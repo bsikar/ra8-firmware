@@ -28,7 +28,7 @@
  * peripheral: the register-level NOR-flash model in
  * ``tests/mocks/src/ra8_fake_xspi_flash.c`` services each ``TRREQ`` kick on
  * the driver's own poll thread, and fault tests arm the seam to drive
- * the timeout legs (#238). Every register access carries a
+ * the timeout legs. Every register access carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
  * citation comment for the cite checker.
  *

@@ -5,7 +5,7 @@
 # scripts/builders/check_no_gnu_attribute.sh -- the GNU-attribute gate.
 #
 # This is a minimal trusted launcher, not an implementation: the gate is the
-# Zig host tool tools/check_no_gnu_attribute (RA8FW-335, #1178), which replaced the
+# Zig host tool tools/check_no_gnu_attribute (RA8FW-335), which replaced the
 # Python scripts/checks/check_no_gnu_attribute.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

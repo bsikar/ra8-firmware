@@ -28,7 +28,7 @@ if [ -z "${_RA8_HISTORY_SH:-}" ]; then
   # runs every gate inside a `git archive` snapshot that was turned into a repo
   # by `git init`. That snapshot holds exactly ONE synthetic commit
   # ("ci.sh snapshot of HEAD") and none of the host's objects, so a gate reading
-  # history there sees no real commit message at all (#348).
+  # history there sees no real commit message at all.
   #
   # Splitting the two sources is deliberate and is what makes snapshot mode
   # still mean something for these gates:
@@ -193,7 +193,7 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
     if [[ "${count:-0}" -eq 0 ]]; then
       echo "::error::commit-metadata gate examined 0 commits -- range '$range'" >&2
       echo "       is empty (base resolved equal to head). This is the" >&2
-      echo "       workflow_dispatch head..head vacuity (#357): a manual re-run" >&2
+      echo "       workflow_dispatch head..head vacuity: a manual re-run" >&2
       echo "       has nothing new to scan, so a green here would mean 'examined" >&2
       echo "       nothing', not 'history is clean'. Failing loudly instead." >&2
       return 1

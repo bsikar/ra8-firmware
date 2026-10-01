@@ -7,7 +7,7 @@ A SOUP record's "how widely is this used here" sentence is the number a reader
 trusts when deciding how much of the firmware a vendored component sits under.
 Those numbers were transcribed by hand and then left: ``docs/SOUP/threadx.md``
 claimed 45 example applications against a tree that held 47, and
-``sbom_registry.py`` restated the same 45 in its component description (#624).
+``sbom_registry.py`` restated the same 45 in its component description.
 Nothing recomputed either one, so both aged quietly and a stale count read
 exactly like a current one.
 

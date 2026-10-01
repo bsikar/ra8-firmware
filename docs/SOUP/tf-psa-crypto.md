@@ -21,7 +21,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   consume it under Apache-2.0.
 - **How it entered our tree**: Vendored snapshot of the upstream
   TF-PSA-Crypto `development` branch shortly after the 1.1.0 release.
-  Resolved (#548) to commit `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77`
+  Resolved to commit `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77`
   (2026-04-29): 217 of the 222 vendored files are byte-identical to it.
   The remaining five are upstream's build-generated sources, enumerated
   under "Deviations / patches" below.
@@ -109,7 +109,7 @@ Five files, all upstream build-generated sources vendored because the cross
 build does not run upstream's generators; they have no upstream counterpart at
 any revision. Declared in `scripts/gen/sbom_registry.py` and pinned by content
 in `docs/sbom/upstream/tf-psa-crypto.manifest`; the other 217 vendored files
-are verified byte-identical to the upstream pin on every CI run (#548).
+are verified byte-identical to the upstream pin on every CI run.
 
 - `core/psa_crypto_driver_wrappers.h` and
   `core/psa_crypto_driver_wrappers_no_static.c` -- emitted from the driver

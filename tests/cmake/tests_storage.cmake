@@ -40,7 +40,7 @@ add_custom_target(
 # The UTF codec (ra8_fs_utf.c) is named for the ENCODING rather than for the
 # filesystem, because both on-disk name formats in this library store UTF-16 --
 # so it does not match the ra8_fs_fat* pattern and has to be named. Every FAT TU
-# that touches a name calls into it (#606).
+# that touches a name calls into it.
 file(GLOB RA8_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_fat*.c)
 list(APPEND RA8_FS_FAT_TU_SOURCES ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_utf.c)
 add_executable(
@@ -56,7 +56,7 @@ target_compile_definitions(test_ra8_fs_exfat PRIVATE RA8_EXFAT_FIXTURE="${RA8_EX
 add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 
 # ---------------------------------------------------------------------------
-# test_ra8_cache_store (#201): persistent key->blob cache over LevelX standalone.
+# test_ra8_cache_store: persistent key->blob cache over LevelX standalone.
 # Builds ra8_cache_store's own sources plus the vendored LevelX NOR sources
 # (LX_STANDALONE_ENABLE, no ThreadX) and the RAM NOR fake. ra8_core_hal
 # supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
@@ -102,7 +102,7 @@ target_include_directories(
 add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 
 # ---------------------------------------------------------------------------
-# test_lx_fs_backend (#611): the LevelX -> ra8_fs block-device backend that the
+# test_lx_fs_backend: the LevelX -> ra8_fs block-device backend that the
 # threadx_fs_demo / threadx_fs_levelx_demo HIL apps mount through. Compiles the
 # REAL vendored LevelX NOR core (LX_STANDALONE_ENABLE, no ThreadX) over the RAM
 # NOR fake plus the port shim under test (port/levelx/src/lx_fs_backend.c);
@@ -135,7 +135,7 @@ target_include_directories(
 add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 
 # ---------------------------------------------------------------------------
-# test_cache_store_demo (#257): the ra8_cache_store_demo example core on the host.
+# test_cache_store_demo: the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
 # (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate
 # exercise byte-identical logic. Links the same Zig cache-store

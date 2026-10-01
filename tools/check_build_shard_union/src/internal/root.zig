@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The cross-build shard-union gate, as pure computation (RA8FW-335, #1159).
+//! The cross-build shard-union gate, as pure computation (RA8FW-335).
 //!
 //! Everything here is a function of text and of already-collected path lists:
 //! no file system, no argv, no process state, so every rule below is provable

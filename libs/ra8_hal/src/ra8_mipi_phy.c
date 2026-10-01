@@ -293,7 +293,7 @@ void priv_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
  * ``line_rate_mbps`` is bounded here against the same 80..720 window
  * ``ra8_mipi_phy_select_timing`` applies to its lookup key, so a rate
  * the DPHYTIM tables cannot serve is refused before the LDO is powered
- * rather than silently accepted (#1367).
+ * rather than silently accepted.
  * @param[in] cfg See declaration: ``const ra8_mipi_phy_config_t* cfg``.
  * @return ::ra8_err_t outcome (or scalar return value).
  * @retval k_ra8_ok Operation completed successfully.

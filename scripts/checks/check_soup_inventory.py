@@ -10,7 +10,7 @@ they were "generated and validated by ``scripts/gen/gen_sbom.py``" -- and
 neither was.  ``gen_sbom.py --write`` writes exactly one artifact, the SBOM at
 ``docs/sbom/ra8-firmware.cdx.json``; ``--check`` validates registry against
 tree against SBOM.  Nothing read either Markdown file, so nothing could notice
-when one stopped describing the tree (#631).
+when one stopped describing the tree.
 
 That is why a vendored component could be missing from the inventory entirely
 (doxygen-awesome, #629), why a host-tool pin could sit in the licence file with

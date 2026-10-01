@@ -255,7 +255,7 @@ RA8_INTERNAL static void internal_test_pipeline_tall_image_height_downscaled(voi
 /**
  * @test internal_test_pipeline_gray8_profile
  * @brief The gray8 device profile stores each raster at 8-bpp (one byte/pixel)
- *        and stamps its descriptor `pixel_format` = gray8 (#343).
+ *        and stamps its descriptor `pixel_format` = gray8.
  *
  * @par MC/DC:
  * Drives the true arm of `if (scr->pixel_format == k_book_pixfmt_gray8)` in

@@ -29,6 +29,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_mram_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io over extra-MRAM: FAT12 to VFS round-trip (#155/#156)"
+  DESCRIPTION "ra8_io over extra-MRAM: FAT12 to VFS round-trip"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

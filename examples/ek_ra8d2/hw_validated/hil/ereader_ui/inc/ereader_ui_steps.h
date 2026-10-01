@@ -268,7 +268,7 @@ typedef enum : uint32_t {
   k_er_reflow_link = 0xFF2A52BEU,        /**< Anchor colour (cerulean ARGB).        */
   k_er_img_arena   = 2U * 1024U * 1024U, /**< SDRAM image-decode scratch.           */
 
-  /* Layer-3 glyph atlas (#164): cache rasterised body glyphs in SDRAM so page
+  /* Layer-3 glyph atlas: cache rasterised body glyphs in SDRAM so page
    * turns reuse them instead of re-running stb_truetype every frame. */
   k_er_glyph_cell_px    = 64U,                                     /**< Cell edge, px (>= body).  */
   k_er_glyph_cell_bytes = k_er_glyph_cell_px * k_er_glyph_cell_px, /**< Bytes per cell.           */
@@ -329,7 +329,7 @@ typedef enum : uint16_t {
   k_er_body_line_count = 10U, /**< Number of pre-wrapped body lines. */
 } er_body_count_t;
 
-/** @brief Two-chapter mock spine for in-content cross-chapter navigation (#110). */
+/** @brief Two-chapter mock spine for in-content cross-chapter navigation. */
 extern const er_chapter_t k_er_spine[];
 /**
  * @enum er_spine_count_t
@@ -369,7 +369,7 @@ extern ra8_batt_monitor_t   s_batt_mon;        /**< Low-battery nag policy state
 extern bool                 s_nag_region_only; /**< True when a tap only toggled the nag. */
 extern display_turn_event_t s_pending_event;   /**< Pending refresh event for next flush. */
 
-/** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL (#78). */
+/** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL. */
 extern volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn. */
 extern volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.   */
 extern volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.    */
@@ -461,7 +461,7 @@ void er_render_reading(void);
 bool er_apply_pageturn(er_dir_t dir);
 
 /**
- * @brief Follow an in-content `<a>` tap in the Reading body (#110).
+ * @brief Follow an in-content `<a>` tap in the Reading body.
  *
  * @param[in] x Tap X (panel pixels).
  * @param[in] y Tap Y (panel pixels).
@@ -550,7 +550,7 @@ void er_nag_render(ra8_widget_t* w);
 void er_poll_touch(void);
 
 /**
- * @brief Poll SW1/SW2 and turn a page on a fresh press (#78).
+ * @brief Poll SW1/SW2 and turn a page on a fresh press.
  *
  * @pre The switch pins were configured as inputs (::app_bringup_buttons).
  * @pre ::s_display / ::s_fb are valid.
@@ -602,7 +602,7 @@ void er_render_current(void);
 void er_render_nag_region(void);
 
 /**
- * @brief Flush the panel for a refresh event through the cadence policy (#78).
+ * @brief Flush the panel for a refresh event through the cadence policy.
  *
  * @param[in] event The page-transition that occurred (open / turn / chapter).
  * @pre ::s_policy was initialised and ::s_display is valid.

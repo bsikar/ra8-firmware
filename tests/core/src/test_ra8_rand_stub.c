@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rand_stub.c
- * @brief Unit tests for ra8_core's freestanding rand()/srand() (#2890)
+ * @brief Unit tests for ra8_core's freestanding rand()/srand()
  *
  * @details
  * The unit under test IS the freestanding rand()/srand() replacement the

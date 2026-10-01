@@ -137,5 +137,5 @@ baseline SIMD, which is bit-identical for the lossless (VP8L) path.
 - Reviewed: 2026-07-15
 - Vendored at upstream `v1.5.0` (`a4d7a715`).
 - Build-flag location and wiring scope re-verified against the tree and
-  corrected (#617): 2026-08-04.
+  corrected: 2026-08-04.
 - Expected re-review by: 2027-07-15

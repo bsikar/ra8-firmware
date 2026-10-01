@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_name.c
- * @brief Host tests for the shared image naming table (#748).
+ * @brief Host tests for the shared image naming table.
  *
  * @par Tag
  * [Ring 3 / Imaging] {World: NS}

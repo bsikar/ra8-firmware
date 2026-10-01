@@ -3,7 +3,7 @@
  * @brief exFAT DIRECTORIES with non-ASCII names (#605 + #606).
  *
  * @details
- * exFAT directories (#605) and UTF-8 names (#606) landed as separate pieces of
+ * exFAT directories and UTF-8 names landed as separate pieces of
  * work, and their intersection is surface neither one's own suite covers: a
  * directory's entry set is built by `priv_exfat_build_dir_set()`, which is a
  * SECOND copy of the name-writing logic the file side has. It carried the same

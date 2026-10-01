@@ -27,7 +27,7 @@ FROM ${BASE_IMAGE}
 # vscode user is uid 1000, so the two never clash. Every pinned tool lives in
 # /usr/local, /usr/bin and /opt, so the runner user resolves them all.
 #
-# No sudoers entry (#487): every workflow step that used to provision host
+# No sudoers entry: every workflow step that used to provision host
 # packages (e.g. the coverage gate's apt-get) was removed because this
 # Ansible-deployed image already carries the complete toolchain. A
 # 'runner ALL=(ALL) NOPASSWD:ALL' line used to live here to match the official
@@ -49,7 +49,7 @@ COPY --from=runner --chown=runner:runner /home/runner /home/runner
 RUN /home/runner/bin/installdependencies.sh \
     && rm -rf /var/lib/apt/lists/*
 
-# The identity marker (#513). Its only job is to let a check running inside a
+# The identity marker. Its only job is to let a check running inside a
 # container prove that the container is THIS image rather than some other
 # Ubuntu that happens to carry the same tools.
 #

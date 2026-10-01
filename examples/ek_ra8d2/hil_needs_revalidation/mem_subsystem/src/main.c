@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c
- * @brief Drives each ra8_mem (#147) memory-hierarchy layer in isolation (#263).
+ * @brief Drives each ra8_mem memory-hierarchy layer in isolation.
  *
  * @details
  * The #147 memory primitives (ra8_slab, ra8_arena, ra8_tile_cache, and the

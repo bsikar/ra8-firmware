@@ -32,7 +32,7 @@
  * is physically first, then group N-1 ... group 1, then the 8.3 entry. Each LFN
  * entry carries 13 UTF-16LE chars (offsets 1/3/5/7/9, 14/16/18/20/22/24, 28/30)
  * and a checksum of the 8.3 name (offset 13) that ties the chain to its entry.
- * Reading a chain came first (#101); writing one came later (#600) and shares
+ * Reading a chain came first; writing one came later and shares
  * this file's layout table rather than restating it.
  * ===========================================================================
  */
@@ -116,7 +116,7 @@ void priv_lfn_fill_slot(uint8_t*        ent,
     uint16_t       val = (uint16_t)k_lfn_unicode_pad;
     if (pos < nlen) {
       /* The unit itself. Taking one byte of the caller's name per slot was
-       * correct only for ASCII, and silently wrong for everything else (#606). */
+       * correct only for ASCII, and silently wrong for everything else. */
       val = name[pos];
     } else if (pos == nlen) {
       val = 0U; /* the NUL that terminates the last populated group */
@@ -162,7 +162,7 @@ void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
     }
     /* The unit as stored. Substituting '?' for everything above 0x7F -- which
      * is what this did -- made the reported name one the caller could not hand
-     * back to `ra8_fs_open()`, so the file was listed and unopenable (#606). */
+     * back to `ra8_fs_open()`, so the file was listed and unopenable. */
     s->units[pos] = (uint16_t)val;
   }
 }
@@ -257,7 +257,7 @@ static ra8_fs_lfn_scan_t internal_dir_find_long_sector(const ra8_fs_mount_t* m,
     /* Compared as UTF-16, which is the domain the name is stored in and the
      * domain the up-case table folds. Comparing the reassembled text meant
      * comparing against a name the reader had already mangled, so a file whose
-     * name held an accent could not be opened by its real name (#606). */
+     * name held an accent could not be opened by its real name. */
     uint32_t        lnunits = 0U;
     const uint16_t* lunits  = priv_lfn_units_for(lfn, ent, &lnunits);
     if ((lunits != nullptr) && (priv_utf16_ieq(needle, nneedle, lunits, lnunits) != 0U)) {
@@ -342,7 +342,7 @@ ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start)
     if (err != k_ra8_ok) {
       return err;
     }
-    /* The volume just got a cluster back, so say so (#607): the free count
+    /* The volume just got a cluster back, so say so: the free count
      * feeds FSInfo, and pulling the hint back is what makes the freed space
      * the next thing allocated rather than something only found after a full
      * wrap of the scan. */

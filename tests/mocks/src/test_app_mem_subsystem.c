@@ -1,6 +1,6 @@
 /**
  * @file test_app_mem_subsystem.c
- * @brief Integration test: mirrors the mem_subsystem example (#263).
+ * @brief Integration test: mirrors the mem_subsystem example.
  *
  * @details
  * Replays each drive the app

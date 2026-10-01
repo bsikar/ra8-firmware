@@ -7,7 +7,7 @@ LED1 toggles on a clean fill and LED2 on a mismatch; `g_drw_match`, `g_drw_rev`
 (HWREVISION), `g_drw_fill_err` and `g_drw_heartbeat` mirror the verdict for
 headless SWD probing. Needs no external hardware.
 
-The engine was long believed inert on silicon (#247). The real cause was power:
+The engine was long believed inert on silicon. The real cause was power:
 the D/AVE 2D block sits in the graphics power domain, which `PDCTRGD` gates OFF
 at reset (HUM Ch 11.2.14 p 452), and cancelling the module-stop bit is not
 enough. Once `ra8_drw_init` powers it, `HWREVISION` reads `0x0FBE0107` instead

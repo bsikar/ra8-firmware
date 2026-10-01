@@ -13,7 +13,7 @@ as Software Of Unknown Provenance (SOUP).
   previously recorded `edbe17738352418245d7228e7fd9f12c3ddc34c4`, which is the
   annotated *tag object* rather than the commit it points at -- a distinction
   that matters because the weekly OSV scan materialises each pin as a commit
-  and would have queried an oid that is not one (#548).
+  and would have queried an oid that is not one.
 - **Upstream URL**: https://github.com/google/flatbuffers
 - **Local path**: `libs/third_party/flatbuffers/`
   - Files in tree: `include/flatbuffers/*.h` (18 headers) and `LICENSE`.

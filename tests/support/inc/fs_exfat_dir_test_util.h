@@ -391,7 +391,7 @@ internal_chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, 
  *
  *          The fold used to up-case only 'a'..'z' of each unit's LOW byte,
  *          which matches the specification for an ASCII name and nothing else:
- *          once names could hold anything (#606), it reported every correctly
+ *          once names could hold anything, it reported every correctly
  *          hashed non-ASCII name as broken. Reading the volume's table rather
  *          than calling the driver's fold is what keeps this an independent
  *          check of the driver rather than a restatement of it.

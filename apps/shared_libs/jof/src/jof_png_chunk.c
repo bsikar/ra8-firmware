@@ -1,7 +1,7 @@
 /**
  * @file jof_png_chunk.c
  * @brief PNG chunk layer for the streaming decoder: prologue, palette
- *        tables, ancillary skipping and the post-IDAT walk (#231).
+ *        tables, ancillary skipping and the post-IDAT walk.
  *
  * @details
  * The byte-source primitives and every chunk-structure concern of the

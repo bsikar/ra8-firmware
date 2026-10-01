@@ -27,7 +27,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # stands up a synthetic microsecond clock and an edge-counting hook on the stack, so
 # ra8_io is here only for the SCI8 console stream. No EXTRA_SRCS are needed and boot
 # files come from the shared libs/ra8_board_ek_ra8d2/src/boot copy (no local
-# vector_table.c). (#155/#264)
+# vector_table.c).
 ra8_add_app(
   NAME power_profile_stats_demo
   STACK_BYTES 4096

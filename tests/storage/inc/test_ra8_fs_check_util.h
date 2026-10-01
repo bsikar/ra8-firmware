@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_check_util.h
- * @brief Shared scaffolding for the `ra8_fs_check()` test suites (#610).
+ * @brief Shared scaffolding for the `ra8_fs_check()` test suites.
  *
  * @details
  * `ra8_fs_check` is exercised by two test binaries that share a RAM-image

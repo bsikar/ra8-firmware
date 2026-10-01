@@ -7,7 +7,7 @@
  *
  *  - @ref ra8_rabook_gray4_output_dims -- dimension-clamping arithmetic
  *  - @ref ra8_rabook_gray4_encode      -- quantise + nibble-pack (4-bpp)
- *  - @ref ra8_rabook_gray8_encode      -- verbatim 8-bpp copy (#343)
+ *  - @ref ra8_rabook_gray8_encode      -- verbatim 8-bpp copy
  *  - @ref ra8_rabook_gray4_downscale   -- Q16.16 bilinear resample
  *
  * @par MC/DC:

@@ -3,7 +3,7 @@
 #
 # cmake/ra8_bootstrap.cmake -- make this repository's cmake/ directory findable
 # by name, so a per-app listfile can say `include(ra8_add_app)` from any depth
-# instead of carrying its own walk up the directory tree (#779).
+# instead of carrying its own walk up the directory tree.
 #
 # The problem this solves
 # -----------------------

@@ -1,6 +1,6 @@
 /**
  * @file test_mem_ecc.c
- * @brief Host tests for the SRAM ECC fault-inject -> error-record decode (#130).
+ * @brief Host tests for the SRAM ECC fault-inject -> error-record decode.
  *
  * @details
  * Backs ``mem_ecc_fault_demo``: drives the ECC decoder self-test

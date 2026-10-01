@@ -4,7 +4,7 @@
 # Per-app CMake stub for `blink_m33`. The Cortex-M85 (CPU0) launcher image is
 # built by the shared cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1) blink
 # image is built + embedded by the shared ra8_add_cpu1_image() helper, so one SWD
-# flash drops both cores' images. This is the canonical M33 template (#152).
+# flash drops both cores' images. This is the canonical M33 template.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().

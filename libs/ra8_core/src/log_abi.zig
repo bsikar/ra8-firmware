@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_log.h` (#2836).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_log.h`.
 //!
 //! The eight emit entry points keep WEAK linkage, which the C spelled
 //! `[[gnu::weak]]`. That is not decoration: eleven test fixtures and two
@@ -10,8 +10,8 @@
 //! links into a duplicate-symbol error.
 //!
 //! `ra8_scb_trace_enabled` stays a call into ra8_scb, Zig too as of the
-//! fault block (#2868), the same delegation the SysTick port makes for the
-//! DEMCR unlock (#588).
+//! fault block, the same delegation the SysTick port makes for the
+//! DEMCR unlock.
 
 const itm = @import("log_itm");
 const line = @import("log_line");

@@ -1,6 +1,6 @@
 # epaper_refresh
 
-End-to-end example for the e-ink display path (#256). It drives an
+End-to-end example for the e-ink display path. It drives an
 IT8951-compatible e-paper panel **entirely through the display PAL** e-ink
 backend, which layers on the `ra8_epaper` HAL driver over an injected
 `ra8_io_spi_bus` seam. The app itself never names `ra8_epaper_*`: it paints a

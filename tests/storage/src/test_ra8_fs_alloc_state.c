@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_alloc_state.c
- * @brief The allocator state's "no bound slot" fallbacks (#607).
+ * @brief The allocator state's "no bound slot" fallbacks.
  *
  * @details
  * `ra8_fs_fat_alloc_internal.h` promises that every accessor is TOTAL: a mount

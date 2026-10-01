@@ -66,7 +66,7 @@ RA8_INTERNAL static ra8_err_t internal_probe_read(
                     (off_t)(offset + used));
     } while ((got < 0) && (errno == EINTR));
     if (got < 0) {
-      /* A host read error is a failure, not the end of the archive (#764). */
+      /* A host read error is a failure, not the end of the archive. */
       return k_ra8_err_hw_error;
     }
     if (got == 0) {

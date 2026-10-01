@@ -17,7 +17,7 @@ in-tree callers were:
 - the host tests under `tests/net/`.
 
 NetX Duo's driver (`port/netxduo/src/nx_ether_driver_ra8_eth.c`) deliberately
-bypasses the PAL and calls `ra8_eth_*` directly (#621), so on a board build the
+bypasses the PAL and calls `ra8_eth_*` directly, so on a board build the
 PAL was compiled and never brought up. This app is the first consumer that
 initialises it on hardware and drives the whole documented surface.
 

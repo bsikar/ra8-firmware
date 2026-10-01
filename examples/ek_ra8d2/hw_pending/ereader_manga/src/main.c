@@ -20,7 +20,7 @@
  *      page never resident whole -- into an SDRAM memstore.
  *   3. Serve the atlas through an ``ra8_tile_cache`` sized (::k_mg_cells) to
  *      the 1:1 viewport tile demand plus a one-tile pan margin, so panning
- *      evicts only newly exposed tiles instead of thrashing (#338).
+ *      evicts only newly exposed tiles instead of thrashing.
  *   4. Main loop: poll the GT911, hit-test the tap-zones (four edges pan, the
  *      centre toggles 1:1 <-> fit-page), redraw the viewport + status bar +
  *      minimap, and present.
@@ -138,7 +138,7 @@ typedef enum : uint32_t {
  */
 static_assert((uint64_t)k_mg_cells >= (uint64_t)k_mg_view_cols * (uint64_t)k_mg_view_rows,
               "tile cache is smaller than the 1:1 viewport tile demand: re-derive k_mg_cells from "
-              "the panel + tile geometry so a single-step pan cannot thrash (#338)");
+              "the panel + tile geometry so a single-step pan cannot thrash");
 static_assert((uint64_t)k_mg_cells * (uint64_t)k_mg_cell_bytes <= (uint64_t)k_mg_cell_budget_bytes,
               "resident tile arena exceeds its SDRAM budget: the tile-cache derivation grew past "
               "k_mg_cell_budget_bytes");
@@ -492,7 +492,7 @@ static void mg_poll_touch(bool* was_touching)
       if (mg_reader_render(&s_reader) == k_ra8_ok) {
         mg_present();
         /* Idle-window read-ahead: warm the next pan step's tiles so a follow-on
-         * pan finds them resident instead of stalling on a cold decode (#341). */
+         * pan finds them resident instead of stalling on a cold decode. */
         (void)mg_reader_prefetch(&s_reader);
       }
     }

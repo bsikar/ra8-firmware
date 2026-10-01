@@ -29,6 +29,6 @@ ra8_add_app(
   NAME ra8_io_cache_demo
   STACK_BYTES 4096
   DESCRIPTION
-    "ra8_io caching block device: LRU sector cache over a RAM disk, re-read hit counters (#160)"
+    "ra8_io caching block device: LRU sector cache over a RAM disk, re-read hit counters"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

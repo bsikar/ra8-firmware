@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_error_handler.h` (#2875).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_error_handler.h`.
 //!
 //! `ra8_fatal_error` keeps WEAK linkage, which the C spelled `[[gnu::weak]]`.
 //! That is the documented override seam: `ra8_check.h` tells field builds to

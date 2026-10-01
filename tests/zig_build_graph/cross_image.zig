@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The ARM cross-build slice (#936): one example app per row of the cross-app
+//! The ARM cross-build slice: one example app per row of the cross-app
 //! table, cross-built for the RA8D2 (Cortex-M85) with no CMake in the loop,
 //! plus the second images (CPU1, non-secure) that hang off the same configure.
 //!
@@ -331,7 +331,7 @@ fn addCrossApp(
         compile.addArgs(&arm_cpu_flags);
         // The device tail, where the toolchain file's *_INIT append puts it:
         // after the shared CPU flags (so its -mfpu wins) and before the
-        // configuration's own set. Empty for every ek_ra8d2 app (#1131).
+        // configuration's own set. Empty for every ek_ra8d2 app.
         compile.addArgs(device.compileFlags(app.board));
         compile.addArgs(globals.config_flags);
         compile.addArgs(&arm_dialect_flags);
@@ -340,7 +340,7 @@ fn addCrossApp(
         compile.addArgs(local_defines);
         // A SOURCE-scope define, so it lands after every target-scope one and
         // on these units alone: OFF_TARGET_LIBS is the only rule here that
-        // compiles one executable at two preprocessor views (#1133).
+        // compiles one executable at two preprocessor views.
         if (cross_sources.isOffTargetSource(app, source)) compile.addArg(cross_sources.off_target_define);
         compile.addArgs(armWarningFlags(b.allocator, app));
         compile.addArgs(&arm_target_dialect_flags);

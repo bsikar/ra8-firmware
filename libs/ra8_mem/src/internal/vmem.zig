@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The byte-range page cache of `inc/ra8_vmem.h` (#147): a typed facade over
+//! The byte-range page cache of `inc/ra8_vmem.h`: a typed facade over
 //! `ra8_keycache` with an (object id, frame-aligned offset) key, the byte page
 //! as the cell payload, and the SLRU policy selected. Every cache mechanic (the
 //! probationary/protected lists, the pinned-frame skip, hash chaining) stays in

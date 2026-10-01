@@ -1,6 +1,6 @@
 /**
  * @file test_app_usb_printer_vendor.c
- * @brief Host unit test for the usb_printer_vendor example chapter-9 router (#265).
+ * @brief Host unit test for the usb_printer_vendor example chapter-9 router.
  *
  * @details
  * Exercises the pure, hardware-free decision logic in the demo's header-only

@@ -52,7 +52,7 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
-# The arena the JOF producer carves its scratch from is Zig (#2601), so it is
+# The arena the JOF producer carves its scratch from is Zig, so it is
 # linked as an archive rather than named as a source. ra8_webp_attach() below
 # relies on the same archive for the decoder scratch.
 if(NOT TARGET ra8_zig::ra8_mem)
@@ -75,7 +75,7 @@ if(NOT TARGET ra8_zig::ra8_jpeg)
 endif()
 link_libraries(ra8_zig::ra8_jpeg)
 
-# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# ra8_log is Zig now, so the ra8_core archive replaces the
 # libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)

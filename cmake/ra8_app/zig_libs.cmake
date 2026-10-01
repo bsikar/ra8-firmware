@@ -29,7 +29,7 @@ find_program(RA8_ZIG_EXECUTABLE zig)
 #
 # That is 77690 bytes of flash bought by nothing the linker can drop, on a
 # part with 1 MB of MRAM. ereader_shelf overflowed by 127236 bytes at Debug
-# and links with 1046110 bytes at ReleaseSmall (#2696). The C side never had
+# and links with 1046110 bytes at ReleaseSmall. The C side never had
 # this cliff because C debug codegen costs a fraction of it and the linker
 # can drop unreferenced objects.
 #

@@ -7,7 +7,7 @@ Every rule is proved twice: on a fixture where the catalogues agree (the
 checker must stay quiet) and on one carrying exactly one seeded disagreement
 (the checker must fire).  A detector is only worth its exit status when both
 halves are shown, which is why this file exists rather than a "it passed on
-the real tree" claim (#531, #631).
+the real tree" claim.
 
 The fixtures are synthetic: a miniature registry, a miniature licence file and
 a miniature index written into a scratch directory.  Running the rules against
@@ -42,7 +42,7 @@ BASE_COMPONENTS = (
     FakeComponent("esp-hosted-mcu", "coprocessor/esp32c6/esp-hosted-mcu"),
     FakeComponent("doxygen-awesome", "docs/doxygen_theme"),
     # Catalogued at a repo-root file rather than a vendored tree, the shape
-    # every pinned-dependency component has (#631).
+    # every pinned-dependency component has.
     FakeComponent("vela", "pyproject.toml"),
 )
 

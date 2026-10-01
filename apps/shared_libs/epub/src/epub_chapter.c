@@ -227,7 +227,7 @@ static ra8_err_t internal_font_init(const epub_book_t* book, stbtt_fontinfo* out
   }
   /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
    * font bytes are attacker-controlled (an EPUB @font-face / epub_set_font
-   * blob) and stb_truetype reads the directory with no length check (#217). */
+   * blob) and stb_truetype reads the directory with no length check. */
   if (!ra8_stbtt_sfnt_dir_in_bounds(book->font_data, book->font_size, (uint32_t)offset)) {
     return k_ra8_err_validation_failed;
   }

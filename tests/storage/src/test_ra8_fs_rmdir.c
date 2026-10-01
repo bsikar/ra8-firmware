@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_rmdir.c
- * @brief `ra8_fs_rmdir()` plus the FAT directory guards on unlink / open (#604).
+ * @brief `ra8_fs_rmdir()` plus the FAT directory guards on unlink / open.
  *
  * @details
  * Two halves of one defect, so one test file.
@@ -131,7 +131,7 @@ RA8_INTERNAL static uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
 {
   /* Partition-adjusted: `priv_read_sector()` adds `partition_base_lba`, so a
    * test poking `s_disk.bytes` directly has to add it too or it lands in the
-   * pre-partition gap (#568). It is 0 for this hand-built superfloppy, but
+   * pre-partition gap. It is 0 for this hand-built superfloppy, but
    * writing it out keeps the helper correct if the fixture ever grows an MBR. */
   return (h->partition_base_lba + h->first_root_lba) * (uint32_t)k_geo_blk_sz;
 }
@@ -562,7 +562,7 @@ RA8_INTERNAL static void internal_test_rmdir_argument_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, ""));
   /* A name too long for 8.3 is no longer a bad name -- since #600 it is a name
-   * that could exist -- so the honest answer is that it does not (#600). */
+   * that could exist -- so the honest answer is that it does not. */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/VERYLONGNAME.TXT"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/NOPE"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/NOPE/X"));

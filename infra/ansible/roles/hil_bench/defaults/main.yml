@@ -98,7 +98,7 @@ hil_bench_linuxptp_masked_units:
 # the board through a USB-Ethernet adapter, which `ethtool -T` reports as
 # software-receive only with "PTP Hardware Clock: none" -- it can never be more
 # than a software-timestamped peer. The Pi's built-in port has PHC 0 with
-# hardware transmit and receive timestamping, so the cable lives there (#292)
+# hardware transmit and receive timestamping, so the cable lives there
 # and the role asserts the property rather than trusting the label.
 # Fleet-owned physical identity. Empty defaults make direct playbook execution
 # fail rather than selecting a plausible but undeclared interface.
@@ -117,7 +117,7 @@ hil_bench_jlink_speed: 1000
 # Whether to pull LFS content (book fixtures some HIL apps bake in).
 hil_bench_lfs_pull: true
 
-# Bench mutual exclusion (#497). The canonical state directory -- one path, on
+# Bench mutual exclusion. The canonical state directory -- one path, on
 # every actor, because two actors flocking two DIFFERENT inodes is the one
 # silent-corruption path the design has. Overriding this is for a test rig, not
 # for the bench.

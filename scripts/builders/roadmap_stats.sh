@@ -27,7 +27,7 @@ TOOL_DIR="${ROOT}/tools/roadmap_stats"
 
 # A missing zig is FATAL rather than a skipped gate. Exiting 0 here would
 # report a current summary because nothing recomputed it, which is the same
-# vacuous green the gate-honesty epic (#190) exists to prevent.
+# vacuous green the gate-honesty epic exists to prevent.
 ZIG="${ZIG:-}"
 if [ -z "${ZIG}" ]; then
   if command -v zig >/dev/null 2>&1; then

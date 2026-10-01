@@ -25,7 +25,7 @@ reader for XML), zero-heap:
 | OPF: `<manifest>`, `<spine>`, Dublin Core `<metadata>` | Yes |
 | Spine reading order + linear items | Yes |
 | Cover image reference (manifest `properties="cover-image"` / OPF `<meta name="cover">`) | Yes (bytes extracted) |
-| Navigation: NCX (`toc.ncx`) and EPUB 3 nav document | Both (#74) |
+| Navigation: NCX (`toc.ncx`) and EPUB 3 nav document | Both |
 | Chapter (spine item) extraction to a byte buffer | Yes |
 
 **Must-accept reality.** The reader targets **EPUB 2.0.1** and **loosely-conformant

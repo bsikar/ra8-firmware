@@ -1,6 +1,6 @@
 # mem_ecc_fault_demo
 
-SRAM ECC fault injection and detection (#130). Where `ecc_monitor_demo` only
+SRAM ECC fault injection and detection. Where `ecc_monitor_demo` only
 brings ECC up and reads a clean status, this deliberately provokes a memory
 error and proves the hardware error path latches it -- which is what the SIL-3 /
 DAL-B bar actually asks for.

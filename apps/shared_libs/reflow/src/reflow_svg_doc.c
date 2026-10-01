@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg_doc.c
- * @brief SVG document walk, gradient definitions, and the public render API (#112).
+ * @brief SVG document walk, gradient definitions, and the public render API.
  *
  * @details The document-order element walk (with a bounded nested `<g>`
  * transform stack), the `<linearGradient>` / `<radialGradient>` + `<stop>`

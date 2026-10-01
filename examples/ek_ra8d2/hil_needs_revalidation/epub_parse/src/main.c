@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/epub_parse/src/main.c
- * @brief On-silicon HIL: epub parse layer runs on the target (#139).
+ * @brief On-silicon HIL: epub parse layer runs on the target.
  *
  * @details
  * First firmware app to exercise `epub` (+ vendored miniz ZIP + bounded XML reader)

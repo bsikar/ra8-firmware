@@ -188,7 +188,7 @@ brought the raw link up at SPI mode 3 / 1 MHz with zero bad checksums, driving
 the SCI directly; the first protocol round-trip through the code described
 here landed in `6d7ddb532`. The validated consumers form their own HIL
 lane (`just hil::c6`) rather than joining `hw_validated/hil/`, because
-`ra8_emulator` models no ESP32-C6 (#494). That evidence is dated against the
+`ra8_emulator` models no ESP32-C6. That evidence is dated against the
 five Wi-Fi bring-up applications that existed then; the two camera servers and
 the two pending consumers do not inherit it and still require target evidence.
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# run_corpus.sh -- drive the ra8_viewer malformed-input security corpus (#298).
+# run_corpus.sh -- drive the ra8_viewer malformed-input security corpus.
 #
 # Builds the corpus with gen_corpus.py, then runs the viewer headless over every
 # fixture and asserts the outcome, so a regression in workspace bounds or
@@ -13,7 +13,7 @@
 #     signal, exit >= 128), never a hang (timeout, exit 124);
 #   * legitimate fixtures MUST exit 0 and write a P6 PPM (a bound that also
 #     refuses a valid file is not a fix);
-#   * recognised-but-unwired fixtures MUST exit 1 AND say why on stderr (#849).
+#   * recognised-but-unwired fixtures MUST exit 1 AND say why on stderr.
 #     A wrapped comic, an EPUB, a RABOOK and an unknown extension each have
 #     their own honest reason, and this tier fails if the viewer ever accepts
 #     one of them or refuses it with the wrong reason -- "not wired yet" must
@@ -122,7 +122,7 @@ for f in "${legit[@]}"; do
   fi
 done
 
-# --- recognised but unwired: refused, and honest about why (#849) -----------
+# --- recognised but unwired: refused, and honest about why -----------
 # Each entry is "fixture|expected stderr fragment".
 unwired=(
   "legit.cbt.gz|wrapped comics require"

@@ -368,7 +368,7 @@ RA8_INTERNAL static void internal_test_find_anchor(void)
  * preceding single-condition page filter `box->page_index != page_idx` is
  * exercised both ways (page 1 matches; page 0 skips -> k_ra8_err_not_found).
  *
- * @details This is the entry point of the reader's tap-to-zoom gesture (#478):
+ * @details This is the entry point of the reader's tap-to-zoom gesture:
  *          a tap that lands on a laid-out figure resolves to the image whose
  *          retained full-resolution pixels the zoom viewer then magnifies.
   * @brief Verify hit test image mcdc behavior against the reflow contract.

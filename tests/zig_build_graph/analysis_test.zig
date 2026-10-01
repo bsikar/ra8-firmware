@@ -3,7 +3,7 @@
 //!
 //! The analysis database's own rules: what makes two compile commands the
 //! same command, which of them this graph can run itself, and the install path
-//! it shares with the lint gate that parses it (#1157).
+//! it shares with the lint gate that parses it.
 //!
 //! In this file rather than in analysis.zig because `zig build test-zig` runs
 //! ONE test root, tests/zig_build_graph/build_graph_test.zig, and reaches the

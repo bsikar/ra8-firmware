@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Striped driver for the baseline decoder (#2799).
+//! Striped driver for the baseline decoder.
 //!
 //! Decodes a JPEG the caller feeds in through a pull callback, emitting one
 //! MCU row of pixels at a time, so peak memory is a sliding window plus one

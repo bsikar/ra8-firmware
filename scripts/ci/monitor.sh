@@ -116,7 +116,7 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # Hard cap on every network-bound `gh` call. A gh api request with NO timeout is
-  # exactly how the daemon went dark (#560): the request hung, poll_once never
+  # exactly how the daemon went dark: the request hung, poll_once never
   # returned, the loop never wrote another state file, and Restart=always could do
   # nothing because a hung process never exits. A bounded call guarantees the loop
   # always makes progress; a killed call surfaces as a failed command, which every
@@ -183,7 +183,7 @@ if [[ "$-" == *p* ]]; then
   # self-hosted job carries the fork guard `if: github.event_name !=
   # 'pull_request' || head.repo.full_name == github.repository`; when that is
   # false the jobs skip and the run's conclusion is `skipped`. Scoring that as
-  # PASS meant a run in which NO GATE EXECUTED reported PASS (#530) -- the exact
+  # PASS meant a run in which NO GATE EXECUTED reported PASS -- the exact
   # shape this file is scrupulous about everywhere else. An all-skipped run is
   # UNKNOWN: no verdict could be established, because nothing ran.
   #
@@ -194,13 +194,13 @@ if [[ "$-" == *p* ]]; then
   # CANCELLED IS NOT FAILURE -- the verdict depends on it too. A run is `cancelled`
   # when superseded (a newer push cancels the in-flight one) or stopped, NOT when a
   # gate failed. Scoring it FAIL read 91eef75dd -- 6/6 success on main, its dev
-  # firmware/emulator-smoke superseded -- as red (#561). So a sha is judged per
+  # firmware/emulator-smoke superseded -- as red. So a sha is judged per
   # workflow by that workflow's LATEST decisive (success/failure) run; a cancelled
   # or skipped sibling never overrides it, and a cancelled/skipped-only workflow is
   # a NON-result (unlike `in_progress`, which keeps the sha UNDECIDED).
   #
   # One reader, one place: every field and rendered view comes from here. The
-  # reader is the Zig host tool tools/ci_status (RA8FW-335, #1144), reached through
+  # reader is the Zig host tool tools/ci_status (RA8FW-335), reached through
   # its trusted launcher scripts/builders/ci_status.sh; the daemon never calls
   # this path, so its stand-alone copy omits it.
   _status_read() {
@@ -754,7 +754,7 @@ JQ
   # Write the systemd user unit that runs the daemon. Extracted from
   # cmd_install_service to keep that function within the NASA Rule 4 line budget.
   # The WatchdogSec / NotifyAccess / Restart trio here is the contract that makes
-  # a stall self-correcting (#560) -- keep them together.
+  # a stall self-correcting -- keep them together.
   write_service_unit() {
     local unitfile="$1" self="$2"
     cat >"$unitfile" <<EOF
@@ -867,7 +867,7 @@ EOF
   # and jump -- NOT by the bare name. `truenas` is an ~/.ssh/config alias on
   # exactly one laptop, so this command (the one CLAUDE.md sends you to when the
   # GitHub quota is gone) died on "Could not resolve hostname truenas" from the
-  # dev box while the machine answered fine on its address (#526). Anything that
+  # dev box while the machine answered fine on its address. Anything that
   # is not a declared host is passed through as a raw ssh destination, so
   # --host user@1.2.3.4 still works for a box outside the fleet.
   _runner_ssh_argv() {

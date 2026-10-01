@@ -1,6 +1,6 @@
 /**
  * @file reflow_css_internal.h
- * @brief Cross-TU surface for the split content-CSS cascade (#111).
+ * @brief Cross-TU surface for the split content-CSS cascade.
  * @ingroup grp_ereader
  *
  * @details

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The one naming table (#748): a container bit to its canonical extension and
+//! The one naming table: a container bit to its canonical extension and
 //! MIME type, and the sniff-then-name shortcut `identify`.
 
 const abi = @import("abi.zig");

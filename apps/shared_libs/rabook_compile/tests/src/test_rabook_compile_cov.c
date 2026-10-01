@@ -1,6 +1,6 @@
 /**
  * @file test_rabook_compile_cov.c
- * @brief Line-coverage top-up for the RABOOK1 builder error / guard legs (#149).
+ * @brief Line-coverage top-up for the RABOOK1 builder error / guard legs.
  *
  * @details
  * The sibling @ref test_rabook_compile.c drives the happy path plus a few

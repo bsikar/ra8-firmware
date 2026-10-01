@@ -29,7 +29,7 @@ pub const file_floor: usize = 320;
 
 /// Top-level directories beneath which a build tree legitimately appears, at
 /// any depth.  Deliberately not "any directory anywhere": a `build` directory
-/// under `scripts/` is source and stays visible to the checkers (#377, #359).
+/// under `scripts/` is source and stays visible to the checkers.
 pub const build_tree_roots = [_][]const u8{
     "docs", "examples", "local-poc", "port", "tests", "tools", "apps",
 };

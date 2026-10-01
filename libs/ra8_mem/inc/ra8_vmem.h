@@ -15,7 +15,7 @@
  * an unpinned victim, loads the page through a caller-supplied loader, and
  * inserts it. The caller `ra8_vmem_put`s the frame when done.
  *
- * ## A typed facade over the one cache engine (#345)
+ * ## A typed facade over the one cache engine
  *
  * `ra8_vmem` no longer carries its own hash/pin/evict machinery. It is a thin
  * typed facade over ::ra8_keycache, the single reader cache engine, configured

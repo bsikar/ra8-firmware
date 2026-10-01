@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gfx_font_8x16.c
- * @brief Unit tests for the bundled 8x16 bitmap font (#727).
+ * @brief Unit tests for the bundled 8x16 bitmap font.
  *
  * @details
  * `ra8_gfx_font_8x16.c` is a data unit: one static glyph table plus the public

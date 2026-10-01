@@ -20,7 +20,7 @@ if(NOT TARGET ra8_zig::fw_if_fs)
   )
 endif()
 
-# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# ra8_log is Zig now, so the ra8_core archive replaces the
 # libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${ALPHABET_SOUP_REPO_ROOT}/tests/cmake/zig_library.cmake)

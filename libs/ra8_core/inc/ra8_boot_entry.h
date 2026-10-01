@@ -112,7 +112,7 @@ void Default_Handler(void);
  * Hosted first-party code -- everything under `tests/` and `tools/` -- uses
  * the ISO `int main(...)` contract instead, because it genuinely does run
  * under an OS that reads the exit status. `scripts/checks/check_entry_points.py`
- * holds each domain to its own contract (#707).
+ * holds each domain to its own contract.
  *
  * Declared here, once, for the same reason `SystemInit` is: every
  * `vector_table.c` used to restate it as a local

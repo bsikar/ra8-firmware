@@ -3,8 +3,8 @@
  * @brief Interactive ra8_widget + ra8_app launcher on the live GLCDC panel.
  *
  * @details
- * The companion `widget_app` gate proves the `ra8_widget` compositor (#145) and
- * `ra8_app` framework (#146) headlessly (off-screen framebuffer + CRC). This app
+ * The companion `widget_app` gate proves the `ra8_widget` compositor and
+ * `ra8_app` framework headlessly (off-screen framebuffer + CRC). This app
  * is the **visible, interactive** counterpart: it brings the GLCDC panel up so
  * the composition is shown on `ra8_emulator`'s panel window, and drives it with the
  * physical SW1/SW2 push-buttons.
@@ -12,7 +12,7 @@
  * What it shows:
  *   - Three **apps** (`Library`, `Reader`, `Settings`) register into one
  *     `ra8_app` registry. `Settings` is `removable` and wrapped in a build-time
- *     guard (`#if WA_APP_SETTINGS`) -- the "core uninstallable" pattern (#146):
+ *     guard (`#if WA_APP_SETTINGS`) -- the "core uninstallable" pattern:
  *     building with `-DWA_APP_SETTINGS=0` drops it from the registry entirely.
  *   - Each app is a **widget tree**: a status bar (fixed) over per-app content
  *     (flex) over a tab bar (fixed), laid out by `ra8_widget_layout_stack` and
@@ -664,7 +664,7 @@ static bool wd_sw_pressed(ra8_port_pin_t pin)
   return (level == k_ra8_level_low);
 }
 
-/** @brief Route a navigation button through the focused app (#146). */
+/** @brief Route a navigation button through the focused app. */
 static void wd_route_button(wd_btn_t btn)
 {
   const ra8_widget_event_t ev      = {.kind      = k_ra8_widget_ev_button,

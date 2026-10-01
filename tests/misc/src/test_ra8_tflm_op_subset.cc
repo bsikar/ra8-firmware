@@ -7,7 +7,7 @@
  * Issue #228's residual is the runtime half of the RA8P1 Ethos-U55 story: the
  * `MicroInterpreter` model-driven path has never executed, and the CPU-fallback
  * leg -- what happens to a graph node the NPU cannot take -- is unexercised.
- * Both of those ultimately need a real Vela command stream (#227) and RA8P1
+ * Both of those ultimately need a real Vela command stream and RA8P1
  * silicon (RA8FW-261). What does NOT need either is the question underneath them:
  * which operators this tree can resolve at all, and whether the resolver keys
  * the Ethos-U custom op on the same name the first-party kernel publishes.

@@ -31,7 +31,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# cm_tiled_check.c (#344) opens an oversized baked CBZ page through the JOF tile
+# cm_tiled_check.c opens an oversized baked CBZ page through the JOF tile
 # path (comic_tiles -> jof produce/read + ra8_tile_cache), so the app
 # also pulls jof + ra8_mem (the tile cache). miniz comes in via epub.
 ra8_add_app(

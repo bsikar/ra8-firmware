@@ -162,7 +162,7 @@ plane inside NASA Power of 10 Rule 3.
 
 First-party FAT12/FAT16/FAT32 + exFAT filesystem (read + write) backed
 by a swappable block-device interface. The platform's only filesystem
-since the vendored FileX was retired (#611). Current consumers include the
+since the vendored FileX was retired. Current consumers include the
 ereader storage paths, filesystem format/mount app, page cache, and RA8 I/O
 demos; the ThreadX LevelX demo uses LevelX directly.
 

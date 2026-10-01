@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_lfn.c
- * @brief VFAT long-filename (LFN) read support for ra8_fs (#101).
+ * @brief VFAT long-filename (LFN) read support for ra8_fs.
  *
  * @details
  * Hand-builds a FAT16 RAM volume whose root directory holds one file written as

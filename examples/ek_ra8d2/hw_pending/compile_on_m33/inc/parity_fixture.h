@@ -1,6 +1,6 @@
 /**
  * @file parity_fixture.h
- * @brief Baked parity .epub + golden blob for the M33 compile (#149).
+ * @brief Baked parity .epub + golden blob for the M33 compile.
  * @details Pins the shared synthetic EPUB and desktop RABOOK1 bytes so
  *          the secondary-core compiler can prove byte identity.
  *

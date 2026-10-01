@@ -12,7 +12,7 @@ app may bolt further translation units onto the same CPU1 executable with its
 own ``target_sources()``, and those compile at ``-mcpu=cortex-m33 ... -Os``
 with no warning flags at all and no ``.su`` stack data.  That hole was
 recorded as a prose ``TODO(T1-09)`` and nothing measured it, so a first-party
-M33 source added tomorrow joins the escape silently (#843).
+M33 source added tomorrow joins the escape silently.
 
 This checker is the measurement half.  It does NOT widen warnings onto
 anything: it enumerates the CPU1 sources, classifies each as first-party or

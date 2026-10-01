@@ -263,7 +263,7 @@ bool ra8_fake_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set)
 }
 
 /* =============================================================================
- * Register-behaviour models (#238): read-to-set and write-1-to-clear.
+ * Register-behaviour models: read-to-set and write-1-to-clear.
  * These replace per-driver RA8_OFF_TARGET peripheral models: the driver
  * performs its real register touch through them, and the seam applies the
  * silicon side effect that dumb host RAM cannot (a read that latches a bit,

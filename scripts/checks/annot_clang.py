@@ -339,7 +339,7 @@ def _darwin_sysroot_args() -> list[str]:
     regardless of whether it is a full Xcode install or just the Command
     Line Tools, so ask it rather than hardcode a path that drifts with
     every OS/Xcode update. Measured effect on this tree: 86.6% call-site
-    resolution without a sysroot, 99.9%+ with one (#488).
+    resolution without a sysroot, 99.9%+ with one.
 
     ``tools/ra8_emulator`` includes ``<unicorn/unicorn.h>``, which on macOS
     is a Homebrew package living outside any path clang searches by

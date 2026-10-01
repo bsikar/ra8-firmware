@@ -403,7 +403,7 @@ if [[ "$-" == *p* ]]; then
 
   # The pinned doxygen release, installed exactly the way .devcontainer/Dockerfile
   # installs it: same URL shape, same sha256 check, same /usr/local/bin
-  # destination shadowing apt's package (#522).
+  # destination shadowing apt's package.
   #
   # The sha256 is read here rather than threaded through ensure_release_tool: it
   # belongs to the release, not to the caller, and reading it at the point of use

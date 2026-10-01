@@ -1,13 +1,13 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c
- * @brief On-silicon HIL: open + parse a real .epub from SD via ra8_fs (#114).
+ * @brief On-silicon HIL: open + parse a real .epub from SD via ra8_fs.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
  * `epub_parse` proved the epub parse stack runs on the M85 from a baked
- * in-memory blob (#139). This app closes the storage gap: it reads the `.epub`
+ * in-memory blob. This app closes the storage gap: it reads the `.epub`
  * off a real microSD card through `ra8_fs` -- the exact path the e-reader uses --
  * so the byte-twiddling parse layer is exercised against real SD timing + the
  * FAT read path, not just a `.rodata` array.
@@ -16,7 +16,7 @@
  * an `ra8_fs` volume (formatting FAT32 first if the card is blank), self-provision
  * a known 2-chapter `.epub` onto it if absent (the same `seed_two_chapters` seed
  * as `epub_parse`), then `epub_open_streamed_fs()` it -- the production
- * open path (#230): no whole-file buffer, every ZIP read seeks the card on
+ * open path: no whole-file buffer, every ZIP read seeks the card on
  * demand -- and assert:
  *   - chapter (spine) count == 2,
  *   - chapter 0's decompressed XHTML CRC-32 == 0xCF23AEEE (byte-exact for the
@@ -124,7 +124,7 @@ volatile uint32_t g_eoh_heartbeat = 0U;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
 static epub_book_t s_book;
-/** @brief Streamed-open source-file context; must outlive @ref s_book (#230). */
+/** @brief Streamed-open source-file context; must outlive @ref s_book. */
 static epub_stream_fs_ctx_t s_epub_io;
 /** @brief Chapter-0 XHTML scratch (file-scope to keep the stack small). */
 static uint8_t s_chapter[k_eoh_chap_cap];

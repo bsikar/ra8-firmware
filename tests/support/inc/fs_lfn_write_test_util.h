@@ -1,6 +1,6 @@
 /**
  * @file fs_lfn_write_test_util.h
- * @brief Shared fixture for the VFAT long-name write suites (#600).
+ * @brief Shared fixture for the VFAT long-name write suites.
  *
  * @details
  * Header-only fixture for `test_ra8_fs_lfn_write.c` (creating a long name) and
@@ -104,7 +104,7 @@ typedef enum : uint32_t {
  *
  * @note Partition-adjusted: `priv_read_sector()` adds `partition_base_lba`, so
  *       a test poking `s_disk.bytes` has to add it too or it lands in the
- *       pre-partition gap (#568).
+ *       pre-partition gap.
  * @since 0.1.0 @details Implements the bounded root dir byte fixture step using caller-owned state.
  */
 RA8_INTERNAL static inline uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)

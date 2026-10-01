@@ -1,6 +1,6 @@
 /**
  * @file fs_unicode_exfat_test_util.h
- * @brief Shared fixtures for the exFAT non-ASCII name suites (#606).
+ * @brief Shared fixtures for the exFAT non-ASCII name suites.
  *
  * @details
  * The exFAT unicode suites -- the round-trip/hash suite in

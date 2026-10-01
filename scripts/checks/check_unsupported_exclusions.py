@@ -11,7 +11,7 @@ README, so a new app could be parked there silently and a stale justification
 could survive a refactor unnoticed -- the emulator matrix printed one blanket
 ``needs external hardware`` line for the whole tier regardless of what each app
 was actually waiting for, and for at least two of the six that line is simply
-untrue (#401).
+untrue.
 
 Each app therefore carries an ``UNSUPPORTED.toml`` marker naming its reason from
 a bounded taxonomy, plus the file that evidences it. This gate proves the set of

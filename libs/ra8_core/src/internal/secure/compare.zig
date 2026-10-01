@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Constant-work byte comparison for security verdicts (#2908).
+//! Constant-work byte comparison for security verdicts.
 //!
 //! A comparison that returns the moment it finds a mismatch leaks, through
 //! its own timing, how many leading bytes matched. Against a MAC, an

@@ -102,7 +102,7 @@ function(ra8_webp_facade_sources out_var repo_root)
 endfunction()
 
 # The non-source half of the facade's link closure: the Zig ra8_mem archive,
-# which defines the ra8_arena_* the shared decoder scratch calls (RA8FW-308, #2601).
+# which defines the ra8_arena_* the shared decoder scratch calls (RA8FW-308).
 # Defined on demand so a standalone host tool needs no other include.
 function(ra8_webp_link_deps target repo_root)
   if(NOT TARGET ra8_zig::ra8_mem)

@@ -312,7 +312,7 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
    * caller's dst_stride, or one derived from the scaled output width
    * and bytes_per_pixel. With neither, CDWDR would be programmed zero
    * and every captured line would land on top of the previous one, so
-   * reject the descriptor before the module clock is ungated (#1362).
+   * reject the descriptor before the module clock is ungated.
    * Data-enable fetch carries no pixel stride and is exempt. */
   if (cfg->dst_stride == 0U) {
     if (priv_ra8_ceu_min_stride_bytes(cfg) == 0U) {

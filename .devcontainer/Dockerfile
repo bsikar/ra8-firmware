@@ -26,7 +26,7 @@
 # explicit clang-format-22 repo pin further down -- the same major the tree is
 # formatted and linted against.
 #
-# gcc-14 is the SECOND host-tool compiler arm (#356). The tools-build gate
+# gcc-14 is the SECOND host-tool compiler arm. The tools-build gate
 # compiles the first-party host tools under clang-18 AND gcc-14 so the warning
 # families each catches but the other misses are both held: gcc-14's
 # -Wformat-truncation found a silent PATH_MAX path-join truncation in
@@ -81,7 +81,7 @@ ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce560
 # .github/workflows/firmware.yml. Unicorn is NOT here: it is the pinned source
 # build below (docs/TOOLCHAIN.md), not an apt package.
 #
-# THE INVARIANT (#513): this list is a SUPERSET of every tool the gates declare
+# THE INVARIANT: this list is a SUPERSET of every tool the gates declare
 # with require_cmd / require_python_mod. Nothing asserts it automatically any
 # more, so keep it true by hand when a gate gains a tool. openssh-client is here for exactly that reason and
 # no other: gate_bench_lock_selftest declares `ssh` and the image carried none

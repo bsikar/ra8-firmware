@@ -366,7 +366,7 @@ RA8_INTERNAL static bool internal_text_has(const char* needle)
 
 /**
  * @test internal_test_display_none_suppressed
- * @brief `display:none` (#140) drops the element's whole subtree from the stream.
+ * @brief `display:none` drops the element's whole subtree from the stream.
  *
  * @par MC/DC:
  * Decision (image-token reduction, enclosing fn internal_test_display_none_suppressed):

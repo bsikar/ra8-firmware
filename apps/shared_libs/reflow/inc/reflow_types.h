@@ -26,8 +26,8 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_glyph_atlas.h" /* ra8_glyph_atlas_t for the Layer-3 glyph cache (#164) */
-#include "reflow_css.h"      /* ra8_css_sheet_t for the content-CSS cascade (#111)   */
+#include "ra8_glyph_atlas.h" /* ra8_glyph_atlas_t for the Layer-3 glyph cache */
+#include "reflow_css.h"      /* ra8_css_sheet_t for the content-CSS cascade   */
 #include "reflow_image.h"    /* ra8_img_arena_t for the decode scratch               */
 
 /* ===========================================================================
@@ -146,7 +146,7 @@ typedef enum : uint8_t {
  * @details The emphasis bits (bold/italic/underline) occupy bits 0-2 of the
  * `style` byte; bits 4-7 are free, so the selected embedded-face index
  * (0 = the engine's bound default face, 1..::k_reflow_max_faces = a
- * registered `@font-face`) rides in the high nibble (#109). Single-face content
+ * registered `@font-face`) rides in the high nibble. Single-face content
  * registers no faces, so the nibble is always 0 -- the cached / default render
  * path is byte-identical.
  */
@@ -414,7 +414,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct reflow_face_t
- * @brief One registered embedded `@font-face` typeface (#109).
+ * @brief One registered embedded `@font-face` typeface.
  *
  * @details Maps a parsed `@font-face` table entry (`css_face_idx`, the value
  * ::ra8_css_match_face returns) to its caller-owned TTF/OTF bytes. The blob
@@ -476,7 +476,7 @@ typedef struct {
   reflow_page_t  pages[k_reflow_max_pages];   /**< Page index ranges. */
   uint32_t       page_count;                  /**< Pages used.        */
 
-  /* --- image rendering (#106) ---------------------------------------- */
+  /* --- image rendering ---------------------------------------- */
   reflow_image_loader_fn img_loader;     /**< `<img>` byte loader (NULL = off). */
   void*                  img_loader_ctx; /**< Opaque context for `img_loader`.  */
   ra8_img_arena_t*       img_arena;      /**< Decode scratch (NULL = off).      */
@@ -487,7 +487,7 @@ typedef struct {
   /** Image boxes used. */
   uint32_t image_box_count;
 
-  /* --- hyperlinks + anchors (#110) ----------------------------------- */
+  /* --- hyperlinks + anchors ----------------------------------- */
   reflow_link_target_t link_targets[k_reflow_max_links];    /**< Distinct hrefs.        */
   uint32_t             link_target_count;                   /**< Interned link targets. */
   reflow_link_rect_t   link_rects[k_reflow_max_link_rects]; /**< Tappable rects.        */
@@ -495,7 +495,7 @@ typedef struct {
   reflow_anchor_t      anchors[k_reflow_max_anchors];       /**< id= anchor positions.  */
   uint32_t             anchor_count;                        /**< Anchor positions used. */
 
-  /* --- content CSS cascade (#111) ------------------------------------ */
+  /* --- content CSS cascade ------------------------------------ */
   ra8_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */
 
   /* --- glyph atlas (Layer-3 cache, #164) ----------------------------- */

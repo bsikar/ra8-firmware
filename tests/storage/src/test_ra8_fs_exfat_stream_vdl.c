@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_stream_vdl.c
- * @brief exFAT ValidDataLength semantics and the streaming refusals (#602).
+ * @brief exFAT ValidDataLength semantics and the streaming refusals.
  *
  * @details
  * exFAT is the only filesystem this adapter mounts that records TWO lengths
@@ -535,7 +535,7 @@ RA8_INTERNAL static void internal_test_stream_over_4gib_accepted(void)
  * @details A directory answers an exFAT name lookup exactly like a file, and
  *          its Stream entry describes the cluster chain holding its CONTENTS.
  *          Truncating it would hand those clusters back to the volume and
- *          orphan every file inside (#604). The guard runs before a file slot
+ *          orphan every file inside. The guard runs before a file slot
  *          is even claimed, and the directory's entry must be untouched
  *          afterwards.
  *

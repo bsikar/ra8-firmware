@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_main.c
- * @brief Non-Secure image: prove the NSC CGC veneers return OK from NS (#60).
+ * @brief Non-Secure image: prove the NSC CGC veneers return OK from NS.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
@@ -57,7 +57,7 @@
  * NS-side import view of the NSC CGC veneers
  * =============================================================================
  *
- * This is the Non-Secure half of a two-project TrustZone build (#96), so the
+ * This is the Non-Secure half of a two-project TrustZone build, so the
  * Secure side's SG veneers are supplied to this link via the CMSE import
  * library (gcc --out-implib on the Secure link; the import object is on this
  * image's link line). The import library binds the bare ``ra8_nsc_cgc_*`` names
@@ -282,7 +282,7 @@ typedef enum : uintptr_t {
    * the current-domain (NS) VTOR alias. */
   *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra8_ls_ns_run_start;
 
-  /* Phase C (#96) milestone 1: hand off to ThreadX, running entirely inside
+  /* Phase C milestone 1: hand off to ThreadX, running entirely inside
    * the NS image. tx_kernel_enter() initialises the kernel, calls
    * tx_application_define() (which spawns the worker below), and starts the
    * scheduler -- it never returns. The worker advances g_tz_nsc_cgc_usb_match,

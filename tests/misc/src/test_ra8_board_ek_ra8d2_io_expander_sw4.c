@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_board_ek_ra8d2_io_expander_sw4.c
- * @brief Host tests for the exact-byte U15 SW4-override entry point (#970)
+ * @brief Host tests for the exact-byte U15 SW4-override entry point
  *
  * @details
  * ``ra8_board_io_expander_apply_sw4`` was the only one of the five public

@@ -1,6 +1,6 @@
 # CMake build artifacts.
 #
-# EVERY PATTERN HERE IS ANCHORED ON PURPOSE (#377). A bare `build/` has no
+# EVERY PATTERN HERE IS ANCHORED ON PURPOSE. A bare `build/` has no
 # leading slash, so git matches it at EVERY depth -- a first-party directory
 # that happens to be named `build` becomes silently unaddable. #359's
 # reorganisation created `scripts/build/` -- PATHREF-OK: #359 renamed it.
@@ -203,7 +203,7 @@ tools/cache_bench/*.dSYM/
 # coprocessor/esp32c6/build.sh fetches at the pinned commit, plus everything it
 # builds underneath (slave/build, dependencies.lock, managed_components,
 # generated sdkconfig). None of it is first-party source. Anchored to the
-# repo root so it cannot match a directory of that name elsewhere (#377).
+# repo root so it cannot match a directory of that name elsewhere.
 /coprocessor/esp32c6/esp-hosted-mcu/
 # Bench Wi-Fi credentials the c6_wifi_join firmware compiles in at build time
 # (SSID + WPA passphrase). The .example template is committed; the real values

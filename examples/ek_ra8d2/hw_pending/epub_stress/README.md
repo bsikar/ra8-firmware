@@ -17,7 +17,7 @@ provisioning -- so this is a firmware defect rather than a rig gap (RA8FW-251).
 Unicorn M33 model has no seam for. `hil.conf` holds the capture. Re-promote only
 from a bench capture showing the PASS banner.
 
-## The bug it pins (#144)
+## The bug it pins
 
 A large real novel was reported to fail `epub_open` with
 `k_ra8_err_no_mem`. The cause was not the miniz ZIP central-directory arena, which

@@ -1,6 +1,6 @@
 # i2c_peripheral_responder
 
-RIIC target/peripheral responder (#189) -- the target-role counterpart to
+RIIC target/peripheral responder -- the target-role counterpart to
 `i2c_loopback`, which drives the controller role. The RA8D2 answers as an I2C
 target at 7-bit own address `0x42` on **RIIC channel 1** (P512 SCL1 / P511
 SDA1), the board's Grove / Pmod / mikroBUS / Arduino I2C bus. It arms the

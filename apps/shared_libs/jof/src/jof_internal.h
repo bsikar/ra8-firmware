@@ -12,7 +12,7 @@
  *
  *   - `jof_produce.c`      -- sniff/dispatch, band accumulator,
  *     tile cut + encode + sink, index/footer emission, JPEG/PNG arms.
- *   - `jof_produce_webp.c` -- the whole-frame WebP arm (#290):
+ *   - `jof_produce_webp.c` -- the whole-frame WebP arm:
  *     `jof_webp_work_bytes()` and `priv_jof_webp_transcode()`.
  *   - `jof_png.c`          -- the streaming PNG scanline decoder.
  *

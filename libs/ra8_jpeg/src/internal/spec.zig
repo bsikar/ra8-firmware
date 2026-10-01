@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Baseline JPEG constants and the zig-zag permutation (#2795).
+//! Baseline JPEG constants and the zig-zag permutation.
 //!
 //! Every value the encoder needs from ITU-T T.81 lives here, grouped by what
 //! it describes rather than flattened into one `k_ra8_jpeg_*` enum. Nothing in

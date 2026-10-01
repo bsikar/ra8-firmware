@@ -26,7 +26,7 @@ gate_emulator_smoke() (
   use_pinned_arm_toolchain
   # Refuse to run on an unpinned Unicorn -- the emulator's decode of Armv8.1-M
   # is version-specific, so a fossil libunicorn produces an unreproducible
-  # verdict (#354). Fail loudly here rather than silently boot on the wrong one.
+  # verdict. Fail loudly here rather than silently boot on the wrong one.
   require_pinned_unicorn
   # Prove the gate is WIRED before trusting a green run. Every app class is
   # dispatched through a table, so a dropped entry stops that class being
@@ -85,7 +85,7 @@ gate_emulator_matrix() (
 )
 
 # --- emulator-io-fabric --------------------------------------------------
-# ra8_io fabric (#155) end-to-end: every storage backend driven through the
+# ra8_io fabric end-to-end: every storage backend driven through the
 # same VFS API (block device -> ra8_fs FAT format/mount -> VFS mkdir + nested
 # file round-trip), plus the format registry, the LRU sector cache, and the
 # DEFLATE stream, asserted by each demo's PASS banner. Covers RAM/SRAM,

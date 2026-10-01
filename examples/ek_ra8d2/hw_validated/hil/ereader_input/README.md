@@ -1,7 +1,7 @@
 # ereader_input
 
 Exercises the e-reader interaction layer with synthetic taps, so it needs no
-GT911 touch panel (#80, #118). It builds a representative target set -- a book
+GT911 touch panel. It builds a representative target set -- a book
 grid plus a toolbar button, each a rect bound to an action id -- injects taps at
 every target's centre and at deliberate misses (the column gutter, off-screen),
 and drives the `ra8_ui` screen stack through opening a book and going back,

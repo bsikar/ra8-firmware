@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Entropy-coded bit reader for the baseline decoder (#2799).
+//! Entropy-coded bit reader for the baseline decoder.
 //!
 //! The struct still mirrors C `ra8_jpeg_bitreader_t`, which the public
 //! header publishes inside `ra8_jpeg_dec_ctx_t`, so its layout is asserted

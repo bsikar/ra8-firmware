@@ -1,6 +1,6 @@
 /**
  * @file cache_store_demo.h
- * @brief Hardware-free driver for the ra8_cache_store on-media cache demo (#257).
+ * @brief Hardware-free driver for the ra8_cache_store on-media cache demo.
  *
  * @details
  * Factors the whole ra8_cache_store demonstration -- mount, put/get several keyed

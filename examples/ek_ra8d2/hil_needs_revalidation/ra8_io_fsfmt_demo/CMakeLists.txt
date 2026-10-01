@@ -28,6 +28,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_fsfmt_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io filesystem-format registry: probe built-in FAT + a foreign-format seam (#159)"
+  DESCRIPTION "ra8_io filesystem-format registry: probe built-in FAT + a foreign-format seam"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

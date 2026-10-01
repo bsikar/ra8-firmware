@@ -211,7 +211,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint)
   /* FAT's BPB records the volume size in a 32-bit field: a device whose
    * sector count does not fit cannot be described by the format at all --
    * exFAT is the right choice there, so this fails cleanly instead of
-   * truncating the size (#683). */
+   * truncating the size. */
   if (g->total_sectors > (uint64_t)UINT32_MAX) {
     return k_ra8_err_invalid_size;
   }
@@ -274,7 +274,7 @@ void priv_fmt_label_field(uint8_t* dst, const char* label)
   /* An unlabelled FAT volume stores the spec sentinel "NO NAME    ", never
    * zeros and never a bare run of spaces: fsck.fat reads a blank BS_VolLab as a
    * corrupt label and strips it on sight, which trains people to ignore fsck
-   * output on every card this firmware writes (#634). A NULL or empty label
+   * output on every card this firmware writes. A NULL or empty label
    * therefore resolves to that sentinel before padding. */
   static const char k_no_name[] = "NO NAME";
   const char*       eff         = ((label != nullptr) && (label[0] != '\0')) ? label : k_no_name;

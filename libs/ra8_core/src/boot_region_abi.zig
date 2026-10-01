@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_boot_region.h` (#2901).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_boot_region.h`.
 //!
 //! The header's contract is three things and this file keeps all three: the
 //! span is half-open, both pointers are rejected as `nullptr` with a log

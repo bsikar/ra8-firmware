@@ -538,7 +538,7 @@ typedef enum : uint32_t {
  *          Holding it as `char` was the shape that forced the old reader to
  *          substitute `?` for every unit above 0x7F: a group writes at a fixed
  *          UNIT offset, and no byte-indexed buffer can take a variable-width
- *          encoding at a fixed index (#606).
+ *          encoding at a fixed index.
  *
  *          A unit of zero terminates the name, exactly as the NUL did before,
  *          which is why ::priv_lfn_reset() clears the whole array: a group that
@@ -705,7 +705,7 @@ typedef struct {
  *          descends into it. Growing a subdirectory has to rewrite that set's
  *          Stream entry -- `DataLength` and the `NoFatChain` flag both change --
  *          so a directory that may need to grow carries the coordinates of the
- *          metadata that describes its allocation (#677). The volume ROOT has
+ *          metadata that describes its allocation. The volume ROOT has
  *          no such set (its extent is the boot sector's FAT chain), so it leaves
  *          `self_cluster` 0, which ::priv_exfat_grow_dir reads as "no entry set
  *          to patch -- just extend the FAT chain".
@@ -805,7 +805,7 @@ typedef struct {
 
 /**
  * @enum ra8_fs_sec_role_t
- * @brief Index of each fixed-role sector buffer in the arena (#683).
+ * @brief Index of each fixed-role sector buffer in the arena.
  *
  * @details One row per role in the discipline documented in
  *          `ra8_fs_fat_bytes_internal.h`; ::k_fs_sec_roles sizes the backing

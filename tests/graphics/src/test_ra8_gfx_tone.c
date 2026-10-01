@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gfx_tone.c
- * @brief Unit tests for ra8_gfx_tone -- per-panel gray-level tone LUT (#479).
+ * @brief Unit tests for ra8_gfx_tone -- per-panel gray-level tone LUT.
  *
  * @details
  * The tone curve exists so the dither can quantise against a panel's real

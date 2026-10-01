@@ -1,7 +1,7 @@
 # ereader_imgfmt
 
 Decodes a baked BMP and a baked GIF through `ra8_img_decode_blit()` into a fixed
-RGB565 framebuffer and hashes each result (#143). The firmware links four
+RGB565 framebuffer and hashes each result. The firmware links four
 stb_image decoders; PNG (`ereader_image`) and JPEG (`ereader_jpeg`) already had
 gates, and this app covers the remaining two, so drift in any of the four linked
 decoders now trips something. Allocation comes only from a fixed SRAM bump

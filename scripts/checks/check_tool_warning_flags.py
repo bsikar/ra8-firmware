@@ -10,7 +10,7 @@ Why this exists
 blanket ``-w``, with a comment claiming "the repo lints these via its own
 build".  It does not: ``-w`` turns off every diagnostic, so the one build in
 the tree that compiles those files for a 64-bit host could not report a
-host-only finding, and neither tool carried ``-Werror`` at all (#309).
+host-only finding, and neither tool carried ``-Werror`` at all.
 Removing the ``-w`` is a one-line edit that nothing stops a later change from
 re-adding, and it would come back silently -- the build would still pass.
 
@@ -37,7 +37,7 @@ The traps this deliberately avoids, each of which a substring test gets wrong:
 
 Matching is therefore on exact argv arguments, in order, never on substrings.
 
-Second compiler arm (#356)
+Second compiler arm
 --------------------------
 gcc-14 catches warning families clang-18 misses -- its ``-Wformat-truncation``
 found a silent PATH_MAX path-join truncation in ``apps/host/mdl`` that clang
@@ -46,7 +46,7 @@ pinned compilers and passes both sets of databases here. ``--require-compilers
 clang,gcc`` makes a silently-dropped arm a hard failure rather than a vacuous
 pass (the #348/#355 class): each named family must drive at least one database.
 
-The apps tier (#718)
+The apps tier
 --------------------
 ``--require-all-cmake-tools`` discovers the host CMake projects itself so the
 gate cannot quietly stop covering one. When the products tier landed, that
@@ -692,13 +692,13 @@ def _report_missing_projects(missing: list[str]) -> None:
 
 
 def _report_missing_arm(missing: list[str], seen: set[str]) -> None:
-    """Print the silently-dropped compiler-arm failure (#356)."""
+    """Print the silently-dropped compiler-arm failure."""
     sys.stderr.write(
         "check_tool_warning_flags.py: FATAL -- required compiler arm(s) "
         f"never exercised: {', '.join(missing)}\n"
         f"  databases were compiled by: {', '.join(sorted(seen)) or '(none)'}\n"
         "  The tools-build gate compiles the host tools under clang-18 AND\n"
-        "  gcc-14 (#356) so the warnings each catches but the other misses\n"
+        "  gcc-14 so the warnings each catches but the other misses\n"
         "  are both held. A silently-dropped arm would read as a pass.\n"
     )
 

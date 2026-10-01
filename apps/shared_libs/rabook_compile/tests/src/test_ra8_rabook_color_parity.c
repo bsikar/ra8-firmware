@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rabook_color_parity.c
- * @brief Host-vs-device byte-identity gate for the default colour raster path (#337).
+ * @brief Host-vs-device byte-identity gate for the default colour raster path.
  *
  * @details
  * Compiling the same source image on the host and on the device used to produce
@@ -79,7 +79,7 @@ RA8_INTERNAL static void internal_check(bool cond, const char* name)
 }
 
 /* -------------------------------------------------------------------------- */
-/* colour raster <-> desktop byte-identity parity (#337) */
+/* colour raster <-> desktop byte-identity parity */
 /* -------------------------------------------------------------------------- */
 
 /**

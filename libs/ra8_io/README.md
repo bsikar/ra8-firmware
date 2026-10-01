@@ -44,7 +44,7 @@ I2C twice (classic RIIC; the I3C block's I2C-compatibility mode), with
 byte-identical controller transfer surfaces. `ra8_io_spi_bus.h` and
 `ra8_io_i2c_bus.h` wrap each pair behind one caller-allocated handle, so which
 physical peripheral a board revision routes a device to becomes a bind-time
-decision (#198 / #199).
+decision.
 
 The two facades stay separate on purpose: SPI has out-of-band chip select and
 is full-duplex, I2C carries an in-band 7-bit address and is half-duplex. Bus

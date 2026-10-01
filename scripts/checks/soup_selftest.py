@@ -447,7 +447,7 @@ def _selftest_format_cases() -> list[tuple[str, bool]]:
 
 
 # --------------------------------------------------------------------------- #
-# Release-basis declarations (#804).                                           #
+# Release-basis declarations.                                           #
 # --------------------------------------------------------------------------- #
 # The declaration says a bare commit pin sits N commits past a named release.
 # Offline nothing can prove that ancestry, so what is asserted here is that the

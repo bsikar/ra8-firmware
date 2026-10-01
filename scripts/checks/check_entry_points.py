@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Gate: every first-party entry point uses its own build domain's contract.
 
-Two domains, two contracts, one enforced boundary (#707):
+Two domains, two contracts, one enforced boundary:
 
 * **Hosted** -- ``tests/`` and ``tools/`` run under an OS that reads an exit
   status, so ISO C applies: ``int main(void)`` or ``int main(int, char**)``.
@@ -83,7 +83,7 @@ BOOT_HEADER_REL = "libs/ra8_core/inc/ra8_boot_entry.h"
 # discovery in the top-level CMakeLists globs examples/, and port/ is RTOS glue
 # compiled into firmware images. The Ring 5 secure substrate that used to sit
 # under src/ is now libs/ra8_secure_app -- pure library code with no entry
-# point, so libs/ needs no row here (#724).
+# point, so libs/ needs no row here.
 FIRMWARE_ROOTS = ("examples/", "port/")
 HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 

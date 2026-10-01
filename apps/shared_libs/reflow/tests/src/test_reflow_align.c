@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_align.c
- * @brief Host unit tests + MC/DC for text alignment / justification (#108).
+ * @brief Host unit tests + MC/DC for text alignment / justification.
  *
  * @details
  * Lays out paragraphs with `style="text-align:..."` through `reflow` (with

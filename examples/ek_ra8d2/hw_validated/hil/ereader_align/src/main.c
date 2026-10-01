@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_align/src/main.c
- * @brief Headless on-silicon HIL gate for text alignment + justification (#108).
+ * @brief Headless on-silicon HIL gate for text alignment + justification.
  *
  * @details
  * Closes the *real-hardware* gap for the alignment pipeline: parse

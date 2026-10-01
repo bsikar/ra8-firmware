@@ -14,7 +14,7 @@ whose label disagrees with the tree.  That guarantee holds only while
 deleted ``inner-local.sh`` -- unreferenced, predating
 ``RA8_GATE_REGISTRY``, carrying hand-copied gate bodies -- also ran
 ``docker build -t ra8-ci:latest`` with the old "present, so reuse it forever"
-logic.  Nothing would have noticed a new one appearing (#528).
+logic.  Nothing would have noticed a new one appearing.
 
 It is a second, drifting home for a thing that must have exactly one, so the
 image gets a single-builder rule.
@@ -863,7 +863,7 @@ def main(argv: list[str]) -> int:
             print(f"  {rel}: builds {' '.join(builders[rel])}", file=sys.stderr)
         print(
             "\nra8-ci:latest must have exactly one builder so its context-digest\n"
-            "staleness guarantee cannot be bypassed (#521, #528). Route this build\n"
+            "staleness guarantee cannot be bypassed. Route this build\n"
             f"through {SOLE_BUILDER}, or -- if it is a different image -- give it a\n"
             "different tag (the ci_runner role builds ra8-ci-runner / ra8-devcontainer).",
             file=sys.stderr,

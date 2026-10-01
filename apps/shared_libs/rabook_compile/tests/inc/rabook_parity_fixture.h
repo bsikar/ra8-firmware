@@ -1,6 +1,6 @@
 /**
  * @file rabook_parity_fixture.h
- * @brief Byte-identity parity fixture for rabook_compile (#151).
+ * @brief Byte-identity parity fixture for rabook_compile.
  * @details Pins one synthetic EPUB against desktop-generated RABOOK1
  *          bytes with and without images for firmware parity checks.
  *

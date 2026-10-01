@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Which DEVICE of the RA8 family an app is cross-built for, and what that
-//! choice adds to every command line (#1131).
+//! choice adds to every command line.
 //!
 //! `ra8_add_app(BOARD <name>)` selects a board layer, and the board layer is
 //! only half of the choice: the other half is the CMake TOOLCHAIN FILE the app

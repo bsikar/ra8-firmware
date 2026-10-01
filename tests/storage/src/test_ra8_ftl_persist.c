@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_ftl_persist.c
- * @brief Unit tests for FTL mapping telemetry + checkpoint persistence (#258).
+ * @brief Unit tests for FTL mapping telemetry + checkpoint persistence.
  *
  * @details
  * Covers the ra8_ftl additions that back the wear-levelling / power-cycle demo:

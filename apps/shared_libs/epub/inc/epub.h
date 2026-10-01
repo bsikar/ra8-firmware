@@ -32,7 +32,7 @@
  *     mounted filesystem (`ra8_fs_read()`) into a caller-owned buffer
  *     before handing it to `epub_open()`.
  *
- * ## The names in this record are untrusted (#749)
+ * ## The names in this record are untrusted
  *
  * Every path this reader publishes is copied out of archive bytes: the
  * chapter list and the cover, TOC, embedded-font and manifest hrefs all come
@@ -202,7 +202,7 @@ typedef struct {
 
 /**
  * @typedef epub_stream_read_fn
- * @brief Seek+read callback backing a streamed (non-resident) EPUB open (#151).
+ * @brief Seek+read callback backing a streamed (non-resident) EPUB open.
  *
  * @details
  * The storage seam for `epub_open_streamed()`: the reader hands the callback
@@ -213,7 +213,7 @@ typedef struct {
  * directory + central directory) and one entry at a time are ever fetched, so a
  * multi-GB book opens inside a fixed, small RAM budget.
  *
- * The signature is the house error shape (#764), not miniz's. A short read is
+ * The signature is the house error shape, not miniz's. A short read is
  * two different events and the callback must say which:
  * - **End of file.** `k_ra8_ok` with `*out_read < len`, because the request ran
  *   past the archive end. `*out_read == 0` when @p offset is already at or
@@ -251,7 +251,7 @@ typedef ra8_err_t (*epub_stream_read_fn)(void*     ctx,
 
 /**
  * @struct epub_stream_media_t
- * @brief Seekable EPUB media descriptor -- opens with no whole-file residency (#151).
+ * @brief Seekable EPUB media descriptor -- opens with no whole-file residency.
  *
  * @details
  * Pass the address of an instance of this struct as the @p media argument to
@@ -358,7 +358,7 @@ typedef struct {
   /** @brief Per-book XML parser state; never shared with another book. */
   epub_xml_workspace_t xml_workspace;
 
-  /* --- Streamed backing (caller-seekable, no resident blob) (#151) ----- */
+  /* --- Streamed backing (caller-seekable, no resident blob) ----- */
   /* For a book opened via `epub_open_streamed()`, miniz's `m_pIO_opaque`
    * points at this inline descriptor (a stable address for the book's
    * lifetime), and `zip_bytes == NULL`. For the resident `epub_open()`
@@ -379,7 +379,7 @@ typedef struct {
   /* --- Cover ----------------------------------------------------------- */
   char cover_path[k_epub_max_path_len]; /**< Path to cover image (or empty). */
 
-  /* --- Embedded fonts (#109) ------------------------------------------- */
+  /* --- Embedded fonts ------------------------------------------- */
   uint16_t embedded_font_count; /**< Manifest font items found (<= cap). */
   char     embedded_font_paths[k_epub_max_fonts]
                               [k_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
@@ -475,7 +475,7 @@ typedef struct {
 [[nodiscard]] ra8_err_t epub_open(const void* media, const char* path, epub_book_t* out_book);
 
 /**
- * @brief Open an EPUB book from a seekable stream, with no whole-file residency (#151).
+ * @brief Open an EPUB book from a seekable stream, with no whole-file residency.
  *
  * @details
  * The streaming counterpart to `epub_open()`. Instead of a fully-resident
@@ -787,7 +787,7 @@ epub_get_cover_image(epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t
                                           size_t*      got_len);
 
 /**
- * @brief Number of `<manifest>` `<item>` entries retained (#151).
+ * @brief Number of `<manifest>` `<item>` entries retained.
  *
  * @details
  * `epub_open()` records every manifest item -- id, href, media-type -- in OPF
@@ -831,7 +831,7 @@ epub_get_cover_image(epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t
                                                              uint16_t           index);
 
 /**
- * @brief Count the fonts the EPUB ships in its OPF manifest (#109).
+ * @brief Count the fonts the EPUB ships in its OPF manifest.
  *
  * @details
  * During `epub_open()` the manifest is scanned for `<item>` entries whose
@@ -862,7 +862,7 @@ epub_get_cover_image(epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t
 [[nodiscard]] ra8_err_t epub_get_embedded_font_count(const epub_book_t* book, uint16_t* out_count);
 
 /**
- * @brief Extract one EPUB-shipped font's bytes into a caller buffer (#109).
+ * @brief Extract one EPUB-shipped font's bytes into a caller buffer.
  *
  * @details
  * Joins the recorded font href onto the OPF directory and extracts the resource

@@ -30,7 +30,7 @@ project(
 )
 
 # ---------------------------------------------------------------------------
-# Layout (#359)
+# Layout
 # ---------------------------------------------------------------------------
 # This listfile was 1475 lines. It is now a driver: the build is assembled from
 # fragments under tests/cmake/, each one answering a single question.

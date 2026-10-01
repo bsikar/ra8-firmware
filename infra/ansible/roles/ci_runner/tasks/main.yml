@@ -21,7 +21,7 @@
 # Staged from the CONTROL NODE'S checkout, which is the whole point: the image
 # is then built from the same tree whose gates assert what it contains. See
 # ci_runner_context_src in defaults/main.yml for the directory that used not to
-# exist and the drift it produced (#513).
+# exist and the drift it produced.
 
 - name: Empty the staged build context
   # Emptied rather than overlaid: `copy` never deletes, so a file removed from
@@ -310,7 +310,7 @@
       {{ ci_runner_image_stage }} is tagged
       {{ ci_runner_archive_tags.stdout_lines | default(['<none>']) | join(', ') }}
       but the scale set boots {{ ci_runner_image }} with imagePullPolicy Never.
-      Importing this archive would leave every pod in ErrImageNeverPull (#484).
+      Importing this archive would leave every pod in ErrImageNeverPull.
       Rebuild the archive with the tag the deployment uses.
     success_msg: "staged archive is tagged {{ ci_runner_image }}"
 
@@ -360,7 +360,7 @@
     fail_msg: >-
       containerd has no pinned {{ ci_runner_image }} after import. The pods use
       imagePullPolicy Never, so they cannot recover this themselves -- they
-      would sit in ErrImageNeverPull until someone noticed (#484).
+      would sit in ErrImageNeverPull until someone noticed.
       Node reported: {{ ci_runner_image_check.stdout | default('<no output>') }}
     success_msg: "{{ ci_runner_image }} present in containerd and pinned"
 
@@ -432,7 +432,7 @@
     path: /tmp/ra8-ci-runner.tar
     state: absent
 
-# The pinned-tool cache backing store (#486). Chowned to the runner uid/gid
+# The pinned-tool cache backing store. Chowned to the runner uid/gid
 # here, on the node, so the hostPath mount below is writable the moment a pod
 # starts -- an ephemeral, one-pod-per-job runner never gets the chance to run
 # its own one-time chown step.
@@ -562,7 +562,7 @@
       maxRunners: "{{ ci_runner_max | int }}"
       template:
         spec:
-          # hostPath, not emptyDir (#486): an emptyDir is exactly as ephemeral
+          # hostPath, not emptyDir: an emptyDir is exactly as ephemeral
           # as the pod, so it would still lose the cached doxygen download
           # every time the (ephemeral, one-pod-per-job) runner is recycled.
           # The single-node k3s cluster makes a node-local hostPath as durable

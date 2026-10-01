@@ -83,7 +83,7 @@ static uint8_t internal_exfat_is_volume(const uint8_t* buf)
  * (512..4096 bytes) are accepted, and the shift must agree with the DEVICE's
  * block size seeded into `m->bytes_per_sector` at mount -- a volume formatted
  * for a different sector size than the medium presents is unmountable, not
- * reinterpretable (#683).
+ * reinterpretable.
  *
  * @param[in,out] m   Mount with backend bound, base LBA set, and
  *                    `bytes_per_sector` seeded from the backend.
@@ -124,7 +124,7 @@ static ra8_err_t internal_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
   m->total_sectors       = priv_rd64(&buf[k_exfat_foff_vol_len]);
   /* Last, because it walks the root directory and so needs every field above.
    * It cannot fail the mount: a volume it could not interrogate is simply one
-   * whose fold this build will not vouch for (#606). */
+   * whose fold this build will not vouch for. */
   priv_exfat_upcase_verify(m);
   return k_ra8_ok;
 }
@@ -174,7 +174,7 @@ void priv_exfat_dir_root(const ra8_fs_mount_t* m, exfat_dir_t* out)
   out->contig_end = 0U; /* the root is always FAT-chained; the format has no other shape */
   /* The root owns no File-entry set: its extent is the boot sector's FAT chain,
    * not a Stream entry, so ::priv_exfat_grow_dir extends the chain and patches
-   * no metadata. 0 is the "no entry set" sentinel (#677). */
+   * no metadata. 0 is the "no entry set" sentinel. */
   out->self_cluster = 0U;
   out->self_index   = 0U;
 }
@@ -283,7 +283,7 @@ ra8_err_t priv_exfat_name_to_units(const ra8_fs_mount_t* m,
   /* An ASCII name folds the same way under every conforming up-case table, so
    * it never depends on the volume carrying the one this build embeds. Anything
    * else does, and a NameHash computed with the wrong fold is a disagreement
-   * with the on-disk format rather than a limitation of this API (#606). */
+   * with the on-disk format rather than a limitation of this API. */
   if (m->exfat_upcase_ok != 0U) {
     return k_ra8_ok;
   }
@@ -375,7 +375,7 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
                           uint8_t*              out_attr)
 {
   /* Leading slashes are not part of the name; match FAT's priv_path_to_83
-   * behavior so ra8_fs_open("/name") resolves on exFAT too (#93). */
+   * behavior so ra8_fs_open("/name") resolves on exFAT too. */
   while (*path == '/') {
     path++;
   }
@@ -490,7 +490,7 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
     return e;
   }
   /* A directory answers the name lookup exactly like a file and reports
-   * DataLength 0, so without this it opens as a bogus empty file (#604). */
+   * DataLength 0, so without this it opens as a bogus empty file. */
   if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }

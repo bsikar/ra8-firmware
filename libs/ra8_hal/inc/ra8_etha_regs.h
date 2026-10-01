@@ -25,7 +25,7 @@
  * type ``R_ETHA0_Type``, which carries a trailing ``EASCR`` at +0x0580.
  * Chapter 32 does not mention that symbol anywhere, so it was an FSP
  * artefact rather than a documented register and has been removed along
- * with the driver entry point that wrote it (#539). The manual, not the
+ * with the driver entry point that wrote it. The manual, not the
  * vendor header, is the authority for what exists.
  *
  * Eight per-traffic-class arrays (EATMFSC, EATDQDC, EATDQM, EATDQMLM,
@@ -225,7 +225,7 @@ typedef enum : uint32_t {
  * entry's one-bit GATE STATE (HUM Ch 32.3.5.14 "EATASGL1 : TAS Gate Learn
  * Register 1" p 1652), and had been carrying an unrelated "cut-through"
  * flag while the gate state was written into ``EATASGL0``, whose
- * ``TASGAL[7:0]`` field is the TAS RAM ENTRY ADDRESS (#539).
+ * ``TASGAL[7:0]`` field is the TAS RAM ENTRY ADDRESS.
  *
  * @invariant Every value is a bit index in 0..31.
  * @see ra8_etha_set_tas_schedule
@@ -510,7 +510,7 @@ typedef struct {
  * The window ends at EAEID2 (+0x0528), the last row of Table 32.3, so the
  * block is 0x52C bytes. It was previously sized 0x584 to match the FSP
  * ``R_ETHA0_Type``, whose trailing ``EASCR`` at +0x0580 the manual does not
- * publish anywhere in Chapter 32 (#539).
+ * publish anywhere in Chapter 32.
  */
 typedef enum : uint16_t {
   k_ra8_etha_window_bytes = 0x52CU, /**< Total MMIO window, EAMC..EAEID2. */

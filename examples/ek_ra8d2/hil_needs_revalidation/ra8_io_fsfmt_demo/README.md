@@ -1,6 +1,6 @@
 # ra8_io_fsfmt_demo
 
-Drives the `ra8_io` filesystem-format registry (#159) with no external hardware.
+Drives the `ra8_io` filesystem-format registry with no external hardware.
 
 The registry lets the fabric recognise the on-disk filesystem on a block device
 and report what that format can do, so the upper layers never hard-code a

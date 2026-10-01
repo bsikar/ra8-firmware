@@ -76,7 +76,7 @@ RA8_PRIV void priv_epub_dirname(const char* path, char* dst, size_t cap);
  * @details Test-access form of the callback installed in a streamed ZIP
  * reader, and of the adapter the ZIP preflight scanner runs through. It is the
  * single place an ::epub_stream_read_fn error is collapsed to a byte count,
- * because miniz's `m_pRead` has nowhere to carry a reason (#764).
+ * because miniz's `m_pRead` has nowhere to carry a reason.
  * Production callers use ::epub_open_streamed.
  * @param[in] opaque Bound ::epub_stream_media_t descriptor.
  * @param[in] file_ofs Absolute archive offset.

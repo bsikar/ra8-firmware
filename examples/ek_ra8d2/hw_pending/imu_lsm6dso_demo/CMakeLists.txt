@@ -35,6 +35,6 @@ ra8_add_app(
   DESCRIPTION "imu_lsm6dso_demo firmware for RA8D2"
   # ra8_io_bus compiles the ra8_io I2C/SPI bus facades only: this app binds
   # the LSM6DSO to the house I2C seam through ra8_io_i2c_bus_bind_i3c_compat
-  # + ra8_io_i2c_bus_as_ops, and needs no other part of the ra8_io fabric (#760).
+  # + ra8_io_i2c_bus_as_ops, and needs no other part of the ra8_io fabric.
   LIBS ra8_lsm6dso ra8_board_ek_ra8d2 ra8_io_bus
 )

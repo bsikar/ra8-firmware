@@ -1,6 +1,6 @@
 /**
  * @file ra8_gfx_tone.h
- * @brief Per-panel gray-level tone LUT for the 16-level e-ink dither path (#479).
+ * @brief Per-panel gray-level tone LUT for the 16-level e-ink dither path.
  * @ingroup grp_ereader
  *
  * @details

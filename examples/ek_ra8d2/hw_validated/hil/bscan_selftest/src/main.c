@@ -1,7 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/bscan_selftest/src/main.c
  * @brief Headless on-silicon self-test gate for the JTAG boundary-scan
- *        TAP bookkeeping driver `ra8_bscan` (#138).
+ *        TAP bookkeeping driver `ra8_bscan`.
  *
  * @details
  * The RA8D2 boundary-scan TAP (HUM Ch 50, p 3257-3262) is driven by an

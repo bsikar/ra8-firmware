@@ -3,7 +3,7 @@
 Composites three layers into a small ARGB8888 framebuffer in SRAM -- an opaque
 background fill, an opaque sprite fill over it, then a source-over alpha blend
 at global alpha -- and folds an FNV-1a-32 hash over the result. It covers the
-`ra8_drw` blend path that `drw_fill_demo` (solid fill only) does not (#120).
+`ra8_drw` blend path that `drw_fill_demo` (solid fill only) does not.
 Needs no panel and no external hardware.
 
 The pinned hash is a real EK-RA8D2 capture, checked pixel by pixel against
@@ -12,7 +12,7 @@ was FNV-1a-32 over an all-zero framebuffer -- the demo hashing its own untouched
 BSS, because the D/AVE 2D engine had never rasterized a pixel on this silicon --
 and it carried "silicon-confirmed PASS" status for months. Two stacked defects
 had to be fixed before a real render existed: the graphics power domain is gated
-off at reset (#247), and the driver then placed rectangles with the spatial
+off at reset, and the driver then placed rectangles with the spatial
 limiters while leaving `CONTROL2.WRITEALPHA` at its reset value (RA8FW-251). If the
 hash ever changes, re-derive it from a bench capture -- never from the emulator,
 and never by writing down whatever the demo happens to print.

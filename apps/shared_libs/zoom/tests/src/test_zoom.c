@@ -1,6 +1,6 @@
 /**
  * @file test_zoom.c
- * @brief Host unit tests for the tap-to-zoom viewport engine (#478).
+ * @brief Host unit tests for the tap-to-zoom viewport engine.
  *
  * @details
  * Drives zoom over a synthetic gray8 source whose every pixel encodes its

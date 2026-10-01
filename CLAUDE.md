@@ -164,7 +164,7 @@ snapshot, so a gate body uses `$PWD` and never `$REPO_ROOT`, which is the HOST
 checkout. `tools-build` reached for `$REPO_ROOT` and so never gated `HEAD` at
 all -- it built the working tree and left its output there -- and could not run
 on the containerised path, where the host repo is mounted read-only at
-`/workspace` (#546). `check_gate_bodies.py` now rejects `$REPO_ROOT` anywhere
+`/workspace`. `check_gate_bodies.py` now rejects `$REPO_ROOT` anywhere
 in `scripts/ci/gates/`. A gate needing the host repository's *history* calls
 `ci_history_repo`; there is no other legitimate use.
 
@@ -207,7 +207,7 @@ never let a gate degrade to a no-op.
 Two rules, both checked by `scripts/ci/check_selftest_coverage.py` in the
 `ci-parity` gate. This used to be a convention that nothing verified, so 28
 gate-wired detectors had no selftest at all and one had a selftest no gate ever
-ran (#531).
+ran.
 
 1. **Any** script a gate body invokes that *has* a selftest must have it RUN by
    that gate, before the scan. A selftest nobody executes is documentation.
@@ -270,7 +270,7 @@ run.
 
 `just ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
 bind-mounts the main repo's git directory alongside it, so the in-container
-read of `HEAD` resolves (#334).
+read of `HEAD` resolves.
 
 ### Do not poll GitHub: `just quality::local::gate ci-status-contract`
 
@@ -329,7 +329,7 @@ another fleet host, and every ssh and Ansible invocation is built from those --
 so any machine with ansible and an accepted key can drive the fleet. Addressing
 a host by an `~/.ssh/config` alias is a gate failure: those existed on one
 laptop, which had no ansible, so nothing was a working control node and a
-half-drained NAS sat unconvergeable (#526). `just infra::ssh_config` GENERATES
+half-drained NAS sat unconvergeable. `just infra::ssh_config` GENERATES
 the friendly aliases from the declaration; never hand-write them.
 
 **Read `docs/CI_FLEET.md` before touching any of it.** It is the runbook for
@@ -950,7 +950,7 @@ non-trivial), `@see` (cross-references), `@warning`, `@par MC/DC:`. Measured
 2026-07-28: 3014 of the 3162 documented function blocks in the tree carry no
 `@see`, 3142 no `@warning`, 3099 no `@par MC/DC:`. A rule demanding them
 everywhere would be closed with filler, so `docs/STYLE_GUIDE.md` -- the source
-of truth -- records them as conventions rather than requirements (#532).
+of truth -- records them as conventions rather than requirements.
 
 **Structs/Enums - Minimum Required Tags:**
 - `@struct/@enum` - Structure/enumeration tag

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_lfn_erase.c
- * @brief Taking a VFAT long name away again, chain and all (#600).
+ * @brief Taking a VFAT long name away again, chain and all.
  *
  * @details
  * `ra8_fs_unlink()` wrote 0xE5 into the 8.3 entry only, leaving the whole

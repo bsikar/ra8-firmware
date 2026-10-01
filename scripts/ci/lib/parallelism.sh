@@ -10,7 +10,7 @@
 # xargs -P, cppcheck -j, clang-tidy fan-out) MUST take its width from
 # ra8_max_jobs -- never from a raw `nproc` / `sysctl -n hw.ncpu`.
 #
-# Why (#328): a raw `nproc` lets ONE gate grab every core. When several gate
+# Why: a raw `nproc` lets ONE gate grab every core. When several gate
 # jobs share one box -- the self-hosted dev box runs many runners at once, and
 # agents also burst gate suites on it by hand -- they each grab all cores and
 # the load average runs to many multiples of the CPU count. The issue measured
@@ -41,7 +41,7 @@ if [ -z "${_RA8_PARALLELISM_SH:-}" ]; then
   }
 
   # ra8_max_jobs -- the bounded per-job parallelism width every parallel
-  # invocation must derive from (#328).
+  # invocation must derive from.
   #
   # Resolution order; the first value that is a positive integer wins:
   #   1. RA8_MAX_JOBS               explicit operator override -- the knob a

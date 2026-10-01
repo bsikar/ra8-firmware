@@ -21,7 +21,7 @@
 # finding -- there is no grandfathering.
 gate_lint_py_shell() (
   set -e
-  # Pinned-version guard (#333). --selftest proves the version comparator fires
+  # Pinned-version guard. --selftest proves the version comparator fires
   # in both directions, then require_tool_versions asserts the three tools this
   # gate resolves are the pinned builds -- not the shellcheck 0.9.0 / shfmt
   # 3.6.0 a non-login PATH used to reach, and not an absent ruff. use_pinned_
@@ -237,7 +237,7 @@ gate_lint_ld() (
 # --- reserved-addrs -------------------------------------------------------
 # Three drivers have now named an address describing hardware that is not
 # there (ra8_rsip, ra8_ptp #498, ra8_wdt_regs #545) -- each compiled clean and
-# failed only on silicon. check_hum_register_map.py (#540) checks register
+# failed only on silicon. check_hum_register_map.py checks register
 # symbols and struct/window offsets against the manual's tables, but an
 # absolute-address enumerator is neither, so that gate does not cover this.
 # This one answers the cheaper question: is the address inside a hole?

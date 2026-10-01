@@ -3,8 +3,8 @@
 //!
 //! Build graph for `ra8_jpeg`.
 //!
-//! Two of the library's seams are Zig: the `ra8_imgdec` backend (#2786) and
-//! the baseline encoder (#2795) and the decoder (#2799). No C implementation
+//! Two of the library's seams are Zig: the `ra8_imgdec` backend and
+//! the baseline encoder and the decoder. No C implementation
 //! is left in this library, so the archive's root is `src/root.zig`, which
 //! exists only to pull the three ABI membranes in.
 //!

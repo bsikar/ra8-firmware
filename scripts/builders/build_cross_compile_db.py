@@ -10,7 +10,7 @@ test build. That database describes ``libs/``, ``src/``, ``tests/`` and
 ``tools/`` and nothing else: no ``-mcpu=cortex-m85``, no per-app include
 directories, no vendored RTOS paths. Pointing clang-tidy at the firmware anyway
 was measured, not guessed -- 135 findings across 96 files, every one a
-``clang-diagnostic-error`` and not one an actionable style finding (#369).
+``clang-diagnostic-error`` and not one an actionable style finding.
 
 The fix is not a wider glob, it is a database that actually describes how those
 translation units compile. CMake already knows: it emits

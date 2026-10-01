@@ -13,7 +13,7 @@ open takes the cached path.
 The card's existing FAT volume is **mounted, never reformatted**, so the source
 `.epub` survives. The importer keys its cache entry by the source CRC-32,
 compiles through the production adapter -- which streams the source through a
-bounded `ra8_vmem` page cache rather than a whole-file load buffer (#230) -- and
+bounded `ra8_vmem` page cache rather than a whole-file load buffer -- and
 writes the result crash-safely (temp plus rename) alongside a freshness marker. A
 second open of the same source matches the marker and returns the cached path
 **without invoking the compiler seam at all**. The app then reads the cached

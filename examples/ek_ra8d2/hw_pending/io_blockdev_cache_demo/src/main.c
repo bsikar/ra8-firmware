@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/io_blockdev_cache_demo/src/main.c
- * @brief ra8_io caching block device contract demo (#983).
+ * @brief ra8_io caching block device contract demo.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Which cell `ra8_keycache` evicts, and what a re-reference does to the
-//! recency order. Two policies over the same lists (#345): plain LRU keeps one
+//! recency order. Two policies over the same lists: plain LRU keeps one
 //! list, SLRU/2Q keeps a probationary scan absorber beside a protected hot set.
 //!
 //! The policy decides *which* cell goes, never *how many* are resident: both

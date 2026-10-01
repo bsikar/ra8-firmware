@@ -65,7 +65,7 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
   future BLE bring-up. One consumer declares it,
   `examples/_unsupported/threadx_nimble_peripheral` (`USES threadx nimble`),
   which sits in the `_unsupported` tier and so is outside the supported
-  example set; no supported app links it (#631).
+  example set; no supported app links it.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
 - **miniz** -- Deflate / inflate / ZIP support behind the EPUB, CBZ, PNG and
   gzip decode paths and the app-owned `compress` VFS composition seam.
@@ -77,7 +77,7 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for longstrip / manga
   raster content, reached through the `apps/shared_libs/webp/` facade. Wired for band
   tiles via the JOF producer; the `reflow` inline small-image path is
-  still `stb_image`-only (#637).
+  still `stb_image`-only.
 - **TFLite-micro** -- On-device neural-network inference runtime
   (MicroInterpreter + a lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.
 - **FlatBuffers** -- Zero-copy serialization headers for the `.tflite` model
@@ -124,7 +124,7 @@ The SBOM is generated and validated by
 (`just quality::local::sbom` / `just quality::local::sbom_check`). The license
 inventory is hand-maintained and cross-checked against the same registry by
 [`../../scripts/checks/check_soup_inventory.py`](../../scripts/checks/check_soup_inventory.py),
-which the same gate runs (#631). The component registry the generator renders lives in
+which the same gate runs. The component registry the generator renders lives in
 the sibling module
 [`../../scripts/gen/sbom_registry.py`](../../scripts/gen/sbom_registry.py)
 and is the single
@@ -143,7 +143,7 @@ upstream commit (the form OSV actually resolves for git-vendored C/C++).
 
 Every document in this directory makes the same load-bearing claim -- this
 tree is what upstream published -- and until #548 nothing verified it. The
-SBOM's integrity digest (#538) is re-derived from both canonical vendored roots
+SBOM's integrity digest is re-derived from both canonical vendored roots
 on every run, which proves the tree has not changed since the SBOM was regenerated; it
 cannot prove the tree was right when it was vendored, because a bad copy is
 hashed just as faithfully as a good one.

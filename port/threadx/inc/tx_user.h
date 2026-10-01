@@ -59,7 +59,7 @@
  * Most apps run ThreadX in the Secure world only (no Non-Secure partition
  * is loaded), so ThreadX compiles out the secure-stack-context machinery
  * (TX_SINGLE_MODE_SECURE). The `threadx_ns` library variant -- used by
- * tz_nsc_cgc_usb to run ThreadX INSIDE the Non-Secure image (#96) --
+ * tz_nsc_cgc_usb to run ThreadX INSIDE the Non-Secure image --
  * defines RA8_THREADX_NON_SECURE so ThreadX builds for the Non-Secure side
  * instead. Selecting exactly one single-mode keeps the scheduler off the
  * dual-world secure-stack path. */

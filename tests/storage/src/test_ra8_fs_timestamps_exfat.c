@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_timestamps_exfat.c
- * @brief exFAT entry-set timestamps, 10 ms increments, and UtcOffset (#601).
+ * @brief exFAT entry-set timestamps, 10 ms increments, and UtcOffset.
  *
  * @details
  * The exFAT half of the timestamp work. `priv_exfat_build_set()` zero-filled
@@ -227,7 +227,7 @@ RA8_INTERNAL static void internal_set_clock(int32_t y,
  * @post No state modified.
  * @post The result addresses the cluster heap.
  *
- * @note Partition-adjusted: an exFAT volume lives inside an MBR partition (#568).
+ * @note Partition-adjusted: an exFAT volume lives inside an MBR partition.
  * @since 0.1.0 @details Implements the bounded root cluster byte fixture step using caller-owned state.
  */
 RA8_INTERNAL static uint32_t internal_root_cluster_byte(const ra8_fs_mount_t* h)

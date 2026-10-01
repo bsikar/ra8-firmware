@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h
- * @brief Tap-to-zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478).
+ * @brief Tap-to-zoom demo scene: tiled 12 MP page, zoom viewport, loupe.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}
@@ -148,7 +148,7 @@ typedef enum : uint8_t {
 
 /**
  * @enum ez_cache_t
- * @brief Tile-cache budget, DERIVED from the viewport and tile geometry (#338).
+ * @brief Tile-cache budget, DERIVED from the viewport and tile geometry.
  * @details At 1:1 the content viewport straddles at most ::k_ez_view_cols x
  *          ::k_ez_view_rows tiles; sizing the cache to that frame plus one tile
  *          of margin on each axis means a single pan step re-decodes only the

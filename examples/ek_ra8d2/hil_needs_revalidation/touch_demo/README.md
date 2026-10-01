@@ -1,6 +1,6 @@
 # touch_demo
 
-Standalone GoodIX GT911 capacitive-touch bring-up (#122). The GT911 driver was
+Standalone GoodIX GT911 capacitive-touch bring-up. The GT911 driver was
 previously only exercised inside `ereader_ui`, with no standalone example and no
 gate of its own.
 

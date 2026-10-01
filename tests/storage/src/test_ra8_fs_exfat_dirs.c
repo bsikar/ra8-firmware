@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_dirs.c
- * @brief exFAT directories end to end: create, enter, list, remove (#605).
+ * @brief exFAT directories end to end: create, enter, list, remove.
  *
  * @details
  * exFAT used to be a flat, root-only namespace in `ra8_fs`. `ra8_fs_mkdir()`
@@ -455,7 +455,7 @@ RA8_INTERNAL static void internal_test_rmdir_non_empty_changes_nothing(void)
  *          therefore never all-zero again, and an emptiness check that counted
  *          any non-zero entry would make it permanently un-removable -- the
  *          exFAT form of the FAT-side rule that deleted slots and long-name
- *          remnants do not count (#604). This proves the retired sets are
+ *          remnants do not count. This proves the retired sets are
  *          discounted, and that the directory is removable afterwards.
  *
  * @par MC/DC:
@@ -540,7 +540,7 @@ RA8_INTERNAL static void internal_test_mkdir_refuses_an_existing_name(void)
   TEST_ASSERT_EQ(before, internal_alloc_bitmap_used(h));
 
   /* The reverse collision: write_file over a DIRECTORY name is refused rather
-   * than replacing it, because unlink refuses a directory (#604). */
+   * than replacing it, because unlink refuses a directory. */
   uint8_t payload[k_dirs_payload] = {};
   internal_fill(payload, (uint32_t)k_dirs_payload, (uint8_t)k_dirs_seed_b);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -612,7 +612,7 @@ RA8_INTERNAL static void internal_test_wrong_verb_for_the_kind(void)
  *
  * @details The flat namespace could not express this at all: both would have
  *          been one root-level name, and the second create would have REPLACED
- *          the first (#603). Different contents are written to each so a lookup
+ *          the first. Different contents are written to each so a lookup
  *          that still resolved by leaf name alone would return the wrong bytes
  *          rather than merely the wrong entry.
  *

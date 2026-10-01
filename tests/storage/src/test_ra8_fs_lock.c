@@ -2,7 +2,7 @@
  */
 /**
  * @file test_ra8_fs_lock.c
- * @brief Tests for the optional `ra8_fs` lock seam (#608).
+ * @brief Tests for the optional `ra8_fs` lock seam.
  *
  * @details
  * The seam's whole claim is that every public entry point takes the lock on

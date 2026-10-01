@@ -83,7 +83,7 @@ SCAN_BASENAMES: frozenset[str] = frozenset({"justfile", "Justfile", "Dockerfile"
 
 # A tree this size cannot legitimately collapse to a handful of files. A scan
 # that enumerates almost nothing reports a clean tree because it read almost
-# nothing -- the exact failure the gate-honesty epic (#190) exists to prevent.
+# nothing -- the exact failure the gate-honesty epic exists to prevent.
 # Measured 2026-08-02: 3415 first-party files in the derived scope. Same
 # trip-wire as check_ruff.py.
 FILE_FLOOR = 2500

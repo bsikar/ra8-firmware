@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/touch_demo/src/main.c
- * @brief Standalone GoodIX GT911 capacitive-touch bring-up demo + HIL (#122).
+ * @brief Standalone GoodIX GT911 capacitive-touch bring-up demo + HIL.
  *
  * @details
  * `ra8_touch` (GT911 over IIC_B channel 0) was only ever exercised *inside*

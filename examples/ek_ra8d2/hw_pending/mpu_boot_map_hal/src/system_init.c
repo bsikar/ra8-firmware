@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/system_init.c
- * @brief Cortex-M85 / RA8D2 core bring-up -- MPU map via the ra8_mpu HAL (#576)
+ * @brief Cortex-M85 / RA8D2 core bring-up -- MPU map via the ra8_mpu HAL
  *
  * @details
  * Per-app override of the shared board `SystemInit()` that installs the boot

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_ftl_mount.c
- * @brief Unit tests for the FTL mount lifecycle (#763).
+ * @brief Unit tests for the FTL mount lifecycle.
  *
  * @details
  * Covers ::ra8_ftl_mount / ::ra8_ftl_sync / ::ra8_ftl_unmount, the lifecycle

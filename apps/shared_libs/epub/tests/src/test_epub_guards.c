@@ -118,7 +118,7 @@ static const struct {
 
   .cover_bytes = {0x89U, 0x50U, 0x4EU, 0x47U},
 
-  /** @brief External stylesheet body (#140) -- a distinctive class rule. */
+  /** @brief External stylesheet body -- a distinctive class rule. */
   .css = ".lead { color: #C00000; }\n",
 };
 

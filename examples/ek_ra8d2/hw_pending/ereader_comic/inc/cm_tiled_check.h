@@ -1,7 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/inc/cm_tiled_check.h
  * @brief Boot-time self-check that opens an oversized comic page via the JOF
- *        tile path and reports a deterministic digest (#344).
+ *        tile path and reports a deterministic digest.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}

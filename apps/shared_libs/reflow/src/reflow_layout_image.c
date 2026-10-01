@@ -1,6 +1,6 @@
 /**
  * @file reflow_layout_image.c
- * @brief Block-level `<img>` layout for the reflow engine (#106).
+ * @brief Block-level `<img>` layout for the reflow engine.
  *
  * @details
  * Splits the image-layout sub-responsibility out of `reflow_layout.c` so

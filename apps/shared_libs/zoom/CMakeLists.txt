@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# apps/shared_libs/zoom -- the reader's tap-to-zoom image viewer (#478).
+# apps/shared_libs/zoom -- the reader's tap-to-zoom image viewer.
 #
 # One viewport engine behind a gray8 sub-rectangle seam, serving both
 # presentations the reader needs: full-screen zoom (a tapped EPUB figure or
@@ -23,7 +23,7 @@
 #   src/zoom_tiles.c  pixel rect -> tiles -> acquire / copy / release
 #
 # Dependencies: ra8_core (err/check/log), ra8_ui (the rect type), and ra8_gfx
-# for the render TU -- the blue-noise dither (#477) IS the feature here, so
+# for the render TU -- the blue-noise dither IS the feature here, so
 # unlike longstrip this library does not push the blit behind a seam. The
 # two adapter TUs are each guarded on `__has_include` of their backend header
 # and compile to nothing otherwise, so an app that magnifies only `.rabook`

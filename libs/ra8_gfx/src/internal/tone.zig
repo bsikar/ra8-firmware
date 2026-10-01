@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Per-panel gray-level tone curve for `ra8_gfx` (#479): the measured gray8
+//! Per-panel gray-level tone curve for `ra8_gfx`: the measured gray8
 //! each of the panel's sixteen levels renders, and the prepared per-sample
 //! map the dither quantises against. Pure integer arithmetic over caller
 //! memory, no binding and no logging, so the same input produces the same

@@ -17,7 +17,7 @@
 //!
 //! `libs/ra8_mem/src` has no C left. The arena was the last translation unit
 //! in it, and its seven `ra8_arena_*` symbols now come out of this archive
-//! through the unchanged `inc/ra8_arena.h` (#2601).
+//! through the unchanged `inc/ra8_arena.h`.
 
 const std = @import("std");
 

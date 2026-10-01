@@ -39,7 +39,7 @@ _pcc_banned_constructs() (
   set -e
   # The obsolete-safety-standard ban moved to _pcc_cross_references, next to
   # the other "does this reference still hold?" checks.
-  # --selftest FIRST for each derived-scope checker (#358): it proves the rule
+  # --selftest FIRST for each derived-scope checker: it proves the rule
   # fires and that tools/ -- silently omitted by the old hardcoded scan lists --
   # is back in scope, before the tree is trusted. A re-narrowed scope turns the
   # selftest red instead of passing green over files it stopped scanning.
@@ -146,7 +146,7 @@ _pcc_migration_contracts() (
   # half as a raw add_executable(), which inherits no warning flags, so the
   # profile call is written by hand in every such app and nothing checked
   # that it was. --selftest proves the detector fires in both directions
-  # before the tree check runs (#759).
+  # before the tree check runs.
   python3 scripts/checks/check_ns_image_warning_profile.py --selftest
   python3 scripts/checks/check_ns_image_warning_profile.py
 
@@ -227,7 +227,7 @@ _pcc_board_and_layering() (
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
   # --selftest proves the detector fires AND that an in-source build under
-  # examples/<app>/build/ is excluded from the scope (#549) before a clean run.
+  # examples/<app>/build/ is excluded from the scope before a clean run.
   bash scripts/builders/check_example_board_pins.sh --selftest
   bash scripts/builders/check_example_board_pins.sh
   # Library architecture: ra8_core stays foundational, module-private headers
@@ -263,7 +263,7 @@ _pcc_repository_structure() (
   # unaddable, and nearly lost the files moved into scripts/build/  # PATHREF-OK: #359
   # and would have lost a seventh outright. The failure is invisible in both
   # directions -- git declines to add and says nothing -- so nothing but a gate
-  # asking the question can catch it (#377).
+  # asking the question can catch it.
   python3 scripts/checks/check_gitignore_scope.py --selftest
   python3 scripts/checks/check_gitignore_scope.py
   # The C6 SPI pin map is stated twice: coprocessor/esp32c6/pins.env (the source
@@ -298,9 +298,9 @@ _pcc_repository_structure() (
   python3 scripts/dev/fleet.py selftest
   # ra8-ci:latest, the image `just ci` boots, is a pure function of its exact
   # root-context allowlist while scripts/ci/devcontainer_image.sh is its SOLE
-  # builder (#521): a second `docker build -t ra8-ci` with the old
+  # builder: a second `docker build -t ra8-ci` with the old
   # reuse-forever logic silently defeats the context-digest staleness guard,
-  # exactly as the deleted inner-local.sh did (#528). This is the image's
+  # exactly as the deleted inner-local.sh did. This is the image's
   # equivalent of ci-parity's ban on a second `run:` check body. --selftest
   # FIRST, both directions plus a non-vacuity floor, so a reconstruction that
   # stopped matching fails instead of reporting a clean, empty scan.
@@ -325,7 +325,7 @@ _pcc_source_form() (
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code. --selftest proves the detector fires and that the derived
-  # scope reaches the roots a hardcoded list had dropped (#549).
+  # scope reaches the roots a hardcoded list had dropped.
   (cd tools/ra8ci && GOWORK=off go run . final-newline)
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
@@ -351,7 +351,7 @@ _pcc_source_form() (
   (cd tools/ra8ci && GOWORK=off go run . tz-boundary-discard)
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the
-  # roots a hardcoded list had dropped (#549).
+  # roots a hardcoded list had dropped.
   (cd tools/ra8ci && GOWORK=off go run . wave-references)
   # C23 typed enums (every enum names an explicit underlying type) and
   # pragma-once headers (no classic #ifndef include guards). Both were
@@ -373,7 +373,7 @@ _pcc_security_invariants() (
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
   # with a fail-closed #else, so a release image that forgot to swap in real
-  # crypto fails closed instead of shipping the stub (#180).
+  # crypto fails closed instead of shipping the stub.
   (cd tools/ra8ci && GOWORK=off go run . stub-crypto-guard)
   # No function may exist only to satisfy the linker. Two narrowly-calibrated
   # rules: SHADOW (a do-nothing second definition of a symbol implemented for
@@ -392,7 +392,7 @@ _pcc_security_invariants() (
   # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_OFF_TARGET -- those
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
   # tests/mocks/src/ra8_host_asm_stub.c so the driver stays branch-free and
-  # coverage lands on the shipping path (#293).
+  # coverage lands on the shipping path.
   (cd tools/ra8ci && GOWORK=off go run . driver-asm-guard)
   # No first-party file may introduce a permanent anti-recovery brick ACTION
   # (setting the ce "Disable Initialize" security flag, or transitioning the DLM
@@ -417,7 +417,7 @@ _pcc_security_invariants() (
 _pcc_cross_references() (
   set -e
   # The in-tree line-number citation ban: reference a symbol, never a file
-  # plus line number, since line numbers rot. --selftest FIRST (#358): it
+  # plus line number, since line numbers rot. --selftest FIRST: it
   # proves the ban fires in source AND docs and that tools/ -- omitted by the
   # old SCAN_ROOTS tuple -- is back in scope.
   python3 scripts/checks/check_line_citations.py --selftest
@@ -431,7 +431,7 @@ _pcc_cross_references() (
   python3 scripts/checks/check_script_references.py
   # Ban citations of safety standards that have been superseded (the checker
   # names them; this comment deliberately does not, since the ban applies to
-  # this file too). --all, not the bare invocation (#190): it read
+  # this file too). --all, not the bare invocation: it read
   # `git diff --cached` unconditionally, so in any CI checkout -- where nothing
   # is staged -- it enumerated 0 files, printed "0 findings" and passed, having
   # audited nothing for its whole life in this gate. Same defect class as
@@ -439,7 +439,7 @@ _pcc_cross_references() (
   python3 scripts/checks/check_obsolete_standards.py --selftest
   python3 scripts/checks/check_obsolete_standards.py --all
   # A documented thread-safety claim must still be backed by the unit's own
-  # state (#893). The ra8_jpeg header advertised the decoder as re-entrant and
+  # state. The ra8_jpeg header advertised the decoder as re-entrant and
   # the encoder as thread-safe while both keep their working set in shared
   # statics; review caught it once, and nothing stopped it coming back. The
   # selftest runs first: a claim checker that stopped matching would report a
@@ -453,7 +453,7 @@ _pcc_cross_references() (
 _pcc_docs_and_tests() (
   set -e
   _pcc_cross_references
-  # Per-app SystemInit boot init-order audit. --selftest FIRST (#190): the
+  # Per-app SystemInit boot init-order audit. --selftest FIRST: the
   # discovery glob was capped at three directory levels while the tree is up to
   # five deep, so this saw 11 of 217 apps and reported the other 206 clean. The
   # selftest asserts the detector fires on an inverted sequence AND that live
@@ -463,7 +463,7 @@ _pcc_docs_and_tests() (
   python3 scripts/checks/audit_init_order.py
   # OSHWA inclusive-terminology gate over first-party sources. --selftest
   # proves the detector fires on a legacy symbol, spares vendored/HW names, and
-  # that the derived scope reaches the roots a hardcoded list had dropped (#549).
+  # that the derived scope reaches the roots a hardcoded list had dropped.
   python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
   # Every hw_validated/hil app must be instrumented (a probed counter +

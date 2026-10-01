@@ -39,7 +39,7 @@ host-vs-device -- decode included -- closing the gap #337 describes.
 The `--realbook` form bakes a single header (s_realbook_epub +
 s_realbook_golden_noimg) from a real-book fixture (verbatim Standard Ebooks
 chapters) using the desktop tool's --no-images path -- the text/CSS-only golden
-the on-device skip-images compile must match byte-for-byte (#151).
+the on-device skip-images compile must match byte-for-byte.
 
 The `--downscale` form bakes rabook_downscale_parity_fixture.h: a synthetic gray
 source plus the golden 4-bpp blob the desktop tool emits for it via the exact
@@ -150,7 +150,7 @@ def _render(epub_bytes: bytes, golden: bytes, golden_noimg: bytes) -> str:
     return (
         "/**\n"
         " * @file rabook_parity_fixture.h\n"
-        " * @brief Byte-identity parity fixture for rabook_compile (#151).\n"
+        " * @brief Byte-identity parity fixture for rabook_compile.\n"
         " * @details Pins one synthetic EPUB against desktop-generated RABOOK1\n"
         " *          bytes with and without images for firmware parity checks.\n"
         " *\n"
@@ -196,7 +196,7 @@ def _render_realbook(epub_bytes: bytes, golden_noimg: bytes) -> str:
     return (
         "/**\n"
         " * @file rabook_realbook_fixture.h\n"
-        " * @brief Real-book byte-identity fixture for rabook_compile (#151).\n"
+        " * @brief Real-book byte-identity fixture for rabook_compile.\n"
         " * @details Pins representative Walden XHTML and its desktop-generated\n"
         " *          text-only RABOOK1 bytes for firmware parity checks.\n"
         " *\n"
@@ -241,7 +241,7 @@ def _render_example(epub_bytes: bytes, golden: bytes) -> str:
     return (
         "/**\n"
         " * @file parity_fixture.h\n"
-        " * @brief Baked parity .epub + golden blob for the M33 compile (#149).\n"
+        " * @brief Baked parity .epub + golden blob for the M33 compile.\n"
         " * @details Pins the shared synthetic EPUB and desktop RABOOK1 bytes so\n"
         " *          the secondary-core compiler can prove byte identity.\n"
         " *\n"
@@ -322,7 +322,7 @@ def _render_downscale(src: bytes, out_w: int, out_h: int, golden: bytes, sha_hex
     return (
         "/**\n"
         " * @file rabook_downscale_parity_fixture.h\n"
-        " * @brief Downscale-kernel byte-identity fixture for ra8_rabook_gray4 (#213).\n"
+        " * @brief Downscale-kernel byte-identity fixture for ra8_rabook_gray4.\n"
         " * @details Pins a synthetic grayscale source against the desktop integer\n"
         " *          downscale kernel's packed output for firmware parity checks.\n"
         " *\n"
@@ -417,7 +417,7 @@ def _render_color(png: bytes, golden: bytes, sha_hex: str, crc: int) -> str:
     return (
         "/**\n"
         " * @file rabook_color_parity_fixture.h\n"
-        " * @brief Colour-raster host-vs-device byte-identity fixture (#337).\n"
+        " * @brief Colour-raster host-vs-device byte-identity fixture.\n"
         " * @details Pins a synthetic RGB PNG against the desktop luma and gray4\n"
         " *          pipeline's packed output for firmware parity checks.\n"
         " *\n"

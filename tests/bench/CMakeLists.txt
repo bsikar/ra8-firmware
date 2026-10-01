@@ -72,7 +72,7 @@ target_include_directories(bench_ra8_jpeg_sw PRIVATE ${FW_ROOT}/libs/ra8_jpeg/in
 # by the time we get here the target normally exists already, and registering it
 # a second time is a duplicate add_executable() -- a fatal configure error that
 # took every bench binary with it, because the whole -DRA8_BENCH=ON tree stops
-# before `ra8_bench_all` is declared (#1415). Nothing in CI configures with
+# before `ra8_bench_all` is declared. Nothing in CI configures with
 # RA8_BENCH=ON, so that break was invisible: the only consumers are
 # `just quality::local::bench` and `just quality::devcontainer::bench`.
 #

@@ -133,7 +133,7 @@ typedef struct {
 [[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* reader, uint32_t page);
 
 /**
- * @brief Name the image container page @p page actually holds (#748).
+ * @brief Name the image container page @p page actually holds.
  *
  * @details The comic engine receives page bytes it did not produce, and until
  * this call the only thing it could say about a page it failed to decode was

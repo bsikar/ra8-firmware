@@ -1,6 +1,6 @@
 /**
  * @file rabook_realbook_fixture.h
- * @brief Real-book byte-identity fixture for rabook_compile (#151).
+ * @brief Real-book byte-identity fixture for rabook_compile.
  * @details Pins representative Walden XHTML and its desktop-generated
  *          text-only RABOOK1 bytes for firmware parity checks.
  *

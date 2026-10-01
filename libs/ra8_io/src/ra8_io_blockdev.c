@@ -172,7 +172,7 @@ static ra8_err_t internal_fs_read(void* ctx, uint64_t lba, uint32_t count, uint8
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   /* The io fabric addresses 32-bit LBAs -- every backend it fronts (SD, XSPI,
    * SDRAM, MRAM) fits comfortably -- so an address past that reach is refused
-   * here rather than truncated. The 64-bit `ra8_fs` interface (#683) stays
+   * here rather than truncated. The 64-bit `ra8_fs` interface stays
    * fully honest: media needing it use a 64-bit-native backend. */
   if (lba > (uint64_t)UINT32_MAX) {
     return k_ra8_err_out_of_range;

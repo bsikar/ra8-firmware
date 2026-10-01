@@ -1,6 +1,6 @@
 # blink_m33_hal
 
-The HAL-based twin of `blink_m33` (#580): the Cortex-M85 releases the
+The HAL-based twin of `blink_m33`: the Cortex-M85 releases the
 Cortex-M33 and sleeps, the M33 blinks LED1. Everything is identical except
 **how the M33 drives the pin**.
 

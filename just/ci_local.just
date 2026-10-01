@@ -156,7 +156,7 @@ vela_compile tflite out="build/vela":
 # Run host microbenchmarks. RA8_BENCH_TARGETS in tests/bench/CMakeLists.txt is
 # the harness registry, so read it rather than restating it here: a harness
 
-# added to the registry must RUN, not just build (#1415).
+# added to the registry must RUN, not just build.
 bench:
     #!/usr/bin/env bash
     set -euo pipefail

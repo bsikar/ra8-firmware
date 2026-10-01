@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Gate: the tier dependency arrow points one way, and nothing may reverse it.
 
-The tree has three tiers (#718), and the products tier has an internal layer of
+The tree has three tiers, and the products tier has an internal layer of
 its own:
 
 * PLATFORM -- ``libs/``, ``port/``, ``tools/``. General-purpose,

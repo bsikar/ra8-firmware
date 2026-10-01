@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/inc/ra8_io_roundtrip.h
- * @brief Shared, backend-agnostic ra8_io VFS round-trip for the FAT demos (#155).
+ * @brief Shared, backend-agnostic ra8_io VFS round-trip for the FAT demos.
  *
  * @details
  * The four `ra8_io_*_demo` apps (RAM, SDRAM, OSPI/xSPI NOR, SD-over-SPI) all run

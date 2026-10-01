@@ -1,6 +1,6 @@
 /**
  * @file jof_png.c
- * @brief Streaming PNG scanline decoder for the transcode producer (#231).
+ * @brief Streaming PNG scanline decoder for the transcode producer.
  *
  * @details
  * Implements `priv_jof_png_rows()`: a bounded-RAM, pull-based PNG decoder

@@ -20,9 +20,9 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# The whole RoT launch closure is Zig archives now (#2932): ra8_rot_launch is
+# The whole RoT launch closure is Zig archives now: ra8_rot_launch is
 # the copy-to-run gate (ra8_dfu_launch), ra8_rot the verifier and anti-rollback
-# counter (#2943, #2947), ra8_psa_crypto the crypto. ra8_rsip (software SHA) is
+# counter, ra8_psa_crypto the crypto. ra8_rsip (software SHA) is
 # auto-globbed. The gate calls ra8_dfu_run_target_valid and the unauthenticated
 # hand-off it wraps, both in ra8_dfu's archive, which this app asks for by hand
 # below: it picks translation units out of ra8_dfu rather than naming the

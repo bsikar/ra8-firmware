@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_table.c
- * @brief Host unit tests + MC/DC for minimal `<table>` layout (#107).
+ * @brief Host unit tests + MC/DC for minimal `<table>` layout.
  *
  * @details
  * Lays out tables through `reflow` (with the fixed-metric Ahem face) and

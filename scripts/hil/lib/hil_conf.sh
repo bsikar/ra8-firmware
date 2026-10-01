@@ -36,7 +36,7 @@
 #                       (e.g. a software-crypto KAT) so the global cap can stay
 #                       low and a genuinely-stuck app fails fast.
 #
-# Three knobs for HIL_MODE=uart_sleep_scrape (#517), where the app's success
+# Three knobs for HIL_MODE=uart_sleep_scrape, where the app's success
 # condition IS being asleep and a UART therefore cannot distinguish "asleep"
 # from "hung":
 #   HIL_SLEEP_ENTER         banner the app emits immediately before the sleep

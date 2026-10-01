@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_glyph_atlas.h" /* ra8_glyph_atlas_t + storage descriptor types (#164) */
+#include "ra8_glyph_atlas.h" /* ra8_glyph_atlas_t + storage descriptor types */
 #include "reflow_image.h"    /* ra8_img_arena_t for the decode scratch              */
 #include "reflow_types.h"    /* reflow_t + supporting data model                    */
 
@@ -170,7 +170,7 @@ reflow_set_css_loader(reflow_t* engine, reflow_css_loader_fn loader, void* ctx);
 
 /**
  * @struct reflow_glyph_atlas_storage_t
- * @brief Caller-owned backing storage for the render-path glyph cache (#164).
+ * @brief Caller-owned backing storage for the render-path glyph cache.
  *
  * @details Mirrors ::ra8_glyph_atlas_cfg_t minus the render seam: reflow
  *          supplies its own stb_truetype rasteriser as the render-on-miss
@@ -200,7 +200,7 @@ typedef struct {
 } reflow_glyph_atlas_storage_t;
 
 /**
- * @brief Bind a Layer-3 glyph cache to the engine's render path (#164).
+ * @brief Bind a Layer-3 glyph cache to the engine's render path.
  *
  * @details Mirrors reflow_set_image_loader(). When bound, the per-page
  * rasteriser routes every glyph through @p atlas: a hit reuses the cached
@@ -282,7 +282,7 @@ typedef struct {
                                              uint32_t*       out_href_len);
 
 /**
- * @brief Hit-test a point on a page against the laid-out `<img>` boxes (#478).
+ * @brief Hit-test a point on a page against the laid-out `<img>` boxes.
  *
  * @details
  * The sibling of ::reflow_hit_test_link, and the entry point of the reader's
@@ -565,7 +565,7 @@ reflow_render_page(const reflow_t* engine, uint32_t page_idx, void* framebuffer)
 [[nodiscard]] ra8_err_t reflow_set_font_size(reflow_t* engine, uint16_t new_font_px);
 
 /**
- * @brief Bind an EPUB-embedded typeface as the engine's active face (#109).
+ * @brief Bind an EPUB-embedded typeface as the engine's active face.
  *
  * @details
  * Replaces the face bound at `reflow_init()` with @p font_data so subsequent
@@ -605,7 +605,7 @@ reflow_render_page(const reflow_t* engine, uint32_t page_idx, void* framebuffer)
 reflow_bind_font(reflow_t* engine, const uint8_t* font_data, size_t font_len);
 
 /**
- * @brief Register one embedded `@font-face` typeface for per-run selection (#109).
+ * @brief Register one embedded `@font-face` typeface for per-run selection.
  *
  * @details
  * Validates @p blob with `stbtt_InitFont` and, on success, appends it to the

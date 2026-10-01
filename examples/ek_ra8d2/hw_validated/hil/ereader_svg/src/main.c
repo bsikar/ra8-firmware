@@ -1,10 +1,10 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_svg/src/main.c
- * @brief On-silicon HIL: SVG vector-art render-at-size + CRC gate (#143).
+ * @brief On-silicon HIL: SVG vector-art render-at-size + CRC gate.
  *
  * @details
  * The vector half of the cover-art family: render an SVG document to a
- * fixed-size framebuffer through the `reflow` SVG rasterizer (#112/#141) and
+ * fixed-size framebuffer through the `reflow` SVG rasterizer and
  * CRC-gate the result -- the SVG counterpart to `ereader_image` (PNG) and
  * `ereader_jpeg` (JPEG), which cover the raster `stb_image` path.
  *

@@ -61,7 +61,7 @@ from lint_targets import is_build_output_path, repo_files
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # First-party roots that carry hand-authored C. Mirrors the GNU-attribute
-# gate, tools/check_no_gnu_attribute (#1178).
+# gate, tools/check_no_gnu_attribute.
 ROOTS = ("libs", "examples", "port", "tools", "apps", "tests")
 EXTS = (".c", ".h", ".cpp", ".hpp")
 # Path fragments that exclude a file: vendored SOUP and generated font tables.

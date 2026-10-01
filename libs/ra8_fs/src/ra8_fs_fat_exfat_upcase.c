@@ -18,7 +18,7 @@
  * and is written by ::priv_exfat_write_upcase across the up-case clusters of a
  * freshly formatted volume.
  *
- * ## Reading it back (#606)
+ * ## Reading it back
  *
  * The table was write-only until name handling needed to FOLD a case, and it is
  * the fold the exFAT specification defines `NameHash` against -- so hashing with

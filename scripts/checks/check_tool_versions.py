@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Gate: assert every pinned host tool resolves to its project-pinned version.
 
-Why this exists (#333)
+Why this exists
 ----------------------
 The self-hosted runner and the dev box resolve tools through PATH, and PATH
 differs between a login shell and a non-interactive one. Measured on the dev
@@ -157,7 +157,7 @@ def _pkg_major(text: str, needle: str, label: str) -> str:
     """Return the pinned major from a ``needle-NN`` package/binary token.
 
     Used for the compiler families whose pin is carried in the package name
-    rather than an exact ARG: the clang-18 family and the gcc-14 arm (#356).
+    rather than an exact ARG: the clang-18 family and the gcc-14 arm.
 
     Args:
         text: The Dockerfile contents.
@@ -301,7 +301,7 @@ def build_specs() -> list[ToolSpec]:
         _spec(args, "rustc", "RUST_VERSION", MODE_EXACT),
         _spec(args, "cargo", "RUST_VERSION", MODE_EXACT),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
-        # gcc-14 is the second host-tool compiler arm (#356); the tools-build
+        # gcc-14 is the second host-tool compiler arm; the tools-build
         # gate resolves it by exact binary name, so pin its major like clang's.
         # `gcc-14 --version` prints a dotted "14.2.0"; `-dumpversion` prints a
         # bare "14" the dotted-token parser would reject, so keep the default.

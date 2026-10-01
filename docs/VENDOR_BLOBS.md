@@ -48,7 +48,7 @@ vendor-controlled implementation", not literally a binary file.
 
 Nowhere yet, and that is deliberate. A snapshot of the FSP RSIP-E50D
 primitives *was* vendored under `libs/third_party/` in a now-deleted
-`fsp_blobs/r_sce_AMC/` subtree and later removed (#614) having never been built:
+`fsp_blobs/r_sce_AMC/` subtree and later removed having never been built:
 no `cmake/` recipe
 referenced it, no first-party call site named a symbol in it, and
 nearly every one of its translation units included `r_rsip_reg.h` /
@@ -138,7 +138,7 @@ thing that cannot move underneath the provenance record.
 - Vendor it **whole or not at all**, at a release tag, with a build
   option that compiles it and an `sbom_registry.py` row that gates it.
   A snapshot that nothing builds is accretion; the tree carried one and
-  deleted it (#614).
+  deleted it.
 - Every vendored file must appear verbatim. If a patch is required,
   write a separate integration shim and declare the deviation in the
   component's `docs/SOUP/*.md`.

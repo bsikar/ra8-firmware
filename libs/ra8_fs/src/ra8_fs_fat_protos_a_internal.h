@@ -517,7 +517,7 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  * @p path; stops at end-of-directory, the end of the directory's run, or the
  * scan bound. This is a single-directory lookup, not a path resolver -- pass a
  * leaf name and the directory it should be in, or use ::priv_exfat_lookup,
- * which resolves a whole path and then calls this (#605).
+ * which resolves a whole path and then calls this.
  *
  * @param[in]  m         Mounted exFAT volume.
  * @param[in]  dir       Directory to search.
@@ -530,7 +530,7 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  *                       where ::k_exfat_attr_directory lives. Callers that act
  *                       on the entry MUST consult it: a directory answers this
  *                       lookup exactly like a file, and treating one as a file
- *                       frees its cluster chain (#604).
+ *                       frees its cluster chain.
  * @return Error code.
  * @retval k_ra8_ok            Entry found; outputs populated.
  * @retval k_ra8_err_not_found No matching entry in @p dir.
@@ -572,7 +572,7 @@ RA8_PRIV
 ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_len);
 
 /**
- * @brief Format the backend as a PC-standard partitioned exFAT volume (#102).
+ * @brief Format the backend as a PC-standard partitioned exFAT volume.
  *
  * @details Writes a DOS/MBR partition table at LBA 0 with a single type-0x07
  *          (exFAT/NTFS) partition aligned at ::k_exfat_fmt_part_lba, then lays a
@@ -674,7 +674,7 @@ RA8_PRIV ra8_err_t priv_exfat_dir_next(const ra8_fs_mount_t* m,
  *
  * It used to compare the low byte of each unit with an ASCII fold and reject
  * any unit whose high byte was set, so a name outside ASCII never matched at
- * all (#606).
+ * all.
  *
  * @param[in] entry 32-byte file-name (0xC1) entry.
  * @param[in] name  Target name as UTF-16 code units.
@@ -704,7 +704,7 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const uint16_t* name, uint32_t po
  * Up-casing with an ASCII-only rule, which is what this did, stored a hash no
  * compliant reader recomputes for any name outside ASCII: the host could see
  * the file listed and then fail to find it, because the hash is the index it
- * probes with (#606).
+ * probes with.
  *
  * @param[in] name File name as UTF-16 code units.
  * @param[in] nlen Name length in UTF-16 units.
@@ -757,7 +757,7 @@ ra8_err_t priv_exfat_name_to_units(const ra8_fs_mount_t* m,
  * @details The exact wrapper the mutate verbs share: ::priv_exfat_name_to_units
  * plus the one line that turns its ::k_ra8_err_no_mem -- a name past the cap --
  * into whatever "absent" or "unsupported" code the caller reports. Factored
- * out so find_set, rename and the create paths do not each restate it (#606).
+ * out so find_set, rename and the create paths do not each restate it.
  *
  * @param[in]  m         Mounted exFAT volume.
  * @param[in]  name      Leaf name, NUL-terminated UTF-8, no leading slash.
@@ -812,7 +812,7 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
  * @details Resolves @p path in the root directory and populates a read handle;
  * write/append modes are rejected (exFAT is read-only here). A name that
  * resolves to a directory is rejected rather than opened as the empty file its
- * zero DataLength would otherwise describe (#604).
+ * zero DataLength would otherwise describe.
  *
  * @param[in]  handle   Mounted exFAT volume.
  * @param[in]  path     Flat root-level file name, UTF-8.
@@ -897,7 +897,7 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
  * ::priv_exfat_unlink_at: the entry set is located, every entry's in-use bit
  * (bit 7 of the entry type) is cleared, and the clusters are freed in the
  * allocation bitmap. A set carrying ::k_exfat_attr_directory is refused:
- * freeing a directory's run would strand every entry inside it (#604).
+ * freeing a directory's run would strand every entry inside it.
  *
  * @param[in] m    Mounted exFAT volume.
  * @param[in] path File path, UTF-8, nested or root-level.
@@ -980,7 +980,7 @@ uint32_t priv_exfat_upcase_checksum(void);
  * Refusing the operation is the point. Hashing a name with a fold the volume
  * does not use stores a `NameHash` the host disagrees with, and a host that
  * cannot match the hash cannot find a file it can see listed -- a disagreement
- * with the on-disk format rather than a limitation of this API (#606).
+ * with the on-disk format rather than a limitation of this API.
  *
  * A missing entry or a read error is treated exactly like a mismatch, so a
  * volume this function could not interrogate degrades to ASCII-only names

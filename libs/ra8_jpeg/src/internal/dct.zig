@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Forward 8x8 DCT for the baseline encoder (#2795).
+//! Forward 8x8 DCT for the baseline encoder.
 //!
 //! Shares the Q14 cosine basis with the decoder's inverse transform, so the
 //! pair is numerically symmetric. The C carried these two tables as

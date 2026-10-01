@@ -20,7 +20,7 @@ to write:
 
 All four dual-image apps in the tree do currently make that call.  Nothing
 enforced it, so a fifth app that forgot the line would silently lose -Werror
-across half its code, with no diagnostic and nothing to notice it (#759).
+across half its code, with no diagnostic and nothing to notice it.
 This checker is the enforcement half, in the shape of its sibling
 ``check_cpu1_warning_profile.py``: the same escape, one image over.
 

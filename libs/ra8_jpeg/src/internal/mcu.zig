@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Minimum coded unit assembly for the baseline decoder (#2799).
+//! Minimum coded unit assembly for the baseline decoder.
 //!
 //! An MCU is one luma tile plus, in colour, one block of each chroma plane.
 //! This is where the interleaved block order in the stream becomes a

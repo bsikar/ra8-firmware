@@ -28,7 +28,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # the KAK store and the OTA commit shadows are all RAM state inside
 # libs/ra8_secure_app, and the whole demo body lives in src/main.c, so no EXTRA_SRCS
 # are needed. Boot files come from the shared libs/ra8_board_ek_ra8d2/src/boot copy
-# (no local vector_table.c). (#155/#264)
+# (no local vector_table.c).
 ra8_add_app(
   NAME secure_app_vault_demo
   STACK_BYTES 4096

@@ -1,8 +1,8 @@
 # mem_subsystem
 
-Drives each layer of the `ra8_mem` hierarchy (#147) in isolation, so the
+Drives each layer of the `ra8_mem` hierarchy in isolation, so the
 primitives the e-reader leans on are observable without the whole reader stack
-around them (#263).
+around them.
 
 - **`ra8_slab`** -- carve a pool into fixed cells, allocate to exhaustion (the
   next allocation must fail with `no_mem`), free a few, then re-init and confirm

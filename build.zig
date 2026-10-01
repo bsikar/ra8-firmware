@@ -40,7 +40,7 @@
 //!   zig build shapes     hold the committed app-shape ledger to the tree's own
 //!                        ra8_add_app() declarations
 //!
-//! The `arm` step is the cross-build slice (#936): it is the first target
+//! The `arm` step is the cross-build slice: it is the first target
 //! artifact this graph produces, and it is deliberately one app rather than
 //! the app tree, so the diff stays reviewable.
 
@@ -112,7 +112,7 @@ const slice = [_]SliceMember{
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_antirollback.c",
         // The image verifier sharing this archive calls the PSA crypto
-        // archive (#2943). That library picks its software stand-ins for a
+        // archive. That library picks its software stand-ins for a
         // host target on its own, so the suite links it unconditionally.
         .extra_dependency_names = &.{"ra8_psa_crypto"},
     },
@@ -131,7 +131,7 @@ const shared_include_paths = [_][]const u8{
 ///
 /// This list is what the Zig ports EXTERN, not what the suites call. It held
 /// `ra8_log.c` until #2836, `ra8_time.c` until #2851, `ra8_scb.c` until the
-/// fault block (#2868) and `ra8_error_handler.c` until the error pair
+/// fault block and `ra8_error_handler.c` until the error pair
 /// (#2875), which is the one that emptied it.
 ///
 /// The fault block is why that last entry existed: the general archive is one
@@ -199,16 +199,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     }));
     // This file and just/zig.just, so command_surface_test.zig can hold the
-    // steps declared here to the recipes that expose them (#1165).
+    // steps declared here to the recipes that expose them.
     command_surface.addSources(b, graph_test_module);
     // The root CMakeLists, so build_type_test.zig can hold the three
-    // configurations against the listfile that declares them (#1179).
+    // configurations against the listfile that declares them.
     graph_test_module.addAnonymousImport("root_cmakelists_source", .{
         .root_source_file = b.path("CMakeLists.txt"),
     });
     // And cmake/ra8_app/zig_libs.cmake, so zig_archive_test.zig can hold the
     // optimisation a migrated archive is cross-built at to the rule that
-    // decides it under CMake (#1244). build.zig itself already arrives above,
+    // decides it under CMake. build.zig itself already arrives above,
     // through command_surface.addSources.
     graph_test_module.addAnonymousImport("zig_libs_cmake_source", .{
         .root_source_file = b.path("cmake/ra8_app/zig_libs.cmake"),
@@ -221,7 +221,7 @@ pub fn build(b: *std.Build) void {
     });
     // The committed app-shape ledger and the listfile that declares
     // ra8_add_app()'s keywords, so app_shapes_test.zig holds the cross-built
-    // table to every kind of app the tree actually has (#1322).
+    // table to every kind of app the tree actually has.
     graph_test_module.addAnonymousImport("app_shape_ledger_source", .{
         .root_source_file = b.path(app_shapes.ledger_path),
     });
@@ -275,7 +275,7 @@ pub fn build(b: *std.Build) void {
             .root_module = suite_module,
         });
         suite.linkLibrary(archive);
-        // The log backend the archives call into (#2836).
+        // The log backend the archives call into.
         suite.linkLibrary(core_archive);
         for (member.extra_dependency_names) |extra_name| {
             suite.linkLibrary(b.dependency(extra_name, .{
@@ -321,7 +321,7 @@ pub fn build(b: *std.Build) void {
 
     // The app tree's own shape ledger: every ra8_add_app() declaration under
     // examples/ and apps/, reduced to its shape and diffed against the
-    // committed file, so a new KIND of app fails this step (#1322).
+    // committed file, so a new KIND of app fails this step.
     const shapes_step = b.step("shapes", app_shapes.step_description);
     const shape_summary = app_shapes.add(b, shapes_step, test_step);
 
@@ -363,7 +363,7 @@ pub fn build(b: *std.Build) void {
         // A two-project TrustZone app gets a row for its Non-Secure image: the
         // script it links with (the app's override, else the board template
         // CMake configures) and the units it compiles. Without it the manifest
-        // describes one of the app's two images and nothing says so (#1111).
+        // describes one of the app's two images and nothing says so.
         if (app.ns) |image| {
             const print_ns = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
             print_ns.addArg(image.name);
@@ -407,7 +407,7 @@ pub fn build(b: *std.Build) void {
 }
 
 // ===========================================================================
-// ARM cross-build slice (#936)
+// ARM cross-build slice
 // ===========================================================================
 // One example app, cross-built for the RA8D2 (Cortex-M85) with no CMake in the
 // loop. blink_hal is a hardware-validated app whose whole source set is one
@@ -466,7 +466,7 @@ var arm: build_type.Globals = undefined;
 /// PATH at all? The wiring they feed lives in cross_image.zig.
 const findArmTools = cross_build.findTools;
 
-// Analysis-input slice (#959): compile_commands.json
+// Analysis-input slice: compile_commands.json
 // ===========================================================================
 // The fourth slice of RA8FW-339, and the one RA8FW-332 most depends on, because the
 // static-analysis gates do not analyse source -- they analyse a compile
@@ -524,7 +524,7 @@ const host_c_driver = "clang";
 fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     var candidates = std.ArrayList(compile_db.Entry).init(b.allocator);
 
-    // --- the host slice (#925) --------------------------------------------
+    // --- the host slice --------------------------------------------
     for (slice) |member| {
         var include_dirs = std.ArrayList([]const u8).init(b.allocator);
         include_dirs.append(member.include_path) catch @panic("OOM");
@@ -555,7 +555,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
         }
     }
 
-    // --- the vendored slice (#950) ----------------------------------------
+    // --- the vendored slice ----------------------------------------
     // Three bars, in the order vendored_soup.addSuite passes them: the vendored TUs
     // with the narrow SOUP suppression, the first-party drivers beside them at
     // the stricter bar, then the suite at the plain host set.
@@ -585,10 +585,10 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
         .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(vendored_soup.slice.c_suite_path)}),
     }) catch @panic("OOM");
 
-    // --- the ABI-contract slice (#1007) ------------------------------------
+    // --- the ABI-contract slice ------------------------------------
     abi_contract.appendCompileDbEntries(b, compile_db.Entry, &candidates, host_c_driver);
 
-    // --- the ARM cross slice (#936) ---------------------------------------
+    // --- the ARM cross slice ---------------------------------------
     // The set a host database structurally cannot describe, and the reason
     // build_cross_compile_db.py exists. Missing cross tools drop these rows
     // rather than failing the step, the same skip the `arm` step takes; the
@@ -614,7 +614,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // Where a source-scope define belongs: after every target-scope
             // one. The off-target rows are the same vector with it spliced in
             // here, so an analysis gate reading this database preprocesses
-            // those two units the way the compiler did (#1133).
+            // those two units the way the compiler did.
             const defines_end = app_flags.items.len;
             // At this app's own frame budget, in the position the compile step
             // puts it: a database row whose -Wstack-usage disagrees with the

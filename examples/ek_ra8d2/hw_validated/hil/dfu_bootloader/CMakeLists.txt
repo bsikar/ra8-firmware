@@ -46,8 +46,8 @@ ra8_add_app(
 # The copy-to-run launch gate (ra8_dfu_launch) verifies the slot's ECDSA-P256 +
 # SHA-256 signature and the extra-MRAM anti-rollback counter BEFORE copying the
 # image to the SRAM run base -- default-deny on any failure. The verifier and
-# the anti-rollback counter are Zig (#2943, #2947) and arrive as the ra8_rot
-# archive named in LIBS above; the gate itself is Zig too (#2932) and arrives
+# the anti-rollback counter are Zig and arrive as the ra8_rot
+# archive named in LIBS above; the gate itself is Zig too and arrives
 # as ra8_rot_launch, and ra8_rsip (software SHA-256) via ra8_hal. This block
 # links the real
 # tf-psa-crypto backend (the exact recipe secure_boot_hil uses to prove the

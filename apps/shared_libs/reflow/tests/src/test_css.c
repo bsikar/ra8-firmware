@@ -1,6 +1,6 @@
 /**
  * @file test_css.c
- * @brief Host unit tests + MC/DC for the minimal content-CSS cascade (#111).
+ * @brief Host unit tests + MC/DC for the minimal content-CSS cascade.
  *
  * @details
  * Exercises the v1 CSS subset: selector parsing (universal / type / class / id,

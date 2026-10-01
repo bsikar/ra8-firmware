@@ -1,6 +1,6 @@
 /**
  * @file test_book_paged.c
- * @brief Equivalence tests for the paged book accessor mode (#163).
+ * @brief Equivalence tests for the paged book accessor mode.
  *
  * @details
  * Builds a small, self-contained `.rabook` blob in memory (the inflated form: a
@@ -347,7 +347,7 @@ static void pbook_compare_chapter(const pbook_t*    book,
   TEST_ASSERT_EQ(l_len, r_len);                            /* resident src == legacy   */
   TEST_ASSERT_EQ(l_len, p_len);                            /* paged == legacy (len)    */
   TEST_ASSERT(internal_objects_equal(legacy, res, l_len)); /* resident src bytes match */
-  TEST_ASSERT(internal_objects_equal(legacy, pag, l_len)); /* paged bytes match (#163) */
+  TEST_ASSERT(internal_objects_equal(legacy, pag, l_len)); /* paged bytes match */
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_table/src/main.c
- * @brief Headless on-silicon HIL gate for `<table>` grid layout (#107).
+ * @brief Headless on-silicon HIL gate for `<table>` grid layout.
  *
  * @details
  * Closes the *real-hardware* gap for the table layout: tokenize

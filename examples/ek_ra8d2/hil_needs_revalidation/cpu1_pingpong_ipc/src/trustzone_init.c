@@ -62,7 +62,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * and IPC1 channel 0 as Non-Secure and leaves every other target Secure
  * and Privileged-only. The bit layout is the encoder's, not this app's,
  * so the invariant that SAIPCIR1 and SAIPCIR3 stay Secure is no longer
- * a comment asking a reader to check a literal (#735).
+ * a comment asking a reader to check a literal.
  *
  * @see ra8_tz_secure_boot_run
  * @since 0.1.0

@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The three build configurations the root CMakeLists declares, and the global
-//! flag sets each one produces (#1179).
+//! flag sets each one produces.
 //!
 //! Every slice of this graph before #1179 hard-coded Debug: `-O0 -g3 -DDEBUG`
 //! was spliced into the compile step, the link step, both second images and

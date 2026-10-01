@@ -317,7 +317,7 @@ RA8_INTERNAL static void internal_test_fs_bridge_erase_value_gate(void)
  * @par MC/DC:
  * Decision: `(lba > UINT32_MAX) || (count > UINT32_MAX)` (2 conditions) in
  * `libs/ra8_io/src/ra8_io_blockdev.c@internal_fs_erase` -- the honest boundary
- * between the 64-bit `ra8_fs` backend interface (#683) and the fabric's
+ * between the 64-bit `ra8_fs` backend interface and the fabric's
  * 32-bit LBAs.
  * - V1: lba small, count small -> F,F -> falls through to the real erase (ok).
  * - V2: lba = 2^32, count = 1  -> T (short-circuit) -> out_of_range.

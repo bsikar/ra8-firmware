@@ -850,7 +850,7 @@ ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_e
  * the direct STR gate. This API mirrors ``ra8_flash_write_block`` semantics:
  * 1..32 bytes inside one page.
  *
- * **OTP-misuse guard (#397):** this is the *general-purpose* write path, so it
+ * **OTP-misuse guard:** this is the *general-purpose* write path, so it
  * refuses any target at or above ``k_ra8_flash_extra_locked_start`` -- the
  * permanent, irreversible structures (PBPS, POFSPS, REVOKE, HUK-zeroize enable,
  * anti-rollback). Programming those can brick the part or destroy the wrapped

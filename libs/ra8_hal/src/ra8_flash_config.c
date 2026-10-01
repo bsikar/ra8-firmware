@@ -702,7 +702,7 @@ ra8_err_t ra8_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uin
     return k_ra8_err_invalid_arg;
   }
   const uint32_t end_excl = (uint32_t)((uint64_t)mram_addr + (uint64_t)len);
-  /* OTP-misuse guard (#397): cap the general-purpose write path at
+  /* OTP-misuse guard: cap the general-purpose write path at
    * k_ra8_flash_extra_locked_start. The permanent / irreversible option-setting
    * structures (PBPS, POFSPS, REVOKE, Zeroization-HUK enable, anti-rollback)
    * begin there; programming any of them can brick the part or destroy the

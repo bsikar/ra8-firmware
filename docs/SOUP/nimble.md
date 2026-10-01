@@ -28,7 +28,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   (`LICENSE`, `NOTICE`, `README.md`, `RELEASE_NOTES.md`, `version.yml`,
   `CODING_STANDARDS.md`, `.clang-format`, `.clang-format-ignore`,
   `.gitignore`).
-- **What the subset drops, and why** (#622): the upstream `apps/`
+- **What the subset drops, and why**: the upstream `apps/`
   directory (163 files) was never vendored, and 212 further files were
   pruned because no RA8 build can reach them -- `babblesim/` (76, the
   Zephyr BSIM shim, which carries its own `core_cm4.h`), `tools/` (41,
@@ -91,7 +91,7 @@ already misled one triage.
   upstream TU has ever been through the compile-gated static analysis.
 - `examples/_unsupported/threadx_nimble_peripheral` is the only app that
   links the port. It includes no upstream NimBLE header, is HW-blocked on
-  the ESP32-C6 radio companion, and is an unvalidated scaffold (#286).
+  the ESP32-C6 radio companion, and is an unvalidated scaffold.
 - Integrity claim category: none (no BLE-driven safety signal in the
   current firmware).
 
@@ -150,7 +150,7 @@ It was cosmetic -- an upstream doc link, no code -- but the lesson is
 that a repo-wide rename must exclude `libs/third_party/`. The 1.10.0
 re-vendor restored upstream content, so the claim holds again.
 
-That lesson is now a mechanism rather than a convention (#538).
+That lesson is now a mechanism rather than a convention.
 `scripts/gen/gen_sbom.py` re-derives a SHA-256 over this component's whole
 vendored tree on every run -- 615 files, by sorted component-relative path,
 git mode and content -- and `gen_sbom.py --check` in the `sbom` gate fails
@@ -177,7 +177,7 @@ The pinned commit is queried against OSV.dev weekly by
 `scripts/checks/osv_scan.sh`); a published advisory affecting the pin
 fails the scheduled run.
 
-That gate fired on 2026-07-27 against the previous pin (#508). The four
+That gate fired on 2026-07-27 against the previous pin. The four
 advisories, the code each one lives in, and their status here:
 
 | CVE | Vulnerable code | In a build of ours? | Status |

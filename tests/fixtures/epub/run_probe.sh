@@ -49,7 +49,7 @@ for c in "${C_SRCS[@]}"; do
   "$CC_BIN" -std=gnu2x "${D[@]}" "${INC[@]}" -c "$c" -o "$OUT/$(basename "$c").o"
 done
 # epub_zip_guard.c charges the shared decompression-limits policy, which is Zig
-# now (#2862), so the probe links ra8_core's archive instead of compiling that
+# now, so the probe links ra8_core's archive instead of compiling that
 # TU above. Built here rather than assumed present: this script is a standalone
 # diagnostic that never runs under the CMake or zig build graphs.
 zig build --build-file libs/ra8_core/build.zig --prefix "$OUT/ra8_core" >/dev/null

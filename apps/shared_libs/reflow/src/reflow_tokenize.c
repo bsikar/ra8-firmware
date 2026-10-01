@@ -81,7 +81,7 @@ typedef struct {
  * @brief Test whether the tokenizer is inside a `display:none` subtree.
  *
  * @details Returns true when `ctx->suppress_sp` is nonzero, meaning the scan
- * entered an element whose cascaded style declared `display:none` (#140). All
+ * entered an element whose cascaded style declared `display:none`. All
  * token and text-pool emits are suppressed until the matching close tag pops
  * the stack back above the recorded depth.
  *
@@ -538,7 +538,7 @@ static ra8_err_t internal_open_styled(tok_ctx_t*        ctx,
     inh.set   = (uint8_t)(inh.set | (uint8_t)k_ra8_css_set_color);
     inh.color = ctx->color;
   }
-  /* font-family inherits (#109): seed the cascade with the parent's resolved
+  /* font-family inherits: seed the cascade with the parent's resolved
    * family so a child without its own `font-family` keeps the ancestor's face. */
   if (ctx->family_len != 0U) {
     inh.set        = (uint8_t)(inh.set | (uint8_t)k_ra8_css_set_family);
@@ -551,7 +551,7 @@ static ra8_err_t internal_open_styled(tok_ctx_t*        ctx,
   const ra8_css_style_t comp =
     ra8_css_cascade_ctx(&ctx->engine->css, &el, inh, inl, ctx->stack_el, n_anc);
   const uint16_t fpx = internal_css_font_px(ctx, &comp);
-  /* display:none (#140): begin suppressing this element + its subtree at the
+  /* display:none: begin suppressing this element + its subtree at the
    * current depth; internal_open_attrs and the emit sites then drop every token
    * until the matching close pops back above this depth. */
   const bool hidden = ((comp.set & (uint8_t)k_ra8_css_set_display) != 0U) && (comp.display != 0U);
@@ -567,7 +567,7 @@ static ra8_err_t internal_open_styled(tok_ctx_t*        ctx,
                                                                  : (uint32_t)k_reflow_color_inherit;
   ctx->css_font_px = fpx;
   /* Resolve the embedded face for this element from its cascaded family +
-   * emphasis (#109). Children inherit the family slice; text runs stamp the
+   * emphasis. Children inherit the family slice; text runs stamp the
    * resolved slot. Both are 0 / unchanged for content without `@font-face`. */
   if ((comp.set & (uint8_t)k_ra8_css_set_family) != 0U) {
     ctx->family_off = comp.family_off;
@@ -684,7 +684,7 @@ static bool internal_tag_is(const uint8_t* buf, size_t i, size_t len, const char
  *
  * @details Per HTML raw-text rules the content runs verbatim (no nested
  * elements) to the matching lowercase close tag. `<style>` content is parsed
- * into the engine stylesheet (#111); `<script>` content is discarded. A missing
+ * into the engine stylesheet; `<script>` content is discarded. A missing
  * close tag consumes to end-of-buffer. Lowercase close literals match valid
  * XHTML (XML is case-sensitive and requires lowercase element names).
  *
@@ -833,7 +833,7 @@ ra8_err_t priv_reflow_xml_walk(reflow_t* engine, const uint8_t* xhtml_buf, size_
     return k_ra8_err_invalid_size;
   }
 
-  (void)ra8_css_sheet_reset(&engine->css); /* fresh CSS rules per chapter (#111) */
+  (void)ra8_css_sheet_reset(&engine->css); /* fresh CSS rules per chapter */
 
   /* The tokenizer scratch (per-open-element cascade stacks) is ~2 kB, which
    * would push this frame past the project stack-usage budget. Hold it in

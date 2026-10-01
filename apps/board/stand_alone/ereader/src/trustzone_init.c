@@ -1,6 +1,6 @@
 /**
  * @file apps/board/stand_alone/ereader/src/trustzone_init.c
- * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#60)
+ * @brief Single-core TrustZone bring-up for a RAM-resident NS image
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}
@@ -375,7 +375,7 @@ static ra8_err_t tz_partition_apply(void)
  *          Runs AFTER the SAU and SRAMSABAR have marked the destination
  *          Non-secure, so the store is a (permitted) Secure-side Non-secure
  *          access. A fixed window is used because the NS image is a separate
- *          ELF (#96); copying more than the image is harmless.
+ *          ELF; copying more than the image is harmless.
  *
  * @pre ``tz_partition_apply`` has run and returned k_ra8_ok.
  * @pre The NS image fits within ::k_tz_ns_copy_size.

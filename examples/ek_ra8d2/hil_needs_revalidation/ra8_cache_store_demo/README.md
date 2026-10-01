@@ -1,7 +1,7 @@
 # ra8_cache_store_demo
 
 Runs the whole `ra8_cache_store` lifecycle end to end on the target -- the
-persistent key-to-blob cache (#201) that backs compiled `.rabook` containers,
+persistent key-to-blob cache that backs compiled `.rabook` containers,
 which had no direct example until #257.
 
 One pass covers: format and mount a store over LevelX standalone; put and get

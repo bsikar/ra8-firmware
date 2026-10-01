@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_num_decimal.c
- * @brief Unit tests for the exact decimal to binary64 conversion (#747).
+ * @brief Unit tests for the exact decimal to binary64 conversion.
  * @details Pins correct rounding, ties-to-even, subnormal and refusal behaviour against known bit patterns.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

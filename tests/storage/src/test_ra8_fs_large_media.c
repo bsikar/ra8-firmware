@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_large_media.c
- * @brief Media past 2 TiB: 64-bit LBAs end to end, GPT entries included (#683).
+ * @brief Media past 2 TiB: 64-bit LBAs end to end, GPT entries included.
  *
  * @details
  * The simulation evidence for beyond-32-bit LBAs, on a 3 TiB sparse fake

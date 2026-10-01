@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/inc/ns_usb_internal.h
- * @brief Private split-seam shared between ns_usb.c and ns_usb_host.c (#96).
+ * @brief Private split-seam shared between ns_usb.c and ns_usb_host.c.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The encoder's output half (#2795): a byte cursor over the caller's buffer
+//! The encoder's output half: a byte cursor over the caller's buffer
 //! plus the MSB-first entropy bit accumulator, with T.81 sec F.1.2.3 byte
 //! stuffing. Capacity exhaustion latches `overflow` rather than writing past
 //! the slice, so the whole encode can run to completion and be rejected once.

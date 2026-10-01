@@ -344,7 +344,7 @@ typedef enum : uint32_t {
 /**
  * @test test_mcdc_format_label_field_pair
  *
- * @brief The BS_VolLab default is the spec sentinel `"NO NAME    "`, not blank (#634).
+ * @brief The BS_VolLab default is the spec sentinel `"NO NAME    "`, not blank.
  *
  * @details Regression for the defect where an unlabelled format left `BS_VolLab`
  *          blank, which `fsck.fat -n` reports as a corrupt label and strips.
@@ -372,7 +372,7 @@ RA8_INTERNAL static void internal_test_mcdc_format_label_field_pair(void)
   static const uint8_t k_no_name[k_fmt_label_width] =
     {'N', 'O', ' ', 'N', 'A', 'M', 'E', ' ', ' ', ' ', ' '};
 
-  /* V1: NULL label -> BS_VolLab holds "NO NAME    " (#634), never blank. */
+  /* V1: NULL label -> BS_VolLab holds "NO NAME    ", never blank. */
   internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;

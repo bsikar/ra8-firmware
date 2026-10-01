@@ -11,7 +11,7 @@
 # reserved for ``--selftest``; the toolchain-parity gate runs that contract
 # test before it trusts the selected binaries.
 #
-# Why (#333): the self-hosted runner and the dev box resolve tools through
+# Why: the self-hosted runner and the dev box resolve tools through
 # PATH, and PATH differs between a login shell and a non-interactive one.
 # Measured on the dev box, `ssh dev '<cmd>'` and `ssh dev 'bash -lc "<cmd>"'`
 # resolved DIFFERENT binaries for the same tool -- shellcheck 0.9.0 vs 0.11.0,
@@ -188,7 +188,7 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
     printf '%s\n' "${count}"
   }
 
-  # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
+  # Persistent PINNED-TOOL cache. The docs gate builds with a
   # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
   # sha256-verifies on first use. Every suite run builds in a fresh mktemp
   # snapshot whose build/tools/ is destroyed on exit, so without a persistent

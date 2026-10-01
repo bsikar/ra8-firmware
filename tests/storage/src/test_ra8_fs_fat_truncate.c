@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_fat_truncate.c
- * @brief ra8_fs_truncate on FAT12/16/32: shrink, grow-with-zero-fill, to-zero (#680).
+ * @brief ra8_fs_truncate on FAT12/16/32: shrink, grow-with-zero-fill, to-zero.
  *
  * @details
  * FAT has one length, so a grow has to put real zeros on disk: the read path

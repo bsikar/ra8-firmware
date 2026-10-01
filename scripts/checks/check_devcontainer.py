@@ -92,7 +92,7 @@ REPO_ROOT = Path(
 # The classes this checker claims. Membership is decided by the SHARED tables in
 # lint_coverage_rules.py, never by a private copy of them here: a second
 # classification map is how the coverage question became unanswerable in the
-# first place (#296, #332, #358, #359, #360).
+# first place.
 OWNED_CLASSES = ("dockerfile", "zsh")
 
 HADOLINT_VERSION = "2.14.0"

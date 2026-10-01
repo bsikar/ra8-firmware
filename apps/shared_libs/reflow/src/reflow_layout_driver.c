@@ -136,7 +136,7 @@ ra8_err_t reflow_run_layout(reflow_t* engine)
     engine->pages[0].glyph_count = engine->glyph_count;
     engine->page_count           = (uint32_t)k_priv_min_chapter_pages;
   }
-  /* Build tappable link rectangles from the link-tagged glyphs (#110). */
+  /* Build tappable link rectangles from the link-tagged glyphs. */
   priv_reflow_layout_build_link_rects(engine, &font);
   return k_ra8_ok;
 }
@@ -316,7 +316,7 @@ ra8_err_t reflow_bind_font(reflow_t* engine, const uint8_t* font_data, size_t fo
   const int32_t offset = stbtt_GetFontOffsetForIndex(font_data, 0);
   /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
    * @font-face bytes are attacker-controlled and stb_truetype reads the
-   * directory with no length check (#217). A non-sfnt blob (offset < 0) is
+   * directory with no length check. A non-sfnt blob (offset < 0) is
    * left to the existing decision below. */
   if (offset >= 0) {
     if (!ra8_stbtt_sfnt_dir_in_bounds(font_data, font_len, (uint32_t)offset)) {
@@ -363,7 +363,7 @@ reflow_register_face(reflow_t* engine, uint8_t css_face_idx, const uint8_t* blob
   const int32_t offset = stbtt_GetFontOffsetForIndex(blob, 0);
   /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
    * @font-face bytes are attacker-controlled and stb_truetype reads the
-   * directory with no length check (#217). A non-sfnt blob (offset < 0) is
+   * directory with no length check. A non-sfnt blob (offset < 0) is
    * left to the existing decision below. */
   if (offset >= 0) {
     if (!ra8_stbtt_sfnt_dir_in_bounds(blob, len, (uint32_t)offset)) {

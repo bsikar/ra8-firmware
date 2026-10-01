@@ -1,7 +1,7 @@
 # ra8_io_sdhi_demo
 
 Proves the `ra8_io` fabric's swappable-backend promise (epic #155, phase #156) on
-the **native 4-bit SDHI** controller (#123): the same VFS API that `ra8_io_demo`
+the **native 4-bit SDHI** controller: the same VFS API that `ra8_io_demo`
 runs over a RAM disk and `ra8_io_sd_demo` runs over SD-over-SPI, now running over
 a micro-SD card reached through the dedicated SDHI host controller, by swapping
 only the block-device backend.

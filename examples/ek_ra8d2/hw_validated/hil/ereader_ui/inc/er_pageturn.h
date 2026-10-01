@@ -1,6 +1,6 @@
 /**
  * @file er_pageturn.h
- * @brief Pure page-turn + input-region decisions for the e-reader (#78).
+ * @brief Pure page-turn + input-region decisions for the e-reader.
  *
  * @details
  * The reading view turns pages from two inputs -- touch edge taps and the two

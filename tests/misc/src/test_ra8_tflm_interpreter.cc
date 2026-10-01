@@ -29,7 +29,7 @@
  * the first-party kernel's own contract, and the last test pins the consequence
  * rather than papering over it -- a Vela-lowered graph is REFUSED at
  * `AllocateTensors()` on a host build instead of silently running as something
- * else. Executing that node needs the real command stream (#227) and RA8P1
+ * else. Executing that node needs the real command stream and RA8P1
  * silicon (RA8FW-261).
  *
  * @note The refusal tests make the vendored runtime print its own diagnostics

@@ -564,7 +564,7 @@ smoke_assert_banner() {
       # Hard assertion for every app, including the periodic-tick demos: their
       # banner is now bounded by RA8_EMU_STOP_ON and ra8_emulator reports a
       # CPU-time truncation honestly, so a missing banner is a real failure, not
-      # the old load-correlated flake (#168). No WARN-accept fallback.
+      # the old load-correlated flake. No WARN-accept fallback.
       echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
       fail=1
     fi

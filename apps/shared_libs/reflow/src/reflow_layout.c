@@ -509,10 +509,10 @@ static ra8_err_t internal_layout_text(reflow_t*             engine,
   const uint8_t* base    = &engine->text_pool[tok->text_off];
   const uint32_t len     = tok->text_len;
   const uint8_t  link_id = tok->reserved; /* 1-based `<a>` link id (0 = none) */
-  /* Colour precedence: an explicit CSS `color` (#140) wins; otherwise a link run
+  /* Colour precedence: an explicit CSS `color` wins; otherwise a link run
    * uses the link colour and ordinary text the body colour. Link colour is keyed
    * on actual link membership, not the underline style bit, so CSS
-   * `text-decoration: underline` (#111) on non-link text keeps the body colour. */
+   * `text-decoration: underline` on non-link text keeps the body colour. */
   const uint32_t fallback = (link_id != 0U) ? engine->link_color : engine->body_color;
   const uint32_t color = (tok->color != (uint32_t)k_reflow_color_inherit) ? tok->color : fallback;
 
@@ -603,7 +603,7 @@ static bool internal_open_block(reflow_t* engine, priv_cursor_t* cur, const refl
     anchor->y               = cur->y;
     engine->anchor_count++;
   }
-  /* CSS `font-size` (#140) on the block-start token wins; else the UA default
+  /* CSS `font-size` on the block-start token wins; else the UA default
    * (body size or heading scale). 0 = no CSS font, so unstyled content is
    * byte-identical. */
   cur->active_font_px = (tok->css_font_px != 0U)

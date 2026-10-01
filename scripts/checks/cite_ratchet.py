@@ -8,7 +8,7 @@ WHY THIS EXISTS
 `CLAUDE.md`, `docs/STYLE_GUIDE.md` and `docs/CITATION_POLICY.md` all state the
 same MANDATORY rule: every register read/write or access must carry an external
 Hardware User's Manual citation immediately above it. The detector for that rule
-exists -- `cite_check.py --require-cites` -- and it ran in NO gate (#534).
+exists -- `cite_check.py --require-cites` -- and it ran in NO gate.
 
 Both call sites (the `cite-check` gate and the removed pre-commit hook) invoked
 `cite_check.py --strict`, which is the cite-VALIDATION pass: it checks that
@@ -227,7 +227,7 @@ def render_baseline(counts: Counter[str]) -> str:
         '# `/* HUM Ch X.Y "..." p NNNN */` citation above them. CLAUDE.md, the style',
         "# guide and docs/CITATION_POLICY.md all call that citation MANDATORY, but the",
         "# detector for it (cite_check.py --require-cites) ran in no gate at all, so",
-        "# the rule was aspirational and the debt went unmeasured (#534).",
+        "# the rule was aspirational and the debt went unmeasured.",
         "#",
         f"# Total at this baseline: {total} uncited access(es)",
         f"# across {len(counts)} file(s).",
@@ -301,7 +301,7 @@ def attest_baseline() -> list[str]:
     The ratchet reads the baseline's ROWS; nothing until now asserted the FILE
     is one `write_baseline` produced. A hand edit that kept the rows parseable
     -- a whole-file `sort`, a typed row, an adjusted total, a stale header line
-    -- went around the tool's own refusal and survived ten days (#712).
+    -- went around the tool's own refusal and survived ten days.
 
     `load_baseline` also SKIPS a row whose column count is wrong, so a mangled
     row silently stops being debt. Re-deriving the whole text catches that: a
@@ -343,7 +343,7 @@ def report_attestation(problems: list[str]) -> None:
     print(
         "\n  A generated baseline is machine-written. Editing it by hand goes\n"
         "  around the ratchet's own refusal, and a parseable hand edit used to\n"
-        "  survive indefinitely (#712). Regenerate it:\n"
+        "  survive indefinitely. Regenerate it:\n"
         "      python3 scripts/checks/cite_ratchet.py --update\n"
         "\n  A row RENAMED by hand -- which this baseline's header sanctions for a\n"
         "  moved file -- is still fine, but it must end up sorted into position.\n"

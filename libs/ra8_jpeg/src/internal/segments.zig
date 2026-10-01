@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Marker-segment parsers for the baseline decoder (#2799).
+//! Marker-segment parsers for the baseline decoder.
 //!
 //! One function per segment type the decoder understands, each advancing the
 //! context cursor past what it consumed. None of them touch the entropy

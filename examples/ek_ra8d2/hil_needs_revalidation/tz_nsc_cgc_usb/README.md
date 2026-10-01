@@ -1,11 +1,11 @@
 # tz_nsc_cgc_usb
 
 Runs a full ThreadX + USBX CDC-ACM self-loop **entirely inside the Non-Secure
-image** (#60), layered on the Non-Secure-Callable CGC veneer wall. Both USB
+image**, layered on the Non-Secure-Callable CGC veneer wall. Both USB
 controllers are delegated to the NS world and the chip enumerates and echoes
 against itself over a J7-to-J11 loop cable -- no PC, no manual cabling.
 
-It is a two-project build (#96): a Secure ELF carrying the secure boot and the
+It is a two-project build: a Secure ELF carrying the secure boot and the
 NSC CGC veneers and emitting a CMSE import library, plus a separate Non-Secure
 ELF, merged into one flashable hex. NS-to-Secure calls bind to the
 Secure-Gateway stubs through that import library.

@@ -4,18 +4,18 @@
 //! Build graph for `ra8_core`.
 //!
 //! Every seam of this library is Zig now: the freestanding runtime
-//! primitives (#2820) and the deterministic `rand()` / `srand()` override
-//! that joins them (#2890), the pin-claim validator (#2825), the SysTick timebase
-//! with its time-interface binding (#2830), the log backend with
-//! `ra8_err_to_str` (#2836), the millisecond tick counter, delay policy and
-//! SysTick IRQ body (#2851), the decompression-limits policy every archive
-//! and stream decoder charges against (#2862) and the fault block: the
+//! primitives and the deterministic `rand()` / `srand()` override
+//! that joins them, the pin-claim validator, the SysTick timebase
+//! with its time-interface binding, the log backend with
+//! `ra8_err_to_str`, the millisecond tick counter, delay policy and
+//! SysTick IRQ body, the decompression-limits policy every archive
+//! and stream decoder charges against and the fault block: the
 //! exception reporter, the cross-reset crash log and the SCB register window
 //! (#2868) and the error sink pair: the weak fatal trap every failed
-//! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875) and
-//! the application-layer bring-up with its stack-canary sentinel (#2884) and
-//! the newlib `_sbrk` heap trap (#2895), the startup SDRAM zero-fill
-//! (#2901) and the secure-comparison primitives (#2908), which were the last
+//! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink and
+//! the application-layer bring-up with its stack-canary sentinel and
+//! the newlib `_sbrk` heap trap, the startup SDRAM zero-fill
+//! (#2901) and the secure-comparison primitives, which were the last
 //! C in the library.
 //! `src/` holds no `.c` at all any more, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.

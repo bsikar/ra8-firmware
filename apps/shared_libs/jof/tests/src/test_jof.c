@@ -1,7 +1,7 @@
 /**
  * @file test_jof.c
  * @brief Host tests for the JOF atlas reader: structural validation, tile
- *        decode, memstore, and hostile-input rejection (#231).
+ *        decode, memstore, and hostile-input rejection.
  *
  * @details
  * Builds atlases by hand (header / tile streams / index / footer serialized

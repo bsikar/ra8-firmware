@@ -1,7 +1,7 @@
 /**
  * @file test_jof_png_hostile.c
  * @brief Hostile-stream corpus for the streaming PNG decoder: every
- *        fail-closed arm of the chunk and pixel layers (#231).
+ *        fail-closed arm of the chunk and pixel layers.
  *
  * @details
  * Complements `test_jof_produce.c` (which proves the happy paths

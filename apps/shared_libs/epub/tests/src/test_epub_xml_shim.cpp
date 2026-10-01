@@ -223,7 +223,7 @@ RA8_INTERNAL static void internal_test_mcdc_parse_opf_null_and_manifest_spine(vo
 }
 
 /* -----------------------------------------------------------------------
- * Table-of-contents fixtures (#74): NCX (EPUB 2) and nav.xhtml (EPUB 3).
+ * Table-of-contents fixtures: NCX (EPUB 2) and nav.xhtml (EPUB 3).
  * Both encode the same logical TOC -- a top-level "Chapter One" with a
  * nested "Section 1.1", then a top-level "Chapter Two" -- so the two
  * parsers can be asserted against one shared expectation.

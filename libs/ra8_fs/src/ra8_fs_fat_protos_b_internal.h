@@ -307,7 +307,7 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
  *          the remainder, matching the BS_VolLab convention. A NULL or empty
  *          @p label resolves to the FAT specification's unlabelled sentinel
  *          `"NO NAME    "` -- never zeros and never a bare run of spaces, both
- *          of which `fsck.fat` treats as a corrupt label and strips (#634).
+ *          of which `fsck.fat` treats as a corrupt label and strips.
  *          Shared by the formatter (`ra8_fs_format()`) and the runtime label
  *          writer (`ra8_fs_set_label()`), so both lay the field identically.
  *
@@ -415,7 +415,7 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
  *          Units above 0x7F used to become `?`, which made the reported name
  *          one the caller could not hand back to `ra8_fs_open()` -- the file was
  *          listed and then unopenable, and two names differing only in an accent
- *          collided (#606).
+ *          collided.
  *
  * @param[in,out] s   Reassembly state being accumulated.
  * @param[in]     ent 32-byte raw LFN directory entry (attribute byte == 0x0F).

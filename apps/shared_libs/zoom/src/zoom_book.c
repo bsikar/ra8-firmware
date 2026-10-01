@@ -1,6 +1,6 @@
 /**
  * @file zoom_book.c
- * @brief `.rabook` image-pool source adapter for the tap-to-zoom viewer (#478).
+ * @brief `.rabook` image-pool source adapter for the tap-to-zoom viewer.
  *
  * @details Implements zoom_book.h. Deliberately thin: the image-pool
  *          addressing contract, the gray4 nibble parity and the paged

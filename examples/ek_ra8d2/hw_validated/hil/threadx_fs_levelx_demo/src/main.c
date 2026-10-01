@@ -16,7 +16,7 @@
  *      partition and ``lx_nor_flash_open`` to mount it.
  *   3. Binds the LevelX flash to the ra8_fs block-device backend
  *      (``lx_fs_backend_bind``) and installs the ``ra8_fs_set_lock()``
- *      seam over a ThreadX mutex (#608).
+ *      seam over a ThreadX mutex.
  *   4. Calls ``ra8_fs_format`` followed by ``ra8_fs_mount`` to lay down
  *      a FAT volume on top of the wear-levelled blocks.
  *   5. Writes ``/levelx_test.txt`` with a known message, then reopens
@@ -91,7 +91,7 @@ static LX_NOR_FLASH s_nor_flash;
 static ra8_fs_backend_t s_fs_backend;
 static ra8_fs_mount_t*  s_fs_mount;
 
-/** @brief ThreadX mutex the ra8_fs lock seam is bound to (#608). */
+/** @brief ThreadX mutex the ra8_fs lock seam is bound to. */
 static TX_MUTEX s_fs_mutex;
 
 /* ThreadX worker thread. */
@@ -361,7 +361,7 @@ static void demo_thread_entry(ULONG thread_input)
  *
  * @details Creates the mutex first and installs it through
  * ``ra8_fs_set_lock()`` before the worker can issue a filesystem call, per
- * the seam's init-time contract (#608). LevelX's core is initialised here
+ * the seam's init-time contract. LevelX's core is initialised here
  * too.
  *
  * @param[in] first_unused_memory Pointer to the start of free RAM

@@ -1,6 +1,6 @@
 /**
  * @file reflow_render_face.c
- * @brief Coverage-based fallback-face resolution for the render pass (#687).
+ * @brief Coverage-based fallback-face resolution for the render pass.
  *
  * @details
  * Implements reflow_render_face.h and the pure picker declared in

@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME widget_chrome_demo
   STACK_BYTES 8192
-  DESCRIPTION "Ereader chrome widgets composited on the live GLCDC panel (#145)"
+  DESCRIPTION "Ereader chrome widgets composited on the live GLCDC panel"
   LIBS ra8_widget
        ra8_box
        ra8_ui

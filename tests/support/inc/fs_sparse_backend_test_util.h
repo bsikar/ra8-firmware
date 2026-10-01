@@ -3,8 +3,8 @@
  * @brief Sparse (windowed) fake block device for huge-media `ra8_fs` tests.
  *
  * @details
- * The simulation rig behind the >4 GiB file (#676) and 4Kn / beyond-2-TiB
- * media (#683) test evidence. A flat RAM store cannot present a 6 GiB -- let
+ * The simulation rig behind the >4 GiB file and 4Kn / beyond-2-TiB
+ * media test evidence. A flat RAM store cannot present a 6 GiB -- let
  * alone a 3 TiB -- device, so this backend keeps only the sectors that were
  * ever written NON-ZERO, in a small open-addressed hash table, and serves
  * every other sector as zeros:

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_cover/src/main.c
- * @brief On-silicon HIL: EPUB cover-art extraction + decode + render (#143).
+ * @brief On-silicon HIL: EPUB cover-art extraction + decode + render.
  *
  * @details
  * The headline "book cover art" path for the on-device e-reader, end to end:

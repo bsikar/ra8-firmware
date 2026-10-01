@@ -71,7 +71,7 @@ pub const NsImage = struct {
     name: []const u8,
     /// The app's own sources, spelled relative to the app directory exactly as
     /// `add_executable` spells them. These are the same three files the SECURE
-    /// target lists in `AUX_SRCS` to keep OUT of its image (#1036): one file
+    /// target lists in `AUX_SRCS` to keep OUT of its image: one file
     /// set, two images, and the only thing that decides which is which is
     /// these two lists agreeing.
     app_sources: []const []const u8,

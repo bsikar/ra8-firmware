@@ -75,7 +75,7 @@
  * 0x2201CA60 and from that address the Ethernet TX path corrupted bits 4 and
  * 5 of every byte at a frame offset congruent to 13 (mod 16) -- silently,
  * under a valid FCS, so even the 60-byte ARP reply went out with the wrong
- * sender IP and the board simply vanished off the wire (#499). That was never
+ * sender IP and the board simply vanished off the wire. That was never
  * an Ethernet defect. `SRAMWTSC.WTEN` was never programmed, so every SRAM read
  * ran with no wait state at ICLK = 250 MHz, which HUM Ch 58.3.7 p 3540 puts
  * outside guaranteed operation; the GWCA's DMA reads of this pool were simply

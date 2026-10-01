@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Regression tests for the argv membrane and the exit contract (RA8FW-335, #1219).
+//! Regression tests for the argv membrane and the exit contract (RA8FW-335).
 //! Each case drives `cli.run` over a real temporary tree, so enumeration,
 //! exclusion and the reported status are exercised together exactly as
 //! `scripts/builders/check_header_file_placement.sh` invokes them.

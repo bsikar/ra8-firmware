@@ -1,7 +1,7 @@
 # bscan_selftest
 
 Self-test for the JTAG / IEEE-1149.1 boundary-scan bookkeeping driver
-`ra8_bscan` (#138). No panel, SD card, touch or external JTAG fixture needed.
+`ra8_bscan`. No panel, SD card, touch or external JTAG fixture needed.
 
 There is no such thing as a "real" boundary-scan demo on this chip. The TAP is
 driven by an external manufacturing fixture over TCK/TMS/TDI/TDO while RES is

@@ -395,7 +395,7 @@ RA8_INTERNAL static void internal_test_gpt_select_second_basic_data(void)
  * Covers priv_gpt_locate_partition `index >= count` (V-true = 4) and the two
  * priv_gpt_entry_select decisions -- null GUID (not_found), zero LBA
  * (validation_failed) -- each against the valid entry 0 control. An entry
- * whose 64-bit first LBA exceeds 32 bits is no longer a select error (#683):
+ * whose 64-bit first LBA exceeds 32 bits is no longer a select error:
  * the address is followed, and on this small fake the backend's own
  * out_of_range comes back, proving the LBA reached it un-truncated.
  *
@@ -421,7 +421,7 @@ RA8_INTERNAL static void internal_test_gpt_index_errors(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 4U, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 1U, &h));
-  /* Entry 2's first LBA is past 2 TiB: followed to the backend (#683), whose
+  /* Entry 2's first LBA is past 2 TiB: followed to the backend, whose
    * fake medium answers out_of_range -- not refused at the parser. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 2U, &h));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount_partition(&s_backend, 3U, &h));

@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
-# bench_contention.sh -- prove the bench lock (#497) under REAL contention from
+# bench_contention.sh -- prove the bench lock under REAL contention from
 # genuinely independent machines.
 #
 # WHY THIS IS NOT THE SELFTEST

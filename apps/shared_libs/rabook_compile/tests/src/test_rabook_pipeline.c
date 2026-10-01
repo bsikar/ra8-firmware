@@ -24,7 +24,7 @@
  *  - Skip-images byte-identity: the same fixture compiled with
  *    @ref ra8_rabook_pipeline_scratch_t::skip_images set equals the desktop
  *    `--no-images` golden (text/CSS-only, the SVG cover dropped).
- *  - Real-book byte-identity (#151): real Standard Ebooks Walden chapters
+ *  - Real-book byte-identity: real Standard Ebooks Walden chapters
  *    (carrying the significant `</abbr> <abbr>` inter-element whitespace)
  *    compiled with skip_images equal the desktop `--no-images` golden -- the
  *    proof the device preserves inline whitespace on real content.

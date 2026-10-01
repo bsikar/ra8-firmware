@@ -62,12 +62,12 @@
  *   - GROWING a directory. A full directory takes another cluster out of the
  *     allocation bitmap, so its ceiling is free space, not one cluster: FAT
  *     subdirectories and the FAT32 root grow their chains, and an exFAT
- *     directory grows as its files do -- contiguous, then a FAT chain (#677).
+ *     directory grows as its files do -- contiguous, then a FAT chain.
  *
  * ## Names are UTF-8, on both formats
  * Every name crossing this API is UTF-8; both on-disk formats store UTF-16LE,
  * converted in one place so the three paths that did their own cannot disagree
- * again (#606).
+ * again.
  *
  *   - All of Unicode is storable: a 4-byte UTF-8 character becomes a surrogate
  *     PAIR on disk and returns as the same 4 bytes.
@@ -94,14 +94,14 @@
  * Limits (compile-time):
  *   - 4 concurrent open file handles (`k_ra8_fs_max_files`).
  *   - 2 concurrent mount points (`k_ra8_fs_max_mounts`).
- *   - File size: 64-bit on exFAT (#676) -- a file past 4 GiB is exactly what
+ *   - File size: 64-bit on exFAT -- a file past 4 GiB is exactly what
  *     exFAT exists for. FAT12/16/32 files stay capped at 4 GiB - 1
  *     (`DIR_FileSize` is 32-bit; the format's own ceiling), enforced with
  *     `k_ra8_err_invalid_size` at the FAT boundary.
  *   - Sector size: 512 / 1024 / 2048 / 4096 bytes, taken from the backend's
- *     reported block size and cross-checked against the BPB / VBR (#683).
+ *     reported block size and cross-checked against the BPB / VBR.
  *   - Media size: 64-bit LBAs end to end -- backend interface, partition
- *     base, GPT entries -- so volumes past 2 TiB are addressable (#683).
+ *     base, GPT entries -- so volumes past 2 TiB are addressable.
  *
  * The 4Kn-sector and beyond-2-TiB paths are SIMULATION-VERIFIED ONLY (host
  * tests over fake backends); no such medium has been on the bench. 512-byte
@@ -489,7 +489,7 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * @retval k_ra8_err_invalid_state file not opened for writing.
  * @retval k_ra8_err_invalid_size  FAT volume and the write would push the file
  *                                past 4 GiB - 1 (`DIR_FileSize` is 32-bit);
- *                                exFAT files have no such cap (#676).
+ *                                exFAT files have no such cap.
  * @retval k_ra8_err_no_mem        Volume out of free clusters.
  * @post On success the entry's `DIR_WrtTime` / `DIR_WrtDate` name this write.
  * @since 0.1.0
@@ -501,7 +501,7 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  *
  * @details Convenience wrapper, and nothing more: on EVERY filesystem it opens
  * @p path in write mode, writes @p data, and closes. It carried a second,
- * exFAT-only implementation until exFAT learned to stream (#602) -- a
+ * exFAT-only implementation until exFAT learned to stream -- a
  * whole-file creator that needed one contiguous run and the entire payload in
  * RAM at once. Both limits are gone with it, and the one remaining path means
  * the two filesystems can no longer disagree about what this call does.
@@ -538,7 +538,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 
 /**
  * @brief Move the file offset to `offset_bytes` (clamped to size).
- * @details 64-bit so any position in a >4 GiB exFAT file is reachable (#676).
+ * @details 64-bit so any position in a >4 GiB exFAT file is reachable.
  * @retval k_ra8_ok            Seek committed.
  * @retval k_ra8_err_null_ptr  file is NULL.
  * @since 0.1.0

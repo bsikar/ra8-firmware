@@ -314,7 +314,7 @@ def selftest(tmp_root: Path) -> list[str]:
         if len(findings) != expected:
             failures.append(f"{label}: expected {expected} finding(s), got {len(findings)}")
 
-    # --- roots the listfile defines itself (#2610) ------------------------
+    # --- roots the listfile defines itself ------------------------
     nested = tmp_root / "apps" / "shared_libs" / "mdl"
     nested.mkdir(parents=True)
     alias_cases: dict[str, tuple[str, int]] = {
@@ -422,7 +422,7 @@ def main(argv: list[str]) -> int:
         print(
             "\nEvery repository-rooted path a CMake file names must resolve. A source "
             "moved or deleted by a port leaves the path behind, and no host configure "
-            "evaluates a cross-only block (#1290, #2610). Update the path, or drop the "
+            "evaluates a cross-only block. Update the path, or drop the "
             "line.",
             file=sys.stderr,
         )

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! SOF0 dimension probe (#2799).
+//! SOF0 dimension probe.
 //!
 //! Answers "how big is this JPEG" without decoding it: walk the marker chain,
 //! stop at the first SOF0, read the two big-endian shorts. Re-entrant, because

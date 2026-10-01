@@ -182,7 +182,7 @@ same verifiers as `just hil::suite`. A second copy of the runner would be a
 second place for all of that to drift.
 
 They sit outside `hw_validated/hil/` for a second, independent reason:
-`ra8_emulator` models no ESP32-C6 (#494), and `check_hil_eil_parity.py`
+`ra8_emulator` models no ESP32-C6, and `check_hil_eil_parity.py`
 requires every app in that directory to be EIL-exercised with no skips. That
 gate is right; the C6 apps simply cannot satisfy it yet, and punching a hole in
 it to house them would cost more than the separate lane does.

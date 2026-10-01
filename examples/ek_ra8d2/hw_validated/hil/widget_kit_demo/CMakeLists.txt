@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME widget_kit_demo
   STACK_BYTES 8192
-  DESCRIPTION "ra8_widget leaf widgets composited through ra8_widget_panel (#145)"
+  DESCRIPTION "ra8_widget leaf widgets composited through ra8_widget_panel"
   LIBS ra8_widget
        ra8_box
        ra8_ui

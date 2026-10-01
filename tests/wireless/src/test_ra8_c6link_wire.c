@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_c6link_wire.c
- * @brief Unit tests for the three pure layers under `ra8_c6link` (#490).
+ * @brief Unit tests for the three pure layers under `ra8_c6link`.
  *
  * @details
  * The payload header, the TLV envelope and the decode arena are pure functions

@@ -92,7 +92,7 @@ static void test_mcdc_ra8_ofs(void)
  * ``ra8_ofs_has_ofs3() == (k_ra8_feat_ofs3 != 0U)`` -- but that WAS the
  * body of ``ra8_ofs_has_ofs3()``, so it compared a constant to itself and
  * would have held for either value. Both the predicate and the feature
- * mirror are gone (#516); the assertions below name the expected
+ * mirror are gone; the assertions below name the expected
  * ordinals literally so they can actually fail.
  */
 static void test_ra8_ofs_inventory(void)
@@ -121,7 +121,7 @@ static void test_ra8_ofs_inventory(void)
  * previously carried `0x03001E04` / `0x03001E20` for OFS0 / OFS3 -- addresses
  * that appear nowhere in either manual and land in the `0x0300_0000 ..
  * 0x07FF_FFFF` Reserved window -- and survived because the only tests that
- * touched them compared each constant against itself (#545).
+ * touched them compared each constant against itself.
  *
  * Sources, identical on both supported parts:
  * - `OFS0` `0x02C9_F040` -- RA8D2 HUM R01UH1065EJ0130 Ch 7.2.1 p 280.

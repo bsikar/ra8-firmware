@@ -9,7 +9,7 @@ size of the *file* they live in: a translation unit can stay Rule-4-clean while
 growing into a multi-thousand-line god-file, or the same body can be
 copy-pasted across siblings until each is enormous.
 
-Scope is derived, not listed (#359)
+Scope is derived, not listed
 -----------------------------------
 This gate used to carry a hand-written ``SCAN_ROOTS`` tuple that omitted
 ``scripts/`` and a ``SOURCE_SUFFIXES`` tuple covering only C and C++.  The
@@ -249,7 +249,7 @@ def main(argv: list[str]) -> int:
     """Fail any file over the line cap, or with ``--selftest`` prove the gate still fires.
 
     Note the THREE distinct exit codes. An empty target set exits 2, not 0:
-    this gate derives its scope from ``git ls-files`` (#359) and so an empty
+    this gate derives its scope from ``git ls-files`` and so an empty
     scan means the enumeration broke, which must never be reported as a clean
     tree -- that is precisely how this checker spent its early life passing
     over a scope that omitted every Python and shell file.

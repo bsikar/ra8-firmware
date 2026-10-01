@@ -5,13 +5,13 @@ off-screen framebuffer headlessly, this brings the GLCDC panel up so the
 composition is actually shown, and drives it from the physical SW1 / SW2
 push-buttons.
 
-**App registry (#146).** Three apps -- Library, Reader, Settings -- register
+**App registry.** Three apps -- Library, Reader, Settings -- register
 into one `ra8_app` registry. Settings is `removable` and sits behind a
 build-time guard (`WA_APP_SETTINGS`), so defining it to 0 drops the app from the
 registry entirely: the "core uninstallable" pattern, with the banner's app count
 following.
 
-**App = a widget tree (#145).** Each app is a fixed status bar over per-app flex
+**App = a widget tree.** Each app is a fixed status bar over per-app flex
 content over a fixed tab bar, laid out by `ra8_widget_layout_stack` and drawn
 through `ra8_gfx` into the GLCDC buffer. Status bar and tab bar are shared
 chrome that read the registry; only the content widget differs per app.

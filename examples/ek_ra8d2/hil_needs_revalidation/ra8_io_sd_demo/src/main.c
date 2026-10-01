@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/src/main.c
- * @brief Prove the ra8_io fabric's swappable backend (#155/#156) over a microSD.
+ * @brief Prove the ra8_io fabric's swappable backend over a microSD.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

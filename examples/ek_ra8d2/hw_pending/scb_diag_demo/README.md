@@ -4,7 +4,7 @@ Drives the `ra8_scb` driver -- the one abstraction over the Arm v8-M System
 Control Block (PPB window `0xE000ED00`) that the exception decoder, the DFU
 copy-to-run launcher and the ITM log transport otherwise reach raw -- and prints
 what those call sites read for themselves, so the HAL primitive can be diffed
-against them on the bench (#583).
+against them on the bench.
 
 Once per second it:
 

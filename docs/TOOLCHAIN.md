@@ -97,8 +97,8 @@ target; the "status" column flags the known skews.
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `pyproject.toml` / `uv.lock`) | 0.6.13 (`.venv`) | 0.6.13 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | 1.7.7 (devcontainer) | 1.7.7 (`/usr/local/bin`) | CONVERGED -- see 3.5 |
-| `gcovr` | **7.0** (`pyproject.toml` / `uv.lock`) | 7.0 (`.venv`) | 7.0 (`/opt/ra8-python-tools`, uv-synchronized) | Exact pin, deliberately; 8.0 and 8.4 both break the coverage data model -- see 3.7 (#802) |
-| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (source build) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
+| `gcovr` | **7.0** (`pyproject.toml` / `uv.lock`) | 7.0 (`.venv`) | 7.0 (`/opt/ra8-python-tools`, uv-synchronized) | Exact pin, deliberately; 8.0 and 8.4 both break the coverage data model -- see 3.7 |
+| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (source build) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 |
 
 ---
 
@@ -112,7 +112,7 @@ majors do not; worked around with `-fno-strict-aliasing` on the SOUP TUs in
 `cmake/ra8_add_app.cmake`), so every environment is pinned to the **same** Arm GNU
 Toolchain release: **13.3.rel1** (gcc `13.3.1`).
 
-**How the pin is enforced (#178):**
+**How the pin is enforced:**
 - **Install path + HINTS.** Each environment installs 13.3.rel1 at a standard
   path: the runner, devcontainer and dev box at
   `/opt/arm-gnu-toolchain-13.3`, and the Mac at
@@ -192,12 +192,12 @@ flow and rejects the former curl-to-parser installer idioms.
 **Resolve managed tools through a login shell.** The fleet profile prepends
 `/opt/ra8-python-tools/bin`, so a non-login remote command may miss a provisioned
 Python tool while `/bin/bash -p -lc "<cmd>"` sees it. The same trap
-changes which `clang-tidy` and `gcovr` you get (#333). Always use
+changes which `clang-tidy` and `gcovr` you get. Always use
 `/bin/bash -p -lc`.
 
 ### 3.5 cmake-format / cmake-lint / yamllint / actionlint
 
-The `lint-cmake` and `lint-yaml` gates (#362) pin `cmakelang`==**0.6.13**
+The `lint-cmake` and `lint-yaml` gates pin `cmakelang`==**0.6.13**
 (which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.37.1**
 and `actionlint` **v1.7.7**. `just setup_python` installs the Python tools in
 the repository-local `.venv`; the devcontainer, runner, and provisioned dev box
@@ -244,7 +244,7 @@ directory makes gcovr resolve nothing and report `no_working_dir_found` -- a
 failure indistinguishable from a real coverage regression. Do not "fix" that
 opt-out.
 
-### 3.6 libunicorn (ra8_emulator CPU emulator): pinned 2.1.4, source-built, fail-loud (#354)
+### 3.6 libunicorn (ra8_emulator CPU emulator): pinned 2.1.4, source-built, fail-loud
 
 `tools/ra8_emulator` boots the real cross-compiled firmware `.elf` on Unicorn
 (QEMU's core as a library). **Different Unicorn versions decode Armv8.1-M
@@ -320,7 +320,7 @@ reproduces it rather than losing it. The fail-loud check above is unchanged and
 is still what guarantees a skew cannot pass silently; `install_unicorn.sh`
 remains the recipe for a bare box (a dev box, or a new runner shape).
 
-### 3.7 gcovr: exact-pinned 7.0 on purpose, and what moving off it costs (#802)
+### 3.7 gcovr: exact-pinned 7.0 on purpose, and what moving off it costs
 
 `pyproject.toml` pins `gcovr==7.0` (January 2024). Upstream is **8.6**
 (2026-01-13). Unlike the other stale pins in this tree, this one is a decision
@@ -349,7 +349,7 @@ is a re-baseline of `.github/tree-coverage-baseline.txt` and
 **The argument on the other side** is the gcc coupling, and it is stronger than
 "the pin is old". gcov moves with the GCC pins, and 7.0 predates gcc-14
 entirely; the coverage gate already pins `gcc-14`/`gcov-14` for exactly this
-reason. If the gcc-14 -> 16 bump (#797) lands, 7.0 would be parsing output from
+reason. If the gcc-14 -> 16 bump lands, 7.0 would be parsing output from
 a gcov two majors newer than anything it was written against. Upstream 8.4 is
 also where gcovr began aborting on a gcc/gcov version mismatch instead of trying
 every working directory, which is the failure this document describes as

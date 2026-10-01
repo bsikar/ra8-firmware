@@ -93,13 +93,13 @@ if(TARGET compile_on_m33_cpu1.elf)
   # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0, so
   # its rows are gone from .github/cpu1-warning-profile-baseline.txt
   # (#843 / T1-09).
-  # The assertion sink itself is Zig now (#2875): miniz MZ_ASSERT and core
+  # The assertion sink itself is Zig now: miniz MZ_ASSERT and core
   # assertions still route to ra8_fatal_error(), but it is a weak export of
   # the cross-built ra8_core archive ra8_add_cpu1_image() already links for
   # this core, not a hand-picked TU.
   # epub still guards its ZIP entries through the shared decompression-limits
   # policy (epub_zip_guard.c -> ra8_decomp_limits_*), but that policy is Zig
-  # now (#2862), so it arrives in the cross-built ra8_core archive
+  # now, so it arrives in the cross-built ra8_core archive
   # ra8_add_cpu1_image() already links for this core rather than as a
   # hand-picked TU.
   #   - ra8_ipc.c: the M33 side of the RA8FW-250 mode-switch IPC path. It joins the
@@ -172,7 +172,7 @@ if(TARGET compile_on_m33_cpu1.elf)
   #
   # The first-party TUs this app bolts on are enumerated in
   # .github/cpu1-warning-profile-baseline.txt and held there by
-  # scripts/checks/check_cpu1_warning_profile.py (#843): adding another
+  # scripts/checks/check_cpu1_warning_profile.py: adding another
   # first-party M33 source here without bringing it onto the profile now fails
   # that gate. miniz.c is classified as SOUP and is deliberately not a row.
   set_property(

@@ -97,7 +97,7 @@ RA8_INTERNAL static void internal_test_mcdc_parse_bpb_guards(void)
   TEST_BEGIN("ra8_fs MC/DC: priv_parse_bpb_into_mount signature + field guards");
   ra8_fs_mount_t m = {};
   /* The parse validates the BPB against the DEVICE sector size, which the
-   * mount seeds from get_capacity before parsing (#683). */
+   * mount seeds from get_capacity before parsing. */
   m.bytes_per_sector = (uint32_t)k_ra8_fs_sector_min;
 
   /* Signature guard. */
@@ -333,7 +333,7 @@ RA8_INTERNAL static void internal_alloc_card(uint32_t blocks)
  * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_label_field` (2 conditions), driven
  * through a real FAT16 `ra8_fs_format` that lays the BS_VolLab field. The
  * effective label `eff` is the caller's label, or the spec sentinel `"NO NAME"`
- * when it is NULL/empty (#634); `past_end` latches once its NUL is seen, so one
+ * when it is NULL/empty; `past_end` latches once its NUL is seen, so one
  * short label sweeps all arms:
  * - before the NUL (i=0,1 of "AB"): `!past_end`=T, `eff[i]=='\0'`=F -> C1=T,C2=F.
  * - at the NUL (i=2 of "AB"):        `!past_end`=T, `eff[i]=='\0'`=T -> C1=T,C2=T

@@ -68,7 +68,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_sau.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
-  # ra8_log is Zig now (#2836) and ra8_scb followed with the fault block
+  # ra8_log is Zig now and ra8_scb followed with the fault block
   # (#2868), so this image cannot pick either up by compiling
   # libs/ra8_core/src/*.c by path: it links ra8_core's archive instead,
   # cross-built for THIS image's core rather than the parent app's. A

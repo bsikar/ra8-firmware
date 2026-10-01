@@ -207,7 +207,7 @@ typedef enum : uint8_t {
 typedef struct {
   uintptr_t base;            /**< Virtual base address to map.                    */
   size_t    size;            /**< Bytes to map.                                   */
-  bool      asan_shadow_gap; /**< True if base lands in ASan's shadow gap (#193). */
+  bool      asan_shadow_gap; /**< True if base lands in ASan's shadow gap. */
 } ra8_fake_region_t;
 
 /**

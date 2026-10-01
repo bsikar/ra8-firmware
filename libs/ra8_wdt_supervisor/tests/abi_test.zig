@@ -4,7 +4,7 @@
 //! ABI-membrane tests: the nine exported symbols, their guard order and their
 //! `ra8_err_t` codes, driven exactly as the unchanged C suites drive them.
 //!
-//! The per-object RTOS codes (#1231) are driven through the host-only
+//! The per-object RTOS codes are driven through the host-only
 //! `ra8_wdt_supervisor_test_force_rtos_failure` symbol rather than an
 //! in-module handle, so these cases also assert that the seam the C suites
 //! link against is actually exported by this archive.

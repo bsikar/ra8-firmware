@@ -73,7 +73,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum sh_loupe_const_t
- * @brief Press-and-hold magnifier-loupe geometry + gesture threshold (#211).
+ * @brief Press-and-hold magnifier-loupe geometry + gesture threshold.
  * @details The lens is a fixed square window centred on the panel. While a press
  *          is held over a full-resolution cover/page image, a
  *          `k_sh_loupe_w / k_sh_loupe_zoom` by `k_sh_loupe_h / k_sh_loupe_zoom`
@@ -182,7 +182,7 @@ typedef struct {
   uint32_t comic_count; /**< Comic reader: open comic page count (0 = none).    */
   bool     comic_rtl;   /**< Comic reader: right-to-left (manga) reading order. */
 
-  bool     loupe_active;  /**< Press-hold magnifier loupe currently open (#211).   */
+  bool     loupe_active;  /**< Press-hold magnifier loupe currently open.   */
   int32_t  loupe_cx;      /**< Loupe pan centre X in full-res source pixels.       */
   int32_t  loupe_cy;      /**< Loupe pan centre Y in full-res source pixels.       */
   uint32_t touch_down_ms; /**< ra8_time_ms() timestamp at the current press start. */
@@ -268,7 +268,7 @@ ra8_err_t sh_image_blit_cover(const book_src_t* src,
 
 /**
  * @brief Draw the magnifier loupe: a `k_sh_loupe_zoom`-magnified 1:1 window of a
- *        full-resolution 4bpp source image, centred on a source point (#211).
+ *        full-resolution 4bpp source image, centred on a source point.
  * @details Samples a `k_sh_loupe_w / k_sh_loupe_zoom` by
  *          `k_sh_loupe_h / k_sh_loupe_zoom` window of the FULL-RESOLUTION source
  *          (read through the demand-paged book, one bounded window per call --
@@ -406,7 +406,7 @@ size_t sh_sd_comic_read(void* ctx, uint64_t offset, void* buf, size_t len);
 
 /**
  * @brief Stream-open SD file @p name as an EPUB via epub_open_streamed_fs.
- * @details No whole-file residency (#230): the source file stays held open by
+ * @details No whole-file residency: the source file stays held open by
  *          this module and every ZIP entry (chapter, cover, resource) is
  *          seek+read on demand, so there is no book-size ceiling below the
  *          `ra8_fs` 4 GiB offset limit. Release with ::sh_sd_close_epub.
@@ -500,14 +500,14 @@ void sh_toc_scroll(int32_t dir);
  */
 ra8_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len);
 
-/* ----- sh_paged.c : demand-paged .rabook backing (#204/#205) ---------------- */
+/* ----- sh_paged.c : demand-paged .rabook backing ---------------- */
 
 /**
  * @brief Open a chunked `.rabook` container as the demand-paged book source.
  * @details Binds the RBKC chunk reader over @p file_read, registers it as a
  *          paged ::ra8_vsource object, (re)initialises the ra8_vmem frame cache,
  *          and binds `g_sh.book_src` in paged mode. Always paged -- there is
- *          deliberately no resident/paged size threshold (#205).
+ *          deliberately no resident/paged size threshold.
  * @param[in] file_read Byte reader over the container file bytes.
  * @param[in] file_ctx  Context for @p file_read.
  * @param[in] file_len  Container file length in bytes.
@@ -580,7 +580,7 @@ void sh_reader_render(void);
 bool sh_reader_turn(int32_t dir);
 
 /**
- * @brief Read-ahead warm the adjacent chapters into the page cache (#207).
+ * @brief Read-ahead warm the adjacent chapters into the page cache.
  * @details Called in the reader's flush-idle window (after the panel flush, before
  *          the next input poll): a within-chapter page turn reads no new cache
  *          bytes (the chapter text is pre-extracted into ::sh_state_t::text), so the
@@ -597,7 +597,7 @@ bool sh_reader_turn(int32_t dir);
  */
 void sh_reader_prefetch_adjacent(void);
 
-/* ----- sh_comic.c : full-page image reader for CBZ / CBR comics (#236) ------ */
+/* ----- sh_comic.c : full-page image reader for CBZ / CBR comics ------ */
 
 /**
  * @brief Open shelf entry @p idx as a comic archive (CBZ / CBR) for page reading.
