@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_c6link_mdl_internal.h"
 #include "ra8_c6link_mdl_msg.h"
 #include "ra8_c6link_mdl_service_internal.h"
 
