@@ -13,7 +13,6 @@
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl.h"
-#include "ra8_media_download.pb-c.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,47 +53,6 @@ extern "C" {
  * @note Pure and reentrant.
  * @since 0.1.0
  */
-/**
- * @struct mdl_text_t
- * @brief One borrowed text span: a pointer and a length, not terminated.
- * @details The layout is stated by `src/internal/mdl_chunk.zig@Text`. A null
- *          pointer means the field was never set.
- * @since 0.1.0
- */
-typedef struct {
-  const char* ptr; /**< First byte, or null when unset. */
-  size_t      len; /**< Valid bytes at `ptr`.           */
-} mdl_text_t;
-
-/**
- * @struct mdl_chunk_view_t
- * @brief One decoded chunk response as flat values, with no generated types.
- * @details The layout is stated by `src/internal/mdl_chunk.zig@View`, which
- *          holds every rule about these values. The generated message layout
- *          is protoc-c output, so it is flattened here once rather than
- *          mirrored in Zig where it could drift against the regenerated code.
- * @invariant Every span borrows the decoded buffer and stays valid only for
- *            the synchronous call that built the view.
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t    job_id;        /**< Correlated remote job identifier.        */
-  uint32_t    sequence;      /**< Zero-based response sequence.            */
-  uint64_t    offset;        /**< Offset of the body bytes.                */
-  uint64_t    total_bytes;   /**< Advertised total, or zero when unknown.  */
-  uint8_t     state;         /**< Generated state, as ra8_mdl_state_t.     */
-  int32_t     status;        /**< Remote failure status in FAILED state.   */
-  const void* data;          /**< Decoded body bytes, or null when absent. */
-  size_t      data_len;      /**< Valid bytes at `data`.                   */
-  const void* sha256;        /**< Decoded digest, or null when absent.     */
-  size_t      sha256_len;    /**< Valid bytes at `sha256`.                 */
-  int32_t     http_status;   /**< Terminal HTTP status, zero when absent.  */
-  mdl_text_t  retry_after;   /**< Decoded Retry-After.                     */
-  mdl_text_t  etag;          /**< Decoded ETag.                            */
-  mdl_text_t  last_modified; /**< Decoded Last-Modified.                   */
-  mdl_text_t  content_type;  /**< Decoded Content-Type.                    */
-} mdl_chunk_view_t;
-
 /**
  * @struct mdl_accepted_view_t
  * @brief One decoded accepted response as flat values.
@@ -318,39 +276,6 @@ typedef struct mdl_advance_t {
                                                                   uint16_t got,
                                                                   bool     complete);
 
-/**
- * @brief Validate terminal HTTP metadata carried by one decoded chunk.
- * @details Implemented by `src/internal/mdl_chunk.zig@httpResponseValid`.
- *          Requires a real status only on COMPLETE and bounds every selected
- *          response header before any caller copy.
- * @param[in] view Flattened decoded chunk.
- * @return Metadata validity.
- * @retval true Metadata matches the chunk state and all string bounds.
- * @retval false Status, presence, termination, or a header bound is invalid.
- * @pre @p view borrows spans that stay live for the call.
- * @post No decoded or caller-owned state is modified.
- * @note Pure and reentrant for independent views.
- * @since 0.1.0
- */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_response_valid(const mdl_chunk_view_t* view);
-
-/**
- * @brief Validate the state-specific fields of one correlated chunk.
- * @details Implemented by `src/internal/mdl_chunk.zig@semanticsValid`.
- *          Enforces the data/digest/status combination each state admits and
- *          checks the totals overflow-safely first.
- * @param[in] view Flattened decoded chunk.
- * @return Whether the semantic combination is valid.
- * @retval true State-specific fields and totals are coherent.
- * @retval false A state, size, status, or digest rule is violated.
- * @pre @p view borrows spans that stay live for the call.
- * @post No caller or decoded state is modified.
- * @post True guarantees later bounded copies are size-safe.
- * @note Reentrant for independent views.
- * @since 0.1.0
- */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_semantics_valid(const mdl_chunk_view_t* view);
-
 [[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_field_valid(const char* text, size_t cap);
 
 /**
@@ -372,53 +297,6 @@ typedef struct mdl_advance_t {
 priv_c6link_mdl_start_request_valid(const ra8_mdl_request_t* request, size_t* out_url_len);
 
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap);
-
-/**
- * @brief Judge one decoded response's HTTP metadata exactly as the client does
- * @details Forwards unchanged to the module-private predicate that separates a
- * non-terminal response, which must carry no metadata at all, from a COMPLETE
- * response, whose status must be HTTP-shaped and whose four selected headers
- * must each be bounded single-line text.
- * @param[in] msg Decoded generated chunk.
- * @return Metadata validity.
- * @retval true The metadata matches what this response's state permits.
- * @retval false A status or header rule for that state is violated.
- * @pre @p msg is non-null and decoded into a live bounded arena.
- * @pre Every string member is null or NUL-terminated within its bound.
- * @post No decoded or session state is modified.
- * @post True authorizes the state-specific semantic checks that follow.
- * @note Test helper; pure and reentrant.
- * @par MC/DC:
- * Two decisions, six conditions in the terminal one. Driving them through the
- * modelled transport would need one malformed-header fault per condition, and
- * the non-terminal decision would need a data response carrying metadata that
- * the service is structurally unable to emit.
- * @since 0.1.0
- */
-RA8_TEST_HELPER bool ra8_c6link_mdl_http_response_valid_test(const Ra8__Mdl__Chunk* msg);
-
-/**
- * @brief Judge one decoded response's state semantics exactly as the client
- * does
- * @details Forwards unchanged to the module-private predicate that enforces
- * the data/digest/status combination each state permits, plus the
- * overflow-safe relationship between offset, data length, and declared total.
- * @param[in] msg Decoded generated chunk.
- * @return Semantic validity.
- * @retval true State, size, status, and digest fields are mutually coherent.
- * @retval false A state-specific rule or the total-covers-data rule is broken.
- * @pre @p msg is non-null and decoded into a live bounded arena.
- * @pre Binary-data lengths describe their decoded buffers.
- * @post No decoded or session state is modified.
- * @post True guarantees the later bounded copies are size-safe.
- * @note Test helper; pure and reentrant.
- * @par MC/DC:
- * Five decisions across four mutually exclusive states, up to six conditions
- * each. Every vector needs one field of one state changed in isolation, which
- * a transport fault cannot express without a new injection per condition.
- * @since 0.1.0
- */
-RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__Chunk* msg);
 
 /**
  * @brief Judge one cancellation acknowledgement exactly as the client does.

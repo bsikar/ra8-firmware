@@ -39,11 +39,9 @@ pub const Decoded = struct {
     view: mdl_chunk.View,
 };
 
-const empty = mdl_chunk.Text.of("");
-
 /// A bytes field as protobuf-c left it: null when empty.
-fn span(bytes: []const u8) ?[*]const u8 {
-    return if (bytes.len == 0) null else bytes.ptr;
+fn span(bytes: []const u8) ?[]const u8 {
+    return if (bytes.len == 0) null else bytes;
 }
 
 /// The state enum. protobuf-c kept an int32 and the old view cut it to a
@@ -56,10 +54,10 @@ fn state(field: read.Field) Error!u8 {
 pub fn chunk(bytes: []const u8) Error!Decoded {
     var key: session.ChunkKeyView = .{};
     var view: mdl_chunk.View = .{
-        .retry_after = empty,
-        .etag = empty,
-        .last_modified = empty,
-        .content_type = empty,
+        .retry_after = "",
+        .etag = "",
+        .last_modified = "",
+        .content_type = "",
     };
     var reader = read.Reader.init(bytes);
     while (try reader.next()) |field| switch (field.number) {
@@ -67,30 +65,22 @@ pub fn chunk(bytes: []const u8) Error!Decoded {
         Field.job_id => view.job_id = try field.uint32(),
         Field.sequence => view.sequence = try field.uint32(),
         Field.offset => view.offset = try field.uint64(),
-        Field.data => {
-            const body = try field.bytes();
-            view.data = span(body);
-            view.data_len = body.len;
-        },
+        Field.data => view.data = span(try field.bytes()),
         Field.total_bytes => view.total_bytes = try field.uint64(),
         Field.state => view.state = try state(field),
         Field.status => view.status = try field.int32(),
-        Field.sha256 => {
-            const digest = try field.bytes();
-            view.sha256 = span(digest);
-            view.sha256_len = digest.len;
-        },
+        Field.sha256 => view.sha256 = span(try field.bytes()),
         Field.http_status => view.http_status = try field.int32(),
-        Field.retry_after => view.retry_after = mdl_chunk.Text.of(try field.bytes()),
-        Field.etag => view.etag = mdl_chunk.Text.of(try field.bytes()),
-        Field.last_modified => view.last_modified = mdl_chunk.Text.of(try field.bytes()),
-        Field.content_type => view.content_type = mdl_chunk.Text.of(try field.bytes()),
+        Field.retry_after => view.retry_after = try field.bytes(),
+        Field.etag => view.etag = try field.bytes(),
+        Field.last_modified => view.last_modified = try field.bytes(),
+        Field.content_type => view.content_type = try field.bytes(),
         else => key.unknown_fields +|= 1,
     };
     key.job_id = view.job_id;
     key.sequence = view.sequence;
     key.offset = view.offset;
-    key.data_len = std.math.cast(u32, view.data_len) orelse return error.Malformed;
+    key.data_len = std.math.cast(u32, mdl_chunk.len(view.data)) orelse return error.Malformed;
     key.data_present = view.data != null;
     return .{ .key = key, .view = view };
 }

@@ -17,8 +17,8 @@ fn hex(comptime text: []const u8) [text.len / 2]u8 {
     return out;
 }
 
-fn str(text: anytype) []const u8 {
-    return text.slice().?;
+fn str(text: ?[]const u8) []const u8 {
+    return text.?;
 }
 
 test "a downloading chunk decodes its key and body" {
@@ -31,7 +31,7 @@ test "a downloading chunk decodes its key and body" {
     try std.testing.expectEqual(@as(u32, 5), got.key.data_len);
     try std.testing.expect(got.key.data_present);
     try std.testing.expectEqual(@as(u32, 0), got.key.unknown_fields);
-    try std.testing.expectEqualStrings("hello", got.view.data.?[0..got.view.data_len]);
+    try std.testing.expectEqualStrings("hello", got.view.data.?);
     try std.testing.expectEqual(@as(u64, 8192), got.view.total_bytes);
     try std.testing.expectEqual(types.State.downloading, got.view.state);
     try std.testing.expect(got.view.sha256 == null);
@@ -49,7 +49,7 @@ test "a complete chunk decodes its digest and headers" {
         "50c8015a0135620522616263226a1d5765642c203231204f637420323031352030373a32383a303020474d54720f6170706c69636174696f6e2f7a6970");
     const got = try decode.chunk(&bytes);
     try std.testing.expectEqual(types.State.complete, got.view.state);
-    try std.testing.expectEqual(@as(usize, 32), got.view.sha256_len);
+    try std.testing.expectEqual(@as(usize, 32), got.view.sha256.?.len);
     try std.testing.expectEqual(@as(u8, 0xAB), got.view.sha256.?[31]);
     try std.testing.expectEqual(@as(i32, 200), got.view.http_status);
     try std.testing.expectEqualStrings("5", str(got.view.retry_after));
