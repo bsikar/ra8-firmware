@@ -433,8 +433,8 @@ static void test_clock_stop_each(void)
   /* set_clock_stop opens a CGC unlock window for the PRC0-protected OCR write
    * and must relock PRCR before it returns: the register reads key-only, with
    * every PRCn group bit cleared. Guards against dropping the
-   * RA8_PROTECTED_WRITE wrapper, which would let the write vanish on silicon
-   * (#392). */
+   * RA8_PROTECTED_WRITE wrapper, which would let the write vanish on silicon.
+   * */
   const uint16_t prcr_after = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
   TEST_ASSERT_EQ(k_ra8_lpm_prcr_key, prcr_after);
 

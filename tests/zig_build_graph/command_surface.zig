@@ -10,7 +10,7 @@
 //! costs nothing at the time: the step works, `zig build test` still depends
 //! on it, the graph stays green, and the step is simply unreachable from the
 //! surface a developer and `just ci` use. `analysis` and `abi`
-//! (#1007) were both in that state.
+//! were both in that state.
 //!
 //! Everything here is a pure function over source TEXT, so the rules are unit
 //! tested on fixtures in this file and then applied to the REAL two files in

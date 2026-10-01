@@ -84,8 +84,8 @@ runner_image:
 #            alias. Bare aliases are what this block used to carry, and they
 #            resolved on exactly one laptop -- which had no ansible, while the
 #            box that had ansible could not resolve a single fleet host. Nothing
-#            was a working control node and a drained runner sat unconvergeable
-#            (#526). check_fleet_declaration.py now rejects a bare label here.
+#            was a working control node and a drained runner sat unconvergeable.
+# check_fleet_declaration.py now rejects a bare label here.
 #   user     the login account, if it is not the caller's own.
 #   jump     an optional ProxyJump through ANOTHER HOST IN THIS FILE, named by
 #            its fleet name -- so a bastion's address is also declared once.

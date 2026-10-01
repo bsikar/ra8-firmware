@@ -115,8 +115,7 @@ git ignores silently, so no vendored file's checkout behaviour changes.
 
 Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
 content in `docs/sbom/upstream/netxduo.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run
-(#548).
+component is verified byte-identical to the upstream pin on each CI run.
 
 The edit is from 2026-07-13 and went unrecorded here until #548 found it two
 weeks later, which is the point: "the vendored tree is unmodified" was prose,
@@ -125,8 +124,8 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 ## Last review date
 
 - Reviewed: 2026-05-02
-- Use case + risk mitigation re-verified against the tree and corrected
-  (#621): 2026-08-04. The document claimed a NetX Secure TLS role that no
+- Use case + risk mitigation re-verified against the tree and corrected:
+  2026-08-04. The document claimed a NetX Secure TLS role that no
   build has, cited an application deleted in `d38587e80`, put the driver
   boundary in a library the drivers do not call, and omitted the Wi-Fi
   consumers entirely.

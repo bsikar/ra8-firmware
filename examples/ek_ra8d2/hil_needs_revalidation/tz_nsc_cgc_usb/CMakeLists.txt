@@ -192,8 +192,8 @@ ra8_link_zig_library_for_cpu(
   CPU cortex_m85
   FLOAT hard
 )
-# ra8_log is Zig now and ra8_scb followed with the fault block
-# (#2868), so the NS image takes both from ra8_core's archive instead of
+# ra8_log is Zig now and ra8_scb followed with the fault block,
+# so the NS image takes both from ra8_core's archive instead of
 # compiling libs/ra8_core/src/*.c by path. The NS world runs
 # on the same Cortex-M85 as the Secure image, and a freestanding build of
 # ra8_core composes its two roots into one archive, so this is the

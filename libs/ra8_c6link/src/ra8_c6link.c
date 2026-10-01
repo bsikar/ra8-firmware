@@ -265,8 +265,8 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
      Retried while the pump reports k_ra8_err_hw_timeout, which it returns only
      when it clocked no transaction at all: the co-processor left HANDSHAKE
      quiet for k_ra8_c6link_hs_giveup waits, 600 ms, and the probe below was
-     never reached. That is a busy co-processor as often as an absent one
-     (#594), and because nothing was clocked the capabilities frame never went
+     never reached. That is a busy co-processor as often as an absent one,
+     and because nothing was clocked the capabilities frame never went
      out, so a retry restates nothing. Any other verdict is a real fault and is
      returned on the spot. */
   ra8_err_t announced = k_ra8_err_hw_timeout;

@@ -46,7 +46,7 @@ source plus the golden 4-bpp blob the desktop tool emits for it via the exact
 integer bilinear kernel (tools/epub_compile/src/gray4_kernel.py, a mirror of
 ra8_rabook_gray4_downscale/_encode). The firmware kernel run over the same source
 must match that golden byte-for-byte, closing the host-vs-device downscale gap
-(#213) -- the opt-in downscale path is now one deterministic kernel, not a
+-- the opt-in downscale path is now one deterministic kernel, not a
 LANCZOS-vs-bilinear exception.
 """
 

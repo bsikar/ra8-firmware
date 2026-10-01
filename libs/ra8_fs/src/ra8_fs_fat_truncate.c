@@ -396,8 +396,8 @@ static ra8_err_t internal_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size,
  *
  * @details Patches the entry's first cluster and size, and stamps the write
  *          time -- a truncate is a content change even when no byte is written,
- *          so an mtime that still described the old contents would be a lie
- *          (#601). Leaves the handle dirty so close flushes FSInfo.
+ *          so an mtime that still described the old contents would be a lie.
+ * Leaves the handle dirty so close flushes FSInfo.
  *
  * @param[in,out] file File whose entry must match its new length.
  *

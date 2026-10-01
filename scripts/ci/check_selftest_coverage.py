@@ -6,8 +6,8 @@
 The repo's stated remedy for its dominant defect class -- a detector that has
 quietly stopped matching -- is a ``--selftest`` asserting BOTH directions.
 ``scripts/ci.sh`` says so and ``CLAUDE.md`` says so.  Nothing checked it, so a
-new checker with no selftest, or one whose gate never ran it, landed clean
-(#531).  Two of the checkers that turned out to have no selftest were the two
+new checker with no selftest, or one whose gate never ran it, landed clean.
+Two of the checkers that turned out to have no selftest were the two
 that had silently stopped seeing their subject -- ``check_obsolete_standards``
 scanning 0 files and ``audit_init_order`` reaching 11 of 217 apps.  That is not
 a coincidence, and it is why this gate exists.

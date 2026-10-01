@@ -365,7 +365,7 @@ RA8_INTERNAL static void internal_test_pipeline_parity_noimg_byte_identical(cons
  * SE markup is also indented, so the body subtree is full of inter-element
  * whitespace text runs. The desktop reference (Python @c HTMLParser) keeps every
  * such run, and -- with the bounded XML reader preserving text-event whitespace
- * (#151) -- so does the device. Byte-identity here is the direct proof that the
+ * -- so does the device. Byte-identity here is the direct proof that the
  * device preserves inline whitespace on real content, so words like
  * "@c Hon. @c Mr." no longer merge into "@c Hon.Mr.".
  *

@@ -81,8 +81,8 @@ class Component:
 
     The ``upstream_*`` group answers "what is this tree supposed to BE?", which
     the version and integrity fields cannot: a digest re-derived from our own
-    tree proves only that we have not changed it since we last looked
-    (#538/#548).  ``upstream_ref`` names the revision the vendored subset is
+    tree proves only that we have not changed it since we last looked.
+    ``upstream_ref`` names the revision the vendored subset is
     claimed to come from; ``patched_files`` and ``local_files`` enumerate every
     file that deliberately departs from it, so "modified" and "corrupted" are
     distinguishable by a machine rather than by reading prose.

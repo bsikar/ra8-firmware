@@ -30,7 +30,7 @@ places, each owning one or two constructs:
    list assumes.
 2. `scripts/checks/check_no_null.py` -- the `nullptr`-only rule. Its
    own docstring records that scope is derived from `git ls-files`
-   (#358) so that `tools/` is held to the same bar as `libs/`.
+   so that `tools/` is held to the same bar as `libs/`.
 3. `scripts/checks/check_c23_patterns.py` -- the canonical spellings:
    C23's empty initializer `{}` as the one first-party zero form,
    typed integer literal suffixes, and digit separators. Its docstring

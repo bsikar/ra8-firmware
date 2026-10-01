@@ -282,7 +282,7 @@ link_libraries(ra8_zig::ra8_mem)
 # for the same reason. The newlib _sbrk trap followed, into this
 # archive rather than that one, because it calls ra8_fatal_error. The startup
 # SDRAM zero-fill followed, and the secure-comparison primitives
-# (#2908) were the last C in the library. libs/ra8_core/src now holds no .c at
+# were the last C in the library. libs/ra8_core/src now holds no .c at
 # all, so there is no partition left to prove and the ra8_viewer_read_path()
 # call for it is gone: the archive above supplies the whole read path.
 if(NOT TARGET ra8_zig::ra8_core)

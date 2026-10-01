@@ -432,7 +432,7 @@
       arm-none-eabi-gcc at {{ dev_box_arm_gcc_prefix }} reports
       '{{ dev_box_arm_installed.stdout_lines | first | trim }}', not the pinned
       {{ dev_box_pins.ARM_GCC_RELEASE }}. Codegen is version-sensitive here
-      (#178) and the EIL==HIL goldens depend on it, so a different release
+      and the EIL==HIL goldens depend on it, so a different release
       builds different firmware from identical sources.
     success_msg: "{{ dev_box_arm_installed.stdout_lines | first | trim }}"
 

@@ -179,8 +179,8 @@ it was gating vanished under it. It prints `RESULT: ABORTED` and no per-gate
 
 That distinction is not cosmetic. The suite used to delete its own snapshot on
 SIGTERM and **keep running**, so every remaining gate "failed" on missing files
-and the run printed a FAIL table describing nothing about the tree under test
-(#542). **Never read an UNKNOWN as either a pass or a failure** -- re-run it.
+and the run printed a FAIL table describing nothing about the tree under test.
+**Never read an UNKNOWN as either a pass or a failure** -- re-run it.
 
 ### Adding a gate
 

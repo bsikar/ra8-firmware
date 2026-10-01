@@ -14,8 +14,8 @@
  * seam, so the example's exact call chain is exercised on host with the two
  * new #581 HAL primitives (ra8_eth_coma_bringup + ra8_eth_rgmii_select) doing
  * the real register work. This is the "test the example, not just compile it"
- * counterpart to the compile-gated ARM app: eth is HW-blocked on silicon
- * (#21), so this host integration test is the authoritative functional check.
+ * counterpart to the compile-gated ARM app: eth is HW-blocked on silicon,
+ * so this host integration test is the authoritative functional check.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

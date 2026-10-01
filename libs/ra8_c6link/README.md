@@ -10,7 +10,7 @@ co-processor sits on stays a composition decision.
 
 ## Why the API is RA8-native rather than ESP-IDF-shaped
 
-[#490](https://github.com/bsikar/ra8-firmware/issues/490) proposed reproducing
+An early design proposed reproducing
 the ESP-IDF `wifi_*_t` / `esp_netif_*` types here on the grounds that the C6
 decodes their byte layouts. It does not, and the bench settled it: the wire
 types are protobuf messages with named fields -- a station config carries its

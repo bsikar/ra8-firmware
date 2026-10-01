@@ -9,8 +9,8 @@
 if	src/fw_os_contract.c	Compile-time conformance TU for the fw_os port contract; a header with no translation unit behind it is never compiled and rots.
 ra8_tz_secure_boot	ns/ra8_ns_rot_header.c	Emits the NS image's ra8_ns_rot_header_t record; stays C on purpose, as tests/cmake/zig_libraries.cmake records, so the magic word and struct shape are compiler-checked instead of hand-assembled in the NS linker scripts.
 #
-# ra8_dfu is partially migrated: the polled USB-DFU host driver is Zig
-# (#2809), the boot logic the bootloader runs at reset is Zig, and
+# ra8_dfu is partially migrated: the polled USB-DFU host driver is Zig,
+# the boot logic the bootloader runs at reset is Zig, and
 # the root-of-trust verifier is Zig; four C TUs remain. The two that
 # are left of the root-of-trust block (antirollback, launch) are blocked by
 # white-box suites that #include the .c files, not by the shared trailer

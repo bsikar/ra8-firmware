@@ -50,7 +50,7 @@
 #
 # The instruction-counted chunk budget is the deterministic bound, so the runs
 # below set RA8_EMU_WALL_S=0 -- which truly DISABLES the CPU-time guard
-# (#168) -- and are bounded by chunks alone. The outer `timeout` stays only as
+# -- and are bounded by chunks alone. The outer `timeout` stays only as
 # a hang backstop and is sized so it is never the effective bound.
 #
 # Because a wall-clock stop can no longer be mistaken for a result, a run that

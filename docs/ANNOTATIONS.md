@@ -515,8 +515,7 @@ was keyed on `ra8_isr_handler`, an annotation no macro has ever emitted,
 so the walk never ran on a single handler. The dead walk is gone rather
 than left looking enforced; deriving the handler set from the vector
 tables and requiring `RA8_ISR_SAFE` across each closure is a campaign of
-its own, tracked by
-[#1247](https://github.com/bsikar/ra8-firmware/issues/1247).
+its own.
 
 Saying that here was not enough. `ra8_attributes.h` went on promising a
 libclang call-graph walk, and the `RULE_CHECKS` comment went on listing

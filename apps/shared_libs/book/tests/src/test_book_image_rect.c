@@ -529,8 +529,8 @@ static void ibook_guard_singleconds(const book_src_t* rsrc, const book_image_t* 
  *           ((pf != k_book_pixfmt_gray4) && (pf != k_book_pixfmt_gray8))`
  * -- 3 conditions, `A || (B && C)` -- in
  * apps/shared_libs/book/src/book_paged.c@book_src_image_rect, where
- * `pf = book_image_pixfmt(img)`: the "readable raster of a known depth" guard
- * (#476), with A the SVG (non-raster) reject and B && C the unknown-depth reject:
+ * `pf = book_image_pixfmt(img)`: the "readable raster of a known depth" guard,
+ * with A the SVG (non-raster) reject and B && C the unknown-depth reject:
  * - Vector 1: format=SVG          -> A true, short-circuit      -> invalid_arg.
  * - Vector 2: gray4 raster (pf=0) -> A false, B false           -> proceeds.
  * - Vector 3: gray8 raster (pf=1) -> A false, B true, C false   -> proceeds.

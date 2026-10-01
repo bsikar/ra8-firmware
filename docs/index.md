@@ -30,8 +30,7 @@ the reasoning rather than as a description of the tree.
     Each goes live in the slice that wires its generator into the build, and
     they are deliberately not links until then: this site fails its build on
     a dead link, and a promise dressed up as a hyperlink is exactly the thing
-    that gate exists to catch. Track the remaining slices on
-    [#900](https://github.com/bsikar/ra8-firmware/issues/900).
+    that gate exists to catch.
 
 ## Where to start
 

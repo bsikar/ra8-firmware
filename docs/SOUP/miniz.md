@@ -110,7 +110,7 @@ document makes. Both files were restored to the release artifact's bytes.
 ## Last review date
 
 - Reviewed: 2026-05-02
-- Use case + risk mitigation re-verified against the tree and corrected
-  (#620): 2026-08-04. The qualification had been scoped to EPUB alone while
+- Use case + risk mitigation re-verified against the tree and corrected:
+  2026-08-04. The qualification had been scoped to EPUB alone while
   five first-party libraries decode through this component.
 - Expected re-review by: 2027-05-02

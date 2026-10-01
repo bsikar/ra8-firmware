@@ -356,8 +356,8 @@ pub const cross_apps = [_]CrossApp{
         // message. Filed separately; every TU still compiles here.
         .links_in_debug = false,
         // All five units this app used to name here are Zig archives now and
-        // reached through LIBS instead: ra8_psa_crypto, ra8_rot
-        // (#2943), ra8_dfu_boot and ra8_dfu_antirollback, which joined the
+        // reached through LIBS instead: ra8_psa_crypto, ra8_rot,
+        // ra8_dfu_boot and ra8_dfu_antirollback, which joined the
         // ra8_rot archive, and the launch gate itself, which became
         // ra8_rot_launch. The app declares no EXTRA_SRCS at all now, which is
         // what its own CMakeLists says, and no app in the table does.
