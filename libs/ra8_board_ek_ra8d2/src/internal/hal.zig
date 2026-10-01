@@ -297,3 +297,30 @@ pub extern fn ra8_mpc_set_open_drain(port: u32, pin_index: u32, enable: bool) u3
 pub extern fn ra8_cgc_usbhs_pll_enable() u32;
 pub extern fn ra8_usb_device_init(speed: u32) u32;
 pub extern fn ra8_usb_host_init(speed: u32) u32;
+
+/// `ra8_board_info_t` from the board's connectors header: three borrowed
+/// string pointers, never owned by the caller.
+pub const BoardInfo = extern struct {
+    name: [*:0]const u8,
+    doc_rev: [*:0]const u8,
+    mcu: [*:0]const u8,
+};
+
+/// `ra8_icu_irq_cfg_t`. Fields map straight onto IRQCRi, HUM 14.2.12 p 535.
+pub const IcuIrqCfg = extern struct {
+    sense: u8,
+    filter_div: u8,
+    filter_en: bool,
+};
+
+pub const IsrHandler = *const fn (?*anyopaque) callconv(.c) void;
+
+pub extern fn ra8_gpio_toggle(pin: u16) u32;
+pub extern fn ra8_icu_configure_irq_pin(irq_num: u8, cfg: *const IcuIrqCfg) u32;
+pub extern fn ra8_isr_register(
+    event: u16,
+    handler: IsrHandler,
+    ctx: ?*anyopaque,
+    priority: u8,
+    out_slot: ?*u16,
+) u32;

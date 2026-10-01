@@ -50,6 +50,13 @@ pub const Psel = struct {
     pub const iic: u32 = 0x07;
     /// 10010b: SSIE I2S audio. HUM 20.6.
     pub const ssie: u32 = 0x12;
+    /// 11001b: graphics controller outputs. HUM 20.6.
+    pub const glcdc: u32 = 0x19;
+    /// 11100b: OSPI / Octo-SPI / xSPI, one encoding shared by both
+    /// controllers, which is why the chip constant is named for QSPI.
+    pub const qspi: u32 = 0x1C;
+    /// 10101b: SDHI SD / MMC. HUM 20.6.
+    pub const sdhi: u32 = 0x15;
 };
 
 /// `ra8_pfs_dscr_t` drive strengths this layer sets.
@@ -122,6 +129,7 @@ pub const Pdm = struct {
 pub const Io = struct {
     pub const level_low: u32 = 0;
     pub const level_high: u32 = 1;
+    pub const pull_none: u32 = 0;
     pub const pull_up: u32 = 1;
 };
 
@@ -219,4 +227,64 @@ pub const Pin = struct {
     pub fn pack(port_id: u16, pin_index: u16) u16 {
         return (port_id << 8) | pin_index;
     }
+};
+
+/// The two user buttons: ICU channels, ELC events and the pressed/released
+/// encoding the board header publishes.
+pub const Sw = struct {
+    pub const sw1_irq: u8 = 13;
+    pub const sw2_irq: u8 = 12;
+    /// IELSR event numbers for IRQ12-DS and IRQ13-DS. HUM Table 13.4.
+    pub const event_irq12: u16 = 0x00D;
+    pub const event_irq13: u16 = 0x00E;
+    pub const released: u8 = 0;
+    pub const pressed: u8 = 1;
+    /// IRQMD: falling edge.
+    pub const irqmd_falling: u8 = 0;
+    /// FCLKSEL: digital filter sampled at PCLKB.
+    pub const fclksel_pclkb: u8 = 0;
+    pub const isr_prio_default: u8 = 8;
+};
+
+/// PFS register geometry. `ra8_pfs_pmn`, `pwpr_unlock` and `pwpr_lock` are
+/// static inlines in a C header, so they have no symbol to link against and
+/// the one place that needs a raw PFS write reproduces the math here.
+pub const Pfs = struct {
+    pub const base: u32 = 0x40400800;
+    pub const pmisc_base: u32 = 0x40400D00;
+    /// PWPR: non-secure PFS write protect.
+    pub const pwpr_off: u32 = 0x00C;
+    /// PWPRS: secure PFS write protect.
+    pub const pwprs_off: u32 = 0x014;
+    pub const pfswe_bit: u3 = 6;
+    pub const b0wi_bit: u3 = 7;
+    pub const psel_shift: u5 = 24;
+    pub const pmr_bit: u32 = 0x00010000;
+    pub const pdr_bit: u32 = 0x00000004;
+    pub const pins_per_port: u32 = 16;
+    pub const port_max: u32 = 14;
+    pub const pin_max: u32 = 15;
+};
+
+/// The J1 panel straps.
+pub const Panel = struct {
+    /// P606, active low.
+    pub const reset_l: u16 = 0x0606;
+    /// P514, backlight enable, active high.
+    pub const blen: u16 = 0x050E;
+    pub const reset_pulse_ms: u32 = 50;
+};
+
+/// IS25LX512M reset timing. tRLRH is 100 ns and tRHSL 100 us, but the
+/// post-release wait is the 10 ms tPUW power-up window, rounded up.
+pub const Xspi = struct {
+    pub const reset_low_ms: u32 = 1;
+    pub const reset_high_ms: u32 = 15;
+};
+
+/// Arduino header pin modes, matching the board header's enum.
+pub const Arduino = struct {
+    pub const mode_input: u8 = 0;
+    pub const mode_input_pullup: u8 = 1;
+    pub const mode_output: u8 = 2;
 };

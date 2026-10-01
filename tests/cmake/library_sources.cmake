@@ -294,15 +294,15 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # ra8_mpu has no C sources left: the descriptor validation, the RBAR/RLAR
 # encoding and the canonical boot attribute map are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
-# ra8_board_ek_ra8d2 is PARTLY migrated (#2998): the dual-core shared-RAM
-# descriptor, the USB full-speed port routing, the board bringup sequence, the
-# VCOM console stream handle and the clock-profile binding are Zig and come
-# from the archive registered in tests/cmake/zig_libraries.cmake. This glob
-# STAYS, unlike the fully-migrated libraries above, because src still holds the
-# pin/LED/switch core, the camera, MIPI panel, ethernet, audio-USB, touch and PDM
-# layers and src/boot. The archive links beside these objects; the five misc
-# suites for the ported units are untouched and take their entry points from
-# it behind the unchanged inc/ headers.
+# ra8_board_ek_ra8d2 is PARTLY migrated (#2998): the board identity, LEDs,
+# switches, GLCDC pin tables, panel straps, xSPI and SDHI routing and the
+# Arduino header (#3033), plus the dual-core shared-RAM descriptor, the USB
+# port routing, bringup, the VCOM console stream handle, the clock profile,
+# the camera, ethernet, audio-USB, touch and PDM layers, are Zig and come from
+# the archive registered in tests/cmake/zig_libraries.cmake. This glob STAYS,
+# unlike the fully-migrated libraries above, because src still holds the MIPI
+# panel layer and src/boot. The archive links beside those objects; the misc
+# suites take their entry points from it behind the unchanged inc/ headers.
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
 # ra8_lsm6dso has no C sources left: the register-level driver (the CTRL1_XL /
 # CTRL2_G encoders, the little-endian sample decoders, the temperature
