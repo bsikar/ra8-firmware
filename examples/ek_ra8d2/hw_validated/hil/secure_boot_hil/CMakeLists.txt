@@ -21,8 +21,12 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 # The RoT launch closure compiled straight in with RA8_ENABLE_ROOT_OF_TRUST:
-# ra8_dfu_launch + its run-target check (ra8_dfu_boot) + anti-rollback + ra8_rot +
-# ra8_psa_crypto, which is the Zig archive. ra8_rsip (software SHA) auto-globbed.
+# ra8_dfu_launch + anti-rollback + ra8_rot + ra8_psa_crypto, which is the Zig
+# archive. ra8_rsip (software SHA) auto-globbed. The run-target check the launch
+# gate calls is Zig now (#2918) and arrives through ra8_dfu's archive below,
+# which this app asks for by hand: it picks translation units out of ra8_dfu
+# rather than naming the library in LIBS, so the ra8_add_app() expansion that
+# registers a migrated library's archive never sees it.
 ra8_add_app(
   NAME secure_boot_hil
   STACK_BYTES 32768
@@ -35,8 +39,14 @@ ra8_add_app(
        ra8_dfu_program.c
   EXTRA_SRCS ${_d}/libs/ra8_dfu/src/ra8_rot.c
              ${_d}/libs/ra8_dfu/src/ra8_dfu_antirollback.c
-             ${_d}/libs/ra8_dfu/src/ra8_dfu_boot.c
              ${_d}/libs/ra8_dfu/src/ra8_dfu_launch.c
+)
+
+ra8_link_zig_library_for_cpu(
+  TARGET secure_boot_hil.elf
+  LIB ra8_dfu
+  CPU cortex_m85
+  FLOAT hard
 )
 
 # tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil).
