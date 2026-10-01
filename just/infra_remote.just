@@ -17,15 +17,10 @@ dashboard:
     data_dir="$(mktemp -d)"
     cleanup() { rm -rf -- "$data_dir"; }
     trap cleanup EXIT INT TERM
-    arc_ssh_argv=()
-    if arc_ssh_target="$(./.venv/bin/python scripts/dev/fleet.py ssh-target k3s-pve 2>/dev/null)"; then
-        read -r -a arc_ssh_argv <<<"$arc_ssh_target"
-    fi
     while :; do
         : >"$data_dir/jobs"
         : >"$data_dir/jobs.status"
         : >"$data_dir/checks"
-        : >"$data_dir/arc"
         head_sha="$(gh run list --branch dev --limit 20 --json headSha,createdAt --jq 'sort_by(.createdAt) | last.headSha')"
         if [[ -z "$head_sha" ]]; then
             echo "error: could not determine the latest dev commit" >&2
@@ -59,24 +54,14 @@ dashboard:
         gh api "repos/bsikar/ra8-firmware/commits/$head_sha/check-runs?per_page=100" \
             --jq '.check_runs[] | [.name,.status,(.conclusion // "-")] | @tsv' \
             >"$data_dir/checks" 2>&1 &
-        if ((${#arc_ssh_argv[@]})); then
-            "${arc_ssh_argv[@]}" \
-                'sudo -n k3s kubectl get autoscalingrunnersets -n arc-runners ra8-ci -o custom-columns="MIN:.spec.minRunners,MAX:.spec.maxRunners,CURRENT:.status.currentRunners" --no-headers' \
-                >"$data_dir/arc" 2>&1 &
-        else
-            echo "ARC capacity unavailable (fleet SSH target could not be resolved)" >"$data_dir/arc"
-        fi
         wait || true
-        arc_busy="$(awk -F '\t' '$5 == "ARC" && $4 == "BUSY" { busy++ } END { print busy + 0 }' "$data_dir/runners")"
-        arc_capacity="$(awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ { printf "%s active / %s max", $3, $2 }' "$data_dir/arc")"
-        [[ -n "$arc_capacity" ]] || arc_capacity="capacity unavailable"
         clear
         now="$(date '+%Y-%m-%d %H:%M:%S %Z')"
         echo "RA8 CI RUNNER DASHBOARD    $now"
         echo "latest dev commit: ${head_sha:0:12}    refresh: 5s    exit: Ctrl-C"
         echo
 
-        echo "== GitHub runners (ARC: ${arc_capacity}; ${arc_busy} busy) =="
+        echo "== GitHub runners =="
         awk -F '\t' -v jobs_file="$data_dir/jobs" -v jobs_ok="$(cat "$data_dir/jobs.status")" '
             FILENAME == jobs_file { count[$1]++; job[$1] = $2; next }
             BEGIN { printf "%-26s %-10s %-10s %-8s %-42s %s\n", "NAME", "STATUS", "ASSIGNMENT", "SOURCE", "LABELS", "ACTIVE JOB" }

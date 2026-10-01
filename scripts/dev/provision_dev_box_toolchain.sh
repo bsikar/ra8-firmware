@@ -9,8 +9,6 @@
 # The Ansible `dev_box` role is the only supported mutating entry point. It
 # asserts a Debian-family host, owns every apt package and source build, then
 # invokes this helper for release binaries and the isolated Python tool venv.
-# CI runners do NOT call this script: their complete container images are built
-# and deployed by the Ansible runner roles from infra/images/runner/Dockerfile.
 # Python tool versions come from pyproject.toml and uv.lock; non-Python host
 # tools still read their pins from .devcontainer/Dockerfile. The final
 # check_tool_versions.py --all is the exact toolchain-parity assertion.

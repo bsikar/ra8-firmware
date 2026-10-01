@@ -36,32 +36,25 @@ it: your machine joins as a CI runner pool.
 
 ```
 fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
-             resolvable name, never an ssh alias), what kind of host it is, how
-             many runner instances, its CPU and memory per instance, its labels,
-             its quiet-hours window. Everything below is derived from it, as is
+             resolvable name, never an ssh alias), what kind of host it is, and
+             which plays it runs. Everything below is derived from it, as is
              the ~/.ssh fragment `just infra::ssh_config` installs.
-ansible/     configures machines (dev_box, ci_runner, fleet_capacity,
-             hil_bench, c6_toolchain, ad2_tools)
-images/      the CI runner container image (devcontainer toolchain + runner)
+ansible/     configures machines (dev_box, k3s_node, openbao, hil_bench,
+             c6_toolchain, ad2_tools)
 network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
 
 `ansible/inventory/hosts.ini` is **generated** from `fleet.yml` on every
 `just infra::*` run and is git-ignored; the committed half is
 `ansible/inventory/host_vars/`, which holds structural facts about a machine
-(where its runner tree lives, which pools CI must avoid) and never a capacity
-knob. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
+and never a knob the declaration owns. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
 re-declares anything `fleet.yml` owns.
 
-**How many machines there are, how each is sized, and which labels it carries
-are questions only `fleet.yml` answers.** Nothing in this file restates them,
-deliberately: a prose copy of a capacity figure is wrong the first time anyone
-retunes a host and nothing notices.
+**Which machines there are and what each runs are questions only `fleet.yml`
+answers.** Nothing in this file restates them.
 
-**Adding a machine, retuning one, quiet hours, removing one:
-[`docs/CI_FLEET.md`](../docs/CI_FLEET.md).** It also carries the sizing formula
-and the measurements behind it, so a new host is sized by plugging in two
-numbers rather than re-deriving anything.
+**Adding a machine, retuning one, removing one:
+[`docs/CI_FLEET.md`](../docs/CI_FLEET.md).**
 
 ## What is codified, and what is not
 
@@ -74,7 +67,6 @@ the documentation, not a footnote:
 | `dev_box` (dev / verification box) | codified |
 | `k3s_node` (cluster + `helm`) | codified |
 | `openbao` (vault deployment) | codified |
-| `ci_runner` (ARC runner pool) | codified |
 | `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
 | `network/` (bench LAN: FortiGate + AP) | codified |
 | vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
@@ -87,10 +79,8 @@ VM and LXC definitions the whole rig sits on exist only as live guest config.
 
 ### Order of operations on a bare cluster
 
-`ci_runner` deploys ARC into "an existing k3s cluster" through helm, so it has
-always had two prerequisites that lived nowhere: the cluster, and a `helm` root
-could resolve. `k3s_node` is those prerequisites, and a host that declares both
-plays runs them in that order:
+`k3s_node` builds the cluster and installs `helm`; `openbao` deploys the vault
+onto it. A host that declares both plays runs them in that order:
 
 ```
 just infra::apply k3s-pve
@@ -248,36 +238,12 @@ generate them -- and finishes on `check_tool_versions.py --all`, the exact
 assertion the `toolchain-parity` gate makes. A box that cannot reach parity
 fails the play.
 
-## The CI runner pool spans several hosts
+## There is no runner pool
 
-Every runner role registers against the same repository and boots the same
-toolchain image, so a job behaves identically whichever host takes it. They
-differ only in shape and in where they run:
-
-| Role | Host kind | Shape |
-|---|---|---|
-| `ci_runner` | k3s node | ARC scale set, pods, autoscaling from zero |
-
-Instance counts, CPU and memory allocations, and the labels each host carries
-are **not** properties of the roles: every one of them comes from that host's
-block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
-
-**Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
-targets `[self-hosted, hil, ra8d2]` -- a dedicated dev-box listener that drives
-the remote physical bench, not a capacity pool. Nothing schedules against a bare
-`[self-hosted, Linux, X64]`; those labels are added by the runner itself and
-cannot be removed, and nothing targets them.
-
-Per-host labels are escape hatches, not scheduling targets: they exist so a
-specific host can be pinned or drained without editing every workflow.
-
-**Why more than one host.** The build farm was one machine, and the k3s node
-hosting the ARC pods shared its silicon with the dev container where every
-agent runs `just ci`. Contention, not runner count, was the throughput ceiling;
-the fix is more machines, not more pods on the first. Measured against the same
-gate and the same commit, an otherwise-idle host runs the heavy cross-build
-several times faster than a pod on the saturated node -- and that gap is
-contention, not CPU.
+CI is `tools/ra8ci`. The ARC scale set on the k3s node, the NAS and WSL Docker
+runners, and the runner image they booted are all removed. The only GitHub
+runner left is the dedicated HIL listener on the dev box, labelled
+`[self-hosted, hil, ra8d2]`, which drives the remote physical bench.
 
 ## The legacy `k3s-runner-*` pool is retired
 
@@ -343,8 +309,8 @@ The same holds for `JLinkExe` and `rfp-cli` on the HIL bench, which the
 
 ## Toolchain source of truth
 
-`.devcontainer/Dockerfile` pins every host tool. `just ci`, the Ansible-owned CI
-runner images, and the `dev_box` role all consume those pins; the
+`.devcontainer/Dockerfile` pins every host tool. `just ci` and the `dev_box`
+role both consume those pins; the
 `toolchain-parity` gate fails if any execution environment drifts from them.
 
 The Debian dev box has two non-overlapping provisioning layers. Its Ansible

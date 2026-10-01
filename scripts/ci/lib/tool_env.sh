@@ -207,7 +207,7 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
   # unwritable location degrades to the per-build build/tools/ rather than
   # failing a gate.
   #
-  # The canonical host directory is a MOUNT the deployed ARC runner image does
+  # The canonical host directory is a MOUNT a containerised runner image does
   # not carry, so on those runners the first candidate is unwritable and every
   # gate re-downloads the pinned doxygen, zig and rust into the per-build
   # build/tools/ that the snapshot then destroys. Fall back to the runner's own

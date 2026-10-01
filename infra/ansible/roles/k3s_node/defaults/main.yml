@@ -1,20 +1,15 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 ---
-# k3s_node role defaults -- the cluster substrate the ARC runner pool needs.
+# k3s_node role defaults -- the cluster substrate the OpenBao vault runs on.
 #
 # WHY THIS ROLE EXISTS
 # --------------------
-# `ci_runner` deploys ARC into "an existing k3s cluster" and calls
-# kubernetes.core.helm to do it. Neither the cluster nor helm was reproducible
-# from this repo: k3s came from a piped get.k3s.io run, and `helm` was a loose
-# binary in a user's ~/bin. On a fresh node `ci_runner` would fail at its first
-# helm task -- so the role that is codified could not actually run without a
-# hand-built prerequisite. This role is that prerequisite.
-#
-# It is deliberately SEPARATE from ci_runner: one is the cluster, the other is
-# a workload on it. A node can be rebuilt and rejoined without redeploying ARC,
-# and ARC can be redeployed without touching the cluster.
+# The openbao role deploys the vault into "an existing k3s cluster" through
+# kubernetes.core.helm. Neither the cluster nor helm was reproducible from this
+# repo: k3s came from a piped get.k3s.io run, and `helm` was a loose binary in
+# a user's ~/bin. This role is that prerequisite, kept separate from the
+# workload so the node can be rebuilt without redeploying the vault.
 
 # --- k3s --------------------------------------------------------------------
 #
@@ -42,7 +37,7 @@ k3s_node_kubeconfig: /etc/rancher/k3s/k3s.yaml
 # --- helm -------------------------------------------------------------------
 #
 # The binary kubernetes.core.helm shells out to. Installed system-wide to
-# /usr/local/bin rather than a user's ~/bin so the ci_runner role's `become:
+# /usr/local/bin rather than a user's ~/bin so the openbao role's `become:
 # true` helm tasks resolve it: the live node had it only in ~ubuntu/bin, which
 # works from an interactive login and not from a root task.
 k3s_node_helm_version: "v4.2.2"
@@ -51,11 +46,6 @@ k3s_node_helm_url: "https://get.helm.sh/\
   helm-{{ k3s_node_helm_version }}-linux-amd64.tar.gz"
 k3s_node_helm_bin: /usr/local/bin/helm
 
-# buildah, which the ci_runner role uses to build the runner image on the node.
-# Listed here rather than there because it is a property of the node, not of
-# the workload, and a node rebuilt without it fails ci_runner's first task.
-k3s_node_apt_packages:
-  - buildah
   - python3-venv
 
 # The Python client kubernetes.core needs on the target for its k8s modules.

@@ -154,9 +154,8 @@ dev_box_image_lock_dir: /var/cache/ra8-devcontainer-image-lock
 # commits that live only in one of them -- so nothing keeps it current, and it
 # was measured sitting at 116e45f07 while the control node's tree carried a new
 # pin. The role therefore ran an old provision_dev_box_toolchain.sh, installed
-# nothing new, and reported a converged box. That is
-# ci_runner_repo_dir's bug with a different name: a build input the
-# tooling does not control is not a build input, it is a rumour.
+# nothing new, and reported a converged box. A build input the tooling does
+# not control is not a build input, it is a rumour.
 #
 # A deterministic archive contains exactly the present cached and non-ignored
 # untracked files below the reviewed roots. The role verifies the extracted

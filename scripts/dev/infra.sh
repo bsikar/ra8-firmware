@@ -45,7 +45,6 @@
 #   check <host>         dry run: what would change, changing nothing
 #   apply <host>         converge that host to the declaration
 #   register-hil         first-register the declared native HIL listener
-#   scale <host> <n>     live capacity change; shrinking DRAINS, never kills
 #   status               what is deployed across the estate, right now
 #
 # `list`, `status` and `doctor` are strictly READ-ONLY and safe to run at any
@@ -275,12 +274,11 @@ EOF
   return "${rc}"
 }
 
-# --- check / apply / scale -------------------------------------------------
+# --- check / apply -------------------------------------------------------
 #
-# All four are fleet.py verbs. The ansible invocation, the inventory, the extra
-# vars and (for the Windows host) the copy-into-the-distro transport are all
-# derived from the declaration, so there is nothing left for this script to
-# assemble.
+# Both are fleet.py verbs. The ansible invocation, the inventory, the extra
+# vars and the transport are all derived from the declaration, so there is
+# nothing left for this script to assemble.
 
 require_playbook_env() {
   [[ -x "$MANAGED_BIN/ansible-playbook" ]] ||
@@ -306,11 +304,6 @@ cmd_register_hil() {
   [[ $# -eq 1 ]] || die "register-hil needs one typed vars file"
   require_playbook_env
   fleet_mutation register-hil "$@"
-}
-
-cmd_scale() {
-  [ $# -ge 2 ] || die "scale needs a host and a target instance count"
-  fleet_mutation scale "$1" "$2"
 }
 
 # --- status -----------------------------------------------------------------
@@ -363,10 +356,6 @@ cmd_status() {
   status_host star "bench Pi" \
     'ls /dev/serial/by-id/ 2>/dev/null | wc -l | tr -d "\n"; echo " serial device(s) by-id"' || true
   echo
-  echo "CI runner pool (ARC pods on k3s):"
-  status_host k3s-pve "scale set" \
-    'sudo k3s kubectl get autoscalingrunnersets -n arc-runners --no-headers 2>/dev/null | awk "{print \$1\"  min=\"\$2\" max=\"\$3\" current=\"\$4}"' || true
-  echo
   echo "OpenBao vault:"
   status_host k3s-pve "seal state" \
     'sudo k3s kubectl exec -n openbao openbao-0 -- bao status -format=json 2>/dev/null | python3 -c "import json,sys;d=json.load(sys.stdin);print(\"initialized=%s sealed=%s\"%(d[\"initialized\"],d[\"sealed\"]))" 2>/dev/null || echo "could not read status"' || true
@@ -407,7 +396,6 @@ usage: infra.sh <command> [args]
   check <host>        dry run -- report what would change, change nothing
   apply <host>        converge that machine to infra/fleet.yml
   register-hil        first-register the declared native HIL listener
-  scale <host> <n>    live capacity change; shrinking DRAINS, never kills
   status              what is deployed across the estate, right now
 
 HOST is a machine declared in infra/fleet.yml: $(host_names | tr '\n' ' ')
@@ -433,7 +421,6 @@ main() {
       cmd_apply "$@"
       ;;
     register-hil) cmd_register_hil "$@" ;;
-    scale) cmd_scale "$@" ;;
     -h | --help | help | "") usage ;;
     *) die "unknown command '${cmd}'. Run 'infra.sh help'." ;;
   esac

@@ -60,7 +60,6 @@ CI_POLICY_ROWS: tuple[ShellPolicyRow, ...] = (
         True,
     ),
     ("scripts/ci/devcontainer_run.sh", "portable", "entry", "bash", True, False),
-    ("scripts/ci/fleet_capacity.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/gates/analysis.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/gates/build.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/gates/checks.sh", "portable", "entry", "bash", True, False),
