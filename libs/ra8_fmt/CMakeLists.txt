@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # libs/ra8_fmt/CMakeLists.txt
 #
-# Intentionally a no-op, like ra8_mdl / ra8_c6link / ra8_io, and with no src/
+# Intentionally a no-op, like ra8_c6link / ra8_io, and with no src/
 # yet: this library is currently the header-only home of the format-neutral
 # byte-stream contract (ra8_fmt_io.h), so a consumer only ever needs
 # libs/ra8_fmt/inc on its include path.

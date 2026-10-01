@@ -27,9 +27,6 @@
 #include "fw_if_fs_posix.h"
 #include "fw_if_fs_posix_test_cases.h"
 #include "fw_if_fs_ra8_vfs.h"
-#include "mdl_hash.h"
-#include "mdl_pathfs.h"
-#include "mdl_storage.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -550,133 +547,6 @@ RA8_INTERNAL static void internal_run_conformance(const char* label, const fw_fs
   TEST_END(label);
 }
 
-/** @brief Complete caller-owned storage fixture used by portability vectors. */
-typedef struct internal_mdl_storage_fixture_t {
-  test_workspace_t file_work;                         /**< Stream backend workspace.      */
-  test_workspace_t transaction_work;                  /**< Transaction backend workspace. */
-  uint8_t          io_buffer[k_mdl_storage_io_bytes]; /**< Copy/hash buffer.              */
-  mdl_storage_t    storage;                           /**< Bound portable storage facade. */
-} internal_mdl_storage_fixture_t;
-
-/** @brief Canonical bytes copied and hashed by the portability vectors. */
-static const uint8_t s_mdl_source[] = {'m', 'e', 'd', 'i', 'a'};
-
-/** @brief Pre-existing destination bytes used to prove preservation. */
-static const uint8_t s_mdl_old[] = {'o', 'l', 'd'};
-
-/** @brief Reject overlapping workspaces, then bind disjoint portable storage. @details Implements the bounded init mdl storage fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @param[in,out] fixture Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
-RA8_INTERNAL
-static void internal_init_mdl_storage(const fw_fs_t* fs, internal_mdl_storage_fixture_t* fixture)
-{
-  fixture->storage = (mdl_storage_t){.fs                    = (const fw_fs_t*)(uintptr_t)UINT32_MAX,
-                                     .file_workspace        = (void*)(uintptr_t)UINT32_MAX,
-                                     .transaction_workspace = (void*)(uintptr_t)UINT32_MAX,
-                                     .io_buffer             = (uint8_t*)(uintptr_t)UINT32_MAX,
-                                     .file_workspace_bytes  = UINT32_MAX,
-                                     .transaction_workspace_bytes = UINT32_MAX,
-                                     .io_buffer_bytes             = UINT32_MAX};
-  const mdl_storage_t preserved = fixture->storage;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 mdl_storage_init(&fixture->storage,
-                                  fs,
-                                  fixture->file_work.bytes,
-                                  sizeof(fixture->file_work.bytes),
-                                  fixture->file_work.bytes,
-                                  sizeof(fixture->file_work.bytes),
-                                  fixture->io_buffer,
-                                  sizeof(fixture->io_buffer)));
-  const mdl_storage_t* got = &fixture->storage; /* field-wise: this type pads */
-  TEST_ASSERT(got->fs == preserved.fs);
-  TEST_ASSERT(got->file_workspace == preserved.file_workspace);
-  TEST_ASSERT(got->transaction_workspace == preserved.transaction_workspace);
-  TEST_ASSERT(got->io_buffer == preserved.io_buffer);
-  TEST_ASSERT_EQ(preserved.file_workspace_bytes, got->file_workspace_bytes);
-  TEST_ASSERT_EQ(preserved.transaction_workspace_bytes, got->transaction_workspace_bytes);
-  TEST_ASSERT_EQ(preserved.io_buffer_bytes, got->io_buffer_bytes);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 mdl_storage_init(&fixture->storage,
-                                  fs,
-                                  fixture->file_work.bytes,
-                                  sizeof(fixture->file_work.bytes),
-                                  fixture->transaction_work.bytes,
-                                  sizeof(fixture->transaction_work.bytes),
-                                  fixture->io_buffer,
-                                  sizeof(fixture->io_buffer)));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_mkdir(&fs->names, "/media"));
-  internal_write_file(fs, "/media/source.bin", s_mdl_source, sizeof(s_mdl_source));
-}
-
-/**
- * @brief Run downloader storage behavior against either filesystem binding
- * @details Proves transactional copy, exact portable hashing, guarded child
- * creation, overlap rejection, output preservation, and truthful replacement
- * capability behavior with one backend-independent vector.
- * @param[in] label Test runner label.
- * @param[in] fs Initialized POSIX or RAM/FAT/VFS filesystem facade.
- * @pre @p label and @p fs are non-null and remain live for the test.
- * @pre The backend root is empty and supports namespace, stream, transactions.
- * @post Every created file and directory is removed.
- * @post Assertions expose any behavioral difference between the two adapters.
- * @note Test-local and single-threaded.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_check_mdl_storage_portability(const char*    label,
-                                                                const fw_fs_t* fs)
-{
-  internal_mdl_storage_fixture_t fixture = {};
-  TEST_BEGIN(label);
-  internal_init_mdl_storage(fs, &fixture);
-
-  uint64_t hash = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&fixture.storage, "/media/source.bin", &hash));
-  TEST_ASSERT_EQ(mdl_hash_bytes(s_mdl_source, sizeof(s_mdl_source)), hash);
-  hash = UINT64_MAX;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, mdl_hash_file(&fixture.storage, "/media/missing.bin", &hash));
-  TEST_ASSERT_EQ(UINT64_MAX, hash);
-  fw_fs_file_t bounded_file = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 fw_fs_open(&fs->streams,
-                            "/media/source.bin",
-                            k_fw_fs_open_read,
-                            &bounded_file,
-                            fixture.file_work.bytes,
-                            sizeof(fixture.file_work.bytes)));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 mdl_hash_stream(&bounded_file,
-                                 (uint64_t)k_mdl_hash_max_file_bytes + 1U,
-                                 fixture.io_buffer,
-                                 sizeof(fixture.io_buffer),
-                                 &hash));
-  TEST_ASSERT_EQ(UINT64_MAX, hash);
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_close(&bounded_file));
-
-  char directory[k_fw_fs_path_cap] = {};
-  TEST_ASSERT(
-    mdl_join_dir_under(&fixture.storage, "/media", "chapter-1", directory, sizeof(directory)));
-  TEST_ASSERT(strcmp(directory, "/media/chapter-1") == 0);
-  TEST_ASSERT(!mdl_join_dir_under(&fixture.storage, "/media", "..", directory, sizeof(directory)));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 mdl_storage_copy_atomic(&fixture.storage, "/media/source.bin", "/media/copy.bin"));
-  internal_expect_file(fs, "/media/copy.bin", s_mdl_source, sizeof(s_mdl_source));
-
-  internal_write_file(fs, "/media/existing.bin", s_mdl_old, sizeof(s_mdl_old));
-  const ra8_err_t replaced =
-    mdl_storage_copy_atomic(&fixture.storage, "/media/source.bin", "/media/existing.bin");
-  if ((fs->caps.flags & (uint32_t)k_fw_fs_cap_atomic_replace) != 0U) {
-    TEST_ASSERT_EQ(k_ra8_ok, replaced);
-    internal_expect_file(fs, "/media/existing.bin", s_mdl_source, sizeof(s_mdl_source));
-  } else {
-    TEST_ASSERT_EQ(k_ra8_err_not_supported, replaced);
-    internal_expect_file(fs, "/media/existing.bin", s_mdl_old, sizeof(s_mdl_old));
-  }
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/existing.bin"));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/copy.bin"));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_unlink(&fs->names, "/media/source.bin"));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rmdir(&fs->names, "/media/chapter-1"));
-  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_rmdir(&fs->names, "/media"));
-  TEST_END(label);
-}
-
 /** @brief Fill a staged VFS file and prove failure never publishes it. @details Implements the bounded check vfs full media fixture step using caller-owned state. @param[in] fs Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
 RA8_INTERNAL static void internal_check_vfs_full_media(const fw_fs_t* fs)
 {
@@ -880,7 +750,6 @@ RA8_INTERNAL static void internal_test_posix_conformance(void)
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_init(&fs, &state, &cfg));
   ra8_test_fw_if_fs_check_contract_guards(&fs);
   internal_run_conformance("fw_if_fs POSIX conformance", &fs);
-  internal_check_mdl_storage_portability("mdl POSIX storage", &fs);
   ra8_test_fw_if_fs_posix_cases(&fs, &state, root);
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&state));
   TEST_ASSERT_EQ(0, rmdir(root));
@@ -922,7 +791,6 @@ RA8_INTERNAL static void internal_test_vfs_conformance(void)
   const fw_fs_ra8_vfs_cfg_t cfg = {.mount_name = "ram", .mount = s_mount, .removable_media = false};
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&fs, &state, &cfg));
   internal_run_conformance("fw_if_fs RAM/FAT/VFS conformance", &fs);
-  internal_check_mdl_storage_portability("mdl RAM/FAT/VFS storage", &fs);
   internal_check_vfs_full_media(&fs);
   internal_check_vfs_adapter_guards(&fs);
   ra8_test_fw_if_fs_vfs_init_guards(s_mount);

@@ -4,8 +4,7 @@
 # tools/rabook_imagepack -- single-file converter / inspector for the first-party
 # content container formats.
 #
-# The single-unit counterpart to the batch producers (apps/host/mdl,
-# tools/epub_compile): convert ONE file into ONE container, dump a container's
+# The single-unit counterpart to the batch producers (tools/epub_compile): convert ONE file into ONE container, dump a container's
 # structure, or round-trip a source to prove the produced bytes are correct.
 #
 #   cmake -B build -S . && cmake --build build -j

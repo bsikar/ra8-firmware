@@ -290,11 +290,6 @@ _pcc_repository_structure() (
   # needed, so it runs here as well as on the bench (build.sh calls it too).
   python3 scripts/checks/check_c6_pin_config.py --selftest
   python3 scripts/checks/check_c6_pin_config.py
-  # The adjacent offline gate protects the fetched-patch integration seams:
-  # staged paths/basenames, ESP-IDF component identity, and the weak/strong ABI
-  # symbol chain. These regressions otherwise surface only in a full C6 build.
-  bash scripts/builders/check_c6_integration.sh --selftest
-  bash scripts/builders/check_c6_integration.sh
   # infra/fleet.yml is the single registry of the machines CI runs on and how
   # much of each one it may use. The declaration has to hold together on its
   # own terms (capacity that fits the declared budget, per-instance floors, a

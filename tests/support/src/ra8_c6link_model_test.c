@@ -3,7 +3,7 @@
  * @brief Shared implementation of the bounded C6 link model-test fixture.
  *
  * @details Owns deterministic mock transport state and shared assertions used by
- * the split generic and media-download C6 link test translation units.
+ * the split C6 link test translation units.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

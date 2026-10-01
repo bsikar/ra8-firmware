@@ -26,6 +26,12 @@ function(ra8_add_zig_library)
     endif()
   endforeach()
 
+  # Several host tools and the aggregate tests each declare the libraries they
+  # link, so a second declaration of the same archive is a no-op, not an error.
+  if(TARGET ${RA8_ZIG_NAME}_zig_library)
+    return()
+  endif()
+
   if(NOT ZIG_EXECUTABLE)
     find_program(ZIG_EXECUTABLE NAMES zig)
   endif()

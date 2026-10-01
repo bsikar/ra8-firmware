@@ -30,32 +30,6 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
-    // The C6 half (#3195): the service-rule exports alone, for the ESP32-C6's
-    // rv32imac core. No compiler_rt and no PIC; the ESP-IDF link brings libgcc
-    // and places the objects itself.
-    const c6_target = b.resolveTargetQuery(.{
-        .cpu_arch = .riscv32,
-        .os_tag = .freestanding,
-        .abi = .none,
-        .cpu_model = .{ .explicit = &std.Target.riscv.cpu.generic_rv32 },
-        .cpu_features_add = std.Target.riscv.featureSet(&.{ .m, .a, .c, .zicsr, .zifencei }),
-    });
-    const c6_library = b.addLibrary(.{
-        .name = "ra8_c6link_mdl_service",
-        .linkage = .static,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/mdl_service_abi.zig"),
-            .target = c6_target,
-            .optimize = .ReleaseSmall,
-            .single_threaded = true,
-            .strip = false,
-        }),
-    });
-    c6_library.bundle_compiler_rt = false;
-    c6_library.root_module.pic = false;
-    const c6_step = b.step("c6-service", "Build the ESP32-C6 mdl service archive");
-    c6_step.dependOn(&b.addInstallArtifact(c6_library, .{}).step);
-
     const implementation_module = b.createModule(.{
         .root_source_file = b.path("src/internal/root.zig"),
         .target = target,
@@ -66,21 +40,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
-    // One stub instance per test binary, each pointed at the types module that
-    // binary already carries, so `mdl_types.zig` never lands in two modules.
-    const rpc_stub_internal = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_rpc_stub.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    rpc_stub_internal.addImport("types", implementation_module);
-    const rpc_stub_abi = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_rpc_stub.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    rpc_stub_abi.addImport("types", abi_module);
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -96,7 +55,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     abi_test_module.addImport("abi", abi_module);
-    abi_test_module.addImport("mdl_rpc_stub", rpc_stub_abi);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
     const frame_test_module = b.createModule(.{
@@ -114,129 +72,6 @@ pub fn build(b: *std.Build) void {
     });
     caps_test_module.addImport("implementation", implementation_module);
     const caps_tests = b.addTest(.{ .root_module = caps_test_module });
-
-    const storage_ram_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/storage_ram_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    storage_ram_test_module.addImport("implementation", implementation_module);
-    const storage_ram_tests = b.addTest(.{ .root_module = storage_ram_test_module });
-
-    const mdl_request_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_request_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_request_test_module.addImport("implementation", implementation_module);
-    const mdl_request_tests = b.addTest(.{ .root_module = mdl_request_test_module });
-
-    const mdl_service_rules_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_service_rules_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_service_rules_test_module.addImport("implementation", implementation_module);
-    const mdl_service_rules_tests = b.addTest(.{ .root_module = mdl_service_rules_test_module });
-
-    const mdl_chunk_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_chunk_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_chunk_test_module.addImport("implementation", implementation_module);
-    const mdl_chunk_tests = b.addTest(.{ .root_module = mdl_chunk_test_module });
-
-    const mdl_session_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_session_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_session_test_module.addImport("implementation", implementation_module);
-    const mdl_session_tests = b.addTest(.{ .root_module = mdl_session_test_module });
-
-    const mdl_pull_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_pull_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_pull_test_module.addImport("implementation", implementation_module);
-    const mdl_pull_tests = b.addTest(.{ .root_module = mdl_pull_test_module });
-
-    const mdl_envelope_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_envelope_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_envelope_test_module.addImport("implementation", implementation_module);
-    const mdl_envelope_tests = b.addTest(.{ .root_module = mdl_envelope_test_module });
-
-    const mdl_issue_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_issue_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_issue_test_module.addImport("implementation", implementation_module);
-    const mdl_issue_tests = b.addTest(.{ .root_module = mdl_issue_test_module });
-
-    const mdl_encode_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_encode_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_encode_test_module.addImport("implementation", implementation_module);
-    const mdl_encode_tests = b.addTest(.{ .root_module = mdl_encode_test_module });
-
-    const mdl_decode_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_decode_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_decode_test_module.addImport("implementation", implementation_module);
-    const mdl_decode_tests = b.addTest(.{ .root_module = mdl_decode_test_module });
-    const mdl_chunk_decode_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_chunk_decode_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_chunk_decode_test_module.addImport("implementation", implementation_module);
-    const mdl_chunk_decode_tests = b.addTest(.{ .root_module = mdl_chunk_decode_test_module });
-    const mdl_chunk_mcdc_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_chunk_mcdc_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_chunk_mcdc_test_module.addImport("implementation", implementation_module);
-    const mdl_chunk_mcdc_tests = b.addTest(.{ .root_module = mdl_chunk_mcdc_test_module });
-    const mdl_service_cancel_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_service_cancel_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_service_cancel_test_module.addImport("implementation", implementation_module);
-    const mdl_service_cancel_tests = b.addTest(.{ .root_module = mdl_service_cancel_test_module });
-    const mdl_service_next_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_service_next_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_service_next_test_module.addImport("implementation", implementation_module);
-    const mdl_service_next_tests = b.addTest(.{ .root_module = mdl_service_next_test_module });
-    const mdl_service_start_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_service_start_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_service_start_test_module.addImport("implementation", implementation_module);
-    const mdl_service_start_tests = b.addTest(.{ .root_module = mdl_service_start_test_module });
-
-    const mdl_take_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_take_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_take_test_module.addImport("implementation", implementation_module);
-    const mdl_take_tests = b.addTest(.{ .root_module = mdl_take_test_module });
 
     const rpc_wait_test_module = b.createModule(.{
         .root_source_file = b.path("tests/rpc_wait_test.zig"),
@@ -286,34 +121,9 @@ pub fn build(b: *std.Build) void {
     wifi_init_test_module.addImport("implementation", implementation_module);
     const wifi_init_tests = b.addTest(.{ .root_module = wifi_init_test_module });
 
-    const mdl_transfer_test_module = b.createModule(.{
-        .root_source_file = b.path("tests/mdl_transfer_test.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    mdl_transfer_test_module.addImport("implementation", implementation_module);
-    mdl_transfer_test_module.addImport("mdl_rpc_stub", rpc_stub_internal);
-    const mdl_transfer_tests = b.addTest(.{ .root_module = mdl_transfer_test_module });
-
-    const run_mdl_envelope_tests = b.addRunArtifact(mdl_envelope_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_frame_tests = b.addRunArtifact(frame_tests);
     const run_caps_tests = b.addRunArtifact(caps_tests);
-    const run_storage_ram_tests = b.addRunArtifact(storage_ram_tests);
-    const run_mdl_request_tests = b.addRunArtifact(mdl_request_tests);
-    const run_mdl_service_rules_tests = b.addRunArtifact(mdl_service_rules_tests);
-    const run_mdl_chunk_tests = b.addRunArtifact(mdl_chunk_tests);
-    const run_mdl_session_tests = b.addRunArtifact(mdl_session_tests);
-    const run_mdl_pull_tests = b.addRunArtifact(mdl_pull_tests);
-    const run_mdl_issue_tests = b.addRunArtifact(mdl_issue_tests);
-    const run_mdl_encode_tests = b.addRunArtifact(mdl_encode_tests);
-    const run_mdl_decode_tests = b.addRunArtifact(mdl_decode_tests);
-    const run_mdl_chunk_decode_tests = b.addRunArtifact(mdl_chunk_decode_tests);
-    const run_mdl_chunk_mcdc_tests = b.addRunArtifact(mdl_chunk_mcdc_tests);
-    const run_mdl_service_cancel_tests = b.addRunArtifact(mdl_service_cancel_tests);
-    const run_mdl_service_next_tests = b.addRunArtifact(mdl_service_next_tests);
-    const run_mdl_service_start_tests = b.addRunArtifact(mdl_service_start_tests);
-    const run_mdl_take_tests = b.addRunArtifact(mdl_take_tests);
     const run_rpc_wait_tests = b.addRunArtifact(rpc_wait_tests);
     const run_sta_cfg_tests = b.addRunArtifact(sta_cfg_tests);
     const run_rx_route_tests = b.addRunArtifact(rx_route_tests);
@@ -338,28 +148,11 @@ pub fn build(b: *std.Build) void {
     const run_wifi_init_tests = b.addRunArtifact(wifi_init_tests);
     const run_bare_rpc_tests = b.addRunArtifact(bare_rpc_tests);
     const run_sta_policy_tests = b.addRunArtifact(sta_policy_tests);
-    const run_mdl_transfer_tests = b.addRunArtifact(mdl_transfer_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_c6link tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_frame_tests.step);
     test_step.dependOn(&run_caps_tests.step);
-    test_step.dependOn(&run_storage_ram_tests.step);
-    test_step.dependOn(&run_mdl_request_tests.step);
-    test_step.dependOn(&run_mdl_service_rules_tests.step);
-    test_step.dependOn(&run_mdl_chunk_tests.step);
-    test_step.dependOn(&run_mdl_session_tests.step);
-    test_step.dependOn(&run_mdl_pull_tests.step);
-    test_step.dependOn(&run_mdl_envelope_tests.step);
-    test_step.dependOn(&run_mdl_issue_tests.step);
-    test_step.dependOn(&run_mdl_encode_tests.step);
-    test_step.dependOn(&run_mdl_decode_tests.step);
-    test_step.dependOn(&run_mdl_chunk_decode_tests.step);
-    test_step.dependOn(&run_mdl_chunk_mcdc_tests.step);
-    test_step.dependOn(&run_mdl_service_cancel_tests.step);
-    test_step.dependOn(&run_mdl_service_next_tests.step);
-    test_step.dependOn(&run_mdl_service_start_tests.step);
-    test_step.dependOn(&run_mdl_take_tests.step);
     test_step.dependOn(&run_rpc_wait_tests.step);
     test_step.dependOn(&run_sta_cfg_tests.step);
     test_step.dependOn(&run_rx_route_tests.step);
@@ -368,6 +161,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_wifi_init_tests.step);
     test_step.dependOn(&run_bare_rpc_tests.step);
     test_step.dependOn(&run_sta_policy_tests.step);
-    test_step.dependOn(&run_mdl_transfer_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

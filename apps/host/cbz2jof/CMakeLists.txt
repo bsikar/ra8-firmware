@@ -12,7 +12,7 @@
 #
 #   cmake -B build -S . && cmake --build build -j && ctest --test-dir build
 #
-# Layout mirrors apps/host/mdl: the C worker interface lives in inc/, its
+# Layout: the C worker interface lives in inc/, its
 # implementation in src/, the Go CLI in cmd/cbz2jof/, and the Go tests in
 # tests/.
 cmake_minimum_required(VERSION 3.20)

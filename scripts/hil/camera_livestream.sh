@@ -207,11 +207,11 @@ if [[ "$-" == *p* ]]; then
   if [[ -z "$HEX_PATH" ]]; then
     CURRENT_STAGE="firmware build"
     (
-      unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK RA8_MEDIA_DOWNLOAD_URL
+      unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK
       cmake -S "$APP" -B "$BUILD_DIR" \
         -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/toolchain-ra8d2.cmake" \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -U 'RA8_C6_WIFI_*' -U RA8_MEDIA_DOWNLOAD_URL \
+        -U 'RA8_C6_WIFI_*' \
         -DRA8_USE_THREADX=ON -DRA8_USE_NETXDUO=ON -DRA8_USE_ESP_HOSTED=ON
       cmake --build "$BUILD_DIR" --parallel 4
     )

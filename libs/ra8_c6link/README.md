@@ -50,33 +50,6 @@ Judging it by data-frame rules is what made a healthy link report a failure
 once already, so the idle frame gets its own verdict rather than being called
 malformed.
 
-## The media-download extension
-
-One checked-in schema under `proto/` generates the protobuf-c codec committed
-beside it. Regeneration pins the exact generator pair that produced the committed
-output (protobuf-c 1.5.2 / libprotoc 35.1), so it is deterministic rather than
-dependent on whichever protoc the developer happens to have installed.
-
-Two different checks guard that pair, and they prove different things:
-
-- `scripts/checks/check_proto_codec_pairing.py` runs in the `artefact-freshness`
-  gate on every push. It re-derives the SHA-256 of the schema and of both
-  generated files from the tree and compares them with
-  `.github/proto-codec-pairing.txt`, which `gen_ra8_media_proto.sh --write`
-  rewrites in the same command it regenerates. A hand edit to a generated file,
-  or a schema change with a forgotten regenerate, fails the gate. It needs no
-  generator installed.
-- `scripts/gen/gen_ra8_media_proto.sh --check` proves the stronger claim, that
-  the committed C is byte-for-byte what the pinned generator emits for this
-  schema. It runs only where that generator pair exists, which today is neither
-  the dev box nor the CI image, so **it is not gated**. Wiring the pinned
-  generator into the image is tracked by #715.
-
-A transfer declares its format in the start request and the far side echoes it
-in the acceptance. `loose` means an untyped source body; a named artifact such
-as RABOOK must be supplied in exactly that representation and pass the
-RA8-owned validator before the storage transaction may publish it.
-
 ## Tested without hardware
 
 The modelled ESP32-C6 under `tests/` is not a recorded byte stream: it

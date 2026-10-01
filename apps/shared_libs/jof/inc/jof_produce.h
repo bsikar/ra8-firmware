@@ -255,11 +255,9 @@ jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_by
  *
  * This is the narrower of the tree's two image-identification tables, and it
  * answers geometry only. A caller that needs to *name* incoming bytes (file
- * extension, MIME type) has no answer here and today reaches for the wider
- * table in `apps/shared_libs/mdl` (`mdl_urlname_sniff_image_type()`), which
- * additionally recognises GIF and BMP -- containers this producer cannot
- * decode. Neither table is the platform's answer and a third consumer would
- * write a third one; converging them behind one primitive is tracked by #748.
+ * extension, MIME type) has no answer here and would need a wider table that
+ * also recognises GIF and BMP -- containers this producer cannot decode. A
+ * consumer must not grow its own table; converging them behind one primitive is tracked by #748.
  *
  * @param[in]  data  Encoded source bytes (non-NULL).
  * @param[in]  len   Readable byte count at @p data.
