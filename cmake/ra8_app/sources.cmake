@@ -187,6 +187,27 @@ macro(_ra8_app_collect_sources)
     REGEX
     "/src/boot/"
   )
+  # The RA8 clock adapter travels with the board layer. Since d0ec9994 (#693)
+  # ra8_board_ek_ra8d2_clock_profile.c includes fw_if_clock_ra8.h and calls
+  # fw_clock_ra8_iface(), whose only definition is libs/if_ra8_cgc. No app
+  # names if_ra8_cgc in LIBS, and none should: it is the adapter the board
+  # binds to, not a library an app picks. Without this block every app for
+  # the board stopped compiling at that #include. The Zig graph links the
+  # same adapter beside the board archive (board_archive.chip_clock_adapter).
+  #
+  # The port it implements comes along for the same reason: the board's
+  # ra8_board_clock_profile_bind() calls fw_clock_bind(), and since 950d187b
+  # the HIL examples call fw_clock_rate_for(ra8_board_clock(), ...). Both are
+  # defined in libs/if/src/fw_if_clock.c, which no app compiled unless it
+  # named `if` in LIBS. Only that one unit, not the whole of libs/if; an app
+  # that does name `if` lists the same path again and CMake builds it once.
+  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/src")
+    file(GLOB _ra8_lib_clock_adapter CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/if_ra8_cgc/src/*.c)
+    list(APPEND _ra8_lib_board ${_ra8_lib_clock_adapter})
+    if(EXISTS "${RA8_REPO_ROOT}/libs/if/src/fw_if_clock.c")
+      list(APPEND _ra8_lib_board ${RA8_REPO_ROOT}/libs/if/src/fw_if_clock.c)
+    endif()
+  endif()
   file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_secure_app/src/*.c)
   _ra8_app_require_compilable_lib(
     ra8_secure_app "${RA8_REPO_ROOT}/libs/ra8_secure_app" "links ra8_secure_app into every app"
@@ -214,6 +235,12 @@ macro(_ra8_app_collect_sources)
   set(_ra8_lib_extra "")
   set(_ra8_lib_extra_off_target "")
   set(_ra8_lib_inc "")
+  # The clock adapter's header rides with the board too: both the board's
+  # clock_profile.c and its public clock_profile.h include fw_if_clock_ra8.h
+  # (see the adapter block above).
+  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc")
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc)
+  endif()
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
       set(_ra8_lib_path "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
