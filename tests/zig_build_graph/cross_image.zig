@@ -23,6 +23,7 @@ const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
+const migrated_libs = @import("migrated_libs.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
@@ -153,6 +154,43 @@ fn addCrossApp(
             arm_target,
             globals.configuration.zig_optimize,
         )) catch @panic("OOM");
+    }
+
+    // Every OTHER library the app names in LIBS that contributes an archive,
+    // decided by cmake/ra8_app/sources.cmake:371's rule rather than by a copy
+    // of its output: build.zig present AND the library's primary src/<lib>.c
+    // gone. See migrated_libs.zig for why the second clause is the real test.
+    //
+    // app_table.zig's zig_libraries held the OUTPUT of that rule by hand, and
+    // a hand-kept copy of a derived set cannot drift loudly: eleven of twelve
+    // apps carried an empty list while six of the libraries the table names
+    // qualify. zig_libraries stays as the explicit escape hatch and is unioned
+    // with this; the board and ra8_core are already linked above, so both are
+    // skipped here rather than linked twice.
+    //
+    // Both lists, because sources.cmake runs the SAME rule over LIBS (:371)
+    // and over OFF_TARGET_LIBS (:437), as two copies of one block. An
+    // off-target library's units are compiled into the app like any other,
+    // just with RA8_OFF_TARGET defined on those units alone, and its archive
+    // is registered identically. crypto_aes_demo is the case in the table: it
+    // reaches ra8_psa_crypto through OFF_TARGET_LIBS, not LIBS, so a LIBS-only
+    // sweep leaves exactly that app's archive out.
+    for ([_][]const []const u8{ app.libraries, app.off_target_libs }) |list| {
+        for (list) |library| {
+            if (std.mem.eql(u8, library, board_lib)) continue;
+            if (std.mem.eql(u8, library, core_archive.lib_name)) continue;
+            var already = false;
+            for (app.zig_libraries) |named| {
+                if (std.mem.eql(u8, named, library)) already = true;
+            }
+            if (already) continue;
+            if (!migrated_libs.contributesArchive(b, library)) continue;
+            const dependency = b.dependency(library, .{
+                .target = arm_target,
+                .optimize = globals.configuration.zig_optimize,
+            });
+            archives.append(dependency.artifact(library).getEmittedBin()) catch @panic("OOM");
+        }
     }
 
     // Everything the app names in USES. Each one is built as its own archive
