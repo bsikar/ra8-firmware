@@ -8,7 +8,7 @@
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
 # clock: 280 reference(s)
-# display: 6 reference(s)
+# display: 1 reference(s)
 # gpio: 3 reference(s)
 # timer: 47 reference(s)
 #
@@ -232,7 +232,6 @@ examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/display_pal_animation/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/src/main.c	display	5
 examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/threadx_usbx_cdc_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/src/main.c	clock	2
