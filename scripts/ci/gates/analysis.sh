@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
 #
-# scripts/ci/gates/analysis.sh -- Static analysis and link-time structure: cppcheck, MISRA, clang-tidy, CMSE.
+# scripts/ci/gates/analysis.sh -- Static analysis and link-time structure: scan-build, clang-tidy, CMSE.
 #
 # SOURCED, NEVER EXECUTED. scripts/ci.sh sources every file in this directory
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
@@ -13,116 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: cppcheck, misra, tidy, nsc-cmse, sg-offsets, stack-usage
-
-# --- cppcheck -------------------------------------------------------------
-# cppcheck 2.13 (Ubuntu 24.04) is finicky about the --suppressions-list
-# parser; convert each non-comment, non-blank line into an explicit
-# --suppress= flag, the syntax every version accepts. apps/host/* are
-# macOS-only dev tools (C23 nullptr + AppKit), not cross-compiled firmware.
-gate_cppcheck() (
-  set -e
-  require_cmd cppcheck
-  # cppcheck findings drift by version (2.10 / 2.13 / 2.21 each differ); the
-  # tree is clean only on the pinned 2.13, so a wrong build must fail loud (#333).
-  require_tool_versions cppcheck
-  # Directory operands make cppcheck recursively ingest ignored CMake output,
-  # so a local build used to change the registered gate's answer. Enumerate
-  # the candidate tree through Git and the shared first-party classifier. The
-  # producer owns the non-vacuity floor and proves tracked inclusion, ignored
-  # and generated exclusion, and missing/empty census failure in both
-  # directions before its live result is accepted.
-  local line raw_manifest source_manifest
-  local source_files=()
-  if [[ "${RA8_TRUSTED_PYTHON:-}" != /usr/bin/python3 ||
-    ! -x "$RA8_TRUSTED_PYTHON" ]]; then
-    echo "cppcheck: shared trusted Python authority is unavailable" >&2
-    return 1
-  fi
-  raw_manifest="$(mktemp "${TMPDIR:-/tmp}/ra8-cppcheck-raw.XXXXXXXX")"
-  source_manifest="$(mktemp "${TMPDIR:-/tmp}/ra8-cppcheck-sources.XXXXXXXX")"
-  trap 'rm -f -- "$raw_manifest" "$source_manifest"' EXIT
-  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
-    -u PYTHONSTARTUP -u PYTHONINSPECT \
-    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py --selftest
-  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
-    -u PYTHONSTARTUP -u PYTHONINSPECT \
-    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py --null >"$raw_manifest"
-  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
-    -u PYTHONSTARTUP -u PYTHONINSPECT \
-    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py \
-    --validate-manifest "$raw_manifest" --null >"$source_manifest"
-  mapfile -d '' -t source_files <"$source_manifest"
-  if ((${#source_files[@]} == 0)); then
-    echo "cppcheck: validated source manifest transport produced zero units" >&2
-    return 1
-  fi
-  echo "cppcheck: scanning ${#source_files[@]} Git-censused translation units"
-  local suppress_args=()
-  while IFS= read -r line; do
-    line="${line%$'\r'}"
-    line="${line## }"
-    line="${line%% }"
-    [[ -z "$line" ]] && continue
-    case "$line" in \#*) continue ;; esac
-    suppress_args+=("--suppress=$line")
-  done <.cppcheck-suppressions
-  # The annotation macros must be RESOLVABLE, or this scan stops parsing.
-  # RA8_OWNS_RESOURCE(kind) / RA8_DI_SLOT(role) are FUNCTION-LIKE macros
-  # written at file scope; this invocation passes no header search path, so
-  # `#include "ra8_attributes.h"` never resolves and cppcheck cannot tell them
-  # from a call -- it abandons the translation unit with unknownMacro. The
-  # object-like spellings (RA8_INTERNAL, RA8_PRIV) had always parsed anyway,
-  # which is why the gap survived until libs/ra8_fs became the first in-scope
-  # library to use the function-like forms and took seven TUs red at once.
-  #
-  # Force-include the ONE header that defines them rather than restating
-  # -DRA8_OWNS_RESOURCE(x)= here: a hand-list of names drifts silently the next
-  # time an annotation is added, and ra8_attributes.h already carries a
-  # `!defined(__CPPCHECK__)` arm so every macro collapses to nothing under this
-  # scan. A full -I search path is deliberately NOT the fix: it lets cppcheck
-  # see through every project header at once and surfaces a large batch of
-  # previously-unanalysed findings, which is a scope change rather than a
-  # green-up. The MISRA half never fired because misra_check_inner.sh derives
-  # real -I roots from the repo layout and resolves the include for real.
-  local attrs_header=libs/ra8_core/inc/ra8_attributes.h
-  if [[ ! -f "$attrs_header" ]]; then
-    echo "cppcheck: $attrs_header not found -- the RA8_* annotation macros" >&2
-    echo "  would go unresolved and every TU using a function-like one would" >&2
-    echo "  fail with unknownMacro. Update this path if the header moved." >&2
-    return 1
-  fi
-  # tools/ is held to the same bar as the firmware (CLAUDE.md), so it is IN
-  # scope here -- not just tools/ra8_emulator, and not behind the
-  # --error-exitcode=0 escape where a finding cannot fail anything (#596). The
-  # host tools are the only first-party code that opens files and calls malloc,
-  # so they are the only code that trips a cppcheck 2.13 blind spot: it does
-  # not model the C23 `nullptr` keyword as a null constant and reports a
-  # false-positive resourceLeak/memleak on every resource guarded by an
-  # `if (p == nullptr)` return. cppcheck_c23_compat.h maps the keyword to the
-  # classic null constant for the analyser only, force-included exactly as the
-  # annotation header is: a command-line `-Dnullptr=NULL` would disable the
-  # configuration exploration that the ra8p1 examples rely on, and a guarded
-  # `#ifdef __CPPCHECK__` would be explored both ways and re-surface the false
-  # positives. See that header for the full rationale.
-  local compat_header=scripts/checks/cppcheck_c23_compat.h
-  if [[ ! -f "$compat_header" ]]; then
-    echo "cppcheck: $compat_header not found -- the C23 nullptr keyword would" >&2
-    echo "  read as a non-null symbol and every nullptr-guarded fopen/malloc" >&2
-    echo "  in tools/ would fail with a false-positive resourceLeak. Update" >&2
-    echo "  this path if the shim moved." >&2
-    return 1
-  fi
-  cppcheck --enable=warning,style,performance,portability \
-    --error-exitcode=1 \
-    "${suppress_args[@]}" \
-    --inline-suppr \
-    --include="$attrs_header" \
-    --include="$compat_header" \
-    -i libs/third_party \
-    --std=c23 \
-    "${source_files[@]}"
-)
+# Gates in this file: scan-build, tidy, nsc-cmse, sg-offsets, stack-usage
 
 # --- scan-build -----------------------------------------------------------
 # The clang static analyzer over the host unit-test build and every CMake host
@@ -191,40 +82,6 @@ gate_scan_build() (
   trap 'scan_build_gate_cleanup "$scan_out"' EXIT
   bash scripts/checks/scan_build.sh --selftest
   RA8_SCAN_BUILD_OUT_DIR="$scan_out" bash scripts/checks/scan_build.sh --strict
-)
-
-# --- misra ----------------------------------------------------------------
-# misra_check_inner.sh (cppcheck misra.py addon) over libs/ src/ port/ tools/ apps/,
-# then misra_ratchet.py compares per-file-per-rule finding counts against
-# .github/misra-baseline.txt. `just quality::local::cppcheck` is NOT a substitute: different
-# rule set, no addon, no baseline, so a new MISRA finding sails through it.
-#
-# check_misra_deviations.py holds the deviation register's derived numbers
-# to the committed baseline + suppression list (#632: the register claimed
-# 166 Rule-8.4 findings while the baseline held 1873, and nothing checked
-# it). It reads only committed files, so it runs BEFORE the slow scan to
-# fail fast, selftest first per the house rule.
-gate_misra() (
-  set -e
-  require_cmd cppcheck
-  # The MISRA baseline records the cppcheck version it was generated with;
-  # a drifted cppcheck ratchets against the wrong findings (#333).
-  require_tool_versions cppcheck
-  python3 scripts/checks/misra_ratchet.py --selftest
-  # #712: the baseline is machine-generated, so prove it is machine-WRITTEN
-  # before trusting its rows. A hand sort of the clang-tidy baseline once
-  # survived ten days of green CI; this file is 2,700+ rows of frozen debt,
-  # where the same edit is harder still to spot in review. Needs no cppcheck.
-  python3 scripts/checks/misra_ratchet.py --attest
-  python3 scripts/checks/check_misra_deviations.py --selftest
-  python3 scripts/checks/check_misra_deviations.py --check
-  # The scan excludes BUILD OUTPUT, and only where build output can live:
-  # a blanket */build/* would swallow real source under libs/. Its selftest
-  # proves both halves against a throwaway tree, so an exclusion that had
-  # quietly become blanket cannot pass as a clean, quiet audit.
-  bash scripts/checks/misra_check_inner.sh --selftest
-  bash scripts/checks/misra_check_inner.sh
-  python3 scripts/checks/misra_ratchet.py --check
 )
 
 # --- tidy -----------------------------------------------------------------

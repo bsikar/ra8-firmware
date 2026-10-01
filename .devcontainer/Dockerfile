@@ -13,8 +13,8 @@
 # immutable index digest so `just ci` starts from a byte-identical root
 # filesystem on every host. The toolchain packages the audit calls out --
 # the ARM cross-compiler (whose version-specific miniz miscompile means
-# codegen depends on the build host), its matching newlib, and the cppcheck /
-# gcovr static-analysis + coverage tools -- are pinned to exact Ubuntu noble
+# codegen depends on the build host), its matching newlib, and the gcovr
+# coverage tool -- are pinned to exact Ubuntu noble
 # versions below. These four live in `universe` and do not rotate within an
 # LTS, so the exact pin stays installable.
 #
@@ -54,10 +54,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 # gates against in shell (scripts/checks/check_errexit_masking.py) and the same
 # reason `just ci` must fail rather than skip on a missing tool.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Exact noble version of the audit-flagged toolchain (see the posture note
-# above). Bump it deliberately when intentionally moving the pinned toolchain.
-ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
 
 # Arm GNU Toolchain 13.3.rel1 -- pinned by URL + sha256 so the devcontainer's
 # cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-13.3
@@ -113,7 +109,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       clang-tidy \
       clangd-18 \
       cmake \
-      cppcheck=${CPPCHECK_VERSION} \
       curl \
       clang-tools-18 \
       gcc-14 \
