@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_mkbookimg_names.c
- * @brief Host test: mkbookimg stores each book under its own long basename (#633).
+ * @brief Host test: mkbookimg stores each book under its own long basename.
  *
  * @details
  * Before #600 gave `ra8_fs` VFAT long-name write, `tools/mkbookimg` emitted

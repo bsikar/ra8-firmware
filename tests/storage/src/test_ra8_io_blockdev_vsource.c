@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_blockdev_vsource.c
- * @brief Unit tests for the block-device -> ra8_vsource read adapter (#147/#155).
+ * @brief Unit tests for the block-device -> ra8_vsource read adapter.
  *
  * @details
  * Proves the Ring-4 adapter (`ra8_io_blockdev_vsource.h`) reads back bytes

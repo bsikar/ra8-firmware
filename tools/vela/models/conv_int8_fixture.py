@@ -262,7 +262,7 @@ def build() -> bytes:
     opcodes = _opcodes(builder, schema)
     buffers = _buffers(builder, schema, (b"", b"", _weight_bytes(), _bias_bytes(), b""))
 
-    description = builder.CreateString("ra8 npu int8 conv fixture (#227)")
+    description = builder.CreateString("ra8 npu int8 conv fixture")
     schema.Model.Start(builder)
     schema.Model.AddVersion(builder, SCHEMA_VERSION)
     schema.Model.AddOperatorCodes(builder, opcodes)

@@ -64,7 +64,7 @@ ra8_add_app(
 #     identical at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and ASan-
 #     clean (guarded by apps/board/stand_alone/ereader/tests/src/test_ereader_shelf_geometry.c),
 #     and -- since
-#     ra8_emulator's LOB decode was fixed (#233) -- ra8_emulator now renders the -O1
+#     ra8_emulator's LOB decode was fixed -- ra8_emulator now renders the -O1
 #     reader byte-identically to -Og too (both fb=0ADB62C6). So real M85 silicon
 #     (which has the Armv8.1-M LOB + MVE hardware natively) runs the reader at
 #     -O1+ with no ra8_emulator relaxation.

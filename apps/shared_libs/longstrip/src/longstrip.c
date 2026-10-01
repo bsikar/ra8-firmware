@@ -1,6 +1,6 @@
 /**
  * @file longstrip.c
- * @brief Continuous vertical-scroll (longstrip) engine over a JOF atlas (#289).
+ * @brief Continuous vertical-scroll (longstrip) engine over a JOF atlas.
  *
  * @details Implements longstrip.h: virtual-canvas geometry, the scroll +
  *          fling state machine, bounded directional prefetch and the visible

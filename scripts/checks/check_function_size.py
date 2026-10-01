@@ -9,7 +9,7 @@ unit-test build drops every ARM-cross-compiled translation unit, so ~90% of
 ``port/``, much of ``libs/ra8_hal/``, and every example ``main.c`` were exempt.
 This checker walks source text directly so the rule reaches all of it.
 
-Scope is derived, not listed (#359)
+Scope is derived, not listed
 -----------------------------------
 The scope was a hand-written ``SCAN_ROOTS`` tuple that omitted ``scripts/``,
 and the parser understood only C -- so Rule 4 had never applied to a single

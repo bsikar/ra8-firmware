@@ -6,7 +6,7 @@
 //! anti-rollback counter behind it.
 //!
 //! The library is Zig only; it has no C implementation. It lived inside
-//! `ra8_dfu` while it was being ported (#2943, #2947), which left its archive
+//! `ra8_dfu` while it was being ported, which left its archive
 //! unreachable: `cmake/ra8_app/sources.cmake` resolves a `LIBS` entry to
 //! `libs/<name>`, so the four apps that declare `LIBS ra8_rot` resolved
 //! nothing and linked no root of trust at all. Its own directory is what

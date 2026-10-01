@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for the baseline JPEG encoder (#2795): `ra8_jpeg_sw_encode`
+//! C ABI membrane for the baseline JPEG encoder: `ra8_jpeg_sw_encode`
 //! from `libs/ra8_jpeg/inc/ra8_jpeg_sw.h`. The decisions live in the
 //! `internal/` modules; this file owns the exported symbol, the argument
 //! guards, the `ra8_err_t` mapping and the module-static working set.

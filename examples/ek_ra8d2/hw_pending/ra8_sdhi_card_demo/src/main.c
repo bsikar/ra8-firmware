@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/src/main.c
- * @brief Native 4-bit SDHI raw-block round-trip on the EK-RA8D2 microSD (#123).
+ * @brief Native 4-bit SDHI raw-block round-trip on the EK-RA8D2 microSD.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

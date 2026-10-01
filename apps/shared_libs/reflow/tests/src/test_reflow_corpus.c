@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_corpus.c
- * @brief Content corpus + live-layout pagination-cache acceptance (#79).
+ * @brief Content corpus + live-layout pagination-cache acceptance.
  *
  * @details
  * Closes the issue #79 acceptance for the import-time pagination cache:
@@ -334,7 +334,7 @@ RA8_INTERNAL static void internal_test_corpus_malformed_robust(void)
 }
 
 /* =========================================================================
- * Real EPUB container corpus (#79): a public-domain Project Gutenberg book
+ * Real EPUB container corpus: a public-domain Project Gutenberg book
  * (H.G. Wells, "The Time Machine") assembled in memory with miniz, opened via
  * epub, and run chapter-by-chapter through the same layout -> cache check.
  * ========================================================================= */

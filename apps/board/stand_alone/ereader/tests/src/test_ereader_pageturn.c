@@ -1,6 +1,6 @@
 /**
  * @file test_ereader_pageturn.c
- * @brief Host unit tests for the e-reader page-turn + input decisions (#78).
+ * @brief Host unit tests for the e-reader page-turn + input decisions.
  *
  * @details
  * Exercises the pure decision functions in the reader's `er_pageturn.h`

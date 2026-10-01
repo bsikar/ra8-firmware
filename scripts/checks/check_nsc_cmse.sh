@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/check_nsc_cmse.sh -- verify every Non-Secure-Callable veneer in
-# libs/ra8_nsc compiles under -mcmse with TrustZone enabled (#54).
+# libs/ra8_nsc compiles under -mcmse with TrustZone enabled.
 #
 # `cmse_nonsecure_entry` rejects any veneer whose arguments spill past the
 # argument registers (AAPCS r0-r3): "attribute not available to functions with

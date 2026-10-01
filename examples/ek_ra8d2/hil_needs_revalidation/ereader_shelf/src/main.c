@@ -102,7 +102,7 @@ static uint32_t sh_fb_hash(void)
  * @details The `fb=` hash digests the rendered SHELF (unchanged by this feature),
  *          so the ra8_emulator uart_scrape gate still catches cover-decode / layout
  *          regressions. The appended `cbz=`/`cbr=`/`rtl=` fields pin the newly
- *          integrated comic decode + RTL path (#236) -- a deterministic,
+ *          integrated comic decode + RTL path -- a deterministic,
  *          toolchain-independent digest of page 0 of the baked CBZ + CBR
  *          fixtures decoded through the shelf's own ::comic + image pipeline.
  * @param[in] cbz    CBZ page-0 self-check result.
@@ -481,7 +481,7 @@ static void sh_present(void)
   (void)display_flush(s_display, full, k_display_refresh_quality);
   /* Flush issued: spend the panel-refresh idle window (before the next input
    * poll) warming the adjacent chapters' first content frames so a
-   * chapter-crossing page turn finds them resident (#207). Reader screen only,
+   * chapter-crossing page turn finds them resident. Reader screen only,
    * so it never runs before the boot banner; best-effort and output-transparent. */
   if (g_sh.screen == k_sh_screen_reader) {
     sh_reader_prefetch_adjacent();
@@ -773,7 +773,7 @@ void main(void)
 
   sh_present();
 
-  /* Prove the integrated comic path (#236) headlessly: decode page 0 of the
+  /* Prove the integrated comic path headlessly: decode page 0 of the
    * baked CBZ + CBR fixtures into an off-screen scratch (rebinding ra8_gfx to it
    * and back), so the shelf render that `sh_present` just left in the live
    * framebuffer -- and its pinned `fb=` hash -- is untouched. */

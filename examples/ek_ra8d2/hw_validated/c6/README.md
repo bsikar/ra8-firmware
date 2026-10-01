@@ -22,7 +22,7 @@ apps need. One run of the bench cannot satisfy both settings.
 > healthy. If the link stops working, check the switch bank **electrically** before
 > suspecting anything else.
 
-**`ra8_emulator` models no ESP32-C6** (#494). `hw_validated/hil/` is bound by
+**`ra8_emulator` models no ESP32-C6**. `hw_validated/hil/` is bound by
 `check_hil_eil_parity.py` to the EIL suite: every app there must also be
 exercised in the emulator, with no skips. That gate is right and these apps
 genuinely cannot satisfy it, so putting them there would mean either a failing

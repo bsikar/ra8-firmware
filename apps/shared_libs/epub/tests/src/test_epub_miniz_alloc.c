@@ -1,6 +1,6 @@
 /**
  * @file test_epub_miniz_alloc.c
- * @brief Host unit tests + MC/DC for the miniz static-arena allocator (#139).
+ * @brief Host unit tests + MC/DC for the miniz static-arena allocator.
  *
  * @details
  * Exercises ::epub_miniz_alloc / _free / _realloc directly (no miniz): basic

@@ -1,6 +1,6 @@
 # reset_cause_demo
 
-Checks that `ra8_reset_get_cause()` decodes `RSTSR1.SWRF` correctly (#52). The
+Checks that `ra8_reset_get_cause()` decodes `RSTSR1.SWRF` correctly. The
 app boots, triggers a software reset via `ra8_reset_software_reset()`, and on
 the post-reset boot enters a loop that advances `g_reset_cause_loop` **only**
 when the observed cause reads back as software.

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The startup zero-fill contract (#2901).
+//! The startup zero-fill contract.
 //!
 //! The half-open span is the part worth pinning here, because getting it
 //! wrong is silent: an inclusive fill clobbers the byte after the region and

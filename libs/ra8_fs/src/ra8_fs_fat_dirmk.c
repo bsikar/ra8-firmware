@@ -10,7 +10,7 @@
  * two dot entries.
  *
  * The public entry points at the bottom dispatch: exFAT has neither dot entries
- * nor a parent back-link, so its half lives in `ra8_fs_fat_exfat_dir.c` (#605)
+ * nor a parent back-link, so its half lives in `ra8_fs_fat_exfat_dir.c`
  * rather than being bent into the FAT shape here.
  *
  * Split out of `ra8_fs_fat_dir.c` for the 1000-line file-size cap.
@@ -66,7 +66,7 @@ static void internal_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluste
   priv_entry_set_cluster_size(ent, cluster, 0U);
   /* "." and ".." are ordinary directory entries to every host, and every mkfs
    * stamps them. Leaving them at zero would put an illegal date inside a
-   * directory this firmware had just created (#601). */
+   * directory this firmware had just created. */
   priv_fat_entry_stamp_create(ent);
 }
 
@@ -183,7 +183,7 @@ static ra8_err_t internal_fat_mkdir(const ra8_fs_mount_t* handle, const char* pa
   priv_entry_set_cluster_size(tmpl, new_cluster, 0U);
   /* Same reasoning as the file case: a zero FAT date is illegal, and the
    * directory's own "." and ".." were stamped when the cluster was built, so
-   * the entry in the parent must agree with them (#601). */
+   * the entry in the parent must agree with them. */
   priv_fat_entry_stamp_create(tmpl);
   err = priv_dir_commit(handle, &plan, tmpl, &lba, &off);
   if (err != k_ra8_ok) {
@@ -197,7 +197,7 @@ static ra8_err_t internal_fat_mkdir(const ra8_fs_mount_t* handle, const char* pa
  * @brief Create a directory -- the guarded body of ::ra8_fs_mkdir().
  *
  * @details Validates arguments and the mount, then dispatches to the FAT or
- *          the exFAT directory creator (#605).
+ *          the exFAT directory creator.
  *
  * @param[in] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to create.
@@ -483,7 +483,7 @@ static ra8_err_t internal_fat_rmdir(const ra8_fs_mount_t* handle, const char* pa
  * @brief Remove an empty directory -- the guarded body of ::ra8_fs_rmdir().
  *
  * @details Validates arguments and the mount, then dispatches to the FAT or
- *          the exFAT directory remover (#605). exFAT `rmdir` landed with exFAT
+ *          the exFAT directory remover. exFAT `rmdir` landed with exFAT
  *          `mkdir`, in one change: before it, a volume mounted here never
  *          contained a directory this driver had made, so the verb had no
  *          reachable subject and could only have been exercised against a

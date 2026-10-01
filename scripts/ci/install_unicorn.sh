@@ -6,14 +6,14 @@
 # scripts/ci/install_unicorn.sh -- build + install the pinned Unicorn from
 # source, reproducibly, so ra8_emulator decodes Armv8.1-M identically on every
 # machine (devcontainer, dev box, self-hosted runner). See scripts/ci/unicorn_pin.sh
-# for the pin and the reason it exists (#354).
+# for the pin and the reason it exists.
 #
 # WHY FROM SOURCE, not apt:
 #   - No distro ships the pinned upstream release at one apt version string
 #     across Debian (dev box) and Ubuntu (runner / devcontainer), so an
 #     `apt-get install libunicorn-dev=<ver>` pin cannot be identical everywhere.
 #   - A source build of one tagged release, verified by sha256, IS byte-for-byte
-#     reproducible everywhere -- exactly the arm-gcc URL+sha256 pattern (#178).
+#     reproducible everywhere -- exactly the arm-gcc URL+sha256 pattern.
 #
 # This is provisioning, NOT a gate. It is invoked by .devcontainer/Dockerfile
 # and run by hand when provisioning the dev box or a runner (docs/TOOLCHAIN.md).

@@ -264,7 +264,7 @@ def _selftest_migrated_zig_archive_provenance() -> list[str]:
             failures.append("external same-name archive gained project approval")
 
         # A dual-core app links a SECOND archive of the same library, built for
-        # the other core (#1290). The per-cpu path segment is what keeps the two
+        # the other core. The per-cpu path segment is what keeps the two
         # apart, so recognition must not be pinned to the app's own core.
         per_core = build / "zig" / "ra8_power_profile" / "cortex_m33" / "lib"
         per_core.mkdir(parents=True)

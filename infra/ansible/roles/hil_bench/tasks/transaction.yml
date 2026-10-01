@@ -624,7 +624,7 @@
         group: root
         mode: "0644"
 
-- name: Provision the bench-lock state directory (#497)
+- name: Provision the bench-lock state directory
   # /var/lib and not /tmp or /run: the record must not depend on whether this
   # host's /tmp is a tmpfs. A reboot is handled explicitly instead, by boot_id.
   # 1777 because several accounts (the bench user, a CI runner, a human) share
@@ -690,7 +690,7 @@
     - name: ra8-bench-reap.service
       body: |
         [Unit]
-        Description=Reap overrun RA8 bench holds (#497)
+        Description=Reap overrun RA8 bench holds
 
         [Service]
         Type=oneshot
@@ -698,7 +698,7 @@
     - name: ra8-bench-reap.timer
       body: |
         [Unit]
-        Description=Reap overrun RA8 bench holds every 5 minutes (#497)
+        Description=Reap overrun RA8 bench holds every 5 minutes
 
         [Timer]
         OnBootSec=5min

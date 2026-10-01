@@ -14,7 +14,7 @@
  * "PAPYR" proof-of-concept, and navigated through the ``libs/ra8_ui``
  * screen stack. The Reading body renders real reflowed book text through
  * ``apps/shared_libs/reflow`` when a font is present on the microSD (``FONT.OTF``);
- * with no card it falls back to the bundled ``ra8_gfx`` bitmap font (#83).
+ * with no card it falls back to the bundled ``ra8_gfx`` bitmap font.
  *
  * Two screens:
  *   - Library: status bar, toolbar (search + count), a 2-column grid of
@@ -160,7 +160,7 @@ static const char k_er_chapter2_xhtml[] =
   "<p>He took one of the small octahedral things from the table and handed it to "
   "us. <a href=\"ch1.xhtml\">Back to Chapter I</a>.</p></body></html>";
 
-/** @brief Two-chapter mock spine for in-content cross-chapter navigation (#110). */
+/** @brief Two-chapter mock spine for in-content cross-chapter navigation. */
 const er_chapter_t k_er_spine[] = {
   {k_er_chapter_xhtml,
    (uint32_t)(sizeof(k_er_chapter_xhtml) - 1U),
@@ -240,7 +240,7 @@ uint8_t s_batt_soc = 0U;
 /** @brief Set by er_handle_tap when a tap only toggled the nag (incremental repaint). */
 bool s_nag_region_only = false;
 
-/** @brief Refresh-cadence policy driving e-ink page-turn waveforms (#78). */
+/** @brief Refresh-cadence policy driving e-ink page-turn waveforms. */
 static display_policy_t s_policy;
 
 /**
@@ -250,7 +250,7 @@ static display_policy_t s_policy;
  */
 display_turn_event_t s_pending_event = k_display_event_chapter;
 
-/** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL (#78). */
+/** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL. */
 volatile uint32_t g_er_cur_page;   /**< Current reading page after the last turn.       */
 volatile uint32_t g_er_turns;      /**< Count of page turns applied since boot.         */
 volatile uint32_t g_er_last_hint;  /**< Last `display_refresh_hint_t` flushed.          */
@@ -261,7 +261,7 @@ enum : uint16_t {
   k_er_clean_every = 8U, /**< Er clean every. */
 };
 
-/** @brief Reading back-stack for link round-trips (footnote + chapter) (#110). */
+/** @brief Reading back-stack for link round-trips (footnote + chapter). */
 er_loc_t s_loc_back[k_er_page_back_cap];
 
 /** @brief Entries used in ::s_loc_back. */
@@ -517,7 +517,7 @@ static void er_render_settings(void)
 #endif
 
 /* ===========================================================================
- * App framework integration (#146)
+ * App framework integration
  *
  * Each screen is re-expressed as an ``ra8_app``: the screen-id stack (``s_nav``)
  * remains the source of truth for *which* screen is active, and that id is the
@@ -601,7 +601,7 @@ void er_render_current(void)
    * focused, so no flicker) and render its widget tree. */
   (void)ra8_app_launch(&s_app_reg, top);
   (void)ra8_app_render(&s_app_reg);
-  /* Low-battery nag (#145/#146): an app-framework-level overlay widget drawn
+  /* Low-battery nag: an app-framework-level overlay widget drawn
    * over whichever screen-app is active. A no-op at a healthy SOC, so the chrome
    * golden (rendered at the default battery) stays byte-identical. */
   if (s_batt_nag != k_ra8_batt_nag_none) {
@@ -652,17 +652,17 @@ void main(void)
   app_bringup_panel();
   app_bringup_gfx();
   app_bringup_touch();
-  (void)ra8_batt_monitor_init(&s_batt_mon); /* low-battery nag policy (#145/#146) */
+  (void)ra8_batt_monitor_init(&s_batt_mon); /* low-battery nag policy */
   /* User switches SW1/SW2 as inputs with internal pull-ups (active-low). Best-
    * effort: a config failure just leaves page-turn on the touch path. */
   (void)ra8_board_sw_init(k_ra8_board_sw1);
   (void)ra8_board_sw_init(k_ra8_board_sw2);
   er_try_load_font(); /* Best-effort SD font for the reflow Reading body. */
 
-  /* Default refresh cadence: fast A2 turns with a periodic GC16 clean (#78). */
+  /* Default refresh cadence: fast A2 turns with a periodic GC16 clean. */
   (void)display_policy_init(&s_policy, k_display_policy_fast_clean, (uint16_t)k_er_clean_every);
   (void)ra8_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
-  er_apps_init(); /* re-express the screens as ra8_app instances (#146) */
+  er_apps_init(); /* re-express the screens as ra8_app instances */
   er_render_current();
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 

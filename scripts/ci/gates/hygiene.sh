@@ -67,13 +67,13 @@ gate_ci_parity() (
   # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
   # once deleted its own snapshot and kept going, inventing a FAIL for every
   # gate that came after; a fabricated red costs a lane its time and teaches
-  # people to discount reds (#542).
+  # people to discount reds.
   suite_abort_selftest
   # suite_errexit_selftest proves the RUNNER propagates a mid-body failure --
   # but only for the shape it probes with, a `( set -e )` subshell. It is
   # therefore blind to a gate written as a `{ }` block, which runs in the
   # calling shell and so inherits run_gate_capture's `set +e`. Two gates were
-  # in exactly that state (#190): each ran a checker `--selftest` first "so a
+  # in exactly that state: each ran a checker `--selftest` first "so a
   # detector that stopped matching cannot pass as clean", then discarded that
   # selftest's status. check_gate_bodies.py covers the other half -- every
   # dispatched body must itself be capable of failing.
@@ -82,7 +82,7 @@ gate_ci_parity() (
   # The second leg. check_gate_bodies proves a gate CAN fail; it does not prove the checker inside it still
   # detects anything -- the requirement CLAUDE.md and ci.sh both state and
   # which nothing enforced, so 28 gate-wired detectors had no --selftest and
-  # one had a selftest no gate ran (#531).
+  # one had a selftest no gate ran.
   python3 scripts/ci/check_selftest_coverage.py --selftest
   python3 scripts/ci/check_selftest_coverage.py --check
 )
@@ -194,7 +194,7 @@ suite_registry_selftest() {
   echo "ci.sh: suite-runner registry self-test OK (empty and invalid registries fail)."
 }
 
-# --- the abort self-test (#542) -------------------------------------------
+# --- the abort self-test -------------------------------------------
 # Assert that a run which STOPPED BEING A MEASUREMENT cannot emit a gate
 # verdict -- and that a run which merely failed still reports FAIL.
 #
@@ -395,7 +395,7 @@ suite_abort_selftest() (
   rm -rf "$tmp"
   if [[ "$failures" -ne 0 ]]; then
     echo "ERROR: ci.sh abort self-test FAILED ($failures assertion(s))." >&2
-    echo "       A killed suite is inventing gate results again (#542), or" >&2
+    echo "       A killed suite is inventing gate results again, or" >&2
     echo "       the abort machinery has started swallowing real failures." >&2
     return 1
   fi
@@ -582,7 +582,7 @@ gate_markdown_references() (
 # --- cmake-source-paths ---------------------------------------------------
 # A library source attached to a target BY PATH survives the source being
 # moved or deleted, because the block that names it is often cross-only and
-# a host configure never evaluates it (#1290). Resolve every repository-
+# a host configure never evaluates it. Resolve every repository-
 # rooted path the CMake files name, and prove the resolver first.
 #
 # Two rules, one gate, because they are one defect: a source list that
@@ -687,7 +687,7 @@ gate_toolchain_parity() (
 # --- no-ai-attribution ----------------------------------------------------
 gate_no_ai_attribution() (
   set -e
-  # --selftest FIRST (#358): proves the ban fires and that tools/, .github/ and
+  # --selftest FIRST: proves the ban fires and that tools/, .github/ and
   # every other tracked-text tree the old SCAN_DIRS omitted are back in scope.
   #
   # A `( set -e )` subshell for the reason spelled out on gate_ci_parity above:
@@ -713,7 +713,7 @@ gate_no_ai_attribution_commits() (
   repo="$(ci_history_repo)"
   ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  # Print the commit COUNT and reject the zero-commit dispatch range (#357):
+  # Print the commit COUNT and reject the zero-commit dispatch range:
   # a run that examined nothing must not read as a pass.
   ci_report_commit_range "$repo" "$range" || return 1
   for sha in $(ci_history_git "$repo" rev-list "$range"); do
@@ -733,7 +733,7 @@ gate_no_ai_attribution_commits() (
 # --- inclusive-terminology ------------------------------------------------
 gate_inclusive_terminology() (
   set -e
-  # --selftest FIRST (#549): proves the detector fires on a legacy symbol,
+  # --selftest FIRST: proves the detector fires on a legacy symbol,
   # spares vendored/hardware names, and that the derived scope reaches the
   # roots (infra/, just/) a hardcoded list had dropped.
   python3 scripts/checks/check_inclusive_terminology.py --selftest
@@ -753,7 +753,7 @@ gate_inclusive_terminology_commits() (
   repo="$(ci_history_repo)"
   ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  # Print the commit COUNT and reject the zero-commit dispatch range (#357):
+  # Print the commit COUNT and reject the zero-commit dispatch range:
   # a run that examined nothing must not read as a pass.
   ci_report_commit_range "$repo" "$range" || return 1
   ci_history_git "$repo" log "$range" --format=%B |

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Huffman decoding tables for the baseline decoder (#2799).
+//! Huffman decoding tables for the baseline decoder.
 //!
 //! The encoder builds its tables from a fixed specification (`huffman.zig`);
 //! the decoder builds them from whatever a DHT segment carried, so this is a

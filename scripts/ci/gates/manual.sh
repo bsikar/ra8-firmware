@@ -37,7 +37,7 @@ gate_osv_scan() (
 )
 
 # --- soup-upstream-refresh (manual) ---------------------------------------
-# The networked half of the SOUP provenance guarantee (#548). The per-push
+# The networked half of the SOUP provenance guarantee. The per-push
 # soup-upstream gate verifies the tree against committed manifests; those
 # manifests are only as good as the moment they were fetched. This gate
 # re-fetches every pinned upstream revision and fails if what upstream now
@@ -84,7 +84,7 @@ gate_fuzz_sweep() (
   fi
   # Prove the budget check before spending the budget it guards. libFuzzer
   # enforces -max_total_time off the steppable wall clock, so on a host that
-  # steps its clock a sweep stops after seconds and still exits 0 (#509);
+  # steps its clock a sweep stops after seconds and still exits 0;
   # run_fuzz.sh times each harness on CLOCK_MONOTONIC and refuses to call that
   # a pass. The selftest drives every branch of that rule with synthetic
   # inputs, so a rule that quietly stopped matching cannot pass as clean.
@@ -131,7 +131,7 @@ gate_fuzz_sweep() (
 # recorded a step that finished before it started, or started before the
 # previous one finished. Neither is possible on a clock that does not step,
 # and a runner that steps its clock corrupts every gate whose contract is a
-# duration -- the fuzz budget, timeout-minutes, any benchmark (#509).
+# duration -- the fuzz budget, timeout-minutes, any benchmark.
 #
 # Scheduled rather than per-push: it is a statement about the FLEET, not about
 # the commit, and it costs one API call per run scanned. In CI that spends the

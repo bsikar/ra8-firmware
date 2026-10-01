@@ -213,7 +213,7 @@ macro(_ra8_app_collect_sources)
   # ra8_core finished its ARM flip in #2820: libs/ra8_core/src holds .zig and
   # no .c at all, so the *.c glob this block used to run can never match again.
   # It is deleted rather than left to rot, which is what cmake-source-paths was
-  # reporting (#2936). The objects are not missing: they arrive in the Zig
+  # reporting. The objects are not missing: they arrive in the Zig
   # archive registered with the other universal archives below, the same path
   # ra8_net_pal takes. The #908 guard stays live and is handed the archive
   # entry itself rather than a literal, so deleting the registration below
@@ -239,7 +239,7 @@ macro(_ra8_app_collect_sources)
     "${_ra8_lib_hal}"
     ""
   )
-  # ra8_net_pal has no C sources: the library is Zig (#1039) and its objects
+  # ra8_net_pal has no C sources: the library is Zig and its objects
   # come from the Zig static archive, linked separately. Left unglobbed and
   # deliberately outside the #908 guard, which exists to catch a library whose
   # objects silently vanish; this one's have a link path of their own.
@@ -299,7 +299,7 @@ macro(_ra8_app_collect_sources)
     # Compile only the named ra8_nsc sources (e.g. just ra8_nsc_cgc.c) instead
     # of globbing all of libs/ra8_nsc/src -- lets an app pull the CGC veneers
     # without dragging in ra8_nsc_comms/ra8_nsc_eth, which don't compile under
-    # -mcmse (#54).
+    # -mcmse.
     set(_ra8_lib_nsc "")
     foreach(_ra8_nsc_src ${_RA8_APP_NSC_SRCS})
       list(APPEND _ra8_lib_nsc ${RA8_REPO_ROOT}/libs/ra8_nsc/src/${_ra8_nsc_src})
@@ -349,7 +349,7 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_zig "${_ra8_core_zig}")
   endif()
   # ra8_secure_app is universal in exactly the same way, and its last C
-  # translation unit is gone (#2670), so its archive is registered here
+  # translation unit is gone, so its archive is registered here
   # rather than through the LIBS loop below, which only sees named libraries.
   set(_ra8_secure_app_path "${RA8_REPO_ROOT}/libs/ra8_secure_app")
   if(EXISTS "${_ra8_secure_app_path}/build.zig")
@@ -529,7 +529,7 @@ macro(_ra8_app_collect_sources)
   # driver's business, not the application's.
   if("ra8_camera" IN_LIST _RA8_APP_LIBS)
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
-      # ra8_jpeg is Zig too (#2820): no .c under its src, so the glob that
+      # ra8_jpeg is Zig too: no .c under its src, so the glob that
       # used to collect it is gone for the reason ra8_core's is, and the
       # archive is registered instead.
       _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
@@ -589,7 +589,7 @@ macro(_ra8_app_collect_sources)
     endif()
   endif()
 
-  # jof transcodes JPEG/PNG sources into JOF tile atlases (#231).
+  # jof transcodes JPEG/PNG sources into JOF tile atlases.
   # Its PNG decoder inflates through the vendored miniz and its tile codec
   # reuses ra8_compress, so wire the miniz + compression includes when an app
   # pulls in jof. The miniz *implementation* TU comes from the
@@ -601,7 +601,7 @@ macro(_ra8_app_collect_sources)
     # that dependency, so applications do not need to know which source image
     # codecs the atlas producer dispatches internally.
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
-      # Same call as the ra8_camera block above, same reason (#2820/#2936).
+      # Same call as the ra8_camera block above, same reason.
       _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
       _ra8_app_require_compilable_lib(
         ra8_jpeg
@@ -701,7 +701,7 @@ macro(_ra8_app_collect_sources)
   # Its ra8_webp facade/arena are globbed by the LIBS loop above (or by
   # the jof block); only the vendored TUs + include root are wired
   # here. Wired whenever webp is requested directly OR pulled in
-  # transitively by jof (#290), rabook_compile, or reflow (#637 inline
+  # transitively by jof, rabook_compile, or reflow (#637 inline
   # small-image WebP), and only once so those paths never double-add the
   # libwebp sources.
   set(_ra8_webp_vendor "")
@@ -980,7 +980,7 @@ macro(_ra8_app_collect_sources)
     set(_ra8_linker ${_ra8_board_dir}/ld/linker_script.ld)
   endif()
 
-  # THREADX_HEAP <region>: compose the board map instead of forking it (#761).
+  # THREADX_HEAP <region>: compose the board map instead of forking it.
   #
   # ThreadX apps need exactly one symbol the board map does not define --
   # g_ra8_threadx_unused_memory_start, the origin of the region tx_application_

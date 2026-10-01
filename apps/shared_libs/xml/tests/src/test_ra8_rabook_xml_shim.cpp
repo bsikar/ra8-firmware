@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rabook_xml_shim.cpp
- * @brief MC/DC + DOM-structure tests for ra8_rabook_xml_shim (#149).
+ * @brief MC/DC + DOM-structure tests for ra8_rabook_xml_shim.
  *
  * @details
  * Drives @ref ra8_rabook_xml_parse_chapter with synthetic XHTML fixtures to

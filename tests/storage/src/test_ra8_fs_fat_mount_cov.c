@@ -507,13 +507,13 @@ RA8_INTERNAL static void internal_test_gpt_bad_signature(void)
 }
 
 /* ===========================================================================
- * Test: GPT entry_lba beyond 32 bits is FOLLOWED (#683)
+ * Test: GPT entry_lba beyond 32 bits is FOLLOWED
  * ===========================================================================
  */
 
 /**
  * @test test_gpt_entry_lba_hi_nonzero
- * @brief A GPT entry array past 2 TiB is addressed, not refused (#683).
+ * @brief A GPT entry array past 2 TiB is addressed, not refused.
  *
  * @details
  * The partition entry array starts beyond 2 TiB (the 64-bit field's high word
@@ -684,7 +684,7 @@ RA8_INTERNAL static void internal_test_gpt_count_clamped_scan_fails(void)
 
 /**
  * @test test_gpt_entry_hi_first_lba
- * @brief A GPT entry whose first_lba exceeds 32 bits is FOLLOWED (#683).
+ * @brief A GPT entry whose first_lba exceeds 32 bits is FOLLOWED.
  *
  * @details
  * Entry 0 has a non-zero type GUID (so it appears allocated) and a first LBA

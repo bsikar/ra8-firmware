@@ -162,7 +162,7 @@ static const struct {
 
   .cover_bytes = {0x89U, 0x50U, 0x4EU, 0x47U},
 
-  /** @brief External stylesheet body (#140) -- a distinctive class rule. */
+  /** @brief External stylesheet body -- a distinctive class rule. */
   .css        = ".lead { color: #C00000; }\n",
   .font_bytes = {0xDEU,
                  0xADU,
@@ -293,7 +293,7 @@ RA8_INTERNAL static void internal_build_synth_epub(void)
   mz_zip_writer_end(&zip);
 }
 /* --------------------------------------------------------------------- */
-/* Untrusted-name fixture (#749). */
+/* Untrusted-name fixture. */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -347,7 +347,7 @@ static uint8_t s_hostile_buf[k_test_epub_buf_bytes];
 /** @brief Finalised length of the archive in ::s_hostile_buf. */
 static size_t s_hostile_size;
 
-/** @brief Build an archive whose manifest hrefs are traversal attempts (#749). @details Writes the mimetype, the shared container document, ::s_hostile_opf and the three payload entries under their hostile names into ::s_hostile_buf. @pre Fixed-capacity fixture storage required by this operation is available. @post ::s_hostile_buf holds a complete archive of ::s_hostile_size bytes. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/** @brief Build an archive whose manifest hrefs are traversal attempts. @details Writes the mimetype, the shared container document, ::s_hostile_opf and the three payload entries under their hostile names into ::s_hostile_buf. @pre Fixed-capacity fixture storage required by this operation is available. @post ::s_hostile_buf holds a complete archive of ::s_hostile_size bytes. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_build_hostile_epub(void)
 {
   mz_zip_archive zip;
@@ -747,7 +747,7 @@ RA8_INTERNAL static void internal_test_two_live_books_isolate_miniz_arenas(void)
   TEST_END("epub: two live books isolate arenas + reopen");
 }
 
-/** @brief Sizing for the external-stylesheet consumer test (#140). */
+/** @brief Sizing for the external-stylesheet consumer test. */
 enum : size_t {
   k_test_css_buf_bytes = 256U, /**< Scratch for an extracted .css resource. */
 };
@@ -793,7 +793,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_css_loader(void*           ctx,
 /**
  * @test internal_test_get_resource
  * @brief `epub_get_resource` extracts an arbitrary archive entry, and the
- *        #140 css-loader glue returns a chapter's external stylesheet (#140).
+ *        #140 css-loader glue returns a chapter's external stylesheet.
  *
  * @par MC/DC:
  * No compound decision in the test itself; the loader's
@@ -835,7 +835,7 @@ RA8_INTERNAL static void internal_test_get_resource(void)
 
 /**
  * @test internal_test_untrusted_hrefs_survive_verbatim
- * @brief The reader hands back archive-supplied names unjudged (#749).
+ * @brief The reader hands back archive-supplied names unjudged.
  * @details `epub.h` states that every name in the book record is copied out of
  *          archive bytes and is not validated as a filesystem path, and names
  *          the policy a caller applies before writing one. That contract is

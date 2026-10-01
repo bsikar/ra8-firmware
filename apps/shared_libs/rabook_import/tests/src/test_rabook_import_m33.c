@@ -25,7 +25,7 @@
  *    -> the adapter compiles the real fixture `.epub` IN-CORE and writes a blob
  *    byte-identical to the desktop golden (proving the appliance still produces a
  *    valid `.rabook` when the offload fails).
- *  - Oversize-source path (#230): a source larger than the cross-core transport
+ *  - Oversize-source path: a source larger than the cross-core transport
  *    buffer is reported as a transport overflow (`k_ra8_err_no_mem`) BEFORE any
  *    dispatch, and the streamed in-core fallback -- which has no size ceiling --
  *    still imports it byte-identically to the golden.
@@ -435,7 +435,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum incore_cache_t
- * @brief Source page-cache geometry for the streamed in-core compile (#230).
+ * @brief Source page-cache geometry for the streamed in-core compile.
  * @details Deliberately tiny (8 x 1 KiB = 8 KiB) -- the streamed adapter's
  *          source-side RAM budget is this fixed pool, not the book size.
  */

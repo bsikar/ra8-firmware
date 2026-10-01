@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg_path.c
- * @brief SVG `<path>` `d` mini-language parser + Bezier flatten (#112).
+ * @brief SVG `<path>` `d` mini-language parser + Bezier flatten.
  *
  * @details The `<path>` `d` mini-language: M/L/H/V/Z exact, the cubic 'C'/'S'
  * and quadratic 'Q'/'T' Bezier curves flattened to line segments (smooth forms

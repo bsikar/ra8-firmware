@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Block sampling for the baseline encoder (#2795): pulling one 8x8 block out
+//! Block sampling for the baseline encoder: pulling one 8x8 block out
 //! of a plane, with clamp-to-edge at the padded borders and 2x2 averaging for
 //! the 4:2:0 chroma planes. Both kernels level-shift by -128 on the way out,
 //! which is what the forward DCT expects.

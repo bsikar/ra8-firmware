@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_unicode_exfat.c
- * @brief A non-ASCII name on exFAT, and the NameHash a host will recompute (#606).
+ * @brief A non-ASCII name on exFAT, and the NameHash a host will recompute.
  *
  * @details
  * exFAT mangled a name in two directions at once. The reader copied the LOW

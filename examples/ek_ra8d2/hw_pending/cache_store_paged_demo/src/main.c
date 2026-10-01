@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/cache_store_paged_demo/src/main.c
- * @brief Maintained consumer for ra8_cache_store: paged reads + crash replay (#937).
+ * @brief Maintained consumer for ra8_cache_store: paged reads + crash replay.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -8,7 +8,7 @@
  * @details
  * `libs/ra8_cache_store` shipped with no maintained application driving it: the
  * only caller on `dev` lived under `examples/ek_ra8d2/hil_needs_revalidation/`,
- * and `threadx_levelx_demo` links the lib without ever calling it (#937). This
+ * and `threadx_levelx_demo` links the lib without ever calling it. This
  * app is that missing consumer, and it deliberately drives the three parts of
  * the public surface the parked demo never touched:
  *

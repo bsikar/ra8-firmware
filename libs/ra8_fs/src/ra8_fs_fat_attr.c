@@ -8,7 +8,7 @@
  * how they are CHANGED. Its first job is the read-only bit: putting it on a file
  * makes every mutating path (`open` for writing, `write`, `write_file`,
  * `unlink`, `rename`) refuse the file with ::k_ra8_err_access_denied, and taking
- * it off restores ordinary access (#681).
+ * it off restores ordinary access.
  *
  * Only the four host-controlled bits are settable. The same byte also carries
  * the DIRECTORY, VOLUME_ID and long-name bits, which say what an entry IS rather

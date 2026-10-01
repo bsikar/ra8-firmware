@@ -138,7 +138,7 @@ ci_require_runtime() {
 # The decision is NOT "is an image present". It was, and that is why the shared
 # verification box booted a 2026-07-20 image under a 2026-07-28 tree and
 # reported four gates red that pass natively on the same box, on the same
-# commit (#521). devcontainer_image.sh compares the build-context digest
+# commit. devcontainer_image.sh compares the build-context digest
 # recorded on the image against the working tree's, so an image built from a
 # different Dockerfile is rebuilt rather than reused. That is one definition,
 # shared with the dev_box Ansible role, so a converge and a `just ci` cannot
@@ -155,7 +155,7 @@ ci_ensure_image() {
     /bin/bash -p "$repo/scripts/ci/devcontainer_image.sh" "${args[@]}"
 }
 
-# Linked git worktrees: mount the main repo's git dir too (#334).
+# Linked git worktrees: mount the main repo's git dir too.
 #
 # In a linked worktree -- an agent workspace from `just workspace::new`, or a
 # .claude/worktrees/* tree -- `.git` is a FILE holding "gitdir: <path>" that
@@ -167,7 +167,7 @@ ci_ensure_image() {
 # That made the isolation pattern agents are told to use (one workspace each, so
 # concurrent runs stop clobbering one another) incompatible with the only
 # toolchain-correct way to run the gates, and pushed agents onto native runs
-# where clang-tidy / gcovr / shellcheck / shfmt all differ from CI (#333).
+# where clang-tidy / gcovr / shellcheck / shfmt all differ from CI.
 #
 # Mounting the common git dir at the SAME absolute path it has on the host is
 # what makes the pointer resolve identically inside and outside. It stays
@@ -213,7 +213,7 @@ ci_ccache_run_args() {
     -e "CCACHE_MAXSIZE=${RA8_CCACHE_MAXSIZE:-20G}"
 }
 
-# Persistent PINNED-TOOL cache for the containerised path (#326).
+# Persistent PINNED-TOOL cache for the containerised path.
 #
 # The docs gate builds with a version-pinned doxygen that
 # scripts/builders/provision_doxygen.sh downloads + sha256-verifies on first
@@ -257,7 +257,7 @@ ci_extra_run_args() {
 # a clean copy of committed HEAD into a throwaway dir and builds there, so the
 # host source tree and its macOS CMake caches are never touched. A gate that
 # writes under the mount instead of the tree it is standing in therefore fails
-# outright, which is exactly what tools-build did (#546). It runs as root so
+# outright, which is exactly what tools-build did. It runs as root so
 # that throwaway tree (and its fresh build dirs) is writable.
 #
 # --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
@@ -270,7 +270,7 @@ ci_extra_run_args() {
 # CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so this
 # reproduces its timing) but is overridable for a beefier verification box.
 # RA8_MAX_JOBS is forwarded when set so an operator can cap every in-container
-# parallel width (#328) below the CMAKE_BUILD_PARALLEL_LEVEL budget; unset on
+# parallel width below the CMAKE_BUILD_PARALLEL_LEVEL budget; unset on
 # the host, `-e RA8_MAX_JOBS` passes nothing and ra8_max_jobs falls through.
 ci_host_mode_exec() {
   local fast="$1" gate="$2" rebuild="$3" image="$4" repo="$5"

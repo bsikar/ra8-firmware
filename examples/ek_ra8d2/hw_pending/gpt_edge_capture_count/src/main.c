@@ -285,8 +285,8 @@ static void gpt_ecc_route_pins_or_halt(void)
  *
  * @details
  * GPT0 starts free-running and GTICASR is armed for GTIOC0A rising-edge
- * capture (#185). GPT1 starts and GTUPSR is armed for GTIOC1A
- * rising-edge counting (#186). Any failure halts.
+ * capture. GPT1 starts and GTUPSR is armed for GTIOC1A
+ * rising-edge counting. Any failure halts.
  * @pre ``gpt_ecc_route_pins_or_halt`` has run.
  * @pre The GPT block clock is enabled by ``ra8_gpt_init``.
  * @post On return both channels are counting; capture / count sources

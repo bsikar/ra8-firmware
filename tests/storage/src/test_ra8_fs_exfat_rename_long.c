@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_rename_long.c
- * @brief exFAT long-name rename: entry-set resize + the fsck.exfat evidence (#603).
+ * @brief exFAT long-name rename: entry-set resize + the fsck.exfat evidence.
  *
  * @details
  * #603(b): `priv_exfat_rename()` used to refuse any name past a single Name

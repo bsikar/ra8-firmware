@@ -306,7 +306,7 @@ def _run_selftest_body() -> int:
     Both directions are asserted because only one of them was ever true before:
     the old hardcoded ``aggregate_sha256`` was perfectly stable on an unchanged
     tree and equally stable on a mutated one.  A selftest that checked only the
-    quiet direction would have passed against the broken code (#538).
+    quiet direction would have passed against the broken code.
 
     Returns:
         ``EXIT_OK`` when every case holds, ``EXIT_VACUOUS`` otherwise.

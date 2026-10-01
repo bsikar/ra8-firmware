@@ -7,7 +7,7 @@
  * at `m->root_cluster`, so `"/logs/a.txt"` was not resolved but matched, after
  * slash-stripping, as one root-level name -- and `mkdir` / `rmdir` declined the
  * volume outright, because a driver with no directory-creation path has no
- * directory to remove either (#605).
+ * directory to remove either.
  *
  * Three pieces, in the order a nested path uses them:
  *
@@ -88,7 +88,7 @@ static ra8_err_t internal_exfat_enter(const ra8_fs_mount_t* m,
    * buffer, because @p comp is UTF-8 here and a 64-unit name is up to three
    * times that many bytes. The UNIT bound below is the one the FORMAT imposes,
    * so it is checked after conversion -- 65 ASCII characters and 65 accented
-   * ones are equally one over, and only the unit count says so (#606). */
+   * ones are equally one over, and only the unit count says so. */
   if (len >= (uint32_t)k_exfat_name_u8_cap) {
     return k_ra8_err_invalid_arg;
   }
@@ -99,7 +99,7 @@ static ra8_err_t internal_exfat_enter(const ra8_fs_mount_t* m,
   namebuf[len] = '\0';
   /* Validate the component converts within the exFAT unit cap and is well-formed
    * UTF-8 before searching -- the byte bound above cannot see a name short in
-   * bytes yet over the 64-UNIT cap (#606). */
+   * bytes yet over the 64-UNIT cap. */
   uint16_t        units[k_exfat_name_cap] = {};
   uint32_t        nunits                  = 0U;
   const ra8_err_t ce                      = priv_exfat_name_to_units(m, namebuf, units, &nunits);
@@ -110,7 +110,7 @@ static ra8_err_t internal_exfat_enter(const ra8_fs_mount_t* m,
     return ce;
   }
   /* ::priv_exfat_find_set rather than ::priv_exfat_find, because a directory
-   * that fills up has to REWRITE its own File-entry set to grow (#677), and only
+   * that fills up has to REWRITE its own File-entry set to grow, and only
    * find_set reports where that set lives. `pos[0]` is the File entry; carrying
    * it in the descendant is what lets ::priv_exfat_grow_dir patch the right
    * metadata without a second walk of the parent. */
@@ -275,7 +275,7 @@ ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus)
  *
  * @details The file-side builder in `ra8_fs_fat_exfat_write.c` makes a
  *          zero-length, cluster-less set, because a streaming write starts with
- *          nothing and grows (#602). A directory is the opposite: it is born
+ *          nothing and grows. A directory is the opposite: it is born
  *          owning exactly one cluster and never grows here, so its set carries
  *          the Directory attribute, the cluster, NoFatChain, and a DataLength
  *          equal to the ALLOCATION -- an exFAT directory's length is its
@@ -286,7 +286,7 @@ ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus)
  * @param[out] set   Buffer of at least ::k_exfat_max_set_bytes bytes.
  * @param[in]  name  Leaf name as UTF-16 code units.
  * @param[in]  nlen  Name length in UTF-16 UNITS, which is what `NameLength`
- *                   counts and what a Name entry holds fifteen of (#606).
+ *                   counts and what a Name entry holds fifteen of.
  * @param[in]  first The directory's own first cluster.
  *
  * @return The total byte length of the built set.
@@ -319,7 +319,7 @@ static uint32_t internal_exfat_build_dir_set(const ra8_fs_mount_t* m,
   set[0]                      = (uint8_t)k_exfat_entry_file;
   set[k_exfat_off_file_secnt] = (uint8_t)sec_count;
   priv_wr16(&set[k_exfat_off_file_attr], (uint16_t)k_exfat_attr_directory);
-  /* Before the SetChecksum below, which covers these bytes (#601). */
+  /* Before the SetChecksum below, which covers these bytes. */
   priv_exfat_file_stamp_create(set);
   const uint32_t cbytes        = priv_cluster_bytes(m);
   uint8_t*       strm          = &set[k_exfat_entry_bytes];
@@ -337,7 +337,7 @@ static uint32_t internal_exfat_build_dir_set(const ra8_fs_mount_t* m,
       const uint32_t pos = (n * (uint32_t)k_exfat_name_per_entry) + c;
       if (pos < nlen) {
         /* A whole UTF-16 unit, not the low byte of one -- the same correction
-         * the file-side builder needed (#606). */
+         * the file-side builder needed. */
         priv_wr16(&ne[k_exfat_name_off + (c * 2U)], name[pos]);
       }
     }
@@ -396,7 +396,7 @@ internal_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint64_t* 
     return e;
   }
   /* Only now, with the bit actually set, is it true that the next free cluster
-   * starts past this one (#607). */
+   * starts past this one. */
   priv_alloc_hint_set(m, *out_clus + 1U);
   return k_ra8_ok;
 }
@@ -442,7 +442,7 @@ static ra8_err_t internal_exfat_mkdir_check(const ra8_fs_mount_t* m,
   uint8_t strm[k_exfat_entry_bytes] = {};
   uint8_t attr                      = 0U;
   /* mkdir REFUSES an existing name rather than replacing it, unlike
-   * ra8_fs_write_file(), which is a create-or-replace verb (#603). A directory
+   * ra8_fs_write_file(), which is a create-or-replace verb. A directory
    * and a file are both an entry set under that name, so both refuse here.
    *
    * The third verdict is the one that is easy to drop: a BACKEND FAILURE is not
@@ -472,7 +472,7 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
   /* The leaf becomes code units here, once, and every on-disk length below
    * counts those: the slot run, `NameLength`, and the name hash. Counting the
    * caller's BYTES instead is what made a directory whose name held one
-   * multi-byte character unopenable by that name (#606). */
+   * multi-byte character unopenable by that name. */
   uint16_t        units[k_exfat_name_cap] = {};
   uint32_t        nlen                    = 0U;
   const ra8_err_t ne                      = priv_exfat_name_to_units(m, leaf, units, &nlen);
@@ -526,7 +526,7 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
  *          which is a deleted remnant. Everything else -- a File entry, a
  *          Stream entry, a Name entry, or any typed entry another
  *          implementation left -- is an occupant, exactly as the FAT side's
- *          ::priv_dir_is_empty treats a live 8.3 entry (#604).
+ *          ::priv_dir_is_empty treats a live 8.3 entry.
  *
  *          exFAT has no "." / ".." entries, so unlike FAT there is nothing to
  *          discount before the count starts: an empty exFAT directory really is

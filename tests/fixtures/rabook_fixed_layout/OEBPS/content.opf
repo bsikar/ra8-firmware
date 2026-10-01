@@ -2,7 +2,7 @@
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"
          prefix="rendition: http://www.idpf.org/vocab/rendition/#">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>Fixed Layout Spike (#196)</dc:title>
+    <dc:title>Fixed Layout Spike</dc:title>
     <dc:creator>Spike Fixture</dc:creator>
     <dc:language>en</dc:language>
     <dc:identifier id="bookid">urn:uuid:196-fixed-layout-epub</dc:identifier>

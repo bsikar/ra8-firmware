@@ -23,7 +23,7 @@ if(NOT TARGET ra8_zig::ra8_mem)
   )
 endif()
 
-# ra8_log is Zig now (#2836), so the bench links ra8_core's archive as well
+# ra8_log is Zig now, so the bench links ra8_core's archive as well
 # instead of compiling libs/ra8_core/src/ra8_log.c by path.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${RA8_ROOT}/tests/cmake/zig_library.cmake)

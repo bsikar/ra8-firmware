@@ -10,12 +10,12 @@ not there, compiled clean, and failed only on silicon:
 
   * the `ra8_rsip` crypto family -- invented registers, whole driver rewritten;
   * `ra8_ptp` -- addressed a reserved window, and its `gptp: clock PASS` was a
-    reserved aperture echoing back a write (#498);
+    reserved aperture echoing back a write;
   * `ra8_wdt_regs.h` -- read OFS0/OFS3 at 0x03001E04 / 0x03001E20, which appear
     nowhere in either Hardware User's Manual and land in a Reserved area, and
-    dereferenced them at runtime (#545).
+    dereferenced them at runtime.
 
-Nothing catches this class. `check_hum_register_map.py` (#540) cross-checks
+Nothing catches this class. `check_hum_register_map.py` cross-checks
 register SYMBOLS and struct/window OFFSETS against the manual's tables, but an
 absolute-address enumerator like `k_ra8_wdt_ofs0_addr` is neither, so it falls
 outside that gate's rules. `check_linker_scripts.py` rule LD007 guards the
@@ -73,8 +73,8 @@ RESERVED_WINDOWS: list[tuple[int, int, str]] = [
     # wrong constant, and omitting it would leave the alias half unguarded.
     (0x13000000, 0x17FFFFFF, "Reserved area, non-secure alias of 0x0300_0000 (HUM Ch 3 map)"),
     # The conventional RA-family data-flash base. The RA8 has no such array;
-    # it faults on this silicon (#397). LD007 guards the linker side.
-    (0x27000000, 0x27FFFFFF, "phantom data-flash -- the RA8 has no data-flash array (#397)"),
+    # it faults on this silicon. LD007 guards the linker side.
+    (0x27000000, 0x27FFFFFF, "phantom data-flash -- the RA8 has no data-flash array"),
 ]
 
 # Directories holding hand-written first-party code. `libs/third_party` is SOUP

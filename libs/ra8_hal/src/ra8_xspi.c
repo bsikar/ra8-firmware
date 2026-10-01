@@ -44,7 +44,7 @@
  * Every build emits the identical register sequence; host unit tests
  * round-trip data through the register-level NOR-flash model in
  * ``tests/mocks/src/ra8_fake_xspi_flash.c``, which services each TRREQ kick
- * from the CMDCMP poll's ``ra8_fake_mmio`` seam consult (#238). Every
+ * from the CMDCMP poll's ``ra8_fake_mmio`` seam consult. Every
  * register write carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
  * citation comment for the cite checker.

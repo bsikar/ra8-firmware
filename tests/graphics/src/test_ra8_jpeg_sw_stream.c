@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_jpeg_sw_stream.c
  * @brief Host tests for the streaming JPEG stripe decoder: whole-vs-stream
- *        parity, window sliding, and fail-closed error paths (#231).
+ *        parity, window sliding, and fail-closed error paths.
  *
  * @details
  * Sources are encoded in-test with `ra8_jpeg_sw_encode()` (4:2:0 colour) so

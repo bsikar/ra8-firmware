@@ -8,7 +8,7 @@ Four checkers in this tree have now had the same defect: a hand-written
 repository.  ``check_file_size.py`` and ``check_function_size.py`` were the
 worst of them -- their roots omitted ``scripts/`` and their suffixes covered
 only C/C++, so the documented 1000-line file cap and the 60-line NASA Rule 4
-function cap had never once applied to a Python or shell file (#359).
+function cap had never once applied to a Python or shell file.
 
 The failure mode is specific and worth naming: a hardcoded list does not fail
 when it goes stale.  It reports success over a shrinking slice of the tree, and
@@ -70,7 +70,7 @@ LANGUAGE_EXCLUDED_PREFIXES = {
 # BUILD OUTPUT -- the single definition, shared by every checker in this tree.
 #
 # This used to be thirteen copies of the substring ``"/build/"``, one per
-# checker, and the substring is the defect (#377). ``"/build/" in path`` cannot
+# checker, and the substring is the defect. ``"/build/" in path`` cannot
 # tell ``tools/ra8_emulator/build/`` -- genuine CMake output -- from a first-party
 # source directory that happens to be called ``build``. When #359's
 # reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: #359
@@ -193,7 +193,7 @@ def is_build_output_path(path: object) -> bool:
 
     The checkers hold a mix of absolute paths, repo-relative paths and
     slash-wrapped forms. Normalising here keeps every call site a single
-    predicate instead of thirteen hand-rolled substring tuples (#377).
+    predicate instead of thirteen hand-rolled substring tuples.
     """
     text = str(path).replace("\\", "/").strip("/")
     root = str(REPO_ROOT).replace("\\", "/").strip("/")
@@ -209,7 +209,7 @@ def repo_files(
 ) -> list[str]:
     """Every present repository file in scope, tracked OR untracked-not-ignored.
 
-    THE enumeration primitive for gates (#713). A checker that shells out to a
+    THE enumeration primitive for gates. A checker that shells out to a
     bare ``git ls-files`` sees the INDEX, not the working tree, so a source
     file nobody has ``git add``ed yet is invisible to it -- and the checker
     reports PASS over code it never read.  That is not hypothetical: it turned
@@ -271,7 +271,7 @@ def untracked_in_scope(
     The set a deliberately index-scoped gate cannot see.  Such a gate is not
     wrong to be index-scoped -- a pre-commit hook judges the prospective
     commit, not the tree -- but it must not report clean without saying what
-    it declined to read (#713).
+    it declined to read.
 
     Args:
         pathspec: Optional git pathspec words narrowing the enumeration.
@@ -408,7 +408,7 @@ def first_party_paths(
 ) -> list[str]:
     """Every tracked first-party path ending in one of ``suffixes``.
 
-    The derived-scope primitive the policy checkers share (#358). Enumeration
+    The derived-scope primitive the policy checkers share. Enumeration
     is ``git ls-files`` -- never a hardcoded directory list -- so a newly added
     top-level directory (``tools/`` was the one that had been silently omitted
     for the life of six checkers) is in scope the day it lands, with no

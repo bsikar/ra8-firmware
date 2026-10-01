@@ -1,6 +1,6 @@
 /**
  * @file ra8_cache_store_internal.h
- * @brief Internal on-media format + cross-TU helpers for ra8_cache_store (#201).
+ * @brief Internal on-media format + cross-TU helpers for ra8_cache_store.
  * @ingroup grp_storage
  *
  * @details

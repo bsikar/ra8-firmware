@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c
- * @brief Wear-levelled block I/O + power-cycle survival over the FTL (#258).
+ * @brief Wear-levelled block I/O + power-cycle survival over the FTL.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -19,7 +19,7 @@
  * (15 spare for relocation headroom). Which blocks lie outside the FTL's reach
  * is therefore an invariant of the API rather than arithmetic the caller has
  * to get right, and the checkpoint's home belongs to the FTL rather than to
- * this app (#763).
+ * this app.
  *
  * The run is three acts:
  *

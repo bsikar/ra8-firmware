@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The second (Cortex-M33 / CPU1) image a dual-core app embeds in its own
-//! Cortex-M85 ELF (#1044).
+//! Cortex-M85 ELF.
 //!
 //! `ra8_add_app()` builds the M85 image and stops there. An app that also runs
 //! code on the RA8D2's second core carries a hand-rolled `add_executable()` in
@@ -41,7 +41,7 @@ pub const App = struct {
 pub const Cpu1Image = struct {
     /// The M33 entry translation unit, relative to the app directory. It is
     /// also what the app names in `AUX_SRCS`, which is how it stays OUT of the
-    /// M85 source set (#1036); the two rules are the same fact seen from both
+    /// M85 source set; the two rules are the same fact seen from both
     /// images.
     entry_source: []const u8,
     /// First-party translation units the M33 image links beside its entry
@@ -63,7 +63,7 @@ pub const Cpu1Image = struct {
     /// memory map, and cpu1_pingpong_ipc names four and stops before it.
     /// Assuming the board arm puts a board header within reach of a
     /// Cortex-M33 translation unit that CMake keeps it out of, and only
-    /// freestanding-clean headers may be reached from one (#1146).
+    /// freestanding-clean headers may be reached from one.
     board_include_dir: bool = true,
 };
 
@@ -87,7 +87,7 @@ pub const target_flags = [_][]const u8{
 /// This is the whole define set even when the app around it is a TrustZone
 /// build: `-DRA8_TRUSTZONE_ENABLE` and `-mcmse` ride on the `ra8_add_app()`
 /// target and this executable is declared by hand, so they never reach the
-/// M33 half. Measured on cpu1_pingpong_ipc, which is both (#1146);
+/// M33 half. Measured on cpu1_pingpong_ipc, which is both;
 /// `RA8_FREESTANDING` does reach it because the toolchain file adds that one
 /// at DIRECTORY scope.
 pub const defines = [_][]const u8{ "-DRA8_BUILD_FOR_CPU1", "-DRA8_FREESTANDING" };
@@ -126,7 +126,7 @@ fn join(allocator: std.mem.Allocator, left: []const u8, right: []const u8) []con
 /// -- only freestanding-clean headers may be reached from a Cortex-M33 TU,
 /// and the difference between the two paths is the rule. The board arm is the
 /// one directory the two dual-core apps disagree about, so it is data on the
-/// image rather than a constant here (#1146).
+/// image rather than a constant here.
 pub fn includeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
     out.append(join(allocator, app.dir, "inc")) catch @panic("OOM");

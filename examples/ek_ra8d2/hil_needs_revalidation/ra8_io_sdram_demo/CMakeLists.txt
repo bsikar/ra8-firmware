@@ -31,6 +31,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_sdram_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io over external SDRAM: block dev to FAT to VFS to UART (#155/#156)"
+  DESCRIPTION "ra8_io over external SDRAM: block dev to FAT to VFS to UART"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

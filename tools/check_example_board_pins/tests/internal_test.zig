@@ -182,7 +182,7 @@ test "a build directory under examples is build output at any depth" {
     try testing.expect(implementation.isBuildOutput("examples/a/b/c/build-cov/gen.c"));
 }
 
-test "a build directory under scripts is source, not build output (#359)" {
+test "a build directory under scripts is source, not build output" {
     try testing.expect(!implementation.isBuildOutput("scripts/build/helper.c"));
 }
 

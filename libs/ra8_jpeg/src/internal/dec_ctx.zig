@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Decoder parse state for the baseline decoder (#2799).
+//! Decoder parse state for the baseline decoder.
 //!
 //! Everything a marker parser fills in and the scan loop then reads: the frame
 //! geometry, the per-component selectors, and the dequantisation and Huffman

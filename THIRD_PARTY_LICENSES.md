@@ -18,12 +18,12 @@ hand-maintained against that same registry rather than generated from it, and
 cross-checks the two so the registry and this inventory cannot drift apart
 unnoticed. When you re-vendor a component, update the registry, update the
 section below, and run `just quality::local::sbom`, which runs the generator
-and that cross-check (#631).
+and that cross-check.
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
 > provenance-pinning half, **T5-09** (SOUP-1), is closed too: every vendored
 > component is pinned to an upstream revision and verified against it file by
-> file (#538, #548). The toolchain-pinning prerequisite **T5-02** is called out
+> file. The toolchain-pinning prerequisite **T5-02** is called out
 > below where it bears on a component.
 
 ---
@@ -153,14 +153,14 @@ pinned upstream revision, 20 declared deviations.**
 Two different machine checks stand behind the table above, and both re-derive
 their evidence rather than reading a number written here.
 
-1. **Tamper-verifiability** (#538). `scripts/gen/gen_sbom.py` re-derives a
+1. **Tamper-verifiability**. `scripts/gen/gen_sbom.py` re-derives a
    SHA-256 over each vendored component's whole tree on every run -- sorted
    component-relative paths, git file mode and file content, each
    length-framed -- and publishes it in the SBOM alongside the file count that
    went into it. `gen_sbom.py --check` runs in the `sbom` gate, so a single
    mutated byte under either canonical third-party root fails CI and names the
    component.
-2. **Upstream identity** (#548). `scripts/checks/check_soup_upstream.py`
+2. **Upstream identity**. `scripts/checks/check_soup_upstream.py`
    compares every vendored file against the git blob SHA-1 its *upstream
    project* publishes for the pinned revision, recorded per component in
    `docs/sbom/upstream/*.manifest` by a real fetch of that project. The
@@ -320,7 +320,7 @@ moment a binary is shared.
    pinned `osv-scanner` release against the SBOM and against every recorded
    upstream commit (`scripts/checks/osv_scan.sh`). OSV.dev resolves C/C++
    advisories by GIT commit range only -- GitHub purls do not resolve. Every
-   vendored component now carries a commit pin (#548), so the ten that used to
+   vendored component now carries a commit pin, so the ten that used to
    be version-only are commit-queried too; the one remaining gap is miniz,
    whose amalgamation is pinned by release-artifact SHA-256 rather than by a
    commit and therefore has nothing for OSV to range-query. It keeps the

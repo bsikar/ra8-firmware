@@ -1,4 +1,4 @@
-# WebP decode fixtures (#290)
+# WebP decode fixtures
 
 Committed WebP bitstreams that exercise the vendored libwebp decoder
 (`apps/shared_libs/third_party/libwebp/`) through the `ra8_webp` facade. They are decoded

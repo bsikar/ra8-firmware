@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_keyboard.c
- * @brief Host unit tests + MC/DC for the iOS-style keyboard widget (#105).
+ * @brief Host unit tests + MC/DC for the iOS-style keyboard widget.
  *
  * @details
  * Lays the letters layer and asserts the key count + in-frame geometry, then

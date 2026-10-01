@@ -20,7 +20,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
 - **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  NetX Duo repository. Resolved (#548) to release tag
+  NetX Duo repository. Resolved to release tag
   `v6.5.0.202601_rel`, commit `8b6e03ac30ab688bec02c69d42f2304b7f72a202`:
   1226 of the 1227 vendored files are byte-identical to it, the exception
   being the `.gitattributes` edit recorded under "Deviations / patches".

@@ -1,6 +1,6 @@
 /**
  * @file rabook_import_compiler.h
- * @brief Production adapter binding the import seam to the real compiler (#151).
+ * @brief Production adapter binding the import seam to the real compiler.
  * @ingroup grp_ereader
  *
  * @details
@@ -50,7 +50,7 @@ extern "C" {
  * @brief Cookie carrying the storage @ref rabook_import_compile_adapter needs.
  *
  * @details All storage is caller-owned. The adapter never loads the whole
- *          `.epub` (#230): it opens the source file, registers it as a paged
+ *          `.epub`: it opens the source file, registers it as a paged
  *          `ra8_vsource` object, re-initialises @p cache over the `cache_*`
  *          arrays (so no stale frame from a previous compile can be served),
  *          and streams every ZIP read through `ra8_vmem_stream_read`. The
@@ -128,7 +128,7 @@ typedef struct {
  *          needs the source resident in shared memory); a source larger than
  *          @p epub_load_cap is reported as a transport overflow
  *          (`k_ra8_err_no_mem`) so the streamed in-core fallback -- which has no
- *          size ceiling (#230) -- can still import it.
+ *          size ceiling -- can still import it.
  *
  *          @p fallback is the robustness seam: when the offload fails with a
  *          TIMEOUT/FAULT or a transport overflow (the `.epub` itself may be fine),
@@ -156,7 +156,7 @@ typedef struct {
 } rabook_import_compiler_m33_ctx_t;
 
 /**
- * @brief Import-seam adapter that offloads the compile to the Cortex-M33 (#149).
+ * @brief Import-seam adapter that offloads the compile to the Cortex-M33.
  *
  * @details Signature matches @ref rabook_import_compile_fn. Reads the source
  *          `.epub` off @p mount, dispatches the compile to the secondary core via

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_secure.h` (#2908).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_secure.h`.
 //!
 //! Both entry points treat a null pointer as the header describes rather
 //! than as a precondition violation: the compare reports "not equal" and the

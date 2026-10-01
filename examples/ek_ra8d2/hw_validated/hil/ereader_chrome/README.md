@@ -3,7 +3,7 @@
 Builds a representative e-reader chrome screen as an `ra8_box` tree -- a status
 bar over a two-column grid of book cells -- lays it out into a fixed frame,
 renders the boxes and labels into an RGB565 framebuffer in internal SRAM with
-the bundled bitmap font, and hashes the framebuffer (#76, #80). It closes the
+the bundled bitmap font, and hashes the framebuffer. It closes the
 real-hardware gap left by the emulator golden renders, with no panel, SDRAM,
 touch or SD dependency.
 

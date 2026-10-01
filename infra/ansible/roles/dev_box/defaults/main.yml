@@ -154,8 +154,8 @@ dev_box_image_lock_dir: /var/cache/ra8-devcontainer-image-lock
 # commits that live only in one of them -- so nothing keeps it current, and it
 # was measured sitting at 116e45f07 while the control node's tree carried a new
 # pin. The role therefore ran an old provision_dev_box_toolchain.sh, installed
-# nothing new, and reported a converged box (#521, #522). That is
-# ci_runner_repo_dir's bug with a different name (#513): a build input the
+# nothing new, and reported a converged box. That is
+# ci_runner_repo_dir's bug with a different name: a build input the
 # tooling does not control is not a build input, it is a rumour.
 #
 # A deterministic archive contains exactly the present cached and non-ignored
@@ -189,7 +189,7 @@ dev_box_context_paths:
   - uv.lock
 # --- gcc 14: built from source, for the same distribution reason ------------
 #
-# gcc-14 is the SECOND host-tool compiler arm (#356): the tools-build and
+# gcc-14 is the SECOND host-tool compiler arm: the tools-build and
 # coverage gates compile the first-party host tools under clang-18 AND gcc-14
 # so each catches the warning families the other misses. Debian 12 ships gcc-12
 # and has no gcc-14 package, so this box builds the release from source into

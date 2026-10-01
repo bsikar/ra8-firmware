@@ -896,7 +896,7 @@ internal_render_page(const reflow_t* engine, uint32_t page_idx, int32_t ox, int3
       fi = 0U; /* defensive: out-of-range face index -> default */
     }
     /* CSS picked the face by family and weight; coverage can still send this
-     * code point to another registered face (#687). */
+     * code point to another registered face. */
     fi = priv_reflow_render_face_for(s_faces, nfaces, fi, g->cp);
     internal_blit_glyph(atlas, fi, &s_faces[fi], g, ox, oy);
   }

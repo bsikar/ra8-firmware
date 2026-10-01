@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg.h
- * @brief Minimal SVG handling for the reflow ereader (#112).
+ * @brief Minimal SVG handling for the reflow ereader.
  * @ingroup grp_ereader
  *
  * @details

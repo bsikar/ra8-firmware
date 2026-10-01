@@ -13,7 +13,7 @@
 "with no `port/` shim, no `docs/SOUP/<name>.md`, no SBOM row, or no license
 entry fails", so that a half-vendored component becomes a detectable state
 rather than a thing a reviewer happens to notice. The issue is marked
-DESIGN / PLANNING ONLY and is sequenced behind the filesystem work (#611), so
+DESIGN / PLANNING ONLY and is sequenced behind the filesystem work, so
 this record settles the contract's shape and leaves the landing to the owner.
 
 Three of the issue's premises have moved since it was filed on 2026-08-09.

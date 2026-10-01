@@ -1,6 +1,6 @@
 /**
  * @file reflow_css.h
- * @brief Minimal content-CSS cascade for the reflow ereader engine (#111).
+ * @brief Minimal content-CSS cascade for the reflow ereader engine.
  * @ingroup grp_ereader
  *
  * @details

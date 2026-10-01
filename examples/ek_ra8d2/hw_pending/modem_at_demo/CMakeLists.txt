@@ -34,6 +34,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME modem_at_demo
   STACK_BYTES 4096
-  DESCRIPTION "Cellular AT modem bring-up + CSQ/CREG/CGATT query over SCI7 (#259)"
+  DESCRIPTION "Cellular AT modem bring-up + CSQ/CREG/CGATT query over SCI7"
   LIBS ra8_modem_at
 )

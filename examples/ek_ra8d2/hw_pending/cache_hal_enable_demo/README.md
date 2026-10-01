@@ -2,7 +2,7 @@
 
 Boots with the Cortex-M85 L1 I-cache and D-cache brought up through the
 `ra8_cache` HAL and proves the core still runs correctly with them on. It is the
-HAL-driven twin of `cache_mpu_hil` (#577): same boot posture, same cacheable
+HAL-driven twin of `cache_mpu_hil`: same boot posture, same cacheable
 round-trip, but the caches are enabled by `ra8_cache_icache_enable()` /
 `ra8_cache_dcache_enable()` rather than the shared boot's hand-rolled register
 pokes.

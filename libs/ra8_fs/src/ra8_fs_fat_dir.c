@@ -6,7 +6,7 @@
  * The verbs that read and rewrite entries in a directory that already exists:
  * listing it, deleting a file from it, and renaming one in place, dispatched
  * across FAT and exFAT volumes. `unlink` refuses a directory -- freeing the
- * cluster chain behind one orphans every file inside it (#604); removing a
+ * cluster chain behind one orphans every file inside it; removing a
  * directory is `rmdir`'s job, in `ra8_fs_fat_dirmk.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -99,13 +99,13 @@ static uint8_t internal_listdir_visit_sector(const ra8_fs_mount_t* m,
     char short_name[(uint32_t)k_ra8_fs_short_name_len + 1U] = {};
     /* The NTRes case flags come along: an entry this driver wrote for
      * `data.log` stores `DATA    LOG` with both flags set, and reporting it as
-     * `DATA.LOG` would lose the caller's own name for no reason (#600). */
+     * `DATA.LOG` would lose the caller's own name for no reason. */
     priv_83_to_str(&ent[k_dir_off_name], ent[k_dir_off_ntres], short_name);
     /* Report the VFAT long name when the preceding chain matches; else the 8.3.
      * The chain is UTF-16 on disk and UTF-8 at this boundary, and a chain that
      * does not convert -- an unpaired surrogate, which nothing conforming
      * writes -- falls back to the alias rather than being reported under a name
-     * that would not re-open it (#606). */
+     * that would not re-open it. */
     char            lname[k_lfn_utf8_cap] = {};
     uint32_t        lnunits               = 0U;
     const uint16_t* lunits                = priv_lfn_units_for(lfn, &ent[k_dir_off_name], &lnunits);
@@ -168,7 +168,7 @@ static ra8_err_t internal_listdir_locked(const ra8_fs_mount_t* handle,
     return k_ra8_err_invalid_state;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    /* Any exFAT directory, not just the root (#605). A path that names nothing
+    /* Any exFAT directory, not just the root. A path that names nothing
      * reports not_found and one that names a FILE reports invalid_arg, which is
      * what the FAT side has always answered -- the two filesystems no longer
      * disagree about what "list this path" means. */
@@ -436,11 +436,11 @@ static ra8_err_t internal_unlink_locate(const ra8_fs_mount_t* handle,
   /* The lookup matches on the name alone, so a directory matches like any
    * other entry. Freeing its chain orphans every file inside it -- their
    * clusters stay allocated in the FAT with nothing referencing them, which
-   * fsck.fat reports as lost clusters (#604). */
+   * fsck.fat reports as lost clusters. */
   if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg; /* a directory: ra8_fs_rmdir() is the verb */
   }
-  /* Honor the read-only attribute (#681): a file a host marked read-only is not
+  /* Honor the read-only attribute: a file a host marked read-only is not
    * deletable through the ordinary path, matching DOS/Windows `del`. Refused
    * before priv_free_chain() touches the FAT, so a denied unlink changes nothing. */
   if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
@@ -507,7 +507,7 @@ static ra8_err_t internal_unlink_locked(const ra8_fs_mount_t* handle, const char
   }
   /* The whole chain, not only the 8.3 entry: clearing one slot left the file's
    * long-name entries on disk with a checksum nothing matched, which fsck.fat
-   * and chkdsk both report as orphans (#600). */
+   * and chkdsk both report as orphans. */
   return priv_dir_erase_chain(handle, &t.parent, t.lba, t.off, &t.entry[k_dir_off_name]);
 }
 
@@ -635,7 +635,7 @@ internal_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const ch
   if (err != k_ra8_ok) {
     return err;
   }
-  /* Honor the read-only attribute (#681): a read-only file is refused before any
+  /* Honor the read-only attribute: a read-only file is refused before any
    * new entry is filed or the old chain is erased, so the directory is untouched. */
   if ((t.entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
     return k_ra8_err_access_denied;

@@ -164,7 +164,7 @@ def _header_preamble() -> list[str]:
     The `NOLINTBEGIN` line carries its rationale inline, matching the committed
     header. Emitting the bare pragma meant every regeneration silently deleted
     that rationale and showed up as diff noise in an otherwise data-only
-    refresh (#782).
+    refresh.
     """
     return [
         "/**",

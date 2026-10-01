@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_longstrip/src/main.c
- * @brief Viewable continuous vertical-scroll (longstrip / manhwa) reader (#289).
+ * @brief Viewable continuous vertical-scroll (longstrip / manhwa) reader.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}

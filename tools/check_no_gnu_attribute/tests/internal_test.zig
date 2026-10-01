@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression tests for the GNU-attribute detector and its scope
-//! rules (RA8FW-335, #1178). Every expectation here was settled against the
+//! rules (RA8FW-335). Every expectation here was settled against the
 //! Python predecessor under CPython before any Zig was written, including
 //! the quirks that were deliberately NOT tidied.
 

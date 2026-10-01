@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Per-block entropy coding for the baseline encoder (#2795): forward DCT,
+//! Per-block entropy coding for the baseline encoder: forward DCT,
 //! quantisation in zig-zag order, the DC difference and the AC run-length
 //! pass of T.81 sec F.1.2.
 

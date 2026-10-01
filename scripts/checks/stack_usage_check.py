@@ -570,7 +570,7 @@ def _print_census(su_count: int, func_count: int) -> None:
     """Print the file/function census that tells a real pass from an empty one.
 
     Emitted on EVERY path -- pass and fail alike, and regardless of --quiet --
-    because it is the one line that makes a green result meaningful (#386): a
+    because it is the one line that makes a green result meaningful: a
     reader can see whether the sweep actually measured anything.
     """
     print(f"stack_usage_check: parsed {func_count} function(s) from {su_count} .su file(s).")
@@ -579,7 +579,7 @@ def _print_census(su_count: int, func_count: int) -> None:
 def _check_enumeration(
     su_count: int, func_count: int, min_functions: int, allow_empty: bool
 ) -> int:
-    """Decide whether the sweep measured enough to trust its verdict (#386).
+    """Decide whether the sweep measured enough to trust its verdict.
 
     A gate that examined nothing must FAIL, not pass. The three collapse modes
     are graded distinctly:
@@ -648,7 +648,7 @@ def main(argv: list) -> int:
     actually parsed functions. Every no-input path is therefore graded by
     ``_check_enumeration`` and prints the file/function census: an empty sweep
     or one collapsed below ``--min-functions`` FAILS with
-    ``RC_ENUMERATION_BROKE`` rather than passing vacuously (#386). The only
+    ``RC_ENUMERATION_BROKE`` rather than passing vacuously. The only
     tolerated empty case is ``--allow-empty`` with no .su files at all -- the
     pre-commit fresh-clone path, where forcing a full build inside the hook
     would cost minutes per commit.

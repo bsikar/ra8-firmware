@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI membrane for `g_ra8_error_sink_log` in
-//! `libs/ra8_core/inc/ra8_error_interface.h` (#2875).
+//! `libs/ra8_core/inc/ra8_error_interface.h`.
 //!
 //! The production non-fatal sink: a driver reporting a degraded sensor or a
 //! CRC mismatch binds this instead of halting through `ra8_fatal_error`.

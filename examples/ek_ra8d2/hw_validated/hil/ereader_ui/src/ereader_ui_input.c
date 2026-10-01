@@ -429,7 +429,7 @@ static bool er_handle_reading_tap(int32_t x, int32_t y)
   const ra8_ui_rect_t back = {0, 0, (int32_t)k_er_back_w, (int32_t)k_er_statusbar_h};
   if (ra8_ui_rect_contains(&back, x, y)) {
     /* Back returns from a link jump (footnote or chapter) first, then pops the
-     * screen back to the Library (#110). */
+     * screen back to the Library. */
     if (s_loc_back_count > 0U) {
       s_loc_back_count--;
       s_chapter_idx  = s_loc_back[s_loc_back_count].chapter;

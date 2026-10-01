@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Machine-readable exclusion marker for examples/_unsupported/threadx_nimble_peripheral (#401).
+# Machine-readable exclusion marker for examples/_unsupported/threadx_nimble_peripheral.
 # The prose in this app's README says what it does; this file says, in a form a
 # gate can read, WHY it is excluded from hardware validation. Keys and the
 # `reason` taxonomy are enforced by scripts/checks/check_unsupported_exclusions.py.
@@ -12,5 +12,5 @@ also = []
 needs_extra_hardware = true
 evidence = "examples/_unsupported/threadx_nimble_peripheral/README.md"
 detail = """
-The RA8D2 has no on-chip BLE radio, so BLE on this board means the ESP32-C6 companion carrying the controller over the ra8_ble HCI transport seam. Only the software path (transport bridge, porting layer, GATT skeleton) is wired here; the transport underneath is itself unproven (#86, #91, #286).
+The RA8D2 has no on-chip BLE radio, so BLE on this board means the ESP32-C6 companion carrying the controller over the ra8_ble HCI transport seam. Only the software path (transport bridge, porting layer, GATT skeleton) is wired here; the transport underneath is itself unproven.
 """

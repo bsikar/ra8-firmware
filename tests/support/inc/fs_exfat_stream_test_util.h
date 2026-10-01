@@ -1,6 +1,6 @@
 /**
  * @file fs_exfat_stream_test_util.h
- * @brief Shared fixture for the exFAT streaming-write test executables (#602).
+ * @brief Shared fixture for the exFAT streaming-write test executables.
  *
  * @details
  * Builds on `fs_fat_exfat_mutate_test_util.h` -- the 64 MiB RAM-backed exFAT

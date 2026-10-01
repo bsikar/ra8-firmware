@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_image.c
- * @brief Host unit tests + MC/DC for apps/shared_libs/reflow/src/reflow_image.c (#106).
+ * @brief Host unit tests + MC/DC for apps/shared_libs/reflow/src/reflow_image.c.
  *
  * @details
  * Exercises the zero-heap raster decode + nearest-neighbour scale + blit path
@@ -13,7 +13,7 @@
  *  - MC/DC for the new compound decisions: the public argument-precondition
  *    (3-condition OR, driven through the real API) plus mirror helpers for the
  *    two TU-private decisions (fit-box branch, decode-failure classify).
- *  - The WebP arm (#637): the committed 8x8 lossless fixture probes and blits
+ *  - The WebP arm: the committed 8x8 lossless fixture probes and blits
  *    through the same public entry points, bit-exact against the fixture's
  *    documented source pattern, and the routing decision is driven from both
  *    sides (a non-RIFF buffer, and a RIFF buffer whose form tag is not WEBP --
@@ -513,7 +513,7 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
 
 /**
  * @test internal_test_probe_size_webp
- * @brief ra8_img_probe_size reads an 8x8 WebP through the libwebp arm (#637).
+ * @brief ra8_img_probe_size reads an 8x8 WebP through the libwebp arm.
  *
  * @par MC/DC:
  * Routing decision `internal_is_webp(bytes, len)` in reflow_image.c: this

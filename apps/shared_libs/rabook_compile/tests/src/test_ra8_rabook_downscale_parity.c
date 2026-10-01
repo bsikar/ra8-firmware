@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rabook_downscale_parity.c
- * @brief Host-vs-device byte-identity gate for the opt-in image downscale (#213).
+ * @brief Host-vs-device byte-identity gate for the opt-in image downscale.
  *
  * @details
  * The .rabook image pipeline may downscale a raster when the caller opts in with
@@ -60,7 +60,7 @@ RA8_INTERNAL static void internal_check(bool cond, const char* name)
 }
 
 /* -------------------------------------------------------------------------- */
-/* downscale <-> desktop byte-identity parity (#213) */
+/* downscale <-> desktop byte-identity parity */
 /* -------------------------------------------------------------------------- */
 
 /**

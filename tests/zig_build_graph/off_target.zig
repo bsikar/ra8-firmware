@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! `ra8_add_app(OFF_TARGET_LIBS <lib>...)`: the one source-set rule that
-//! compiles a single executable at TWO preprocessor views (#1133).
+//! compiles a single executable at TWO preprocessor views.
 //!
 //! Extracted into its own module because cross_sources.zig sits at the
 //! 1000-line ceiling scripts/checks/check_file_size.py holds every Zig source

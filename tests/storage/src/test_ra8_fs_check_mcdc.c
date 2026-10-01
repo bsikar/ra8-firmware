@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_check_mcdc.c
- * @brief MC/DC vector suite for `ra8_fs_check()`'s compound decisions (#610).
+ * @brief MC/DC vector suite for `ra8_fs_check()`'s compound decisions.
  *
  * @details
  * One `test_mcdc_*` per enclosing function that carries a compound boolean

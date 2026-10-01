@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/touch_cal/src/main.c
- * @brief N-point affine touch-calibration demo + HIL gate (#262).
+ * @brief N-point affine touch-calibration demo + HIL gate.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}

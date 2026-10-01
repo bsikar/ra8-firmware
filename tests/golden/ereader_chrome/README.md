@@ -1,4 +1,4 @@
-# ereader_ui chrome golden images (#84)
+# ereader_ui chrome golden images
 
 Pinned reference renders of the `ereader_ui` example's **chrome** (the Library
 and Reading screens, issue #80), used as a regression gate.

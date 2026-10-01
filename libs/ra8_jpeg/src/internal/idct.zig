@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Inverse DCT for the baseline decoder (#2799).
+//! Inverse DCT for the baseline decoder.
 //!
 //! Shares the Q14 cosine and weight tables with the forward transform in
 //! `dct.zig`: same constants, opposite direction.

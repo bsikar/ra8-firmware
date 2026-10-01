@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_crashlog.h` (#2868).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_crashlog.h`.
 //!
 //! Owns the one record instance and where it lives; the state machine over
 //! it is `internal/fault/crashlog.zig`.

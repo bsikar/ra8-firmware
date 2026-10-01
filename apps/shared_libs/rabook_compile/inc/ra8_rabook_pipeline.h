@@ -1,6 +1,6 @@
 /**
  * @file ra8_rabook_pipeline.h
- * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
+ * @brief End-to-end EPUB -> RABOOK1 compile pipeline.
  * @ingroup grp_ereader
  *
  * @details

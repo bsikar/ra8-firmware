@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c
- * @brief Nested ra8_widget tree composited on the live GLCDC panel (#145).
+ * @brief Nested ra8_widget tree composited on the live GLCDC panel.
  *
  * @details
  * The sibling `widget_app_demo` proves the `ra8_widget` + `ra8_app` stack as an

@@ -38,7 +38,7 @@ the tree is:
 That last check is *self*-referential by nature: it proves the tree has not
 changed since the SBOM was regenerated, never that the tree was right when it
 was vendored.  The complementary check lives in
-``scripts/checks/check_soup_upstream.py`` (#548), which compares every vendored
+``scripts/checks/check_soup_upstream.py``, which compares every vendored
 file against the blob hash its upstream project publishes for the pinned
 revision.  The two are deliberately separate: this one needs no network and
 covers every byte under a component path, that one needs a fetch (done weekly)
@@ -49,7 +49,7 @@ literal in ``sbom_registry.py``, present on four of twenty-three components and
 absent from NimBLE -- the one component that had actually drifted.  Nothing
 ever computed it, so ``--check``'s byte-comparison of regenerated-against-
 committed JSON compared a constant with itself, and appending a line to a
-vendored source still printed ``SBOM matches the tree`` with status 0 (#538).
+vendored source still printed ``SBOM matches the tree`` with status 0.
 Provenance is now DERIVED, never transcribed: a value re-computed from the tree
 on each run is the only kind that can disagree with the tree.
 

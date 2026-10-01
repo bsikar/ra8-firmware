@@ -1,7 +1,7 @@
 /**
  * @file epub_img_tiles.h
  * @brief Page a large in-EPUB image through ra8_tile_cache + a real reflow
- *        `<img>` loader off the streaming reader (#231).
+ *        `<img>` loader off the streaming reader.
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -30,7 +30,7 @@
  *      through `jof_produce()` into a caller-supplied atlas store,
  *      and registers the result -- after which a page larger than SDRAM at
  *      native resolution renders full-res via decode-on-demand tiles. Every
- *      source codec converges on the one JOF container (#290). An entry that
+ *      source codec converges on the one JOF container. An entry that
  *      already IS a stored JOF atlas registers in place with no transcode.
  *   3. **Reflow `<img>` loader** (`epub_reflow_img_load`): the real
  *      `reflow_image_loader_fn` -- resolves an `<img src>` href to an
@@ -185,7 +185,7 @@ typedef struct {
 } epub_atlas_import_cfg_t;
 
 /**
- * @brief Initialise a tile binder over caller-supplied tile-cache storage (#231).
+ * @brief Initialise a tile binder over caller-supplied tile-cache storage.
  *
  * @details
  * Wires @p storage into an owned ::ra8_tile_cache whose decode-on-miss is this
@@ -220,7 +220,7 @@ typedef struct {
                                               uint32_t                    scratch_cap);
 
 /**
- * @brief Register a stored in-archive JOF atlas entry under @p image_id (#231).
+ * @brief Register a stored in-archive JOF atlas entry under @p image_id.
  *
  * @details
  * Resolves @p path (OPF-relative, then archive-rooted), measures the entry,
@@ -257,7 +257,7 @@ typedef struct {
                                              uint32_t            image_id);
 
 /**
- * @brief Register an externally-backed JOF atlas under @p image_id (#231).
+ * @brief Register an externally-backed JOF atlas under @p image_id.
  *
  * @details
  * The external seam serves atlases that live outside the archive: an SDRAM
@@ -351,7 +351,7 @@ typedef struct {
                                                 const epub_atlas_import_cfg_t* cfg);
 
 /**
- * @brief Report a registered image's parsed geometry (#231).
+ * @brief Report a registered image's parsed geometry.
  *
  * @param[in]  binder   Binder with @p image_id registered.
  * @param[in]  image_id Image to query.
@@ -373,7 +373,7 @@ typedef struct {
 epub_tile_binder_info(const epub_tile_binder_t* binder, uint32_t image_id, jof_info_t* out_info);
 
 /**
- * @brief Get (and pin) one decoded tile of a registered image (#231).
+ * @brief Get (and pin) one decoded tile of a registered image.
  *
  * @details
  * Builds the tile-cache key `(image_id, tile_x, tile_y)` and fetches it through
@@ -413,7 +413,7 @@ epub_tile_binder_info(const epub_tile_binder_t* binder, uint32_t image_id, jof_i
                                              ra8_tile_t*         out_tile);
 
 /**
- * @brief Release one pin taken by `epub_tile_binder_get()` (#231).
+ * @brief Release one pin taken by `epub_tile_binder_get()`.
  *
  * @param[in] binder Initialised binder.
  * @param[in] pixels The `pixels` pointer from a returned ::ra8_tile_t.
@@ -433,7 +433,7 @@ epub_tile_binder_info(const epub_tile_binder_t* binder, uint32_t image_id, jof_i
 [[nodiscard]] ra8_err_t epub_tile_binder_put(epub_tile_binder_t* binder, const uint8_t* pixels);
 
 /**
- * @brief Predictively warm the tiles one step ahead of a panning image (#341).
+ * @brief Predictively warm the tiles one step ahead of a panning image.
  *
  * @details
  * The image-render counterpart of ::book_src_prefetch_chapter's text
@@ -477,7 +477,7 @@ epub_tile_binder_info(const epub_tile_binder_t* binder, uint32_t image_id, jof_i
                                                       uint16_t*              out_warmed);
 
 /**
- * @brief Real reflow `<img>` byte loader off an EPUB book (#231).
+ * @brief Real reflow `<img>` byte loader off an EPUB book.
  *
  * @details
  * A `reflow_image_loader_fn` (matching signature) that resolves @p href to an

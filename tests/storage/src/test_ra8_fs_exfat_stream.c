@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_stream.c
- * @brief exFAT streaming write: create, append, truncate, seek, handles (#602).
+ * @brief exFAT streaming write: create, append, truncate, seek, handles.
  *
  * @details
  * `ra8_fs_open()` answered `k_ra8_err_not_supported` for both writing modes on

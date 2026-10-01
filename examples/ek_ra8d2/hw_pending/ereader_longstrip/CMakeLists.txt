@@ -41,7 +41,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ereader_longstrip
   STACK_BYTES 16384
-  DESCRIPTION "Vertical-scroll strip on the GLCDC panel, tap-zone paging (#289)"
+  DESCRIPTION "Vertical-scroll strip on the GLCDC panel, tap-zone paging"
   LIBS longstrip
        jof
        ra8_mem

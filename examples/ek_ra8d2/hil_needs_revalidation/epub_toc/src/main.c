@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c
- * @brief On-silicon HIL: EPUB TOC navigation (NCX + nav.xhtml) from SD (#116).
+ * @brief On-silicon HIL: EPUB TOC navigation (NCX + nav.xhtml) from SD.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -8,7 +8,7 @@
  * @details
  * #74 added titled-TOC parsing to `epub` -- both the EPUB2 NCX (`<navMap>`)
  * and the EPUB3 `nav.xhtml` (`<nav epub:type="toc">`) forms -- but it has only
- * ever run on the x86 host. This app, building on `epub_open` (#114), runs
+ * ever run on the x86 host. This app, building on `epub_open`, runs
  * the TOC path on the M85 against real `.epub` files staged on a microSD card.
  *
  * It self-provisions three baked books onto the card (if absent) and parses each:
@@ -129,7 +129,7 @@ volatile uint32_t g_etoc_heartbeat = 0U;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
 static epub_book_t s_book;
-/** @brief Streamed-open source-file context; must outlive @ref s_book (#230). */
+/** @brief Streamed-open source-file context; must outlive @ref s_book. */
 static epub_stream_fs_ctx_t s_epub_io;
 /** @brief SD backend; file-scope so the mount handle may reference it. */
 static ra8_fs_backend_t s_backend;

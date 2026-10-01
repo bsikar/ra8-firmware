@@ -23,7 +23,7 @@
  * The per-timer `PTPTIVC` / `PTPTOVC` assertions and the 0x40-stride check in
  * ``internal_test_increment`` are the ones carrying real weight here: they prove the
  * driver reaches the HUM offsets rather than an invented window, which is the
- * defect this file exists to prevent recurring (#498).
+ * defect this file exists to prevent recurring.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -13,7 +13,7 @@ exercise. Between the two configs, the USBX device stack and the first-party
 host stack are shown running concurrently on either controller in either role,
 returning the chip's flash byte for byte.
 
-## The fix this app forced (#67)
+## The fix this app forced
 
 The HS DCD used to seed `ux_system_slave_speed`, and the current device
 framework, to high speed at init -- before the link speed is knowable. Against

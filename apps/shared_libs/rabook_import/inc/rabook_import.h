@@ -1,6 +1,6 @@
 /**
  * @file rabook_import.h
- * @brief On-import EPUB -> .rabook compile-and-cache manager (#151).
+ * @brief On-import EPUB -> .rabook compile-and-cache manager.
  * @ingroup grp_ereader
  *
  * @details
@@ -62,7 +62,7 @@ extern "C" {
  * @details The cache entry is named after the SOURCE'S OWN name -- the `.epub`
  *          basename with `.rabook` (cache), `.rabook.tmp` (crash-safe temp) or
  *          `.rabook.mrk` (freshness marker) appended -- now that `ra8_fs` writes
- *          VFAT long names (#600/#633). The CRC-32 still keys freshness inside
+ *          VFAT long names. The CRC-32 still keys freshness inside
  *          the marker, but no longer names the file. @ref k_rabook_import_name_cap
  *          bounds the derivation onto fixed buffers; a source whose derived name
  *          does not fit is refused rather than truncated.

@@ -1,6 +1,6 @@
 /**
  * @file reflow_cache.h
- * @brief Import-time pagination cache for `reflow` (#79).
+ * @brief Import-time pagination cache for `reflow`.
  * @ingroup grp_ereader
  *
  * @details

@@ -10,7 +10,7 @@
  * exactly one seam has to exist between the two -- this one. It is a seam and
  * not a scattering of casts on purpose: the three separate places that used to
  * do their own byte-to-unit arithmetic each got it wrong in a different
- * direction (#606), and a single conversion cannot disagree with itself.
+ * direction, and a single conversion cannot disagree with itself.
  *
  * ## What is representable
  *

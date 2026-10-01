@@ -143,7 +143,7 @@ static void test_extra_mram_write_validation(void)
  * @test test_extra_mram_write_rejects_locked_otp
  *
  * @details
- * OTP-misuse guard (#397): the general-purpose write path must refuse any
+ * OTP-misuse guard: the general-purpose write path must refuse any
  * target at or above ``k_ra8_flash_extra_locked_start`` -- the permanent,
  * irreversible option-setting structures (PBPS, POFSPS, REVOKE, HUK-zeroize,
  * anti-rollback). Those need the deliberate ``ra8_flash_config_set_write``.

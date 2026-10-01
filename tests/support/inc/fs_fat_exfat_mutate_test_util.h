@@ -457,7 +457,7 @@ RA8_INTERNAL static inline uint32_t internal_alloc_bitmap_used(const ra8_fs_moun
  * @brief Mark every cluster of the exFAT allocation bitmap as used.
  *
  * @details The direct way to present a driver with a volume that has no free
- *          cluster left, so directory growth (#677) has nowhere to extend to and
+ *          cluster left, so directory growth has nowhere to extend to and
  *          must report ::k_ra8_err_no_mem. Sets every bit of the bitmap region
  *          the formatter laid down; the on-disk structure is deliberately
  *          inconsistent afterwards (the bitmap claims clusters no entry set

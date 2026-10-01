@@ -73,7 +73,7 @@ typedef enum : uint32_t {
  *          which is why they are `UINT64_MAX` rather than 0 (LBA 0 is the boot
  *          sector and a perfectly real address). They are 64-bit because LBAs
  *          are: on beyond-2-TiB media the old 32-bit sentinel value
- *          `0xFFFFFFFF` is an ordinary addressable sector (#683).
+ *          `0xFFFFFFFF` is an ordinary addressable sector.
  *
  * @invariant Both values are above any LBA a supported medium can carry.
  * @see priv_exfat_bitmap_lba()

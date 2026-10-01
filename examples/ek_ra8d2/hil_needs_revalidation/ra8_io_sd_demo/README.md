@@ -1,6 +1,6 @@
 # ra8_io_sd_demo
 
-Proves the `ra8_io` fabric's swappable-backend promise (#155, #156): the same
+Proves the `ra8_io` fabric's swappable-backend promise: the same
 VFS API that `ra8_io_demo` runs over a RAM disk, running over a microSD card by
 swapping only the block device. Everything above `ra8_io_blockdev_sdspi_init` is
 identical -- the `ra8_fs` bridge, the format and mount, the VFS mount, `mkdir`, a

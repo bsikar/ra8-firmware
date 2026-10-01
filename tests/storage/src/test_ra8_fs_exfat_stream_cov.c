@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_stream_cov.c
- * @brief Backend-failure arms of the exFAT streaming writer (#602).
+ * @brief Backend-failure arms of the exFAT streaming writer.
  *
  * @details
  * A storage driver is mostly error handling, and the arms that carry it are
@@ -563,7 +563,7 @@ RA8_INTERNAL static void internal_test_create_file_table_full(void)
 /**
  * @test test_create_no_directory_space
  *
- * @brief A root directory with no room GROWS to hold the new create (#677).
+ * @brief A root directory with no room GROWS to hold the new create.
  *
  * @details Every slot in the single root cluster is filled with an in-use Name
  *          entry, which occupies the slot without pretending to be a File set,

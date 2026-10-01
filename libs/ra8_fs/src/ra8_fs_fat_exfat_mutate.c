@@ -40,7 +40,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus
     }
     sec[byte] = (uint8_t)(sec[byte] & (uint8_t)~(uint8_t)(1U << bit));
     /* Pull the scan hint back to the space just released, or the next create
-     * would step over it and only find it after a full rescan (#607). */
+     * would step over it and only find it after a full rescan. */
     priv_alloc_hint_lower(m, idx + (uint32_t)k_cluster_first_data);
   }
   return priv_write_sector(m, loaded, sec);
@@ -96,7 +96,7 @@ static ra8_err_t internal_exfat_take_set(const ra8_fs_mount_t* m,
      * (it has already advanced past what it read). Capturing before the call
      * records (old cluster, one-past-end) for the first entry of a new cluster --
      * harmless while directories were one cluster, a mis-retired slot once they
-     * grow (#677). */
+     * grow. */
     const exfat_setpos_t sp = {.cluster = cur->cluster, .index = cur->entry_in_cluster - 1U};
     pos[1U + k]             = sp;
     if (k == 0U) {
@@ -200,7 +200,7 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
                               uint8_t*              file_copy,
                               uint8_t*              strm_copy)
 {
-  /* Strip leading slashes so a "/name" path matches (#93), as FAT does. */
+  /* Strip leading slashes so a "/name" path matches, as FAT does. */
   while (*path == '/') {
     path++;
   }
@@ -220,7 +220,7 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
     }
     /* AFTER the read (see ::priv_exfat_take_set): the File entry lives at the
      * cursor's current cluster, one slot back, so a set whose File entry is the
-     * first of a grown cluster is recorded where it truly is (#677). */
+     * first of a grown cluster is recorded where it truly is. */
     const exfat_setpos_t at = {.cluster = cur.cluster, .index = cur.entry_in_cluster - 1U};
     if (e[0] == (uint8_t)k_exfat_entry_eod) {
       return k_ra8_err_not_found;
@@ -280,7 +280,7 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
 {
   const uint32_t first = priv_rd32(&strm[k_exfat_strm_off_clus]);
   /* The full 64-bit DataLength: reading only the low word here under-counted a
-   * >4 GiB file's clusters and leaked the rest on unlink/truncate (#676). */
+   * >4 GiB file's clusters and leaked the rest on unlink/truncate. */
   const uint64_t size = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   if (first < k_cluster_first_data) {
     return k_ra8_ok;
@@ -363,11 +363,11 @@ ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, 
   }
   /* A directory's entry set looks like a file's, so without this the chain
    * holding every child is handed to priv_exfat_free_clusters and the children
-   * become unreachable allocated clusters -- silent, unrecoverable loss (#604). */
+   * become unreachable allocated clusters -- silent, unrecoverable loss. */
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  /* Honor the read-only attribute (#681): a read-only file is refused before the
+  /* Honor the read-only attribute: a read-only file is refused before the
    * entry set is dropped or its clusters freed, so a denied unlink is a no-op. */
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
     return k_ra8_err_access_denied;
@@ -408,7 +408,7 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
  * A name of 16+ units needs more than one Name entry, so the built set can be
  * longer OR shorter than the one on the volume. That is precisely why the old
  * in-place patch could not do this and ::priv_exfat_place_rename has to decide
- * where the result lands (#603).
+ * where the result lands.
  *
  * @param[out] set      Buffer of at least ::k_exfat_max_set_bytes.
  * @param[in]  file_e   The file's current 32-byte File entry.
@@ -456,7 +456,7 @@ static uint32_t internal_exfat_build_rename_set(uint8_t*        set,
   }
   /* Access stamp only, and before the checksum that covers it. Same reasoning
    * as the FAT rename: the name moved, the bytes did not, so LastModified must
-   * not move or every backup tool concludes the file changed (#601). */
+   * not move or every backup tool concludes the file changed. */
   priv_exfat_file_stamp_access(set);
   priv_wr16(&set[k_exfat_off_file_csum], priv_exfat_set_checksum(set, total));
   return total;
@@ -538,7 +538,7 @@ static ra8_err_t internal_exfat_rename_prepare(const ra8_fs_mount_t* m,
  * That order is the crash-safe one. The new set names the same clusters as the
  * old, so a failure after the write but before the drop leaves two names for one
  * file -- a transient the next scan resolves -- whereas dropping first would
- * orphan the clusters if the write never completed (#603).
+ * orphan the clusters if the write never completed.
  *
  * @param[in] m         Mounted exFAT volume.
  * @param[in] parent    Directory that holds the set.
@@ -602,7 +602,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   }
   /* The new leaf in UTF-16 up front: the built Name entries and the NameHash
    * both count CODE UNITS, and a UTF-8 argument of the same unit count can be
-   * three times as many bytes (#606). A name over the cap is an argument fault,
+   * three times as many bytes. A name over the cap is an argument fault,
    * not a full disk. The old leaf stays UTF-8: ::priv_exfat_find_set converts it
    * itself, and the entry count it reports is all the placement below needs. */
   uint16_t        new_units[k_exfat_name_cap] = {};
@@ -632,7 +632,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (fe != k_ra8_ok) {
     return fe;
   }
-  /* Honor the read-only attribute (#681). file_e is the File entry read back by
+  /* Honor the read-only attribute. file_e is the File entry read back by
    * priv_exfat_find_set above, so its FileAttributes low byte carries the
    * read-only bit; a read-only file is refused before the rename set is rebuilt
    * or placed. */
@@ -655,7 +655,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
  * Collecting units and converting once is what makes the conversion possible at
  * all. The old loop copied the LOW BYTE of each unit straight into the output,
  * so U+00E9 came back as the single byte 0xE9 -- not valid UTF-8 -- and U+4F60
- * came back as a backtick (#606). A variable-width encoding cannot be produced
+ * came back as a backtick. A variable-width encoding cannot be produced
  * one fixed-width unit at a time into a byte-indexed buffer.
  *
  * A set whose units cannot be expressed in UTF-8 at all -- an unpaired
@@ -725,7 +725,7 @@ static ra8_err_t internal_exfat_gather_name(const ra8_fs_mount_t* m,
  * stays under the statement-count gate. Reads the Stream entry, decides the
  * size a directory reports (0, not its allocation), gathers the name as UTF-8
  * and fills @p out -- unless the name is one no UTF-8 string encodes, which is
- * reported as absent rather than as mojibake (#606).
+ * reported as absent rather than as mojibake.
  *
  * @param[in]     m    Mounted exFAT volume.
  * @param[in,out] cur  Cursor positioned just after the File entry.
@@ -762,7 +762,7 @@ static ra8_err_t internal_exfat_list_emit(const ra8_fs_mount_t* m,
   /* A directory's exFAT DataLength is its ALLOCATION, not a byte count, so
    * reporting it as a size would tell every caller that an empty folder held
    * a cluster's worth of bytes. FAT reports 0 for a directory and so does
-   * ra8_fs_stat(); this is the third place that has to agree (#605). */
+   * ra8_fs_stat(); this is the third place that has to agree. */
   uint64_t size = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
     size = 0U;

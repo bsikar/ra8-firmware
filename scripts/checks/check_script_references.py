@@ -88,7 +88,7 @@ OPT_OUT = "PATHREF-OK"
 # their OWN scripts/ paths, which do not exist here and never will.
 #
 # docs/sbom/upstream/ is the same fact one step removed: those manifests are
-# generated listings of UPSTREAM file paths (#548), and mbedtls and LevelX
+# generated listings of UPSTREAM file paths, and mbedtls and LevelX
 # each ship a `scripts/` directory of their own -- a row naming
 # `scripts/generate_errors.pl`  # PATHREF-OK: upstream's path, not ours
 # records what upstream publishes rather than referring to anything here, and

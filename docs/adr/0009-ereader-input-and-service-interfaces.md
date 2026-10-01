@@ -104,7 +104,7 @@ line under the same IRQ0..15 rule as D2.
 ## Consequences
 
 * Five buttons claim five of the sixteen standby-capable IRQ channels, which
-  the touch interrupt (#830), the radio link (#826), the charger and gauge
+  the touch interrupt, the radio link, the charger and gauge
   (#825) and the accelerometer all also want. The pin allocation done under
   #823 and #824 has to treat IRQ0..15 as a scarce resource; this ADR is the
   reason it is scarce.

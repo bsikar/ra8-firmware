@@ -1,7 +1,7 @@
 # dtc_isr_arm_demo
 
 The same 1 KB SRAM-to-SRAM block copy as `dtc_transfer_demo`, but it arms and
-disarms DTC activation through the `ra8_isr_set_dtc()` HAL primitive (#579)
+disarms DTC activation through the `ra8_isr_set_dtc()` HAL primitive
 instead of open-coding the `IELSRn.DTCE` read-modify-write. Because the
 primitive owns that write, this app never includes `ra8_icu_regs.h` at all --
 the DTC-vs-CPU routing decision no longer leaks into application code.

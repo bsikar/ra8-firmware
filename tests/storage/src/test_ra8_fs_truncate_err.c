@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_truncate_err.c
- * @brief Backend-failure coverage for ra8_fs_truncate on FAT and exFAT (#680).
+ * @brief Backend-failure coverage for ra8_fs_truncate on FAT and exFAT.
  *
  * @details
  * The happy-path suites (`test_ra8_fs_fat_truncate.c` /

@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * End-to-end example for the e-ink display path (#256): it drives an
+ * End-to-end example for the e-ink display path: it drives an
  * IT8951-compatible e-paper panel entirely through ``libs/ra8_display_pal``'s
  * e-ink backend (``k_display_backend_eink_it8951``), which sits on the
  * ``ra8_epaper`` HAL driver over an injected ``ra8_io_spi_bus`` seam. The app

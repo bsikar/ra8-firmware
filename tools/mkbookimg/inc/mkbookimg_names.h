@@ -5,7 +5,7 @@
  * @details
  * mkbookimg packs each input book onto the FAT card under a HUMAN-READABLE
  * name: the source file's own basename, stored verbatim now that `ra8_fs`
- * writes VFAT long names (#600). Before that landed the tool emitted `BOOK01`,
+ * writes VFAT long names. Before that landed the tool emitted `BOOK01`,
  * `BOOK02`, ... under a forced 8.3 extension and threw the real name away
  * (#633 removed that workaround).
  *

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Tests for the decompression-limits policy (#2862). The saturating
+//! Tests for the decompression-limits policy. The saturating
 //! arithmetic is the security-load-bearing part, so each bound and each
 //! wrap guard is exercised on its own.
 

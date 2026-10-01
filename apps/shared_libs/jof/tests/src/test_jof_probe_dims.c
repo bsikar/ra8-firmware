@@ -1,6 +1,6 @@
 /**
  * @file test_jof_probe_dims.c
- * @brief Geometry-probe vectors for `jof_probe_dims()` (#290).
+ * @brief Geometry-probe vectors for `jof_probe_dims()`.
  *
  * @details
  * The probe is the seam that lets a caller size a source before the producer

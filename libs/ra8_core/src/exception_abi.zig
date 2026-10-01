@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_exception.h` (#2868).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_exception.h`.
 //!
 //! This is the fault path itself, so the ORDER below is the contract, not a
 //! style choice:

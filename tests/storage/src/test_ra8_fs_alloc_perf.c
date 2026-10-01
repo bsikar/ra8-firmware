@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_alloc_perf.c
- * @brief Cluster allocation cost, and FAT32 FSInfo maintenance (#607).
+ * @brief Cluster allocation cost, and FAT32 FSInfo maintenance.
  *
  * @details
  * Two halves of one defect: `ra8_fs` did not know where its free space was.

@@ -63,7 +63,7 @@ static uint16_t s_lib_node_count;
 static uint16_t s_lib_body_first = 2U;
 
 /**
- * @brief In-content SVG (#112): a navy field, a gold disc, and a crimson block.
+ * @brief In-content SVG: a navy field, a gold disc, and a crimson block.
  *
  * @details Returned by ::er_image_loader for any `*.svg` `<img src>`; rendered as
  * vector `<rect>`/`<circle>` shapes by ra8_svg_render (no raster decode).
@@ -551,7 +551,7 @@ void er_render_library(void)
   er_collect_targets(&tree);
   s_lib_node_count = tree.count;
 
-  /* Compose the screen from two band widgets (#145): a status bar over the body
+  /* Compose the screen from two band widgets: a status bar over the body
    * (toolbar + grid + nav). The bands occupy disjoint y-ranges, so the widget
    * composition renders byte-identically to the monolithic box tree -- the
    * status bar can now be invalidated + partial-flushed on its own. */
@@ -574,7 +574,7 @@ void er_render_library(void)
  * =========================================================================== */
 
 /**
- * @brief Bind the Layer-3 glyph atlas (#164) to the reflow engine.
+ * @brief Bind the Layer-3 glyph atlas to the reflow engine.
  *
  * @details A page turn re-renders the same body glyphs, so caching the
  * rasterised bitmaps (cells in SDRAM, like the framebuffer + decode arena)
@@ -707,7 +707,7 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
 static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
 {
   /* Reflow from the SD-loaded font if present, else the Latin-1 face baked into
-   * flash (#66) -- so the Reading body shows real proportional text with no card
+   * flash -- so the Reading body shows real proportional text with no card
    * at all. Only a reflow-engine failure falls through to the bitmap body. */
   const uint8_t* font_data = s_have_font ? s_font_buf : g_ra8_font_literata_latin1;
   const uint32_t font_len  = s_have_font ? s_font_len : g_ra8_font_literata_latin1_len;
@@ -868,7 +868,7 @@ void er_render_reading(void)
 }
 
 /* ===========================================================================
- * In-content navigation (#110) -- page turns + `<a href>` link following
+ * In-content navigation -- page turns + `<a href>` link following
  * =========================================================================== */
 
 void er_push_loc(void)

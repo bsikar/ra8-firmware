@@ -1,7 +1,7 @@
 /**
  * @file test_jof_produce_reject.c
  * @brief Producer entry-point rejection vectors: format sniff, pull failure,
- *        config guards, PNG IHDR malformations and starved budgets (#231).
+ *        config guards, PNG IHDR malformations and starved budgets.
  *
  * @details
  * Complements `test_jof_produce.c` (happy paths, byte parity and the

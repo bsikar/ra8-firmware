@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The ci-monitor status reader, as pure computation (RA8FW-335, #1144).
+//! The ci-monitor status reader, as pure computation (RA8FW-335).
 //!
 //! Everything here is a function of an already-parsed JSON document: no file
 //! system, no argv, no process state, so every rule below is provable with no
@@ -13,9 +13,9 @@
 //! anger:
 //!
 //! * SKIPPED IS NOT SUCCESS -- an all-skipped sha ran no gate, so it is
-//!   UNKNOWN, never PASS (#530).
+//!   UNKNOWN, never PASS.
 //! * CANCELLED IS NOT FAILURE -- a superseded run is a non-result, not a red;
-//!   a workflow is judged by its latest run that actually concluded (#561).
+//!   a workflow is judged by its latest run that actually concluded.
 //!
 //! The Python rendered values with `str()` and tested truth with Python's
 //! truthiness, and `monitor.sh` reads those exact bytes, so both are

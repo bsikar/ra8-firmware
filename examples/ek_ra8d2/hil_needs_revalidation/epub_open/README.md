@@ -1,14 +1,14 @@
 # epub_open
 
 Opens a real `.epub` off a microSD card and runs the `epub` parse stack on
-it, on the target (#114). `epub_parse` proved the parser runs on the M85 from a
+it, on the target. `epub_parse` proved the parser runs on the M85 from a
 baked in-memory blob; this closes the storage gap by reading the book through
 `ra8_fs` -- the exact path the e-reader uses -- so the byte-twiddling parse
 layer meets real SD timing and the FAT read path instead of a `.rodata` array.
 
 It self-provisions a known two-chapter book onto the card if it is not already
 there, then opens it with `epub_open_streamed_fs()`: the production streamed
-open (#230), which keeps no whole-file buffer and seeks the card for every ZIP
+open, which keeps no whole-file buffer and seeks the card for every ZIP
 read. It asserts the spine count, a byte-exact CRC-32 over chapter 0's
 decompressed XHTML, and a non-empty Dublin Core title, so a pass means the bytes
 were right and not merely that nothing crashed.

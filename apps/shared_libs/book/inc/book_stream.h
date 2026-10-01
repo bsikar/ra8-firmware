@@ -12,7 +12,7 @@
  * The callback is the shared ::ra8_vsource_read_fn seam from @c ra8_mem, not a
  * private typedef: @ref book_chunked_read already carries that exact shape, so
  * a chunked reader can be handed to @ref ra8_vsource_add_paged and to this
- * validator without an adapter (#770).
+ * validator without an adapter.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

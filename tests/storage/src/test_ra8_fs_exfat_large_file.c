@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_large_file.c
- * @brief exFAT files past 4 GiB: write, read, seek, truncate across the line (#676).
+ * @brief exFAT files past 4 GiB: write, read, seek, truncate across the line.
  *
  * @details
  * The simulation evidence for the 64-bit length model, on a 6 GiB sparse fake

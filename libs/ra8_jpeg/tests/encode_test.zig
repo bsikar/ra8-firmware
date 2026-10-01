@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Decision tests for the baseline JPEG encoder (#2795).
+//! Decision tests for the baseline JPEG encoder.
 //!
 //! These drive the units that decide bytes: the IJG quality curve, the
 //! quantisation clamps and rounding, the SSSS magnitude categories, the

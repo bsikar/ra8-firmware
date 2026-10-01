@@ -1,6 +1,6 @@
 /**
  * @file reflow_image.c
- * @brief Zero-heap raster image decode + nearest-neighbour scale + blit (#106).
+ * @brief Zero-heap raster image decode + nearest-neighbour scale + blit.
  *
  * @details
  * Implements reflow_image.h. The decode runs through the vendored stb_image
@@ -10,7 +10,7 @@
  * `ra8_gfx_pixel()` per destination pixel (which clips to the framebuffer).
  *
  * stb_image cannot decode WebP, so a RIFF/WEBP buffer is dispatched instead to
- * the `ra8_webp` facade over the vendored libwebp (#637): the inline
+ * the `ra8_webp` facade over the vendored libwebp: the inline
  * small-image path now takes the same formats the band-tile producer does, and
  * an EPUB whose illustrations are WebP no longer renders them as nothing. The
  * WebP canvas is RGBA8888, so the blit carries a source bytes-per-pixel rather
@@ -158,12 +158,12 @@ ra8_err_t ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, i
   RA8_CHECK_NULL_PTR(out_w, s_tag_img, "probe: null out_w");
   RA8_CHECK_NULL_PTR(out_h, s_tag_img, "probe: null out_h");
 
-  /* SVG is not a raster: take its intrinsic size from the document (#112). */
+  /* SVG is not a raster: take its intrinsic size from the document. */
   if (ra8_svg_is_svg(bytes, len)) {
     return ra8_svg_size(bytes, len, out_w, out_h);
   }
 
-  /* stb_image cannot parse a WebP header; the ra8_webp facade can (#637). */
+  /* stb_image cannot parse a WebP header; the ra8_webp facade can. */
   if (internal_is_webp(bytes, len)) {
     uint32_t        webp_w = 0U;
     uint32_t        webp_h = 0U;
@@ -391,7 +391,7 @@ static void internal_arena_release(ra8_img_arena_t* arena)
 /**
  * @brief Decode a WebP through the ra8_webp facade and blit it scaled to fit.
  *
- * @details The WebP arm of ra8_img_decode_blit() (#637). Reads the canvas size
+ * @details The WebP arm of ra8_img_decode_blit(). Reads the canvas size
  * from the container, then splits the caller's single arena in two: the decoded
  * RGBA8888 canvas is bump-allocated from it through ra8_img_arena_malloc(), and
  * whatever capacity is left above that allocation backs a sibling
@@ -517,7 +517,7 @@ ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
     return k_ra8_err_invalid_arg;
   }
 
-  /* stb_image has no WebP decoder: route the container to libwebp (#637). */
+  /* stb_image has no WebP decoder: route the container to libwebp. */
   if (internal_is_webp(bytes, len)) {
     return internal_webp_decode_blit(arena, bytes, len, dst_x, dst_y, box_w, box_h, out_w, out_h);
   }

@@ -591,7 +591,7 @@ static uint32_t internal_alloc_start(const ra8_fs_mount_t* m, uint32_t hint)
 ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster)
 {
   /* Start where the last allocation stopped and wrap exactly once, instead of
-   * restarting at cluster 2 every time (#607). Combined with the FAT sector
+   * restarting at cluster 2 every time. Combined with the FAT sector
    * cache behind priv_fat_get(), appending to a file costs a bounded number of
    * block reads per cluster rather than one read per cluster EXAMINED -- which
    * is what made writing a K-cluster file O(K * N) real device round trips. */

@@ -1,6 +1,6 @@
 /**
  * @file zoom_tiles.h
- * @brief Bind a tiled gray8 atlas behind an ra8_tile_cache as a zoom source (#478).
+ * @brief Bind a tiled gray8 atlas behind an ra8_tile_cache as a zoom source.
  * @ingroup grp_ereader
  *
  * @details
@@ -14,12 +14,12 @@
  * Each tile is acquired and released around a single copy, so at most one cell
  * is pinned at a time and a cache smaller than the frame degrades to re-decoding
  * rather than to ::k_ra8_err_no_mem. Sizing the cache to the frame is the
- * caller's job and is what stops thrash (#338); ::zoom_tiles_prefetch warms
+ * caller's job and is what stops thrash; ::zoom_tiles_prefetch warms
  * the lead edge of a pan out of whatever spare capacity the caller declares.
  *
  * @par Fail-closed on geometry
  * The tile cache carries no pixel format, so a colour atlas would otherwise be
- * read as gray8 and silently misrender (#339). Every fetched tile has its
+ * read as gray8 and silently misrender. Every fetched tile has its
  * decoded extent checked against the geometry declared at init, which is exactly
  * the mismatch a wrong bpp produces, and a mismatch is
  * ::k_ra8_err_invalid_size rather than a wrong picture.

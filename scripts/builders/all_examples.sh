@@ -20,7 +20,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width. The
 # across-app worker pool below defaults to it so this canonical cross-build
 # does not grab every core when it shares the box with other gate jobs.
 # shellcheck source=scripts/ci/lib/parallelism.sh

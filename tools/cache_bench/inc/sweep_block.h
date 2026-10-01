@@ -72,7 +72,7 @@ typedef struct {
  * sequential whole-object scan and (b) same-block re-read. Prints one
  * machine-parseable `sweep-block ...` line per row, then a human summary
  * with the measured knee and a chunk-size recommendation versus the current
- * 64 KiB `.rabook` default (#204). Every returned byte is verified against
+ * 64 KiB `.rabook` default. Every returned byte is verified against
  * the source blob, so a lying backend fails the run instead of skewing it.
  *
  * @param[in,out] config Caller-owned cache, workspace, scratch, and sinks.

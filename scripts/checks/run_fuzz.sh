@@ -44,7 +44,7 @@
 # The script exits non-zero if any requested harness reports a crash;
 # with --all every harness still runs so one crash cannot mask another.
 #
-# THE BUDGET IS VERIFIED, NOT ASSUMED (#509)
+# THE BUDGET IS VERIFIED, NOT ASSUMED
 #
 # libFuzzer enforces -max_total_time off the WALL clock. In the compiler-rt
 # sources the clang we pin is built from, compiler-rt/lib/fuzzer/
@@ -79,7 +79,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328).
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "${SCRIPT_DIR}/../ci/lib/parallelism.sh"
 
@@ -362,7 +362,7 @@ select_fuzz_compiler() {
 
 # Configure (first use) + build the given cmake target in tests/build-fuzz.
 # Parallelism is the bounded canonical width (ra8_max_jobs), matching
-# tests/build_tests.sh -- an explicit bound, not make's unlimited -j (#328).
+# tests/build_tests.sh -- an explicit bound, not make's unlimited -j.
 build_fuzz_target() {
   local cmake_target="$1" jobs
   jobs="$(ra8_max_jobs)"
@@ -464,8 +464,8 @@ selftest() {
   #             verdict      rc  description                        budget elapsed status reported cap
   verdict_case ok 0 "full budget spent" 300 302 0 301 "" || fails=1
   verdict_case crash 1 "crash found four seconds in" 300 4 1 "" "" || fails=1
-  verdict_case clock-skew 1 "clock stepped BACK mid-run (#509)" 300 4 0 -232 "" || fails=1
-  verdict_case clock-skew 1 "clock stepped FORWARD mid-run (#509)" 60 61 0 251 "" || fails=1
+  verdict_case clock-skew 1 "clock stepped BACK mid-run" 300 4 0 -232 "" || fails=1
+  verdict_case clock-skew 1 "clock stepped FORWARD mid-run" 60 61 0 251 "" || fails=1
   verdict_case runs-capped 0 "FUZZ_RUNS cap reached early" 30 2 0 2 4096 || fails=1
   verdict_case short-run 1 "starved with a coherent clock" 300 4 0 4 "" || fails=1
   verdict_case no-stats 1 "no final-stats line to check" 300 300 0 "" "" || fails=1

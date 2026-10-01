@@ -1,6 +1,6 @@
 /**
  * @file rabook_color_parity_fixture.h
- * @brief Colour-raster host-vs-device byte-identity fixture (#337).
+ * @brief Colour-raster host-vs-device byte-identity fixture.
  * @details Pins a synthetic RGB PNG against the desktop luma and gray4
  *          pipeline's packed output for firmware parity checks.
  *

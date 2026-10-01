@@ -1,6 +1,6 @@
 /**
  * @file jof_produce.c
- * @brief Transcode producer: sniff, decode, tile, encode, emit (#231, #290).
+ * @brief Transcode producer: sniff, decode, tile, encode, emit.
  *
  * @details
  * Implements `jof_produce()` and `jof_work_bytes()`. The
@@ -10,7 +10,7 @@
  * or `priv_jof_png_rows()` (PNG), both bounded-RAM by construction. Every
  * streaming buffer is carved from the caller's `work` arena through the bump
  * allocator -- the producer allocates nothing on the heap. The whole-frame
- * WebP arm (#290) is dispatched here but lives in the sibling
+ * WebP arm is dispatched here but lives in the sibling
  * `jof_produce_webp.c`, sharing the producer state and the
  * geometry / rows / prefix-pull seams through `jof_internal.h`.
  *

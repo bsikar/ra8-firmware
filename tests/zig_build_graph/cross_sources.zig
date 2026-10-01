@@ -14,7 +14,7 @@
 //! it is data with tests rather than a glob: board boot files resolve per app,
 //! two board units are opt-in on a library the app must name, one library name
 //! has no directory of its own at all, and one app-local source under `src/`
-//! belongs to a second image and must be kept OUT of this one (#1029).
+//! belongs to a second image and must be kept OUT of this one.
 
 const std = @import("std");
 const cpu1_image = @import("cpu1_image.zig");
@@ -26,7 +26,7 @@ const off_target_mod = @import("off_target.zig");
 pub const app_table = @import("app_table.zig");
 
 /// One example app the graph cross-builds. The type and the table of apps
-/// live in app_table.zig (#1146); they are re-exported here so every call
+/// live in app_table.zig; they are re-exported here so every call
 /// site, including build.zig, still reads them beside the rules they take an
 /// arm of.
 pub const CrossApp = app_table.CrossApp;
@@ -98,7 +98,7 @@ pub const library_source_gates = [_]LibrarySourceGate{
 };
 
 /// The OFF_TARGET_LIBS rule, aliased so call sites read the same as before the
-/// extraction (#1133).
+/// extraction.
 pub const off_target_define = off_target_mod.off_target_define;
 
 /// True when `source` is one of this app's OFF_TARGET_LIBS units.
@@ -397,7 +397,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         collectCSources(b, dir_path, &sources);
     }
     // The board layer this app selected, last of the universal set and
-    // resolved per app rather than hard-coded (#1131).
+    // resolved per app rather than hard-coded.
     collectCSources(b, b.fmt("{s}/src", .{app.board}), &sources);
 
     // Named libraries. A library with a directory of its own contributes

@@ -45,7 +45,7 @@ static const char* const s_tag = "ereader_zoom";
  */
 static_assert((uint64_t)k_ez_cells >= ((uint64_t)k_ez_view_cols * (uint64_t)k_ez_view_rows),
               "tile cache is smaller than the 1:1 viewport tile demand: re-derive k_ez_cells "
-              "from the panel + tile geometry so a single-step pan cannot thrash (#338)");
+              "from the panel + tile geometry so a single-step pan cannot thrash");
 static_assert((uint64_t)k_ez_cells * (uint64_t)k_ez_cell_bytes <= (uint64_t)k_ez_cell_budget_bytes,
               "resident tile arena exceeds its SDRAM budget");
 static_assert((k_ez_page_w % k_ez_tile_edge) == 0U,
@@ -523,7 +523,7 @@ static bool ez_apply_pan(ez_scene_t* s, ez_zone_t zone, uint32_t now_ms)
     return false;
   }
   /* Idle-window read-ahead: warm the tiles the next step in this direction
-   * will expose, out of the cache's spare margin (#341). */
+   * will expose, out of the cache's spare margin. */
   (void)ez_scene_prefetch(s, dir, nullptr);
   return true;
 }

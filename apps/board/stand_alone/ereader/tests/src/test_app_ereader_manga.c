@@ -56,7 +56,7 @@ enum : uint32_t {
   k_t_cap_edge   = 2048U,       /**< Produce budget cap, pixels.       */
   k_t_cell_bytes = 256U * 256U, /**< Cache cell = one gray8 256 tile.  */
   /* Cache budget DERIVED from the viewport geometry, in lockstep with main.c's
-   * k_mg_cells (#338): the 1:1 frame's tile span (ceil(extent/tile) + 1 for the
+   * k_mg_cells: the 1:1 frame's tile span (ceil(extent/tile) + 1 for the
    * viewport not being tile-aligned) plus one tile of pan margin on each axis.
    */
   k_t_view_cols = ((k_t_fb_w + k_t_tile_edge - 1U) / k_t_tile_edge) + 1U, /**< 1:1 cols. */
@@ -331,7 +331,7 @@ static void t_put_bytes(jof_memstore_t* st, const uint8_t* p, size_t n)
  *
  * @details A 1x1 image with one 1x1 raw tile: structurally complete and
  *          accepted by ``jof_parse`` (bpp 3 is a legal header value), but
- *          not gray8 -- so ::mg_reader_init must fail closed on it (#339). The
+ *          not gray8 -- so ::mg_reader_init must fail closed on it. The
  *          layout mirrors the writer in test_jof.c: 32-byte header, the
  * tile stream, an 8-byte index entry, then the 16-byte footer.
  *
@@ -767,7 +767,7 @@ static void test_manga_init_rejects_each_geometry_bound(void)
 /**
  * @test test_manga_bpp_guard
  * @brief ::mg_reader_init rejects a colour (bpp != 1) JOF atlas fail-closed and
- *        still binds a valid gray8 atlas (#339).
+ *        still binds a valid gray8 atlas.
  *
  * @details The reader's blit path reads one byte per pixel and expands gray8; a
  *          bpp=3 atlas would be mis-read one byte per pixel and rendered as
@@ -812,7 +812,7 @@ static void test_manga_bpp_guard(void)
  * @test test_manga_pan_no_thrash
  * @brief The derived tile-cache budget stops the pan thrash: a representative
  *        oscillating pan never evicts an on-screen tile, where the old 4-cell
- *        budget re-decodes a full screen every frame (#338).
+ *        budget re-decodes a full screen every frame.
  *
  * @details Runs the identical oscillating one-tile pan against two caches over
  *          the same atlas -- the old 4-cell stress budget and the derived

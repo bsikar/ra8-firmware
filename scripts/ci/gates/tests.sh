@@ -66,7 +66,7 @@ gate_test_rust() (
 # changes with the runner image, and -Wconversion findings are
 # compiler-version-specific.
 #
-# gcc-14, not gcc-13 (#489): gcc-13 was never a provisioned pin anywhere, only
+# gcc-14, not gcc-13: gcc-13 was never a provisioned pin anywhere, only
 # an assumption that Ubuntu 24.04's apt `gcc` metapackage happens to default
 # to it -- true on the ra8-ci runner image, but the shared dev box runs Debian
 # 12 (bookworm), which defaults to gcc-12 and has no gcc-13 package at all
@@ -91,7 +91,7 @@ gate_ubsan() (
 # generator produces from the current tree. --selftest runs first, in both
 # directions, so a checker that stopped comparing cannot pass as clean.
 #
-# The media-download codec (#715) rides here too, but by DIGEST rather than by
+# The media-download codec rides here too, but by DIGEST rather than by
 # regeneration: scripts/gen/gen_ra8_media_proto.sh --check needs the exact pinned
 # protobuf-c 1.5.2 / libprotoc 35.1 pair, which neither the dev box nor this image has,
 # and a guaranteed-red command is worse than none. check_proto_codec_pairing.py instead
@@ -103,7 +103,7 @@ gate_ubsan() (
 # emit today; only a regenerate proves that, and #715 stays open for wiring the pinned
 # generator into the image so it can run here.
 #
-# The SOUP consumer counts (#624) ride here for the same reason the artefacts do:
+# The SOUP consumer counts ride here for the same reason the artefacts do:
 # they are a DERIVED number stated in prose, and nothing recomputed them. The
 # threadx record claimed 45 example apps against a tree holding 47, and
 # sbom_registry.py restated the same 45. check_soup_consumer_census.py re-derives
@@ -122,7 +122,7 @@ gate_ubsan() (
 # nothing, or filtered empty, is a finding too: a class must not stay claimed by a
 # pattern that quietly stopped resolving.
 #
-# check_bench_claims.py (#710) closes the same class in prose rather than in a
+# check_bench_claims.py closes the same class in prose rather than in a
 # build recipe. coprocessor/esp32c6/build.sh asserted the recipe had been "built,
 # flashed and booted on the bench" in a comment written BEFORE the media component
 # existed: true when written, silently widened to cover code added 19 days later,
@@ -169,12 +169,12 @@ gate_artefact_freshness() (
 # the first compiler's binaries for the second arm.
 #
 # Despite the name this is NOT a wall-clock gate, so it belongs in the local
-# suite and is stable under a loaded shared box (#326/#328). Every non-zero exit
+# suite and is stable under a loaded shared box. Every non-zero exit
 # in cache_bench / reader_vmem / glyph_bench comes from a DETERMINISTIC failure
 # -- an allocation or trace-build error, a get/put/verify data-integrity
 # mismatch, or the SLRU policy losing on the fixed captured trace -- none of
 # which depend on how busy the machine is. The wall_ns / MiB-s figures the tools
-# print are informational only and gate nothing, so a load average of 156 (#328)
+# print are informational only and gate nothing, so a load average of 156
 # changes the numbers on screen but never the PASS/FAIL verdict.
 gate_cache_bench() (
   set -e

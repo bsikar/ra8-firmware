@@ -19,7 +19,7 @@
  *  - TAS entry read, HUM Figure 32.15 (Ch 32.4.2.13 p 1678).
  *
  * What was here before returned ``k_ra8_ok`` while programming the wrong
- * things into the right registers (#539). ``EATASGL0.TASGAL[7:0]`` is the
+ * things into the right registers. ``EATASGL0.TASGAL[7:0]`` is the
  * TAS RAM ENTRY ADDRESS -- "Configures the address in which the TAS entry
  * is learned" (HUM Ch 32.3.5.13 p 1652) -- and it was receiving the gate
  * state, so every learn iteration targeted an address derived from a gate

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The secure-comparison and scrub contracts (#2908).
+//! The secure-comparison and scrub contracts.
 //!
 //! What these pin is behaviour, not timing: no host test can prove the
 //! compare is constant-work, and `tests/security/src/test_ra8_secure_cov.c`

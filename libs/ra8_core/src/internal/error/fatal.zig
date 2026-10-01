@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! How the fatal path stops the machine (#2875).
+//! How the fatal path stops the machine.
 //!
 //! Three steps, in this order and for this reason: mask interrupts so nothing
 //! runs after the decision to stop, `bkpt #0` so an attached debugger halts

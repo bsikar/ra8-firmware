@@ -723,7 +723,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "ra8_cache_store_demo",
         .shape = .{ .uses = &.{"levelx_standalone"} },
-        .note = "1 declaration, and the only uncovered kind with NO ThreadX at all: LevelX in standalone mode (#616)",
+        .note = "1 declaration, and the only uncovered kind with NO ThreadX at all: LevelX in standalone mode",
     },
     .{
         .representative = "threadx_netx_tcp_echo",
@@ -795,7 +795,7 @@ fn splitSemicolons(allocator: std.mem.Allocator, field: []const u8) ![]const []c
 }
 
 // ===========================================================================
-// The build step, and the parity row it reports (#1322)
+// The build step, and the parity row it reports
 // ===========================================================================
 
 /// Ceiling on one listfile read for the ledger. The largest app listfile in

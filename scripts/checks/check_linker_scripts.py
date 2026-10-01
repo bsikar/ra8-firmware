@@ -86,7 +86,7 @@ is 0 for ra8p1 -- but the RA8P1 Hardware User's Manual (R01UH1064EJ0130 Ch 7.2.6
 p 288, Ch 7.2.7 p 290) documents OFS3, OFS3_SEC and OFS3_SEL at the same
 addresses and with the same WDT1 bit fields as the RA8D2. A device-feature table
 would have had to encode that same wrong premise to pass, and would then have
-enforced it (#516).
+enforced it.
 
 So LD008 asserts a structural invariant that needs no device knowledge: the
 option-setting block is indivisible. Every RA8 script either owns the option
@@ -503,7 +503,7 @@ def _check_device_region_fit(path: pathlib.Path, code: str, regions: set[str]) -
 # OFS1/OFS3/BPS/PBPS are listed at the Non-secure alias 0x12.., the secure alias
 # below addresses the same cell). This is the authority the linker scripts are
 # checked against, and it is the same table scripts/gen has no business owning:
-# a wrong option-byte address silently programs the wrong OTP cell (#391).
+# a wrong option-byte address silently programs the wrong OTP cell.
 OPTION_SETTING_ADDR = {
     "OFS0_ADDR": 0x02C9F040,
     "OFS1_ADDR": 0x02C9F4C0,
@@ -538,8 +538,8 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
     """LD007 -- no phantom data-flash, and option-setting addresses match the HUM.
 
     The RA8D2 has no general-purpose data-flash / EEPROM array: 0x27000000 (the
-    conventional RA-family data-flash base) faults on this silicon (#397). And
-    the option bytes must land on their true addresses (#391) or the flasher
+    conventional RA-family data-flash base) faults on this silicon. And
+    the option bytes must land on their true addresses or the flasher
     programs the wrong OTP cell. Only scripts that actually declare the
     option-setting words are address-checked; every RA8 script is phantom-checked.
     """
@@ -551,7 +551,7 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
                 path,
                 line,
                 "LD007",
-                "phantom data-flash 0x27000000 -- the RA8D2 has no such region (#397)",
+                "phantom data-flash 0x27000000 -- the RA8D2 has no such region",
             )
         )
     for name, expect in OPTION_SETTING_ADDR.items():

@@ -1,6 +1,6 @@
 /**
  * @file reflow_css.c
- * @brief Content-CSS primitives + declaration-body parsing (#111).
+ * @brief Content-CSS primitives + declaration-body parsing.
  *
  * @details
  * The string-classification primitives and the `prop:value;` declaration parser

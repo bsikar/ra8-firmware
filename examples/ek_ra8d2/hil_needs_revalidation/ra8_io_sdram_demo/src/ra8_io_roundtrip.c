@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/ra8_io_roundtrip.c
- * @brief Shared ra8_io VFS round-trip implementation for the FAT demos (#155).
+ * @brief Shared ra8_io VFS round-trip implementation for the FAT demos.
  *
  * @details
  * Implements ::ra8_io_roundtrip_mount, ::ra8_io_roundtrip_root_file, and

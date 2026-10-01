@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_unicode_names.c
- * @brief A non-ASCII name on FAT: create it, list it, open it again (#606).
+ * @brief A non-ASCII name on FAT: create it, list it, open it again.
  *
  * @details
  * `priv_lfn_add()` used to substitute `?` for every UTF-16 unit above 0x7F, and

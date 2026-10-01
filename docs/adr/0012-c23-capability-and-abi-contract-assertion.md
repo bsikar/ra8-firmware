@@ -101,7 +101,7 @@ that can fail.
 
 `tests/cmake/host_config.cmake` uses `CheckCCompilerFlag` to probe
 `-fcoverage-mcdc` and `-fcondition-coverage`, and it carries the lesson a
-language probe would otherwise have to learn again (#346): it clears the cached
+language probe would otherwise have to learn again: it clears the cached
 result first, because the answer is a property of the compiler rather than of
 the build directory, and a stale cache once let a gate report MC/DC support
 from a compiler that had none. It also fails closed when the requested

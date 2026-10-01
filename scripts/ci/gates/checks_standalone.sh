@@ -62,7 +62,7 @@ gate_shebangs() (
 )
 
 # --- tier-imports ---------------------------------------------------------
-# The three-tier dependency arrow (#718), enforced instead of described.
+# The three-tier dependency arrow, enforced instead of described.
 # libs/, port/, src/ and tools/ are the PLATFORM and must not reach into
 # apps/; within the products tier, apps/shared_libs/ sits BELOW the form
 # categories (apps/host/, apps/board/) and must not reach up
@@ -88,7 +88,7 @@ gate_tier_imports() (
 )
 
 # --- entry-points ---------------------------------------------------------
-# Two build domains, two entry-point contracts, one boundary (#707). Hosted
+# Two build domains, two entry-point contracts, one boundary. Hosted
 # code (tests/, tools/) runs under an OS and uses ISO `int main(...)`.
 # Firmware (examples/, src/, port/) is reached from Reset_Handler with no
 # process and no exit status, so it uses `void main(void)`, declared once in
@@ -167,7 +167,7 @@ gate_font_coverage() (
 
 # --- bench-lock -----------------------------------------------------------
 # One EK-RA8D2, ~20 concurrent agents, a nightly CI job and two humans. Every
-# script that drives it must take the bench lock first (#497); this proves the
+# script that drives it must take the bench lock first; this proves the
 # tree still does, and derives the set of bench-touching scripts MECHANICALLY
 # so a new one cannot be forgotten.
 #
@@ -266,7 +266,7 @@ gate_disambig_readmes() (
 #   newly-added uncited access fails today.
 gate_cite_check() (
   set -e
-  # --selftest FIRST (#358): proves a malformed cite fires and that tools/
+  # --selftest FIRST: proves a malformed cite fires and that tools/
   # (ra8_emulator cites the RA8 HUM) and port/ are back in scope, before trusting
   # a clean run over the derived first-party-C set. The ratchet's selftest does
   # the same for the coverage pass -- it runs the REAL detector over a fixture

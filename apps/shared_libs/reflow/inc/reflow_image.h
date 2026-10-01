@@ -1,6 +1,6 @@
 /**
  * @file reflow_image.h
- * @brief Zero-heap raster image decode + scale + blit for reflow (#106).
+ * @brief Zero-heap raster image decode + scale + blit for reflow.
  * @ingroup grp_ereader
  *
  * @details

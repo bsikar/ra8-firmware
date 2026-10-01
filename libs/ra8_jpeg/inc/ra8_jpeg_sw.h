@@ -307,7 +307,7 @@ typedef enum : uint8_t {
                                            uint32_t*      out_len);
 
 /* ------------------------------------------------------------------ */
-/* Streaming stripe decode (#231): bounded-RAM MCU-row decoding */
+/* Streaming stripe decode: bounded-RAM MCU-row decoding */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -420,7 +420,7 @@ typedef enum : uint8_t {
  *
  * @details
  * The streaming counterpart of `ra8_jpeg_sw_decode()` for images whose whole
- * decoded frame cannot be resident (#231). Input arrives through @p pull
+ * decoded frame cannot be resident. Input arrives through @p pull
  * into the caller's sliding @p window (the resident compressed footprint);
  * output leaves through @p on_rows one MCU row at a time (8 rows for
  * 4:4:4/grayscale, 16 for 4:2:0), so the resident decoded footprint is one

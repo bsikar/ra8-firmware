@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/reflow_content/src/main.c
- * @brief Headless on-silicon HIL gate for reflow content render + pagination (#115).
+ * @brief Headless on-silicon HIL gate for reflow content render + pagination.
  *
  * @details
  * Closes the *real-hardware* gap for the book-content render path: paginate a

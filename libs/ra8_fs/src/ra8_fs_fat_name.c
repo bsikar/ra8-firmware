@@ -301,7 +301,7 @@ static uint8_t internal_unit_in_set(uint16_t u, const char* set)
  *          store UTF-16 and this adapter now reads them back as such, so the
  *          old "at or above DEL" cut -- which existed only because the reader
  *          substituted `?` for those units -- would refuse names the format and
- *          the reader both handle (#606).
+ *          the reader both handle.
  *
  * @param[in] u Candidate code unit.
  *
@@ -583,7 +583,7 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
   *out_ntres = 0U;
   /* The decode is where a malformed name dies -- an over-long sequence, a raw
    * surrogate, a truncated one -- and the unit count it produces is the length
-   * every on-disk structure below counts in. A byte count is neither (#606). */
+   * every on-disk structure below counts in. A byte count is neither. */
   uint32_t n = 0U;
   if (priv_utf8_to_utf16(leaf, out_units, (uint32_t)k_lfn_write_max, &n) != k_ra8_ok) {
     *out_nunits = 0U;

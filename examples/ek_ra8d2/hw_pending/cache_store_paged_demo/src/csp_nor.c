@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/cache_store_paged_demo/src/csp_nor.c
- * @brief RAM-backed LevelX NOR model for the cache_store paged demo (#937).
+ * @brief RAM-backed LevelX NOR model for the cache_store paged demo.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

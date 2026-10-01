@@ -135,7 +135,7 @@ typedef enum : uint8_t {
  *
  * LBAs and the block count are 64-bit so media past the 32-bit-LBA reach
  * (2 TiB at 512-byte blocks) are addressable end to end -- through the mount's
- * partition base, the GPT parser and every cluster computation (#683). The
+ * partition base, the GPT parser and every cluster computation. The
  * block size is the medium's real sector size: 512-byte and 4096-byte-native
  * (4Kn) devices are both supported, 1024/2048 included.
  *
@@ -288,7 +288,7 @@ typedef struct {
  * (`DataLength`).
  *
  * The three byte lengths are 64-bit because exFAT's on-disk `DataLength` /
- * `ValidDataLength` are (#676): a file past 4 GiB is exactly what exFAT
+ * `ValidDataLength` are: a file past 4 GiB is exactly what exFAT
  * exists to carry. On FAT12/16/32 the same fields never exceed
  * ::k_ra8_fs_fat_max_file_bytes -- `DIR_FileSize` is 32-bit -- and the write
  * and truncate paths enforce that cap rather than wrapping.

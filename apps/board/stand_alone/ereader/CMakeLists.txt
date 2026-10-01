@@ -46,7 +46,7 @@ ra8_add_app(
 # SRAM-run e-reader stays the default build.
 option(RA8_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
 # ra8_add_ns_image() generates the script from the board template; the option
-# selects the read-only home rather than a second copy of the script (#759).
+# selects the read-only home rather than a second copy of the script.
 if(RA8_EREADER_NS_XIP)
   set(_ra8_ns_xip XIP)
 else()

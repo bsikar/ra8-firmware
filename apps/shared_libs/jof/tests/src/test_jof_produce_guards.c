@@ -2,7 +2,7 @@
  * @file test_jof_produce_guards.c
  * @brief Producer guard-arm MC/DC vectors: work-arena calculator overflow,
  *        bump-carve guards, config/cap clamps, decoder-driven geometry
- *        rejections and the carve-boundary sweep (#231).
+ *        rejections and the carve-boundary sweep.
  *
  * @details
  * Complements `test_jof_produce.c` (happy paths + parity) and

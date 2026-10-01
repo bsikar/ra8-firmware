@@ -21,7 +21,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 # libs/ra8_core has no C sources left: the log backend, time, decomp limits,
 # the fault block, the error pair, bring-up and the stack canary, the
 # freestanding runtime, the newlib _sbrk trap, the startup SDRAM zero-fill and
-# the secure-comparison primitives (#2908) are Zig now, linked via
+# the secure-comparison primitives are Zig now, linked via
 # tests/cmake/zig_libraries.cmake. inc/ is unchanged and is still the
 # membrane, so tests/core, tests/security and every other C suite include the
 # same headers and link the archive without knowing the bodies moved. There is
@@ -29,7 +29,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE XML_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/xml/src/*.c)
 file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/*.c)
 # libs/ra8_jpeg has no C sources left: the imgdec backend, the encoder
-# (#2798) and the marker walk, whole-buffer decoder and stripe driver (#2799)
+# (#2798) and the marker walk, whole-buffer decoder and stripe driver
 # are Zig (libs/ra8_jpeg/src/*.zig, built by libs/ra8_jpeg/build.zig) behind
 # the unchanged C headers, and tests/cmake/zig_libraries.cmake links that
 # archive at directory scope. There is no RA8_JPEG_SOURCES glob any more.
@@ -54,7 +54,7 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # the promoted priv_usb_pal_* predicates.
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
 # libs/if is fully migrated to Zig: the portable filesystem interface, the
-# untrusted-name containment policy (#749) and the clock-intent facade (RA8FW-362)
+# untrusted-name containment policy and the clock-intent facade (RA8FW-362)
 # all live in libs/if/src/*.zig,
 # built by libs/if/build.zig behind the unchanged inc/fw_if_fs.h,
 # inc/fw_if_fs_types.h, inc/fw_if_fs_backend.h and inc/ra8_path.h; see
@@ -272,7 +272,7 @@ set(EPUB_THIRD_PARTY
     ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_truetype_impl.c
     ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
-# libwebp decode-only SOUP (#290) + the first-party ra8_webp facade/arena that
+# libwebp decode-only SOUP + the first-party ra8_webp facade/arena that
 # fronts it. Only the decoder subset is vendored under
 # apps/shared_libs/third_party/libwebp,
 # so a recursive *.c glob is exactly that subset. NOT yet wired into the
@@ -284,7 +284,7 @@ include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
 ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # ra8_secure_app has no C sources left: the key vault, the entropy read, the
-# OTA bank commit, the AES-CMAC and the sealed-key import (#2670) are Zig
+# OTA bank commit, the AES-CMAC and the sealed-key import are Zig
 # now, linked via tests/cmake/zig_libraries.cmake. inc/ and the three
 # src/*_internal.h headers stay: the NSC veneers and the C security suites
 # include them for the constants and the priv_ declarations.
@@ -301,7 +301,7 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # tests/cmake/zig_libraries.cmake.
 # ra8_board_ek_ra8d2 is PARTLY migrated (RA8FW-365): the board identity, LEDs,
 # switches, GLCDC pin tables, panel straps, xSPI and SDHI routing and the
-# Arduino header (#3033), plus the dual-core shared-RAM descriptor, the USB
+# Arduino header, plus the dual-core shared-RAM descriptor, the USB
 # port routing, bringup, the VCOM console stream handle, the clock profile,
 # the camera, ethernet, audio-USB, touch and PDM layers, are Zig and come from
 # the archive registered in tests/cmake/zig_libraries.cmake. This glob STAYS,
@@ -328,8 +328,8 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # Zig now, linked via tests/cmake/zig_libraries.cmake. The NS-side
 # ns/ra8_ns_rot_header.c is a different artifact: it is data compiled into the
 # Non-Secure image by ra8_add_ns_image.cmake, never into this library.
-# ra8_dfu is partially migrated. The polled host-side DFU driver (#2809) and
-# the pure boot logic (#2918) are Zig and this glob no longer matches them,
+# ra8_dfu is partially migrated. The polled host-side DFU driver and
+# the pure boot logic are Zig and this glob no longer matches them,
 # but the MRAM program/verify path, the USBX device class, the launch gate,
 # the anti-rollback counter and the root-of-trust reader are all still C, so
 # the glob stays non-empty and issue #908 does not bite here. The Zig archive is

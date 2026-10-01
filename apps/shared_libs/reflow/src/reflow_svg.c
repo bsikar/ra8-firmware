@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg.c
- * @brief Scan / attribute / colour-parsing core of the minimal SVG subset (#112).
+ * @brief Scan / attribute / colour-parsing core of the minimal SVG subset.
  *
  * @details Pure string-scanning leaf helpers for the SVG subset: XML whitespace
  * and ASCII-fold classifiers, case-insensitive literal scans, integer parsing,

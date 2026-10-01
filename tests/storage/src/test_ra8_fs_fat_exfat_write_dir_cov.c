@@ -110,7 +110,7 @@ RA8_INTERNAL static void internal_test_create_path_too_long(void)
  *          whole-file creator refused `len == 0` while the FAT path accepted
  *          it -- the same call meaning two different things depending on a
  *          volume format the caller was supposed to be abstracted from. With
- *          exFAT streaming (#602) there is one path for both, so a zero-length
+ *          exFAT streaming there is one path for both, so a zero-length
  *          create now does on exFAT exactly what it always did on FAT.
  *
  * @par MC/DC:
@@ -236,7 +236,7 @@ RA8_INTERNAL static void internal_test_read_entry_fail(void)
  *          set) from the pre-fill. With all 128 entries in-use,
  *          `priv_exfat_scan_dir_space` scans the whole cluster, follows the root
  *          through `priv_fat_get`, and finds it end-of-chain -- the arm that
- *          drives ::priv_exfat_find_dir_space to GROW the root (#677). Before
+ *          drives ::priv_exfat_find_dir_space to GROW the root. Before
  *          #677 that arm returned `k_ra8_err_no_mem`; now the root's FAT chain is
  *          extended by a fresh cluster and the write succeeds. The root here is
  *          deliberately corrupted with bare in-use bytes, so the file is not read

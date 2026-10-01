@@ -1,6 +1,6 @@
 /**
  * @file zoom_book.h
- * @brief Bind a `.rabook` image-pool figure as a zoom source (#478).
+ * @brief Bind a `.rabook` image-pool figure as a zoom source.
  * @ingroup grp_ereader
  *
  * @details

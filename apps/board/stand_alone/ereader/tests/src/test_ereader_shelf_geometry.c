@@ -1,6 +1,6 @@
 /**
  * @file test_ereader_shelf_geometry.c
- * @brief Regression guard for the ereader_shelf layout + fill render (#233).
+ * @brief Regression guard for the ereader_shelf layout + fill render.
  *
  * @details
  * Issue #233 reported that building `ereader_shelf` at -O1+ makes the shelf
@@ -148,7 +148,7 @@ static void layout_shelf(ra8_box_t* store, ra8_ui_rect_t* out)
 }
 
 /**
- * @brief The shelf grid places 3 cards at the golden coordinates (#233).
+ * @brief The shelf grid places 3 cards at the golden coordinates.
  * @details Pins the exact rects ra8_emulator renders at -Og -- a regression in
  *          ra8_box's grid maths that shifted the shelf would fail here.
  *
@@ -210,7 +210,7 @@ static void render_shelf(uint16_t* fb, const ra8_ui_rect_t* card)
 }
 
 /**
- * @brief The header bar and card fills render where they belong (#233).
+ * @brief The header bar and card fills render where they belong.
  * @details Asserts px(0,0) is the BAR colour (not the background: the exact
  *          #233 symptom), that the bar reaches its bottom row, that a card
  *          interior carries the card fill, and that a grid gap stays

@@ -1,6 +1,6 @@
 /**
  * @file cache_store_demo.c
- * @brief Hardware-free ra8_cache_store on-media cache demo -- implementation (#257).
+ * @brief Hardware-free ra8_cache_store on-media cache demo -- implementation.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

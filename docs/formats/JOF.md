@@ -50,12 +50,12 @@ manga page possible at all.
 
 One format serves three consumers, which is the other half of the point:
 
-- **Full-resolution in-EPUB manga pages** (#231): a 2-D tile grid paged through
+- **Full-resolution in-EPUB manga pages**: a 2-D tile grid paged through
   `ra8_tile_cache` by the `epub_img_tiles` binder.
-- **Longstrip band-scroll** (#289): a *band-tile* is just a tile as wide as the
+- **Longstrip band-scroll**: a *band-tile* is just a tile as wide as the
   whole image (`tile_w == width`), so there is one tile column and the tile
   index **is** the band index -- O(1) seek to any scroll position.
-- **Normalized on-device representation** (#290): every source codec converges
+- **Normalized on-device representation**: every source codec converges
   on this one format at import, so the render path has exactly one decoder.
 
 If you stop reading here: *JOF is a tiled, indexed, losslessly-recompressed

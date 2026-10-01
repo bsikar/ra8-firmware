@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_time.h` (#2851).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_time.h`.
 //!
 //! The millisecond timebase sits on the SysTick and DWT primitive ported in
 //! #2830: this file owns the tick counter, the delay policy and the SysTick

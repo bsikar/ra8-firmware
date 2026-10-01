@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief Demonstration of per-panel gray-level tone LUT calibration (#479).
+ * @brief Demonstration of per-panel gray-level tone LUT calibration.
  *
  * @details
  * Shows per-panel 16-level gray tone LUT calibration and blue-noise dither
@@ -141,7 +141,7 @@ static void internal_render_tone_demo(void)
   (void)ra8_gfx_tone_prepare(&k_calibrated_s_curve, &s_map_calibrated);
 
   /* Title and header */
-  (void)ra8_gfx_text_out(40, 22, "Panel Gray-Level Tone LUT Calibration (#479)", &ra8_gfx_font_8x16,
+  (void)ra8_gfx_text_out(40, 22, "Panel Gray-Level Tone LUT Calibration", &ra8_gfx_font_8x16,
                          k_tone_ink_argb, k_tone_paper_argb);
   (void)ra8_gfx_text_out(40, 44, "Per-panel glass response calibration with blue-noise dither quantisation",
                          &ra8_gfx_font_8x16, k_tone_sub_argb, k_tone_paper_argb);

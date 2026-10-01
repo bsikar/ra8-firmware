@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/epub_stress/src/main.c
- * @brief On-silicon HIL: large-structure EPUB opens on the static arena (#144).
+ * @brief On-silicon HIL: large-structure EPUB opens on the static arena.
  *
  * @details
  * Regression gate for #144 bug 1 ("large EPUBs fail to open with no_mem"). On

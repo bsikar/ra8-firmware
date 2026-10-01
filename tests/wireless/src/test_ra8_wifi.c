@@ -651,7 +651,7 @@ static void test_get_mac(void)
   /* Once one HAS been read, a failed re-read serves the cached address instead
    * of handing the caller 00:00:00:00:00:00 -- a station's own address cannot
    * change under it, and the bench printed exactly that null MAC out of a run
-   * that had associated (#586). */
+   * that had associated. */
   mac         = (ra8_wifi_mac_t){};
   s_m.mac_ret = k_ra8_err_spi_error;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_get_mac(&wifi, &mac));

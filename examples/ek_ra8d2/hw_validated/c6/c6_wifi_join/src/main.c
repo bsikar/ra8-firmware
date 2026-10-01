@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c
- * @brief Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP (#492).
+ * @brief Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

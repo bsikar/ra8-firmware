@@ -18,7 +18,7 @@
 # was built on 2026-07-20 and lacked cmake-format, cmake-lint, yamllint,
 # hadolint, gcc-14 and g++-14, so toolchain-parity, lint-cmake,
 # lint-yaml and lint-devcontainer FAILED inside the container and PASSED
-# natively on the same box, on the same commit (#521). That is the most
+# natively on the same box, on the same commit. That is the most
 # expensive shape a failure can take: `just ci` is what CLAUDE.md tells every
 # agent to run before a push, and four reds that have nothing to do with the
 # change under test are indistinguishable from real ones until each is re-run
@@ -61,7 +61,7 @@
 # per digest instead
 # would avoid the churn at the price of an unbounded pile of images and a
 # reaper to own it, which is a worse trade on a box that has already lost an
-# image to a garbage collector (#484).
+# image to a garbage collector.
 #
 # ===========================================================================
 # WHAT THE DIGEST COVERS
@@ -648,7 +648,7 @@ EOF
     echo "    image: ${have:-(no context label -- built before #521 recorded one)}"
     echo "    tree:  $want"
     echo "    Rebuilding. A cached image that predates the Dockerfile is how four"
-    echo "    gates came to fail in the container and pass natively on one box (#521)."
+    echo "    gates came to fail in the container and pass natively on one box."
   }
 
   # Build under an exclusive lock where one is available.

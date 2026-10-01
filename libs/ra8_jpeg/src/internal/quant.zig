@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Quantisation for the baseline encoder (#2795): the T.81 Annex K.1 base
+//! Quantisation for the baseline encoder: the T.81 Annex K.1 base
 //! tables, the IJG quality curve that scales them, and the per-coefficient
 //! divide.
 

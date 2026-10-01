@@ -492,7 +492,7 @@ invokes the script after the existing static gates (`cite_check`,
 | 7  | `ra8_nasa_rule_3_ok`            | global malloc/free sweep                |
 | 8  | `ra8_mcdc_deactivated:<reason>` | reason-string regex                     |
 | 9  | `ra8_max_stack:<bytes>`         | reads `examples/**/build*/**/*.su`      |
-| 10 | `ra8_isr_safe`                  | marker only; nothing reads it (#1247)   |
+| 10 | `ra8_isr_safe`                  | marker only; nothing reads it   |
 | 11 | `ra8_expects_lock:<name>`       | caller owns or propagates the lock      |
 | 12 | `ra8_host_friendly`             | rejects calls into MMIO accessors       |
 | 13 | `ra8_latency_budget_ns:<n>`     | informational until a WCET pass exists  |

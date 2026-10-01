@@ -79,7 +79,7 @@ the documentation, not a footnote:
 | `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
 | `network/` (bench LAN: FortiGate + AP) | codified |
 | vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
-| Proxmox guest topology | **hand-built** (#500) |
+| Proxmox guest topology | **hand-built** |
 
 Two rows deserve their exact wording. Vault initialisation and unsealing are
 manual *by design*, not by omission: both produce secrets, and a playbook that
@@ -236,7 +236,7 @@ when no `.runner` registration exists. It never writes the token into the
 runner environment, systemd unit, or repository.
 
 One of its tools is built from source, and that is a property of the
-distribution rather than a preference. The **second host-tool compiler arm** (#356) is a gcc major that Debian
+distribution rather than a preference. The **second host-tool compiler arm** is a gcc major that Debian
 12 does not package at all. It is pinned by URL + sha256 and asserted
 afterwards, the same discipline as every vendor download here. A first run
 therefore takes tens of minutes; re-runs skip the build once the pinned
@@ -391,7 +391,7 @@ The play reads the caps back out of the container's cgroup and **asserts** them
 rather than trusting the compose file, because a cap that was silently ignored
 is worse than one that was never set.
 
-## The legacy `k3s-runner-*` pool is retired (#502)
+## The legacy `k3s-runner-*` pool is retired
 
 Before ARC, CI ran on hand-registered GitHub runners installed as bare systemd
 services on the k3s node itself. They were never provisioned from this tree --
@@ -468,7 +468,7 @@ Ansible runner roles. The helper installs the pinned **doxygen** release the
 same way the Dockerfile does (download, sha256, `/usr/local/bin`), because
 `toolchain-parity` now compares that version too: it did not, which is why a
 major doxygen drift stayed invisible to the one gate whose job is catching
-exactly that (#522). The pin is asserted only on the architectures the
+exactly that. The pin is asserted only on the architectures the
 Dockerfile pins it for -- doxygen publishes no official linux-arm64 binary, so
 an arm64 `just ci` container keeps apt's.
 
@@ -500,7 +500,7 @@ so a cached image built from a different Dockerfile is rebuilt rather than
 reused. `just ci` calls it on every run -- which is what covers the Mac, where
 no Ansible play ever lands -- and the `dev_box` role calls the same script so
 `just infra::apply dev` leaves the box warm. Before that, the box booted a stale image under a newer tree and reported
-gates red that passed natively on the same commit (#521).
+gates red that passed natively on the same commit.
 
 Image-build serialization has a separate managed lock authority at
 `/var/cache/ra8-devcontainer-image-lock`. The role owns the directory as

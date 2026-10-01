@@ -8,7 +8,7 @@ full-speed fallback framework -- and the USBHS controller plus UTMI PHY bring-up
 Verification is the same by-hand comparison: copy `MRAM.BIN` off over USB, dump
 the same window over SWD with `savebin`, and require the bytes to be identical.
 
-## Four device-path defects that HS mass storage flushed out (#67)
+## Four device-path defects that HS mass storage flushed out
 
 The HS CDC class worked from day one. Mass storage at high speed exercised paths
 CDC never touched:

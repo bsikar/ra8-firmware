@@ -17,7 +17,7 @@
  *      a 128x160 RGB565 framebuffer and folded into an FNV-1a-32.
  *   4. A second, one-image `.rabook` (rabook_gray8_fixture.h) carries a raster at
  *      full source resolution in continuous-tone gray8 -- the representation the
- *      compiler retains for zoomable content (#476), never a panel-quantised 4bpp
+ *      compiler retains for zoomable content, never a panel-quantised 4bpp
  *      copy. The gate confirms it is 8bpp and holds more than the 16 tones a gray4
  *      store could reproduce, then blits it 1:1 (no downscale, no re-quantise).
  *
@@ -93,7 +93,7 @@ static const uint8_t k_msg_x[]    = "x";
 static const uint8_t k_msg_g8[]   = " gray8";
 static const uint8_t k_msg_ok[]   = " ok\r\n";
 
-/** @enum erb_img_const_t @brief Full-resolution gray8 figure check bounds (#476). */
+/** @enum erb_img_const_t @brief Full-resolution gray8 figure check bounds. */
 typedef enum : uint32_t {
   k_erb_gray4_levels = 16U,       /**< Distinct tones a 4bpp store can ever show. */
   k_erb_level_count  = 256U,      /**< gray8 value space (presence bitmap size).  */
@@ -247,7 +247,7 @@ static uint32_t erb_distinct_levels(const uint8_t* px, uint32_t n)
 }
 
 /**
- * @brief Render the retained full-resolution gray8 figure and check it (#476).
+ * @brief Render the retained full-resolution gray8 figure and check it.
  *
  * @details The compiled-book path retains zoomable rasters at full source
  *          resolution in continuous-tone gray8, never a panel-quantised 4bpp copy.

@@ -244,7 +244,7 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{},
         .zig_libraries = &.{},
         .aux_srcs = &.{"src/cpu1_main.c"},
-        // The M33 half of this app (#1044). Its entry TU is the same file
+        // The M33 half of this app. Its entry TU is the same file
         // AUX_SRCS keeps out of the M85 set above: one file, two images.
         .cpu1 = .{
             .entry_source = "src/cpu1_main.c",
@@ -295,7 +295,7 @@ pub const cross_apps = [_]CrossApp{
         // AUX_SRCS, no app-local CMake, no migrated Zig archive, so #948 does
         // not block it.
         //
-        // It also opens the one arm of the board opt-in gate (#936) that no
+        // It also opens the one arm of the board opt-in gate that no
         // app in this table has opened. `..._console_stream.c` is gated on the
         // app naming `ra8_io`, and until now every app here has been on the
         // shut side of that gate, so only its DROP was ever observed. This app
@@ -332,7 +332,7 @@ pub const cross_apps = [_]CrossApp{
         //
         // No USES, so the first-party set is the same shape as blink_hal's and
         // everything differing IS the two rules above. STACK_BYTES 32768 is the
-        // second non-default frame budget in the table (#1068).
+        // second non-default frame budget in the table.
         .name = "secure_boot_hil",
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -356,9 +356,9 @@ pub const cross_apps = [_]CrossApp{
         // message. Filed separately; every TU still compiles here.
         .links_in_debug = false,
         // All five units this app used to name here are Zig archives now and
-        // reached through LIBS instead: ra8_psa_crypto (#1114), ra8_rot
+        // reached through LIBS instead: ra8_psa_crypto, ra8_rot
         // (#2943), ra8_dfu_boot and ra8_dfu_antirollback, which joined the
-        // ra8_rot archive, and the launch gate itself (#2932), which became
+        // ra8_rot archive, and the launch gate itself, which became
         // ra8_rot_launch. The app declares no EXTRA_SRCS at all now, which is
         // what its own CMakeLists says, and no app in the table does.
         .extra_srcs = &.{},
@@ -431,9 +431,9 @@ pub const cross_apps = [_]CrossApp{
         .nsc_srcs = &.{"ra8_nsc_cgc.c"},
         .trust_zone = true,
         .cmse_implib = "tz_nsc_cgc_usb_cmse_import.o",
-        // The Non-Secure half (#1111). The three ns_*.c files AUX_SRCS keeps
+        // The Non-Secure half. The three ns_*.c files AUX_SRCS keeps
         // out of the secure image above are this image's own sources, which is
-        // the same one-file-two-images shape cpu1_pingpong has (#1044) with a
+        // the same one-file-two-images shape cpu1_pingpong has with a
         // whole vendored USB stack and an RTOS variant on top.
         .ns = .{
             .name = "tz_nsc_cgc_usb_ns",
@@ -456,7 +456,7 @@ pub const cross_apps = [_]CrossApp{
                 .{ .dir = "port/usbx/src", .prefix = "ux_dcd_ra8_usb" },
             },
             // Named one by one, in the app's order. The timebase is absent
-            // here because it is Zig in ra8_core's archive (#2851), and the
+            // here because it is Zig in ra8_core's archive, and the
             // NS half overrides its weak ra8_time_ms / ra8_delay_ms with the
             // ThreadX-backed pair in ns_usb.c rather than reprogramming the
             // SysTick ThreadX owns.
@@ -559,7 +559,7 @@ pub const cross_apps = [_]CrossApp{
         // No USES, no EXTRA_SRCS, no app-local CMake, no migrated Zig archive
         // (so #948 does not block it) and the default 2200-byte frame budget:
         // the first-party set is blink_hal's 200 units, so everything that
-        // differs between the two apps IS this keyword (#1133).
+        // differs between the two apps IS this keyword.
         .name = "crypto_aes_demo",
         .dir = "examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -588,7 +588,7 @@ pub const cross_apps = [_]CrossApp{
         // which ride on the ra8_add_app() target this hand-rolled executable
         // never is. Its include path is also one directory shorter than
         // cpu1_pingpong's: four dirs, stopping before the board layer, which
-        // is why cpu1_image.Cpu1Image now carries that arm as data (#1146).
+        // is why cpu1_image.Cpu1Image now carries that arm as data.
         //
         // 192 units: blink_hal's universal 200, minus the ten NSC units,
         // plus ra8_tz_secure_boot from LIBS, plus src/ns_main.c. That last
@@ -619,7 +619,7 @@ pub const cross_apps = [_]CrossApp{
         .no_nsc = true,
         .trust_zone = true,
         // The M33 half. Same four units and the same hand-rolled target shape
-        // as cpu1_pingpong (#1044), with the board include directory absent:
+        // as cpu1_pingpong, with the board include directory absent:
         // this app's cpu1_main.c reaches core and HAL headers only.
         .cpu1 = .{
             .entry_source = "src/cpu1_main.c",
@@ -662,7 +662,7 @@ pub const cross_apps = [_]CrossApp{
         // link then reports the missing ra8_power_profile_* symbols by name.
         // Building the archive at the WRONG optimisation fails nothing at
         // all: zig_libs.cmake builds every configure's archive at
-        // RA8_ZIG_OPTIMIZE's default (#2696), so a graph that asks for some
+        // RA8_ZIG_OPTIMIZE's default, so a graph that asks for some
         // other mode links a perfectly good image that is simply not the
         // artifact CMake produces. See build_type.zig's zig_optimize.
         //

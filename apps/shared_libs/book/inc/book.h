@@ -32,7 +32,7 @@
  * content (manga pages) keeps every pixel; a long-edge clamp exists only as an
  * opt-in compile knob. The depth is the `pixel_format` axis: 4bpp panel-native
  * (a hardware limit, not a renderer one) for never-zoomed content, or
- * full-resolution continuous-tone 8bpp kept verbatim for zoomable content (#476),
+ * full-resolution continuous-tone 8bpp kept verbatim for zoomable content,
  * since the zoom loupe and the e-ink dither need the 256-level tones the 4bpp
  * quantise discards. See @ref md_docs_2formats_2RBKC section 3.5.
  *

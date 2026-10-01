@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The glyph cache of `inc/ra8_glyph_atlas.h` (#147): a typed facade over
+//! The glyph cache of `inc/ra8_glyph_atlas.h`: a typed facade over
 //! `ra8_keycache`, where the glyph key is the cache key, the glyph bitmap is
 //! the cell payload, and the rendered width and height ride in the per-cell
 //! descriptor. Every cache mechanic (the LRU list, the pinned-cell skip, hash

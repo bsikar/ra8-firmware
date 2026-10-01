@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_lfn_write_cov.c
- * @brief The long-name write seam's failure paths and its awkward geometries (#600).
+ * @brief The long-name write seam's failure paths and its awkward geometries.
  *
  * @details
  * The two behaviour suites (`test_ra8_fs_lfn_write.c`, `test_ra8_fs_lfn_erase.c`)

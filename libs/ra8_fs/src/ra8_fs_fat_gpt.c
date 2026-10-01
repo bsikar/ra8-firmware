@@ -4,7 +4,7 @@
  *
  * @details
  * The GUID Partition Table half of volume location (UEFI spec 2.10 ch 5),
- * split out of `ra8_fs_fat_mount.c` when 64-bit LBAs (#683) pushed that file
+ * split out of `ra8_fs_fat_mount.c` when 64-bit LBAs pushed that file
  * past the source-size cap: header validation, the bounded entry-array walk,
  * Basic-Data preference, and the two locate entry points the mount path calls
  * -- auto-select (::priv_gpt_locate_volume) and by explicit index
@@ -62,7 +62,7 @@ static const uint8_t s_gpt_guid_basic_data[k_gpt_guid_len] = {
  * @details An entry is usable when its type GUID is non-zero (the slot is
  * allocated) and its first LBA is non-zero. The LBA is the entry's full
  * 64-bit field: partitions past the 32-bit-LBA reach (2 TiB at 512-byte
- * sectors) are addressable now that the backend interface is 64-bit (#683).
+ * sectors) are addressable now that the backend interface is 64-bit.
  *
  * @param[in] entry One 128-byte partition entry.
  * @return The entry's first LBA, or 0 when the entry is unusable.
@@ -278,7 +278,7 @@ ra8_err_t priv_gpt_locate_volume(const ra8_fs_mount_t* m, uint64_t* out_base)
  * skipping an unusable entry it reports why. An all-zero type GUID is an empty
  * slot; a zero first LBA is a malformed allocated entry. The full 64-bit LBA
  * is honoured -- entries past 2 TiB select cleanly now that the backend
- * addresses 64-bit LBAs (#683).
+ * addresses 64-bit LBAs.
  *
  * @param[in]  entry    One 128-byte partition entry.
  * @param[out] out_base Receives the entry's first LBA on success.

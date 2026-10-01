@@ -14,7 +14,7 @@
  *   - `priv_exfat_name_chunk_eq`: the full 15-unit loop completion (171). The
  *     case-fold behaviour of the same function is a fold question rather than a
  *     read-path one, and lives with the other fold vectors in
- *     `tests/storage/src/test_ra8_fs_utf.c` (#606).
+ *     `tests/storage/src/test_ra8_fs_utf.c`.
  *   - `priv_exfat_match_set`: stream I/O fail (208), wrong stream type (211),
  *     name I/O fail (221), wrong name type (224).
  *   - `priv_exfat_find`: first-read I/O fail (253), match_set I/O error
@@ -857,7 +857,7 @@ RA8_INTERNAL static void internal_test_find_first_read_fail(void)
  *
  * @details This case used to assert `k_ra8_err_not_supported`: exFAT opened
  *          read-only and the largest file the firmware could create on such a
- *          card was bounded by RAM. Streaming write (#602) replaced that
+ *          card was bounded by RAM. Streaming write replaced that
  *          refusal with a dispatch, so the same call now CREATES the name and
  *          hands back a writable handle -- which is what this asserts, because
  *          a test still pinning the old answer would be pinning the defect.

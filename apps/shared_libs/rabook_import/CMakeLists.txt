@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# apps/shared_libs/rabook_import -- on-import EPUB -> .rabook compile-and-cache (#151).
+# apps/shared_libs/rabook_import -- on-import EPUB -> .rabook compile-and-cache.
 #
 # Makes the e-reader self-contained: drop a raw .epub on the SD card and the
 # first open compiles it once into the flat RABOOK1 .rabook (via an injected

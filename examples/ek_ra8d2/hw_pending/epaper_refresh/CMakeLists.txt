@@ -37,6 +37,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME epaper_refresh
   STACK_BYTES 4096
-  DESCRIPTION "IT8951 e-paper full + partial refresh via the display PAL (#256)"
+  DESCRIPTION "IT8951 e-paper full + partial refresh via the display PAL"
   LIBS ra8_display_pal ra8_epd_cal ra8_io_bus
 )

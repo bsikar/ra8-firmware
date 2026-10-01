@@ -1,6 +1,6 @@
 # glcdc_render
 
-Proves the GLCDC hardware is programmed and scanning a real framebuffer (#121).
+Proves the GLCDC hardware is programmed and scanning a real framebuffer.
 `ereader_chrome` gates the software rasteriser into an SRAM buffer but never
 touches the display controller; this app paints a deterministic RGB565 pattern
 into an SRAM framebuffer, brings the panel up through the display PAL -- panel

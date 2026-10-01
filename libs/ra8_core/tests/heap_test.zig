@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The heap policy the `_sbrk` trap reports (#2895).
+//! The heap policy the `_sbrk` trap reports.
 //!
 //! The trap body itself has nothing to test here: it is one ignored
 //! parameter and an unconditional call into a `noreturn` sink, and the leg

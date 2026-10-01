@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_usb_host.c
- * @brief Non-Secure USBHS polled HOST ladder: enumerate + bulk echo (#96).
+ * @brief Non-Secure USBHS polled HOST ladder: enumerate + bulk echo.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

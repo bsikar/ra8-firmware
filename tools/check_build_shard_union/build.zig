@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_build_shard_union` host tool (RA8FW-335, #1159). One
+//! Build graph for the `check_build_shard_union` host tool (RA8FW-335). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the union rules and manifest parsing in the internal module, and the read
 //! modes, the tree walk and the exit-status contract

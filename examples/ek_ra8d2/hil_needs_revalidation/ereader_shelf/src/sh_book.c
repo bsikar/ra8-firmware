@@ -463,7 +463,7 @@ bool sh_book_open(uint16_t idx)
     g_sh.chapter_count = n;
   } else {
     /* Always demand-paged through the chunked container -- no resident/paged
-     * size threshold, one code path for every book size (#204/#205). */
+     * size threshold, one code path for every book size. */
     if (!sh_book_open_rabook(e)) {
       sh_paged_close();
       return false;

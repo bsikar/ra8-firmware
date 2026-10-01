@@ -635,7 +635,7 @@ internal_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, siz
  * @brief Shared serialize/load precheck: init state, content args, and the
  *        #109 multi-face cache-bypass invariant.
  *
- * @details Per-glyph embedded face indices (#109) are not part of the cache
+ * @details Per-glyph embedded face indices are not part of the cache
  * key/format, so a book with any registered `@font-face` is never cached: it
  * live-layouts instead, and a persisted page can never be mis-served under a
  * different face set. The caller checks its own NULL pointers first.

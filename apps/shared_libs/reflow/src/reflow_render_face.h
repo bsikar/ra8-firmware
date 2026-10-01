@@ -1,6 +1,6 @@
 /**
  * @file reflow_render_face.h
- * @brief Coverage-based fallback-face resolution for the render pass (#687).
+ * @brief Coverage-based fallback-face resolution for the render pass.
  * @ingroup grp_ereader
  *
  * @details

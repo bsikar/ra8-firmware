@@ -31,6 +31,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io fabric end-to-end: RAM block device -> FAT -> VFS -> UART stream (#155)"
+  DESCRIPTION "ra8_io fabric end-to-end: RAM block device -> FAT -> VFS -> UART stream"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

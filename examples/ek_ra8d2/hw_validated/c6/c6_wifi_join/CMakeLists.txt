@@ -34,7 +34,7 @@ ra8_add_app(
   NAME c6_wifi_join
   THREADX_HEAP SDRAM
   STACK_BYTES 8192
-  DESCRIPTION "Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP (#492)"
+  DESCRIPTION "Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP"
   USES threadx netxduo esp_hosted
   LIBS ra8_board_ek_ra8d2 ra8_c6link
   EXTRA_SRCS "${_d}/examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c"

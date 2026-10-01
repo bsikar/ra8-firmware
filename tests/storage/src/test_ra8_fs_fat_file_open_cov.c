@@ -297,7 +297,7 @@ RA8_INTERNAL static void internal_test_enter_subdir_name_too_long(void)
   /* One BYTE past the cap: "/AAA...A/FILE.TXT". The guard in
    * `priv_enter_subdir` bounds the UTF-8 buffer it copies the component into,
    * so it counts bytes; the 247-UNIT limit is a separate test, in
-   * `priv_name_classify` (#606). The value is restated here rather than
+   * `priv_name_classify`. The value is restated here rather than
    * included, because ra8_fs_fat_internal.h and this suite's own fixture header
    * both name the BPB offsets and would collide. */
   char path[(uint32_t)k_oc_lfn_utf8_cap + 16U] = {};

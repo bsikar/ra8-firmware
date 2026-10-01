@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! JFIF header segments for the baseline encoder (#2795): every byte that
+//! JFIF header segments for the baseline encoder: every byte that
 //! precedes the entropy-coded scan of a 4:2:0 YCbCr stream, in JFIF 1.1
 //! order. Output is fixed-shape, so each writer takes only what varies.
 

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_truncate.c
- * @brief ra8_fs_truncate on exFAT: shrink, sparse grow, and the chain transition (#680).
+ * @brief ra8_fs_truncate on exFAT: shrink, sparse grow, and the chain transition.
  *
  * @details
  * exFAT records two lengths (spec sec 7.4.5), and that is what makes its grow
@@ -15,7 +15,7 @@
  * The transition case is the exFAT-specific one: a blocker parked on the cluster
  * a contiguous file would grow into forces the grow off the fast path, so it
  * materialises a real FAT chain and clears `NoFatChain` -- the same machinery a
- * streaming write uses (#602/#677), reached here through a pre-size rather than
+ * streaming write uses, reached here through a pre-size rather than
  * a write.
  *
  * `RA8_EXFAT_DUMP_DIR` dumps each scenario's image for a real `fsck.exfat -n`

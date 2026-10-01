@@ -1,7 +1,7 @@
 /**
  * @file comic_tiles.h
  * @brief Tile an oversized comic page through the JOF atlas + ra8_tile_cache so
- *        a CBZ/CBR page larger than the whole-decode arena opens and zooms (#344).
+ *        a CBZ/CBR page larger than the whole-decode arena opens and zooms.
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -164,7 +164,7 @@ typedef struct {
 } comic_tile_reader_t;
 
 /**
- * @brief Read a comic page's decoded footprint from its encoded header (#344).
+ * @brief Read a comic page's decoded footprint from its encoded header.
  *
  * @details Sniffs the encoded page's dimensions without decoding its body (via
  *          ::ra8_imgdec_dims, the shared geometry probe, narrowed here to the
@@ -312,7 +312,7 @@ typedef struct {
                                            const comic_tiles_import_cfg_t* cfg);
 
 /**
- * @brief Report the bound page's parsed atlas geometry (#344).
+ * @brief Report the bound page's parsed atlas geometry.
  *
  * @param[in]  r        Reader with a page bound by ::comic_tiles_import.
  * @param[out] out_info Receives the atlas geometry (non-NULL).
@@ -333,7 +333,7 @@ typedef struct {
 [[nodiscard]] ra8_err_t comic_tiles_info(const comic_tile_reader_t* r, jof_info_t* out_info);
 
 /**
- * @brief Get (and pin) one decoded tile of the bound page (#344).
+ * @brief Get (and pin) one decoded tile of the bound page.
  *
  * @details Builds the tile-cache key `(epoch, tile_x, tile_y)` and fetches it
  *          through the owned cache. On a miss the tile's stored stream is read
@@ -371,7 +371,7 @@ typedef struct {
 comic_tiles_tile(comic_tile_reader_t* r, uint16_t tile_x, uint16_t tile_y, ra8_tile_t* out_tile);
 
 /**
- * @brief Release one pin taken by ::comic_tiles_tile (#344).
+ * @brief Release one pin taken by ::comic_tiles_tile.
  *
  * @param[in] r      Reader with a page bound.
  * @param[in] pixels The `pixels` pointer from a returned ::ra8_tile_t.

@@ -59,7 +59,7 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 include("${CMAKE_CURRENT_LIST_DIR}/ccache.cmake")
 
 # -----------------------------------------------------------------------------
-# Repo discovery for per-app listfiles (#779)
+# Repo discovery for per-app listfiles
 # -----------------------------------------------------------------------------
 # Same argument as the ccache include above: the toolchain file is the one place
 # every cross build passes through, and it knows where the repo root is. This
@@ -70,7 +70,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/ccache.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/ra8_bootstrap.cmake")
 
 # -----------------------------------------------------------------------------
-# Pin the cross-compiler major version (#178)
+# Pin the cross-compiler major version
 # -----------------------------------------------------------------------------
 # Codegen correctness on the attacker-facing miniz ZIP inflater is
 # version-specific: Arm GNU Toolchain 13.3 miscompiles it under strict aliasing
@@ -82,14 +82,14 @@ include("${CMAKE_CURRENT_LIST_DIR}/ra8_bootstrap.cmake")
 #
 # Default: FATAL on a mismatch. Every environment installs the pinned 13.3 at a
 # standard path (found via the HINTS above), so the single-version convergence is
-# enforced everywhere (#178): a build that silently picks up a stray arm-gcc fails
+# enforced everywhere: a build that silently picks up a stray arm-gcc fails
 # loudly instead of shipping version-divergent codegen. For a deliberate one-off
 # local build on a different toolchain, pass -DRA8_STRICT_TOOLCHAIN=OFF (or
 # RA8_STRICT_TOOLCHAIN=0 in the environment) to downgrade the mismatch to a
 # warning. See docs/TOOLCHAIN.md.
 set(RA8_PINNED_ARM_GCC_VERSION
     "13.3"
-    CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1) (#178)"
+    CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1)"
 )
 option(RA8_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned version" ON)
 # Escape hatch: RA8_STRICT_TOOLCHAIN=0 in the environment downgrades to a warning.
@@ -117,7 +117,7 @@ if(NOT _ra8_arm_gcc_mm STREQUAL "${RA8_PINNED_ARM_GCC_VERSION}")
   set(_ra8_tc_msg
       "arm-none-eabi-gcc is ${_ra8_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
       "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
-      "reproducible codegen -- the miniz inflater is version-sensitive (#178). "
+      "reproducible codegen -- the miniz inflater is version-sensitive. "
       "Install 13.3.rel1 to /opt/arm-gnu-toolchain-13.3 or "
       "~/opt/arm-gnu-toolchain-13.3 (see docs/TOOLCHAIN.md), or pass "
       "-DRA8_STRICT_TOOLCHAIN=OFF for a deliberate one-off build."

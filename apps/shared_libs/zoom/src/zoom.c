@@ -1,6 +1,6 @@
 /**
  * @file zoom.c
- * @brief Viewport state machine for the tap-to-zoom image viewer (#478).
+ * @brief Viewport state machine for the tap-to-zoom image viewer.
  *
  * @details Implements the non-rendering half of zoom.h: opening a viewport
  *          onto a source, the integer magnification ladder, anchor clamping in

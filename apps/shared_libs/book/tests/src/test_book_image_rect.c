@@ -1,6 +1,6 @@
 /**
  * @file test_book_image_rect.c
- * @brief Sub-rect image addressing tests for book_src_image / _rect (#342).
+ * @brief Sub-rect image addressing tests for book_src_image / _rect.
  *
  * @details
  * Builds a small, self-contained `.rabook` blob in memory with three raster
@@ -11,7 +11,7 @@
  * the low 4 bits of the pixel's flat index, so a reader knows the exact byte every
  * pixel must expand to. The third is an 80x3 @ref k_book_pixfmt_gray8 image --
  * the full-resolution, continuous-tone representation the compiled `.rabook`
- * retains for zoomable content (#476) -- whose pixels take deliberately off-grid
+ * retains for zoomable content -- whose pixels take deliberately off-grid
  * values (not on the 16-level gray4 quantiser), proving the gray8 read returns the
  * source byte verbatim with no quantisation and that it crosses a paged frame
  * boundary (80 > the 64-byte fixture frame).
@@ -178,7 +178,7 @@ typedef enum : uint16_t {
  * @brief Continuous-tone gray8 value of pixel `(px, py)` for a @p w-wide image.
  * @details `(flat * 37 + 5) mod 256` -- deliberately off the 16-level gray4 grid
  *          {0,17,...,255}, so a gray4 round-trip would perturb it; the gray8 read
- *          returning this exact byte proves no quantisation happened (#476).
+ *          returning this exact byte proves no quantisation happened.
  */
 static uint8_t ibook_g8(uint32_t w, uint32_t px, uint32_t py)
 {
@@ -600,7 +600,7 @@ static void ibook_verify_rect_g8(uint32_t       iw,
 /**
  * @test test_book_src_image_rect_gray8
  * @brief A gray8 raster reads back its full-resolution, continuous-tone source
- *        bytes verbatim -- resident == paged -- with no quantisation (#476).
+ *        bytes verbatim -- resident == paged -- with no quantisation.
  *
  * @details The core #476 acceptance at the library level: the compiled `.rabook`
  *          retains full-resolution gray8 for zoomable content, and the sub-rect

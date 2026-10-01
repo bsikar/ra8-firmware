@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Y'CbCr to RGB888 for the baseline decoder (#2799).
+//! Y'CbCr to RGB888 for the baseline decoder.
 //!
 //! The inverse of `color.zig`, and a separate set of constants: the forward
 //! transform scales by 65536 into three sums, this one scales the two chroma

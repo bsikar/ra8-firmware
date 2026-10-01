@@ -128,7 +128,7 @@ if [[ "$-" == *p* ]]; then
   # an alias -- but the docs, the runbooks and everyone's fingers say `ssh dev`
   # and `ssh truenas`, and those names used to exist on exactly one laptop. This
   # generates them from the same declaration, so a fresh control node has them
-  # too (#526).
+  # too.
   say "SSH aliases"
   python3 "${ROOT}/scripts/dev/fleet.py" ssh-config --install
 

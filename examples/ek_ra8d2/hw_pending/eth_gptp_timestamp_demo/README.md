@@ -44,12 +44,12 @@ driver API, which carries its own HUM citations.
 `ra8_emulator` has no GPTP timer model -- the window falls to the sparse
 config-reflect fallback, where a counter cannot advance -- so the app would
 correctly report failure under emulation. The EK-RA8D2 Ethernet wire is also
-marginal (#21).
+marginal.
 
 A gPTP peer *is* attached to the bench (the board's RJ45 goes to the HIL Pi's
 built-in Ethernet port, which has a real PTP hardware clock and provisioned
 `linuxptp`), and it does not unblock this app -- **no peer can**, because the
 RA8D2 has no PTP message engine. Sync, Follow_Up, Pdelay, the servo and the
 state machine are all software on this silicon, and no such stack drives the
-RA8D2 Ethernet path in this tree (#292). Comparing this counter against the
+RA8D2 Ethernet path in this tree. Comparing this counter against the
 peer's `/dev/ptp0` over a long window remains a manual bench measurement.

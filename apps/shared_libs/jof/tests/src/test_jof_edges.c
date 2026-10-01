@@ -1,6 +1,6 @@
 /**
  * @file test_jof_edges.c
- * @brief Partial-edge-tile round-trip and tile-distinctness guards (#231, #289).
+ * @brief Partial-edge-tile round-trip and tile-distinctness guards.
  *
  * @details
  * A rendering defect that duplicates or tears image content has two candidate

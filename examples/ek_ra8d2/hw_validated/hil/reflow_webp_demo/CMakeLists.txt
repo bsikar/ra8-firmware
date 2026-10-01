@@ -17,7 +17,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME reflow_webp_demo
   STACK_BYTES 8192
-  DESCRIPTION "Demonstrate inline WebP decoding in reflow text layout (#637)"
+  DESCRIPTION "Demonstrate inline WebP decoding in reflow text layout"
   LIBS ra8_gfx
        ra8_display_pal
        reflow

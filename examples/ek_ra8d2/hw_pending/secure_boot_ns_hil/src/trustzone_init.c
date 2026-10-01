@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/trustzone_init.c
- * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#172).
+ * @brief Single-core TrustZone bring-up for a RAM-resident NS image.
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}

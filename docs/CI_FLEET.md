@@ -777,7 +777,7 @@ just infra::apply win-ci "" dev-slice   # no drain
 
 Delete the block and re-apply, and the slice, its entry point, its shell
 environment and its reaper are removed. That is also how the 5 GiB goes back to
-the Ethos-U55 / NPU work (#228) when that starts: it is one block, in one file.
+the Ethos-U55 / NPU work when that starts: it is one block, in one file.
 
 ### Why a weight and a wall, and not a share of the machine
 

@@ -19,7 +19,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
 - **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  USBX repository. Resolved (#548) to release tag
+  USBX repository. Resolved to release tag
   `v6.5.0.202601_rel`, commit `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b`:
   1035 of the 1036 vendored files are byte-identical to it, the exception
   being the `.gitattributes` edit recorded under "Deviations / patches".
@@ -100,7 +100,7 @@ A second deviation existed and has been removed rather than declared: the four
 `support/windows_host_files/*.inf` templates were vendored with CRLF line
 endings while upstream stores LF, an artifact of the checkout the vendor-in
 copied from (`7a471613c`). They are Windows driver templates, compiled by
-nothing, so they were restored to upstream's bytes (#548) instead of being
+nothing, so they were restored to upstream's bytes instead of being
 recorded as an intentional patch.
 
 ## Last review date

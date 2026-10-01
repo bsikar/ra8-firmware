@@ -29,7 +29,7 @@ map rather than a second spelling of it. For every board package that has both a
     Both declare the region and they disagree. This is the failure the gate
     exists for: the drift is silent today because no build compares them.
 
-Scope is DERIVED, never a hardcoded list (#358): every `libs/ra8_board_*`
+Scope is DERIVED, never a hardcoded list: every `libs/ra8_board_*`
 package is scanned, so a board added tomorrow is covered the day it lands. A
 board with a linker script and no header yet is skipped and named in the report,
 because publishing the descriptor is per-board work that can land separately.

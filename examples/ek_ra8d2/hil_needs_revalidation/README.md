@@ -11,7 +11,7 @@ the current commit can support a current green/red claim.
 **A blocker written down is a hypothesis, not a verdict.** One app here was
 labelled "needs an Ethernet peer"; it got one, and failed anyway -- on a
 firmware regression that had been sitting on `dev` for a month behind that
-wrong label (#499). Expect clearing a blocker to sometimes reveal a defect
+wrong label. Expect clearing a blocker to sometimes reveal a defect
 rather than a pass.
 
 They build like any other app and the target name does not change with the
@@ -22,7 +22,7 @@ tier. Re-validating one is a `git mv` back into `hw_validated/hil/`; its
 
 - **The C6 sits on the Octo-SPI pins.** The companion radio is wired onto the
   PMOD1 pins that *are* the Octo-SPI flash bus, so in that bench configuration
-  storage-backed apps cannot reach their storage. A carrier PCB (#318) gives
+  storage-backed apps cannot reach their storage. A carrier PCB gives
   the C6 dedicated pins; until then, unwire it and re-run.
 - **Consumables and cabling.** An unseated microSD fails a whole family of
   reader apps at once and reads as a code defect until someone looks at the

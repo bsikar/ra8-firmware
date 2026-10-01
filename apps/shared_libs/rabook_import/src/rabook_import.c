@@ -1,6 +1,6 @@
 /**
  * @file rabook_import.c
- * @brief On-import EPUB -> .rabook compile-and-cache manager (#151).
+ * @brief On-import EPUB -> .rabook compile-and-cache manager.
  * @details Validates import inputs, selects cache paths, and coordinates the
  * injected compiler and storage seams without retaining source ownership.
  * @since Version 0.1.0

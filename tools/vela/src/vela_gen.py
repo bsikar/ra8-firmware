@@ -633,7 +633,7 @@ def main(argv: list[str]) -> int:
     Returns:
         The handler's status, for `sys.exit`.
     """
-    parser = argparse.ArgumentParser(description="Offline Ethos-U55 model build step (#227).")
+    parser = argparse.ArgumentParser(description="Offline Ethos-U55 model build step.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_emit = sub.add_parser("emit", help="descriptor -> committed C header")

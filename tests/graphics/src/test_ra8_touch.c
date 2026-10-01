@@ -14,7 +14,7 @@
  * return a chosen byte stream (the real model can only echo the address
  * byte), everything else forwards to the bound bus. This is what lets
  * the product-id VALUE check and the exact status-byte read legs run on
- * the host (#234). The wire-format parser tests live in
+ * the host. The wire-format parser tests live in
  * ``test_ra8_touch_decode.c``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -121,7 +121,7 @@ static ra8_i2c_bus_ops_t s_bus_ops;
 static ra8_touch_cfg_t s_cfg_default;
 
 /* =============================================================================
- * Controllable-RX bus trampoline (#234)
+ * Controllable-RX bus trampoline
  *
  * The real i3c-i2c-compat host model can only echo the address byte on
  * reads, so it can never present a valid GT911 product id (or an exact

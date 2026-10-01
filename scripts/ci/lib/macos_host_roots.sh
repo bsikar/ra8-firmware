@@ -29,8 +29,8 @@ RA8_MACOS_HOST_ROOTS=(
   "tools/zig_build|covered|it defines the host target selection, so it is the first root that must build and test natively"
   "apps/host/image_pyramid|covered|a pure-Zig host app needing no toolchain beyond zig, and the root whose Mach-O the gate reads back"
   "tests/zig_abi_fixture|covered|a pure-Zig test root needing no toolchain beyond zig"
-  "apps/host/reg_gen|deferred|its generated-header contract resolves a C23 front end at run time and the zig cc fallback leg is unexercised; cover it once the nightly shows which front end the runner resolves (#1035)"
-  "apps/host/firmware_pipeline/zig|deferred|it links a cargo-built archive and the macOS workflow provisions no Rust toolchain; a wrong-target archive is now a named refusal rather than a bare undefined symbol (#1141)"
+  "apps/host/reg_gen|deferred|its generated-header contract resolves a C23 front end at run time and the zig cc fallback leg is unexercised; cover it once the nightly shows which front end the runner resolves"
+  "apps/host/firmware_pipeline/zig|deferred|it links a cargo-built archive and the macOS workflow provisions no Rust toolchain; a wrong-target archive is now a named refusal rather than a bare undefined symbol"
   "tests/abi_chain_fixture|deferred|same cargo-built archive dependency as apps/host/firmware_pipeline/zig"
   "tests/rust_abi_fixture/zig|deferred|same cargo-built archive dependency as apps/host/firmware_pipeline/zig"
 )

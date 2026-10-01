@@ -17,7 +17,7 @@ The container's command stream is the documented stand-in convention declared
 in the NPU headers, **not** a Vela-compiled program. So the app exercises the
 full offline-build to load to submit to run path deterministically, while
 lowering a real quantized `.tflite` into a genuine Ethos-U55 command stream
-with Arm's Vela compiler, and pinning a golden to *that*, remains open (#227).
+with Arm's Vela compiler, and pinning a golden to *that*, remains open.
 
 The emulator maps the Ethos-U55 window only for the RA8P1 device, decodes the
 stand-in command stream and applies the op to the tensor arenas, so the run is

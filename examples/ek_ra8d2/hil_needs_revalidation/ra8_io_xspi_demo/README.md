@@ -1,6 +1,6 @@
 # ra8_io_xspi_demo
 
-The `ra8_io` fabric (#155, #156) over the on-board Octo-SPI NOR flash -- a third
+The `ra8_io` fabric over the on-board Octo-SPI NOR flash -- a third
 storage tier alongside the RAM (`ra8_io_demo`) and SD (`ra8_io_sd_demo`) cases.
 
 NOR is what makes this one different. It is an **erase-before-write** medium: a
@@ -20,4 +20,4 @@ small because each write costs a full sector RMW.
 The real part is an IS25LX512M. Its bus is the constraint to watch on this
 bench: the Octo-SPI pins are the PMOD1 pins, so anything else wired onto PMOD1
 takes the flash away from this app and it cannot reach its storage. The carrier
-PCB (#318) is the way out.
+PCB is the way out.

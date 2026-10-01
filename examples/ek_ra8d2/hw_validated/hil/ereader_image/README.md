@@ -2,7 +2,7 @@
 
 Decodes a baked RGB PNG cover through `ra8_img_decode_blit()`,
 nearest-neighbour scales it to fit a fixed RGB565 framebuffer in internal SRAM,
-and hashes the framebuffer (#106) -- the same decode, scale and blit path the
+and hashes the framebuffer -- the same decode, scale and blit path the
 e-reader uses for cover art and in-chapter `<img>` figures. Allocation comes
 only from a fixed SRAM bump arena, so the decode reaches no `malloc` (NASA P10
 Rule 3). Headless -- no panel, SDRAM, touch or SD.

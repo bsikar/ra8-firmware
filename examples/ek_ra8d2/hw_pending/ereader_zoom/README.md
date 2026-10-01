@@ -3,7 +3,7 @@
 The other half of a decision already made. `.rabook` import deliberately does
 **not** downscale images (#210-213, #476): the pixels are kept so the reader can
 magnify into them. This app makes that magnifier viewable, and is the demo for
-`apps/shared_libs/zoom` (#478).
+`apps/shared_libs/zoom`.
 
 It brings up the 1024x600 GLCDC panel, binds a 4096x3072 gray8 page -- an order
 of magnitude past what this part can hold -- through an `ra8_tile_cache`, and
@@ -18,7 +18,7 @@ shortcut: the two things the viewer has to prove are best proven by content that
 is generated, not stored.
 
 * The **gradient** swings dozens of gray levels across roughly a screen. A
-  16-level panel bands that visibly without the blue-noise dither (#477); with
+  16-level panel bands that visibly without the blue-noise dither; with
   it, the grain is scattered and the ramp is smooth. Look at the render, not the
   hash.
 * The **rules** are 3 px tall at source resolution. At fit-to-page they would be
@@ -42,7 +42,7 @@ scripted viewport states, plus the tile-cache counters, and each is an assertion
 | the four state hashes | Each viewport state renders to a fixed framebuffer on host **and** emulator **and** silicon -- the whole path is integer. |
 | miss count | Only the visible tiles are ever decoded; the whole four-state sequence touches a small fraction of the page. |
 | evict count, which must be zero | No tile still on screen was thrown away. That is the thrash #338 describes, and `k_ez_cells` is sized to the viewport tile demand plus a pan margin so it cannot happen. |
-| warm count | The pan read-ahead warmed the lead-edge column out of the cache's spare capacity (#341). |
+| warm count | The pan read-ahead warmed the lead-edge column out of the cache's spare capacity. |
 
 The hashes are toolchain-independent **because the chrome carries no text**. A
 framebuffer hash over antialiased glyphs is toolchain-bound -- the same board

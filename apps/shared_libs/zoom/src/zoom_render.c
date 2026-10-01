@@ -1,6 +1,6 @@
 /**
  * @file zoom_render.c
- * @brief Strip composite for the tap-to-zoom viewer: magnify, re-dither, blit (#478).
+ * @brief Strip composite for the tap-to-zoom viewer: magnify, re-dither, blit.
  *
  * @details
  * The render half of zoom.h. It never holds the visible window: a 1024x600

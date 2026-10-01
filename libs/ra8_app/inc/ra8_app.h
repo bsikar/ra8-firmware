@@ -1,6 +1,6 @@
 /**
  * @file ra8_app.h
- * @brief Zero-heap app framework: lifecycle + static registry + launcher (#146).
+ * @brief Zero-heap app framework: lifecycle + static registry + launcher.
  * @ingroup grp_board
  *
  * @details

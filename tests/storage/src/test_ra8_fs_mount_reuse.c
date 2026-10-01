@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_mount_reuse.c
- * @brief A reused mount slot carries no field of the previous volume (#684).
+ * @brief A reused mount slot carries no field of the previous volume.
  *
  * @details
  * `k_ra8_fs_max_mounts` is 2 and the slots are reused across cards of different
@@ -75,7 +75,7 @@ RA8_INTERNAL static void internal_test_reuse_fat_then_exfat(void)
   /* No FAT geometry survived: the exFAT parse leaves these zero, and the
    * slot-clear guarantees no earlier FAT value can leak through.
    * `total_sectors` is no longer zero on exFAT -- the parse records the VBR's
-   * 64-bit VolumeLength (#683) -- so the stale-field proof for it is that the
+   * 64-bit VolumeLength -- so the stale-field proof for it is that the
    * value is the exFAT partition's own span, not the FAT card's total. */
   TEST_ASSERT_EQ(0U, exf->root_entries);
   TEST_ASSERT_EQ(0U, exf->first_root_lba);

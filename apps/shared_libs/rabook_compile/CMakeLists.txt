@@ -8,7 +8,7 @@
 # plus metadata) and serializes the exact binary RABOOK1 blob that the desktop
 # tool tools/epub_compile/src/epub_compile.py emits and the on-device reader
 # apps/shared_libs/book parses. This is ONLY the emitter; the XHTML -> DOM front-end and
-# the raster -> gray4 image transcode are the next stage-(a) pieces (#149).
+# the raster -> gray4 image transcode are the next stage-(a) pieces.
 #
 # No dynamic allocation (NASA Power-of-10 Rule 3): the caller hands the builder
 # fixed, caller-sized arenas and the output buffer. Depends only on book (the

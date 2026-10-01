@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_meta_cov.c
- * @brief Error-path and edge-branch coverage for the fs metadata APIs (#678/#682).
+ * @brief Error-path and edge-branch coverage for the fs metadata APIs.
  *
  * @details
  * The happy paths live in `test_ra8_fs_{space,label,utime}.c`; this file drives

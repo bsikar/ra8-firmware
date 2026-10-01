@@ -30,7 +30,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # ra8_io globs every backend/sink (sd-spi -> ra8_sdmmc_spi, usb-cdc ->
 # ra8_usb_pal), so those libs are listed to satisfy their includes, same as
 # devcfg_record_demo. Boot files come from the shared
-# libs/ra8_board_ek_ra8d2/src/boot copy (no local vector_table.c). (#155/#264)
+# libs/ra8_board_ek_ra8d2/src/boot copy (no local vector_table.c).
 ra8_add_app(
   NAME touch_cal_matrix_demo
   STACK_BYTES 4096

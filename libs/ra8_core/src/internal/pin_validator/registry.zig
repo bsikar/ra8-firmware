@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The pin-claim registry (#2825): one bit per port/pin, so two drivers cannot
+//! The pin-claim registry: one bit per port/pin, so two drivers cannot
 //! configure the same physical pin without the second one being told.
 //!
 //! Pure logic. No MMIO, no logging, no C types. The membrane in

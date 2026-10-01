@@ -227,7 +227,7 @@ just infra::apply <host>
 **Where do you run these from?** Any machine with ansible and a key the hosts
 accept. It used to be *nowhere*: every host was addressed by an `~/.ssh/config`
 alias that existed on the Mac, which had no ansible, while the dev box had
-ansible and could resolve none of them (#526). `infra/fleet.yml` now carries
+ansible and could resolve none of them. `infra/fleet.yml` now carries
 each machine's real address, `fleet.py` builds every command from it, and
 `just infra::ssh_config` generates the friendly aliases -- so becoming a control
 node is `just setup_ansible`; Ansible core comes from `uv.lock` and
@@ -265,7 +265,7 @@ Being honest about this is the point of the section.
   cannot enforce where a cable is physically plugged in, so an operator must
   confirm placement before a replay or bench run.
 
-### Known cruft, cleaned up (#502)
+### Known cruft, cleaned up
 
 `just infra::status` used to show a pool of `k3s-runner*` runners registered
 and online -- pre-ARC leftovers from before the repository was renamed,

@@ -1,7 +1,7 @@
 /**
  * @file test_jof_produce.c
  * @brief Host tests for the import-time transcode producer: JPEG/PNG ->
- *        JOF, byte parity and the bounded-RAM high-water proof (#231).
+ *        JOF, byte parity and the bounded-RAM high-water proof.
  *
  * @details
  * Sources are synthesized in-test from deterministic pixel patterns:

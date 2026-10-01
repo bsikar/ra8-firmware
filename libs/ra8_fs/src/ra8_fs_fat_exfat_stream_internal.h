@@ -4,7 +4,7 @@
  * @ingroup grp_storage
  *
  * @details
- * exFAT streaming write (#602) is one self-contained mechanism with its own
+ * exFAT streaming write is one self-contained mechanism with its own
  * vocabulary, so it gets its own themed sub-header rather than being scattered
  * alphabetically across `ra8_fs_fat_protos_a_internal.h` and its `_b` twin --
  * the same reasoning that gave the timestamp and allocator mechanisms theirs.
@@ -12,7 +12,7 @@
  * translation unit defines it:
  *
  *   - ::exfat_setpos_t and ::k_exfat_set_max_entries -- declared in
- *     `ra8_fs_fat_types_internal.h`, because the directory seam (#605) retires
+ *     `ra8_fs_fat_types_internal.h`, because the directory seam retires
  *     and rewrites sets through the same coordinates -- naming one
  *     directory ENTRY SET, shared by the mutation helpers and the stream;
  *   - the allocation-bitmap primitives (`priv_exfat_bitmap_*`), which the
@@ -141,7 +141,7 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus,
  * @brief Append one zeroed cluster to a directory, keeping its entry set true.
  *
  * @details The directory counterpart of the file grow path, reusing its
- *          contiguous/`NoFatChain`->FAT-chain machinery (#677). Surveys the
+ *          contiguous/`NoFatChain`->FAT-chain machinery. Surveys the
  *          directory's run, prefers the tail's successor to stay contiguous,
  *          ZEROES the new cluster before linking it (a directory cluster reads
  *          as its own contents, so a half-built one must never be reachable),
@@ -204,7 +204,7 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir);
  * @post On success @p pos holds `*out_count` valid positions.
  * @post On failure the outputs are unspecified.
  *
- * @note One directory is searched -- the one @p dir names (#605).
+ * @note One directory is searched -- the one @p dir names.
  *
  * @since 0.1.0
  */
@@ -261,7 +261,7 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  * @param[in]  dir       Directory the set is linked into.
  * @param[in]  name      Leaf name as UTF-16 code units (no leading '/').
  * @param[in]  nlen      Name length in UTF-16 UNITS (1..::k_exfat_name_cap),
- *                       which is what `NameLength` counts (#606).
+ *                       which is what `NameLength` counts.
  * @param[out] out_head  Receives the File entry's (cluster, index).
  * @param[out] out_count Receives the entry count (1 + SecondaryCount).
  *
@@ -367,7 +367,7 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
  *          the tail's successor so a run that can stay contiguous keeps its
  *          `NoFatChain` fast path, and materialising a real FAT chain over the
  *          run the moment it cannot. The streaming write path drives it to reach
- *          the cluster an offset lands in; the truncate path (#680) drives it to
+ *          the cluster an offset lands in; the truncate path drives it to
  *          pre-size a file, which is why it lives in the header rather than
  *          staying private to the stream.
  *

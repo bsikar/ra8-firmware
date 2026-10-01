@@ -12,7 +12,7 @@ header:
 This script:
 
     1. Walks every first-party C file, derived from git ls-files via
-       lint_targets (#358) rather than a hardcoded ("libs","tests")
+       lint_targets rather than a hardcoded ("libs","tests")
        + example-app list that silently omitted tools/ and port/. Vendored
        trees (libs/third_party/) are dropped automatically; port/threadx is
        first-party glue and stays in scope.
@@ -38,7 +38,7 @@ file_is_in_ring3_plus(), described here as a documented decision that left out
 only host tooling and vendored code. It left out a great deal more: the
 requirement reaches 7 of 51 first-party roots, while apps/, port/ and 38
 libs/ roots sit outside it, most of them carrying Ring/World tags this gate
-never reads (#842). Those omissions are declared row by row and measured now,
+never reads. Those omissions are declared row by row and measured now,
 so they can be paid down instead of being invisible; which files must carry
 tags is unchanged. The NSC-location and cmse_nonsecure_entry bans (checks 3
 and 4) apply to every file, everywhere.
@@ -53,7 +53,7 @@ A finite EXACT-PATH inventory (.github/world-tag-legacy-inventory.txt)
 grandfathers the pre-tag-system libs/ra8_hal/ and tests/ files. It replaced an
 open-ended PREFIX exemption on those two roots, which let a brand-new untagged
 file under either of them pass the strict gate while the comment beside it said
-new code had no route into the exemption (#842). Membership is by exact path,
+new code had no route into the exemption. Membership is by exact path,
 so a file that did not exist when the rule landed cannot be exempt; an
 inventoried file also leaves the exemption the moment it grows either tag, and
 a row whose file is gone or is tagged now is reported as stale. The exemption
@@ -125,7 +125,7 @@ APP_DIRS = discover_app_dirs()
 # {World: ...} tag pair, it leaves the exemption automatically: the script
 # enforces consistency on any file that already carries at least one tag.
 #
-# The inventory is an EXACT-PATH list, not a prefix list (#842). Prefixes
+# The inventory is an EXACT-PATH list, not a prefix list. Prefixes
 # ("libs/ra8_hal/", "tests/") exempted every FUTURE file under those roots too,
 # so a brand-new untagged HAL or test file passed the strict gate. An exact
 # list cannot grandfather a file that did not exist when the rule landed.
@@ -208,7 +208,7 @@ def stale_inventory_entries(inventory: frozenset[str] | None = None) -> list[str
 
 
 # ---------------------------------------------------------------------------
-# Inventory census (#842). The inventory header claimed the list "shrinks and
+# Inventory census. The inventory header claimed the list "shrinks and
 # can never quietly grow", and nothing measured that claim: stale_inventory_
 # entries only reports rows that stopped granting anything (file deleted, file
 # tagged). A row HAND-ADDED for a brand-new untagged HAL or test file was
@@ -763,7 +763,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _select_targets(paths: list[str]) -> list[pathlib.Path]:
-    """Explicit paths, or the derived first-party C set (#358).
+    """Explicit paths, or the derived first-party C set.
 
     The old ("libs","tests") + APP_DIRS list silently omitted tools/ and
     port/. Host tooling (tools/) and vendored trees are enumerated but are NOT

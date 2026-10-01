@@ -51,7 +51,7 @@ raw MMIO of its own.
 Nothing off-target models the ETHA shapers or the GPTP timer -- both windows fall
 to the sparse config-reflect fallback, where a counter cannot advance -- so the
 app would correctly report failure under emulation. The EK-RA8D2 Ethernet wire is
-also marginal (#21).
+also marginal.
 
 A measurement peer is provisioned on the bench (`linuxptp` on the HIL Pi's
 built-in Ethernet port, which carries a real PTP hardware clock), and it still

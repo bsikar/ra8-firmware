@@ -1,6 +1,6 @@
 # epub_parse
 
-The first firmware app to run the `epub` parse stack on the target (#139).
+The first firmware app to run the `epub` parse stack on the target.
 It bakes a known-good two-chapter `.epub` into a C array and parses it entirely
 in memory -- no card, no USB, no display -- driving the ZIP central-directory
 read, the bounded XML reader over `META-INF/container.xml` and the OPF, the

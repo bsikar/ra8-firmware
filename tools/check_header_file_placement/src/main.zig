@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for `check_header_file_placement` (RA8FW-335, #1219). It owns the
+//! Process shell for `check_header_file_placement` (RA8FW-335). It owns the
 //! allocator, the real file system, the environment and the exit status, and
 //! nothing else: every decision is in `src/cli.zig` and
 //! `src/internal/root.zig`, so the tests drive the gate without a process.

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/smbus_demo/src/main.c
- * @brief SMBus 3.2 protocol-layer demo + HIL over IIC_B (#128).
+ * @brief SMBus 3.2 protocol-layer demo + HIL over IIC_B.
  *
  * @details
  * `ra8_smbus` is the SMBus 3.2 protocol layer on top of the IIC_B (I3C-in-

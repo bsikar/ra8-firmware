@@ -2,7 +2,7 @@
  */
 /**
  * @file test_ra8_fs_stat.c
- * @brief Tests for `ra8_fs_stat()` on FAT and exFAT volumes (#609).
+ * @brief Tests for `ra8_fs_stat()` on FAT and exFAT volumes.
  *
  * @details
  * The defect this closes is a wrong answer, not a missing one: `stat` used to
@@ -489,7 +489,7 @@ RA8_INTERNAL static void internal_test_stat_exfat(void)
   internal_expect_epoch(&file.modified);
   internal_expect_epoch(&file.accessed);
 
-  /* The leading slash is optional on exFAT, exactly as it is for open (#93). */
+  /* The leading slash is optional on exFAT, exactly as it is for open. */
   ra8_fs_stat_t no_slash = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "STORY.TXT", &no_slash));
   TEST_ASSERT_EQ(file.size_bytes, no_slash.size_bytes);

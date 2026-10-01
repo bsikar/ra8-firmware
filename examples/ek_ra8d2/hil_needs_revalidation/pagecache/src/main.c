@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c
- * @brief On-silicon HIL: reflow pagination-cache round-trip on SD (#117).
+ * @brief On-silicon HIL: reflow pagination-cache round-trip on SD.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

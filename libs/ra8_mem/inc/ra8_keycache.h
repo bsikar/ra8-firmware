@@ -1,6 +1,6 @@
 /**
  * @file ra8_keycache.h
- * @brief The one reusable hash + pin + evict cache engine (#147, #345).
+ * @brief The one reusable hash + pin + evict cache engine.
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -315,7 +315,7 @@ ra8_keycache_get(ra8_keycache_t* kc, const void* key, ra8_keycache_view_t* out_v
  *          ::ra8_vmem_prefetch (which warms a page-cache frame). The cell is
  *          inserted at the MRU (single-list LRU), so a wrong read-ahead guess can
  *          age out hot data before itself; the scan-resistant probationary insert
- *          is tracked by the cache-consolidation work (#345).
+ *          is tracked by the cache-consolidation work.
  *
  * @param[in,out] kc  Initialised cache.
  * @param[in]     key `key_bytes`-wide key to warm (fully initialised).

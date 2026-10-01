@@ -694,7 +694,7 @@ RA8_INTERNAL static void internal_test_render_glyph_atlas_equivalence(void)
   uint32_t miss2 = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_stats(&s_atlas, &hits2, &miss2, nullptr));
   TEST_ASSERT(hits2 > hits1);   /* Re-render served from cache.   */
-  TEST_ASSERT_EQ(miss1, miss2); /* No glyph re-rasterised (#164). */
+  TEST_ASSERT_EQ(miss1, miss2); /* No glyph re-rasterised. */
 
   /* Oversized fallback: a cache whose cells are too small for any body glyph
      forces every glyph down the direct path (internal_atlas_render_glyph returns

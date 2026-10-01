@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """C / C++ function-body measurement for ``check_function_size.py``.
 
-Split out of the checker when the gate grew Python and shell parsers (#359):
+Split out of the checker when the gate grew Python and shell parsers:
 three languages in one file put it well over the 1000-line file cap it is
 itself half of, and a size gate that cannot pass its own rule has no standing
 to enforce it.

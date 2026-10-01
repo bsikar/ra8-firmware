@@ -13,19 +13,19 @@
  * stack over a volume that is never materialised:
  *
  * ```
- *   ra8_tile_cache (LRU, decoded bands)          <- Layer 3b (#231)
+ *   ra8_tile_cache (LRU, decoded bands)          <- Layer 3b
  *     |  miss -> decode
  *     v
  *   jof_read_tile (real JOF reader)   <- the #231/#289 band format
  *     |  pread
  *     v
- *   ra8_vmem_stream_read (byte stream)           <- Layer 2 helper (#151)
+ *   ra8_vmem_stream_read (byte stream)           <- Layer 2 helper
  *     |
  *     v
- *   ra8_vmem (SLRU page cache, raw atlas bytes)  <- Layer 2 (#147)
+ *   ra8_vmem (SLRU page cache, raw atlas bytes)  <- Layer 2
  *     |  miss -> loader
  *     v
- *   ra8_vsource (paged object)                   <- Layer 1 (#147)
+ *   ra8_vsource (paged object)                   <- Layer 1
  *     |
  *     v
  *   synthetic volume-of-JOF-atlases (content-generated, never materialised)
@@ -33,7 +33,7 @@
  *
  * The volume is a concatenation of byte-identical JOF atlases, each a legal
  * 768 x 32768 longstrip strip: `tile_w == width` (one tile column), so a tile row
- * IS a scroll band (#289) with O(1) seek to any scroll-y. Its bytes -- header,
+ * IS a scroll band with O(1) seek to any scroll-y. Its bytes -- header,
  * every band's pixels, the tile index, the footer -- are produced on the fly by
  * a pure content function, so a 2.75 GB book is modelled in a few hundred KiB of
  * host RAM (no downscaling: full-resolution tiling is the memory strategy). The

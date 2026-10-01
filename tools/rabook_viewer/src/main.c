@@ -151,7 +151,7 @@ RA8_INTERNAL static void internal_report_capacity(ra8_io_stream_t*              
 }
 
 /**
- * @brief Name the container a failed page holds, when it can be named (#748).
+ * @brief Name the container a failed page holds, when it can be named.
  * @details A render refusal says the page did not open; it does not say what
  * the page was. ::ra8_viewer_page_container answers that from the one shared
  * naming table, so a GIF the bound decoder will not open reads as a GIF rather

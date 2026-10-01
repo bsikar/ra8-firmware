@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/psa_verify_rng.c
- * @brief Fail-closed PSA external-RNG hook for the verify-only secure boot (#172).
+ * @brief Fail-closed PSA external-RNG hook for the verify-only secure boot.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

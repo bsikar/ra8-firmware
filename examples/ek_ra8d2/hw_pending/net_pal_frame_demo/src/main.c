@@ -13,7 +13,7 @@
  * `ra8_net_pal.h`. Its only in-tree callers were the TrustZone veneers in
  * `libs/ra8_nsc/src/ra8_nsc_eth.c` (themselves uncalled by any application)
  * and the host tests, and NetX Duo's driver deliberately bypasses the PAL and
- * talks to `ra8_eth_*` directly (#621). This app is the first consumer that
+ * talks to `ra8_eth_*` directly. This app is the first consumer that
  * brings the PAL up on the board and drives the whole stack-facing surface.
  *
  * Legs:

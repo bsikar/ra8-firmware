@@ -487,7 +487,7 @@ fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
 test "EXTRA_SRCS helpers are compiled in, in the order the app names them" {
     // This app named five helpers out of two libraries it does NOT name in
     // LIBS. The ports took all five into Zig archives it reaches through LIBS
-    // instead, the last of them the launch gate (#2932), so the declaration is
+    // instead, the last of them the launch gate, so the declaration is
     // empty and no app in the table uses the keyword any more.
     //
     // The case stays, pinned to empty, because the keyword is still live in
@@ -627,7 +627,7 @@ test "the secure half names the CMSE import library, and only it does" {
     }
 }
 
-/// The Non-Secure image of the two-project TrustZone app (#1111). Its rules
+/// The Non-Secure image of the two-project TrustZone app. Its rules
 /// live on the app entry above, which is the only one in the tree that has a
 /// second, separate executable rather than an embedded blob.
 const ns_image_of = trust_zone_app.ns.?;
@@ -944,7 +944,7 @@ test "the app that excludes the NSC set names nothing else that could explain it
 // The second-image (Cortex-M33) rules live in their own file: this one hit the
 // 1000-line ceiling scripts/checks/check_file_size.py holds every Zig source
 // to, and the CPU1 tests are the coherent piece to lift out. Same module, so
-// they still reach the graph through the `build_graph` import (#1146).
+// they still reach the graph through the `build_graph` import.
 test {
     _ = @import("cpu1_image_test.zig");
     _ = @import("analysis_test.zig");

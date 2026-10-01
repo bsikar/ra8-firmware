@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app CMake for `tz_nsc_cgc_usb` -- a TWO-PROJECT TrustZone build (#96).
+# Per-app CMake for `tz_nsc_cgc_usb` -- a TWO-PROJECT TrustZone build.
 #
 # The Secure ELF (ra8_add_app) holds the secure boot + the NSC CGC veneers and
 # emits a CMSE import library (--out-implib). A SEPARATE Non-Secure executable
@@ -63,7 +63,7 @@ ra8_add_app(
 #
 # The other dual-image apps never hit this because they set the define and
 # -mcmse on the target directly rather than relying on the option. Do the same
-# here: this app IS the two-project TrustZone build (#96), so TrustZone is not
+# here: this app IS the two-project TrustZone build, so TrustZone is not
 # optional for it whichever way it is configured.
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
 # The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
@@ -192,11 +192,11 @@ ra8_link_zig_library_for_cpu(
   CPU cortex_m85
   FLOAT hard
 )
-# ra8_log is Zig now (#2836) and ra8_scb followed with the fault block
+# ra8_log is Zig now and ra8_scb followed with the fault block
 # (#2868), so the NS image takes both from ra8_core's archive instead of
 # compiling libs/ra8_core/src/*.c by path. The NS world runs
 # on the same Cortex-M85 as the Secure image, and a freestanding build of
-# ra8_core composes its two roots into one archive (#2842), so this is the
+# ra8_core composes its two roots into one archive, so this is the
 # same call secure_boot_ns_hil already makes.
 ra8_link_zig_library_for_cpu(
   TARGET tz_nsc_cgc_usb_ns.elf

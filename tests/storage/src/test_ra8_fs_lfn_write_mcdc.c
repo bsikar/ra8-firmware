@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_lfn_write_mcdc.c
- * @brief MC/DC vectors for the pure halves of the long-name write seam (#600).
+ * @brief MC/DC vectors for the pure halves of the long-name write seam.
  *
  * @details
  * The three functions here decide, without touching a volume, everything about
@@ -563,7 +563,7 @@ RA8_INTERNAL static void internal_test_fill_slot_shape(void)
  *          the interesting failure is at a group boundary: 26 characters is two
  *          exactly-full groups with no terminator anywhere. The last two names
  *          carry 2-byte and 3-byte UTF-8 characters, which is the round trip
- *          that used to come back full of `?` (#606).
+ *          that used to come back full of `?`.
  *
  * @par MC/DC:
  * Decision: `if (s->checksum != priv_sfn_checksum(name83))` in

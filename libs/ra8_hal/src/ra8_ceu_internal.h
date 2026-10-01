@@ -86,7 +86,7 @@ RA8_PRIV void priv_ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg);
  * other byte streams) has no pixel stride, so it answers zero. This is
  * the value ``ra8_ceu_init`` validates against and
  * ``priv_ra8_ceu_program_destination`` falls back to when the caller
- * leaves ``dst_stride`` at zero (#1362). Promoted from a TU-private
+ * leaves ``dst_stride`` at zero. Promoted from a TU-private
  * static so ``ra8_ceu_init`` (in ``ra8_ceu.c``) can reach it.
  *
  * @param[in] cfg Caller-supplied config; must not be nullptr.

@@ -125,9 +125,9 @@ CMAKE_TARGET_NAME_RE = re.compile(
 MIN_TRACKED_MARKDOWN = 450
 MIN_FIRST_PARTY_MARKDOWN = 370
 # Measured 74. The floor was 75, pinned in 5909ea4aa against a tree of 77,
-# and 47965d769 (#622) then pruned three never-buildable NimBLE READMEs, so
+# and 47965d769 then pruned three never-buildable NimBLE READMEs, so
 # the whole checker exited 2 on the census instead of checking anything; it
-# stayed dark from 2026-09-17 to 2026-09-30 (#2334). Pinned below the
+# stayed dark from 2026-09-17 to 2026-09-30. Pinned below the
 # measurement on purpose: a SOUP prune removing a vendored document is
 # routine, a vendored tree disappearing is not, and the smallest vendored
 # tree here carries more than the 14 documents of headroom this leaves.

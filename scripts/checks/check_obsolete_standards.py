@@ -20,8 +20,8 @@ That is deliberate. This checker read ``git diff --cached`` unconditionally,
 and the ``pre-commit-checks`` CI gate invoked it with no arguments -- where
 nothing is ever staged. It therefore scanned ZERO files on every CI run and
 printed ``0 findings``, for as long as it had been wired there. The same
-defect was found and fixed in ``check_mcdc_block.py`` (#325) and
-``check_new_compound_has_mcdc.py`` (#355); this is the third instance, so the
+defect was found and fixed in ``check_mcdc_block.py`` and
+``check_new_compound_has_mcdc.py``; this is the third instance, so the
 remedy is the one those adopted: make the mode explicit so a caller cannot
 silently get the vacuous one, and refuse an empty tree-wide scan outright.
 

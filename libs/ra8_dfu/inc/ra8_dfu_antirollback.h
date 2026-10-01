@@ -249,7 +249,7 @@ const ra8_rot_antirollback_store_t* ra8_rot_antirollback_default_store(void);
  * The default store reads the durable counter (extra-MRAM at
  * ::k_ra8_flash_extra_start) under a transient fault-catch, because a never-written
  * (blank) ECC-protected extra-MRAM word bus-faults on read and the RA8D2 has no
- * MRAM BlankCheck command (#194). The app's BusFault/HardFault handler must call
+ * MRAM BlankCheck command. The app's BusFault/HardFault handler must call
  * this first with a pointer to the exception stack frame
  * ([R0 R1 R2 R3 R12 LR PC xPSR]): when a probe is in progress it records the fault,
  * advances the stacked PC past the faulting load, clears the sticky fault status,

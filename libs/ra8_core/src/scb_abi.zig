@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_scb.h` (#2868).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_scb.h`.
 //!
 //! The register window below deals in named registers; this file maps it
 //! onto the `ra8_err_t` codes the header promises and keeps the one logged

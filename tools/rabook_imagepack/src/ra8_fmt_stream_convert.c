@@ -342,7 +342,7 @@ internal_png_dims(const uint8_t prefix[k_convert_png_dims_end], uint16_t* out_w,
  * ends for three. GIF, BMP and TGA are therefore named-but-refused here rather
  * than silently treated as an unrecognised prefix, which keeps "what this tool
  * can convert" a property of the producer rather than of a private signature
- * table (#748).
+ * table.
  * @param[in] format One sniffed ::ra8_imgdec_format_t bit.
  * @param[out] kind Receives the accepted encoding kind.
  * @return Mapping status.

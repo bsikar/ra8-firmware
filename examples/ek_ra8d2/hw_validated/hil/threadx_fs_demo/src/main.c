@@ -12,7 +12,7 @@
  * needs no card at all. It is the file-ops counterpart to
  * ``threadx_fs_levelx_demo`` (which proves the LevelX integration); this one
  * drives the ra8_fs FAT API itself, from an RTOS world through the
- * ``ra8_fs_set_lock()`` seam bound to a ThreadX mutex (#608).
+ * ``ra8_fs_set_lock()`` seam bound to a ThreadX mutex.
  *
  * Brings the chip up like ``uart_hello`` (CGC -> SCI8 @ 115200 8N1), then hands
  * control to ThreadX. ``tx_application_define`` spawns one worker that:
@@ -81,7 +81,7 @@ static LX_NOR_FLASH s_nor_flash;
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
 
-/** @brief ThreadX mutex the ra8_fs lock seam is bound to (#608). */
+/** @brief ThreadX mutex the ra8_fs lock seam is bound to. */
 static TX_MUTEX s_fs_mutex;
 
 /* Mutable name -- the ThreadX/LevelX APIs take non-const CHAR*. */
@@ -377,7 +377,7 @@ static void demo_thread_entry(ULONG thread_input)
  *
  * @details Creates the mutex first and installs it through
  * ``ra8_fs_set_lock()`` before the worker can issue a filesystem call, per the
- * seam's init-time contract (#608). LevelX's core is initialised here too.
+ * seam's init-time contract. LevelX's core is initialised here too.
  *
  * @param[in] first_unused_memory Free-RAM sentinel from the port (unused;
  *   control blocks are static).

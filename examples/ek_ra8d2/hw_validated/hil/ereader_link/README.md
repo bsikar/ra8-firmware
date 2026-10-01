@@ -1,6 +1,6 @@
 # ereader_link
 
-Exercises in-content hyperlink navigation end to end (#110). It lays a baked
+Exercises in-content hyperlink navigation end to end. It lays a baked
 chapter out through `reflow` carrying one cross-chapter `<a href>`, one
 `#fragment` link and the matching `id` anchor; synthesises a tap at the centre
 of every laid-out link rectangle and resolves it with

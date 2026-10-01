@@ -1,6 +1,6 @@
 /**
  * @file ra8_rabook_gray4.h
- * @brief Grayscale image transcode stage (4-bpp / 8-bpp) for the on-device EPUB compiler (#149).
+ * @brief Grayscale image transcode stage (4-bpp / 8-bpp) for the on-device EPUB compiler.
  * @ingroup grp_ereader
  *
  * @details

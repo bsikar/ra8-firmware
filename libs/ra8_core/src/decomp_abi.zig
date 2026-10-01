@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_decomp_limits.h` (#2862).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_decomp_limits.h`.
 //!
 //! The units behind this file deal in policies, budgets and Zig errors.
 //! This one maps them onto the `ra8_err_t` codes the header promises and

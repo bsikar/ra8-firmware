@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# ra8_c6link host tests (#490): the facade over the ported esp-hosted host
+# ra8_c6link host tests: the facade over the ported esp-hosted host
 # driver, driven against a co-processor model that speaks the real wire format.
 #
 # These cannot come from the ra8_add_test() auto-glob. ra8_c6link encodes and

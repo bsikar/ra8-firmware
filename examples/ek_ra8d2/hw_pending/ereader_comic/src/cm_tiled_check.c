@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/src/cm_tiled_check.c
- * @brief Oversized-page tile self-check for ereader_comic (#344).
+ * @brief Oversized-page tile self-check for ereader_comic.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}

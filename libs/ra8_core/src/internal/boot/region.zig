@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The startup zero-fill for regions the reset handler cannot reach (#2901).
+//! The startup zero-fill for regions the reset handler cannot reach.
 //!
 //! `Reset_Handler` copies `.data` out of MRAM and zeroes `.bss`, both of
 //! which live in SRAM and answer from the first instruction after reset.

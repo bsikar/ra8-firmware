@@ -115,7 +115,7 @@ RA8_INTERNAL static void internal_write_small(ra8_fs_mount_t* h, const char* pat
  *          cleared on its File entry, exactly as `unlink` would, but its
  *          clusters are deliberately left marked in the allocation bitmap. That
  *          is the leak `ra8_fs_write_file()` used to produce on a repeated
- *          create (#603) and the one a `rmdir` that forgot to free would produce
+ *          create and the one a `rmdir` that forgot to free would produce
  *          now, and the scanner must call it an orphan. The clean reading taken
  *          first is the must-stay-quiet half.
  *
@@ -467,7 +467,7 @@ RA8_INTERNAL static void internal_test_mkdir_read_failure_propagates(void)
 
 /**
  * @test test_mkdir_fills_a_directory
- * @brief A directory filled past one cluster GROWS through `mkdir` (#677).
+ * @brief A directory filled past one cluster GROWS through `mkdir`.
  *
  * @details A directory is born owning one cluster, whose capacity is the entry
  *          slots it holds divided by the three a short-named set occupies. This

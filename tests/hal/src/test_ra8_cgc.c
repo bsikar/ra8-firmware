@@ -441,7 +441,7 @@ static void test_mcdc_eswclk_pdctreswm(void)
  * holding the correct word. Nothing in the boot log, the emulator or
  * any existing gate could see it; only the wire test and a bare-metal
  * BusFault could, and both were misdiagnosed as an Ethernet DMA address
- * constraint for a month (#499). A missing register write with that
+ * constraint for a month. A missing register write with that
  * blast radius gets a unit test, so it cannot be quietly dropped again.
  */
 static void test_init_programs_sram_wait_state(void)

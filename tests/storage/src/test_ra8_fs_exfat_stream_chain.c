@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_stream_chain.c
- * @brief exFAT streaming write: the NoFatChain transition and the bitmap (#602).
+ * @brief exFAT streaming write: the NoFatChain transition and the bitmap.
  *
  * @details
  * The allocation half of the streaming work, and the part the old whole-file

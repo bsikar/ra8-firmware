@@ -98,7 +98,7 @@ struct test_fixture {
   inline static uint8_t           s_out[k_out_cap];          /**< Compiled output storage.   */
 
   /**
- * @brief Node arena for the deep-nesting fixtures (#625).
+ * @brief Node arena for the deep-nesting fixtures.
  * @details The worst-case document at the reader depth cap emits nearly twice
  *          the shared @ref k_node_cap, so those tests get their own table.
  */

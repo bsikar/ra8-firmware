@@ -91,7 +91,7 @@ typedef enum : uint32_t {
  *          `bpp` 3 (RGB888) or 4 (RGBA8888) -- ``jof_produce`` follows the
  *          source decoder's channel count -- so ::mg_reader_init fails closed on
  *          anything but ::k_mg_gray8_bpp rather than mis-reading a colour tile
- *          one byte per pixel and rendering garbage (#339).
+ *          one byte per pixel and rendering garbage.
  *
  * @since 0.1.0
  */
@@ -597,7 +597,7 @@ static ra8_err_t mg_reader_check_ptrs(const mg_reader_t* r, const mg_reader_cfg_
   return k_ra8_ok;
 }
 
-/** @brief Validate framebuffer + atlas geometry; reject non-gray8 atlases (#339). */
+/** @brief Validate framebuffer + atlas geometry; reject non-gray8 atlases. */
 static ra8_err_t mg_reader_check_geometry(const mg_reader_cfg_t* cfg)
 {
   if ((cfg->fb_w <= 0) || (cfg->fb_h <= (int32_t)k_mg_statusbar_h)) {
@@ -608,7 +608,7 @@ static ra8_err_t mg_reader_check_geometry(const mg_reader_cfg_t* cfg)
     return k_ra8_err_invalid_size;
   }
   /* The blit path is gray8-only; a colour atlas (bpp 3/4) would be mis-read one
-   * byte per pixel and rendered as garbage. Fail closed instead (#339). */
+   * byte per pixel and rendered as garbage. Fail closed instead. */
   if (cfg->info->bpp != (uint8_t)k_mg_gray8_bpp) {
     ra8_log_error(k_mg_tag, "JOF atlas bpp unsupported: reader is gray8-only");
     return k_ra8_err_not_supported;

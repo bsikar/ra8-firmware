@@ -145,7 +145,7 @@ BSD-3-Clause, so they can be pulled as SOUP under IEC 61508-3 sec. 7.4.2.12 and
 DO-178C sec. 12.1.4 whenever a hardware build needs them -- no NDA, no
 clean-room rewrite. Nothing is vendored today: the tree builds the software
 backend (`RA8_RSIP_SOFTWARE_BACKEND` in `libs/ra8_hal/src/`). An earlier
-in-tree snapshot of the FSP primitives was deleted (#614) because no target
+in-tree snapshot of the FSP primitives was deleted because no target
 compiled it and it could not have compiled anyway -- nearly all of its
 translation units included FSP headers that were never copied alongside them.
 That is the standing lesson: a real port re-vendors a complete, tag-pinned

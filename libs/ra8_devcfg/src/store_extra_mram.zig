@@ -21,7 +21,7 @@
 //! get what they got before without passing a flag.
 //!
 //! Blank (never-programmed) extra-MRAM reads back as 0xFF with valid ECC and
-//! does not bus-fault on the corrected window (#315), so no fault-catch probe
+//! does not bus-fault on the corrected window, so no fault-catch probe
 //! is needed and a virgin unit fails the record magic and resolves cleanly to
 //! UNPROVISIONED. The window is one-time-programmable (HUM Ch 59.7.4.5): a
 //! commit programs a fresh copy slot rather than rewriting one in place.
@@ -108,7 +108,7 @@ fn read(offset: u32, dst: ?[*]u8, len: u32) callconv(.c) abi.RawErr {
     } else {
         // HUM Ch 59.1 "Address Map" p 3543: the extra-MRAM window is directly
         // memory-mapped for CPU reads; a virgin word returns 0xFFFFFFFF with
-        // valid ECC and no BusFault (#315).
+        // valid ECC and no BusFault.
         const src: [*]const volatile u8 = @ptrFromInt(flash_extra_start + offset);
         var i: u32 = 0;
         while (i < len) : (i += 1) out[i] = src[i];

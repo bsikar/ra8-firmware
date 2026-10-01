@@ -4,15 +4,15 @@
 //! Build graph for `ra8_dfu`.
 //!
 //! Three seams of this library are Zig: the polled USB-DFU host driver
-//! (#2809), the pure boot logic the bootloader runs at reset (#2918), and
-//! the MRAM slot programmer (#2968). Only the USBX device class is still C,
+//! (#2809), the pure boot logic the bootloader runs at reset, and
+//! the MRAM slot programmer. Only the USBX device class is still C,
 //! which `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! The slot programmer is the one unit with a placement requirement: its
 //! exports are in `.sram_text` so the program loop does not execute from the
 //! array it is writing. See src/program_abi.zig.
 //!
-//! The root of trust moved out to `libs/ra8_rot` (#2951): it is its own
+//! The root of trust moved out to `libs/ra8_rot`: it is its own
 //! archive, and an archive is only linkable where cmake can find a
 //! `build.zig` under `libs/<name>`.
 //!

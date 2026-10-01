@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The image-tile cache of `inc/ra8_tile_cache.h` (#147): the third typed
+//! The image-tile cache of `inc/ra8_tile_cache.h`: the third typed
 //! facade over `ra8_keycache`, and the sibling of the glyph atlas at a
 //! different scale. The tile key is the cache key, the decoded pixels are the
 //! cell payload, and the decoded width and height ride in the per-cell

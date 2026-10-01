@@ -354,7 +354,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct ra8_widget_panel_t
- * @brief A container widget's child array + stack-layout parameters (#145).
+ * @brief A container widget's child array + stack-layout parameters.
  *
  * @details
  * The flat container ops above (::ra8_widget_layout_stack et al.) lay out one

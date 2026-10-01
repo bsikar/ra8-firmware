@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Host tests for the error sink pair (#2875).
+//! Host tests for the error sink pair.
 //!
 //! The fatal path itself is not callable from a Zig test: it ends in a trap
 //! by contract. `tests/misc/src/test_ra8_error_handler.c` covers that end,

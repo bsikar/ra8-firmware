@@ -10,7 +10,7 @@ corpus that exercises both sides of that policy:
   * malicious fixtures that MUST be refused with a clean ra8_err_t (process exit
     1), never an OOM, an abort, or a hang;
   * legitimate fixtures that MUST still decode (exit 0, a P6 PPM written); and
-  * recognised-but-unwired fixtures (#849) that MUST be refused with the honest
+  * recognised-but-unwired fixtures that MUST be refused with the honest
     reason for the refusal -- a wrapped comic, an EPUB, a RABOOK, and an
     unrecognised extension -- so "not wired yet" can never quietly become
     "accepted and rendered wrong".
@@ -252,7 +252,7 @@ def build_epub() -> bytes:
     """Build a structurally valid minimal EPUB 3 publication.
 
     Valid on purpose: the viewer must refuse this because its reflow engine is
-    not wired (#849), never because the file is malformed. `mimetype` is the
+    not wired, never because the file is malformed. `mimetype` is the
     first member and is stored uncompressed, as OCF requires, so a real EPUB
     reader would open it.
 
@@ -308,7 +308,7 @@ def build_rabook_stub() -> bytes:
     own. The viewer classifies `.rabook` by extension and refuses it before any
     byte is parsed, so the magic plus a zeroed fixed header is exactly enough to
     gate that refusal. Replace this fixture with exporter output when the reflow
-    engine lands (#849).
+    engine lands.
 
     Returns:
         The stub container bytes.
@@ -361,7 +361,7 @@ def main() -> int:
     _write(out, "legit.jof", build_jof(JofGeom(32, 32, 32, 32, 1)))
     _write(out, "legit_deflate.jof", build_jof(JofGeom(32, 32, 32, 32, 1), codec=1))
 
-    # --- recognised but unwired: must be refused with the honest reason (#849)
+    # --- recognised but unwired: must be refused with the honest reason
     _write(out, "sample.epub", build_epub())
     _write(out, "sample.rabook", build_rabook_stub())
     _write(out, "notes.pdf", b"%PDF-1.7\n% not a book format the viewer knows\n")

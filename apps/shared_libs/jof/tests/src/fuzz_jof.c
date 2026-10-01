@@ -1,6 +1,6 @@
 /**
  * @file fuzz_jof.c
- * @brief libFuzzer harness for the JOF atlas reader (#231).
+ * @brief libFuzzer harness for the JOF atlas reader.
  *
  * @details
  * A tile atlas can arrive pre-baked inside a downloaded EPUB (the

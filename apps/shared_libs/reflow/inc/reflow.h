@@ -30,14 +30,14 @@
  *                          `<ul>`, `<ol>`, `<li>`, `<hr>`.
  *   - Tables:             `<table>` / `<tr>` / `<td>` / `<th>` -- an
  *                          equal-column grid with per-cell text flow and
- *                          row-level page breaks (#107).
+ *                          row-level page breaks.
  *   - Inline tags:        `<em>`, `<strong>`, `<b>`, `<i>`, `<a>`,
  *                          `<br>`. `<a href>` links are hit-testable and
- *                          followable (#110).
+ *                          followable.
  *   - Replaced elements:  `<img>` -- decoded + scaled + blitted when an
- *                          image loader is bound, else a placeholder (#106).
+ *                          image loader is bound, else a placeholder.
  *   - Alignment:          `text-align` (left / right / centre / justify)
- *                          from an inline `style` on a block (#108).
+ *                          from an inline `style` on a block.
  *   - Everything else (the rest of CSS, scripts, `<div>`, `<span>`) is
  *     treated as a transparent flow-pass-through; child content is still
  *     laid out, the wrapping element itself contributes no styling.

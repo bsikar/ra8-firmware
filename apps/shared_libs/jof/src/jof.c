@@ -1,6 +1,6 @@
 /**
  * @file jof.c
- * @brief JOF atlas reader: parse/validate + bounded per-tile decode (#231).
+ * @brief JOF atlas reader: parse/validate + bounded per-tile decode.
  *
  * @details
  * Implements the fail-closed structural validation (`jof_parse`)

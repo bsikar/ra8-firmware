@@ -36,6 +36,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME webp_decode_demo
   STACK_BYTES 4096
-  DESCRIPTION "On-target WebP (libwebp) decode smoke test over the ra8_webp facade (#290)"
+  DESCRIPTION "On-target WebP (libwebp) decode smoke test over the ra8_webp facade"
   LIBS webp ra8_board_ek_ra8d2
 )

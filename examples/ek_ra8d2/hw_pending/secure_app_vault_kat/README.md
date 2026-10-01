@@ -19,7 +19,7 @@ prints only when all 27 steps matched.
 
 Steps 1-16, `key_vault.h`. The placeholder key vault compiles its real body
 only under `RA8_INSECURE_STUB_CRYPTO` (or off-target); its `#else` fails every
-entry point closed (#180). This app asserts whichever half it was built
+entry point closed. This app asserts whichever half it was built
 against, so the same source proves both directions:
 
 - Default image, `RA8_INSECURE_STUB_CRYPTO` off: every vault entry point must

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_input/src/main.c
- * @brief Headless on-silicon HIL gate for e-reader interaction / hit-test (#118).
+ * @brief Headless on-silicon HIL gate for e-reader interaction / hit-test.
  *
  * @details
  * #80 built the e-reader interaction layer -- `ra8_ui` hit-testing + screen-stack

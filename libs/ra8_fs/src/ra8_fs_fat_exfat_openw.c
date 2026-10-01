@@ -6,7 +6,7 @@
  * `ra8_fs_open()` used to answer `k_ra8_err_not_supported` for both writing
  * modes on an exFAT volume, so the one way to put bytes on such a card was a
  * whole-file creator that needed the payload in RAM and one contiguous run on
- * disk (#602). This file is the other half of the fix: it turns a name into an
+ * disk. This file is the other half of the fix: it turns a name into an
  * open, writable handle, in the three shapes the API promises.
  *
  *   - **Create.** The name does not exist, so a zero-length entry set is laid
@@ -24,7 +24,7 @@
  *
  * A path that resolves to a DIRECTORY is refused in both modes: a truncate
  * would hand the clusters holding its contents back to the volume and orphan
- * every file inside it (#604).
+ * every file inside it.
  *
  * References (every shorthand citation in this file):
  *   - "exFAT spec" = Microsoft Corp., "exFAT file system specification",
@@ -231,7 +231,7 @@ static ra8_err_t internal_exfat_truncate(ra8_fs_file_t* file, const uint8_t* str
  *          A `DataLength` above 4 GiB is no longer one of the refusals: the
  *          whole length model is 64-bit now, so a file past 4 GiB opens,
  *          appends and truncates like any other -- carrying such files is the
- *          reason exFAT exists (#676).
+ *          reason exFAT exists.
  *
  * @param[in] count Entry count of the set (1 + SecondaryCount).
  *
@@ -308,7 +308,7 @@ static ra8_err_t internal_exfat_open_found(ra8_fs_mount_t*       handle,
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  /* Honor the read-only attribute (#681): both writing modes mutate the file, so
+  /* Honor the read-only attribute: both writing modes mutate the file, so
    * a host-marked read-only file is refused before a slot is claimed or a cluster
    * freed. A read open never reaches here (priv_exfat_open dispatches it away). */
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
@@ -415,8 +415,8 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
                                 ra8_fs_file_t** out_file)
 {
   /* Resolve the directory the name lives in, rather than treating the whole
-   * path as one root-level name (#605). Leading slashes fall out of the walk,
-   * which is what used to make "/name" resolve (#93); "/logs/name" now lands in
+   * path as one root-level name. Leading slashes fall out of the walk,
+   * which is what used to make "/name" resolve; "/logs/name" now lands in
    * "/logs" instead of creating a file literally called "logs/name" that no
    * matcher could ever find again. */
   exfat_dir_t     parent = {};
@@ -427,7 +427,7 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
   }
   /* The name becomes code units once, here, and every on-disk length below
    * counts those rather than the caller's bytes. The cap is a UNIT cap, so a
-   * UTF-8 argument three times as long is still perfectly legal (#606). */
+   * UTF-8 argument three times as long is still perfectly legal. */
   uint16_t        name[k_exfat_name_cap] = {};
   uint32_t        nlen                   = 0U;
   const ra8_err_t ne                     = priv_exfat_name_to_units(handle, leaf, name, &nlen);
