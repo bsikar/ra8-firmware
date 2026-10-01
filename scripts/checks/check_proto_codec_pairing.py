@@ -144,7 +144,7 @@ def check(root: Path) -> int:
         for problem in problems:
             print(f"  {problem}")
         print("  Regenerate with: bash scripts/gen/gen_ra8_media_proto.sh --write")
-        print("  (that needs protobuf-c 1.5.2 / libprotoc 35.1; see #715)")
+        print("  (that needs protobuf-c 1.5.2 / libprotoc 35.1)")
         return 1
     print(f"PASS: schema and generated codec pair across {len(TRACKED)} files.")
     return 0

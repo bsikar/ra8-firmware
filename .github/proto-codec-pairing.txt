@@ -7,7 +7,7 @@
 #
 # This is NOT the byte-exact regeneration check: that is
 # `scripts/gen/gen_ra8_media_proto.sh --check` and it needs the pinned generator
-# pair (protobuf-c 1.5.2 / libprotoc 35.1). See #715.
+# pair (protobuf-c 1.5.2 / libprotoc 35.1).
 #
 # Do not hand-edit. Rewritten by `bash scripts/gen/gen_ra8_media_proto.sh --write`.
 # Rows: <sha256>  <repo-relative path>

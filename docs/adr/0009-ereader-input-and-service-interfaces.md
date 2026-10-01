@@ -113,7 +113,7 @@ line under the same IRQ0..15 rule as D2.
   change, because applications speak ids.
 * Fixing the numbering now lets the reader UI and its tests be written against
   five physical controls before hardware arrives.
-* Nothing here closes the electrical work in #832. The issue keeps its
+* Nothing here closes the electrical work. The issue keeps its
   `needs-bench` state.
 
 ## Open questions -- document reads and bench work, not arithmetic

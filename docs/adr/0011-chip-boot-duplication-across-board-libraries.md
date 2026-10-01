@@ -15,7 +15,7 @@ build-selection model") proposes an `RA8_ARCH` / `RA8_CHIP` /
 a board-interface header with a gate behind it, and a split of
 `libs/ra8_core/inc/ra8_device.h` so that external-memory geometry
 moves to the board half. The issue is marked DESIGN / PLANNING
-ONLY and is sequenced behind the filesystem work in #611.
+ONLY and is sequenced behind the filesystem work.
 
 Three of the issue's premises have moved since it was filed, and a
 fourth condition it did not anticipate is now the load-bearing one.

@@ -12,7 +12,7 @@
  * one is consumed whole and decodes to U+FFFD, a digit run long enough to
  * overflow a 32-bit accumulator saturates instead of wrapping, and the
  * malformed *shapes* still fail open so the caller emits the literal '&'.
- * See issue #686 part 3 and ADR-0010.
+ * See ADR-0010.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

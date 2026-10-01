@@ -96,7 +96,7 @@ typedef enum : uint8_t {
  * cannot honour a set flag and refuses it with
  * ``k_ra8_err_not_supported`` instead of accepting it silently.
  * Both fields are 0/1 booleans; any other value is rejected with
- * ``k_ra8_err_invalid_arg``. See issue #1348.
+ * ``k_ra8_err_invalid_arg``.
  */
 typedef struct {
   uint8_t use_external_osc;  /**< Must be 0: the C6 owns the radio oscillator. */

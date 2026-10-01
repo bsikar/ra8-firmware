@@ -12,7 +12,7 @@
  * `priv_reflow_tok_lookup_entity` and `priv_reflow_tok_decode_entity` over
  * the references publisher prose actually uses, the five the tokenizer
  * knew before, the case-sensitivity rule, and the malformed shapes that
- * must fail open. See issue #686 and ADR-0010.
+ * must fail open. See ADR-0010.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

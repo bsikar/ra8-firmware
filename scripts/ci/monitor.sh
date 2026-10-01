@@ -226,7 +226,7 @@ if [[ "$-" == *p* ]]; then
   # WatchdogSec, and if the daemon wedges it stops pinging, so systemd -- promised
   # a ping every WatchdogSec -- kills and restarts it. Restart=always alone cannot
   # do this, because a hung process never exits and so never triggers a restart.
-  # That is precisely how the daemon went dark in #560.
+  # That is precisely how the daemon went dark.
   sd_notify() {
     [[ -n "${NOTIFY_SOCKET:-}" ]] || return 0
     command -v systemd-notify >/dev/null 2>&1 || return 0
