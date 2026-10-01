@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 441 reference(s)
+# clock: 436 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -16,13 +16,13 @@
 apps/board/stand_alone/ereader/src/system_init.c	clock	1
 apps/board/stand_alone/ereader/src/trustzone_init.c	clock	1
 apps/board/stand_alone/ereader/src/trustzone_init.c	gpio	2
-examples/_unsupported/audio_loopback/src/main.c	clock	2
-examples/_unsupported/motor_3phase/src/main.c	clock	2
+examples/_unsupported/audio_loopback/src/main.c	clock	1
+examples/_unsupported/motor_3phase/src/main.c	clock	1
 examples/_unsupported/motor_3phase/src/main.c	timer	7
-examples/_unsupported/threadx_https_client/src/main.c	clock	2
-examples/_unsupported/threadx_nimble_peripheral/src/main.c	clock	2
+examples/_unsupported/threadx_https_client/src/main.c	clock	1
+examples/_unsupported/threadx_nimble_peripheral/src/main.c	clock	1
 examples/_unsupported/threadx_sdcard_demo/src/main.c	clock	1
-examples/_unsupported/usb_audio_device/src/main.c	clock	2
+examples/_unsupported/usb_audio_device/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	clock	1
