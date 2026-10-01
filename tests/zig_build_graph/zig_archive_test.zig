@@ -2,7 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The archive optimisation rules, held against the REAL
-//! cmake/ra8_app/zig_libs.cmake and the REAL build.zig (#1244, part of #857).
+//! cmake/ra8_app/zig_libs.cmake and the REAL cross-image wiring in
+//! tests/zig_build_graph/cross_image.zig (#1244, part of #857).
 //!
 //! Both files arrive as anonymous imports declared in build.zig, so they are
 //! read at COMPILE time from the paths the build graph itself names. A test
@@ -16,7 +17,7 @@ const zig_archive = graph.zig_archive;
 const build_type = graph.build_type;
 
 const zig_libs_cmake_source = @embedFile("zig_libs_cmake_source");
-const build_zig_source = @embedFile("build_zig_source");
+const cross_image_source = @embedFile("cross_image_source");
 
 /// The variable zig_libs.cmake holds the answer in. Named here rather than in
 /// the module so a rename shows up as one failing line with this text next to
@@ -97,17 +98,18 @@ test "the listfile answers every configuration, from the knob it documents" {
 }
 
 test "the cross-build asks for the selected configuration, not a fixed mode" {
-    const argument = zig_archive.archiveOptimizeArgument(build_zig_source) orelse {
+    const argument = zig_archive.archiveOptimizeArgument(cross_image_source) orelse {
         std.debug.print(
-            "build.zig has no .optimize on the archive request in its" ++
-                " for (app.zig_libraries) loop; nothing pins what a migrated archive is built at\n",
+            "cross_image.zig has no .optimize on the archive request in its" ++
+                " for (app.zig_libraries) loop; nothing pins what a migrated" ++
+                " archive is built at\n",
             .{},
         );
         return error.NoArchiveRequestInGraph;
     };
     if (!zig_archive.isConfigurationDriven(argument)) {
         std.debug.print(
-            "build.zig asks for a migrated archive at `{s}`, a mode pinned regardless of" ++
+            "cross_image.zig asks for a migrated archive at `{s}`, a mode pinned regardless of" ++
                 " -Dbuild-type; at two of CMake's three configurations that is the wrong artifact\n",
             .{argument},
         );
