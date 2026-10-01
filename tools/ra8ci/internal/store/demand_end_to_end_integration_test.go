@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -94,6 +95,17 @@ func deliver(t *testing.T, handler http.Handler, deliveryID string, body []byte,
 
 func uniqueJobID() int64 { return time.Now().UnixNano() % 1000000000 }
 
+// demandDeliveryID mints the delivery identifier a test will send. GitHub never
+// reuses one across deliveries, and the plane enforces that, so a fixed string
+// here makes the suite runnable exactly once per database: the second run sends
+// an identifier that already describes a different job and is rightly refused.
+// Keying it to the job the test invented keeps it unique per run while leaving
+// two calls with the same job and label equal, which is what the replay and
+// reuse cases need.
+func demandDeliveryID(jobID int64, label string) string {
+	return label + "-" + strconv.FormatInt(jobID, 10)
+}
+
 // GitHub delivers at least once. Three copies of one delivery must leave one
 // unit of demand that never moved.
 func TestDemandEndToEndAbsorbsRetriedDeliveries(t *testing.T) {
@@ -103,7 +115,7 @@ func TestDemandEndToEndAbsorbsRetriedDeliveries(t *testing.T) {
 	body := workflowJobBody(jobID, 1, demand.PhaseQueued, time.Now().UTC())
 
 	for i := 0; i < 3; i++ {
-		if code := deliver(t, handler, "end-to-end-retry", body, true); code != http.StatusAccepted {
+		if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-retry"), body, true); code != http.StatusAccepted {
 			t.Fatalf("delivery %d answered %d, want 202", i, code)
 		}
 	}
@@ -124,10 +136,10 @@ func TestDemandEndToEndKeepsTheLaterPhaseWhateverTheOrder(t *testing.T) {
 	jobID := uniqueJobID()
 	queued := time.Now().UTC()
 
-	if code := deliver(t, handler, "end-to-end-late-completed", workflowJobBody(jobID, 1, demand.PhaseCompleted, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-late-completed"), workflowJobBody(jobID, 1, demand.PhaseCompleted, queued), true); code != http.StatusAccepted {
 		t.Fatalf("completion answered %d, want 202", code)
 	}
-	if code := deliver(t, handler, "end-to-end-late-queued", workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-late-queued"), workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
 		t.Fatalf("late queued answered %d, want 202", code)
 	}
 	record, err := store.GetDemandEvent(ctx, demand.JobKey(jobID, 1))
@@ -156,7 +168,7 @@ func TestDemandEndToEndTurnsADroppedCompletionIntoALateRun(t *testing.T) {
 	jobID := uniqueJobID()
 	queued := time.Now().UTC().Add(-time.Hour)
 
-	if code := deliver(t, handler, "end-to-end-dropped", workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-dropped"), workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
 		t.Fatalf("queued delivery answered %d, want 202", code)
 	}
 	jobs := &stubJobSource{snapshots: map[int64]demand.JobSnapshot{jobID: {
@@ -204,7 +216,7 @@ func TestDemandEndToEndConcludesDemandTheForgeForgot(t *testing.T) {
 	jobID := uniqueJobID()
 	queued := time.Now().UTC().Add(-3 * time.Hour)
 
-	if code := deliver(t, handler, "end-to-end-forgotten", workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-forgotten"), workflowJobBody(jobID, 1, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
 		t.Fatalf("queued delivery answered %d, want 202", code)
 	}
 	jobs := &stubJobSource{missing: map[int64]bool{jobID: true}}
@@ -233,7 +245,7 @@ func TestDemandEndToEndLeavesFreshDemandAlone(t *testing.T) {
 	ctx := context.Background()
 	jobID := uniqueJobID()
 
-	if code := deliver(t, handler, "end-to-end-fresh", workflowJobBody(jobID, 1, demand.PhaseQueued, time.Now().UTC()), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-fresh"), workflowJobBody(jobID, 1, demand.PhaseQueued, time.Now().UTC()), true); code != http.StatusAccepted {
 		t.Fatalf("queued delivery answered %d, want 202", code)
 	}
 	jobs := &stubJobSource{snapshots: map[int64]demand.JobSnapshot{}}
@@ -262,10 +274,10 @@ func TestDemandEndToEndKeepsRunAttemptsApart(t *testing.T) {
 	jobID := uniqueJobID()
 	queued := time.Now().UTC()
 
-	if code := deliver(t, handler, "end-to-end-attempt-1", workflowJobBody(jobID, 1, demand.PhaseCompleted, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-attempt-1"), workflowJobBody(jobID, 1, demand.PhaseCompleted, queued), true); code != http.StatusAccepted {
 		t.Fatalf("attempt 1 answered %d, want 202", code)
 	}
-	if code := deliver(t, handler, "end-to-end-attempt-2", workflowJobBody(jobID, 2, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-attempt-2"), workflowJobBody(jobID, 2, demand.PhaseQueued, queued), true); code != http.StatusAccepted {
 		t.Fatalf("attempt 2 answered %d, want 202", code)
 	}
 	first, err := store.GetDemandEvent(ctx, demand.JobKey(jobID, 1))
@@ -288,7 +300,7 @@ func TestDemandEndToEndRefusesAnUnsignedDelivery(t *testing.T) {
 	ctx := context.Background()
 	jobID := uniqueJobID()
 
-	if code := deliver(t, handler, "end-to-end-unsigned", workflowJobBody(jobID, 1, demand.PhaseQueued, time.Now().UTC()), false); code != http.StatusUnauthorized {
+	if code := deliver(t, handler, demandDeliveryID(jobID, "end-to-end-unsigned"), workflowJobBody(jobID, 1, demand.PhaseQueued, time.Now().UTC()), false); code != http.StatusUnauthorized {
 		t.Fatalf("unsigned delivery answered %d, want 401", code)
 	}
 	if _, err := store.GetDemandEvent(ctx, demand.JobKey(jobID, 1)); err == nil {
