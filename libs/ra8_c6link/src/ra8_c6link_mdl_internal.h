@@ -71,6 +71,87 @@ typedef struct {
  * @note Pure and reentrant.
  * @since 0.1.0
  */
+/**
+ * @struct mdl_chunk_view_t
+ * @brief One decoded chunk response as flat values, with no generated types.
+ * @details The layout is stated by `src/internal/mdl_chunk.zig@View`, which
+ *          holds every rule about these values. The generated message layout
+ *          is protoc-c output, so it is flattened here once rather than
+ *          mirrored in Zig where it could drift against the regenerated code.
+ * @invariant Every span borrows the decoding arena and stays valid only for
+ *            the synchronous call that built the view.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t    job_id;        /**< Correlated remote job identifier.        */
+  uint32_t    sequence;      /**< Zero-based response sequence.            */
+  uint64_t    offset;        /**< Offset of the body bytes.                */
+  uint64_t    total_bytes;   /**< Advertised total, or zero when unknown.  */
+  uint8_t     state;         /**< Generated state, as ra8_mdl_state_t.     */
+  int32_t     status;        /**< Remote failure status in FAILED state.   */
+  const void* data;          /**< Decoded body bytes, or null when absent. */
+  size_t      data_len;      /**< Valid bytes at `data`.                   */
+  const void* sha256;        /**< Decoded digest, or null when absent.     */
+  size_t      sha256_len;    /**< Valid bytes at `sha256`.                 */
+  int32_t     http_status;   /**< Terminal HTTP status, zero when absent.  */
+  const char* retry_after;   /**< Decoded Retry-After.                     */
+  const char* etag;          /**< Decoded ETag.                            */
+  const char* last_modified; /**< Decoded Last-Modified.                   */
+  const char* content_type;  /**< Decoded Content-Type.                    */
+} mdl_chunk_view_t;
+
+/**
+ * @brief Validate terminal HTTP metadata carried by one decoded chunk.
+ * @details Implemented by `src/internal/mdl_chunk.zig@httpResponseValid`.
+ *          Requires a real status only on COMPLETE and bounds every selected
+ *          response header before any caller copy.
+ * @param[in] view Flattened decoded chunk.
+ * @return Metadata validity.
+ * @retval true Metadata matches the chunk state and all string bounds.
+ * @retval false Status, presence, termination, or a header bound is invalid.
+ * @pre @p view borrows spans that stay live for the call.
+ * @post No decoded or caller-owned state is modified.
+ * @note Pure and reentrant for independent views.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_response_valid(const mdl_chunk_view_t* view);
+
+/**
+ * @brief Validate the state-specific fields of one correlated chunk.
+ * @details Implemented by `src/internal/mdl_chunk.zig@semanticsValid`.
+ *          Enforces the data/digest/status combination each state admits and
+ *          checks the totals overflow-safely first.
+ * @param[in] view Flattened decoded chunk.
+ * @return Whether the semantic combination is valid.
+ * @retval true State-specific fields and totals are coherent.
+ * @retval false A state, size, status, or digest rule is violated.
+ * @pre @p view borrows spans that stay live for the call.
+ * @post No caller or decoded state is modified.
+ * @post True guarantees later bounded copies are size-safe.
+ * @note Reentrant for independent views.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_semantics_valid(const mdl_chunk_view_t* view);
+
+/**
+ * @brief Copy one validated chunk into caller storage and advance its session.
+ * @details Implemented by `src/internal/mdl_chunk.zig@accept`. Correlation and
+ *          semantics are checked first, so every copy here is size-safe.
+ * @param[in] view Flattened decoded chunk.
+ * @param[in,out] session Correlated caller session.
+ * @param[out] chunk Caller chunk destination.
+ * @return Remote terminal status.
+ * @retval k_ra8_ok Data, completion, or cancellation was accepted.
+ * @retval other The exact nonzero FAILED status supplied by the remote.
+ * @pre Every pointer is non-null and validation already succeeded.
+ * @post Session correlation advances once and terminal state deactivates it.
+ * @note Not thread-safe for a shared session or chunk.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_c6link_mdl_accept_chunk(const mdl_chunk_view_t* view,
+                                                ra8_mdl_session_t*      session,
+                                                ra8_mdl_chunk_t*        chunk);
+
 [[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_field_valid(const char* text, size_t cap);
 
 /**

@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  * @par MC/DC:
  * The terminal-state decision
  * `(state == COMPLETE) || (state == CANCELLED) || (state == FAILED)` in
- * `internal_mdl_accept_chunk` executes
+ * `mdl_chunk.zig@accept` executes
  * V1 DOWNLOADING -> F,F,F/false for the two data chunks and
  * V2 COMPLETE -> T,-,-/true for the digest-bearing terminal chunk. V1/V2
  * independently vary COMPLETE; the CANCELLED and FAILED conjuncts are varied
@@ -54,10 +54,10 @@ typedef enum : uint8_t {
  * empty headers); every single-field variation of those controls lives in
  * `internal_test_media_response_metadata_mcdc`.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_accept_chunk
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
+ * Decisions: libs/ra8_c6link/src/internal/mdl_chunk.zig@accept
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_response_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@httpResponseValid
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_cancelled
  * @details Executes the media download roundtrip scenario with bounded fixture
@@ -127,7 +127,7 @@ static void internal_test_media_download_roundtrip(void)
  * true to false (control in `internal_test_media_download_terminal_status`).
  * Every rejected vector preserves the active session and its offset/sequence.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
  * @details Executes the media download rejects bad terminal frames scenario
  * with bounded fixture state and asserts the contract-specific result. @pre
@@ -200,7 +200,7 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
  * @par MC/DC:
  * The terminal-state decision
  * `(state == COMPLETE) || (state == CANCELLED) || (state == FAILED)` in
- * `internal_mdl_accept_chunk` executes
+ * `mdl_chunk.zig@accept` executes
  * V1 DOWNLOADING -> F,F,F/false before each terminal,
  * V2 FAILED -> F,F,T/true, and V3 CANCELLED -> F,T,-/true. V1/V2
  * independently vary FAILED and V1/V3 independently vary CANCELLED; the
@@ -212,8 +212,8 @@ static void internal_test_media_download_rejects_bad_terminal_frames(void)
  * FAILED has a positive bounded status with no data/digest, while CANCELLED
  * has zero status with no data/digest.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_accept_chunk
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
+ * Decisions: libs/ra8_c6link/src/internal/mdl_chunk.zig@accept
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
  * @details Executes the media download terminal status scenario with bounded
  * fixture state and asserts the contract-specific result. @pre Fixed-capacity

@@ -123,7 +123,7 @@ static void internal_test_header_bytes(void)
  * Each rejected vector pairs with its control to prove one condition
  * independently decides. N+1 = 3 and 7 vectors for N=2 and N=6.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_response_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@httpResponseValid
  * @details A non-terminal response must carry no HTTP metadata at all, which
  * the C6 service is structurally unable to emit; only this seam can present it.
  * @pre The private validation seam is linked into this executable.
@@ -190,7 +190,7 @@ static void internal_test_response_metadata(void)
  * Vectors 1+3 prove the unspecified-total condition independently decides;
  * 2+3 prove the same for the bound. N+1 = 3 vectors for N=2.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
  * @details Holds state, status, and digest constant so only the declared total
  * changes between vectors.
  * @pre The private validation seam is linked into this executable.
@@ -279,7 +279,7 @@ static void internal_terminal_state_semantics(void)
  * chain true, so it pairs with its own control to prove one condition
  * independently decides.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
  * @details Each state has its own control; the four states are mutually
  * exclusive arms of one switch, so a vector for one cannot disturb another.
  * @pre The private validation seam is linked into this executable.
