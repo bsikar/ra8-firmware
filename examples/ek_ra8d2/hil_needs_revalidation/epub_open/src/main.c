@@ -81,12 +81,6 @@ typedef enum : uint32_t {
   k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.      */
 } eoh_consts_t;
 
-/** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
-static const ra8_port_pin_t k_eoh_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-static const ra8_port_pin_t k_eoh_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-static const ra8_port_pin_t k_eoh_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-static const ra8_port_pin_t k_eoh_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
 /** @brief Book path on the SD volume (8.3 short name; ra8_fs is root-only). */
 static const char k_eoh_book_path[] = "BOOK.EPB";
 
@@ -238,7 +232,7 @@ static ra8_err_t eoh_spi_set_clock(void* ctx, uint32_t hz)
 static ra8_err_t eoh_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(k_eoh_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /** @brief ra8_sdmmc_spi_transport_t::xfer over ra8_sci_spi_xfer. */
@@ -251,19 +245,7 @@ static ra8_err_t eoh_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_
 /** @brief Route Pmod2 SPI pins and claim CS as a GPIO output (idle high). */
 [[nodiscard]] static ra8_err_t eoh_spi_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_eoh_pin_sck, k_ra8_psel_sci_async, "eoh.sck");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_eoh_pin_cipo, k_ra8_psel_sci_async, "eoh.cipo");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_eoh_pin_copi, k_ra8_psel_sci_async, "eoh.copi");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_gpio_output_init(k_eoh_pin_cs, k_ra8_level_high);
+  return ra8_board_pmod2_spi_bus_init();
 }
 
 /** @brief Bring up CGC + SysTick + console SCI + SPI + CS GPIO; halt on fail. */
