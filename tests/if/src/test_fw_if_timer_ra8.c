@@ -43,6 +43,8 @@ typedef enum : uint32_t {
   k_test_count      = 0x00012345UL, /**< Count planted in GTCNT.    */
   k_test_gtcr_md    = 0x000F0000UL, /**< GTCR.MD field.             */
   k_test_md_oneshot = 0x00010000UL, /**< MD = saw one-shot.         */
+  k_test_gtst_tcfpo = 0x00000040UL, /**< GTST.TCFPO: count wrapped. */
+  k_test_gtst_other = 0x00000001UL, /**< GTST.TCFA: compare A hit.  */
 } test_const_t;
 
 /** @brief A handle bound to the adapter, failing the case if bind fails. */
@@ -164,6 +166,33 @@ static void test_read_and_set_period(void)
   TEST_END("read returns GTCNT; set_period while stopped lands in GTPR");
 }
 
+static void test_take_wrap_reads_and_clears_tcfpo(void)
+{
+  TEST_BEGIN("take_wrap reports TCFPO once, clears only it, leaves other flags");
+  ra8_fake_mmap_reset();
+  const fw_timer_t               tmr     = bound();
+  volatile r_gpt_channel_regs_t* reg     = ra8_gpt((uint8_t)k_test_ch);
+  bool                           wrapped = true;
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_timer_open(&tmr, ch_of(k_test_ch), k_fw_timer_mode_one_shot, k_test_period));
+  reg->GTST = k_test_gtst_other;
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_take_wrap(&tmr, ch_of(k_test_ch), &wrapped));
+  TEST_ASSERT_EQ(false, wrapped);
+  TEST_ASSERT_EQ(k_test_gtst_other, reg->GTST);
+
+  reg->GTST = k_test_gtst_tcfpo | k_test_gtst_other;
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_take_wrap(&tmr, ch_of(k_test_ch), &wrapped));
+  TEST_ASSERT_EQ(true, wrapped);
+  TEST_ASSERT_EQ(k_test_gtst_other, reg->GTST);
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_take_wrap(&tmr, ch_of(k_test_ch), &wrapped));
+  TEST_ASSERT_EQ(false, wrapped);
+
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_close(&tmr, ch_of(k_test_ch)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_timer_take_wrap(&tmr, ch_of(k_test_ch), &wrapped));
+  TEST_END("take_wrap reports TCFPO once, clears only it, leaves other flags");
+}
+
 static void test_double_open_is_busy(void)
 {
   TEST_BEGIN("opening an open channel is busy, not a second MSTP reference");
@@ -203,6 +232,7 @@ static void (*const s_test_roster[])(void) = {
   test_one_shot_selects_one_shot_mode,
   test_start_stop_hit_this_channel,
   test_read_and_set_period,
+  test_take_wrap_reads_and_clears_tcfpo,
   test_double_open_is_busy,
   test_ops_on_unopened_channel_refused,
 };
