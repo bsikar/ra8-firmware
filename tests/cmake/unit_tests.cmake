@@ -636,6 +636,13 @@ endif()
 # ra8_cgc_* header, which is the whole point of the seam.
 if(TARGET test_fw_if_clock)
   target_include_directories(test_fw_if_clock PRIVATE ${FW_ROOT}/libs/if/inc)
+  # The facade itself. ra8_add_test links only $<TARGET_OBJECTS:ra8_core_hal>,
+  # and core_hal.cmake carries no libs/if sources -- there is no RA8_IF_SOURCES
+  # glob and every library glob in library_sources.cmake is named explicitly --
+  # so these vectors had no definition of fw_clock_bind to link against. The
+  # six fw_clock_* exports ride in this archive since #2791, the same way
+  # test_ra8_devcfg and test_ra8_num_decimal reach theirs.
+  target_link_libraries(test_fw_if_clock PRIVATE ra8_zig::fw_if_fs)
 endif()
 
 # The RA8 chip adapter for that same port. Unlike the port's own vectors this

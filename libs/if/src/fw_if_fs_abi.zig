@@ -9,8 +9,9 @@
 //! There are no external symbols: this interface is pure dispatch over a
 //! caller-supplied vtable, so nothing below it is a link-time dependency.
 //!
-//! `ra8_path_abi.zig` rides in the same archive: it is the other C ABI this
-//! library publishes, and it shares the error codes and the path cap.
+//! `ra8_path_abi.zig` and `fw_if_clock_abi.zig` ride in the same archive:
+//! they are the other two C ABIs this library publishes, and they share the
+//! error codes.
 
 const std = @import("std");
 pub const core = @import("internal/root.zig");
@@ -18,6 +19,12 @@ pub const core = @import("internal/root.zig");
 /// The untrusted-name policy (`ra8_path.h`), imported so its three exports
 /// land in the same archive the C build already links for `fw_fs_*`.
 pub const path_policy = @import("ra8_path_abi.zig");
+
+/// The clock-intent facade (`fw_if_clock.h`), imported for the same reason:
+/// its six `fw_clock_*` exports belong in this archive. `libs/if/src` holds
+/// no C the build compiles, so before #2791 nothing in the tree defined them
+/// at all and every image calling `fw_clock_bind` linked short.
+pub const clock_facade = @import("fw_if_clock_abi.zig");
 
 comptime {
     // The declaration above is not enough on its own. Zig analyses lazily, and
@@ -30,6 +37,7 @@ comptime {
     // no hardware and declares no `extern fn`, so there is nothing a host test
     // binary would be left unable to resolve.
     _ = path_policy;
+    _ = clock_facade;
 }
 
 const Err = core.Err;
