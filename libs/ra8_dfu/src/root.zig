@@ -8,4 +8,5 @@
 comptime {
     _ = @import("dfu_host_abi");
     _ = @import("dfu_boot_abi");
+    _ = @import("launch_abi");
 }

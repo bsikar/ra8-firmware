@@ -342,12 +342,13 @@ pub const cross_apps = [_]CrossApp{
         // failure from the graph (overflow 29860 bytes), same linker, same
         // message. Filed separately; every TU still compiles here.
         .links_in_debug = false,
-        // Four of the five units this app used to name here are Zig archives
-        // now and reached through LIBS instead: ra8_psa_crypto (#1114),
-        // ra8_rot (#2943), ra8_dfu_boot, and ra8_dfu_antirollback, which
-        // joined the ra8_rot archive. The keyword survives on the one unit
-        // that is still C, which is what the app's own CMakeLists declares.
-        .extra_srcs = &.{"libs/ra8_dfu/src/ra8_dfu_launch.c"},
+        // All five units this app used to name here are Zig archives now and
+        // reached through LIBS instead: ra8_psa_crypto (#1114), ra8_rot
+        // (#2943), ra8_dfu_boot and ra8_dfu_antirollback, which joined the
+        // ra8_rot archive, and the launch gate itself (#2932), which became
+        // ra8_rot_launch. The app declares no EXTRA_SRCS at all now, which is
+        // what its own CMakeLists says, and no app in the table does.
+        .extra_srcs = &.{},
         .local = .{
             .defines = &.{"-DRA8_ENABLE_ROOT_OF_TRUST"},
             .include_dirs = &.{

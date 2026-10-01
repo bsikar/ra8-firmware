@@ -12,8 +12,9 @@
  *
  * This app embeds that image (`payload_image.h`, generated from `payload.c` by
  * `examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh`)
- * and hands it to the shared ::ra8_dfu_launch -- the exact
- * launcher the bootloader uses for a validated slot. ra8_dfu_launch copies the
+ * and hands it to the shared ::ra8_dfu_launch_unverified -- the exact
+ * launcher the bootloader uses for a validated slot, minus the root of trust it
+ * does not carry. It copies the
  * image to ::k_ra8_dfu_run_base and branches there; the payload then spins in the
  * SRAM run window forever (writing a sentinel + heartbeat at a fixed probe word).
  *
@@ -61,7 +62,7 @@ typedef enum : uint32_t {
  * @brief Fixed SRAM probe-word addresses the copied-to-run payload writes.
  *
  * @details Mirror of payload.c's `k_payload_probe_sentinel` /
- * `k_payload_probe_counter`. Once ::ra8_dfu_launch branches into it, the payload
+ * `k_payload_probe_counter`. Once ::ra8_dfu_launch_unverified branches into it, the payload
  * (running from the SRAM run window) writes a proof-of-run sentinel and a
  * free-running heartbeat at these two fixed words. They sit above this app's
  * low-SRAM `.bss`/`.data` and below the run base (0x22020000), so neither this
@@ -103,7 +104,7 @@ typedef enum : uintptr_t {
 /**
  * @brief Park forever in WFI -- copy-to-run did not happen (alive gate fails).
  * @return Does not return.
- * @pre Reached only when ::ra8_dfu_launch returned (run-target check failed).
+ * @pre Reached only when ::ra8_dfu_launch_unverified returned (run-target check failed).
  * @pre Interrupts are in any state.
  * @post The CPU spins; the alive gate sees a fault-spinner PC and fails.
  * @post No further app code runs.
@@ -156,11 +157,13 @@ void main(void)
     internal_dcr_panic_halt();
   }
 
-  /* Copy-to-run: ra8_dfu_launch copies the image to k_ra8_dfu_run_base and branches
-   * there. It returns only if the run-target check fails (it should not). */
-  ra8_dfu_launch((uintptr_t)s_payload_image,
-                 (uint32_t)sizeof(s_payload_image),
-                 (uint32_t)k_ra8_dfu_run_base);
+  /* Copy-to-run: ra8_dfu_launch_unverified copies the image to k_ra8_dfu_run_base
+   * and branches there. It returns only if the run-target check fails (it should
+   * not). This app carries no root of trust and names the unauthenticated entry
+   * point to say so; the authenticating one lives in ra8_rot_launch. */
+  ra8_dfu_launch_unverified((uintptr_t)s_payload_image,
+                            (uint32_t)sizeof(s_payload_image),
+                            (uint32_t)k_ra8_dfu_run_base);
 
   internal_dcr_panic_halt();
 }

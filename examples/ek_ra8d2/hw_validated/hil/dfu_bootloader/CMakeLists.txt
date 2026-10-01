@@ -33,7 +33,7 @@ ra8_add_app(
   DESCRIPTION
     "Immutable USB-DFU MRAM bootloader: A/B slot boot + jump, or DFU the inactive slot over USB-FS"
   USES threadx usbx
-  LIBS ra8_dfu ra8_psa_crypto ra8_rot
+  LIBS ra8_dfu ra8_psa_crypto ra8_rot ra8_rot_launch
        THREADX_HEAP
        SDRAM
        MRAM_LENGTH
@@ -48,8 +48,8 @@ ra8_add_app(
 # SHA-256 signature and the extra-MRAM anti-rollback counter BEFORE copying the
 # image to the SRAM run base -- default-deny on any failure. The verifier and
 # the anti-rollback counter are Zig (#2943, #2947) and arrive as the ra8_rot
-# archive named in LIBS above; ra8_dfu_launch is still globbed in via
-# `LIBS ra8_dfu`, and ra8_rsip (software SHA-256) via ra8_hal. This block
+# archive named in LIBS above; the gate itself is Zig too (#2932) and arrives
+# as ra8_rot_launch, and ra8_rsip (software SHA-256) via ra8_hal. This block
 # links the real
 # tf-psa-crypto backend (the exact recipe secure_boot_hil uses to prove the
 # mechanism on silicon) and turns the gate on. The bootloader's src/psa_verify_rng.c
