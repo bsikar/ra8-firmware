@@ -10,12 +10,6 @@ if	src/fw_os_contract.c	Compile-time conformance TU for the fw_os port contract;
 if	src/fw_if_clock.c	The neutral clock-intent port, landed on dev in #693 and carried onto this branch by the zig/dev sync below it. libs/if is migrated here but not on dev, so dev can add C to it without seeing this checker; the row is what the sync owes. Ports with the rest of the if surface.
 ra8_tz_secure_boot	ns/ra8_ns_rot_header.c	Emits the NS image's ra8_ns_rot_header_t record; stays C on purpose, as tests/cmake/zig_libraries.cmake records, so the magic word and struct shape are compiler-checked instead of hand-assembled in the NS linker scripts.
 #
-# ra8_jpeg is partially migrated: the ra8_imgdec backend binding is Zig
-# the codec proper is still C. Five TUs, one shared internal header, one block.
-ra8_jpeg	src/ra8_jpeg_sw.c	Decoder core of the baseline codec: the marker walk and the SOF/SOS/DHT/DQT table state behind src/ra8_jpeg_sw_internal.h. The encoder left for Zig in #2795; these three decoder TUs share that header and the stripe cursor by value, so they port as one block rather than piecemeal.
-ra8_jpeg	src/ra8_jpeg_sw_decode.c	Whole-buffer baseline decoder: Huffman tables, the dequantise and IDCT path, upsampling. Shares src/ra8_jpeg_sw_internal.h and its decode state with ra8_jpeg_sw.c and ra8_jpeg_sw_stream.c, so it ports with them; the imgdec seam went in #2786 and the encoder in #2795.
-ra8_jpeg	src/ra8_jpeg_sw_stream.c	Bounded-memory striped decoder driving the same core as the whole-buffer path. Holds the stripe cursor across calls through src/ra8_jpeg_sw_internal.h, so splitting it from the other two decoder TUs would put shared decoder state across a language boundary mid-port.
-#
 # ra8_dfu is partially migrated: the polled USB-DFU host driver is Zig
 # (#2809), the rest of the library is still C. Six TUs, three blocks.
 ra8_dfu	src/ra8_dfu_boot.c	Reset-time boot decision: software CRC32, image-header validation and A/B slot selection. No MMIO, and the only ra8_dfu TU with host unit tests behind it, so it ports with its suite rather than ahead of it.
@@ -24,7 +18,3 @@ ra8_dfu	src/ra8_dfu_device.c	USBX DFU device class bound to real MRAM through th
 ra8_dfu	src/ra8_dfu_launch.c	Copy-to-run launch gate: verifies the slot's ECDSA-P256 signature via ra8_psa_crypto, then branches to the run base. Shares the anti-rollback counter with ra8_dfu_antirollback.c and ra8_rot.c, so those three port as one block.
 ra8_dfu	src/ra8_dfu_antirollback.c	Monotonic anti-rollback counter behind the launch gate. Shares its record layout with ra8_dfu_launch.c and ra8_rot.c; splitting it would put that record across a language boundary mid-port.
 ra8_dfu	src/ra8_rot.c	Root-of-trust key reader, also compiled directly by three HIL examples through EXTRA_SRCS rather than through the library. Ports with ra8_dfu_launch.c and ra8_dfu_antirollback.c once those examples can take an archive.
-# 
-# ra8_core is partially migrated: the freestanding runtime primitives are
-# Zig (#2820), the other sixteen TUs are still C. Four blocks.
-ra8_core	src/ra8_time.c	Millisecond timebase. The counter and the delay are ordinary code, but the firmware-only SysTick_Handler in this TU dispatches through three weak externs (_tx_timer_interrupt, ux_dcd_ra8_usb_irq_reenable, g_ra8_threadx_systick_ready) and is itself a weak definition the vector table's alias loses to and an app's own handler wins over. That behaviour is the ELF linker's, not the compiler's: a wrong port does not fail a build, it stops ThreadX ticking on a board. It ports in a slice that can be checked against a full ARM image link with and without libthreadx.a, or against hardware. The rest of the timebase went to Zig in #2830.
