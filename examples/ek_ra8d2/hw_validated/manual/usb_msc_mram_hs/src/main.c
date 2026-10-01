@@ -106,9 +106,6 @@ void        SysTick_Handler(void)
  */
 static const ra8_port_pin_t k_demo_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 role-select strap (PD07): LOW = Device (UM Sec 6.2 p 34). */
-static const ra8_port_pin_t k_demo_pin_hs_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /* -------------------------------------------------------------------------- */
 /* Tunables */
 /* -------------------------------------------------------------------------- */
@@ -801,7 +798,7 @@ static void demo_panic_halt(void)
   /* PD07 (J7 USB-HS role select, UM 6.2 p 34): drive LOW for Device
    * mode so U18 does not back-feed VBUS into the host's cable. D+/D-
    * are dedicated HS PHY balls -- no PFS routing needed. */
-  return ra8_gpio_output_init(k_demo_pin_hs_role, k_ra8_level_low);
+  return ra8_board_usbhs_pwr_set(false);
 }
 
 /**

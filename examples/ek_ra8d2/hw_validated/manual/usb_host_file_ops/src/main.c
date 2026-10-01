@@ -64,9 +64,6 @@
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_fileops_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra8_port_pin_t k_fileops_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
 static const ra8_port_pin_t k_fileops_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
 
@@ -126,7 +123,7 @@ static void fileops_route_usb_or_halt(void)
   if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra8_gpio_output_init(k_fileops_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
+  if (ra8_board_usbhs_pwr_set(true) != k_ra8_ok) {
     fileops_panic_halt();
   }
   if (ra8_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra8_psel_usb_hs, "fileops.hs_vbus") !=

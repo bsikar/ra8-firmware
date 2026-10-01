@@ -123,10 +123,6 @@ static const ra8_port_pin_t k_selftest_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_u
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_selftest_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 role strap (PD07): LOW = Device, so U18 does not back-feed
- *         VBUS into the FS host's cable (config B device role, UM 6.2). */
-static const ra8_port_pin_t k_selftest_pin_hs_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 #ifndef RA8_OFF_TARGET
 
 /* -------------------------------------------------------------------------- */
@@ -256,7 +252,7 @@ static void selftest_route_usb_or_halt(void)
       k_ra8_ok) {
     selftest_panic_halt();
   }
-  if (ra8_gpio_output_init(k_selftest_pin_hs_role, k_ra8_level_low) != k_ra8_ok) {
+  if (ra8_board_usbhs_pwr_set(false) != k_ra8_ok) {
     selftest_panic_halt();
   }
   /* FS port: host role. P5_00 VBUSEN peripheral-routed sources J11. */

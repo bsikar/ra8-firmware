@@ -87,6 +87,12 @@ RA8_INTERNAL static ra8_err_t internal_usbfs_strap_role(ra8_board_usb_role_t rol
   return ra8_gpio_output_init((ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen, level);
 }
 
+ra8_err_t ra8_board_usbhs_pwr_set(bool on)
+{
+  const ra8_level_t level = on ? k_ra8_level_high : k_ra8_level_low;
+  return ra8_gpio_output_init((ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr, level);
+}
+
 ra8_err_t ra8_board_usb_port_init(ra8_board_usb_port_t port, ra8_board_usb_role_t role)
 {
   if ((role != k_ra8_board_usb_role_device) && (role != k_ra8_board_usb_role_host)) {
