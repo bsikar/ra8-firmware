@@ -104,15 +104,30 @@ pub fn build(b: *std.Build) void {
     timer_test_module.addImport("abi", timer_abi_module);
     const timer_tests = b.addTest(.{ .root_module = timer_test_module });
 
+    const pwm_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/fw_if_pwm_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const pwm_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/pwm_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    pwm_test_module.addImport("abi", pwm_abi_module);
+    const pwm_tests = b.addTest(.{ .root_module = pwm_test_module });
+
     const run_path_tests = b.addRunArtifact(path_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_clock_tests = b.addRunArtifact(clock_tests);
     const run_timer_tests = b.addRunArtifact(timer_tests);
+    const run_pwm_tests = b.addRunArtifact(pwm_tests);
     const test_step = b.step("test", "Run Zig fw_if_fs tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_path_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_clock_tests.step);
     test_step.dependOn(&run_timer_tests.step);
+    test_step.dependOn(&run_pwm_tests.step);
 }
