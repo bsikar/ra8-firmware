@@ -53,8 +53,10 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_isr.h"
@@ -316,10 +318,13 @@ static void sdmsc_setup_or_halt(void)
   if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  const fw_clock_module_t clk_sci  = {.kind  = k_fw_clock_module_uart,
+                                      .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
+  if (fw_clock_rate_for(ra8_board_clock(), clk_sci, &pclka_hz) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
