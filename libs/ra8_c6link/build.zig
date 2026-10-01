@@ -177,6 +177,14 @@ pub fn build(b: *std.Build) void {
     sta_cfg_test_module.addImport("implementation", implementation_module);
     const sta_cfg_tests = b.addTest(.{ .root_module = sta_cfg_test_module });
 
+    const rx_route_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/rx_route_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    rx_route_test_module.addImport("implementation", implementation_module);
+    const rx_route_tests = b.addTest(.{ .root_module = rx_route_test_module });
+
     const mdl_transfer_test_module = b.createModule(.{
         .root_source_file = b.path("tests/mdl_transfer_test.zig"),
         .target = target,
@@ -200,6 +208,7 @@ pub fn build(b: *std.Build) void {
     const run_mdl_take_tests = b.addRunArtifact(mdl_take_tests);
     const run_rpc_wait_tests = b.addRunArtifact(rpc_wait_tests);
     const run_sta_cfg_tests = b.addRunArtifact(sta_cfg_tests);
+    const run_rx_route_tests = b.addRunArtifact(rx_route_tests);
     const run_mdl_transfer_tests = b.addRunArtifact(mdl_transfer_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_c6link tests");
@@ -217,6 +226,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mdl_take_tests.step);
     test_step.dependOn(&run_rpc_wait_tests.step);
     test_step.dependOn(&run_sta_cfg_tests.step);
+    test_step.dependOn(&run_rx_route_tests.step);
     test_step.dependOn(&run_mdl_transfer_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

@@ -1028,6 +1028,51 @@ RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBin
  * @see priv_c6link_sta_credentials_valid
  * @since 0.1.0
  */
+/**
+ * @brief The one consumer a well-formed received frame's payload is offered to.
+ * @details Mirrors the `rx_route.Route` ordinals the Zig side returns; see
+ *        `src/internal/rx_route.zig`.
+ * @since 0.1.0
+ */
+typedef enum {
+  k_priv_c6link_route_rpc      = 0, /**< Control plane; hand the payload to the RPC decoder. */
+  k_priv_c6link_route_ethernet = 1, /**< Station or access point; count it and call the receive callback. */
+  k_priv_c6link_route_counted  = 2  /**< Everything else; count it as unrouted and drop it. */
+} priv_c6link_route_t;
+
+/**
+ * @brief Decide which consumer an interface number belongs to.
+ *
+ * @details
+ * The co-processor multiplexes three unrelated conversations onto one SPI
+ * link and tells them apart by the interface number in the frame header.
+ * Implemented in Zig; see `src/internal/rx_route.zig`.
+ *
+ * @param[in] if_type Interface number as the frame header carries it.
+ * @return The consumer, as a ::priv_c6link_route_t ordinal.
+ * @retval k_priv_c6link_route_rpc The serial interface, which carries RPC.
+ * @retval k_priv_c6link_route_ethernet The station or access-point interface.
+ * @retval k_priv_c6link_route_counted No consumer; the frame is counted and dropped.
+ *
+ * @pre None; every byte value has an answer.
+ * @post No state is modified.
+ *
+ * @note `ESP_PRIV_IF` answers ::k_priv_c6link_route_counted on purpose. This
+ *       co-processor build seals its only privileged frame with a checksum
+ *       computed as if `if_num` were zero (#529), so a conformant host never
+ *       sees a valid one and nothing here depends on it.
+ *
+ * @par Example:
+ * @code
+ * if (priv_c6link_rx_route(view->if_type) == (uint8_t)k_priv_c6link_route_rpc) {
+ *   return priv_c6link_rpc_consume(link, payload, view->len);
+ * }
+ * @endcode
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
+
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);
 
 /**
