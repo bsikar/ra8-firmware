@@ -242,7 +242,7 @@ ci_toolcache_run_args() {
 # rather than compete with them. It has to be a run-command flag --
 # `--cgroup-parent=<slice>` -- because the container's cgroup is created by the
 # docker DAEMON, so it inherits nothing from the slice this shell is in. The
-# dev_slice Ansible role exports it in /etc/profile.d there; nothing else does.
+# caller exports it; nothing in the tree sets it.
 ci_extra_run_args() {
   local words=()
   read -r -a words <<<"${RA8_CI_CONTAINER_ARGS:-}"

@@ -118,13 +118,6 @@ PLAYS: dict[str, Play] = {
         removable=False,
         summary="the ARC autoscaling runner pool",
     ),
-    "ci-runner-docker": Play(
-        playbook="ci-runner-docker.yml",
-        group="ci_runners_docker",
-        roles=("ci_runner_docker", "dev_slice", "fleet_capacity"),
-        removable=True,
-        summary="long-lived runner containers on a Docker host",
-    ),
     "hil-bench": Play(
         playbook="hil-bench.yml",
         group="hil_bench",
@@ -141,35 +134,7 @@ PLAYS: dict[str, Play] = {
 # This is a whitelist rather than a judgement call at the call site: a tag
 # added here that DOES touch a container would silently make `fleet.py apply`
 # cancel jobs, which is the one failure the drain exists to prevent.
-NO_DRAIN_TAGS = frozenset({"capacity", "dev-slice"})
-
-# systemd's default CPUWeight, which is what `system.slice` carries -- and
-# every Docker container is a scope under `system.slice` unless it is given an
-# explicit `--cgroup-parent`. A dev slice is only a LOW-priority slice if its
-# weight is below this, so the number is named here and checked rather than
-# left as folklore in a role.
-SYSTEMD_DEFAULT_CPU_WEIGHT = 100
-
-# Upper bound cgroup v2 accepts for cpu.weight.
-CGROUP_MAX_CPU_WEIGHT = 10000
-
-# The systemd slice unit the dev_slice role installs.
-#
-# NO DASH IN THE NAME, and that is load-bearing rather than a style choice.
-# systemd reads `-` in a slice name as HIERARCHY: a unit called
-# `ra8-dev.slice` is created as a child of an auto-generated `ra8.slice`, which
-# systemd gives the DEFAULT weight. The dev slice's CPUWeight would then be
-# compared against its siblings inside `ra8.slice` -- of which there are none
-# -- while `ra8.slice` itself competed with `system.slice` at 100 against 100,
-# i.e. the runners and the dev work splitting the machine evenly. Verified on
-# the host: `systemd-run --slice=ra8-dev.slice` lands in
-# `/ra8.slice/ra8-dev.slice/...`. A single-token name is a root-level slice and
-# a direct sibling of `system.slice`, which is the comparison that matters.
-#
-# Named here because fleet.py has to pass it to the capacity script and the
-# role has to create it; the fleet-declaration gate asserts the role's default
-# agrees rather than trusting this copy.
-DEV_SLICE_UNIT = "ra8dev.slice"
+NO_DRAIN_TAGS = frozenset({"capacity"})
 
 
 class FleetError(Exception):
@@ -225,68 +190,6 @@ def recommended_instances(sizing: dict[str, Any], budget: dict[str, Any]) -> int
     return max(0, min(by_cpu, by_mem))
 
 
-def instance_names(name: str, host: dict[str, Any]) -> list[str]:
-    """Runner registration names this host's instances will carry on GitHub.
-
-    Mirrors the ``ci_runner_docker`` role exactly: a single instance keeps the
-    unsuffixed base name, and above one every instance is ``<base>-<i>``. The
-    difference matters because those are the names in
-    ``gh api .../actions/runners``, and moving between the two forms renames a
-    registration.
-
-    Args:
-        name: Fleet host name, the default base.
-        host: That host's declaration.
-
-    Returns:
-        One name per declared instance, in instance order. Empty for an ARC
-        host: its runner names are generated per ephemeral pod by the
-        controller, so there is no stable set to predict.
-    """
-    return frm.instance_names(name, host)
-
-
-def container_names(host: dict[str, Any]) -> list[str]:
-    """Docker container names for this host's instances, in instance order.
-
-    Args:
-        host: One host's declaration.
-
-    Returns:
-        Container names the capacity script drains, empty for a non-container
-        class.
-    """
-    return frm.container_names(host)
-
-
-def remote_shell(host: dict[str, Any]) -> str:
-    """The remote command that reads a shell script on stdin and runs it.
-
-    Feeding the script on stdin rather than quoting it into the command line
-    keeps it clear of the remote shell's parsing.
-
-    Args:
-        host: One host's declaration.
-
-    Returns:
-        A remote command string ending in ``bash -s``.
-    """
-    return frm.remote_shell(host)
-
-
-def docker_command(host: dict[str, Any]) -> str:
-    """How the capacity script must invoke Docker on this host.
-
-    Args:
-        host: One host's declaration.
-
-    Returns:
-        ``docker`` where the connecting user owns the socket, ``sudo docker``
-        otherwise.
-    """
-    return frm.docker_command(host)
-
-
 def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
     """Ansible variables carrying this host's declared runner capacity.
 
@@ -297,6 +200,7 @@ def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The role variables for the host's class, empty for a non-runner class.
     """
+    del name
     if not CLASSES[host["class"]].capacity_runner:
         return {}
     run = host["runners"]
@@ -309,20 +213,7 @@ def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
             "ci_runner_mem_request": f"{run['memory_request_gb']}Gi",
             "ci_runner_scale_set_name": run["labels"][0],
         }
-    memory = f"{run['memory_gb']}g"
-    out: dict[str, Any] = {
-        "ci_runner_docker_name": run.get("name", name),
-        "ci_runner_docker_instances": int(run["instances"]),
-        "ci_runner_docker_cpus": str(run["cpus"]),
-        "ci_runner_docker_memory": memory,
-        # Equal to the memory cap, never larger: a swapping runner is one whose
-        # job has quietly become an order of magnitude slower, and that
-        # presents as a timeout rather than as the OOM it really is.
-        "ci_runner_docker_memswap": memory,
-        "ci_runner_docker_pin_cpus": bool(run.get("pin_cpus", False)),
-        "ci_runner_docker_labels": ",".join(run["labels"]),
-    }
-    return out
+    return {}
 
 
 def _runner_image_vars(data: dict[str, Any], host: dict[str, Any]) -> dict[str, Any]:
@@ -342,54 +233,7 @@ def _runner_image_vars(data: dict[str, Any], host: dict[str, Any]) -> dict[str, 
             "ci_runner_image": image["image"],
             "ci_runner_image_archive": image["archive"],
         }
-    if CLASSES[host["class"]].capacity_kind == "docker":
-        return {
-            "ci_runner_docker_image": image["image"],
-            "ci_runner_docker_image_source_host": image["source_host"],
-            "ci_runner_docker_image_source_archive": image["archive"],
-            "ci_runner_docker_image_source_ssh": fr.ssh_target(data, image["source_host"]),
-        }
     return {}
-
-
-def _dev_slice_vars(host: dict[str, Any]) -> dict[str, Any]:
-    """Ansible variables for the low-priority dev slice, if one is declared.
-
-    A runner host is a CI host first. The slice it lends to agents is therefore
-    declared as a CPU *weight* (it consumes whatever CI is not using and yields
-    the moment a job arrives) and a HARD memory cap (memory does not yield, so
-    it has to be taken out of CI's reservation up front).
-
-    ``dev_slice_enabled`` is false for a host with no block, so the role
-    REMOVES a slice a previous declaration installed. Deleting a block must
-    undo it, not orphan a cgroup nobody can account for.
-
-    Args:
-        host: One host's declaration.
-
-    Returns:
-        The ``dev_slice`` role variables, empty for a class that carries none.
-    """
-    if CLASSES[host["class"]].capacity_kind != "docker":
-        return {}
-    slice_ = host.get("dev_slice") or {}
-    out: dict[str, Any] = {"dev_slice_enabled": bool(slice_)}
-    if not slice_:
-        return out
-    out.update(
-        {
-            "dev_slice_cpu_weight": int(slice_["cpu_weight"]),
-            "dev_slice_memory": f"{slice_['memory_gb']}G",
-            "dev_slice_swap": f"{slice_.get('swap_gb', 0)}G",
-            "dev_slice_max_jobs": int(slice_["max_jobs"]),
-            # The weight the slice must stay under to be a low-priority one.
-            # Passed rather than assumed by the role, so the role can read the
-            # host's REAL system.slice weight back and assert against the same
-            # number this validator used.
-            "dev_slice_ci_cpu_weight": SYSTEMD_DEFAULT_CPU_WEIGHT,
-        }
-    )
-    return out
 
 
 def _capacity_vars(host: dict[str, Any]) -> dict[str, Any]:
@@ -413,15 +257,7 @@ def _capacity_vars(host: dict[str, Any]) -> dict[str, Any]:
         "fleet_capacity_full_instances": int(host["runners"]["instances"]),
         "fleet_capacity_enabled": bool(quiet),
     }
-    if cls.capacity_kind == "docker":
-        out["fleet_capacity_docker"] = docker_command(host)
-        out["fleet_capacity_containers"] = " ".join(container_names(host))
-        # Quiet hours have to reach the dev slice too, or standing the runners
-        # down buys the owner nothing -- a gate suite in the slice would go on
-        # using the machine. Empty when the host lends no slice.
-        out["fleet_capacity_dev_slice"] = DEV_SLICE_UNIT if host.get("dev_slice") else ""
-    else:
-        out["fleet_capacity_scale_set"] = host["runners"]["labels"][0]
+    out["fleet_capacity_scale_set"] = host["runners"]["labels"][0]
     if quiet:
         start, _, end = str(quiet["window"]).partition("-")
         out.update(
@@ -454,7 +290,6 @@ def role_vars(data: dict[str, Any], name: str, host: dict[str, Any]) -> dict[str
         **_runner_vars(name, host),
         **fh.runner_vars(data, host),
         **_runner_image_vars(data, host),
-        **_dev_slice_vars(host),
         **_capacity_vars(host),
     }
 
@@ -609,7 +444,7 @@ def _check_runner_block(name: str, host: dict[str, Any]) -> list[str]:
     if not cls.capacity_runner:
         return [
             f"{name}: class {host['class']} carries no runners, so '{key}:' is meaningless here"
-            for key in ("runners", "budget", "quiet_hours", "dev_slice")
+            for key in ("runners", "budget", "quiet_hours")
             if host.get(key)
         ]
     bad = []
@@ -735,79 +570,6 @@ def _check_sizing(name: str, host: dict[str, Any], sizing: dict[str, Any]) -> li
         f"{name}: departs from the sizing formula ({joined}) with no sizing_note. "
         "Either use the formula's numbers or write down why not."
     ]
-
-
-def _check_dev_slice(name: str, host: dict[str, Any]) -> list[str]:
-    """Rule: a lent dev slice cannot take anything CI was promised.
-
-    The slice exists so an agent can verify on a runner host without CI
-    noticing, and the two properties that make that true are checked here
-    rather than trusted:
-
-    * **CPU is a weight below CI's.** The runner containers live in
-      ``system.slice`` at systemd's default weight, so a slice at or above that
-      would not yield to a job -- it would split the machine with one.
-    * **Memory is taken out of CI's reservation, not shared with it.** Memory
-      does not yield: a page a dev build holds is a page a job cannot have. So
-      the slice's cap plus every runner's cap must fit the budget, exactly as
-      the runners alone must.
-
-    Args:
-        name: Fleet host name.
-        host: That host's declaration.
-
-    Returns:
-        One message per violation.
-    """
-    slice_ = host.get("dev_slice")
-    if not slice_:
-        return []
-    if CLASSES[host["class"]].capacity_kind != "docker":
-        return [
-            f"{name}: class {host['class']} runs no dev slice -- it is a cgroup on a "
-            "Docker host, and there is no role that would create one here"
-        ]
-    bad = [
-        f"{name}: dev_slice.{key} is required (see the dev_slice note in infra/fleet.yml)"
-        for key in ("cpu_weight", "memory_gb", "max_jobs")
-        if not isinstance(slice_.get(key), int)
-    ]
-    if bad:
-        return bad
-    weight = int(slice_["cpu_weight"])
-    if not 1 <= weight <= CGROUP_MAX_CPU_WEIGHT:
-        bad.append(f"{name}: dev_slice.cpu_weight must be 1..{CGROUP_MAX_CPU_WEIGHT}, got {weight}")
-    elif weight >= SYSTEMD_DEFAULT_CPU_WEIGHT:
-        bad.append(
-            f"{name}: dev_slice.cpu_weight {weight} is not below the "
-            f"{SYSTEMD_DEFAULT_CPU_WEIGHT} that system.slice -- where every runner "
-            "container lives -- carries, so dev work would compete with CI rather "
-            "than yield to it. That is the whole property the slice is for."
-        )
-    if int(slice_["max_jobs"]) < 1:
-        bad.append(f"{name}: dev_slice.max_jobs must be at least 1")
-    budget, run = host["budget"], host["runners"]
-    reserved = int(run["instances"]) * int(run["memory_gb"])
-    lent = int(slice_["memory_gb"])
-    if lent < 1:
-        bad.append(f"{name}: dev_slice.memory_gb must be at least 1")
-    elif reserved + lent > int(budget["memory_gb"]):
-        bad.append(
-            f"{name}: {run['instances']} runner(s) x {run['memory_gb']} GB reserve "
-            f"{reserved} GB and the dev slice caps at {lent} GB, which is "
-            f"{reserved + lent} of a {budget['memory_gb']} GB budget. Memory does not "
-            "yield, so the slice must fit what the runners leave -- lower "
-            "dev_slice.memory_gb or raise budget.memory_gb."
-        )
-    swap = slice_.get("swap_gb", 0)
-    if not isinstance(swap, int) or swap < 0:
-        bad.append(f"{name}: dev_slice.swap_gb must be a non-negative integer, got {swap!r}")
-    elif swap > int(budget.get("swap_gb", 0)):
-        bad.append(
-            f"{name}: dev_slice.swap_gb {swap} exceeds the {budget.get('swap_gb', 0)} GB "
-            "of swap this host's budget declares, so the cap could not be honoured"
-        )
-    return bad
 
 
 def _check_quiet_hours(name: str, host: dict[str, Any]) -> list[str]:
@@ -943,7 +705,6 @@ def validate(data: dict[str, Any], host_vars_dir: Path | None = None) -> list[st
         problems += _check_fit(name, host)
         problems += _check_sizing(name, host, sizing)
         problems += _check_quiet_hours(name, host)
-        problems += _check_dev_slice(name, host)
     if not problems:
         # Only once the declaration itself is sound: role_vars() derives the
         # owned-name set from it, so running this over a broken declaration

@@ -312,8 +312,7 @@ line size is safe for Unicorn's JIT.
 **No longer an out-of-repo residual.** This used to be a manual step on the
 bare-metal `k3s-runner-*` services on `k3s-pve`, whose `/usr/local` Unicorn was
 hand-provisioned and would have needed re-running by hand after any re-image.
-That pool is retired: every runner answering `ra8-ci` -- the ARC pods and the
-truenas container alike -- boots `localhost/ra8-ci-runner:v2`, which builds
+That pool is retired: every runner answering `ra8-ci` -- the ARC pods -- boots `localhost/ra8-ci-runner:v2`, which builds
 Unicorn **2.1.4** from source by URL + sha256 in `.devcontainer/Dockerfile`. The
 pin is therefore provisioned by the same file that declares it, and a re-image
 reproduces it rather than losing it. The fail-loud check above is unchanged and

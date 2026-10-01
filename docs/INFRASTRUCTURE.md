@@ -106,22 +106,6 @@ poller and the workspace reaper.
 **Never work directly in `~/ra8-firmware` on this box.** Use
 `just workspace::new <name>`; improvised checkouts have clobbered other work.
 
-### `truenas` -- NAS, and two CI runners
-
-Plain (non-ARC) self-hosted runners in Docker containers, deployed by the
-`ci_runner_docker` role. Measured roughly **2x faster per job** than a pve1 pod,
-which is the oversubscription in section 1 stated from the other direction.
-
-Everything it writes lives on a pool dataset, so `docker rm` is non-destructive
-and a TrueNAS SCALE upgrade is survivable. The role refuses, by assertion, to
-put CI I/O on the appliance's known-degraded 100T pool.
-
-It is the one host class with a real one-command teardown:
-
-```sh
-just infra::remove truenas
-```
-
 ### HIL bench controller
 
 A Linux single-board computer controls the attached bench hardware:

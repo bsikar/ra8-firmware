@@ -569,9 +569,7 @@ def _boundary_contract_errors(infra_text: str) -> list[str]:
         'MUTATION_LOCK="${ROOT}/scripts/dev/fleet_mutation_lock.py"\n',
         '  "$PYTHON" -I "$MUTATION_LOCK" -- "$PYTHON" -I "$FLEET" "$@"\n',
         '  fleet_mutation apply "$@"\n',
-        '  fleet_mutation register-runner "$@"\n',
         '  fleet_mutation register-hil "$@"\n',
-        '  fleet_mutation remove "$@"\n',
         '  fleet_mutation scale "$1" "$2"\n',
     )
     return (
