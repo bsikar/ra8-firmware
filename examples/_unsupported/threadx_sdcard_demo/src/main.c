@@ -39,6 +39,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -322,7 +323,8 @@ void tx_application_define(void* first_unused_memory)
    * but this makes the 1 ms kernel tick correct-by-construction for
    * whatever clock the app actually brought up (issue #287). Runs after
    * _tx_initialize_low_level and before the first scheduling decision. */
-  if (ra8_threadx_systick_retune() != k_ra8_ok) {
+  if ((ra8_threadx_clock_bind(ra8_board_clock()) != k_ra8_ok) ||
+      (ra8_threadx_systick_retune() != k_ra8_ok)) {
     while (1) {
       __asm__ volatile("wfi");
     }

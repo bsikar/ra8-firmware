@@ -42,6 +42,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "fw_if_clock.h"
 #include "ra8_err.h"
 
 /**
@@ -121,20 +122,49 @@ typedef enum : uint32_t {
 ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* out_reload);
 
 /**
+ * @brief Hand the port the clock handle it reads the core rate from.
+ *
+ * @details
+ * The ThreadX port is portable code: it must not name a chip's clock tree,
+ * and `cmake/threadx.cmake` deliberately does not link the chip adapter so
+ * it cannot. The app is the composition root, so the app binds. Pass
+ * whatever handle the board already publishes (on the EK-RA8D2 that is
+ * ``ra8_board_clock()``) or a handle bound straight to the chip adapter
+ * with ``fw_clock_ra8_bind``.
+ *
+ * There is no fallback to a chip driver when nothing is bound: a silent
+ * second path would be exactly the parallel tree this seam exists to
+ * remove, so ::ra8_threadx_systick_retune refuses instead.
+ *
+ * @param[in] clk Bound handle; borrowed, must outlive the retune call.
+ *
+ * @return ::ra8_err_t error code.
+ * @retval k_ra8_ok                  Handle stored.
+ * @retval k_ra8_err_null_ptr        @p clk was NULL.
+ * @retval k_ra8_err_not_initialized @p clk is not bound.
+ *
+ * @note Thread safety: not thread-safe; single-threaded init context only.
+ * @see ra8_threadx_systick_retune
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_threadx_clock_bind(const fw_clock_t* clk);
+
+/**
  * @brief Reprogram SysTick.LOAD from the live CPUCLK0 rate.
  *
  * @details
- * Queries the live CPUCLK0 frequency via ::ra8_cgc_get_clock_hz, derives
+ * Queries the live core rate through the ``fw_if_clock`` handle the app
+ * bound with ::ra8_threadx_clock_bind, derives
  * the reload with ::ra8_threadx_systick_reload_for for the ThreadX tick
  * rate (::k_ra8_threadx_tick_hz), then writes SYST_RVR and clears SYST_CVR
  * so the new period takes effect on the next reload. The SysTick enable /
  * clock-source / interrupt bits programmed by `_tx_initialize_low_level.S`
  * are left untouched.
  *
- * Call this from `tx_application_define` (which ThreadX invokes after
- * `_tx_initialize_low_level` but before the first scheduling decision) so
- * that whatever clock the app raised via `ra8_cgc_init()` -- or did not --
- * the kernel tick is accurate. Calling it earlier (from `main` before
+ * Bind first, then call this from `tx_application_define` (which ThreadX
+ * invokes after `_tx_initialize_low_level` but before the first scheduling
+ * decision) so that whatever clock the app raised -- or did not -- the
+ * kernel tick is accurate. Calling it earlier (from `main` before
  * `tx_kernel_enter`) has no effect: `_tx_initialize_low_level` reprograms
  * SYST_RVR afterwards and would overwrite it.
  *
@@ -143,11 +173,13 @@ ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* o
  * @retval k_ra8_err_invalid_arg CPUCLK0 query returned a nonsensical rate
  *                               (0, or too slow for one tick period).
  * @retval k_ra8_err_out_of_range Live clock too high for a 24-bit reload.
+ * @retval k_ra8_err_not_initialized No clock handle bound yet.
  *
+ * @pre ::ra8_threadx_clock_bind has run with a bound handle.
  * @pre `_tx_initialize_low_level` has already armed SysTick (i.e. this runs
  *      from `tx_application_define` or later).
- * @pre The CGC published-clock table reflects the live clock (i.e.
- *      `ra8_cgc_init()` has run if the app raises the clock).
+ * @pre The bound handle reports the live core rate (i.e. the app has
+ *      brought the clock tree up before binding).
  * @post On ::k_ra8_ok, SYST_RVR == `CPUCLK0 / k_ra8_threadx_tick_hz - 1`.
  * @post On ::k_ra8_ok, SYST_CVR == 0 (counter restarts at the new reload).
  *
@@ -160,13 +192,14 @@ ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* o
  * @code
  * void tx_application_define(void* unused) {
  *   (void)unused;
+ *   if (ra8_threadx_clock_bind(ra8_board_clock()) != k_ra8_ok) { for (;;) { } }
  *   if (ra8_threadx_systick_retune() != k_ra8_ok) { for (;;) { } }
  *   // ... tx_thread_create(...) ...
  * }
  * @endcode
  *
  * @see ra8_threadx_systick_reload_for
- * @see ra8_cgc_get_clock_hz
+ * @see ra8_threadx_clock_bind
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_threadx_systick_retune(void);

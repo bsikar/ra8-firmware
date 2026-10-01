@@ -15,7 +15,8 @@
  *     full range/validity coverage incl. the MC/DC vectors for its compound
  *     zero-input guard.
  *   - ra8_threadx_systick_retune() -- the end-to-end path over the live CGC
- *     published-clock table. It now programs SYST_RVR through the shared
+ *     published-clock table, reached through the `fw_if_clock` handle the
+ *     caller binds (issue #693). It now programs SYST_RVR through the shared
  *     ra8_hal SysTick primitive (ra8_systick_set_reload), whose writes land in
  *     the fake MMIO map on host, so the retune runs end-to-end here.
  *
@@ -26,6 +27,8 @@
 
 #include <stdint.h>
 
+#include "fw_if_clock.h"
+#include "fw_if_clock_ra8.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -237,6 +240,13 @@ static void test_retune_matches_live_clock(void)
   /* The retune reads the live table + programs SYST_RVR through the HAL
    * primitive (writes land in the fake MMIO map on host); it must succeed for
    * a valid clock. */
+  /* The port no longer names a clock tree (issue #693): the app is the
+   * composition root and binds the handle. Host-side that is the chip
+   * adapter straight onto the fake CGC table. */
+  fw_clock_t clk = {0};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_clock_ra8_bind(&clk));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_threadx_clock_bind(&clk));
+
   TEST_ASSERT_EQ(k_ra8_ok, ra8_threadx_systick_retune());
 
   /* Confirm the live clock the retune saw is CPUCLK0 = 1 GHz and that the
