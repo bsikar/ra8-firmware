@@ -177,11 +177,11 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const
     };
 }
 
-/// The value the root build graph passes as `.optimize` when it asks a
-/// migrated library's build.zig for an ARM archive, read out of build.zig's
+/// The value the cross-build graph passes as `.optimize` when it asks a
+/// migrated library's build.zig for an ARM archive, read out of the wiring's
 /// own text: the argument of the `.optimize =` line inside the
-/// `for (app.zig_libraries)` loop of addArmCrossApp(). Null when that loop or
-/// that line is no longer there, which the rule below refuses.
+/// `for (app.zig_libraries)` loop of cross_image.addCrossApp(). Null when that
+/// loop or that line is no longer there, which the rule below refuses.
 pub fn archiveOptimizeArgument(source: []const u8) ?[]const u8 {
     const loop = "for (app.zig_libraries)";
     const start = std.mem.indexOf(u8, source, loop) orelse return null;
