@@ -167,16 +167,6 @@ typedef struct mdl_next_request_view_t {
 } mdl_next_request_view_t;
 
 /**
- * @struct mdl_cancel_request_view_t
- * @brief Decoded CancelRequest fields the correlation rules read
- * @since 0.1.0
- */
-typedef struct mdl_cancel_request_view_t {
-  uint32_t protocol_version; /**< Wire version the peer speaks. */
-  uint32_t job_id;           /**< Job the peer wants cancelled. */
-} mdl_cancel_request_view_t;
-
-/**
  * @struct mdl_pull_view_t
  * @brief One backend pull with the service state it must agree with
  * @since 0.1.0
@@ -219,18 +209,35 @@ typedef struct mdl_advance_t {
   const mdl_job_view_t*          job);
 
 /**
- * @brief Whether a CancelRequest may act on the service's active job
- * @param[in] request Decoded request fields.
- * @param[in] job Live service correlation state.
- * @return Whether version and job id agree with the running job.
- * @pre @p request and @p job are non-null.
- * @post No input is modified.
- * @note Pure and reentrant.
+ * @brief Answer one CancelRequest for the service's active job
+ * @details Decodes the request, refuses any unknown field, checks it names
+ * the active job at the current protocol version, and writes the Cancelled
+ * acknowledgement. Does not call the backend or change service state.
+ * @param[in] request Packed CancelRequest bytes.
+ * @param[in] request_len Request length in bytes.
+ * @param[in] job Correlation state of the service's one job.
+ * @param[out] response Caller-owned acknowledgement buffer.
+ * @param[in] response_cap Response capacity in bytes.
+ * @param[out] response_len Bytes written; zero on every refusal.
+ * @return Reply status.
+ * @retval k_ra8_ok The acknowledgement was written.
+ * @retval k_ra8_err_null_ptr A pointer argument is null.
+ * @retval k_ra8_err_protocol_error Decode failed or an unknown field was present.
+ * @retval k_ra8_err_invalid_state The request does not name the active job.
+ * @retval k_ra8_err_invalid_size The acknowledgement does not fit.
+ * @pre @p request is readable for @p request_len bytes.
+ * @pre @p response is writable for @p response_cap bytes.
+ * @post A refusal leaves @p response untouched.
+ * @post Service and backend state are never modified.
+ * @note Reentrant.
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_pull_cancel_correlates(
-  const mdl_cancel_request_view_t* request,
-  const mdl_job_view_t*            job);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_service_cancel(const uint8_t*         request,
+                                                               size_t                 request_len,
+                                                               const mdl_job_view_t*  job,
+                                                               uint8_t*               response,
+                                                               size_t                 response_cap,
+                                                               size_t*                response_len);
 
 /**
  * @brief Offset just past a returned body
