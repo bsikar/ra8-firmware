@@ -99,10 +99,9 @@ Manual that every register access in this tree cites.
 
 ## Tracker
 
-The [issues](https://github.com/bsikar/ra8-firmware/issues) are the public
-record. A private project board sorts them into lanes on top; if the board link
-does not open for you, nothing is hidden -- the `priority:`, `epic:`, `area:`
-and `needs-bench` labels carry the same information.
+Work is tracked in a private YouTrack instance: project RA8 for this
+repository and EMU for ra8-emulator. GitHub issues and the old GitHub project
+board are retired and are no longer used for planning.
 
 ## License
 
