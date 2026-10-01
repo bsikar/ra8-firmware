@@ -37,6 +37,7 @@ const glcdc_pins = @import("internal/glcdc_pins.zig");
 const leds = @import("internal/leds.zig");
 const panel = @import("internal/panel.zig");
 const sdhi_pins = @import("internal/sdhi_pins.zig");
+const pmod_pins = @import("internal/pmod_pins.zig");
 const switches = @import("internal/switches.zig");
 const xspi_pins = @import("internal/xspi_pins.zig");
 const vocab = @import("internal/vocab.zig");
@@ -282,6 +283,14 @@ export fn ra8_board_backlight_set(on: bool) u32 {
 
 export fn ra8_board_xspi_pins_init() u32 {
     return xspi_pins.init();
+}
+
+export fn ra8_board_pmod2_spi_bus_init() u32 {
+    return pmod_pins.init();
+}
+
+export fn ra8_board_pmod2_spi_cs_set(asserted: bool) u32 {
+    return pmod_pins.csSet(asserted);
 }
 
 export fn ra8_board_sdhi_pins_init() u32 {
