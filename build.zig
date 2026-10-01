@@ -14,7 +14,7 @@
 //!   ra8_power_profile  tests/misc/src/test_ra8_power_profile.c
 //!   ra8_epd_cal        tests/misc/src/test_ra8_epd_cal.c
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
-//!   ra8_dfu (ra8_rot)  tests/misc/src/test_ra8_dfu_antirollback.c
+//!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
 //!
 //! Under CMake the same three archives are produced by
 //! tests/cmake/zig_library.cmake shelling out to `zig build`, then linked into
@@ -97,7 +97,7 @@ const slice = [_]SliceMember{
         .c_suite_path = "tests/misc/src/test_ra8_dfu_boot.c",
     },
     .{
-        .dependency_name = "ra8_dfu",
+        .dependency_name = "ra8_rot",
         .artifact_name = "ra8_rot",
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_antirollback.c",
