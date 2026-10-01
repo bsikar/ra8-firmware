@@ -408,6 +408,15 @@ def _check_absence_claim_cases(root: Path, failures: list[str]) -> None:
     if _path_reason(root, source, fetched) is not None:
         failures.append("a git-ignored build-time tree was reported missing")
 
+    _check_absence_overreach_cases(root, source, page, failures)
+
+    page.unlink()
+
+
+def _check_absence_overreach_cases(
+    root: Path, source: str, page: Path, failures: list[str]
+) -> None:
+    """Prove an absence claim clears nothing beyond the thing it actually names."""
     # A claim about a NEIGHBOUR reaches this token no further than one a
     # paragraph away does. Each of these names a real absent thing that is not
     # the token, so the token stays reported.
@@ -451,7 +460,6 @@ def _check_absence_claim_cases(root: Path, failures: list[str]) -> None:
     if any(item.kind == "contradicted-absence-claim" and item.path == source for item in findings):
         failures.append("a bare absence claim was contradicted by a file in another directory")
 
-    page.unlink()
     (real / "hil.conf").unlink()
     (real / "keep.md").unlink()
     real.rmdir()

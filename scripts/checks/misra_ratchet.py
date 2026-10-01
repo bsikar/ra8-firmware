@@ -425,6 +425,36 @@ def check(counts: Counter[tuple[str, str]], details: dict[tuple[str, str], list[
     return 0
 
 
+def _early_mode(args: argparse.Namespace) -> int | None:
+    """Run the modes that need no results.txt, or None when the rows must be read."""
+    if args.selftest:
+        return selftest()
+    # Attestation needs no results.txt and no cppcheck, so it runs anywhere.
+    if args.attest:
+        return report_attestation()
+    return None
+
+
+def _loaded_results() -> tuple[dict[tuple[str, str], int], dict[tuple[str, str], list[str]]] | None:
+    """The audit rows, or None after explaining why they cannot be ratcheted."""
+    if not RESULTS_TSV.is_file():
+        print(
+            f"misra_ratchet.py: ERROR -- {RESULTS_TSV} not found; "
+            f"run `bash scripts/checks/misra_check_inner.sh` first."
+        )
+        return None
+    counts, details = load_results(RESULTS_TSV)
+    if not counts:
+        print(
+            "misra_ratchet.py: ERROR -- results.txt parsed to zero findings; "
+            "a clean tree writes an empty baseline via --update, but an empty "
+            "parse in --check mode almost always means the audit itself broke "
+            "(cppcheck missing, addon missing, or dump generation failed)."
+        )
+        return None
+    return counts, details
+
+
 def main() -> int:
     """Entry point: parse the mode flag and run the ratchet or the update."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
@@ -451,33 +481,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.selftest:
-        return selftest()
-
-    # Attestation needs no results.txt and no cppcheck, so it runs anywhere.
-    if args.attest:
-        return report_attestation()
+    early = _early_mode(args)
+    if early is not None:
+        return early
 
     # #712: read the rows only after proving the file is machine-written.
     attest_rc = report_attestation()
     if attest_rc:
         return attest_rc
 
-    if not RESULTS_TSV.is_file():
-        print(
-            f"misra_ratchet.py: ERROR -- {RESULTS_TSV} not found; "
-            f"run `bash scripts/checks/misra_check_inner.sh` first."
-        )
+    loaded = _loaded_results()
+    if loaded is None:
         return 1
-    counts, details = load_results(RESULTS_TSV)
-    if not counts:
-        print(
-            "misra_ratchet.py: ERROR -- results.txt parsed to zero findings; "
-            "a clean tree writes an empty baseline via --update, but an empty "
-            "parse in --check mode almost always means the audit itself broke "
-            "(cppcheck missing, addon missing, or dump generation failed)."
-        )
-        return 1
+    counts, details = loaded
 
     if args.update:
         write_baseline(BASELINE_FILE, counts)
