@@ -85,10 +85,54 @@ export fn ra8_delay_ms(milliseconds: u32) void {
     delay_count += 1;
 }
 
-export fn ra8_board_io_expander_apply_sw4_mask(output_byte: u8, output_mask: u8) u32 {
-    latch_output = output_byte;
-    latch_mask = output_mask;
-    return latch_err;
+// The U15 expander now lives in this archive, so the latch is observed where
+// it actually reaches the part: the output-latch and direction register
+// writes of the 0x43 device. Register numbers are the PI4IOE5V6408's.
+const u15_addr_7b: u8 = 0x43;
+const u15_reg_iodir: u8 = 0x03;
+const u15_reg_output: u8 = 0x05;
+
+export fn ra8_i2c_write(channel: u8, addr_7b: u8, data: [*]const u8, len: usize, send_stop: bool) u32 {
+    _ = channel;
+    _ = send_stop;
+    if (latch_err != Err.ok) return latch_err;
+    if (addr_7b != u15_addr_7b or len != 2) return Err.ok;
+    switch (data[0]) {
+        u15_reg_output => latch_output = data[1],
+        u15_reg_iodir => latch_mask = data[1],
+        else => {},
+    }
+    return Err.ok;
+}
+
+export fn ra8_i2c_init(channel: u8, cfg: *const extern struct { bus_hz: u32, pclkb_hz: u32 }) u32 {
+    _ = channel;
+    _ = cfg;
+    return Err.ok;
+}
+
+export fn ra8_gpio_input_init(pin: u16, pull: u32) u32 {
+    _ = pin;
+    _ = pull;
+    return Err.ok;
+}
+
+export fn ra8_gpio_read(pin: u16, out_level: *u32) u32 {
+    _ = pin;
+    out_level.* = 1;
+    return Err.ok;
+}
+
+export fn ra8_gpio_release(pin: u16) u32 {
+    _ = pin;
+    return Err.ok;
+}
+
+export fn ra8_mpc_set_open_drain(port: u32, pin_index: u32, enable: bool) u32 {
+    _ = port;
+    _ = pin_index;
+    _ = enable;
+    return Err.ok;
 }
 
 export fn ra8_io_i2c_bus_bind_riic(bus: *anyopaque, channel: u8) callconv(.c) u32 {
