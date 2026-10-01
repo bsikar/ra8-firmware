@@ -179,6 +179,13 @@ ROW_FIELDS = 2
 # is distinguishable from a truncated or hand-emptied one.  Both parse to zero
 # rows; only the first carries a matching declaration.
 ROW_COUNT_RE = re.compile(r"^#!\s*rows:\s*(\d+)\s*$")
+# The second declared section of the inventory: which CPU1 images route their
+# first-party sources through ra8_cpu1_add_first_party_sources(). A row of
+# escape debt says "this source is NOT on the bar"; a helper declaration says
+# "this image's sources ARE, by that call". Without it, deleting the call
+# reads exactly like an image that never had the sources at all.
+HELPER_DECL_RE = re.compile(r"^#!\s*helper:\s*(\S+)\s*$")
+HELPER_COUNT_RE = re.compile(r"^#!\s*helpers:\s*(\d+)\s*$")
 
 # Sources ra8_add_cpu1_image() appends to every CPU1 image itself; they are
 # part of the helper's per-source profile, so they are covered by definition.
@@ -306,6 +313,10 @@ class Image:
         self.covered: list[str] = []
         self.added: list[str] = []
         self.unresolved: list[str] = []
+        # True once an opt-in call naming THIS image was found, whatever its
+        # tokens resolved to. Coverage and an absent call both look like an
+        # empty ``covered`` list, so the call itself has to be recorded.
+        self.opt_in_call = False
 
     def escapes(self) -> list[str]:
         """App-added first-party translation units, i.e. the #843 hole."""
@@ -416,6 +427,7 @@ def collect_opt_in(listfile: Listfile, image: Image) -> None:
         tokens = block.split()
         if not tokens or expand_vars(tokens[0], listfile.setvars) != image.target:
             continue
+        image.opt_in_call = True
         for token in tokens[1:]:
             hits = resolve_source(
                 expand_vars(token, listfile.setvars), listfile.app_dir, listfile.globs
@@ -522,12 +534,61 @@ def inventory_findings(root: Path, images: list[Image]) -> list[str]:
     return findings
 
 
-def vacuity_error(root: Path, images: list[Image]) -> str:
-    """Non-empty message when the scan itself collapsed."""
-    if not images:
-        return f"no {HELPER}() call found under {', '.join(SEARCH_ROOTS)}"
-    if not any(image.covered for image in images):
-        return f"no profile-covered CPU1 source found; {HELPER}() parse collapsed"
+def read_helper_decls(root: Path) -> tuple[int | None, set[str]]:
+    """Return (declared count, declared targets) for the helper section."""
+    path = root / INVENTORY_REL
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None, set()
+    declared: int | None = None
+    targets: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        count = HELPER_COUNT_RE.match(line)
+        if count is not None:
+            declared = int(count.group(1))
+            continue
+        decl = HELPER_DECL_RE.match(line)
+        if decl is not None:
+            targets.add(decl.group(1))
+    return declared, targets
+
+
+def helper_findings(root: Path, images: list[Image]) -> list[str]:
+    """Every disagreement between the declared helper images and the tree.
+
+    This is the half the escape inventory cannot see. An image whose sources
+    reach the bar through ``ra8_cpu1_add_first_party_sources()`` has no escape
+    rows BY DESIGN, so deleting that call takes those sources off the bar (or
+    off the image entirely) and still leaves the escape inventory perfectly
+    satisfied: absence and coverage are the same silence to it. Declaring the
+    call makes its removal a finding instead.
+    """
+    _, declared = read_helper_decls(root)
+    calling = {image.target for image in images if image.opt_in_call}
+    gone = [
+        f"{target}: declared in {INVENTORY_REL} as putting its first-party sources on "
+        f"the bar via {FIRST_PARTY_HELPER}(), but no such call names it. Either the "
+        "call was removed (the sources are off the bar, or off the image) or the image "
+        "was renamed; restore the call, or drop the declaration and say why in review."
+        for target in sorted(declared - calling)
+    ]
+    undeclared = [
+        f"{target}: calls {FIRST_PARTY_HELPER}() but is not declared in "
+        f"{INVENTORY_REL}; add a '#! helper: {target}' line, so that deleting the call "
+        "later cannot pass as an image that never had those sources"
+        for target in sorted(calling - declared)
+    ]
+    return gone + undeclared
+
+
+def declaration_error(root: Path) -> str:
+    """Non-empty when the inventory cannot vouch for its own two sections.
+
+    Both sections self-declare their length, for the same reason: a truncated
+    or hand-emptied file must not read as zero debt and no image on the bar.
+    """
     readable, declared, rows = read_inventory_file(root)
     if not readable:
         return f"{INVENTORY_REL} is missing or unreadable"
@@ -542,6 +603,30 @@ def vacuity_error(root: Path, images: list[Image]) -> str:
             f"{INVENTORY_REL} declares '#! rows: {declared}' but holds {len(rows)} "
             "row(s); the declaration does not match the file"
         )
+    helpers, targets = read_helper_decls(root)
+    if helpers is None:
+        return (
+            f"{INVENTORY_REL} carries no '#! helpers: <n>' declaration; the helper "
+            "section cannot state its own length, so a truncated file must not read "
+            "as no image being on the bar"
+        )
+    if helpers != len(targets):
+        return (
+            f"{INVENTORY_REL} declares '#! helpers: {helpers}' but holds {len(targets)} "
+            "'#! helper:' line(s); the declaration does not match the file"
+        )
+    return ""
+
+
+def vacuity_error(root: Path, images: list[Image]) -> str:
+    """Non-empty message when the scan itself collapsed."""
+    if not images:
+        return f"no {HELPER}() call found under {', '.join(SEARCH_ROOTS)}"
+    if not any(image.covered for image in images):
+        return f"no profile-covered CPU1 source found; {HELPER}() parse collapsed"
+    declaration = declaration_error(root)
+    if declaration:
+        return declaration
     return profile_vacuity_error(root)
 
 
@@ -631,6 +716,11 @@ ROLLED_OPT_IN_EXTRA = """\
     target_compile_options(${CPU1_NAME}.elf PRIVATE -mcpu=cortex-m33 -Os)
     """
 _SOUP_SRC = "apps/shared_libs/third_party/miniz/miniz.c"
+# The helper section of a fixture inventory: no image on the bar by that route,
+# the hand-rolled image on it, the helper-built one on it.
+NO_HELPERS = "#! helpers: 0\n"
+ROLLED_HELPER = "#! helpers: 1\n#! helper: rolled_cpu1.elf\n"
+DEMO_HELPER = "#! helpers: 1\n#! helper: demo_cpu1.elf\n"
 
 
 def selftest_cases() -> list[tuple[str, str, str, str]]:
@@ -638,11 +728,16 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
     ipc_row = "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n"
     rolled = FIXTURE_LISTFILE + textwrap.dedent(HANDROLLED_EXTRA)
     rolled_opt_in = FIXTURE_LISTFILE + textwrap.dedent(ROLLED_OPT_IN_EXTRA)
-    one = "#! rows: 1\n"
-    two = "#! rows: 2\n"
+    one = "#! rows: 1\n" + NO_HELPERS
+    two = "#! rows: 2\n" + NO_HELPERS
     return [
         ("inventoried escape is quiet", one + ipc_row, "", FIXTURE_LISTFILE),
-        ("unlisted escape fires", "#! rows: 0\n# nothing\n", "not in .github", FIXTURE_LISTFILE),
+        (
+            "unlisted escape fires",
+            "#! rows: 0\n# nothing\n" + NO_HELPERS,
+            "not in .github",
+            FIXTURE_LISTFILE,
+        ),
         ("undeclared empty inventory fails closed", "", "declaration", FIXTURE_LISTFILE),
         ("undeclared inventory with rows fails closed", ipc_row, "declaration", FIXTURE_LISTFILE),
         (
@@ -673,9 +768,33 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
         ("hand-rolled CPU1 escape inventoried is quiet", two + ipc_row + ROLLED_ROW, "", rolled),
         (
             "opt-in naming a ${VAR} target is matched to that image",
-            two + ipc_row + ROLLED_ROW,
+            "#! rows: 2\n" + ROLLED_HELPER + ipc_row + ROLLED_ROW,
             "${NOT_A_VARIABLE}/ghost.c",
             rolled_opt_in,
+        ),
+        (
+            "deleting a declared opt-in call fires",
+            "#! rows: 1\n" + DEMO_HELPER + ipc_row,
+            "no such call names it",
+            FIXTURE_LISTFILE,
+        ),
+        (
+            "an undeclared opt-in call fires",
+            "#! rows: 0\n" + NO_HELPERS,
+            "is not declared in",
+            OPT_IN_LISTFILE,
+        ),
+        (
+            "helper count below the declaration fires",
+            "#! rows: 0\n#! helpers: 2\n#! helper: demo_cpu1.elf\n",
+            "does not match",
+            OPT_IN_LISTFILE,
+        ),
+        (
+            "a missing helper declaration fails closed",
+            "#! rows: 0\n",
+            "#! helpers:",
+            FIXTURE_LISTFILE,
         ),
     ]
 
@@ -703,12 +822,14 @@ def opt_in_cases() -> list[tuple[str, str, str]]:
     return [
         (
             "row for an opt-in source is stale",
-            "#! rows: 1\ndemo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n",
+            "#! rows: 1\n" + DEMO_HELPER + "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n",
             "stale",
         ),
         (
             "row for a helper-appended source is stale",
-            "#! rows: 1\ndemo_cpu1.elf libs/ra8_core/src/ra8_freestanding_mem.c\n",
+            "#! rows: 1\n"
+            + DEMO_HELPER
+            + "demo_cpu1.elf libs/ra8_core/src/ra8_freestanding_mem.c\n",
             "stale",
         ),
     ]
@@ -742,9 +863,8 @@ def run_case(
         if drop_cmake:
             (base / drop_cmake).unlink()
         images = find_images(base)
-        findings = inventory_findings(base, images) + profile_findings(
-            base, divergence if isinstance(divergence, dict) else None
-        )
+        findings = inventory_findings(base, images) + helper_findings(base, images)
+        findings += profile_findings(base, divergence if isinstance(divergence, dict) else None)
         return vacuity_error(base, images), findings
 
 
@@ -752,7 +872,7 @@ def bar_selftest_failures() -> list[str]:
     """Prove each bar rule fires on its own fixture and on no other's."""
     failures: list[str] = []
     for name, kwargs, expect in bar_cases():
-        error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE, bar=kwargs)
+        error, findings = run_case("#! rows: 0\n" + DEMO_HELPER, OPT_IN_LISTFILE, bar=kwargs)
         blob = " ".join([error, *findings])
         if expect and expect not in blob:
             failures.append(f"{name}: expected {expect!r} in {blob!r}")
@@ -783,7 +903,9 @@ def selftest() -> int:
     unresolved_listfile = FIXTURE_LISTFILE.replace(
         "${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c", "${SOME_APP_VAR}"
     )
-    error, findings = run_case("demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", unresolved_listfile)
+    error, findings = run_case(
+        "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n" + NO_HELPERS, unresolved_listfile
+    )
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("unresolved token: expected a finding")
     for name, inventory, expect in opt_in_cases():
@@ -794,16 +916,18 @@ def selftest() -> int:
         if "ra8_ipc.c: first-party CPU1 source" in blob:
             failures.append(f"{name}: opt-in source still counted as an escape: {blob!r}")
     blind = OPT_IN_LISTFILE.replace(_IPC_SRC, "${SOME_APP_VAR}")
-    error, findings = run_case("#! rows: 1\ndemo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", blind)
+    error, findings = run_case(
+        "#! rows: 1\n" + DEMO_HELPER + "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", blind
+    )
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("opt-in unresolved token: expected a finding, not silent coverage")
     # The #843 end state: every first-party source on the profile, the
     # inventory intact and declaring zero rows.  This must be SILENT, and a
     # missing file must not reach the same silence.
-    error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE)
+    error, findings = run_case("#! rows: 0\n" + DEMO_HELPER, OPT_IN_LISTFILE)
     if " ".join([error, *findings]).strip():
         failures.append(f"declared-zero inventory: expected silence, got {error} {findings}")
-    error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE, drop_inventory=True)
+    error, findings = run_case("#! rows: 0\n" + DEMO_HELPER, OPT_IN_LISTFILE, drop_inventory=True)
     if "missing or unreadable" not in " ".join([error, *findings]):
         failures.append("missing inventory: expected the missing-file fatal, not zero debt")
     failures += bar_selftest_failures()
@@ -839,7 +963,8 @@ def main(argv: list[str]) -> int:
     if error:
         print(f"check_cpu1_warning_profile.py: FATAL -- {error}", file=sys.stderr)
         return 2
-    findings = inventory_findings(root, images) + profile_findings(root)
+    findings = inventory_findings(root, images) + helper_findings(root, images)
+    findings += profile_findings(root)
     if findings:
         print(f"\n{len(findings)} CPU1 warning-profile finding(s):\n", file=sys.stderr)
         for finding in findings:
@@ -856,6 +981,8 @@ def main(argv: list[str]) -> int:
     print(
         f"check_cpu1_warning_profile.py: {len(images)} CPU1 image(s); "
         f"{escapes} inventoried first-party escape(s), none new; "
+        f"{len(read_helper_decls(root)[1])} declared on the bar by "
+        f"{FIRST_PARTY_HELPER}(); "
         f"CPU1 bar holds {len(profile_flags(root) or [])} flag(s), "
         f"{len(DECLARED_DIVERGENCE)} declared divergence(s) from the M85 set."
     )

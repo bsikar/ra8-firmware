@@ -66,7 +66,29 @@
 # legitimately reach zero rows when #843 is paid off: an intact inventory can
 # declare "#! rows: 0", while a truncated or hand-emptied one carries no
 # matching declaration and still fails closed.
+# THE SECOND SECTION: images on the bar BY OPT-IN.
+#
+# A row above records a source that is NOT on the bar. The lines below record
+# the opposite: a CPU1 image whose first-party sources reach the bar through
+# ra8_cpu1_add_first_party_sources(), which does the target_sources() AND puts
+# the per-source profile on the same files.
+#
+# Such an image has no escape rows by design, so without this section deleting
+# that call is invisible here: the sources come off the bar (or off the image
+# entirely) and the inventory above stays perfectly satisfied, because absence
+# and coverage are the same silence to it. A declared image whose call has gone
+# is a finding, and a call on an undeclared image is a finding too, so the list
+# cannot quietly drift in either direction. Removing a declaration is the same
+# kind of act as removing a row: say why in review.
+#
+# Format: "#! helper: <cpu1-target>", with "#! helpers: <n>" declaring how many
+# there are, exactly as "#! rows: <n>" does for the inventory above.
+
 #! rows: 5
+#! helpers: 3
+#! helper: compile_on_m33_cpu1.elf
+#! helper: cpu1_pingpong_ipc_cpu1.elf
+#! helper: ereader_m33_cpu1.elf
 cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c
