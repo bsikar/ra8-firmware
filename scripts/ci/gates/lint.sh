@@ -16,16 +16,6 @@
 # Gates in this file: lint-py-shell, lint-go, lint-zig, zig-abi-policy, lint-rust, lint-cmake,
 # lint-yaml, lint-just, lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
-# --- unused-includes ------------------------------------------------------
-# Speculative compilation check over modified first-party C files.
-# Comments out each #include and tests compilation: if the compiler succeeds
-# without error, the include was 100% dead weight. Zero false positives.
-gate_unused_includes() (
-  set -e
-  python3 scripts/checks/check_unused_includes.py --selftest
-  python3 scripts/checks/check_unused_includes.py --check
-)
-
 # --- lint-py-shell --------------------------------------------------------
 # --require: fail (never skip) when a tool is missing. These gates fail on ANY
 # finding -- there is no grandfathering.

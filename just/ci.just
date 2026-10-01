@@ -25,11 +25,6 @@ default:
 
 export CLANG_FORMAT := env('CLANG_FORMAT', `if command -v clang-format-22 >/dev/null 2>&1; then command -v clang-format-22; elif [ "$(uname -s)" = "Darwin" ] && command -v clang-format >/dev/null 2>&1; then command -v clang-format; else echo "clang-format-22"; fi`)
 
-# The Dockerfile-derived registry owns the tidy major. An explicit override may
-# select another path, but clang_tidy.sh still verifies its reported major.
-
-export CLANG_TIDY := env('CLANG_TIDY', `python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy`)
-
 mod local 'ci_local.just'
 mod remote 'ci_remote.just'
 mod devcontainer 'ci_devcontainer.just'

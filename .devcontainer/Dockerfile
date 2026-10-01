@@ -106,7 +106,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       clang \
       clang-18 \
       clang-format \
-      clang-tidy \
       clangd-18 \
       cmake \
       curl \

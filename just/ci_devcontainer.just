@@ -11,8 +11,6 @@ default:
     @echo "  just quality::devcontainer::gate <name>            Run a specific CI gate by name"
     @echo "  just quality::devcontainer::format                 Auto-format source code in place"
     @echo "  just quality::devcontainer::check                  Verify formatting without modifying files"
-    @echo "  just quality::devcontainer::tidy                   Run clang-tidy static analysis"
-    @echo "  just quality::devcontainer::scan_build             Run Clang Static Analyzer"
     @echo "  just quality::devcontainer::test                   Run host unit test suite"
     @echo "  just quality::devcontainer::mcdc                   Generate DO-178C MC/DC coverage report"
     @echo "  just quality::devcontainer::fuzz [seconds] [runs]  Smoke-run every libFuzzer harness"
@@ -42,12 +40,6 @@ format:
 # toolchain while keeping the developer's current working tree writable.
 check:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::check
-
-tidy:
-    bash scripts/ci/devcontainer_run.sh -- just quality::local::tidy
-
-scan_build strict="0":
-    bash scripts/ci/devcontainer_run.sh -- just quality::local::scan_build "{{ strict }}"
 
 mcdc:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::mcdc

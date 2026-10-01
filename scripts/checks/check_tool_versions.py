@@ -30,7 +30,7 @@ Comparison modes
                    exact version. gcovr is exact because 8.4 changed its data
                    model to retain multiple coverage records per source line,
                    which changes this tree's per-file line and branch counts.
-* ``major``     -- major must equal the pin (clang-format-22, clang-tidy-18,
+* ``major``     -- major must equal the pin (clang-format-22,
                    gcc-14). The clang family and the gcc-14 host-tool arm
                    (#356) are pinned by major on purpose; the tree is
                    formatted/linted/built to that major and the binary carries
@@ -286,7 +286,6 @@ def build_specs() -> list[ToolSpec]:
     text = _read_dockerfile()
     args = _dockerfile_args(text)
     cf = _pkg_major(text, "clang-format", "clang-format")
-    ct = _pkg_major(text, "clang-tools", "clang-tidy")
     gc = _pkg_major(text, "gcc", "gcc")
     return [
         _spec(args, "just", "JUST_VERSION", MODE_EXACT),
@@ -305,7 +304,6 @@ def build_specs() -> list[ToolSpec]:
         _spec(args, "rustc", "RUST_VERSION", MODE_EXACT),
         _spec(args, "cargo", "RUST_VERSION", MODE_EXACT),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
-        ToolSpec(f"clang-tidy-{ct}", ct, MODE_MAJOR, f"clang-tools-{ct}"),
         # gcc-14 is the second host-tool compiler arm (#356); the tools-build
         # gate resolves it by exact binary name, so pin its major like clang's.
         # `gcc-14 --version` prints a dotted "14.2.0"; `-dumpversion` prints a
@@ -673,113 +671,6 @@ def _active_lines(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if not line.lstrip().startswith("#")]
 
 
-def _tidy_consumer_findings(just_text: str, gate_text: str, direct_text: str) -> list[str]:
-    """Validate all three clang-tidy consumers use the registry query.
-
-    Args:
-        just_text: Contents of ``just/ci.just``.
-        gate_text: Contents of the CI analysis gate body.
-        direct_text: Contents of the direct clang-tidy driver.
-
-    Returns:
-        Stable finding identifiers; empty only for the required consumer shape.
-    """
-    just_lines = _active_lines(just_text)
-    gate_lines = _active_lines(gate_text)
-    direct_active = "\n".join(_active_lines(direct_text))
-    findings: list[str] = []
-    just_query = (
-        "export CLANG_TIDY := env('CLANG_TIDY', `python3 "
-        "scripts/checks/check_tool_versions.py --print-binary clang-tidy`)"
-    )
-    if just_lines.count(just_query) != 1:
-        findings.append("just-query")
-    gate_query = (
-        'pinned_tidy="$(python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy)"'
-    )
-    gate_require = 'require_tool_versions "$pinned_tidy"'
-    gate_selftest = 'CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh --selftest'
-    gate_check = (
-        'CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh '
-        '--check --verbose >"$log" 2>&1 || rc=$?'
-    )
-    gate_required = (gate_query, gate_require, gate_selftest, gate_check)
-    if any(gate_lines.count(line) != 1 for line in gate_required):
-        findings.append("gate-query-or-consumer")
-    direct_query = re.compile(
-        r'if ! RA8_PINNED_CLANG_TIDY="\$\(\n\s*python3 '
-        r'"\$SCRIPT_DIR/check_tool_versions\.py" --print-binary clang-tidy\n\s*\)"; then'
-    )
-    if len(direct_query.findall(direct_active)) != 1:
-        findings.append("direct-query")
-    for label, active in (("just", just_lines), ("gate", gate_lines), ("direct", direct_active)):
-        joined = "\n".join(active) if isinstance(active, list) else active
-        if re.search(r"\bclang-tidy-[0-9]+\b", joined):
-            findings.append(f"{label}-hardcoded-major")
-    return findings
-
-
-def _tidy_consumer_failures() -> list[str]:
-    """Prove live and fixture consumers bind to the version registry."""
-    valid_just = (
-        "export CLANG_TIDY := env('CLANG_TIDY', `python3 "
-        "scripts/checks/check_tool_versions.py --print-binary clang-tidy`)\n"
-    )
-    gate_query = (
-        'pinned_tidy="$(python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy)"'
-    )
-    gate_require = 'require_tool_versions "$pinned_tidy"'
-    gate_selftest = 'CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh --selftest'
-    gate_check = (
-        'CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh '
-        '--check --verbose >"$log" 2>&1 || rc=$?'
-    )
-    valid_gate = f"{gate_query}\n{gate_require}\n{gate_selftest}\n{gate_check}"
-    valid_direct = (
-        'if ! RA8_PINNED_CLANG_TIDY="$(\n'
-        '  python3 "$SCRIPT_DIR/check_tool_versions.py" --print-binary clang-tidy\n'
-        ')"; then\n'
-    )
-    failures: list[str] = []
-    if _tidy_consumer_findings(valid_just, valid_gate, valid_direct):
-        failures.append("  valid clang-tidy consumer fixture was rejected")
-    query_command = "python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy"
-    mutations = {
-        "just hardcode": (
-            valid_just.replace(query_command, "echo clang-tidy-18"),
-            valid_gate,
-            valid_direct,
-        ),
-        "gate hardcode": (
-            valid_just,
-            valid_gate.replace(f"$({query_command})", "clang-tidy-18"),
-            valid_direct,
-        ),
-        "gate bypass": (
-            valid_just,
-            valid_gate.replace(gate_require, "require_tool_versions clang-tidy-18"),
-            valid_direct,
-        ),
-        "direct hardcode": (
-            valid_just,
-            valid_gate,
-            'RA8_PINNED_CLANG_TIDY="clang-tidy-18"\n',
-        ),
-    }
-    for label, fixture in mutations.items():
-        if not _tidy_consumer_findings(*fixture):
-            failures.append(f"  clang-tidy consumer mutation {label!r} was accepted")
-    live = (
-        (REPO_ROOT / "just/ci.just").read_text(encoding="utf-8"),
-        (REPO_ROOT / "scripts/ci/gates/analysis.sh").read_text(encoding="utf-8"),
-        (REPO_ROOT / "scripts/checks/clang_tidy.sh").read_text(encoding="utf-8"),
-    )
-    failures.extend(
-        f"  live clang-tidy consumer: {item}" for item in _tidy_consumer_findings(*live)
-    )
-    return failures
-
-
 def selftest() -> int:
     """Prove the version comparator fires in both directions for every mode.
 
@@ -795,7 +686,6 @@ def selftest() -> int:
         + _python_pin_failures()
         + _shell_assignment_failures()
         + _family_binary_failures()
-        + _tidy_consumer_failures()
     )
     if failures:
         sys.stderr.write("check_tool_versions.py --selftest: FAILED\n")

@@ -1289,7 +1289,6 @@ ra8-firmware/
     reference/                 Committed datasheets and manuals (PDFs)
   .github/workflows/           CI
   .clang-format                Formatter config (copied verbatim from STAR rx72n)
-  .clang-tidy                  Linter config (naming, NASA Rule 4 thresholds)
   .clangd                      Editor integration (strips ARM flags clangd can't parse)
   .gitignore
   .gitattributes
