@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+// reserveLease is the lease these tests hand ReserveRunnerVM. It is NOT
+// MinUnclaimedLease: the bound is judged against the clock the store reads,
+// which is microseconds later than the one the caller computed, so a
+// deadline exactly MinUnclaimedLease away arrives just under the minimum and
+// the reservation is refused. Nothing here depends on the lease being short,
+// since each test moves the deadline into the past itself.
+const reserveLease = 2 * MinUnclaimedLease
+
 // The case #1473 names: a job cancelled after its credential was minted. The
 // reservation exists, nothing ever claimed it, and the deadline passes.
 func TestIntegrationReleaseUnclaimedRunnerVM(t *testing.T) {
@@ -21,7 +29,7 @@ func TestIntegrationReleaseUnclaimedRunnerVM(t *testing.T) {
 	defer cancel()
 	in := runnerVMTestInput(t)
 	now := time.Now().UTC()
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, now.Add(MinUnclaimedLease))
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, now.Add(reserveLease))
 	if err != nil || !created {
 		t.Fatalf("reserve: created=%v err=%v", created, err)
 	}
@@ -77,7 +85,7 @@ func TestIntegrationReleaseUnclaimedRefusesAClaimedReservation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	in := runnerVMTestInput(t)
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, time.Now().UTC().Add(MinUnclaimedLease))
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, time.Now().UTC().Add(reserveLease))
 	if err != nil || !created {
 		t.Fatalf("reserve: created=%v err=%v", created, err)
 	}
@@ -105,7 +113,7 @@ func TestIntegrationReleaseUnclaimedIsSingleWinner(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	in := runnerVMTestInput(t)
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, time.Now().UTC().Add(MinUnclaimedLease))
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, time.Now().UTC().Add(reserveLease))
 	if err != nil || !created {
 		t.Fatalf("reserve: created=%v err=%v", created, err)
 	}
