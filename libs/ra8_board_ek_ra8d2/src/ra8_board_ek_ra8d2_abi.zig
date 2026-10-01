@@ -11,6 +11,7 @@
 //! of it and a prefix would buy nothing.
 
 const audio = @import("internal/audio.zig");
+const backdrop = @import("internal/backdrop.zig");
 const bringup = @import("internal/bringup.zig");
 const camera = @import("internal/camera.zig");
 const camera_mode = @import("internal/camera_mode.zig");
@@ -280,6 +281,14 @@ export fn ra8_board_sw_attach_irq(
 
 export fn ra8_board_glcdc_init(fmt: u8) u32 {
     return glcdc.init(fmt);
+}
+
+export fn ra8_board_panel_backdrop_begin(rgb888: u32) u32 {
+    return backdrop.begin(rgb888);
+}
+
+export fn ra8_board_panel_backdrop_set(rgb888: u32) u32 {
+    return backdrop.set(rgb888);
 }
 
 export fn ra8_board_lcd_panel_power_on() u32 {
