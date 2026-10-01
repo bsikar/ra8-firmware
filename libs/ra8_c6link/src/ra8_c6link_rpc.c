@@ -174,11 +174,9 @@ RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
   if ((link == nullptr) || (req == nullptr) || (take == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!link->open) {
-    return k_ra8_err_not_initialized;
-  }
-  if (link->wait.armed || (link->tx_len != 0U)) {
-    return k_ra8_err_busy;
+  const ra8_err_t issuable = priv_c6link_rpc_issuable(link->open, link->wait.armed, link->tx_len);
+  if (issuable != k_ra8_ok) {
+    return issuable;
   }
 
   link->next_uid = link->next_uid + 1U;
@@ -337,18 +335,14 @@ RA8_INTERNAL static void internal_c6link_rpc_event(ra8_c6link_t* link, const Rpc
  * @pre @p link is open.
  * @post The wait is satisfied at most once.
  * @post The extractor ran exactly once when it matched.
- * @note All three conditions must hold: a UID that matches but an id that does
- *       not is a different question's answer arriving late.
+ * @note The three correlation conditions live in `internal/rpc_wait.zig`,
+ *       which host tests drive directly.
  * @since 0.1.0
- *
- * @par MC/DC:
- * `armed && uid == wait.uid && msg_id == wait.resp_id` is a three-condition
- * decision; `tests/wireless/src/test_ra8_c6link.c` drives the N+1 vectors.
  */
 RA8_INTERNAL static bool internal_c6link_rpc_answer(ra8_c6link_t* link, const Rpc* msg)
 {
-  if (!link->wait.armed || (msg->uid != link->wait.uid) ||
-      ((uint32_t)msg->msg_id != link->wait.resp_id)) {
+  if (!priv_c6link_rpc_answers(link->wait.armed, link->wait.uid, link->wait.resp_id, msg->uid,
+                               (uint32_t)msg->msg_id)) {
     return false;
   }
   link->wait.result    = link->wait.take(link->wait.take_ctx, msg);
