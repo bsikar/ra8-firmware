@@ -159,10 +159,18 @@ func TestIntegrationReleaseUnclaimedIsSingleWinner(t *testing.T) {
 // reaper's queue offers it, without the test waiting out a real lease. The
 // deadline column is deliberately not writable through the store, so the test
 // reaches for SQL rather than an API that should not exist.
+// expireUnclaimedDeadline ages a reservation until its deadline has genuinely
+// passed. Both timestamps move, because runner_vms_unclaimed_deadline_future
+// holds unclaimed_deadline > created_at: the row becomes one reserved an hour
+// ago whose deadline passed 59 minutes back, which is the case #1473 names.
+// Postgres reads the right-hand side of an UPDATE from the OLD row, so both
+// assignments are relative to the created_at the reservation was written with.
 func expireUnclaimedDeadline(ctx context.Context, t *testing.T, s *Store, reservationID string) {
 	t.Helper()
 	tag, err := s.pool.Exec(ctx, `UPDATE runner_vms
-		SET unclaimed_deadline=created_at + interval '1 second' WHERE id=$1`, reservationID)
+		SET created_at=created_at - interval '1 hour',
+		    unclaimed_deadline=created_at - interval '59 minutes'
+		WHERE id=$1`, reservationID)
 	if err != nil || tag.RowsAffected() != 1 {
 		t.Fatalf("expire deadline: %v rows=%d", err, tag.RowsAffected())
 	}
