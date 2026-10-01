@@ -879,32 +879,30 @@ def _target_findings(library: dict[str, Any], name: str, required_targets: set[s
     return findings
 
 
-def _library_findings(
+def _library_paths_findings(
     library: dict[str, Any],
-    required_targets: set[str],
+    name: str,
+    header_rows: list[dict[str, Any]],
+    adapter_paths: list[str],
     repository_root: Path = ROOT,
-    source_inventory: list[dict[str, Any]] | None = None,
-) -> list[str]:
-    """Return source, metadata, test, and compatibility findings for one library."""
+) -> tuple[list[str], Path]:
+    """Check the build root, pinned headers and adapters all exist on disk.
+
+    Returns the findings and the build root, so the caller does not rebuild a
+    path it already had to resolve to report a missing one.
+    """
     findings: list[str] = []
-    name = library.get("name", "<unnamed>")
-    prefix = library.get("symbol_prefix")
-    if not isinstance(prefix, str) or not prefix:
-        return [f"{name}: missing symbol_prefix"]
-    header_rows = _boundary_header_rows(library)
-    adapter_paths = _boundary_adapter_paths(library)
     if not header_rows:
         findings.append(f"{name}: missing public_header")
     if not adapter_paths:
         findings.append(f"{name}: missing adapter")
-    paths: dict[str, Path] = {}
     build_root_value = library.get("build_root")
-    paths["build_root"] = (
+    build_root = (
         repository_root / build_root_value
         if isinstance(build_root_value, str)
         else repository_root / "<missing>"
     )
-    if not paths["build_root"].exists():
+    if not build_root.exists():
         findings.append(f"{name}: missing build_root: {build_root_value}")
     for row in header_rows:
         value = row.get("path")
@@ -915,10 +913,80 @@ def _library_findings(
         for value in adapter_paths
         if not (repository_root / value).exists()
     )
+    return findings, build_root
+
+
+def _header_namespace_names(
+    name: str, header_rows: list[dict[str, Any]], header_texts: dict[str, str], prefix: str
+) -> tuple[set[str], list[str]]:
+    """Collect the declared C symbols across every pinned header.
+
+    A pinned header may front a different namespace than the library's own:
+    ra8_ota publishes the ra8_ota_ API from inc/ra8_ota.h and the promoted
+    priv_ota_ predicates from src/ra8_ota_internal.h, and both are ABI the port
+    has to keep. A row without its own symbol_prefix reads as before.
+    """
+    names: set[str] = set()
+    findings: list[str] = []
+    for row in header_rows:
+        row_prefix = row.get("symbol_prefix", prefix)
+        if not isinstance(row_prefix, str) or not row_prefix:
+            findings.append(f"{name}: malformed public header symbol_prefix: {row['path']}")
+            continue
+        names |= _header_exports(header_texts[row["path"]], row_prefix)
+    return names, findings
+
+
+def _layout_assertion_text(
+    name: str, library: dict[str, Any], build_root: Path, repository_root: Path
+) -> tuple[str, list[str]]:
+    """Gather representation-assertion text from the declared layout sources.
+
+    Representation assertions do not have to sit in the adapter: a port that
+    keeps its layout comptime asserts with the types they describe names those
+    files here, and they must live inside the build root so a row cannot claim
+    evidence from another library.
+    """
+    layout_sources = library.get("layout_sources", [])
+    if not isinstance(layout_sources, list) or not all(
+        isinstance(value, str) for value in layout_sources
+    ):
+        return "", [f"{name}: layout_sources must be a list of paths"]
+    findings: list[str] = []
+    text = ""
+    for value in layout_sources:
+        path = repository_root / value
+        try:
+            path.resolve().relative_to(build_root.resolve())
+        except ValueError:
+            findings.append(f"{name}: layout source is outside build root: {value}")
+            continue
+        if not path.is_file():
+            findings.append(f"{name}: missing layout source: {value}")
+            continue
+        text += "\n" + path.read_text(encoding="utf-8")
+    return text, findings
+
+
+def _library_findings(
+    library: dict[str, Any],
+    required_targets: set[str],
+    repository_root: Path = ROOT,
+    source_inventory: list[dict[str, Any]] | None = None,
+) -> list[str]:
+    """Return source, metadata, test, and compatibility findings for one library."""
+    name = library.get("name", "<unnamed>")
+    prefix = library.get("symbol_prefix")
+    if not isinstance(prefix, str) or not prefix:
+        return [f"{name}: missing symbol_prefix"]
+    header_rows = _boundary_header_rows(library)
+    adapter_paths = _boundary_adapter_paths(library)
+    findings, build_root = _library_paths_findings(
+        library, name, header_rows, adapter_paths, repository_root
+    )
     if findings:
         return findings
 
-    multi_header = len(header_rows) > 1
     header_texts = {
         row["path"]: (repository_root / row["path"]).read_text(encoding="utf-8")
         for row in header_rows
@@ -932,17 +1000,8 @@ def _library_findings(
     # backend header declares what the backend adapter exports.
     header_text = "\n".join(header_texts.values())
     adapter_text = "\n".join(adapter_texts.values())
-    # A pinned header may front a different namespace than the library's own:
-    # ra8_ota publishes the ra8_ota_ API from inc/ra8_ota.h and the promoted
-    # priv_ota_ predicates from src/ra8_ota_internal.h, and both are ABI the
-    # port has to keep. A row without its own symbol_prefix reads as before.
-    header_names: set[str] = set()
-    for row in header_rows:
-        row_prefix = row.get("symbol_prefix", prefix)
-        if not isinstance(row_prefix, str) or not row_prefix:
-            findings.append(f"{name}: malformed public header symbol_prefix: {row['path']}")
-            continue
-        header_names |= _header_exports(header_texts[row["path"]], row_prefix)
+    header_names, prefix_findings = _header_namespace_names(name, header_rows, header_texts, prefix)
+    findings.extend(prefix_findings)
     zig_names, zig_heads = _zig_exports(adapter_text)
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
@@ -973,36 +1032,15 @@ def _library_findings(
         source_inventory or [], library, repository_root
     ) | {(repository_root / value).resolve() for value in adapter_paths}
     findings.extend(
-        _adapter_scope_findings(
-            name,
-            paths["build_root"].resolve(),
-            declared_sources,
-            repository_root,
-        )
+        _adapter_scope_findings(name, build_root.resolve(), declared_sources, repository_root)
     )
-    # Representation assertions do not have to sit in the adapter: a port that
-    # keeps its layout comptime asserts with the types they describe names
-    # those files here, and they must live inside the build root so a row
-    # cannot claim evidence from another library.
-    assertion_text = adapter_text
-    layout_sources = library.get("layout_sources", [])
-    if not isinstance(layout_sources, list) or not all(
-        isinstance(value, str) for value in layout_sources
-    ):
-        findings.append(f"{name}: layout_sources must be a list of paths")
-    else:
-        for value in layout_sources:
-            path = repository_root / value
-            try:
-                path.resolve().relative_to(paths["build_root"].resolve())
-            except ValueError:
-                findings.append(f"{name}: layout source is outside build root: {value}")
-                continue
-            if not path.is_file():
-                findings.append(f"{name}: missing layout source: {value}")
-                continue
-            assertion_text += "\n" + path.read_text(encoding="utf-8")
+    layout_text, layout_findings = _layout_assertion_text(
+        name, library, build_root, repository_root
+    )
+    findings.extend(layout_findings)
+    assertion_text = adapter_text + layout_text
     findings.extend(_adapter_prefix_findings(name, library, repository_root))
+    multi_header = len(header_rows) > 1
     for row in header_rows:
         findings.extend(
             _compatibility_findings(
