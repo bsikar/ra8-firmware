@@ -59,3 +59,42 @@ pub fn forTarget(
     });
     return dependency.artifact(name).getEmittedBin();
 }
+
+/// The RA8 chip adapter the board archive's clock externs resolve against.
+///
+/// `libs/ra8_board_ek_ra8d2/src/internal/hal.zig:123` declares
+/// `fw_clock_ra8_iface` as a `pub extern`, and `internal/clock_profile.zig`
+/// calls it twice (`rate_for`, `set_gate`). The only definition in the tree is
+/// `libs/if_ra8_cgc/src/clock_ops_abi.zig:100`, so linking the board archive
+/// without this one leaves that symbol undefined in every image for the board.
+///
+/// `tests/cmake/zig_libraries.cmake:384` registers the same archive and its
+/// comment states the same coupling from the other side: the ops "reach
+/// ra8_cgc_get_clock_hz, ra8_mstp_enable / ra8_mstp_disable and fw_clock_bind
+/// as externs resolved at the final link, which is why this archive is linked
+/// beside fw_if_fs rather than standing alone". It is an adapter, never a
+/// standalone layer, and it travels with the board half of the link.
+///
+/// Guarded on the directory rather than on which board is selected: a board
+/// that never touches the CGC simply has no reference to resolve, and an
+/// archive contributing no referenced symbol costs the image nothing.
+pub const chip_clock_adapter = "if_ra8_cgc";
+
+/// Whether the chip clock adapter is present as a Zig layer to link.
+pub fn hasChipClockAdapter(b: *std.Build) bool {
+    const build_file = b.fmt("libs/{s}/build.zig", .{chip_clock_adapter});
+    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
+}
+
+/// The chip clock adapter archive, built for the consuming image's target.
+pub fn chipClockAdapterForTarget(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) std.Build.LazyPath {
+    const dependency = b.dependency(chip_clock_adapter, .{
+        .target = target,
+        .optimize = optimize,
+    });
+    return dependency.artifact(chip_clock_adapter).getEmittedBin();
+}

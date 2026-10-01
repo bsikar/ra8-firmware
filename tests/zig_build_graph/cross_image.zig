@@ -156,6 +156,30 @@ fn addCrossApp(
         )) catch @panic("OOM");
     }
 
+    // The RA8 chip clock adapter, immediately behind the board archive whose
+    // externs it resolves. ra8_board_ek_ra8d2's hal.zig declares
+    // fw_clock_ra8_iface as a pub extern and clock_profile.zig calls it; the
+    // only definition is libs/if_ra8_cgc/src/clock_ops_abi.zig. No app names
+    // if_ra8_cgc in LIBS and none ever will -- it is an adapter the board
+    // layer binds to, not a library an app chooses -- so the LIBS sweep below
+    // cannot reach it and the symbol stayed undefined in every board image.
+    // tests/cmake/zig_libraries.cmake:384 states the same coupling from the
+    // CMake side: these ops are "linked beside fw_if_fs rather than standing
+    // alone" precisely because they resolve at the final link.
+    if (board_archive.hasChipClockAdapter(b)) {
+        var names_adapter = false;
+        for (app.zig_libraries) |lib_name| {
+            if (std.mem.eql(u8, lib_name, board_archive.chip_clock_adapter)) names_adapter = true;
+        }
+        if (!names_adapter) {
+            archives.append(board_archive.chipClockAdapterForTarget(
+                b,
+                arm_target,
+                globals.configuration.zig_optimize,
+            )) catch @panic("OOM");
+        }
+    }
+
     // Every OTHER library the app names in LIBS that contributes an archive,
     // decided by cmake/ra8_app/sources.cmake:371's rule rather than by a copy
     // of its output: build.zig present AND the library's primary src/<lib>.c

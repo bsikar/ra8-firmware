@@ -21,6 +21,7 @@
         .ra8_sdmmc_spi = .{ .path = "libs/ra8_sdmmc_spi" },
         .ra8_tz_secure_boot = .{ .path = "libs/ra8_tz_secure_boot" },
         .ra8_usb_pal = .{ .path = "libs/ra8_usb_pal" },
+        .if_ra8_cgc = .{ .path = "libs/if_ra8_cgc" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
     },
     .paths = .{
