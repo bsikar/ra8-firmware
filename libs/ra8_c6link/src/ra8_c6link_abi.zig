@@ -25,6 +25,7 @@ const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
 const rx_route = @import("internal/rx_route.zig");
+const field_copy = @import("internal/field_copy.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -584,4 +585,14 @@ pub export fn priv_c6link_sta_credentials_valid(ssid_len: u8, pass_len: u8) call
 /// Returns the `rx_route.Route` ordinal, which `priv_c6link_route_t` mirrors.
 pub export fn priv_c6link_rx_route(if_type: u8) callconv(.c) u8 {
     return @intFromEnum(rx_route.routeFor(if_type));
+}
+
+/// `priv_c6link_field_take`: octets of a text field that fit a `cap`-octet destination.
+pub export fn priv_c6link_field_take(src_len: usize, cap: u8) callconv(.c) usize {
+    return field_copy.strTake(src_len, cap);
+}
+
+/// `priv_c6link_field_is_mac`: does this field carry exactly one hardware address?
+pub export fn priv_c6link_field_is_mac(src_len: usize) callconv(.c) bool {
+    return field_copy.macAcceptable(src_len);
 }
