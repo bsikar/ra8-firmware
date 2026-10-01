@@ -11,7 +11,7 @@
  * accidental newlib heap dependency traps into `ra8_fatal_error` and the
  * firmware halts, enforcing NASA Power of 10 Rule 3 (zero dynamic allocation).
  * On the host the production `_sbrk` is linked from the `ra8_core_zig` archive
- * (it was `ra8_core_hal` while the trap was C, #2895) but is never called
+ * (it was `ra8_core_hal` while the trap was C) but is never called
  * (glibc's `malloc` resolves its own program break), so the trap body cannot be
  * reached through any public path.
  *

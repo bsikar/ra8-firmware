@@ -1,6 +1,6 @@
 /**
  * @file ra8_vmem.h
- * @brief Byte-range page cache with SLRU eviction (Layer 2, #147).
+ * @brief Byte-range page cache with SLRU eviction (Layer 2).
  * @ingroup grp_ereader
  *
  * @par Tag

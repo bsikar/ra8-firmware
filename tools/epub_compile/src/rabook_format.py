@@ -66,7 +66,7 @@ def wrap_container(blob: bytes, chunk_bytes: int = CONTAINER_CHUNK_BYTES) -> byt
     return header + table + b"".join(streams)
 
 
-# Downscale is OPT-IN (owner decision, issue #210): the default preserves the
+# Downscale is OPT-IN (owner decision): the default preserves the
 # source resolution because any compile-time pixel loss is unrecoverable at
 # zoom time (the planned press-and-hold loupe re-magnifies small manga text).
 # 0 means no clamp. Pass --max-edge N to opt into a long-edge clamp where the

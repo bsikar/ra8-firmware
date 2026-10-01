@@ -29,7 +29,7 @@
  * two extracted primitives compose on their own.
  *
  * @note **hw_pending.** eth is HW-blocked on silicon (the EK-RA8D2 Ethernet
- * wire is marginal, issue #21), so this app is compile-gated and bench-only;
+ * wire is marginal), so this app is compile-gated and bench-only;
  * it makes no claim of hardware validation. The COMA/RGMII register accesses
  * are host-tested in ``tests/misc/src/test_ra8_eth_coma.c`` /
  * ``tests/misc/src/test_ra8_eth.c``.

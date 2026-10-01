@@ -25,7 +25,7 @@
 # The core manager TU (rabook_import.c) depends only on ra8_fs + ra8_core. The
 # adapter TU (rabook_import_compiler.c) additionally pulls epub,
 # rabook_compile, and ra8_mem (the bounded page cache the streamed source is
-# fronted with, #230) and is only needed by apps that wire the real compiler.
+# fronted with) and is only needed by apps that wire the real compiler.
 #
 # Header-and-source library; no standalone build target. Firmware apps list
 # `rabook_import` in ra8_add_app(LIBS ...); the host test build folds the

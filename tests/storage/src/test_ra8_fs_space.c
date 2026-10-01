@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_space.c
- * @brief Free / used / total space query (`ra8_fs_free_space()`, #678).
+ * @brief Free / used / total space query (`ra8_fs_free_space()`).
  *
  * @details
  * Formats a RAM card as FAT16, FAT32 and exFAT, mounts it, and checks that

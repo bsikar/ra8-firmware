@@ -739,7 +739,7 @@ static ra8_err_t internal_exfat_write_mbr(const ra8_fs_backend_t* backend,
  *          device too small for the minimum volume plus the alignment gap,
  *          and one whose partition would not fit the MBR's 32-bit fields
  *          (past-2-TiB media arrive GPT-partitioned; mounting them is the
- *          supported half, #683).
+ *          supported half).
  *
  * @param[in]  total_sectors    Whole-device sector count.
  * @param[in]  bps              Device sector size (a power of two, 512..4096).

@@ -384,7 +384,7 @@ typedef struct {
   char     embedded_font_paths[k_epub_max_fonts]
                               [k_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
 
-  /* --- Manifest (document order, #151) -------------------------------- */
+  /* --- Manifest (document order) -------------------------------- */
   uint16_t manifest_count; /**< `<manifest>` `<item>` entries stored (<= cap). */
   /** Items, OPF order. */
   epub_manifest_item_t manifest[k_epub_max_manifest];
@@ -809,7 +809,7 @@ epub_get_cover_image(epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t
 [[nodiscard]] uint16_t epub_manifest_count(const epub_book_t* book);
 
 /**
- * @brief Borrow the manifest item at @p index (OPF document order, #151).
+ * @brief Borrow the manifest item at @p index (OPF document order).
  *
  * @details
  * Returns a const pointer into the book's retained manifest array; the storage

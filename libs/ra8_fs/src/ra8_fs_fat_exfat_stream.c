@@ -111,7 +111,7 @@ static ra8_err_t internal_exfat_pick_cluster(const ra8_fs_mount_t* m,
  * @details The reusable core of the `NoFatChain` conversion, on explicit run
  *          coordinates rather than a file handle, so both the file streaming
  *          path (::priv_exfat_link_cluster) and the directory growth path
- *          (::priv_exfat_dir_link, #677) drive the identical logic. Links every
+ *          (::priv_exfat_dir_link) drive the identical logic. Links every
  *          already-allocated cluster of the run to its successor -- the run is
  *          contiguous, so a cluster's successor is the next integer -- and the
  *          tail to @p next. The caller writes @p next's end-of-chain marker and
@@ -668,7 +668,7 @@ static ra8_err_t internal_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, ui
  *          it is about to write exists.
  *
  * @param[in,out] file     Open exFAT handle.
- * @param[in]     pos      Byte position within the file (64-bit, #676).
+ * @param[in]     pos      Byte position within the file (64-bit).
  * @param[out]    out_lba  Receives the volume-relative sector holding @p pos.
  * @param[out]    out_off  Receives the byte offset of @p pos inside it.
  * @param[out]    out_room Receives the bytes from @p pos to the sector's end.

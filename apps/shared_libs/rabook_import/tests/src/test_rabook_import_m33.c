@@ -1,6 +1,6 @@
 /**
  * @file test_rabook_import_m33.c
- * @brief Host test for the M33-offload import adapter (rabook_import, #149).
+ * @brief Host test for the M33-offload import adapter (rabook_import).
  *
  * @par Tag
  * [Ring 4 / Test] {World: NS}
@@ -836,7 +836,7 @@ RA8_INTERNAL static void internal_test_m33_adapter_uses_clean_result_no_fallback
 /**
  * @test A source larger than the cross-core transport buffer is reported as a
  *       transport overflow BEFORE dispatch, and the streamed in-core fallback
- *       (which has no size ceiling, #230) still imports it to the golden blob.
+ *       (which has no size ceiling) still imports it to the golden blob.
  *
  * @details The cookie's @p epub_load_cap is shrunk below the parity fixture's
  * length, so `s_read_whole_file` reports `k_ra8_err_no_mem` without ever

@@ -17,7 +17,7 @@ site, indexes the manuals under `docs/`, parses the C sources and headers,
 audits `@since` tags, and backs the doc-attachment and warning gates.
 
 That worked while every first-party line was C. It no longer holds. Libraries
-are moving to Zig behind unchanged C headers (`epic:zig-migration`, #855), the
+are moving to Zig behind unchanged C headers (`epic:zig-migration`), the
 host and HIL harnesses are Rust, and the tooling is Python and Go. Doxygen
 cannot parse Zig or Rust at all: it does not read `///` doc comments, struct
 declarations, comptime constructs, traits, or safety contracts in either

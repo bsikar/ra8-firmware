@@ -4,7 +4,7 @@
  *
  * @details
  * The .rabook image pipeline may downscale a raster when the caller opts in with
- * a max-edge clamp (default off, issue #210). The desktop compiler
+ * a max-edge clamp (default off). The desktop compiler
  * (tools/epub_compile/src/epub_compile.py, resampling via tools/epub_compile/
  * src/gray4_kernel.py) and the firmware (ra8_rabook_gray4_downscale + _encode) MUST
  * emit the same 4-bpp bytes for that path -- one deterministic integer kernel, not

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/src/main.c
- * @brief DRW display-list (DLR) clear+fill demo -- loop-stable (EK-RA8D2, #247)
+ * @brief DRW display-list (DLR) clear+fill demo -- loop-stable (EK-RA8D2)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

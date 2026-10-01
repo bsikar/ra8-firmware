@@ -6,7 +6,7 @@
  * @details
  * The manga / comic half of the tap-to-zoom viewer, and the half that answers
  * the residency question. A full-resolution comic page does not fit in RAM, so
- * it lives as a tiled atlas (JOF, #231) paged through an ::ra8_tile_cache. This
+ * it lives as a tiled atlas (JOF) paged through an ::ra8_tile_cache. This
  * adapter turns "give me source rectangle (x,y,w,h)" into "get exactly the tiles
  * that rectangle intersects, copy the overlap, release them" -- so the resident
  * set at any instant is the tiles under the viewport and never the page.

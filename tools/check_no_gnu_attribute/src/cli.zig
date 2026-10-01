@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The argv membrane and the exit-status contract of the GNU-attribute gate
-//! (RA8FW-335, #1178). Everything here is parameterised on a directory handle, a
+//! (RA8FW-335). Everything here is parameterised on a directory handle, a
 //! repo root and both output streams, so the whole contract is exercised by
 //! `tests/cli_test.zig` against a temporary tree with no process spawning.
 //!

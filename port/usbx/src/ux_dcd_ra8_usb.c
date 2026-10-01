@@ -385,7 +385,7 @@ RA8_INTERNAL static ra8_err_t internal_init_bind_owner(ra8_usb_speed_t speed)
                       "ra8_isr_register");
   internal_usbfs_storm_guard_init(speed);
 #else
-  /* RA8_USB_POLLED_ONLY (TrustZone NS image, #96): the worker drives the
+  /* RA8_USB_POLLED_ONLY (TrustZone NS image): the worker drives the
    * controller by calling ra8_usb_dispatch() in a tight loop instead of taking
    * the USB NVIC line. The ICU IELSR + NVIC are Secure-attributed and would
    * fault from Non-secure state, so skip ra8_isr_register entirely. Bus events,

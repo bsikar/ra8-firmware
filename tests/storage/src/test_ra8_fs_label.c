@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_label.c
- * @brief Runtime volume-label read/set round-trips (`ra8_fs_{get,set}_label`, #682).
+ * @brief Runtime volume-label read/set round-trips (`ra8_fs_{get,set}_label`).
  *
  * @details
  * Round-trips a label through ::ra8_fs_set_label / ::ra8_fs_get_label on FAT16,

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_keycache.c
- * @brief Unit tests for the reusable ra8_mem keyed-LRU cache (Layer 3, #147).
+ * @brief Unit tests for the reusable ra8_mem keyed-LRU cache (Layer 3).
  *
  * @details
  * Exercises render-on-miss + hit (with rendered content + the user descriptor),

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_vsource.c
- * @brief Unit tests for the ra8_mem object-source registry (Layer 1, #147).
+ * @brief Unit tests for the ra8_mem object-source registry (Layer 1).
  *
  * @details
  * Exercises paged + XIP registration, the loader adapter (content + zero-padded

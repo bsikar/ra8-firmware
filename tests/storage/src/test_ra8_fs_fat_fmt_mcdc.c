@@ -86,7 +86,7 @@ RA8_INTERNAL static void internal_seed_valid_bpb(void)
  *
  * Field guard `if (bpb_bps != m->bytes_per_sector || sectors_per_cluster == 0 ||
  * num_fats == 0)` (3 conditions; the BPB size must equal the DEVICE size seeded
- * at mount, #683), reached only once the signature is valid:
+ * at mount), reached only once the signature is valid:
  * - V4: bps match, spc=1, fats=2 -> F,F,F -> dec F (returns ok).
  * - V5: bps mismatch       -> C1=T short          -> validation_failed.
  * - V6: spc==0 (bps ok)    -> C1=F,C2=T short      -> validation_failed.

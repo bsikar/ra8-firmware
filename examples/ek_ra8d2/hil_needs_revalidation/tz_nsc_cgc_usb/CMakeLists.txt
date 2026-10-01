@@ -154,7 +154,7 @@ file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
      "${_ra8_usbx_root}/common/usbx_device_classes/src/ux_device_class_cdc_acm_*.c"
 )
 
-# The timebase is Zig in ra8_core's archive since #2851, so the NS image can no
+# The timebase is Zig in ra8_core's archive, so the NS image can no
 # longer decline it by leaving a TU out of this list. It does not have to: the
 # port exports ra8_time_init / ra8_time_ms / ra8_delay_ms WEAK, and the strong
 # ThreadX-backed ra8_delay_ms and ra8_time_ms in ns_usb.c win over them. That

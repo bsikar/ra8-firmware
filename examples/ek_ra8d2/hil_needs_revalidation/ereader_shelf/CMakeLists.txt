@@ -30,7 +30,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # 1024x600 panel. book + miniz inflate the compressed .rabook blobs (baked in
 # MRAM via library.h, or read from SD). src/*.c hold the per-screen modules.
 # comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
-# for the full-page comic reader (sh_comic.c, #236); it reuses epub's
+# for the full-page comic reader (sh_comic.c); it reuses epub's
 # miniz-with-ZIP + static pool, already a dep here.
 ra8_add_app(
   NAME ereader_shelf

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/inc/sh_classify.h
- * @brief Book-format classification by file extension (long-name aware, #633).
+ * @brief Book-format classification by file extension (long-name aware).
  *
  * @details
  * The shelf scans the FAT root and decides which files are books and in what

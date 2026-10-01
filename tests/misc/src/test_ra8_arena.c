@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_arena.c
- * @brief Unit tests for the ra8_mem init-time bump arena (Layer 0, #147).
+ * @brief Unit tests for the ra8_mem init-time bump arena (Layer 0).
  *
  * @details
  * Exercises aligned carving (alignment honoured, blocks non-overlapping,

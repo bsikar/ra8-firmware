@@ -1,6 +1,6 @@
 /**
  * @file test_rabook_pipeline.c
- * @brief End-to-end EPUB -> RABOOK1 pipeline test (ra8_rabook_pipeline, #149).
+ * @brief End-to-end EPUB -> RABOOK1 pipeline test (ra8_rabook_pipeline).
  *
  * @details
  * Exercises @ref rabook_compile_from_epub -- the only entry point that wires

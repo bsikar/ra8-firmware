@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_check.c
- * @brief Read-only volume consistency check (`ra8_fs_check()`, #610) -- detection.
+ * @brief Read-only volume consistency check (`ra8_fs_check()`) -- detection.
  *
  * @details
  * Formats a RAM card as FAT12/16/32 and exFAT and asserts two things about

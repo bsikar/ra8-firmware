@@ -251,7 +251,7 @@ macro(_ra8_app_collect_sources)
   # A board layer with a build.zig contributes its objects through the Zig
   # archive, exactly as the two LIBS loops below do for any other ported
   # library. Register it whenever the build.zig is there, whether the flip is
-  # finished (no C left outside src/boot/, ra8_board_ra8p1, #2984) or only
+  # finished (no C left outside src/boot/, ra8_board_ra8p1) or only
   # partway (support C such as ra8_board_ek_ra8d2_mipi_panel.c still compiles
   # beside the archive, ra8_board_ek_ra8d2, RA8FW-365/#3033).
   #
@@ -499,9 +499,9 @@ macro(_ra8_app_collect_sources)
     endforeach()
   endif()
 
-  # reflow's glyph rasteriser (reflow_render.c, #164) caches glyph bitmaps
+  # reflow's glyph rasteriser (reflow_render.c) caches glyph bitmaps
   # through the Layer-3 ra8_glyph_atlas, and book's paged accessor
-  # (book_paged.c / book_xhtml.c, #163) reads books through the ra8_vmem
+  # (book_paged.c / book_xhtml.c) reads books through the ra8_vmem
   # page cache -- both in libs/ra8_mem. ra8_mem depends only on ra8_core, so wire
   # it in automatically for reflow / book consumers (mirroring the stb
   # special-case above), unless the app already lists ra8_mem in LIBS -- in which

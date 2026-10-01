@@ -405,7 +405,7 @@ int priv_print_crossover(cb_sink_t*       sink,
   return (cb_sink_format(sink,
                          "Caveat: these are host numbers -- per-request cost here is only the "
                          "chunk lookup + zlib stream setup. SD-over-SPI adds real per-command "
-                         "overhead (CMD17 loops, #202), which pushes the knee toward larger "
+                         "overhead (CMD17 loops), which pushes the knee toward larger "
                          "blocks; the hardware leg of #208 must re-run this sweep on the bench "
                          "before shrinking the chunk size below the default.\n") == k_cb_io_ok)
            ? 0
