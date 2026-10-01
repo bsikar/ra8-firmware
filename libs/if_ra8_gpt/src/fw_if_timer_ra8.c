@@ -31,6 +31,16 @@
 #include "fw_if_timer.h"
 #include "ra8_err.h"
 #include "ra8_gpt.h"
+#include "ra8_gpt_capture.h"
+
+/** @brief Per-channel capture state; cleared on close. */
+typedef struct {
+  bool armed;   /**< Opened through fw_timer_ra8_open_capture.   */
+  bool latched; /**< An edge has latched GTCCRA since that open. */
+} internal_capture_t;
+
+/** @brief Capture state, indexed by chip channel. */
+static internal_capture_t s_capture[k_fw_timer_ra8_channel_count];
 
 /**
  * @brief Whether @p ch is open here.
@@ -119,6 +129,10 @@ static ra8_err_t internal_close(void* ctx, fw_timer_ch_t ch)
   if (!internal_is_open(ch)) {
     return k_ra8_err_invalid_state;
   }
+  if (s_capture[ch.index].armed) {
+    (void)ra8_gpt_capture_configure(ch.index, k_ra8_gpt_ccr_a, k_ra8_gpt_cap_src_none);
+  }
+  s_capture[ch.index] = (internal_capture_t){};
   fw_gpt_ra8_release(ch.index, k_fw_gpt_ra8_owner_timer);
   return ra8_gpt_deinit(ch.index);
 }
@@ -194,19 +208,38 @@ static ra8_err_t internal_set_period(void* ctx, fw_timer_ch_t ch, uint32_t perio
 }
 
 /**
- * @brief Capture is not offered; see the header.
+ * @brief Count latched in GTCCRA by the most recent capture edge.
+ *
+ * @details A set GTST.TCFA marks a new edge; it is cleared alone and
+ *          remembered, so a later call with no new edge still returns the
+ *          last latched count rather than ::k_ra8_err_would_block.
  *
  * @param[in]  ctx        Unused.
- * @param[in]  ch         Unused.
- * @param[out] out_counts Unused.
- * @return ::k_ra8_err_not_supported always.
+ * @param[in]  ch         Chip channel.
+ * @param[out] out_counts Latched count on success.
+ * @return ::k_ra8_ok, ::k_ra8_err_invalid_state when not open for capture,
+ *         ::k_ra8_err_would_block before the first edge, or what the GPT
+ *         driver reported.
  */
 static ra8_err_t internal_capture_read(void* ctx, fw_timer_ch_t ch, uint32_t* out_counts)
 {
   (void)ctx;
-  (void)ch;
-  (void)out_counts;
-  return k_ra8_err_not_supported;
+  if (!internal_is_open(ch) || !s_capture[ch.index].armed) {
+    return k_ra8_err_invalid_state;
+  }
+  uint32_t        status = 0U;
+  const ra8_err_t st_err = ra8_gpt_get_status(ch.index, &status);
+  if (st_err != k_ra8_ok) {
+    return st_err;
+  }
+  if ((status & (uint32_t)k_ra8_gpt_status_ccra) != 0U) {
+    s_capture[ch.index].latched = true;
+    (void)ra8_gpt_clear_status(ch.index, (uint32_t)k_ra8_gpt_status_ccra);
+  }
+  if (!s_capture[ch.index].latched) {
+    return k_ra8_err_would_block;
+  }
+  return ra8_gpt_capture_read(ch.index, k_ra8_gpt_ccr_a, out_counts);
 }
 
 /**
@@ -260,4 +293,26 @@ const fw_timer_iface_t* fw_timer_ra8_iface(void)
 ra8_err_t fw_timer_ra8_bind(fw_timer_t* tmr)
 {
   return fw_timer_bind(tmr, &k_internal_iface, nullptr);
+}
+
+ra8_err_t fw_timer_ra8_open_capture(fw_timer_ch_t ch, uint32_t period, uint32_t source_mask)
+{
+  if (ch.index >= (uint8_t)k_fw_timer_ra8_channel_count) {
+    return k_ra8_err_not_found;
+  }
+  if ((period == 0U) || (source_mask == 0U) ||
+      ((source_mask & ~(uint32_t)k_ra8_gpt_cap_src_valid_mask) != 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  ra8_err_t err = internal_open(nullptr, ch, k_fw_timer_mode_free_run, period);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = ra8_gpt_capture_configure(ch.index, k_ra8_gpt_ccr_a, source_mask);
+  if (err != k_ra8_ok) {
+    (void)internal_close(nullptr, ch);
+    return err;
+  }
+  s_capture[ch.index] = (internal_capture_t){.armed = true, .latched = false};
+  return k_ra8_ok;
 }

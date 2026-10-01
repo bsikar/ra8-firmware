@@ -32,10 +32,11 @@
  * the full 32-bit range. The counter is clocked from PCLKD with no prescaler.
  *
  * @par What is refused
- *   - capture: a GPT capture needs a source route (pin edge or ELC event) and
- *     the port's open carries none, so `has_capture` is false and
- *     `capture_read` returns ::k_ra8_err_not_supported until a board profile
- *     can supply one;
+ *   - capture through the port's own open: a GPT capture needs a source
+ *     route (pin edge or ELC event) and the port's open carries none, so the
+ *     bare adapter reports `has_capture` false. A board binding that knows
+ *     its routes opens capture with ::fw_timer_ra8_open_capture instead, then
+ *     reads through the ordinary `capture_read` op;
  *   - opening a channel already open, through this port or through the PWM
  *     adapter on the same block: ::k_ra8_err_busy, because `ra8_gpt_init`
  *     takes a module-stop reference and reprograms the whole channel;
@@ -94,6 +95,37 @@ const fw_timer_iface_t* fw_timer_ra8_iface(void);
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t fw_timer_ra8_bind(fw_timer_t* tmr);
+
+/**
+ * @brief Open a channel for input capture on capture register A.
+ *
+ * @details
+ * The board-side half of capture: the port's open carries no source, so a
+ * board binding that knows which pin edge or ELC event feeds a timer calls
+ * this in place of `open` when asked for ::k_fw_timer_mode_capture. The
+ * counter runs free on PCLKD with wrap point @p period, stopped until
+ * `start`; each selected edge latches the count into GTCCRA. The channel is
+ * then an ordinary open timer channel: `start`, `stop`, `read`, `close` and
+ * `capture_read` all apply. Pin routing stays the caller's job.
+ *
+ * @param[in] ch          Chip channel, 0..9.
+ * @param[in] period      Wrap point; nonzero.
+ * @param[in] source_mask OR of `k_ra8_gpt_cap_src_*` bits from
+ *                        `ra8_gpt_capture.h`; nonzero, no reserved bit.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              Open, armed, not running.
+ * @retval k_ra8_err_not_found   @p ch past the ten channels.
+ * @retval k_ra8_err_invalid_arg Zero @p period, or an empty or reserved
+ *                               @p source_mask.
+ * @retval k_ra8_err_busy        Either adapter already holds the channel.
+ * @retval (other)               What `ra8_gpt_init` or
+ *                               `ra8_gpt_capture_configure` reported; the
+ *                               channel is released again.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+fw_timer_ra8_open_capture(fw_timer_ch_t ch, uint32_t period, uint32_t source_mask);
 
 #ifdef __cplusplus
 }
