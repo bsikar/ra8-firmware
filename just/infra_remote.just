@@ -6,33 +6,7 @@ set working-directory := ".."
 default:
     @echo "INFRA (REMOTE)"
     @echo ""
-    @echo "  just infra::remote::reconcile_apply <ssh-host>   Restart the reconciler service"
-    @echo "  just infra::remote::reconcile_status <ssh-host>  Show reconciler status and logs"
-    @echo "  just infra::remote::logs <ssh-host>              Follow reconciler logs"
-    @echo "  just infra::remote::status <ssh-host>            Show prepared host service state"
     @echo "  just infra::remote::dashboard                    Show runner and host health dashboard"
-
-# Reconcile from the prepared infrastructure control host.
-reconcile_apply host:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "==> remote infra reconcile: {{ host }}"
-    echo "==> starting ra8-fleet-reconcile.service; follow logs with:"
-    echo "    just infra::remote::logs {{ host }}"
-    ssh "{{ host }}" 'sudo systemctl restart ra8-fleet-reconcile.service'
-    ssh "{{ host }}" 'sudo systemctl status ra8-fleet-reconcile.service --no-pager --full'
-
-# Show the control host's reconciler state and recent result.
-reconcile_status host:
-    ssh "{{ host }}" 'systemctl status ra8-fleet-reconcile.service --no-pager --full; echo "== recent logs =="; sudo journalctl -u ra8-fleet-reconcile.service -n 40 --no-pager'
-
-# Follow reconciliation logs live.
-logs host:
-    ssh "{{ host }}" 'sudo journalctl -fu ra8-fleet-reconcile.service'
-
-# Show the prepared host's fleet service state.
-status host:
-    ssh "{{ host }}" 'systemctl is-active ra8-fleet-reconcile.service; sudo systemctl status ra8-fleet-reconcile.service --no-pager --full'
 
 # Continuously display GitHub runner, ARC, host, and process health.
 dashboard:
