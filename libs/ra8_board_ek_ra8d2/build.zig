@@ -111,6 +111,12 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "touch",
+            .source = "src/internal/touch.zig",
+            .root = "tests/touch_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "camera_mode",
             .source = "src/internal/camera_mode.zig",
             .root = "tests/camera_mode_test.zig",
