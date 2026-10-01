@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 452 reference(s)
+# clock: 441 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -23,7 +23,7 @@ examples/_unsupported/threadx_https_client/src/main.c	clock	2
 examples/_unsupported/threadx_nimble_peripheral/src/main.c	clock	2
 examples/_unsupported/threadx_sdcard_demo/src/main.c	clock	1
 examples/_unsupported/usb_audio_device/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	gpio	2
@@ -32,7 +32,7 @@ examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	gpio	2
-examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	timer	3
 examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/src/main.c	clock	1
@@ -42,18 +42,18 @@ examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c	gpio	2
-examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	timer	4
-examples/ek_ra8d2/hil_needs_revalidation/power_profiler/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/power_profiler/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c	clock	1
@@ -68,7 +68,7 @@ examples/ek_ra8d2/hil_needs_revalidation/rtc_alarm/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/rtc_periodic_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/touch_cal/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/touch_demo/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	clock	4
+examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	clock	3
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	gpio	1
 examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/battery_monitor_demo/src/main.c	clock	3
