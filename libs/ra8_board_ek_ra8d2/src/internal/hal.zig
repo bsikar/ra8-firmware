@@ -124,3 +124,78 @@ pub extern fn fw_clock_bind(
     ctx: ?*anyopaque,
 ) u32;
 pub extern fn fw_clock_ra8_iface() *const clock.FwClockIface;
+
+/// `ra8_gpt_cfg_t`. `mode` and `prescaler` are each `enum : uint8_t`.
+pub const GptCfg = extern struct {
+    mode: u8,
+    prescaler: u8,
+    period: u32,
+    duty_a: u32,
+    duty_b: u32,
+    auto_start: bool,
+};
+
+/// `ra8_gpt_pwm_pin_cfg_t`. The three encodings are each `enum : uint8_t`.
+pub const GptPwmPinCfg = extern struct {
+    output_enable: bool,
+    polarity: u8,
+    stop_level: u8,
+    disable_on_fault: u8,
+};
+
+pub extern fn ra8_gpt_init(channel: u8, cfg: *const GptCfg) u32;
+pub extern fn ra8_gpt_pwm_pin_configure(channel: u8, pin: u8, cfg: *const GptPwmPinCfg) u32;
+pub extern fn ra8_delay_ms(milliseconds: u32) void;
+pub extern fn ra8_board_io_expander_apply_sw4_mask(output_byte: u8, output_mask: u8) u32;
+
+/// `ra8_i2c_bus_ops_t`, the Ring-3 facade the sensor driver is handed.
+pub const I2cBusOps = extern struct {
+    write: ?*const fn (
+        ctx: ?*anyopaque,
+        addr: u8,
+        data: [*]const u8,
+        len: u32,
+        send_stop: bool,
+    ) callconv(.c) u32,
+    read: ?*const fn (ctx: ?*anyopaque, addr: u8, data: [*]u8, len: u32) callconv(.c) u32,
+    transfer: ?*const fn (
+        ctx: ?*anyopaque,
+        addr: u8,
+        wr: [*]const u8,
+        wr_len: u32,
+        rd: [*]u8,
+        rd_len: u32,
+    ) callconv(.c) u32,
+    ctx: ?*anyopaque,
+};
+
+/// `ra8_io_i2c_bus_t`. Both members are private to `ra8_io`; this side only
+/// ever hands the address back, never reads through it.
+pub const IoI2cBus = extern struct {
+    iface: ?*const anyopaque,
+    ctx: ?*anyopaque,
+};
+
+/// The two `ra8_io` entry points the camera adapter needs, both weak.
+///
+/// The C build dropped `..._camera.c` from the board glob unless the app
+/// named `ra8_io`, `ra8_io_bus` or `ra8_camera` in LIBS, because the bus
+/// backend lives there. A Zig static archive is a single compilation unit, so
+/// that per-file gate has nowhere left to attach: the camera code is in the
+/// archive whether the app asked for it or not. Declaring both sinks weak
+/// keeps the link honest instead. An app without `ra8_io` resolves them to
+/// null and `camera.i2cOps` refuses, rather than failing to link over a
+/// facility it never asked for. Same treatment `ra8_io_stream_uart_init` got
+/// above.
+pub const IoI2cBindRiic = fn (bus: *IoI2cBus, channel: u8) callconv(.c) u32;
+pub const IoI2cAsOps = fn (bus: *const IoI2cBus, out: *I2cBusOps) callconv(.c) u32;
+
+pub const ra8_io_i2c_bus_bind_riic: ?*const IoI2cBindRiic = @extern(
+    ?*const IoI2cBindRiic,
+    .{ .name = "ra8_io_i2c_bus_bind_riic", .linkage = .weak },
+);
+
+pub const ra8_io_i2c_bus_as_ops: ?*const IoI2cAsOps = @extern(
+    ?*const IoI2cAsOps,
+    .{ .name = "ra8_io_i2c_bus_as_ops", .linkage = .weak },
+);
