@@ -568,10 +568,6 @@ libs/ra8_dfu/src/ra8_dfu_device.c	ra8_dfu_device_start	1
 libs/ra8_dfu/src/ra8_dfu_device.c	ra8_dfu_device_worker_step	1
 libs/ra8_dfu/src/ra8_dfu_host.c	ra8_dfu_host_program	2
 libs/ra8_dfu/src/ra8_dfu_host.c	ra8_dfu_host_run	2
-libs/ra8_dfu/src/ra8_dfu_program.c	priv_dfu_write_secure	1
-libs/ra8_dfu/src/ra8_dfu_program.c	ra8_dfu_program_commit	1
-libs/ra8_dfu/src/ra8_dfu_program.c	ra8_dfu_program_image	1
-libs/ra8_dfu/src/ra8_dfu_program.c	ra8_dfu_slot_valid	1
 libs/ra8_dfu/src/ra8_rot.c	internal_ct_equal	1
 libs/ra8_dfu/src/ra8_rot.c	ra8_rot_trailer_after	1
 libs/ra8_dfu/src/ra8_rot.c	ra8_rot_verify_image	4
