@@ -166,7 +166,6 @@ PATH_CLASS: dict[str, str] = {
     "infra/terraform/environments/lab/.terraform.lock.hcl": "validated-input",
     "infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2": "validated-input",
     "scripts/hil/lib/ra8-hil-privileged.sha256": "validated-input",
-    "scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch": "validated-input",
     "coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch": "validated-input",
     "coprocessor/esp32c6/patches/series": "validated-input",
     "docs/sbom/patches/levelx/0001-remove-nested-attribute-macros.patch": "validated-input",
@@ -313,7 +312,6 @@ NAME_CLASS: dict[str, str] = {
     ".pylintrc": "tool-config",
     ".globalrc": "tool-config",
     ".cursorrules": "markdown",
-    ".cppcheck-suppressions": "tool-config",
     # Go module manifests: consumed and validated by the Go toolchain on use.
     "go.mod": "tool-config",
     "go.sum": "tool-config",

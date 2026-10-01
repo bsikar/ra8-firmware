@@ -21,9 +21,8 @@
   tags: [always]
 
 - name: Assert a distribution this role's source builds are calibrated for
-  # Not decoration. The two source builds below exist BECAUSE this is Debian:
-  # neither cppcheck 2.13 nor gcc-14 is an apt package here, while both are on
-  # the Ubuntu runners. On a distribution that packages them, this role would be
+  # Not decoration. The gcc-14 source build below exists BECAUSE this is Debian:
+  # gcc-14 is not an apt package here, while it is on the Ubuntu runners. On a distribution that packages them, this role would be
   # installing from source for no reason.
   ansible.builtin.assert:
     that:
@@ -257,7 +256,7 @@
   loop_control:
     label: "{{ item.link }} -> {{ item.target }}"
 
-# --- cppcheck 2.13.0 from source --------------------------------------------
+# --- source-build probes ----------------------------------------------------
 
 # The version probes and post-install assertions from here down all carry
 # `check_mode: false`. Every one is READ-ONLY -- a `--version`, a parity check,
@@ -269,104 +268,6 @@
 # completion at all. Probing for real keeps the guards accurate, the build
 # blocks are correctly not entered, and the read-backs the final asserts
 # consume have real output instead of a skip dict (#527).
-
-- name: Check the installed cppcheck version
-  ansible.builtin.command:
-    cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
-  register: dev_box_cppcheck_probe
-  changed_when: false
-  failed_when: false
-  check_mode: false
-
-- name: Build and install the pinned cppcheck
-  when: >-
-    ('Cppcheck ' ~ dev_box_cppcheck_version)
-    not in (dev_box_cppcheck_probe.stdout | default(''))
-  become: true
-  block:
-    - name: Create a scratch directory for the cppcheck build
-      ansible.builtin.tempfile:
-        state: directory
-        suffix: cppcheck
-      register: dev_box_cppcheck_tmp
-
-    - name: Download the pinned cppcheck source (sha256-verified)
-      ansible.builtin.get_url:
-        url: "{{ dev_box_cppcheck_url }}"
-        dest: "{{ dev_box_cppcheck_tmp.path }}/cppcheck.tar.gz"
-        checksum: "sha256:{{ dev_box_cppcheck_sha256 }}"
-        mode: "0644"
-
-    - name: Unpack it
-      ansible.builtin.unarchive:
-        src: "{{ dev_box_cppcheck_tmp.path }}/cppcheck.tar.gz"
-        dest: "{{ dev_box_cppcheck_tmp.path }}"
-        remote_src: true
-
-    - name: Configure cppcheck
-      # FILESDIR is the load-bearing option: without it the binary looks for
-      # its cfg/, addons/ and platforms/ next to the build tree, which is
-      # deleted below. It would then analyse with NO library configuration --
-      # running fine, reporting different findings, failing nothing.
-      ansible.builtin.command:
-        cmd: >-
-          cmake -S {{ dev_box_cppcheck_tmp.path }}/cppcheck-{{ dev_box_cppcheck_version }}
-          -B {{ dev_box_cppcheck_tmp.path }}/build
-          -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_INSTALL_PREFIX={{ dev_box_cppcheck_prefix }}
-          -DFILESDIR={{ dev_box_cppcheck_filesdir }}
-          -DUSE_MATCHCOMPILER=ON
-        creates: "{{ dev_box_cppcheck_tmp.path }}/build/build.ninja"
-
-    - name: Compile cppcheck
-      ansible.builtin.command:
-        cmd: >-
-          cmake --build {{ dev_box_cppcheck_tmp.path }}/build
-          --parallel {{ ansible_processor_vcpus }}
-      changed_when: true
-
-    - name: Install cppcheck
-      ansible.builtin.command:
-        cmd: "cmake --install {{ dev_box_cppcheck_tmp.path }}/build"
-      changed_when: true
-  always:
-    - name: Remove the cppcheck build tree
-      when: dev_box_cppcheck_tmp.path is defined
-      ansible.builtin.file:
-        path: "{{ dev_box_cppcheck_tmp.path }}"
-        state: absent
-
-- name: Read back the installed cppcheck version
-  ansible.builtin.command:
-    cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
-  register: dev_box_cppcheck_installed
-  changed_when: false
-  check_mode: false
-
-- name: Check that cppcheck's library configuration landed with it
-  ansible.builtin.stat:
-    path: "{{ dev_box_cppcheck_filesdir }}/{{ item }}"
-  loop: [cfg, addons, platforms]
-  register: dev_box_cppcheck_files
-
-- name: Assert cppcheck is the pinned build AND can find its configuration
-  ansible.builtin.assert:
-    that:
-      - ('Cppcheck ' ~ dev_box_cppcheck_version) in dev_box_cppcheck_installed.stdout
-      - dev_box_cppcheck_files.results | map(attribute='stat.exists') | min
-    fail_msg: >-
-      cppcheck reports
-      '{{ dev_box_cppcheck_installed.stdout | trim }}' and its FILESDIR
-      {{ dev_box_cppcheck_filesdir }} is missing
-      {{ dev_box_cppcheck_files.results | rejectattr('stat.exists')
-         | map(attribute='item') | join(', ') | default('nothing', true) }}.
-      The misra/cppcheck gates are calibrated against
-      {{ dev_box_cppcheck_version }} WITH its library configuration; either half
-      absent changes the findings silently.
-    success_msg: >-
-      {{ dev_box_cppcheck_installed.stdout | trim }} with cfg/addons/platforms
-      in {{ dev_box_cppcheck_filesdir }}
 
 # --- gcc 14 from source (the slow step) -------------------------------------
 
@@ -857,7 +758,6 @@
   ansible.builtin.debug:
     msg: >-
       dev box ready: {{ dev_box_parity.stdout_lines | last | trim }}
-      cppcheck {{ dev_box_cppcheck_version }} (source),
       gcc {{ dev_box_gcc_version }} (source),
       {{ dev_box_arm_installed.stdout_lines | first | trim }},
       {{ dev_box_unicorn_check.stdout_lines | last | default('unicorn pinned') | trim }};

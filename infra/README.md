@@ -237,15 +237,12 @@ one-time registration succeeds. The role fails loudly without this input only
 when no `.runner` registration exists. It never writes the token into the
 runner environment, systemd unit, or repository.
 
-Two of its tools are built from source, and that is a property of the
-distribution rather than a preference. **cppcheck** is compared in `exact` mode
-by the parity gate because neighbouring releases emit version-specific false
-positives against this tree, and no Debian suite carries the pin at any version
-string. The **second host-tool compiler arm** (#356) is a gcc major that Debian
-12 does not package at all. Both are pinned by URL + sha256 and asserted
+One of its tools is built from source, and that is a property of the
+distribution rather than a preference. The **second host-tool compiler arm** (#356) is a gcc major that Debian
+12 does not package at all. It is pinned by URL + sha256 and asserted
 afterwards, the same discipline as every vendor download here. A first run
-therefore takes tens of minutes; re-runs skip both builds once the pinned
-versions are present.
+therefore takes tens of minutes; re-runs skip the build once the pinned
+version is present.
 
 The role reads the *other* pins rather than restating them -- lint and format
 versions from `.devcontainer/Dockerfile`, the Unicorn pin from
@@ -591,7 +588,7 @@ runner images, and the `dev_box` role all consume those pins; the
 `toolchain-parity` gate fails if any execution environment drifts from them.
 
 The Debian dev box has two non-overlapping provisioning layers. Its Ansible
-role owns apt packages and the cppcheck/GCC source builds. The role then calls
+role owns apt packages and the GCC source build. The role then calls
 `scripts/dev/provision_dev_box_toolchain.sh`, the one definition for pinned
 release binaries and the isolated Python gate-tool venv. CI runners never call
 that host helper: their complete container image is built and deployed by the

@@ -41,7 +41,6 @@ pub const self_source = "tools/check_no_legacy_make/src/internal/root.zig";
 /// Authored surfaces named exactly.
 pub const exact_files = [_][]const u8{
     ".clangd",
-    ".cppcheck-suppressions",
     ".env.example",
     "CMakePresets.json",
     "justfile",

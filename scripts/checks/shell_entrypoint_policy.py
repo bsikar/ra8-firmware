@@ -300,13 +300,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "scripts/checks/cppcheck.sh": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
     "scripts/checks/format_code.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
@@ -323,20 +316,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
     ),
     "scripts/checks/lint_selftest.sh": ShellPolicy(
         ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "scripts/checks/misra_check.sh": ShellPolicy(
-        ShellSecurity.PORTABLE,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "scripts/checks/misra_check_inner.sh": ShellPolicy(
-        ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
         ShellDialect.BASH,
         executable=True,

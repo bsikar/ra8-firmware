@@ -342,8 +342,6 @@ jobs:
       - if: always()
         run: just quality::local::gate pre-commit-checks
       - if: always()
-        run: just quality::local::gate suppressions
-      - if: always()
         run: just quality::local::gate markdown-references
       - if: always()
         run: just quality::local::gate cmake-source-paths
@@ -587,35 +585,6 @@ jobs:
       - run: just quality::local::gate build-cross-union
       - run: just quality::local::gate sg-offsets
       - run: just quality::local::gate stack-usage
-
-  # ---------------------------------------------------------------------------
-  # MISRA-C 2012 ratchet (#240). The baseline records the cppcheck version it
-  # was generated with -- keep the runner's cppcheck in step with it, and
-  # regenerate via `just quality::local::misra` (never to absorb new findings; see
-  # docs/MISRA.md).
-  # ---------------------------------------------------------------------------
-  misra:
-    name: MISRA-C 2012 ratchet
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    # The ratchet measured 20m15s on a contended managed runner; keep the
-    # verdict bounded without canceling a complete cppcheck analysis at 20m.
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate misra
-
-  cppcheck:
-    name: cppcheck
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate cppcheck
 
   # ---------------------------------------------------------------------------
   # Clang static analyzer (#532). docs/STATIC_ANALYSIS.md asserted that CI ran

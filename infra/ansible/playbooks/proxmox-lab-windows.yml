@@ -74,9 +74,6 @@
     lab_ci_shellcheck_url: "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.zip"
     lab_ci_shellcheck_zip: "C:\\Windows\\Temp\\shellcheck-0.11.0.zip"
     lab_ci_shellcheck_path: "C:\\ProgramData\\ra8\\tools\\shellcheck.exe"
-    lab_ci_cppcheck_url: "https://github.com/cppcheck-opensource/cppcheck/releases/download/2.13.0/cppcheck-2.13.0-x64-Setup.msi"
-    lab_ci_cppcheck_msi: "C:\\Windows\\Temp\\cppcheck-2.13.0-x64-Setup.msi"
-    lab_ci_cppcheck_dir: "C:\\Program Files\\Cppcheck"
     lab_ci_tools_dir: "C:\\ProgramData\\ra8\\tools"
     lab_ci_cmake_url: "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-windows-x86_64.zip"
     lab_ci_cmake_zip: "C:\\Windows\\Temp\\cmake-3.31.6-windows-x86_64.zip"
@@ -614,23 +611,10 @@
       args:
         executable: powershell.exe
 
-    - name: Download pinned cppcheck
-      ansible.windows.win_get_url:
-        url: "{{ lab_ci_cppcheck_url }}"
-        dest: "{{ lab_ci_cppcheck_msi }}"
-        force: false
-
-    - name: Install pinned cppcheck
-      ansible.windows.win_package:
-        path: "{{ lab_ci_cppcheck_msi }}"
-        state: present
-        arguments: /qn /norestart
-
     - name: Add pinned Windows CI tools to the machine PATH
       ansible.windows.win_path:
         elements:
           - "{{ lab_ci_tools_dir }}"
-          - "{{ lab_ci_cppcheck_dir }}"
         scope: machine
         state: present
 
@@ -679,7 +663,6 @@
           @{ Name = 'go'; Command = 'go'; Arguments = @('version') },
           @{ Name = 'jq'; Command = '{{ lab_ci_jq_path }}'; Arguments = @('--version') },
           @{ Name = 'hadolint'; Command = '{{ lab_ci_hadolint_path }}'; Arguments = @('--version') },
-          @{ Name = 'cppcheck'; Command = '{{ lab_ci_cppcheck_dir }}\\cppcheck.exe'; Arguments = @('--version') },
           @{ Name = 'actionlint'; Command = '{{ lab_ci_actionlint_path }}'; Arguments = @('-version') },
           @{ Name = 'shfmt'; Command = '{{ lab_ci_shfmt_path }}'; Arguments = @('--version') },
           @{ Name = 'shellcheck'; Command = '{{ lab_ci_shellcheck_path }}'; Arguments = @('--version') },

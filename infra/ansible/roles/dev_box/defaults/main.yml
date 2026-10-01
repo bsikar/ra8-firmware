@@ -92,7 +92,7 @@ dev_box_apt_llvm:
 
 # Build dependencies for the two source builds below. They are listed as a
 # named group rather than folded into the base set because they exist ONLY to
-# compile gcc and cppcheck -- nothing at gate time uses them.
+# compile gcc -- nothing at gate time uses them.
 dev_box_apt_source_build:
   - bison
   - flex
@@ -187,30 +187,6 @@ dev_box_context_paths:
   - pyproject.toml
   - scripts
   - uv.lock
-# --- cppcheck: built from source, and the version is load-bearing -----------
-#
-# The `misra` / `cppcheck` gates are calibrated against 2.13.0 EXACTLY, which is
-# why check_tool_versions.py compares it in `exact` mode. Neighbouring releases
-# are not substitutable: Debian 12 ships 2.10 and Homebrew ships 2.21, and both
-# emit version-specific false positives against this tree.
-#
-# The devcontainer gets 2.13.0 as an Ubuntu noble apt package
-# (CPPCHECK_VERSION in .devcontainer/Dockerfile). No Debian suite carries it at
-# any version string, so on this box a pinned source build of the tagged
-# release is the ONLY way to reach the same pin -- the same reasoning
-# scripts/ci/install_unicorn.sh spells out for Unicorn.
-#
-# FILESDIR matters as much as the binary: cppcheck resolves its cfg/, addons/
-# and platforms/ relative to it, and a build installed without them runs but
-# analyses with no library configuration at all -- quietly, and with different
-# findings. The tasks assert both.
-dev_box_cppcheck_version: "2.13.0"
-dev_box_cppcheck_sha256: "8229afe1dddc3ed893248b8a723b428dc221ea014fbc76e6289840857c03d450"
-dev_box_cppcheck_url: "https://github.com/danmar/cppcheck/archive/refs/tags/\
-  {{ dev_box_cppcheck_version }}.tar.gz"
-dev_box_cppcheck_prefix: /usr/local
-dev_box_cppcheck_filesdir: /usr/local/share/Cppcheck
-
 # --- gcc 14: built from source, for the same distribution reason ------------
 #
 # gcc-14 is the SECOND host-tool compiler arm (#356): the tools-build and
