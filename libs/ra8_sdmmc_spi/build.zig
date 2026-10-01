@@ -47,6 +47,14 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const driver_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/driver_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    driver_test_module.addImport("abi", abi_module);
+    const driver_tests = b.addTest(.{ .root_module = driver_test_module });
+
     const implementation_module = b.createModule(.{
         .root_source_file = b.path("src/internal/root.zig"),
         .target = target,
@@ -62,7 +70,9 @@ pub fn build(b: *std.Build) void {
 
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_driver_tests = b.addRunArtifact(driver_tests);
     const test_step = b.step("test", "Run Zig ra8_sdmmc_spi tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_driver_tests.step);
 }
