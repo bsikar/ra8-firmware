@@ -230,8 +230,13 @@ void tx_application_define(void* first_unused_memory)
 
   (void)first_unused_memory;
 
+  /* The ThreadX port is portable code and does not name a clock tree, so the
+   * app hands it the board's bound handle first (issue #693). */
+  const ra8_err_t bind_err = ra8_threadx_clock_bind(ra8_board_clock());
+
   /* Reprogram SysTick.LOAD from the live CPUCLK0 (issue #287). */
-  const ra8_err_t retune_err = ra8_threadx_systick_retune();
+  const ra8_err_t retune_err =
+    (bind_err == k_ra8_ok) ? ra8_threadx_systick_retune() : bind_err;
 
   /* Independently recompute the expected reload from the live clock and
    * compare against what retune actually left in SYST_RVR. Any deviation
