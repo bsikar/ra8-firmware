@@ -113,6 +113,15 @@ pub const NsImage = struct {
     /// path in the source tree at all: CMake writes it into the app's binary
     /// directory, and this build has no such directory.
     linker_script: ?[]const u8 = null,
+    /// Migrated libraries the target links as per-CPU Zig archives through
+    /// `ra8_link_zig_library_for_cpu()`, in the app's call order, ra8_core
+    /// excepted: that one always follows the kernel (see `Context`).
+    ///
+    /// A raw target gets no LIBS sweep, so a library whose C was retired into
+    /// a Zig archive leaves the NS image with an undefined symbol unless the
+    /// app names it here. `ra8_usb_device_compose` went that way when
+    /// 3c676497 deleted `ra8_usb_compose.c` from this app's source list.
+    zig_libraries: []const []const u8 = &.{},
     /// Link options the target adds ahead of the script. `-nostartfiles`
     /// because the Secure boot copies `.data` and `ns_reset_handler` zeroes
     /// `.bss`, so there is no C runtime startup to link.
@@ -319,6 +328,11 @@ pub const Context = struct {
     /// kernel, which is the order ld needs: the undefined memcpy comes out of
     /// libthreadx_ns.a and is satisfied by an archive that follows it.
     core_archive: ?std.Build.LazyPath = null,
+    /// One archive per `NsImage.zig_libraries` entry, same order. They sit
+    /// between the kernel and ra8_core on the link line, as the app's
+    /// CMakeLists orders its calls, because they reference ra8_core (the
+    /// logger, the freestanding mem* shims) and ld reads archives once.
+    library_archives: []const std.Build.LazyPath = &.{},
     /// The import library the Secure link emitted (`--out-implib`). An input
     /// of this link, which is why the Secure link declares it as an output
     /// rather than writing it somewhere by convention.
@@ -406,6 +420,10 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     // files compiled into the kernel archive itself; they are Zig now and
     // cmake/threadx_ns.cmake stopped naming them in the same change.
     link.addFileArg(ctx.middleware_archive orelse @panic("ra8: the NS link needs the threadx_ns archive"));
+    if (ctx.library_archives.len != image.zig_libraries.len) {
+        @panic("ra8: the NS link needs one archive per zig_libraries entry");
+    }
+    for (ctx.library_archives) |archive| link.addFileArg(archive);
     link.addFileArg(ctx.core_archive orelse @panic("ra8: the NS link needs ra8_core's archive"));
 
     const bin = objcopyTo(b, ctx, "binary", &.{}, elf, b.fmt("{s}.bin", .{image.name}));

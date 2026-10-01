@@ -426,6 +426,15 @@ fn addCrossApp(
     if (app.ns) |image| {
         var ctx = cross_build.nsContext(b, tools, app, image, globals, &arm_global_defines);
         ctx.core_archive = core_archive.forTarget(b, arm_target, globals.configuration.zig_optimize);
+        const ns_archives = b.allocator.alloc(std.Build.LazyPath, image.zig_libraries.len) catch @panic("OOM");
+        for (image.zig_libraries, 0..) |library, index| {
+            const dependency = b.dependency(library, .{
+                .target = arm_target,
+                .optimize = globals.configuration.zig_optimize,
+            });
+            ns_archives[index] = dependency.artifact(library).getEmittedBin();
+        }
+        ctx.library_archives = ns_archives;
         ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
         ctx.implib = implib;
         ctx.secure_elf = elf;
