@@ -4,14 +4,12 @@
 //! The media-download chunk rules: what a decoded response has to look like
 //! before any of it reaches caller memory, and the one copy that applies it.
 //!
-//! The protobuf codec stays in C, because the generated message layout is
-//! protoc-c output and mirroring it by hand would be a silent-drift hazard.
-//! What crosses into Zig is a `View`: the decoded field values, flat, with no
-//! generated types in sight. Every rule about those values lives here.
+//! The decoder (`mdl_chunk_decode.zig`) fills a `View`: the decoded field
+//! values, flat, borrowing the response buffer. Every rule about those values
+//! lives here.
 
 const std = @import("std");
 
-const request = @import("mdl_request.zig");
 const types = @import("mdl_types.zig");
 
 /// Bounds the C6 service's HTTP metadata has to respect.
@@ -24,12 +22,27 @@ pub const Bound = struct {
     pub const content_type: usize = types.Limit.content_type_max;
 };
 
+/// One borrowed text span. Extern so C test helpers can build one, which is
+/// why it is a pointer and a length rather than a slice. A null pointer means
+/// the field was never set; a decoded absent field is a zero-length span.
+pub const Text = extern struct {
+    ptr: ?[*]const u8 = null,
+    len: usize = 0,
+
+    pub fn of(bytes: []const u8) Text {
+        return .{ .ptr = bytes.ptr, .len = bytes.len };
+    }
+
+    pub fn slice(self: Text) ?[]const u8 {
+        const ptr = self.ptr orelse return null;
+        return ptr[0..self.len];
+    }
+};
+
 /// One decoded chunk response, as flat values rather than generated types.
 ///
-/// A byte span is a pointer and a length because that is what the decoder
-/// hands over; an absent span is a null pointer with a zero length. The four
-/// header fields are the decoder's own NUL-terminated strings, which is why
-/// they are not slices here.
+/// A byte span is a pointer and a length because that is what crosses the C
+/// test helpers; an absent span is a null pointer with a zero length.
 pub const View = extern struct {
     job_id: u32 = 0,
     sequence: u32 = 0,
@@ -42,23 +55,31 @@ pub const View = extern struct {
     sha256: ?[*]const u8 = null,
     sha256_len: usize = 0,
     http_status: i32 = 0,
-    retry_after: ?[*:0]const u8 = null,
-    etag: ?[*:0]const u8 = null,
-    last_modified: ?[*:0]const u8 = null,
-    content_type: ?[*:0]const u8 = null,
+    retry_after: Text = .{},
+    etag: Text = .{},
+    last_modified: Text = .{},
+    content_type: Text = .{},
 };
 
-fn present(text: ?[*:0]const u8) bool {
-    const ptr = text orelse return false;
-    return ptr[0] != 0;
+/// Was the header decoded, and empty?
+fn blank(text: Text) bool {
+    const bytes = text.slice() orelse return false;
+    return bytes.len == 0;
+}
+
+/// One optional header: unset, or shorter than its terminated storage and free
+/// of CR, LF and NUL. A NUL would silently cut the copy short, so it is
+/// refused rather than inherited from the old C-string view.
+pub fn fieldValid(text: Text, cap: usize) bool {
+    const bytes = text.slice() orelse return true;
+    if (bytes.len >= cap) return false;
+    return std.mem.indexOfAny(u8, bytes, "\r\n\x00") == null;
 }
 
 /// Is every selected header absent, so a non-terminal chunk carries no metadata?
 fn headersEmpty(view: *const View) bool {
-    return view.retry_after != null and !present(view.retry_after) and
-        view.etag != null and !present(view.etag) and
-        view.last_modified != null and !present(view.last_modified) and
-        view.content_type != null and !present(view.content_type);
+    return blank(view.retry_after) and blank(view.etag) and
+        blank(view.last_modified) and blank(view.content_type);
 }
 
 /// Does the terminal HTTP metadata match the chunk's state and its bounds?
@@ -72,10 +93,10 @@ pub fn httpResponseValid(view: *const View) bool {
     }
     return view.http_status >= Bound.status_min and
         view.http_status <= Bound.status_max and
-        request.httpFieldValid(view.retry_after, Bound.retry_after) and
-        request.httpFieldValid(view.etag, Bound.etag) and
-        request.httpFieldValid(view.last_modified, Bound.http_date) and
-        request.httpFieldValid(view.content_type, Bound.content_type);
+        fieldValid(view.retry_after, Bound.retry_after) and
+        fieldValid(view.etag, Bound.etag) and
+        fieldValid(view.last_modified, Bound.http_date) and
+        fieldValid(view.content_type, Bound.content_type);
 }
 
 /// Are the state-specific fields of one correlated chunk coherent?
@@ -111,14 +132,11 @@ pub fn semanticsValid(view: *const View) bool {
 ///
 /// `httpResponseValid` already rejects anything longer than the storage, so a
 /// source that reaches the cap here means validation was skipped. Truncate to
-/// the last byte rather than run past the destination: the terminator is part
-/// of the storage, so the usable text is one byte shorter than the array.
-fn copyField(destination: []u8, source: ?[*:0]const u8) void {
-    const ptr = source orelse return;
-    const cap = destination.len - 1;
-    var length: usize = 0;
-    while (length < cap and ptr[length] != 0) : (length += 1) {}
-    @memcpy(destination[0..length], ptr[0..length]);
+/// the last byte rather than run past the destination.
+fn copyField(destination: []u8, source: Text) void {
+    const bytes = source.slice() orelse return;
+    const length = @min(bytes.len, destination.len - 1);
+    @memcpy(destination[0..length], bytes[0..length]);
     destination[length] = 0;
 }
 

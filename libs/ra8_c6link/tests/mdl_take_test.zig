@@ -92,7 +92,7 @@ fn key(current: *const types.Session, data_len: u32) mdl_session.ChunkKeyView {
     };
 }
 
-const empty: [*:0]const u8 = "";
+const empty = mdl_chunk.Text.of("");
 
 fn body(current: *const types.Session, bytes: []const u8) mdl_chunk.View {
     return .{

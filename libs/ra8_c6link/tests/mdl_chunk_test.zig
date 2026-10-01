@@ -11,7 +11,7 @@ const implementation = @import("implementation");
 const chunk = implementation.mdl_chunk;
 const types = implementation.mdl_types;
 
-const empty: [*:0]const u8 = "";
+const empty = chunk.Text.of("");
 
 fn downloading(body: []const u8) chunk.View {
     return .{
@@ -51,13 +51,13 @@ test "a non-terminal chunk must carry no http metadata" {
     try std.testing.expect(!chunk.httpResponseValid(&view));
 
     view = downloading("abc");
-    view.etag = "\"x\"";
+    view.etag = chunk.Text.of("\"x\"");
     try std.testing.expect(!chunk.httpResponseValid(&view));
 }
 
 test "a null header on a non-terminal chunk is refused, not treated as absent" {
     var view = downloading("abc");
-    view.content_type = null;
+    view.content_type = .{};
     try std.testing.expect(!chunk.httpResponseValid(&view));
 }
 
@@ -79,11 +79,11 @@ test "a complete chunk needs a real status in range" {
 test "a complete chunk's headers are bounded and single-line" {
     var digest: [32]u8 = @splat(0xAB);
     var view = complete(&digest);
-    view.etag = "\"abc\"";
-    view.content_type = "application/zip";
+    view.etag = chunk.Text.of("\"abc\"");
+    view.content_type = chunk.Text.of("application/zip");
     try std.testing.expect(chunk.httpResponseValid(&view));
 
-    view.content_type = "application/zip\r\nX-Evil: 1";
+    view.content_type = chunk.Text.of("application/zip\r\nX-Evil: 1");
     try std.testing.expect(!chunk.httpResponseValid(&view));
 }
 
@@ -204,8 +204,8 @@ test "accepting a complete chunk copies the digest, headers, and retires the ses
     var session = types.Session{ .job_id = 7, .active = true };
     var out: types.Chunk = .{};
     var view = complete(&digest);
-    view.etag = "\"abc\"";
-    view.content_type = "application/zip";
+    view.etag = chunk.Text.of("\"abc\"");
+    view.content_type = chunk.Text.of("application/zip");
 
     try std.testing.expectEqual(@as(u16, 0), chunk.accept(&view, &session, &out));
     try std.testing.expect(out.has_sha256);
@@ -260,9 +260,8 @@ test "a header copy terminates and does not run past its storage" {
     var out: types.Chunk = .{};
     var view = complete(&digest);
 
-    var long: [types.Limit.etag_max + 16]u8 = @splat('x');
-    long[long.len - 1] = 0;
-    view.etag = @ptrCast(&long);
+    const long: [types.Limit.etag_max + 16]u8 = @splat('x');
+    view.etag = chunk.Text.of(&long);
 
     _ = chunk.accept(&view, &session, &out);
     try std.testing.expectEqual(
@@ -270,4 +269,20 @@ test "a header copy terminates and does not run past its storage" {
         std.mem.sliceTo(&out.response.etag, 0).len,
     );
     try std.testing.expectEqual(@as(u8, 0), out.response.etag[types.Limit.etag_max - 1]);
+}
+
+test "a header must fit its terminated storage" {
+    const cap = types.Limit.etag_max;
+    const fits: [cap - 1]u8 = @splat('x');
+    const full: [cap]u8 = @splat('x');
+    try std.testing.expect(chunk.fieldValid(chunk.Text.of(&fits), cap));
+    try std.testing.expect(!chunk.fieldValid(chunk.Text.of(&full), cap));
+}
+
+test "an unset header is valid, and a header with CR, LF or NUL is not" {
+    try std.testing.expect(chunk.fieldValid(.{}, 8));
+    try std.testing.expect(chunk.fieldValid(chunk.Text.of(""), 8));
+    for ([_][]const u8{ "a\rb", "a\nb", "a\x00b" }) |bad| {
+        try std.testing.expect(!chunk.fieldValid(chunk.Text.of(bad), 8));
+    }
 }

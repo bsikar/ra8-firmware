@@ -55,13 +55,25 @@ extern "C" {
  * @since 0.1.0
  */
 /**
+ * @struct mdl_text_t
+ * @brief One borrowed text span: a pointer and a length, not terminated.
+ * @details The layout is stated by `src/internal/mdl_chunk.zig@Text`. A null
+ *          pointer means the field was never set.
+ * @since 0.1.0
+ */
+typedef struct {
+  const char* ptr; /**< First byte, or null when unset. */
+  size_t      len; /**< Valid bytes at `ptr`.           */
+} mdl_text_t;
+
+/**
  * @struct mdl_chunk_view_t
  * @brief One decoded chunk response as flat values, with no generated types.
  * @details The layout is stated by `src/internal/mdl_chunk.zig@View`, which
  *          holds every rule about these values. The generated message layout
  *          is protoc-c output, so it is flattened here once rather than
  *          mirrored in Zig where it could drift against the regenerated code.
- * @invariant Every span borrows the decoding arena and stays valid only for
+ * @invariant Every span borrows the decoded buffer and stays valid only for
  *            the synchronous call that built the view.
  * @since 0.1.0
  */
@@ -77,10 +89,10 @@ typedef struct {
   const void* sha256;        /**< Decoded digest, or null when absent.     */
   size_t      sha256_len;    /**< Valid bytes at `sha256`.                 */
   int32_t     http_status;   /**< Terminal HTTP status, zero when absent.  */
-  const char* retry_after;   /**< Decoded Retry-After.                     */
-  const char* etag;          /**< Decoded ETag.                            */
-  const char* last_modified; /**< Decoded Last-Modified.                   */
-  const char* content_type;  /**< Decoded Content-Type.                    */
+  mdl_text_t  retry_after;   /**< Decoded Retry-After.                     */
+  mdl_text_t  etag;          /**< Decoded ETag.                            */
+  mdl_text_t  last_modified; /**< Decoded Last-Modified.                   */
+  mdl_text_t  content_type;  /**< Decoded Content-Type.                    */
 } mdl_chunk_view_t;
 
 /**
@@ -99,24 +111,6 @@ typedef struct {
   uint32_t format;           /**< Generated format enumerator echoed.  */
   uint32_t unknown_fields;   /**< Count of undecoded generated fields. */
 } mdl_accepted_view_t;
-
-/**
- * @struct mdl_chunk_key_view_t
- * @brief The correlation fields of one decoded chunk, as flat values.
- * @details The layout is stated by `src/internal/mdl_session.zig@ChunkKeyView`.
- *          Separate from ::mdl_chunk_view_t because correlation runs before the
- *          body is examined and needs no borrowed spans.
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t protocol_version; /**< Claimed protocol version.            */
-  uint32_t job_id;           /**< Claimed remote job identifier.       */
-  uint32_t sequence;         /**< Claimed response sequence.           */
-  uint64_t offset;           /**< Claimed offset of the body bytes.    */
-  uint32_t data_len;         /**< Decoded body length.                 */
-  bool     data_present;     /**< Whether a body pointer was decoded.  */
-  uint32_t unknown_fields;   /**< Count of undecoded generated fields. */
-} mdl_chunk_key_view_t;
 
 /**
  * @struct mdl_cancelled_view_t
@@ -161,24 +155,6 @@ typedef struct {
 RA8_PRIV void priv_c6link_mdl_session_activate(const mdl_accepted_view_t* view,
                                                ra8_mdl_session_t*         session,
                                                uint8_t                    requested_format);
-
-/**
- * @brief Decide whether a chunk sits where the session is waiting.
- * @details Implemented by `src/internal/mdl_session.zig@chunkCorrelates`.
- * @param[in] view Flattened correlation fields of the decoded chunk.
- * @param[in] session Active caller session.
- * @param[in] requested_bytes Largest body the caller asked for.
- * @return Correlation validity.
- * @retval true Job, sequence, offset and body bound all match.
- * @retval false Any one of them is wrong.
- * @pre @p view and @p session are non-null.
- * @post No input or global state is modified.
- * @note Pure and reentrant.
- * @since 0.1.0
- */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_correlates(const mdl_chunk_key_view_t* view,
-                                                             const ra8_mdl_session_t*    session,
-                                                             uint32_t requested_bytes);
 
 /**
  * @brief Decide whether a cancellation acknowledges the active job.
@@ -375,25 +351,6 @@ typedef struct mdl_advance_t {
  */
 [[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_semantics_valid(const mdl_chunk_view_t* view);
 
-/**
- * @brief Copy one validated chunk into caller storage and advance its session.
- * @details Implemented by `src/internal/mdl_chunk.zig@accept`. Correlation and
- *          semantics are checked first, so every copy here is size-safe.
- * @param[in] view Flattened decoded chunk.
- * @param[in,out] session Correlated caller session.
- * @param[out] chunk Caller chunk destination.
- * @return Remote terminal status.
- * @retval k_ra8_ok Data, completion, or cancellation was accepted.
- * @retval other The exact nonzero FAILED status supplied by the remote.
- * @pre Every pointer is non-null and validation already succeeded.
- * @post Session correlation advances once and terminal state deactivates it.
- * @note Not thread-safe for a shared session or chunk.
- * @since 0.1.0
- */
-RA8_PRIV ra8_err_t priv_c6link_mdl_accept_chunk(const mdl_chunk_view_t* view,
-                                                ra8_mdl_session_t*      session,
-                                                ra8_mdl_chunk_t*        chunk);
-
 [[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_field_valid(const char* text, size_t cap);
 
 /**
@@ -565,27 +522,27 @@ typedef struct mdl_envelope_view_t {
                                                              uint8_t                    expected);
 
 /**
- * @brief Decide whether a decoded chunk may reach the caller's session
- * @details Zig implementation; the C declaration is the membrane, not a
- *          reimplementation of it. Correlation and the state-specific chunk
- *          rules both have to hold, so the call site copies a chunk or
- *          refuses it on one answer.
- * @param[in] key Flattened correlation fields of the decoded chunk.
- * @param[in] view Flattened decoded chunk.
- * @param[in] session Active caller session.
+ * @brief Decode one packed Chunk response, correlate it, and accept it.
+ * @details Zig implementation; the C declaration is the membrane.
+ * @param[in] data Packed Chunk bytes; may be null only when @p len is zero.
+ * @param[in] len Valid bytes at @p data; the decoder reads no further.
+ * @param[in,out] session Active caller session.
+ * @param[out] chunk Caller chunk destination.
  * @param[in] requested_bytes Largest body the caller asked for.
- * @return Admissibility of the decoded chunk.
- * @retval true The chunk correlates and its semantics hold.
- * @retval false Either half failed.
- * @pre @p key, @p view and @p session are non-null.
- * @post No input or global state is modified.
- * @note Pure and reentrant.
+ * @return Decode, correlation, or remote terminal status.
+ * @retval k_ra8_ok A data or successful terminal chunk was copied.
+ * @retval k_ra8_err_protocol_error The bytes were malformed or the chunk
+ *         did not belong to the session.
+ * @retval other The exact nonzero FAILED status supplied by the remote.
+ * @post Failure leaves @p session and @p chunk unchanged.
+ * @note Not thread-safe for a shared session or chunk.
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_admissible(const mdl_chunk_key_view_t* key,
-                                                             const mdl_chunk_view_t*     view,
-                                                             const ra8_mdl_session_t*    session,
-                                                             uint32_t requested_bytes);
+RA8_PRIV ra8_err_t priv_c6link_mdl_take_chunk(const uint8_t*      data,
+                                              size_t              len,
+                                              ra8_mdl_session_t*  session,
+                                              ra8_mdl_chunk_t*    chunk,
+                                              uint32_t            requested_bytes);
 
 /**
  * @brief Decide whether a cancel may be issued for a session
