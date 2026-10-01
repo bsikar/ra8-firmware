@@ -1,6 +1,7 @@
 {
   "test_roots": [
     "tests/abi_test.zig",
+    "tests/bare_rpc_test.zig",
     "tests/caps_test.zig",
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
@@ -21,6 +22,7 @@
     "tests/wifi_init_test.zig"
   ],
   "covered_sources": [
+    "src/internal/bare_rpc.zig",
     "src/internal/caps.zig",
     "src/internal/field_copy.zig",
     "src/internal/frame.zig",
@@ -52,5 +54,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 308
+  "minimum_tests": 321
 }
