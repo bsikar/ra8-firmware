@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 359 reference(s)
+# clock: 353 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -195,12 +195,12 @@ examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	timer	4
 examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	timer	3
-examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/i2c_loopback/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/i3c_loopback/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/iwdt_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/i2c_loopback/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/i3c_loopback/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/iwdt_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/keyboard/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/kint_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/src/main.c	clock	2
