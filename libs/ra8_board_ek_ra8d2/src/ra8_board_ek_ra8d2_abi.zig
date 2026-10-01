@@ -21,6 +21,8 @@ const console_stream = @import("internal/console_stream.zig");
 const dualcore = @import("internal/dualcore.zig");
 const ethernet = @import("internal/ethernet.zig");
 const hal = @import("internal/hal.zig");
+const pdm_mic = @import("internal/pdm_mic.zig");
+const pdm_pins = @import("internal/pdm_pins.zig");
 const stream = @import("internal/stream.zig");
 const touch = @import("internal/touch.zig");
 const uart_console = @import("internal/uart_console.zig");
@@ -137,6 +139,15 @@ export fn ra8_board_camera_reset() u32 {
 
 export fn ra8_board_camera_delay_ms(ctx: ?*anyopaque, milliseconds: u32) void {
     camera.delayMs(ctx, milliseconds);
+}
+
+export fn ra8_board_pdm_mic_route() u32 {
+    return pdm_pins.routeAll();
+}
+
+export fn ra8_board_pdm_mic_get_config(microphone: u8, out_config: ?*pdm_mic.Config) u32 {
+    const out = out_config orelse return vocab.Err.null_ptr;
+    return pdm_mic.get(microphone, out);
 }
 
 export fn ra8_board_touch_open(cfg: ?*const touch.Cfg) u32 {

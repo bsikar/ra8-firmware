@@ -229,3 +229,36 @@ pub const ra8_io_i2c_bus_bind_i3c_compat: ?*const IoI2cBindI3cCompat = @extern(
     ?*const IoI2cBindI3cCompat,
     .{ .name = "ra8_io_i2c_bus_bind_i3c_compat", .linkage = .weak },
 );
+
+/// `ra8_pdm_channel_cfg_t`. Mirrored field for field because the board's host
+/// suite reads the coefficients back off the config it is handed.
+pub const PdmChannelCfg = extern struct {
+    pub const hpf_h_count = 2;
+    pub const comp_h_count = 11;
+    pub const lpf_h1_count = 20;
+
+    sinc_order: u8,
+    clock_div: u8,
+    sinc_dec: u8,
+    sinc_range: u8,
+    data_shift: u8,
+    edge: u8,
+    hpf_shift: u8,
+    cf_shift: u8,
+    lpf_shift: u8,
+    rx_threshold: u8,
+    hpf_s0: u16,
+    hpf_k1: u16,
+    hpf_h: [hpf_h_count]u16,
+    comp_h: [comp_h_count]u16,
+    lpf_h0: u16,
+    lpf_h1: [lpf_h1_count]u16,
+};
+
+/// `ra8_board_pdm_mic_config_t`, the whole microphone story in one struct.
+pub const PdmMicConfig = extern struct {
+    pdm: PdmChannelCfg,
+    sample_rate_hz: u32,
+    channel: u8,
+    valid_bits: u8,
+};
