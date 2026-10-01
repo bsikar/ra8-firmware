@@ -887,15 +887,6 @@ libs/ra8_secure_app/src/sec_cmac.c	internal_cmac_tag	1
 libs/ra8_secure_app/src/sec_cmac.c	priv_ra8_sec_cmac_compute	1
 libs/ra8_secure_app/src/sec_cmac.c	priv_ra8_sec_cmac_verify	1
 libs/ra8_secure_app/src/secure_trng.c	priv_ra8_secure_trng_read	2
-libs/ra8_tls/src/ra8_tls.c	internal_apply_verify_cfg	1
-libs/ra8_tls/src/ra8_tls.c	internal_copy_cstr	1
-libs/ra8_tls/src/ra8_tls.c	internal_handle_valid	1
-libs/ra8_tls/src/ra8_tls.c	internal_session_validate_args	1
-libs/ra8_tls/src/ra8_tls.c	ra8_tls_get_cipher_suite	1
-libs/ra8_tls/src/ra8_tls.c	ra8_tls_handshake	1
-libs/ra8_tls/src/ra8_tls.c	ra8_tls_mss_clamp	1
-libs/ra8_tls/src/ra8_tls.c	ra8_tls_recv	2
-libs/ra8_tls/src/ra8_tls.c	ra8_tls_send	2
 libs/ra8_usb_pal/src/ra8_usb_pal.c	priv_usb_pal_ep_out_of_range	1
 libs/ra8_usb_pal/src/ra8_usb_pal.c	priv_usb_pal_should_dispatch_event	1
 libs/ra8_usb_pal/src/ra8_usb_pal.c	ra8_usb_pal_ep_open	2

@@ -174,7 +174,6 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_jpeg/src
             ${FW_ROOT}/libs/ra8_net_pal/src
             ${FW_ROOT}/libs/ra8_modem_at/src
-            ${FW_ROOT}/libs/ra8_tls/src
             ${FW_ROOT}/libs/ra8_usb_pal/src
             ${FW_ROOT}/libs/ra8_fs/src
             ${FW_ROOT}/libs/ra8_io/src

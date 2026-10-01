@@ -1995,11 +1995,6 @@ libs/ra8_secure_app/src/secure_trng.c	misra-c2012-10.7	1
 libs/ra8_secure_app/src/secure_trng.c	misra-c2012-15.5	3
 libs/ra8_secure_app/src/secure_trng.c	misra-c2012-8.4	4
 libs/ra8_secure_app/src/secure_trng.c	misra-c2012-8.9	1
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-10.4	1
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-11.1	2
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-15.5	48
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-20.1	4
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-8.9	1
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-10.8	2
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-15.5	22
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-21.15	2

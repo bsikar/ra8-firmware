@@ -17,7 +17,6 @@ add_library(
   ra8_core_hal OBJECT
   ${XML_SOURCES}
   ${RA8_HAL_SOURCES}
-  ${RA8_TLS_SOURCES}
   ${RA8_FS_SOURCES}
   ${RA8_IO_SOURCES}
   ${COMPRESS_SOURCES}
@@ -172,7 +171,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_jpeg/src
          ${FW_ROOT}/libs/ra8_net_pal/src
          ${FW_ROOT}/libs/ra8_modem_at/src
-         ${FW_ROOT}/libs/ra8_tls/src
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src
          ${FW_ROOT}/libs/ra8_io/src

@@ -885,7 +885,6 @@ libs/ra8_secure_app/src/key_vault.c	MEASURED	122	122	52	52
 libs/ra8_secure_app/src/ota_commit.c	MEASURED	27	27	12	12
 libs/ra8_secure_app/src/sec_cmac.c	MEASURED	138	139	87	88
 libs/ra8_secure_app/src/secure_trng.c	MEASURED	21	21	12	12
-libs/ra8_tls/src/ra8_tls.c	MEASURED	139	148	87	96
 libs/ra8_touch_cal/src/ra8_touch_cal.c	MEASURED	217	217	94	96
 libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c	MEASURED	107	116	35	44
 libs/ra8_ui/src/ra8_ui.c	MEASURED	80	83	59	72
