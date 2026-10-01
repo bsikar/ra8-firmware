@@ -111,6 +111,18 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "pdm_mic",
+            .source = "src/internal/pdm_mic.zig",
+            .root = "tests/pdm_mic_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "pdm_pins",
+            .source = "src/internal/pdm_pins.zig",
+            .root = "tests/pdm_pins_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "touch",
             .source = "src/internal/touch.zig",
             .root = "tests/touch_test.zig",

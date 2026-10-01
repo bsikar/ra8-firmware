@@ -41,6 +41,8 @@ pub const Psel = struct {
     pub const gpt0: u32 = 0x02;
     /// 01111b: camera engine unit.
     pub const ceu: u32 = 0x0F;
+    /// 11011b: PDM-IF (PDMCLKn / PDMDATn). HUM 20.6.
+    pub const pdm: u32 = 0x1B;
 };
 
 /// `ra8_pfs_dscr_t` drive strengths this layer sets.
@@ -86,6 +88,26 @@ pub const Touch = struct {
     pub const max_points: u8 = 5;
     /// Sentinel for "no IRQ pin attached".
     pub const irq_pin_unset: u8 = 32;
+};
+
+/// The SPH0690 microphones as the board wires them, plus what the PDM-IF is
+/// asked for.
+pub const Pdm = struct {
+    /// Decimated SPH0690 sample rate.
+    pub const sample_rate_hz: u32 = 16_000;
+    /// PDM-IF signed PCM payload width.
+    pub const valid_bits: u8 = 20;
+    /// Channel 2 carries the EK-RA8D2 MEMS mics.
+    pub const channel: u8 = 2;
+    /// MIC1 has SELECT tied low, so it clocks out on the rising edge.
+    pub const mic1: u8 = 0;
+    /// MIC2 has SELECT tied high, so it clocks out on the falling edge.
+    pub const mic2: u8 = 1;
+    pub const mic_count: u8 = 2;
+    /// INPSEL: rising edge of channel n.
+    pub const edge_rising: u8 = 0;
+    /// INPSEL: falling edge of channel n-1.
+    pub const edge_falling: u8 = 1;
 };
 
 pub const Mstp = struct {
