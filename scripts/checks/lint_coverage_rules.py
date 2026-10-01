@@ -426,6 +426,22 @@ KNOWN_GAPS: tuple[Gap, ...] = (
         "from a provider, not raising this number",
         lambda c: c.cls == "terraform",
     ),
+    Gap(
+        "arch-headers-outside-tidy-roots",
+        3,
+        "#2962",
+        "scripts/checks/tidy/collect.sh filters the tracked list through a root "
+        "allowlist -- libs, tests, tools, apps, examples, port -- and arch/ "
+        "landed as a top-level directory after that line was written, so "
+        "clang-tidy enumerates none of it. clang-format does cover all three "
+        "headers, and the code is analysed transitively because libs/if "
+        "includes it, but nothing claims the files. None of the three is an "
+        "include-fragment, so each has a standalone TU and the fix is one word "
+        "in that allowlist plus whatever tidy then reports. Closing it needs a "
+        "run of clang-tidy, which is a tool this gate cannot assume; a fourth "
+        "file under arch/ fails here first",
+        lambda c: c.cls == "c-family" and c.rel.startswith("arch/"),
+    ),
 )
 
 
