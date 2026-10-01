@@ -49,6 +49,8 @@ pub const Iface = extern struct {
     read: ?*const fn (?*anyopaque, Ch, ?*u32) callconv(.c) Err,
     set_period: ?*const fn (?*anyopaque, Ch, u32) callconv(.c) Err,
     capture_read: ?*const fn (?*anyopaque, Ch, ?*u32) callconv(.c) Err,
+    /// Whether the count reached its period since the last call; clears it.
+    take_wrap: ?*const fn (?*anyopaque, Ch, ?*bool) callconv(.c) Err,
 };
 
 /// `fw_timer_t`: the caller-owned binding handle.
@@ -62,7 +64,7 @@ pub const Timer = extern struct {
 const zero_caps = std.mem.zeroes(Caps);
 
 /// A NULL op is a malformed binding, not a declined capability. Every op is
-/// checked by name off the struct, so a ninth op cannot be forgotten here.
+/// checked by name off the struct, so a tenth op cannot be forgotten here.
 fn complete(ops: *const Iface) bool {
     inline for (std.meta.fields(Iface)) |field| {
         if (@field(ops, field.name) == null) return false;
@@ -173,6 +175,20 @@ pub export fn fw_timer_capture_read(tmr: ?*const Timer, ch: Ch, out_counts: ?*u3
     // like "no edge has arrived yet".
     if (!tmr.?.caps.has_capture) return core.err_not_supported;
     return forwardCount(tmr.?.iface.?.capture_read.?, tmr.?.ctx, ch, out);
+}
+
+/// Sticky until taken, read-and-clear in one call. Writes false first and on
+/// every failure, so no stale true leaks to a caller ignoring the status.
+pub export fn fw_timer_take_wrap(tmr: ?*const Timer, ch: Ch, out_wrapped: ?*bool) callconv(.c) Err {
+    const out = out_wrapped orelse return core.err_invalid_arg;
+    out.* = false;
+    const guard = check(tmr, ch);
+    if (guard != core.ok) return guard;
+    var wrapped = false;
+    const err = tmr.?.iface.?.take_wrap.?(tmr.?.ctx, ch, &wrapped);
+    if (err != core.ok) return err;
+    out.* = wrapped;
+    return core.ok;
 }
 
 fn forwardCount(

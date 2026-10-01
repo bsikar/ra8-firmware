@@ -52,6 +52,7 @@ typedef struct {
   uint32_t        last_period;  /**< Period of the last open / retune. */
   uint8_t         last_index;   /**< Channel of the last call.         */
   uint32_t        calls;        /**< Total forwarding ops entered.     */
+  bool            wrapped;      /**< Value take_wrap gives.            */
 } fake_state_t;
 
 static fake_state_t g_fake;
@@ -116,6 +117,15 @@ static ra8_err_t fake_capture_read(void *ctx, fw_timer_ch_t ch, uint32_t *out_co
   return st->op_err;
 }
 
+static ra8_err_t fake_take_wrap(void* ctx, fw_timer_ch_t ch, bool* out_wrapped)
+{
+  fake_state_t* st = (fake_state_t*)ctx;
+  st->calls += 1U;
+  st->last_index = ch.index;
+  *out_wrapped   = st->wrapped;
+  return st->op_err;
+}
+
 static const fw_timer_iface_t g_fake_iface = {
   .get_caps     = fake_get_caps,
   .open         = fake_open,
@@ -125,6 +135,7 @@ static const fw_timer_iface_t g_fake_iface = {
   .read         = fake_read,
   .set_period   = fake_set_period,
   .capture_read = fake_capture_read,
+  .take_wrap    = fake_take_wrap,
 };
 
 static const fw_timer_ch_t k_ch0 = {.index = 0U};
@@ -168,7 +179,7 @@ static void test_bind_rejects_null_and_incomplete(void) {
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_timer_bind(&tmr, NULL, &g_fake));
   TEST_ASSERT(!tmr.bound);
 
-  /* Each op is cleared on its own, so adding a ninth cannot be forgotten
+  /* Each op is cleared on its own, so adding a tenth cannot be forgotten
    * here without this vector going quiet about it. */
   fw_timer_iface_t partial = g_fake_iface;
   partial.get_caps         = NULL;
@@ -193,6 +204,9 @@ static void test_bind_rejects_null_and_incomplete(void) {
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_timer_bind(&tmr, &partial, &g_fake));
   partial                  = g_fake_iface;
   partial.capture_read     = NULL;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_timer_bind(&tmr, &partial, &g_fake));
+  partial           = g_fake_iface;
+  partial.take_wrap = NULL;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_timer_bind(&tmr, &partial, &g_fake));
   TEST_ASSERT(!tmr.bound);
 
@@ -389,6 +403,41 @@ static void test_reads_zero_their_output_and_propagate(void) {
   TEST_END("read and capture_read zero the output on failure and pass the value on success");
 }
 
+static void test_take_wrap_zeroes_on_failure_and_passes_the_report(void)
+{
+  TEST_BEGIN("take_wrap passes the report through, reads false on any failure");
+
+  internal_fake_reset_32bit();
+  fw_timer_t tmr = {0};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_bind(&tmr, &g_fake_iface, &g_fake));
+
+  const fw_timer_ch_t ch2     = {.index = 2U};
+  bool                wrapped = false;
+  g_fake.wrapped              = true;
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_take_wrap(&tmr, ch2, &wrapped));
+  TEST_ASSERT_EQ(true, wrapped);
+  TEST_ASSERT_EQ(2U, g_fake.last_index);
+
+  /* A failing backend must not leave a stale true for the caller to act on. */
+  g_fake.op_err = k_ra8_err_invalid_state;
+  wrapped       = true;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, fw_timer_take_wrap(&tmr, k_ch0, &wrapped));
+  TEST_ASSERT_EQ(false, wrapped);
+
+  /* Guards answer before the backend is entered. */
+  const uint32_t      calls = g_fake.calls;
+  const fw_timer_ch_t past  = {.index = (uint8_t)k_fake_channels};
+  wrapped                   = true;
+  TEST_ASSERT_EQ(k_ra8_err_not_found, fw_timer_take_wrap(&tmr, past, &wrapped));
+  TEST_ASSERT_EQ(false, wrapped);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_timer_take_wrap(&tmr, k_ch0, NULL));
+  const fw_timer_t unbound = {0};
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_timer_take_wrap(&unbound, k_ch0, &wrapped));
+  TEST_ASSERT_EQ(calls, g_fake.calls);
+
+  TEST_END("take_wrap passes the report through, reads false on any failure");
+}
+
 static void test_capture_without_support_never_reaches_the_backend(void) {
   TEST_BEGIN("capture_read on a backend without capture is refused at the facade");
 
@@ -438,6 +487,7 @@ int main(void) {
   test_mode_is_enumerated_and_capability_checked();
   test_channel_index_is_checked_against_the_board_count();
   test_reads_zero_their_output_and_propagate();
+  test_take_wrap_zeroes_on_failure_and_passes_the_report();
   test_capture_without_support_never_reaches_the_backend();
   test_context_reaches_every_op();
   return 0;

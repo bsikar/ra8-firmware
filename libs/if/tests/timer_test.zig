@@ -41,6 +41,7 @@ const Fake = struct {
     calls: u32 = 0,
     last_mode: u8 = 0,
     last_period: u32 = 0,
+    wrapped: bool = true,
 };
 
 var fake: Fake = .{};
@@ -85,6 +86,15 @@ fn fakeRead(ctx: ?*anyopaque, _: Ch, out: ?*u32) callconv(.c) u16 {
     return ok;
 }
 
+fn fakeWrap(ctx: ?*anyopaque, _: Ch, out: ?*bool) callconv(.c) u16 {
+    const s = state(ctx);
+    s.calls += 1;
+    if (s.op_err != ok) return s.op_err;
+    out.?.* = s.wrapped;
+    s.wrapped = false;
+    return ok;
+}
+
 const ops = Iface{
     .get_caps = fakeCaps,
     .open = fakeOpen,
@@ -94,6 +104,7 @@ const ops = Iface{
     .read = fakeRead,
     .set_period = fakePeriod,
     .capture_read = fakeRead,
+    .take_wrap = fakeWrap,
 };
 
 fn bound() Timer {
@@ -239,6 +250,33 @@ test "capture_read answers declared-absent itself, before the backend" {
     try std.testing.expectEqual(@as(u32, 1234), counts);
 }
 
+test "take_wrap reports once, and writes false on every failure" {
+    const tmr = bound();
+    var wrapped = false;
+    try std.testing.expectEqual(ok, abi.fw_timer_take_wrap(&tmr, ch0, &wrapped));
+    try std.testing.expect(wrapped);
+    try std.testing.expectEqual(ok, abi.fw_timer_take_wrap(&tmr, ch0, &wrapped));
+    try std.testing.expect(!wrapped);
+    fake.wrapped = true;
+    fake.op_err = err_backend;
+    wrapped = true;
+    try std.testing.expectEqual(err_backend, abi.fw_timer_take_wrap(&tmr, ch0, &wrapped));
+    try std.testing.expect(!wrapped);
+    try std.testing.expectEqual(err_invalid_arg, abi.fw_timer_take_wrap(&tmr, ch0, null));
+}
+
+test "take_wrap guards answer before the backend" {
+    var tmr = bound();
+    var wrapped = true;
+    try std.testing.expectEqual(err_not_found, abi.fw_timer_take_wrap(&tmr, .{ .index = 200 }, &wrapped));
+    try std.testing.expect(!wrapped);
+    tmr.bound = false;
+    wrapped = true;
+    try std.testing.expectEqual(err_not_initialized, abi.fw_timer_take_wrap(&tmr, ch0, &wrapped));
+    try std.testing.expect(!wrapped);
+    try std.testing.expectEqual(@as(u32, 0), fake.calls);
+}
+
 test "layouts match the header" {
     try std.testing.expectEqual(@as(usize, 1), @sizeOf(Ch));
     try std.testing.expectEqual(@as(usize, 12), @sizeOf(Caps));
@@ -247,7 +285,7 @@ test "layouts match the header" {
     try std.testing.expectEqual(@as(usize, 4), @offsetOf(Caps, "counter_max"));
     try std.testing.expectEqual(@as(usize, 8), @offsetOf(Caps, "has_capture"));
     try std.testing.expectEqual(@as(usize, 9), @offsetOf(Caps, "has_one_shot"));
-    try std.testing.expectEqual(@as(usize, 8 * @sizeOf(usize)), @sizeOf(Iface));
+    try std.testing.expectEqual(@as(usize, 9 * @sizeOf(usize)), @sizeOf(Iface));
     try std.testing.expectEqual(2 * @sizeOf(usize), @offsetOf(Timer, "caps"));
     try std.testing.expectEqual(2 * @sizeOf(usize) + 12, @offsetOf(Timer, "bound"));
 }

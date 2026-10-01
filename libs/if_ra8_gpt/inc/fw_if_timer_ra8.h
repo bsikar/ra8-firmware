@@ -7,7 +7,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Fills the eight `fw_timer_iface_t` ops over `ra8_gpt`. It is the chip half of
+ * Fills the nine `fw_timer_iface_t` ops over `ra8_gpt`. It is the chip half of
  * "a binding supplied by the chip and the board": what a GPT channel can do,
  * and how a neutral open, start, stop or period change lands on it.
  *
