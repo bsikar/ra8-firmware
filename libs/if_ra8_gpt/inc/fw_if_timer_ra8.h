@@ -36,8 +36,9 @@
  *     the port's open carries none, so `has_capture` is false and
  *     `capture_read` returns ::k_ra8_err_not_supported until a board profile
  *     can supply one;
- *   - opening an open channel: ::k_ra8_err_busy, because `ra8_gpt_init` takes
- *     a module-stop reference each time and a second open would leak one;
+ *   - opening a channel already open, through this port or through the PWM
+ *     adapter on the same block: ::k_ra8_err_busy, because `ra8_gpt_init`
+ *     takes a module-stop reference and reprograms the whole channel;
  *   - any op but open on a channel not opened here: ::k_ra8_err_invalid_state.
  *
  * @par World
@@ -75,7 +76,7 @@ typedef enum : uint32_t {
  * @details
  * Static storage with no context: the GPT block is a chip singleton, so
  * ::fw_timer_bind is called with a NULL `ctx` and the ops ignore it. Which
- * channels are open is file-scope state for the same reason.
+ * channels are open is library-scope state shared with the PWM adapter.
  *
  * @return Borrowed ops struct, never NULL.
  * @since 0.1.0
