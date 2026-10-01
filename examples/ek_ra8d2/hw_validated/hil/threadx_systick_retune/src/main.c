@@ -238,7 +238,8 @@ void tx_application_define(void* first_unused_memory)
    * means the kernel tick would drift, so flag it for the probe. */
   uint32_t        cpuclk_hz = 0U;
   uint32_t        expected  = 0U;
-  const ra8_err_t clk_err   = ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk_hz);
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  const ra8_err_t clk_err = fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk_hz);
   const ra8_err_t rel_err =
     ra8_threadx_systick_reload_for(cpuclk_hz, (uint32_t)k_ra8_threadx_tick_hz, &expected);
   const uint32_t live_rvr = internal_retune_read_syst_rvr();

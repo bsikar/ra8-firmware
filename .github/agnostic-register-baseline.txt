@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 343 reference(s)
+# clock: 330 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -212,20 +212,20 @@ examples/ek_ra8d2/hw_validated/hil/spi_loopback/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_blink/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/threadx_fs_levelx_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/threadx_fs_levelx_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	timer	3
-examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	clock	3
+examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	gpio	2
-examples/ek_ra8d2/hw_validated/hil/uart_hello/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/ulpt_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/uart_hello/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ulpt_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/main.c	clock	3
