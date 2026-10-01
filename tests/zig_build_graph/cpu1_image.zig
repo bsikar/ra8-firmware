@@ -49,7 +49,8 @@ pub const Cpu1Image = struct {
     /// hand-written `add_executable()` naming four files, and a glob of
     /// `libs/ra8_hal/src` here would build a second 200-TU image.
     shared_sources: []const []const u8,
-    /// The M33 linker script, relative to the app directory.
+    /// The M33 linker script, relative to the app directory, falling back to
+    /// the board layer's shared copy when the app has none. See `linkerScript`.
     linker_script: []const u8,
     /// The section the blob is renamed to, and which the M85 linker script
     /// pins at `ORIGIN(MRAM_CPU1)`.
@@ -181,6 +182,27 @@ pub const Options = struct {
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
 /// the M85 artifacts, and hand back the relocatable `.cpu1_image` object for
 /// the caller to link into the M85 ELF.
+/// App dir if the script is there, else the shared M33 map in the board layer.
+///
+/// `ra8_add_cpu1_image()` has made exactly this choice since #742, which
+/// dropped eight byte-identical `linker_script_cpu1.ld` forks onto one source
+/// (fcb624f8 carried the last two over to this branch). The graph resolved the
+/// name against the app directory alone, so those apps asked for a file that
+/// is no longer in the tree and the link failed before it started. Only an app
+/// whose M33 image genuinely diverges keeps its own copy, and it still wins.
+///
+/// The board is spelled out rather than derived for the same reason CMake
+/// spells it out: a CPU1 image is an RA8D2 feature, and that board layer
+/// already owns `cpu1_memory_map.cmake`, where the windows in the script
+/// come from.
+pub fn linkerScript(b: *std.Build, app_dir: []const u8, name: []const u8) []const u8 {
+    const in_app = b.pathJoin(&.{ app_dir, name });
+    b.build_root.handle.access(in_app, .{}) catch {
+        return b.pathJoin(&.{ "libs/ra8_board_ek_ra8d2/ld", name });
+    };
+    return in_app;
+}
+
 pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.LazyPath {
     const name = imageName(b.allocator, options.app);
     const flags = compileFlags(b.allocator, options.global_compile_flags);
@@ -203,10 +225,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     const link = b.addSystemCommand(&.{options.gcc});
     link.addArgs(options.global_link_flags);
     link.addArgs(&link_target_flags);
-    link.addPrefixedFileArg("-T", b.path(b.pathJoin(&.{
-        options.app.dir,
-        options.image.linker_script,
-    })));
+    link.addPrefixedFileArg("-T", b.path(linkerScript(b, options.app.dir, options.image.linker_script)));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{name}));
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{name}));
