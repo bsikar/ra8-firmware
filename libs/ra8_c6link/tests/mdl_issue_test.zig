@@ -63,28 +63,6 @@ test "next checks the session before the size" {
     try std.testing.expectError(error.InvalidState, issue.nextAllowed(&session, 0));
 }
 
-test "a coherent encode agrees with itself" {
-    try std.testing.expect(issue.packedCoherent(40, 40, issue.Bound.request_bytes_max));
-}
-
-test "an empty encode is refused" {
-    try std.testing.expect(!issue.packedCoherent(0, 0, issue.Bound.request_bytes_max));
-}
-
-test "an encode past the request buffer is refused" {
-    const cap = issue.Bound.request_bytes_max;
-    try std.testing.expect(issue.packedCoherent(cap, cap, cap));
-    try std.testing.expect(!issue.packedCoherent(cap + 1, cap + 1, cap));
-}
-
-test "a short write is refused" {
-    try std.testing.expect(!issue.packedCoherent(40, 39, issue.Bound.request_bytes_max));
-}
-
-test "a long write is refused" {
-    try std.testing.expect(!issue.packedCoherent(40, 41, issue.Bound.request_bytes_max));
-}
-
 test "the request buffer bound matches the protocol sum" {
     const sum: usize = 512 + 256 + 512 + 128 + 64 + 96;
     try std.testing.expectEqual(sum, issue.Bound.request_bytes_max);

@@ -41,23 +41,6 @@ extern "C" {
  * @since 0.1.0
  */
 /**
- * @struct mdl_http_headers_t
- * @brief Fixed-capacity storage for the four optional MDL HTTP request headers.
- * @details The layout is stated by `src/internal/mdl_request.zig@Headers`,
- *          which fills it; this declaration is the C view of that storage. An
- *          absent header travels as an empty string rather than as a dangling
- *          pointer into caller memory.
- * @invariant Every member is NUL-terminated for its whole declared capacity.
- * @since 0.1.0
- */
-typedef struct {
-  char user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent staging.        */
-  char referer[k_ra8_mdl_referer_max];             /**< Referer staging.           */
-  char if_none_match[k_ra8_mdl_etag_max];          /**< If-None-Match staging.     */
-  char if_modified_since[k_ra8_mdl_http_date_max]; /**< If-Modified-Since staging. */
-} mdl_http_headers_t;
-
-/**
  * @brief Validate one optional HTTP field against its protocol bound.
  * @details Implemented by `src/internal/mdl_request.zig@httpFieldValid`.
  *          Treats null as absent and rejects CR/LF header injection.
@@ -431,22 +414,6 @@ RA8_PRIV ra8_err_t priv_c6link_mdl_accept_chunk(const mdl_chunk_view_t* view,
 [[nodiscard]] RA8_PRIV ra8_err_t
 priv_c6link_mdl_start_request_valid(const ra8_mdl_request_t* request, size_t* out_url_len);
 
-/**
- * @brief Copy every present optional HTTP header into bounded local storage.
- * @details Implemented by `src/internal/mdl_request.zig@stageHeaders`. Each
- *          field was length-checked first, so every copy is bounded by its own
- *          protocol maximum and an absent field stays an empty string.
- * @param[in] http Caller-supplied optional headers; members may be null.
- * @param[out] out Staging storage to fill.
- * @return Nothing.
- * @pre @p http and @p out are non-null.
- * @post Every present member is copied and NUL-terminated in @p out.
- * @note Not thread-safe for a shared @p out.
- * @since 0.1.0
- */
-RA8_PRIV void priv_c6link_mdl_stage_headers(const ra8_mdl_http_policy_t* http,
-                                            mdl_http_headers_t*          out);
-
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap);
 
 /**
@@ -658,24 +625,28 @@ typedef struct mdl_envelope_view_t {
                                                               uint16_t max_bytes);
 
 /**
- * @brief Decide whether one encoded request is self-consistent
- * @details Zig implementation; the C declaration is the membrane, not a
- *          reimplementation of it. Fail-closed backstop against a codec
- *          defect rather than an input class: a sized message is never empty,
- *          a message whose fields were bounded first fits the request buffer,
- *          and pack() writes exactly what get_packed_size() counted.
- * @param[in] sized Byte count the encoder reported before packing.
- * @param[in] written Byte count the encoder reported after packing.
- * @param[in] capacity Bytes available in the link request buffer.
- * @return Whether the encode may be transmitted.
- * @retval false The encode is empty, oversized, or disagreed with itself.
- * @pre None.
- * @post No state is observed or changed.
- * @note Pure predicate; thread-safe.
+ * @brief Encode a checked media-download StartRequest
+ * @details Zig implementation in `src/internal/mdl_encode.zig`; byte-identical
+ *          to the reference protobuf encoder, empty and zero fields omitted per
+ *          proto3. Reads the caller's request directly, so nothing is staged.
+ * @param[in] request Request already accepted by
+ *            priv_c6link_mdl_start_request_valid().
+ * @param[in] url_len URL length that check reported.
+ * @param[out] buf Destination buffer.
+ * @param[in] capacity Bytes available in @p buf.
+ * @param[out] out_len Bytes written; zero on failure.
+ * @return Whether the encode was written.
+ * @retval false An argument was NULL or the encode does not fit.
+ * @pre @p request passed priv_c6link_mdl_start_request_valid().
+ * @post @p out_len is always written when non-NULL.
+ * @note Pure function of its arguments; thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool
-priv_c6link_mdl_packed_coherent(size_t sized, size_t written, size_t capacity);
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_encode_start(const ra8_mdl_request_t* request,
+                                                         size_t                   url_len,
+                                                         uint8_t*                 buf,
+                                                         size_t                   capacity,
+                                                         size_t*                  out_len);
 
 /**
  * @brief Encode a media-download NextRequest

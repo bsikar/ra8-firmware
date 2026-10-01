@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Vectors for the NextRequest and CancelRequest encoders. Every expected
+//! Vectors for the StartRequest, NextRequest and CancelRequest encoders. Every expected
 //! byte string was produced by the reference protobuf encoder (Python
 //! google.protobuf over `proto/ra8_media_download.proto`), so these pin wire
 //! compatibility with the C6 side, not just self-consistency.
@@ -65,4 +65,61 @@ test "a tag packs the field number above the wire type" {
     var w = wire.Writer.init(&buf);
     try w.tag(16, wire.Wire.len);
     try std.testing.expectEqualSlices(u8, &.{ 0x82, 0x01 }, w.written());
+}
+
+test "minimal start request matches the reference encoder" {
+    var buf: [64]u8 = undefined;
+    const got = try encode.start(&buf, .{ .url = "https://a.b/c" });
+    try std.testing.expectEqualSlices(u8, &hex("0803120d68747470733a2f2f612e622f63"), got);
+}
+
+test "start request with every field matches the reference encoder" {
+    var buf: [256]u8 = undefined;
+    const got = try encode.start(&buf, .{
+        .url = "https://example.com/x.cbz",
+        .format = 1,
+        .user_agent = "ra8/1",
+        .referer = "https://r/",
+        .if_none_match = "\"e1\"",
+        .if_modified_since = "Wed, 21 Oct 2015 07:28:00 GMT",
+        .timeout_ms = 60000,
+    });
+    const want = hex("0803121968747470733a2f2f6578616d706c652e636f6d2f782e63627a" ++
+        "180122057261382f312a0a68747470733a2f2f722f3204226531223a1d" ++
+        "5765642c203231204f637420323031352030373a32383a303020474d5440e0d403");
+    try std.testing.expectEqualSlices(u8, &want, got);
+}
+
+test "the last format and a tiny timeout match the reference encoder" {
+    var buf: [32]u8 = undefined;
+    const got = try encode.start(&buf, .{ .url = "https://h/", .format = 8, .timeout_ms = 1 });
+    try std.testing.expectEqualSlices(u8, &hex("0803120a68747470733a2f2f682f18084001"), got);
+}
+
+test "a 200-byte url takes a two-byte length prefix" {
+    var buf: [256]u8 = undefined;
+    const url = "https://" ++ "a" ** 192;
+    const got = try encode.start(&buf, .{ .url = url });
+    try std.testing.expectEqualSlices(u8, &hex("080312c801"), got[0..5]);
+    try std.testing.expectEqualStrings(url, got[5..]);
+    try std.testing.expectEqual(@as(usize, 205), got.len);
+}
+
+test "a string that does not fit is refused whole" {
+    var buf: [12]u8 = undefined;
+    try std.testing.expectError(error.NoSpace, encode.start(&buf, .{ .url = "https://a.b/c" }));
+}
+
+test "the worst-case start request fits the request buffer" {
+    var buf: [implementation.mdl_issue.Bound.request_bytes_max]u8 = undefined;
+    const got = try encode.start(&buf, .{
+        .url = "u" ** 511,
+        .format = 8,
+        .user_agent = "a" ** 255,
+        .referer = "r" ** 511,
+        .if_none_match = "e" ** 127,
+        .if_modified_since = "d" ** 63,
+        .timeout_ms = 60000,
+    });
+    try std.testing.expect(got.len <= buf.len);
 }

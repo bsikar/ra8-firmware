@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The caller-facing half of the media download client: what a start request
-//! must look like before anything is encoded, and where its optional headers
-//! are staged for the wire.
+//! must look like before anything is encoded, and the slices the encoder
+//! reads once it has been checked.
 //!
 //! Nothing here touches the generated protobuf codecs. The rules are about the
 //! caller's own argument contract, so they are stated once, in one place, and
@@ -11,6 +11,7 @@
 
 const std = @import("std");
 
+const encode = @import("mdl_encode.zig");
 const types = @import("mdl_types.zig");
 
 /// Protocol bounds for the optional HTTP fields, each including its NUL.
@@ -81,31 +82,20 @@ pub fn startRequestValid(request: ?*const types.Request) Refusal!usize {
     return url.len;
 }
 
-/// Fixed storage for the four optional request headers.
+/// The encoder's view of a checked request: every field as a slice.
 ///
-/// An absent header travels as an empty string rather than as a pointer into
-/// caller memory, so the encoder never has to ask whether a field is there.
-pub const Headers = extern struct {
-    user_agent: [Bound.user_agent]u8,
-    referer: [Bound.referer]u8,
-    etag: [Bound.etag]u8,
-    http_date: [Bound.http_date]u8,
-};
-
-fn stage(destination: []u8, text: ?[*:0]const u8) void {
-    const source = span(text, destination.len) orelse return;
-    @memcpy(destination[0..source.len], source);
-    destination[source.len] = 0;
-}
-
-/// Copy every present header into caller-owned fixed storage.
-///
-/// Every field was bounded by `startRequestValid` first, so each copy fits and
-/// this cannot fail.
-pub fn stageHeaders(http: *const types.HttpPolicy, out: *Headers) void {
-    out.* = std.mem.zeroes(Headers);
-    stage(&out.user_agent, http.user_agent);
-    stage(&out.referer, http.referer);
-    stage(&out.etag, http.if_none_match);
-    stage(&out.http_date, http.if_modified_since);
+/// `url_len` is the length `startRequestValid` measured, so the URL is
+/// bounded exactly once. An absent header is an empty slice. Every header was
+/// already bounded and terminated inside its cap, so `span` cannot stop short.
+pub fn startFields(request: *const types.Request, url_len: usize) encode.StartFields {
+    const http = &request.http;
+    return .{
+        .url = if (request.url) |url| url[0..url_len] else "",
+        .format = request.format,
+        .user_agent = span(http.user_agent, Bound.user_agent) orelse "",
+        .referer = span(http.referer, Bound.referer) orelse "",
+        .if_none_match = span(http.if_none_match, Bound.etag) orelse "",
+        .if_modified_since = span(http.if_modified_since, Bound.http_date) orelse "",
+        .timeout_ms = http.timeout_ms,
+    };
 }
