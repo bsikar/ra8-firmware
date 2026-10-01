@@ -11,6 +11,7 @@
 //! of it and a prefix would buy nothing.
 
 const bringup = @import("internal/bringup.zig");
+const camera_mode = @import("internal/camera_mode.zig");
 const clocks = @import("internal/clocks.zig");
 const clock_profile = @import("internal/clock_profile.zig");
 const clock_types = @import("internal/clock_types.zig");
@@ -104,4 +105,13 @@ export fn priv_ra8_board_eth_eswm_bring_up(out_eswclk_hz: ?*u32) u32 {
 
 export fn priv_ra8_board_eth_etha_to_config() u32 {
     return ethernet.ethaToConfig();
+}
+
+export fn ra8_board_camera_get_ceu_config(
+    mode: u8,
+    frame_bytes_max: u32,
+    out_config: ?*camera_mode.BoardConfig,
+) u32 {
+    const out = out_config orelse return vocab.Err.null_ptr;
+    return camera_mode.get(mode, frame_bytes_max, out);
 }

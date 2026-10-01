@@ -10,6 +10,7 @@
 pub const Err = struct {
     pub const ok: u32 = 0;
     pub const invalid_arg: u32 = 0x103;
+    pub const invalid_size: u32 = 0x105;
     pub const not_found: u32 = 0x106;
     pub const not_initialized: u32 = 0x10F;
     pub const not_supported: u32 = 0x107;
