@@ -600,6 +600,24 @@ ra8_add_zig_library(
   ra8_psa_crypto
 )
 
+# Fully migrated: the Mbed TLS facade behind inc/ra8_tls.h is Zig, so
+# libs/ra8_tls/src has no .c left. Same two-backend shape as ra8_psa_crypto,
+# chosen at comptime from build_config.off_target: a loopback stand-in that
+# drives the transport seam for the host and off-target builds, and a binding
+# to the vendored Mbed TLS for ARM.
+#
+# The three C suites (tests/wireless/src/test_ra8_tls.c, test_ra8_tls_net.c,
+# tests/fuzz/src/fuzz_ra8_tls.c) stay C on purpose: they only ever included
+# inc/ra8_tls.h, so they keep testing the archive from the outside.
+ra8_add_zig_library(
+  NAME
+  ra8_tls
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_tls
+  LIBRARY_NAME
+  ra8_tls
+)
+
 ra8_add_zig_library(
   NAME
   ra8_imgdec
@@ -734,6 +752,7 @@ target_link_libraries(
          ra8_zig::ra8_net_policy
          ra8_zig::ra8_imgdec
          ra8_zig::ra8_psa_crypto
+         ra8_zig::ra8_tls
          ra8_zig::ra8_secure_app
          ra8_zig::ra8_mem
          ra8_zig::ra8_widget

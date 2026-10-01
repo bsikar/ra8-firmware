@@ -43,7 +43,8 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # behind the unchanged C header, and tests/cmake/zig_libraries.cmake links that
 # archive into ra8_core_hal. src/ra8_modem_at_internal.h stays: the MC/DC
 # suites include it to reach the promoted priv_modem_* helpers.
-file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
+# libs/ra8_tls/src is no longer any C: the Mbed TLS facade behind
+# inc/ra8_tls.h is Zig, linked as ra8_zig::ra8_tls (tests/cmake/zig_libraries.cmake).
 # libs/ra8_usb_pal is fully migrated to Zig: the PAL core, the four descriptor
 # builders and the one-call compose facade (#766) all live in
 # libs/ra8_usb_pal/src/*.zig, built by libs/ra8_usb_pal/build.zig behind the
