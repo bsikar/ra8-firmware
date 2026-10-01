@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 EXPORT_FN = re.compile(r"^[ \t]*(?:pub[ \t]+)?export[ \t]+fn[ \t]+(\w+)", re.MULTILINE)
@@ -200,8 +201,6 @@ CASES: tuple[tuple[str, str, str, str, bool], ...] = (
 
 def run_selftest() -> int:
     """Run the built-in cases over synthetic trees; return a process exit code."""
-    import tempfile
-
     failures = 0
     for name, zig, build, consumer, expect in CASES:
         with tempfile.TemporaryDirectory() as td:
