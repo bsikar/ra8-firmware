@@ -52,7 +52,7 @@ def _data() -> dict[str, Any]:
         "runner_image": {"source_host": "producer"},
         "hosts": {
             "consumer": {
-                "class": "docker_wsl",
+                "class": "docker_linux",
                 "runners": {"instances": 1},
                 "provisions": ["one"],
             },

@@ -122,12 +122,6 @@ It is the one host class with a real one-command teardown:
 just infra::remove truenas
 ```
 
-### Optional Windows/WSL runner
-
-A Windows host may run `win-ci-*` instances under WSL2 with the `ra8-ci` and
-`ra8-win` labels. Its route and optional jump host are declared in the private
-fleet configuration rather than documented as literal SSH commands.
-
 ### HIL bench controller
 
 A Linux single-board computer controls the attached bench hardware:
@@ -226,7 +220,7 @@ just infra::apply <host>
 | 3 | k3s + helm + vault | `just infra::apply k3s-pve k3s-node` | then init + unseal by hand |
 | 4 | the ARC runner pool | `just infra::apply k3s-pve ci-runner` | needs 3 |
 | 5 | the dev box | `just infra::apply dev` | slow: two source builds |
-| 6 | extra runner hosts | `just infra::apply <host>` | persistent Linux or WSL runners |
+| 6 | extra runner hosts | `just infra::apply <host>` | persistent Linux runners |
 | 7 | the HIL bench | `just infra::apply star` | needs the board attached |
 | 8 | the bench LAN | `just infra::fortigate_bootstrap` | from the authorized bench controller; guarded confirmation |
 
@@ -247,7 +241,7 @@ pinned versions are present and cost a handful of version probes.
 
 The dev box is also the trusted control node for ordinary-runner convergence.
 A system timer executes a root-owned, operator-promoted repository snapshot
-every six hours, with `k3s-pve` first and the persistent Docker/WSL consumers
+every six hours, with `k3s-pve` first and the persistent Docker consumers
 afterward. No GitHub Actions job receives the fleet SSH authority. Inspect it
 with `just infra::reconcile_status`; run the same decision path read-only with
 `just infra::reconcile`.

@@ -15,8 +15,6 @@ DEPLOYMENT_CLOSURE_PATHS = (
     Path("infra/ansible/roles/dev_box/tasks/transaction.yml"),
     Path("infra/ansible/roles/hil_bench/tasks/transaction.yml"),
     Path("scripts/ci/devcontainer_image.sh"),
-    Path("scripts/dev/fleet_wsl.py"),
-    Path("scripts/dev/fleet_wsl_stage.py"),
 )
 EXEC_MODULE_SHA256 = "bd54ee9be90ca047c535349b2ab3855b4afcefd53c077a56215f5440d76e2ae4"
 RUNNER_MODULE_SHA256 = "4242262cf1649cf5935dd8e12f42b737bbc2592b3d633615acf6593179502f40"

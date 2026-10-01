@@ -106,14 +106,12 @@ sizing:
 
 hosts:
   <name>:
-    class: arc_k8s | docker_linux | docker_wsl | dev_box | hil_bench
+    class: arc_k8s | docker_linux | dev_box | hil_bench
     summary: "one line"
     connect:
       address: ci.example.net    # an IP or resolvable name -- NEVER an ssh alias
       user: ci-admin             # optional login account
       jump: bastion              # optional ProxyJump through ANOTHER FLEET HOST
-      distro: Ubuntu             # docker_wsl only
-      windows_user: ci-user      # docker_wsl only
     provisions: [play, play]     # from `just infra::list`
     runners:                     # runner classes only
       name: <base>               # optional; defaults to the host name
@@ -128,7 +126,6 @@ hosts:
       mode: reserved | burst
       threads: 8
       memory_gb: 16
-      swap_gb: 8                 # docker_wsl only (the VM's swap file)
     quiet_hours:                 # optional
       window: "18:00-23:59"
       days: "Fri,Sat,Sun"
@@ -152,9 +149,7 @@ Aliases are local convenience configuration and are not portable between
 control nodes. A literal address or resolvable name keeps both Ansible and the
 fleet tooling independent of one maintainer's SSH configuration.
 
-`win-ci` hid it: it is `docker_wsl`, so `fleet.py` ships the play *into* the
-distro and runs it `--connection=local`, never asking the control node to
-resolve anything. Every `docker_linux` and `k8s` host does ask.
+Every `docker_linux` and `k8s` host asks the control node to resolve it.
 
 **Everything is derived from the address now**, so no command in this tooling
 needs a name your machine happens to know:
@@ -215,7 +210,6 @@ Ansible transport, which sets `host_key_checking = False`.
 |---|---|---|
 | `arc_k8s` | an ARC scale set on a k8s cluster | patching `maxRunners` |
 | `docker_linux` | long-lived runner containers on any Docker host | draining containers |
-| `docker_wsl` | the same, inside a Windows machine's WSL2 distro | draining containers |
 | `dev_box` | shared verification box + dedicated HIL listener | n/a (not general capacity) |
 | `hil_bench` | the hardware-in-the-loop bench Pi (not a runner) | n/a |
 
@@ -352,12 +346,6 @@ recreates only containers whose image ID differs. The image is never rebuilt
 per host: `.devcontainer/Dockerfile` remains the single source of truth, and a
 second independently-built image would be a drift source with no upside.
 
-For WSL the play itself runs with `connection=local` inside the distro, so it
-cannot delegate back to the producer. `fleet.py` bridges that transport
-boundary automatically: it streams the same declared archive into
-`/opt/ra8-infra-cache`, verifies SHA-256 before publishing it, and passes that
-cache to the same Docker role. No archive or host address is maintained twice.
-
 ### Step 5 -- converge it
 
 ```sh
@@ -490,27 +478,6 @@ would oversubscribe the machine N-fold. A cpuset changes the affinity mask, so
 gets threads `[(i-1)*cpus, i*cpus-1]`, so the host
 needs at least `instances * cpus` threads.
 
-### Change the WSL VM caps (`docker_wsl` only)
-
-```yaml
-    budget:
-      threads: 16     # was 22
-      memory_gb: 20   # was 26
-```
-
-These are written into the Windows user's `.wslconfig`, and they are the
-**outer** limit: the per-instance container caps sit under them.
-
-> **This one needs a restart.** `.wslconfig` is read when the WSL2 VM boots, so
-> a change needs `wsl --shutdown` -- which stops **every** distro on that
-> machine, not just the runner's. The tooling reports that and refuses to do it
-> behind the owner's back. Run it yourself when the machine is free; the
-> runners come back with the distro.
->
-> Note also that `.wslconfig` is **per Windows user**. Written under the wrong
-> profile it is silently ignored and every cap in it does nothing, which is why
-> `connect.windows_user` is declared rather than guessed.
-
 ### What takes effect when
 
 | change | effect |
@@ -521,7 +488,6 @@ These are written into the Windows user's `.wslconfig`, and they are the
 | `labels` | needs `infra-apply` (re-registration) |
 | `quiet_hours` | `fleet.py apply <host> --tags capacity` -- no drain, no container touched |
 | `dev_slice` | `fleet.py apply <host> --tags dev-slice` -- no drain, no container touched |
-| `budget.threads`, `budget.memory_gb` on `docker_wsl` | needs `infra-apply` **and** `wsl --shutdown` |
 | `instances` on `arc_k8s` | `infra-apply`, or live with `infra-scale` |
 
 ---
@@ -550,11 +516,7 @@ just infra::apply win-ci "" capacity
 `just infra::apply win-ci` installs it too, along with everything else. The
 window is evaluated in the **host's own local time**, not UTC.
 
-> That makes the host's clock load-bearing, and a WSL2 VM's clock is not
-> reliable on its own -- it drifts and jumps across host sleep, which is
-> visible in the drain logs as non-monotonic timestamps from a single process.
-> The `wsl_ci_host` role waits for `timesyncd` to report `NTPSynchronized=yes`
-> before it finishes for exactly this reason. If a window ever appears to fire
+> That makes the host's clock load-bearing. If a window ever appears to fire
 > at the wrong time, check the clock before the schedule.
 
 ### How it works, and why it is a poll rather than two alarms
@@ -931,7 +893,7 @@ run that silently began five minutes before a window is not.
 `just infra::status` reports the slice beside the runners:
 
 ```
-win-ci (docker_wsl, declared 3 instance(s)):
+<host> (docker_linux, declared 3 instance(s)):
   INSTANCE             STATE     BUSY  DETAIL
   ra8-ci-runner-1      running   idle  ready to park
   ra8-ci-runner-2      running   idle  ready to park

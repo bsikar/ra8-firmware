@@ -64,7 +64,6 @@ import fleet_reconcile_unaccounted_selftest as fru
 import fleet_reconcile_uninspected_selftest as frun
 import fleet_reconcile_unmutated_selftest as frum
 import fleet_reconcile_window_selftest as frw
-import fleet_wsl as fw
 
 SOURCE_DIGEST_FILE = ".ra8-source-sha256"
 STATE_FILE = "state.json"
@@ -227,9 +226,9 @@ CommandRunner = Callable[[Sequence[str]], frp.CommandResult]
 
 
 def recap_identity(data: dict[str, Any], host: str) -> str:
-    """Return Ansible's recap name without changing the fleet control identity."""
-    transport = fm.CLASSES[data["hosts"][host]["class"]].transport
-    return "localhost" if transport == "wsl" else host
+    """Return Ansible's recap name, which is the fleet host name for every class."""
+    del data
+    return host
 
 
 def runner_hosts(data: dict[str, Any]) -> list[str]:
@@ -346,7 +345,7 @@ def inspect_host(
     verb = "parked-check" if parked else "check"
     result = run(fleet_command(host, verb))
     emit_result(result)
-    if result.status == fw.APPLY_REQUIRED_STATUS:
+    if result.status == frp.APPLY_REQUIRED_STATUS:
         return True, 1
     if result.status:
         return False, 0
@@ -367,7 +366,7 @@ def inspect_activation_host(
 
     The activation check is a ``--check`` run, so the verifier reports work
     still outstanding by exit status rather than by a recap row:
-    ``fw.APPLY_REQUIRED_STATUS`` means the check RAN and found one change, which
+    ``frp.APPLY_REQUIRED_STATUS`` means the check RAN and found one change, which
     is why ``inspect_host`` counts it as a clean read of one drifted task.  Read
     as a failed check instead, it made the sole ARC capacity opener unusable on
     exactly the host that expects an outstanding change: an ARC producer is
@@ -384,7 +383,7 @@ def inspect_activation_host(
     """
     result = run(fleet_command(host, "activation-check"))
     emit_result(result)
-    if result.status == fw.APPLY_REQUIRED_STATUS:
+    if result.status == frp.APPLY_REQUIRED_STATUS:
         return True, 1
     if result.status:
         return False, 0
@@ -2631,7 +2630,7 @@ def _selftest_data() -> dict[str, Any]:
         "runner_image": {"source_host": "producer"},
         "hosts": {
             "consumer": {
-                "class": "docker_wsl",
+                "class": "docker_linux",
                 "runners": {"instances": 1},
                 "provisions": ["one"],
             },
@@ -2684,20 +2683,20 @@ def _clean_check_result(data: dict[str, Any], host: str) -> frp.CommandResult:
     return _check_result(data, host, PRODUCER_CHECK_NOISE if producer else 0)
 
 
-def _selftest_wsl_status_mapping(data: dict[str, Any], failures: list[str]) -> None:
-    """Prove safe WSL drift is actionable while probe failures stay fatal."""
+def _selftest_check_status_mapping(data: dict[str, Any], failures: list[str]) -> None:
+    """Prove check-mode drift is actionable while probe failures stay fatal."""
 
     def apply_required(_argv: Sequence[str]) -> frp.CommandResult:
-        return frp.CommandResult(fw.APPLY_REQUIRED_STATUS, "", "")
+        return frp.CommandResult(frp.APPLY_REQUIRED_STATUS, "", "")
 
     if inspect_host(data, "consumer", apply_required) != (True, 1):
-        failures.append("authenticated WSL stage drift did not request an apply")
+        failures.append("check-mode drift did not request an apply")
 
     def fatal_probe(_argv: Sequence[str]) -> frp.CommandResult:
         return frp.CommandResult(5, "", "")
 
     if inspect_host(data, "consumer", fatal_probe) != (False, 0):
-        failures.append("fatal WSL inspection error was treated as repairable drift")
+        failures.append("fatal inspection error was treated as repairable drift")
 
 
 def _selftest_order_parsing_and_schedule(failures: list[str]) -> None:
@@ -2710,23 +2709,18 @@ def _selftest_order_parsing_and_schedule(failures: list[str]) -> None:
         != SELFTEST_CHANGED_TOTAL
     ):
         failures.append("changed recap sum drifted")
-    wsl_calls: list[tuple[str, str]] = []
+    check_calls: list[tuple[str, str]] = []
 
-    def wsl_run(argv: Sequence[str]) -> frp.CommandResult:
-        wsl_calls.append(_command_identity(argv))
+    def check_run(argv: Sequence[str]) -> frp.CommandResult:
+        check_calls.append(_command_identity(argv))
         return _check_result(data, "consumer")
 
-    if inspect_host(data, "consumer", wsl_run) != (True, 0):
-        failures.append("WSL localhost recap was not mapped to its fleet identity")
+    if inspect_host(data, "consumer", check_run) != (True, 0):
+        failures.append("consumer recap was not mapped to its fleet identity")
 
-    _selftest_wsl_status_mapping(data, failures)
-    if wsl_calls != [("check", "consumer")]:
-        failures.append("WSL recap mapping changed its declared control identity")
-    try:
-        parse_changed(_recap("consumer"), recap_identity(data, "consumer"), 1)
-        failures.append("WSL declared name was accepted as its local recap identity")
-    except ValueError:
-        pass
+    _selftest_check_status_mapping(data, failures)
+    if check_calls != [("check", "consumer")]:
+        failures.append("consumer check changed its declared control identity")
     try:
         parse_changed(_recap("producer", failed=1), "producer", 1)
         failures.append("failed recap was accepted")

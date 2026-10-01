@@ -63,37 +63,18 @@ def policy_flags(host: dict[str, Any]) -> list[str]:
 
 def state_group(host: dict[str, Any]) -> str:
     """Return the account group that executes the host-local capacity script."""
-    host_class = fm.CLASSES[host["class"]]
-    if host_class.transport == "wsl":
-        return "root"
     return str(host["connect"]["user"])
 
 
 def run_selftest(data: dict[str, Any]) -> list[str]:
-    """Prove exact streamed capacity argv for windowed and ordinary hosts."""
+    """Prove exact streamed capacity argv and refuse malformed quiet hours."""
     failures: list[str] = []
-    expected_win = [
-        "--full-instances",
-        "3",
-        "--quiet-instances",
-        "0",
-        "--quiet-start",
-        "18:00",
-        "--quiet-end",
-        "23:59",
-        "--quiet-days",
-        "Fri,Sat,Sun",
-    ]
-    if policy_flags(data["hosts"]["win-ci"]) != expected_win:
-        failures.append("WSL restore argv lost its declared quiet-hours target")
     expected_nas = ["--full-instances", "1"]
     if policy_flags(data["hosts"]["truenas"]) != expected_nas:
         failures.append("ordinary Docker restore argv lost its declared capacity")
-    if state_group(data["hosts"]["win-ci"]) != "root":
-        failures.append("WSL capacity state did not bind to its root executor")
     if state_group(data["hosts"]["truenas"]) != "truenas_admin":
         failures.append("SSH capacity state lost its connecting account group")
-    malformed = {**data["hosts"]["win-ci"], "quiet_hours": {"window": "18:00"}}
+    malformed = {**data["hosts"]["truenas"], "quiet_hours": {"window": "18:00"}}
     try:
         policy_flags(malformed)
     except fm.FleetError:
@@ -145,9 +126,7 @@ def run(data: dict[str, Any], name: str, args: list[str], command_runner: Comman
             flags += ["--dev-slice", fm.DEV_SLICE_UNIT]
     else:
         flags += ["--scale-set", host["runners"]["labels"][0]]
-    # Never a quoted argument: for the WSL host this line is parsed by Windows'
-    # shell before `wsl -e` sees it, and quoting does not survive that. The
-    # capacity script's flags are shaped so none is ever needed.
+    # The capacity script's flags are shaped so none ever needs quoting.
     remote = f"{fm.remote_shell(host)} -- {' '.join(flags)} {' '.join(args)}"
     return command_runner(
         [*fr.ssh_target(data, name), remote],
