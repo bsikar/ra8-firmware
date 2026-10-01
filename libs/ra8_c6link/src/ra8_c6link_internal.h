@@ -1002,6 +1002,67 @@ RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBin
                                                     uint32_t msg_uid,
                                                     uint32_t msg_id);
 
+/**
+ * @brief Measure a credential that is not trusted to be terminated.
+ *
+ * @details
+ * Bounded by the destination rather than by the string, so a caller that
+ * hands over an unterminated buffer gets a refusal on length instead of a
+ * read past its end. Implemented in Zig; see `src/internal/sta_cfg.zig`.
+ *
+ * @param[in] text Credential to measure; must be non-null.
+ * @param[in] cap Octets that may be examined, including the terminator.
+ * @return The length in octets, or @p cap when no terminator was found.
+ * @retval 0 The credential is empty.
+ *
+ * @pre @p cap octets are readable at @p text.
+ * @post No buffer is modified.
+ *
+ * @note The caller treats a result equal to @p cap as "too long".
+ *
+ * @par Example:
+ * @code
+ * const uint8_t ssid_len = priv_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
+ * @endcode
+ *
+ * @see priv_c6link_sta_credentials_valid
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);
+
+/**
+ * @brief Are these the lengths of one joinable network?
+ *
+ * @details
+ * An empty SSID names no network and an over-long one never terminated
+ * inside its buffer; a zero-length passphrase is the open network and is
+ * allowed. Implemented in Zig; see `src/internal/sta_cfg.zig`.
+ *
+ * @param[in] ssid_len Octets of SSID to transmit.
+ * @param[in] pass_len Octets of passphrase to transmit, zero when open.
+ * @return true when the credentials may be sent to the co-processor.
+ * @retval true Both lengths are inside their bounds and the SSID is non-empty.
+ * @retval false The credentials are refused as ::k_ra8_err_invalid_size.
+ *
+ * @pre The caller has already rejected null arguments.
+ * @post No state is modified.
+ *
+ * @note The same rule decides a refusal when the credentials are built and
+ *       again when a join is asked for.
+ *
+ * @par Example:
+ * @code
+ * if (!priv_c6link_sta_credentials_valid(cfg->ssid_len, cfg->pass_len)) {
+ *   return k_ra8_err_invalid_size;
+ * }
+ * @endcode
+ *
+ * @see priv_c6link_sta_len
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_sta_credentials_valid(uint8_t ssid_len,
+                                                              uint8_t pass_len);
+
 #ifdef __cplusplus
 }
 #endif
