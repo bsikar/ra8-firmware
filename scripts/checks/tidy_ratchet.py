@@ -484,6 +484,27 @@ def selftest() -> int:
     return 0
 
 
+def _do_update(current: dict[tuple[str, str], int]) -> int:
+    """Rewrite the baseline from this run, refusing to let any bucket grow."""
+    baseline = load_baseline()
+    # Seeding the very first baseline necessarily "grows" every bucket from
+    # nothing, so the no-growth rule applies only once a baseline exists.
+    seeding = not BASELINE_FILE.is_file()
+    grew = [] if seeding else [k for k, n in current.items() if n > baseline.get(k, 0)]
+    if grew:
+        print(
+            f"refusing to --update: {len(grew)} bucket(s) would GROW. "
+            "The baseline is a burn-down; fix the new findings instead.",
+            file=sys.stderr,
+        )
+        for key in grew[:MAX_DETAIL_LINES]:
+            print(f"  {key[0]}  {key[1]}", file=sys.stderr)
+        return 1
+    write_baseline(current)
+    print(f"baseline updated: {sum(current.values())} finding(s) recorded")
+    return 0
+
+
 def main() -> int:
     """Ratchet clang-tidy findings against the committed baseline.
 
@@ -536,23 +557,7 @@ def main() -> int:
         return 1
 
     if args.update:
-        baseline = load_baseline()
-        # Seeding the very first baseline necessarily "grows" every bucket from
-        # nothing, so the no-growth rule applies only once a baseline exists.
-        seeding = not BASELINE_FILE.is_file()
-        grew = [] if seeding else [k for k, n in current.items() if n > baseline.get(k, 0)]
-        if grew:
-            print(
-                f"refusing to --update: {len(grew)} bucket(s) would GROW. "
-                "The baseline is a burn-down; fix the new findings instead.",
-                file=sys.stderr,
-            )
-            for key in grew[:MAX_DETAIL_LINES]:
-                print(f"  {key[0]}  {key[1]}", file=sys.stderr)
-            return 1
-        write_baseline(current)
-        print(f"baseline updated: {sum(current.values())} finding(s) recorded")
-        return 0
+        return _do_update(current)
 
     return report(current, load_baseline())
 
