@@ -240,7 +240,7 @@ def repo_files(
         SystemExit: When git fails.  An enumeration that cannot run must never
             read as an empty -- that is, clean -- tree.
     """
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603 -- trusted: fixed argv, no shell, no user input
         [  # noqa: S607 -- trusted: fixed git argv
             "git",
             "ls-files",
@@ -281,7 +281,7 @@ def untracked_in_scope(
     Returns:
         Repo-relative paths of existing untracked, non-ignored files, sorted.
     """
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603 -- trusted: fixed argv, no shell, no user input
         [  # noqa: S607 -- trusted: fixed git argv
             "git",
             "ls-files",
@@ -568,8 +568,11 @@ def _seed_enumeration_fixture(root: Path) -> None:
         ("add", ".gitignore", "libs/ra8_new/src/tracked.c", "libs/ra8_new/src/deleted.c"),
         ("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "seed"),
     ):
-        subprocess.run(  # noqa: S603, S607 -- fixed git argv against a temporary fixture
-            ["git", *argv], cwd=root, check=True, capture_output=True
+        subprocess.run(  # noqa: S603 -- fixed git argv against a temporary fixture
+            ["git", *argv],  # noqa: S607 -- trusted: git off PATH, as every gate runs it
+            cwd=root,
+            check=True,
+            capture_output=True,
         )
     (root / "libs/ra8_new/src/deleted.c").unlink()
 

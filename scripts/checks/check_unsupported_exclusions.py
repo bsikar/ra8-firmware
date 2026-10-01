@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: every app under ``examples/_unsupported/`` shall carry a current, specific
-machine-readable exclusion reason.
+"""Gate the ``examples/_unsupported/`` tier's machine-readable exclusion reasons.
+
+Every app parked there shall carry a current, specific reason a machine can read.
 
 ``examples/_unsupported/`` is the tier nothing in CI flashes. Until now its
 exclusions were asserted by the directory name and by prose in each app's own
@@ -51,6 +52,9 @@ TIER_DIR = "examples/_unsupported"
 """The excluded tier this gate covers."""
 
 MARKER_NAME = "UNSUPPORTED.toml"
+# The selftest fixture tier: named here so the discovery assertion counts the
+# fixture rather than a number written twice.
+FIXTURE_APPS = ("demo", "demo2", "demo3", "demo4")
 """Per-app marker filename."""
 
 APP_FLOOR = 4
@@ -109,9 +113,9 @@ def check_marker(path: Path, app_name: str) -> list[str]:
     except (tomllib.TOMLDecodeError, UnicodeDecodeError) as exc:
         return [f"{path}: unparseable -- {exc}"]
 
-    for key in REQUIRED_KEYS:
-        if key not in data:
-            findings.append(f"{path}: missing required key '{key}'")
+    findings += [
+        f"{path}: missing required key '{key}'" for key in REQUIRED_KEYS if key not in data
+    ]
     if findings:
         return findings
 
@@ -149,12 +153,12 @@ def scan(root: Path) -> tuple[list[str], int]:
     findings: list[str] = []
 
     marked = {p.parent.name for p in markers}
-    for app in apps:
-        if app.name not in marked:
-            findings.append(
-                f"{app.relative_to(root)}: no {MARKER_NAME} -- an app cannot be parked in "
-                "the excluded tier without a stated reason"
-            )
+    findings += [
+        f"{app.relative_to(root)}: no {MARKER_NAME} -- an app cannot be parked in "
+        "the excluded tier without a stated reason"
+        for app in apps
+        if app.name not in marked
+    ]
     for marker in markers:
         if marker.parent.name not in {a.name for a in apps}:
             findings.append(
@@ -177,20 +181,36 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         tier = root / TIER_DIR
-        for name in ("demo", "demo2", "demo3", "demo4"):
+        for name in FIXTURE_APPS:
             (tier / name / "src").mkdir(parents=True)
             (tier / name / "src" / "main.c").write_text("int main(void) { return 0; }\n")
             (tier / name / "README.md").write_text("x\n")
             (tier / name / MARKER_NAME).write_text(good.replace('"demo"', f'"{name}"'))
         findings, count = scan(root)
         expect(not findings, "a fully marked tier is quiet", failures)
-        expect(count == 4, "every app directory is discovered", failures)
+        expect(count == len(FIXTURE_APPS), "every app directory is discovered", failures)
 
         (tier / "demo2" / MARKER_NAME).unlink()
         findings, _ = scan(root)
         expect(
             any("no UNSUPPORTED.toml" in f for f in findings), "a missing marker fires", failures
         )
+        (tier / "demo2" / MARKER_NAME).write_text(good.replace('"demo"', '"demo2"'))
+
+        # A marker that parses but omits a required key. Nothing else in this
+        # selftest exercised REQUIRED_KEYS, so the missing-key direction could
+        # be disabled outright and every other assertion would still hold.
+        for key in REQUIRED_KEYS:
+            lines = good.replace('"demo"', '"demo2"').splitlines(keepends=True)
+            (tier / "demo2" / MARKER_NAME).write_text(
+                "".join(line for line in lines if not line.startswith(f"{key} "))
+            )
+            findings, _ = scan(root)
+            expect(
+                any(f"missing required key '{key}'" in f for f in findings),
+                f"a marker missing '{key}' fires",
+                failures,
+            )
         (tier / "demo2" / MARKER_NAME).write_text(good.replace('"demo"', '"demo2"'))
 
         (tier / "demo3" / MARKER_NAME).write_text(

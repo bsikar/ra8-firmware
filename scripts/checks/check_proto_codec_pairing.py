@@ -43,6 +43,9 @@ import tempfile
 from pathlib import Path
 
 MANIFEST_REL = ".github/proto-codec-pairing.txt"
+# A manifest row is "<sha256>  <path>": two fields, the first 64 hex digits.
+ROW_FIELDS = 2
+SHA256_HEX_LEN = 64
 
 #: The exact row set.  Fixed here, not read from the manifest, so a manifest that
 #: dropped a row is a failure rather than a check that quietly stopped covering it.
@@ -73,7 +76,7 @@ def repo_root() -> Path:
     """Return the repository root, preferring git so the gate is run-from-anywhere."""
     try:
         out = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- git off PATH, fixed argv
             capture_output=True,
             text=True,
             check=True,
@@ -103,7 +106,7 @@ def parse(text: str) -> tuple[dict[str, str], list[str]]:
         if not line or line.startswith("#"):
             continue
         parts = line.split()
-        if len(parts) != 2 or len(parts[0]) != 64:
+        if len(parts) != ROW_FIELDS or len(parts[0]) != SHA256_HEX_LEN:
             problems.append(f"{MANIFEST_REL}:{number}: not a '<sha256>  <path>' row: {raw!r}")
             continue
         sha, rel = parts
@@ -132,9 +135,7 @@ def check(root: Path) -> int:
         actual = digest(target)
         if actual != rows[rel]:
             problems.append(
-                f"{rel}: digest drifted\n"
-                f"    manifest: {rows[rel]}\n"
-                f"    tree:     {actual}"
+                f"{rel}: digest drifted\n    manifest: {rows[rel]}\n    tree:     {actual}"
             )
     for rel in sorted(set(rows) - set(TRACKED)):
         problems.append(f"{rel}: unexpected row in {MANIFEST_REL}; this gate does not own it")
