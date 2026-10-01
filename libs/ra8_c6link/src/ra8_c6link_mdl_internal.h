@@ -40,6 +40,73 @@ extern "C" {
  * need a distinct hand-packed terminal response per vector to reach them.
  * @since 0.1.0
  */
+/**
+ * @struct mdl_http_headers_t
+ * @brief Fixed-capacity storage for the four optional MDL HTTP request headers.
+ * @details The layout is stated by `src/internal/mdl_request.zig@Headers`,
+ *          which fills it; this declaration is the C view of that storage. An
+ *          absent header travels as an empty string rather than as a dangling
+ *          pointer into caller memory.
+ * @invariant Every member is NUL-terminated for its whole declared capacity.
+ * @since 0.1.0
+ */
+typedef struct {
+  char user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent staging.        */
+  char referer[k_ra8_mdl_referer_max];             /**< Referer staging.           */
+  char if_none_match[k_ra8_mdl_etag_max];          /**< If-None-Match staging.     */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< If-Modified-Since staging. */
+} mdl_http_headers_t;
+
+/**
+ * @brief Validate one optional HTTP field against its protocol bound.
+ * @details Implemented by `src/internal/mdl_request.zig@httpFieldValid`.
+ *          Treats null as absent and rejects CR/LF header injection.
+ * @param[in] text Optional NUL-terminated field.
+ * @param[in] cap Maximum extent including NUL.
+ * @return Field validity.
+ * @retval true Field is absent or bounded and single-line.
+ * @retval false Field is unterminated, too large, or contains CR/LF.
+ * @pre @p cap is nonzero.
+ * @post No input or global state is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_http_field_valid(const char* text, size_t cap);
+
+/**
+ * @brief Validate every caller-supplied start-request field before staging.
+ * @details Implemented by `src/internal/mdl_request.zig@startRequestValid`.
+ *          Reports the bounded URL length so the encoder copies exactly the
+ *          length that was checked rather than re-deriving it.
+ * @param[in] request Caller request; may be null.
+ * @param[out] out_url_len Receives the validated URL length on success.
+ * @return Validation status.
+ * @retval k_ra8_ok Every field satisfies the documented contract.
+ * @retval k_ra8_err_null_ptr @p request, its URL, or @p out_url_len is null.
+ * @retval k_ra8_err_invalid_arg A field is out of range or malformed.
+ * @post @p out_url_len holds the bounded URL length on success only.
+ * @note Not thread-safe for a shared request structure.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t
+priv_c6link_mdl_start_request_valid(const ra8_mdl_request_t* request, size_t* out_url_len);
+
+/**
+ * @brief Copy every present optional HTTP header into bounded local storage.
+ * @details Implemented by `src/internal/mdl_request.zig@stageHeaders`. Each
+ *          field was length-checked first, so every copy is bounded by its own
+ *          protocol maximum and an absent field stays an empty string.
+ * @param[in] http Caller-supplied optional headers; members may be null.
+ * @param[out] out Staging storage to fill.
+ * @return Nothing.
+ * @pre @p http and @p out are non-null.
+ * @post Every present member is copied and NUL-terminated in @p out.
+ * @note Not thread-safe for a shared @p out.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_c6link_mdl_stage_headers(const ra8_mdl_http_policy_t* http,
+                                            mdl_http_headers_t*          out);
+
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap);
 
 /**
