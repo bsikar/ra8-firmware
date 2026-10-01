@@ -30,6 +30,7 @@ add_library(
   ${RA8_IMGDEC_SOURCES}
   ${RA8_IF_RA8_VFS_SOURCES}
   ${RA8_IF_RA8_CGC_SOURCES}
+  ${RA8_IF_RA8_GPT_SOURCES}
   ${RA8_IO_SOURCES}
   ${COMPRESS_SOURCES}
   ${RA8_AUDIO_SOURCES}
@@ -133,6 +134,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_imgdec/inc
          ${FW_ROOT}/libs/if_ra8_vfs/inc
          ${FW_ROOT}/libs/if_ra8_cgc/inc
+         ${FW_ROOT}/libs/if_ra8_gpt/inc
          ${FW_ROOT}/libs/ra8_io/inc
          ${FW_ROOT}/apps/shared_libs/compress/inc
          ${FW_ROOT}/libs/ra8_audio/inc
@@ -214,6 +216,7 @@ target_include_directories(
          ${FW_ROOT}/libs/if/src
          ${FW_ROOT}/libs/if_ra8_vfs/src
          ${FW_ROOT}/libs/if_ra8_cgc/src
+         ${FW_ROOT}/libs/if_ra8_gpt/src
          ${FW_ROOT}/libs/ra8_io/src
          ${FW_ROOT}/libs/ra8_audio/src
          ${FW_ROOT}/libs/ra8_camera/src
