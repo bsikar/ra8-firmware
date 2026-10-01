@@ -43,7 +43,7 @@ pub extern fn ra8_isr_globals_enable() void;
 /// CGC and SCI calls into its link.
 pub extern fn ra8_board_clocks_init(out_rates: *ClockRates) u32;
 pub extern fn ra8_board_uart_console_init(baud: u32) u32;
-pub extern fn ra8_board_led_init(led: u32) u32;
+pub extern fn ra8_board_led_init(led: u8) u32;
 
 pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) u32;
 pub extern fn ra8_pfs_set_drive_strength(pin: u16, dscr: u8) u32;
