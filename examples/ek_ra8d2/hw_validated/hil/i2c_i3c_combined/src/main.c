@@ -95,6 +95,9 @@ static void combo_clocks_or_halt(uint32_t* out_pclka_hz)
   if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     combo_panic_halt();
   }
+  /* Direct driver read on purpose (issue #693): this app clocks I3C channel 0
+   * (J27, P400/P401). The board clock profile's i2c slot is RIIC1, the J35
+   * SCCB channel, so routing this read would name the wrong peripheral. */
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
     combo_panic_halt();
   }
