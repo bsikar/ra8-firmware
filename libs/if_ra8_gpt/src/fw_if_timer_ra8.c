@@ -27,23 +27,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "fw_if_gpt_ra8_claim.h"
 #include "fw_if_timer.h"
 #include "ra8_err.h"
 #include "ra8_gpt.h"
-
-/** @brief One bit per channel this adapter has opened and not closed. */
-static uint16_t s_open_mask;
-
-/**
- * @brief The open-mask bit for one channel.
- *
- * @param[in] ch Channel, already range-checked by the facade.
- * @return One-hot mask for @p ch.
- */
-static uint16_t internal_bit(fw_timer_ch_t ch)
-{
-  return (uint16_t)(1U << ch.index);
-}
 
 /**
  * @brief Whether @p ch is open here.
@@ -53,7 +40,7 @@ static uint16_t internal_bit(fw_timer_ch_t ch)
  */
 static bool internal_is_open(fw_timer_ch_t ch)
 {
-  return (s_open_mask & internal_bit(ch)) != 0U;
+  return fw_gpt_ra8_owned_by(ch.index, k_fw_gpt_ra8_owner_timer);
 }
 
 /**
@@ -86,17 +73,13 @@ static ra8_err_t internal_get_caps(void* ctx, fw_timer_caps_t* out)
  * @param[in] ch     Chip channel.
  * @param[in] mode   Free-run or one-shot; capture is refused.
  * @param[in] period Written to GTPR.
- * @return ::k_ra8_ok, ::k_ra8_err_busy when already open,
+ * @return ::k_ra8_ok, ::k_ra8_err_busy when either adapter holds it,
  *         ::k_ra8_err_not_supported for capture or an unknown mode, or
  *         whatever `ra8_gpt_init` reported.
  */
 static ra8_err_t internal_open(void* ctx, fw_timer_ch_t ch, fw_timer_mode_t mode, uint32_t period)
 {
   (void)ctx;
-  if (internal_is_open(ch)) {
-    return k_ra8_err_busy;
-  }
-
   ra8_gpt_cfg_t cfg = {
     .mode       = k_ra8_gpt_mode_saw_pwm,
     .prescaler  = k_ra8_gpt_ps_div_1,
@@ -111,9 +94,13 @@ static ra8_err_t internal_open(void* ctx, fw_timer_ch_t ch, fw_timer_mode_t mode
     return k_ra8_err_not_supported;
   }
 
+  const ra8_err_t claim = fw_gpt_ra8_claim(ch.index, k_fw_gpt_ra8_owner_timer);
+  if (claim != k_ra8_ok) {
+    return claim;
+  }
   const ra8_err_t err = ra8_gpt_init(ch.index, &cfg);
-  if (err == k_ra8_ok) {
-    s_open_mask |= internal_bit(ch);
+  if (err != k_ra8_ok) {
+    fw_gpt_ra8_release(ch.index, k_fw_gpt_ra8_owner_timer);
   }
   return err;
 }
@@ -132,7 +119,7 @@ static ra8_err_t internal_close(void* ctx, fw_timer_ch_t ch)
   if (!internal_is_open(ch)) {
     return k_ra8_err_invalid_state;
   }
-  s_open_mask &= (uint16_t)~internal_bit(ch);
+  fw_gpt_ra8_release(ch.index, k_fw_gpt_ra8_owner_timer);
   return ra8_gpt_deinit(ch.index);
 }
 
