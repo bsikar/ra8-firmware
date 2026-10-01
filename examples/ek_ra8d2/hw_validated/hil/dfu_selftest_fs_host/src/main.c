@@ -111,9 +111,6 @@ static const ra8_port_pin_t k_dfu_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_dfu_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 role strap (PD07): LOW = Device, so U18 does not back-feed VBUS. */
-static const ra8_port_pin_t k_dfu_pin_hs_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /* -------------------------------------------------------------------------- */
 /* Tunables */
 /* -------------------------------------------------------------------------- */
@@ -863,7 +860,7 @@ static void dfu_route_usb_or_halt(void)
   if (ra8_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra8_psel_usb_hs, "dfu.hs_vbus") != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra8_gpio_output_init(k_dfu_pin_hs_role, k_ra8_level_low) != k_ra8_ok) {
+  if (ra8_board_usbhs_pwr_set(false) != k_ra8_ok) {
     dfu_panic_halt();
   }
   /* FS port: host role. P5_00 VBUSEN peripheral-routed sources J11. */

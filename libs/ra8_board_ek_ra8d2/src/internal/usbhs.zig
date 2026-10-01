@@ -54,6 +54,16 @@ pub fn clockAndMstp() u32 {
     return hal.ra8_mstp_enable(Usb.mstp_usbhs);
 }
 
+/// Drive the J7 host-power switch on PD07.
+///
+/// HIGH turns U18 on so the board supplies 5 V VBUS downstream (host role,
+/// UM 6.2). LOW holds U18 off so it cannot back-feed somebody else's bus,
+/// which is what a device, and a board hosting on FS, wants here.
+pub fn pwrSet(on: bool) u32 {
+    const level = if (on) Io.level_high else Io.level_low;
+    return hal.ra8_gpio_output_init(role_pin, level);
+}
+
 /// Drive PD07 low to strap J7 to Device. UM 6.2 p 34: low is Device, high is
 /// Host. This is a plain MCU GPIO; U15 only matters when firmware needs to
 /// override the SW4-8 strap from somewhere else.
