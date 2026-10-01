@@ -434,7 +434,7 @@ typedef enum : uint8_t {
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_caps(uint8_t* out, uint8_t cap);
 
 /* ==========================================================================
- * ra8_c6link_tlv.c -- the serial endpoint's two-tag envelope
+ * src/internal/tlv.zig -- the serial endpoint's two-tag envelope (Zig)
  * ==========================================================================
  */
 
