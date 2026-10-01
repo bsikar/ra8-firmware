@@ -2,7 +2,8 @@
   "test_roots": [
     "tests/internal_test.zig",
     "tests/abi_test.zig",
-    "tests/path_test.zig"
+    "tests/path_test.zig",
+    "tests/timer_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -11,7 +12,9 @@
     "tests/abi_test.zig",
     "src/internal/path.zig",
     "src/ra8_path_abi.zig",
-    "tests/path_test.zig"
+    "tests/path_test.zig",
+    "src/fw_if_timer_abi.zig",
+    "tests/timer_test.zig"
   ],
-  "minimum_tests": 85
+  "minimum_tests": 100
 }
