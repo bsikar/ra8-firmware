@@ -299,7 +299,7 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # VCOM console stream handle and the clock-profile binding are Zig and come
 # from the archive registered in tests/cmake/zig_libraries.cmake. This glob
 # STAYS, unlike the fully-migrated libraries above, because src still holds the
-# pin/LED/switch core, the camera, comms, ethernet, audio-USB, touch and PDM
+# pin/LED/switch core, the camera, MIPI panel, ethernet, audio-USB, touch and PDM
 # layers and src/boot. The archive links beside these objects; the five misc
 # suites for the ported units are untouched and take their entry points from
 # it behind the unchanged inc/ headers.
