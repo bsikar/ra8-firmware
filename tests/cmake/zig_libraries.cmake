@@ -168,6 +168,31 @@ ra8_add_zig_library(
   ra8_lsm6dso
 )
 
+# PARTLY migrated (#2998), and the first board in that state. The dual-core
+# shared-RAM descriptor, the USB full-speed port routing, the board bringup
+# sequence, the VCOM console stream handle and the clock-profile binding are
+# Zig; libs/ra8_board_ek_ra8d2/src still holds the pin/LED/switch core, the
+# camera, comms, ethernet, audio-USB, touch and PDM layers and src/boot, so
+# unlike ra8_board_ra8p1 the RA8_BOARD_EK_RA8D2_SOURCES glob stays and this
+# archive links BESIDE those objects rather than replacing them.
+#
+# No renamed archive here. ra8_board_ra8p1 needed -Dabi-prefix because its
+# coverage suite links it alongside the default EK-RA8D2 objects; this layer
+# IS the default, so nothing links two copies and a prefix would buy nothing.
+#
+# The five misc suites (test_ra8_board_ek_ra8d2_{dualcore,usb_port,bringup,
+# console_stream,clock_profile}.c) are untouched: they only ever called these
+# entry points, never defined them, so they take all eight from this archive
+# behind the unchanged inc/ headers.
+ra8_add_zig_library(
+  NAME
+  ra8_board_ek_ra8d2
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_board_ek_ra8d2
+  LIBRARY_NAME
+  ra8_board_ek_ra8d2
+)
+
 # Fully migrated. The per-endpoint packet rings, the two MC/DC-promoted
 # predicates, the ra8_usb status -> PAL event translation and the whole public
 # ra8_usb_pal.h surface are Zig, so src/ra8_usb_pal.c is gone. The four
@@ -733,6 +758,7 @@ target_link_libraries(
          ra8_zig::ra8_mpu
          ra8_zig::ra8_net_pal
          ra8_zig::ra8_lsm6dso
+         ra8_zig::ra8_board_ek_ra8d2
          ra8_zig::ra8_usb_pal
          ra8_zig::ra8_keyboard
          ra8_zig::ra8_audio
@@ -776,6 +802,7 @@ link_libraries(
   ra8_zig::ra8_mpu
   ra8_zig::ra8_net_pal
   ra8_zig::ra8_lsm6dso
+  ra8_zig::ra8_board_ek_ra8d2
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio
