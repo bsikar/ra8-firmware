@@ -23,6 +23,12 @@ import (
 
 var endToEndSecret = []byte("integration-webhook-secret")
 
+// pastGrace carries a reconciler's clock beyond the one-minute grace window
+// these tests configure. The window is measured from ObservedAt, which the
+// webhook stamps at delivery, so a pass reading the wall clock a moment later
+// reports every row it just received as waiting and reaches no decision.
+const pastGrace = 2 * time.Minute
+
 type stubJobSource struct {
 	snapshots map[int64]demand.JobSnapshot
 	missing   map[int64]bool
@@ -160,9 +166,13 @@ func TestDemandEndToEndTurnsADroppedCompletionIntoALateRun(t *testing.T) {
 		StartedAt:   queued.Add(time.Minute),
 		CompletedAt: queued.Add(5 * time.Minute),
 	}}}
+	// The pass runs after the grace window, which is the only time it looks
+	// at demand at all. Grace is measured from ObservedAt, and the delivery
+	// above set that to the moment this test ran, so a pass on the wall
+	// clock would report the row as waiting and decide nothing.
 	reconciler, err := demand.NewReconciler(demand.ReconcilerConfig{Source: jobs, Store: source,
 		Grace: time.Minute, MissingAfter: 2 * time.Hour, BatchSize: 100,
-		Now: func() time.Time { return time.Now().UTC() }})
+		Now: func() time.Time { return time.Now().UTC().Add(pastGrace) }})
 	if err != nil {
 		t.Fatalf("new reconciler: %v", err)
 	}
@@ -200,7 +210,7 @@ func TestDemandEndToEndConcludesDemandTheForgeForgot(t *testing.T) {
 	jobs := &stubJobSource{missing: map[int64]bool{jobID: true}}
 	reconciler, err := demand.NewReconciler(demand.ReconcilerConfig{Source: jobs, Store: source,
 		Grace: time.Minute, MissingAfter: time.Hour, BatchSize: 100,
-		Now: func() time.Time { return time.Now().UTC() }})
+		Now: func() time.Time { return time.Now().UTC().Add(pastGrace) }})
 	if err != nil {
 		t.Fatalf("new reconciler: %v", err)
 	}
