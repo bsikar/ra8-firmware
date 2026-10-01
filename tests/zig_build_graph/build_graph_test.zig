@@ -725,20 +725,26 @@ test "threadx_ns is a different archive from threadx, not the same one with a fl
     try std.testing.expect(!secure_has_ns_define);
     try std.testing.expectEqualStrings("-DRA8_THREADX_NON_SECURE", mw.threadx_ns.public_defines[0]);
 
-    // The NS archive drops the SysTick retune (it reprograms a secure-world
-    // peripheral) and carries the three freestanding shims instead, because
-    // the NS image links no libc and no libgcc at all.
+    // The NS archive drops the SysTick retune, because it reprograms a
+    // secure-world peripheral.
     var secure_has_retune = false;
     for (mw.threadx.project_sources) |source| {
         if (std.mem.endsWith(u8, source, "tx_systick_retune.c")) secure_has_retune = true;
     }
     try std.testing.expect(secure_has_retune);
-    var ns_shims: usize = 0;
+
+    // The NS image still links no libc and no libgcc at all, so it still needs
+    // the freestanding primitives. It no longer COMPILES them: until #2820
+    // they were three ra8_core C files in this archive, and that port deleted
+    // them. cmake/threadx_ns.cmake stopped naming them in the same change and
+    // links ra8_core's archive onto the kernel as INTERFACE instead, so the
+    // image picks them up behind the kernel on its own link line.
     for (mw.threadx_ns.project_sources) |source| {
         try std.testing.expect(!std.mem.endsWith(u8, source, "tx_systick_retune.c"));
-        if (std.mem.indexOf(u8, source, "ra8_freestanding_") != null) ns_shims += 1;
+        try std.testing.expect(std.mem.indexOf(u8, source, "ra8_freestanding_") == null);
+        try std.testing.expect(!std.mem.endsWith(u8, source, ".c") or
+            std.mem.indexOf(u8, source, "libs/ra8_core/src/") == null);
     }
-    try std.testing.expectEqual(@as(usize, 3), ns_shims);
 
     // Dropping that TU is why the private include path narrows: ra8_hal was
     // only ever there for it.

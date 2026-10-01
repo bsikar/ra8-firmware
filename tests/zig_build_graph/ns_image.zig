@@ -275,6 +275,15 @@ pub const Context = struct {
     /// because `zig build compile-db` builds the same Context to describe this
     /// image's compile commands, and a database row has no link.
     middleware_archive: ?std.Build.LazyPath = null,
+
+    /// ra8_core's archive, which follows the kernel's on the link line.
+    /// cmake/threadx_ns.cmake:93 links it onto threadx_ns as INTERFACE rather
+    /// than PRIVATE, because an archive is not linked into a static library,
+    /// it is linked into the image that consumes one. Every consumer already
+    /// names threadx_ns, so propagating it puts ra8_core immediately AFTER the
+    /// kernel, which is the order ld needs: the undefined memcpy comes out of
+    /// libthreadx_ns.a and is satisfied by an archive that follows it.
+    core_archive: ?std.Build.LazyPath = null,
     /// The import library the Secure link emitted (`--out-implib`). An input
     /// of this link, which is why the Secure link declares it as an output
     /// rather than writing it somewhere by convention.
@@ -345,10 +354,14 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{image.name}));
     for (objects.items) |object| link.addFileArg(object);
-    // The archive last and NO -lgcc: this target names threadx_ns as its only
-    // link library, so the three ra8_freestanding_* shims inside that archive
-    // are the whole of this image's libc.
+    // The archives last and NO -lgcc: this target names threadx_ns as its only
+    // link library, and ra8_core rides in behind it as that library's
+    // INTERFACE dependency. Between them they are the whole of this image's
+    // libc. Until #2820 the freestanding primitives were three ra8_core C
+    // files compiled into the kernel archive itself; they are Zig now and
+    // cmake/threadx_ns.cmake stopped naming them in the same change.
     link.addFileArg(ctx.middleware_archive orelse @panic("ra8: the NS link needs the threadx_ns archive"));
+    link.addFileArg(ctx.core_archive orelse @panic("ra8: the NS link needs ra8_core's archive"));
 
     const bin = objcopyTo(b, ctx, "binary", &.{}, elf, b.fmt("{s}.bin", .{image.name}));
     const ns_hex = objcopyTo(b, ctx, "ihex", &.{}, elf, b.fmt("{s}.hex", .{image.name}));

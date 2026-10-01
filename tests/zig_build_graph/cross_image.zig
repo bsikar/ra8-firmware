@@ -21,6 +21,7 @@ const app_local = @import("app_local.zig");
 const arm_flags = @import("arm_flags.zig");
 const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
+const core_archive = @import("core_archive.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
@@ -99,12 +100,33 @@ fn addCrossApp(
     // and nothing failed in between, because an archive at the wrong
     // optimisation links perfectly well.
     var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var names_core = false;
     for (app.zig_libraries) |lib_name| {
+        if (std.mem.eql(u8, lib_name, core_archive.lib_name)) names_core = true;
         const dependency = b.dependency(lib_name, .{
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
         });
         archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
+    }
+
+    // ra8_core, which is not optional and is not in the table above.
+    // cmake/ra8_app/sources.cmake registers it unconditionally and names the
+    // reason in its own guard string: "links ra8_core into every app". Since
+    // #2820 libs/ra8_core/src holds no .c at all, so this archive is the only
+    // place an image gets memcpy / memset / str* / abs, which the compiler
+    // emits calls to from ordinary struct assignment, along with the log
+    // backend, the timebase and the fault block.
+    //
+    // The dedupe mirrors _ra8_app_link_zig_libraries(), which runs
+    // list(REMOVE_DUPLICATES) for the same reason: an app free to name a
+    // library the universal set already carries would otherwise link it twice.
+    if (!names_core) {
+        archives.append(core_archive.forTarget(
+            b,
+            arm_target,
+            globals.configuration.zig_optimize,
+        )) catch @panic("OOM");
     }
 
     // Everything the app names in USES. Each one is built as its own archive
@@ -189,6 +211,11 @@ fn addCrossApp(
         .size = tools.size,
         .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
         .image = image,
+        .core_archive = core_archive.forCpu(
+            b,
+            &std.Target.arm.cpu.cortex_m33,
+            globals.configuration.zig_optimize,
+        ),
         .global_compile_flags = globals.c_flags,
         .global_link_flags = globals.link_flags,
     }) else null;
@@ -275,6 +302,7 @@ fn addCrossApp(
     // merge. Both are declared outputs above rather than paths by convention.
     if (app.ns) |image| {
         var ctx = cross_build.nsContext(b, tools, app, image, globals, &arm_global_defines);
+        ctx.core_archive = core_archive.forTarget(b, arm_target, globals.configuration.zig_optimize);
         ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
         ctx.implib = implib;
         ctx.secure_elf = elf;

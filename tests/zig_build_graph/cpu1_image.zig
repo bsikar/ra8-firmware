@@ -166,6 +166,16 @@ pub const Options = struct {
     global_compile_flags: []const []const u8,
     /// The global link flags, ahead of the CPU1 target's own.
     global_link_flags: []const []const u8,
+
+    /// ra8_core's archive built for THIS image's core, not the app's.
+    /// cmake/ra8_add_app.cmake asks for cortex_m33 here while the main
+    /// expansion registers the M85 one, because the compiler emits calls to
+    /// memcpy / memset from ordinary struct assignment and those names have to
+    /// be present in this image's own instruction set.
+    /// Null on the compile-database path, which has no link; the link itself
+    /// refuses to run without it, the same way the NS image treats the
+    /// kernel's archive.
+    core_archive: ?std.Build.LazyPath = null,
 };
 
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
@@ -201,6 +211,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{name}));
     for (objects.items) |object| link.addFileArg(object);
+    link.addFileArg(options.core_archive orelse @panic("ra8: the CPU1 link needs ra8_core's archive built for cortex_m33"));
 
     const hex = objcopyTo(b, options.objcopy, "ihex", elf, b.fmt("{s}.hex", .{name}));
     const bin = objcopyTo(b, options.objcopy, "binary", elf, b.fmt("{s}.bin", .{name}));
