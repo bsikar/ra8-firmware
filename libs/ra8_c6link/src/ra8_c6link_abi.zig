@@ -24,6 +24,7 @@ const mdl_take = @import("internal/mdl_take.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
+const rx_route = @import("internal/rx_route.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -576,4 +577,11 @@ pub export fn priv_c6link_sta_len(text: ?[*]const u8, cap: u8) callconv(.c) u8 {
 pub export fn priv_c6link_sta_credentials_valid(ssid_len: u8, pass_len: u8) callconv(.c) bool {
     sta_cfg.credentialsValid(ssid_len, pass_len) catch return false;
     return true;
+}
+
+/// `priv_c6link_rx_route`: which consumer this frame's interface number belongs to.
+///
+/// Returns the `rx_route.Route` ordinal, which `priv_c6link_route_t` mirrors.
+pub export fn priv_c6link_rx_route(if_type: u8) callconv(.c) u8 {
+    return @intFromEnum(rx_route.routeFor(if_type));
 }

@@ -106,10 +106,12 @@ RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_
   }
   const uint8_t* payload = &link->rx[view->offset];
 
-  if (view->if_type == (uint8_t)ESP_SERIAL_IF) {
+  const uint8_t route = priv_c6link_rx_route(view->if_type);
+
+  if (route == (uint8_t)k_priv_c6link_route_rpc) {
     return priv_c6link_rpc_consume(link, payload, view->len);
   }
-  if ((view->if_type == (uint8_t)ESP_STA_IF) || (view->if_type == (uint8_t)ESP_AP_IF)) {
+  if (route == (uint8_t)k_priv_c6link_route_ethernet) {
     if (link->stats != nullptr) {
       link->stats->eth_in++;
     }
@@ -118,10 +120,6 @@ RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_
     }
     return false;
   }
-  /* `ESP_PRIV_IF` lands here. Upstream reads peripheral-side capabilities from it, but
-     this co-processor build transmits its only privileged frame with a
-     checksum computed as if `if_num` were zero (#529), so a conformant host
-     never sees a valid one and nothing in this library depends on it. */
   if (link->stats != nullptr) {
     link->stats->unrouted++;
   }
