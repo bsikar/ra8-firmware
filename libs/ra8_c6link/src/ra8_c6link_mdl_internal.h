@@ -579,6 +579,63 @@ typedef struct mdl_envelope_view_t {
  */
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_mdl_envelope_accept(const mdl_envelope_view_t* view);
 
+/**
+ * @brief Decide whether a cancel may be issued for a session
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. An active session always carries a
+ *          non-zero job id, so a zero one means the caller kept a session
+ *          across a failed start.
+ * @param[in] session Caller-owned session the cancel would name.
+ * @return Issue status.
+ * @retval k_ra8_ok The session may be cancelled.
+ * @retval k_ra8_err_invalid_state The session is inactive or uncorrelated.
+ * @pre @p session is non-null.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_cancel_allowed(const ra8_mdl_session_t* session);
+
+/**
+ * @brief Decide whether a next request may ask for a span
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. The ask is bounded both by what the peer
+ *          negotiated at accept time and by the protocol chunk ceiling, since
+ *          a peer may offer more than this build can receive.
+ * @param[in] session Caller-owned active session.
+ * @param[in] max_bytes Span the caller wants from the next chunk.
+ * @return Issue status.
+ * @retval k_ra8_ok The ask is within both ceilings.
+ * @retval k_ra8_err_invalid_state The session is inactive or uncorrelated.
+ * @retval k_ra8_err_invalid_size The ask is zero or past a ceiling.
+ * @pre @p session is non-null.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_next_allowed(const ra8_mdl_session_t* session,
+                                                              uint16_t max_bytes);
+
+/**
+ * @brief Decide whether one encoded request is self-consistent
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. Fail-closed backstop against a codec
+ *          defect rather than an input class: a sized message is never empty,
+ *          a message whose fields were bounded first fits the request buffer,
+ *          and pack() writes exactly what get_packed_size() counted.
+ * @param[in] sized Byte count the encoder reported before packing.
+ * @param[in] written Byte count the encoder reported after packing.
+ * @param[in] capacity Bytes available in the link request buffer.
+ * @return Whether the encode may be transmitted.
+ * @retval false The encode is empty, oversized, or disagreed with itself.
+ * @pre None.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool
+priv_c6link_mdl_packed_coherent(size_t sized, size_t written, size_t capacity);
+
 #ifdef __cplusplus
 }
 #endif

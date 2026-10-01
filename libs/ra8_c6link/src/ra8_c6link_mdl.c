@@ -356,9 +356,8 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
   inner.timeout_ms        = request->http.timeout_ms;
   uint8_t* const data     = link->mdl_request;
   const size_t   packed   = ra8__mdl__start_request__get_packed_size(&inner);
-  // mcdc-deactivated: ra8_c6link_mdl_start_request codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
-  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
-      (ra8__mdl__start_request__pack(&inner, data) != packed)) {
+  const size_t written = ra8__mdl__start_request__pack(&inner, data);
+  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session          = session,
@@ -384,12 +383,9 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
   if ((link == nullptr) || (session == nullptr) || (chunk == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!session->active || (session->job_id == 0U)) {
-    return k_ra8_err_invalid_state;
-  }
-  if ((max_bytes == 0U) || (max_bytes > session->max_chunk_bytes) ||
-      (max_bytes > k_ra8_mdl_chunk_data_max)) {
-    return k_ra8_err_invalid_size;
+  const ra8_err_t allowed = priv_c6link_mdl_next_allowed(session, max_bytes);
+  if (allowed != k_ra8_ok) {
+    return allowed;
   }
   *chunk                      = (ra8_mdl_chunk_t){};
   Ra8__Mdl__NextRequest inner = RA8__MDL__NEXT_REQUEST__INIT;
@@ -399,9 +395,8 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
   inner.max_bytes             = max_bytes;
   uint8_t* const data         = link->mdl_request;
   const size_t   packed       = ra8__mdl__next_request__get_packed_size(&inner);
-  // mcdc-deactivated: ra8_c6link_mdl_next codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
-  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
-      (ra8__mdl__next_request__pack(&inner, data) != packed)) {
+  const size_t written = ra8__mdl__next_request__pack(&inner, data);
+  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session         = session,
@@ -416,17 +411,17 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
   if ((link == nullptr) || (session == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!session->active || (session->job_id == 0U)) {
-    return k_ra8_err_invalid_state;
+  const ra8_err_t allowed = priv_c6link_mdl_cancel_allowed(session);
+  if (allowed != k_ra8_ok) {
+    return allowed;
   }
   Ra8__Mdl__CancelRequest inner = RA8__MDL__CANCEL_REQUEST__INIT;
   inner.protocol_version        = k_ra8_mdl_protocol_version;
   inner.job_id                  = session->job_id;
   uint8_t* const data           = link->mdl_request;
   const size_t   packed         = ra8__mdl__cancel_request__get_packed_size(&inner);
-  // mcdc-deactivated: ra8_c6link_mdl_cancel codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
-  if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
-      (ra8__mdl__cancel_request__pack(&inner, data) != packed)) {
+  const size_t written = ra8__mdl__cancel_request__pack(&inner, data);
+  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session = session, .kind = k_mdl_take_cancelled};
