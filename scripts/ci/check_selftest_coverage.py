@@ -542,7 +542,7 @@ def _taxonomy_cases() -> list[tuple[str, bool]]:
         ("scripts/checks/ is classified as a detector", is_detector("scripts/checks/check_asm.py")),
         (
             "scripts/ci/check_*.py is classified as a detector",
-            is_detector("scripts/ci/check_ci_parity.py"),
+            is_detector("scripts/ci/check_gate_bodies.py"),
         ),
         ("scripts/builders/ is NOT a detector", not is_detector("scripts/builders/docs.sh")),
         ("scripts/report/ is NOT a detector", not is_detector("scripts/report/app_sizes.py")),

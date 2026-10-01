@@ -10,8 +10,7 @@ the human-readable record of where the remaining structural-coverage and
 documentation gaps are; a committed copy that has silently drifted describes a
 tree that no longer exists (issue #380).
 
-This is the "regenerate and gate" resolution -- the same shape
-``check_ci_parity.py`` uses on the gate registry. For every versioned generated
+This is the "regenerate and gate" resolution. For every versioned generated
 artefact this gate re-runs its generator and byte-compares the result against
 the tracked worktree candidate; any difference fails the gate and names the
 command that refreshes it. Reading the candidate rather than ``HEAD`` makes the
