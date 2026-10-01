@@ -108,7 +108,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
 | `scripts/checks/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
 | `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
-| `tools/check_since_version`                 | Doxygen `@since` enforcement.                        |
+| `ra8ci since`     | Doxygen `@since` enforcement.                        |
 | `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
 | `tools/roadmap_stats`                       | `../ROADMAP.md` summary block freshness gate.        |
 | `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |
@@ -203,7 +203,7 @@ component is vendored at the exact version recorded in its
 The hook at the `pre-commit-checks` CI gate enforces the following gates on
 every commit. Failure of any gate refuses the commit:
 
-1. ASCII-only source files (`fix-encoding.py --check`).
+1. ASCII-only source files (`ra8ci ascii`).
 2. C23 patterns: no `_Static_assert`, no `= {0}`, no `#include
    <stdbool.h>`.
 3. Defensive-paren on numeric `#define` values.

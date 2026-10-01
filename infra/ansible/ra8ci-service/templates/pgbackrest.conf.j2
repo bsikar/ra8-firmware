@@ -1,0 +1,18 @@
+[global]
+repo1-type=s3
+repo1-s3-endpoint={{ ra8ci_backup_s3_endpoint }}
+repo1-s3-bucket={{ ra8ci_backup_s3_bucket }}
+repo1-s3-region={{ ra8ci_backup_s3_region }}
+repo1-s3-key={{ ra8ci_backup_s3_key }}
+repo1-s3-key-secret={{ ra8ci_backup_s3_secret }}
+repo1-s3-uri-style={{ ra8ci_backup_s3_uri_style }}
+repo1-path={{ ra8ci_backup_repo_path }}
+repo1-cipher-type=aes-256-cbc
+repo1-cipher-pass={{ ra8ci_backup_cipher_pass }}
+repo1-retention-full-type=time
+repo1-retention-full=30
+compress-type=zst
+start-fast=y
+
+[ra8ci]
+pg1-path={{ ra8ci_pg_data }}

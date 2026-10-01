@@ -225,7 +225,7 @@ must pass:
 - `clang-tidy --check` (pre-commit hook).
 - `cppcheck` general checks (pre-commit hook; MISRA addon is `just quality::local::misra`
   only -- see Section 6).
-- `check_since_version` (every public symbol carries a `@since`
+- `ra8ci since` (every public symbol carries a `@since`
   tag; pre-commit hook).
 - `check-copyright.py` (every source file carries the project header;
   pre-commit hook).
@@ -383,8 +383,7 @@ project policy in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)).
 
 ### 6.6 Stack-usage analysis
 
-`scripts/checks/check_stack_usage.sh` plus
-`scripts/checks/stack_usage_check.py` analyse the per-function
+`scripts/checks/stack_usage_check.py` analyses the per-function
 `.su` files emitted by `arm-none-eabi-gcc -fstack-usage`. Results
 roll up into [`../STACK_USAGE.md`](../STACK_USAGE.md). This satisfies
 IEC 61508-3 Annex B (control of coding-time error sources, stack
@@ -422,7 +421,7 @@ Source: [`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh).
 | Defensive macro paren                            | inline check in pre-commit hook                            |
 | clang-format                                     | `scripts/checks/format_code.sh --check`                           |
 | clang-tidy                                       | `scripts/checks/clang_tidy.sh --check`                            |
-| `@since` tag presence                            | `tools/check_since_version`                                 |
+| `@since` tag presence                            | `ra8ci since`                     |
 | Copyright header presence                        | `scripts/checks/check-copyright.py`                         |
 | cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
 | HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |

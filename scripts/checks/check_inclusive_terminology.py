@@ -242,6 +242,7 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/checks/check_inclusive_terminology.py",
         "scripts/fix/fix_inclusive_terminology.py",
+        "tools/ra8ci/internal/committerms/committerms.go",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
         ".claude/agents/style-reviewer.md",

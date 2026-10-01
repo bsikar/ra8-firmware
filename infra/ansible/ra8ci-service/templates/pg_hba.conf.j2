@@ -1,0 +1,9 @@
+# TYPE  DATABASE  USER           ADDRESS  METHOD
+local   all       postgres                peer
+local   ra8ci     ra8ci_migrate           peer
+local   ra8ci     ra8ci_service           peer
+local   ra8ci     ra8ci_operator          peer
+local   replication postgres              peer
+local   all       all                     reject
+host    all       all            0.0.0.0/0 reject
+host    all       all            ::/0      reject

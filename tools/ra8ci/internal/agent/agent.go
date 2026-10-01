@@ -1,0 +1,669 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
+// Package agent runs reviewed read-only tasks from outbound mTLS assignments.
+// Each agent checkout must be clean and dedicated to the agent. Write tasks and
+// board actions are not dispatched until their own fenced protocols exist.
+package agent
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
+)
+
+const (
+	requestLimit      = 10 * time.Second
+	heartbeatInterval = 5 * time.Second
+	deadlineSafety    = 500 * time.Millisecond
+	defaultPollWait   = 25 * time.Second
+	maxHTTPResponse   = protocol.MaxJSONBytes
+	// evidenceAttempts bounds how many times one piece of in-flight evidence
+	// is offered before the uploader gives up. Repeating a log chunk is safe
+	// because the plane stores a chunk at or below its high-water sequence
+	// only when the stream, step, digest and bytes all match, and reports
+	// that match as success. Three attempts inside the task's own budget.
+	evidenceAttempts = 3
+	evidenceBackoff  = 250 * time.Millisecond
+)
+
+var (
+	ErrUnsafeAssignment = errors.New("agent rejected unsafe assignment")
+	ErrServerProtocol   = errors.New("agent server protocol failure")
+)
+
+// Config requires an HTTPS server and a dedicated client certificate. The
+// agent identity is authenticated by that certificate, never a body field.
+type Config struct {
+	ServerURL string
+	CAFile    string
+	CertFile  string
+	KeyFile   string
+	Root      string
+	PollWait  time.Duration
+}
+
+// Agent has no listener, incoming shell endpoint, or board device access.
+type Agent struct {
+	base     string
+	root     string
+	pollWait time.Duration
+	beat     time.Duration
+	// flush bounds the kept-back log chunk's last offer. Zero means the
+	// reviewed logFlushWindow; see flushWindow.
+	flush   time.Duration
+	client  *http.Client
+	catalog *catalog.Catalog
+	// authorities re-asks whether the trust file this agent verifies the
+	// server against can still verify anything. Only New wires it, from the
+	// bundle it read; an agent assembled directly in a test holds no bundle
+	// and there is nothing to re-ask.
+	authorities func() error
+}
+
+// beatInterval is the period between heartbeats. Zero means the reviewed
+// heartbeatInterval, so every agent New builds beats at that rate; the field
+// exists because the plane's cancellation only reaches a running attempt on a
+// heartbeat, and a test cannot wait five seconds to observe the teardown.
+func (agent *Agent) beatInterval() time.Duration {
+	if agent.beat > 0 {
+		return agent.beat
+	}
+	return heartbeatInterval
+}
+
+// New constructs an outbound-only client with TLS 1.3 mutual authentication.
+func New(config Config) (*Agent, error) {
+	parsed, err := url.Parse(config.ServerURL)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil ||
+		parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return nil, fmt.Errorf("%w: server must be an HTTPS origin", ErrServerProtocol)
+	}
+	if config.CAFile == "" || config.CertFile == "" || config.KeyFile == "" || config.Root == "" {
+		return nil, fmt.Errorf("%w: TLS identity and checkout are required", ErrServerProtocol)
+	}
+	caPEM, err := os.ReadFile(config.CAFile)
+	if err != nil {
+		return nil, err
+	}
+	// The pool and the same question asked again on every poll. This agent
+	// runs until it is cancelled, and an authority outlives a leaf by years,
+	// so deciding the bundle once at startup leaves the whole remaining life
+	// of the CA uncovered.
+	roots, authorities, err := mtls.ServerAuthoritySource(caPEM, time.Now)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrServerProtocol, err)
+	}
+	identity, err := mtls.LoadClientIdentity(config.CertFile, config.KeyFile, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	present, err := mtls.ClientIdentitySource(identity, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	absolute, err := filepath.Abs(config.Root)
+	if err != nil {
+		return nil, err
+	}
+	root, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return nil, err
+	}
+	definitions, err := catalog.Load()
+	if err != nil {
+		return nil, err
+	}
+	wait := config.PollWait
+	if wait == 0 {
+		wait = defaultPollWait
+	}
+	if wait < 0 || wait > 25*time.Second {
+		return nil, fmt.Errorf("%w: invalid poll wait", ErrServerProtocol)
+	}
+	transport := &http.Transport{Proxy: nil, ForceAttemptHTTP2: true, TLSClientConfig: &tls.Config{
+		MinVersion: tls.VersionTLS13, RootCAs: roots, GetClientCertificate: present,
+	}}
+	return &Agent{base: strings.TrimSuffix(config.ServerURL, "/"), root: root, pollWait: wait,
+		client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}}, catalog: definitions, authorities: authorities}, nil
+}
+
+// Run polls until cancelled. A protocol or active-attempt error terminates the
+// loop so the service manager can restart while the server fences that attempt.
+func (agent *Agent) Run(ctx context.Context) error {
+	for ctx.Err() == nil {
+		assigned, err := agent.RunOnce(ctx)
+		if err != nil {
+			return err
+		}
+		if !assigned {
+			timer := time.NewTimer(250 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+			case <-timer.C:
+			}
+		}
+	}
+	return ctx.Err()
+}
+
+// RunOnce claims at most one attempt; false means the server had no work.
+func (agent *Agent) RunOnce(ctx context.Context) (bool, error) {
+	if agent == nil || ctx == nil {
+		return false, fmt.Errorf("%w: nil agent or context", ErrServerProtocol)
+	}
+	// Before the request rather than after it. If the trust file has lapsed
+	// the handshake fails verifying the SERVER's chain, and that error names
+	// the server, so the operator reads the listener's log and finds nothing
+	// wrong. Asking here is what makes a lapsed local file readable as one.
+	if agent.authorities != nil {
+		if err := agent.authorities(); err != nil {
+			return false, fmt.Errorf("%w: %v", ErrServerProtocol, err)
+		}
+	}
+	facts, err := HostFacts()
+	if err != nil {
+		return false, err
+	}
+	claim := protocol.ClaimRequest{SchemaVersion: protocol.Version, HostFacts: facts,
+		PollWaitMS: agent.pollWait.Milliseconds()}
+	if err := claim.Validate(); err != nil {
+		return false, err
+	}
+	claimCtx, stop := context.WithTimeout(ctx, agent.pollWait+requestLimit)
+	defer stop()
+	var assignment protocol.Assignment
+	status, err := agent.post(claimCtx, "/v1/agents/me/claim", claim, &assignment, true)
+	if err != nil {
+		return false, err
+	}
+	if status == http.StatusNoContent {
+		return false, nil
+	}
+	if err := assignment.Validate(); err != nil {
+		return true, fmt.Errorf("%w: invalid grant: %v", ErrUnsafeAssignment, err)
+	}
+	return true, agent.execute(ctx, assignment)
+}
+
+func (agent *Agent) execute(parent context.Context, assignment protocol.Assignment) error {
+	task, found := agent.catalog.Task(assignment.Task.Name)
+	if !found || task.Version != assignment.Task.Version ||
+		assignment.CatalogSHA256 != agent.catalog.Digest() || task.Scope != "safe-local-read-only" ||
+		task.BoardPolicy != "none" || !task.SupportsOS(runtime.GOOS) {
+		return fmt.Errorf("%w: task is not an embedded read-only non-board definition", ErrUnsafeAssignment)
+	}
+	budget, err := assignmentBudget(assignment, task.DeadlineSeconds)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(parent, budget)
+	defer cancel()
+	if _, err := catalog.VerifyCheckout(agent.root); err != nil {
+		return fmt.Errorf("%w: catalog checkout: %v", ErrUnsafeAssignment, err)
+	}
+	if _, err := source.Verify(ctx, agent.root, assignment.Source.Commit, assignment.Source.SnapshotSHA256); err != nil {
+		return fmt.Errorf("%w: source snapshot: %v", ErrUnsafeAssignment, err)
+	}
+	startFacts, err := HostFacts()
+	if err != nil {
+		return err
+	}
+	ack := protocol.Ack{SchemaVersion: protocol.Version, AssignmentID: assignment.AssignmentID,
+		AttemptID: assignment.AttemptID, AssignmentVersion: assignment.AssignmentVersion,
+		FencingToken: assignment.FencingToken, CatalogSHA256: assignment.CatalogSHA256,
+		SourceSnapshotSHA256: assignment.Source.SnapshotSHA256, HostFacts: startFacts}
+	if err := ack.Validate(); err != nil {
+		return err
+	}
+	if err := agent.accept(ctx, assignment, "/v1/assignments/"+assignment.AssignmentID+"/ack", ack); err != nil {
+		return err
+	}
+	uploader := &logUploader{agent: agent, ctx: ctx, assignment: assignment}
+	hbCtx, hbCancel := context.WithCancel(ctx)
+	hbDone := make(chan error, 1)
+	go func() { hbDone <- agent.heartbeat(hbCtx, assignment, cancel) }()
+	result, runErr := executor.Run(ctx, agent.root, task, io.Discard, io.Discard, func(stepName string) (io.Writer, io.Writer) {
+		return &streamWriter{uploader: uploader, stream: "stdout", stepName: stepName}, &streamWriter{uploader: uploader, stream: "stderr", stepName: stepName}
+	})
+	hbCancel()
+	hbErr := <-hbDone
+	runErr = errors.Join(runErr, hbErr)
+	// Artifacts travel on the parent, not on ctx: ctx is the run's own budget
+	// and is already expired on the deadline path, which is precisely the
+	// attempt whose outputs explain the most. The window is bounded and
+	// separate from the receipt's so a large upload cannot cost the receipt.
+	artifactCtx, artifactStop := context.WithTimeout(parent, artifactWindow)
+	_, artifactErr := agent.collectAttemptArtifacts(artifactCtx, assignment, task, result, time.Now)
+	artifactStop()
+	// Retry only the last ambiguous log chunk. The server must treat the same
+	// sequence and digest idempotently; this never resumes the child process.
+	// On its own window, not the receipt's: a plane that stalls here must not
+	// be able to spend the budget of the one message that says how this
+	// attempt ended. See logFlushWindow.
+	flushCtx, flushStop := context.WithTimeout(parent, agent.flushWindow())
+	uploader.flushGrace(flushCtx)
+	flushStop()
+	// The end reading is read for the receipt, never the other way round: a
+	// /proc read that fails here, or a clock stepped back between the two
+	// readings, used to discard the whole report of an attempt that had
+	// already run. See endHostFacts.
+	measured, endErr := HostFacts()
+	endFacts, measuredAtEnd := endHostFacts(startFacts, measured, endErr)
+	sequence, logErr := uploader.status()
+	receipt := terminalReceipt(assignment, result, startFacts, endFacts, sequence, runErr, logErr, artifactErr)
+	if !measuredAtEnd {
+		receipt = withoutEndReading(receipt)
+	}
+	if err := receipt.Validate(); err != nil {
+		return err
+	}
+	// Taken after the flush has returned, so the receipt starts on a full
+	// window however long the flush spent. This grace permits reporting a
+	// deadline, not further task execution.
+	evidenceCtx, evidenceCancel := context.WithTimeout(parent, requestLimit)
+	defer evidenceCancel()
+	if err := agent.accept(evidenceCtx, assignment, "/v1/attempts/"+assignment.AttemptID+"/result", receipt); err != nil {
+		return err
+	}
+	reported := errors.Join(runErr, logErr, artifactErr, endErr)
+	// A log upload that failed because this attempt's own budget ran out is
+	// the deadline, not the plane refusing the attempt. The receipt above
+	// carries the evidence gap and has already been accepted, so ending the
+	// poll loop here would restart the agent after every timed-out attempt
+	// that still had a chunk in flight, for a failure that is the expected
+	// consequence of the timeout being enforced.
+	if result.TimedOut && spentWithTheBudget(ctx, reported) {
+		return nil
+	}
+	return reported
+}
+
+// spentWithTheBudget reports whether the run context's own expiry explains
+// err ENTIRELY. err is a join, and errors.Is is satisfied by any one member,
+// so asking it directly would let a genuine protocol failure ride along beside
+// a deadline and be swallowed with it. Every leaf has to be the deadline.
+func spentWithTheBudget(ctx context.Context, err error) bool {
+	if ctx == nil || err == nil || !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return false
+	}
+	return everyLeafIs(err, context.DeadlineExceeded)
+}
+
+// endedTheAttempt reports whether err is nothing but the cancellation this
+// attempt was told to take. A cancel reaches a running attempt on a heartbeat
+// and cancels the run context, so the step's own log write fails with it and
+// the executor hands that back joined onto the run error (executor.go: a step
+// whose log writer failed is reported as "execute <step>: ..."). Read plainly,
+// that makes a clean teardown look like an executor failure and clears the
+// evidence flag on a receipt whose evidence is in fact complete.
+//
+// The cancellation itself is not a failure of the evidence, so it is stripped
+// before the receipt is judged. Anything else in the join still is, which is
+// why every leaf has to be the cancellation: errors.Is is satisfied by any one
+// member of a join, so asking it directly would let a real failure ride along
+// beside the cancel and be forgiven with it.
+func endedTheAttempt(result executor.Result, err error) bool {
+	if !result.Cancelled || err == nil {
+		return false
+	}
+	return everyLeafIs(err, context.Canceled)
+}
+
+func everyLeafIs(err error, target error) bool {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		members := joined.Unwrap()
+		if len(members) == 0 {
+			return false
+		}
+		for _, member := range members {
+			if member != nil && !everyLeafIs(member, target) {
+				return false
+			}
+		}
+		return true
+	}
+	return errors.Is(err, target)
+}
+
+// assignmentBudget uses only the server's remaining-time hint for a local
+// monotonic timer. DeadlineAt remains the server's audit/deadline authority;
+// comparing it with this host's wall clock would assume clock synchronization.
+func assignmentBudget(assignment protocol.Assignment, catalogDeadlineSeconds int) (time.Duration, error) {
+	if err := assignment.Validate(); err != nil {
+		return 0, fmt.Errorf("%w: %v", ErrUnsafeAssignment, err)
+	}
+	if catalogDeadlineSeconds < 1 || catalogDeadlineSeconds > protocol.MaxDeadlineMS/1000 {
+		return 0, fmt.Errorf("%w: invalid reviewed task deadline", ErrUnsafeAssignment)
+	}
+	remaining := time.Duration(assignment.RemainingMS)*time.Millisecond - deadlineSafety
+	maximum := time.Duration(catalogDeadlineSeconds)*time.Second - deadlineSafety
+	if maximum < remaining {
+		remaining = maximum
+	}
+	if remaining <= 0 {
+		return 0, fmt.Errorf("%w: assignment deadline is exhausted", ErrUnsafeAssignment)
+	}
+	return remaining, nil
+}
+
+func (agent *Agent) post(ctx context.Context, endpoint string, request any, response any, allowEmpty bool) (int, error) {
+	data, err := json.Marshal(request)
+	if err != nil {
+		return 0, err
+	}
+	limit := requestLimit
+	if endpoint == "/v1/agents/me/claim" {
+		limit += agent.pollWait
+	}
+	callCtx, cancel := context.WithTimeout(ctx, limit)
+	defer cancel()
+	call, err := http.NewRequestWithContext(callCtx, http.MethodPost, agent.base+endpoint, bytes.NewReader(data))
+	if err != nil {
+		return 0, err
+	}
+	call.Header.Set("Content-Type", "application/json")
+	call.Header.Set("Accept", "application/json")
+	result, err := agent.client.Do(call)
+	if err != nil {
+		return 0, fmt.Errorf("%w: request failed: %w", ErrServerProtocol, err)
+	}
+	defer result.Body.Close()
+	if result.StatusCode == http.StatusNoContent && allowEmpty {
+		var probe [1]byte
+		count, readErr := result.Body.Read(probe[:])
+		if count != 0 || (readErr != nil && readErr != io.EOF) {
+			return 0, fmt.Errorf("%w: nonempty 204", ErrServerProtocol)
+		}
+		return result.StatusCode, nil
+	}
+	if result.StatusCode != http.StatusOK {
+		return result.StatusCode, fmt.Errorf("%w: server returned HTTP %d", ErrServerProtocol, result.StatusCode)
+	}
+	if response == nil {
+		return result.StatusCode, fmt.Errorf("%w: missing response target", ErrServerProtocol)
+	}
+	// Past this point the plane has answered 200. A body this agent cannot
+	// read is a protocol break, not silence, so the status travels with the
+	// error: status 0 is reserved for a call the plane never answered, and
+	// only that is worth offering again.
+	if result.ContentLength > maxHTTPResponse {
+		return result.StatusCode, fmt.Errorf("%w: oversized response", ErrServerProtocol)
+	}
+	if err := protocol.DecodeStrict(result.Body, response); err != nil {
+		return result.StatusCode, fmt.Errorf("%w: %v", ErrServerProtocol, err)
+	}
+	return result.StatusCode, nil
+}
+
+func (agent *Agent) accept(ctx context.Context, assignment protocol.Assignment, endpoint string, body any) error {
+	var response protocol.AcceptResponse
+	if _, err := agent.post(ctx, endpoint, body, &response, false); err != nil {
+		return err
+	}
+	if err := response.ValidateFor(assignment); err != nil {
+		return fmt.Errorf("%w: stale or negative acknowledgment", ErrServerProtocol)
+	}
+	return nil
+}
+
+// retryableEvidence separates a call the plane never answered from a refusal
+// it did answer with. Status 0 is a transport failure, so the server's mind is
+// unknown; 5xx is the server saying it could not answer right now. Every 4xx is
+// a decision, and a decision does not change because it was asked twice.
+func retryableEvidence(status int) bool {
+	return status == 0 || status >= http.StatusInternalServerError
+}
+
+// acceptEvidence posts evidence a running attempt cannot re-derive later, and
+// repeats it while the plane is merely unreachable. Fencing is never retried: a
+// stale or negative acknowledgment is the plane refusing this attempt's word,
+// and asking again would only overwrite that refusal with a transport error.
+func (agent *Agent) acceptEvidence(ctx context.Context, assignment protocol.Assignment, endpoint string, body any) error {
+	var last error
+	for attempt := 1; attempt <= evidenceAttempts; attempt++ {
+		if attempt > 1 {
+			timer := time.NewTimer(time.Duration(attempt-1) * evidenceBackoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return last
+			case <-timer.C:
+			}
+		}
+		var response protocol.AcceptResponse
+		status, err := agent.post(ctx, endpoint, body, &response, false)
+		if err == nil {
+			if response.ValidateFor(assignment) != nil {
+				return fmt.Errorf("%w: stale or negative acknowledgment", ErrServerProtocol)
+			}
+			return nil
+		}
+		last = err
+		if !retryableEvidence(status) {
+			return err
+		}
+	}
+	return last
+}
+
+func (agent *Agent) heartbeat(ctx context.Context, assignment protocol.Assignment, cancel context.CancelFunc) error {
+	ticker := time.NewTicker(agent.beatInterval())
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			facts, err := HostFacts()
+			if err != nil {
+				cancel()
+				return err
+			}
+			body := protocol.Heartbeat{SchemaVersion: protocol.Version, AssignmentID: assignment.AssignmentID,
+				AttemptID: assignment.AttemptID, AssignmentVersion: assignment.AssignmentVersion,
+				FencingToken: assignment.FencingToken, Phase: "executing", HostFacts: facts}
+			var response protocol.HeartbeatResponse
+			if _, err := agent.post(ctx, "/v1/agents/me/heartbeat", body, &response, false); err != nil {
+				// A task deadline or the local completion path cancels an in-flight
+				// heartbeat. That expected cancellation must not suppress the
+				// independent terminal evidence upload. A heartbeat's own timeout
+				// remains an error while the task context is still live.
+				if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) ||
+					errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					return nil
+				}
+				cancel()
+				return err
+			}
+			if err := response.ValidateFor(assignment); err != nil {
+				cancel()
+				return err
+			}
+			if response.Cancel || response.Yield {
+				cancel()
+				return nil
+			}
+		}
+	}
+}
+
+type logUploader struct {
+	agent      *Agent
+	ctx        context.Context
+	assignment protocol.Assignment
+	mu         sync.Mutex
+	sequence   int64
+	err        error
+	pending    *protocol.LogChunk
+	// dropped counts the bytes this uploader refused or never offered after
+	// the chunk it is holding. Those bytes are gone whatever the last offer
+	// does, so they decide whether a held chunk landing leaves the plane
+	// holding the whole log. See recoveredLogIsWhole.
+	dropped int64
+}
+
+type streamWriter struct {
+	uploader *logUploader
+	stream   string
+	stepName string
+}
+
+func (writer *streamWriter) Write(data []byte) (int, error) {
+	return writer.uploader.write(writer.stepName, writer.stream, data)
+}
+
+func (uploader *logUploader) write(stepName, stream string, data []byte) (int, error) {
+	uploader.mu.Lock()
+	defer uploader.mu.Unlock()
+	if uploader.err != nil {
+		// Turned away at the door: these bytes are never offered to the
+		// plane, and no later call recovers them.
+		uploader.dropped += int64(len(data))
+		return 0, uploader.err
+	}
+	written := 0
+	for len(data) > 0 {
+		length := len(data)
+		if length > protocol.MaxLogBytes {
+			length = protocol.MaxLogBytes
+		}
+		part := data[:length]
+		digest := sha256.Sum256(part)
+		chunk := protocol.LogChunk{SchemaVersion: protocol.Version,
+			AssignmentID: uploader.assignment.AssignmentID, AttemptID: uploader.assignment.AttemptID,
+			AssignmentVersion: uploader.assignment.AssignmentVersion, FencingToken: uploader.assignment.FencingToken,
+			Sequence: uploader.sequence + 1, Stream: stream, StepName: stepName,
+			DataBase64: base64.StdEncoding.EncodeToString(part), SHA256: hex.EncodeToString(digest[:])}
+		if err := chunk.Validate(); err != nil {
+			uploader.err = err
+			return written, err
+		}
+		if err := uploader.agent.acceptEvidence(uploader.ctx, uploader.assignment, "/v1/attempts/"+uploader.assignment.AttemptID+"/logs", chunk); err != nil {
+			uploader.err = err
+			uploader.pending = &chunk
+			// Whatever is left of this call sits behind the held chunk and
+			// is never offered either. The held chunk itself is not lost
+			// yet, so it is not counted here.
+			uploader.dropped += int64(len(data) - length)
+			return written, err
+		}
+		uploader.sequence++
+		written += length
+		data = data[length:]
+	}
+	return written, nil
+}
+
+func (uploader *logUploader) flushGrace(ctx context.Context) {
+	uploader.mu.Lock()
+	defer uploader.mu.Unlock()
+	if uploader.pending == nil {
+		return
+	}
+	if err := uploader.agent.accept(ctx, uploader.assignment,
+		"/v1/attempts/"+uploader.assignment.AttemptID+"/logs", *uploader.pending); err == nil {
+		uploader.acceptHeldChunk()
+	}
+}
+
+func (uploader *logUploader) status() (int64, error) {
+	uploader.mu.Lock()
+	defer uploader.mu.Unlock()
+	return uploader.sequence, uploader.err
+}
+
+func terminalReceipt(assignment protocol.Assignment, result executor.Result, start, end protocol.HostFacts, sequence int64, runErr, logErr, artifactErr error) protocol.TerminalReceipt {
+	// A cancelled attempt reports the cancellation through every writer it
+	// still holds. That is the attempt ending as it was asked to, not an
+	// executor or upload failure, so it neither names an error code nor
+	// costs the receipt its evidence. See endedTheAttempt.
+	if endedTheAttempt(result, runErr) {
+		runErr = nil
+	}
+	if endedTheAttempt(result, logErr) {
+		logErr = nil
+	}
+	steps := make([]protocol.StepSummary, 0, len(result.Steps))
+	for _, step := range result.Steps {
+		steps = append(steps, protocol.StepSummary{Name: step.Name, StartedAt: step.StartedAt,
+			EndedAt: step.EndedAt, DurationNS: int64(step.Duration), ExitCode: step.ExitCode,
+			TimedOut: step.TimedOut, Cancelled: step.Cancelled, StdoutSHA256: step.StdoutSHA256,
+			StderrSHA256: step.StderrSHA256, StdoutBytes: step.StdoutBytes, StderrBytes: step.StderrBytes})
+	}
+	outcome := "succeeded"
+	switch {
+	case result.TimedOut:
+		outcome = "timed_out"
+	case result.Cancelled:
+		outcome = "cancelled"
+	case runErr != nil || logErr != nil || artifactErr != nil || result.ExitCode != 0:
+		outcome = "failed"
+	}
+	if len(result.Steps) == 0 && outcome == "succeeded" {
+		outcome = "failed"
+	}
+	var exit *int
+	if !result.StartedAt.IsZero() && result.ExitCode >= 0 {
+		value := result.ExitCode
+		exit = &value
+	}
+	started := result.StartedAt
+	ended := result.EndedAt
+	if started.IsZero() {
+		started = start.CapturedAt
+	}
+	if ended.IsZero() {
+		ended = end.CapturedAt
+	}
+	if ended.Before(started) {
+		ended = started
+	}
+	receipt := protocol.TerminalReceipt{SchemaVersion: protocol.Version,
+		AssignmentID: assignment.AssignmentID, AttemptID: assignment.AttemptID,
+		AssignmentVersion: assignment.AssignmentVersion, FencingToken: assignment.FencingToken,
+		Outcome: outcome, ChildExitCode: exit, TimedOut: result.TimedOut, Cancelled: result.Cancelled,
+		EvidenceComplete: runErr == nil && logErr == nil && artifactErr == nil && len(result.Steps) > 0,
+		StartedAt:        started, EndedAt: ended,
+		DurationNS: int64(result.Duration), Steps: steps, FinalLogSequence: sequence,
+		CatalogSHA256: assignment.CatalogSHA256, SourceSnapshotSHA256: assignment.Source.SnapshotSHA256,
+		HostFactsAtStart: start, HostFactsAtEnd: end}
+	if runErr != nil {
+		receipt.ErrorCode = "executor_error"
+	} else if logErr != nil {
+		receipt.ErrorCode = "log_upload_error"
+	} else if artifactErr != nil {
+		receipt.ErrorCode = "artifact_upload_error"
+	} else if len(result.Steps) == 0 {
+		receipt.ErrorCode = "no_step_executed"
+	}
+	return receipt
+}
+
+// copy a bounded, untrusted HTTP body only through protocol.DecodeStrict.
+var _ io.Writer = (*streamWriter)(nil)

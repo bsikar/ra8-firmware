@@ -65,7 +65,7 @@
 #     that expand `HOSTED_CALLOC`, whose failure arm is a `goto` to a
 #     caller-supplied label. Supplying that macro would put a `goto` in
 #     first-party code, which NASA Power of 10 Rule 1 forbids and
-#     `check_no_goto_setjmp.py` rejects with no allowlist. Substituting a
+#     `ra8ci no-goto-setjmp` rejects with no allowlist. Substituting a
 #     `return` for the jump is not an option either: `serial_drv.c`'s
 #     `free_bufs` label frees two buffers before returning, so a bare
 #     `return` would leak both. The macro is therefore absent -- the
