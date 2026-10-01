@@ -345,9 +345,27 @@ pub const Context = struct {
     global_compile_flags: []const []const u8,
     warning_flags: []const []const u8,
     global_link_flags: []const []const u8,
-    /// The repo's own ihex merger, the same script CMake's POST_BUILD runs.
-    merge_script: []const u8,
+    /// The repo's own ihex merger, the host tool CMake's POST_BUILD runs
+    /// (`ra8_add_ns_image.cmake:203-211`). Optional for the same reason as the
+    /// archives: a compile database has no merge.
+    merge_tool: ?*std.Build.Step.Compile = null,
 };
+
+/// `tools/merge_ihex` built for the machine running the build. #929 moved the
+/// merger from `scripts/gen/merge_ihex.py` into that Zig tool, and CMake runs
+/// it as `$<TARGET_FILE:ra8_zig::merge_ihex> <secure.hex> <ns.hex> <out.hex>`.
+/// Built from source here rather than through a package dependency: the tool
+/// has no build options and imports only its own files.
+pub fn mergeTool(b: *std.Build) *std.Build.Step.Compile {
+    return b.addExecutable(.{
+        .name = "merge_ihex",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/merge_ihex/src/main.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+}
 
 fn objcopyTo(
     b: *std.Build,
@@ -440,7 +458,7 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
         b.fmt("{s}_secure.hex", .{ctx.app_name}),
     );
 
-    const merge = b.addSystemCommand(&.{ctx.merge_script});
+    const merge = b.addRunArtifact(ctx.merge_tool orelse @panic("ra8: the hex merge needs the merge_ihex tool"));
     merge.addFileArg(secure_hex);
     merge.addFileArg(ns_hex);
     const merged = merge.addOutputFileArg(b.fmt("{s}.hex", .{ctx.app_name}));
