@@ -408,8 +408,21 @@ pub const FsBackend = core.FsBackend;
 extern fn ra8_sci_spi_init(channel: u8, cfg: ?*const core.SciSpiCfg) u16;
 extern fn ra8_sci_spi_set_clock(channel: u8, baud_hz: u32, pclk_hz: u32) u16;
 extern fn ra8_sci_spi_xfer(channel: u8, tx: ?[*]const u8, rx: ?[*]u8, len: u32) u16;
-extern fn ra8_gpio_output_init(pin: u16, init_level: u8) u16;
-extern fn ra8_gpio_write(pin: u16, lvl: u8) u16;
+
+/// `ra8_pin_interface_t` (libs/ra8_core/inc/ra8_pin_interface.h), whole
+/// vtable in declaration order so the layout matches what the C side hands
+/// back through the pointer.
+const PinInterface = extern struct {
+    output_init: *const fn (ctx: ?*anyopaque, pin: u16, init_level: u8) callconv(.c) u16,
+    input_init: *const fn (ctx: ?*anyopaque, pin: u16, pull: u8) callconv(.c) u16,
+    write: *const fn (ctx: ?*anyopaque, pin: u16, level: u8) callconv(.c) u16,
+    read: *const fn (ctx: ?*anyopaque, pin: u16, out_level: ?*u8) callconv(.c) u16,
+    toggle: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    release: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    ctx: ?*anyopaque,
+};
+
+extern fn ra8_pin_interface_default() *const PinInterface;
 extern fn ra8_pfs_route_peripheral(pin: u16, sel: u8, owner: ?[*:0]const u8) u16;
 
 // ---------------------------------------------------------------------------
@@ -436,7 +449,8 @@ fn sciTransportCs(ctx: ?*anyopaque, asserted: bool) callconv(.c) u16 {
         return core.err.null_ptr;
     };
     const c: *const core.SciBusCtx = @ptrCast(@alignCast(raw));
-    return ra8_gpio_write(c.cs, if (asserted) core.level.low else core.level.high);
+    const pins = ra8_pin_interface_default();
+    return pins.write(pins.ctx, c.cs, if (asserted) core.level.low else core.level.high);
 }
 
 fn sciTransportXfer(ctx: ?*anyopaque, tx: ?[*]const u8, rx: ?[*]u8, len: u32) callconv(.c) u16 {
@@ -458,7 +472,8 @@ fn sciTransportBringup(channel: u8, pclk_hz: u32, pins: *const SciPins) u16 {
     if (code != core.err.ok) return code;
     code = ra8_pfs_route_peripheral(pins.copi, core.psel_sci_async, "sdspi.copi");
     if (code != core.err.ok) return code;
-    code = ra8_gpio_output_init(pins.cs, core.level.high);
+    const pin_if = ra8_pin_interface_default();
+    code = pin_if.output_init(pin_if.ctx, pins.cs, core.level.high);
     if (code != core.err.ok) return code;
     const spi_cfg: core.SciSpiCfg = .{
         .baud_hz = core.clock_init_hz,
