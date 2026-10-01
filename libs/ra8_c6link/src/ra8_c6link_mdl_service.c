@@ -9,7 +9,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl_msg.h"
@@ -167,41 +166,6 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_accepted(const Ra8__Mdl__Accepte
 }
 
 /**
- * @brief Pack a Chunk response into a bounded caller buffer
- * @details Verifies encoded size before invoking the generated packer.
- * @param[in] msg Valid generated Chunk message.
- * @param[out] response Caller-owned packed bytes.
- * @param[in] response_cap Capacity of @p response.
- * @param[out] response_len Exact packed length.
- * @return Packing status.
- * @retval k_ra8_ok Response was packed exactly.
- * @retval k_ra8_err_invalid_size Response does not fit.
- * @retval k_ra8_err_validation_failed Codec length and write disagree.
- * @pre Every pointer is non-null.
- * @pre @p response_len is writable and response spans do not overlap @p msg.
- * @post Success sets @p response_len within capacity.
- * @post Failure does not report a successful length.
- * @note Reentrant for independent buffers.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg,
-                                                      uint8_t*               response,
-                                                      size_t                 response_cap,
-                                                      size_t*                response_len)
-{
-  const size_t    len      = ra8__mdl__chunk__get_packed_size(msg);
-  const ra8_err_t capacity = internal_mdl_check_response_size(len, response_cap);
-  if (capacity != k_ra8_ok) {
-    return capacity;
-  }
-  if (ra8__mdl__chunk__pack(msg, response) != len) {
-    return k_ra8_err_validation_failed;
-  }
-  *response_len = len;
-  return k_ra8_ok;
-}
-
-/**
  * @brief Validate every generated Start field before backend activation
  * @details Checks the protocol version, HTTPS URL, format, timeout, and each
  * optional request header before constructing the portable backend request.
@@ -347,69 +311,6 @@ static ra8_err_t internal_mdl_fail_job(ra8_mdl_service_t* service, ra8_err_t err
 }
 
 /**
- * @brief Prove the worst-case Chunk for one request fits before backend I/O.
- * @details Measures a maximally encoded response using caller-requested data
- * length and worst-case protobuf varints and digest fields.
- * @param[in] max_data Maximum body bytes permitted for this pull.
- * @param[in] response_cap Capacity of the caller's packed-response buffer.
- * @return Canonical capacity status.
- * @retval k_ra8_ok Every legal response for this pull fits.
- * @retval k_ra8_err_invalid_size Worst-case packed response exceeds capacity.
- * @pre @p max_data does not exceed ::k_ra8_mdl_chunk_data_max.
- * @pre @p response_cap is the actual writable response capacity.
- * @post No backend callback is invoked.
- * @post Service and caller buffers are unchanged.
- * @note One bounded filler run supplies every length protobuf sizing reads.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_cap)
-{
-  /* `get_packed_size()` reads a string field only through `strlen()` and a
-   * bytes field only through its `len`, never through its `data` pointer
-   * (protobuf-c `required_field_get_packed_size`). So one filler run measures
-   * every header: a field of capacity `cap` takes the suffix at
-   * `sizeof(filler) - cap`, whose length is exactly `cap - 1`. Six
-   * separate worst-case buffers cost 1440 stack bytes and measured the same
-   * numbers. */
-  char filler[k_ra8_mdl_etag_max];
-  memset(filler, 'x', sizeof(filler) - 1U);
-  filler[sizeof(filler) - 1U] = '\0';
-  Ra8__Mdl__Chunk data;
-  ra8__mdl__chunk__init(&data);
-  data.protocol_version = UINT32_MAX;
-  data.job_id           = UINT32_MAX;
-  data.sequence         = UINT32_MAX;
-  data.offset           = UINT64_MAX;
-  data.data             = (ProtobufCBinaryData){.len = max_data, .data = (uint8_t*)filler};
-  data.total_bytes      = UINT64_MAX;
-  data.state            = RA8__MDL__STATE__STATE_DOWNLOADING;
-  const ra8_err_t data_fit =
-    internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&data), response_cap);
-  if (data_fit != k_ra8_ok) {
-    return data_fit;
-  }
-
-  Ra8__Mdl__Chunk terminal;
-  ra8__mdl__chunk__init(&terminal);
-  terminal.protocol_version = UINT32_MAX;
-  terminal.job_id           = UINT32_MAX;
-  terminal.sequence         = UINT32_MAX;
-  terminal.offset           = UINT64_MAX;
-  terminal.total_bytes      = UINT64_MAX;
-  terminal.state            = RA8__MDL__STATE__STATE_COMPLETE;
-  terminal.sha256 =
-    (ProtobufCBinaryData){.len = (size_t)k_ra8_mdl_sha256_bytes, .data = (uint8_t*)filler};
-  terminal.http_status   = (int32_t)k_ra8_mdl_http_status_max;
-  terminal.retry_after   = &filler[sizeof(filler) - k_ra8_mdl_retry_after_max];
-  terminal.etag          = filler; /* the longest header: the whole run */
-  terminal.last_modified = &filler[sizeof(filler) - k_ra8_mdl_http_date_max];
-  terminal.content_type  = &filler[sizeof(filler) - k_ra8_mdl_content_type_max];
-  return internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&terminal),
-                                          response_cap);
-}
-
-/**
  * @brief Pull and validate one backend response without advancing service
  * state.
  * @details Reads into fixed storage, proves byte/count/offset/terminal
@@ -465,114 +366,65 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
 }
 
 /**
- * @brief Build one Chunk message from a completed backend pull.
- * @details Copies protocol, correlation, sequencing, and body fields from
- * @p service and @p result into @p out, adding terminal HTTP metadata only
- * when the pull is complete. Performs no I/O and cannot fail.
- * @param[in] service Active portable service context.
- * @param[in] result Bounded backend pull already validated by the caller.
- * @param[out] out Chunk message populated for packing.
- * @pre @p service, @p result, and @p out are non-null.
- * @pre @p result was produced by `internal_mdl_read_next` for this pull.
- * @post @p out carries the pull's data and, when complete, its terminal
- * metadata.
- * @post No allocation or backend I/O occurs.
- * @note Not thread-safe for a shared service.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_mdl_build_chunk(const ra8_mdl_service_t*  service,
-                                                  internal_mdl_next_read_t* result,
-                                                  Ra8__Mdl__Chunk*          out)
-{
-  ra8__mdl__chunk__init(out);
-  out->protocol_version = k_ra8_mdl_protocol_version;
-  out->job_id           = service->active_job_id;
-  out->sequence         = service->next_sequence;
-  out->offset           = service->next_offset;
-  out->data             = (ProtobufCBinaryData){.len = result->got, .data = result->bytes};
-  out->total_bytes      = result->total;
-  out->state =
-    result->complete ? RA8__MDL__STATE__STATE_COMPLETE : RA8__MDL__STATE__STATE_DOWNLOADING;
-  out->status = 0;
-  if (result->complete) {
-    out->sha256      = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = result->digest};
-    out->http_status = result->response.status;
-    out->retry_after = result->response.retry_after;
-    out->etag        = result->response.etag;
-    out->last_modified = result->response.last_modified;
-    out->content_type  = result->response.content_type;
-  }
-}
-
-/**
- * @brief Validate one pull, read bounded bytes, and pack a correlated Chunk
+ * @brief Admit one pull, read bounded bytes, and encode a correlated Chunk
  * @details Proves worst-case response capacity before consuming backend bytes.
  * @param[in,out] service Active portable service.
- * @param[in,out] alloc Bounded per-dispatch protobuf allocator.
  * @param[in] request Packed NextRequest.
  * @param[in] request_len Valid request bytes.
  * @param[out] response Caller-owned Chunk bytes.
  * @param[in] response_cap Response capacity.
- * @param[out] response_len Packed response length.
+ * @param[out] response_len Encoded response length.
  * @return Pull status.
- * @retval k_ra8_ok One ordered data or terminal response was packed.
+ * @retval k_ra8_ok One ordered data or terminal response was encoded.
  * @retval k_ra8_err_protocol_error Decode, unknown fields, or backend fields
  * are incoherent.
  * @retval k_ra8_err_invalid_state Job correlation or requested bound is
  * invalid.
  * @retval k_ra8_err_invalid_size Worst-case response does not fit.
- * @pre All pointers are non-null and one job is active.
- * @pre @p alloc owns a fresh bounded arena.
+ * @pre All pointers are non-null.
  * @post Success advances sequence/offset by exactly returned body bytes.
  * @post Terminal success deactivates the service job.
  * @note Not thread-safe for a shared service/backend.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  service,
-                                                         ProtobufCAllocator* alloc,
-                                                         const uint8_t*      request,
-                                                         size_t              request_len,
-                                                         uint8_t*            response,
-                                                         size_t              response_cap,
-                                                         size_t*             response_len)
+RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t* service,
+                                                         const uint8_t*     request,
+                                                         size_t             request_len,
+                                                         uint8_t*           response,
+                                                         size_t             response_cap,
+                                                         size_t*            response_len)
 {
-  const Ra8__Mdl__NextRequest* req = ra8__mdl__next_request__unpack(alloc, request_len, request);
-  if (req == nullptr) {
-    return k_ra8_err_protocol_error;
-  }
-  if (req->base.n_unknown_fields != 0U) {
-    return k_ra8_err_protocol_error;
-  }
-  const mdl_next_request_view_t next_view = {
-    .acknowledged_offset = req->acknowledged_offset,
-    .protocol_version    = req->protocol_version,
-    .job_id              = req->job_id,
-    .max_bytes           = req->max_bytes,
-  };
-  const mdl_job_view_t next_job = {
+  const mdl_job_view_t job = {
     .next_offset   = service->next_offset,
     .active_job_id = service->active_job_id,
     .active        = service->active,
   };
-  if (!priv_c6link_mdl_pull_next_correlates(&next_view, &next_job)) {
-    return k_ra8_err_invalid_state;
-  }
-
-  const ra8_err_t capacity = internal_mdl_next_capacity(req->max_bytes, response_cap);
-  if (capacity != k_ra8_ok) {
-    return capacity;
+  uint32_t        max_bytes = 0U;
+  const ra8_err_t admitted =
+    priv_c6link_mdl_service_next_admit(request, request_len, &job, response_cap, &max_bytes);
+  if (admitted != k_ra8_ok) {
+    return admitted;
   }
 
   internal_mdl_next_read_t result = {};
-  const ra8_err_t          read   = internal_mdl_read_next(service, req->max_bytes, &result);
+  const ra8_err_t          read   = internal_mdl_read_next(service, max_bytes, &result);
   if (read != k_ra8_ok) {
     return read;
   }
 
-  Ra8__Mdl__Chunk out;
-  ra8__mdl__chunk__init(&out);
-  internal_mdl_build_chunk(service, &result, &out);
-  const ra8_err_t packed = internal_mdl_pack_chunk(&out, response, response_cap, response_len);
+  const mdl_chunk_reply_t reply = {
+    .offset   = service->next_offset,
+    .total    = result.total,
+    .data     = result.bytes,
+    .digest   = result.digest,
+    .response = &result.response,
+    .job_id   = service->active_job_id,
+    .sequence = service->next_sequence,
+    .got      = result.got,
+    .complete = result.complete,
+  };
+  const ra8_err_t packed =
+    priv_c6link_mdl_service_pack_chunk(&reply, response, response_cap, response_len);
   if (packed != k_ra8_ok) {
     return internal_mdl_fail_job(service, packed);
   }
@@ -691,7 +543,6 @@ ra8_err_t ra8_mdl_service_dispatch(void*          ctx,
                                          response_len);
     case k_ra8_mdl_rpc_next:
       return internal_mdl_dispatch_next(service,
-                                        &alloc,
                                         request,
                                         request_len,
                                         response,
