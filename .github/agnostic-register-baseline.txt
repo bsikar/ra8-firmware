@@ -9,13 +9,12 @@
 #
 # clock: 280 reference(s)
 # display: 6 reference(s)
-# gpio: 8 reference(s)
+# gpio: 3 reference(s)
 # timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
 apps/board/stand_alone/ereader/src/system_init.c	clock	1
 apps/board/stand_alone/ereader/src/trustzone_init.c	clock	1
-apps/board/stand_alone/ereader/src/trustzone_init.c	gpio	2
 examples/_unsupported/audio_loopback/src/main.c	clock	1
 examples/_unsupported/motor_3phase/src/main.c	clock	1
 examples/_unsupported/motor_3phase/src/main.c	timer	7
@@ -90,7 +89,6 @@ examples/ek_ra8d2/hw_pending/import_reader/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/lin_commander_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	gpio	1
 examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c	clock	1
@@ -161,7 +159,6 @@ examples/ek_ra8d2/hw_validated/hil/ereader_link/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ereader_rabook/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ereader_svg/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ereader_table/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_input.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/eth_loopback/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c	clock	1
@@ -230,7 +227,6 @@ examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_app/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c	clock	1

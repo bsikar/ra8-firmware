@@ -32,6 +32,7 @@
 #include "ra8_gfx_font.h"
 #include "ra8_i3c.h"
 #include "ra8_keyboard.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_touch.h"
@@ -579,8 +580,9 @@ void er_poll_touch(void)
 /** @brief Read a user switch (active-low); true == pressed. */
 static bool er_sw_pressed(ra8_port_pin_t pin)
 {
-  ra8_level_t level = k_ra8_level_high;
-  if (ra8_gpio_read(pin, &level) != k_ra8_ok) {
+  ra8_level_t                      level = k_ra8_level_high;
+  const ra8_pin_interface_t* const pins  = ra8_pin_interface_default();
+  if (pins->read(pins->ctx, pin, &level) != k_ra8_ok) {
     return false; /* unreadable switch -> treat as released (touch still works) */
   }
   return (level == k_ra8_level_low);
