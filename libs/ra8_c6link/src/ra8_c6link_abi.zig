@@ -21,6 +21,7 @@ const mdl_session = @import("internal/mdl_session.zig");
 const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
 const mdl_take = @import("internal/mdl_take.zig");
+const mdl_encode = @import("internal/mdl_encode.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
@@ -396,6 +397,40 @@ pub export fn priv_c6link_mdl_packed_coherent(
     capacity: usize,
 ) callconv(.c) bool {
     return mdl_issue.packedCoherent(sized, written, capacity);
+}
+
+/// `priv_c6link_mdl_encode_next`: encode a NextRequest into the request
+/// buffer. False when an argument is NULL or the encode does not fit.
+pub export fn priv_c6link_mdl_encode_next(
+    job_id: u32,
+    acknowledged_offset: u64,
+    max_bytes: u32,
+    buf: ?[*]u8,
+    capacity: usize,
+    out_len: ?*usize,
+) callconv(.c) bool {
+    const len = out_len orelse return false;
+    len.* = 0;
+    const dst = (buf orelse return false)[0..capacity];
+    const bytes = mdl_encode.next(dst, job_id, acknowledged_offset, max_bytes) catch return false;
+    len.* = bytes.len;
+    return true;
+}
+
+/// `priv_c6link_mdl_encode_cancel`: encode a CancelRequest into the request
+/// buffer. False when an argument is NULL or the encode does not fit.
+pub export fn priv_c6link_mdl_encode_cancel(
+    job_id: u32,
+    buf: ?[*]u8,
+    capacity: usize,
+    out_len: ?*usize,
+) callconv(.c) bool {
+    const len = out_len orelse return false;
+    len.* = 0;
+    const dst = (buf orelse return false)[0..capacity];
+    const bytes = mdl_encode.cancel(dst, job_id) catch return false;
+    len.* = bytes.len;
+    return true;
 }
 
 /// `priv_c6link_mdl_accept_chunk`: copy a validated chunk, advance the session.

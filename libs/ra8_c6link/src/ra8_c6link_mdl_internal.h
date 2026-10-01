@@ -677,6 +677,48 @@ typedef struct mdl_envelope_view_t {
 [[nodiscard]] RA8_PRIV bool
 priv_c6link_mdl_packed_coherent(size_t sized, size_t written, size_t capacity);
 
+/**
+ * @brief Encode a media-download NextRequest
+ * @details Zig implementation in `src/internal/mdl_encode.zig`; byte-identical
+ *          to the reference protobuf encoder, zero fields omitted per proto3.
+ * @param[in] job_id Job identifier field.
+ * @param[in] acknowledged_offset Acknowledged offset field.
+ * @param[in] max_bytes Requested chunk byte limit field.
+ * @param[out] buf Destination buffer.
+ * @param[in] capacity Bytes available in @p buf.
+ * @param[out] out_len Bytes written; zero on failure.
+ * @return Whether the encode was written.
+ * @retval false An argument was NULL or the encode does not fit.
+ * @pre None.
+ * @post @p out_len is always written when non-NULL.
+ * @note Pure function of its arguments; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_encode_next(uint32_t job_id,
+                                                        uint64_t acknowledged_offset,
+                                                        uint32_t max_bytes,
+                                                        uint8_t* buf,
+                                                        size_t   capacity,
+                                                        size_t*  out_len);
+
+/**
+ * @brief Encode a media-download CancelRequest
+ * @details Zig implementation in `src/internal/mdl_encode.zig`; byte-identical
+ *          to the reference protobuf encoder, zero fields omitted per proto3.
+ * @param[in] job_id Job identifier field.
+ * @param[out] buf Destination buffer.
+ * @param[in] capacity Bytes available in @p buf.
+ * @param[out] out_len Bytes written; zero on failure.
+ * @return Whether the encode was written.
+ * @retval false An argument was NULL or the encode does not fit.
+ * @pre None.
+ * @post @p out_len is always written when non-NULL.
+ * @note Pure function of its arguments; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool
+priv_c6link_mdl_encode_cancel(uint32_t job_id, uint8_t* buf, size_t capacity, size_t* out_len);
+
 #ifdef __cplusplus
 }
 #endif
