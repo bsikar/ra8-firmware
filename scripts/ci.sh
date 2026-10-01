@@ -193,7 +193,7 @@ if [[ "$-" == *p* ]]; then
     "zig-abi-policy|fast|Zig C ABI inventory, exports, contracts and compatibility"
     "lint-rust|fast|Clippy + rustfmt over first-party Rust"
     "lint-cmake|fast|cmake-lint over every listfile"
-    "lint-yaml|fast|yamllint + actionlint over the workflows"
+    "lint-yaml|fast|yamllint over tracked YAML"
     "lint-just|fast|justfile structure, headers and portable ROOT"
     "lint-ld|fast|linker-script structure, headers and symbol closure"
     "lint-asm|fast|assembly headers, sections and exported-symbol shape"

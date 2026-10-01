@@ -113,7 +113,7 @@ dev_box_apt_runtime:
 # Until #521 nothing in this tree owned it. scripts/ci.sh built it the first
 # time a machine had none and reused it forever after, so this box booted a
 # 2026-07-20 image under a 2026-07-28 tree: cmake-format, cmake-lint, yamllint,
-# actionlint, hadolint, gcc-14 and g++-14 were all absent from it, and
+# hadolint, gcc-14 and g++-14 were all absent from it, and
 # toolchain-parity, lint-cmake, lint-yaml and lint-devcontainer therefore FAILED
 # inside the container while PASSING natively on the same box, on the same
 # commit. `just ci` is what every agent runs before a push, so that is four

@@ -31,8 +31,6 @@ SHA_ARGS = (
     "SHELLCHECK_SHA256_AARCH64",
     "SHFMT_SHA256_AMD64",
     "SHFMT_SHA256_ARM64",
-    "ACTIONLINT_SHA256_AMD64",
-    "ACTIONLINT_SHA256_ARM64",
     "JUST_SHA256_X86_64",
     "JUST_SHA256_AARCH64",
     "HADOLINT_SHA256_X86_64",
@@ -104,40 +102,34 @@ TLS_FLAGS = "--proto '=https' --proto-redir '=https' --tlsv1.2"
 DOCKER_DOWNLOAD_MARKER = {
     "shellcheck": f"curl {TLS_FLAGS} -fsSL -o /tmp/shellcheck.tar.xz",
     "shfmt": f"curl {TLS_FLAGS} -fsSL -o /tmp/shfmt",
-    "actionlint": f"curl {TLS_FLAGS} -fsSL -o /tmp/actionlint.tar.gz",
     "just": f"curl {TLS_FLAGS} -fsSL -o /tmp/just.tar.gz",
     "hadolint": f"curl {TLS_FLAGS} -fsSL -o /tmp/hadolint",
 }
-TOOLS = ("shellcheck", "shfmt", "actionlint", "just", "hadolint")
-ARCHIVE_TOOLS = ("shellcheck", "actionlint", "just")
+TOOLS = ("shellcheck", "shfmt", "just", "hadolint")
+ARCHIVE_TOOLS = ("shellcheck", "just")
 DOCKER_VERIFY_MARKER = {
     "shellcheck": '"${scsha}" /tmp/shellcheck.tar.xz | sha256sum -c -',
     "shfmt": '"${shsha}" /tmp/shfmt | sha256sum -c -',
-    "actionlint": '"${alsha}" /tmp/actionlint.tar.gz | sha256sum -c -',
     "just": '"${justsha}" /tmp/just.tar.gz | sha256sum -c -',
     "hadolint": '"${hsha}" /tmp/hadolint | sha256sum -c -',
 }
 DOCKER_ARCHIVE_MEMBER = {
     "shellcheck": '"shellcheck-v${SHELLCHECK_VERSION}/shellcheck"',
-    "actionlint": "-C /tmp/actionlint actionlint",
     "just": "-C /tmp/just just",
 }
 PROVISION_ARCHIVE_MEMBER = {
     "shellcheck": '"shellcheck-v${version}/shellcheck"',
-    "actionlint": '-C "${tmp}/extract" actionlint',
     "just": '-C "${tmp}/extract" just',
 }
 DOCKER_END = {
     "shellcheck": "# cmake-format",
     "shfmt": "# cmake-format",
-    "actionlint": "# just",
     "just": "# hadolint",
     "hadolint": "# Create a non-root user",
 }
 PROVISION_END = {
     "shellcheck": "install_shfmt()",
-    "shfmt": "install_actionlint()",
-    "actionlint": "install_hadolint()",
+    "shfmt": "install_hadolint()",
     "hadolint": "install_just()",
     "just": "install_doxygen()",
 }
@@ -727,7 +719,7 @@ def _basic_selftest_failures(docker: str, provision: str, macos: str) -> list[st
             "Dockerfile redirect downgrade must fire",
         ),
         (
-            not check_dockerfile(docker.replace(DOCKER_ARCHIVE_MEMBER["actionlint"], ".", 1)),
+            not check_dockerfile(docker.replace(DOCKER_ARCHIVE_MEMBER["just"], ".", 1)),
             "Dockerfile unbounded archive extraction must fire",
         ),
         (

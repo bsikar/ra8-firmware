@@ -632,10 +632,6 @@ def _live_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
             bool(scan(_bypass_infra_boundary_endpoint(inputs))),
         ),
         (
-            "recursive workflow closure selftest",
-            not policy.workflow_dependency_selftest(),
-        ),
-        (
             "package mutation before idle proof fires",
             bool(scan(_move_apt_before_idle_proof(inputs))),
         ),
@@ -695,10 +691,6 @@ def run(scan: Scan, runner_scan: Scan) -> int:
     for label, moving_name, before_name in fixtures.reorders():
         changed = _move_dev_task_before(inputs, moving_name, before_name)
         cases.append((f"{label} fires", bool(scan(changed))))
-    for event in ("push", "pull_request"):
-        for path in policy.workflow_paths(policy.REPO_ROOT):
-            changed = policy.remove_workflow_path(inputs, event, path)
-            cases.append((f"{event} trigger removal fires: {path}", bool(scan(changed))))
     for label, passed in cases:
         print(f"  [{'PASS' if passed else 'FAIL'}] {label}")
     ok = all(passed for _, passed in cases)
