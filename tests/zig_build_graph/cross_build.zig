@@ -97,6 +97,5 @@ pub fn nsContext(
         .global_compile_flags = arm.c_flags,
         .warning_flags = arm_flags.warningFlagsForStack(b.allocator, image.stack_bytes),
         .global_link_flags = arm.link_flags,
-        .merge_script = "scripts/gen/merge_ihex.py",
     };
 }
