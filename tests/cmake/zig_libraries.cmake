@@ -370,8 +370,7 @@ ra8_add_zig_library(
 # RA8_IF_SOURCES glob is gone from library_sources.cmake and core_hal.cmake,
 # and libs/if/src is no longer an include directory anywhere. The three
 # ra8_path_* symbols ride in this same archive behind the unchanged
-# inc/ra8_path.h, which is why apps/shared_libs/mdl no longer compiles that
-# .c into eight of its targets: it already links ra8_zig::fw_if_fs.
+# inc/ra8_path.h, so no target compiles that .c by path any more.
 ra8_add_zig_library(
   NAME
   fw_if_fs
@@ -523,8 +522,7 @@ ra8_add_zig_library(
 # Fully migrated: the exact decimal -> binary64 conversion behind inc/ra8_num.h
 # is Zig, so libs/ra8_num/src has no .c left. This library was never in the
 # RA8_*_SOURCES glob set at all: three test targets named
-# src/ra8_num_decimal.c directly by path (test_ra8_num_decimal,
-# test_mdl_state_parity, test_mdl_library), so the archive replaces those three
+# src/ra8_num_decimal.c directly by path, so the archive replaced those
 # by-path references in unit_tests.cmake rather than a glob. The archive
 # resolves every symbol it names: the conversion is pure arithmetic with no
 # driver call, no MMIO and no libc conversion.
@@ -574,10 +572,9 @@ ra8_add_zig_library(
 
 # Fully migrated: the bounded XML emitter behind inc/ra8_xml_writer.h is Zig,
 # so libs/ra8_xml/src has no .c left. This library sat in BOTH wiring worlds:
-# RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake (#908) and eight
-# by-path references compiled the TU directly into the mdl builds (six in
-# apps/shared_libs/mdl, two in apps/host/mdl). The archive replaces the glob
-# entry and all eight by-path references. It resolves every symbol it names:
+# RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake (#908) and by-path
+# references compiled the TU directly into other builds. The archive replaces
+# the glob entry and every by-path reference. It resolves every symbol it names:
 # the emitter is pure string construction over caller-owned storage with no
 # allocation, no driver call and no MMIO.
 ra8_add_zig_library(
@@ -592,9 +589,9 @@ ra8_add_zig_library(
 # Fully migrated: the URL and peer-address safety policy behind
 # inc/ra8_net_urlguard.h is Zig, so libs/ra8_net_policy/src has no .c left.
 # Like ra8_xml this library sat in BOTH wiring worlds: RA8_NET_POLICY_SOURCES
-# was globbed in library_sources.cmake and eight by-path references compiled
-# the TU directly into the mdl builds (six in apps/shared_libs/mdl, two in
-# apps/host/mdl). The archive replaces the glob entry and all eight. It
+# was globbed in library_sources.cmake and by-path references compiled
+# the TU directly into other builds. The archive replaces the glob entry and
+# every by-path reference. It
 # resolves every symbol it names: the policy is pure lexical and numeric work
 # over caller-owned storage, with no allocation, no name resolution and no
 # network call.
@@ -612,8 +609,8 @@ ra8_add_zig_library(
 # inc/ra8_imgdec_scratch.h is Zig, so libs/ra8_imgdec/src has no .c left.
 # This library had the widest wiring surface of the port so far: the
 # RA8_IMGDEC_SOURCES glob in library_sources.cmake plus twenty-two by-path
-# references across the app source rules, the WebP vendor rule, six mdl
-# targets, cbz2jof, media_download and the three host tools. The archive
+# references across the app source rules, the WebP vendor rule, cbz2jof
+# and the host tools. The archive
 # replaces every one of them.
 #
 # It does NOT resolve every symbol it names: ra8_arena_carve and
@@ -718,7 +715,7 @@ ra8_add_zig_library(
 # now, so libs/ra8_mem/src has no .c left and this archive exports ra8_arena_*
 # like every other ra8_mem symbol. What blocked that was never the port, it was
 # the double definition: tools/rabook_viewer, tools/rabook_imagepack,
-# apps/host/mdl and cmake/ra8_webp_vendor.cmake each COMPILED
+# a host app and cmake/ra8_webp_vendor.cmake each COMPILED
 # libs/ra8_mem/src/ra8_arena.c by absolute path instead of linking the library,
 # so exporting the symbols would have defined each of them twice. All four now
 # link ra8_zig::ra8_mem, which is the form that dedupes: CMake collapses a

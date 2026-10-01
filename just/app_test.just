@@ -80,7 +80,3 @@ run app="all":
         ctest --test-dir "apps/host/{{ app }}/build" --output-on-failure
     fi
 
-# Run integration tests combining mdl, mkbookimg, rabook_viewer, and ra8_reader
-integration:
-    bash scripts/builders/host_cmake.sh apps/host/mdl apps/host/mdl/build -DBUILD_INTEGRATION_TESTS=ON
-    ctest --test-dir apps/host/mdl/build -R integration --output-on-failure

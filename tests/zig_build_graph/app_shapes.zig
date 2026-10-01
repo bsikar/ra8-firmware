@@ -686,9 +686,9 @@ pub const uncovered = [_]Uncovered{
         .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
     },
     .{
-        .representative = "c6_mdl_test",
+        .representative = "c6_fw_version",
         .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .threadx_heap = true },
-        .note = "4 declarations: the C6 co-processor host stack, which brings its own generated sources",
+        .note = "3 declarations: the C6 co-processor host stack, which brings its own generated sources",
     },
     .{
         .representative = "threadx_fs_demo",
@@ -744,11 +744,6 @@ pub const uncovered = [_]Uncovered{
             .mram_length = true,
         },
         .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
-    },
-    .{
-        .representative = "media_download",
-        .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .extra_srcs = true, .threadx_heap = true },
-        .note = "1 declaration: C6 host plus EXTRA_SRCS",
     },
 };
 

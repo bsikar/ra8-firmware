@@ -30,9 +30,7 @@ include it except a composition root and the tests that pin its guards.
 sibling, validate the closed artifact, publish it with one rename
 (`fw_fs_transaction_begin`, `fw_fs_transaction_commit`, gated by
 `k_fw_fs_cap_transactions`, with `fw_fs_transaction_policy_t` distinguishing
-create-new from atomic replacement). `apps/shared_libs/mdl_storage_vfs`
-implements the same dance a second time, directly on `ra8_io_vfs`, for the
-media-download coordinator.
+create-new from atomic replacement).
 
 That is not an intentional split. It is issue #762, and until it resolves,
 **new consumers of staged publication should take `fw_fs_transaction_*`**: it

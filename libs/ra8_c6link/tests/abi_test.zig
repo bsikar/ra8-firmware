@@ -6,12 +6,6 @@
 
 const std = @import("std");
 const abi = @import("abi");
-const rpc_stub = @import("mdl_rpc_stub");
-
-comptime {
-    // the media RPC seam the coordinator calls into; C owns it in the archive
-    _ = rpc_stub;
-}
 
 const ok: u16 = 0;
 const invalid_size: u16 = 0x105;

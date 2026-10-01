@@ -5,17 +5,13 @@
 #
 # build.sh -- reproducibly build the ESP32-C6 wireless co-processor firmware.
 #
-# The C6 image is a pinned Espressif esp-hosted-mcu "network_adapter" plus the
-# reviewed first-party mdl_service component. The checked-in numbered patch
-# series exposes a bounded synchronous CustomRpc response hook; this script
-# refuses to build if any patch no longer applies to the exact upstream pin.
+# The C6 image is the stock Espressif esp-hosted-mcu "network_adapter" at an
+# exact upstream pin, with no patches and no first-party components.
 #
 # Three things are ASSERTED rather than assumed, because each can drift while
 # the build still succeeds:
 #   - the esp-idf release is exactly ESP_IDF_VERSION (not merely its series),
 #   - sdkconfig.defaults still agrees with pins.env (check_c6_pin_config.py),
-#   - staged sources, components, hook, and ABI agree
-#     (scripts/builders/check_c6_integration.sh),
 #   - the component set the registry resolved matches components-lock.txt.
 #
 # Usage:
@@ -28,9 +24,8 @@
 # Building is hardware-free. Flashing and mixed-image qualification remain
 # restricted to the Pi bench workflow.
 #
-# The pinned upstream base recipe was built, flashed, and booted on the bench
-# with these pins before the media component was added. The component itself
-# still requires an explicit mixed-image bench qualification.
+# The pinned upstream recipe was built, flashed, and booted on the bench with
+# these pins.
 
 if [[ "$-" == *p* ]]; then
   unset -v BASH_ENV ENV
@@ -146,7 +141,6 @@ if [[ "$-" == *p* ]]; then
     exit 1
   fi
   python3 "${SCRIPT_DIR}/../../scripts/checks/check_c6_pin_config.py"
-  bash "${SCRIPT_DIR}/../../scripts/builders/check_c6_integration.sh"
 
   # ---- 2. fetch esp-hosted-mcu at the pinned commit ----
   if [[ ! -d "${CLONE_DIR}/.git" ]]; then
@@ -163,72 +157,6 @@ if [[ "$-" == *p* ]]; then
     echo "ERROR: ${PERIPHERAL_DIR} missing -- upstream layout changed at this commit" >&2
     exit 1
   fi
-
-  # ---- 2b. apply the reviewed series and stage the first-party component ----
-  PATCH_SERIES="${SCRIPT_DIR}/patches/series"
-  COMPONENT_DIR="${PERIPHERAL_DIR}/components/mdl_service"
-  if [[ ! -f "${PATCH_SERIES}" ]]; then
-    echo "ERROR: required patch series is missing: ${PATCH_SERIES}" >&2
-    exit 1
-  fi
-  echo "==> applying checked-in patch series"
-  while IFS= read -r patch_name || [[ -n "${patch_name}" ]]; do
-    if [[ -z "${patch_name}" || "${patch_name}" == \#* ]]; then
-      continue
-    fi
-    if [[ ! "${patch_name}" =~ ^[0-9]{4}-[a-z0-9][a-z0-9-]*\.patch$ ]]; then
-      echo "ERROR: invalid patch-series entry: ${patch_name}" >&2
-      exit 1
-    fi
-    patch_file="${SCRIPT_DIR}/patches/${patch_name}"
-    if [[ ! -f "${patch_file}" ]]; then
-      echo "ERROR: required patch is missing: ${patch_file}" >&2
-      exit 1
-    fi
-    echo "    ${patch_name}"
-    git -C "${CLONE_DIR}" apply --unidiff-zero --check "${patch_file}"
-    git -C "${CLONE_DIR}" apply --unidiff-zero "${patch_file}"
-  done <"${PATCH_SERIES}"
-
-  echo "==> staging first-party mdl_service component"
-  rm -rf "${COMPONENT_DIR}"
-  mkdir -p "${COMPONENT_DIR}/include" "${COMPONENT_DIR}/src"
-  cp "${SCRIPT_DIR}/../../port/esp32_c6/CMakeLists.txt" "${COMPONENT_DIR}/CMakeLists.txt"
-  cp "${SCRIPT_DIR}/../../port/esp32_c6/src/mdl_service.c" "${COMPONENT_DIR}/src/mdl_service.c"
-  cp "${SCRIPT_DIR}/../../port/esp32_c6/src/esp_idf_mdl_compat_internal.h" \
-    "${COMPONENT_DIR}/src/esp_idf_mdl_compat_internal.h"
-  cp "${SCRIPT_DIR}/../../port/esp32_c6/inc/ra8_mdl_service.h" \
-    "${COMPONENT_DIR}/include/ra8_mdl_service.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_c6link_mdl_service.c" \
-    "${COMPONENT_DIR}/src/ra8_c6link_mdl_service.c"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_c6link_mdl_service_internal.h" \
-    "${COMPONENT_DIR}/src/ra8_c6link_mdl_service_internal.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_media_download.pb-c.c" \
-    "${COMPONENT_DIR}/src/ra8_media_download.pb-c.c"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_c6link_mdl_msg.h" \
-    "${COMPONENT_DIR}/include/ra8_c6link_mdl_msg.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_protocol.h" \
-    "${COMPONENT_DIR}/include/ra8_mdl_protocol.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_http.h" \
-    "${COMPONENT_DIR}/include/ra8_mdl_http.h"
-  cp "${SCRIPT_DIR}/../../apps/shared_libs/mdl/inc/mdl_format.h" \
-    "${COMPONENT_DIR}/include/mdl_format.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_media_download.pb-c.h" \
-    "${COMPONENT_DIR}/include/ra8_media_download.pb-c.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_err.h" "${COMPONENT_DIR}/include/ra8_err.h"
-  cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_attributes.h" \
-    "${COMPONENT_DIR}/include/ra8_attributes.h"
-  # ra8_c6link_mdl_service.c calls service rules that are Zig since #3080;
-  # build them for the C6 core and stage the archive the component links
-  # (#3195). Fails closed: no zig, no C6 image.
-  if ! command -v zig >/dev/null 2>&1; then
-    echo "ERROR: zig missing; cannot build the C6 mdl service archive" >&2
-    exit 1
-  fi
-  (cd "${SCRIPT_DIR}/../../libs/ra8_c6link" && zig build c6-service)
-  mkdir -p "${COMPONENT_DIR}/lib"
-  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/zig-out/lib/libra8_c6link_mdl_service.a" \
-    "${COMPONENT_DIR}/lib/libra8_c6link_mdl_service.a"
 
   # ---- 3. drop in the proven sdkconfig.defaults ----
   echo "==> installing sdkconfig.defaults"
@@ -248,30 +176,6 @@ if [[ "$-" == *p* ]]; then
     idf.py set-target "${ESP_TARGET}"
     idf.py build
   )
-
-  if ! command -v riscv32-esp-elf-nm >/dev/null 2>&1; then
-    echo "ERROR: riscv32-esp-elf-nm missing; cannot assert media service linkage" >&2
-    exit 1
-  fi
-  C6_ELF="${PERIPHERAL_DIR}/build/network_adapter.elf"
-  C6_SYMBOLS="$(riscv32-esp-elf-nm --defined-only "${C6_ELF}")"
-  if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+esp_hosted_custom_rpc_sync_handler$' \
-    <<<"${C6_SYMBOLS}"; then
-    echo "ERROR: built C6 image does not contain the strong media CustomRpc handler" >&2
-    echo "       (a weak W fallback does not satisfy this check)" >&2
-    exit 1
-  fi
-  if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+ra8_mdl_service_component_abi$' \
-    <<<"${C6_SYMBOLS}"; then
-    echo "ERROR: built C6 image lacks the mdl_service component ABI marker" >&2
-    exit 1
-  fi
-  if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+priv_c6link_mdl_service_start_admit$' \
-    <<<"${C6_SYMBOLS}"; then
-    echo "ERROR: built C6 image lacks the Zig mdl service rules (#3195)" >&2
-    exit 1
-  fi
-  echo "==> verified strong ra8 media handler and component ABI in network_adapter.elf"
 
   # ---- 5. verify the component set that actually resolved ----
   # Step 4 deletes dependencies.lock, so the esp-idf component manager re-resolves

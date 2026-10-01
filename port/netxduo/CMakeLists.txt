@@ -89,7 +89,6 @@ target_link_libraries(netxduo_ipif_wifi INTERFACE netxduo_ipif netxduo_port_c6)
 target_include_directories(
   netxduo_ipif_wifi INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
                               ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_c6link/inc
-                              ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mdl/inc
 )
 
 set_property(

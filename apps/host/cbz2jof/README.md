@@ -43,7 +43,7 @@ CBZ2JOF_WORKER=/abs/path/jof-worker cbz2jof book.cbz out-dir
 ## Where the code lives
 
 Each language has its own subtree, Go-idiomatic inside its module root and C
-following the `mdl`/firmware `inc`+`src` split:
+following the firmware `inc`+`src` split:
 
 - `go/cbz2jof.go` -- reusable conversion package: argument grammar, worker
   resolution, entry selection and ordering, limits, atomic publication.

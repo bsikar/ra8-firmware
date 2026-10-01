@@ -25,10 +25,6 @@ include("${CMAKE_CURRENT_LIST_DIR}/cmake/ra8_bootstrap.cmake")
 option(RA8_HOST_MODE "Build host apps/tests/tools natively" OFF)
 if(RA8_HOST_MODE)
   enable_testing()
-  # The host mdl composition adds its shared core. Configure it before the
-  # aggregate unit-test graph so that graph can reuse the existing targets
-  # instead of attempting to add the core a second time.
-  add_subdirectory(apps/host/mdl)
   add_subdirectory(apps/host/cbz2jof)
   add_subdirectory(tools/mkfontimg)
   add_subdirectory(tools/exfat_mkimage)

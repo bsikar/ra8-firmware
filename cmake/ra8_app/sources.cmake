@@ -376,12 +376,6 @@ macro(_ra8_app_collect_sources)
         list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
         set(_ra8_lib_has_archive ON)
       endif()
-      if(_ra8_lib STREQUAL "ra8_c6link")
-        # The media-download wire format is Zig on the RA8 (#3199); the
-        # generated codec stays in the tree only for the C6 component and the
-        # C test fixtures.
-        list(FILTER _ra8_lib_one EXCLUDE REGEX "/ra8_media_download\\.pb-c\\.c$")
-      endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         # Board boot sources are image-composition fallbacks selected above.
         # A board named explicitly in LIBS must not re-add src/boot after an
@@ -405,12 +399,6 @@ macro(_ra8_app_collect_sources)
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
   endforeach()
-  if("ra8_c6link" IN_LIST _RA8_APP_LIBS)
-    # The media RPC carries the canonical mdl_format_t in its public
-    # request contract. Consumers need the declaration even when they use
-    # c6link only for Wi-Fi and do not otherwise compile mdl sources.
-    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/mdl/inc)
-  endif()
   foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
       set(_ra8_lib_path "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
@@ -495,12 +483,11 @@ macro(_ra8_app_collect_sources)
   endif()
 
   # An app may name the same vendored TU directly in EXTRA_SRCS rather than
-  # reaching it through LIBS reflow / rabook_compile: media_download composes its
-  # own rabook source list and does exactly that. The SOUP treatment (the narrow
+  # reaching it through LIBS reflow / rabook_compile. The SOUP treatment (the narrow
   # _ra8_soup_wno_* set from issue #179, plus the -fno-strict-aliasing below) is a
   # property of the FILE, not of the route it took into the app, so recognise the
   # vendored decoder wherever it appears in this app's sources. Keying it on the
-  # route left media_download compiling an attacker-facing third_party parser under
+  # route once left an app compiling an attacker-facing third_party parser under
   # the first-party warning profile -- which does not build at all -- and with
   # strict aliasing on, the same miscompile class documented for miniz below.
   if(NOT _ra8_stb_img_impl)
@@ -708,7 +695,7 @@ macro(_ra8_app_collect_sources)
   # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
   # cmake/ra8_webp_vendor.cmake and is NOT restated here: open-coding it is
   # what left the recipe unreachable from a standalone host tool, which is why
-  # tools/rabook_imagepack and apps/host/mdl each faked jof_priv_webp_transcode()
+  # tools/rabook_imagepack and a host app each faked jof_priv_webp_transcode()
   # rather than compile the decoder that was already in the tree.
   #
   # Its ra8_webp facade/arena are globbed by the LIBS loop above (or by

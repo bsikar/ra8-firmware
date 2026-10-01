@@ -21,7 +21,7 @@
 
 /** @brief Image-probe and report constants. */
 typedef enum : uint32_t {
-  k_convert_band_height    = 256U,  /**< Established media-downloader band height. */
+  k_convert_band_height    = 256U,  /**< Established conversion band height.    */
   k_convert_probe_bytes    = 64U,   /**< WebP metadata prefix capacity.            */
   k_convert_jpeg_soi       = 0xD8U, /**< JPEG start-of-image marker.               */
   k_convert_jpeg_eoi       = 0xD9U, /**< JPEG end-of-image marker.                 */

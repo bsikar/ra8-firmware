@@ -78,7 +78,6 @@ extern "C" {
 
 #include "ra8_c6link_transport.h"
 #include "ra8_err.h"
-#include "ra8_mdl_protocol.h"
 
 /**
  * @enum ra8_c6link_geometry_t
@@ -541,8 +540,8 @@ typedef struct ra8_c6link {
   ra8_c6link_wait_t      wait;        /**< The outstanding request, if any. */
   ra8_c6link_fault_t     fault;       /**< The last failing request.        */
   ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.   */
-  /* tx_len/tx_if/open/boot_seen sit AFTER the two DMA-aligned frame buffers
-     and mdl_request, not beside the other bookkeeping fields above: the
+  /* tx_len/tx_if/open/boot_seen sit AFTER the two DMA-aligned frame buffers,
+     not beside the other bookkeeping fields above: the
      bookkeeping ahead of `tx` already sums to an exact multiple of
      k_ra8_c6link_dma_align, so `tx` needs no compiler-inserted padding to
      reach its alignment boundary. Moving these four scalars back up
@@ -552,16 +551,6 @@ typedef struct ra8_c6link {
   /**< Transmit transaction. */
   alignas(k_ra8_c6link_dma_align) uint8_t rx[k_ra8_c6link_frame_bytes];
   /**< Receive transaction. */
-  uint8_t mdl_request[k_ra8_mdl_request_bytes_max];
-  /**< Packed inner media request awaiting transmission. Owned by the link
-       rather than by the media RPC that packs it: as an automatic object it
-       put ::ra8_c6link_mdl_start_request over the 2048-byte first-party frame
-       budget on the Cortex-M85 (`-fstack-usage`). One outstanding request per
-       link is already the rule -- ::ra8_c6link_mdl_start_request,
-       ::ra8_c6link_mdl_next and ::ra8_c6link_mdl_cancel each pack, transmit
-       and finish before the next may begin, and a second concurrent request
-       is refused with `k_ra8_err_busy` -- so sharing one buffer between them
-       is the same exclusivity `tx` already assumes. */
   uint16_t tx_len;    /**< Staged payload length, or zero.    */
   uint8_t  tx_if;     /**< Interface the staged payload uses. */
   bool     open;      /**< The handle is initialised.         */

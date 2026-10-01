@@ -23,9 +23,7 @@ default:
     @echo "  just tests::wireless       ESP32-C6 Wi-Fi, BLE, and Modem abstraction"
     @echo "  just tests::security       Security, Crypto, RSIP, and Key Vault"
     @echo "  just tests::net            Networking, LwIP, and Ethernet"
-    @echo "  just tests::mdl            Run the MDL test lane"
     @echo "  just tests::alphabet_soup  Run the alphabet-soup test lane"
-    @echo "  just tests::integration    Run integration tests"
     @echo ""
     @echo "  just tests::shared         App-Level Shared Libraries (Portable)"
     @echo "  just tests::host           Standalone Desktop Applications"
@@ -63,20 +61,10 @@ net:
 
 # --- Host App Tests ---
 
-# Build and run mdl unit tests
-mdl:
-    bash scripts/builders/host_cmake.sh apps/host/mdl apps/host/mdl/build
-    ctest --test-dir apps/host/mdl/build --output-on-failure
-
 # Build and run alphabet_soup unit tests
 alphabet_soup:
     bash scripts/builders/host_cmake.sh apps/host/alphabet_soup apps/host/alphabet_soup/build
     ctest --test-dir apps/host/alphabet_soup/build --output-on-failure
-
-# Run integration tests combining mdl, mkbookimg, rabook_viewer, and ra8_reader
-integration:
-    bash scripts/builders/host_cmake.sh apps/host/mdl apps/host/mdl/build -DBUILD_INTEGRATION_TESTS=ON
-    ctest --test-dir apps/host/mdl/build -R test_integration --output-on-failure
 
 shared:
     bash scripts/builders/list_tests.sh shared

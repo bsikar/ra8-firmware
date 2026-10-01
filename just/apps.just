@@ -60,11 +60,11 @@ build app="" build_type="RelWithDebInfo":
     . scripts/builders/select_host_compiler.sh
     ra8_cmake_reset_if_incompatible "$build_dir" "$app_dir"
     mkdir -p "$build_dir"
-    unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK RA8_MEDIA_DOWNLOAD_URL
+    unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK
     cmake -S "$app_dir" -B "$build_dir" \
       -DCMAKE_TOOLCHAIN_FILE="$PWD/$toolchain" \
       -DCMAKE_BUILD_TYPE="{{ build_type }}" \
-      -U 'RA8_C6_WIFI_*' -U RA8_MEDIA_DOWNLOAD_URL \
+      -U 'RA8_C6_WIFI_*' \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ${cmake_args[@]+"${cmake_args[@]}"}
     cmake --build "$build_dir"
     python3 scripts/checks/check_freestanding_runtime.py --scan-dir "$build_dir"
