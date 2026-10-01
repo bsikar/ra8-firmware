@@ -182,8 +182,8 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
   /* The BPB must agree with the DEVICE: `m->bytes_per_sector` was seeded from
    * the backend's reported block size before this parse ran, and a volume
    * formatted for a different sector size than the medium presents (a 512e
-   * image on a 4Kn device, or vice versa) is unmountable, not reinterpretable
-   * (#683). Every supported size passes ::priv_bps_valid at mount, so the
+   * image on a 4Kn device, or vice versa) is unmountable, not reinterpretable.
+   * Every supported size passes ::priv_bps_valid at mount, so the
    * comparison also enforces 512..4096.
 
      MC/DC: the three-condition guard's vectors live with the tests that drive

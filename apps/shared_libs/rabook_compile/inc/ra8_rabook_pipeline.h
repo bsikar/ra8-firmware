@@ -202,8 +202,8 @@ ra8_err_t rabook_compile_from_epub(epub_book_t*                         epub,
  * Identical compile to @ref rabook_compile_from_epub -- same stages, same
  * byte-identical desktop emit order -- but it stops at @ref ra8_rabook_finalize
  * and returns the blob in place instead of calling @ref ra8_fs_write_file. This is
- * the entry point for callers with no filesystem: notably the Cortex-M33 offload
- * (#149), which finalises into a shared SDRAM buffer and lets the M85 own the SD
+ * the entry point for callers with no filesystem: notably the Cortex-M33 offload,
+ * which finalises into a shared SDRAM buffer and lets the M85 own the SD
  * write. The returned @p *out_blob aliases @p bufs->out and is valid only while
  * that arena is. A build defining @c RA8_RABOOK_NO_RASTER (the M33 text/CSS/SVG
  * image) links no stb_image: raster manifest images are skipped, SVG verbatim and

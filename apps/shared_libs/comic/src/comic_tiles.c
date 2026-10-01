@@ -1,7 +1,7 @@
 /**
  * @file comic_tiles.c
- * @brief Tile an oversized comic page: encoded bytes -> JOF atlas -> tile cache
- *        (#344). Import-time transcode + decode-on-demand tile paging.
+ * @brief Tile an oversized comic page: encoded bytes -> JOF atlas -> tile cache.
+ * Import-time transcode + decode-on-demand tile paging.
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}

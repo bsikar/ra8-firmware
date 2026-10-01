@@ -9,7 +9,6 @@
   published and no documentation generator runs. The record is kept for the
   reasoning, not as a description of the tree.
 * **Date:** 2026-09-16
-* **Issue:** [#900](https://github.com/bsikar/ra8-firmware/issues/900)
 
 ## Context
 

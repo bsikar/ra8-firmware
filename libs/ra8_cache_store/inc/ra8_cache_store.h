@@ -2,8 +2,7 @@
  * @file ra8_cache_store.h
  * @brief Persistent key(CRC32)->blob cache for compiled `.rabook` containers,
  * @ingroup grp_storage
- *        built on the vendored, HIL-validated LevelX NOR wear-levelling layer
- *        (#201).
+ *        built on the vendored, HIL-validated LevelX NOR wear-levelling layer.
  *
  * @details
  * `ra8_cache_store` is the persistent-cache tier from the multi-GB book-streaming

@@ -310,8 +310,7 @@ moment a binary is shared.
    of the finding, but re-vendoring at a tagged release remains preferable
    -- litehtml is on the untrusted-EPUB path (linked via
    `apps/shared_libs/reflow`). NimBLE was the other half of this finding and is
-   now resolved: it is vendored at the `nimble_1_10_0_tag` release tag
-   (#508).
+   now resolved: it is vendored at the `nimble_1_10_0_tag` release tag.
 2. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. Adding a standalone license file to
    `apps/shared_libs/third_party/stb/` would make the attribution self-contained.

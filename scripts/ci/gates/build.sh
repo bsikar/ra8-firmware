@@ -53,8 +53,8 @@
 # core still builds, links, and renders here -- the whole tool is gated on
 # Linux rather than skipped for the sake of its window backend.
 #
-# Every path below is $PWD -- the TREE UNDER TEST -- and never $REPO_ROOT
-# (#546). $REPO_ROOT is the host checkout the runner was invoked from, which is
+# Every path below is $PWD -- the TREE UNDER TEST -- and never $REPO_ROOT.
+# $REPO_ROOT is the host checkout the runner was invoked from, which is
 # not the tree the suite is gating: run_suite_on_snapshot cds into a clean
 # snapshot of HEAD and every other gate reads it from there. Reaching back to
 # $REPO_ROOT had two consequences, and the second one is what made it visible:
@@ -213,8 +213,8 @@ gate_tools_build() (
   # where every other dependency of this gate is named, and fail on it here.
   require_cmd openssl "mdl's HTTPS integration test mints its server cert with the openssl CLI"
   require_cmd python3 "mdl's HTTPS integration test serves its fixtures from python3 http.server"
-  # gcc-14 is enforced to its pin the same way the other gates enforce theirs
-  # (#333/#447): the wrong gcc silently changes which warnings the arm holds.
+  # gcc-14 is enforced to its pin the same way the other gates enforce theirs:
+  # the wrong gcc silently changes which warnings the arm holds.
   require_tool_versions gcc-14
 
   # Prove the flag detector fires and stays quiet BEFORE trusting its verdict.

@@ -501,8 +501,8 @@ static uint16_t internal_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t
  * @brief Run the CSS cascade for a just-pushed element and apply the result.
  *
  * @details Builds the element's CSS identity and inherited run style, runs the
- * author `<style>` rules + inline `style` attribute through `ra8_css_cascade_ctx()`
- * (#111 / #140), emits the block-start via `internal_open_attrs()` carrying the
+ * author `<style>` rules + inline `style` attribute through `ra8_css_cascade_ctx()`,
+ * emits the block-start via `internal_open_attrs()` carrying the
  * cascaded alignment + font size, and updates `ctx->style`, `ctx->color`,
  * `ctx->css_font_px`, `ctx->family_off`/`len`, and `ctx->face_slot` for
  * descendant content. Unstyled content lays out byte-identically to the

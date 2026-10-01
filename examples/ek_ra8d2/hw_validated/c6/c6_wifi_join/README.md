@@ -1,6 +1,6 @@
 # c6_wifi_join
 
-[#492](https://github.com/bsikar/ra8-firmware/issues/492): the first application
+The first application
 on this board that takes a real network all the way up over the ESP32-C6. It
 associates the co-processor's Wi-Fi station with a bench access point through
 `libs/ra8_c6link`, runs a NetX Duo DHCP client over the C6 link driver to obtain

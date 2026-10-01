@@ -15,8 +15,8 @@ set(TOOLCHAIN_PREFIX arm-none-eabi-)
 
 # Prefer the pinned Arm GNU Toolchain 13.3 install if present, at the per-OS
 # standard path, so every environment (Mac, dev box, CI runner, devcontainer)
-# builds with the SAME compiler regardless of what stray arm-gcc sits on PATH
-# (#178). find_program searches HINTS before the system PATH, so a 13.3 install
+# builds with the SAME compiler regardless of what stray arm-gcc sits on PATH.
+# find_program searches HINTS before the system PATH, so a 13.3 install
 # here wins; absent it, the search falls back to PATH and the version assertion
 # below catches a mismatch. To relocate, install to one of these paths (see
 # docs/TOOLCHAIN.md) or pass -DRA8_ARM_TOOLCHAIN_BIN=<dir>.

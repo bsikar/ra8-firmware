@@ -592,8 +592,8 @@ RA8_INTERNAL static void internal_test_exfat_write_file_over_directory_refused(v
  *
  * @details This used to report `k_ra8_err_not_supported`: with no exFAT
  *          directory-CREATION path, removal had no reachable subject and
- *          declining was the only honest answer. Both halves landed together
- *          (#605), so the dispatch now reaches `priv_exfat_rmdir` and a name
+ *          declining was the only honest answer. Both halves landed together,
+ * so the dispatch now reaches `priv_exfat_rmdir` and a name
  *          that is not there reports not_found. Argument validation still runs
  *          first, so a NULL path is a null_ptr rather than a lookup.
  *

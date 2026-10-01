@@ -1,7 +1,6 @@
 /**
  * @file test_ra8_cache_store.c
- * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake
- * (#201).
+ * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake.
  *
  * @details
  * Drives the persistent key->blob store end to end on the host: put/get random

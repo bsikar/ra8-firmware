@@ -8,8 +8,8 @@
  * `ra8_fs_fat_protos_a_internal.h` and `ra8_fs_fat_protos_b_internal.h`. The
  * helpers declared here are kept apart from those for the same reason the VFAT
  * long-name write seam is: they are one feature rather than one letter range --
- * everything needed to turn exFAT from a flat root-only namespace into a tree
- * (#605). Splitting them out also keeps the two halves inside the 1000-line
+ * everything needed to turn exFAT from a flat root-only namespace into a tree.
+ * Splitting them out also keeps the two halves inside the 1000-line
  * source cap, which they were already close to.
  *
  * The seam spans four translation units, so the declarations cannot live in any

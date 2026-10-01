@@ -27,8 +27,7 @@
 //! an image that defines one wins, an image that does not gets this default.
 //!
 //! The log lines go through `ra8_log_emit_*`, and the DEMCR unlock behind
-//! `ra8_dwt_cyccnt_enable` reaches ra8_scb, Zig as of the fault block
-//! (#2868).
+//! `ra8_dwt_cyccnt_enable` reaches ra8_scb, Zig as of the fault block.
 
 const reload_math = @import("time_reload");
 const tick = @import("time_tick");

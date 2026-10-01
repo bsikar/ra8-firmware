@@ -131,8 +131,8 @@ const shared_include_paths = [_][]const u8{
 ///
 /// This list is what the Zig ports EXTERN, not what the suites call. It held
 /// `ra8_log.c` until #2836, `ra8_time.c` until #2851, `ra8_scb.c` until the
-/// fault block and `ra8_error_handler.c` until the error pair
-/// (#2875), which is the one that emptied it.
+/// fault block and `ra8_error_handler.c` until the error pair,
+/// which is the one that emptied it.
 ///
 /// The fault block is why that last entry existed: the general archive is one
 /// compilation unit, so linking it for any port also pulls in

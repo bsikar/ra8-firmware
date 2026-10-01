@@ -1,7 +1,7 @@
 # compress_demo
 
 Drives the `ra8_io` fabric with the opt-in DEFLATE compression layer
-(#161) on a stock EK-RA8D2 with no external hardware: build an in-SRAM RAM block
+on a stock EK-RA8D2 with no external hardware: build an in-SRAM RAM block
 device, bridge it to `ra8_fs`, format and mount a FAT12 volume and register it in
 the VFS, then compress a payload, write the compressed blob through the VFS,
 read it back, inflate it, and require the result to be byte-identical to the

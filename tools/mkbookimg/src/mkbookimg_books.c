@@ -173,8 +173,8 @@ internal_input_open(const char* path, int* out_fd, mkbookimg_input_identity_t* i
  *          and refusing one would be a policy change, not a naming one -- but
  *          it now says what it saw instead of packing an unnamed blob.
  *
- *          The answer comes from ::ra8_imgdec_identify, the one shared table
- *          (#748); the tool keeps no magic-byte list of its own. At most
+ *          The answer comes from ::ra8_imgdec_identify, the one shared table;
+ * the tool keeps no magic-byte list of its own. At most
  *          ::k_ra8_imgdec_sniff_bytes leading bytes are read, into a local
  *          buffer, and an input shorter than that prefix or carrying no
  *          recognised signature is passed over in silence rather than guessed

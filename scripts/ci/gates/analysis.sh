@@ -61,7 +61,7 @@ gate_sg_offsets() (
 #
 # The aggregator runs WITHOUT --allow-empty, so a sweep that finds no .su files
 # or collapses below its function floor FAILS rather than passing vacuously
-# (#386) -- a stack budget that went unmeasured must never read as clean. The
+# -- a stack budget that went unmeasured must never read as clean. The
 # --selftest runs first and asserts that empty/collapsed detection still fires,
 # so a detector that quietly stopped matching cannot pass as a clean gate.
 gate_stack_usage() (

@@ -30,7 +30,7 @@ Comparison modes
                    exact version.
 * ``major``     -- major must equal the pin (clang-format-22,
                    gcc-14). The clang family and the gcc-14 host-tool arm
-                   (#356) are pinned by major on purpose; the tree is
+                   are pinned by major on purpose; the tree is
                    formatted/linted/built to that major and the binary carries
                    it in its name.
 Non-vacuity

@@ -190,12 +190,9 @@ Nothing below is settled by this ADR.
 
 ## References
 
-* Issue [#846](https://github.com/bsikar/ra8-firmware/issues/846) --
-  main-rail voltage versus SDRAM guaranteed logic-high margin.
-* Issues [#821](https://github.com/bsikar/ra8-firmware/issues/821)
-  (epic), [#825](https://github.com/bsikar/ra8-firmware/issues/825)
-  (power tree), [#827](https://github.com/bsikar/ra8-firmware/issues/827)
-  (storage subsystems).
+* The main-rail voltage versus SDRAM guaranteed logic-high margin
+  investigation, under the SDRAM epic with its power-tree and
+  storage-subsystem work.
 * RA8P1 datasheet R01DS0439EJ0130 Rev.1.30, Table 2.2 p.45 and
   Table 2.4 p.46.
 * ISSI IS42/45S32160F / IS42/45R32160F datasheet Rev. C, DC

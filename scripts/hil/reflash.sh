@@ -14,8 +14,8 @@
 #   2. The RoT anti-rollback counter persists across a normal flash, so a
 #      lower-versioned image is refused at boot. It lives in the extra-MRAM
 #      option-setting window, NOT in a data-flash array -- this part has none,
-#      and the conventional RA-family data-flash base does not decode on it
-#      (#397). RA8_ENABLE_ROOT_OF_TRUST keeps its durable highest-accepted
+#      and the conventional RA-family data-flash base does not decode on it.
+# RA8_ENABLE_ROOT_OF_TRUST keeps its durable highest-accepted
 #      version at `k_ra8_flash_extra_start` (0x02E0_7600, the first legal MACI
 #      Program target; libs/ra8_dfu/src/ra8_dfu_antirollback.c), and the silicon
 #      ARC structures are ARCCS 0x02E1_7932, ARC_SEC 0x02F2_7E00 and ARC_NSEC

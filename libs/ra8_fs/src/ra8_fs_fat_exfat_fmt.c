@@ -606,8 +606,8 @@ static ra8_err_t internal_exfat_write_root(const ra8_fs_backend_t* backend,
   /* Zero the WHOLE root cluster, not just the sector the three system entries
    * land in. The rest must read as end-of-directory (0x00), or a directory that
    * fills past the first sector -- or a rename that relocates an entry set into
-   * it -- runs the scan straight into whatever the device held before the format
-   * (#603). Directory growth already zeroes every cluster it appends; the initial
+   * it -- runs the scan straight into whatever the device held before the format.
+   * Directory growth already zeroes every cluster it appends; the initial
    * root cluster was the one spot that skipped it. */
   const ra8_err_t ze = priv_fmt_clear_region(backend, g->part_lba + lba, g->spc, g->bps);
   if (ze != k_ra8_ok) {

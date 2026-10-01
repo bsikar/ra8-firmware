@@ -56,8 +56,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Arm GNU Toolchain 13.3.rel1 -- pinned by URL + sha256 so the devcontainer's
-# cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-13.3
-# (#178). Linux and Darwin publish different archives for each architecture;
+# cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-13.3.
+# Linux and Darwin publish different archives for each architecture;
 # bump the release and all four per-platform sha256 pins together.
 ARG ARM_GCC_RELEASE=13.3.rel1
 ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4

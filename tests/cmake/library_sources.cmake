@@ -29,7 +29,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE XML_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/xml/src/*.c)
 file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/*.c)
 # libs/ra8_jpeg has no C sources left: the imgdec backend, the encoder
-# (#2798) and the marker walk, whole-buffer decoder and stripe driver
+# and the marker walk, whole-buffer decoder and stripe driver
 # are Zig (libs/ra8_jpeg/src/*.zig, built by libs/ra8_jpeg/build.zig) behind
 # the unchanged C headers, and tests/cmake/zig_libraries.cmake links that
 # archive at directory scope. There is no RA8_JPEG_SOURCES glob any more.

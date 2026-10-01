@@ -39,8 +39,8 @@ the extension policy has no build path behind it yet.
 `-dumpfullversion`, matches `major.minor` against `RA8_PINNED_ARM_GCC_VERSION`
 ("13.3"), and raises `FATAL_ERROR` on a mismatch unless
 `RA8_STRICT_TOOLCHAIN` is turned off. The justification recorded in the file is
-codegen reproducibility for the vendored miniz inflater under strict aliasing
-(#178), which is a good reason to pin a version and not a statement about
+codegen reproducibility for the vendored miniz inflater under strict aliasing,
+which is a good reason to pin a version and not a statement about
 language features.
 
 The same file sets `CMAKE_C_COMPILER_WORKS 1` and `CMAKE_CXX_COMPILER_WORKS 1`,

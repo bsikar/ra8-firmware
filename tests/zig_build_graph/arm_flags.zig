@@ -120,8 +120,8 @@ pub fn warningFlags(allocator: std.mem.Allocator, app: CrossApp) []const []const
 
 /// The same profile at a budget given directly, for a target that is not an
 /// app: the Non-Secure image of a two-project TrustZone build is a raw
-/// add_executable() that calls ra8_target_enable_project_warnings() itself
-/// (#1111), so it has a frame budget without being a CrossApp.
+/// add_executable() that calls ra8_target_enable_project_warnings() itself,
+/// so it has a frame budget without being a CrossApp.
 pub fn warningFlagsForStack(allocator: std.mem.Allocator, stack_bytes: u32) []const []const u8 {
     var flags = std.ArrayList([]const u8).init(allocator);
     flags.appendSlice(&warning_flags) catch @panic("OOM");

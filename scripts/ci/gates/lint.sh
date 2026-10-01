@@ -290,8 +290,8 @@ gate_lint_devcontainer() (
 # linter or no formatter, or when a file type has no classification rule at all.
 #
 # "Is everything linted?" was previously answerable only by hand-auditing each
-# checker's scan list. That audit ran five times and was wrong five times
-# (#296, #332, #358, #359, #360), every time because a hardcoded root list had
+# checker's scan list. That audit ran five times and was wrong five times,
+# every time because a hardcoded root list had
 # stopped matching the tree while the checker still reported clean. This gate
 # makes the answer mechanical, and makes a NEW language landing in the tree
 # (.rs, .ts, .proto) go red until somebody decides how it is checked.

@@ -22,7 +22,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   Corporation").
 - **How it entered our tree**: Vendored snapshot of the upstream Eclipse
   ThreadX repository copied into `libs/third_party/threadx/`. Resolved
-  (#548) to release tag `v6.5.0.202601_rel`, commit
+  to release tag `v6.5.0.202601_rel`, commit
   `3726d7906b4808bfec7855fc088e073199df9120`: 4757 of the 4758 vendored
   files are byte-identical to it, the exception being the `.gitattributes`
   edit recorded under "Deviations / patches" below. The vendored subset
@@ -112,8 +112,7 @@ git ignores silently, so no vendored file's checkout behaviour changes.
 
 Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
 content in `docs/sbom/upstream/threadx.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run
-(#548).
+component is verified byte-identical to the upstream pin on each CI run.
 
 The edit is from 2026-07-13 and went unrecorded here until #548 found it two
 weeks later, which is the point: "the vendored tree is unmodified" was prose,
@@ -122,8 +121,8 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 ## Last review date
 
 - Reviewed: 2026-05-02
-- Use case + risk mitigation re-verified against the tree and corrected
-  (#624): 2026-08-04. The kernel's footprint was understated by roughly 4x,
+- Use case + risk mitigation re-verified against the tree and corrected:
+  2026-08-04. The kernel's footprint was understated by roughly 4x,
   a deleted application was still cited, and the named verification hook
   hardware-smoke coverage never existed.
 - Expected re-review by: 2027-05-02

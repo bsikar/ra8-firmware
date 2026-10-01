@@ -1,8 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Host tests for the baseline decoder primitives and the dimension probe
-//! (#2799).
+//! Host tests for the baseline decoder primitives and the dimension probe.
 
 const std = @import("std");
 const bitreader = @import("bitreader");

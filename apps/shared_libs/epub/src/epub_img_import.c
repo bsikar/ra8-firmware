@@ -8,8 +8,8 @@
  * register it in place when the entry already is a stored JOF atlas, or
  * stream its encoded JPEG/PNG/WebP bytes through the bounded transcode producer
  * (`jof_produce`) into the caller's atlas store and register the
- * result. Every source codec normalizes to the one JOF container on import
- * (#290). Either way the binder afterwards serves the image's full-resolution
+ * result. Every source codec normalizes to the one JOF container on import.
+ * Either way the binder afterwards serves the image's full-resolution
  * tiles decode-on-demand -- the #231 goal for pages larger than SDRAM.
  *
  * Guarded on `__has_include` exactly like the binder unit so epub-only apps
