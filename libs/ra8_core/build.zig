@@ -423,6 +423,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/image_root.zig"),
             .target = target,
             .optimize = optimize,
+            .unwind_tables = .none,
         });
         image_root.addImport("freestanding_abi", freestanding_abi);
         image_root.addImport("pin_validator_abi", pin_validator_abi);
@@ -448,6 +449,8 @@ pub fn build(b: *std.Build) void {
             .root_module = image_root,
         });
         image_library.bundle_compiler_rt = false;
+        image_library.link_function_sections = true;
+        image_library.link_data_sections = true;
         b.installArtifact(image_library);
     }
 
