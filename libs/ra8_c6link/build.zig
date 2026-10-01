@@ -73,13 +73,23 @@ pub fn build(b: *std.Build) void {
     caps_test_module.addImport("implementation", implementation_module);
     const caps_tests = b.addTest(.{ .root_module = caps_test_module });
 
+    const storage_ram_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/storage_ram_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    storage_ram_test_module.addImport("implementation", implementation_module);
+    const storage_ram_tests = b.addTest(.{ .root_module = storage_ram_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_frame_tests = b.addRunArtifact(frame_tests);
     const run_caps_tests = b.addRunArtifact(caps_tests);
+    const run_storage_ram_tests = b.addRunArtifact(storage_ram_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_c6link tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_frame_tests.step);
     test_step.dependOn(&run_caps_tests.step);
+    test_step.dependOn(&run_storage_ram_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }
