@@ -62,66 +62,6 @@ typedef enum : int32_t {
   k_ra8_c6link_mode_ap   = 2, /**< Access point.                      */
 } ra8_c6link_wifi_mode_t;
 
-/**
- * @enum ra8_c6link_wifi_init_t
- * @brief The `Req_WifiInit` configuration this host transmits.
- *
- * @details
- * ESP-IDF's default set for an ESP32-C6, restated. The co-processor supplies
- * its own OS and crypto function tables -- those are pointers and are not on
- * the wire at all -- and takes these scalars from the request.
- *
- * @invariant ::k_ra8_c6link_wifi_magic is the word `esp_wifi_init()` checks
- *            before it looks at anything else; a wrong value is refused with
- *            `ESP_ERR_INVALID_ARG` and nothing else happens.
- * @invariant Every buffer count is within the range the co-processor's own
- *            build accepts, which is what makes the request succeed rather
- *            than merely arrive.
- *
- * @par Example:
- * @code
- * cfg.magic = (int32_t)k_ra8_c6link_wifi_magic;
- * @endcode
- *
- * @see ra8_c6link_wifi_start
- * @since 0.1.0
- */
-typedef enum : int32_t {
-  k_ra8_c6link_wifi_magic = 0x1F2F3F4F,
-  /**< `WIFI_INIT_CONFIG_MAGIC`; the first thing the far side validates. */
-  k_ra8_c6link_wifi_static_rx = 10,
-  /**< Static receive buffers. */
-  k_ra8_c6link_wifi_dynamic_rx = 32,
-  /**< Dynamic receive buffers. */
-  k_ra8_c6link_wifi_tx_type = 1,
-  /**< Transmit buffer type: dynamic, which is the IDF default. */
-  k_ra8_c6link_wifi_static_tx = 0,
-  /**< Static transmit buffers; zero because the type above is dynamic. */
-  k_ra8_c6link_wifi_dynamic_tx = 32,
-  /**< Dynamic transmit buffers. */
-  k_ra8_c6link_wifi_rx_mgmt_type = 0,
-  /**< Management receive buffers are static by default. */
-  k_ra8_c6link_wifi_rx_mgmt_num = 5,
-  /**< Management receive buffers. */
-  k_ra8_c6link_wifi_ampdu_on = 1,
-  /**< Aggregation enabled in both directions, as IDF defaults it. */
-  k_ra8_c6link_wifi_nvs_on = 1,
-  /**< Let the co-processor persist calibration in its own NVS. */
-  k_ra8_c6link_wifi_ba_win = 6,
-  /**< Block-ack window. */
-  k_ra8_c6link_wifi_beacon_max = 752,
-  /**< Longest beacon the soft-AP path would build; unused by a station but
-       part of the validated set. */
-  k_ra8_c6link_wifi_mgmt_sbuf = 32,
-  /**< Management short-buffer count. */
-  k_ra8_c6link_wifi_feature_caps = 1,
-  /**< Feature bitmap; bit zero is WPA3-SAE, which the bench network does not
-       use but which costs nothing to advertise. */
-  k_ra8_c6link_wifi_espnow_keys = 7,
-  /**< ESP-NOW encrypted peer slots. */
-  k_ra8_c6link_wifi_hetb_queues = 3,
-  /**< HE trigger-based queues. */
-} ra8_c6link_wifi_init_t;
 
 RA8_PRIV ra8_err_t priv_c6link_take_resp(void* ctx, const void* msg_v)
 {
@@ -303,26 +243,29 @@ RA8_PRIV ra8_err_t priv_c6link_bare_req(ra8_c6link_t* link, uint32_t req_id)
  */
 RA8_INTERNAL static ra8_err_t internal_c6link_wifi_do_init(ra8_c6link_t* link)
 {
+  priv_c6link_wifi_init_cfg_t set;
+  priv_c6link_wifi_init_cfg(&set);
+
   WifiInitConfig cfg;
   wifi_init_config__init(&cfg);
-  cfg.static_rx_buf_num      = (int32_t)k_ra8_c6link_wifi_static_rx;
-  cfg.dynamic_rx_buf_num     = (int32_t)k_ra8_c6link_wifi_dynamic_rx;
-  cfg.tx_buf_type            = (int32_t)k_ra8_c6link_wifi_tx_type;
-  cfg.static_tx_buf_num      = (int32_t)k_ra8_c6link_wifi_static_tx;
-  cfg.dynamic_tx_buf_num     = (int32_t)k_ra8_c6link_wifi_dynamic_tx;
-  cfg.rx_mgmt_buf_type       = (int32_t)k_ra8_c6link_wifi_rx_mgmt_type;
-  cfg.rx_mgmt_buf_num        = (int32_t)k_ra8_c6link_wifi_rx_mgmt_num;
-  cfg.ampdu_rx_enable        = (int32_t)k_ra8_c6link_wifi_ampdu_on;
-  cfg.ampdu_tx_enable        = (int32_t)k_ra8_c6link_wifi_ampdu_on;
-  cfg.nvs_enable             = (int32_t)k_ra8_c6link_wifi_nvs_on;
-  cfg.rx_ba_win              = (int32_t)k_ra8_c6link_wifi_ba_win;
-  cfg.beacon_max_len         = (int32_t)k_ra8_c6link_wifi_beacon_max;
-  cfg.mgmt_sbuf_num          = (int32_t)k_ra8_c6link_wifi_mgmt_sbuf;
-  cfg.feature_caps           = (uint64_t)k_ra8_c6link_wifi_feature_caps;
-  cfg.sta_disconnected_pm    = true;
-  cfg.espnow_max_encrypt_num = (int32_t)k_ra8_c6link_wifi_espnow_keys;
-  cfg.tx_hetb_queue_num      = (int32_t)k_ra8_c6link_wifi_hetb_queues;
-  cfg.magic                  = (int32_t)k_ra8_c6link_wifi_magic;
+  cfg.static_rx_buf_num      = set.static_rx_buf_num;
+  cfg.dynamic_rx_buf_num     = set.dynamic_rx_buf_num;
+  cfg.tx_buf_type            = set.tx_buf_type;
+  cfg.static_tx_buf_num      = set.static_tx_buf_num;
+  cfg.dynamic_tx_buf_num     = set.dynamic_tx_buf_num;
+  cfg.rx_mgmt_buf_type       = set.rx_mgmt_buf_type;
+  cfg.rx_mgmt_buf_num        = set.rx_mgmt_buf_num;
+  cfg.ampdu_rx_enable        = set.ampdu_rx_enable;
+  cfg.ampdu_tx_enable        = set.ampdu_tx_enable;
+  cfg.nvs_enable             = set.nvs_enable;
+  cfg.rx_ba_win              = set.rx_ba_win;
+  cfg.beacon_max_len         = set.beacon_max_len;
+  cfg.mgmt_sbuf_num          = set.mgmt_sbuf_num;
+  cfg.feature_caps           = set.feature_caps;
+  cfg.sta_disconnected_pm    = (set.sta_disconnected_pm != 0);
+  cfg.espnow_max_encrypt_num = set.espnow_max_encrypt_num;
+  cfg.tx_hetb_queue_num      = set.tx_hetb_queue_num;
+  cfg.magic                  = set.magic;
 
   RpcReqWifiInit body;
   rpc__req__wifi_init__init(&body);
