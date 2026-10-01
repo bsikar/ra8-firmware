@@ -1188,6 +1188,20 @@ typedef struct priv_c6link_wifi_init_cfg {
  */
 void priv_c6link_wifi_init_cfg(priv_c6link_wifi_init_cfg_t* out);
 
+/**
+ * @brief Which answer id pairs with this bare Wi-Fi request?
+ *
+ * Zig implementation, `internal/bare_rpc.zig`, where the pairing is stated per
+ * request and tested. Five Wi-Fi calls send an empty body and get a bare
+ * result code back; the generated body type is chosen at the C membrane, but
+ * which `RPC_ID__Resp_*` the facade then waits on is decided here.
+ *
+ * @param req_id   `RPC_ID__Req_*` about to be sent.
+ * @param[out] out Receives the answering id, or zero when there is none.
+ * @return true when @p req_id is one of the bare requests.
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_bare_resp(uint32_t req_id, uint32_t* out);
+
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
 
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);

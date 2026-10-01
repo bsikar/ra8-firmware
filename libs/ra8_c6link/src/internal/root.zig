@@ -25,3 +25,4 @@ pub const rx_route = @import("rx_route.zig");
 pub const field_copy = @import("field_copy.zig");
 pub const tx_admit = @import("tx_admit.zig");
 pub const wifi_init = @import("wifi_init.zig");
+pub const bare_rpc = @import("bare_rpc.zig");

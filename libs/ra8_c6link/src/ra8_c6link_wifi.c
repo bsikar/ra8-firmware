@@ -151,10 +151,12 @@ typedef struct ra8_c6link_bare_body {
  * @pre @p body outlives the request, which a caller stack frame guarantees.
  * @pre @p req has been initialised by `rpc__init()`.
  * @post On true the payload case matches @p req_id.
- * @post On false @p req is left with no payload and @p resp_id is zero.
- * @note The answer id is stated per arm rather than derived by arithmetic on
- *       the request id: the two happen to differ by a constant today, and a
- *       facade that silently depended on that would break quietly.
+ * @post On false @p resp_id is zero.
+ * @note Which id answers which is not decided here: `priv_c6link_bare_resp`
+ *       holds the pairing and is tested on it. This switch carries only the
+ *       generated body, so the two must agree on the same five requests; when
+ *       they do not the call is refused rather than sent to wait on an answer
+ *       that will never match.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool internal_c6link_wifi_bare_body(Rpc*                    req,
@@ -162,42 +164,37 @@ RA8_INTERNAL static bool internal_c6link_wifi_bare_body(Rpc*                    
                                                         uint32_t                req_id,
                                                         uint32_t*               resp_id)
 {
-  *resp_id = 0U;
   switch ((int32_t)req_id) {
     case (int32_t)RPC_ID__Req_WifiStart:
       rpc__req__wifi_start__init(&body->start);
       req->payload_case   = RPC__PAYLOAD_REQ_WIFI_START;
       req->req_wifi_start = &body->start;
-      *resp_id            = (uint32_t)RPC_ID__Resp_WifiStart;
       break;
     case (int32_t)RPC_ID__Req_WifiStop:
       rpc__req__wifi_stop__init(&body->stop);
       req->payload_case  = RPC__PAYLOAD_REQ_WIFI_STOP;
       req->req_wifi_stop = &body->stop;
-      *resp_id           = (uint32_t)RPC_ID__Resp_WifiStop;
       break;
     case (int32_t)RPC_ID__Req_WifiDeinit:
       rpc__req__wifi_deinit__init(&body->deinit);
       req->payload_case    = RPC__PAYLOAD_REQ_WIFI_DEINIT;
       req->req_wifi_deinit = &body->deinit;
-      *resp_id             = (uint32_t)RPC_ID__Resp_WifiDeinit;
       break;
     case (int32_t)RPC_ID__Req_WifiConnect:
       rpc__req__wifi_connect__init(&body->connect);
       req->payload_case     = RPC__PAYLOAD_REQ_WIFI_CONNECT;
       req->req_wifi_connect = &body->connect;
-      *resp_id              = (uint32_t)RPC_ID__Resp_WifiConnect;
       break;
     case (int32_t)RPC_ID__Req_WifiDisconnect:
       rpc__req__wifi_disconnect__init(&body->disconnect);
       req->payload_case        = RPC__PAYLOAD_REQ_WIFI_DISCONNECT;
       req->req_wifi_disconnect = &body->disconnect;
-      *resp_id                 = (uint32_t)RPC_ID__Resp_WifiDisconnect;
       break;
     default:
+      *resp_id = 0U;
       return false;
   }
-  return true;
+  return priv_c6link_bare_resp(req_id, resp_id);
 }
 
 RA8_PRIV ra8_err_t priv_c6link_bare_req(ra8_c6link_t* link, uint32_t req_id)
