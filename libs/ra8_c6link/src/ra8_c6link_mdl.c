@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_internal.h"
@@ -38,7 +39,7 @@ typedef enum : uint8_t {
 /** @brief Context consumed synchronously by the CustomRpc response extractor.
  */
 typedef struct {
-  ra8_c6link_t*      link;             /**< Link whose arena decoded the response.  */
+  ra8_c6link_t*      link;             /**< Link the response arrived on.           */
   ra8_mdl_session_t* session;          /**< Correlated caller session.              */
   ra8_mdl_chunk_t*   chunk;            /**< Optional caller chunk destination.      */
   uint32_t           operation;        /**< Expected CustomRpc operation id.        */
@@ -48,14 +49,25 @@ typedef struct {
 } mdl_take_ctx_t;
 
 /**
- * @brief Flatten one decoded generated chunk into the Zig rule layer's view.
- * @details The generated message layout is protoc-c output, so the rules live
- * in `src/internal/mdl_chunk.zig` over flat field values rather than over a
- * hand-mirrored copy of that layout. This is the only place the two meet.
- * @param[in] msg Decoded generated chunk.
- * @return A view borrowing @p msg's decoded spans.
- * @pre @p msg is non-null and its arena stays live for the whole call.
- * @post No decoded or caller-owned state is modified.
+ * @brief Borrow one generated C string as a text span.
+ * @param[in] text Generated string, or null when the test left it unset.
+ * @return The span; null stays null.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static mdl_text_t internal_mdl_text(const char* text)
+{
+  return (mdl_text_t){.ptr = text, .len = (text != nullptr) ? strlen(text) : 0U};
+}
+
+/**
+ * @brief Flatten one generated chunk into the Zig rule layer's view.
+ * @details Only the test helpers build generated chunks now; production
+ * chunks are decoded in `src/internal/mdl_chunk_decode.zig`.
+ * @param[in] msg Generated chunk.
+ * @return A view borrowing @p msg's spans.
+ * @pre @p msg is non-null.
+ * @post No state is modified.
  * @note Pure and reentrant for independent messages.
  * @since 0.1.0
  */
@@ -73,10 +85,10 @@ RA8_INTERNAL static mdl_chunk_view_t internal_mdl_view(const Ra8__Mdl__Chunk* ms
     .sha256        = msg->sha256.data,
     .sha256_len    = msg->sha256.len,
     .http_status   = msg->http_status,
-    .retry_after   = msg->retry_after,
-    .etag          = msg->etag,
-    .last_modified = msg->last_modified,
-    .content_type  = msg->content_type,
+    .retry_after   = internal_mdl_text(msg->retry_after),
+    .etag          = internal_mdl_text(msg->etag),
+    .last_modified = internal_mdl_text(msg->last_modified),
+    .content_type  = internal_mdl_text(msg->content_type),
   };
 }
 
@@ -111,45 +123,24 @@ internal_mdl_take_accepted(mdl_take_ctx_t* take, const uint8_t* data, size_t len
 
 /**
  * @brief Decode a chunk and enforce correlation and size bounds
- * @details Accepts only the exact active job, sequence, offset, and requested
- * span.
+ * @details Decodes in Zig; accepts only the exact active job, sequence,
+ * offset, and requested span.
  * @param[in,out] take Active extraction/session context.
- * @param[in] data Packed generated Chunk response.
+ * @param[in] data Packed Chunk response.
+ * @param[in] len Valid bytes at @p data; the decoder reads no further.
  * @return Decode or remote terminal status.
  * @retval k_ra8_ok A valid data or successful terminal chunk was copied.
  * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
  * @pre @p take owns an active session and non-null output chunk.
- * @pre The link arena is exclusively owned for this callback.
  * @post Success advances offset/sequence by exactly the decoded data length.
  * @post A valid terminal response deactivates the session.
- * @note Not thread-safe for a shared session or c6link arena.
+ * @note Not thread-safe for a shared session.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*            take,
-                                                      const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_take_chunk(mdl_take_ctx_t* take, const uint8_t* data, size_t len)
 {
-  ProtobufCAllocator alloc = {};
-  priv_c6link_arena_bind(&alloc, take->link);
-  Ra8__Mdl__Chunk* msg = ra8__mdl__chunk__unpack(&alloc, data->len, data->data);
-  if (msg == nullptr) {
-    return k_ra8_err_protocol_error;
-  }
-  const mdl_chunk_view_t     view = internal_mdl_view(msg);
-  const mdl_chunk_key_view_t key  = {
-     .protocol_version = msg->protocol_version,
-     .job_id           = msg->job_id,
-     .sequence         = msg->sequence,
-     .offset           = msg->offset,
-     .data_len         = (uint32_t)msg->data.len,
-     .data_present     = (msg->data.data != nullptr),
-     .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
-  };
-  const bool valid =
-    priv_c6link_mdl_chunk_admissible(&key, &view, take->session, take->requested_bytes);
-  const ra8_err_t result =
-    valid ? priv_c6link_mdl_accept_chunk(&view, take->session, take->chunk) : k_ra8_err_protocol_error;
-  ra8__mdl__chunk__free_unpacked(msg, &alloc);
-  return result;
+  return priv_c6link_mdl_take_chunk(data, len, take->session, take->chunk, take->requested_bytes);
 }
 
 /**
@@ -224,7 +215,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
     case k_mdl_take_accepted:
       return internal_mdl_take_accepted(take, body->data.data, body->data.len);
     case k_mdl_take_chunk:
-      return internal_mdl_take_chunk(take, &body->data);
+      return internal_mdl_take_chunk(take, body->data.data, body->data.len);
     case k_mdl_take_cancelled:
       return internal_mdl_take_cancelled(take, body->data.data, body->data.len);
     default:
