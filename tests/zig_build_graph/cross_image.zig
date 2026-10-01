@@ -226,8 +226,22 @@ fn addCrossApp(
     // is registered identically. crypto_aes_demo is the case in the table: it
     // reaches ra8_psa_crypto through OFF_TARGET_LIBS, not LIBS, so a LIBS-only
     // sweep leaves exactly that app's archive out.
-    for ([_][]const []const u8{ app.libraries, app.off_target_libs }) |list| {
-        for (list) |library| {
+    //
+    // What RA8_OFF_TARGET is to the C units, `-Doff-target=true` is to the
+    // archive. Every library that has both backends picks them at comptime
+    // from that option, and it defaults to OFF on a freestanding target. So an
+    // OFF_TARGET_LIBS archive built with the defaults is the ON-target one:
+    // ra8_psa_crypto then binds the vendored TF-PSA-Crypto, which this app
+    // does not link, and crypto_aes_demo failed with ten undefined psa_*
+    // symbols. Before #1114 (a7193bf4) the same library was C, compiled into
+    // this app under RA8_OFF_TARGET, i.e. on its software stand-ins; the
+    // option keeps that. A library reached this way has to declare the option,
+    // and the dependency call fails loudly if it does not.
+    for ([_]struct { list: []const []const u8, off_target: bool }{
+        .{ .list = app.libraries, .off_target = false },
+        .{ .list = app.off_target_libs, .off_target = true },
+    }) |group| {
+        for (group.list) |library| {
             if (std.mem.eql(u8, library, board_lib)) continue;
             if (std.mem.eql(u8, library, core_archive.lib_name)) continue;
             var already = false;
@@ -236,7 +250,11 @@ fn addCrossApp(
             }
             if (already) continue;
             if (!migrated_libs.contributesArchive(b, library)) continue;
-            const dependency = b.dependency(library, .{
+            const dependency = if (group.off_target) b.dependency(library, .{
+                .target = arm_target,
+                .optimize = globals.configuration.zig_optimize,
+                .@"off-target" = true,
+            }) else b.dependency(library, .{
                 .target = arm_target,
                 .optimize = globals.configuration.zig_optimize,
             });
