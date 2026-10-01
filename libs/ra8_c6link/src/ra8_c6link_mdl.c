@@ -157,8 +157,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
      .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
   };
   const bool valid =
-    priv_c6link_mdl_chunk_correlates(&key, take->session, take->requested_bytes) &&
-    priv_c6link_mdl_chunk_semantics_valid(&view);
+    priv_c6link_mdl_chunk_admissible(&key, &view, take->session, take->requested_bytes);
   const ra8_err_t result =
     valid ? priv_c6link_mdl_accept_chunk(&view, take->session, take->chunk) : k_ra8_err_protocol_error;
   ra8__mdl__chunk__free_unpacked(msg, &alloc);
@@ -238,11 +237,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
     .body_len      = body->data.len,
     .body_present  = (body->data.data != nullptr),
   };
-  const uint8_t accepted = priv_c6link_mdl_envelope_accept(&view);
-  if ((accepted == 0U) || ((mdl_take_kind_t)accepted != take->kind)) {
+  const uint8_t selected = priv_c6link_mdl_take_selected(&view, (uint8_t)take->kind);
+  if (selected == 0U) {
     return k_ra8_err_protocol_error;
   }
-  switch (take->kind) {
+  switch ((mdl_take_kind_t)selected) {
     case k_mdl_take_accepted:
       return internal_mdl_take_accepted(take, &body->data);
     case k_mdl_take_chunk:
