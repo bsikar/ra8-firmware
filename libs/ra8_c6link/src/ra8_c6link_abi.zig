@@ -19,6 +19,7 @@ const mdl_chunk = @import("internal/mdl_chunk.zig");
 const mdl_service_rules = @import("internal/mdl_service_rules.zig");
 const mdl_session = @import("internal/mdl_session.zig");
 const mdl_pull = @import("internal/mdl_pull.zig");
+const mdl_envelope = @import("internal/mdl_envelope.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -458,4 +459,23 @@ pub export fn priv_c6link_mdl_pull_advance(
     complete: bool,
 ) mdl_pull.Advance {
     return mdl_pull.advance(next_offset, next_sequence, got, complete);
+}
+
+/// `priv_c6link_mdl_envelope_operation_valid`: a media operation id.
+pub export fn priv_c6link_mdl_envelope_operation_valid(operation: u32) bool {
+    return mdl_envelope.operationValid(operation);
+}
+
+/// `priv_c6link_mdl_envelope_kind_for`: expected inner response, 0 if none.
+pub export fn priv_c6link_mdl_envelope_kind_for(operation: u32) u8 {
+    const kind = mdl_envelope.kindFor(operation) orelse return 0;
+    return @intFromEnum(kind);
+}
+
+/// `priv_c6link_mdl_envelope_accept`: outer response check, 0 when refused.
+pub export fn priv_c6link_mdl_envelope_accept(
+    view: *const mdl_envelope.ResponseView,
+) u8 {
+    const kind = mdl_envelope.accept(view) orelse return 0;
+    return @intFromEnum(kind);
 }

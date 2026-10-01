@@ -522,6 +522,63 @@ RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      
                                                              const uint8_t*     packed,
                                                              size_t             len);
 
+/**
+ * @struct mdl_envelope_view_t
+ * @brief Flattened outer CustomRpc response, as the Zig envelope rules see it.
+ * @since 0.1.0
+ */
+typedef struct mdl_envelope_view_t {
+  uint32_t custom_msg_id; /**< Operation id the reply names.       */
+  uint32_t operation;     /**< Operation id the call asked for.    */
+  size_t   body_len;      /**< Bytes in the inner body.            */
+  bool     body_present;  /**< Whether a body pointer was present. */
+} mdl_envelope_view_t;
+
+/**
+ * @brief Report whether an id names a media operation
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it.
+ * @param[in] operation Candidate CustomRpc operation id.
+ * @return Whether the id is one of start, next, or cancel.
+ * @retval true The id names a media operation.
+ * @retval false The id belongs to another protocol family.
+ * @pre None.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_envelope_operation_valid(uint32_t operation);
+
+/**
+ * @brief Report which generated response an operation is answered with
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it.
+ * @param[in] operation CustomRpc operation id the call used.
+ * @return Expected ::mdl_take_kind_t value, or zero when the id is unknown.
+ * @retval 0 The id names no media operation.
+ * @pre None.
+ * @post No state is observed or changed.
+ * @note Pure mapping; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_mdl_envelope_kind_for(uint32_t operation);
+
+/**
+ * @brief Decide whether an outer CustomRpc response may be decoded
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. Refuses a reply that names a different
+ *          operation than the call asked for, and one carrying no body.
+ * @param[in] view Flattened outer response.
+ * @return Expected ::mdl_take_kind_t value, or zero when the response is
+ *         refused.
+ * @retval 0 Identity or body made the response undecodable.
+ * @pre @p view is non-null.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_mdl_envelope_accept(const mdl_envelope_view_t* view);
+
 #ifdef __cplusplus
 }
 #endif
