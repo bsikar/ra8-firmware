@@ -58,9 +58,19 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const stream_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/stream_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    stream_test_module.addImport("abi", abi_module);
+    const stream_tests = b.addTest(.{ .root_module = stream_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_stream_tests = b.addRunArtifact(stream_tests);
     const test_step = b.step("test", "Run Zig if_ra8_vfs tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_stream_tests.step);
 }
