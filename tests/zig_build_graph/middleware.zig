@@ -156,9 +156,6 @@ pub const threadx_ns = Middleware{
     .project_sources = &.{
         "port/threadx/src/cortex_m85/tx_initialize_low_level.S",
         "port/threadx/src/cortex_m85/tx_systick_ready.c",
-        "libs/ra8_core/src/ra8_freestanding_mem.c",
-        "libs/ra8_core/src/ra8_freestanding_str.c",
-        "libs/ra8_core/src/ra8_freestanding_math.c",
     },
     .private_include_dirs = &.{"libs/ra8_core/inc"},
     .public_include_dirs = &.{"port/threadx/inc"},
