@@ -619,8 +619,13 @@ pub const cross_apps = [_]CrossApp{
         // this app's cpu1_main.c reaches core and HAL headers only.
         .cpu1 = .{
             .entry_source = "src/cpu1_main.c",
+            // Both files its CMakeLists hands ra8_cpu1_add_first_party_sources().
+            // ra8_sau.c is not optional here: cpu1_main.c:190 calls
+            // ra8_sau_configure() from the M33 reset handler, because this app
+            // is the TrustZone one and the M33 programmes its own SAU.
             .shared_sources = &.{
                 "libs/ra8_hal/src/ra8_ipc.c",
+                "libs/ra8_hal/src/ra8_sau.c",
             },
             .linker_script = "linker_script_cpu1.ld",
             .board_include_dir = false,
