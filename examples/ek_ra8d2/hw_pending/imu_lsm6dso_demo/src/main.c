@@ -45,8 +45,10 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
@@ -209,9 +211,13 @@ static void imu_demo_clocks_or_halt(uint32_t* out_pclka_hz)
   if (ra8_cgc_init() != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
+  /* Direct driver read on purpose (issue #693): k_imu_demo_iic_channel is the
+   * mikrobus IIC_B channel 0, while the board clock profile's i2c slot is
+   * RIIC1 (J35 SCCB), so routing it would name the wrong peripheral. */
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
