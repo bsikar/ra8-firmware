@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 412 reference(s)
+# clock: 399 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -119,27 +119,27 @@ examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/acmphs_compare/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/adc_b_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/agt_periodic/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/acmphs_compare/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/adc_b_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/agt_periodic/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/app_launch_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/app_shell_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/blink_m33/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/bscan_selftest/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/bscan_selftest/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ceu.c	gpio	2
-examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	timer	2
-examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/canfd_loopback/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/canfd_loopback/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/clock_check/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/crc_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/crc_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dac_b_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/dac_waveform/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/main.c	clock	4
