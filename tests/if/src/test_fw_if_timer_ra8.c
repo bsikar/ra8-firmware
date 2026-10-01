@@ -45,6 +45,13 @@ typedef enum : uint32_t {
   k_test_md_oneshot = 0x00010000UL, /**< MD = saw one-shot.         */
   k_test_gtst_tcfpo = 0x00000040UL, /**< GTST.TCFPO: count wrapped. */
   k_test_gtst_other = 0x00000001UL, /**< GTST.TCFA: compare A hit.  */
+  k_test_gtst_tcfa  = 0x00000001UL, /**< GTST.TCFA: capture A edge. */
+  k_test_gtst_tcfb  = 0x00000002UL, /**< GTST.TCFB: left alone.     */
+  k_test_cap_src    = 0x00000300UL, /**< GTIOCnA rising.            */
+  k_test_cap_bad    = 0x02000000UL, /**< Reserved GTICASR bit.      */
+  k_test_latched    = 0x0000BEEFUL, /**< Count planted in GTCCRA.   */
+  k_test_latched_2  = 0x0000CAFEUL, /**< A later latched count.     */
+  k_test_ch_past    = 10U,          /**< First channel past ten.    */
 } test_const_t;
 
 /** @brief A handle bound to the adapter, failing the case if bind fails. */
@@ -223,6 +230,81 @@ static void test_ops_on_unopened_channel_refused(void)
   TEST_END("start, stop, read, set_period, close refuse an unopened channel");
 }
 
+/** @brief Read capture straight through the adapter's op, past the facade. */
+static ra8_err_t capture_op(uint32_t index, uint32_t* out)
+{
+  return fw_timer_ra8_iface()->capture_read(nullptr, ch_of(index), out);
+}
+
+static void test_open_capture_rejects_bad_arguments(void)
+{
+  TEST_BEGIN("open_capture refuses a channel past ten, zero period, empty or reserved source");
+  ra8_fake_mmap_reset();
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch_past), k_test_period, k_test_cap_src));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch), 0U, k_test_cap_src));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch), k_test_period, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch), k_test_period, k_test_cap_bad));
+  TEST_ASSERT_EQ(0U, ra8_gpt((uint8_t)k_test_ch)->GTICASR);
+  TEST_END("open_capture refuses a channel past ten, zero period, empty or reserved source");
+}
+
+static void test_capture_latches_and_remembers(void)
+{
+  TEST_BEGIN("capture arms GTICASR, blocks before an edge, then keeps the last latch");
+  ra8_fake_mmap_reset();
+  const fw_timer_t               tmr   = bound();
+  volatile r_gpt_channel_regs_t* reg   = ra8_gpt((uint8_t)k_test_ch);
+  uint32_t                       count = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch), k_test_period, k_test_cap_src));
+  TEST_ASSERT_EQ(k_test_cap_src, reg->GTICASR);
+  TEST_ASSERT_EQ(k_test_period, reg->GTPR);
+  TEST_ASSERT_EQ(0U, reg->GTSTR);
+  TEST_ASSERT_EQ(k_ra8_err_would_block, capture_op(k_test_ch, &count));
+  reg->GTCCR[0] = k_test_latched;
+  reg->GTST     = k_test_gtst_tcfa | k_test_gtst_tcfb;
+  TEST_ASSERT_EQ(k_ra8_ok, capture_op(k_test_ch, &count));
+  TEST_ASSERT_EQ(k_test_latched, count);
+  TEST_ASSERT_EQ(k_test_gtst_tcfb, reg->GTST);
+  reg->GTCCR[0] = k_test_latched_2;
+  TEST_ASSERT_EQ(k_ra8_ok, capture_op(k_test_ch, &count));
+  TEST_ASSERT_EQ(k_test_latched_2, count);
+  TEST_ASSERT_EQ(k_ra8_err_busy,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch), k_test_period, k_test_cap_src));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_close(&tmr, ch_of(k_test_ch)));
+  TEST_ASSERT_EQ(0U, reg->GTICASR);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, capture_op(k_test_ch, &count));
+  TEST_END("capture arms GTICASR, blocks before an edge, then keeps the last latch");
+}
+
+static void test_capture_read_refuses_a_counting_channel(void)
+{
+  TEST_BEGIN("capture_read refuses a channel opened free-run, and a reopen starts unlatched");
+  ra8_fake_mmap_reset();
+  const fw_timer_t               tmr   = bound();
+  volatile r_gpt_channel_regs_t* reg   = ra8_gpt((uint8_t)k_test_ch_other);
+  uint32_t                       count = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    fw_timer_open(&tmr, ch_of(k_test_ch_other), k_fw_timer_mode_free_run, k_test_period));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, capture_op(k_test_ch_other, &count));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_close(&tmr, ch_of(k_test_ch_other)));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch_other), k_test_period, k_test_cap_src));
+  reg->GTST = k_test_gtst_tcfa;
+  TEST_ASSERT_EQ(k_ra8_ok, capture_op(k_test_ch_other, &count));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_close(&tmr, ch_of(k_test_ch_other)));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 fw_timer_ra8_open_capture(ch_of(k_test_ch_other), k_test_period, k_test_cap_src));
+  TEST_ASSERT_EQ(k_ra8_err_would_block, capture_op(k_test_ch_other, &count));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_timer_close(&tmr, ch_of(k_test_ch_other)));
+  TEST_END("capture_read refuses a channel opened free-run, and a reopen starts unlatched");
+}
+
 /** @brief Cases in run order; main walks this so it never grows. */
 static void (*const s_test_roster[])(void) = {
   test_caps_report_ten_32bit_channels,
@@ -235,6 +317,9 @@ static void (*const s_test_roster[])(void) = {
   test_take_wrap_reads_and_clears_tcfpo,
   test_double_open_is_busy,
   test_ops_on_unopened_channel_refused,
+  test_open_capture_rejects_bad_arguments,
+  test_capture_latches_and_remembers,
+  test_capture_read_refuses_a_counting_channel,
 };
 
 int main(void)
