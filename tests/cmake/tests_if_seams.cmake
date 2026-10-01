@@ -102,6 +102,18 @@ if(TARGET test_ra8_board_ek_ra8d2_clock_profile)
                  PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
+# The board's split of its GPT channels between those two ports. It reaches
+# both GPT adapters and the pin router, so it wants the GPT adapter include
+# path on top of the clock profile's, and the same fake MMIO mock.
+if(TARGET test_ra8_board_ek_ra8d2_gpt_profile)
+  target_include_directories(
+    test_ra8_board_ek_ra8d2_gpt_profile
+    PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
+            ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc ${FW_ROOT}/tests/mocks/inc)
+  target_sources(test_ra8_board_ek_ra8d2_gpt_profile
+                 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
+endif()
+
 # The ThreadX binding of the same seam cannot run on a host -- it needs a
 # scheduler -- but its three mapping functions are pure and live in the port
 # header on purpose, so the host build proves them without ThreadX. Only the
