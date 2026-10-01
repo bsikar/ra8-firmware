@@ -13,3 +13,4 @@ pub const mdl_types = @import("mdl_types.zig");
 pub const mdl_transfer = @import("mdl_transfer.zig");
 pub const mdl_request = @import("mdl_request.zig");
 pub const mdl_chunk = @import("mdl_chunk.zig");
+pub const mdl_service_rules = @import("mdl_service_rules.zig");

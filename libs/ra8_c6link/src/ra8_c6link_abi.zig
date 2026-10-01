@@ -16,6 +16,7 @@ const frame = @import("internal/frame.zig");
 const mdl_transfer = @import("internal/mdl_transfer.zig");
 const mdl_request = @import("internal/mdl_request.zig");
 const mdl_chunk = @import("internal/mdl_chunk.zig");
+const mdl_service_rules = @import("internal/mdl_service_rules.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -327,4 +328,51 @@ pub export fn priv_c6link_mdl_accept_chunk(
     const active = session orelse return Err.null_ptr;
     const out = chunk orelse return Err.null_ptr;
     return mdl_chunk.accept(decoded, active, out);
+}
+
+/// `priv_c6link_mdl_service_field_valid`: one bounded single-line header.
+pub export fn priv_c6link_mdl_service_field_valid(
+    text: ?[*:0]const u8,
+    cap: usize,
+) callconv(.c) bool {
+    if (cap == 0) return false;
+    return mdl_service_rules.fieldValid(text, cap);
+}
+
+/// `priv_c6link_mdl_service_response_valid`: fixed terminal response metadata.
+pub export fn priv_c6link_mdl_service_response_valid(
+    response: ?*const mdl_service_rules.ResponseView,
+) callconv(.c) bool {
+    const metadata = response orelse return false;
+    return mdl_service_rules.responseValid(metadata);
+}
+
+/// `priv_c6link_mdl_service_start_valid`: whether a Start request may begin.
+pub export fn priv_c6link_mdl_service_start_valid(
+    request: ?*const mdl_service_rules.StartView,
+) callconv(.c) bool {
+    const decoded = request orelse return false;
+    return mdl_service_rules.startValid(decoded);
+}
+
+/// `priv_c6link_mdl_decode_allocation_fits`: one aligned arena request.
+pub export fn priv_c6link_mdl_decode_allocation_fits(
+    used: usize,
+    len: usize,
+    capacity: usize,
+) callconv(.c) bool {
+    return mdl_service_rules.allocationFits(used, len, capacity);
+}
+
+/// `priv_c6link_mdl_decode_aligned_size`: that request's rounded size.
+pub export fn priv_c6link_mdl_decode_aligned_size(len: usize) callconv(.c) usize {
+    return mdl_service_rules.alignedSize(len);
+}
+
+/// `priv_c6link_mdl_service_response_size_ok`: a whole packed response fits.
+pub export fn priv_c6link_mdl_service_response_size_ok(
+    len: usize,
+    response_cap: usize,
+) callconv(.c) bool {
+    return mdl_service_rules.responseSizeOk(len, response_cap);
 }
