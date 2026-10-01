@@ -1,28 +1,34 @@
 {
   "test_roots": [
-    "tests/internal_test.zig",
     "tests/abi_test.zig",
-    "tests/frame_test.zig",
     "tests/caps_test.zig",
-    "tests/storage_ram_test.zig",
-    "tests/mdl_service_rules_test.zig",
+    "tests/frame_test.zig",
+    "tests/internal_test.zig",
     "tests/mdl_chunk_test.zig",
-    "tests/mdl_transfer_test.zig",
-    "tests/mdl_request_test.zig",
-    "tests/mdl_pull_test.zig",
     "tests/mdl_envelope_test.zig",
     "tests/mdl_issue_test.zig",
-    "tests/mdl_take_test.zig"
+    "tests/mdl_pull_test.zig",
+    "tests/mdl_request_test.zig",
+    "tests/mdl_service_rules_test.zig",
+    "tests/mdl_take_test.zig",
+    "tests/mdl_transfer_test.zig",
+    "tests/rpc_wait_test.zig",
+    "tests/storage_ram_test.zig"
   ],
   "covered_sources": [
     "src/internal/caps.zig",
     "src/internal/frame.zig",
     "src/internal/mdl_chunk.zig",
+    "src/internal/mdl_envelope.zig",
+    "src/internal/mdl_issue.zig",
+    "src/internal/mdl_pull.zig",
     "src/internal/mdl_request.zig",
     "src/internal/mdl_service_rules.zig",
+    "src/internal/mdl_take.zig",
     "src/internal/mdl_transfer.zig",
     "src/internal/mdl_types.zig",
     "src/internal/root.zig",
+    "src/internal/rpc_wait.zig",
     "src/internal/storage_ram.zig",
     "src/internal/tlv.zig",
     "src/internal/vocab.zig",
@@ -34,11 +40,7 @@
     "tests/mdl_request_test.zig",
     "tests/mdl_rpc_stub.zig",
     "tests/mdl_transfer_test.zig",
-    "tests/storage_ram_test.zig",
-    "src/internal/mdl_pull.zig",
-    "src/internal/mdl_envelope.zig",
-    "src/internal/mdl_issue.zig",
-    "src/internal/mdl_take.zig"
+    "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 236
+  "minimum_tests": 246
 }

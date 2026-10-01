@@ -943,6 +943,65 @@ RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBin
 [[nodiscard]] RA8_PRIV bool priv_c6link_copy_mac(ra8_c6link_mac_t*          dst,
                                                  const ProtobufCBinaryData* src);
 
+/**
+ * @brief Decide whether another request may go out on this link.
+ *
+ * @param[in] open Whether the link is open.
+ * @param[in] armed Whether a request is already outstanding.
+ * @param[in] tx_len Bytes already staged for transmission.
+ * @return Canonical verdict the caller returns as it stands.
+ * @retval k_ra8_ok The link is open and idle.
+ * @retval k_ra8_err_not_initialized The link is not open.
+ * @retval k_ra8_err_busy A wait is armed or a payload is still staged.
+ *
+ * @pre The caller has already rejected null arguments.
+ * @post No link state is modified.
+ *
+ * @note Pure decision; safe from any context.
+ *
+ * @par Example:
+ * @code
+ * const ra8_err_t ready = priv_c6link_rpc_issuable(link->open, link->wait.armed, link->tx_len);
+ * @endcode
+ *
+ * @see priv_c6link_rpc_answers
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_rpc_issuable(bool open, bool armed, uint16_t tx_len);
+
+/**
+ * @brief Decide whether one decoded response answers the outstanding request.
+ *
+ * @param[in] armed Whether a request is outstanding.
+ * @param[in] wait_uid UID stamped on the outstanding request.
+ * @param[in] wait_resp_id Message id that request is answered by.
+ * @param[in] msg_uid UID the peer echoed back.
+ * @param[in] msg_id Message id the peer answered with.
+ * @return true when the response is the answer to the outstanding request.
+ * @retval true All three correlation conditions hold.
+ * @retval false No request is outstanding, or this is another question's
+ *         answer.
+ *
+ * @pre The caller has already rejected null arguments.
+ * @post No link state is modified.
+ *
+ * @note A UID that matches but an id that does not is a different question's
+ *       answer arriving late.
+ *
+ * @par Example:
+ * @code
+ * if (!priv_c6link_rpc_answers(link->wait.armed, link->wait.uid, ...)) { return false; }
+ * @endcode
+ *
+ * @see priv_c6link_rpc_issuable
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_rpc_answers(bool     armed,
+                                                    uint32_t wait_uid,
+                                                    uint32_t wait_resp_id,
+                                                    uint32_t msg_uid,
+                                                    uint32_t msg_id);
+
 #ifdef __cplusplus
 }
 #endif
