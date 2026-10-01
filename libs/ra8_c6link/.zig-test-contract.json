@@ -3,7 +3,8 @@
     "tests/internal_test.zig",
     "tests/abi_test.zig",
     "tests/frame_test.zig",
-    "tests/caps_test.zig"
+    "tests/caps_test.zig",
+    "tests/storage_ram_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -15,7 +16,9 @@
     "src/internal/frame.zig",
     "src/internal/caps.zig",
     "tests/frame_test.zig",
-    "tests/caps_test.zig"
+    "tests/caps_test.zig",
+    "src/internal/storage_ram.zig",
+    "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 51
+  "minimum_tests": 68
 }

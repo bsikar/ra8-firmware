@@ -9,15 +9,30 @@
 //! working for the C translation units beside it and the `tests/wireless`
 //! suites.
 
+const std = @import("std");
+
 const caps = @import("internal/caps.zig");
 const frame = @import("internal/frame.zig");
+const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
 
 /// Subset of `ra8_err_t` this library returns.
 const Err = struct {
     pub const ok: u16 = 0;
+    pub const no_mem: u16 = 0x102;
+    pub const invalid_arg: u16 = 0x103;
+    pub const invalid_state: u16 = 0x104;
     pub const invalid_size: u16 = 0x105;
     pub const null_ptr: u16 = 0x504;
+
+    /// Flatten one refused storage transition.
+    fn of(e: storage_ram.Error) u16 {
+        return switch (e) {
+            error.InvalidArg => invalid_arg,
+            error.InvalidState => invalid_state,
+            error.NoMem => no_mem,
+        };
+    }
 };
 
 /// `priv_c6link_tlv_open`: open an envelope for a `proto_len`-byte body.
@@ -118,4 +133,103 @@ pub export fn priv_c6link_frame_classify(rx: ?[*]const u8, view: ?*RxView) callc
 pub export fn priv_c6link_caps(out: ?[*]u8, cap: u8) callconv(.c) u8 {
     const buf = out orelse return 0;
     return caps.write(buf[0..cap]) orelse 0;
+}
+
+/// `ra8_mdl_storage_iface_t`: the coordinator's view of one storage backend.
+///
+/// `validate` stays null for this backend: the transfer layer verifies the
+/// byte count and digest itself, and a RAM sink has nothing of its own to
+/// check.
+const StorageIface = extern struct {
+    begin: ?*const fn (?*anyopaque, ?[*:0]const u8) callconv(.c) u16,
+    write: ?*const fn (?*anyopaque, ?[*]const u8, u16, ?*u16) callconv(.c) u16,
+    validate: ?*const anyopaque,
+    commit: ?*const fn (?*anyopaque) callconv(.c) u16,
+    abort: ?*const fn (?*anyopaque) callconv(.c) u16,
+    ctx: ?*anyopaque,
+};
+
+fn storageOf(context: ?*anyopaque) ?*storage_ram.Ram {
+    return @ptrCast(@alignCast(context orelse return null));
+}
+
+fn ramBegin(context: ?*anyopaque, destination: ?[*:0]const u8) callconv(.c) u16 {
+    const label = destination orelse return Err.null_ptr;
+    const ram = storageOf(context) orelse return Err.null_ptr;
+
+    ram.begin(std.mem.span(label)) catch |e| return Err.of(e);
+    return Err.ok;
+}
+
+fn ramWrite(
+    context: ?*anyopaque,
+    data: ?[*]const u8,
+    length: u16,
+    written: ?*u16,
+) callconv(.c) u16 {
+    const out = written orelse return Err.null_ptr;
+    const ram = storageOf(context) orelse return Err.null_ptr;
+    out.* = 0;
+
+    const bytes = if (data) |p| p[0..length] else if (length == 0)
+        &[_]u8{}
+    else
+        return Err.null_ptr;
+
+    ram.write(bytes) catch |e| return Err.of(e);
+    out.* = length;
+    return Err.ok;
+}
+
+fn ramCommit(context: ?*anyopaque) callconv(.c) u16 {
+    const ram = storageOf(context) orelse return Err.null_ptr;
+    ram.commit() catch |e| return Err.of(e);
+    return Err.ok;
+}
+
+fn ramAbort(context: ?*anyopaque) callconv(.c) u16 {
+    const ram = storageOf(context) orelse return Err.null_ptr;
+    ram.abort() catch |e| return Err.of(e);
+    return Err.ok;
+}
+
+/// `ra8_mdl_storage_ram_init`: bind an idle adapter and its callback table
+/// over `capacity` bytes the caller owns.
+pub export fn ra8_mdl_storage_ram_init(
+    storage: ?*storage_ram.Ram,
+    output: ?*StorageIface,
+    data: ?[*]u8,
+    capacity: usize,
+) callconv(.c) u16 {
+    const ram = storage orelse return Err.null_ptr;
+    const iface = output orelse return Err.null_ptr;
+    const buffer = data orelse return Err.null_ptr;
+    if (capacity == 0) return Err.invalid_size;
+
+    ram.* = storage_ram.Ram.bind(buffer[0..capacity]);
+    iface.* = .{
+        .begin = ramBegin,
+        .write = ramWrite,
+        .validate = null,
+        .commit = ramCommit,
+        .abort = ramAbort,
+        .ctx = ram,
+    };
+    return Err.ok;
+}
+
+/// `ra8_mdl_storage_ram_view`: hand back the committed extent.
+pub export fn ra8_mdl_storage_ram_view(
+    storage: ?*const storage_ram.Ram,
+    data: ?*?[*]const u8,
+    length: ?*usize,
+) callconv(.c) u16 {
+    const ram = storage orelse return Err.null_ptr;
+    const out_data = data orelse return Err.null_ptr;
+    const out_len = length orelse return Err.null_ptr;
+
+    const bytes = ram.view() catch |e| return Err.of(e);
+    out_data.* = bytes.ptr;
+    out_len.* = bytes.len;
+    return Err.ok;
 }
