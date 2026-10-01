@@ -575,7 +575,7 @@ RA8_INTERNAL static void internal_test_join_pinned_bssid(void)
  * (no compound decision under test -- the announcement is transmitted, its
  * octets are checked against the protocol, and a request issued before it is
  * shown to go unanswered)
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_caps @brief Verify host announcement behavior. @details Executes the host announcement scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_caps @brief Verify host announcement behavior. @details Executes the host announcement scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_host_announcement(void)
 {
   TEST_BEGIN("c6link host announcement");
