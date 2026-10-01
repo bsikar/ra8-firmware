@@ -494,7 +494,8 @@ pub const cross_apps = [_]CrossApp{
             },
             .uses = "threadx_ns",
             .stack_bytes = 2200,
-            .linker_script = "ns_image.ld",
+            // No LINKER: the script is configured from the board's
+            // ns_image.ld.in, SRAM-run layout (this app names no XIP).
             .link_flags = &.{"-nostartfiles"},
         },
     },
