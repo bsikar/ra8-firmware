@@ -21,7 +21,8 @@
     "tests/storage_ram_test.zig",
     "tests/tx_admit_test.zig",
     "tests/wifi_init_test.zig",
-    "tests/mdl_encode_test.zig"
+    "tests/mdl_encode_test.zig",
+    "tests/mdl_decode_test.zig"
   ],
   "covered_sources": [
     "src/internal/bare_rpc.zig",
@@ -58,7 +59,10 @@
     "tests/storage_ram_test.zig",
     "src/internal/mdl_encode.zig",
     "src/internal/mdl_wire.zig",
-    "tests/mdl_encode_test.zig"
+    "tests/mdl_encode_test.zig",
+    "src/internal/mdl_decode.zig",
+    "src/internal/mdl_wire_read.zig",
+    "tests/mdl_decode_test.zig"
   ],
-  "minimum_tests": 341
+  "minimum_tests": 356
 }
