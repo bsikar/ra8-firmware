@@ -69,7 +69,7 @@ EXCLUDED_BACKEND_FILES = frozenset(
     }
 )
 
-CHIP_ADAPTER_PREFIXES = ("libs/if_ra8_cgc/", "libs/ra8_nsc/")
+CHIP_ADAPTER_PREFIXES = ("libs/if_ra8_cgc/", "libs/if_ra8_gpt/", "libs/ra8_nsc/")
 """Adapter trees that exist to bind a neutral ``fw_if_*`` port to one chip.
 
 A ``libs/if_ra8_*`` tree is the named backend for its port: translating board
