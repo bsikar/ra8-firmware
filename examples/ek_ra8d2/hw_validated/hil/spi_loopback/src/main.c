@@ -101,7 +101,8 @@ RA8_INTERNAL static void internal_clocks_or_halt(uint32_t* out_pclka)
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     internal_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka) != k_ra8_ok) {
