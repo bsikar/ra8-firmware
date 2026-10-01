@@ -77,14 +77,13 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import repo_files  # noqa: E402 -- sibling import needs the path above
+from lint_targets import repo_files  # sibling import needs the path above
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

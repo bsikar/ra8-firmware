@@ -215,11 +215,11 @@ def attest_baseline() -> list[str]:
     counts = load_baseline()
 
     diag_rows = sorted(path for (path, check) in counts if check == DIAGNOSTIC_ERROR_CHECK)
-    for path in diag_rows:
-        problems.append(
-            f"{path}: {DIAGNOSTIC_ERROR_CHECK} is baselined. That is a compile "
-            "failure, not lint debt: build the target or delete it."
-        )
+    problems.extend(
+        f"{path}: {DIAGNOSTIC_ERROR_CHECK} is baselined. That is a compile "
+        "failure, not lint debt: build the target or delete it."
+        for path in diag_rows
+    )
 
     if committed != render_baseline(counts):
         problems.append(

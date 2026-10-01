@@ -61,7 +61,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import (  # noqa: E402 -- sibling import needs the path above
+from lint_targets import (  # sibling import needs the path above
     announce_unscanned,
     repo_files,
     untracked_in_scope,

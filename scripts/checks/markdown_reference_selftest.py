@@ -832,9 +832,11 @@ def _check_census_guidance_cases(failures: list[str]) -> None:
         return
     if "census collapsed" not in message:
         failures.append("the census failure stopped naming the collapse")
-    for expected in ("enumeration", "re-pin", "naming the commit"):
-        if expected not in message:
-            failures.append(f"the census failure does not tell a reader to {expected}")
+    failures.extend(
+        f"the census failure does not tell a reader to {expected}"
+        for expected in ("enumeration", "re-pin", "naming the commit")
+        if expected not in message
+    )
     if "darkens the whole" not in message:
         failures.append("the census failure does not say it blocks every other check")
 
