@@ -729,10 +729,10 @@ const vendored_first_party_sources = [_][]const u8{
     "apps/shared_libs/unarch/src/unarch_xz_pool.c",
     "apps/shared_libs/unarch/src/unarch_io.c",
     // The pool stopped being its own bump arena in #768: it draws blocks from
-    // the shared decoder scratch now, so the arena under it is part of this
-    // slice rather than something CMake links from elsewhere. The scratch
-    // itself is Zig, so it arrives as an archive rather than a TU.
-    "libs/ra8_mem/src/ra8_arena.c",
+    // the shared decoder scratch now, so the arena under it belongs to this
+    // slice rather than to something CMake links from elsewhere. Both the
+    // scratch and the arena are Zig now, so they arrive as archives below
+    // rather than as TUs here.
 };
 
 /// Include path for the slice. `apps/shared_libs/unarch/inc` has to be on it
@@ -812,6 +812,13 @@ fn addVendoredCSuite(
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_core_zig"));
+    // And the bump arena the pool carves from: ra8_mem's last C went in #2601
+    // (ra8_arena.c), so the seven ra8_arena_* entry points this suite resolves
+    // are ra8_mem_abi.zig's exports now.
+    suite.linkLibrary(b.dependency("ra8_mem", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_mem"));
 
     const run_suite = b.addRunArtifact(suite);
     run_suite.expectExitCode(0);
