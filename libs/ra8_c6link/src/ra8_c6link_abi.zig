@@ -26,6 +26,7 @@ const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
 const rx_route = @import("internal/rx_route.zig");
 const field_copy = @import("internal/field_copy.zig");
+const tx_admit = @import("internal/tx_admit.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -595,4 +596,19 @@ pub export fn priv_c6link_field_take(src_len: usize, cap: u8) callconv(.c) usize
 /// `priv_c6link_field_is_mac`: does this field carry exactly one hardware address?
 pub export fn priv_c6link_field_is_mac(src_len: usize) callconv(.c) bool {
     return field_copy.macAcceptable(src_len);
+}
+
+/// `priv_c6link_tx_admit`: may this Ethernet frame go out right now?
+///
+/// Returns `k_ra8_ok`, `k_ra8_err_not_initialized`, `k_ra8_err_invalid_size`
+/// or `k_ra8_err_busy`, so the caller returns the verdict as it stands.
+pub export fn priv_c6link_tx_admit(open: bool, len: u16, tx_len: u16) callconv(.c) u16 {
+    tx_admit.admit(open, len, tx_len) catch |e| {
+        return switch (e) {
+            error.NotInitialized => Err.not_initialized,
+            error.InvalidSize => Err.invalid_size,
+            error.Busy => Err.busy,
+        };
+    };
+    return Err.ok;
 }
