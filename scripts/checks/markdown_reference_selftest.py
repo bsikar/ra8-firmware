@@ -27,7 +27,6 @@ _bare_declaration_findings = core.bare_declaration_findings
 _built_link_output = core.built_link_output
 _context_sha256 = core.context_sha256
 _declared_bare_code_file = core.declared_bare_code_file
-_declared_work_fixture = core.declared_work_fixture
 _fail = core.fail
 _git = core.git
 _is_vendor = core.is_vendor
@@ -262,12 +261,6 @@ def _check_parser_cases(failures: list[str]) -> None:
     shortcut = parse_document("See [docs/missing.md] for the plan.\n")
     if shortcut.missing_references != (LinkRef(1, "docs/missing.md"),):
         failures.append("path-looking shortcut reference without a definition escaped")
-    fixture = PathRef(1, 0, "../escape", "A key that looks like a path")
-    if not _declared_work_fixture("scripts/dev/work/tests/fixtures/bad_key.md", fixture):
-        failures.append("exact workflow fixture declaration was rejected")
-    wrong_fixture = PathRef(1, 0, "../other", "A key that looks like a path")
-    if _declared_work_fixture("scripts/dev/work/tests/fixtures/bad_key.md", wrong_fixture):
-        failures.append("a different workflow fixture escape was accepted")
     declared_document = parse_document(
         (REPO_ROOT / "docs/HIL_SUITE.md").read_text(encoding="utf-8")
     )

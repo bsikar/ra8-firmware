@@ -88,7 +88,6 @@ from markdown_reference_policy import (
     UPSTREAM_REVISION_RE,
     VENDOR_PREFIXES,
     VENDORING_ABSENCE_RE,
-    WORK_FIXTURE_PATH,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -452,15 +451,6 @@ def _declared_absence(source: str, ref: PathRef) -> bool:
     )
 
 
-def _declared_work_fixture(source: str, ref: PathRef) -> bool:
-    """Recognize the exact intentionally path-shaped workflow-key fixture."""
-    return (
-        source == "scripts/dev/work/tests/fixtures/bad_key.md"
-        and ref.token == WORK_FIXTURE_PATH
-        and "A key that looks like a path" in ref.source_line
-    )
-
-
 def _declared_planned_path(root: Path, source: str, ref: PathRef) -> bool:
     """Recognize exact future namespaces with a committed policy authority."""
     release = re.fullmatch(r"docs/qualification/release/<tag>/(?:conformance\.md)?", ref.token)
@@ -681,7 +671,6 @@ def _reference_is_declared(root: Path, source: str, ref: PathRef, had_line_citat
         (had_line_citation and CITES_OK_RE.search(ref.source_line) is not None)
         or source == "CHANGELOG.md"
         or _declared_absence(source, ref)
-        or _declared_work_fixture(source, ref)
         or _declared_planned_path(root, source, ref)
     )
 
@@ -939,7 +928,6 @@ bare_declaration_findings = _bare_declaration_findings
 built_link_output = _built_link_output
 context_sha256 = _context_sha256
 declared_bare_code_file = _declared_bare_code_file
-declared_work_fixture = _declared_work_fixture
 enforce_population = _enforce_population
 fail = _fail
 git = _git

@@ -166,7 +166,6 @@ LINE_CITATION_RE = re.compile(r":\d+(?:-\d+)?(?::\d+)?$")
 LOCAL_LINE_FRAGMENT_RE = re.compile(r"L\d+(?:-L?\d+)?$", re.IGNORECASE)
 SYMBOL_SUFFIX_RE = re.compile(r"::.*$")
 SOUP_LOCAL_PATH_RE = re.compile(r"^- \*\*Local path\*\*: `([^`]+)`\s*$", re.MULTILINE)
-WORK_FIXTURE_PATH = "../escape"
 SOUP_RECORD_PREFIX = "docs/SOUP/"
 SOUP_RECORD_EXEMPT = frozenset({"docs/SOUP/README.md"})
 # A SOUP record's job is to state the boundary of the vendored subset, so it

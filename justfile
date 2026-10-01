@@ -24,7 +24,6 @@ mod quality 'just/ci.just'
 mod tools 'just/tools.just'
 mod infra 'just/infra.just'
 mod workspace 'just/ws.just'
-mod work 'just/work.just'
 mod docs 'just/docs.just'
 mod checks 'just/checks.just'
 mod zig 'just/zig.just'
@@ -44,7 +43,6 @@ default:
     @echo "  just tools             Desktop utilities and developer tooling"
     @echo "  just docs              Dashboards and architecture audits"
     @echo "  just workspace         Isolated git agent workspaces"
-    @echo "  just work              Plans and canonical task workspaces"
     @echo "  just zig               Root Zig build graph (parity slice of CMake)"
     @echo "  just infra             Ansible fleet infrastructure"
     @echo ""
