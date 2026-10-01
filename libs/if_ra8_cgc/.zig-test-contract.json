@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "tests/clock_map_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/clock_map.zig",
+    "tests/clock_map_test.zig"
+  ],
+  "minimum_tests": 9
+}

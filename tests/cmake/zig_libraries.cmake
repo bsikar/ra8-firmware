@@ -356,6 +356,23 @@ ra8_add_zig_library(
   fw_if_fs
 )
 
+# Fully migrated: the RA8 module-to-clock table and the three ops behind
+# inc/fw_if_clock_ra8.h are Zig, so fw_if_clock_ra8.c and
+# fw_if_clock_ra8_map.c are gone, the RA8_IF_RA8_CGC_SOURCES glob is gone from
+# library_sources.cmake and core_hal.cmake, and libs/if_ra8_cgc/src is no
+# longer an include directory anywhere. The ops reach ra8_cgc_get_clock_hz,
+# ra8_mstp_enable / ra8_mstp_disable and fw_clock_bind as externs resolved at
+# the final link, which is why this archive is linked beside fw_if_fs rather
+# than standing alone.
+ra8_add_zig_library(
+  NAME
+  if_ra8_cgc
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if_ra8_cgc
+  LIBRARY_NAME
+  if_ra8_cgc
+)
+
 # Fully migrated: the FTL core (init, the presented free-overwrite vtable,
 # copy-on-write relocation, reclamation and wear-levelling), the canonical
 # checkpoint codec and the mount lifecycle are all Zig, so ra8_ftl.c,
@@ -706,6 +723,7 @@ target_link_libraries(
          ra8_zig::if_ra8_vfs
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
+         ra8_zig::if_ra8_cgc
          ra8_zig::ra8_ftl
          ra8_zig::ra8_sdmmc_spi
          ra8_zig::ra8_display_pal
@@ -747,6 +765,7 @@ link_libraries(
   ra8_zig::if_ra8_vfs
   ra8_zig::ra8_camera
   ra8_zig::fw_if_fs
+  ra8_zig::if_ra8_cgc
   ra8_zig::ra8_ftl
   ra8_zig::ra8_sdmmc_spi
   ra8_zig::ra8_display_pal
