@@ -14,6 +14,7 @@
 //!   ra8_power_profile  tests/misc/src/test_ra8_power_profile.c
 //!   ra8_epd_cal        tests/misc/src/test_ra8_epd_cal.c
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
+//!   ra8_dfu (ra8_rot)  tests/misc/src/test_ra8_dfu_antirollback.c
 //!
 //! Under CMake the same three archives are produced by
 //! tests/cmake/zig_library.cmake shelling out to `zig build`, then linked into
@@ -62,6 +63,12 @@ const SliceMember = struct {
     artifact_name: []const u8,
     include_path: []const u8,
     c_suite_path: []const u8,
+    /// Archives this member's own archive externs into. A Zig archive is one
+    /// compilation unit, so linking it for a suite pulls in every call the
+    /// archive makes, not only the ones the suite exercises; the suite has to
+    /// resolve them exactly as a target image does. Empty for a library whose
+    /// only externs are into C the suite already compiles.
+    extra_dependency_names: []const []const u8 = &.{},
 };
 
 const slice = [_]SliceMember{
@@ -88,6 +95,16 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_dfu_boot",
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_boot.c",
+    },
+    .{
+        .dependency_name = "ra8_dfu",
+        .artifact_name = "ra8_rot",
+        .include_path = "libs/ra8_dfu/inc",
+        .c_suite_path = "tests/misc/src/test_ra8_dfu_antirollback.c",
+        // The image verifier sharing this archive calls the PSA crypto
+        // archive (#2943). That library picks its software stand-ins for a
+        // host target on its own, so the suite links it unconditionally.
+        .extra_dependency_names = &.{"ra8_psa_crypto"},
     },
 };
 
@@ -255,6 +272,12 @@ pub fn build(b: *std.Build) void {
         suite.linkLibrary(archive);
         // The log backend the archives call into (#2836).
         suite.linkLibrary(core_archive);
+        for (member.extra_dependency_names) |extra_name| {
+            suite.linkLibrary(b.dependency(extra_name, .{
+                .target = target,
+                .optimize = optimize,
+            }).artifact(extra_name));
+        }
 
         const run_suite = b.addRunArtifact(suite);
         run_suite.expectExitCode(0);
