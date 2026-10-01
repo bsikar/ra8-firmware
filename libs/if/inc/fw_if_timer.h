@@ -30,7 +30,8 @@
  * block, which is exactly what the RA8 adapter will do.
  *
  * What stays here: counting up to a period, free-running or one-shot, reading
- * the count, retuning the period, and latching the count on an external edge.
+ * the count, learning that the count wrapped, retuning the period, and
+ * latching the count on an external edge.
  * What leaves: anything that drives a pin.
  *
  * Counters are not interchangeable, which is why this port has caps. The GPT
@@ -154,6 +155,8 @@ typedef struct fw_timer_iface_s {
   ra8_err_t (*set_period)(void *ctx, fw_timer_ch_t ch, uint32_t period);
   /** @brief Count latched by the most recent external edge. */
   ra8_err_t (*capture_read)(void *ctx, fw_timer_ch_t ch, uint32_t *out_counts);
+  /** @brief Whether the count reached its period since the last call; clears it. */
+  ra8_err_t (*take_wrap)(void* ctx, fw_timer_ch_t ch, bool* out_wrapped);
 } fw_timer_iface_t;
 
 /**
@@ -334,6 +337,33 @@ fw_timer_set_period(const fw_timer_t *tmr, fw_timer_ch_t ch, uint32_t period);
  */
 [[nodiscard]] ra8_err_t
 fw_timer_capture_read(const fw_timer_t *tmr, fw_timer_ch_t ch, uint32_t *out_counts);
+
+/**
+ * @brief Report whether the count reached its period since the last call,
+ * and clear that report.
+ *
+ * @details
+ * This is how a caller learns that an interval elapsed without reading the
+ * count twice and guessing: a free-running channel wrapped, or a one-shot
+ * channel finished and stopped. The report is sticky until taken, so a caller
+ * polling slower than the period still sees one wrap rather than none; it
+ * cannot see how many. Taking it clears it, so two callers polling one
+ * channel would steal each other's reports, which is why a channel has one
+ * owner.
+ *
+ * @param[in]  tmr         Bound handle.
+ * @param[in]  ch          Which board instance.
+ * @param[out] out_wrapped True when a wrap was pending; false on any failure.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Report written and cleared.
+ * @retval k_ra8_err_invalid_arg   @p out_wrapped NULL.
+ * @retval k_ra8_err_invalid_state Channel not open.
+ * @retval k_ra8_err_not_found     No such channel on this board.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+fw_timer_take_wrap(const fw_timer_t* tmr, fw_timer_ch_t ch, bool* out_wrapped);
 
 #ifdef __cplusplus
 }

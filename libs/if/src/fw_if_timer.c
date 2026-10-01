@@ -32,16 +32,16 @@
  * @brief Whether every op in a candidate binding is set.
  *
  * @details
- * All eight, checked individually, so adding a ninth op cannot be forgotten
+ * All nine, checked individually, so adding a tenth op cannot be forgotten
  * here: a NULL op is a malformed binding, and a backend declining a capability
  * says so from the op itself plus its caps.
  */
 static bool internal_iface_complete(const fw_timer_iface_t *iface)
 {
-  return (iface->get_caps != nullptr) && (iface->open != nullptr) &&
-         (iface->close != nullptr) && (iface->start != nullptr) &&
-         (iface->stop != nullptr) && (iface->read != nullptr) &&
-         (iface->set_period != nullptr) && (iface->capture_read != nullptr);
+  return (iface->get_caps != nullptr) && (iface->open != nullptr) && (iface->close != nullptr) &&
+         (iface->start != nullptr) && (iface->stop != nullptr) && (iface->read != nullptr) &&
+         (iface->set_period != nullptr) && (iface->capture_read != nullptr) &&
+         (iface->take_wrap != nullptr);
 }
 
 /** @brief Common entry guard: non-NULL handle, bound. */
@@ -254,5 +254,26 @@ ra8_err_t fw_timer_capture_read(const fw_timer_t *tmr, fw_timer_ch_t ch, uint32_
     return err;
   }
   *out_counts = counts;
+  return k_ra8_ok;
+}
+
+ra8_err_t fw_timer_take_wrap(const fw_timer_t* tmr, fw_timer_ch_t ch, bool* out_wrapped)
+{
+  if (out_wrapped == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_wrapped = false;
+
+  const ra8_err_t guard = internal_check_channel(tmr, ch);
+  if (guard != k_ra8_ok) {
+    return guard;
+  }
+
+  bool            wrapped = false;
+  const ra8_err_t err     = tmr->iface->take_wrap(tmr->ctx, ch, &wrapped);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *out_wrapped = wrapped;
   return k_ra8_ok;
 }
