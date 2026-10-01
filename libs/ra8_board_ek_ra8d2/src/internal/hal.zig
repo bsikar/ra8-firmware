@@ -46,12 +46,48 @@ pub extern fn ra8_board_uart_console_init(baud: u32) u32;
 pub extern fn ra8_board_led_init(led: u32) u32;
 
 pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) u32;
+pub extern fn ra8_pfs_set_drive_strength(pin: u16, dscr: u8) u32;
 pub extern fn ra8_gpio_output_init(pin: u16, init_level: u32) u32;
+pub extern fn ra8_gpio_write(pin: u16, level: u32) u32;
 
 pub extern fn ra8_sci_init(channel: u8, cfg: *const SciCfg) u32;
 pub extern fn ra8_sci_write_polling(channel: u8, data: [*]const u8, len: u32) u32;
 pub extern fn ra8_sci_getc_polling(channel: u8, out_byte: *u8) u32;
 pub extern fn ra8_sci_flush(channel: u8) u32;
+
+/// `ra8_etha_config_t`. `initial_mode` is `enum : uint8_t` in the header.
+pub const EthaConfig = extern struct {
+    initial_mode: u8,
+    eaeie0_mask: u32,
+    eaeie1_mask: u32,
+    eaeie2_mask: u32,
+};
+
+/// `ra8_rmac_config_t`. `rx_filter` is `enum : uint32_t`; the three interface
+/// fields are `enum : uint8_t`.
+pub const RmacConfig = extern struct {
+    rx_filter: u32,
+    err_irq_enable: u32,
+    mon0_irq_enable: u32,
+    mon1_irq_enable: u32,
+    mon2_irq_enable: u32,
+    phy_interface: u8,
+    link_speed: u8,
+    duplex: u8,
+    eswclk_hz: u32,
+    mdc_hz: u32,
+};
+
+pub extern fn ra8_mstp_enable(id: u16) u32;
+pub extern fn ra8_cgc_eswclk_init() u32;
+pub extern fn ra8_cgc_eswclk_hz(out_hz: *u32) u32;
+pub extern fn ra8_eth_coma_bringup() u32;
+pub extern fn ra8_eth_rgmii_select(port: u8) u32;
+pub extern fn ra8_etha_init(port: u8, cfg: *const EthaConfig) u32;
+pub extern fn ra8_etha_set_mode(port: u8, mode: u8) u32;
+pub extern fn ra8_rmac_init(port: u8, cfg: *const RmacConfig) u32;
+pub extern fn ra8_rmac_mdio_c22_read(port: u8, phy_addr: u8, reg_addr: u8, out_value: *u16) u32;
+pub extern fn ra8_rmac_mdio_c22_write(port: u8, phy_addr: u8, reg_addr: u8, value: u16) u32;
 
 pub extern fn ra8_board_usbhs_device_init() u32;
 pub extern fn ra8_board_usbhs_host_init() u32;

@@ -16,6 +16,7 @@ const clock_profile = @import("internal/clock_profile.zig");
 const clock_types = @import("internal/clock_types.zig");
 const console_stream = @import("internal/console_stream.zig");
 const dualcore = @import("internal/dualcore.zig");
+const ethernet = @import("internal/ethernet.zig");
 const hal = @import("internal/hal.zig");
 const stream = @import("internal/stream.zig");
 const uart_console = @import("internal/uart_console.zig");
@@ -90,4 +91,17 @@ export fn ra8_board_uart_console_flush() u32 {
 
 export fn priv_ra8_board_uart_console_is_up() bool {
     return uart_console.isUp();
+}
+
+export fn ra8_board_ethernet_init() u32 {
+    return ethernet.init();
+}
+
+export fn priv_ra8_board_eth_eswm_bring_up(out_eswclk_hz: ?*u32) u32 {
+    const out = out_eswclk_hz orelse return vocab.Err.null_ptr;
+    return ethernet.eswmBringUp(out);
+}
+
+export fn priv_ra8_board_eth_etha_to_config() u32 {
+    return ethernet.ethaToConfig();
 }
