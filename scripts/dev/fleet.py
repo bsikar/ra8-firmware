@@ -36,10 +36,8 @@ import fleet_typed_vars as ftv
 IDLE_STOP_HELPER = fm.REPO_ROOT / "infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py"
 MUTATING_COMMANDS = frozenset(
     {
-        "register-runner",
         "register-hil",
         "apply",
-        "remove",
         "capacity-quarantine",
         "capacity-restore",
         "scale",
@@ -180,21 +178,10 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
     if cls.capacity_runner:
         want = fm.recommended_instances(data["sizing"], host["budget"])
         print(f"  instances      {host['runners']['instances']} (formula gives {want})")
-        if fm.container_names(host):
-            print(f"  registrations  {', '.join(fm.instance_names(args.host, host))}")
-            print(f"  containers     {', '.join(fm.container_names(host))}")
     hil = host.get("hil_runner")
     if hil:
         print(f"  HIL listener   {hil['name']} ({','.join(hil['labels'])})")
         print(f"  HIL bench      {hil['bench']['host']}")
-    lent = host.get("dev_slice")
-    if lent:
-        print(
-            f"  dev slice      {fm.DEV_SLICE_UNIT}: CPUWeight {lent['cpu_weight']} "
-            f"(vs {fm.SYSTEMD_DEFAULT_CPU_WEIGHT} for CI), MemoryMax "
-            f"{lent['memory_gb']}G, swap {lent.get('swap_gb', 0)}G, "
-            f"-j{lent['max_jobs']}"
-        )
     print("  derived ansible variables:")
     for key, value in sorted(fm.role_vars(data, args.host, host).items()):
         print(f"    {key}: {value}")
@@ -347,13 +334,6 @@ def _converge_refusal(args: argparse.Namespace, host: dict[str, Any], plays: lis
     """
     if not plays:
         return f"{args.host} does not provision '{args.play}' ({', '.join(host['provisions'])})"
-    if args.mode == "remove" and not all(fm.PLAYS[p].removable for p in plays):
-        return (
-            f"{args.host} runs {', '.join(plays)}, and not every one of those roles owns "
-            "both halves of its lifecycle. Removing it would mean undoing the rest by "
-            "hand, which is the drift the roles exist to prevent -- add a teardown path "
-            "to the role instead of tearing it down manually."
-        )
     boundary = fb.control_flow_refusal(
         fb.FlowRequest(
             str(host["class"]),
@@ -379,7 +359,8 @@ def _restore_after_converge(data: dict[str, Any], args: argparse.Namespace, rc: 
 
 def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     """Build Ansible flags without weakening credential handling."""
-    extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
+    del host
+    extra = ["--check", "--diff"] if args.mode == "check" else []
     # SHORT-LIVED credentials only, and preferably by file reference.
     #
     # Anything given as KEY=VALUE lands in this process's argv and in
@@ -417,24 +398,6 @@ def _registration_args(
     )
 
 
-def cmd_register_runner(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Register a declared Docker runner host from one schema-limited vars file."""
-    host = _host(data, args.host)
-    if host["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
-        return _fail(
-            f"{args.host} is class {host['class']}; runner registration is limited to "
-            f"{', '.join(sorted(ftv.CONTAINER_RUNNER_CLASSES))}"
-        )
-    provisions = list(host["provisions"])
-    if len(provisions) != 1 or provisions[0] not in ftv.CONTAINER_RUNNER_PLAYS:
-        return _fail(
-            f"{args.host} does not have one typed container-runner play: {', '.join(provisions)}"
-        )
-    typed_vars = ftv.read_typed_vars_file(args.vars_file, ftv.RUNNER_REGISTRATION)
-    request = _registration_args(args.host, provisions[0], "", typed_vars, args.original_argv)
-    return cmd_converge(data, request)
-
-
 def cmd_register_hil(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Register the one declared native HIL listener from a typed vars file."""
     candidates = [name for name, host in data["hosts"].items() if "hil_runner" in host]
@@ -453,20 +416,12 @@ def _typed_vars_for_converge(
     args: argparse.Namespace, host: dict[str, Any]
 ) -> ftv.TypedVars | None:
     """Validate typed vars before inventory writes, draining, or remote work."""
+    del host
     typed_vars = getattr(args, "typed_vars", None)
-    vars_file = getattr(args, "vars_file", "")
-    if vars_file:
-        if args.mode != "remove":
-            message = "--vars-file is accepted only by the typed remove operation"
-            raise fm.FleetError(message)
-        if host["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
-            message = "runner removal vars are accepted only for container-runner hosts"
-            raise fm.FleetError(message)
-        typed_vars = ftv.read_typed_vars_file(vars_file, ftv.RUNNER_REMOVAL)
     if any(value.startswith("@") for value in args.extra_var):
         message = (
-            "raw -e @file is not accepted; use register-runner, register-hil, or "
-            "remove --vars-file so the file is validated before side effects"
+            "raw -e @file is not accepted; use register-hil so the file is "
+            "validated before side effects"
         )
         raise fm.FleetError(message)
     return typed_vars
@@ -670,27 +625,6 @@ def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list
     return 0
 
 
-def _remove_flags(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
-    """The extra-vars that turn a converge into a teardown.
-
-    Args:
-        host: One host's declaration.
-        args: Parsed command line.
-
-    Returns:
-        The ``state=absent`` flags for a removal, empty otherwise.
-    """
-    del host
-    if args.mode != "remove":
-        return []
-    return [
-        "-e",
-        "ci_runner_docker_state=absent",
-        "-e",
-        "fleet_capacity_enabled=false",
-    ]
-
-
 def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Report what each runner host is actually running.
 
@@ -785,10 +719,6 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
         + fm.controller_inventory_selftest(data)
         + fb.parser_selftest(_parser)
     )
-    if data["hosts"]["truenas"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
-        failures.append("declared Docker runner class was refused")
-    if data["hosts"]["dev"]["class"] in ftv.CONTAINER_RUNNER_CLASSES:
-        failures.append("non-container dev host was accepted as a container runner")
     for failure in failures:
         print(f"fleet.py --selftest: FAIL: {failure}", file=sys.stderr)
     if failures:
@@ -798,8 +728,8 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
 
 
 def _add_converge_parsers(subs: _SubparserGroup) -> None:
-    """Add apply/check/remove parsers and their shared guarded arguments."""
-    for mode in ("check", "apply", "remove"):
+    """Add apply/check parsers and their shared guarded arguments."""
+    for mode in ("check", "apply"):
         sub = subs.add_parser(mode, help=f"{mode} a host against the declaration")
         sub.add_argument("host")
         sub.add_argument("play", nargs="?", help="one play instead of all of them")
@@ -812,15 +742,9 @@ def _add_converge_parsers(subs: _SubparserGroup) -> None:
             metavar="KEY=VALUE",
             help=(
                 "pass a non-secret compatibility variable through to ansible; "
-                "credentials require register-runner, register-hil, or remove --vars-file"
+                "credentials require register-hil"
             ),
         )
-        if mode == "remove":
-            sub.add_argument(
-                "--vars-file",
-                default="",
-                help="typed mode-0600 removal/dataset vars file",
-            )
         sub.add_argument(
             "--tags",
             default="",
@@ -869,11 +793,6 @@ def _parser() -> argparse.ArgumentParser:
     subs.add_parser(
         "remote-shell", help="the shell boundary that executes stdin on one host"
     ).add_argument("host")
-    register_runner = subs.add_parser(
-        "register-runner", help="first-register one declared Docker runner host"
-    )
-    register_runner.add_argument("host")
-    register_runner.add_argument("vars_file")
     subs.add_parser(
         "register-hil", help="first-register the one declared native HIL listener"
     ).add_argument("vars_file")
@@ -904,11 +823,9 @@ def main(argv: list[str] | None = None) -> int:
         "ssh-config": cmd_ssh_config,
         "ssh-target": cmd_ssh_target,
         "remote-shell": cmd_remote_shell,
-        "register-runner": cmd_register_runner,
         "register-hil": cmd_register_hil,
         "check": cmd_converge,
         "apply": cmd_converge,
-        "remove": cmd_converge,
         "status": cmd_status,
         "capacity-quarantine": cmd_capacity_quarantine,
         "capacity-restore": cmd_capacity_restore,

@@ -35,9 +35,7 @@ default:
     @echo "  just infra::fortigate_verify [tty]                 Run read-only FortiGate/AP verification"
     @echo "  just infra::check <host> [play] [tags]             Dry-run all or one play/tag slice"
     @echo "  just infra::apply <host> [play] [tags]             Apply all or one play/tag slice"
-    @echo "  just infra::register_runner <host> <vars>          First-register from a mode-0600 vars file"
     @echo "  just infra::register_hil <vars-file>               First-register the declared HIL listener"
-    @echo "  just infra::remove <host> [vars-file]              Tear down a supported host class"
     @echo "  just infra::scale <host> <count>                   Scale CI runner count on host"
     @echo ""
 
@@ -157,15 +155,6 @@ apply host play="" tags="":
     fi
     exec {{ infra }} "${args[@]}"
 
-# First-register a container runner from a mode-0600 Ansible vars file.
-[confirm("Register this host as a GitHub Actions runner?")]
-register_runner host vars_file:
-    #!/bin/bash -p
-    set -euo pipefail
-    host={{ quote(host) }}
-    vars_file={{ quote(vars_file) }}
-    exec {{ infra }} register-runner "$host" "$vars_file"
-
 # First-register the declared dev-box HIL listener from a mode-0600 vars file.
 [confirm("Register the declared dev-box HIL listener?")]
 register_hil vars_file:
@@ -173,19 +162,6 @@ register_hil vars_file:
     set -euo pipefail
     vars_file={{ quote(vars_file) }}
     exec {{ infra }} register-hil "$vars_file"
-
-# Tear down a host whose fleet class implements removal
-[confirm("Are you sure you want to remove this host's managed infrastructure?")]
-remove host vars_file="":
-    #!/bin/bash -p
-    set -euo pipefail
-    host={{ quote(host) }}
-    vars_file={{ quote(vars_file) }}
-    args=(remove "$host")
-    if [ -n "$vars_file" ]; then
-        args+=(--vars-file "$vars_file")
-    fi
-    exec {{ infra }} "${args[@]}"
 
 # Scale how many runners a host is running right now
 scale host count:

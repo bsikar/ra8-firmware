@@ -44,9 +44,7 @@
 #   ssh-config-preview   print the fragment without installing it
 #   check <host>         dry run: what would change, changing nothing
 #   apply <host>         converge that host to the declaration
-#   register-runner      first-register a declared Docker runner host
 #   register-hil         first-register the declared native HIL listener
-#   remove <host>        tear down (classes whose roles implement it)
 #   scale <host> <n>     live capacity change; shrinking DRAINS, never kills
 #   status               what is deployed across the estate, right now
 #
@@ -277,7 +275,7 @@ EOF
   return "${rc}"
 }
 
-# --- check / apply / remove / scale ------------------------------------------
+# --- check / apply / scale -------------------------------------------------
 #
 # All four are fleet.py verbs. The ansible invocation, the inventory, the extra
 # vars and (for the Windows host) the copy-into-the-distro transport are all
@@ -304,21 +302,10 @@ cmd_apply() {
   fleet_mutation apply "$@"
 }
 
-cmd_register_runner() {
-  [[ $# -eq 2 ]] || die "register-runner needs a host and typed vars file"
-  require_playbook_env
-  fleet_mutation register-runner "$@"
-}
-
 cmd_register_hil() {
   [[ $# -eq 1 ]] || die "register-hil needs one typed vars file"
   require_playbook_env
   fleet_mutation register-hil "$@"
-}
-
-cmd_remove() {
-  require_playbook_env
-  fleet_mutation remove "$@"
 }
 
 cmd_scale() {
@@ -419,9 +406,7 @@ usage: infra.sh <command> [args]
   ssh-config-preview  print the generated fragment without installing it
   check <host>        dry run -- report what would change, change nothing
   apply <host>        converge that machine to infra/fleet.yml
-  register-runner     first-register a declared Docker runner host
   register-hil        first-register the declared native HIL listener
-  remove <host>       tear down (classes whose roles implement it)
   scale <host> <n>    live capacity change; shrinking DRAINS, never kills
   status              what is deployed across the estate, right now
 
@@ -447,12 +432,7 @@ main() {
       [ $# -ge 1 ] || die "apply needs a host: $(host_names | tr '\n' ' ')"
       cmd_apply "$@"
       ;;
-    register-runner) cmd_register_runner "$@" ;;
     register-hil) cmd_register_hil "$@" ;;
-    remove)
-      [ $# -ge 1 ] || die "remove needs a host: $(host_names | tr '\n' ' ')"
-      cmd_remove "$@"
-      ;;
     scale) cmd_scale "$@" ;;
     -h | --help | help | "") usage ;;
     *) die "unknown command '${cmd}'. Run 'infra.sh help'." ;;

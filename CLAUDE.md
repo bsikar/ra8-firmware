@@ -318,8 +318,8 @@ fails a `host_vars` file that re-declares anything the declaration owns.
 just infra::ssh_config              turn THIS machine into a control node
 just infra::list                    what is declared, and how it is sized
 just infra::status                  what every host is running, right now
-just infra::check truenas      DRY RUN -- report, change nothing
-just infra::apply truenas      converge that machine to the declaration
+just infra::check k3s-pve      DRY RUN -- report, change nothing
+just infra::apply k3s-pve      converge that machine to the declaration
 just infra::scale win-ci 1   live capacity change; shrinking DRAINS
 ```
 

@@ -734,15 +734,6 @@ if [[ "$-" == *p* ]]; then
       timer="$(systemctl --user is-enabled ra8-workspace-reap.timer 2>/dev/null) (user)"
     fi
     printf '  %-22s %s\n' "reap timer" "$timer"
-    # The dev slice, where this host has one: a workspace on a CI runner host is
-    # only safe because gate runs in it are weighted below the runners, so a
-    # doctor there must say whether that is actually in force.
-    if [[ -n "${RA8_DEV_SLICE:-}" ]]; then
-      printf '  %-22s %s\n' "dev slice" \
-        "$RA8_DEV_SLICE $(systemctl is-active "$RA8_DEV_SLICE" 2>/dev/null || echo inactive), freezer=$(systemctl show -p FreezerState --value "$RA8_DEV_SLICE" 2>/dev/null || echo '?')"
-      printf '  %-22s %s\n' "gate container args" "${RA8_CI_CONTAINER_ARGS:-NONE -- just ci would run OUTSIDE the slice}"
-      printf '  %-22s %s\n' "bounded parallelism" "RA8_MAX_JOBS=${RA8_MAX_JOBS:-unset} CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-unset}"
-    fi
   }
 
   # WHICH systemd the reaper is installed into, and why it is decided rather than

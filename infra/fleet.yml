@@ -65,11 +65,8 @@ sizing:
 # --- The canonical runner image --------------------------------------------
 #
 # The ARC role builds this image once on the k3s node and atomically publishes
-# its docker archive there. Plain-Docker runner hosts consume that
-# exact archive; they never build an independent toolchain and never require a
-# hand-copied tarball. `fleet.py apply` derives both the producer and artifact
-# path from this block, and ci_runner_docker refreshes a target whenever its
-# archive checksum or loaded image ID differs.
+# its docker archive there. `fleet.py apply` derives both the producer and
+# artifact path from this block.
 runner_image:
   source_host: k3s-pve
   image: "localhost/ra8-ci-runner:v2"
@@ -100,7 +97,6 @@ runner_image:
 # classes themselves live in CLASSES in scripts/dev/fleet.py.
 #
 #   arc_k8s       an ARC (Actions Runner Controller) scale set on a k8s cluster
-#   docker_linux  long-lived runner containers on any plain Docker host
 #   dev_box       the shared verification box + dedicated HIL listener
 #   hil_bench     the hardware-in-the-loop bench Pi (NOT a runner)
 #
@@ -116,15 +112,6 @@ runner_image:
 #             instances * cpus and instances * memory_gb must FIT the budget.
 #   burst     the caps are ceilings a scheduler may oversubscribe, so the
 #             REQUESTS are what must fit. Only arc_k8s is honest as `burst`.
-#
-# `dev_slice` is the OTHER direction: what a runner host may lend back to
-# agents doing verification work on it. A runner host is CI first, so the slice
-# is declared as a CPU WEIGHT (it takes whatever CI is not using and yields the
-# instant a job arrives) plus a HARD memory cap (memory does not yield, so it
-# has to be reserved away from CI up front). It deliberately declares no thread
-# count: a thread reservation would idle when CI is busy AND cap the slice when
-# CI is idle, which is the opposite of what a weight buys. See docs/CI_FLEET.md
-# section 9.
 hosts:
 
   # --- VM 300 on pve1: the k3s cluster, the vault, and the ARC runner pool ---
@@ -160,45 +147,6 @@ hosts:
       i5-12600K it shares with the dev box (28 vCPU committed on a 16-thread
       part before anything runs), so extra pods add contention rather than
       throughput. Real capacity comes from hosts that are not pve1.
-
-  # --- The NAS: a plain Docker host that is otherwise idle -------------------
-  truenas:
-    class: docker_linux
-    summary: "TrueNAS SCALE: runner containers on the stripe pool"
-    connect:
-      # Dedicated endpoint reachable from supported control nodes.
-      address: 10.10.10.1
-      user: truenas_admin
-    provisions: [ci-runner-docker]
-    sizing_note: >-
-      Deliberately held at one instead of the formula-derived two because
-      observed system load was already too high for a second concurrent
-      runner; increase only after a capacity measurement shows the host can
-      sustain it without contention.
-    runners:
-      # Base name for the GitHub registrations. One instance keeps the base
-      # unsuffixed; above one they become <base>-1..<base>-N -- so this base
-      # keeps instance 1 registered as `truenas-ci-1`, the name that was
-      # already in the pool, and adds `truenas-ci-2` beside it.
-      name: truenas-ci
-      # One instance is retained while the ARC pool is restored on k3s-pve.
-      instances: 1
-      cpus: 4
-      memory_gb: 8
-      # Each instance sees only its own 4 threads, so Just's exported CMake job limit
-      # it is right by construction instead of fanning out over the host.
-      pin_cpus: true
-      labels: [ra8-ci, ra8-nas]
-    budget:
-      mode: reserved
-      # 6-core / 12-thread i5-10400 whose day job is serving files. 8 of 12
-      # threads is 4 physical cores plus their SMT siblings; the remaining 4
-      # stay free for SMB/NFS, the ZFS transaction groups and the middleware.
-      threads: 8
-      # 62 GiB installed, ~34 GiB of it ZFS ARC. The ARC shrinks under
-      # pressure down to arc_min, so it yields to the runners and grows back;
-      # leaving 46 GiB outside the cap keeps that yielding rare.
-      memory_gb: 16
 
   # --- CT 107 on pve1: verification box + dedicated HIL listener -------------
   dev:

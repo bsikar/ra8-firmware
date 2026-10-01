@@ -18,32 +18,12 @@ from unittest.mock import patch
 import fleet_model as fm
 import yaml
 
-RUNNER_REGISTRATION = "runner registration"
 HIL_REGISTRATION = "HIL registration"
-RUNNER_REMOVAL = "runner removal"
 
-RUNNER_REGISTRATION_KEYS = frozenset({"ci_runner_docker_registration_token"})
 HIL_REGISTRATION_KEYS = frozenset({"dev_box_hil_runner_registration_token"})
-RUNNER_REMOVAL_KEYS = frozenset(
-    {"ci_runner_docker_removal_token", "ci_runner_docker_destroy_dataset"}
-)
-TYPED_VAR_KEYS = MappingProxyType(
-    {
-        RUNNER_REGISTRATION: RUNNER_REGISTRATION_KEYS,
-        HIL_REGISTRATION: HIL_REGISTRATION_KEYS,
-        RUNNER_REMOVAL: RUNNER_REMOVAL_KEYS,
-    }
-)
-EXACT_KEY_OPERATIONS = frozenset({RUNNER_REGISTRATION, HIL_REGISTRATION})
-TOKEN_KEYS = frozenset(
-    {
-        "ci_runner_docker_registration_token",
-        "ci_runner_docker_removal_token",
-        "dev_box_hil_runner_registration_token",
-    }
-)
-CONTAINER_RUNNER_CLASSES = frozenset({"docker_linux"})
-CONTAINER_RUNNER_PLAYS = frozenset({"ci-runner-docker"})
+TYPED_VAR_KEYS = MappingProxyType({HIL_REGISTRATION: HIL_REGISTRATION_KEYS})
+EXACT_KEY_OPERATIONS = frozenset({HIL_REGISTRATION})
+TOKEN_KEYS = frozenset({"dev_box_hil_runner_registration_token"})
 MAX_TYPED_VARS_BYTES = 64 * 1024
 PRIVATE_FILE_MODE = stat.S_IRUSR | stat.S_IWUSR
 
@@ -129,12 +109,6 @@ def _validate_mapping(content: bytes, operation: str, candidate: Path) -> None:
     for key in keys & TOKEN_KEYS:
         if not isinstance(values[key], str) or not values[key].strip():
             _raise_fleet_error(f"{operation} key {key} must be a non-empty string")
-    if "ci_runner_docker_destroy_dataset" in values and not isinstance(
-        values["ci_runner_docker_destroy_dataset"], bool
-    ):
-        _raise_fleet_error(
-            f"{operation} key ci_runner_docker_destroy_dataset must be a YAML boolean"
-        )
 
 
 def read_typed_vars_file(raw_path: str, operation: str) -> TypedVars:
@@ -196,16 +170,16 @@ def _rejection_selftest(root: Path, good: Path) -> list[str]:
         (_fixture(root, "oversized.yml", b"x" * (MAX_TYPED_VARS_BYTES + 1)), "oversized"),
     )
     for path, label in cases:
-        if not _expect_refusal(path, RUNNER_REGISTRATION):
+        if not _expect_refusal(path, HIL_REGISTRATION):
             failures.append(f"{label} typed vars file was accepted")
-    if not _expect_refusal(root, RUNNER_REGISTRATION):
+    if not _expect_refusal(root, HIL_REGISTRATION):
         failures.append("non-regular typed vars path was accepted")
     with patch.object(os, "geteuid", return_value=os.geteuid() + 1):
-        if not _expect_refusal(good, RUNNER_REGISTRATION):
+        if not _expect_refusal(good, HIL_REGISTRATION):
             failures.append("wrong-owner typed file was accepted")
     link = root / "link.yml"
     link.symlink_to(good)
-    if not _expect_refusal(link, RUNNER_REGISTRATION):
+    if not _expect_refusal(link, HIL_REGISTRATION):
         failures.append("symlinked typed file was accepted")
     return failures
 
@@ -241,15 +215,12 @@ def run_selftest() -> list[str]:
         checkout.mkdir()
         with patch.object(fm, "REPO_ROOT", checkout):
             good = _fixture(
-                root, "registration.yml", b"ci_runner_docker_registration_token: test-token\n"
+                root, "registration.yml", b"dev_box_hil_runner_registration_token: test-token\n"
             )
-            typed = read_typed_vars_file(str(good), RUNNER_REGISTRATION)
+            typed = read_typed_vars_file(str(good), HIL_REGISTRATION)
             failures = _rejection_selftest(root, good)
             if typed.source != good.resolve() or typed.content != good.read_bytes():
                 failures.append("valid typed file was not captured canonically")
             if not _expect_refusal(good, "arbitrary operation"):
                 failures.append("unlisted typed operation was accepted")
-            removal = _fixture(root, "removal.yml", b"ci_runner_docker_destroy_dataset: false\n")
-            if read_typed_vars_file(str(removal), RUNNER_REMOVAL).source != removal.resolve():
-                failures.append("valid removal typed file was rejected")
             return failures + _snapshot_cleanup_selftest(typed)
