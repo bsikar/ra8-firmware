@@ -1129,6 +1129,21 @@ typedef enum {
  */
 [[nodiscard]] RA8_PRIV bool priv_c6link_field_is_mac(size_t src_len);
 
+/**
+ * @brief May one Ethernet frame go out on this link right now?
+ *
+ * Zig implementation, `internal/tx_admit.zig`. Reports the refusal the caller
+ * returns as it stands: `k_ra8_err_not_initialized` for a closed link,
+ * `k_ra8_err_invalid_size` for a frame one transaction cannot carry, and
+ * `k_ra8_err_busy` while the transmit slot is occupied.
+ *
+ * @param open    Whether the link has been opened.
+ * @param len     Octets the caller wants to transmit.
+ * @param tx_len  Octets already staged in the transmit slot.
+ * @return `k_ra8_ok` when the frame is admitted.
+ */
+uint16_t priv_c6link_tx_admit(bool open, uint16_t len, uint16_t tx_len);
+
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
 
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);
