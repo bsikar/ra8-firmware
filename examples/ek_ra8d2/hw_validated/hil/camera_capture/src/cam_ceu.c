@@ -21,6 +21,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_regs.h"
 #include "ra8_port_utils.h"
 #include "ra8_systick.h"
@@ -98,7 +99,7 @@ static const cam_ceu_pin_t s_ceu_pins[] = {
  * @param[in] count Number of entries in ::s_ceu_pins to release.
  * @pre `count` does not exceed the pin-table length.
  * @pre Each selected pin is either claimed or safe to release.
- * @post Every selected pin has been offered back to the GPIO owner.
+ * @post Every selected pin has been offered back to the pin owner.
  * @post Pins outside the selected prefix are untouched.
  * @note Thread safety: init context only.
  * @since 0.1.0
@@ -107,8 +108,9 @@ static void cam_release_probe_pins(uint32_t count)
 {
   const uint32_t pin_count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
   const uint32_t bounded   = (count < pin_count) ? count : pin_count;
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint32_t i = 0U; i < bounded; i += 1U) {
-    (void)ra8_gpio_release(RA8_PIN(s_ceu_pins[i].port, s_ceu_pins[i].pin));
+    (void)pins->release(pins->ctx, RA8_PIN(s_ceu_pins[i].port, s_ceu_pins[i].pin));
   }
 }
 
@@ -119,7 +121,7 @@ static void cam_release_probe_pins(uint32_t count)
  * @retval k_ra8_ok Every camera pin is configured as an input.
  * @retval k_ra8_err_gpio_conflict A pin could not be claimed.
  * @pre The CEU has not claimed the parallel-camera pins.
- * @pre GPIO ownership tracking is initialized.
+ * @pre Pin ownership tracking is initialized.
  * @post Success leaves every camera pin claimed as an input.
  * @post Failure releases every pin claimed by this call.
  * @note Thread safety: init context only.
@@ -129,9 +131,10 @@ static ra8_err_t cam_claim_probe_pins(void)
 {
   const uint32_t pin_count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
   uint32_t       claimed   = 0U;
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (; claimed < pin_count; claimed += 1U) {
     const ra8_port_pin_t pin = RA8_PIN(s_ceu_pins[claimed].port, s_ceu_pins[claimed].pin);
-    if (ra8_gpio_input_init(pin, k_ra8_pull_none) != k_ra8_ok) {
+    if (pins->input_init(pins->ctx, pin, k_ra8_pull_none) != k_ra8_ok) {
       cam_release_probe_pins(claimed);
       return k_ra8_err_gpio_conflict;
     }
