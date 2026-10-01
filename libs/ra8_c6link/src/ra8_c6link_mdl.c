@@ -106,20 +106,16 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_accepted(mdl_take_ctx_t*        
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->base.n_unknown_fields == 0U) &&
-                     (msg->protocol_version == k_ra8_mdl_protocol_version) && (msg->job_id != 0U) &&
-                     (msg->max_chunk_bytes != 0U) &&
-                     (msg->max_chunk_bytes <= k_ra8_mdl_chunk_data_max) &&
-                     ((uint32_t)msg->format == (uint32_t)take->requested_format);
+  const mdl_accepted_view_t view = {
+    .protocol_version = msg->protocol_version,
+    .job_id           = msg->job_id,
+    .max_chunk_bytes  = msg->max_chunk_bytes,
+    .format           = (uint32_t)msg->format,
+    .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
+  };
+  const bool valid = priv_c6link_mdl_accepted_valid(&view, (uint32_t)take->requested_format);
   if (valid) {
-    *take->session = (ra8_mdl_session_t){
-      .job_id          = msg->job_id,
-      .next_sequence   = 0U,
-      .next_offset     = 0U,
-      .max_chunk_bytes = msg->max_chunk_bytes,
-      .format          = take->requested_format,
-      .active          = true,
-    };
+    priv_c6link_mdl_session_activate(&view, take->session, (uint8_t)take->requested_format);
   }
   ra8__mdl__accepted__free_unpacked(msg, &alloc);
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;
@@ -150,13 +146,18 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const mdl_chunk_view_t view = internal_mdl_view(msg);
-  const bool             valid =
-    (msg->base.n_unknown_fields == 0U) && (msg->protocol_version == k_ra8_mdl_protocol_version) &&
-    (msg->job_id == take->session->job_id) && (msg->sequence == take->session->next_sequence) &&
-    (msg->offset == take->session->next_offset) && (msg->data.len <= take->requested_bytes) &&
-    (msg->data.len <= k_ra8_mdl_chunk_data_max) &&
-    ((msg->data.len == 0U) || (msg->data.data != nullptr)) &&
+  const mdl_chunk_view_t     view = internal_mdl_view(msg);
+  const mdl_chunk_key_view_t key  = {
+     .protocol_version = msg->protocol_version,
+     .job_id           = msg->job_id,
+     .sequence         = msg->sequence,
+     .offset           = msg->offset,
+     .data_len         = (uint32_t)msg->data.len,
+     .data_present     = (msg->data.data != nullptr),
+     .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
+  };
+  const bool valid =
+    priv_c6link_mdl_chunk_correlates(&key, take->session, take->requested_bytes) &&
     priv_c6link_mdl_chunk_semantics_valid(&view);
   const ra8_err_t result =
     valid ? priv_c6link_mdl_accept_chunk(&view, take->session, take->chunk) : k_ra8_err_protocol_error;
@@ -189,11 +190,15 @@ internal_mdl_take_cancelled(mdl_take_ctx_t* take, const uint8_t* data, size_t le
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->base.n_unknown_fields == 0U) &&
-                     (msg->protocol_version == k_ra8_mdl_protocol_version) &&
-                     (msg->job_id == take->session->job_id) && (msg->status == 0);
+  const mdl_cancelled_view_t view = {
+    .protocol_version = msg->protocol_version,
+    .job_id           = msg->job_id,
+    .status           = msg->status,
+    .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
+  };
+  const bool valid = priv_c6link_mdl_cancelled_valid(&view, take->session);
   if (valid) {
-    take->session->active = false;
+    priv_c6link_mdl_session_deactivate(take->session);
   }
   ra8__mdl__cancelled__free_unpacked(msg, &alloc);
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;

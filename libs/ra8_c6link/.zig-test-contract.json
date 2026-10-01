@@ -32,5 +32,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 140
+  "minimum_tests": 165
 }

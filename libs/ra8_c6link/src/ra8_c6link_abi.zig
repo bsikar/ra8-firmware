@@ -17,6 +17,7 @@ const mdl_transfer = @import("internal/mdl_transfer.zig");
 const mdl_request = @import("internal/mdl_request.zig");
 const mdl_chunk = @import("internal/mdl_chunk.zig");
 const mdl_service_rules = @import("internal/mdl_service_rules.zig");
+const mdl_session = @import("internal/mdl_session.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -313,6 +314,45 @@ pub export fn priv_c6link_mdl_chunk_semantics_valid(
 ) callconv(.c) bool {
     const chunk = view orelse return false;
     return mdl_chunk.semanticsValid(chunk);
+}
+
+/// `priv_c6link_mdl_accepted_valid`: does an accepted response open a usable job?
+pub export fn priv_c6link_mdl_accepted_valid(
+    view: *const mdl_session.AcceptedView,
+    requested_format: u32,
+) callconv(.c) bool {
+    return mdl_session.acceptedValid(view, requested_format);
+}
+
+/// `priv_c6link_mdl_session_activate`: open the session an accepted response granted.
+pub export fn priv_c6link_mdl_session_activate(
+    view: *const mdl_session.AcceptedView,
+    session: *mdl_types.Session,
+    requested_format: u8,
+) callconv(.c) void {
+    mdl_session.activate(view, session, requested_format);
+}
+
+/// `priv_c6link_mdl_chunk_correlates`: is this chunk the one the session awaits?
+pub export fn priv_c6link_mdl_chunk_correlates(
+    view: *const mdl_session.ChunkKeyView,
+    session: *const mdl_types.Session,
+    requested_bytes: u32,
+) callconv(.c) bool {
+    return mdl_session.chunkCorrelates(view, session, requested_bytes);
+}
+
+/// `priv_c6link_mdl_cancelled_valid`: does this acknowledge the job we cancelled?
+pub export fn priv_c6link_mdl_cancelled_valid(
+    view: *const mdl_session.CancelledView,
+    session: *const mdl_types.Session,
+) callconv(.c) bool {
+    return mdl_session.cancelledValid(view, session);
+}
+
+/// `priv_c6link_mdl_session_deactivate`: close a session a cancellation acknowledged.
+pub export fn priv_c6link_mdl_session_deactivate(session: *mdl_types.Session) callconv(.c) void {
+    mdl_session.deactivate(session);
 }
 
 /// `priv_c6link_mdl_accept_chunk`: copy a validated chunk, advance the session.
