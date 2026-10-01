@@ -9,7 +9,7 @@
  * and in a nested folder, plus entries the reader must skip (a text file, a
  * macOS AppleDouble fork) and one large uncompressed filler entry that
  * dominates the archive size but is never referenced. The suite opens that CBZ
- * through `comic_open` over a seek+read callback -- the #151 streaming path
+ * through `comic_open` over a seek+read callback -- the streaming path
  * -- and proves:
  *
  *   1. pages are enumerated in sorted-name order (reading order),

@@ -199,13 +199,13 @@ if(REFLOW_USE_LITEHTML)
   # The static stb_truetype arena allocator (ra8_stbtt_malloc/free) is shared:
   # both v1 and the litehtml v2 engine rasterise glyphs through stb_truetype,
   # so this one file stays in even when the v1 reflow engine is excluded.
-  # ra8_stbtt_guard.c (the #217 sfnt table-directory bounds check) is likewise
+  # ra8_stbtt_guard.c (the sfnt table-directory bounds check) is likewise
   # shared: epub's priv_font_init calls it before stbtt_InitFont, so its
   # symbol must resolve even under the v2 engine.
   # ra8_img_arena.c (the stb_image bump arena) is likewise shared: the always-on
   # stb_image_impl.c TU in EPUB_THIRD_PARTY references its symbols.
   # reflow_link.c is pure query logic over engine fields (no layout/stbtt),
-  # so the #110 link/anchor API is available under v2 as well.
+  # so the link/anchor API is available under v2 as well.
   set(REFLOW_C_SOURCES
       ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
       ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c

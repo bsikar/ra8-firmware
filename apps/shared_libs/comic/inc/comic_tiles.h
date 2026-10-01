@@ -275,7 +275,7 @@ typedef struct {
  *          memstore), validates the produced atlas with `jof_parse()`, and
  *          binds it as the reader's single source under a fresh epoch. After a
  *          successful import ::comic_tiles_tile pages the page's
- *          full-resolution tiles on demand -- the #344 goal: a comic page larger
+ *          full-resolution tiles on demand -- the goal: a comic page larger
  *          than the whole-decode arena renders without a whole-image decode and
  *          without downscaling. Re-importing (a page turn) resets the store and
  *          bumps the epoch so no stale tile of the previous page survives.

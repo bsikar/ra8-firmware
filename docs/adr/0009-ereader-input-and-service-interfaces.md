@@ -131,7 +131,7 @@ line under the same IRQ0..15 rule as D2.
    rearm and brownout behaviour are bench items; no timing figure is asserted
    here.
 5. **Sleep mode versus regulator.** The DCDC exclusion in finding 6 has to be
-   reconciled with the #825 rail design and confirmed against the HUM
+   reconciled with the rail design and confirmed against the HUM
    electrical tables. The resulting sleep current is a measurement, not a
    calculation.
 6. **Exact accelerometer part.** Bus options, interrupt count and idle current

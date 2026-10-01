@@ -544,7 +544,7 @@ static ra8_err_t internal_compile_chapters(epub_book_t*                         
  * @brief Intern the Dublin Core metadata and record it (the final emit stage).
  * @details Runs LAST, after the chapters, so the title/author/language/identifier
  *          strings land after the chapter DOM strings in the pool -- matching the
- *          desktop epub_compile.py serialize(meta) order the #151 byte-identity
+ *          desktop epub_compile.py serialize(meta) order the byte-identity
  *          gate requires. Interning metadata earlier shifts every string offset.
  * @param[in,out] ctx               Builder receiving the metadata (non-NULL).
  * @param[in]     epub              Open book to read the Dublin Core fields from.

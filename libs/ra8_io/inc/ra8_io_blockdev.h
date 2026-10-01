@@ -44,7 +44,7 @@
  *
  * This block device is the read/write/erase storage seam at [Ring 4 / PAL]. It
  * is deliberately distinct from `ra8_vsource` (`ra8_vsource.h`, [Ring 2 / Core]),
- * the read-only byte-offset view that feeds the #147 page cache. The split is
+ * the read-only byte-offset view that feeds the page cache. The split is
  * intentional, not drift: a Ring-2 source must not depend on this Ring-4 fabric,
  * since that would invert ring ordering (see `docs/RING_AND_WORLD.md`). The
  * sanctioned bridge is the Ring-4 adapter `ra8_io_blockdev_vsource.h`, which

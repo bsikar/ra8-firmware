@@ -909,7 +909,7 @@ static void prefetch_cold_case(const pbook_t* book, uint32_t node1_off, uint32_t
 /**
  * @test test_book_paged_prefetch_warms
  * @brief book_src_prefetch_chapter() warms a chapter's first content frame so
- *        the next real read of it is a cache HIT (the #207 read-ahead primitive).
+ *        the next real read of it is a cache HIT (the read-ahead primitive).
  *
  * @par Coverage:
  * Proves the flush-idle read-ahead #207 wires into the reader loop: a cold read of

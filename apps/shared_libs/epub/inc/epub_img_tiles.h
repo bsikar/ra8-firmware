@@ -10,13 +10,13 @@
  * @details
  * A full-page manga scan in an all-image EPUB inflates to tens of megabytes --
  * too big to decode whole into the ~10 MB working set. This module supplies
- * the #231 runtime pieces, all bounded-RAM by construction and all reading
+ * the runtime pieces, all bounded-RAM by construction and all reading
  * off the streaming reader (`epub_open_streamed`) so the whole archive is
  * never resident:
  *
  *   1. **Tile binder** (`epub_tile_binder_*`): pages JOF tile atlases
  *      (`jof.h` -- the display-native band-tile format shared with
- *      the longstrip scroll #289 and the #290 codec policy) through
+ *      the longstrip scroll #289 and the codec policy) through
  *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
  *      tile_y)`. An atlas backs onto either a *stored* archive entry
  *      (`epub_tile_binder_add()`, host-baked books) or any external
@@ -311,7 +311,7 @@ typedef struct {
  *      atlas via `epub_tile_binder_add_ext()`.
  *
  * After a successful import, `epub_tile_binder_get()` pages the image's
- * full-resolution tiles on demand -- the #231 goal: a manga page larger than
+ * full-resolution tiles on demand -- the goal: a manga page larger than
  * SDRAM at native resolution renders without whole-image decode and without
  * downscaling.
  *
@@ -437,7 +437,7 @@ epub_tile_binder_info(const epub_tile_binder_t* binder, uint32_t image_id, jof_i
  *
  * @details
  * The image-render counterpart of ::book_src_prefetch_chapter's text
- * read-ahead: on a pan of a tiled page (the #231 all-image EPUB path, and the
+ * read-ahead: on a pan of a tiled page (the all-image EPUB path, and the
  * comic-tiling path that shares this binder), warms the tile row or column just
  * beyond @p view in @p dir so the next tiles the viewport exposes are resident
  * before they are needed. The binder supplies the image's tile-grid extent to

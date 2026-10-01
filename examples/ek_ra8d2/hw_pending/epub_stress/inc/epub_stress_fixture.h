@@ -1,6 +1,6 @@
 /**
  * @file epub_stress_fixture.h
- * @brief Baked synthetic large-structure EPUB3 for the #144 pool-stress gate.
+ * @brief Baked synthetic large-structure EPUB3 for the pool-stress gate.
  *
  * @details 60 chapters + 60 manifest resources + an NCX
  * with 60 navPoints + a cover -- ~125 archive

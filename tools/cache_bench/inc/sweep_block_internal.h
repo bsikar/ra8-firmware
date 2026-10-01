@@ -1,6 +1,6 @@
 /**
  * @file inc/sweep_block_internal.h
- * @brief Module-private seams shared by the #208 sweep translation units.
+ * @brief Module-private seams shared by the sweep translation units.
  *
  * @details
  * The `--sweep-block` mode is split across three translation units to keep
@@ -64,7 +64,7 @@ typedef enum : uint32_t {
 /**
  * @struct cbs_backend_t
  * @brief One byte-addressed backing store the sweep reads through -- the
- *        backend DIP seam the #208 hardware leg will implement.
+ *        backend DIP seam the hardware leg will implement.
  *
  * @details `setup` prepares a backing for one (blob, block size) pair and
  *          publishes `read`/`read_ctx` (an ::ra8_vsource_read_fn, so the

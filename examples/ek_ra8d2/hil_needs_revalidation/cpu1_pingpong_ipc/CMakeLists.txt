@@ -56,7 +56,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   set(CPU1_LINKER_SCRIPT ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld)
   set(CPU1_NAME cpu1_pingpong_ipc_cpu1)
   add_executable(${CPU1_NAME}.elf ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c)
-  # The four shared first-party TUs come onto this image ON the #843 warning
+  # The four shared first-party TUs come onto this image ON the warning
   # bar instead of as plain sources. This image hand-rolls its executable, so
   # nothing on it is profile-covered by default; ra8_cpu1_add_first_party_sources()
   # does the target_sources() AND puts the canonical per-source profile on the

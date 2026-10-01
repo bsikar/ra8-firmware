@@ -5,7 +5,7 @@
  *
  * @details
  * The bridge between the chunked on-disk container (see @ref
- * book_container_t in book.h) and the #147 page-cache stack: where
+ * book_container_t in book.h) and the page-cache stack: where
  * book_open() inflates *every* chunk into one resident SDRAM buffer, this
  * reader inflates *single* chunks on demand, so a book far larger than RAM is
  * read through an ::ra8_vmem cache with a bounded resident working set.

@@ -349,7 +349,7 @@ def _selftest_sram_fit() -> int:
         return 1
 
     with tempfile.TemporaryDirectory() as td:
-        # 1024K overruns to 0x22200000 (the #544 defect); 640K lands exactly on
+        # 1024K overruns to 0x22200000 (the defect); 640K lands exactly on
         # 0x221A0000, proving the bound is inclusive.
         for tag, ns_len, want in (("overrun.ld", "1024K", True), ("fits.ld", "640K", False)):
             p = pathlib.Path(td) / tag

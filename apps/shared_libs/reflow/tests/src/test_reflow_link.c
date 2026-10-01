@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_link.c
- * @brief Host unit tests + MC/DC for the #110 link/anchor query API.
+ * @brief Host unit tests + MC/DC for the link/anchor query API.
  *
  * @details
  * Covers apps/shared_libs/reflow/src/reflow_link.c:

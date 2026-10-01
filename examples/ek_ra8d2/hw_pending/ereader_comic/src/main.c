@@ -338,7 +338,7 @@ static cm_src_t s_src;
 
 /**
  * @var s_tiled
- * @brief Result of the #344 oversized-page tile self-check.
+ * @brief Result of the oversized-page tile self-check.
  * @details Populated once in ::main (before the banner) by
  *          ::cm_comic_tiled_selfcheck; read by ::cm_print_banner.
  * @note File-scope so the banner helper can read it.

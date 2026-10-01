@@ -405,7 +405,7 @@ def print_top_n(entries: list, n: int) -> None:
 
 
 def _add_enumeration_args(parser: argparse.ArgumentParser) -> None:
-    """Add the #386 enumeration-floor and self-check options.
+    """Add the enumeration-floor and self-check options.
 
     Kept out of ``_build_parser`` so that function stays within the 60-line
     NASA Rule 4 budget the ``function-size`` gate enforces; these are the

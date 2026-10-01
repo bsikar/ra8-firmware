@@ -7,7 +7,7 @@
  *
  * @details
  * This header pins the cross-core JOB mailbox and the shared input/output buffers
- * for the #149 compiler offload: running the full text/CSS/SVG EPUB->`.rabook`
+ * for the compiler offload: running the full text/CSS/SVG EPUB->`.rabook`
  * compile (`apps/shared_libs/rabook_compile` + `epub`) on the RA8D2's Cortex-M33
  * secondary core. The Cortex-M85 (primary, "CPU0") STAGES a source `.epub` into
  * shared SRAM, posts the job, releases the M33, then PARKS while the slow core

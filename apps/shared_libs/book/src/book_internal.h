@@ -5,7 +5,7 @@
  *
  * @details
  * Module-private seam between book_xhtml.c (resident XHTML serialiser + text
- * extractor) and book_paged.c (the #163 paged text extractor). The plain-text
+ * extractor) and book_paged.c (the paged text extractor). The plain-text
  * leaf helpers (whitespace collapse, paragraph break, block-element test) and the
  * shared walk-bound constants are declared here so the paged walk can reuse them
  * verbatim -- guaranteeing paged output is byte-identical to the resident walk --

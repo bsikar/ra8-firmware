@@ -578,7 +578,7 @@ def _seed_enumeration_fixture(root: Path) -> None:
 
 
 def _enumeration_cases(root: Path) -> tuple[tuple[bool, str], ...]:
-    """Both directions of the #713 contract, against a fixture repo.
+    """Both directions of the contract, against a fixture repo.
 
     The must-fire case is the one that matters: a source file written but never
     ``git add``ed has to appear, because a gate that cannot see it reports

@@ -22,7 +22,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ereader_longstrip is the #289 continuous vertical-scroll reader made VIEWABLE:
+# ereader_longstrip is the continuous vertical-scroll reader made VIEWABLE:
 # the longstrip engine's band-composite blit sink is bound to the live
 # 1024x600 GLCDC panel framebuffer (ra8_display_pal + k_display_backend_lcd_
 # ra8_glcdc, in external SDRAM) instead of an internal scratch buffer, so

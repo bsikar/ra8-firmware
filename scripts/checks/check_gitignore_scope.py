@@ -7,7 +7,7 @@ WHY THIS EXISTS
 ---------------
 `.gitignore` line 2 was `build/` for the life of the tree. A pattern with a
 trailing slash and no leading slash matches at EVERY depth, so any directory
-named `build` -- anywhere -- was silently untrackable. #359's reorganisation
+named `build` -- anywhere -- was silently untrackable. The reorganisation
 created `scripts/build/` (PATHREF-OK: #359 renamed it), and its six
 files were tracked only because `git mv` moves files that were already
 tracked. A seventh, newly created, would never have been added, and
@@ -225,11 +225,11 @@ def marker_bindings(text: str) -> tuple[list[MarkerBinding], list[tuple[int, str
 
 
 def _assert_fires(failures: list[str]) -> None:
-    """Assert an unanchored directory pattern fires -- the #377 defect shape."""
+    """Assert an unanchored directory pattern fires -- the defect shape."""
     got = scan("build/\n")
     expect(
         [f.pattern for f in got] == ["build/"],
-        "a bare 'build/' fires (the #377 landmine)",
+        "a bare 'build/' fires (the landmine)",
         failures,
     )
     expect(

@@ -94,7 +94,7 @@ HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 # whole root either way is wrong for half of it -- calling the e-reader hosted
 # demands `int main(void)` of a freestanding image and drops the
 # `ra8_boot_entry.h` include that makes the cross-TU check happen at all, which
-# is precisely the #707 hole.
+# is precisely the hole.
 #
 # So the firmware products are NAMED here, and `check_firmware_apps()` re-derives
 # the same set from the tree on every whole-tree run. The declaration is what

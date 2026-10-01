@@ -65,7 +65,7 @@
  *      now the only running core, holding the page and polling a (fake)
  *      touch input -- the e-reader's steady-state idle posture.
  *   6. On a page-turn touch the M33 bumps `turn_req` and POKES the M85 over IPC0
- *      (`ra8_ipc_send_event`), waking it from WFI -- the #149 wake mechanism.
+ *      (`ra8_ipc_send_event`), waking it from WFI -- the wake mechanism.
  *   7. The woken M85 restores its clocks, does the "heavy" work (the next-page
  *      decision the 1 GHz core owns), acknowledges via `turn_ack`, and re-parks.
  *   8. The M33 observes the ack, RE-RENDERS the held page (re-folding the same

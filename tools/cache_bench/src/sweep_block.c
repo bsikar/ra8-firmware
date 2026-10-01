@@ -1,6 +1,6 @@
 /**
  * @file src/sweep_block.c
- * @brief Core of the #208 block/frame-size sweep (`--sweep-block`).
+ * @brief Core of the block/frame-size sweep (`--sweep-block`).
  *
  * @details
  * Drives the REAL ::ra8_vmem SLRU page cache (not a re-modelled policy) with

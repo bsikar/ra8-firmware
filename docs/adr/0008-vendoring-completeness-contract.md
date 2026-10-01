@@ -163,7 +163,7 @@ Two questions are left open rather than answered here, because both are policy:
    reach it. Either the font is out of the catalog's scope on the record (a
    sentence in `docs/SOUP/README.md`), or it owes a short record like every
    other pinned artifact.
-2. **Where does the "add a library" runbook live?** #699's first acceptance
+2. **Where does the "add a library" runbook live?** The first acceptance
    criterion wants it linked from `docs/STYLE_GUIDE.md`, which today contains no
    such link. Whether it is a new page under `docs/` or a section of
    `docs/STYLE_GUIDE.md` is a structure choice, not a technical one.
@@ -178,7 +178,7 @@ Two questions are left open rather than answered here, because both are policy:
   first time, so the esp-hosted halves stop being a thing you have to know.
 - Shim absence stays visible without becoming a failure, so the No-Stubs Policy
   and the completeness gate cannot pull in opposite directions.
-- Nothing here unblocks #699's tier-placement gate (item 2), which still needs
+- Nothing here unblocks the tier-placement gate (item 2), which still needs
   the tier taxonomy from children (a)/(b) before a gate can require a library to
   declare a tier.
 

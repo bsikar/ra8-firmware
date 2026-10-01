@@ -18,7 +18,7 @@ shape follows from that one fact.
 
 `ra8_io_blockdev` is read / write / erase over 512-byte logical blocks -- the
 storage fabric that filesystems and caches sit on. `ra8_vsource` (over in
-`ra8_mem`) is a read-only byte-offset view feeding the #147 page cache, and
+`ra8_mem`) is a read-only byte-offset view feeding the page cache, and
 binds a generic `offset -> bytes` callback so that layer carries no storage
 dependency at all.
 

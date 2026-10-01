@@ -12,7 +12,7 @@
  * asserts:
  *   1. mount succeeds and detects exFAT,
  *   2. listdir enumerates the known files,
- *   3. open("/HELLO.TXT") -- WITH a leading slash -- succeeds (the #93 fix;
+ *   3. open("/HELLO.TXT") -- WITH a leading slash -- succeeds (the fix;
  *      it returned k_ra8_err_not_found before because the exFAT name matcher
  *      did not strip leading slashes like the FAT path does),
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,

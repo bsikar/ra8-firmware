@@ -9,7 +9,7 @@
  * @details
  * The viewable reader in main.c pages small baked CBZ pages with the whole-decode
  * pipeline (`ra8_img_decode_blit`). A page whose decoded size exceeds the decode
- * arena cannot be opened that way -- the #344 cap. This self-check proves the fix
+ * arena cannot be opened that way -- the cap. This self-check proves the fix
  * on device: it opens a baked oversized single-page CBZ (::k_comic_large_cbz),
  * routes the page through ::comic_tiles (import-time JOF transcode +
  * `ra8_tile_cache` paging), decodes every tile in bounded RAM, and FNV-hashes the

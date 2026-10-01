@@ -289,7 +289,7 @@ gate_cite_check() (
 # right chapter; this asks whether the register it names EXISTS, at the offset
 # we declare, on the page we cite. Three landed defects were invisible to the
 # first question and obvious to the second -- the ra8_rsip family, #498's
-# reserved-aperture GPTP window, and #539's EASCR.
+# reserved-aperture GPTP window, and the EASCR.
 #
 # The authority is the committed manual PDF, re-parsed here on every run, so
 # pdftotext is a hard requirement: a gate that skipped when poppler was absent

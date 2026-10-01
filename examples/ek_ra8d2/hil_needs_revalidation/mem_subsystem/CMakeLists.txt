@@ -29,7 +29,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# LIBS ra8_mem pulls in the #147 memory-hierarchy primitives (ra8_slab,
+# LIBS ra8_mem pulls in the memory-hierarchy primitives (ra8_slab,
 # ra8_arena, ra8_tile_cache, ra8_vmem / ra8_vsource / ra8_vmem_stream) and adds
 # libs/ra8_mem/inc to the include path. ra8_board_ek_ra8d2 supplies the SCI
 # console the banner is printed on.

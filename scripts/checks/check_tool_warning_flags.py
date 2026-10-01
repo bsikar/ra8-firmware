@@ -138,7 +138,7 @@ def compiler_of(argv: list[str]) -> str:
 def missing_required_compilers(seen: set[str], required: list[str]) -> list[str]:
     """Return the required compiler families that no database exercised.
 
-    This is the #356 second-arm guard: the tools-build gate compiles the host
+    This is the second-arm guard: the tools-build gate compiles the host
     tools under clang-18 AND gcc-14 and passes both sets of databases here. If
     the gcc arm is ever silently dropped, its family never appears in `seen`,
     and a silently-dropped arm otherwise reads as a pass -- the #348/#355
@@ -310,7 +310,7 @@ def flag_problem(argv: list[str]) -> str | None:
 def check_database(path: Path) -> tuple[list[str], set[str], set[str]]:
     """Return (violation lines, compiler families, compiled sources) for one database.
 
-    The compiler set is the #356 second-arm evidence: every translation unit in
+    The compiler set is the second-arm evidence: every translation unit in
     one database is compiled by the same driver, so the union across the clang
     and gcc databases the gate passes must contain both families.
 
@@ -413,7 +413,7 @@ SELFTEST_CASES: list[tuple[str, str, list[str], bool]] = [
 
 # Compiler-classification cases: compiler_of must name the driver family from
 # an argv the way the real databases spell it (absolute path, versioned name,
-# a launcher prefix). Asserted so the #356 second-arm guard cannot be defeated
+# a launcher prefix). Asserted so the second-arm guard cannot be defeated
 # by a classifier that quietly folds gcc into clang or "other".
 COMPILER_SELFTEST_CASES: list[tuple[str, list[str], str]] = [
     ("clang-18 absolute path", ["/usr/bin/clang-18", "-c", "f.c"], "clang"),
@@ -427,7 +427,7 @@ COMPILER_SELFTEST_CASES: list[tuple[str, list[str], str]] = [
 
 # Second-arm coverage cases: with both arms required, a missing family must be
 # reported (fires) and a complete set must report nothing (quiet). This is the
-# property the #356 acceptance names -- a silently-dropped gcc arm reads as a
+# property the acceptance names -- a silently-dropped gcc arm reads as a
 # pass unless its absence is turned into a hard finding here.
 COVERAGE_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
     ("only clang seen -> gcc missing", {"clang"}, ["clang", "gcc"], ["gcc"]),
@@ -746,7 +746,7 @@ def _argument_parser() -> argparse.ArgumentParser:
         metavar="FAMILY[,FAMILY...]",
         help=(
             "comma-separated compiler families (e.g. clang,gcc) that must each "
-            "drive at least one database; the #356 second-arm guard. A single "
+            "drive at least one database; the second-arm guard. A single "
             "comma-joined value keeps it order-independent of the database list."
         ),
     )

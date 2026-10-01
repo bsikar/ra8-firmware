@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * Layer 0 of the #147 memory hierarchy. A slab carves a caller-owned buffer into
+ * Layer 0 of the memory hierarchy. A slab carves a caller-owned buffer into
  * a fixed number of equal-size cells and hands them out / takes them back in
  * O(1) from an intrusive freelist. Because every cell is the same size there is
  * no external fragmentation, and because the backing buffer is supplied by the

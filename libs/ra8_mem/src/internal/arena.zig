@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The init-time bump arena (layer 0 of the #147 memory hierarchy, paired with
+//! The init-time bump arena (layer 0 of the memory hierarchy, paired with
 //! the slab). One contiguous region of a single tier is handed out as aligned
 //! sub-blocks by bumping a cursor. There is no free: bring-up carves every
 //! fixed buffer once and then never allocates again (NASA Power-of-10 rule 3).

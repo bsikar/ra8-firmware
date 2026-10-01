@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * Layer 0 of the #147 memory hierarchy, paired with ::ra8_slab. An arena owns one
+ * Layer 0 of the memory hierarchy, paired with ::ra8_slab. An arena owns one
  * contiguous memory region of a single tier (DTCM, SRAM, or SDRAM) and hands out
  * aligned sub-blocks by bumping a high-water mark. It is an **init-time** API:
  * there is no free -- you carve all the slab backing (and any other fixed

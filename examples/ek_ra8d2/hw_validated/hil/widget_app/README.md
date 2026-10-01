@@ -10,7 +10,7 @@ fixed-height status bar over a flex content widget -- laid out by
 Launching the second app fires the focus lifecycle (`on_leave` then `on_enter`)
 before compositing it. The banner hashes both composites, so the gate asserts
 that both apps registered, that the two composites are distinct, that the
-lifecycle fired exactly once each, and -- the #145 partial-flush acceptance --
+lifecycle fired exactly once each, and -- the partial-flush acceptance --
 that invalidating only the status bar yields damage of exactly the status-bar
 rect with the `fast` (A2) hint, the minimal e-ink update.
 

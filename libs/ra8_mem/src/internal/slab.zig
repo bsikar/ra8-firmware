@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The fixed-cell slab allocator (layer 0 of the #147 memory hierarchy). A
+//! The fixed-cell slab allocator (layer 0 of the memory hierarchy). A
 //! caller-owned buffer is divided into equal cells handed out and taken back
 //! in O(1). Equal cells mean no external fragmentation, and a caller-supplied
 //! buffer means nothing is allocated after init.

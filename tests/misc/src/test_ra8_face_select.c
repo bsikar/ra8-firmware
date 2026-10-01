@@ -3,7 +3,7 @@
  * @brief #109 (items 2-3): per-run embedded `@font-face` selection in reflow.
  *
  * @details
- * The #109 foundation loads + binds a single embedded face; #142 parses the
+ * The foundation loads + binds a single embedded face; #142 parses the
  * `@font-face` table + resolves `font-family`. This test covers the remainder:
  * a text run whose cascaded `font-family` + bold/italic matches a registered
  * `@font-face` is laid out with that face, a different weight selects a

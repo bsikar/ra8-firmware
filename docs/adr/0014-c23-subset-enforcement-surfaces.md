@@ -110,7 +110,7 @@ option where the inventory cannot drift from what is enforced.
 **B. Documentation-only inventory now, gates untouched.** Write the
 matrix as a maintained document, citing the four surfaces, and accept
 that it is a description rather than a mechanism. Cheap, honest about
-being prose, and it goes stale exactly the way the #711 naming
+being prose, and it goes stale exactly the way the naming
 inventory did (see ADR-0006 in the open pull request #1238).
 
 **C. Settle the MISRA edition first, then derive.** Rejected as
@@ -160,7 +160,7 @@ the duration of this fire and no sweep of the tree was possible:
   names its "C23 Syntax" and "Constants and Macros" sections as the
   source of the rules it enforces, so a normative statement of the
   subset does exist there. Nothing in this record claims what those
-  sections do or do not say, and #788's acceptance criterion about
+  sections do or do not say, and the acceptance criterion about
   `CLAUDE.md` is therefore neither confirmed nor refuted here.
 * **No construct census was run.** A code search reported seven
   `constexpr` occurrences in the repository, and the first-party ones

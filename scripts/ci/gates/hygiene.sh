@@ -421,7 +421,7 @@ suite_abort_selftest() (
 #   history repo, which is the failure mode of the rejected "export
 #   RA8_CI_COMMIT_RANGE into the snapshot" fix (SHAs the object store lacks).
 # Build the BROKEN fixture: a one-commit repository whose single message is the
-# `ci.sh snapshot of HEAD` that the #348 false-green guard exists to reject.
+# `ci.sh snapshot of HEAD` that the false-green guard exists to reject.
 # Fixture construction only -- every assertion and the cleanup/exit path stays
 # in commit_range_selftest, so there is one place that decides the verdict.
 _crs_make_snapshot_repo() {
@@ -470,7 +470,7 @@ commit_range_selftest() (
     rm -rf "$tmp"
     echo "ERROR: ci.sh commit-range self-test FAILED (direction 1)." >&2
     echo "       A synthetic one-commit snapshot was ACCEPTED as real" >&2
-    echo "       history. The #348 false-green guard has stopped firing:" >&2
+    echo "       history. The false-green guard has stopped firing:" >&2
     echo "       the commit-message gates would again report PASS having" >&2
     echo "       scanned only 'ci.sh snapshot of HEAD'." >&2
     exit 1
@@ -538,7 +538,7 @@ commit_range_selftest() (
     rm -rf "$tmp"
     echo "ERROR: ci.sh commit-range self-test FAILED (direction 3, dispatch)." >&2
     echo "       With upstream == head a non-push event resolved" >&2
-    echo "       '$dispatch_range' spanning commits. The #357 vacuity" >&2
+    echo "       '$dispatch_range' spanning commits. The vacuity" >&2
     echo "       rejection for manual re-runs has been bypassed." >&2
     exit 1
   fi
