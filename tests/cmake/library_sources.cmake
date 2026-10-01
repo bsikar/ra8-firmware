@@ -82,7 +82,10 @@ file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.
 # It arrived from dev in a43342038 (#693) as C; both translation units are
 # gone, so there is no RA8_IF_RA8_CGC_SOURCES glob left and
 # libs/if_ra8_cgc/src is no longer an include directory anywhere.
-file(GLOB_RECURSE RA8_IF_RA8_GPT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if_ra8_gpt/src/*.c)
+# if_ra8_gpt is fully migrated too: the timer and PWM adapters behind
+# inc/fw_if_{timer,pwm}_ra8.h and their shared channel-ownership table live in
+# libs/if_ra8_gpt/src/*.zig, built by libs/if_ra8_gpt/build.zig, so there is no
+# RA8_IF_RA8_GPT_SOURCES glob left either.
 file(GLOB_RECURSE RA8_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_io/src/*.c)
 file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/compress/src/*.c)
 # ra8_audio is fully migrated to Zig (facade + memory and PDM backends);

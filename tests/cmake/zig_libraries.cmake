@@ -398,6 +398,21 @@ ra8_add_zig_library(
   if_ra8_cgc
 )
 
+# Fully migrated: the RA8 GPT32 timer and PWM adapters behind
+# inc/fw_if_timer_ra8.h and inc/fw_if_pwm_ra8.h, and the channel-ownership
+# table they share, are Zig, so fw_if_timer_ra8.c, fw_if_pwm_ra8.c and
+# fw_if_gpt_ra8_claim.{c,h} are gone and libs/if_ra8_gpt/src is no longer an
+# include directory. The ops reach ra8_gpt_* and fw_timer_bind / fw_pwm_bind
+# as externs resolved at the final link, like if_ra8_cgc.
+ra8_add_zig_library(
+  NAME
+  if_ra8_gpt
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if_ra8_gpt
+  LIBRARY_NAME
+  if_ra8_gpt
+)
+
 # Fully migrated: the FTL core (init, the presented free-overwrite vtable,
 # copy-on-write relocation, reclamation and wear-levelling), the canonical
 # checkpoint codec and the mount lifecycle are all Zig, so ra8_ftl.c,
@@ -785,6 +800,8 @@ target_link_libraries(
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
          ra8_zig::if_ra8_cgc
+  ra8_zig::if_ra8_gpt
+         ra8_zig::if_ra8_gpt
          ra8_zig::ra8_ftl
          ra8_zig::ra8_sdmmc_spi
          ra8_zig::ra8_display_pal
@@ -830,6 +847,7 @@ link_libraries(
   ra8_zig::ra8_camera
   ra8_zig::fw_if_fs
   ra8_zig::if_ra8_cgc
+  ra8_zig::if_ra8_gpt
   ra8_zig::ra8_ftl
   ra8_zig::ra8_sdmmc_spi
   ra8_zig::ra8_display_pal
