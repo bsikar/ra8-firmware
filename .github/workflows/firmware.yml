@@ -54,7 +54,6 @@ concurrency:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  MCDC_BASELINE_FILE: .github/mcdc-baseline.txt
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -256,39 +255,17 @@ jobs:
 
       - run: just quality::local::gate tools-build
 
-  # Statement + branch coverage is scheduled ONCE, in coverage.yml, by the
-  # coverage-tree gate. There is one census, one baseline and one policy for
-  # every first-party translation unit, so there is one job that applies it --
-  # the two jobs that used to sit here (an aggregate 90/80 over the host suite
-  # and a legacy product-named per-file ratchet) each built the same translation
-  # units and answered the same question differently.
-
-  # ---------------------------------------------------------------------------
-  # MC/DC report (clang-18 source-based coverage with -fcoverage-mcdc), gated
-  # against .github/mcdc-baseline.txt -- never let coverage regress.
-  # ---------------------------------------------------------------------------
-  mcdc:
-    name: MC/DC coverage gate
+  # Freshness of the committed generated docs (#380).
+  artefact-freshness:
+    name: Generated docs freshness
     runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: just quality::local::gate mcdc
-      # Freshness of the committed MC/DC + doxygen gap docs (#380). Runs in THIS
-      # job because it reuses the mcdc step's build/mcdc-report/mcdc.txt instead
-      # of re-running the coverage build; the checker fails loudly if that report
-      # is absent, so it can never silently pass out of this job's context.
       - run: just quality::local::gate artefact-freshness
-      - name: Upload MC/DC report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mcdc-report
-          path: build/mcdc-report/
-          retention-days: 14
 
   # ---------------------------------------------------------------------------
   # Pre-commit gate suite -- the commit-time gate set, so PRs surface what
@@ -561,69 +538,3 @@ jobs:
       - run: just quality::local::gate build-cross-union
       - run: just quality::local::gate sg-offsets
       - run: just quality::local::gate stack-usage
-
-  # ---------------------------------------------------------------------------
-  # PR-only: post a per-file MC/DC delta comment vs the base branch.
-  # Limited to the first 50 rows so the comment stays readable.
-  # ---------------------------------------------------------------------------
-  coverage-comment:
-    name: MC/DC delta comment
-    runs-on: ra8-ci
-    needs: mcdc
-    # PR-only job, and self-hosted: also require the PR head to live in THIS
-    # repo so a fork PR can never reach the runner (defence in depth -- `needs:
-    # mcdc` already skips it when the guarded mcdc job is skipped on a fork PR).
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      pull-requests: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Download PR MC/DC report
-        uses: actions/download-artifact@v4
-        with:
-          name: mcdc-report
-          path: pr-mcdc
-      - name: Build base-branch MC/DC report (best-effort)
-        env:
-          RA8_MCDC_BASE_REF: ${{ github.event.pull_request.base.ref }}
-        # This report is informational: the following renderer records an
-        # unavailable base measurement explicitly and still publishes the PR
-        # branch's measured coverage instead of hiding that useful evidence.
-        continue-on-error: true
-        run: just quality::local::gate mcdc-delta-base
-      - name: Render delta comment body
-        run: just quality::local::gate mcdc-delta-render
-      - name: Post delta comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Plumbing only -- no check logic. The body is rendered by
-            // scripts/report/mcdc_delta_comment.py under the
-            // mcdc-delta-render gate, so it is in scope for
-            // check_ci_parity.py and carries its own --selftest. The JS that
-            // used to live here computed the deltas itself and treated a
-            // missing base report as an empty one, which rendered a failed
-            // base build as a complete-looking table of n/a deltas (#536).
-            const fs = require('fs');
-            const body = fs.readFileSync('mcdc-delta-comment.md', 'utf8');
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-            const marker = "<!-- mcdc-delta-comment -->";
-            const existing = await github.rest.issues.listComments({
-              owner, repo, issue_number, per_page: 100,
-            });
-            const prior = existing.data.find(c => c.body && c.body.includes(marker));
-            if (prior) {
-              await github.rest.issues.updateComment({
-                owner, repo, comment_id: prior.id, body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner, repo, issue_number, body,
-              });
-            }

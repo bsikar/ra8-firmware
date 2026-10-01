@@ -310,7 +310,6 @@ EXPECTED_UV_RUN_BLOCK = (
     '"${PYTHON_TOOL_VENV}/bin/ruff" --version; '
     '"${PYTHON_TOOL_VENV}/bin/cmake-format" --version; '
     '"${PYTHON_TOOL_VENV}/bin/yamllint" --version; '
-    '"${PYTHON_TOOL_VENV}/bin/gcovr" --version; '
     'rm -f -- "${PYTHON_TOOL_VENV}/.lock"'
 )
 

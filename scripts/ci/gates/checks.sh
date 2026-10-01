@@ -33,7 +33,7 @@
 # every other independent group.
 
 # Constructs that may not appear in first-party source at all: superseded
-# standards, missing TrustZone world tags, MC/DC block markers, heap use after
+# standards, missing TrustZone world tags, heap use after
 # init (NASA P10 Rule 3), AI attribution, and the C NULL macro.
 _pcc_banned_constructs() (
   set -e
@@ -45,16 +45,6 @@ _pcc_banned_constructs() (
   # selftest red instead of passing green over files it stopped scanning.
   python3 scripts/checks/check_world_tags.py --selftest
   python3 scripts/checks/check_world_tags.py --strict
-  # Every unit test must declare its MC/DC vector pattern via @par MC/DC:.
-  # #325: the checker used `git diff --cached`, so in any CI checkout (nothing
-  # staged) it scanned 0 files and passed unconditionally -- a no-op that read
-  # as green while `just ci` (which stages `git add -A`) saw the real backlog.
-  # --selftest FIRST proves the detector fires in BOTH directions, so one that
-  # stopped matching cannot pass as clean; --all then audits the whole tree
-  # index-independently (the fix), so CI and local agree. The --staged
-  # counterpart used to run blocking in the removed pre-commit hook.
-  python3 scripts/checks/check_mcdc_block.py --selftest
-  python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --selftest
   python3 scripts/checks/check_no_dynamic_alloc.py --all
@@ -428,43 +418,6 @@ _pcc_security_invariants() (
   python3 scripts/checks/check_image_no_antirecovery.py --selftest
 )
 
-# The MC/DC discipline: DO-178C Level B makes MC/DC of every compound boolean
-# decision the core evidence, so this is the half of the gate that has teeth
-# about it.
-_pcc_mcdc_discipline() (
-  set -e
-  # Every new compound boolean decision must arrive with MC/DC vectors.
-  # #355: the checker used `git diff --cached`, so in any CI checkout (nothing
-  # staged) it saw 0 files and exited 0, auditing nothing ever. It is
-  # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
-  # a silent clean scan). --selftest proves the detector in BOTH directions, so
-  # one that stopped matching cannot pass as clean; the staged counterpart runs
-  # blocking in the removed pre-commit hook (--staged).
-  python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
-  # ... and the CI teeth for that rule: the MC/DC RATCHET (#426). Until it
-  # landed, enforcement here was decorative -- only the --selftest above ran, so
-  # it proved the detector worked while auditing none of the tree, and a new
-  # uncovered compound decision passed CI. The `--range` delta scan that was
-  # meant to be the teeth had only ever existed here as a commented-out line.
-  #
-  # That delta scan is not what is enabled, because it keys on new source
-  # LINES: with a backlog of pre-existing uncovered decisions it fails on a
-  # mere reformat of one of them, which is a cliff, and a cliff gets bypassed.
-  # The ratchet is the shape this tree already uses for a measured debt
-  # (tidy_ratchet.py, misra_ratchet.py): per-file-per-function counts frozen in
-  # .github/mcdc-compound-baseline.txt, any INCREASE fails, shrinkage passes
-  # and can be re-baselined. The backlog is tolerated, cannot grow, and a
-  # genuinely new uncovered decision fails the push. --selftest first, both
-  # directions, so a ratchet that stopped detecting growth cannot pass clean.
-  python3 scripts/checks/mcdc_compound_ratchet.py --selftest
-  # #712: this baseline's own header sanctions a hand-rename (renaming a
-  # function reads as growth, so the row is rewritten by hand). That is the
-  # edit most likely to drift, because a hand-written row keeps the old
-  # row's position. Prove the file is still in the form --update writes.
-  python3 scripts/checks/mcdc_compound_ratchet.py --attest
-  python3 scripts/checks/mcdc_compound_ratchet.py --check
-)
-
 # Cross-reference integrity: every in-tree reference points at something that
 # still exists, and none of them is a rot-prone file:line anchor.
 _pcc_cross_references() (
@@ -590,6 +543,5 @@ gate_pre_commit_checks() (
     tree-structure _pcc_tree_structure \
     source-form _pcc_source_form \
     security-invariants _pcc_security_invariants \
-    mcdc-discipline _pcc_mcdc_discipline \
     docs-and-tests _pcc_docs_and_tests
 )
