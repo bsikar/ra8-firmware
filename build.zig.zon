@@ -11,6 +11,8 @@
         .ra8_epd_cal = .{ .path = "libs/ra8_epd_cal" },
         .ra8_imgdec = .{ .path = "libs/ra8_imgdec" },
         .ra8_core = .{ .path = "libs/ra8_core" },
+        .ra8_board_ek_ra8d2 = .{ .path = "libs/ra8_board_ek_ra8d2" },
+        .ra8_board_ra8p1 = .{ .path = "libs/ra8_board_ra8p1" },
         .ra8_mem = .{ .path = "libs/ra8_mem" },
         .ra8_dfu = .{ .path = "libs/ra8_dfu" },
         .ra8_rot = .{ .path = "libs/ra8_rot" },
