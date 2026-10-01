@@ -1,7 +1,7 @@
 # ereader_ui chrome golden images
 
 Pinned reference renders of the `ereader_ui` example's **chrome** (the Library
-and Reading screens, issue #80), used as a regression gate.
+and Reading screens), used as a regression gate.
 
 `tools/ra8_emulator` boots the real cross-built `ereader_ui.elf` on the emulated
 RA8D2 and renders the GLCDC framebuffer deterministically. Each golden is that

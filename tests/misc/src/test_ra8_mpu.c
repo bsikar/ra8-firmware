@@ -658,7 +658,7 @@ RA8_INTERNAL static void internal_test_validate_cfg_mcdc_region_count_and_region
 }
 
 /* =============================================================================
- * Canonical boot memory-attribute map (ra8_mpu_apply_boot_map, issue #576)
+ * Canonical boot memory-attribute map (ra8_mpu_apply_boot_map)
  * =============================================================================
  */
 

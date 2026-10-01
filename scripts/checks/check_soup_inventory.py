@@ -13,8 +13,8 @@ tree against SBOM.  Nothing read either Markdown file, so nothing could notice
 when one stopped describing the tree.
 
 That is why a vendored component could be missing from the inventory entirely
-(doxygen-awesome, #629), why a host-tool pin could sit in the licence file with
-no registry entry and therefore no OSV query (vela, #628), and why the index
+(doxygen-awesome), why a host-tool pin could sit in the licence file with
+no registry entry and therefore no OSV query (vela), and why the index
 could link a ``docs/SOUP/*.md`` that had been deleted.  Each was found by a
 person reading prose, which is not a gate.
 

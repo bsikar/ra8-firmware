@@ -223,7 +223,7 @@ internal_bad_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
  * @par MC/DC:
  * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))`
  * (2 conditions, function `ra8_fs_format`, after `get_capacity`; sizes
- * 512..4096 are all supported since #683). The mem backend always reports a
+ * 512..4096 are all supported). The mem backend always reports a
  * supported block size, and a zero-block card cannot be allocated, so the
  * independent influence of each condition is structurally constrained to one
  * reachable input each: a valid 512-byte card flips the decision false, while

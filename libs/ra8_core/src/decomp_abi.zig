@@ -6,7 +6,7 @@
 //! The units behind this file deal in policies, budgets and Zig errors.
 //! This one maps them onto the `ra8_err_t` codes the header promises and
 //! emits the same null-pointer log lines `RA8_CHECK_NULL_PTR` emitted,
-//! through `ra8_log_emit_error` (Zig since #2836).
+//! through `ra8_log_emit_error` (Zig).
 //!
 //! Every entry point stays STRONG: unlike the log emitters and the
 //! timebase, nothing in the tree overrides a bound check, and a weak

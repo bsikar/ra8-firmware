@@ -6,7 +6,7 @@
 //! `cmake/ra8_app/sources.cmake` registers it unconditionally and says so in
 //! the guard it hands to `_ra8_app_require_compilable_lib()`: "links ra8_core
 //! into every app". That is not a convenience. `libs/ra8_core/src` holds no
-//! `.c` at all since #2820, so the archive is the ONLY place an image can get
+//! `.c` at all, so the archive is the ONLY place an image can get
 //! the freestanding runtime primitives (`memcpy`, `memset`, `str*`, `abs`) the
 //! compiler emits calls to from ordinary struct assignment, alongside every
 //! other ra8_core port: the log backend, the timebase, the fault block.

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_tile_cache.c
- * @brief Unit tests for the ra8_mem image-tile cache (Layer 3b, #147).
+ * @brief Unit tests for the ra8_mem image-tile cache (Layer 3b).
  *
  * @details
  * Mirrors the glyph-atlas tests for the second ::ra8_keycache facade:

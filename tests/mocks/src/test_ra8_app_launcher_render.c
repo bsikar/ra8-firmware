@@ -3,8 +3,8 @@
  * @brief Widget-rendered CRC golden of the app-framework chrome + launcher.
  *
  * @details
- * Ties the app framework (`ra8_app`, #146) to the composable widget layer
- * (`ra8_widget`, #145): the "chrome" enumerates the app **registry** and
+ * Ties the app framework (`ra8_app`) to the composable widget layer
+ * (`ra8_widget`): the "chrome" enumerates the app **registry** and
  * composes a **launcher** -- a header label over one label tile per registered
  * app, tiled by an ::ra8_widget_panel column -- into an in-memory `ra8_gfx`
  * framebuffer, and the result is pinned with a CRC-32 golden. This proves an

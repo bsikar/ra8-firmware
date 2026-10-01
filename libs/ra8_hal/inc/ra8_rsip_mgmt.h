@@ -22,9 +22,9 @@
  * HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" (p 3302-3307) is a six-page
  * conceptual overview and HUM Ch 51 "Security Features" (p 3263-3301) is
  * a prose feature index, neither a register map. The key-management and
- * hash surface (``ra8_rsip_asym.c``, issues #214 / #215) and the device-
+ * hash surface (``ra8_rsip_asym.c``) and the device-
  * security surface -- lifecycle, debug authorisation, tamper, DPA arm
- * (``ra8_rsip_devsec.c``, issue #216) -- therefore return
+ * (``ra8_rsip_devsec.c``) -- therefore return
  * ``k_ra8_err_not_supported`` outside the insecure off-target build
  * rather than fabricate a digest, key, or security-state answer. The
  * ``k_ra8_ok`` / ``@post`` contracts below describe the guarded fake

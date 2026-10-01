@@ -3,7 +3,7 @@
 //!
 //! Verification for the analysis inputs the root build graph emits.
 //!
-//! The graph has written `zig-out/analysis/compile_commands.json` since #959,
+//! The graph has written `zig-out/analysis/compile_commands.json`,
 //! and it now carries a command for every translation unit the graph compiles.
 //! Nothing ever proved one of those commands compiles the file it describes.
 //!

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_glyph_atlas.c
- * @brief Unit tests for the ra8_mem glyph atlas (Layer 3, #147).
+ * @brief Unit tests for the ra8_mem glyph atlas (Layer 3).
  *
  * @details
  * Exercises render-on-miss + hit (with rendered content + dimensions), LRU

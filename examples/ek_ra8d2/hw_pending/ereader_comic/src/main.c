@@ -310,7 +310,7 @@ static const uint8_t k_cm_msg_dim[] = " ";
 static const uint8_t k_cm_msg_x[] = "x";
 /** @brief Banner page + crc separator (SCI8). */
 static const uint8_t k_cm_msg_page[] = " page=1 crc=";
-/** @brief Banner oversized-page tile self-check field prefix (SCI8, #344). */
+/** @brief Banner oversized-page tile self-check field prefix (SCI8). */
 static const uint8_t k_cm_msg_tiled[] = " tiled=";
 /** @brief Banner numeric-field separator (SCI8). */
 static const uint8_t k_cm_msg_colon[] = ":";

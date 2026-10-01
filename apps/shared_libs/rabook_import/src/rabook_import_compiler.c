@@ -466,7 +466,7 @@ ra8_err_t rabook_import_compile_adapter_m33(void*           compile_ctx,
    * bug -- matching how the in-core adapter leans on its downstream guards. */
 
   /* Read the source .epub off the mount (the M85 owns the FS), then offload. A
-   * read-stage transport overflow (source larger than the load buffer, #230)
+   * read-stage transport overflow (source larger than the load buffer)
    * is an offload failure like any other: the streamed in-core fallback still
    * imports the book. */
   uint32_t  epub_len = 0U;

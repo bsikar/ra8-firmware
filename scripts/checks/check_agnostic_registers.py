@@ -216,7 +216,7 @@ def format_baseline(counts: Counter[tuple[str, str]]) -> str:
     lines = [
         "# Concrete RA8 driver reach-in debt, per (file, peripheral family).",
         "# Consumed by scripts/checks/check_agnostic_registers.py --check",
-        "# (CI gate: agnostic-registers; issue #698).",
+        "# (CI gate: agnostic-registers).",
         "#",
         "# New or increased counts fail. Shrinkage passes and should be locked in",
         "# with --update. This baseline may only shrink; do not add new debt.",

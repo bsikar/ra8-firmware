@@ -63,7 +63,7 @@ OPTION_ARG_COUNT = 2
 # 5/28 on dev. On this branch #981 then reimplemented ra8_cache_store's mount
 # path in Zig and its two C sites went too, which put the floors at 3/20.
 #
-# 2/17 since #2851, and this one is NOT a burn-down: the SysTick leak #695
+# 2/17, and this one is NOT a burn-down: the SysTick leak #695
 # names moved into Zig with the timebase port, so a C-only scan stopped seeing
 # it. The three symbols are still there, in
 # libs/ra8_core/src/internal/time/hooks.zig, which is why RA8FW-363 is open to put

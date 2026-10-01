@@ -11,7 +11,7 @@
  *
  * NOTE on the gap: recon #134 named ``ra8_tsn`` as the "time-sensitive
  * networking" driver, but ``libs/ra8_hal/ra8_tsn`` is the on-die **temperature
- * sensor** (already demonstrated by ``adc_diag_tsn_demo``, #183). The real TSN
+ * sensor** (already demonstrated by ``adc_diag_tsn_demo``). The real TSN
  * networking surface on this part is the ETHA shaper block: the time-aware
  * shaper (TAS / 802.1Qbv scheduled traffic) and the credit-based shaper (CBS /
  * 802.1Qav), exposed by ``ra8_etha_set_tas_schedule`` / ``ra8_etha_enable_tas``

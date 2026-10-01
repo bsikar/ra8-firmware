@@ -260,7 +260,7 @@ def iter_source_files(root: Path) -> list[Path]:
 
     Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
     derived-scope primitive -- so ``infra/`` and ``just/`` (the roots a hardcoded
-    list silently dropped, #549) are covered, and any future top-level
+    list silently dropped) are covered, and any future top-level
     directory is in scope the day it lands. The only subtractions on top of what
     that primitive already exempts (third_party/, generated fonts, build output)
     are the docs-side vendored/generated directories in ``DOCS_VENDOR_DIRS``.

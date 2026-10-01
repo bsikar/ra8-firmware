@@ -6,7 +6,7 @@
  * Slot allocation, BPB parsing, MBR partition location, volume-type
  * detection, and the public mount/unmount/format entry points. The GPT half
  * of partition location lives in `ra8_fs_fat_gpt.c` (it outgrew this file
- * when LBAs went 64-bit, #683); the two locators are called from here.
+ * when LBAs went 64-bit); the two locators are called from here.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -18,7 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** @brief Baked ncx.epub (TOC fixture, #116). Pure ASCII. */
+/** @brief Baked ncx.epub (TOC fixture). Pure ASCII. */
 enum : size_t { k_etoc_ncx_len = 1528U /**< Etoc ncx length. */ };
 static const uint8_t k_etoc_ncx[k_etoc_ncx_len] = {
   0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3E, 0xA3, 0x5C, 0x6F, 0x61,
@@ -119,7 +119,7 @@ static const uint8_t k_etoc_ncx[k_etoc_ncx_len] = {
   0x00, 0x00, 0x74, 0x04, 0x00, 0x00, 0x00, 0x00,
 };
 
-/** @brief Baked nav.epub (TOC fixture, #116). Pure ASCII. */
+/** @brief Baked nav.epub (TOC fixture). Pure ASCII. */
 enum : size_t { k_etoc_nav_len = 1515U /**< Etoc nav length. */ };
 static const uint8_t k_etoc_nav[k_etoc_nav_len] = {
   0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3E, 0xA3, 0x5C, 0x6F, 0x61,
@@ -219,7 +219,7 @@ static const uint8_t k_etoc_nav[k_etoc_nav_len] = {
   0x00, 0x70, 0x01, 0x00, 0x00, 0x65, 0x04, 0x00, 0x00, 0x00, 0x00,
 };
 
-/** @brief Baked bad.epub (TOC fixture, #116). Pure ASCII. */
+/** @brief Baked bad.epub (TOC fixture). Pure ASCII. */
 enum : size_t { k_etoc_bad_len = 1175U /**< Etoc bad length. */ };
 static const uint8_t k_etoc_bad[k_etoc_bad_len] = {
   0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3E, 0xA3, 0x5C, 0x6F, 0x61,

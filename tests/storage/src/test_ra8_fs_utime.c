@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_utime.c
- * @brief Per-entry timestamp set (`ra8_fs_utime()`, #682) on FAT and exFAT.
+ * @brief Per-entry timestamp set (`ra8_fs_utime()`) on FAT and exFAT.
  *
  * @details
  * Creates a file, stamps chosen create / modify / access times onto it, and

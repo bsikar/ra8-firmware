@@ -5,7 +5,7 @@
  * @details
  * Closes the stb_image format-coverage gap: the firmware links four decoders
  * (`STBI_ONLY_JPEG/PNG/GIF/BMP` in `stb_image_impl.c`), but only PNG
- * (`ereader_image`, #106) and JPEG (`ereader_jpeg`) had a gate. This
+ * (`ereader_image`) and JPEG (`ereader_jpeg`) had a gate. This
  * app exercises the remaining two -- **BMP** and **GIF** -- end to end through
  * the same zero-heap `ra8_img_decode_blit` pipeline, so any drift in those
  * decoders trips a gate.

@@ -198,7 +198,7 @@ RA8_INTERNAL static void internal_test_classify_length_bounds(void)
  * the false arm of all three.
  *
  * The DEL arm is a point test now, not a range one: everything ABOVE DEL is
- * legal since #606, which the second control asserts -- a name holding U+00E9
+ * legal, which the second control asserts -- a name holding U+00E9
  * classifies as long rather than invalid.
  *
  * @pre None; the function under test touches no volume.

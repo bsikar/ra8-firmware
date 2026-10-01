@@ -49,7 +49,7 @@ mechanically checkable about a linker script without linking it:
                                 declared and closed; only this proves it is real
                                 memory, the one enforcement a 0-byte placeholder
                                 no CI job links can have (an ASSERT there never
-                                fires, #544).
+                                fires).
   LD010  named region agrees -- a MEMORY region NAMED for a device memory
                                 region (MRAM, MRAM_CPU1, ITCM, DTCM, SRAM,
                                 SRAM_CPU1, SDRAM) must actually lie inside that

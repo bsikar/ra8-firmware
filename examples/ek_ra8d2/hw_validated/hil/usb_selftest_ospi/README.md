@@ -18,7 +18,7 @@ itself, so the single xSPI controller has exactly one user -- the device class
 thread -- and there is no contention, while the loop still proves the OSPI erase
 + program + read round-trips intact over USB.
 
-## OSPI bring-up (mirrors flash_journal, #44)
+## OSPI bring-up (mirrors flash_journal)
 
 `ra8_board_io_expander_set_octospi_active`, then `ra8_board_xspi_pins_init`
 (OCTA pins PSEL 0x1C plus a RESET pulse on the IS25LX512M, xSPI CS1), then

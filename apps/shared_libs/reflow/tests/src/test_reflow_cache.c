@@ -1,7 +1,7 @@
 /**
  * @file test_reflow_cache.c
  * @brief Host unit tests for the import-time pagination cache
- *        (apps/shared_libs/reflow/src/reflow_cache.c, #79).
+ *        (apps/shared_libs/reflow/src/reflow_cache.c).
  *
  * @details
  * Proves the serialise -> load round-trip restores an identical layout

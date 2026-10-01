@@ -1,6 +1,6 @@
 /**
  * @file ra8_glyph_atlas.h
- * @brief Fixed-RAM-budget glyph cache with LRU eviction (Layer 3, #147).
+ * @brief Fixed-RAM-budget glyph cache with LRU eviction (Layer 3).
  * @ingroup grp_ereader
  *
  * @par Tag

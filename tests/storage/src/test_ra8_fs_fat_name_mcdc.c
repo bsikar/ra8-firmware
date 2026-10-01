@@ -6,7 +6,7 @@
  * Sibling of `tests/storage/src/test_ra8_fs_fat_name_cov.c`, which drives the same 8.3
  * pack/unpack primitives for statement/branch coverage. This file adds the
  * dedicated N+1 independent-influence vector sets that the compound-decision
- * ratchet (`scripts/checks/mcdc_compound_ratchet.py`, issue #426) requires for:
+ * ratchet (`scripts/checks/mcdc_compound_ratchet.py`) requires for:
  *
  *   - `priv_to_upper`   -- the ASCII lower-case range test.
  *   - `priv_pack_base`  -- the 8.3 base-name scan loop head (reached through the
