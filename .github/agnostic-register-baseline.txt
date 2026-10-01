@@ -9,7 +9,7 @@
 #
 # clock: 280 reference(s)
 # display: 6 reference(s)
-# gpio: 35 reference(s)
+# gpio: 16 reference(s)
 # timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -108,8 +108,6 @@ examples/ek_ra8d2/hw_pending/tls_client/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_sideband.c	gpio	17
-examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_xfer.c	gpio	2
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/main.c	clock	1

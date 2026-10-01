@@ -546,3 +546,8 @@ const ra8_pin_interface_t g_ra8_gpio_pin_interface = {
   .release     = internal_pin_if_release,
   .ctx         = nullptr,
 };
+
+const ra8_pin_interface_t* ra8_pin_interface_default(void)
+{
+  return &g_ra8_gpio_pin_interface;
+}

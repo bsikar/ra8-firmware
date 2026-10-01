@@ -23,6 +23,7 @@
 #include "c6_probe.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_utils.h"
 #include "ra8_sci_spi.h"
 #include "ra8_spi.h"
@@ -92,7 +93,8 @@ static void internal_fill_idle_tx(void)
  */
 static void internal_cs(ra8_level_t level)
 {
-  (void)ra8_gpio_write((ra8_port_pin_t)k_ra8_board_pmod1_spi_cs, level);
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  (void)pins->write(pins->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cs, level);
   ra8_delay_ms((uint32_t)k_c6_probe_cs_hold_ms);
 }
 
@@ -339,7 +341,9 @@ ra8_err_t c6_probe_spi_pins_init(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_gpio_output_init((ra8_port_pin_t)k_ra8_board_pmod1_spi_cs, k_ra8_level_high);
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  return pins->output_init(pins->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cs,
+                           k_ra8_level_high);
 }
 
 bool c6_probe_sweep_mode(ra8_spi_mode_t    mode,
