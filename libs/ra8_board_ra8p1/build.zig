@@ -1,0 +1,80 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! Build graph for the Zig implementation of `ra8_board_ra8p1`. CMake consumes
+//! the installed static library through the unchanged `inc/ra8_board_ra8p1.h`,
+//! so no consumer include path moves.
+//!
+//! `-Dabi-prefix` renames the exported C surface (default `ra8_`). The host
+//! coverage suite builds a second archive with `-Dabi-prefix=ra8p1_test_` so it
+//! can link this board layer alongside the default EK-RA8D2 objects without
+//! duplicate definitions, the same mechanism `ra8_core` uses for its
+//! freestanding archive.
+//!
+//! The layer calls into the HAL (`ra8_gpio_*`, `ra8_pfs_route_peripheral`,
+//! `ra8_icu_configure_irq_pin`, `ra8_isr_register`, `ra8_sci_*`,
+//! `ra8_cgc_get_clock_hz`) as plain externs, resolved at link time by whichever
+//! HAL the app or the host suite already links. Nothing here needs a vendored
+//! header, so there is no `@cImport` and no off-target switch.
+
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+    const abi_prefix = b.option(
+        []const u8,
+        "abi-prefix",
+        "Prefix for the exported C symbols (\"ra8_\" for an image, \"ra8p1_test_\" for the host suite)",
+    ) orelse "ra8_";
+
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "abi_prefix", abi_prefix);
+
+    const library_module = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    library_module.addOptions("build_config", build_options);
+
+    const library = b.addLibrary(.{
+        .name = "ra8_board_ra8p1",
+        .linkage = .static,
+        .root_module = library_module,
+    });
+    library.bundle_compiler_rt = true;
+    library.root_module.pic = true;
+    b.installArtifact(library);
+
+    const test_step = b.step("test", "Run Zig ra8_board_ra8p1 tests");
+
+    // One unit module per suite, rooted at the file under test, and the suite
+    // reaches the vocabulary back through it. Keeps any internal file out of
+    // two modules of the same test binary.
+    const suites = [_]struct {
+        name: []const u8,
+        source: []const u8,
+        root: []const u8,
+    }{
+        .{ .name = "pins", .source = "src/internal/pins.zig", .root = "tests/pins_test.zig" },
+        .{ .name = "identity", .source = "src/internal/identity.zig", .root = "tests/identity_test.zig" },
+        .{ .name = "console", .source = "src/internal/console.zig", .root = "tests/console_test.zig" },
+    };
+    for (suites) |suite| {
+        const under_test = b.createModule(.{
+            .root_source_file = b.path(suite.source),
+            .target = target,
+            .optimize = optimize,
+        });
+        const test_module = b.createModule(.{
+            .root_source_file = b.path(suite.root),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_module.addImport(suite.name, under_test);
+        const tests = b.addTest(.{ .root_module = test_module });
+        test_step.dependOn(&b.addRunArtifact(tests).step);
+    }
+}

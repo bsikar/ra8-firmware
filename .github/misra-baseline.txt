@@ -951,10 +951,6 @@ libs/ra8_board_ra8p1/src/boot/trustzone_init.c	misra-c2012-15.5	1
 libs/ra8_board_ra8p1/src/boot/vector_table.c	misra-c2012-13.3	2
 libs/ra8_board_ra8p1/src/boot/vector_table.c	misra-c2012-20.10	3
 libs/ra8_board_ra8p1/src/boot/vector_table.c	misra-c2012-20.5	2
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-11.1	1
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-15.5	31
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-8.4	14
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-8.9	3
 libs/ra8_box/src/ra8_box.c	misra-c2012-10.8	1
 libs/ra8_box/src/ra8_box.c	misra-c2012-15.5	9
 libs/ra8_box/src/ra8_box.c	misra-c2012-8.4	3
