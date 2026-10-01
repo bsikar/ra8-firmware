@@ -18,7 +18,6 @@ add_library(
   ${XML_SOURCES}
   ${RA8_HAL_SOURCES}
   ${RA8_FS_SOURCES}
-  ${RA8_IF_RA8_GPT_SOURCES}
   ${RA8_IO_SOURCES}
   ${COMPRESS_SOURCES}
   ${RA8_MEM_SOURCES}
@@ -175,7 +174,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_modem_at/src
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src
-         ${FW_ROOT}/libs/if_ra8_gpt/src
          ${FW_ROOT}/libs/ra8_io/src
          ${FW_ROOT}/libs/ra8_audio/src
          ${FW_ROOT}/libs/ra8_camera/src
