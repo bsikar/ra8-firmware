@@ -535,7 +535,7 @@ func (s *Store) RecordRunnerVMTerraformPlan(ctx context.Context, actor, reservat
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var generation int64
-	var currentID string
+	var currentID sql.NullString
 	var unknown bool
 	err = tx.QueryRow(ctx, `SELECT generation,current_operation_id::text,unknown_outcome
 		FROM runner_vms WHERE id=$1 FOR UPDATE`, reservationID).Scan(&generation, &currentID, &unknown)
@@ -545,7 +545,7 @@ func (s *Store) RecordRunnerVMTerraformPlan(ctx context.Context, actor, reservat
 	if err != nil {
 		return fmt.Errorf("%w: lock VM plan evidence: %v", ErrUnavailable, err)
 	}
-	if generation != expectedGeneration || !unknown || currentID != operationID {
+	if generation != expectedGeneration || !unknown || !currentOperationIs(currentID, operationID) {
 		return ErrConflict
 	}
 	op, err := getRunnerVMOperation(ctx, tx, operationID)
@@ -611,7 +611,7 @@ func (s *Store) BeginRunnerVMTerraformApply(ctx context.Context, actor, reservat
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var generation int64
-	var currentID string
+	var currentID sql.NullString
 	var unknown bool
 	if err := tx.QueryRow(ctx, `SELECT generation,current_operation_id::text,unknown_outcome
 		FROM runner_vms WHERE id=$1 FOR UPDATE`, reservationID).Scan(&generation, &currentID, &unknown); err != nil {
@@ -620,7 +620,7 @@ func (s *Store) BeginRunnerVMTerraformApply(ctx context.Context, actor, reservat
 		}
 		return false, fmt.Errorf("%w: lock Terraform apply intent: %v", ErrUnavailable, err)
 	}
-	if generation != expectedGeneration || currentID != operationID || !unknown {
+	if generation != expectedGeneration || !currentOperationIs(currentID, operationID) || !unknown {
 		return false, ErrConflict
 	}
 	op, err := getRunnerVMOperation(ctx, tx, operationID)
@@ -661,6 +661,14 @@ func (s *Store) BeginRunnerVMTerraformApply(ctx context.Context, actor, reservat
 
 // RecordRunnerVMUPID binds the Proxmox task ID to the one unresolved intent.
 // A lost UPID leaves the operation unknown rather than authorizing a retry.
+// currentOperationIs reports whether a reservation's current operation is
+// the named one. A resolved reservation holds NULL there, which must read
+// as "some other operation" (a conflict the caller can act on), never as a
+// scan failure reported as the database being unavailable.
+func currentOperationIs(current sql.NullString, operationID string) bool {
+	return current.Valid && current.String == operationID
+}
+
 func (s *Store) RecordRunnerVMUPID(ctx context.Context, actor, reservationID string, expectedGeneration int64, operationID, upid string) error {
 	if s == nil || s.pool == nil || actor == "" || len(actor) > 256 || !ValidID(reservationID) ||
 		!ValidID(operationID) || expectedGeneration < 1 || len(upid) > 512 || !runnerVMUPID.MatchString(upid) {
@@ -672,7 +680,7 @@ func (s *Store) RecordRunnerVMUPID(ctx context.Context, actor, reservationID str
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var generation int64
-	var currentID string
+	var currentID sql.NullString
 	var unknown bool
 	err = tx.QueryRow(ctx, `SELECT generation,current_operation_id::text,unknown_outcome
 		FROM runner_vms WHERE id=$1 FOR UPDATE`, reservationID).
@@ -683,7 +691,7 @@ func (s *Store) RecordRunnerVMUPID(ctx context.Context, actor, reservationID str
 	if err != nil {
 		return fmt.Errorf("%w: lock VM for UPID: %v", ErrUnavailable, err)
 	}
-	if generation != expectedGeneration || !unknown || currentID != operationID {
+	if generation != expectedGeneration || !unknown || !currentOperationIs(currentID, operationID) {
 		return ErrConflict
 	}
 	var previous sql.NullString
