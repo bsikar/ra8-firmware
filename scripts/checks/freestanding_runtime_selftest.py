@@ -17,6 +17,7 @@ import tempfile
 from typing import Any
 
 import check_freestanding_runtime as core
+import freestanding_static_checks as static_checks
 
 
 def _selftest_nm_and_map() -> list[str]:
@@ -87,11 +88,11 @@ def _selftest_linker_scripts() -> list[str]:
     bad_ld_end = "SECTIONS { PROVIDE(end = .); }"
     bad_ld_heap = "SECTIONS { .heap : { *(._heap*) } > SRAM }"
 
-    if core.check_linker_script(clean_ld, "clean.ld"):
+    if static_checks.check_linker_script(clean_ld, "clean.ld"):
         failures.append("clean linker script flagged")
-    if not core.check_linker_script(bad_ld_end, "bad_end.ld"):
+    if not static_checks.check_linker_script(bad_ld_end, "bad_end.ld"):
         failures.append("linker script defining 'end' not flagged")
-    if not core.check_linker_script(bad_ld_heap, "bad_heap.ld"):
+    if not static_checks.check_linker_script(bad_ld_heap, "bad_heap.ld"):
         failures.append("linker script defining '.heap' not flagged")
     return failures
 
@@ -425,16 +426,18 @@ def _selftest_source_asserts(repo_root: pathlib.Path) -> list[str]:
     bad_inc = "#include <assert.h>\nvoid f(void) {}"
     bad_call = "void f(int x) { assert(x > 0); }"
 
-    if core.check_source_asserts(clean_src, "clean.c"):
+    if static_checks.check_source_asserts(clean_src, "clean.c"):
         failures.append("clean source with static_assert/RA8_ASSERT flagged")
-    if not core.check_source_asserts(bad_inc, "bad_inc.c"):
+    if not static_checks.check_source_asserts(bad_inc, "bad_inc.c"):
         failures.append("<assert.h> include not flagged")
-    if not core.check_source_asserts(bad_call, "bad_call.c"):
+    if not static_checks.check_source_asserts(bad_call, "bad_call.c"):
         failures.append("runtime assert() call not flagged")
 
     # Target esp-hosted assert must fail
     esp_hosted_bad = "void f(void) { assert(bus != NULL); }"
-    if not core.check_source_asserts(esp_hosted_bad, "port/esp-hosted/src/ra8_esp_hosted_spi.c"):
+    if not static_checks.check_source_asserts(
+        esp_hosted_bad, "port/esp-hosted/src/ra8_esp_hosted_spi.c"
+    ):
         failures.append("target esp-hosted assert() not flagged")
 
     macro_redirect = (
@@ -443,7 +446,9 @@ def _selftest_source_asserts(repo_root: pathlib.Path) -> list[str]:
         '#define assert(expr) RA8_ASSERT(expr, "msg")\n'
         "#endif\n"
     )
-    if core.check_source_asserts(macro_redirect, "port/esp-hosted/inc/port_esp_hosted_host_os.h"):
+    if static_checks.check_source_asserts(
+        macro_redirect, "port/esp-hosted/inc/port_esp_hosted_host_os.h"
+    ):
         failures.append("macro redirect #define assert(...) incorrectly flagged")
 
     # POSIX fail-closed guard verification (repo-rooted so the check cannot
