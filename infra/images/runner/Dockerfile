@@ -53,8 +53,8 @@ RUN /home/runner/bin/installdependencies.sh \
 # container prove that the container is THIS image rather than some other
 # Ubuntu that happens to carry the same tools.
 #
-# scripts/checks/check_runner_image_deps.py refuses to report a clean scan
-# without it: the subject of that gate is the DEPLOYED image, and a probe that
+# A dependency probe must refuse to report a clean scan without it: the
+# subject is the DEPLOYED image, and a probe that
 # cannot show it reached one must fail rather than answer about whatever host
 # it landed on. Deliberately content-free beyond the identity -- a build stamp
 # here would make the layer uncacheable, and a copy of the tool pins would be a

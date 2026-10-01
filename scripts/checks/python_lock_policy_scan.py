@@ -16,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
+import yaml
 from git_environment import isolated_git_environment, trusted_git_executable
-from hil_convergence_safety_policy import load_bench_transaction
 from python_lock_policy_process import (
     forbidden_argv,
     is_process_call,
@@ -292,9 +292,33 @@ def hil_preflight_findings(document: object) -> list[str]:
     return findings
 
 
+BENCH_ENTRY = "infra/ansible/roles/hil_bench/tasks/main.yml"
+
+
+class BenchTransactionError(RuntimeError):
+    """The HIL bench role entry does not own exactly one transaction file."""
+
+
 def load_hil_tasks(root: Path) -> object:
     """Follow the exact public role entry to its authoritative transaction."""
-    return load_bench_transaction(root)
+    entry_path = root / BENCH_ENTRY
+    entry = yaml.safe_load(entry_path.read_text(encoding="utf-8"))
+    if not isinstance(entry, list) or len(entry) != 1 or not isinstance(entry[0], dict):
+        message = "HIL bench role entry is not one dynamic transaction"
+        raise BenchTransactionError(message)
+    include = entry[0].get("ansible.builtin.include_tasks")
+    if not isinstance(include, dict) or set(include) != {"file"}:
+        message = "HIL bench role entry does not own one task file"
+        raise BenchTransactionError(message)
+    relative = include["file"]
+    if relative != "transaction.yml":
+        message = "HIL bench role transaction authority drifted"
+        raise BenchTransactionError(message)
+    transaction = entry_path.with_name(relative)
+    if transaction.is_symlink() or not transaction.is_file():
+        message = "HIL bench role transaction is unavailable or linked"
+        raise BenchTransactionError(message)
+    return yaml.safe_load(transaction.read_text(encoding="utf-8"))
 
 
 def _runner_removal_findings(document: object) -> list[str]:

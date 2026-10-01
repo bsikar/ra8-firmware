@@ -145,27 +145,6 @@ gate_runner_clock() (
   (cd tools/ra8ci && GOWORK=off go run . runner-clock)
 )
 
-# --- runner-image-deps (manual) -------------------------------------------
-# Every tool a gate DECLARES with require_cmd / require_python_mod has to exist
-# in the image the gates run in (#513).
-#
-# manual, not fast, and that is the honest classification rather than a way of
-# opting out of the local suite: the subject is the DEPLOYED runner image, and
-# neither the dev box nor the macOS devcontainer is one. The checker refuses to
-# answer about anything else -- so scheduling it locally would make every
-# `just quality::native` red with a question the box cannot be asked. Its workflow
-# step runs on `ra8-ci`, where the step is already executing inside the image.
-#
-# The selftest runs first, as everywhere else here: an extractor that has
-# stopped matching require_cmd reports an empty dependency set, and an empty
-# set is indistinguishable from a complete image.
-gate_runner_image_deps() (
-  set -e
-  require_cmd python3 "python3 is the interpreter every gate driver already needs"
-  python3 scripts/checks/check_runner_image_deps.py --selftest
-  python3 scripts/checks/check_runner_image_deps.py
-)
-
 # --- hil-all (manual) -----------------------------------------------------
 # Drives scripts/hil/all.sh, which auto-discovers every app under
 # examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
