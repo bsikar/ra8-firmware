@@ -245,8 +245,8 @@ def _capacity_vars(host: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The role variables, including the quiet-hours window when one is
         declared. ``fleet_capacity_enabled`` is false for a host with no
-        window, so the role removes a timer a previous declaration installed --
-        deleting a block must undo it, not orphan it.
+        window; the timer is still installed and converges the host to its
+        declared count.
     """
     cls = CLASSES[host["class"]]
     if cls.capacity_kind == "none":

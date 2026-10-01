@@ -237,9 +237,9 @@ ci_toolcache_run_args() {
 # Extra container-run flags, for a host that is ALSO something else. Empty by
 # default, so this changes nothing where it is not set.
 #
-# One measured case: win-ci is a CI RUNNER host first and a verification host
-# second, so a `just ci` there must be weighted BELOW its runner containers
-# rather than compete with them. It has to be a run-command flag --
+# The case it exists for: a host that is a CI runner first and a verification
+# host second, where a `just ci` must be weighted BELOW the runners rather than
+# compete with them. It has to be a run-command flag --
 # `--cgroup-parent=<slice>` -- because the container's cgroup is created by the
 # docker DAEMON, so it inherits nothing from the slice this shell is in. The
 # caller exports it; nothing in the tree sets it.

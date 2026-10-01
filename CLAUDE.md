@@ -320,7 +320,7 @@ just infra::list                    what is declared, and how it is sized
 just infra::status                  what every host is running, right now
 just infra::check k3s-pve      DRY RUN -- report, change nothing
 just infra::apply k3s-pve      converge that machine to the declaration
-just infra::scale win-ci 1   live capacity change; shrinking DRAINS
+just infra::scale k3s-pve 3   live capacity change; temporary
 ```
 
 **Reachability is declared too, and never assumed.** Each host carries a real

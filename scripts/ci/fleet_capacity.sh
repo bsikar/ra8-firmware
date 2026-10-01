@@ -482,12 +482,10 @@ in_quiet_window() {
 # A host with no quiet-hours window still has an answer, and it is its declared
 # instance count. This used to return "nothing to do" there, which made the
 # level-triggered timer level-triggered only on hosts that declared a window.
-# The consequence was measured: `just infra::scale HOST=truenas N=1` drained
-# ra8-ci-runner-2 during a bench session, `restart: unless-stopped` deliberately
-# does not undo an explicit stop, truenas declares no window and therefore had
-# no timer -- so the NAS served CI at half its declared capacity for hours with
-# nothing anywhere that would ever notice or correct it. win-ci, which declares
-# a window, would have healed the same fault in ten minutes.
+# The consequence was measured: a manual scale-down on a host with no window
+# left it at half its declared capacity for hours with nothing anywhere that
+# would notice or correct it, while a host with a window healed the same fault
+# in ten minutes.
 #
 # So a live scale-down is TEMPORARY by construction now, on every host. To stand
 # a host down durably, change `instances:` in infra/fleet.yml (or give it a
