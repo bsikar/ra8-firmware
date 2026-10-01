@@ -180,6 +180,13 @@ static ra8_err_t internal_timer_capture(void* ctx, fw_timer_ch_t ch, uint32_t* o
   return fw_timer_ra8_iface()->capture_read(nullptr, internal_timer_chip(ch), out_counts);
 }
 
+/** @brief Delegate take_wrap. @return Adapter status. */
+static ra8_err_t internal_timer_take_wrap(void* ctx, fw_timer_ch_t ch, bool* out_wrapped)
+{
+  (void)ctx;
+  return fw_timer_ra8_iface()->take_wrap(nullptr, internal_timer_chip(ch), out_wrapped);
+}
+
 static const fw_timer_iface_t k_internal_timer_iface = {
   .get_caps     = internal_timer_caps,
   .open         = internal_timer_open,
@@ -189,6 +196,7 @@ static const fw_timer_iface_t k_internal_timer_iface = {
   .read         = internal_timer_read,
   .set_period   = internal_timer_set_period,
   .capture_read = internal_timer_capture,
+  .take_wrap    = internal_timer_take_wrap,
 };
 
 /* ------------------------------------------------------------------ pwm -- */

@@ -1,6 +1,6 @@
 /**
  * @file fw_if_timer_ra8.c
- * @brief The eight `fw_if_timer` ops, over `ra8_gpt`.
+ * @brief The nine `fw_if_timer` ops, over `ra8_gpt`.
  * @ingroup grp_fw_timer
  *
  * @par Tag
@@ -209,6 +209,37 @@ static ra8_err_t internal_capture_read(void* ctx, fw_timer_ch_t ch, uint32_t* ou
   return k_ra8_err_not_supported;
 }
 
+/**
+ * @brief Report and clear a pending wrap, read from GTST.TCFPO.
+ *
+ * @details The overflow flag sets when the count reaches GTPR, in saw-wave
+ *          free-run and at the end of a one-shot alike, and stays set until
+ *          written clear, which is the sticky report the port promises.
+ *
+ * @param[in]  ctx         Unused.
+ * @param[in]  ch          Chip channel.
+ * @param[out] out_wrapped True when TCFPO was set.
+ * @return ::k_ra8_ok, ::k_ra8_err_invalid_state when not open, or whatever
+ *         `ra8_gpt_get_status` / `ra8_gpt_clear_status` reported.
+ */
+static ra8_err_t internal_take_wrap(void* ctx, fw_timer_ch_t ch, bool* out_wrapped)
+{
+  (void)ctx;
+  if (!internal_is_open(ch)) {
+    return k_ra8_err_invalid_state;
+  }
+  uint32_t        status = 0U;
+  const ra8_err_t err    = ra8_gpt_get_status(ch.index, &status);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *out_wrapped = (status & (uint32_t)k_ra8_gpt_status_overflow) != 0U;
+  if (!*out_wrapped) {
+    return k_ra8_ok;
+  }
+  return ra8_gpt_clear_status(ch.index, (uint32_t)k_ra8_gpt_status_overflow);
+}
+
 static const fw_timer_iface_t k_internal_iface = {
   .get_caps     = internal_get_caps,
   .open         = internal_open,
@@ -218,6 +249,7 @@ static const fw_timer_iface_t k_internal_iface = {
   .read         = internal_read,
   .set_period   = internal_set_period,
   .capture_read = internal_capture_read,
+  .take_wrap    = internal_take_wrap,
 };
 
 const fw_timer_iface_t* fw_timer_ra8_iface(void)
