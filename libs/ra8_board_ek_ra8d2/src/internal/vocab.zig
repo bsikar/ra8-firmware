@@ -28,6 +28,7 @@ pub const Level = struct {
 pub const ClockId = struct {
     pub const cpuclk0: u32 = 0;
     pub const pclka: u32 = 3;
+    pub const pclkd: u32 = 6;
 };
 
 /// `ra8_psel_t` members this layer routes.
@@ -36,11 +37,34 @@ pub const Psel = struct {
     pub const usb_fs: u32 = 0x13;
     /// 11000b: ESWM (RGMII). HUM 20.6.
     pub const ether_rgmii: u32 = 0x18;
+    /// 00010b: GPT0 (low channels).
+    pub const gpt0: u32 = 0x02;
+    /// 01111b: camera engine unit.
+    pub const ceu: u32 = 0x0F;
 };
 
 /// `ra8_pfs_dscr_t` drive strengths this layer sets.
 pub const Dscr = struct {
     pub const middle: u8 = 1;
+    /// 10b: high-speed high drive.
+    pub const high_speed_high: u8 = 2;
+};
+
+/// `ra8_gpt_*` members this layer selects. All of them are the zero member of
+/// their enum, which is why each is named rather than defaulted.
+pub const Gpt = struct {
+    /// Saw-wave PWM, up-count.
+    pub const mode_saw_pwm: u8 = 0;
+    /// PCLKD / 1.
+    pub const ps_div_1: u8 = 0;
+    /// GTIOCnA, the compare register A path.
+    pub const pin_a: u8 = 0;
+    /// Output is high while duty < count.
+    pub const pol_active_high: u8 = 0;
+    /// OnDFLT = 0, stop level low.
+    pub const stop_low: u8 = 0;
+    /// A POEG fault does not affect the pin.
+    pub const disable_none: u8 = 0;
 };
 
 /// `ra8_mstp_t` members this layer releases. Register index in the high byte,

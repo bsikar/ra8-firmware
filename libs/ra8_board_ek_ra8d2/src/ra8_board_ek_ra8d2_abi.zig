@@ -11,7 +11,9 @@
 //! of it and a prefix would buy nothing.
 
 const bringup = @import("internal/bringup.zig");
+const camera = @import("internal/camera.zig");
 const camera_mode = @import("internal/camera_mode.zig");
+const camera_xclk = @import("internal/camera_xclk.zig");
 const clocks = @import("internal/clocks.zig");
 const clock_profile = @import("internal/clock_profile.zig");
 const clock_types = @import("internal/clock_types.zig");
@@ -114,4 +116,29 @@ export fn ra8_board_camera_get_ceu_config(
 ) u32 {
     const out = out_config orelse return vocab.Err.null_ptr;
     return camera_mode.get(mode, frame_bytes_max, out);
+}
+
+export fn ra8_board_camera_xclk_start(frequency_hz: u32) u32 {
+    return camera_xclk.start(frequency_hz);
+}
+
+export fn ra8_board_camera_select_parallel() u32 {
+    return camera.selectParallel();
+}
+
+export fn ra8_board_camera_route_parallel_pins() u32 {
+    return camera.routeParallelPins();
+}
+
+export fn ra8_board_camera_reset() u32 {
+    return camera.reset();
+}
+
+export fn ra8_board_camera_delay_ms(ctx: ?*anyopaque, milliseconds: u32) void {
+    camera.delayMs(ctx, milliseconds);
+}
+
+export fn ra8_board_camera_i2c_ops(out: ?*camera.I2cBusOps) u32 {
+    const dst = out orelse return vocab.Err.null_ptr;
+    return camera.i2cOps(dst);
 }
