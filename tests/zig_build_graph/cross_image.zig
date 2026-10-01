@@ -24,6 +24,7 @@ const cpu1_image = @import("cpu1_image.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
+const ld_fragments = @import("ld_fragments.zig");
 const middleware = @import("middleware.zig");
 const ns_image = @import("ns_image.zig");
 
@@ -221,6 +222,12 @@ fn addCrossApp(
     // Before -T, where CMake puts it: the link picks its multilib and its
     // secure-gateway handling from this flag.
     if (app.trust_zone) link.addArg(arm_flags.trust_zone.cmse);
+    // Both board memory maps INCLUDE ra8_app_pre_memory.ld and
+    // ra8_app_pre_text.ld by bare name, and ra8_add_app() generates both into
+    // the directory the link runs in. There is no such directory here, so the
+    // pair is written into a generated one and that goes on the search path.
+    // Ahead of -T, because ld resolves an INCLUDE as it reads the script.
+    link.addPrefixedDirectoryArg("-L", ld_fragments.directory(b, app));
     link.addPrefixedFileArg("-T", b.path(app.linker_script));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
     // The import library the Non-Secure link binds veneer names against. It
