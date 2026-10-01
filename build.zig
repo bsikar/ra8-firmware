@@ -53,6 +53,7 @@ pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
+const ns_linker_script = @import("tests/zig_build_graph/ns_linker_script.zig");
 pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");
 pub const zig_archive = @import("tests/zig_build_graph/zig_archive.zig");
 pub const app_shapes = @import("tests/zig_build_graph/app_shapes.zig");
@@ -357,6 +358,21 @@ pub fn build(b: *std.Build) void {
                 image.section,
             }));
             parity_step.dependOn(&print_cpu1.step);
+        }
+
+        // A two-project TrustZone app gets a row for its Non-Secure image: the
+        // script it links with (the app's override, else the board template
+        // CMake configures) and the units it compiles. Without it the manifest
+        // describes one of the app's two images and nothing says so (#1111).
+        if (app.ns) |image| {
+            const print_ns = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
+            print_ns.addArg(image.name);
+            print_ns.addArg(if (image.linker_script) |named|
+                b.pathJoin(&.{ app.dir, named })
+            else
+                b.pathJoin(&.{ ns_linker_script.board_dir, ns_linker_script.template_name }));
+            print_ns.addArg(b.fmt("{d} TUs", .{ns_image.units(b, app.dir, image).len}));
+            parity_step.dependOn(&print_ns.step);
         }
     }
 
