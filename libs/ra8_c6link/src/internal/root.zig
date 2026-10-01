@@ -21,3 +21,4 @@ pub const mdl_issue = @import("mdl_issue.zig");
 pub const mdl_take = @import("mdl_take.zig");
 pub const rpc_wait = @import("rpc_wait.zig");
 pub const sta_cfg = @import("sta_cfg.zig");
+pub const rx_route = @import("rx_route.zig");
