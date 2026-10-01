@@ -155,16 +155,23 @@ typedef struct mdl_job_view_t {
 } mdl_job_view_t;
 
 /**
- * @struct mdl_next_request_view_t
- * @brief Decoded NextRequest fields the correlation rules read
+ * @struct mdl_chunk_reply_t
+ * @brief One validated backend pull, ready to encode as a Chunk
+ * @details Borrowed spans only: the dispatcher keeps the body, digest, and
+ * response storage alive for the call that reads this view.
  * @since 0.1.0
  */
-typedef struct mdl_next_request_view_t {
-  uint64_t acknowledged_offset; /**< Offset the peer confirms it has.  */
-  uint32_t protocol_version;    /**< Wire version the peer speaks.     */
-  uint32_t job_id;              /**< Job the peer believes is running. */
-  uint32_t max_bytes;           /**< Body bytes the peer will accept.  */
-} mdl_next_request_view_t;
+typedef struct mdl_chunk_reply_t {
+  uint64_t                       offset;   /**< Offset the body starts at.     */
+  uint64_t                       total;    /**< Declared artifact size.        */
+  const uint8_t*                 data;     /**< Body bytes, @c got of them.    */
+  const uint8_t*                 digest;   /**< Terminal SHA-256, 32 bytes.    */
+  const ra8_mdl_http_response_t* response; /**< Terminal HTTP metadata.        */
+  uint32_t                       job_id;   /**< Job the Chunk belongs to.      */
+  uint32_t                       sequence; /**< Sequence the Chunk is sent as. */
+  uint16_t                       got;      /**< Body byte count.               */
+  bool                           complete; /**< Whether the Chunk is terminal. */
+} mdl_chunk_reply_t;
 
 /**
  * @struct mdl_pull_view_t
@@ -194,19 +201,54 @@ typedef struct mdl_advance_t {
 } mdl_advance_t;
 
 /**
- * @brief Whether a NextRequest may act on the service's active job
- * @param[in] request Decoded request fields.
- * @param[in] job Live service correlation state.
- * @return Whether version, job id, acknowledged offset, and the requested
- * bound all agree with the running job.
- * @pre @p request and @p job are non-null.
- * @post No input is modified.
- * @note Pure and reentrant.
+ * @brief Decode one NextRequest and admit it for a backend pull
+ * @details Refuses any unknown field, checks the request names the active
+ * job at its acknowledged offset with a legal bound, and proves the largest
+ * data or terminal Chunk for that bound fits @p response_cap. Runs before
+ * the backend is asked for a byte.
+ * @param[in] request Packed NextRequest bytes.
+ * @param[in] request_len Request length in bytes.
+ * @param[in] job Correlation state of the service's one job.
+ * @param[in] response_cap Capacity of the caller's response buffer.
+ * @param[out] max_bytes Body bound the peer granted; zero on every refusal.
+ * @return Admission status.
+ * @retval k_ra8_ok The pull may be read.
+ * @retval k_ra8_err_null_ptr A pointer argument is null.
+ * @retval k_ra8_err_protocol_error Decode failed or an unknown field was present.
+ * @retval k_ra8_err_invalid_state The request does not correlate.
+ * @retval k_ra8_err_invalid_size The worst-case Chunk does not fit.
+ * @pre @p request is readable for @p request_len bytes.
+ * @post Service and backend state are never modified.
+ * @note Reentrant.
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_pull_next_correlates(
-  const mdl_next_request_view_t* request,
-  const mdl_job_view_t*          job);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_service_next_admit(const uint8_t*        request,
+                                                                   size_t                request_len,
+                                                                   const mdl_job_view_t* job,
+                                                                   size_t                response_cap,
+                                                                   uint32_t*             max_bytes);
+
+/**
+ * @brief Encode the Chunk for one admitted, coherent pull
+ * @details Writes the data Chunk, or the terminal Chunk with digest and HTTP
+ * metadata when @c complete is set, byte-identical to the reference encoder.
+ * @param[in] reply Pull to encode.
+ * @param[out] response Caller-owned Chunk buffer.
+ * @param[in] response_cap Response capacity in bytes.
+ * @param[out] response_len Bytes written; zero on every refusal.
+ * @return Encode status.
+ * @retval k_ra8_ok The Chunk was written.
+ * @retval k_ra8_err_null_ptr A pointer argument or a span @p reply needs is null.
+ * @retval k_ra8_err_invalid_size The Chunk does not fit.
+ * @pre The pull was admitted with the same @p response_cap.
+ * @post Service and backend state are never modified.
+ * @note Reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_service_pack_chunk(const mdl_chunk_reply_t* reply,
+                                                                   uint8_t*                 response,
+                                                                   size_t                   response_cap,
+                                                                   size_t*                  response_len);
 
 /**
  * @brief Answer one CancelRequest for the service's active job

@@ -189,6 +189,13 @@ pub fn build(b: *std.Build) void {
     });
     mdl_service_cancel_test_module.addImport("implementation", implementation_module);
     const mdl_service_cancel_tests = b.addTest(.{ .root_module = mdl_service_cancel_test_module });
+    const mdl_service_next_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/mdl_service_next_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mdl_service_next_test_module.addImport("implementation", implementation_module);
+    const mdl_service_next_tests = b.addTest(.{ .root_module = mdl_service_next_test_module });
 
     const mdl_take_test_module = b.createModule(.{
         .root_source_file = b.path("tests/mdl_take_test.zig"),
@@ -271,6 +278,7 @@ pub fn build(b: *std.Build) void {
     const run_mdl_chunk_decode_tests = b.addRunArtifact(mdl_chunk_decode_tests);
     const run_mdl_chunk_mcdc_tests = b.addRunArtifact(mdl_chunk_mcdc_tests);
     const run_mdl_service_cancel_tests = b.addRunArtifact(mdl_service_cancel_tests);
+    const run_mdl_service_next_tests = b.addRunArtifact(mdl_service_next_tests);
     const run_mdl_take_tests = b.addRunArtifact(mdl_take_tests);
     const run_rpc_wait_tests = b.addRunArtifact(rpc_wait_tests);
     const run_sta_cfg_tests = b.addRunArtifact(sta_cfg_tests);
@@ -315,6 +323,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mdl_chunk_decode_tests.step);
     test_step.dependOn(&run_mdl_chunk_mcdc_tests.step);
     test_step.dependOn(&run_mdl_service_cancel_tests.step);
+    test_step.dependOn(&run_mdl_service_next_tests.step);
     test_step.dependOn(&run_mdl_take_tests.step);
     test_step.dependOn(&run_rpc_wait_tests.step);
     test_step.dependOn(&run_sta_cfg_tests.step);
