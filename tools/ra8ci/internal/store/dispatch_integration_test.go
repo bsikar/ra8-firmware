@@ -147,11 +147,26 @@ func TestIntegrationAgentDispatchEvidenceAndFence(t *testing.T) {
 		FinalLogSequence: 1, CatalogSHA256: grant.CatalogSHA256,
 		SourceSnapshotSHA256: grant.Source.SnapshotSHA256,
 		HostFactsAtStart:     facts, HostFactsAtEnd: facts}
+	// A forged stderr digest beside the step's own zero stderr byte count
+	// contradicts itself, so the receipt never reaches the database: the
+	// protocol validator refuses it as invalid. That is the cheaper of the
+	// two refusals and the one a box without Postgres can reach.
+	selfContradicting := receipt
+	selfContradicting.Steps = append([]protocol.StepSummary(nil), receipt.Steps...)
+	selfContradicting.Steps[0].StderrSHA256 = strings.Repeat("e", 64)
+	if err := st.CompleteAgentAttempt(ctx, cert, selfContradicting, cat); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("receipt stating no stderr bytes and the digest of some accepted: %v", err)
+	}
+
+	// A forged stdout digest beside the step's real stdout byte count is
+	// internally consistent, so it passes the validator and is caught where
+	// the forgery actually shows: the store comparing the digest against the
+	// log chunks the agent uploaded.
 	alteredReceipt := receipt
 	alteredReceipt.Steps = append([]protocol.StepSummary(nil), receipt.Steps...)
-	alteredReceipt.Steps[0].StderrSHA256 = strings.Repeat("e", 64)
+	alteredReceipt.Steps[0].StdoutSHA256 = strings.Repeat("e", 64)
 	if err := st.CompleteAgentAttempt(ctx, cert, alteredReceipt, cat); !errors.Is(err, ErrConflict) {
-		t.Fatalf("receipt with forged stderr digest accepted: %v", err)
+		t.Fatalf("receipt with forged stdout digest accepted: %v", err)
 	}
 	if err := st.CompleteAgentAttempt(ctx, cert, receipt, cat); err != nil {
 		t.Fatal(err)
