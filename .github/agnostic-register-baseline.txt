@@ -7,10 +7,10 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 283 reference(s)
-# display: 9 reference(s)
+# clock: 280 reference(s)
+# display: 6 reference(s)
 # gpio: 78 reference(s)
-# timer: 51 reference(s)
+# timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
 apps/board/stand_alone/ereader/src/system_init.c	clock	1
@@ -279,11 +279,6 @@ examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/main.c	gpio	1
 examples/ra8p1_foundation/npu_infer/src/main.c	clock	1
 examples/ra8p1_foundation/npu_smoke/src/main.c	clock	1
 examples/ra8p1_foundation/npu_vela/src/main.c	clock	1
-libs/ra8_nsc/inc/ra8_nsc_io.h	display	1
-libs/ra8_nsc/inc/ra8_nsc_io.h	timer	1
-libs/ra8_nsc/src/ra8_nsc_cgc.c	clock	3
-libs/ra8_nsc/src/ra8_nsc_io.c	display	2
-libs/ra8_nsc/src/ra8_nsc_io.c	timer	3
 libs/ra8_sdfont/src/ra8_sdfont.c	gpio	2
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	gpio	2
 port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	6
