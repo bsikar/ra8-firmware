@@ -18,10 +18,12 @@ pub const err_no_mem: Err = 0x102;
 pub const err_invalid_arg: Err = 0x103;
 pub const err_invalid_state: Err = 0x104;
 pub const err_invalid_size: Err = 0x105;
+pub const err_not_found: Err = 0x106;
 pub const err_not_supported: Err = 0x107;
 pub const err_busy: Err = 0x109;
 pub const err_not_initialized: Err = 0x10F;
 pub const err_access_denied: Err = 0x112;
+pub const err_out_of_range: Err = 0x208;
 pub const err_null_ptr: Err = 0x504;
 
 /// k_fw_fs_path_cap: largest portable path including its NUL.

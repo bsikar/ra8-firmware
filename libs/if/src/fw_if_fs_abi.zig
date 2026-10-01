@@ -9,9 +9,9 @@
 //! There are no external symbols: this interface is pure dispatch over a
 //! caller-supplied vtable, so nothing below it is a link-time dependency.
 //!
-//! `ra8_path_abi.zig` and `fw_if_clock_abi.zig` ride in the same archive:
-//! they are the other two C ABIs this library publishes, and they share the
-//! error codes.
+//! `ra8_path_abi.zig`, `fw_if_clock_abi.zig` and `fw_if_timer_abi.zig` ride
+//! in the same archive: they are the other C ABIs this library publishes, and
+//! they share the error codes.
 
 const std = @import("std");
 pub const core = @import("internal/root.zig");
@@ -26,6 +26,10 @@ pub const path_policy = @import("ra8_path_abi.zig");
 /// at all and every image calling `fw_clock_bind` linked short.
 pub const clock_facade = @import("fw_if_clock_abi.zig");
 
+/// The counter-intent facade (`fw_if_timer.h`): its nine `fw_timer_*`
+/// exports replace `src/fw_if_timer.c` in this archive.
+pub const timer_facade = @import("fw_if_timer_abi.zig");
+
 comptime {
     // The declaration above is not enough on its own. Zig analyses lazily, and
     // nothing references `path_policy` by name, so the file was never analysed
@@ -38,6 +42,7 @@ comptime {
     // binary would be left unable to resolve.
     _ = path_policy;
     _ = clock_facade;
+    _ = timer_facade;
 }
 
 const Err = core.Err;
