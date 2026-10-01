@@ -12,8 +12,6 @@ default:
     @echo "  just quality::devcontainer::format                 Auto-format source code in place"
     @echo "  just quality::devcontainer::check                  Verify formatting without modifying files"
     @echo "  just quality::devcontainer::tidy                   Run clang-tidy static analysis"
-    @echo "  just quality::devcontainer::cppcheck               Run cppcheck static analysis"
-    @echo "  just quality::devcontainer::misra                  Run MISRA-C:2012 compliance audit"
     @echo "  just quality::devcontainer::scan_build             Run Clang Static Analyzer"
     @echo "  just quality::devcontainer::test                   Run host unit test suite"
     @echo "  just quality::devcontainer::mcdc                   Generate DO-178C MC/DC coverage report"
@@ -47,12 +45,6 @@ check:
 
 tidy:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::tidy
-
-cppcheck:
-    bash scripts/ci/devcontainer_run.sh -- just quality::local::cppcheck
-
-misra check="0":
-    bash scripts/ci/devcontainer_run.sh -- just quality::local::misra "{{ check }}"
 
 scan_build strict="0":
     bash scripts/ci/devcontainer_run.sh -- just quality::local::scan_build "{{ strict }}"

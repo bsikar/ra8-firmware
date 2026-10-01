@@ -7,9 +7,9 @@
 # Operator entry point: `just infra::apply dev`. The fleet dispatcher supplies
 # the declared native HIL identity/topology; direct execution omits it.
 #
-# The role builds cppcheck and gcc from source (no Debian suite carries either
-# at the pinned version), so a FIRST run takes tens of minutes. Re-runs skip
-# both once the pinned versions are present and cost a handful of version
+# The role builds gcc from source (no Debian suite carries it at the pinned
+# version), so a FIRST run takes tens of minutes. Re-runs skip it once the
+# pinned version is present and cost a handful of version
 # probes.
 #
 # The one exception to general CI capacity is a dedicated repo-scoped HIL

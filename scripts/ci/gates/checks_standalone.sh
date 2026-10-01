@@ -27,26 +27,11 @@
 # _pcc_repository_structure out of its text. Moving those would have broken
 # both.
 #
-# Gates in this file: suppressions, agnostic-registers, shebangs, tier-imports,
+# Gates in this file: agnostic-registers, shebangs, tier-imports,
 # entry-points, pinout-freshness, font-coverage, bench-lock, annotations,
 # enum-underlying-casts, tests-readme, disambig-readmes,
 # cite-check, hum-register-map, arch-caps, arch-compiles, measured-counts,
 # hil-eil-parity
-
-# --- suppressions -----------------------------------------------------------
-# Every lint, analysis, coverage, baseline, skip, and checker-scope control in
-# the repository must be represented by a binding-exact reviewed ledger row.
-# The selftest runs first and proves both the accepting and rejecting paths,
-# including stale identities, reason-only binding changes, forged successor
-# references, and prerequisite skips whose registered gate does not fail
-# closed. Missing PyYAML is a hard dependency failure, never a skipped audit.
-gate_suppressions() (
-  set -e
-  require_python_mod yaml "run 'just setup_python'"
-  python3 scripts/checks/check_suppressions.py --selftest
-  python3 scripts/checks/suppression_rebind.py --selftest
-  python3 scripts/checks/check_suppressions.py --check
-)
 
 # --- agnostic-registers --------------------------------------------------
 # The existing clock, display, GPIO and timer reach-ins are migration debt

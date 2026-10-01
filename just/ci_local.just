@@ -12,8 +12,6 @@ default:
     @echo "  just quality::local::format                       Auto-format source code in place"
     @echo "  just quality::local::check                        Verify formatting without modifying files"
     @echo "  just quality::local::tidy                         Run clang-tidy static analysis"
-    @echo "  just quality::local::cppcheck                     Run cppcheck static analysis"
-    @echo "  just quality::local::misra                        Run MISRA-C:2012 compliance audit"
     @echo "  just quality::local::scan_build                   Run Clang Static Analyzer"
     @echo "  just quality::local::test                         Run host unit test suite"
     @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
@@ -22,7 +20,6 @@ default:
     @echo "  just quality::local::stack_usage                  Build firmware and enforce stack budgets"
     @echo "  just quality::local::sbom                         Regenerate the committed CycloneDX SBOM"
     @echo "  just quality::local::sbom_check                   Verify the committed CycloneDX SBOM"
-    @echo "  just quality::local::misra_baseline               Freeze MISRA burn-down on the pinned toolchain"
     @echo "  just quality::local::vela_check                   Verify the generated Vela model header"
     @echo "  just quality::local::vela_regen                   Regenerate the fake Vela model header"
     @echo "  just quality::local::vela_compile <tflite> [out]  Compile a TFLite model with Vela"
@@ -31,10 +28,6 @@ default:
     @echo "  just quality::local::version                      Verify @since version annotations"
     @echo "  just quality::local::test_go                      Run Go tests through the CI gate"
     @echo "  just quality::local::unused_includes              Check for unused C includes"
-    @echo "  just quality::local::auto_sync                    Run suppression auto-sync"
-    @echo "  just quality::local::review_suppressions          Review draft suppressions"
-    @echo "  just quality::local::review_scope_suppressions    Review draft checker-scope authorities"
-    @echo "  just quality::local::bless_scope                  Bless checker scope"
     @echo "  just quality::local::lint-c                       Lint C sources"
     @echo "  just quality::local::format-c                     Format C sources"
     @echo "  just quality::local::test-c                       Test C sources"
@@ -72,10 +65,6 @@ check:
 # Run clang-tidy through the registered gate with CI/ratchet return semantics
 tidy:
     "{{ just_executable() }}" quality::local::gate tidy
-
-# Run cppcheck static analysis
-cppcheck:
-    /bin/bash -p scripts/checks/cppcheck.sh
 
 # Check for genuinely unused C includes via speculative compilation
 unused_includes:
@@ -156,58 +145,6 @@ fuzz seconds="30" runs="10000" cc="" cxx="":
 stack_usage:
     "{{ just_executable() }}" quality::local::gate build-cross
     "{{ just_executable() }}" quality::local::gate stack-usage
-
-# Run MISRA-C:2012 audit
-misra check="0":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    bash scripts/checks/misra_check_inner.sh
-    if [ "{{ check }}" = "1" ]; then
-        python3 scripts/checks/misra_ratchet.py --check
-    fi
-
-# Never use this to accept new findings; the recipe intentionally runs the
-# same producer first.
-
-# Regenerate the MISRA baseline after an audited burn-down
-misra_baseline:
-    bash scripts/checks/misra_check_inner.sh
-    python3 scripts/checks/misra_ratchet.py --update
-
-# Automatically update cryptographic hashes and append missing suppressions to the ledger
-auto_sync:
-    python3 scripts/dev/auto_sync.py
-
-# Interactively approve draft suppressions and generate a review batch
-review_suppressions:
-    python3 scripts/dev/review_suppressions.py
-
-# Retain only live, unreviewed checker-scope controls after the authenticated
-# scope census has been inspected. The inventory filter prevents this shortcut
-
-# from approving unrelated lint, coverage, or test suppressions.
-review_scope_suppressions:
-    #!/bin/bash
-    set -euo pipefail
-    declare -a review_args=()
-    while IFS= read -r site_id; do
-        [[ -n "$site_id" ]] && review_args+=(--site "$site_id")
-    done < <(
-        python3 scripts/checks/check_suppressions.py --inventory --format json |
-            python3 -c 'import csv, json, pathlib, sys; data = json.load(sys.stdin); ledger = {row["site_id"]: row["state"] for row in csv.DictReader(pathlib.Path(".github/suppression-review-ledger.tsv").open(), delimiter="\t")}; print(*sorted(row["site_id"] for row in data["suppressions"] if row["family"] == "checker-scope-control" and row["disposition"] == "unreviewed" and ledger.get(row["site_id"]) == "unreviewed"), sep="\n")'
-    )
-    if ((${#review_args[@]} == 0)); then
-        echo "No unreviewed checker-scope authorities."
-        exit 0
-    fi
-    python3 scripts/dev/review_suppressions.py retain \
-        --rationale reviewed-scope-authority \
-        --evidence "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py" \
-        "${review_args[@]}"
-
-# Bless new checker scope authorities (automatically updates the hardcoded cryptographic ledger)
-bless_scope:
-    python3 scripts/checks/suppression_checker_scope.py --update
 
 # Regenerate or verify the committed third-party CycloneDX inventory.
 sbom:

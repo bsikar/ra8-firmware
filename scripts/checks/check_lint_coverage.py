@@ -605,12 +605,6 @@ def _assert_exact_classifications(failures: list[str]) -> None:
         failures,
     )
     expect(
-        classify("scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch")
-        == "validated-input",
-        "the pinned cppcheck MISRA patch is an exact selftested input",
-        failures,
-    )
-    expect(
         classify("docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch") == "validated-input"
         and classify("docs/sbom/patches/stb/series") == "validated-input",
         "the reviewed SOUP patch and series are exact replay-gated inputs",
@@ -647,14 +641,6 @@ def _assert_future_classifications(failures: list[str]) -> None:
     expect(
         classify("coprocessor/esp32c6/patches/another.patch") is None,
         "a future upstream patch remains unclassified",
-        failures,
-    )
-    expect(
-        classify(
-            "scripts/checks/patches/cppcheck-2.13/future.patch"  # PATHREF-OK: synthetic fixture
-        )
-        is None,
-        "a future cppcheck patch remains unclassified",
         failures,
     )
     expect(

@@ -95,23 +95,6 @@ next to it. Bare markers, blanket rule disables, unexplained baselines, and
 file-wide exclusions are not acceptable when the underlying code can be
 fixed.
 
-`just checks::suppressions markdown` generates the deterministic manual-review
-inventory. Every row carries a durable site identity and a binding hash, and
-the committed review ledger (`.github/suppression-review-ledger.tsv` with its
-rationale vocabulary and batch records) binds each site to a reviewed
-decision. Only a ledger `retain` row with an exact binding match marks a row
-approved; generation never approves anything, and `--check` stays red while
-any site is unreviewed or carries an unremediated fix decision.
-
-### Identity is durable; line numbers are display only
-
-Each row carries a full-SHA256 `site_id` naming the OCCURRENCE and a full-SHA256
-`binding_sha256` over exactly what was approved. Inserting a line above a site or
-re-indenting it keeps the site's name; changing its reason, rule, scope, owner,
-evidence, count, or the suppressed construct itself invalidates the binding and
-reopens review. Repeated identical directives stay individually represented
-through a deterministic ordinal inside one anchor-equivalence class.
-
 ### A branch marker must sit on the line that carries the branch
 
 `GCOVR_EXCL_BR_LINE` excludes the branch on its OWN physical line, and gcov
@@ -130,29 +113,6 @@ gets a full column budget. Never buy space for a comment by shortening a
 runtime log message: 30 error strings were collapsed that way, several distinct
 failure sites ending up sharing one generic string, so a field log could no
 longer say which call failed.
-
-`check_suppressions.py` reports `stranded-branch-marker` as an INTEGRITY
-failure, and its selftest asserts three directions -- a wrapped marker fires, an
-attached one stays quiet, and one following a multi-line block comment stays
-quiet (the interior of a `/* ... */` block looks exactly like an unfinished
-statement to a backward scan).
-
-### Every checker constant is classified
-
-`suppression_scope_registry.py` (typed scope/control authorities) and
-`suppression_nonauth_registry.py` (explicit non-authorities with a category
-reason) between them must classify EVERY module-level constant in
-`scripts/checks/` and `scripts/ci/`. An unclassified constant fails, whatever it
-is named -- the old name-pattern discovery is gone, so `ROOTS` or
-`SOURCE_SUFFIXES` no longer slips through. A registered authority must also be
-bound exactly once at module top level: augmented assignment, mutator calls,
-conditional or nested binding, subscript stores, `del`, `global` rebinding,
-same-module aliases, and mutation through an import anywhere in the tree are all
-rejected, so the authenticated digests always describe the runtime value. Path
-scope may not be smuggled past that registry as an inline literal in a
-`startswith`/`endswith` tuple or a `Path.parts` membership test.
-
----
 
 ## Run the CI Gates Before Every `git push`
 
@@ -1331,7 +1291,6 @@ ra8-firmware/
   .clang-format                Formatter config (copied verbatim from STAR rx72n)
   .clang-tidy                  Linter config (naming, NASA Rule 4 thresholds)
   .clangd                      Editor integration (strips ARM flags clangd can't parse)
-  .cppcheck-suppressions       MISRA deviation justifications
   .gitignore
   .gitattributes
   .editorconfig
