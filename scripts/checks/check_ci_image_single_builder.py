@@ -16,9 +16,8 @@ deleted ``inner-local.sh`` -- unreferenced, predating
 ``docker build -t ra8-ci:latest`` with the old "present, so reuse it forever"
 logic.  Nothing would have noticed a new one appearing (#528).
 
-This is the same hole ``check_ci_parity.py`` closes for workflow ``run:``
-bodies: a second, drifting home for a thing that must have exactly one.  The
-image needs the equivalent.
+It is a second, drifting home for a thing that must have exactly one, so the
+image gets a single-builder rule.
 
 WHAT IT FORBIDS, PRECISELY
 --------------------------

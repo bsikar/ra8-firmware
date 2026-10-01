@@ -110,7 +110,7 @@ CONSUMER_PROOF_ROWS = {
         "scripts/hil/tapo_control.py",
         "from kasa import Credentials",
     ),
-    "pyyaml": ("runtime", "scripts/ci/check_ci_parity.py", "import yaml"),
+    "pyyaml": ("runtime", "scripts/checks/check_ansible_collections.py", "import yaml"),
     "cmakelang": ("dev", "scripts/ci/gates/lint.sh", "cmake-format"),
     "gcovr": ("dev", "scripts/ci/gates/tests.sh", "require_cmd gcovr"),
     "libclang": (

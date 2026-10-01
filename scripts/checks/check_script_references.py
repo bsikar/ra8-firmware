@@ -321,7 +321,7 @@ def _classify(base: Path, rest: str, token: str) -> str | None:
 def _unescape(token: str) -> str:
     r"""Undo regex escaping, and cut the token where escaping stops meaning a dot.
 
-    ``check_ci_parity.py`` matches gate calls with a regex holding an escaped
+    A checker can match gate calls with a regex holding an escaped
     ``.sh`` followed by ``\s+``.  Left alone, the extracted token stops at the
     first backslash and reads as a dangling directory reference; blindly
     stripping every backslash instead welds the pattern's next atom onto the

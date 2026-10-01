@@ -79,10 +79,7 @@ gate_ci_parity() (
   # dispatched body must itself be capable of failing.
   python3 scripts/ci/check_gate_bodies.py --selftest
   python3 scripts/ci/check_gate_bodies.py
-  python3 scripts/ci/check_ci_parity.py --selftest
-  python3 scripts/ci/check_ci_parity.py
-  # The third leg. check_gate_bodies proves a gate CAN fail; check_ci_parity
-  # proves it is SCHEDULED. Neither proves the checker inside it still
+  # The second leg. check_gate_bodies proves a gate CAN fail; it does not prove the checker inside it still
   # detects anything -- the requirement CLAUDE.md and ci.sh both state and
   # which nothing enforced, so 28 gate-wired detectors had no --selftest and
   # one had a selftest no gate ran (#531).
@@ -681,28 +678,6 @@ gate_toolchain_parity() (
   # Linux or not at all.
   python3 scripts/checks/check_macos_gate_bash32.py --selftest
   python3 scripts/checks/check_macos_gate_bash32.py
-  # The macos-14 runner ships no Zig, so .github/workflows/macos-host.yml
-  # carries its own ZIG_VERSION: a second copy of a pin .devcontainer/Dockerfile
-  # owns and every Linux gate reads. Bump the Dockerfile alone and both legs
-  # stay green while the Mac vets a different compiler -- and a different
-  # bundled libSystem stub, which is the one thing #899 turns on.
-  python3 scripts/checks/check_workflow_toolchain_pins.py --selftest
-  python3 scripts/checks/check_workflow_toolchain_pins.py
-  # That check deliberately does not invent a Dockerfile owner for the macOS
-  # runner's ZIG_SHA256_AARCH64_MACOS, which left the digest tied to nothing:
-  # bump the pin and the agreement rule moves ZIG_VERSION while the digest
-  # stays, so the Mac fetches the new tarball, checks it against the old
-  # digest, and dies at `shasum -c` reading like a corrupted download (#899).
-  # Zig also renamed its archives at 0.14.1 (target before os), so a pin the
-  # other side of that boundary 404s at curl.
-  python3 scripts/checks/check_zig_dist_pins.py --selftest
-  python3 scripts/checks/check_zig_dist_pins.py
-  # docs/MACOS_HOST_BUILDS.md restates the workflow's runner, clock, triggers
-  # and gate name; nothing compared them, so the page told readers to wait for
-  # a nightly that cannot fire while macos-host.yml is off the default branch
-  # (#899). The workflow is the source of truth, the page is the copy.
-  python3 scripts/checks/check_macos_doc_workflow_parity.py --selftest
-  python3 scripts/checks/check_macos_doc_workflow_parity.py
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest

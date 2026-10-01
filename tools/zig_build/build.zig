@@ -224,7 +224,7 @@ const VerifyBundledStub = struct {
                 "{s}: {s}. The #899 workaround pins an explicit {s} target so this stub is " ++
                     "linked instead of the SDK one, so a toolchain whose own stub cannot link " ++
                     "{s} breaks the pinned path as well as the native one. Check the Zig version " ++
-                    "pin in .devcontainer/Dockerfile and .github/workflows/macos-host.yml.",
+                    "pin in .devcontainer/Dockerfile.",
                 .{ where, state.explain(), macos_host.required_target, macos_host.required_target },
             );
         }
