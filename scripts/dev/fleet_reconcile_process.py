@@ -17,6 +17,9 @@ import fleet_model as fm
 import fleet_mutation_lock as fml
 
 TIMEOUT_STATUS = 124
+# A check-mode converge that RAN and found a change still to apply, as
+# opposed to one that failed.
+APPLY_REQUIRED_STATUS = 4
 
 
 @dataclass

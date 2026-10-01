@@ -32,7 +32,6 @@ import fleet_reach as fr
 import fleet_runner_maintenance as frm
 import fleet_ssh_config as fsc
 import fleet_typed_vars as ftv
-import fleet_wsl as fw
 
 IDLE_STOP_HELPER = fm.REPO_ROOT / "infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py"
 MUTATING_COMMANDS = frozenset(
@@ -572,20 +571,6 @@ def _prepare_native_runner(request: _ConvergeTransport) -> frm.MaintenanceDecisi
 
 def _run_converge_transport(request: _ConvergeTransport) -> int:
     """Run one already-validated converge over its declared transport."""
-    if fm.CLASSES[request.host["class"]].transport == "wsl":
-        spec = fw.ConvergeSpec(
-            request.data,
-            request.args.host,
-            request.plays,
-            request.extra,
-            request.typed_vars,
-            request.args.mode,
-        )
-        return fw.converge(
-            spec,
-            sync_image=request.args.mode == "apply" and not request.no_drain_tags,
-            run=_run,
-        )
     if request.typed_vars is None:
         return _converge_ssh(request.data, request.args.host, request.plays, request.extra)
     with ftv.local_vars_snapshot(request.typed_vars) as snapshot:
@@ -713,17 +698,15 @@ def _remove_flags(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     Returns:
         The ``state=absent`` flags for a removal, empty otherwise.
     """
+    del host
     if args.mode != "remove":
         return []
-    flags = [
+    return [
         "-e",
         "ci_runner_docker_state=absent",
         "-e",
         "fleet_capacity_enabled=false",
     ]
-    if fm.CLASSES[host["class"]].transport == "wsl":
-        flags += ["-e", "wsl_ci_host_state=absent"]
-    return flags
 
 
 def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
@@ -757,9 +740,9 @@ def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
 def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
     """Probe every declared machine over its own transport.
 
-    The transport is the point: ``win-ci`` is not an ssh alias but a jump
-    through the bench Pi into a Windows box and then into a WSL distro, and a
-    reachability check that did not know that would report the fleet broken.
+    The transport is the point: a host reached through a jump is not an ssh
+    alias, and a reachability check that did not know that would report the
+    fleet broken.
     Because the list AND every address come from the declaration, a machine
     added there is probed from the next run with nothing else edited, on a
     control node with no ``~/.ssh/config`` at all.
@@ -811,7 +794,6 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
     """Run transport and typed-operation tests without contacting any host."""
     failures = (
         ftv.run_selftest()
-        + fw.run_selftest(data)
         + fb.run_selftest()
         + frm.run_selftest()
         + fml.run_selftest()
@@ -821,8 +803,8 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
         + fm.controller_inventory_selftest(data)
         + fb.parser_selftest(_parser)
     )
-    if data["hosts"]["win-ci"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
-        failures.append("declared WSL runner class was refused")
+    if data["hosts"]["truenas"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
+        failures.append("declared Docker runner class was refused")
     if data["hosts"]["dev"]["class"] in ftv.CONTAINER_RUNNER_CLASSES:
         failures.append("non-container dev host was accepted as a container runner")
     for failure in failures:
@@ -881,7 +863,7 @@ def _parser() -> argparse.ArgumentParser:
     """Build the command-line parser described by the module docstring."""
     parser = argparse.ArgumentParser(prog="fleet.py", description=__doc__.splitlines()[0])
     subs = parser.add_subparsers(dest="command", required=True)
-    subs.add_parser("selftest", help="exercise typed vars and WSL rendering offline")
+    subs.add_parser("selftest", help="exercise typed vars and transports offline")
     subs.add_parser("list", help="what is declared, and how it is sized")
     subs.add_parser("show", help="one host in full").add_argument("host")
     subs.add_parser("validate", help="the fleet-declaration gate's check")

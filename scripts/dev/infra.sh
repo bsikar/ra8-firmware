@@ -252,8 +252,7 @@ cmd_doctor() {
   echo "declaration:"
   doctor_declaration || rc=1
   echo "hosts (from THIS machine, each over its own declared transport):"
-  # Delegated, and derived: `win-ci` is not an ssh alias but a jump through the
-  # bench Pi into a Windows box and then into a WSL distro, so only fleet.py
+  # Delegated, and derived: a jumped host is not an ssh alias, so only fleet.py
   # knows how to reach it. A machine added to the declaration is probed from
   # the next run with nothing here edited.
   fleet reach || rc=1

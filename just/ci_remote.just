@@ -43,49 +43,28 @@ gate name host:
         "$(git log -1 --format=%ce HEAD)"
     remote_prepare="git init -q && git add --all && git -c user.email=ci@localhost -c user.name=ci commit --quiet --no-verify -m 'remote CI transport snapshot' && $remote_history_environment git commit --quiet --allow-empty --no-verify -m $remote_history_message"
 
-    if [[ "$remote_shell" == wsl* ]]; then
-        # win-ci terminates SSH in Windows and then starts this root, empty-
-        # environment WSL shell.  It must explicitly enter the dev slice: its
-        # profile supplies the container cgroup parent and parallelism cap, and
-        # ra8-dev puts the host-side Docker client below the CI runners.
-        remote_profile="/etc/profile.d/ra8-dev-slice.sh"
-        remote_launcher="/usr/local/bin/ra8-dev"
-        remote_preflight="test -r $remote_profile && test -x $remote_launcher && command -v docker >/dev/null && command -v ionice >/dev/null"
-        if [[ "$remote_name" == "__full__" ]]; then
-            gate_label="full CI suite"
-            gate_command="/bin/bash -p scripts/ci.sh"
-        else
-            gate_label="$remote_name"
-            gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"
-        fi
+    # A plain Linux verification box has no dev slice.  Keep its archive
+    # extraction and gate processes at idle I/O priority and low CPU
+    # priority, and bound a suite to two build jobs by default.
+    remote_profile=""
+    remote_jobs="${RA8_REMOTE_MAX_JOBS:-2}"
+    if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then
+        echo "error: RA8_REMOTE_MAX_JOBS must be a positive decimal integer" >&2
+        exit 2
+    fi
+    remote_launcher="env RA8_MAX_JOBS=$remote_jobs CMAKE_BUILD_PARALLEL_LEVEL=$remote_jobs nice -n 19 ionice -c3"
+    remote_preflight="command -v ionice >/dev/null"
+    if [[ "$remote_name" == "__full__" ]]; then
+        gate_label="full CI suite"
+        gate_command="/bin/bash -p scripts/ci.sh --native"
     else
-        # A plain Linux verification box has no dev slice.  Keep its archive
-        # extraction and gate processes at idle I/O priority and low CPU
-        # priority, and bound a suite to two build jobs by default.
-        remote_profile=""
-        remote_jobs="${RA8_REMOTE_MAX_JOBS:-2}"
-        if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then
-            echo "error: RA8_REMOTE_MAX_JOBS must be a positive decimal integer" >&2
-            exit 2
-        fi
-        remote_launcher="env RA8_MAX_JOBS=$remote_jobs CMAKE_BUILD_PARALLEL_LEVEL=$remote_jobs nice -n 19 ionice -c3"
-        remote_preflight="command -v ionice >/dev/null"
-        if [[ "$remote_name" == "__full__" ]]; then
-            gate_label="full CI suite"
-            gate_command="/bin/bash -p scripts/ci.sh --native"
-        else
-            gate_label="$remote_name"
-            gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg"
-        fi
+        gate_label="$remote_name"
+        gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg"
     fi
 
     if ! printf '%s\n' "$remote_preflight" | "${remote_ssh[@]}" "$remote_shell"; then
         echo "error: $remote_host is not provisioned for isolated remote CI" >&2
-        if [[ "$remote_shell" == wsl* ]]; then
-            echo "       expected $remote_profile, $remote_launcher, Docker, and ionice in WSL" >&2
-        else
-            echo "       expected ionice on the Linux target" >&2
-        fi
+        echo "       expected ionice on the Linux target" >&2
         exit 1
     fi
 

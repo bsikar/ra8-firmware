@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import shlex
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,7 +15,7 @@ class HostClass:
     Attributes:
         capacity_runner: Whether the host carries scalable runner capacity.
         budget_mode: The only budget mode this class may declare.
-        transport: Direct ``ssh`` or Windows-mediated ``wsl`` transport.
+        transport: Remote transport; only ``ssh`` remains.
         capacity_kind: Capacity controller arm used to scale this host.
         summary: One-line human-readable description.
     """
@@ -42,13 +41,6 @@ CLASSES: dict[str, HostClass] = {
         transport="ssh",
         capacity_kind="docker",
         summary="runner containers on a plain Docker host",
-    ),
-    "docker_wsl": HostClass(
-        capacity_runner=True,
-        budget_mode="reserved",
-        transport="wsl",
-        capacity_kind="docker",
-        summary="runner containers inside a Windows WSL2 distro",
     ),
     "dev_box": HostClass(
         # The repo-scoped HIL listener is declared by the host's hil_runner
@@ -96,16 +88,11 @@ def container_names(host: dict[str, Any]) -> list[str]:
 
 def remote_shell(host: dict[str, Any]) -> str:
     """Return the fixed remote command that executes a stdin shell script."""
-    if CLASSES[host["class"]].transport == "wsl":
-        distro = shlex.quote(str(host["connect"]["distro"]))
-        return (
-            f"wsl -d {distro} -u root -e /usr/bin/env -i HOME=/root PATH=/usr/bin:/bin /bin/bash -s"
-        )
+    del host
     return "/bin/bash -s"
 
 
 def docker_command(host: dict[str, Any]) -> str:
     """Return the fixed Docker command for one host's transport."""
-    if CLASSES[host["class"]].transport == "wsl":
-        return "docker"
+    del host
     return "sudo docker"

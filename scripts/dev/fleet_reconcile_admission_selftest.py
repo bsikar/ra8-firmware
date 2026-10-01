@@ -45,7 +45,6 @@ from types import ModuleType
 from typing import Any
 
 import fleet_reconcile_process as frp
-import fleet_wsl as fw
 
 APPLY_FAILURE_STATUS = 1
 ORDINARY_FAILURE_STATUS = 1
@@ -161,7 +160,7 @@ def _recovery_pass(
         if verb in {"check", "parked-check"}:
             return _clean(controller, data, host)
         if verb == "activation-check":
-            return frp.CommandResult(fw.APPLY_REQUIRED_STATUS, "", "")
+            return frp.CommandResult(frp.APPLY_REQUIRED_STATUS, "", "")
         if verb == "parked-apply" and host == PRODUCER:
             return frp.CommandResult(APPLY_FAILURE_STATUS, "", "runner image build failed\n")
         if verb == "restore":
@@ -300,7 +299,7 @@ def _policy_stays_narrow(controller: ModuleType, failures: list[str]) -> None:
         verb, host = _identity(argv)
         calls.append((verb, host))
         if verb == "activation-check":
-            return frp.CommandResult(fw.APPLY_REQUIRED_STATUS, "", "")
+            return frp.CommandResult(frp.APPLY_REQUIRED_STATUS, "", "")
         if verb == "restore":
             return frp.CommandResult(0, ZERO_TARGET, "")
         return frp.CommandResult(0, "", "")

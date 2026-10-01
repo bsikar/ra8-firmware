@@ -51,8 +51,7 @@
 # The memory divisor is deliberately CONSERVATIVE. Container memory caps are
 # ceilings, not reservations, so this protects the case where several heavy
 # jobs coincide on one host rather than describing one job's typical draw --
-# a full cross-build was measured peaking at 4.06 GiB RSS on win-ci, well
-# inside it. If per-job peak RSS is ever measured properly and stays under the
+# a full cross-build was measured peaking at 4.06 GiB RSS, well inside it. If per-job peak RSS is ever measured properly and stays under the
 # divisor across the whole gate set, drop the divisor and every host's
 # recommended count rises with it. That is a measurement away, not a redesign.
 #
@@ -66,7 +65,7 @@ sizing:
 # --- The canonical runner image --------------------------------------------
 #
 # The ARC role builds this image once on the k3s node and atomically publishes
-# its docker archive there. Plain-Docker and WSL runner hosts consume that
+# its docker archive there. Plain-Docker runner hosts consume that
 # exact archive; they never build an independent toolchain and never require a
 # hand-copied tarball. `fleet.py apply` derives both the producer and artifact
 # path from this block, and ci_runner_docker refreshes a target whenever its
@@ -102,7 +101,6 @@ runner_image:
 #
 #   arc_k8s       an ARC (Actions Runner Controller) scale set on a k8s cluster
 #   docker_linux  long-lived runner containers on any plain Docker host
-#   docker_wsl    the same, inside a Windows machine's WSL2 distro
 #   dev_box       the shared verification box + dedicated HIL listener
 #   hil_bench     the hardware-in-the-loop bench Pi (NOT a runner)
 #
@@ -202,120 +200,6 @@ hosts:
       # leaving 46 GiB outside the cap keeps that yielding rare.
       memory_gb: 16
 
-  # --- Windows/WSL runner host ------------------------------------------------
-  win-ci:
-    class: docker_wsl
-    summary: "Ryzen 9 7900X, Windows 11 + WSL2: the fleet's fastest host"
-    connect:
-      # No SSH daemon runs inside WSL. fleet.py copies the play over this path
-      # and runs it inside the distro with --connection=local. See docs/CI_FLEET.md.
-      #
-      # The tailnet address is the CI-maintenance endpoint. The workstation's
-      # odd-port DHCP lease is intentionally transient and has no internet, so
-      # it cannot serve GitHub Actions there anyway. A temporary even-port leg
-      # brings this endpoint online for runner updates. The fleet's reachable
-      # bastion is `star`, so every control node uses the same route.
-      address: 100.64.0.12
-      user: sikar
-      jump: star
-      distro: Ubuntu
-      windows_user: sikar
-    provisions: [wsl-ci-host]
-    runners:
-      # min(22/4, 26/8) = min(5, 3) = 3. Memory is the binding constraint;
-      # cores would divide fine at four. Do not go to four until clang-tidy is
-      # sharded and per-shard peak memory has been re-measured.
-      instances: 3
-      cpus: 7
-      # 7, not the 8.7 the division allows, so that 5 GiB of the VM stays
-      # outside the runners' reservation and available to the `dev_slice`.
-      memory_gb: 7
-      pin_cpus: true
-      labels: [ra8-ci, ra8-win]
-    budget:
-      mode: reserved
-      # These two ARE the WSL2 VM caps -- 22 of 24 threads and 26 of 31 GiB,
-      # leaving ~2 threads and ~5 GiB for an idle Windows desktop. They are
-      # declared once, here, and written into .wslconfig from this file.
-      #
-      # Changing either needs `wsl --shutdown` to take effect, which stops
-      # every distro on the machine; the tooling reports that and refuses to
-      # do it without explicit operator action. See docs/CI_FLEET.md.
-      threads: 22
-      memory_gb: 26
-      swap_gb: 8
-    # Quiet hours allow the host to be reserved for interactive use.
-    #
-    # Scaling down DRAINS: an instance is stopped only once it is idle, never
-    # signalled while it holds a job. A `docker stop` on a busy runner cancels
-    # that job (actions/runner cancels the in-flight job on SIGTERM), which is
-    # the orphaned-job failure this fleet has already seen once.
-    #
-    # THESE HOURS ARE A PLACEHOLDER, and deliberately a live one: weekend
-    # evenings are a guess at when this machine is wanted for something other
-    # than CI. Change the two lines below and re-run
-    # `just infra::apply win-ci "" capacity` -- that path
-    # touches no container and costs the host no runner time. Delete the block
-    # entirely and the same command removes the timer.
-    quiet_hours:
-      window: "18:00-23:59"
-      days: "Fri,Sat,Sun"
-      instances: 0
-    # The other half of the machine's job: a SECOND verification host, so an
-    # agent can get a workspace and run gates here the way they do on the dev
-    # box, without CI ever noticing.
-    #
-    # CPU is a WEIGHT, not a quota or a cpuset. The runner containers are
-    # Docker's default parent (system.slice, systemd's default CPUWeight=100);
-    # this slice sits beside it at 10, so dev work gets ~1/11 of any thread a
-    # runner is contending for and 100% of every thread no runner is using. It
-    # yields within a scheduling period of a job arriving, with nothing to
-    # schedule and nothing to remember.
-    #
-    # MEMORY is the opposite and has to be a hard wall, because memory does not
-    # yield: a page a dev build holds is a page a clang-tidy job cannot have.
-    # 5 GiB is exactly what the runners' 3 x 7 GiB leaves of the 26 GiB VM cap,
-    # so the arithmetic is closed -- the fleet-declaration gate fails this
-    # block if the two ever stop summing to the budget.
-    #
-    # swap_gb is deliberately non-zero where the runners' is zero, and it earns
-    # its place: a full `just ci` in this slice REACHES the 5 GiB wall and
-    # stays there (98405 memory.max events in one 20-minute run) with
-    # oom_kill 0 -- swap is what turned that into a slow run instead of a dead
-    # one. A runner that swaps is a job that has silently become an order of
-    # magnitude slower and presents as a timeout; a dev gate run that swaps is
-    # just slow, and slow beats losing an agent's whole suite.
-    #
-    # max_jobs bounds every gate's parallel width (RA8_MAX_JOBS +
-    # CMAKE_BUILD_PARALLEL_LEVEL). It is a MEMORY bound wearing a CPU hat:
-    # nothing here needs to cap CPU -- that is what the weight is for -- but a
-    # 22-wide compile does not fit under a 5 GiB cap. 6 rather than something
-    # smaller because it was measured: halving it to 3 changed a co-tenant CI
-    # job's time by nothing measurable (the residual cost is SMT siblings and
-    # shared cache, which no scheduler knob reaches), so the smaller number
-    # would have bought CI nothing and cost dev half its throughput.
-    dev_slice:
-      cpu_weight: 10
-      memory_gb: 5
-      swap_gb: 3
-      max_jobs: 6
-    sizing_note: >-
-      Per-instance memory is 7 GB where the formula's divisor is 8. The count
-      is the formula's -- min(22/4, 26/8) = 3 -- but each instance is given
-      one GB less than the division allows, so that 5 GB of the 26 GB VM cap
-      stays outside the runners' reservation. That 5 GB was first held for the
-      CUDA co-tenant of the Ethos-U55 / NPU work (#228); with that work months
-      out the owner released it, and it is now the dev_slice above -- the
-      machine's second job as a verification host. It goes back to #228 by
-      deleting that block, which is why the number lives in one place rather
-      than being described here. The divisor is a conservative ceiling rather
-      than a measured per-job draw: a full cross-build peaked at 4.06 GiB RSS
-      on this host and an idle listener holds ~95 MiB, so 7 GB has real
-      headroom over anything measured here. If clang-tidy is ever measured
-      above 7 GB on this machine, drop to two instances or raise the VM cap --
-      do not let a job OOM, which presents as a flaky gate rather than as the
-      capacity fault it is.
-
   # --- CT 107 on pve1: verification box + dedicated HIL listener -------------
   dev:
     class: dev_box
@@ -345,8 +229,7 @@ hosts:
       sysfs_device: "/sys/devices/platform/axi/1000120000.pcie/1f00100000.ethernet"
       phc_index: 0
     connect:
-      # Tailnet, not the wlan0 DHCP lease: the LAN address moves, and this is
-      # also win-ci's jump host, so a stale one breaks two machines.
+      # Tailnet, not the wlan0 DHCP lease: the LAN address moves.
       address: 100.64.0.6
       user: star
     provisions: [hil-bench]

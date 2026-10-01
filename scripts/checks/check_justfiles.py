@@ -33,11 +33,8 @@ NATIVE_FAST_RECIPE_RE = re.compile(
     re.MULTILINE,
 )
 NATIVE_FAST_COMMAND = "/bin/bash -p scripts/ci.sh --native --fast"
-REMOTE_CI_WSL_BLOCK_RE = re.compile(
-    r'if \[\[ "\$remote_shell" == wsl\* \]\]; then(?P<body>.*?)\n    else', re.DOTALL
-)
 REMOTE_CI_LINUX_BLOCK_RE = re.compile(
-    r"^    else(?P<body>.*?)^    fi\n[ \t]*\n    if ! printf", re.MULTILINE | re.DOTALL
+    r"^    remote_prepare=[^\n]*\n(?P<body>.*?)^    if ! printf", re.MULTILINE | re.DOTALL
 )
 REMOTE_CI_SNAPSHOT_COMMIT = (
     "git -c user.email=ci@localhost -c user.name=ci commit --quiet --no-verify "
@@ -163,24 +160,9 @@ def _check_remote_commits(text: str, rel: str) -> list[str]:
 
 
 def check_remote_ci_contract(text: str, rel: str) -> list[str]:
-    """Require remote CI to preserve host isolation and WSL container parity."""
+    """Require remote CI to throttle the Linux target and keep its commits."""
     findings: list[str] = []
-    wsl_match = REMOTE_CI_WSL_BLOCK_RE.search(text)
     linux_match = REMOTE_CI_LINUX_BLOCK_RE.search(text)
-    findings.extend(
-        _check_remote_branch(
-            wsl_match,
-            rel,
-            "WSL",
-            "WSL isolation branch",
-            (
-                'remote_profile="/etc/profile.d/ra8-dev-slice.sh"',
-                'remote_launcher="/usr/local/bin/ra8-dev"',
-                'gate_command="/bin/bash -p scripts/ci.sh"',
-                'gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"',
-            ),
-        )
-    )
     findings.extend(
         _check_remote_branch(
             linux_match,
@@ -373,26 +355,16 @@ remote_tar="${{remote_shell%/bin/bash -s}}ionice -c3 /usr/bin/tar"
 printf -v remote_gate_arg '%q' "$remote_name"
 remote_prepare="git init -q && git add --all && {REMOTE_CI_SNAPSHOT_COMMIT} && \\
     $remote_history_environment {REMOTE_CI_HISTORY_COMMIT}"
-if [[ "$remote_shell" == wsl* ]]; then
-    remote_profile="/etc/profile.d/ra8-dev-slice.sh"
-    remote_launcher="/usr/local/bin/ra8-dev"
-    if [[ "$remote_name" == "__full__" ]]; then
-        gate_command="/bin/bash -p scripts/ci.sh"
-    else
-        gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"
-    fi
+remote_jobs="${{RA8_REMOTE_MAX_JOBS:-2}}"
+if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then
+    exit 2
+fi
+remote_launcher="env RA8_MAX_JOBS=$remote_jobs CMAKE_BUILD_PARALLEL_LEVEL=$remote_jobs \\
+    nice -n 19 ionice -c3"
+if [[ "$remote_name" == "__full__" ]]; then
+    gate_command="/bin/bash -p scripts/ci.sh --native"
 else
-    remote_jobs="${{RA8_REMOTE_MAX_JOBS:-2}}"
-    if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then
-        exit 2
-    fi
-    remote_launcher="env RA8_MAX_JOBS=$remote_jobs CMAKE_BUILD_PARALLEL_LEVEL=$remote_jobs \\
-        nice -n 19 ionice -c3"
-    if [[ "$remote_name" == "__full__" ]]; then
-        gate_command="/bin/bash -p scripts/ci.sh --native"
-    else
-        gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg"
-    fi
+    gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg"
 fi
 
 if ! printf
@@ -401,8 +373,7 @@ if ! printf
     """
     valid = "\n".join(f"    {line}" for line in valid.splitlines())
     remote_cases = (
-        (valid, False, "isolated WSL transport stays valid"),
-        (valid.replace("--container", ""), True, "native WSL gate fires"),
+        (valid, False, "throttled Linux transport stays valid"),
         (valid.replace(REMOTE_CI_SNAPSHOT_COMMIT, "", 1), True, "missing transport HEAD fires"),
         (valid.replace(REMOTE_CI_HISTORY_COMMIT, "", 1), True, "missing candidate metadata fires"),
         (valid.replace("nice -n 19 ionice -c3", "", 1), True, "unthrottled Linux gate fires"),

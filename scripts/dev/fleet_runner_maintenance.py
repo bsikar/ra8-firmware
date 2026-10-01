@@ -74,8 +74,6 @@ def playbook_argv(
         "-e",
         json.dumps(variables),
     ]
-    if fm.CLASSES[str(host["class"])].transport == "wsl":
-        argv += ["-e", f"wsl_ci_host_id={name}"]
     return argv + extra
 
 

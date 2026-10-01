@@ -42,8 +42,8 @@ TOKEN_KEYS = frozenset(
         "dev_box_hil_runner_registration_token",
     }
 )
-CONTAINER_RUNNER_CLASSES = frozenset({"docker_linux", "docker_wsl"})
-CONTAINER_RUNNER_PLAYS = frozenset({"ci-runner-docker", "wsl-ci-host"})
+CONTAINER_RUNNER_CLASSES = frozenset({"docker_linux"})
+CONTAINER_RUNNER_PLAYS = frozenset({"ci-runner-docker"})
 MAX_TYPED_VARS_BYTES = 64 * 1024
 PRIVATE_FILE_MODE = stat.S_IRUSR | stat.S_IWUSR
 

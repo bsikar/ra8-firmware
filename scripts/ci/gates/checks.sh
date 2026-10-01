@@ -292,7 +292,7 @@ _pcc_repository_structure() (
   python3 -B -I infra/network/fg_bringup.py --selftest config
   /bin/bash -p scripts/dev/run_just.sh \
     infra::fortigate_config_selftest "$(command -v python3)"
-  # The fleet driver carries credentials across both SSH and WSL boundaries.
+  # The fleet driver carries credentials across SSH boundaries.
   # Its offline selftest proves strict typed schemas, private snapshots,
   # shell-argument integrity, redacted summaries, and cleanup after failure.
   python3 scripts/dev/fleet.py selftest
