@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """Selftests for ``check_linker_scripts.py``: every rule fired and held quiet.

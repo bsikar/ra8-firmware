@@ -116,9 +116,7 @@ PROTECTED_RE = re.compile(r"\bRA8_PROTECTED_WRITE\s*\(")
 ATTRIBUTE_RE = re.compile(r"\[\[[^\]]*\]\]")
 
 #: Control-flow words that look like a call but never name a function.
-NOT_A_DEFINITION = frozenset(
-    {"if", "for", "while", "switch", "return", "sizeof", "do", "else"}
-)
+NOT_A_DEFINITION = frozenset({"if", "for", "while", "switch", "return", "sizeof", "do", "else"})
 
 CALL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
@@ -314,10 +312,9 @@ void apply(void)
 
 
 def main() -> int:
+    """Run the attribution-gate sweep, or the checker's own selftest."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--selftest", action="store_true", help="run the checker's own test cases"
-    )
+    parser.add_argument("--selftest", action="store_true", help="run the checker's own test cases")
     args = parser.parse_args()
     if args.selftest:
         return selftest()
