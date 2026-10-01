@@ -59,8 +59,7 @@ RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBin
     return 0U;
   }
 
-  const size_t room = (size_t)cap - 1U;
-  const size_t take = (src->len < room) ? src->len : room;
+  const size_t take = priv_c6link_field_take(src->len, cap);
   for (size_t i = 0U; i < take; i++) {
     dst[i] = (char)src->data[i];
   }
@@ -74,7 +73,7 @@ RA8_PRIV bool priv_c6link_copy_mac(ra8_c6link_mac_t* dst, const ProtobufCBinaryD
     return false;
   }
   *dst = (ra8_c6link_mac_t){};
-  if ((src == nullptr) || (src->data == nullptr) || (src->len != (size_t)k_ra8_c6link_mac_bytes)) {
+  if ((src == nullptr) || (src->data == nullptr) || !priv_c6link_field_is_mac(src->len)) {
     return false;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_mac_bytes; i++) {

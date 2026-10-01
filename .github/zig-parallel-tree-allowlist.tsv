@@ -7,7 +7,6 @@
 #
 # lib	path	reason
 if	src/fw_os_contract.c	Compile-time conformance TU for the fw_os port contract; a header with no translation unit behind it is never compiled and rots.
-if	src/fw_if_clock.c	The neutral clock-intent port, landed on dev in #693 and carried onto this branch by the zig/dev sync below it. libs/if is migrated here but not on dev, so dev can add C to it without seeing this checker; the row is what the sync owes. Ports with the rest of the if surface.
 ra8_tz_secure_boot	ns/ra8_ns_rot_header.c	Emits the NS image's ra8_ns_rot_header_t record; stays C on purpose, as tests/cmake/zig_libraries.cmake records, so the magic word and struct shape are compiler-checked instead of hand-assembled in the NS linker scripts.
 #
 # ra8_dfu is partially migrated: the polled USB-DFU host driver is Zig

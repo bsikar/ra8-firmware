@@ -1071,6 +1071,64 @@ typedef enum {
  *
  * @since 0.1.0
  */
+/**
+ * @brief Octets of a text field that fit a terminated destination.
+ *
+ * @details
+ * One octet of the destination is always spent on the terminator, and a
+ * longer field is truncated rather than refused: these are display strings
+ * from the peer, and a short SSID is more useful than a dropped event.
+ * Implemented in Zig; see `src/internal/field_copy.zig`.
+ *
+ * @param[in] src_len Octets the decoded field carries.
+ * @param[in] cap Octets of the destination, terminator included.
+ * @return Octets that may be copied.
+ * @retval 0 The destination has no room, or the field is empty.
+ *
+ * @pre None; every pair of lengths has an answer.
+ * @post No buffer is modified.
+ *
+ * @note The result is always less than @p cap when @p cap is non-zero.
+ *
+ * @par Example:
+ * @code
+ * const size_t take = priv_c6link_field_take(src->len, cap);
+ * @endcode
+ *
+ * @see priv_c6link_field_is_mac
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV size_t priv_c6link_field_take(size_t src_len, uint8_t cap);
+
+/**
+ * @brief Does a binary field carry exactly one hardware address?
+ *
+ * @details
+ * Exact rather than bounded: a short field would leave octets of the
+ * destination unwritten and a long one is not an address at all.
+ * Implemented in Zig; see `src/internal/field_copy.zig`.
+ *
+ * @param[in] src_len Octets the decoded field carries.
+ * @return true when the field is one address and may be copied.
+ * @retval false The peer sent something this library does not understand.
+ *
+ * @pre The caller has already rejected a null field.
+ * @post No state is modified.
+ *
+ * @note The one accepted length is ::k_ra8_c6link_mac_bytes.
+ *
+ * @par Example:
+ * @code
+ * if (!priv_c6link_field_is_mac(src->len)) {
+ *   return false;
+ * }
+ * @endcode
+ *
+ * @see priv_c6link_field_take
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_field_is_mac(size_t src_len);
+
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
 
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);
