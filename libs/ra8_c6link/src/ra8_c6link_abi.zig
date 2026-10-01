@@ -29,6 +29,7 @@ const field_copy = @import("internal/field_copy.zig");
 const tx_admit = @import("internal/tx_admit.zig");
 const wifi_init = @import("internal/wifi_init.zig");
 const bare_rpc = @import("internal/bare_rpc.zig");
+const sta_policy = @import("internal/sta_policy.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -635,4 +636,19 @@ pub export fn priv_c6link_bare_resp(req_id: u32, out: ?*u32) callconv(.c) bool {
     const resp = bare_rpc.respFor(req_id) orelse return false;
     dst.* = resp;
     return true;
+}
+
+/// `priv_c6link_sta_policy`: the selectors one station join transmits.
+///
+/// Writes the interface index, scan method, sort order, auth threshold and
+/// PMF capability into @p out, which the caller copies into the generated
+/// `WifiStaConfig`.
+pub export fn priv_c6link_sta_policy(out: ?*sta_policy.Policy) callconv(.c) void {
+    const dst = out orelse return;
+    dst.* = sta_policy.policy();
+}
+
+/// `priv_c6link_sta_bssid_len`: octets of BSSID this join puts on the wire.
+pub export fn priv_c6link_sta_bssid_len(pinned: bool) callconv(.c) usize {
+    return sta_policy.bssidLen(pinned);
 }

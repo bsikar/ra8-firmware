@@ -26,3 +26,4 @@ pub const field_copy = @import("field_copy.zig");
 pub const tx_admit = @import("tx_admit.zig");
 pub const wifi_init = @import("wifi_init.zig");
 pub const bare_rpc = @import("bare_rpc.zig");
+pub const sta_policy = @import("sta_policy.zig");
