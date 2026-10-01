@@ -578,7 +578,6 @@ libs/ra8_board_ra8p1/src/boot/secure_exception.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ra8p1/src/boot/system_init.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ra8p1/src/boot/trustzone_init.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ra8p1/src/boot/vector_table.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	MEASURED	124	124	66	66
 libs/ra8_box/src/ra8_box.c	MEASURED	136	143	65	78
 libs/ra8_c6link/src/ra8_c6link.c	MEASURED	175	181	115	124
 libs/ra8_c6link/src/ra8_c6link_arena.c	MEASURED	34	34	22	22

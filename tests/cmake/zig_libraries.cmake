@@ -873,3 +873,32 @@ set_target_properties(
              INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_core/inc"
 )
 add_dependencies(ra8_zig::ra8_core_freestanding_prefixed ra8_core_freestanding_prefixed_zig_library)
+
+# Fully migrated: libs/ra8_board_ra8p1/src holds no .c for the board layer, only
+# src/boot/, which ra8_add_app's boot fallback still compiles as C (#2984).
+#
+# This archive is NOT added to the global link_libraries() set below. The RA8P1
+# BSP exports the same substitutable names as the EK-RA8D2 layer that every
+# host test already links, so only the focused coverage suite takes it, and it
+# takes the -Dabi-prefix=ra8p1_test_ build to keep the two apart.
+set(_ra8p1_prefixed_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_libs/ra8_board_ra8p1_prefixed")
+set(_ra8p1_prefixed_library
+    "${_ra8p1_prefixed_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ra8_board_ra8p1${CMAKE_STATIC_LIBRARY_SUFFIX}"
+)
+add_custom_target(
+  ra8_board_ra8p1_prefixed_zig_library ALL
+  COMMAND "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8p1_test_ -Doptimize=Debug --prefix
+          "${_ra8p1_prefixed_dir}" --cache-dir "${_ra8p1_prefixed_dir}/cache"
+          --global-cache-dir "${_ra8p1_prefixed_dir}/global-cache"
+  WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_board_ra8p1"
+  BYPRODUCTS "${_ra8p1_prefixed_library}"
+  COMMENT "Building ra8p1_test_ prefixed ra8_board_ra8p1 archive for test_ra8_board_ra8p1_cov"
+  VERBATIM
+)
+add_library(ra8_zig::ra8_board_ra8p1_prefixed STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ra8_zig::ra8_board_ra8p1_prefixed
+  PROPERTIES IMPORTED_LOCATION "${_ra8p1_prefixed_library}"
+             INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_board_ra8p1/inc"
+)
+add_dependencies(ra8_zig::ra8_board_ra8p1_prefixed ra8_board_ra8p1_prefixed_zig_library)
