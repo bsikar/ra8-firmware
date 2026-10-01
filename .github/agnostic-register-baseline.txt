@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 369 reference(s)
+# clock: 359 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -179,21 +179,21 @@ examples/ek_ra8d2/hw_validated/hil/eth_loopback/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/flash_journal/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	clock	3
+examples/ek_ra8d2/hw_validated/hil/flash_journal/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	gpio	2
-examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	display	1
-examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/src/main.c	timer	3
-examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	timer	3
-examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	timer	5
-examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	timer	4
-examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	timer	3
 examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/i2c_loopback/src/main.c	clock	2
