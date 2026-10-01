@@ -190,7 +190,6 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
     hil = host.get("hil_runner")
     if hil:
         print(f"  HIL listener   {hil['name']} ({','.join(hil['labels'])})")
-        print(f"  HIL workflow   {hil['workflow']}")
         print(f"  HIL bench      {hil['bench']['host']}")
     lent = host.get("dev_slice")
     if lent:

@@ -1,13 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Governed inputs and workflow policy for HIL convergence safety."""
+"""Governed inputs for HIL convergence safety."""
 
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
-from typing import cast
 
 import yaml
 
@@ -42,39 +40,12 @@ FLEET_RUNNER_MODEL = "scripts/dev/fleet_runner_model.py"
 FLEET_REACH = "scripts/dev/fleet_reach.py"
 FLEET_PATH_AUTHORITY = "scripts/dev/fleet_path_authority.py"
 GATE = "scripts/ci/gates/checks.sh"
-WORKFLOW = ".github/workflows/hil.yml"
 HIL_JUST = "just/hil.just"
 DECLARATION = "infra/fleet.yml"
 PLAYBOOKS = (
     "infra/ansible/playbooks/dev-box.yml",
     "infra/ansible/playbooks/hil-bench.yml",
 )
-DIRECT_DEPENDENCIES = (
-    ".devcontainer/Dockerfile",
-    "scripts/ci/**",
-    "scripts/dev/**",
-    "scripts/checks/check_runner_image_deps.py",
-    "scripts/checks/check_tool_versions.py",
-)
-BASE_WORKFLOW_PATHS = (
-    "just/**",
-    "justfile",
-    "infra/bootstrap.sh",
-    "scripts/dev/fleet*.py",
-    "infra/ansible/ansible.cfg",
-    "infra/ansible/requirements.yml",
-    "scripts/checks/check_ansible_collections.py",
-    "scripts/checks/check_shebangs.py",
-    GATE,
-    DECLARATION,
-    "scripts/checks/check_hil_convergence_safety.py",
-    "scripts/checks/hil_convergence_check_mode.py",
-    "scripts/checks/hil_convergence_safety_*.py",
-    "scripts/checks/shell_entrypoint_policy*.py",
-    "scripts/hil/**",
-)
-
-
 class WorkflowPolicyError(ValueError):
     """A playbook cannot provide a safe workflow dependency closure."""
 
@@ -99,186 +70,6 @@ def load_bench_transaction(root: Path) -> object:
         message = "HIL bench role transaction is unavailable or linked"
         raise WorkflowPolicyError(message)
     return yaml.safe_load(transaction.read_text(encoding="utf-8"))
-
-
-def workflow_paths(root: Path) -> tuple[str, ...]:
-    """Derive playbook/role closure, then add direct command-source inputs."""
-    derived: set[str] = set(BASE_WORKFLOW_PATHS)
-    derived.update(DIRECT_DEPENDENCIES)
-    initial_roles: list[str] = []
-    for playbook in PLAYBOOKS:
-        document = yaml.safe_load((root / playbook).read_text(encoding="utf-8"))
-        if not isinstance(document, list):
-            message = f"workflow playbook is malformed: {playbook}"
-            raise WorkflowPolicyError(message)
-        derived.add(playbook)
-        for play in document:
-            if not isinstance(play, dict):
-                message = f"workflow playbook has a malformed play: {playbook}"
-                raise WorkflowPolicyError(message)
-            roles = list(play.get("roles") or [])
-            for section in ("pre_tasks", "tasks"):
-                tasks = play.get(section) or []
-                if not isinstance(tasks, list):
-                    message = f"workflow playbook has malformed {section}: {playbook}"
-                    raise WorkflowPolicyError(message)
-                for task in tasks:
-                    include = (
-                        task.get("ansible.builtin.include_role") if isinstance(task, dict) else None
-                    )
-                    if isinstance(include, dict):
-                        roles.append(include.get("name"))
-            if not roles:
-                message = f"workflow playbook has no role closure: {playbook}"
-                raise WorkflowPolicyError(message)
-            initial_roles.extend(_role_name(role) for role in roles)
-    for role in _role_closure(root, initial_roles):
-        derived.add(f"infra/ansible/roles/{role}/**")
-    return tuple(sorted(derived))
-
-
-def _role_name(value: object) -> str:
-    """Return one confined static role name."""
-    if not isinstance(value, str) or "/" in value or value in {"", ".", ".."}:
-        msg = f"workflow contains unsafe role: {value!r}"
-        raise WorkflowPolicyError(msg)
-    return value
-
-
-def _role_dependencies(document: object, label: str) -> set[str]:
-    """Find nested include/import role names in one task or metadata tree."""
-    dependencies: set[str] = set()
-    if isinstance(document, list):
-        for item in document:
-            dependencies.update(_role_dependencies(item, label))
-    elif isinstance(document, dict):
-        for key in ("ansible.builtin.include_role", "ansible.builtin.import_role"):
-            include = document.get(key)
-            if isinstance(include, dict) and "name" in include:
-                dependencies.add(_role_name(include["name"]))
-            elif include is not None:
-                msg = f"{label}: malformed {key}"
-                raise WorkflowPolicyError(msg)
-        for key, value in document.items():
-            if key not in {
-                "ansible.builtin.include_role",
-                "ansible.builtin.import_role",
-            }:
-                dependencies.update(_role_dependencies(value, label))
-    return dependencies
-
-
-def _included_task_files(path: Path, role_root: Path, seen: set[Path]) -> set[Path]:
-    """Follow static task includes with cycle and real-path confinement checks."""
-    resolved = path.resolve(strict=True)
-    if resolved in seen:
-        return set()
-    if resolved != role_root and role_root not in resolved.parents:
-        msg = f"role task include escaped its owner: {path}"
-        raise WorkflowPolicyError(msg)
-    seen.add(resolved)
-    document = yaml.safe_load(resolved.read_text(encoding="utf-8"))
-    found = {resolved}
-    for task in document if isinstance(document, list) else []:
-        if not isinstance(task, dict):
-            msg = f"role task file is malformed: {path}"
-            raise WorkflowPolicyError(msg)
-        for key in ("ansible.builtin.include_tasks", "ansible.builtin.import_tasks"):
-            include = task.get(key)
-            value = include.get("file") if isinstance(include, dict) else include
-            if value is None:
-                continue
-            if not isinstance(value, str) or "{{" in value or Path(value).is_absolute():
-                msg = f"role task include is not static: {value!r}"
-                raise WorkflowPolicyError(msg)
-            found.update(_included_task_files(resolved.parent / value, role_root, seen))
-    return found
-
-
-def _one_role_dependencies(root: Path, role: str) -> set[str]:
-    """Return nested task/meta role dependencies for one exact role."""
-    roles_root = (root / "infra/ansible/roles").resolve(strict=True)
-    role_root = (roles_root / role).resolve(strict=True)
-    if role_root.parent != roles_root or (role_root / "tasks/main.yml").is_symlink():
-        msg = f"role path is linked or escaped: {role}"
-        raise WorkflowPolicyError(msg)
-    task_files = _included_task_files(role_root / "tasks/main.yml", role_root, set())
-    dependencies: set[str] = set()
-    for path in task_files:
-        dependencies.update(
-            _role_dependencies(yaml.safe_load(path.read_text(encoding="utf-8")), str(path))
-        )
-    meta = role_root / "meta/main.yml"
-    if meta.exists():
-        document = yaml.safe_load(meta.read_text(encoding="utf-8"))
-        raw = document.get("dependencies") if isinstance(document, dict) else None
-        for item in raw or []:
-            value = item.get("role") if isinstance(item, dict) else item
-            dependencies.add(_role_name(value))
-    return dependencies
-
-
-def _role_closure(root: Path, initial: list[str]) -> set[str]:
-    """Return complete recursive task/meta role closure with cycle handling."""
-    closure: set[str] = set()
-    pending = list(initial)
-    while pending:
-        role = _role_name(pending.pop())
-        if role in closure:
-            continue
-        closure.add(role)
-        pending.extend(sorted(_one_role_dependencies(root, role) - closure))
-    return closure
-
-
-def workflow_dependency_selftest() -> list[str]:
-    """Prove nested task includes and meta dependencies enter the trigger set."""
-    with tempfile.TemporaryDirectory(prefix="ra8-hil-workflow-") as raw:
-        root = Path(raw)
-        for playbook, role in zip(PLAYBOOKS, ("alpha", "beta"), strict=False):
-            target = root / playbook
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(f"- hosts: all\n  roles: [{role}]\n", encoding="utf-8")
-        fixtures = {
-            "alpha/tasks/main.yml": "- ansible.builtin.include_tasks: nested.yml\n",
-            "alpha/tasks/nested.yml": "- ansible.builtin.include_role:\n    name: gamma\n",
-            "beta/tasks/main.yml": "- ansible.builtin.debug:\n    msg: beta\n",
-            "beta/meta/main.yml": "dependencies:\n  - role: delta\n",
-            "gamma/tasks/main.yml": "- ansible.builtin.debug:\n    msg: gamma\n",
-            "delta/tasks/main.yml": "- ansible.builtin.debug:\n    msg: delta\n",
-        }
-        for relative, content in fixtures.items():
-            path = root / "infra/ansible/roles" / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content, encoding="utf-8")
-        found = set(workflow_paths(root))
-    required = {"infra/ansible/roles/gamma/**", "infra/ansible/roles/delta/**"}
-    return [] if required <= found else ["recursive task/meta role dependency escaped workflow"]
-
-
-def workflow_errors(workflow: str, declaration: str, root: Path = REPO_ROOT) -> list[str]:
-    """Bind both HIL parallelism variables and trusted path triggers to fleet."""
-    try:
-        doc = yaml.safe_load(workflow)
-        fleet = yaml.safe_load(declaration)
-    except yaml.YAMLError:
-        return ["hil workflow/fleet declaration: malformed YAML"]
-    if not isinstance(doc, dict) or not isinstance(fleet, dict):
-        return ["hil workflow/fleet declaration: expected mappings"]
-    expected = fleet.get("sizing", {}).get("build_parallelism")
-    environment = doc.get("env")
-    errors = []
-    if not isinstance(environment, dict) or any(
-        environment.get(name) != expected for name in ("RA8_MAX_JOBS", "CMAKE_BUILD_PARALLEL_LEVEL")
-    ):
-        errors.append("hil.yml: both build limits must equal fleet build_parallelism")
-    triggers = doc.get(True, doc.get("on"))
-    for event in ("push", "pull_request"):
-        config = triggers.get(event) if isinstance(triggers, dict) else None
-        paths = config.get("paths") if isinstance(config, dict) else None
-        if not isinstance(paths, list) or any(path not in paths for path in workflow_paths(root)):
-            errors.append(f"hil.yml: convergence safety paths missing from {event}")
-    return errors
 
 
 def _image_lock_selftest_process_tokens() -> tuple[str, ...]:
@@ -570,7 +361,6 @@ def _governed_source_paths() -> dict[str, str]:
         "ad2_role": AD2_ROLE,
         "ad2_entry": AD2_ENTRY,
         "bench_defaults": BENCH_DEFAULTS,
-        "workflow": WORKFLOW,
         "declaration": DECLARATION,
         "dev_playbook": PLAYBOOKS[0],
         "bench_playbook": PLAYBOOKS[1],
@@ -618,17 +408,3 @@ def load_inputs(root: Path) -> dict[str, str]:
     result["dev_handler"] = handler.read_text(encoding="utf-8") if handler.exists() else ""
     return result
 
-
-def remove_workflow_path(inputs: dict[str, str], event: str, path: str) -> dict[str, str]:
-    """Remove one exact governed path from one workflow event."""
-    document = cast(dict[object, object], yaml.safe_load(inputs["workflow"]))
-    triggers = cast(dict[str, object], document.get(True, document.get("on")))
-    config = cast(dict[str, object], triggers[event])
-    paths = cast(list[str], config["paths"])
-    if paths.count(path) != 1:
-        message = f"workflow {event} path fixture is not unique: {path}"
-        raise ValueError(message)
-    paths.remove(path)
-    changed = dict(inputs)
-    changed["workflow"] = yaml.safe_dump(document, sort_keys=False)
-    return changed

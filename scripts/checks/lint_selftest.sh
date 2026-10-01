@@ -106,17 +106,6 @@ if [[ "$-" == *p* ]]; then
   . "$REPO_ROOT/scripts/dev/git_environment.sh"
   install_sanitized_git_environment
 
-  # actionlint refuses to run outside a git project ("no project was found in
-  # any parent directories"). That exits NON-ZERO, so a scratch tree without a
-  # repo makes the "must reject the malformed workflow" half pass for entirely
-  # the wrong reason -- the selftest would then be as blind as the gate it is
-  # supposed to protect. Every scratch tree gets a real repo.
-  init_scratch_repo() {
-    "$RA8_TRUSTED_GIT" -C "$1" init -q
-    "$RA8_TRUSTED_GIT" -C "$1" config user.email selftest@invalid
-    "$RA8_TRUSTED_GIT" -C "$1" config user.name selftest
-  }
-
   case "$MODE" in
     cmake)
       # The config lives at the repo root, so run from a subdirectory of it.
@@ -159,22 +148,6 @@ EOF
       ;;
 
     yaml)
-      # Two defects, both in the class behind #357: an `on:` trigger GitHub does
-      # not recognise (so the workflow silently never runs) and an expression
-      # referencing a context property that does not exist (so the step reads
-      # empty forever). An earlier revision of this fixture used
-      # `github.event.<unknown>` and `fetch-depth: not-a-number`, BOTH of which
-      # actionlint legitimately accepts -- it passed only because actionlint was
-      # exiting non-zero for want of a git project. Pin defects it truly rejects.
-      cat >"$TMP/malformed.yml" <<'EOF'
-name: broken
-on: pushh
-jobs:
-  a:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "${{ github.nonexistent_ctx }}"
-EOF
       # yamllint: missing document start + a duplicate key.
       cat >"$TMP/malformed_style.yml" <<'EOF'
 a: 1
@@ -186,48 +159,23 @@ EOF
       fi
       echo "selftest: yamllint rejects a malformed document OK"
 
-      # actionlint must reject a bad workflow expression. Run it on a scratch
-      # tree so the repo's own .github is not in scope.
-      mkdir -p "$TMP/wf/.github/workflows"
-      init_scratch_repo "$TMP/wf"
-      cp "$TMP/malformed.yml" "$TMP/wf/.github/workflows/bad.yml"
-      if (cd "$TMP/wf" && actionlint >/dev/null 2>&1); then
-        fail "actionlint accepted a workflow with an invalid expression"
-      fi
-      echo "selftest: actionlint rejects an invalid workflow OK"
-
-      # Legal-but-tricky: folded expression, a matrix, a self-hosted label the
-      # repo config declares, and an `on:` key YAML 1.1 would call boolean.
-      mkdir -p "$TMP/ok/.github/workflows"
-      init_scratch_repo "$TMP/ok"
-      cp "$REPO_ROOT/.github/actionlint.yaml" "$TMP/ok/.github/actionlint.yaml"
-      cat >"$TMP/ok/.github/workflows/good.yml" <<'EOF'
+      # Legal-but-tricky: a folded scalar, a flow sequence, and an `on:` key
+      # YAML 1.1 would call boolean.
+      cat >"$TMP/ok.yml" <<'EOF'
 ---
 name: good
 on:
   push:
     branches: [main]
-jobs:
-  a:
-    runs-on: [self-hosted, Linux, X64]
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    strategy:
-      matrix:
-        n: [1, 2]
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "${{ matrix.n }}"
+note: >-
+  one folded
+  paragraph
 EOF
       if ! yamllint --strict -c "$REPO_ROOT/.yamllint.yaml" \
-        "$TMP/ok/.github/workflows/good.yml" >/dev/null 2>&1; then
-        fail "yamllint rejected a legal workflow"
+        "$TMP/ok.yml" >/dev/null 2>&1; then
+        fail "yamllint rejected a legal document"
       fi
-      if ! (cd "$TMP/ok" && actionlint >/dev/null 2>&1); then
-        fail "actionlint rejected a legal workflow"
-      fi
-      echo "selftest: yamllint/actionlint accept a legal-but-tricky workflow OK"
+      echo "selftest: yamllint accepts a legal-but-tricky document OK"
       ;;
 
     *)

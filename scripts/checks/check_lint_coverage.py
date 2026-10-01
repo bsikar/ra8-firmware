@@ -143,7 +143,7 @@ PROVIDERS: tuple[Provider, ...] = (
     ),
     Provider("check_justfiles", (LINT,), ("just",), "check_justfiles.py", ("--list-files",)),
     Provider("just-fmt", (FORMAT,), ("just",), "format_tree.sh", ("--list-files", "just"), "bash"),
-    Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
+    Provider("yamllint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
     Provider(
         "check_linker_scripts",
         (LINT, FORMAT),
@@ -505,7 +505,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "shfmt": {"scripts/git/commit-msg"},
         "cmake-lint": {"CMakeLists.txt"},
         "cmake-format": {"CMakeLists.txt"},
-        "yamllint+actionlint": {"infra/fleet.yml"},
+        "yamllint": {"infra/fleet.yml"},
         "check_linker_scripts": {"examples/app/linker_script.ld"},
         "check_asm": {"examples/app/boot.S"},
         "hadolint+zsh": {".devcontainer/Dockerfile", ".devcontainer/zshrc"},

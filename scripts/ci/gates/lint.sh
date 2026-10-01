@@ -158,16 +158,13 @@ gate_lint_cmake() (
 )
 
 # --- lint-yaml ------------------------------------------------------------
-# The workflow YAML decides which gates run at all -- #357 found two that never
-# ran on dev pushes. yamllint covers structure and style; actionlint covers the
-# Actions schema specifically (invalid `on:` triggers, bad ${{ }} expressions,
-# unknown runner labels), which is the class of defect behind #357.
+# yamllint covers structure and style for every tracked YAML file (Ansible,
+# the fleet declaration, configs). There are no GitHub Actions workflows any
+# more, so actionlint is gone.
 gate_lint_yaml() (
   set -e
   require_cmd yamllint "run 'just setup_python'"
-  require_cmd actionlint \
-    "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
-  require_tool_versions yamllint actionlint
+  require_tool_versions yamllint
   python3 scripts/checks/lint_targets.py --selftest
 
   # Scope comes from lint_targets.py -- see the note in gate_lint_cmake.
@@ -187,7 +184,6 @@ gate_lint_yaml() (
   yamllint --strict \
     -d '{extends: .yamllint.yaml, rules: {line-length: {max: 1000, level: error}}}' \
     "$wide_line_file"
-  actionlint
 )
 
 # --- lint-just ------------------------------------------------------------

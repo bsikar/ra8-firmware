@@ -436,7 +436,7 @@ def _selftest_extraction() -> None:
         "  require_cmd cmake\n"
         '  require_cmd clang-18 "the gate pins clang-18 to match CI"\n'
         "  require_cmd git || exit 1\n"
-        "  require_cmd actionlint \\\n"
+        "  require_cmd shellcheck \\\n"
         '  require_python_mod yaml "run just setup_python"\n'
         "  require_python_mod clang.cindex \\\n"
         "  # require_cmd never_declared_only_mentioned\n"
@@ -453,7 +453,7 @@ def _selftest_extraction() -> None:
         staged.unlink()
     commands = unique_names(deps, K_KIND_CMD)
     modules = unique_names(deps, K_KIND_MOD)
-    expected_commands = ["actionlint", "clang-18", "cmake", "git"]
+    expected_commands = ["clang-18", "cmake", "git", "shellcheck"]
     expected_modules = ["clang.cindex", "yaml"]
     if commands != expected_commands:
         message = f"selftest: extractor returned commands {commands}, expected {expected_commands}"

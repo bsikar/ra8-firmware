@@ -731,7 +731,7 @@ def _image_lock_selftest_trap_mutations() -> tuple[Mutation, ...]:
 
 
 def _role_entry_mutations() -> tuple[Mutation, ...]:
-    """Return independently selectable role and workflow mutations."""
+    """Return independently selectable role mutations."""
     return (
         (
             "dev role prefix guard removed",
@@ -776,18 +776,6 @@ def _role_entry_mutations() -> tuple[Mutation, ...]:
             "      when: hil_bench_transaction_authenticated | default(false) | bool",
             "- name: Converge the bench host beneath its authenticated front door\n"
             "      when: true",
-        ),
-        (
-            "default nproc escape",
-            "workflow",
-            "RA8_MAX_JOBS: 4",
-            "RA8_MAX_JOBS: ${{ nproc }}",
-        ),
-        (
-            "parallelism drift",
-            "workflow",
-            "CMAKE_BUILD_PARALLEL_LEVEL: 4",
-            "CMAKE_BUILD_PARALLEL_LEVEL: 8",
         ),
     )
 

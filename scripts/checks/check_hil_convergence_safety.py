@@ -924,7 +924,6 @@ def _scan(inputs: dict[str, str]) -> list[str]:
         + python_authority.uv_helper_deployment_errors(inputs)
         + python_authority.hil_python_authority_errors(inputs["bench_role"])
         + roles.errors(inputs)
-        + policy.workflow_errors(inputs["workflow"], inputs["declaration"])
         + v8.errors(inputs)
         + v9.errors(inputs)
     )

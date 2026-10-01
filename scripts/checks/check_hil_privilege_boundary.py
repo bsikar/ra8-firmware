@@ -28,14 +28,6 @@ CALLER_PATHS = (
     "scripts/hil/exit_low_power.sh",
     "scripts/hil/eth_tcp.sh",
 )
-WORKFLOW_PATHS = (
-    HELPER_REL,
-    POLICY_TEMPLATE_REL,
-    ROLE_ENTRY_REL,
-    "infra/fleet.yml",
-    "scripts/dev/fleet_hil.py",
-    "infra/ansible/roles/hil_bench/tasks/main.yml",
-)
 SPAWN_ARGC = 2
 EXACT_POLICY_TEMPLATE = """{
   "board_iface": {{ dev_box_hil_runner_bench_iface | to_json }},
@@ -610,42 +602,6 @@ def _identity_errors(helper: bytes, manifest: str, fleet: str) -> list[str]:
     return [] if manifest.strip() == expected else ["privileged helper or policy identity is stale"]
 
 
-def _strings(value: object) -> list[str]:
-    """Flatten scalar strings in parsed YAML."""
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [item for child in value for item in _strings(child)]
-    if isinstance(value, dict):
-        return [item for child in value.values() for item in _strings(child)]
-    return []
-
-
-def _workflow_errors(source: str) -> list[str]:
-    """Require trigger coverage while forbidding provisioning mutation."""
-    try:
-        document = yaml.safe_load(source)
-    except yaml.YAMLError:
-        return ["hil.yml: workflow YAML is malformed"]
-    triggers = document.get("on", document.get(True)) if isinstance(document, dict) else None
-    if not isinstance(document, dict) or not isinstance(triggers, dict):
-        return ["hil.yml: workflow triggers are malformed"]
-    errors = []
-    for event in ("push", "pull_request"):
-        config = triggers.get(event)
-        paths = config.get("paths") if isinstance(config, dict) else None
-        if not isinstance(paths, list) or any(path not in paths for path in WORKFLOW_PATHS):
-            errors.append(f"hil.yml: trusted policy paths missing from {event}")
-    forbidden = ("ansible-playbook", "just infra::apply", "infra::apply")
-    values = _strings(document.get("jobs", {}))
-    errors.extend(
-        f"hil.yml: workflow must not auto-apply trusted provisioning: {token}"
-        for token in forbidden
-        if any(token in value for value in values)
-    )
-    return errors
-
-
 def _scan(inputs: dict[str, object]) -> list[str]:
     """Return every privilege-boundary structural error."""
     return (
@@ -657,7 +613,6 @@ def _scan(inputs: dict[str, object]) -> list[str]:
             cast(str, inputs["fleet"]),
         )
         + _caller_errors(cast(dict[str, str], inputs["callers"]))
-        + _workflow_errors(cast(str, inputs["workflow"]))
     )
 
 
@@ -672,7 +627,6 @@ def _repo_inputs(root: Path) -> dict[str, object]:
         "manifest": (root / MANIFEST_REL).read_text(encoding="ascii"),
         "fleet": (root / "infra/fleet.yml").read_text(encoding="utf-8"),
         "callers": {path: (root / path).read_text(encoding="utf-8") for path in CALLER_PATHS},
-        "workflow": (root / ".github/workflows/hil.yml").read_text(encoding="utf-8"),
     }
 
 
@@ -771,15 +725,9 @@ def _helper_policy_mutations() -> list[tuple[str, str, str, str]]:
 
 
 def _configuration_mutations() -> list[tuple[str, str, str, str]]:
-    """Return trusted provisioning and workflow mutations."""
+    """Return trusted provisioning mutations."""
     return [
         ("policy template drift", "template", '  "version": 1', '  "version": 2'),
-        (
-            "workflow auto-apply",
-            "workflow",
-            "just quality::local::gate hil-all",
-            "just quality::local::gate hil-all\n          ansible-playbook live.yml",
-        ),
     ]
 
 

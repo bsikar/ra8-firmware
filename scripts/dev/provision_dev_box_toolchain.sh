@@ -351,32 +351,6 @@ if [[ "$-" == *p* ]]; then
     as_root install -m 0755 "${tmp}/shfmt" "${BIN_DIR}/shfmt"
   )
 
-  install_actionlint() (
-    local version="$1" arch sha tmp
-    case "$(uname -m)" in
-      x86_64)
-        arch=amd64
-        sha="$(dockerfile_arg ACTIONLINT_SHA256_AMD64)"
-        ;;
-      aarch64)
-        arch=arm64
-        sha="$(dockerfile_arg ACTIONLINT_SHA256_ARM64)"
-        ;;
-      *)
-        echo "error: unsupported actionlint architecture: $(uname -m)" >&2
-        return 1
-        ;;
-    esac
-    release_tmp_begin
-    tmp="$RELEASE_TMP_DIR"
-    download_verified \
-      "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_${arch}.tar.gz" \
-      "${sha}" "${tmp}/actionlint.tar.gz"
-    mkdir "${tmp}/extract"
-    tar -xzf "${tmp}/actionlint.tar.gz" -C "${tmp}/extract" actionlint
-    as_root install -m 0755 "${tmp}/extract/actionlint" "${BIN_DIR}/actionlint"
-  )
-
   install_hadolint() (
     local version="$1" arch sha tmp
     case "$(uname -m)" in
@@ -562,8 +536,8 @@ if [[ "$-" == *p* ]]; then
   require_release_digests() {
     local name value
     for name in SHELLCHECK_SHA256_X86_64 SHELLCHECK_SHA256_AARCH64 \
-      SHFMT_SHA256_AMD64 SHFMT_SHA256_ARM64 ACTIONLINT_SHA256_AMD64 \
-      ACTIONLINT_SHA256_ARM64 HADOLINT_SHA256_X86_64 HADOLINT_SHA256_ARM64 \
+      SHFMT_SHA256_AMD64 SHFMT_SHA256_ARM64 \
+      HADOLINT_SHA256_X86_64 HADOLINT_SHA256_ARM64 \
       JUST_SHA256_X86_64 JUST_SHA256_AARCH64 DOXYGEN_SHA256_LINUX_X64 \
       GO_SHA256_AMD64 GO_SHA256_ARM64 ZIG_SHA256_X86_64 ZIG_SHA256_AARCH64 \
       RUST_SHA256_X86_64 RUST_SHA256_AARCH64; do
@@ -600,16 +574,14 @@ if [[ "$-" == *p* ]]; then
   # The GitHub-release binaries and uv-managed Python tools, at the versions
   # read from their native or project authorities. Split out of main() so each
   install_pinned_tools() {
-    local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
-    local just_v="$5" doxygen_v="$6" go_v="$7" zig_v="$8" rust_v="$9"
+    local shellcheck_v="$1" shfmt_v="$2" hadolint_v="$3"
+    local just_v="$4" doxygen_v="$5" go_v="$6" zig_v="$7" rust_v="$8"
     local just_bin="" just_installed_v=""
 
     ensure_release_tool shellcheck "${shellcheck_v}" \
       "$(shellcheck --version 2>/dev/null | sed -n 's/^version: //p')" install_shellcheck
     ensure_release_tool shfmt "${shfmt_v}" \
       "$(shfmt --version 2>/dev/null | sed 's/^v//')" install_shfmt
-    ensure_release_tool actionlint "${actionlint_v}" \
-      "$(actionlint --version 2>/dev/null | head -1)" install_actionlint
     ensure_release_tool hadolint "${hadolint_v}" \
       "$(hadolint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')" install_hadolint
     just_bin="$(command -v just 2>/dev/null || true)"
@@ -732,11 +704,10 @@ if [[ "$-" == *p* ]]; then
       echo "error: ${DOCKERFILE} not found -- run from a full checkout" >&2
       exit 1
     }
-    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v zig_v rust_v
+    local shellcheck_v shfmt_v hadolint_v just_v doxygen_v go_v zig_v rust_v
     local python_venv
     shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
     shfmt_v="$(dockerfile_arg SHFMT_VERSION)"
-    actionlint_v="$(dockerfile_arg ACTIONLINT_VERSION)"
     hadolint_v="$(dockerfile_arg HADOLINT_VERSION)"
     just_v="$(dockerfile_arg JUST_VERSION)"
     python_venv="$(dockerfile_arg PYTHON_TOOL_VENV)"
@@ -745,7 +716,7 @@ if [[ "$-" == *p* ]]; then
     zig_v="$(dockerfile_arg ZIG_VERSION)"
     rust_v="$(dockerfile_arg RUST_VERSION)"
     for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
-      "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
+      "HADOLINT_VERSION=${hadolint_v}" \
       "JUST_VERSION=${just_v}" "PYTHON_TOOL_VENV=${python_venv}" \
       "DOXYGEN_VERSION=${doxygen_v}" "GO_VERSION=${go_v}" \
       "ZIG_VERSION=${zig_v}" "RUST_VERSION=${rust_v}"; do
@@ -758,7 +729,7 @@ if [[ "$-" == *p* ]]; then
 
     if [ "${check_only}" -eq 0 ]; then
       echo "provisioning dev-box host tools from ${DOCKERFILE#"${ROOT}"/} pins:"
-      install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
+      install_pinned_tools "${shellcheck_v}" "${shfmt_v}" \
         "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}" "${zig_v}" "${rust_v}"
       install_python_tools "${python_venv}"
     else

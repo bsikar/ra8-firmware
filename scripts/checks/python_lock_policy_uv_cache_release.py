@@ -128,7 +128,6 @@ def _provisioner_release_tmp_findings(source: str, selftest_source: str) -> list
     for name in (
         "install_shellcheck",
         "install_shfmt",
-        "install_actionlint",
         "install_hadolint",
         "install_just",
         "install_doxygen",

@@ -39,12 +39,7 @@ estate. This checks three things a green Ansible run would not:
    input rule and still only work on a machine that happened to define that
    name -- which is the whole of #526, one layer down.
 
-6. **Native HIL labels cannot drift.** A declared native listener names its
-   workflow, and every job in that workflow must request exactly
-   ``self-hosted`` plus the listener's declared custom labels. A workflow
-   cannot acquire a HIL label without being owned by one declaration.
-
-7. **The cache-only HIL repair stays cache-only.** Its standalone playbook,
+6. **The cache-only HIL repair stays cache-only.** Its standalone playbook,
    private inventory driver and isolated Justfile must match one exact
    execution document. The path and identity are literals, and inventory
    variables may not override the corresponding full-role safety defaults.
@@ -200,147 +195,6 @@ def _check_hil_service_template(
     return problems
 
 
-def _workflow_jobs(path: Path) -> tuple[dict[str, Any], str | None]:
-    """Load the job mapping from one GitHub Actions workflow.
-
-    Args:
-        path: Workflow YAML path.
-
-    Returns:
-        ``(jobs, error)`` with exactly one side populated.
-    """
-    try:
-        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, yaml.YAMLError) as exc:
-        return {}, str(exc)
-    if not isinstance(loaded, dict) or not isinstance(loaded.get("jobs"), dict):
-        return {}, "workflow has no jobs mapping"
-    return loaded["jobs"], None
-
-
-def _runs_on_labels(job: object) -> list[str] | None:
-    """Return literal labels from one job's ``runs-on`` field.
-
-    Args:
-        job: Parsed job mapping.
-
-    Returns:
-        Literal label list, or None for a missing/dynamic/non-list field.
-    """
-    if not isinstance(job, dict):
-        return None
-    value = job.get("runs-on")
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list) and all(isinstance(label, str) for label in value):
-        return value
-    return None
-
-
-def _check_claimed_hil_workflow(
-    host_name: str, workflow: str, expected: set[str], repo_root: Path
-) -> list[str]:
-    """Check every job in one fleet-owned HIL workflow.
-
-    Args:
-        host_name: Fleet host owning the listener.
-        workflow: Repository-relative workflow path.
-        expected: Exact literal label set every job must request.
-        repo_root: Repository root or selftest fixture.
-
-    Returns:
-        One message per missing, unreadable, dynamic or drifted workflow job.
-    """
-    path = repo_root / workflow
-    if not path.is_file():
-        return [f"{host_name}: declared HIL workflow '{workflow}' does not exist"]
-    jobs, error = _workflow_jobs(path)
-    if error is not None:
-        return [f"{workflow}: {error}"]
-    problems = []
-    for job_name, job in jobs.items():
-        actual = _runs_on_labels(job)
-        if actual is None:
-            problems.append(
-                f"{workflow}:{job_name}: runs-on is not a literal string/list, so its "
-                "HIL labels cannot be checked against infra/fleet.yml"
-            )
-        elif len(actual) != len(set(actual)) or set(actual) != expected:
-            problems.append(
-                f"{workflow}:{job_name}: runs-on {actual!r} does not exactly match "
-                f"declared labels {sorted(expected)!r}"
-            )
-    return problems
-
-
-def _check_unclaimed_hil_workflows(
-    repo_root: Path, claims: set[str], custom_labels: set[str]
-) -> list[str]:
-    """Reject a workflow using native HIL labels without fleet ownership.
-
-    Args:
-        repo_root: Repository root or selftest fixture.
-        claims: Workflow paths owned by native listener declarations.
-        custom_labels: Every custom native HIL label in the fleet.
-
-    Returns:
-        One message per unclaimed job using a native HIL label.
-    """
-    problems = []
-    workflows_dir = repo_root / ".github" / "workflows"
-    paths = sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
-    for path in paths:
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in claims:
-            continue
-        jobs, error = _workflow_jobs(path)
-        if error is not None:
-            continue
-        for job_name, job in jobs.items():
-            actual = _runs_on_labels(job)
-            overlap = set(actual or []) & custom_labels
-            if overlap:
-                problems.append(
-                    f"{rel}:{job_name}: uses native HIL label(s) {sorted(overlap)!r} "
-                    "but no hil_runner declaration owns this workflow"
-                )
-    return problems
-
-
-def _check_hil_workflows(data: dict[str, Any], repo_root: Path = REPO_ROOT) -> list[str]:
-    """Cross-check native HIL declarations against literal workflow labels.
-
-    Args:
-        data: Parsed fleet declaration.
-        repo_root: Repository root, overridden by the selftest fixture.
-
-    Returns:
-        One message per missing workflow, dynamic label set, label mismatch,
-        or undeclared workflow using a native HIL label.
-    """
-    problems = []
-    claims: set[str] = set()
-    all_custom_labels: set[str] = set()
-    for host_name, host in data["hosts"].items():
-        declared = host.get("hil_runner")
-        if not isinstance(declared, dict):
-            continue
-        workflow = declared.get("workflow")
-        labels = declared.get("labels")
-        if (
-            not isinstance(workflow, str)
-            or not isinstance(labels, list)
-            or any(not isinstance(label, str) for label in labels)
-        ):
-            continue
-        expected = {"self-hosted", *labels}
-        claims.add(workflow)
-        all_custom_labels.update(labels)
-        problems += _check_claimed_hil_workflow(host_name, workflow, expected, repo_root)
-    problems += _check_unclaimed_hil_workflows(repo_root, claims, all_custom_labels)
-    return problems
-
-
 def _is_literal(destination: str) -> bool:
     """Whether an ssh destination is an address rather than a config alias.
 
@@ -448,7 +302,6 @@ def _good_hosts() -> dict[str, Any]:
                 "name": "dev-hil",
                 "repository": "https://github.com/example/firmware",
                 "labels": ["hil", "ra8d2"],
-                "workflow": ".github/workflows/hil.yml",
                 "bench": {"host": "bench", "aliases": ["bench.local"]},
             },
         },
@@ -533,12 +386,6 @@ def _hil_listener_mutations() -> dict[str, Any]:
         "HIL listener with implicit label repeated": lambda d: d["hosts"]["dev"][
             "hil_runner"
         ].update(labels=["self-hosted", "hil"]),
-        "HIL listener with no workflow": lambda d: d["hosts"]["dev"]["hil_runner"].update(
-            workflow=""
-        ),
-        "HIL listener with unsafe workflow path": lambda d: d["hosts"]["dev"]["hil_runner"].update(
-            workflow="../hil.yml"
-        ),
         "HIL listener with malformed repository": lambda d: d["hosts"]["dev"]["hil_runner"].update(
             repository="owner/repo"
         ),
@@ -552,9 +399,8 @@ def _hil_listener_mutations() -> dict[str, Any]:
             "bench"
         ].update(aliases="bench.local"),
         "duplicate HIL registration name": lambda d: _duplicate_hil(
-            d, workflow=".github/workflows/hil-second.yml"
+            d, repository="https://github.com/example/firmware-second"
         ),
-        "duplicate HIL workflow owner": lambda d: _duplicate_hil(d, name="dev-hil-second"),
     }
 
 
@@ -768,43 +614,6 @@ def _check_jump_resolves(host_vars_dir: Path) -> list[str]:
     return problems
 
 
-def _check_hil_selftest(root: Path) -> list[str]:
-    """Prove HIL workflow labels and declarations reject drift both ways."""
-    failures: list[str] = []
-    good_declaration = _good_declaration()
-    workflow = root / ".github" / "workflows" / "hil.yml"
-    workflow.parent.mkdir(parents=True)
-    workflow.write_text(
-        "---\nname: hil\non: workflow_dispatch\njobs:\n"
-        "  hil-all:\n    runs-on: [self-hosted, hil, ra8d2]\n    steps: []\n",
-        encoding="utf-8",
-    )
-    if _check_hil_workflows(good_declaration, root):
-        failures.append("  a workflow matching its declared HIL labels was rejected")
-    workflow.write_text(
-        "---\nname: hil\non: workflow_dispatch\njobs:\n"
-        "  hil-all:\n    runs-on: [self-hosted, hil, wrong-board]\n    steps: []\n",
-        encoding="utf-8",
-    )
-    if not _check_hil_workflows(good_declaration, root):
-        failures.append("  drift in a HIL workflow label was not reported")
-    workflow.write_text(
-        "---\nname: hil\non: workflow_dispatch\njobs:\n"
-        "  hil-all:\n    runs-on: [self-hosted, hil, ra8d2]\n    steps: []\n",
-        encoding="utf-8",
-    )
-    declaration_drift = deepcopy(good_declaration)
-    declaration_drift["hosts"]["dev"]["hil_runner"]["labels"] = ["hil", "ra8p1"]
-    if not _check_hil_workflows(declaration_drift, root):
-        failures.append("  drift in a declared HIL label was not reported")
-    undeclared = workflow.with_name("undeclared.yml")
-    undeclared.write_text(workflow.read_text(encoding="utf-8"), encoding="utf-8")
-    if not _check_hil_workflows(good_declaration, root):
-        failures.append("  an undeclared workflow using HIL labels was not reported")
-    undeclared.unlink()
-    return failures
-
-
 def _check_hil_service_selftest(root: Path) -> list[str]:
     """Prove the managed systemd template contract accepts and rejects."""
     failures: list[str] = []
@@ -836,7 +645,6 @@ def _selftest() -> int:
         good_declaration = _good_declaration()
         if fm.validate(good_declaration, host_vars_dir=empty):
             failures.append("  a legal declaration was rejected")
-        failures += _check_hil_selftest(empty)
         failures += _check_hil_service_selftest(empty)
         failures += hctr.selftest(REPO_ROOT)
         # A validator that rejected EVERY dev slice would pass every mutation
@@ -919,7 +727,6 @@ def main(argv: list[str] | None = None) -> int:
         + _check_hil_service_template()
         + hctr.check(REPO_ROOT, data)
         + _check_derived_reach(data)
-        + _check_hil_workflows(data)
     )
     if problems:
         print(f"infra/fleet.yml: {len(problems)} problem(s):", file=sys.stderr)
