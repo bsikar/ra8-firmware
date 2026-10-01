@@ -202,7 +202,7 @@ ra8_err_t ra8_ble_open(const ra8_ble_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be NULL");
   /* Descriptor first, so a flag this transport cannot programme is
-   * refused the same way whatever the open state (issue #1348). */
+   * refused the same way whatever the open state. */
   if (cfg->use_external_osc > k_ra8_ble_cfg_flag_max) {
     return k_ra8_err_invalid_arg;
   }

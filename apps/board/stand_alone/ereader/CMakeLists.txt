@@ -59,7 +59,7 @@ endif()
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
 # The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
 # constants. They come from the same map the NS linker script is generated from
-# rather than being re-typed in trustzone_init.c (#759 item 2).
+# rather than being re-typed in trustzone_init.c.
 ra8_ns_memory_map_defines(ra8d2-ereader.elf)
 
 target_compile_definitions(
@@ -89,7 +89,7 @@ add_custom_command(
 # ---- Non-Secure Target ----------------------------------------------------
 # Configures the Non-Secure ThreadX OS and the e-reader UI. ra8_add_ns_image()
 # owns the CMSE implib handshake at both ends, the NS warning profile, the
-# build ordering, and the merged-hex staple (#759 item 1).
+# build ordering, and the merged-hex staple.
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
 # The NS world runs the ThreadX watchdog supervisor. The supervisor is Zig

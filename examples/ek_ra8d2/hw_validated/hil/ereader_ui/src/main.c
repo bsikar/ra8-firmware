@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * E-reader UI chrome (issue #80). The application
+ * E-reader UI chrome. The application
  * shell is laid out by the bounded box-model engine ``libs/ra8_box``
  * (the #80 box model: stacks, a fixed-column grid, padding/gap, fixed
  * vs flex sizing), rendered into the GLCDC framebuffer through

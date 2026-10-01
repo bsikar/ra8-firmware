@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Fixed-layout selftest (issue #196): a CBZ in EPUB clothing must survive intact.
+"""Fixed-layout selftest: a CBZ in EPUB clothing must survive intact.
 
 A fixed-layout / image-only EPUB3 has no flowable text at all -- each spine
 document is one full-page <img>. That content model exercises a different path
@@ -29,7 +29,7 @@ from epub_pipeline import compile_epub
 from rabook_blob import BlobBuilder
 from rabook_format import IMG_GRAY4, NIL, NODE_ELEMENT, wrap_container
 
-# --- fixed-layout selftest (issue #196) ---------------------------------------
+# --- fixed-layout selftest ---------------------------------------
 # A fixed-layout / image-only EPUB3 is a CBZ in EPUB clothing: each spine
 # document is one full-page <img> with no flowable text. This selftest proves
 # that content model survives the compiler end to end -- the emitted .rabook has

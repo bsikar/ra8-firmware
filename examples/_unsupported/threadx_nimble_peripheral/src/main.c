@@ -229,7 +229,7 @@ RA8_INTERNAL static void internal_demo_ble_or_halt(void)
 {
   /* Both flags stay 0: the C6 companion owns the radio oscillator and
    * the controller sleep policy, and ra8_ble_open refuses a set flag
-   * with k_ra8_err_not_supported (issue #1348). */
+   * with k_ra8_err_not_supported. */
   const ra8_ble_config_t ble_cfg = {
     .use_external_osc  = 0U,
     .deep_sleep_enable = 0U,

@@ -6,7 +6,7 @@
  * Every public FAT entry point opens with a compound null / state guard. The
  * behavioural suite (`tests/storage/src/test_ra8_fs_fat.c` and siblings) exercises the
  * happy paths; this file adds the dedicated N+1 independent-influence vector
- * sets the compound-decision ratchet (issue #426) requires for each guard:
+ * sets the compound-decision ratchet requires for each guard:
  *
  *   - `ra8_fs_mount`   -- the backend/out-handle null guard and the
  *                         read/write/capacity function-pointer guard.

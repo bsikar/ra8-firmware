@@ -20,7 +20,7 @@
  * decodes **protobuf**, not C structures: `WifiStaConfig` is a message with
  * named fields and upstream's own host converts to it field by field, so no
  * struct layout, field order or padding on this side ever reaches the C6.
- * That was measured on the bench before this library was written (see #490),
+ * That was measured on the bench before this library was written,
  * and it is why this file defines the handful of small types a caller genuinely
  * needs rather than reproducing ESP-IDF's `wifi_*_t` surface for an ABI
  * compatibility the link does not have.

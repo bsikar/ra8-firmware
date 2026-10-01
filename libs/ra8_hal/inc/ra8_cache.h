@@ -16,7 +16,7 @@
  *     peripheral or the secondary core wrote (use after an RX DMA completes);
  *   - **clean + invalidate** -- both, for a bidirectional buffer.
  *
- * ...plus the L1 bring-up primitives the boot path uses (issue #577): the
+ * ...plus the L1 bring-up primitives the boot path uses: the
  * I-cache invalidate (ICIALLU), and the enable/disable pair for each cache
  * (CCR.IC / CCR.DC) with the unified ::ra8_cache_enable. Each *enable* runs its
  * architectural invalidate before setting the CCR bit; ::ra8_cache_dcache_disable

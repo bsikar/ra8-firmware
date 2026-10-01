@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_tflm_op_subset.cc
  * @brief Unit tests pinning the vendored TFLite-micro operator subset and the
- *        first-party Ethos-U custom-op registration seam (issue #228)
+ *        first-party Ethos-U custom-op registration seam
  *
  * @details
  * Issue #228's residual is the runtime half of the RA8P1 Ethos-U55 story: the

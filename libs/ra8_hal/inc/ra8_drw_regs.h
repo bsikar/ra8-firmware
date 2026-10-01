@@ -552,7 +552,7 @@ typedef enum : uint8_t {
  * the layout below is the one the DLR consumes, decoded from the vendored TES
  * D/AVE 2D reference (its software DLR model d2_executedlist_intern and
  * register map: register index == byte offset / 4) and bench-verified on an
- * EK-RA8D2 (issue #247).
+ * EK-RA8D2.
  *
  * Each entry is a TAG word followed by one value word per register it writes.
  * The tag packs up to four register indices, one per byte. The first byte

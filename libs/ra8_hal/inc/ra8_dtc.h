@@ -131,7 +131,7 @@ typedef void (*ra8_dtc_event_fn_t)(void* ctx, uint16_t status);
 void ra8_dtc_dispatch(void);
 
 /* ---------------------------------------------------------------------
- * Transfer-descriptor facade (issue #774)
+ * Transfer-descriptor facade
  *
  * ra8_dtc_init()/_enable()/_reconfigure() cover the module; describing a
  * transfer was left to the consumer, so three apps each transcribed the

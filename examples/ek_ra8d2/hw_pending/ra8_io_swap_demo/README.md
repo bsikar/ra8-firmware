@@ -1,6 +1,6 @@
 # ra8_io_swap_demo
 
-The `ra8_io` capstone (epic #155, #264): a single binary showing every
+The `ra8_io` capstone: a single binary showing every
 abstraction at once -- two block-device backends swapped behind one interface, a
 VFS round-trip, and stdio retargeted to two different sinks. Where each sibling
 `ra8_io_*_demo` binds one backend, this ties the fabric together.

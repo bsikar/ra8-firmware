@@ -71,7 +71,7 @@ RA8_INTERNAL static void internal_check(bool cond, const char* name)
  *          baked source and diffs the packed 4-bpp result against the host golden
  *          the desktop compiler emits for the same source via the same integer
  *          kernel. A match proves the opt-in downscale path is one deterministic
- *          kernel host-vs-device (issue #213).
+ *          kernel host-vs-device.
  *
  * @par MC/DC:
  * No compound boolean decision is under test here -- the assertions are

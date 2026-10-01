@@ -91,7 +91,7 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 # than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
 # `scripts/emu/smoke.sh usb_cdc_echo usb_msc_device`.
 #
-# usb_printer_vendor (issue #265) is the odd one out: it is bare-metal (no
+# usb_printer_vendor is the odd one out: it is bare-metal (no
 # ThreadX/USBX) and answers the same chapter-9 script from a hand-rolled polled
 # responder that drives the native ra8_usb_pprn (Printer 7/1/2) + ra8_usb_pvnd
 # (Vendor 0xFF) class layers. The virtual host detects its first interface

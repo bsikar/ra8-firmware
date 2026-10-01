@@ -99,7 +99,7 @@ target_link_libraries(secure_boot_ns_hil.elf PRIVATE tfpsa_sbns)
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
 # The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
 # constants. They come from the same map the NS linker script is generated from
-# rather than being re-typed in trustzone_init.c (#759 item 2).
+# rather than being re-typed in trustzone_init.c.
 ra8_ns_memory_map_defines(secure_boot_ns_hil.elf)
 
 target_compile_definitions(
@@ -148,7 +148,7 @@ target_include_directories(
 # The NS link is hand-rolled (no CMSE veneers to hand over, so ra8_add_ns_image()
 # does not fit), but the linker script is still the shared board template rather
 # than a third fork: ra8_ns_linker_script() configures it from ns_image.ld.in
-# with this board's one NS memory map (#759 item 2).
+# with this board's one NS memory map.
 include(${RA8_REPO_ROOT}/cmake/ra8_add_ns_image.cmake)
 ra8_ns_linker_script(_sbnh_ns_linker NAME secure_boot_ns_hil_ns)
 

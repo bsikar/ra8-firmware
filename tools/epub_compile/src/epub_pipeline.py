@@ -53,7 +53,7 @@ def compile_epub(
             paths are not byte-equivalent.
         skip_images: Drop every image, producing a text-only blob small enough
             to bake into MRAM as a fixture. The cover is dropped too.
-        pixel_format: Device-profile raster depth (issue #343): PIXFMT_GRAY4
+        pixel_format: Device-profile raster depth: PIXFMT_GRAY4
             (the default 4bpp packing) or PIXFMT_GRAY8 (lossless 8bpp). Only the
             raster image arm reads it; SVG is unaffected.
 

@@ -2,7 +2,7 @@
 
 * **Status** -- Proposed
 * **Date** -- 2026-09-17
-* **Driver** -- issue #832 (parent epic #821); consumed by #823, #824, #825, #834
+* **Driver** -- issue #832; consumed by #823, #824, #825, #834
 
 ## Context
 

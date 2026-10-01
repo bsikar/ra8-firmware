@@ -289,7 +289,7 @@ def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> l
 # rule set is fixing: libs/ra8_core/inc/ra8_device.h says the enums below are
 # "the runtime mirror of the MEMORY { } block in every app's linker_script.ld;
 # keep the two in lock-step", and nothing in the tree read them, so nothing
-# enforced the lock-step either (issue #1048).
+# enforced the lock-step either.
 DEVICE_HEADER = pathlib.Path(__file__).resolve().parents[2] / "libs/ra8_core/inc/ra8_device.h"
 
 # One enum row: `k_ra8_mem_sram_base = 0x22000000U, /**< ... */`. Only the

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_widget_keyboard.c
- * @brief Unit tests for the ra8_widget on-screen-keyboard leaf (#145 Phase 2).
+ * @brief Unit tests for the ra8_widget on-screen-keyboard leaf.
  *
  * @details
  * The keyboard widget draws each key (a bordered face plus its glyph or label)

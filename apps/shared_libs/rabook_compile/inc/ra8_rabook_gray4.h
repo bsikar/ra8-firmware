@@ -20,7 +20,7 @@
  * Grayscale value v (0-255) maps to nibble n = (v + 8) / 17, clamped to
  * [0, 15]. This is the round-to-nearest equivalent of the desktop palette
  * quantisation (16 evenly-spaced entries at i * 17, i = 0..15).  Downscaled
- * images are byte-identical between host and device (issue #213): the desktop
+ * images are byte-identical between host and device: the desktop
  * tool resamples and quantises with this exact integer kernel, mirrored in
  * tools/epub_compile/src/gray4_kernel.py, so both sides emit the same pixels -- no
  * LANCZOS-vs-bilinear exception.  test_ra8_rabook_downscale_parity.c gates that

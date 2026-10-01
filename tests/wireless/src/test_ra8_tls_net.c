@@ -8,7 +8,7 @@
  * Compiled with ``RA8_OFF_TARGET`` defined, so ``ra8_tls.c`` runs its
  * loopback BIO drain instead of a real Mbed TLS handshake. That lets the
  * host build exercise the full public contract of the new facade surface
- * added for the TLS-client example (issue #261):
+ * added for the TLS-client example:
  *
  *  - ``ra8_tls_mss_clamp`` -- the IPv4 + TCP overhead subtraction that keeps
  *    every segment inside the #21-pinned 128-byte MTU, including its

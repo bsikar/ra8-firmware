@@ -1,6 +1,6 @@
 /**
  * @file figure_fixture.h
- * @brief Baked 200x130 RGB PNG figure for the Reading screen (#106 Phase 1/2).
+ * @brief Baked 200x130 RGB PNG figure for the Reading screen.
  *
  * @details A small deterministic chapter illustration (navy band over a
  * crimson/gold split). Decoded + scaled + blitted by reflow's image path

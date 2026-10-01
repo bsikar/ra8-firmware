@@ -96,7 +96,7 @@ typedef enum : uint16_t {
  * first TI long-word out as MR[31:24] = MRA, MR[23:16] = MRB,
  * MR[15:8] = MRC, MR[7:0] = reserved) plus the MRA / MRB sub-field
  * positions (MRA: HUM 18.2.2 p 786, MRB: HUM 18.2.3 p 787). These were
- * transcribed into three application files (issue #774); they live here
+ * transcribed into three application files; they live here
  * now so a consumer never has to encode them. */
 typedef enum : uint8_t {
   k_ra8_dtc_mra_byte_pos = 24U,   /**< MRA occupies MR[31:24].        */

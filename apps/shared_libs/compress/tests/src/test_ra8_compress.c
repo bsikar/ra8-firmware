@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_compress.c
- * @brief Unit tests for app-domain DEFLATE compress/decompress (issue #161).
+ * @brief Unit tests for app-domain DEFLATE compress/decompress.
  *
  * @details
  * Exercises the heap-free raw-DEFLATE and zlib wrappers: both round trips are

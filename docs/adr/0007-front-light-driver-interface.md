@@ -4,7 +4,7 @@
 
 Proposed. The electrical decision below is analysis only; every photometric
 and thermal number it depends on needs bench confirmation on Rev 1 hardware
-(see Open questions). Tracks #831 (parent #821).
+(see Open questions). Tracks #831.
 
 Numbering note: `0005` was claimed by two open pull requests when this was
 written (#1225 SDRAM interface supply domain, #1227 usb_cdc example
@@ -33,7 +33,7 @@ Three facts about the current tree shape this decision.
    Those are indicator LEDs on GPIO, not an illumination channel. So no
    firmware assumption constrains the choice yet, and whatever is chosen
    has to arrive with a board-layer seam rather than slot into one.
-2. **The main rail is already spoken for.** ADR-0010 (#846, PR #1225)
+2. **The main rail is already spoken for.** ADR-0010
    bounds any MCU domain carrying SDRAM DQ bits to a complete envelope
    inside 3.00 V..3.35 V, leaving >= 55 mV of guaranteed read-high margin
    at the ceiling. A front light is the largest dynamic load on a reader,
@@ -287,7 +287,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   Conditions; Electrical Characteristics (ISHDN, ILED_MIN, IHVLED,
   IMATCH_HV, VREG_CS, VOVP); PWM Input Frequency Range; 11-bit code
   calculation.
-* ADR-0010 (PR #1225, issue #846): SDRAM interface supply domain, the
+* ADR-0010: SDRAM interface supply domain, the
   3.00..3.35 V envelope with >= 55 mV guaranteed read-high margin.
 * Tree, at dev 013631d: `libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h` and
   `libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c` (three provisional GPIO user

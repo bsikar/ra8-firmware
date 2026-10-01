@@ -9,7 +9,7 @@
  * The vendored TensorFlow Lite for Microcontrollers runtime calls `abort()`
  * from its tensor-accessor error paths (`kernel_util.cc` and `micro_utils.cc`).
  * This app links `-nostdlib`, so there is no libc to resolve that symbol and
- * the image failed to link at all (issue #2500) with five undefined references.
+ * the image failed to link at all with five undefined references.
  *
  * Rather than pull in newlib for one symbol, this translation unit provides a
  * strong `abort` that routes into the project's fatal-error policy and never

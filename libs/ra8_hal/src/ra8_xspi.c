@@ -339,7 +339,7 @@ static void internal_xspi_reset_device(volatile r_xspi_regs_t* reg)
  * CMDCMP. ``CMCTLCH[0/1]`` are zeroed so XIPEN is not left armed. The CS is
  * ``k_ra8_xspi_onboard_cs`` (CS1): the EK-RA8D2 IS25LX512M is wired there
  * (FSP OSPI example ``channel == 1``); an earlier CS0 default strobed an
- * unconnected pin and floated RDID to 0x00FFFFFF (issue #44).
+ * unconnected pin and floated RDID to 0x00FFFFFF.
  * HUM Ch 44 p 2986.
  *
  * @param[in] reg  xSPI register block (already gated open by the caller).

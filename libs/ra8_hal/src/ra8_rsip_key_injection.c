@@ -41,7 +41,7 @@
 static const char* const s_tag = "RSIP_KI";
 
 /*
- * Fail-closed stub-crypto gate (issue #180). The key-wrap and MAC below use a
+ * Fail-closed stub-crypto gate. The key-wrap and MAC below use a
  * NON-cryptographic xorshift mixer (see the @warning in the file banner), so
  * the wrapping is not cryptographically meaningful. It is only safe under an
  * off-target build or an explicitly-declared insecure dev/eval image. A real

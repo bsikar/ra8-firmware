@@ -29,7 +29,7 @@
  *
  * The device-security paths (device lifecycle, the three debug-authorisation
  * levels, the tamper subsystem, and the SPA / DPA side-channel arm) were split
- * out into ``ra8_rsip_devsec.c`` and fail-closed the same way (issue #216): they
+ * out into ``ra8_rsip_devsec.c`` and fail-closed the same way: they
  * drove an invented "RSIP security-state" register block cited to HUM Ch 51,
  * which is a prose feature index with no register map.
  *
@@ -85,7 +85,7 @@ static const char* const s_tag = "RSIP";
  * these bytes for a valid hash, MAC, or key handle. The only real hash path is
  * ra8_rsip_sha256 -> the software SHA-256 backend in ra8_rsip.c (untouched); any
  * real hash / HMAC / KDF need is served by tf-psa-crypto on the M85,
- * silicon-proven in psa_crypto_hil (issue #215). The register pokes below
+ * silicon-proven in psa_crypto_hil. The register pokes below
  * therefore carry NO HUM citation: there is no real register map to cite. The
  * former "HUM Ch 52.1" / "52.2.3" citations were fabricated and are removed.
  */
@@ -627,7 +627,7 @@ ra8_err_t ra8_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
  * k_ra8_ok) so a production image cannot mistake the fake command-path for a
  * real digest, MAC, wrapped key, or derived key. The only real hash is
  * ra8_rsip_sha256 -> the software SHA-256 backend in ra8_rsip.c; callers needing
- * hash / HMAC / KDF use tf-psa-crypto on the M85 (issue #215).
+ * hash / HMAC / KDF use tf-psa-crypto on the M85.
  */
 
 ra8_err_t ra8_rsip_hash(ra8_rsip_hash_alg_t alg,

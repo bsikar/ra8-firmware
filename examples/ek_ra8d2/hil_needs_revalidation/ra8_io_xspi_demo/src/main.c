@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/src/main.c
- * @brief ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK-RA8D2.
+ * @brief ra8_io fabric over OSPI NOR flash on the EK-RA8D2.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

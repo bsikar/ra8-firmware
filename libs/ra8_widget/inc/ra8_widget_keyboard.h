@@ -1,6 +1,6 @@
 /**
  * @file ra8_widget_keyboard.h
- * @brief On-screen-keyboard leaf widget for the ra8_widget tree (#145 Phase 2).
+ * @brief On-screen-keyboard leaf widget for the ra8_widget tree.
  * @ingroup grp_ereader
  *
  * @details

@@ -1,6 +1,6 @@
 /**
  * @file test_stub_crypto_gate.c
- * @brief Stub-vs-production crypto build-gate reachability test (issue #180)
+ * @brief Stub-vs-production crypto build-gate reachability test
  *
  * @par Tag
  * [Ring 1 / Core] {World: S}

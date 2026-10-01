@@ -6,7 +6,7 @@
  * @details
  * Decodes an in-memory JPEG/PNG/GIF/BMP (the formats EPUB covers + figures
  * use) through `stb_image` and blits it -- nearest-neighbour scaled to fit a
- * layout box -- into the `ra8_gfx` framebuffer. The cover path (#106 Phase 1)
+ * layout box -- into the `ra8_gfx` framebuffer. The cover path
  * and the in-chapter `<img>` path (Phase 2) both call ::ra8_img_decode_blit.
  *
  * **Zero heap (NASA P10 Rule 3).** `stb_image` normally `malloc`s; here it is

@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Exercises the ra8_scb System Control Block driver (issue #583) end to end on
+ * Exercises the ra8_scb System Control Block driver end to end on
  * a bare EK-RA8D2, printing what the three raw-poke call sites used to read for
  * themselves so the HAL primitive can be diffed against them on the bench:
  *

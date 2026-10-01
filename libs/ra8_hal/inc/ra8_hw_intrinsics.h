@@ -13,7 +13,7 @@
  * busy-waits, the ``cpsie i`` / ``cpsid i`` global-interrupt gate, and the
  * post-reset spin that never returns on silicon.
  *
- * This header is the single divergence point (issue #293). On the
+ * This header is the single divergence point. On the
  * arm-none-eabi target each primitive is a ``static inline`` that expands to
  * exactly the inline asm the drivers used before -- so the shipping code is
  * byte-for-byte unchanged and, critically, the calibrated ``nop`` pads stay

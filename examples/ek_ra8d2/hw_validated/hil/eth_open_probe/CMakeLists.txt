@@ -33,7 +33,7 @@ ra8_add_app(
   NAME eth_open_probe
   STACK_BYTES 2200
   LIBS ra8_board_ek_ra8d2
-  DESCRIPTION "Bare-metal ra8_eth_open bring-up probe for RA8D2 (issue #524)"
+  DESCRIPTION "Bare-metal ra8_eth_open bring-up probe for RA8D2"
 )
 
 # Address-sweep knob. The app forces a pad of this many bytes into the plain

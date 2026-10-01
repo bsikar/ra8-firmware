@@ -8,7 +8,7 @@
  * @details
  * Covers the five ThreadX failure branches in ``ra8_wdt_supervisor.c``
  * that no host input could reach before the ::fw_os host binding gained a one-shot
- * forced-failure slot (issue #1231). Each case arms one ThreadX call to
+ * forced-failure slot. Each case arms one ThreadX call to
  * fail, drives the public entry point that makes that call, and asserts
  * the published per-object code rather than the old catch-all
  * ``k_ra8_err_rtos_error``:

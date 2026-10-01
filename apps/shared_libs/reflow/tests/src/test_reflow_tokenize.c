@@ -9,7 +9,7 @@
  * end-to-end `priv_reflow_xml_walk` over inputs that exercise every
  * markup handler. The tokenizer replaced the former DOM shim; its
  * output was verified byte-for-byte equivalent to that shim across a
- * corpus before the swap (see issue #82).
+ * corpus before the swap.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

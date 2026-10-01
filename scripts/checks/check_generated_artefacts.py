@@ -8,7 +8,7 @@ GENERATED, yet they are also COMMITTED, and nothing compared the committed copy 
 generator produces from the current tree. On a DO-178C Level B target these are
 the human-readable record of where the remaining structural-coverage and
 documentation gaps are; a committed copy that has silently drifted describes a
-tree that no longer exists (issue #380).
+tree that no longer exists.
 
 This is the "regenerate and gate" resolution. For every versioned generated
 artefact this gate re-runs its generator and byte-compares the result against

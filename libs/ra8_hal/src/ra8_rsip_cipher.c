@@ -24,7 +24,7 @@
  * guard and a production build returns ``k_ra8_err_not_supported``. The shipping
  * symmetric crypto is tf-psa-crypto on the M85. NetX Crypto is linked with its
  * own built-in software AES / SHA-256 (there is no RSIP ALT shim), so no NetX
- * consumer depends on this fail-closed path (issue #214).
+ * consumer depends on this fail-closed path.
  *
  * Cross-TU primitives shared with ``ra8_rsip.c`` and ``ra8_rsip_asym.c`` are
  * declared in ``ra8_rsip_internal.h`` and remain compiled in every build. The
@@ -229,7 +229,7 @@ uint8_t priv_aes_alg_byte(uint32_t alg)
  * valid tag. The shipping symmetric crypto is tf-psa-crypto on the M85,
  * silicon-proven in psa_crypto_hil; NetX Crypto is linked with its own built-in
  * software AES / SHA-256 (there is no RSIP ALT shim), so no NetX consumer
- * depends on this fail-closed path (issue #214). The register pokes below
+ * depends on this fail-closed path. The register pokes below
  * therefore carry NO HUM citation: there is no real register map to cite.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)

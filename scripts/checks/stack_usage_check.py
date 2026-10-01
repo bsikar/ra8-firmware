@@ -60,7 +60,7 @@ CRITICAL_MODULES = (
     "ra8_pfs",
 )
 
-# --- Enumeration floor (issue #386) ------------------------------------------
+# --- Enumeration floor ------------------------------------------
 #
 # A scan that parsed ZERO functions -- no .su files at all, or .su files that
 # decode to nothing -- used to exit 0, byte-for-byte identical to a genuine
@@ -416,7 +416,7 @@ def _add_enumeration_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         default=DEFAULT_MIN_FUNCTIONS,
         help=(
-            "Enumeration floor (issue #386). A sweep that parses fewer than "
+            "Enumeration floor. A sweep that parses fewer than "
             "this many functions is treated as a collapsed enumeration and "
             "FAILS, so a degraded run reporting fewer results cannot read as a "
             "pass. Ignored under --allow-empty."

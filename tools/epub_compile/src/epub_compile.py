@@ -33,7 +33,7 @@ from epub_pipeline import compile_epub
 from rabook_blob import MAX_IMAGE_EDGE, BlobBuilder
 from rabook_format import CONTAINER_CHUNK_BYTES, PIXFMT_GRAY4, PIXFMT_GRAY8, wrap_container
 
-# Device-profile raster depth selector for --pixel-format (issue #343). gray4 is
+# Device-profile raster depth selector for --pixel-format. gray4 is
 # the default so an existing compile emits the same 4bpp packing; gray8 keeps the
 # lossless 8bpp source for a deeper panel.
 _PIXFMT_BY_NAME = {"gray4": PIXFMT_GRAY4, "gray8": PIXFMT_GRAY8}

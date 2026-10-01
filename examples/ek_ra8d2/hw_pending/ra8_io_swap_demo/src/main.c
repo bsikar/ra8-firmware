@@ -2,7 +2,7 @@
  * @file examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/src/main.c
  * @brief ra8_io fabric capstone: two block-dev backends swapped behind one
  *        interface, a VFS open/read/write/close round-trip, and stdio
- *        retargeted to both a UART and a RAM stream (epic #155, issue #264).
+ *        retargeted to both a UART and a RAM stream.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

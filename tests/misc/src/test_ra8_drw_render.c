@@ -497,7 +497,7 @@ RA8_INTERNAL static void internal_test_run_dlist(void)
  * @details
  * Independent of the builder's own encoding constants so a wrong register
  * index or tag bit is caught. These are the exact words a J-Link savebin read
- * back from the EK-RA8D2 display list (issue #247).
+ * back from the EK-RA8D2 display list.
  */
 typedef enum : uint32_t {
   k_drw_dl_tag_color1  = 0x80808019UL, /**< 1-index tag, COLOR1 (idx 25).   */

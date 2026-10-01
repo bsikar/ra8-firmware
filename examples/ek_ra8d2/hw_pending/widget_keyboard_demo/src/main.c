@@ -721,7 +721,7 @@ static void internal_draw_chrome(void)
   /* Title and subtitle */
   (void)ra8_gfx_text_out(24,
                          20,
-                         "RA8 On-Screen Keyboard Widget (PR #1342 / Issue #1336)",
+                         "RA8 On-Screen Keyboard Widget",
                          &ra8_gfx_font_8x16,
                          (uint32_t)k_wkd_col_hdr_title,
                          (uint32_t)k_wkd_col_hdr_bg);

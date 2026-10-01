@@ -33,6 +33,6 @@ ra8_add_app(
   NAME threadx_systick_retune
   THREADX_HEAP SDRAM
   STACK_BYTES 2200
-  DESCRIPTION "Eclipse ThreadX SysTick retune-to-live-CPUCLK0 demo (issue #287)"
+  DESCRIPTION "Eclipse ThreadX SysTick retune-to-live-CPUCLK0 demo"
   USES threadx
 )

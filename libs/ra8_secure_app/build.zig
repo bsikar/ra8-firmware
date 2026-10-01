@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
     const insecure_stub_crypto = b.option(
         bool,
         "insecure-stub-crypto",
-        "Declare this an insecure dev/eval image (issue #180); never for production",
+        "Declare this an insecure dev/eval image; never for production",
     ) orelse false;
 
     const build_options = b.addOptions();

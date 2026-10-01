@@ -70,7 +70,7 @@ def parse_opf(
     `<meta name="cover">` is only the fallback. The substring test mirrors
     `epub_xml_shim.cpp` `find_cover_by_properties()` byte for byte, so the
     host `.rabook` and an on-device compile agree on the cover -- which matters
-    for EPUB3-only fixed-layout comics that ship no legacy meta (issue #196).
+    for EPUB3-only fixed-layout comics that ship no legacy meta.
 
     Args:
         zf: Open ZipFile for the EPUB.
@@ -119,7 +119,7 @@ def parse_opf(
             # substring test mirrors epub_xml_shim.cpp find_cover_by_properties()
             # (a strstr over the space-separated properties list) byte-for-byte, so
             # an EPUB3-only book -- no legacy meta, how modern fixed-layout comics
-            # ship (issue #196) -- resolves the same cover host-side and on-device.
+            # ship -- resolves the same cover host-side and on-device.
             if (cover_id_props is None) and ("cover-image" in props):
                 cover_id_props = el.get("id")
         elif tag == "itemref":

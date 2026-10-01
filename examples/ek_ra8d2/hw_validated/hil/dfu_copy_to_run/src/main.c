@@ -7,7 +7,7 @@
  *
  * @details
  * The unattended, self-contained proof of the dfu_bootloader's **copy-to-run**
- * scheme (issue #97): an image linked ONCE at the SRAM run base
+ * scheme: an image linked ONCE at the SRAM run base
  * (::k_ra8_dfu_run_base) runs from wherever it is staged, with no per-slot build.
  *
  * This app embeds that image (`payload_image.h`, generated from `payload.c` by

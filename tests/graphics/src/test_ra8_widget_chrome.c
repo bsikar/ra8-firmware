@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_widget_chrome.c
- * @brief Unit tests for the ra8_widget concrete chrome leaves (#145 Phase 2).
+ * @brief Unit tests for the ra8_widget concrete chrome leaves.
  *
  * @details
  * Covers the pure Dependency-Injection-painted chrome widgets extracted from the

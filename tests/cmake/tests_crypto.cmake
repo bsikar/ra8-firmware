@@ -14,7 +14,7 @@
 # to the driver and to the fragments included after it.
 
 # ---------------------------------------------------------------------------
-# test_stub_crypto_gate (issue #180): reachability half of the stub-vs-production
+# test_stub_crypto_gate: reachability half of the stub-vs-production
 # crypto gate. The auto-glob above already registered it (it links ra8_core_hal,
 # built under RA8_OFF_TARGET, so the guarded #if branch is active). Define
 # RA8_INSECURE_STUB_CRYPTO on it too, so it faithfully compiles under the opt-in
@@ -27,7 +27,7 @@ if(TARGET test_stub_crypto_gate)
 endif()
 
 # ---------------------------------------------------------------------------
-# test_ra8_rsip_devsec_failclosed (issue #216): production fail-closed reachability
+# test_ra8_rsip_devsec_failclosed: production fail-closed reachability
 # for the RSIP device-security path (lifecycle / debug / tamper / DPA arm). The
 # rest of the host build compiles ra8_rsip_devsec.c under RA8_OFF_TARGET (the
 # guarded #if branch, exercised by test_life / test_debug_level / test_tamper in

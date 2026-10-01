@@ -7,7 +7,7 @@
  * block documented in `ra8_sau_regs.h` from a declarative region table, adding
  * the alignment and granularity validation, the `base + size - 32` limit
  * arithmetic, and the ENABLE / NSC encoding that sixteen in-tree
- * `trustzone_init.c` copies each open-code today (issue #735).
+ * `trustzone_init.c` copies each open-code today.
  *
  * It also owns the canonical four-region boot partition
  * (`ra8_sau_apply_boot_map()`), the single source of truth the secure reset
