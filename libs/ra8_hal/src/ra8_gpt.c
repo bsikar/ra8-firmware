@@ -136,6 +136,8 @@ RA8_INTERNAL static void internal_gpt_clock_block_init(void)
  * @details
  * Per HUM Ch 22.2.5 "GTCR : General PWM Timer Control Register",
  * p 904..906: CST = bit 0, MD = bits 16..19, TPCS = bits 23..26.
+ * GTSTR and GTSTP carry no fixed bit here: they hold one CSTRTn /
+ * CSTOPn bit per channel, see ::internal_channel_bit.
  * GTST flag layout from HUM Ch 22.2.16 "GTST : General PWM Timer
  * Status Register", p 962..964: TCFA = bit 0, TCFB = bit 1,
  * TCFPO = bit 6, TCFPU = bit 7.
@@ -144,8 +146,6 @@ typedef enum : uint32_t {
   k_ra8_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start.        */
   k_ra8_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0.          */
   k_ra8_gpt_gtcr_tpcs_shift = 23U,          /**< GTCR.TPCS bit0.        */
-  k_ra8_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write.    */
-  k_ra8_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write.    */
   k_ra8_gpt_gtst_mask       = 0x000000C3UL, /**< TCFPU|TCFPO|TCFB|TCFA. */
 } ra8_gpt_bits_t;
 
@@ -274,6 +274,25 @@ RA8_INTERNAL static uint32_t internal_gtcr(ra8_gpt_mode_t mode, ra8_gpt_prescale
   return ((uint32_t)mode << k_ra8_gpt_gtcr_md_shift) | ((uint32_t)ps << k_ra8_gpt_gtcr_tpcs_shift);
 }
 
+/**
+ * @brief The GTSTR / GTSTP bit that addresses one channel.
+ *
+ * @details
+ * GTSTR and GTSTP are shared across the GPT block: bit n is CSTRTn /
+ * CSTOPn and starts or stops channel n, whichever channel window the
+ * write goes through (HUM Ch 22.2.2 "GTSTR" p 886, Ch 22.2.3 "GTSTP").
+ * ::ra8_gpt_three_phase_open already relies on that to start three
+ * counters with one write. Writing a bare 1 from channel n's window
+ * therefore starts or stops channel 0, not n.
+ *
+ * @param[in] channel GPT channel, already range-checked by the caller.
+ * @return One-hot mask for @p channel.
+ */
+RA8_INTERNAL static uint32_t internal_channel_bit(uint8_t channel)
+{
+  return (uint32_t)(1UL << channel);
+}
+
 ra8_err_t ra8_gpt_start_free_run(uint8_t channel, uint32_t period)
 {
   volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
@@ -292,11 +311,11 @@ ra8_err_t ra8_gpt_start_free_run(uint8_t channel, uint32_t period)
   /* GCOVR_EXCL_BR_STOP */
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
-  reg->GTSTP = 1UL;          /* Stop if running.   */
-  reg->GTCR  = 0x00000001UL; /* Saw-wave PWM mode. */
+  reg->GTSTP = internal_channel_bit(channel); /* Stop if running.   */
+  reg->GTCR  = 0x00000001UL;                  /* Saw-wave PWM mode. */
   reg->GTPR  = period;
   reg->GTCNT = 0U;
-  reg->GTSTR = 1UL; /* Start. */
+  reg->GTSTR = internal_channel_bit(channel); /* Start. */
   reg->GTWP  = k_ra8_gtwp_key_lock;
 
   ra8_log_info_val(s_tag, "start channel", (uint32_t)channel);
@@ -309,7 +328,22 @@ ra8_err_t ra8_gpt_stop(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
-  reg->GTSTP = 1UL;
+  reg->GTSTP = internal_channel_bit(channel);
+  reg->GTWP  = k_ra8_gtwp_key_lock;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_gpt_start(uint8_t channel)
+{
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
+  RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if (!s_gpt_state[channel].configured) {
+    return k_ra8_err_invalid_state;
+  }
+
+  reg->GTWP = k_ra8_gtwp_key_unlock;
+  reg->GTCR |= k_ra8_gpt_gtcr_cst_set;
+  reg->GTSTR = internal_channel_bit(channel);
   reg->GTWP  = k_ra8_gtwp_key_lock;
   return k_ra8_ok;
 }
@@ -344,7 +378,7 @@ ra8_err_t ra8_gpt_init(uint8_t channel, const ra8_gpt_cfg_t* cfg)
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable");
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
-  reg->GTSTP = k_ra8_gpt_gtstp_stop;
+  reg->GTSTP = internal_channel_bit(channel);
   reg->GTCR  = internal_gtcr(cfg->mode, cfg->prescaler);
   reg->GTPR  = cfg->period;
   reg->GTPBR = cfg->period;
@@ -356,7 +390,7 @@ ra8_err_t ra8_gpt_init(uint8_t channel, const ra8_gpt_cfg_t* cfg)
   reg->GTCNT    = 0U;
   if (cfg->auto_start) {
     reg->GTCR |= k_ra8_gpt_gtcr_cst_set;
-    reg->GTSTR = k_ra8_gpt_gtstr_start;
+    reg->GTSTR = internal_channel_bit(channel);
   }
   reg->GTWP = k_ra8_gtwp_key_lock;
 
@@ -371,7 +405,7 @@ ra8_err_t ra8_gpt_deinit(uint8_t channel)
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
-  reg->GTSTP = k_ra8_gpt_gtstp_stop;
+  reg->GTSTP = internal_channel_bit(channel);
   reg->GTCR  = 0U;
   reg->GTWP  = k_ra8_gtwp_key_lock;
 
@@ -447,7 +481,7 @@ ra8_err_t ra8_gpt_enter_stop(uint8_t channel)
   volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
   if (reg != nullptr) {
     reg->GTWP  = k_ra8_gtwp_key_unlock;
-    reg->GTSTP = k_ra8_gpt_gtstp_stop;
+    reg->GTSTP = internal_channel_bit(channel);
     reg->GTWP  = k_ra8_gtwp_key_lock;
   }
   return ra8_mstp_disable(s_gpt_mstp_table[channel]);
