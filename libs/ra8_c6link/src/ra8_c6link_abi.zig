@@ -22,6 +22,7 @@ const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
 const mdl_take = @import("internal/mdl_take.zig");
 const mdl_decode = @import("internal/mdl_decode.zig");
+const mdl_chunk_decode = @import("internal/mdl_chunk_decode.zig");
 const mdl_encode = @import("internal/mdl_encode.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
@@ -46,6 +47,7 @@ const Err = struct {
     pub const busy: u16 = 0x109;
     pub const not_initialized: u16 = 0x10F;
     pub const null_ptr: u16 = 0x504;
+    pub const protocol_error: u16 = 0x406;
 
     /// Flatten one refused storage transition.
     fn of(e: storage_ram.Error) u16 {
@@ -467,21 +469,6 @@ pub export fn priv_c6link_mdl_encode_cancel(
     return true;
 }
 
-/// `priv_c6link_mdl_accept_chunk`: copy a validated chunk, advance the session.
-///
-/// Returns the remote's own status on a FAILED chunk and ok otherwise, which
-/// is the value the caller propagates.
-pub export fn priv_c6link_mdl_accept_chunk(
-    view: ?*const mdl_chunk.View,
-    session: ?*mdl_types.Session,
-    chunk: ?*mdl_types.Chunk,
-) callconv(.c) u16 {
-    const decoded = view orelse return Err.null_ptr;
-    const active = session orelse return Err.null_ptr;
-    const out = chunk orelse return Err.null_ptr;
-    return mdl_chunk.accept(decoded, active, out);
-}
-
 /// `priv_c6link_mdl_service_field_valid`: one bounded single-line header.
 pub export fn priv_c6link_mdl_service_field_valid(
     text: ?[*:0]const u8,
@@ -599,15 +586,26 @@ pub export fn priv_c6link_mdl_take_selected(
     return @intFromEnum(kind);
 }
 
-/// `priv_c6link_mdl_chunk_admissible`: may this decoded chunk reach the session?
-pub export fn priv_c6link_mdl_chunk_admissible(
-    key: *const mdl_session.ChunkKeyView,
-    view: ?*const mdl_chunk.View,
-    session: *const mdl_types.Session,
+/// `priv_c6link_mdl_take_chunk`: decode one Chunk response, check it belongs
+/// to the session, then copy it out and advance the session.
+///
+/// Returns ok, protocol_error for a malformed or foreign chunk, or the
+/// remote's own status on a FAILED chunk, which the caller propagates.
+pub export fn priv_c6link_mdl_take_chunk(
+    data: ?[*]const u8,
+    len: usize,
+    session: ?*mdl_types.Session,
+    chunk: ?*mdl_types.Chunk,
     requested_bytes: u32,
-) callconv(.c) bool {
-    const chunk = view orelse return false;
-    return mdl_take.chunkAdmissible(key, chunk, session, requested_bytes);
+) callconv(.c) u16 {
+    const active = session orelse return Err.null_ptr;
+    const out = chunk orelse return Err.null_ptr;
+    const bytes = body(data, len) orelse return Err.protocol_error;
+    const decoded = mdl_chunk_decode.chunk(bytes) catch return Err.protocol_error;
+    if (!mdl_take.chunkAdmissible(&decoded.key, &decoded.view, active, requested_bytes)) {
+        return Err.protocol_error;
+    }
+    return mdl_chunk.accept(&decoded.view, active, out);
 }
 
 /// `priv_c6link_rpc_issuable`: may another request go out on this link?

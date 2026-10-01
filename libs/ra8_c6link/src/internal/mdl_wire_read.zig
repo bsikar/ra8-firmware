@@ -52,6 +52,22 @@ pub const Field = struct {
     pub fn int32(self: Field) Error!i32 {
         return @bitCast(try self.uint32());
     }
+
+    /// A uint64 field: the whole varint.
+    pub fn uint64(self: Field) Error!u64 {
+        return switch (self.value) {
+            .varint => |v| v,
+            else => error.Malformed,
+        };
+    }
+
+    /// A bytes or string field: the span, borrowed from the buffer.
+    pub fn bytes(self: Field) Error![]const u8 {
+        return switch (self.value) {
+            .len => |span| span,
+            else => error.Malformed,
+        };
+    }
 };
 
 /// Walks a caller-owned buffer; never reads past it.

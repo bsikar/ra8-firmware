@@ -168,6 +168,13 @@ pub fn build(b: *std.Build) void {
     });
     mdl_decode_test_module.addImport("implementation", implementation_module);
     const mdl_decode_tests = b.addTest(.{ .root_module = mdl_decode_test_module });
+    const mdl_chunk_decode_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/mdl_chunk_decode_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mdl_chunk_decode_test_module.addImport("implementation", implementation_module);
+    const mdl_chunk_decode_tests = b.addTest(.{ .root_module = mdl_chunk_decode_test_module });
 
     const mdl_take_test_module = b.createModule(.{
         .root_source_file = b.path("tests/mdl_take_test.zig"),
@@ -247,6 +254,7 @@ pub fn build(b: *std.Build) void {
     const run_mdl_issue_tests = b.addRunArtifact(mdl_issue_tests);
     const run_mdl_encode_tests = b.addRunArtifact(mdl_encode_tests);
     const run_mdl_decode_tests = b.addRunArtifact(mdl_decode_tests);
+    const run_mdl_chunk_decode_tests = b.addRunArtifact(mdl_chunk_decode_tests);
     const run_mdl_take_tests = b.addRunArtifact(mdl_take_tests);
     const run_rpc_wait_tests = b.addRunArtifact(rpc_wait_tests);
     const run_sta_cfg_tests = b.addRunArtifact(sta_cfg_tests);
@@ -288,6 +296,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mdl_issue_tests.step);
     test_step.dependOn(&run_mdl_encode_tests.step);
     test_step.dependOn(&run_mdl_decode_tests.step);
+    test_step.dependOn(&run_mdl_chunk_decode_tests.step);
     test_step.dependOn(&run_mdl_take_tests.step);
     test_step.dependOn(&run_rpc_wait_tests.step);
     test_step.dependOn(&run_sta_cfg_tests.step);

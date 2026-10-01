@@ -19,6 +19,7 @@ pub const mdl_pull = @import("mdl_pull.zig");
 pub const mdl_envelope = @import("mdl_envelope.zig");
 pub const mdl_issue = @import("mdl_issue.zig");
 pub const mdl_decode = @import("mdl_decode.zig");
+pub const mdl_chunk_decode = @import("mdl_chunk_decode.zig");
 pub const mdl_encode = @import("mdl_encode.zig");
 pub const mdl_wire = @import("mdl_wire.zig");
 pub const mdl_wire_read = @import("mdl_wire_read.zig");
