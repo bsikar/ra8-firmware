@@ -6,18 +6,20 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Exercises the GPT in saw-wave one-shot mode (HUM Ch 25.2.1
- * GTCR.MD = 001b) -- the counter counts up from 0 to period once,
- * fires an overflow IRQ, then stops on its own. The demo arms +
- * starts + waits for IRQ + re-arms in a loop so the bench can
- * scrape ``g_gpt_one_shot_match`` and confirm each one-shot
- * completes.
+ * Exercises a one-shot timer through the board's timer port: board
+ * timer 0 (GPT0 on this board, saw-wave one-shot, HUM Ch 25.2.1
+ * GTCR.MD = 001b) counts up from 0 to the period once, reports the
+ * wrap, then stops on its own. The demo starts, polls for the wrap
+ * and restarts in a loop so the bench can scrape
+ * ``g_gpt_one_shot_match`` and confirm each one-shot completes.
  *
  * Bring-up sequence:
  *   - CGC + SysTick + LED1 init.
- *   - ``ra8_gpt_init`` with ``mode = saw_one_shot`` + ``auto_start = false``.
- *   - ``ra8_gpt_attach_handler`` to count overflows.
- *   - Loop: ``ra8_gpt_start_free_run`` -> wait for IRQ -> repeat.
+ *   - ``fw_timer_open`` on ``ra8_board_timer()`` in one-shot mode.
+ *   - Loop: ``fw_timer_start`` -> poll ``fw_timer_take_wrap`` -> repeat.
+ *
+ * No GPT register or driver call remains here; which chip channel and
+ * clock divider back board timer 0 is the board profile's business.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -28,32 +30,29 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_gpt_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
-#include "ra8_gpt.h"
 #include "ra8_isr.h"
 #include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_os_demo_period         = 0x0000FFFFU, /**< 16-bit period at div_4.  */
+  k_gpt_os_demo_period         = 0x0000FFFFU, /**< Wrap point, in counts.   */
   k_gpt_os_demo_rearm_delay_ms = 50U,         /**< Sleep between one-shots. */
 } gpt_os_demo_const_t;
 
-/** @brief GPT channel. */
-typedef enum : uint8_t {
-  k_gpt_os_demo_channel = 0U, /**< GPT os demo channel. */
-} gpt_os_demo_chan_t;
+/** @brief Board timer, a dense board index rather than a chip channel. */
+static const fw_timer_ch_t k_gpt_os_demo_timer = {.index = 0U};
 
 /**
  * @var g_gpt_one_shot_match
- * @brief HIL liveness counter -- bumped on every IRQ-observed one-shot
+ * @brief HIL liveness counter -- bumped on every observed one-shot
  *        completion. Read externally by hil_jlink_memprobe.sh.
  *
- * @details If the GPT clock is gated, GTCR.MD is wrong, or the IRQ
- * is masked, the overflow callback never fires and this counter
- * stops advancing.
+ * @details If the timer's clock is gated or its mode is wrong, the
+ * wrap is never reported and this counter stops advancing.
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
@@ -66,7 +65,7 @@ volatile uint32_t g_gpt_one_shot_match = 0U;
  *        non-ok inside the loop.
  *
  * @details The memprobe asserts this stays at 0. Catches "clock gate
- * closed silently" and "ra8_gpt_start_free_run rejected".
+ * closed silently" and "the timer port refused the start".
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -102,7 +101,7 @@ RA8_INTERNAL static void internal_panic_halt(void)
  * @pre Reset startup initialized static storage and the vector table.
  * @pre Called once before global interrupt enable.
  * @post On return, the delay service and LED1 are ready for the one-shot loop.
- * @post GPT0 remains unconfigured until ``internal_arm`` runs.
+ * @post Board timer 0 stays closed until ``internal_arm`` runs.
  * @note Not thread-safe; it mutates global board and clock state.
  * @since 0.1.0
  */
@@ -125,50 +124,47 @@ RA8_INTERNAL static void internal_setup_or_halt(void)
 }
 
 /**
- * @brief Init GPT0 in one-shot mode.
+ * @brief Open board timer 0 as a one-shot.
  *
- * @details Programs channel zero for a PCLKD/4 saw-wave one-shot with manual
- *          start and the fixed demo period; no callback is required because
- *          completion is polled through the status register.
+ * @details Asks the board's timer port for a one-shot channel with the fixed
+ *          demo period, left stopped. The board profile picks the chip
+ *          channel and the clock divider; the port checks the period against
+ *          the counter width before the chip sees it.
  *
- * @return ra8_err_t from ra8_gpt_init.
- * @retval k_ra8_ok GPT0 accepted the one-shot configuration.
- * @retval (other) The HAL rejected or could not apply the configuration.
+ * @return ra8_err_t from ``fw_timer_open``.
+ * @retval k_ra8_ok Board timer 0 is open in one-shot mode, not running.
+ * @retval (other)  The port or the board refused the open.
  *
- * @pre ra8_isr_globals_enable has been called.
- * @pre GPT0 not yet initialised.
- * @post On k_ra8_ok the channel is armed (not yet running).
+ * @pre ``internal_setup_or_halt`` completed.
+ * @pre Board timer 0 is not open.
+ * @post On k_ra8_ok the timer is open and stopped.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_arm(void)
 {
-  const ra8_gpt_cfg_t cfg = {
-    .mode       = k_ra8_gpt_mode_saw_one_shot,
-    .prescaler  = k_ra8_gpt_ps_div_4,
-    .period     = (uint32_t)k_gpt_os_demo_period,
-    .duty_a     = 0U,
-    .duty_b     = 0U,
-    .auto_start = false,
-  };
-  return ra8_gpt_init((uint8_t)k_gpt_os_demo_channel, &cfg);
+  return fw_timer_open(ra8_board_timer(),
+                       k_gpt_os_demo_timer,
+                       k_fw_timer_mode_one_shot,
+                       (uint32_t)k_gpt_os_demo_period);
 }
 
 /**
- * @brief Poll GTST.TCFPO for one overflow + clear, bounded.
+ * @brief Poll for the one-shot's wrap, bounded.
  *
- * @details Samples channel-zero status up to the fixed poll budget, clears the
- *          overflow flag on first observation, and treats a HAL read failure
- *          the same as exhaustion so the caller records a mismatch.
+ * @details Asks the timer port up to the fixed poll budget whether the count
+ *          reached its period; the port clears the report as it answers.
+ *          A port failure counts the same as exhaustion so the caller records
+ *          a mismatch.
  *
- * @return true if the overflow flag was observed.
- * @retval true  TCFPO set + cleared within budget.
- * @retval false poll budget elapsed.
+ * @return true if the wrap was reported within budget.
+ * @retval true  Wrap reported and cleared.
+ * @retval false Poll budget elapsed, or the port refused.
  *
- * @pre GPT0 is running (ra8_gpt_start_free_run was called).
+ * @pre Board timer 0 was started.
  * @pre IRQs are not required (poll-only path).
- * @post On true the GTST.TCFPO bit has been cleared.
+ * @post On true the wrap report has been taken.
  * @post Iteration count bounded.
  *
  * @note Not thread-safe.
@@ -178,13 +174,11 @@ RA8_INTERNAL static bool internal_wait_ovf(void)
 {
   enum : uint32_t { k_poll_budget = 200000U /**< Poll budget. */ };
   for (uint32_t i = 0U; i < k_poll_budget; ++i) {
-    uint32_t status = 0U;
-    if (ra8_gpt_get_status((uint8_t)k_gpt_os_demo_channel, &status) != k_ra8_ok) {
+    bool wrapped = false;
+    if (fw_timer_take_wrap(ra8_board_timer(), k_gpt_os_demo_timer, &wrapped) != k_ra8_ok) {
       return false;
     }
-    if ((status & (uint32_t)k_ra8_gpt_status_overflow) != 0U) {
-      (void)ra8_gpt_clear_status((uint8_t)k_gpt_os_demo_channel,
-                                 (uint32_t)k_ra8_gpt_status_overflow);
+    if (wrapped) {
       return true;
     }
   }
@@ -192,14 +186,14 @@ RA8_INTERNAL static bool internal_wait_ovf(void)
 }
 
 /**
- * @brief Repeatedly start and verify GPT0 one-shot intervals.
+ * @brief Repeatedly start and verify one-shot intervals on board timer 0.
  *
- * @details Initializes and arms GPT0 once, then starts, polls, records the
+ * @details Opens board timer 0 once, then starts, polls, records the
  *          exported pass/failure counters, toggles LED1 on completion, and
  *          delays before the next one-shot.
  *
  * @pre Reset startup and SystemInit completed successfully.
- * @pre GPT0 and LED1 are not owned by another execution context.
+ * @pre Board timer 0 and LED1 are not owned by another execution context.
  * @post Each completed one-shot increments ``g_gpt_one_shot_match``.
  * @post Each start or bounded-poll failure increments the mismatch counter.
  * @note Does not return during normal operation.
@@ -215,8 +209,7 @@ void main(void)
   }
 
   while (1) {
-    if (ra8_gpt_start_free_run((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_gpt_os_demo_period) !=
-        k_ra8_ok) {
+    if (fw_timer_start(ra8_board_timer(), k_gpt_os_demo_timer) != k_ra8_ok) {
       g_gpt_one_shot_mismatch += 1U;
       ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
       continue;

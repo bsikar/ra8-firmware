@@ -117,7 +117,9 @@ typedef void (*ns_exc_handler_t)(void);
  * @note Single-threaded; IRQs stay masked (no drivers, no RTOS).
  * @since 0.1.0
  */
-[[gnu::section(".ns_text"), noreturn]] static void ns_reset_handler(void)
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void);
+
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void)
 {
   const uintptr_t bss_start = (uintptr_t)&g_ra8_ls_ns_bss_start;
   const uintptr_t bss_end   = (uintptr_t)&g_ra8_ls_ns_bss_end;
