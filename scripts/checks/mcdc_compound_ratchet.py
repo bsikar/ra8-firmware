@@ -658,6 +658,47 @@ def _list_backlog(root: Path) -> int:
     return 0
 
 
+def _early_mode(
+    args: argparse.Namespace, parser: argparse.ArgumentParser, root: Path
+) -> int | None:
+    """Run the modes that need no scan, or None when the tree must be scanned."""
+    if args.selftest:
+        return selftest()
+    # Attestation needs no scan at all, so it runs anywhere and runs first.
+    if args.attest:
+        return report_attestation()
+    if args.list:
+        return _list_backlog(root)
+    if not (args.check or args.update):
+        parser.error("one of --check / --update / --list / --attest / --selftest is required")
+    return None
+
+
+def _do_update(current: dict[tuple[str, str], int], files: int) -> int:
+    """Rewrite the baseline from this scan, refusing to let any bucket grow."""
+    baseline = load_baseline()
+    # Seeding the very first baseline necessarily "grows" every bucket from
+    # nothing, so the no-growth rule applies only once a baseline exists.
+    seeding = not BASELINE_FILE.is_file()
+    grew = [] if seeding else [k for k, n in current.items() if n > baseline.get(k, 0)]
+    if grew:
+        print(
+            f"refusing to --update: {len(grew)} bucket(s) would GROW. "
+            "The baseline is a burn-down; write the missing MC/DC vectors instead.",
+            file=sys.stderr,
+        )
+        for path, function in grew[:MAX_DETAIL_LINES]:
+            print(f"  {path}  {function}()", file=sys.stderr)
+        return 1
+    write_baseline(current)
+    print(
+        f"baseline updated: {sum(current.values())} uncovered compound decision(s) "
+        f"recorded across {len({p for p, _ in current})} file(s) "
+        f"({files} production file(s) scanned)."
+    )
+    return 0
+
+
 def main() -> int:
     """Ratchet uncovered compound decisions against the committed baseline.
 
@@ -682,16 +723,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.selftest:
-        return selftest()
-    # Attestation needs no scan at all, so it runs anywhere and runs first.
-    if args.attest:
-        return report_attestation()
     root = Path(args.root).resolve()
-    if args.list:
-        return _list_backlog(root)
-    if not (args.check or args.update):
-        parser.error("one of --check / --update / --list / --attest / --selftest is required")
+    early = _early_mode(args, parser, root)
+    if early is not None:
+        return early
 
     # #712: read the rows only after proving the file is machine-written.
     attest_rc = report_attestation()
@@ -714,27 +749,7 @@ def main() -> int:
         return 1
 
     if args.update:
-        baseline = load_baseline()
-        # Seeding the very first baseline necessarily "grows" every bucket from
-        # nothing, so the no-growth rule applies only once a baseline exists.
-        seeding = not BASELINE_FILE.is_file()
-        grew = [] if seeding else [k for k, n in current.items() if n > baseline.get(k, 0)]
-        if grew:
-            print(
-                f"refusing to --update: {len(grew)} bucket(s) would GROW. "
-                "The baseline is a burn-down; write the missing MC/DC vectors instead.",
-                file=sys.stderr,
-            )
-            for path, function in grew[:MAX_DETAIL_LINES]:
-                print(f"  {path}  {function}()", file=sys.stderr)
-            return 1
-        write_baseline(current)
-        print(
-            f"baseline updated: {sum(current.values())} uncovered compound decision(s) "
-            f"recorded across {len({p for p, _ in current})} file(s) "
-            f"({files} production file(s) scanned)."
-        )
-        return 0
+        return _do_update(current, files)
 
     print(
         f"MC/DC ratchet: scanned {files} production file(s), "
