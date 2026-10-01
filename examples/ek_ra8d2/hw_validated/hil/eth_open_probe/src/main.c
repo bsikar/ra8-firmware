@@ -31,7 +31,7 @@
  * `r0` is the descriptor-chain pointer as the CPU actually loaded it.
  *
  * Sequence:
- *   1. `ra8_cgc_init` + `ra8_cgc_get_clock_hz` + `ra8_mstp_init` +
+ *   1. `ra8_cgc_init` + `fw_clock_rate_for` + `ra8_mstp_init` +
  *      `ra8_time_init` + `ra8_board_uart_console_init`.
  *   2. `ra8_log_set_byte_sink` -> console, so a fault dump is visible.
  *   3. `ra8_board_ethernet_init` (pins, PHY reset, RMII/RGMII select).

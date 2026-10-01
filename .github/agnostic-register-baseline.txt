@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 330 reference(s)
+# clock: 322 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -250,16 +250,16 @@ examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/watchdog_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/watchdog_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/widget_app/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/widget_app/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/display_pal_animation/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/src/main.c	display	5
