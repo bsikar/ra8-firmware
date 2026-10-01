@@ -169,7 +169,7 @@ pub fn build(b: *std.Build) void {
         "ra8: -Dbuild-type={s} is not a configuration this graph declares; it knows {s}",
         .{ build_type_name, build_type.names(b.allocator) },
     );
-    arm = build_type.globals(b.allocator, selected, armBase());
+    arm = build_type.globals(b.allocator, selected, cross_image.base());
 
     const test_step = b.step("test", "Build and run the whole migrated-library slice");
     const c_test_step = b.step("test-c", "Run the unmodified C suites against the Zig archives");
@@ -211,6 +211,12 @@ pub fn build(b: *std.Build) void {
     // through command_surface.addSources.
     graph_test_module.addAnonymousImport("zig_libs_cmake_source", .{
         .root_source_file = b.path("cmake/ra8_app/zig_libs.cmake"),
+    });
+    // And the cross-image wiring itself, which is where the archive request
+    // lives since #2791 split it out of this file: the same rule has to read
+    // the file that actually asks for the archive, not the one that used to.
+    graph_test_module.addAnonymousImport("cross_image_source", .{
+        .root_source_file = b.path("tests/zig_build_graph/cross_image.zig"),
     });
     // The committed app-shape ledger and the listfile that declares
     // ra8_add_app()'s keywords, so app_shapes_test.zig holds the cross-built
@@ -293,7 +299,7 @@ pub fn build(b: *std.Build) void {
         "Cross-build {d} example apps for the RA8D2 (Cortex-M85)",
         .{cross_apps.len},
     ));
-    addArmCrossBuild(b, arm_step);
+    cross_image.addCrossBuild(b, arm_step, arm);
 
     const compile_db_step = b.step(
         "compile-db",
@@ -407,8 +413,6 @@ pub fn build(b: *std.Build) void {
 //
 // Nothing in CMake is changed or deleted; CMake stays authoritative.
 
-const CrossApp = cross_sources.CrossApp;
-
 /// The apps this slice cross-builds. The table itself lives beside the
 /// source-set rules it exercises, in cross_sources.zig, because that is what
 /// each entry is FOR: an app is in here when it takes an arm of an
@@ -423,13 +427,13 @@ pub const cross_apps = cross_sources.cross_apps;
 pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");
 pub const build_type = @import("tests/zig_build_graph/build_type.zig");
 pub const cross_build = @import("tests/zig_build_graph/cross_build.zig");
+pub const cross_image = @import("tests/zig_build_graph/cross_image.zig");
 pub const device = @import("tests/zig_build_graph/device.zig");
 pub const off_target = @import("tests/zig_build_graph/off_target.zig");
 const arm_cpu_flags = arm_flags.cpu_flags;
 const arm_global_defines = arm_flags.global_defines;
 const arm_dialect_flags = arm_flags.dialect_flags;
 const arm_target_dialect_flags = arm_flags.target_dialect_flags;
-const arm_link_flags = arm_flags.link_flags;
 pub const armWarningFlags = arm_flags.warningFlags;
 
 /// The global flag sets at the configuration THIS invocation selected, and the
@@ -441,255 +445,10 @@ pub const armWarningFlags = arm_flags.warningFlags;
 /// compile-database row cannot disagree about which configuration they are.
 var arm: build_type.Globals = undefined;
 
-/// The cross toolchain and the per-sub-target contexts, in their own module
-/// since #1179. Aliased here so the call sites below read as they did.
-const ArmTools = cross_build.Tools;
+/// The cross toolchain probe, kept here because the compile-database slice
+/// below asks the same question the `arm` step does: are the cross tools on
+/// PATH at all? The wiring they feed lives in cross_image.zig.
 const findArmTools = cross_build.findTools;
-
-/// The sets that do not vary by configuration, as build_type.Base names them.
-fn armBase() build_type.Base {
-    return .{
-        .c_flags = &arm_cpu_flags,
-        .c_dialect = &.{"-std=gnu2x"},
-        .asm_flags = &arm_flags.cpu_select_flags,
-        .link_flags = &arm_link_flags,
-    };
-}
-
-/// Wire the cross-build into `arm_step`. Missing cross tools are a skip, not a
-/// failure: the host slice above has to keep working on a machine with no Arm
-/// GNU Toolchain installed.
-fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
-    const tools = findArmTools(b) orelse {
-        const notice = b.addSystemCommand(&.{
-            "echo",
-            "arm: skipped -- no arm-none-eabi-gcc/objcopy/size on PATH (run `just setup` for the pinned Arm GNU Toolchain)",
-        });
-        arm_step.dependOn(&notice.step);
-        return;
-    };
-    for (cross_apps) |app| addArmCrossApp(b, arm_step, tools, app);
-}
-
-fn addArmCrossApp(
-    b: *std.Build,
-    arm_step: *std.Build.Step,
-    tools: ArmTools,
-    app: CrossApp,
-) void {
-
-    // The target zig_libs.cmake derives from the toolchain's own -mcpu and
-    // -mfloat-abi (cortex-m85 + hard float -> thumb-freestanding-eabihf,
-    // cortex_m85), spelled here as a query instead of a string so the graph
-    // itself type-checks it.
-    const arm_target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb,
-        .os_tag = .freestanding,
-        .abi = .eabihf,
-        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
-    });
-
-    // At the optimisation THIS configuration asks for, not a fixed Debug:
-    // zig_libs.cmake maps a Debug configure onto a Debug archive and every
-    // other configure onto ReleaseSmall, so an archive built at one of the two
-    // and kept there is not the artifact CMake links in the other. The hook
-    // was written when the graph only had Debug (#1179 gave it the other two)
-    // and nothing failed in between, because an archive at the wrong
-    // optimisation links perfectly well.
-    var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (app.zig_libraries) |lib_name| {
-        const dependency = b.dependency(lib_name, .{
-            .target = arm_target,
-            .optimize = arm.configuration.zig_optimize,
-        });
-        archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
-    }
-
-    // Everything the app names in USES. Each one is built as its own archive
-    // AND changes how the app's own translation units are compiled: the
-    // exported define and include directories below are not decoration, an
-    // app compiled without them gets a different kernel configuration and no
-    // diagnostic about it.
-    const middlewares = middleware.resolve(b.allocator, app.uses);
-    const middleware_archives = b.allocator.alloc(std.Build.LazyPath, middlewares.len) catch @panic("OOM");
-    for (middlewares, 0..) |mw, index| {
-        middleware_archives[index] = middleware.add(b, mw, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
-    }
-    const middleware_defines = middleware.appDefines(b.allocator, middlewares);
-    const middleware_include_dirs = middleware.appIncludeDirs(b.allocator, middlewares);
-    const middleware_system_dirs = middleware.appSystemIncludeDirs(b.allocator, middlewares);
-
-    // A vendored static library the app's OWN CMakeLists declares, plus the
-    // defines and -isystem directories it exports onto the app's translation
-    // units. Silent when missed, see app_local.zig.
-    const local_archive: ?std.Build.LazyPath = if (app.local.vendored) |lib|
-        app_local.add(b, lib, cross_build.appLocalToolchain(tools, arm, &arm_global_defines))
-    else
-        null;
-    const local_defines = app_local.appDefines(b.allocator, app.local);
-    const local_system_dirs = app_local.appSystemIncludeDirs(app.local);
-
-    var include_dirs = std.ArrayList([]const u8).init(b.allocator);
-    include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
-    include_dirs.appendSlice(middleware_include_dirs) catch @panic("OOM");
-
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (cross_sources.crossSources(b, app)) |source| {
-        const compile = b.addSystemCommand(&.{tools.gcc});
-        compile.addArgs(&arm_cpu_flags);
-        // The device tail, where the toolchain file's *_INIT append puts it:
-        // after the shared CPU flags (so its -mfpu wins) and before the
-        // configuration's own set. Empty for every ek_ra8d2 app (#1131).
-        compile.addArgs(device.compileFlags(app.board));
-        compile.addArgs(arm.config_flags);
-        compile.addArgs(&arm_dialect_flags);
-        if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
-        compile.addArgs(middleware_defines);
-        compile.addArgs(local_defines);
-        // A SOURCE-scope define, so it lands after every target-scope one and
-        // on these units alone: OFF_TARGET_LIBS is the only rule here that
-        // compiles one executable at two preprocessor views (#1133).
-        if (cross_sources.isOffTargetSource(app, source)) compile.addArg(cross_sources.off_target_define);
-        compile.addArgs(armWarningFlags(b.allocator, app));
-        compile.addArgs(&arm_target_dialect_flags);
-        if (app.trust_zone) compile.addArg(arm_flags.trust_zone.cmse);
-        // Prefixed directory args, not bare -I strings: this both spells the
-        // include flag and declares the directory as an input of the step, so
-        // editing a header actually invalidates the cached object.
-        for (include_dirs.items) |include_dir| {
-            compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
-        }
-        // After every -I, and -isystem rather than -I: the vendor headers are
-        // not held to the app's -Werror bar, and putting them on the ordinary
-        // include path would fail the app's own compile on the middleware's
-        // diagnostics.
-        for (middleware_system_dirs) |include_dir| {
-            compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
-        }
-        for (local_system_dirs) |include_dir| {
-            compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
-        }
-        compile.addArg("-c");
-        compile.addFileArg(b.path(source));
-        compile.addArg("-o");
-        const object_name = b.fmt("{s}.o", .{std.fs.path.basename(source)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
-    }
-
-    // A dual-core app's second image is built first and linked in as an
-    // ordinary object: CMake adds the packed blob to the M85 target's sources,
-    // ahead of its own, and the app linker script pins the section.
-    const cpu1_blob: ?std.Build.LazyPath = if (app.cpu1) |image| cpu1_image.add(b, arm_step, .{
-        .gcc = tools.gcc,
-        .objcopy = tools.objcopy,
-        .size = tools.size,
-        .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
-        .image = image,
-        .global_compile_flags = arm.c_flags,
-        .global_link_flags = arm.link_flags,
-    }) else null;
-
-    // An app that does not link in a Debug configure under EITHER build system
-    // still compiles every one of its translation units here; only the final
-    // link is held back, with the reason printed rather than a red step.
-    if (!app.links_in_debug) {
-        for (objects.items) |object| object.addStepDependencies(arm_step);
-        const notice = b.addSystemCommand(&.{
-            "echo",
-            b.fmt(
-                "arm: {s} compiled ({d} TUs) but NOT linked -- it overflows MRAM in a Debug configure, and CMake's own standalone configure of it fails the same way",
-                .{ app.name, objects.items.len },
-            ),
-        });
-        arm_step.dependOn(&notice.step);
-        return;
-    }
-
-    const link = b.addSystemCommand(&.{tools.gcc});
-    link.addArgs(&arm_cpu_flags);
-    link.addArgs(device.linkFlags(app.board));
-    link.addArgs(arm.config_flags);
-    link.addArgs(&arm_link_flags);
-    // The middleware's INTERFACE link options. Dropping these does not fail
-    // the link, it produces a firmware image whose kernel time base never
-    // advances (issue #8), which is the sharpest reason middleware belongs in
-    // the graph as data rather than as a pile of source paths.
-    link.addArgs(middleware.appLinkOptions(b.allocator, middlewares));
-    // Before -T, where CMake puts it: the link picks its multilib and its
-    // secure-gateway handling from this flag.
-    if (app.trust_zone) link.addArg(arm_flags.trust_zone.cmse);
-    link.addPrefixedFileArg("-T", b.path(app.linker_script));
-    const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
-    // The import library the Non-Secure link binds veneer names against. It
-    // is an OUTPUT of the secure link, so it is declared as one: a follow-up
-    // slice building the NS half consumes this path rather than re-deriving it.
-    const implib: ?std.Build.LazyPath = if (app.cmse_implib) |name| blk: {
-        link.addArg(arm_flags.trust_zone.implib_flag);
-        break :blk link.addPrefixedOutputFileArg(arm_flags.trust_zone.out_implib_prefix, name);
-    } else null;
-    link.addArg("-o");
-    const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
-    if (cpu1_blob) |blob| link.addFileArg(blob);
-    for (objects.items) |object| link.addFileArg(object);
-    // Archives after the objects that reference them, then libgcc last, the
-    // order CMake's link line uses.
-    for (middleware_archives) |archive| link.addFileArg(archive);
-    for (archives.items) |archive| link.addFileArg(archive);
-    link.addArg("-lgcc");
-    // After -lgcc, which is where CMake puts it: target_link_libraries() in
-    // the app's own CMakeLists appends to a list that already holds -lgcc, and
-    // a static archive resolved on either side of libgcc can pull a different
-    // set of members.
-    if (local_archive) |archive| link.addFileArg(archive);
-
-    const hex = objcopyTo(b, tools.objcopy, "ihex", elf, b.fmt("{s}.hex", .{app.name}));
-    const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{app.name}));
-
-    arm_step.dependOn(&b.addInstallFileWithDir(elf, .{ .custom = "arm" }, b.fmt("{s}.elf", .{app.name})).step);
-    // Only when this app has no Non-Secure half. When it does, the hex a flash
-    // flow wants is the MERGED one, and CMake's own POST_BUILD writes it over
-    // the app's hex; ns_image.add installs that trio instead, so the two never
-    // race for the same output path.
-    if (app.ns == null) {
-        arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{app.name})).step);
-    }
-    arm_step.dependOn(&b.addInstallFileWithDir(bin, .{ .custom = "arm" }, b.fmt("{s}.bin", .{app.name})).step);
-    arm_step.dependOn(&b.addInstallFileWithDir(map, .{ .custom = "arm" }, b.fmt("{s}.map", .{app.name})).step);
-    if (implib) |object| {
-        arm_step.dependOn(&b.addInstallFileWithDir(object, .{ .custom = "arm" }, app.cmse_implib.?).step);
-    }
-
-    // The second, SEPARATE executable of a two-project TrustZone build. It
-    // consumes this link's own outputs: the import library binds its calls to
-    // the .gnu.sgstubs veneers, and the Secure ELF is an input of the hex
-    // merge. Both are declared outputs above rather than paths by convention.
-    if (app.ns) |image| {
-        var ctx = cross_build.nsContext(b, tools, app, image, arm, &arm_global_defines);
-        ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
-        ctx.implib = implib;
-        ctx.secure_elf = elf;
-        ns_image.add(b, arm_step, ctx);
-    }
-
-    // The size report CMake prints as a post-build command.
-    const report_size = b.addSystemCommand(&.{tools.size});
-    report_size.addFileArg(elf);
-    arm_step.dependOn(&report_size.step);
-}
-
-fn objcopyTo(
-    b: *std.Build,
-    objcopy_path: []const u8,
-    format: []const u8,
-    elf: std.Build.LazyPath,
-    output_name: []const u8,
-) std.Build.LazyPath {
-    const run = b.addSystemCommand(&.{ objcopy_path, "-O", format });
-    run.addFileArg(elf);
-    return run.addOutputFileArg(output_name);
-}
 
 // Analysis-input slice (#959): compile_commands.json
 // ===========================================================================
