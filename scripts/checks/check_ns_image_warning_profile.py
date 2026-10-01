@@ -134,6 +134,7 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Audit every dual-image app and report the ones off the warning profile."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--selftest", action="store_true", help="run the checker's own test cases"
@@ -151,8 +152,7 @@ def main() -> int:
         if not is_dual_image(text):
             continue
         dual += 1
-        for target in audit_text(text):
-            failures.append((path, target))
+        failures.extend((path, target) for target in audit_text(text))
 
     name = Path(__file__).name
     if failures:

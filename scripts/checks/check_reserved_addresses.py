@@ -55,7 +55,7 @@ from dataclasses import dataclass
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from lint_targets import repo_files  # noqa: E402 -- sibling import needs the path above
+from lint_targets import repo_files  # sibling import needs the path above
 
 # Reserved windows of the RA8 address map. Both supported parts agree
 # line-for-line: RA8D2 HUM R01UH1065EJ0130 and RA8P1 HUM R01UH1064EJ0130,
