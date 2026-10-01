@@ -66,8 +66,15 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    # (name, doc, workflow, ci.sh, expected rule or None for silence)
+    CaseFn = Callable[[str, str, str, str, "str | None"], None]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOC = REPO_ROOT / "docs" / "MACOS_HOST_BUILDS.md"
@@ -83,6 +90,9 @@ RUNNER_RE = re.compile(r"(?<![A-Za-z0-9_.-])macos-(\d+)(?![\d.])")
 UTC_TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\s+UTC\b")
 CRON_RE = re.compile(r"`([-\d*,/]+(?:\s+[-\d*,/]+){4})`")
 GATE_RUN_RE = re.compile(r"just\s+quality::local::gate\s+([A-Za-z0-9_.:-]+)")
+
+# POSIX cron: minute hour day-of-month month day-of-week.
+CRON_FIELD_COUNT = 5
 
 
 # ---------------------------------------------------------------- workflow
@@ -124,11 +134,11 @@ def workflow_crons(text: str) -> list[str]:
     schedule = triggers.get("schedule") or []
     if not isinstance(schedule, list):
         return []
-    out: list[str] = []
-    for entry in schedule:
-        if isinstance(entry, dict) and isinstance(entry.get("cron"), str):
-            out.append(entry["cron"].strip())
-    return out
+    return [
+        entry["cron"].strip()
+        for entry in schedule
+        if isinstance(entry, dict) and isinstance(entry.get("cron"), str)
+    ]
 
 
 def workflow_gates(text: str) -> list[str]:
@@ -139,7 +149,7 @@ def workflow_gates(text: str) -> list[str]:
 def cron_hhmm(cron: str) -> tuple[int, int] | None:
     """``(hour, minute)`` for a cron that fires at one fixed time, else None."""
     fields = cron.split()
-    if len(fields) != 5:
+    if len(fields) != CRON_FIELD_COUNT:
         return None
     minute, hour = fields[0], fields[1]
     if not minute.isdigit() or not hour.isdigit():
@@ -168,66 +178,74 @@ def doc_runner_labels(doc_text: str) -> set[str]:
 # ------------------------------------------------------------------- rules
 
 
-def scan(doc_text: str, wf_text: str, ci_text: str) -> list[str]:
-    """Findings, one string each; empty means the page agrees with the workflow."""
+def _runner_findings(doc_text: str, runner: str | None) -> list[str]:
+    """Rule 1 -- a runner label on the page that the job does not take."""
+    if runner is None:
+        return []
+    return [
+        f"runner: the page names the runner '{label}', but "
+        f"{_rel(WORKFLOW)} runs on '{runner}'. The page's Apple silicon "
+        "advice is only true for the image the job actually takes."
+        for label in sorted(doc_runner_labels(doc_text) - {runner})
+    ]
+
+
+def _clock_findings(doc_text: str, crons: list[str]) -> list[str]:
+    """Rule 2 -- a wall-clock time or cron on the page that the schedule contradicts."""
+    if not crons:
+        return []
     findings: list[str] = []
-    runner = workflow_runner(wf_text)
-    triggers = workflow_triggers(wf_text)
-    crons = workflow_crons(wf_text)
-    gates = workflow_gates(wf_text)
+    hhmm = cron_hhmm(crons[0])
+    if hhmm is not None:
+        findings.extend(
+            f"clock: the page says {hour:02d}:{minute:02d} UTC, but "
+            f"{_rel(WORKFLOW)} is scheduled at "
+            f"{hhmm[0]:02d}:{hhmm[1]:02d} UTC (cron '{crons[0]}')."
+            for hour, minute in _doc_times(doc_text)
+            if (hour, minute) != hhmm
+        )
+    where = _rel(WORKFLOW)
+    findings.extend(
+        f"clock: the page quotes the cron '{quoted}', but {where} schedules '{crons[0]}'."
+        for quoted in CRON_RE.findall(doc_text)
+        if quoted.split() != crons[0].split()
+    )
+    return findings
 
-    # Rule 1 -- runner.
-    named = doc_runner_labels(doc_text)
-    if runner is not None:
-        for label in sorted(named - {runner}):
-            findings.append(
-                f"runner: the page names the runner '{label}', but "
-                f"{_rel(WORKFLOW)} runs on '{runner}'. The page's Apple silicon "
-                "advice is only true for the image the job actually takes."
-            )
 
-    # Rule 2 -- clock.
+def _caveat_findings(doc_text: str, wf_text: str, triggers: set[str]) -> list[str]:
+    """Rule 3 -- triggers declared without the default-branch caveat they need."""
+    declared = triggers & {"schedule", "workflow_dispatch"}
+    if not declared:
+        return []
+    findings: list[str] = []
+    if CAVEAT_PHRASE not in wf_text:
+        findings.append(
+            f"caveat: {_rel(WORKFLOW)} declares "
+            f"{sorted(declared)} but never says "
+            "that neither trigger fires while the file is off the default "
+            "branch. GitHub runs 'schedule' from the default branch only and "
+            "lists 'workflow_dispatch' only for workflows that exist there."
+        )
     section = clock_section(doc_text)
-    if crons:
-        hhmm = cron_hhmm(crons[0])
-        for hour, minute in _doc_times(doc_text):
-            if hhmm is not None and (hour, minute) != hhmm:
-                findings.append(
-                    f"clock: the page says {hour:02d}:{minute:02d} UTC, but "
-                    f"{_rel(WORKFLOW)} is scheduled at "
-                    f"{hhmm[0]:02d}:{hhmm[1]:02d} UTC (cron '{crons[0]}')."
-                )
-        for quoted in CRON_RE.findall(doc_text):
-            if quoted.split() != crons[0].split():
-                findings.append(
-                    f"clock: the page quotes the cron '{quoted}', but "
-                    f"{_rel(WORKFLOW)} schedules '{crons[0]}'."
-                )
+    if section is None:
+        findings.append(
+            f"caveat: {_rel(DOC)} has no '{CLOCK_HEADING}' section, so the "
+            "page cannot carry the default-branch caveat for the triggers "
+            f"{_rel(WORKFLOW)} declares."
+        )
+    elif CAVEAT_PHRASE not in section:
+        findings.append(
+            f"caveat: '{CLOCK_HEADING}' in {_rel(DOC)} describes triggers "
+            "without saying they do not fire off the default branch. A "
+            "reader is then waiting for a nightly that cannot start."
+        )
+    return findings
 
-    # Rule 3 -- caveat.
-    if triggers & {"schedule", "workflow_dispatch"}:
-        if CAVEAT_PHRASE not in wf_text:
-            findings.append(
-                f"caveat: {_rel(WORKFLOW)} declares "
-                f"{sorted(triggers & {'schedule', 'workflow_dispatch'})} but never says "
-                "that neither trigger fires while the file is off the default "
-                "branch. GitHub runs 'schedule' from the default branch only and "
-                "lists 'workflow_dispatch' only for workflows that exist there."
-            )
-        if section is None:
-            findings.append(
-                f"caveat: {_rel(DOC)} has no '{CLOCK_HEADING}' section, so the "
-                "page cannot carry the default-branch caveat for the triggers "
-                f"{_rel(WORKFLOW)} declares."
-            )
-        elif CAVEAT_PHRASE not in section:
-            findings.append(
-                f"caveat: '{CLOCK_HEADING}' in {_rel(DOC)} describes triggers "
-                "without saying they do not fire off the default branch. A "
-                "reader is then waiting for a nightly that cannot start."
-            )
 
-    # Rule 4 -- gate.
+def _gate_findings(doc_text: str, ci_text: str, gates: list[str]) -> list[str]:
+    """Rule 4 -- a gate the workflow runs that the page or the registry omits."""
+    findings: list[str] = []
     for gate in sorted(set(gates)):
         if gate not in doc_text:
             findings.append(
@@ -242,6 +260,16 @@ def scan(doc_text: str, wf_text: str, ci_text: str) -> list[str]:
                 "unknown-gate error wherever it is run."
             )
     return findings
+
+
+def scan(doc_text: str, wf_text: str, ci_text: str) -> list[str]:
+    """Findings, one string each; empty means the page agrees with the workflow."""
+    return [
+        *_runner_findings(doc_text, workflow_runner(wf_text)),
+        *_clock_findings(doc_text, workflow_crons(wf_text)),
+        *_caveat_findings(doc_text, wf_text, workflow_triggers(wf_text)),
+        *_gate_findings(doc_text, ci_text, workflow_gates(wf_text)),
+    ]
 
 
 def _doc_times(doc_text: str) -> list[tuple[int, int]]:
@@ -302,20 +330,8 @@ def _rule_of(finding: str) -> str:
     return finding.split(":", 1)[0]
 
 
-def _selftest() -> int:
-    failures: list[str] = []
-
-    def case(name: str, doc: str, wf: str, ci: str, want: str | None) -> None:
-        rules = {_rule_of(f) for f in scan(doc, wf, ci)}
-        if want is None:
-            if rules:
-                failures.append(f"{name}: expected silence, got {sorted(rules)}")
-            return
-        if want not in rules:
-            failures.append(f"{name}: expected rule '{want}', got {sorted(rules)}")
-        elif rules != {want}:
-            failures.append(f"{name}: rule '{want}' fired with others {sorted(rules)}")
-
+def _selftest_rule_cases(case: CaseFn) -> None:
+    """Every rule against a fixture that must fire it, and against ones that must not."""
     case("compliant page is quiet", _DOC, _WF, _CI, None)
     case(
         "wrong runner named",
@@ -329,7 +345,8 @@ def _selftest() -> int:
     case(
         "caveat deleted from the page",
         _DOC.replace(
-            "Neither\ntrigger fires while the file is off the default branch, so run the gate by\nhand instead.",
+            "Neither\ntrigger fires while the file is off the default branch, "
+            "so run the gate by\nhand instead.",
             "It runs nightly and can be started by hand with workflow_dispatch.",
         ),
         _WF,
@@ -339,7 +356,9 @@ def _selftest() -> int:
     case(
         "caveat deleted from the workflow",
         _DOC,
-        _WF.replace("DEFAULT BRANCH", "SOME OTHER BRANCH").replace("default branch only", "there only"),
+        _WF.replace("DEFAULT BRANCH", "SOME OTHER BRANCH").replace(
+            "default branch only", "there only"
+        ),
         _CI,
         "caveat",
     )
@@ -385,7 +404,10 @@ def _selftest() -> int:
     no_clock_doc = _DOC.replace("at 07:41 UTC, `41 7 * * *`", "on every push")
     case("no schedule, no dispatch, no caveat needed", no_clock_doc, no_trigger_wf, _CI, None)
 
-    # Parser-level assertions: the rules are only as good as what they read.
+
+def _selftest_parser_failures() -> list[str]:
+    """Parser-level assertions: the rules are only as good as what they read."""
+    failures: list[str] = []
     if workflow_runner(_WF) != "macos-14":
         failures.append("parser: runs-on not read from the fixture")
     if workflow_triggers(_WF) != {"schedule", "workflow_dispatch"}:
@@ -398,8 +420,12 @@ def _selftest() -> int:
         failures.append("parser: a non-fixed cron should yield no wall-clock time")
     if workflow_gates(_WF) != ["macos-host-build"]:
         failures.append(f"parser: gates read as {workflow_gates(_WF)}")
+    return failures
 
-    # Live-tree assertions: a green scan must not come from an empty read.
+
+def _selftest_live_failures() -> list[str]:
+    """Live-tree assertions: a green scan must not come from an empty read."""
+    failures: list[str] = []
     if WORKFLOW.is_file():
         live = WORKFLOW.read_text(encoding="utf-8")
         if not workflow_crons(live):
@@ -411,6 +437,26 @@ def _selftest() -> int:
             failures.append(f"live: {_rel(WORKFLOW)} invokes no gate, so rule 4 reads nothing")
     if DOC.is_file() and clock_section(DOC.read_text(encoding="utf-8")) is None:
         failures.append(f"live: {_rel(DOC)} has no '{CLOCK_HEADING}' section")
+    return failures
+
+
+def _selftest() -> int:
+    failures: list[str] = []
+
+    def case(name: str, doc: str, wf: str, ci: str, want: str | None) -> None:
+        rules = {_rule_of(f) for f in scan(doc, wf, ci)}
+        if want is None:
+            if rules:
+                failures.append(f"{name}: expected silence, got {sorted(rules)}")
+            return
+        if want not in rules:
+            failures.append(f"{name}: expected rule '{want}', got {sorted(rules)}")
+        elif rules != {want}:
+            failures.append(f"{name}: rule '{want}' fired with others {sorted(rules)}")
+
+    _selftest_rule_cases(case)
+    failures.extend(_selftest_parser_failures())
+    failures.extend(_selftest_live_failures())
 
     total = 16
     if failures:
