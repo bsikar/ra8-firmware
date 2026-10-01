@@ -97,12 +97,6 @@ architectural rings and TrustZone worlds each file is tagged with.
 [`docs/reference/`](docs/reference/) holds the datasheet and the Hardware User's
 Manual that every register access in this tree cites.
 
-## Tracker
-
-Work is tracked in a private YouTrack instance: project RA8 for this
-repository and EMU for ra8-emulator. GitHub issues and the old GitHub project
-board are retired and are no longer used for planning.
-
 ## License
 
 MIT. See [`LICENSE.txt`](LICENSE.txt).
