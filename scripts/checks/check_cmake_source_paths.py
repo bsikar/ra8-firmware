@@ -93,6 +93,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -155,9 +156,11 @@ def cmake_files(root: Path) -> list[Path]:
     """Return every first-party CMake file, sorted for a stable report."""
     found: list[Path] = []
     for pattern in ("**/CMakeLists.txt", "**/*.cmake"):
-        for path in root.glob(pattern):
-            if path.is_file() and is_scannable(path.relative_to(root).as_posix()):
-                found.append(path)
+        found.extend(
+            path
+            for path in root.glob(pattern)
+            if path.is_file() and is_scannable(path.relative_to(root).as_posix())
+        )
     return sorted(set(found))
 
 
@@ -379,8 +382,6 @@ def selftest(tmp_root: Path) -> list[str]:
 
 def run_selftest() -> int:
     """Run the selftest in a throwaway tree."""
-    import tempfile
-
     with tempfile.TemporaryDirectory() as raw:
         failures = selftest(Path(raw))
     if failures:

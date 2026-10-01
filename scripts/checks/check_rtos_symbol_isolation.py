@@ -210,7 +210,7 @@ DECLARED_SITES: dict[str, frozenset[str]] = {
     ),
 }
 
-BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
+BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 STRING_RE = re.compile(r'"(?:\\.|[^"\\\n])*"')
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -416,9 +416,12 @@ def _selftest() -> int:
     return report(failures)
 
 
-def main(argv: list[str]) -> int:
-    """Sweep libs/ against the declared inventory, or run the selftest."""
-    options = [arg for arg in argv[1:] if arg.startswith("--")]
+def _option_exit(argv: list[str], options: list[str]) -> int | None:
+    """Return the exit code for an option-only invocation, or None to sweep.
+
+    Keeps the three option-shaped exits out of main(), which otherwise carries
+    more return paths than one function should hold.
+    """
     if options and len(argv) != OPTION_ARG_COUNT:
         print(f"{PROGRAM}: {options[0]} accepts no paths", file=sys.stderr)
         return 2
@@ -427,25 +430,30 @@ def main(argv: list[str]) -> int:
         return 2
     if options == ["--selftest"]:
         return _selftest()
+    return None
 
-    paths = [] if options else argv[1:]
-    targets = enumerate_targets(paths)
-    full_sweep = not paths
-    if full_sweep and len(targets) < FILE_FLOOR:
+
+def _scope_exit(target_count: int, *, full_sweep: bool) -> int | None:
+    """Return the exit code for a scope that cannot be judged, or None to sweep.
+
+    A full sweep that collapsed below the floor fails closed; an explicit path
+    list that matched nothing is simply nothing to do.
+    """
+    if full_sweep and target_count < FILE_FLOOR:
         print(
-            f"{PROGRAM}: FATAL -- only {len(targets)} library file(s) in scope, "
+            f"{PROGRAM}: FATAL -- only {target_count} library file(s) in scope, "
             f"floor is {FILE_FLOOR}. A collapsed sweep is not clean.",
             file=sys.stderr,
         )
         return 2
-    if not targets:
+    if not target_count:
         print(f"{PROGRAM}: no library files to scan")
         return 0
+    return None
 
-    observed = observe(targets)
-    if options == ["--print-ledger"]:
-        return _print_ledger(observed)
 
+def _ledger_floor_exit(*, full_sweep: bool) -> int | None:
+    """Fail a full sweep closed when the ledger itself was shrunk by editing."""
     declared_symbols = sum(len(v) for v in DECLARED_SITES.values())
     if full_sweep and (
         len(DECLARED_SITES) < LEDGER_SITE_FLOOR or declared_symbols < LEDGER_SYMBOL_FLOOR
@@ -457,6 +465,30 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 2
+    return None
+
+
+def main(argv: list[str]) -> int:
+    """Sweep libs/ against the declared inventory, or run the selftest."""
+    options = [arg for arg in argv[1:] if arg.startswith("--")]
+    option_exit = _option_exit(argv, options)
+    if option_exit is not None:
+        return option_exit
+
+    paths = [] if options else argv[1:]
+    targets = enumerate_targets(paths)
+    full_sweep = not paths
+    scope_exit = _scope_exit(len(targets), full_sweep=full_sweep)
+    if scope_exit is not None:
+        return scope_exit
+
+    observed = observe(targets)
+    if options == ["--print-ledger"]:
+        return _print_ledger(observed)
+
+    ledger_exit = _ledger_floor_exit(full_sweep=full_sweep)
+    if ledger_exit is not None:
+        return ledger_exit
 
     findings = compare(observed, full_sweep=full_sweep)
     if findings:
