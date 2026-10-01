@@ -10,7 +10,8 @@
 //! meet at the `priv_cache_store_*` symbols, and both have to be part of the
 //! compilation for their exports to land. The tests deliberately do not share
 //! that root: `tests/abi_test.zig` substitutes its own helpers over a RAM
-//! medium, which only works while `mount.zig` is out of that binary.
+//! medium, which only works while `mount.zig` is out of that binary. The
+//! mount and primitive roots share the fake medium in `tests/cache_fake.zig`.
 //!
 //! No build options: the store has no compile-time switches.
 
@@ -75,11 +76,21 @@ pub fn build(b: *std.Build) void {
     mount_test_module.addImport("mount", mount_module);
     const mount_tests = b.addTest(.{ .root_module = mount_test_module });
 
+    const primitives_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/primitives_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    primitives_test_module.addImport("mount", mount_module);
+    const primitives_tests = b.addTest(.{ .root_module = primitives_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_mount_tests = b.addRunArtifact(mount_tests);
+    const run_primitives_tests = b.addRunArtifact(primitives_tests);
     const test_step = b.step("test", "Run Zig ra8_cache_store tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_mount_tests.step);
+    test_step.dependOn(&run_primitives_tests.step);
 }
