@@ -12,7 +12,7 @@
  *
  * This unit was the display half of ``ra8_board_ek_ra8d2_comms.c``. The
  * serial half of that file -- the J-Link OB VCOM console on SCI8 and the
- * board clock bring-up -- moved to Zig in #3003; what is left is one
+ * board clock bring-up -- moved to Zig; what is left is one
  * purpose, so the file is named for it.
  *
  * Like the primary unit, the BSP itself never touches MCU registers;

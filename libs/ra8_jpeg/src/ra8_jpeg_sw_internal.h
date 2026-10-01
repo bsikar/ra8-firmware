@@ -10,7 +10,7 @@
  * @details
  * The pure-software baseline JPEG codec was C across three translation
  * units, which shared this header. It is Zig throughout now: the
- * encoder as of #2795, the decoder as of #2799, and no `.c` is left in
+ * encoder, the decoder, and no `.c` is left in
  * this library.
  *
  * What remains here is the surface one out-of-tree C suite still drives
@@ -468,7 +468,7 @@ RA8_PRIV int32_t priv_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jp
 /*
  * The decoder's remaining primitives, its parse context and its
  * marker-action enum were declared here while the codec was C. The codec is
- * Zig as of #2799 and they are internal to it now (src/internal/dec_ctx.zig
+ * Zig and they are internal to it now (src/internal/dec_ctx.zig
  * and its neighbours), so they are no longer declared. What is left is the
  * surface tests/graphics/src/test_ra8_jpeg_sw_cov.c drives directly: the two
  * entropy structs by value, and the three primitives above.

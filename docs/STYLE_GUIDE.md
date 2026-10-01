@@ -406,7 +406,7 @@ build sets. That guard is load-bearing, not decoration: `ra8_core` is also
 compiled natively for the host unit tests, and an unguarded `void main(void);`
 makes every hosted translation unit that reaches this header fail with
 `conflicting types for 'main'` against its own ISO entry point. The
-declaration exists exactly where its contract does. See issue #707.
+declaration exists exactly where its contract does.
 
 ## Header guards
 

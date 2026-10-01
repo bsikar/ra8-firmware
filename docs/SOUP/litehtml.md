@@ -65,7 +65,7 @@ litehtml is, so it is never compiled on a default configure.
 
 Google's upstream `gumbo-parser` is archived, so fixes reach this tree
 only by re-vendoring litehtml, which is why the lineage is worth
-watching. As filed in #618, gumbo has no SBOM component and no
+watching. As filed, gumbo has no SBOM component and no
 licence-inventory row of its own today; it rides this record until that
 follow-up lands.
 

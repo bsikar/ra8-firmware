@@ -32,4 +32,4 @@ app cannot be parked here silently and a marker cannot outlive its app.
 The reason is a statement of what the app is waiting for, not a verdict that the
 exclusion is still correct. Two of the six do not in fact need hardware this
 project lacks (`needs_extra_hardware = false`), which is exactly the kind of
-stale tiering a bench pass should revisit; see #401.
+stale tiering a bench pass should revisit.

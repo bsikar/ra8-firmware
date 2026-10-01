@@ -12,7 +12,7 @@
  * `ra8_gfx` framebuffer. Glyph scratch goes through the no-heap stb arena
  * (`ra8_stbtt_alloc`), so the whole read-and-render path is heap-free
  * exactly as it runs on target -- only the font *storage* moves from the
- * (switch-gated, see #44) OSPI flash to an SD/FAT volume.
+ * (switch-gated) OSPI flash to an SD/FAT volume.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

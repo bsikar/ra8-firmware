@@ -210,7 +210,7 @@ macro(_ra8_app_collect_sources)
     list(REMOVE_DUPLICATES _ra8_extra_inc)
   endif()
 
-  # ra8_core finished its ARM flip in #2820: libs/ra8_core/src holds .zig and
+  # ra8_core finished its ARM flip: libs/ra8_core/src holds .zig and
   # no .c at all, so the *.c glob this block used to run can never match again.
   # It is deleted rather than left to rot, which is what cmake-source-paths was
   # reporting. The objects are not missing: they arrive in the Zig

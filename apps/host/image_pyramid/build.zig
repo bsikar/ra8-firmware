@@ -5,8 +5,8 @@ const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
 
 /// Both halves of the codec are Zig now: the encoder moved in #2795 and the
-/// decoder plus its stripe driver in #2799, so the three ra8_jpeg_sw*.c paths
-/// this listed no longer exist on disk. ra8_log went the same way in #2836.
+/// decoder plus its stripe driver, so the three ra8_jpeg_sw*.c paths
+/// this listed no longer exist on disk. ra8_log went the same way.
 /// What is left of the C here is ra8_error_handler.c; the rest arrives as the
 /// `ra8_jpeg` and `ra8_core` archives linked in build().
 fn addCodec(module: *std.Build.Module, b: *std.Build) void {

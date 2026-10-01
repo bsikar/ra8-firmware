@@ -331,7 +331,7 @@
   changed_when: true
 
 # Pin it against the containerd CRI garbage collector, which is what evicted
-# the image in #484. Verified on the node: containerd v2.1.5-k3s1 honours
+# the image. Verified on the node: containerd v2.1.5-k3s1 honours
 # io.cri-containerd.pinned, and k3s applies that same label itself to
 # everything it imports from ci_runner_image_dir (labelImages in
 # pkg/agent/containerd). This makes the import done above -- which does not go

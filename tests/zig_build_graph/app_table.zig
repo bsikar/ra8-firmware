@@ -182,7 +182,7 @@ pub const cross_apps = [_]CrossApp{
         // and nothing else, which is what made it the right FIRST app to
         // cross-build here. The `zig_libraries` hook below is wired and
         // exercised by an empty list; an app that links a migrated Zig ARCHIVE
-        // cannot be cross-built by either build system yet, see #948.
+        // cannot be cross-built by either build system yet.
         .libraries = &.{},
         .zig_libraries = &.{},
     },

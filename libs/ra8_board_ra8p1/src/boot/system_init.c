@@ -12,7 +12,7 @@
  *       other. Two divergences, both deliberate on the EK-RA8D2 side:
  *       1. The region-4 window is derived differently (see 2 below). The
  *          `RA8_BOOT_CACHE_VIA_HAL` divergence is GONE: issue #590 gave this
- *          copy the same gated arm the EK-RA8D2 copy got in #577, so an RA8P1
+ *          copy the same gated arm the EK-RA8D2 copy got, so an RA8P1
  *          image built with `-DRA8_BOOT_CACHE_VIA_HAL` now brings the L1 caches
  *          up through `ra8_cache_icache_enable()` /
  *          `ra8_cache_dcache_enable()` exactly as the EK-RA8D2 copy does.
@@ -620,7 +620,7 @@ void SystemInit(void)
 #ifdef RA8_BOOT_CACHE_VIA_HAL
     /* Issue #590: bring the L1 caches up through the ra8_cache HAL instead of the
     * hand-rolled internal_enable_icache / internal_enable_dcache pokes, matching
-    * the arm the EK-RA8D2 copy got in #577. The HAL primitives encode the
+    * the arm the EK-RA8D2 copy got. The HAL primitives encode the
     * identical ICIALLU + CCR.IC / CCR.DC sequence (each runs its architectural
     * invalidate before setting the enable bit), so this is a drop-in with no
     * behaviour change. The raw helpers stay compiled just above as the reference

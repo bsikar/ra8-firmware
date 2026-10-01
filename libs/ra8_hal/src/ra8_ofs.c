@@ -52,7 +52,7 @@
  * `BSP_FEATURE_BSP_HAS_OFS3 == 0` for ra8p1 -- a value that
  * contradicts Renesas' own RA8P1 manual. The effect was an RA8P1
  * image with no OFS3 word at all, leaving WDT1's boot-latched
- * configuration unprogrammed. Removed in #516; see `ra8_ofs.h`.
+ * configuration unprogrammed. Removed; see `ra8_ofs.h`.
  *
  * ## Overriding
  *

@@ -13,7 +13,7 @@
  * has been cleared to the erase value (`0xFF`). FAT, by contrast, freely
  * overwrites individual sectors in place (directory entries, FAT links) with no
  * erase step, so layering FAT directly over the raw MRAM block device corrupts
- * data. See issue #165.
+ * data.
  *
  * This module is a Flash Translation Layer (FTL). It **wraps** an
  * erase-before-write ::ra8_io_blockdev_t (the underlying device) and

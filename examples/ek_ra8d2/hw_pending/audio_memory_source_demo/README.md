@@ -9,7 +9,7 @@ second backend, so the seam the facade exists for -- an app swapping its
 capture source without touching its own logic -- was never exercised outside
 the host tests, and `ra8_audio_source_get_info` (the call that lets an app size
 its storage from the source instead of hard-coding the geometry) had no caller
-at all. This app is that consumer. See #1349.
+at all. This app is that consumer.
 
 ## What it proves
 
