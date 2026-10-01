@@ -29,6 +29,17 @@ CONTEXTS = {
 ADDITIONAL_HEADER_ROLES = {"test-only", "internal"}
 MIN_OWNERSHIP_LENGTH = 12
 MIN_NM_SYMBOL_FIELDS = 3
+# "ra8_unit_symbol" carries a two-part ra8_<unit>_ prefix; anything shorter is
+# the whole symbol.
+MIN_PREFIXED_SYMBOL_PARTS = 2
+# libs/<name>/... -- the name is readable only once there are parts past it.
+LIBS_SOURCE_MIN_PARTS = 2
+# libs/<name>/src/<file> -- a library-support source sits exactly this deep.
+LIBRARY_SRC_PATH_PARTS = 4
+# tests/<suite>/src/test_<x>.c -- the shape unit_tests.cmake globs.
+GLOBBED_TEST_PATH_PARTS = 4
+# nm's archive form, "archive.a:member.o:address", carries two colons.
+MIN_NM_MEMBER_COLONS = 2
 REQUIRED_MODES = {"Debug", "ReleaseSafe", "ReleaseSmall"}
 MODE_C_FLAGS = {"Debug": "-O0", "ReleaseSafe": "-O2", "ReleaseSmall": "-Oz"}
 RA8_ZIG_ARGUMENTS = (
@@ -117,7 +128,7 @@ def _normalized_header_digest(text: str) -> str:
 def _symbol_root(symbol: str) -> str:
     """Return the ra8_<unit>_ prefix a retained C symbol is declared under."""
     parts = symbol.split("_")
-    return "_".join(parts[:2]) + "_" if len(parts) > 2 else symbol
+    return "_".join(parts[:2]) + "_" if len(parts) > MIN_PREFIXED_SYMBOL_PARTS else symbol
 
 
 def _header_exports(text: str, prefix: str) -> set[str]:
@@ -293,7 +304,8 @@ def _c_retained_findings(
         if not path.exists():
             findings.append(f"{name}: missing C retention source: {source}")
             continue
-        if not re.search(rf"\b{re.escape(symbol)}\s*\(", _strip_comments(path.read_text(encoding="utf-8"))):
+        retention_text = _strip_comments(path.read_text(encoding="utf-8"))
+        if not re.search(rf"\b{re.escape(symbol)}\s*\(", retention_text):
             findings.append(f"{name}: C retention source does not define {symbol}: {source}")
             continue
         retained.add(symbol)
@@ -459,8 +471,7 @@ def _adapter_prefix_findings(
         )
         if unexpected:
             findings.append(
-                f"{name}: adapter export prefix mismatch in {row['path']}: "
-                + ", ".join(unexpected)
+                f"{name}: adapter export prefix mismatch in {row['path']}: " + ", ".join(unexpected)
             )
     return findings
 
@@ -531,34 +542,45 @@ def _repository_inventory_findings(
             and (root / library["build_root"]).resolve() in path.parents
         ]
         policy_bound = any(
-                (root / value).resolve() == path
-                for library in owners
-                for value in _boundary_adapter_paths(library)
-            )
-        inferred_lib = relative_path.parts[1] if len(relative_path.parts) > 2 and relative_path.parts[0] == "libs" else None
+            (root / value).resolve() == path
+            for library in owners
+            for value in _boundary_adapter_paths(library)
+        )
+        inferred_lib = (
+            relative_path.parts[1]
+            if len(relative_path.parts) > LIBS_SOURCE_MIN_PARTS and relative_path.parts[0] == "libs"
+            else None
+        )
         if kind in {"library-adapter", "app-adapter"} and not policy_bound:
             if inferred_lib is None or relative_path.parts[2] != "src":
                 findings.append(
-                    f"{row['path']}: adapter must be bound to a policy row or a libs/<name>/src header"
+                    f"{row['path']}: adapter must be bound to a policy row "
+                    "or a libs/<name>/src header"
                 )
             else:
                 header_dir = root / "libs" / inferred_lib / "inc"
                 headers = list(header_dir.glob("*.h")) if header_dir.is_dir() else []
                 source_names, _ = _zig_exports(path.read_text(encoding="utf-8"))
-                header_symbols = set().union(
-                    *(
-                        _header_exports(header.read_text(encoding="utf-8"), f"{inferred_lib}_")
-                        for header in headers
+                header_symbols = (
+                    set().union(
+                        *(
+                            _header_exports(header.read_text(encoding="utf-8"), f"{inferred_lib}_")
+                            for header in headers
+                        )
                     )
-                ) if headers else set()
+                    if headers
+                    else set()
+                )
                 if not headers or not source_names <= header_symbols:
                     findings.append(
                         f"{row['path']}: adapter exports are not declared by its public C header"
                     )
-        elif kind in {"library-support", "test-helper"} and inferred_lib is None and len(owners) != 1:
+        elif (
+            kind in {"library-support", "test-helper"} and inferred_lib is None and len(owners) != 1
+        ):
             findings.append(f"{row['path']}: source must belong to exactly one library build root")
         if kind == "library-support" and (
-            len(relative_path.parts) < 4 or relative_path.parts[-2] != "src"
+            len(relative_path.parts) < LIBRARY_SRC_PATH_PARTS or relative_path.parts[-2] != "src"
         ):
             findings.append(f"{row['path']}: library-support source must be under a library src/")
         names, _ = _zig_exports(path.read_text(encoding="utf-8"))
@@ -591,7 +613,9 @@ def _repository_inventory_findings(
                 if path.relative_to(contract.parent).as_posix() in registered_paths:
                     contract_registered = True
             if not contract_registered:
-                findings.append(f"{row['path']}: test-helper is not declared by a Zig test contract")
+                findings.append(
+                    f"{row['path']}: test-helper is not declared by a Zig test contract"
+                )
         registered.add(path.resolve())
     discovered: set[Path] = set()
     for source in repository_root.rglob("*.zig"):
@@ -748,7 +772,7 @@ def _contract_test_findings(
             )
             glob_registered = (
                 registration.name == "unit_tests.cmake"
-                and len(path_parts) == 4
+                and len(path_parts) == GLOBBED_TEST_PATH_PARTS
                 and path_parts[0] == "tests"
                 and path_parts[2] == "src"
                 and path_parts[3].startswith("test_")
@@ -818,9 +842,11 @@ def _library_findings(
         value = row.get("path")
         if not isinstance(value, str) or not (repository_root / value).exists():
             findings.append(f"{name}: missing public_header: {value}")
-    for value in adapter_paths:
-        if not (repository_root / value).exists():
-            findings.append(f"{name}: missing adapter: {value}")
+    findings.extend(
+        f"{name}: missing adapter: {value}"
+        for value in adapter_paths
+        if not (repository_root / value).exists()
+    )
     if findings:
         return findings
 
@@ -1016,7 +1042,7 @@ def _archive_symbol_names(output: str, *, bundle_compiler_rt: bool = False) -> s
         # similarly named symbols from the library's own object files.
         member_match = re.search(r"[\[(]([^\)\]]+)[\)\]]", parts[0])
         member = member_match.group(1) if member_match else ""
-        if not member and parts[0].count(":") >= 2:
+        if not member and parts[0].count(":") >= MIN_NM_MEMBER_COLONS:
             archive_and_member, _address = parts[0].rsplit(":", 1)
             _archive, member = archive_and_member.split(":", 1)
         if bundle_compiler_rt and Path(member).name == "compiler_rt.o":
@@ -1496,18 +1522,12 @@ def _selftest_c_retention(base: dict[str, Any], root: Path) -> str | None:
     quiet["compatibility_sha256"] = _normalized_header_digest(
         (root / "inc/demo.h").read_text(encoding="utf-8")
     )
-    quiet["c_retained_exports"] = [
-        {"name": "demo_bind", "source": "demo_bind.c", "reason": reason}
-    ]
-    if any(
-        "unexpected export" in item for item in _library_findings(quiet, {"host", "ra8"}, root)
-    ):
+    quiet["c_retained_exports"] = [{"name": "demo_bind", "source": "demo_bind.c", "reason": reason}]
+    if any("unexpected export" in item for item in _library_findings(quiet, {"host", "ra8"}, root)):
         return "must-stay-quiet fixture failed: declared C retention read as header drift"
     if not any(
         "header unexpected export" in item
-        for item in _library_findings(
-            {**quiet, "c_retained_exports": []}, {"host", "ra8"}, root
-        )
+        for item in _library_findings({**quiet, "c_retained_exports": []}, {"host", "ra8"}, root)
     ):
         return "must-fire fixture was accepted: undeclared C-implemented header symbol"
     mutations = (
@@ -1520,14 +1540,15 @@ def _selftest_c_retention(base: dict[str, Any], root: Path) -> str | None:
             [{"name": "demo_bind", "source": "demo_other.c", "reason": reason}],
             "C retention source does not define",
         ),
-        ([{"name": "demo_bind", "source": "demo_bind.c", "reason": "x"}], "undocumented C retention"),
+        (
+            [{"name": "demo_bind", "source": "demo_bind.c", "reason": "x"}],
+            "undocumented C retention",
+        ),
     )
     for rows, expected in mutations:
         broken = json.loads(json.dumps(quiet))
         broken["c_retained_exports"] = rows
-        if not any(
-            expected in item for item in _library_findings(broken, {"host", "ra8"}, root)
-        ):
+        if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
             return f"must-fire fixture was accepted: {expected}"
     return None
 
@@ -1586,9 +1607,7 @@ def _selftest_source_inventory(root: Path, base: dict[str, Any]) -> str | None:
     """Reject omitted sources and symbol drift while accepting exact registration."""
     source = root / "libs/demo/src/adapter.zig"
     source.parent.mkdir(parents=True)
-    source.write_text(
-        'pub export fn demo_run() callconv(.c) void {}\n', encoding="utf-8"
-    )
+    source.write_text("pub export fn demo_run() callconv(.c) void {}\n", encoding="utf-8")
     row = {"path": "libs/demo/src/adapter.zig", "kind": "library-adapter", "symbols": ["demo_run"]}
     library = {"name": "demo", "build_root": "libs/demo", "adapter": row["path"]}
     base_row = {
