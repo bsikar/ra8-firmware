@@ -95,9 +95,6 @@ void SysTick_Handler(void)
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_dfu_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS. */
-static const ra8_port_pin_t k_dfu_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /* The J-Link OB CDC console (SCI8, PD_02 TXD / PD_03 RXD) bring-up -- pin
  * routing, baud, and SCI init -- is owned by ra8_board_uart_console_init(). */
 
@@ -676,7 +673,7 @@ static void dfu_route_usb_or_halt(void)
   if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra8_gpio_output_init(k_dfu_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
+  if (ra8_board_usbhs_pwr_set(true) != k_ra8_ok) {
     dfu_panic_halt();
   }
   if (ra8_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra8_psel_usb_hs, "dfu.hs_vbus") != k_ra8_ok) {
