@@ -282,7 +282,7 @@ void main(void)
 [[nodiscard]] RA8_INTERNAL static bool internal_clock_check_verify_all(void)
 {
   /* Deliberately reads the CGC driver directly rather than the board clock
-   * profile (issue #693). This walk is the thing under test: it proves the
+   * profile (issue RA8FW-299). This walk is the thing under test: it proves the
    * driver's readback agrees with the configured tree on real silicon. Going
    * through the profile would test the profile's adapter instead, and the
    * profile only describes the domains the board wires up, not all ten. */

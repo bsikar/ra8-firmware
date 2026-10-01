@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `font_to_c` host tool (#858). One executable, plus the
+//! Build graph for the `font_to_c` host tool (RA8FW-335). One executable, plus the
 //! test step `scripts/checks/check_zig.py --test` runs: the rendering algebra
 //! and the exit-status contract the font bakes depend on.
 

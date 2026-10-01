@@ -1,11 +1,11 @@
 /**
  * @file test_ra8_manga_stream_policy.c
- * @brief #232 manga-scale streaming gate (part 2): SLRU scan resistance + the
+ * @brief RA8FW-257 manga-scale streaming gate (part 2): SLRU scan resistance + the
  *        eviction-split tuning knob under a manga page-turn workload.
  *
  * @details
  * Drives the shared harness in `test_ra8_manga_stream.h` to prove the two
- * eviction-policy properties #232 asks for, both over the synthetic
+ * eviction-policy properties RA8FW-257 asks for, both over the synthetic
  * volume-of-JOF-atlases streamed through the real tile-cache + page-cache stack:
  *
  *   1. **Scan resistance.** A bookmarked chapter's JOF metadata, promoted into
@@ -215,7 +215,7 @@ static uint32_t t_mg_tune_misses(uint8_t protected_pct)
 
 /**
  * @test manga_stream_split_tuning
- * @brief The SLRU protected/probationary split is a real tuning knob (#232): a
+ * @brief The SLRU protected/probationary split is a real tuning knob (RA8FW-257): a
  *        manga-sized split beats a too-small one on the page-turn revisit
  *        workload, and residency stays bounded under both.
  *

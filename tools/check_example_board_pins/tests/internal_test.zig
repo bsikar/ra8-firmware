@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression tests for the example board-pin gate's decisions
-//! (#858).  Every case here pins something the Python predecessor did, most of
+//! (RA8FW-335).  Every case here pins something the Python predecessor did, most of
 //! it established by probing CPython first: the Unicode reach of `\d` and `\s`
 //! inside ENCODING_RE, the `str.splitlines()` break set, the `str.strip()`
 //! whitespace set (which is NOT the same as `\s`), the build-output predicate

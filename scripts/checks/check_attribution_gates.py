@@ -13,7 +13,7 @@ and the calling code reports success.
 
 That exact defect has now been found three times in this tree:
 
-  * #131  -- ``ra8_bkup_security_apply`` wrote BBFSAR / VBRSABAR / VBRPABARS /
+  * RA8FW-254  -- ``ra8_bkup_security_apply`` wrote BBFSAR / VBRSABAR / VBRPABARS /
              VBRPABARNS ungated.
   * #759c -- ``ra8_tz_partition_apply`` wrote SRAMSABARn ungated, via
              ``ra8_sram_set_boundary``.
@@ -342,7 +342,7 @@ def main() -> int:
             "\nThese registers sit behind PRCR PRC4 (HUM Ch 13.1 Table 13.1,\n"
             "p 520-521). Stored to with PRC4 locked they are discarded silently:\n"
             "no fault, no flag, and the attribution keeps its reset value while\n"
-            "the caller reports success. That is #131 and #759. Wrap the write:\n"
+            "the caller reports success. That is RA8FW-254 and #759. Wrap the write:\n"
             "\n    RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar) { ... }\n"
             "\nIf the function is deliberately a gate-free leaf whose caller holds\n"
             "the window, document that as a @pre and add it to ALLOWED_LEAVES in\n"

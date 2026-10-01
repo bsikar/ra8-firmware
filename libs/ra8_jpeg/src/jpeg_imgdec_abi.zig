@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI membrane for `libs/ra8_jpeg/inc/ra8_jpeg_imgdec.h`: the `ra8_imgdec`
-//! backend over the first-party software JPEG codec (#768). The decisions are
+//! backend over the first-party software JPEG codec (RA8FW-308). The decisions are
 //! in `internal/imgdec.zig`; this file owns the mirrored seam records, the one
 //! vtable instance, the guard order and the `ra8_err_t` mapping.
 //!

@@ -5,7 +5,7 @@
  * @details
  * See ra8_webp_arena.h for the rationale. This file used to carry its own copy
  * of the bump arithmetic, byte for byte the same as the stb_image arena next
- * door apart from `live` being narrower. #768 says there should be one copy,
+ * door apart from `live` being narrower. RA8FW-308 says there should be one copy,
  * so the policy now lives in `libs/ra8_imgdec/inc/ra8_imgdec_scratch.h` and
  * these hooks forward to it.
  *

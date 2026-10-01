@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the commit-message terminology gate (#858): read the
+//! Process shell for the commit-message terminology gate (RA8FW-335): read the
 //! commit messages from stdin, hand argv and the real streams to `cli.run`,
 //! return its status.
 

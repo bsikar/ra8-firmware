@@ -371,7 +371,7 @@ void ra8_isr_dispatch(uint16_t slot)
    * WRITE-ZERO-to-clear, not write-one-to-clear: HUM Ch 14.2.17 p 547 states
    * under "IR flag (Interrupt Status Flag)" -> [Clearing condition] that "the
    * IR flag is cleared to 0 by writing 0". ORing a 1 into the bit -- which
-   * this did until issue #170 -- therefore cannot ever clear it. The ICU then
+   * this did until issue RA8FW-251 -- therefore cannot ever clear it. The ICU then
    * re-asserts the request the instant the handler returns and the core
    * live-locks in an interrupt storm that starves the main loop. Bench-proven
    * on an EK-RA8D2: lpm_periodic_idle sat in IRQ0_Handler with
@@ -428,7 +428,7 @@ ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
    * enables DTC activation. The read-modify-write touches only DTCE -- the IELS
    * event field ra8_isr_register wrote is preserved, and the write-0-to-clear IR
    * status flag is retained by writing back its own read value (ORing/ANDing the
-   * DTCE mask leaves bit 16 unchanged; see ra8_isr_dispatch and issue #170). */
+   * DTCE mask leaves bit 16 unchanged; see ra8_isr_dispatch and issue RA8FW-251). */
   const uint32_t cur = *ielsr;
   const uint32_t next =
     enable ? (cur | (uint32_t)k_ra8_ielsr_dtce_mask) : (cur & ~(uint32_t)k_ra8_ielsr_dtce_mask);

@@ -39,7 +39,7 @@ typedef enum : uint16_t {
  * @brief Return true only for a candidate the shared sniff names as WebP.
  * @details Forwards the leading bytes to ra8_imgdec_sniff() rather than
  *          matching the RIFF and WEBP tags in this module, so the routing
- *          decision follows one container table (#768). Every refusal folds to
+ *          decision follows one container table (RA8FW-308). Every refusal folds to
  *          false because the single caller only asks whether the libwebp arena
  *          path applies; any other answer belongs to the stb decoder, which
  *          rejects what it cannot read.

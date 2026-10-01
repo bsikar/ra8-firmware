@@ -328,7 +328,7 @@ if [[ "$-" == *p* ]]; then
   # scripts from the snapshot, the history from the host repo) and a commit
   # range that survives every GitHub event shape. That family lives in
   # scripts/ci/lib/history.sh -- it is history resolution, not a gate
-  # definition, and this file is the gate registry (#2791).
+  # definition, and this file is the gate registry (RA8FW-362).
   # shellcheck source=scripts/ci/lib/history.sh
   . "${SCRIPT_DIR}/ci/lib/history.sh"
 

@@ -8,7 +8,7 @@ base directory a relative reference resolves against. It answers "what does this
 token name and does something own it", never "is this document wrong", which
 stays in ``markdown_references.py``.
 
-Split out of ``markdown_references.py`` (#2791), which sat over the 1000-line
+Split out of ``markdown_references.py`` (RA8FW-362), which sat over the 1000-line
 cap ``scripts/checks/check_file_size.py`` enforces. This layer calls nothing
 above it, so imports run one way: the parent imports from here, never the
 reverse. ``PathRef`` is used in annotations only and comes in under

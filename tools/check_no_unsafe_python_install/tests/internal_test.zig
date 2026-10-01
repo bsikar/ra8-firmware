@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the PEP 668 override detector (#858).
+//! Behavioural regression tests for the PEP 668 override detector (RA8FW-335).
 //!
 //! Every fixture that must carry the rejected option builds it from
 //! `implementation.forbidden`, never as one literal: the gate scans its own

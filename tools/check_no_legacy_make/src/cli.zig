@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the legacy-task-runner gate (#858).
+//! Argv membrane and exit-status contract for the legacy-task-runner gate (RA8FW-335).
 //!
 //! Exit 0 when no authored surface carries a command-shaped legacy task
 //! invocation, 1 on a finding, a failing detector self-test, or a source that

@@ -1,13 +1,13 @@
 /**
  * @file test_ra8_appimg.c
- * @brief Unit tests for the `.ra8app` container header (#662).
+ * @brief Unit tests for the `.ra8app` container header (RA8FW-293).
  *
  * @details
  * Exercises the three answers the loader needs before it trusts a byte of a
  * module image: identity (magic, format version, API generation, text-field
  * termination, undefined capability bits), declared sizes against both their
  * caps and the real file length, and the signed / payload spans the signer and
- * the #663 verifier must agree on. Also covers the grant comparison, including
+ * the RA8FW-291 verifier must agree on. Also covers the grant comparison, including
  * the case an app declares more than the host is willing to give.
  *
  * Pure format policy: nothing is hashed, nothing is loaded, no filesystem is

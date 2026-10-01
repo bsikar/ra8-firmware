@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Declaration and definition algebra of the NSC veneer gate (#858). Every
+//! Declaration and definition algebra of the NSC veneer gate (RA8FW-335). Every
 //! case here is pure text, so the two patterns the Python gate carried as
 //! regular expressions are pinned with no repository on disk.
 

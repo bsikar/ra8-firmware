@@ -53,13 +53,13 @@ gate_ci_parity() (
   # every gate on macOS into the Linux devcontainer, which cannot answer a gate
   # whose subject is the host itself: macos-host-build saw Linux inside the
   # container and refused, so the documented entry point could never run it
-  # (#899). The routing list is selftested here because a renamed gate would
+  # (RA8FW-330). The routing list is selftested here because a renamed gate would
   # otherwise leave a dead row that routes nothing.
   bash scripts/ci/lib/native_host_gates.sh --selftest
   # Gate metadata also includes WHICH build roots a gate measures.
   # macos-host-build carried three directory names inline, so a Zig host root
   # added later sat outside it silently: the host-target rule keeps such a root
-  # looking correct from Linux while nothing ever builds it on a Mac (#899).
+  # looking correct from Linux while nothing ever builds it on a Mac (RA8FW-330).
   # The manifest's selftest fails when a build.zig exists that it does not
   # declare, and proves the gate still reads the list rather than a hard-coded
   # loop.
@@ -663,18 +663,18 @@ gate_toolchain_parity() (
   bash scripts/ci/lib/lang_toolchains.sh --selftest
   # The macOS SDK precondition. `command -v xcrun` passes on a Mac with no
   # Command Line Tools, which let the macos-host-build gate report green for a
-  # link path it never took (#899); this proves the probe is actually run and
+  # link path it never took (RA8FW-330); this proves the probe is actually run and
   # that every failure keeps its own remedy.
   bash scripts/ci/lib/macos_sdk.sh --selftest
   # The forced-SDK leg of macos-host-build is the only step that still touches
   # Apple's own libSystem stub, and it was a boolean: every non-zero exit was
-  # reported as the expected #899 failure, including `invalid option:
+  # reported as the expected RA8FW-330 failure, including `invalid option:
   # -Dmacos-libsystem` after a rename, which would have left the leg printing
-  # the finding nightly while measuring nothing (#899).
+  # the finding nightly while measuring nothing (RA8FW-330).
   bash scripts/ci/lib/macos_sdk_link.sh --selftest
   # macOS ships bash 3.2 as /bin/bash, which justfile and scripts/ci.sh both
   # pin. A bash 4 construct on the macOS gate's shell path reads as correct on
-  # every Linux box here and breaks only the Mac (#899), so it is caught from
+  # every Linux box here and breaks only the Mac (RA8FW-330), so it is caught from
   # Linux or not at all.
   python3 scripts/checks/check_macos_gate_bash32.py --selftest
   python3 scripts/checks/check_macos_gate_bash32.py

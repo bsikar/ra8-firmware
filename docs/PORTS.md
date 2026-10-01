@@ -6,8 +6,8 @@ catalog: which ports exist, which are still coupled to `libs/ra8_hal/`, the
 shape a new port has to take, and the order the near-term ones get built in.
 
 It is the planning artifact for
-[#693](https://github.com/bsikar/ra8-firmware/issues/693) under epic
-[#692](https://github.com/bsikar/ra8-firmware/issues/692). Anything that says
+RA8FW-299 under epic
+RA8FW-298. Anything that says
 "port" in a platform-architecture issue means the shape defined here.
 
 ## The shape of a port
@@ -136,7 +136,7 @@ Three things worth stating plainly, because the figures move:
 
 1. These are *file* counts naming a concrete symbol, not call-site counts. A
    file that calls `ra8_cgc_*` forty times counts once.
-2. They differ from the figures quoted when #693 was filed (494 clock, 227
+2. They differ from the figures quoted when RA8FW-299 was filed (494 clock, 227
    display, 158 GPIO). Those were call-site counts over a wider file set. The
    ratio between ports is the durable signal; the absolute number is not.
 3. The flash, ADC, RTC, watchdog, DMA and interrupt-controller rows carried

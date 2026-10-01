@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_no_driver_asm_guard` host gate (#858). One
+//! Build graph for the `check_no_driver_asm_guard` host gate (RA8FW-335). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the comment stripper, the conditional walk and the asm detector, and the
 //! exit-status contract `scripts/builders/check_no_driver_asm_guard.sh`

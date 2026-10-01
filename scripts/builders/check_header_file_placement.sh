@@ -6,7 +6,7 @@
 # directory shall be module-private (*_internal.h).
 #
 # This is a minimal trusted launcher, not an implementation: the gate is the
-# Zig host tool tools/check_header_file_placement (#858, #1219), which replaced
+# Zig host tool tools/check_header_file_placement (RA8FW-335, #1219), which replaced
 # the Python scripts/checks/check_header_file_placement.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

@@ -29,7 +29,7 @@
  * Neither boot announcement is load-bearing here. The `ESP_PRIV_IF`
  * `ESP_PRIV_EVENT_INIT` frame upstream normally uses is unusable on this
  * co-processor build -- transmitted with a non-zero `if_num` but checksummed as
- * if that nibble were zero, so every conformant host drops it (#529) -- and the
+ * if that nibble were zero, so every conformant host drops it (RA8FW-276) -- and the
  * `Event_ESPInit` RPC event that replaces it is a **one-shot fired when the
  * co-processor boots**, which on this bench is not when the RA8 boots: the C6
  * has its own supply. Both are reported (::k_ra8_c6link_event_boot) and neither
@@ -731,7 +731,7 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * fired. A facade that waited for it therefore worked exactly once, on a
  * freshly-flashed co-processor, and timed out on every run after. Waiting on a
  * one-shot announcement to decide a steady-state property is the same defect
- * #529 records against the `ESP_PRIV_IF` frame, wearing the RPC layer's
+ * RA8FW-276 records against the `ESP_PRIV_IF` frame, wearing the RPC layer's
  * clothes; the fix is to stop inferring liveness and measure it.
  *
  * The announcement is still sent, because a co-processor that *has* just

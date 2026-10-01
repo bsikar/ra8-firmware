@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The command-surface parity rules of command_surface.zig, applied to the
-//! REAL build.zig and the REAL just/zig.just (#1165, part of #857).
+//! REAL build.zig and the REAL just/zig.just (#1165, part of RA8FW-339).
 //!
 //! Both files arrive as anonymous imports declared in build.zig, so they are
 //! read at COMPILE time from the paths the build graph itself names. A test

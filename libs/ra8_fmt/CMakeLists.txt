@@ -7,7 +7,7 @@
 # byte-stream contract (ra8_fmt_io.h), so a consumer only ever needs
 # libs/ra8_fmt/inc on its include path.
 #
-# It is the landing site for #755. The ra8_fmt engines still live under
+# It is the landing site for RA8FW-315. The ra8_fmt engines still live under
 # tools/rabook_imagepack/src and are not consumable from a product yet; as they
 # are promoted they gain a src/ here and this file grows the add_library()
 # target the issue asks for. The host-edge adapters (ra8_fmt_host_fd.c,

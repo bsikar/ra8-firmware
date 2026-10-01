@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! What a migrated Zig library's ARCHIVE is built at when an app links it, and
-//! the two places that answer has to agree (#1244, part of #857).
+//! the two places that answer has to agree (#1244, part of RA8FW-339).
 //!
 //! An app whose `LIBS` names a migrated library takes the one arm of
 //! ra8_add_app() no earlier slice could: the library keeps its public `inc/`

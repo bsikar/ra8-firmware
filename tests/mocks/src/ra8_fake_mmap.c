@@ -230,7 +230,7 @@ enum : size_t {
  * The four windows that back a BOARD memory-map region take their base from
  * `libs/ra8_board_ek_ra8d2/inc/ra8_board_memmap.h`, which is the board layer's
  * published map and is itself pinned to the linker script's `MEMORY{}` block by
- * `scripts/checks/check_board_memory_map.py` (#758). They are no longer retyped
+ * `scripts/checks/check_board_memory_map.py` (RA8FW-306). They are no longer retyped
  * here. The remaining four are NOT board memory: the peripheral bus, its
  * Non-Secure alias and the SCB/MPU window are architectural address space the
  * `ra8_*_regs.h` headers own, and the MRAM calibration window is a host backing

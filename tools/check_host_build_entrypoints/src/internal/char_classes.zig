@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Character classes for the host-build-entrypoint gate (#858).
+//! Character classes for the host-build-entrypoint gate (RA8FW-335).
 //!
 //! The predecessor scripts/checks/check_host_build_entrypoints.py matched with
 //! Python's `re` on `str` patterns, so `\s` and `\w` were Unicode-aware. These

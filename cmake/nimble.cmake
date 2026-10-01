@@ -33,7 +33,7 @@
 # sources"; it never has, and that claim -- read against a
 # `docs/SOUP/nimble.md` that said the opposite -- is what made the #508
 # CVE triage harder than it needed to be. Linking `nimble/host/src` for
-# real is #493; when that lands, this comment must change with it.
+# real is RA8FW-270; when that lands, this comment must change with it.
 #
 #
 

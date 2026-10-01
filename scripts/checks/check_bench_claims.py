@@ -75,6 +75,7 @@ LOCATOR_RE = re.compile(
     r"(20\d\d-\d\d-\d\d"
     r"|\b[0-9a-f]{8,40}\b"
     r"|#\d+"
+    r"|\bRA8(?:FW|EMU)-\d+\b"
     r"|``[^`]+``"
     r"|`[^`]+`"
     r"|\b[\w./-]+\.(?:c|h|py|sh|env|md|conf|cmake|yml|yaml|json|toml|txt)\b"

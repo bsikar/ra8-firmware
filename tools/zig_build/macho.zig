@@ -1,9 +1,9 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Minimal Mach-O reader for checking what a host build actually produced (#899).
+//! Minimal Mach-O reader for checking what a host build actually produced (RA8FW-330).
 //!
-//! The #899 rule is a claim about linkage: on an arm64 Mac the build must come
+//! The RA8FW-330 rule is a claim about linkage: on an arm64 Mac the build must come
 //! out as a native arm64 Mach-O, carrying the host's deployment target, linked
 //! against the system `libSystem`. Until now the only evidence for that was
 //! `zig build` exiting zero, which says the link succeeded but nothing about
@@ -21,7 +21,7 @@
 //! The signature is not a detail on arm64. Apple silicon refuses to execute an
 //! unsigned Mach-O: the kernel kills the process at exec with `Killed: 9` and
 //! no diagnostic, so a host binary that links perfectly can still be
-//! unrunnable, which is the #899 failure shape exactly. Zig's own Mach-O
+//! unrunnable, which is the RA8FW-330 failure shape exactly. Zig's own Mach-O
 //! linker writes an ad-hoc signature, so the check is that what came out still
 //! carries one and that it still covers the whole image.
 

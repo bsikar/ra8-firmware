@@ -24,7 +24,7 @@ mirrors the **settled** `DVSTCTR0.RHST` into both the speed field and the
 current framework on every bus reset, so an HS device drops to the 64-byte FS
 framework by itself.
 
-## Known limitation (#92)
+## Known limitation (RA8FW-253)
 
 As in config A, the WRITE(10) rejection leaves the bulk-OUT endpoint STALLed.
 Full BOT reset + Clear Feature ENDPOINT_HALT recovery is not in the host class

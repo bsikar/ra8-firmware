@@ -18,7 +18,7 @@
  * per-channel validator are private to this TU because no other part of
  * the driver addresses tamper channels.
  *
- * @par PRCR write protection (issue #131)
+ * @par PRCR write protection (issue RA8FW-254)
  * The whole tamper register file sits behind **PRC1** (HUM Ch 13.1
  * Table 13.1 "Association between PRCR bits and use of registers to be
  * protected" p 520-521). A write issued while PRC1 is locked is

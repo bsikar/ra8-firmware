@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the trailing-newline gate (#858).
+//! Argv membrane and exit-status contract for the trailing-newline gate (RA8FW-335).
 //!
 //! Exit 0 when every scanned file ends in a newline, or when an argv-supplied
 //! file list filtered to nothing; 1 when a file is missing its trailing

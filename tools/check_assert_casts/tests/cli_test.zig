@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status and stream contract tests for the redundant-cast gate (#858).
+//! Exit-status and stream contract tests for the redundant-cast gate (RA8FW-335).
 //! `cli.run` takes a directory handle, a repository root and both streams, so
 //! each status below is proved against a real tree with no process involved.
 

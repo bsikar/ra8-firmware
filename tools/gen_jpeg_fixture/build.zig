@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `gen_jpeg_fixture` host tool (#858). One executable,
+//! Build graph for the `gen_jpeg_fixture` host tool (RA8FW-335). One executable,
 //! plus the test step `scripts/checks/check_zig.py --test` runs: the blob the
 //! libFuzzer corpora are seeded with and the exit-status contract
 //! `scripts/builders/init_fuzz_corpora.sh` depends on.

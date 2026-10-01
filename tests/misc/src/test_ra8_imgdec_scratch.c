@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_scratch.c
- * @brief Host tests for the shared decoder bump scratch (#768).
+ * @brief Host tests for the shared decoder bump scratch (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

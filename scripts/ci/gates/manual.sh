@@ -212,7 +212,7 @@ gate_bench_lock_selftest() (
 )
 
 # --- macos-host-build (manual) --------------------------------------------
-# The native arm64 macOS half of #899, and the only job in this tree that runs
+# The native arm64 macOS half of RA8FW-330, and the only job in this tree that runs
 # on a Mac.
 #
 # Every other gate runs on Linux, so the one property none of them can observe
@@ -259,7 +259,7 @@ gate_macos_host_build() (
     printf 'error: macos-host-build measures the native arm64 macOS link path, and this shell is\n' >&2
     printf 'error: %s.\n' "$(ra8_host_arch_summary "${host_os}" "${host_proc_arch}")" >&2
     printf 'error: a translated zig links the x86_64 path, so it cannot observe the missing\n' >&2
-    printf 'error: arm64-macos slice in the SDK libSystem stub at all (#899).\n' >&2
+    printf 'error: arm64-macos slice in the SDK libSystem stub at all (RA8FW-330).\n' >&2
     ra8_host_translation_advice >&2
     return 1
   fi
@@ -267,7 +267,7 @@ gate_macos_host_build() (
     printf 'error: macos-host-build measures the native arm64 macOS link path; this host is %s.\n' \
       "$(ra8_host_arch_summary "${host_os}" "${host_proc_arch}")" >&2
     printf 'error: run it on an arm64 macOS runner -- a cross-build from here links the bundled\n' >&2
-    printf 'error: libSystem stub and would pass without ever touching the SDK one (#899).\n' >&2
+    printf 'error: libSystem stub and would pass without ever touching the SDK one (RA8FW-330).\n' >&2
     return 1
   fi
   require_cmd zig "the macos-host-build gate builds every host root with the pinned Zig"
@@ -299,7 +299,7 @@ gate_macos_host_build() (
     # macOS ships /usr/bin/xcrun as a stub on every install, so `require_cmd
     # xcrun` passed on a Mac with no Command Line Tools at all; the graph then
     # found no SDK, pinned the bundled libSystem stub, every root built, and this
-    # gate reported green for the native SDK link path it never took (#899).
+    # gate reported green for the native SDK link path it never took (RA8FW-330).
     # macos_sdk.sh runs `xcrun --show-sdk-path` and keeps the failures apart --
     # no developer directory, an unaccepted licence, a moved SDK, an SDK with no
     # libSystem stub -- because each needs a different fix.
@@ -357,7 +357,7 @@ gate_macos_host_build() (
     (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=bundled)
 
     # The forced-SDK leg is INFORMATIONAL and may legitimately fail: failing is
-    # precisely the bug #899 reports, and the default auto path above is what
+    # precisely the bug RA8FW-330 reports, and the default auto path above is what
     # carries the verdict. It stays in the log so the day Apple ships an
     # arm64-macos target in the stub is visible here instead of going unnoticed.
     #
@@ -366,7 +366,7 @@ gate_macos_host_build() (
     # non-zero when the option has been renamed out of tools/zig_build (`error:
     # invalid option: -Dmacos-libsystem`), and the old else-branch reported that
     # as an affected SDK -- so the one leg that still touches Apple's own stub
-    # would have gone on printing the #899 shape every night while measuring
+    # would have gone on printing the RA8FW-330 shape every night while measuring
     # nothing. A compile error or a cache failure read the same way.
     # macos_sdk_link.sh classifies the outcome instead: the two real SDK
     # findings stay informational, a dead option and an unrecognised failure

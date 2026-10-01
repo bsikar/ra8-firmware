@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_jpeg_imgdec.c
  * @brief Host tests for the software JPEG codec bound as an `ra8_imgdec`
- *        backend (#768).
+ *        backend (RA8FW-308).
  *
  * @details Every case drives the backend through ::ra8_imgdec_decode rather
  * than calling the vtable directly, because the division of labour is the

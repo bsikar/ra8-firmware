@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Generated character classes for `gen_jlink_w4` (#858). CPython's
+//! Generated character classes for `gen_jlink_w4` (RA8FW-335). CPython's
 //! `int(text, 16)` does not parse the argument directly: it first runs
 //! `_PyUnicode_TransformDecimalAndSpaceToASCII`, which rewrites every
 //! NON-ASCII code point that `Py_UNICODE_ISSPACE` accepts to a plain space and

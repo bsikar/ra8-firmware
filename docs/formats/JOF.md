@@ -39,7 +39,7 @@ Import runs on the **host** (`rabook_imagepack convert`) *or* on the **device**
 (`epub_tile_binder_import()`, when a book arrives with ordinary JPEG/PNG
 inside it). That is not an afterthought: the producer is a streaming,
 zero-heap, fixed-arena transcoder precisely so the device can run it, and
-[section 5.1](#51-memory-behaviour-of-the-writer) is the half of the memory
+[section 5.1](RA8FW-252-memory-behaviour-of-the-writer) is the half of the memory
 story that makes on-device import possible at all.
 
 That gives full-resolution random access with a working set that does not grow
@@ -247,7 +247,7 @@ structurally incapable of seeking, and neither real sink (an SD file, a SDRAM
 memstore) needs one. Compare the *reader's* `jof_pread_fn`, which does take
 a `uint64_t offset`. The asymmetry is deliberate, and it is what lets a page
 whose decoded size exceeds SDRAM transcode without ever being resident
-([section 5.1](#51-memory-behaviour-of-the-writer)).
+([section 5.1](RA8FW-252-memory-behaviour-of-the-writer)).
 
 There is a smaller fourth point, recorded because it bites the band-tile trick
 specifically: TIFF requires `TileWidth` and `TileLength` to be **multiples of
@@ -396,7 +396,7 @@ The same function runs in both places. On the host it is driven by
 the device it is driven by
 `epub_tile_binder_import()` when an EPUB turns out to contain ordinary
 JPEG/PNG. There is no separate device transcoder and no reduced device mode --
-the memory contract in [section 5.1](#51-memory-behaviour-of-the-writer) is
+the memory contract in [section 5.1](RA8FW-252-memory-behaviour-of-the-writer) is
 what lets one implementation serve both.
 
 @dot
@@ -506,7 +506,7 @@ coverage or geometry fails.
 
 This is the section that justifies the format's existence, so it is worth being
 concrete. There are **two** memory stories, not one: reading a tile (below) and
-*producing* the atlas in the first place ([section 5.1](#51-memory-behaviour-of-the-writer)).
+*producing* the atlas in the first place ([section 5.1](RA8FW-252-memory-behaviour-of-the-writer)).
 The second is the one people ask about, because it is the one that sounds
 impossible.
 

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the GNU-attribute gate (#858, #1178): it owns argv, the
+//! Process shell for the GNU-attribute gate (RA8FW-335, #1178): it owns argv, the
 //! working directory and the two streams, and nothing else. Every decision
 //! lives in `src/cli.zig`, which is why the exit contract can be tested
 //! without spawning anything.

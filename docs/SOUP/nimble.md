@@ -39,7 +39,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   `repository.yml`. None of those paths lie under any include directory
   `cmake/nimble.cmake` publishes, none is named by any file outside the
   vendored tree, and none is reached by the `nimble/host` + `porting/` +
-  `nimble/transport` surface #493 will compile. Verified three ways
+  `nimble/transport` surface RA8FW-270 will compile. Verified three ways
   before deleting: no reference to any pruned path anywhere in the repo,
   no pruned path under a published include dir, and no `NOLINT` or
   `cppcheck-suppress` directive inside the pruned files (so no
@@ -124,7 +124,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 - Stack is not yet wired to any production-track example; introduction
   will require a fresh integration test pass. Because no upstream TU is
   compiled today, the first change that links `nimble/host/src` -- the
-  ESP32-C6 BLE HCI seam (#493) -- is the point at which every host-stack
+  ESP32-C6 BLE HCI seam (RA8FW-270) -- is the point at which every host-stack
   advisory becomes live exposure in shipped code. Keeping this pin ahead
   of published fixes is therefore a precondition of that work, not a
   follow-up to it.
@@ -182,10 +182,10 @@ advisories, the code each one lives in, and their status here:
 
 | CVE | Vulnerable code | In a build of ours? | Status |
 | --- | --- | --- | --- |
-| CVE-2026-45811 | `nimble/transport/socket/src/ble_hci_socket.c`, `ble_hci_sock_rx_msg` -- unchecked HCI event copy in the POSIX **socket** transport | No, and not under #493 either: our transport is `port/nimble/src/ble_hci_ra8_ble.c`, and `nimble/transport/socket/` is a host / simulator transport this firmware never builds | Fixed in the pin |
-| CVE-2026-45815 | `nimble/host/src/ble_gattc.c`, `ble_gattc_read_mult_cb_var` -- reachable assertion parsing an ATT Read Multiple Variable Response | Not today; **yes** once #493 links `nimble/host/src`. Core GATT client, remotely triggerable (`AV:N/AC:L`) | Fixed in the pin |
-| CVE-2026-45816 | `nimble/host/src/ble_sm.c`, `ble_sm_ltk_req_rx` -- NULL dereference on an LE Long Term Key Request naming an unknown connection handle | Not today; **yes** once #493 links `nimble/host/src`. Its threat model is a misbehaving controller, which is exactly what sits across our SPI HCI link to the C6 | Fixed in the pin |
-| CVE-2026-46452 | `nimble/host/mesh/src/proxy_msg.c`, `bt_mesh_proxy_msg_recv` -- unbounded SAR reassembly append | No, unless BLE Mesh is adopted: the mesh sources are a separate opt-in subset that neither the current build nor #493 compiles | Fixed in the pin |
+| CVE-2026-45811 | `nimble/transport/socket/src/ble_hci_socket.c`, `ble_hci_sock_rx_msg` -- unchecked HCI event copy in the POSIX **socket** transport | No, and not under RA8FW-270 either: our transport is `port/nimble/src/ble_hci_ra8_ble.c`, and `nimble/transport/socket/` is a host / simulator transport this firmware never builds | Fixed in the pin |
+| CVE-2026-45815 | `nimble/host/src/ble_gattc.c`, `ble_gattc_read_mult_cb_var` -- reachable assertion parsing an ATT Read Multiple Variable Response | Not today; **yes** once RA8FW-270 links `nimble/host/src`. Core GATT client, remotely triggerable (`AV:N/AC:L`) | Fixed in the pin |
+| CVE-2026-45816 | `nimble/host/src/ble_sm.c`, `ble_sm_ltk_req_rx` -- NULL dereference on an LE Long Term Key Request naming an unknown connection handle | Not today; **yes** once RA8FW-270 links `nimble/host/src`. Its threat model is a misbehaving controller, which is exactly what sits across our SPI HCI link to the C6 | Fixed in the pin |
+| CVE-2026-46452 | `nimble/host/mesh/src/proxy_msg.c`, `bt_mesh_proxy_msg_recv` -- unbounded SAR reassembly append | No, unless BLE Mesh is adopted: the mesh sources are a separate opt-in subset that neither the current build nor RA8FW-270 compiles | Fixed in the pin |
 
 The four upstream fixes are commits `dcc4e4f0`, `fae6a487`, `9448c5f4`
 and `593f9522` respectively; all are ancestors of `nimble_1_10_0_tag`,

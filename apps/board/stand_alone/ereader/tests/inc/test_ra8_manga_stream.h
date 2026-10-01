@@ -1,10 +1,10 @@
 /**
  * @file test_ra8_manga_stream.h
- * @brief #232 manga-scale streaming harness: a synthetic volume-of-JOF-atlases
+ * @brief RA8FW-257 manga-scale streaming harness: a synthetic volume-of-JOF-atlases
  *        driven through the real #231 tile-cache + #147 page-cache stack.
  *
  * @details
- * Shared test harness for the two #232 manga-scale streaming TUs
+ * Shared test harness for the two RA8FW-257 manga-scale streaming TUs
  * (`test_ra8_manga_stream.c` -- bounded residency + correctness;
  * `test_ra8_manga_stream_policy.c` -- scan resistance + eviction-split tuning).
  * It proves that a manga volume whose decoded size dwarfs the ~10 MB SDRAM
@@ -42,7 +42,7 @@
  * the reference oracle.
  *
  * The real >SDRAM run off the Pmod2 SD card (ra8_emulator, then EK-RA8D2 HIL) is an
- * owner/bench step (#232); this host gate is the EIL==HIL golden it is compared
+ * owner/bench step (RA8FW-257); this host gate is the EIL==HIL golden it is compared
  * against.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -111,7 +111,7 @@ static_assert((uint32_t)k_mg_bands <= (uint32_t)k_jof_max_tiles,
 
 /**
  * @enum t_mg_target_t
- * @brief The two manga-scale volume sizes #232 cites (bytes).
+ * @brief The two manga-scale volume sizes RA8FW-257 cites (bytes).
  *
  * @details The bounded-residency gate builds a whole number of atlases whose
  *          total is >= the target, so the modelled volume genuinely spans the

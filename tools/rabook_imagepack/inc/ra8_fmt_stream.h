@@ -14,7 +14,7 @@
  *
  * Those four contracts are format-neutral, so they now live in
  * `libs/ra8_fmt/inc/ra8_fmt_io.h`, where a product can bind them without
- * linking anything under `tools/` (#755). What remains here is the part that
+ * linking anything under `tools/` (RA8FW-315). What remains here is the part that
  * is genuinely JOF- and RABOOK-specific: the requirements/workspace protocol
  * and the engine entry points.
  *

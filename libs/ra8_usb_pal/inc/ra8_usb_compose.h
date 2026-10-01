@@ -1,6 +1,6 @@
 /**
  * @file ra8_usb_compose.h
- * @brief One call that synthesises a device's whole framework set (#766).
+ * @brief One call that synthesises a device's whole framework set (RA8FW-317).
  * @ingroup grp_net
  *
  * @par Tag
@@ -13,7 +13,7 @@
  * strings, build the language id, carry three lengths. This header collapses
  * that into one config struct and one call.
  *
- * It is still the pure half of #766: bytes into caller-owned buffers, no USBX
+ * It is still the pure half of RA8FW-317: bytes into caller-owned buffers, no USBX
  * types, no allocation, no global state, so it is proven off-target like the
  * encoders under it. The USBX handshake (`_ux_system_initialize`,
  * `_ux_device_stack_initialize`, `_ux_device_stack_class_register`) is the
@@ -43,7 +43,7 @@
  *
  * ## One function per device, for now
  *
- * ::ra8_usb_device_cfg_t takes a class array because that is the shape #766
+ * ::ra8_usb_device_cfg_t takes a class array because that is the shape RA8FW-317
  * asks for and the shape a composite device needs. The encoders underneath
  * model single-function devices, which is what all twenty-nine current copies
  * publish, so a `class_count` above one is refused with
@@ -107,7 +107,7 @@ typedef struct {
  * @struct ra8_usb_device_cfg_t
  * @brief Everything the synthesiser needs to describe one device.
  *
- * @details The `pool` / `pool_bytes` / `port` fields #766 sketches belong to
+ * @details The `pool` / `pool_bytes` / `port` fields RA8FW-317 sketches belong to
  * the USBX handshake, not to descriptor synthesis, so they are not here: they
  * land with the half of the facade that owns the stack.
  *

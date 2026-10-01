@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the blob `gen_jpeg_fixture` writes (#858).
+//! Behavioural regression tests for the blob `gen_jpeg_fixture` writes (RA8FW-335).
 //!
 //! The seeds live in the committed libFuzzer corpora, so the contract this
 //! migration had to preserve is byte-for-byte output, not "a JPEG the parser

@@ -86,7 +86,7 @@ pub const Scratch = extern struct {
     high_water: usize = 0,
 };
 
-/// `k_ra8_imgdec_mux_max`: one member per backend named in #768.
+/// `k_ra8_imgdec_mux_max`: one member per backend named in RA8FW-308.
 pub const mux_max: u32 = 4;
 
 /// `ra8_imgdec_mux_t`.

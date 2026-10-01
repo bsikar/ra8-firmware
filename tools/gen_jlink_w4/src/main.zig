@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for `gen_jlink_w4` (#858): collect argv, hand the current
+//! Process shell for `gen_jlink_w4` (RA8FW-335): collect argv, hand the current
 //! working directory and both streams to the CLI, and exit with its status.
 //! Relative image paths resolve against the caller's working directory, as
 //! the predecessor's `Path(bin_file)` did.

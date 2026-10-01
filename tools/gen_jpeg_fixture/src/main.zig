@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Entry point of the `gen_jpeg_fixture` build tool (#858). Everything
+//! Entry point of the `gen_jpeg_fixture` build tool (RA8FW-335). Everything
 //! decidable lives in `cli.zig`, so the process boundary here stays a thin
 //! shell around it: collect argv, hand over the real cwd and streams, exit
 //! with the status `run` returned.

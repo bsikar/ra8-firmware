@@ -1,6 +1,6 @@
 /**
  * @file ra8_usb_desc.h
- * @brief Synthesise the three USB device frameworks from a config struct (#766).
+ * @brief Synthesise the three USB device frameworks from a config struct (RA8FW-317).
  * @ingroup grp_net
  *
  * @par Tag

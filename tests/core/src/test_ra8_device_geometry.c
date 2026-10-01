@@ -4,7 +4,7 @@
  *        libs/ra8_core/inc/ra8_device.h
  *
  * @details
- * Issue #850 was a reconciliation bug, not a code bug: one place was storing
+ * Issue RA8FW-336 was a reconciliation bug, not a code bug: one place was storing
  * two different facts, "how big is this bank" and "how much of it do we
  * declare", and the two drifted. `ra8_device_mem_capacity_t` now holds the
  * first and `ra8_device_mem_size_t` the second. This file is what stops them
@@ -20,7 +20,7 @@
  *    per-bank splits must multiply out to the datasheet's per-core totals.
  * 3. PIN THE FLOOR. Supported allocation must never exceed capacity, and the
  *    M85 TCM entries must stay at 64 KiB until the startup copy/zero/ECC audit
- *    and a silicon run raise them deliberately (issues #226 / #229). A table
+ *    and a silicon run raise them deliberately (issues RA8FW-260 / RA8FW-261). A table
  *    correction alone must not be able to expand a linker region.
  *
  * Host-only and hardware-free: `ra8_device.h` is compile-time constants, so
@@ -210,13 +210,13 @@ static void test_declared_never_exceeds_capacity(void)
  * @brief The 64 KiB M85 TCM floor is still in force.
  *
  * @details
- * This is the assertion that makes issue #850 safe to land. Correcting the
+ * This is the assertion that makes issue RA8FW-336 safe to land. Correcting the
  * capacity table must NOT expand what the linker scripts declare: the ITCM and
  * DTCM banks are ECC and 16-block-granular, so growing the declared region
  * changes what `Reset_Handler` must copy, zero and ECC-initialize, changes the
  * window `ra8_emulator` maps (`k_dtcm_end == 0x20010000`), and invalidates the
  * link of every HIL-validated image. Raising this floor is a deliberate change
- * behind that audit and a silicon run (#226 / #229), and it should fail here
+ * behind that audit and a silicon run (RA8FW-260 / RA8FW-261), and it should fail here
  * first so whoever raises it has to come and read this comment.
  *
  * @pre None.
@@ -313,7 +313,7 @@ static void test_every_value_is_whole_kib(void)
  * @brief The TCM and SRAM base addresses are unchanged by this reconciliation.
  *
  * @details
- * Issue #850 corrects a capacity table and nothing else. If a base address
+ * Issue RA8FW-336 corrects a capacity table and nothing else. If a base address
  * moved, a region moved, which is exactly what this change promised not to do.
  *
  * @pre None.

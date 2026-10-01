@@ -9,7 +9,7 @@ const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
     // Default target comes from the shared host probe so a native arm64 macOS
-    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const executable = b.addExecutable(.{
@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     test_module.addImport("application", application_module);
-    // The C23 contract test resolves a front end at run time (#899). Handing it
+    // The C23 contract test resolves a front end at run time (RA8FW-330). Handing it
     // the zig that is running this build gives it a `zig cc` fallback on a host
     // that has no clang-18, which is every arm64 macOS workstation.
     const test_options = b.addOptions();

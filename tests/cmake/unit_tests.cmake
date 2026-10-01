@@ -570,7 +570,7 @@ endif()
 
 # The exact decimal -> binary64 conversion promoted out of the downloader's
 # state codec (#747). The glob builds the case file alone, so the implementation
-# joins it here (#754). It is Zig now, so the archive is linked rather than a
+# joins it here (RA8FW-302). It is Zig now, so the archive is linked rather than a
 # library TU compiled in by path.
 if(TARGET test_ra8_num_decimal)
   target_link_libraries(test_ra8_num_decimal PRIVATE ra8_zig::ra8_num)

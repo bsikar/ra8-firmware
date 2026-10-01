@@ -41,7 +41,7 @@
  * `libs/third_party/threadx/ports/cortex_m33/gnu/src`, vendored and not yet
  * selected by `cmake/threadx.cmake`, which wires the Cortex-M85 port only. The
  * flag records that this core has a port to implement the contract with, not
- * that a CPU1 RTOS image is built today; #694's migration slice is where the
+ * that a CPU1 RTOS image is built today; RA8FW-300's migration slice is where the
  * two stop being different answers.
  */
 #define ARCH_HAS_RTOS_CONTEXT (1)
@@ -52,7 +52,7 @@
  * MIGRATION: implemented today by `libs/ra8_mpu/src/ra8_mpu_abi.zig`, shared with
  * CPU0. Same PMSAv8 programming model, half the regions, which is why the
  * count is answered per core below. Moves to `arch/armv8m/` in a later slice
- * of #694.
+ * of RA8FW-300.
  */
 #define ARCH_HAS_MEM_PROTECT (1)
 /** @brief Protection flavour, as `arch.h` documents the term. */
@@ -84,7 +84,7 @@
  *
  * @details
  * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_sau.c`. Moves to
- * `arch/armv8m/trustzone/` in a later slice of #694.
+ * `arch/armv8m/trustzone/` in a later slice of RA8FW-300.
  */
 #define ARCH_HAS_TRUSTZONE_M (1)
 /** @brief Number of SAU regions this core implements. */

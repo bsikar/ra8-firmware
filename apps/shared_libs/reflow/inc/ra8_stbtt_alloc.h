@@ -24,7 +24,7 @@
  * NULL; stb_truetype tolerates this and the offending glyph is skipped
  * rather than corrupting memory.
  *
- * Since #768 that arithmetic is not written here: both hooks forward to
+ * Since RA8FW-308 that arithmetic is not written here: both hooks forward to
  * ::ra8_imgdec_scratch_t, the one bump-scratch contract shared by every
  * decoder shim in the tree. Only the backing store and the file-static slot
  * it is reached through stay local, because `STBTT_malloc` / `STBTT_free`

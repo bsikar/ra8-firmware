@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status and stream tests for `gen_jlink_w4` (#858). Every case runs the
+//! Exit-status and stream tests for `gen_jlink_w4` (RA8FW-335). Every case runs the
 //! real CLI against a temporary directory, so the ordering the predecessor
 //! inherited is pinned: the usage line, then the base address, then the option
 //! scan, then the image read, then the vector table, and only then output.

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Guard locator and escape detector for the stub-crypto gate (#858).
+//! Guard locator and escape detector for the stub-crypto gate (RA8FW-335).
 //!
 //! Several secure-side translation units ship a deliberately INSECURE
 //! placeholder body (a deterministic PRNG standing in for a TRNG, a plain

@@ -198,7 +198,7 @@ static TX_SEMAPHORE s_cdc_active_sem;
 /* -------------------------------------------------------------------------- */
 
 /* The three frameworks below are synthesised at start-up from the config
- * structs by libs/ra8_usb_pal (#766) rather than typed out as raw byte
+ * structs by libs/ra8_usb_pal (RA8FW-317) rather than typed out as raw byte
  * arrays. VID/PID matches the prior bare-metal app (pid.codes test range).
  * The configuration is one CDC ACM communications interface + one CDC data
  * interface, with EP3 IN (interrupt) for notifications and EP2 OUT /

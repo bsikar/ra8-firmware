@@ -660,7 +660,7 @@ static void internal_test_arena_malloc_and_bind(void)
  *  - V2: size=4,       nmemb=4        -> (T,F) -> zeroed block (no overflow).
  *  - V3: size=0,       nmemb=8        -> (F,-) -> refused, nothing reserved.
  * V1+V2 prove the overflow term independently drives the outcome; V2/V3 vary
- * `size != 0`. Since #768 the shared scratch refuses a zero-byte request rather
+ * `size != 0`. Since RA8FW-308 the shared scratch refuses a zero-byte request rather
  * than answering it with a live block that can never be written.
  * @since 0.1.0
  * @pre The test exclusively owns the shared WebP fixture state.

@@ -262,7 +262,7 @@ SBOM component list with `scope: excluded` rather than as linked SOUP:
   enabled**: `cmake/esp_hosted.cmake` excludes the host `drivers/bt/` bridge,
   `coprocessor/esp32c6/sdkconfig.defaults` says nothing about the BT stack so
   what the C6 image contains is undetermined, and the RA8-side BLE work is
-  still open (#493). See [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
+  still open (RA8FW-270). See [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
   This **C6 image** is NOT vendored into the tree:
   it is built from the
   pinned upstream commit `949bb30` with esp-idf `v5.5.4` and flashed onto

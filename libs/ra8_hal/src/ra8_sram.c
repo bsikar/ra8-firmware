@@ -401,7 +401,7 @@ RA8_INTERNAL static void internal_apply_security(const ra8_sram_security_cfg_t* 
   /* All three registers below are security-attribution registers, so they sit
    * behind PRC4 (HUM Ch 13.1 Table 13.1 p 520-521). Issued with PRC4 locked
    * the stores are discarded silently -- no bus fault, no status flag -- the
-   * same failure #131 found in `ra8_bkup_security_apply`. One window covers
+   * same failure RA8FW-254 found in `ra8_bkup_security_apply`. One window covers
    * the whole apply, which is also what the hand-rolled TrustZone apps do. */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
   {

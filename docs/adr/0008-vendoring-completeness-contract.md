@@ -4,7 +4,7 @@
   is implemented by this record.
 - **Date**: 2026-09-17
 - **Issue**: #699 (Platform-arch (g): own-your-vendoring / add-a-first-party-or-vendored-lib cleanliness)
-- **Parent epic**: #692
+- **Parent epic**: RA8FW-298
 - **Verified against**: `dev` @ `1657296`
 
 ## Context
@@ -184,7 +184,7 @@ Two questions are left open rather than answered here, because both are policy:
 
 ## References
 
-- Issue #699 (this record), parent epic #692, dependency #611.
+- Issue #699 (this record), parent epic RA8FW-298, dependency #611.
 - `scripts/gen/sbom_registry.py`, `scripts/gen/gen_sbom.py`,
   `scripts/checks/check_soup_upstream.py`,
   `scripts/checks/check_third_party_patches.py`,

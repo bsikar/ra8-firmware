@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the NSC veneer gate (#858): resolve the repository root,
+//! Process shell for the NSC veneer gate (RA8FW-335): resolve the repository root,
 //! hand argv, the live paths and the real streams to `cli.run`, return its
 //! status.
 

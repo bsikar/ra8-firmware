@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detection algebra for the PEP 668 override gate (#858).
+//! Detection algebra for the PEP 668 override gate (RA8FW-335).
 //!
 //! Python-managed repository tools belong in a virtual environment. The
 //! system-pip override can mutate apt-owned files, and the user-site fallback

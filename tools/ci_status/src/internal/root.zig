@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The ci-monitor status reader, as pure computation (#858, #1144).
+//! The ci-monitor status reader, as pure computation (RA8FW-335, #1144).
 //!
 //! Everything here is a function of an already-parsed JSON document: no file
 //! system, no argv, no process state, so every rule below is provable with no

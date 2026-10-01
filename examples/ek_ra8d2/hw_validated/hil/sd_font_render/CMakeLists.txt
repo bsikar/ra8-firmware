@@ -46,7 +46,7 @@ ra8_add_app(
 # this blob to the card, then reads it back. The hex array is generated at build
 # time -- not committed -- so the ~37 KB of byte literals never reach the QC gates.
 # ${_d} is the repo root resolved above.
-# The font baker moved from Python to Zig (#940, epic #858); it is built for the
+# The font baker moved from Python to Zig (#940, epic RA8FW-335); it is built for the
 # HOST with the pinned toolchain even in this Arm cross build, and a missing zig
 # is a configure-time error rather than a silently skipped bake.
 include("${_d}/cmake/ra8_zig_tool.cmake")

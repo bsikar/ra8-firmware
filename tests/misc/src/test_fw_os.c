@@ -6,7 +6,7 @@
  * [Ring 3 / Test] {World: NS}
  *
  * @details
- * The OSAL seam of #693 declared a contract and compiled it; nothing proved a
+ * The OSAL seam of RA8FW-299 declared a contract and compiled it; nothing proved a
  * binding could satisfy it. These vectors drive the first binding
  * (`tests/support/src/fw_os_host_test.c`) through every MUST declaration and
  * assert the documented answer, including the failure answers, so the contract

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract of the NSC veneer gate (#858). `cli.run` is
+//! Exit-status contract of the NSC veneer gate (RA8FW-335). `cli.run` is
 //! parameterised on a directory handle, the repository root, the scanned
 //! paths and both streams, so every status below is proved here with no
 //! process and no real repository.

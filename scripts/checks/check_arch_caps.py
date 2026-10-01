@@ -6,7 +6,7 @@ answers in `arch/core/<core>/caps.h`, and it tells the reader outright that
 "silence is not a third option: the port-completeness gate (epic invariant #4)
 fails a capability flag that is set with no backend translation unit behind it,
 and fails a cleared flag with no documented decline". Both `caps.h` files repeat
-the promise. Nothing enforced it, so this is that gate (#694).
+the promise. Nothing enforced it, so this is that gate (RA8FW-300).
 
 Four questions, asked mechanically, derived from the contract rather than from a
 list kept here:

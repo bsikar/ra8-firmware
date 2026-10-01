@@ -7,7 +7,7 @@
  *
  * @details The C6 remains the validated esp-hosted L2 co-processor. NetX Duo,
  * DHCP, TCP, HTTP parsing, camera capture and JPEG generation all run on RA8.
- * The IP bring-up itself is the shared `ra8_ipif` facade (#740); what stays here
+ * The IP bring-up itself is the shared `ra8_ipif` facade (RA8FW-319); what stays here
  * is the HTTP server and the buffers it and the stack are given.
  * The page uses one persistent multipart/MJPEG connection. `/frame.jpg`
  * remains available for still capture, diagnostics, and HIL qualification.
@@ -72,7 +72,7 @@ static const char s_page[] =
   "<meta name=viewport content='width=device-width,initial-scale=1'>"
   "<title>EK-RA8D2 Camera</title><style>body{margin:0;background:#111;color:#eee;"
   "font:16px system-ui;display:grid;place-items:center;min-height:100vh}main{text-align:center}"
-  "img{width:min(96vw,960px);height:auto;image-rendering:auto;border:1px solid #555}"
+  "img{width:min(96vw,960px);height:auto;image-rendering:auto;border:1px solid RA8FW-278}"
   "small{display:block;margin-top:.5rem;color:#aaa}audio{margin-top:1rem}</style></head><body><main>"
   "<h1>EK-RA8D2 / OV5640</h1><img id=stream src=/stream.mjpg alt='live camera'>"
   "<small>bounded multipart MJPEG stream with automatic reconnect</small>"

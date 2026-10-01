@@ -5,7 +5,7 @@
 # scripts/builders/gen_jlink_w4.sh -- emit a J-Link w4 programming script.
 #
 # This is a minimal trusted launcher, not an implementation: the generator is
-# the Zig host tool tools/gen_jlink_w4 (#858), which replaced the Python
+# the Zig host tool tools/gen_jlink_w4 (RA8FW-335), which replaced the Python
 # scripts/gen/gen_jlink_w4.py  PATHREF-OK: the predecessor this names was
 # deleted in the same change.
 #

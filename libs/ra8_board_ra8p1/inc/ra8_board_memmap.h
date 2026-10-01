@@ -15,7 +15,7 @@
  * region table as C literals, `tools/ra8_emulator/inc/emu_memmap.h` restates
  * three of the bases a second time as an enum, and `tests/mocks/ra8_fake_mmap.c`
  * declares a third copy under a third set of names. Four spellings of one fact,
- * and correcting one of them corrected nothing else (#758).
+ * and correcting one of them corrected nothing else (RA8FW-306).
  *
  * This header is the board layer's answer: the same regions the board's
  * `ld/linker_script.ld` declares, as ordinary C constants a host tool or a
@@ -32,7 +32,7 @@
  * but it cannot become a second VERSION of it.
  *
  * NOT YET CONSUMED. Landing the descriptor and its pin is the first slice of
- * #758. Pointing the emulator's region table, the emulator's core-register
+ * RA8FW-306. Pointing the emulator's region table, the emulator's core-register
  * window and `ra8_fake_mmap.c` at these constants, and generating the linker
  * script's `MEMORY{}` from them, are the slices that follow; until they land,
  * those three copies still exist and the gate does not yet know about them.

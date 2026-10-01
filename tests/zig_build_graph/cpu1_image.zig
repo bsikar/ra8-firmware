@@ -16,7 +16,7 @@
 //! linked, it was the right size for its own sections, and it was simply not
 //! the image CMake produces, because the second core's half was missing. That
 //! is the failure mode this file exists to close, and the reason the app-local
-//! CMake outside `ra8_add_app()` has to be in the graph before #859 can delete
+//! CMake outside `ra8_add_app()` has to be in the graph before RA8FW-332 can delete
 //! anything.
 //!
 //! Two flag facts are load-bearing and neither is visible in the CMakeLists:
@@ -184,7 +184,7 @@ pub const Options = struct {
 /// the caller to link into the M85 ELF.
 /// App dir if the script is there, else the shared M33 map in the board layer.
 ///
-/// `ra8_add_cpu1_image()` has made exactly this choice since #742, which
+/// `ra8_add_cpu1_image()` has made exactly this choice since RA8FW-309, which
 /// dropped eight byte-identical `linker_script_cpu1.ld` forks onto one source
 /// (fcb624f8 carried the last two over to this branch). The graph resolved the
 /// name against the app directory alone, so those apps asked for a file that

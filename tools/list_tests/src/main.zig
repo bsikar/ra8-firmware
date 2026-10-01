@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Entry point of the `list_tests` build tool (#858). Everything decidable
+//! Entry point of the `list_tests` build tool (RA8FW-335). Everything decidable
 //! lives in `cli.zig`, so the process boundary here stays a thin shell around
 //! it: collect argv and the one environment variable the root resolution
 //! reads, hand over the real cwd and streams, exit with the status `run`

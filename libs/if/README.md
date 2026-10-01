@@ -67,7 +67,7 @@ files: libs/ra8_io/src/*.c = 25
 
 ## The OSAL seam: `fw_os`
 
-`fw_os.h` is child (c) of epic #692, the OS port of #693. Portable libraries
+`fw_os.h` is child (c) of epic RA8FW-298, the OS port of RA8FW-299. Portable libraries
 state what they need of an operating system there; a binding chosen by the
 composition root supplies it. Nothing above the header names ThreadX.
 

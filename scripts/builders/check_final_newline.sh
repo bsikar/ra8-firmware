@@ -6,7 +6,7 @@
 # file ends in a trailing newline.
 #
 # This is a minimal trusted launcher, not an implementation: the gate is the
-# Zig host tool tools/check_final_newline (#858), which replaced the Python
+# Zig host tool tools/check_final_newline (RA8FW-335), which replaced the Python
 # scripts/checks/check_final_newline.py  PATHREF-OK: the predecessor this
 # names was deleted in the same change. All this does is resolve zig, build
 # the tool once, and hand over argv and the exit status unchanged.

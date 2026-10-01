@@ -53,7 +53,7 @@
 #                       calls ra8_add_cpu1_image(). Before this option the only
 #                       way to get those was a per-app linker_script.ld, so nine
 #                       dual-core apps each forked the whole 340-line board map
-#                       to gain one section and two symbols (#742). Rejected if
+#                       to gain one section and two symbols (RA8FW-309). Rejected if
 #                       the app also ships its own linker_script.ld.
 #   NS_INLINE_IMAGE     compose the board linker script with a generated
 #                       fragment that places the .ns_vectors / .ns_text /
@@ -63,7 +63,7 @@
 #                       whose NS world rides inside the Secure ELF in sections
 #                       the SAU later reclassifies -- NOT for one that links a
 #                       separate NS ELF, which is ra8_add_ns_image()'s job and
-#                       uses a different window (#742). Rejected if the app
+#                       uses a different window (RA8FW-309). Rejected if the app
 #                       also ships its own linker_script.ld.
 #   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
 #                       ek_ra8d2). Selects which board layer supplies the fallback
@@ -73,7 +73,7 @@
 #                       paths this recipe used before the parameter existed, so the
 #                       default build is byte-for-behaviour unchanged. The RA8P1
 #                       foundation apps pass BOARD ra8p1 to build against the
-#                       libs/ra8_board_ra8p1 layer (issue #226).
+#                       libs/ra8_board_ra8p1 layer (issue RA8FW-260).
 #   NO_NSC              exclude the ra8_nsc sources (secure-only dual-core apps)
 #   USES <m>...         vendored middleware to enable + link. Each <m> maps to
 #                       cmake/<m>.cmake (interface lib target <m>) and, when a
@@ -161,7 +161,7 @@ macro(ra8_add_app)
   if(NOT _RA8_APP_DESCRIPTION)
     set(_RA8_APP_DESCRIPTION "RA8D2 firmware: ${_RA8_APP_NAME}")
   endif()
-  # Board-support layer selector (issue #226). Unset -> ek_ra8d2, so every
+  # Board-support layer selector (issue RA8FW-260). Unset -> ek_ra8d2, so every
   # existing app resolves to the exact libs/ra8_board_ek_ra8d2 paths this recipe
   # hardcoded before the parameter existed and rebuilds byte-identically.
   if(NOT _RA8_APP_BOARD)
@@ -621,7 +621,7 @@ function(ra8_add_cpu1_image)
   endif()
 
   # App dir if present, else the shared M33 map in the board layer. Eight apps
-  # carried a byte-identical linker_script_cpu1.ld (#742); the fallback lets them
+  # carried a byte-identical linker_script_cpu1.ld (RA8FW-309); the fallback lets them
   # build from one source. Only an app whose M33 image genuinely diverges -- the
   # two that park a working-set arena in external SDRAM -- keeps its own copy.
   #

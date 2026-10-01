@@ -30,7 +30,7 @@
  * rather than papering over it -- a Vela-lowered graph is REFUSED at
  * `AllocateTensors()` on a host build instead of silently running as something
  * else. Executing that node needs the real command stream (#227) and RA8P1
- * silicon (#229).
+ * silicon (RA8FW-261).
  *
  * @note The refusal tests make the vendored runtime print its own diagnostics
  *       to stderr on the way to returning `kTfLiteError`. That output is

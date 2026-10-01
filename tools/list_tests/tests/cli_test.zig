@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status and output contract for `list_tests` (#858).
+//! Exit-status and output contract for `list_tests` (RA8FW-335).
 //!
 //! `run` is parameterised on the directory the search resolves against, the
 //! `RA8_REPO_ROOT` value and both streams, so every case below builds a small

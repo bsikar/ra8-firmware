@@ -166,7 +166,7 @@ RA8_INTERNAL static void internal_test_probe_too_short(void)
 /**
  * @brief The PNG arm reads IHDR, and refuses a truncated or foreign one.
  * @details The producer no longer carries its own IHDR field offsets; the arm
- *          forwards to `ra8_imgdec_dims()` (#768). A header long enough to
+ *          forwards to `ra8_imgdec_dims()` (RA8FW-308). A header long enough to
  *          carry both fields yields the declared geometry, one cut short of
  *          the height field is refused rather than read out of bounds, and a
  *          first chunk that is not IHDR is refused rather than have four

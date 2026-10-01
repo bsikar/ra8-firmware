@@ -38,7 +38,7 @@
  *
  * The one policy knob is the share of frames the **protected** segment may hold;
  * the rest is the **probationary** scan buffer. It is a per-cache tuning axis
- * (#232) because the sweet spot depends on the workload's hot-set size versus its
+ * (RA8FW-257) because the sweet spot depends on the workload's hot-set size versus its
  * scan volume:
  *
  *  - **Default (`protected_pct == 0` selects 75%).** Good general default: most
@@ -161,7 +161,7 @@ typedef struct {
   uint8_t            protected_pct; /**< SLRU protected-segment share, 1..100;
                                      *   0 selects the 75% default. See the file
                                      *   comment "Tuning the protected/probationary
-                                     *   split" for how to size it (#232).           */
+                                     *   split" for how to size it (RA8FW-257).           */
 } ra8_vmem_cfg_t;
 
 /**

@@ -23,7 +23,7 @@ The co-processor's IDF target string is printed but never asserted, through a
 formatter that truncates and strips non-printable bytes: it is a string the far
 side chose, and a protocol field that can reprogram a terminal is not evidence.
 
-## The ESP_PRIV_IF INIT event is unusable on this co-processor build (#529)
+## The ESP_PRIV_IF INIT event is unusable on this co-processor build (RA8FW-276)
 
 The C6's bootup INIT frame -- the one carrying its capabilities, chip id and
 firmware version as TLVs -- is checksummed with `if_num` taken as zero and then

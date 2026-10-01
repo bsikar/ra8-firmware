@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Argv membrane and exit-status contract for the commit-message terminology
-//! gate (#858).
+//! gate (RA8FW-335).
 //!
 //! Exit 0 when the scanned commit messages are clean, and 1 when a banned term
 //! survives its paragraph's opt-out or the detector selftest fails. There is

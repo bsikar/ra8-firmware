@@ -13,7 +13,7 @@ BSS, because the D/AVE 2D engine had never rasterized a pixel on this silicon --
 and it carried "silicon-confirmed PASS" status for months. Two stacked defects
 had to be fixed before a real render existed: the graphics power domain is gated
 off at reset (#247), and the driver then placed rectangles with the spatial
-limiters while leaving `CONTROL2.WRITEALPHA` at its reset value (#170). If the
+limiters while leaving `CONTROL2.WRITEALPHA` at its reset value (RA8FW-251). If the
 hash ever changes, re-derive it from a bench capture -- never from the emulator,
 and never by writing down whatever the demo happens to print.
 

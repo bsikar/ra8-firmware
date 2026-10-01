@@ -1,6 +1,6 @@
 # lpm_periodic_idle
 
-The shape a real periodic application takes (#153): each period the CPU does a
+The shape a real periodic application takes (RA8FW-249): each period the CPU does a
 small unit of work, then sleeps in Software Standby until the on-chip
 Ultra-Low-Power Timer (ULPT0) wakes it, for a fixed number of periods. It reuses
 the wake path from `lpm_ulpt_standby` verbatim rather than inventing a second

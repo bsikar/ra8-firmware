@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detector for the legacy-task-runner gate (#858).
+//! Detector for the legacy-task-runner gate (RA8FW-335).
 //!
 //! The repository task runner is Just. GNU Make can still be a real
 //! dependency of CMake or an upstream source build, so this detector

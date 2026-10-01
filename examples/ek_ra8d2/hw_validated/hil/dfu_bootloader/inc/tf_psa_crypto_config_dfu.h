@@ -19,7 +19,7 @@
  * Trimming to the reachable set takes the shipping (MinSizeRel) image from
  * 116528 B to 61828 B, 88.90% of the bank down to 47.17%. That is both
  * headroom and attack surface: a Root-of-Trust bootloader has no business
- * carrying an RSA implementation it never calls. See issue #2502, which also
+ * carrying an RSA implementation it never calls. See issue RA8FW-353, which also
  * tracks the separate fact that a Debug build of this app does not fit the
  * bank at all.
  *

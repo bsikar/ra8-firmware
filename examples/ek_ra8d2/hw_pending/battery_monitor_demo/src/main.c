@@ -202,7 +202,7 @@ static void bm_setup_or_halt(uint32_t* out_pclka_hz)
     bm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   /* The second operand reads the clock driver directly on purpose (issue
-   * #693): k_bm_iic_chan is the mikrobus IIC_B channel 0, while the board
+   * RA8FW-299): k_bm_iic_chan is the mikrobus IIC_B channel 0, while the board
    * clock profile's i2c slot is RIIC1 (J35 SCCB), so routing it would name
    * the wrong peripheral. */
   const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};

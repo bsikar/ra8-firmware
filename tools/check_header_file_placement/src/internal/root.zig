@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Placement rules for the `check_header_file_placement` gate (#858, #1219).
+//! Placement rules for the `check_header_file_placement` gate (RA8FW-335, #1219).
 //!
 //! A header under a `src/` directory is module-private by construction and
 //! must announce that with an `_internal` stem suffix. This module holds the

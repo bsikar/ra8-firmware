@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
- * for the #150 power-saving demo. It is compiled as a wholly separate ELF
+ * for the RA8FW-250 power-saving demo. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
  * the M85 hands the reader to this core via `ra8_cpu1_release` (HUM Ch 2.9.1)
  * and PARKS. From then on the M33 is the live core holding the page.
@@ -30,7 +30,7 @@
  *   5. Fold a CRC-32 over the rendered pixels -- reading them back out of SDRAM is
  *      itself the proof real pixels landed -- and PUBLISH the framebuffer base,
  *      geometry, format, glyph count and CRC into the shared mailbox.
- *   6. Set `status = ok`, `done = 1`, then enter the #150 MODE-SWITCH hold loop:
+ *   6. Set `status = ok`, `done = 1`, then enter the RA8FW-250 MODE-SWITCH hold loop:
  *      the M33 holds the page and polls a (fake) touch input. On each
  *      page turn it bumps `turn_req`, POKES the parked M85 over IPC0
  *      (`ra8_ipc_send_event`, HUM Ch 3.2.11 p 215) to wake it, waits for the
@@ -51,7 +51,7 @@
  *       this is replaced by a GT911 touch-controller poll, a HIL follow-up.
  * @note The framebuffer is the M33's own RGB565 plane in external SDRAM, not yet
  *       the GLCDC scan-out plane; wiring the held plane to the live panel + the
- *       display-plane handoff is a later increment (#150).
+ *       display-plane handoff is a later increment (RA8FW-250).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -695,7 +695,7 @@ static bool wait_for_ack(volatile const erm33_mailbox_t* mb, uint32_t turn)
 }
 
 /**
- * @brief Hold the page and run the #150 page-turn handoff loop for the M85.
+ * @brief Hold the page and run the RA8FW-250 page-turn handoff loop for the M85.
  *
  * @details For each of ::k_erm33_max_turns turns the M33 dwells on the held page
  * (::simulate_touch_dwell), publishes the page-turn request (`turn_req`) behind a
@@ -799,7 +799,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * @details Stamps the boot signature, validates the baked `RABOOK1` blob,
  * renders chapter 0's opening page into the SDRAM framebuffer (::render_held_page),
  * publishes the descriptor, and sets `status = ok`, `done = 1`. It then becomes
- * the live core for the #150 mode-switch: it runs the page-turn hold loop
+ * the live core for the RA8FW-250 mode-switch: it runs the page-turn hold loop
  * (::run_page_turns) -- holding the page, waking the parked M85 on each scripted
  * touch, and re-rendering -- before holding for good. A failure at any step
  * publishes the matching failure status and parks.
@@ -838,7 +838,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
   mb->done = 1U;
   __asm volatile("dsb" ::: "memory");
 
-  /* #150 mode-switch: the M33 is now the live core. Hold the page, poll the
+  /* RA8FW-250 mode-switch: the M33 is now the live core. Hold the page, poll the
    * simulated touch, and on each page turn wake the parked M85, wait for its
    * heavy-work ack, then re-render + republish the (identical) held page. */
   run_page_turns(mb, base);

@@ -11,7 +11,7 @@
 #
 # or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
-# BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1 layer (issue #226), the
+# BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1 layer (issue RA8FW-260), the
 # same selector npu_smoke and blink_ra8p1 pass. This app is an RA8P1 build
 # (-DRA8_DEVICE_RA8P1 via cmake/toolchain-ra8p1.cmake), so the RA8P1 board's pin
 # map is the correct one; before issue #773 it took the ek_ra8d2 default and

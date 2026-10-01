@@ -23,7 +23,7 @@
 # nobody can author a source directory called that (the checker's
 # RESERVED_DIR_NAMES records that judgement).
 /build/
-# The macos-host-build gate's transcript (#899). That gate runs on the one
+# The macos-host-build gate's transcript (RA8FW-330). That gate runs on the one
 # machine in this suite nobody here can log into, so it tees its output to a
 # file the workflow can upload and a human can attach to a bug report. The
 # same hazard as the line above applies: the file lands at the repository

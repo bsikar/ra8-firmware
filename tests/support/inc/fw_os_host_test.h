@@ -7,7 +7,7 @@
  * [Ring 3 / Test] {World: NS}
  *
  * @details
- * The first binding of the OSAL seam declared in `libs/if/inc/fw_os.h` (#693).
+ * The first binding of the OSAL seam declared in `libs/if/inc/fw_os.h` (RA8FW-299).
  * It is owned by the test tree rather than by `port/`, because the host build
  * is the only place the seam can be exercised without a bench or a linked
  * RTOS, and a production port with no consumer is a gap rather than progress.

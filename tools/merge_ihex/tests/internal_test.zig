@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression suite for the record algebra behind `merge_ihex`
-//! (#858). These cases pin what the replaced Python tool did: EOF records are
+//! (RA8FW-335). These cases pin what the replaced Python tool did: EOF records are
 //! dropped, every other record survives in order, one canonical EOF closes the
 //! image, and malformed or blank input is passed over rather than rejected.
 

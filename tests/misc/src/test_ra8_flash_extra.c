@@ -195,7 +195,7 @@ static void test_extra_mram_write_success_pads_payload(void)
  * @test test_extra_mram_write_emits_program_opcode
  *
  * @details
- * Regression guard for #170 (recon seed T1-17): the extra-MRAM DATA write path
+ * Regression guard for RA8FW-251 (recon seed T1-17): the extra-MRAM DATA write path
  * MUST issue the MACI Program command (opener 0xE8, HUM Ch 59.7.4.5 "Program
  * Command" Figure 59.13 p 3591), NOT the Configuration Set command (opener
  * 0x40), which is valid only for the OFS config area. Config-Set against the

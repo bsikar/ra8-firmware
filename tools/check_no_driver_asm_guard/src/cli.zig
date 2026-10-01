@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Argv membrane and exit-status contract for the HAL driver asm-guard gate
-//! (#858).
+//! (RA8FW-335).
 //!
 //! Exit 0 when every HAL peripheral driver routes its CPU primitives through
 //! the shared seam, 1 on a violation, a failing detector selftest, a driver

@@ -9,7 +9,7 @@
  * See `unarch_xz_pool.h` for the contract. The arena arithmetic is no longer
  * written here: one module-static ::ra8_imgdec_scratch_t holds the installed
  * store and every entry point forwards to the shared decoder-scratch
- * contract (`ra8_imgdec_scratch.h`, issue #768), which is where rounding,
+ * contract (`ra8_imgdec_scratch.h`, issue RA8FW-308), which is where rounding,
  * capacity and cursor accounting live for every image-path bump arena in the
  * tree. What stays local is the policy this seam publishes and the contract
  * does not have: the install-time alignment precondition, the fail-closed

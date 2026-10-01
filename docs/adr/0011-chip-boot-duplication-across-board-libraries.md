@@ -83,7 +83,7 @@ units. Line counts, `libs/ra8_board_ek_ra8d2/src/boot/` against
 
 Three of the five RA8P1 copies open with a note reading "this
 chip-boot TU is byte-identical to the EK-RA8D2 copy", attributed to
-issue #226. For three of the five files that claim is false today:
+issue RA8FW-260. For three of the five files that claim is false today:
 
 * `libs/ra8_board_ra8p1/src/boot/secure_exception.c` and
   `libs/ra8_board_ra8p1/src/boot/trustzone_init.c` are byte-identical
@@ -173,11 +173,11 @@ structure, at the cost of making one board library depend on
 another, which is the wrong direction for a board layer and would
 have to be undone by Option A later.
 
-**Option D -- defer everything** until #611 and #226 land, per the
+**Option D -- defer everything** until #611 and RA8FW-260 land, per the
 issue's own sequencing.
 
 **The deciding constraint is that no RA8P1 silicon is in hand.**
-#226 is open and labelled `needs-purchase`: the RA8P1 board layer
+RA8FW-260 is open and labelled `needs-purchase`: the RA8P1 board layer
 has never been brought up on hardware. Options A and C rewrite
 the boot path of a board that cannot be bench-validated, and boot
 code is the one place where an unvalidated refactor fails silently
@@ -228,7 +228,7 @@ If Option A is adopted later:
   hard-coded shared-RAM MPU bounds, the missing `RA8_BOOT_CACHE_VIA_HAL`
   path, and the vector-table shape each become an explicit call.
 * Both boards need bench validation of reset, NMI, SecureFault and
-  first-interrupt paths, which is why this waits on #226.
+  first-interrupt paths, which is why this waits on RA8FW-260.
 * The board libraries gain the interface contract #696 asks for as
   a by-product, since what remains in each is by definition the
   board-specific surface.
@@ -244,15 +244,15 @@ If Option D is adopted:
 
 * Issue #696 -- Platform-arch (d): board-description + arch/chip/board
   build-selection model (this ADR).
-* Issue #692 -- EPIC: Platform architecture, agnostic
+* Issue RA8FW-298 -- EPIC: Platform architecture, agnostic
   multi-arch / multi-chip / multi-board structure.
 * Issue #611 -- filesystem work #696 is sequenced behind.
-* Issue #226 -- RA8P1 on-silicon bring-up, board layer landed,
+* Issue RA8FW-260 -- RA8P1 on-silicon bring-up, board layer landed,
   needs an RA8P1 EK. Source of the byte-identity notes.
 * Issue #577 -- L1 cache enable through the `ra8_cache` HAL, the
   `RA8_BOOT_CACHE_VIA_HAL` opt-in present only in the EK-RA8D2 copy.
 * Issue #1048 -- whether the device memory map has readers.
-* Issue #220 -- RA8D2-vs-RA8P1 difference analysis and multi-chip plan.
+* Issue RA8FW-258 -- RA8D2-vs-RA8P1 difference analysis and multi-chip plan.
 * `libs/ra8_core/inc/ra8_device.h` -- compile-time device selection
   and the memory-map enumerations.
 * `docs/reference/ra8p1_vs_ra8d2.md` -- the documented chip delta.

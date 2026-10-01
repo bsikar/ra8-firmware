@@ -31,7 +31,7 @@ fn addCodec(module: *std.Build.Module, b: *std.Build) void {
 
 pub fn build(b: *std.Build) void {
     // Default target comes from the shared host probe so a native arm64 macOS
-    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const app_module = b.createModule(.{
@@ -51,10 +51,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(executable);
 
     // Reading the emitted image back is what turns "the link exited zero" into
-    // evidence about the Mach-O the #899 rule is actually about.
+    // evidence about the Mach-O the RA8FW-330 rule is actually about.
     b.step(
         "verify-host-artifact",
-        "Check the emitted binary's architecture, deployment target and libSystem linkage (#899)",
+        "Check the emitted binary's architecture, deployment target and libSystem linkage (RA8FW-330)",
     ).dependOn(ra8_build.addVerifyHostArtifactStep(b, executable));
 
     const run_app = b.addRunArtifact(executable);

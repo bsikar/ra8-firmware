@@ -330,7 +330,7 @@ static void internal_expect_raster_capacity_errors(void)
  * @par MC/DC:
  * WebP routing decision `internal_is_webp(source, source_size)` in
  * ra8_rabook_raster.c: this module now forwards it to ra8_imgdec_sniff() under
- * #768, so the condition-level vectors live in
+ * RA8FW-308, so the condition-level vectors live in
  * tests/misc/src/test_ra8_imgdec_sniff.c. What is exercised here is the
  * routing OUTCOME: the BMP vector and the RIFF/WAVE and truncated-WebP vectors
  * below take the false arm onto the stb decoder, the companion WebP test takes

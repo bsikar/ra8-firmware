@@ -828,7 +828,7 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
  * to the Ethernet receive callback, and everything else is counted. `ESP_PRIV_IF`
  * frames are counted rather than decoded: this co-processor build transmits its
  * only privileged frame with a checksum that does not match its own header
- * (#529), so a conformant host never sees a valid one.
+ * (RA8FW-276), so a conformant host never sees a valid one.
  *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] view Payload location from the classifier; must be non-null.
@@ -1059,7 +1059,7 @@ typedef enum {
  *
  * @note `ESP_PRIV_IF` answers ::k_priv_c6link_route_counted on purpose. This
  *       co-processor build seals its only privileged frame with a checksum
- *       computed as if `if_num` were zero (#529), so a conformant host never
+ *       computed as if `if_num` were zero (RA8FW-276), so a conformant host never
  *       sees a valid one and nothing here depends on it.
  *
  * @par Example:

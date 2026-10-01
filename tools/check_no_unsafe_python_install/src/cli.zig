@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the PEP 668 override gate (#858).
+//! Argv membrane and exit-status contract for the PEP 668 override gate (RA8FW-335).
 //!
 //! Exit 0 clean, 1 findings (or a failing detector selftest, or an unreadable
 //! source, which aborts the scan the way the Python's uncaught OSError did),

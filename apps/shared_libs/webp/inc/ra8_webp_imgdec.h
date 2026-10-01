@@ -1,13 +1,13 @@
 /**
  * @file ra8_webp_imgdec.h
- * @brief `ra8_imgdec` backend over the vendored libwebp facade (#768).
+ * @brief `ra8_imgdec` backend over the vendored libwebp facade (RA8FW-308).
  * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / WebP] {World: NS}
  *
  * @details
- * #768 names four binders, one per decoder the tree already carries, and this
+ * RA8FW-308 names four binders, one per decoder the tree already carries, and this
  * is `ra8_imgdec_bind_webp()`: the one format no other backend in this tree
  * opens, and the one whose absence the issue leads with. An app rendering an
  * EPUB's inline `<img>` cannot show a WebP today because the reflow seam is

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Root Zig build graph for ra8-firmware (#857, the parity step #859 depends
+//! Root Zig build graph for ra8-firmware (RA8FW-339, the parity step RA8FW-332 depends
 //! on). CMake is still authoritative for the whole repository; this graph owns
 //! one bounded slice of it and proves the slice can be built and verified with
 //! no CMake in the loop at all.
@@ -214,7 +214,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("cmake/ra8_app/zig_libs.cmake"),
     });
     // And the cross-image wiring itself, which is where the archive request
-    // lives since #2791 split it out of this file: the same rule has to read
+    // lives since RA8FW-362 split it out of this file: the same rule has to read
     // the file that actually asks for the archive, not the one that used to.
     graph_test_module.addAnonymousImport("cross_image_source", .{
         .root_source_file = b.path("tests/zig_build_graph/cross_image.zig"),
@@ -402,7 +402,7 @@ pub fn build(b: *std.Build) void {
     parity_step.dependOn(&print_database.step);
 
     // The app tree's row. Its third number is how many kinds of app the
-    // cross-build table has never built: the distance left to #859.
+    // cross-build table has never built: the distance left to RA8FW-332.
     app_shapes.addParityRow(b, parity_step, shape_summary);
 }
 
@@ -468,7 +468,7 @@ const findArmTools = cross_build.findTools;
 
 // Analysis-input slice (#959): compile_commands.json
 // ===========================================================================
-// The fourth slice of #857, and the one #859 most depends on, because the
+// The fourth slice of RA8FW-339, and the one RA8FW-332 most depends on, because the
 // static-analysis gates do not analyse source -- they analyse a compile
 // database, and only a CMake configure produces one today:
 //

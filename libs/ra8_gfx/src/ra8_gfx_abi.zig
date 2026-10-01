@@ -59,7 +59,7 @@ fn clip() impl.Box {
     };
 }
 
-/// Row stride of the bound framebuffer, in bytes. Since #737 the binding
+/// Row stride of the bound framebuffer, in bytes. Since RA8FW-304 the binding
 /// carries its own pitch, so a padded surface addresses rows correctly and a
 /// packed one is bit-for-bit what `width * bpp` gave before.
 fn stride() usize {
@@ -179,7 +179,7 @@ pub export fn ra8_gfx_init(
     return impl.err.ok;
 }
 
-/// `ra8_gfx_init_surface` -- the pitch-carrying bind form (#737). The
+/// `ra8_gfx_init_surface` -- the pitch-carrying bind form (RA8FW-304). The
 /// descriptor is copied, so the caller may reuse the object.
 pub export fn ra8_gfx_init_surface(s: ?*const bind_impl.Surface) callconv(.c) u16 {
     const surface = s orelse return impl.err.null_ptr;

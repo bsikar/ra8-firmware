@@ -71,7 +71,7 @@ a delta -- see the correction below.
 
 The host and emulator paths cover the device switch, OFS handling, FPU probe,
 NPU driver and Ethos-U adapter. On-silicon NPU clock, interrupt and
-Vela-compiled-model validation remain tracked by issue #229 because they
+Vela-compiled-model validation remain tracked by issue RA8FW-261 because they
 require an RA8P1 evaluation kit.
 
 ## Correction: the DP-FPU is not an RA8P1 delta (issue #225)
@@ -110,14 +110,14 @@ deliberate, it just does not differ between the two parts.
 `toolchain-ra8d2.cmake` like everything else, which is the correctness-safe
 option on a part whose vendor header declares no DP FPU: `.f64` opcodes are
 UNDEFINED on a single-precision FPU, i.e. a HardFault on first silicon. The DP
-build survives as an explicit bench switch for the #229 benchmark,
+build survives as an explicit bench switch for the RA8FW-261 benchmark,
 `-DRA8P1_DP_FPU=ON`, which appends `-mfpu=fpv5-d16` and defines
 `RA8_FPU_DP_ENABLED`; `libs/ra8_hal/inc/ra8_fpu_probe.h` refuses any build where
 that define and the compiler's actual `__ARM_FP` disagree. Both newlib-nano
 multilibs ship in the pinned Arm GNU Toolchain 13.3.Rel1 (`fpv5-d16` selects
 `thumb/v8-m.main+dp/hard`, `fpv5-sp-d16` selects `thumb/v8-m.main+fp/hard`), so
 the switch links either way; what no host check can settle is whether this
-silicon executes `.f64` at all. That measurement is #229's, on an RA8P1 EK.
+silicon executes `.f64` at all. That measurement is RA8FW-261's, on an RA8P1 EK.
 
 **The other half of #225, the 16-bit ADC, was already done** by `ac5401343`
 (`k_ra8_adc_res_{16,14,12,10}bit` mapped to `ADDOPCRCn.ADPRC[1:0]`, HUM Ch 53.2.3.4
@@ -125,7 +125,7 @@ p 3339) and is untouched here.
 
 ## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1 (issue #224)
 
-An earlier revision of this reference (and roadmap issues #220 / #224) claimed the
+An earlier revision of this reference (and roadmap issues RA8FW-258 / #224) claimed the
 RA8P1 adds a classic single-port ETHERC/EDMAC Ethernet MAC at `0x40354000`, in
 addition to the shared R-Switch/ESWM fabric. **That was a misread; the RA8P1 has
 no such peripheral.** Verified by full-text search of both primary manuals:
@@ -202,7 +202,7 @@ groups (P0-P9, PA-PD), and the full peripheral set (GLCDC, MIPI DSI/CSI, CEU,
 DRW 2D, CANFD x2, USB FS+HS, SDHI x2, OSPI x2, SCI x10, I3C, GPT x14, AGT, SSIE,
 PDM, CAC, DMAC x8, DTC, ELC, IPC dual-core).
 
-## Cache / TCM geometry is identical on both parts (issue #850)
+## Cache / TCM geometry is identical on both parts (issue RA8FW-336)
 
 Two earlier claims in this file were wrong and are corrected here. The memory-map
 table said the RA8P1 M85 TCM was "256 KB total (split unconfirmed)", implying a
@@ -234,7 +234,7 @@ it.** It is re-derived here from the **RA8D2** HUM R01UH1065EJ0130 Rev.1.30,
 committed as [`ra8d2-hardware-user-manual.pdf`](ra8d2-hardware-user-manual.pdf),
 section 2.1.1 "CPU", printed pp 111-112 (corroborated by section 2.3
 "Implementation Options", `TCM` row p 115 and `CACHE` row p 116) -- because the
-RA8P1 HUM is ~49 MB and is **not** in the tree. Issue #850 cites RA8P1 HUM
+RA8P1 HUM is ~49 MB and is **not** in the tree. Issue RA8FW-336 cites RA8P1 HUM
 R01UH1064EJ0130 sections 2.1.1 pp 111-112 and 2.16.1.1 Table 2.34 p 160 for the
 same numbers.
 
@@ -298,8 +298,8 @@ correction:
   needs a board.
 
 So: **do not expand a region or enable a cache on the strength of this table.**
-Region growth belongs to the startup/ECC audit plus a silicon run (issues #226 /
-#229); linker/target composition belongs to #758 / #761; broader M85 cache and
+Region growth belongs to the startup/ECC audit plus a silicon run (issues RA8FW-260 /
+RA8FW-261); linker/target composition belongs to RA8FW-306 / #761; broader M85 cache and
 MPU conversion belongs to #590 / #591. `tests/core/src/test_ra8_device_geometry.c`
 pins the capacities, pins the floor, and fails if supported allocation ever
 exceeds capacity, so the distinction cannot quietly erode.
@@ -311,7 +311,7 @@ The `MEMORY { }` header comment in the 78 per-app `linker_script.ld` files reads
 `SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K`. The comment is the
 double-count this section corrects (user SRAM is 1664 KB, and 2 MiB is the whole
 island including TCM); the declaration is a further deliberate floor. Both are
-RA8D2-side linker composition, owned by #758 / #761, and touching 78 scripts
+RA8D2-side linker composition, owned by RA8FW-306 / #761, and touching 78 scripts
 here would be region churn outside this reconciliation. Recorded, not changed.
 
 ## Sources

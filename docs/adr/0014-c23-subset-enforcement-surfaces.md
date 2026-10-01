@@ -6,7 +6,7 @@
   names the constraint that orders the options. It adopts nothing.
 * **Date:** 2026-09-17
 * **Context issue:** #788 (Platform-arch (i): C23 / MISRA / analyzer
-  coverage and deviation audit), parent epic #692.
+  coverage and deviation audit), parent epic RA8FW-298.
 * **Related:** #787 and ADR-0010 (the compiler / ABI / data-model
   contract), #805 (the MISRA edition question), ADR-0002
   (`docs/adr/0002-cppcheck-only-misra-enforcement.md`).
@@ -183,7 +183,7 @@ the duration of this fire and no sweep of the tree was possible:
 
 ## References
 
-* Issue #788, and its parent epic #692.
+* Issue #788, and its parent epic RA8FW-298.
 * `scripts/checks/check_c23_headers.py`,
   `scripts/checks/check_no_null.py`,
   `scripts/checks/check_c23_patterns.py`.

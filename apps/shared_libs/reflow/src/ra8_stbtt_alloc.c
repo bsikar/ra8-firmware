@@ -1,6 +1,6 @@
 /**
  * @file ra8_stbtt_alloc.c
- * @brief stb_truetype's allocator hooks, forwarded to the shared scratch (#768).
+ * @brief stb_truetype's allocator hooks, forwarded to the shared scratch (RA8FW-308).
  *
  * @details
  * See ra8_stbtt_alloc.h for the rationale. The bump arithmetic that used to

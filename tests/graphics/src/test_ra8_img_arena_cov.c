@@ -240,7 +240,7 @@ static void test_realloc_zero_oldsz(void)
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
-  /* A zero-byte allocation reserves one byte (#768), so it gets an address of
+  /* A zero-byte allocation reserves one byte (RA8FW-308), so it gets an address of
    * its own instead of aliasing whatever is handed out next: offset advances
    * one alignment step, live = 1. */
   void* const zero_blk = ra8_img_arena_malloc(0U);

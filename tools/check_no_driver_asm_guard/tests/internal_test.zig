@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detector algebra of the HAL driver asm-guard gate (#858): the comment
+//! Detector algebra of the HAL driver asm-guard gate (RA8FW-335): the comment
 //! stripper, the directive matchers, the asm pattern and the conditional
 //! walk. Every case here is pure text in and findings out, so the behaviour
 //! the predecessor's four regular expressions encoded is pinned with no

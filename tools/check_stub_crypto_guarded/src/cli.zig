@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the stub-crypto gate (#858).
+//! Argv membrane and exit-status contract for the stub-crypto gate (RA8FW-335).
 //!
 //! Exit 0 when every listed stub translation unit guards its insecure
 //! placeholder body fail-closed, 1 on any finding (a missing guard, an

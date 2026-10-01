@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 //
-// Exit-status contract tests for the stub-crypto gate (#858).
+// Exit-status contract tests for the stub-crypto gate (RA8FW-335).
 //
 // `cli.run` takes a directory handle, a repository root, the governed TU list
 // and both streams, so every status the gate can return is provable here with

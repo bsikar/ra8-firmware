@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Declaration and definition algebra for the NSC veneer gate (#858).
+//! Declaration and definition algebra for the NSC veneer gate (RA8FW-335).
 //!
 //! Every function here is pure: text in, findings out, no file system and no
 //! argv, so the detector is provable with no repository on disk. The two

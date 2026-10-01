@@ -693,7 +693,7 @@ def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: li
     grown, and did the gaps we claim to have closed actually close?".
     """
     # 41 unclaimed .tf files exceed the recorded 40 of
-    # terraform-has-no-pinned-tooling (#2791); one does not.
+    # terraform-has-no-pinned-tooling (RA8FW-362); one does not.
     many = [f"infra/terraform/m{n}.tf" for n in range(41)]
     grew = evaluate([*files, *many], claimed)
     expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)

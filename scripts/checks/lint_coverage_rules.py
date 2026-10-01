@@ -419,7 +419,7 @@ KNOWN_GAPS: tuple[Gap, ...] = (
     Gap(
         "terraform-has-no-pinned-tooling",
         40,
-        "#2791",
+        "RA8FW-362",
         "infra/terraform is real infrastructure code -- it provisions the lab "
         "fleet -- and nothing in this repo lints or formats it. The reason is "
         "concrete rather than an oversight: .devcontainer/Dockerfile pins every "

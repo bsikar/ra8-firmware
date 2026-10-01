@@ -8,7 +8,7 @@ is, and it is readable by the linker and by nothing else. Every host-side
 consumer that needs the same numbers has therefore retyped them: the emulator's
 region table restates them as C literals, the emulator's own header restates
 three of the bases a second time, and `tests/mocks/ra8_fake_mmap.c` declares a
-third copy under a third set of names (#758). Four spellings, no pin between
+third copy under a third set of names (RA8FW-306). Four spellings, no pin between
 them, and correcting one corrected nothing else.
 
 `libs/ra8_board_<board>/inc/ra8_board_memmap.h` is the board layer's answer: the
@@ -375,7 +375,7 @@ def main() -> int:
             print(f"  {finding.render()}", file=sys.stderr)
         print(
             "\nThe linker script is authoritative. Correct "
-            "libs/ra8_board_<board>/inc/ra8_board_memmap.h to match it (#758).",
+            "libs/ra8_board_<board>/inc/ra8_board_memmap.h to match it (RA8FW-306).",
             file=sys.stderr,
         )
         return 1

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The Non-Secure image of a two-project TrustZone build (#1111, part of #857).
+//! The Non-Secure image of a two-project TrustZone build (#1111, part of RA8FW-339).
 //!
 //! #1096 taught the graph the SECURE half of `tz_nsc_cgc_usb`: 192 TUs, the
 //! `NSC_SRCS` veneer subset, `-mcmse`, and the CMSE import library the link

@@ -11,7 +11,7 @@
 //! long as nobody pins a target and nobody reuses a target directory a
 //! different host filled in. When they disagree the link fails deep inside the
 //! linker, naming a symbol rather than the mismatch, which is the single
-//! reason those three roots are still outside the macOS gate (#899).
+//! reason those three roots are still outside the macOS gate (RA8FW-330).
 //!
 //! Reading the archive answers that directly: an archive of ELF objects is not
 //! a thing an `aarch64-macos` link can use, whatever the symbols look like.

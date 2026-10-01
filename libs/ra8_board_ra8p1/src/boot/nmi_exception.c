@@ -5,7 +5,7 @@
  * @par Tag
  * [Ring 1 / Boot] {World: S}
  *
- * @note RA8P1 board layer (issue #226): this chip-boot TU is byte-identical to
+ * @note RA8P1 board layer (issue RA8FW-260): this chip-boot TU is byte-identical to
  *       the EK-RA8D2 copy. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 core,
  *       ICU, and register map (see libs/ra8_core/inc/ra8_device.h), so the NMI
  *       handling is common; the HUM citations reference the RA8D2 manual

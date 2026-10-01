@@ -1,6 +1,6 @@
 # arch/
 
-The CPU-architecture tier: the lowest layer in the platform structure #692
+The CPU-architecture tier: the lowest layer in the platform structure RA8FW-298
 describes. A new instruction-set architecture is a new `arch/<isa>/` directory
 implementing one contract header, [`arch.h`](arch.h), and nothing above it
 notices which one it was built against.
@@ -36,7 +36,7 @@ python3 scripts/checks/check_arch_caps.py --selftest
 python3 scripts/checks/check_arch_caps.py
 ```
 
-There is no backend directory yet, and that is deliberate: this slice of #694
+There is no backend directory yet, and that is deliberate: this slice of RA8FW-300
 fixes the target before anything moves, so each migration that follows is a move
 plus an adapter rather than a design argument held one file at a time.
 
@@ -44,7 +44,7 @@ plus an adapter rather than a design argument held one file at a time.
 
 `arch.h` now declares the monotonic timebase as a MUST: `arch_timebase_configure`,
 `arch_timebase_now` and `arch_timebase_hz`. It had no slot before, which is the
-concrete reason "de-middleware the SysTick" (#693 step 0) was a design question
+concrete reason "de-middleware the SysTick" (RA8FW-299 step 0) was a design question
 rather than a move: `ra8_systick.h` was the only declaration of a timebase
 anywhere in the tree, so every consumer that wanted the time reached into a
 Ring-1 register header, and there was nowhere else to point them.
@@ -171,7 +171,7 @@ answer are this one's.
 
 Contract only, now compiled. There is still no backend: nothing implements the
 declared symbols, no build reaches `arch/` for linking, and the migration out of
-`ra8_core` has not started. Those are later slices of #694.
+`ra8_core` has not started. Those are later slices of RA8FW-300.
 
 ## How the numbers here are measured
 

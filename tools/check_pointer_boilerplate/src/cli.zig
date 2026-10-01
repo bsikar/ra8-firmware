@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Argv membrane and exit-status contract for the pointer-only comment gate
-//! (#858).
+//! (RA8FW-335).
 //!
 //! Exit 0 clean, 1 findings or a failing detector selftest, 2 any argument
 //! other than a lone `--selftest`, a census that could not be enumerated, a

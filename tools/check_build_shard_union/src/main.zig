@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the cross-build shard-union gate (#858, #1159): hand
+//! Process shell for the cross-build shard-union gate (RA8FW-335, #1159): hand
 //! argv, the working directory, a scratch directory for `--selftest` and the
 //! real streams to `cli.run`, return its status.
 //!

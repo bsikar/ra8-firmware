@@ -168,7 +168,7 @@ ra8_add_zig_library(
   ra8_lsm6dso
 )
 
-# PARTLY migrated (#2998), and the first board in that state. The dual-core
+# PARTLY migrated (RA8FW-365), and the first board in that state. The dual-core
 # shared-RAM descriptor, the USB full-speed port routing, the board bringup
 # sequence, the VCOM console stream handle and the clock-profile binding are
 # Zig; libs/ra8_board_ek_ra8d2/src still holds the pin/LED/switch core, the
@@ -197,7 +197,7 @@ ra8_add_zig_library(
 # predicates, the ra8_usb status -> PAL event translation and the whole public
 # ra8_usb_pal.h surface are Zig, so src/ra8_usb_pal.c is gone. The four
 # descriptor builders behind inc/ra8_usb_desc.h are Zig, so src/ra8_usb_desc.c
-# is gone. The one-call compose facade behind inc/ra8_usb_compose.h (#766) is
+# is gone. The one-call compose facade behind inc/ra8_usb_compose.h (RA8FW-317) is
 # Zig, so src/ra8_usb_compose.c is gone and the RA8_USB_PAL_SOURCES glob is
 # retired with it. src/ra8_usb_pal_internal.h stays: the host suite includes
 # it to drive the two promoted predicates, which the Zig archive exports under

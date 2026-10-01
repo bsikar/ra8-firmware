@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile the arch tier contract, for every core, in every capability state.
 
-`arch/arch.h` is the contract every `arch/<isa>/` backend implements (#694). It
+`arch/arch.h` is the contract every `arch/<isa>/` backend implements (RA8FW-300). It
 is a header with no backend behind it yet, and until this gate existed NOTHING
 in the tree compiled it: not a library, not a test, not a tool. A header nobody
 compiles rots exactly the way an unmeasured number rots, and it had:

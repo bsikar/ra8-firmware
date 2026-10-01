@@ -91,7 +91,7 @@ gate_emulator_matrix() (
 # DEFLATE stream, asserted by each demo's PASS banner. Covers RAM/SRAM,
 # external SDRAM, SD-over-SPI, native SDHI and OSPI NOR (erase-before-write).
 #
-# ra8_io_mram_demo is deliberately NOT in this list (#170): it targets a
+# ra8_io_mram_demo is deliberately NOT in this list (RA8FW-251): it targets a
 # general-purpose data-flash at 0x2700_0000 that the RA8D2 does not have (HUM
 # Ch 5 Figure 5.2 p 237 calls the region "Extra MRAM (option-setting memory)";
 # HUM Ch 59.7.4.5 Table 59.15 p 3592 enumerates the legal MACI Program targets

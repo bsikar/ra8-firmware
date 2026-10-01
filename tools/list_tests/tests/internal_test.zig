@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the pure half of `list_tests` (#858).
+//! Behavioural regression tests for the pure half of `list_tests` (RA8FW-335).
 //! Every case here pins a rule the deleted Python implementation had, so a
 //! rewrite that changes one fails rather than silently producing a different
 //! listing.

@@ -1,6 +1,6 @@
 /**
  * @file ra8_imgdec.h
- * @brief One image-decoder seam with format backends (#768).
+ * @brief One image-decoder seam with format backends (RA8FW-308).
  * @ingroup grp_io
  *
  * @par Tag
@@ -51,7 +51,7 @@
  * gate (a backend is never handed a format or a destination pixel layout it
  * did not advertise), and the dispatch. **No
  * backend is bound and no consumer is converted here.** The binders named in
- * #768 (`ra8_imgdec_bind_jpeg_sw`, `_png`, `_webp`, `_stb`) and the
+ * RA8FW-308 (`ra8_imgdec_bind_jpeg_sw`, `_png`, `_webp`, `_stb`) and the
  * `ra8_reflow_set_image_loader()` signature change are later slices, each of
  * which can now be written against a seam that already exists and is proven.
  *
@@ -158,7 +158,7 @@ typedef enum : uint32_t {
  * @brief Name the container format @p bytes opens with, from its leading bytes.
  *
  * @details
- * The container sniff is the other half of the duplication #768 is about. The
+ * The container sniff is the other half of the duplication RA8FW-308 is about. The
  * format *matrix* was four-way, and so was the signature test that feeds it:
  * `reflow_image.c` carries a RIFF/WEBP predicate, `jof_produce.c` carries the
  * JPEG SOI plus PNG signature plus the same RIFF/WEBP pair, and the removed
@@ -447,7 +447,7 @@ typedef struct {
  * into the JOF producer to call it: the RABOOK exporter,
  * the comic tiler (`comic_tiles.c`) and the host
  * worker (`jof_worker.c`). None of them is producing a JOF at that moment;
- * they want the geometry. That is the same ring inversion #768 records for
+ * they want the geometry. That is the same ring inversion RA8FW-308 records for
  * the arenas, one layer up.
  *
  * Each container is read at its own fixed offsets:
@@ -504,7 +504,7 @@ ra8_imgdec_dims(const uint8_t* bytes, uint32_t byte_count, ra8_imgdec_geom_t* ou
  * ::ra8_imgdec_get_caps, then testing the format bit and the backend's own
  * `dim_max` by hand, and getting the four-way error mapping right at every
  * call site. That is four decode paths' worth of duplicated gating, which is
- * the duplication #768 exists to remove, so the fabric does it once.
+ * the duplication RA8FW-308 exists to remove, so the fabric does it once.
  *
  * Nothing is decoded and no backend hook is reached beyond its capability
  * query, so this stays a pure read of the leading bytes: the answer costs a

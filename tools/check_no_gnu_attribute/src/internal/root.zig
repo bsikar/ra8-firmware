@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The GNU-attribute gate's detector and scope rules (#858, #1178), free of
+//! The GNU-attribute gate's detector and scope rules (RA8FW-335, #1178), free of
 //! the file system and of argv: everything here is a pure function over text
 //! and over repo-relative path strings, so the behaviour can be pinned by
 //! tests without a tree on disk.

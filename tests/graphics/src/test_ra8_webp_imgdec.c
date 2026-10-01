@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_webp_imgdec.c
- * @brief Host unit tests for the WebP `ra8_imgdec` backend binder (#768).
+ * @brief Host unit tests for the WebP `ra8_imgdec` backend binder (RA8FW-308).
  *
  * @details
  * Exercises `ra8_webp_imgdec_bind()` (`apps/shared_libs/webp`) through the

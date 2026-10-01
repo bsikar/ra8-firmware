@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the ci-monitor status reader (#858, #1144): hand argv,
+//! Process shell for the ci-monitor status reader (RA8FW-335, #1144): hand argv,
 //! the working directory and the real streams to `cli.run`, return its
 //! status. The state file is named on the command line, so this tool needs no
 //! repository root.

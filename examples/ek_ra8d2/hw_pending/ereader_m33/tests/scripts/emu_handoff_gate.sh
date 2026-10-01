@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# emu_handoff_gate.sh -- ra8_emulator gate for the #150 ereader_m33 MODE-SWITCH.
+# emu_handoff_gate.sh -- ra8_emulator gate for the RA8FW-250 ereader_m33 MODE-SWITCH.
 #
 # Cross-builds the app (Debug, so the M85's INFO banners are compiled in), builds
 # the ra8_emulator, boots the real M85 ELF (which auto-boots the embedded

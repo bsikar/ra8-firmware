@@ -14,7 +14,7 @@
  * symbols below are declared somewhere the linker-script checkers can read
  * them. While ereader_m33 still carried its own map, that fork was the only
  * tracked script defining them, and deleting it took LD006's only definition
- * with it (#742).
+ * with it (RA8FW-309).
  */
 
 SECTIONS

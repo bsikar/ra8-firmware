@@ -815,7 +815,7 @@ RA8_INTERNAL static void internal_csp_panic_halt(void)
  * @details Asks the board to initialise its clock tree and publish its rates,
  *          starts SysTick from CPUCLK0, and configures the board console, in
  *          dependency order. The clock tree is the board's: this helper never
- *          names a concrete clock-generator symbol (#693).
+ *          names a concrete clock-generator symbol (RA8FW-299).
  * @return Nothing.
  * @pre Reset startup has initialised .data and zeroed .bss.
  * @pre The board clock and console register mappings are accessible.

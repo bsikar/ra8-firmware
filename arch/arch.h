@@ -3,7 +3,7 @@
  * @brief The arch tier contract: what every CPU-architecture backend supplies.
  *
  * @details
- * `arch/` is the lowest tier in the platform structure described by #692. A new
+ * `arch/` is the lowest tier in the platform structure described by RA8FW-298. A new
  * instruction-set architecture is a new `arch/<isa>/` directory implementing
  * this one header; the ports tier above it means no logic library notices which
  * ISA it was built for.
@@ -14,7 +14,7 @@
  * `libs/ra8_core/` (`ra8_scb.h`, `ra8_systick.h`, `ra8_exception.h`,
  * `ra8_boot_entry.h`) and scattered across per-app boot files, which is why the
  * "Ring 1 is host==target" claim in `docs/RING_AND_WORLD.md` is not true yet.
- * Migrating those translation units is a later slice of #694; this slice fixes
+ * Migrating those translation units is a later slice of RA8FW-300; this slice fixes
  * the target they migrate to, so the moves that follow are mechanical rather
  * than a design argument per file. The timebase block below is the first of
  * those targets to be filled in: `ra8_systick.h` had no declaration here to
@@ -322,7 +322,7 @@ void arch_barrier_inst_sync(void);
  * Armv8-M's shape of this is `libs/ra8_core/inc/ra8_systick.h`: SysTick as the
  * periodic source plus the DWT cycle counter as the fine-grained one, filed in
  * Ring-1 `libs/ra8_core/` today and reached by six first-party translation
- * units. That header is the thing the `fw_os` OSAL seam (#693 step 0) exists to
+ * units. That header is the thing the `fw_os` OSAL seam (RA8FW-299 step 0) exists to
  * stop everyone reaching into, and this block is the target it reaches instead.
  *
  * ::arch_tick_configure in the RTOS block below is NOT a second timebase. It is
