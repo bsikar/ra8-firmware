@@ -125,6 +125,15 @@ CLASSES: dict[str, ClassSpec] = {
         CODE,
         "privileged Jinja/systemd input checked against the fleet role contract",
     ),
+    "terraform": _spec(
+        "terraform", CODE, "HCL that provisions the lab fleet; infrastructure is code"
+    ),
+    "ansible-config-template": _spec(
+        "ansible-config-template",
+        CONF,
+        "Jinja service config for a lab-only role, rendered by ansible and "
+        "carrying no privileged contract, unlike the systemd template above",
+    ),
 }
 
 # ---------------------------------------------------------------------------
@@ -140,6 +149,13 @@ CLASSES: dict[str, ClassSpec] = {
 # ---------------------------------------------------------------------------
 PATH_CLASS: dict[str, str] = {
     "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2": "ansible-systemd-template",
+    # Named one by one rather than through a blanket *.j2 rule, for the reason
+    # stated above: the next template to land may well be another privileged
+    # systemd or policy input, and it should stay unclassified until somebody
+    # says which of the three it is.
+    "infra/ansible/roles/lab_cache/templates/acng.conf.j2": "ansible-config-template",
+    "infra/ansible/roles/lab_cache/templates/nginx-lab-cache.conf.j2": "ansible-config-template",
+    "infra/terraform/environments/lab/.terraform.lock.hcl": "validated-input",
     "infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2": "validated-input",
     "scripts/hil/lib/ra8-hil-privileged.sha256": "validated-input",
     "scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch": "validated-input",
@@ -172,6 +188,7 @@ PATH_CLASS: dict[str, str] = {
 # Extension -> class. Lower-cased suffix, including the dot.
 # ---------------------------------------------------------------------------
 EXT_CLASS: dict[str, str] = {
+    ".tf": "terraform",
     # C family
     ".c": "c-family",
     ".h": "c-family",
@@ -393,6 +410,21 @@ KNOWN_GAPS: tuple[Gap, ...] = (
         "is fixed and its tidy-baseline rows are gone. Closing this one needs a "
         "macOS lint job, which is a runner decision, not a code change",
         lambda c: c.cls == "c-family" and c.rel.endswith(".m"),
+    ),
+    Gap(
+        "terraform-has-no-pinned-tooling",
+        40,
+        "#2791",
+        "infra/terraform is real infrastructure code -- it provisions the lab "
+        "fleet -- and nothing in this repo lints or formats it. The reason is "
+        "concrete rather than an oversight: .devcontainer/Dockerfile pins every "
+        "tool CI may run and mentions neither terraform nor tflint, so no gate "
+        "could invoke `terraform fmt -check` today even if one wanted to. The "
+        "count is both roles for every .tf file, so adding a module widens the "
+        "gap and fails this gate rather than slipping in quietly. Closing it "
+        "means pinning the tool in the devcontainer and claiming the class "
+        "from a provider, not raising this number",
+        lambda c: c.cls == "terraform",
     ),
 )
 
