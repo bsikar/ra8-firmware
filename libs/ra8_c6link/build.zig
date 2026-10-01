@@ -30,6 +30,32 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
+    // The C6 half (#3195): the service-rule exports alone, for the ESP32-C6's
+    // rv32imac core. No compiler_rt and no PIC; the ESP-IDF link brings libgcc
+    // and places the objects itself.
+    const c6_target = b.resolveTargetQuery(.{
+        .cpu_arch = .riscv32,
+        .os_tag = .freestanding,
+        .abi = .none,
+        .cpu_model = .{ .explicit = &std.Target.riscv.cpu.generic_rv32 },
+        .cpu_features_add = std.Target.riscv.featureSet(&.{ .m, .a, .c, .zicsr, .zifencei }),
+    });
+    const c6_library = b.addLibrary(.{
+        .name = "ra8_c6link_mdl_service",
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/mdl_service_abi.zig"),
+            .target = c6_target,
+            .optimize = .ReleaseSmall,
+            .single_threaded = true,
+            .strip = false,
+        }),
+    });
+    c6_library.bundle_compiler_rt = false;
+    c6_library.root_module.pic = false;
+    const c6_step = b.step("c6-service", "Build the ESP32-C6 mdl service archive");
+    c6_step.dependOn(&b.addInstallArtifact(c6_library, .{}).step);
+
     const implementation_module = b.createModule(.{
         .root_source_file = b.path("src/internal/root.zig"),
         .target = target,

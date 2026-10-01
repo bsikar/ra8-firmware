@@ -218,6 +218,17 @@ if [[ "$-" == *p* ]]; then
   cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_err.h" "${COMPONENT_DIR}/include/ra8_err.h"
   cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_attributes.h" \
     "${COMPONENT_DIR}/include/ra8_attributes.h"
+  # ra8_c6link_mdl_service.c calls service rules that are Zig since #3080;
+  # build them for the C6 core and stage the archive the component links
+  # (#3195). Fails closed: no zig, no C6 image.
+  if ! command -v zig >/dev/null 2>&1; then
+    echo "ERROR: zig missing; cannot build the C6 mdl service archive" >&2
+    exit 1
+  fi
+  (cd "${SCRIPT_DIR}/../../libs/ra8_c6link" && zig build c6-service)
+  mkdir -p "${COMPONENT_DIR}/lib"
+  cp "${SCRIPT_DIR}/../../libs/ra8_c6link/zig-out/lib/libra8_c6link_mdl_service.a" \
+    "${COMPONENT_DIR}/lib/libra8_c6link_mdl_service.a"
 
   # ---- 3. drop in the proven sdkconfig.defaults ----
   echo "==> installing sdkconfig.defaults"
@@ -253,6 +264,11 @@ if [[ "$-" == *p* ]]; then
   if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+ra8_mdl_service_component_abi$' \
     <<<"${C6_SYMBOLS}"; then
     echo "ERROR: built C6 image lacks the mdl_service component ABI marker" >&2
+    exit 1
+  fi
+  if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+priv_c6link_mdl_service_start_admit$' \
+    <<<"${C6_SYMBOLS}"; then
+    echo "ERROR: built C6 image lacks the Zig mdl service rules (#3195)" >&2
     exit 1
   fi
   echo "==> verified strong ra8 media handler and component ABI in network_adapter.elf"
