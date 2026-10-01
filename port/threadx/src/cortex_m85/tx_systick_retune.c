@@ -5,7 +5,7 @@
  * @details
  * See `port/threadx/inc/ra8_threadx.h` for the public contract.
  * ::ra8_threadx_systick_reload_for derives the SYST_RVR reload from the live
- * core clock and the kernel tick rate; ::ra8_threadx_systick_retune then
+ * core clock, read through the `fw_if_clock` handle the app bound, and the kernel tick rate; ::ra8_threadx_systick_retune then
  * programs it through the shared `ra8_core` SysTick timebase primitive
  * (::ra8_systick_set_reload), which owns the SYST_RVR / SYST_CVR access. That
  * primitive replaced this file's private address-cast accessors, so the SysTick
@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-#include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -30,6 +30,24 @@
 #include "ra8_threadx.h"
 
 static const char* s_tag = "TX_SYST";
+
+/**
+ * @var s_clk
+ * @brief Clock handle the app bound, read by ::ra8_threadx_systick_retune.
+ * @note File-scope only; NULL until ::ra8_threadx_clock_bind runs.
+ */
+static const fw_clock_t* s_clk = nullptr;
+
+ra8_err_t ra8_threadx_clock_bind(const fw_clock_t* clk)
+{
+  RA8_CHECK_NULL_PTR(clk, s_tag, "clock_bind: clk is NULL");
+  if (!clk->bound) {
+    ra8_log_error(s_tag, "clock_bind: handle is not bound");
+    return k_ra8_err_not_initialized;
+  }
+  s_clk = clk;
+  return k_ra8_ok;
+}
 
 ra8_err_t ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, uint32_t* out_reload)
 {
@@ -63,10 +81,15 @@ ra8_err_t ra8_threadx_systick_reload_for(uint32_t cpuclk_hz, uint32_t tick_hz, u
 
 ra8_err_t ra8_threadx_systick_retune(void)
 {
-  uint32_t cpuclk_hz = 0U;
-  RA8_RETURN_ON_ERROR(ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk_hz),
-                      s_tag,
-                      "CPUCLK0 query failed");
+  if (s_clk == nullptr) {
+    ra8_log_error(s_tag, "no clock handle bound; call ra8_threadx_clock_bind first");
+    return k_ra8_err_not_initialized;
+  }
+
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  uint32_t                cpuclk_hz = 0U;
+  RA8_RETURN_ON_ERROR(
+    fw_clock_rate_for(s_clk, clk_core, &cpuclk_hz), s_tag, "core rate query failed");
 
   uint32_t reload = 0U;
   RA8_RETURN_ON_ERROR(

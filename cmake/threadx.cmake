@@ -111,21 +111,22 @@ add_library(
   "${RA8_THREADX_PORT_DIR}/src/fw_os_threadx.c"
 )
 
-# tx_systick_retune.c reprograms SysTick from the live CGC clock, so it
-# needs the ra8_core / ra8_hal public headers (ra8_err.h, ra8_check.h,
-# ra8_log.h, ra8_cgc.h). PRIVATE: only this library's own TUs need them;
-# the symbols it references (ra8_cgc_get_clock_hz, ra8_log_*) resolve at
-# final-app link time against ra8_hal / ra8_core, which every ThreadX app
-# already links.
+# tx_systick_retune.c reprograms SysTick from a clock handle the app binds,
+# so it needs the ra8_core / ra8_hal public headers (ra8_err.h, ra8_check.h,
+# ra8_log.h). PRIVATE: only this library's own TUs need them; the symbols it
+# references (ra8_log_*) resolve at final-app link time against ra8_hal /
+# ra8_core, which every ThreadX app already links. It no longer names the
+# chip's clock tree at all (issue #693).
 target_include_directories(
   threadx PRIVATE "${RA8_REPO_ROOT}/libs/ra8_core/inc" "${RA8_REPO_ROOT}/libs/ra8_hal/inc"
 )
 
-# fw_os_threadx.c binds the libs/if `fw_os` port contract onto ThreadX, so it
-# needs the seam's own header. PRIVATE for the same reason as above: only this
-# library's TU includes it. The fw_os_* symbols land in their own object file,
-# so an app that never calls the seam does not pull them out of the archive.
-target_include_directories(threadx PRIVATE "${RA8_REPO_ROOT}/libs/if/inc")
+# fw_os_threadx.c binds the libs/if `fw_os` port contract onto ThreadX, and
+# ra8_threadx.h now takes a `fw_clock_t*` in its own API, so the seam's
+# headers are part of this target's public interface rather than an
+# implementation detail. PUBLIC so an app TU that includes "ra8_threadx.h"
+# resolves fw_if_clock.h without restating the directory.
+target_include_directories(threadx PUBLIC "${RA8_REPO_ROOT}/libs/if/inc")
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
 # "tx_api.h" without re-stating the include dirs.
