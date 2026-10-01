@@ -252,11 +252,11 @@ static void internal_mdl_expect_metadata_rejection(ra8_c6_model_mdl_fault_t faul
  * empty string and never yields null, so they are structurally infeasible
  * defensive guards rather than missing vectors.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_response_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@httpResponseValid
  * Decisions:
  * libs/ra8_c6link/src/internal/mdl_request.zig@httpFieldValid
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
+ * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
  * @details Repacks each modelled response through the same generated codec the
  * production decoder uses, so no rejection depends on a hand-built frame.
  * @pre The shared C6 model fixture can be reset and brought up.
