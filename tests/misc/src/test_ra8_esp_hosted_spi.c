@@ -198,12 +198,53 @@ RA8_INTERNAL static ra8_err_t internal_mock_toggle(void* ctx, ra8_port_pin_t pin
   return k_ra8_ok;
 }
 
+/** @brief Records an input configuration; the transport never asks for one.
+ * @details Implements the fixture-only input init operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @param[in] pull Internal pull selection requested by the adapter.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mock_input_init(void* ctx, ra8_port_pin_t pin, ra8_pin_pull_t pull)
+{
+  (void)ctx;
+  (void)pin;
+  (void)pull;
+  return k_ra8_ok;
+}
+
+/** @brief Records a pin release; the close path drops all four link pins.
+ * @details Implements the fixture-only release operation with bounded static state.
+ * @param[in,out] ctx Backend context supplied by the adapter under test.
+ * @param[in] pin Logical port/pin identifier presented to the mock.
+ * @return Mock status returned to the adapter under test.
+ * @retval k_ra8_ok The deterministic mock operation completed.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mock_release(void* ctx, ra8_port_pin_t pin)
+{
+  (void)ctx;
+  (void)pin;
+  return k_ra8_ok;
+}
+
 /** @brief The recording chip-select driver injected in place of the HAL's. */
 static const ra8_pin_interface_t s_mock_pin_if = {
   .output_init = internal_mock_output_init,
+  .input_init  = internal_mock_input_init,
   .write       = internal_mock_write,
   .read        = internal_mock_read,
   .toggle      = internal_mock_toggle,
+  .release     = internal_mock_release,
   .ctx         = nullptr,
 };
 
