@@ -99,6 +99,12 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "camera_mode",
+            .source = "src/internal/camera_mode.zig",
+            .root = "tests/camera_mode_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "eth_phy",
             .source = "src/internal/eth_phy.zig",
             .root = "tests/eth_phy_test.zig",
