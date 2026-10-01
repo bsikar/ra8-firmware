@@ -301,6 +301,15 @@ pub const cross_include_dirs = [_][]const u8{
     // library directory, so a board header shadows a library's same-named one.
 };
 
+/// The chip adapter include directories every board app gets, in the order
+/// cmake/ra8_app/board_adapters.cmake appends them: the board's clock profile
+/// includes fw_if_clock_ra8.h and its GPT profile includes fw_if_pwm_ra8.h and
+/// fw_if_timer_ra8.h.
+pub const board_adapter_include_dirs = [_][]const u8{
+    "libs/if_ra8_cgc/inc",
+    "libs/if_ra8_gpt/inc",
+};
+
 /// Collect `*.c` from one directory, sorted, so the link order is stable
 /// across machines and two builds of the same tree produce the same ELF.
 pub fn collectCSources(b: *std.Build, dir_path: []const u8, out: *std.ArrayList([]const u8)) void {
@@ -460,6 +469,14 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     dirs.append(b.fmt("{s}/src", .{app.dir})) catch @panic("OOM");
     dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
     dirs.append(b.fmt("{s}/inc", .{app.board})) catch @panic("OOM");
+
+    // The chip adapters' headers ride with the board, ahead of every named
+    // library, where cmake/ra8_app/sources.cmake puts them through
+    // _ra8_app_board_adapter_includes(). No app names an adapter in LIBS.
+    for (board_adapter_include_dirs) |adapter_inc| {
+        const exists = if (b.build_root.handle.access(adapter_inc, .{})) |_| true else |_| false;
+        if (exists) dirs.append(adapter_inc) catch @panic("OOM");
+    }
 
     for (app.libraries) |library| {
         const library_inc = b.fmt("libs/{s}/inc", .{library});
