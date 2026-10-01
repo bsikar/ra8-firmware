@@ -18,3 +18,4 @@ pub const mdl_session = @import("mdl_session.zig");
 pub const mdl_pull = @import("mdl_pull.zig");
 pub const mdl_envelope = @import("mdl_envelope.zig");
 pub const mdl_issue = @import("mdl_issue.zig");
+pub const mdl_take = @import("mdl_take.zig");
