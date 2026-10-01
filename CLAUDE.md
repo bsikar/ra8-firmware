@@ -305,22 +305,20 @@ Nested HIL shell calls must preserve the same absolute `-p` boundary.
 
 ## The CI fleet is DECLARED, not hand-built
 
-Every machine that runs CI lives in one file, **`infra/fleet.yml`**: how to
-reach it, what kind of host it is, how many runner instances it carries, its
-CPU and memory per instance, its labels, and any quiet-hours window. The
-inventory, the playbook selection, the transport and every role variable are
-derived from it. **Adding a machine is adding a block; retuning one is changing
-a number in that block.** Never hand-edit a role, a `host_vars` file or an
-inventory to change capacity -- `scripts/checks/check_fleet_declaration.py`
+Every machine the CI and HIL tooling touches lives in one file,
+**`infra/fleet.yml`**: how to reach it, what kind of host it is, and which
+plays it runs. The inventory, the playbook selection, the transport and every
+role variable are derived from it. **Adding a machine is adding a block.**
+Never hand-edit a role, a `host_vars` file or an inventory to change what the
+declaration owns -- `scripts/checks/check_fleet_declaration.py`
 fails a `host_vars` file that re-declares anything the declaration owns.
 
 ```sh
 just infra::ssh_config              turn THIS machine into a control node
-just infra::list                    what is declared, and how it is sized
+just infra::list                    what is declared, and what each host runs
 just infra::status                  what every host is running, right now
 just infra::check k3s-pve      DRY RUN -- report, change nothing
 just infra::apply k3s-pve      converge that machine to the declaration
-just infra::scale k3s-pve 3   live capacity change; temporary
 ```
 
 **Reachability is declared too, and never assumed.** Each host carries a real
@@ -328,27 +326,12 @@ just infra::scale k3s-pve 3   live capacity change; temporary
 another fleet host, and every ssh and Ansible invocation is built from those --
 so any machine with ansible and an accepted key can drive the fleet. Addressing
 a host by an `~/.ssh/config` alias is a gate failure: those existed on one
-laptop, which had no ansible, so nothing was a working control node and a
-half-drained NAS sat unconvergeable. `just infra::ssh_config` GENERATES
+laptop, which had no ansible, so nothing was a working control node. `just infra::ssh_config` GENERATES
 the friendly aliases from the declaration; never hand-write them.
 
-**Read `docs/CI_FLEET.md` before touching any of it.** It is the runbook for
-adding a host (with a worked example), retuning one, quiet hours, removal, and
-how instance counts are derived rather than guessed.
-
-### A scale-down must DRAIN. Never stop a busy runner.
-
-`docker stop` on a runner that is executing a job **cancels that job** -- our
-image sets `RUNNER_MANUALLY_TRAP_SIG=1`, so `run.sh` forwards SIGTERM to the
-listener as SIGINT, and `JobDispatcher.ShutdownAsync()` calls
-`EnsureDispatchFinished(..., cancelRunningJob: true)`. A longer stop timeout
-does not help; the cancel is immediate and deliberate. This fleet has already
-lost three live jobs to it once, when WSL's idle timeout reaped the VM.
-
-So capacity changes go through `scripts/ci/fleet_capacity.sh`, which polls
-`docker top` for `Runner.Worker` and stops an instance only in the moment it is
-idle, and which reports rather than forces when it cannot converge in time. Do
-not add a "just stop the container" shortcut anywhere.
+**Read `docs/CI_FLEET.md` before touching any of it.** There is no runner
+pool: the fleet is the k3s vault node, the dev box with its HIL listener, and
+the bench Pi.
 
 ---
 

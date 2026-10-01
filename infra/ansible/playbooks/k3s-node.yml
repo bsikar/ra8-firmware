@@ -8,16 +8,11 @@
 # generates inventory, derives variables, and preserves the declared play
 # order; this file is an internal Ansible implementation detail.
 #
-# This is the PREREQUISITE for playbooks/ci-runner.yml: that playbook deploys
-# ARC into "an existing k3s cluster" through helm, and neither the cluster nor
-# helm existed in code until this one did. The fleet declaration orders this
-# before ci-runner.yml on a fresh node.
-#
 # The vault is deployed but deliberately NOT initialised or unsealed -- both
 # produce secrets. The play reports what it left for the operator; the steps are
 # in scripts/secrets/README.md.
 - name: Provision the k3s node and its vault
-  hosts: ci_runners
+  hosts: k3s_nodes
   gather_facts: true
   roles:
     - k3s_node

@@ -12,24 +12,23 @@ document themselves, and `infra/README.md` is the per-role index.
 
 ```sh
 just infra::status     # what is deployed across the estate, right now (read-only)
-just infra::list       # what machines are declared, and how they are sized
+just infra::list       # what machines are declared, and what each runs
 just infra::doctor     # can THIS machine drive any of it?
 ```
 
 **The machines themselves are declared in `infra/fleet.yml`** -- one block per
 host, and everything downstream is derived from it. This document is the
 narrative; [`CI_FLEET.md`](CI_FLEET.md) is the runbook for *changing* the
-fleet: adding a host, retuning one, giving one quiet hours, removing one, and
-how instance counts are derived rather than guessed.
+fleet: adding a host, retuning one, and removing one.
 
 ---
 
 ## 1. The shape of it
 
-The deployment has four logical roles: a containerized CI pool, a shared Linux
-verification host, optional persistent CI runners, and an isolated HIL bench.
-Some roles may share physical hardware, so runner limits must account for host
-oversubscription. `infra/fleet.yml` is the machine-readable deployment
+The deployment has three logical roles: a single-node k3s cluster that hosts
+the vault, a shared Linux verification host carrying the HIL listener, and an
+isolated HIL bench. There is no runner pool; CI is `tools/ra8ci`. Some roles
+share physical hardware, so load on one guest is load on its neighbours. `infra/fleet.yml` is the machine-readable deployment
 declaration; do not copy its live coordinates into narrative documentation.
 
 ### The single most load-bearing fact
@@ -43,18 +42,8 @@ against its own 16 vCPU while agents were simultaneously running gates in the
 `dev` box guest beside it.
 
 This is *the* reason CI feels slow, and almost every "the runner timed out"
-investigation eventually lands back here. Two consequences follow, and both are
-already encoded in the roles rather than left as folklore:
-
-- **Adding ARC pods does not add throughput.** The pod ceiling is deliberately
-  lower than the thread count would suggest. The reasoning -- with the measured
-  numbers -- is written at length in
-  `infra/ansible/roles/ci_runner/defaults/main.yml`. Read it before raising
-  that value; the answer is almost certainly "no".
-- **Real capacity comes from machines that are not pve1.** That is exactly what
-independent persistent runners are for. They answer the same `ra8-ci` label, so
-  GitHub spreads `runs-on: ra8-ci` across three independent machines instead of
-  piling it onto the one that is already oversubscribed at the hypervisor level.
+investigation eventually lands back here. Real capacity comes from machines
+that are not pve1, never from more work on the guests already sharing it.
 
 If pve1's headroom ever genuinely improves, the number to re-check first is
 total vCPU commitment on the physical host -- not any single guest's setting.
@@ -71,18 +60,15 @@ private operator inventory for addresses, accounts, bridges, and storage.
 **Not codified.** The guest definitions exist only as live config. This is the
 one remaining hole in the rebuild story -- see section 5.
 
-### VM 300 `k3s` -- CI cluster and vault
+### VM 300 `k3s` -- the vault node
 
-Its capacity and endpoint are declared in `infra/fleet.yml`; generated SSH
+Its endpoint is declared in `infra/fleet.yml`; generated SSH
 configuration provides any local convenience alias.
 
 Runs:
 
 - **k3s**, single node. `just infra::apply k3s-pve`
   (or `just infra::apply k3s-pve k3s-node` for that play alone).
-- **ARC** (Actions Runner Controller) and the `ra8-ci` runner scale set,
-  sized by the declaration, pods booting the pinned toolchain image.
-  `just infra::apply k3s-pve ci-runner`.
 - **OpenBao** -- the vault everything else reads credentials from.
 
 ### CT 107 `dev` -- the shared verification box
@@ -202,9 +188,7 @@ just infra::apply <host>
 | 1 | the Proxmox host | -- | **manual, not codified** (section 5) |
 | 2 | VM 300 + CT 107 | -- | **manual, not codified** (section 5) |
 | 3 | k3s + helm + vault | `just infra::apply k3s-pve k3s-node` | then init + unseal by hand |
-| 4 | the ARC runner pool | `just infra::apply k3s-pve ci-runner` | needs 3 |
 | 5 | the dev box | `just infra::apply dev` | slow: two source builds |
-| 6 | extra runner hosts | `just infra::apply <host>` | persistent Linux runners |
 | 7 | the HIL bench | `just infra::apply star` | needs the board attached |
 | 8 | the bench LAN | `just infra::fortigate_bootstrap` | from the authorized bench controller; guarded confirmation |
 

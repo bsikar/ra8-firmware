@@ -443,8 +443,7 @@ JSON
             else
               "warning: all \($cur | length) run(s) for \($s[0:9]) queued "
               + "\($age)m (>\($lim)m) -- runner pool likely stalled, nothing is "
-              + "picking jobs up. Recovery: issue #484 and the \"Emergency "
-              + "recovery\" section of infra/images/README.md."
+              + "picking jobs up. Recovery: issue #484."
             end
         end' 2>/dev/null)"
     # jq failing (malformed timestamp, ancient state document) must not corrupt
