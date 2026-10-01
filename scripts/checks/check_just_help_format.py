@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# ruff: noqa: D103,E501,FLY002,I001,PLR2004,SLF001
+# ruff: noqa: D103,E501,I001,PLR2004,SLF001
 """Check spacing and description columns in rendered Just help screens.
 
 Every command row must use two-space indentation, contain a description, and
