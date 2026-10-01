@@ -40,7 +40,7 @@ fn initLeds(leds_mask: u32) u32 {
     var led: u32 = 0;
     while (led < Leds.count) : (led += 1) {
         if ((leds_mask & (@as(u32, 1) << @intCast(led))) == 0) continue;
-        const err = hal.ra8_board_led_init(led);
+        const err = hal.ra8_board_led_init(@intCast(led));
         if (err != Err.ok) return err;
     }
     return Err.ok;
