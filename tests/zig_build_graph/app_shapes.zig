@@ -681,11 +681,6 @@ pub const uncovered = [_]Uncovered{
         .note = "1 declaration: the copy-to-run HIL proof, and the first app to name MRAM_LENGTH. #742 traded its 377-line linker_script.ld fork for the 128K bootloader bank plus a linker_append.ld, so the bank size and the SRAM-resident flash driver are both link shape now",
     },
     .{
-        .representative = "usb_selftest_wlun",
-        .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true },
-        .note = "22 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX, linked against a generated heap fragment. #742 folded the secure-only pair in here by giving them THREADX_HEAP, retiring the kind that linked the board script with no heap fragment. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
-    },
-    .{
         .representative = "tz_threadx_demo",
         .shape = .{ .aux_srcs = true, .mram_length = true },
         .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
