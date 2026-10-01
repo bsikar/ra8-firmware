@@ -25,11 +25,9 @@ dependencies in ``pyproject.toml`` and their transitive closure is committed in
 Comparison modes
 ----------------
 * ``exact``     -- version string must equal the pin (just, ruff, shellcheck, shfmt,
-                   cmakelang, yamllint, actionlint, hadolint, gcovr).
+                   cmakelang, yamllint, actionlint, hadolint).
                    These are the tools whose findings drift with the
-                   exact version. gcovr is exact because 8.4 changed its data
-                   model to retain multiple coverage records per source line,
-                   which changes this tree's per-file line and branch counts.
+                   exact version.
 * ``major``     -- major must equal the pin (clang-format-22,
                    gcc-14). The clang family and the gcc-14 host-tool arm
                    (#356) are pinned by major on purpose; the tree is
@@ -314,7 +312,6 @@ def build_specs() -> list[ToolSpec]:
         # gcc-14 without g++-14 sank the coverage gate for hours. Pin the pair
         # so every environment (devcontainer, runner pod, bare-metal) has both.
         ToolSpec(f"g++-{gc}", gc, MODE_MAJOR, f"g++-{gc}"),
-        _python_spec("gcovr", "gcovr"),
     ]
 
 
@@ -514,16 +511,13 @@ def _selftest_cases() -> list[tuple[ToolSpec, bool]]:
     """Return the crafted ``(spec, expected_pass)`` selftest cases.
 
     Returns:
-        A case per mode in each direction, the gcovr exact-pin regression in
-        both directions, plus a deliberately missing tool.
+        A case per mode in each direction, plus a deliberately missing tool.
     """
     return [
         (ToolSpec("ra8_fake_exact", "1.2.3", MODE_EXACT, "selftest"), True),
         (ToolSpec("ra8_fake_exact", "9.9.9", MODE_EXACT, "selftest"), False),
         (ToolSpec("ra8_fake_major18", "18", MODE_MAJOR, "selftest"), True),
         (ToolSpec("ra8_fake_major19", "18", MODE_MAJOR, "selftest"), False),
-        (ToolSpec("ra8_fake_gcovr70", "7.0", MODE_EXACT, "selftest"), True),
-        (ToolSpec("ra8_fake_gcovr86", "7.0", MODE_EXACT, "selftest"), False),
         (ToolSpec("ra8_fake_zig_match", "0.14.1", MODE_EXACT, "selftest", ("version",)), True),
         (ToolSpec("ra8_fake_zig_mismatch", "0.14.1", MODE_EXACT, "selftest", ("version",)), False),
         (ToolSpec("ra8_fake_absent", "1.0.0", MODE_EXACT, "selftest"), False),
@@ -543,8 +537,6 @@ def _run_selftest_cases() -> list[str]:
         _write_fake(tmp_dir, "ra8_fake_exact", "faketool 1.2.3")
         _write_fake(tmp_dir, "ra8_fake_major18", "Ubuntu LLVM version 18.1.8")
         _write_fake(tmp_dir, "ra8_fake_major19", "Ubuntu LLVM version 19.1.0")
-        _write_fake(tmp_dir, "ra8_fake_gcovr70", "gcovr 7.0")
-        _write_fake(tmp_dir, "ra8_fake_gcovr86", "gcovr 8.6")
         _write_fake(tmp_dir, "ra8_fake_zig_match", "0.14.1")
         _write_fake(tmp_dir, "ra8_fake_zig_mismatch", "0.13.0")
         os.environ["PATH"] = f"{tmp_dir}{os.pathsep}{saved_path}"
@@ -557,26 +549,6 @@ def _run_selftest_cases() -> list[str]:
                     failures.append(f"  {detail}")
         finally:
             os.environ["PATH"] = saved_path
-    return failures
-
-
-def _gcovr_registry_failures() -> list[str]:
-    """Verify the live gcovr spec is the exact uv-project package pin.
-
-    Returns:
-        A list of failure descriptions; empty when the registry enforces the
-        pyproject.toml direct version exactly.
-    """
-    raw_pin = _python_pin("gcovr")
-    specs = [spec for spec in build_specs() if spec.binary == "gcovr"]
-    if len(specs) != 1:
-        return [f"  expected one gcovr spec, found {len(specs)}"]
-    spec = specs[0]
-    failures: list[str] = []
-    if spec.mode != MODE_EXACT:
-        failures.append(f"  gcovr uses {spec.mode!r}, not exact comparison")
-    if spec.expected != raw_pin:
-        failures.append(f"  gcovr expects {spec.expected!r}, not uv project pin {raw_pin!r}")
     return failures
 
 
@@ -682,7 +654,6 @@ def selftest() -> int:
     """
     failures = (
         _run_selftest_cases()
-        + _gcovr_registry_failures()
         + _python_pin_failures()
         + _shell_assignment_failures()
         + _family_binary_failures()
@@ -693,8 +664,7 @@ def selftest() -> int:
         sys.stderr.write("The comparator does not judge versions as claimed.\n")
         return EXIT_FAIL
     print(
-        "check_tool_versions.py --selftest: OK (all modes and the gcovr exact "
-        "pin both ways, plus missing-tool)."
+        "check_tool_versions.py --selftest: OK (all modes both ways, plus missing-tool)."
     )
     return EXIT_OK
 

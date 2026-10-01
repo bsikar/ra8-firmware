@@ -12,7 +12,6 @@ default:
     @echo "  just quality::devcontainer::format                 Auto-format source code in place"
     @echo "  just quality::devcontainer::check                  Verify formatting without modifying files"
     @echo "  just quality::devcontainer::test                   Run host unit test suite"
-    @echo "  just quality::devcontainer::mcdc                   Generate DO-178C MC/DC coverage report"
     @echo "  just quality::devcontainer::fuzz [seconds] [runs]  Smoke-run every libFuzzer harness"
     @echo "  just quality::devcontainer::bench                  Run host microbenchmarks"
     @echo "  just quality::devcontainer::lint-c                 Lint C sources"
@@ -41,8 +40,6 @@ format:
 check:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::check
 
-mcdc:
-    bash scripts/ci/devcontainer_run.sh -- just quality::local::mcdc
 
 fuzz seconds="30" runs="10000":
     bash scripts/ci/devcontainer_run.sh -- just quality::local::fuzz "{{ seconds }}" "{{ runs }}"

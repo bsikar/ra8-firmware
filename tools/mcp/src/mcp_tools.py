@@ -172,7 +172,6 @@ def tool_repo_overview(_args: dict[str, Any]) -> str:
         "  just apps::hardware::flash <app>    build + flash via local J-Link\n"
         "  just apps::emulator::run <app>      run the real .elf on ra8_emulator\n"
         "  just quality::gate::run unit-tests host unit tests (portable)\n"
-        "  just quality::local::mcdc           DO-178C Level B MC/DC coverage report\n"
         "  just quality::gate::run <name>      run one registered quality gate (portable)\n"
         "  just hil::flash <app>               flash the Pi-attached HIL board\n\n"
         "AUTHORITATIVE DOCS are exposed as MCP resources (CLAUDE.md, STYLE_GUIDE, "

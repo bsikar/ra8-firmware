@@ -13,8 +13,8 @@
 # immutable index digest so `just ci` starts from a byte-identical root
 # filesystem on every host. The toolchain packages the audit calls out --
 # the ARM cross-compiler (whose version-specific miniz miscompile means
-# codegen depends on the build host), its matching newlib, and the gcovr
-# coverage tool -- are pinned to exact Ubuntu noble
+# codegen depends on the build host) and its matching newlib -- are pinned to
+# exact Ubuntu noble
 # versions below. These four live in `universe` and do not rotate within an
 # LTS, so the exact pin stays installable.
 #
@@ -262,7 +262,6 @@ RUN set -eux; \
     "${PYTHON_TOOL_VENV}/bin/ruff" --version; \
     "${PYTHON_TOOL_VENV}/bin/cmake-format" --version; \
     "${PYTHON_TOOL_VENV}/bin/yamllint" --version; \
-    "${PYTHON_TOOL_VENV}/bin/gcovr" --version; \
     rm -f -- "${PYTHON_TOOL_VENV}/.lock"
 ENV PYTHONDONTWRITEBYTECODE="1" \
     PYTHONNOUSERSITE="1" \
