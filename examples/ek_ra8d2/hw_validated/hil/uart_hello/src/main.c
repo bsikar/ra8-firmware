@@ -21,8 +21,9 @@
  *      MRAM prefetch buffer, sets VSCR.VSCM = 1, programmes MRMS
  *      wait states, and routes SCICLK from PLL1R per HUM 9.2.54 --
  *      no per-app workarounds needed.
- *   2. ``ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz)`` --
- *      the heartbeat delay is calibrated against CPUCLK0.
+ *   2. ``fw_clock_rate_for(ra8_board_clock(), {core, 0}, &cpuclk0_hz)``
+ *      -- the heartbeat delay is calibrated against CPUCLK0, read
+ *      through the board clock profile rather than the CGC driver.
  *   3. ``ra8_time_init(cpuclk0_hz)`` for the heartbeat delay.
  *   4. ``ra8_board_uart_console_init(115200)`` -- the BSP routes PD_02
  *      / PD_03 to SCI8 async (PSEL) and brings up SCI8 at 115200 8N1,
@@ -116,7 +117,8 @@ RA8_INTERNAL static void internal_uart_hello_setup_or_halt(void)
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_uart_hello_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     internal_uart_hello_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
