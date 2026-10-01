@@ -58,9 +58,6 @@ test "a start request must claim the protocol version this service speaks" {
 test "a start url must be https with something after the scheme" {
     var request = startRequest();
 
-    request.url = null;
-    try std.testing.expect(!rules.startValid(&request));
-
     request.url = "";
     try std.testing.expect(!rules.startValid(&request));
 
@@ -77,22 +74,21 @@ test "a start url must be https with something after the scheme" {
 test "a start url at or past its bound is refused" {
     var long: [rules.Bound.url_max + 8]u8 = @splat('x');
     @memcpy(long[0..8], "https://");
-    long[long.len - 1] = 0;
 
     var request = startRequest();
-    request.url = @ptrCast(&long);
+    request.url = &long;
     try std.testing.expect(!rules.startValid(&request));
 
-    var exact: [rules.Bound.url_max]u8 = @splat('x');
-    @memcpy(exact[0..8], "https://");
-    exact[rules.Bound.url_max - 1] = 0;
-    request.url = @ptrCast(&exact);
-    try std.testing.expect(rules.startValid(&request));
+    request.url = long[0..rules.Bound.url_max];
+    try std.testing.expect(!rules.startValid(&request));
 
-    var unterminated: [rules.Bound.url_max + 1]u8 = @splat('x');
-    @memcpy(unterminated[0..8], "https://");
-    unterminated[rules.Bound.url_max] = 0;
-    request.url = @ptrCast(&unterminated);
+    request.url = long[0 .. rules.Bound.url_max - 1];
+    try std.testing.expect(rules.startValid(&request));
+}
+
+test "a start url carrying a NUL is refused, not cut short" {
+    var request = startRequest();
+    request.url = "https://example.test/\x00book";
     try std.testing.expect(!rules.startValid(&request));
 }
 
@@ -116,24 +112,30 @@ test "a start timeout past the cap is refused" {
 
 test "each start header is bounded by its own cap" {
     var request = startRequest();
-    request.user_agent = null;
+    request.user_agent = "agent\x00hidden";
     try std.testing.expect(!rules.startValid(&request));
 
     request = startRequest();
     request.referer = "a\r\nb";
     try std.testing.expect(!rules.startValid(&request));
 
+    const date: [rules.Bound.http_date_max]u8 = @splat('x');
     request = startRequest();
-    var date: [rules.Bound.http_date_max + 1]u8 = @splat('x');
-    date[date.len - 1] = 0;
-    request.if_modified_since = @ptrCast(&date);
+    request.if_modified_since = &date;
     try std.testing.expect(!rules.startValid(&request));
 
+    const etag: [rules.Bound.etag_max - 1]u8 = @splat('x');
     request = startRequest();
-    var etag: [rules.Bound.etag_max]u8 = @splat('x');
-    etag[rules.Bound.etag_max - 2] = 0;
-    request.if_none_match = @ptrCast(&etag);
+    request.if_none_match = &etag;
     try std.testing.expect(rules.startValid(&request));
+}
+
+test "text is bounded by its terminator and refuses CR, LF and NUL" {
+    try std.testing.expect(rules.textValid("", 1));
+    try std.testing.expect(rules.textValid("abc", 4));
+    try std.testing.expect(!rules.textValid("abcd", 4));
+    try std.testing.expect(!rules.textValid("a\x00b", 8));
+    try std.testing.expect(!rules.textValid("a\rb", 8));
 }
 
 test "terminal response metadata needs an http-shaped status" {

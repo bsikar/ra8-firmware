@@ -1,7 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Service-side encoder for the media-download Cancelled and Chunk responses
+//! Service-side encoder for the media-download Accepted, Chunk and Cancelled
+//! responses
 //! (`proto/ra8_media_download.proto`), replacing the generated protobuf-c
 //! pack. Byte-identical to the reference encoder, which the vectors pin.
 
@@ -12,6 +13,17 @@ const types = @import("mdl_types.zig");
 const wire = @import("mdl_wire.zig");
 
 pub const Error = wire.Error;
+
+/// Encode an Accepted reply granting `job_id` and the largest chunk this
+/// service sends. Returns the bytes written.
+pub fn accepted(buf: []u8, job_id: u32, format: u8) Error![]const u8 {
+    var w = wire.Writer.init(buf);
+    try w.uint(decode.Accepted.protocol_version, encode.protocol_version);
+    try w.uint(decode.Accepted.job_id, job_id);
+    try w.uint(decode.Accepted.max_chunk_bytes, types.Limit.chunk_data_max);
+    try w.uint(decode.Accepted.format, format);
+    return w.written();
+}
 
 /// Encode a Cancelled acknowledgement with status zero, which proto3 leaves
 /// off the wire. Returns the bytes written.

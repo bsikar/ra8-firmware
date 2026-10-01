@@ -27,6 +27,8 @@ const mdl_encode = @import("internal/mdl_encode.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const mdl_service_cancel = @import("internal/mdl_service_cancel.zig");
 const mdl_service_next = @import("internal/mdl_service_next.zig");
+const mdl_service_start = @import("internal/mdl_service_start.zig");
+const mdl_start_text = @import("internal/mdl_start_text.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
 const rx_route = @import("internal/rx_route.zig");
@@ -472,12 +474,45 @@ pub export fn priv_c6link_mdl_service_response_valid(
     return mdl_service_rules.responseValid(metadata);
 }
 
-/// `priv_c6link_mdl_service_start_valid`: whether a Start request may begin.
-pub export fn priv_c6link_mdl_service_start_valid(
-    request: ?*const mdl_service_rules.StartView,
-) callconv(.c) bool {
-    const decoded = request orelse return false;
-    return mdl_service_rules.startValid(decoded);
+/// `priv_c6link_mdl_service_start_admit`: decode, check and copy one Start.
+///
+/// Refuses a malformed request, an invalid one, and any Start while a job is
+/// active, in that order; `text` is written only once all three pass.
+/// `out` is the empty request on every refusal.
+pub export fn priv_c6link_mdl_service_start_admit(
+    request: ?[*]const u8,
+    request_len: usize,
+    active: bool,
+    text: ?*mdl_start_text.Text,
+    out: ?*mdl_types.Request,
+) callconv(.c) u16 {
+    const backend_request = out orelse return Err.null_ptr;
+    backend_request.* = .{};
+    const in = request orelse return Err.null_ptr;
+    const storage = text orelse return Err.null_ptr;
+    backend_request.* = mdl_service_start.admit(in[0..request_len], active, storage) catch |e| return switch (e) {
+        error.Malformed => Err.protocol_error,
+        error.Invalid => Err.invalid_arg,
+        error.Busy => Err.busy,
+    };
+    return Err.ok;
+}
+
+/// `priv_c6link_mdl_service_accepted`: encode the Accepted reply for a job.
+/// `response_len` is zero and the buffer untouched on every refusal.
+pub export fn priv_c6link_mdl_service_accepted(
+    job_id: u32,
+    format: u8,
+    response: ?[*]u8,
+    response_cap: usize,
+    response_len: ?*usize,
+) callconv(.c) u16 {
+    const out_len = response_len orelse return Err.null_ptr;
+    out_len.* = 0;
+    const out = response orelse return Err.null_ptr;
+    const bytes = mdl_service_start.accepted(job_id, format, out[0..response_cap]) catch return Err.invalid_size;
+    out_len.* = bytes.len;
+    return Err.ok;
 }
 
 /// `priv_c6link_mdl_decode_allocation_fits`: one aligned arena request.

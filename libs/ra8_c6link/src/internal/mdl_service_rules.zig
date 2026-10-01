@@ -29,16 +29,17 @@ pub const Bound = struct {
     pub const protocol_version: u32 = 3;
 };
 
-/// One decoded Start request as flat values, with no generated types.
-pub const StartView = extern struct {
+/// One decoded Start request, its text borrowed from the request bytes.
+/// An absent header is empty, which proto3 leaves off the wire.
+pub const StartView = struct {
     protocol_version: u32 = 0,
-    url: ?[*:0]const u8 = null,
+    url: []const u8 = "",
     format: u32 = 0,
     timeout_ms: u32 = 0,
-    user_agent: ?[*:0]const u8 = null,
-    referer: ?[*:0]const u8 = null,
-    if_none_match: ?[*:0]const u8 = null,
-    if_modified_since: ?[*:0]const u8 = null,
+    user_agent: []const u8 = "",
+    referer: []const u8 = "",
+    if_none_match: []const u8 = "",
+    if_modified_since: []const u8 = "",
 };
 
 /// Terminal response metadata a backend fills in, as fixed storage.
@@ -60,19 +61,25 @@ fn span(text: [*:0]const u8, cap: usize) usize {
     return length;
 }
 
-/// Whether one optional header is bounded single-line text.
+/// Whether `text` fits a buffer of `cap` with room for its terminator and
+/// holds no byte that would cut it short or split it.
 ///
-/// Empty is valid and means the header is absent. Refusing CR and LF is what
-/// stops a remote request from injecting extra headers into the backend's own
-/// request, so the check belongs here rather than at the backend.
+/// Refusing CR and LF is what stops a remote request from injecting extra
+/// headers into the backend's own request. Refusing NUL keeps the terminated
+/// copy the backend reads identical to what was checked.
+pub fn textValid(text: []const u8, cap: usize) bool {
+    if (text.len >= cap) return false;
+    return std.mem.indexOfAny(u8, text, "\r\n\x00") == null;
+}
+
+/// Whether one terminated optional header is bounded single-line text.
+///
+/// Empty is valid and means the header is absent.
 pub fn fieldValid(text: ?[*:0]const u8, cap: usize) bool {
     const ptr = text orelse return false;
     const length = span(ptr, cap);
     if (length >= cap) return false;
-    for (ptr[0..length]) |byte| {
-        if (byte == '\r' or byte == '\n') return false;
-    }
-    return true;
+    return textValid(ptr[0..length], cap);
 }
 
 /// Whether fixed terminal response metadata is well formed.
@@ -93,20 +100,19 @@ pub fn responseValid(response: *const ResponseView) bool {
 /// "https://" decodes fine and would reach the backend as a request for
 /// nothing.
 pub fn startValid(request: *const StartView) bool {
-    const url = request.url orelse return false;
     const scheme = "https://";
-    const url_len = span(url, Bound.url_max);
-    if (url_len == 0 or url_len >= Bound.url_max) return false;
-    if (url_len <= scheme.len) return false;
-    if (!std.mem.eql(u8, url[0..scheme.len], scheme)) return false;
+    const url = request.url;
+    if (url.len <= scheme.len or url.len >= Bound.url_max) return false;
+    if (!std.mem.startsWith(u8, url, scheme)) return false;
+    if (std.mem.indexOfScalar(u8, url, 0) != null) return false;
 
     return request.protocol_version == Bound.protocol_version and
         request.format <= Bound.format_max and
         request.timeout_ms <= Bound.timeout_ms_max and
-        fieldValid(request.user_agent, Bound.user_agent_max) and
-        fieldValid(request.referer, Bound.referer_max) and
-        fieldValid(request.if_none_match, Bound.etag_max) and
-        fieldValid(request.if_modified_since, Bound.http_date_max);
+        textValid(request.user_agent, Bound.user_agent_max) and
+        textValid(request.referer, Bound.referer_max) and
+        textValid(request.if_none_match, Bound.etag_max) and
+        textValid(request.if_modified_since, Bound.http_date_max);
 }
 
 /// Whether one aligned arena request still fits.
