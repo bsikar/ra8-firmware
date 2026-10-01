@@ -39,9 +39,6 @@ MUTATING_COMMANDS = frozenset(
         "register-runner",
         "register-hil",
         "apply",
-        "reconcile-parked-apply",
-        "reconcile-parked-check",
-        "reconcile-activate",
         "remove",
         "capacity-quarantine",
         "capacity-restore",
@@ -380,18 +377,9 @@ def _restore_after_converge(data: dict[str, Any], args: argparse.Namespace, rc: 
     return fcc.run(data, args.host, ["restore"], _run)
 
 
-def _is_parked_command(command: str) -> bool:
-    """Return whether reconciliation requires zero admission through postcheck."""
-    return command in {"reconcile-parked-apply", "reconcile-parked-check"}
-
-
 def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     """Build Ansible flags without weakening credential handling."""
     extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
-    if _is_parked_command(args.command):
-        extra += ["-e", "fleet_reconcile_parked=true"]
-    if args.command in {"reconcile-activate", "reconcile-activation-check"}:
-        extra += ["-e", "fleet_reconcile_activation_hold=true"]
     # SHORT-LIVED credentials only, and preferably by file reference.
     #
     # Anything given as KEY=VALUE lands in this process's argv and in
@@ -606,16 +594,12 @@ def _bench_guard_inheritance_selftest() -> list[str]:
 def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Run a dry check or a guarded real converge of one host's plays.
 
-    Container-host applies drain first. A reconciler-only parked apply leaves
-    capacity at zero for its caller's postcheck. Bench-host applies re-enter
+    Container-host applies drain first. Bench-host applies re-enter
     under the physical bench lock before inventory generation or remote work.
     """
     host = _host(data, args.host)
-    parked = _is_parked_command(args.command)
     plays = _plays_for(host, args.play)
     refusal = _converge_refusal(args, host, plays)
-    if parked and not host.get("runners"):
-        refusal = "parked reconciliation is limited to capacity-managed runner hosts"
     if refusal:
         return _fail(refusal)
     guard = _bench_guard_argv(host, plays, args)
@@ -643,7 +627,7 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
         args.mode == "apply"
         and not args.no_drain
         and not no_drain_tags
-        and (parked or fm.container_names(host))
+        and fm.container_names(host)
     )
     if drain:
         print(f"==> parking {args.host} before converging (a converge changes admission)")
@@ -654,10 +638,8 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
         if rc:
             return _fail("could not drain the host; refusing to converge over running jobs")
     rc = _run_converge_transport(request)
-    if drain and not parked:
-        # Interactive convergence restores the declared service after either
-        # outcome. The reconciler uses the parked command instead and owns
-        # postcheck, receipt publication, and the eventual capacity restore.
+    if drain:
+        # Convergence restores the declared service after either outcome.
         rc = _restore_after_converge(data, args, rc)
     return rc
 
@@ -896,24 +878,6 @@ def _parser() -> argparse.ArgumentParser:
         "register-hil", help="first-register the one declared native HIL listener"
     ).add_argument("vars_file")
     _add_converge_parsers(subs)
-    parked_commands = {
-        "reconcile-parked-apply": ("apply", False),
-        "reconcile-parked-check": ("check", False),
-        "reconcile-activate": ("apply", True),
-        "reconcile-activation-check": ("check", True),
-    }
-    for command, (mode, no_drain) in parked_commands.items():
-        internal = subs.add_parser(command, help=argparse.SUPPRESS)
-        internal.add_argument("host")
-        internal.set_defaults(
-            mode=mode,
-            play=None,
-            no_drain=no_drain,
-            extra_var=[],
-            tags="",
-            vars_file="",
-            trusted_tags=False,
-        )
     _add_capacity_parsers(subs)
     return parser
 
@@ -944,10 +908,6 @@ def main(argv: list[str] | None = None) -> int:
         "register-hil": cmd_register_hil,
         "check": cmd_converge,
         "apply": cmd_converge,
-        "reconcile-parked-apply": cmd_converge,
-        "reconcile-parked-check": cmd_converge,
-        "reconcile-activate": cmd_converge,
-        "reconcile-activation-check": cmd_converge,
         "remove": cmd_converge,
         "status": cmd_status,
         "capacity-quarantine": cmd_capacity_quarantine,
