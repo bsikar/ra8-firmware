@@ -499,10 +499,50 @@ RA8_INTERNAL static ra8_err_t internal_pin_if_toggle(void* ctx, ra8_port_pin_t p
   return ra8_gpio_toggle(pin);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @param[in] ctx See implementation.
+ * @param[in] pin See implementation.
+ * @param[in] pull See implementation.
+ * @return Result code.
+ * @retval k_ra8_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_pin_if_input_init(void* ctx, ra8_port_pin_t pin, ra8_pin_pull_t pull)
+{
+  (void)ctx;
+  return ra8_gpio_input_init(pin, pull);
+}
+
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @param[in] ctx See implementation.
+ * @param[in] pin See implementation.
+ * @return Result code.
+ * @retval k_ra8_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_pin_if_release(void* ctx, ra8_port_pin_t pin)
+{
+  (void)ctx;
+  return ra8_gpio_release(pin);
+}
+
 const ra8_pin_interface_t g_ra8_gpio_pin_interface = {
   .output_init = internal_pin_if_output_init,
+  .input_init  = internal_pin_if_input_init,
   .write       = internal_pin_if_write,
   .read        = internal_pin_if_read,
   .toggle      = internal_pin_if_toggle,
+  .release     = internal_pin_if_release,
   .ctx         = nullptr,
 };

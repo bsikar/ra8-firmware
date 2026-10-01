@@ -149,7 +149,8 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_gpio_bind(hosted_osi_funcs_
  * ra8_port_pin_t pin = k_ra8_pin_none;
  * if (priv_ra8_esp_hosted_gpio_decode_pin(H_GPIO_DATA_READY_Port,
  *                                    (uint32_t)H_GPIO_DATA_READY_Pin, &pin)) {
- *   (void)ra8_gpio_read(pin, &level);
+ *   const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
+ *   (void)pin_if->read(pin_if->ctx, pin, &level);
  * }
  * @endcode
  *
@@ -166,10 +167,11 @@ RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_gpio_decode_pin(const void*     
  * @details
  * Dependency-injection seam. Production leaves it at
  * ``g_ra8_gpio_pin_interface``; host tests point it at a recorder so pin
- * levels can be driven without hardware. The interface covers
- * ``output_init``, ``write``, ``read`` and ``toggle`` only, so input
- * configuration, pin release and interrupt attachment still call the HAL
- * directly -- those have no row in ``ra8_pin_interface_t``.
+ * levels can be driven without hardware. The interface covers a pin's whole
+ * life: ``output_init``, ``input_init``, ``write``, ``read``, ``toggle`` and
+ * ``release``. Interrupt attachment is the one thing still taken straight
+ * from the HAL, because an ICU channel is a chip resource with its own
+ * numbering and has no row in ``ra8_pin_interface_t``.
  *
  * @param[in] iface Replacement interface, or null to restore the production
  *                  instance. Must out-live every later slot call.
