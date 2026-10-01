@@ -17,6 +17,7 @@
     "tests/rpc_wait_test.zig",
     "tests/rx_route_test.zig",
     "tests/sta_cfg_test.zig",
+    "tests/sta_policy_test.zig",
     "tests/storage_ram_test.zig",
     "tests/tx_admit_test.zig",
     "tests/wifi_init_test.zig"
@@ -39,6 +40,7 @@
     "src/internal/rpc_wait.zig",
     "src/internal/rx_route.zig",
     "src/internal/sta_cfg.zig",
+    "src/internal/sta_policy.zig",
     "src/internal/storage_ram.zig",
     "src/internal/tlv.zig",
     "src/internal/tx_admit.zig",
@@ -54,5 +56,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 321
+  "minimum_tests": 333
 }

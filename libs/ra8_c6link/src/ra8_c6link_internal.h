@@ -1200,6 +1200,50 @@ void priv_c6link_wifi_init_cfg(priv_c6link_wifi_init_cfg_t* out);
  * @param[out] out Receives the answering id, or zero when there is none.
  * @return true when @p req_id is one of the bare requests.
  */
+/**
+ * @struct priv_c6link_sta_policy
+ * @brief The selectors one station join transmits, owned by Zig.
+ *
+ * @details
+ * Zig implementation, `internal/sta_policy.zig`, where each value is
+ * documented and tested. All four wire selectors answer zero today in four
+ * different ESP-IDF enumerations, which is exactly why they are named rather
+ * than written as literals. PMF capability travels as a word rather than
+ * relying on a C `bool`'s width.
+ *
+ * @invariant The field order matches `sta_policy.Policy` exactly.
+ * @since 0.1.0
+ */
+typedef struct priv_c6link_sta_policy {
+  int32_t iface;          /**< `WIFI_IF_STA` interface index.      */
+  int32_t scan_method;    /**< `WIFI_FAST_SCAN`.                   */
+  int32_t sort_method;    /**< `WIFI_CONNECT_AP_BY_SIGNAL`.        */
+  int32_t auth_threshold; /**< `WIFI_AUTH_OPEN`: no minimum.       */
+  int32_t pmf_capable;    /**< Management frames offered, not due. */
+} priv_c6link_sta_policy_t;
+
+/**
+ * @brief Read the association policy every station join sends.
+ *
+ * Zig implementation, `internal/sta_policy.zig`. The caller copies the fields
+ * into the generated `WifiStaConfig`; nothing here depends on link state.
+ *
+ * @param[out] out Receives the policy; a null pointer is ignored.
+ */
+void priv_c6link_sta_policy(priv_c6link_sta_policy_t* out);
+
+/**
+ * @brief How many BSSID octets this join puts on the wire.
+ *
+ * Zig implementation, `internal/sta_policy.zig`. Zero when the caller pinned
+ * no BSSID: sending the field at full length regardless would pin the
+ * association to the all-zero address, which no access point answers.
+ *
+ * @param pinned Whether the caller set a BSSID.
+ * @return Octets to transmit.
+ */
+[[nodiscard]] RA8_PRIV size_t priv_c6link_sta_bssid_len(bool pinned);
+
 [[nodiscard]] RA8_PRIV bool priv_c6link_bare_resp(uint32_t req_id, uint32_t* out);
 
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
