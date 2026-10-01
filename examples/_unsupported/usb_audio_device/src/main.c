@@ -306,10 +306,11 @@ RA8_INTERNAL static void internal_usb_audio_u32_to_ascii(uint32_t value, char* b
  */
 RA8_INTERNAL static void internal_usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
+  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_usb_audio_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, cpuclk0_hz) != k_ra8_ok) {
+  if (fw_clock_rate_for(ra8_board_clock(), core_module, cpuclk0_hz) != k_ra8_ok) {
     internal_usb_audio_panic_halt();
   }
   if (ra8_time_init(*cpuclk0_hz) != k_ra8_ok) {
