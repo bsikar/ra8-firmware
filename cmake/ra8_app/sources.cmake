@@ -251,43 +251,26 @@ macro(_ra8_app_collect_sources)
   # A board layer with a build.zig contributes its objects through the Zig
   # archive, exactly as the two LIBS loops below do for any other ported
   # library. Register it whenever the build.zig is there, whether the flip is
-  # finished or only partway:
+  # finished (no C left outside src/boot/, ra8_board_ra8p1, #2984) or only
+  # partway (support C such as ra8_board_ek_ra8d2_mipi_panel.c still compiles
+  # beside the archive, ra8_board_ek_ra8d2, #2998/#3033).
   #
-  #   FINISHED (no C left outside src/boot/): every object comes from the
-  #   archive. The glob above can still be non-empty for such a board because
-  #   src/boot/ is globbed with it and filtered out a few lines down, so
-  #   _ra8_board_zig tells the #908 guard the library has a link path --
-  #   without it the guard would see a compilable library and let the archive
-  #   fall out of the link. ra8_board_ra8p1 is the first board in that state
-  #   (#2984).
+  # Either way the archive is the board's link path, so _ra8_board_zig tells
+  # the #908 guard so. Leaving it off for a partial board made the guard's
+  # flip test fire as soon as src/ra8_board_<board>.c was ported, even with
+  # the archive registered (every ek_ra8d2 app failed configure on zig/dev).
+  # The guard's C-side check is unaffected: a partial board's glob is
+  # non-empty, which already returns before it.
   #
-  #   PARTIAL (some non-boot C left): the archive links BESIDE the remaining C
-  #   objects. _ra8_board_zig stays off, because the glob is genuinely
-  #   non-empty and the #908 guard should keep checking it on the C side.
-  #   Registering the archive is still required, and gating it on the absence
-  #   of the board .c -- as this did before -- silently dropped the ported
-  #   half of such a board out of the link. ra8_board_ek_ra8d2 is the first
-  #   board in that state (#2998).
-  #
-  #   The flag is read off the filtered source list rather than off
-  #   src/ra8_board_<board>.c by name: with that file ported (#3033) the board
-  #   still has ra8_board_ek_ra8d2_mipi_panel.c compiling beside the archive,
-  #   so a filename test would have declared the board finished and waved the
-  #   guard off a library that is still half C.
+  # The entry is held here and appended after _ra8_lib_zig is (re)initialised
+  # below; an append made at this point would be wiped by that set(), which
+  # dropped the archive for every app that does not also name the board in
+  # LIBS.
   set(_ra8_board_zig "")
+  set(_ra8_board_zig_entry "")
   if(EXISTS "${_ra8_board_dir}/build.zig")
-    list(APPEND _ra8_lib_zig "ra8_board_${_RA8_APP_BOARD}|${_ra8_board_dir}")
-    set(_ra8_board_c_outside_boot "${_ra8_lib_board}")
-    list(
-      FILTER
-      _ra8_board_c_outside_boot
-      EXCLUDE
-      REGEX
-      "/src/boot/"
-    )
-    if(NOT _ra8_board_c_outside_boot)
-      set(_ra8_board_zig ON)
-    endif()
+    set(_ra8_board_zig_entry "ra8_board_${_RA8_APP_BOARD}|${_ra8_board_dir}")
+    set(_ra8_board_zig ON)
   endif()
   _ra8_app_require_compilable_lib(
     "ra8_board_${_RA8_APP_BOARD}"
@@ -337,6 +320,18 @@ macro(_ra8_app_collect_sources)
   set(_ra8_lib_extra_off_target "")
   # Migrated (Zig) libraries, as "<lib>|<path>" entries.
   set(_ra8_lib_zig "")
+  # The board layer's archive, decided where the board is globbed above.
+  if(_ra8_board_zig_entry)
+    list(APPEND _ra8_lib_zig "${_ra8_board_zig_entry}")
+  endif()
+  # ...and the chip adapters that ride with it (board_adapters.cmake).
+  list(APPEND _ra8_lib_zig ${_ra8_board_adapter_zig})
+  # ra8_usb_pal is universal the same way as ra8_net_pal, and Zig since #766:
+  # every USBX app calls ra8_usb_device_compose without naming it in LIBS.
+  set(_ra8_usb_pal_path "${RA8_REPO_ROOT}/libs/ra8_usb_pal")
+  if(EXISTS "${_ra8_usb_pal_path}/build.zig")
+    list(APPEND _ra8_lib_zig "ra8_usb_pal|${_ra8_usb_pal_path}")
+  endif()
   # ra8_net_pal is part of every app's universal source set, so applications
   # do not normally name it in LIBS. Once its primary C implementation is
   # gone, register the replacement archive here just as the LIBS loop below
