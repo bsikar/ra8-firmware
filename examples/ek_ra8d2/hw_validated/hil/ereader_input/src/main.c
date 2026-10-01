@@ -204,10 +204,11 @@ static bool iu_nav_check(void)
 static void iu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
+  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     iu_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
     iu_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
