@@ -46,11 +46,6 @@ typedef enum : uint32_t {
   k_sd_spi_module_index = 0U,
 } sh_sd_const_t;
 
-static const ra8_port_pin_t k_sd_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-static const ra8_port_pin_t k_sd_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-static const ra8_port_pin_t k_sd_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-static const ra8_port_pin_t k_sd_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
 static uint32_t         s_pclka_hz;         /**< PCLKA for the SPI clock divider.       */
 static ra8_fs_backend_t s_backend;          /**< SD block-device backend (mount-lived). */
 static ra8_fs_mount_t*  s_mount;            /**< Mounted FAT volume, or NULL.           */
@@ -71,7 +66,7 @@ static ra8_err_t sh_sd_set_clock(void* ctx, uint32_t hz)
 static ra8_err_t sh_sd_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(k_sd_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /** @brief ra8_sdmmc_spi_transport_t::xfer over ra8_sci_spi_xfer. */
@@ -84,10 +79,7 @@ static ra8_err_t sh_sd_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t 
 /** @brief Route Pmod2 SPI pins + CS GPIO and init SCI0 SPI at the 400 kHz floor. */
 [[nodiscard]] static ra8_err_t sh_sd_bus_init(void)
 {
-  if ((ra8_pfs_route_peripheral(k_sd_pin_sck, k_ra8_psel_sci_async, "sd.sck") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_sd_pin_cipo, k_ra8_psel_sci_async, "sd.cipo") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(k_sd_pin_copi, k_ra8_psel_sci_async, "sd.copi") != k_ra8_ok) ||
-      (ra8_gpio_output_init(k_sd_pin_cs, k_ra8_level_high) != k_ra8_ok)) {
+  if ((ra8_board_pmod2_spi_bus_init() != k_ra8_ok)) {
     return k_ra8_err_invalid_arg;
   }
   const ra8_sci_spi_cfg_t cfg = {.baud_hz   = (uint32_t)k_ra8_sdmmc_spi_clock_init_hz,

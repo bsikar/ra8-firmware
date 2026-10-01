@@ -28,6 +28,9 @@
  *   - ``ra8_board_ek_ra8d2_peripherals.h`` -- the U15 I/O-expander SW4
  *     override functions, USB-HS/FS, parallel camera J35, Octo-SPI flash
  *     + SDRAM, MIPI-DSI J32, the J-Link OB VCOM console, and Ethernet.
+ *   - ``ra8_board_ek_ra8d2_pmod.h`` -- Pmod2 (J25) Simple-SPI bus
+ *     bring-up: the pin routing and the active-low chip-select every
+ *     microSD-over-Pmod2 consumer used to open-code.
  *   - ``ra8_board_ek_ra8d2_dualcore.h`` -- where the Cortex-M85 and the
  *     Cortex-M33 meet: the shared SRAM window, CPU1's private bank, and
  *     the MRAM window its image is pinned in.
@@ -57,4 +60,5 @@
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_board_ek_ra8d2_pdm.h"
+#include "ra8_board_ek_ra8d2_pmod.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"
