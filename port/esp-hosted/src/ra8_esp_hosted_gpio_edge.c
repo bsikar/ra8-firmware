@@ -427,7 +427,8 @@ RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
     return k_ra8_err_no_mem;
   }
 
-  const ra8_err_t err = ra8_gpio_input_init(pin, k_ra8_pull_none);
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
+  const ra8_err_t            err    = pin_if->input_init(pin_if->ctx, pin, k_ra8_pull_none);
   if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "polled pin input init failed", (uint32_t)err);
     return err;
@@ -445,7 +446,7 @@ RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_edge_register(ra8_port_pin_t pin,
   const ra8_err_t timer_err = internal_timer_arm();
   if (timer_err != k_ra8_ok) {
     s_rows[slot] = (ra8_esp_hosted_gpio_edge_row_t){};
-    (void)ra8_gpio_release(pin);
+    (void)pin_if->release(pin_if->ctx, pin);
   }
   return timer_err;
 }
@@ -456,8 +457,9 @@ RA8_PRIV ra8_err_t priv_ra8_esp_hosted_gpio_edge_unregister(ra8_port_pin_t pin)
   if (slot >= (uint8_t)k_ra8_esp_hosted_gpio_row_max) {
     return k_ra8_err_not_found;
   }
-  s_rows[slot] = (ra8_esp_hosted_gpio_edge_row_t){};
-  (void)ra8_gpio_release(pin);
+  s_rows[slot]                      = (ra8_esp_hosted_gpio_edge_row_t){};
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
+  (void)pin_if->release(pin_if->ctx, pin);
   if (priv_ra8_esp_hosted_gpio_edge_count() != 0U) {
     return k_ra8_ok;
   }

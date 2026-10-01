@@ -9,7 +9,7 @@
 #
 # clock: 280 reference(s)
 # display: 6 reference(s)
-# gpio: 45 reference(s)
+# gpio: 35 reference(s)
 # timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -256,6 +256,4 @@ examples/ra8p1_foundation/npu_smoke/src/main.c	clock	1
 examples/ra8p1_foundation/npu_vela/src/main.c	clock	1
 libs/ra8_sdfont/src/ra8_sdfont.c	gpio	2
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	gpio	2
-port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	6
-port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c	gpio	3
-port/esp-hosted/src/ra8_esp_hosted_spi.c	gpio	4
+port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	3

@@ -434,12 +434,12 @@ static int internal_config_gpio(void* gpio_port, uint32_t gpio_num, uint32_t mod
   if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;
   }
-  ra8_err_t err = k_ra8_err_invalid_arg;
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
+  ra8_err_t                  err    = k_ra8_err_invalid_arg;
   if (mode == (uint32_t)k_ra8_esp_hosted_gpio_mode_output) {
-    const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
     err = pin_if->output_init(pin_if->ctx, pin, (ra8_level_t)H_RESET_VAL_INACTIVE);
   } else if (mode == (uint32_t)k_ra8_esp_hosted_gpio_mode_input) {
-    err = ra8_gpio_input_init(pin, k_ra8_pull_none);
+    err = pin_if->input_init(pin_if->ctx, pin, k_ra8_pull_none);
   } else {
     return RET_INVALID;
   }
@@ -678,9 +678,10 @@ internal_pull_gpio(void* gpio_port, uint32_t gpio_num, uint32_t pull_value, uint
   if (pull_value != (uint32_t)k_ra8_esp_hosted_gpio_pull_up) {
     return RET_INVALID;
   }
-  const ra8_pin_pull_t pull = (enable != 0U) ? k_ra8_pull_up : k_ra8_pull_none;
-  (void)ra8_gpio_release(pin);
-  return (ra8_gpio_input_init(pin, pull) == k_ra8_ok) ? RET_OK : RET_FAIL;
+  const ra8_pin_pull_t       pull   = (enable != 0U) ? k_ra8_pull_up : k_ra8_pull_none;
+  const ra8_pin_interface_t* pin_if = priv_ra8_esp_hosted_gpio_pin_interface();
+  (void)pin_if->release(pin_if->ctx, pin);
+  return (pin_if->input_init(pin_if->ctx, pin, pull) == k_ra8_ok) ? RET_OK : RET_FAIL;
 }
 
 /**
