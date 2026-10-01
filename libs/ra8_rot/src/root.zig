@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Archive root for the root of trust alone: the verifier and the
+//! Archive root for the root of trust: the image verifier and the
 //! anti-rollback counter behind it.
 //!
 //! `ra8_rot.c` compiled to an empty translation unit unless the app defined
