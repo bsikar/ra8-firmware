@@ -54,6 +54,12 @@ if(TARGET test_fw_if_timer)
   target_include_directories(test_fw_if_timer PRIVATE ${FW_ROOT}/libs/if/inc)
 endif()
 
+# The PWM port, the second half of that split. Same rule: interface include
+# directory only, so its vectors cannot reach a ra8_gpt_* header.
+if(TARGET test_fw_if_pwm)
+  target_include_directories(test_fw_if_pwm PRIVATE ${FW_ROOT}/libs/if/inc)
+endif()
+
 # The RA8 chip adapter for that same port. Unlike the port's own vectors this
 # one is *allowed* the chip headers -- bridging to them is its whole job -- and
 # it needs the fake MMIO mock, because ra8_mstp polls a hardware bit for
