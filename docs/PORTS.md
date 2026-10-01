@@ -71,7 +71,7 @@ the next reader.
 | `fw_os` (mutex / time / yield) | three reinventions, no port | -- | P0 | Splits to its own child issue; do first. |
 | clock / CGC | coupled, no port | 226 | P0 | Wants an intent API, not a portable register API. |
 | display / framebuffer | facade exists, caps, two backends | 22 | P0 | Enforcement plus backends; see the population rows below. |
-| GPIO | coupled, free functions only | 46 | P0 | Extract the vtable; the board owns the pin map. |
+| GPIO | coupled, free functions only | 44 | P0 | Extract the vtable; the board owns the pin map. |
 | timebase / monotonic `now()` | non-injectable singleton in `libs/ra8_core/` | 237 | P1 | Foundational. `ra8_time_interface.h` is the nearest thing today. |
 | timer / counter / capture | coupled | 13 GPT, 3 AGT | P1 | Split from PWM. |
 | PWM | coupled to GPT output | -- | P1 | Duty semantics; its own port. |
@@ -104,7 +104,7 @@ is no third place to keep in step.
 grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
 # display / framebuffer -- 22 file(s)
 grep -rlE 'ra8_glcdc|ra8_epaper|ra8_drw' examples --include=*.c --include=*.h | wc -l
-# GPIO -- 46 file(s)
+# GPIO -- 44 file(s)
 grep -rlE 'ra8_gpio|ra8_ioport' examples --include=*.c --include=*.h | wc -l
 # timebase / monotonic now() -- 237 file(s)
 grep -rlE 'ra8_systick|ra8_time' examples --include=*.c --include=*.h | wc -l
