@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 353 reference(s)
+# clock: 343 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -201,15 +201,15 @@ examples/ek_ra8d2/hw_validated/hil/i3c_loopback/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/iwdt_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/keyboard/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/kint_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/sd_font_render/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/sdram_benchmark/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/spi_loopback/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/keyboard/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/kint_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/sd_font_render/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/sdram_benchmark/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/spi_loopback/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_blink/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/src/main.c	clock	2
