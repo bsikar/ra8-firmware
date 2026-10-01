@@ -235,6 +235,15 @@ export fn ra8_board_led_pin(led: u8, out_pin: ?*u16) u32 {
     return leds.readPin(led, dst);
 }
 
+/// The header declares this beside the other four and
+/// ra8_board_ek_ra8d2_bringup.h:128 names it as prologue step 6, but it was
+/// the one LED entry point the ABI never exported. `leds.init` has been here
+/// the whole time; around thirty example main.c files call it and linked
+/// short, as did the board's own bringup, which reaches it as an extern.
+export fn ra8_board_led_init(led: u8) u32 {
+    return leds.init(led);
+}
+
 export fn ra8_board_led_on(led: u8) u32 {
     return leds.on(led);
 }
