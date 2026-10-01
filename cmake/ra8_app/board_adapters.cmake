@@ -31,16 +31,13 @@ macro(_ra8_app_board_adapter_sources)
   endif()
   # The GPT timer and PWM adapters travel with the board for the same reason:
   # ra8_board_ek_ra8d2_gpt_profile.c (#693) binds them, so every board app
-  # needs libs/if_ra8_gpt and the two ports' facades, fw_if_timer.c and
-  # fw_if_pwm.c. Only those two units of libs/if, as with fw_if_clock.c.
-  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_gpt/src")
-    file(GLOB _ra8_lib_gpt_adapter CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/if_ra8_gpt/src/*.c)
-    list(APPEND _ra8_lib_board ${_ra8_lib_gpt_adapter})
-    foreach(_ra8_gpt_port fw_if_timer.c fw_if_pwm.c)
-      if(EXISTS "${RA8_REPO_ROOT}/libs/if/src/${_ra8_gpt_port}")
-        list(APPEND _ra8_lib_board ${RA8_REPO_ROOT}/libs/if/src/${_ra8_gpt_port})
-      endif()
-    endforeach()
+  # needs libs/if_ra8_gpt and the two ports' facades. On zig/dev all of it is
+  # Zig: libs/if_ra8_gpt has no C left, and fw_if_timer.c / fw_if_pwm.c became
+  # libs/if/src/fw_if_{timer,pwm}_abi.zig, already in the "if" archive above.
+  # dev compiles the C units here instead; on a dev -> zig/dev sync keep this
+  # side.
+  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_gpt/build.zig")
+    list(APPEND _ra8_board_adapter_zig "if_ra8_gpt|${RA8_REPO_ROOT}/libs/if_ra8_gpt")
   endif()
 endmacro()
 
