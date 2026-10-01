@@ -11,23 +11,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_mdl_internal.h"
-#include "ra8_media_download.pb-c.h"
-
-static_assert((uint32_t)k_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
-static_assert((uint32_t)k_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
-static_assert((uint32_t)k_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
-static_assert((uint32_t)k_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
-static_assert((uint32_t)k_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
-static_assert((uint32_t)k_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
-static_assert((uint32_t)k_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
-static_assert((uint32_t)k_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
-static_assert((uint32_t)k_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
-static_assert((uint32_t)k_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
@@ -47,50 +34,6 @@ typedef struct {
   mdl_format_t       requested_format; /**< Format the Accepted response must echo. */
   mdl_take_kind_t    kind;             /**< Expected generated response variant.    */
 } mdl_take_ctx_t;
-
-/**
- * @brief Borrow one generated C string as a text span.
- * @param[in] text Generated string, or null when the test left it unset.
- * @return The span; null stays null.
- * @note Pure and reentrant.
- * @since 0.1.0
- */
-RA8_INTERNAL static mdl_text_t internal_mdl_text(const char* text)
-{
-  return (mdl_text_t){.ptr = text, .len = (text != nullptr) ? strlen(text) : 0U};
-}
-
-/**
- * @brief Flatten one generated chunk into the Zig rule layer's view.
- * @details Only the test helpers build generated chunks now; production
- * chunks are decoded in `src/internal/mdl_chunk_decode.zig`.
- * @param[in] msg Generated chunk.
- * @return A view borrowing @p msg's spans.
- * @pre @p msg is non-null.
- * @post No state is modified.
- * @note Pure and reentrant for independent messages.
- * @since 0.1.0
- */
-RA8_INTERNAL static mdl_chunk_view_t internal_mdl_view(const Ra8__Mdl__Chunk* msg)
-{
-  return (mdl_chunk_view_t){
-    .job_id        = msg->job_id,
-    .sequence      = msg->sequence,
-    .offset        = msg->offset,
-    .total_bytes   = msg->total_bytes,
-    .state         = (uint8_t)msg->state,
-    .status        = msg->status,
-    .data          = msg->data.data,
-    .data_len      = msg->data.len,
-    .sha256        = msg->sha256.data,
-    .sha256_len    = msg->sha256.len,
-    .http_status   = msg->http_status,
-    .retry_after   = internal_mdl_text(msg->retry_after),
-    .etag          = internal_mdl_text(msg->etag),
-    .last_modified = internal_mdl_text(msg->last_modified),
-    .content_type  = internal_mdl_text(msg->content_type),
-  };
-}
 
 /**
  * @brief Decode and validate one accepted-job response
@@ -282,18 +225,6 @@ RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap)
 {
   return priv_c6link_mdl_http_field_valid(text, cap);
-}
-
-RA8_TEST_HELPER bool ra8_c6link_mdl_http_response_valid_test(const Ra8__Mdl__Chunk* msg)
-{
-  const mdl_chunk_view_t view = internal_mdl_view(msg);
-  return priv_c6link_mdl_http_response_valid(&view);
-}
-
-RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__Chunk* msg)
-{
-  const mdl_chunk_view_t view = internal_mdl_view(msg);
-  return priv_c6link_mdl_chunk_semantics_valid(&view);
 }
 
 ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,

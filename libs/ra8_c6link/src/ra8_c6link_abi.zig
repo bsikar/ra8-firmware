@@ -308,22 +308,6 @@ pub export fn priv_c6link_mdl_start_request_valid(
     return Err.ok;
 }
 
-/// `priv_c6link_mdl_http_response_valid`: terminal HTTP metadata, checked.
-pub export fn priv_c6link_mdl_http_response_valid(
-    view: ?*const mdl_chunk.View,
-) callconv(.c) bool {
-    const chunk = view orelse return false;
-    return mdl_chunk.httpResponseValid(chunk);
-}
-
-/// `priv_c6link_mdl_chunk_semantics_valid`: the state-specific chunk rules.
-pub export fn priv_c6link_mdl_chunk_semantics_valid(
-    view: ?*const mdl_chunk.View,
-) callconv(.c) bool {
-    const chunk = view orelse return false;
-    return mdl_chunk.semanticsValid(chunk);
-}
-
 /// `priv_c6link_mdl_accepted_valid`: does an accepted response open a usable job?
 pub export fn priv_c6link_mdl_accepted_valid(
     view: *const mdl_session.AcceptedView,

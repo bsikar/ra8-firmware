@@ -23,7 +23,8 @@
     "tests/wifi_init_test.zig",
     "tests/mdl_encode_test.zig",
     "tests/mdl_decode_test.zig",
-    "tests/mdl_chunk_decode_test.zig"
+    "tests/mdl_chunk_decode_test.zig",
+    "tests/mdl_chunk_mcdc_test.zig"
   ],
   "covered_sources": [
     "src/internal/bare_rpc.zig",
@@ -65,7 +66,8 @@
     "src/internal/mdl_wire_read.zig",
     "tests/mdl_decode_test.zig",
     "src/internal/mdl_chunk_decode.zig",
-    "tests/mdl_chunk_decode_test.zig"
+    "tests/mdl_chunk_decode_test.zig",
+    "tests/mdl_chunk_mcdc_test.zig"
   ],
-  "minimum_tests": 370
+  "minimum_tests": 377
 }

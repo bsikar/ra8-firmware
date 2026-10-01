@@ -92,7 +92,7 @@ fn key(current: *const types.Session, data_len: u32) mdl_session.ChunkKeyView {
     };
 }
 
-const empty = mdl_chunk.Text.of("");
+const empty: []const u8 = "";
 
 fn body(current: *const types.Session, bytes: []const u8) mdl_chunk.View {
     return .{
@@ -102,8 +102,7 @@ fn body(current: *const types.Session, bytes: []const u8) mdl_chunk.View {
         .total_bytes = 8192,
         .state = types.State.downloading,
         .status = 0,
-        .data = bytes.ptr,
-        .data_len = bytes.len,
+        .data = bytes,
         .retry_after = empty,
         .etag = empty,
         .last_modified = empty,
