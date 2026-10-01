@@ -219,7 +219,6 @@ tests/misc/src/test_ra8_bkup.c
 tests/misc/src/test_ra8_bkup_tamper.c
 tests/misc/src/test_ra8_ble.c
 tests/misc/src/test_ra8_board_ek_ra8d2.c
-tests/misc/src/test_ra8_board_ek_ra8d2_audio_usb_cov.c
 tests/misc/src/test_ra8_board_ek_ra8d2_comms_cov.c
 tests/misc/src/test_ra8_board_ek_ra8d2_console_stream.c
 tests/misc/src/test_ra8_board_ek_ra8d2_cov.c
