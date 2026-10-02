@@ -580,8 +580,8 @@ RA8_INTERNAL static void internal_test_exfat_listdir_skip_non_stream(void)
  * and `continue` fires, so no units are gathered.
  *
  * The entry is then NOT reported.  This case used to assert the opposite --
- * one callback with an empty name -- which was the same class of defect #606
- * is about: a listing entry the caller cannot do anything with, because `""`
+ * one callback with an empty name -- which was the same class of defect
+ * the non-ASCII fix is about: a listing entry the caller cannot do anything with, because `""`
  * re-opens nothing.  A set whose name cannot be assembled has no name this
  * library will vouch for, and the walk still consumes every secondary, so the
  * cursor stays aligned and the entries after it are listed normally.

@@ -589,7 +589,7 @@ RA8_INTERNAL static void internal_test_mcdc_priv_to_upper_range(void)
  * V3 "": first char NUL -> C1=F. N+1 = 3 vectors for N=2.
  *
  * V2 no longer FAILS the open. `.TXT` has an empty 8.3 base, so `priv_pack_base`
- * still rejects it -- which is the decision under test -- but since #600 that
+ * still rejects it -- which is the decision under test -- but since FAT long-name write that
  * verdict routes the name to a long-name chain instead of ending the call, and
  * the file is created under the alias `TXT~1`. The vector is unchanged; only
  * what the caller sees afterwards is. @brief Exercise the mcdc pack base terminator filesystem operation. @details Runs the mcdc pack base terminator vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0

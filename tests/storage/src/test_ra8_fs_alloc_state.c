@@ -37,7 +37,7 @@
  * @enum as_const_t
  * @brief The values pushed at an unbound mount, and what it must answer.
  *
- * @invariant `k_as_expect_hint` is ::k_cluster_first_data, the pre-#607 scan start.
+ * @invariant `k_as_expect_hint` is ::k_cluster_first_data, the pre-allocation-hint scan start.
  * @see test_unbound_mount_degrades_gracefully()
  * @since 0.1.0
  */
@@ -51,7 +51,7 @@ typedef enum : uint32_t {
 /**
  * @test test_unbound_mount_degrades_gracefully
  * @brief Every allocator accessor is total: a mount with no state slot gets
- *        the pre-#607 behaviour instead of a crash or a stale answer.
+ *        the pre-allocation-hint behaviour instead of a crash or a stale answer.
  *
  * @details The header promises "a missing binding degrades performance and
  *          never correctness". Nothing in the public API can produce an
@@ -68,7 +68,7 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static void internal_test_unbound_mount_degrades_gracefully(void)
 {
-  TEST_BEGIN("fs alloc: an unbound mount gets the pre-#607 behaviour");
+  TEST_BEGIN("fs alloc: an unbound mount gets the pre-allocation-hint behaviour");
   ra8_fs_mount_t orphan    = {};
   orphan.count_of_clusters = (uint32_t)k_as_clusters;
 
@@ -88,7 +88,7 @@ RA8_INTERNAL static void internal_test_unbound_mount_degrades_gracefully(void)
   /* Releasing a mount that owns nothing is equally harmless. */
   priv_alloc_state_release(&orphan);
   TEST_ASSERT_EQ(k_as_expect_hint, priv_alloc_hint_get(&orphan));
-  TEST_END("fs alloc: an unbound mount gets the pre-#607 behaviour");
+  TEST_END("fs alloc: an unbound mount gets the pre-allocation-hint behaviour");
 }
 
 /**

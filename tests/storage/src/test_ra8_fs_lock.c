@@ -20,7 +20,7 @@
  *   - the cookie handed to the callbacks is the one that was installed.
  *
  * The default -- no lock installed -- is asserted too: a seam that costs the
- * bare-metal world a callback it never asked for is not the seam #608 wanted.
+ * bare-metal world a callback it never asked for is not the seam the lock work wanted.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

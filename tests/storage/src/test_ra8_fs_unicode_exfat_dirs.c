@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_unicode_exfat_dirs.c
- * @brief exFAT DIRECTORIES with non-ASCII names (#605 + #606).
+ * @brief exFAT DIRECTORIES with non-ASCII names.
  *
  * @details
  * exFAT directories and UTF-8 names landed as separate pieces of
@@ -15,7 +15,7 @@
  * short Cyrillic folder name looked over-long while descending.
  *
  * These cases pin the join. Every one of them ends with `internal_exfat_verify()`, the
- * structural scan #605 brought with it, and that is the point of putting them
+ * structural scan exFAT subdirectories brought with them, and that is the point of putting them
  * here rather than in the file-side suite: the scan recomputes each entry set's
  * SetChecksum AND its NameHash from the volume's own bytes, so a directory
  * whose name this library hashed with the wrong fold fails it. The hash is
@@ -26,7 +26,7 @@
  *
  * @par Out-of-band `fsck.exfat` evidence:
  * `internal_exfat_dump()` (from the shared fixture) writes each volume out under
- * `RA8_FS_EXFAT_DUMP`, exactly as #605's own suites do, so these images join
+ * `RA8_FS_EXFAT_DUMP`, exactly as the exFAT subdirectory suites do, so these images join
  * that evidence set rather than inventing a second convention.
  *
  * @par Evidence a real operating system can read:

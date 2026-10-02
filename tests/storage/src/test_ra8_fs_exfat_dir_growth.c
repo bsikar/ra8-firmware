@@ -3,7 +3,7 @@
  * @brief exFAT directories grow past their first cluster.
  *
  * @details
- * Before #677 an exFAT directory was born owning exactly ONE cluster and never
+ * Before directory growth an exFAT directory was born owning exactly ONE cluster and never
  * grew: `priv_exfat_find_dir_space()` reported `k_ra8_err_no_mem` the moment
  * that cluster's entry sets were full, so a folder on a card with gigabytes free
  * held only as many files as fit a single cluster -- about 42 short-named files
@@ -13,7 +13,7 @@
  * The scenarios, in the order the feature is exercised:
  *
  *  - **The single-cluster ceiling, and the create that used to fail.** A
- *    directory is filled to exactly the pre-#677 ceiling -- proven by the
+ *    directory is filled to exactly the pre-growth ceiling -- proven by the
  *    allocation census showing it still owns one cluster -- and then the NEXT
  *    create is asserted to SUCCEED and to grow the directory to two clusters.
  *    That create is the deliberate negative control: it is the exact call that
@@ -134,7 +134,7 @@ RA8_INTERNAL static uint32_t internal_cluster_bytes(const ra8_fs_mount_t* h)
  * @pre @p h is non-NULL and mounted.
  * @pre A short name occupies one Name entry (a 3-entry set).
  * @post No state is modified.
- * @post The result is the pre-#677 single-cluster directory ceiling.
+ * @post The result is the pre-growth single-cluster directory ceiling.
  *
  * @since 0.1.0 @details Implements the bounded files per cluster fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
@@ -332,9 +332,10 @@ RA8_INTERNAL static uint32_t internal_first_dir_datalen(const ra8_fs_mount_t* h)
  *
  * @details The census brackets the behaviour change. `mkdir` takes one cluster;
  *          filling the directory to exactly `files_per_cluster` short-named files
- *          leaves it at one cluster -- the pre-#677 ceiling, asserted by the
+ *          leaves it at one cluster -- the pre-growth ceiling, asserted by the
  *          census. The NEXT create is the deliberate negative control: before
- *          #677 it returned `k_ra8_err_no_mem` on a volume with gigabytes free;
+ *          directory growth it returned `k_ra8_err_no_mem` on a volume with
+ *          gigabytes free;
  *          it now succeeds and the census shows the directory grew to two
  *          clusters. Filling well past the ceiling then keeps every create
  *          succeeding and the structural scan clean.
@@ -363,7 +364,7 @@ RA8_INTERNAL static void internal_test_fill_past_one_cluster(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BIG"));
   TEST_ASSERT_EQ(baseline + 1U, internal_alloc_bitmap_used(h)); /* one cluster, as ever */
 
-  /* Fill to exactly the pre-#677 ceiling: the directory must still own its one
+  /* Fill to exactly the pre-growth ceiling: the directory must still own its one
    * cluster, because these sets all fit inside it. */
   internal_fill_dir(h, "/BIG", 0U, fpc);
   TEST_ASSERT_EQ(baseline + 1U, internal_alloc_bitmap_used(h));
@@ -574,8 +575,8 @@ RA8_INTERNAL static void internal_test_convert_forces_fat_chain(void)
  *          a directory that grew CONTIGUOUSLY across several clusters is emptied
  *          and removed, and the census is asserted back to its pre-`mkdir` value.
  *          A `rmdir` that freed only the first cluster of the run -- or that read
- *          the stale one-cluster DataLength #677 left before it taught growth to
- *          update the Stream entry -- would leave the census high, and the
+ *          the stale one-cluster DataLength the first growth slice left
+ *          before it was taught to update the Stream entry -- would leave the census high, and the
  *          structural scan would call the rest orphaned space.
  *
  * @par MC/DC:

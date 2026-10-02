@@ -6,7 +6,7 @@
  * Creates a file, stamps chosen create / modify / access times onto it, and
  * decodes the ON-DISK timestamp fields back out of the image: the packed
  * date/time words must equal what the caller asked for, and must be a LEGAL
- * calendar value (month and day non-zero) -- the property #601 exists to keep,
+ * calendar value (month and day non-zero) -- the property the timestamp fix exists to keep,
  * now for a caller-chosen instant instead of the clock's. A NULL argument must
  * leave its field untouched. On exFAT the entry-set SetChecksum is recomputed
  * over the image and compared, proving the patch did not corrupt the set.

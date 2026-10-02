@@ -419,7 +419,7 @@ RA8_INTERNAL static void internal_test_mkdir_exfat_dispatches(void)
  *          as in an 8.3 one, so ::priv_name_classify() reports
  *          `k_name_kind_invalid` and `priv_dir_reserve()` refuses. The sibling
  *          case `"bad name!"` -- illegal in 8.3 only, because of the space --
- *          is created as a long name since #600 and is covered in
+ *          is created as a long name since FAT long-name write and is covered in
  *          test_ra8_fs_lfn_write.c.
  *
  * @par MC/DC:
