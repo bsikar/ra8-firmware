@@ -16,7 +16,7 @@
  * All four entry points are FAIL-CLOSED in production: HUM Ch 52 documents no
  * asymmetric command-register map for the RSIP-E50D, so the off-target-only command
  * path is gated behind the stub-crypto guard and a production build returns
- * ``k_ra8_err_not_supported`` (issues #214 + #187).
+ * ``k_ra8_err_not_supported`` (RSIP register audit).
  *
  * The byte-lane streaming primitives ``internal_asym_push`` /
  * ``internal_asym_pull`` are defined in ``ra8_rsip_asym.c`` and shared
@@ -67,7 +67,7 @@ static const char* const s_tag = "RSIP";
  * insecure-stub / off-target guard so a production image gets the fail-closed
  * #else and can never mistake these bytes for a valid RSA signature or
  * ciphertext. No plain-key RSA backend ships on this part; RSA (if ever needed)
- * is provided by tf-psa-crypto on the M85 (issues #214 + #187). The register
+ * is provided by tf-psa-crypto on the M85 (RSIP register audit). The register
  * pokes below therefore carry NO HUM citation: there is no real register map to
  * cite.
  */

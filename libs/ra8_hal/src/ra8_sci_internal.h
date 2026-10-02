@@ -103,7 +103,7 @@ typedef struct {
  *       The critical section (``cpsid i`` + a ``"memory"`` clobber) both
  *       serialises the read-modify-write against a same-core ISR and prevents
  *       the compiler from reordering the descriptor publish past the interrupt
- *       enable (#176 / T1-02). ``ra8_sci_init`` publishes the initial zeroed
+ *       enable (T1-02). ``ra8_sci_init`` publishes the initial zeroed
  *       state during single-threaded bring-up, before the channel IRQ is armed.
  * @warning Do not redefine; the single definition is owned by ra8_sci.c.
  * @since 0.1.0

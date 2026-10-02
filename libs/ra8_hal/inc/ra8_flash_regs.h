@@ -59,7 +59,7 @@ extern "C" {
  * code certificate, general-purpose OTP, PBPS, POFSPS, REVOKE,
  * HUK-zeroize enable, anti-rollback counter). The previously-declared
  * 0x27000000 "data flash" base is an RA-family assumption this part does
- * not honour (writing it faults, ILGCOMERR|ILGLERR -- issue #397).
+ * not honour (writing it faults, ILGCOMERR|ILGLERR).
  * Anti-rollback counters and the start-up area-select fuse live in the
  * Option-Setting Memory window starting at 0x02C9F000.
  */

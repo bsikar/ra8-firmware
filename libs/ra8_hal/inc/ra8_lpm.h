@@ -606,7 +606,7 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * unpowered out of reset** and cancelling module-stop alone is not enough
  * to make one respond.
  *
- * This was the whole of issue #247: the D/AVE 2D engine had never
+ * This was the whole DRW bring-up bug: the D/AVE 2D engine had never
  * rasterised a pixel on real silicon because nothing ever powered its
  * domain. Bench evidence on an EK-RA8D2 -- with ``PDCTRGD`` at its ``0x81``
  * reset value the DRW ``HWREVISION`` register reads ``0x00000000``; after

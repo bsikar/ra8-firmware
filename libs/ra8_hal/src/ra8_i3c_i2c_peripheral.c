@@ -106,7 +106,7 @@ ra8_err_t ra8_i3c_i2c_peripheral_open(uint8_t channel, const ra8_i3c_i2c_periphe
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 -- the R_I3C
    * block is clock-gated OFF at reset; cancel its module-stop (MSTPB4) before the
    * first responder register write or the peripheral never sees the bus. Omitting
-   * this ran clean in ra8_emulator yet was inert on silicon until #405 modelled the
+   * this ran clean in ra8_emulator yet was inert on silicon until the emulator modelled the
    * gate, which surfaced the miss here (the controller path already ungated). The
    * writes are guarded so a failed ungate does not touch a still-gated block, and
    * the outcome is returned from the single exit below (no extra return path). */

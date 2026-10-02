@@ -127,8 +127,7 @@ typedef enum : uint32_t {
  * @details
  * Modelled algorithm-selector values for the RSIP HASH CTRL word. The
  * shipping hash path is software SHA-256 (``ra8_rsip_sha256``), not this
- * selector; HUM Ch 52 is a feature overview with no hash register map
- * (issue #215).
+ * selector; HUM Ch 52 is a feature overview with no hash register map.
  */
 typedef enum : uint32_t {
   k_ra8_rsip_hash_sha224     = 0x00000001UL, /**< SHA-224.               */
@@ -153,8 +152,8 @@ typedef enum : uint32_t {
  * Mirrors the ``rsip_oem_cmd_t`` table in the FSP key-injection
  * driver (``r_rsip_key_injection.c``). These opcodes select which
  * algorithm + key length the OEM-flow installs into the wrapped
- * key vault. HUM Ch 52 documents no key-vault register map (issue
- * #215); the opcode values come from the FSP primitive above.
+ * key vault. HUM Ch 52 documents no key-vault register map; the
+ * opcode values come from the FSP primitive above.
  */
 typedef enum : uint32_t {
   k_ra8_rsip_oem_cmd_invalid             = 0U,  /**< Sentinel / unused.      */

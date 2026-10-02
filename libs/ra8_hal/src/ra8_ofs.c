@@ -47,7 +47,7 @@
  * and RA8P1 HUM R01UH1064EJ0130 Ch 7.2.6 p 288 / Ch 7.2.7 p 290.
  * The whole OFS3 family is therefore emitted unconditionally.
  *
- * Issue #223 previously gated these three emissions out of RA8P1
+ * The RA8P1 OFS work previously gated these three emissions out of RA8P1
  * builds behind `RA8_HAS_OFS3`, on the strength of FSP's
  * `BSP_FEATURE_BSP_HAS_OFS3 == 0` for ra8p1 -- a value that
  * contradicts Renesas' own RA8P1 manual. The effect was an RA8P1

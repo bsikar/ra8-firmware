@@ -370,7 +370,7 @@ uint16_t priv_pipebuf_word(uint8_t pipe_num, uint16_t max_packet)
  * DBLB flag into the PIPECFG word. HUM Ch 36.2.24 PIPECFG. Bulk OUT is
  * always single-buffered, otherwise the controller fills both banks
  * with host data and the one-bank-per-call ra8_usb_queue_out drainer
- * wedges the data phase (GitHub issue #6). Bulk IN double-banking is
+ * wedges the data phase (the usb_msc_device BOT stall). Bulk IN double-banking is
  * the caller's choice: HOST mode wants it so queue_in can push a
  * data + ZLP pair back-to-back without the second push hitting a
  * full-bank FRDY stall; DEVICE mode must run single-banked because the

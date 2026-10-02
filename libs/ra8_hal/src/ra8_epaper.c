@@ -880,7 +880,7 @@ RA8_INTERNAL
  *
  * @details
  * The per-poll "LUT idle" comparison is routed through the ra8_fake_mmio
- * fault seam under the host unit-test build (issue #177 / T1-01) so this
+ * fault seam under the host unit-test build (T1-01) so this
  * real poll/timeout loop executes on host instead of a compiled-out
  * short-circuit; un-armed the seam is transparent and honours the
  * comparison. The LUTAFSR value is clocked in over the injected bus, so

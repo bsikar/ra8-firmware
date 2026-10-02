@@ -18,14 +18,13 @@
  * six-page feature overview (p 3302-3307) with no hash / key command-register
  * map, so the ``HUM Ch 52.1`` / ``52.2.3`` citations that used to sit on
  * those register pokes were fabricated (they passed cite_check while being
- * false, exactly the #214 / #181 finding). The off-target-only command path is
+ * false, exactly the invented-register RSIP audit finding). The off-target-only command path is
  * gated behind the stub-crypto guard and a production build returns
  * ``k_ra8_err_not_supported`` -- never a plausible-looking wrong digest, MAC,
  * wrapped key, or derived key. The only real hash path on this part is
  * ``ra8_rsip_sha256`` -> the software SHA-256 backend in ``ra8_rsip.c`` (proven
  * in rsip_sha256_kat); it is untouched. Any real hash / HMAC / KDF need is
- * served by tf-psa-crypto on the M85 (silicon-proven in psa_crypto_hil),
- * issue #215.
+ * served by tf-psa-crypto on the M85 (silicon-proven in psa_crypto_hil).
  *
  * The device-security paths (device lifecycle, the three debug-authorisation
  * levels, the tamper subsystem, and the SPA / DPA side-channel arm) were split

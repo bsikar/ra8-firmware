@@ -7,8 +7,9 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * The two supported RA8 parts do NOT differ in FPU width (settled in issue
- * #225): FSP's CMSIS device headers declare `__FPU_PRESENT 1` and `__FPU_DP 0`
+ * The two supported RA8 parts do NOT differ in FPU width (settled by the
+ * RA8P1 capability evaluation): FSP's CMSIS device headers declare
+ * `__FPU_PRESENT 1` and `__FPU_DP 0`
  * for the primary Cortex-M85 of BOTH parts (`R7KA8P1KF_core0.h` is
  * byte-identical to `R7KA8D2KF_core0.h` in that block), and the "half, single,
  * and double-precision" sentence in the RA8P1 datasheet appears verbatim in the
@@ -41,7 +42,7 @@
  *
  * @see cmake/toolchain-ra8p1.cmake  Carries the opt-in `RA8P1_DP_FPU` switch.
  * @see ra8_device.h                  RA8D2/RA8P1 compile-time device switch.
- * @see docs/reference/ra8p1_vs_ra8d2.md  The sourced #225 resolution.
+ * @see docs/reference/ra8p1_vs_ra8d2.md  The sourced resolution.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
