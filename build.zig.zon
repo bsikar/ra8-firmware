@@ -73,6 +73,21 @@
             .hash = "N-V-__8AACeHVAWQnalf6pLkI_X_OgjmjhX_AXiqy625pqeO",
             .lazy = true,
         },
+        // Mbed TLS and TF-PSA-Crypto, from bsikar forks that only add the
+        // generated headers upstream builds at configure time. The Zig build
+        // graph reads them through pkg:mbedtls/ and pkg:tf_psa_crypto/ paths,
+        // cmake/mbedtls.cmake through cmake/zig_package.cmake, and
+        // libs/ra8_psa_crypto and libs/ra8_tls pin the same two entries.
+        .mbedtls = .{
+            .url = "https://github.com/bsikar/mbedtls/archive/f06d8d7cb0ce4f9c0ebc6db3e1dbf3ca02973e00.tar.gz",
+            .hash = "N-V-__8AAONGfwDjjMjSEyow7xCaH-cj9BOe1iHzR_n4TxFQ",
+            .lazy = true,
+        },
+        .tf_psa_crypto = .{
+            .url = "https://github.com/bsikar/TF-PSA-Crypto/archive/fe051ec96e072ae8499eba8741950ff209b32e49.tar.gz",
+            .hash = "N-V-__8AAGXETQH82E7iW1WCWsDfDOuaNu545OeJ4Z_ffPs6",
+            .lazy = true,
+        },
         // Eclipse USBX device stack (usbx middleware, tz_nsc_cgc_usb NS image).
         .usbx = .{
             .url = "https://github.com/eclipse-threadx/usbx/archive/6dc0cf233d5b7ee6e1a7434581964975f8d8d37b.tar.gz",

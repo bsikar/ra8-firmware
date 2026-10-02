@@ -8,8 +8,8 @@
  *
  * @details
  * ``ra8_tls`` is a thin, project-shaped wrapper around the third-party
- * Mbed TLS 4.x + TF-PSA-Crypto 1.x library that ships under
- * ``libs/third_party/mbedtls`` and ``libs/third_party/tf-psa-crypto``.
+ * Mbed TLS 4.x + TF-PSA-Crypto 1.x library pinned in ``build.zig.zon``
+ * (packages ``mbedtls`` and ``tf_psa_crypto``).
  * The goal is twofold:
  *
  * 1. Hide the Mbed TLS spelling (``mbedtls_ssl_context``,

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+.{
+    .name = .ra8_psa_crypto,
+    .version = "0.1.0",
+    .fingerprint = 0xdfedae39362c62d6,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        // Same pins as the root build.zig.zon; the on-target backend reads
+        // their headers through @cImport.
+        .mbedtls = .{
+            .url = "https://github.com/bsikar/mbedtls/archive/f06d8d7cb0ce4f9c0ebc6db3e1dbf3ca02973e00.tar.gz",
+            .hash = "N-V-__8AAONGfwDjjMjSEyow7xCaH-cj9BOe1iHzR_n4TxFQ",
+            .lazy = true,
+        },
+        .tf_psa_crypto = .{
+            .url = "https://github.com/bsikar/TF-PSA-Crypto/archive/fe051ec96e072ae8499eba8741950ff209b32e49.tar.gz",
+            .hash = "N-V-__8AAGXETQH82E7iW1WCWsDfDOuaNu545OeJ4Z_ffPs6",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

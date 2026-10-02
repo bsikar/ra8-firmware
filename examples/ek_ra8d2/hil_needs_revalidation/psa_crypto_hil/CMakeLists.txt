@@ -36,7 +36,9 @@ ra8_add_app(
 # supplies a test-only mbedtls_psa_external_get_random + mbedtls_ms_time
 # (src/psa_kat_shim.c). MBEDTLS_PSA_CRYPTO_STORAGE_C is off -> no filesystem.
 # ---------------------------------------------------------------------------
-set(_TF "${_d}/libs/third_party/tf-psa-crypto")
+include(${_d}/cmake/zig_package.cmake)
+ra8_zig_package_dir(tf_psa_crypto _TF)
+ra8_zig_package_dir(mbedtls _MBEDTLS)
 set(_PORT "${_d}/port/mbedtls/inc")
 file(
   GLOB
@@ -61,7 +63,7 @@ target_include_directories(
          ${_TF}/platform
          ${_TF}/utilities
          ${_TF}/extras
-         ${_d}/libs/third_party/mbedtls/include
+         ${_MBEDTLS}/include
          ${_PORT}
 )
 target_compile_definitions(

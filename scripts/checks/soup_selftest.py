@@ -79,7 +79,7 @@ FIXTURE_VERIFIED_ROWS = 2
 # family of constants exists to prevent. RA8FW-385 left 814 vendored files
 # once ThreadX became a build.zig.zon package, so the sanity bar sits below
 # that live count while staying far above zero.
-FLOOR_SANITY_MIN = 500
+FLOOR_SANITY_MIN = 300
 _FIXTURE_FILES = {
     "src/a.c": b"int a;\n",
     "src/b.c": b"int b;\n",
