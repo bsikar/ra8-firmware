@@ -84,8 +84,7 @@ if(TARGET ereader_m33_cpu1.elf)
   # it onto the image AND applies the per-source first-party profile
   # (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the same set
   # ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean under
-  # arm-none-eabi-gcc 13.3.1 at this image's -Os, so its rows are gone from
-  # .github/cpu1-warning-profile-baseline.txt (#843 / T1-09). The two
+  # arm-none-eabi-gcc 13.3.1 at this image's -Os (#843 / T1-09). The two
   # diagnostics that used to hold it back are both fixed in first-party code,
   # not silenced: the unused s_tag went away when the compiled-out ra8_log
   # macros started using their arguments, and the channel-regs cast no longer
