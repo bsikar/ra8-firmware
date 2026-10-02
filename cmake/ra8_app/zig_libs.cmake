@@ -134,15 +134,17 @@ function(
   set(_archive "${_prefix}/lib/lib${_lib}.a")
 
   # One OUTPUT rule per (library, cpu) pair, however many targets ask for it.
+  # The rule lives in the binary dir of the first app that asked, so a later
+  # app reuses that archive path rather than its own, which has no rule.
   get_property(_declared GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}")
   if(_declared)
     set(${_out_archive}
-        "${_archive}"
+        "${_declared}"
         PARENT_SCOPE
     )
     return()
   endif()
-  set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}" ON)
+  set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}" "${_archive}")
 
   file(
     GLOB_RECURSE
