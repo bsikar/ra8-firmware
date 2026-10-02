@@ -259,7 +259,7 @@ ra8_err_t ble_hci_ra8_ble_deinit(void)
  *
  * The NimBLE transport core calls these *_impl() entry points -- the
  * outer ``ble_transport_to_ll_cmd`` / ``ble_transport_to_ll_acl``
- * wrappers in libs/third_party/nimble/nimble/transport/ resolve here.
+ * wrappers in NimBLE's nimble/transport/ (pinned package) resolve here.
  * ``ble_transport_ll_init`` is invoked from the upstream
  * ``ble_transport_init`` so we use it to hot-attach our callbacks
  * even when the app skipped the explicit ``ble_hci_ra8_ble_init``.

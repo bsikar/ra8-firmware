@@ -51,16 +51,12 @@
  * a single syscfg.h on the include path; including the upstream copy
  * here keeps every other knob at its documented default.
  *
- * The path is relative to THIS FILE's directory (port/nimble/inc), which is
- * three levels below the repository root -- so the quoted-include rule
- * resolves it with no -I at all. It read ``../../`` until src/ was dissolved: that is
- * port/libs/... , which does not exist, and it only ever resolved because
- * some unrelated -I happened to sit exactly two levels below the repo root
- * (the app include path carried ${RA8_REPO_ROOT}/src/secure_app, and a
- * phantom ${RA8_REPO_ROOT}/src/inc besides). Dissolving src/ removed both
- * and the include stopped resolving, which is the latent defect surfacing,
- * not a new one. Anchoring on the including file cannot break that way. */
-#include "../../../libs/third_party/nimble/porting/nimble/include/syscfg/syscfg.h"
+ * NimBLE is a pinned build.zig.zon package, not a tree in this repo, so the
+ * upstream header is reached through the ``porting/nimble/include`` system
+ * include directory that the ``nimble`` interface target in
+ * cmake/nimble.cmake publishes. ``syscfg/syscfg.h`` cannot resolve back to
+ * this file: this one is ``syscfg.h`` at the top of port/nimble/inc. */
+#include "syscfg/syscfg.h"
 
 /* ----------------------------------------------------------------------- */
 /* Security Manager Protocol (SMP) */

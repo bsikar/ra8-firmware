@@ -11,8 +11,8 @@
  * (``host/drivers/bt/vhci_drv.c`` and ``hci_stub_drv.c``) are written for
  * two possible Bluetooth hosts and select between them here.
  *
- * This project already vendors Apache NimBLE
- * (``libs/third_party/nimble/``) with a first-party ThreadX port under
+ * This project already carries Apache NimBLE (a pinned build.zig.zon
+ * package, see cmake/nimble.cmake) with a first-party ThreadX port under
  * ``port/nimble/``, so NimBLE is the host and Bluedroid is off. That is a
  * fact about this tree, not a preference: no Bluedroid source exists here,
  * and selecting it would leave the HCI driver referencing
@@ -34,7 +34,7 @@
 /**
  * @def H_BT_HOST_ESP_NIMBLE
  * @brief Route esp-hosted HCI traffic to the Apache NimBLE host.
- * @details One. NimBLE is vendored at ``libs/third_party/nimble/`` and
+ * @details One. NimBLE is a pinned build.zig.zon package and
  * ported onto ThreadX by ``port/nimble/``, so it is the only Bluetooth
  * host this image can carry.
  * @note Read-only build configuration.

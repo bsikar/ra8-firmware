@@ -414,12 +414,6 @@
       ],
       "copyright": "Ships its own NOTICE (Apache-2.0 section 4(d)).",
       "purl": "pkg:github/apache/mynewt-nimble@a7a156f28954819e158b62dd613008f22f9cf73b",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "26608420d612a545fad34e477356009b1ba26530fa7d2dda57b10f2897afa879"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -429,15 +423,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/nimble"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "615"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -448,16 +438,12 @@
           "value": "nimble_1_10_0_tag"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/nimble/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "false"
         },
         {
           "name": "ra8:note0",
-          "value": "Pinned to a release tag, not a default-branch snapshot: all 827 vendored files (826 regular plus the one symlink) are byte-identical to nimble_1_10_0_tag == commit a7a156f2. The vendored subset drops upstream apps/ (163 files) only."
+          "value": "NOT vendored: pinned in build.zig.zon as the upstream nimble_1_10_0_tag tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake. All 615 files the tree used to vendor are byte-identical in it."
         },
         {
           "name": "ra8:note1",
@@ -473,7 +459,7 @@
         },
         {
           "name": "ra8:note4",
-          "value": "Second attribution file: libs/third_party/nimble/NOTICE."
+          "value": "Second attribution file: NOTICE at the package root."
         }
       ]
     },

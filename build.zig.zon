@@ -45,6 +45,11 @@
             .hash = "N-V-__8AABnHqwH0WNMqhd6EOZNeMNA60iRlcWUh_osHYQKZ",
             .lazy = true,
         },
+        .nimble = .{
+            .url = "https://github.com/apache/mynewt-nimble/archive/a7a156f28954819e158b62dd613008f22f9cf73b.tar.gz",
+            .hash = "N-V-__8AAGXukwCsPZWLszqjHEq2BSv7gwvQcmCQ8FZ3C7BA",
+            .lazy = true,
+        },
         .netxduo = .{
             .url = "https://github.com/eclipse-threadx/netxduo/archive/8b6e03ac30ab688bec02c69d42f2304b7f72a202.tar.gz",
             .hash = "N-V-__8AAPZtwAhYa3pneorsST1dPMt0UEWk2_bDy9Cdc3To",
