@@ -196,7 +196,6 @@ if [[ "$-" == *p* ]]; then
     "lint-ld|fast|linker-script structure, headers and symbol closure"
     "lint-asm|fast|assembly headers, sections and exported-symbol shape"
     "lint-devcontainer|fast|hadolint over the Dockerfile, zsh -n over the zshrc"
-    "lint-coverage|fast|every code file is claimed by a linter and a formatter"
     "reserved-addrs|fast|address enums never point into a HUM Reserved window"
     "roadmap-stats|fast|historical HAL completion record stats"
     "sbom|fast|CycloneDX SBOM freshness"
