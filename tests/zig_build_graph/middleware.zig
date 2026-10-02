@@ -133,10 +133,10 @@ pub fn globSelects(glob: SoupGlob, basename: []const u8) bool {
 pub const threadx = Middleware{
     .name = "threadx",
     .soup_c_dirs = &.{
-        "libs/third_party/threadx/common/src",
-        "libs/third_party/threadx/ports/cortex_m85/gnu/src",
+        "pkg:threadx/common/src",
+        "pkg:threadx/ports/cortex_m85/gnu/src",
     },
-    .soup_asm_dirs = &.{"libs/third_party/threadx/ports/cortex_m85/gnu/src"},
+    .soup_asm_dirs = &.{"pkg:threadx/ports/cortex_m85/gnu/src"},
     // The upstream low-level init is dropped for the project-tuned copy in
     // port/threadx/src/cortex_m85 below. It is the ONLY exclusion, and it is a
     // whole-basename match, not a prefix: `tx_initialize_kernel_enter.c` and
@@ -158,8 +158,8 @@ pub const threadx = Middleware{
     // order is the one on the command line.
     .public_include_dirs = &.{ "libs/if/inc", "port/threadx/inc" },
     .public_system_include_dirs = &.{
-        "libs/third_party/threadx/common/inc",
-        "libs/third_party/threadx/ports/cortex_m85/gnu/inc",
+        "pkg:threadx/common/inc",
+        "pkg:threadx/ports/cortex_m85/gnu/inc",
     },
     // Without this the kernel reads its own defaults instead of
     // port/threadx/inc/tx_user.h: a different tick rate, different stack
@@ -197,10 +197,10 @@ pub const threadx = Middleware{
 pub const threadx_ns = Middleware{
     .name = "threadx_ns",
     .soup_c_dirs = &.{
-        "libs/third_party/threadx/common/src",
-        "libs/third_party/threadx/ports/cortex_m85/gnu/src",
+        "pkg:threadx/common/src",
+        "pkg:threadx/ports/cortex_m85/gnu/src",
     },
-    .soup_asm_dirs = &.{"libs/third_party/threadx/ports/cortex_m85/gnu/src"},
+    .soup_asm_dirs = &.{"pkg:threadx/ports/cortex_m85/gnu/src"},
     .replaced_basenames = &.{"tx_initialize_low_level.S"},
     .project_sources = &.{
         "port/threadx/src/cortex_m85/tx_initialize_low_level.S",
@@ -209,8 +209,8 @@ pub const threadx_ns = Middleware{
     .private_include_dirs = &.{"libs/ra8_core/inc"},
     .public_include_dirs = &.{"port/threadx/inc"},
     .public_system_include_dirs = &.{
-        "libs/third_party/threadx/common/inc",
-        "libs/third_party/threadx/ports/cortex_m85/gnu/inc",
+        "pkg:threadx/common/inc",
+        "pkg:threadx/ports/cortex_m85/gnu/inc",
     },
     // Both PUBLIC, so the app's own TUs see the same kernel-option view the
     // archive was built with. Declared in the order CMake's generator emits

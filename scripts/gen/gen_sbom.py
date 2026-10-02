@@ -129,8 +129,10 @@ NON_VENDORED_PROVENANCE = (PROV_NOT_VENDORED, PROV_DEP_PINNED)
 # across the 22 vendored components on 2026-07-28 (nimble 827, threadx 4758,
 # ... fonts/Literata 1).  The total floor is set well below that so ordinary
 # vendored churn does not trip it, but far above any plausible collapse.
+# RA8FW-385 moved ThreadX and the other big trees to build.zig.zon packages,
+# leaving 814 vendored files across 8 components; the floor followed.
 COMPONENT_FILE_FLOOR = 1
-TOTAL_FILE_FLOOR = 5000
+TOTAL_FILE_FLOOR = 750
 
 EXIT_OK = 0
 EXIT_DRIFT = 1

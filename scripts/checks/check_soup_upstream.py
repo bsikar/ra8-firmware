@@ -119,9 +119,10 @@ EXIT_VACUOUS = 2
 # files with it (8530 covered, 8511 identical), so the file floors were re-measured
 # with the same slack. NetX Duo followed (RA8FW-385): 13 components, 7303 files
 # covered, file floors re-measured with the same slack again.
-MIN_COMPONENTS = 9
-MIN_ENTRIES = 5500
-MIN_UPSTREAM_VERIFIED = 5450
+# ThreadX (RA8FW-385) took the largest tree out: 8 components, 814 files.
+MIN_COMPONENTS = 8
+MIN_ENTRIES = 800
+MIN_UPSTREAM_VERIFIED = 790
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300

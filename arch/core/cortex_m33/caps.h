@@ -38,7 +38,7 @@
  *
  * @details
  * MIGRATION: the surface exists at
- * `libs/third_party/threadx/ports/cortex_m33/gnu/src`, vendored and not yet
+ * `ports/cortex_m33/gnu/src` of the threadx build.zig.zon package, not yet
  * selected by `cmake/threadx.cmake`, which wires the Cortex-M85 port only. The
  * flag records that this core has a port to implement the contract with, not
  * that a CPU1 RTOS image is built today; RA8FW-300's migration slice is where the

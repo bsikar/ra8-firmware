@@ -41,12 +41,6 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/threadx@6.5.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "7abed922e803e5bc8debb7888af6b218f834e6ae04b0833c2d201492cfb81d43"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -56,15 +50,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/threadx"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "4758"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -75,12 +65,12 @@
           "value": "v6.5.0.202601_rel"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/threadx/LICENSE.txt"
+          "name": "ra8:modified",
+          "value": "false"
         },
         {
-          "name": "ra8:modified",
-          "value": "true"
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned in build.zig.zon as the upstream v6.5.0.202601_rel tarball (url + Zig content hash), fetched into the Zig package cache by the Zig build graph (pkg:threadx paths) and by cmake/zig_package.cmake. Every file the build used is byte-identical in it."
         }
       ]
     },

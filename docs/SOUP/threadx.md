@@ -12,7 +12,8 @@ firmware as Software Of Unknown Provenance (SOUP).
   PATCH macros). The `CHANGELOG.md` head also references release line 6.4.x;
   the in-tree headers are 6.5.0.
 - **Upstream URL**: https://github.com/eclipse-threadx/threadx
-- **Local path**: `libs/third_party/threadx/`
+- **Local path**: none. Pinned in `build.zig.zon` as package `threadx`
+  (upstream tarball, commit `3726d79`), fetched into the Zig package cache.
 
 ## Provenance
 
@@ -20,13 +21,14 @@ firmware as Software Of Unknown Provenance (SOUP).
   (donated by Microsoft from the former Azure RTOS family in 2024).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
-- **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  ThreadX repository copied into `libs/third_party/threadx/`. Resolved
-  to release tag `v6.5.0.202601_rel`, commit
-  `3726d7906b4808bfec7855fc088e073199df9120`: 4757 of the 4758 vendored
-  files are byte-identical to it, the exception being the `.gitattributes`
-  edit recorded under "Deviations / patches" below. The vendored subset
-  drops 3611 upstream files (ports we do not build, test suites, docs).
+- **How it enters the build**: RA8FW-385 replaced the vendored snapshot in
+  `libs/third_party/threadx/` with the upstream release tarball for tag
+  `v6.5.0.202601_rel`, commit `3726d7906b4808bfec7855fc088e073199df9120`,
+  pinned by url and Zig content hash in `build.zig.zon`. Every vendored source
+  was byte-identical to that tarball (4683 files; the rest were CRLF-only
+  Windows `.bat` build scripts and repository metadata). The Zig build graph
+  reads it through `pkg:threadx/` paths and `cmake/threadx.cmake` through
+  `ra8_zig_package_dir(threadx ...)`.
 
 ## Use case in this firmware
 
@@ -102,21 +104,9 @@ DO-178C Section 12.1.4 (previously developed software):
 
 ## Deviations / patches
 
-One file, `.gitattributes`, and it is a repository-hygiene edit rather than a
-change to any shipped source. Commit `368072a1a` dropped its two `[attr]`
-attribute-macro blocks (`our-c-style`, `generated`) from all five vendored
-Eclipse ThreadX trees: git honours `[attr]` definitions only in the top-level
-`.gitattributes` and printed a "not allowed" warning for each on EVERY git
-operation. The macro *uses* left behind reference undefined attributes, which
-git ignores silently, so no vendored file's checkout behaviour changes.
-
-Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
-content in `docs/sbom/upstream/threadx.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run.
-
-The edit is from 2026-07-13 and went unrecorded here until the upstream-pin sweep found it two
-weeks later, which is the point: "the vendored tree is unmodified" was prose,
-and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
+None. The old vendored tree carried one `.gitattributes` hygiene edit; the
+pinned package is the unmodified upstream tarball, so there is nothing to
+patch.
 
 ## Last review date
 
