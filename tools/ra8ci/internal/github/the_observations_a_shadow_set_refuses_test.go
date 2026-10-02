@@ -16,7 +16,7 @@ func planeRan(task, head string) []PlaneOutcome {
 }
 
 func TestAnActionsJobThatNamesNoCommitIsRefusedBeforeItIsPaired(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "tidy": "lint-tidy"})
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "unit-tests": "lint-tidy"})
 	for _, c := range []struct {
 		name string
 		head string
@@ -49,7 +49,7 @@ func TestAnActionsJobThatNamesNoCommitIsRefusedBeforeItIsPaired(t *testing.T) {
 // commits within Actions alone must be caught there rather than surviving to
 // be blamed on the plane.
 func TestActionsJobsThatJudgedTwoCommitsAreRefusedOnTheActionsSideAlone(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "tidy": "lint-tidy"})
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "unit-tests": "lint-tidy"})
 	collection, err := correspondence.Collect(
 		planeRan("format", headA),
 		[]ActionsOutcome{
@@ -80,7 +80,7 @@ func TestActionsJobsThatJudgedTwoCommitsAreRefusedOnTheActionsSideAlone(t *testi
 }
 
 func TestAPlaneOutcomeForAnUnusableTaskNameIsRefused(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "tidy": "lint-tidy"})
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "unit-tests": "lint-tidy"})
 	for _, c := range []struct {
 		name string
 		task string
@@ -114,7 +114,7 @@ func TestAPlaneOutcomeForAnUnusableTaskNameIsRefused(t *testing.T) {
 // the bad observation may reach a caller, or a report could rest on a prefix
 // of the evidence it claims to cover.
 func TestARefusalLateInTheSetDiscardsWhatWasAlreadyPaired(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "tidy": "lint-tidy"})
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "unit-tests": "lint-tidy"})
 	collection, err := correspondence.Collect(
 		[]PlaneOutcome{
 			{Task: "format", HeadSHA: headA, Observed: "success"},

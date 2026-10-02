@@ -55,7 +55,7 @@ func TestCheckRunConfigDefaultsToShadow(t *testing.T) {
 }
 
 func TestCheckRunConfigReadsAnAuthoritativeDeployment(t *testing.T) {
-	path := writeCorrespondenceFile(t, `{"format": "lint-format", "tidy": "lint-tidy"}`)
+	path := writeCorrespondenceFile(t, `{"format": "lint-format", "unit-tests": "lint-tidy"}`)
 	t.Setenv(EnvShadowCorrespondenceFile, path)
 	t.Setenv(EnvCheckRunMode, "authoritative")
 	config, enabled, err := LoadCheckRunConfigFromEnv(catalogNames(t))
@@ -148,7 +148,7 @@ func TestCheckRunConfigRefusesAFileThatIsNotACorrespondence(t *testing.T) {
 		{"a job that is not a string", `{"format": 7}`},
 		{"a job that is an object", `{"format": {"job": "lint"}}`},
 		{"truncated object", `{"format": "lint-format"`},
-		{"trailing document", `{"format": "lint-format"} {"tidy": "lint-tidy"}`},
+		{"trailing document", `{"format": "lint-format"} {"unit-tests": "lint-tidy"}`},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

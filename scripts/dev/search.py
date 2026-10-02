@@ -508,15 +508,16 @@ def selftest() -> int:
     if not found_dash:
         failures.append("query 'dashboard' did not find recipe 'infra::remote::dashboard'")
 
-    mcdc_results = search_all("mcdc")
-    found_mcdc_cmd = any(
-        isinstance(r, dict) and "mcdc" in str(r.get("namepath")) for r in mcdc_results["commands"]
+    zig_results = search_all("lint-zig")
+    found_zig_cmd = any(
+        isinstance(r, dict) and "lint-zig" in str(r.get("namepath"))
+        for r in zig_results["commands"]
     )
-    found_mcdc_gate = any(
-        isinstance(g, dict) and str(g.get("name")) == "mcdc" for g in mcdc_results["gates"]
+    found_zig_gate = any(
+        isinstance(g, dict) and str(g.get("name")) == "lint-zig" for g in zig_results["gates"]
     )
-    if not found_mcdc_cmd or not found_mcdc_gate:
-        failures.append("query 'mcdc' did not find mcdc recipe or gate")
+    if not found_zig_cmd or not found_zig_gate:
+        failures.append("query 'lint-zig' did not find the lint-zig recipe or gate")
 
     empty_results = search_all("nonexistent_unique_token_xyz_9999")
     total_empty = sum(len(items) for items in empty_results.values())
