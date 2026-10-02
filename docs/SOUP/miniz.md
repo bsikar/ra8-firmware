@@ -101,7 +101,7 @@ The exact patch is
 `docs/sbom/patches/miniz/0001-use-ra8-assertion-policy.patch`, and the offline
 patch gate replays it against the pinned artifact bytes on every run.
 
-They were not, until #548. The vendor-in sweep (`75b635cc7`) ran the project
+They were not, until the upstream-pin sweep. The vendor-in sweep (`75b635cc7`) ran the project
 formatter over the amalgamation, so `miniz.c` and `miniz.h` differed from the
 published bytes by macro-continuation and pointer-style re-spacing throughout
 -- semantically identical, and a complete break of the byte-identity claim this
