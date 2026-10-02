@@ -30,6 +30,7 @@ const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
 const ld_fragments = @import("ld_fragments.zig");
 const middleware = @import("middleware.zig");
+const pkg_path = @import("pkg_path.zig");
 
 /// The universal library whose C left the universal glob for a Zig archive.
 const universal_usb_pal = "ra8_usb_pal";
@@ -350,7 +351,7 @@ fn addCrossApp(
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
         for (include_dirs.items) |include_dir| {
-            compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
+            compile.addPrefixedDirectoryArg("-I", pkg_path.lazy(b, include_dir));
         }
         // After every -I, and -isystem rather than -I: the vendor headers are
         // not held to the app's -Werror bar, and putting them on the ordinary
@@ -358,11 +359,11 @@ fn addCrossApp(
         // diagnostics.
         for (middleware_system_dirs) |include_dir| {
             compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
+            compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         for (local_system_dirs) |include_dir| {
             compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
+            compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         compile.addArg("-c");
         compile.addFileArg(b.path(source));

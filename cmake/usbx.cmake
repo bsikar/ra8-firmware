@@ -3,8 +3,8 @@
 #
 # cmake/usbx.cmake
 #
-# Top-level integration of the vendored USBX USB stack
-# (libs/third_party/usbx). Mirrors the shape of
+# Top-level integration of the USBX USB stack (the pinned build.zig.zon
+# package usbx). Mirrors the shape of
 # cmake/threadx.cmake: declares an interface `usbx` library that
 # bundles the USBX core sources, exposes the include dirs, and pulls
 # in the project's `port/usbx/` shim.
@@ -20,7 +20,7 @@
 # What it does:
 #
 #   - Compiles every C source under
-#     libs/third_party/usbx/common/core/src/*.c except for the
+#     common/core/src/*.c in the usbx package except for the
 #     simulator DCD / HCD (ux_dcd_sim_slave_*.c and
 #     ux_hcd_sim_host_*.c) -- our own DCD / HCD bridges live in
 #     port/usbx/ and replace those.
@@ -35,7 +35,7 @@
 #     defaults plus exactly two -D overrides set below,
 #     UX_MAX_SLAVE_LUN and UX_SLAVE_REQUEST_DATA_MAX_LENGTH. Add a real
 #     ux_user.h (and the define) before claiming a config layer; the
-#     vendored libs/third_party/usbx/CMakeLists.txt that would set it is
+#     upstream CMakeLists.txt in the package that would set it is
 #     never add_subdirectory'd.
 #
 # Requires `RA8_USE_THREADX=ON` because USBX's tx_api.h dependency
@@ -64,7 +64,10 @@ if(NOT DEFINED RA8_REPO_ROOT)
   get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()
 
-set(_RA8_USBX_VENDOR_DIR "${RA8_REPO_ROOT}/libs/third_party/usbx")
+# Pinned build.zig.zon package (upstream 6dc0cf2, v6.5.0.202601_rel), fetched
+# once into the Zig cache; not a tree in this repo.
+include(${RA8_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(usbx _RA8_USBX_VENDOR_DIR)
 set(_RA8_USBX_COMMON_INC "${_RA8_USBX_VENDOR_DIR}/common/core/inc")
 set(_RA8_USBX_COMMON_SRC "${_RA8_USBX_VENDOR_DIR}/common/core/src")
 set(_RA8_USBX_DEV_CLS_INC "${_RA8_USBX_VENDOR_DIR}/common/usbx_device_classes/inc")
@@ -72,7 +75,7 @@ set(_RA8_USBX_DEV_CLS_SRC "${_RA8_USBX_VENDOR_DIR}/common/usbx_device_classes/sr
 set(_RA8_USBX_PORT_INC "${_RA8_USBX_VENDOR_DIR}/ports/cortex_m33/gnu/inc")
 
 if(NOT EXISTS "${_RA8_USBX_COMMON_INC}/ux_api.h")
-  message(FATAL_ERROR "RA8_USE_USBX=ON but USBX vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_USBX=ON but the pinned USBX package is missing at "
                       "${_RA8_USBX_VENDOR_DIR}."
   )
 endif()

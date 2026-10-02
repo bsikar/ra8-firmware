@@ -24,6 +24,7 @@
 //! later slices and each is a table entry rather than new code.
 
 const std = @import("std");
+const pkg_path = @import("pkg_path.zig");
 
 /// One vendored middleware, as `cmake/<name>.cmake` defines it.
 pub const Middleware = struct {
@@ -239,13 +240,13 @@ pub const usbx = Middleware{
         // The simulator host and device controllers are dropped; the RA8
         // bridges in port/usbx/src replace them. 172 of 221 core TUs.
         .{
-            .dir = "libs/third_party/usbx/common/core/src",
+            .dir = "pkg:usbx/common/core/src",
             .excluded_prefixes = &.{ "ux_dcd_sim_slave_", "ux_hcd_sim_host_" },
         },
         // Four device classes, 75 of 225 TUs. PIMA is not storage, and the
         // stock inquiry handler is replaced by the port's own copy.
         .{
-            .dir = "libs/third_party/usbx/common/usbx_device_classes/src",
+            .dir = "pkg:usbx/common/usbx_device_classes/src",
             .prefixes = &.{
                 "ux_device_class_cdc_acm_",
                 "ux_device_class_hid_",
@@ -256,9 +257,9 @@ pub const usbx = Middleware{
         },
     },
     .public_system_include_dirs = &.{
-        "libs/third_party/usbx/common/core/inc",
-        "libs/third_party/usbx/common/usbx_device_classes/inc",
-        "libs/third_party/usbx/ports/cortex_m33/gnu/inc",
+        "pkg:usbx/common/core/inc",
+        "pkg:usbx/common/usbx_device_classes/inc",
+        "pkg:usbx/ports/cortex_m33/gnu/inc",
     },
     // RA8_USBX_MAX_PERIPHERAL_LUN and RA8_USBX_REQUEST_DATA_MAX_LENGTH, at
     // their cache defaults. Both size structures the app shares with the
@@ -410,9 +411,7 @@ fn collect(
     mw: Middleware,
     out: *std.ArrayList(Unit),
 ) void {
-    var dir = b.build_root.handle.openDir(dir_path, .{ .iterate = true }) catch |err| {
-        std.debug.panic("ra8: cannot read middleware directory '{s}': {s}", .{ dir_path, @errorName(err) });
-    };
+    var dir = pkg_path.openDir(b, dir_path) orelse return;
     defer dir.close();
 
     var names = std.ArrayList([]const u8).init(b.allocator);
@@ -439,9 +438,7 @@ fn collect(
 }
 
 fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
-    var dir = b.build_root.handle.openDir(glob.dir, .{ .iterate = true }) catch |err| {
-        std.debug.panic("ra8: cannot read middleware directory '{s}': {s}", .{ glob.dir, @errorName(err) });
-    };
+    var dir = pkg_path.openDir(b, glob.dir) orelse return;
     defer dir.close();
 
     var names = std.ArrayList([]const u8).init(b.allocator);
@@ -535,15 +532,15 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
         compile.addArgs(tc.global_defines);
         compile.addArgs(defines);
         for (include_dirs) |include_dir| {
-            compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
+            compile.addPrefixedDirectoryArg("-I", pkg_path.lazy(b, include_dir));
         }
         for (system_dirs) |include_dir| {
             compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
+            compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         compile.addArgs(unitFlags(tc, mw, unit));
         compile.addArg("-c");
-        compile.addFileArg(b.path(unit.path));
+        compile.addFileArg(pkg_path.lazy(b, unit.path));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");

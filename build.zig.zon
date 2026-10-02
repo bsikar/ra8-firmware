@@ -67,6 +67,12 @@
             .hash = "N-V-__8AAPZtwAhYa3pneorsST1dPMt0UEWk2_bDy9Cdc3To",
             .lazy = true,
         },
+        // Eclipse USBX device stack (usbx middleware, tz_nsc_cgc_usb NS image).
+        .usbx = .{
+            .url = "https://github.com/eclipse-threadx/usbx/archive/6dc0cf233d5b7ee6e1a7434581964975f8d8d37b.tar.gz",
+            .hash = "N-V-__8AAOXoRQGfmvONnuF6PJBJcnL5BhJXM69TKQ9f_w3A",
+            .lazy = true,
+        },
         .levelx = .{
             .url = "https://github.com/eclipse-threadx/levelx/archive/a46b74fb8aa133796ccbc13e7902cb8bb818e12f.tar.gz",
             .hash = "N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC",

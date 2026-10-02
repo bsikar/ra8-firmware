@@ -178,8 +178,6 @@ PATH_CLASS: dict[str, str] = {
     "docs/sbom/patches/stb/series": "validated-input",
     "docs/sbom/patches/threadx/0001-remove-nested-attribute-macros.patch": "validated-input",
     "docs/sbom/patches/threadx/series": "validated-input",
-    "docs/sbom/patches/usbx/0001-remove-nested-attribute-macros.patch": "validated-input",
-    "docs/sbom/patches/usbx/series": "validated-input",
     "libs/ra8_c6link/proto/ra8_media_download.proto": "validated-input",
     "libs/ra8_c6link/inc/ra8_media_download.pb-c.h": "generated-source",
     "libs/ra8_c6link/src/ra8_media_download.pb-c.c": "generated-source",

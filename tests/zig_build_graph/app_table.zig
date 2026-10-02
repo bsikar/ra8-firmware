@@ -443,12 +443,12 @@ pub const cross_apps = [_]CrossApp{
             .app_sources = &.{ "src/ns_main.c", "src/ns_usb.c", "src/ns_usb_host.c" },
             .vendored = &.{
                 .{
-                    .dir = "libs/third_party/usbx/common/core/src",
+                    .dir = "pkg:usbx/common/core/src",
                     .excluded_prefixes = &.{ "ux_dcd_sim_slave_", "ux_hcd_sim_host_" },
                     .suppressions = &usbx_suppressions,
                 },
                 .{
-                    .dir = "libs/third_party/usbx/common/usbx_device_classes/src",
+                    .dir = "pkg:usbx/common/usbx_device_classes/src",
                     .prefix = "ux_device_class_cdc_acm_",
                     .suppressions = &usbx_suppressions,
                 },
@@ -494,9 +494,9 @@ pub const cross_apps = [_]CrossApp{
                 "libs/ra8_board_ek_ra8d2/inc",
             },
             .system_include_dirs = &.{
-                "libs/third_party/usbx/common/core/inc",
-                "libs/third_party/usbx/common/usbx_device_classes/inc",
-                "libs/third_party/usbx/ports/cortex_m33/gnu/inc",
+                "pkg:usbx/common/core/inc",
+                "pkg:usbx/common/usbx_device_classes/inc",
+                "pkg:usbx/ports/cortex_m33/gnu/inc",
             },
             .uses = "threadx_ns",
             .stack_bytes = 2200,
