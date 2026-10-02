@@ -168,9 +168,18 @@ func TestASoundButDifferentCatalogIsADigestMismatch(t *testing.T) {
 	if err := json.Unmarshal(raw, &document); err != nil {
 		t.Fatalf("the checkout manifest would not decode: %v", err)
 	}
-	// One key nothing reads, which changes the canonical bytes and so the
-	// digest, while leaving every reviewed task exactly as it was.
-	document["schema_version"] = json.RawMessage("1")
+	// Change a reviewed value while keeping the document valid. The altered
+	// catalog must reach the digest comparison rather than being rejected by
+	// schema validation first.
+	var tasks []map[string]json.RawMessage
+	if err := json.Unmarshal(document["tasks"], &tasks); err != nil || len(tasks) == 0 {
+		t.Fatalf("the checkout task list would not decode: %v", err)
+	}
+	tasks[0]["version"] = json.RawMessage("2")
+	document["tasks"], err = json.Marshal(tasks)
+	if err != nil {
+		t.Fatalf("the altered task list would not encode: %v", err)
+	}
 	altered, err := json.Marshal(document)
 	if err != nil {
 		t.Fatalf("the altered manifest would not encode: %v", err)
@@ -187,8 +196,8 @@ func TestASoundButDifferentCatalogIsADigestMismatch(t *testing.T) {
 	if err == nil {
 		t.Fatalf("a checkout carrying a different catalog was accepted as %s", embedded.Digest())
 	}
-	if !errors.Is(err, ErrDigestMismatch) && !errors.Is(err, ErrInvalidCatalog) {
-		t.Fatalf("the refusal is neither a digest mismatch nor an invalid catalog: %v", err)
+	if !errors.Is(err, ErrDigestMismatch) {
+		t.Fatalf("the valid altered catalog did not reach the digest check: %v", err)
 	}
 }
 
