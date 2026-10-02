@@ -189,12 +189,9 @@ Stated so no one reads this page as a description of the tree:
 
 - `libs/if/` holds one port. Every other neutral seam in the table above is
   still to be written.
-- The gate exists and runs in CI as `gate_agnostic_registers`
-  (`scripts/checks/check_agnostic_registers.py`), ratcheted against
-  `.github/agnostic-register-baseline.txt`, which may only shrink. So the
-  reach-in counts can no longer grow, and criterion 5 is measurable per
-  peripheral today: `--list` prints every reference tagged with its family.
-  What is still missing for criterion 5 is not the gate but the ports; a
+- The C reach-in ratchet (`check_agnostic_registers.py`) was removed with
+  the C-era gates (RA8FW-370); the Zig port retires the C reach-ins it
+  counted. What is still missing for criterion 5 is the ports; a
   family cannot reach zero until the neutral seam it would move to exists.
 - The gate covers four families (clock, display, GPIO, timer). The other rows
   in the table above are still a grep, recorded here with the command so the

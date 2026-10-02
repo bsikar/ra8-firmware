@@ -98,8 +98,8 @@ edit -> just quality::devcontainer::format -> just checks::devcontainer -> git c
   file afterwards. Every one of these tools now has an `--attest` mode that
   re-derives the canonical text and fails on anything else; the gates run it.
 * `git commit` runs no gate of its own: there is no pre-commit hook. The
-  same audits (formatting, clang-tidy, ASCII check, doxygen audit, citation
-  check, world-tag check, MC/DC block check, ...) run in `just ci` and in CI,
+  same audits (formatting, ASCII check, citation check, ...) run in `just ci`
+  and in CI,
   so run `just ci` before you push rather than after a red pipeline.
 
 For cross-compiled firmware iteration:

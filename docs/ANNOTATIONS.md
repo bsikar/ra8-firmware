@@ -75,8 +75,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Purpose:** TrustZone Secure-to-Non-Secure entry-point veneer; pairs
   with `__attribute__((cmse_nonsecure_entry))`. Lives in `.gnu.sgstubs`.
 - **Enforcement:**
-  - `scripts/checks/check_world_tags.py` restricts `cmse_nonsecure_entry`
-    to files under `libs/ra8_nsc/`.
+  - `cmse_nonsecure_entry` belongs only in files under `libs/ra8_nsc/`.
  - libclang checker verifies every pointer parameter passes
     through a `RA8_NSC_CHECK_NS_RANGE_*` helper before being dereferenced.
 - **Example:**
@@ -476,8 +475,7 @@ failing is a gate that hides the gap.
 ### Pre-commit wiring
 
 The hook at [`scripts/ci/gates/checks.sh`](../scripts/ci/gates/checks.sh)
-invokes the script after the existing static gates (`cite_check`,
-`check_world_tags`, etc.) and before the stack-usage aggregator.
+invokes the script after the existing static gates (`cite_check`, etc.) and before the stack-usage aggregator.
 
 ### Rule-by-rule notes
 
