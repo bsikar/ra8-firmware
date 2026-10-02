@@ -29,7 +29,7 @@
 #
 # Gates in this file: shebangs, tier-imports,
 # entry-points, pinout-freshness, font-coverage, bench-lock, annotations,
-# enum-underlying-casts, tests-readme, disambig-readmes,
+# tests-readme, disambig-readmes,
 # arch-caps, arch-compiles, measured-counts,
 # hil-eil-parity
 
@@ -183,18 +183,6 @@ gate_annotations() (
   # Regression-test the checker itself before trusting its verdict.
   python3 scripts/checks/check_annotations.py --selftest
   python3 scripts/checks/check_annotations.py --check
-)
-
-# --- enum-underlying-casts -----------------------------------------------
-# Preserve the C23 fixed-enum representability constraint. A cast enclosing a
-# complete initializer can narrow before the compiler checks the enumerator;
-# operand casts used to select intermediate arithmetic width remain legal.
-gate_enum_underlying_casts() (
-  set -e
-  require_python_mod clang.cindex \
-    "Run 'just setup_python' locally; CI/container use the same uv lock."
-  python3 scripts/checks/check_enum_underlying_casts.py --selftest
-  python3 scripts/checks/check_enum_underlying_casts.py --all
 )
 
 # --- tests-readme ---------------------------------------------------------

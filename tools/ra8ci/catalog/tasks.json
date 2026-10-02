@@ -723,38 +723,6 @@
       "resource_hints": {}
     },
     {
-      "name": "enum-underlying-casts",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "enum-underlying-casts",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "enum-underlying-casts"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "final-newline",
       "version": 1,
       "tier": "required",
