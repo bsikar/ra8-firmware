@@ -242,33 +242,27 @@
       ],
       "copyright": "Dual-licensed; ra8-firmware elects the Apache-2.0 option.",
       "purl": "pkg:github/Mbed-TLS/mbedtls@4.1.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "d00e4e32aafe21c14777c7eaa1969fccfbc1702a9b182f67e24cbaa576d18699"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/Mbed-TLS/mbedtls"
+          "url": "https://github.com/bsikar/mbedtls"
         }
       ],
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/mbedtls"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "256"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
+          "value": "d12fbb991c0822f347bbc569badef904629ce605"
+        },
+        {
+          "name": "ra8:upstreamRef",
           "value": "d12fbb991c0822f347bbc569badef904629ce605"
         },
         {
@@ -292,12 +286,12 @@
           "value": "Apache-2.0"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/mbedtls/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "true"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned in build.zig.zon as the bsikar/mbedtls fork at f06d8d7c (branch ra8-d12fbb99): upstream d12fbb99 plus one commit that adds the three generated library/mbedtls_config_check_*.h headers and stops library/.gitignore ignoring them, because the firmware build never runs upstream's generator. That commit is the whole local change; it used to live in docs/sbom/patches/mbedtls."
         }
       ]
     },
@@ -318,33 +312,27 @@
       ],
       "copyright": "Dual-licensed; ra8-firmware elects the Apache-2.0 option.",
       "purl": "pkg:github/Mbed-TLS/TF-PSA-Crypto@1.1.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "0307fcaa21b35a63e2612c2e8988208ef8830630e66f9a8b984b55cccf76e828"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/Mbed-TLS/TF-PSA-Crypto"
+          "url": "https://github.com/bsikar/TF-PSA-Crypto"
         }
       ],
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/tf-psa-crypto"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "222"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
+          "value": "bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77"
+        },
+        {
+          "name": "ra8:upstreamRef",
           "value": "bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77"
         },
         {
@@ -368,12 +356,12 @@
           "value": "Apache-2.0"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/tf-psa-crypto/LICENSE"
+          "name": "ra8:modified",
+          "value": "true"
         },
         {
-          "name": "ra8:modified",
-          "value": "false"
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned in build.zig.zon as the bsikar/TF-PSA-Crypto fork at fe051ec9 (branch ra8-bbf1eaf5): upstream bbf1eaf5 plus one commit that adds the five generated core/ sources (the driver wrappers and the config-check headers), because the firmware build never runs upstream's generators."
         }
       ]
     },

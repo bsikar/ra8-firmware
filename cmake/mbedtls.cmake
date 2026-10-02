@@ -8,9 +8,9 @@
 # cryptographic primitives out of the main repo into a companion
 # `tf-psa-crypto` repo: AES, SHA, RSA, ECC, bignum, PSA crypto layer
 # all live there now. The mbedtls/library/ tree retains TLS, X.509,
-# SSL, debug, and the MPS / net / timing helpers. Both trees are
-# vendored: ``libs/third_party/mbedtls`` and
-# ``libs/third_party/tf-psa-crypto``.
+# SSL, debug, and the MPS / net / timing helpers. Neither tree is
+# vendored: both are pinned in ``build.zig.zon`` (packages ``mbedtls`` and
+# ``tf_psa_crypto``) and resolved by ``cmake/zig_package.cmake``.
 #
 # Exposes the ``RA8_USE_MBEDTLS`` option; when ON, this file:
 #
@@ -71,13 +71,14 @@ endif()
 # from the top-level CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_MBEDTLS_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_MBEDTLS_VENDOR_DIR "${_RA8_MBEDTLS_REPO_ROOT}/libs/third_party/mbedtls")
+include(${_RA8_MBEDTLS_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(mbedtls _RA8_MBEDTLS_VENDOR_DIR)
 set(_RA8_MBEDTLS_INC_DIR "${_RA8_MBEDTLS_VENDOR_DIR}/include")
 set(_RA8_MBEDTLS_LIB_DIR "${_RA8_MBEDTLS_VENDOR_DIR}/library")
 set(_RA8_MBEDTLS_PORT_DIR "${_RA8_MBEDTLS_REPO_ROOT}/port/mbedtls")
 set(_RA8_MBEDTLS_CONFIG_FILE "${_RA8_MBEDTLS_PORT_DIR}/inc/mbedtls_config.h")
 
-set(_RA8_TFPSA_DIR "${_RA8_MBEDTLS_REPO_ROOT}/libs/third_party/tf-psa-crypto")
+ra8_zig_package_dir(tf_psa_crypto _RA8_TFPSA_DIR)
 set(_RA8_TFPSA_INC_DIR "${_RA8_TFPSA_DIR}/include")
 set(_RA8_TFPSA_CORE_DIR "${_RA8_TFPSA_DIR}/core")
 set(_RA8_TFPSA_DISPATCH_DIR "${_RA8_TFPSA_DIR}/dispatch")

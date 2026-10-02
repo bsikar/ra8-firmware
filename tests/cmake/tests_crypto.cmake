@@ -71,10 +71,12 @@ target_include_directories(
   test_mbedtls_psa_rng PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/inc ${FW_ROOT}/libs/ra8_core/inc
                                ${FW_ROOT}/libs/ra8_hal/inc
 )
+include(${FW_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(tf_psa_crypto _RA8_TFPSA_PKG_DIR)
 target_include_directories(
   test_mbedtls_psa_rng SYSTEM
-  PRIVATE ${FW_ROOT}/libs/third_party/tf-psa-crypto/drivers/builtin/include
-          ${FW_ROOT}/libs/third_party/tf-psa-crypto/include
+  PRIVATE ${_RA8_TFPSA_PKG_DIR}/drivers/builtin/include
+          ${_RA8_TFPSA_PKG_DIR}/include
 )
 target_compile_definitions(test_mbedtls_psa_rng PRIVATE MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1)
 target_compile_options(
@@ -96,8 +98,8 @@ add_test(NAME test_mbedtls_psa_rng COMMAND test_mbedtls_psa_rng)
 # !RA8_OFF_TARGET path calls -- and pins them to NIST/RFC vectors. It is a
 # self-contained executable (no ra8_core_hal, no fake). TF-PSA-Crypto is SOUP:
 # compile it -w -fno-strict-aliasing like the other vendored trees; it is
-# already excluded from the coverage filter (libs/third_party/).
-set(_RA8_TFPSA_KAT_DIR ${FW_ROOT}/libs/third_party/tf-psa-crypto)
+# pinned in build.zig.zon and lives in the Zig package cache, outside the tree.
+set(_RA8_TFPSA_KAT_DIR ${_RA8_TFPSA_PKG_DIR})
 file(
   GLOB
   _RA8_TFPSA_KAT_SRC

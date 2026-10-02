@@ -75,8 +75,8 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Eclipse NetX Duo | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/netxduo> |
 | Eclipse USBX | 6.5.0 | MIT | `build.zig.zon` package `usbx` (6dc0cf2) | <https://github.com/eclipse-threadx/usbx> |
 | Eclipse LevelX | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/levelx> |
-| Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
-| TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
+| Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `build.zig.zon` (`mbedtls`, bsikar fork) | <https://github.com/Mbed-TLS/mbedtls> |
+| TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `build.zig.zon` (`tf_psa_crypto`, bsikar fork) | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
 | Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/apache/mynewt-nimble> |
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `apps/shared_libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 (`MZ_VERSION`; release artifact `miniz-3.0.2.zip`) | MIT (zlib-style) | `apps/shared_libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
@@ -191,9 +191,9 @@ below); this section reproduces the copyright line and points to that text.
   `LICENSE.txt` in the pinned upstream tarball, `build.zig.zon`). Origin: Eclipse Foundation
   (Eclipse ThreadX).
 - **Mbed TLS** -- Apache-2.0 (elected). TrustedFirmware.org / Arm. Text:
-  `libs/third_party/mbedtls/LICENSE`.
+  `LICENSE` in the pinned `mbedtls` package (`build.zig.zon`).
 - **TF-PSA-Crypto** -- Apache-2.0 (elected). TrustedFirmware.org. Text:
-  `libs/third_party/tf-psa-crypto/LICENSE`.
+  `LICENSE` in the pinned `tf_psa_crypto` package (`build.zig.zon`).
 - **Apache NimBLE** -- Apache-2.0. Apache Software Foundation. Text:
   `LICENSE` in the pinned `nimble` package; **NOTICE:**
   `NOTICE` in the same package (must be propagated).

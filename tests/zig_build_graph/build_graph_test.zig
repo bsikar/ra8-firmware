@@ -524,7 +524,7 @@ test "an app-local vendored library exports its defines and system dirs onto the
     // headers would fail the app's own compile.
     const system_dirs = local.appSystemIncludeDirs(extra_srcs_app.local);
     try std.testing.expectEqual(@as(usize, 10), system_dirs.len);
-    try std.testing.expectEqualStrings("libs/third_party/tf-psa-crypto/include", system_dirs[0]);
+    try std.testing.expectEqualStrings("pkg:tf_psa_crypto/include", system_dirs[0]);
     try std.testing.expectEqualStrings("port/mbedtls/inc", system_dirs[9]);
 
     // An app with no CMakeLists of its own takes neither.

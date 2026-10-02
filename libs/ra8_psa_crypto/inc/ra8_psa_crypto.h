@@ -8,8 +8,8 @@
  *
  * @details
  * ``ra8_psa_crypto`` is a thin, project-shaped wrapper around the
- * vendored TF-PSA-Crypto 1.x library at
- * ``libs/third_party/tf-psa-crypto``. Where ``ra8_tls`` provides session-
+ * TF-PSA-Crypto 1.x library pinned in ``build.zig.zon``
+ * (package ``tf_psa_crypto``). Where ``ra8_tls`` provides session-
  * oriented TLS, this module exposes the *application-level* PSA Crypto
  * primitives (key import / destroy, signing, hashing, AEAD) behind a
  * small ``ra8_psa_*`` API that returns ``ra8_err_t``.

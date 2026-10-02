@@ -120,9 +120,11 @@ EXIT_VACUOUS = 2
 # with the same slack. NetX Duo followed (RA8FW-385): 13 components, 7303 files
 # covered, file floors re-measured with the same slack again.
 # ThreadX (RA8FW-385) took the largest tree out: 8 components, 814 files.
-MIN_COMPONENTS = 8
-MIN_ENTRIES = 800
-MIN_UPSTREAM_VERIFIED = 790
+# Mbed TLS and TF-PSA-Crypto (RA8FW-385) left for pinned bsikar forks: 6
+# components, 336 files covered, 331 identical.
+MIN_COMPONENTS = 6
+MIN_ENTRIES = 330
+MIN_UPSTREAM_VERIFIED = 325
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300
@@ -307,13 +309,14 @@ SOUP_DOC_DIR = "docs/SOUP"
 # the floor claim sites in check_tree_coverage.py).
 BASIS_CLAIM_FORM = (
     "- **Release basis**: `{tag}` (`{basis_short}`) plus {distance} commits. "
-    "The vendored pin `{pin_short}` is a post-tag development snapshot, not "
+    "The upstream pin `{pin_short}` is a post-tag development snapshot, not "
     "the release."
 )
 BASIS_SHORT_LEN = 12
 
 # Measured 2026-09-17: mbedtls and tf-psa-crypto are the two components whose
-# upstream pin is a bare development commit rather than a tag or an archive.
+# upstream pin is a bare development commit rather than a tag or an archive
+# (since RA8FW-385 a build.zig.zon fork pin on that commit, not a vendored tree).
 # No slack, deliberately: a declaration deleted or a component re-pinned to a
 # tag is meant to fail here until someone re-measures this number on purpose.
 MIN_RELEASE_BASIS = 2
@@ -357,10 +360,11 @@ def _basis_record_failures(comp: Component) -> list[str]:
             "are one claim and must be declared together"
         )
         return failures
-    if comp.provenance != PROV_COMMIT_PINNED:
+    if comp.provenance not in (PROV_COMMIT_PINNED, PROV_DEP_PINNED):
         failures.append(
             f"{comp.key}: release basis declared on a '{comp.provenance}' component; "
-            f"only a {PROV_COMMIT_PINNED} pin can sit at a distance from a release"
+            f"only a {PROV_COMMIT_PINNED} or {PROV_DEP_PINNED} pin can sit at a "
+            "distance from a release"
         )
     if comp.upstream_commit is None:
         failures.append(f"{comp.key}: release basis declared with no upstream_commit to measure")

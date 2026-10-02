@@ -17,15 +17,23 @@
 
 const std = @import("std");
 
-const vendor_include_roots = [_][]const u8{
-    "../third_party/tf-psa-crypto/include",
-    "../third_party/tf-psa-crypto/drivers/builtin/include",
-    "../third_party/mbedtls/include",
-    "../../port/mbedtls/inc",
+/// Package (pinned in build.zig.zon) and the include root inside it.
+const VendorRoot = struct { package: []const u8, dir: []const u8 };
+
+const vendor_include_roots = [_]VendorRoot{
+    .{ .package = "tf_psa_crypto", .dir = "include" },
+    .{ .package = "tf_psa_crypto", .dir = "drivers/builtin/include" },
+    .{ .package = "mbedtls", .dir = "include" },
 };
 
+/// On the configure pass that first asks for a package zig fetches it and
+/// runs the configure again, so a missing one is skipped here.
 fn addVendorHeaders(b: *std.Build, module: *std.Build.Module) void {
-    for (vendor_include_roots) |root| module.addIncludePath(b.path(root));
+    for (vendor_include_roots) |root| {
+        const dep = b.lazyDependency(root.package, .{}) orelse continue;
+        module.addIncludePath(dep.path(root.dir));
+    }
+    module.addIncludePath(b.path("../../port/mbedtls/inc"));
     module.addCMacro("TF_PSA_CRYPTO_CONFIG_FILE", "\"tf_psa_crypto_config.h\"");
     module.addCMacro("MBEDTLS_CONFIG_FILE", "\"mbedtls_config.h\"");
 }
