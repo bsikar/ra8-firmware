@@ -9,8 +9,8 @@ adopted by merging it.
 
 ## Context
 
-Issue #696 ("Platform-arch (d): board-description + arch/chip/board
-build-selection model") proposes an `RA8_ARCH` / `RA8_CHIP` /
+The "Platform-arch (d): board-description + arch/chip/board
+build-selection model" issue proposes an `RA8_ARCH` / `RA8_CHIP` /
 `RA8_BOARD` selection triple, a single toolchain dispatcher under `cmake/`,
 a board-interface header with a gate behind it, and a split of
 `libs/ra8_core/inc/ra8_device.h` so that external-memory geometry
@@ -59,12 +59,12 @@ missing is not the layer but its contract: there is no
 board-interface header and no gate that holds one board library to
 the shape of the other.
 
-`libs/ra8_core/inc/ra8_device.h` is referenced by 27 tracked
-files, including every RA8P1 foundation example, the whole of
-`libs/ra8_board_ra8p1`, the NPU and Ethos-U surface in
-`libs/ra8_hal`, and `tests/cmake/unit_tests.cmake`. Whether the
-memory-map enumerations *specifically* have consumers is the
-question asked by #1048, which is not this issue's and is not
+`libs/ra8_core/inc/ra8_device.h` is referenced by 27 tracked files,
+including every RA8P1 foundation example, the whole of
+`libs/ra8_board_ra8p1`, the NPU and Ethos-U surface in `libs/ra8_hal`,
+and `tests/cmake/unit_tests.cmake`. Whether the memory-map enumerations
+*specifically* have consumers is the question asked by the
+device-memory-map gap issue, which is not this issue's and is not
 settled here.
 
 ### The load-bearing condition: the copies have already drifted
@@ -102,7 +102,7 @@ issue RA8FW-260. For three of the five files that claim is false today:
   `libs/ra8_core/inc/ra8_attributes.h`, marks two file-local helpers
   `RA8_INTERNAL`, and does not carry the `RA8_BOOT_CACHE_VIA_HAL`
   opt-in that routes L1 cache enable through `ra8_cache_icache_enable`
-  for issue #577.
+  for the M85 L1 cache-enable work.
 * `libs/ra8_board_ra8p1/src/boot/vector_table.c` is the more serious
   one. The EK-RA8D2 copy forwards every peripheral IRQ vector to
   `ra8_isr_dispatch` so that a `(handler, ctx)` pair armed through
@@ -161,7 +161,7 @@ in place and add a check that compares the translation units the
 RA8P1 headers declare identical against their EK-RA8D2
 counterparts, failing when they diverge without a declared
 deviation, in the two-direction style proposed for the RTOS
-symbol-isolation check under #695 (a new divergence fails, and a
+symbol-isolation check under the OSAL seam work (a new divergence fails, and a
 declared deviation that no longer exists also fails).
 Cheap, behaviour-neutral, and it converts a prose claim into an
 enforced one.
@@ -173,8 +173,8 @@ structure, at the cost of making one board library depend on
 another, which is the wrong direction for a board layer and would
 have to be undone by Option A later.
 
-**Option D -- defer everything** until #611 and RA8FW-260 land, per the
-issue's own sequencing.
+**Option D -- defer everything** until the filesystem strategy and
+RA8FW-260 land, per the issue's own sequencing.
 
 **The deciding constraint is that no RA8P1 silicon is in hand.**
 RA8FW-260 is open and labelled `needs-purchase`: the RA8P1 board layer
@@ -199,9 +199,9 @@ to say what actually differs. That is a comment-only change and is
 deliberately not bundled here: the ADR authoring rule in
 `docs/adr/README.md` requires an ADR to land as its own commit.
 
-The selection-model half of #696 (the `RA8_ARCH` / `RA8_CHIP` /
+The selection-model half of the issue (the `RA8_ARCH` / `RA8_CHIP` /
 `RA8_BOARD` triple and the toolchain dispatcher) is not decided
-here and stays sequenced behind #611. The premise corrections
+here and stays sequenced behind the filesystem strategy. The premise corrections
 above should be applied to the issue body before that work is
 scheduled, so the estimate is not built on 227 Makefiles that do
 not exist.
@@ -229,7 +229,7 @@ If Option A is adopted later:
   path, and the vector-table shape each become an explicit call.
 * Both boards need bench validation of reset, NMI, SecureFault and
   first-interrupt paths, which is why this waits on RA8FW-260.
-* The board libraries gain the interface contract #696 asks for as
+* The board libraries gain the interface contract the issue asks for as
   a by-product, since what remains in each is by definition the
   board-specific surface.
 
@@ -242,16 +242,16 @@ If Option D is adopted:
 
 ## References
 
-* Issue #696 -- Platform-arch (d): board-description + arch/chip/board
-  build-selection model (this ADR).
+* Platform-arch (d): board-description + arch/chip/board
+  build-selection model (this ADR's issue).
 * Issue RA8FW-298 -- EPIC: Platform architecture, agnostic
   multi-arch / multi-chip / multi-board structure.
-* Issue #611 -- filesystem work #696 is sequenced behind.
+* The platform-complete filesystem strategy this work is sequenced behind.
 * Issue RA8FW-260 -- RA8P1 on-silicon bring-up, board layer landed,
   needs an RA8P1 EK. Source of the byte-identity notes.
-* Issue #577 -- L1 cache enable through the `ra8_cache` HAL, the
+* The M85 L1 cache-enable work through the `ra8_cache` HAL, the
   `RA8_BOOT_CACHE_VIA_HAL` opt-in present only in the EK-RA8D2 copy.
-* Issue #1048 -- whether the device memory map has readers.
+* The device-memory-map gap: whether `ra8_device.h`'s memory map has readers.
 * Issue RA8FW-258 -- RA8D2-vs-RA8P1 difference analysis and multi-chip plan.
 * `libs/ra8_core/inc/ra8_device.h` -- compile-time device selection
   and the memory-map enumerations.
