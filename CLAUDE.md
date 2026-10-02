@@ -347,12 +347,6 @@ This repository utilizes specialized custom project subagents under `.claude/age
   - **Purpose**: Audits safety compliance (DO-178C Level B), compound boolean decision MC/DC test vector coverage, SOLID design principles, and NASA Power of 10 rules.
   - **When to Trigger**: On any modification to core logic, state machines, control flow, or host unit tests under `tests/`.
   - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `just quality::local::test`.
-- **HUM Citations Validation (`@citation-reviewer`)**:
-  - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
-  - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
-  - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run BOTH verification passes -- they answer different questions and neither alone is sufficient:
-    - `python3 scripts/checks/cite_check.py --strict` -- cite-VALIDATION: every cite that EXISTS parses and points at a real chapter/page.
-    - `python3 scripts/checks/cite_ratchet.py --check` -- cite-COVERAGE: every MMIO access HAS a cite, ratcheted against `.github/cite-baseline.txt`. Run `python3 scripts/checks/cite_check.py --require-cites <file>` to see the offending lines. **`--strict` alone cannot detect a missing citation**, so a review that runs only it will approve an entirely uncited driver.
 
 ### Agent Collaboration Protocol
 

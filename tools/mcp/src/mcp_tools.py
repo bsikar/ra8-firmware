@@ -213,7 +213,6 @@ _GATES: dict[str, str] = {
     "cppcheck": "cppcheck",
     "check-annotations": "annotations",
     "mcdc": "mcdc",
-    "cite-check": "cite-check",
     "ai-attribution": "no-ai-attribution",
     "inclusive": "inclusive-terminology",
 }
@@ -448,7 +447,7 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "quality_gate",
         "description": "Run one named quality gate: format-check, tidy, ascii, "
-        "version, cppcheck, check-annotations, mcdc, cite-check, "
+        "version, cppcheck, check-annotations, mcdc, "
         "ai-attribution, inclusive.",
         "inputSchema": _schema({"gate": {"type": "string", "description": "gate name"}}, ["gate"]),
         "handler": tool_quality_gate,
