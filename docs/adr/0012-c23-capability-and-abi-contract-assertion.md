@@ -6,12 +6,12 @@
 * **Status** -- Proposed. The decision below is the owner's to confirm; this
   record frames it and names the constraint that narrows it.
 * **Date** -- 2026-09-17
-* **Issue** -- #787 (Platform-arch (h): portable C23 compiler / ABI /
-  data-model contract), parent epic RA8FW-298.
+* **Issue** -- Platform-arch (h): portable C23 compiler / ABI /
+  data-model contract, parent epic RA8FW-298.
 
 ## Context
 
-#787 asks for a contract with one central property: *required language and
+The issue asks for a contract with one central property: *required language and
 library features are verified with compile probes, not inferred only from a
 compiler name or version.* Before choosing a shape for that contract, this
 record establishes what the tree asserts today and where.
@@ -28,10 +28,10 @@ The top-level `CMakeLists.txt` sets `CMAKE_C_STANDARD 23`,
 `CMAKE_C_STANDARD_REQUIRED ON` and `CMAKE_C_EXTENSIONS ON`. GNU extensions are
 therefore enabled for every cross target configured from that listfile, and
 `tests/cmake/host_config.cmake` repeats the same three settings for the host
-test build. #787 item 2 wants neutral code held to strict ISO C23 by default,
-with extensions confined to named platform surfaces. Neither of those two
-configuration files offers a strict-ISO configuration to hold anything to, so
-the extension policy has no build path behind it yet.
+test build. The issue's item 2 wants neutral code held to strict ISO C23 by
+default, with extensions confined to named platform surfaces. Neither of those
+two configuration files offers a strict-ISO configuration to hold anything to,
+so the extension policy has no build path behind it yet.
 
 ### 2. Capability is inferred from the compiler version, deliberately
 
@@ -49,7 +49,7 @@ and it is also the constraint that decides this ADR: with those variables
 forced, CMake runs no compiler test of its own during a cross configure, so the
 cross build performs **no** configure-time probe of anything. Capability is
 inferred entirely from the pinned version string, which is exactly the
-substitution #787 rules out.
+substitution the issue rules out.
 
 ### 3. One float-ABI capability claim is already marked unverified in-tree
 
@@ -64,9 +64,9 @@ be re-verified against the RA8P1 CMSIS core header and HUM R01UH1064EJ once
 silicon/datasheet access is available".
 
 So a flag that changes floating-point ABI and codegen for a whole chip is set
-from an unconfirmed premise, and the only record of the doubt is a comment.
-A probe cannot settle this one either: it is a silicon fact, not a compiler
-fact. It belongs in the target/toolchain capability matrix #787 asks for, as an
+from an unconfirmed premise, and the only record of the doubt is a comment. A
+probe cannot settle this one either: it is a silicon fact, not a compiler fact.
+It belongs in the target/toolchain capability matrix the issue asks for, as an
 unconfirmed row.
 
 ### 4. The freestanding contract is stated twice, and the two statements differ
@@ -80,8 +80,8 @@ newlib-nano multilib from the effective `-mfpu`", which is why the override has
 to reach the linker flags too.
 
 Both statements are about the same link, and they do not agree on whether
-newlib-nano is in the picture. #787 item 5 wants the freestanding contract
-enumerated; today it is a define plus two divergent comments.
+newlib-nano is in the picture. The issue's item 5 wants the freestanding
+contract enumerated; today it is a define plus two divergent comments.
 
 ### 5. Two C implementations already build the same first-party sources
 
@@ -92,12 +92,12 @@ ABI divergence in a comment where it drops the target's stack-usage bound:
 pins the host image with `-no-pie -Wl,-Ttext-segment=0x70000000` on Linux so
 static data cannot land inside the fake peripheral windows.
 
-That is the data-model question #787 poses, already live: one set of sources,
-two implementations (freestanding `arm-none-eabi` and the hosted 64-bit host
-compiler), with the difference recorded in prose rather than asserted anywhere
-that can fail.
+That is the data-model question the issue poses, already live: one set of
+sources, two implementations (freestanding `arm-none-eabi` and the hosted 64-bit
+host compiler), with the difference recorded in prose rather than asserted
+anywhere that can fail.
 
-### 6. The probe idiom #787 wants already exists, one directory away
+### 6. The probe idiom the issue wants already exists, one directory away
 
 `tests/cmake/host_config.cmake` uses `CheckCCompilerFlag` to probe
 `-fcoverage-mcdc` and `-fcondition-coverage`, and it carries the lesson a
@@ -134,7 +134,7 @@ the data model well but language *features* poorly.
 
 **C. Keep the version pin as the only gate, and say so on purpose.** Record in
 the qualification documentation that capability is asserted by pinning Arm GNU
-Toolchain 13.3 and that the pin is load-bearing. Cost: it closes #787 by
+Toolchain 13.3 and that the pin is load-bearing. Cost: it closes the issue by
 narrowing it, and the first genuinely dissimilar target breaks the claim.
 
 **D. Both A and B, split by kind.** Probes for language and library features at
@@ -145,7 +145,7 @@ three kinds of claim in the issue.
 
 The recommendation is **D**, sequenced so the probe module lands first and the
 matrix is declared before a second dissimilar target is called portable. The
-portability tiers #787 names (`portable-core`, `portable-octet`,
+portability tiers the issue names (`portable-core`, `portable-octet`,
 `platform-specific`) are deliberately **not** proposed here: no file read for
 this record names a tier, both implementations in the tree today have an 8-bit
 byte, and the C28x counterexample that motivates the split is hypothetical
@@ -156,14 +156,14 @@ data model is real would be structure ahead of evidence.
 
 * The version pin stays either way. Nothing in this record argues for relaxing
   it: it protects codegen, and it is only its use as a *capability* claim that
-  #787 objects to.
+  the issue objects to.
 * Under A or D, every cross configure gains a probe step. The probes must be
   compile-only for the reason in option A, and a failure has to name the
   construct and the tier, not just the flag.
 * Under B or D, one header becomes the single home for the data-model
-  invariants, and the assertions currently carried by product code (for
-  example the IEC 60559 guards #747 records in the media-download state
-  header) move there rather than being duplicated.
+  invariants, and the assertions currently carried by product code (for example
+  the IEC 60559 guards the exact decimal-to-binary64 conversion issue recorded
+  in the media-download state header) move there rather than being duplicated.
 * The RA8P1 double-precision FPU premise in section 3 stays unconfirmed until
   silicon or the RA8P1 hardware manual is in hand, whichever option is chosen.
   It should be visible as an unconfirmed row rather than as a comment in a
@@ -181,20 +181,24 @@ data model is real would be structure ahead of evidence.
   `tests/cmake/host_config.cmake`. No count is derived from a search, and no
   statement here asserts that a construct, a `static_assert` or a probe is
   absent from the tree as a whole.
-* The C23 construct inventory #787 asks for (which constructs the tree actually
-  uses, and which of them the analyzer applies semantic rules to) is **not**
-  attempted here. It needs a sweep and an analyzer run, and it is the natural
-  next slice.
+* The C23 construct inventory the issue asks for (which constructs the tree
+  actually uses, and which of them the analyzer applies semantic rules to) is
+  **not** attempted here. It needs a sweep and an analyzer run, and it is the
+  natural next slice.
 * Nothing here is a build. This record touches no build input.
 
 ## References
 
-* #787 -- Platform-arch (h): portable C23 compiler / ABI / data-model contract.
+* Platform-arch (h): portable C23 compiler / ABI / data-model contract
+  (this ADR's issue).
 * RA8FW-298 -- EPIC: platform architecture.
-* #788 -- Platform-arch (i): C23 / MISRA / analyzer coverage and deviation
+* Platform-arch (i): C23 / MISRA / analyzer coverage and deviation
   audit, which owns the analyzer half of the same question.
-* #178 -- the codegen reason the cross compiler version is pinned.
-* #346 -- the stale-probe-cache failure the host configuration learned from.
-* #747 -- IEC 60559 guards asserted in a product header today.
+* The cross-compiler pin: a documented version-specific miniz miscompile is
+  the codegen reason the cross compiler version is pinned.
+* The MC/DC gate's stale compiler probe: the stale-probe-cache failure the
+  host configuration learned from.
+* The exact decimal-to-binary64 conversion issue: IEC 60559 guards asserted
+  in a product header today.
 * `docs/adr/0002-cppcheck-only-misra-enforcement.md` -- the analyzer budget
   decision that bounds what any language policy can be enforced with.
