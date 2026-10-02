@@ -840,12 +840,6 @@
         }
       ],
       "purl": "pkg:github/tensorflow/tflite-micro@fddd3707a3c5733af4cb866f18650441e6712504",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "ec8d3c62d259b66186d93b43f529c94dab01240fc6e2873c4802efa011a47ae3"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -855,15 +849,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/tflite-micro"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "278"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -874,23 +864,23 @@
           "value": "fddd3707a3c5733af4cb866f18650441e6712504"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/tflite-micro/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "false"
         },
         {
           "name": "ra8:note0",
-          "value": "LEAN subset: MicroInterpreter / MicroAllocator / op-resolver core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and examples are omitted."
+          "value": "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig content hash), fetched by cmake/zig_package.cmake; the LEAN subset is the source list in cmake/tflite_micro_sources.cmake."
         },
         {
           "name": "ra8:note1",
-          "value": "Build deps FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in build.zig.zon (not nested)."
+          "value": "LEAN subset: MicroInterpreter / MicroAllocator / op-resolver core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and examples are omitted."
         },
         {
           "name": "ra8:note2",
+          "value": "Build deps FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in build.zig.zon (not nested)."
+        },
+        {
+          "name": "ra8:note3",
           "value": "Phase 2 replaces the Ethos-U op stub with an ra8_npu adapter; see docs/SOUP/tflite-micro.md."
         }
       ]

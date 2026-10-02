@@ -130,11 +130,11 @@ add_test(NAME test_ra8_npu_loader COMMAND test_ra8_npu_loader)
 # byte buffers. The first-party TUs keep the project warning profile.
 #
 # Guarded on the vendor trees being present: a partial checkout without
-# libs/third_party/tflite-micro configures without this target instead of
+# the pinned TFLite-micro package configures without this target instead of
 # failing, and says so.
 # ---------------------------------------------------------------------------
-set(_ra8_tflm_host_dir "${FW_ROOT}/libs/third_party/tflite-micro")
 include(${FW_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(tflite_micro _ra8_tflm_host_dir)
 ra8_zig_package_dir(flatbuffers _ra8_flatb_host_dir)
 ra8_zig_package_dir(gemmlowp _ra8_gemmlowp_host_dir)
 ra8_zig_package_dir(ruy _ra8_ruy_host_dir)
@@ -149,9 +149,9 @@ if(NOT EXISTS "${_ra8_tflm_host_dir}/tensorflow/lite/micro/micro_interpreter.h"
 else()
   enable_language(CXX)
 
-  file(GLOB_RECURSE _ra8_tflm_host_sources CONFIGURE_DEPENDS
-       "${_ra8_tflm_host_dir}/tensorflow/*.cc"
-  )
+  include(${FW_ROOT}/cmake/tflite_micro_sources.cmake)
+  set(_ra8_tflm_host_sources ${RA8_TFLM_LEAN_SOURCES})
+  list(TRANSFORM _ra8_tflm_host_sources PREPEND "${_ra8_tflm_host_dir}/")
   list(
     FILTER
     _ra8_tflm_host_sources

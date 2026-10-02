@@ -8,7 +8,7 @@
  * @details
  * This is the REAL `tflite::Register_ETHOSU()` operator kernel for this project,
  * replacing the vendored portable stub
- * (`libs/third_party/tflite-micro/.../kernels/ethosu.cc`, which returned
+ * (TFLite-micro's `tensorflow/lite/micro/kernels/ethosu.cc`, which returned
  * `nullptr`). The vendored stub is excluded from the TFLite-micro object library
  * by `cmake/tflite_micro.cmake`, and this first-party translation unit is
  * compiled into that library in its place, so `MicroInterpreter` resolves the
