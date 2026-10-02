@@ -21,8 +21,7 @@ to write:
 All four dual-image apps in the tree do currently make that call.  Nothing
 enforced it, so a fifth app that forgot the line would silently lose -Werror
 across half its code, with no diagnostic and nothing to notice it.
-This checker is the enforcement half, in the shape of its sibling
-``check_cpu1_warning_profile.py``: the same escape, one image over.
+This checker is the enforcement half.
 
 WHAT IT ENFORCES, PRECISELY
 ---------------------------
@@ -40,9 +39,8 @@ SCOPE, HONESTLY
 ---------------
 This is a listfile-text check, not a build-graph check.  It proves the call is
 written, not that CMake reached it: a call parked behind a false ``if()``
-would satisfy this checker.  That is the same bargain
-``check_cpu1_warning_profile.py`` makes, and it is worth stating plainly
-rather than implying more.  It also does not read the stack-usage argument;
+would satisfy this checker, and it is worth stating plainly rather than
+implying more.  It also does not read the stack-usage argument;
 the bar per app is a judgement call, and the profile being applied at all is
 what this gate is for.
 
