@@ -535,7 +535,7 @@ static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, 
     file->dirty = 1U;
     return priv_exfat_flush_set(file);
   }
-  /* The FAT boundary of #676: `DIR_FileSize` is 32-bit, so a write that would
+  /* The FAT boundary of the 4 GiB cap: `DIR_FileSize` is 32-bit, so a write that would
    * push the file past 4 GiB - 1 cannot be recorded and is refused whole --
    * truncating the count silently would corrupt the entry on the next flush.
    * exFAT never reaches this test (its branch returned above). */

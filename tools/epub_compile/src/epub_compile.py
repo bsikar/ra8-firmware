@@ -7,8 +7,8 @@ The on-device reader (apps/shared_libs/book) never unzips or parses XHTML at run
 This host tool does it once: it unzips the EPUB, parses every spine document
 into a faithful DOM (every tag, attribute and text run preserved), keeps each
 stylesheet verbatim, transcodes raster images to the panel-native 4bpp
-grayscale at source resolution (downscale is an opt-in --max-edge knob;
-issue #210) and preserves SVG as
+grayscale at source resolution (downscale is an opt-in --max-edge knob)
+and preserves SVG as
 vector source, then serializes everything into the binary layout described by
 apps/shared_libs/book/inc/book.h.
 
@@ -127,7 +127,7 @@ def _run_selftest() -> int:
 def main() -> int:
     """Parse the command line, compile, and write the container to disk.
 
-    Two modes: `--selftest` runs the issue #196 fixed-layout self-check and
+    Two modes: `--selftest` runs the fixed-layout self-check and
     ignores the positional arguments entirely, otherwise both input and output
     are required. The output written is the RBKC-wrapped container, not the raw
     blob -- `--chunk-bytes` must equal the reader's `ra8_vmem` frame size or the

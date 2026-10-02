@@ -1,7 +1,7 @@
 /**
  * @file tests/host/src/exfat_fs_test.c
  * @brief Standalone host test for ra8_fs exFAT read, the leading-slash
- *        open regression, and the exFAT write path (#104: create /
+ *        open regression, and the exFAT write path (create /
  *        multi-cluster write + read-back / rename / unlink).
  *
  * @details
@@ -18,7 +18,7 @@
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,
  *   5. the file content reads back byte-for-byte.
  *
- * It then exercises the exFAT write path (#104, now the streaming writer behind
+ * It then exercises the exFAT write path (now the streaming writer behind
  * `ra8_fs_write_file()`) on the same mounted volume:
  *   6. write_file + read-back + rename + unlink of a single-cluster file,
  *   7. the same cycle for a multi-cluster file (a payload spanning four 4 KiB
@@ -32,7 +32,7 @@
  * the cluster-free walk -- is single-condition, so MC/DC for them collapses to
  * branch coverage: each must be taken both ways, and the cases above drive the
  * match / mismatch and single- / multi-cluster branches accordingly. The
- * compound decisions the streaming writer added in #602 (contiguity probe,
+ * compound decisions the streaming writer added (contiguity probe,
  * `NoFatChain` transition, chain walk, allocation survey) carry their vectors
  * in the Unity suite, cited by `path@function`; this harness deliberately
  * exercises the whole-file round trip, not those.
@@ -115,7 +115,7 @@ typedef enum : uint8_t {
 
 static const char s_expect[] = "Hello exFAT from the ra_fs standalone test 1234567890\n";
 
-/* #104: a payload that spans several 4 KiB exFAT clusters (with an odd tail) so
+/* A payload that spans several 4 KiB exFAT clusters (with an odd tail) so
  * the write/read/free paths exercise their multi-cluster branches. */
 enum : uint32_t { k_mc_payload_bytes = 12425U /**< Mc payload bytes. */ };
 
@@ -320,7 +320,7 @@ RA8_INTERNAL static void internal_check(int cond, const char* what)
  *   fsck_exfat -n "${DEV}s1" ; hdiutil detach "$DEV"
  *   # Linux (fsck.exfat validates the raw partition slice directly):
  *   dd if=/tmp/x.bigfile bs=512 skip=2048 count=4096 of=/tmp/vol.img ; fsck.exfat -n /tmp/vol.img
- * #104 confirmed both the BIG.BIN-present and post-unlink images fsck-clean
+ * The exFAT write work confirmed both the BIG.BIN-present and post-unlink images fsck-clean
  * ("The volume RAFS appears to be OK").
  */
 /**
@@ -403,7 +403,7 @@ RA8_INTERNAL static void internal_check_open_reads_hello(ra8_fs_mount_t* mnt, co
 }
 
 /* exFAT write/create/rename/unlink round-trip, all with leading slashes
- * (#93 covered read; create + rename also have to strip the slash). */
+ * (the read fix covered read; create + rename also have to strip the slash). */
 /**
  * @brief Check write path.
  * @details Performs one bounded, deterministic operation for this host test.
@@ -444,7 +444,7 @@ RA8_INTERNAL static void internal_check_write_path(ra8_fs_mount_t* mnt)
   internal_check(!internal_name_present(mnt, "W83R.TXT"), "unlink removed the entry");
 }
 
-/* #104: multi-cluster exFAT write. A payload larger than one 4 KiB cluster must
+/* Multi-cluster exFAT write. A payload larger than one 4 KiB cluster must
  * allocate a contiguous run in the bitmap, read back byte-identical across the
  * cluster boundaries, and free every cluster on unlink -- branches the
  * single-cluster W83.TXT case never reaches. */
@@ -503,7 +503,7 @@ RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
   internal_check(!internal_name_present(mnt, "BIG2.BIN"), "multi-cluster file gone after unlink");
 }
 
-/* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
+/* Drive the name-matcher's mismatch branches in priv_exfat_take_set --
  * one wrong name of the SAME length (the byte-compare fails) and one of a
  * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
 /**
@@ -664,7 +664,7 @@ int main(int argc, char** argv)
                  "listdir root succeeds");
   internal_check(s_found_hello == 1, "listdir finds HELLO.TXT");
 
-  /* #93: a leading slash must resolve on exFAT just like it does on FAT. */
+  /* A leading slash must resolve on exFAT just like it does on FAT. */
   internal_check_open_reads_hello(mnt, "/HELLO.TXT");
   internal_check_open_reads_hello(mnt, "HELLO.TXT");
 

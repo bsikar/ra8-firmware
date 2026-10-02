@@ -751,7 +751,7 @@ static ra8_err_t internal_truncate_locked(ra8_fs_file_t* file, uint64_t new_size
   if (file->mount->type == k_ra8_fs_type_exfat) {
     e = internal_exfat_trunc(file, new_size);
   } else if (new_size > (uint64_t)k_ra8_fs_fat_max_file_bytes) {
-    /* The FAT boundary of #676: `DIR_FileSize` cannot record 4 GiB or more,
+    /* The FAT boundary of the 4 GiB cap: `DIR_FileSize` cannot record 4 GiB or more,
      * so the request is refused rather than wrapped (see ra8_fs_meta.h). */
     e = k_ra8_err_invalid_size;
   } else {

@@ -6,7 +6,7 @@
  * `ra8_gfx_font_8x16.c` is a data unit: one static glyph table plus the public
  * ::ra8_gfx_font_8x16 descriptor that points at it. It was compiled into the
  * host coverage build and linked by no test binary, so gcovr reported it not at
- * 0% but not at all, which is the state #727 exists to end. Linking it from a
+ * 0% but not at all, which is the state this test exists to end. Linking it from a
  * test is the whole point; asserting on it is what makes the link worth having.
  *
  * What is pinned here is exactly what a consumer of ::ra8_gfx_font_t is

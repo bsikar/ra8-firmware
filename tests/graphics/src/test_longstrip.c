@@ -12,7 +12,7 @@
  *   - open validation (MC/DC on the geometry + viewport compound decisions),
  *   - O(1) y->band geometry + visible-band range,
  *   - a full top-to-bottom scroll traversal proving ZERO skipped bands, zero
- *     seams and complete canvas coverage (the #289 0-skip contract),
+ *     seams and complete canvas coverage (the vertical-scroll 0-skip contract),
  *   - fling physics: bounded convergence + end clamp (MC/DC on the fling-stop
  *     and end-pin compound decisions),
  *   - directional prefetch (MC/DC on the prefetch-skip compound decision),

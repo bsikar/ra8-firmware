@@ -1,6 +1,6 @@
 /**
  * @file ra8_vmem_stream.h
- * @brief Read a page-cached object as a seekable byte stream (Layer 2 helper, #147/#151).
+ * @brief Read a page-cached object as a seekable byte stream (Layer 2 helper).
  * @ingroup grp_ereader
  *
  * @par Tag

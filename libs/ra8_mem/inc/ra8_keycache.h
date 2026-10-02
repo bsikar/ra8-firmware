@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * The single hash + pin + evict engine every reader cache is built on. #345
+ * The single hash + pin + evict engine every reader cache is built on. The keycache merge
  * folded ::ra8_vmem's once-duplicate SLRU/hash/pin machinery into this one
  * implementation, so the eviction policy is now a config choice rather than a
  * second copy of the code. A keycache maps a fixed-size opaque **key** to a

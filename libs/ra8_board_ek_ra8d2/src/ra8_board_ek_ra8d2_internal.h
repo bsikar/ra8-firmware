@@ -62,7 +62,7 @@ typedef enum : uint16_t {
  * the same answer gets it as a predicate rather than as a mutable extern: a
  * caller can ask, and cannot lie about it.
  *
- * Since #3003 the console is Zig (``src/internal/uart_console.zig``) and this
+ * The console is now Zig (``src/internal/uart_console.zig``) and this
  * symbol comes out of the board's static archive. The declaration stays here
  * because the C host suites still call it.
  *

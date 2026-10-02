@@ -203,7 +203,7 @@ void priv_fat_entry_stamp_write(uint8_t* entry);
  * @details What a rename gets. A rename changes the name, not the bytes, so
  *          advancing `DIR_WrtDate` would tell every `rsync`, backup and OTA
  *          "newest image" heuristic that the contents changed -- the exact
- *          class of false positive #601 exists to remove, only inverted. FAT
+ *          class of false positive the timestamp fix exists to remove, only inverted. FAT
  *          has no separate metadata-change field, so the honest record of
  *          "this entry was touched" is the access date, which is also the only
  *          access field FAT has (there is no last-access TIME).

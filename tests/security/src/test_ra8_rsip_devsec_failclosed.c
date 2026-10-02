@@ -1,7 +1,6 @@
 /**
  * @file test_ra8_rsip_devsec_failclosed.c
- * @brief Production fail-closed test for the RSIP device-security path (issue
- * #216)
+ * @brief Production fail-closed test for the RSIP device-security path
  *
  * @par Tag
  * [Ring 1 / Core] {World: S}
@@ -10,8 +9,8 @@
  * ``ra8_rsip_devsec.c`` (device lifecycle / debug authorisation / tamper /
  * SPA-DPA arm) used to drive an invented "RSIP security-state" register block
  * cited to HUM Ch 51 "Security Features" -- a prose feature index with no
- * register map. Issue #216 fail-closes that fiction the same way #214 / #215
- * did: the insecure off-target command path stays behind
+ * register map. The RSIP register audit fail-closes that fiction the same way as the
+ * asym and hash paths: the insecure off-target command path stays behind
  * ``#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`` and the
  * production ``#else`` returns ``k_ra8_err_not_supported`` for every entry
  * point, writing no fabricated state.
