@@ -87,4 +87,56 @@ pub fn build(b: *std.Build) void {
         const tests = b.addTest(.{ .root_module = test_module });
         test_step.dependOn(&b.addRunArtifact(tests).step);
     }
+
+    addAbiTests(b, target, optimize, test_step);
+}
+
+/// Drive the C membrane through a linked archive on both sides of the
+/// fail-closed split, whatever this build's own options say.
+///
+/// The membrane screens some arguments before the vault sees them, so the order
+/// of those screens is tested at the exported symbol. `vault` comes from the
+/// same source under the same options, so the test knows which side it is on
+/// without restating the switch.
+fn addAbiTests(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    test_step: *std.Build.Step,
+) void {
+    // `vault.enabled` is `off_target or insecure_stub_crypto`; with the second
+    // held false, `off_target` alone picks the side.
+    for ([_]bool{ true, false }) |off_target| {
+        const abi_options = b.addOptions();
+        abi_options.addOption(bool, "off_target", off_target);
+        abi_options.addOption(bool, "insecure_stub_crypto", false);
+
+        const abi_library_module = b.createModule(.{
+            .root_source_file = b.path("src/ra8_secure_app_abi.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        abi_library_module.addOptions("build_config", abi_options);
+        const abi_library = b.addLibrary(.{
+            .name = if (off_target) "ra8_secure_app_enabled" else "ra8_secure_app_fail_closed",
+            .linkage = .static,
+            .root_module = abi_library_module,
+        });
+
+        const vault_module = b.createModule(.{
+            .root_source_file = b.path("src/internal/vault.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        vault_module.addOptions("build_config", abi_options);
+        const test_module = b.createModule(.{
+            .root_source_file = b.path("tests/abi_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_module.addImport("vault", vault_module);
+        test_module.linkLibrary(abi_library);
+        const tests = b.addTest(.{ .root_module = test_module });
+        test_step.dependOn(&b.addRunArtifact(tests).step);
+    }
 }
