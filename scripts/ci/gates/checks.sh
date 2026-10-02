@@ -78,7 +78,7 @@ _pcc_banned_constructs() (
 # functions -- with no waiver list and no narrowed scope. The two rejected
 # alternatives are worth naming, because both report green: a waiver list
 # would grandfather the offenders permanently, and narrowing the scope back to
-# C would restore the exact defect #359 exists to fix.
+# C would restore the exact defect this scope exists to fix.
 _pcc_size_caps() (
   set -e
   python3 scripts/checks/check_function_size.py --selftest
@@ -184,7 +184,7 @@ _pcc_layout_and_credentials() (
   bash scripts/builders/check_header_file_placement.sh
   # ra8_regs.h claims to be the one include that reaches every RA8D2 register
   # block. No TU includes an umbrella, so nothing preprocesses it and the claim
-  # rots unobserved: by #1389 it re-exported 30 of 60 headers. Keep it complete.
+  # rots unobserved: once it re-exported only 30 of 60 headers. Keep it complete.
   python3 scripts/checks/check_umbrella_regs.py --selftest
   python3 scripts/checks/check_umbrella_regs.py
 )
@@ -194,7 +194,7 @@ _pcc_board_and_layering() (
   set -e
   # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
-  # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
+  # the DFU example fix removed (identical pins copy-pasted across 29 apps) cannot come back.
   # --selftest proves the detector fires AND that an in-source build under
   # examples/<app>/build/ is excluded from the scope before a clean run.
   bash scripts/builders/check_example_board_pins.sh --selftest
@@ -205,8 +205,8 @@ _pcc_board_and_layering() (
   python3 scripts/checks/check_core_layering.py
   # No first-party library may name an RTOS or middleware API symbol: the
   # scheduler, the USB device stack and the FTL are reached through a seam
-  # bound under port/ (#695 workstream (c)). The tree does not satisfy that
-  # yet and #695 is design-only, so the ledger in the checker freezes the
+  # bound under port/ (the OSAL seam's workstream (c)). The tree does not satisfy that
+  # yet and the OSAL seam is design-only, so the ledger in the checker freezes the
   # leak sites that exist today: a new symbol fails, and a symbol that has
   # been burned down also fails until its ledger entry goes with it.
   # --selftest proves the detector fires, stays quiet on lookalike
@@ -229,7 +229,7 @@ _pcc_repository_structure() (
   set -e
   # No .gitignore directory pattern may match at arbitrary depth. `build/` did,
   # for the life of the tree: any directory named `build` was silently
-  # unaddable, and nearly lost the files moved into scripts/build/  # PATHREF-OK: #359
+  # unaddable, and nearly lost the files moved into scripts/build/  # PATHREF-OK: reorg
   # and would have lost a seventh outright. The failure is invisible in both
   # directions -- git declines to add and says nothing -- so nothing but a gate
   # asking the question can catch it.

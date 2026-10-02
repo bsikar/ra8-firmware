@@ -40,7 +40,7 @@ if [ -z "${_RA8_HISTORY_SH:-}" ]; then
   #     metadata that `git archive` cannot carry and no snapshot can synthesise.
   #
   # Exporting RA8_CI_COMMIT_RANGE into the snapshot instead (the other candidate
-  # in #348) does not work: the range names SHAs the snapshot's fresh object
+  # for the snapshot fix) does not work: the range names SHAs the snapshot's fresh object
   # store does not contain, so `git rev-list` dies with "Invalid revision range".
   # Making it work would mean importing the host object store into every
   # snapshot, which is precisely the independence run_suite_on_snapshot documents
@@ -87,7 +87,7 @@ if [ -z "${_RA8_HISTORY_SH:-}" ]; then
   # absent tool.
   #
   # The invariant asserted here is history DEPTH (> 1 commit), not the span of
-  # the resolved range, even though #348 words it as the latter. A range spanning
+  # the resolved range, even though the snapshot fix was worded as the latter. A range spanning
   # exactly one commit is perfectly legal -- pushing a single commit produces
   # `HEAD~1..HEAD` -- so failing on a one-commit span would reject the most
   # ordinary push there is. What is never legal is the gate reading a repository
@@ -156,7 +156,7 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
     # rejects. A push event always carries at least its tip commit, so drop the
     # degenerate base and let the head~1 fallback scan that one commit instead.
     # workflow_dispatch deliberately keeps base == head: a manual re-run has
-    # nothing new to scan, and rejecting that vacuity is #357's whole point.
+    # nothing new to scan, and rejecting that vacuity is the whole point.
     if [[ "${GITHUB_EVENT_NAME:-}" == "push" && -n "$base" ]] &&
       [[ "$(ci_history_git "$repo" rev-parse --verify --quiet "${base}^{commit}" 2>/dev/null)" == "$(ci_history_git "$repo" rev-parse --verify --quiet "${head}^{commit}" 2>/dev/null)" ]]; then
       base=""

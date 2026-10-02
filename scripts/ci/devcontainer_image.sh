@@ -578,7 +578,7 @@ EOF
 
   # The digest recorded in an image, or nothing when the image is absent or
   # predates this labelling. Both label locations are consulted: docker reports
-  # .Config.Labels and podman reports both. An image built before #521 reports
+  # .Config.Labels and podman reports both. An image built before the stale-image fix reports
   # neither, which is a stale image rather than an error.
   #
   # Args: $1 image reference (default: the managed tag)
@@ -645,7 +645,7 @@ EOF
       return
     fi
     echo "==> cached $IMAGE_TAG was built from a DIFFERENT locked root context."
-    echo "    image: ${have:-(no context label -- built before #521 recorded one)}"
+    echo "    image: ${have:-(no context label -- built before images recorded one)}"
     echo "    tree:  $want"
     echo "    Rebuilding. A cached image that predates the Dockerfile is how four"
     echo "    gates came to fail in the container and pass natively on one box."

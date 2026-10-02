@@ -34,7 +34,7 @@
 # both directions before anyone can trust it again.
 gate_ci_status_contract() (
   set -e
-  # No require_cmd for the reader's toolchain: since #1144 the reader is the Zig
+  # No require_cmd for the reader's toolchain: since its port the reader is the Zig
   # tool tools/ci_status, and its launcher scripts/builders/ci_status.sh already
   # fails closed with a FATAL and status 2 when zig cannot be resolved. A
   # require_cmd here would instead fail on a host where zig is installed but off
@@ -142,7 +142,7 @@ suite_errexit_selftest() {
 
 # Assert that run_suite() refuses to report PASS for a suite that ran nothing.
 #
-# Two ways the suite could once do exactly that, both fixed in #190 and both
+# Two ways the suite could once do exactly that, both fixed and both
 # asserted here so neither can come back:
 #
 #   1. an EMPTY gate selection. The summary loop is bounded by `gate_names`,
@@ -406,7 +406,7 @@ suite_abort_selftest() (
 # Assert that the commit-message gates can still tell real history from a
 # synthetic snapshot -- in BOTH directions.
 #
-# Shaped after suite_errexit_selftest above, and for the same reason: #348 was
+# Shaped after suite_errexit_selftest above, and for the same reason: the snapshot bug was
 # a detector that had quietly stopped seeing its subject while still printing a
 # green line. A guard nobody has watched fire is worth nothing, so the property
 # is re-proved on every run rather than remembered.
