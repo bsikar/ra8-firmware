@@ -198,7 +198,7 @@ test "a CPU1 image with no middleware keeps exactly its old flags and path" {
     const a = arena.allocator();
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
-        try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+        if (image.uses.len != 0) continue;
         const view = cpu1.App{ .name = app.name, .dir = app.dir, .board = app.board };
         const global = &[_][]const u8{ "-mcpu=cortex-m85", "-O0" };
         try std.testing.expectEqualDeep(cpu1.compileFlags(a, global), cpu1.unitFlags(a, image, global));
@@ -228,9 +228,18 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "every CPU1 image in the table still has a C entry" {
+test "threadx_cpu1 is the one CPU1 image with a Zig entry, and it uses the kernel" {
+    var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
-        try std.testing.expectEqual(cpu1.EntryLanguage.c, image.entry_language);
+        if (image.entry_language == .c) {
+            try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+            continue;
+        }
+        zig_entries += 1;
+        try std.testing.expectEqualStrings("threadx_cpu1", app.name);
+        try std.testing.expectEqual(@as(usize, 1), image.uses.len);
+        try std.testing.expectEqualStrings("threadx_m33", image.uses[0]);
     }
+    try std.testing.expectEqual(@as(usize, 1), zig_entries);
 }
