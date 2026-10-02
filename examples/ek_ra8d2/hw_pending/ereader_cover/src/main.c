@@ -24,7 +24,7 @@
  * and silicon. Any failure on any stage prints a FAIL banner and halts on a
  * BKPT before the PASS line, so the gate is exact.
  *
- * This is the EPUB analogue of `ereader_image` (#106, which decodes a bare
+ * This is the EPUB analogue of `ereader_image` (the reflow image demo, which decodes a bare
  * baked PNG): the only new surface is the `epub_get_cover_image` extraction
  * in front of the proven decode+scale+blit pipeline.
  *

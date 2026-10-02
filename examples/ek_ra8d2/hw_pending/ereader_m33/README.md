@@ -28,7 +28,7 @@ the heavy next-page work before it re-parks.
   value for the M85 to narrate. On silicon the single physical SDRAM is shared,
   so an M85 re-read would match.
 - **The wake path is real.** The M33 bumps a turn request and pokes IPC0
-  (`ra8_ipc_send_event`, the same #149 wake `compile_on_m33` uses); the woken
+  (`ra8_ipc_send_event`, the same M33 wake `compile_on_m33` uses); the woken
   M85 restores its clock, does the work the fast core owns, acks, and re-parks;
   the M33 re-renders the held page, re-folding the identical CRC. The CRC staying
   stable across every re-render is the assertion.
