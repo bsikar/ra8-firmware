@@ -23,6 +23,7 @@ const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const cpu1_threadx = @import("cpu1_threadx.zig");
 const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
+const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
 const interface_archive = @import("interface_archive.zig");
@@ -100,6 +101,16 @@ pub fn addThreadxM33Modules(b: *std.Build, step: *std.Build.Step, globals: build
         return;
     };
     cpu1_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+}
+
+/// The `txm-m33` step: the library a CPU1 module links (RA8FW-413).
+pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "txm-m33: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
 fn addCrossApp(

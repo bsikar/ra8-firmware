@@ -38,6 +38,7 @@ default:
     @echo "  just zig::parity            Print the slice manifest"
     @echo "  just zig::threadx-m33       Build the ThreadX kernel for CPU1 (Cortex-M33)"
     @echo "  just zig::threadx-m33-modules  Build the ThreadX Module Manager for CPU1"
+    @echo "  just zig::txm-m33              Build the ThreadX module library for CPU1 modules"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
     @echo "The CMake path is unchanged: just tests::build, just apps::build,"
@@ -108,6 +109,10 @@ threadx-m33: _zig
 # Build the ThreadX Module Manager for CPU1 (Cortex-M33) as libthreadx_m33_modules.a
 threadx-m33-modules: _zig
     "${RA8_ZIG}" build threadx-m33-modules
+
+# The library a CPU1 ThreadX module links (RA8FW-413).
+txm-m33: _zig
+    "${RA8_ZIG}" build txm-m33
 
 # Remove this graph's own build outputs; no CMake tree is touched
 clean:
