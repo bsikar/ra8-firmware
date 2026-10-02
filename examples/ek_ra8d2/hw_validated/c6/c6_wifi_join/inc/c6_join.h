@@ -7,8 +7,8 @@
  *
  * @details
  * ``c6_wifi_link`` took the ESP32-C6's Wi-Fi station up through ``ra8_c6link``
- * and read its MAC, but joined no network -- that was left to #492. This
- * application is #492: it associates the station with the bench access point,
+ * and read its MAC, but joined no network -- that was left for later. This
+ * application does it: it associates the station with the bench access point,
  * runs a NetX Duo DHCP client over the ``nx_ether_driver_c6`` link driver to
  * obtain a lease, and then proves the path carries traffic by pinging the
  * lease's gateway.

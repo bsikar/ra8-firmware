@@ -16,7 +16,7 @@ content over a fixed tab bar, laid out by `ra8_widget_layout_stack` and drawn
 through `ra8_gfx` into the GLCDC buffer. Status bar and tab bar are shared
 chrome that read the registry; only the content widget differs per app.
 
-**Input routing (#145 + #146).** SW1 and SW2 are delivered as `button` events
+**Input routing (widgets + app framework).** SW1 and SW2 are delivered as `button` events
 through `ra8_app_route_input` to the focused app, whose `on_input` launches the
 neighbouring app. A touch on the tab bar goes through `ra8_widget_dispatch`,
 which maps the hit column to an app id. Either way the focus lifecycle fires and

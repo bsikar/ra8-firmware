@@ -2,7 +2,7 @@
 
 Opens a baked synthetic large-structure EPUB in memory and asserts that the
 firmware's bounded ZIP arena and XML workspaces handle it -- a regression net
-for #144. The fixture carries a full spine just under the
+for the large-EPUB no_mem bug. The fixture carries a full spine just under the
 `k_epub_max_chapters` cap, an NCX with a navPoint per chapter, a cover, and
 more archive entries than the real book that prompted the bug.
 

@@ -13,7 +13,7 @@
  *   1. Registers two stub apps into one registry:
  *      - `reader`   (id 1) -- a **core, non-removable** app (`removable=false`):
  *        the "core functionality should be able to be uninstalled" point from
- *        #146 says the *optional* apps are removable; the reader is core here.
+ *        The app framework says the *optional* apps are removable; the reader is core here.
  *      - `settings` (id 2) -- an **optional, removable** app (`removable=true`),
  *        wrapped in a build-time guard (`#if APP_LAUNCH_SETTINGS`). Building with
  *        `-DAPP_LAUNCH_SETTINGS=0` drops it from the registry entirely -- the
@@ -141,7 +141,7 @@ static void app_launch_hil_emit_pass(void)
 
 /**
  * @def APP_LAUNCH_SETTINGS
- * @brief Build-time selector for the optional `settings` app (#146 exclusion).
+ * @brief Build-time selector for the optional `settings` app (core-uninstallable exclusion).
  *
  * @details
  * Defaults to 1 (settings shipped). Define it to 0 at configure time

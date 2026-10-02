@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME widget_app_demo
   STACK_BYTES 8192
-  DESCRIPTION "Interactive ra8_widget + ra8_app launcher on the live GLCDC panel (#145/#146 demo)"
+  DESCRIPTION "Interactive ra8_widget + ra8_app launcher on the live GLCDC panel (widget + app framework demo)"
   LIBS ra8_app
        ra8_widget
        ra8_box

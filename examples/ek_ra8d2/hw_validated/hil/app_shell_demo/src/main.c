@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/app_shell_demo/src/main.c
- * @brief App-shell chrome: launch reader / library / settings apps (#146 Ph2).
+ * @brief App-shell chrome: launch reader / library / settings apps (app framework phase 2).
  *
  * @details
  * The chrome / "shell" increment of the app framework. It
@@ -22,7 +22,7 @@
  *      - `settings` (id 3) -- **optional, removable** (`removable = true`),
  *        wrapped in a build-time guard (`#if APP_SHELL_SETTINGS`). Building with
  *        `-DAPP_SHELL_SETTINGS=0` drops it from the registry entirely -- the
- *        "core uninstallable" build-time-exclusion mechanism from #146 -- and the
+ *        "core uninstallable" build-time-exclusion mechanism from the app framework -- and the
  *        shell still builds + runs (it just skips the settings leg).
  *   2. Presents a launcher: enumerates the registry (`ra8_app_count` +
  *      `ra8_app_at`), logs each app as a menu entry, and launches one **by its
@@ -163,7 +163,7 @@ static void app_shell_hil_emit_pass(void)
 
 /**
  * @def APP_SHELL_SETTINGS
- * @brief Build-time selector for the optional `settings` app (#146 exclusion).
+ * @brief Build-time selector for the optional `settings` app (core-uninstallable exclusion).
  *
  * @details
  * Defaults to 1 (settings shipped). Define it to 0 at configure time

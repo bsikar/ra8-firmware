@@ -5,7 +5,7 @@
  * @details
  * The sibling `widget_app_demo` proves the `ra8_widget` + `ra8_app` stack as an
  * interactive launcher. This app is the focused demonstration of the **new
- * compositor primitive** issue #145 adds: ::ra8_widget_panel -- a container that
+ * compositor primitive** the widget work adds: ::ra8_widget_panel -- a container that
  * is itself a ::ra8_widget_t, which is what turns the flat widget array into a
  * **tree**. It composes a small tree and shows the damage-tracked partial flush
  * on `ra8_emulator`'s panel window.

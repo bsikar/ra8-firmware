@@ -17,7 +17,7 @@
  *   - Each app is a **widget tree**: a status bar (fixed) over per-app content
  *     (flex) over a tab bar (fixed), laid out by `ra8_widget_layout_stack` and
  *     drawn by each widget's `render` through `ra8_gfx` into the GLCDC buffer.
- *   - **Input routing** (#145 + #146): SW1 = previous app, SW2 = next app. A
+ *   - **Input routing** (widgets + app framework): SW1 = previous app, SW2 = next app. A
  *     press is delivered as a `button` event through `ra8_app_route_input` to the
  *     focused app, whose `on_input` selects the neighbour app and launches it.
  *     A touch is routed through `ra8_widget_dispatch` to the tab bar, which maps
@@ -68,7 +68,7 @@
 #include "ra8_ui.h"
 #include "ra8_widget.h"
 
-/** @brief Build-time guard for the optional `Settings` app (#146 exclusion). */
+/** @brief Build-time guard for the optional `Settings` app (core-uninstallable exclusion). */
 #ifndef WA_APP_SETTINGS
 /** @brief WA APP SETTINGS. */
 #define WA_APP_SETTINGS (1)

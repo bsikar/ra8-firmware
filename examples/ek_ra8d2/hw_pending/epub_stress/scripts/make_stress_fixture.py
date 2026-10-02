@@ -4,7 +4,7 @@
 """Generate epub_stress_fixture.h, a synthetic large-STRUCTURE EPUB3.
 
 Reproduces the bounded ZIP and XML structure pressure of a big real-world book
-(#144 bug 1) without shipping a copyrighted 7 MB novel.
+(large-EPUB bug 1) without shipping a copyrighted 7 MB novel.
 
 The insight the fixture is built on: miniz arena pressure is proportional to
 archive FILE COUNT, while XML consumer bounds are proportional to the number

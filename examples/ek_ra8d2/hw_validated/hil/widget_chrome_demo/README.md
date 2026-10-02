@@ -1,7 +1,7 @@
 # widget_chrome_demo
 
 The concrete ereader **chrome widgets** -- extracted into the `ra8_widget`
-library for issue #145 -- composited on the live GLCDC panel. Where
+library from the widget/compositor work -- composited on the live GLCDC panel. Where
 `widget_compose_demo` proves the `ra8_widget_panel` compositor primitive with
 anonymous tiles, this app shows the reusable leaves the ereader chrome is now
 built from: a status bar with a live clock, a toolbar carrying a search field
