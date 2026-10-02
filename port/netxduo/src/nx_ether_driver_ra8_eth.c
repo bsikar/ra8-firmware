@@ -588,7 +588,7 @@ RA8_INTERNAL static void internal_handle_init(NX_IP_DRIVER* req)
    * on this board. Bench-confirmed: with channel=0 the GWCA goes
    * to OPERATION and ra8_eth_open reports k_ra8_ok but the on-silicon
    * MRGFCE/MTGFCE counters on RMAC1 stay zero because frames go to
-   * the unwired ETHA0/RMAC0 port instead. Issue #1 trail. */
+   * the unwired ETHA0/RMAC0 port instead (the large-frame TX bug trail). */
   ra8_eth_cfg_t cfg = {
     .mac_address        = {0U, 0U, 0U, 0U, 0U, 0U},
     .channel            = 1U,
