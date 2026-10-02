@@ -1,13 +1,13 @@
 /**
  * @file src/glyph_bench.c
- * @brief #147/#162/#164 glyph-cache workload sweep: drive the real
+ * @brief Glyph-cache workload sweep: drive the real
  *        ra8_glyph_atlas with a realistic text-render glyph stream and report the
  *        hit rate (and rasterisations saved) versus the cache budget.
  *
  * @details
  * HOST tool (not firmware). The Layer-3 glyph atlas earns its keep when the
  * renderer stops re-rasterising glyphs it just drew; this sweep quantifies that
- * on a realistic page-render workload so #164 can size the cell budget. It models
+ * on a realistic page-render workload so the render path can size the cell budget. It models
  * reading a book: each page draws a stream of glyphs from an English
  * letter-frequency distribution (plus spaces, capitals, punctuation, digits) at a
  * body font size with occasional headings, and page-turns re-render the same
@@ -570,7 +570,7 @@ internal_put_padded_u64(ra8_io_stream_t* stream, uint64_t value, uint32_t width)
  */
 RA8_INTERNAL static ra8_err_t internal_report_header(void)
 {
-  const char* const prefix[] = {"# #147/#164 glyph-cache budget sweep\n\nWorkload: "};
+  const char* const prefix[] = {"# Glyph-cache budget sweep\n\nWorkload: "};
   ra8_err_t         error    = internal_write_parts(&s_gb_output, prefix, 1U);
   if (error == k_ra8_ok) {
     error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_pages);

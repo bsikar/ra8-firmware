@@ -15,7 +15,7 @@
  * immediately and reflected in the cache). Eviction is least-recently-used.
  *
  * This is the cache layer between the filesystem/VFS and the media. It composes
- * with the unified page-cache design of issue #147 (and the SLRU policy chosen
+ * with the unified page-cache design (and the SLRU policy chosen
  * by `tools/cache_bench`); this first cut uses straightforward write-through LRU
  * and exposes hit/miss counters for observability.
  *

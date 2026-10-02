@@ -37,7 +37,7 @@
 #
 # An earlier version of this comment said those layouts "are what the
 # co-processor decodes on the far side of the link". That is NOT true, and
-# #490 disproved it on the bench before `libs/ra8_c6link` was written. The
+# The c6link facade work disproved it on the bench before `libs/ra8_c6link` was written. The
 # C6 decodes PROTOBUF: `grep -c 'wifi_config_t\|esp_netif'` over
 # `common/proto/esp_hosted_rpc.pb-c.{h,c}` returns 0, `WifiStaConfig` is a
 # message with named fields, and upstream's own `rpc_req.c` converts into

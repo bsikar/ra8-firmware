@@ -31,7 +31,7 @@
 # ----------------------------------
 # Not even in a probe. Every ssh command this script runs is asked for with
 # `fleet.py ssh-target <host>`, which builds it from the declaration's address,
-# user and jump. Spelling `ssh k3s-pve` would have quietly re-introduced #526:
+# user and jump. Spelling `ssh k3s-pve` would have quietly re-introduced the SSH-alias bug:
 # those aliases lived in one laptop's ~/.ssh/config, so `just infra::status` from
 # the dev box reported the entire estate unreachable when in fact every machine
 # answered on its address.

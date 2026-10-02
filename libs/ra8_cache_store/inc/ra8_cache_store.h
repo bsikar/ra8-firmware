@@ -17,7 +17,7 @@
  * the already-vendored Azure RTOS LevelX (`libs/third_party/levelx/`), run in
  * standalone mode (`LX_STANDALONE_ENABLE`, no ThreadX). This module is only the
  * thin `key -> LevelX-logical-sector` index + log/checkpoint bookkeeping on top
- * of `lx_nor_flash_sector_write` / `_read` / `_release`. See issue #201 and
+ * of `lx_nor_flash_sector_write` / `_read` / `_release`. See
  * `recon/reports/disk-cache-design-review.md` for the full rationale.
  *
  * ## Dependency-inversion seam (host-testable)
@@ -37,7 +37,7 @@
  * ::ra8_cache_store_get fills a ::ra8_cache_store_reader_t and the caller wires
  * ::ra8_cache_store_read (an `ra8_vsource_read_fn`-shaped `read(ctx,off,buf,len)`)
  * into `ra8_vsource_add_paged`, so a cached `.rabook` demand-pages through the
- * #204/#205 paged path -- full residency is never required.
+ * chunked .rabook paged path -- full residency is never required.
  *
  * ## Write-once invariant
  * An entry is sealed by a single ::ra8_cache_store_put; there is deliberately no

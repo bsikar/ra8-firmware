@@ -11,7 +11,7 @@
 //! * `off-target` is `RA8_OFF_TARGET`. It defaults from the target, so a hosted
 //!   build gets the host shadows and a freestanding build does not.
 //! * `insecure-stub-crypto` is `RA8_INSECURE_STUB_CRYPTO`, the explicit
-//!   dev/eval opt-in from issue #180. It defaults false, so a production image
+//!   dev/eval opt-in from the fail-closed crypto gate. It defaults false, so a production image
 //!   that passes nothing fails closed.
 //!
 //! The vault and the TRNG take the union of the two. `ota_commit` takes

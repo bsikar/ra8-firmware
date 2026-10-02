@@ -58,7 +58,7 @@
  * @warning The downgrade check is only as strong as the durable counter store,
  *          which is provisioning-gated: on a fresh device the extra-MRAM counter
  *          word is blank and cannot be programmed at runtime on this silicon (no
- *          BlankCheck -- #194), so the first authentic image sets no floor and
+ *          BlankCheck), so the first authentic image sets no floor and
  *          anti-rollback begins enforcing only once the counter is provisioned
  *          (see ``internal_default_store_commit`` in ``ra8_dfu_antirollback.c``).
  *          Provisioning that initial counter word is bench-gated.

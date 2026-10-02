@@ -215,7 +215,7 @@ test "on a divisible width every cell's first and last pixel route to it" {
 }
 
 test "an indivisible width routes each cell's first pixel to that same cell" {
-    // #2750. The C this was ported from computed cell rects one way (`w * i /
+    // The C this was ported from computed cell rects one way (`w * i /
     // count`) and hit-tested another (`(px - x) * count / w`), two expressions
     // that only coincide when `count` divides `w`: on a 101-wide strip cell 1
     // was drawn from x = 25 but a tap at x = 25 activated cell 0. Both halves

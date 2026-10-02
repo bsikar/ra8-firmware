@@ -23,7 +23,7 @@
 #     vendored `kernels/pooling.cc` registers MAX_POOL_2D next to
 #     AVERAGE_POOL_2D, so both have been linkable since the subset was
 #     vendored. That set is the CPU-fallback surface for a Vela-lowered graph
-#     (issue #228), so it is pinned by a test rather than by this comment:
+#     (the Ethos-U55 runtime), so it is pinned by a test rather than by this comment:
 #     tests/misc/src/test_ra8_tflm_op_subset.cc.
 #   * libs/third_party/flatbuffers   -- the FlatBuffer read-path headers the
 #     .tflite model format needs (headers only; no compiler/codegen).

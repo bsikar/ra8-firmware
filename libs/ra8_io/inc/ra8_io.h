@@ -20,7 +20,7 @@
  *     --------+---------------------+-------------------------------
  *          filesystem-format ops  (FAT12/16/32, exFAT, future formats)
  *     ----------------------------------------------------------------
- *          page / block cache  (composes the issue #147 hierarchy)
+ *          page / block cache  (composes the memory hierarchy)
  *     ----------------------------------------------------------------
  *          block-device vtable  (one interface, many media)
  *     ----------------------------------------------------------------

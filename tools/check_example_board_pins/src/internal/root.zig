@@ -6,7 +6,7 @@
 //! predecessor this names is deleted in the same change.
 //!
 //! The EK-RA8D2 pinout is a board fact owned by `libs/ra8_board_ek_ra8d2`.
-//! #251 showed the cost of duplicating it: the four USB-FS pins were
+//! The DFU example showed the cost of duplicating it: the four USB-FS pins were
 //! copy-pasted byte-identically across 29 apps under a dozen local names, so a
 //! correction in one silently skipped the rest.  This module holds the decision
 //! logic only: the encoding matcher, Python's line and whitespace semantics,

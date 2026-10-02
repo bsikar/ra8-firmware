@@ -31,7 +31,7 @@
 # header that reaches a compiled TU is `nimble/nimble_npl.h`. This file
 # used to claim it "compiles a curated subset of the upstream NimBLE host
 # sources"; it never has, and that claim -- read against a
-# `docs/SOUP/nimble.md` that said the opposite -- is what made the #508
+# `docs/SOUP/nimble.md` that said the opposite -- is what made the NimBLE
 # CVE triage harder than it needed to be. Linking `nimble/host/src` for
 # real is RA8FW-270; when that lands, this comment must change with it.
 #

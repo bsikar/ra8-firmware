@@ -4,7 +4,7 @@
 //! Behavioural regression tests for the ci-monitor status reader's pure core
 //! (RA8FW-335). Every case here is a rule the Python held and monitor.sh
 //! depends on, including the two rules that were each paid for with a wrong
-//! verdict in anger (#530 skipped is not success, #561 cancelled is not
+//! verdict in anger (skipped is not success, cancelled is not
 //! failure).
 
 const std = @import("std");

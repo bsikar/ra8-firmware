@@ -215,14 +215,14 @@ Being honest about this is the point of the section.
 
 - **The Proxmox guest topology.** VM 300 and CT 107 exist only as live config.
   If pve1 died tonight, both would be recreated from memory. The exact live
-  configuration is recorded on issue #500 so a rebuild does not depend on
+  configuration is recorded with the infra codification work so a rebuild does not depend on
   anyone's recollection, and the intended shape of the role is described there.
 - **Vault init and unseal.** Manual *by design*, not by omission -- see
   section 3.
 - **`k3s-runner-maintenance.sh`** on the k3s node (weekly image / journal /
   build-dir housekeeping, on a systemd timer) is hand-installed and in no repo.
   Part of it is now dead: its build-dir step walks
-  `/home/ubuntu/actions-runner*/_work`, and #502 removed those trees with the
+  `/home/ubuntu/actions-runner*/_work`, and the runner-pool cleanup removed those trees with the
   legacy runner pool. The loop is `nullglob`, so it reports "0 stale build/
   dir(s)" rather than failing, and the image-prune and journald steps are
   unaffected -- but a hand-installed script that silently lost a third of its

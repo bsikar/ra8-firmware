@@ -134,7 +134,7 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_ra8_tls_ipv4_hdr_bytes = 20U,  /**< IPv4 header with no options.    */
   k_ra8_tls_tcp_hdr_bytes  = 20U,  /**< TCP header with no options.     */
-  k_ra8_tls_mtu_min        = 128U, /**< #21 pinned MTU floor (bytes).   */
+  k_ra8_tls_mtu_min        = 128U, /**< Pinned MTU floor (bytes).       */
   k_ra8_tls_mss_min        = 64U,  /**< Smallest MSS worth clamping to. */
 } ra8_tls_net_const_t;
 

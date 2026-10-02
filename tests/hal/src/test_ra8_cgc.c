@@ -432,7 +432,7 @@ static void test_mcdc_eswclk_pdctreswm(void)
  * single-condition and is covered in test_ra8_sram_ecc.c)
  *
  * @details
- * Regression guard for tracker #524. ra8_cgc_init takes ICLK to
+ * Regression guard for the ra8_eth_open HardFault tracker. ra8_cgc_init takes ICLK to
  * k_ra8_iclk_hz, above half the part's rated maximum, and HUM Ch 58.3.7
  * "Wait State" p 3540 requires a wait cycle from that point on: "when
  * the wait is not inserted, the operation is not guaranteed". It was

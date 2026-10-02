@@ -5,7 +5,7 @@
  * @details
  * Pumps arbitrary bytes through ::eff_parse_eth_header, the tests-side
  * Ethernet II header parser in ``tests/fixtures/inc/eth_frame_fixture.h`` (moved out
- * of the ra8_etha driver by issue #238 -- it never touched driver state
+ * of the ra8_etha driver by the simulator-mode migration -- it never touched driver state
  * or MMIO). The harness does not care about the parser output -- the
  * goal is to surface any out-of-bounds read or integer UB in the header
  * decode for malformed inputs.

@@ -53,7 +53,7 @@
  *
  * The path is relative to THIS FILE's directory (port/nimble/inc), which is
  * three levels below the repository root -- so the quoted-include rule
- * resolves it with no -I at all. It read ``../../`` until #724: that is
+ * resolves it with no -I at all. It read ``../../`` until src/ was dissolved: that is
  * port/libs/... , which does not exist, and it only ever resolved because
  * some unrelated -I happened to sit exactly two levels below the repo root
  * (the app include path carried ${RA8_REPO_ROOT}/src/secure_app, and a

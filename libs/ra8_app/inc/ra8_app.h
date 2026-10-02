@@ -404,7 +404,7 @@ ra8_app_state(const ra8_app_registry_t* reg, uint16_t id, ra8_app_state_t* out_s
  * @brief Uninstall (unmount) a removable, non-focused app from the registry.
  *
  * @details
- * The run-time half of #146's "core uninstallable" rule. Resolves @p id and:
+ * The run-time half of the app framework's "core uninstallable" rule. Resolves @p id and:
  *   - **refuses a core app** (`removable == false`) with k_ra8_err_not_supported
  *     -- the framework guarantees a core app can never be torn down at run time;
  *   - **refuses the focused app** with k_ra8_err_busy -- the chrome must navigate

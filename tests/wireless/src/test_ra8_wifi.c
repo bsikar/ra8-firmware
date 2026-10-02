@@ -374,7 +374,7 @@ static void test_connect_success_and_reuse(void)
 /**
  * @test connect survives a radio that is quiet while it associates
  *
- * The silicon defect behind #586: ``ra8_wifi_backend_c6link``'s `service` maps
+ * The silicon defect behind the ra8_wifi facade fix: ``ra8_wifi_backend_c6link``'s `service` maps
  * onto the co-processor pump, which reports ::k_ra8_err_hw_timeout whenever the
  * co-processor arms nothing -- its normal state while an 802.11 association is
  * in flight. The wait used to return that first reading, so whether the station

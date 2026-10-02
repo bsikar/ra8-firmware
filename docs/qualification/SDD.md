@@ -374,7 +374,7 @@ SHALL NOT ship in a certified build (PSAC Section 7.2).
 ### 6.3 Filesystem algorithm choices
 
 `libs/ra8_fs/` is the first-party FAT12/16/32 + exFAT implementation
-(the vendored FileX was retired by #611); it mounts any block-device
+(the vendored FileX was retired by the filesystem strategy work); it mounts any block-device
 backend, including the EK-RA8D2 64 MiB Octo-SPI NOR through LevelX (NOR
 flash translation layer, SOUP per [`../SOUP/levelx.md`](../SOUP/levelx.md))
 via `port/levelx/src/lx_fs_backend.c`.

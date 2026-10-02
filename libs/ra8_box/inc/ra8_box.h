@@ -5,7 +5,7 @@
  *
  * @details
  * `ra8_box` is the minimal CSS-style box model the e-reader chrome needs
- * (issue #80, #76). The full document engine (`ra8_reflow`) reflows
+ * (the chrome work). The full document engine (`ra8_reflow`) reflows
  * arbitrary book XHTML; the *chrome* (library grid, reading bars, menus)
  * is instead a small fixed box tree laid out once per screen. This is
  * the only "web-like" layout compatible with the no-malloc / bounded /

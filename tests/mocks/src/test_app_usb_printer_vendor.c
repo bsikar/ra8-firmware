@@ -310,7 +310,7 @@ static void test_clamp_len(void)
  * @details Asserts the CONFIGURATION descriptor advertises exactly the bytes
  * it contains (wTotalLength == sizeof), two interfaces, and that the first
  * interface is Printer 0x07 while the second is Vendor 0xFF -- the class codes
- * the ra8_emulator host detects and the issue #265 requires.
+ * the ra8_emulator host detects and the printer/vendor example requires.
  *
  * @par MC/DC:
  * (no compound decision is varied by this case -- it reads one descriptor table
