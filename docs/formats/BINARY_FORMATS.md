@@ -320,7 +320,7 @@ block -- they render nowhere. Use `@dot`, which does.
 `@startuml` outright. Its other half counted authored `@dot` blocks against the
 diagrams that reached the generated HTML, and there is no generated HTML any
 more; the script is also wired into no gate body, so neither half runs today.
-#2660 tracks deciding what it should check in a tree that renders nothing.
+What it should check in a tree that renders nothing is still undecided.
 
 ---
 

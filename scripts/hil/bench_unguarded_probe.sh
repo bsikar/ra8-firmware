@@ -176,7 +176,7 @@ go
 q
 JLINK
 # The console reader is the SECOND collision axis: two readers on one VCOM each
-# get half the bytes, which is one of the concrete failures #497 lists. Resolve
+# get half the bytes, which is one of the concrete failures the bench-lease design lists. Resolve
 # it loudly -- an unresolvable console silently skipped the reader once already,
 # and the run then reported an evidence channel it had never exercised.
 TTY="\$(ra8_tty_resolve console 2>&1)" || {

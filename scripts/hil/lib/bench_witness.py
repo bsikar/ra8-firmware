@@ -303,7 +303,7 @@ def scan_consoles(root: Path, peers: dict[int, str]) -> list[dict[str, object]]:
     """Who currently holds a /dev/ttyACM* open, and from which machine.
 
     The board console is the J-Link OB's VCOM: a second reader silently halves
-    everyone's bytes, which is one of the collisions #497 exists to stop. Cheap
+    everyone's bytes, which is one of the collisions the bench lease exists to stop. Cheap
     enough at a fraction of the census rate, and far too expensive at all of it.
     """
     holders: list[dict[str, object]] = []
