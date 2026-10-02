@@ -27,6 +27,13 @@ static void reset_world(void)
   ra8_fake_mmap_reset();
 }
 
+/** @brief Assert PRCR.PRC1 is locked again after an unlock / relock pair. */
+static void assert_prc1_locked(void)
+{
+  const uint16_t prcr = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
+  TEST_ASSERT((prcr & (uint16_t)k_ra8_lpm_prcr_prc1_msk) == 0U);
+}
+
 /**
  * @brief Bring-up programmes SBYCR / DPSBYCR with the requested config.
  *
@@ -45,7 +52,10 @@ static void test_lpm_app_init_ok(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_END("lpm_idle_demo: init ok");
 }
 
@@ -82,8 +92,14 @@ static void test_lpm_app_enter_sleep_ok(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_END("lpm_idle_demo: enter Sleep returns ok");
 }
 
@@ -105,8 +121,14 @@ static void test_lpm_app_status_after_sleep(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   uint32_t status = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_status(&status));
   TEST_END("lpm_idle_demo: get_status returns ok after wake");

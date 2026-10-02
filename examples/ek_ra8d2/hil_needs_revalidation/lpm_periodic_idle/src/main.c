@@ -300,7 +300,15 @@ static void lpi_setup_or_halt(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
+  /* ra8_lpm_init's stores sit behind PRCR.PRC1, which it leaves to the caller. */
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
+    lpi_panic_halt();
+  }
+  const ra8_err_t lpm_err = ra8_lpm_init(&lpm_cfg);
+  if (ra8_lpm_prcr_relock() != k_ra8_ok) {
+    lpi_panic_halt();
+  }
+  if (lpm_err != k_ra8_ok) {
     lpi_panic_halt();
   }
   /* Keep LOCO running (LCSTP = 0) so ULPTLCLK survives Software Standby:
@@ -417,9 +425,19 @@ static void lpi_setup_or_halt(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std);
+  /* The LPSCR store on sleep entry is behind PRCR.PRC1, which ra8_lpm leaves
+   * to the caller. */
+  err = ra8_lpm_prcr_unlock();
   if (err != k_ra8_ok) {
     return err;
+  }
+  const ra8_err_t sleep_err = ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std);
+  err                       = ra8_lpm_prcr_relock();
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (sleep_err != k_ra8_ok) {
+    return sleep_err;
   }
   return ra8_ulpt_stop((uint8_t)k_lpi_channel);
 }

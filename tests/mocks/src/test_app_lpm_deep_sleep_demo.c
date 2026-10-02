@@ -39,6 +39,13 @@ static ra8_lpm_config_t make_demo_cfg(void)
   return cfg;
 }
 
+/** @brief Assert PRCR.PRC1 is locked again after an unlock / relock pair. */
+static void assert_prc1_locked(void)
+{
+  const uint16_t prcr = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
+  TEST_ASSERT((prcr & (uint16_t)k_ra8_lpm_prcr_prc1_msk) == 0U);
+}
+
 /**
  * @brief Bring-up programmes SBYCR / DPSBYCR with the demo's config.
  *
@@ -51,7 +58,10 @@ static void test_lpm_deep_sleep_init_ok(void)
   reset_world();
   TEST_BEGIN("lpm_deep_sleep_demo: init ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_END("lpm_deep_sleep_demo: init ok");
 }
 
@@ -86,8 +96,14 @@ static void test_lpm_deep_sleep_enter_ok(void)
   reset_world();
   TEST_BEGIN("lpm_deep_sleep_demo: enter Deep Sleep ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   /* HAL clears LPSCR after wake so the next plain WFI is a CPU sleep. */
   TEST_ASSERT_EQ(0, *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off));
   TEST_END("lpm_deep_sleep_demo: enter Deep Sleep ok");
@@ -105,8 +121,14 @@ static void test_lpm_deep_sleep_status_after(void)
   reset_world();
   TEST_BEGIN("lpm_deep_sleep_demo: get_status ok after wake");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   uint32_t status = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_status(&status));
   TEST_END("lpm_deep_sleep_demo: get_status ok after wake");
