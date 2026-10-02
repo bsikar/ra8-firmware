@@ -463,7 +463,7 @@ def _selftest_cases() -> list[tuple[str, str, bool]]:
         (
             "a neighboring detector's selftest does not confer credit",
             "gate_x() (\n  python3 scripts/checks/check_asm.py && "
-            "python3 scripts/checks/check_c23_headers.py --selftest\n)\n",
+            "python3 scripts/checks/check_shebangs.py --selftest\n)\n",
             True,
         ),
         (
