@@ -11,12 +11,18 @@ Provenance (SOUP).
 - **Version**: no upstream release tag; pinned to upstream commit
   `fddd3707a3c5733af4cb866f18650441e6712504` (2026 default branch).
 - **Upstream URL**: https://github.com/tensorflow/tflite-micro
-- **Local path**: `libs/third_party/tflite-micro/`
+- **Local path**: none. Pinned in `build.zig.zon` as the upstream tarball
+  (url + Zig content hash), fetched into the Zig package cache by
+  `cmake/zig_package.cmake`; the lean subset is the source list in
+  `cmake/tflite_micro_sources.cmake`.
   - Vendored as a **lean subset** (see below), preserving the upstream
     repository-root include layout so `#include "tensorflow/lite/micro/..."`
     resolves unchanged.
 
 ### Vendored subset (what is IN)
+
+Since RA8FW-385 this is the set of `.cc` files the build compiles from the
+pinned tarball (`cmake/tflite_micro_sources.cmake`), not a copied tree.
 
 - **Core runtime**: `tensorflow/lite/micro/` (MicroInterpreter, MicroAllocator,
   the arena allocators, the greedy/linear memory planners, the op resolver,
@@ -85,11 +91,11 @@ call in Phase 2.
 ## Provenance
 
 - **Origin**: Google / the TensorFlow Authors (TFLite-micro project).
-- **License**: Apache-2.0 (`LICENSE`, mirrored at
-  `libs/third_party/tflite-micro/LICENSE`).
+- **License**: Apache-2.0 (`LICENSE` in the pinned upstream tarball).
 - **How it entered our tree**: vendored subset of the upstream repository at the
   pinned commit above. The subset is reproducible: check out that commit and
-  copy the directory set listed under "Vendored subset".
+  copy the directory set listed under "Vendored subset". Since RA8FW-385 the
+  build takes that commit's tarball directly and compiles only the listed set.
 
 ## Use case in this firmware
 
@@ -184,11 +190,13 @@ app that reuses the `npu_smoke` boot files; (3) the ra8_emulator Ethos-U model
 
 ## Deviations / patches
 
-None to the vendored file *contents*: every file under
-`libs/third_party/tflite-micro/` is unmodified upstream content. The changes from
-upstream are both *file-selection* choices, not source edits:
+None to file *contents*: the build compiles the pinned upstream tarball as is
+(until RA8FW-385 it was a vendored copy, all 278 files byte-identical to the
+pinned commit). The changes from upstream are both *file-selection* choices,
+not source edits:
 
-1. the lean subset (which files are vendored), documented above; and
+1. the lean subset (which .cc files are compiled), listed in
+   `cmake/tflite_micro_sources.cmake` and documented above; and
 2. the Ethos-U operator: the vendored portable stub
    `tensorflow/lite/micro/kernels/ethosu.cc` is left byte-for-byte unmodified but
    **excluded from the build** by `cmake/tflite_micro.cmake`, which compiles the

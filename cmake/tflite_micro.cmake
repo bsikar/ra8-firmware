@@ -10,9 +10,10 @@
 # the operator graph. The Ethos-U custom operator is the hand-off point to the
 # NPU.
 #
-# The runtime is vendored as SOUP under libs/third_party/ in a LEAN subset:
+# The runtime is SOUP, pinned in build.zig.zon, built as a LEAN subset
+# (cmake/tflite_micro_sources.cmake):
 #
-#   * libs/third_party/tflite-micro  -- MicroInterpreter + MicroAllocator + the
+#   * tflite_micro (build.zig.zon)   -- MicroInterpreter + MicroAllocator + the
 #     op resolver + a modest reference-kernel set (CONV_2D, DEPTHWISE_CONV_2D,
 #     FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D,
 #     MAX_POOL_2D) + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft),
@@ -73,9 +74,10 @@ enable_language(CXX)
 get_filename_component(_RA8_TFLM_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 include(${_RA8_TFLM_REPO_ROOT}/cmake/ra8_warnings.cmake)
 
-set(_RA8_TFLM_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/tflite-micro")
-# FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in build.zig.zon.
+# TFLite-micro, FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in
+# build.zig.zon.
 include(${_RA8_TFLM_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(tflite_micro _RA8_TFLM_DIR)
 ra8_zig_package_dir(flatbuffers _RA8_FLATB_DIR)
 ra8_zig_package_dir(gemmlowp _RA8_GEMMLOWP_DIR)
 ra8_zig_package_dir(ruy _RA8_RUY_DIR)
@@ -106,9 +108,11 @@ if(NOT EXISTS "${_RA8_RUY_DIR}/ruy/profiler/instrumentation.h")
 endif()
 
 # ---------------------------------------------------------------------------
-# Source list -- every vendored *.cc compiles into one OBJECT library.
+# Source list -- the LEAN subset's *.cc compile into one OBJECT library.
 # ---------------------------------------------------------------------------
-file(GLOB_RECURSE _RA8_TFLM_SOURCES CONFIGURE_DEPENDS "${_RA8_TFLM_DIR}/tensorflow/*.cc")
+include(${_RA8_TFLM_REPO_ROOT}/cmake/tflite_micro_sources.cmake)
+set(_RA8_TFLM_SOURCES ${RA8_TFLM_LEAN_SOURCES})
+list(TRANSFORM _RA8_TFLM_SOURCES PREPEND "${_RA8_TFLM_DIR}/")
 
 # Ethos-U operator: DROP the vendored portable stub (kernels/ethosu.cc, which
 # returns nullptr from Register_ETHOSU) and compile the first-party kernel
