@@ -73,6 +73,23 @@ pub const Cpu1Image = struct {
     /// and its archive and link options to the M33 link. Empty for every
     /// image that predates RA8FW-403, which therefore builds as before.
     uses: []const []const u8 = &.{},
+    /// What `entry_source` is written in. A `.zig` entry is its own Zig
+    /// object built for the M33 (see `zigEntry`), linked ahead of the gcc
+    /// objects, and never one of `sources()`: gcc does not compile it and
+    /// the compile database has no row for it.
+    entry_language: EntryLanguage = .c,
+};
+
+pub const EntryLanguage = enum { c, zig };
+
+/// The Zig target every `.zig` CPU1 entry is built for. Same triple and CPU
+/// model as ra8_core's cortex_m33 archive, so both halves of the M33 link
+/// agree on the float ABI (fpv5-sp-d16, hard).
+pub const zig_target_query = std.Target.Query{
+    .cpu_arch = .thumb,
+    .os_tag = .freestanding,
+    .abi = .eabihf,
+    .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m33 },
 };
 
 /// The CPU1 target's own compile options, in CMakeLists order. No warning
@@ -119,7 +136,9 @@ pub fn imageName(allocator: std.mem.Allocator, app: App) []const u8 {
 /// app, then the shared first-party units.
 pub fn sources(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
-    out.append(join(allocator, app.dir, image.entry_source)) catch @panic("OOM");
+    if (image.entry_language == .c) {
+        out.append(join(allocator, app.dir, image.entry_source)) catch @panic("OOM");
+    }
     out.appendSlice(image.shared_sources) catch @panic("OOM");
     return out.toOwnedSlice() catch @panic("OOM");
 }
@@ -210,6 +229,9 @@ pub const Options = struct {
     /// The archives of `image.uses`, from `cpu1_threadx.archives`, in order.
     /// Empty on the compile-database path.
     middleware_archives: []const std.Build.LazyPath = &.{},
+    /// The optimize mode a `.zig` entry is built at: the configuration's
+    /// `zig_optimize`, the same one ra8_core's archive takes.
+    zig_optimize: std.builtin.OptimizeMode = .ReleaseSmall,
 };
 
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
@@ -243,6 +265,9 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     const system_dirs = systemIncludeDirs(b.allocator, options.image);
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    if (options.image.entry_language == .zig) {
+        objects.append(zigEntry(b, options, name)) catch @panic("OOM");
+    }
     for (sources(b.allocator, options.app, options.image)) |source| {
         const compile = b.addSystemCommand(&.{options.gcc});
         compile.addArgs(flags);
@@ -308,6 +333,22 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     step.dependOn(&report_size.step);
 
     return blob;
+}
+
+/// The `.zig` entry as one relocatable object for the M33.
+fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPath {
+    const object = b.addObject(.{
+        .name = b.fmt("{s}_entry", .{name}),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(join(b.allocator, options.app.dir, options.image.entry_source)),
+            .target = b.resolveTargetQuery(zig_target_query),
+            .optimize = options.zig_optimize,
+            // ra8_core's archive does the same: an .ARM.exidx entry names
+            // __aeabi_unwind_cpp_pr0, which this -nostdlib link cannot resolve.
+            .unwind_tables = .none,
+        }),
+    });
+    return object.getEmittedBin();
 }
 
 fn objcopyTo(
