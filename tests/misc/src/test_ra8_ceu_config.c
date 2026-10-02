@@ -750,7 +750,7 @@ static void test_board_camera_reset_pulses_pin(void)
  * @brief Cover the CDWDR stride derivation and its rejection leg.
  *
  * @details
- * Regression for #1362: `bytes_per_pixel` was published, documented
+ * Regression: `bytes_per_pixel` was published, documented
  * as "used to derive scaled stride", and read by nothing, so a
  * descriptor that left `dst_stride` at zero programmed CDWDR = 0 and
  * stacked every captured line on the previous one. Four legs: an

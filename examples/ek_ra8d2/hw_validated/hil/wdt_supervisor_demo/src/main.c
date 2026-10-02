@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Second of three apps under #18. Exercises ``libs/ra8_wdt_supervisor``
+ * Second of three apps. Exercises ``libs/ra8_wdt_supervisor``
  * end-to-end on real hardware: the supervisor refreshes the WWDT only
  * when every registered worker thread has called
  * ``ra8_wdt_supervisor_checkin`` inside its deadline. Two synthetic

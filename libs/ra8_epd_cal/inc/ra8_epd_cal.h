@@ -198,7 +198,7 @@ typedef enum : uint8_t {
  * firmware update and a rollback alike.
  * @note The window is one-time-programmable option-setting memory, not a
  *       rewritable data-flash; a real rewritable-medium home for this record is
- *       a bench question tracked by #315.
+ *       a bench question tracked separately.
  *
  * ## Why this is not at the obvious ``0x40``
  *

@@ -4,7 +4,7 @@
  *
  * @details
  * `ra8_fs_fat_alloc_internal.h` promises that every accessor is TOTAL: a mount
- * with no state slot behaves exactly like the code before #607 -- the hint is
+ * with no state slot behaves exactly like the code before the fix -- the hint is
  * cluster 2, the free count is unknown, and nothing is written back -- so a
  * missing binding degrades performance and never correctness.
  *

@@ -18,7 +18,7 @@
  * memory (HUM Ch 59.7.4.5 Table 59.15 p 3592), NOT a rewritable data-flash
  * array -- there is no erase-and-reuse cycle on this silicon. A rewritable
  * block backend therefore belongs on a real rewritable medium (OSPI / SD);
- * retargeting this backend and its demos off the OTP window is tracked by #315.
+ * retargeting this backend and its demos off the OTP window is tracked separately.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

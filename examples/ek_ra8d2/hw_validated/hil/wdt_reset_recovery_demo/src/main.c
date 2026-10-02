@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Third of three apps under #18. Companion to ``watchdog_demo``
+ * Third of three apps. Companion to ``watchdog_demo``
  * (which covers IWDT) -- this one specifically exercises the
  * Window Watchdog Timer (WDT0 / WWDT) reset path: arm WWDT,
  * deliberately stop refreshing, let the WWDT underflow trigger an

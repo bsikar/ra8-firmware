@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Single-core (Cortex-M85) demonstrator for issue #576. The app's build defines
+ * Single-core (Cortex-M85) demonstrator. The app's build defines
  * ``RA8_BOOT_ENABLE_CACHE_MPU`` (see ``CMakeLists.txt``) and ships a per-app
  * ``system_init.c`` whose ``SystemInit()`` installs the boot MPU
  * memory-attribute map through the ``ra8_mpu`` HAL

@@ -13,7 +13,7 @@
  *
  * The RA8D2 answers as an I2C target at 7-bit own address 0x42 on RIIC
  * channel 1 (P512 SCL1 / P511 SDA1 -- the board's Grove / Pmod / mikroBUS /
- * Arduino I2C bus, per issue #46). An *external* I2C controller (a second
+ * Arduino I2C bus). An *external* I2C controller (a second
  * board running ``i2c_loopback``, a Raspberry Pi ``i2cset`` / ``i2cget``, a
  * bench host, ...) drives the bus; a single RA8D2 core cannot both clock a
  * blocking controller transfer and service its own target at once, so the

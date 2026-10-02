@@ -257,7 +257,7 @@ jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_by
  * answers geometry only. A caller that needs to *name* incoming bytes (file
  * extension, MIME type) has no answer here and would need a wider table that
  * also recognises GIF and BMP -- containers this producer cannot decode. A
- * consumer must not grow its own table; converging them behind one primitive is tracked by #748.
+ * consumer must not grow its own table; converging them behind one primitive is tracked separately.
  *
  * @param[in]  data  Encoded source bytes (non-NULL).
  * @param[in]  len   Readable byte count at @p data.

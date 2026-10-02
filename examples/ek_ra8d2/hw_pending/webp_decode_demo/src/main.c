@@ -29,7 +29,7 @@
  * is a link-and-run smoke test for the facade, not a rendering path. Band-tile
  * normalisation is not future work -- it shipped with #344 and lives in
  * ``apps/shared_libs/comic/{inc/comic_tiles.h,src/comic_tiles.c}``. The inline
- * reflow raster dispatch for small WebP illustrations is tracked by #637.
+ * reflow raster dispatch for small WebP illustrations is tracked separately.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

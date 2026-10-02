@@ -7,7 +7,7 @@
  * the derived lifecycle / mode observers, the decoded DPHYSFR snapshot, the
  * PLL-frequency and line-rate arithmetic, the dry-run timing lookup and the
  * dual-mode arbitration shadow. Every prototype exercised here had no
- * definition in the tree before #1430, so no sibling suite reached them.
+ * definition in the tree before the fix, so no sibling suite reached them.
  *
  * Sibling suites: test_ra8_mipi_phy_init.c (bring-up, status, dispatch) and
  * test_ra8_mipi_phy_lanes.c (lane / clock / PLL setters, MC/DC vectors).
