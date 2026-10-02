@@ -337,7 +337,7 @@ ra8_err_t book_src_image_rect(const book_src_t*   src,
   /* Readable raster of a known depth (one decision, single exit -- MISRA 15.5):
    * SVG has no pixel grid, and only the two grayscale depths are unpackable --
    * gray4 nibble-unpacks 2px/byte, gray8 copies 1px/byte verbatim (the retained
-   * full-resolution continuous-tone source, #343/#476). book_validate()
+   * full-resolution continuous-tone source). book_validate()
    * already refuses any other depth; this also guards a corrupt descriptor. */
   const book_image_pixfmt_t pf = book_image_pixfmt(img);
   if ((img->format != (uint8_t)k_book_image_gray4) ||

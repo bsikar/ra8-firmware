@@ -200,8 +200,8 @@ typedef enum : uint8_t {
  * @enum reflow_color_t
  * @brief Sentinel marking a token / run with no CSS colour.
  *
- * @details A text token's `color` field holds a 0xRRGGBB CSS colour (#111 /
- * #140) or this sentinel, in which case the renderer falls back to the engine
+ * @details A text token's `color` field holds a 0xRRGGBB CSS colour (the
+ * CSS cascade) or this sentinel, in which case the renderer falls back to the engine
  * body colour (or link colour for an `<a>` run). 0xFFFFFFFF is outside the
  * 24-bit RGB range, so it can never collide with a real colour.
  */

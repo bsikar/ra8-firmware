@@ -208,7 +208,7 @@ RA8_INTERNAL static void internal_test_pipeline_undecodable_cover_skipped(void)
 }
 
 /* -------------------------------------------------------------------------- */
-/* #151 byte-identity parity gate */
+/* Byte-identity parity gate */
 /* -------------------------------------------------------------------------- */
 
 /**

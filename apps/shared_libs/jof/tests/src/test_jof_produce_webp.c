@@ -1,7 +1,7 @@
 /**
  * @file test_jof_produce_webp.c
  * @brief Host tests for WebP normalize-on-import: WebP -> JOF through the
- *        #231 producer, byte-consistent tiles, cross-format convergence, and
+ *        producer, byte-consistent tiles, cross-format convergence, and
  *        fail-closed hostile handling.
  *
  * @details

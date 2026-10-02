@@ -8,7 +8,7 @@
  * and the RABOOK1 emitter by reaching the compile step through the injected
  * @ref rabook_import_compile_fn seam. This adapter is the production binding
  * of that seam: it STREAMS the source `.epub` off the filesystem through a
- * bounded `ra8_vmem` page cache (#230 -- no whole-file load buffer, so a source
+ * bounded `ra8_vmem` page cache (no whole-file load buffer, so a source
  * far larger than RAM compiles inside a fixed frame-pool budget), drives
  * @ref rabook_compile_from_epub, and closes the book -- matching the seam's
  * exact signature so an app passes `rabook_import_compile_adapter` (with a

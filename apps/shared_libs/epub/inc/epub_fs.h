@@ -14,7 +14,7 @@
  * only the ZIP tail and one entry at a time are ever resident -- no whole-file
  * buffer, no book-size ceiling below the `ra8_fs` 4 GiB offset limit, and no
  * heap (NASA Rule 3). The retired whole-file `epub_open_fs()` bridge was
- * deleted with #230 when its last consumer moved onto this streamed path.
+ * deleted when its last consumer moved onto this streamed path.
  *
  * Keeping the bridge in its own translation unit (and behind
  * `__has_include("ra8_fs.h")`) means the pure `epub` core stays free of any

@@ -14,7 +14,7 @@
  * build a sorted page index, then serve each page's *encoded image bytes* on
  * demand for the image decoder (`ra8_img_decode_blit`) to rasterise.
  *
- * @par Streaming, bounded RAM (#151, NASA P10 Rule 3)
+ * @par Streaming, bounded RAM (NASA P10 Rule 3)
  * The archive is never resident in full. The CBZ backend drives miniz's user-read
  * ZIP reader off the same seek+read seam that streams a large `.epub`
  * (`epub_open_streamed`): only the ZIP central directory and one entry at a

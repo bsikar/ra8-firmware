@@ -3,12 +3,12 @@
  * @brief End-to-end host test for the ra8_fs -> epub bridge.
  *
  * @details
- * Proves the storage-stack acceptance for #71/#151/#230 on the host: a real
+ * Proves the storage-stack acceptance for the EPUB storage stack on the host: a real
  * `.epub` is assembled in memory with miniz, *written to a FAT16 volume through
  * ra8_fs* (over a RAM block backend -- the same mem-disk pattern as
  * `tests/storage/src/test_ra8_fs_fat.c`), and then opened end to end with the STREAMED
  * `epub_open_streamed_fs()` -- the sole production `ra8_fs` open path since
- * #230 retired the whole-file `epub_open_fs()`: the source file stays open
+ * The streamed open retired the whole-file `epub_open_fs()`: the source file stays open
  * and every ZIP entry is seek+read on demand, with no whole-file buffer. On
  * target the only difference is the block backend (`ra8_sdmmc_spi` over the SD
  * card instead of RAM), which is independently bench-validated.

@@ -11,7 +11,7 @@
  *     ::ra8_tile_cache whose decoder is a coordinate-encoding generator, so an
  *     assembled rectangle can be checked pixel by pixel AND the cache's own
  *     counters can prove that only the requested tiles were ever touched. The
- *     residency test is the acceptance bar of #478: a rectangle spanning a
+ *     residency test is the acceptance bar of tap-to-zoom: a rectangle spanning a
  *     handful of tiles must never decode more than those tiles, whatever the
  *     image size.
  *   - **book** (`zoom_book`): a `.rabook` image-pool figure, at both
@@ -412,7 +412,7 @@ static void t_tile_read_edges_and_failclosed(ra8_tile_cache_t* cache, zoom_tile_
  * The fixture decoder mangles each extent under its own flag precisely so that
  * neither condition is masked by the other. N+1 = 3 vectors for N=2.
  *
- * @details Beyond MC/DC this is the residency acceptance bar of #478: a
+ * @details Beyond MC/DC this is the residency acceptance bar of tap-to-zoom: a
  *          rectangle spanning six tiles must decode six tiles and no more,
  *          whatever the image size, and re-reading it must decode nothing.
  */

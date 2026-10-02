@@ -618,7 +618,7 @@ RA8_INTERNAL static void internal_test_render_images_loader_both_arms(void)
  *  2. **Cache effectiveness** -- re-rendering the same page does ZERO new glyph
  *     rasterisation (the miss count is unchanged across the second render) while
  *     the hit count grows. That "re-render never re-rasterises" property is the
- *     entire motivation for #147/#164.
+ *     entire motivation for the memory hierarchy and glyph atlas.
  *
  * The budget (k_ra8_cell_count cells) exceeds the distinct-glyph count of the
  * pangram page, so the second render evicts nothing and is all hits.

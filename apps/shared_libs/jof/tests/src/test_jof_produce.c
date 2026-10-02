@@ -17,7 +17,7 @@
  *
  * The bounded-RAM test transcodes a synthetic image whose *decoded* size is
  * more than 5x the producer's entire working set and asserts the fixed-
- * buffer budget held -- the #231 "larger than the working set at native
+ * buffer budget held -- the "larger than the working set at native
  * resolution" property, proven at host scale.
  *
  * The producer's rejection vectors (format sniff, pull failure, config guards,
@@ -812,7 +812,7 @@ RA8_INTERNAL static void internal_produce_bounded_check_corners(const jof_info_t
  *          caller work arena (every internal buffer is a bump carve out of
  *          it -- there is no allocator anywhere in the pipeline). This test
  *          pins the numbers: decoded bytes >= 5x the arena, and the arena
- *          plus every caller buffer stays under the #231 ~10 MiB budget.
+ *          plus every caller buffer stays under the ~10 MiB budget.
  *
  * @par MC/DC:
  * (bounded-budget inequalities + parity spot checks; the producer's

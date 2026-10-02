@@ -59,7 +59,7 @@ extern "C" {
  *     `epub_load_chapter` / `..._get_resource`): the ~11 KiB inflate
  *     decompressor plus, on the streamed path, a bounded compressed-read buffer
  *     (`MZ_ZIP_MAX_IO_BUF_SIZE`, 64 KiB).
- *   - Streaming entry cursor (`epub_entry_open`, #231, over
+ *   - Streaming entry cursor (`epub_entry_open`, over
  *     `mz_zip_reader_extract_iter_*`): the iterator state (~8.4 KiB, embeds the
  *     inflator) plus -- for a DEFLATE entry -- a 32 KiB LZ dictionary window and
  *     the same 64 KiB compressed-read buffer. A *stored* (method-0) entry needs
@@ -68,7 +68,7 @@ extern "C" {
  * The DEFLATE streaming cursor is therefore the peak: ~8.4 + 32 + 64 = ~105 KiB of
  * transient inflate state, on top of the resident central directory. 160 KiB gives
  * that peak room while staying tiny against the 1.6 MiB SRAM. A large in-content
- * image (a manga page) is the motivating #231 case and is streamed through this
+ * image (a manga page) is the motivating case and is streamed through this
  * cursor rather than materialised whole.
  */
 typedef enum : uint32_t {

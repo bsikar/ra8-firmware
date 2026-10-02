@@ -1,7 +1,7 @@
 /**
  * @file jof.h
  * @brief JOF band-tile atlas: the display-native normalized image format
- *        (#231, shared with the longstrip scroll #289 and codec policy #290).
+ *        (shared with the longstrip scroll and the codec policy).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -20,13 +20,13 @@
  * access at full resolution, never a downscale.
  *
  * One format serves three consumers:
- *   - **#231** full-resolution in-EPUB manga pages: 2-D tile grids paged
+ *   - **Full-resolution** in-EPUB manga pages: 2-D tile grids paged
  *     through `ra8_tile_cache` via the `epub_img_tiles` binder.
- *   - **#289** longstrip band-scroll: a band-tile is simply a tile the full
+ *   - **Longstrip band-scroll**: a band-tile is simply a tile the full
  *     image width (`tile_w == width`, one tile column); the tile index THEN
  *     IS the band index (byte offset + length per band), giving O(1) seek to
  *     any scroll position.
- *   - **#290** normalized on-device representation: every source codec
+ *   - **Normalized on-device** representation: every source codec
  *     (JPEG/PNG/...) converges on this one well-understood format at import,
  *     so render time touches a single decode path.
  *
@@ -91,7 +91,7 @@
  * pass; a reader locates the index via the footer. Atlases are capped at
  * 4 GiB (u32 offsets) and 65536 tiles.
  *
- * ## Why DEFLATE and not JPEG for the tile codec (#290 resolution)
+ * ## Why DEFLATE and not JPEG for the tile codec
  *
  * Re-encoding tiles as JPEG would stack a second lossy generation on the
  * source image, which the no-quality-loss rule forbids; DEFLATE is lossless,
@@ -409,7 +409,7 @@ jof_parse(jof_pread_fn pread, void* pread_ctx, uint64_t total_size, jof_info_t* 
  * @p scratch and inflated with `ra8_decompress()` (zero heap). The decoded
  * byte count must equal the tile's exact payload size or the read fails
  * closed. Resident cost is `scratch_cap + out_cap`, independent of the image
- * size -- the property #231 needs for decode-on-demand paging.
+ * size -- the property streaming needs for decode-on-demand paging.
  *
  * @param[in]  pread       Backing read seam (non-NULL).
  * @param[in]  pread_ctx   Context for @p pread.

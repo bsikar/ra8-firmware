@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_vfs_compress.c
  * @brief Unit tests for the app-owned transparent VFS compression seam plus the
- *        UART / USB-CDC stream sink data paths (ra8_io fabric, issues #157/#161).
+ *        UART / USB-CDC stream sink data paths (ra8_io fabric, Phases 2 and 6).
  *
  * @details
  * Three uncovered ra8_io modules are exercised host-side over RAM-backed models,

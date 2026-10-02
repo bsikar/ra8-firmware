@@ -350,7 +350,7 @@ struct limit_test_suite : test_fixture_t {
  * node count exactly. A dropped frame loses an
  * entire subtree, so an exact count is what distinguishes "the guard never
  * fired" from "the guard fired and the chapter was silently truncated". Before
- * #625 the deactivation cited a cap of 100 and a 2 * depth bound; under those
+ * the depth-cap correction the deactivation cited a cap of 100 and a 2 * depth bound; under those
  * numbers with the real cap this document would have demanded 1000 frames and
  * overrun the stack, so this case is precisely the one the false rationale
  * hid. @details Executes the deep at reader cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
