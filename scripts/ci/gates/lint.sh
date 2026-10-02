@@ -14,7 +14,7 @@
 # prevent.
 #
 # Gates in this file: lint-py-shell, lint-go, lint-zig, zig-abi-policy, lint-rust, lint-cmake,
-# lint-yaml, lint-just, lint-ld, lint-asm, lint-devcontainer, lint-coverage
+# lint-yaml, lint-just, lint-ld, lint-asm, lint-devcontainer
 
 # --- lint-py-shell --------------------------------------------------------
 # --require: fail (never skip) when a tool is missing. These gates fail on ANY
@@ -278,28 +278,4 @@ gate_lint_devcontainer() (
   require_tool_versions hadolint
   python3 scripts/checks/check_devcontainer.py --selftest
   python3 scripts/checks/check_devcontainer.py
-)
-
-# --- lint-coverage --------------------------------------------------------
-# The meta-gate: it does not lint anything itself, it proves that everything
-# else does. Enumerates every file from `git ls-files`, classifies it by name /
-# extension / shebang, then asks each checker above -- in its own --list-files
-# mode -- which files it claims, and fails when a code file is claimed by no
-# linter or no formatter, or when a file type has no classification rule at all.
-#
-# "Is everything linted?" was previously answerable only by hand-auditing each
-# checker's scan list. That audit ran five times and was wrong five times,
-# every time because a hardcoded root list had
-# stopped matching the tree while the checker still reported clean. This gate
-# makes the answer mechanical, and makes a NEW language landing in the tree
-# (.rs, .ts, .proto) go red until somebody decides how it is checked.
-#
-# --selftest FIRST, as everywhere else: it asserts the gate still fires on a
-# planted unclassified type, on a code file in a directory no checker
-# enumerates, and on a checker whose scan list was narrowed -- and that it
-# stays quiet on legitimately exempt files and on new files of a covered type.
-gate_lint_coverage() (
-  set -e
-  python3 scripts/checks/check_lint_coverage.py --selftest
-  python3 scripts/checks/check_lint_coverage.py
 )

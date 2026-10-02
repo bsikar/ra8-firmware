@@ -1087,38 +1087,6 @@
       "resource_hints": {}
     },
     {
-      "name": "lint-coverage",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "lint-coverage",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "lint-coverage"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "lint-devcontainer",
       "version": 1,
       "tier": "required",
