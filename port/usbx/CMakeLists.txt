@@ -4,7 +4,7 @@
 # port/usbx/CMakeLists.txt
 #
 # Defines the `usbx_port_ra8_usb` interface library that exposes the
-# bridge between vendored USBX (libs/third_party/usbx) and the
+# bridge between USBX (the pinned build.zig.zon package usbx) and the
 # project's `ra8_usb` register-level driver.
 #
 # Two source files implement the bridge:

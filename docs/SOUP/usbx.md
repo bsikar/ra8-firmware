@@ -10,7 +10,9 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **Version**: 6.5.0 (per `common/core/inc/ux_api.h` USBX_MAJOR / MINOR /
   PATCH macros).
 - **Upstream URL**: https://github.com/eclipse-threadx/usbx
-- **Local path**: `libs/third_party/usbx/`
+- **Local path**: none. Pinned in `build.zig.zon` as package `usbx` (upstream
+  tarball at commit `6dc0cf2`, url + Zig content hash) and fetched once into
+  the Zig cache.
 
 ## Provenance
 
@@ -18,11 +20,12 @@ firmware as Software Of Unknown Provenance (SOUP).
   (donated by Microsoft from Azure RTOS in 2024).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
-- **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  USBX repository. Resolved to release tag
-  `v6.5.0.202601_rel`, commit `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b`:
-  1035 of the 1036 vendored files are byte-identical to it, the exception
-  being the `.gitattributes` edit recorded under "Deviations / patches".
+- **How it enters the build**: the unmodified upstream release tag
+  `v6.5.0.202601_rel`, commit `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b`,
+  fetched as a build.zig.zon package. It used to be vendored; every file the
+  build used was byte-identical to that commit (the only differences were a
+  local `.gitattributes` edit and the line endings of four unused Windows
+  `.inf` templates), so the vendored copy was dropped for upstream as is.
 
 ## Use case in this firmware
 
@@ -79,28 +82,15 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-One file, `.gitattributes`, and it is a repository-hygiene edit rather than a
-change to any shipped source. Commit `368072a1a` dropped its two `[attr]`
-attribute-macro blocks (`our-c-style`, `generated`) from all five vendored
-Eclipse ThreadX trees: git honours `[attr]` definitions only in the top-level
-`.gitattributes` and printed a "not allowed" warning for each on EVERY git
-operation. The macro *uses* left behind reference undefined attributes, which
-git ignores silently, so no vendored file's checkout behaviour changes.
+None. The build uses the upstream `v6.5.0.202601_rel` tarball exactly as
+published; `build.zig.zon` pins it by Zig content hash, so a changed byte fails
+the fetch rather than reaching the compile.
 
-Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
-content in `docs/sbom/upstream/usbx.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run.
-
-The edit is from 2026-07-13 and went unrecorded here until the upstream-pin sweep found it two
-weeks later, which is the point: "the vendored tree is unmodified" was prose,
-and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
-
-A second deviation existed and has been removed rather than declared: the four
-`support/windows_host_files/*.inf` templates were vendored with CRLF line
-endings while upstream stores LF, an artifact of the checkout the vendor-in
-copied from (`7a471613c`). They are Windows driver templates, compiled by
-nothing, so they were restored to upstream's bytes instead of being
-recorded as an intentional patch.
+While it was vendored, the tree carried one hygiene edit (`.gitattributes`
+with its `[attr]` macro blocks dropped, commit `368072a1a`) and, before that,
+CRLF copies of the four unused `support/windows_host_files/*.inf` templates.
+Neither touched a compiled source, and neither exists now that the copy is
+gone.
 
 ## Last review date
 

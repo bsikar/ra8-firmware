@@ -10,15 +10,6 @@ file = "0001-remove-nested-attribute-macros.patch"
 classification = "metadata"
 
 [[component]]
-key = "usbx"
-delivery = "vendored"
-series = "docs/sbom/patches/usbx/series"
-
-[[component.patches]]
-file = "0001-remove-nested-attribute-macros.patch"
-classification = "metadata"
-
-[[component]]
 key = "mbedtls"
 delivery = "vendored"
 series = "docs/sbom/patches/mbedtls/series"

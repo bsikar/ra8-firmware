@@ -14,6 +14,7 @@
 //! per-slice knowledge the file exists to hold.
 
 const std = @import("std");
+const pkg_path = @import("pkg_path.zig");
 
 /// One compile command: the TU, the driver that compiles it, the flags it is
 /// really given, its include path in order, and where its object goes.
@@ -37,14 +38,14 @@ pub fn arguments(b: *std.Build, entry: Entry) []const []const u8 {
     argv.append(entry.driver) catch @panic("OOM");
     for (entry.flags) |flag| argv.append(flag) catch @panic("OOM");
     for (entry.include_dirs) |include_dir| {
-        argv.append(b.fmt("-I{s}", .{b.pathFromRoot(include_dir)})) catch @panic("OOM");
+        argv.append(b.fmt("-I{s}", .{pkg_path.absolute(b, include_dir)})) catch @panic("OOM");
     }
     for (entry.system_include_dirs) |include_dir| {
         argv.append("-isystem") catch @panic("OOM");
-        argv.append(b.pathFromRoot(include_dir)) catch @panic("OOM");
+        argv.append(pkg_path.absolute(b, include_dir)) catch @panic("OOM");
     }
     argv.append("-c") catch @panic("OOM");
-    argv.append(b.pathFromRoot(entry.file)) catch @panic("OOM");
+    argv.append(pkg_path.absolute(b, entry.file)) catch @panic("OOM");
     argv.append("-o") catch @panic("OOM");
     argv.append(entry.object) catch @panic("OOM");
     return argv.items;
@@ -115,7 +116,7 @@ pub fn render(b: *std.Build, entries: []const Entry) []const u8 {
         json.appendSlice("  {\n    \"directory\": ") catch @panic("OOM");
         appendJsonString(&json, directory);
         json.appendSlice(",\n    \"file\": ") catch @panic("OOM");
-        appendJsonString(&json, b.pathFromRoot(entry.file));
+        appendJsonString(&json, pkg_path.absolute(b, entry.file));
         json.appendSlice(",\n    \"output\": ") catch @panic("OOM");
         appendJsonString(&json, entry.object);
         json.appendSlice(",\n    \"arguments\": [") catch @panic("OOM");

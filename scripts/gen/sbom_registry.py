@@ -193,19 +193,21 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/usbx",
-        path="libs/third_party/usbx",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="USB host / device stack (CDC, HID, MSC demos).",
         purl="pkg:github/eclipse-threadx/usbx@6.5.0",
         upstream_commit="6dc0cf233d5b7ee6e1a7434581964975f8d8d37b",
         upstream_ref="v6.5.0.202601_rel",
-        modified=True,
-        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
-        license_file="libs/third_party/usbx/LICENSE.txt",
-        probe_file="common/core/inc/ux_api.h",
-        probe_prefix="USBX",
-        expected_version="6.5.0",
+        dep_pin_spec="N-V-__8AAOXoRQGfmvONnuF6PJBJcnL5BhJXM69TKQ9f_w3A",
+        extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as the upstream "
+            "v6.5.0.202601_rel tarball (url + Zig content hash), fetched into "
+            "the Zig package cache by the Zig build graph (pkg:usbx paths) and "
+            "by cmake/zig_package.cmake. Every file the build used is "
+            "byte-identical in it.",
+        ),
     ),
     Component(
         key="levelx",

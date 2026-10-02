@@ -78,7 +78,7 @@ MIN_COMPONENTS = 15
 # Re-measured 2026-10-02 (RA8FW-385): the libs moved to build.zig.zon share one
 # inventory path (`build.zig.zon`), so distinct paths dropped to 14, then 13
 # after NetX Duo.
-MIN_INVENTORY_PATHS = 10
+MIN_INVENTORY_PATHS = 9
 MIN_INDEX_LINKS = 15
 MIN_SOUP_DOCS = 15
 
