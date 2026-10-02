@@ -22,7 +22,7 @@ MRAM -> `ra8_ftl`; the Octo-SPI part -> LevelX. Neither stacks on the other.
 
 <!-- disambig
 this: libs/ra8_ftl
-that: libs/third_party/levelx
+that: levelx (pinned in build.zig.zon)
 symbol: ra8_ftl_init
 symbol: ra8_io_blockdev_t
 symbol: lx_nor_flash_open

@@ -14,7 +14,7 @@
  *
  * ## Not bespoke wear-levelling -- LevelX underneath
  * The wear-levelling / block-remapping / power-safe-sector-write machinery is
- * the already-vendored Azure RTOS LevelX (`libs/third_party/levelx/`), run in
+ * Azure RTOS LevelX (the upstream tarball pinned in build.zig.zon), run in
  * standalone mode (`LX_STANDALONE_ENABLE`, no ThreadX). This module is only the
  * thin `key -> LevelX-logical-sector` index + log/checkpoint bookkeeping on top
  * of `lx_nor_flash_sector_write` / `_read` / `_release`. See

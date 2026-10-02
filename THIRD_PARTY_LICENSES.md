@@ -74,7 +74,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Eclipse ThreadX | 6.5.0 | MIT | `libs/third_party/threadx/` | <https://github.com/eclipse-threadx/threadx> |
 | Eclipse NetX Duo | 6.5.0 | MIT | `libs/third_party/netxduo/` | <https://github.com/eclipse-threadx/netxduo> |
 | Eclipse USBX | 6.5.0 | MIT | `libs/third_party/usbx/` | <https://github.com/eclipse-threadx/usbx> |
-| Eclipse LevelX | 6.5.0 | MIT | `libs/third_party/levelx/` | <https://github.com/eclipse-threadx/levelx> |
+| Eclipse LevelX | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/levelx> |
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
 | Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
@@ -128,7 +128,6 @@ permitted to differ.
 | ThreadX | tag `v6.5.0.202601_rel` `3726d7906b4808bfec7855fc088e073199df9120` | 4757/4758 | 1 patched (`.gitattributes`) |
 | NetX Duo | tag `v6.5.0.202601_rel` `8b6e03ac30ab688bec02c69d42f2304b7f72a202` | 1226/1227 | 1 patched (`.gitattributes`) |
 | USBX | tag `v6.5.0.202601_rel` `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b` | 1035/1036 | 1 patched (`.gitattributes`) |
-| LevelX | tag `v6.5.0.202601_rel` `a46b74fb8aa133796ccbc13e7902cb8bb818e12f` | 89/90 | 1 patched (`.gitattributes`) |
 | Mbed TLS | `development` `d12fbb991c0822f347bbc569badef904629ce605` | 252/256 | 1 patched, 3 generated |
 | TF-PSA-Crypto | `development` `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77` | 217/222 | 5 generated |
 | Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 615/615 | none |
@@ -190,7 +189,8 @@ below); this section reproduces the copyright line and points to that text.
 
 - **ThreadX, NetX Duo, USBX, LevelX** -- MIT.
   "Copyright (c) 2024 - present Microsoft Corporation." Text:
-  `libs/third_party/<component>/LICENSE.txt`. Origin: Eclipse Foundation
+  `libs/third_party/<component>/LICENSE.txt` (LevelX: `LICENSE.txt` in the
+  pinned upstream tarball, `build.zig.zon`). Origin: Eclipse Foundation
   (Eclipse ThreadX).
 - **Mbed TLS** -- Apache-2.0 (elected). TrustedFirmware.org / Arm. Text:
   `libs/third_party/mbedtls/LICENSE`.

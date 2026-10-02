@@ -216,19 +216,19 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/levelx",
-        path="libs/third_party/levelx",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="NOR-flash wear-levelling on Octo-SPI: under ra8_fs, and standalone.",
         purl="pkg:github/eclipse-threadx/levelx@6.5.0",
         upstream_commit="a46b74fb8aa133796ccbc13e7902cb8bb818e12f",
         upstream_ref="v6.5.0.202601_rel",
-        modified=True,
-        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
-        license_file="libs/third_party/levelx/LICENSE.txt",
-        probe_file="common/inc/lx_api.h",
-        probe_prefix="LEVELX",
-        expected_version="6.5.0",
+        dep_pin_spec="N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC",
+        extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash) and fetched into the Zig package cache by "
+            "cmake/zig_package.cmake.",
+        ),
     ),
     Component(
         key="mbedtls",

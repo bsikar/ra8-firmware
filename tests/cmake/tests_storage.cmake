@@ -59,15 +59,17 @@ add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 # test_ra8_cache_store: persistent key->blob cache over LevelX standalone.
 # Builds ra8_cache_store's own sources plus the vendored LevelX NOR sources
 # (LX_STANDALONE_ENABLE, no ThreadX) and the RAM NOR fake. ra8_core_hal
-# supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
-# already outside the coverage filter (libs/third_party/).
+# supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP (the upstream tarball
+# pinned in build.zig.zon), so compile it -w.
 # ---------------------------------------------------------------------------
 # Fully migrated (zig epic): ra8_cache_store has no C sources left. Both
 # halves, the runtime path and the mount / recovery path, are the Zig archive
 # ra8_zig::ra8_cache_store registered in zig_libraries.cmake, so there is no
 # source glob for this library any more.
+include(${FW_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(levelx _ra8_levelx_dir)
 file(GLOB RA8_LEVELX_NOR_STANDALONE CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/third_party/levelx/common/src/lx_nor_*.c
+     ${_ra8_levelx_dir}/common/src/lx_nor_*.c
 )
 # Drop the upstream NOR simulator: this test supplies its own RAM NOR driver.
 list(
@@ -96,7 +98,7 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_hal/inc
           ${FW_ROOT}/libs/ra8_mem/inc
-          ${FW_ROOT}/libs/third_party/levelx/common/inc
+          ${_ra8_levelx_dir}/common/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
 )
 add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
@@ -129,7 +131,7 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_fs/inc
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_hal/inc
-          ${FW_ROOT}/libs/third_party/levelx/common/inc
+          ${_ra8_levelx_dir}/common/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
 )
 add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
@@ -164,7 +166,7 @@ target_include_directories(
           ${RCS_DEMO_DIR}/inc
           ${FW_ROOT}/libs/ra8_cache_store/inc
           ${FW_ROOT}/libs/ra8_cache_store/src
-          ${FW_ROOT}/libs/third_party/levelx/common/inc
+          ${_ra8_levelx_dir}/common/inc
           # This is the FIRST test to pull examples/ .c sources (cache_store_demo.c,
           # lx_nor_ram.c) into the tidy compile_commands.json. clang-tidy lints every
           # examples/<app> dir; an app not in the DB has its command INTERPOLATED from

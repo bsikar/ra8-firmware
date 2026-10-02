@@ -10,7 +10,8 @@
 #      `tx_api.h` whenever `LX_STANDALONE_ENABLE` is absent
 #      (`common/inc/lx_api.h:69-72`), so every LevelX TU in this mode
 #      needs the ThreadX headers, mutexes or not.
-#   2. Compiles `libs/third_party/levelx/common/src/lx_nor_*.c` into a
+#   2. Compiles LevelX's `common/src/lx_nor_*.c` (the upstream tarball pinned in
+#      build.zig.zon, see cmake/zig_package.cmake) into a
 #      single `levelx` interface library. NAND sources and the
 #      simulator drivers are excluded -- this firmware uses LevelX's
 #      NOR API exclusively, against the on-board MX25LM512 chip.
@@ -60,12 +61,13 @@ endif()
 # from the top-level CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_LEVELX_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_LEVELX_VENDOR_DIR "${_RA8_LEVELX_REPO_ROOT}/libs/third_party/levelx")
+include(${_RA8_LEVELX_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(levelx _RA8_LEVELX_VENDOR_DIR)
 set(_RA8_LEVELX_COMMON_INC "${_RA8_LEVELX_VENDOR_DIR}/common/inc")
 set(_RA8_LEVELX_COMMON_SRC "${_RA8_LEVELX_VENDOR_DIR}/common/src")
 
 if(NOT EXISTS "${_RA8_LEVELX_COMMON_INC}/lx_api.h")
-  message(FATAL_ERROR "RA8_USE_LEVELX=ON but LevelX vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_LEVELX=ON but the pinned LevelX package is missing at "
                       "${_RA8_LEVELX_VENDOR_DIR}."
   )
 endif()
