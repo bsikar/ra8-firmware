@@ -703,4 +703,64 @@ pub const cross_apps = [_]CrossApp{
         .threadx_heap = "SDRAM",
         .stack_bytes = 4000,
     },
+    .{
+        // The M85 releases the M33, which blinks an LED on its own.
+        // Declared through ra8_add_cpu1_image(), so its M33 half is the
+        // helper's shape: one entry TU, no shared first-party units, the
+        // board's linker_script_cpu1.ld and the five-directory include path.
+        // Appended last so the graph tests' positional picks stay put.
+        .name = "blink_m33",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/blink_m33",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{"src/cpu1_main.c"},
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.c",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+        },
+    },
+    .{
+        // The two cores pass messages through a shared-SRAM mailbox.
+        // Declared through ra8_add_cpu1_image(), so its M33 half is the
+        // helper's shape: one entry TU, no shared first-party units, the
+        // board's linker_script_cpu1.ld and the five-directory include path.
+        // Appended last so the graph tests' positional picks stay put.
+        .name = "dualcore_mailbox",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{"src/cpu1_main.c"},
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.c",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+        },
+    },
+    .{
+        // The M33 counts on its own while the M85 yields.
+        // Declared through ra8_add_cpu1_image(), so its M33 half is the
+        // helper's shape: one entry TU, no shared first-party units, the
+        // board's linker_script_cpu1.ld and the five-directory include path.
+        // Appended last so the graph tests' positional picks stay put.
+        .name = "dualcore_background_m33",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{"src/cpu1_main.c"},
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.c",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+        },
+    },
 };
