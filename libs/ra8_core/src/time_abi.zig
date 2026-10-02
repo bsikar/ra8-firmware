@@ -112,6 +112,13 @@ const weak_surface = .{
     .{ "ra8_time_init", &timeInit },
     .{ "ra8_time_ms", &timeMs },
     .{ "ra8_delay_ms", &delayMs },
+    // The short-form aliases from the deleted libs/ra8_hal/src/timer.c. They
+    // share the default bodies, so an image that overrides ra8_time_ms or
+    // ra8_delay_ms and also calls these must override them too (no image
+    // does today: only tz_nsc_cgc_usb's ns_usb.c overrides, and it never
+    // calls them).
+    .{ "ra8_now_ms", &timeMs },
+    .{ "ra8_sleep_ms", &delayMs },
     .{ "ra8_time_on_tick", &timeOnTick },
     .{ "SysTick_Handler", &systickHandler },
 };
