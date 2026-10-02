@@ -25,6 +25,10 @@ const tlv = @import("internal/tlv.zig");
 
 const Err = @import("abi_err.zig");
 
+comptime {
+    _ = @import("ra8_c6link_arena_abi.zig");
+}
+
 /// `priv_c6link_tlv_open`: open an envelope for a `proto_len`-byte body.
 ///
 /// Writes both tag headers and the endpoint name into `out`, then reports

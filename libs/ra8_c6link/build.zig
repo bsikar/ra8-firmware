@@ -144,6 +144,14 @@ pub fn build(b: *std.Build) void {
     sta_policy_test_module.addImport("implementation", implementation_module);
     const sta_policy_tests = b.addTest(.{ .root_module = sta_policy_test_module });
 
+    const arena_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/arena_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    arena_test_module.addImport("implementation", implementation_module);
+    const arena_tests = b.addTest(.{ .root_module = arena_test_module });
+
     const run_tx_admit_tests = b.addRunArtifact(tx_admit_tests);
     const run_wifi_init_tests = b.addRunArtifact(wifi_init_tests);
     const run_bare_rpc_tests = b.addRunArtifact(bare_rpc_tests);
@@ -162,4 +170,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_bare_rpc_tests.step);
     test_step.dependOn(&run_sta_policy_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&b.addRunArtifact(arena_tests).step);
 }
