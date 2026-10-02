@@ -2,7 +2,7 @@
 
 A nested `ra8_widget` tree composited on the live GLCDC panel. Where
 `widget_app_demo` shows the full `ra8_widget` + `ra8_app` launcher, this app
-isolates the structural piece issue #145 added: **a container that is itself a
+isolates the structural piece the widget work added: **a container that is itself a
 widget**, which is what turns a flat widget array into a tree.
 
 ```

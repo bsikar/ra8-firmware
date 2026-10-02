@@ -34,7 +34,7 @@
  * the EK-RA8D2 Ethernet wire is marginal, so this is compile-gated and
  * bench-only -- matching the driver-gap example wave. Proving a
  * frame is actually forwarded to the right egress port needs a multi-port
- * topology (two links + a traffic source, bench wiring #89).
+ * topology (two links + a traffic source, laptop bench wiring).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

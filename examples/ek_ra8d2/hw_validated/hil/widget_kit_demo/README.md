@@ -28,7 +28,7 @@ a synthetic touch routed through the root panel onto button A, which latches and
 -- from its `on_press` callback -- invalidates only the body band, then a partial
 compose that dirties exactly that one child, damages just the body rect with the
 `fast` hint, repaints both buttons, and changes the CRC because button A now
-shows its pressed face. That is the issue #145 partial-flush acceptance driven by
+shows its pressed face. That is the widget compositor's partial-flush acceptance driven by
 a concrete button. After the banner the loop alternately taps A and B and
 partial-composes only the body band, so the panel visibly toggles a button.
 

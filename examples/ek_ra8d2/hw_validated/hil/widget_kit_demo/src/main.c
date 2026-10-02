@@ -33,7 +33,7 @@
  *     `on_press` callback -- invalidates only the body band.
  *   - **Partial compose**: exactly 1 dirty root child (the body), damage is just
  *     the `512x440` body rect with the fast hint, and the composite CRC changes
- *     (button A now shows its pressed face). This is the issue #145 partial-flush
+ *     (button A now shows its pressed face). This is the widget compositor's partial-flush
  *     acceptance, driven by the concrete button widget.
  *
  * It then emits one banner so the app doubles as a ra8_emulator gate:

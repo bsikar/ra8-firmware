@@ -5,7 +5,7 @@
  * @details
  * The sibling `widget_compose_demo` proves the ::ra8_widget_panel compositor
  * primitive with generic tiles. This app is the focused demonstration of issue
- * #145 **Phase 2**: the concrete ereader chrome widgets now extracted into the
+ * Widget work **Phase 2**: the concrete ereader chrome widgets now extracted into the
  * `ra8_widget` library, each a reusable leaf that paints through the injected
  * ::ra8_widget_paint_t backend. It composes them into one panel tree on the GLCDC
  * panel:

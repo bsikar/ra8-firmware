@@ -29,7 +29,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# Build-time exclusion of the optional "settings" app (#146 "core uninstallable").
+# Build-time exclusion of the optional "settings" app ("core uninstallable").
 # Default 1 (settings shipped); configure with -DAPP_LAUNCH_SETTINGS=0 to drop it
 # from the registry. Forwarded as a compile definition so the C `#if` sees it;
 # applies to the elf target ra8_add_app() creates below (directory scope).

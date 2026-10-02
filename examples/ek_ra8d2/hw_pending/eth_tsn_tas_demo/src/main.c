@@ -43,7 +43,7 @@
  * ``k_ra8_ok``. The first two are hardware assertions. The third only proves
  * the arguments were accepted: ETHA stays in CONFIG mode here, so no frame is
  * ever transmitted and nothing about *shaped egress* is measured. That needs
- * a multi-node measurement rig (bench wiring #89).
+ * a multi-node measurement rig (laptop bench wiring).
  *
  * The read-back was added with #539, when the driver was found to be writing
  * gate states into ``EATASGL0``, whose field is the TAS RAM entry ADDRESS.

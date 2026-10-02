@@ -33,7 +33,7 @@ ra8_add_app(
   NAME widget_compose_demo
   STACK_BYTES 8192
   DESCRIPTION
-    "Nested ra8_widget tree composited on the live GLCDC panel (#145 ra8_widget_panel demo)"
+    "Nested ra8_widget tree composited on the live GLCDC panel (ra8_widget_panel demo)"
   LIBS ra8_widget
        ra8_box
        ra8_ui
