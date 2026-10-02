@@ -16,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf16"
 	"unsafe"
 )
 
@@ -266,7 +267,7 @@ func processParameters(program string, args []string, root string, env []string)
 		right, _, _ := strings.Cut(ordered[j], "=")
 		return strings.ToUpper(left) < strings.ToUpper(right)
 	})
-	environment := syscall.StringToUTF16(strings.Join(ordered, "\x00") + "\x00")
+	environment := append(utf16.Encode([]rune(strings.Join(ordered, "\x00"))), 0, 0)
 	return application, commandLine, directory, environment, nil
 }
 
