@@ -39,6 +39,7 @@ default:
     @echo "  just zig::threadx-m33       Build the ThreadX kernel for CPU1 (Cortex-M33)"
     @echo "  just zig::threadx-m33-modules  Build the ThreadX Module Manager for CPU1"
     @echo "  just zig::txm-m33              Build the ThreadX module library for CPU1 modules"
+    @echo "  just zig::txm-hello-m33        Build the hello-world ThreadX module for CPU1"
     @echo "  just zig::threadx-m85-modules  Build the ThreadX Module Manager for the M85"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
@@ -114,6 +115,9 @@ threadx-m33-modules: _zig
 # The library a CPU1 ThreadX module links (RA8FW-413).
 txm-m33: _zig
     "${RA8_ZIG}" build txm-m33
+
+txm-hello-m33: _zig
+    "${RA8_ZIG}" build txm-hello-m33
 
 # The ThreadX Module Manager for the M85 (RA8FW-426).
 threadx-m85-modules: _zig
