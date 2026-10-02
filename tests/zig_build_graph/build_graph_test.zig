@@ -953,5 +953,6 @@ test {
     _ = @import("zig_archive_test.zig");
     _ = @import("app_shapes_test.zig");
     _ = @import("cpu1_threadx_test.zig");
+    _ = @import("cpu1_threadx_modules_test.zig");
     _ = @import("zig_main_test.zig");
 }

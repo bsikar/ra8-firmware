@@ -85,6 +85,11 @@ pub const Middleware = struct {
     /// REGEX)` pair has. Compiled at the same no-warning bar as soup_c_dirs.
     soup_c_globs: []const SoupGlob = &.{},
 
+    /// Directories whose lowercase `*.s` still need the C preprocessor (they
+    /// `#include` and `#define`), the shape ports_module/cortex_m33/gnu ships.
+    /// Assembled with the assembly flags plus `-x assembler-with-cpp`.
+    soup_cpp_asm_dirs: []const []const u8 = &.{},
+
     /// Middlewares this one compiles against: its own TUs get their PUBLIC
     /// defines and include directories, the way `target_link_libraries(<mw>
     /// PRIVATE <dep>)` hands them over. The app names the dependency in USES
@@ -401,7 +406,7 @@ pub fn isReplaced(mw: Middleware, basename: []const u8) bool {
 /// CMAKE_C_FLAGS and the assembler rejects most of what the C driver takes.
 pub const Unit = struct {
     path: []const u8,
-    language: enum { c, assembly },
+    language: enum { c, assembly, assembly_cpp },
 };
 
 fn collect(
@@ -432,7 +437,12 @@ fn collect(
     for (names.items) |name| {
         out.append(.{
             .path = b.fmt("{s}/{s}", .{ dir_path, name }),
-            .language = if (std.mem.eql(u8, extension, ".c")) .c else .assembly,
+            .language = if (std.mem.eql(u8, extension, ".c"))
+                .c
+            else if (std.mem.eql(u8, extension, ".s"))
+                .assembly_cpp
+            else
+                .assembly,
         }) catch @panic("OOM");
     }
 }
@@ -466,6 +476,7 @@ pub fn units(b: *std.Build, mw: Middleware) []const Unit {
     for (mw.soup_c_dirs) |dir_path| collect(b, dir_path, ".c", mw, &out);
     for (mw.soup_c_globs) |glob| collectGlob(b, glob, &out);
     for (mw.soup_asm_dirs) |dir_path| collect(b, dir_path, ".S", mw, &out);
+    for (mw.soup_cpp_asm_dirs) |dir_path| collect(b, dir_path, ".s", mw, &out);
     for (mw.project_sources) |source| {
         out.append(.{
             .path = source,
@@ -503,7 +514,16 @@ pub fn unitFlags(tc: Toolchain, mw: Middleware, unit: Unit) []const []const u8 {
     _ = mw;
     return switch (unit.language) {
         .c => tc.c_flags,
-        .assembly => tc.asm_flags,
+        .assembly, .assembly_cpp => tc.asm_flags,
+    };
+}
+
+/// The driver's language switch a unit needs on top of its flags: a lowercase
+/// `.s` that still has to go through the preprocessor.
+pub fn languageFlags(unit: Unit) []const []const u8 {
+    return switch (unit.language) {
+        .assembly_cpp => &.{ "-x", "assembler-with-cpp" },
+        .c, .assembly => &.{},
     };
 }
 
@@ -539,6 +559,7 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
             compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         compile.addArgs(unitFlags(tc, mw, unit));
+        compile.addArgs(languageFlags(unit));
         compile.addArg("-c");
         compile.addFileArg(pkg_path.lazy(b, unit.path));
         compile.addArg("-o");
@@ -564,6 +585,7 @@ pub fn appendCompileDbEntries(
         flags.appendSlice(tc.global_defines) catch @panic("OOM");
         flags.appendSlice(unitDefines(b.allocator, mw)) catch @panic("OOM");
         flags.appendSlice(unitFlags(tc, mw, unit)) catch @panic("OOM");
+        flags.appendSlice(languageFlags(unit)) catch @panic("OOM");
         out.append(.{
             .file = unit.path,
             .driver = tc.gcc,

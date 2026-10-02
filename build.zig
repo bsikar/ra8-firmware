@@ -51,6 +51,7 @@ pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
 pub const app_local = @import("tests/zig_build_graph/app_local.zig");
 pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cpu1_threadx = @import("tests/zig_build_graph/cpu1_threadx.zig");
+pub const cpu1_threadx_modules = @import("tests/zig_build_graph/cpu1_threadx_modules.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
@@ -305,6 +306,9 @@ pub fn build(b: *std.Build) void {
 
     const threadx_m33_step = b.step("threadx-m33", cpu1_threadx.step_description);
     cross_image.addThreadxM33(b, threadx_m33_step, arm);
+
+    const threadx_m33_modules_step = b.step("threadx-m33-modules", cpu1_threadx_modules.step_description);
+    cross_image.addThreadxM33Modules(b, threadx_m33_modules_step, arm);
 
     const compile_db_step = b.step(
         "compile-db",

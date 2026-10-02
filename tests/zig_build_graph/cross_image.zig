@@ -22,6 +22,7 @@ const arm_flags = @import("arm_flags.zig");
 const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const cpu1_threadx = @import("cpu1_threadx.zig");
+const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
 const interface_archive = @import("interface_archive.zig");
@@ -90,6 +91,15 @@ pub fn addThreadxM33(b: *std.Build, step: *std.Build.Step, globals: build_type.G
         return;
     };
     cpu1_threadx.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+}
+
+pub fn addThreadxM33Modules(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "threadx-m33-modules: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    cpu1_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
 fn addCrossApp(
