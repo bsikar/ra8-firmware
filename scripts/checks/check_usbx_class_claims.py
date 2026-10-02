@@ -26,6 +26,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from zig_package import package_dir
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CMAKE_REL = "cmake/usbx.cmake"
@@ -51,8 +53,9 @@ MARKER_RE = re.compile(
     r"\s+host=(?P<host>[a-z0-9_,]+|none)\s*-->"
 )
 
-DEV_CLS_SRC_REL = "libs/third_party/usbx/common/usbx_device_classes/src"
-HOST_CLS_SRC_REL = "libs/third_party/usbx/common/usbx_host_classes/src"
+# Relative to the usbx package root (pinned in build.zig.zon, not in this repo).
+DEV_CLS_SRC_REL = "common/usbx_device_classes/src"
+HOST_CLS_SRC_REL = "common/usbx_host_classes/src"
 
 # A collapsed read of the recipe must fail loudly rather than agree with an
 # empty marker: the tree has four device classes today.
@@ -67,7 +70,7 @@ def _read(path: Path) -> str:
         raise SystemExit(message) from exc
 
 
-def compiled_device_classes(root: Path) -> tuple[set[str], list[str]]:
+def compiled_device_classes(root: Path, usbx: Path) -> tuple[set[str], list[str]]:
     """Class stems the recipe really compiles out of the device-class tree.
 
     Resolves each ``file(GLOB)`` against the vendored sources on disk and
@@ -84,7 +87,7 @@ def compiled_device_classes(root: Path) -> tuple[set[str], list[str]]:
     for match in EXCLUDE_RE.finditer(text):
         excludes.setdefault(match.group("var"), []).append(match.group("regex"))
 
-    src = root / DEV_CLS_SRC_REL
+    src = usbx / DEV_CLS_SRC_REL
     stems: set[str] = set()
     vacuous: list[str] = []
     for match in DEVICE_GLOB_RE.finditer(text):
@@ -117,9 +120,9 @@ def compiled_host_classes(root: Path) -> set[str]:
     return stems
 
 
-def vendored_host_class_files(root: Path) -> int:
-    """How many host-class sources are vendored, compiled or not."""
-    src = root / HOST_CLS_SRC_REL
+def vendored_host_class_files(usbx: Path) -> int:
+    """How many host-class sources the package ships, compiled or not."""
+    src = usbx / HOST_CLS_SRC_REL
     return len(sorted(src.glob("*.c"))) if src.is_dir() else 0
 
 
@@ -140,13 +143,13 @@ def prose_without_markers(root: Path) -> str:
     return MARKER_RE.sub("", _read(root / SOUP_REL))
 
 
-def scan(root: Path) -> list[str]:
+def scan(root: Path, usbx: Path) -> list[str]:
     """Compare what the recipe compiles against what the SOUP entry claims."""
-    device, vacuous = compiled_device_classes(root)
+    device, vacuous = compiled_device_classes(root, usbx)
     host = compiled_host_classes(root)
 
     findings: list[str] = [
-        f"{CMAKE_REL}: glob {glob} matches no source under {DEV_CLS_SRC_REL}" for glob in vacuous
+        f"{CMAKE_REL}: glob {glob} matches no source under the usbx package's {DEV_CLS_SRC_REL}" for glob in vacuous
     ]
     if len(device) < CLASS_FLOOR and not vacuous:
         findings.append(
@@ -175,7 +178,7 @@ def scan(root: Path) -> list[str]:
 
     prose = prose_without_markers(root)
     if not host and re.search(r"device\s*\+\s*host", prose):
-        count = vendored_host_class_files(root)
+        count = vendored_host_class_files(usbx)
         findings.append(
             f"{SOUP_REL}: the prose still claims a class is used 'device + host' "
             f"while the recipe compiles zero of the {count} vendored host-class "
@@ -195,12 +198,12 @@ def _fmt(stems: set[str]) -> str:
 
 
 def _seed(root: Path, *, marker: str, prose: str, classes: tuple[str, ...]) -> None:
-    src = root / DEV_CLS_SRC_REL
+    src = _fixture_usbx(root) / DEV_CLS_SRC_REL
     src.mkdir(parents=True, exist_ok=True)
     for stem in classes:
         (src / f"ux_device_class_{stem}_entry.c").write_text("/* fixture */\n")
-    (root / HOST_CLS_SRC_REL).mkdir(parents=True, exist_ok=True)
-    (root / HOST_CLS_SRC_REL / "ux_host_class_hub_entry.c").write_text("/* f */\n")
+    (_fixture_usbx(root) / HOST_CLS_SRC_REL).mkdir(parents=True, exist_ok=True)
+    (_fixture_usbx(root) / HOST_CLS_SRC_REL / "ux_host_class_hub_entry.c").write_text("/* f */\n")
     (root / "cmake").mkdir(parents=True, exist_ok=True)
     globs = "\n".join(
         f"file(GLOB _RA8_USBX_{stem.upper()}_SOURCES CONFIGURE_DEPENDS "
@@ -212,6 +215,11 @@ def _seed(root: Path, *, marker: str, prose: str, classes: tuple[str, ...]) -> N
     (root / SOUP_REL).write_text(f"{marker}\n\n{prose}\n")
 
 
+def _fixture_usbx(root: Path) -> Path:
+    """Where a fixture plants its stand-in for the usbx package."""
+    return root / "usbx"
+
+
 GOOD_MARKER = "<!-- usbx-class-claims: device=cdc_acm,dfu host=none -->"
 GOOD_PROSE = "Class drivers used: CDC-ACM (device), DFU (device)."
 FIXTURE_CLASSES = ("cdc_acm", "dfu")
@@ -221,7 +229,7 @@ def _run_case(expect_clean: bool, **seed: object) -> tuple[bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         _seed(root, **seed)  # type: ignore[arg-type]
-        found = scan(root)
+        found = scan(root, _fixture_usbx(root))
         ok = (not found) if expect_clean else bool(found)
         return ok, "; ".join(found)
 
@@ -274,7 +282,7 @@ def _host_glob_case() -> tuple[str, bool, str]:
                 '"${_RA8_USBX_VENDOR_DIR}/common/usbx_host_classes/src/'
                 'ux_host_class_hub_*.c")\n'
             )
-        found = scan(root)
+        found = scan(root, _fixture_usbx(root))
         return (
             "a host-class glob the marker calls none fires",
             any("host=" in f for f in found),
@@ -287,9 +295,9 @@ def _vacuous_glob_case() -> tuple[str, bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
-        for stale in (root / DEV_CLS_SRC_REL).glob("ux_device_class_dfu_*.c"):
+        for stale in (_fixture_usbx(root) / DEV_CLS_SRC_REL).glob("ux_device_class_dfu_*.c"):
             stale.unlink()
-        found = scan(root)
+        found = scan(root, _fixture_usbx(root))
         return (
             "a glob matching no vendored source fires",
             any("matches no source" in f for f in found),
@@ -307,7 +315,7 @@ def _filtered_empty_case() -> tuple[str, bool, str]:
                 "list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX "
                 '".*/ux_device_class_dfu_.*\\.c$")\n'
             )
-        found = scan(root)
+        found = scan(root, _fixture_usbx(root))
         return (
             "a filter removing every match of a class fires",
             any("filtered back out" in f for f in found),
@@ -320,14 +328,14 @@ def _single_tu_filter_case() -> tuple[str, bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
-        src = root / DEV_CLS_SRC_REL
+        src = _fixture_usbx(root) / DEV_CLS_SRC_REL
         (src / "ux_device_class_dfu_inquiry.c").write_text("/* fixture */\n")
         with (root / CMAKE_REL).open("a", encoding="utf-8") as handle:
             handle.write(
                 "list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX "
                 '".*/ux_device_class_dfu_inquiry\\.c$")\n'
             )
-        found = scan(root)
+        found = scan(root, _fixture_usbx(root))
         return (
             "one filtered TU leaves the class compiled and the gate quiet",
             not found,
@@ -367,7 +375,8 @@ def main() -> int:
     if args.selftest:
         return selftest()
 
-    findings = scan(args.root)
+    usbx = package_dir("usbx", args.root)
+    findings = scan(args.root, usbx)
     if findings:
         print(
             f"{Path(__file__).name}: {len(findings)} USBX class-claim finding(s):",
@@ -376,7 +385,7 @@ def main() -> int:
         for finding in findings:
             print(f"  {finding}", file=sys.stderr)
         return 1
-    device, _ = compiled_device_classes(args.root)
+    device, _ = compiled_device_classes(args.root, usbx)
     print(
         f"{Path(__file__).name}: class-driver claim current "
         f"({len(device)} device class(es) compiled, host side not compiled)"

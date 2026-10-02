@@ -44,6 +44,7 @@
 
 const std = @import("std");
 const middleware_mod = @import("middleware.zig");
+const pkg_path = @import("pkg_path.zig");
 const ns_linker_script = @import("ns_linker_script.zig");
 
 /// One vendored tree the NS image compiles into itself, as the app's own
@@ -181,9 +182,7 @@ pub fn vendoredSelects(set: VendoredSet, basename: []const u8) bool {
 }
 
 fn collectVendored(b: *std.Build, set: VendoredSet, out: *std.ArrayList(Unit)) void {
-    var dir = b.build_root.handle.openDir(set.dir, .{ .iterate = true }) catch |err| {
-        std.debug.panic("ra8: cannot read vendored directory '{s}': {s}", .{ set.dir, @errorName(err) });
-    };
+    var dir = pkg_path.openDir(b, set.dir) orelse return;
     defer dir.close();
 
     const first = out.items.len;
@@ -406,13 +405,13 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
         const compile = b.addSystemCommand(&.{ctx.gcc});
         compile.addArgs(define_flags);
         compile.addArgs(compileFlags(b.allocator, ctx.global_compile_flags, ctx.warning_flags, unit));
-        for (include_dirs) |dir_path| compile.addPrefixedDirectoryArg("-I", b.path(dir_path));
+        for (include_dirs) |dir_path| compile.addPrefixedDirectoryArg("-I", pkg_path.lazy(b, dir_path));
         for (system_dirs) |dir_path| {
             compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(dir_path));
+            compile.addDirectoryArg(pkg_path.lazy(b, dir_path));
         }
         compile.addArg("-c");
-        compile.addFileArg(b.path(unit.path));
+        compile.addFileArg(pkg_path.lazy(b, unit.path));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");

@@ -141,7 +141,8 @@ ra8_add_ns_image(
 # are compiled FRESH into the NS image so it has its own copies -- the Secure
 # side uses ra8_log/ra8_mstp/ra8_time too, and a shared single-ELF copy would
 # fault INVTRAN across the S/NS boundary.
-set(_ra8_usbx_root ${RA8_REPO_ROOT}/libs/third_party/usbx)
+include(${RA8_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(usbx _ra8_usbx_root)
 file(GLOB _ns_usbx_core CONFIGURE_DEPENDS "${_ra8_usbx_root}/common/core/src/*.c")
 list(
   FILTER

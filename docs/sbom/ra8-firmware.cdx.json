@@ -153,12 +153,6 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/usbx@6.5.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "ecc871cefadf40ddb87767f57d280b815fcf16630edc69d9895f54ab10196017"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -168,15 +162,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/usbx"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "1036"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -187,12 +177,12 @@
           "value": "v6.5.0.202601_rel"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/usbx/LICENSE.txt"
+          "name": "ra8:modified",
+          "value": "false"
         },
         {
-          "name": "ra8:modified",
-          "value": "true"
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned in build.zig.zon as the upstream v6.5.0.202601_rel tarball (url + Zig content hash), fetched into the Zig package cache by the Zig build graph (pkg:usbx paths) and by cmake/zig_package.cmake. Every file the build used is byte-identical in it."
         }
       ]
     },
