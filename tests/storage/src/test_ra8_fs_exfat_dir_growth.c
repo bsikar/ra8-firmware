@@ -369,7 +369,7 @@ RA8_INTERNAL static void internal_test_fill_past_one_cluster(void)
   TEST_ASSERT_EQ(baseline + 1U, internal_alloc_bitmap_used(h));
   internal_exfat_verify(h, "grow_ceiling_reached");
 
-  /* NEGATIVE CONTROL: this exact create returned k_ra8_err_no_mem before #677.
+  /* NEGATIVE CONTROL: this exact create returned k_ra8_err_no_mem before the fix.
    * It now succeeds and the directory grows to a second cluster. */
   internal_make_empty_file(h, "/BIG/F00042ceil");
   TEST_ASSERT_EQ(baseline + 2U, internal_alloc_bitmap_used(h));

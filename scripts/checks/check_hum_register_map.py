@@ -71,7 +71,7 @@ Being precise about the edge is part of not crying wolf:
   that case is that ``0x03001E04`` / ``0x03001E20`` fall inside a window both
   manuals mark ``Reserved area`` -- a wrong ADDRESS, not an invented NAME.
   That needs an address-versus-reserved-window guard, which is a different
-  rule and is being added separately under #545. Do not read this gate as
+  rule and is being added separately. Do not read this gate as
   covering it.
 
 WHAT MAKES THIS GATE ABLE TO FAIL

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Offline Ethos-U55 model build step for issue #227.
+"""Offline Ethos-U55 model build step.
 
 Two responsibilities, deliberately separated so the golden pipeline runs in CI
 WITHOUT the heavy, optional Vela toolchain:

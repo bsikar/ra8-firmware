@@ -79,7 +79,7 @@ _pcc_banned_constructs() (
 # they cover cross-compiled TUs the host tidy build never sees
 # (ThreadX/USBX/NetX/HAL register code).
 #
-# Both checkers were rewritten under #359: their scope is now derived from
+# Both checkers were rewritten: their scope is now derived from
 # git ls-files plus per-file language detection rather than a hardcoded
 # root/suffix list that had quietly stopped describing the tree, so they
 # cover Python, shell, CMake, YAML, Just and linker scripts as well as C --

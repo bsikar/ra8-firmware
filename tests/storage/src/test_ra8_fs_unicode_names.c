@@ -43,7 +43,7 @@
  * this codebase -- reassembled the chain we wrote and got U+00E9 back at both
  * positions, printing it as byte 0xE9 in its own single-byte output charset.
  * That is a third party reading a real accented long name off a card this
- * library wrote; before #606 the same slot held `?`.
+ * library wrote; before the fix the same slot held `?`.
  *
  * (Both images also report `Label '' stored in boot sector is not valid`, which
  * is `ra8_fs_format()` leaving `BS_VolLab` blank and has nothing to do with
@@ -102,7 +102,7 @@ typedef enum : uint32_t {
  *  @brief "R", U+00E9, "sum", U+00E9, ".txt" -- two-byte UTF-8, NFC form.
  *  @details The everyday case: a Latin name with accents. Ten UTF-16 units,
  *           twelve UTF-8 bytes, which is exactly the discrepancy that broke
- *           every length calculation before #606.
+ *           every length calculation before the fix.
  *  @note Read-only; shared by several cases.
  *  @since 0.1.0
  */
@@ -167,7 +167,7 @@ static const char s_resume_nfd[] = {'R',
 
 /** @var s_resume_plain
  *  @brief "Resume.txt": the same letters with the accents removed.
- *  @details The collision control. Both names were `R?sum?.txt` before #606 --
+ *  @details The collision control. Both names were `R?sum?.txt` before the fix --
  *           no, worse: this one was itself, and the accented one became a
  *           string of question marks that matched nothing the caller could
  *           type. Either way the two must be distinct files, and are.

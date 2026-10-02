@@ -7,7 +7,7 @@
  * FAT32 and exFAT, and checks the ON-DISK bytes it writes -- `BS_VolLab` and the
  * root `ATTR_VOLUME_ID` entry on FAT, the Volume Label directory entry on exFAT
  * -- because a matching return code would not prove a host reads the label back.
- * The formatter's default (`"NO NAME    "` per #634) reports as the empty
+ * The formatter's default (`"NO NAME    "`) reports as the empty
  * string; clearing restores it and drops the root entry, so the two FAT copies
  * of the label stay consistent and `fsck.fat` stays quiet.
  *

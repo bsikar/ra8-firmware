@@ -570,7 +570,7 @@ RA8_INTERNAL static void internal_test_create_file_table_full(void)
  *          so the lookup still reports the name absent and the create still has
  *          to find three consecutive free entries. There are none in the first
  *          cluster, so ::priv_exfat_link grows the root and lays the set down in
- *          the fresh one -- before #677 this refused with `k_ra8_err_no_mem`, its
+ *          the fresh one -- before the fix this refused with `k_ra8_err_no_mem`, its
  *          FAT chain being end-of-chain with nowhere to extend to.
  *
  * @par MC/DC:

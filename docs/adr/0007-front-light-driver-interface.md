@@ -95,7 +95,7 @@ noted). Each line is the datasheet figure, then the design consequence.
   before an I2C transaction is ACKed, earlier ones NAKed: firmware-visible
   timing.
 * Thermal shutdown, 140 degC typ with 15 degC hysteresis: feeds the
-  thermal review under #835 and #836.
+  thermal review.
 
 **Alternative considered: TI LM3697** (SNOSCS2D, November 2013, revised
 March 2019). Three sinks at up to 30 mA, 11-bit (2048-step) dimming, PWM
