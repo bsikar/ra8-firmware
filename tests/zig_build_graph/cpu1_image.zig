@@ -347,7 +347,10 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
 fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPath {
     const root = zigModule(b, options, join(b.allocator, options.app.dir, options.image.entry_source));
     if (cpu1_threadx.wantsGlue(options.image.uses)) {
-        root.addImport(cpu1_threadx.zig_glue_import, zigModule(b, options, cpu1_threadx.zig_glue));
+        const glue = zigModule(b, options, cpu1_threadx.zig_glue);
+        const handlers = cpu1_threadx.handlersFor(options.image.uses);
+        glue.addImport(cpu1_threadx.handlers_import, zigModule(b, options, handlers));
+        root.addImport(cpu1_threadx.zig_glue_import, glue);
     }
     const object = b.addObject(.{ .name = b.fmt("{s}_entry", .{name}), .root_module = root });
     return object.getEmittedBin();

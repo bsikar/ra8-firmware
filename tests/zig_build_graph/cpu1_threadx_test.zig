@@ -73,3 +73,11 @@ test "the CPU1 kernel link gives the port its free-memory symbol" {
     try std.testing.expect(contains(opts, "--defsym=__RAM_segment_used_end__=g_ra8_ls_cpu1_bss_end"));
     try std.testing.expect(contains(opts, "--undefined=_tx_timer_interrupt"));
 }
+
+test "the single-mode kernel's glue keeps BadHandler, the Module Manager's gets the port's handlers" {
+    try std.testing.expectEqualStrings("cpu1_handlers", cpu1_threadx.handlers_import);
+    try std.testing.expectEqualStrings(cpu1_threadx.handlers_single, cpu1_threadx.handlersFor(&.{"threadx_m33"}));
+    try std.testing.expectEqualStrings(cpu1_threadx.handlers_modules, cpu1_threadx.handlersFor(&.{"threadx_m33_modules"}));
+    try std.testing.expectEqualStrings(cpu1_threadx.handlers_single, cpu1_threadx.handlersFor(&.{}));
+    try std.testing.expect(std.mem.endsWith(u8, cpu1_threadx.handlers_modules, "cortex_m33/cpu1_handlers_modules.zig"));
+}
