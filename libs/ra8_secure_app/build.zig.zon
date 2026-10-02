@@ -1,0 +1,17 @@
+.{
+    .name = .ra8_secure_app,
+    .version = "0.1.0",
+    .fingerprint = 0xa97b2496288b78ae,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

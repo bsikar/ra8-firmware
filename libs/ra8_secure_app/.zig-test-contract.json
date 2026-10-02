@@ -1,0 +1,67 @@
+{
+  "test_roots": [
+    "tests/vocab_test.zig",
+    "tests/vault_test.zig",
+    "tests/trng_test.zig",
+    "tests/ota_test.zig",
+    "tests/aes_test.zig",
+    "tests/cmac_test.zig",
+    "tests/key_handle_test.zig",
+    "tests/key_import_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/aes.zig",
+    "src/internal/cmac.zig",
+    "src/internal/key_handle.zig",
+    "src/internal/key_import.zig",
+    "src/internal/ota.zig",
+    "src/internal/standalone_build_config.zig",
+    "src/internal/trng.zig",
+    "src/internal/vault.zig",
+    "src/internal/vocab.zig",
+    "src/ra8_secure_app_abi.zig",
+    "tests/abi_test.zig",
+    "tests/aes_test.zig",
+    "tests/cmac_test.zig",
+    "tests/key_handle_test.zig",
+    "tests/key_import_test.zig",
+    "tests/ota_test.zig",
+    "tests/trng_test.zig",
+    "tests/vault_test.zig",
+    "tests/vocab_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/key_import.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/key_import.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/internal/ota.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/ota.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/internal/trng.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/trng.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/internal/vault.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/vault.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/ra8_secure_app_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_secure_app_abi.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ]
+  },
+  "minimum_tests": 10
+}

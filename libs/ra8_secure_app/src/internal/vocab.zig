@@ -7,8 +7,6 @@
 //! for the numbering; these are the subset `ra8_secure_app` actually hands
 //! back, kept as a `u16` enum so the values cross the ABI unchanged.
 
-const std = @import("std");
-
 /// The `ra8_err_t` subset this library returns.
 pub const Err = enum(u16) {
     ok = 0,
@@ -26,12 +24,3 @@ pub const Err = enum(u16) {
         return @intFromEnum(self);
     }
 };
-
-test "success is the only zero value" {
-    try std.testing.expectEqual(@as(u16, 0), Err.ok.code());
-    inline for (@typeInfo(Err).@"enum".fields) |field| {
-        if (!std.mem.eql(u8, field.name, "ok")) {
-            try std.testing.expect(field.value != 0);
-        }
-    }
-}
