@@ -371,13 +371,17 @@ ra8_add_zig_library(
 # and libs/if/src is no longer an include directory anywhere. The three
 # ra8_path_* symbols ride in this same archive behind the unchanged
 # inc/ra8_path.h, so no target compiles that .c by path any more.
+#
+# libs/if/build.zig names the archive libif.a after its directory, which is
+# what the app build links, so LIBRARY_NAME follows it. The target keeps the
+# fw_if_fs name its consumers link against.
 ra8_add_zig_library(
   NAME
   fw_if_fs
   ZIG_ROOT
   ${FW_ROOT}/libs/if
   LIBRARY_NAME
-  fw_if_fs
+  if
 )
 
 # Fully migrated: the RA8 module-to-clock table and the three ops behind
