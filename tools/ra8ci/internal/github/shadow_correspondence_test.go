@@ -76,24 +76,24 @@ func TestCorrespondenceRefusesAnUncheckableDeclaration(t *testing.T) {
 // attributed, and grading both against it would report a conflict for a task
 // that may have passed.
 func TestCorrespondenceRefusesOneJobCoveringTwoTasks(t *testing.T) {
-	_, err := NewShadowCorrespondence(map[string]string{"format": "lint", "tidy": "lint"}, catalogNames(t))
+	_, err := NewShadowCorrespondence(map[string]string{"format": "lint", "unit-tests": "lint"}, catalogNames(t))
 	if !errors.Is(err, ErrShadowCorrespondenceAmbiguous) {
 		t.Fatalf("want ErrShadowCorrespondenceAmbiguous, got %v", err)
 	}
 }
 
 func TestCorrespondenceReportsWhatItCovers(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"tidy": "lint-tidy", "format": "lint-format"})
+	correspondence := testCorrespondence(t, map[string]string{"unit-tests": "lint-tidy", "format": "lint-format"})
 	job, covered := correspondence.Job("format")
 	if !covered || job != "lint-format" {
 		t.Fatalf("Job(format) = %q %v", job, covered)
 	}
-	if _, covered := correspondence.Job("misra"); covered {
-		t.Fatal("misra is not in this correspondence")
+	if _, covered := correspondence.Job("lint-go"); covered {
+		t.Fatal("lint-go is not in this correspondence")
 	}
 	tasks := correspondence.Tasks()
-	if len(tasks) != 2 || tasks[0] != "format" || tasks[1] != "tidy" {
-		t.Fatalf("Tasks() = %v, want [format tidy]", tasks)
+	if len(tasks) != 2 || tasks[0] != "format" || tasks[1] != "unit-tests" {
+		t.Fatalf("Tasks() = %v, want [format unit-tests]", tasks)
 	}
 	tasks[0] = "mutated"
 	if again := correspondence.Tasks(); again[0] != "format" {
@@ -105,11 +105,11 @@ func TestCorrespondenceReportsWhatItCovers(t *testing.T) {
 func TestCollectProducesObservationsCompareShadowRunGrades(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
+		"unit-tests":   "lint-tidy",
 	})
 	collection, err := correspondence.Collect(
 		[]PlaneOutcome{
-			{Task: "tidy", HeadSHA: headA, Observed: "failure"},
+			{Task: "unit-tests", HeadSHA: headA, Observed: "failure"},
 			{Task: "format", HeadSHA: headA, Observed: "success"},
 		},
 		[]ActionsOutcome{
@@ -147,14 +147,14 @@ func TestCollectRefusesATaskTheCorrespondenceDoesNotCover(t *testing.T) {
 	_, err := correspondence.Collect(
 		[]PlaneOutcome{
 			{Task: "format", HeadSHA: headA, Observed: "success"},
-			{Task: "misra", HeadSHA: headA, Observed: "failure"},
+			{Task: "lint-go", HeadSHA: headA, Observed: "failure"},
 		},
 		[]ActionsOutcome{{Job: "lint-format", HeadSHA: headA, Conclusion: "success"}},
 	)
 	if !errors.Is(err, ErrShadowTaskNotCorrespondent) {
 		t.Fatalf("want ErrShadowTaskNotCorrespondent, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "misra") {
+	if !strings.Contains(err.Error(), "lint-go") {
 		t.Fatalf("error should name the task, got %v", err)
 	}
 }
@@ -182,8 +182,8 @@ func TestCollectIgnoresAnActionsJobOutsideTheCorrespondence(t *testing.T) {
 func TestCollectCountsCoveredTasksThisCommitDidNotRun(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
-		"misra":  "static-misra",
+		"unit-tests":   "lint-tidy",
+		"lint-go":  "static-misra",
 	})
 	collection, err := correspondence.Collect(
 		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
@@ -192,8 +192,8 @@ func TestCollectCountsCoveredTasksThisCommitDidNotRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
-	if len(collection.NotRun) != 2 || collection.NotRun[0] != "misra" || collection.NotRun[1] != "tidy" {
-		t.Fatalf("NotRun = %v, want [misra tidy]", collection.NotRun)
+	if len(collection.NotRun) != 2 || collection.NotRun[0] != "lint-go" || collection.NotRun[1] != "unit-tests" {
+		t.Fatalf("NotRun = %v, want [lint-go unit-tests]", collection.NotRun)
 	}
 	if len(collection.Observations) != 1 {
 		t.Fatalf("a task that did not run is not paired: %+v", collection.Observations)
@@ -239,7 +239,7 @@ func TestCollectKeepsAPairingActionsNeverReported(t *testing.T) {
 }
 
 func TestCollectRefusesAnUngradableSet(t *testing.T) {
-	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "tidy": "lint-tidy"})
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format", "unit-tests": "lint-tidy"})
 	cases := []struct {
 		name    string
 		plane   []PlaneOutcome
@@ -264,7 +264,7 @@ func TestCollectRefusesAnUngradableSet(t *testing.T) {
 		},
 		{
 			name:  "two commits on the plane side",
-			plane: []PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}, {Task: "tidy", HeadSHA: headB, Observed: "success"}},
+			plane: []PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}, {Task: "unit-tests", HeadSHA: headB, Observed: "success"}},
 			want:  ErrShadowHeadMismatch,
 		},
 		{
@@ -332,7 +332,7 @@ func TestCollectAcceptsEveryConclusionATaskCanEndWith(t *testing.T) {
 func TestCollectNamesATaskActionsJudgedThatThisPlaneDidNotRun(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
+		"unit-tests":   "lint-tidy",
 	})
 	collection, err := correspondence.Collect(
 		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
@@ -348,10 +348,10 @@ func TestCollectNamesATaskActionsJudgedThatThisPlaneDidNotRun(t *testing.T) {
 		t.Fatalf("NotRunJudged = %+v, want one entry", collection.NotRunJudged)
 	}
 	judged := collection.NotRunJudged[0]
-	if judged.Task != "tidy" || judged.Job != "lint-tidy" || judged.Conclusion != "failure" {
+	if judged.Task != "unit-tests" || judged.Job != "lint-tidy" || judged.Conclusion != "failure" {
 		t.Fatalf("NotRunJudged[0] = %+v", judged)
 	}
-	if len(collection.NotRun) != 1 || collection.NotRun[0] != "tidy" {
+	if len(collection.NotRun) != 1 || collection.NotRun[0] != "unit-tests" {
 		t.Fatalf("a judged task is still one this commit did not exercise: %v", collection.NotRun)
 	}
 	if len(collection.Observations) != 1 || collection.Observations[0].Task != "format" {
@@ -371,7 +371,7 @@ func TestCollectNamesATaskActionsJudgedThatThisPlaneDidNotRun(t *testing.T) {
 func TestANotRunTaskWithNoActionsVerdictIsNotJudged(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
+		"unit-tests":   "lint-tidy",
 	})
 	for _, testCase := range []struct {
 		name    string
@@ -390,10 +390,10 @@ func TestANotRunTaskWithNoActionsVerdictIsNotJudged(t *testing.T) {
 				t.Fatalf("Collect: %v", err)
 			}
 			if len(collection.NotRunJudged) != 0 {
-				t.Fatalf("nothing was stated about tidy: %+v", collection.NotRunJudged)
+				t.Fatalf("nothing was stated about unit-tests: %+v", collection.NotRunJudged)
 			}
-			if len(collection.NotRun) != 1 || collection.NotRun[0] != "tidy" {
-				t.Fatalf("NotRun = %v, want [tidy]", collection.NotRun)
+			if len(collection.NotRun) != 1 || collection.NotRun[0] != "unit-tests" {
+				t.Fatalf("NotRun = %v, want [unit-tests]", collection.NotRun)
 			}
 		})
 	}
@@ -405,7 +405,7 @@ func TestANotRunTaskWithNoActionsVerdictIsNotJudged(t *testing.T) {
 func TestTheActionsConclusionForANotRunTaskIsCarriedVerbatim(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
+		"unit-tests":   "lint-tidy",
 	})
 	for _, conclusion := range []string{"success", "failure", "cancelled", "skipped", "timed_out", "neutral", "action_required"} {
 		t.Run(conclusion, func(t *testing.T) {
@@ -428,8 +428,8 @@ func TestTheActionsConclusionForANotRunTaskIsCarriedVerbatim(t *testing.T) {
 func TestTheJudgedTasksThatDidNotRunAreNamedInTaskOrder(t *testing.T) {
 	correspondence := testCorrespondence(t, map[string]string{
 		"format": "lint-format",
-		"tidy":   "lint-tidy",
-		"misra":  "static-misra",
+		"unit-tests":   "lint-tidy",
+		"lint-go":  "static-misra",
 	})
 	collection, err := correspondence.Collect(
 		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
@@ -444,8 +444,8 @@ func TestTheJudgedTasksThatDidNotRunAreNamedInTaskOrder(t *testing.T) {
 	if len(collection.NotRunJudged) != 2 {
 		t.Fatalf("NotRunJudged = %+v, want two entries", collection.NotRunJudged)
 	}
-	if collection.NotRunJudged[0].Task != "misra" || collection.NotRunJudged[1].Task != "tidy" {
-		t.Fatalf("NotRunJudged order = %+v, want misra then tidy", collection.NotRunJudged)
+	if collection.NotRunJudged[0].Task != "lint-go" || collection.NotRunJudged[1].Task != "unit-tests" {
+		t.Fatalf("NotRunJudged order = %+v, want lint-go then unit-tests", collection.NotRunJudged)
 	}
 }
 
