@@ -1,6 +1,6 @@
 /**
  * @file src/cache_bench.c
- * @brief #147 eviction-policy benchmark: the exact-accounting replay engine.
+ * @brief Eviction-policy benchmark: the exact-accounting replay engine.
  *
  * @details
  * Replays one access trace through one registered ::cache_policy_t at one

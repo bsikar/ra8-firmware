@@ -1,13 +1,13 @@
 /**
  * @file test_ra8_embedded_fonts.c
- * @brief #109 foundation: enumerate + extract an EPUB-embedded font (epub)
+ * @brief Embedded-font foundation: enumerate + extract an EPUB-embedded font (epub)
  *        and bind it as the reflow engine's active face (reflow).
  *
  * @details
- * Covers the additive foundation of issue #109 (items 1 + 4 -- the common
+ * Covers the additive foundation of EPUB embedded-font support (items 1 + 4 -- the common
  * "the EPUB ships one typeface" case + graceful degradation). The face
  * *matching* half (bold/italic/family selection across multiple faces) is
- * deferred to #109's remainder, blocked on the `@font-face` prerequisite #142.
+ * deferred to the remainder, blocked on the `@font-face` prerequisite.
  *
  * A synthetic EPUB is built in memory (miniz writer) embedding the baked Ahem
  * test font as a `font/ttf` manifest item. The tests then:

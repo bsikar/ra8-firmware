@@ -7,10 +7,9 @@ SPDX-License-Identifier: MIT
 
 A host benchmark that settles two page-cache sizing questions by measurement
 rather than argument: which eviction policy and how many frames the cache
-should hold (#147, whose decision record is SLRU), and how many *bytes* a frame
--- and therefore a chunk of the `.rabook` container -- should be (#208, feeding
-#204). Both sweeps run in CI, so the answers are re-derived rather than
-remembered.
+should hold (the decision record is SLRU), and how many *bytes* a frame -- and
+therefore a chunk of the chunked `.rabook` container -- should be. Both sweeps
+run in CI, so the answers are re-derived rather than remembered.
 
 The capacity sweep re-models the candidate policies over synthetic and captured
 reader traces; a page there is an abstract key, so it can never say anything
@@ -52,8 +51,8 @@ decompress-cost-per-miss against chunk size -- the number that actually picks
 the chunk size -- and not raw byte moves.
 
 SD-over-SPI numbers are a bench follow-up; the seam exists so a backend issuing
-real card reads, or one binding the landed `ra8_cache_store` from closed issue
-#201 to OSPI / NAND, plugs in without touching the sweep core.
+real card reads, or one binding the landed `ra8_cache_store` to OSPI / NAND,
+plugs in without touching the sweep core.
 
 ## Reading the result
 
@@ -71,6 +70,6 @@ human summary tables and the measured crossover. The durable findings so far:
   its history; the container itself grows on disk as well.
 - **The host knee is a lower bound.** On real storage the command and bus costs
   dwarf the host's per-stream setup and push the knee toward larger blocks.
-  Closed issue #202 landed streamed CMD18 multi-block reads, but only a hardware
+  An earlier slice landed streamed CMD18 multi-block reads, but only a hardware
   run can measure that path, so it still has to confirm before any chunk-size
   *reduction*.

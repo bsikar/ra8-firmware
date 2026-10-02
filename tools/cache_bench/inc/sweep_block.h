@@ -1,6 +1,6 @@
 /**
  * @file inc/sweep_block.h
- * @brief #208 block/frame-size sweep: the byte-size axis the capacity sweep
+ * @brief Block/frame-size sweep: the byte-size axis the capacity sweep
  *        never touches, so the chunked `.rabook` chunk size and the ra8_vmem
  *        `frame_bytes` constant are picked from measurement, not intuition.
  *
@@ -29,7 +29,7 @@
  *                 genuine staged read + tinfl inflate of one chunk. This is
  *                 the decompress-per-miss number that picks the chunk size.
  *
- * The SD-over-SPI hardware leg of #208 plugs in later as a third
+ * The SD-over-SPI hardware leg of the sweep plugs in later as a third
  * ::cbs_backend_t whose `read` issues real card reads; nothing in the sweep
  * core changes.
  *
