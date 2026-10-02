@@ -172,8 +172,6 @@ PATH_CLASS: dict[str, str] = {
     "docs/sbom/patches/libwebp/series": "validated-input",
     "docs/sbom/patches/miniz/0001-use-ra8-assertion-policy.patch": "validated-input",
     "docs/sbom/patches/miniz/series": "validated-input",
-    "docs/sbom/patches/mbedtls/0001-track-generated-config-headers.patch": "validated-input",
-    "docs/sbom/patches/mbedtls/series": "validated-input",
     "docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch": "validated-input",
     "docs/sbom/patches/stb/series": "validated-input",
     "libs/ra8_c6link/proto/ra8_media_download.proto": "validated-input",

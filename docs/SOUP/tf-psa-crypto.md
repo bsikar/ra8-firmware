@@ -10,7 +10,8 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **Version**: 1.1.0 (per `ChangeLog` head: "TF-PSA-Crypto 1.1.0 branch
   released 2026-03-31").
 - **Upstream URL**: https://github.com/Mbed-TLS/TF-PSA-Crypto
-- **Local path**: `libs/third_party/tf-psa-crypto/`
+- **Local path**: none. Pinned in `build.zig.zon` as package `tf_psa_crypto`
+  (the `bsikar/TF-PSA-Crypto` fork, commit `fe051ec`), fetched into the Zig package cache.
 
 ## Provenance
 
@@ -33,7 +34,7 @@ firmware as Software Of Unknown Provenance (SOUP).
     upstream at `bbf1eaf5` -- is exact; what the evidence does not establish
     is that no other commit would satisfy it too.
 
-- **Release basis**: `v1.1.0` (`29160dd877d2`) plus 76 commits. The vendored
+- **Release basis**: `v1.1.0` (`29160dd877d2`) plus 76 commits. The upstream
   pin `bbf1eaf5f4a7` is a post-tag development snapshot, not the release.
   `v1.1.0` is the newest named release the pin descends from: measured
   2026-09-17 against upstream's tag graph, the pin is 76 commits ahead of that
@@ -105,11 +106,13 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-Five files, all upstream build-generated sources vendored because the cross
-build does not run upstream's generators; they have no upstream counterpart at
-any revision. Declared in `scripts/gen/sbom_registry.py` and pinned by content
-in `docs/sbom/upstream/tf-psa-crypto.manifest`; the other 217 vendored files
-are verified byte-identical to the upstream pin on every CI run.
+RA8FW-385 replaced the vendored snapshot in `libs/third_party/tf-psa-crypto/`
+with the `bsikar/TF-PSA-Crypto` fork, branch `ra8-bbf1eaf5`, commit
+`fe051ec96e072ae8499eba8741950ff209b32e49`, pinned by url and Zig content hash
+in `build.zig.zon`. The fork is upstream `bbf1eaf5` plus one commit adding five
+upstream build-generated sources, which have no upstream counterpart at any
+revision. All 222 previously vendored files are byte-identical in the pinned
+tarball.
 
 - `core/psa_crypto_driver_wrappers.h` and
   `core/psa_crypto_driver_wrappers_no_static.c` -- emitted from the driver

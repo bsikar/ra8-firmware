@@ -9,7 +9,7 @@
 # This port is config-only: it ships no compiled sources. Mbed TLS 4.x
 # replaced the legacy ``MBEDTLS_AES_ALT`` / ``MBEDTLS_SHA256_ALT``
 # hooks with the PSA driver wrapper interface (see
-# ``libs/third_party/tf-psa-crypto/scripts/data_files/driver_templates``),
+# ``scripts/data_files/driver_templates`` in the pinned tf_psa_crypto package),
 # so ALT-style shims are not dispatchable, and the RSIP crypto engine
 # they once targeted is not functional on this silicon (RSIP
 # register audit). The ``RA8_MBEDTLS_PORT_SOURCES`` global property is therefore

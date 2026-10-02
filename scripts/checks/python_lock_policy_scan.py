@@ -35,9 +35,8 @@ DERIVED_EXPORTS = {
     Path("infra/ansible/roles/k3s_node/files/requirements.lock"),
     Path("infra/ansible/roles/hil_bench/files/requirements.lock"),
 }
-VENDOR_BOUNDARIES = (
-    Path("libs/third_party/mbedtls"),
-)
+# No vendored Python-bearing tree is left in the repo (RA8FW-385).
+VENDOR_BOUNDARIES: tuple[Path, ...] = ()
 SECONDARY_AUTHORITY_NAMES = {
     "Pipfile",
     "Pipfile.lock",

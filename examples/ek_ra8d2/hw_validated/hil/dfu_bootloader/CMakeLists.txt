@@ -53,7 +53,9 @@ ra8_add_app(
 # tf-psa-crypto backend (the exact recipe secure_boot_hil uses to prove the
 # mechanism on silicon) and turns the gate on. The bootloader's src/psa_verify_rng.c
 # provides a FAIL-CLOSED external-RNG hook (verify draws no randomness).
-set(_TF "${_d}/libs/third_party/tf-psa-crypto")
+include(${_d}/cmake/zig_package.cmake)
+ra8_zig_package_dir(tf_psa_crypto _TF)
+ra8_zig_package_dir(mbedtls _MBEDTLS)
 set(_PORT "${_d}/port/mbedtls/inc")
 file(
   GLOB
@@ -77,7 +79,7 @@ target_include_directories(
          ${_TF}/platform
          ${_TF}/utilities
          ${_TF}/extras
-         ${_d}/libs/third_party/mbedtls/include
+         ${_MBEDTLS}/include
          ${_PORT}
 )
 target_compile_definitions(

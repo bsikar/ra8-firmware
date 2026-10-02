@@ -132,7 +132,7 @@ NON_VENDORED_PROVENANCE = (PROV_NOT_VENDORED, PROV_DEP_PINNED)
 # RA8FW-385 moved ThreadX and the other big trees to build.zig.zon packages,
 # leaving 814 vendored files across 8 components; the floor followed.
 COMPONENT_FILE_FLOOR = 1
-TOTAL_FILE_FLOOR = 750
+TOTAL_FILE_FLOOR = 320
 
 EXIT_OK = 0
 EXIT_DRIFT = 1

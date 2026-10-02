@@ -1,15 +1,6 @@
 schema_version = 1
 
 [[component]]
-key = "mbedtls"
-delivery = "vendored"
-series = "docs/sbom/patches/mbedtls/series"
-
-[[component.patches]]
-file = "0001-track-generated-config-headers.patch"
-classification = "metadata"
-
-[[component]]
 key = "stb"
 delivery = "vendored"
 series = "docs/sbom/patches/stb/series"
