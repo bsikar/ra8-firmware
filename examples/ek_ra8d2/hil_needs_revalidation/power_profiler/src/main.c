@@ -124,7 +124,13 @@ static void pp_demo_clocks_or_halt(void)
   }
 }
 
-/** @brief Bring LPM + power profiler + LEDs up; panic-halts on fail. */
+/**
+ * @brief Bring LPM + power profiler + LEDs up; panic-halts on fail.
+ *
+ * @details ``ra8_lpm_init`` writes SBYCR, DPSBYCR, SSCR1 and LPSCR, all behind
+ * PRCR.PRC1, and leaves the unlock to its caller. Without the unlock / relock
+ * pair below those stores are silently dropped on silicon.
+ */
 static void pp_demo_modules_or_halt(void)
 {
   const ra8_lpm_config_t lpm_cfg = {
@@ -134,7 +140,14 @@ static void pp_demo_modules_or_halt(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
+    pp_demo_panic_halt();
+  }
+  const ra8_err_t lpm_err = ra8_lpm_init(&lpm_cfg);
+  if (ra8_lpm_prcr_relock() != k_ra8_ok) {
+    pp_demo_panic_halt();
+  }
+  if (lpm_err != k_ra8_ok) {
     pp_demo_panic_halt();
   }
   const ra8_power_profile_config_t pp_cfg = {
@@ -170,11 +183,15 @@ static void pp_demo_setup_or_halt(void)
  * is the deepest mode safely entered from this demo because deep-
  * standby resets the CPU and would not return into this loop.
  *
- * @return ``true`` when every enter/exit and ``ra8_lpm_enter_sleep``
+ * ``ra8_lpm_enter_sleep`` writes LPSCR, which is behind PRCR.PRC1, so the
+ * sleep entry is scoped by an unlock / relock pair like the init is.
+ *
+ * @return ``true`` when every enter/exit, PRCR and ``ra8_lpm_enter_sleep``
  *         call returns ``k_ra8_ok``.
  *
  * @pre ``ra8_lpm_init`` and ``ra8_power_profile_init`` succeeded.
  * @post All four region accumulators have one new closed pair.
+ * @post PRCR.PRC1 is locked again.
  * @since 0.1.0
  */
 static bool pp_demo_cycle_modes(void)
@@ -192,7 +209,14 @@ static bool pp_demo_cycle_modes(void)
   if (ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep) != k_ra8_ok) {
     return false;
   }
-  if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep) != k_ra8_ok) {
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
+    return false;
+  }
+  const ra8_err_t sleep_err = ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep);
+  if (ra8_lpm_prcr_relock() != k_ra8_ok) {
+    return false;
+  }
+  if (sleep_err != k_ra8_ok) {
     return false;
   }
   if (ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep) != k_ra8_ok) {

@@ -7,7 +7,10 @@
  * the LPM block + the power profiler and walking through the
  * ACTIVE / SLEEP / DEEP_STANDBY / SOFTWARE_STANDBY regions, then
  * snapshotting the accumulator. Host WFI is a no-op so the cycle
- * completes immediately under RA8_OFF_TARGET.
+ * completes immediately under RA8_OFF_TARGET. Like the app, it scopes
+ * ``ra8_lpm_init`` and ``ra8_lpm_enter_sleep`` with the PRCR.PRC1
+ * unlock / relock pair their protected stores need, and checks PRC1 is
+ * locked again afterwards.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,6 +22,7 @@
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
 #include "ra8_power_profile.h"
 #include "unity_minimal.h"
 
@@ -37,6 +41,13 @@ static void reset_world(void)
 {
   ra8_fake_mmap_reset();
   s_now_us = 0U;
+}
+
+/** @brief Assert PRCR.PRC1 is locked again after an unlock / relock pair. */
+static void assert_prc1_locked(void)
+{
+  const uint16_t prcr = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
+  TEST_ASSERT((prcr & (uint16_t)k_ra8_lpm_prcr_prc1_msk) == 0U);
 }
 
 /** @brief Synthetic monotonic clock; each call advances by 100 us. */
@@ -67,7 +78,10 @@ static void test_pp_app_bringup_ok(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&lpm_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   const ra8_power_profile_config_t pp_cfg = {
     .pulse         = nullptr,
     .now_us        = test_pp_now_us,
@@ -116,7 +130,10 @@ static void test_pp_app_cycle_modes(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&lpm_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   const ra8_power_profile_config_t pp_cfg = {
     .pulse         = nullptr,
     .now_us        = test_pp_now_us,
@@ -128,7 +145,10 @@ static void test_pp_app_cycle_modes(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_enter(k_ra8_power_profile_region_active));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_exit(k_ra8_power_profile_region_active));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep));
 
   ra8_power_profile_stats_t stats = {};
