@@ -310,12 +310,6 @@ func (r SysfsReader) ReadSignal(ctx context.Context, target string) (string, err
 	return string(raw), nil
 }
 
-func withinRoot(root, path string) bool {
-	relative, err := filepath.Rel(root, path)
-	return err == nil && relative != "." && relative != ".." &&
-		!strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
-}
-
 // LinuxActivityInspector checks process names and protected device descriptors
 // through procfs. Any uninspectable live process fails closed.
 type LinuxActivityInspector struct {
