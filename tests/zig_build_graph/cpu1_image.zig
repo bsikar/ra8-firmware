@@ -29,6 +29,9 @@
 //! real configure's `compile_commands.json`, not read off the listfile.
 
 const std = @import("std");
+const cpu1_threadx = @import("cpu1_threadx.zig");
+const middleware = @import("middleware.zig");
+const pkg_path = @import("pkg_path.zig");
 
 /// The dual-core app this image belongs to, spelled as `CrossApp` spells it.
 pub const App = struct {
@@ -65,6 +68,11 @@ pub const Cpu1Image = struct {
     /// Cortex-M33 translation unit that CMake keeps it out of, and only
     /// freestanding-clean headers may be reached from one.
     board_include_dir: bool = true,
+    /// CPU1 middleware this image links, by name (see `cpu1_threadx.find`).
+    /// Each one adds its public defines and include paths to every CPU1 TU
+    /// and its archive and link options to the M33 link. Empty for every
+    /// image that predates RA8FW-403, which therefore builds as before.
+    uses: []const []const u8 = &.{},
 };
 
 /// The CPU1 target's own compile options, in CMakeLists order. No warning
@@ -127,6 +135,28 @@ fn join(allocator: std.mem.Allocator, left: []const u8, right: []const u8) []con
 /// and the difference between the two paths is the rule. The board arm is the
 /// one directory the two dual-core apps disagree about, so it is data on the
 /// image rather than a constant here.
+/// The compile flags plus the public defines of every middleware the image
+/// uses, which ride after the CPU1 flags exactly as an M85 app's do.
+pub fn unitFlags(allocator: std.mem.Allocator, image: Cpu1Image, global_flags: []const []const u8) []const []const u8 {
+    var out = std.ArrayList([]const u8).init(allocator);
+    out.appendSlice(compileFlags(allocator, global_flags)) catch @panic("OOM");
+    out.appendSlice(middleware.appDefines(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
+    return out.toOwnedSlice() catch @panic("OOM");
+}
+
+/// The image's own include path, then its middleware's public directories.
+pub fn unitIncludeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
+    var out = std.ArrayList([]const u8).init(allocator);
+    out.appendSlice(includeDirs(allocator, app, image)) catch @panic("OOM");
+    out.appendSlice(middleware.appIncludeDirs(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
+    return out.toOwnedSlice() catch @panic("OOM");
+}
+
+/// The middleware's `-isystem` directories, after every `-I`.
+pub fn systemIncludeDirs(allocator: std.mem.Allocator, image: Cpu1Image) []const []const u8 {
+    return middleware.appSystemIncludeDirs(allocator, cpu1_threadx.resolve(allocator, image.uses));
+}
+
 pub fn includeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
     out.append(join(allocator, app.dir, "inc")) catch @panic("OOM");
@@ -177,6 +207,9 @@ pub const Options = struct {
     /// refuses to run without it, the same way the NS image treats the
     /// kernel's archive.
     core_archive: ?std.Build.LazyPath = null,
+    /// The archives of `image.uses`, from `cpu1_threadx.archives`, in order.
+    /// Empty on the compile-database path.
+    middleware_archives: []const std.Build.LazyPath = &.{},
 };
 
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
@@ -205,15 +238,20 @@ pub fn linkerScript(b: *std.Build, app_dir: []const u8, name: []const u8) []cons
 
 pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.LazyPath {
     const name = imageName(b.allocator, options.app);
-    const flags = compileFlags(b.allocator, options.global_compile_flags);
-    const include_dirs = includeDirs(b.allocator, options.app, options.image);
+    const flags = unitFlags(b.allocator, options.image, options.global_compile_flags);
+    const include_dirs = unitIncludeDirs(b.allocator, options.app, options.image);
+    const system_dirs = systemIncludeDirs(b.allocator, options.image);
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (sources(b.allocator, options.app, options.image)) |source| {
         const compile = b.addSystemCommand(&.{options.gcc});
         compile.addArgs(flags);
         for (include_dirs) |include_dir| {
-            compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
+            compile.addPrefixedDirectoryArg("-I", pkg_path.lazy(b, include_dir));
+        }
+        for (system_dirs) |include_dir| {
+            compile.addArg("-isystem");
+            compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         compile.addArg("-c");
         compile.addFileArg(b.path(source));
@@ -230,6 +268,8 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{name}));
     for (objects.items) |object| link.addFileArg(object);
+    for (options.middleware_archives) |archive| link.addFileArg(archive);
+    link.addArgs(middleware.appLinkOptions(b.allocator, cpu1_threadx.resolve(b.allocator, options.image.uses)));
     link.addFileArg(options.core_archive orelse @panic("ra8: the CPU1 link needs ra8_core's archive built for cortex_m33"));
 
     const hex = objcopyTo(b, options.objcopy, "ihex", elf, b.fmt("{s}.hex", .{name}));
@@ -292,14 +332,16 @@ pub fn appendCompileDbEntries(
     options: Options,
 ) void {
     const name = imageName(b.allocator, options.app);
-    const flags = compileFlags(b.allocator, options.global_compile_flags);
-    const include_dirs = includeDirs(b.allocator, options.app, options.image);
+    const flags = unitFlags(b.allocator, options.image, options.global_compile_flags);
+    const include_dirs = unitIncludeDirs(b.allocator, options.app, options.image);
+    const system_dirs = systemIncludeDirs(b.allocator, options.image);
     for (sources(b.allocator, options.app, options.image)) |source| {
         out.append(.{
             .file = source,
             .driver = driver,
             .flags = flags,
             .include_dirs = include_dirs,
+            .system_include_dirs = system_dirs,
             .object = b.fmt("arm/{s}/{s}.o", .{ name, std.fs.path.basename(source) }),
         }) catch @panic("OOM");
     }

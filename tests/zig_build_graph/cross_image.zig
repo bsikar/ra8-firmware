@@ -400,6 +400,11 @@ fn addCrossApp(
         ),
         .global_compile_flags = globals.c_flags,
         .global_link_flags = globals.link_flags,
+        .middleware_archives = cpu1_threadx.archives(
+            b,
+            image.uses,
+            cross_build.middlewareToolchain(tools, globals, &arm_global_defines),
+        ),
     }) else null;
 
     // An app that does not link in a Debug configure under EITHER build system

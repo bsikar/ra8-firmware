@@ -54,3 +54,8 @@ test "the CPU1 kernel compiles C and assembly for the M33, CPU1 defines first" {
 test "the CPU1 kernel is not middleware any app can name yet" {
     try std.testing.expect(mw.find("threadx_m33") == null);
 }
+
+test "the CPU1 graph finds threadx_m33 by name and knows nothing else" {
+    try std.testing.expectEqualStrings("threadx_m33", cpu1_threadx.find("threadx_m33").?.name);
+    try std.testing.expect(cpu1_threadx.find("threadx") == null);
+}
