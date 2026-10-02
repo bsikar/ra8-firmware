@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_manga_stream.h
  * @brief RA8FW-257 manga-scale streaming harness: a synthetic volume-of-JOF-atlases
- *        driven through the real #231 tile-cache + #147 page-cache stack.
+ *        driven through the real tile-cache + page-cache stack.
  *
  * @details
  * Shared test harness for the two RA8FW-257 manga-scale streaming TUs
@@ -16,7 +16,7 @@
  *   ra8_tile_cache (LRU, decoded bands)          <- Layer 3b
  *     |  miss -> decode
  *     v
- *   jof_read_tile (real JOF reader)   <- the #231/#289 band format
+ *   jof_read_tile (real JOF reader)   <- the streamed-image band format
  *     |  pread
  *     v
  *   ra8_vmem_stream_read (byte stream)           <- Layer 2 helper
@@ -67,7 +67,7 @@
 
 /**
  * @enum t_mg_geom_t
- * @brief Synthetic JOF atlas geometry: one legal longstrip strip (#289 bands).
+ * @brief Synthetic JOF atlas geometry: one legal longstrip strip (vertical-scroll bands).
  *
  * @details A single tile column (`tile_w == width`) of `tile_h`-tall bands at
  *          the maximum legal 32768-px height, gray8, raw codec. The derived
@@ -128,7 +128,8 @@ typedef enum : uint64_t {
  * @enum t_mg_budget_t
  * @brief Fixed RAM budgets for the two caches (independent of volume size).
  *
- * @details The whole point of #147/#231: these budgets are what the resident
+ * @details The whole point of the memory hierarchy and image streaming:
+ *          these budgets are what the resident
  *          set is bounded by. Decoded budget = `k_mg_cells * k_mg_cell_bytes`
  *          (~192 KiB); raw page budget = `k_mg_frames * k_mg_frame_bytes`
  *          (~256 KiB). A band's raw stream (payload) spans 12 page frames.

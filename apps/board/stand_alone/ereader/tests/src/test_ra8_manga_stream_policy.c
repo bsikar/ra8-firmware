@@ -102,7 +102,7 @@ t_mg_reparse_warm_delta(const ra8_vmem_t* vm, ra8_vmem_stream_t* st, jof_info_t*
  * @test manga_stream_metadata_scan_resistance
  * @brief A bookmarked chapter's JOF metadata, promoted into the page cache's
  *        SLRU protected segment, survives a one-shot flood that skims a band from
- *        every OTHER chapter (#147 scan resistance, faithful to a manga skim).
+ *        every OTHER chapter (SLRU scan resistance, faithful to a manga skim).
  *
  * @details Chapters `0 .. k_mg_scan_warm-1` are opened twice, promoting each
  *          atlas's header + footer frames into the protected segment. Then one

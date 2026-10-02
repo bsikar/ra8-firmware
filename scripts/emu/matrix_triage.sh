@@ -46,7 +46,8 @@ report="$ROOT/build/ra8_emulator_matrix.txt"
 # two things about that are load-bearing:
 #
 #   * ra8_emulator prints the MVE store family BYTE-WISE and little-endian --
-#     `INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F` -- whereas #396 names the
+#     `INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F` -- whereas the board_sim
+#     MVE bug report names the
 #     same instruction halfword-wise as `ED80 7F31`. A rule written from the
 #     issue text matches nothing at all.
 #   * "MVE" and "Helium" on their own are NOT fault signatures. ra8_emulator

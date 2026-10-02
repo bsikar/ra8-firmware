@@ -73,7 +73,7 @@ add_test(NAME test_epub_xml_shim_cov2 COMMAND test_epub_xml_shim_cov2)
 # ---------------------------------------------------------------------------
 # C++ test target for ra8_rabook_xml_shim. Drives the public C-linkage entry
 # point ra8_rabook_xml_parse_chapter() to verify DOM pre-order and MC/DC
-# vectors for the iterative DFS (#149 stage-a XHTML parser).
+# vectors for the iterative DFS (stage-a XHTML parser).
 # ---------------------------------------------------------------------------
 add_executable(
   test_ra8_rabook_xml_shim

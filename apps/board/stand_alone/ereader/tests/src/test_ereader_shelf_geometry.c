@@ -3,7 +3,7 @@
  * @brief Regression guard for the ereader_shelf layout + fill render.
  *
  * @details
- * Issue #233 reported that building `ereader_shelf` at -O1+ makes the shelf
+ * A bug report found that building `ereader_shelf` at -O1+ makes the shelf
  * "miscompile": the header bar shifts (px(0,0) becomes background instead of
  * bar) and ~63% of framebuffer pixels change versus the -Og golden
  * (fb=FA3AB5B5). Root-causing it proved the FIRMWARE is correct and
@@ -212,7 +212,7 @@ static void render_shelf(uint16_t* fb, const ra8_ui_rect_t* card)
 /**
  * @brief The header bar and card fills render where they belong.
  * @details Asserts px(0,0) is the BAR colour (not the background: the exact
- *          #233 symptom), that the bar reaches its bottom row, that a card
+ *          -O1+ miscompile symptom), that the bar reaches its bottom row, that a card
  *          interior carries the card fill, and that a grid gap stays
  *          background. Each probe is a single pixel whose colour is decided by
  *          one rectangle, so a failure names which rectangle went wrong.
@@ -233,7 +233,7 @@ static void test_shelf_render_pixels(void)
 
   const int32_t row0_y = card[0].y + (card[0].h / 2);
   const size_t  row0   = (size_t)row0_y * (size_t)k_fb_w;
-  /* #233 symptom: px(0,0) must be the bar, not the background. */
+  /* -O1+ miscompile symptom: px(0,0) must be the bar, not the background. */
   TEST_ASSERT_EQ(pack565(k_col_bar), s_fb[0]);
   TEST_ASSERT_EQ(pack565(k_col_bar), s_fb[(size_t)(k_bar_h - 1) * (size_t)k_fb_w]); /* bar bottom */
   /* Card 0 interior is the selected-card fill. */
