@@ -239,7 +239,7 @@ static void test_init_preserves_wait_state(void)
   /* Configuring ECC says nothing about ICLK, so it must not disturb the
    * wait state. A zero-initialised config used to clear it here, which
    * is how two demos in this tree silently took their own memory system
-   * outside guaranteed operation (tracker #524). */
+   * outside guaranteed operation (the ra8_eth_open HardFault tracker). */
   TEST_ASSERT_EQ(k_ra8_sram_wtsc_wten, regs->SRAMWTSC);
   TEST_END("sram init preserves the wait state cgc_init set");
 }

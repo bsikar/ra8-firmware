@@ -434,7 +434,7 @@ RA8_INTERNAL static void internal_test_stream_interleaved_handles(void)
  * @brief An empty exFAT file is legal, and this is what one looks like.
  *
  * @details `ra8_fs_write_file(len = 0)` used to be refused on exFAT and
- *          accepted on FAT, which is the inconsistency #602 is about: the same
+ *          accepted on FAT, which is the inconsistency exFAT streaming write is about: the same
  *          call meant two things depending on a volume format the caller was
  *          supposed to be abstracted from. It now creates the file on both.
  *

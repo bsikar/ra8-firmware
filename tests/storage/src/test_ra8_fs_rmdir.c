@@ -561,7 +561,7 @@ RA8_INTERNAL static void internal_test_rmdir_argument_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rmdir(h, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/"));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, ""));
-  /* A name too long for 8.3 is no longer a bad name -- since #600 it is a name
+  /* A name too long for 8.3 is no longer a bad name -- since FAT long-name write it is a name
    * that could exist -- so the honest answer is that it does not. */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/VERYLONGNAME.TXT"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/NOPE"));

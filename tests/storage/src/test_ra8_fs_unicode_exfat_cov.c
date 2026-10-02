@@ -18,7 +18,7 @@
  * @code
  *   RA8_EXFAT_DUMP_DIR=/tmp/xuni ./test_ra8_fs_unicode_exfat_cov
  *   /usr/sbin/fsck.exfat -n -v /tmp/xuni/unicode_files_three.img  # three names
- *   /usr/sbin/fsck.exfat -n -v /tmp/xuni/unicode_files_badhash.img # PRE-#606
+ *   /usr/sbin/fsck.exfat -n -v /tmp/xuni/unicode_files_badhash.img # before the non-ASCII fix
  * @endcode
  * Confirmed 2026-08-10 on the Linux verification host, exfatprogs 1.2.0 (and
  * on 2026-08-04, byte for byte, under the private variable this file used to
@@ -29,7 +29,7 @@
  *            unicode_files_badhash.img: corrupted. directories 1, files 2
  * @endverbatim
  * The second line is the whole argument in one sentence, from a checker that
- * has never seen this codebase: the hash the PRE-#606 code stored for
+ * has never seen this codebase: the hash the pre-fix code stored for
  * `Caf<U+00E9>.txt` is one `fsck.exfat` calls wrong. The control repairs the
  * `SetChecksum` around the edit, so what is reported is the defect and not an
  * artefact of a clumsy patch -- and without it a clean report on the first
@@ -57,7 +57,7 @@
 #include "unity_minimal.h"
 
 /**
- * @brief The NameHash `priv_exfat_name_hash()` produced BEFORE #606.
+ * @brief The NameHash `priv_exfat_name_hash()` produced BEFORE the non-ASCII name fix.
  *
  * @details The old body, reproduced: fold the caller's UTF-8 BYTES with an
  *          ASCII-only up-case, one byte plus a zero byte each. For a pure-ASCII
@@ -66,7 +66,7 @@
  *
  * @param[in] path Caller's name, NUL-terminated UTF-8.
  *
- * @return The hash the pre-#606 code would have stored.
+ * @return The hash the pre-fix code would have stored.
  * @retval 0..0xFFFF The folded value.
  *
  * @pre @p path is non-NULL.
@@ -171,7 +171,7 @@ RA8_INTERNAL static void internal_test_exfat_dump_images_for_fsck(void)
   internal_unicode_dump_image("unicode_files_three", base);
 
   /* The control, and it is the specific one worth having: put back the hash the
-   * PRE-#606 code stored for this name -- an ASCII-only fold over UTF-8 bytes --
+   * pre-fix code stored for this name -- an ASCII-only fold over UTF-8 bytes --
    * and repair the SetChecksum around it, so the set is well-formed in every
    * other respect. What a real checker then reports is the defect itself, not
    * an artefact of a clumsy edit. */

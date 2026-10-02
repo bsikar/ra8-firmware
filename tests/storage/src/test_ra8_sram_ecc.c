@@ -278,7 +278,7 @@ static void test_lifecycle_leaves_wtsc_alone(void)
   /* ra8_cgc_init owns SRAMWTSC (HUM Ch 58.3.7 p 3540). An ECC config
    * pass must not be able to undo it -- clearing WTEN behind the
    * application's back is what took the memory system outside
-   * guaranteed operation in tracker #524, via two demos that passed a
+   * guaranteed operation in the ra8_eth_open HardFault tracker, via two demos that passed a
    * zero-initialised ra8_sram_config_t. */
   volatile r_sram_regs_t* regs = ra8_sram_regs();
   TEST_ASSERT_EQ(k_ra8_ok,

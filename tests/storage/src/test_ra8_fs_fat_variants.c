@@ -386,7 +386,7 @@ RA8_INTERNAL static void internal_test_short_name_boundary_cases(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "NOEXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   /* Nine base characters and a four-character extension are both past what an
-   * 8.3 entry can hold. Since #600 that is a long-name chain, not a refusal. */
+   * 8.3 entry can hold. Since FAT long-name write that is a long-name chain, not a refusal. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "ABCDEFGHI.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.TOOL", k_ra8_fs_mode_write, &f));

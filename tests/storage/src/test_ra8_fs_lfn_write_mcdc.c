@@ -12,7 +12,7 @@
  * reaching them through a mount that would obscure which condition varied.
  *
  * `priv_lfn_fill_slot()` is checked against `priv_lfn_add()`, the reassembler
- * that has read these entries since #101 -- a writer whose output its own
+ * that has read these entries since LFN read support -- a writer whose output its own
  * reader cannot recover is the one failure mode a byte-by-byte assertion on
  * the writer alone would not catch.
  *

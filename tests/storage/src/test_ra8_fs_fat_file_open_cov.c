@@ -261,9 +261,9 @@ RA8_INTERNAL static void internal_test_open_existing_no_mem(void)
  * @brief A path component longer than a long name can be is rejected.
  *
  * @details
- * Since #600 a directory component is looked up as a long name as well as an
+ * Since FAT long-name write a directory component is looked up as a long name as well as an
  * 8.3 one, so thirteen characters is ordinary and the ceiling moved to the
- * long-name limit. Since #606 that limit is expressed in UTF-8 BYTES here --
+ * long-name limit. Since the non-ASCII name fix that limit is expressed in UTF-8 BYTES here --
  * `k_lfn_utf8_cap`, mirrored as ::k_oc_lfn_utf8_cap -- because the component
  * arrives as UTF-8 and is copied into a buffer of that size; the 247-UNIT limit
  * is enforced separately, by `priv_name_classify()`. Bounding the bytes by the
@@ -325,7 +325,7 @@ RA8_INTERNAL static void internal_test_enter_subdir_name_too_long(void)
  * A component that begins with a dot (e.g. ".HIDDEN") cannot be packed into an
  * 8.3 name by priv_path_to_83, so the 8.3 half of ::priv_dir_lookup_any() is
  * skipped and the long-name half decides. On a volume that holds no such
- * directory the answer is `k_ra8_err_not_found`: since #600 a dot-leading name
+ * directory the answer is `k_ra8_err_not_found`: since FAT long-name write a dot-leading name
  * is one this driver can create, so refusing it as malformed would be wrong.
  *
  * @par MC/DC:

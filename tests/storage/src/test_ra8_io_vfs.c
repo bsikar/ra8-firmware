@@ -207,7 +207,8 @@ RA8_INTERNAL static void internal_test_open_read(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- stat reports presence/size, a missing
- * file yields exists==false with ok, and a DIRECTORY reports as one: #609, where
+ * file yields exists==false with ok, and a DIRECTORY reports as one (the
+ * directory stat fix), where
  * the open-based implementation returned every folder as a zero-byte file with a
  * hardcoded `archive` attribute) @brief Verify stat behavior. @details Executes the stat scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_stat(void)

@@ -173,7 +173,7 @@ internal_expect_contents(ra8_fs_mount_t* h, const char* path, const uint8_t* wan
   free(got);
 }
 
-/* ---- #603: create / replace --------------------------------------------- */
+/* ---- create / replace ---------------------------------------------------- */
 
 /**
  * @test test_exfat_create_new
@@ -462,7 +462,7 @@ RA8_INTERNAL static void internal_test_mcdc_exfat_create_unlink_verdict(void)
   TEST_END("exfat create: MC/DC over the replace-or-propagate verdict");
 }
 
-/* ---- #604: exFAT directory guards --------------------------------------- */
+/* ---- exFAT directory guards ---------------------------------------------- */
 
 /**
  * @test test_exfat_unlink_directory_refused

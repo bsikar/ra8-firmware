@@ -107,7 +107,7 @@ RA8_INTERNAL static void internal_test_unlink_bad_parent(void)
  * @brief unlink with a name that is not 8.3 now reports not_found, not invalid_arg.
  *
  * @details Deleting never had to pack a name to 8.3 -- it has to FIND one. Since
- *          #600, `"bad name!"` is a name a volume could genuinely hold, so the
+ *          FAT long-name write, `"bad name!"` is a name a volume could genuinely hold, so the
  *          honest answer for a volume that does not hold it is
  *          `k_ra8_err_not_found`; `priv_dir_lookup_any()` misses on both the 8.3
  *          and the long-name pass. The old `k_ra8_err_invalid_arg` said "that is
@@ -389,7 +389,7 @@ RA8_INTERNAL static void internal_test_rename_cross_subdir(void)
  * @test test_rename_old_bad_83
  * @brief rename of an absent long name reports not_found, not invalid_arg.
  *
- * @details `priv_rename_prepare()` no longer packs either leaf: since #600 both
+ * @details `priv_rename_prepare()` no longer packs either leaf: since FAT long-name write both
  *          sides may be long names, so whether one fits 8.3 is not the rename's
  *          question. `"bad name!"` is a name a volume could hold; this one does
  *          not, so the lookup misses on both passes.
