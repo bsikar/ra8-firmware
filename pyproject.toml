@@ -53,10 +53,10 @@ default-groups = ["dev", "infra", "k3s", "vela"]
 #
 # Lint + format are gated in CI via scripts/checks/check_ruff.py, which fails on
 # ANY finding. There is no baseline and no grandfathering; the tree must be
-# clean. #360 was a SCOPE defect, not a suppression one: the gate hardcoded its
-# target list and so never saw seven first-party files, while reporting a clean
-# tree. It derives the list from `git ls-files` now, so a new directory is
-# covered the day it appears.
+# clean. An earlier gate bug was a SCOPE defect, not a suppression one: the gate
+# hardcoded its target list and so never saw seven first-party files, while
+# reporting a clean tree. It derives the list from `git ls-files` now, so a new
+# directory is covered the day it appears.
 #
 # Every family below was MEASURED across the tree before being selected, and
 # every finding it produced was fixed rather than exempted. Families that are
@@ -76,7 +76,7 @@ target-version = "py311"
 # against every path COMPONENT, so `build` excluded any directory of that name
 # at any depth -- and because check_ruff.py passes --force-exclude, ruff drops
 # such a file even when it is named explicitly on the command line. A
-# first-party `scripts/build/foo.py` -- PATHREF-OK: #359 renamed it -- would have
+# first-party `scripts/build/foo.py` -- PATHREF-OK: since renamed -- would have
 # been handed to ruff by the gate
 # and silently skipped. `_deps` and `__pycache__` stay slashless on purpose:
 # CMake and CPython reserve those names, so they cannot collide with source.
@@ -116,18 +116,19 @@ select = [
   "FURB",      # refurb (modernization)
   "TRY",       # tryceratops (exception hygiene)
   "EM",         # flake8-errmsg
-  # --- added by #365 -------------------------------------------------------
+  # --- added: pydocstyle ---------------------------------------------------
   # pydocstyle, google convention (see [tool.ruff.lint.pydocstyle] for why that
   # convention and not the other two). Measured 366 at selection time; all 366
   # were WRITTEN, not exempted, and there is no per-file-ignore for D anywhere
   # in this file.
   #
-  # The split from #360 was never about size. A docstring that restates the
-  # signature is worse than none, because it makes an unaudited function look
-  # audited -- the same defect CLAUDE.md rejects for C definition-site comments
-  # and docs/STYLE_GUIDE.md bans as the pointer-only form. So each of the 236
-  # missing docstrings had to say what its function's NAME does not already
-  # say: its contract, what its inputs constrain, how it fails.
+  # The split from the earlier batch was never about size. A docstring that
+  # restates the signature is worse than none, because it makes an unaudited
+  # function look audited -- the same defect CLAUDE.md rejects for C
+  # definition-site comments and docs/STYLE_GUIDE.md bans as the pointer-only
+  # form. So each of the 236 missing docstrings had to say what its function's
+  # NAME does not already say: its contract, what its inputs constrain, how it
+  # fails.
   #
   # These files implement every CI gate in the repo, so the ones worth having
   # are the ones a green run does not distinguish from a real pass -- the
@@ -136,9 +137,9 @@ select = [
   # stack_usage_check exiting 0 both when it finds no .su files and when they
   # parse to zero functions.
   "D",
-  # --- added by #372 -------------------------------------------------------
+  # --- added: type annotations ---------------------------------------------
   # Type annotations. Measured 431 at selection time (ANN001 265, ANN201 106,
-  # ANN202 47, ANN204 9, ANN401 4) -- higher than the 377 #363 recorded,
+  # ANN202 47, ANN204 9, ANN401 4) -- higher than the 377 recorded earlier,
   # because the decomposition created new signatures. All 431 were
   # annotated; none suppressed.
   #
@@ -153,7 +154,7 @@ select = [
   # `str | int | None` per the 2.0 spec, and the MCP selftest's request-builder
   # kwargs are `object` -- stored and serialised, never inspected.
   "ANN",
-  # --- added by #363 -------------------------------------------------------
+  # --- added: private-member access ----------------------------------------
   # Private-member access. The reason previously recorded here -- "this repo's
   # own tests reaching into modules it owns" -- was simply wrong: all 15
   # measured findings were scripts/hil/tapo_control.py reaching into the
@@ -170,11 +171,11 @@ select = [
   # the callee is designed. Measured 12, all `_svg(True)`/`_svg(False)` in
   # check_doc_diagrams.py; fixed by making the parameter keyword-only.
   "FBT003",
-  # --- added by #373 -------------------------------------------------------
+  # --- added: complexity ---------------------------------------------------
   # mccabe cyclomatic complexity. Threshold and reasoning in
   # [tool.ruff.lint.mccabe] below.
   "C90",
-  # --- added by #360 -------------------------------------------------------
+  # --- added: blind except -------------------------------------------------
   # A blind `except Exception` in a gate swallows the very failure the gate
   # exists to report. Measured 9, all resolved: five were file-read catch-alls
   # now narrowed to OSError (read_text(errors="replace") cannot raise anything
@@ -265,11 +266,11 @@ convention = "google"
 # Pinned explicitly rather than inherited, so a ruff default change cannot
 # silently move this project's limit.
 #
-# 50 statements is the ruff default and the tree is clean at it (measured:
-# 0 findings at 50, 18 at 40, 52 at 30). It is deliberately NOT tightened here:
-# tightening is a function-size decision, and #359 owns choosing the right size
-# cap for Python. Setting a second, competing number here is how two gates end
-# up disagreeing about the same rule.
+# 50 statements is the ruff default and the tree is clean at it (measured: 0
+# findings at 50, 18 at 40, 52 at 30). It is deliberately NOT tightened here:
+# tightening is a function-size decision, and the file-size decomposition owns
+# choosing the right size cap for Python. Setting a second, competing number
+# here is how two gates end up disagreeing about the same rule.
 max-statements = 50
 max-branches = 12
 
@@ -277,8 +278,8 @@ max-branches = 12
 # Pinned explicitly rather than inherited, so a ruff default change cannot
 # silently move this project's limit.
 #
-# MEASURED against the decomposed tree, after #359 split the eight oversized
-# files and the over-cap functions inside them:
+# MEASURED against the decomposed tree, after the decomposition split the
+# eight oversized files and the over-cap functions inside them:
 #
 #     max-complexity   findings
 #          10            37
@@ -288,7 +289,8 @@ max-branches = 12
 #
 # For reference, the same sweep BEFORE that decomposition read 54 / 37 / 15 at
 # 10 / 12 / 15. Decomposing for the size cap removed most of the complexity by
-# itself, which is the whole reason #373 was sequenced behind #359: the two are
+# itself, which is the whole reason the complexity cap was sequenced behind
+# the decomposition: the two are
 # measures of one property and fixing either fixes the other.
 #
 # Why 15 and not ruff's default 10:
@@ -305,7 +307,8 @@ max-branches = 12
 # it does not quietly re-litigate a branch budget another rule already owns.
 # Choosing 10 or 12 would make C901 strictly tighter than max-branches and
 # effectively supersede it -- two rules limiting the same property at two
-# different numbers, which is exactly what #373 said not to do.
+# different numbers, which is exactly what the complexity-cap decision said
+# not to do.
 #
 # The 9 findings between 13 and 15 are NOT grandfathered: nothing is exempted,
 # there is no per-file-ignore, and every function this gate reports must be
@@ -313,7 +316,7 @@ max-branches = 12
 max-complexity = 15
 
 # ---------------------------------------------------------------------------
-# Deliberately NOT selected. Every count below was RE-MEASURED for #363 against
+# Deliberately NOT selected. Every count below was RE-MEASURED against
 # the current tree (124 first-party Python files, ruff 0.15.19), not carried
 # over from the previous pass -- a stale number is how a dropped family stops
 # being a decision and becomes an omission.
