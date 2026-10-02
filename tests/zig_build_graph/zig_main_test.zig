@@ -21,15 +21,17 @@ test "an app with a Zig main has no main.c in its C set" {
     try std.testing.expect(!sources.hasCMain(zig_app));
 }
 
-test "threadx_cpu1 is the one app in the table with a Zig main" {
+test "threadx_cpu1 and npu_vela_conv are the apps in the table with a Zig main" {
+    const expected = [_][]const u8{ "threadx_cpu1", "npu_vela_conv" };
     var zig_mains: usize = 0;
     for (sources.cross_apps) |app| {
         if (sources.hasCMain(app)) continue;
-        zig_mains += 1;
-        try std.testing.expectEqualStrings("threadx_cpu1", app.name);
+        try std.testing.expect(zig_mains < expected.len);
+        try std.testing.expectEqualStrings(expected[zig_mains], app.name);
         try std.testing.expectEqualStrings("src/main.zig", app.zig_main.?);
+        zig_mains += 1;
     }
-    try std.testing.expectEqual(@as(usize, 1), zig_mains);
+    try std.testing.expectEqual(expected.len, zig_mains);
 }
 
 test "an app's Zig code is built for the M85 with the hard float ABI" {

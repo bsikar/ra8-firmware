@@ -801,4 +801,20 @@ pub const cross_apps = [_]CrossApp{
             .uses = &.{"threadx_m33"},
         },
     },
+    .{
+        // RA8FW-416: the real Vela conv_int8 model end to end on the Ethos-U55,
+        // checked against the TFLM golden. Zig main, no C of its own; the blob
+        // and golden are generated Zig under tools/vela/generated/.
+        .name = "npu_vela_conv",
+        .dir = "examples/ra8p1_foundation/npu_vela_conv",
+        .board = "libs/ra8_board_ra8p1",
+        .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            .{ .name = "model", .path = "tools/vela/generated/ra8_npu_model_conv_int8_vela.zig" },
+            .{ .name = "golden", .path = "tools/vela/generated/conv_int8_vela_golden.zig" },
+        },
+    },
 };
