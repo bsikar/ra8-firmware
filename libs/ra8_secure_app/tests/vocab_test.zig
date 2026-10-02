@@ -21,3 +21,12 @@ test "error codes match ra8_err.h" {
 test "the enum crosses the ABI as uint16_t" {
     try std.testing.expectEqual(@as(usize, 2), @sizeOf(vocab.Err));
 }
+
+test "success is the only zero value" {
+    try std.testing.expectEqual(@as(u16, 0), vocab.Err.ok.code());
+    inline for (@typeInfo(vocab.Err).@"enum".fields) |field| {
+        if (!std.mem.eql(u8, field.name, "ok")) {
+            try std.testing.expect(field.value != 0);
+        }
+    }
+}

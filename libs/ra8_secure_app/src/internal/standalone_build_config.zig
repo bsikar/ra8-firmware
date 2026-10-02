@@ -1,0 +1,9 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! Host-safe options for the test-zig gate's standalone production-source
+//! compile. Real library and test builds receive generated options from
+//! build.zig instead.
+
+pub const off_target: bool = true;
+pub const insecure_stub_crypto: bool = false;
