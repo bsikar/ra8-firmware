@@ -54,9 +54,15 @@ def _run(model: Path) -> tuple[list[int], list[int]]:
 
 def _array(name: str, values: list[int]) -> str:
     """Render ``values`` as a public Zig ``[N]i8`` constant."""
+    # zig fmt's grid: each cell is ``value,`` left-aligned in its column, padded
+    # to that column's widest cell plus one space, trailing space dropped.
+    cells = [f"{v}," for v in values]
+    widths = [
+        max(len(c) for c in cells[col::PER_LINE]) + 1 for col in range(min(PER_LINE, len(cells)))
+    ]
     rows = [
-        "    " + ", ".join(str(v) for v in values[i : i + PER_LINE]) + ","
-        for i in range(0, len(values), PER_LINE)
+        "    " + "".join(c.ljust(widths[j]) for j, c in enumerate(cells[i : i + PER_LINE])).rstrip()
+        for i in range(0, len(cells), PER_LINE)
     ]
     body = "\n".join(rows)
     return f"pub const {name} = [{len(values)}]i8{{\n{body}\n}};\n"
