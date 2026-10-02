@@ -17,8 +17,8 @@ Ch 33).
 
 An earlier version of this app drove an invented `ra8_ptp` "SYNFP/STCA" register
 window at `0x403E_0100` -- a reserved hole in the GPTP aperture -- and printed
-`PASS` because a reserved region echoed back its own writes. Issue #498 records
-that; the fiction is deleted.
+`PASS` because a reserved region echoed back its own writes. The GPTP
+register-map fix records that; the fiction is deleted.
 
 ## What the app does
 

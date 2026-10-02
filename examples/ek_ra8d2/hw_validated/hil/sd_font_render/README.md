@@ -6,10 +6,10 @@ test `apps/shared_libs/reflow/tests/src/test_ra8_sdmmc_card_reflow.c`, running t
 SD -> `ra8_fs` -> `reflow` -> `ra8_gfx` -> GLCDC pipeline as a real RA8D2
 binary.
 
-The e-reader needs its fonts in storage rather than baked into flash, and #44
-showed the on-board Octo-SPI part was not usable for that on this board, so
-font storage moved to the card. This app is the end-to-end proof the path
-works.
+The e-reader needs its fonts in storage rather than baked into flash, and the
+Octo-SPI bring-up showed the on-board Octo-SPI part was not usable for that on
+this board, so font storage moved to the card. This app is the end-to-end proof
+the path works.
 
 ## Any card works
 

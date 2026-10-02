@@ -5,7 +5,8 @@ stop, time, console, `ra8_board_ethernet_init()`, then open on channel 1 -- the
 EK-RA8D2 RJ45 is ETHA1. No RTOS, no IP stack, no packet pool, no wire peer. It
 reaches a verdict in about a second and a debugger can watch the whole thing.
 
-It is the bare-metal reproducer for the fault behind both #524 and #499.
+It is the bare-metal reproducer for the fault behind the ra8_eth_open HardFault
+reports.
 
 ## What it is guarding
 

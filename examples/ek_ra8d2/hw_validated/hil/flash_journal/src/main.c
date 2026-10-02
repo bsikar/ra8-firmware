@@ -151,8 +151,8 @@ volatile uint32_t g_fj_last_echoed = 0U;
  * ID returned; 0xFFFFFF means the bus floated to the board pull-ups (no
  * CIPO drive) -- the on-board flash is reached only through the SW4-3
  * analog mux, which is hardware-only and cannot be moved from firmware
- * (the U15 expander override does NOT gate the OSPI bus; see issue #44
- * and docs/HARDWARE_BRINGUP.md), NOT a dead chip.
+ * (the U15 expander override does NOT gate the OSPI bus; see the Octo-SPI
+ * bring-up in docs/HARDWARE_BRINGUP.md), NOT a dead chip.
  *
  * @note Read externally by J-Link.
  * @since 0.1.0
@@ -308,7 +308,7 @@ static void flash_journal_setup_or_halt(void)
   /* Best-effort U15 I/O-expander courtesy write. The on-board Octo-SPI
    * flash (U3, ISSI IS25LX512M; UM section 6.3 p 35) is connected through
    * the SW4-3 analog mux, which is hardware-only. A firmware sweep of the
-   * full U15 output space (issue #44; see docs/HARDWARE_BRINGUP.md) proved
+   * full U15 output space (Octo-SPI bring-up; see docs/HARDWARE_BRINGUP.md) proved
    * the expander's GPIOs do NOT gate the OSPI bus, so this call cannot
    * affect flash reachability -- it is kept only as a no-op courtesy and
    * its return code is stamped to g_fj_expander_err for the memprobe. If

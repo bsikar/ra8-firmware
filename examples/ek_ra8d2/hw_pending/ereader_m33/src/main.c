@@ -428,7 +428,7 @@ static void emit_verdict(uint32_t crc, bool pass)
  * @brief IPC channel the M85 watches for the M33's page-turn wake.
  * @details The M33 (CPU1) pokes IPC0 channel 0 (the CPU1 -> CPU0 receive
  *          direction); the M85 arms this channel's IRQ-line-0 receive event so a
- *          page-turn poke wakes it out of Sleep-mode WFI -- the same #149 wake
+ *          page-turn poke wakes it out of Sleep-mode WFI -- the same M33 wake
  *          path the sibling `compile_on_m33` driver uses for compile-done.
  * @since 0.1.0
  */

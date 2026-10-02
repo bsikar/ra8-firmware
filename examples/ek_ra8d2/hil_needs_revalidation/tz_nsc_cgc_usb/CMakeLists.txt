@@ -135,7 +135,7 @@ ra8_add_ns_image(
   threadx_ns
 )
 
-# ---- USBX + ra8_usb, compiled NS-private into the NS ELF (#96 M2) -----------
+# ---- USBX + ra8_usb, compiled NS-private into the NS ELF (Phase C M2) -------
 # USBX core + CDC-ACM, the ra8_usb<->USBX DCD bridge, the ra8_usb register driver
 # and the HAL modules ra8_usb pulls in (ra8_mstp/ra8_log/ra8_time/ra8_usbhs). These
 # are compiled FRESH into the NS image so it has its own copies -- the Secure

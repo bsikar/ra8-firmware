@@ -17,9 +17,9 @@ stays at the raw LevelX sector layer.
 
 ## Hardware notes
 
-The board carries an ISSI IS25LX512M-JHLE Octo-SPI flash (EK-RA8D2 v1 UM
-Section 6.3 and Table 29 p 35; JEDEC ID 0x9D5A1A, hardware-verified). It hangs
-off xSPI controller **CS1**, not CS0 -- see #44 for the bring-up fix. SW4-3
+The board carries an ISSI IS25LX512M-JHLE Octo-SPI flash (EK-RA8D2 v1 UM Section
+6.3 and Table 29 p 35; JEDEC ID 0x9D5A1A, hardware-verified). It hangs off xSPI
+controller **CS1**, not CS0 -- see docs/HARDWARE_BRINGUP.md for the fix. SW4-3
 selects Octo-SPI over the Arduino / Pmod1 routing, so those pins are not
 simultaneously available.
 

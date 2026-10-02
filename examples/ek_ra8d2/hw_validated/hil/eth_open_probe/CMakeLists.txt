@@ -46,7 +46,7 @@ ra8_add_app(
 #   cmake -S . -B build ... -DRA8_ETH_PROBE_PAD_BYTES=16
 #
 # The default is not 16. 393168 (0x5FFD0) reproduces the exact .bss layout
-# that #524 reported -- s_gwca_state at 0x22060474, s_tx_chain at 0x220664B0 --
+# that the HardFault report gave -- s_gwca_state at 0x22060474, s_tx_chain at 0x220664B0 --
 # which on stock `dev` before the SRAM wait state landed BusFaulted 5 runs out
 # of 5, and passes 5 out of 5 with it. Keeping the default there means the
 # default build of this app is the reproducer, not a variant of it.
