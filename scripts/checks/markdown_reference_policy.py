@@ -109,7 +109,7 @@ BARE_CODE_FILE_RE = re.compile(
 
 # A README that documents how to build its own app names the linker output as a
 # build target ("ninja -C cmake-build-debug vfs_port_demo.elf"). That artifact is
-# never tracked, so the bare-basename rule cannot resolve it; #2334. Recognising
+# never tracked, so the bare-basename rule cannot resolve it. Recognising
 # it needs all three of these to agree, so the suffix alone waves nothing
 # through: the suffix is a link output, the line is a build invocation, and the
 # document's own CMake component names that target.

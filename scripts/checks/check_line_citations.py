@@ -12,7 +12,7 @@ Per CLAUDE.md "Code Style / Comment citations":
   External / vendor citations (HUM, FSP, RFC, datasheet) remain
   MANDATORY for any HAL register access, ISR, or driver path.
 
-Scope (derived, not a hardcoded root list -- #358):
+Scope (derived, not a hardcoded root list):
   Scans C / C++ source comments in every first-party C file (via
   lint_targets, so tools/ -- which the old SCAN_ROOTS tuple
   silently omitted -- is covered). Flags tokens matching
@@ -311,7 +311,7 @@ def _selftest_scope(failures: list[str]) -> None:
     """Assert derived scope: tools source/docs in, both SOUP roots out."""
     expect(
         is_in_scope("tools/ra8_emulator/src/main.c"),
-        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
+        "tools/ C is in scope (SCAN_ROOTS once omitted it)",
         failures,
     )
     expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
@@ -326,7 +326,7 @@ def _selftest_scope(failures: list[str]) -> None:
 
 # ---------------------------------------------------------------------------
 # Selftest -- both directions, for source AND docs, plus scope assertions under
-# tools/ (source and docs), silently omitted until #358.
+# tools/ (source and docs), once silently omitted.
 # ---------------------------------------------------------------------------
 def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
     """Assert both directions of the RA8_MCDC_DEACTIVATED reason scan.

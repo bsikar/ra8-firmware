@@ -177,7 +177,7 @@ parse_args() {
 # revision walked a hand-maintained set of roots (libs, src, tests,
 # examples/*/*, tools/*) and so formatted nothing under port/ -- 43
 # first-party C files that no formatter had ever touched, carrying 477
-# clang-format violations. That is the #296 / #332 / #358 / #359 / #360 defect
+# clang-format violations. That is the hardcoded-scan-list defect
 # class: a scan list narrower than the tree, reporting "All files are properly
 # formatted".
 #

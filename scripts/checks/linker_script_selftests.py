@@ -114,7 +114,7 @@ def _synth_option_script(omit: tuple[str, ...] = (), stray: str = "") -> str:
     )
 
 
-# The exact trio #223 deleted from the four RA8P1 app scripts. LD008 exists to
+# The exact trio the RA8P1 OFS work deleted from the four RA8P1 app scripts. LD008 exists to
 # make that deletion impossible to land again, so the selftest reproduces it
 # rather than an invented omission.
 OFS3_FAMILY = ("OFS3_ADDR", "OFS3_SEC_ADDR", "OFS3_SEL_ADDR")

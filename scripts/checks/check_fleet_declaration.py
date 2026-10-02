@@ -28,7 +28,7 @@ so an error in it is an error in the estate. This checks three things a green An
    inventory line for every host and failing on any destination or ProxyJump
    hop that is a bare label. A future ``-J <fleet name>`` would pass every
    input rule and still only work on a machine that happened to define that
-   name -- which is the whole of #526, one layer down.
+   name -- which is the whole SSH-alias bug, one layer down.
 
 6. **The cache-only HIL repair stays cache-only.** Its standalone playbook,
    private inventory driver and isolated Justfile must match one exact
@@ -224,7 +224,7 @@ def _check_derived_reach(data: dict[str, Any]) -> list[str]:
         problems += [
             f"{name}: {what} dials '{token}', a bare label rather than an address. It "
             "would resolve only on a machine whose ~/.ssh/config happened to define it, "
-            "which is exactly the fault #526 removed -- one layer further down."
+            "which is exactly the SSH-alias fault removed -- one layer further down."
             for what, tokens in derived.items()
             for token in tokens
             if not _is_literal(token)

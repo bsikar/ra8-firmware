@@ -38,7 +38,7 @@ the rewrite its own help text recommends.  Measured on this tree it produces 90
 findings, and the only two source forms it accepts are worse than what it
 rejects -- ``set +e; fn; rc=$?; set -e`` (which it passes) and a bare subshell
 (which aborts the parent).  Adopting it would mean ~90 inline disables rather
-than ~90 fixes.  See #363 for the full form-by-form evidence.
+than ~90 fixes.
 
 This check keeps the signal and drops the noise: it fires only where a
 first-party function whose body has more than one command is invoked with its

@@ -18,7 +18,7 @@
 #
 # A missing formatter is a HARD FAILURE, never a silent skip: a language the
 # toolchain cannot format is a language CI cannot be checking, and a script
-# that quietly drops a language is the #296/#332/#358 collapse defect wearing
+# that quietly drops a language is the hardcoded-scan-list collapse defect wearing
 # a different name. The per-language dirty/canonical proofs live in each
 # formatter's own both-direction selftest (lint_selftest.sh for cmake-format);
 # this script's selftest proves the orchestration contract (missing tool fails,

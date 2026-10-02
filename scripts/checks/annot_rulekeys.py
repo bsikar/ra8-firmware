@@ -42,7 +42,7 @@ INFORMATIONAL_RULES = {"ra8_latency_budget_ns", "ra8_reviewed_by", "ra8_register
 MARKER_ONLY_RULES = {
     # ra8_isr_safe: applied to 70 sites, read by nothing. The closure it
     # implies needs the ISR-entry set derived from the vector tables and a
-    # ruling on inline MMIO accessors first -- issue #1247.
+    # ruling on inline MMIO accessors first.
     "ra8_isr_safe",
 }
 

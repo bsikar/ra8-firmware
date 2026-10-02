@@ -72,8 +72,8 @@ LANGUAGE_EXCLUDED_PREFIXES = {
 # This used to be thirteen copies of the substring ``"/build/"``, one per
 # checker, and the substring is the defect. ``"/build/" in path`` cannot
 # tell ``tools/ra8_emulator/build/`` -- genuine CMake output -- from a first-party
-# source directory that happens to be called ``build``. When #359's
-# reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: #359
+# source directory that happens to be called ``build``. When the scripts/
+# reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: reorg
 # became invisible to shellcheck, shfmt and the rest, while every gate still
 # reported
 # a clean tree. The bare ``build/`` line in .gitignore did the same thing to
@@ -306,7 +306,7 @@ def untracked_in_scope(
 def announce_unscanned(paths: list[str], *, caller: str, why: str, limit: int = 10) -> None:
     """Say on stderr which in-scope files this run did not read.
 
-    Silence over unread code is the defect #713 exists to kill.  A gate that
+    Silence over unread code is the defect this gate exists to kill.  A gate that
     must stay index-scoped keeps its scope and pays for it with this line,
     every run, so a clean verdict is never mistaken for a complete one.
 
@@ -484,7 +484,8 @@ _IMAGE_MARKER_SUFFIX = ".ld"
 #: Proof that a directory owns a reset path.
 _IMAGE_MARKER_NAME = "vector_table.c"
 
-#: The second, now primary, proof. RA8FW-309 and #759 moved the linker scripts and
+#: The second, now primary, proof. RA8FW-309 and the dual-image scaffold moved
+#: the linker scripts and
 #: the reset path OUT of the app directories and into the board libraries: one
 #: generated NS template per target, one shared vector table. That left every
 #: app directory without the marker pair, so the pair rule alone derives the

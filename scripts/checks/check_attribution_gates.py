@@ -21,8 +21,9 @@ That exact defect has now been found three times in this tree:
              ungated.
 
 Each was fixed by hand, each time by someone who happened to read the register
-table.  Nothing stopped the fourth one being written tomorrow, which is #759
-item (a): the register block had no guard that every attribution writer goes
+table.  Nothing stopped the fourth one being written tomorrow, which is
+the dual-image scaffold's item (a): the register block had no guard that
+every attribution writer goes
 through the protection helper.  This checker is that guard.
 
 WHAT IT ENFORCES, PRECISELY
@@ -61,7 +62,7 @@ written inside, not the window that is open when the write executes:
 
 The five hand-rolled ``trustzone_init.c`` app forks are **out of scope**: they
 write PRCR_S with raw hex literals rather than the helper, and reconciling them
-against the library path is #759 item (b).  Scoping this checker to ``libs/``
+against the library path is the dual-image scaffold's item (b).  Scoping this checker to ``libs/``
 is what lets it pass today instead of failing open on work that has not
 happened yet.
 """
@@ -342,7 +343,7 @@ def main() -> int:
             "\nThese registers sit behind PRCR PRC4 (HUM Ch 13.1 Table 13.1,\n"
             "p 520-521). Stored to with PRC4 locked they are discarded silently:\n"
             "no fault, no flag, and the attribution keeps its reset value while\n"
-            "the caller reports success. That is RA8FW-254 and #759. Wrap the write:\n"
+            "the caller reports success. That is RA8FW-254. Wrap the write:\n"
             "\n    RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar) { ... }\n"
             "\nIf the function is deliberately a gate-free leaf whose caller holds\n"
             "the window, document that as a @pre and add it to ALLOWED_LEAVES in\n"

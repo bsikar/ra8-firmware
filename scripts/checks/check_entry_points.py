@@ -321,7 +321,7 @@ def check_shared_declaration() -> list[str]:
 
     Everything else in this gate is downstream of this file. Delete the
     declaration and every firmware entry point silently loses the
-    cross-translation-unit check that is the whole point of #707; drop the
+    cross-translation-unit check that is the whole point of this gate; drop the
     guard and every hosted TU that includes the header stops compiling with
     `conflicting types for 'main'`.
     """

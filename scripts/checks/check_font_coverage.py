@@ -38,7 +38,7 @@ holds it against the fonts:
 coverage in both directions and asserts the committed declaration is quiet, so
 "0 problems" cannot mean "measured nothing".
 
-Part of #687 (Tier 2 font coverage). The wider baked subset and the fallback
+Part of Tier 2 font coverage. The wider baked subset and the fallback
 face are the rest of that issue; this is the declaration and the gate they need
 in order to be reviewable changes rather than a new blob.
 """

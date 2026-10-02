@@ -6,7 +6,7 @@
 ``libs/ra8_hal/inc/ra8_regs.h`` publishes itself as the one include that hands
 a consumer every peripheral register block on the RA8D2.  Nothing in the tree
 had to include it for that claim to be believed, and nothing did, so the claim
-was never tested by a build: by #1389 the umbrella re-exported 30 of the 60
+was never tested by a build: by the time it was audited the umbrella re-exported 30 of the 60
 eligible headers and half the chip had fallen out of it unnoticed.
 
 This gate makes the claim checkable.  Three rules, all reported per header:
@@ -14,7 +14,7 @@ This gate makes the claim checkable.  Three rules, all reported per header:
 ``missing-re-export``
     A ``ra8_*_regs.h`` in ``libs/ra8_hal/inc/`` that the umbrella does not
     include and that is not one of the documented exclusions below.  This is
-    the rule that would have caught #1389.
+    the rule that would have caught that drift.
 
 ``stale-re-export``
     The umbrella includes a header that no longer exists in that directory,
