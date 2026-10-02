@@ -11,14 +11,13 @@ registry record, upstream manifest, qualification, license inventory entry, and
 raw-byte checkout rule. No dependency currently qualifies for that tool-private
 shape.
 
-FlatBuffers, gemmlowp, ruy, LevelX and TFLite-micro are not vendored: they are pinned upstream
+FlatBuffers, gemmlowp, ruy, LevelX, TFLite-micro and NetX Duo are not vendored: they are pinned upstream
 tarballs in `build.zig.zon`, resolved by `cmake/zig_package.cmake`.
 
 | Library | Description |
 |---|---|
 | `esp-hosted` | ESP32 Wi-Fi / Bluetooth co-processor firmware and driver |
 | `mbedtls` | ARM Mbed TLS cryptography and SSL/TLS library |
-| `netxduo` | Microsoft Azure RTOS NetX Duo TCP/IP IPv4/IPv6 stack |
 | `nimble` | Apache NimBLE open-source Bluetooth Low Energy host stack |
 | `tf-psa-crypto` | Trusted Firmware Platform Security Architecture (PSA) Crypto API |
 | `threadx` | Microsoft Azure RTOS ThreadX real-time operating system |

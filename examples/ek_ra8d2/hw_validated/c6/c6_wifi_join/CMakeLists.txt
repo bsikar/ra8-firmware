@@ -44,11 +44,13 @@ if(TARGET c6_wifi_join.elf)
   # The wireless NetX Duo driver bridges onto ra8_c6link; the DHCP client is not
   # part of the netxduo core glob (it lives under addons/dhcp), so name it here.
   get_property(_c6_nx_src GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES)
-  set(_dhcp_src "${_d}/libs/third_party/netxduo/addons/dhcp/nxd_dhcp_client.c")
+  include(${_d}/cmake/zig_package.cmake)
+  ra8_zig_package_dir(netxduo _nx_dir)
+  set(_dhcp_src "${_nx_dir}/addons/dhcp/nxd_dhcp_client.c")
   target_sources(c6_wifi_join.elf PRIVATE ${_c6_nx_src} "${_dhcp_src}")
   target_include_directories(
     c6_wifi_join.elf PRIVATE "${_d}/examples/ek_ra8d2/common/network_provision/inc"
-                             "${_d}/port/netxduo/inc" "${_d}/libs/third_party/netxduo/addons/dhcp"
+                             "${_d}/port/netxduo/inc" "${_nx_dir}/addons/dhcp"
   )
   target_link_libraries(c6_wifi_join.elf PRIVATE netxduo_port_c6)
   # Vendored SOUP. All three names were measured on nxd_dhcp_client.c under the

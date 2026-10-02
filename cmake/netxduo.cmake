@@ -10,7 +10,8 @@
 #
 #   1. Verifies that ThreadX is also enabled (NetX Duo's protection
 #      macros call `tx_mutex_*` and threads are scheduled by ThreadX).
-#   2. Compiles `libs/third_party/netxduo/common/src/*.c` plus the
+#   2. Compiles NetX Duo's `common/src/*.c` (the upstream tarball pinned in
+#      build.zig.zon, see cmake/zig_package.cmake) plus the
 #      bundled NetX Crypto sources into a single `netxduo` interface
 #      library.
 #   3. Pulls in our `port/netxduo/` shim which exposes the NetX Duo
@@ -59,14 +60,15 @@ endif()
 # from the top-level CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_NETXDUO_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_NETXDUO_VENDOR_DIR "${_RA8_NETXDUO_REPO_ROOT}/libs/third_party/netxduo")
+include(${_RA8_NETXDUO_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(netxduo _RA8_NETXDUO_VENDOR_DIR)
 set(_RA8_NETXDUO_COMMON_INC "${_RA8_NETXDUO_VENDOR_DIR}/common/inc")
 set(_RA8_NETXDUO_COMMON_SRC "${_RA8_NETXDUO_VENDOR_DIR}/common/src")
 set(_RA8_NETXDUO_CRYPTO_INC "${_RA8_NETXDUO_VENDOR_DIR}/crypto_libraries/inc")
 set(_RA8_NETXDUO_PORT_INC "${_RA8_NETXDUO_VENDOR_DIR}/ports/cortex_m85/gnu/inc")
 
 if(NOT EXISTS "${_RA8_NETXDUO_COMMON_INC}/nx_api.h")
-  message(FATAL_ERROR "RA8_USE_NETXDUO=ON but NetX Duo vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_NETXDUO=ON but the pinned NetX Duo package is missing at "
                       "${_RA8_NETXDUO_VENDOR_DIR}."
   )
 endif()

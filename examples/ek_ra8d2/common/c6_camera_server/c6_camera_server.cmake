@@ -47,14 +47,16 @@ function(c6_camera_server_add_app)
   get_property(_c6_nx_src GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES)
   get_property(_ipif_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES)
   get_property(_ipif_wifi_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES)
-  set(_dhcp_src "${APP_ROOT}/libs/third_party/netxduo/addons/dhcp/nxd_dhcp_client.c")
+  include(${APP_ROOT}/cmake/zig_package.cmake)
+  ra8_zig_package_dir(netxduo _nx_dir)
+  set(_dhcp_src "${_nx_dir}/addons/dhcp/nxd_dhcp_client.c")
   target_sources(
     ${APP_NAME}.elf PRIVATE ${_c6_nx_src} ${_ipif_src} ${_ipif_wifi_src} "${_dhcp_src}"
   )
   target_include_directories(
     ${APP_NAME}.elf
     PRIVATE "${_common}/inc" "${APP_ROOT}/examples/ek_ra8d2/common/network_provision/inc"
-            "${APP_ROOT}/port/netxduo/inc" "${APP_ROOT}/libs/third_party/netxduo/addons/dhcp"
+            "${APP_ROOT}/port/netxduo/inc" "${_nx_dir}/addons/dhcp"
   )
   target_link_libraries(${APP_NAME}.elf PRIVATE netxduo_ipif_wifi)
   # Vendored SOUP. All three names were measured on nxd_dhcp_client.c under the
