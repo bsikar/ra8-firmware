@@ -3,7 +3,7 @@
 Per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4, every
 third-party library shipped in this firmware must have a written
 qualification basis. This directory holds one Markdown justification per
-vendored component under `libs/third_party/` or
+component pinned in `build.zig.zon` or vendored under
 `apps/shared_libs/third_party/`.
 
 The exemption that admits these libraries to the build (no source-level
@@ -107,8 +107,8 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 
 This catalog is the per-component *qualification* record. Two aggregated
 artifacts are derived from every supported vendored root and must be kept in
-sync with them. The current roots are `libs/third_party/` and
-`apps/shared_libs/third_party/`. A future dependency used by only one host tool
+sync with them. The current vendored root is
+`apps/shared_libs/third_party/`; platform libraries are pinned in `build.zig.zon`. A future dependency used by only one host tool
 may live at `tools/<tool>/third_party/<component>`, but only when it is truly
 tool-exclusive and has a registry entry, upstream manifest, qualification,
 license inventory entry, and raw-byte checkout rule. A tool that merely helps

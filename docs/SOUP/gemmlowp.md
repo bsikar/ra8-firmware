@@ -10,8 +10,9 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 - **Version**: no upstream release tag; pinned to upstream commit
   `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` (2018-09-04).
 - **Upstream URL**: https://github.com/google/gemmlowp
-- **Local path**: `libs/third_party/gemmlowp/`
-  - Files in tree: `fixedpoint/*.h` (`fixedpoint.h` + the per-ISA
+- **Local path**: none. Pinned in `build.zig.zon` as package `gemmlowp`
+  (RA8FW-385); the build uses only these files of it:
+  - Files used: `fixedpoint/*.h` (`fixedpoint.h` + the per-ISA
     `fixedpoint_{neon,sse,avx,msa}.h`, all guarded by `#ifdef` so none is
     active on Cortex-M85), `internal/detect_platform.h`, and `LICENSE`.
     Header-only subset -- the full gemmlowp GEMM machinery is NOT vendored.
@@ -51,7 +52,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   SSE / AVX / MSA paths compile in, so only the portable scalar path is used.
 - Compiled behind the SOUP boundary as part of the `tflite_micro` object library
   (`cmake/tflite_micro.cmake`).
-- Exempt from the first-party gates as vendored SOUP under `libs/third_party/`.
+- Exempt from the first-party gates as SOUP pinned in `build.zig.zon`.
 
 ## Deviations / patches
 

@@ -30,11 +30,11 @@ and that cross-check.
 
 ## Scope
 
-- **Covered here:** vendored Software Of Unknown Provenance (SOUP) under
-  `libs/third_party/` and `apps/shared_libs/third_party/`, plus the one bundled
-  font data asset under `libs/ra8_fonts/`. The first vendor root contains
-  platform-wide dependencies; the second contains dependencies used only by
-  application products and their companion host tools.
+- **Covered here:** Software Of Unknown Provenance (SOUP) pinned in
+  `build.zig.zon` or vendored under `apps/shared_libs/third_party/`, plus the
+  one bundled font data asset under `libs/ra8_fonts/`. The pinned packages are
+  the platform-wide dependencies; the vendored root contains dependencies used
+  only by application products and their companion host tools.
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
   `apps/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
@@ -187,8 +187,7 @@ below); this section reproduces the copyright line and points to that text.
 
 - **ThreadX, NetX Duo, USBX, LevelX** -- MIT.
   "Copyright (c) 2024 - present Microsoft Corporation." Text:
-  `libs/third_party/<component>/LICENSE.txt` (LevelX and NetX Duo:
-  `LICENSE.txt` in the pinned upstream tarball, `build.zig.zon`). Origin: Eclipse Foundation
+  `LICENSE.txt` in each pinned upstream tarball (`build.zig.zon`). Origin: Eclipse Foundation
   (Eclipse ThreadX).
 - **Mbed TLS** -- Apache-2.0 (elected). TrustedFirmware.org / Arm. Text:
   `LICENSE` in the pinned `mbedtls` package (`build.zig.zon`).

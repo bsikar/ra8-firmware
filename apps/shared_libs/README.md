@@ -24,5 +24,5 @@ general tools vendor bucket and requires an SBOM registry entry, upstream
 manifest, SOUP qualification, license inventory entry, and raw-byte checkout
 rule. No current dependency qualifies for tool-private ownership.
 
-Platform and middleware dependencies with genuine cross-domain consumers stay
-under `libs/third_party/`.
+Platform and middleware dependencies with genuine cross-domain consumers are
+pinned packages in `build.zig.zon`, not vendored.
