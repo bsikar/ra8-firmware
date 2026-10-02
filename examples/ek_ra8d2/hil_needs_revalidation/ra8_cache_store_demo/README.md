@@ -2,7 +2,7 @@
 
 Runs the whole `ra8_cache_store` lifecycle end to end on the target -- the
 persistent key-to-blob cache that backs compiled `.rabook` containers,
-which had no direct example until #257.
+which had no direct example before this one.
 
 One pass covers: format and mount a store over LevelX standalone; put and get
 several keyed render/glyph blobs whose sizes cross sector boundaries and read

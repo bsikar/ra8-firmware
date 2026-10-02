@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: NS}
  *
  * @details
- * This is the literal title of issue #60 -- "ThreadX + USBX inside the NS
+ * This is the literal title of the Phase C issue -- "ThreadX + USBX inside the NS
  * image" -- realised on the RAM-resident two-project NS build, taken all the way
  * to a self-validating loop. The Secure side (``trustzone_init.c``), before
  * BLXNS, routes both ports' pins, enables the USBHS PLL, sets the U15 expander to

@@ -9,12 +9,12 @@
  * @details
  * The DTC counterpart to ``dtc_transfer_demo`` -- same 1 KB SRAM-to-SRAM
  * block copy, same ELC-software-event activation -- but it arms and disarms
- * DTC activation through the ``ra8_isr_set_dtc()`` HAL primitive (issue
- * #579) instead of open-coding the ``ICU.IELSRn.DTCE`` read-modify-write.
+ * DTC activation through the ``ra8_isr_set_dtc()`` HAL primitive
+ * instead of open-coding the ``ICU.IELSRn.DTCE`` read-modify-write.
  * Because the primitive owns that write, this app never includes
  * ``ra8_icu_regs.h`` at all: the DTC-vs-CPU routing decision for the
- * allocated slot no longer leaks into application code. Since issue #774
- * the transfer itself is described the same way: ``ra8_dtc_bind_activation()``
+ * allocated slot no longer leaks into application code. Since the DTC
+ * facade landed, the transfer itself is described the same way: ``ra8_dtc_bind_activation()``
  * encodes MRA/MRB/CRA/CRB, points the vector-table slot at the TI block,
  * cleans the D-cache over both and performs the arming ``DTCE`` write, so
  * no HUM Ch 18.2 field encoding is left in this file.
@@ -322,8 +322,8 @@ static void dtc_arm_fill(uint32_t dst_init)
  * Rebuilt every pass because the DTC writes the post-transfer TI back to
  * SRAM (MRA.WBDIS = 0, HUM Ch 18.2.2 p 786), consuming SAR/DAR/CRA/CRB.
  * ``ra8_dtc_bind_activation()`` owns the encoding, the vector-table slot
- * write, the D-cache clean over both, and the ``IELSRn.DTCE`` set (issue
- * #774) -- so the arming half of this demo now runs through the facade and
+ * write, the D-cache clean over both, and the ``IELSRn.DTCE`` set --
+ * so the arming half of this demo now runs through the facade and
  * the disarming half still calls ``ra8_isr_set_dtc()`` directly, which is
  * the same write the facade performs.
  *

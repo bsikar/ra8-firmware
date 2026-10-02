@@ -14,8 +14,8 @@
  * The ONE difference from the raw twin is the register access: instead of casting
  * `0x404000C0` to a `volatile uint32_t*` and hand-rolling the combined `{PODR,PDR}`
  * PCNTR1 store, it drives board LED1 (BLUE, P600 = PORT6 pin 0) through
- * `ra8_pcntr_set_output()` -- the CPU1-safe, header-only HAL primitive (issue
- * #580). No `ra8_hal` object is linked; only the freestanding-clean inline
+ * `ra8_pcntr_set_output()` -- the CPU1-safe, header-only HAL primitive.
+ * No `ra8_hal` object is linked; only the freestanding-clean inline
  * accessor is included, so the image stays exactly as freestanding as before.
  * This app exists ALONGSIDE the raw `blink_m33` (which is kept as the deliberate
  * raw-MMIO reference), demonstrating that the primitive substitutes at the M33

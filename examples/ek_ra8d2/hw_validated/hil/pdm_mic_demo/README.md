@@ -2,7 +2,7 @@
 
 Captures from the EK-RA8D2's on-board PDM MEMS microphones through the
 `ra8_audio` facade and its `ra8_pdm` backend, then judges whether what came
-back is plausibly acoustic. Closes gap issue #129.
+back is plausibly acoustic. Closes the PDM example gap.
 
 The verdict is the point. It captures 20-bit PCM windows and reports RMS, peak,
 mean and span, calling the line active only when a window is non-degenerate --

@@ -27,7 +27,7 @@
  *
  * @note This demo decodes a whole WebP into one RGBA buffer, deliberately: it
  * is a link-and-run smoke test for the facade, not a rendering path. Band-tile
- * normalisation is not future work -- it shipped with #344 and lives in
+ * normalisation is not future work -- it shipped with the comic tiling work and lives in
  * ``apps/shared_libs/comic/{inc/comic_tiles.h,src/comic_tiles.c}``. The inline
  * reflow raster dispatch for small WebP illustrations is tracked separately.
  *

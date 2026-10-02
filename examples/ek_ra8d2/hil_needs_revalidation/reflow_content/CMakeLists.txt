@@ -31,6 +31,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME reflow_content
   STACK_BYTES 16384
-  DESCRIPTION "Headless multi-page reflow render + CRC + font-size re-flow over UART (#115 HIL)"
+  DESCRIPTION "Headless multi-page reflow render + CRC + font-size re-flow over UART (reflow content HIL)"
   LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

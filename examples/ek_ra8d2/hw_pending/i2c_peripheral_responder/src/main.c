@@ -7,7 +7,7 @@
  *
  * @details
  * Standalone EVM-tier app that exercises the ra8_i2c (RIIC) *target*
- * (peripheral) role added for issue #189 -- the own-address match, the
+ * (peripheral) role added to the RIIC driver -- the own-address match, the
  * attached-callback dispatch (``ra8_i2c_peripheral_attach_handler`` /
  * ``ra8_i2c_peripheral_dispatch``) and the clock-stretched target TX/RX path.
  *

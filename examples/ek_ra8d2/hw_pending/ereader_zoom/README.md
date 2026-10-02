@@ -41,7 +41,7 @@ scripted viewport states, plus the tile-cache counters, and each is an assertion
 |---|---|
 | the four state hashes | Each viewport state renders to a fixed framebuffer on host **and** emulator **and** silicon -- the whole path is integer. |
 | miss count | Only the visible tiles are ever decoded; the whole four-state sequence touches a small fraction of the page. |
-| evict count, which must be zero | No tile still on screen was thrown away. That is the thrash #338 describes, and `k_ez_cells` is sized to the viewport tile demand plus a pan margin so it cannot happen. |
+| evict count, which must be zero | No tile still on screen was thrown away. That is the tile-cache thrash, and `k_ez_cells` is sized to the viewport tile demand plus a pan margin so it cannot happen. |
 | warm count | The pan read-ahead warmed the lead-edge column out of the cache's spare capacity. |
 
 The hashes are toolchain-independent **because the chrome carries no text**. A

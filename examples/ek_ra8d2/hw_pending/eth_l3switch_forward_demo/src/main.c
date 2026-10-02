@@ -7,7 +7,7 @@
  *
  * @details
  * Configures the RA8D2 Ethernet frame-forwarding path that no other example
- * referenced (recon gap #135). Two drivers, honestly separated:
+ * referenced (a recon gap). Two drivers, honestly separated:
  *
  *   1. ``ra8_eth_mfwd`` -- the **real** Message Forwarding engine that sits
  *      between the GMAC ports and the CPU Agent (GWCA) making per-frame
