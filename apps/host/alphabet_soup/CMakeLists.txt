@@ -16,7 +16,7 @@ if(NOT TARGET ra8_zig::fw_if_fs)
   ra8_add_zig_library(
     NAME fw_if_fs
     ZIG_ROOT ${FW}/if
-    LIBRARY_NAME fw_if_fs
+    LIBRARY_NAME if
   )
 endif()
 
