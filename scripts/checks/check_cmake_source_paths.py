@@ -13,8 +13,8 @@ library's own build unit::
       PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
     )
 
-Nothing checked that the path on the right still names a file.  #1290 is the
-worked example: the Zig port deleted ``libs/ra8_gfx/src/ra8_gfx_text.c`` and
+Nothing checked that the path on the right still names a file.  The ra8_gfx port
+is the worked example: the Zig port deleted ``libs/ra8_gfx/src/ra8_gfx_text.c`` and
 that ``target_sources()`` line kept naming it.  Two independent reasons no
 existing gate saw it, and both recur for every library the migration touches:
 
@@ -52,8 +52,8 @@ WHICH ROOTS ARE RESOLVED
 ------------------------
 ``${RA8_REPO_ROOT}`` is the tree-wide spelling and is always the repository
 root.  It is not the only one: this tree reaches across build units through
-six more names, each defined by the listfile that uses it, and #2610 is what
-resolving only the first one cost.  ``libs/ra8_num/src/ra8_num_decimal.c``
+six more names, each defined by the listfile that uses it, and resolving only
+the first one once cost a broken build.  ``libs/ra8_num/src/ra8_num_decimal.c``
 went Zig and left five dangling paths in ``apps/shared_libs/mdl``, spelled
 ``${MDL_REPO_ROOT}/...``.  This gate scanned that very file and reported it
 clean, because the prefix was not the one name it knew.

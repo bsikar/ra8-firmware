@@ -325,7 +325,7 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
 
 # ---------------------------------------------------------------------------
 # Selftest -- both directions, plus a scope assertion under the root that was
-# invisible until #358. The dominant defect in this tree is a gate that looks
+# once invisible. The dominant defect in this tree is a gate that looks
 # active and enforces nothing, so a scope that quietly re-narrows to omit
 # tools/ must fail here rather than pass green.
 # ---------------------------------------------------------------------------
@@ -362,7 +362,7 @@ def selftest() -> int:
 
     expect(
         _in_scan_scope("tools/ra8_emulator/src/main.c"),
-        "tools/ is in scope (SCAN_DIRS omitted it before #358)",
+        "tools/ is in scope (SCAN_DIRS once omitted it)",
         failures,
     )
     expect(

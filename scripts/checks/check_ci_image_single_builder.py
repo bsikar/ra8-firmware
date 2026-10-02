@@ -5,7 +5,7 @@
 
 WHY THIS EXISTS
 ===============
-``just ci`` boots a locally-built image tagged ``ra8-ci:latest``.  #521 made
+``just ci`` boots a locally-built image tagged ``ra8-ci:latest``.  The stale-image fix made
 that image a pure function of its allowlisted build context -- it carries the
 context's sha256 as an OCI label, and ``scripts/ci/devcontainer_image.sh`` is
 the ONE thing that builds it, rebuilding rather than reusing a cached image

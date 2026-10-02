@@ -26,7 +26,7 @@ R1  Every registry component's in-tree path is named in
     by an ancestor directory of at least two path segments -- the co-processor
     firmware is catalogued as ``coprocessor/esp32c6/`` rather than by the
     per-component subdirectory.  One segment is NOT enough: ``docs/`` must not
-    stand in for ``docs/doxygen_theme``, which is precisely how #629 hid.
+    stand in for ``docs/doxygen_theme``, which is precisely how a SOUP component once hid.
 
 R2  Every vendored path named in the inventory table belongs to a registry
     component.  An inventory row with no registry entry is a component the

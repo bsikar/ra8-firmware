@@ -8,7 +8,7 @@ WHY THIS EXISTS
 `.gitignore` line 2 was `build/` for the life of the tree. A pattern with a
 trailing slash and no leading slash matches at EVERY depth, so any directory
 named `build` -- anywhere -- was silently untrackable. The reorganisation
-created `scripts/build/` (PATHREF-OK: #359 renamed it), and its six
+created `scripts/build/` (PATHREF-OK: that reorg renamed it), and its six
 files were tracked only because `git mv` moves files that were already
 tracked. A seventh, newly created, would never have been added, and
 `git add` would have reported nothing wrong.
@@ -327,7 +327,7 @@ def main(argv: list[str]) -> int:
 
     A slashless pattern such as ``build`` matches ANY directory of that name
     anywhere in the tree, which is how a first-party source directory under
-    ``scripts/build/`` -- PATHREF-OK: #359 has since renamed it away -- became
+    ``scripts/build/`` -- PATHREF-OK: the reorg has since renamed it away -- became
     invisible to git and to every gate at once.  Anchoring makes the
     intended scope explicit.
 

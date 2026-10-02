@@ -9,7 +9,7 @@ layer is reached through a seam bound under ``port/``; a library that spells
 ``_tx_timer_interrupt`` or ``lx_nor_flash_open`` has wired one specific
 middleware into a tier meant to outlive it.
 
-The tree does not satisfy that invariant yet, and #695 is design-only until the
+The tree does not satisfy that invariant yet, and the OSAL seam is design-only until the
 owner schedules it, so this gate does NOT assert the end state. It freezes the
 inventory that exists today: every leak site is declared below with the symbols
 it names, and the sweep fails when tree and ledger disagree either way.
@@ -60,11 +60,11 @@ OPTION_ARG_COUNT = 2
 # The ledger floors track the ledger down as leaks genuinely burn down: RA8FW-299
 # moved the watchdog supervisor onto the fw_os seam and took two sites and
 # eighteen symbols with it, so they were re-pinned from 6/40 to the surviving
-# 5/28 on dev. On this branch #981 then reimplemented ra8_cache_store's mount
+# 5/28 on dev. On this branch a later slice reimplemented ra8_cache_store's mount
 # path in Zig and its two C sites went too, which put the floors at 3/20.
 #
-# 2/17, and this one is NOT a burn-down: the SysTick leak #695
-# names moved into Zig with the timebase port, so a C-only scan stopped seeing
+# 2/17, and this one is NOT a burn-down: the SysTick leak the
+# OSAL seam names moved into Zig with the timebase port, so a C-only scan stopped seeing
 # it. The three symbols are still there, in
 # libs/ra8_core/src/internal/time/hooks.zig, which is why RA8FW-363 is open to put
 # Zig in scope. Re-pinning here keeps the tripwire live for the C that is left
@@ -172,8 +172,8 @@ NAME_TOKENS: dict[str, str] = {
 # The declared inventory: what libs/ names today, verified on dev @73a62d3.
 # Shrink an entry in the same change that removes the symbol.
 #
-# The scan is C-only, so a leak that moves into Zig leaves it. #2851 moved the
-# Ring-1 SysTick leak #695 names: the weak externs for `_tx_timer_interrupt`,
+# The scan is C-only, so a leak that moves into Zig leaves it. The ra8_time port moved
+# the Ring-1 SysTick leak the OSAL seam names: the weak externs for `_tx_timer_interrupt`,
 # `g_ra8_threadx_systick_ready` and `ux_dcd_ra8_usb_irq_reenable` now live in
 # libs/ra8_core/src/internal/time/hooks.zig, so the entry that declared them
 # here is gone with the C file. The leak itself is unchanged, and this gate no
@@ -181,7 +181,7 @@ NAME_TOKENS: dict[str, str] = {
 # arrive as @extern string literals, which strip_non_code removes, and the
 # already-migrated libraries would add ~19 undeclared sites of their own.
 DECLARED_SITES: dict[str, frozenset[str]] = {
-    # The Ring-1 leak #695 names: the SysTick handler dispatches into ThreadX
+    # The Ring-1 leak the OSAL seam names: the SysTick handler dispatches into ThreadX
     # and USBX through weak externs.
     # USBX device stack in the DFU library, including one field of its PUBLIC
     # header, so a DFU consumer inherits the middleware name.

@@ -12,7 +12,7 @@ makes that explicit, globbing the library source directory and calling
 That check is good.  Its problem is WHEN it runs: only under a configure of
 that one host tool.
 
-#2610 is the worked example.  ``libs/ra8_mem/src/ra8_slab.c`` went Zig in
+The slab port is the worked example.  ``libs/ra8_mem/src/ra8_slab.c`` went Zig in
 a4aff0d4a and the DROP list kept naming it.  A declared-but-absent member
 breaks configure just as hard as an unclassified present one, so the tools
 build was broken from that commit, and nothing said so: ``zig build`` never

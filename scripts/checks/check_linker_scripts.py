@@ -80,7 +80,7 @@ LD006 is whole-tree, so it is reported once rather than per file.
 WHY LD008 IS ALL-OR-NOTHING RATHER THAN PER-DEVICE
 ==================================================
 The obvious rule here would be "check the emitted OFS words against the target
-device's feature set". That rule is the bug. Issue #223 deleted the OFS3 family
+device's feature set". That rule is the bug. The RA8P1 OFS work deleted the OFS3 family
 from the four RA8P1 app scripts because Renesas FSP's `BSP_FEATURE_BSP_HAS_OFS3`
 is 0 for ra8p1 -- but the RA8P1 Hardware User's Manual (R01UH1064EJ0130 Ch 7.2.6
 p 288, Ch 7.2.7 p 290) documents OFS3, OFS3_SEC and OFS3_SEL at the same
@@ -588,7 +588,8 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 # as the remaining forks convert. What the floor is actually defending has not
 # changed: a PROVIDE rename takes the count to 0, and 0 must never read clean.
 
-# Re-pinned 40 -> 25 when #761 landed. The population was comfortably into the
+# Re-pinned 40 -> 25 when the composable linker script landed. The population
+# was comfortably into the
 # sixties because 42 ThreadX apps each carried a full private copy of the board
 # memory map, option-setting family and all. Those apps now compose the board
 # script through ra8_add_app(THREADX_HEAP ...) instead of forking it, so the

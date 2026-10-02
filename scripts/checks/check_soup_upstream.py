@@ -33,7 +33,7 @@ history, or a project that vanished.
 Deliberate deviations are DECLARED, never inferred
 --------------------------------------------------
 Vendored SOUP is sometimes patched on purpose (libwebp's arena allocator,
-TinyXML-2's #151 whitespace fix, stb's bounds hardening) and sometimes carries
+TinyXML-2's whitespace fix, stb's bounds hardening) and sometimes carries
 files upstream has none of (mbedtls' build-generated config-check headers).
 Those files must be listed in the registry's ``patched_files`` /
 ``local_files`` with a justification; ``--refresh`` REFUSES to write a

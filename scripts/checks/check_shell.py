@@ -63,7 +63,7 @@ SHELLCHECK_ENABLE = (
     "useless-use-of-cat",
 )
 
-# Deliberately NOT enabled. Re-measured for #363 on the first-party shell files
+# Deliberately NOT enabled. Re-measured on the first-party shell files
 # at ShellCheck 0.11.0, on top of the severity + opt-in set above:
 #
 #   check-set-e-suppressed (SC2310/SC2311) -- 90 findings / 24 files.
@@ -193,7 +193,7 @@ def first_party_scripts() -> list[str]:
     -- commit-msg, hook-launcher, post-merge, post-commit,
     post-checkout -- is an extensionless bash script, so a suffix-only scope
     left the hooks that enforce this entire tree as the only shell in it that
-    nothing shellchecked. That is the #296/#332/#358/#359/#360
+    nothing shellchecked. That is the hardcoded-scan-list
     defect class exactly: a scope narrower than the thing it claims to cover,
     reporting clean.
     """

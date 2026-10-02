@@ -722,7 +722,7 @@ def selftest() -> int:
     """Assert the gate fires in BOTH directions, so a collapse cannot pass clean.
 
     Builds throwaway .su fixtures in a temp tree and drives ``main`` against
-    them. A vacuous selftest would defeat the whole point of #386, so each
+    them. A vacuous selftest would defeat the whole point of this gate, so each
     direction is asserted against a real return code:
 
     * an empty sweep (no .su files, no --allow-empty) FAILS;
