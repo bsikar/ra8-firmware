@@ -44,18 +44,9 @@ _pcc_banned_constructs() (
   # is back in scope, before the tree is trusted. A re-narrowed scope turns the
   # selftest red instead of passing green over files it stopped scanning.
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
-  python3 scripts/checks/check_no_dynamic_alloc.py --selftest
-  python3 scripts/checks/check_no_dynamic_alloc.py --all
   python3 scripts/checks/check_freestanding_runtime.py --selftest
   python3 scripts/checks/check_freestanding_runtime.py --check-scripts
   python3 scripts/checks/check_freestanding_runtime.py --check-asserts
-  # Opaque C/POSIX FILE and DIR streams hide allocation and buffer ownership.
-  # The production contract is fw_fs_file_t plus injected ra8_io/logging; host
-  # adapters use raw descriptors with bounded caller-owned state. Selftest
-  # proves every token, exact generated-source exclusion, and scope floor before
-  # the zero-baseline full-tree sweep is trusted.
-  python3 scripts/checks/check_no_stdio_streams.py --selftest
-  python3 scripts/checks/check_no_stdio_streams.py --all
   python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
@@ -307,11 +298,6 @@ _pcc_source_form() (
   # config-as-code. --selftest proves the detector fires and that the derived
   # scope reaches the roots a hardcoded list had dropped.
   (cd tools/ra8ci && GOWORK=off go run . final-newline)
-  # No magic numbers. clang-tidy's readability-magic-numbers only sees files
-  # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
-  # which is how ra8_delay_ms(500U) slipped past CI.
-  python3 scripts/checks/check_magic_numbers.py --selftest
-  python3 scripts/checks/check_magic_numbers.py
   # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).

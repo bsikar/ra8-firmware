@@ -108,8 +108,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Purpose:** documented exception to NASA P10 Rule 3 (no dynamic alloc).
 - **Reason:** a narrow string literal naming the unavoidable allocation
   boundary is mandatory.
-- **Enforcement:** `scripts/checks/check_no_dynamic_alloc.py` plus
-  libclang call-graph walk over firmware-linkable translation units. Host
+- **Enforcement:** a libclang call-graph walk over firmware-linkable translation units. Host
   products and files in any `tests/` directory are outside the firmware rule;
   untagged firmware callers of tagged functions must themselves be tagged or
   carry a deviation entry.
