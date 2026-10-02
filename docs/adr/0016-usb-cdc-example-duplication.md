@@ -147,7 +147,7 @@ Whichever option is taken:
 
 ## References
 
-* Issue #728 -- `usb_cdc_echo` and `threadx_usbx_cdc_demo` are the
+* The finding that `usb_cdc_echo` and `threadx_usbx_cdc_demo` are the
   same app twice.
 * `docs/STYLE_GUIDE.md` -- parallel-implementation debt.
 * `docs/HARDWARE_BRINGUP.md` -- what a `hw_validated` claim requires.
