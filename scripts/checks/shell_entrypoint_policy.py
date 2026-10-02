@@ -496,13 +496,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "scripts/gen/gen_ra8_media_proto.sh": ShellPolicy(
-        ShellSecurity.PORTABLE,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
     "scripts/git/commit-msg": ShellPolicy(
         ShellSecurity.PRIVILEGED,
         ShellUsage.ENTRY,
