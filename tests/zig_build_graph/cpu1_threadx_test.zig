@@ -59,3 +59,17 @@ test "the CPU1 graph finds threadx_m33 by name and knows nothing else" {
     try std.testing.expectEqualStrings("threadx_m33", cpu1_threadx.find("threadx_m33").?.name);
     try std.testing.expect(cpu1_threadx.find("threadx") == null);
 }
+
+test "a CPU1 entry gets the ThreadX glue only when it uses the CPU1 kernel" {
+    try std.testing.expect(cpu1_threadx.wantsGlue(&.{"threadx_m33"}));
+    try std.testing.expect(!cpu1_threadx.wantsGlue(&.{}));
+    try std.testing.expect(!cpu1_threadx.wantsGlue(&.{"threadx"}));
+    try std.testing.expectEqualStrings("threadx_cpu1", cpu1_threadx.zig_glue_import);
+    try std.testing.expect(std.mem.endsWith(u8, cpu1_threadx.zig_glue, "cortex_m33/threadx_cpu1.zig"));
+}
+
+test "the CPU1 kernel link gives the port its free-memory symbol" {
+    const opts = cpu1_threadx.threadx_m33.link_options;
+    try std.testing.expect(contains(opts, "--defsym=__RAM_segment_used_end__=g_ra8_ls_cpu1_bss_end"));
+    try std.testing.expect(contains(opts, "--undefined=_tx_timer_interrupt"));
+}

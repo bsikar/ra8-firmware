@@ -337,18 +337,23 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
 
 /// The `.zig` entry as one relocatable object for the M33.
 fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPath {
-    const object = b.addObject(.{
-        .name = b.fmt("{s}_entry", .{name}),
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(join(b.allocator, options.app.dir, options.image.entry_source)),
-            .target = b.resolveTargetQuery(zig_target_query),
-            .optimize = options.zig_optimize,
-            // ra8_core's archive does the same: an .ARM.exidx entry names
-            // __aeabi_unwind_cpp_pr0, which this -nostdlib link cannot resolve.
-            .unwind_tables = .none,
-        }),
-    });
+    const root = zigModule(b, options, join(b.allocator, options.app.dir, options.image.entry_source));
+    if (cpu1_threadx.wantsGlue(options.image.uses)) {
+        root.addImport(cpu1_threadx.zig_glue_import, zigModule(b, options, cpu1_threadx.zig_glue));
+    }
+    const object = b.addObject(.{ .name = b.fmt("{s}_entry", .{name}), .root_module = root });
     return object.getEmittedBin();
+}
+
+fn zigModule(b: *std.Build, options: Options, path: []const u8) *std.Build.Module {
+    return b.createModule(.{
+        .root_source_file = b.path(path),
+        .target = b.resolveTargetQuery(zig_target_query),
+        .optimize = options.zig_optimize,
+        // ra8_core's archive does the same: an .ARM.exidx entry names
+        // __aeabi_unwind_cpp_pr0, which this -nostdlib link cannot resolve.
+        .unwind_tables = .none,
+    });
 }
 
 fn objcopyTo(

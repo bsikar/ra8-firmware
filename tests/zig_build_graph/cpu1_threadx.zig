@@ -38,7 +38,11 @@ pub const threadx_m33 = middleware.Middleware{
         "pkg:threadx/ports/cortex_m33/gnu/inc",
     },
     .public_defines = &.{"-DTX_INCLUDE_USER_DEFINE_FILE"},
-    .link_options = &.{"-Wl,--undefined=_tx_timer_interrupt"},
+    .link_options = &.{
+        "-Wl,--undefined=_tx_timer_interrupt",
+        // The port's first free byte. The board script names it differently.
+        "-Wl,--defsym=__RAM_segment_used_end__=g_ra8_ls_cpu1_bss_end",
+    },
 };
 
 /// The M85 middleware toolchain turned into a CPU1 one. C takes
@@ -71,6 +75,19 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain) voi
 /// `middleware.find()` on purpose: an M85 app naming `threadx_m33` would link
 /// M33 objects into an M85 image, and that has to stay unrepresentable.
 const known = [_]middleware.Middleware{threadx_m33};
+
+/// The Zig glue a CPU1 entry imports as `threadx_cpu1` when it uses the
+/// kernel: vector table, reset path, `_vectors`, SysTick retune (RA8FW-409).
+pub const zig_glue = "port/threadx/src/cortex_m33/threadx_cpu1.zig";
+pub const zig_glue_import = "threadx_cpu1";
+
+/// True when `uses` names the CPU1 kernel, so the entry gets the glue.
+pub fn wantsGlue(uses: []const []const u8) bool {
+    for (uses) |name| {
+        if (std.mem.eql(u8, name, threadx_m33.name)) return true;
+    }
+    return false;
+}
 
 pub fn find(name: []const u8) ?middleware.Middleware {
     for (known) |candidate| {
