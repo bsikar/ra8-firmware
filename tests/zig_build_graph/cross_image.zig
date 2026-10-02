@@ -24,6 +24,7 @@ const cpu1_image = @import("cpu1_image.zig");
 const cpu1_threadx = @import("cpu1_threadx.zig");
 const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
+const m85_threadx_modules = @import("m85_threadx_modules.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
 const interface_archive = @import("interface_archive.zig");
@@ -111,6 +112,16 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
         return;
     };
     cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+}
+
+/// The `threadx-m85-modules` step: the M85 Module Manager archive (RA8FW-426).
+pub fn addThreadxM85Modules(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "threadx-m85-modules: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    m85_threadx_modules.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
 fn addCrossApp(

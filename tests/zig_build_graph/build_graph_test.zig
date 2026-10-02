@@ -955,5 +955,6 @@ test {
     _ = @import("cpu1_threadx_test.zig");
     _ = @import("cpu1_threadx_modules_test.zig");
     _ = @import("cpu1_txm_lib_test.zig");
+    _ = @import("m85_threadx_modules_test.zig");
     _ = @import("zig_main_test.zig");
 }
