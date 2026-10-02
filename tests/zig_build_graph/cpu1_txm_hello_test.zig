@@ -41,3 +41,7 @@ test "the unwind index and its relocations are both stripped" {
     try std.testing.expect(mentions(&hello.strip_args, ".rel.ARM.exidx"));
     try std.testing.expectEqual(@as(u32, 0x4D4F4455), hello.preamble_id);
 }
+
+test "a CPU1 image finds the packed module in .txm_module" {
+    try std.testing.expectEqualStrings(".txm_module", hello.module_section);
+}

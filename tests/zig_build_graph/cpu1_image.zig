@@ -78,6 +78,10 @@ pub const Cpu1Image = struct {
     /// objects, and never one of `sources()`: gcc does not compile it and
     /// the compile database has no row for it.
     entry_language: EntryLanguage = .c,
+    /// Whether the image carries the hello-world ThreadX module
+    /// (`cpu1_txm_hello`), packed into `.txm_module` for its Module Manager
+    /// to load in place. The app's own CPU1 linker script places it (RA8FW-431).
+    txm_module: bool = false,
 };
 
 pub const EntryLanguage = enum { c, zig };
@@ -232,6 +236,9 @@ pub const Options = struct {
     /// The optimize mode a `.zig` entry is built at: the configuration's
     /// `zig_optimize`, the same one ra8_core's archive takes.
     zig_optimize: std.builtin.OptimizeMode = .ReleaseSmall,
+    /// Prebuilt objects linked after the image's own, such as the packed
+    /// module of `image.txm_module`.
+    extra_objects: []const std.Build.LazyPath = &.{},
 };
 
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
@@ -293,6 +300,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{name}));
     for (objects.items) |object| link.addFileArg(object);
+    for (options.extra_objects) |object| link.addFileArg(object);
     for (options.middleware_archives) |archive| link.addFileArg(archive);
     link.addArgs(middleware.appLinkOptions(b.allocator, cpu1_threadx.resolve(b.allocator, options.image.uses)));
     link.addFileArg(options.core_archive orelse @panic("ra8: the CPU1 link needs ra8_core's archive built for cortex_m33"));

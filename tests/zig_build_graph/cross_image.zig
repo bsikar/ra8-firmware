@@ -115,6 +115,15 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
     cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
+/// The packed hello-world module for a CPU1 image that asks for one, else
+/// nothing (RA8FW-431).
+fn txmModuleObjects(b: *std.Build, image: cpu1_image.Cpu1Image, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
+    if (!image.txm_module) return &.{};
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const module = cpu1_txm_hello.image(b, module_tc, tools.objcopy);
+    return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module.bin)}) catch @panic("OOM");
+}
+
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
 pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
     const tools = findArmTools(b) orelse {
@@ -448,6 +457,7 @@ fn addCrossApp(
             image.uses,
             cross_build.middlewareToolchain(tools, globals, &arm_global_defines),
         ),
+        .extra_objects = txmModuleObjects(b, image, tools, globals),
     }) else null;
 
     // An app that does not link in a Debug configure under EITHER build system

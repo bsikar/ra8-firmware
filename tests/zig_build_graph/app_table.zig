@@ -817,4 +817,26 @@ pub const cross_apps = [_]CrossApp{
             .{ .name = "golden", .path = "tools/vela/generated/conv_int8_vela_golden.zig" },
         },
     },
+    .{
+        // CPU1 runs the ThreadX Module Manager and loads the hello-world
+        // module in place; the M85 waits for the module to run (RA8FW-431).
+        // Zig throughout, so no CMakeLists. Appended last so the graph tests'
+        // positional picks stay put.
+        .name = "txm_manager_cpu1",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_manager_cpu1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .uses = &.{"threadx_m33_modules"},
+            .txm_module = true,
+        },
+    },
 };

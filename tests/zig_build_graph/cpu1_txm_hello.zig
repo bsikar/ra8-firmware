@@ -13,7 +13,8 @@
 //! The module's code is Zig, not C. Zig emits an `.ARM.exidx` cantunwind
 //! entry the module script never places, so it is stripped from the entry
 //! object before the link. `zig build txm-hello-m33` installs
-//! `arm/txm_hello_m33.{elf,bin,map}`; no other image links it.
+//! `arm/txm_hello_m33.{elf,bin,map}`. A CPU1 image that sets `txm_module`
+//! links the binary packed into `.txm_module` (`pack`, RA8FW-431).
 
 const std = @import("std");
 const middleware = @import("middleware.zig");
@@ -35,6 +36,9 @@ pub const entry_symbol = "_txm_module_thread_shell_entry";
 
 /// The first word of every module image, upstream's preamble ID ("MODU").
 pub const preamble_id: u32 = 0x4D4F4455;
+
+/// The section a CPU1 image's linker script places the packed module in.
+pub const module_section = ".txm_module";
 
 /// What objcopy removes from the Zig entry object.
 pub const strip_args = [_][]const u8{ "-R", ".ARM.exidx", "-R", ".rel.ARM.exidx" };
@@ -62,8 +66,27 @@ pub fn asmFlags(allocator: std.mem.Allocator) []const []const u8 {
     return flags.toOwnedSlice() catch @panic("OOM");
 }
 
+/// The module's link outputs.
+pub const Artifacts = struct {
+    elf: std.Build.LazyPath,
+    bin: std.Build.LazyPath,
+    map: std.Build.LazyPath,
+};
+
 /// Builds the module and installs its ELF, binary and map under `arm/`.
 pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8) void {
+    const module = image(b, base, objcopy);
+    inline for (.{ .{ module.elf, "elf" }, .{ module.bin, "bin" }, .{ module.map, "map" } }) |artifact| {
+        step.dependOn(&b.addInstallFileWithDir(
+            artifact[0],
+            .{ .custom = "arm" },
+            name ++ "." ++ artifact[1],
+        ).step);
+    }
+}
+
+/// Links the module and converts it to a raw binary.
+pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8) Artifacts {
     const archive = middleware.add(b, cpu1_txm_lib.txm_m33, cpu1_txm_lib.toolchain(b.allocator, base));
     const flags = asmFlags(b.allocator);
 
@@ -80,15 +103,16 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, obj
 
     const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
     to_bin.addFileArg(elf);
-    const bin = to_bin.addOutputFileArg(name ++ ".bin");
+    return .{ .elf = elf, .bin = to_bin.addOutputFileArg(name ++ ".bin"), .map = map };
+}
 
-    inline for (.{ .{ elf, "elf" }, .{ bin, "bin" }, .{ map, "map" } }) |artifact| {
-        step.dependOn(&b.addInstallFileWithDir(
-            artifact[0],
-            .{ .custom = "arm" },
-            name ++ "." ++ artifact[1],
-        ).step);
-    }
+/// The module binary as a relocatable object whose one section is
+/// `module_section`, for a CPU1 image to link.
+pub fn pack(b: *std.Build, objcopy: []const u8, bin: std.Build.LazyPath) std.Build.LazyPath {
+    const run = b.addSystemCommand(&.{ objcopy, "-I", "binary", "-O", "elf32-littlearm", "-B", "arm", "--rename-section" });
+    run.addArg(".data=" ++ module_section ++ ",alloc,load,readonly,contents");
+    run.addFileArg(bin);
+    return run.addOutputFileArg(name ++ "_module.o");
 }
 
 fn assemble(b: *std.Build, gcc: []const u8, flags: []const []const u8, source: []const u8, object: []const u8) std.Build.LazyPath {
