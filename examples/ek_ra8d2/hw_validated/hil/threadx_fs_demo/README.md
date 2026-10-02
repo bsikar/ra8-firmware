@@ -18,4 +18,4 @@ that point.
 This is the file-operations counterpart to `threadx_fs_levelx_demo`, which
 proves the LevelX integration itself. It also exercises the `ra8_fs_set_lock()`
 seam bound to a ThreadX mutex. Both demos ran on the vendored FileX
-until #611 retired it -- `ra8_fs` covers the whole surface they used.
+until `ra8_fs` retired it -- `ra8_fs` covers the whole surface they used.

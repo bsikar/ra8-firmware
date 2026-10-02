@@ -31,6 +31,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ereader_align
   STACK_BYTES 16384
-  DESCRIPTION "Headless text-align/justify layout -> glyph-geometry hash over UART (#108 HIL)"
+  DESCRIPTION "Headless text-align/justify layout -> glyph-geometry hash over UART (text-align/justify HIL)"
   LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

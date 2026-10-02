@@ -7,12 +7,12 @@
  * through this backend, which dispatches on the open book's ::sh_book_fmt_t:
  *
  *   - `.rabook`: the pre-parsed book blob, demand-paged through the chunked
- *     RBKC reader bound by sh_paged.c (#204/#205 -- always paged, never a
+ *     RBKC reader bound by sh_paged.c (chunked .rabook -- always paged, never a
  *     whole-book inflate). Chapter text, TOC labels, metadata strings and the
  *     4bpp cover are all copied out of the page cache via book_src_read /
  *     book_chapter_text_src.
  *   - `.epub`: parsed on-device by epub (SD only), STREAMED straight off
- *     the card (#230 -- the source file stays held open in sh_sd.c and every
+ *     the card (streamed open -- the source file stays held open in sh_sd.c and every
  *     ZIP entry is seek+read on demand; no whole-file buffer, no book-size
  *     ceiling). Chapters arrive as XHTML, which this module strips to the same
  *     plain text the reader word-wraps; the cover is a compressed JPEG/PNG

@@ -4,7 +4,7 @@
  *
  * @details
  * The shelf scans the FAT root and decides which files are books and in what
- * container format. Since #600 gave `ra8_fs` VFAT long-name write, the card
+ * container format. Since `ra8_fs` gained VFAT long-name write, the card
  * carries real extensions (`.rabook`, `.epub`) rather than the 8.3 truncations
  * (`.RBK`, `.EPB`) the tools used to emit, so the classifier matches BOTH: the
  * long forms and, so existing 8.3-named cards still resolve, the legacy short

@@ -19,8 +19,8 @@
  *   - Pages by re-decoding on each turn (one page + one decode arena resident at
  *     a time), so the encoded-page buffer (::k_shc_pagebuf_cap) bounds the
  *     openable page size. The band-tile alternative this used to defer to is no
- *     longer future work: #231 landed the JOF tile-cache path for EPUB images
- *     and #344 landed the CBZ/CBR half in ::comic_tiles (dev 5cdd3ab7b). This
+ *     longer future work: EPUB image streaming landed the JOF tile-cache path for EPUB images
+ *     and the comic tiling work landed the CBZ/CBR half in ::comic_tiles (dev 5cdd3ab7b). This
  *     reader keeps the whole-page decode deliberately -- the shelf's baked
  *     fixtures fit the cap -- so adopting ::comic_tiles here is an open
  *     product choice, not a tracked defect. Manga-scale streaming budgets and

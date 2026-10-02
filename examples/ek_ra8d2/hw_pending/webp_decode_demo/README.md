@@ -12,4 +12,4 @@ framebuffer, and checks one pixel against its expected value. The source is
 lossless with `-exact`, so RGB is bit-exact and the check is not a tolerance.
 
 It exercises decode only, with no display. Integrating the render path into
-`reflow` and the band-tile format is #289.
+`reflow` and the band-tile format comes from the longstrip work.

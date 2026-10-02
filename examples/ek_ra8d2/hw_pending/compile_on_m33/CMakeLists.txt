@@ -91,7 +91,7 @@ if(TARGET compile_on_m33_cpu1.elf)
   # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
   # same set ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean on it
   # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0
-  # (#843 / T1-09).
+  # (T1-09).
   # The assertion sink itself is Zig now: miniz MZ_ASSERT and core
   # assertions still route to ra8_fatal_error(), but it is a weak export of
   # the cross-built ra8_core archive ra8_add_cpu1_image() already links for

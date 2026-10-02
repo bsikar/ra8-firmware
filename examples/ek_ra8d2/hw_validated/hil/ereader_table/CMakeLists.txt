@@ -31,6 +31,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ereader_table
   STACK_BYTES 16384
-  DESCRIPTION "Headless <table> grid layout -> glyph-geometry hash over UART (#107 HIL)"
+  DESCRIPTION "Headless <table> grid layout -> glyph-geometry hash over UART (table layout HIL)"
   LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

@@ -10,8 +10,8 @@
  * (::ra8_systick_reload_for, ::ra8_systick_configure,
  * ::ra8_systick_current_value, ::ra8_dwt_cyccnt_enable /
  * ::ra8_dwt_cyccnt_reset / ::ra8_dwt_cyccnt_read) on real silicon, ALONGSIDE
- * the existing raw-poke `ra8_time` path, so the two can be diffed on the bench
- * (issue #582). Both program the same architectural SysTick registers; this app
+ * the existing raw-poke `ra8_time` path, so the two can be diffed on the bench.
+ * Both program the same architectural SysTick registers; this app
  * shows the HAL primitive producing the identical reload the raw path uses, and
  * uses the DWT cycle counter to measure the wall-clock length of an
  * `ra8_delay_ms()` produced by the raw path.

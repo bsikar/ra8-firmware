@@ -1,7 +1,7 @@
 # tls_client
 
 TLS client over `ra8_tls` plus `ra8_net_pal` (NetX Duo transport), closing the
-example-coverage gap in #261 -- neither library had a standalone example.
+example-coverage gap -- neither library had a standalone example.
 
 The board brings up the console, the on-board RMII PHY pins with ETHA0/RMAC0 and
 the RSIP engine, boots ThreadX with a single worker driving NetX Duo, opens a TCP
@@ -41,8 +41,8 @@ emulator run the way `threadx_netx_tcp_echo` is:
   routed to software crypto on silicon.
 
 Closing that needs a TLS-server role in the emulated network peer plus a modelled
-or deterministic entropy source under the open board-emulator fidelity epic
-#67; closed issue #261 delivered this application rather than those emulator
+or deterministic entropy source under the open board-emulator fidelity epic;
+the example-gap work delivered this application rather than those emulator
 models. Meanwhile the transport and
 facade glue are proven by `tests/wireless/src/test_ra8_tls_net.c`, which drives the same API
 over the `ra8_net_pal` loopback frame ring with MC/DC vectors for every compound

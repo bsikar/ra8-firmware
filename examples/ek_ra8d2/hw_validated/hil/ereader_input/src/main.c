@@ -3,7 +3,7 @@
  * @brief Headless on-silicon HIL gate for e-reader interaction / hit-test.
  *
  * @details
- * #80 built the e-reader interaction layer -- `ra8_ui` hit-testing + screen-stack
+ * The e-reader UI work built the interaction layer -- `ra8_ui` hit-testing + screen-stack
  * navigation -- but no HIL routes an input event through it; the chrome HIL only
  * checks the *render*. This app closes that gap with **synthetic** input (no
  * GT911 touch needed): it builds a representative chrome target set (book cells

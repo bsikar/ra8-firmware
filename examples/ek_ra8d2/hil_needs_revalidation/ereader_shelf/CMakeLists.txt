@@ -78,7 +78,7 @@ ra8_add_app(
 #     golden gate (hil.conf fb=0ADB62C6) runs in well under a second. Until the
 #     LOB seam batches whole loops, -Og stays the gated level for a fast gate.
 # NOTE: the earlier "ra8_emulator has no LOB seam / -O1 is fb=DE69E794 corruption"
-# was the pre-#233 state -- ra8_emulator's emulate_lob mis-decoded the LE branch
+# was the state before the -O1 fix -- ra8_emulator's emulate_lob mis-decoded the LE branch
 # offset (the scattered immediate LSB), branching mid-instruction; that bug is
 # fixed, so -O1 no longer diverges, only runs slower under emulation.
 target_compile_options(ereader_shelf.elf PRIVATE -Og)

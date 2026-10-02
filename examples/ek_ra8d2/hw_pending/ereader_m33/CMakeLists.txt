@@ -64,9 +64,9 @@ ra8_add_app(
 # cross-built for THIS image's core rather than the app's. CPU1 is a
 # Cortex-M33 while the parent app is a cortex-m85, so the archive has to be
 # requested per-core -- see ra8_link_zig_library_for_cpu() in
-# cmake/ra8_app/zig_libs.cmake. The glyph/text TU joined the archive with
-# #1328, the tone LUT with #1326, the dither with #1402, the lifecycle binder
-# with #1466 and the bundled 8x16 font table with #2689, so no ra8_gfx C is
+# cmake/ra8_app/zig_libs.cmake. The glyph/text TU, the tone LUT, the dither,
+# the lifecycle binder and the bundled 8x16 font table have all joined the
+# archive, so no ra8_gfx C is
 # left on this image: cpu1_main.c reaches ra8_gfx_text_out and the
 # ra8_gfx_font_8x16 descriptor alike through the archive, with inc/ra8_gfx.h
 # and inc/ra8_gfx_font.h unchanged.
@@ -84,7 +84,7 @@ if(TARGET ereader_m33_cpu1.elf)
   # it onto the image AND applies the per-source first-party profile
   # (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the same set
   # ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean under
-  # arm-none-eabi-gcc 13.3.1 at this image's -Os (#843 / T1-09). The two
+  # arm-none-eabi-gcc 13.3.1 at this image's -Os (T1-09). The two
   # diagnostics that used to hold it back are both fixed in first-party code,
   # not silenced: the unused s_tag went away when the compiled-out ra8_log
   # macros started using their arguments, and the channel-regs cast no longer

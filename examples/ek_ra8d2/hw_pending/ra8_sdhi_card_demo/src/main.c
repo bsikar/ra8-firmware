@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * The minimal #123 deliverable: bring up the on-board microSD through the
+ * The minimal SDHI example deliverable: bring up the on-board microSD through the
  * dedicated **SDHI** 4-bit host controller and prove a *raw* 512-byte block
  * round-trip straight against the `ra8_sdcard` HAL -- no `ra8_io`, no `ra8_fs`,
  * no file system. The SD Physical Layer identification

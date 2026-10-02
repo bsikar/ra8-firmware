@@ -22,7 +22,7 @@
  * seam stripe at every band edge, so scrolling is obviously visible), which
  * keeps boot instant and needs no multi-megabyte pixel buffer while still
  * exercising the real streaming path: bands page through a deliberately small
- * `ra8_tile_cache` (fewer cells than bands, so the LRU must evict -- the #147
+ * `ra8_tile_cache` (fewer cells than bands, so the LRU must evict -- the memory-hierarchy
  * bounded-memory property) and `longstrip_render` composites the visible
  * range into the panel FB through `ra8_gfx_blit`.
  *
@@ -304,7 +304,7 @@ static display_handle_t* s_display = nullptr;
 static display_fb_t s_fb;
 /** @brief True while the status bar + scroll rail chrome is shown. */
 static bool s_chrome = true;
-/** @brief Skipped-band count from the last render (must stay 0: #289 contract). */
+/** @brief Skipped-band count from the last render (must stay 0: band-tile contract). */
 static uint16_t s_last_skipped = 0U;
 /** @brief Edge-detect: was SW1 held on the previous button poll. */
 static bool s_was_sw1 = false;

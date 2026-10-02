@@ -1,7 +1,7 @@
 # secure_boot_ns_hil
 
 Proves that the Secure world **authenticates the Non-Secure image before BLXNS**
-and **default-denies** a tampered one. This is the BLXNS half of #172;
+and **default-denies** a tampered one. This is the BLXNS half of the root-of-trust work;
 copy-to-run is already silicon-proven by `secure_boot_hil`.
 
 The Secure side no longer hardcodes the NS trailer address:

@@ -10,7 +10,7 @@
  * I2C-compatibility mode (``libs/ra8_hal/inc/ra8_i3c.h``) on channel 0.
  * The I3C peripheral's ch0 bus (P400 SCL0 / P401 SDA0) routes to the J27
  * header (board UM section 5.4.2 Table 31), which has no guaranteed
- * on-board device -- U15 lives on RIIC ch1 (see i2c_loopback and #46).
+ * on-board device -- U15 lives on RIIC ch1 (see i2c_loopback).
  * So this is a controller self-test: it proves ra8_i3c powers up and
  * clocks a real START / address / STOP, not a data round-trip. The flow:
  *

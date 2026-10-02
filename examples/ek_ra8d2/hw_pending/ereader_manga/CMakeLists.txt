@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.20)
 # add_subdirectory() (project() is already called at the root), so guard on
 # PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case. jof transitively
-# wires the vendored libwebp decoder (#290 normalize-on-import); the bare
+# wires the vendored libwebp decoder (normalize-on-import); the bare
 # "miniz" token supplies the DEFLATE core that jof's PNG decoder and
 # tile codec inflate/deflate through. Both are C, but the languages keep CXX to
 # match the shared toolchain setup used across the example apps.

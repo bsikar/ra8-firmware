@@ -5,10 +5,10 @@ SPDX-License-Identifier: MIT
 
 # import_reader
 
-The self-contained-appliance flow from #151: drop a raw `.epub` on the SD card
-and the device just works. The first open compiles the book **once** into the
-flat, execute-in-place `RABOOK1` format and caches it on the card; every later
-open takes the cached path.
+The self-contained-appliance flow from the on-import compiler: drop a raw
+`.epub` on the SD card and the device just works. The first open compiles the
+book **once** into the flat, execute-in-place `RABOOK1` format and caches it on
+the card; every later open takes the cached path.
 
 The card's existing FAT volume is **mounted, never reformatted**, so the source
 `.epub` survives. The importer keys its cache entry by the source CRC-32,
@@ -29,5 +29,5 @@ over `ra8_sdmmc_spi` (SCI0 Simple-SPI).
   longer blocked on FAT subdirectory writes; adopting that optional layout is
   simply outside this example's current scope.
 - The compile working arenas live in external SDRAM -- the conversion-arena
-  tenant of #147 -- and are sized here for a small text book. An image-heavy book
-  needs the much larger budget the issue specifies.
+  tenant of `ra8_mem` -- and are sized here for a small text book. An
+  image-heavy book needs the much larger budget the issue specifies.
