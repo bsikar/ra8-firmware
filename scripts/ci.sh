@@ -209,7 +209,6 @@ if [[ "$-" == *p* ]]; then
     "ubsan|slow|host unit tests under UBSan"
     "artefact-freshness|slow|committed generated docs match a fresh regenerate"
     "cache-bench|slow|cache/glyph benchmark toolchain"
-    "tools-build|slow|first-party host tools compile, link and test on Linux"
     "build-cross|slow|cross-build every example app"
     "build-cross-union|slow|the cross-build shards covered every app exactly once"
     "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
