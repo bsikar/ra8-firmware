@@ -228,18 +228,33 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "threadx_cpu1 is the one CPU1 image with a Zig entry, and it uses the kernel" {
+test "threadx_cpu1 and txm_manager_cpu1 are the CPU1 images with a Zig entry, each on one kernel" {
+    const expected = [_]struct { app: []const u8, kernel: []const u8 }{
+        .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
+        .{ .app = "txm_manager_cpu1", .kernel = "threadx_m33_modules" },
+    };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         if (image.entry_language == .c) {
             try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+            try std.testing.expect(!image.txm_module);
             continue;
         }
-        zig_entries += 1;
-        try std.testing.expectEqualStrings("threadx_cpu1", app.name);
+        try std.testing.expect(zig_entries < expected.len);
+        try std.testing.expectEqualStrings(expected[zig_entries].app, app.name);
         try std.testing.expectEqual(@as(usize, 1), image.uses.len);
-        try std.testing.expectEqualStrings("threadx_m33", image.uses[0]);
+        try std.testing.expectEqualStrings(expected[zig_entries].kernel, image.uses[0]);
+        zig_entries += 1;
     }
-    try std.testing.expectEqual(@as(usize, 1), zig_entries);
+    try std.testing.expectEqual(expected.len, zig_entries);
+}
+
+test "only the Module Manager image carries the packed module, in its own linker script" {
+    for (graph.cross_apps) |app| {
+        const image = app.cpu1 orelse continue;
+        if (!image.txm_module) continue;
+        try std.testing.expectEqualStrings("txm_manager_cpu1", app.name);
+        try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
+    }
 }
