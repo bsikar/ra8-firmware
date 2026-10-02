@@ -53,7 +53,7 @@ absorbed. Measured against upstream's tag graph on 2026-09-17:
   development commits it does.
 - `v1.2.0` (released 2026-07-07) is a descendant of our pin, 189 commits
   ahead, so moving to it is a fast-forward along the same line.
-- `osv-scan` was not run for this record; the advisory question stays on #804.
+- `osv-scan` was not run for this record; the advisory question stays open.
   This component is the secure-boot signature verifier, so that question is
   the one that matters most of the two.
 

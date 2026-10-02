@@ -31,7 +31,7 @@ version (2.12.11), which is what makes them wire-compatible.
   of upstream, and `scripts/checks/check_soup_upstream.py` compares them
   against this tree on every run of the `soup-upstream` gate; the per-run
   derived digest is published in `docs/sbom/ra8-firmware.cdx.json`. No
-  aggregate hash is transcribed into the registry -- #538 removed that field
+  aggregate hash is transcribed into the registry -- that field was removed
   because a hand-copied constant compared against itself reports clean on a
   mutated byte.
 
@@ -149,7 +149,7 @@ layer, the RPC wire codec and the shared utilities:
   API surface, **not** because the capability is missing. An earlier revision
   of this document argued that those struct layouts "are what the co-processor
   decodes on the far side of the link" and called reproducing them the next
-  piece of work; #490 disproved that on the bench. The C6 decodes **protobuf**:
+  piece of work; the bench disproved that. The C6 decodes **protobuf**:
   `esp_hosted_rpc.pb-c.{h,c}` contains zero `wifi_config_t` / `esp_netif`
   references, `WifiStaConfig` is a message with named fields, and padding or
   field order on this side never reaches the co-processor. The landed
@@ -332,7 +332,7 @@ alongside the rest of the vendored SOUP.
 - Build status, compiled-TU list, integration boundary and integrity clause
   re-verified against the tree and corrected (RA8FW-285): 2026-08-04. The document
   still said this port had never run on silicon, listed nine compiled TUs
-  including one the build excludes, and taught the premise #490 disproved.
+  including one the build excludes, and taught the premise the bench disproved.
 - Expected re-review by: 2027-07-26
 
 ## See also

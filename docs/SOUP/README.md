@@ -142,7 +142,7 @@ upstream commit (the form OSV actually resolves for git-vendored C/C++).
 ## The pins are checked, not asserted
 
 Every document in this directory makes the same load-bearing claim -- this
-tree is what upstream published -- and until #548 nothing verified it. The
+tree is what upstream published -- and until the upstream-pin sweep nothing verified it. The
 SBOM's integrity digest is re-derived from both canonical vendored roots
 on every run, which proves the tree has not changed since the SBOM was regenerated; it
 cannot prove the tree was right when it was vendored, because a bad copy is

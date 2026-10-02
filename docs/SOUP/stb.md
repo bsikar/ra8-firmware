@@ -93,7 +93,7 @@ bytes plus the single focused
 gate proves exact reverse and forward replay. No vendor-wide formatter output is
 part of that patch.
 
-`stb_image.h` is byte-identical to the upstream pin. It was not until #548:
+`stb_image.h` is byte-identical to the upstream pin. It was not until the upstream-pin sweep:
 the vendor-in sweep (`75b635cc7`) ran the project formatter over it, so it
 differed from upstream by operator placement, include ordering and macro
 continuations throughout. It was restored to upstream's bytes; every security

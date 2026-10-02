@@ -129,7 +129,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   `libs/third_party/`; this document is the case-by-case justification for that
   exemption.
 
-## Phase 2: Ethos-U operator -> ra8_npu adapter (adapter landed; #228 remains open)
+## Phase 2: Ethos-U operator -> ra8_npu adapter (adapter landed)
 
 Phase 1 vendored the portable `ethosu.cc` stub. Phase 2 replaces it, in-build,
 with a first-party kernel: `cmake/tflite_micro.cmake` drops the vendored stub
@@ -142,7 +142,7 @@ the first-party `ra8_ethosu_shim` (no Arm `ethos-u-core-driver` is vendored). Th
 and asserts the operator is registered via `ra8_ethosu_kernel_available()`; a full
 Vela-model-driven inference additionally needs the offline Vela compiler
 (`tools/vela`) and silicon and remains a follow-up. Those unexecuted model and
-CPU-fallback paths are why issue #228 remains open.
+CPU-fallback paths are the remaining follow-up.
 
 The half of that seam which needs neither Vela nor silicon is now checked off
 target: `tests/misc/src/test_ra8_tflm_op_subset.cc` compiles

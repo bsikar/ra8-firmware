@@ -22,7 +22,7 @@ as Software Of Unknown Provenance (SOUP).
   `docs/sbom/ra8-firmware.cdx.json` carries the per-run digest that
   `gen_sbom.py` re-derives from the directory on every run. There is
   deliberately **no** integrity-hash field in `scripts/gen/sbom_registry.py`:
-  #538 deleted the stored `aggregate_sha256` literals precisely because a
+  the stored `aggregate_sha256` literals were deleted precisely because a
   hand-transcribed constant compared against itself reported clean on a
   mutated vendored byte.
 
@@ -111,6 +111,6 @@ None. The vendored tree is unmodified (byte-identical to upstream commit
 
 - Reviewed: 2026-07-16
 - Integrity sentence corrected: 2026-08-04. It cited a transcribed
-  aggregate hash "recorded in `sbom_registry.py`" -- the field #538 removed,
+  aggregate hash "recorded in `sbom_registry.py`" -- a field since removed,
   and a value no gate parsed.
 - Expected re-review by: 2027-07-16

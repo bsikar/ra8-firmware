@@ -112,7 +112,7 @@ linked into nothing -- see the build-tools note below and
 
 **All nineteen vendored components are now pinned to an upstream revision and
 verified against it file by file.** Ten of them had no upstream pin at all
-until #548 -- their version was read out of a header in our own tree, which
+until the upstream-pin sweep -- their version was read out of a header in our own tree, which
 says what the code calls itself, not where it came from. Each was resolved by
 fingerprinting the vendored files against the upstream project's published
 history, and the resolved revision is recorded in

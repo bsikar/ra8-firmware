@@ -33,7 +33,7 @@ firmware as Software Of Unknown Provenance (SOUP).
     `threadx_fs_demo` and `threadx_fs_levelx_demo` mount a first-party
     `ra8_fs` FAT volume on LevelX through the block-device backend
     (`port/levelx/src/lx_fs_backend.c`). All three live under
-    `examples/ek_ra8d2/hw_validated/hil/`. (Until #611 the two storage demos
+    `examples/ek_ra8d2/hw_validated/hil/`. (Before `ra8_fs` the two storage demos
     mounted the vendored FileX here instead; FileX is retired.)
   - **Standalone** (`cmake/levelx_standalone.cmake`, built with
     `LX_STANDALONE_ENABLE`): no ThreadX in the graph at all. The
@@ -70,7 +70,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
   first-party library sitting on the standalone build. The demos remain the
   hardware-verification vehicle -- `threadx_levelx_demo` (`[lx] sector rw
   verified readback=1`) and the FAT-on-LevelX demo (now `threadx_fs_levelx_demo`,
-  ported from FileX to `ra8_fs` by #611) were both verified
+  since ported from FileX to `ra8_fs`) were both verified
   live on 2026-06-10 per their `hil.conf` records -- and no safety-critical
   data is committed to NOR flash.
 
@@ -88,7 +88,7 @@ Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
 content in `docs/sbom/upstream/levelx.manifest`; every other file in this
 component is verified byte-identical to the upstream pin on each CI run.
 
-The edit is from 2026-07-13 and went unrecorded here until #548 found it two
+The edit is from 2026-07-13 and went unrecorded here until the upstream-pin sweep found it two
 weeks later, which is the point: "the vendored tree is unmodified" was prose,
 and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 

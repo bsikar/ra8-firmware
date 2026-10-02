@@ -61,7 +61,7 @@ open is a move within the 4.x line, measured against upstream's tag graph on
   branch change.
 - No advisory conclusion is drawn here. `osv-scan` was not run for this
   record, so whether either release fixes anything that affects our build
-  options stays open on #804.
+  options stays open.
 
 ## Use case in this firmware
 
