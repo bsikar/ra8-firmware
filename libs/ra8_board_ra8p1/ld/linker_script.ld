@@ -277,6 +277,11 @@ SECTIONS
         g_ra8_ls_sdata = .;
         *(.data)
         *(.data.*)
+        /* The GOT is initialised data too: left outside this section it
+         * lands past g_ra8_ls_edata, and Reset_Handler never copies it. */
+        *(.got)
+        *(.got.*)
+        *(.got.plt)
         g_ra8_ls_edata = .;
     } > SRAM AT > MRAM
 
