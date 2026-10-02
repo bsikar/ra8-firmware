@@ -2,8 +2,9 @@
 
 ## Status
 
-Proposed -- 2026-09-17. Blocks the regulator stage of #825 and the
-memory subsystem of #827; opened against #846 under epic #821.
+Proposed -- 2026-09-17. Blocks the regulator stage of the power design
+and the memory subsystem; opened against the SDRAM supply-domain
+finding under the e-reader hardware epic.
 
 The DC arithmetic below is arithmetic over published guarantees. No
 board has been built, so nothing here is a measurement, and the
@@ -14,8 +15,9 @@ decision stays `Proposed` until the bench items in
 
 The e-reader's proposed LTC3119 main rail reaches a complete
 upper envelope of 3.584411411 V once the static feedback error and
-the +/-75 mV rail allowance are stacked. #846 records that this
-invalidates the guaranteed SDRAM read-high margin. The purpose of
+the +/-75 mV rail allowance are stacked. The SDRAM supply-domain
+finding records that this invalidates the guaranteed SDRAM read-high
+margin. The purpose of
 this ADR is to name *which supply the ceiling actually belongs to*,
 because the ceiling has so far been discussed as a property of the
 main rail, and it is not: it is a property of the MCU's SDRAM
@@ -53,8 +55,8 @@ apply to this selection. The S-family Voh guarantee is a flat 2.4 V.
   3.00 to 3.63 V. Outside SDRAM use both start at 1.62 V.
 * No SDRAM input-threshold selector is documented. `PmnPFS.DSCR`
   selects output drive only, so firmware has no lever over the
-  receive threshold. This confirms the finding already recorded on
-  #846.
+  receive threshold. This confirms the finding already recorded in
+  the SDRAM supply-domain finding.
 
 ### What the ratio implies
 
@@ -72,7 +74,7 @@ margin(V) = 2.4 - 0.7 * V
 | 3.30 V                   |  90.0 mV                    |
 | 3.35 V                   |  55.0 mV                    |
 | 3.428571429 V            |    0 mV                     |
-| 3.584411411 V (#825 max) | -109.088 mV                 |
+| 3.584411411 V (reg. max) | -109.088 mV                 |
 
 So the usable window for a domain that carries SDRAM DQ bits is
 `[3.00 V, 3.428571429 V)` minus a deliberate noise allowance, and the
@@ -130,10 +132,10 @@ Cross-checked against the dev tree at `013631d`:
    screen, the resolution is a *separate, tighter supply for the
    SDRAM interface domains*, not a relaxed margin. If instead a
    single rail feeds everything, then the main rail inherits the
-   3.35 V ceiling in full, which is #846 resolution directions 1
-   and 3.
-4. Keep the regulator stage of #825 a draft until one of those two
-   shapes is chosen with a realizable circuit.
+   3.35 V ceiling in full, which is resolution directions 1 and 3
+   of the SDRAM supply-domain finding.
+4. Keep the regulator stage of the power design a draft until one of
+   those two shapes is chosen with a realizable circuit.
 
 This ADR records the constraint and the shape of the fix. It does not
 select a regulator, a divider, or a part.
@@ -159,7 +161,8 @@ select a regulator, a divider, or a part.
   is referenced to VCC or VCC2.
 * PWR-002/PWR-003/PWR-004, SYS-007, RST-001, RADIO-014 and
   CMS-010D/CMS-011 all need restating against the two-envelope model
-  rather than one rail number. That work stays on #846.
+  rather than one rail number. That work stays with the SDRAM
+  supply-domain finding.
 
 ## Open questions
 
