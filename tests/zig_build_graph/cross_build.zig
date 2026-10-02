@@ -5,7 +5,7 @@
 //! handed: the middleware archive, the app-local vendored library, and the
 //! Non-Secure image.
 //!
-//! Extracted from build.zig by #1179, which had to give every one of these a
+//! Extracted from build.zig by the build-type slice, which had to give every one of these a
 //! configuration and put the root build file over the 1000-line ceiling
 //! scripts/checks/check_file_size.py holds every Zig source to. The coherent
 //! piece is this one: WHO the tools are and WHAT global sets each sub-target
@@ -29,7 +29,7 @@ pub const Tools = struct {
     gcc: []const u8,
     objcopy: []const u8,
     size: []const u8,
-    /// The archiver, needed only since #1054: a middleware is handed to the
+    /// The archiver, needed only since middleware support: a middleware is handed to the
     /// app as a static archive, and a static link pulls only the members
     /// something references.
     ar: []const u8,

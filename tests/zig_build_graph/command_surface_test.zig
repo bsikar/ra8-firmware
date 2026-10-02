@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The command-surface parity rules of command_surface.zig, applied to the
-//! REAL build.zig and the REAL just/zig.just (#1165, part of RA8FW-339).
+//! REAL build.zig and the REAL just/zig.just (part of RA8FW-339).
 //!
 //! Both files arrive as anonymous imports declared in build.zig, so they are
 //! read at COMPILE time from the paths the build graph itself names. A test
@@ -103,7 +103,7 @@ test "no recipe passes anything to zig build but a step name" {
     try std.testing.expectEqual(@as(usize, 0), offenders.len);
 }
 
-test "the two steps #1165 found unreachable are both on the surface now" {
+test "the two steps the drift audit found unreachable are both on the surface now" {
     const allocator = std.testing.allocator;
 
     const recipes = try command_surface.parseRecipes(allocator, just_zig_source);

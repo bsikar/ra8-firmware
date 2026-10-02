@@ -3,7 +3,7 @@
 //!
 //! The archive optimisation rules, held against the REAL
 //! cmake/ra8_app/zig_libs.cmake and the REAL cross-image wiring in
-//! tests/zig_build_graph/cross_image.zig (#1244, part of RA8FW-339).
+//! tests/zig_build_graph/cross_image.zig (part of RA8FW-339).
 //!
 //! Both files arrive as anonymous imports declared in build.zig, so they are
 //! read at COMPILE time from the paths the build graph itself names. A test
@@ -57,7 +57,7 @@ test "the listfile answers every configuration, from the knob it documents" {
     const listfile = try mapping(allocator);
     defer allocator.free(listfile.named);
 
-    // Until #2696 this rule read the other way round: the listfile branched on
+    // Until the single-mode change this rule read the other way round: the listfile branched on
     // CMAKE_BUILD_TYPE, and a mapping that stopped varying was the defect to
     // catch. It now holds one mode for every configure deliberately, so what
     // is worth refusing is a listfile that answers SOME configuration
@@ -67,7 +67,7 @@ test "the listfile answers every configuration, from the knob it documents" {
         if (declared != listfile.forName(build_type.configurations[0].cmake_name)) {
             std.debug.print(
                 "zig_libs.cmake answers {s} with {s} but {s} with {s};" ++
-                    " the single-mode rule #2696 introduced no longer holds\n",
+                    " the single-mode rule introduced no longer holds\n",
                 .{
                     configuration.cmake_name,
                     @tagName(declared),
@@ -120,7 +120,7 @@ test "the cross-build asks for the selected configuration, not a fixed mode" {
 test "an app in the table actually names a migrated library" {
     // Without one, every rule above is about a code path no app reaches, and
     // the zig_libraries hook reads as wiring that is never exercised (which is
-    // exactly what it was, from #936 until #948 was closed).
+    // exactly what it was, until the unwind-table link failure was fixed).
     var apps_with_archives: usize = 0;
     for (graph.cross_apps) |app| {
         if (app.zig_libraries.len == 0) continue;

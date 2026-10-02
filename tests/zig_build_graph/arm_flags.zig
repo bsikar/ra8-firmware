@@ -142,7 +142,7 @@ pub const link_flags = [_][]const u8{
 /// What `RA8_TRUSTZONE_ENABLE` adds, and where.
 ///
 /// The option is OFF at the repo root, so the six apps this graph cross-built
-/// before #1096 never saw either flag. It is ON for a standalone configure of
+/// before the TrustZone secure build never saw either flag. It is ON for a standalone configure of
 /// a TrustZone app, because that app's own CMakeLists declares the option
 /// `ON` when it is the top-level listfile, and a standalone configure is what
 /// this graph reproduces.

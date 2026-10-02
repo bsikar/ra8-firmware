@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! What a migrated Zig library's ARCHIVE is built at when an app links it, and
-//! the two places that answer has to agree (#1244, part of RA8FW-339).
+//! the two places that answer has to agree (part of RA8FW-339).
 //!
 //! An app whose `LIBS` names a migrated library takes the one arm of
 //! ra8_add_app() no earlier slice could: the library keeps its public `inc/`
@@ -20,11 +20,12 @@
 //!
 //! So the mapping is read out of that listfile's own text rather than copied
 //! into a table here. A table agrees with a listfile exactly once, on the day
-//! it was copied, which is precisely what happened across #2696: the listfile
+//! it was copied, which is precisely what happened when the archive mode
+//! became one cache variable: the listfile
 //! stopped branching on CMAKE_BUILD_TYPE and started reading one cache
 //! variable, every configuration now builds ReleaseSmall unless a configure
 //! passes -DRA8_ZIG_OPTIMIZE=, and the rules here went on asserting the old
-//! shape until #2924. Reading the text is what makes that a failing test
+//! shape until the gate was fixed. Reading the text is what makes that a failing test
 //! rather than a quiet disagreement; following one level of variable
 //! indirection is what makes it readable at all.
 
@@ -151,7 +152,7 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const
             continue;
         }
         const raw = setValue(text, variable) orelse continue;
-        // `set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")` is the shape #2696 left
+        // `set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")` is the shape the single-mode change left
         // behind: the answer is the knob's own default, one hop away in the
         // same listfile.
         const value = if (referencedVariable(raw)) |name|
@@ -194,7 +195,7 @@ pub fn archiveOptimizeArgument(source: []const u8) ?[]const u8 {
 
 /// Report whether an `.optimize` argument is driven by the selected
 /// configuration rather than pinned to one mode. A literal `.Debug` is the
-/// exact defect #1244 fixes: it builds the archive CMake produces at ONE of
+/// exact defect this rule fixes: it builds the archive CMake produces at ONE of
 /// its three configurations and the wrong one at the other two, and nothing
 /// fails.
 pub fn isConfigurationDriven(argument: []const u8) bool {
@@ -256,7 +257,7 @@ test "a mapping this graph cannot read is null, not a guess" {
 }
 
 test "a set through a cache knob resolves to the knob's default" {
-    // The shape #2696 left in zig_libs.cmake, formatter line breaks and all.
+    // The shape the single-mode change left in zig_libs.cmake, formatter line breaks and all.
     const source =
         \\set(RA8_ZIG_OPTIMIZE
         \\    "ReleaseSmall"
