@@ -83,7 +83,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `apps/shared_libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `apps/shared_libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `apps/shared_libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
-| TFLite-micro | git `fddd3707` | Apache-2.0 | `libs/third_party/tflite-micro/` | <https://github.com/tensorflow/tflite-micro> |
+| TFLite-micro | git `fddd3707` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/tensorflow/tflite-micro> |
 | FlatBuffers | 25.9.23 | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/flatbuffers> |
 | gemmlowp | git `719139ce` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/gemmlowp> |
 | ruy | git `d3712831` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/ruy> |
@@ -136,7 +136,6 @@ permitted to differ.
 | XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
 | stb | `31c1ad37456438565541f4919958214b6e762fb4` | 1/4 | 1 patched, 2 first-party |
 | libwebp (decode-only) | tag `v1.5.0` `a4d7a715337ded4451fec90ff8ce79728e04126c` | 101/102 | 1 patched (arena allocator) |
-| TFLite-micro | `fddd3707a3c5733af4cb866f18650441e6712504` | 278/278 | none |
 | esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
@@ -223,7 +222,8 @@ below); this section reproduces the copyright line and points to that text.
   `apps/shared_libs/third_party/libwebp/src/utils/utils.c` (see
   [`docs/SOUP/libwebp.md`](docs/SOUP/libwebp.md)).
 - **TFLite-micro** -- Apache-2.0. "Copyright The TensorFlow Authors."
-  (Google / TensorFlow). Text: `libs/third_party/tflite-micro/LICENSE`.
+  (Google / TensorFlow). Text: `LICENSE` in the pinned upstream tarball
+  (`build.zig.zon`).
 - **FlatBuffers** -- Apache-2.0. Copyright Google Inc. Text: `LICENSE`
   in the pinned upstream tarball (`build.zig.zon`).
 - **gemmlowp** -- Apache-2.0. Copyright The Gemmlowp Authors (Google). Text: `LICENSE`

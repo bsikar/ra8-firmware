@@ -115,10 +115,12 @@ EXIT_VACUOUS = 2
 # numbers deliberately. Re-measured 2026-10-02 (RA8FW-385): FlatBuffers, gemmlowp
 # and ruy left the tree for pinned upstream tarballs in build.zig.zon, whose Zig
 # content hash is their upstream proof, so 16 components remain here. LevelX
-# followed the same day (RA8FW-385), leaving 15.
-MIN_COMPONENTS = 15
-MIN_ENTRIES = 8800
-MIN_UPSTREAM_VERIFIED = 8700
+# followed the same day (RA8FW-385), leaving 15, then TFLite-micro, leaving 14. TFLite-micro took 278
+# files with it (8530 covered, 8511 identical), so the file floors were re-measured
+# with the same slack.
+MIN_COMPONENTS = 14
+MIN_ENTRIES = 8400
+MIN_UPSTREAM_VERIFIED = 8300
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300

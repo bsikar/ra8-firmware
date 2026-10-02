@@ -558,18 +558,21 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="tensorflow",
         url="https://github.com/tensorflow/tflite-micro",
-        path="libs/third_party/tflite-micro",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description=(
             "On-device inference runtime (MicroInterpreter + lean "
             "reference-kernel set) for the RA8P1 Ethos-U55 NPU."
         ),
         purl="pkg:github/tensorflow/tflite-micro@fddd3707a3c5733af4cb866f18650441e6712504",
         spdx="Apache-2.0",
-        license_file="libs/third_party/tflite-micro/LICENSE",
+        dep_pin_spec="N-V-__8AABnHqwH0WNMqhd6EOZNeMNA60iRlcWUh_osHYQKZ",
         upstream_commit="fddd3707a3c5733af4cb866f18650441e6712504",
         upstream_ref="fddd3707a3c5733af4cb866f18650441e6712504",
         extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash), fetched by cmake/zig_package.cmake; the LEAN subset is the "
+            "source list in cmake/tflite_micro_sources.cmake.",
             "LEAN subset: MicroInterpreter / MicroAllocator / op-resolver "
             "core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, "
             "FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the "

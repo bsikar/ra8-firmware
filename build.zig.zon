@@ -40,6 +40,11 @@
             .hash = "N-V-__8AAHM2GQD1bQLoOLlEhGDOEM8O1g0jjvII9F_PUyat",
             .lazy = true,
         },
+        .tflite_micro = .{
+            .url = "https://github.com/tensorflow/tflite-micro/archive/fddd3707a3c5733af4cb866f18650441e6712504.tar.gz",
+            .hash = "N-V-__8AABnHqwH0WNMqhd6EOZNeMNA60iRlcWUh_osHYQKZ",
+            .lazy = true,
+        },
         .levelx = .{
             .url = "https://github.com/eclipse-threadx/levelx/archive/a46b74fb8aa133796ccbc13e7902cb8bb818e12f.tar.gz",
             .hash = "N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC",
