@@ -141,7 +141,7 @@ RA8_INTERNAL static uint8_t internal_ntres_of(const char* leaf)
  * what catches an off-by-one in either direction.
  *
  * The cap counts CODE UNITS, so the fourth assertion is the one that would
- * have failed before #606: 247 two-byte characters are 494 UTF-8 bytes and
+ * have failed before the fix: 247 two-byte characters are 494 UTF-8 bytes and
  * still exactly one legal chain.
  *
  * @pre None; the function under test touches no volume.

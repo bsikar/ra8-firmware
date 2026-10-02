@@ -12,7 +12,7 @@ Randomness comes from the PSA crypto layer, seeded from the RSIP TRNG through th
 reads one back, and prints the negotiated cipher suite and the peer-verification
 result -- **reported, not fatal**, so a self-signed server certificate is fine.
 
-That covers the whole surface added for #261: session open, handshake, send,
+That covers the whole surface added: session open, handshake, send,
 recv, plus cipher-suite, verify-result and MSS-clamp queries.
 
 ## MSS clamp under the MTU=128 limitation

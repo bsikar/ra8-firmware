@@ -239,7 +239,7 @@ RA8_INTERNAL static void internal_test_composed_snapshot(void)
  * @brief Assert no published event bit is left without a producer.
  *
  * @details
- * The regression this file exists for: before #1204 eight of the ten
+ * The regression this file exists for: before the fix eight of the ten
  * ``k_ra8_usb_pal_event_*`` bits had no producer anywhere in the
  * tree. This vector ORs the translation of every single-source
  * snapshot and asserts the union covers each published bit, so a

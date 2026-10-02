@@ -95,7 +95,7 @@ typedef enum : uint32_t {
  * @warning This window is one-time-programmable option-setting / OTP memory, not
  * a rewritable data-flash bank: the erase + re-stage cycle an A/B updater needs
  * does NOT work on real silicon. ra8_emulator maps the window so the demo passes
- * here, but a real inactive-bank home (OSPI / SD) is tracked by #315.
+ * here, but a real inactive-bank home (OSPI / SD) is tracked separately.
  */
 typedef enum : uintptr_t {
   k_app_bank_addr = k_ra8_flash_extra_start, /**< Inactive-bank base (extra-MRAM start). */

@@ -171,7 +171,7 @@ if [[ "$-" == *p* ]]; then
   #
   # Adding jq to the image is the obvious fix and is also being done, but it only
   # takes effect after a rebuild and redeploy -- the image-vs-Dockerfile lag
-  # tracked in #513. Depending on a toolchain the tree provisions itself removes
+  # tracked separately. Depending on a toolchain the tree provisions itself removes
   # the failure mode instead of provisioning around it, and makes
   # `just quality::local::gate ci-status-contract` work on a bare machine with no jq at all.
   # The reader was a python script until #1144 moved it to Zig under the RA8FW-335

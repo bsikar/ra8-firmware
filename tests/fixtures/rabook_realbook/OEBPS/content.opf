@@ -10,7 +10,7 @@
     <!-- Real Standard Ebooks Walden CSS + chapters, vendored verbatim. Only the
          two chapters carrying the significant `</abbr> <abbr>` inter-element
          whitespace are kept (visitors, conclusion); this fixture is the real-
-         book byte-identity proof for #151. No image is declared: the gate runs
+         book byte-identity proof. No image is declared: the gate runs
          the skip-images (text/CSS-only) path, so a cover would never appear. -->
     <item id="core.css" href="css/core.css" media-type="text/css"/>
     <item id="local.css" href="css/local.css" media-type="text/css"/>

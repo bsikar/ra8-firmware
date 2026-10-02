@@ -11,7 +11,7 @@
  * I2C I/O port expander (U15) at 7-bit address 0x43 -- the only I2C
  * peripheral guaranteed to be populated on a bare EK-RA8D2 v1 (board UM
  * section 4.3.4 "Switch Configuration", p 24). U15 sits on RIIC channel 1
- * (P512 SCL1 / P511 SDA1), per issue #46. The flow:
+ * (P512 SCL1 / P511 SDA1). The flow:
  *
  *   1. ``ra8_cgc_init`` -- bring CPUCLK0 up.
  *   2. ``ra8_board_uart_console_init`` -- BSP SCI8 console (PD02 TXD /
@@ -51,7 +51,7 @@ typedef enum : uint32_t {
   k_i2c_demo_baud        = 115200U, /**< I2C demo baud.                                         */
   k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms.                                    */
   k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.                                       */
-  k_i2c_demo_iic_channel = 1U,      /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 here, per #46. */
+  k_i2c_demo_iic_channel = 1U,      /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 here. */
 } i2c_demo_const_t;
 
 /** @brief Probe target -- on-board PI4IOE5V6408 I/O port expander U15

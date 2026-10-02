@@ -7,7 +7,7 @@
  * repository file-size cap. This sibling owns the archive-level tests: a
  * hand-assembled RAR5 archive whose compressed page decodes via the
  * comic facade to the same bytes as the equivalent STORE page (the
- * CBZ-parity acceptance for #235), a RAR4 archive whose compressed member
+ * CBZ-parity acceptance), a RAR4 archive whose compressed member
  * stays unsupported, and the ra8_rar_extract dispatch guards. The shared
  * RAR5 writer fixture is tests/support/inc/rar5_enc_fixture.h. Tests are
  * magic-number exempt, so byte offsets and bit widths appear as literals.

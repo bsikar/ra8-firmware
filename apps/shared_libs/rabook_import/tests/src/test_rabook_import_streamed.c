@@ -82,7 +82,7 @@ typedef enum : uint8_t {
  * @enum streamed_cap_t
  * @brief RAM-disk geometry, fixture sizes, and the retired-buffer yardstick.
  * @details `k_st_legacy_load_cap` is the whole-file `epub_load_buf` capacity
- *          the import_reader app carried before #230 -- the big fixture is
+ *          the import_reader app carried before the fix -- the big fixture is
  *          asserted LARGER than it, so this compile was impossible on the
  *          legacy path and only succeeds because the adapter streams.
  */

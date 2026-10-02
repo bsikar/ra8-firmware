@@ -56,7 +56,7 @@
  *       internal_test_deep_at_reader_cap pins that worst
  *       case and internal_test_deep_beyond_reader_cap pins the rejection one level
  *       deeper, so the deactivation rests on a measurement rather than on the
- *       false cap-of-100 claim it carried before #625.
+ *       false cap-of-100 claim it carried before the fix.
  *   - @c frame.prev_sib_idx == k_book_nil in internal_walk_body_subtree -- single
  *       condition. T (first child) and F (later sibling) both in
  *       internal_test_nested_siblings_preorder.

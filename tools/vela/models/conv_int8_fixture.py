@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Build the deterministic INT8 CONV_2D fixture Vela compiles for issue #227.
+"""Build the deterministic INT8 CONV_2D fixture Vela compiles.
 
 The distill path (`tools/vela/src/vela_gen.py distill`) needs a REAL Vela output,
 and a real Vela output needs a real quantized .tflite. Rather than commit an

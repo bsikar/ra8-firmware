@@ -16,7 +16,7 @@
  * a rewritable data-flash: the erase + re-program cycle this demo exercises does
  * NOT work on real silicon (there is no erase). ra8_emulator maps the window and so
  * the round-trip passes here, but that is optimistic -- a real rewritable-medium
- * home for this demo (OSPI / SD) is tracked by #315.
+ * home for this demo (OSPI / SD) is tracked separately.
  *
  * The demo exercises the backend directly through the ra8_io block-device layer,
  * which is the right level for this special-purpose non-volatile store (the FAT

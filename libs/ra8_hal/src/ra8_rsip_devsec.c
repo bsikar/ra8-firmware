@@ -17,7 +17,7 @@
  * block (``LIFE_STATE`` @ 0xC0, ``DEBUG_LEVEL`` @ 0xC4, ``TAMPER_CTRL`` @ 0x14,
  * ``TAMPER_STATUS`` @ 0x18, ``DPA_CTRL`` @ 0x1C, ``CTRL.DPA_ARM``) inside the
  * RSIP window (base 0x403B0000) and cited HUM Ch 51 "Security Features". That
- * register model is fiction, verified against the manual for issue #216:
+ * register model is fiction, verified against the manual:
  *
  * - HUM Ch 51 "Security Features" (p 3263-3301) is a prose feature INDEX, not
  *   a register map. 51.1 lists "Device lifecycle management" and the "Three

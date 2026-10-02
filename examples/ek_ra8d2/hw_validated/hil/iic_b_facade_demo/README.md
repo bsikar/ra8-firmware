@@ -30,4 +30,4 @@ and `i3c_i2c_peripheral_demo` use. Under the emulator both halves do run, since
 it models the GT911 on the controller bus AND plays the external controller
 driving the firmware's target role.
 
-Part of the example-coverage sweep; closes #255.
+Part of the example-coverage sweep.

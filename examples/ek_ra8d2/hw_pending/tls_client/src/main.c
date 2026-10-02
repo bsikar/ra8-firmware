@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Minimal TLS-client demo for issue #261. It brings the chip up the same
+ * Minimal TLS-client demo. It brings the chip up the same
  * way ``threadx_netx_tcp_echo`` does (CGC -> SCI console -> RMII pins ->
  * RSIP), hands control to ThreadX, and on a single worker thread:
  *
