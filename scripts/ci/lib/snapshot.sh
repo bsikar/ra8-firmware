@@ -212,7 +212,7 @@ prepare_head_snapshot() {
   # commit messages simply are not in it -- a tree copy carries no history.
   # Point the message-scanning gates back at the real repository; everything
   # else still reads the clean snapshot. Without this the two commit-metadata
-  # gates scan "ci.sh snapshot of HEAD" and report PASS, which is #348: the only
+  # gates scan "ci.sh snapshot of HEAD" and report PASS, which was the snapshot bug: the only
   # local enforcement of the attribution-trailer ban and the
   # inclusive-terminology rule, silently reading nothing.
   export RA8_CI_HISTORY_REPO="${RA8_CI_HISTORY_REPO:-$REPO_ROOT}"

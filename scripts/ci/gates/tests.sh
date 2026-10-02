@@ -87,7 +87,7 @@ gate_ubsan() (
 )
 
 # --- artefact-freshness ---------------------------------------------------
-# #380: committed generated docs (docs/DRIVER_STATUS.md) must equal what their
+# Committed generated docs (docs/DRIVER_STATUS.md) must equal what their
 # generator produces from the current tree. --selftest runs first, in both
 # directions, so a checker that stopped comparing cannot pass as clean.
 #

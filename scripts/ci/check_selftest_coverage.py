@@ -39,7 +39,7 @@ principle, not an allowlist.
 THE BACKLOG IS RETIRED, NOT WAIVED
 ----------------------------------
 
-Turning Rule B on found a real backlog, and issue #790 closed every row. The
+Turning Rule B on found a real backlog, and a cleanup closed every row. The
 former ``.github/selftest-baseline.txt`` must remain absent: a NEW gate-wired
 detector with no selftest fails immediately, and recreating even an empty
 baseline fails too. There is no update mode because a detector regression is

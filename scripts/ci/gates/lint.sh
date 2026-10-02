@@ -32,7 +32,7 @@ gate_lint_py_shell() (
   # --selftest runs FIRST and asserts the configured rule set really enforces
   # what it advertises: a deliberately non-conforming fixture must trip every
   # rule family named in EXPECTED_CODES, and a legal-but-tricky one must stay
-  # silent. #360 is why -- `check_ruff.py` hardcoded its target list, so seven
+  # silent. A retired checker is why -- `check_ruff.py` hardcoded its target list, so seven
   # first-party files (host tooling and the HIL fixture generators) were never
   # linted at all while the gate reported a clean tree. Scope is derived from
   # `git ls-files` now, and gutting the select list turns the selftest red
@@ -123,7 +123,7 @@ gate_lint_rust() (
 )
 
 # --- lint-cmake -----------------------------------------------------------
-# 283 first-party listfiles decide what is compiled with which flags -- #309
+# 283 first-party listfiles decide what is compiled with which flags -- an audit
 # found host tools silently building firmware sources with -w. cmake-lint is
 # the linter; it comes from cmakelang, pinned so the gate and the runner
 # cannot disagree about a rule. Formatting (cmake-format) is enforced by the
@@ -236,7 +236,7 @@ gate_lint_ld() (
 
 # --- reserved-addrs -------------------------------------------------------
 # Three drivers have now named an address describing hardware that is not
-# there (ra8_rsip, ra8_ptp #498, ra8_wdt_regs #545) -- each compiled clean and
+# there (ra8_rsip, ra8_ptp, ra8_wdt_regs) -- each compiled clean and
 # failed only on silicon. This gate answers the cheap question: is the
 # address inside a HUM Reserved hole?
 gate_reserved_addrs() (
@@ -264,7 +264,7 @@ gate_lint_asm() (
 # --- lint-devcontainer ----------------------------------------------------
 # .devcontainer/Dockerfile and pyproject.toml own the tool versions CI resolves, so a defect in
 # it changes what every other gate runs -- and it was linted by nothing until
-# #371. hadolint found DL4006 on its first run: eight `curl | tar` pipelines
+# the lint-coverage audit. hadolint found DL4006 on its first run: eight `curl | tar` pipelines
 # under `/bin/sh -c`, where a failed download still reported success and built
 # an image with the pinned tool absent. The zshrc is checked with `zsh -n`,
 # which is the only real option: ShellCheck refuses zsh, and running it as

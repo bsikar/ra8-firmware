@@ -133,7 +133,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
 
   # THE signal handler. It exits; it does not fall through.
   #
-  # This is the whole of #542 in one function. The previous handler cleaned up
+  # This is the whole of the signal-abort fix in one function. The previous handler cleaned up
   # and returned, which is why a signalled run went on to "measure" a tree it
   # had just deleted.
   ci_abort_on_signal() {
@@ -275,7 +275,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   # scope would be dispatchable by name through `--gate`, and a gate that
   # nothing schedules but anything can run is not a gate.
   #
-  # `ra8-probe-after` FAILS when it runs. That is the point: under the #542
+  # `ra8-probe-after` FAILS when it runs. That is the point: under the old
   # behaviour the runner carried on past the abort, so a suite that reaches
   # this fixture produces exactly the invented FAIL row the self-test asserts
   # can no longer appear.
@@ -284,7 +284,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   # scope would be dispatchable by name through `--gate`, and a gate that
   # nothing schedules but anything can run is not a gate.
   #
-  # `ra8-probe-after` FAILS when it runs. That is the point: under the #542
+  # `ra8-probe-after` FAILS when it runs. That is the point: under the old
   # behaviour the runner carried on past the abort, so a suite that reaches
   # this fixture produces exactly the invented FAIL row the self-test asserts
   # can no longer appear.
