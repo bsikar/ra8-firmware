@@ -443,8 +443,8 @@ extern "C" {
  * is declared in `annot_rulekeys.MARKER_ONLY_RULES` and the gate fails if
  * that declaration is removed without a rule appearing. This block
  * previously promised a libclang call-graph walk, and named an
- * `RA8_ISR_HANDLER` macro that has never existed. Issue #1247 carries the
- * campaign: derive the ISR-entry set from the vector tables, rule on
+ * `RA8_ISR_HANDLER` macro that has never existed. The annotations work carries
+ * the campaign: derive the ISR-entry set from the vector tables, rule on
  * whether an inline MMIO accessor is ISR-safe by construction, close the
  * remaining tagged-to-untagged call edges, then turn the rule on.
  *

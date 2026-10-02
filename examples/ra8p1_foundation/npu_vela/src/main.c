@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Companion to ``examples/ra8p1_foundation/npu_smoke`` on the way to issue #227:
+ * Companion to ``examples/ra8p1_foundation/npu_smoke`` on the way to Vela integration:
  * instead of hand-building a command stream in SRAM, this app LOADS a
  * committed, generated ``.npub`` model container
  * (``tools/vela/generated/ra8_npu_model_addk_fake.h``, produced offline by

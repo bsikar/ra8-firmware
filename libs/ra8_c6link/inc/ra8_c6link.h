@@ -742,7 +742,7 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * A co-processor that does not arm HANDSHAKE for the whole announcement budget
  * is reported absent, but not on the first quiet window. The pump abandons a
  * run after ::k_ra8_c6link_hs_giveup consecutive quiet waits, so 600 ms of
- * silence ends the announcement before the probe is ever reached, and #594
+ * silence ends the announcement before the probe is ever reached, and the HANDSHAKE fix
  * records two bench runs that failed exactly there and then passed ten times
  * running. The announcement is therefore attempted up to
  * ::k_ra8_c6link_ready_attempts times, and only a run that clocked no

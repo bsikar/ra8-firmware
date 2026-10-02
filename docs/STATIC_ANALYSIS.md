@@ -212,7 +212,7 @@ takes minutes -- too expensive to gate every commit). Instead:
   gate was "warn-only today". Neither was true: no workflow invoked
   the script, `RA8_GATE_REGISTRY` had no such gate, and
   the `pre-commit-checks` CI gate carried a comment saying exactly that -- so the tree
-  contradicted itself in writing. That was #532.
+  contradicted itself in writing.
 
 ## Cross-references
 

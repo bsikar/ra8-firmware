@@ -4,7 +4,7 @@
 //! C ABI membrane for `libs/ra8_core/inc/ra8_time.h`.
 //!
 //! The millisecond timebase sits on the SysTick and DWT primitive ported in
-//! #2830: this file owns the tick counter, the delay policy and the SysTick
+//! This file owns the tick counter, the delay policy and the SysTick
 //! IRQ body, and every raw register access stays behind
 //! `ra8_systick_configure` / `ra8_dwt_cyccnt_*`.
 //!
@@ -20,7 +20,7 @@
 //! what `tz_nsc_cgc_usb`'s NS half does: its `ra8_time_init` would reprogram
 //! the SysTick ThreadX owns, and its delay would wait on a tick the ThreadX
 //! handler never advances, so `ns_usb.c` defines a ThreadX-backed
-//! `ra8_delay_ms` and `ra8_time_ms` instead. Since #2842 a freestanding image
+//! `ra8_delay_ms` and `ra8_time_ms` instead. Since the archive fix a freestanding image
 //! links ONE ra8_core archive, so that image now receives this TU whether it
 //! wants it or not, and a strong export here would make its own definitions
 //! duplicate symbols. Weak linkage is the same override by another spelling:

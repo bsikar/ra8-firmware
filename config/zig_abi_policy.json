@@ -1117,7 +1117,7 @@
         {
           "name": "ra8_lsm6dso_bind_i2c",
           "source": "libs/ra8_lsm6dso/src/ra8_lsm6dso_bind.c",
-          "reason": "house-I2C-seam binder added by #760 after this port branch was cut; it consumes the ported C ABI (it calls ra8_lsm6dso_init) rather than implementing it, so it stays a C translation unit beside the Zig archive until it is ported in its own slice"
+          "reason": "house-I2C-seam binder added after this port branch was cut; it consumes the ported C ABI (it calls ra8_lsm6dso_init) rather than implementing it, so it stays a C translation unit beside the Zig archive until it is ported in its own slice"
         }
       ],
       "exports": [
@@ -1871,7 +1871,7 @@
         {
           "name": "ra8_ov5640_bind_i2c",
           "source": "libs/ra8_ov5640/src/ra8_ov5640_bind.c",
-          "reason": "house-I2C-seam binder added by #760 after this port branch was cut; it consumes the ported C ABI (it calls ra8_ov5640_init) rather than implementing it, so it stays a C translation unit beside the Zig archive until it is ported in its own slice"
+          "reason": "house-I2C-seam binder added after this port branch was cut; it consumes the ported C ABI (it calls ra8_ov5640_init) rather than implementing it, so it stays a C translation unit beside the Zig archive until it is ported in its own slice"
         }
       ]
     },

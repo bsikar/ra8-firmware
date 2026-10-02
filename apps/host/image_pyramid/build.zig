@@ -4,7 +4,7 @@
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
 
-/// Both halves of the codec are Zig now: the encoder moved in #2795 and the
+/// Both halves of the codec are Zig now: the encoder moved first and the
 /// decoder plus its stripe driver, so the three ra8_jpeg_sw*.c paths
 /// this listed no longer exist on disk. ra8_log went the same way.
 /// What is left of the C here is ra8_error_handler.c; the rest arrives as the

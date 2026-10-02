@@ -472,7 +472,7 @@ RA8_INTERNAL static void internal_test_events(void)
   TEST_ASSERT_EQ(k_c6m_chip_id, quiet.chip_id);
   TEST_ASSERT(ra8_c6_model()->caps_seen);
 
-  /* #594: a momentarily quiet co-processor is not an absent one. The pump
+  /* A momentarily quiet co-processor is not an absent one. The pump
      abandons a run after k_ra8_c6link_hs_giveup quiet HANDSHAKE waits, each
      k_ra8_c6link_hs_wait_ms long and sampled every k_ra8_c6link_hs_poll_ms, so
      that whole first announcement clocks nothing and the probe is never

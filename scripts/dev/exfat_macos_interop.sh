@@ -155,7 +155,7 @@ for img in "${images[@]}"; do
 
   # Apple's own checker, on the raw device so it sees the on-disk bytes.
   #
-  # Some images are deliberately corrupt NEGATIVE CONTROLS (a pre-#606 NameHash,
+  # Some images are deliberately corrupt NEGATIVE CONTROLS (a pre-non-ASCII-fix NameHash,
   # a mangling control). For those a clean bill of health is the failure: it
   # would mean the checker cannot see the very fault the image exists to carry.
   fsckout="$(fsck_exfat -n "${fsdev/disk/rdisk}" 2>&1 || true)"

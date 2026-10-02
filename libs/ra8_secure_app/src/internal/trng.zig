@@ -7,7 +7,7 @@
 //! DETERMINISTIC PRNG standing in for the RSIP TRNG that is not wired yet.
 //! Predictable "random" bytes were the top finding in the security audit, so
 //! the stand-in only exists in an off-target or explicitly-insecure image
-//! (issue #180). A production image compiles the fail-closed arm, where every
+//! (the fail-closed crypto gate). A production image compiles the fail-closed arm, where every
 //! entry point hard-errors and no predictable entropy can be drawn.
 
 const std = @import("std");

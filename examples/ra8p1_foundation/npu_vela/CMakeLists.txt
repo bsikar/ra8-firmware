@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `npu_vela` -- the RA8P1 Ethos-U55 .npub container loader
-# end-to-end demo (on the way to issue #227).
+# end-to-end demo (on the way to Vela integration).
 #
 # Build it STANDALONE with the RA8P1 toolchain (it is deliberately excluded from
 # the top-level RA8D2 unified build so the RA8D2 build never touches an NPU app --
@@ -17,7 +17,7 @@
 # (including the RA8P1-only ra8_npu.c + ra8_npu_loader.c, live under
 # -DRA8_DEVICE_RA8P1) + the board layer BOARD names. BOARD ra8p1 selects the
 # dedicated libs/ra8_board_ra8p1 layer (issue RA8FW-260), the same selector npu_smoke
-# and blink_ra8p1 pass. Until issue #773 this app named no BOARD, so it took the
+# and blink_ra8p1 pass. Until the RA8P1 board fix this app named no BOARD, so it took the
 # ek_ra8d2 default and compiled against the RA8D2 board's pin map; that only
 # worked because the app touches nothing outside the console subset the two
 # boards share by name. This app additionally includes the committed, generated

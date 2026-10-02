@@ -22,7 +22,7 @@
 #
 #   1. the device-selection define -DRA8_DEVICE_RA8P1 (see below), and
 #   2. nothing else by default: the FPU width is NOT a delta between the two
-#      parts (issue #225, see the FPU section), so -mfpu is inherited unchanged
+#      parts (see the FPU section), so -mfpu is inherited unchanged
 #      and fpv5-d16 is reachable only through the opt-in RA8P1_DP_FPU switch.
 #
 # libs/ra8_core/inc/ra8_device.h reads the device define to switch register bases,

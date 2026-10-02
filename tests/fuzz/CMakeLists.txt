@@ -122,7 +122,7 @@ list(
 foreach(_t ${RA8_FUZZ_TARGETS})
   # fuzz_log_sink.c installs a discard ra8_log byte sink before main() so no
   # harness reaches the ITM registers at 0xE0000000 (which are unmapped
-  # here -- see fuzz_log_sink.c and issue #193). Linked into every harness.
+  # here -- see fuzz_log_sink.c). Linked into every harness.
   set(_t_src ${CMAKE_CURRENT_SOURCE_DIR}/src/${_t}.c)
   if(NOT EXISTS ${_t_src})
     set(_t_matches "")

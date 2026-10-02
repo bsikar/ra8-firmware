@@ -6,7 +6,7 @@
 //! `libs/ra8_core/inc/ra8_time_interface.h` publishes a two-call vtable so a
 //! caller can be handed a fake clock in a test. This file is the production
 //! binding: it forwards to `ra8_time_ms` and `ra8_delay_ms`, Zig themselves
-//! since #2851, and carries no context of its own.
+//! since the ra8_time port, and carries no context of its own.
 
 /// Layout of `ra8_time_interface_t`.
 const TimeInterface = extern struct {

@@ -4,7 +4,7 @@
  * @ingroup grp_ereader
  *
  * @details
- * `ra8_widget` is the composable-UI layer issue #145 asks for: render
+ * `ra8_widget` is the composable-UI layer the widget compositor asks for: render
  * *everything* as widgets the way a tiling WM (dwm) composes a screen from
  * opt-in pieces. A status bar is a widget; a book view is a widget; an
  * on-screen keyboard is a widget. A screen (or an app) is just an

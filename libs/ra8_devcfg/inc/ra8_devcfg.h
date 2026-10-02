@@ -506,7 +506,7 @@ void ra8_devcfg_reset(void);
  * @details
  * Wires ::ra8_devcfg_read_fn_t / ::ra8_devcfg_write_fn_t to the extra-MRAM
  * (data-flash) window: reads dereference ``k_ra8_flash_extra_start + offset``
- * (a blank word reads back as 0xFF and does not fault -- #315), writes go
+ * (a blank word reads back as 0xFF and does not fault, bench-proved), writes go
  * through ``ra8_flash_extra_mram_write`` in ::k_ra8_devcfg_page_bytes pages
  * (HUM Ch 59.7.4.5 "Program Command" Table 59.15 p 3592). Under
  * ``RA8_OFF_TARGET`` both members address a RAM shadow so host tests

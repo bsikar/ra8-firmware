@@ -74,10 +74,10 @@ export var g_ra8_rot_ar_probing: bool = false;
 /// Set by `ra8_rot_antirollback_on_probe_fault` when a probe read faulted.
 export var g_ra8_rot_ar_faulted: bool = false;
 
-/// Fault-tolerant read of the durable counter word. #315 bench-proved that a
+/// Fault-tolerant read of the durable counter word. A bench run proved that a
 /// virgin word in the corrected window reads back erased without faulting
-/// (the fault #194 recorded was the phantom 0x27000000 address, corrected by
-/// #397), so the catch is belt-and-braces for the counter's own location.
+/// (the recorded fault was the phantom 0x27000000 address, since
+/// corrected), so the catch is belt-and-braces for the counter's own location.
 fn probeCounter() u32 {
     g_ra8_rot_ar_faulted = false;
     g_ra8_rot_ar_probing = true;

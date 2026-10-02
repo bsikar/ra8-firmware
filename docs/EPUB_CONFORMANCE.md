@@ -1,6 +1,6 @@
 # EPUB Reader -- Supported Conformance Subset
 
-> Ratifies issue #70 (part of the e-reader roadmap #69). This is the **contract**
+> Ratifies the EPUB conformance subset (part of the e-reader roadmap). This is the **contract**
 > the on-device EPUB reader implements: what it accepts, what it renders, and --
 > for everything it does not support -- the **defined** degradation it falls back
 > to. There is no undefined behavior: every unsupported feature is skipped,
@@ -66,7 +66,7 @@ surface is exactly:
 1. The intrinsic block/inline/heading layout `reflow` applies by tag.
 2. The **minimal authored box-model** that the application *chrome* uses --
    padding/margin, background fill, border, a constrained flex/grid, absolute
-   placement -- added under #76/#80. That subset is bounded and MC/DC-able
+   placement -- added with the CSS cascade and chrome work. That subset is bounded and MC/DC-able
    **because the chrome markup is authored in-tree**, so only the properties
    actually used are implemented.
 
@@ -76,7 +76,7 @@ model but pulls C++/STL + `malloc` (violates NASA P10 Rule 3) and a large
 SOUP surface onto the content path. It is the **content-only** escape hatch: if a real
 EPUB 3 corpus visibly defeats v1's text-flow model (tables, floats, embedded
 fonts), the flag may be flipped for **book content rendering only -- never for
-chrome** (see `docs/SOUP/litehtml.md` and #76). The boundary is explicit: chrome
+chrome** (see `docs/SOUP/litehtml.md`). The boundary is explicit: chrome
 is always v1.
 
 ---

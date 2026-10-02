@@ -4,7 +4,8 @@
  *
  * @details
  * Replays each drive the app
- * examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c performs on the #147
+ * examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c performs on
+ * the memory-hierarchy
  * ra8_mem memory hierarchy, on the host-compiled library, and asserts the exact
  * observables the app prints in its banner:
  *
@@ -617,7 +618,7 @@ static void test_vmem_stream_read_stops_on_get_failure(void)
  * (no compound decision under test here -- the point is the return channel, not a
  * branch: the same two-frame request that comes back short with `k_ra8_ok` when it
  * ran off the object end comes back short with the cache's error when a frame
- * failed, so a caller can finally tell the two apart. #764.)
+ * failed, so a caller can finally tell the two apart.)
  */
 /**
  * @brief Wire a paged source whose second frame faults, and a stream over it.

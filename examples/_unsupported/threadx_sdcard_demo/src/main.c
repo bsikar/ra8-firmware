@@ -370,7 +370,7 @@ void main(void)
    * boot-default MOCO (~8 MHz) instead would run the "1 ms" tick ~119x
    * too slow, so tx_thread_sleep(5000) would stretch to ~10 minutes.
    * Raise the PLL before tx_kernel_enter (and tx_application_define
-   * additionally retunes SysTick from the live clock -- issue #287). */
+   * additionally retunes SysTick from the live clock). */
   if (ra8_cgc_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");

@@ -70,7 +70,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if (offset < 0) {
     return 0;
   }
-  /* Mirror the firmware's #217 hardening: bound-check the sfnt table directory
+  /* Mirror the firmware's sfnt hardening: bound-check the sfnt table directory
    * before stbtt_InitFont walks it (see ra8_stbtt_guard.h and priv_font_init in
    * apps/shared_libs/epub/src/epub_chapter.c). Without this, stbtt__find_table reads
    * past the buffer on a crafted font. */

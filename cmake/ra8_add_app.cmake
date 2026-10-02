@@ -397,7 +397,7 @@ macro(ra8_add_app)
   endif()
 
   # Compile the insecure placeholder crypto only when explicitly opted in
-  # (issue #180). Left OFF, the guarded #else branches fail closed.
+  # (the fail-closed crypto gate). Left OFF, the guarded #else branches fail closed.
   if(RA8_INSECURE_STUB_CRYPTO)
     target_compile_definitions(${_ra8_elf} PRIVATE RA8_INSECURE_STUB_CRYPTO)
   endif()
@@ -703,8 +703,8 @@ function(ra8_add_cpu1_image)
   target_link_libraries(${C1_NAME}.elf PRIVATE gcc)
   # The CPU1 image links NO ra8_hal, but it may INCLUDE the freestanding-clean
   # PORT headers so an M33 image drives a pin through a HAL primitive
-  # (ra8_pcntr.h -> ra8_port_regs.h) instead of hand-rolling raw MMIO (issue
-  # #580). Only header-only accessors reach the M33 this way; nothing is
+  # (ra8_pcntr.h -> ra8_port_regs.h) instead of hand-rolling raw MMIO. Only
+  # header-only accessors reach the M33 this way; nothing is
   # compiled or linked from ra8_hal/src. IMPORTANT: keep this an include path,
   # not a link -- a future dev must add ONLY freestanding-clean headers here
   # (ra8_pcntr.h / ra8_port_regs.h + the ra8_core/inc enums they pull). A HAL
@@ -712,8 +712,8 @@ function(ra8_add_cpu1_image)
   # freestanding and must never be reached from a CPU1 TU.
   #
   # The board directory is on this path for one header:
-  # ra8_board_ek_ra8d2_dualcore.h, which states where the two cores meet
-  # (issue #778). An app's shared header names those constants and is
+  # ra8_board_ek_ra8d2_dualcore.h, which states where the two cores meet. An
+  # app's shared header names those constants and is
   # included by BOTH images, so the M33 side has to be able to resolve it.
   # It pulls in nothing but <stdint.h> and ra8_err.h, which is the bar. The
   # rest of the board headers are merely REACHABLE, not included: adding an

@@ -10,8 +10,8 @@
 //! Capturing the handler the PAL installs also reaches the dispatch guard the
 //! C host suite could only cover cross-compiled: both conditions of
 //! `event_fn && pal_mask` can be varied here directly. The same substitution
-//! stages a BMSR the host Ethernet fake cannot, so the link-up edge #1218
-//! left host-unproven is covered here.
+//! stages a BMSR the host Ethernet fake cannot, so the link-up edge the
+//! event-bit fix left host-unproven is covered here.
 
 const std = @import("std");
 const abi = @import("abi");

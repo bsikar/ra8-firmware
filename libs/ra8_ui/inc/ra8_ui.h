@@ -5,7 +5,7 @@
  *
  * @details
  * `ra8_ui` is the interaction / controller layer for the e-reader UI
- * (issue #80). The rendering engines (`ra8_reflow`, `ra8_gfx`) emit boxes
+ * (the chrome work). The rendering engines (`ra8_reflow`, `ra8_gfx`) emit boxes
  * and glyphs; none of them model *interaction*. This library fills that
  * gap with three small, allocation-free, MC/DC-able units:
  *
