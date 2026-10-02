@@ -3,7 +3,8 @@
  * @brief exFAT long-name rename: entry-set resize + the fsck.exfat evidence.
  *
  * @details
- * #603(b): `priv_exfat_rename()` used to refuse any name past a single Name
+ * The exFAT entry-set fix, part (b): `priv_exfat_rename()` used to refuse
+ * any name past a single Name
  * entry (15 UTF-16 units) and return `k_ra8_err_not_supported`, yet
  * `ra8_fs_write_file()` writes names up to `k_exfat_name_cap` (64) -- so rename
  * was unusable for names the same library had just written. The fix rewrites the
@@ -409,7 +410,7 @@ RA8_INTERNAL static void internal_test_exfat_rename_long_to_long_same_count(void
  * @details 16 units (two Name entries) to 32 units (three Name entries): the
  *          entry count changes from 4 to 5, so the relocation branch runs even
  *          though both names are "long". This is the "long -> long across a
- *          differing entry count" case #603 calls out.
+ *          differing entry count" case the entry-set fix calls out.
  *
  * @par MC/DC:
  * Decision: `if (new_count == old_count)` in `priv_exfat_place_rename` -- 1

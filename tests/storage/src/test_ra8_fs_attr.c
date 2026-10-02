@@ -3,7 +3,7 @@
  * @brief File-attribute honor + set/clear (`ra8_fs_set_attr()`) on FAT and exFAT.
  *
  * @details
- * Two halves of #681, proven on both filesystems:
+ * Two halves of the attribute work, proven on both filesystems:
  *
  *   - HONORED. A file marked read-only refuses every mutating path -- open for
  *     writing, open for appending, whole-file write, unlink and rename -- with

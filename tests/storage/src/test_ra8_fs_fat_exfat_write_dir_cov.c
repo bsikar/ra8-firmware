@@ -237,7 +237,8 @@ RA8_INTERNAL static void internal_test_read_entry_fail(void)
  *          `priv_exfat_scan_dir_space` scans the whole cluster, follows the root
  *          through `priv_fat_get`, and finds it end-of-chain -- the arm that
  *          drives ::priv_exfat_find_dir_space to GROW the root. Before
- *          #677 that arm returned `k_ra8_err_no_mem`; now the root's FAT chain is
+ *          exFAT directory growth that arm returned `k_ra8_err_no_mem`; now
+ *          the root's FAT chain is
  *          extended by a fresh cluster and the write succeeds. The root here is
  *          deliberately corrupted with bare in-use bytes, so the file is not read
  *          back; the success of the write is the whole assertion.

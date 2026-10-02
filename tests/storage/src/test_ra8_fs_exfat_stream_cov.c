@@ -442,7 +442,7 @@ RA8_INTERNAL static void internal_test_flush_set_io_fails(void)
  * @details ::priv_exfat_open_write treats `k_ra8_err_not_found` as "create it"
  *          and everything else as a failure. Conflating the two would turn an
  *          unreadable card into a second entry set for a name that already
- *          exists -- the duplication #603 fixed, reintroduced through the
+ *          exists -- the duplication the entry-set fix removed, reintroduced through the
  *          error path.
  *
  * @par MC/DC:

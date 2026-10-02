@@ -685,7 +685,7 @@ RA8_INTERNAL static void internal_test_out_of_range_is_clamped(void)
  * @brief Writing content advances the modification time and leaves the
  *        creation time where it was.
  *
- * @details The half of #601 that matters most to a backup tool: before this,
+ * @details The half of the timestamp fix that matters most to a backup tool: before this,
  *          the write path touched only offsets 20, 26 and 28, so a file a PC
  *          created kept the PC's `DIR_WrtDate` through every firmware write
  *          and `rsync` concluded nothing had changed.
@@ -877,7 +877,7 @@ RA8_INTERNAL static void internal_test_truncate_moves_mtime(void)
  *
  * @details A rename changes the name, not the bytes. Moving `DIR_WrtDate`
  *          would tell every `rsync`, backup and "newest image" OTA heuristic
- *          that the contents changed -- the same false signal #601 exists to
+ *          that the contents changed -- the same false signal the timestamp fix exists to
  *          remove, only inverted.
  *
  * @par MC/DC:

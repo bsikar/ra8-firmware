@@ -182,7 +182,7 @@ internal_expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_
  * @test test_mkdir_lists_as_a_directory
  * @brief `ra8_fs_mkdir()` on exFAT creates something the listing calls a folder.
  *
- * @details Before #605 this call returned `k_ra8_err_not_supported` before
+ * @details Before exFAT subdirectories this call returned `k_ra8_err_not_supported` before
  *          touching the volume. It now writes a File + Stream + Name set with
  *          bit 4 of FileAttributes set, over one zeroed cluster. The listing is
  *          asserted to report the directory bit and a size of zero -- a
@@ -508,7 +508,7 @@ RA8_INTERNAL static void internal_test_rmdir_after_unlink_inside(void)
  * `mkdir` is not. Both collisions are checked, because the
  *          lookup that finds them cannot tell the two kinds apart on its own --
  *          a directory answers a name lookup exactly like a file does, which is
- *          the property #604 exists because of.
+ *          the property the directory guards exist because of.
  *
  * @par MC/DC:
  * No compound decision lies on this path. The vectors it contributes are

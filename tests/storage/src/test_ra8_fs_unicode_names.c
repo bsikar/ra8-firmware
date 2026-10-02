@@ -551,7 +551,7 @@ RA8_INTERNAL static void internal_test_accents_do_not_collide(void)
  *          spellings of the same word are two names here, exactly as they are
  *          on Windows and Linux FAT drivers. Normalising would mean a name this
  *          API returned was not the name on the card, which is the class of
- *          defect #606 is about. This case exists so the choice is recorded and
+ *          defect the non-ASCII name fix is about. This case exists so the choice is recorded and
  *          a future change to it has to be deliberate.
  *
  * @par MC/DC:
