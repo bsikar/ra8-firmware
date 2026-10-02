@@ -560,6 +560,36 @@ static void test_load_alias_shares_base(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- each assertion is one equality; the
+ * claim is that the query and the load agree once a blob carries an alias)
+ */
+static void test_arena_bytes_skips_alias(void)
+{
+  TEST_BEGIN("arena query skips alias regions, as the load does (RA8FW-429)");
+  ra8_npu_job_t job = {};
+
+  /* Region 1 aliases region 0, the shape Vela's scratch_fast takes. */
+  const lt_region_t regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .size = k_lt_alias_bytes},
+    {.role   = (uint32_t)k_ra8_npu_blob_role_scratch,
+     .size   = k_lt_alias_bytes,
+     .alias  = true,
+     .target = 0U},
+  };
+  const uint32_t total  = lt_build(s_scratch, regs, 2U);
+  uint32_t       needed = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_arena_bytes(s_scratch, total, &needed));
+  /* Only the target owns bytes. */
+  TEST_ASSERT_EQ((uint32_t)k_lt_alias_bytes, needed);
+
+  /* And exactly that loads. */
+  ra8_npu_arena_t exact = lt_arena(needed);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_load(s_scratch, total, &exact, &job));
+  TEST_END("arena query skips alias regions, as the load does (RA8FW-429)");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- each assertion is one equality; the
  * exactness claim is pinned by loading at the reported size and one byte below)
  */
 static void test_arena_bytes_is_exact(void)
@@ -742,6 +772,7 @@ int main(void)
   test_load_runtime_arena_limits();
   test_load_alias_shares_base();
   test_load_rejects_bad_alias();
+  test_arena_bytes_skips_alias();
   test_arena_bytes_is_exact();
   test_arena_bytes_counts_padding();
   test_arena_bytes_refusals();

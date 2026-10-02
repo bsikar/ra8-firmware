@@ -335,7 +335,11 @@ static ra8_err_t internal_npu_plan_arena(const uint8_t* p, uint32_t rcount, uint
     const uint32_t flags = ra8_npu_blob_read_word(
       p,
       desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_flags * (uint32_t)k_ra8_npu_blob_word_bytes));
-    if ((flags & (uint32_t)k_ra8_npu_blob_rflag_baked) == 0U) {
+    /* An ALIAS region takes no arena: internal_npu_place_all_regions() resolves
+     * it onto its target, so counting it here would over-report (RA8FW-429). */
+    const uint32_t owns_nothing =
+      (uint32_t)k_ra8_npu_blob_rflag_baked | (uint32_t)k_ra8_npu_blob_rflag_alias;
+    if ((flags & owns_nothing) == 0U) {
       const uint32_t size = ra8_npu_blob_read_word(
         p,
         desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_size * (uint32_t)k_ra8_npu_blob_word_bytes));
