@@ -35,7 +35,8 @@
  *     mandatory: HUM Ch 58.3.7 p 3540 requires a wait cycle above half
  *     the rated maximum ICLK, and without it "the operation is not
  *     guaranteed" -- which on this part means a bit silently dropped
- *     from an SRAM read, not a hang (tracker #524 / #499).
+ *     from an SRAM read, not a hang (the ra8_eth_open HardFault and
+ *     Ethernet TX DMA-placement trackers).
  *  8. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
  *     FSP `bsp_clocks.c`.
  *  9. Switch SCKSCR to PLL1.
@@ -716,7 +717,7 @@ RA8_INTERNAL static ra8_err_t internal_cgc_init_protected(void)
      * switch would leave a window in which .data, .bss and the stack
      * are read at full speed with no wait; the ONE fault it is known
      * to produce is a single dropped bit in a value read back out of
-     * SRAM, so that window has to be empty, not short (tracker #524). */
+     * SRAM, so that window has to be empty, not short (the ra8_eth_open HardFault tracker). */
     err = ra8_sram_set_wait_state_for_clock(k_ra8_iclk_hz, (uint32_t)k_ra8_iclk_max_hz);
   }
   if (err == k_ra8_ok) {

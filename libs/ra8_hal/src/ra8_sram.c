@@ -572,7 +572,7 @@ RA8_INTERNAL static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
   /* SRAMWTSC is deliberately NOT touched here -- ra8_cgc_init owns it,
    * derived from ICLK per HUM Ch 58.3.7 p 3540. Clearing it from a
    * zero-initialised config is how a caller silently takes the memory
-   * system outside guaranteed operation (tracker #524). */
+   * system outside guaranteed operation (the ra8_eth_open HardFault tracker). */
 
   internal_apply_per_bank(cfg);
 

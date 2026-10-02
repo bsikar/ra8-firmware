@@ -30,7 +30,8 @@
  * - HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" (p 3302-3307) is a six-page
  *   conceptual overview (block diagrams + an "input key, input data, read
  *   result" procedure) with no command-register map at all -- the same
- *   invented-MMIO finding as #214 / #215 / #181.
+ *   invented-MMIO finding as the rest of the RSIP
+ *   register audit.
  *
  * The real RA8D2 device-security state does NOT live behind an RSIP MMIO read:
  * the device lifecycle and the secure-debug (AL0/AL1/AL2) authorisation are
