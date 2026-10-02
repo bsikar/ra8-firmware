@@ -199,7 +199,10 @@ test "a checkpoint longer than its tail is refused" {
 }
 
 test "the mount states keep the C's numbering" {
-    try std.testing.expectEqual(@as(u32, 0), mount.state_cold);
-    try std.testing.expectEqual(@as(u32, 1), mount.state_resumed);
+    // ra8_ftl_mount_state_t is `enum : uint8_t`: ra8_ftl_mount stores through
+    // the caller's one-byte state, so the type must stay one byte wide.
+    try std.testing.expectEqual(u8, mount.State);
+    try std.testing.expectEqual(@as(mount.State, 0), mount.state_cold);
+    try std.testing.expectEqual(@as(mount.State, 1), mount.state_resumed);
     try std.testing.expectEqual(@as(u32, 1), mount.reserved_tail_min);
 }

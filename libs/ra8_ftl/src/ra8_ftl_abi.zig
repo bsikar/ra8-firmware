@@ -631,7 +631,7 @@ fn mountedTail(ftl: *const Ftl, erase_out: *u8) core.Outcome(u32) {
 /// `internal_resolve`: read the tail, cold-start on a blank one, otherwise
 /// offer it to the checkpoint loader whose error is returned as-is. Presenting
 /// a full medium as an empty one is worse than refusing to mount it.
-fn resolveTail(ftl: *Ftl, tail_bytes: u32, erase: u8, state_out: *u32) Err {
+fn resolveTail(ftl: *Ftl, tail_bytes: u32, erase: u8, state_out: *mount_core.mount.State) Err {
     const staging = ftl.checkpoint.?;
     const rd = ra8_io_blockdev_read(ftl.raw.?, ftl.reserved_lba, ftl.reserved_blocks, staging);
     if (rd != core.ok) {
@@ -658,7 +658,11 @@ fn resolveTail(ftl: *Ftl, tail_bytes: u32, erase: u8, state_out: *u32) Err {
     return core.ok;
 }
 
-pub export fn ra8_ftl_mount(ftl: ?*Ftl, cfg: ?*const Cfg, state_out: ?*u32) callconv(.c) Err {
+pub export fn ra8_ftl_mount(
+    ftl: ?*Ftl,
+    cfg: ?*const Cfg,
+    state_out: ?*mount_core.mount.State,
+) callconv(.c) Err {
     const handle = ftl orelse {
         ra8_log_emit_error(mount_tag, "ftl must not be nullptr");
         return core.err_null_ptr;
@@ -697,7 +701,7 @@ pub export fn ra8_ftl_mount(ftl: ?*Ftl, cfg: ?*const Cfg, state_out: ?*u32) call
     handle.reserved_lba = split.physical_blocks;
     handle.reserved_blocks = config.reserved_tail_blocks;
 
-    var state: u32 = mount_core.mount.state_cold;
+    var state: mount_core.mount.State = mount_core.mount.state_cold;
     const resolved = resolveTail(handle, split.tail_bytes, caps.erase_value, &state);
     if (resolved != core.ok) {
         handle.* = .{};
