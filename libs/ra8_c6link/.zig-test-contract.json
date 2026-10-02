@@ -1,6 +1,7 @@
 {
   "test_roots": [
     "tests/abi_test.zig",
+    "tests/arena_test.zig",
     "tests/bare_rpc_test.zig",
     "tests/caps_test.zig",
     "tests/field_copy_test.zig",
@@ -14,6 +15,7 @@
     "tests/wifi_init_test.zig"
   ],
   "covered_sources": [
+    "src/internal/arena.zig",
     "src/internal/bare_rpc.zig",
     "src/internal/caps.zig",
     "src/internal/field_copy.zig",
@@ -28,10 +30,11 @@
     "src/internal/vocab.zig",
     "src/internal/wifi_init.zig",
     "src/ra8_c6link_abi.zig",
+    "src/ra8_c6link_arena_abi.zig",
     "tests/abi_test.zig",
     "tests/caps_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig"
   ],
-  "minimum_tests": 148
+  "minimum_tests": 155
 }

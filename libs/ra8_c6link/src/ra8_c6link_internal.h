@@ -104,7 +104,7 @@ typedef struct ra8_c6link_rx_view {
 } ra8_c6link_rx_view_t;
 
 /* ==========================================================================
- * ra8_c6link_arena.c -- the fixed decode arena behind the protobuf codec
+ * ra8_c6link_arena_abi.zig -- the fixed decode arena behind the protobuf codec (Zig)
  * ==========================================================================
  */
 
