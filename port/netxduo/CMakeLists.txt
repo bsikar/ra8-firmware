@@ -64,13 +64,15 @@ set_property(
 # splicing RA8_NETXDUO_IPIF_SOURCES into its own glob, the same shape the two
 # link drivers above use. The DHCP client itself is not in the netxduo core
 # glob (it lives under addons/dhcp), so a consumer still names that TU.
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/zig_package.cmake)
+ra8_zig_package_dir(netxduo _ra8_netxduo_dir)
 add_library(netxduo_ipif INTERFACE)
 
 target_include_directories(
   netxduo_ipif INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
                          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
                          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_wifi/inc
-                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/netxduo/addons/dhcp
+                         ${_ra8_netxduo_dir}/addons/dhcp
 )
 
 set_property(GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif.c)

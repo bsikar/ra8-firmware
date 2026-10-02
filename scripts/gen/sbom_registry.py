@@ -170,20 +170,18 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/netxduo",
-        path="libs/third_party/netxduo",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="Dual IPv4/IPv6 TCP/IP stack (wired eth + C6 Wi-Fi); NetX Secure not compiled.",
         purl="pkg:github/eclipse-threadx/netxduo@6.5.0",
         upstream_commit="8b6e03ac30ab688bec02c69d42f2304b7f72a202",
         upstream_ref="v6.5.0.202601_rel",
-        modified=True,
-        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
-        license_file="libs/third_party/netxduo/LICENSE.txt",
-        probe_file="common/inc/nx_api.h",
-        probe_prefix="NETXDUO",
-        expected_version="6.5.0",
+        dep_pin_spec="N-V-__8AAPZtwAhYa3pneorsST1dPMt0UEWk2_bDy9Cdc3To",
         extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash) and fetched into the Zig package cache by "
+            "cmake/zig_package.cmake.",
             "CVE tracking is manual: netxduo.md hand-records "
             "CVE-2025-2258/2259/2260 as fixed (see T5-09 / SOUP-3).",
         ),

@@ -43,11 +43,13 @@ if(TARGET wifi_hal_join.elf)
   # The wireless NetX Duo driver bridges onto ra8_c6link; the DHCP client is not
   # part of the netxduo core glob (it lives under addons/dhcp), so name it here.
   get_property(_c6_nx_src GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES)
-  set(_dhcp_src "${_d}/libs/third_party/netxduo/addons/dhcp/nxd_dhcp_client.c")
+  include(${_d}/cmake/zig_package.cmake)
+  ra8_zig_package_dir(netxduo _nx_dir)
+  set(_dhcp_src "${_nx_dir}/addons/dhcp/nxd_dhcp_client.c")
   target_sources(wifi_hal_join.elf PRIVATE ${_c6_nx_src} "${_dhcp_src}")
   target_include_directories(
     wifi_hal_join.elf PRIVATE "${_d}/examples/ek_ra8d2/common/network_provision/inc"
-                              "${_d}/port/netxduo/inc" "${_d}/libs/third_party/netxduo/addons/dhcp"
+                              "${_d}/port/netxduo/inc" "${_nx_dir}/addons/dhcp"
   )
   # The IP bring-up and its C6 provider now live in port/netxduo rather than in
   # this application's wifi_hal_ip.c; netxduo_ipif_wifi already pulls in

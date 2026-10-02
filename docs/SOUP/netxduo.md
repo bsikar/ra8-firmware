@@ -11,7 +11,9 @@ firmware as Software Of Unknown Provenance (SOUP).
   PATCH macros). `CHANGELOG.md` documents 6.4.3 history including
   CVE-2025-2258 / 2259 / 2260 fixes.
 - **Upstream URL**: https://github.com/eclipse-threadx/netxduo
-- **Local path**: `libs/third_party/netxduo/`
+- **Local path**: none. Pinned in `build.zig.zon` as the upstream tarball
+  (url + Zig content hash) and fetched into the Zig package cache by
+  `cmake/zig_package.cmake`.
 
 ## Provenance
 
@@ -19,11 +21,13 @@ firmware as Software Of Unknown Provenance (SOUP).
   (donated by Microsoft from Azure RTOS in 2024).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
-- **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  NetX Duo repository. Resolved to release tag
-  `v6.5.0.202601_rel`, commit `8b6e03ac30ab688bec02c69d42f2304b7f72a202`:
-  1226 of the 1227 vendored files are byte-identical to it, the exception
-  being the `.gitattributes` edit recorded under "Deviations / patches".
+- **How it enters the build**: the upstream Eclipse NetX Duo tarball at
+  release tag `v6.5.0.202601_rel`, commit
+  `8b6e03ac30ab688bec02c69d42f2304b7f72a202`, pinned by Zig content hash in
+  `build.zig.zon`. Until 2026-10-02 (RA8FW-385) it was a vendored copy; all
+  1220 of its source files were byte-identical to that commit, and the only
+  local edit (a `.gitattributes` macro block) is not part of the tarball tree
+  the build compiles.
 
 ## Use case in this firmware
 
@@ -105,21 +109,12 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-One file, `.gitattributes`, and it is a repository-hygiene edit rather than a
-change to any shipped source. Commit `368072a1a` dropped its two `[attr]`
-attribute-macro blocks (`our-c-style`, `generated`) from all five vendored
-Eclipse ThreadX trees: git honours `[attr]` definitions only in the top-level
-`.gitattributes` and printed a "not allowed" warning for each on EVERY git
-operation. The macro *uses* left behind reference undefined attributes, which
-git ignores silently, so no vendored file's checkout behaviour changes.
-
-Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
-content in `docs/sbom/upstream/netxduo.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run.
-
-The edit is from 2026-07-13 and went unrecorded here until the upstream-pin sweep found it two
-weeks later, which is the point: "the vendored tree is unmodified" was prose,
-and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
+None. The build uses the pinned upstream tarball as is. While NetX Duo was
+vendored (until RA8FW-385, 2026-10-02) its one local edit was a
+repository-hygiene change to `.gitattributes`: commit `368072a1a` dropped two
+`[attr]` macro blocks that git only honours in the top-level `.gitattributes`.
+No shipped source was ever changed, and that file is not part of the tree the
+build compiles.
 
 ## Last review date
 

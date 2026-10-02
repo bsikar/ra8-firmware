@@ -45,6 +45,11 @@
             .hash = "N-V-__8AABnHqwH0WNMqhd6EOZNeMNA60iRlcWUh_osHYQKZ",
             .lazy = true,
         },
+        .netxduo = .{
+            .url = "https://github.com/eclipse-threadx/netxduo/archive/8b6e03ac30ab688bec02c69d42f2304b7f72a202.tar.gz",
+            .hash = "N-V-__8AAPZtwAhYa3pneorsST1dPMt0UEWk2_bDy9Cdc3To",
+            .lazy = true,
+        },
         .levelx = .{
             .url = "https://github.com/eclipse-threadx/levelx/archive/a46b74fb8aa133796ccbc13e7902cb8bb818e12f.tar.gz",
             .hash = "N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC",
