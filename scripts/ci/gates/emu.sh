@@ -42,7 +42,7 @@ gate_emulator_smoke() (
 # is ratcheted DOWNWARD against a committed baseline. Growth fails; shrinking
 # is free (and prints a re-baseline notice).
 #
-# This measures #67's own headline success criterion -- "every example runs in
+# This measures the emulator's own headline success criterion -- "every example runs in
 # the emulator". matrix.sh has existed and been well-formed for months while
 # being invoked by NOTHING: not ci.sh, not a workflow, not the justfile. That
 # is this repo's dominant defect class applied to the epic's definition of
@@ -67,7 +67,7 @@ gate_emulator_matrix() (
   python3 scripts/checks/matrix_ratchet.py --selftest
   # The ratchet reads the baseline's ROWS; --attest asserts the FILE is one
   # the tool wrote. A parseable hand edit (a whole-file sort, a typed row, an
-  # adjusted total) used to survive indefinitely -- #712. Free, needs no sweep.
+  # adjusted total) used to survive indefinitely. Free, needs no sweep.
   python3 scripts/checks/matrix_ratchet.py --attest
   # matrix.sh exits non-zero whenever the sweep is not perfectly clean, which is
   # the right default for a human running it by hand but is NOT this gate's

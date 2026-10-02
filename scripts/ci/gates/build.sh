@@ -16,7 +16,7 @@
 # Gates in this file: build-cross, build-cross-union, sbom, soup-upstream, roadmap-stats
 
 # --- build-cross ----------------------------------------------------------
-# #178: RA8_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version
+# T5-02: RA8_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version
 # mismatch warning to a hard error, so a runner with a skewed arm-gcc fails
 # loudly instead of silently shipping version-divergent miniz codegen.
 #

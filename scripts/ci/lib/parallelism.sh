@@ -51,8 +51,8 @@ if [ -z "${_RA8_PARALLELISM_SH:-}" ]; then
   #                                 already exports (4). Routing every site
   #                                 through here is what finally makes it govern
   #                                 make / ctest / xargs / cppcheck too, not
-  #                                 just `cmake --build` -- the exact gap #328
-  #                                 identified.
+  #                                 just `cmake --build` -- the exact gap the
+  #                                 parallelism audit identified.
   #   3. cpu_count                  host core count, so an unconfigured
   #                                 single-user box still runs at full speed.
   ra8_max_jobs() {

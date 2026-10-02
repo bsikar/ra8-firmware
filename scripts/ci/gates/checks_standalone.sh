@@ -133,7 +133,7 @@ gate_pinout_freshness() (
 
 # --- font coverage --------------------------------------------------------
 # Which characters the reader can draw with no SD card present is decided by
-# the cmap of the subset checked in under libs/ra8_fonts/, and until #687 no
+# the cmap of the subset checked in under libs/ra8_fonts/, and until Tier 2 font coverage no
 # file in the tree declared that set: the only record was the pyftsubset recipe
 # in the docstring of scripts/gen/font_to_c.py, which nothing read the font
 # back against and which is 33 codepoints wider than the committed bytes.

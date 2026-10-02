@@ -174,7 +174,7 @@ if [[ "$-" == *p* ]]; then
   # tracked separately. Depending on a toolchain the tree provisions itself removes
   # the failure mode instead of provisioning around it, and makes
   # `just quality::local::gate ci-status-contract` work on a bare machine with no jq at all.
-  # The reader was a python script until #1144 moved it to Zig under the RA8FW-335
+  # The reader was a python script until a port moved it to Zig under the RA8FW-335
   # migration; zig is provisioned by the same setup path that provisions the
   # rest of the host tooling, and a missing zig is FATAL in the launcher rather
   # than a silent fallback.
@@ -268,7 +268,7 @@ if [[ "$-" == *p* ]]; then
   # Assert that `status --sha <sha>` EXPLAINS itself, not just that it exits
   # right. The exit code alone cannot distinguish "UNKNOWN because nothing ran"
   # from "UNKNOWN because the daemon is dead", and a reader who cannot tell
-  # those apart is back where #530 left them.
+  # those apart is back where the skipped-status bug left them.
   _ci_selftest_says() {
     local sha="$1" pattern="$2" label="$3" hits
     hits="$(/bin/bash -p "$0" status --sha "$sha" 2>&1 | grep -cE "$pattern" || true)"
@@ -319,7 +319,7 @@ JSON
     _ci_selftest_case 3 "a still-running sha is UNKNOWN, not PASS" status --sha ccccccccc3 || fails=$((fails + 1))
     _ci_selftest_case 3 "an unrecorded sha is UNKNOWN, not PASS" status --sha deadbeef9 || fails=$((fails + 1))
 
-    # #530: skipped is not success. These are the two directions of that rule --
+    # Skipped is not success. These are the two directions of that rule --
     # all-skipped must NOT pass, and a partial skip must NOT start failing, or
     # the fix would cry wolf on every legitimately-conditional job.
     _ci_selftest_case 3 "an ALL-SKIPPED sha is UNKNOWN, not PASS (no gate executed)" \
@@ -332,7 +332,7 @@ JSON
     _ci_selftest_says eeeeeeeee5 '^note:.*skipped' \
       "a partially skipped sha names the jobs that did not execute" || fails=$((fails + 1))
 
-    # #561: cancelled is not failure. A superseded run must not read as red, must
+    # Cancelled is not failure. A superseded run must not read as red, must
     # not mask a real failure, and a cancelled-only sha is a non-result (UNKNOWN).
     # Each direction is asserted so the fix can neither cry wolf nor go quiet.
     _ci_selftest_case 0 "success workflows + cancelled-only workflows is PASS (the 91eef75dd case)" \
@@ -443,7 +443,7 @@ JSON
             else
               "warning: all \($cur | length) run(s) for \($s[0:9]) queued "
               + "\($age)m (>\($lim)m) -- runner pool likely stalled, nothing is "
-              + "picking jobs up. Recovery: issue #484."
+              + "picking jobs up. Recovery: restart the runner pool."
             end
         end' 2>/dev/null)"
     # jq failing (malformed timestamp, ancient state document) must not corrupt
@@ -578,7 +578,7 @@ JQ
     # failure), so right after it returns the file must be seconds old. If it is
     # not, write_state failed -- a vanished state dir, a full disk -- and the
     # daemon is running while producing nothing. Count those dead cycles and exit
-    # so systemd restarts a clean daemon (issue #190: never silently do nothing).
+    # so systemd restarts a clean daemon (never silently do nothing).
     local stale_cycles=0
     local fresh_limit=$((RA8_CI_GH_TIMEOUT * 2 + 30))
     while true; do
@@ -775,7 +775,7 @@ ExecStart=/bin/bash -p $self daemon
 Restart=always
 RestartSec=30
 # A hung daemon never exits, so Restart=always alone cannot recover it -- that
-# is how #560 stayed dark. The watchdog closes that gap: the daemon pings
+# is how the monitor once stayed dark. The watchdog closes that gap: the daemon pings
 # WATCHDOG=1 every cycle (sd_watchdog_ping), and if the pings stop -- wedged in a
 # call, deadlocked -- systemd SIGABRTs it once WatchdogSec elapses and
 # Restart=always brings it straight back. NotifyAccess=all is required because
