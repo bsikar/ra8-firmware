@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# tools/cache_bench -- host build of the eviction benchmark and the #208
+# tools/cache_bench -- host build of the eviction benchmark and the
 # block/frame-size sweep.
 #
 # The day-to-day build is `just tools::build_cache_bench`; the full sweep is

@@ -1,6 +1,6 @@
 /**
  * @file src/cache_bench_report.c
- * @brief #147 benchmark front end: swept-capacity report, mode dispatch, main.
+ * @brief Eviction benchmark front end: swept-capacity report, mode dispatch, main.
  *
  * @details
  * Drives the replay engine in src/cache_bench.c across the RAM-budget axis and
@@ -35,7 +35,7 @@
  * @brief Swept cache capacities (in frames) used on the RAM-budget axis.
  * @details These are the seven capacity points that the benchmark sweeps over.
  *          Each is a power of two chosen to cover the expected SRAM/SDRAM
- *          budget range for the RA8D2 page cache (#147 decision record).
+ *          budget range for the RA8D2 page cache (SLRU decision record).
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -453,7 +453,7 @@ static int internal_run_capacity(int argc, char** argv, cb_sink_t* output, cb_si
   cb_workspace_t workspace = {.data     = s_cb_composition_workspace,
                               .capacity = sizeof(s_cb_composition_workspace)};
   const bool     banner_ok =
-    (cb_sink_format(output, "# #147 eviction-policy benchmark\n") == k_cb_io_ok) &&
+    (cb_sink_format(output, "# Eviction-policy benchmark\n") == k_cb_io_ok) &&
     (cb_sink_format(output, "\nHit rate (%%) by cache size (frames). Higher is better.\n") ==
      k_cb_io_ok);
   int result = 1;

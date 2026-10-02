@@ -315,7 +315,7 @@ static void test_happy_path(void)
 
   /* Happy load + display + sleep. The display_area LUT-idle poll reads LUTAFSR
    * over SPI; the fake SPI loopback returns the driver's own dummy byte (never
-   * zero), so the real bounded poll (issue #177 / T1-01, no longer compiled
+   * zero), so the real bounded poll (T1-01, no longer compiled
    * out) is driven through the ra8_fake_mmio seam keyed on the injected seam's
    * ctx cookie -- the bound bus handle &s_bus. Arm it to report "LUT idle" on
    * the 3rd poll so the real loop iterates twice then succeeds. */

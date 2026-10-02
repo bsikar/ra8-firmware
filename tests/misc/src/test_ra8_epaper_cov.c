@@ -28,8 +28,8 @@
  * directly on a fresh transfer counter. The production module has no coverage
  * exclusions: its timeout re-raises are driven by ``test_ra8_epaper_waits``
  * and the transport failures are driven here. The HRDY wait, the /RESET GPIO
- * pulse, and the display LUT-idle loop all run for real on host (issues #177 /
- * #238): this TU drives the LUT loop's idle-success exit (mock RX 0) and its
+ * pulse, and the display LUT-idle loop all run for real on host (the MMIO
+ * fault seam): this TU drives the LUT loop's idle-success exit (mock RX 0) and its
  * budget-exhaustion timeout (mock RX always busy), and the HRDY wait's first-
  * poll success through the unarmed ``ra8_fake_mmio`` seam.
  *

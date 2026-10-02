@@ -8,7 +8,7 @@
  * machine-parseable `sweep-block key=value ...` rows are printed as each leg
  * finishes; the human summary (one sequential and one hot-path markdown
  * table per backend, then the crossover paragraph naming the measured knee
- * against the 64 KiB `.rabook` chunk default from #204) is printed once the
+ * against the 64 KiB `.rabook` chunk default) is printed once the
  * sweep completes. Pure readers: nothing here mutates row data.
  *
  *
@@ -339,8 +339,8 @@ static int internal_print_verdict(cb_sink_t*        sink,
 {
   if (knee->knee_block == (uint32_t)k_cbs_default_chunk) {
     return (cb_sink_format(sink,
-                           "The measured knee lands on the current %s `.rabook` chunk default "
-                           "(#204): keep it.\n",
+                           "The measured knee lands on the current %s `.rabook` chunk default: "
+                           "keep it.\n",
                            default_label) == k_cb_io_ok)
              ? 0
              : 1;
@@ -406,7 +406,7 @@ int priv_print_crossover(cb_sink_t*       sink,
                          "Caveat: these are host numbers -- per-request cost here is only the "
                          "chunk lookup + zlib stream setup. SD-over-SPI adds real per-command "
                          "overhead (CMD17 loops), which pushes the knee toward larger "
-                         "blocks; the hardware leg of #208 must re-run this sweep on the bench "
+                         "blocks; the hardware leg must re-run this sweep on the bench "
                          "before shrinking the chunk size below the default.\n") == k_cb_io_ok)
            ? 0
            : 1;

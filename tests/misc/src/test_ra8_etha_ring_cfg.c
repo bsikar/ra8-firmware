@@ -7,7 +7,7 @@
  *
  * @details
  * ``ra8_etha_ring_cfg_t`` is the const-pointer spelling of the descriptor-ring
- * sizing arguments. Before #1028 the type was declared in
+ * sizing arguments. Before the ring-config fix the type was declared in
  * ``libs/ra8_hal/inc/ra8_etha_types.h`` and no entry point accepted it, so a
  * caller following its doc-comment could not compile. These cases pin the
  * forwarder that closes that gap:

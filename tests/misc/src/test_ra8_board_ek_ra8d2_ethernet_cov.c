@@ -23,8 +23,8 @@
  * the called HAL function cannot fail under RA8_OFF_TARGET given the
  * fixed, valid arguments that the ethernet module always passes; those
  * lines carry GCOVR_EXCL_LINE in the source with a justification comment.
- * The chip-generic COMA / RGMII register work moved to the ETH HAL in
- * issue #581, so the CABPIRM.BPR timeout leg is now covered in
+ * The chip-generic COMA / RGMII register work moved to the ETH HAL with
+ * the ESWM RGMII/COMA bring-up, so the CABPIRM.BPR timeout leg is now covered in
  * test_ra8_eth_coma.c and the RGMII media-select in test_ra8_eth.c; the
  * board happy path (which drives both HAL primitives) stays covered by
  * test_board_ethernet_init in test_ra8_board_ek_ra8d2.c.

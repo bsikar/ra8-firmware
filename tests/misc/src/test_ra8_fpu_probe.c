@@ -6,8 +6,8 @@
  * `ra8_fpu_dp_madd()` is the tiny `double` product-sum whose ARM object
  * code witnesses the FPU width of the build target (soft-float calls on
  * every default build, RA8D2 and RA8P1 alike; hardware `.f64` opcodes
- * only on an opt-in `RA8P1_DP_FPU=ON` build -- see ra8_fpu_probe.h and
- * issue #225). That codegen contrast is checked out-of-band by
+ * only on an opt-in `RA8P1_DP_FPU=ON` build -- see ra8_fpu_probe.h). That
+ * codegen contrast is checked out-of-band by
  * disassembling the cross-compiled objects. This host test is the
  * complementary numeric check: it runs the identical source on the
  * host's native binary64 hardware and asserts the arithmetic result, so

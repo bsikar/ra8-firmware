@@ -8,7 +8,7 @@
  * This is a HOST tool (not firmware): it replays reader access traces through
  * each candidate Layer-2 page-cache eviction policy at swept cache sizes and
  * reports hit rate, per-eviction worst-case frames scanned (a WCET proxy), and
- * per-frame metadata cost, so #147 can pick the knee of the hit-rate-vs-RAM
+ * per-frame metadata cost, so the memory design can pick the knee of the hit-rate-vs-RAM
  * curve that also clears the WCET / MC/DC bars. Policies plug in behind
  * ::cache_policy_t exactly as the eventual firmware Layer 2 will (NASA Rule 9
  * allows the function-pointer vtable for this DIP seam).
