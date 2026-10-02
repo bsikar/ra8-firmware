@@ -574,6 +574,22 @@ ra8_add_zig_library(
   ra8_tz_secure_boot
 )
 
+# The root of trust is Zig only: image verification against the provisioned
+# root key and the anti-rollback counter. Its port left it unregistered here,
+# so test_ra8_root_of_trust could not link. libs/ra8_rot has no inc/; its
+# headers (ra8_rot.h, ra8_dfu_antirollback.h) still live in libs/ra8_dfu/inc.
+ra8_add_zig_library(
+  NAME
+  ra8_rot
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_rot
+  LIBRARY_NAME
+  ra8_rot
+)
+set_target_properties(
+  ra8_zig::ra8_rot PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_dfu/inc"
+)
+
 # Fully migrated: the bounded XML emitter behind inc/ra8_xml_writer.h is Zig,
 # so libs/ra8_xml/src has no .c left. This library sat in BOTH wiring worlds:
 # RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake and by-path
@@ -854,6 +870,7 @@ link_libraries(
   ra8_zig::ra8_display_pal
   ra8_zig::ra8_ota
   ra8_zig::ra8_tz_secure_boot
+  ra8_zig::ra8_rot
   ra8_zig::ra8_camera_io
   ra8_zig::ra8_xml
   ra8_zig::ra8_net_policy
