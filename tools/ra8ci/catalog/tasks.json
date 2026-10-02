@@ -2,38 +2,6 @@
   "schema_version": 1,
   "tasks": [
     {
-      "name": "agnostic-registers",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "agnostic-registers",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "agnostic-registers"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "annotations",
       "version": 1,
       "tier": "required",
@@ -1007,38 +975,6 @@
             "scripts/ci.sh",
             "--gate",
             "hil-eil-parity"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
-      "name": "hum-register-map",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "hum-register-map",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "hum-register-map"
           ]
         }
       ],

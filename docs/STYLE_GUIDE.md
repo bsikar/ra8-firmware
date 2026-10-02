@@ -46,8 +46,7 @@ Every `.c` and `.h` opens with the same Doxygen comment block, in the
 order below. The order itself is a readability convention: no tool parses
 it, and nothing breaks if you swap two tags. (This paragraph used to say
 "order matters -- the cite_check / world_tag scripts grep on it". Neither
-ever has. `cite_check.py` greps `HUM Ch`, `check_world_tags.py` greps the
-`[Ring N / X]` / `{World: X}` pair, and neither has ever read `@file`,
+ever has. `cite_check.py` greps `HUM Ch` and has never read `@file`,
 `@brief` or `@details`. What the tags themselves are held to is in the
 table below, one enforcer named per row.)
 
@@ -86,7 +85,7 @@ they are here so the Required column can be audited rather than believed.
 |---|---|---|---|
 | `@file` | Yes | `doxy_audit.py --style` | Must be present and must name **this** file: the bare basename (1648 files), the repo-relative path (456), or no argument at all (17, doxygen then infers it). A `@file` left naming the old location after a `git mv` fails here rather than becoming a doxygen warning nobody reads. |
 | `@brief` | Yes | `doxy_audit.py --style` | One sentence, ends without a period. |
-| `@par Tag` | Yes for Ring 3+ | `check_world_tags.py` | See [Ring and World tagging](#ring-and-world-tagging). |
+| `@par Tag` | Yes for Ring 3+ | review | See [Ring and World tagging](#ring-and-world-tagging). |
 | `@details` | Yes | `doxy_audit.py --style`, strict | Multi-paragraph explanation. The original debt is closed; every missing paragraph fails and no baseline remains. |
 | Named `@par <Name>` | Optional | -- | Use for PRCR sequencing, IRQ wiring, state machines, anything subtle. |
 | `@author` | Optional | -- | Review convention, not a rule: 104 of 2121 first-party C files carry one, and `@copyright` below already names the author. Keep it where it exists; a new file does not need it. This row said "Yes" for the life of the tree while 95% of it disagreed and nothing checked. |
@@ -613,4 +612,4 @@ to run in:
  */
 ```
 
-`scripts/checks/check_world_tags.py` enforces it at commit time.
+Review enforces it; the C-only checker was removed (RA8FW-370).

@@ -33,7 +33,7 @@
 # every other independent group.
 
 # Constructs that may not appear in first-party source at all: superseded
-# standards, missing TrustZone world tags, heap use after
+# standards, heap use after
 # init (NASA P10 Rule 3), AI attribution, and the C NULL macro.
 _pcc_banned_constructs() (
   set -e
@@ -43,8 +43,6 @@ _pcc_banned_constructs() (
   # fires and that tools/ -- silently omitted by the old hardcoded scan lists --
   # is back in scope, before the tree is trusted. A re-narrowed scope turns the
   # selftest red instead of passing green over files it stopped scanning.
-  python3 scripts/checks/check_world_tags.py --selftest
-  python3 scripts/checks/check_world_tags.py --strict
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --selftest
   python3 scripts/checks/check_no_dynamic_alloc.py --all

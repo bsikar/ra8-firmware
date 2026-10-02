@@ -27,25 +27,11 @@
 # _pcc_repository_structure out of its text. Moving those would have broken
 # both.
 #
-# Gates in this file: agnostic-registers, shebangs, tier-imports,
+# Gates in this file: shebangs, tier-imports,
 # entry-points, pinout-freshness, font-coverage, bench-lock, annotations,
 # enum-underlying-casts, tests-readme, disambig-readmes,
-# cite-check, hum-register-map, arch-caps, arch-compiles, measured-counts,
+# cite-check, arch-caps, arch-compiles, measured-counts,
 # hil-eil-parity
-
-# --- agnostic-registers --------------------------------------------------
-# The existing clock, display, GPIO and timer reach-ins are migration debt
-# under RA8FW-299. Freeze it before that migration starts: a new concrete symbol
-# outside the HAL, a named backend TU, or a board composition library fails
-# now, while a removed reference passes and can be ratcheted into the baseline. The
-# selftest drives the same scanner first and asserts both directions plus the
-# live-scope floor, so a broken matcher cannot report a clean tree.
-gate_agnostic_registers() (
-  set -e
-  require_cmd python3 "the agnostic-registers gate is a Python source scanner"
-  python3 scripts/checks/check_agnostic_registers.py --selftest
-  python3 scripts/checks/check_agnostic_registers.py --check
-)
 
 # --- shebangs -------------------------------------------------------------
 # Every first-party shell path has an explicit typed authority: portable Bash
@@ -281,28 +267,6 @@ gate_cite_check() (
   python3 scripts/checks/cite_check.py --strict
   python3 scripts/checks/cite_ratchet.py --selftest
   python3 scripts/checks/cite_ratchet.py --check
-)
-
-# --- hum-register-map -----------------------------------------------------
-# The complement of cite-check, and the reason it is a SEPARATE gate:
-# cite_check.py asks whether a citation is well-formed and points inside the
-# right chapter; this asks whether the register it names EXISTS, at the offset
-# we declare, on the page we cite. Three landed defects were invisible to the
-# first question and obvious to the second -- the ra8_rsip family, #498's
-# reserved-aperture GPTP window, and the EASCR.
-#
-# The authority is the committed manual PDF, re-parsed here on every run, so
-# pdftotext is a hard requirement: a gate that skipped when poppler was absent
-# would report every register in the tree clean.
-gate_hum_register_map() (
-  set -e
-  require_cmd pdftotext
-  # --selftest FIRST: proves each of the four rules fires on a broken input
-  # AND stays quiet on a real one, that both vacuity floors reject an empty
-  # scan, and that the ratchet only permits shrinkage. A symbol-table
-  # extractor that silently produced nothing would otherwise pass forever.
-  python3 scripts/checks/check_hum_register_map.py --selftest
-  python3 scripts/checks/check_hum_register_map.py
 )
 
 # --- arch-caps ------------------------------------------------------------

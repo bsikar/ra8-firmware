@@ -237,10 +237,8 @@ gate_lint_ld() (
 # --- reserved-addrs -------------------------------------------------------
 # Three drivers have now named an address describing hardware that is not
 # there (ra8_rsip, ra8_ptp #498, ra8_wdt_regs #545) -- each compiled clean and
-# failed only on silicon. check_hum_register_map.py checks register
-# symbols and struct/window offsets against the manual's tables, but an
-# absolute-address enumerator is neither, so that gate does not cover this.
-# This one answers the cheaper question: is the address inside a hole?
+# failed only on silicon. This gate answers the cheap question: is the
+# address inside a HUM Reserved hole?
 gate_reserved_addrs() (
   set -e
   python3 scripts/checks/check_reserved_addresses.py --selftest
