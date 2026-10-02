@@ -3,17 +3,17 @@
 - **Status**: Proposed -- the decision below is Brighton's to confirm; nothing
   is implemented by this record.
 - **Date**: 2026-09-17
-- **Issue**: #699 (Platform-arch (g): own-your-vendoring / add-a-first-party-or-vendored-lib cleanliness)
+- **Issue**: Platform-arch (g): own-your-vendoring / add-a-first-party-or-vendored-lib cleanliness
 - **Parent epic**: RA8FW-298
 - **Verified against**: `dev` @ `1657296`
 
 ## Context
 
-#699 asks for a *vendoring-completeness gate*: a vendored component directory
-"with no `port/` shim, no `docs/SOUP/<name>.md`, no SBOM row, or no license
-entry fails", so that a half-vendored component becomes a detectable state
-rather than a thing a reviewer happens to notice. The issue is marked
-DESIGN / PLANNING ONLY and is sequenced behind the filesystem work, so
+The own-your-vendoring issue asks for a *vendoring-completeness gate*: a
+vendored component directory "with no `port/` shim, no `docs/SOUP/<name>.md`, no
+SBOM row, or no license entry fails", so that a half-vendored component becomes
+a detectable state rather than a thing a reviewer happens to notice. The issue
+is marked DESIGN / PLANNING ONLY and is sequenced behind the filesystem work, so
 this record settles the contract's shape and leaves the landing to the owner.
 
 Three of the issue's premises have moved since it was filed on 2026-08-09.
@@ -85,7 +85,7 @@ every gate in the tree while carrying no qualification record at all -- which
 matters because `CLAUDE.md` line 1249 rests the MC/DC exemption for both vendor
 roots on exactly those records.
 
-### Item 4 of #699 is already satisfied
+### Item 4 of the vendoring issue is already satisfied
 
 `scripts/checks/check_no_silent_stubs.py` line 95 sets
 `ROOTS = ("libs", "tools", "apps", "examples", "port")`, so shim sources under
@@ -124,9 +124,10 @@ nothing.
 
 ## Options
 
-**A. Gate all four requirements exactly as #699 states them.** Rejected. It
-fails 11 of 18 components on the shim requirement alone, and the only remedies
-are an empty shim or a baseline with 11 rows, which is the prose it replaced.
+**A. Gate all four requirements exactly as the vendoring issue states them.**
+Rejected. It fails 11 of 18 components on the shim requirement alone, and the
+only remedies are an empty shim or a baseline with 11 rows, which is the prose
+it replaced.
 
 **B. Gate the documents from declared fields; report the shim (recommended).**
 Add two fields to each registry entry naming its qualification record and its
@@ -140,7 +141,7 @@ failure. The checks are peers of the directory-drift check already in
 
 **C. Leave it as prose (status quo).** The coupling stays checkable only by a
 human reading three documents. Cheapest today; loses the "clean path is the only
-path" property #699 is for.
+path" property the vendoring issue is for.
 
 **D. Derive the document path from the key, with an exceptions allowlist.**
 Rejected. An allowlist of today's four exceptions is the same prose moved into
@@ -184,7 +185,8 @@ Two questions are left open rather than answered here, because both are policy:
 
 ## References
 
-- Issue #699 (this record), parent epic RA8FW-298, dependency #611.
+- The own-your-vendoring issue (this record), parent epic RA8FW-298, dependency
+  on the platform-complete filesystem strategy.
 - `scripts/gen/sbom_registry.py`, `scripts/gen/gen_sbom.py`,
   `scripts/checks/check_soup_upstream.py`,
   `scripts/checks/check_third_party_patches.py`,

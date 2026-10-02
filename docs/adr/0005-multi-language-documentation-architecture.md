@@ -129,7 +129,7 @@ and the three Markdown, Zig and Rust columns were never wired at all.
 
 ## References
 
-* #900, this architecture
-* #855 `epic:zig-migration`, RA8FW-339 build-graph parity
+* The multi-language documentation architecture design (this record)
+* The first-library C-to-Zig migration epic, RA8FW-339 build-graph parity
 * `docs/DOCS.md`, the Doxygen pin and theme
 * [MkDocs configuration](https://www.mkdocs.org/user-guide/configuration/)
