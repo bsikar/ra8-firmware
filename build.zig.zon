@@ -24,6 +24,22 @@
         .if_ra8_cgc = .{ .path = "libs/if_ra8_cgc" },
         .@"if" = .{ .path = "libs/if" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
+        // Third-party, fetched by cmake/zig_package.cmake; nothing in build.zig imports it.
+        .flatbuffers = .{
+            .url = "https://github.com/google/flatbuffers/archive/187240970746d00bbd26b0f5873ed54d2477f9f3.tar.gz",
+            .hash = "N-V-__8AABzBxwBMl4El_S7LHuoUmX_djbnoBjd-bFivTVUO",
+            .lazy = true,
+        },
+        .gemmlowp = .{
+            .url = "https://github.com/google/gemmlowp/archive/719139ce755a0f31cbf1c37f7f98adcc7fc9f425.tar.gz",
+            .hash = "N-V-__8AAF8UUQDfw2gf77-gAA8_kdu0idv5S00VssPCWByg",
+            .lazy = true,
+        },
+        .ruy = .{
+            .url = "https://github.com/google/ruy/archive/d37128311b445e758136b8602d1bbd2a755e115d.tar.gz",
+            .hash = "N-V-__8AAHM2GQD1bQLoOLlEhGDOEM8O1g0jjvII9F_PUyat",
+            .lazy = true,
+        },
     },
     .paths = .{
         "build.zig",

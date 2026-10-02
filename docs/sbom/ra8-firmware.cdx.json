@@ -485,7 +485,7 @@
         },
         {
           "name": "ra8:note2",
-          "value": "Bumped from 1.9.0+git.8b6f3e81, which OSV resolved into CVE-2026-45811 / -45815 / -45816 / -46452. All four are fixed in 1.10.0 and OSV resolves this commit clean (#508). Moving to a tagged release also closes the NimBLE half of SOUP-4."
+          "value": "Bumped from 1.9.0+git.8b6f3e81, which OSV resolved into CVE-2026-45811 / -45815 / -45816 / -46452. All four are fixed in 1.10.0 and OSV resolves this commit clean. Moving to a tagged release also closes the NimBLE half of SOUP-4."
         },
         {
           "name": "ra8:note3",
@@ -818,7 +818,7 @@
         },
         {
           "name": "ra8:note0",
-          "value": "DECODE-ONLY subset (#290): upstream's libwebpdecoder source set (src/dec + the decode subset of src/dsp + src/utils COMMON) plus the headers those TUs include; the encoder, mux/demux, sharpyuv and CLI tools are not vendored. Byte-identical to release tag v1.5.0."
+          "value": "DECODE-ONLY subset: upstream's libwebpdecoder source set (src/dec + the decode subset of src/dsp + src/utils COMMON) plus the headers those TUs include; the encoder, mux/demux, sharpyuv and CLI tools are not vendored. Byte-identical to release tag v1.5.0."
         },
         {
           "name": "ra8:note1",
@@ -893,15 +893,15 @@
         },
         {
           "name": "ra8:note0",
-          "value": "LEAN subset (#228): MicroInterpreter / MicroAllocator / op-resolver core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and examples are omitted."
+          "value": "LEAN subset: MicroInterpreter / MicroAllocator / op-resolver core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and examples are omitted."
         },
         {
           "name": "ra8:note1",
-          "value": "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling libs/third_party components (not nested)."
+          "value": "Build deps FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in build.zig.zon (not nested)."
         },
         {
           "name": "ra8:note2",
-          "value": "Phase 2 (#228) replaces the Ethos-U op stub with an ra8_npu adapter; see docs/SOUP/tflite-micro.md."
+          "value": "Phase 2 replaces the Ethos-U op stub with an ra8_npu adapter; see docs/SOUP/tflite-micro.md."
         }
       ]
     },
@@ -921,12 +921,6 @@
         }
       ],
       "purl": "pkg:github/google/flatbuffers@v25.9.23",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "7003a5b6c767362a5055a3ece298a3cb6b8ae5a6f40db1e3fb45addfc556b5e8"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -936,15 +930,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/flatbuffers"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "19"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -955,19 +945,19 @@
           "value": "v25.9.23"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/flatbuffers/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "false"
         },
         {
           "name": "ra8:note0",
-          "value": "Headers only (include/flatbuffers/*.h) -- the read/verify path TFLite-micro needs; no flatc compiler or codegen vendored."
+          "value": "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake."
         },
         {
           "name": "ra8:note1",
+          "value": "Headers only (include/flatbuffers/*.h) -- the read/verify path TFLite-micro needs; no flatc compiler or codegen vendored."
+        },
+        {
+          "name": "ra8:note2",
           "value": "The exact tag and commit are shared with docs/sbom/upstream/flatbuffers.manifest."
         }
       ]
@@ -988,12 +978,6 @@
         }
       ],
       "purl": "pkg:github/google/gemmlowp@719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "58e46eed4293578f57ef7df6a953f8e4e64cbb004b81dbe736a55406bbe91db0"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -1003,15 +987,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/gemmlowp"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "7"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1022,19 +1002,19 @@
           "value": "719139ce755a0f31cbf1c37f7f98adcc7fc9f425"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/gemmlowp/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "false"
         },
         {
           "name": "ra8:note0",
-          "value": "Header-only subset: fixedpoint/*.h + internal/detect_platform.h (the files the reference kernels include)."
+          "value": "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake."
         },
         {
           "name": "ra8:note1",
+          "value": "Header-only subset: fixedpoint/*.h + internal/detect_platform.h (the files the reference kernels include)."
+        },
+        {
+          "name": "ra8:note2",
           "value": "The exact commit is shared with docs/sbom/upstream/gemmlowp.manifest."
         }
       ]
@@ -1055,12 +1035,6 @@
         }
       ],
       "purl": "pkg:github/google/ruy@d37128311b445e758136b8602d1bbd2a755e115d",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "a7b26d8c292bf793c4c5329f2a87d44ed105c951bc4c614d48c430c4b612dd06"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -1070,15 +1044,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/ruy"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "2"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1089,19 +1059,19 @@
           "value": "d37128311b445e758136b8602d1bbd2a755e115d"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/ruy/LICENSE"
-        },
-        {
           "name": "ra8:modified",
           "value": "false"
         },
         {
           "name": "ra8:note0",
-          "value": "Single header vendored: ruy/profiler/instrumentation.h (a no-op profiler stub); no ruy GEMM backend."
+          "value": "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake."
         },
         {
           "name": "ra8:note1",
+          "value": "Single header vendored: ruy/profiler/instrumentation.h (a no-op profiler stub); no ruy GEMM backend."
+        },
+        {
+          "name": "ra8:note2",
           "value": "The exact commit is shared with docs/sbom/upstream/ruy.manifest."
         }
       ]

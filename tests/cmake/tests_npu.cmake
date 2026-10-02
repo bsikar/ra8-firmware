@@ -134,7 +134,10 @@ add_test(NAME test_ra8_npu_loader COMMAND test_ra8_npu_loader)
 # failing, and says so.
 # ---------------------------------------------------------------------------
 set(_ra8_tflm_host_dir "${FW_ROOT}/libs/third_party/tflite-micro")
-set(_ra8_flatb_host_dir "${FW_ROOT}/libs/third_party/flatbuffers")
+include(${FW_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(flatbuffers _ra8_flatb_host_dir)
+ra8_zig_package_dir(gemmlowp _ra8_gemmlowp_host_dir)
+ra8_zig_package_dir(ruy _ra8_ruy_host_dir)
 
 if(NOT EXISTS "${_ra8_tflm_host_dir}/tensorflow/lite/micro/micro_interpreter.h"
    OR NOT EXISTS "${_ra8_flatb_host_dir}/include/flatbuffers/flatbuffers.h"
@@ -166,8 +169,8 @@ else()
   )
   target_include_directories(
     tflm_host_objs SYSTEM PUBLIC ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
-                                 ${FW_ROOT}/libs/third_party/gemmlowp
-                                 ${FW_ROOT}/libs/third_party/ruy
+                                 ${_ra8_gemmlowp_host_dir}
+                                 ${_ra8_ruy_host_dir}
   )
   target_compile_definitions(tflm_host_objs PUBLIC TF_LITE_STATIC_MEMORY)
   target_compile_options(
@@ -197,7 +200,7 @@ else()
   target_include_directories(
     test_ra8_tflm_op_subset SYSTEM
     PRIVATE ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
-            ${FW_ROOT}/libs/third_party/gemmlowp ${FW_ROOT}/libs/third_party/ruy
+            ${_ra8_gemmlowp_host_dir} ${_ra8_ruy_host_dir}
   )
   target_compile_definitions(test_ra8_tflm_op_subset PRIVATE TF_LITE_STATIC_MEMORY)
   if(REFLOW_USE_LITEHTML)
@@ -245,7 +248,7 @@ else()
   target_include_directories(
     test_ra8_tflm_interpreter SYSTEM
     PRIVATE ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
-            ${FW_ROOT}/libs/third_party/gemmlowp ${FW_ROOT}/libs/third_party/ruy
+            ${_ra8_gemmlowp_host_dir} ${_ra8_ruy_host_dir}
   )
   target_compile_definitions(test_ra8_tflm_interpreter PRIVATE TF_LITE_STATIC_MEMORY)
   if(REFLOW_USE_LITEHTML)

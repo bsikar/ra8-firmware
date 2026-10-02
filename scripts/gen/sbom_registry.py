@@ -576,8 +576,8 @@ REGISTRY: tuple[Component, ...] = (
             "Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the "
             "CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and "
             "examples are omitted.",
-            "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling "
-            "libs/third_party components (not nested).",
+            "Build deps FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in "
+            "build.zig.zon (not nested).",
             "Phase 2 replaces the Ethos-U op stub with an ra8_npu adapter; "
             "see docs/SOUP/tflite-micro.md.",
         ),
@@ -589,15 +589,18 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="google",
         url="https://github.com/google/flatbuffers",
-        path="libs/third_party/flatbuffers",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="Serialization headers for the .tflite model format read by TFLite-micro.",
         purl="pkg:github/google/flatbuffers@v25.9.23",
         upstream_ref="v25.9.23",
         spdx="Apache-2.0",
-        license_file="libs/third_party/flatbuffers/LICENSE",
+        dep_pin_spec="N-V-__8AABzBxwBMl4El_S7LHuoUmX_djbnoBjd-bFivTVUO",
         upstream_commit="187240970746d00bbd26b0f5873ed54d2477f9f3",
         extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash) and fetched into the Zig package cache by "
+            "cmake/zig_package.cmake.",
             "Headers only (include/flatbuffers/*.h) -- the read/verify path "
             "TFLite-micro needs; no flatc compiler or codegen vendored.",
             "The exact tag and commit are shared with docs/sbom/upstream/flatbuffers.manifest.",
@@ -610,17 +613,20 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="google",
         url="https://github.com/google/gemmlowp",
-        path="libs/third_party/gemmlowp",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description=(
             "Fixed-point math headers the quantized TFLite-micro reference kernels depend on."
         ),
         purl="pkg:github/google/gemmlowp@719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
         spdx="Apache-2.0",
-        license_file="libs/third_party/gemmlowp/LICENSE",
+        dep_pin_spec="N-V-__8AAF8UUQDfw2gf77-gAA8_kdu0idv5S00VssPCWByg",
         upstream_commit="719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
         upstream_ref="719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
         extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash) and fetched into the Zig package cache by "
+            "cmake/zig_package.cmake.",
             "Header-only subset: fixedpoint/*.h + internal/detect_platform.h "
             "(the files the reference kernels include).",
             "The exact commit is shared with docs/sbom/upstream/gemmlowp.manifest.",
@@ -633,17 +639,20 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="google",
         url="https://github.com/google/ruy",
-        path="libs/third_party/ruy",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description=(
             "Profiler instrumentation stub header included by TFLite-micro kernel utilities."
         ),
         purl="pkg:github/google/ruy@d37128311b445e758136b8602d1bbd2a755e115d",
         spdx="Apache-2.0",
-        license_file="libs/third_party/ruy/LICENSE",
+        dep_pin_spec="N-V-__8AAHM2GQD1bQLoOLlEhGDOEM8O1g0jjvII9F_PUyat",
         upstream_commit="d37128311b445e758136b8602d1bbd2a755e115d",
         upstream_ref="d37128311b445e758136b8602d1bbd2a755e115d",
         extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig "
+            "content hash) and fetched into the Zig package cache by "
+            "cmake/zig_package.cmake.",
             "Single header vendored: ruy/profiler/instrumentation.h (a no-op "
             "profiler stub); no ruy GEMM backend.",
             "The exact commit is shared with docs/sbom/upstream/ruy.manifest.",
