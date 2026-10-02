@@ -17,12 +17,14 @@
 # same directory scope, so every variable and target defined here is visible
 # to the driver and to the fragments included after it.
 
-set(RA8_C6LINK_VENDOR_DIR ${FW_ROOT}/libs/third_party/esp-hosted)
+# RA8_ESP_HOSTED_HOST_DIR / RA8_PROTOBUF_C_DIR: pinned packages, resolved in
+# core_hal.cmake.
+set(RA8_C6LINK_VENDOR_DIR ${RA8_ESP_HOSTED_HOST_DIR})
 
 # The vendored subset ra8_c6link reaches: the generated codec and the runtime
 # that walks its descriptors. Nothing else from the vendor tree is linked.
 set(RA8_C6LINK_SOUP ${RA8_C6LINK_VENDOR_DIR}/common/proto/esp_hosted_rpc.pb-c.c
-                    ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
+                    ${RA8_PROTOBUF_C_DIR}/protobuf-c/protobuf-c.c
 )
 
 set(RA8_C6LINK_INCLUDE_DIRS
@@ -38,7 +40,7 @@ set(RA8_C6LINK_INCLUDE_DIRS
     ${RA8_C6LINK_VENDOR_DIR}/common
     ${RA8_C6LINK_VENDOR_DIR}/common/transport
     ${RA8_C6LINK_VENDOR_DIR}/common/proto
-    ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c
+    ${RA8_PROTOBUF_C_DIR}
 )
 
 file(GLOB RA8_C6LINK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_c6link/src/*.c)

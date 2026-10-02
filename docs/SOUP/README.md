@@ -94,7 +94,8 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
   and the protocol round-trip is proven on silicon.
 - **protobuf-c** -- Protocol Buffers C runtime backing the esp-hosted RPC
   codec; a git submodule upstream, so it is pinned and licensed separately
-  (BSD-2-Clause) inside `libs/third_party/esp-hosted/common/protobuf-c/`.
+  (BSD-2-Clause) as its own pinned `build.zig.zon` package (`bsikar/protobuf-c`
+  fork carrying the RA8 patch).
 - **Vela** (host tool) -- Arm's offline Ethos-U model compiler; runs at build
   time, links nothing into firmware. See [vela.md](vela.md).
 - **Espressif esp-hosted-mcu** -- ESP32-C6 wireless co-processor firmware

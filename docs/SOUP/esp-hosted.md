@@ -11,7 +11,7 @@ as two components because they are qualified differently:
 | Half | Runs on | Vendored? | Document |
 |------|---------|-----------|----------|
 | Co-processor firmware (**this document**) | ESP32-C6, flashed as its own image | no, built from a pinned recipe | this file |
-| Host driver | RA8D2, linked into the RA8 image | yes, `libs/third_party/esp-hosted/` | [`esp-hosted-host.md`](esp-hosted-host.md) |
+| Host driver | RA8D2, linked into the RA8 image | no, pinned `build.zig.zon` package `esp_hosted` | [`esp-hosted-host.md`](esp-hosted-host.md) |
 
 Both halves come from the same upstream commit `949bb30` and report the same
 protocol version 2.12.11, which is what makes them wire-compatible.
@@ -31,8 +31,8 @@ protocol version 2.12.11, which is what makes them wire-compatible.
   `coprocessor/esp32c6/build.sh` fetches the pinned upstream into the
   git-ignored `coprocessor/esp32c6/esp-hosted-mcu/` at build time.
   This is a statement about the C6 image only: the complementary **host
-  driver from the same upstream repository IS vendored**, at
-  `libs/third_party/esp-hosted/`, and is qualified separately in
+  driver from the same upstream repository IS linked into the RA8 image**, as
+  the pinned `build.zig.zon` package `esp_hosted`, and is qualified separately in
   [`esp-hosted-host.md`](esp-hosted-host.md).
 
 ## Provenance
@@ -132,7 +132,7 @@ OSV.dev alongside the vendored SOUP.
 
 ## See also
 
-- [`esp-hosted-host.md`](esp-hosted-host.md) -- the host-driver half, vendored
-  at `libs/third_party/esp-hosted/`.
+- [`esp-hosted-host.md`](esp-hosted-host.md) -- the host-driver half, a
+  pinned `build.zig.zon` package (`esp_hosted`).
 - [`../design/c6_wireless_architecture.md`](../design/c6_wireless_architecture.md)
   -- the design-level architecture.

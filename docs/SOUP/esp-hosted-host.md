@@ -10,7 +10,7 @@ as two components because they are qualified differently:
 
 | Half | Runs on | Vendored? | Document |
 |------|---------|-----------|----------|
-| Host driver (**this document**) | RA8D2, linked into the RA8 image | yes, `libs/third_party/esp-hosted/` | this file |
+| Host driver (**this document**) | RA8D2, linked into the RA8 image | no, pinned `build.zig.zon` package `esp_hosted` | this file |
 | Co-processor firmware | ESP32-C6, flashed as its own image | no, built from a pinned recipe | [`esp-hosted.md`](esp-hosted.md) |
 
 Both halves come from the same upstream commit and report the same protocol
@@ -24,16 +24,13 @@ version (2.12.11), which is what makes them wire-compatible.
 - **Source pin**: upstream commit
   `949bb30612747a3bd9e402eda8d01fbfa1f8503e` (short `949bb30`).
 - **Upstream URL**: <https://github.com/espressif/esp-hosted-mcu>.
-- **Local path**: `libs/third_party/esp-hosted/`.
-- **Integrity**: the 77 esp-hosted-owned files are pinned file by file in
-  `docs/sbom/upstream/esp-hosted.manifest` (the nested protobuf-c subtree is
-  excluded and pinned separately, below). Those hashes come from a real fetch
-  of upstream, and `scripts/checks/check_soup_upstream.py` compares them
-  against this tree on every run of the `soup-upstream` gate; the per-run
-  derived digest is published in `docs/sbom/ra8-firmware.cdx.json`. No
-  aggregate hash is transcribed into the registry -- that field was removed
-  because a hand-copied constant compared against itself reports clean on a
-  mutated byte.
+- **Local path**: none. Pinned in `build.zig.zon` (`esp_hosted`) as the
+  upstream `949bb30` tarball and fetched into the Zig package cache by
+  `cmake/zig_package.cmake` (RA8FW-385, 2026-10-02).
+- **Integrity**: the Zig content hash in `build.zig.zon` pins the exact
+  upstream bytes, and a fetch that does not match it fails. When RA8FW-385
+  replaced the vendored copy, all 77 vendored files were byte-identical to
+  the tarball.
 
 ### Nested component: protobuf-c
 
@@ -46,13 +43,15 @@ esp-hosted aggregate hash.
 - **Name**: protobuf-c (Protocol Buffers C runtime).
 - **Version**: 1.4.1 (`PROTOBUF_C_VERSION` in `protobuf-c/protobuf-c.h`).
 - **Source pin**: submodule commit
-  `abc67a11c6db271bedbb9f58be85d6f4e2ea8389`.
+  `abc67a11c6db271bedbb9f58be85d6f4e2ea8389`, consumed through the fork
+  <https://github.com/bsikar/protobuf-c> at `c61bb2e30f50a984f9c76f600b34150bc76f9553`
+  (branch `ra8-abc67a11`: upstream plus one RA8 patch commit).
 - **Upstream URL**: <https://github.com/protobuf-c/protobuf-c>.
-- **Local path**: `libs/third_party/esp-hosted/common/protobuf-c/`.
+- **Local path**: none. Pinned in `build.zig.zon` (`protobuf_c`).
 - **License**: BSD-2-Clause (upstream `LICENSE`).
-- **Integrity**: its 3 files are pinned individually in
-  `docs/sbom/upstream/esp-hosted/protobuf-c.manifest`, checked by the same
-  `soup-upstream` gate.
+- **Integrity**: the Zig content hash pins the fork commit. Its `LICENSE`,
+  `protobuf-c.c` and `protobuf-c.h` were byte-identical to the previously
+  vendored files.
 
 ## Provenance
 
@@ -310,13 +309,13 @@ DO-178C Section 12.1.4 (previously developed software):
 ## Deviations / patches
 
 The esp-hosted driver files remain byte-identical to upstream `949bb30`. The
-nested protobuf-c runtime has one functional patch,
-`docs/sbom/patches/protobuf-c/0001-use-ra8-runtime-policy.patch`: target builds
-route its unreachable assertion and hosted allocator paths through the
-first-party RA8 policy, while host builds retain the upstream behavior. The
-two omissions described under "Vendoring scope" are whole-file exclusions,
-not source modifications. The offline patch gate replays the numbered patch
-against the `abc67a11` blobs and requires the checked-in bytes to match.
+protobuf-c runtime has one functional patch: target builds route its
+unreachable assertion and hosted allocator paths through the first-party RA8
+policy, while host builds keep the upstream behavior. It is the single commit
+`c61bb2e3` on top of upstream `abc67a11` in the `bsikar/protobuf-c` fork, so
+`git diff abc67a11 c61bb2e3` there is the whole deviation. (Until RA8FW-385
+it was `docs/sbom/patches/protobuf-c/0001-use-ra8-runtime-policy.patch`,
+replayed by the offline patch gate.)
 
 ## CVE monitoring
 

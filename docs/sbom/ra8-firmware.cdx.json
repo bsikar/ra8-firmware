@@ -1049,12 +1049,6 @@
       ],
       "copyright": "Apache-2.0 (upstream LICENSE); no separate NOTICE file upstream.",
       "purl": "pkg:github/espressif/esp-hosted-mcu@949bb30612747a3bd9e402eda8d01fbfa1f8503e",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "af66c83108a87fa8a2deb001ebf371daf92d3b58db8b9bd42b7c6717d5cba327"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -1064,23 +1058,15 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/esp-hosted"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "80"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
           "value": "949bb30612747a3bd9e402eda8d01fbfa1f8503e"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/esp-hosted/LICENSE"
         },
         {
           "name": "ra8:modified",
@@ -1092,7 +1078,7 @@
         },
         {
           "name": "ra8:note1",
-          "value": "Vendored subset: upstream host/ (minus host/port/) and common/ (minus esp_hosted_lwip_src_port_hook.h). 77 files, all byte-identical to upstream 949bb30; aggregate SHA-256 is over the sorted per-file hashes of those 77 files (it excludes the separately-pinned nested protobuf-c subtree)."
+          "value": "NOT vendored: pinned in build.zig.zon as the upstream 949bb30 tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake. The 77 files the tree used to vendor (host/ minus host/port/, common/ minus the lwip hook) are byte-identical in it. The upstream tarball has no common/protobuf-c (a submodule there); that comes from the protobuf_c package."
         },
         {
           "name": "ra8:note2",
@@ -1121,30 +1107,20 @@
       ],
       "copyright": "BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
       "purl": "pkg:github/protobuf-c/protobuf-c@abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "a82bad693a1d57f810de1517038da72aa79f3ab2dec9da98fe41aec608f503c9"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/protobuf-c/protobuf-c"
+          "url": "https://github.com/bsikar/protobuf-c"
         }
       ],
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/esp-hosted/common/protobuf-c"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "3"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1153,10 +1129,6 @@
         {
           "name": "ra8:upstreamRef",
           "value": "abc67a11c6db271bedbb9f58be85d6f4e2ea8389"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/esp-hosted/common/protobuf-c/LICENSE"
         },
         {
           "name": "ra8:modified",
@@ -1168,11 +1140,15 @@
         },
         {
           "name": "ra8:note1",
-          "value": "Runtime-only subset: protobuf-c/protobuf-c.c, protobuf-c/protobuf-c.h and LICENSE (3 files, byte-identical to abc67a11). The protoc-c code generator, build system and tests are a host-side C++ toolchain and are not vendored; the generated esp_hosted_rpc.pb-c.c ships pre-generated in the esp-hosted tree."
+          "value": "NOT vendored: pinned in build.zig.zon as the bsikar/protobuf-c fork at c61bb2e3 (branch ra8-abc67a11): upstream abc67a11 plus one commit that routes target-build assertions through the RA8 policy and makes the system allocator fail closed. That commit is the whole local patch; it used to live in docs/sbom/patches/protobuf-c."
         },
         {
           "name": "ra8:note2",
-          "value": "Version is doubly evidenced: commit pin + aggregate SHA-256 + an in-header PROTOBUF_C_VERSION probe cross-checked by this generator."
+          "value": "Only the runtime is used: protobuf-c/protobuf-c.c and .h. The protoc-c code generator, build system and tests are a host-side C++ toolchain and are not vendored; the generated esp_hosted_rpc.pb-c.c ships pre-generated in the esp-hosted tree."
+        },
+        {
+          "name": "ra8:note3",
+          "value": "Version: 1.4.1 (PROTOBUF_C_VERSION in protobuf-c/protobuf-c.h at the pin)."
         }
       ]
     },
