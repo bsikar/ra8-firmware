@@ -14,14 +14,17 @@ firmware as Software Of Unknown Provenance (SOUP).
   the release tag points at; the 1.10.0 identity comes from the tag and
   from `RELEASE_NOTES.md`.
 - **Upstream URL**: https://github.com/apache/mynewt-nimble
-- **Local path**: `libs/third_party/nimble/`
+- **Local path**: none. Pinned in `build.zig.zon` as the upstream
+  `nimble_1_10_0_tag` tarball (url + Zig content hash) and fetched into the
+  Zig package cache by `cmake/zig_package.cmake`.
 
 ## Provenance
 
 - **Origin**: Apache Software Foundation, Apache Mynewt project.
 - **License**: Apache-2.0 (`LICENSE` and `NOTICE`).
-- **How it entered our tree**: Vendored from the upstream release tag.
-  All 615 vendored files (614 regular files plus the one
+- **How it entered our tree**: Vendored from the upstream release tag
+  until RA8FW-385 (2026-10-02), which replaced the vendored copy with the
+  pinned upstream tarball after re-checking every file. All 615 vendored files (614 regular files plus the one
   `porting/npl/riot/include/npl_syscfg/npl_sycfg.h` symlink) are
   byte-identical to `nimble_1_10_0_tag`. The vendored subset is
   `nimble/` (475 files), `porting/` (131) and nine repository-root files
@@ -131,8 +134,10 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None. The vendored tree is byte-identical to the pinned upstream release
-tag, re-verified file-by-file at the 1.10.0 re-vendor. Omission is not
+None. The build uses the pinned upstream release tarball as is. While it
+was vendored, the tree was byte-identical to the tag, re-verified
+file-by-file at the 1.10.0 re-vendor and again (615/615) when RA8FW-385
+moved it to `build.zig.zon`. Omission is not
 deviation: upstream `apps/` and the 212 unbuildable files listed under
 "Provenance" are absent, and every file that is present matches the tag
 byte for byte.
@@ -141,7 +146,7 @@ One historical deviation is worth recording, because it was undocumented
 and because of how it arose. Under the previous 1.9.0+dev pin, a
 tree-wide `esp32/` path-rename pass (commit `a823419b9`, cleaning up
 after a deleted first-party spike) also rewrote a documentation URL
-inside `libs/third_party/nimble/README.md`
+inside the then-vendored NimBLE `README.md`
 (`.../esp-idf/en/latest/esp32/api-reference/...` ->
 `.../esp32c6/api-reference/...`). That one-line edit made this document's
 "byte-identical" claim, and the matching claims in
@@ -164,11 +169,11 @@ falsifying this section.
 A digest over our own tree would still not have caught the drift at
 vendor-in -- it would have hashed the rewritten URL faithfully and reported
 clean forever. So the claim above is also checked against upstream itself:
-`docs/sbom/upstream/nimble.manifest` records the blob SHA-1 upstream
-publishes for each of the 615 vendored files at `nimble_1_10_0_tag`, fetched
-from `apache/mynewt-nimble` rather than derived here, and the `soup-upstream`
-gate compares our index against it on every push. Under that check the tree
-is 615/615 byte-identical with zero declared deviations.
+`docs/sbom/upstream/nimble.manifest` recorded the blob SHA-1 upstream
+publishes for each of the 615 vendored files at `nimble_1_10_0_tag`, and the
+`soup-upstream` gate compared our index against it on every push. With the
+tree gone both checks are moot: the Zig content hash in `build.zig.zon` pins
+the exact upstream bytes, and a fetch that does not match it fails.
 
 ## CVE monitoring
 

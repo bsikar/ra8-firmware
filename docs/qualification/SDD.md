@@ -144,7 +144,7 @@ Cross-cutting design points:
 | ra8_tls              | `ra8_tls.h`                                                                                    | Mbed TLS (SOUP), `ra8_psa_crypto`                              | REQ-HAL-009     |
 | ra8_psa_crypto       | `ra8_psa_crypto.h`                                                                             | TF-PSA-Crypto (SOUP), `ra8_rsip*` (when HW path available)     | REQ-HAL-010     |
 | ra8_ota              | `ra8_ota.h`                                                                                    | `ra8_flash`, `ra8_psa_crypto`, NSC `ra8_nsc_ota`                 | REQ-HAL-011     |
-| NimBLE host (SOUP, via `port/nimble`) | NimBLE `host/ble_*.h` (`libs/third_party/nimble/`)                                          | `ra8_ble` (HCI transport seam; controller on ESP32-C6 companion), Apache NimBLE (SOUP) | REQ-HAL-012     |
+| NimBLE host (SOUP, via `port/nimble`) | NimBLE `host/ble_*.h` (pinned `build.zig.zon` package)                                          | `ra8_ble` (HCI transport seam; controller on ESP32-C6 companion), Apache NimBLE (SOUP) | REQ-HAL-012     |
 | ra8_modem_at         | `ra8_modem_at.h`                                                                               | injected byte-stream operations (`ra8_io_stream_uart` in production) | REQ-HAL-013 |
 | epub             | `apps/shared_libs/epub/inc/epub.h`                                                       | `ra8_fs`, miniz (SOUP), TinyXML-2 (SOUP) via xml shim          | REQ-HAL-014     |
 | reflow           | `apps/shared_libs/reflow/inc/reflow.h`                                                   | `ra8_gfx`, litehtml (SOUP) via xml shim                        | REQ-HAL-015     |
@@ -305,7 +305,7 @@ Implementation in `ra8_usb.c` + `ra8_usb_cdc.c`. Test:
 
 ### 5.3 BLE host (Apache NimBLE via `port/nimble/`)
 
-The BLE host is Apache NimBLE (SOUP, `libs/third_party/nimble/`),
+The BLE host is Apache NimBLE (SOUP, pinned `build.zig.zon` package),
 consumed directly by applications through the `port/nimble/` ThreadX +
 HCI-over-`ra8_ble` port; the former first-party BLE-host facade
 was retired. NimBLE runs the host and the ESP32-C6 companion runs the

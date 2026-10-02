@@ -61,7 +61,7 @@ copyleft contamination of the MIT firmware.
   `ra8-firmware` **elects Apache-2.0**. The GPL-2.0 option is NOT taken.
 
 **Apache-2.0 NOTICE:** Apache NimBLE ships its own
-[`libs/third_party/nimble/NOTICE`](libs/third_party/nimble/NOTICE); its
+`NOTICE` (at the root of the pinned `nimble` package in `build.zig.zon`); its
 contents must be reproduced in any binary distribution that links NimBLE.
 Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 
@@ -77,7 +77,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Eclipse LevelX | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/levelx> |
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
-| Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
+| Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/apache/mynewt-nimble> |
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `apps/shared_libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 (`MZ_VERSION`; release artifact `miniz-3.0.2.zip`) | MIT (zlib-style) | `apps/shared_libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `apps/shared_libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
@@ -195,8 +195,8 @@ below); this section reproduces the copyright line and points to that text.
 - **TF-PSA-Crypto** -- Apache-2.0 (elected). TrustedFirmware.org. Text:
   `libs/third_party/tf-psa-crypto/LICENSE`.
 - **Apache NimBLE** -- Apache-2.0. Apache Software Foundation. Text:
-  `libs/third_party/nimble/LICENSE`; **NOTICE:**
-  `libs/third_party/nimble/NOTICE` (must be propagated).
+  `LICENSE` in the pinned `nimble` package; **NOTICE:**
+  `NOTICE` in the same package (must be propagated).
 - **litehtml** -- BSD-3-Clause. "Copyright (c) 2013, Yuri Kobets (tordex).
   All rights reserved." Text: `apps/shared_libs/third_party/litehtml/LICENSE`.
 - **miniz** -- MIT. "Copyright 2013-2014 RAD Game Tools and Valve Software;

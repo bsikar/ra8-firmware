@@ -3,8 +3,10 @@
 #
 # cmake/nimble.cmake
 #
-# Top-level integration of the vendored Apache NimBLE host stack on
-# RA8. Exposes the `RA8_USE_NIMBLE` option; when ON, this file:
+# Top-level integration of the Apache NimBLE host stack on RA8. NimBLE is
+# not vendored: it is pinned in build.zig.zon (upstream nimble_1_10_0_tag
+# tarball, url + hash) and fetched into the Zig package cache by
+# cmake/zig_package.cmake. Exposes the `RA8_USE_NIMBLE` option; when ON, this file:
 #
 #   1. Verifies that ThreadX is also enabled (the NimBLE Native
 #      Porting Layer maps onto ThreadX TX_MUTEX / TX_SEMAPHORE /
@@ -45,7 +47,7 @@ if(DEFINED _RA8_NIMBLE_INCLUDED)
 endif()
 set(_RA8_NIMBLE_INCLUDED TRUE)
 
-option(RA8_USE_NIMBLE "Enable the vendored Apache NimBLE host stack" OFF)
+option(RA8_USE_NIMBLE "Enable the Apache NimBLE host stack (pinned build.zig.zon package)" OFF)
 
 if(NOT RA8_USE_NIMBLE)
   return()
@@ -72,10 +74,11 @@ endif()
 # from the top-level CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_NIMBLE_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_NIMBLE_VENDOR_DIR "${_RA8_NIMBLE_REPO_ROOT}/libs/third_party/nimble")
+include(${_RA8_NIMBLE_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(nimble _RA8_NIMBLE_VENDOR_DIR)
 
 if(NOT EXISTS "${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include/host/ble_hs.h")
-  message(FATAL_ERROR "RA8_USE_NIMBLE=ON but Apache NimBLE vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_NIMBLE=ON but the pinned Apache NimBLE package is missing at "
                       "${_RA8_NIMBLE_VENDOR_DIR}."
   )
 endif()
