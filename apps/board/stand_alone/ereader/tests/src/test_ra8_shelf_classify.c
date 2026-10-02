@@ -3,9 +3,9 @@
  * @brief Host test: the ereader_shelf finds long-named books on the card.
  *
  * @details
- * Before #600 gave `ra8_fs` VFAT long-name write, the shelf classified 8.3
- * truncations (`.RBK`, `.EPB`). #633 migrated it to the real long extensions
- * while keeping the legacy ones so existing cards still resolve.
+ * Before `ra8_fs` got VFAT long-name write, the shelf classified 8.3
+ * truncations (`.RBK`, `.EPB`). A later slice migrated it to the real long
+ * extensions while keeping the legacy ones so existing cards still resolve.
  *
  * This exercises the SAME classifier the shelf ships
  * (`sh_book_classify`, shared through the board-free `sh_classify.h`) and proves
@@ -225,7 +225,7 @@ static void test_discovery_roundtrips_through_mount(void)
 
   put_file(mount, "Meditations.rabook", "RABOOK1-body-a");
   put_file(mount, "Pride and Prejudice.epub", "epub-body-b");
-  put_file(mount, "BOOK01.RBK", "legacy-body-c"); /* pre-#633 card content */
+  put_file(mount, "BOOK01.RBK", "legacy-body-c"); /* pre-long-name card content */
   put_file(mount, "notes.txt", "not-a-book");     /* must be skipped       */
 
   shc_scan_t sc = {};

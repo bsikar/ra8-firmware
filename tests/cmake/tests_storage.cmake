@@ -13,7 +13,7 @@
 # to the driver and to the fragments included after it.
 
 # ---------------------------------------------------------------------------
-# exFAT host test (#85 read support / #93 leading-slash open regression).
+# exFAT host test (read support and the leading-slash open regression).
 # Standalone: links ONLY ra8_fs_fat.c (no ra8_core_hal -> no ra8_time
 # weak-extern), so it builds and runs on macOS and Linux alike. The fixture
 # is a tiny real exFAT image checked in gzipped; it is decompressed to the
@@ -62,7 +62,7 @@ add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 # supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
 # already outside the coverage filter (libs/third_party/).
 # ---------------------------------------------------------------------------
-# Fully migrated (#201 / zig epic): ra8_cache_store has no C sources left. Both
+# Fully migrated (zig epic): ra8_cache_store has no C sources left. Both
 # halves, the runtime path and the mount / recovery path, are the Zig archive
 # ra8_zig::ra8_cache_store registered in zig_libraries.cmake, so there is no
 # source glob for this library any more.

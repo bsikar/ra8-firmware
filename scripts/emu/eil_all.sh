@@ -84,7 +84,7 @@
 #   /bin/bash -p scripts/emu/eil_all.sh --list           # list apps
 #
 # Budgets (env overridable):
-#   EIL_JOBS               parallel workers (default: ra8_max_jobs -- #328;
+#   EIL_JOBS               parallel workers (default: ra8_max_jobs;
 #                          RA8_MAX_JOBS / CMAKE_BUILD_PARALLEL_LEVEL / nproc)
 #   EIL_UART_MAX_CHUNKS    uart_scrape/alive instruction-chunk cap (150000; a
 #                          hil.conf may raise its own via HIL_EMU_MAX_CHUNKS)

@@ -151,7 +151,7 @@ ra8_add_zig_library(
 
 # Fully migrated: the CTRL1_XL / CTRL2_G bit-field encoders, the
 # little-endian sample decoders, the temperature conversion, the FIFO drain AND
-# the house-I2C binder from #760 are all Zig now, so libs/ra8_lsm6dso/src has
+# the house-I2C binder are all Zig now, so libs/ra8_lsm6dso/src has
 # no .c left, the RA8_LSM6DSO_SOURCES glob is gone from library_sources.cmake
 # and core_hal.cmake, and libs/ra8_lsm6dso/src is no longer an include
 # directory anywhere. The transport stays a caller-supplied seam, so the host
@@ -260,7 +260,7 @@ ra8_add_zig_library(
 # archive by name there rather than through the list below.
 # Fully migrated: the OV5640 register protocol, the
 # board-qualified VGA DVP scene table, the JPEG overlay writes, the JPEG status
-# decode AND the house-I2C binder from #760 are all Zig, so libs/ra8_ov5640/src
+# decode AND the house-I2C binder are all Zig, so libs/ra8_ov5640/src
 # has no .c left, the RA8_OV5640_SOURCES glob is gone from
 # library_sources.cmake and core_hal.cmake, and libs/ra8_ov5640/src is no
 # longer an include directory anywhere. The SCCB transport and the millisecond

@@ -14,8 +14,7 @@
 # These run AFTER add_executable() because they are per-SOURCE properties on
 # targets that must already exist. Each block narrows -Werror for exactly the
 # style classes one vendored parser trips -- never a blanket -w, which is what
-# these used to carry and which switched off the memory-safety classes too
-# (issue #179).
+# these used to carry and which switched off the memory-safety classes too.
 macro(_ra8_app_vendored_flags)
   # Route stb_truetype's allocations through the heap-free arena (see above).
   # The vendored header trips only the style classes suppressed by the SOUP

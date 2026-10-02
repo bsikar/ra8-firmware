@@ -29,7 +29,7 @@
 # sources does LIBS reflow pull in" would stop being answerable by reading
 # one list. The waiver is per-file; the global ceilings in .cmake-format.yaml
 # stay at cmakelang defaults so no other listfile inherits it.
-# #908: the LIBS expansions below only ever glob *.c, so a library that ships
+# The LIBS expansions below only ever glob *.c, so a library that ships
 # its implementation in anything else contributes NO object code and says
 # nothing about it. Whether that surfaces as an undefined reference or as
 # quietly-missing behaviour depends on how the app reaches the library, and
@@ -75,8 +75,8 @@ function(
   _has_archive
 )
   # A library that has finished its ARM flip contributes nothing but the Zig
-  # archive, so being pulled in without one registered is always the #908
-  # defect -- even when the *.c glob came back non-empty. That case is the one
+  # archive, so being pulled in without one registered is always the *.c-only
+  # LIBS defect -- even when the *.c glob came back non-empty. That case is the one
   # the _globbed early return below cannot see: a lib that keeps support C past
   # its flip leaves _globbed truthy, so the check returns clean while every
   # symbol the port moved into Zig leaves the link silently. Judge the flip
@@ -288,8 +288,8 @@ macro(_ra8_app_collect_sources)
   )
   _ra8_app_board_adapter_sources()
   # ra8_secure_app has no C sources either: the sealed-key vault, the CMAC
-  # core, the OTA commit gate and the secure TRNG are Zig (#2591, #2659,
-  # #2670) and its objects come from the Zig static archive registered below.
+  # core, the OTA commit gate and the secure TRNG are Zig and its
+  # objects come from the Zig static archive registered below.
   # Left unglobbed and deliberately outside the guard, for the same
   # reason as ra8_net_pal above.
   set(_ra8_secure_app "")
@@ -484,7 +484,7 @@ macro(_ra8_app_collect_sources)
 
   # An app may name the same vendored TU directly in EXTRA_SRCS rather than
   # reaching it through LIBS reflow / rabook_compile. The SOUP treatment (the narrow
-  # _ra8_soup_wno_* set from issue #179, plus the -fno-strict-aliasing below) is a
+  # _ra8_soup_wno_* set, plus the -fno-strict-aliasing below) is a
   # property of the FILE, not of the route it took into the app, so recognise the
   # vendored decoder wherever it appears in this app's sources. Keying it on the
   # route once left an app compiling an attacker-facing third_party parser under
@@ -509,7 +509,7 @@ macro(_ra8_app_collect_sources)
   if((("reflow" IN_LIST _RA8_APP_LIBS) OR ("book" IN_LIST _RA8_APP_LIBS)) AND (NOT "ra8_mem" IN_LIST
                                                                                _RA8_APP_LIBS)
   )
-    # ra8_mem has no C left (#2601: the init-time arena was its last .c), so
+    # ra8_mem has no C left (the init-time arena was its last .c), so
     # this transitive path contributes no sources at all and every symbol it
     # needs -- ra8_glyph_atlas_*, ra8_vmem_*, ra8_slab_*, ra8_arena_* -- arrives
     # only from the Zig archive. Register it exactly as the LIBS loop above
@@ -625,7 +625,7 @@ macro(_ra8_app_collect_sources)
     if(NOT "compress" IN_LIST _RA8_APP_LIBS)
       list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c)
     endif()
-    # #290 normalize-on-import: the producer normalises WebP manifest images
+    # Normalize-on-import: the producer normalises WebP manifest images
     # to JOF too, so it calls the ra8_webp facade (the WebP arm lives in
     # jof_produce_webp.c: jof_priv_webp_transcode). Compile the
     # facade sources here when the app did
@@ -664,7 +664,7 @@ macro(_ra8_app_collect_sources)
     endif()
   endif()
 
-  # #637 inline small-image WebP: reflow's ra8_img_decode_blit / ra8_img_probe_size
+  # Inline small-image WebP: reflow's ra8_img_decode_blit / ra8_img_probe_size
   # dispatch a RIFF/WEBP buffer to the ra8_webp facade, because stb_image has no
   # WebP decoder and an inline EPUB illustration would otherwise render as
   # nothing. So reflow now pulls the facade the same way jof and rabook_compile
@@ -701,7 +701,7 @@ macro(_ra8_app_collect_sources)
   # Its ra8_webp facade/arena are globbed by the LIBS loop above (or by
   # the jof block); only the vendored TUs + include root are wired
   # here. Wired whenever webp is requested directly OR pulled in
-  # transitively by jof, rabook_compile, or reflow (#637 inline
+  # transitively by jof, rabook_compile, or reflow (inline
   # small-image WebP), and only once so those paths never double-add the
   # libwebp sources.
   set(_ra8_webp_vendor "")
@@ -793,7 +793,7 @@ macro(_ra8_app_collect_sources)
 
   # ra8_io_blockdev_vsource.c (globbed in by a bare "ra8_io" in LIBS) is the
   # sanctioned Ring-4 -> Ring-2 bridge that exposes a block device as an
-  # ra8_vsource read callback for the issue #147 page cache. It includes
+  # ra8_vsource read callback for the ra8_mem page cache. It includes
   # ra8_vsource.h from ra8_mem, so it only links -- and only adds ra8_mem/inc to
   # the include path -- when the app also declares "ra8_mem" in LIBS. Mirrors the
   # app-owned compression composition: a plain ra8_io consumer that never wires a
@@ -1018,8 +1018,8 @@ macro(_ra8_app_collect_sources)
   # SRAM_TEXT <file.c>... is the third case (RA8FW-309), and it does NOT compose by
   # appending. Flash-writing code cannot execute from the MRAM it is erasing,
   # so the DFU apps run ra8_flash.c from an SRAM-resident .sram_text section
-  # loaded from MRAM at boot. (The DFU programmer beside it is Zig since
-  # #2968 and places its own exports with linksection, so it is claimed by
+  # loaded from MRAM at boot. (The DFU programmer beside it is Zig now and
+  # places its own exports with linksection, so it is claimed by
   # the wildcards below rather than named here.) Appending that section after
   # the INCLUDE links and produces an EMPTY section: ld assigns each input
   # section to the first output section in script order that matches, and the

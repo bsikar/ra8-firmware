@@ -122,9 +122,9 @@ file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/
 # loupe zoom blit and both text calls included) is Zig now
 # (libs/ra8_gfx/src/*.zig, built by libs/ra8_gfx/build.zig) behind the
 # unchanged C headers, and tests/cmake/zig_libraries.cmake links that archive
-# into ra8_core_hal. The per-panel tone LUT joined the archive with #1326, the
-# blue-noise dither with #1402, the lifecycle binder with #1466 and the
-# bundled 8x16 font table with #2689, which retired this glob: the descriptor
+# into ra8_core_hal. The per-panel tone LUT, the blue-noise dither, the lifecycle
+# binder and finally the bundled 8x16 font table joined the archive, which
+# retired this glob: the descriptor
 # ra8_gfx_font_8x16 is exported from the archive now, so there is no
 # RA8_GFX_SOURCES variable to carry.
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
@@ -276,7 +276,7 @@ set(EPUB_THIRD_PARTY
 # fronts it. Only the decoder subset is vendored under
 # apps/shared_libs/third_party/libwebp,
 # so a recursive *.c glob is exactly that subset. NOT yet wired into the
-# reflow/ra8_img raster dispatch (that is #289) -- compiled into ra8_core_hal
+# reflow/ra8_img raster dispatch (that is the vertical-scroll work) -- compiled into ra8_core_hal
 # so the standalone WebP decode host test (test_ra8_webp.c) and the fuzz harness
 # (fuzz_ra8_webp) link against it. utils.c routes its allocator through the
 # ra8_webp bump arena via -DRA8_WEBP_USE_ARENA (set below).
@@ -311,7 +311,7 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
 # ra8_lsm6dso has no C sources left: the register-level driver (the CTRL1_XL /
 # CTRL2_G encoders, the little-endian sample decoders, the temperature
-# conversion and the FIFO drain) AND the house-I2C binder from #760 are all
+# conversion and the FIFO drain) AND the house-I2C binder are all
 # Zig now, linked via tests/cmake/zig_libraries.cmake. The four binder cases
 # in test_ra8_lsm6dso.c take ra8_lsm6dso_bind_i2c from that archive, which
 # ra8_core_hal links PUBLIC and which is attached at directory scope for the
@@ -319,7 +319,7 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # app recipe registers the same archive for it.
 # ra8_ov5640 has no C sources left: the register protocol, the qualified VGA
 # DVP scene table, the JPEG overlay, the status decode AND the house-I2C binder
-# from #760 are all Zig now, linked via tests/cmake/zig_libraries.cmake. The
+# are all Zig now, linked via tests/cmake/zig_libraries.cmake. The
 # four vectors in tests/graphics/src/test_ra8_ov5640_bind.c take
 # ra8_ov5640_bind_i2c from that archive, which ra8_core_hal links PUBLIC and
 # which is attached at directory scope for the object-library consumers.
@@ -332,7 +332,7 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # the pure boot logic are Zig and this glob no longer matches them,
 # but the MRAM program/verify path, the USBX device class, the launch gate,
 # the anti-rollback counter and the root-of-trust reader are all still C, so
-# the glob stays non-empty and issue #908 does not bite here. The Zig archive is
+# the glob stays non-empty and the *.c-only LIBS expansion does not bite here. The Zig archive is
 # deliberately NOT linked into ra8_core_hal: the C it replaces was firmware-only
 # (#ifndef RA8_OFF_TARGET), so it contributed nothing to this host build, and its
 # ra8_usb_host_* seam has no host-side implementation to bind to. The ARM side
