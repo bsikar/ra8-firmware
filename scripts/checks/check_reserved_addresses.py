@@ -15,10 +15,9 @@ not there, compiled clean, and failed only on silicon:
     nowhere in either Hardware User's Manual and land in a Reserved area, and
     dereferenced them at runtime.
 
-Nothing catches this class. `check_hum_register_map.py` cross-checks
-register SYMBOLS and struct/window OFFSETS against the manual's tables, but an
-absolute-address enumerator like `k_ra8_wdt_ofs0_addr` is neither, so it falls
-outside that gate's rules. `check_linker_scripts.py` rule LD007 guards the
+Nothing else catches this class: an absolute-address enumerator like
+`k_ra8_wdt_ofs0_addr` is neither a register symbol nor a struct offset.
+`check_linker_scripts.py` rule LD007 guards the
 phantom data-flash base on the LINKER side only -- the C side was unguarded,
 which is exactly how #545 survived.
 

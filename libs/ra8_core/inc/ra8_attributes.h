@@ -266,8 +266,8 @@ extern "C" {
  * Non-Secure entry address.
  *
  * @par Enforcement:
- * - `check_world_tags.py` already restricts the CMSE non-secure-entry
- *   attribute to files under `libs/ra8_nsc/`.
+ * - The CMSE non-secure-entry attribute belongs only in files under
+ *   `libs/ra8_nsc/`.
  * - libclang checker verifies every pointer parameter is fed
  *   to a `RA8_NSC_CHECK_NS_RANGE_*` call before being dereferenced.
  *

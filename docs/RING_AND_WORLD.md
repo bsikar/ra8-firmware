@@ -14,10 +14,8 @@ and `libs/ra8_secure_app/` carries a two-part tag in its file-level Doxygen head
  */
 ```
 
-The pair is enforced by `scripts/checks/check_world_tags.py`, which runs
-in the pre-commit hook and refuses commits whose Ring-3+ files are
-missing either tag (or carry a tag that's inconsistent with where the
-file lives).
+The pair is a convention for the remaining C headers; the C-only checker
+that enforced it was removed with the C-era gates (RA8FW-370).
 
 ## `[Ring N / LAYER]` -- architectural ring
 
@@ -186,6 +184,4 @@ When you add a `.c` or `.h` under `libs/ra8_hal/`, `libs/ra8_*_pal/`,
     * ...
     */
    ```
-4. Run `python3 scripts/checks/check_world_tags.py --strict` to verify.
-
 That's the whole system.
