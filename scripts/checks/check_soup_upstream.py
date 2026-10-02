@@ -114,8 +114,9 @@ EXIT_VACUOUS = 2
 # component is meant to fail here until whoever does it re-measures these three
 # numbers deliberately. Re-measured 2026-10-02 (RA8FW-385): FlatBuffers, gemmlowp
 # and ruy left the tree for pinned upstream tarballs in build.zig.zon, whose Zig
-# content hash is their upstream proof, so 16 components remain here.
-MIN_COMPONENTS = 16
+# content hash is their upstream proof, so 16 components remain here. LevelX
+# followed the same day (RA8FW-385), leaving 15.
+MIN_COMPONENTS = 15
 MIN_ENTRIES = 8800
 MIN_UPSTREAM_VERIFIED = 8700
 

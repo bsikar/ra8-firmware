@@ -40,6 +40,11 @@
             .hash = "N-V-__8AAHM2GQD1bQLoOLlEhGDOEM8O1g0jjvII9F_PUyat",
             .lazy = true,
         },
+        .levelx = .{
+            .url = "https://github.com/eclipse-threadx/levelx/archive/a46b74fb8aa133796ccbc13e7902cb8bb818e12f.tar.gz",
+            .hash = "N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC",
+            .lazy = true,
+        },
     },
     .paths = .{
         "build.zig",
