@@ -291,7 +291,7 @@ def console_collisions(events: list[dict]) -> list[tuple[float, list[str]]]:
 
     A second axis, and an independently damaging one: the J-Link OB's VCOM
     delivers each byte to exactly one reader, so two tails of one console each
-    get roughly half the stream. #497 lists that as a concrete failure -- a HIL
+    get roughly half the stream. The bench-lease design lists that as a concrete failure -- a HIL
     run silently pattern-matching against half its output -- and it is a
     collision the J-Link's own multiplexing does nothing to prevent.
     """

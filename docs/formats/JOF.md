@@ -3,7 +3,7 @@
 **Magic:** `JOF1` (header), `JOFE` (footer) &nbsp;|&nbsp;
 **Library:** `apps/shared_libs/jof` &nbsp;|&nbsp;
 **Extension:** `.jof` &nbsp;|&nbsp;
-**Issues:** #231 (full-resolution pages), #289 (longstrip scroll), #290 (codec policy)
+**Covers:** full-resolution pages, longstrip scroll, codec policy
 
 ---
 

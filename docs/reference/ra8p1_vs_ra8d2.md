@@ -62,8 +62,8 @@ draft of this table listed one, but it does not exist (see "Correction" below).
 
 1. **+ Ethos-U55 NPU** (256 8x8 MACs, up to 500 MHz, ~256 GOPS, 8/16-bit CNN+RNN)
 2. **ADC 16-bit** (ADC16H x2, datasheet) vs 12-bit (FSP comment) -- base unchanged
-3. ~~**M85 double-precision-capable FPU**~~ -- **not a delta**, resolved in
-   issue #225; both parts build `fpv5-sp-d16` (see the correction below)
+3. ~~**M85 double-precision-capable FPU**~~ -- **not a delta**, resolved by the
+   RA8P1 capability evaluation; both parts build `fpv5-sp-d16` (see the correction below)
 4. + DOC alias; + `IOPORT_PERIPHERAL_ESC` pin function; ADC-sensor sampling-time flag
 
 An earlier revision listed "- OFS3 / WDT1 option register" as delta 2. It is not
@@ -119,13 +119,13 @@ multilibs ship in the pinned Arm GNU Toolchain 13.3.Rel1 (`fpv5-d16` selects
 the switch links either way; what no host check can settle is whether this
 silicon executes `.f64` at all. That measurement is RA8FW-261's, on an RA8P1 EK.
 
-**The other half of #225, the 16-bit ADC, was already done** by `ac5401343`
+**The other half of that evaluation, the 16-bit ADC, was already done** by `ac5401343`
 (`k_ra8_adc_res_{16,14,12,10}bit` mapped to `ADDOPCRCn.ADPRC[1:0]`, HUM Ch 53.2.3.4
 p 3339) and is untouched here.
 
 ## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1
 
-An earlier revision of this reference (and roadmap issues RA8FW-258 / #224) claimed the
+An earlier revision of this reference (and roadmap issue RA8FW-258) claimed the
 RA8P1 adds a classic single-port ETHERC/EDMAC Ethernet MAC at `0x40354000`, in
 addition to the shared R-Switch/ESWM fabric. **That was a misread; the RA8P1 has
 no such peripheral.** Verified by full-text search of both primary manuals:
@@ -153,7 +153,7 @@ RA8P1's clean-vs-defect Ethernet story is identical to the RA8D2's R-Switch.
 ## Correction: the RA8P1 DOES have OFS3
 
 An earlier revision of this reference claimed `**RA8P1 has no OFS3/WDT1 option
-register**`, and issue #223 acted on it -- deleting the OFS3 / OFS3_SEC /
+register**`, and the RA8P1 OFS work acted on it -- deleting the OFS3 / OFS3_SEC /
 OFS3_SEL family from the four RA8P1 app linker scripts and gating it out of
 `ra8_ofs.{h,c}` behind `RA8_HAS_OFS3`. **That was wrong.** Verified by direct
 extraction from both primary manuals:
@@ -299,8 +299,9 @@ correction:
 
 So: **do not expand a region or enable a cache on the strength of this table.**
 Region growth belongs to the startup/ECC audit plus a silicon run (issues RA8FW-260 /
-RA8FW-261); linker/target composition belongs to RA8FW-306 / #761; broader M85 cache and
-MPU conversion belongs to #590 / #591. `tests/core/src/test_ra8_device_geometry.c`
+RA8FW-261); linker/target composition belongs to RA8FW-306; broader M85 cache and
+MPU conversion belongs to the system_init cache and boot-map conversions.
+`tests/core/src/test_ra8_device_geometry.c`
 pins the capacities, pins the floor, and fails if supported allocation ever
 exceeds capacity, so the distinction cannot quietly erode.
 
@@ -311,7 +312,7 @@ The `MEMORY { }` header comment in the 78 per-app `linker_script.ld` files reads
 `SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K`. The comment is the
 double-count this section corrects (user SRAM is 1664 KB, and 2 MiB is the whole
 island including TCM); the declaration is a further deliberate floor. Both are
-RA8D2-side linker composition, owned by RA8FW-306 / #761, and touching 78 scripts
+RA8D2-side linker composition, owned by RA8FW-306, and touching 78 scripts
 here would be region churn outside this reconciliation. Recorded, not changed.
 
 ## Sources

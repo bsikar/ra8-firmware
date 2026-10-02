@@ -2,14 +2,14 @@
 #
 # EVERY PATTERN HERE IS ANCHORED ON PURPOSE. A bare `build/` has no
 # leading slash, so git matches it at EVERY depth -- a first-party directory
-# that happens to be named `build` becomes silently unaddable. #359's
-# reorganisation created `scripts/build/` -- PATHREF-OK: #359 renamed it.
+# that happens to be named `build` becomes silently unaddable. The scripts/
+# reorganisation created `scripts/build/` -- PATHREF-OK: that reorg renamed it.
 # Its six files were tracked only because `git mv` moves already-tracked
 # files; a seventh, newly created, would never have been added, and
 # `git add` would have reported nothing wrong.
 #
 # So each pattern below is rooted at a directory where a build tree is actually
-# produced. A `scripts/build/` -- PATHREF-OK: #359 renamed it -- or a
+# produced. A `scripts/build/` -- PATHREF-OK: that reorg renamed it -- or a
 # `libs/ra8_core/build/` outside these roots is ordinary tracked source.
 #
 # Note the deliberate absence of a `build*/` glob: it would match `builders/`,
@@ -102,7 +102,7 @@ docs/reference/ra8d2-technical-brief/
 # up). Anchored to the repo root for the same reason as the build trees above:
 # `output/` and `ra/` are both plausible source directory names.
 #
-# `ra/` had already drawn blood in exactly the way #377 describes -- unanchored,
+# `ra/` had already drawn blood in exactly the way described above -- unanchored,
 # it swallowed the vendored FSP blob trees, which is the only reason the two
 # negations that used to sit below it existed. Anchoring the pattern makes them
 # dead code, so they went with it.
@@ -183,7 +183,7 @@ apps/shared_libs/book/inc/book_library.h
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img
 
-# tools/reader_vmem host build artifacts (binary + dSYM + generated #147 traces)
+# tools/reader_vmem host build artifacts (binary + dSYM + generated page-cache traces)
 tools/reader_vmem/reader_vmem
 tools/reader_vmem/*.trace
 tools/reader_vmem/*.dSYM/

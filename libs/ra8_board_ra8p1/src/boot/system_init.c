@@ -11,7 +11,7 @@
  * @note The two copies are NO LONGER byte-identical, so do not read one as the
  *       other. Two divergences, both deliberate on the EK-RA8D2 side:
  *       1. The region-4 window is derived differently (see 2 below). The
- *          `RA8_BOOT_CACHE_VIA_HAL` divergence is GONE: issue #590 gave this
+ *          `RA8_BOOT_CACHE_VIA_HAL` divergence is GONE: the cache conversion gave this
  *          copy the same gated arm the EK-RA8D2 copy got, so an RA8P1
  *          image built with `-DRA8_BOOT_CACHE_VIA_HAL` now brings the L1 caches
  *          up through `ra8_cache_icache_enable()` /
@@ -393,7 +393,7 @@ static void internal_set_priority_grouping(void)
  *   BOTH the 576 KiB shared window and CPU1's 64 KiB private bank above it,
  *   which is why the figure is larger than the 576 KiB shared window alone
  *   (`k_ra8_board_shared_ram_size_bytes`), and why it is not a power of two
- *   (see libs/ra8_mpu/src/ra8_mpu.c and #591).
+ *   (see libs/ra8_mpu/src/ra8_mpu.c).
  *
  * Attribute indirection table:
  * - MAIR0[0] = 0xFF (Normal inner + outer write-back / write-alloc).
@@ -533,7 +533,7 @@ static void internal_mpu_init(void)
 /**
  * @brief Install the canonical boot memory-attribute map, HAL or raw poke.
  *
- * @details Issue #591: with ``RA8_BOOT_MPU_VIA_HAL`` set the map goes down
+ * @details With ``RA8_BOOT_MPU_VIA_HAL`` set the map goes down
  *          through ``ra8_mpu_apply_boot_map()`` instead of the hand-rolled
  *          MAIR / RBAR / RLAR / CTRL pokes in ::internal_mpu_init. The two
  *          spellings program byte-identical registers for all five regions
@@ -568,7 +568,7 @@ static bool internal_boot_map_install(void)
  *
  * @details Default path: ::internal_mpu_init cannot fail, so this always
  *          reports success and the caller's cache bring-up is unconditional,
- *          exactly as it was before #591.
+ *          exactly as it was before the boot-map conversion.
  *
  * @return ``true`` always.
  *
@@ -618,7 +618,7 @@ void SystemInit(void)
    * coherent with no software maintenance. */
   if (internal_boot_map_install()) {
 #ifdef RA8_BOOT_CACHE_VIA_HAL
-    /* Issue #590: bring the L1 caches up through the ra8_cache HAL instead of the
+    /* Bring the L1 caches up through the ra8_cache HAL instead of the
     * hand-rolled internal_enable_icache / internal_enable_dcache pokes, matching
     * the arm the EK-RA8D2 copy got. The HAL primitives encode the
     * identical ICIALLU + CCR.IC / CCR.DC sequence (each runs its architectural

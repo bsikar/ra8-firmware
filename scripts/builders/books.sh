@@ -11,7 +11,7 @@
 # tools/epub_compile, so they are regenerated rather than committed.
 #
 # Image downscale target (long edge, pixels) is RA8_BOOK_MAX_EDGE. The compiler
-# default is now NO downscale (issue #210: full-res sources for the zoom
+# default is now NO downscale (full-res sources for the zoom
 # loupe); the library build stays an EXPLICIT opt-in use of the knob because
 # these baked TFT-class fixtures pin goldens on their pixel content and gain
 # nothing from full-res storage.

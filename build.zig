@@ -130,7 +130,7 @@ const shared_include_paths = [_][]const u8{
 /// under test. Under CMake these arrive through ra8_core_hal.
 ///
 /// This list is what the Zig ports EXTERN, not what the suites call. It held
-/// `ra8_log.c` until #2836, `ra8_time.c` until #2851, `ra8_scb.c` until the
+/// `ra8_log.c` and `ra8_time.c` until their ports, `ra8_scb.c` until the
 /// fault block and `ra8_error_handler.c` until the error pair,
 /// which is the one that emptied it.
 ///
@@ -158,7 +158,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // CMAKE_BUILD_TYPE, by its CMake name. Debug by default so every existing
-    // invocation builds exactly what it did before #1179; an unrecognised name
+    // invocation builds exactly what it did before build types existed; an unrecognised name
     // is refused rather than silently built as Debug, which is the whole
     // failure this option exists to end.
     const build_type_name = b.option(
@@ -423,7 +423,7 @@ pub fn build(b: *std.Build) void {
 // __aeabi_unwind_cpp_pr0/pr1, which pulls libgcc's unwind-arm.o into a
 // -nostdlib image, and that object then wants __exidx_start / __exidx_end /
 // abort, none of which the board linker script defines (it names its own
-// g_ra8_ls_exidx_start / _end). Filed as #948 with the evidence; the
+// g_ra8_ls_exidx_start / _end). Filed with the evidence; the
 // `zig_libraries` hook here is the seam that slice will use, wired and
 // exercised with an empty list rather than left to be invented later.
 //
@@ -437,7 +437,7 @@ pub const cross_apps = cross_sources.cross_apps;
 
 /// The flag sets a cross configure hands each kind of translation unit, and
 /// the two flags TrustZone adds. Data with tests, in its own module since
-/// #1096: build.zig is at the file-size ceiling and these are measurements,
+/// the TrustZone build: build.zig is at the file-size ceiling and these are measurements,
 /// not wiring. Aliased here under their old names so every call site below
 /// still reads as the flag set it is.
 pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");

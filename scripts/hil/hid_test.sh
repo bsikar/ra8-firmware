@@ -153,7 +153,7 @@ if [[ "$-" == *p* ]]; then
     exit 0
   fi
 
-  # Issue #58: usbhid probe occasionally fails with -32 (EPIPE) when the
+  # Known HIL flake: usbhid probe occasionally fails with -32 (EPIPE) when the
   # USB-FS bus state from a previous test leaks into this enumeration.
   # Force a clean re-enum via soft PPPS (authorized toggle on the USBFS
   # hub port 4 -- hard PPPS doesn't bus-reset USBFS reliably; see
