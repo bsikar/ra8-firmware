@@ -10,10 +10,13 @@
 //!
 //! The port's lowercase `.s` units `#include` and `#define`, so they are
 //! listed as `soup_cpp_asm_dirs` and assembled through the preprocessor.
+//! None of the port's assembly includes tx_user.h, and the manager's dispatch
+//! needs the notify callbacks, which is what the extra defines below are for.
 //!
-//! No image links this archive yet (RA8FW-414 adds the `uses` option).
-//! `zig build threadx-m33-modules` builds it so the port is proven to compile
-//! at -mcpu=cortex-m33 first.
+//! A CPU1 image opts in by naming `threadx_m33_modules` in `Cpu1Image.uses`
+//! instead of `threadx_m33` (RA8FW-414); naming both is a build error, and
+//! either gets the threadx_cpu1 glue. No image in the app table names it yet.
+//! `zig build threadx-m33-modules` builds the archive on its own.
 
 const std = @import("std");
 const middleware = @import("middleware.zig");
@@ -42,7 +45,15 @@ pub const threadx_m33_modules = middleware.Middleware{
         "pkg:threadx/common_modules/module_manager/inc",
         "pkg:threadx/ports_module/cortex_m33/gnu/inc",
     },
-    .public_defines = &.{"-DTX_INCLUDE_USER_DEFINE_FILE"},
+    // RA8_THREADX_MODULES keeps the notify callbacks tx_user.h otherwise
+    // disables; the Module Manager dispatch needs them. The port's assembly
+    // never includes tx_user.h (the plain port's does), so the single-mode
+    // switch is passed here, empty, matching tx_user.h's own definition.
+    .public_defines = &.{
+        "-DTX_INCLUDE_USER_DEFINE_FILE",
+        "-DRA8_THREADX_MODULES",
+        "-DTX_SINGLE_MODE_SECURE=",
+    },
     .link_options = cpu1_threadx.threadx_m33.link_options,
 };
 
