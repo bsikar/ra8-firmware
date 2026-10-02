@@ -474,7 +474,7 @@ RA8_INTERNAL static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t
  * @details Parks the pipe at PID=NAK (a host OUT token landing before
  * the class layer arms the next receiver is then NAK'd rather than
  * ACK'd into a FIFO with no waiter -- the latter latches BRDYSTS and
- * storms the ISR, GitHub issue #6), records the transfer in the trace
+ * storms the ISR, the BRDY storm bug), records the transfer in the trace
  * ring (with the SCSI opcode + CDB bytes 1..2 when it is a 31-byte
  * CBW), posts UX_SUCCESS, and wakes the waiter.
  *
@@ -599,7 +599,7 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
  * transfer stashed. If a host packet has landed in the controller bank
  * (BRDYSTS set), draining it via ::ra8_usb_queue_out both W0C-clears
  * BRDYSTS -- so the no-receiver BRDY interrupt cannot storm the CPU and
- * starve thread mode (GitHub issue #6) -- and preserves the packet in
+ * starve thread mode (the BRDY storm bug) -- and preserves the packet in
  * ::g_orphan_buf for ::internal_submit_pipe to hand to the next
  * bulk-OUT transfer. The pipe is then parked at PID=NAK so no second
  * packet can land. Skipped for IN pipes, unconfigured pipes, the CDC

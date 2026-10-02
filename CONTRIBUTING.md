@@ -294,7 +294,7 @@ What the data proves; what is ruled out and why.
 ## Next step
 ```
 
-GitHub issue #1 ("Ethernet: large-frame TX corrupted post-MAC") is
+The old "Ethernet: large-frame TX corrupted post-MAC" bug report is
 the worked example -- match that level of detail.
 
 ## 10. Where to ask questions

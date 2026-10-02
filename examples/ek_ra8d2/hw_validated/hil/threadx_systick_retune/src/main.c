@@ -152,7 +152,7 @@ static TX_THREAD s_retune_thread;
 
 /* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the shared weak
  * SysTick_Handler dispatches to ThreadX via a weak extern to
- * `_tx_timer_interrupt`, so no per-app override is needed (issue #8). */
+ * `_tx_timer_interrupt`, so no per-app override is needed. */
 
 /**
  * @brief Read back the SysTick reload register (SYST_RVR).

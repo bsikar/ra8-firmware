@@ -146,7 +146,7 @@ target_compile_definitions(threadx PUBLIC TX_INCLUDE_USER_DEFINE_FILE)
 # WEAK reference to it (so non-ThreadX apps still link), and that weak
 # reference is satisfied with NULL if nothing else pulls the symbol in.
 # Without this --undefined the ThreadX time base never advances when an
-# app uses ThreadX via the port-level SysTick path -- Issue #8.
+# app uses ThreadX via the port-level SysTick path.
 target_link_options(
   threadx INTERFACE -Wl,--undefined=_tx_timer_interrupt -Wl,--undefined=g_ra8_threadx_systick_ready
 )
