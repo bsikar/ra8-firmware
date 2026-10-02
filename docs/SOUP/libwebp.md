@@ -43,15 +43,15 @@ into this firmware as Software Of Unknown Provenance (SOUP).
   attacker-controlled initial-access content (a WebP inside a downloaded
   book), so it cannot rely on trusted input.
 - **Scope note -- where the decoder is wired, and where it is not.** The
-  decoder is vendored, built, standalone-tested and fuzzed (that was #290).
+  decoder is vendored, built, standalone-tested and fuzzed.
   Render-time decodes reach it through the band-tile producer:
   `apps/shared_libs/jof/src/jof_produce_webp.c` normalises a decoded WebP into the
   band-tile format, so comic and EPUB **tiles** take WebP. That is the half of
-  #289 that landed before it closed on 2026-07-20. The other half did not: the
+  the longstrip work that landed before it closed on 2026-07-20. The other half did not: the
   `reflow` **inline small-image** path
   (`apps/shared_libs/reflow/src/reflow_image.c`) is still `stb_image`-only and
-  fails a WebP closed. That residual arm is tracked by #637, which the seam
-  comments in `ra8_webp.c` / `ra8_webp.h` now name directly (`TODO(#637)`).
+  fails a WebP closed. That residual arm is still open, and the seam comments in
+  `ra8_webp.c` / `ra8_webp.h` mark it with a `TODO`.
 
 ## Qualification basis
 
