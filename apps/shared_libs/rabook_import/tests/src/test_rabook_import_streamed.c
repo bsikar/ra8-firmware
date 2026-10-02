@@ -1,6 +1,6 @@
 /**
  * @file test_rabook_import_streamed.c
- * @brief #230 gate: the production import compile adapter STREAMS its source
+ * @brief Streamed-open gate: the production import compile adapter STREAMS its source
  *        through a bounded page cache -- no whole-file residency -- and its
  *        output stays byte-identical to the desktop golden.
  *

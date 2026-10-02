@@ -27,11 +27,11 @@
 # the vendored libwebp decoder + define RA8_WEBP_USE_ARENA on its utils.c
 # (mirroring the epub/miniz special-case).
 #
-# INTEGRATION(#290): the JOF tile producer (apps/shared_libs/jof) consumes this
+# INTEGRATION(normalize-on-import): the JOF tile producer (apps/shared_libs/jof) consumes this
 # facade to normalise WebP manifest images to the band-tile format on import, so
 # an app that lists jof in LIBS also compiles this facade + the
 # vendored libwebp (see the jof block in cmake/ra8_app/sources.cmake).
-# INTEGRATION(#637): the small-image reflow / ra8_img inline raster dispatch
+# INTEGRATION(inline WebP): the small-image reflow / ra8_img inline raster dispatch
 # calls this facade too, so an app that lists reflow in LIBS compiles it as
 # well (see the reflow block in cmake/ra8_app/sources.cmake).
 #

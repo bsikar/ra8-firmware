@@ -425,7 +425,7 @@ static void internal_test_chunked_workspace_and_reader_guards(void)
 /**
  * @test One ::ra8_vsource_read_fn callback drives both the paged virtual-source
  *       registry and the strict RABOOK1 validator, with no per-library typedef.
- * @details #770 collapsed @c book_stream_read_fn onto ::ra8_vsource_read_fn.
+ * @details The positioned-read seam collapsed @c book_stream_read_fn onto ::ra8_vsource_read_fn.
  *          This vector is the anti-regression pin: the fixture's exact reader is
  *          held in a variable of the shared seam type and then handed to
  *          ra8_vsource_add_paged() and book_validate_stream_strict() in turn. A

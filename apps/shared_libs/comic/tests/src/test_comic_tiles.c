@@ -1,6 +1,6 @@
 /**
  * @file test_comic_tiles.c
- * @brief #344 -- an oversized CBZ page that overruns the whole-decode arena
+ * @brief An oversized CBZ page that overruns the whole-decode arena
  *        opens and zooms through the JOF tile path.
  *
  * @details
@@ -628,7 +628,7 @@ RA8_INTERNAL static void internal_test_footprint_and_budget(void)
 /**
  * @test comic_tiles_large_page_opens
  * @brief Decode a page that exceeds the whole-image arena through bounded tiles.
- * @details The heart of #344: the big page defeats the whole-decode arena
+ * @details The heart of the comic tiling work: the big page defeats the whole-decode arena
  *          (`k_ra8_err_no_mem`) yet the tile path opens it and every tile is
  *          byte-exact at full resolution, with resident RAM bounded by the cell
  *          budget. A re-fetch is a cache hit, not a re-decode.

@@ -16,7 +16,7 @@
  *
  *   1. **Tile binder** (`epub_tile_binder_*`): pages JOF tile atlases
  *      (`jof.h` -- the display-native band-tile format shared with
- *      the longstrip scroll #289 and the codec policy) through
+ *      the longstrip scroll and the codec policy) through
  *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
  *      tile_y)`. An atlas backs onto either a *stored* archive entry
  *      (`epub_tile_binder_add()`, host-baked books) or any external
@@ -25,7 +25,7 @@
  *      pixels stay bounded by the cache's cell budget regardless of the
  *      image size, with no downscaling.
  *   2. **Import-time transcode** (`epub_tile_binder_import()`): the
- *      #231 producer wired to the open path. Resolves a manifest href,
+ *      producer wired to the open path. Resolves a manifest href,
  *      streams the encoded JPEG/PNG (or, with a `webp_work` arena, WebP)
  *      through `jof_produce()` into a caller-supplied atlas store,
  *      and registers the result -- after which a page larger than SDRAM at
@@ -297,7 +297,7 @@ typedef struct {
 
 /**
  * @brief Import a manifest image through the transcode producer and register
- *        it for tile paging (#231 -- the open-path wiring).
+ *        it for tile paging (the open-path wiring).
  *
  * @details
  * Resolves @p href against the book, then:

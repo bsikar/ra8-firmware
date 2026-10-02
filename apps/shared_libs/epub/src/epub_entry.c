@@ -186,7 +186,7 @@ static bool internal_backing_read(epub_book_t* book, uint64_t archive_ofs, uint8
   const ra8_err_t err =
     book->stream_media.read(book->stream_media.ctx, archive_ofs, buf, (uint32_t)n, &got);
   /* A failed backing and a short archive are both "no window" here, but they are
-   * now distinguishable one layer down, which is the point of #764: the caller
+   * now distinguishable one layer down, which is the point of the vmem error fix: the caller
    * that compiles a book sees the error instead of a clean truncation. */
   return (err == k_ra8_ok) && (got == (uint32_t)n);
 }

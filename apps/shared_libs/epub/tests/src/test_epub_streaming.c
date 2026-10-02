@@ -1,10 +1,11 @@
 /**
  * @file test_epub_streaming.c
- * @brief #151 bounded-RAM invariant gate: open + parse a large EPUB by STREAMING
+ * @brief Bounded-RAM invariant gate: open + parse a large EPUB by STREAMING
  *        it from a seekable backing, never resident in one whole-file buffer.
  *
  * @details
- * The load-bearing claim of #151 is that a book far larger than SRAM+SDRAM can be
+ * The load-bearing claim of the on-import compiler is that a book far larger
+ * than SRAM+SDRAM can be
  * *opened and parsed* on-device, because `epub_open_streamed()` reads only the
  * ZIP tail (end-of-central-directory + central directory) and inflates each entry
  * on demand through a seek+read callback -- it never materialises the archive.

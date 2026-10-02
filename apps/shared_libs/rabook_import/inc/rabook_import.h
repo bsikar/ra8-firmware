@@ -12,7 +12,7 @@
  * This header is the cache manager + import state machine only. It owns:
  *   - the on-disk cache convention (the source's own name, e.g. a `.epub`
  *     basename with `.rabook` cache + `.rabook.mrk` freshness marker beside it,
- *     now that `ra8_fs` writes VFAT long names -- #600/#633),
+ *     now that `ra8_fs` writes VFAT long names),
  *   - the freshness / staleness gate (a sidecar marker that stores the source
  *     size + CRC-32, the `.rabook` format version, and an importer version --
  *     any mismatch forces a re-derive),

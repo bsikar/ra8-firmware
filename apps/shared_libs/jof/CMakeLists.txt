@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # apps/shared_libs/jof -- JOF band-tile atlas: format reader + import-time
-# transcode producer (#231; the normalized image format shared with the
-# longstrip scroll #289 and the codec policy #290).
+# transcode producer (the normalized image format shared with the
+# longstrip scroll and the codec policy).
 #
 # Layout:
 #   inc/jof.h          format spec (authoritative), reader, memstore

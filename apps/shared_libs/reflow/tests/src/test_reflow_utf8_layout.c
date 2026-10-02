@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_utf8_layout.c
- * @brief UTF-8 decode correctness in the v1 layout walk (#686 Tier 1).
+ * @brief UTF-8 decode correctness in the v1 layout walk (Unicode Tier 1).
  *
  * @details
  * Two halves. The first drives ::priv_reflow_tok_utf8_decode directly over
@@ -8,7 +8,7 @@
  * substitution contract: a scalar value or U+FFFD, never a surrogate, and a
  * consumed length always in 1..4 so a caller that advances by it can neither
  * stall nor overrun. The second lays real markup through the public API and
- * asserts the laid-out glyph code points, which is the behaviour #686 is
+ * asserts the laid-out glyph code points, which is the behaviour Unicode Tier 1 is
  * actually about: before this change
  * apps/shared_libs/reflow/src/reflow_layout.c emitted one glyph per BYTE, so
  * every non-ASCII character in an EPUB became two to four tofu boxes.

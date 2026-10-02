@@ -4,7 +4,7 @@
  *
  * @details
  * Implements the public "what did the user tap on this page" query surface
- * declared in reflow.h (#110, extended for tap-to-zoom). The layout
+ * declared in reflow.h (hyperlinks, extended for tap-to-zoom). The layout
  * pass (reflow_layout.c) populates `engine->link_rects[]`,
  * `engine->link_targets[]`, `engine->anchors[]` and `engine->image_boxes[]`;
  * this TU reads them:

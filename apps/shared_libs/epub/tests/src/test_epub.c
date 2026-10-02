@@ -793,7 +793,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_css_loader(void*           ctx,
 /**
  * @test internal_test_get_resource
  * @brief `epub_get_resource` extracts an arbitrary archive entry, and the
- *        #140 css-loader glue returns a chapter's external stylesheet.
+ *        The css-loader glue returns a chapter's external stylesheet.
  *
  * @par MC/DC:
  * No compound decision in the test itself; the loader's

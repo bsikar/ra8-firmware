@@ -7,7 +7,7 @@
  * The default book accessors (book.h) are pure offset arithmetic over a
  * fully-resident inflated blob -- the right, zero-copy fast path for a book that
  * fits the resident budget (and XIP-friendly). This sub-header adds the *paged*
- * mode the #147/#162 memory hierarchy was built for: node / string / chapter
+ * mode the memory hierarchy was built for: node / string / chapter
  * lookups copy the needed bytes out of an @ref ra8_vmem page cache on demand, so
  * a GB-class EPUB / CBZ that does not fit RAM is read frame-by-frame with a
  * bounded resident working set instead of a whole-blob inflate.
@@ -314,7 +314,7 @@ typedef struct {
  * @brief Warm the cache frame holding a chapter's first content bytes, without
  *        pinning it (single-threaded read-ahead for the display-flush idle window).
  *
- * @details The reader-facing wrapper #207 wires into the flush-idle window: after
+ * @details The reader-facing wrapper the page prefetch wires into the flush-idle window: after
  *          rendering the current page and issuing the panel flush, warm the
  *          adjacent chapters (N+1 for forward reading, N-1 for a back-flip) so the
  *          next chapter-crossing page turn finds them resident. Resolves @p

@@ -748,7 +748,7 @@ epub_get_cover_image(epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t
 
 /**
  * @brief Copy the raw bytes of an arbitrary archive resource into the caller's
- *        buffer (#140 external stylesheets, and any href-referenced resource).
+ *        buffer (external stylesheets, and any href-referenced resource).
  *
  * @details
  * Generic by-path extraction from the open ZIP -- the same path the cover,

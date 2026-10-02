@@ -14,7 +14,7 @@
  * arena cannot be opened at all, and there is no sub-rect access, so the loupe
  * cannot magnify a comic page. That whole-page cap is exactly the case
  * `jof` was built for and is already wired to the EPUB path
- * (`epub_tile_binder_import`), but not to comics -- #344.
+ * (`epub_tile_binder_import`), but not to comics.
  *
  * This module is the comic analogue of that EPUB binder, reusing the same
  * tiling infrastructure rather than reinventing it: it does not implement a new

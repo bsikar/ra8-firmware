@@ -17,7 +17,7 @@
  * boundary (80 > the 64-byte fixture frame).
  *
  * The addressing contract (descriptor stride, pool base, nibble packing, odd-width
- * parity) used to be open-coded in ereader_shelf's sh_image.c; #342 moved it into
+ * parity) used to be open-coded in ereader_shelf's sh_image.c; it moved into
  * the library. These tests own the library-level acceptance bar: the descriptor
  * read and the sub-rect pixel read are exercised through BOTH a resident source
  * (`base + off`) and a paged source (an ::ra8_vmem cache over an ::ra8_vsource
@@ -602,7 +602,7 @@ static void ibook_verify_rect_g8(uint32_t       iw,
  * @brief A gray8 raster reads back its full-resolution, continuous-tone source
  *        bytes verbatim -- resident == paged -- with no quantisation.
  *
- * @details The core #476 acceptance at the library level: the compiled `.rabook`
+ * @details The core full-resolution acceptance at the library level: the compiled `.rabook`
  *          retains full-resolution gray8 for zoomable content, and the sub-rect
  *          reader serves it 1 byte/pixel with no gray4 nibble-pack in the path.
  *          Image 2 is 80x3 (wider than the 64-byte paged frame, so a row crosses a
