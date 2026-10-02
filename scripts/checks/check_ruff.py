@@ -24,7 +24,7 @@ The previous revision hardcoded ``TARGETS = ("scripts", "tools", "tests")``.
 That left seven first-party files -- host tooling and the HIL fixture
 generators under ``examples/`` -- unlinted and unformatted for the life of the
 gate, hiding 33 lint findings and 3 unformatted files.  It is the same
-hardcoded-scan-list defect as #358 / #332 / #296, so the list is derived here
+hardcoded-scan-list defect as several retired checkers, so the list is derived here
 rather than grown by three more entries: a new root is covered the day it is
 added, with no allowlist to forget.
 

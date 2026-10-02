@@ -2,7 +2,7 @@
 """Every completed bench/silicon verification claim must say where its evidence lives.
 
 A verification claim that names no evidence cannot go stale, because there is
-nothing to check it against. That is not a hypothetical: #710 found
+nothing to check it against. That is not a hypothetical: an audit found
 ``coprocessor/esp32c6/build.sh`` asserting the recipe had been "built, flashed
 and booted on the bench" in a comment written before the media component
 existed. The claim was true when it was written, silently widened to cover code

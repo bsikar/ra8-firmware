@@ -19,7 +19,7 @@ Nothing else catches this class: an absolute-address enumerator like
 `k_ra8_wdt_ofs0_addr` is neither a register symbol nor a struct offset.
 `check_linker_scripts.py` rule LD007 guards the
 phantom data-flash base on the LINKER side only -- the C side was unguarded,
-which is exactly how #545 survived.
+which is exactly how the OFS-address defect survived.
 
 WHAT IT CHECKS
 ==============
@@ -37,8 +37,8 @@ is undefined: it may fault, or return garbage the caller then trusts.
 WHAT IT DELIBERATELY DOES NOT CHECK
 ===================================
 It does not try to validate that a non-reserved address is CORRECT -- that
-needs the manual's register tables, which is #540's job. This gate answers the
-much cheaper question that #540 cannot: "is this address inside a hole?"
+needs the manual's register tables, which is a separate job. This gate answers the
+much cheaper question that one cannot: "is this address inside a hole?"
 """
 
 from __future__ import annotations

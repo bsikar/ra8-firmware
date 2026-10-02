@@ -28,7 +28,7 @@ One artefact family today:
   ``scripts/gen/gen_driver_status.py`` from the HAL source inventory. This one
   used to be hand-maintained, and by the time it was replaced 33 of its 109 rows
   named a deleted file and it still described a library that had been removed
-  (issue #721). Deriving it is only half the fix; gating the derivation is the
+  Deriving it is only half the fix; gating the derivation is the
   other half.
 
 ``--selftest`` proves the detector still fires in both directions -- a matching

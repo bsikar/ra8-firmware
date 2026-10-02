@@ -8,7 +8,7 @@ WHY THESE TWO FILES, TOGETHER
 `.devcontainer/Dockerfile` pins every tool version CI resolves -- clang-format
 22, the ARM toolchain by sha256, ruff, shellcheck, shfmt, cmake-format,
 yamllint. A defect in it changes what every other gate in this
-repository runs. It was, until #371, linted and formatted by nothing at all.
+repository runs. It was, until the lint-coverage audit, linted and formatted by nothing at all.
 `.devcontainer/zshrc` is copied to ~/.zshrc at image build time and is the
 other half of the same artefact. They are checked as one unit because they are
 one deliverable: the container.

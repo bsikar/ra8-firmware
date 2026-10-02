@@ -33,7 +33,7 @@ that binds to nothing -- so both directions are fatal, and the selftest
 * **stale statement form** -- a legacy ``RA8_BOUNDED_LOOP(x);`` in statement
   position (immediately above a loop). That annotation was a hard clang error
   and a silent GCC no-op that bound to no loop at all; it is the very thing
-  #382 replaced, and it must never come back. (The function-level
+  the RA8_BOUNDED_LOOP fix replaced, and it must never come back. (The function-level
   ``RA8_BOUNDED_LOOP`` annotation -- immediately above a *declaration* -- is
   legitimate and is left alone: its next code line is a function signature, not
   a loop.)

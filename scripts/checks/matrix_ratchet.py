@@ -5,8 +5,8 @@
 
 `scripts/emu/matrix.sh` boots EVERY example under `examples/ek_ra8d2/` on the
 board emulator and writes one `app<pad>VERDICT` row per app to
-`build/ra8_emulator_matrix.txt`. That sweep measures #67's own headline success
-criterion -- "every example runs in the emulator" -- and until #394 it was
+`build/ra8_emulator_matrix.txt`. That sweep measures the emulator's own headline success
+criterion -- "every example runs in the emulator" -- and until this ratchet it was
 invoked by nothing: not ci.sh, not a workflow, not the justfile. The repo's
 dominant defect class (a gate wired to nothing) applied to the epic's own
 definition of done.
@@ -281,7 +281,7 @@ def attest_baseline(baseline_file: Path = BASELINE_FILE) -> list[str]:
     The ratchet reads ROWS; nothing until now asserted the FILE is one
     `write_baseline` produced. A hand edit that keeps the rows parseable --
     a whole-file `sort`, a hand-written row, an adjusted `# total:` -- passed
-    silently, which is the ten-day bypass #712 records.
+    silently, which is how a ten-day bypass once happened.
 
     An ABSENT baseline is not a violation: this gate's documented bootstrap on
     a new machine is an empty baseline whose first run lists every failing app.
@@ -588,7 +588,7 @@ def _selftest_attestation(tmp: Path) -> list[str]:
     canonical = fixture.read_text(encoding="utf-8")
     rows = canonical.splitlines()
 
-    # Case 2 -- MUST FAIL: the whole-file `sort` that started #712.
+    # Case 2 -- MUST FAIL: the whole-file `sort` that started that bypass.
     fixture.write_text("\n".join(sorted(rows)) + "\n", encoding="utf-8")
     if not attest_baseline(fixture):
         failures.append("a whole-file sort attested clean")

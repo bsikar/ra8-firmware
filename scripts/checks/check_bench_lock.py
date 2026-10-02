@@ -6,7 +6,7 @@
 Why this is a gate and not a convention
 ---------------------------------------
 There is exactly ONE EK-RA8D2, and the owner, another maintainer, ~20
-concurrent agents over ssh and a nightly CI job all reach it. Before #497
+concurrent agents over ssh and a nightly CI job all reach it. Before the bench lease
 nothing serialised that at all -- no flock, no lockfile, no PID file anywhere
 in the tree. ``scripts/hil/bench.sh`` fixed the mechanism; this fixes the
 enforcement, because a lock nobody is forced to take is decoration.

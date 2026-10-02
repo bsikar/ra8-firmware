@@ -515,7 +515,7 @@ def _rule_register_bank(sym: AnnotatedSymbol, arg: str, _ctx: RuleCtx) -> list[V
 #: is enforced by nothing at all: no rule reads it, and this comment claimed
 #: otherwise for as long as nobody checked. It is declared in
 #: ``annot_rulekeys.MARKER_ONLY_RULES`` so the gap is stated rather than
-#: implied; issue #1247 carries the campaign that closes it. Every key here
+#: implied; the annotations work carries the campaign that closes it. Every key here
 #: and in ANNOTATION_PREFIXES is cross-checked against ra8_attributes.h on
 #: every run, and ``check_rule_coverage`` proves each recognised key is
 #: implemented, read, or declared a marker.
