@@ -500,7 +500,8 @@ smoke_capture_run() {
   # prints, so disabling the guard cannot let a genuinely-stuck app run long:
   # such an app is still bounded by k_run_max_chunks (40000), deterministically.
   #
-  # #168 diagnosed this and fixed it for $periodic_tick_apps only. The root
+  # The periodic-tick banner flake fix diagnosed this and fixed it for
+  # $periodic_tick_apps only. The root
   # cause is not specific to those three apps: ra8_emulator's guard is CPU-time
   # (clock()), so under host load Unicorn's TCG re-translation burns the budget
   # faster than wall time and TRUNCATES the run before the (deterministic)
@@ -543,7 +544,7 @@ smoke_capture_run() {
 smoke_assert_banner() {
   local app="$1"
   # Peripheral apps: assert the app actually produced its real SCI output, not
-  # just that it reached the run budget (the #67 "exercise it meaningfully" bar).
+  # just that it reached the run budget (the "exercise it meaningfully" bar).
   want="$(uart_expect "$app")"
   if [ -n "$want" ]; then
     # Match with a here-string, not `echo "$out" | grep -qF`: `grep -q` closes

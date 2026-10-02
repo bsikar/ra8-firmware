@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# scripts/emu/matrix.sh -- the #67 "run every example" coverage matrix.
+# scripts/emu/matrix.sh -- the "run every example" coverage matrix.
 #
 # Where ra8_emulator_smoke.sh is a curated CI gate (deep per-app assertions on a
 # hand-picked set), this is the breadth gate: it builds and boots EVERY example
@@ -44,7 +44,7 @@
 #      identical UART output. Whether the app reached its budget (OK) or was
 #      cut short therefore tracked how busy the host was, and the app flipped
 #      OK -> FAULT across a change that touched nothing it uses. This is the
-#      #168 mechanism exactly: Unicorn's TCG re-translation burns CPU-time
+#      periodic-tick banner flake mechanism exactly: Unicorn's TCG re-translation burns CPU-time
 #      under load, so the guard fires earlier the busier the box is.
 #   2. The outer `timeout` on the ra8_emulator process, likewise wall-clock.
 #
@@ -401,7 +401,7 @@ fi
 # that cost real work is a wall-clock truncation reported as FAULT: the
 # run was cut short by host load, the app was never judged, and the matrix
 # called it broken. The inverse mislabel -- truncation reported as OK -- is the
-# #168 bug in its original form. Both directions are asserted here, against the
+# periodic-tick banner flake in its original form. Both directions are asserted here, against the
 # real classify_run, so a future edit that folds TRUNCATED back into either
 # neighbour fails immediately instead of at the next flake.
 #

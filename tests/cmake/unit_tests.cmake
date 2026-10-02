@@ -273,8 +273,8 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_lx_f
 # rather than host libc. Registered by hand below with direct sources.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c)
 
-# test_ra8_rand_stub.c tests the freestanding rand()/srand() override, Zig since
-# #2890, and it reaches the unit under test through bare rand()/srand() calls.
+# test_ra8_rand_stub.c tests the freestanding rand()/srand() override, now Zig,
+# and it reaches the unit under test through bare rand()/srand() calls.
 # Those only bound to project code while the host glob compiled ra8_rand_stub.c
 # into ra8_core_hal, where the strong definitions beat libc. With the C gone the
 # same calls would resolve to glibc's rand(), which passes every assertion in

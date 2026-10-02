@@ -68,7 +68,7 @@ sd_image=""
 # TCG re-translation burned the guard's budget faster than wall time and
 # TRUNCATED the run before the (deterministic, but a-few-chunks-in) banner
 # printed -- and a truncated run used to be mislabelled "EXECUTED to the run
-# budget", so the gate accepted it banner-less. That is the whole #168 flake: not
+# budget", so the gate accepted it banner-less. That is the whole periodic-tick banner flake: not
 # emulator non-determinism, a CPU-time guard plus a mislabel. Fixed three ways:
 # ra8_emulator now reports a truncation honestly (a TRUNCATED line that fails the
 # budget check below instead of masquerading as success); RA8_EMU_WALL_S=0 now
@@ -80,7 +80,7 @@ sd_image=""
 # WARN-accept); a small retry stays as cheap insurance only.
 periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 
-# USB device-enumeration apps (#67 Phase 3 -- the headline USB-debugging goal).
+# USB device-enumeration apps (Phase 3 -- the headline USB-debugging goal).
 # ra8_emulator's virtual USB host (board_usb.c) watches SYSCFG.DPRPU and drives the
 # real chapter-9 SETUP sequence (GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION
 # plus the class-specific traffic) against the firmware's actual USBX device stack
@@ -99,7 +99,7 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 # same CONFIGURED assertion applies.
 usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device usb_printer_vendor"
 
-# USB HOST-mode apps (#67 Phase 3, the inverse path). ra8_emulator seams the
+# USB HOST-mode apps (Phase 3, the inverse path). ra8_emulator seams the
 # first-party ra8_usb_host_* primitives to a virtual HID boot keyboard (the same
 # function-seam technique it uses for ra8_eth_*), since the USBHS host controller
 # (0x40351000) is unmodelled. The firmware's real host stack enumerates the
@@ -187,7 +187,7 @@ modem_apps="modem_at_demo"
 # give-up. So, exactly like the "print PASS then idle" SD/OSPI apps above, stop
 # the run at the banner and assert it directly -- but with the NORMAL 300 s wall
 # guard and a single run, NOT the periodic-tick WALL_S=0 path (that path is the
-# #168 deterministic fix for agt_periodic/rtc_alarm/elc_event_demo and is left
+# deterministic banner-flake fix for agt_periodic/rtc_alarm/elc_event_demo and is left
 # untouched). Asserts via uart_expect().
 selfpark_banner_apps="lpm_periodic_idle"
 
@@ -353,7 +353,7 @@ emu_extra_args() { # app -> extra args on stdout
 # names here means there is no string to fall out of step with hil.conf.
 # smoke.sh --selftest fails if any name here resolves to no hil.conf HIL_EXPECT
 # (a listed app that cannot supply its banner would silently assert the empty
-# string -- pass on any output -- which is exactly the hole #398 closes).
+# string -- pass on any output -- which is exactly the hole this table closes).
 uart_banner_apps="
   uart_hello
   ra8_io_demo ra8_io_sdram_demo compress_demo ra8_io_sd_demo

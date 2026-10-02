@@ -239,7 +239,7 @@ if [ "${1:-}" = "--selftest" ]; then
   # source of truth). uart_expect_override() is the only sanctioned exception --
   # an emulator banner that DIFFERS from hil.conf on purpose, with a stated reason. If
   # an override's value ever EQUALS the app's HIL_EXPECT, the divergence is gone
-  # and the override is pure duplication again: exactly the drift #398 removed,
+  # and the override is pure duplication again: exactly the drift the uart_expect cleanup removed,
   # relocated into the table. Fail so it is DELETED (the app then reads hil.conf
   # like every other banner app) rather than left to rot. Without this tripwire
   # the override table just becomes the new drift site.
@@ -411,7 +411,7 @@ done
 [ -n "$sd_image" ] && rm -f "$sd_image"
 [ -n "$book_sd_image" ] && rm -f "$book_sd_image"
 
-# On-screen SW1 button (#39 interactive --view input layer): a click on the
+# On-screen SW1 button (interactive --view input layer): a click on the
 # sidebar's SW1 push-button must route to the user-switch model (drive P009 low),
 # NOT the touch panel -- so gpio_input_demo lights LED1 (SW1 -> LED1) while
 # draining zero GT911 touches. The SW1 button face centre sits at composite
