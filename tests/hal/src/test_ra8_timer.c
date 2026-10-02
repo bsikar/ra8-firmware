@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_timer.c
- * @brief Unit tests for timer.c (thin ra8_now_ms / ra8_sleep_ms wrappers)
+ * @brief Unit tests for ra8_now_ms / ra8_sleep_ms (aliases in libs/ra8_core/src/time_abi.zig)
  * @details Validates the thin timer wrappers' millisecond reads and zero-duration sleep behavior over the shared time service.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
