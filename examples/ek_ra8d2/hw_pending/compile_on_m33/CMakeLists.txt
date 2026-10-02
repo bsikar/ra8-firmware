@@ -90,8 +90,7 @@ if(TARGET compile_on_m33_cpu1.elf)
   # which bolts it onto the image AND applies the per-source first-party
   # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
   # same set ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean on it
-  # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0, so
-  # its rows are gone from .github/cpu1-warning-profile-baseline.txt
+  # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0
   # (#843 / T1-09).
   # The assertion sink itself is Zig now: miniz MZ_ASSERT and core
   # assertions still route to ra8_fatal_error(), but it is a weak export of
@@ -170,11 +169,8 @@ if(TARGET compile_on_m33_cpu1.elf)
   # when it is not. When T1-09 lands, re-measure and re-add whatever actually
   # fires.
   #
-  # The first-party TUs this app bolts on are enumerated in
-  # .github/cpu1-warning-profile-baseline.txt and held there by
-  # scripts/checks/check_cpu1_warning_profile.py: adding another
-  # first-party M33 source here without bringing it onto the profile now fails
-  # that gate. miniz.c is classified as SOUP and is deliberately not a row.
+  # A first-party M33 source added here belongs on
+  # ra8_cpu1_add_first_party_sources(); miniz.c is SOUP and stays off it.
   set_property(
     SOURCE ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
     APPEND
