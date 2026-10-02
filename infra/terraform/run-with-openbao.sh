@@ -41,4 +41,5 @@ export TF_VAR_openbao_role_id="$terraform_role_id"
 export TF_VAR_openbao_secret_id="$terraform_secret_id"
 unset TF_VAR_proxmox_api_token
 
-exec terraform -chdir="$repo_root/infra/terraform/environments/lab" "$@"
+iac_bin="${RA8_IAC_BIN:-terraform}"
+exec "$iac_bin" -chdir="$repo_root/infra/terraform/environments/lab" "$@"
