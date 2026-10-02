@@ -628,7 +628,7 @@ RA8_INTERNAL static bool internal_cache_is_fresh(ra8_fs_mount_t*              mo
 /**
  * @brief Write a fresh marker file, replacing any stale one.
  * @details `ra8_fs_write_file` replaces an existing name by itself since
- *          #603, so the unlink is belt-and-braces: it keeps the marker
+ *          the exFAT entry-set fix, so the unlink is belt-and-braces: it keeps the marker
  *          absent rather than stale if the write fails partway.
  * @param[in] mount Mounted volume.
  * @param[in] path  Marker path (root-level).

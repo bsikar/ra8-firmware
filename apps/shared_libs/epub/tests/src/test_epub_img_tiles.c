@@ -1,6 +1,6 @@
 /**
  * @file test_epub_img_tiles.c
- * @brief #231 bounded-RAM tile paging of JOF atlases through ra8_tile_cache,
+ * @brief Bounded-RAM tile paging of JOF atlases through ra8_tile_cache,
  *        the import-time transcode wiring, and the real reflow `<img>` loader.
  *
  * @details
@@ -613,7 +613,7 @@ RA8_INTERNAL static void internal_test_tile_edges(void)
  * @test internal_test_import_transcode
  * @brief The open-path wiring end to end: a DEFLATE-compressed PNG manifest
  *        entry imports through the real transcode producer into a memstore
- *        and pages back byte-identically -- #231's "manifest href resolves
+ *        and pages back byte-identically -- the "manifest href resolves
  *        through the atlas".
  *
  * @par MC/DC:

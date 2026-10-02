@@ -3,7 +3,7 @@
 #
 # apps/shared_libs/longstrip -- continuous vertical-scroll (longstrip / manhwa) reading
 # mode. A thin scroll/geometry engine over the JOF band-tile atlas
-# (#231, apps/shared_libs/jof): a longstrip band is one full-width JOF tile
+# (apps/shared_libs/jof): a longstrip band is one full-width JOF tile
 # column, so the tile index IS the band index -- O(1) seek to any scroll-y.
 #
 # Layout:

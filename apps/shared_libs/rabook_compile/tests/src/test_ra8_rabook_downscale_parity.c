@@ -8,7 +8,7 @@
  * (tools/epub_compile/src/epub_compile.py, resampling via tools/epub_compile/
  * src/gray4_kernel.py) and the firmware (ra8_rabook_gray4_downscale + _encode) MUST
  * emit the same 4-bpp bytes for that path -- one deterministic integer kernel, not
- * a LANCZOS-vs-bilinear exception. Before #213 the desktop tool used PIL LANCZOS,
+ * a LANCZOS-vs-bilinear exception. Before the parity fix the desktop tool used PIL LANCZOS,
  * so a downscaled image could not be round-trip-verified byte-identical.
  *
  * This test runs the firmware kernel over a baked 8-bpp source and asserts the

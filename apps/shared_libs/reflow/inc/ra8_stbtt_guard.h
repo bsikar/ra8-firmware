@@ -68,7 +68,7 @@
  * then the loca / glyf outline walk); stb_truetype does not bound those against
  * the buffer either, so a crafted font can still drive an out-of-bounds read
  * there. Hardening that deeper path is tracked separately as parser hardening
- * (issue #179); it is a much larger change than this directory pre-check.
+ * (the untrusted-parser hardening work); it is a much larger change than this directory pre-check.
  *
  * @param[in] data      Pointer to the first byte of the font buffer.
  * @param[in] len       Length of the font buffer, bytes.

@@ -1,7 +1,7 @@
 /**
  * @file jof_produce.h
  * @brief Import-time transcode producer: JPEG/PNG/WebP -> JOF band-tile atlas
- *        in bounded RAM (#231, #290 normalize-on-import).
+ *        in bounded RAM (normalize-on-import).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -297,8 +297,7 @@ jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_by
 jof_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h);
 
 /**
- * @brief Transcode one encoded JPEG/PNG/WebP source into a JOF atlas (#231,
- *        #290).
+ * @brief Transcode one encoded JPEG/PNG/WebP source into a JOF atlas.
  *
  * @details
  * Sniffs the source magic (JPEG SOI, PNG signature, or WebP RIFF/WEBP), then:

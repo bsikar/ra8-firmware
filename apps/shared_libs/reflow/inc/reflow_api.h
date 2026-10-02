@@ -578,7 +578,7 @@ reflow_render_page(const reflow_t* engine, uint32_t page_idx, void* framebuffer)
  * `reflow_set_font_size()`); otherwise the next layout picks it up.
  *
  * Per-run family / bold / italic face *selection* across multiple embedded faces
- * is intentionally out of scope here and tracked on #109 (blocked on the
+ * is intentionally out of scope here and tracked as embedded-font work (blocked on the
  * `@font-face` / `font-family` resolution prerequisite).
  *
  * @param[in,out] engine    Initialised engine.

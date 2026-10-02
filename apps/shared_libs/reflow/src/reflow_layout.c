@@ -773,7 +773,7 @@ ra8_err_t priv_reflow_layout_apply_token(reflow_t*             engine,
                                          const reflow_token_t* tok)
 {
   /* Pack the per-run embedded-face index (stamped on the token by the cascade,
-   * #109) into the free high nibble of the style stamp; bits 0-2 keep the
+   * embedded fonts) into the free high nibble of the style stamp; bits 0-2 keep the
    * bold/italic/underline emphasis. Single-face content carries face 0, so the
    * style byte is unchanged. */
   cur->active_style =

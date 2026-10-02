@@ -3,9 +3,10 @@
  * @brief Host test: mkbookimg stores each book under its own long basename.
  *
  * @details
- * Before #600 gave `ra8_fs` VFAT long-name write, `tools/mkbookimg` emitted
- * `BOOK01.RBK`, `BOOK02.RBK`, ... and discarded the source's real name. #633
- * removed that workaround: the tool now files each book under its own basename.
+ * Before `ra8_fs` gained VFAT long-name write, `tools/mkbookimg` emitted
+ * `BOOK01.RBK`, `BOOK02.RBK`, ... and discarded the source's real name. The
+ * long-name migration removed that workaround: the tool now files each book
+ * under its own basename.
  *
  * This test exercises the SAME name derivation the tool ships
  * (`mkbookimg_dest_name`, shared through `tools/mkbookimg/inc/mkbookimg_names.h`)

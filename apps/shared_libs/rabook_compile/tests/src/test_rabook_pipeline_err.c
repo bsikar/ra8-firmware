@@ -105,7 +105,7 @@ RA8_INTERNAL static void internal_test_pipeline_raster_images_transcoded(void)
  * The new opt-out arm of the transcode stage: `scr->max_image_edge == 0`
  * skips ra8_rabook_gray4_output_dims entirely, so ow/oh stay the source
  * dimensions and internal_downscale_if_needed takes its copy-in-place arm with no
- * gray scratch needed (issue #210: full-resolution sources for the zoom
+ * gray scratch needed (full-resolution sources for the zoom
  * loupe).
  *
  * @par MC/DC:

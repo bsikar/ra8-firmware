@@ -1,10 +1,10 @@
 /**
  * @file test_epub_entry.c
- * @brief #231 bounded-RAM ZIP-entry extraction: forward streaming cursor +
+ * @brief Bounded-RAM ZIP-entry extraction: forward streaming cursor +
  *        positioned (windowed) read, proven byte-identical to a whole-inflate.
  *
  * @details
- * The load-bearing claim of #231 is that a large in-content image entry (a manga
+ * The load-bearing claim of EPUB image streaming is that a large in-content image entry (a manga
  * page that inflates to tens of MB) can be paged off an EPUB without ever holding
  * the whole entry resident. This file turns that into a CI-enforced invariant for
  * the two extraction primitives on `epub`:
@@ -336,7 +336,7 @@ RA8_INTERNAL static void internal_test_entry_stream_parity_bounded(void)
   const epub_mem_media_t mem  = {.data = s_fixture.archive, .size = s_fixture.archive_size};
   TEST_ASSERT_EQ(k_ra8_ok, epub_open(&mem, "entry.epub", &book));
 
-  /* Oracle: the whole entry inflated in one shot (the path #231 replaces). */
+  /* Oracle: the whole entry inflated in one shot (the path streaming replaces). */
   size_t ref_got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  epub_get_resource(&book,

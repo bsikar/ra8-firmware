@@ -12,7 +12,7 @@
  *
  * The cache is deliberately tiny (8 frames x 64 bytes = 512 bytes for a ~520-byte
  * blob), so the node table and string pool span many frames and the walk forces
- * real evictions and re-faults. The acceptance bar for #163 is that the paged
+ * real evictions and re-faults. The acceptance bar for the paged accessor is that the paged
  * walk produces byte-for-byte identical text to the resident walk (and to the
  * legacy book_chapter_text()), proving the cache is a transparent data source.
  *

@@ -3,7 +3,7 @@
  * @brief Host test for the on-import EPUB -> .rabook cache manager.
  *
  * @details
- * Proves the import-and-cache acceptance for #151 on the host without the real
+ * Proves the import-and-cache acceptance for the on-import compiler on the host without the real
  * compiler: a tiny text-only `.epub` is assembled with miniz and written to a
  * FAT16 volume through `ra8_fs` (over a RAM block backend -- the RAM-disk pattern
  * from `apps/shared_libs/epub/tests/src/test_epub_fs.c`). A lightweight compile *spy* is injected

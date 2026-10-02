@@ -633,7 +633,7 @@ internal_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, siz
 
 /**
  * @brief Shared serialize/load precheck: init state, content args, and the
- *        #109 multi-face cache-bypass invariant.
+ *        Embedded-font multi-face cache-bypass invariant.
  *
  * @details Per-glyph embedded face indices are not part of the cache
  * key/format, so a book with any registered `@font-face` is never cached: it

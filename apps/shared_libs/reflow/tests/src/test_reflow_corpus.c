@@ -3,7 +3,7 @@
  * @brief Content corpus + live-layout pagination-cache acceptance.
  *
  * @details
- * Closes the issue #79 acceptance for the import-time pagination cache:
+ * Closes the acceptance for the import-time pagination cache:
  * "corpus fixtures run via `just quality::local::test`; cache produces identical pages to
  * live layout; config change invalidates correctly."
  *

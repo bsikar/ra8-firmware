@@ -1,6 +1,6 @@
 /**
  * @file jof_produce_webp.c
- * @brief Transcode producer: whole-frame WebP arm (#290 normalize-on-import).
+ * @brief Transcode producer: whole-frame WebP arm (normalize-on-import).
  *
  * @details
  * The producer normalises WebP manifest images to the one on-device JOF

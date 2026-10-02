@@ -190,7 +190,7 @@ typedef struct {
  * pool (the `src` is the de-`url()`-wrapped manifest href, e.g.
  * `fonts/Body.ttf`). `weight_bold` / `style_italic` capture which face this is so
  * ::ra8_css_match_face can pick the right one for a run's emphasis. The
- * reflow-side loading of that href is #109's remainder, not this module.
+ * reflow-side loading of that href is embedded-font remainder work, not this module.
  */
 typedef struct {
   uint16_t family_off;   /**< `font-family` name slice offset.   */
@@ -395,7 +395,7 @@ typedef struct {
  * prefers an exact `(weight, style)` match; failing that it falls back to the
  * family's regular (non-bold, non-italic) face; failing that it reports
  * ::k_ra8_css_no_face so the caller uses its default face. This is the
- * face-selection decision #109's remainder consumes (it then resolves the
+ * face-selection decision the embedded-font remainder consumes (it then resolves the
  * winning entry's ::ra8_css_face_src href to a loaded typeface).
  *
  * @param[in] sheet       Parsed stylesheet (its `faces` table is scanned).

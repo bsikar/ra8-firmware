@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_vmem_hugebook.c
- * @brief #147 huge-book invariant gate: a GB-class object served correctly
+ * @brief Huge-book invariant gate: a GB-class object served correctly
  *        through a tiny fixed page-cache budget (Layer 1 + Layer 2).
  *
  * @details
@@ -70,7 +70,7 @@ static bool internal_objects_equal(const void* lhs, const void* rhs, size_t len)
  * @details The resident budget is deliberately tiny relative to the object: a
  *          32-frame x 4096-byte cache (128 KiB) fronts a ~7.6 GiB object, so
  * the file is ~62,500x the budget and the workload's distinct working set is
- *          ~188x the budget -- the "working set >> RAM" regime #147 targets.
+ *          ~188x the budget -- the "working set >> RAM" regime the memory hierarchy targets.
  * @since 0.1.0
  */
 typedef enum : uint32_t {

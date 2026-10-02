@@ -15,14 +15,14 @@
  * attacker-controlled initial-access content -- a WebP inside a downloaded
  * book -- and are fuzzed by `tests/fuzz/src/fuzz_ra8_webp.c`.
  *
- * @par Integration (#290 normalize-on-import):
+ * @par Integration (normalize-on-import):
  * The JOF tile producer consumes this facade
  * (`ra8_jof_produce()` -> `priv_webp_transcode`): a WebP manifest image
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The
  * small-image (non-tiled) `reflow` / `ra8_img` inline raster dispatch calls
  * ra8_webp_get_info() / ra8_webp_decode_rgba() directly instead, so an
- * inline EPUB illustration takes the same decoder a comic tile does. (#637 feat(reflow): decode inline WebP through the libwebp facade)
+ * inline EPUB illustration takes the same decoder a comic tile does.
  *
  *
  * [Ring 4 / WebP] {World: NS}
