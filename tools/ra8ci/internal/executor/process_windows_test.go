@@ -68,6 +68,24 @@ func TestWindowsJobClosesDescendantAfterParentExit(t *testing.T) {
 	}
 }
 
+func TestProcessParametersEnvironmentBlockTerminatesWithTwoNuls(t *testing.T) {
+	_, _, _, environment, err := processParameters("program", nil, ".", []string{"A=B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(environment) != 5 || environment[len(environment)-3] == 0 || environment[len(environment)-2] != 0 || environment[len(environment)-1] != 0 {
+		t.Fatalf("environment tail = %v, want two NULs", environment)
+	}
+
+	_, _, _, empty, err := processParameters("program", nil, ".", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(empty) != 2 || empty[0] != 0 || empty[1] != 0 {
+		t.Fatalf("empty environment = %v, want [0 0]", empty)
+	}
+}
+
 func TestWindowsJobHelper(t *testing.T) {
 	sep := -1
 	for i, arg := range os.Args {
