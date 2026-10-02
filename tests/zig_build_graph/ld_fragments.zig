@@ -101,7 +101,8 @@ fn hasLinkerAppend(b: *std.Build, app: CrossApp) bool {
 }
 
 /// `THREADX_HEAP <region>`. One PROVIDE: the origin of the region
-/// tx_application_define() carves its pools from. Before #761 the only way to
+/// tx_application_define() carves its pools from. Before the composable board
+/// script the only way to
 /// add it was a private copy of the whole 340-line board map, which is why 42
 /// apps missed every later platform change.
 fn threadxHeap(b: *std.Build, region: []const u8) []const u8 {

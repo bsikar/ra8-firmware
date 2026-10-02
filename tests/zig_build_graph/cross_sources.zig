@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Which translation units an example app compiles, and on what include path
-//! (#936, widened by #1017).
+//! (first proven on one app, then widened).
 //!
 //! Extracted from build.zig because the root build file is at the 1000-line
 //! ceiling scripts/checks/check_file_size.py holds every Zig source to, and
@@ -76,7 +76,7 @@ pub const library_aliases = [_]LibraryAlias{
 /// compiles the unit for every `ra8_io` consumer, and it does not fail on the
 /// missing header -- `libs/ra8_mem/inc` happens to be reachable through
 /// nothing at all, so what you get is an extra object in an image CMake never
-/// put it in. #1068 measured the drop arm on ra8_io_swap_demo (which names
+/// put it in. The stack-budget slice measured the drop arm on ra8_io_swap_demo (which names
 /// `ra8_io` and not `ra8_mem`): 261 units against CMake's 260, this one
 /// either-only. The KEEP arm is encoded from the listfile and is not yet
 /// measured -- no app in the table names `ra8_mem`.
@@ -140,7 +140,7 @@ pub const board_opt_in_sources = [_]BoardOptIn{
 };
 
 // ===========================================================================
-// The app table (#936, widened by #1021, #1036, #1044, #1054, #1068)
+// The app table
 // ===========================================================================
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -155,7 +155,7 @@ pub const cross_source_dirs = [_][]const u8{
     "libs/ra8_secure_app/src",
     // The board layer's own src/ is NOT listed here: it is `<app.board>/src`,
     // appended per app by crossSources() below. Every app cross-built before
-    // #1131 is an ek_ra8d2 app, so the directory sat in this list looking like
+    // the RA8P1 board landed is an ek_ra8d2 app, so the directory sat in this list looking like
     // a constant; `ra8_add_app(BOARD ra8p1)` resolves it to a different layer
     // entirely, and a hard-coded entry would compile the RA8D2 BSP into an
     // RA8P1 image and omit the RA8P1 one.
@@ -461,7 +461,7 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     // difference and not a formality: this list is also what
     // `zig build compile-db` writes, and a database row whose include path is
     // one directory short of the compiler's is a row clang-tidy resolves
-    // differently than the build did. #1068 measured it on ra8_io_swap_demo,
+    // differently than the build did. The stack-budget slice measured it on ra8_io_swap_demo,
     // which ships no inc/; the step spells an absent directory as a plain -I
     // string, because only an existing directory can be declared as a step
     // input.

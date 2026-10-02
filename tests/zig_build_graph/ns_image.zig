@@ -1,9 +1,9 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The Non-Secure image of a two-project TrustZone build (#1111, part of RA8FW-339).
+//! The Non-Secure image of a two-project TrustZone build (part of RA8FW-339).
 //!
-//! #1096 taught the graph the SECURE half of `tz_nsc_cgc_usb`: 192 TUs, the
+//! The TrustZone secure build taught the graph the SECURE half of `tz_nsc_cgc_usb`: 192 TUs, the
 //! `NSC_SRCS` veneer subset, `-mcmse`, and the CMSE import library the link
 //! emits. That is one of the app's two images. The other one is a SEPARATE
 //! executable the app's own CMakeLists declares with a raw `add_executable`,
@@ -16,8 +16,8 @@
 //! 1. A raw `add_executable` target gets the toolchain's global flags and
 //!    whatever its own CMakeLists asks for, in ITS declaration order. Here
 //!    that order is the reverse of `ra8_add_app()`'s: `-fshort-enums`
-//!    `-ffreestanding` land BEFORE the warning profile, not after it (#1090
-//!    fixed the other direction). Compilers do not care; a compile-database
+//!    `-ffreestanding` land BEFORE the warning profile, not after it (the EXTRA_SRCS
+//!    slice fixed the other direction). Compilers do not care; a compile-database
 //!    row diffed against a real configure does.
 //! 2. The middleware is a VARIANT, not the one the secure side uses:
 //!    `cmake/threadx_ns.cmake` adds `RA8_THREADX_NON_SECURE`, which flips
@@ -25,8 +25,8 @@
 //!    `TX_SINGLE_MODE_NON_SECURE`. Same 185 kernel sources, a different
 //!    kernel, and not one diagnostic if the define goes missing.
 //! 3. First-party TUs the secure side also compiles are recompiled NS-private
-//!    (`ra8_scb.c`, `ra8_mstp.c`, the `ra8_usb*` driver; `ra8_log` is Zig as of
-//!    #2836 and arrives as ra8_core's archive). A
+//!    (`ra8_scb.c`, `ra8_mstp.c`, the `ra8_usb*` driver; `ra8_log` is Zig now
+//!    and arrives as ra8_core's archive). A
 //!    single shared copy links fine and faults INVTRAN across the S/NS
 //!    boundary at run time.
 //! 4. A second vendored tree (USBX) with suppressions measured per set: the
@@ -351,7 +351,7 @@ pub const Context = struct {
     merge_tool: ?*std.Build.Step.Compile = null,
 };
 
-/// `tools/merge_ihex` built for the machine running the build. #929 moved the
+/// `tools/merge_ihex` built for the machine running the build. The merge_ihex port moved the
 /// merger from `scripts/gen/merge_ihex.py` into that Zig tool, and CMake runs
 /// it as `$<TARGET_FILE:ra8_zig::merge_ihex> <secure.hex> <ns.hex> <out.hex>`.
 /// Built from source here rather than through a package dependency: the tool
@@ -434,7 +434,7 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     // The archives last and NO -lgcc: this target names threadx_ns as its only
     // link library, and ra8_core rides in behind it as that library's
     // INTERFACE dependency. Between them they are the whole of this image's
-    // libc. Until #2820 the freestanding primitives were three ra8_core C
+    // libc. Until the port the freestanding primitives were three ra8_core C
     // files compiled into the kernel archive itself; they are Zig now and
     // cmake/threadx_ns.cmake stopped naming them in the same change.
     link.addFileArg(ctx.middleware_archive orelse @panic("ra8: the NS link needs the threadx_ns archive"));

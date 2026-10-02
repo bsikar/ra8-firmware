@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Vendored middleware (`USES`) for the root build graph (#1054, part of RA8FW-339).
+//! Vendored middleware (`USES`) for the root build graph (part of RA8FW-339).
 //!
 //! An app names a middleware in `USES` and `ra8_add_app()` does four separate
 //! things with it, none of which the graph could see until this slice: it
@@ -13,7 +13,7 @@
 //! The four are independent, and three of them fail SILENTLY when they are
 //! missing: an app compiled without the exported define gets a different
 //! `tx_api.h`, an app linked without `--undefined=_tx_timer_interrupt` links
-//! clean and never advances its time base (issue #8), and objects linked
+//! clean and never advances its time base (the USB-FS no-timer-tick bug), and objects linked
 //! directly instead of through an archive pull in members a static link would
 //! have left out. Only the source set fails loudly.
 //!
@@ -164,8 +164,8 @@ pub const threadx = Middleware{
     // port/threadx/inc/tx_user.h: a different tick rate, different stack
     // sizes, different feature set, and not one diagnostic about it.
     .public_defines = &.{"-DTX_INCLUDE_USER_DEFINE_FILE"},
-    // Issue #8. The shared SysTick_Handler, Zig in ra8_core's archive since
-    // #2851, takes a WEAK reference to _tx_timer_interrupt so non-ThreadX apps
+    // The shared SysTick_Handler, Zig in ra8_core's archive since the
+    // ra8_time port, takes a WEAK reference to _tx_timer_interrupt so non-ThreadX apps
     // still link; a weak reference does not pull the archive member, so the
     // weak symbol resolves to NULL and the ThreadX time base never advances.
     // The link succeeds either way, which is exactly why this belongs in the

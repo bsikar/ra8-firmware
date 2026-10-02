@@ -4,7 +4,7 @@
 //! `ra8_ns_linker_script()`: the Non-Secure image's linker script, CONFIGURED
 //! from the board template rather than named by the app.
 //!
-//! Until #759 item 2 this was two hand-maintained forks -- a shared SRAM-run
+//! Until the dual-image scaffold work this was two hand-maintained forks -- a shared SRAM-run
 //! script and ereader's XIP variant -- that shared 78 of ~130 lines and drifted
 //! on symbol names. They are one template now with one substitution axis: where
 //! `.text` lives. The app says which layout it wants and gets the current

@@ -46,7 +46,7 @@ const arm_link_flags = arm_flags.link_flags;
 const armWarningFlags = arm_flags.warningFlags;
 
 /// The cross toolchain and the per-sub-target contexts, in their own module
-/// since #1179. Aliased here so the call sites below read as they did.
+/// since the build-type slice. Aliased here so the call sites below read as they did.
 const ArmTools = cross_build.Tools;
 const findArmTools = cross_build.findTools;
 
@@ -102,7 +102,7 @@ fn addCrossApp(
     // zig_libs.cmake maps a Debug configure onto a Debug archive and every
     // other configure onto ReleaseSmall, so an archive built at one of the two
     // and kept there is not the artifact CMake links in the other. The hook
-    // was written when the graph only had Debug (#1179 gave it the other two)
+    // was written when the graph only had Debug (the build-type slice gave it the other two)
     // and nothing failed in between, because an archive at the wrong
     // optimisation links perfectly well.
     var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
@@ -122,7 +122,8 @@ fn addCrossApp(
     // ra8_core, which is not optional and is not in the table above.
     // cmake/ra8_app/sources.cmake registers it unconditionally and names the
     // reason in its own guard string: "links ra8_core into every app". Since
-    // #2820 libs/ra8_core/src holds no .c at all, so this archive is the only
+    // the freestanding-primitives port, libs/ra8_core/src holds no .c at
+    // all, so this archive is the only
     // place an image gets memcpy / memset / str* / abs, which the compiler
     // emits calls to from ordinary struct assignment, along with the log
     // backend, the timebase and the fault block.
@@ -254,7 +255,7 @@ fn addCrossApp(
     // OFF_TARGET_LIBS archive built with the defaults is the ON-target one:
     // ra8_psa_crypto then binds the vendored TF-PSA-Crypto, which this app
     // does not link, and crypto_aes_demo failed with ten undefined psa_*
-    // symbols. Before #1114 (a7193bf4) the same library was C, compiled into
+    // symbols. Before a7193bf4 the same library was C, compiled into
     // this app under RA8_OFF_TARGET, i.e. on its software stand-ins; the
     // option keeps that. A library reached this way has to declare the option,
     // and the dependency call fails loudly if it does not.
@@ -411,7 +412,7 @@ fn addCrossApp(
     link.addArgs(&arm_link_flags);
     // The middleware's INTERFACE link options. Dropping these does not fail
     // the link, it produces a firmware image whose kernel time base never
-    // advances (issue #8), which is the sharpest reason middleware belongs in
+    // advances (the USB-FS no-timer-tick bug), which is the sharpest reason middleware belongs in
     // the graph as data rather than as a pile of source paths.
     link.addArgs(middleware.appLinkOptions(b.allocator, middlewares));
     // Before -T, where CMake puts it: the link picks its multilib and its
