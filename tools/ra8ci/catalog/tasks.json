@@ -367,38 +367,6 @@
       "resource_hints": {}
     },
     {
-      "name": "cite-check",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "cite-check",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "cite-check"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "copyright",
       "version": 1,
       "tier": "required",

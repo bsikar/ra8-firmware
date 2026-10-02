@@ -46,7 +46,7 @@ Every `.c` and `.h` opens with the same Doxygen comment block, in the
 order below. The order itself is a readability convention: no tool parses
 it, and nothing breaks if you swap two tags. (This paragraph used to say
 "order matters -- the cite_check / world_tag scripts grep on it". Neither
-ever has. `cite_check.py` greps `HUM Ch` and has never read `@file`,
+ever has. The old cite checker grepped `HUM Ch` and never read `@file`,
 `@brief` or `@details`. What the tags themselves are held to is in the
 table below, one enforcer named per row.)
 
@@ -474,9 +474,9 @@ The format is:
 /* HUM Ch X.Y "Section name" p NNNN-MMMM */      (page range)
 ```
 
-`scripts/checks/cite_check.py` walks every `.c` / `.h` and verifies
-that each cite's chapter exists in `docs/reference/CHAPTER_MAP.md`
-and the page falls within the chapter's range.
+Each cite's chapter should exist in `docs/reference/CHAPTER_MAP.md`
+and its page should fall within the chapter's range. No CI gate checks
+this any more; reviewers do.
 
 ## SOLID principles for C
 

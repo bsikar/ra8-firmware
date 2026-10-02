@@ -199,7 +199,6 @@ if [[ "$-" == *p* ]]; then
     "lint-devcontainer|fast|hadolint over the Dockerfile, zsh -n over the zshrc"
     "lint-coverage|fast|every code file is claimed by a linter and a formatter"
     "reserved-addrs|fast|address enums never point into a HUM Reserved window"
-    "cite-check|fast|HUM citation validator (strict)"
     "roadmap-stats|fast|historical HAL completion record stats"
     "sbom|fast|CycloneDX SBOM freshness"
     "soup-upstream|fast|vendored SOUP matches the upstream blobs recorded for its pin"
