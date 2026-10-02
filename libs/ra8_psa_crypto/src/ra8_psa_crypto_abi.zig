@@ -23,10 +23,20 @@ comptime {
 }
 
 /// An empty slice that is still non-null, for the `(NULL, 0)` arguments the
-/// C contract accepts: the guards ask about presence separately.
+/// C contract accepts. Only for a pointer the membrane has already refused
+/// when null, or one whose length the guards check on its own.
 fn span(ptr: ?[*]const u8, len: usize) []const u8 {
     const base = ptr orelse return &[_]u8{};
     return base[0..len];
+}
+
+/// The caller's `(ptr, len)` for a buffer the contract lets be absent. `(NULL,
+/// 0)` is the empty slice; `(NULL, n)` with n != 0 is null, so the caller can
+/// refuse it here. Building an empty slice for it would hand the guards a zero
+/// length, and their `NULL && len != 0` check would never fire.
+fn optionalSpan(ptr: ?[*]const u8, len: usize) ?[]const u8 {
+    if (ptr) |base| return base[0..len];
+    return if (len == 0) &[_]u8{} else null;
 }
 
 fn spanMut(ptr: ?[*]u8, len: usize) []u8 {
@@ -74,9 +84,10 @@ export fn ra8_psa_hash_compute(
 ) u16 {
     if (out_len) |written| written.* = 0;
     if (out == null or out_len == null) return Err.invalid_arg;
+    const message = optionalSpan(input, input_len) orelse return Err.invalid_arg;
     return facade.hashCompute(
         alg,
-        span(input, input_len),
+        message,
         input != null,
         spanMut(out, out_cap),
         out_len.?,
@@ -124,13 +135,15 @@ export fn ra8_psa_aead_encrypt(
 ) u16 {
     if (out_len) |written| written.* = 0;
     if (nonce == null or out == null or out_len == null) return Err.invalid_arg;
+    const plain_text = optionalSpan(plain, plain_len) orelse return Err.invalid_arg;
+    const assoc = optionalSpan(aad, aad_len) orelse return Err.invalid_arg;
     return facade.aeadEncrypt(
         handle,
         alg,
         span(nonce, nonce_len),
-        span(aad, aad_len),
+        assoc,
         aad != null,
-        span(plain, plain_len),
+        plain_text,
         plain != null,
         spanMut(out, out_cap),
         out_len.?,
@@ -152,11 +165,12 @@ export fn ra8_psa_aead_decrypt(
 ) u16 {
     if (out_len) |written| written.* = 0;
     if (nonce == null or cipher == null or out_len == null) return Err.invalid_arg;
+    const assoc = optionalSpan(aad, aad_len) orelse return Err.invalid_arg;
     return facade.aeadDecrypt(
         handle,
         alg,
         span(nonce, nonce_len),
-        span(aad, aad_len),
+        assoc,
         aad != null,
         span(cipher, cipher_len),
         spanMut(out, out_cap),
