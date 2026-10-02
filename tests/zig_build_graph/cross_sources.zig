@@ -345,13 +345,28 @@ pub fn declaresLibrary(app: CrossApp, library: []const u8) bool {
     return false;
 }
 
+/// The target an app's Zig code is built for: cortex-m85 with hard float,
+/// what zig_libs.cmake derives from the toolchain's -mcpu and -mfloat-abi.
+pub const zig_target_query = std.Target.Query{
+    .cpu_arch = .thumb,
+    .os_tag = .freestanding,
+    .abi = .eabihf,
+    .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
+};
+
+/// False for an app whose main is a Zig root (`zig_main`): it has no
+/// `src/main.c`, and listing one would fail the compile on a missing file.
+pub fn hasCMain(app: CrossApp) bool {
+    return app.zig_main == null;
+}
+
 /// Every C translation unit in the app's link, in ra8_add_app()'s own order:
 /// the app's main.c, the resolved boot files, the globbed universal set, then
 /// whatever the app's `LIBS` add on top.
 pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     var sources = std.ArrayList([]const u8).init(b.allocator);
 
-    sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
+    if (hasCMain(app)) sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
 
     for (cross_boot_sources) |boot| {
         const app_copy = b.fmt("{s}/src/{s}", .{ app.dir, boot });
