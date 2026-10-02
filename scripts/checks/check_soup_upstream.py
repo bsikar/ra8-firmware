@@ -112,8 +112,10 @@ EXIT_VACUOUS = 2
 # does not trip them while sitting far above any plausible collapse;
 # MIN_COMPONENTS has no component slack, so adding or deleting a vendored
 # component is meant to fail here until whoever does it re-measures these three
-# numbers deliberately.
-MIN_COMPONENTS = 19
+# numbers deliberately. Re-measured 2026-10-02 (RA8FW-385): FlatBuffers, gemmlowp
+# and ruy left the tree for pinned upstream tarballs in build.zig.zon, whose Zig
+# content hash is their upstream proof, so 16 components remain here.
+MIN_COMPONENTS = 16
 MIN_ENTRIES = 8800
 MIN_UPSTREAM_VERIFIED = 8700
 
