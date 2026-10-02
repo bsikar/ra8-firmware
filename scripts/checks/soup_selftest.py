@@ -76,8 +76,10 @@ FIXTURE_FLOORS = (1, 1, 1)
 FIXTURE_VERIFIED_ROWS = 2
 # The shipped floors must be real numbers, not 0-with-a-comment. A floor of
 # zero passes for a scan that covered nothing, which is the failure this whole
-# family of constants exists to prevent.
-FLOOR_SANITY_MIN = 1000
+# family of constants exists to prevent. RA8FW-385 left 814 vendored files
+# once ThreadX became a build.zig.zon package, so the sanity bar sits below
+# that live count while staying far above zero.
+FLOOR_SANITY_MIN = 500
 _FIXTURE_FILES = {
     "src/a.c": b"int a;\n",
     "src/b.c": b"int b;\n",

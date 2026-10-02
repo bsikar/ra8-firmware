@@ -71,7 +71,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 
 | Component | Version | License (SPDX) | In-tree path | Upstream |
 |-----------|---------|----------------|--------------|----------|
-| Eclipse ThreadX | 6.5.0 | MIT | `libs/third_party/threadx/` | <https://github.com/eclipse-threadx/threadx> |
+| Eclipse ThreadX | 6.5.0 | MIT | `build.zig.zon` package `threadx` (3726d79) | <https://github.com/eclipse-threadx/threadx> |
 | Eclipse NetX Duo | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/netxduo> |
 | Eclipse USBX | 6.5.0 | MIT | `build.zig.zon` package `usbx` (6dc0cf2) | <https://github.com/eclipse-threadx/usbx> |
 | Eclipse LevelX | 6.5.0 | MIT | `build.zig.zon` (pinned tarball) | <https://github.com/eclipse-threadx/levelx> |

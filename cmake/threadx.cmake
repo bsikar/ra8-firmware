@@ -16,7 +16,7 @@
 # What it does:
 #
 #   - Compiles every C source under
-#     libs/third_party/threadx/common/src/*.c into a static library
+#     common/src/*.c of the threadx build.zig.zon package into a static library
 #     named `threadx`.
 #   - Compiles every .S file under the upstream M85/GNU port
 #     EXCEPT `tx_initialize_low_level.S`, which we replace with the
@@ -51,7 +51,8 @@ if(NOT DEFINED RA8_REPO_ROOT)
   get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()
 
-set(RA8_THREADX_ROOT "${RA8_REPO_ROOT}/libs/third_party/threadx")
+include(${RA8_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(threadx RA8_THREADX_ROOT)
 set(RA8_THREADX_PORT_DIR "${RA8_REPO_ROOT}/port/threadx")
 set(RA8_THREADX_M85_GNU "${RA8_THREADX_ROOT}/ports/cortex_m85/gnu")
 

@@ -60,18 +60,6 @@ PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); versi
 UPSTREAM_GIT = "git"
 UPSTREAM_ARCHIVE = "archive"
 
-# The five Eclipse ThreadX trees share one deliberate deviation, so its
-# justification is written once.  Repeating a justification string is how five
-# copies of it drift into four different claims.
-GITATTRIBUTES_PATCH = (
-    "Attribute-macro blocks ([attr]our-c-style, [attr]generated) removed: git "
-    "honours [attr] definitions only in the top-level .gitattributes and printed "
-    "a 'not allowed' warning on every git operation across five vendored trees. "
-    "The macro USES left behind reference undefined attributes, which git ignores "
-    "silently, so no vendored file's checkout behaviour changes."
-)
-
-
 @dataclass(frozen=True)
 class Component:
     """One SOUP or bundled-asset record.
@@ -149,19 +137,21 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="eclipse-threadx",
         url="https://github.com/eclipse-threadx/threadx",
-        path="libs/third_party/threadx",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="Preemptive RTOS kernel under the vendored middleware and the NS image.",
         purl="pkg:github/eclipse-threadx/threadx@6.5.0",
         upstream_commit="3726d7906b4808bfec7855fc088e073199df9120",
         upstream_ref="v6.5.0.202601_rel",
-        modified=True,
-        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
         spdx="MIT",
-        license_file="libs/third_party/threadx/LICENSE.txt",
-        probe_file="common/inc/tx_api.h",
-        probe_prefix="THREADX",
-        expected_version="6.5.0",
+        dep_pin_spec="N-V-__8AACeHVAWQnalf6pLkI_X_OgjmjhX_AXiqy625pqeO",
+        extra_notes=(
+            "NOT vendored: pinned in build.zig.zon as the upstream "
+            "v6.5.0.202601_rel tarball (url + Zig content hash), fetched into "
+            "the Zig package cache by the Zig build graph (pkg:threadx paths) and "
+            "by cmake/zig_package.cmake. Every file the build used is "
+            "byte-identical in it.",
+        ),
     ),
     Component(
         key="netxduo",
