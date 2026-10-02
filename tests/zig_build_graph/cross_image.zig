@@ -541,14 +541,24 @@ fn zigMain(
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
 ) std.Build.LazyPath {
-    const object = b.addObject(.{
-        .name = b.fmt("{s}_main", .{app.name}),
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(b.pathJoin(&.{ app.dir, root })),
+    const module = b.createModule(.{
+        .root_source_file = b.path(b.pathJoin(&.{ app.dir, root })),
+        .target = target,
+        .optimize = optimize,
+        .unwind_tables = .none,
+    });
+    // Generated Zig sits outside the app's src/, so it comes in by name.
+    for (app.zig_main_imports) |import| {
+        module.addImport(import.name, b.createModule(.{
+            .root_source_file = b.path(import.path),
             .target = target,
             .optimize = optimize,
             .unwind_tables = .none,
-        }),
+        }));
+    }
+    const object = b.addObject(.{
+        .name = b.fmt("{s}_main", .{app.name}),
+        .root_module = module,
     });
     return object.getEmittedBin();
 }

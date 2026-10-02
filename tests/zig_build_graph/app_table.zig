@@ -21,6 +21,13 @@ const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
 const ns_image_mod = @import("ns_image.zig");
 
+/// One named module a Zig main imports: `@import(name)` resolves to `path`,
+/// a root source file spelled relative to the repo root.
+pub const ZigImport = struct {
+    name: []const u8,
+    path: []const u8,
+};
+
 pub const CrossApp = struct {
     name: []const u8,
     dir: []const u8,
@@ -63,6 +70,11 @@ pub const CrossApp = struct {
     /// file as one cortex_m85 object and links it first, where main.c would
     /// go. Null, the app's main is C, which is every app in the table today.
     zig_main: ?[]const u8 = null,
+    /// Named modules the Zig main may `@import`, each a repo-relative root
+    /// file (RA8FW-419). The main's own module is rooted in the app's src/,
+    /// so generated Zig under tools/ is out of its reach without one. Empty
+    /// for every app with a C main, and ignored there.
+    zig_main_imports: []const ZigImport = &.{},
     /// The call passes NS_INLINE_IMAGE, so ra8_add_app() composes the board
     /// linker script with a generated block placing .ns_vectors / .ns_text /
     /// .ns_rodata / .ns_bss. The in-image counterpart to cpu1_image, and only

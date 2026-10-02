@@ -39,3 +39,27 @@ test "an app's Zig code is built for the M85 with the hard float ABI" {
     try std.testing.expectEqual(std.Target.Abi.eabihf, q.abi.?);
     try std.testing.expectEqualStrings("cortex_m85", q.cpu_model.explicit.name);
 }
+
+test "a Zig main imports nothing unless its row names a module" {
+    try std.testing.expectEqual(@as(usize, 0), zig_app.zig_main_imports.len);
+    for (sources.cross_apps) |app| {
+        if (sources.hasCMain(app)) try std.testing.expectEqual(@as(usize, 0), app.zig_main_imports.len);
+    }
+}
+
+test "a named import carries its module name and a repo-relative root" {
+    const row = sources.CrossApp{
+        .name = "probe",
+        .dir = "examples/ra8p1_foundation/probe",
+        .board = "libs/ra8_board_ra8p1",
+        .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{.{ .name = "golden", .path = "tools/vela/generated/conv_int8_vela_golden.zig" }},
+    };
+    const import = row.zig_main_imports[0];
+    try std.testing.expectEqualStrings("golden", import.name);
+    try std.testing.expect(!std.mem.startsWith(u8, import.path, row.dir));
+    try std.testing.expect(std.mem.endsWith(u8, import.path, ".zig"));
+}
