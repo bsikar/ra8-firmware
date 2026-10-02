@@ -30,10 +30,10 @@ skew and a peer.
 ## Accepted hardware limitation
 
 The full-link path remains constrained by the accepted EK-RA8D2 transmit
-limitation characterized in closed issue #21. The issue was closed because the
-MTU=128 mitigation is sufficient for this project and the e-reader does not use
-this Ethernet port, not because full-size frames were repaired. The COMA and
-RGMII register paths are host-tested instead
-(`tests/misc/src/test_ra8_eth_coma.c` covers the bring-up happy path and the CABPIRM.BPR
-timeout; `tests/misc/src/test_ra8_eth.c` covers `rgmii_select` per port and the bad-port
-rejection).
+limitation characterized in the closed large-frame TX issue. It was closed
+because the MTU=128 mitigation is sufficient for this project and the e-reader
+does not use this Ethernet port, not because full-size frames were repaired. The
+COMA and RGMII register paths are host-tested instead
+(`tests/misc/src/test_ra8_eth_coma.c` covers the bring-up happy path and the
+CABPIRM.BPR timeout; `tests/misc/src/test_ra8_eth.c` covers `rgmii_select` per
+port and the bad-port rejection).

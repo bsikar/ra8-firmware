@@ -23,7 +23,7 @@
  *      through ``ra8_tls_get_cipher_suite`` / ``ra8_tls_get_verify_result``.
  *
  * The TCP MSS is clamped with ``ra8_tls_mss_clamp`` so every segment fits
- * inside the #21-pinned 128-byte MTU (128 - 20 IPv4 - 20 TCP == 88).
+ * inside the pinned 128-byte MTU (128 - 20 IPv4 - 20 TCP == 88).
  *
  * ## Why hw_pending (not emulator-gated)
  *
@@ -96,7 +96,7 @@ typedef enum : uint32_t {
   k_demo_io_max         = 4000U,   /**< Bounded send/recv poll count.  */
   k_demo_line_buf       = 160U,    /**< Result line buffer bytes.      */
   k_demo_record_cap     = 64U,     /**< Inbound record buffer bytes.   */
-  k_demo_mtu            = 128U,    /**< #21 pinned link MTU.           */
+  k_demo_mtu            = 128U,    /**< Pinned link MTU (TX limit).    */
   k_demo_verify_unset =
     0xFFFFFFFFU, /**< Fail-closed verify sentinel: nonzero until the getter fills it. */
 } demo_config_t;

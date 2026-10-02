@@ -7,9 +7,9 @@
  *
  * @details
  * Programs the RA8D2 Ethernet Agent (ETHA) time-sensitive-networking shapers
- * that no other example referenced (recon gap #134).
+ * that no other example referenced (a recon gap).
  *
- * NOTE on the gap: recon #134 named ``ra8_tsn`` as the "time-sensitive
+ * NOTE on the gap: the recon named ``ra8_tsn`` as the "time-sensitive
  * networking" driver, but ``libs/ra8_hal/ra8_tsn`` is the on-die **temperature
  * sensor** (already demonstrated by ``adc_diag_tsn_demo``). The real TSN
  * networking surface on this part is the ETHA shaper block: the time-aware
@@ -45,7 +45,7 @@
  * ever transmitted and nothing about *shaped egress* is measured. That needs
  * a multi-node measurement rig (laptop bench wiring).
  *
- * The read-back was added with #539, when the driver was found to be writing
+ * The read-back was added with the ETHA register-map fix, when the driver was found to be writing
  * gate states into ``EATASGL0``, whose field is the TAS RAM entry ADDRESS.
  * Every call returned ``k_ra8_ok`` throughout, which is precisely why a
  * verdict built only out of return codes was worth nothing.
@@ -56,8 +56,8 @@
  * ETHA shaper half does not: the TAS gate RAM learn/read (``EATASGL*`` /
  * ``EATASGR*``, HUM Ch 32) and the CBS state are indirect-RAM registers the
  * emulator leaves to config-reflect, so ``ra8_etha_read_tas_entry`` reads back
- * zero and the entry-match check fails -- modelling that RAM is #539 / #292
- * territory. The EK-RA8D2 Ethernet wire is also marginal. So the whole-app
+ * zero and the entry-match check fails -- modelling that RAM is ETHA register-map /
+ * bench-peer territory. The EK-RA8D2 Ethernet wire is also marginal. So the whole-app
  * verdict is compile-gated in CI and asserted on the bench, while
  * ``eth_gptp_timestamp_demo`` carries the emulator-gated counter-advance check.
  *
@@ -300,7 +300,7 @@ static uint64_t tsn_flatten_ns(uint64_t sec, uint32_t nsec)
  * Samples the 78-bit GPTP counter either side of a SysTick-timed window and
  * requires the advance to match to within ``k_tsn_tolerance_pct``. Without
  * this the app would program a gate-control list against a time base that
- * never started, which is exactly the defect issue #498 records.
+ * never started, which is exactly the defect the GPTP register-map fix records.
  *
  * @return True iff the counter advanced by the measured interval.
  * @retval true  The advance matched SysTick inside the tolerance band.

@@ -51,7 +51,7 @@
 
 #include "ra8_cgc.h"
 #include "ra8_err.h"
-#include "tx_api.h" /* Non-Secure ThreadX (threadx_ns, TX_SINGLE_MODE_NON_SECURE) -- #96 */
+#include "tx_api.h" /* Non-Secure ThreadX (threadx_ns, TX_SINGLE_MODE_NON_SECURE) -- Phase C */
 
 /* =============================================================================
  * NS-side import view of the NSC CGC veneers
@@ -292,7 +292,7 @@ typedef enum : uintptr_t {
 }
 
 /* =============================================================================
- * ThreadX worker + SysTick (NS-resident RTOS) -- #96 milestone 1
+ * ThreadX worker + SysTick (NS-resident RTOS) -- Phase C milestone 1
  * =============================================================================
  */
 

@@ -77,7 +77,7 @@ ra8_add_cpu1_image(
            ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
 )
 
-# #149 stage a1 -- the M33 runs the REAL text/CSS/SVG EPUB->RABOOK1 compile. It
+# Stage a1 -- the M33 runs the REAL text/CSS/SVG EPUB->RABOOK1 compile. It
 # links the EPUB front end (miniz ZIP + bounded XML reader) plus the rabook pipeline
 # and emitter, and cpu1_main.c calls rabook_compile_from_epub_to_buffer over
 # the baked parity fixture (no filesystem -- it finalizes into the shared SRAM2

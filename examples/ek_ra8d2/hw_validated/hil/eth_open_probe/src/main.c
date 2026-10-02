@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c
- * @brief Bare-metal ra8_eth_open() bring-up probe (tracker issue #524).
+ * @brief Bare-metal ra8_eth_open() bring-up probe (the eth_open HardFault).
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -94,7 +94,7 @@ typedef enum : uint32_t {
  * other change to the program.
  *
  * That makes "where the Ethernet DMA structures live" a single
- * build-time variable, which is what tracker issue #499 needs and could
+ * build-time variable, which is what the DMA-placement TX corruption fix needs and could
  * not get by growing an application array (that moves the rings *and*
  * every unrelated static, and pulling the rings out of `.bss` into a
  * placed section moves everything that followed them instead).
