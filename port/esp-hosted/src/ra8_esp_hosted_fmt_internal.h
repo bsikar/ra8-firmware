@@ -21,7 +21,7 @@
  *
  * @par Supported conversions
  * The set is derived from what the vendored tree actually uses, measured
- * across every format string in ``libs/third_party/esp-hosted/``:
+ * across every format string in the pinned esp-hosted package:
  * ``%d %i %u %x %X %c %s %p %%``, with length modifiers ``l``, ``ll`` and
  * ``z``, the flags ``0`` (zero pad) and ``-`` (left justify), and a decimal
  * field width. Floating point is deliberately absent: the only ``%f`` in

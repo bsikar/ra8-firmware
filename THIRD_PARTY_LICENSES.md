@@ -87,8 +87,8 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | FlatBuffers | 25.9.23 | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/flatbuffers> |
 | gemmlowp | git `719139ce` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/gemmlowp> |
 | ruy | git `d3712831` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/ruy> |
-| esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `libs/third_party/esp-hosted/` | <https://github.com/espressif/esp-hosted-mcu> |
-| protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
+| esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/espressif/esp-hosted-mcu> |
+| protobuf-c (esp-hosted RPC runtime) | 1.4.1 (git `abc67a11` + RA8 patch, fork `bsikar/protobuf-c` `c61bb2e3`) | BSD-2-Clause | `build.zig.zon` (pinned tarball) | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
 Counts: **18 vendored source components** + **1 bundled font asset**. One of
@@ -231,14 +231,15 @@ below); this section reproduces the copyright line and points to that text.
   pinned upstream tarball (`build.zig.zon`).
 - **esp-hosted host driver** -- Apache-2.0. "Copyright Espressif Systems
   (Shanghai) CO LTD" (per-file `SPDX-FileCopyrightText`). Text:
-  `libs/third_party/esp-hosted/LICENSE`. Upstream ships no separate `NOTICE`,
+  `LICENSE` in the pinned `esp_hosted` package. Upstream ships no separate `NOTICE`,
   so there is nothing beyond the license text to propagate. Unmodified SOUP;
   the RA8 port that makes it buildable is first-party (see
   [`docs/SOUP/esp-hosted-host.md`](docs/SOUP/esp-hosted-host.md)).
 - **protobuf-c** -- BSD-2-Clause. "Copyright (c) 2008-2022, Dave Benson and
   the protobuf-c authors. All rights reserved." Text:
-  `libs/third_party/esp-hosted/common/protobuf-c/LICENSE`. Vendored *inside*
-  the esp-hosted tree because upstream embeds it there as a git submodule;
+  `LICENSE` in the pinned `protobuf_c` package (a `bsikar` fork of upstream
+  `abc67a11` carrying the RA8 runtime-policy patch). Upstream esp-hosted embeds
+  it as a git submodule;
   it is a separate upstream project under a separate license and is pinned
   and attributed as one.
 - **Literata** -- "Copyright 2017 The Literata Project Authors
@@ -265,7 +266,7 @@ SBOM component list with `scope: excluded` rather than as linked SOUP:
   the C6 by `coprocessor/esp32c6/build.sh` / `flash.sh`. Recipe and pins in
   `coprocessor/esp32c6/`; qualification in [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
   Do not confuse this with the **host driver** from the same upstream
-  repository, which *is* vendored (`libs/third_party/esp-hosted/`), is linked
+  repository, which is a pinned `build.zig.zon` package (`esp_hosted`), is linked
   into the RA8 image, and appears in the inventory table above.
 
 ### Build-time host tools (not linked into firmware)

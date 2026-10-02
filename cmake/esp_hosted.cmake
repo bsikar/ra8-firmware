@@ -3,8 +3,9 @@
 #
 # cmake/esp_hosted.cmake
 #
-# Top-level integration of the vendored Espressif esp-hosted-mcu host
-# driver (libs/third_party/esp-hosted/, pinned 949bb30; see
+# Top-level integration of the Espressif esp-hosted-mcu host driver
+# (pinned build.zig.zon package esp_hosted at 949bb30, with protobuf-c from
+# the protobuf_c package; see
 # docs/SOUP/esp-hosted-host.md). Exposes the `RA8_USE_ESP_HOSTED`
 # option; when ON, this file:
 #
@@ -112,11 +113,13 @@ endif()
 # the top-level CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_ESP_HOSTED_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_ESP_HOSTED_VENDOR_DIR "${_RA8_ESP_HOSTED_REPO_ROOT}/libs/third_party/esp-hosted")
+include(${_RA8_ESP_HOSTED_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(esp_hosted _RA8_ESP_HOSTED_VENDOR_DIR)
+ra8_zig_package_dir(protobuf_c _RA8_PROTOBUF_C_DIR)
 set(_RA8_ESP_HOSTED_PORT_DIR "${_RA8_ESP_HOSTED_REPO_ROOT}/port/esp-hosted")
 
 if(NOT EXISTS "${_RA8_ESP_HOSTED_VENDOR_DIR}/host/esp_hosted_os_abstraction.h")
-  message(FATAL_ERROR "RA8_USE_ESP_HOSTED=ON but the esp-hosted vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_ESP_HOSTED=ON but the pinned esp-hosted package is missing at "
                       "${_RA8_ESP_HOSTED_VENDOR_DIR}."
   )
 endif()
@@ -145,7 +148,7 @@ set(_RA8_ESP_HOSTED_INCLUDE_DIRS
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/log
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/mempool/include
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/proto
-    ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/protobuf-c
+    ${_RA8_PROTOBUF_C_DIR}
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/rpc
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/transport
     ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/utils
@@ -154,7 +157,7 @@ set(_RA8_ESP_HOSTED_INCLUDE_DIRS
 add_library(
   esp_hosted_objs OBJECT
   ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/proto/esp_hosted_rpc.pb-c.c
-  ${_RA8_ESP_HOSTED_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
+  ${_RA8_PROTOBUF_C_DIR}/protobuf-c/protobuf-c.c
   ${_RA8_ESP_HOSTED_VENDOR_DIR}/host/api/src/esp_hosted_transport_config.c
   ${_RA8_ESP_HOSTED_VENDOR_DIR}/host/drivers/power_save/power_save_drv.c
   ${_RA8_ESP_HOSTED_VENDOR_DIR}/host/drivers/serial/serial_ll_if.c

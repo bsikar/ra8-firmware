@@ -151,14 +151,14 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/port/esp-hosted/inc/idf_compat
             ${FW_ROOT}/port/esp-hosted/src
             ${FW_ROOT}/port/esp-hosted/tests/inc
-            ${FW_ROOT}/libs/third_party/esp-hosted/host
-            ${FW_ROOT}/libs/third_party/esp-hosted/host/api/include
-            ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport
-            ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport/spi
-            ${FW_ROOT}/libs/third_party/esp-hosted/common
-            ${FW_ROOT}/libs/third_party/esp-hosted/common/log
-            ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
-            ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
+            ${RA8_ESP_HOSTED_HOST_DIR}/host
+            ${RA8_ESP_HOSTED_HOST_DIR}/host/api/include
+            ${RA8_ESP_HOSTED_HOST_DIR}/host/drivers/transport
+            ${RA8_ESP_HOSTED_HOST_DIR}/host/drivers/transport/spi
+            ${RA8_ESP_HOSTED_HOST_DIR}/common
+            ${RA8_ESP_HOSTED_HOST_DIR}/common/log
+            ${RA8_ESP_HOSTED_HOST_DIR}/common/mempool/include
+            ${RA8_ESP_HOSTED_HOST_DIR}/common/transport
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
             ${FW_ROOT}/apps/shared_libs/third_party/stb
             ${FW_ROOT}/apps/shared_libs/third_party/xz_embedded

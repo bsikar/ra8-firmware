@@ -8,7 +8,8 @@ build and the BLE HCI seam is still on loopback (RA8FW-270).
 
 The C6 image is the stock pinned Espressif esp-hosted-mcu `network_adapter`,
 with no patches and no first-party components. The RA8-side host driver lives
-in `libs/third_party/esp-hosted/`, `port/esp-hosted/` and `libs/ra8_c6link/`.
+in the pinned `esp_hosted` package (`build.zig.zon`), `port/esp-hosted/` and
+`libs/ra8_c6link/`.
 
 - SOUP qualification: [`../../docs/SOUP/esp-hosted.md`](../../docs/SOUP/esp-hosted.md)
 - Architecture: [`../../docs/design/c6_wireless_architecture.md`](../../docs/design/c6_wireless_architecture.md)
