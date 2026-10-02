@@ -30,11 +30,10 @@ dev_box_home: "/home/{{ dev_box_user }}"
 
 # --- LLVM apt repository ----------------------------------------------------
 #
-# clang-format 22 and clang-tidy 22 are the exact binaries the format and tidy
-# gates pin, and no Debian release ships them. apt.llvm.org is the only source.
-# The 18 line is separate and equally load-bearing: clang-tidy-18 is what the
-# tidy gate pins (the tree's .clang-tidy is written to that major) and
-# libclang-rt-18-dev carries the profile runtime `just quality::local::mcdc` links against.
+# clang-format 22 is the exact binary the format gate pins for the permanent C,
+# and no Debian release ships it. apt.llvm.org is the only source. The 18 line
+# carries clang-18 and libclang-rt-18-dev, the sanitizer and libFuzzer runtime
+# the ubsan and fuzz-sweep tasks link against.
 dev_box_llvm_keyring: /etc/apt/keyrings/llvm-snapshot.gpg
 dev_box_llvm_key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
 dev_box_llvm_suites:
@@ -84,8 +83,6 @@ dev_box_apt_gates:
 dev_box_apt_llvm:
   - clang-18
   - clang-format-22
-  - clang-tidy-18
-  - clang-tidy-22
   - clang-tools-18
   - libclang-rt-18-dev
   - llvm-18
