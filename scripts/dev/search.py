@@ -500,13 +500,15 @@ def selftest() -> int:
     """Verify that unified search discovers known targets in both directions."""
     failures: list[str] = []
 
-    dash_results = search_all("dashboard")
-    found_dash = any(
-        isinstance(r, dict) and r.get("namepath") == "infra::remote::dashboard"
-        for r in dash_results["commands"]
+    ssh_results = search_all("ssh_config_preview")
+    found_ssh = any(
+        isinstance(r, dict) and r.get("namepath") == "infra::ssh_config_preview"
+        for r in ssh_results["commands"]
     )
-    if not found_dash:
-        failures.append("query 'dashboard' did not find recipe 'infra::remote::dashboard'")
+    if not found_ssh:
+        failures.append(
+            "query 'ssh_config_preview' did not find recipe 'infra::ssh_config_preview'"
+        )
 
     zig_results = search_all("lint-zig")
     found_zig_cmd = any(
