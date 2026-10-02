@@ -63,8 +63,8 @@ static const ra8_mstp_t s_agt_mstp_table[k_ra8_agt_mstp_id_count] = {
  * underflow via ``ra8_agt_stop`` + ``ra8_agt_start_free_run``; without this latch
  * each restart took a fresh MSTP reference, leaking the ``uint8_t`` refcount in
  * ra8_mstp.c until it saturated at 255 and the 256th start returned
- * ``k_ra8_err_invalid_state`` (issue #68 -- "AGT free-run demos fault after
- * exactly 255 periods"). The latch makes the MSTP acquire idempotent: a start
+ * ``k_ra8_err_invalid_state`` (the "AGT free-run demos fault after
+ * exactly 255 periods" bug). The latch makes the MSTP acquire idempotent: a start
  * only enables when the channel is not already held, and only deinit /
  * enter-stop release it.
  */

@@ -159,7 +159,7 @@ typedef struct {
  * window as the MRAM wait-state latches. A ``wait_state`` member here
  * would let a zero-initialised config silently clear it after boot,
  * which is exactly how the two ECC demos in this tree were re-breaking
- * their own memory system (tracker #524).
+ * their own memory system (the ra8_eth_open HardFault tracker).
  */
 typedef struct {
   ra8_sram_bank_cfg_t     banks[k_ra8_sram_bank_count]; /**< Per-bank settings.             */
@@ -379,8 +379,8 @@ typedef void (*ra8_sram_error_fn_t)(void* ctx, uint8_t bank, bool is_2bit, uintp
  * "when the wait is not inserted, the operation is not guaranteed". The
  * observed failure is not a hang -- it is a single bit dropped out of a
  * value read back from SRAM at full speed, silently, with the memory
- * itself intact (tracker #524, and the Ethernet TX frame corruption of
- * #499, which is the same fault seen through the GWCA's DMA reads).
+ * itself intact (the ra8_eth_open HardFault tracker, and the Ethernet TX frame
+ * corruption, which is the same fault seen through the GWCA's DMA reads).
  *
  * Called from ``ra8_cgc_init`` before the SCKSCR switch that raises
  * ICLK, so no code ever executes in the unguaranteed window.

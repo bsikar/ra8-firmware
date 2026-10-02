@@ -213,8 +213,8 @@ typedef struct {
  * @details
  * A display list lets the DRW clear and repaint a framebuffer end to end with
  * the CPU never touching it inside the loop, so there is no CPU/engine write
- * race to latch STATUS.BUSERRMFB -- the loop-stable path proven on silicon for
- * issue #247. ::ra8_drw_dlist_begin binds this builder to a 4-byte-aligned
+ * race to latch STATUS.BUSERRMFB -- the loop-stable path proven on silicon by
+ * the DRW bring-up. ::ra8_drw_dlist_begin binds this builder to a 4-byte-aligned
  * word buffer in a region the DRW bus initiator can read (SRAM);
  * ::ra8_drw_dlist_add_fill appends primitives; ::ra8_drw_dlist_end terminates
  * the list; ::ra8_drw_dlist_run kicks it. The build calls never touch MMIO.

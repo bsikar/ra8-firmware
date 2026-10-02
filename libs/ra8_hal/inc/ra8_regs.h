@@ -17,7 +17,7 @@
  *
  * Every `ra8_*_regs.h` in `libs/ra8_hal/inc/` is re-exported below except
  * three, and `scripts/checks/check_umbrella_regs.py` fails the build if
- * that stops being true (#1389, which found the list had drifted to 30 of
+ * that stops being true (the list once drifted to 30 of
  * 60):
  *
  *  - `ra8_npu_regs.h` is the Ethos-U55 window on the **RA8P1**, not this

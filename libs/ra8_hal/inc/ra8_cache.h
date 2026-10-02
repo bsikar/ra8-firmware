@@ -34,7 +34,7 @@
  * @warning Enabling a cache is now a first-class primitive here
  *          (::ra8_cache_dcache_enable / ::ra8_cache_icache_enable /
  *          ::ra8_cache_enable), but turning the D-cache on remains a deliberate,
- *          strictly ordered step (issue #173 / the T4 chain): do it only after
+ *          strictly ordered step (the T4 chain): do it only after
  *          every DMA path and the inter-core mailbox invoke the by-address
  *          maintenance primitives above -- otherwise a cached write the peer
  *          never sees, or a stale line the CPU reads, silently corrupts data.

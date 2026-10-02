@@ -153,8 +153,8 @@ static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
   /* Hold the Secure-alias pointer in a local before the integer cast.
    * Casting the ra8_ipc_channel() call expression itself is a cast of a
    * function result to a different type, which -Wbad-function-cast reports
-   * and the CPU1 first-party warning profile promotes to an error (#843 /
-   * T1-09). The address computed and the generated code are unchanged; the
+   * and the CPU1 first-party warning profile promotes to an error
+   * (T1-09). The address computed and the generated code are unchanged; the
    * bounds check above already rules the pointer out of being nullptr. */
   volatile r_ipc_channel_regs_t* const secure_regs = ra8_ipc_channel(channel);
   return (volatile r_ipc_channel_regs_t*)((uintptr_t)secure_regs + ns_offset);

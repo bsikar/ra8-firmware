@@ -29,12 +29,12 @@
  * the WDT1 it configures (RA8P1 datasheet R01DS0439EJ0130: "Watchdog Timer
  * (WDT) x 2", WDT1 at 0x4020_2600).
  *
- * @warning Issue #223 previously gated OFS3 out of RA8P1 builds behind an
+ * @warning The RA8P1 OFS work previously gated OFS3 out of RA8P1 builds behind an
  *          `RA8_HAS_OFS3` macro, on the strength of Renesas FSP's
  *          `BSP_FEATURE_BSP_HAS_OFS3 == 0` for ra8p1. That FSP value
  *          contradicts Renesas' own RA8P1 manual and drives no open FSP source;
  *          a RASC-generated RA8P1 project emits the OFS3 sections. The gating
- *          was removed in #516 -- do not reintroduce it without a primary-source
+ *          was removed later -- do not reintroduce it without a primary-source
  *          citation showing the word is absent.
  *
  * @note Host-friendly: compile-time constants only, touches no hardware, so it
@@ -93,7 +93,7 @@ typedef enum : uint8_t {
  * ROM latched. The option-setting words live in the extra-MRAM
  * "Configuration setting area", which is ordinary addressable memory -- HUM
  * Ch 7.1 Figure 7.1 "Option-setting memory area" p 279 maps the whole region,
- * and #315 proved on the bench that extra-MRAM cells read back with valid ECC.
+ * and a bench run proved that extra-MRAM cells read back with valid ECC.
  *
  * Each constant is the address the HUM prints in that register's own section:
  *

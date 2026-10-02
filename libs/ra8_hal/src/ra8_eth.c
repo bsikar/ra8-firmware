@@ -781,7 +781,7 @@ ra8_err_t ra8_eth_open(const ra8_eth_cfg_t* cfg)
 
   internal_capture_state(cfg);
 
-  /* Bench-confirmed (issue #1 follow-up): leaving MPIC.PIS at the
+  /* Bench-confirmed (large-frame TX follow-up): leaving MPIC.PIS at the
    * default GMII (1000mbit) configured by ra8_board_ethernet_init
    * silently drops every RX frame when the actual link auto-
    * negotiates to 100 Mbps. The PIS must match the *internal* xMII

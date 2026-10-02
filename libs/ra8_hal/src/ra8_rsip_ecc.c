@@ -18,8 +18,8 @@
  * asymmetric command-register map for the RSIP-E50D, so the off-target-only command
  * path is gated behind the stub-crypto guard and a production build returns
  * ``k_ra8_err_not_supported``. The real ECDSA-P256 / ECDH / Ed25519 backend is
- * tf-psa-crypto on the M85, silicon-proven in psa_crypto_hil (issues #214 +
- * #181).
+ * tf-psa-crypto on the M85, silicon-proven in psa_crypto_hil (RSIP register
+ * audit).
  *
  * The byte-lane streaming primitives ``internal_asym_push`` /
  * ``internal_asym_pull`` and the handle-tail zero helper
@@ -71,7 +71,7 @@ static const char* const s_tag = "RSIP";
  * production image gets the fail-closed #else and can never mistake these
  * bytes for a valid signature or shared secret. The real ECDSA-P256 / ECDH /
  * Ed25519 backend is tf-psa-crypto on the M85, silicon-proven in
- * psa_crypto_hil (issues #214 + #181). The register pokes below therefore
+ * psa_crypto_hil (RSIP register audit). The register pokes below therefore
  * carry NO HUM citation: there is no real register map to cite.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)
