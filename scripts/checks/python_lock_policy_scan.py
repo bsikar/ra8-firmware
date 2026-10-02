@@ -37,7 +37,6 @@ DERIVED_EXPORTS = {
 }
 VENDOR_BOUNDARIES = (
     Path("libs/third_party/mbedtls"),
-    Path("libs/third_party/nimble"),
 )
 SECONDARY_AUTHORITY_NAMES = {
     "Pipfile",

@@ -18,7 +18,6 @@ tarballs in `build.zig.zon`, resolved by `cmake/zig_package.cmake`.
 |---|---|
 | `esp-hosted` | ESP32 Wi-Fi / Bluetooth co-processor firmware and driver |
 | `mbedtls` | ARM Mbed TLS cryptography and SSL/TLS library |
-| `nimble` | Apache NimBLE open-source Bluetooth Low Energy host stack |
 | `tf-psa-crypto` | Trusted Firmware Platform Security Architecture (PSA) Crypto API |
 | `threadx` | Microsoft Azure RTOS ThreadX real-time operating system |
 | `usbx` | Microsoft Azure RTOS USBX host and device stack |

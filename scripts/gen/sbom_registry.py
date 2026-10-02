@@ -332,20 +332,20 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="apache",
         url="https://github.com/apache/mynewt-nimble",
-        path="libs/third_party/nimble",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="Bluetooth 5.4 host + controller stack (staged, not linked).",
         purl="pkg:github/apache/mynewt-nimble@a7a156f28954819e158b62dd613008f22f9cf73b",
         spdx="Apache-2.0",
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",
-        license_file="libs/third_party/nimble/LICENSE",
         upstream_commit="a7a156f28954819e158b62dd613008f22f9cf73b",
         upstream_ref="nimble_1_10_0_tag",
+        dep_pin_spec="N-V-__8AAGXukwCsPZWLszqjHEq2BSv7gwvQcmCQ8FZ3C7BA",
         extra_notes=(
-            "Pinned to a release tag, not a default-branch snapshot: all 827 "
-            "vendored files (826 regular plus the one symlink) are "
-            "byte-identical to nimble_1_10_0_tag == commit a7a156f2. The "
-            "vendored subset drops upstream apps/ (163 files) only.",
+            "NOT vendored: pinned in build.zig.zon as the upstream "
+            "nimble_1_10_0_tag tarball (url + Zig content hash) and fetched "
+            "into the Zig package cache by cmake/zig_package.cmake. All 615 "
+            "files the tree used to vendor are byte-identical in it.",
             "version.yml records repo.version 0.0.0 (upstream keeps that "
             "placeholder on its default branch, which the release tag points "
             "at); the 1.10.0 identity comes from the tag and "
@@ -357,7 +357,7 @@ REGISTRY: tuple[Component, ...] = (
             "1.10.0 removes the bundled ext/tinycrypt sub-component, dropping "
             "its BSD-2-Clause / BSD-3-Clause text from our redistribution "
             "surface.",
-            "Second attribution file: libs/third_party/nimble/NOTICE.",
+            "Second attribution file: NOTICE at the package root.",
         ),
     ),
     Component(
