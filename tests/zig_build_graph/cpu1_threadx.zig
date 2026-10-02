@@ -90,6 +90,21 @@ const kernels = [_][]const u8{ threadx_m33.name, cpu1_threadx_modules.threadx_m3
 pub const zig_glue = "port/threadx/src/cortex_m33/threadx_cpu1.zig";
 pub const zig_glue_import = "threadx_cpu1";
 
+/// The glue's MemManage, BusFault and SVC handlers, imported into it under
+/// this name: the single-mode kernel has none of the three, the Module
+/// Manager needs the port's own (RA8FW-431).
+pub const handlers_import = "cpu1_handlers";
+pub const handlers_single = "port/threadx/src/cortex_m33/cpu1_handlers_single.zig";
+pub const handlers_modules = "port/threadx/src/cortex_m33/cpu1_handlers_modules.zig";
+
+/// The handlers file for the kernel `uses` names.
+pub fn handlersFor(uses: []const []const u8) []const u8 {
+    for (uses) |name| {
+        if (std.mem.eql(u8, name, cpu1_threadx_modules.threadx_m33_modules.name)) return handlers_modules;
+    }
+    return handlers_single;
+}
+
 /// How many CPU1 kernels `uses` names.
 pub fn kernelCount(uses: []const []const u8) usize {
     var count: usize = 0;

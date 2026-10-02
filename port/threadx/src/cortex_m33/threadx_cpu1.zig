@@ -15,6 +15,10 @@
 //! `startTicks` there with CPU1's clock, so the kernel ticks at
 //! `ticks_per_second` (tx_user.h's TX_TIMER_TICKS_PER_SECOND).
 
+/// MemManage, BusFault and SVC differ per kernel: the build graph imports
+/// `cpu1_handlers_single.zig` or `cpu1_handlers_modules.zig` here.
+const handlers = @import("cpu1_handlers");
+
 pub const ticks_per_second: u32 = 1000;
 
 /// SysTick and SCB registers the reset path and `startTicks` write.
@@ -94,14 +98,14 @@ export const _vectors linksection(".cpu1_vectors") = [16]?*const anyopaque{
     @ptrCast(&cpu1_reset_handler),
     @ptrCast(&__tx_NMIHandler),
     @ptrCast(&HardFault_Handler),
-    @ptrCast(&__tx_BadHandler), // MemManage
-    @ptrCast(&__tx_BadHandler), // BusFault
+    @ptrCast(handlers.mem_manage),
+    @ptrCast(handlers.bus_fault),
     @ptrCast(&UsageFault_Handler),
     @ptrCast(&__tx_BadHandler), // SecureFault
     null,
     null,
     null,
-    @ptrCast(&__tx_BadHandler), // SVC: unused in TX_SINGLE_MODE_SECURE
+    @ptrCast(handlers.svc),
     @ptrCast(&__tx_DBGHandler),
     null,
     @ptrCast(&PendSV_Handler),
