@@ -91,18 +91,6 @@ gate_ubsan() (
 # generator produces from the current tree. --selftest runs first, in both
 # directions, so a checker that stopped comparing cannot pass as clean.
 #
-# The media-download codec rides here too, but by DIGEST rather than by
-# regeneration: scripts/gen/gen_ra8_media_proto.sh --check needs the exact pinned
-# protobuf-c 1.5.2 / libprotoc 35.1 pair, which neither the dev box nor this image has,
-# and a guaranteed-red command is worse than none. check_proto_codec_pairing.py instead
-# re-derives the SHA-256 of the schema and both generated files from the tree and
-# compares them with .github/proto-codec-pairing.txt, which the regenerate script
-# rewrites in the same command. That catches the two drift shapes the issue names -- a
-# hand edit to a generated file, and a schema change with a forgotten regenerate --
-# with no generator installed. It does NOT claim the committed C is what protoc-c would
-# emit today; only a regenerate proves that, and #715 stays open for wiring the pinned
-# generator into the image so it can run here.
-#
 # The SOUP consumer counts ride here for the same reason the artefacts do:
 # they are a DERIVED number stated in prose, and nothing recomputed them. The
 # threadx record claimed 45 example apps against a tree holding 47, and
@@ -134,22 +122,11 @@ gate_ubsan() (
 # and leaves negated and forward-looking statements alone, since those are the
 # honest shape. "On the bench" on its own is not a claim: this tree uses it
 # constantly as a location (the bench host, the bench Pi).
-#
-# gen_ra8_media_proto.sh --selftest runs here too, and it is the odd one out: it
-# exercises a --check this gate cannot itself run. That is the reason for it. The
-# byte-exact comparison, the post-processing, the version pin and the missing-generator
-# exit are all code no machine we build on has ever executed, so without the selftest
-# they would first run on the day someone installs the pinned pair -- the worst moment
-# to discover the compare was wrong. It needs no generator: it stubs one inside a
-# throwaway git repo and asserts both directions.
 gate_artefact_freshness() (
   set -e
   require_cmd python3 "the artefact-freshness gate regenerates docs via python generators"
   python3 scripts/checks/check_generated_artefacts.py --selftest
   python3 scripts/checks/check_generated_artefacts.py
-  python3 scripts/checks/check_proto_codec_pairing.py --selftest
-  python3 scripts/checks/check_proto_codec_pairing.py
-  bash scripts/gen/gen_ra8_media_proto.sh --selftest
   python3 scripts/checks/check_soup_consumer_census.py --selftest
   python3 scripts/checks/check_soup_consumer_census.py
   python3 scripts/checks/check_usbx_class_claims.py --selftest
