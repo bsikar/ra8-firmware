@@ -1,7 +1,7 @@
 /**
  * @file test_mcdc_hal.c
  * @brief MC/DC floor vectors for compound decisions in ra8_gfx / ra8_i2c /
- *        ra8_i2c_peripheral / ra8_jpeg_sw_decode (issue #190, theme T1-04).
+ *        ra8_i2c_peripheral / ra8_jpeg_sw_decode (theme T1-04).
  *
  * @details
  * Each test group closes a reachable MC/DC gap reported by the per-file floor

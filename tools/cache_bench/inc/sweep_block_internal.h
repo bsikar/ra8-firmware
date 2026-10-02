@@ -52,7 +52,7 @@ typedef enum : uint32_t {
   k_cbs_seq_passes    = 4U,          /**< Whole-object passes in the seq leg.        */
   k_cbs_hot_reads     = 1048576U,    /**< Accesses in the same-block re-read leg.    */
   k_cbs_bucket_min    = 16U,         /**< Minimum hash-bucket count for tiny caches. */
-  k_cbs_default_chunk = 65536U,      /**< #204 `.rabook` chunk-size default.         */
+  k_cbs_default_chunk = 65536U,      /**< `.rabook` chunk-size default.              */
   k_cbs_knee_pct      = 90U,         /**< %% of peak throughput that names the knee. */
   k_cbs_words_per_dot = 11U,         /**< Words per sentence in the text filler.     */
   k_cbs_kib           = 1024U,       /**< Bytes per KiB (block-size labels).         */

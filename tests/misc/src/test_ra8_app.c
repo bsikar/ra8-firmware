@@ -919,7 +919,7 @@ static void uninstall_check_active_none(void)
  * @test ra8_app_uninstall: core-uninstallable invariant + removable unmount.
  *
  * @details
- * The run-time half of #146's "core uninstallable" rule. Drives every reachable
+ * The run-time half of the app framework's "core uninstallable" rule. Drives every reachable
  * branch of ra8_app_uninstall: an unknown id is not_found, a core app is refused
  * (not_supported, nothing torn down), the focused app is refused (busy), and a
  * removable background app is unmounted -- its `deinit` fires, it leaves the

@@ -621,7 +621,7 @@ int cb_sweep_block(cb_sweep_config_t* config)
   }
   config->workspace_floor = internal_align_size(payload_bytes);
   config->workspace_used  = config->workspace_floor;
-  if (cb_sink_format(config->output, "# #208 block/frame-size sweep\n\n") != k_cb_io_ok ||
+  if (cb_sink_format(config->output, "# Block/frame-size sweep\n\n") != k_cb_io_ok ||
       cb_sink_format(config->output,
                      "payload=%u cache_budget=%u req=%u seq_passes=%u hot_reads=%u zlib_level=%d "
                      "cache=ra8_vmem(SLRU)\n\n",

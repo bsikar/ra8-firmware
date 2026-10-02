@@ -2,10 +2,9 @@
  * @file test_ra8_tflm_interpreter.cc
  * @brief Model-driven `MicroInterpreter` host tests for the RA8P1 inference
  *        runtime: real graphs, a static arena, and the off-target NPU refusal
- *        (issue #228)
  *
  * @details
- * The residual #228 names is the runtime half of the Ethos-U55 story, and the
+ * The residual RA8P1 Ethos-U55 work is the runtime half of the Ethos-U55 story, and the
  * first line of it is blunt: the `MicroInterpreter` model-driven path has never
  * executed anywhere in this tree. `test_ra8_tflm_op_subset.cc` pins which
  * operators resolve, which is the registration surface; it never builds a
@@ -308,7 +307,7 @@ const tflite::Model* build_conv_model(Offsets& fbb, bool with_reshape)
       TFLITE_SCHEMA_VERSION,
       fbb.CreateVector(codes, op_count),
       fbb.CreateVector(&subgraph, 1U),
-      fbb.CreateString("ra8 #228 interpreter fixture"),
+      fbb.CreateString("ra8 interpreter fixture"),
       fbb.CreateVector(buffers, 4U)
   );
   fbb.Finish(model, tflite::ModelIdentifier());
@@ -384,7 +383,7 @@ const tflite::Model* build_ethosu_model(Offsets& fbb)
       TFLITE_SCHEMA_VERSION,
       fbb.CreateVector(codes, 1U),
       fbb.CreateVector(&subgraph, 1U),
-      fbb.CreateString("ra8 #228 ethos-u refusal fixture"),
+      fbb.CreateString("ra8 ethos-u refusal fixture"),
       fbb.CreateVector(buffers, 1U)
   );
   fbb.Finish(model, tflite::ModelIdentifier());
@@ -563,7 +562,7 @@ void test_unregistered_op_is_refused(void)
 /**
  * @brief A Vela-shaped Ethos-U graph is refused on a host build, by name.
  *
- * @details This is the honest edge of #228 off silicon. `Register_ETHOSU()` is
+ * @details This is the honest edge of the Ethos-U55 runtime off silicon. `Register_ETHOSU()` is
  *          `nullptr` here because `RA8_HAS_NPU` is undefined, so the custom op
  *          cannot be registered at all and the graph cannot run. The refusal
  *          has to happen at `AllocateTensors()`: a host build must not decide
