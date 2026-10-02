@@ -22,8 +22,9 @@ character references today:
 
 Numeric references are already complete: `internal_decode_numeric()` in the same
 file takes both `&#dec;` and `&#xhex;`, in either letter case, and the layout
-walk now steps by decoded code point rather than by byte (issue #686 part 1,
-landed on branch `ereader/686-utf8-decode-in-layout`).
+walk now steps by decoded code point rather than by byte (part 1 of the Unicode
+Tier 1 decode-correctness issue, landed on branch
+`ereader/686-utf8-decode-in-layout`).
 
 So the remaining hole is named references, and it is not an edge case. An
 unrecognised reference is deliberately fail-open: the decoder returns `false`,
@@ -92,8 +93,8 @@ no defined behaviour for the second one.
 
 6. **Decoding a reference does not claim it renders.** Advertising the symbol
    set depends on the explicit `.notdef` / tofu fallback and code-point
-   sanitisation of issue #686 part 3. Until that lands, a decoded code point
-   outside the declared font coverage is a known gap, recorded here, not a
+   sanitisation of part 3 of the Tier 1 issue. Until that lands, a decoded code
+   point outside the declared font coverage is a known gap, recorded here, not a
    feature.
 
 ## Consequences
@@ -137,10 +138,11 @@ no defined behaviour for the second one.
 
 ## References
 
-- Issue #686, reflow: decode UTF-8 in the layout path, full entity set, tofu
-  fallback. Part 1 (layout decode) landed; this ADR records the contract for
-  parts 2 and 3.
-- Issue #687 and `.github/font-coverage-declaration.txt`, the shipped face's
+- Unicode Tier 1 decode-correctness, reflow: decode UTF-8 in the layout path,
+  full entity set, tofu fallback. Part 1 (layout decode) landed; this ADR
+  records the contract for parts 2 and 3.
+- Unicode Tier 2 font coverage and
+  `.github/font-coverage-declaration.txt`, the shipped face's
   declared 198 code points.
 - `apps/shared_libs/reflow/src/reflow_tokenize_lex.c`,
   `priv_reflow_tok_decode_entity()` and `internal_decode_numeric()`.
