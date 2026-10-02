@@ -2,17 +2,19 @@
 
 * **Status** -- Proposed
 * **Date** -- 2026-09-17
-* **Driver** -- issue #832; consumed by #823, #824, #825, #834
+* **Driver** -- the e-reader input-surface brief; consumed by pin
+  allocation, the power design and the schematic
 
 ## Context
 
-Issue #832 fixes the product's user-input surface: five exposed buttons (power /
-wake / shutdown / recovery, previous page, next page, volume down, volume up),
-an ADXL367 accelerometer, optional ambient-light and hall sensors, and the
-service access needed to recover a blank or corrupted board. None of that can
-be drawn, placed or measured in this repository. What *can* be settled now,
-before a schematic exists, is the contract the firmware already in this tree
-imposes on that schematic, plus an honest list of what is still missing.
+The input-surface brief fixes the product's user-input surface: five exposed
+buttons (power / wake / shutdown / recovery, previous page, next page, volume
+down, volume up), an ADXL367 accelerometer, optional ambient-light and hall
+sensors, and the service access needed to recover a blank or corrupted board.
+None of that can be drawn, placed or measured in this repository. What *can* be
+settled now, before a schematic exists, is the contract the firmware already in
+this tree imposes on that schematic, plus an honest list of what is still
+missing.
 
 This ADR records that contract and that inventory. It selects no component, no
 value and no timing, and it contains no measurement.
@@ -33,7 +35,7 @@ marker: they are mirrored from the pin-compatible EK-RA8D2 because no RA8P1
 board is defined yet. They are what the code assumes, not what a schematic has
 decided.
 
-Eight findings follow from reading that code against #832:
+Eight findings follow from reading that code against the input-surface brief:
 
 1. The board layer exposes **two** switches; the product requires **five**.
    `ra8_board_sw_id_t` is a contiguous enum with a per-switch ICU channel enum
@@ -56,16 +58,16 @@ Eight findings follow from reading that code against #832:
    depth if resume has to be instant; only the power control plausibly wants it.
 6. `libs/ra8_hal/inc/ra8_vreg.h` documents the on-chip DCDC as **not**
    supporting Software Standby, Deep Software Standby modes 1/2/3, Battery
-   Backup or Voltage Scaling Control. The deepest sleep mode the product can
-   use is therefore coupled to the regulator-mode decision owned by #825; the
-   two cannot be settled independently.
+   Backup or Voltage Scaling Control. The deepest sleep mode the product can use
+   is therefore coupled to the regulator-mode decision owned by the power
+   design; the two cannot be settled independently.
 7. Debounce is not a constant. The ICU digital filter samples at PCLKB and the
    CGC tree belongs to the application, so the filter window moves with the
    clock configuration the product ships.
 8. There is **no accelerometer anywhere in the tree**: a repository-wide code
    search for `ADXL367` returns no hits. Bus choice, chip-select or address
-   default, and interrupt routing are all unallocated, so #832 is free to pick
-   them and firmware has nothing to stay compatible with.
+   default, and interrupt routing are all unallocated, so the input-surface
+   brief is free to pick them and firmware has nothing to stay compatible with.
 
 ## Decision
 
@@ -85,7 +87,7 @@ reader UI can be written against it before any board exists.
 
 **D4. The power control's forced-off path is hardware, outside the MCU.**
 Firmware sees that control only as an input plus a wake source, and its net
-joins no boot-mode strap (an explicit #832 requirement).
+joins no boot-mode strap (an explicit requirement of the input-surface brief).
 
 **D5. The accelerometer gets one bus, a strap-free identity and a wake line**:
 either a dedicated chip select or a fixed address that needs no strap, plus at
@@ -98,15 +100,15 @@ VCOM console (provisionally PD02 / PD03 on SCI8), usable with a blank or
 corrupted image, and no user button on a boot-mode net.
 
 **D7. Ambient-light and hall sensors stay outside the firmware contract** until
-#832 records an owner decision. If either lands, it needs its own wake-capable
-line under the same IRQ0..15 rule as D2.
+the input-surface brief records an owner decision. If either lands, it needs its
+own wake-capable line under the same IRQ0..15 rule as D2.
 
 ## Consequences
 
 * Five buttons claim five of the sixteen standby-capable IRQ channels, which
   the touch interrupt, the radio link, the charger and gauge
-  and the accelerometer all also want. The pin allocation done under
-  #823 and #824 has to treat IRQ0..15 as a scarce resource; this ADR is the
+  and the accelerometer all also want. The board's pin allocation
+  has to treat IRQ0..15 as a scarce resource; this ADR is the
   reason it is scarce.
 * `libs/ra8_board_ra8p1` grows from two switch ids to five once the board is
   defined. That is a board-layer change plus its tests, not an application
@@ -126,10 +128,10 @@ line under the same IRQ0..15 rule as D2.
    not read.
 3. **Snooze on RA8P1.** `ra8_lpm.h` documents the RA8D2 as having no dedicated
    snooze register block. Whether the RA8P1 matches is unverified.
-4. **Forced-off timing.** #832 already records that a nominal LTC2954
-   calculation does not close this gate. Threshold, discharge, source-valid
-   rearm and brownout behaviour are bench items; no timing figure is asserted
-   here.
+4. **Forced-off timing.** The input-surface brief already records that a nominal
+   LTC2954 calculation does not close this gate. Threshold, discharge,
+   source-valid rearm and brownout behaviour are bench items; no timing figure
+   is asserted here.
 5. **Sleep mode versus regulator.** The DCDC exclusion in finding 6 has to be
    reconciled with the rail design and confirmed against the HUM
    electrical tables. The resulting sleep current is a measurement, not a
@@ -143,13 +145,14 @@ line under the same IRQ0..15 rule as D2.
 
 ## References
 
-* Issue #832 (`ereader hw: design buttons, accelerometer, optional wake
-  sensors, and service interfaces`); parent epic #821.
+* The input-surface brief (`ereader hw: design buttons, accelerometer,
+  optional wake sensors, and service interfaces`), under the e-reader
+  hardware epic.
 * `libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h` and
   `libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c`.
 * `libs/ra8_hal/inc/ra8_lpm.h`, `libs/ra8_hal/src/ra8_pwr.c`,
   `libs/ra8_hal/inc/ra8_vreg.h`.
 * `libs/ra8_widget/inc/ra8_widget.h` (`k_ra8_widget_ev_button`).
-* Sibling pre-board records: ADR-0010 (#846, SDRAM interface supply domain) and
-  ADR-0007 (#831, front-light driver interface). Both have landed under those
+* Sibling pre-board records: ADR-0010 (SDRAM interface supply domain) and
+  ADR-0007 (front-light driver interface). Both have landed under those
   numbers; the SDRAM record took `0010`, not the `0005` this line first claimed.
