@@ -9,16 +9,6 @@
   gather_facts: true
   become: true
   vars:
-    lab_ci_packages:
-      - ca-certificates
-      - git
-      - git-lfs
-      - podman
-      - uidmap
-      - python3
-      - dbus-user-session
-      - cloud-guest-utils
-      - fuse-overlayfs
     lab_ci_repo_dir: "/home/{{ lab_ci_user }}/ra8-lab-ci"
     lab_ci_history_dir: "/home/{{ lab_ci_user }}/ra8-lab-history"
     lab_ci_tmp_dir: "/home/{{ lab_ci_user }}/ra8-lab-tmp"
@@ -32,6 +22,11 @@
           - lab_ci_source_archive is not search('\n')
           - lab_ci_history_archive is string
           - lab_ci_history_archive is file
+          - lab_ci_image_archive is string
+          - lab_ci_image_archive is file
+          - lab_ci_image_id is match('^sha256:[0-9a-f]{64}$')
+          - lab_ci_image_name == 'ra8-ci:latest'
+          - lab_ci_image_platform == 'linux/amd64'
         fail_msg: "The disposable lab playbook requires a valid user and a controller-local source archive."
       become: false
 
@@ -40,37 +35,18 @@
         database: passwd
         key: "{{ lab_ci_user }}"
 
-    - name: Ensure systemd-resolved drop-in directory exists
-      ansible.builtin.file:
-        path: /etc/systemd/resolved.conf.d
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-
-    - name: Configure approved DNS server for systemd-resolved
-      ansible.builtin.copy:
-        dest: /etc/systemd/resolved.conf.d/lab-dns.conf
-        content: |
-          [Resolve]
-          DNS=1.1.1.1
-        owner: root
-        group: root
-        mode: "0644"
-
-    - name: Restart systemd-resolved to apply DNS configuration
-      ansible.builtin.systemd:
-        name: systemd-resolved
-        state: restarted
-
-    - name: Update the disposable guest package index
-      ansible.builtin.apt:
-        update_cache: true
-
-    - name: Install the disposable guest CI substrate
-      ansible.builtin.apt:
-        name: "{{ lab_ci_packages }}"
-        state: present
+    - name: Verify the offline template substrate is available
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          for tool in podman git git-lfs python3 growpart resize2fs fuse-overlayfs; do
+            command -v "$tool" >/dev/null || {
+              echo "required offline template tool is missing: $tool" >&2
+              exit 1
+            }
+          done
+        executable: /bin/bash
+      changed_when: false
 
     - name: Expand root partition to the full virtual disk size
       ansible.builtin.shell:
@@ -216,10 +192,51 @@
           - ((lab_ci_podman_info.stdout | from_json).store.graphDriverName | default('')) == "overlay"
         fail_msg: "The disposable guest CI user cannot use rootless Podman with overlay driver."
 
-    - name: Verify that rootless Podman can execute a container via crun
+    - name: Stage the controller-pinned CI image for the lab user
+      ansible.builtin.copy:
+        src: "{{ lab_ci_image_archive }}"
+        dest: "/home/{{ lab_ci_user }}/ra8-ci-image.tar"
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0600"
+
+    - name: Load the controller-pinned CI image into rootless Podman
       become_user: "{{ lab_ci_user }}"
       ansible.builtin.command:
-        argv: [podman, run, --rm, "docker.io/library/debian:bookworm-slim", "true"]
+        argv: [podman, load, --input, "/home/{{ lab_ci_user }}/ra8-ci-image.tar"]
+      environment:
+        HOME: "/home/{{ lab_ci_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+      register: lab_ci_image_load
+      changed_when: "'Loaded image' in lab_ci_image_load.stdout"
+
+    - name: Inspect the loaded CI image digest and platform
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [podman, image, inspect, --format, "{{ '{{' }}.Id{{ '}}' }}|{{ '{{' }}.Os{{ '}}' }}/{{ '{{' }}.Architecture{{ '}}' }}", "{{ lab_ci_image_name }}"]
+      environment:
+        HOME: "/home/{{ lab_ci_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+      register: lab_ci_image_inspect
+      changed_when: false
+
+    - name: Refuse a CI image that differs from the controller-pinned image
+      ansible.builtin.assert:
+        that:
+          - lab_ci_image_inspect.stdout == (lab_ci_image_id ~ '|' ~ lab_ci_image_platform)
+        fail_msg: "Loaded CI image digest or platform differs from the controller pin."
+
+    - name: Remove the transferred image archive after verification
+      ansible.builtin.file:
+        path: "/home/{{ lab_ci_user }}/ra8-ci-image.tar"
+        state: absent
+
+    - name: Verify that rootless Podman can execute the side-loaded CI image
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [podman, run, --rm, "{{ lab_ci_image_name }}", true]
       environment:
         HOME: "/home/{{ lab_ci_user }}"
         XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"

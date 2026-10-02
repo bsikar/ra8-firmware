@@ -13,6 +13,8 @@ PROFILE="${1:-linux}"
 RUN_ID="${2:-$(od -An -N8 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')}"
 ARCHIVE_PATH="${3:-/var/lib/ra8-lab/$PROFILE/source.tar}"
 KEEP="${4:-false}"
+IMAGE_ARCHIVE_PATH="${5:-}"
+IMAGE_ID="${6:-}"
 
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
@@ -63,15 +65,17 @@ if [[ "$PROFILE" == "linux" ]]; then
   TEMPLATE_ID=9001
   BRIDGE="vmbr9"
   SUBNET="10.250.9.0/24"
-  GATEWAY="10.250.9.1"
+  BRIDGE_ADDR="10.250.9.1"
   GUEST_IP="10.250.9.10"
   GUEST_USER="terraform-lab"
+  [[ -r "$IMAGE_ARCHIVE_PATH" ]] || { echo "error: controller-side CI image archive is unavailable."; exit 1; }
+  [[ "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "error: controller-side CI image digest is invalid."; exit 1; }
 elif [[ "$PROFILE" == "windows" ]]; then
   VM_ID=9010
   TEMPLATE_ID=9011
   BRIDGE="vmbr8"
   SUBNET="10.250.8.0/24"
-  GATEWAY="10.250.8.1"
+  BRIDGE_ADDR="10.250.8.1"
   GUEST_IP="10.250.8.20"
   GUEST_USER="Administrator"
   if [[ -n "${RA8_LAB_WINDOWS_PASSWORD:-}" ]]; then
@@ -128,6 +132,7 @@ cleanup() {
   fi
   # The Windows inventory carries the credential at the point of use, so it does
   # not outlive the run that needed it.
+  [[ -z "$IMAGE_ARCHIVE_PATH" ]] || rm -f "$IMAGE_ARCHIVE_PATH"
   rm -f "$RUN_DIR/windows-inventory.ini"
   rm -f "$PID_FILE"
   if ((exit_code == 0)); then
@@ -145,12 +150,16 @@ trap 'exit 143' TERM
 
 # 1. Setup network isolation
 echo "$(ts) Configuring network isolation ($BRIDGE, $SUBNET)..."
-if ! ip link show "$BRIDGE" >/dev/null 2>&1; then
-  ip link add "$BRIDGE" type bridge
+if ip link show "$BRIDGE" >/dev/null 2>&1; then
+  echo "error: refusing to reuse existing bridge $BRIDGE; inspect its live configuration first." >&2
+  exit 1
 fi
-ip addr replace "$GATEWAY/24" dev "$BRIDGE"
+ip link add "$BRIDGE" type bridge
+# Keep only the private management address on the bridge so the controller can
+# SSH to the guest. The Linux guest has no default route and forwarding is
+# dropped below, so this address does not provide guest egress.
+ip addr replace "$BRIDGE_ADDR/24" dev "$BRIDGE"
 ip link set "$BRIDGE" up
-sysctl -w net.ipv4.ip_forward=1 >/dev/null
 
 nft -f - <<EOF
 table ip $NFT_TABLE {
@@ -162,24 +171,14 @@ table ip $NFT_TABLE {
   chain input {
     type filter hook input priority -100; policy accept;
     ct state established,related accept
-    iifname @lab_ingress tcp dport { 3142, 8080 } accept
     iifname @lab_ingress drop
   }
 
   chain forward {
     type filter hook forward priority -100; policy accept;
+    iifname @lab_ingress drop
     ct state established,related accept
     iifname != @lab_ingress accept
-    iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
-    iifname @lab_ingress oifname "vmbr0" udp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport { 80, 443 } accept
-    iifname @lab_ingress drop
-  }
-
-  chain postrouting {
-    type nat hook postrouting priority srcnat; policy accept;
-    oifname "vmbr0" ip saddr $SUBNET masquerade
   }
 }
 EOF
@@ -239,8 +238,7 @@ fi
 qm set "$VM_ID" --net0 "$net_model,bridge=$BRIDGE,firewall=0,rate=10"
 
 qm set "$VM_ID" --ide2 "ra8-tf-lab:cloudinit"
-  qm set "$VM_ID" --ipconfig0 "ip=$GUEST_IP/24,gw=$GATEWAY"
-  qm set "$VM_ID" --nameserver "1.1.1.1"
+  qm set "$VM_ID" --ipconfig0 "ip=$GUEST_IP/24"
   qm set "$VM_ID" --ciuser "$GUEST_USER"
   qm set "$VM_ID" --sshkeys "$KEY_FILE.pub"
 
@@ -281,26 +279,15 @@ echo "$(ts) Guest management endpoint is online."
 if [[ "$PROFILE" == "linux" ]]; then
   echo "$(ts) Uploading repository archive to Linux guest..."
   scp "${SSH_OPTS[@]}" "$ARCHIVE_PATH" "$GUEST_USER@$GUEST_IP:/tmp/source.tar"
+  echo "$(ts) Uploading the pinned CI image archive to Linux guest..."
+  scp "${SSH_OPTS[@]}" "$IMAGE_ARCHIVE_PATH" "$GUEST_USER@$GUEST_IP:/tmp/ra8-ci-image.tar"
 fi
 
 if [[ "$PROFILE" == "linux" ]]; then
-  echo "$(ts) Preparing Linux guest CI substrate and dependencies..."
-  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s -- "$GATEWAY" <<'GUEST_SETUP'
+  echo "$(ts) Preparing Linux guest CI checkout and loading the pinned image..."
+  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s -- "$IMAGE_ID" <<'GUEST_SETUP'
 set -euo pipefail
-gateway="${1:-10.250.9.1}"
-
-# Auto-detect local lab apt cache proxy on host gateway
-if curl -s --connect-timeout 1 "http://$gateway:3142" >/dev/null 2>&1; then
-  echo "Acquire::http::Proxy \"http://$gateway:3142\";" | sudo tee /etc/apt/apt.conf.d/01proxy >/dev/null
-fi
-
-# Configure systemd-resolved to use approved 1.1.1.1 DNS egress
-sudo mkdir -p /etc/systemd/resolved.conf.d
-sudo bash -c 'cat > /etc/systemd/resolved.conf.d/lab-dns.conf <<EOF
-[Resolve]
-DNS=1.1.1.1
-EOF'
-sudo systemctl restart systemd-resolved 2>/dev/null || true
+image_id="$1"
 
 # Expand disk partition
 root_dev="$(findmnt -n -o SOURCE / 2>/dev/null || echo /dev/sda1)"
@@ -313,11 +300,14 @@ if ! grep -q "^$USER:" /etc/subuid 2>/dev/null; then
   sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"
 fi
 
-# Ensure substrate packages
-if ! command -v podman >/dev/null 2>&1 || ! command -v git-lfs >/dev/null 2>&1; then
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq podman git git-lfs python3 curl ca-certificates fuse-overlayfs
-fi
+# The template owns the offline substrate. Never install packages or configure
+# network access while starting an isolated lab guest.
+for command_name in podman git git-lfs python3; do
+  command -v "$command_name" >/dev/null 2>&1 || {
+    echo "error: the lab template is missing required command $command_name" >&2
+    exit 1
+  }
+done
 
 # Initialize git-lfs
 sudo git lfs install --system >/dev/null 2>&1 || true
@@ -337,6 +327,15 @@ driver = "overlay"
 [storage.options.overlay]
 mount_program = "/usr/bin/fuse-overlayfs"
 EOF
+
+podman load --input /tmp/ra8-ci-image.tar
+loaded_image="$(podman image inspect --format '{{.Id}}|{{.Os}}/{{.Architecture}}' ra8-ci:latest)"
+[[ "$loaded_image" == "$image_id|linux/amd64" ]] || {
+  echo "error: loaded CI image does not match the controller digest and platform" >&2
+  exit 1
+}
+podman run --rm ra8-ci:latest true
+rm -f /tmp/ra8-ci-image.tar
 
 # Unpack checkout
 rm -rf ~/ra8-lab-ci
@@ -361,7 +360,7 @@ GUEST_SETUP
 set -u
 rm -f "$HOME/ci.pid" "$HOME/ci.exit"
 nohup /bin/bash -p -c '
-  env RA8_CONTAINER_RUNTIME="sudo podman" /bin/bash -p "$HOME/ra8-lab-ci/scripts/ci/devcontainer_run.sh" -- just ci
+  env RA8_CONTAINER_RUNTIME="podman" /bin/bash -p "$HOME/ra8-lab-ci/scripts/ci/devcontainer_run.sh" -- just ci
   rc=$?
   echo "$rc" > "$HOME/ci.exit"
   exit "$rc"

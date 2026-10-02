@@ -18,26 +18,23 @@ TF_WRAPPER="$REPO_ROOT/infra/terraform/run-with-openbao.sh"
 PLAYBOOK="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-linux.yml"
 PLAYBOOK_WINDOWS="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-windows.yml"
 LOOPBACK_PROXY="$REPO_ROOT/scripts/dev/ssh_loopback_proxy.py"
+LAB_IMAGE_HELPER="$REPO_ROOT/scripts/dev/proxmox_lab_side_load_image.sh"
 SSH_ALIAS="pve"
 LINUX_BRIDGE="vmbr9"
-LINUX_SUBNET="10.250.9.0/24"
-LINUX_GATEWAY="10.250.9.1"
+LINUX_BRIDGE_ADDR="10.250.9.1"
 LINUX_VM_ID=9000
 LINUX_TEMPLATE_ID=9001
 LINUX_HOST="10.250.9.10"
 
 WINDOWS_BRIDGE="vmbr8"
-WINDOWS_SUBNET="10.250.8.0/24"
-WINDOWS_GATEWAY="10.250.8.1"
+WINDOWS_BRIDGE_ADDR="10.250.8.1"
 WINDOWS_VM_ID=9010
 WINDOWS_TEMPLATE_ID=9011
 WINDOWS_HOST="10.250.8.20"
 
 LAB_BRIDGE=""
-LAB_SUBNET=""
-LAB_GATEWAY=""
+LAB_BRIDGE_ADDR=""
 LAB_VM_ID=0
-LAB_HOST=""
 NFT_TABLE=""
 
 run_dir=""
@@ -45,7 +42,6 @@ run_id=""
 proxy_pid=""
 guest_proxy_pid=""
 guest_ssh_port=""
-network_ip_forward_before=""
 network_ready=0
 cleanup_enabled=0
 keep_guest=0
@@ -65,7 +61,6 @@ The CI profile requires:
   RA8_LAB_NODE                 Proxmox node name declared for the lab
   RA8_LAB_LINUX_USER           guest user created by the Linux template
   RA8_LAB_NETWORK_APPROVED=1   explicit approval of the isolated lab bridge
-  RA8_LAB_EGRESS_APPROVED=1    explicit approval of controlled guest egress
 
 Proxmox is addressed only as the SSH alias `pve`; the Terraform API endpoint
 and guest SSH endpoint are created locally as 127.0.0.1 tunnels. The guest is
@@ -186,13 +181,12 @@ REMOTE
 
 setup_lab_network() {
   NFT_TABLE="ra8_lab_ci_${run_id}"
-  network_ip_forward_before="$(remote_root "$NFT_TABLE" "$LAB_GATEWAY" "$LAB_SUBNET" "$LAB_BRIDGE" "$LAB_VM_ID" <<'REMOTE'
+  remote_root "$NFT_TABLE" "$LAB_BRIDGE_ADDR" "$LAB_BRIDGE" "$LAB_VM_ID" <<'REMOTE'
 set -euo pipefail
 table="$1"
-gateway="$2"
-subnet="$3"
-bridge="$4"
-vmid="$5"
+bridge_addr="$2"
+bridge="$3"
+vmid="$4"
 
 [[ ! -e /sys/class/net/"$bridge" ]] || {
   printf '%s appeared after preflight; refusing to touch it\n' "$bridge" >&2
@@ -203,20 +197,17 @@ if nft list table ip "$table" >/dev/null 2>&1; then
   exit 1
 fi
 
-old_forward="$(sysctl -n net.ipv4.ip_forward)"
 rollback() {
   set +e
   nft delete table ip "$table" >/dev/null 2>&1
   ip addr flush dev "$bridge" scope global >/dev/null 2>&1
   ip link delete "$bridge" type bridge >/dev/null 2>&1
-  sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null 2>&1
 }
 trap rollback ERR
 
 ip link add "$bridge" type bridge
-ip addr add "${gateway}/24" dev "$bridge"
+ip addr add "${bridge_addr}/24" dev "$bridge"
 ip link set "$bridge" up
-sysctl -w net.ipv4.ip_forward=1 >/dev/null
 nft -f - <<EOF
 table ip $table {
   set lab_ingress {
@@ -232,35 +223,24 @@ table ip $table {
 
   chain forward {
     type filter hook forward priority -100; policy accept;
+    iifname @lab_ingress drop
     ct state established,related accept
     iifname != @lab_ingress accept
-    iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
-    iifname @lab_ingress oifname "vmbr0" udp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport { 80, 443 } accept
-    iifname @lab_ingress drop
-  }
-
-  chain postrouting {
-    type nat hook postrouting priority srcnat; policy accept;
-    oifname "vmbr0" ip saddr $subnet masquerade
   }
 }
 EOF
 trap - ERR
-printf '%s\n' "$old_forward"
 REMOTE
-)"
+
   network_ready=1
 }
 
 cleanup_lab_network() {
   ((network_ready)) || return 0
-  remote_root "$NFT_TABLE" "$network_ip_forward_before" "$LAB_BRIDGE" <<'REMOTE'
+  remote_root "$NFT_TABLE" "$LAB_BRIDGE" <<'REMOTE'
 set -euo pipefail
 table="$1"
-old_forward="$2"
-bridge="$3"
+bridge="$2"
 
 children="$(ip -o link show master "$bridge" 2>/dev/null | awk -F': ' '{print $2}')"
 [[ -z "$children" ]] || {
@@ -272,11 +252,6 @@ nft list table ip "$table" >/dev/null 2>&1 && nft delete table ip "$table"
 ip addr flush dev "$bridge" scope global
 ip link set "$bridge" down
 ip link delete "$bridge" type bridge
-[[ "$old_forward" == "0" || "$old_forward" == "1" ]] || {
-  printf '%s\n' 'refusing to restore an unexpected ip_forward value' >&2
-  exit 1
-}
-sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null
 REMOTE
   network_ready=0
 }
@@ -425,7 +400,6 @@ build_windows_tfvar() {
       memory_mb: 8192,
       bridge: "vmbr8",
       ipv4_address: "10.250.8.20/24",
-      ipv4_gateway: "10.250.8.1",
       ssh_public_keys: [$public_key],
       user_name: $user,
       started: true,
@@ -455,7 +429,6 @@ build_linux_tfvar() {
       memory_mb: 8192,
       bridge: "vmbr9",
       ipv4_address: "10.250.9.10/24",
-      ipv4_gateway: "10.250.9.1",
       ssh_public_keys: [$public_key],
       user_name: $user,
       started: true,
@@ -697,6 +670,7 @@ preflight_tools() {
     [[ -r "$PLAYBOOK_WINDOWS" ]] || die "Windows lab Ansible playbook is unavailable"
   fi
   [[ -r "$LOOPBACK_PROXY" ]] || die "localhost SSH proxy helper is unavailable"
+  [[ -x "$LAB_IMAGE_HELPER" ]] || die "controller side-load image helper is unavailable"
 }
 
 preflight_local() {
@@ -722,7 +696,7 @@ selftest() {
     die "selftest accepted a malformed run ID"
   fi
   [[ "$LINUX_HOST" == "10.250.9.10" ]] || die "selftest changed the pinned lab guest address"
-  [[ "$LINUX_GATEWAY" == "10.250.9.1" ]] || die "selftest changed the pinned lab gateway"
+  [[ "$LINUX_BRIDGE_ADDR" == "10.250.9.1" ]] || die "selftest changed the pinned private bridge address"
   printf '%s\n' 'proxmox_lab_ci.sh --selftest: PASS'
 }
 
@@ -765,7 +739,6 @@ run_ci() {
   ci_profile="$profile"
   [[ "$profile" == "linux" || "$profile" == "windows" ]] || die "profile '$profile' must be linux or windows"
   [[ "${RA8_LAB_NETWORK_APPROVED:-}" == "1" ]] || die "set RA8_LAB_NETWORK_APPROVED=1 only after reviewing the isolated lab bridge boundary"
-  [[ "${RA8_LAB_EGRESS_APPROVED:-}" == "1" ]] || die "set RA8_LAB_EGRESS_APPROVED=1 only after reviewing controlled guest package/image egress"
   if [[ -z "${RA8_LAB_NODE:-}" ]]; then
     RA8_LAB_NODE="$(ssh -o BatchMode=yes -o RequestTTY=no -o ConnectTimeout=3 "$SSH_ALIAS" hostname 2>/dev/null || echo pve1)"
   fi
@@ -774,17 +747,13 @@ run_ci() {
     RA8_LAB_LINUX_USER="${RA8_LAB_LINUX_USER:-terraform-lab}"
     validate_user "$RA8_LAB_LINUX_USER"
     LAB_BRIDGE="$LINUX_BRIDGE"
-    LAB_SUBNET="$LINUX_SUBNET"
-    LAB_GATEWAY="$LINUX_GATEWAY"
+    LAB_BRIDGE_ADDR="$LINUX_BRIDGE_ADDR"
     LAB_VM_ID="$LINUX_VM_ID"
-    LAB_HOST="$LINUX_HOST"
   elif [[ "$profile" == "windows" ]]; then
     RA8_LAB_WINDOWS_USER="${RA8_LAB_WINDOWS_USER:-Administrator}"
     LAB_BRIDGE="$WINDOWS_BRIDGE"
-    LAB_SUBNET="$WINDOWS_SUBNET"
-    LAB_GATEWAY="$WINDOWS_GATEWAY"
+    LAB_BRIDGE_ADDR="$WINDOWS_BRIDGE_ADDR"
     LAB_VM_ID="$WINDOWS_VM_ID"
-    LAB_HOST="$WINDOWS_HOST"
   fi
 
   preflight_local "$profile"
@@ -802,6 +771,9 @@ run_ci() {
   chmod 0644 "$run_dir/id_ed25519.pub"
   build_source_archive
   build_history_archive
+  image_archive="$run_dir/ra8-ci-image.tar"
+  image_vars="$run_dir/ra8-ci-image.yml"
+  "$LAB_IMAGE_HELPER" "$image_archive" "$image_vars"
   setup_lab_network
 
   api_port="$(local_port)"
@@ -839,6 +811,8 @@ run_ci() {
       ansible-playbook \
         -i "$run_dir/inventory.ini" \
         "$PLAYBOOK" \
+        -e "@$image_vars" \
+        -e "lab_ci_image_archive=$image_archive" \
         -e "lab_ci_source_archive=$run_dir/source.tar" \
         -e "lab_ci_history_archive=$run_dir/history.tar" \
         -e "lab_ci_user=$RA8_LAB_LINUX_USER"
