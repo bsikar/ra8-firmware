@@ -58,6 +58,11 @@ pub const CrossApp = struct {
     /// The call passes CPU1_IMAGE, so ra8_add_app() composes the board linker
     /// script with a generated CPU1 memory map instead of taking a fork.
     cpu1_image: bool = false,
+    /// The M85 image's entry as a Zig root, relative to the app directory
+    /// (RA8FW-408). Set, the app has no `src/main.c`: the graph builds this
+    /// file as one cortex_m85 object and links it first, where main.c would
+    /// go. Null, the app's main is C, which is every app in the table today.
+    zig_main: ?[]const u8 = null,
     /// The call passes NS_INLINE_IMAGE, so ra8_add_app() composes the board
     /// linker script with a generated block placing .ns_vectors / .ns_text /
     /// .ns_rodata / .ns_bss. The in-image counterpart to cpu1_image, and only

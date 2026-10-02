@@ -104,12 +104,7 @@ fn addCrossApp(
     // -mfloat-abi (cortex-m85 + hard float -> thumb-freestanding-eabihf,
     // cortex_m85), spelled here as a query instead of a string so the graph
     // itself type-checks it.
-    const arm_target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb,
-        .os_tag = .freestanding,
-        .abi = .eabihf,
-        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
-    });
+    const arm_target = b.resolveTargetQuery(cross_sources.zig_target_query);
 
     // At the optimisation THIS configuration asks for, not a fixed Debug:
     // zig_libs.cmake maps a Debug configure onto a Debug archive and every
@@ -340,6 +335,10 @@ fn addCrossApp(
     app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    // A Zig main goes first, where main.c would (RA8FW-408).
+    if (app.zig_main) |root| {
+        objects.append(zigMain(b, app, root, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+    }
     for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
@@ -520,6 +519,28 @@ fn addCrossApp(
     const report_size = b.addSystemCommand(&.{tools.size});
     report_size.addFileArg(elf);
     arm_step.dependOn(&report_size.step);
+}
+
+/// The app's Zig main as one relocatable M85 object. Unwind tables off, as
+/// in ra8_core's archive: an .ARM.exidx entry names __aeabi_unwind_cpp_pr0,
+/// which the app's link does not resolve.
+fn zigMain(
+    b: *std.Build,
+    app: CrossApp,
+    root: []const u8,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) std.Build.LazyPath {
+    const object = b.addObject(.{
+        .name = b.fmt("{s}_main", .{app.name}),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(b.pathJoin(&.{ app.dir, root })),
+            .target = target,
+            .optimize = optimize,
+            .unwind_tables = .none,
+        }),
+    });
+    return object.getEmittedBin();
 }
 
 fn objcopyTo(
