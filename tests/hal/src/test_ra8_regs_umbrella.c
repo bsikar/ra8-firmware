@@ -3,7 +3,7 @@
  * @brief Unit tests for the RA8D2 register umbrella header
  *
  * @details
- * This suite exists to give `ra8_regs.h` a consumer. Until #1389 nothing in
+ * This suite exists to give `ra8_regs.h` a consumer. Until this suite nothing in
  * the tree included it, so no build ever preprocessed it: the umbrella could
  * (and did) drift to re-exporting half the chip, and nothing proved it still
  * compiled at all. `scripts/checks/check_umbrella_regs.py` answers the first

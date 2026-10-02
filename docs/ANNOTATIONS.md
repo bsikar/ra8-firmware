@@ -414,7 +414,7 @@ a bound annotation that binds to nothing:
 - a `RA8_LOOP_BOUND` / `RA8_LOOP_BOUND_RUNTIME` marker whose next code
   line is not a `for` / `while` / `do` loop (mis-attached); and
 - a legacy `RA8_BOUNDED_LOOP(x);` in statement position, immediately
-  above a loop (the clang-error / GCC-no-op form that #382 removed).
+  above a loop (the clang-error / GCC-no-op form that the RA8_BOUNDED_LOOP fix removed).
 
 `--selftest` asserts both directions and both clean shapes (a correctly
 attached marker, and a function-level `RA8_BOUNDED_LOOP` above a

@@ -19,7 +19,7 @@
  * request to the first member that advertises both the container and the
  * destination layout it asks for. Adding WebP to a consumer that had only stb
  * then becomes one more ::ra8_imgdec_mux_add call rather than a fifth special
- * case in the consumer, which is the shape #637 needs.
+ * case in the consumer, which is the shape inline WebP needs.
  *
  * @code
  * ra8_imgdec_mux_t mux = {};

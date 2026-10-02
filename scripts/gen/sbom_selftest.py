@@ -5,7 +5,7 @@
 This is the must-fire/must-stay-quiet half of the SBOM provenance gate, split
 out of ``gen_sbom.py`` so neither file carries two subjects. The generator
 renders and validates the registry; this module proves that validation can
-actually fail, which is the property #538 showed was missing when
+actually fail, which is the property the SOUP audit showed was missing when
 ``aggregate_sha256`` was a transcribed constant compared against itself.
 
 Every case is a ``(label, ok)`` pair, so a case that stops exercising anything

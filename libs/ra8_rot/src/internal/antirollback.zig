@@ -14,8 +14,8 @@
 //! and that is a function of one halfword.
 
 /// The durable counter's unprogrammed value. Extra-MRAM has no BlankCheck
-/// command on this part, so a virgin word is recognised by reading it: #315
-/// bench-proved on EK-RA8D2 silicon that it reads back all-ones without
+/// command on this part, so a virgin word is recognised by reading it: a bench
+/// run proved on EK-RA8D2 silicon that it reads back all-ones without
 /// faulting.
 pub const Nv = struct {
     pub const erased: u32 = 0xFFFF_FFFF;

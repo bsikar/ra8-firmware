@@ -34,7 +34,7 @@ the golden 4-bpp blob the desktop tool emits for it on the DEFAULT no-downscale
 path (host stb_luma8 + gray4_kernel.gray4_encode). test_ra8_rabook_color_parity.c
 decodes the same PNG with the firmware's stb_image and encodes with the same
 kernel, so byte-identity proves the default path is one luma and one quantiser
-host-vs-device -- decode included -- closing the gap #337 describes.
+host-vs-device -- decode included -- closing the gray4 parity gap.
 
 The `--realbook` form bakes a single header (s_realbook_epub +
 s_realbook_golden_noimg) from a real-book fixture (verbatim Standard Ebooks

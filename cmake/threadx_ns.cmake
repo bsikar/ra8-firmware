@@ -4,7 +4,7 @@
 # cmake/threadx_ns.cmake
 #
 # Non-Secure variant of the ThreadX library (Cortex-M85), for apps that run
-# the RTOS INSIDE the TrustZone Non-Secure image (see GitHub #96 -- Phase C of
+# the RTOS INSIDE the TrustZone Non-Secure image (Phase C of
 # tz_nsc_cgc_usb). Identical sources to cmake/threadx.cmake, but compiled with
 # RA8_THREADX_NON_SECURE so port/threadx/inc/tx_user.h selects TX_SINGLE_MODE_NON_SECURE
 # instead of TX_SINGLE_MODE_SECURE. The consuming app's linker script routes
@@ -66,7 +66,8 @@ add_library(
 
 # The freestanding runtime primitives (memcpy / memset / str* / abs) that the
 # kernel and the NS application call. They were three ra8_core C files listed
-# above until #2820 ported them to Zig and deleted them, which left this the
+# above until the freestanding-primitives port moved them to Zig and deleted
+# them, which left this the
 # one consumer in the tree still naming them: the CPU1 image has taken them
 # from ra8_core's archive since that port (cmake/ra8_add_app.cmake), and an
 # app built through ra8_add_app() gets the same archive for its own core.

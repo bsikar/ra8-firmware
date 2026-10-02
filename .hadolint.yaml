@@ -5,14 +5,14 @@
 #
 # Scope is the single first-party Dockerfile, .devcontainer/Dockerfile. That
 # file pins every tool version CI resolves, so a defect in it changes what
-# every other gate runs -- which is why #371 called out its being unlinted as
+# every other gate runs -- which is why the lint-coverage audit called out its being unlinted as
 # the most consequential of the four gaps.
 #
 # `failure-threshold: style` promotes every severity to a failure. hadolint
 # defaults to failing only on `error`, which would let the DL4006 class -- a
 # pipeline whose exit status is silently that of its LAST command -- pass as a
 # warning. That is the exact defect scripts/checks/check_errexit_masking.py
-# exists to catch in shell, and it was live in this Dockerfile until #371:
+# exists to catch in shell, and it was live in this Dockerfile until that audit:
 # eight `curl -fsSL <url> | tar -x` lines would have reported success on a
 # failed download and produced an image with the pinned tool simply absent.
 # It is fixed by the `SHELL ["/bin/bash", "-o", "pipefail", "-c"]` directive

@@ -163,7 +163,7 @@ static ra8_err_t stub_ofs_reader_map(uintptr_t addr, uint32_t* out)
     }
   }
   /* The driver asked for an address this test never programmed -- exactly the
-   * #545 defect. Record it so the assertion fails loudly rather than the
+   * OFS-address defect. Record it so the assertion fails loudly rather than the
    * driver silently receiving a plausible word. */
   s_ofs_saw_unknown = true;
   *out              = k_ofs_unprogrammed_word;

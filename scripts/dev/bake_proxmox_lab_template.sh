@@ -161,8 +161,8 @@ tar -xf /tmp/source.tar -C ~/ra8-bake
 rm -f /tmp/source.tar
 
 # Build ra8-ci:latest through THE blessed builder, never a raw `podman build`.
-# #521 makes the image carry its build context's sha256 as an OCI label, and
-# scripts/ci/devcontainer_image.sh is the only thing that stamps it; #528 made
+# The stale-image fix makes the image carry its build context's sha256 as an OCI label, and
+# scripts/ci/devcontainer_image.sh is the only thing that stamps it; a follow-up made
 # that script the sole builder so the staleness guarantee cannot be bypassed.
 # It matters most here of all places: a raw build would bake a label-less
 # ra8-ci:latest into the golden template every lab runner clones, so every

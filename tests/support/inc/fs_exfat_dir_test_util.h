@@ -14,7 +14,7 @@
  * of referenced clusters against the allocation bitmap in both directions:
  *
  * - a cluster the bitmap calls used that no entry set references is an ORPHAN
- *   (leaked space -- exactly what a repeated create used to produce, #603, and
+ *   (leaked space -- exactly what a repeated create used to produce, and
  *   what a `rmdir` that freed nothing would produce now);
  * - a cluster an entry set references that the bitmap calls free is a
  *   DANGLING reference (the reverse fault: a set left pointing at space the
@@ -427,7 +427,7 @@ internal_chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uin
      * exists to disagree with when it is wrong. Up-casing only 'a'..'z' of the
      * low byte, which is what this did, matches the specification for an ASCII
      * name and nothing else: it reported every correctly-hashed non-ASCII name
-     * as broken (#605 fixture, #606). */
+     * as broken. */
     const uint32_t raw  = (uint32_t)s_disk.bytes[bpos] |
                           ((uint32_t)s_disk.bytes[bpos + 1U] << (uint32_t)k_mut_shift_byte8);
     const uint32_t unit = s_upc_table[raw];

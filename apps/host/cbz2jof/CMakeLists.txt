@@ -86,7 +86,7 @@ set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
 )
-# The JPEG codec is Zig now (encoder #2798, decoder and stripe driver #2799),
+# The JPEG codec is Zig now (encoder, decoder and stripe driver),
 # so libs/ra8_jpeg/src holds no .c. The C23 public header is unchanged; the
 # archive is linked below. Kept defined and empty because the variable is
 # still expanded in the jof-worker source list.

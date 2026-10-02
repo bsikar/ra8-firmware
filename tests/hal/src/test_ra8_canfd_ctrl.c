@@ -377,7 +377,7 @@ RA8_INTERNAL static void internal_test_mcdc_validate_frame_brs_without_fd(void)
 }
 
 /* ---------------------------------------------------------------------------
- * T1-01 / #177: real timeout + error-propagation legs.
+ * T1-01: real timeout + error-propagation legs.
  *
  * The bounded HW polls in ra8_canfd.c now run for real on host via the
  * ra8_hw_wait_flag_* primitives (ra8_hw_err.h) consulting the ra8_fake_mmio

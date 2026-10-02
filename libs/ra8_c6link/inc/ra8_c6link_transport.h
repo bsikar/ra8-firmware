@@ -31,7 +31,7 @@
  * `DATA_READY` is deliberately absent. The board routes it and the port reads
  * it, but no first-party evidence yet describes how the co-processor drives it
  * under load, and a facade that gated transactions on an unproven signal would
- * be guessing. Until #492 measures it, this link discovers pending receive data
+ * be guessing. Until a bench run measures it, this link discovers pending receive data
  * by clocking a transaction, which is what the bench-proven bring-up did.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

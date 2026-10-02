@@ -8,7 +8,7 @@
 # sizing) that lays a caller-owned node tree into positioned rectangles.
 # Geometry only: no font, no framebuffer -- the renderer (ra8_gfx) and
 # hit-tester (ra8_ui) layer on top. The document engine (ra8_reflow) handles
-# book content; ra8_box handles the fixed application chrome (issue #80/#76).
+# book content; ra8_box handles the fixed application chrome.
 #
 # Layout:
 #   inc/ra8_box.h    public API (node, tree builder, layout)

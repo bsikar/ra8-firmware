@@ -32,7 +32,8 @@ sibling, validate the closed artifact, publish it with one rename
 `k_fw_fs_cap_transactions`, with `fw_fs_transaction_policy_t` distinguishing
 create-new from atomic replacement).
 
-That is not an intentional split. It is issue #762, and until it resolves,
+That is not an intentional split. It is a known gap (one staged-publication
+transaction), and until it resolves,
 **new consumers of staged publication should take `fw_fs_transaction_*`**: it
 is the richer of the two contracts and the one with a substitutable backend.
 

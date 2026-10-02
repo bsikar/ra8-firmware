@@ -15,7 +15,7 @@
  * is the gate's other intended home -- the Secure world authenticating the
  * Non-Secure image before handing control to it -- but that source calls
  * nothing from this header today, so the second boundary is a plan, not a
- * wiring. #2932 records the finding.
+ * wiring.
  *
  * Historically both boundaries trusted a CRC32 only (integrity, not
  * authenticity): a CRC-correct image of any origin would launch. This module
@@ -60,8 +60,8 @@
  *    images with an ::ra8_rot_trailer_t -- otherwise every launch
  *    **default-denies**.
  *
- * The implementation is Zig (``src/internal/rot.zig`` + ``src/rot_abi.zig``,
- * #2943) and ships as its own static archive. A prebuilt archive cannot see an
+ * The implementation is Zig (``src/internal/rot.zig`` + ``src/rot_abi.zig``)
+ * and ships as its own static archive. A prebuilt archive cannot see an
  * app's compile definitions, so *linking it* is the opt-in that the flag alone
  * used to express; the flag still gates the C callers' own arms. The
  * declarations below are always visible and reference no external symbol, so a

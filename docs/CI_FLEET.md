@@ -105,7 +105,7 @@ a duplicate would look authoritative and do nothing.
   secrets, and a playbook that handles a root token can log one. See
   `scripts/secrets/README.md`.
 - **The Proxmox guest topology.** VM 300 and CT 107 exist only as live guest
-  config; recorded on issue #500.
+  config; recorded with the infra codification work.
 - **The HIL listener's registration token.** Minted once for first
   registration and passed in a mode-0600 vars file, never stored.
 - **Which keys a host authorises.** The declaration says where a machine is and

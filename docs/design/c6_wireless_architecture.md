@@ -142,7 +142,7 @@ LSM6DSO IMU Click cannot be used at the same time as the C6 link. That is a
 genuine board-level trade-off, not an oversight.
 
 SW4-3 is a hardware-only analog mux: the U15 PI4IOE5V6408 expander can sense
-and override the other SW4 lines, but a whole-output-space sweep (issue #44,
+and override the other SW4 lines, but a whole-output-space sweep (the OSPI bring-up,
 recorded on `ra8_board_io_expander_set_octospi_active`) established that its
 GPIOs are not in the Octo-SPI path.
 

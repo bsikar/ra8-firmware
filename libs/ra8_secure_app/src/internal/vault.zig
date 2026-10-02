@@ -10,7 +10,7 @@
 //! * The raw key never leaves the secure world. The only operation the NS side
 //!   can reach (through the `ra8_nsc_key_vault_challenge` veneer) is
 //!   `sha256XorChallenge`, which returns SHA-256(key XOR challenge).
-//! * The fail-closed split from issue #180. The vault body only exists in an
+//! * The fail-closed split from the crypto gate. The vault body only exists in an
 //!   off-target or explicitly-insecure image; a production image serves
 //!   `not_supported` from every entry point rather than operate a vault whose
 //!   hardened storage backend is not wired yet. That switch is a comptime
