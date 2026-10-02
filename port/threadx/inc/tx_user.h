@@ -51,8 +51,13 @@
 #define TX_DISABLE_PREEMPTION_THRESHOLD
 /** @brief TX DISABLE REDUNDANT CLEARING. */
 #define TX_DISABLE_REDUNDANT_CLEARING
+/* The Module Manager's kernel dispatch hands modules the notify trampolines
+ * unconditionally, so the `threadx_m33_modules` archive defines
+ * RA8_THREADX_MODULES and keeps the callbacks (RA8FW-414). */
+#ifndef RA8_THREADX_MODULES
 /** @brief TX DISABLE NOTIFY CALLBACKS. */
 #define TX_DISABLE_NOTIFY_CALLBACKS
+#endif
 
 /* Single-mode selection.
  *

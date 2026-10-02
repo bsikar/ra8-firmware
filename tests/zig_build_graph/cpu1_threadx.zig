@@ -13,12 +13,14 @@
 //! M85-tuned and the SysTick retune reads the CGC through ra8_hal, which the
 //! CPU1 image does not link. The upstream `tx_initialize_low_level.S` stays.
 //!
-//! No app links this archive yet. `zig build threadx-m33` builds it so the
-//! port is proven to compile at -mcpu=cortex-m33 before an example uses it.
+//! A CPU1 image links it by naming it in `Cpu1Image.uses` (threadx_cpu1
+//! does); `zig build threadx-m33` builds it on its own. The Module Manager
+//! variant lives in `cpu1_threadx_modules.zig` and is named the same way.
 
 const std = @import("std");
 const middleware = @import("middleware.zig");
 const cpu1_image = @import("cpu1_image.zig");
+const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 
 pub const step_description = "Build the ThreadX kernel for CPU1 (Cortex-M33) as libthreadx_m33.a";
 
@@ -74,19 +76,34 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain) voi
 /// The middleware a CPU1 image may name in `Cpu1Image.uses`. Kept apart from
 /// `middleware.find()` on purpose: an M85 app naming `threadx_m33` would link
 /// M33 objects into an M85 image, and that has to stay unrepresentable.
-const known = [_]middleware.Middleware{threadx_m33};
+///
+/// `threadx_m33_modules` is the same kernel with the Module Manager built in
+/// (RA8FW-414). Naming it instead of `threadx_m33` is the opt-in; naming
+/// both is refused, because each carries the whole kernel.
+const known = [_]middleware.Middleware{ threadx_m33, cpu1_threadx_modules.threadx_m33_modules };
+
+/// The CPU1 kernels: an image links at most one of them.
+const kernels = [_][]const u8{ threadx_m33.name, cpu1_threadx_modules.threadx_m33_modules.name };
 
 /// The Zig glue a CPU1 entry imports as `threadx_cpu1` when it uses the
 /// kernel: vector table, reset path, `_vectors`, SysTick retune (RA8FW-409).
 pub const zig_glue = "port/threadx/src/cortex_m33/threadx_cpu1.zig";
 pub const zig_glue_import = "threadx_cpu1";
 
-/// True when `uses` names the CPU1 kernel, so the entry gets the glue.
-pub fn wantsGlue(uses: []const []const u8) bool {
+/// How many CPU1 kernels `uses` names.
+pub fn kernelCount(uses: []const []const u8) usize {
+    var count: usize = 0;
     for (uses) |name| {
-        if (std.mem.eql(u8, name, threadx_m33.name)) return true;
+        for (kernels) |kernel| {
+            if (std.mem.eql(u8, name, kernel)) count += 1;
+        }
     }
-    return false;
+    return count;
+}
+
+/// True when `uses` names a CPU1 kernel, so the entry gets the glue.
+pub fn wantsGlue(uses: []const []const u8) bool {
+    return kernelCount(uses) > 0;
 }
 
 pub fn find(name: []const u8) ?middleware.Middleware {
@@ -99,6 +116,10 @@ pub fn find(name: []const u8) ?middleware.Middleware {
 /// Every middleware a CPU1 image names, in order. An unknown name is a build
 /// error, the same rule `middleware.resolve()` applies to M85 apps.
 pub fn resolve(allocator: std.mem.Allocator, uses: []const []const u8) []const middleware.Middleware {
+    if (kernelCount(uses) > 1) std.debug.panic(
+        "ra8: a CPU1 image names more than one ThreadX kernel in USES; pick threadx_m33 or threadx_m33_modules",
+        .{},
+    );
     var out = std.ArrayList(middleware.Middleware).init(allocator);
     for (uses) |name| {
         const record = find(name) orelse std.debug.panic(

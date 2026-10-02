@@ -32,8 +32,24 @@ test "the Module Manager is the whole kernel, not a layer on threadx_m33" {
     try std.testing.expectEqual(@as(usize, 0), m.requires.len);
 }
 
-test "no CPU1 image can name the Module Manager yet" {
-    try std.testing.expect(cpu1_threadx.find(modules.threadx_m33_modules.name) == null);
+test "a CPU1 image can name the Module Manager, and it gets the glue" {
+    try std.testing.expect(cpu1_threadx.find(modules.threadx_m33_modules.name) != null);
+    try std.testing.expect(cpu1_threadx.wantsGlue(&.{"threadx_m33_modules"}));
+    try std.testing.expect(cpu1_threadx.wantsGlue(&.{"threadx_m33"}));
+    try std.testing.expect(!cpu1_threadx.wantsGlue(&.{}));
+}
+
+test "the two CPU1 kernels are counted so naming both can be refused" {
+    try std.testing.expectEqual(@as(usize, 1), cpu1_threadx.kernelCount(&.{"threadx_m33_modules"}));
+    try std.testing.expectEqual(@as(usize, 2), cpu1_threadx.kernelCount(&.{ "threadx_m33", "threadx_m33_modules" }));
+    try std.testing.expectEqual(@as(usize, 0), cpu1_threadx.kernelCount(&.{"other"}));
+}
+
+test "resolving the opt-in hands back the Module Manager archive alone" {
+    const got = cpu1_threadx.resolve(std.testing.allocator, &.{"threadx_m33_modules"});
+    defer std.testing.allocator.free(got);
+    try std.testing.expectEqual(@as(usize, 1), got.len);
+    try std.testing.expectEqualStrings("threadx_m33_modules", got[0].name);
 }
 
 test "only a lowercase .s unit gets the preprocessor switch" {
@@ -44,4 +60,10 @@ test "only a lowercase .s unit gets the preprocessor switch" {
     try std.testing.expectEqual(@as(usize, 0), mw.languageFlags(c).len);
     try std.testing.expectEqualStrings("-x", mw.languageFlags(cpp)[0]);
     try std.testing.expectEqualStrings("assembler-with-cpp", mw.languageFlags(cpp)[1]);
+}
+
+test "the Module Manager keeps notify callbacks and tells the assembly it is single-mode secure" {
+    const defines = modules.threadx_m33_modules.public_defines;
+    try std.testing.expect(mentions(defines, "-DRA8_THREADX_MODULES"));
+    try std.testing.expect(mentions(defines, "-DTX_SINGLE_MODE_SECURE="));
 }
