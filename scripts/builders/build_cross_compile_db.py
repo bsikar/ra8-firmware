@@ -36,7 +36,7 @@ WHAT IT COVERS AND HOW IT FINDS IT
    below.
 
 Step 2 is the load-bearing one. A hardcoded residual list is the exact defect
-that #296 / #332 / #358 / #359 / #360 were each an instance of: a scan list
+that several retired C-era checkers were each an instance of: a scan list
 that silently stops matching the tree. Deriving the residual means a new app,
 at any depth, in any tier, needing any middleware, is picked up the day it
 lands -- or fails this script loudly if it cannot be configured at all.

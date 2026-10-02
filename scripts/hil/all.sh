@@ -55,7 +55,7 @@
 #                                     the device as a SCSI block device
 #                                     (the marker that the BOT INQUIRY +
 #                                     READ_CAPACITY handshake completed,
-#                                     i.e. the Issue #6 wedge cleared).
+#                                     i.e. the BOT-stall wedge cleared).
 #
 #   HIL_MODE=alive
 #     HIL_BOOT_S=2                 -- seconds to let the chip run before
@@ -501,7 +501,7 @@ if [[ "$-" == *p* ]]; then
     echo -e "${CYAN}[hil_all]${NC} ${app} (mode=${HIL_MODE})"
     echo -e "${CYAN}[hil_all]${NC} =========================================="
 
-    # Issue #58: USB-mode tests flake when bus state from a prior test
+    # Known HIL flake: USB-mode tests flake when bus state from a prior test
     # (or even a non-USB test that left the device in an odd state) leaks
     # into this enumeration. Soft-PPPS the hub port before any usb_*
     # test so the kernel starts clean. Safe to repeat; the per-test

@@ -30,7 +30,7 @@ A report is a claim, not a log
 This is the rule the whole module is built around. ``sleep_verdict.py`` scores
 ``wake_observed: false`` as **FAIL**, so writing that field on a capture that
 merely ran out of samples would turn a truncated recording into a failing app,
-which is the exact defect #517 exists to remove. So a capture that never showed
+which is the exact defect this probe exists to remove. So a capture that never showed
 an assertion, or that ends with the line still asserted, writes **no report**
 and exits ``INCONCLUSIVE``. The consumer then keeps its honest
 ``SLEEPING_UNPROBED`` instead of inheriting a fabricated verdict.

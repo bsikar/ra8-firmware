@@ -7,7 +7,7 @@
 # on the EK-RA8D2. Flashes the app, then confirms on the USB host (the
 # bench Pi) that the device enumerates AND completes the SCSI INQUIRY
 # / READ_CAPACITY handshake (which is the bulk-only-transport surface
-# Issue #6 used to wedge on). Pass criteria: a /dev/sdX block node
+# the BOT stall used to wedge on). Pass criteria: a /dev/sdX block node
 # appears for the EK-RA8D2's vid:pid within the wait window.
 #
 # A USB-MSC app cannot use HIL_MODE=jlink_memprobe: halting the core
@@ -164,10 +164,10 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # Soft-fail when the device enumerated but the BOT layer never
-  # completed -- this is the Issue #6 signature.
+  # completed -- this is the BOT-stall signature.
   if echo "$DM" | grep -qiE "New USB device found.*${VID}.*${PID}"; then
     echo -e "${RED}[MSC FAIL]${NC} ${APP}: enumerated but no SCSI block device attached"
-    echo -e "${RED}[MSC FAIL]${NC} this is the Issue #6 BOT-handshake signature"
+    echo -e "${RED}[MSC FAIL]${NC} this is the BOT-handshake stall signature"
     exit 1
   fi
 
