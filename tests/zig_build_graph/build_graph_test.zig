@@ -320,10 +320,10 @@ test "a middleware exports defines, include dirs and link options onto its app" 
     try std.testing.expect(indexOf(include_dirs, "port/threadx/inc") != null);
 
     const system_dirs = mw.appSystemIncludeDirs(allocator, uses);
-    try std.testing.expect(indexOf(system_dirs, "libs/third_party/threadx/common/inc") != null);
+    try std.testing.expect(indexOf(system_dirs, "pkg:threadx/common/inc") != null);
     // The vendor headers are -isystem, never -I: on the ordinary include path
     // their own diagnostics would fail the app's compile, not the vendor's.
-    try std.testing.expect(indexOf(include_dirs, "libs/third_party/threadx/common/inc") == null);
+    try std.testing.expect(indexOf(include_dirs, "pkg:threadx/common/inc") == null);
 
     const link_options = mw.appLinkOptions(allocator, uses);
     try std.testing.expect(indexOf(link_options, "-Wl,--undefined=_tx_timer_interrupt") != null);
@@ -345,11 +345,11 @@ test "a middleware TU takes its own bar, and assembly is not the C bar" {
     };
 
     const c_flags = mw.unitFlags(toolchain, mw.threadx, .{
-        .path = "libs/third_party/threadx/common/src/tx_block_allocate.c",
+        .path = "pkg:threadx/common/src/tx_block_allocate.c",
         .language = .c,
     });
     const asm_flags = mw.unitFlags(toolchain, mw.threadx, .{
-        .path = "libs/third_party/threadx/ports/cortex_m85/gnu/src/tx_thread_schedule.S",
+        .path = "pkg:threadx/ports/cortex_m85/gnu/src/tx_thread_schedule.S",
         .language = .assembly,
     });
 

@@ -52,7 +52,7 @@ pub const excluded_prefixes = [_][]const u8{
 /// since dev's 46248b41 put `port/threadx/` back in scope: it was the only
 /// entry, and the three .c files under it (`tx_systick_ready.c`,
 /// `tx_systick_retune.c`, `fw_os_threadx.c`) are first-party glue, not the
-/// vendored Eclipse ThreadX, which lives at `libs/third_party/threadx/`.
+/// Eclipse ThreadX, which is fetched as the `threadx` build.zig.zon package.
 /// The mechanism stays because the next vendored-C tree will want it.
 pub const c_excluded_prefixes = [_][]const u8{};
 

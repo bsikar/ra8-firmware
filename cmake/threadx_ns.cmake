@@ -25,7 +25,8 @@ if(NOT DEFINED RA8_REPO_ROOT)
   get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()
 
-set(RA8_THREADX_ROOT "${RA8_REPO_ROOT}/libs/third_party/threadx")
+include(${RA8_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(threadx RA8_THREADX_ROOT)
 set(RA8_THREADX_PORT_DIR "${RA8_REPO_ROOT}/port/threadx")
 set(RA8_THREADX_M85_GNU "${RA8_THREADX_ROOT}/ports/cortex_m85/gnu")
 
