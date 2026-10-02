@@ -648,9 +648,9 @@ internal_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const ch
   /* Access date only, deliberately. A rename changes the name, not the bytes,
    * so advancing DIR_WrtDate would tell every rsync, backup and "newest image"
    * OTA heuristic that the contents changed -- the same class of false signal
-   * #601 exists to remove, only inverted. FAT has no metadata-change field, so
+   * the timestamp fix exists to remove, only inverted. FAT has no metadata-change field, so
    * the access date is the honest record that the entry was touched. It goes on
-   * the template BEFORE the commit, because since #600 a rename writes a new
+   * the template BEFORE the commit, because since long-name write a rename writes a new
    * entry rather than editing the old one in place. */
   priv_fat_entry_stamp_access(t.entry);
   uint64_t new_lba = 0U;

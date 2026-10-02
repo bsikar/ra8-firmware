@@ -110,7 +110,7 @@ static const uint8_t s_bad_dir_record[28] = {
 
 /**
  * @brief A crafted font whose cmap record fits but whose in-table encoding
- *        count overruns the buffer (the fuzz-found #239 out-of-bounds read).
+ *        count overruns the buffer (the fuzz-found out-of-bounds read).
  * @details The top-level directory is well-formed: one record tagged "cmap" at
  *          offset 28, declared length 4 (28 + 4 == 32 == buffer len), so checks
  *          (1)-(3) pass. The cmap table's internal numTables field is 0xFFFF, so

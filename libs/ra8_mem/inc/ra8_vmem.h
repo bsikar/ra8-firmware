@@ -27,7 +27,7 @@
  * ::ra8_vmem_prefetch read-ahead helper -- the representation its byte-range
  * consumers want and the tile/glyph consumers do not.
  *
- * Eviction is **SLRU (Segmented LRU / 2Q)** -- the policy chosen in #147 because
+ * Eviction is **SLRU (Segmented LRU / 2Q)** -- the policy the memory-hierarchy work chose because
  * it is the only scan-resistant policy with deterministic O(1) (WCET = 1)
  * victim selection: a probationary segment absorbs one-shot linear scans while a
  * protected segment holds the re-referenced working set, so a page-turn flood
@@ -112,7 +112,7 @@ typedef ra8_err_t (*ra8_vmem_loader_fn)(void*    ctx,
  * @typedef ra8_vmem_frame_t
  * @brief Per-frame cache metadata (one caller-owned array entry per frame).
  *
- * @details Treat as private; the cache owns the contents. Since #345 folded the
+ * @details Treat as private; the cache owns the contents. Since the keycache merge folded the
  *          cache machinery into ::ra8_keycache, this is exactly an
  *          ::ra8_keycache_cell_t -- allocate an array of `frame_count` of them
  *          alongside the frame storage, the key array, and the hash buckets.

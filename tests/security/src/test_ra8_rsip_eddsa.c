@@ -25,7 +25,7 @@
  *    cross-build.
  * 2. RSA (``ra8_rsip_rsa_sign`` / ``..._verify`` / ``..._encrypt`` /
  *    ``..._decrypt``) has no documented RSIP register backend either
- *    (issues #214 + #187), so it too is FAIL-CLOSED in a production build
+ *    (RSIP register audit), so it too is FAIL-CLOSED in a production build
  *    (``k_ra8_err_not_supported``) and drives the modelled command path only
  *    under the insecure-stub / off-target guard. The cases below assert that a
  *    fake RSA operation writes the opcode, padding-scheme, and

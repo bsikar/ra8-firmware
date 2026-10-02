@@ -528,7 +528,7 @@ static bool build_kit_fixture(kit_fixture_t* f)
  * body panel -> left button (each level's hit-test true arm), latching it.
  * Partial compose -- only the body band re-invalidated -> exactly 1 dirty root
  * child, the body rect with the fast hint, both buttons repainted (4 fills, 2
- * texts) and the labels untouched. This is the issue #145 partial-flush
+ * texts) and the labels untouched. This is the widget compositor's partial-flush
  * acceptance, driven by the concrete leaf widgets.
  */
 static void test_kit_compose(void)

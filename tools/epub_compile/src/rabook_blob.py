@@ -245,7 +245,7 @@ class BlobBuilder:
         luminance with the SAME integer luma the device's stb_image applies
         (`gray4_kernel.stb_compute_y`, mirroring `stbi__compute_y`), so the host
         tool and the on-device compiler emit byte-identical output for one source
-        (issue #337). The reduced gray8 is then either kept verbatim
+        (host/device gray4 parity). The reduced gray8 is then either kept verbatim
         (`pixel_format` PIXFMT_GRAY8, one byte per pixel) or quantized and packed
         two-pixels-per-byte to 4bpp (PIXFMT_GRAY4, the default) via the exact
         integer kernel `ra8_rabook_gray4_*` runs on device. Dithering stays OFF
@@ -255,8 +255,8 @@ class BlobBuilder:
         BOTH the default no-downscale path and the opt-in `--max-edge` downscale
         path go through `gray4_kernel`, so there is exactly ONE luma and ONE
         quantiser shared with the firmware -- no PIL palette-snap, no LANCZOS,
-        nothing that drifts across Pillow versions (issue #337 closes the
-        no-downscale gap that #213 left on the default path).
+        nothing that drifts across Pillow versions (this closes the
+        no-downscale gap the kernel-parity fix left on the default path).
 
         Pixels are stored uncompressed. The container DEFLATEs the whole blob
         once, so per-image compression would only double-compress, and after the

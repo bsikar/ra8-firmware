@@ -3,7 +3,7 @@
 //
 // The stream adapter against a fake page cache. The fake is the point: it can
 // fail a chosen frame, which is the case the real cache will not reproduce on
-// demand and the case #764 was about.
+// demand and the case the vmem error fix was about.
 
 const std = @import("std");
 const vmem_stream = @import("vmem_stream");

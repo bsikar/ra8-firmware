@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The one hash + pin + evict cache engine of `inc/ra8_keycache.h` (#147,
-//! #345). A keycache maps a fixed-size opaque key to a fixed-size opaque cell:
+//! The one hash + pin + evict cache engine of `inc/ra8_keycache.h`. A keycache
+//! maps a fixed-size opaque key to a fixed-size opaque cell:
 //! a hit returns a pinned view, a miss evicts an unpinned victim, fills the
 //! cell through the caller's render callback, inserts it and pins it.
 //!
