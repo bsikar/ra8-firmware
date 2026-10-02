@@ -49,8 +49,8 @@ test "the second image compiles exactly the units its executable names" {
     const units = cpu1.sources(allocator, app, image);
     defer allocator.free(units);
     defer allocator.free(units[0]);
-    // Two, not three: libs/ra8_core/src/ra8_scb.c was the third until #2868
-    // ported the fault block to Zig and deleted it. The SCB window is in
+    // Two, not three: libs/ra8_core/src/ra8_scb.c was the third until the
+    // fault-block port to Zig deleted it. The SCB window is in
     // ra8_core's archive now, which this image links built for its own core.
     try std.testing.expectEqual(@as(usize, 2), units.len);
     try std.testing.expectEqualStrings(

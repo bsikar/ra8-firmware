@@ -105,7 +105,7 @@ pub const CrossApp = struct {
     /// The subset of `libs/ra8_nsc/src` this app compiles, named exactly as
     /// `NSC_SRCS` names it (bare file names, no directory). Empty means the
     /// app named none, and cmake/ra8_app/sources.cmake then globs the whole
-    /// directory -- which is what all six pre-#1096 apps get.
+    /// directory -- which is what all six pre-TrustZone apps get.
     ///
     /// The narrowing exists because the NSC veneers are not one set: an app
     /// pulls the CGC veneers without dragging in ra8_nsc_comms/ra8_nsc_eth,
@@ -194,7 +194,7 @@ pub const cross_apps = [_]CrossApp{
         // the board opt-in gate keeps `..._touch.c` instead of dropping it, a
         // library with no directory of its own contributes six translation
         // units, and the include path grows a directory. It links no migrated
-        // Zig archive, so #948 does not block it.
+        // Zig archive, so the unwind-table link failure does not block it.
         .name = "iic_b_facade_demo",
         .dir = "examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -224,13 +224,14 @@ pub const cross_apps = [_]CrossApp{
         // shared_pingpong.h), which is the first directory on CMake's include
         // path and had never been exercised either.
         //
-        // No LIBS, no USES, no migrated Zig archive, so #948 does not block it.
+        // No LIBS, no USES, no migrated Zig archive, so the unwind-table link
+        // failure does not block it.
         //
         // The app's CMakeLists hand-rolls a SECOND executable for the M33
         // (cpu1_pingpong_cpu1.elf, four TUs at -mcpu=cortex-m33, its own
         // linker script) and objcopies it into the M85 image as a .cpu1_image
-        // blob. That is app-local CMake outside ra8_add_app(), and #1044 is
-        // the slice that brought it into the graph: see the .cpu1 field below.
+        // blob. That is app-local CMake outside ra8_add_app(), and the CPU1
+        // image work is the slice that brought it into the graph: see the .cpu1 field below.
         .name = "cpu1_pingpong",
         .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
         .cpu1_image = true,
@@ -265,13 +266,14 @@ pub const cross_apps = [_]CrossApp{
         //
         // threadx_blink is the smallest app that names one: `USES threadx`
         // and nothing else, no LIBS, no EXTRA_SRCS, no migrated Zig archive,
-        // so #948 does not block it and its first-party set is byte-for-byte
+        // so the unwind-table link failure does not block it and its
+        // first-party set is byte-for-byte
         // blink_hal's 200 TUs. Everything that differs between the two apps
         // is the middleware, which is what makes it the right fourth app.
         .name = "threadx_blink",
         .dir = "examples/ek_ra8d2/hw_validated/hil/threadx_blink",
         .board = "libs/ra8_board_ek_ra8d2",
-        // Fork dropped by 9dd9f1d1 (#761, "convert the 42 forked ThreadX app
+        // Fork dropped by 9dd9f1d1 ("convert the 42 forked ThreadX app
         // maps onto the board script"), so this resolves to the board's.
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
@@ -292,7 +294,7 @@ pub const cross_apps = [_]CrossApp{
         //
         // ra8_io_swap_demo names `STACK_BYTES 4096` and is otherwise the
         // plainest app that can carry the rule: no USES, no EXTRA_SRCS, no
-        // AUX_SRCS, no app-local CMake, no migrated Zig archive, so #948 does
+        // AUX_SRCS, no app-local CMake, no migrated Zig archive, so the unwind-table failure does
         // not block it.
         //
         // It also opens the one arm of the board opt-in gate that no
@@ -416,7 +418,8 @@ pub const cross_apps = [_]CrossApp{
         // src/trustzone_init.c), where cpu1_pingpong overrode one, and its
         // AUX_SRCS name the three ns_*.c files that belong to the SEPARATE
         // Non-Secure executable, which this slice deliberately leaves out.
-        // It links no migrated Zig archive, so #948 does not block it.
+        // It links no migrated Zig archive, so the unwind-table link failure
+        // does not block it.
         .name = "tz_nsc_cgc_usb",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -517,8 +520,8 @@ pub const cross_apps = [_]CrossApp{
         // appends the DP-FPU override and the device define. See device.zig
         // for why both are silent when missed.
         //
-        // No LIBS, no USES, no EXTRA_SRCS, no migrated Zig archive (so #948
-        // does not block it), and it ships its own src/vector_table.c -- the
+        // No LIBS, no USES, no EXTRA_SRCS, no migrated Zig archive (so the
+        // unwind-table failure does not block it), and it ships its own src/vector_table.c -- the
         // second app in the table to override a
         // boot unit, and the first to override one on a board layer whose
         // src/boot does not carry that file at all.
@@ -557,7 +560,7 @@ pub const cross_apps = [_]CrossApp{
         // the same `_ra8_lib_inc` list the LIBS loop does.
         //
         // No USES, no EXTRA_SRCS, no app-local CMake, no migrated Zig archive
-        // (so #948 does not block it) and the default 2200-byte frame budget:
+        // (so the unwind-table failure does not block it) and the default 2200-byte frame budget:
         // the first-party set is blink_hal's 200 units, so everything that
         // differs between the two apps IS this keyword.
         .name = "crypto_aes_demo",
@@ -574,7 +577,7 @@ pub const cross_apps = [_]CrossApp{
         // The TENTH app, and the one that takes the last arm of the last
         // source-set keyword: `NO_NSC`. cmake/ra8_app/sources.cmake decides
         // the NSC set three ways and this table had two of them -- the whole
-        // ten-unit glob every pre-#1096 app gets, and the named subset
+        // ten-unit glob every pre-TrustZone app gets, and the named subset
         // tz_nsc_cgc_usb narrows it to. cpu1_pingpong_ipc is the only app in
         // the tree that compiles NONE of it. See CrossApp.no_nsc for why the
         // mistake is silent rather than a compile failure, which was measured
@@ -592,14 +595,15 @@ pub const cross_apps = [_]CrossApp{
         //
         // 192 units: blink_hal's universal 200, minus the ten NSC units,
         // plus ra8_tz_secure_boot from LIBS, plus src/ns_main.c. That last
-        // one is the app-local glob from #1036 taking an arm nothing else in
+        // one is the app-local glob rule taking an arm nothing else in
         // the table takes -- the app keeps a THIRD unit under its own src/
         // and names only src/cpu1_main.c in AUX_SRCS, so ns_main.c belongs to
         // the M85 image even though its name says otherwise. src/system_init.c
         // and src/trustzone_init.c override two board boot units, the same
         // pair tz_nsc_cgc_usb overrides.
         //
-        // It links no migrated Zig archive, so #948 does not block it.
+        // It links no migrated Zig archive, so the unwind-table link failure
+        // does not block it.
         .name = "cpu1_pingpong_ipc",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -640,11 +644,11 @@ pub const cross_apps = [_]CrossApp{
         // names a MIGRATED Zig library (ra8_power_profile). That makes it the
         // arm of cmake/ra8_app/zig_libs.cmake -- the last piece of
         // ra8_add_app() no entry here took -- and it was not a free choice
-        // before now: #948 held every such app out of the table, because the
+        // before now: the unwind-table failure held every such app out of the table, because the
         // archive pulled libgcc's unwinder into a -nostdlib image and the
-        // link failed the same way under BOTH build systems. #1200 took the
-        // unwind tables off the three archives and #1209 gave the AEABI
-        // memory helpers a first-party home, so the link completes and the
+        // link failed the same way under BOTH build systems. Taking the
+        // unwind tables off the three archives and giving the AEABI
+        // memory helpers a first-party home means the link completes and the
         // rule can finally be held to a real image.
         //
         // What the keyword actually is: a migrated library keeps its public

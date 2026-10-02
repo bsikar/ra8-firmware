@@ -3,7 +3,7 @@
 //!
 //! The command surface of the root Zig build graph: the steps `build.zig`
 //! declares, the `just/zig.just` recipes that dispatch to them, and the help
-//! menu that advertises those recipes (#1165, part of RA8FW-339).
+//! menu that advertises those recipes (part of RA8FW-339).
 //!
 //! Three hand-maintained lists of the same thing, and until this module
 //! nothing compared them. A slice that adds a step and forgets the recipe
@@ -308,7 +308,7 @@ test "the step parser reads every b.step spelling this graph uses" {
     try std.testing.expectEqualStrings("test-soup", steps[2]);
 }
 
-test "a step with no recipe is the drift #1165 found, in both directions" {
+test "a step with no recipe is the drift the audit found, in both directions" {
     const allocator = std.testing.allocator;
     const recipes = try parseRecipes(allocator, fixture_just);
     defer allocator.free(recipes);

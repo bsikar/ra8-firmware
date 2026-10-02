@@ -12,7 +12,7 @@
 //! the RA8P1 command line is the RA8D2 one plus a one-flag tail.
 //!
 //! What it does NOT append matters as much. The toolchain file used to override
-//! -mfpu to fpv5-d16 unconditionally; #225 settled that the RA8P1 primary M85
+//! -mfpu to fpv5-d16 unconditionally; the RA8P1 FPU evaluation settled that the RA8P1 primary M85
 //! declares `__FPU_DP 0` in FSP's own CMSIS header, byte-identical to the RA8D2,
 //! so both parts build fpv5-sp-d16 and fpv5-d16 is reachable only through the
 //! opt-in `-DRA8P1_DP_FPU=ON` bench switch for RA8FW-261 (which also defines
@@ -109,7 +109,7 @@ test "the RA8P1 adds only the device define, never a DP -mfpu" {
     const p1 = forBoard("libs/ra8_board_ra8p1");
     try std.testing.expectEqual(@as(usize, 1), p1.compile_flags.len);
     try std.testing.expectEqualStrings("-DRA8_DEVICE_RA8P1", p1.compile_flags[0]);
-    // #225: a default fpv5-d16 trips ra8_fpu_probe.h's #error and would emit
+    // RA8P1: a default fpv5-d16 trips ra8_fpu_probe.h's #error and would emit
     // .f64 opcodes the part's single-precision FPU takes as UNDEFINED.
     for (devices) |device| {
         for (device.compile_flags) |flag| {

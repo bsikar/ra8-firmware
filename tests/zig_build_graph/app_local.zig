@@ -4,8 +4,9 @@
 //! The part of an app's build that ra8_add_app() does not do.
 //!
 //! Most apps in this repo are one ra8_add_app() call and nothing else, so the
-//! cross-build rules the graph has encoded so far (#936, #1021, #1036, #1054,
-//! #1068) are all rules of that one function. cpu1_pingpong was the first app
+//! cross-build rules the graph has encoded so far (app-local sources, the CPU1
+//! image, middleware, the stack budget) are all rules of that one function.
+//! cpu1_pingpong was the first app
 //! whose own CMakeLists declares a second target. This module is the
 //! general case of that: an app that declares a VENDORED STATIC LIBRARY beside
 //! its executable, links it, and takes the library's PUBLIC usage

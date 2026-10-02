@@ -312,7 +312,7 @@ test "a middleware exports defines, include dirs and link options onto its app" 
     // SILENTLY when they are missing: the kernel reads its own defaults
     // instead of port/threadx/inc/tx_user.h, the vendor headers land on the
     // app's -Werror include path, and the link succeeds with a time base that
-    // never advances (issue #8).
+    // never advances (the USB-FS no-timer-tick bug).
     const defines = mw.appDefines(allocator, uses);
     try std.testing.expect(indexOf(defines, "-DTX_INCLUDE_USER_DEFINE_FILE") != null);
 
@@ -734,8 +734,9 @@ test "threadx_ns is a different archive from threadx, not the same one with a fl
     try std.testing.expect(secure_has_retune);
 
     // The NS image still links no libc and no libgcc at all, so it still needs
-    // the freestanding primitives. It no longer COMPILES them: until #2820
-    // they were three ra8_core C files in this archive, and that port deleted
+    // the freestanding primitives. It no longer COMPILES them: until the
+    // freestanding-primitives port they were three ra8_core C files in this
+    // archive, and that port deleted
     // them. cmake/threadx_ns.cmake stopped naming them in the same change and
     // links ra8_core's archive onto the kernel as INTERFACE instead, so the
     // image picks them up behind the kernel on its own link line.
@@ -870,7 +871,7 @@ test "the NSC set is one decision with three arms, and every app takes one" {
     try std.testing.expect(!sources.nscIsCompiled(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_comms.c"));
 
     // And an app that names neither keyword compiles the whole directory,
-    // which is the arm every app before #1096 takes.
+    // which is the arm every pre-TrustZone app takes.
     try std.testing.expect(!bare_app.no_nsc);
     try std.testing.expectEqual(@as(usize, 0), bare_app.nsc_srcs.len);
     for ([_][]const u8{

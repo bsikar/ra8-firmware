@@ -683,7 +683,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "tz_threadx_demo",
         .shape = .{ .aux_srcs = true, .mram_length = true },
-        .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. RA8FW-309 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
+        .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. RA8FW-309 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined with the ra8_rot Zig port when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
     },
     .{
         .representative = "c6_fw_version",
@@ -743,7 +743,7 @@ pub const uncovered = [_]Uncovered{
             .sram_text = true,
             .mram_length = true,
         },
-        .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. RA8FW-309 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
+        .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. RA8FW-309 traded its 361-line linker_script.ld fork for three keywords at once; a later Zig port then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
     },
 };
 

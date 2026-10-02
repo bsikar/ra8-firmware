@@ -4,7 +4,7 @@
 //! The three build configurations the root CMakeLists declares, and the global
 //! flag sets each one produces.
 //!
-//! Every slice of this graph before #1179 hard-coded Debug: `-O0 -g3 -DDEBUG`
+//! Every slice of this graph before the build-type slice hard-coded Debug: `-O0 -g3 -DDEBUG`
 //! was spliced into the compile step, the link step, both second images and
 //! every compile-database row, and nothing could ask for anything else. Debug
 //! is also the configuration almost nothing in the repo asks for. CI's own
@@ -43,7 +43,7 @@ pub const Configuration = struct {
     /// port's `.S` units differ from the C units beside them in exactly this.
     asm_flags: []const []const u8,
     /// What cmake/ra8_app/zig_libs.cmake builds a migrated Zig archive at for
-    /// this configuration. Since #2696 that is RA8_ZIG_OPTIMIZE's default for
+    /// this configuration. Since the single-mode change that is RA8_ZIG_OPTIMIZE's default for
     /// all three: a Debug configure gets a ReleaseSmall archive unless the
     /// configure passes -DRA8_ZIG_OPTIMIZE=, because -Doptimize=Debug emits a
     /// compiler_rt the images cannot carry. An archive built at a different
@@ -60,7 +60,7 @@ pub const configurations = [_]Configuration{
         .c_flags = &.{ "-O0", "-g3", "-DDEBUG" },
         .asm_flags = &.{"-g3"},
         // NOT .Debug: the C units of a Debug configure are -O0, the migrated
-        // archive beside them is not, and #2696 made that deliberate.
+        // archive beside them is not, and the single-mode change made that deliberate.
         .zig_optimize = .ReleaseSmall,
     },
     .{
@@ -207,7 +207,7 @@ test "the assembler set is not the C set" {
 }
 
 test "the Zig archive does not vary by configuration" {
-    // #2696: one mode for every configure, behind RA8_ZIG_OPTIMIZE. Held here
+    // One mode for every configure, behind RA8_ZIG_OPTIMIZE. Held here
     // as a property rather than three literals so that a row changed on its
     // own fails, and zig_archive_test holds the whole set against the
     // listfile's own text.

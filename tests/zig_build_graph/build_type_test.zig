@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The configurations build_type.zig declares, held against the REAL root
-//! CMakeLists.txt (#1179, part of RA8FW-339).
+//! CMakeLists.txt (part of RA8FW-339).
 //!
 //! The listfile arrives as an anonymous import declared in build.zig, so it is
 //! read at COMPILE time from the path the build graph itself names. A test
