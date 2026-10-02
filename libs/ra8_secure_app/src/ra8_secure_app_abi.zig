@@ -60,7 +60,7 @@ export fn ra8_key_vault_set_mac_key(key: ?[*]const u8, key_len: u16) u16 {
     // The length is validated inside; an out-of-range one must not be used to
     // build the slice first.
     if (key_len != vault.Limits.mac_key_128 and key_len != vault.Limits.mac_key_256) {
-        return Err.invalid_arg.code();
+        return if (vault.enabled) Err.invalid_arg.code() else Err.not_supported.code();
     }
     return vault.setMacKey(src[0..key_len]).code();
 }
