@@ -25,11 +25,11 @@
 #     vendored. That set is the CPU-fallback surface for a Vela-lowered graph
 #     (the Ethos-U55 runtime), so it is pinned by a test rather than by this comment:
 #     tests/misc/src/test_ra8_tflm_op_subset.cc.
-#   * libs/third_party/flatbuffers   -- the FlatBuffer read-path headers the
+#   * flatbuffers (build.zig.zon)    -- the FlatBuffer read-path headers the
 #     .tflite model format needs (headers only; no compiler/codegen).
-#   * libs/third_party/gemmlowp      -- fixed-point math headers the quantized
+#   * gemmlowp (build.zig.zon)       -- fixed-point math headers the quantized
 #     reference kernels depend on.
-#   * libs/third_party/ruy           -- the profiler instrumentation stub header
+#   * ruy (build.zig.zon)            -- the profiler instrumentation stub header
 #     the kernel utilities include (no ruy GEMM backend).
 #
 # Exposes the RA8_USE_TFLITE_MICRO option; when ON, this file:
@@ -74,31 +74,33 @@ get_filename_component(_RA8_TFLM_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLU
 include(${_RA8_TFLM_REPO_ROOT}/cmake/ra8_warnings.cmake)
 
 set(_RA8_TFLM_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/tflite-micro")
-set(_RA8_FLATB_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/flatbuffers")
-set(_RA8_GEMMLOWP_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/gemmlowp")
-set(_RA8_RUY_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/ruy")
+# FlatBuffers, gemmlowp and ruy are pinned upstream tarballs in build.zig.zon.
+include(${_RA8_TFLM_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(flatbuffers _RA8_FLATB_DIR)
+ra8_zig_package_dir(gemmlowp _RA8_GEMMLOWP_DIR)
+ra8_zig_package_dir(ruy _RA8_RUY_DIR)
 
 if(NOT EXISTS "${_RA8_TFLM_DIR}/tensorflow/lite/micro/micro_interpreter.h")
-  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the TFLite-micro vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the TFLite-micro tree is missing at "
                       "${_RA8_TFLM_DIR}."
   )
 endif()
 
 if(NOT EXISTS "${_RA8_FLATB_DIR}/include/flatbuffers/flatbuffers.h")
   message(
-    FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the FlatBuffers vendor tree is missing at "
+    FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the FlatBuffers tree is missing at "
                 "${_RA8_FLATB_DIR}. TFLite-micro's model format needs the FlatBuffer " "headers."
   )
 endif()
 
 if(NOT EXISTS "${_RA8_GEMMLOWP_DIR}/fixedpoint/fixedpoint.h")
-  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the gemmlowp vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the gemmlowp tree is missing at "
                       "${_RA8_GEMMLOWP_DIR}. The quantized reference kernels need it."
   )
 endif()
 
 if(NOT EXISTS "${_RA8_RUY_DIR}/ruy/profiler/instrumentation.h")
-  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the ruy vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_TFLITE_MICRO=ON but the ruy tree is missing at "
                       "${_RA8_RUY_DIR}. The kernel utilities include its profiler stub."
   )
 endif()

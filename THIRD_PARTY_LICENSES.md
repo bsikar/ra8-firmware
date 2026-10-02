@@ -84,9 +84,9 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `apps/shared_libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `apps/shared_libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
 | TFLite-micro | git `fddd3707` | Apache-2.0 | `libs/third_party/tflite-micro/` | <https://github.com/tensorflow/tflite-micro> |
-| FlatBuffers | 25.9.23 | Apache-2.0 | `libs/third_party/flatbuffers/` | <https://github.com/google/flatbuffers> |
-| gemmlowp | git `719139ce` | Apache-2.0 | `libs/third_party/gemmlowp/` | <https://github.com/google/gemmlowp> |
-| ruy | git `d3712831` | Apache-2.0 | `libs/third_party/ruy/` | <https://github.com/google/ruy> |
+| FlatBuffers | 25.9.23 | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/flatbuffers> |
+| gemmlowp | git `719139ce` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/gemmlowp> |
+| ruy | git `d3712831` | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/google/ruy> |
 | esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `libs/third_party/esp-hosted/` | <https://github.com/espressif/esp-hosted-mcu> |
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
@@ -138,9 +138,6 @@ permitted to differ.
 | stb | `31c1ad37456438565541f4919958214b6e762fb4` | 1/4 | 1 patched, 2 first-party |
 | libwebp (decode-only) | tag `v1.5.0` `a4d7a715337ded4451fec90ff8ce79728e04126c` | 101/102 | 1 patched (arena allocator) |
 | TFLite-micro | `fddd3707a3c5733af4cb866f18650441e6712504` | 278/278 | none |
-| FlatBuffers | tag `v25.9.23` `187240970746d00bbd26b0f5873ed54d2477f9f3` | 31/31 | none |
-| gemmlowp | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | 7/7 | none |
-| ruy | `d37128311b445e758136b8602d1bbd2a755e115d` | 2/2 | none |
 | esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
@@ -227,12 +224,12 @@ below); this section reproduces the copyright line and points to that text.
   [`docs/SOUP/libwebp.md`](docs/SOUP/libwebp.md)).
 - **TFLite-micro** -- Apache-2.0. "Copyright The TensorFlow Authors."
   (Google / TensorFlow). Text: `libs/third_party/tflite-micro/LICENSE`.
-- **FlatBuffers** -- Apache-2.0. Copyright Google Inc. Text:
-  `libs/third_party/flatbuffers/LICENSE`.
-- **gemmlowp** -- Apache-2.0. Copyright The Gemmlowp Authors (Google). Text:
-  `libs/third_party/gemmlowp/LICENSE`.
-- **ruy** -- Apache-2.0. Copyright The ruy Authors (Google). Text:
-  `libs/third_party/ruy/LICENSE`.
+- **FlatBuffers** -- Apache-2.0. Copyright Google Inc. Text: `LICENSE`
+  in the pinned upstream tarball (`build.zig.zon`).
+- **gemmlowp** -- Apache-2.0. Copyright The Gemmlowp Authors (Google). Text: `LICENSE`
+  in the pinned upstream tarball (`build.zig.zon`).
+- **ruy** -- Apache-2.0. Copyright The ruy Authors (Google). Text: `LICENSE` in the
+  pinned upstream tarball (`build.zig.zon`).
 - **esp-hosted host driver** -- Apache-2.0. "Copyright Espressif Systems
   (Shanghai) CO LTD" (per-file `SPDX-FileCopyrightText`). Text:
   `libs/third_party/esp-hosted/LICENSE`. Upstream ships no separate `NOTICE`,
