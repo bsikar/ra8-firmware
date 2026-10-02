@@ -58,6 +58,7 @@ typedef enum : uint8_t {
   k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising a 32-bit
                                   field; also the XOR that corrupts a signature. */
   k_t_le32_hi_shift = 24U,   /**< Shift for the top byte of a 32-bit LE field. */
+  k_test_octet_bits = 8U,    /**< Bits per byte; the shift step between LE bytes. */
 } t_rot_t;
 
 /** @brief Fixed test-body sizing + corrupted-field sentinels. */
