@@ -4,16 +4,15 @@
 
 Proposed.
 
-This records the storage and measurement half of issue #479. The curve
-format, the nominal curve and the renderer that consumes them are draft
-pull request #1326; this record does not restate them.
+This records the storage and measurement half of the per-panel gray-level
+LUT work. The curve format, the nominal curve and the renderer that consumes
+them landed in an earlier format slice; this record does not restate them.
 
 ## Context
 
 ### What exists after the format slice
 
-`libs/ra8_gfx/inc/ra8_gfx_tone.h` (on branch
-`ereader/479-panel-gray-level-lut`, draft pull request #1326) publishes two
+`libs/ra8_gfx/inc/ra8_gfx_tone.h` publishes two
 objects and three entry points:
 
 * `ra8_gfx_tone_lut_t` is the curve: 16 bytes, `level_gray8[n]` being the
@@ -65,13 +64,12 @@ direction.
 ### The storage constraint, read off the VCOM record
 
 `libs/ra8_epd_cal/inc/ra8_epd_cal.h` places its 32-byte blob in the
-extra-MRAM option-setting window at
-`k_ra8_flash_extra_start + k_ra8_epd_cal_extra_mram_offset` (`0x200`), and
-carries its own note that the window is one-time-programmable
-option-setting memory rather than a rewritable data flash, with a
-rewritable home tracked as a bench question by issue #315. It also records
-that `0x40 .. 0x1BF` is reserved for the two sequence-numbered copies of
-the general per-device configuration record.
+extra-MRAM option-setting window at `k_ra8_flash_extra_start +
+k_ra8_epd_cal_extra_mram_offset` (`0x200`), and carries its own note that
+the window is one-time-programmable option-setting memory rather than a
+rewritable data flash, with a rewritable home tracked as the extra-MRAM page
+bench question. It also records that `0x40 .. 0x1BF` is reserved for the two
+sequence-numbered copies of the general per-device configuration record.
 
 A VCOM value is provisioned about once per panel. A tone curve is not: it
 is re-measured whenever the panel is replaced, and possibly re-measured
@@ -113,10 +111,10 @@ home for it, and that is a constraint rather than a preference.
 5. **The record does not go in the extra-MRAM option-setting window.** It
    belongs in the general per-device configuration record that
    `libs/ra8_epd_cal/inc/ra8_epd_cal.h` reserves `0x40 .. 0x1BF` for, or in
-   whatever rewritable medium issue #315 settles on. Until one of those
-   exists, the only supported source of a measured curve is the
-   bench-supplied one, and the record half of this decision is specified
-   but not implemented.
+   whatever rewritable medium the extra-MRAM bench question settles on.
+   Until one of those exists, the only supported source of a measured curve
+   is the bench-supplied one, and the record half of this decision is
+   specified but not implemented.
 
 6. **Provisioning is explicit.** A boot path never writes a tone record.
    Writing one is a service or provisioning action, as
@@ -167,10 +165,10 @@ asked to take on trust.
 * An operator can provision a wrong curve. The worst case is an ugly page,
   and recovery is a rewrite, which is the whole reason the policy here is
   fail open rather than fail closed.
-* Decision 5 means the storage half cannot be implemented until issue #315
-  or the general per-device record provides a rewritable medium. The
-  bench-supplied path can be implemented immediately and is what first
-  light will actually use.
+* Decision 5 means the storage half cannot be implemented until the
+  extra-MRAM bench question or the general per-device record provides a
+  rewritable medium. The bench-supplied path can be implemented immediately
+  and is what first light will actually use.
 
 ## Open questions
 
@@ -196,12 +194,13 @@ nothing here is a measurement or an estimate of one.
 
 ## References
 
-* Issue #479 -- per-panel gray-level LUT (perceptual 16-level tone mapping),
+* The per-panel gray-level LUT work (perceptual 16-level tone mapping),
   labelled `needs-bench`.
 * Issue RA8FW-267 -- the e-ink render-quality epic this sits under.
-* Issue #315 -- rewritable-medium home for per-device records.
-* Draft pull request #1326 -- the curve format, nominal curve and renderer
-  consumption.
+* The extra-MRAM bench question (can a virgin page be programmed without a
+  prior faulting read) -- rewritable-medium home for per-device records.
+* The format slice -- the curve format, nominal curve and renderer
+  consumption, merged on dev.
 * `libs/ra8_gfx/inc/ra8_gfx_tone.h` -- the curve and its contract.
 * `libs/ra8_gfx/src/internal/dither.zig` -- the quantiser the curve feeds.
 * `libs/ra8_epd_cal/inc/ra8_epd_cal.h` -- the per-device VCOM record whose
