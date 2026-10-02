@@ -237,7 +237,7 @@
     cache_valid_time: 3600
 
 - name: Point the unsuffixed clang tools at the pinned majors
-  # Several checkers and editors invoke a bare `clang-format` / `clang-tidy`.
+  # Several checkers and editors invoke a bare `clang-format`.
   # Without these the bare name resolves to whatever major apt last installed,
   # which is how a tree gets reformatted by the wrong version.
   become: true
@@ -248,8 +248,6 @@
   loop:
     - link: clang-format
       target: clang-format-22
-    - link: clang-tidy
-      target: clang-tidy-22
   loop_control:
     label: "{{ item.link }} -> {{ item.target }}"
 

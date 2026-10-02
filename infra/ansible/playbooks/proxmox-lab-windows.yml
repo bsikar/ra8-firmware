@@ -65,9 +65,6 @@
     lab_ci_jq_path: "C:\\ProgramData\\ra8\\tools\\jq.exe"
     lab_ci_hadolint_url: "https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Windows-x86_64.exe"
     lab_ci_hadolint_path: "C:\\ProgramData\\ra8\\tools\\hadolint.exe"
-    lab_ci_actionlint_url: "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_windows_amd64.zip"
-    lab_ci_actionlint_zip: "C:\\Windows\\Temp\\actionlint-1.7.7.zip"
-    lab_ci_actionlint_path: "C:\\ProgramData\\ra8\\tools\\actionlint.exe"
     lab_ci_shfmt_url: "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_windows_amd64.exe"
     lab_ci_shfmt_path: "C:\\ProgramData\\ra8\\tools\\shfmt.exe"
     lab_ci_shellcheck_url: "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.zip"
@@ -552,32 +549,6 @@
         dest: "{{ lab_ci_hadolint_path }}"
         force: false
 
-    - name: Download pinned actionlint
-      ansible.windows.win_get_url:
-        url: "{{ lab_ci_actionlint_url }}"
-        dest: "{{ lab_ci_actionlint_zip }}"
-        force: false
-
-    - name: Extract pinned actionlint
-      community.windows.win_unzip:
-        src: "{{ lab_ci_actionlint_zip }}"
-        dest: "{{ lab_ci_tools_dir }}"
-        creates: "{{ lab_ci_actionlint_path }}"
-        delete_archive: true
-
-    - name: Normalize pinned actionlint executable location
-      ansible.windows.win_shell: |
-        $binary = Get-ChildItem '{{ lab_ci_tools_dir }}' -Recurse -File -Filter 'actionlint.exe' |
-          Select-Object -First 1
-        if ($null -eq $binary) {
-          throw 'The pinned actionlint archive did not contain actionlint.exe.'
-        }
-        if ($binary.FullName -ne '{{ lab_ci_actionlint_path }}') {
-          Copy-Item $binary.FullName '{{ lab_ci_actionlint_path }}' -Force
-        }
-      args:
-        executable: powershell.exe
-
     - name: Download pinned shfmt
       ansible.windows.win_get_url:
         url: "{{ lab_ci_shfmt_url }}"
@@ -635,7 +606,7 @@
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         Update-SessionEnvironment
         $pathEntries = @('C:\ProgramData\chocolatey\bin', '{{ lab_ci_mingit_dir }}\\cmd', '{{ lab_ci_mingit_dir }}\\bin', '{{ lab_ci_mingit_dir }}\\mingw64\\bin', '{{ lab_ci_mingit_dir }}\\usr\\bin', '{{ lab_ci_git_lfs_dir }}', '{{ lab_ci_cmake_bin }}', '{{ lab_ci_ninja_dir }}', '{{ lab_ci_arm_bin }}', '{{ lab_ci_python_dir }}', '{{ lab_ci_python_scripts_dir }}', '{{ lab_ci_go_bin }}', '{{ lab_ci_tools_dir }}', '{{ lab_ci_cppcheck_dir }}')
-        $executableNames = @('git.exe', 'git-lfs.exe', 'cmake.exe', 'ninja.exe', 'python.exe', 'arm-none-eabi-gcc.exe', 'go.exe', 'jq.exe', 'hadolint.exe', 'cppcheck.exe', 'actionlint.exe', 'shfmt.exe', 'shellcheck.exe')
+        $executableNames = @('git.exe', 'git-lfs.exe', 'cmake.exe', 'ninja.exe', 'python.exe', 'arm-none-eabi-gcc.exe', 'go.exe', 'jq.exe', 'hadolint.exe', 'shfmt.exe', 'shellcheck.exe')
         foreach ($searchRoot in @($env:ChocolateyInstall + '\lib', 'C:\Program Files', 'C:\Program Files (x86)')) {
           if (Test-Path $searchRoot) {
             $pathEntries += Get-ChildItem $searchRoot -Recurse -File -Include $executableNames -ErrorAction SilentlyContinue |
@@ -662,7 +633,6 @@
           @{ Name = 'go'; Command = 'go'; Arguments = @('version') },
           @{ Name = 'jq'; Command = '{{ lab_ci_jq_path }}'; Arguments = @('--version') },
           @{ Name = 'hadolint'; Command = '{{ lab_ci_hadolint_path }}'; Arguments = @('--version') },
-          @{ Name = 'actionlint'; Command = '{{ lab_ci_actionlint_path }}'; Arguments = @('-version') },
           @{ Name = 'shfmt'; Command = '{{ lab_ci_shfmt_path }}'; Arguments = @('--version') },
           @{ Name = 'shellcheck'; Command = '{{ lab_ci_shellcheck_path }}'; Arguments = @('--version') },
           @{ Name = 'ruff'; Command = 'ruff'; Arguments = @('--version') },

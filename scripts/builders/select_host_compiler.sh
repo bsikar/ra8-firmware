@@ -3,8 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/builders/select_host_compiler.sh -- shared C23-capable host-compiler
-# selection (and the matching gcov tool) for the host-test, coverage, and
-# ra8_emulator builds.
+# selection for the host-test and ra8_emulator builds.
 #
 # C23 fixed-underlying-type enums ("typedef enum : uint8_t") require clang >= 17
 # or gcc >= 13. CMake otherwise defaults to a bare "cc", which on the Debian 12
@@ -16,17 +15,14 @@
 # Usage (source it first):
 #   ra8_select_host_compiler [candidate ...]   -- sets+exports CC and CXX to the
 #       first listed candidate that compiles a C23 typed enum (default order is
-#       clang-first; the coverage and ra8_emulator builds pass a gcc-first list so
-#       they match CI's gcov pipeline and only fall back to clang where gcc is
-#       too old).
+#       clang-first; the ra8_emulator builds pass a gcc-first list and only
+#       fall back to clang where gcc is too old).
 #   ra8_select_emulator_compiler               -- selects the normal gcc-first
 #       host pair on Linux and requires Clang on macOS, whose CoreGraphics
 #       headers use Clang block syntax that Homebrew GCC cannot parse.
 #   ra8_cmake_reset_if_incompatible "$dir" ["$source"] -- wipe a CMake build
 #       directory whose cached compiler differs from the selected $CC, or whose
 #       source path came from a different host/container mount.
-#   ra8_gcov_executable_for "$CC"              -- echoes the gcovr --gcov-executable
-#       that reads coverage data produced by $CC (llvm-cov for clang, gcov for gcc).
 #
 
 # Return success if compiler $1 accepts a C23 fixed-underlying-type enum.
@@ -154,21 +150,4 @@ ra8_cmake_reset_if_incompatible() {
   if [ "$_must_reset" -eq 1 ]; then
     rm -rf "$_build_dir"
   fi
-}
-
-# Echo the gcovr --gcov-executable matching compiler $1. clang's coverage data
-# (.gcda) must be read by llvm-cov; gcc's by a gcov of the same major version.
-ra8_gcov_executable_for() {
-  case "$1" in
-    clang-*)
-      if command -v "llvm-cov-${1#clang-}" >/dev/null 2>&1; then
-        echo "llvm-cov-${1#clang-} gcov"
-      else
-        echo "llvm-cov gcov"
-      fi
-      ;;
-    clang) echo "llvm-cov gcov" ;;
-    gcc-*) echo "gcov-${1#gcc-}" ;;
-    *) echo "gcov" ;;
-  esac
 }
