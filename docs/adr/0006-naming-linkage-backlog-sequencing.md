@@ -7,15 +7,16 @@ confirm; nothing here changes a gate.
 
 ## Context
 
-Issue #711 filed the largest untracked number in the tree: a
-whole-tree AST audit of the naming and linkage contracts, run on
-2026-08-16 during the #665 / #708 work, reporting **30,982 findings
-(30,974 fatal) across 1,623 translation units**, of which 30,966 are
-`ra8_naming`. The inventory was left deliberately un-baselined,
-because per `CLAUDE.md` the tree does not fix a gate by editing its
-baseline, and a 13k-row grandfather file would be a monument rather
-than a burn-down. The consequence is that the debt is invisible: no
-gate fails on it, no ratchet counts it, and nothing stops it growing.
+The naming/linkage legacy-backlog issue filed the largest untracked
+number in the tree: a whole-tree AST audit of the naming and linkage
+contracts, run on 2026-08-16 during the media-download arena refactor,
+reporting **30,982 findings (30,974 fatal) across 1,623 translation
+units**, of which 30,966 are `ra8_naming`. The inventory was left
+deliberately un-baselined, because per `CLAUDE.md` the tree does not fix
+a gate by editing its baseline, and a 13k-row grandfather file would be
+a monument rather than a burn-down. The consequence is that the debt is
+invisible: no gate fails on it, no ratchet counts it, and nothing stops
+it growing.
 
 The issue asks for a sequencing policy, not a mega-refactor. Four of
 its five checkboxes turn out to depend on facts that have moved since
@@ -54,7 +55,7 @@ exists only as a rescued 7,124,930-byte JSON in one home directory.
 No file under version control references
 `ra8_linkage_naming_inventory`, and no `just` recipe, Makefile target,
 CI workflow or documentation page invokes `--naming-audit`. The
-figures in #711 cannot currently be confirmed or refuted by anyone.
+backlog's figures cannot currently be confirmed or refuted by anyone.
 
 **3. The scope moved.** Counting first-party `.c` and `.cpp` under the
 six roots the checker walks, excluding vendored trees, the tree holds
@@ -88,7 +89,7 @@ ADR.
 * **Option A1: measure, then decide.** Land a reproducible naming-audit
   target (a `just` recipe over the checker's `--naming-audit --json`
   entry point, plus a durable home for the output) and record the live
-  figure on #711 before any policy is set.
+  figure before any policy is set.
 * **Option A2: ratchet `libs/` now.** Freeze the first-party library
   half at whatever it measures so the clean side cannot regress, and
   let `tests/` and `examples/` burn down behind it.
@@ -146,7 +147,8 @@ this quarter, and it is compatible with either B1 or B2 afterwards.
 
 ## References
 
-* Issue #711 -- naming/linkage legacy backlog.
+* The naming/linkage legacy backlog (30,974 fatal AST findings across 1,623
+  TUs, deliberately not baselined).
 * `scripts/checks/check_annotations.py` -- the checker, and the
   `--naming-audit --json` entry point that produces the inventory.
 * `scripts/checks/annot_scope.py` -- `is_generated_source()`, the

@@ -147,8 +147,8 @@ That arithmetic is the decision: a load that steps to a few hundred milliamps,
 switching at 500 kHz or 1 MHz, must not share the regulated domain that ADR-0010
 holds inside 3.00..3.35 V with >= 55 mV of guaranteed read-high margin. The
 input-current ripple and the step load would be spent straight out of that
-55 mV. Feeding the driver from VBAT keeps the disturbance on the cell and out
-of VCC/VCC2. If the power design later insists the front light hang off a regulated
+55 mV. Feeding the driver from VBAT keeps the disturbance on the cell and out of
+VCC/VCC2. If the power design later insists the front light hang off a regulated
 rail, that rail is a separate regulator from VCC/VCC2, and ADR-0010's envelope
 stands unchanged.
 
