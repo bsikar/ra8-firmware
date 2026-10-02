@@ -39,6 +39,13 @@ static ra8_lpm_config_t make_demo_cfg(void)
   return cfg;
 }
 
+/** @brief Assert PRCR.PRC1 is locked again after an unlock / relock pair. */
+static void assert_prc1_locked(void)
+{
+  const uint16_t prcr = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
+  TEST_ASSERT((prcr & (uint16_t)k_ra8_lpm_prcr_prc1_msk) == 0U);
+}
+
 /**
  * @par MC/DC:
  * Decision: ``ra8_lpm_init != ok``. One atomic condition x 2 vectors:
@@ -49,7 +56,10 @@ static void test_lpm_swstd_init_ok(void)
   reset_world();
   TEST_BEGIN("lpm_software_standby_demo: init ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_END("lpm_software_standby_demo: init ok");
 }
 
@@ -79,7 +89,10 @@ static void test_lpm_swstd_arm_wupen0_rtcalm(void)
   reset_world();
   TEST_BEGIN("lpm_software_standby_demo: arm WUPEN0.RTCALM");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm));
   /* Confirm the RTCALM bit landed in WUPEN0 without disturbing others. */
   const uint32_t wupen0 = *ra8_lpm_icu_reg32(k_ra8_lpm_wupen0_off);
@@ -100,9 +113,15 @@ static void test_lpm_swstd_enter_ok(void)
   reset_world();
   TEST_BEGIN("lpm_software_standby_demo: enter Software Standby ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   /* The HAL clears LPSCR after the WFI returns to guard against the
    * J-Link RAMCode brick path -- verify here. */
   TEST_ASSERT_EQ(0, *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off));

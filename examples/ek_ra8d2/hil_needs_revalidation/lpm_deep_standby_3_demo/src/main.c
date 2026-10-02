@@ -147,7 +147,15 @@ RA8_INTERNAL static void internal_lpm_dpsby3_setup_or_halt(void)
     .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
+  /* ra8_lpm_init's stores sit behind PRCR.PRC1, which it leaves to the caller. */
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
+    internal_lpm_dpsby3_panic_halt();
+  }
+  const ra8_err_t lpm_err = ra8_lpm_init(&lpm_cfg);
+  if (ra8_lpm_prcr_relock() != k_ra8_ok) {
+    internal_lpm_dpsby3_panic_halt();
+  }
+  if (lpm_err != k_ra8_ok) {
     internal_lpm_dpsby3_panic_halt();
   }
 }
@@ -254,7 +262,15 @@ void main(void)
      * the CPU on wake, so control re-enters Reset_Handler. On the
      * host (RA8_OFF_TARGET) WFI is a no-op so the loop simply
      * iterates. */
-    if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_3) != k_ra8_ok) {
+    /* The LPSCR store on sleep entry is behind PRCR.PRC1 as well. */
+    if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
+      break;
+    }
+    const ra8_err_t sleep_err = ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_3);
+    if (ra8_lpm_prcr_relock() != k_ra8_ok) {
+      break;
+    }
+    if (sleep_err != k_ra8_ok) {
       break;
     }
   }

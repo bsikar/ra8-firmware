@@ -40,6 +40,13 @@ static ra8_lpm_config_t make_demo_cfg(void)
   return cfg;
 }
 
+/** @brief Assert PRCR.PRC1 is locked again after an unlock / relock pair. */
+static void assert_prc1_locked(void)
+{
+  const uint16_t prcr = *ra8_lpm_sysc_reg16(k_ra8_lpm_prcr_off);
+  TEST_ASSERT((prcr & (uint16_t)k_ra8_lpm_prcr_prc1_msk) == 0U);
+}
+
 /**
  * @par MC/DC:
  * Decision: ``ra8_lpm_init != ok``. One atomic condition x 2 vectors.
@@ -49,7 +56,10 @@ static void test_lpm_dpsby1_init_ok(void)
   reset_world();
   TEST_BEGIN("lpm_deep_standby_1_demo: init ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_END("lpm_deep_standby_1_demo: init ok");
 }
 
@@ -77,7 +87,10 @@ static void test_lpm_dpsby1_arm_dpsier2_drtca(void)
   reset_world();
   TEST_BEGIN("lpm_deep_standby_1_demo: arm DPSIER2.DRTCAIE");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_lpm_arm_dpsier(k_ra8_lpm_dpsier_idx_2, (uint8_t)k_ra8_lpm_dpsier2_drtcaie_mask));
@@ -97,12 +110,18 @@ static void test_lpm_dpsby1_enter_ok(void)
   reset_world();
   TEST_BEGIN("lpm_deep_standby_1_demo: enter Deep Standby 1 ok");
   const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_lpm_arm_dpsier(k_ra8_lpm_dpsier_idx_2, (uint8_t)k_ra8_lpm_dpsier2_drtcaie_mask));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_unlock());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_prcr_relock());
+  assert_prc1_locked();
   /* HAL clears LPSCR after WFI returns. */
   TEST_ASSERT_EQ(0, *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off));
   TEST_END("lpm_deep_standby_1_demo: enter Deep Standby 1 ok");
