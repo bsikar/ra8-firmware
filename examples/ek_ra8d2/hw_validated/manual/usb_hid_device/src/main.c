@@ -103,7 +103,7 @@
  * shared weak SysTick_Handler dispatches into ThreadX (via a weak
  * extern to `_tx_timer_interrupt`) AND re-arms the USB storm-guard
  * NVIC line (via a weak extern to `ux_dcd_ra8_usb_irq_reenable`), so
- * no per-app override is needed. Closes Issue #8. */
+ * no per-app override is needed. */
 #endif
 
 /* -------------------------------------------------------------------------- */

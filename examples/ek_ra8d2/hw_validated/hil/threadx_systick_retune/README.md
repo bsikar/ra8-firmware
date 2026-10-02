@@ -23,6 +23,6 @@ Space as well, so the emulator runs the identical ARM path and its verdict
 matches the on-hardware one.
 
 No per-app `SysTick_Handler` override is needed: the shared weak handler in
-`libs/ra8_core` already dispatches to `_tx_timer_interrupt` (#8), and
+`libs/ra8_core` already dispatches to `_tx_timer_interrupt`, and
 `PendSV_Handler` / `SVC_Handler` arrive as strong symbols from the upstream
 ThreadX port.

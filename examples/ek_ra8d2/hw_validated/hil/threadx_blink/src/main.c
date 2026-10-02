@@ -149,8 +149,7 @@ volatile uint32_t g_threadx_blink_tick = 0U;
 
 /* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
- * to `_tx_timer_interrupt`) so no per-app override is needed. Closes
- * Issue #8. */
+ * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
 /* ---------------------------------------------------------------------------
  * Thread bodies.

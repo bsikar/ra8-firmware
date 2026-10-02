@@ -46,8 +46,8 @@
  * it (CDC loopback); every other OUT pipe is parked at PID=NAK so a
  * host OUT token arriving before ::internal_submit_pipe arms a real
  * receiver is NAK-flow-controlled rather than ACKed into a FIFO with
- * no waiter -- the latter latches BRDYSTS and storms the ISR (GitHub
- * issue #6). Nested ifs keep the auto-echo test out of the MC/DC
+ * no waiter -- the latter latches BRDYSTS and storms the ISR (the
+ * BRDY storm bug). Nested ifs keep the auto-echo test out of the MC/DC
  * inventory.
  *
  * @param[in] pipe    Pipe index (1..max_pipes-1).

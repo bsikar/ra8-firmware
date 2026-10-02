@@ -81,8 +81,8 @@ typedef struct {
  * data phase straight after the CBW. With no USBX waiter stashed the
  * IRQ walk cannot drain it, BRDYSTS stays latched, and the USBFS IRQ
  * storms at the full bus rate: BRDY is a real event so the event-less
- * storm guard never masks it and RTOS thread mode starves (GitHub
- * issue #6). internal_irq_drain_orphan_out pulls that packet into
+ * storm guard never masks it and RTOS thread mode starves (the
+ * BRDY storm bug). internal_irq_drain_orphan_out pulls that packet into
  * g_orphan_buf -- which W0C-clears BRDYSTS and parks the pipe -- and
  * internal_submit_pipe hands it to the next bulk-OUT transfer. The
  * bulk-OUT wire is strictly serial, so a held packet always belongs to

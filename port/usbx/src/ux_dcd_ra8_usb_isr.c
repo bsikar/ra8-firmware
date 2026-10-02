@@ -166,7 +166,7 @@ volatile uint32_t g_dcd_irq_spurious_mask_count = 0U;
 /* pipe (e.g. the MSC bulk-OUT before the storage class thread has armed the */
 /* CBW receive) these event-less entries re-fire ~1e5/s and -- via Cortex-M */
 /* exception tail-chaining -- consume 100% CPU, so RTOS thread mode never runs */
-/* and the USBX class thread is permanently starved (GitHub issue #6). */
+/* and the USBX class thread is permanently starved (the BRDY storm). */
 /*                                                                            */
 /* internal_usbfs_isr counts consecutive event-less entries; once that run */
 /* crosses k_ra8_usb_storm_mask_run a real storm is in progress, and */
@@ -262,7 +262,7 @@ RA8_INTERNAL static void internal_isr_bump_counts(uint16_t intsts0)
  * event-less *rate*. Once it crosses ::k_ra8_usb_storm_mask_run within a
  * millisecond a genuine storm is in progress, and ::priv_usbfs_irq_mask
  * disables the USB IRQ so RTOS thread mode -- the otherwise-starved USBX
- * class thread (GitHub issue #6) -- gets the CPU back. The SysTick handler
+ * class thread (the BRDY storm bug) -- gets the CPU back. The SysTick handler
  * re-enables the line within 1 ms. Normal idle SOFR (~1/ms) never trips
  * the guard.
  *
