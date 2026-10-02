@@ -165,5 +165,4 @@ Target firmware is fully freestanding (`-ffreestanding -nostdlib`). The project 
   - Standard `assert(...)` from `<assert.h>` is forbidden in target code (it pulls in `__assert_func`, standard I/O streams, and allocator internals).
 - **Enforcement & Gating**:
   - Source checks alone are insufficient; post-link binary and ELF/map verification is mandatory.
-  - `scripts/checks/check_no_dynamic_alloc.py` enforces source-level bans on direct allocators across firmware and production code.
   - `scripts/checks/check_freestanding_runtime.py` verifies target ELFs and map files for zero newlib/libnosys members, absence of heap anchors, absence of `.heap` sections, reviewed runtime ABI allowlists, and proper symbol provider resolution.
