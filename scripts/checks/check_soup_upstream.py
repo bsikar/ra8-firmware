@@ -117,10 +117,11 @@ EXIT_VACUOUS = 2
 # content hash is their upstream proof, so 16 components remain here. LevelX
 # followed the same day (RA8FW-385), leaving 15, then TFLite-micro, leaving 14. TFLite-micro took 278
 # files with it (8530 covered, 8511 identical), so the file floors were re-measured
-# with the same slack.
-MIN_COMPONENTS = 14
-MIN_ENTRIES = 8400
-MIN_UPSTREAM_VERIFIED = 8300
+# with the same slack. NetX Duo followed (RA8FW-385): 13 components, 7303 files
+# covered, file floors re-measured with the same slack again.
+MIN_COMPONENTS = 13
+MIN_ENTRIES = 7200
+MIN_UPSTREAM_VERIFIED = 7100
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300
