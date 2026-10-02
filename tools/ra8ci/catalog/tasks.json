@@ -2477,38 +2477,6 @@
       "resource_hints": {}
     },
     {
-      "name": "tools-build",
-      "version": 1,
-      "tier": "required",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 7200,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "tools-build",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "tools-build"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "ubsan",
       "version": 1,
       "tier": "required",

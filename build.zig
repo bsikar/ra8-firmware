@@ -485,10 +485,6 @@ const findArmTools = cross_build.findTools;
 //                                          firmware pass silently shrinking
 //   scripts/checks/check_unused_includes.py loads compile_commands.json from the
 //                                          repo root, build/tidy/ or build/
-//   scripts/checks/check_tool_warning_flags.py
-//                                          takes databases as operands and
-//                                          asserts the warning flags really are
-//                                          on the command line
 //
 // So retiring CMake without this slice would take clang-tidy, the unused-include
 // check and every IDE's language server with it, and it would do so in the quiet
