@@ -15,6 +15,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 TF_ROOT="$REPO_ROOT/infra/terraform/environments/lab"
 TF_WRAPPER="$REPO_ROOT/infra/terraform/run-with-openbao.sh"
+IAC_BIN="${RA8_IAC_BIN:-terraform}"
 PLAYBOOK="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-linux.yml"
 PLAYBOOK_WINDOWS="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-windows.yml"
 LOOPBACK_PROXY="$REPO_ROOT/scripts/dev/ssh_loopback_proxy.py"
@@ -641,8 +642,8 @@ remove_state_address() {
   local address="$1"
   local state_file="$run_dir/terraform.tfstate"
   [[ -f "$state_file" ]] || return 0
-  if TF_DATA_DIR="$run_dir/tf-data" terraform -chdir="$TF_ROOT" state list 2>/dev/null | grep -Fxq "$address"; then
-    TF_DATA_DIR="$run_dir/tf-data" terraform -chdir="$TF_ROOT" state rm "$address" >/dev/null
+  if TF_DATA_DIR="$run_dir/tf-data" "$IAC_BIN" -chdir="$TF_ROOT" state list 2>/dev/null | grep -Fxq "$address"; then
+    TF_DATA_DIR="$run_dir/tf-data" "$IAC_BIN" -chdir="$TF_ROOT" state rm "$address" >/dev/null
   fi
 }
 
@@ -687,7 +688,7 @@ finish() {
 
 preflight_tools() {
   local profile="${1:-linux}"
-  for tool in ssh ssh-keygen ansible-playbook git jq python3 terraform security; do
+  for tool in ssh ssh-keygen ansible-playbook git jq python3 "$IAC_BIN" security; do
     require_cmd "$tool"
   done
   [[ -x "$TF_WRAPPER" ]] || die "OpenBao Terraform wrapper is unavailable"
@@ -708,7 +709,8 @@ preflight_local() {
     bridge="$LINUX_BRIDGE"
   fi
   preflight_tools "$profile" || return 1
-  terraform -chdir="$TF_ROOT" validate >/dev/null || return 1
+  "$IAC_BIN" -chdir="$TF_ROOT" init -backend=false -input=false -lockfile=readonly >/dev/null || return 1
+  "$IAC_BIN" -chdir="$TF_ROOT" validate >/dev/null || return 1
   ssh -o BatchMode=yes -o RequestTTY=no "$SSH_ALIAS" /bin/true >/dev/null || return 1
   check_lab_bridge_absent "$bridge" || return 1
   check_template_fixtures "$profile" || return 1
