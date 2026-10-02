@@ -7,7 +7,7 @@
  * `ra8_fs` is a self-contained, pure-C FAT filesystem implementation that sits
  * on top of an arbitrary block-device backend (`ra8_fs_backend_t`), with no
  * RTOS and no vendor-SDK dependencies. It is the platform's only filesystem:
- * the vendored FileX it once coexisted with was retired by #611.
+ * the vendored FileX it once coexisted with was retired by the filesystem strategy work.
  *
  * Two backends are intended for production use:
  *   1. `ra8_sdhi` -- on-board SD/MMC card (sweep 1).

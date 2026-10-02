@@ -11,7 +11,6 @@
  * independent-influence vector set. Each test drives the public API entirely
  * on the host (no register fake needed) and cites its decision by the
  * drift-proof ``path@function`` anchor the MC/DC compound ratchet consumes
- * (issue #426).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

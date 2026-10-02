@@ -493,7 +493,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
 /**
  * @brief Stamp the final modification time of a file that was written.
  *
- * @details The close half of #601. `ra8_fs_write()` already advances the
+ * @details The close half of the timestamp fix. `ra8_fs_write()` already advances the
  *          modification time on every call, which is what protects a file
  *          whose writer never gets to close it; this is the stamp that says
  *          when the file was FINISHED, which is the one a host displays and a

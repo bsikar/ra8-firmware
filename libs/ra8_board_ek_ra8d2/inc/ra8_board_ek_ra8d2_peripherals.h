@@ -160,7 +160,7 @@ typedef struct {
  * IMPORTANT -- this does NOT, and CANNOT, connect the flash. A firmware
  * sweep over the entire U15 output space (all 256 output bytes, plus
  * released-inputs / Hi-Z / per-bit single-line overrides; 2026-06, issue
- * #44, docs/HARDWARE_BRINGUP.md) re-read the 1S JEDEC ID after each config
+ * the OSPI bring-up, docs/HARDWARE_BRINGUP.md) re-read the 1S JEDEC ID after each config
  * and saw zero change: the flash stays silent (bus at the board pull-ups)
  * for every U15 state. The U15 expander is therefore a pure SW4 *sense /
  * override* whose GPIOs are NOT in the OSPI DQ/CK/CS path; the flash is
@@ -170,7 +170,7 @@ typedef struct {
  * lives in the EK-RA8D2 Design Package schematic -- and has not yet been
  * verified on this EVM, so that value is NOT actionable.) This call is kept
  * only as an inert courtesy write; it has no bearing on flash reachability.
- * See ``examples/.../flash_journal/README.md`` and issue #44.
+ * See ``examples/.../flash_journal/README.md`` and the OSPI bring-up notes.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                All U15 register writes succeeded.

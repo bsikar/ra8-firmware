@@ -29,7 +29,7 @@
  *
  * Note: the sealed-key importer (libs/ra8_secure_app/src/key_import.c) is no longer part
  * of this set -- its forgeable XOR-fold MAC was replaced by a real AES-CMAC
- * (issue #291), so it is no longer a stub crypto TU. Its own tests live in
+ * (the PSA-backed CMAC), so it is no longer a stub crypto TU. Its own tests live in
  * test_secure_app_key_import.c / test_secure_app_sec_cmac.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

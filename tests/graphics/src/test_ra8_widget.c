@@ -626,7 +626,7 @@ static void test_panel_compose_full(void)
  * dirty child, the damage rect is the 100x44 status band with the fast hint,
  * and the nested body panel is NOT re-rendered (its tiles' render counters stay
  * at zero -- the `child.dirty` false arm of render_dirty for the body panel).
- * This is the issue #145 partial-flush acceptance.
+ * This is the widget compositor's partial-flush acceptance.
  */
 static void test_panel_compose_partial(void)
 {

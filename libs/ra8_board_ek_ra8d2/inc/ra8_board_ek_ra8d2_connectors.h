@@ -832,7 +832,7 @@ typedef enum : uint8_t {
  * pattern into the U15 PI4IOE5V6408 expander in push-pull output mode
  * (iodir=0xFF, hiz=0x00, output=0xF2), which the EK-RA8D2 UM (Sec 4.3.4
  * p 15) says overrides the SW4 DIP switches in software. The earlier
- * issue-#44 reading of ``u15: pins=0000`` was a FALSE ALARM: a 2026-06-11
+ * OSPI bring-up reading of ``u15: pins=0000`` was a FALSE ALARM: a 2026-06-11
  * U15 drive test (``out=FF->pins=0000 out=00->pins=0000``) shows the
  * PI4IOE5V6408 input-status register
  * (0x0F) reads 0x00 for any pin held in output mode -- it does not
@@ -854,7 +854,7 @@ typedef enum : uint8_t {
    *  (bits 0,1) and OSPI_OE_L (bit 2), which are LOW. Bit 2 = OSPI_OE_L is
    *  active-low: driving it LOW connects the flash's OM_0 bus to the MCU.
    *  Our prior 0xFF held OSPI_OE_L HIGH and kept the flash off the bus -- the
-   *  root cause of issue #44. The exact U15-bit <-> SW4-channel mapping is
+   *  root cause of the OSPI bus float. The exact U15-bit <-> SW4-channel mapping is
    *  NOT published in the UM (it lives in the EK-RA8D2 Design Package
    *  schematic); this byte is derived, and the on-hardware verification of
    *  the mapping on this EVM is tracked with the U15 bring-up work. */

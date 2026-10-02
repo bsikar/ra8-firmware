@@ -6,7 +6,7 @@
 CBZ is the manga interchange format: page order is the filename sort of the
 archive entries, and there is no OPF/spine/TOC/CSS -- the images ARE the book.
 This tool maps that onto the exact RABOOK1 content model the EPUB compiler
-emits for fixed-layout books (issue #196 calls that shape "CBZ-in-EPUB-
+emits for fixed-layout books (the fixed-layout spike calls that shape "CBZ-in-EPUB-
 clothing"): one spine chapter per page whose DOM is a single full-page
 ``<img>`` element referencing one manifest image, so the device render path
 (``reflow``'s existing image handling) is shared with EPUB books instead of
@@ -19,12 +19,12 @@ Behavior:
   natural-sorted so ``p2`` orders before ``p10``. Directories, hidden files,
   ``__MACOSX/`` resource forks, and non-image entries are ignored.
 * Raster pages are transcoded to panel-native 4bpp grayscale at SOURCE
-  resolution -- no downscale by default (issue #210; manga text must survive
+  resolution -- no downscale by default (manga text must survive
   the zoom loupe). ``--max-edge`` remains the opt-in clamp.
 * The first page doubles as the shelf cover (``cover_image_index``).
 * ``--rtl`` stamps the right-to-left reading-order flag
   (``k_book_flag_rtl`` in apps/shared_libs/book/inc/book.h) into the header;
-  mirrored page-turn zones on device are issue #211.
+  mirrored page-turn zones on device are the reader-zoom work.
 * The flat blob is wrapped in the chunked RBKC container, same as EPUB books,
   so full-resolution volumes ride the demand-paged open.
 

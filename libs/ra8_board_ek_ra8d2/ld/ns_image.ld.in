@@ -2,7 +2,7 @@
  * GNU ld linker script TEMPLATE for a NON-SECURE image on the EK-RA8D2 board.
  *
  * ra8_add_ns_image() configures this into the build tree, once per NS target,
- * choosing the read-only home from the XIP option. Until #759 this existed as
+ * choosing the read-only home from the XIP option. Until the dual-image scaffold this existed as
  * two hand-maintained forks -- a shared SRAM-run script and ereader's XIP
  * variant -- that shared 78 of ~130 lines and drifted on symbol names, so
  * ns_main.c needed #ifdef RA8_EREADER_NS_XIP just to name what the two scripts

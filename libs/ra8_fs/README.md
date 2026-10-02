@@ -10,8 +10,9 @@ labels, free-space accounting and a formatter; the header enumerates the
 surface and is the authority on it.
 
 It is the only filesystem in the tree, deliberately. The vendored FileX that
-used to sit beside it was retired by #611 once its entire first-party consumer
-surface turned out to be a subset of what `ra8_fs` already did. LevelX stays,
+used to sit beside it was retired by the filesystem strategy work once its
+entire first-party consumer surface turned out to be a subset of what `ra8_fs`
+already did. LevelX stays,
 but as wear levelling only -- built with no ThreadX and no filesystem above it.
 
 ## The parts that are not obvious

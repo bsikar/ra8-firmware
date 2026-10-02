@@ -514,7 +514,7 @@ static void internal_mpu_init(void)
 /**
  * @brief Install the canonical boot memory-attribute map, HAL or raw poke.
  *
- * @details Issue #591: with ``RA8_BOOT_MPU_VIA_HAL`` set the map goes down
+ * @details With ``RA8_BOOT_MPU_VIA_HAL`` set the map goes down
  *          through ``ra8_mpu_apply_boot_map()`` instead of the hand-rolled
  *          MAIR / RBAR / RLAR / CTRL pokes in ::internal_mpu_init. The two
  *          spellings program byte-identical registers for all five regions
@@ -549,7 +549,7 @@ static bool internal_boot_map_install(void)
  *
  * @details Default path: ::internal_mpu_init cannot fail, so this always
  *          reports success and the caller's cache bring-up is unconditional,
- *          exactly as it was before #591.
+ *          exactly as it was before the boot-map conversion.
  *
  * @return ``true`` always.
  *
@@ -599,7 +599,7 @@ void SystemInit(void)
    * coherent with no software maintenance. */
   if (internal_boot_map_install()) {
 #ifdef RA8_BOOT_CACHE_VIA_HAL
-    /* Issue #577: bring the L1 caches up through the ra8_cache HAL instead of the
+    /* Bring the L1 caches up through the ra8_cache HAL instead of the
     * hand-rolled internal_enable_icache / internal_enable_dcache pokes. The HAL
     * primitives encode the identical ICIALLU + CCR.IC / CCR.DC sequence (each
     * runs its architectural invalidate before setting the enable bit), so this is

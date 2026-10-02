@@ -6,7 +6,7 @@
  * `ra8_jpeg_sw.h` used to advertise `ra8_jpeg_sw_decode()` as
  * "thread-safe (re-entrant)" and `ra8_jpeg_sw_encode()` as
  * "thread-safe" while both keep their working state in module-static
- * objects (`s_d`, `s_e`, the `s_*_strip` buffers, `s_js`). #893
+ * objects (`s_d`, `s_e`, the `s_*_strip` buffers, `s_js`). The thread-safety reconcile
  * resolved that contradiction in favour of the implementation: the
  * statics stay, because the project budgets stack with
  * `-Wstack-usage` and forbids the heap, and the header now states the

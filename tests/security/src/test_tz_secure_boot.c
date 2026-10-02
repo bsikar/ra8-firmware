@@ -274,7 +274,7 @@ static void test_tz_security_init_ipcsar_landed(void)
                  ra8_tz_secure_boot_security_init((uint32_t)k_test_tz_ipcsar_expected,
                                                   (uint32_t)k_test_tz_ipcpar_expected));
 
-  /* IPCSAR captured value must match issue #22 acceptance criterion. */
+  /* IPCSAR captured value must match the IPC TrustZone acceptance criterion. */
   TEST_ASSERT_EQ(k_test_tz_ipcsar_expected, k_test_tz_ipcsar_expected);
 
   /* The host capture exposes the unlock/relock counts indirectly via
