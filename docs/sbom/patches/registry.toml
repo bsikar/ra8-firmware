@@ -10,27 +10,9 @@ file = "0001-remove-nested-attribute-macros.patch"
 classification = "metadata"
 
 [[component]]
-key = "netxduo"
-delivery = "vendored"
-series = "docs/sbom/patches/netxduo/series"
-
-[[component.patches]]
-file = "0001-remove-nested-attribute-macros.patch"
-classification = "metadata"
-
-[[component]]
 key = "usbx"
 delivery = "vendored"
 series = "docs/sbom/patches/usbx/series"
-
-[[component.patches]]
-file = "0001-remove-nested-attribute-macros.patch"
-classification = "metadata"
-
-[[component]]
-key = "levelx"
-delivery = "vendored"
-series = "docs/sbom/patches/levelx/series"
 
 [[component.patches]]
 file = "0001-remove-nested-attribute-macros.patch"
@@ -70,15 +52,6 @@ series = "docs/sbom/patches/miniz/series"
 
 [[component.patches]]
 file = "0001-use-ra8-assertion-policy.patch"
-classification = "functional"
-
-[[component]]
-key = "esp-hosted/protobuf-c"
-delivery = "vendored"
-series = "docs/sbom/patches/protobuf-c/series"
-
-[[component.patches]]
-file = "0001-use-ra8-runtime-policy.patch"
 classification = "functional"
 
 [[component]]

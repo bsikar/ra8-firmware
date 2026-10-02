@@ -13,6 +13,13 @@
 # same directory scope, so every variable and target defined here is visible
 # to the driver and to the fragments included after it.
 
+# esp-hosted and protobuf-c are pinned build.zig.zon packages, not trees in
+# this repo. Resolved once here; unit_tests.cmake and tests_c6link.cmake,
+# included after this file, reuse both variables.
+include(${FW_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(esp_hosted RA8_ESP_HOSTED_HOST_DIR)
+ra8_zig_package_dir(protobuf_c RA8_PROTOBUF_C_DIR)
+
 add_library(
   ra8_core_hal OBJECT
   ${XML_SOURCES}
@@ -146,14 +153,14 @@ target_include_directories(
          ${FW_ROOT}/port/esp-hosted/inc/idf_compat
          ${FW_ROOT}/port/esp-hosted/src
          ${FW_ROOT}/port/esp-hosted/tests/inc
-         ${FW_ROOT}/libs/third_party/esp-hosted/host
-         ${FW_ROOT}/libs/third_party/esp-hosted/host/api/include
-         ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport
-         ${FW_ROOT}/libs/third_party/esp-hosted/host/drivers/transport/spi
-         ${FW_ROOT}/libs/third_party/esp-hosted/common
-         ${FW_ROOT}/libs/third_party/esp-hosted/common/log
-         ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
-         ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
+         ${RA8_ESP_HOSTED_HOST_DIR}/host
+         ${RA8_ESP_HOSTED_HOST_DIR}/host/api/include
+         ${RA8_ESP_HOSTED_HOST_DIR}/host/drivers/transport
+         ${RA8_ESP_HOSTED_HOST_DIR}/host/drivers/transport/spi
+         ${RA8_ESP_HOSTED_HOST_DIR}/common
+         ${RA8_ESP_HOSTED_HOST_DIR}/common/log
+         ${RA8_ESP_HOSTED_HOST_DIR}/common/mempool/include
+         ${RA8_ESP_HOSTED_HOST_DIR}/common/transport
          ${FW_ROOT}/apps/shared_libs/third_party/miniz
          ${FW_ROOT}/apps/shared_libs/third_party/stb
          ${FW_ROOT}/apps/shared_libs/third_party/xz_embedded

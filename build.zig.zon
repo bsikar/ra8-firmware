@@ -45,6 +45,18 @@
             .hash = "N-V-__8AABnHqwH0WNMqhd6EOZNeMNA60iRlcWUh_osHYQKZ",
             .lazy = true,
         },
+        .esp_hosted = .{
+            .url = "https://github.com/espressif/esp-hosted-mcu/archive/949bb30612747a3bd9e402eda8d01fbfa1f8503e.tar.gz",
+            .hash = "N-V-__8AAPk7yQDK2oreQ5VXoxAgGf5nMpSFAB6_6Dialtw4",
+            .lazy = true,
+        },
+        // bsikar fork of protobuf-c at upstream abc67a11 plus the RA8
+        // assertion/allocator patch (branch ra8-abc67a11).
+        .protobuf_c = .{
+            .url = "https://github.com/bsikar/protobuf-c/archive/c61bb2e30f50a984f9c76f600b34150bc76f9553.tar.gz",
+            .hash = "N-V-__8AAMeECgBRiKccCTAGJTRwB5LP6QVHDxHj_SQxBofe",
+            .lazy = true,
+        },
         .nimble = .{
             .url = "https://github.com/apache/mynewt-nimble/archive/a7a156f28954819e158b62dd613008f22f9cf73b.tar.gz",
             .hash = "N-V-__8AAGXukwCsPZWLszqjHEq2BSv7gwvQcmCQ8FZ3C7BA",

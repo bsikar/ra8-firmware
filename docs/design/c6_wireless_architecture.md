@@ -38,7 +38,7 @@ final ELF. The C6 image is never linked into the RA8D2 firmware binary -- the
 two remain separate images that meet only on the wire.
 
 The RA8D2 side is a mix by design: the protocol driver is the *same upstream
-project* (vendored at `libs/third_party/esp-hosted/`, so the framing and RPC
+project* (the pinned `build.zig.zon` package `esp_hosted`, so the framing and RPC
 encoding cannot drift from the peripheral side), while everything that touches
 RA8D2 hardware -- the SPI transfers, GPIO, timers, tasks and memory -- is
 first-party port code held to the full project bar.
@@ -193,7 +193,7 @@ update does not touch the C6, and vice versa.
 
 ## RA8-side host driver
 
-The upstream host driver source is vendored at `libs/third_party/esp-hosted/`
+The upstream host driver source is the pinned `build.zig.zon` package `esp_hosted`
 (host driver + shared protocol, with the upstream ESP-IDF/FreeRTOS port
 deliberately left out), and the first-party replacement for that port is at
 **`port/esp-hosted/`**. It supplies the `port_esp_hosted_host_*.h` header

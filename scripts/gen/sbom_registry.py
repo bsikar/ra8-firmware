@@ -666,28 +666,28 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="espressif",
         url="https://github.com/espressif/esp-hosted-mcu",
-        path="libs/third_party/esp-hosted",
-        provenance=PROV_COMMIT_PINNED,
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description=(
             "esp-hosted host driver + shared protocol for the ESP32-C6 Wi-Fi/BLE co-processor."
         ),
         purl="pkg:github/espressif/esp-hosted-mcu@949bb30612747a3bd9e402eda8d01fbfa1f8503e",
         spdx="Apache-2.0",
         license_note="Apache-2.0 (upstream LICENSE); no separate NOTICE file upstream.",
-        nested_paths=("libs/third_party/esp-hosted/common/protobuf-c",),
-        license_file="libs/third_party/esp-hosted/LICENSE",
         upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
+        dep_pin_spec="N-V-__8AAPk7yQDK2oreQ5VXoxAgGf5nMpSFAB6_6Dialtw4",
         extra_notes=(
             "HOST half of esp-hosted: this is the driver compiled INTO the RA8 "
             "image. The peripheral-side co-processor firmware that runs on the "
             "ESP32-C6 is the separate, not-vendored esp-hosted-mcu entry. Both "
             "halves are the same upstream commit 949bb30 and the same protocol "
             "version 2.12.11, which is what makes them wire-compatible.",
-            "Vendored subset: upstream host/ (minus host/port/) and common/ "
-            "(minus esp_hosted_lwip_src_port_hook.h). 77 files, all "
-            "byte-identical to upstream 949bb30; aggregate SHA-256 is over the "
-            "sorted per-file hashes of those 77 files (it excludes the "
-            "separately-pinned nested protobuf-c subtree).",
+            "NOT vendored: pinned in build.zig.zon as the upstream 949bb30 "
+            "tarball (url + Zig content hash) and fetched into the Zig package "
+            "cache by cmake/zig_package.cmake. The 77 files the tree used to "
+            "vendor (host/ minus host/port/, common/ minus the lwip hook) are "
+            "byte-identical in it. The upstream tarball has no common/protobuf-c "
+            "(a submodule there); that comes from the protobuf_c package.",
             "host/port/ (the upstream ESP-IDF/FreeRTOS port) is deliberately "
             "NOT vendored: a first-party RA8/ThreadX port supplies the same 10 "
             "port_esp_hosted_host_*.h header contracts and fills the 72-entry "
@@ -705,46 +705,33 @@ REGISTRY: tuple[Component, ...] = (
         version="1.4.1 (git abc67a11)",
         ctype="library",
         group="protobuf-c",
-        url="https://github.com/protobuf-c/protobuf-c",
-        path="libs/third_party/esp-hosted/common/protobuf-c",
-        provenance=PROV_COMMIT_PINNED,
+        url="https://github.com/bsikar/protobuf-c",
+        path="build.zig.zon",
+        provenance=PROV_DEP_PINNED,
         description="Protocol Buffers C runtime backing the esp-hosted RPC codec.",
         purl="pkg:github/protobuf-c/protobuf-c@abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
         spdx="BSD-2-Clause",
         license_note="BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
-        license_file="libs/third_party/esp-hosted/common/protobuf-c/LICENSE",
         upstream_commit="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
         upstream_ref="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
+        dep_pin_spec="N-V-__8AAMeECgBRiKccCTAGJTRwB5LP6QVHDxHj_SQxBofe",
         modified=True,
-        patched_files=(
-            (
-                "protobuf-c/protobuf-c.c",
-                "Target builds route unreachable assertions through the first-party "
-                "RA8 assertion policy and make the system allocator fail closed; "
-                "see docs/SOUP/esp-hosted-host.md.",
-            ),
-            (
-                "protobuf-c/protobuf-c.h",
-                "Target builds provide the RA8 assertion policy instead of hosted "
-                "assert.h; see docs/SOUP/esp-hosted-host.md.",
-            ),
-        ),
-        probe_file="protobuf-c/protobuf-c.h",
-        probe_re=r"#\s*define\s+PROTOBUF_C_VERSION\s+\"([0-9.]+)\"",
-        expected_version="1.4.1",
         extra_notes=(
             "Nested component: upstream esp-hosted-mcu carries protobuf-c as a "
             "git SUBMODULE at common/protobuf-c, pinned to abc67a11. A submodule "
             "is a separate upstream project under a separate license, so it gets "
             "its own registry entry and its own OSV commit query rather than "
             "hiding inside the esp-hosted aggregate hash.",
-            "Runtime-only subset: protobuf-c/protobuf-c.c, protobuf-c/protobuf-c.h "
-            "and LICENSE (3 files, byte-identical to abc67a11). The protoc-c code "
+            "NOT vendored: pinned in build.zig.zon as the bsikar/protobuf-c fork "
+            "at c61bb2e3 (branch ra8-abc67a11): upstream abc67a11 plus one commit "
+            "that routes target-build assertions through the RA8 policy and makes "
+            "the system allocator fail closed. That commit is the whole local "
+            "patch; it used to live in docs/sbom/patches/protobuf-c.",
+            "Only the runtime is used: protobuf-c/protobuf-c.c and .h. The protoc-c code "
             "generator, build system and tests are a host-side C++ toolchain and "
             "are not vendored; the generated esp_hosted_rpc.pb-c.c ships "
             "pre-generated in the esp-hosted tree.",
-            "Version is doubly evidenced: commit pin + aggregate SHA-256 + an "
-            "in-header PROTOBUF_C_VERSION probe cross-checked by this generator.",
+            "Version: 1.4.1 (PROTOBUF_C_VERSION in protobuf-c/protobuf-c.h at the pin).",
         ),
     ),
     Component(
