@@ -12,7 +12,6 @@ default:
     @echo "  just quality::local::format                       Auto-format source code in place"
     @echo "  just quality::local::check                        Verify formatting without modifying files"
     @echo "  just quality::local::test                         Run host unit test suite"
-    @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
     @echo "  just quality::local::fuzz [seconds] [runs]        Smoke-run every libFuzzer harness"
     @echo "  just quality::local::stack_usage                  Build firmware and enforce stack budgets"
     @echo "  just quality::local::sbom                         Regenerate the committed CycloneDX SBOM"
@@ -111,15 +110,6 @@ format-zig:
 
 test-zig:
     "{{ just_executable() }}" quality::local::gate test-zig
-
-# Generate DO-178C Level B MC/DC coverage report
-
-# Keep this welded to the registered gate so its self-tests and compiler pin
-# cannot drift from CI.
-
-# Measure and enforce the whole-tree line/branch coverage ratchet
-coverage:
-    /bin/bash -p scripts/ci.sh --gate coverage-tree
 
 # Smoke-run every registered libFuzzer harness with the former local defaults.
 fuzz seconds="30" runs="10000" cc="" cxx="":

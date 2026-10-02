@@ -44,7 +44,7 @@ func TestOneGatePlanSeparatesTheReadyFromTheConflictingAcrossKeepAndAdd(t *testi
 	conflicting := requiredName(t, "build")
 	readiness := ShadowReadiness{
 		Threshold:   2,
-		Ready:       []string{"format", "tidy"},
+		Ready:       []string{"format", "unit-tests"},
 		Conflicting: []string{"build"},
 	}
 
@@ -55,7 +55,7 @@ func TestOneGatePlanSeparatesTheReadyFromTheConflictingAcrossKeepAndAdd(t *testi
 	if !namesContext(plan.Plan.Keep, held) || !namesContext(plan.Plan.Keep, conflicting) {
 		t.Fatalf("Keep %v should carry both contexts the gate already has", plan.Plan.Keep)
 	}
-	if !namesContext(plan.Plan.Add, requiredName(t, "tidy")) {
+	if !namesContext(plan.Plan.Add, requiredName(t, "unit-tests")) {
 		t.Fatalf("Add %v does not propose the ready task the gate lacks", plan.Plan.Add)
 	}
 	if len(plan.Plan.Add) != 1 {
@@ -64,7 +64,7 @@ func TestOneGatePlanSeparatesTheReadyFromTheConflictingAcrossKeepAndAdd(t *testi
 	if _, withheld := withheldFor(plan, "format"); withheld {
 		t.Fatal("the ready task already on the gate was withheld")
 	}
-	if _, withheld := withheldFor(plan, "tidy"); withheld {
+	if _, withheld := withheldFor(plan, "unit-tests"); withheld {
 		t.Fatal("the ready task proposed for the gate was withheld")
 	}
 	entry, withheld := withheldFor(plan, "build")

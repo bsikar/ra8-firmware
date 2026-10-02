@@ -23,7 +23,7 @@ func TestACorrespondenceThatStopsEarlyIsRefusedAndNamesTheFile(t *testing.T) {
 		{"a key and nothing else", `{"format"`},
 		{"a key with no value", `{"format":`},
 		{"a comma with nothing after it", `{"format": "lint-format",`},
-		{"a second pair cut short", `{"format": "lint-format", "tidy"`},
+		{"a second pair cut short", `{"format": "lint-format", "unit-tests"`},
 		{"an unterminated job name", `{"format": "lint-form`},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestACorrespondenceThatStopsEarlyIsRefusedAndNamesTheFile(t *testing.T) {
 // in shadow. A correspondence the catalog carries is the one case that enables
 // publishing, and it must still be shadow unless authoritative was spelled out.
 func TestAWholeCorrespondenceEnablesShadowPublishing(t *testing.T) {
-	path := writeCorrespondenceFile(t, `{"format": "lint-format", "tidy": "lint-tidy"}`)
+	path := writeCorrespondenceFile(t, `{"format": "lint-format", "unit-tests": "lint-tidy"}`)
 	t.Setenv(EnvShadowCorrespondenceFile, path)
 	os.Unsetenv(EnvCheckRunMode)
 	config, enabled, err := LoadCheckRunConfigFromEnv(catalogNames(t))
