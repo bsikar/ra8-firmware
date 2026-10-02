@@ -66,3 +66,37 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain) voi
     const install = b.addInstallLibFile(archive, "libthreadx_m33.a");
     step.dependOn(&install.step);
 }
+
+/// The middleware a CPU1 image may name in `Cpu1Image.uses`. Kept apart from
+/// `middleware.find()` on purpose: an M85 app naming `threadx_m33` would link
+/// M33 objects into an M85 image, and that has to stay unrepresentable.
+const known = [_]middleware.Middleware{threadx_m33};
+
+pub fn find(name: []const u8) ?middleware.Middleware {
+    for (known) |candidate| {
+        if (std.mem.eql(u8, candidate.name, name)) return candidate;
+    }
+    return null;
+}
+
+/// Every middleware a CPU1 image names, in order. An unknown name is a build
+/// error, the same rule `middleware.resolve()` applies to M85 apps.
+pub fn resolve(allocator: std.mem.Allocator, uses: []const []const u8) []const middleware.Middleware {
+    var out = std.ArrayList(middleware.Middleware).init(allocator);
+    for (uses) |name| {
+        const record = find(name) orelse std.debug.panic(
+            "ra8: a CPU1 image names USES {s}, which the CPU1 graph does not know",
+            .{name},
+        );
+        out.append(record) catch @panic("OOM");
+    }
+    return out.toOwnedSlice() catch @panic("OOM");
+}
+
+/// One archive per named middleware, built with the CPU1 toolchain.
+pub fn archives(b: *std.Build, uses: []const []const u8, base: middleware.Toolchain) []const std.Build.LazyPath {
+    const tc = toolchain(b.allocator, base);
+    var out = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    for (resolve(b.allocator, uses)) |mw| out.append(middleware.add(b, mw, tc)) catch @panic("OOM");
+    return out.items;
+}

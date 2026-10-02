@@ -162,3 +162,47 @@ test "a TrustZone app's second image carries neither -mcmse nor the TrustZone de
     try std.testing.expect(indexOf(flags, "-DRA8_FREESTANDING") != null);
     try std.testing.expect(indexOf(flags, "-DRA8_BUILD_FOR_CPU1") != null);
 }
+
+fn has(items: []const []const u8, needle: []const u8) bool {
+    for (items) |item| {
+        if (std.mem.indexOf(u8, item, needle) != null) return true;
+    }
+    return false;
+}
+
+const middleware_app = cpu1.App{ .name = "threadx_cpu1", .dir = "examples/ek_ra8d2/threadx_cpu1", .board = "libs/ra8_board_ek_ra8d2" };
+const middleware_image = cpu1.Cpu1Image{
+    .entry_source = "src/cpu1_main.c",
+    .shared_sources = &.{},
+    .linker_script = "linker_script_cpu1.ld",
+    .uses = &.{"threadx_m33"},
+};
+
+test "a CPU1 image that uses threadx_m33 gets its defines and include paths" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const flags = cpu1.unitFlags(a, middleware_image, &.{"-mcpu=cortex-m85"});
+    try std.testing.expectEqualStrings("-DTX_INCLUDE_USER_DEFINE_FILE", flags[flags.len - 1]);
+    try std.testing.expect(has(flags, "-mcpu=cortex-m33"));
+    const dirs = cpu1.unitIncludeDirs(a, middleware_app, middleware_image);
+    try std.testing.expectEqualStrings("port/threadx/inc", dirs[dirs.len - 1]);
+    const system = cpu1.systemIncludeDirs(a, middleware_image);
+    try std.testing.expect(has(system, "ports/cortex_m33/gnu/inc"));
+    try std.testing.expect(!has(system, "cortex_m85"));
+}
+
+test "a CPU1 image with no middleware keeps exactly its old flags and path" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    for (graph.cross_apps) |app| {
+        const image = app.cpu1 orelse continue;
+        try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+        const view = cpu1.App{ .name = app.name, .dir = app.dir, .board = app.board };
+        const global = &[_][]const u8{ "-mcpu=cortex-m85", "-O0" };
+        try std.testing.expectEqualDeep(cpu1.compileFlags(a, global), cpu1.unitFlags(a, image, global));
+        try std.testing.expectEqualDeep(cpu1.includeDirs(a, view, image), cpu1.unitIncludeDirs(a, view, image));
+        try std.testing.expectEqual(@as(usize, 0), cpu1.systemIncludeDirs(a, image).len);
+    }
+}
