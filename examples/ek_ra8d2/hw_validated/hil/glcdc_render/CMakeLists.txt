@@ -32,6 +32,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME glcdc_render
   STACK_BYTES 4096
-  DESCRIPTION "Headless GLCDC layer-1 render path -> framebuffer CRC over UART (#121 HIL)"
+  DESCRIPTION "Headless GLCDC layer-1 render path -> framebuffer CRC over UART (GLCDC HIL)"
   LIBS ra8_display_pal ra8_board_ek_ra8d2
 )

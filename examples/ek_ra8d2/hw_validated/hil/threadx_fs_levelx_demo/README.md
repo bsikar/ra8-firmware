@@ -17,4 +17,4 @@ chip-select bug -- which is worth remembering the next time a peripheral
 looks physically unresponsive.
 
 It also installs the `ra8_fs_set_lock()` seam over a ThreadX mutex. Like
-its sibling it ran on the vendored FileX until #611 retired it.
+its sibling it ran on the vendored FileX until `ra8_fs` retired it.

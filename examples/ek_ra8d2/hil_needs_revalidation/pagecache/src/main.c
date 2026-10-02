@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * #79 added the import-time pagination cache (`reflow_cache`): lay a chapter
+ * The EPUB reader work added the import-time pagination cache (`reflow_cache`): lay a chapter
  * out once, serialise the flattened glyph/page result to a keyed blob, persist
  * it, and on the next open skip the expensive layout by loading the blob. That
  * path was host-tested only; this app runs it on the M85 against a real microSD

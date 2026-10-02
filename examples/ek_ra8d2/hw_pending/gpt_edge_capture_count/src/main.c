@@ -308,7 +308,7 @@ static void gpt_ecc_timers_or_halt(void)
   if (ra8_gpt_init((uint8_t)k_gpt_ecc_capture_channel, &cfg) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  /* #185 input capture: latch GTCNT into GTCCRA on each GTIOC0A rising edge. */
+  /* Input capture: latch GTCNT into GTCCRA on each GTIOC0A rising edge. */
   if (ra8_gpt_capture_configure((uint8_t)k_gpt_ecc_capture_channel,
                                 k_ra8_gpt_ccr_a,
                                 (uint32_t)k_ra8_gpt_cap_src_ioca_rising) != k_ra8_ok) {
@@ -317,7 +317,7 @@ static void gpt_ecc_timers_or_halt(void)
   if (ra8_gpt_init((uint8_t)k_gpt_ecc_count_channel, &cfg) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  /* #186 pulse counting: GTCNT counts GTIOC1A rising edges (up source only).
+  /* Pulse counting: GTCNT counts GTIOC1A rising edges (up source only).
    * Quadrature variant: pass k_ra8_gpt_cnt_src_ioca_falling as the down
    * source instead of k_ra8_gpt_cnt_src_none for an encoder up/down count. */
   if (ra8_gpt_event_count_configure((uint8_t)k_gpt_ecc_count_channel,
@@ -381,10 +381,10 @@ void main(void)
   bool     have_prev  = false;
 
   while (1) {
-    /* #185 input capture: hardware edge timestamp -> period. */
+    /* Input capture: hardware edge timestamp -> period. */
     (void)gpt_ecc_service_capture(&prev_latch);
 
-    /* #186 external event counting: accumulated GTIOC1A edge count. */
+    /* External event counting: accumulated GTIOC1A edge count. */
     uint32_t pulses = 0U;
     if (ra8_gpt_read((uint8_t)k_gpt_ecc_count_channel, &pulses) == k_ra8_ok) {
       g_gpt_ecc_pulse_count = pulses;

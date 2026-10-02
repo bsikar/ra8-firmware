@@ -333,7 +333,7 @@ void SystemInit(void)
   internal_enable_fault_handlers();
   internal_enable_div0_trap();
 #ifdef RA8_BOOT_ENABLE_CACHE_MPU
-  /* #576 demo: install the MPU memory-attribute map through the ra8_mpu HAL
+  /* MPU boot-map demo: install the MPU memory-attribute map through the ra8_mpu HAL
    * (ra8_mpu_apply_boot_map) instead of the raw MAIR/RBAR/RLAR/CTRL pokes the
    * shared board system_init.c uses -- the two boot paths are otherwise
    * identical and diff cleanly on HIL. The map goes down FIRST (so the D-cache
@@ -341,7 +341,7 @@ void SystemInit(void)
    * cacheable), then the caches. Enable the caches only if the map installed. */
   if (ra8_mpu_apply_boot_map() == k_ra8_ok) {
 #ifdef RA8_BOOT_CACHE_VIA_HAL
-    /* Issue #590: same gated arm the shared board copy got in #577 -- the L1
+    /* Same gated arm the shared board copy got for the M85 L1 cache -- the L1
      * caches come up through the ra8_cache HAL rather than the hand-rolled
      * pokes. Both spellings emit the identical ICIALLU + CCR.IC / CCR.DC
      * sequence, so this is a drop-in; with the flag set this app takes the HAL

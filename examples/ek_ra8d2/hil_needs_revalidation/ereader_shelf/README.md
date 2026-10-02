@@ -42,7 +42,7 @@ app-level toggle on the comic screen's header, and flipping it mirrors the
 edge-tap zones so the left edge advances. `comic` streams one page's encoded
 image at a time and the page is re-decoded on each turn through the same integer
 decode pipeline the cover uses, so a page has to fit the bounded decode buffer;
-tile-cache streaming for large manga pages is #231/#232.
+tile-cache streaming for large manga pages is separate work.
 
 Holding SW1 at boot runs a self-demo that walks every screen, and the first
 touch takes over. Without SW1 the app boots to the shelf and idles rather than

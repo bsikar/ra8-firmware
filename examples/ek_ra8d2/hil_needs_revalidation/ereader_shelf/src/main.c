@@ -8,7 +8,7 @@
  * MRAM (library.h, chunked RBKC containers) and the rest read from a FAT SD
  * card. Either way `.rabook` books are demand-paged: sh_paged.c binds the
  * chunked reader + ra8_vmem page cache and single chunks inflate into cache
- * frames as they are touched (never the whole book -- see #204/#205). The same
+ * frames as they are touched (never the whole book -- see sh_paged.c). The same
  * source-agnostic screens render everything:
  *
  *   shelf (cover-thumbnail grid) -> cover/title page -> table of contents ->

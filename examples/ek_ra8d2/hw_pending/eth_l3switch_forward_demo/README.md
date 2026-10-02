@@ -1,7 +1,7 @@
 # eth_l3switch_forward_demo
 
 Configures the RA8D2 Ethernet frame-forwarding path that no other example
-referenced (recon gap #135). Two drivers are exercised, honestly separated:
+referenced (a recon gap). Two drivers are exercised, honestly separated:
 
 - `ra8_eth_mfwd` -- the **real** Message Forwarding engine between the GMAC
   ports and the CPU Agent (GWCA). The app programs the per-port forwarding

@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * #74 added titled-TOC parsing to `epub` -- both the EPUB2 NCX (`<navMap>`)
+ * Titled-TOC parsing was added to `epub` -- both the EPUB2 NCX (`<navMap>`)
  * and the EPUB3 `nav.xhtml` (`<nav epub:type="toc">`) forms -- but it has only
  * ever run on the x86 host. This app, building on `epub_open`, runs
  * the TOC path on the M85 against real `.epub` files staged on a microSD card.

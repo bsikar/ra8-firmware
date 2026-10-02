@@ -3,7 +3,7 @@
  * @brief Demand-paged .rabook backing: chunk reader + page cache + source bind.
  *
  * @details
- * The #204/#205 open path. Every `.rabook` book -- baked MRAM blob or SD file --
+ * The chunked-.rabook open path. Every `.rabook` book -- baked MRAM blob or SD file --
  * is opened through the chunked "RBKC" reader (book_chunked) and bound as an
  * ::book_src_paged source over an ::ra8_vmem page cache. There is deliberately
  * NO resident/paged size threshold: a small book simply never evicts anything

@@ -1,7 +1,7 @@
 # epub_toc
 
 Runs the `epub` table-of-contents path on silicon against real
-`.epub` files staged on a microSD card. #74 added titled TOC parsing -- EPUB2
+`.epub` files staged on a microSD card. Titled TOC parsing is covered -- EPUB2
 NCX `<navMap>` and EPUB3 `nav.xhtml` `<nav epub:type="toc">` -- but it had only
 ever run on the x86 host. Building on `epub_open`, this exercises both forms
 plus the malformed-TOC fallback.

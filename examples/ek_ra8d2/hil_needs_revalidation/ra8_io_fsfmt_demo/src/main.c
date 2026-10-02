@@ -9,7 +9,7 @@
  * Exercises the format registry that lets the fabric recognise the on-disk
  * filesystem without the upper layers hard-coding a `switch` over FAT vs exFAT:
  *   1. Build a RAM block device, bridge it to ra8_fs, and format a FAT12 volume
- *      on it (Phase 1/3, #156/#158).
+ *      on it (Phase 1/3).
  *   2. Register the built-in formats (`ra8_io_fsfmt_init`) and probe the FAT
  *      volume: it must resolve to the "fat" format and report FAT capabilities
  *      (writable, streaming-write, 8.3 name length).

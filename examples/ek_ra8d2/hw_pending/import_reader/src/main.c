@@ -7,11 +7,11 @@
  *
  * @details
  * The on-silicon proof of the self-contained-appliance flow specified in issue
- * #151: drop a raw `.epub` on the SD card and the device "just works." This app
+ * Import flow: drop a raw `.epub` on the SD card and the device "just works." This app
  * mounts a FAT volume on a micro-SD over `ra8_sdmmc_spi`, then drives the
  * `rabook_import` cache manager wired to its PRODUCTION compile adapter
  * (`rabook_import_compile_adapter`, which STREAMS the source through a
- * bounded `ra8_vmem` page cache -- no whole-file load buffer, #230 -- into
+ * bounded `ra8_vmem` page cache -- no whole-file load buffer -- into
  * `rabook_compile_from_epub`):
  *
  *   1. First open of `BOOK.EPB` is a cache MISS -> the importer streams the
@@ -38,7 +38,7 @@
  *       dedicated `/RABOOK/` subdirectory layout is a possible future increment
  *       -- do not attempt it here.
  * @note The compile working arenas live in external SDRAM (the issue's
- *       conversion-arena tenant of #147); they are sized for a small text book.
+ *       conversion-arena tenant of ra8_mem); they are sized for a small text book.
  *       A worst-case (image-heavy) book needs the larger ~24-32 MiB budget the
  *       issue specifies, also carved from SDRAM.
  *

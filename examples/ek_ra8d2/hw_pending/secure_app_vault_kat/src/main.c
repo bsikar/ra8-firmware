@@ -21,7 +21,7 @@
  *     vault must **fail closed**. Every vault entry point has to return
  *     ``k_ra8_err_not_supported``, the digest buffer has to come back
  *     untouched, and the NULL-pointer checks still have to fire *ahead* of
- *     the fail-closed return. That is the property #180 added the guard for,
+ *     the fail-closed return. That is the property the crypto build gate added the guard for,
  *     and this is the first place it is checked from an application.
  *   - Declared dev/eval image (``-DRA8_INSECURE_STUB_CRYPTO=ON``): the vault
  *     answers for real, so the challenge path is checked against a SHA-256

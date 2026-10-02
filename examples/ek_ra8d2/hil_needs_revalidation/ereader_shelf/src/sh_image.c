@@ -6,8 +6,8 @@
  * `book` stores raster images as panel-native 4-bit grayscale (two pixels
  * per byte) in the flat blob's image pool. The image-pool addressing contract --
  * descriptor stride, pool base, nibble packing and odd-width parity -- lives in
- * the library that owns the format (::book_src_image / ::book_src_image_rect,
- * #342), not here. This module keeps only the presentation geometry: it asks the
+ * the library that owns the format (::book_src_image / ::book_src_image_rect),
+ * not here. This module keeps only the presentation geometry: it asks the
  * library for one unpacked gray8 *source row* at a time (a bounded, demand-paged
  * read), nearest-neighbour aspect-fit scales it, and emits gray8 rows. Covers
  * feed both the shelf thumbnail cache (gray8 buffer) and the full-screen cover
@@ -55,7 +55,7 @@ static uint8_t s_sh_gray8_row[k_sh_img_max_w];
  *          to keep frames small; the single-threaded UI never re-enters the render.
  * @warning A paged book's loupe locality differs from sequential reading: panning
  *          samples scattered sub-rect rows that each span several inflated chunks,
- *          so the per-frame read is bounded to just this window (the #207
+ *          so the per-frame read is bounded to just this window (the page
  *          prefetch policy is a separate concern).
  * @since 0.1.0
  */

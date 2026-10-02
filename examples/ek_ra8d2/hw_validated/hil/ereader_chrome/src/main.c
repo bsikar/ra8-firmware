@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * The e-reader chrome (#76 box model + #80 interaction) is golden-validated on
+ * The e-reader chrome (CSS box model + interaction layer) is golden-validated on
  * the ra8_emulator. This app closes the on-hardware gap: it exercises the
  * **real** `ra8_box` layout + `ra8_gfx` software render on the actual RA8D2,
  * deterministically, with no panel / SDRAM / touch / SD dependency.

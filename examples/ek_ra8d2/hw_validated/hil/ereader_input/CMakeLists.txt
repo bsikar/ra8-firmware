@@ -32,6 +32,6 @@ ra8_add_app(
   NAME ereader_input
   STACK_BYTES 4096
   DESCRIPTION
-    "Headless ra8_ui hit-test + nav push/pop via synthetic input -> banner over UART (#118 HIL)"
+    "Headless ra8_ui hit-test + nav push/pop via synthetic input -> banner over UART (interaction HIL)"
   LIBS ra8_ui ra8_board_ek_ra8d2
 )

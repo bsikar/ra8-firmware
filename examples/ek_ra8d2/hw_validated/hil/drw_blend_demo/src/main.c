@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Issue #120 asks for a demo that exercises the DRW ("D/AVE 2D") engine's
+ * The DRW example gap asked for a demo that exercises the DRW ("D/AVE 2D") engine's
  * blit AND alpha-blend path (``ra8_drw_blend_t``), not just the solid fill the
  * sibling ``drw_fill_demo`` covers. This app renders three layers into a small
  * 32x32 ARGB8888 framebuffer in SRAM and then folds an FNV-1a-32 hash over the

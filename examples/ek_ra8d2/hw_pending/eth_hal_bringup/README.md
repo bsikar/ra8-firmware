@@ -1,10 +1,9 @@
 # eth_hal_bringup
 
 Drives the two chip-generic ETH HAL primitives extracted from the EK-RA8D2 board
-Ethernet bring-up directly, instead of through
-`ra8_board_ethernet_init`, logging each step's status. Before #581 the ESWM/COMA
-media bring-up was open-coded inside the board library; it is chip-generic, so it
-now lives in the HAL.
+Ethernet bring-up directly, instead of through `ra8_board_ethernet_init`,
+logging each step's status. The ESWM/COMA media bring-up used to be open-coded
+inside the board library; it is chip-generic, so it now lives in the HAL.
 
 - `ra8_eth_coma_bringup()` pulses COMA.RRC, enables the switch clock (RCEC.RCE),
   kicks the CABPIRM buffer-pool init and polls CABPIRM.BPR, then fans every

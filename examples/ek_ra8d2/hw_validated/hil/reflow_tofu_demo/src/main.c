@@ -7,7 +7,7 @@
  * This application lays out and renders text containing characters outside the
  * font's character map (Kanji, Greek, Cyrillic, and math symbols).
  *
- * With the PR #686 / #687 fixes:
+ * With the Unicode Tier 1 / Tier 2 fixes:
  *   1. UTF-8 multibyte sequences are decoded into full Unicode codepoints during
  *      layout and walk.
  *   2. Glyphs missing from the font face cleanly trigger the notdef tofu fallback,

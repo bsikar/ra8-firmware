@@ -340,7 +340,7 @@ void main(void)
   for (uint32_t ci = 0U; ci < chapters; ci++) {
     erb_render_chapter(book, ci);
   }
-  erb_render_image(); /* #476: render the retained full-resolution gray8 figure */
+  erb_render_image(); /* Render the retained full-resolution gray8 figure */
   erb_print(k_msg_ok, (uint32_t)sizeof(k_msg_ok) - 1U);
 
   while (1) {
