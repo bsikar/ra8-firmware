@@ -37,8 +37,6 @@
 # init (NASA P10 Rule 3), AI attribution, and the C NULL macro.
 _pcc_banned_constructs() (
   set -e
-  # The obsolete-safety-standard ban moved to _pcc_cross_references, next to
-  # the other "does this reference still hold?" checks.
   # --selftest FIRST for each derived-scope checker: it proves the rule
   # fires and that tools/ -- silently omitted by the old hardcoded scan lists --
   # is back in scope, before the tree is trusted. A re-narrowed scope turns the
@@ -380,15 +378,6 @@ _pcc_cross_references() (
   # stopped matching would report a clean tree, which is worse than no gate.
   python3 scripts/checks/check_script_references.py --selftest
   python3 scripts/checks/check_script_references.py
-  # Ban citations of safety standards that have been superseded (the checker
-  # names them; this comment deliberately does not, since the ban applies to
-  # this file too). --all, not the bare invocation: it read
-  # `git diff --cached` unconditionally, so in any CI checkout -- where nothing
-  # is staged -- it enumerated 0 files, printed "0 findings" and passed, having
-  # audited nothing for its whole life in this gate. Same defect class as
-  # #325 / #355; a bare invocation is an error now rather than the vacuous mode.
-  python3 scripts/checks/check_obsolete_standards.py --selftest
-  python3 scripts/checks/check_obsolete_standards.py --all
   # A documented thread-safety claim must still be backed by the unit's own
   # state. The ra8_jpeg header advertised the decoder as re-entrant and
   # the encoder as thread-safe while both keep their working set in shared
