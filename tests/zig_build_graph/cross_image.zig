@@ -400,6 +400,7 @@ fn addCrossApp(
         ),
         .global_compile_flags = globals.c_flags,
         .global_link_flags = globals.link_flags,
+        .zig_optimize = globals.configuration.zig_optimize,
         .middleware_archives = cpu1_threadx.archives(
             b,
             image.uses,

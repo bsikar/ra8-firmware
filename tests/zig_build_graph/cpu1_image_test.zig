@@ -206,3 +206,31 @@ test "a CPU1 image with no middleware keeps exactly its old flags and path" {
         try std.testing.expectEqual(@as(usize, 0), cpu1.systemIncludeDirs(a, image).len);
     }
 }
+
+const zig_entry_image = cpu1.Cpu1Image{
+    .entry_source = "src/cpu1_main.zig",
+    .shared_sources = &.{"libs/ra8_hal/src/ra8_ipc.c"},
+    .linker_script = "linker_script_cpu1.ld",
+    .entry_language = .zig,
+};
+
+test "a Zig CPU1 entry is never a gcc translation unit" {
+    const units = cpu1.sources(std.testing.allocator, middleware_app, zig_entry_image);
+    defer std.testing.allocator.free(units);
+    try std.testing.expectEqual(@as(usize, 1), units.len);
+    try std.testing.expectEqualStrings("libs/ra8_hal/src/ra8_ipc.c", units[0]);
+}
+
+test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
+    const q = cpu1.zig_target_query;
+    try std.testing.expectEqual(std.Target.Cpu.Arch.thumb, q.cpu_arch.?);
+    try std.testing.expectEqual(std.Target.Abi.eabihf, q.abi.?);
+    try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
+}
+
+test "every CPU1 image in the table still has a C entry" {
+    for (graph.cross_apps) |app| {
+        const image = app.cpu1 orelse continue;
+        try std.testing.expectEqual(cpu1.EntryLanguage.c, image.entry_language);
+    }
+}
