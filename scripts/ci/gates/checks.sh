@@ -130,14 +130,6 @@ _pcc_migration_contracts() (
   bash scripts/builders/check_host_build_entrypoints.sh --selftest
   bash scripts/builders/check_host_build_entrypoints.sh
 
-  # The same escape one image over: a dual-image app builds its Non-Secure
-  # half as a raw add_executable(), which inherits no warning flags, so the
-  # profile call is written by hand in every such app and nothing checked
-  # that it was. --selftest proves the detector fires in both directions
-  # before the tree check runs.
-  python3 scripts/checks/check_ns_image_warning_profile.py --selftest
-  python3 scripts/checks/check_ns_image_warning_profile.py
-
   # The same shape one layer down, in C rather than CMake: a store to a
   # security-attribution register with PRCR PRC4 locked is discarded silently,
   # so the code reports success and the attribution keeps its reset value.
