@@ -8,7 +8,7 @@
 # + the ra8_xspi bridge). Exposes the `RA8_USE_LEVELX_STANDALONE` option; when
 # ON, this file:
 #
-#   1. Compiles `libs/third_party/levelx/common/src/lx_nor_*.c` into a single
+#   1. Compiles LevelX's `common/src/lx_nor_*.c` (pinned in build.zig.zon) into a single
 #      `levelx_standalone` interface library, built with `LX_STANDALONE_ENABLE`
 #      so `lx_api.h` skips its `#include "tx_api.h"` and defines
 #      `LX_DISABLE` / `LX_RESTORE` as no-ops instead of the `TX_` forms
@@ -55,7 +55,7 @@ if(RA8_USE_LEVELX)
   message(
     FATAL_ERROR
       "RA8_USE_LEVELX_STANDALONE and RA8_USE_LEVELX are mutually exclusive: "
-      "both compile libs/third_party/levelx/common/src/lx_nor_*.c. Pick one "
+      "both compile the LevelX lx_nor_*.c sources. Pick one "
       "LevelX build mode per app."
   )
 endif()
@@ -64,12 +64,13 @@ endif()
 # CMakeLists.txt or from a standalone per-app build.
 get_filename_component(_RA8_LXS_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA8_LXS_VENDOR_DIR "${_RA8_LXS_REPO_ROOT}/libs/third_party/levelx")
+include(${_RA8_LXS_REPO_ROOT}/cmake/zig_package.cmake)
+ra8_zig_package_dir(levelx _RA8_LXS_VENDOR_DIR)
 set(_RA8_LXS_COMMON_INC "${_RA8_LXS_VENDOR_DIR}/common/inc")
 set(_RA8_LXS_COMMON_SRC "${_RA8_LXS_VENDOR_DIR}/common/src")
 
 if(NOT EXISTS "${_RA8_LXS_COMMON_INC}/lx_api.h")
-  message(FATAL_ERROR "RA8_USE_LEVELX_STANDALONE=ON but LevelX vendor tree is missing at "
+  message(FATAL_ERROR "RA8_USE_LEVELX_STANDALONE=ON but the pinned LevelX package is missing at "
                       "${_RA8_LXS_VENDOR_DIR}."
   )
 endif()

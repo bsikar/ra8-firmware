@@ -222,12 +222,6 @@
         }
       ],
       "purl": "pkg:github/eclipse-threadx/levelx@6.5.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "8fb1bb6d516e2afac605b29b1202eeb11ab4ba31ade82fccf707ef42842e85c1"
-        }
-      ],
       "externalReferences": [
         {
           "type": "vcs",
@@ -237,15 +231,11 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
+          "value": "dependency-pinned-lockfile"
         },
         {
           "name": "ra8:path",
-          "value": "libs/third_party/levelx"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "90"
+          "value": "build.zig.zon"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -256,12 +246,12 @@
           "value": "v6.5.0.202601_rel"
         },
         {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/levelx/LICENSE.txt"
+          "name": "ra8:modified",
+          "value": "false"
         },
         {
-          "name": "ra8:modified",
-          "value": "true"
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned in build.zig.zon as an upstream tarball (url + Zig content hash) and fetched into the Zig package cache by cmake/zig_package.cmake."
         }
       ]
     },

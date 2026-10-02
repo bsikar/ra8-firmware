@@ -10,7 +10,9 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **Version**: 6.5.0 (per `common/inc/lx_api.h` LEVELX_MAJOR / MINOR /
   PATCH macros).
 - **Upstream URL**: https://github.com/eclipse-threadx/levelx
-- **Local path**: `libs/third_party/levelx/`
+- **Local path**: none. Pinned in `build.zig.zon` as the upstream tarball
+  (url + Zig content hash) and fetched into the Zig package cache by
+  `cmake/zig_package.cmake`.
 
 ## Provenance
 
@@ -18,11 +20,12 @@ firmware as Software Of Unknown Provenance (SOUP).
   (donated by Microsoft from Azure RTOS in 2024).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
-- **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  LevelX repository. Resolved to release tag
-  `v6.5.0.202601_rel`, commit `a46b74fb8aa133796ccbc13e7902cb8bb818e12f`:
-  89 of the 90 vendored files are byte-identical to it, the exception
-  being the `.gitattributes` edit recorded under "Deviations / patches".
+- **How it enters the build**: the upstream Eclipse LevelX tarball at release
+  tag `v6.5.0.202601_rel`, commit `a46b74fb8aa133796ccbc13e7902cb8bb818e12f`,
+  pinned by Zig content hash in `build.zig.zon`. Until 2026-10-02 (RA8FW-385)
+  it was a vendored copy; all 84 of its source files were byte-identical to
+  that commit, and the only local edit (a `.gitattributes` macro block) does
+  not exist in the tarball tree we build from.
 
 ## Use case in this firmware
 
@@ -76,21 +79,12 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-One file, `.gitattributes`, and it is a repository-hygiene edit rather than a
-change to any shipped source. Commit `368072a1a` dropped its two `[attr]`
-attribute-macro blocks (`our-c-style`, `generated`) from all five vendored
-Eclipse ThreadX trees: git honours `[attr]` definitions only in the top-level
-`.gitattributes` and printed a "not allowed" warning for each on EVERY git
-operation. The macro *uses* left behind reference undefined attributes, which
-git ignores silently, so no vendored file's checkout behaviour changes.
-
-Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
-content in `docs/sbom/upstream/levelx.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run.
-
-The edit is from 2026-07-13 and went unrecorded here until the upstream-pin sweep found it two
-weeks later, which is the point: "the vendored tree is unmodified" was prose,
-and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
+None. The build uses the pinned upstream tarball as is, so there is nothing to
+patch. While LevelX was vendored (until RA8FW-385, 2026-10-02) its one local
+edit was a repository-hygiene change to `.gitattributes`: commit `368072a1a`
+dropped two `[attr]` macro blocks that git only honours in the top-level
+`.gitattributes`. No shipped source was ever changed, and that file is not part
+of the tree the build compiles.
 
 ## Last review date
 
