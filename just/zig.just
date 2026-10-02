@@ -36,6 +36,7 @@ default:
     @echo "  just zig::shapes            Check the app-shape ledger against the tree"
     @echo "  just zig::abi               Prove the Zig-to-C ABI contract"
     @echo "  just zig::parity            Print the slice manifest"
+    @echo "  just zig::threadx-m33       Build the ThreadX kernel for CPU1 (Cortex-M33)"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
     @echo "The CMake path is unchanged: just tests::build, just apps::build,"
@@ -98,6 +99,10 @@ abi: _zig
 # Print the slice manifest the CMake-side parity check reads
 parity: _zig
     "${RA8_ZIG}" build parity
+
+# Build the ThreadX kernel for CPU1 (Cortex-M33) as libthreadx_m33.a
+threadx-m33: _zig
+    "${RA8_ZIG}" build threadx-m33
 
 # Remove this graph's own build outputs; no CMake tree is touched
 clean:

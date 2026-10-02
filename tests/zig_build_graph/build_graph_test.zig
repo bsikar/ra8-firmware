@@ -952,4 +952,5 @@ test {
     _ = @import("command_surface_test.zig");
     _ = @import("zig_archive_test.zig");
     _ = @import("app_shapes_test.zig");
+    _ = @import("cpu1_threadx_test.zig");
 }

@@ -21,6 +21,7 @@ const app_local = @import("app_local.zig");
 const arm_flags = @import("arm_flags.zig");
 const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
+const cpu1_threadx = @import("cpu1_threadx.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
 const interface_archive = @import("interface_archive.zig");
@@ -78,6 +79,17 @@ pub fn addCrossBuild(
         return;
     };
     for (cross_sources.cross_apps) |app| addCrossApp(b, arm_step, tools, app, globals);
+}
+
+/// The `threadx-m33` step: the CPU1 ThreadX kernel archive (RA8FW-396), built
+/// from the same middleware toolchain the M85 kernel gets, retargeted to CPU1.
+pub fn addThreadxM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "threadx-m33: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    cpu1_threadx.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
 fn addCrossApp(
