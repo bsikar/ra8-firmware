@@ -74,7 +74,7 @@ add_custom_command(
 target_sources(ereader_ui.elf PRIVATE "${_ra8_baked_font_c}")
 target_include_directories(ereader_ui.elf PRIVATE "${_d}/libs/ra8_fonts")
 
-# ---- Optional Settings app (#146 "core uninstallable") --------------------
+# ---- Optional Settings app ("core uninstallable") -------------------------
 # libs/ra8_app/inc/ra8_app.h documents RA8_APP_SETTINGS as the build-time knob
 # that keeps an app out of the registry entirely: the Settings screen, its nav
 # tap target and its registration are each guarded by `#ifdef RA8_APP_SETTINGS`

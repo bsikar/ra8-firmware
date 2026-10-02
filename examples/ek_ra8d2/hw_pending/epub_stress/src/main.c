@@ -3,7 +3,7 @@
  * @brief On-silicon HIL: large-structure EPUB opens on the static arena.
  *
  * @details
- * Regression gate for #144 bug 1 ("large EPUBs fail to open with no_mem"). On
+ * Regression gate for large-EPUB bug 1 ("large EPUBs fail to open with no_mem"). On
  * the firmware target, miniz's ZIP central directory uses a 96 KiB static
  * arena while OPF and NCX parsing use fixed caller-owned XML workspaces. A big
  * real book (many image files + a large OPF manifest) stresses both bounds.
@@ -18,7 +18,7 @@
  *
  *   - `epub_open` returns `k_ra8_ok` (all bounded resources were sufficient),
  *   - chapter count == 60 (full spine parsed),
- *   - NCX TOC count == 60 (every navPoint extracted, #144 bug 2),
+ *   - NCX TOC count == 60 (every navPoint extracted, NCX TOC bug 2),
  *   - the cover-image manifest item resolved (`cover_path` non-empty).
  *
  * The fixture is synthetic (not the copyrighted novel), tens of KB, so it bakes

@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME widget_app
   STACK_BYTES 8192
-  DESCRIPTION "Headless ra8_widget + ra8_app compose -> framebuffer CRC over UART (#145/#146 HIL)"
+  DESCRIPTION "Headless ra8_widget + ra8_app compose -> framebuffer CRC over UART (widget + app framework HIL)"
   LIBS ra8_app
        ra8_widget
        ra8_box

@@ -37,7 +37,7 @@
  * produces from its all-zero framebuffer. EIL == HIL: the EIL gate and the
  * bench print the identical banner. This app lives in ``hw_validated/hil/``
  * because that zero-framebuffer result is confirmed on silicon; the demo will
- * only report a genuinely composited CRC once #247 brings the engine to life.
+ * only report a genuinely composited CRC once the DRW silicon fix brings the engine to life.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

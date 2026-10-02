@@ -32,7 +32,7 @@
  * verdict -- the number in that field is what a fix would be based on.
  *
  * No network is joined here. Association needs an AP in range and belongs to
- * #492; this stops at "the radio is up and has an address", which is exactly
+ * c6_wifi_join; this stops at "the radio is up and has an address", which is exactly
  * the state an IP driver starts from.
  *
  * @par Bench requirements
@@ -137,7 +137,7 @@ static ra8_c6link_t s_c6_wifi_link;
  * @brief Count of announcements the co-processor volunteered.
  * @details Printed with the verdict. A station that starts and says nothing is
  * a different situation from one that starts and raises `WIFI_EVENT_STA_START`,
- * and the difference matters to whoever debugs #492.
+ * and the difference matters to whoever debugs the join.
  * @note Written only from the event callback, on the worker thread.
  * @warning Not reset between phases; it is a run total.
  * @since 0.1.0

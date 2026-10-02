@@ -11,7 +11,7 @@
  * (8,8), and the display-list reader (DLR) executes it end to end when kicked
  * via DLISTSTART. The CPU never writes the framebuffer inside the loop, so
  * there is no CPU/engine write race to latch STATUS.BUSERRMFB -- the
- * loop-stable path that closes issue #247.
+ * loop-stable path that fixed DRW on silicon.
  *
  * Once a second the loop kicks the list, waits for the DLR to go idle, hashes
  * the whole framebuffer FNV-1a-32, and prints

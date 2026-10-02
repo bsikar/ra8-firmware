@@ -17,7 +17,7 @@
  * ``"drw: fill match=Y\r\n"`` (or ``match=N``) on the J-Link OB CDC channel.
  * LED1 toggles on a clean fill; LED2 toggles on a mismatch. On silicon the DRW
  * paints exactly the requested rectangle once the graphics power domain is up
- * (issue #247 resolved), so the banner reads ``match=Y``.
+ * (DRW silicon bring-up resolved), so the banner reads ``match=Y``.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers. The DRW FB
  * cache is left off (``enable_caches = false``) so the CPU reads the
