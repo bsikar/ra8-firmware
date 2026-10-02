@@ -1,6 +1,6 @@
 # port/
 
-Adapters between the vendored stacks in [`libs/third_party/`](../libs/third_party/)
+Adapters between the third-party stacks pinned in [`build.zig.zon`](../build.zig.zon)
 and this firmware. Each directory is first-party code held to the full style and
 safety rules; the stack it adapts is not. Nothing here reimplements a stack --
 the adapter is the seam, so the vendored source stays unpatched and updatable.

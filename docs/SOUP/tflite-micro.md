@@ -76,8 +76,8 @@ default output (which pulls every kernel + kissfft) was intentionally NOT used.
 
 ### Build dependencies (vendored as sibling SOUP components)
 
-TFLite-micro does not stand alone; three of its build dependencies are vendored
-as their own `libs/third_party/` components (each with its own SOUP doc and SBOM
+TFLite-micro does not stand alone; three of its build dependencies are pinned
+as their own `build.zig.zon` packages (each with its own SOUP doc and SBOM
 entry), not nested under this tree:
 
 - `flatbuffers` (`docs/SOUP/flatbuffers.md`) -- the `.tflite` model format.
@@ -131,8 +131,8 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   `-fno-rtti -fno-exceptions -fno-threadsafe-statics -fno-use-cxa-atexit`) via
   `cmake/tflite_micro.cmake`, isolated as an OBJECT library so it never drags
   its include tree into first-party code.
-- Exempt from the first-party C23 / Doxygen / MC/DC gates as vendored SOUP under
-  `libs/third_party/`; this document is the case-by-case justification for that
+- Exempt from the first-party C23 / Doxygen / MC/DC gates as SOUP pinned in
+  `build.zig.zon`; this document is the case-by-case justification for that
   exemption.
 
 ## Phase 2: Ethos-U operator -> ra8_npu adapter (adapter landed)

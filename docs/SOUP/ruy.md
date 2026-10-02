@@ -10,8 +10,9 @@ header into this firmware as Software Of Unknown Provenance (SOUP).
 - **Version**: no upstream release tag; pinned to upstream commit
   `d37128311b445e758136b8602d1bbd2a755e115d` (2021-05-11).
 - **Upstream URL**: https://github.com/google/ruy
-- **Local path**: `libs/third_party/ruy/`
-  - Files in tree: `ruy/profiler/instrumentation.h` and `LICENSE`. A **single**
+- **Local path**: none. Pinned in `build.zig.zon` as package `ruy`
+  (RA8FW-385); the build uses only these files of it:
+  - Files used: `ruy/profiler/instrumentation.h` and `LICENSE`. A **single**
     header -- the ruy GEMM backend is NOT vendored.
 
 ## Provenance
@@ -47,7 +48,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
 - Single header; profiling compiled out, so it contributes no executable code.
 - Compiled behind the SOUP boundary as part of the `tflite_micro` object library
   (`cmake/tflite_micro.cmake`).
-- Exempt from the first-party gates as vendored SOUP under `libs/third_party/`.
+- Exempt from the first-party gates as SOUP pinned in `build.zig.zon`.
 
 ## Deviations / patches
 

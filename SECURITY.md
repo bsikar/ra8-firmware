@@ -44,8 +44,8 @@ no path onto a self-hosted runner.
 
 ## Supply chain
 
-Third-party ("SOUP") components are vendored at pinned versions under
-`libs/third_party/`, each with a written justification under `docs/SOUP/`, and a
+Third-party ("SOUP") components are pinned packages in `build.zig.zon` (url +
+content hash) or vendored under `apps/shared_libs/third_party/`, each with a written justification under `docs/SOUP/`, and a
 CycloneDX SBOM is published under `docs/sbom/`. CI scans that SBOM for known
 CVEs, builds the host tests under a sanitizer, and fuzzes the parsers that
 ingest untrusted content -- EPUB, image, font and archive data, which is the

@@ -5,8 +5,8 @@ order, not an index: [`libs/README.md`](../libs/README.md) lists every library
 in the tree, and the public header named under "main entry points" carries the
 full API with the project's mandatory Doxygen tag set.
 
-Vendored third-party libraries live under `libs/third_party/` and are
-documented as SOUP under [`docs/SOUP/`](SOUP/); they are not covered here.
+Third-party libraries are pinned packages in `build.zig.zon` (or vendored
+under `apps/shared_libs/third_party/`) and are documented as SOUP under [`docs/SOUP/`](SOUP/); they are not covered here.
 
 ## ra8_core
 

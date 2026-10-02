@@ -365,6 +365,7 @@ def check_tree(root: Path) -> int:
     vendor_dirs = {
         PurePosixPath(base, child.name)
         for base in ("libs/third_party", "apps/shared_libs/third_party")
+        if (root / base).is_dir()
         for child in (root / base).iterdir()
         if child.is_dir()
     }

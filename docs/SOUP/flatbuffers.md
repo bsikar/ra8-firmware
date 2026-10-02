@@ -15,8 +15,9 @@ as Software Of Unknown Provenance (SOUP).
   that matters because the weekly OSV scan materialises each pin as a commit
   and would have queried an oid that is not one.
 - **Upstream URL**: https://github.com/google/flatbuffers
-- **Local path**: `libs/third_party/flatbuffers/`
-  - Files in tree: `include/flatbuffers/*.h` (18 headers) and `LICENSE`.
+- **Local path**: none. Pinned in `build.zig.zon` as package `flatbuffers`
+  (RA8FW-385); the build uses only these files of it:
+  - Files used: `include/flatbuffers/*.h` (18 headers) and `LICENSE`.
     Headers only, and only the read/verify path: no `flatc` compiler, no
     codegen, no schema parser, no reflection or gRPC headers, and no library
     sources are vendored. The snapshot was the complete upstream
@@ -62,7 +63,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
 - Compiled behind the SOUP boundary as part of the `tflite_micro` object library
   (`cmake/tflite_micro.cmake`), never pulled into first-party include paths
   except through that interface target.
-- Exempt from the first-party gates as vendored SOUP under `libs/third_party/`.
+- Exempt from the first-party gates as SOUP pinned in `build.zig.zon`.
 
 ## Deviations / patches
 
