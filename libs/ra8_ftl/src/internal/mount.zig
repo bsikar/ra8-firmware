@@ -17,9 +17,12 @@ pub const mount = struct {
     /// Smallest reserved checkpoint tail, in blocks.
     pub const reserved_tail_min: u32 = 1;
     /// Reserved tail was blank, so the tables cold-started.
-    pub const state_cold: u32 = 0;
+    pub const state_cold: State = 0;
     /// A checkpoint was found and loaded, so the mapping resumed.
-    pub const state_resumed: u32 = 1;
+    pub const state_resumed: State = 1;
+    /// `ra8_ftl_mount_state_t` is `enum : uint8_t`, so a caller's state is one
+    /// byte; a wider store through its pointer overwrites whatever follows it.
+    pub const State = u8;
 };
 
 /// The fields of a `ra8_ftl_cfg_t` the rules judge, lifted out of the pointer
