@@ -4,10 +4,10 @@
 
 Proposed. The electrical decision below is analysis only; every photometric
 and thermal number it depends on needs bench confirmation on Rev 1 hardware
-(see Open questions). Tracks #831.
+(see Open questions). Tracks the front-light brief.
 
 Numbering note: `0005` was claimed by two open pull requests when this was
-written (#1225 SDRAM interface supply domain, #1227 usb_cdc example
+written (the SDRAM interface supply domain and the usb_cdc example
 duplication). Both have since landed elsewhere -- the SDRAM supply domain as
 ADR-0010, the usb_cdc example as ADR-0016 -- and `0005` went to the
 multi-language documentation architecture. This ADR keeps `0007`; the
@@ -15,13 +15,13 @@ cross-references below name the numbers those decisions actually took.
 
 ## Context
 
-#831 asks for "smooth, efficient, independently adjustable warm and cool
-illumination" for the final light guide, and its acceptance criteria demand
-quantitative brightness and mixing ranges, a stated control resolution, and
-checked sleep leakage. None of that can be settled by picking a part number
-late in layout: the driver's per-sink current ceiling and its series-LED
-ceiling are *constraints on the light guide*, so they have to be written
-down before #822 commits to a light guide and before #836 routes anything.
+The front-light brief asks for "smooth, efficient, independently adjustable warm
+and cool illumination" for the final light guide, and its acceptance criteria
+demand quantitative brightness and mixing ranges, a stated control resolution,
+and checked sleep leakage. None of that can be settled by picking a part number
+late in layout: the driver's per-sink current ceiling and its series-LED ceiling
+are *constraints on the light guide*, so they have to be written down before the
+light-guide selection commits to a guide and before layout routes anything.
 
 Three facts about the current tree shape this decision.
 
@@ -143,14 +143,14 @@ Every figure above is arithmetic from datasheet limits plus an assumed
 and 85% efficiency figures are the datasheet's headline and a conservative
 shading of it, not efficiency at our operating point.
 
-That arithmetic is the decision: a load that steps to a few hundred
-milliamps, switching at 500 kHz or 1 MHz, must not share the regulated
-domain that ADR-0010 holds inside 3.00..3.35 V with >= 55 mV of guaranteed
-read-high margin. The input-current ripple and the step load would be spent
-straight out of that 55 mV. Feeding the driver from VBAT keeps the
-disturbance on the cell and out of VCC/VCC2. If #825 later insists the
-front light hang off a regulated rail, that rail is a separate regulator
-from VCC/VCC2, and ADR-0010's envelope stands unchanged.
+That arithmetic is the decision: a load that steps to a few hundred milliamps,
+switching at 500 kHz or 1 MHz, must not share the regulated domain that ADR-0010
+holds inside 3.00..3.35 V with >= 55 mV of guaranteed read-high margin. The
+input-current ripple and the step load would be spent straight out of that
+55 mV. Feeding the driver from VBAT keeps the disturbance on the cell and out
+of VCC/VCC2. If the power design later insists the front light hang off a regulated
+rail, that rail is a separate regulator from VCC/VCC2, and ADR-0010's envelope
+stands unchanged.
 
 Sleep leakage, for the acceptance criterion: 4 uA maximum with HWEN
 low, plus the part's true shutdown isolation on the LED strings, so the
@@ -187,8 +187,7 @@ the part rather than against a panel that does not exist yet:
 
 ### 4. Pin and rail inventory
 
-Board side, as schematic deliverables for #834 and layout constraints for
-#836:
+Board side, as schematic deliverables and layout constraints:
 
 * `IN` from VBAT, 2.2 uF minimum ceramic to GND at the pin (pin table).
 * `SW` to the boost inductor. The datasheet's typical characteristics are
@@ -197,19 +196,19 @@ Board side, as schematic deliverables for #834 and layout constraints for
 * Schottky to the output node, output capacitor, and `OVP` sensed at the
   output node's positive terminal.
 * `ILED1` as the warm sink and `ILED2` as the cool sink, one string each,
-  to the light connector defined by #830.
+  to the light connector defined by the front-panel connector design.
 * `HWEN` from an MCU GPIO, held low for shipping and deep sleep.
 * `SCL` / `SDA` on the shared house I2C bus.
 * `SEL` strapped to GND for 7-bit address 0x36.
 * `PWM` strapped off, per section 3.
 * SW / OVP / ILED1 / ILED2 all carry up to 45 V absolute maximum: a
   high-voltage island in a hand-held enclosure, so keep it away from the
-  capacitive-touch sense lines of #830.
+  capacitive-touch sense lines of the touch design.
 
 The `SEL` strap is not a preference. 0x38 is the stock 7-bit address of the
-FT5x06-class capacitive touch controllers that #830 is likely to reach for,
-so leaving `SEL` at VIN risks an address collision on a shared bus. If the
-final touch part sits elsewhere, revisit; the safe default is 0x36.
+FT5x06-class capacitive touch controllers that the touch design is likely to
+reach for, so leaving `SEL` at VIN risks an address collision on a shared bus.
+If the final touch part sits elsewhere, revisit; the safe default is 0x36.
 
 Firmware side, not implemented here, recorded so it is not discovered late:
 
@@ -225,7 +224,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
 
 ## Consequences
 
-* #822 inherits two hard numbers when it selects the light guide: at most
+* The light-guide selection inherits two hard numbers: at most
   10 series LEDs and at most 28.5 mA per colour. A guide that wants
   parallel strings per colour, or more than 28.5 mA, invalidates the
   baseline part, and the LM3697 at 30 mA only marginally relieves it. That
@@ -241,25 +240,25 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   pin is a stuff option, so leave the net and a 0R to ground rather than
   tying it hard.
 * Nothing here selects an inductor, a Schottky, an output capacitor, or an
-  LED. Those stay open until #822 delivers the string, and they belong to
-  #834 and #836.
+  LED. Those stay open until the light-guide selection delivers the string, and
+  they belong to the schematic and layout.
 
-## Open questions (needs bench, or needs #822)
+## Open questions (needs bench, or needs the light guide)
 
-1. String topology, from #822: LED count per colour, series/parallel
-   arrangement, Vf range and binning, and whether warm and cool differ in
-   Vf enough to matter (they usually do, the phosphor and drive differ).
-   Every voltage number above assumes 3.0 V per LED, which is an
+1. String topology, from the light-guide selection: LED count per colour,
+   series/parallel arrangement, Vf range and binning, and whether warm and cool
+   differ in Vf enough to matter (they usually do, the phosphor and drive
+   differ). Every voltage number above assumes 3.0 V per LED, which is an
    assumption, not a datasheet value for a part anyone has chosen.
 2. Efficiency at our operating point. 87% is the LM3630A's headline figure
    at a particular VIN and string. Ours is unmeasured.
 3. Thermal rise. A 12-bump DSBGA moving up to about 1.7 W of output power
    sits behind a panel in a sealed hand-held, against a 140 degC typical
-   thermal shutdown. Needs bench, and a thermal opinion from #835 before
+   thermal shutdown. Needs bench, and a thermal review before
    the stackup closes.
 4. Perceived flicker and camera banding under DC dimming. Expected to be a
-   non-issue by construction, but it is an acceptance criterion in #831 and
-   only a bench check closes it.
+   non-issue by construction, but it is an acceptance criterion in the
+   front-light brief and only a bench check closes it.
 5. Audible noise from the output ceramics under fast firmware brightness
    ramps. The switcher itself is at 500 kHz or 1 MHz, well clear of the
    audible band; the risk is the envelope, not the carrier.
@@ -272,7 +271,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
    above the electrical floor.
 8. Inductor and capacitor selection across the battery range and LED
    tolerances, including switching-loop layout constraints and test points.
-   #831's scope asks for these; they are blocked on item 1.
+   The front-light brief's scope asks for these; they are blocked on item 1.
 
 ## References
 
@@ -293,5 +292,8 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   `libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c` (three provisional GPIO user
   LEDs, no illumination channel); no `frontlight` / `front_light` symbol
   anywhere in the repository.
-* Issues: #831 (this decision), #821 (parent epic), #822, #823, #825,
-  #830, #834, #835, #836, #846.
+* Related e-reader hardware work: the front-light brief (this decision), under
+  the e-reader hardware epic, alongside the light-guide selection, pin
+  allocation, the power design, the front-panel connector and touch design,
+  the schematic, the thermal review, layout, and the SDRAM supply domain
+  (ADR-0010).
