@@ -61,5 +61,5 @@
     "tests/pump_test.zig",
     "tests/ready_abi_test.zig"
   ],
-  "minimum_tests": 195
+  "minimum_tests": 199
 }

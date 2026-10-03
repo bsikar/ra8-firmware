@@ -16,7 +16,7 @@
 const std = @import("std");
 
 /// Transaction geometry, restated by the public C header so consumers need no
-/// esp-hosted include path. `ra8_c6link.c` carries the static assertions that
+/// esp-hosted include path. `ra8_c6link_rpc.c` carries the static assertions that
 /// tie these to the vendored declaration.
 pub const Frame = struct {
     /// Octets clocked in one transaction, `ESP_TRANSPORT_SPI_MAX_BUF_SIZE`.

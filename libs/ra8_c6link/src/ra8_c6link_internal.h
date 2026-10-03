@@ -859,7 +859,7 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
  * @brief Deliver one decoded announcement to the registered callback.
  *
  * @details
- * Lives in `ra8_c6link.c` beside the rest of the handle's state, and is called
+ * Lives beside the rest of the handle's state, and is called
  * from the RPC decoder once it has turned an `Event_*` message into a
  * first-party record.
  *

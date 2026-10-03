@@ -1,0 +1,25 @@
+.{
+    .name = .ra8_c6link,
+    .version = "0.1.0",
+    .fingerprint = 0x6e720f9dd119442c,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        .esp_hosted = .{
+            .url = "https://github.com/espressif/esp-hosted-mcu/archive/949bb30612747a3bd9e402eda8d01fbfa1f8503e.tar.gz",
+            .hash = "N-V-__8AAPk7yQDK2oreQ5VXoxAgGf5nMpSFAB6_6Dialtw4",
+            .lazy = true,
+        },
+        .protobuf_c = .{
+            .url = "https://github.com/bsikar/protobuf-c/archive/c61bb2e30f50a984f9c76f600b34150bc76f9553.tar.gz",
+            .hash = "N-V-__8AAMeECgBRiKccCTAGJTRwB5LP6QVHDxHj_SQxBofe",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

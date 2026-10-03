@@ -42,6 +42,21 @@
 #include "ra8_c6link_internal.h"
 #include "ra8_secure.h"
 
+/* The public header restates the transaction geometry so consumers need no
+   esp-hosted include path, and `src/internal/frame.zig` reproduces it again on
+   the Zig side. These assertions are what keeps all three in step: if upstream
+   ever changes either size, the build stops here rather than mis-framing on the
+   wire. They live in the RPC layer because it is the C translation unit that
+   includes the vendored declaration; the frame layer and the facade they
+   were written beside are now Zig. */
+static_assert((uint16_t)k_ra8_c6link_header_bytes == (uint16_t)sizeof(struct esp_payload_header),
+              "k_ra8_c6link_header_bytes must equal sizeof(struct esp_payload_header)");
+static_assert((uint16_t)k_ra8_c6link_frame_bytes == (uint16_t)ESP_TRANSPORT_SPI_MAX_BUF_SIZE,
+              "k_ra8_c6link_frame_bytes must equal ESP_TRANSPORT_SPI_MAX_BUF_SIZE");
+static_assert((uint16_t)k_ra8_c6link_max_payload ==
+                ((uint16_t)k_ra8_c6link_frame_bytes - (uint16_t)k_ra8_c6link_header_bytes),
+              "k_ra8_c6link_max_payload must be the frame size less the header");
+
 /** @enum c6link_esp_status_t @brief Stable ESP-IDF general error values carried on the wire. */
 typedef enum : int32_t {
   k_c6link_esp_err_no_mem           = 0x101, /**< Remote allocation failed.               */

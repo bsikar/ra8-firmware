@@ -21,6 +21,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addHeaders(library_module, b);
+    addVendorHeaders(library_module, b);
 
     const library = b.addLibrary(.{
         .name = "ra8_c6link",
@@ -178,6 +179,22 @@ pub fn build(b: *std.Build) void {
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_lifecycle_abi.zig", "tests/lifecycle_abi_test.zig", "lifecycle_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_ready_abi.zig", "tests/ready_abi_test.zig", "ready_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_eth_abi.zig", "tests/eth_abi_test.zig", "eth_abi");
+    addFwAbiTest(b, test_step, target, optimize);
+}
+
+/// The firmware-version query, which reads the vendored RPC codec types.
+fn addFwAbiTest(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const abi = b.createModule(.{ .root_source_file = b.path("src/ra8_c6link_fw_abi.zig"), .target = target, .optimize = optimize });
+    addHeaders(abi, b);
+    addVendorHeaders(abi, b);
+    const tests = b.createModule(.{ .root_source_file = b.path("tests/fw_abi_test.zig"), .target = target, .optimize = optimize });
+    tests.addImport("fw_abi", abi);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tests })).step);
 }
 
 /// A C ABI file that reads the public header, tested on its own.
@@ -195,6 +212,19 @@ fn addHeaderAbiTest(
     const tests = b.createModule(.{ .root_source_file = b.path(test_source), .target = target, .optimize = optimize });
     tests.addImport(import_name, abi);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tests })).step);
+}
+
+/// The private header and the vendored esp-hosted and protobuf-c headers it
+/// pulls in. Both packages are lazy, so a build that never reaches this
+/// fetches neither; on the first build that does, Zig fetches and re-runs.
+fn addVendorHeaders(module: *std.Build.Module, b: *std.Build) void {
+    module.addIncludePath(b.path("src"));
+    const esp = b.lazyDependency("esp_hosted", .{}) orelse return;
+    const protobuf = b.lazyDependency("protobuf_c", .{}) orelse return;
+    module.addIncludePath(esp.path("common"));
+    module.addIncludePath(esp.path("common/transport"));
+    module.addIncludePath(esp.path("common/proto"));
+    module.addIncludePath(protobuf.path("."));
 }
 
 /// The public headers the pump's ABI reads `ra8_c6link_t` from.
