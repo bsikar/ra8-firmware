@@ -470,8 +470,23 @@ _ra8_board_map_saved:
     MOV     r2, #4                                  // Select region 4
     LDR     r3, =0xE000ED98                         // Get region register
     STR     r2, [r3]                                // Set region to 4
-    LDM     r0, {r2-r9}                             // Load second four MPU regions
-    STM     r1, {r2-r9}                             // Store second four MPU regions
+    LDM     r0, {r2-r7}                             // Load the module's last three regions (4..6, RA8FW-484)
+    STM     r1, {r2-r7}                             // Store them
+    // Region 7 is not the module's: it is a privileged-only (AP=00), XN,
+    // AttrIndx 1 (non-cacheable) copy of the board's shared-SRAM region,
+    // slot 4 of the saved board map, so an ISR that runs while this module
+    // thread is current still reaches the M85 to M33 mailbox coherently.
+    // The module can't, being unprivileged (RA8FW-484).
+    LDR     r6, =_ra8_txm_board_map                 // The board map again (the first LDM overwrote r6)
+    LDRD    r4, r5, [r6, #32]                       // Board slot 4: RBAR, RLAR
+    BIC     r4, r4, #6                              // AP = 00, privileged read/write only
+    ORR     r4, r4, #1                              // XN
+    BIC     r5, r5, #0xE                            // Clear AttrIndx
+    ORR     r5, r5, #2                              // AttrIndx 1, keeping the board's EN bit
+    MOV     r2, #7                                  // Select region 7
+    LDR     r3, =0xE000ED98                         // Region register again (the LDM overwrote r3)
+    STR     r2, [r3]                                // Set region to 7
+    STRD    r4, r5, [r1]                            // MPU_RBAR, MPU_RLAR
 _tx_enable_mpu:
     LDR     r0, =0xE000ED94                         // Build MPU control reg address
     MOV     r1, #5                                  // Build enable value with background region enabled

@@ -25,6 +25,7 @@
 
 const std = @import("std");
 const pkg_path = @import("pkg_path.zig");
+pub const header_patch = @import("header_patch.zig");
 
 /// One vendored middleware, as `cmake/<name>.cmake` defines it.
 pub const Middleware = struct {
@@ -110,6 +111,21 @@ pub const Middleware = struct {
     /// `-I` directories the middleware's port library adds to the app only,
     /// after its public ones. Its own TUs never see them.
     app_include_dirs: []const []const u8 = &.{},
+
+    /// Vendored headers recompiled with some lines rewritten (RA8FW-484).
+    /// Each lands in a generated directory that goes FIRST on the
+    /// middleware's own `-I` path, so it shadows the vendored copy on the
+    /// `-isystem` path. Only the middleware's TUs see it: no app links a
+    /// middleware that sets this yet, and the compile database lists the
+    /// vendored path.
+    patched_headers: []const HeaderPatch = &.{},
+};
+
+/// One vendored header and the whole lines rewritten in its generated copy.
+pub const HeaderPatch = struct {
+    /// The vendored header, `pkg:`-prefixed like the other directories.
+    header: []const u8,
+    rewrites: []const header_patch.Rewrite,
 };
 
 /// One prefix-selected glob over a vendored source directory.
@@ -546,11 +562,14 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
     const defines = unitDefines(b.allocator, mw);
     const system_dirs = systemIncludeDirs(b.allocator, mw);
 
+    const patched_dirs = patchedHeaderDirs(b, mw);
+
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (units(b, mw)) |unit| {
         const compile = b.addSystemCommand(&.{tc.gcc});
         compile.addArgs(tc.global_defines);
         compile.addArgs(defines);
+        for (patched_dirs) |dir| compile.addPrefixedDirectoryArg("-I", dir);
         for (include_dirs) |include_dir| {
             compile.addPrefixedDirectoryArg("-I", pkg_path.lazy(b, include_dir));
         }
@@ -567,6 +586,29 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
     return objects.items;
+}
+
+/// One generated directory per patched header, each holding the rewritten
+/// copy under the vendored basename. The rewrite runs on the host and fails
+/// the build when a line it expects is missing or repeated.
+pub fn patchedHeaderDirs(b: *std.Build, mw: Middleware) []const std.Build.LazyPath {
+    if (mw.patched_headers.len == 0) return &.{};
+    const tool = b.addExecutable(.{
+        .name = "header_patch",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/header_patch.zig"),
+            .target = b.graph.host,
+        }),
+    });
+    var dirs = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    for (mw.patched_headers) |patch| {
+        const run = b.addRunArtifact(tool);
+        run.addFileArg(pkg_path.lazy(b, patch.header));
+        const out = run.addOutputFileArg(std.fs.path.basename(patch.header));
+        for (patch.rewrites) |rewrite| run.addArgs(&.{ rewrite.old, rewrite.new });
+        dirs.append(out.dirname()) catch @panic("OOM");
+    }
+    return dirs.items;
 }
 
 /// Append this middleware's compile commands to the database. They are their
