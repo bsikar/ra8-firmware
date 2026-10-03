@@ -1,3 +1,5 @@
+//go:build linux
+
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 
@@ -10,16 +12,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// privateConfigHome points the lease store at a temporary configuration home,
-// so a board command that reads the local lease directory before it reaches
-// for credentials does not touch the real one.
-func privateConfigHome(t *testing.T) string {
-	t.Helper()
-	home := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", home)
-	return home
-}
 
 func TestBoardRecoverRefusesEveryInvocationThatApprovesNoPlan(t *testing.T) {
 	noServerNamed(t)
