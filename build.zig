@@ -78,6 +78,10 @@ const SliceMember = struct {
     /// resolve them exactly as a target image does. Empty for a library whose
     /// only externs are into C the suite already compiles.
     extra_dependency_names: []const []const u8 = &.{},
+    /// Zig files built for this suite alone, standing in for driver symbols
+    /// the archive externs but the suite never calls. Each must answer every
+    /// call with an error, so a suite that does reach one fails.
+    host_seam_roots: []const []const u8 = &.{},
 };
 
 const slice = [_]SliceMember{
@@ -104,12 +108,16 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_dfu_boot",
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_boot.c",
+        // The archive carries program_abi, whose flash driver externs have
+        // no host implementation here (RA8FW-477).
+        .host_seam_roots = &.{"tests/support/zig/dfu_flash_seam.zig"},
     },
     .{
         .dependency_name = "ra8_dfu",
         .artifact_name = "ra8_dfu_boot",
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_launch.c",
+        .host_seam_roots = &.{"tests/support/zig/dfu_flash_seam.zig"},
     },
     .{
         .dependency_name = "ra8_rot",
@@ -287,6 +295,17 @@ pub fn build(b: *std.Build) void {
                 .target = target,
                 .optimize = optimize,
             }).artifact(extra_name));
+        }
+        for (member.host_seam_roots) |seam_root| {
+            suite.linkLibrary(b.addLibrary(.{
+                .name = b.fmt("{s}_seam", .{std.fs.path.stem(member.c_suite_path)}),
+                .linkage = .static,
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path(seam_root),
+                    .target = target,
+                    .optimize = optimize,
+                }),
+            }));
         }
 
         const run_suite = b.addRunArtifact(suite);
