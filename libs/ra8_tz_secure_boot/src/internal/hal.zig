@@ -21,9 +21,11 @@ pub const SauCfg = extern struct {
     all_ns: bool,
 };
 
-extern fn ra8_sau_configure(cfg: *const SauCfg) callconv(.c) u32;
+// Both return `ra8_err_t`, which is `enum : uint16_t`; reading the result as
+// a u32 would take the undefined upper half of the return register on x86-64.
+extern fn ra8_sau_configure(cfg: *const SauCfg) callconv(.c) u16;
 extern fn ra8_sau_region_count() callconv(.c) u8;
-extern fn ra8_sram_set_boundary(bank: u8, offset: u32) callconv(.c) u32;
+extern fn ra8_sram_set_boundary(bank: u8, offset: u32) callconv(.c) u16;
 
 /// What the fake driver saw and what it should answer.
 pub const Fake = struct {
@@ -52,7 +54,7 @@ pub fn reset() void {
 
 /// Program the SAU from a descriptor.
 pub fn configure(cfg: *const SauCfg) u32 {
-    if (comptime mmio.on_target) return ra8_sau_configure(cfg);
+    if (comptime mmio.live_registers) return ra8_sau_configure(cfg);
     fake.configure_count +%= 1;
     fake.last_region_count = cfg.region_count;
     fake.last_all_ns = cfg.all_ns;
@@ -61,13 +63,13 @@ pub fn configure(cfg: *const SauCfg) u32 {
 
 /// How many SAU regions this silicon implements.
 pub fn regionCount() u8 {
-    if (comptime mmio.on_target) return ra8_sau_region_count();
+    if (comptime mmio.live_registers) return ra8_sau_region_count();
     return fake.implemented;
 }
 
 /// Move one SRAM bank's security boundary.
 pub fn setBoundary(bank: u8, offset: u32) u32 {
-    if (comptime mmio.on_target) return ra8_sram_set_boundary(bank, offset);
+    if (comptime mmio.live_registers) return ra8_sram_set_boundary(bank, offset);
     fake.boundary_count +%= 1;
     fake.last_bank = bank;
     fake.last_offset = offset;
