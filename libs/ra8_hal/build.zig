@@ -29,6 +29,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
     library.bundle_compiler_rt = false;
+    // Split functions and data so --gc-sections keeps only the exports an
+    // image actually calls from the single-object archive.
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_hal tests");
@@ -36,6 +40,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "eth_media", .source = "src/internal/eth_media.zig", .root = "tests/eth_media_test.zig" },
         .{ .name = "canfd_tdc", .source = "src/internal/canfd_tdc.zig", .root = "tests/canfd_tdc_test.zig" },
         .{ .name = "layer3_switch", .source = "src/internal/layer3_switch.zig", .root = "tests/layer3_switch_test.zig" },
+        .{ .name = "icu", .source = "src/internal/icu.zig", .root = "tests/icu_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
