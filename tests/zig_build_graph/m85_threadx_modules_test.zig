@@ -29,6 +29,16 @@ test "the M85 Module Manager keeps the M85 kernel's low-level init and SysTick g
     try std.testing.expectEqual(mw.threadx.link_options.len, m.link_options.len);
 }
 
+test "the M85 Module Manager schedules with the copy that keeps the board MPU map" {
+    const m = m85.threadx_m85_modules;
+    try std.testing.expect(mw.isReplaced(m, "tx_thread_schedule.S"));
+    try std.testing.expect(mentions(m.project_sources, m85.schedule_source));
+    try std.testing.expect(!mw.isReplaced(mw.threadx, "tx_thread_schedule.S"));
+    for (mw.threadx.project_sources) |source| {
+        try std.testing.expect(mentions(m.project_sources, source));
+    }
+}
+
 test "the M85 Module Manager carries the Module Manager defines" {
     const defines = m85.threadx_m85_modules.public_defines;
     try std.testing.expect(mentions(defines, "-DTX_INCLUDE_USER_DEFINE_FILE"));

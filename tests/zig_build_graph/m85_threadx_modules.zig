@@ -23,6 +23,12 @@ pub const step_description = "Build the ThreadX Module Manager for the M85 as li
 const port_src = "pkg:threadx/ports_module/cortex_m33/gnu/module_manager/src";
 const kernel = middleware.threadx;
 
+/// The M85 scheduler that keeps the board MPU map for kernel threads
+/// (RA8FW-481), in place of the module port's own.
+pub const schedule_source = "port/threadx/src/cortex_m85_modules/tx_thread_schedule.S";
+const replaced_basenames = kernel.replaced_basenames[0..kernel.replaced_basenames.len].* ++ [_][]const u8{"tx_thread_schedule.S"};
+const project_sources = kernel.project_sources[0..kernel.project_sources.len].* ++ [_][]const u8{schedule_source};
+
 pub const threadx_m85_modules = middleware.Middleware{
     .name = "threadx_m85_modules",
     .soup_c_dirs = &.{
@@ -32,8 +38,8 @@ pub const threadx_m85_modules = middleware.Middleware{
     },
     .soup_asm_dirs = &.{port_src},
     .soup_cpp_asm_dirs = &.{port_src},
-    .replaced_basenames = kernel.replaced_basenames,
-    .project_sources = kernel.project_sources,
+    .replaced_basenames = &replaced_basenames,
+    .project_sources = &project_sources,
     .private_include_dirs = kernel.private_include_dirs,
     .public_include_dirs = kernel.public_include_dirs,
     .public_system_include_dirs = &.{
