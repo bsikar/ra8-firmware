@@ -9,6 +9,15 @@
 const stream = @import("stream.zig");
 const clock = @import("clock_types.zig");
 
+/// `ra8_err_t`, which is `enum : uint16_t`, so every C return of it is 16 bits.
+///
+/// Declaring these returns `u32` reads bits the callee never wrote: the SysV
+/// x86-64 ABI leaves the upper half of a 16-bit return undefined, so a host
+/// build saw a successful `ra8_cgc_get_clock_hz` as 0xFFFF0000 and forwarded
+/// it as a failure. Reading `u16` and widening on the Zig side is defined on
+/// every target.
+pub const ErrCode = u16;
+
 /// `ra8_board_clock_rates_t`.
 pub const ClockRates = extern struct {
     cpuclk0_hz: u32,
@@ -54,32 +63,32 @@ pub const GlcdcCfg = extern struct {
     timing: GlcdcTiming,
 };
 
-pub extern fn ra8_mstp_init() u32;
-pub extern fn ra8_time_init(cpu_hz: u32) u32;
-pub extern fn ra8_cgc_init() u32;
-pub extern fn ra8_cgc_get_clock_hz(id: u32, out_hz: *u32) u32;
+pub extern fn ra8_mstp_init() ErrCode;
+pub extern fn ra8_time_init(cpu_hz: u32) ErrCode;
+pub extern fn ra8_cgc_init() ErrCode;
+pub extern fn ra8_cgc_get_clock_hz(id: u32, out_hz: *u32) ErrCode;
 pub extern fn ra8_isr_globals_enable() void;
-pub extern fn ra8_glcdc_init(cfg: *const GlcdcCfg) u32;
-pub extern fn ra8_glcdc_set_background_color(argb: u32) u32;
-pub extern fn ra8_glcdc_start(enable: bool) u32;
+pub extern fn ra8_glcdc_init(cfg: *const GlcdcCfg) ErrCode;
+pub extern fn ra8_glcdc_set_background_color(argb: u32) ErrCode;
+pub extern fn ra8_glcdc_start(enable: bool) ErrCode;
 
 /// `clocks.zig` and `uart_console.zig` define these two; they stay on the
 /// extern seam rather than being imported directly so a suite rooted at
 /// `bringup.zig` can stand a fake behind either without dragging the real
 /// CGC and SCI calls into its link.
-pub extern fn ra8_board_clocks_init(out_rates: *ClockRates) u32;
-pub extern fn ra8_board_uart_console_init(baud: u32) u32;
-pub extern fn ra8_board_led_init(led: u8) u32;
+pub extern fn ra8_board_clocks_init(out_rates: *ClockRates) ErrCode;
+pub extern fn ra8_board_uart_console_init(baud: u32) ErrCode;
+pub extern fn ra8_board_led_init(led: u8) ErrCode;
 
-pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) u32;
-pub extern fn ra8_pfs_set_drive_strength(pin: u16, dscr: u8) u32;
-pub extern fn ra8_gpio_output_init(pin: u16, init_level: u32) u32;
-pub extern fn ra8_gpio_write(pin: u16, level: u32) u32;
+pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) ErrCode;
+pub extern fn ra8_pfs_set_drive_strength(pin: u16, dscr: u8) ErrCode;
+pub extern fn ra8_gpio_output_init(pin: u16, init_level: u32) ErrCode;
+pub extern fn ra8_gpio_write(pin: u16, level: u32) ErrCode;
 
-pub extern fn ra8_sci_init(channel: u8, cfg: *const SciCfg) u32;
-pub extern fn ra8_sci_write_polling(channel: u8, data: [*]const u8, len: u32) u32;
-pub extern fn ra8_sci_getc_polling(channel: u8, out_byte: *u8) u32;
-pub extern fn ra8_sci_flush(channel: u8) u32;
+pub extern fn ra8_sci_init(channel: u8, cfg: *const SciCfg) ErrCode;
+pub extern fn ra8_sci_write_polling(channel: u8, data: [*]const u8, len: u32) ErrCode;
+pub extern fn ra8_sci_getc_polling(channel: u8, out_byte: *u8) ErrCode;
+pub extern fn ra8_sci_flush(channel: u8) ErrCode;
 
 /// `ra8_etha_config_t`. `initial_mode` is `enum : uint8_t` in the header.
 pub const EthaConfig = extern struct {
@@ -104,16 +113,16 @@ pub const RmacConfig = extern struct {
     mdc_hz: u32,
 };
 
-pub extern fn ra8_mstp_enable(id: u16) u32;
-pub extern fn ra8_cgc_eswclk_init() u32;
-pub extern fn ra8_cgc_eswclk_hz(out_hz: *u32) u32;
-pub extern fn ra8_eth_coma_bringup() u32;
-pub extern fn ra8_eth_rgmii_select(port: u8) u32;
-pub extern fn ra8_etha_init(port: u8, cfg: *const EthaConfig) u32;
-pub extern fn ra8_etha_set_mode(port: u8, mode: u8) u32;
-pub extern fn ra8_rmac_init(port: u8, cfg: *const RmacConfig) u32;
-pub extern fn ra8_rmac_mdio_c22_read(port: u8, phy_addr: u8, reg_addr: u8, out_value: *u16) u32;
-pub extern fn ra8_rmac_mdio_c22_write(port: u8, phy_addr: u8, reg_addr: u8, value: u16) u32;
+pub extern fn ra8_mstp_enable(id: u16) ErrCode;
+pub extern fn ra8_cgc_eswclk_init() ErrCode;
+pub extern fn ra8_cgc_eswclk_hz(out_hz: *u32) ErrCode;
+pub extern fn ra8_eth_coma_bringup() ErrCode;
+pub extern fn ra8_eth_rgmii_select(port: u8) ErrCode;
+pub extern fn ra8_etha_init(port: u8, cfg: *const EthaConfig) ErrCode;
+pub extern fn ra8_etha_set_mode(port: u8, mode: u8) ErrCode;
+pub extern fn ra8_rmac_init(port: u8, cfg: *const RmacConfig) ErrCode;
+pub extern fn ra8_rmac_mdio_c22_read(port: u8, phy_addr: u8, reg_addr: u8, out_value: *u16) ErrCode;
+pub extern fn ra8_rmac_mdio_c22_write(port: u8, phy_addr: u8, reg_addr: u8, value: u16) ErrCode;
 
 /// `uart_console.zig` defines this; same extern seam, same reason, so the
 /// `console_stream.zig` suite can answer it without an SCI behind it.
@@ -134,7 +143,7 @@ pub const UartStreamInit = fn (
     s: *stream.IoStream,
     state: *stream.UartState,
     channel: u8,
-) callconv(.c) u32;
+) callconv(.c) ErrCode;
 
 pub const ra8_io_stream_uart_init: ?*const UartStreamInit = @extern(
     ?*const UartStreamInit,
@@ -145,7 +154,7 @@ pub extern fn fw_clock_bind(
     clk: *clock.FwClock,
     iface: *const clock.FwClockIface,
     ctx: ?*anyopaque,
-) u32;
+) ErrCode;
 pub extern fn fw_clock_ra8_iface() *const clock.FwClockIface;
 
 /// `ra8_gpt_cfg_t`. `mode` and `prescaler` are each `enum : uint8_t`.
@@ -166,8 +175,8 @@ pub const GptPwmPinCfg = extern struct {
     disable_on_fault: u8,
 };
 
-pub extern fn ra8_gpt_init(channel: u8, cfg: *const GptCfg) u32;
-pub extern fn ra8_gpt_pwm_pin_configure(channel: u8, pin: u8, cfg: *const GptPwmPinCfg) u32;
+pub extern fn ra8_gpt_init(channel: u8, cfg: *const GptCfg) ErrCode;
+pub extern fn ra8_gpt_pwm_pin_configure(channel: u8, pin: u8, cfg: *const GptPwmPinCfg) ErrCode;
 pub extern fn ra8_delay_ms(milliseconds: u32) void;
 
 /// `ra8_i2c_bus_ops_t`, the Ring-3 facade the sensor driver is handed.
@@ -178,8 +187,8 @@ pub const I2cBusOps = extern struct {
         data: [*]const u8,
         len: u32,
         send_stop: bool,
-    ) callconv(.c) u32,
-    read: ?*const fn (ctx: ?*anyopaque, addr: u8, data: [*]u8, len: u32) callconv(.c) u32,
+    ) callconv(.c) ErrCode,
+    read: ?*const fn (ctx: ?*anyopaque, addr: u8, data: [*]u8, len: u32) callconv(.c) ErrCode,
     transfer: ?*const fn (
         ctx: ?*anyopaque,
         addr: u8,
@@ -187,7 +196,7 @@ pub const I2cBusOps = extern struct {
         wr_len: u32,
         rd: [*]u8,
         rd_len: u32,
-    ) callconv(.c) u32,
+    ) callconv(.c) ErrCode,
     ctx: ?*anyopaque,
 };
 
@@ -209,8 +218,8 @@ pub const IoI2cBus = extern struct {
 /// null and `camera.i2cOps` refuses, rather than failing to link over a
 /// facility it never asked for. Same treatment `ra8_io_stream_uart_init` got
 /// above.
-pub const IoI2cBindRiic = fn (bus: *IoI2cBus, channel: u8) callconv(.c) u32;
-pub const IoI2cAsOps = fn (bus: *const IoI2cBus, out: *I2cBusOps) callconv(.c) u32;
+pub const IoI2cBindRiic = fn (bus: *IoI2cBus, channel: u8) callconv(.c) ErrCode;
+pub const IoI2cAsOps = fn (bus: *const IoI2cBus, out: *I2cBusOps) callconv(.c) ErrCode;
 
 pub const ra8_io_i2c_bus_bind_riic: ?*const IoI2cBindRiic = @extern(
     ?*const IoI2cBindRiic,
@@ -238,14 +247,14 @@ pub const TouchCfg = extern struct {
     max_points: u8,
 };
 
-pub extern fn ra8_i3c_init(channel: u8, cfg: *const I3cCfg) u32;
-pub extern fn ra8_touch_open(cfg: *const TouchCfg) u32;
+pub extern fn ra8_i3c_init(channel: u8, cfg: *const I3cCfg) ErrCode;
+pub extern fn ra8_touch_open(cfg: *const TouchCfg) ErrCode;
 
 /// The third `ra8_io` sink, weak for the same reason as the two above: the C
 /// build dropped `..._touch.c` from the board glob unless the app named
 /// `ra8_io` or `ra8_io_bus` in LIBS, and a Zig archive has nowhere to hang
 /// that per-file gate.
-pub const IoI2cBindI3cCompat = fn (bus: *IoI2cBus, channel: u8) callconv(.c) u32;
+pub const IoI2cBindI3cCompat = fn (bus: *IoI2cBus, channel: u8) callconv(.c) ErrCode;
 
 pub const ra8_io_i2c_bus_bind_i3c_compat: ?*const IoI2cBindI3cCompat = @extern(
     ?*const IoI2cBindI3cCompat,
@@ -312,17 +321,28 @@ pub const I2cCfg = extern struct {
     pclkb_hz: u32,
 };
 
-pub extern fn ra8_ssie_init(channel: u8, cfg: *const SsieCfg) u32;
-pub extern fn ra8_ssie_write_buffer(channel: u8, data: [*]const u32, len: u16, out_written: *u16) u32;
-pub extern fn ra8_i2c_init(channel: u8, cfg: *const I2cCfg) u32;
-pub extern fn ra8_i2c_write(channel: u8, addr_7b: u8, data: [*]const u8, len: usize, send_stop: bool) u32;
-pub extern fn ra8_gpio_input_init(pin: u16, pull: u32) u32;
-pub extern fn ra8_gpio_read(pin: u16, out_level: *u32) u32;
-pub extern fn ra8_gpio_release(pin: u16) u32;
-pub extern fn ra8_mpc_set_open_drain(port: u32, pin_index: u32, enable: bool) u32;
-pub extern fn ra8_cgc_usbhs_pll_enable() u32;
-pub extern fn ra8_usb_device_init(speed: u32) u32;
-pub extern fn ra8_usb_host_init(speed: u32) u32;
+pub extern fn ra8_ssie_init(channel: u8, cfg: *const SsieCfg) ErrCode;
+pub extern fn ra8_ssie_write_buffer(
+    channel: u8,
+    data: [*]const u32,
+    len: u16,
+    out_written: *u16,
+) ErrCode;
+pub extern fn ra8_i2c_init(channel: u8, cfg: *const I2cCfg) ErrCode;
+pub extern fn ra8_i2c_write(
+    channel: u8,
+    addr_7b: u8,
+    data: [*]const u8,
+    len: usize,
+    send_stop: bool,
+) ErrCode;
+pub extern fn ra8_gpio_input_init(pin: u16, pull: u32) ErrCode;
+pub extern fn ra8_gpio_read(pin: u16, out_level: *u32) ErrCode;
+pub extern fn ra8_gpio_release(pin: u16) ErrCode;
+pub extern fn ra8_mpc_set_open_drain(port: u32, pin_index: u32, enable: bool) ErrCode;
+pub extern fn ra8_cgc_usbhs_pll_enable() ErrCode;
+pub extern fn ra8_usb_device_init(speed: u32) ErrCode;
+pub extern fn ra8_usb_host_init(speed: u32) ErrCode;
 
 /// `ra8_board_info_t` from the board's connectors header: three borrowed
 /// string pointers, never owned by the caller.
@@ -341,12 +361,12 @@ pub const IcuIrqCfg = extern struct {
 
 pub const IsrHandler = *const fn (?*anyopaque) callconv(.c) void;
 
-pub extern fn ra8_gpio_toggle(pin: u16) u32;
-pub extern fn ra8_icu_configure_irq_pin(irq_num: u8, cfg: *const IcuIrqCfg) u32;
+pub extern fn ra8_gpio_toggle(pin: u16) ErrCode;
+pub extern fn ra8_icu_configure_irq_pin(irq_num: u8, cfg: *const IcuIrqCfg) ErrCode;
 pub extern fn ra8_isr_register(
     event: u16,
     handler: IsrHandler,
     ctx: ?*anyopaque,
     priority: u8,
     out_slot: ?*u16,
-) u32;
+) ErrCode;
