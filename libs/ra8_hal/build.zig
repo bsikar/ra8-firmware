@@ -41,6 +41,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "canfd_tdc", .source = "src/internal/canfd_tdc.zig", .root = "tests/canfd_tdc_test.zig" },
         .{ .name = "layer3_switch", .source = "src/internal/layer3_switch.zig", .root = "tests/layer3_switch_test.zig" },
         .{ .name = "icu", .source = "src/internal/icu.zig", .root = "tests/icu_test.zig" },
+        .{ .name = "iwdt", .source = "src/internal/iwdt.zig", .root = "tests/iwdt_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
