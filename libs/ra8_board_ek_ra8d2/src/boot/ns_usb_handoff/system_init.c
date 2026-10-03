@@ -12,9 +12,9 @@
  * the ``cmse_nonsecure_entry`` veneers in ``libs/ra8_nsc/``.
  *
  * @details
- * `SystemInit()` follows the CMSIS naming convention and runs as the
- * first C function out of reset, *before* `Reset_Handler` copies
- * .data or zeroes .bss. Its responsibilities are strictly CPU-core
+ * `SystemInit()` follows the CMSIS naming convention and runs out of
+ * reset right *after* `Reset_Handler` copies .data and zeroes .bss
+ * (see `Reset_Handler()`). Its responsibilities are strictly CPU-core
  * level -- anything peripheral-bus-side belongs in
  * `ra8_infrastructure_init()` called from `main()` after the C
  * runtime is live.
@@ -41,14 +41,11 @@
  * usable. `Reset_Handler` loads SP from the vector table before
  * calling `SystemInit()`, so the stack is fine.
  *
- * .data and .bss are NOT yet initialised here: `Reset_Handler` runs
- * `SystemInit()` at step 1 and only copies .data / zeroes .bss at
- * steps 2-3 (see `libs/ra8_board_ek_ra8d2/src/boot/vector_table.c`).
- * `SystemInit()` itself writes no globals, but it is not currently
- * free of them either: `ra8_cgc_init()` logs through the CGC
- * driver's `s_tag`, a .data-resident `const char*`, so that read
- * lands on uninitialised SRAM on the real part. Tracked separately;
- * do not add new global reads on this path.
+ * .data and .bss ARE initialised here, and must be: `ra8_trustzone_init()`
+ * BLXNS-es into the Non-Secure image and never returns, so any RAM init
+ * sequenced after `SystemInit()` would never run. `ra8_cgc_init()` (its
+ * `s_tag` and clock-rate cache), the USB hand-off's I/O-expander hook and
+ * every Secure driver the NSC veneers reach all depend on it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -341,7 +338,7 @@ static void internal_mpu_init(void)
  * @pre Reached from SystemInit, before the SAU + BLXNS world switch.
  * @pre Global interrupts are masked (ra8_boot_disable_irq ran first).
  * @post The CPU is parked with interrupts masked; no NS code runs.
- * @post No global state is touched (safe before .data/.bss init).
+ * @post No global state is touched.
  *
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
@@ -357,10 +354,8 @@ static void internal_mpu_init(void)
  * Public entry point
  * =============================================================================
  *
- * Called from `Reset_Handler` before the .data copy and .bss zero,
- * so this path must not touch global variables: everything here
- * should run on the stack and write to CPU / SCB memory only. The
- * `ra8_cgc_init()` log tag is a known violation of that rule.
+ * Called from `Reset_Handler` after the .data copy and .bss zero, which
+ * the Secure clock bring-up and the TrustZone hand-off below rely on.
  */
 
 void SystemInit(void)

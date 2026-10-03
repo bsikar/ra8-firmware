@@ -3,9 +3,9 @@
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details
- * `SystemInit()` follows the CMSIS naming convention and runs as the
- * first C function out of reset, *before* `Reset_Handler` copies
- * .data or zeroes .bss. Its responsibilities are strictly CPU-core
+ * `SystemInit()` follows the CMSIS naming convention and runs out of
+ * reset right *after* `Reset_Handler` copies .data and zeroes .bss
+ * (see `Reset_Handler()`). Its responsibilities are strictly CPU-core
  * level -- anything peripheral-bus-side belongs in
  * `ra8_infrastructure_init()` called from `main()` after the C
  * runtime is live.
@@ -33,10 +33,8 @@
  * `__enable_irq()` once all drivers are up.
  *
  * The function is C, not naked asm, so stack and BSS must already be
- * usable. `Reset_Handler` loads SP from the vector table before
- * calling `SystemInit()`, so the stack is fine; BSS is zeroed only
- * *after* `SystemInit()` returns but `SystemInit()` writes to no
- * BSS or data-section variables, so the ordering is safe.
+ * usable. `Reset_Handler` loads SP from the vector table, copies .data
+ * and zeroes .bss before calling `SystemInit()`, so both are live here.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -530,7 +528,7 @@ static void internal_mpu_init(void)
  *               caller must leave the caches off, because a D-cache enabled
  *               with no map would see MMIO as Normal cacheable.
  *
- * @pre Runs from ``SystemInit()``, before the ``.data`` copy.
+ * @pre Runs from ``SystemInit()``, before the caches are enabled.
  * @post The MPU is enabled with PRIVDEFENA on success; untouched on failure.
  *
  * @note Opting in adds a link dependency on ``ra8_mpu``: an app that defines
@@ -555,7 +553,7 @@ static bool internal_boot_map_install(void)
  *
  * @retval true The map is installed.
  *
- * @pre Runs from ``SystemInit()``, before the ``.data`` copy.
+ * @pre Runs from ``SystemInit()``, before the caches are enabled.
  * @post The MPU is enabled with PRIVDEFENA.
  *
  * @since 0.1.0
@@ -571,9 +569,8 @@ static bool internal_boot_map_install(void)
  * Public entry point
  * =============================================================================
  *
- * Called from `Reset_Handler` before the .data copy and .bss zero.
- * Must therefore not touch any global variables -- everything here
- * runs on the stack and writes to CPU / SCB memory only.
+ * Called from `Reset_Handler` after the .data copy and .bss zero.
+ * Everything here runs on the stack and writes to CPU / SCB memory only.
  */
 
 void SystemInit(void)

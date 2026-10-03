@@ -32,26 +32,29 @@ extern "C" {
 #endif
 
 /**
- * @brief Earliest C code the image runs: bring the core up before RAM init.
+ * @brief Core bring-up hook ``Reset_Handler`` runs before ``main``.
  *
  * @details
- * Called by ``Reset_Handler`` before ``.data`` is copied and ``.bss`` is
- * zeroed, so it must not touch initialised or zero-initialised statics.
- * Each image supplies its own definition -- the shared board one under
- * the board boot directories, or an application-local
+ * Where it runs relative to RAM init is board-defined. The EK-RA8D2
+ * ``Reset_Handler`` copies ``.data`` and zeroes ``.bss`` first, because its
+ * TrustZone variants never return from here (they BLXNS into the
+ * Non-Secure image). The RA8P1 ``Reset_Handler`` calls it before RAM init,
+ * so a definition shared across boards must not touch initialised or
+ * zero-initialised statics. Each image supplies its own definition -- the
+ * shared board one under the board boot directories, or an application-local
  * ``system_init.c`` where the clock tree or memory map diverges.
  *
  * The name is the CMSIS convention; the startup code reaches it by that
  * name, which is why it has external linkage.
  *
  * @pre The CPU is at the reset vector with interrupts masked.
- * @pre ``.data`` has not been copied and ``.bss`` has not been zeroed.
+ * @pre ``.data``/``.bss`` are initialised (EK-RA8D2) or not yet (RA8P1).
  * @post The clock tree, cache and memory controller are configured.
- * @post It is safe for ``Reset_Handler`` to initialise RAM and call `main`.
+ * @post It is safe for ``Reset_Handler`` to call `main` (after RAM init).
  *
  * @note Not thread-safe; single-threaded reset context only.
- * @warning Must not read or write any static that startup has yet to
- *          initialise -- at this point they hold whatever SRAM held.
+ * @warning On a board that runs it before RAM init it must not read or
+ *          write any static -- they still hold whatever SRAM held.
  *
  * @see Default_Handler()
  *
