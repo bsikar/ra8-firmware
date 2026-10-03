@@ -9,8 +9,10 @@
 //! link-time value, and is wrong the moment the module runs.
 //!
 //! The link keeps its relocations (`--emit-relocs`), and this walks them. A
-//! relocation is a finding when the section it patches is data and its type
-//! does not move with the module.
+//! relocation is a site when the section it patches is data and its type
+//! does not move with the module. Whether a site is a failure is for
+//! `coverage.zig`: one the module's rebase records name is put right at
+//! start-up, and one they miss is not.
 //!
 //! Data here means loaded and not executable. Three kinds of section are
 //! left alone: code, which is never copied and may hold link addresses on

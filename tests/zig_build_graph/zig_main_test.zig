@@ -21,8 +21,11 @@ test "an app with a Zig main has no main.c in its C set" {
     try std.testing.expect(!sources.hasCMain(zig_app));
 }
 
-test "threadx_cpu1, npu_vela_conv, txm_manager_cpu1, txm_fault_cpu1 and cpu1_pingpong_ra8p1 are the apps in the table with a Zig main" {
-    const expected = [_][]const u8{ "threadx_cpu1", "npu_vela_conv", "txm_manager_cpu1", "txm_fault_cpu1", "cpu1_pingpong_ra8p1" };
+test "the apps in the table with a Zig main are these six, in this order" {
+    const expected = [_][]const u8{
+        "threadx_cpu1",   "npu_vela_conv",  "txm_manager_cpu1",
+        "txm_fault_cpu1", "txm_table_cpu1", "cpu1_pingpong_ra8p1",
+    };
     var zig_mains: usize = 0;
     for (sources.cross_apps) |app| {
         if (sources.hasCMain(app)) continue;

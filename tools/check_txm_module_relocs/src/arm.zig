@@ -49,6 +49,12 @@ pub fn name(kind: Kind) ?[]const u8 {
     return null;
 }
 
+/// True for the types that store one whole absolute address in a word: the
+/// only ones a rebase table can cover.
+pub fn isWholeWord(kind: Kind) bool {
+    return kind == abs32 or kind == target1;
+}
+
 /// True for the types whose stored value does not depend on where the
 /// module is loaded: relative to the place, to the GOT or to the data base.
 ///

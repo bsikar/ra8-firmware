@@ -26,7 +26,8 @@ const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
 const cpu1_txm_hello = @import("cpu1_txm_hello.zig");
 const txm_ra8app = @import("txm_ra8app.zig");
-const txm_module_object = @import("txm_module_object.zig");
+const txm_module_target = @import("txm_module_target.zig");
+const txm_module_check = @import("txm_module_check.zig");
 const m85_threadx_modules = @import("m85_threadx_modules.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
@@ -153,13 +154,13 @@ pub fn addTxmModuleCheck(
     globals: build_type.Globals,
     dir: []const u8,
 ) void {
-    const gnu = txm_module_object.findGnu(b, dir) orelse {
-        txm_module_object.addMissing(b, step, dir);
+    const gnu = txm_module_target.findGnu(b, dir) orelse {
+        txm_module_check.addMissing(b, step, dir);
         return;
     };
     const tools: ArmTools = .{ .gcc = gnu.gcc, .objcopy = gnu.objcopy, .size = "", .ar = gnu.ar };
     const m85 = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
-    txm_module_object.add(b, step, gnu, m85);
+    txm_module_check.add(b, step, gnu, m85);
 }
 
 /// The `threadx-m85-modules` step: the M85 Module Manager archive (RA8FW-426).

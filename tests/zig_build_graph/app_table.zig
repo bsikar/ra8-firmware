@@ -861,6 +861,27 @@ pub const cross_apps = [_]CrossApp{
         },
     },
     .{
+        // A module that keeps addresses in its data: built through C and
+        // rebased at start-up, and checked by the values it reports
+        // (RA8FW-539). Appended after txm_fault_cpu1 for the same reason.
+        .name = "txm_table_cpu1",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_table_cpu1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .uses = &.{"threadx_m33_modules"},
+            .txm_module = "txm_table_m33",
+        },
+    },
+    .{
         // The RA8P1's first dual-core app (RA8FW-496): the EK cpu1_pingpong
         // protocol, Zig on both halves, no RTOS on CPU1. Its CPU1 linker
         // script and image fragment come from the RA8P1 board layer through

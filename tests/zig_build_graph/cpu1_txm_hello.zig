@@ -23,6 +23,7 @@ const middleware = @import("middleware.zig");
 const pkg_path = @import("pkg_path.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
+const module_object = @import("txm_module_object.zig");
 
 pub const step_description = "Build the hello-world ThreadX module for CPU1 (Cortex-M33) as arm/txm_hello_m33.elf";
 
@@ -30,6 +31,11 @@ pub const step_description = "Build the hello-world ThreadX module for CPU1 (Cor
 pub const Module = struct {
     name: []const u8,
     entry_source: []const u8,
+    /// Build the start thread through Zig's C backend and gcc with the
+    /// module flags, and link the rebase pass and table (RA8FW-539). A
+    /// module that keeps any address in its data needs this; one that keeps
+    /// none, like the two below, is built natively as before.
+    through_c: bool = false,
 };
 
 /// The hello-world module, and the one the `txm-hello-m33` step installs.
@@ -45,8 +51,16 @@ pub const fault = Module{
     .entry_source = "examples/ek_ra8d2/hw_pending/txm_fault_m33/module_start.zig",
 };
 
+/// The module that keeps a table of function pointers in its data and
+/// reports what it computes through it, for txm_table_cpu1 (RA8FW-539).
+pub const table = Module{
+    .name = "txm_table_m33",
+    .entry_source = "tests/zig_build_graph/txm_module_probes/table.zig",
+    .through_c = true,
+};
+
 /// Every module a CPU1 image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault };
+pub const modules = [_]Module{ hello_world, fault, table };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
@@ -98,20 +112,24 @@ pub fn asmFlags(allocator: std.mem.Allocator) []const []const u8 {
     return flags.toOwnedSlice() catch @panic("OOM");
 }
 
-/// The module's link outputs.
+/// The module's link outputs. A module built through C has no map.
 pub const Artifacts = struct {
     elf: std.Build.LazyPath,
     bin: std.Build.LazyPath,
-    map: std.Build.LazyPath,
+    map: ?std.Build.LazyPath,
 };
 
 /// Builds `module`, installs its ELF, binary and map under `arm/`, and
 /// returns them for a later step (txm_ra8app.zig packs the binary).
 pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8, module: Module) Artifacts {
     const built = image(b, base, objcopy, module);
-    inline for (.{ .{ built.elf, "elf" }, .{ built.bin, "bin" }, .{ built.map, "map" } }) |artifact| {
+    const outputs = [_]struct { ?std.Build.LazyPath, []const u8 }{
+        .{ built.elf, "elf" }, .{ built.bin, "bin" }, .{ built.map, "map" },
+    };
+    for (outputs) |artifact| {
+        const path = artifact[0] orelse continue;
         step.dependOn(&b.addInstallFileWithDir(
-            artifact[0],
+            path,
             .{ .custom = "arm" },
             b.fmt("{s}.{s}", .{ module.name, artifact[1] }),
         ).step);
@@ -121,6 +139,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, obj
 
 /// Links `module` and converts it to a raw binary.
 pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8, module: Module) Artifacts {
+    if (module.through_c) return imageThroughC(b, base, objcopy, module);
     const archive = middleware.add(b, cpu1_txm_lib.txm_m33, cpu1_txm_lib.toolchain(b.allocator, base));
     const flags = asmFlags(b.allocator);
 
@@ -138,6 +157,28 @@ pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8, mod
     const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
     to_bin.addFileArg(elf);
     return .{ .elf = elf, .bin = to_bin.addOutputFileArg(b.fmt("{s}.bin", .{module.name})), .map = map };
+}
+
+/// The same, for a module whose Zig goes through C: txm_module_object.zig's
+/// recipe, with the toolchain this graph already drives.
+fn imageThroughC(
+    b: *std.Build,
+    base: middleware.Toolchain,
+    objcopy: []const u8,
+    module: Module,
+) Artifacts {
+    const ctx: module_object.Context = .{
+        .gnu = .{ .gcc = base.gcc, .ar = base.ar, .objcopy = objcopy },
+        .core = .cortex_m33,
+        .base = base,
+    };
+    const root = module_object.rootModule(b, ctx.core, module.entry_source);
+    const entry = module_object.object(b, ctx, module.name, root);
+    const elf = module_object.link(b, ctx, module.name, entry, null);
+    const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
+    to_bin.addFileArg(elf);
+    const bin = to_bin.addOutputFileArg(b.fmt("{s}.bin", .{module.name}));
+    return .{ .elf = elf, .bin = bin, .map = null };
 }
 
 /// `module`'s binary as a relocatable object whose one section is

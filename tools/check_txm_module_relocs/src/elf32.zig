@@ -99,6 +99,40 @@ pub const File = struct {
         };
     }
 
+    /// The symbol called `name`, from whichever symbol table has it.
+    pub fn symbolNamed(self: File, name: []const u8) Error!?Symbol {
+        for (0..self.section_count) |index| {
+            const table = try self.section(@intCast(index));
+            if (table.kind != elf.SHT_SYMTAB) continue;
+            const count = table.bytes.len / @sizeOf(elf.Elf32_Sym);
+            for (0..count) |entry| {
+                const found = try self.symbol(@intCast(index), @intCast(entry));
+                if (std.mem.eql(u8, found.name, name)) return found;
+            }
+        }
+        return null;
+    }
+
+    /// The `length` bytes the image holds for `address`, or null when no
+    /// loaded section with contents covers them.
+    pub fn bytesAt(self: File, address: u32, length: u32) Error!?[]const u8 {
+        for (0..self.section_count) |index| {
+            const found = try self.section(@intCast(index));
+            if (found.flags & elf.SHF_ALLOC == 0) continue;
+            if (address < found.address) continue;
+            const offset = address - found.address;
+            if (offset > found.bytes.len or length > found.bytes.len - offset) continue;
+            return found.bytes[offset..][0..length];
+        }
+        return null;
+    }
+
+    /// The little-endian word the image holds at `address`.
+    pub fn wordAt(self: File, address: u32) Error!?u32 {
+        const bytes = try self.bytesAt(address, @sizeOf(u32)) orelse return null;
+        return std.mem.readInt(u32, bytes[0..4], .little);
+    }
+
     /// A section header as read, before its name is resolved.
     const Raw = struct { section: Section, name_offset: u32 };
 
