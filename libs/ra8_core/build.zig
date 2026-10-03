@@ -52,6 +52,11 @@
 //! all: the three ARM images that still compile `ra8_log.c` by path had no
 //! archive to move to until these two were composed.
 //!
+//! Both HOST archives are position-independent. The host suite links with
+//! `-no-pie`, but a standalone host app such as `apps/host/alphabet_soup`
+//! links a default PIE executable, and a non-PIC archive cannot go into one.
+//! The image archive is left alone: nothing about a firmware link changes.
+//!
 //! `bundle_compiler_rt` is OFF on both. Zig's compiler_rt carries its own
 //! `memcpy` / `memset` / `memmove` / `memcmp`: in the freestanding archive
 //! that would double-define the names this archive exports itself, and in the
@@ -117,6 +122,7 @@ pub fn build(b: *std.Build) void {
             .root_module = freestanding_root,
         });
         freestanding_library.bundle_compiler_rt = false;
+        freestanding_library.root_module.pic = true;
         b.installArtifact(freestanding_library);
     }
 
@@ -417,6 +423,7 @@ pub fn build(b: *std.Build) void {
             .root_module = root,
         });
         library.bundle_compiler_rt = false;
+        library.root_module.pic = true;
         b.installArtifact(library);
     } else {
         const image_root = b.createModule(.{
