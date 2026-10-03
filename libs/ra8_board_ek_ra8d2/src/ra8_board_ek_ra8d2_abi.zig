@@ -232,7 +232,7 @@ export fn ra8_board_get_info(out: ?*hal.BoardInfo) u32 {
 }
 
 export fn ra8_board_led_pin(led: u8, out_pin: ?*u16) u32 {
-    const dst = out_pin orelse return vocab.Err.null_ptr;
+    const dst = out_pin orelse return vocab.Err.invalid_arg;
     return leds.readPin(led, dst);
 }
 
@@ -258,7 +258,7 @@ export fn ra8_board_led_toggle(led: u8) u32 {
 }
 
 export fn ra8_board_sw_pin(sw: u8, out_pin: ?*u16) u32 {
-    const dst = out_pin orelse return vocab.Err.null_ptr;
+    const dst = out_pin orelse return vocab.Err.invalid_arg;
     return switches.readPin(sw, dst);
 }
 
@@ -267,7 +267,7 @@ export fn ra8_board_sw_init(sw: u8) u32 {
 }
 
 export fn ra8_board_sw_read(sw: u8, out_pressed: ?*u8) u32 {
-    const dst = out_pressed orelse return vocab.Err.null_ptr;
+    const dst = out_pressed orelse return vocab.Err.invalid_arg;
     return switches.read(sw, dst);
 }
 
@@ -324,7 +324,7 @@ export fn ra8_board_arduino_gpio_write(pin: u16, level: u32) u32 {
 }
 
 export fn ra8_board_arduino_gpio_read(pin: u16, out_level: ?*u32) u32 {
-    const dst = out_level orelse return vocab.Err.null_ptr;
+    const dst = out_level orelse return vocab.Err.invalid_arg;
     return arduino.read(pin, dst);
 }
 
