@@ -13,8 +13,10 @@
 //! The module's code is Zig, not C. Zig emits an `.ARM.exidx` cantunwind
 //! entry the module script never places, so it is stripped from the entry
 //! object before the link. `zig build txm-hello-m33` installs
-//! `arm/txm_hello_m33.{elf,bin,map}`. A CPU1 image that sets `txm_module`
-//! links the binary packed into `.txm_module` (`pack`, RA8FW-431).
+//! `arm/txm_hello_m33.{elf,bin,map}`. A CPU1 image that names a module in
+//! `txm_module` links that module's binary packed into `.txm_module` (`pack`,
+//! RA8FW-431). Every module builds the same way and differs only in its name
+//! and its Zig start thread (`Module`, RA8FW-458).
 
 const std = @import("std");
 const middleware = @import("middleware.zig");
@@ -24,8 +26,31 @@ const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
 
 pub const step_description = "Build the hello-world ThreadX module for CPU1 (Cortex-M33) as arm/txm_hello_m33.elf";
 
-pub const name = "txm_hello_m33";
-pub const entry_source = "examples/ek_ra8d2/hw_pending/txm_hello_m33/module_start.zig";
+/// One CPU1 module: the name its outputs carry and its Zig start thread.
+pub const Module = struct {
+    name: []const u8,
+    entry_source: []const u8,
+};
+
+/// The hello-world module, and the one the `txm-hello-m33` step installs.
+pub const hello_world = Module{
+    .name = "txm_hello_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_hello_m33/module_start.zig",
+};
+
+/// Every module a CPU1 image can name in `txm_module`.
+pub const modules = [_]Module{hello_world};
+
+pub const name = hello_world.name;
+pub const entry_source = hello_world.entry_source;
+
+/// The module called `wanted`, or null when there is none.
+pub fn find(wanted: []const u8) ?Module {
+    for (modules) |module| {
+        if (std.mem.eql(u8, module.name, wanted)) return module;
+    }
+    return null;
+}
 pub const preamble = "pkg:threadx/ports_module/cortex_m33/gnu/example_build/txm_module_preamble.S";
 pub const gcc_setup = "pkg:threadx/ports_module/cortex_m33/gnu/example_build/gcc_setup.s";
 pub const linker_script = "pkg:threadx/ports_module/cortex_m3/gnu/example_build/sample_threadx_module.ld";
@@ -73,46 +98,46 @@ pub const Artifacts = struct {
     map: std.Build.LazyPath,
 };
 
-/// Builds the module and installs its ELF, binary and map under `arm/`.
-pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8) void {
-    const module = image(b, base, objcopy);
-    inline for (.{ .{ module.elf, "elf" }, .{ module.bin, "bin" }, .{ module.map, "map" } }) |artifact| {
+/// Builds `module` and installs its ELF, binary and map under `arm/`.
+pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8, module: Module) void {
+    const built = image(b, base, objcopy, module);
+    inline for (.{ .{ built.elf, "elf" }, .{ built.bin, "bin" }, .{ built.map, "map" } }) |artifact| {
         step.dependOn(&b.addInstallFileWithDir(
             artifact[0],
             .{ .custom = "arm" },
-            name ++ "." ++ artifact[1],
+            b.fmt("{s}.{s}", .{ module.name, artifact[1] }),
         ).step);
     }
 }
 
-/// Links the module and converts it to a raw binary.
-pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8) Artifacts {
+/// Links `module` and converts it to a raw binary.
+pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8, module: Module) Artifacts {
     const archive = middleware.add(b, cpu1_txm_lib.txm_m33, cpu1_txm_lib.toolchain(b.allocator, base));
     const flags = asmFlags(b.allocator);
 
     const link = b.addSystemCommand(&.{base.gcc});
     link.addArgs(&link_flags);
     link.addPrefixedFileArg("-T", pkg_path.lazy(b, linker_script));
-    const map = link.addPrefixedOutputFileArg("-Wl,--Map=", name ++ ".map");
+    const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{module.name}));
     link.addArg("-o");
-    const elf = link.addOutputFileArg(name ++ ".elf");
+    const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{module.name}));
     link.addFileArg(assemble(b, base.gcc, flags, preamble, "txm_module_preamble.o"));
     link.addFileArg(assemble(b, base.gcc, flags, gcc_setup, "gcc_setup.o"));
-    link.addFileArg(zigEntry(b, objcopy));
+    link.addFileArg(zigEntry(b, objcopy, module));
     link.addFileArg(archive);
 
     const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
     to_bin.addFileArg(elf);
-    return .{ .elf = elf, .bin = to_bin.addOutputFileArg(name ++ ".bin"), .map = map };
+    return .{ .elf = elf, .bin = to_bin.addOutputFileArg(b.fmt("{s}.bin", .{module.name})), .map = map };
 }
 
-/// The module binary as a relocatable object whose one section is
+/// `module`'s binary as a relocatable object whose one section is
 /// `module_section`, for a CPU1 image to link.
-pub fn pack(b: *std.Build, objcopy: []const u8, bin: std.Build.LazyPath) std.Build.LazyPath {
+pub fn pack(b: *std.Build, objcopy: []const u8, module: Module, bin: std.Build.LazyPath) std.Build.LazyPath {
     const run = b.addSystemCommand(&.{ objcopy, "-I", "binary", "-O", "elf32-littlearm", "-B", "arm", "--rename-section" });
     run.addArg(".data=" ++ module_section ++ ",alloc,load,readonly,contents");
     run.addFileArg(bin);
-    return run.addOutputFileArg(name ++ "_module.o");
+    return run.addOutputFileArg(b.fmt("{s}_module.o", .{module.name}));
 }
 
 fn assemble(b: *std.Build, gcc: []const u8, flags: []const []const u8, source: []const u8, object: []const u8) std.Build.LazyPath {
@@ -125,16 +150,16 @@ fn assemble(b: *std.Build, gcc: []const u8, flags: []const []const u8, source: [
 }
 
 /// The Zig start thread as one object for the M33, its unwind index removed.
-fn zigEntry(b: *std.Build, objcopy: []const u8) std.Build.LazyPath {
+fn zigEntry(b: *std.Build, objcopy: []const u8, module: Module) std.Build.LazyPath {
     const root = b.createModule(.{
-        .root_source_file = b.path(entry_source),
+        .root_source_file = b.path(module.entry_source),
         .target = b.resolveTargetQuery(cpu1_image.zig_target_query),
         .optimize = .ReleaseSmall,
         .unwind_tables = .none,
     });
-    const object = b.addObject(.{ .name = name ++ "_entry", .root_module = root });
+    const object = b.addObject(.{ .name = b.fmt("{s}_entry", .{module.name}), .root_module = root });
     const strip = b.addSystemCommand(&.{objcopy});
     strip.addArgs(&strip_args);
     strip.addFileArg(object.getEmittedBin());
-    return strip.addOutputFileArg(name ++ "_entry.o");
+    return strip.addOutputFileArg(b.fmt("{s}_entry.o", .{module.name}));
 }

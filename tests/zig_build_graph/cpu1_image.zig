@@ -78,10 +78,11 @@ pub const Cpu1Image = struct {
     /// objects, and never one of `sources()`: gcc does not compile it and
     /// the compile database has no row for it.
     entry_language: EntryLanguage = .c,
-    /// Whether the image carries the hello-world ThreadX module
-    /// (`cpu1_txm_hello`), packed into `.txm_module` for its Module Manager
-    /// to load in place. The app's own CPU1 linker script places it (RA8FW-431).
-    txm_module: bool = false,
+    /// The ThreadX module the image carries, by name (see
+    /// `cpu1_txm_hello.find`), packed into `.txm_module` for its Module
+    /// Manager to load in place. The app's own CPU1 linker script places it
+    /// (RA8FW-431). Null for every image without a Module Manager.
+    txm_module: ?[]const u8 = null,
 };
 
 pub const EntryLanguage = enum { c, zig };

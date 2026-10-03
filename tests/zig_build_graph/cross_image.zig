@@ -115,13 +115,13 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
     cpu1_txm_lib.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
 }
 
-/// The packed hello-world module for a CPU1 image that asks for one, else
-/// nothing (RA8FW-431).
+/// The packed module a CPU1 image names, else nothing (RA8FW-431, RA8FW-458).
 fn txmModuleObjects(b: *std.Build, image: cpu1_image.Cpu1Image, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
-    if (!image.txm_module) return &.{};
+    const wanted = image.txm_module orelse return &.{};
+    const module = cpu1_txm_hello.find(wanted) orelse @panic("CPU1 image names a ThreadX module with no entry in cpu1_txm_hello.modules");
     const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
-    const module = cpu1_txm_hello.image(b, module_tc, tools.objcopy);
-    return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module.bin)}) catch @panic("OOM");
+    const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
+    return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, built.bin)}) catch @panic("OOM");
 }
 
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
@@ -131,7 +131,7 @@ pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, globals: build_type.
         step.dependOn(&notice.step);
         return;
     };
-    cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy);
+    cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy, cpu1_txm_hello.hello_world);
 }
 
 /// The `threadx-m85-modules` step: the M85 Module Manager archive (RA8FW-426).
