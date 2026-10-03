@@ -48,10 +48,10 @@ typedef enum : uint32_t {
  * - Vector 5: arena NULL             -> true  (varies arena only)
  * Vector 1 paired with each of 2..5 proves the corresponding condition
  * independently decides. N+1 = 5 vectors for N=4: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@internal_c6link_check_cfg
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_open
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_is_open
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_last_fault @brief Verify open validation behavior. @details Executes the open validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_lifecycle_abi.zig@internal_c6link_check_cfg
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_lifecycle_abi.zig@ra8_c6link_open
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_lifecycle_abi.zig@ra8_c6link_is_open
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_lifecycle_abi.zig@ra8_c6link_last_fault @brief Verify open validation behavior. @details Executes the open validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_open_validation(void)
 {
   TEST_BEGIN("c6link open validation");
