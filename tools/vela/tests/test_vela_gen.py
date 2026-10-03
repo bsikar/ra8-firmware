@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Tests for vela_gen's COP1 driver-payload unwrap.
+"""Tests for vela_gen's COP1 unwrap and input/output placement.
 
 Run with: python3 -m unittest discover -s tools/vela/tests
 """
@@ -77,6 +77,31 @@ class UnwrapCommandStreamTest(unittest.TestCase):
         payload = _payload(*_command_stream(STREAM), *_command_stream(STREAM))
         with self.assertRaisesRegex(ValueError, "found 2"):
             vela_gen.unwrap_command_stream(payload)
+
+
+
+class PlaceIoTest(unittest.TestCase):
+    """place_io maps the input and output into the scratch region."""
+
+    def test_offline_offsets_land_in_the_scratch_slot(self) -> None:
+        slots = [("weights", -1), ("scratch", 0), ("scratch", 0), ("input", 256), ("output", 0)]
+        self.assertEqual(vela_gen.place_io(slots), {"input": (1, 256), "output": (1, 0)})
+
+    def test_offsets_are_relative_to_the_scratch_tensor(self) -> None:
+        slots = [("scratch", 64), ("input", 320), ("output", 64)]
+        self.assertEqual(vela_gen.place_io(slots), {"input": (0, 256), "output": (0, 0)})
+
+    def test_no_metadata_keeps_each_tensor_in_its_own_slot(self) -> None:
+        slots = [("weights", -1), ("scratch", -1), ("input", -1), ("output", -1)]
+        self.assertEqual(vela_gen.place_io(slots), {"input": (2, 0), "output": (3, 0)})
+
+    def test_rejects_a_tensor_before_the_scratch(self) -> None:
+        with self.assertRaisesRegex(ValueError, "before the scratch"):
+            vela_gen.place_io([("scratch", 128), ("input", 0)])
+
+    def test_rejects_two_inputs(self) -> None:
+        with self.assertRaisesRegex(ValueError, "more than one input"):
+            vela_gen.place_io([("scratch", 0), ("input", 0), ("input", 256)])
 
 
 if __name__ == "__main__":

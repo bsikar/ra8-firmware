@@ -96,6 +96,8 @@ ACCEL_ETHOS_U55_256 = 256
 # Vela's own markers inside a compiled _vela.tflite (see `distill`).
 VELA_CUSTOM_CODE = b"ethos-u"
 VELA_CMD_STREAM_TENSOR = b"ethos_u_command_stream"
+# Metadata Vela writes so TFLM places tensors at Vela's arena offsets.
+VELA_OFFLINE_ALLOCATION = b"OfflineMemoryAllocation"
 VELA_SCRATCH_PREFIX = b"scratch"
 VELA_READ_ONLY_TENSOR = b"read_only"
 
@@ -362,6 +364,21 @@ def emit_header(desc: dict, blob: bytes) -> str:
     return "\n".join(lines)
 
 
+def _place_lines(places: dict[str, tuple[int, int]]) -> list[str]:
+    """Zig constants naming where the input and output sit (RA8FW-487)."""
+    lines: list[str] = []
+    for role in ("input", "output"):
+        if role not in places:
+            continue
+        slot, offset = places[role]
+        lines += [
+            f"/// BASEP slot and byte offset the command stream {'reads' if role == 'input' else 'writes'} the {role} at.",
+            f"pub const {role}_region: usize = {slot};",
+            f"pub const {role}_offset: usize = {offset};",
+        ]
+    return [*lines, ""] if lines else []
+
+
 def emit_zig(desc: dict, blob: bytes) -> str:
     """Render `blob` as a Zig file a Zig main can `@import` (RA8FW-420).
 
@@ -382,6 +399,7 @@ def emit_zig(desc: dict, blob: bytes) -> str:
         f"//! '{desc['name']}', byte for byte the bytes of {desc['header_name']},",
         "//! spelled as Zig so a Zig main can import it.",
         "",
+        *_place_lines(desc.get("places", {})),
         f"pub const bytes = [{len(blob)}]u8{{",
         *rows,
         "};",
@@ -537,7 +555,12 @@ def _tensor_role(tensor, index: int, subgraph, const: bytes) -> str:  # noqa: AN
 
 def _const_bytes(model, tensor) -> bytes:  # noqa: ANN001
     """Constant buffer bytes backing @p tensor (empty when runtime-allocated)."""
-    buf = model.Buffers(tensor.Buffer())
+    return _buffer_bytes(model, tensor.Buffer())
+
+
+def _buffer_bytes(model, index: int) -> bytes:  # noqa: ANN001
+    """The bytes of model buffer @p index (empty when it carries none)."""
+    buf = model.Buffers(index)
     length = buf.DataLength()
     if length == 0:
         return b""
@@ -619,6 +642,68 @@ def unwrap_command_stream(payload: bytes) -> bytes:
     return streams[0]
 
 
+def place_io(slots: list[tuple[str, int]]) -> dict[str, tuple[int, int]]:
+    """Find where the network input and output live, as (BASEP slot, offset).
+
+    Vela's OfflineMemoryAllocation puts the scratch tensor and the network's
+    input and output in one arena, and the command stream addresses all three
+    through the scratch region's base pointer. TFLM honours those offsets, so
+    the input and output are read and written inside the scratch region, not
+    through the input and output slots of their own.
+
+    Args:
+        slots: One (role, offline offset) per BASEP slot, in slot order. An
+            offset of -1 means Vela gave the tensor no offline offset.
+
+    Returns:
+        {"input": (slot, offset), "output": (slot, offset)} for the roles
+        present. A tensor with no offline offset, or no offline scratch to
+        sit in, keeps its own slot at offset 0.
+
+    Raises:
+        ValueError: More than one input or output, or a tensor placed before
+            the scratch tensor's own offset.
+    """
+    scratch = next(
+        ((slot, off) for slot, (role, off) in enumerate(slots) if role == "scratch" and off >= 0),
+        None,
+    )
+    places: dict[str, tuple[int, int]] = {}
+    for slot, (role, off) in enumerate(slots):
+        if role not in ("input", "output"):
+            continue
+        if role in places:
+            msg = f"more than one {role} tensor; one of each is supported"
+            raise ValueError(msg)
+        if scratch is None or off < 0:
+            places[role] = (slot, 0)
+            continue
+        if off < scratch[1]:
+            msg = f"{role} offset {off} sits before the scratch tensor at {scratch[1]}"
+            raise ValueError(msg)
+        places[role] = (scratch[0], off - scratch[1])
+    return places
+
+
+def _offline_offsets(model, tensor_count: int) -> list[int]:  # noqa: ANN001
+    """Per-tensor arena offsets from OfflineMemoryAllocation, -1 when absent.
+
+    The metadata buffer is int32 words: version, subgraph, offset count, then
+    one offset per tensor (-1 for a tensor TFLM allocates itself).
+    """
+    for index in range(model.MetadataLength()):
+        meta = model.Metadata(index)
+        if meta.Name() != VELA_OFFLINE_ALLOCATION:
+            continue
+        raw = _buffer_bytes(model, meta.Buffer())
+        words = struct.unpack(f"<{len(raw) // 4}i", raw[: len(raw) // 4 * 4])
+        if len(words) < 3 or words[2] != tensor_count or len(words) != 3 + tensor_count:
+            msg = f"OfflineMemoryAllocation does not cover {tensor_count} tensors"
+            raise ValueError(msg)
+        return list(words[3:])
+    return [-1] * tensor_count
+
+
 def distill_blob(path: Path, accel: int = ACCEL_ETHOS_U55_256) -> tuple[bytes, dict]:
     """Distill a Vela `_vela.tflite` into a `.npub` blob plus a layout report.
 
@@ -684,8 +769,10 @@ def distill_blob(path: Path, accel: int = ACCEL_ETHOS_U55_256) -> tuple[bytes, d
             regions.append({"role": role, "size": size, "mode": "runtime"})
             report.append({"slot": index, "name": name, "role": role, "runtime": size})
 
+    offsets = _offline_offsets(model, subgraph.TensorsLength())
+    places = place_io([(region["role"], offsets[tindex]) for region, tindex in zip(regions, slots)])
     blob = pack_blob(regions, cmd, accel)
-    return blob, {"regions": report, "cmd_bytes": len(cmd), "total": len(blob)}
+    return blob, {"regions": report, "cmd_bytes": len(cmd), "total": len(blob), "places": places}
 
 
 def cmd_distill(args: argparse.Namespace) -> int:
@@ -702,6 +789,7 @@ def cmd_distill(args: argparse.Namespace) -> int:
         "source": source.name,
         "model_source": args.model_source,
         "header_name": Path(args.output).name,
+        "places": report["places"],
     }
     header = emit_header(desc, blob)
     for region in report["regions"]:

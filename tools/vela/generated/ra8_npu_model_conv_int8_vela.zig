@@ -6,6 +6,13 @@
 //! 'conv_int8_vela', byte for byte the bytes of ra8_npu_model_conv_int8_vela.h,
 //! spelled as Zig so a Zig main can import it.
 
+/// BASEP slot and byte offset the command stream reads the input at.
+pub const input_region: usize = 1;
+pub const input_offset: usize = 256;
+/// BASEP slot and byte offset the command stream writes the output at.
+pub const output_region: usize = 1;
+pub const output_offset: usize = 0;
+
 pub const bytes = [520]u8{
     0x4E, 0x50, 0x55, 0x31, 0x01, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
     0x70, 0x00, 0x00, 0x00, 0x28, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x80, 0x08, 0xC4, 0xCC,
