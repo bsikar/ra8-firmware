@@ -92,6 +92,10 @@ static bool s_read_fails;
 static uint32_t s_handler_calls;
 /** @brief Argument of the most recent edge callback. */
 static void* s_handler_arg;
+/** @brief Number of ``input_init`` calls the mock pin driver has taken. */
+static uint32_t s_input_inits;
+/** @brief Pull selection carried by the most recent ``input_init`` call. */
+static ra8_pin_pull_t s_last_pull;
 
 /**
  * @brief Find or create the mock level row for a pin.
@@ -212,7 +216,7 @@ RA8_INTERNAL static ra8_err_t internal_mock_toggle(void* ctx, ra8_port_pin_t pin
   return k_ra8_ok;
 }
 
-/** @brief Records an input configuration; the pull selection is not modelled.
+/** @brief Records an input configuration and the pull selection it carried.
  * @details Implements the fixture-only input init operation with bounded static state.
  * @param[in,out] ctx Backend context supplied by the adapter under test.
  * @param[in] pin Logical port/pin identifier presented to the mock.
@@ -228,11 +232,12 @@ RA8_INTERNAL static ra8_err_t
 internal_mock_input_init(void* ctx, ra8_port_pin_t pin, ra8_pin_pull_t pull)
 {
   (void)ctx;
-  (void)pull;
   mock_level_t* row = internal_mock_row(pin);
   if (row == nullptr) {
     return k_ra8_err_no_mem;
   }
+  s_input_inits++;
+  s_last_pull = pull;
   return k_ra8_ok;
 }
 
@@ -353,6 +358,8 @@ RA8_INTERNAL static void internal_reset_state(void)
   s_read_fails    = false;
   s_handler_calls = 0U;
   s_handler_arg   = nullptr;
+  s_input_inits   = 0U;
+  s_last_pull     = k_ra8_pull_none;
   priv_ra8_esp_hosted_gpio_set_pin_interface(&s_mock_pin_if);
 }
 
@@ -472,9 +479,10 @@ RA8_INTERNAL static void internal_test_config_gpio(void)
   TEST_ASSERT_EQ(RET_OK, f._h_config_gpio(prt, num, (uint32_t)H_GPIO_MODE_DEF_OUTPUT));
   TEST_ASSERT_EQ(H_RESET_VAL_INACTIVE, internal_get_level(pin));
 
-  /* Input configuration goes straight to the HAL: it has no seam row. */
+  /* Input configuration goes through the injected driver, with no pull. */
   TEST_ASSERT_EQ(RET_OK, f._h_config_gpio(prt, num, (uint32_t)H_GPIO_MODE_DEF_INPUT));
-  TEST_ASSERT(ra8_pin_validator_is_claimed(pin));
+  TEST_ASSERT_EQ(1U, s_input_inits);
+  TEST_ASSERT_EQ(k_ra8_pull_none, s_last_pull);
 
   TEST_ASSERT_EQ(RET_INVALID, f._h_config_gpio(prt, num, (uint32_t)k_gpio_test_bad_mode));
   TEST_ASSERT_EQ(
@@ -550,13 +558,16 @@ RA8_INTERNAL static void internal_test_pull(void)
 
   /* The RA8D2 PFS has no pull-down bit; the request must not report success. */
   TEST_ASSERT(f._h_pull_gpio(prt, num, (uint32_t)H_GPIO_PULL_DOWN, (uint32_t)H_ENABLE) != RET_OK);
-  TEST_ASSERT(!ra8_pin_validator_is_claimed(pin));
+  TEST_ASSERT_EQ(0U, s_input_inits);
 
   TEST_ASSERT_EQ(RET_INVALID,
                  f._h_pull_gpio(prt, num, (uint32_t)k_gpio_test_bad_pull, (uint32_t)H_ENABLE));
   TEST_ASSERT_EQ(RET_OK, f._h_pull_gpio(prt, num, (uint32_t)H_GPIO_PULL_UP, (uint32_t)H_ENABLE));
-  TEST_ASSERT(ra8_pin_validator_is_claimed(pin));
+  TEST_ASSERT_EQ(1U, s_input_inits);
+  TEST_ASSERT_EQ(k_ra8_pull_up, s_last_pull);
   TEST_ASSERT_EQ(RET_OK, f._h_pull_gpio(prt, num, (uint32_t)H_GPIO_PULL_UP, (uint32_t)H_DISABLE));
+  TEST_ASSERT_EQ(2U, s_input_inits);
+  TEST_ASSERT_EQ(k_ra8_pull_none, s_last_pull);
   TEST_ASSERT_EQ(RET_INVALID,
                  f._h_pull_gpio(prt,
                                 (uint32_t)k_gpio_test_unwired,
