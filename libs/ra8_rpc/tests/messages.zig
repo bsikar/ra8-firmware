@@ -8,6 +8,10 @@
 //! records what the code did cannot say the code is wrong.
 
 const std = @import("std");
+const rpc = @import("ra8_rpc");
+
+/// The envelope the tests speak: bodies of at most 32 bytes.
+pub const Env = rpc.Envelope(32);
 
 pub const Mode = enum(u8) { idle = 0, run = 1, halt = 7 };
 pub const Region = enum(u16) { boot = 0x0100, app = 0xA55A };
@@ -33,6 +37,19 @@ pub const Mixed = struct {
 
     pub const max_len = .{ .name = 8, .body = 32 };
 };
+
+/// A tag that is not 0, 1, 2: the wire carries the enum's value, not its index.
+pub const Which = enum(u8) { none = 0, code = 1, text = 4 };
+
+pub const Body = union(Which) {
+    none: void,
+    code: u16,
+    text: []const u8,
+
+    pub const max_len = .{ .text = 8 };
+};
+
+pub const Reply = struct { seq: u16, body: Body };
 
 /// A value, the kind it is framed under, and the bytes that frame must be.
 pub fn Case(comptime T: type) type {
@@ -77,12 +94,47 @@ pub const cases = .{
         .seq = 0x1234,
         .body = &ramp,
     } },
+    Case(Reply){ .kind = 0x0011, .golden = golden("reply_none"), .value = .{
+        .seq = 1,
+        .body = .none,
+    } },
+    Case(Reply){ .kind = 0x0011, .golden = golden("reply_code"), .value = .{
+        .seq = 2,
+        .body = .{ .code = 0xBEEF },
+    } },
+    Case(Reply){ .kind = 0x0011, .golden = golden("reply_text"), .value = .{
+        .seq = 3,
+        .body = .{ .text = "hi" },
+    } },
+    Case(rpc.Hello){ .kind = rpc.Kind.hello, .golden = golden("hello"), .value = .{
+        .caps = 0x0000_0005,
+    } },
+    Case(rpc.Fault){ .kind = rpc.Kind.fault, .golden = golden("fault"), .value = .{
+        .code = .version_mismatch,
+    } },
+    Case(Env.Request){ .kind = rpc.Kind.request, .golden = golden("request"), .value = .{
+        .id = 7,
+        .method = 0x0102,
+        .args = "\xDE\xAD",
+    } },
+    Case(Env.Response){ .kind = rpc.Kind.response, .golden = golden("response_ok"), .value = .{
+        .id = 7,
+        .result = .{ .ok = "ok!" },
+    } },
+    Case(Env.Response){ .kind = rpc.Kind.response, .golden = golden("response_err"), .value = .{
+        .id = 8,
+        .result = .{ .err = .unknown_method },
+    } },
+    Case(Env.Event){ .kind = rpc.Kind.event, .golden = golden("event"), .value = .{
+        .topic = 9,
+        .payload = "UART",
+    } },
 };
 
 /// The bytes of `fixtures/<name>.txt`: hex pairs separated by whitespace.
 fn golden(comptime name: []const u8) []const u8 {
     comptime {
-        @setEvalBranchQuota(10_000);
+        @setEvalBranchQuota(100_000);
         const text = @embedFile("fixtures/" ++ name ++ ".txt");
         var bytes: [text.len / 2]u8 = undefined;
         var count: usize = 0;

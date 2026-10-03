@@ -14,6 +14,7 @@ const Mixed = messages.Mixed;
 
 comptime {
     _ = @import("messages.zig");
+    _ = @import("service.zig");
 }
 
 const header_bytes = rpc.frame.Header.bytes;
@@ -109,6 +110,30 @@ test "an enum tag the type does not name is refused, at either width" {
     _ = try codec.decode(Tagged, &.{ 0x07, 0x5A, 0xA5 });
     try testing.expectError(error.BadTag, codec.decode(Tagged, &.{ 0x02, 0x5A, 0xA5 }));
     try testing.expectError(error.BadTag, codec.decode(Tagged, &.{ 0x07, 0xA5, 0x5A }));
+}
+
+test "a union is as wide as its tag and its widest field" {
+    try testing.expectEqual(@as(usize, 2 + 1 + 4 + 8), codec.maxSize(messages.Reply));
+}
+
+test "a union tag the union does not name is refused" {
+    const Reply = messages.Reply;
+    _ = try codec.decode(Reply, &.{ 1, 0, 0x00 });
+    try testing.expectError(error.BadTag, codec.decode(Reply, &.{ 1, 0, 0x02 }));
+    try testing.expectError(error.BadTag, codec.decode(Reply, &.{ 1, 0, 0xFF }));
+}
+
+test "a union field's own rules still hold behind the tag" {
+    const Reply = messages.Reply;
+    const long = prefix(9) ++ [_]u8{0xAB} ** 9;
+    try testing.expectError(error.Oversize, codec.decode(Reply, &([_]u8{ 1, 0, 4 } ++ long)));
+    try testing.expectError(error.Truncated, codec.decode(Reply, &.{ 1, 0, 1, 0xEF }));
+    try testing.expectError(error.Trailing, codec.decode(Reply, &.{ 1, 0, 0, 0 }));
+
+    const value: Reply = .{ .seq = 1, .body = .{ .text = "nine long" } };
+    var out = [_]u8{0x7E} ** 32;
+    try testing.expectError(error.Oversize, codec.encode(Reply, value, &out));
+    for (out) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
 }
 
 test "decoded slices point into the input rather than a copy" {

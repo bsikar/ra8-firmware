@@ -11,6 +11,7 @@ const messages = @import("messages.zig");
 
 comptime {
     _ = @import("messages.zig");
+    _ = @import("service.zig");
 }
 
 test "every message encodes to its golden frame, byte for byte" {
@@ -44,6 +45,6 @@ test "a decoded golden frame encodes back to the same bytes" {
     }
 }
 
-test "the fixtures hold at least one frame per shape of field" {
-    try testing.expectEqual(@as(usize, 6), messages.cases.len);
+test "no fixture has gone missing" {
+    try testing.expectEqual(@as(usize, 15), messages.cases.len);
 }
