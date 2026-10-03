@@ -119,6 +119,17 @@ MAX_REGIONS = 8
 # Pinned Vela accelerator argument (see tools/vela/README.md and the uv lock).
 VELA_ACCEL_CONFIG = "ethos-u55-256"
 
+# Vela's `ethos-u` command-stream tensor is a driver payload, not an NPU
+# program: a "COP1" fourcc, then driver actions, one of which is the register
+# command stream itself. The Arm ethos-u core driver walks the actions and
+# hands only that section to QBASE, so distill does the same. Each action word
+# is command:8, reserved:8, length:16 (ethos-u-core-driver, ethosu_driver.c).
+COP_FOURCC = 0x31504F43
+COP_OPTIMIZER_CONFIG = 1
+COP_COMMAND_STREAM = 2
+COP_NOP = 5
+COP_OPTIMIZER_CONFIG_WORDS = 3
+
 
 def _fnv1a(data: bytes) -> int:
     """FNV-1a 32-bit digest over `data` (matches ra8_npu_blob.h / the loader)."""
@@ -559,6 +570,55 @@ def _ethos_operator(  # noqa: ANN202  (returns Vela's vendored Operator, unstubb
     return found[0]
 
 
+def unwrap_command_stream(payload: bytes) -> bytes:
+    """Return the register command stream inside a Vela COP1 driver payload.
+
+    Args:
+        payload: The bytes of Vela's `ethos_u_command_stream` tensor.
+
+    Returns:
+        The single COMMAND_STREAM section's words, the program QBASE points at.
+
+    Raises:
+        ValueError: No COP1 fourcc, a length that is not whole words, an
+            unknown driver action, a section running past the payload, or not
+            exactly one COMMAND_STREAM section.
+    """
+    if len(payload) % 4 != 0 or len(payload) < 8:
+        msg = f"driver payload is {len(payload)} B, not a whole number of words past the fourcc"
+        raise ValueError(msg)
+    words = struct.unpack(f"<{len(payload) // 4}I", payload)
+    if words[0] != COP_FOURCC:
+        msg = f"driver payload starts 0x{words[0]:08X}, not the COP1 fourcc"
+        raise ValueError(msg)
+    streams: list[bytes] = []
+    index = 1
+    while index < len(words):
+        command = words[index] & 0xFF
+        length = words[index] >> 16
+        if command == COP_NOP:
+            index += 1
+        elif command == COP_OPTIMIZER_CONFIG:
+            index += COP_OPTIMIZER_CONFIG_WORDS
+        elif command == COP_COMMAND_STREAM:
+            end = index + 1 + length
+            if length == 0 or end > len(words):
+                msg = f"COMMAND_STREAM of {length} words at word {index} runs past the payload"
+                raise ValueError(msg)
+            streams.append(payload[(index + 1) * 4 : end * 4])
+            index = end
+        else:
+            msg = f"unknown driver action {command} at word {index}"
+            raise ValueError(msg)
+    if index != len(words):
+        msg = "a driver action runs past the end of the payload"
+        raise ValueError(msg)
+    if len(streams) != 1:
+        msg = f"expected 1 COMMAND_STREAM section, found {len(streams)}"
+        raise ValueError(msg)
+    return streams[0]
+
+
 def distill_blob(path: Path, accel: int = ACCEL_ETHOS_U55_256) -> tuple[bytes, dict]:
     """Distill a Vela `_vela.tflite` into a `.npub` blob plus a layout report.
 
@@ -592,10 +652,11 @@ def distill_blob(path: Path, accel: int = ACCEL_ETHOS_U55_256) -> tuple[bytes, d
     if cmd_tensor.Name() != VELA_CMD_STREAM_TENSOR:
         msg = f"operator input 0 is {cmd_tensor.Name()!r}, not the command stream"
         raise ValueError(msg)
-    cmd = _const_bytes(model, cmd_tensor)
-    if len(cmd) == 0:
+    payload = _const_bytes(model, cmd_tensor)
+    if len(payload) == 0:
         msg = "the command-stream tensor carries no constant bytes"
         raise ValueError(msg)
+    cmd = unwrap_command_stream(payload)
 
     slots = [int(op.Inputs(i)) for i in range(1, op.InputsLength())]
     slots += [int(op.Outputs(i)) for i in range(op.OutputsLength())]
