@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ *
+ * CPU1 (Cortex-M33) image fragment for an RA8P1 app, appended to the board
+ * map by ra8_add_app(CPU1_IMAGE) and the Zig graph's ld_fragments
+ * (RA8FW-496). Substituted from cpu1_memory_map.cmake beside it.
+ *
+ * Everything from SECTIONS down is byte-identical to the EK-RA8D2 fragment,
+ * which explains why .cpu1_image carries an explicit address and why the two
+ * symbols live in a tracked file. tests/zig_build_graph/ra8p1_cpu1_ld_test.zig
+ * holds the two copies together.
+ */
+
+SECTIONS
+{
+    .cpu1_image @RA8_CPU1_IMAGE_ORIGIN@ : ALIGN(4)
+    {
+        KEEP(*(.cpu1_image))
+        KEEP(*(.cpu1_image.*))
+    }
+}
+
+/* Where the M33 image is flashed; ra8_cpu1_release() starts the core here. */
+g_ra8_ls_cpu1_mram_start = @RA8_CPU1_IMAGE_ORIGIN@;
+
+/* The M33's initial SP, handed to ra8_cpu1_release() as `sp`. Equals the value
+ * the M33's own linker_script_cpu1.ld computes, the top of SRAM_CPU1. */
+g_ra8_ls_cpu1_stack_top  = @RA8_CPU1_STACK_TOP_EXPR@;
+
+ASSERT(LOADADDR(.dtcm_data) + SIZEOF(.dtcm_data) <= @RA8_CPU1_IMAGE_ORIGIN@,
+       "FATAL: the M85 image overran the CPU1 image window")
