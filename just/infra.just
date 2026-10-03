@@ -28,7 +28,7 @@ default:
     @echo "  just infra::fortigate_config_selftest [python]     Prove declaration checks both ways"
     @echo "  just infra::fortigate_config_lint [path]           Lint the FortiGate declaration offline"
     @echo "  just infra::fortigate_replay_dry_run [path] [lan]  Render its offline replay stream"
-    @echo "  just infra::fortigate_bootstrap [path] [tty]       Factory-reset and replay the FortiGate"
+    @echo "  just infra::fortigate_bootstrap [path] [tty]       BLOCKED: stale FortiGate replay declaration"
     @echo "  just infra::fortigate_ap_configure [tty]           Configure the bench AP over the console"
     @echo "  just infra::fortigate_verify [tty]                 Run read-only FortiGate/AP verification"
     @echo "  just infra::check <host> [play] [tags]             Dry-run all or one play/tag slice"
@@ -81,7 +81,7 @@ fortigate_replay_dry_run path="infra/network/fortigate-bench.conf" lan="internal
     {{ clean_env }} .venv/bin/python3 -B -I infra/network/fg_bringup.py replay-dry-run {{ quote(path) }} {{ quote(lan) }}
 
 # Factory-reset the FortiGate and replay one reviewed declaration
-[confirm("Factory-reset and reconfigure the FortiGate? This disrupts the bench network.")]
+[confirm("BLOCKED: declaration is historical. Do not factory-reset or replay it.")]
 fortigate_bootstrap path="infra/network/fortigate-bench.conf" tty="":
     #!/bin/bash -p
     set -euo pipefail
