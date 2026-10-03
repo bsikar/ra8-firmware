@@ -28,7 +28,13 @@ const kernel = middleware.threadx;
 /// The M85 scheduler that keeps the board MPU map for kernel threads
 /// (RA8FW-481), in place of the module port's own.
 pub const schedule_source = "port/threadx/src/cortex_m85_modules/tx_thread_schedule.S";
-const replaced_basenames = kernel.replaced_basenames[0..kernel.replaced_basenames.len].* ++ [_][]const u8{"tx_thread_schedule.S"};
+/// The shared-memory grant that refuses the board's shared SRAM (RA8FW-527),
+/// in Zig, in place of the module port's C.
+pub const external_memory_source = "port/threadx/src/cortex_m85_modules/external_memory_enable.zig";
+const replaced_basenames = kernel.replaced_basenames[0..kernel.replaced_basenames.len].* ++ [_][]const u8{
+    "tx_thread_schedule.S",
+    "txm_module_manager_external_memory_enable.c",
+};
 const project_sources = kernel.project_sources[0..kernel.project_sources.len].* ++ [_][]const u8{schedule_source};
 
 /// The M85 MPU budget (RA8FW-484). DREGION is 8 on the M85. A module keeps
@@ -80,6 +86,7 @@ pub const threadx_m85_modules = middleware.Middleware{
     .public_defines = modules.threadx_m33_modules.public_defines,
     .link_options = kernel.link_options,
     .patched_headers = &.{port_header},
+    .zig_sources = &.{.{ .path = external_memory_source, .cpu = &std.Target.arm.cpu.cortex_m85 }},
 };
 
 /// Builds the archive with the M85 middleware toolchain and installs it as

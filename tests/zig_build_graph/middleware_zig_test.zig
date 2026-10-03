@@ -46,7 +46,7 @@ test "a Zig source's object is named after its file, like the C ones" {
     try std.testing.expectEqualStrings("external_memory_enable.o", name);
 }
 
-test "no archive carries a Zig source yet, so none changes its build" {
-    try std.testing.expectEqual(@as(usize, 0), m85_modules.threadx_m85_modules.zig_sources.len);
+test "only the M85 Module Manager carries a Zig source (RA8FW-527)" {
+    try std.testing.expectEqual(@as(usize, 1), m85_modules.threadx_m85_modules.zig_sources.len);
     try std.testing.expectEqual(@as(usize, 0), cpu1_modules.threadx_m33_modules.zig_sources.len);
 }
