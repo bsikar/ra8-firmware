@@ -228,7 +228,7 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "threadx_cpu1, the two Module Manager apps and cpu1_pingpong_ra8p1 are the CPU1 images with a Zig entry" {
+test "threadx_cpu1, cpu1_pingpong_ra8p1 and the Module Manager apps are the Zig CPU1 entries" {
     // A null kernel is a bare-metal CPU1 half that owns its own vector table.
     const expected = [_]struct { app: []const u8, kernel: ?[]const u8 }{
         .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
@@ -236,6 +236,7 @@ test "threadx_cpu1, the two Module Manager apps and cpu1_pingpong_ra8p1 are the 
         .{ .app = "txm_fault_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_table_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
+        .{ .app = "txm_rpc_cpu1", .kernel = "threadx_m33_modules" },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -262,7 +263,9 @@ test "only the Module Manager images carry a packed module, each in its own link
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         if (image.txm_module == null) continue;
-        const module_apps = [_][]const u8{ "txm_manager_cpu1", "txm_fault_cpu1", "txm_table_cpu1" };
+        const module_apps = [_][]const u8{
+            "txm_manager_cpu1", "txm_fault_cpu1", "txm_table_cpu1", "txm_rpc_cpu1",
+        };
         var known = false;
         for (module_apps) |name| known = known or std.mem.eql(u8, app.name, name);
         try std.testing.expect(known);

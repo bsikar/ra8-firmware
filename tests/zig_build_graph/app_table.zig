@@ -901,4 +901,26 @@ pub const cross_apps = [_]CrossApp{
             .entry_language = .zig,
         },
     },
+    .{
+        // A module that calls a resident-image service through ra8_rpc over
+        // ThreadX queues, the resident side serving it (RA8FW-544). Appended
+        // last so the positional picks stay put.
+        .name = "txm_rpc_cpu1",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .uses = &.{"threadx_m33_modules"},
+            .txm_module = "txm_rpc_m33",
+            .rpc = true,
+        },
+    },
 };
