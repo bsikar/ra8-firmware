@@ -308,7 +308,14 @@ func cleanEnvironment(root string) ([]string, error) {
 		}
 		seen[key] = true
 		if key == "PATH" {
-			for _, path := range filepath.SplitList(value) {
+			paths := strings.Split(value, string(os.PathListSeparator))
+			safePaths := make([]string, 0, len(paths))
+			for _, path := range paths {
+				// An empty PATH component searches the current directory. Drop it
+				// rather than handing that implicit lookup to a task.
+				if path == "" {
+					continue
+				}
 				if !filepath.IsAbs(path) {
 					return nil, fmt.Errorf("%w: PATH has non-absolute entry", ErrUnsafeEnvironment)
 				}
@@ -319,6 +326,11 @@ func cleanEnvironment(root string) ([]string, error) {
 				if within {
 					return nil, fmt.Errorf("%w: PATH includes checkout", ErrUnsafeEnvironment)
 				}
+				safePaths = append(safePaths, path)
+			}
+			if len(safePaths) != len(paths) {
+				value = strings.Join(safePaths, string(os.PathListSeparator))
+				item = key + "=" + value
 			}
 		}
 		if pathValues[key] && value != "" {

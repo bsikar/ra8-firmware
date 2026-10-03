@@ -401,6 +401,7 @@ func fixtureCheckout(t *testing.T, script string) (string, source.Result) {
 		"tools/ra8ci/catalog/tasks.json": embedded.Manifest(),
 		"tools/ra8ci/catalog/sha256.txt": embedded.Digest(),
 		"scripts/checks/format_tree.sh":  []byte(script),
+		"tests/agent_fixture.c":          []byte("TEST_ASSERT_EQ(actual, expected);\n"),
 	}
 	for relative, data := range files {
 		path := filepath.Join(root, relative)
@@ -429,6 +430,7 @@ func fixtureCheckout(t *testing.T, script string) (string, source.Result) {
 func TestRunOnceEndToEndReadOnly(t *testing.T) {
 	root, snapshot := fixtureCheckout(t, "printf 'agent-log\\n'\n")
 	a := testAssignment()
+	a.Task = protocol.TaskRef{Name: "assert-casts", Version: 1}
 	definitions, err := catalog.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -483,7 +485,7 @@ func TestRunOnceEndToEndReadOnly(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !seenAck || sequence != 1 || terminal.FinalLogSequence != 1 || terminal.Outcome != "succeeded" ||
+	if !seenAck || sequence == 0 || terminal.FinalLogSequence != sequence || terminal.Outcome != "succeeded" ||
 		terminal.ChildExitCode == nil || *terminal.ChildExitCode != 0 || !terminal.EvidenceComplete {
 		t.Fatalf("incomplete end-to-end evidence: ack=%v sequence=%d terminal=%+v", seenAck, sequence, terminal)
 	}
