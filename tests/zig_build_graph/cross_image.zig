@@ -25,6 +25,7 @@ const cpu1_threadx = @import("cpu1_threadx.zig");
 const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
 const cpu1_txm_hello = @import("cpu1_txm_hello.zig");
+const txm_ra8app = @import("txm_ra8app.zig");
 const m85_threadx_modules = @import("m85_threadx_modules.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
@@ -125,13 +126,17 @@ fn txmModuleObjects(b: *std.Build, image: cpu1_image.Cpu1Image, tools: cross_bui
 }
 
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
-pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+/// Also signs it into arm/txm_hello_m33.ra8app and checks that file in
+/// `test_step` (RA8FW-479); both skip without an ARM toolchain.
+pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Build.Step, globals: build_type.Globals) void {
     const tools = findArmTools(b) orelse {
         const notice = b.addSystemCommand(&.{ "echo", "txm-hello-m33: skipped -- no arm-none-eabi toolchain on PATH" });
         step.dependOn(&notice.step);
+        test_step.dependOn(&notice.step);
         return;
     };
-    cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy, cpu1_txm_hello.hello_world);
+    const built = cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy, cpu1_txm_hello.hello_world);
+    txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, built.bin));
 }
 
 /// The `threadx-m85-modules` step: the M85 Module Manager archive (RA8FW-426).

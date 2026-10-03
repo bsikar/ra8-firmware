@@ -336,7 +336,7 @@ pub fn build(b: *std.Build) void {
     cross_image.addTxmM33(b, txm_m33_step, arm);
 
     const txm_hello_m33_step = b.step("txm-hello-m33", cpu1_txm_hello.step_description);
-    cross_image.addTxmHelloM33(b, txm_hello_m33_step, arm);
+    cross_image.addTxmHelloM33(b, txm_hello_m33_step, test_step, arm);
 
     const threadx_m85_modules_step = b.step("threadx-m85-modules", m85_threadx_modules.step_description);
     cross_image.addThreadxM85Modules(b, threadx_m85_modules_step, arm);

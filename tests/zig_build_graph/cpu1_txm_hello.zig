@@ -105,8 +105,9 @@ pub const Artifacts = struct {
     map: std.Build.LazyPath,
 };
 
-/// Builds `module` and installs its ELF, binary and map under `arm/`.
-pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8, module: Module) void {
+/// Builds `module`, installs its ELF, binary and map under `arm/`, and
+/// returns them for a later step (txm_ra8app.zig packs the binary).
+pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, objcopy: []const u8, module: Module) Artifacts {
     const built = image(b, base, objcopy, module);
     inline for (.{ .{ built.elf, "elf" }, .{ built.bin, "bin" }, .{ built.map, "map" } }) |artifact| {
         step.dependOn(&b.addInstallFileWithDir(
@@ -115,6 +116,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, obj
             b.fmt("{s}.{s}", .{ module.name, artifact[1] }),
         ).step);
     }
+    return built;
 }
 
 /// Links `module` and converts it to a raw binary.
