@@ -12,32 +12,6 @@ import (
 	"testing"
 )
 
-// theCommit is the object ID the stub below reports for every checkout.
-const theCommit = "1f2e3d4c5b6a798807162534435261708f9e0d1c"
-
-// stubbedGit puts a scripted git first on PATH. The snapshot resolves the
-// executable off PATH and runs it with a fixed argument vector, so a script
-// that dispatches on the subcommand can answer each step of the walk and fail
-// exactly one of them. Real git cannot be made to fail these ways on demand.
-func stubbedGit(t *testing.T, lsTree string) {
-	t.Helper()
-	dir := t.TempDir()
-	script := "#!/bin/sh\nfor arg in \"$@\"; do\n  case \"$arg\" in\n" +
-		"  rev-parse) echo " + theCommit + "; exit 0 ;;\n" +
-		"  status) exit 0 ;;\n" +
-		"  archive) echo tar-bytes; exit 0 ;;\n" +
-		"  ls-tree) " + lsTree + " ;;\n" +
-		"  esac\ndone\nexit 0\n"
-	path := filepath.Join(dir, "git")
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(path, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", dir)
-}
-
 // A checkout cannot be identified without git, and the refusal says which
 // piece is missing rather than reporting a checkout that is merely unreadable.
 func TestAMissingGitIsNamedAsTheMissingPiece(t *testing.T) {
@@ -54,50 +28,50 @@ func TestAMissingGitIsNamedAsTheMissingPiece(t *testing.T) {
 // leave an operator guessing which git call actually went wrong.
 func TestEachStepOfTheWalkCarriesItsOwnComplaint(t *testing.T) {
 	for _, one := range []struct {
-		name    string
-		lsTree  string
-		wrapped error
-		says    string
+		name     string
+		response fakeGitResponse
+		wrapped  error
+		says     string
 	}{
 		{
-			name:    "a tree record with no tab",
-			lsTree:  `printf '160000 commit ` + theCommit + ` libs/dep\000'; exit 0`,
-			wrapped: ErrGit,
-			says:    "malformed ls-tree record",
+			name:     "a tree record with no tab",
+			response: fakeGitResponse{Stdout: []byte("160000 commit " + theCommit + " libs/dep\x00")},
+			wrapped:  ErrGit,
+			says:     "malformed ls-tree record",
 		},
 		{
-			name:    "a tree record whose header is short",
-			lsTree:  `printf '160000 commit\tlibs/dep\000'; exit 0`,
-			wrapped: ErrGit,
-			says:    "malformed ls-tree header",
+			name:     "a tree record whose header is short",
+			response: fakeGitResponse{Stdout: []byte("160000 commit\tlibs/dep\x00")},
+			wrapped:  ErrGit,
+			says:     "malformed ls-tree header",
 		},
 		{
-			name:    "a gitlink pinned to something that is not a commit",
-			lsTree:  `printf '160000 commit notacommit\tlibs/dep\000'; exit 0`,
-			wrapped: ErrGit,
-			says:    "invalid gitlink",
+			name:     "a gitlink pinned to something that is not a commit",
+			response: fakeGitResponse{Stdout: []byte("160000 commit notacommit\tlibs/dep\x00")},
+			wrapped:  ErrGit,
+			says:     "invalid gitlink",
 		},
 		{
-			name:    "a gitlink whose path climbs out of the checkout",
-			lsTree:  `printf '160000 commit ` + theCommit + `\t../escape\000'; exit 0`,
-			wrapped: ErrUnsafePath,
-			says:    "../escape",
+			name:     "a gitlink whose path climbs out of the checkout",
+			response: fakeGitResponse{Stdout: []byte("160000 commit " + theCommit + "\t../escape\x00")},
+			wrapped:  ErrUnsafePath,
+			says:     "../escape",
 		},
 		{
-			name:    "the tree listing itself failing",
-			lsTree:  `echo "ls-tree exploded" >&2; exit 3`,
-			wrapped: ErrGit,
-			says:    "git ls-tree",
+			name:     "the tree listing itself failing",
+			response: fakeGitResponse{Stderr: []byte("ls-tree exploded\n"), Exit: 3},
+			wrapped:  ErrGit,
+			says:     "git ls-tree",
 		},
 		{
-			name:    "the tree listing warning on a clean exit",
-			lsTree:  `echo "detached something" >&2; exit 0`,
-			wrapped: ErrGit,
-			says:    "warning",
+			name:     "the tree listing warning on a clean exit",
+			response: fakeGitResponse{Stderr: []byte("detached something\n")},
+			wrapped:  ErrGit,
+			says:     "warning",
 		},
 	} {
 		t.Run(one.name, func(t *testing.T) {
-			stubbedGit(t, one.lsTree)
+			stubbedGitResponse(t, one.response)
 
 			_, err := Snapshot(context.Background(), t.TempDir())
 			if !errors.Is(err, one.wrapped) {
@@ -114,13 +88,9 @@ func TestEachStepOfTheWalkCarriesItsOwnComplaint(t *testing.T) {
 // than carried into the manifest, where it would become part of an identity
 // nothing can verify.
 func TestACommitThatIsNotAnObjectIDIsRefused(t *testing.T) {
-	dir := t.TempDir()
-	script := "#!/bin/sh\nfor arg in \"$@\"; do\n  case \"$arg\" in\n" +
-		"  rev-parse) echo HEAD-is-fine-thanks; exit 0 ;;\n  esac\ndone\nexit 0\n"
-	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", dir)
+	installFakeGit(t, fakeGitFixture{Responses: map[string]fakeGitResponse{
+		"rev-parse": {Stdout: []byte("HEAD-is-fine-thanks\n")},
+	}})
 
 	_, err := Snapshot(context.Background(), t.TempDir())
 	if !errors.Is(err, ErrGit) || !strings.Contains(err.Error(), "invalid commit") {
@@ -165,7 +135,7 @@ func TestAPinnedSubmoduleMustBeAnInitializedDirectory(t *testing.T) {
 		},
 	} {
 		t.Run(one.name, func(t *testing.T) {
-			stubbedGit(t, `printf '160000 commit `+theCommit+`\tlibs/dep\000'; exit 0`)
+			stubbedGit(t, []byte("160000 commit "+theCommit+"\tlibs/dep\x00"))
 			root := t.TempDir()
 			one.plant(t, root)
 

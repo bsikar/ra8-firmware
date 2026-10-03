@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -235,11 +236,10 @@ func TestASpentContextProducesNoIdentity(t *testing.T) {
 
 func gitBinary(t *testing.T) string {
 	t.Helper()
-	for _, candidate := range []string{"/usr/bin/git", "/bin/git", "/usr/local/bin/git"} {
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
+	candidate, err := exec.LookPath("git")
+	if err == nil {
+		return candidate
 	}
-	t.Skip("git is not installed at a known path")
+	t.Skipf("git is unavailable on PATH: %v", err)
 	return ""
 }

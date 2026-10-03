@@ -10,9 +10,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+func trustedGitForTest(t *testing.T) string {
+	t.Helper()
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skipf("git is unavailable on PATH: %v", err)
+	}
+	return git
+}
 
 // Run is the whole gate as CI invokes it: a root, a README, and three exit
 // codes an operator has to be able to tell apart. These tests hold what each
@@ -172,6 +182,9 @@ func TestAnAbsentREADMEIsDriftAgainstEverySubdirectory(t *testing.T) {
 }
 
 func TestAnUnreadableREADMEIsARefusalRatherThanDrift(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not implement POSIX mode 000 read denial")
+	}
 	names := fiveNames()
 	root := plantRoot(t, names, names...)
 	readme := filepath.Join(root, "tests", "README.md")
@@ -211,15 +224,13 @@ func TestFilesAndDottedNamesAreNotSubdirectories(t *testing.T) {
 // The carve-out that keeps a developer's own scratch directory out of the
 // gate: a subdirectory Git ignores is neither counted nor demanded.
 func TestAnIgnoredSubdirectoryIsNeitherCountedNorDemanded(t *testing.T) {
-	if _, err := os.Stat(trustedGit); err != nil {
-		t.Skipf("trusted git is unavailable: %v", err)
-	}
+	git := trustedGitForTest(t)
 	names := fiveNames()
 	root := plantRoot(t, names, append(names, "scratch")...)
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("tests/scratch/\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := exec.Command(trustedGit, "init", "-q", root).CombinedOutput(); err != nil {
+	if output, err := exec.Command(git, "init", "-q", root).CombinedOutput(); err != nil {
 		t.Skipf("git init unavailable: %v: %s", err, output)
 	}
 	got := check(t, root)

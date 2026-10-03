@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -18,15 +19,24 @@ import (
 // construct its own evidence has proved nothing about the gate, and a green
 // CI line over that is worse than a red one.
 //
-// TMPDIR is what decides where those fixtures land, so pointing it at a path
+// The process temp environment variable decides where those fixtures land, so pointing it at a path
 // that is not there is the one wedge on this box that makes fixture
 // construction fail without touching the gate itself.
+func setSelfTestTempDir(t *testing.T, directory string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Setenv("TMP", directory)
+		t.Setenv("TEMP", directory)
+		return
+	}
+	t.Setenv("TMPDIR", directory)
+}
 
 // A self-test that could not build a single fixture fails, names the fixture
 // it could not build, and never prints its success line.
 func TestASelfTestWithNoUsableTempDirectoryIsFailedNotPassed(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "not-a-directory")
-	t.Setenv("TMPDIR", absent)
+	setSelfTestTempDir(t, absent)
 
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), t.Name(), []string{"--selftest"}, &stdout, &stderr)
@@ -50,7 +60,7 @@ func TestASelfTestWithNoUsableTempDirectoryIsFailedNotPassed(t *testing.T) {
 // is what tells an operator the box is at fault rather than one case.
 func TestBothHalvesOfTheSelfTestNameTheFixtureTheyCouldNotBuild(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "not-a-directory")
-	t.Setenv("TMPDIR", absent)
+	setSelfTestTempDir(t, absent)
 
 	var stdout, stderr bytes.Buffer
 	if selfTest(context.Background(), &stdout, &stderr) {
@@ -67,7 +77,7 @@ func TestBothHalvesOfTheSelfTestNameTheFixtureTheyCouldNotBuild(t *testing.T) {
 // which is what lets the self-test above list it beside the other failures.
 func TestTheGitignoreCarveOutHandsBackAFixtureItCannotBuild(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "not-a-directory")
-	t.Setenv("TMPDIR", absent)
+	setSelfTestTempDir(t, absent)
 
 	err := selfTestGitignore(context.Background())
 	if err == nil {
@@ -86,7 +96,7 @@ func TestTheSelfTestPassesAgainOnceTheTempDirectoryIsUsable(t *testing.T) {
 	if err := os.MkdirAll(usable, 0755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", usable)
+	setSelfTestTempDir(t, usable)
 
 	var stdout, stderr bytes.Buffer
 	if !selfTest(context.Background(), &stdout, &stderr) {

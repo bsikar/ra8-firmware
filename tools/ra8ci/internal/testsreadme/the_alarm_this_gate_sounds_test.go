@@ -6,7 +6,6 @@ package testsreadme
 import (
 	"bytes"
 	"context"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -27,9 +26,7 @@ func withRowNamePattern(t *testing.T, pattern *regexp.Regexp) {
 
 func ranSelfTest(t *testing.T) (int, string, string) {
 	t.Helper()
-	if _, err := os.Stat(trustedGit); err != nil {
-		t.Skipf("the self-test needs %s: %v", trustedGit, err)
-	}
+	trustedGitForTest(t)
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), t.TempDir(), []string{"--selftest"}, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()

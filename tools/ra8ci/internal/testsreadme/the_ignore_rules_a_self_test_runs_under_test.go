@@ -24,17 +24,15 @@ import (
 // under borrowed ignore rules certifies a detector nobody exercised.
 func repoTempDir(t *testing.T, ignore string) {
 	t.Helper()
-	if _, err := os.Stat(trustedGit); err != nil {
-		t.Skipf("trusted git is unavailable: %v", err)
-	}
+	git := trustedGitForTest(t)
 	root := t.TempDir()
-	if output, err := exec.Command(trustedGit, "init", "-q", root).CombinedOutput(); err != nil {
+	if output, err := exec.Command(git, "init", "-q", root).CombinedOutput(); err != nil {
 		t.Skipf("git init: %v: %s", err, strings.TrimSpace(string(output)))
 	}
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(ignore), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", root)
+	setSelfTestTempDir(t, root)
 }
 
 func selfTestUnder(t *testing.T) (bool, string, string) {

@@ -12,35 +12,6 @@ import (
 	"testing"
 )
 
-// gitAnsweringOnlyAtTheRoot puts a scripted git first on PATH that reports
-// gitlinks for the root of the checkout and nothing for anything below it.
-// The real walk recurses into every submodule it is told about, so a stub
-// that answered the same tree everywhere would descend until it hit the depth
-// bound and the snapshot would fail there instead of where the test is
-// looking.
-func gitAnsweringOnlyAtTheRoot(t *testing.T, canonicalRoot, rootTree string) {
-	t.Helper()
-	dir := t.TempDir()
-	script := "#!/bin/sh\n" +
-		"asked=\"$2\"\n" +
-		"for arg in \"$@\"; do\n" +
-		"  case \"$arg\" in\n" +
-		"  rev-parse) echo " + theCommit + "; exit 0 ;;\n" +
-		"  status) exit 0 ;;\n" +
-		"  archive) echo tar-bytes; exit 0 ;;\n" +
-		"  ls-tree)\n" +
-		"    if [ \"$asked\" = \"" + canonicalRoot + "\" ]; then " + rootTree + "; fi\n" +
-		"    exit 0 ;;\n" +
-		"  esac\n" +
-		"done\n" +
-		"exit 0\n"
-	path := filepath.Join(dir, "git")
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", dir)
-}
-
 // Two submodules whose paths differ only in case are two directories here and
 // one directory on a case-insensitive filesystem. The snapshot is the identity
 // a runner verifies its checkout against, so a pair that collapses into one
@@ -59,8 +30,7 @@ func TestTwoSubmodulesCannotShareOnePathIgnoringCase(t *testing.T) {
 		}
 		initialized(t, filepath.Join(canonical, name))
 	}
-	gitAnsweringOnlyAtTheRoot(t, canonical,
-		`printf '160000 commit `+theCommit+`\tSub\000160000 commit `+theCommit+`\tsub\000'`)
+	stubbedGitForRootTree(t, canonical, []byte("160000 commit "+theCommit+"\tSub\x00160000 commit "+theCommit+"\tsub\x00"))
 
 	_, err = Snapshot(context.Background(), root)
 	if !errors.Is(err, ErrUnsafePath) {
@@ -86,8 +56,7 @@ func TestTwoSubmodulesWithDistinctPathsAreBothTaken(t *testing.T) {
 		}
 		initialized(t, filepath.Join(canonical, name))
 	}
-	gitAnsweringOnlyAtTheRoot(t, canonical,
-		`printf '160000 commit `+theCommit+`\tfirst\000160000 commit `+theCommit+`\tsecond\000'`)
+	stubbedGitForRootTree(t, canonical, []byte("160000 commit "+theCommit+"\tfirst\x00160000 commit "+theCommit+"\tsecond\x00"))
 
 	result, err := Snapshot(context.Background(), root)
 	if err != nil {

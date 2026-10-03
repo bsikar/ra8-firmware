@@ -36,6 +36,9 @@ var (
 	ErrUnsafePath     = errors.New("unsafe submodule path")
 	ErrSourceMismatch = errors.New("source snapshot mismatch")
 	ErrGit            = errors.New("source Git operation failed")
+
+	gitLookPath = exec.LookPath
+	gitCommand  = newGitCommand
 )
 
 // Entry binds one tree, including the root at path "", to its exact archive.
@@ -78,7 +81,7 @@ func Snapshot(ctx context.Context, root string) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("%w: root: %v", ErrGit, err)
 	}
-	gitPath, err := exec.LookPath("git")
+	gitPath, err := gitLookPath("git")
 	if err != nil {
 		return Result{}, fmt.Errorf("%w: git is missing: %v", ErrGit, err)
 	}
@@ -290,7 +293,7 @@ func runGit(ctx context.Context, gitPath, directory string, args ...string) ([]b
 	return stdout.Bytes(), nil
 }
 
-func gitCommand(ctx context.Context, gitPath, directory string, args ...string) *exec.Cmd {
+func newGitCommand(ctx context.Context, gitPath, directory string, args ...string) *exec.Cmd {
 	argv := []string{"-C", directory, "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false"}
 	argv = append(argv, args...)
 	cmd := exec.CommandContext(ctx, gitPath, argv...)
