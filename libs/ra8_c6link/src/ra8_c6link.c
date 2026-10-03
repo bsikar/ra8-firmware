@@ -98,33 +98,6 @@ RA8_PRIV void priv_c6link_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev)
   }
 }
 
-RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_t* view)
-{
-  if ((link == nullptr) || (view == nullptr)) {
-    return false;
-  }
-  const uint8_t* payload = &link->rx[view->offset];
-
-  const uint8_t route = priv_c6link_rx_route(view->if_type);
-
-  if (route == (uint8_t)k_priv_c6link_route_rpc) {
-    return priv_c6link_rpc_consume(link, payload, view->len);
-  }
-  if (route == (uint8_t)k_priv_c6link_route_ethernet) {
-    if (link->stats != nullptr) {
-      link->stats->eth_in++;
-    }
-    if (link->rx_cb != nullptr) {
-      link->rx_cb(link->cb_ctx, payload, view->len);
-    }
-    return false;
-  }
-  if (link->stats != nullptr) {
-    link->stats->unrouted++;
-  }
-  return false;
-}
-
 /**
  * @brief Reject a configuration the link cannot honour.
  * @details Rejects a seam with a missing row here rather than discovering it

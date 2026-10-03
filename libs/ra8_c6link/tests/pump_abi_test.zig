@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! `priv_c6link_pump` through its C ABI, on a real `ra8_c6link_t` laid out by
-//! the public header. The C dispatcher is stood in for by an export below.
+//! the public header. The C RPC decoder is stood in for by an export below.
 
 const std = @import("std");
 const pump_abi = @import("pump_abi");
@@ -39,10 +39,11 @@ fn delayMs(ctx: ?*anyopaque, ms: u16) callconv(.c) void {
     _ = ms;
 }
 
-export fn priv_c6link_dispatch(link: *c.ra8_c6link_t, view: *const pump_abi.RxView) callconv(.c) bool {
+export fn priv_c6link_rpc_consume(link: *c.ra8_c6link_t, payload: [*]const u8, len: u16) callconv(.c) bool {
+    _ = payload;
     bench.stats_seen = link.stats != null;
     bench.dispatched += 1;
-    return view.len == 8;
+    return len == 8;
 }
 
 fn openLink() c.ra8_c6link_t {
@@ -53,10 +54,10 @@ fn openLink() c.ra8_c6link_t {
     return link;
 }
 
-/// A data reply: header offset 12, payload length 8, interface 1, checksum.
+/// A data reply: header offset 12, payload length 8, serial interface, checksum.
 fn sealedReply() [frame_bytes]u8 {
     var buf = [_]u8{0} ** frame_bytes;
-    buf[0] = 1;
+    buf[0] = 3;
     std.mem.writeInt(u16, buf[2..4], 8, .little);
     std.mem.writeInt(u16, buf[4..6], 12, .little);
     var sum: u16 = 0;
@@ -72,7 +73,7 @@ test "null handle or counters is a null-pointer error" {
     try std.testing.expectEqual(@as(u16, 0x504), pump_abi.priv_c6link_pump(&link, 1, null));
 }
 
-test "a data frame reaches the dispatcher with the counters published" {
+test "an RPC frame reaches the decoder with the counters published" {
     bench = .{ .reply = sealedReply() };
     var link = openLink();
     var stats = std.mem.zeroes(c.ra8_c6link_stats_t);
