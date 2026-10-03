@@ -33,6 +33,18 @@ pub fn channelBase(channel: u8) ?usize {
     return channel_bases[channel];
 }
 
+pub const Error = error{ NullCfg, ChannelOutOfRange, OffsetTooLarge };
+
+/// The guards `ra8_canfd_set_tdc` runs before touching a register, in its
+/// order: a null cfg, then the channel, then the offset. Returns the
+/// channel's base.
+pub fn validate(channel: u8, cfg: ?*const Cfg) Error!usize {
+    const config = cfg orelse return error.NullCfg;
+    const base = channelBase(channel) orelse return error.ChannelOutOfRange;
+    if (config.offset > offset_max) return error.OffsetTooLarge;
+    return base;
+}
+
 /// FDCFG after applying `cfg` to `old`. FDOE, REFE, CLOE, ESIC and EOCCFG are
 /// kept; TDE, TDCOC and the TDCO slot are cleared, then re-stamped when
 /// enabled.
