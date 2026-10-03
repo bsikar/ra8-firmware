@@ -107,5 +107,11 @@
         "build.zig.zon",
         "libs",
         "tests",
+        // What build.zig reads when this package is somebody's dependency:
+        // libs/ra8_hal and tests/zig_abi_fixture reach tools/zig_build by
+        // path, and the cross-build graph lists examples/ and port/.
+        "tools/zig_build",
+        "examples",
+        "port",
     },
 }
