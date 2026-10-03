@@ -55,6 +55,7 @@ pub const cpu1_threadx_modules = @import("tests/zig_build_graph/cpu1_threadx_mod
 pub const cpu1_txm_lib = @import("tests/zig_build_graph/cpu1_txm_lib.zig");
 pub const cpu1_txm_hello = @import("tests/zig_build_graph/cpu1_txm_hello.zig");
 pub const m85_threadx_modules = @import("tests/zig_build_graph/m85_threadx_modules.zig");
+pub const m85_shared_grant = @import("port/threadx/src/cortex_m85_modules/shared_grant.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
