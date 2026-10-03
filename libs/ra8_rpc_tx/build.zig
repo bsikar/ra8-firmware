@@ -31,6 +31,8 @@ pub fn build(b: *std.Build) void {
     const roots = [_][]const u8{
         "tests/queue_test.zig",
         "tests/session_test.zig",
+        "tests/module_test.zig",
+        "tests/module_session_test.zig",
     };
     for (roots) |root| {
         const test_module = b.createModule(.{

@@ -6,9 +6,10 @@ session in the resident image can run over a pair of them. It is freestanding
 Zig with no heap and no libc, and it is the only place the RPC stack names
 ThreadX: `ra8_rpc` itself has no ThreadX symbol in it.
 
-This is the resident side only. Code inside a ThreadX module reaches the
-kernel through the module dispatcher, not by calling it, and is not covered
-here.
+It covers both sides of the module boundary. The resident image calls the
+kernel's queue services. Code inside a ThreadX module cannot, and goes
+through the module's kernel-call dispatcher instead. Each side is one `Api`
+value, and `TxQueue` is the same over either.
 
 ## Which ThreadX services
 
@@ -26,6 +27,51 @@ service `_txe_queue_send`, and this binding calls the same three:
 They are named in one file, `src/kernel.zig`. Everything else takes the entry
 points as a comptime value, `rpc_tx.Api`, so the host tests pass fakes and
 only an image that links the kernel binds the real ones.
+
+## Inside a module
+
+Module code does not link the kernel. The module library's wrappers
+(`txm_queue_send.c`, `txm_queue_receive.c` and `txm_queue_info_get.c` in the
+ThreadX package) turn each service into one call to the module's kernel-call
+dispatcher, `ULONG dispatcher(ULONG request, ULONG p1, ULONG p2, ULONG p3)`,
+and `rpc_tx.module.api` does the same in Zig:
+
+| Service      | Request | `p1`    | `p2`              | `p3`                      |
+|--------------|--------:|---------|-------------------|---------------------------|
+| `send`       | 43      | queue   | message           | wait option               |
+| `receive`    | 42      | queue   | destination       | wait option               |
+| `info_get`   | 38      | queue   | `name`            | array of five more        |
+
+The five are `enqueued`, `available_storage`, `first_suspended`,
+`suspended_count` and `next_queue`, in that order, in an array on the stack.
+The request numbers are `TXM_QUEUE_SEND_CALL`, `TXM_QUEUE_RECEIVE_CALL` and
+`TXM_QUEUE_INFO_GET_CALL` from `txm_module.h`.
+
+The C wrappers find the dispatcher in a global of the module,
+`_txm_module_kernel_call_dispatcher`. The Zig reads no global. The dispatcher
+comes in with the queue, in a `module.QueueRef` the caller owns, and on this
+side a `TxQueue` is bound to a pointer to that:
+
+```zig
+const ModuleQueue = rpc_tx.TxQueue(rpc_tx.module.api);
+
+var ref: rpc_tx.module.QueueRef = .{ .dispatcher = dispatcher, .queue = &queue_out };
+var to_resident = try ModuleQueue.init(ref.handle(), 16);
+```
+
+Whoever builds the `QueueRef` gets the dispatcher from code compiled with the
+module data model, where `_txm_module_kernel_call_dispatcher` is reached
+through `r9`. Zig 0.14.1 cannot address a module global that way, which is
+why the pointer is handed in rather than looked up.
+
+That is all this library settles about modules. Whether Zig code can run
+inside a module at all, with its own constant tables and data placed by the
+module manager, is RA8FW-534's question and not answered here. What is here
+is checked on the host against a fake dispatcher, and as an ARM object that
+needs no ThreadX symbol.
+
+Everything below holds for both sides: the status handling, the latch, the
+size rule and the reset are `TxQueue`'s and do not depend on the `Api`.
 
 ## What each ThreadX answer becomes
 
@@ -102,9 +148,10 @@ A binding that is down stays down. With both sides of the link stopped:
 
 ## Tests
 
-`zig build test --summary all` runs two roots on the host, against fake
+`zig build test --summary all` runs four roots on the host, against fake
 ThreadX services in `tests/fake_threadx.zig` that make the same checks the
-`_txe_` services do:
+`_txe_` services do, and a fake dispatcher in `tests/fake_dispatcher.zig`
+that records each request before passing it on to them:
 
 - `queue_test`: send, receive, the counts, a full queue, an empty queue, each
   unexpected status and that it is not retried, a deleted queue, the message
@@ -114,3 +161,9 @@ ThreadX services in `tests/fake_threadx.zig` that make the same checks the
   `rpc.QueueTransport`: a frame split across several queue messages, a full
   queue refusing a frame whole, interleaved events, and an unexpected status
   through to the session and back after a reset.
+- `module_test`: the request number and every argument of each of the three
+  services as the dispatcher receives them, and the same status handling
+  through a `TxQueue` bound on the module side.
+- `module_session_test`: a client inside a module and a server in the
+  resident image over two queues, with a frame split across several queue
+  messages and each one going through the dispatcher.
