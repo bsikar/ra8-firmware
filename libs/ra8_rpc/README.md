@@ -8,8 +8,9 @@ heap and no libc; every buffer belongs to the caller.
 Message sets are not in here. The firmware's app messages and the emulator's
 session messages each live with their owner and share only this library, and
 so do the transports that touch an operating system or a wire. This directory
-holds two that touch neither: the in-memory loopback the tests run on, and a
-transport over any queue of fixed-size messages.
+holds three that touch neither: the in-memory loopback the tests run on, a
+transport over any queue of fixed-size messages, and a transport over a pair
+of rings in memory two cores share.
 
 ## The frame
 
@@ -240,6 +241,70 @@ var link = try rpc.QueueTransport.init(out_queue, in_queue, &tx_message, &rx_mes
 var client = Client.init(link.transport(), &rx, my_caps);
 ```
 
+### Over shared memory
+
+`rpc.RingTransport` carries the byte stream over two rings in memory that two
+cores share, one ring for each direction. Each ring has one producer and one
+consumer. The memory is the caller's: nothing here names an address, and
+where the rings live belongs to whoever binds this to a board.
+
+A ring is a header of three 32-byte lines and then the data. Every header
+field is a little-endian `u32`, and the numbers are pinned in
+`rpc.ring.Layout`.
+
+| Offset | Field      | Written by | Meaning                                    |
+|-------:|------------|------------|--------------------------------------------|
+| 0      | `magic`    | formatter  | `0x42384152`, the bytes `RA8B`             |
+| 4      | `version`  | formatter  | Layout version, 1                          |
+| 8      | `capacity` | formatter  | Data bytes in the ring                     |
+| 32     | `head`     | producer   | Where the next byte will be written        |
+| 64     | `tail`     | consumer   | Where the next byte will be read           |
+| 96     | data       | producer   | `capacity` bytes                           |
+
+The rest of each line is zero. `head` and `tail` each have a line to
+themselves, so the two cores never write the same one. Both are byte offsets
+into the data and are always less than `capacity`. The ring is empty when they
+are equal, so one byte is always left unused: a ring holds `capacity - 1`
+bytes.
+
+The machine's part is injected as `rpc.Signal`, a context pointer and a vtable
+of two functions:
+
+| Function  | Contract                                                         |
+|-----------|------------------------------------------------------------------|
+| `barrier` | Stores made before the call are visible before stores made after |
+| `notify`  | Tell the other core there is something to read; a hint only      |
+
+The order of the steps is the contract between the cores:
+
+- **Writing**: copy the data, `barrier`, publish `head`, `notify`.
+- **Reading**: read `head`, `barrier`, copy the data, `barrier`, publish
+  `tail`.
+
+So data is in place before the index that reveals it, and a byte is not given
+back to the writer until it has been copied out.
+
+- **All or nothing.** A write longer than the free space is `LinkFull`. It
+  writes nothing, moves nothing and rings nothing. Data is never overwritten.
+- **One doorbell per send.** `notify` is called once for each write that
+  carried anything, however it wrapped, and never for one that was refused.
+- **The header is checked on every use.** Part of it is written by the other
+  core. A wrong `magic`, `version` or `capacity`, or a `head` or `tail` at or
+  past `capacity`, is `BadMessage`: nothing is copied and nothing is written.
+- **Failures stick.** After `BadMessage`, every send and receive on that
+  transport returns it until the transport is reset, even if the header has
+  since been mended.
+
+```zig
+const up = try rpc.Ring.init(shared[0..ring_bytes]);
+const down = try rpc.Ring.init(shared[ring_bytes..][0..ring_bytes]);
+up.writeHeader(); // one core only, before the other starts
+down.writeHeader();
+
+var link = rpc.RingTransport.init(up, down, signal); // the other core: (down, up)
+var client = Client.init(link.transport(), &rx, my_caps);
+```
+
 ### Resetting a link
 
 Two errors cannot be recovered from in place, because the byte stream has lost
@@ -264,9 +329,18 @@ The owner of the link brings it back. With both sides stopped:
 A transport that has no `reset` of its own, such as the loopback, is replaced
 with a fresh one at step 1.
 
+For a pair of rings, step 1 is done by the two cores together. Both stop
+using the link, by whatever means the binding gives them to agree on that.
+One core, the same one that formatted the rings at start-up, calls
+`Ring.writeHeader()` on both, which empties them and restores the header. Then
+each core calls `RingTransport.reset()` on its own transport to clear the
+failure, and both carry on from step 2. A core must not reset its transport
+before the headers have been rewritten: the damage would still be there, and
+the next call would fail again.
+
 ## Tests
 
-`zig build test --summary all` runs twelve roots:
+`zig build test --summary all` runs fifteen roots:
 
 - `codec_test`, `frame_test`, `envelope_test`: sizes, pinned numbers, and each
   refusal.
@@ -284,6 +358,13 @@ with a fresh one at step 1.
   events, a bad length, and the reset after each kind of failure.
 - `queue_fuzz_test`: random writes through the packing and back, and random
   messages through the unpacking.
+- `ring_transport_test`, `ring_session_test`: one ring's layout, the order of
+  its steps and what it refuses, and a client and a server over two rings in
+  one shared buffer: wrap-around, a frame that exactly fills the ring, a full
+  ring, interleaved events, a corrupted header, indices out of range, the
+  doorbell count, and the reset.
+- `ring_fuzz_test`: random sends and receives against a plain queue, and a
+  header of random words.
 - `fuzz_test`: damaged golden frames and random bytes through the decoder,
   then onto the wire of a live session towards each side. The seeded loops run
   every time; `zig build test --fuzz` drives the same properties with coverage
