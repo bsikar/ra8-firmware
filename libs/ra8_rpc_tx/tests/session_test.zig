@@ -14,6 +14,7 @@ const FakeQueue = fake.FakeQueue;
 const TxQueue = rpc_tx.TxQueue(fake.api);
 
 comptime {
+    _ = @import("fake_dispatcher.zig");
     _ = @import("fake_threadx.zig");
 }
 

@@ -16,3 +16,7 @@ pub const TxQueue = @import("queue.zig").TxQueue;
 /// The real kernel's entry points. Referring to this is what makes an image
 /// need the ThreadX kernel at link time, so host tests never do.
 pub const kernel = @import("kernel.zig");
+
+/// The same three services as code inside a ThreadX module reaches them:
+/// through the module's kernel-call dispatcher. It needs no symbol at all.
+pub const module = @import("module.zig");

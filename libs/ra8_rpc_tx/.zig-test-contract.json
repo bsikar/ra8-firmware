@@ -1,14 +1,20 @@
 {
   "test_roots": [
     "tests/queue_test.zig",
-    "tests/session_test.zig"
+    "tests/session_test.zig",
+    "tests/module_test.zig",
+    "tests/module_session_test.zig"
   ],
   "covered_sources": [
     "src/api.zig",
     "src/kernel.zig",
+    "src/module.zig",
     "src/queue.zig",
     "src/ra8_rpc_tx.zig",
+    "tests/fake_dispatcher.zig",
     "tests/fake_threadx.zig",
+    "tests/module_session_test.zig",
+    "tests/module_test.zig",
     "tests/queue_test.zig",
     "tests/session_test.zig"
   ],
@@ -26,5 +32,5 @@
       "-Mra8_rpc=../ra8_rpc/src/ra8_rpc.zig"
     ]
   },
-  "minimum_tests": 21
+  "minimum_tests": 37
 }
