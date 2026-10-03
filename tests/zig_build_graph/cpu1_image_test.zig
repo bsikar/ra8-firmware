@@ -238,7 +238,7 @@ test "threadx_cpu1 and txm_manager_cpu1 are the CPU1 images with a Zig entry, ea
         const image = app.cpu1 orelse continue;
         if (image.entry_language == .c) {
             try std.testing.expectEqual(@as(usize, 0), image.uses.len);
-            try std.testing.expect(!image.txm_module);
+            try std.testing.expect(image.txm_module == null);
             continue;
         }
         try std.testing.expect(zig_entries < expected.len);
@@ -253,7 +253,7 @@ test "threadx_cpu1 and txm_manager_cpu1 are the CPU1 images with a Zig entry, ea
 test "only the Module Manager image carries the packed module, in its own linker script" {
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
-        if (!image.txm_module) continue;
+        if (image.txm_module == null) continue;
         try std.testing.expectEqualStrings("txm_manager_cpu1", app.name);
         try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
     }

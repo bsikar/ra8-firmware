@@ -45,3 +45,22 @@ test "the unwind index and its relocations are both stripped" {
 test "a CPU1 image finds the packed module in .txm_module" {
     try std.testing.expectEqualStrings(".txm_module", hello.module_section);
 }
+
+test "every module a CPU1 image names is one the build knows" {
+    for (graph.cross_apps) |app| {
+        const image = app.cpu1 orelse continue;
+        const wanted = image.txm_module orelse continue;
+        const module = hello.find(wanted) orelse return error.UnknownModule;
+        try std.testing.expectEqualStrings(wanted, module.name);
+        try std.testing.expect(std.mem.endsWith(u8, module.entry_source, ".zig"));
+    }
+}
+
+test "txm_manager_cpu1 packs the hello-world module and an unknown name finds nothing" {
+    try std.testing.expectEqualStrings(hello.hello_world.entry_source, hello.find("txm_hello_m33").?.entry_source);
+    try std.testing.expect(hello.find("txm_missing_m33") == null);
+    for (graph.cross_apps) |app| {
+        if (!std.mem.eql(u8, app.name, "txm_manager_cpu1")) continue;
+        try std.testing.expectEqualStrings(hello.hello_world.name, app.cpu1.?.txm_module.?);
+    }
+}

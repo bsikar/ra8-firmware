@@ -836,7 +836,7 @@ pub const cross_apps = [_]CrossApp{
             .linker_script = "linker_script_cpu1.ld",
             .entry_language = .zig,
             .uses = &.{"threadx_m33_modules"},
-            .txm_module = true,
+            .txm_module = "txm_hello_m33",
         },
     },
 };
