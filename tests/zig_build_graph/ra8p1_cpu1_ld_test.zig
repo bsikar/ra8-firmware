@@ -47,3 +47,49 @@ test "the RA8P1 CPU1 windows sit in Figure 6's MRAM user area and the shared ban
     try std.testing.expect(sram_origin >= shram_start);
     try std.testing.expectEqual(shram_end, sram_origin + sram_length);
 }
+
+const ra8p1_fragment = "libs/ra8_board_ra8p1/ld/cpu1_image.ld.in";
+const ek_ra8d2_fragment = "libs/ra8_board_ek_ra8d2/ld/cpu1_image.ld.in";
+const ra8p1_map = "libs/ra8_board_ra8p1/ld/cpu1_memory_map.cmake";
+const ek_ra8d2_map = "libs/ra8_board_ek_ra8d2/ld/cpu1_memory_map.cmake";
+
+fn fromMarker(text: []const u8, marker: []const u8) ![]const u8 {
+    const start = std.mem.indexOf(u8, text, marker) orelse return error.NoMarker;
+    return text[start..];
+}
+
+/// Every `set(` line, in order, joined by newlines.
+fn setLines(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
+    var out = std.ArrayList(u8).init(allocator);
+    errdefer out.deinit();
+    var lines = std.mem.splitScalar(u8, text, '\n');
+    while (lines.next()) |line| {
+        if (!std.mem.startsWith(u8, line, "set(")) continue;
+        try out.appendSlice(line);
+        try out.append('\n');
+    }
+    return out.toOwnedSlice();
+}
+
+test "the RA8P1 CPU1 image fragment is the EK-RA8D2 one below its header" {
+    const ra8p1 = try readScript(ra8p1_fragment);
+    defer std.testing.allocator.free(ra8p1);
+    const ek = try readScript(ek_ra8d2_fragment);
+    defer std.testing.allocator.free(ek);
+    try std.testing.expectEqualStrings(try fromMarker(ek, "\nSECTIONS\n{"), try fromMarker(ra8p1, "\nSECTIONS\n{"));
+}
+
+test "the RA8P1 CPU1 window module sets what the EK-RA8D2 one sets" {
+    const allocator = std.testing.allocator;
+    const ra8p1 = try readScript(ra8p1_map);
+    defer allocator.free(ra8p1);
+    const ek = try readScript(ek_ra8d2_map);
+    defer allocator.free(ek);
+    const ra8p1_sets = try setLines(allocator, ra8p1);
+    defer allocator.free(ra8p1_sets);
+    const ek_sets = try setLines(allocator, ek);
+    defer allocator.free(ek_sets);
+    try std.testing.expectEqualStrings(ek_sets, ra8p1_sets);
+    try std.testing.expect(std.mem.indexOf(u8, ra8p1_sets, "set(RA8_CPU1_IMAGE_ORIGIN 0x020C0000)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, ra8p1_sets, "set(RA8_CPU1_SRAM_ORIGIN 0x22190000)") != null);
+}
