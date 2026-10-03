@@ -35,6 +35,9 @@ pub const Probe = struct {
 };
 
 const probe_dir = "tests/zig_build_graph/txm_module_probes/";
+/// txm_rpc_cpu1's module (RA8FW-544): an ra8_rpc client over ThreadX queues,
+/// whose vtables are words of data holding addresses.
+const rpc_source = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1/src/module_start.zig";
 
 pub const probes = [_]Probe{
     .{
@@ -55,6 +58,19 @@ pub const probes = [_]Probe{
         .leave_out = 0,
         .clean = false,
         .expect = &.{ ".data at 0x", "R_ARM_ABS32 -> ", "FAIL, 1 word(s)" },
+    },
+    .{
+        .name = "rpc",
+        .source = rpc_source,
+        .clean = true,
+        .expect = &.{"word(s) of data hold an address, each one in the rebase records"},
+    },
+    .{
+        .name = "rpc_short",
+        .source = rpc_source,
+        .leave_out = 0,
+        .clean = false,
+        .expect = &.{ ".data", "R_ARM_ABS32 -> ", "FAIL, 1 word(s)" },
     },
 };
 

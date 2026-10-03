@@ -59,8 +59,17 @@ pub const table = Module{
     .through_c = true,
 };
 
+/// The module that calls a resident-image service through ra8_rpc over
+/// ThreadX queues, for txm_rpc_cpu1 (RA8FW-544). Its client and transport
+/// reach their queues through vtables in its data, so it goes through C.
+pub const rpc = Module{
+    .name = "txm_rpc_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1/src/module_start.zig",
+    .through_c = true,
+};
+
 /// Every module a CPU1 image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table };
+pub const modules = [_]Module{ hello_world, fault, table, rpc };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;

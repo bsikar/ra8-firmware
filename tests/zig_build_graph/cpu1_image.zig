@@ -83,6 +83,9 @@ pub const Cpu1Image = struct {
     /// Manager to load in place. The app's own CPU1 linker script places it
     /// (RA8FW-431). Null for every image without a Module Manager.
     txm_module: ?[]const u8 = null,
+    /// Whether the Zig entry imports `ra8_rpc` and `ra8_rpc_tx`, for an
+    /// image that serves calls from its module (RA8FW-544).
+    rpc: bool = false,
 };
 
 pub const EntryLanguage = enum { c, zig };
@@ -358,7 +361,18 @@ fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPat
         glue.addImport(cpu1_threadx.handlers_import, zigModule(b, options, handlers));
         root.addImport(cpu1_threadx.zig_glue_import, glue);
     }
+    if (options.image.rpc) {
+        const rpc = zigModule(b, options, "libs/ra8_rpc/src/ra8_rpc.zig");
+        const rpc_tx = zigModule(b, options, "libs/ra8_rpc_tx/src/ra8_rpc_tx.zig");
+        rpc_tx.addImport("ra8_rpc", rpc);
+        root.addImport("ra8_rpc", rpc);
+        root.addImport("ra8_rpc_tx", rpc_tx);
+    }
     const object = b.addObject(.{ .name = b.fmt("{s}_entry", .{name}), .root_module = root });
+    // The RPC stack copies messages, and Zig lowers those copies to
+    // `__aeabi_memcpy` and `__aeabi_memclr`, which this -nostdlib link has
+    // nowhere else to find.
+    if (options.image.rpc) object.bundle_compiler_rt = true;
     return object.getEmittedBin();
 }
 
