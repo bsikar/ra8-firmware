@@ -50,6 +50,26 @@ test "setup leaves a fresh handle down" {
     try std.testing.expectEqual(core.Link.down, c6link.linkState(&handle));
 }
 
+test "setup clears the latches a previous link left behind" {
+    var handle: c6link.Handle = .{};
+    const up: c6link.Event = .{ .kind = .sta_connected };
+    const down: c6link.Event = .{ .kind = .sta_disconnected, .reason = 0x0F03 };
+    c6link.noteEvent(&handle, &up);
+    c6link.noteEvent(&handle, &down);
+    const cfg: c6link.Cfg = .{ .arena_bytes = c6link.c6.arena_min };
+
+    c6link.applyCfg(&handle, &cfg);
+
+    try std.testing.expect(!handle.connected);
+    try std.testing.expect(!handle.disconnected);
+    try std.testing.expectEqual(@as(u16, 0), handle.reason);
+
+    // A connect heard on the new link must now bring it up; a disconnect
+    // latched from the old one would otherwise pin it down.
+    c6link.noteEvent(&handle, &up);
+    try std.testing.expectEqual(core.Link.up, c6link.linkState(&handle));
+}
+
 test "a connect event brings the link up" {
     var handle: c6link.Handle = .{};
     const ev: c6link.Event = .{ .kind = .sta_connected };
