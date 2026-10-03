@@ -3,7 +3,7 @@
 //!
 //! npu_vela_conv (RA8FW-416). Runs the real Vela-compiled conv_int8 model on
 //! the RA8P1 Ethos-U55 through the firmware's own loader and driver: loads the
-//! distilled .npub, copies the golden input into the input region, submits,
+//! distilled .npub, copies the golden input to where the stream reads it, submits,
 //! runs, waits, and prints PASS only when all 256 output bytes equal the TFLM
 //! golden. The board and HAL C layers are reached through extern.
 
@@ -13,9 +13,12 @@ const golden = @import("golden");
 pub const baud: u32 = 115_200;
 /// Runtime arena: scratch (512) + input (256) + output (256), 16-aligned.
 pub const arena_bytes: u32 = 1024;
-/// BASEPn slots of the distilled blob, in the order vela_gen packs them.
-pub const input_region: usize = 3;
-pub const output_region: usize = 4;
+/// Where the command stream reads the input and writes the output: Vela's
+/// offline allocation puts both inside the scratch region (RA8FW-487).
+pub const input_region: usize = model.input_region;
+pub const input_offset: usize = model.input_offset;
+pub const output_region: usize = model.output_region;
+pub const output_offset: usize = model.output_offset;
 pub const region_slots: usize = 8;
 pub const pass_line = "npu_vela_conv: PASS\r\n";
 pub const fail_line = "npu_vela_conv: FAIL\r\n";
@@ -69,7 +72,7 @@ fn load(job: *Job) bool {
     const arena = Arena{ .base = &arena_buf, .bytes = arena_bytes };
     if (ra8_npu_load(&blob, blob.len, &arena, job) != ok) return false;
     if (job.region_count <= output_region) return false;
-    const input = region(job, input_region);
+    const input = region(job, input_region) + input_offset;
     for (golden.input, 0..) |v, i| input[i] = @bitCast(v);
     return true;
 }
@@ -94,7 +97,8 @@ fn runModel() bool {
     var job = Job{};
     if (!load(&job)) return false;
     if (!execute(&job)) return false;
-    return matches(region(&job, output_region)[0..golden.output.len]);
+    const output = region(&job, output_region) + output_offset;
+    return matches(output[0..golden.output.len]);
 }
 
 export fn main() callconv(.c) c_int {
