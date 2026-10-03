@@ -19,4 +19,5 @@ comptime {
     _ = @import("ra8_c6link_fw_abi.zig");
     _ = @import("ra8_c6link_wifi_abi.zig");
     _ = @import("ra8_c6link_ap_info_abi.zig");
+    _ = @import("ra8_c6link_mac_abi.zig");
 }
