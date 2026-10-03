@@ -113,32 +113,3 @@ ra8_err_t ra8_c6link_fw_version(ra8_c6link_t* link, ra8_c6link_fw_version_t* out
                               internal_c6link_take_fw,
                               &take);
 }
-
-ra8_err_t ra8_c6link_eth_send(ra8_c6link_t* link, const uint8_t* frame, uint16_t len)
-{
-  if ((link == nullptr) || (frame == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  const uint16_t admitted = priv_c6link_tx_admit(link->open, len, link->tx_len);
-  if (admitted != (uint16_t)k_ra8_ok) {
-    return (ra8_err_t)admitted;
-  }
-
-  for (uint16_t i = 0U; i < len; i++) {
-    link->tx[(uint16_t)k_ra8_c6link_header_bytes + i] = frame[i];
-  }
-  link->tx_len = len;
-  link->tx_if  = (uint8_t)ESP_STA_IF;
-
-  ra8_c6link_stats_t local  = {};
-  const ra8_err_t    pumped = priv_c6link_pump(link, (uint16_t)k_ra8_c6link_hs_giveup, &local);
-  if (pumped != k_ra8_ok) {
-    link->tx_len = 0U;
-    return pumped;
-  }
-  if (link->tx_len != 0U) {
-    link->tx_len = 0U;
-    return k_ra8_err_hw_timeout;
-  }
-  return k_ra8_ok;
-}
