@@ -232,12 +232,16 @@ macro(_ra8_app_collect_sources)
     "${_ra8_core_zig}"
   )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
+  set(_ra8_hal_zig "")
+  if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_hal/build.zig")
+    set(_ra8_hal_zig "ra8_hal|${RA8_REPO_ROOT}/libs/ra8_hal")
+  endif()
   _ra8_app_require_compilable_lib(
     ra8_hal
     "${RA8_REPO_ROOT}/libs/ra8_hal"
     "links ra8_hal into every app"
     "${_ra8_lib_hal}"
-    ""
+    "${_ra8_hal_zig}"
   )
   # ra8_net_pal has no C sources: the library is Zig and its objects
   # come from the Zig static archive, linked separately. Left unglobbed and
@@ -348,13 +352,13 @@ macro(_ra8_app_collect_sources)
   if(_ra8_core_zig)
     list(APPEND _ra8_lib_zig "${_ra8_core_zig}")
   endif()
-  # ra8_secure_app is universal in exactly the same way, and its last C
-  # translation unit is gone, so its archive is registered here
-  # rather than through the LIBS loop below, which only sees named libraries.
+  # Universal archives, registered here, not via the LIBS loop below (named libraries
+  # only): ra8_secure_app (no C left) and ra8_hal, mid-port (RA8FW-497).
   set(_ra8_secure_app_path "${RA8_REPO_ROOT}/libs/ra8_secure_app")
   if(EXISTS "${_ra8_secure_app_path}/build.zig")
     list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
   endif()
+  list(APPEND _ra8_lib_zig ${_ra8_hal_zig})
   set(_ra8_lib_inc "")
   # Chip adapter headers ride with the board (RA8FW-299); see board_adapters.cmake.
   _ra8_app_board_adapter_includes()

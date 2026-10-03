@@ -1,0 +1,11 @@
+{
+  "test_roots": [
+    "tests/eth_media_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/eth_media.zig",
+    "src/ra8_hal_abi.zig",
+    "tests/eth_media_test.zig"
+  ],
+  "minimum_tests": 5
+}
