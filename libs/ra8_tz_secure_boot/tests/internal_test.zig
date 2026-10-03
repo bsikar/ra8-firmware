@@ -28,7 +28,7 @@ test "the board map passes the validator it will be checked by" {
 test "the board map carves out NS MRAM, NS SRAM, NS SDRAM and the NSC alias" {
     const regions = partition.board_regions;
     try std.testing.expectEqual(@as(usize, 4), regions.len);
-    try std.testing.expectEqual(@as(usize, 0x02080000), regions[0].base);
+    try std.testing.expectEqual(@as(usize, 0x12080000), regions[0].base);
     try std.testing.expectEqual(partition.SauAttr.ns, regions[0].attr);
     try std.testing.expectEqual(@as(usize, 0x10000000), regions[3].base);
     try std.testing.expectEqual(partition.SauAttr.nsc, regions[3].attr);
@@ -57,7 +57,7 @@ test "a security_init sequence walks the steps in order and rebalances PRCR" {
 
 test "arming the jump records the vector table the NS world will use" {
     boot.reset();
-    const ns_base: u32 = 0x02080000;
+    const ns_base: u32 = 0x12080000;
     boot.host.write32(regs.Addr.vtor_ns, ns_base);
     boot.step = .blxns_armed;
     try std.testing.expectEqual(ns_base, boot.host.vtor_ns);

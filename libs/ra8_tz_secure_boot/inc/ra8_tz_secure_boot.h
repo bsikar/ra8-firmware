@@ -73,9 +73,9 @@ extern "C" {
  *
  * @code
  * Region 0  Code-Flash NSC alias  0x10000000..0x100FFFE0  NSC
- * Region 1  NS upper MRAM         0x02080000..0x020FFFE0  NS
+ * Region 1  NS upper MRAM         0x12080000..0x120FFFE0  NS
  * Region 2  NSC SRAM alias        0x12000000..0x1200FFE0  NSC
- * Region 3  NS upper SRAM         0x22100000..0x221FFFE0  NS
+ * Region 3  NS upper SRAM         0x32100000..0x321FFFE0  NS
  * Region 4  NS peripheral window  0x50000000..0x5FFFFFE0  NS
  * @endcode
  */

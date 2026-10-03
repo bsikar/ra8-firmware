@@ -41,9 +41,9 @@ pub const Region = enum(u8) {
 /// hand.
 pub const regions = [Region.count]partition.SauRegion{
     .{ .base = 0x10000000, .size = 0x00100000, .attr = .nsc },
-    .{ .base = 0x02080000, .size = 0x00080000, .attr = .ns },
+    .{ .base = 0x12080000, .size = 0x00080000, .attr = .ns },
     .{ .base = 0x12000000, .size = 0x00010000, .attr = .nsc },
-    .{ .base = 0x22100000, .size = 0x00100000, .attr = .ns },
+    .{ .base = 0x32100000, .size = 0x00100000, .attr = .ns },
     .{ .base = 0x50000000, .size = 0x10000000, .attr = .ns },
 };
 
@@ -77,9 +77,9 @@ pub fn window(region: Region) partition.SauRegion {
 test "the published region order is what the table actually holds" {
     try std.testing.expectEqual(@as(usize, 5), Region.count);
     try std.testing.expectEqual(@as(usize, 0x10000000), window(.code_nsc).base);
-    try std.testing.expectEqual(@as(usize, 0x02080000), window(.ns_mram).base);
+    try std.testing.expectEqual(@as(usize, 0x12080000), window(.ns_mram).base);
     try std.testing.expectEqual(@as(usize, 0x12000000), window(.sram_nsc).base);
-    try std.testing.expectEqual(@as(usize, 0x22100000), window(.ns_sram).base);
+    try std.testing.expectEqual(@as(usize, 0x32100000), window(.ns_sram).base);
     try std.testing.expectEqual(@as(usize, 0x50000000), window(.ns_periph).base);
 }
 
@@ -123,5 +123,14 @@ test "unmapped memory stays Secure" {
 test "the NS image window is the upper half of MRAM, not the whole bank" {
     const ns_mram = window(.ns_mram);
     try std.testing.expectEqual(@as(u32, 0x80000), ns_mram.size);
-    try std.testing.expect(ns_mram.base > 0x02000000);
+    try std.testing.expect(ns_mram.base > 0x12000000);
+}
+
+test "the NS windows sit at the bit-28 Non-secure aliases" {
+    // On RA8 the IDAU makes an address with bit 28 clear Secure, and the SAU
+    // cannot make it Non-secure (RA8FW-510), so the NS windows name the alias.
+    const alias_bit: u32 = 1 << 28;
+    try std.testing.expect(window(.ns_mram).base & alias_bit != 0);
+    try std.testing.expect(window(.ns_sram).base & alias_bit != 0);
+    try std.testing.expect(window(.ns_periph).base & alias_bit != 0);
 }
