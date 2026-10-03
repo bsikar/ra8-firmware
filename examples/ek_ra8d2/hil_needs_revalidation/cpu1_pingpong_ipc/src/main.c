@@ -9,7 +9,7 @@
  * On the happy path this function is never reached. ``SystemInit`` calls
  * ``ra8_trustzone_init``, which programmes the SAU, writes
  * IPCSAR=0x00050000, releases CPU1 via ``ra8_cpu1_release`` (still in S),
- * then BLXNS-es into the NS image at 0x02080000 (``ns_reset_handler``
+ * then BLXNS-es into the NS image at 0x12080000 (``ns_reset_handler``
  * in ``ns_main.c``). BLXNS does not return on hardware, so the
  * ``Reset_Handler`` step that calls ``main()`` is unreachable.
  *
