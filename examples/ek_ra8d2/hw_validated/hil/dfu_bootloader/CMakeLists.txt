@@ -33,7 +33,7 @@ ra8_add_app(
   DESCRIPTION
     "Immutable USB-DFU MRAM bootloader: A/B slot boot + jump, or DFU the inactive slot over USB-FS"
   USES threadx usbx
-  LIBS ra8_dfu ra8_psa_crypto ra8_rot_launch ra8_rot
+  LIBS ra8_dfu_device ra8_dfu ra8_psa_crypto ra8_rot_launch ra8_rot
        THREADX_HEAP
        SDRAM
        MRAM_LENGTH

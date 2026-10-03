@@ -12,10 +12,9 @@
 #      unchanged inc/ra8_dfu.h. Its exports carry linksection(".sram_text"),
 #      so an app still reaches them through ra8_add_app(SRAM_TEXT ...) and
 #      only ra8_flash.c has to be named there by file.
-#   3. USBX DFU device class wired to real MRAM (ra8_dfu_device.c), bound to
-#      either USB controller through the ux_dcd_ra8_usb bridge via
-#      ra8_usb_speed_t. Firmware-only (guarded by RA8_OFF_TARGET), so the
-#      host test build compiles it away.
+#   3. The USBX DFU device class glue moved to its own Zig archive,
+#      libs/ra8_dfu_device (RA8FW-507). Linking it is the opt-in to USBX,
+#      so apps that call ra8_dfu_device_start name both in LIBS.
 #   4. The polled host-side DFU driver, which is Zig now:
 #      src/dfu_host_abi.zig behind the unchanged inc/ra8_dfu_host.h, built by
 #      build.zig. Firmware-only by construction rather than by guard, since
