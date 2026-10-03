@@ -4,20 +4,19 @@
 //! Which library named in an app's `LIBS` contributes a Zig ARCHIVE, decided
 //! by the rule rather than by a hand-kept list.
 //!
-//! `cmake/ra8_app/sources.cmake:371` is the whole rule, and it runs over every
+//! `cmake/ra8_app/sources.cmake` holds the whole rule, and it runs over every
 //! `LIBS` entry:
 //!
-//!     if(EXISTS "${_ra8_lib_path}/build.zig"
-//!        AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
+//!     if(EXISTS "${_ra8_lib_path}/build.zig")
 //!       list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
 //!
-//! with the comment that fixes the meaning of the second clause: "A first-half
-//! port retains its primary C implementation for ARM. The later ARM flip
-//! removes that file; support C sources may remain. Only then link the Zig
-//! archive beside any support C objects." So the presence of `build.zig` alone
-//! is NOT the test. A library mid-port still has `src/<lib>.c` and must keep
-//! linking C, and the archive joins the link only once that file is gone,
-//! sitting beside whatever support `.c` the library still has.
+//! A `build.zig` alone is the test. The rule once also required the primary
+//! `src/<lib>.c` to be gone, on the theory that a library mid-port keeps a
+//! complete C implementation for ARM. Ports do not work that way: each slice
+//! deletes the C it replaces, so the C that remains calls into Zig.
+//! `ra8_c6link` kept `src/ra8_c6link.c` while its `priv_c6link_*` helpers and
+//! handle lifecycle moved to Zig, and that second clause left every app naming
+//! it without them at link.
 //!
 //! The Zig graph had the OUTPUT of this rule hand-written into
 //! `app_table.zig`'s `zig_libraries` instead of the rule itself: eleven of the
@@ -25,9 +24,8 @@
 //! the rule to the libraries the table already names turns up six that qualify,
 //! so five archives were missing from the link and nothing could notice,
 //! because a hand-kept copy of a derived set cannot drift loudly. Deriving it
-//! here means a library finishing its ARM flip joins the link by deleting its
-//! last primary `.c`, exactly as it does under CMake, with no second edit in
-//! this graph.
+//! here means a library joins the link by gaining a `build.zig`, exactly as it
+//! does under CMake, with no second edit in this graph.
 //!
 //! `zig_libraries` stays as the explicit escape hatch for a library this rule
 //! cannot see; it is unioned with what this returns.
@@ -49,14 +47,9 @@ pub fn pathFor(b: *std.Build, name: []const u8) ?[]const u8 {
     return null;
 }
 
-/// The rule itself: a `build.zig` present and the library's primary
-/// implementation `src/<name>.c` absent.
+/// The rule itself: a `build.zig` present.
 pub fn contributesArchive(b: *std.Build, name: []const u8) bool {
     const path = pathFor(b, name) orelse return false;
     const build_file = b.fmt("{s}/build.zig", .{path});
-    const has_build = if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
-    if (!has_build) return false;
-    const primary = b.fmt("{s}/src/{s}.c", .{ path, name });
-    const has_primary = if (b.build_root.handle.access(primary, .{})) |_| true else |_| false;
-    return !has_primary;
+    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
 }
