@@ -374,11 +374,11 @@ func isWithin(root, candidate string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrUnsafeEnvironment, err)
 	}
-	relative, err := filepath.Rel(resolvedRoot, resolvedCandidate)
+	within, err := pathsWithin(resolvedRoot, resolvedCandidate)
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrUnsafeEnvironment, err)
 	}
-	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))), nil
+	return within, nil
 }
 
 func resolvePath(path string) (string, error) {
@@ -434,8 +434,8 @@ func resolveTaskProgram(root, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %s: %v", ErrToolMissing, name, err)
 	}
-	relative, err := filepath.Rel(root, resolved)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+	within, err := pathsWithin(root, resolved)
+	if err != nil || !within {
 		return "", fmt.Errorf("%w: task program escapes the verified checkout: %s", ErrUnsafeEnvironment, name)
 	}
 	info, err := os.Stat(resolved)
