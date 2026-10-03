@@ -40,6 +40,9 @@ const pkg_path = @import("pkg_path.zig");
 
 /// The universal library whose C left the universal glob for a Zig archive.
 const universal_usb_pal = "ra8_usb_pal";
+/// ra8_hal, universal and mid-port: its C stays in the universal glob and
+/// its ported units arrive in this archive beside them (RA8FW-497).
+const universal_hal = "ra8_hal";
 const ns_image = @import("ns_image.zig");
 
 const CrossApp = cross_sources.CrossApp;
@@ -220,6 +223,21 @@ fn addCrossApp(
             .optimize = globals.configuration.zig_optimize,
         });
         archives.append(dependency.artifact(universal_usb_pal).getEmittedBin()) catch @panic("OOM");
+    }
+
+    // ra8_hal, the same footing as ra8_usb_pal, registered beside
+    // ra8_secure_app in sources.cmake. Its archive holds only ported units, so
+    // it never duplicates a symbol the universal C glob still compiles.
+    var names_hal = false;
+    for (app.zig_libraries) |lib_name| {
+        if (std.mem.eql(u8, lib_name, universal_hal)) names_hal = true;
+    }
+    if (!names_hal and migrated_libs.contributesArchive(b, universal_hal)) {
+        const dependency = b.dependency(universal_hal, .{
+            .target = arm_target,
+            .optimize = globals.configuration.zig_optimize,
+        });
+        archives.append(dependency.artifact(universal_hal).getEmittedBin()) catch @panic("OOM");
     }
 
     // The selected board's own archive, on the same unconditional footing.
