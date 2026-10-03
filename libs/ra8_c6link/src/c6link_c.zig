@@ -20,3 +20,9 @@ pub const RxView = extern struct {
     if_type: u8,
     if_num: u8,
 };
+
+/// protobuf-c's `ProtobufCBinaryData`: a length and a pointer, in that order.
+pub const BinaryData = extern struct {
+    len: usize,
+    data: ?[*]const u8,
+};

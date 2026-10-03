@@ -331,7 +331,7 @@ RA8_INTERNAL static void internal_test_rpc_call_guards(void)
  * - Vector 9: staged only     -> true  (varies tx_len only)
  * Each control paired with each varied vector proves that condition
  * independently decides. N+1 vectors per decision: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_emit
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_emit_abi.zig@priv_c6link_emit
  * Decisions: libs/ra8_c6link/src/ra8_c6link_dispatch_abi.zig@priv_c6link_dispatch
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_last_fault
  * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_rpc_consume
