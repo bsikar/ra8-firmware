@@ -4,7 +4,8 @@
     "tests/canfd_tdc_test.zig",
     "tests/layer3_switch_test.zig",
     "tests/icu_test.zig",
-    "tests/iwdt_test.zig"
+    "tests/iwdt_test.zig",
+    "tests/npu_quant_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -23,7 +24,10 @@
     "src/canfd_abi.zig",
     "src/layer3_switch_abi.zig",
     "src/icu_abi.zig",
-    "src/iwdt_abi.zig"
+    "src/iwdt_abi.zig",
+    "src/internal/npu_quant.zig",
+    "tests/npu_quant_test.zig",
+    "src/npu_quant_abi.zig"
   ],
-  "minimum_tests": 28
+  "minimum_tests": 36
 }
