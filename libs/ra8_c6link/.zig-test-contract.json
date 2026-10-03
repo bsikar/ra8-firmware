@@ -10,6 +10,7 @@
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig",
+    "tests/lifecycle_abi_test.zig",
     "tests/pump_abi_test.zig",
     "tests/pump_test.zig",
     "tests/rpc_wait_test.zig",
@@ -41,6 +42,7 @@
     "src/ra8_c6link_dispatch_abi.zig",
     "src/ra8_c6link_emit_abi.zig",
     "src/ra8_c6link_field_abi.zig",
+    "src/ra8_c6link_lifecycle_abi.zig",
     "src/ra8_c6link_pump_abi.zig",
     "tests/abi_test.zig",
     "tests/caps_test.zig",
@@ -49,8 +51,9 @@
     "tests/field_abi_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig",
+    "tests/lifecycle_abi_test.zig",
     "tests/pump_abi_test.zig",
     "tests/pump_test.zig"
   ],
-  "minimum_tests": 179
+  "minimum_tests": 185
 }

@@ -333,7 +333,7 @@ RA8_INTERNAL static void internal_test_rpc_call_guards(void)
  * independently decides. N+1 vectors per decision: minimal MC/DC.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_emit_abi.zig@priv_c6link_emit
  * Decisions: libs/ra8_c6link/src/ra8_c6link_dispatch_abi.zig@priv_c6link_dispatch
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_last_fault
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_lifecycle_abi.zig@ra8_c6link_last_fault
  * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_rpc_consume
  * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_resp @brief Verify mcdc facade guards behavior. @details Executes the mcdc facade guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_facade_guards(void)
