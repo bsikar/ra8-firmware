@@ -344,28 +344,3 @@ ra8_err_t ra8_c6link_wifi_start(ra8_c6link_t* link)
   }
   return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
 }
-
-ra8_err_t ra8_c6link_wifi_stop(ra8_c6link_t* link)
-{
-  if (link == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (!ra8_c6link_is_open(link)) {
-    return k_ra8_err_not_initialized;
-  }
-
-  const ra8_err_t stopped = priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStop);
-  const ra8_err_t deinit  = priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiDeinit);
-  return (stopped != k_ra8_ok) ? stopped : deinit;
-}
-
-ra8_err_t ra8_c6link_wifi_leave(ra8_c6link_t* link)
-{
-  if (link == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (!ra8_c6link_is_open(link)) {
-    return k_ra8_err_not_initialized;
-  }
-  return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiDisconnect);
-}
