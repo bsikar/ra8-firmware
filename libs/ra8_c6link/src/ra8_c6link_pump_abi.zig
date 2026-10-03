@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the poll pump: `priv_c6link_pump`, which
-//! `src/ra8_c6link_internal.h` declares and `ra8_c6link.c` calls.
+//! `src/ra8_c6link_internal.h` declares and the C RPC layer calls.
 //!
 //! `ra8_c6link_t` comes from the public header through translate-c, so the
 //! transport, the two frame buffers and the staged-payload fields are read at
