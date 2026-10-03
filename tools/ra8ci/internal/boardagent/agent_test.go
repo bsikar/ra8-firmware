@@ -12,37 +12,6 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardclient"
 )
 
-type testControlClient struct {
-	state            board.Snapshot
-	onAcknowledge    func(boardclient.LeaseToken) error
-	acknowledgements int
-	observations     int
-}
-
-func (c *testControlClient) Status(context.Context, string) (board.Snapshot, error) {
-	return c.state, nil
-}
-
-func (c *testControlClient) AcknowledgeGrant(_ context.Context, token boardclient.LeaseToken) (board.Snapshot, error) {
-	c.acknowledgements++
-	if c.onAcknowledge != nil {
-		if err := c.onAcknowledge(token); err != nil {
-			return board.Snapshot{}, err
-		}
-	}
-	result, _, err := board.Apply(c.state, board.AcknowledgeGrant{Actor: "board-agent",
-		LeaseID: token.LeaseID, Generation: token.Generation, InstalledGeneration: token.Generation}, time.Now().UTC())
-	c.state = result
-	return result, err
-}
-
-func (c *testControlClient) ObserveAgentGeneration(_ context.Context, boardID string, highWater uint64) (board.Snapshot, error) {
-	c.observations++
-	result, _, err := board.Apply(c.state, board.ObserveAgentGeneration{Actor: "board-agent", HighWater: highWater}, time.Now().UTC())
-	c.state = result
-	return result, err
-}
-
 func TestReconcilePersistsGenerationBeforeGrantAck(t *testing.T) {
 	state, err := board.New("ek-ra8d2")
 	if err != nil {

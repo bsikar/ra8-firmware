@@ -136,33 +136,6 @@ func TestHTTPBackendEnvironmentBindsReservationAndUsesMTLS(t *testing.T) {
 	}
 }
 
-func TestHTTPBackendEnvironmentRejectsUnapprovedEndpointsAndWeakKeys(t *testing.T) {
-	base := testHTTPBackendConfig(t)
-	for _, endpoint := range []string{
-		"http://ra8ci.internal.example:8443",
-		"https://ra8ci.internal.example",
-		"https://user@ra8ci.internal.example:8443",
-		"https://ra8ci.internal.example:8443?x=y",
-		"https://ra8ci.internal.example:8443/../outside",
-		"https://control.tail123.ts.net:8443",
-		"https://100.64.1.2:8443",
-	} {
-		t.Run(endpoint, func(t *testing.T) {
-			config := base
-			config.ServerURL = endpoint
-			if _, err := HTTPBackendEnvironment(config); err == nil {
-				t.Fatalf("accepted unapproved endpoint %q", endpoint)
-			}
-		})
-	}
-	if err := os.Chmod(base.ClientPrivateKeyFile, 0o640); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := HTTPBackendEnvironment(base); err == nil {
-		t.Fatal("accepted a private key accessible to group")
-	}
-}
-
 func TestOverlayEnvironmentScrubsInheritedBackendConfig(t *testing.T) {
 	result, err := OverlayEnvironment(
 		[]string{

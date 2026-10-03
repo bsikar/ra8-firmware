@@ -32,9 +32,7 @@ func TestPublishingAnAttestationNeedsAProtectedRealDirectory(t *testing.T) {
 	if err := os.Mkdir(realDirectory, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(realDirectory, link); err != nil {
-		t.Skipf("symlinks unavailable here: %v", err)
-	}
+	symlinkTest(t, realDirectory, link)
 	for name, directory := range map[string]string{
 		"a directory that is not there": filepath.Join(root, "absent"),
 		"a file standing in for one":    plainFile,
@@ -42,28 +40,6 @@ func TestPublishingAnAttestationNeedsAProtectedRealDirectory(t *testing.T) {
 	} {
 		if _, err := publishedInto(t, directory); err == nil ||
 			!strings.Contains(err.Error(), "protected real directory") {
-			t.Fatalf("%s = %v", name, err)
-		}
-	}
-}
-
-// A directory anyone in the group can write is a directory anyone in the
-// group can swap the published file at, whatever the file's own 0640 says.
-func TestPublishingAnAttestationRefusesASharedDirectory(t *testing.T) {
-	for name, mode := range map[string]os.FileMode{
-		"group writable": 0o770,
-		"world writable": 0o707,
-		"both":           0o777,
-	} {
-		directory := filepath.Join(t.TempDir(), "out")
-		if err := os.Mkdir(directory, mode); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(directory, mode); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := publishedInto(t, directory); err == nil ||
-			!strings.Contains(err.Error(), "group or world writable") {
 			t.Fatalf("%s = %v", name, err)
 		}
 	}

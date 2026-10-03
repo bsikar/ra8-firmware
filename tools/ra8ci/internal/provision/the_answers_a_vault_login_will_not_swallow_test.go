@@ -6,7 +6,7 @@ package provision
 import (
 	"context"
 	"net/http"
-	"os"
+
 	"strings"
 	"testing"
 )
@@ -50,29 +50,4 @@ func TestAnAnswerLargerThanThePlaneWillReadIsRefusedWhole(t *testing.T) {
 		t.Fatalf("an ordinary answer was refused: %v", err)
 	}
 	token.Clear()
-}
-
-// TestACredentialFileThePolicyAdmitsButCannotBeOpened pins the gap between the
-// file policy and the read. A mode 0o000 file is a regular file, inside the
-// size bound, with no group or other bits, so it passes every policy check and
-// still cannot be opened. Each of the three credentials keeps its own wrapper,
-// which is what tells an operator WHICH file to look at.
-func TestACredentialFileThePolicyAdmitsButCannotBeOpened(t *testing.T) {
-	for name, pick := range map[string]func(AppRoleConfig) (string, string){
-		"role ID":   func(c AppRoleConfig) (string, string) { return c.RoleIDFile, "read AppRole role ID" },
-		"secret ID": func(c AppRoleConfig) (string, string) { return c.SecretIDFile, "read AppRole secret ID" },
-		"CA bundle": func(c AppRoleConfig) (string, string) { return c.CAFile, "read AppRole CA bundle" },
-	} {
-		t.Run(name, func(t *testing.T) {
-			server, authority := appRoleAnswering(t, http.StatusOK, appRoleGoodAnswer)
-			defer server.Close()
-			config := appRoleConfigWithCA(t, server.URL+"/bao", authority)
-			file, wrapper := pick(config)
-			if err := os.Chmod(file, 0o000); err != nil {
-				t.Fatalf("seal credential file: %v", err)
-			}
-			appRoleRefused(t, name, config, wrapper)
-			appRoleRefused(t, name, config, "credential file is unreadable")
-		})
-	}
 }

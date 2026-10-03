@@ -1,3 +1,5 @@
+//go:build unix
+
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 
@@ -122,9 +124,7 @@ func TestNewFileHighWaterRefusesAPlaceItCannotProtect(t *testing.T) {
 	}
 
 	linked := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(directory, linked); err != nil {
-		t.Skipf("this box does not make symlinks: %v", err)
-	}
+	symlinkTest(t, directory, linked)
 	if _, err := NewFileHighWater(filepath.Join(linked, "generation.state"), "ek-ra8d2"); !errors.Is(err, ErrUnsafeState) {
 		t.Errorf("a directory reached through a symlink: err = %v, want ErrUnsafeState", err)
 	}

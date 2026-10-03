@@ -10,34 +10,6 @@ import (
 	"testing"
 )
 
-func TestTerraformWorkspacePathAndPrivateFileFence(t *testing.T) {
-	root := t.TempDir()
-	workspace := filepath.Join(root, "reservation")
-	if err := os.Mkdir(workspace, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	privateFile := filepath.Join(workspace, "variables.tfvars.json")
-	if err := os.WriteFile(privateFile, []byte("{\"runner\":{}}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if !pathInside(workspace, privateFile) || pathInside(workspace, root) ||
-		pathInside(workspace, workspace) {
-		t.Fatal("workspace path containment returned an unexpected result")
-	}
-	if err := requirePrivateFileInside(workspace, privateFile, 1024); err != nil {
-		t.Fatalf("accepted private workspace file: %v", err)
-	}
-	if err := requirePrivateFileInside(workspace, filepath.Join(root, "outside"), 1024); err == nil {
-		t.Fatal("accepted a variable file outside the reservation workspace")
-	}
-	if err := os.Chmod(privateFile, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := requirePrivateFileInside(workspace, privateFile, 1024); err == nil {
-		t.Fatal("accepted a variable file readable by other users")
-	}
-}
-
 func TestTerraformWorkspaceRejectsSymlinksAndBoundsOutput(t *testing.T) {
 	root := t.TempDir()
 	workspace := filepath.Join(root, "reservation")
@@ -49,9 +21,7 @@ func TestTerraformWorkspaceRejectsSymlinksAndBoundsOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(workspace, "linked")
-	if err := os.Symlink(target, link); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, target, link)
 	if err := requirePrivateFileInside(workspace, link, 1024); err == nil {
 		t.Fatal("accepted a symlinked Terraform input")
 	}

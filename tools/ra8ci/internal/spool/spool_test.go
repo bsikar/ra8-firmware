@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -102,18 +101,9 @@ func TestOpenRejectsSharedDirectoryAndSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(base, "link")
-	if err := os.Symlink(target, link); err == nil {
-		if _, err := Open(link); err == nil {
-			t.Fatal("symlink spool accepted")
-		}
-	}
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(target, 0777); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := Open(target); err == nil {
-			t.Fatal("shared directory accepted")
-		}
+	symlinkTest(t, target, link)
+	if _, err := Open(link); err == nil {
+		t.Fatal("symlink spool accepted")
 	}
 }
 

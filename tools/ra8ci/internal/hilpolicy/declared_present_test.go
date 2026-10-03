@@ -54,9 +54,7 @@ func TestADanglingConfigLinkIsRefusedRatherThanReadAsAbsent(t *testing.T) {
 	if err := os.MkdirAll(app, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(app, "hil.conf.real"), filepath.Join(app, "hil.conf")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, filepath.Join(app, "hil.conf.real"), filepath.Join(app, "hil.conf"))
 	_, found, err := DeclaredTimeout(root, "uart_hello")
 	if !errors.Is(err, ErrUnresolvableConfig) || found {
 		t.Fatalf("found=%v err=%v", found, err)
@@ -65,9 +63,7 @@ func TestADanglingConfigLinkIsRefusedRatherThanReadAsAbsent(t *testing.T) {
 
 func TestADanglingAppDirectoryLinkIsRefusedRatherThanReadAsAbsent(t *testing.T) {
 	root, base := hilBase(t)
-	if err := os.Symlink(filepath.Join(base, "gone"), filepath.Join(base, "uart_hello")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, filepath.Join(base, "gone"), filepath.Join(base, "uart_hello"))
 	_, found, err := DeclaredTimeout(root, "uart_hello")
 	if !errors.Is(err, ErrUnresolvableConfig) || found {
 		t.Fatalf("found=%v err=%v", found, err)
@@ -80,9 +76,7 @@ func TestAnAppDirectoryLinkThatResolvesLeavesAMissingConfigAbsent(t *testing.T) 
 	if err := os.MkdirAll(real, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(real, filepath.Join(base, "uart_hello")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, real, filepath.Join(base, "uart_hello"))
 	seconds, found, err := DeclaredTimeout(root, "uart_hello")
 	if err != nil || found || seconds != 0 {
 		t.Fatalf("seconds=%d found=%v err=%v", seconds, found, err)
@@ -93,9 +87,7 @@ func TestADeclarationBehindResolvableLinksIsStillRead(t *testing.T) {
 	root, base := hilBase(t)
 	real := filepath.Join(base, "uart_hello_v2")
 	writeConfig(t, real, "HIL_TIMEOUT_S=90\n")
-	if err := os.Symlink(real, filepath.Join(base, "uart_hello")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, real, filepath.Join(base, "uart_hello"))
 	seconds, found, err := DeclaredTimeout(root, "uart_hello")
 	if err != nil || !found || seconds != 90 {
 		t.Fatalf("seconds=%d found=%v err=%v", seconds, found, err)

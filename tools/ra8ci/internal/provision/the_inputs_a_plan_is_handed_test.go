@@ -276,9 +276,7 @@ func TestAnEmptyOrMissingTreeIsRefusedRatherThanDigested(t *testing.T) {
 func TestASymlinkInTheTreeIsRefusedRatherThanFollowed(t *testing.T) {
 	root := tfTree(t, map[string]string{"main.tf": "resource \"one\" {}\n"})
 	outside := tfTree(t, map[string]string{"secret.tf": "resource \"elsewhere\" {}\n"})
-	if err := os.Symlink(filepath.Join(outside, "secret.tf"), filepath.Join(root, "linked.tf")); err != nil {
-		t.Fatalf("create symlink: %v", err)
-	}
+	symlinkTest(t, filepath.Join(outside, "secret.tf"), filepath.Join(root, "linked.tf"))
 
 	// A followed symlink would digest sources that are not in the tree, and
 	// could be repointed between the digest and the apply.
@@ -288,9 +286,7 @@ func TestASymlinkInTheTreeIsRefusedRatherThanFollowed(t *testing.T) {
 
 	// A symlinked directory is refused on the same reading.
 	other := tfTree(t, map[string]string{"main.tf": "resource \"one\" {}\n"})
-	if err := os.Symlink(outside, filepath.Join(other, "vendored")); err != nil {
-		t.Fatalf("create directory symlink: %v", err)
-	}
+	symlinkTest(t, outside, filepath.Join(other, "vendored"))
 	if _, err := digestTerraformTree(other); err == nil {
 		t.Fatal("a symlinked directory in the source tree must be refused")
 	}

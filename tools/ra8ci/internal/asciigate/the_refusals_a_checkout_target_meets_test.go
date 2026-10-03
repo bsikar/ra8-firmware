@@ -23,9 +23,7 @@ func checkoutRoot(t *testing.T) string {
 	if err := os.Mkdir(filepath.Join(root, "section"), 0o755); err != nil {
 		t.Fatalf("plant section: %v", err)
 	}
-	if err := os.Symlink(filepath.Join(root, "page.md"), filepath.Join(root, "link.md")); err != nil {
-		t.Skipf("symlinks are unavailable on this box: %v", err)
-	}
+	symlinkTest(t, filepath.Join(root, "page.md"), filepath.Join(root, "link.md"))
 	return root
 }
 

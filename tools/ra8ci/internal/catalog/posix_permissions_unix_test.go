@@ -1,15 +1,40 @@
+//go:build unix
+
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 
 package catalog
 
 import (
-	"errors"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
+	errors "errors"
+	os "os"
+	filepath "path/filepath"
+	strings "strings"
+	testing "testing"
 )
+
+// A checkout file the review cannot open is refused by the read itself, not
+// by the parse that would have followed. Root would sail past a sealed file,
+// so the test says what it needs and skips rather than asserting falsely.
+func TestACheckoutFileThatWillNotOpenIsRefused(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a sealed file still opens")
+	}
+	sealed := filepath.Join(t.TempDir(), "tasks.json")
+	if err := os.WriteFile(sealed, []byte(`{"schema_version":1}`), 0o000); err != nil {
+		t.Fatalf("plant a sealed manifest: %v", err)
+	}
+	if _, err := readCheckoutFile(sealed, maxReadableManifestBytes); err == nil {
+		t.Fatal("a sealed manifest was read")
+	}
+	readable := filepath.Join(t.TempDir(), "tasks.json")
+	if err := os.WriteFile(readable, []byte(`{"schema_version":1}`), 0o644); err != nil {
+		t.Fatalf("plant a readable manifest: %v", err)
+	}
+	if _, err := readCheckoutFile(readable, maxReadableManifestBytes); err != nil {
+		t.Fatalf("a readable manifest was refused: %v", err)
+	}
+}
 
 // VerifyCheckout is handed a root by its caller and makes it absolute before
 // it reads anything. A relative root is resolved against the working

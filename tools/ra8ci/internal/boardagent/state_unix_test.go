@@ -1,3 +1,5 @@
+//go:build unix
+
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 
@@ -6,24 +8,9 @@ package boardagent
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 )
-
-func newTestHighWater(t *testing.T) (*FileHighWater, string) {
-	t.Helper()
-	directory := t.TempDir()
-	if err := os.Chmod(directory, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(directory, "generation.state")
-	state, err := NewFileHighWater(path, "ek-ra8d2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return state, path
-}
 
 func TestFileHighWaterIsDurableMonotonicAndBoardBound(t *testing.T) {
 	state, path := newTestHighWater(t)
@@ -60,25 +47,21 @@ func TestFileHighWaterIsDurableMonotonicAndBoardBound(t *testing.T) {
 	}
 }
 
-func TestFileHighWaterRejectsSymlinkWritableAndMalformedState(t *testing.T) {
+func TestFileHighWaterRejectsSymlinkState(t *testing.T) {
 	state, path := newTestHighWater(t)
 	if err := state.Advance(2); err != nil {
 		t.Fatal(err)
 	}
 	link := path + ".link"
-	if err := os.Symlink(path, link); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, path, link)
 	if _, err := NewFileHighWater(link, "ek-ra8d2"); !errors.Is(err, ErrUnsafeState) {
 		t.Fatalf("symlink state accepted: %v", err)
 	}
-	if err := os.Chmod(path, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := state.Load(); !errors.Is(err, ErrUnsafeState) {
-		t.Fatalf("world-readable state accepted: %v", err)
-	}
-	if err := os.Chmod(path, 0o600); err != nil {
+}
+
+func TestFileHighWaterRejectsMalformedState(t *testing.T) {
+	state, path := newTestHighWater(t)
+	if err := state.Advance(2); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte("schema_version=1\nboard_id=ek-ra8d2\nboard_id=ek-ra8d2\nhigh_water=2\n"), 0o600); err != nil {
@@ -86,16 +69,6 @@ func TestFileHighWaterRejectsSymlinkWritableAndMalformedState(t *testing.T) {
 	}
 	if _, err := state.Load(); !errors.Is(err, ErrUnsafeState) {
 		t.Fatalf("duplicate state field accepted: %v", err)
-	}
-}
-
-func TestNewFileHighWaterRequiresPrivateDirectory(t *testing.T) {
-	directory := t.TempDir()
-	if err := os.Chmod(directory, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := NewFileHighWater(filepath.Join(directory, "generation.state"), "ek-ra8d2"); !errors.Is(err, ErrUnsafeState) {
-		t.Fatalf("public state directory accepted: %v", err)
 	}
 }
 

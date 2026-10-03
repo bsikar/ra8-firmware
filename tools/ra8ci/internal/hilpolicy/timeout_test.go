@@ -94,9 +94,8 @@ func TestDeclaredTimeoutParsesExistingConfigurationWithoutShellEvaluation(t *tes
 	if err := os.Remove(config); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, config); err == nil {
-		if _, _, err := DeclaredTimeout(root, "uart_hello"); err == nil || !strings.Contains(err.Error(), "escapes") {
-			t.Fatalf("symlink escape err=%v", err)
-		}
+	symlinkTest(t, outside, config)
+	if _, _, err := DeclaredTimeout(root, "uart_hello"); err == nil || !strings.Contains(err.Error(), "escapes") {
+		t.Fatalf("symlink escape err=%v", err)
 	}
 }

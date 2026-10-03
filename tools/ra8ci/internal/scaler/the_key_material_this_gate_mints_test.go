@@ -61,30 +61,6 @@ func TestBackupKeyParentMustBeARealProtectedDirectory(t *testing.T) {
 	}
 }
 
-// Exclusive creation cannot stop an account that can write the directory from
-// renaming the new key away and leaving its own pair behind, so a group or
-// world writable parent is refused before any key is generated.
-func TestBackupKeyParentMayNotBeGroupOrWorldWritable(t *testing.T) {
-	for name, mode := range map[string]os.FileMode{
-		"group writable": 0o770,
-		"world writable": 0o707,
-	} {
-		dir := t.TempDir()
-		if err := os.Chmod(dir, mode); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-		private, public := filepath.Join(dir, "private.key"), filepath.Join(dir, "public.key")
-		err := CreateBackupSigningKeyPair(private, public)
-		if err == nil || !strings.Contains(err.Error(), "must not be group or world writable") {
-			t.Fatalf("%s parent = %v", name, err)
-		}
-		if _, statErr := os.Lstat(private); statErr == nil {
-			t.Fatalf("%s parent still received a key", name)
-		}
-	}
-}
-
 // Existing material is never replaced, from either side of the pair.
 func TestExistingBackupKeyMaterialIsNeverReplaced(t *testing.T) {
 	for name, existing := range map[string]int{"the private key": 0, "the public key": 1} {
@@ -104,30 +80,6 @@ func TestExistingBackupKeyMaterialIsNeverReplaced(t *testing.T) {
 		if _, statErr := os.Lstat(paths[1-existing]); statErr == nil {
 			t.Fatalf("%s refusal still minted the other half", name)
 		}
-	}
-}
-
-// A pair is written whole or not at all: if the public half cannot be
-// created, the private half is removed rather than left as unpaired secret
-// material nothing can verify against.
-func TestAHalfWrittenPairLeavesNoPrivateKeyBehind(t *testing.T) {
-	privateDir, sealedDir := t.TempDir(), t.TempDir()
-	if err := os.Chmod(sealedDir, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sealedDir, 0o700) })
-	private := filepath.Join(privateDir, "private.key")
-	public := filepath.Join(sealedDir, "public.key")
-	if handle, err := os.OpenFile(filepath.Join(sealedDir, "probe"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600); err == nil {
-		_ = handle.Close()
-		t.Skip("this account can write a read-only directory")
-	}
-	err := CreateBackupSigningKeyPair(private, public)
-	if err == nil || !strings.Contains(err.Error(), "create backup key file without replacement") {
-		t.Fatalf("a sealed public parent = %v", err)
-	}
-	if _, statErr := os.Lstat(private); statErr == nil {
-		t.Fatal("the private key survived a failed pair")
 	}
 }
 

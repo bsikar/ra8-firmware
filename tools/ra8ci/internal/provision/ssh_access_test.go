@@ -98,27 +98,3 @@ func TestSSHAccessStorePersistsOnePrivateKeyPerReservation(t *testing.T) {
 		t.Fatalf("removed key was not replaced: %+v, %v", recreated, err)
 	}
 }
-
-func TestSSHAccessStoreRejectsUnsafeKeyPermissions(t *testing.T) {
-	keys, err := NewSSHAccessStore(filepath.Join(t.TempDir(), "keys"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	reservationID, err := store.NewID()
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := keys.Ensure(reservationID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(key.PrivateKeyFile, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := keys.Ensure(reservationID); err == nil {
-		t.Fatal("accepted a group-readable SSH private key")
-	}
-	if err := keys.Remove(reservationID); err == nil {
-		t.Fatal("removed a key that violates private-file policy")
-	}
-}

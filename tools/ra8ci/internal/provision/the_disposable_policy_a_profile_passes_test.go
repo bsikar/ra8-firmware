@@ -357,9 +357,7 @@ func TestTheFixedModuleDirectoryIsCheckedNotAssumed(t *testing.T) {
 		t.Fatal("a module path that is a file was admitted")
 	}
 	link := filepath.Join(root, "linked")
-	if err := os.Symlink(t.TempDir(), link); err != nil {
-		t.Fatalf("link module directory: %v", err)
-	}
+	symlinkTest(t, t.TempDir(), link)
 	config = reviewedConfig(t)
 	config.ModuleDirectory = link
 	if _, err := openProvisioner(t, config); err == nil {

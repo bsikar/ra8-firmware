@@ -52,9 +52,7 @@ func TestAManifestNamingAnotherFileIsRefused(t *testing.T) {
 	if err := os.Remove(manifest); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(elsewhere, manifest); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, elsewhere, manifest)
 	if _, err := VerifyCheckout(root); !errors.Is(err, ErrInvalidCheckout) {
 		t.Fatalf("linked manifest error = %v", err)
 	}
@@ -70,9 +68,7 @@ func TestADigestNamingAnotherFileIsRefused(t *testing.T) {
 	if err := os.Remove(digest); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(elsewhere, digest); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, elsewhere, digest)
 	if _, err := VerifyCheckout(root); !errors.Is(err, ErrInvalidCheckout) {
 		t.Fatalf("linked digest error = %v", err)
 	}

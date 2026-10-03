@@ -6,7 +6,7 @@ package spool
 import (
 	"os"
 	"path/filepath"
-	"runtime"
+
 	"strings"
 	"testing"
 )
@@ -17,16 +17,11 @@ import (
 // difference between refusing the link and following it.
 func linkOver(t *testing.T, s *Spool, name, target string) {
 	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("symlinks need a privilege this test does not assume on Windows")
-	}
 	path := filepath.Join(s.directory, name)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(target, path); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, target, path)
 }
 
 // moveAside carries a real record out of the spool and returns where it went,

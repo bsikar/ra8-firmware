@@ -5,22 +5,18 @@ package syncclient
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
+
 	"errors"
-	"io"
+
 	"net/http"
 	"net/http/httptest"
-	"os"
+
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/spool"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
 // Three places a sweep can lose a record: the step window the spool's own
@@ -103,59 +99,6 @@ func TestAnExecutionOutsideTheRecordsOwnWindowIsRefused(t *testing.T) {
 				t.Errorf("err = %v, want it to say %q", err, one.says)
 			}
 		})
-	}
-}
-
-// A durable receipt that cannot be written down is not a synced record: the
-// marker is the only thing that stops the next pass sending the same record
-// again, so a sweep that could not write it has to report the failure rather
-// than count the record sent.
-func TestAReceiptThatCannotBeWrittenDownIsNotASyncedRecord(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root writes into a sealed directory regardless of its mode")
-	}
-	outbox, directory := openOutbox(t)
-	entry := measuredRecord()
-	plantRaw(t, directory, entry)
-	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) })
-
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read upload: %v", err)
-			return
-		}
-		canonical, err := catalog.CanonicalJSON(body)
-		if err != nil {
-			t.Errorf("canonicalise upload: %v", err)
-			return
-		}
-		sum := sha256.Sum256(canonical)
-		// Sealed once the bytes are in hand and before the receipt is
-		// answered: the plane has taken the record, and the host can no
-		// longer write the marker that says so.
-		if err := os.Chmod(directory, 0o500); err != nil {
-			t.Errorf("seal outbox: %v", err)
-			return
-		}
-		_ = json.NewEncoder(w).Encode(store.LocalRunReceipt{
-			LocalRunID: durableRunID, LocalID: entry.ID, PayloadSHA256: hex.EncodeToString(sum[:]),
-		})
-	}))
-	t.Cleanup(server.Close)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	report, err := SyncPending(ctx, outbox, server.URL, server.Client())
-
-	if err == nil {
-		t.Fatal("a receipt that was never written down answered a clean sweep")
-	}
-	if !strings.Contains(err.Error(), "persist local "+entry.ID+" receipt") {
-		t.Fatalf("err = %v, want the unwritten receipt and its record named", err)
-	}
-	if report.Synced != 0 {
-		t.Errorf("report = %+v, want nothing counted as sent", report)
 	}
 }
 

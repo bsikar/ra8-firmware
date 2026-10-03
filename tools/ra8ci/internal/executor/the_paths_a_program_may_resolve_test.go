@@ -40,53 +40,6 @@ func TestResolvePathRejoinsEveryMissingComponent(t *testing.T) {
 	}
 }
 
-// A failure that is not "it does not exist yet" is handed back rather than
-// walked past: a directory the runner cannot enter is a real answer about the
-// path, and treating it as absent would let the walk invent a location.
-func TestResolvePathHandsBackAFailureThatIsNotAbsence(t *testing.T) {
-	root := t.TempDir()
-	sealed := filepath.Join(root, "sealed")
-	if err := os.Mkdir(sealed, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(sealed, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sealed, 0o700) })
-	if _, err := os.Stat(filepath.Join(sealed, "tool")); err == nil || errors.Is(err, os.ErrNotExist) {
-		t.Skip("this box enters a mode 0o000 directory")
-	}
-	if _, err := resolvePath(filepath.Join(sealed, "tool")); err == nil {
-		t.Fatal("a sealed directory resolved")
-	} else if errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("err = %v, want the access failure rather than absence", err)
-	}
-}
-
-// isWithin's other half: a candidate that cannot be resolved is an unsafe
-// environment, not a quiet "outside".
-func TestIsWithinRefusesACandidateItCannotResolve(t *testing.T) {
-	root := t.TempDir()
-	sealed := filepath.Join(root, "sealed")
-	if err := os.Mkdir(sealed, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(sealed, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sealed, 0o700) })
-	if _, err := os.Stat(filepath.Join(sealed, "tool")); err == nil || errors.Is(err, os.ErrNotExist) {
-		t.Skip("this box enters a mode 0o000 directory")
-	}
-	within, err := isWithin(root, filepath.Join(sealed, "tool"))
-	if !errors.Is(err, ErrUnsafeEnvironment) {
-		t.Fatalf("err = %v, want ErrUnsafeEnvironment", err)
-	}
-	if within {
-		t.Fatal("an unresolvable candidate was judged inside")
-	}
-}
-
 // The checkout is the thing under test, so it may not also supply the tool
 // doing the testing. A resolved program inside it is refused by name, and one
 // outside it is left alone.
@@ -125,9 +78,7 @@ func TestASymlinkOutsideTheCheckoutPointingInIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(t.TempDir(), "tool")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("this box does not make symlinks: %v", err)
-	}
+	symlinkTest(t, target, link)
 	if err := checkProgramIsOutsideTheCheckout(root, link); !errors.Is(err, ErrUnsafeEnvironment) {
 		t.Fatalf("err = %v, want ErrUnsafeEnvironment", err)
 	}

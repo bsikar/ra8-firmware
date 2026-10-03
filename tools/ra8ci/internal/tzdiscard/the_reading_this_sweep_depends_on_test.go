@@ -82,9 +82,7 @@ func TestAnEntryThatIsNotThereWhenItIsReadIsPassedOver(t *testing.T) {
 	root := t.TempDir()
 	plantTreeAboveTheFloor(t, root, 1)
 	plantSource(t, root, "apps/real.c", boundaryDiscard)
-	if err := os.Symlink(filepath.Join(root, "apps", "absent.c"), filepath.Join(root, "apps", "ghost.c")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, filepath.Join(root, "apps", "absent.c"), filepath.Join(root, "apps", "ghost.c"))
 
 	run := sweep(t, root)
 	if run.code != 1 {

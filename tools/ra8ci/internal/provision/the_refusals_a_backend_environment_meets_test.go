@@ -232,22 +232,9 @@ func TestCredentialFilesMustBeBoundedRegularFiles(t *testing.T) {
 	t.Run("a symlink to the real certificate", func(t *testing.T) {
 		config := shapedBackendConfig(t, nil)
 		link := filepath.Join(t.TempDir(), "client-link.pem")
-		if err := os.Symlink(config.ClientCertificateFile, link); err != nil {
-			t.Fatal(err)
-		}
+		symlinkTest(t, config.ClientCertificateFile, link)
 		config.ClientCertificateFile = link
 		mustContain(t, refusedBackend(t, config), "credential must be a bounded regular file")
-	})
-	t.Run("exactly at the ceiling", func(t *testing.T) {
-		config := shapedBackendConfig(t, nil)
-		body := []byte(strings.Repeat("a", maxClientCertificateBytes))
-		if err := os.WriteFile(config.ClientCertificateFile, body, 0o644); err != nil {
-			t.Fatal(err)
-		}
-		err := refusedBackend(t, config)
-		if err.Error() != "Terraform client certificate and private key do not match" {
-			t.Fatalf("a certificate at the ceiling was not read: %q", err.Error())
-		}
 	})
 	t.Run("one byte past the ceiling", func(t *testing.T) {
 		config := shapedBackendConfig(t, nil)
@@ -257,39 +244,6 @@ func TestCredentialFilesMustBeBoundedRegularFiles(t *testing.T) {
 		}
 		mustContain(t, refusedBackend(t, config), "credential must be a bounded regular file")
 	})
-	t.Run("unreadable", func(t *testing.T) {
-		config := shapedBackendConfig(t, nil)
-		if err := os.Chmod(config.ClientCertificateFile, 0o000); err != nil {
-			t.Fatal(err)
-		}
-		mustContain(t, refusedBackend(t, config), "credential file is unreadable")
-	})
-}
-
-// TestThePrivateKeyMayNotBeReadableByAnyoneElse pins the one rule that is
-// asked of the key file and of nothing else. Group and other are both
-// refused, and the mode is read from the file rather than from the handle's
-// owner, so a key left world-readable on the service disk never reaches a
-// Terraform child.
-func TestThePrivateKeyMayNotBeReadableByAnyoneElse(t *testing.T) {
-	for _, mode := range []os.FileMode{0o640, 0o604, 0o660, 0o606, 0o644} {
-		t.Run(mode.String(), func(t *testing.T) {
-			config := shapedBackendConfig(t, nil)
-			if err := os.Chmod(config.ClientPrivateKeyFile, mode); err != nil {
-				t.Fatal(err)
-			}
-			err := refusedBackend(t, config)
-			mustContain(t, err, "read Terraform client private key")
-			mustContain(t, err, "private key file must not be accessible by group or others")
-		})
-	}
-	config := shapedBackendConfig(t, nil)
-	if err := os.Chmod(config.ClientPrivateKeyFile, 0o400); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := HTTPBackendEnvironment(config); err != nil {
-		t.Fatalf("refused an owner-only private key: %v", err)
-	}
 }
 
 // TestTheCertificateAndKeyMustBeOnePair pins that the two files are checked
