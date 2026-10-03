@@ -2,7 +2,8 @@
   "test_roots": [
     "tests/eth_media_test.zig",
     "tests/canfd_tdc_test.zig",
-    "tests/layer3_switch_test.zig"
+    "tests/layer3_switch_test.zig",
+    "tests/icu_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -11,7 +12,9 @@
     "tests/eth_media_test.zig",
     "tests/canfd_tdc_test.zig",
     "src/internal/layer3_switch.zig",
-    "tests/layer3_switch_test.zig"
+    "tests/layer3_switch_test.zig",
+    "src/internal/icu.zig",
+    "tests/icu_test.zig"
   ],
-  "minimum_tests": 17
+  "minimum_tests": 23
 }
