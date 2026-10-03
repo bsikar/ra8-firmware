@@ -129,12 +129,16 @@ fn caps(ctx: ?*anyopaque, out: ?*Caps) callconv(.c) u16 {
 /// too small for the surface, and refuse a stride the decoder cannot honour.
 /// `ra8_jpeg_sw_get_dimensions` is the cheap way to get it, since it walks
 /// markers and does no entropy decoding.
-fn probe(req: *const Request, out_w: *u16, out_h: *u16) Error {
-    const bytes = req.bytes orelse return .null_ptr;
+///
+/// The result is the raw `ra8_err_t` code, not an `Error`: a codec refusal is
+/// passed through unchanged, and the codec returns codes (a protocol error on
+/// a stream that is not a JPEG) outside the subset this backend names itself.
+fn probe(req: *const Request, out_w: *u16, out_h: *u16) u16 {
+    const bytes = req.bytes orelse return @intFromEnum(Error.null_ptr);
     const err = ra8_jpeg_sw_get_dimensions(bytes, req.byte_count, out_w, out_h);
-    if (err != @intFromEnum(Error.ok)) return @enumFromInt(err);
-    if (!policy.withinDimMax(out_w.*, out_h.*)) return .invalid_size;
-    return .ok;
+    if (err != @intFromEnum(Error.ok)) return err;
+    if (!policy.withinDimMax(out_w.*, out_h.*)) return @intFromEnum(Error.invalid_size);
+    return @intFromEnum(Error.ok);
 }
 
 /// Decode one baseline JPEG into the request's packed RGB888 surface.
@@ -161,7 +165,7 @@ fn decode(ctx: ?*anyopaque, req: ?*const Request, out: ?*Image) callconv(.c) u16
     var width: u16 = 0;
     var height: u16 = 0;
     const probed = probe(request, &width, &height);
-    if (probed != .ok) return @intFromEnum(probed);
+    if (probed != @intFromEnum(Error.ok)) return probed;
 
     const stride = policy.rowStride(width);
     const need = policy.surfaceBytes(width, height);
