@@ -31,9 +31,8 @@ func aSpool(t *testing.T) *Spool {
 // they were before the first command. A read of it separates absent from
 // present-but-wrong, because the two mean different things to an operator.
 func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
-	s := aSpool(t)
-
 	t.Run("absent", func(t *testing.T) {
+		s := aSpool(t)
 		_, err := s.readStarted("0123456789abcdef0123456789abcdef")
 		if err == nil || !strings.Contains(err.Error(), "missing start record") {
 			t.Fatalf("error = %v, want the record reported missing", err)
@@ -41,6 +40,7 @@ func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
 	})
 
 	t.Run("a directory in its place", func(t *testing.T) {
+		s := aSpool(t)
 		id := "11111111111111111111111111111111"
 		if err := os.Mkdir(filepath.Join(s.directory, id+".started.json"), 0o700); err != nil {
 			t.Fatal(err)
@@ -52,6 +52,7 @@ func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
 	})
 
 	t.Run("a link to a real record", func(t *testing.T) {
+		s := aSpool(t)
 		id := "22222222222222222222222222222222"
 		honest := filepath.Join(s.directory, "elsewhere.json")
 		if err := os.WriteFile(honest, []byte(`{"id":"`+id+`"}`), 0o600); err != nil {
@@ -67,6 +68,7 @@ func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
 	})
 
 	t.Run("present and not JSON", func(t *testing.T) {
+		s := aSpool(t)
 		id := "33333333333333333333333333333333"
 		if err := os.WriteFile(filepath.Join(s.directory, id+".started.json"), []byte("{not json"), 0o600); err != nil {
 			t.Fatal(err)
@@ -78,6 +80,7 @@ func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
 	})
 
 	t.Run("an honest record", func(t *testing.T) {
+		s := aSpool(t)
 		entry, err := s.Begin("ra8ci:build", strings.Repeat("a", 64))
 		if err != nil {
 			t.Fatal(err)
