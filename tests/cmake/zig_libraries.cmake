@@ -574,10 +574,6 @@ ra8_add_zig_library(
   ra8_tz_secure_boot
 )
 
-# The root of trust is Zig only: image verification against the provisioned
-# root key and the anti-rollback counter. Its port left it unregistered here,
-# so test_ra8_root_of_trust could not link. libs/ra8_rot has no inc/; its
-# headers (ra8_rot.h, ra8_dfu_antirollback.h) still live in libs/ra8_dfu/inc.
 # ra8_dfu's boot, launch and program logic. The full ra8_dfu archive also
 # carries the USB host DFU driver, whose ra8_usb_host_* seam has no host
 # implementation, so the suites link the ra8_dfu_boot archive the same
@@ -591,6 +587,10 @@ ra8_add_zig_library(
   ra8_dfu_boot
 )
 
+# The root of trust is Zig only: image verification against the provisioned
+# root key and the anti-rollback counter. Its port left it unregistered here,
+# so test_ra8_root_of_trust could not link. libs/ra8_rot has no inc/; its
+# headers (ra8_rot.h, ra8_dfu_antirollback.h) still live in libs/ra8_dfu/inc.
 ra8_add_zig_library(
   NAME
   ra8_rot
