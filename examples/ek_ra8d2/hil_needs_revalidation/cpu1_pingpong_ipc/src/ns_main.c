@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/ns_main.c
- * @brief Self-contained Non-Secure image at 0x02080000 for the IPC ping-pong
+ * @brief Self-contained Non-Secure image at 0x12080000 for the IPC ping-pong
  * demo.
  *
  * @par Tag
@@ -24,9 +24,9 @@
  *
  * | Symbol                          | Section         | Address          |
  * |---------------------------------|-----------------|------------------|
- * | ``g_ra8_ns_vector_table``        | ``.ns_vectors`` | 0x02080000       |
- * | ``ns_reset_handler``            | ``.ns_text``    | 0x02080000+      |
- * | ``g_ns_pingpong_*`` counters    | ``.ns_bss``     | 0x22100000+      |
+ * | ``g_ra8_ns_vector_table``        | ``.ns_vectors`` | 0x12080000       |
+ * | ``ns_reset_handler``            | ``.ns_text``    | 0x12080000+      |
+ * | ``g_ns_pingpong_*`` counters    | ``.ns_bss``     | 0x32100000+      |
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -429,7 +429,7 @@ extern uint32_t g_ra8_ls_ns_bss_end;
 }
 
 /* =============================================================================
- * NS vector table -- 8 slots at 0x02080000.
+ * NS vector table -- 8 slots at 0x12080000.
  *
  * Only the first two are meaningful for this image: initial MSP_NS and
  * the reset handler. The remaining slots are zero -- if any NS
@@ -448,7 +448,8 @@ extern uint32_t g_ra8_ls_ns_stack_top;
  * @details Slot 0 = initial MSP_NS, slot 1 = reset entry (Thumb bit
  * set by the linker on function symbols), slots 2..7 reserved.
  *
- * @note Linker places this at 0x02080000 via the ``.ns_vectors`` section.
+ * @note Linker places this at 0x12080000 (loaded at physical 0x02080000)
+ * via the ``.ns_vectors`` section.
  *
  * @since 0.1.0
  */

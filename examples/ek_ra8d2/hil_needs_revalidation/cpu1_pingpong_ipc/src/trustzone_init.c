@@ -23,7 +23,8 @@
  *      ``PRCR_S.PRC4``, encodes, and writes IPCSAR / IPCPAR.
  *   3. Re-locks PRCR_S.
  *   4. BLXNS-es into the NS image starting at ``NS_VECTOR_TABLE``,
- *      which the linker places at the NS-MRAM base (0x02080000).
+ *      which the linker places at the NS-MRAM base: it runs at the
+ *      bit-28 Non-secure alias 0x12080000 over physical 0x02080000.
  *
  * Bench validation is NOT performed by this commit -- a human operator
  * with ``scripts/hil/recover.sh`` warm is the only safe path to flash
@@ -54,7 +55,9 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  *
  * @details
  * ``k_ns_vector_table_addr`` is the linker-pinned start of NS MRAM where
- * the NS image's vector table is placed.
+ * the NS image's vector table is placed, named at the bit-28 Non-secure
+ * alias: the RA8 IDAU keeps every bit-28-clear address Secure, so the NS
+ * world must take its vectors from 0x12080000 (RA8FW-510).
  *
  * The IPC attribution words used to live here as two hand-assembled
  * literals. They are now expressed as a descriptor built by
@@ -68,7 +71,7 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ns_vector_table_addr = 0x02080000UL, /**< NS vectors. */
+  k_ns_vector_table_addr = 0x12080000UL, /**< NS vectors (NS alias). */
 } cpu1_pingpong_ipc_tz_const_t;
 
 /**
