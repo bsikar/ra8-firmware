@@ -289,6 +289,13 @@ static ra8_err_t internal_route_data_pins(void)
  * are ignored on purpose: a pin that was never claimed is exactly the case
  * the unwind has to tolerate.
  *
+ * Each pin is handed back through the path that claimed it. The three data
+ * pins were claimed by ::ra8_pfs_route_peripheral, which has no row in
+ * ``ra8_pin_interface_t``, so they go back through the HAL. Only the chip
+ * select, claimed by the injected driver's ``output_init``, goes back
+ * through its ``release``. Sending the data pins through an injected
+ * driver would leave their claims standing in the pin validator, and the
+ * next open would be refused with a GPIO conflict.
  *
  * @pre No transfer is in flight.
  * @pre The SCI channel has already been disabled, or was never enabled.
@@ -302,10 +309,10 @@ static ra8_err_t internal_route_data_pins(void)
 RA8_INTERNAL
 static void internal_release_pins(void)
 {
+  (void)ra8_gpio_release((ra8_port_pin_t)k_ra8_board_pmod1_spi_sck);
+  (void)ra8_gpio_release((ra8_port_pin_t)k_ra8_board_pmod1_spi_copi);
+  (void)ra8_gpio_release((ra8_port_pin_t)k_ra8_board_pmod1_spi_cipo);
   const ra8_pin_interface_t* pin_if = internal_pin_if();
-  (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_sck);
-  (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_copi);
-  (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cipo);
   (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_esp_hosted_pin_chip_select);
 }
 

@@ -79,6 +79,7 @@ typedef enum : uint8_t {
   k_spi_test_event_cs_high = 2U, /**< Chip select driven high (released). */
   k_spi_test_event_xfer    = 3U, /**< A full-duplex frame was clocked.    */
   k_spi_test_event_cs_init = 4U, /**< Chip select configured as output.   */
+  k_spi_test_event_cs_free = 5U, /**< Chip select handed back.            */
 } spi_test_event_t;
 
 /** @brief Ordered log of chip-select transitions and bus transfers. */
@@ -219,7 +220,7 @@ internal_mock_input_init(void* ctx, ra8_port_pin_t pin, ra8_pin_pull_t pull)
   return k_ra8_ok;
 }
 
-/** @brief Records a pin release; the close path drops all four link pins.
+/** @brief Records a release; only the chip select is handed back through the seam.
  * @details Implements the fixture-only release operation with bounded static state.
  * @param[in,out] ctx Backend context supplied by the adapter under test.
  * @param[in] pin Logical port/pin identifier presented to the mock.
@@ -234,6 +235,7 @@ RA8_INTERNAL static ra8_err_t internal_mock_release(void* ctx, ra8_port_pin_t pi
 {
   (void)ctx;
   (void)pin;
+  internal_log_event(k_spi_test_event_cs_free);
   return k_ra8_ok;
 }
 
@@ -697,6 +699,10 @@ RA8_INTERNAL static void internal_test_open_close_cycle(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_spi_close());
   TEST_ASSERT(!priv_ra8_esp_hosted_spi_is_open());
+  /* The chip select goes back through the driver that took it ... */
+  TEST_ASSERT_EQ(2U, s_event_count);
+  TEST_ASSERT_EQ(k_spi_test_event_cs_free, s_events[1]);
+  /* ... and the routed data pins go back to the validator that holds them. */
   TEST_ASSERT(!ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_board_pmod1_spi_sck));
   TEST_ASSERT(!ra8_pin_validator_is_claimed((ra8_port_pin_t)k_ra8_esp_hosted_pin_chip_select));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, priv_ra8_esp_hosted_spi_close());
