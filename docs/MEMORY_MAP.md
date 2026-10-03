@@ -83,7 +83,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | WDT0            | `0x40202600`  | Watchdog (M85 side)                                  | `ra8_wdt.c`                               |
 | WDT1            | `0x40202700`  | Watchdog (M33 side)                                  | `ra8_wdt.c`                               |
 | MSTP            | `0x40203000`  | Module-stop (clock-gate) registers                   | `ra8_mstp.c`                              |
-| ELC             | `0x40201000`  | Event Link Controller                                | `ra8_elc.c`                               |
+| ELC             | `0x40201000`  | Event Link Controller                                | `elc_abi.zig`                             |
 | MRMS / MRAM     | `0x4013C000`  | MRAM control / R_MRMS                                | `ra8_flash.c`                             |
 | RESET (SYSC)    | `0x4001E000`  | Reset control via SYSC                               | `ra8_reset.c`                             |
 

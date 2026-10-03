@@ -6,7 +6,8 @@
     "tests/icu_test.zig",
     "tests/iwdt_test.zig",
     "tests/npu_quant_test.zig",
-    "tests/glcdc_gamma_test.zig"
+    "tests/glcdc_gamma_test.zig",
+    "tests/elc_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -31,7 +32,10 @@
     "src/npu_quant_abi.zig",
     "src/internal/glcdc_gamma.zig",
     "tests/glcdc_gamma_test.zig",
-    "src/glcdc_gamma_abi.zig"
+    "src/glcdc_gamma_abi.zig",
+    "src/internal/elc.zig",
+    "tests/elc_test.zig",
+    "src/elc_abi.zig"
   ],
-  "minimum_tests": 41
+  "minimum_tests": 46
 }
