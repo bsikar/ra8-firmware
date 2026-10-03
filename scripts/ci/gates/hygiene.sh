@@ -13,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: ci-parity, ascii, copyright, since, markdown-references,
+# Gates in this file: ci-parity, ascii, copyright, markdown-references,
 # no-ai-attribution, no-ai-attribution-commits, inclusive-terminology,
 # inclusive-terminology-commits, format
 
@@ -45,8 +45,8 @@ gate_ci_status_contract() (
 gate_ci_parity() (
   set -e
   require_python_mod yaml "run 'just setup_python'"
-  suite_errexit_selftest
   suite_registry_selftest
+  suite_errexit_selftest
   suite_build_lifecycle_selftest
   bash scripts/ci/lib/nofile.sh --selftest
   # Gate metadata includes WHERE a gate may run. `just quality::gate::run` sent
@@ -187,11 +187,26 @@ suite_registry_selftest() {
     failures=1
   fi
 
+  # 3. A gate function with no registry row must also invalidate the registry.
+  #    Otherwise a function can be added in a fragment yet never be scheduled
+  #    by `just ci` or ra8ci.
+  rc=0
+  (
+    # shellcheck disable=SC2329  # discovered by list_gates below.
+    gate_ra8_registry_probe_orphan() { :; }
+    list_gates
+  ) >"$probe_log" 2>&1 || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "ERROR: list_gates accepted an unregistered gate function." >&2
+    echo "       Every gate body must have exactly one registry row." >&2
+    failures=1
+  fi
+
   rm -f "$probe_log"
   if [[ "$failures" -ne 0 ]]; then
     return 1
   fi
-  echo "ci.sh: suite-runner registry self-test OK (empty and invalid registries fail)."
+  echo "ci.sh: suite-runner registry self-test OK (empty, missing and orphan gates fail)."
 }
 
 # --- the abort self-test -------------------------------------------

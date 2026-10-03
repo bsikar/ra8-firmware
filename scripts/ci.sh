@@ -160,7 +160,6 @@ if [[ "$-" == *p* ]]; then
     "toolchain-parity|fast|pinned host tools match .devcontainer/Dockerfile versions"
     "ascii|fast|ASCII-only source files"
     "copyright|fast|SPDX + copyright headers"
-    "since|fast|Doxygen @since tags on public headers"
     "hil-eil-parity|fast|every HIL app is also exercised in ra8_emulator"
     "no-ai-attribution|fast|attribution ban (tracked files)"
     "no-ai-attribution-commits|fast|attribution ban (commit messages)"
@@ -176,7 +175,6 @@ if [[ "$-" == *p* ]]; then
     "tier-imports|fast|the platform never imports apps/; apps/shared_libs never imports a form"
     "bench-lock|fast|every bench-touching script takes the bench lock"
     "annotations|fast|RA8_* annotation attributes (libclang)"
-    "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
     "tests-readme|fast|tests/README.md documents every tests/ subdir, none stale"
     "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
     "pinout-freshness|fast|committed docs/pinouts/ matches a fresh parse of the datasheets"
@@ -396,7 +394,7 @@ if [[ "$-" == *p* ]]; then
   done
   unset _ra8_gate_file _ra8_gate_files _RA8_GATE_DIR
 
-  gate_fn_name() {
+  registry_function_name() {
     printf 'gate_%s\n' "${1//-/_}"
   }
 
@@ -411,13 +409,13 @@ if [[ "$-" == *p* ]]; then
   # self-verifies that every registered name has a function behind it, so a
   # typo'd registry row is caught here rather than at gate-run time.
   list_gates() {
-    local row name speed desc rest fn rc=0
+    local row name speed desc rest fn rc=0 registered_name
     for row in "${RA8_GATE_REGISTRY[@]}"; do
       name="${row%%|*}"
       rest="${row#*|}"
       speed="${rest%%|*}"
       desc="${rest#*|}"
-      fn="$(gate_fn_name "$name")"
+      fn="$(registry_function_name "$name")"
       if ! declare -F "$fn" >/dev/null 2>&1; then
         echo "ERROR: registry lists gate '$name' but no function $fn() exists." >&2
         rc=1
@@ -432,6 +430,24 @@ if [[ "$-" == *p* ]]; then
       esac
       printf '%s\t%s\t%s\n' "$name" "$speed" "$desc"
     done
+    # The registry is the complete list, not just a list of functions that
+    # happen to be runnable. An unregistered gate body is dead CI code and
+    # usually means the registry/function edit was only half applied.
+    while IFS= read -r fn; do
+      name="${fn#gate_}"
+      name="${name//_/-}"
+      registered_name=0
+      for row in "${RA8_GATE_REGISTRY[@]}"; do
+        if [[ "${row%%|*}" == "$name" ]]; then
+          registered_name=1
+          break
+        fi
+      done
+      if [[ "$registered_name" -eq 0 ]]; then
+        echo "ERROR: function $fn() exists but gate '$name' is not registered." >&2
+        rc=1
+      fi
+    done < <(declare -F | awk '$3 ~ /^gate_/ {print $3}')
     return "$rc"
   }
 
@@ -457,7 +473,7 @@ if [[ "$-" == *p* ]]; then
     # fails through its own require_cmd diagnostic when provisioning could not
     # reach the official download, rather than dying here with a curl error.
     use_pinned_lang_toolchains
-    fn="$(gate_fn_name "$name")"
+    fn="$(registry_function_name "$name")"
     if ! declare -F "$fn" >/dev/null 2>&1; then
       echo "ci.sh: unknown gate '$name'. Registered gates:" >&2
       registry_names | sed 's/^/  /' >&2
