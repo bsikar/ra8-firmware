@@ -183,6 +183,7 @@ pub fn build(b: *std.Build) void {
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_wifi_abi.zig", "tests/wifi_abi_test.zig", "wifi_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_ap_info_abi.zig", "tests/ap_info_abi_test.zig", "ap_info_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_mac_abi.zig", "tests/mac_abi_test.zig", "mac_abi");
+    addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_sta_abi.zig", "tests/sta_abi_test.zig", "sta_abi");
 }
 
 /// A C ABI file that reads the vendored RPC codec types, tested on its own.
