@@ -13,7 +13,7 @@
 const std = @import("std");
 const implementation = @import("internal/c6link.zig");
 const core = implementation.core;
-const facade = @import("ra8_wifi_abi.zig");
+const types = @import("ra8_wifi_types.zig");
 
 /// Component tag on this backend's log lines, matching `RA8_WIFI_C6_TAG`.
 const tag: [*:0]const u8 = "WIFI-C6";
@@ -167,7 +167,7 @@ fn opIdle(ctx: ?*anyopaque, ms: u16) callconv(.c) void {
 /// `k_ra8_wifi_backend_c6link`: the vtable a board points `ra8_wifi_cfg_t` at.
 /// Committed to rodata so the address stays valid for the program's life, the
 /// way the C's file-scope `const` did.
-pub export const k_ra8_wifi_backend_c6link: facade.Backend = .{
+pub export const k_ra8_wifi_backend_c6link: types.Backend = .{
     .open = &opOpen,
     .close = &opClose,
     .radio_up = &opRadioUp,
@@ -183,7 +183,7 @@ pub export const k_ra8_wifi_backend_c6link: facade.Backend = .{
 pub export fn ra8_wifi_c6link_setup(
     self: ?*implementation.Handle,
     cfg: ?*const implementation.Cfg,
-    out_wcfg: ?*facade.Config,
+    out_wcfg: ?*types.Config,
 ) callconv(.c) u16 {
     const handle = self orelse return nullPtr("self");
     const source = cfg orelse return nullPtr("cfg");

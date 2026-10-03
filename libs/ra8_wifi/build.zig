@@ -31,6 +31,20 @@ pub fn build(b: *std.Build) void {
     // consumers link it into PIE executables.
     library.bundle_compiler_rt = true;
     library.root_module.pic = true;
+
+    // The ESP32-C6 backend is a separate member of the same archive, so a link
+    // pulls it in only when it names the backend. Folded into the facade's
+    // object, it made every facade-only link resolve the ra8_c6link transport.
+    const c6link_backend = b.addObject(.{
+        .name = "ra8_wifi_c6link",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ra8_wifi_c6link_abi.zig"),
+            .target = target,
+            .optimize = optimize,
+            .pic = true,
+        }),
+    });
+    library.addObject(c6link_backend);
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

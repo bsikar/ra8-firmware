@@ -12,29 +12,16 @@
 //! C did. That is what keeps it host-testable against a mock table.
 
 const std = @import("std");
-const builtin = @import("builtin");
 const implementation = @import("internal/root.zig");
+const types = @import("ra8_wifi_types.zig");
 
-/// The ESP32-C6 backend membrane, reached from here so its exported vtable
-/// and setup call land in the same archive as the facade.
-pub const c6link = @import("ra8_wifi_c6link_abi.zig");
-
-comptime {
-    // The declaration above is not enough on its own. Zig analyses lazily, and
-    // nothing references `c6link` by name, so the file was never analysed and
-    // neither `k_ra8_wifi_backend_c6link` nor `ra8_wifi_c6link_setup` was
-    // emitted into the archive. C binds the vtable by ADDRESS, which is a
-    // link-time reference to a symbol that was never produced, so the archive
-    // built clean and the failure only showed at the final app link.
-    //
-    // Not in a test binary: the backend declares the transport `extern fn`s it
-    // drives, which the firmware resolves when an app links the board layer.
-    // A host test links no board layer, so forcing the analysis there would
-    // only produce undefined symbols for hardware the test never calls.
-    if (!builtin.is_test) {
-        _ = c6link;
-    }
-}
+// The ESP32-C6 backend (`ra8_wifi_c6link_abi.zig`) is not imported here. It is
+// compiled as its own object and added to the same archive by build.zig, so a
+// link pulls it in only when something names `k_ra8_wifi_backend_c6link` or
+// `ra8_wifi_c6link_setup`. An app that selects the backend gets it; a link that
+// uses the facade alone is not made to resolve the `ra8_c6link_*` transport the
+// backend calls. Forcing it into this object instead had left every
+// facade-only host test unable to link.
 
 /// 48-bit station address (`ra8_wifi_mac_t`).
 pub const Mac = implementation.Mac;
@@ -62,39 +49,11 @@ fn nullPtr(message: [*:0]const u8) u16 {
 }
 
 /// IP provider seam (`ra8_wifi_ip_bind_fn`).
-pub const IpBindFn = *const fn (
-    ip_ctx: ?*anyopaque,
-    mac: ?*const Mac,
-    out: ?*Lease,
-) callconv(.c) u16;
-
-/// The radio-operation vtable (`ra8_wifi_backend_t`). Every row is optional
-/// here because the C struct holds plain function pointers a caller may leave
-/// null, which is exactly what `ra8_wifi_init` rejects.
-pub const Backend = extern struct {
-    open: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    close: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    radio_up: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    radio_down: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    join: ?*const fn (
-        ctx: ?*anyopaque,
-        ssid: ?[*:0]const u8,
-        psk: ?[*:0]const u8,
-    ) callconv(.c) u16 = null,
-    leave: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    service: ?*const fn (ctx: ?*anyopaque, out_link: ?*u8) callconv(.c) u16 = null,
-    get_mac: ?*const fn (ctx: ?*anyopaque, out: ?*Mac) callconv(.c) u16 = null,
-    get_ap: ?*const fn (ctx: ?*anyopaque, out: ?*Ap) callconv(.c) u16 = null,
-    idle: ?*const fn (ctx: ?*anyopaque, ms: u16) callconv(.c) void = null,
-};
-
+pub const IpBindFn = types.IpBindFn;
+/// The radio-operation vtable (`ra8_wifi_backend_t`).
+pub const Backend = types.Backend;
 /// Selection a caller hands `ra8_wifi_init` (`ra8_wifi_cfg_t`).
-pub const Config = extern struct {
-    backend: ?*const Backend = null,
-    backend_ctx: ?*anyopaque = null,
-    ip_bind: ?IpBindFn = null,
-    ip_ctx: ?*anyopaque = null,
-};
+pub const Config = types.Config;
 
 /// Caller-owned handle (`ra8_wifi_t`). `state` stays a raw byte: the initial
 /// zeroed struct is the only guaranteed initial value, so nothing here may
