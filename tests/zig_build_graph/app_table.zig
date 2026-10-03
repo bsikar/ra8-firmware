@@ -839,4 +839,25 @@ pub const cross_apps = [_]CrossApp{
             .txm_module = "txm_hello_m33",
         },
     },
+    .{
+        // The negative case: CPU1's Module Manager starts a module that
+        // stores outside its MPU regions and must survive it (RA8FW-459).
+        // Appended after txm_manager_cpu1 for the same reason.
+        .name = "txm_fault_cpu1",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_fault_cpu1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .uses = &.{"threadx_m33_modules"},
+            .txm_module = "txm_fault_m33",
+        },
+    },
 };

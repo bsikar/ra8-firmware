@@ -228,10 +228,11 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "threadx_cpu1 and txm_manager_cpu1 are the CPU1 images with a Zig entry, each on one kernel" {
+test "threadx_cpu1 and the two Module Manager apps are the CPU1 images with a Zig entry, each on one kernel" {
     const expected = [_]struct { app: []const u8, kernel: []const u8 }{
         .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
         .{ .app = "txm_manager_cpu1", .kernel = "threadx_m33_modules" },
+        .{ .app = "txm_fault_cpu1", .kernel = "threadx_m33_modules" },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -250,11 +251,11 @@ test "threadx_cpu1 and txm_manager_cpu1 are the CPU1 images with a Zig entry, ea
     try std.testing.expectEqual(expected.len, zig_entries);
 }
 
-test "only the Module Manager image carries the packed module, in its own linker script" {
+test "only the Module Manager images carry a packed module, each in its own linker script" {
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         if (image.txm_module == null) continue;
-        try std.testing.expectEqualStrings("txm_manager_cpu1", app.name);
+        try std.testing.expect(std.mem.eql(u8, app.name, "txm_manager_cpu1") or std.mem.eql(u8, app.name, "txm_fault_cpu1"));
         try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
     }
 }

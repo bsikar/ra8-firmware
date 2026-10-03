@@ -64,3 +64,12 @@ test "txm_manager_cpu1 packs the hello-world module and an unknown name finds no
         try std.testing.expectEqualStrings(hello.hello_world.name, app.cpu1.?.txm_module.?);
     }
 }
+
+test "txm_fault_cpu1 packs the negative module, whose code is Zig beside the hello module's" {
+    try std.testing.expectEqualStrings("txm_fault_m33", hello.find("txm_fault_m33").?.name);
+    try std.testing.expect(std.mem.endsWith(u8, hello.fault.entry_source, "txm_fault_m33/module_start.zig"));
+    for (graph.cross_apps) |app| {
+        if (!std.mem.eql(u8, app.name, "txm_fault_cpu1")) continue;
+        try std.testing.expectEqualStrings(hello.fault.name, app.cpu1.?.txm_module.?);
+    }
+}
