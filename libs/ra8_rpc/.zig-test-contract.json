@@ -3,17 +3,35 @@
     "tests/codec_test.zig",
     "tests/frame_test.zig",
     "tests/golden_test.zig",
+    "tests/envelope_test.zig",
+    "tests/loopback_test.zig",
+    "tests/link_test.zig",
+    "tests/pending_test.zig",
+    "tests/session_test.zig",
     "tests/fuzz_test.zig"
   ],
   "covered_sources": [
+    "src/client.zig",
     "src/codec.zig",
+    "src/envelope.zig",
     "src/frame.zig",
+    "src/link.zig",
+    "src/loopback.zig",
+    "src/pending.zig",
     "src/ra8_rpc.zig",
+    "src/server.zig",
+    "src/transport.zig",
     "tests/codec_test.zig",
+    "tests/envelope_test.zig",
     "tests/frame_test.zig",
     "tests/fuzz_test.zig",
     "tests/golden_test.zig",
-    "tests/messages.zig"
+    "tests/link_test.zig",
+    "tests/loopback_test.zig",
+    "tests/messages.zig",
+    "tests/pending_test.zig",
+    "tests/service.zig",
+    "tests/session_test.zig"
   ],
-  "minimum_tests": 30
+  "minimum_tests": 70
 }

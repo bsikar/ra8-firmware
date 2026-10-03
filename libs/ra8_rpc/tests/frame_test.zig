@@ -14,6 +14,7 @@ const Blob = messages.Blob;
 
 comptime {
     _ = @import("messages.zig");
+    _ = @import("service.zig");
 }
 
 const blob: Blob = .{ .addr = 0x11223344, .data = "abc" };

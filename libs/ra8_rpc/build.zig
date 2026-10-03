@@ -5,7 +5,7 @@
 //! it exports no symbol and has no C ABI, so there is no archive to install.
 //! A consumer adds the `ra8_rpc` module to its own root.
 //!
-//! No build options: the codec is pure byte work with no target conditionals.
+//! No build options: the library is pure byte work with no target conditionals.
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
@@ -29,6 +29,11 @@ pub fn build(b: *std.Build) void {
         "tests/codec_test.zig",
         "tests/frame_test.zig",
         "tests/golden_test.zig",
+        "tests/envelope_test.zig",
+        "tests/loopback_test.zig",
+        "tests/link_test.zig",
+        "tests/pending_test.zig",
+        "tests/session_test.zig",
         "tests/fuzz_test.zig",
     };
     for (roots) |root| {
