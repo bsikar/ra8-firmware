@@ -841,8 +841,10 @@ link_libraries(ra8_zig::ra8_batt)
 
 # Object-library consumers do not inherit the core target's link interface;
 # attach migrated archives at directory scope so every host test links them.
+# Order matters: the linker reads each archive once, left to right, so an
+# archive goes after every archive that calls into it (ra8_box after
+# ra8_widget, ra8_gfx after its ra8_widget caller).
 link_libraries(
-  ra8_zig::ra8_box
   ra8_zig::ra8_power_profile
   ra8_zig::ra8_epd_cal
   ra8_zig::ra8_touch_cal
@@ -880,6 +882,7 @@ link_libraries(
   ra8_zig::ra8_secure_app
   ra8_zig::ra8_mem
   ra8_zig::ra8_widget
+  ra8_zig::ra8_box
   ra8_zig::ra8_gfx
 )
 

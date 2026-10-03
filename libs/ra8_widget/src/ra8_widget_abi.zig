@@ -51,3 +51,23 @@ pub const book = @import("widget_book_abi.zig");
 /// The flat container ops: `ra8_widget_layout_stack`, `_dispatch`,
 /// `_invalidate`, `_damage`, `_render_dirty`.
 pub const core = @import("widget_core_abi.zig");
+
+// A `pub const` import is analysed only when something refers to it, and
+// nothing in this archive does, so on their own the declarations above leave
+// every membrane's `export fn` uncompiled and the archive empty. Referring to
+// each one here is what makes its exports land in the library.
+comptime {
+    _ = types;
+    _ = paint;
+    _ = label;
+    _ = button;
+    _ = progress_bar;
+    _ = status_bar;
+    _ = toolbar;
+    _ = keyboard;
+    _ = nav_bar;
+    _ = panel;
+    _ = reflow_view;
+    _ = book;
+    _ = core;
+}
