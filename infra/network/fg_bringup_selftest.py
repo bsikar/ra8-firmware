@@ -172,15 +172,15 @@ def _lan_detection_checks(primary_lan: _PrimaryLan) -> list[tuple[str, bool]]:
     two_switch = (
         "config system interface\n"
         '    edit "wan1"\n        set mode dhcp\n    next\n'
-        '    edit "lan"\n        set ip 10.0.40.1 255.255.255.0\n'
+        '    edit "lan"\n        set ip 192.0.2.1 255.255.255.0\n'
         "        set type hard-switch\n    next\n"
-        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n'
+        '    edit "lan-even"\n        set ip 198.51.100.1 255.255.255.0\n'
         "        set type hard-switch\n    next\nend\n"
     )
     internal_box = (
         "config system interface\n"
-        '    edit "internal"\n        set ip 10.0.40.1 255.255.255.0\n    next\n'
-        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n    next\nend\n'
+        '    edit "internal"\n        set ip 192.0.2.1 255.255.255.0\n    next\n'
+        '    edit "lan-even"\n        set ip 198.51.100.1 255.255.255.0\n    next\nend\n'
     )
     cases = (
         ("primary read past lan-even", two_switch, "lan"),
@@ -244,133 +244,50 @@ def _add_unexpected_reservation(lines: list[str]) -> list[str]:
     block_end = fixture.index("end", block_start + 1)
     fixture[block_end:block_end] = [
         "edit 9",
-        "set ip 10.0.40.198",
-        "set mac 02:00:00:00:00:01",
+        "set ip 192.0.2.198",
+        "set mac 02:00:00:00:00:10",
         'set description "transient-fixture"',
         "next",
     ]
     return fixture
 
 
-def _transient_reservation_checks(
+def _reservation_contract_checks(
     config: _ConfigModule,
     tracked: list[str],
 ) -> list[tuple[str, bool]]:
-    """Return mutations proving transient Windows clients stay unreserved."""
-    transient_ip = sorted(config.PROHIBITED_TRANSIENT_WIN_IPS)[0]
-    transient_address = config.config_lint_errors(
+    """Return mutations proving duplicate and extra reservations are rejected."""
+    duplicate_ip = config.config_lint_errors(
         _mutate_reservation_line(
             tracked,
             config.STAR_RESERVED_IP,
             f"set ip {config.STAR_RESERVED_IP}",
-            f"set ip {transient_ip}",
+            f"set ip {config.AP_RESERVED_IP}",
         )
     )
-    transient_mac = config.config_lint_errors(
+    duplicate_mac = config.config_lint_errors(
         _mutate_reservation_line(
             tracked,
             config.STAR_RESERVED_IP,
-            "set mac 00:05:1b:db:75:d3",
-            f"set mac {config.PROHIBITED_TRANSIENT_WIN_MAC}",
+            f"set mac {config.STAR_RESERVED_MAC}",
+            f"set mac {config.AP_RESERVED_MAC}",
         )
     )
-    return [
-        (
-            "transient Win11 address is rejected",
-            any("must not be reserved" in item for item in transient_address),
-        ),
-        (
-            "transient Win11 MAC is rejected",
-            any("transient Win11 MAC" in item for item in transient_mac),
-        ),
-    ]
-
-
-def _required_address_checks(
-    config: _ConfigModule,
-    tracked: list[str],
-) -> list[tuple[str, bool]]:
-    """Prove the required-reservation comparator binds IP and MAC itself."""
-    wrong_ip = config.config_lint_errors(
-        _mutate_reservation_line(
-            tracked,
-            config.STAR_RESERVED_IP,
-            f"set ip {config.STAR_RESERVED_IP}",
-            "set ip 10.0.40.197",
-        )
-    )
-    wrong_mac = config.config_lint_errors(
-        _mutate_reservation_line(
-            tracked,
-            config.CAM_RESERVED_IP,
-            "set mac 88:a2:9e:9b:d0:ea",
-            "set mac 02:00:00:00:00:fe",
-        )
-    )
-    return [
-        (
-            "reservation IP is exact independently of transient-client policy",
-            any("star reservation" in item for item in wrong_ip),
-        ),
-        (
-            "reservation MAC is exact independently of transient-client policy",
-            any("camera relay reservation" in item for item in wrong_mac),
-        ),
-    ]
-
-
-def _exact_reservation_checks(
-    config: _ConfigModule,
-    tracked: list[str],
-) -> list[tuple[str, bool]]:
-    """Return mutations proving every declared reservation field is exact."""
-    wrong_description = config.config_lint_errors(
-        _mutate_reservation_line(
-            tracked,
-            config.STAR_RESERVED_IP,
-            'set description "star-bench-wired"',
-            'set description "wrong-description"',
-        )
-    )
-    wrong_id = config.config_lint_errors(
-        _mutate_reservation_line(
-            tracked,
-            config.CAM_RESERVED_IP,
-            "edit 1",
-            "edit 9",
-        )
-    )
-    wrong_server = config.config_lint_errors(_move_reservations_to_wrong_server(tracked))
     unexpected = config.config_lint_errors(_add_unexpected_reservation(tracked))
-    checks = [
+    return [
         (
-            "reservation description is exact",
-            any("star reservation" in item for item in wrong_description),
+            "duplicate reservation IP is rejected",
+            any("duplicated" in item for item in duplicate_ip),
         ),
         (
-            "reservation ID is exact",
-            any("camera relay reservation" in item for item in wrong_id),
-        ),
-        (
-            "reservation DHCP server is exact",
-            any("DHCP server 1" in item for item in wrong_server),
+            "duplicate reservation MAC is rejected",
+            any("duplicated" in item for item in duplicate_mac),
         ),
         (
             "unexpected reservation is rejected",
             any("expected exactly" in item for item in unexpected),
         ),
     ]
-    return _required_address_checks(config, tracked) + checks
-
-
-def _reservation_contract_checks(
-    config: _ConfigModule,
-    tracked: list[str],
-) -> list[tuple[str, bool]]:
-    """Return mutations proving the exact three-reservation contract."""
-    return _transient_reservation_checks(config, tracked) + _exact_reservation_checks(
-        config, tracked
-    )
 
 
 def declaration_selftest_checks(
@@ -380,7 +297,7 @@ def declaration_selftest_checks(
 ) -> tuple[list[tuple[str, bool]], list[str]]:
     """Return declaration must-fire, must-stay-quiet, and non-vacuity checks."""
     try:
-        tracked = config.load_config_lines(config.DEFAULT_CONF)
+        tracked = config.load_config_lines(config.EXAMPLE_CONF)
     except (OSError, UnicodeError) as exc:
         return [(f"tracked declaration load: {exc}", False)], []
     tracked_errors = config.config_lint_errors(tracked)
@@ -400,6 +317,12 @@ def declaration_selftest_checks(
                 any("non-vacuity" in item for item in config.config_lint_errors([])),
             ),
         ]
+    )
+    checks.append(
+        (
+            "example fixture retains placeholder reservations",
+            not config.example_reservation_errors(tracked),
+        )
     )
     checks.extend(_reservation_contract_checks(config, tracked))
     return checks, tracked_errors
@@ -452,7 +375,9 @@ def _fortigate_recipe_findings(text: str) -> list[str]:
         if "HIL_OPENBAO_ENV" in body or "PYTHONPATH" in body:
             findings.append(f"{recipe} admits an ambient Python or credential path")
     signatures = {
-        "fortigate_bootstrap": "BLOCKED: declaration is historical. Do not factory-reset or replay it.",
+        "fortigate_bootstrap": (
+            "Factory-reset and configure the FortiGate from the private declaration?"
+        ),
         "fortigate_ap_configure": "Reconfigure the bench AP over the FortiGate console?",
     }
     lines = text.splitlines()
@@ -476,7 +401,6 @@ def _documentation_findings(repo_root: Path) -> list[str]:
             "just infra::fortigate_ap_configure",
             "just infra::fortigate_verify",
         ),
-        repo_root / "infra/network/fortigate-bench.conf": ("just infra::fortigate_bootstrap",),
     }
     raw = ("python3 infra/network/fg_bringup.py", "fg_bringup.py verify")
     for path, required_commands in required.items():
@@ -500,8 +424,7 @@ def just_recipe_selftest_checks(just_path: Path) -> list[tuple[str, bool]]:
     )
     weakened_tty = text.replace('env_args+=("FG_CONSOLE_TTY=$tty")', 'env_args+=("$tty")', 1)
     weakened_confirmation = text.replace(
-        '[confirm("BLOCKED: declaration is historical. '
-        'Do not factory-reset or replay it.")]\n',
+        '[confirm("Factory-reset and configure the FortiGate from the private declaration?")]\n',
         "",
         1,
     )

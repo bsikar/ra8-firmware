@@ -6,7 +6,7 @@ set working-directory := ".."
 
 mod lab 'infra_lab.just'
 
-clean_env := "/usr/bin/env -i HOME=" + quote(env('HOME')) + " USER=" + quote(env('USER', '')) + " LOGNAME=" + quote(env('LOGNAME', '')) + " LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 RA8_INFRA_SANITIZED=v1"
+clean_env := "/usr/bin/env -i HOME=" + quote(env('HOME')) + " USER=" + quote(env('USER', '')) + " LOGNAME=" + quote(env('LOGNAME', '')) + " LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 RA8_FORTIGATE_CONF=" + quote(env("RA8_FORTIGATE_CONF", "")) + " RA8_INFRA_SANITIZED=v1"
 infra := clean_env + " /bin/bash --noprofile --norc scripts/dev/infra.sh"
 
 # Show fleet infrastructure help menu
@@ -73,16 +73,16 @@ fortigate_config_selftest python=".venv/bin/python3":
     {{ clean_env }} {{ quote(python) }} -B -I infra/network/fg_bringup.py --selftest config
 
 # Validate the FortiGate declaration without opening a console or reading secrets
-fortigate_config_lint path="infra/network/fortigate-bench.conf":
+fortigate_config_lint path="infra/network/fortigate-bench.example.conf":
     {{ clean_env }} .venv/bin/python3 -B -I infra/network/fg_bringup.py config-lint {{ quote(path) }}
 
 # Render the exact FortiGate replay command stream without contacting hardware
-fortigate_replay_dry_run path="infra/network/fortigate-bench.conf" lan="internal":
+fortigate_replay_dry_run path="infra/network/fortigate-bench.example.conf" lan="internal":
     {{ clean_env }} .venv/bin/python3 -B -I infra/network/fg_bringup.py replay-dry-run {{ quote(path) }} {{ quote(lan) }}
 
 # Factory-reset the FortiGate and replay one reviewed declaration
-[confirm("BLOCKED: declaration is historical. Do not factory-reset or replay it.")]
-fortigate_bootstrap path="infra/network/fortigate-bench.conf" tty="":
+[confirm("Factory-reset and configure the FortiGate from the private declaration?")]
+fortigate_bootstrap path="" tty="":
     #!/bin/bash -p
     set -euo pipefail
     declaration={{ quote(path) }}
@@ -91,8 +91,12 @@ fortigate_bootstrap path="infra/network/fortigate-bench.conf" tty="":
     if [[ -n "$tty" ]]; then
         env_args+=("FG_CONSOLE_TTY=$tty")
     fi
+    args=(bootstrap)
+    if [[ -n "$declaration" ]]; then
+        args+=("$declaration")
+    fi
     exec {{ clean_env }} "${env_args[@]}" .venv/bin/python3 -B -I \
-        infra/network/fg_bringup.py bootstrap "$declaration"
+        infra/network/fg_bringup.py "${args[@]}"
 
 # Configure the bench AP through the FortiGate console jump
 [confirm("Reconfigure the bench AP over the FortiGate console?")]

@@ -26,6 +26,7 @@ docs/sbom/patches/**/*.patch -whitespace
 coprocessor/**/patches/*.patch -whitespace
 # Binary files
 *.pdf binary
+infra/network/fortigate-bench.conf binary
 *.png binary
 *.jpg binary
 *.jpeg binary
