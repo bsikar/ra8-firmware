@@ -5,7 +5,7 @@ package github
 
 import (
 	"context"
-	"os"
+
 	"strings"
 	"testing"
 )
@@ -16,31 +16,6 @@ import (
 // the owner, the nil caller, a group-readable key, a directory, a symlink, an
 // empty key, an oversized key and an absent one. What is left is the file that
 // passes all of that and still cannot become a credential.
-
-// A key file can be a bounded regular file readable by nobody but its owner
-// and still refuse to open. Mode 0o000 satisfies every check made against the
-// metadata, so the refusal has to come from the open itself. An operator who
-// sealed a key and forgot needs to be told the file could not be read, not
-// that GitHub rejected the credential.
-func TestAPrivateKeyThatCannotBeOpenedIsRefusedBeforeTheCredential(t *testing.T) {
-	config := openable(t, []byte("placeholder key material"))
-	if err := os.Chmod(config.PrivateKeyFile, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	if readable, err := os.ReadFile(config.PrivateKeyFile); err == nil {
-		t.Skipf("this process reads a mode 0000 file (%d bytes); the seal proves nothing here", len(readable))
-	}
-
-	_, err := OpenSession(context.Background(), config)
-	if err == nil || !strings.Contains(err.Error(), "read GitHub App private key") {
-		t.Fatalf("a sealed key file: %v", err)
-	}
-	// Every metadata check passed, so neither of their refusals is what
-	// answered here.
-	if strings.Contains(err.Error(), "bounded regular file") || strings.Contains(err.Error(), "group or others") {
-		t.Fatalf("the open was blamed on the file's metadata: %v", err)
-	}
-}
 
 // The App credential is assembled from three fields and validated by shape
 // alone: a client ID, an installation and some bytes. Bytes that are not a

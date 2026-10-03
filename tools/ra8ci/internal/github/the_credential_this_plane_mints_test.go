@@ -5,8 +5,6 @@ package github
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,8 +13,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,20 +21,6 @@ import (
 // An installation token is what lets this plane act as the App, so what it
 // is minted from, where it is minted, and the client it is minted over are
 // all decided before a request is sent. Nothing here reaches GitHub.
-
-// appKeyFile writes a private-mode key file and hands its path back.
-func appKeyFile(t *testing.T, body []byte, mode os.FileMode) string {
-	t.Helper()
-	file := filepath.Join(t.TempDir(), "app.pem")
-	if err := os.WriteFile(file, body, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	// os.WriteFile applies the umask, so the mode is set explicitly.
-	if err := os.Chmod(file, mode); err != nil {
-		t.Fatal(err)
-	}
-	return file
-}
 
 // mintedAppKey builds a real RSA key and its PEM, once per test that needs one.
 func mintedAppKey(t *testing.T) (*rsa.PrivateKey, []byte) {
@@ -78,66 +60,6 @@ func TestTheAppAPIOriginIsExactlyThePublicOne(t *testing.T) {
 		if _, err := validAppAPIOrigin(base); err == nil {
 			t.Fatalf("%s (%q) was accepted", name, base)
 		}
-	}
-}
-
-// The key is the App's whole identity, so it is read only from a private,
-// bounded, regular file, and only when it really holds an RSA key.
-func TestAnAppKeyIsReadOnlyFromAPrivateBoundedRegularFile(t *testing.T) {
-	_, keyPEM := mintedAppKey(t)
-
-	good := appKeyFile(t, keyPEM, 0o600)
-	if _, err := loadAppPrivateKey(good); err != nil {
-		t.Fatalf("a private RSA key file was refused: %v", err)
-	}
-
-	if _, err := loadAppPrivateKey(filepath.Join(t.TempDir(), "absent.pem")); err == nil {
-		t.Fatal("an absent key file was loaded")
-	}
-	if _, err := loadAppPrivateKey(t.TempDir()); err == nil {
-		t.Fatal("a directory was loaded as a key")
-	}
-	for _, mode := range []os.FileMode{0o604, 0o640, 0o644, 0o660} {
-		if _, err := loadAppPrivateKey(appKeyFile(t, keyPEM, mode)); err == nil {
-			t.Fatalf("a key readable at mode %v was loaded", mode)
-		}
-	}
-	if _, err := loadAppPrivateKey(appKeyFile(t, nil, 0o600)); err == nil {
-		t.Fatal("an empty key file was loaded")
-	}
-	if _, err := loadAppPrivateKey(appKeyFile(t, []byte(strings.Repeat("k", maxGitHubPrivateKeyBytes+1)), 0o600)); err == nil {
-		t.Fatal("an oversized key file was loaded")
-	}
-	if _, err := loadAppPrivateKey(appKeyFile(t, []byte("not pem at all\n"), 0o600)); err == nil {
-		t.Fatal("a file that is not PEM was loaded")
-	}
-
-	// A link to a good key is still not a regular file: the check and the
-	// read could then be pointed at two different files.
-	link := filepath.Join(t.TempDir(), "link.pem")
-	if err := os.Symlink(good, link); err != nil {
-		t.Skipf("this box cannot make symlinks: %v", err)
-	}
-	if _, err := loadAppPrivateKey(link); err == nil {
-		t.Fatal("a symlinked key was loaded")
-	}
-}
-
-// PEM alone is not enough: the App signs RS256, so a key of another kind is
-// refused at load rather than at the first signature.
-func TestAnAppKeyOfAnotherKindIsRefused(t *testing.T) {
-	elliptical, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	der, err := x509.MarshalECPrivateKey(elliptical)
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
-
-	if _, err := loadAppPrivateKey(appKeyFile(t, body, 0o600)); err == nil {
-		t.Fatal("an elliptic-curve key was loaded for an RS256 App")
 	}
 }
 

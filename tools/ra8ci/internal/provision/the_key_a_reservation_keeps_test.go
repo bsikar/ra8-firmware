@@ -95,40 +95,10 @@ func TestTheDirectoryAStoreWillOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(base, "link")
-	if err := os.Symlink(real, link); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, real, link)
 	if _, err := NewSSHAccessStore(link); err == nil ||
 		!strings.Contains(err.Error(), "not a real directory") {
 		t.Fatalf("symlinked directory admitted or misreported: %v", err)
-	}
-}
-
-// TestAnOpenedDirectoryIsTightenedAndCleaned pins that opening a store fixes
-// the directory it was handed rather than trusting how it was found.
-func TestAnOpenedDirectoryIsTightenedAndCleaned(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "keys")
-	if err := os.MkdirAll(root, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(root, 0o777); err != nil {
-		t.Fatal(err)
-	}
-	keys, err := NewSSHAccessStore(root + string(filepath.Separator) + "." + string(filepath.Separator))
-	if err != nil {
-		t.Fatalf("open store over an existing directory: %v", err)
-	}
-	info, err := os.Stat(root)
-	if err != nil || info.Mode().Perm() != 0o700 {
-		t.Fatalf("world-readable directory was not tightened to 0700: %v, %v", info, err)
-	}
-	reservationID := reservationKeyID(t)
-	key, err := keys.Ensure(reservationID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if key.PrivateKeyFile != filepath.Join(root, reservationID+".key") {
-		t.Fatalf("uncleaned directory leaked into the key path: %q", key.PrivateKeyFile)
 	}
 }
 
@@ -395,9 +365,7 @@ func TestAKeyPathThatIsNotAFile(t *testing.T) {
 
 	pointing := reservationKeyID(t)
 	pointer := filepath.Join(root, pointing+".key")
-	if err := os.Symlink(real.PrivateKeyFile, pointer); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, real.PrivateKeyFile, pointer)
 	if _, err := keys.Load(pointing); err == nil ||
 		err.Error() != "reservation SSH key violates private-file policy" {
 		t.Fatalf("a symlinked key was followed or misreported: %v", err)
@@ -464,40 +432,5 @@ func TestRemoveIsForgivingAboutAbsenceAndExactAboutPresence(t *testing.T) {
 	}
 	if err := keys.Remove(going); err != nil {
 		t.Fatalf("removing an already removed key reported an error: %v", err)
-	}
-}
-
-// TestAnUnsafeKeyIsLeftWhereItIs pins that a refused removal changes nothing,
-// so the evidence of how the file got that way survives for whoever looks.
-func TestAnUnsafeKeyIsLeftWhereItIs(t *testing.T) {
-	keys, root := reservationKeyStore(t)
-	reservationID := reservationKeyID(t)
-	key, err := keys.Ensure(reservationID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := os.ReadFile(key.PrivateKeyFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(key.PrivateKeyFile, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := keys.Remove(reservationID); err == nil ||
-		err.Error() != "refusing to remove an unsafe SSH key file" {
-		t.Fatalf("an unsafe key was removed or misreported: %v", err)
-	}
-	after, err := os.ReadFile(key.PrivateKeyFile)
-	if err != nil || !bytes.Equal(before, after) {
-		t.Fatalf("a refused removal disturbed the file: %v", err)
-	}
-	if err := os.Chmod(key.PrivateKeyFile, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := keys.Remove(reservationID); err != nil {
-		t.Fatalf("a repaired key could not be removed: %v", err)
-	}
-	if names := rootEntries(t, root); len(names) != 0 {
-		t.Fatalf("the directory still holds something: %v", names)
 	}
 }

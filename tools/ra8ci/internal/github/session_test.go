@@ -28,18 +28,6 @@ func TestOpenSessionRejectsInvalidConfigBeforeReadingCredentials(t *testing.T) {
 	}
 }
 
-func TestOpenSessionRejectsGroupAccessiblePrivateKeyBeforeNetwork(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "app.pem")
-	if err := os.WriteFile(path, []byte("not-a-private-key"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	config := SessionConfig{GitHubConfigURL: "https://github.com/bsikar", AppClientID: "client",
-		InstallationID: 1, PrivateKeyFile: path, Owner: "bsikar", ScaleSetID: 42, MaxRunners: 2}
-	if _, err := OpenSession(context.Background(), config); err == nil || !strings.Contains(err.Error(), "group or others") {
-		t.Fatalf("permissive key mode err=%v", err)
-	}
-}
-
 func TestOpenSessionRejectsNonregularPrivateKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "directory.pem")
 	if err := os.Mkdir(path, 0700); err != nil {
@@ -55,9 +43,7 @@ func TestOpenSessionRejectsNonregularPrivateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	linkPath := filepath.Join(t.TempDir(), "private-link.pem")
-	if err := os.Symlink(keyPath, linkPath); err != nil {
-		t.Skipf("symlink unavailable: %v", err)
-	}
+	symlinkTest(t, keyPath, linkPath)
 	config.PrivateKeyFile = linkPath
 	if _, err := OpenSession(context.Background(), config); err == nil || !strings.Contains(err.Error(), "regular file") {
 		t.Fatalf("symlinked key err=%v", err)

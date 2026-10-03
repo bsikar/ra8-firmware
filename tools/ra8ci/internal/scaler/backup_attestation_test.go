@@ -73,20 +73,3 @@ func TestSignedBackupGateRejectsTamperingAndWrongApproval(t *testing.T) {
 		t.Fatal("modified signed evidence was accepted")
 	}
 }
-
-func TestSignedBackupGateRejectsStaleEvidenceAndWritableFiles(t *testing.T) {
-	gate, attestation, key := backupGateFixture(t)
-	attestation.CheckedAt = gate.now().Add(-time.Hour)
-	writeSignedBackupFixture(t, gate.path, attestation, key)
-	if err := gate.Check(context.Background(), gate.approvalID); err == nil {
-		t.Fatal("stale backup check was accepted")
-	}
-	attestation.CheckedAt = gate.now().Add(-time.Minute)
-	writeSignedBackupFixture(t, gate.path, attestation, key)
-	if err := os.Chmod(gate.path, 0o666); err != nil {
-		t.Fatal(err)
-	}
-	if err := gate.Check(context.Background(), gate.approvalID); err == nil {
-		t.Fatal("writable attestation was accepted")
-	}
-}

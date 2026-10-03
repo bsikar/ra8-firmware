@@ -209,9 +209,7 @@ func TestAnExecutableThatDoesNotMatchItsPinnedDigestIsRefused(t *testing.T) {
 	linked := trustedRuntimeConfig(t)
 	target := linked.BinaryPath
 	link := filepath.Join(filepath.Dir(target), "terraform-link")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, target, link)
 	linked.BinaryPath = link
 	refusedRuntime(t, "symlinked binary", linked, "digest differs from pinned configuration")
 

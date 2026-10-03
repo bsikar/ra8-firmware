@@ -225,9 +225,7 @@ func TestATaskProgramSymlinkMayNotLeaveTheCheckout(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(escape, filepath.Join(root, "scripts", "gate.sh")); err != nil {
-		t.Skipf("this filesystem will not hold a symlink: %v", err)
-	}
+	symlinkTest(t, escape, filepath.Join(root, "scripts", "gate.sh"))
 	if _, err := resolveTaskProgram(root, "scripts/gate.sh"); !errors.Is(err, ErrUnsafeEnvironment) {
 		t.Fatalf("err = %v, want ErrUnsafeEnvironment", err)
 	}

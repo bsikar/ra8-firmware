@@ -135,9 +135,7 @@ func TestAnUnknownExtensionStaysOutOfScopeWhateverItHolds(t *testing.T) {
 
 func TestOnlyARegularFileIsDerived(t *testing.T) {
 	root := plantRepo(t, map[string]string{"docs/real.md": "prose\n"})
-	if err := os.Symlink(filepath.Join(root, "docs", "real.md"), filepath.Join(root, "docs", "linked.md")); err != nil {
-		t.Skipf("symlinks are unavailable here: %v", err)
-	}
+	symlinkTest(t, filepath.Join(root, "docs", "real.md"), filepath.Join(root, "docs", "linked.md"))
 	held := derivedScope(t, root)
 	if !held["docs/real.md"] {
 		t.Errorf("the real file was dropped: %v", held)

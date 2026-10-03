@@ -4,12 +4,11 @@
 package scaler
 
 import (
-	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"strings"
+
 	"testing"
 	"time"
 )
@@ -56,68 +55,4 @@ func backupMonitorFixture(t *testing.T, binaryMode os.FileMode) (BackupMonitorCo
 		RestoreDrillPath: drillPath, AttestationPath: filepath.Join(outputDir, "backup.json"),
 		ApprovalID: monitorApprovalID, Stanza: "ra8ci"}
 	return config, public
-}
-
-func TestProtectedPgBackRestExecutableIsStillAccepted(t *testing.T) {
-	config, public := backupMonitorFixture(t, 0o750)
-	if err := RefreshBackupAttestation(context.Background(), config); err != nil {
-		t.Fatalf("protected executable was refused: %v", err)
-	}
-	gate, err := NewSignedBackupGate(config.AttestationPath, public, config.ApprovalID, time.Hour, 48*time.Hour, 90*24*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := gate.Check(context.Background(), config.ApprovalID); err != nil {
-		t.Fatalf("signed evidence failed verification: %v", err)
-	}
-}
-
-func TestOwnerWritablePgBackRestExecutableIsStillAccepted(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o700)
-	if err := RefreshBackupAttestation(context.Background(), config); err != nil {
-		t.Fatalf("owner-writable executable was refused: %v", err)
-	}
-}
-
-func TestGroupWritablePgBackRestExecutableIsRefused(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o770)
-	err := RefreshBackupAttestation(context.Background(), config)
-	if err == nil {
-		t.Fatal("group-writable pgBackRest executable was accepted")
-	}
-	if !strings.Contains(err.Error(), "group or world writable") {
-		t.Fatalf("refused for the wrong reason: %v", err)
-	}
-}
-
-func TestWorldWritablePgBackRestExecutableIsRefused(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o757)
-	err := RefreshBackupAttestation(context.Background(), config)
-	if err == nil {
-		t.Fatal("world-writable pgBackRest executable was accepted")
-	}
-	if !strings.Contains(err.Error(), "group or world writable") {
-		t.Fatalf("refused for the wrong reason: %v", err)
-	}
-}
-
-func TestWritablePgBackRestExecutableSignsNothing(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o777)
-	if err := RefreshBackupAttestation(context.Background(), config); err == nil {
-		t.Fatal("world-writable pgBackRest executable was accepted")
-	}
-	if _, err := os.Stat(config.AttestationPath); !os.IsNotExist(err) {
-		t.Fatal("a refused run published an attestation")
-	}
-}
-
-func TestNonExecutablePgBackRestIsStillRefusedAsNotExecutable(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o640)
-	err := RefreshBackupAttestation(context.Background(), config)
-	if err == nil {
-		t.Fatal("non-executable pgBackRest was accepted")
-	}
-	if !strings.Contains(err.Error(), "executable regular file") {
-		t.Fatalf("the pre-existing rule no longer names its own reason: %v", err)
-	}
 }

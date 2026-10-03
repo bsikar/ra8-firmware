@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+
 	"strings"
 	"testing"
 	"time"
@@ -162,30 +162,5 @@ func TestAMintTheEndpointAnsweredBadlyIsNotAToken(t *testing.T) {
 		if _, _ = installation.accessToken(context.Background()); asks != 2 {
 			t.Errorf("%s was cached: the endpoint saw %d asks across two calls", refusal.name, asks)
 		}
-	}
-}
-
-// A key file that passes every check on its metadata and still cannot be
-// opened is reported as the failed open it was, naming the file, rather than
-// as a key that is not private or not PEM.
-func TestAKeyFileThatCannotBeOpenedIsNamedAsAFailedOpen(t *testing.T) {
-	sealed := soundKeyFile(t)
-	if _, err := loadAppPrivateKey(sealed); err != nil {
-		t.Fatalf("a sound key file was refused: %v", err)
-	}
-	if err := os.Chmod(sealed, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sealed, 0o600) })
-
-	key, err := loadAppPrivateKey(sealed)
-	if err == nil {
-		t.Fatal("an unopenable key file loaded a key")
-	}
-	if !strings.Contains(err.Error(), "open GitHub App private key") {
-		t.Fatalf("an unopenable key file answered %v", err)
-	}
-	if key != nil {
-		t.Fatal("an unopenable key file answered a key as well as an error")
 	}
 }

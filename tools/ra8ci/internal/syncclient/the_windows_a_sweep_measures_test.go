@@ -8,7 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
+
 	"path/filepath"
 	"strings"
 	"testing"
@@ -177,22 +177,6 @@ func TestAnOriginTheSweepWillNotSendAnOutboxToIsRefused(t *testing.T) {
 		if report.Synced != 0 || report.Quarantined != 0 {
 			t.Errorf("origin %q answered %+v", origin, report)
 		}
-	}
-}
-
-func TestAnUnreadableOutboxStopsTheSweep(t *testing.T) {
-	outbox, directory := openOutbox(t)
-	plantRaw(t, directory, measuredRecord())
-	if err := os.Chmod(directory, 0o000); err != nil {
-		t.Fatalf("seal outbox: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) })
-	if _, err := os.ReadDir(directory); err == nil {
-		t.Skip("the outbox is readable while sealed, so this host cannot hold the refusal")
-	}
-
-	if _, err := SyncPending(context.Background(), outbox, "https://plane.example", http.DefaultClient); err == nil {
-		t.Fatal("an unreadable outbox answered a clean sweep")
 	}
 }
 

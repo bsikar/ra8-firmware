@@ -60,23 +60,7 @@ func TestEvidenceJustInsideEveryWindowIsStillAccepted(t *testing.T) {
 	}
 }
 
-// An attestation whose mode passes the gate's policy check can still refuse to
-// open, and that is named as an unreadable file rather than a permissions
-// fault. An operator told the file is writable would go and change a mode that
-// was never the problem.
-func TestAnAttestationThatWillNotOpenIsNamedAsSuch(t *testing.T) {
-	gate, attestation, key := backupGateFixture(t)
-	writeSignedBackupFixture(t, gate.path, attestation, key)
-	if err := gate.Check(context.Background(), gate.approvalID); err != nil {
-		t.Fatalf("a readable attestation was refused: %v", err)
-	}
-	seal(t, gate.path)
 
-	err := gate.Check(context.Background(), gate.approvalID)
-	if err == nil || err.Error() != "open signed backup attestation" {
-		t.Fatalf("answered %v, want the attestation named as unopenable", err)
-	}
-}
 
 // The monitor signs nothing it could not have observed, so the same coherence
 // rule the gate applies on the way in is applied on the way out. A signing

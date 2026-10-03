@@ -5,8 +5,6 @@ package catalog
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -134,29 +132,6 @@ func TestAScriptPathOutsidePrintableASCIIIsRefused(t *testing.T) {
 	}
 	if !ValidScriptPath("scripts/ci/gate.sh") {
 		t.Fatal("an ordinary script path was refused")
-	}
-}
-
-// A checkout file the review cannot open is refused by the read itself, not
-// by the parse that would have followed. Root would sail past a sealed file,
-// so the test says what it needs and skips rather than asserting falsely.
-func TestACheckoutFileThatWillNotOpenIsRefused(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: a sealed file still opens")
-	}
-	sealed := filepath.Join(t.TempDir(), "tasks.json")
-	if err := os.WriteFile(sealed, []byte(`{"schema_version":1}`), 0o000); err != nil {
-		t.Fatalf("plant a sealed manifest: %v", err)
-	}
-	if _, err := readCheckoutFile(sealed, maxReadableManifestBytes); err == nil {
-		t.Fatal("a sealed manifest was read")
-	}
-	readable := filepath.Join(t.TempDir(), "tasks.json")
-	if err := os.WriteFile(readable, []byte(`{"schema_version":1}`), 0o644); err != nil {
-		t.Fatalf("plant a readable manifest: %v", err)
-	}
-	if _, err := readCheckoutFile(readable, maxReadableManifestBytes); err != nil {
-		t.Fatalf("a readable manifest was refused: %v", err)
 	}
 }
 

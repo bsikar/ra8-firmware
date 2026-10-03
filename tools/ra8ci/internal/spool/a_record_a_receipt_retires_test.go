@@ -39,9 +39,7 @@ func TestALinkedRecordIsNotRetiredByAReceipt(t *testing.T) {
 	if err := os.Remove(recordPath(s, entry.ID)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(elsewhere, recordPath(s, entry.ID)); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, elsewhere, recordPath(s, entry.ID))
 	err := s.MarkSynced(entry.ID, "server-run-1")
 	if !errors.Is(err, errRetiredRecordIsNotAFile) {
 		t.Fatalf("a link standing in for a record was retired: %v", err)
@@ -100,9 +98,7 @@ func TestTheRefusalNamesTheRecordAndNotItsContents(t *testing.T) {
 	if err := os.Remove(recordPath(s, entry.ID)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(secret, recordPath(s, entry.ID)); err != nil {
-		t.Fatal(err)
-	}
+	symlinkTest(t, secret, recordPath(s, entry.ID))
 	err := s.MarkSynced(entry.ID, "server-run-1")
 	if err == nil {
 		t.Fatal("a link standing in for a record was retired")

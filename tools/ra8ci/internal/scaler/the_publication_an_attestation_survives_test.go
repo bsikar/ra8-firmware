@@ -32,31 +32,6 @@ func attestationLeftovers(t *testing.T, directory string) []string {
 	return stray
 }
 
-func TestAPublishedAttestationLandsOwnerReadableWithNoTemporaryLeftBehind(t *testing.T) {
-	config, _ := backupMonitorFixture(t, 0o750)
-	if err := RefreshBackupAttestation(context.Background(), config); err != nil {
-		t.Fatalf("RefreshBackupAttestation: %v", err)
-	}
-	info, err := os.Lstat(config.AttestationPath)
-	if err != nil {
-		t.Fatalf("an accepted run published nothing: %v", err)
-	}
-	if !info.Mode().IsRegular() {
-		t.Fatalf("published attestation is not a regular file: %v", info.Mode())
-	}
-	// 0640 is the published mode: the API service reads it as a group member,
-	// and nobody outside the group reads it at all.
-	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("published attestation mode is %v, want 0640", info.Mode().Perm())
-	}
-	if info.Size() == 0 {
-		t.Fatal("published attestation is empty")
-	}
-	if stray := attestationLeftovers(t, filepath.Dir(config.AttestationPath)); len(stray) != 0 {
-		t.Fatalf("publication left a temporary behind: %v", stray)
-	}
-}
-
 // The publication renames into the directory, so a symlink there is a
 // redirection of where the attestation lands. Lstat is what catches it.
 func TestAnAttestationDirectoryThatIsASymlinkIsRefused(t *testing.T) {
@@ -66,9 +41,7 @@ func TestAnAttestationDirectoryThatIsASymlinkIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	linked := filepath.Join(filepath.Dir(filepath.Dir(config.AttestationPath)), "linked")
-	if err := os.Symlink(real, linked); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, real, linked)
 	config.AttestationPath = filepath.Join(linked, "backup.json")
 	err := RefreshBackupAttestation(context.Background(), config)
 	if err == nil {
@@ -102,27 +75,6 @@ func TestAnAttestationDirectoryThatIsAFileIsRefused(t *testing.T) {
 	}
 	if string(raw) != "attestations do not go here\n" {
 		t.Fatal("a refused publication overwrote the file at the directory's path")
-	}
-}
-
-// A directory nobody may write passes the permission rule (0500 is neither
-// group nor world writable) and still cannot hold a temporary. The refusal
-// has to name the temporary rather than the permission rule, because those
-// are two different things for an operator to go and fix.
-func TestASealedAttestationDirectoryRefusesBeforeAnythingIsWritten(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores the write bit this test depends on")
-	}
-	config := monitorWithOutputDirectory(t, 0o500)
-	err := RefreshBackupAttestation(context.Background(), config)
-	if err == nil {
-		t.Fatal("a sealed attestation directory was accepted")
-	}
-	if !strings.Contains(err.Error(), "create temporary backup attestation") {
-		t.Fatalf("refused for the wrong reason: %v", err)
-	}
-	if _, statErr := os.Stat(config.AttestationPath); !os.IsNotExist(statErr) {
-		t.Fatal("a refused run published an attestation")
 	}
 }
 

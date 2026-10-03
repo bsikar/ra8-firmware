@@ -93,9 +93,7 @@ func TestRunCheckoutRefusesSymlinkComponents(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(outside, "target.md"), []byte("dash—\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, outside, filepath.Join(root, "linked"))
 	if code := Run(context.Background(), root, []string{"--checkout", "linked/target.md"}, io.Discard, io.Discard); code != 2 {
 		t.Fatalf("Run through symlink = %d, want 2", code)
 	}

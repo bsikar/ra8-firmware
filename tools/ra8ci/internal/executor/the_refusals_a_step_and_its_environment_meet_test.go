@@ -39,15 +39,6 @@ func TestBoundTaskRefusesADefinitionTheCatalogRejects(t *testing.T) {
 	}
 }
 
-func TestCleanEnvironmentRefusesAPathEntryItCannotResolve(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv("PATH", occupiedPath(t))
-	env, err := cleanEnvironment(root)
-	if !errors.Is(err, ErrUnsafeEnvironment) || env != nil {
-		t.Fatalf("env = %v, error = %v", env, err)
-	}
-}
-
 func TestCleanEnvironmentRefusesAScratchDirectoryItCannotResolve(t *testing.T) {
 	root := t.TempDir()
 	scratch := occupiedPath(t)

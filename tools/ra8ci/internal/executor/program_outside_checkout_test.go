@@ -16,18 +16,6 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 )
 
-// writeProgram writes an executable shell script and returns its path.
-func writeProgram(t *testing.T, path, body string) string {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("make program directory: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
-		t.Fatalf("write program: %v", err)
-	}
-	return path
-}
-
 // The shape this closes: an absolute program path that lands in the tree under
 // test. The same bytes reached through a relative name are refused by the
 // relative branch only when they escape the checkout, which is the opposite
@@ -81,9 +69,7 @@ func TestAPathSymlinkIntoTheCheckoutIsRefused(t *testing.T) {
 	binDir := t.TempDir()
 	target := writeProgram(t, filepath.Join(root, "tools", "gate"), "exit 0")
 	link := filepath.Join(binDir, "gate-probe")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, target, link)
 	t.Setenv("PATH", binDir)
 	if _, err := resolveTaskProgram(root, "gate-probe"); !errors.Is(err, ErrUnsafeEnvironment) {
 		t.Fatalf("resolveTaskProgram error = %v, want ErrUnsafeEnvironment", err)
@@ -125,8 +111,8 @@ func TestAMissingToolIsStillAMissingTool(t *testing.T) {
 // move.
 func TestARelativeProgramInsideTheCheckoutStillResolves(t *testing.T) {
 	root := t.TempDir()
-	program := writeProgram(t, filepath.Join(root, "scripts", "probe.sh"), "exit 0")
-	resolved, err := resolveTaskProgram(root, "scripts/probe.sh")
+	program := writeProgram(t, filepath.Join(root, "scripts", "probe"+programFixtureExtension), "exit 0")
+	resolved, err := resolveTaskProgram(root, filepath.Join("scripts", "probe"+programFixtureExtension))
 	if err != nil {
 		t.Fatalf("resolveTaskProgram error = %v, want nil", err)
 	}

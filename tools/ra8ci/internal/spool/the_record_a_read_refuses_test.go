@@ -57,9 +57,7 @@ func TestAStartRecordSaysWhichHalfIsWrong(t *testing.T) {
 		if err := os.WriteFile(honest, []byte(`{"id":"`+id+`"}`), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Symlink(honest, filepath.Join(s.directory, id+".started.json")); err != nil {
-			t.Skipf("symlinks unavailable: %v", err)
-		}
+		symlinkTest(t, honest, filepath.Join(s.directory, id+".started.json"))
 		_, err := s.readStarted(id)
 		if err == nil || !strings.Contains(err.Error(), "not a regular file") {
 			t.Fatalf("error = %v, want the link refused rather than followed", err)

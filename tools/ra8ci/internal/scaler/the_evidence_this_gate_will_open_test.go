@@ -188,9 +188,7 @@ func TestAnAttestationThatIsASymlinkIsRefusedOnItsShape(t *testing.T) {
 	gate, attestation, key := backupGateFixture(t)
 	behind := filepath.Join(filepath.Dir(gate.path), "behind.json")
 	writeSignedBackupFixture(t, behind, attestation, key)
-	if err := os.Symlink(behind, gate.path); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	symlinkTest(t, behind, gate.path)
 	gateRefusal(t, gate, "backup attestation must be a bounded, non-writable regular file")
 }
 

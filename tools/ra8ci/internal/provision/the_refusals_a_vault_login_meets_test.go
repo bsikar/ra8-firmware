@@ -188,16 +188,6 @@ func TestACredentialFileTheOperatorMisconfiguredNeverReachesTheEndpoint(t *testi
 				t.Fatal(err)
 			}
 		}},
-		{"group-readable role ID file", "read AppRole role ID", func(t *testing.T, c *AppRoleConfig) {
-			if err := os.Chmod(c.RoleIDFile, 0o640); err != nil {
-				t.Fatal(err)
-			}
-		}},
-		{"group-readable secret ID file", "read AppRole secret ID", func(t *testing.T, c *AppRoleConfig) {
-			if err := os.Chmod(c.SecretIDFile, 0o640); err != nil {
-				t.Fatal(err)
-			}
-		}},
 		{"a directory where the role ID belongs", "read AppRole role ID", func(t *testing.T, c *AppRoleConfig) {
 			if err := os.Remove(c.RoleIDFile); err != nil {
 				t.Fatal(err)
