@@ -25,7 +25,6 @@ const (
 	exitDrift   = 1
 	exitVacuous = 2
 	minSubdirs  = 5
-	trustedGit  = "/usr/bin/git"
 )
 
 var rowNamePattern = regexp.MustCompile(`^\x60([A-Za-z0-9._-]+)/\x60$`)
@@ -164,14 +163,11 @@ func ignoredNames(ctx context.Context, testsDir string, names map[string]struct{
 }
 
 func trustedGitExecutable() (string, error) {
-	info, err := os.Lstat(trustedGit)
+	git, err := exec.LookPath("git")
 	if err != nil {
-		return "", fmt.Errorf("trusted %s is unavailable: %w", trustedGit, err)
+		return "", fmt.Errorf("trusted Git is unavailable on PATH: %w", err)
 	}
-	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
-		return "", fmt.Errorf("trusted Git %s is not a regular executable", trustedGit)
-	}
-	return trustedGit, nil
+	return git, nil
 }
 
 func sanitizedGitEnvironment(source []string) []string {

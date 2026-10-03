@@ -24,11 +24,9 @@ import (
 // goes in on stdin comes straight back out on stdout.
 func ignoringEverything(t *testing.T) string {
 	t.Helper()
-	if _, err := os.Stat(trustedGit); err != nil {
-		t.Skipf("trusted git is unavailable: %v", err)
-	}
+	git := trustedGitForTest(t)
 	root := t.TempDir()
-	if output, err := exec.Command(trustedGit, "init", "-q", root).CombinedOutput(); err != nil {
+	if output, err := exec.Command(git, "init", "-q", root).CombinedOutput(); err != nil {
 		t.Skipf("git init unavailable: %v: %s", err, output)
 	}
 	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("*\n"), 0o644); err != nil {

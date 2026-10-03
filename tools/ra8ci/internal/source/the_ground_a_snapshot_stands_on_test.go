@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -21,6 +21,9 @@ import (
 // be trusted, rather than resolved into something else.
 
 func TestARelativeCheckoutWithNoGroundUnderItIsRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow removing the process working directory")
+	}
 	// A working directory that has been removed under the process. Every
 	// relative path is now meaningless, and resolving one anyway would
 	// identify some other tree.
@@ -68,15 +71,11 @@ func TestTheWalkJudgesThePathItComposesRatherThanTheOneItWasHanded(t *testing.T)
 	// what keeps the recursion honest about where it is: a walk that trusted
 	// the composition would descend on a path leading out of the checkout
 	// while every piece it was handed looked ordinary.
-	stubbedGit(t, `printf '160000 commit `+theCommit+`\tlibs/dep\000'; exit 0`)
-	gitPath, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
+	gitPath := stubbedGit(t, []byte("160000 commit "+theCommit+"\tlibs/dep\x00"))
 	root := t.TempDir()
 
 	entries := make([]Entry, 0, 2)
-	err = inspectTree(context.Background(), gitPath, root, root, "..", "", 0, &entries)
+	err := inspectTree(context.Background(), gitPath, root, root, "..", "", 0, &entries)
 	if !errors.Is(err, ErrUnsafePath) {
 		t.Fatalf("a child path composed outside the checkout was not refused: %v", err)
 	}

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -154,7 +155,11 @@ func TestSnapshotRejectsMissingContextAndRepository(t *testing.T) {
 
 func TestSnapshotRejectsGitExecutableInsideCheckout(t *testing.T) {
 	repo := newRepository(t, filepath.Join(t.TempDir(), "root"), "root.txt")
-	gitTool := filepath.Join(repo, "git")
+	gitName := "git"
+	if runtime.GOOS == "windows" {
+		gitName += ".exe"
+	}
+	gitTool := filepath.Join(repo, gitName)
 	if err := os.WriteFile(gitTool, []byte("not executed\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -167,10 +172,10 @@ func TestSnapshotRejectsGitExecutableInsideCheckout(t *testing.T) {
 func TestInspectTreeBoundsAndArchiveFailure(t *testing.T) {
 	repo := newRepository(t, filepath.Join(t.TempDir(), "root"), "root.txt")
 	var entries []Entry
-	if err := inspectTree(context.Background(), "/usr/bin/git", repo, repo, "", "", maxDepth+1, &entries); !errors.Is(err, ErrUnsafePath) {
+	if err := inspectTree(context.Background(), gitBinary(t), repo, repo, "", "", maxDepth+1, &entries); !errors.Is(err, ErrUnsafePath) {
 		t.Fatalf("depth error = %v", err)
 	}
-	if _, err := archiveSHA256(context.Background(), "/usr/bin/git", t.TempDir()); !errors.Is(err, ErrGit) {
+	if _, err := archiveSHA256(context.Background(), gitBinary(t), t.TempDir()); !errors.Is(err, ErrGit) {
 		t.Fatalf("archive in non-repository error = %v", err)
 	}
 }
