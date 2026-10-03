@@ -77,8 +77,8 @@ MEMORY
      * (see blink_hal/trustzone_init.c) so the CPU sees them as
      * Non-Secure aliases. With RA8_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
-    NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
-    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 640K   /* SRAM1 upper half; unused placeholder w/ TrustZone off */
+    NS_MRAM (rx) : ORIGIN = 0x12080000, LENGTH = 512K   /* bit-28 NS alias of upper MRAM (RA8FW-510) */
+    NS_SRAM (rwx) : ORIGIN = 0x32100000, LENGTH = 640K   /* bit-28 NS alias of SRAM1 upper half; unused placeholder w/ TrustZone off */
 }
 
 /*

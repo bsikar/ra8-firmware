@@ -74,8 +74,8 @@ typedef enum : uintptr_t {
   k_ra8_board_sram_base    = 0x22000000UL, /**< On-chip SRAM, less NOINIT.   */
   k_ra8_board_noinit_base  = 0x220FFF00UL, /**< Warm-reset crash-log record. */
   k_ra8_board_sdram_base   = 0x68000000UL, /**< External SDRAM.              */
-  k_ra8_board_ns_mram_base = 0x02080000UL, /**< Non-Secure MRAM placeholder. */
-  k_ra8_board_ns_sram_base = 0x22100000UL, /**< Non-Secure SRAM placeholder. */
+  k_ra8_board_ns_mram_base = 0x12080000UL, /**< NS MRAM, bit-28 alias.      */
+  k_ra8_board_ns_sram_base = 0x32100000UL, /**< NS SRAM, bit-28 alias.      */
 } ra8_board_memmap_base_t;
 
 /**
