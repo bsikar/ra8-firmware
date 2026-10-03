@@ -7,20 +7,20 @@
  *
  * @details
  * Covers the five ThreadX failure branches in ``ra8_wdt_supervisor.c``
- * that no host input could reach before the ::fw_os host binding gained a one-shot
- * forced-failure slot. Each case arms one ThreadX call to
+ * that no host input can reach without the supervisor test seam. Each case arms
+ * one ThreadX call to
  * fail, drives the public entry point that makes that call, and asserts
  * the published per-object code rather than the old catch-all
  * ``k_ra8_err_rtos_error``:
  *
- *  - ``ra8_wdt_supervisor_init``            -> ``fw_os_mutex_init``
- *  - ``ra8_wdt_supervisor_register_thread`` -> ``fw_os_mutex_lock``
- *  - ``ra8_wdt_supervisor_checkin``         -> ``fw_os_mutex_lock``
- *  - ``ra8_wdt_supervisor_start``           -> ``fw_os_thread_create``
- *  - ``ra8_wdt_supervisor_tick``            -> ``fw_os_mutex_lock``
+ *  - ``ra8_wdt_supervisor_init``            -> mutex create
+ *  - ``ra8_wdt_supervisor_register_thread`` -> mutex get
+ *  - ``ra8_wdt_supervisor_checkin``         -> mutex get
+ *  - ``ra8_wdt_supervisor_start``           -> thread create
+ *  - ``ra8_wdt_supervisor_tick``            -> mutex get
  *
- * The forced failure is one-shot, so each case also asserts that the
- * immediately following call succeeds; that is what keeps a forced
+ * The supervisor test seam applies a forced failure once. Each case asserts
+ * that the immediately following call succeeds, keeping a forced
  * failure from leaking into the next case.
  *
  * No hardware registers are touched beyond the WDT refresh the tick path
@@ -32,10 +32,19 @@
 
 #include <stdint.h>
 
-#include "ra8_err.h"
 #include "fw_os_host_test.h"
+#include "ra8_err.h"
 #include "ra8_wdt_supervisor.h"
 #include "unity_minimal.h"
+
+/** Host-only failure seam exported by the Zig supervisor archive. */
+extern void ra8_wdt_supervisor_test_force_rtos_failure(uint32_t call);
+
+typedef enum : uint32_t {
+  k_t_rtos_call_mutex_create  = 1U,
+  k_t_rtos_call_mutex_get     = 2U,
+  k_t_rtos_call_thread_create = 3U,
+} t_sup_rtos_call_t;
 
 /**
  * @enum t_sup_rtos_err_t
@@ -141,7 +150,7 @@ static void test_init_mutex_create_failure(void)
     .refresh_period_ms = (uint32_t)k_t_rtos_period_ms,
   };
 
-  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_init, k_ra8_err_rtos_error);
+  ra8_wdt_supervisor_test_force_rtos_failure(k_t_rtos_call_mutex_create);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_init(&cfg));
 
   /* The forced failure is one-shot: the retry must come up clean, and the
@@ -169,7 +178,7 @@ static void test_register_mutex_get_failure(void)
   bring_up(&h);
 
   uint8_t h2 = (uint8_t)k_ra8_wdt_sup_handle_invalid;
-  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
+  ra8_wdt_supervisor_test_force_rtos_failure(k_t_rtos_call_mutex_get);
   TEST_ASSERT_EQ(
     k_ra8_err_rtos_mutex,
     ra8_wdt_supervisor_register_thread("rtos_w2", (uint32_t)k_t_rtos_deadline_ms, &h2));
@@ -201,7 +210,7 @@ static void test_checkin_mutex_get_failure(void)
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
 
-  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
+  ra8_wdt_supervisor_test_force_rtos_failure(k_t_rtos_call_mutex_get);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_checkin(h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
 
@@ -225,7 +234,7 @@ static void test_start_thread_create_failure(void)
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
 
-  fw_os_host_test_fail_next(k_fw_os_host_test_call_thread_create, k_ra8_err_rtos_error);
+  ra8_wdt_supervisor_test_force_rtos_failure(k_t_rtos_call_thread_create);
   TEST_ASSERT_EQ(k_ra8_err_rtos_thread_create, ra8_wdt_supervisor_start());
 
   /* A failed spawn must not latch s_state.started, otherwise the retry
@@ -254,7 +263,7 @@ static void test_tick_mutex_get_failure(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
 
   bool did_refresh = true;
-  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
+  ra8_wdt_supervisor_test_force_rtos_failure(k_t_rtos_call_mutex_get);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);
 
