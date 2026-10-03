@@ -292,18 +292,7 @@ def capture(ser: serial.Serial) -> str:
 
 
 def primary_lan_name(interface_text: str) -> str:
-    """Return the PRIMARY LAN hard-switch name from a `show system interface` dump.
-
-    The bench splits the one physical switch (sw0) into two hard switches: the
-    primary (factory-named "lan" or "internal", depending on the model) carries
-    the odd ports, and a SECOND switch named "lan-even" carries the even ports.
-    Only the primary name is model-dependent, so only the primary is what gets
-    resolved here and what configure_after_wipe() rewrites the "internal" token
-    in fortigate-bench.conf to. "lan-even" is a literal we choose, and it is
-    deliberately NOT confused with the primary: the needle `edit "lan"` cannot
-    match inside `edit "lan-even"` (the closing quote differs), so the presence
-    of the second switch cannot make this misreport the primary. See --selftest.
-    """
+    """Return the primary LAN hard-switch name from an interface dump."""
     for name in ("lan", "internal"):
         if f'edit "{name}"' in interface_text:
             return name
@@ -432,7 +421,7 @@ def configure_after_wipe(
     require_valid_config(conf_lines, declaration_path)
     run_lines(ser, conf_lines, 60)
     run_lines(ser, ["get system status", f"show system interface {lan}", "get system poe"], 40)
-    status("DONE: FortiGate wiped and bench-configured (10.0.40.1/24) -- ready for AP")
+    status("DONE: FortiGate configuration replay completed")
     return 0
 
 
@@ -853,11 +842,12 @@ def _live_declaration(mode: str, args: list[str]) -> tuple[Path, list[str]]:
     path_argc = ARGC_WITH_PATH - 1
     if len(args) == path_argc:
         declaration_path = Path(args[1])
-    declaration_text = declaration_path.read_text(encoding="ascii")
-    if "# HISTORICAL CONFIGURATION: DO NOT APPLY." in declaration_text:
-        raise ValueError(
-            "the tracked FortiGate declaration is historical and must not be replayed"
+    if mode == "bootstrap" and not declaration_path.is_file():
+        message = (
+            "private FortiGate declaration is missing; set RA8_FORTIGATE_CONF "
+            "or provide a private config path"
         )
+        raise ValueError(message)
     return declaration_path, read_valid_config(declaration_path)
 
 
