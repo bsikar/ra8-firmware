@@ -1,11 +1,14 @@
 {
   "test_roots": [
-    "tests/eth_media_test.zig"
+    "tests/eth_media_test.zig",
+    "tests/canfd_tdc_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
+    "src/internal/canfd_tdc.zig",
     "src/ra8_hal_abi.zig",
-    "tests/eth_media_test.zig"
+    "tests/eth_media_test.zig",
+    "tests/canfd_tdc_test.zig"
   ],
-  "minimum_tests": 5
+  "minimum_tests": 10
 }

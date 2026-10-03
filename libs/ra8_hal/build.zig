@@ -34,6 +34,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig ra8_hal tests");
     const units = [_]struct { name: []const u8, source: []const u8, root: []const u8 }{
         .{ .name = "eth_media", .source = "src/internal/eth_media.zig", .root = "tests/eth_media_test.zig" },
+        .{ .name = "canfd_tdc", .source = "src/internal/canfd_tdc.zig", .root = "tests/canfd_tdc_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
