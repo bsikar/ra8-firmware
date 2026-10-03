@@ -35,3 +35,17 @@ test "the config struct matches ra8_canfd_tdc_cfg_t" {
     try std.testing.expectEqual(@as(usize, 3), @sizeOf(tdc.Cfg));
     try std.testing.expectEqual(@as(usize, 2), @offsetOf(tdc.Cfg, "offset"));
 }
+
+test "the guards run in the C order: null cfg, channel, offset" {
+    const good: tdc.Cfg = .{ .enable = true, .manual = true, .offset = 127 };
+    const big: tdc.Cfg = .{ .enable = true, .manual = true, .offset = 128 };
+    try std.testing.expectError(error.NullCfg, tdc.validate(9, null));
+    try std.testing.expectError(error.ChannelOutOfRange, tdc.validate(2, &big));
+    try std.testing.expectError(error.OffsetTooLarge, tdc.validate(1, &big));
+    try std.testing.expectEqual(@as(usize, 0x4038_2000), try tdc.validate(1, &good));
+}
+
+test "an offset over the limit is refused even with TDC disabled" {
+    const off: tdc.Cfg = .{ .enable = false, .manual = false, .offset = 200 };
+    try std.testing.expectError(error.OffsetTooLarge, tdc.validate(0, &off));
+}
