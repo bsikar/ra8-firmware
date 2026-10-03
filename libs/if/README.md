@@ -107,10 +107,11 @@ Three design calls worth naming, since they are choices rather than readings:
 
 The contract carries its own storage-size defaults behind `#ifndef` rather than
 including a per-binding capability header, and a binding raises one from its
-own build if its control block does not fit. `src/fw_os_contract.c` is a translation unit with
-no code in it whose only job is to be compiled by the ordinary
-`libs/if/src/*.c` discovery, so the contract cannot rot the way `arch/arch.h`
-did while nothing fed it to a compiler.
+own build if its control block does not fit. `tests/os_contract_test.zig` imports
+`fw_os.h` in the library's `zig build test`, once with the default caps and once with
+`FW_OS_HAS_QUEUE` set, so a compiler reads the contract and its own `static_assert`s and the
+tests check handle size and alignment, the priority band and the timeout sentinels. That keeps
+the contract from rotting the way `arch/arch.h` did while nothing fed it to a compiler.
 
 Two bindings satisfy the seam today, and neither is a caller:
 

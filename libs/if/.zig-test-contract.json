@@ -4,7 +4,8 @@
     "tests/abi_test.zig",
     "tests/path_test.zig",
     "tests/timer_test.zig",
-    "tests/pwm_test.zig"
+    "tests/pwm_test.zig",
+    "tests/os_contract_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -17,7 +18,8 @@
     "src/fw_if_timer_abi.zig",
     "tests/timer_test.zig",
     "src/fw_if_pwm_abi.zig",
-    "tests/pwm_test.zig"
+    "tests/pwm_test.zig",
+    "tests/os_contract_test.zig"
   ],
-  "minimum_tests": 111
+  "minimum_tests": 116
 }
