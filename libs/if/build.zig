@@ -35,6 +35,10 @@ pub fn build(b: *std.Build) void {
         .root_module = library_module,
     });
     library.bundle_compiler_rt = true;
+    // Split functions and data so --gc-sections can discard unused Zig code
+    // from the single-object archive in firmware images.
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     library.root_module.pic = true;
     b.installArtifact(library);
 
