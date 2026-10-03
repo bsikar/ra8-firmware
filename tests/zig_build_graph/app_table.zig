@@ -860,4 +860,24 @@ pub const cross_apps = [_]CrossApp{
             .txm_module = "txm_fault_m33",
         },
     },
+    .{
+        // The RA8P1's first dual-core app (RA8FW-496): the EK cpu1_pingpong
+        // protocol, Zig on both halves, no RTOS on CPU1. Its CPU1 linker
+        // script and image fragment come from the RA8P1 board layer through
+        // the board fallback. Appended last so the positional picks stay put.
+        .name = "cpu1_pingpong_ra8p1",
+        .dir = "examples/ra8p1_foundation/cpu1_pingpong_ra8p1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ra8p1",
+        .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+        },
+    },
 };

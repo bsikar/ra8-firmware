@@ -228,11 +228,13 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "threadx_cpu1 and the two Module Manager apps are the CPU1 images with a Zig entry, each on one kernel" {
-    const expected = [_]struct { app: []const u8, kernel: []const u8 }{
+test "threadx_cpu1, the two Module Manager apps and cpu1_pingpong_ra8p1 are the CPU1 images with a Zig entry" {
+    // A null kernel is a bare-metal CPU1 half that owns its own vector table.
+    const expected = [_]struct { app: []const u8, kernel: ?[]const u8 }{
         .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
         .{ .app = "txm_manager_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_fault_cpu1", .kernel = "threadx_m33_modules" },
+        .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -244,8 +246,12 @@ test "threadx_cpu1 and the two Module Manager apps are the CPU1 images with a Zi
         }
         try std.testing.expect(zig_entries < expected.len);
         try std.testing.expectEqualStrings(expected[zig_entries].app, app.name);
-        try std.testing.expectEqual(@as(usize, 1), image.uses.len);
-        try std.testing.expectEqualStrings(expected[zig_entries].kernel, image.uses[0]);
+        if (expected[zig_entries].kernel) |kernel| {
+            try std.testing.expectEqual(@as(usize, 1), image.uses.len);
+            try std.testing.expectEqualStrings(kernel, image.uses[0]);
+        } else {
+            try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+        }
         zig_entries += 1;
     }
     try std.testing.expectEqual(expected.len, zig_entries);
@@ -271,4 +277,22 @@ test "an M33 image without its own linker script falls back to its board layer (
     // Both fallbacks are real files in the tree.
     try std.fs.cwd().access(ek, .{});
     try std.fs.cwd().access(ra8p1, .{});
+}
+
+test "the RA8P1 ping-pong pair links CPU1 from the RA8P1 board layer (RA8FW-496)" {
+    const allocator = std.testing.allocator;
+    var found = false;
+    for (graph.cross_apps) |app| {
+        if (!std.mem.eql(u8, app.name, "cpu1_pingpong_ra8p1")) continue;
+        found = true;
+        const image = app.cpu1 orelse return error.NoCpu1Image;
+        try std.testing.expect(app.cpu1_image);
+        try std.testing.expectEqualStrings("libs/ra8_board_ra8p1", app.board);
+        try std.testing.expectEqual(.zig, image.entry_language);
+        try std.testing.expectEqual(@as(usize, 0), image.uses.len);
+        const script = cpu1.boardLinkerScript(allocator, app.board, image.linker_script);
+        defer allocator.free(script);
+        try std.testing.expectEqualStrings("libs/ra8_board_ra8p1/ld/linker_script_cpu1.ld", script);
+    }
+    try std.testing.expect(found);
 }
