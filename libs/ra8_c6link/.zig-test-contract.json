@@ -4,6 +4,7 @@
     "tests/arena_test.zig",
     "tests/bare_rpc_test.zig",
     "tests/caps_test.zig",
+    "tests/dispatch_abi_test.zig",
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig",
@@ -17,6 +18,7 @@
     "tests/wifi_init_test.zig"
   ],
   "covered_sources": [
+    "src/c6link_c.zig",
     "src/internal/arena.zig",
     "src/internal/bare_rpc.zig",
     "src/internal/caps.zig",
@@ -34,13 +36,15 @@
     "src/internal/wifi_init.zig",
     "src/ra8_c6link_abi.zig",
     "src/ra8_c6link_arena_abi.zig",
+    "src/ra8_c6link_dispatch_abi.zig",
     "src/ra8_c6link_pump_abi.zig",
     "tests/abi_test.zig",
     "tests/caps_test.zig",
+    "tests/dispatch_abi_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig",
     "tests/pump_abi_test.zig",
     "tests/pump_test.zig"
   ],
-  "minimum_tests": 166
+  "minimum_tests": 171
 }

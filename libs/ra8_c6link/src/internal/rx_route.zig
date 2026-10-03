@@ -7,8 +7,8 @@
 //! link and tells them apart by an interface number in the frame header.
 //! Control-plane frames belong to the RPC decoder, station and access-point
 //! frames to the Ethernet receive callback, and everything else is counted
-//! and dropped. Reading the frame and handing the payload to a callback stays
-//! in C at the membrane; this is the decision in the middle of it.
+//! and dropped. `ra8_c6link_dispatch_abi.zig` reads the frame and hands the
+//! payload over; this is the decision in the middle of it.
 
 /// Interface numbers as the vendored esp-hosted header orders them.
 ///

@@ -53,7 +53,7 @@ static uint8_t s_oversize[k_ra8_c6link_frame_bytes];
  * Vectors 1+2 and 1+3 prove each condition independently decides.
  * N+1 = 3 vectors for N=2: minimal MC/DC.
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_eth_send
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_dispatch @brief Verify eth data plane behavior. @details Executes the eth data plane scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_dispatch_abi.zig@priv_c6link_dispatch @brief Verify eth data plane behavior. @details Executes the eth data plane scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_eth_data_plane(void)
 {
   TEST_BEGIN("c6link Ethernet data plane");
@@ -332,7 +332,7 @@ RA8_INTERNAL static void internal_test_rpc_call_guards(void)
  * Each control paired with each varied vector proves that condition
  * independently decides. N+1 vectors per decision: minimal MC/DC.
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_emit
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_dispatch
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_dispatch_abi.zig@priv_c6link_dispatch
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_last_fault
  * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_rpc_consume
  * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_resp @brief Verify mcdc facade guards behavior. @details Executes the mcdc facade guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */

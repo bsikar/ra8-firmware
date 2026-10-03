@@ -6,30 +6,17 @@
 //!
 //! `ra8_c6link_t` comes from the public header through translate-c, so the
 //! transport, the two frame buffers and the staged-payload fields are read at
-//! the offsets the C compiler gives them. Routing a data frame stays in C
-//! (`priv_c6link_dispatch`) until the dispatcher ports.
+//! the offsets the C compiler gives them. Data frames go to the dispatcher in
+//! `ra8_c6link_dispatch_abi.zig`.
 
 const pump = @import("internal/pump.zig");
 const frame = @import("internal/frame.zig");
 const Err = @import("abi_err.zig");
+const header = @import("c6link_c.zig");
+const dispatcher = @import("ra8_c6link_dispatch_abi.zig");
 
 /// The public `ra8_c6link.h` view of the handle and its counters.
-pub const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cDefine("alignas", "_Alignas");
-    @cInclude("stdbool.h");
-    @cInclude("ra8_c6link.h");
-});
-
-/// `ra8_c6link_rx_view_t`: where a classified frame's payload is.
-pub const RxView = extern struct {
-    offset: u16,
-    len: u16,
-    if_type: u8,
-    if_num: u8,
-};
-
-extern fn priv_c6link_dispatch(link: *c.ra8_c6link_t, view: *const RxView) callconv(.c) bool;
+pub const c = header.c;
 
 comptime {
     if (@sizeOf(pump.Stats) != @sizeOf(c.ra8_c6link_stats_t)) @compileError("ra8_c6link_stats_t size drifted");
@@ -82,8 +69,7 @@ const LinkPort = struct {
     }
 
     pub fn dispatch(self: LinkPort, view: frame.View) bool {
-        const out: RxView = .{ .offset = view.offset, .len = view.len, .if_type = view.if_type, .if_num = view.if_num };
-        return priv_c6link_dispatch(self.link, &out);
+        return dispatcher.dispatch(self.link, .{ .offset = view.offset, .len = view.len, .if_type = view.if_type, .if_num = view.if_num });
     }
 };
 
