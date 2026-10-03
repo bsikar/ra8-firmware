@@ -131,10 +131,9 @@ full apply while another actor holds the rig.
 
 ### The bench LAN
 
-The bench uses an isolated device segment and a separate uplinked management
-segment. The tracked replay declaration defines the policy; deployment
-addresses, equipment models, port assignments, and wireless identity are kept
-in private operator configuration.
+The bench network is configured through an operator-managed declaration kept
+outside the repository. The tracked example fixture contains documentation-only
+addresses and placeholder hardware identifiers.
 
 Not Ansible -- it is driven over the console cable from the bench Pi by
 `infra/network/fg_bringup.py`, which reads every credential from OpenBao. See
@@ -190,7 +189,6 @@ just infra::apply <host>
 | 3 | k3s + helm + vault | `just infra::apply k3s-pve k3s-node` | then init + unseal by hand |
 | 5 | the dev box | `just infra::apply dev` | slow: two source builds |
 | 7 | the HIL bench | `just infra::apply star` | needs the board attached |
-| 8 | the bench LAN | `just infra::fortigate_bootstrap` | from the authorized bench controller; guarded confirmation |
 
 **Where do you run these from?** Any machine with ansible and a key the hosts
 accept. It used to be *nowhere*: every host was addressed by an `~/.ssh/config`
@@ -227,11 +225,9 @@ Being honest about this is the point of the section.
   dir(s)" rather than failing, and the image-prune and journald steps are
   unaffected -- but a hand-installed script that silently lost a third of its
   job is the argument for codifying it, not against.
-- **Physical cable placement at the FortiGate.** `fortigate-bench.conf`
-  declares the odd/even port memberships, reservations, and policies, while
-  `infra/network/README.md` records the Win11 client observed on port3. The repo
-  cannot enforce where a cable is physically plugged in, so an operator must
-  confirm placement before a replay or bench run.
+- **Network appliance state.** Network appliance configuration is managed
+  separately from the repository. See `infra/network/README.md` for the private
+  declaration boundary and offline validation commands.
 
 ### Known cruft, cleaned up
 
@@ -258,7 +254,7 @@ reclaimed from disk. The per-workflow dependency evidence is in
 ## See also
 
 - `infra/README.md` -- per-role index, and the runner-pool topology in detail
-- `infra/network/README.md` -- the split odd-islanded/even-uplinked bench LAN
+- `infra/network/README.md` -- network tooling and the private declaration boundary
 - `scripts/secrets/README.md` -- vault init, unseal, and secret configuration
 - `docs/TOOLCHAIN.md` -- what the pinned versions are and why
 - `just infra` -- the command surface

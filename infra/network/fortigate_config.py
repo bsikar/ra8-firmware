@@ -4,31 +4,39 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 
-DEFAULT_CONF = Path(__file__).with_name("fortigate-bench.conf")
+EXAMPLE_CONF = Path(__file__).with_name("fortigate-bench.example.conf")
+PRIVATE_CONF_ENV = "RA8_FORTIGATE_CONF"
+DEFAULT_CONF = EXAMPLE_CONF
+
+
+def private_config_path() -> Path | None:
+    """Return the operator-selected private declaration path, if configured."""
+    configured = os.environ.get(PRIVATE_CONF_ENV, "").strip()
+    return Path(configured).expanduser() if configured else None
 
 MIN_CONFIG_COMMANDS = 120
 MIN_CONFIG_BLOCKS = 10
+EXPECTED_RESERVATION_COUNT = 3
 MAX_LAN_NAME_LENGTH = 35
 EDIT_TOKEN_COUNT = 2
 CONFIG_MIN_TOKEN_COUNT = 2
 SET_MIN_TOKEN_COUNT = 3
 COMMAND_TOKEN_COUNT = 1
-AP_RESERVED_IP = "10.0.40.10"
-AP_RESERVED_MAC = "00:18:0a:7b:dd:eb"
-STAR_RESERVED_IP = "10.0.40.101"
-STAR_RESERVED_MAC = "00:05:1b:db:75:d3"
-CAM_RESERVED_IP = "10.0.41.102"
-CAM_RESERVED_MAC = "88:a2:9e:9b:d0:ea"
-PROHIBITED_TRANSIENT_WIN_IPS = frozenset(("10.0.40.100", "10.0.40.103"))
-PROHIBITED_TRANSIENT_WIN_MAC = "bc:fc:e7:da:3f:61"
+AP_RESERVED_IP = "192.0.2.10"
+AP_RESERVED_MAC = "02:00:00:00:00:10"
+STAR_RESERVED_IP = "192.0.2.101"
+STAR_RESERVED_MAC = "02:00:00:00:00:11"
+CAM_RESERVED_IP = "198.51.100.102"
+CAM_RESERVED_MAC = "02:00:00:00:00:12"
 EXPECTED_RESERVATIONS = (
-    ("AP", "1", "1", AP_RESERVED_IP, AP_RESERVED_MAC, "MR18-AP"),
-    ("star", "1", "2", STAR_RESERVED_IP, STAR_RESERVED_MAC, "star-bench-wired"),
-    ("camera relay", "3", "1", CAM_RESERVED_IP, CAM_RESERVED_MAC, "cam-relay"),
+    ("AP", "1", "1", AP_RESERVED_IP, AP_RESERVED_MAC, "example-ap"),
+    ("client", "1", "2", STAR_RESERVED_IP, STAR_RESERVED_MAC, "example-client"),
+    ("camera", "3", "1", CAM_RESERVED_IP, CAM_RESERVED_MAC, "example-camera"),
 )
 
 
@@ -233,15 +241,12 @@ def _reservation_inventory_errors(reservations: list[dict[str, str]]) -> list[st
             )
         else:
             seen_macs[mac] = edit
-        if ip in PROHIBITED_TRANSIENT_WIN_IPS:
-            errors.append(f"transient Win11 address {ip} must not be reserved")
-        if mac == PROHIBITED_TRANSIENT_WIN_MAC:
-            errors.append(f"transient Win11 MAC {mac} must not be reserved")
     return errors
 
 
-def _required_reservation_errors(reservations: list[dict[str, str]]) -> list[str]:
-    """Require the complete reviewed reservation inventory exactly once."""
+def example_reservation_errors(lines: list[str]) -> list[str]:
+    """Check that the safe fixture retains its exact placeholder reservations."""
+    reservations = _lint_structure(lines).reservations
     errors: list[str] = []
     for (
         label,
@@ -277,7 +282,7 @@ def _required_reservation_errors(reservations: list[dict[str, str]]) -> list[str
 
 
 def config_lint_errors(lines: list[str]) -> list[str]:
-    """Return structural and bench-reservation errors in a replay stream."""
+    """Return structural and inventory errors in a replay stream."""
     state = _lint_structure(lines)
     errors = list(state.errors)
     if len(lines) < MIN_CONFIG_COMMANDS:
@@ -291,7 +296,11 @@ def config_lint_errors(lines: list[str]) -> list[str]:
             f"{MIN_CONFIG_BLOCKS}"
         )
     errors.extend(_reservation_inventory_errors(state.reservations))
-    errors.extend(_required_reservation_errors(state.reservations))
+    if len(state.reservations) != EXPECTED_RESERVATION_COUNT:
+        errors.append(
+            f"reservation inventory contains {len(state.reservations)} entries; "
+            f"expected exactly {EXPECTED_RESERVATION_COUNT}"
+        )
     return errors
 
 
