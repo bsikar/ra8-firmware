@@ -35,6 +35,7 @@ pub fn build(b: *std.Build) void {
     const units = [_]struct { name: []const u8, source: []const u8, root: []const u8 }{
         .{ .name = "eth_media", .source = "src/internal/eth_media.zig", .root = "tests/eth_media_test.zig" },
         .{ .name = "canfd_tdc", .source = "src/internal/canfd_tdc.zig", .root = "tests/canfd_tdc_test.zig" },
+        .{ .name = "layer3_switch", .source = "src/internal/layer3_switch.zig", .root = "tests/layer3_switch_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
