@@ -38,8 +38,15 @@ pub const hello_world = Module{
     .entry_source = "examples/ek_ra8d2/hw_pending/txm_hello_m33/module_start.zig",
 };
 
+/// The negative case: a module whose start thread stores outside its MPU
+/// regions, for txm_fault_cpu1 (RA8FW-459).
+pub const fault = Module{
+    .name = "txm_fault_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_fault_m33/module_start.zig",
+};
+
 /// Every module a CPU1 image can name in `txm_module`.
-pub const modules = [_]Module{hello_world};
+pub const modules = [_]Module{ hello_world, fault };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
