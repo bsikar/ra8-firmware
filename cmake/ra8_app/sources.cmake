@@ -411,7 +411,11 @@ macro(_ra8_app_collect_sources)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
       set(_ra8_lib_has_archive "")
       if(EXISTS "${_ra8_lib_path}/build.zig" AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
-        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+        # The archive must be the off-target build, the Zig spelling of the
+        # RA8_OFF_TARGET define the C sources below receive. Registering the
+        # plain archive linked ra8_psa_crypto's on-target TF-PSA-Crypto
+        # backend into apps that link no TF-PSA-Crypto.
+        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}|off_target")
         set(_ra8_lib_has_archive ON)
       endif()
       if(_ra8_lib MATCHES "^ra8_board_")
