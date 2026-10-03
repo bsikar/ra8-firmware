@@ -170,6 +170,7 @@ if [[ "$-" == *p* ]]; then
   DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
   IMAGE_TAG="${RA8_CI_IMAGE:-ra8-ci:latest}"
+  IMAGE_PLATFORM="${RA8_CI_PLATFORM:-}"
   CANONICAL_IMAGE_LOCK_DIR="/var/cache/ra8-devcontainer-image-lock"
   IMAGE_LOCK_FILE=""
   IMAGE_LOCK_GROUP_GID=""
@@ -616,6 +617,14 @@ EOF
       return 0
     fi
     have="$(image_digest)"
+    if [[ -n "$IMAGE_PLATFORM" ]]; then
+      local platform
+      platform="$("${RUNTIME[@]}" image inspect --format '{{.Os}}/{{.Architecture}}' "$IMAGE_TAG" 2>/dev/null || true)"
+      [[ "$platform" == "$IMAGE_PLATFORM" ]] || {
+        printf 'stale\n'
+        return 0
+      }
+    fi
     if [[ -n "$want" && "$have" == "$want" ]]; then
       printf 'current\n'
     else
@@ -627,10 +636,16 @@ EOF
   # the build that produced it, so the image and its digest cannot be set apart.
   build_image() {
     local want="$1"
+    local -a platform_args=()
     require_runtime
     echo "==> building $IMAGE_TAG from the allowlisted repository context (runtime: ${RUNTIME[*]})"
     echo "    context digest $want"
+    if [[ -n "$IMAGE_PLATFORM" ]]; then
+      platform_args+=(--platform "$IMAGE_PLATFORM")
+      echo "    target platform $IMAGE_PLATFORM"
+    fi
     "${RUNTIME[@]}" build \
+      "${platform_args[@]}" \
       --label "$LABEL_KEY=$want" \
       -t "$IMAGE_TAG" \
       -f "$DOCKERFILE" \

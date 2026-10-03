@@ -17,10 +17,11 @@ BAKER_VM_ID=9005
 STORAGE_ID="ra8-tf-lab"
 POOL_ID="ra8-tf-lab"
 BRIDGE="vmbr9"
-SUBNET="10.250.9.0/24"
-GATEWAY="10.250.9.1"
 GUEST_IP="10.250.9.10"
 GUEST_USER="terraform-lab"
+IMAGE_ARCHIVE="${TMPDIR:-/tmp}/ra8-ci-image-${$}.tar"
+IMAGE_METADATA="${TMPDIR:-/tmp}/ra8-ci-image-${$}.yml"
+IMAGE_ID=""
 
 info() { printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
 success() { printf '\033[1;32m[OK]\033[0m %s\n' "$*"; }
@@ -50,8 +51,9 @@ if ! ssh -o BatchMode=yes -o RequestTTY=no "$SSH_ALIAS" /bin/true >/dev/null 2>&
   die "Cannot connect to '$SSH_ALIAS' via SSH."
 fi
 
-# Ensure cache server is up
-"$SCRIPT_DIR/setup_lab_cache.sh"
+"$SCRIPT_DIR/proxmox_lab_side_load_image.sh" "$IMAGE_ARCHIVE" "$IMAGE_METADATA"
+IMAGE_ID="$(sed -n 's/^lab_ci_image_id: "\(sha256:[0-9a-f]*\)"$/\1/p' "$IMAGE_METADATA")"
+[[ "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || die "controller image helper returned an invalid image digest"
 
 info "Preparing temporary baker VM $BAKER_VM_ID from template $ORIGINAL_TEMPLATE_ID..."
 run_id="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
@@ -60,9 +62,9 @@ rm -f "$KEY_FILE" "$KEY_FILE.pub"
 ssh-keygen -q -t ed25519 -N '' -C "ra8-bake-$run_id" -f "$KEY_FILE"
 scp -q "$KEY_FILE.pub" "$SSH_ALIAS:/tmp/ra8_bake.pub"
 
-remote_root "$ORIGINAL_TEMPLATE_ID" "$BAKER_VM_ID" "$POOL_ID" "$STORAGE_ID" "$BRIDGE" "$GUEST_IP" "$GATEWAY" "$GUEST_USER" <<'REMOTE'
+remote_root "$ORIGINAL_TEMPLATE_ID" "$BAKER_VM_ID" "$POOL_ID" "$STORAGE_ID" "$BRIDGE" "$GUEST_IP" "$GUEST_USER" <<'REMOTE'
 set -euo pipefail
-orig="$1"; baker="$2"; pool="$3"; storage="$4"; bridge="$5"; ip="$6"; gw="$7"; user="$8"
+orig="$1"; baker="$2"; pool="$3"; storage="$4"; bridge="$5"; ip="$6"; user="$7"
 
 if qm status "$baker" >/dev/null 2>&1; then
   qm stop "$baker" --timeout 10 >/dev/null 2>&1 || true
@@ -75,8 +77,7 @@ qm clone "$orig" "$baker" --name "ra8-lab-baker" --pool "$pool" --storage "$stor
 qm set "$baker" --description "Temporary builder VM for baking ra8-ci devcontainer"
 qm set "$baker" --net0 "virtio,bridge=$bridge,firewall=1,rate=10"
 qm set "$baker" --ide2 "$storage:cloudinit"
-qm set "$baker" --ipconfig0 "ip=$ip/24,gw=$gw"
-qm set "$baker" --nameserver "1.1.1.1"
+qm set "$baker" --ipconfig0 "ip=$ip/24"
 qm set "$baker" --ciuser "$user"
 qm set "$baker" --sshkeys /tmp/ra8_bake.pub
 rm -f /tmp/ra8_bake.pub
@@ -111,17 +112,13 @@ subprocess.run(["git", "-C", repo_root, "archive", "--format=tar", "-o", tar_out
 ' "$REPO_ROOT" "$temp_tar"
 
 scp "${SSH_OPTS[@]}" "$temp_tar" "$GUEST_USER@$GUEST_IP:/tmp/source.tar"
-rm -f "$temp_tar"
+scp "${SSH_OPTS[@]}" "$IMAGE_ARCHIVE" "$GUEST_USER@$GUEST_IP:/tmp/ra8-ci-image.tar"
+rm -f "$temp_tar" "$IMAGE_ARCHIVE"
 
-info "Building ra8-ci:latest inside baker VM (using local apt and artifact caches)..."
-ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s -- "$GATEWAY" <<'GUEST_BAKE'
+info "Loading the controller-pinned ra8-ci:latest image inside baker VM..."
+ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s -- "$IMAGE_ID" <<'GUEST_BAKE'
 set -euo pipefail
-gateway="${1:-10.250.9.1}"
-
-# Use local apt-cacher-ng proxy
-if curl -s --connect-timeout 2 "http://$gateway:3142" >/dev/null 2>&1; then
-  echo "Acquire::http::Proxy \"http://$gateway:3142\";" | sudo tee /etc/apt/apt.conf.d/01proxy >/dev/null
-fi
+image_id="$1"
 
 # Expand partition
 root_dev="$(findmnt -n -o SOURCE / 2>/dev/null || echo /dev/sda1)"
@@ -134,10 +131,14 @@ if ! grep -q "^$USER:" /etc/subuid 2>/dev/null; then
   sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"
 fi
 
-# Install substrate
-sudo apt-get update -qq
-sudo apt-get install -y -qq podman git git-lfs python3 curl ca-certificates fuse-overlayfs
-sudo git lfs install --system >/dev/null 2>&1 || true
+# The protected template supplies the offline substrate; do not configure a
+# gateway, DNS server, apt proxy, or package egress in the baker.
+for command_name in podman git git-lfs python3; do
+  command -v "$command_name" >/dev/null 2>&1 || {
+    echo "error: the Linux template is missing required command $command_name" >&2
+    exit 1
+  }
+done
 
 # Configure container runtime
 mkdir -p ~/.config/containers
@@ -160,6 +161,14 @@ mkdir -p ~/ra8-bake
 tar -xf /tmp/source.tar -C ~/ra8-bake
 rm -f /tmp/source.tar
 
+podman load --input /tmp/ra8-ci-image.tar
+loaded_image="$(podman image inspect --format '{{.Id}}|{{.Os}}/{{.Architecture}}' ra8-ci:latest)"
+[[ "$loaded_image" == "$image_id|linux/amd64" ]] || {
+  echo "error: loaded CI image does not match the controller digest and platform" >&2
+  exit 1
+}
+rm -f /tmp/ra8-ci-image.tar
+
 # Build ra8-ci:latest through THE blessed builder, never a raw `podman build`.
 # The stale-image fix makes the image carry its build context's sha256 as an OCI label, and
 # scripts/ci/devcontainer_image.sh is the only thing that stamps it; a follow-up made
@@ -169,18 +178,13 @@ rm -f /tmp/source.tar
 # runner would start from an image the staleness check cannot judge, and
 # `just ci` on it would reuse that image forever.
 #
-# Root Podman, for two reasons the script already supports: rootless Podman
-# cannot build the devcontainer in this guest, and the image has to land in
-# root's container storage to survive into the template. RA8_IMAGE_LOCK_DIR
-# stays unset on purpose -- /var/cache/ra8-devcontainer-image-lock does not
-# exist in a fresh baker VM, so discovery takes the documented private
-# fallback and makes its own caller-owned 0700 lock.
+# Rootless Podman stores the preloaded image under the lab user so clones of
+# this template can run it without copying the image into root's store.
 cd ~/ra8-bake
-RA8_CONTAINER_RUNTIME="sudo podman" scripts/ci/devcontainer_image.sh ensure
+RA8_CI_PLATFORM=linux/amd64 RA8_CONTAINER_RUNTIME="podman" scripts/ci/devcontainer_image.sh ensure
 
 # Cleanup
-rm -rf ~/ra8-bake /tmp/*
-sudo apt-get clean
+rm -rf ~/ra8-bake
 sudo cloud-init clean --logs 2>/dev/null || true
 sudo truncate -s 0 /etc/machine-id
 GUEST_BAKE
@@ -216,6 +220,6 @@ qm set "$orig" --protection 1
 qm destroy "$baker" --purge 1 >/dev/null 2>&1 || true
 REMOTE
 
-rm -f "$KEY_FILE" "$KEY_FILE.pub"
+rm -f "$KEY_FILE" "$KEY_FILE.pub" "$IMAGE_METADATA" "$IMAGE_ARCHIVE"
 trap - EXIT
 success "Template $ORIGINAL_TEMPLATE_ID pre-baked and sealed successfully!"

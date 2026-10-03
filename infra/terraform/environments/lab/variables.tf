@@ -128,11 +128,11 @@ variable "lab_linux_vm" {
       var.lab_linux_vm.memory_mb >= 512 &&
       var.lab_linux_vm.memory_mb <= 8192 &&
       ((!var.lab_linux_vm.network_enabled && lower(trimspace(var.lab_linux_vm.ipv4_address)) == "dhcp" && var.lab_linux_vm.ipv4_gateway == null) ||
-      (var.lab_linux_vm.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.lab_linux_vm.ipv4_address))) && (var.lab_linux_vm.ipv4_gateway == "10.250.8.1" || var.lab_linux_vm.ipv4_gateway == "10.250.9.1"))) &&
+      (var.lab_linux_vm.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.lab_linux_vm.ipv4_address))) && var.lab_linux_vm.ipv4_gateway == null)) &&
       length(var.lab_linux_vm.ssh_public_keys) > 0 &&
       (!var.lab_linux_vm.network_enabled || var.lab_linux_vm.started)
     )
-    error_message = "An enabled Linux lab VM requires ra8-lab-* naming, a 16-hex run ID, VM/template IDs in 9000-9099, the exact ra8-tf-lab pool and datastore, an approved lab bridge (vmbr8 or vmbr9), 1-4 cores, 512-8192 MB, either disconnected DHCP or the exact lab network, at least one SSH public key, and network_enabled requires started."
+    error_message = "An enabled Linux lab VM requires ra8-lab-* naming, a 16-hex run ID, VM/template IDs in 9000-9099, the exact ra8-tf-lab pool and datastore, an approved lab bridge (vmbr8 or vmbr9), 1-4 cores, 512-8192 MB, either disconnected DHCP or a static lab subnet without a default gateway, at least one SSH public key, and network_enabled requires started."
   }
 }
 
@@ -222,10 +222,10 @@ variable "lab_windows_vm" {
       var.lab_windows_vm.memory_mb >= 4096 &&
       var.lab_windows_vm.memory_mb <= 8192 &&
       ((!var.lab_windows_vm.network_enabled && lower(trimspace(var.lab_windows_vm.ipv4_address)) == "dhcp" && var.lab_windows_vm.ipv4_gateway == null) ||
-      (var.lab_windows_vm.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.lab_windows_vm.ipv4_address))) && (var.lab_windows_vm.ipv4_gateway == "10.250.8.1" || var.lab_windows_vm.ipv4_gateway == "10.250.9.1"))) &&
+      (var.lab_windows_vm.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.lab_windows_vm.ipv4_address))) && var.lab_windows_vm.ipv4_gateway == null)) &&
       (!var.lab_windows_vm.network_enabled || var.lab_windows_vm.started)
     )
-    error_message = "An enabled Windows lab VM requires an ra8-lab-win-* name, a 16-hex run ID, VM/template IDs in 9000-9099, the exact ra8-tf-lab pool and datastore, an approved lab bridge (vmbr8 or vmbr9), 2-4 cores, 4096-8192 MB of memory, either disconnected DHCP or the exact lab network, network_enabled requires started, and a prebuilt Cloudbase-Init template."
+    error_message = "An enabled Windows lab VM requires an ra8-lab-win-* name, a 16-hex run ID, VM/template IDs in 9000-9099, the exact ra8-tf-lab pool and datastore, an approved lab bridge (vmbr8 or vmbr9), 2-4 cores, 4096-8192 MB of memory, either disconnected DHCP or a static lab subnet without a default gateway, network_enabled requires started, and a prebuilt Cloudbase-Init template."
   }
 }
 

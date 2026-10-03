@@ -113,9 +113,9 @@ resource "proxmox_virtual_environment_vm" "this" {
     precondition {
       condition = (
         (!var.network_enabled && lower(trimspace(var.ipv4_address)) == "dhcp" && var.ipv4_gateway == null) ||
-        (var.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.ipv4_address))) && (var.ipv4_gateway == "10.250.8.1" || var.ipv4_gateway == "10.250.9.1"))
+        (var.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.ipv4_address))) && var.ipv4_gateway == null)
       )
-      error_message = "A disconnected lab VM must use DHCP without a gateway; an enabled lab VM must use the exact lab network (10.250.8.0/24 or 10.250.9.0/24)."
+      error_message = "A disconnected lab VM must use DHCP without a gateway; an enabled lab VM must use the exact lab subnet (10.250.8.0/24 or 10.250.9.0/24) without a default gateway."
     }
 
     precondition {

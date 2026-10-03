@@ -245,6 +245,21 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     run_id = os.urandom(8).hex()
     tar_path = os.path.join(tempfile.gettempdir(), f"ra8-lab-{profile}-{run_id}.tar")
+    image_path = os.path.join(tempfile.gettempdir(), f"ra8-lab-image-{run_id}.tar")
+    image_metadata_path = os.path.join(tempfile.gettempdir(), f"ra8-lab-image-{run_id}.yml")
+    image_id = ""
+
+    if profile == "linux":
+        print("==> Building and pinning the linux/amd64 CI image on the controller...")
+        helper = os.path.join(SCRIPT_DIR, "proxmox_lab_side_load_image.sh")
+        subprocess.run(["/bin/bash", helper, image_path, image_metadata_path], cwd=REPO_ROOT, check=True)
+        with open(image_metadata_path, encoding="utf-8") as metadata_file:
+            metadata = metadata_file.read()
+        match = re.search(r'^lab_ci_image_id: "(sha256:[0-9a-f]{64})"$', metadata, re.MULTILINE)
+        if not match:
+            sys.stderr.write("error: controller image helper did not return a valid image digest.\n")
+            return 1
+        image_id = match.group(1)
 
     print(f"==> Packaging local workspace for {profile} CI (including uncommitted changes)...")
     size_bytes = build_source_archive(tar_path)
@@ -261,17 +276,23 @@ def cmd_start(args: argparse.Namespace) -> int:
     # scp implementation during large uploads. Use the legacy SCP protocol
     # for these two controller-to-host transfers instead.
     subprocess.run(["scp", "-O", "-q", tar_path, f"{SSH_ALIAS}:{remote_dir}/source.tar"], check=True)
+    if profile == "linux":
+        subprocess.run(
+            ["scp", "-O", "-q", image_path, f"{SSH_ALIAS}:{remote_dir}/ra8-ci-image.tar"], check=True
+        )
     subprocess.run(["scp", "-O", "-q", runner_script, f"{SSH_ALIAS}:/var/lib/ra8-lab/runner.sh"], check=True)
-    try:
-        os.remove(tar_path)
-    except OSError:
-        pass
+    for path in (tar_path, image_path, image_metadata_path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
     keep_str = "true" if getattr(args, "keep", False) else "false"
     launch_cmd = (
         "sudo -n chmod +x /var/lib/ra8-lab/runner.sh && "
         f"(sudo -n nohup /bin/bash /var/lib/ra8-lab/runner.sh {profile} {run_id} "
-        f"{remote_dir}/source.tar {keep_str} </dev/null >/dev/null 2>&1 &)"
+        f"{remote_dir}/source.tar {keep_str} {remote_dir}/ra8-ci-image.tar {image_id} "
+        f"</dev/null >/dev/null 2>&1 &)"
     )
     subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, launch_cmd], check=True)
 
