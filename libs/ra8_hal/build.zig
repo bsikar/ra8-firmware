@@ -29,8 +29,26 @@ pub fn build(b: *std.Build) void {
         }),
     });
     library.bundle_compiler_rt = false;
-    // Split functions and data so --gc-sections keeps only the exports an
-    // image actually calls from the single-object archive.
+    // One archive member per ported unit (RA8FW-542): the linker pulls only
+    // the members an image references. Zig merges an object's string
+    // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
+    // single shared object would carry every unit's log strings.
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt" };
+    for (abi_units) |unit| {
+        const object = b.addObject(.{
+            .name = b.fmt("ra8_hal_{s}", .{unit}),
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(b.fmt("src/{s}_abi.zig", .{unit})),
+                .target = target,
+                .optimize = optimize,
+                .pic = true,
+            }),
+        });
+        object.bundle_compiler_rt = false;
+        object.link_function_sections = true;
+        object.link_data_sections = true;
+        library.addObject(object);
+    }
     library.link_function_sections = true;
     library.link_data_sections = true;
     b.installArtifact(library);
