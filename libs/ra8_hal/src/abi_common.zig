@@ -11,8 +11,10 @@ pub const k_ra8_err_invalid_state: u16 = 0x104;
 pub const k_ra8_err_not_supported: u16 = 0x107;
 pub const k_ra8_err_exists: u16 = 0x10C;
 pub const k_ra8_err_not_initialized: u16 = 0x10F;
+pub const k_ra8_err_out_of_range: u16 = 0x208;
 pub const k_ra8_err_null_ptr: u16 = 0x504;
 
 pub extern fn ra8_log_emit_info(tag: [*:0]const u8, message: [*:0]const u8) void;
 pub extern fn ra8_log_emit_info_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
 pub extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
+pub extern fn ra8_log_emit_error_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
