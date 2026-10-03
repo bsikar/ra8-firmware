@@ -1,0 +1,19 @@
+{
+  "test_roots": [
+    "tests/codec_test.zig",
+    "tests/frame_test.zig",
+    "tests/golden_test.zig",
+    "tests/fuzz_test.zig"
+  ],
+  "covered_sources": [
+    "src/codec.zig",
+    "src/frame.zig",
+    "src/ra8_rpc.zig",
+    "tests/codec_test.zig",
+    "tests/frame_test.zig",
+    "tests/fuzz_test.zig",
+    "tests/golden_test.zig",
+    "tests/messages.zig"
+  ],
+  "minimum_tests": 30
+}
