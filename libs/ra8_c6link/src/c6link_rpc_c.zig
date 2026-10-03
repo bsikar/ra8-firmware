@@ -3,7 +3,8 @@
 //!
 //! The private `ra8_c6link_internal.h` view, which brings in the vendored
 //! esp-hosted RPC codec types (`Rpc` and its request and response bodies)
-//! and the C ABI the remaining C exports. `RA8_FREESTANDING` makes the
+//! the Wi-Fi record types from `ra8_c6link_wifi.h`, and the C ABI the
+//! remaining C exports. `RA8_FREESTANDING` makes the
 //! protobuf-c fork route `assert` through `ra8_check.h` instead of
 //! `<assert.h>`, so this translates without libc on host and on Arm alike.
 
@@ -13,4 +14,5 @@ pub const c = @cImport({
     @cDefine("alignas", "_Alignas");
     @cInclude("stdbool.h");
     @cInclude("ra8_c6link_internal.h");
+    @cInclude("ra8_c6link_wifi.h");
 });
