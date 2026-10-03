@@ -179,21 +179,25 @@ pub fn build(b: *std.Build) void {
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_lifecycle_abi.zig", "tests/lifecycle_abi_test.zig", "lifecycle_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_ready_abi.zig", "tests/ready_abi_test.zig", "ready_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_eth_abi.zig", "tests/eth_abi_test.zig", "eth_abi");
-    addFwAbiTest(b, test_step, target, optimize);
+    addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_fw_abi.zig", "tests/fw_abi_test.zig", "fw_abi");
+    addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_wifi_abi.zig", "tests/wifi_abi_test.zig", "wifi_abi");
 }
 
-/// The firmware-version query, which reads the vendored RPC codec types.
-fn addFwAbiTest(
+/// A C ABI file that reads the vendored RPC codec types, tested on its own.
+fn addCodecAbiTest(
     b: *std.Build,
     test_step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    source: []const u8,
+    test_source: []const u8,
+    import_name: []const u8,
 ) void {
-    const abi = b.createModule(.{ .root_source_file = b.path("src/ra8_c6link_fw_abi.zig"), .target = target, .optimize = optimize });
+    const abi = b.createModule(.{ .root_source_file = b.path(source), .target = target, .optimize = optimize });
     addHeaders(abi, b);
     addVendorHeaders(abi, b);
-    const tests = b.createModule(.{ .root_source_file = b.path("tests/fw_abi_test.zig"), .target = target, .optimize = optimize });
-    tests.addImport("fw_abi", abi);
+    const tests = b.createModule(.{ .root_source_file = b.path(test_source), .target = target, .optimize = optimize });
+    tests.addImport(import_name, abi);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tests })).step);
 }
 
