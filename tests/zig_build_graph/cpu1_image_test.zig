@@ -259,3 +259,16 @@ test "only the Module Manager images carry a packed module, each in its own link
         try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
     }
 }
+
+test "an M33 image without its own linker script falls back to its board layer (RA8FW-496)" {
+    const allocator = std.testing.allocator;
+    const ek = cpu1.boardLinkerScript(allocator, "libs/ra8_board_ek_ra8d2", "linker_script_cpu1.ld");
+    defer allocator.free(ek);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld", ek);
+    const ra8p1 = cpu1.boardLinkerScript(allocator, "libs/ra8_board_ra8p1", "linker_script_cpu1.ld");
+    defer allocator.free(ra8p1);
+    try std.testing.expectEqualStrings("libs/ra8_board_ra8p1/ld/linker_script_cpu1.ld", ra8p1);
+    // Both fallbacks are real files in the tree.
+    try std.fs.cwd().access(ek, .{});
+    try std.fs.cwd().access(ra8p1, .{});
+}

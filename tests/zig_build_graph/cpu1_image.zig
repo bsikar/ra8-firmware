@@ -254,16 +254,21 @@ pub const Options = struct {
 /// is no longer in the tree and the link failed before it started. Only an app
 /// whose M33 image genuinely diverges keeps its own copy, and it still wins.
 ///
-/// The board is spelled out rather than derived for the same reason CMake
-/// spells it out: a CPU1 image is an RA8D2 feature, and that board layer
-/// already owns `cpu1_memory_map.cmake`, where the windows in the script
-/// come from.
-pub fn linkerScript(b: *std.Build, app_dir: []const u8, name: []const u8) []const u8 {
-    const in_app = b.pathJoin(&.{ app_dir, name });
+/// The fallback is the app's own board layer, `<board>/ld/<name>`
+/// (RA8FW-496). EK-RA8D2 apps get the same file as before, and an RA8P1 app
+/// gets `libs/ra8_board_ra8p1/ld/linker_script_cpu1.ld`, which keeps the
+/// EK-RA8D2 windows.
+pub fn linkerScript(b: *std.Build, app: App, name: []const u8) []const u8 {
+    const in_app = b.pathJoin(&.{ app.dir, name });
     b.build_root.handle.access(in_app, .{}) catch {
-        return b.pathJoin(&.{ "libs/ra8_board_ek_ra8d2/ld", name });
+        return boardLinkerScript(b.allocator, app.board, name);
     };
     return in_app;
+}
+
+/// The board layer's shared copy of an M33 linker script.
+pub fn boardLinkerScript(allocator: std.mem.Allocator, board: []const u8, name: []const u8) []const u8 {
+    return std.fs.path.join(allocator, &.{ board, "ld", name }) catch @panic("OOM");
 }
 
 pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.LazyPath {
@@ -296,7 +301,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     const link = b.addSystemCommand(&.{options.gcc});
     link.addArgs(options.global_link_flags);
     link.addArgs(&link_target_flags);
-    link.addPrefixedFileArg("-T", b.path(linkerScript(b, options.app.dir, options.image.linker_script)));
+    link.addPrefixedFileArg("-T", b.path(linkerScript(b, options.app, options.image.linker_script)));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{name}));
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{name}));
