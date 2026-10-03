@@ -10,7 +10,8 @@
  * The half of the station API that carries data rather than lifecycle: the
  * credentials go up in `Req_WifiSetConfig`, and the station's own address and
  * its view of the AP come back in `Resp_GetMACAddress` and
- * `Resp_WifiStaGetApInfo`.
+ * `Resp_WifiStaGetApInfo`. The address query, `ra8_c6link_wifi_mac`, is
+ * Zig now (`ra8_c6link_mac_abi.zig`, RA8FW-509).
  *
  * @par Why the optional sub-messages are always sent
  * `WifiStaConfig` carries a scan threshold and a protected-management-frame
@@ -222,77 +223,4 @@ ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* c
     return configured;
   }
   return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiConnect);
-}
-
-/**
- * @brief Extract the station address from its answer.
- * @details Checks the co-processor's result code before the address, so a
- *        refusal is reported as a refusal rather than as a malformed address.
- * @param[in] ctx A ::ra8_c6link_take_ctx_t whose `out` is a MAC address.
- * @param[in] msg_v The decoded `Rpc`; must be non-null.
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok The address was copied out.
- * @retval k_ra8_err_protocol_error The answer carried no body, reported a
- *         failure, or held an address of the wrong length.
- * @pre @p ctx names a live link and a writable address.
- * @pre @p msg_v is still owned by the decoder.
- * @post On success the address holds six octets.
- * @post On failure the address is cleared.
- * @note Runs inside the pump, on the polling thread.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6link_take_mac(void* ctx, const void* msg_v)
-{
-  ra8_c6link_take_ctx_t* take = (ra8_c6link_take_ctx_t*)ctx;
-  const Rpc*             msg  = (const Rpc*)msg_v;
-  ra8_c6link_mac_t*      out  = (ra8_c6link_mac_t*)take->out;
-
-  const RpcRespGetMacAddress* body = msg->resp_get_mac_address;
-  if (body == nullptr) {
-    return k_ra8_err_protocol_error;
-  }
-  const ra8_err_t reported = priv_c6link_resp(take->link, take->rpc_id, body->resp);
-  if (reported != k_ra8_ok) {
-    return reported;
-  }
-  return priv_c6link_copy_mac(out, &body->mac) ? k_ra8_ok : k_ra8_err_protocol_error;
-}
-
-ra8_err_t ra8_c6link_wifi_mac(ra8_c6link_t* link, ra8_c6link_mac_t* out)
-{
-  if ((link == nullptr) || (out == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (!ra8_c6link_is_open(link)) {
-    return k_ra8_err_not_initialized;
-  }
-  *out = (ra8_c6link_mac_t){};
-
-  priv_c6link_sta_policy_t policy;
-  priv_c6link_sta_policy(&policy);
-
-  RpcReqGetMacAddress body;
-  rpc__req__get_mac_address__init(&body);
-  /* `Req_GetMACAddress.mode` is a `wifi_interface_t`, not a `wifi_mode_t`: the
-     co-processor passes it straight to `esp_wifi_get_mac()`, so the station
-     interface index is what returns the address the radio associates with.
-     Why `WIFI_IF_AP` must not be selected is documented in
-     `internal/sta_policy.zig`, which owns the value. */
-  body.mode = policy.iface;
-
-  Rpc req;
-  rpc__init(&req);
-  req.msg_type            = RPC_TYPE__Req;
-  req.msg_id              = RPC_ID__Req_GetMACAddress;
-  req.payload_case        = RPC__PAYLOAD_REQ_GET_MAC_ADDRESS;
-  req.req_get_mac_address = &body;
-
-  ra8_c6link_take_ctx_t take = {.link   = link,
-                                .out    = out,
-                                .rpc_id = (uint32_t)RPC_ID__Req_GetMACAddress};
-  return priv_c6link_rpc_call(link,
-                              &req,
-                              (uint32_t)RPC_ID__Resp_GetMACAddress,
-                              internal_c6link_take_mac,
-                              &take);
 }
