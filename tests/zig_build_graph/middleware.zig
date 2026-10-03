@@ -91,6 +91,12 @@ pub const Middleware = struct {
     /// Assembled with the assembly flags plus `-x assembler-with-cpp`.
     soup_cpp_asm_dirs: []const []const u8 = &.{},
 
+    /// Project-owned Zig roots compiled into the same archive (RA8FW-526).
+    /// Each is one object for thumb/eabihf at its own CPU, and its
+    /// `@cImport` sees exactly this archive's include path and defines, so
+    /// it reads the vendored structs in the layout the C half compiles.
+    zig_sources: []const ZigSource = &.{},
+
     /// Middlewares this one compiles against: its own TUs get their PUBLIC
     /// defines and include directories, the way `target_link_libraries(<mw>
     /// PRIVATE <dep>)` hands them over. The app names the dependency in USES
@@ -506,6 +512,30 @@ pub fn units(b: *std.Build, mw: Middleware) []const Unit {
 /// with. `c_flags` is CMAKE_C_FLAGS plus the Debug configuration; `asm_flags`
 /// is CMAKE_ASM_FLAGS plus the same configuration, which on this toolchain is
 /// the CPU selection and `-g3` and nothing else.
+/// One Zig root in a middleware archive. The CPU is named here because the
+/// toolchain carries only gcc and ar, never a Zig target.
+pub const ZigSource = struct {
+    path: []const u8,
+    cpu: *const std.Target.Cpu.Model,
+};
+
+/// A `-DNAME` or `-DNAME=VALUE` flag as the name and value translate-c is
+/// given. A bare name is 1, gcc's default; anything else is not a define.
+pub const Define = struct { name: []const u8, value: []const u8 };
+
+pub fn splitDefine(flag: []const u8) ?Define {
+    if (!std.mem.startsWith(u8, flag, "-D") or flag.len == 2) return null;
+    const body = flag[2..];
+    const eq = std.mem.indexOfScalar(u8, body, '=') orelse return .{ .name = body, .value = "1" };
+    if (eq == 0) return null;
+    return .{ .name = body[0..eq], .value = body[eq + 1 ..] };
+}
+
+/// The object a Zig source becomes, named like the C objects beside it.
+pub fn zigObjectName(b: *std.Build, source: ZigSource) []const u8 {
+    return b.fmt("{s}.o", .{std.fs.path.stem(source.path)});
+}
+
 pub const Toolchain = struct {
     gcc: []const u8,
     ar: []const u8,
@@ -585,7 +615,46 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
+    for (mw.zig_sources) |source| {
+        objects.append(addZigObject(b, mw, tc, source)) catch @panic("OOM");
+    }
     return objects.items;
+}
+
+/// The newlib headers gcc finds on its own and translate-c does not: the
+/// vendored headers include <stdlib.h>, and a freestanding Zig target has no
+/// libc of its own. Asked of the toolchain, never a guessed path.
+fn libcInclude(b: *std.Build, tc: Toolchain) []const u8 {
+    var code: u8 = 0;
+    const out = b.runAllowFail(&.{ tc.gcc, "-print-sysroot" }, &code, .Ignore) catch
+        std.debug.panic("{s} -print-sysroot failed, so a Zig source cannot see newlib", .{tc.gcc});
+    return b.pathJoin(&.{ std.mem.trim(u8, out, " \r\n"), "include" });
+}
+
+/// One Zig root built for the archive's target, with the same patched,
+/// -I, -isystem and -D set the C units get, in the same order.
+fn addZigObject(b: *std.Build, mw: Middleware, tc: Toolchain, source: ZigSource) std.Build.LazyPath {
+    const module = b.createModule(.{
+        .root_source_file = pkg_path.lazy(b, source.path),
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .thumb,
+            .os_tag = .freestanding,
+            .abi = .eabihf,
+            .cpu_model = .{ .explicit = source.cpu },
+        }),
+        .optimize = .ReleaseSmall,
+        .single_threaded = true,
+    });
+    for (patchedHeaderDirs(b, mw)) |dir| module.addIncludePath(dir);
+    for (includeDirs(b.allocator, mw)) |dir| module.addIncludePath(pkg_path.lazy(b, dir));
+    for (systemIncludeDirs(b.allocator, mw)) |dir| module.addSystemIncludePath(pkg_path.lazy(b, dir));
+    module.addSystemIncludePath(.{ .cwd_relative = libcInclude(b, tc) });
+    for ([_][]const []const u8{ tc.global_defines, unitDefines(b.allocator, mw) }) |set| {
+        for (set) |flag| if (splitDefine(flag)) |d| module.addCMacro(d.name, d.value);
+    }
+    const object = b.addObject(.{ .name = std.fs.path.stem(source.path), .root_module = module });
+    object.bundle_compiler_rt = false;
+    return object.getEmittedBin();
 }
 
 /// One generated directory per patched header, each holding the rewritten
