@@ -439,7 +439,11 @@ static void imp_build_cookie(void)
     .out            = s_imp_out,
     .out_cap        = (uint32_t)k_imp_out_cap,
   };
-  s_imp_arena = (ra8_img_arena_t){s_imp_img_scratch, sizeof(s_imp_img_scratch), 0U, 0U};
+  s_imp_arena = (ra8_img_arena_t){.base       = s_imp_img_scratch,
+                                  .cap        = sizeof(s_imp_img_scratch),
+                                  .offset     = 0U,
+                                  .live       = 0U,
+                                  .high_water = 0U};
   s_imp_scr   = (ra8_rabook_pipeline_scratch_t){
     .xhtml         = s_imp_xhtml,
     .xhtml_cap     = sizeof(s_imp_xhtml),
