@@ -24,14 +24,21 @@ ra8_add_app(
        webp
 )
 
+# The font baker moved from Python to Zig (font_to_c); it is built for the
+# HOST with the pinned toolchain even in this Arm cross build, and a missing zig
+# is a configure-time error rather than a silently skipped bake.
+include("${_d}/cmake/ra8_zig_tool.cmake")
+ra8_add_zig_host_tool(NAME font_to_c ZIG_ROOT "${_d}/tools/font_to_c")
 set(_ra8_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra8_font_literata_latin1.c")
 add_custom_command(
   OUTPUT "${_ra8_baked_font_c}"
   COMMAND
-    ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/gen/font_to_c.py"
-    "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
-    literata_latin1.h
-  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
+    $<TARGET_FILE:ra8_zig::font_to_c> "${_d}/libs/ra8_fonts/literata_latin1.ttf"
+    "${_ra8_baked_font_c}" g_ra8_font_literata_latin1 literata_latin1.h
+  # The font baker executable is a FILE input: a custom TARGET in DEPENDS is only
+  # order-only under Ninja, so a rebuilt font_to_c must invalidate the baked array.
+  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "$<TARGET_FILE:ra8_zig::font_to_c>"
+          ra8_zig_tool_font_to_c
   COMMENT "Generating baked Latin-1 font array (reflow_webp_demo)"
 )
 target_sources(reflow_webp_demo.elf PRIVATE "${_ra8_baked_font_c}")
