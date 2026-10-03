@@ -623,7 +623,7 @@ def do_ap_status_mode(ser: serial.Serial, c: dict[str, str]) -> int:
 
 
 def do_verify_mode(ser: serial.Serial, c: dict[str, str]) -> int:
-    """Log in and run read-only checks, incl. reaching the AP at 10.0.40.10."""
+    """Log in and run read-only checks, including reaching the configured AP."""
     if not login(ser, c["fortigate_admin_user"], c["fortigate_admin_pass"]):
         status("verify login failed")
         return 2
@@ -634,7 +634,7 @@ def do_verify_mode(ser: serial.Serial, c: dict[str, str]) -> int:
         "get router info routing-table all",
         "get system interface physical",
         "execute ping-options repeat-count 3",
-        "execute ping 10.0.40.10",
+        f"execute ping {c['ap_ip']}",
         "diagnose ip arp list",
     ):
         send(ser, cmd)
@@ -853,6 +853,11 @@ def _live_declaration(mode: str, args: list[str]) -> tuple[Path, list[str]]:
     path_argc = ARGC_WITH_PATH - 1
     if len(args) == path_argc:
         declaration_path = Path(args[1])
+    declaration_text = declaration_path.read_text(encoding="ascii")
+    if "# HISTORICAL CONFIGURATION: DO NOT APPLY." in declaration_text:
+        raise ValueError(
+            "the tracked FortiGate declaration is historical and must not be replayed"
+        )
     return declaration_path, read_valid_config(declaration_path)
 
 
@@ -877,6 +882,7 @@ def _redacted_creds() -> dict[str, str]:
     secret_keys = (
         "fortigate_admin_pass",
         "fortigate_maintainer_pass",
+        "fortigate_serial",
         "ap_ssh_pass",
         "bench_psk",
         "legacy_psk_iot_network",
