@@ -26,6 +26,7 @@ const cpu1_threadx_modules = @import("cpu1_threadx_modules.zig");
 const cpu1_txm_lib = @import("cpu1_txm_lib.zig");
 const cpu1_txm_hello = @import("cpu1_txm_hello.zig");
 const txm_ra8app = @import("txm_ra8app.zig");
+const txm_module_object = @import("txm_module_object.zig");
 const m85_threadx_modules = @import("m85_threadx_modules.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
@@ -140,6 +141,25 @@ pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Buil
     };
     const built = cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy, cpu1_txm_hello.hello_world);
     txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, built.bin));
+}
+
+/// The `txm-module-check` step: Zig built as module objects through the C
+/// backend and gcc, and each linked probe held to the relocation check
+/// (RA8FW-540). The toolchain is the one in `dir`, never PATH's; without it
+/// the step fails, since a check that did not run has not passed.
+pub fn addTxmModuleCheck(
+    b: *std.Build,
+    step: *std.Build.Step,
+    globals: build_type.Globals,
+    dir: []const u8,
+) void {
+    const gnu = txm_module_object.findGnu(b, dir) orelse {
+        txm_module_object.addMissing(b, step, dir);
+        return;
+    };
+    const tools: ArmTools = .{ .gcc = gnu.gcc, .objcopy = gnu.objcopy, .size = "", .ar = gnu.ar };
+    const m85 = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    txm_module_object.add(b, step, gnu, m85);
 }
 
 /// The `threadx-m85-modules` step: the M85 Module Manager archive (RA8FW-426).

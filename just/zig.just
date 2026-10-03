@@ -41,6 +41,7 @@ default:
     @echo "  just zig::txm-m33              Build the ThreadX module library for CPU1 modules"
     @echo "  just zig::txm-hello-m33        Build the hello-world ThreadX module for CPU1"
     @echo "  just zig::threadx-m85-modules  Build the ThreadX Module Manager for the M85"
+    @echo "  just zig::txm-module-check     Build Zig module probes via C, check relocations"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
     @echo "The CMake path is unchanged: just tests::build, just apps::build,"
@@ -122,6 +123,11 @@ txm-hello-m33: _zig
 # The ThreadX Module Manager for the M85 (RA8FW-426).
 threadx-m85-modules: _zig
     "${RA8_ZIG}" build threadx-m85-modules
+
+# Zig as ThreadX module objects through the C backend and gcc, with the
+# data-relocation check on the linked probes (RA8FW-540).
+txm-module-check: _zig
+    "${RA8_ZIG}" build txm-module-check
 
 # Remove this graph's own build outputs; no CMake tree is touched
 clean:
