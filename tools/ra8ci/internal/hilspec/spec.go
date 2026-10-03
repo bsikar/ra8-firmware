@@ -106,7 +106,7 @@ var durationKeys = map[string]bool{
 // symlinks. It refuses path traversal and symlink escapes before opening.
 func Load(root, relativePath string) (Spec, error) {
 	if filepath.IsAbs(relativePath) || filepath.Base(relativePath) != "hil.conf" ||
-		strings.Contains(relativePath, "\\") {
+		(filepath.Separator != '\\' && strings.Contains(relativePath, "\\")) {
 		return Spec{}, ErrUnsafePath
 	}
 	clean := filepath.Clean(relativePath)
@@ -122,7 +122,8 @@ func Load(root, relativePath string) (Spec, error) {
 	if err != nil {
 		return Spec{}, err
 	}
-	if !strings.HasPrefix(path, base+string(filepath.Separator)) {
+	withinExamples, err := filepath.Rel(base, path)
+	if err != nil || withinExamples == ".." || strings.HasPrefix(withinExamples, ".."+string(filepath.Separator)) {
 		return Spec{}, ErrUnsafePath
 	}
 	file, err := os.Open(path)
@@ -134,7 +135,7 @@ func Load(root, relativePath string) (Spec, error) {
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxManifestBytes {
 		return Spec{}, ErrInvalidManifest
 	}
-	return Parse(file, clean)
+	return Parse(file, filepath.ToSlash(clean))
 }
 
 // Parse accepts a deliberately small assignment grammar, not Bash. Literal
