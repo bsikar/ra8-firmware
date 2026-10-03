@@ -86,13 +86,28 @@ pub fn build(b: *std.Build) void {
     appimg_verify_test_module.addImport("appimg_verify", appimg_verify_module);
     const appimg_verify_tests = b.addTest(.{ .root_module = appimg_verify_test_module });
 
+    const appimg_pack_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/appimg_pack.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const appimg_pack_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/appimg_pack_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    appimg_pack_test_module.addImport("appimg_pack", appimg_pack_module);
+    const appimg_pack_tests = b.addTest(.{ .root_module = appimg_pack_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_appimg_tests = b.addRunArtifact(appimg_tests);
     const run_appimg_verify_tests = b.addRunArtifact(appimg_verify_tests);
+    const run_appimg_pack_tests = b.addRunArtifact(appimg_pack_tests);
     const test_step = b.step("test", "Run Zig ra8_app tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_appimg_tests.step);
     test_step.dependOn(&run_appimg_verify_tests.step);
+    test_step.dependOn(&run_appimg_pack_tests.step);
 }
