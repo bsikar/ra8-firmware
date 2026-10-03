@@ -15,6 +15,8 @@ pub const Transport = struct {
         LinkFull,
         /// The other end is gone.
         LinkDown,
+        /// The transport received something it cannot turn into bytes.
+        BadMessage,
     };
 
     pub const VTable = struct {
@@ -22,7 +24,8 @@ pub const Transport = struct {
         send: *const fn (ctx: *anyopaque, bytes: []const u8) Error!void,
         /// Copy waiting bytes into `into` and say how many; zero if none.
         receive: *const fn (ctx: *anyopaque, into: []u8) Error!usize,
-        /// Give the transport a turn and say how many bytes are waiting.
+        /// Give the transport a turn and say how many bytes are waiting:
+        /// zero if none, and otherwise the count or an upper bound on it.
         poll: *const fn (ctx: *anyopaque) usize,
     };
 
