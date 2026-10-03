@@ -482,7 +482,8 @@ typedef struct {
  *                                 the bytes supplied, or TGA.
  *
  * @pre @p bytes holds @p byte_count readable bytes.
- * @post `*out` is zeroed on every non-ok return.
+ * @post When `dec`, `bytes` and `out` are non-NULL, `*out` is zeroed on every
+ *       non-ok return. A missing pointer leaves any available output untouched.
  * @post The buffer is never written and no decoder is invoked.
  *
  * @note Pure apart from `*out`; thread-safe.

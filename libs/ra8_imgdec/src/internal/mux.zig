@@ -22,6 +22,7 @@ const Image = abi.Image;
 const Mux = abi.Mux;
 const Pixel = vocab.Pixel;
 const Req = abi.Req;
+const scratch_mod = @import("scratch.zig");
 
 /// The ring-below seam, re-exported for the same reason the fabric does it.
 pub const Ops = arena.Ops;
@@ -101,6 +102,7 @@ pub fn add(mux: *Mux, dec: *const Handle) u16 {
 
 /// Every container the set opens into `pixel`.
 pub fn formats(mux: *const Mux, pixel: u32, out_formats: *u32) u16 {
+    out_formats.* = Format.none;
     if (!vocab.oneDefinedBit(pixel, Pixel.mask)) return Err.invalid_arg;
 
     const ready = usable(mux);
@@ -170,6 +172,9 @@ pub fn decode(mux: *const Mux, req: *const Req, out: *Image, ops: arena.Ops) u16
 
 /// The widest scratch demand in the set, and the strictest alignment.
 pub fn scratchBudget(mux: *const Mux, out_bytes: *u32, out_align: *u32) u16 {
+    out_bytes.* = 0;
+    out_align.* = 0;
+
     const ready = usable(mux);
     if (ready != Err.ok) return ready;
 
@@ -184,7 +189,7 @@ pub fn scratchBudget(mux: *const Mux, out_bytes: *u32, out_align: *u32) u16 {
     }
 
     out_bytes.* = bytes;
-    out_align.* = alignment;
+    out_align.* = if (alignment == 0) scratch_mod.Limits.alignment else alignment;
     return Err.ok;
 }
 

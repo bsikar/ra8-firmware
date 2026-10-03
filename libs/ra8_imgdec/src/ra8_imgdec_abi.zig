@@ -83,6 +83,7 @@ export fn ra8_imgdec_dims(bytes: ?[*]const u8, byte_count: u32, out: ?*Geom) cal
 
 export fn ra8_imgdec_name(format: u32, out: ?*abi.Name) callconv(.c) u16 {
     const slot = out orelse return Err.null_ptr;
+    slot.* = .{};
     const row = name_mod.name(format) catch |fault| return vocab.faultCode(fault);
     slot.* = name_mod.toAbi(row);
     return Err.ok;
@@ -94,6 +95,7 @@ export fn ra8_imgdec_identify(
     out: ?*abi.Name,
 ) callconv(.c) u16 {
     const slot = out orelse return Err.null_ptr;
+    slot.* = .{};
     const raw = bytes orelse return Err.null_ptr;
 
     const row = name_mod.identify(raw[0..byte_count]) catch |fault| {
@@ -148,9 +150,9 @@ export fn ra8_imgdec_probe(
     out: ?*Geom,
 ) callconv(.c) u16 {
     const slot = out orelse return Err.null_ptr;
-    slot.* = .{};
     const handle = dec orelse return Err.null_ptr;
     const raw = bytes orelse return Err.null_ptr;
+    slot.* = .{};
     return fabric.probe(handle, raw[0..byte_count], slot);
 }
 
@@ -219,6 +221,7 @@ export fn ra8_imgdec_scratch_carve(
     alignment: u32,
 ) callconv(.c) u16 {
     const slot = scratch orelse return Err.invalid_arg;
+    slot.* = .{};
     if (arena_ptr == null) return Err.invalid_arg;
 
     const want = switch (scratch_mod.carveAlign(bytes, alignment)) {
@@ -311,6 +314,8 @@ export fn ra8_imgdec_mux_scratch_budget(
 ) callconv(.c) u16 {
     const bytes_slot = out_bytes orelse return Err.null_ptr;
     const align_slot = out_align orelse return Err.null_ptr;
+    bytes_slot.* = 0;
+    align_slot.* = 0;
     const set = mux orelse return Err.null_ptr;
     return mux_mod.scratchBudget(set, bytes_slot, align_slot);
 }
@@ -322,6 +327,7 @@ export fn ra8_imgdec_mux_carve(
 ) callconv(.c) u16 {
     if (arena_ptr == null) return Err.null_ptr;
     const slot = out orelse return Err.null_ptr;
+    slot.* = .{};
     const set = mux orelse return Err.null_ptr;
 
     var bytes: u32 = 0;
