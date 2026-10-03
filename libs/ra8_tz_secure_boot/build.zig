@@ -25,8 +25,22 @@ pub fn build(b: *std.Build) void {
         "Require the NS image to authenticate before BLXNS (RA8_ENABLE_ROOT_OF_TRUST)",
     ) orelse false;
 
+    // The installed archive reaches its registers by address on every build;
+    // the host test suites back those addresses with the fake MMIO map. The
+    // Zig unit tests below have no map, so they record into a capture.
+    const host_capture = b.option(
+        bool,
+        "host-capture",
+        "Record host register accesses instead of performing them",
+    ) orelse false;
+
     const options = b.addOptions();
     options.addOption(bool, "root_of_trust", root_of_trust);
+    options.addOption(bool, "host_capture", host_capture);
+
+    const test_options = b.addOptions();
+    test_options.addOption(bool, "root_of_trust", root_of_trust);
+    test_options.addOption(bool, "host_capture", true);
 
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_tz_secure_boot_abi.zig"),
@@ -49,6 +63,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    implementation_module.addOptions("build_options", test_options);
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -68,6 +83,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    module_test_module.addOptions("build_options", test_options);
     const module_tests = b.addTest(.{ .root_module = module_test_module });
     const run_module_tests = b.addRunArtifact(module_tests);
 
@@ -78,7 +94,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    abi_module.addOptions("build_options", options);
+    abi_module.addOptions("build_options", test_options);
 
     const abi_test_module = b.createModule(.{
         .root_source_file = b.path("tests/abi_test.zig"),
