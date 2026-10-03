@@ -99,14 +99,13 @@ endif()
 
 # The board's own answer to that same port: which chip instance each board-level
 # module index lands on. It reaches the adapter and therefore ra8_mstp, so it
-# wants the same fake MMIO mock for the module-stop read-back.
+# wants the same fake MMIO mock for the module-stop read-back, which
+# ra8_core_hal already supplies; only the mock's header directory is added.
 if(TARGET test_ra8_board_ek_ra8d2_clock_profile)
   target_include_directories(
     test_ra8_board_ek_ra8d2_clock_profile
     PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_cgc/inc
             ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc ${FW_ROOT}/tests/mocks/inc)
-  target_sources(test_ra8_board_ek_ra8d2_clock_profile
-                 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
 # The board's split of its GPT channels between those two ports. It reaches
@@ -117,8 +116,6 @@ if(TARGET test_ra8_board_ek_ra8d2_gpt_profile)
     test_ra8_board_ek_ra8d2_gpt_profile
     PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
             ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc ${FW_ROOT}/tests/mocks/inc)
-  target_sources(test_ra8_board_ek_ra8d2_gpt_profile
-                 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
 # The ThreadX binding of the same seam cannot run on a host -- it needs a
