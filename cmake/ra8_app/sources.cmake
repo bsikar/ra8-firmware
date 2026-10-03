@@ -724,8 +724,12 @@ macro(_ra8_app_collect_sources)
     # (_ra8_app_link_zig_libraries), so the blocks above may already have
     # named it.
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
+    list(APPEND _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_mem/inc IN_LIST _ra8_lib_inc)
+      list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
     endif()
   endif()
 
