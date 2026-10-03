@@ -187,15 +187,18 @@ pub fn arenaTooSmall(bytes: u32) bool {
     return bytes < c6.arena_min;
 }
 
-/// Copy the config a board supplied into the handle. The flags stay as they
-/// were; a fresh handle is already down, and a re-setup does not invent an
-/// association.
+/// Rebuild the handle from the config a board supplied. Every other field,
+/// the event latches included, starts from zero: a handle set up again must
+/// not carry a connect or disconnect heard on its previous link into the next
+/// `service` reading.
 pub fn applyCfg(self: *Handle, cfg: *const Cfg) void {
-    self.link = cfg.link;
-    self.transport = cfg.transport;
-    self.arena = cfg.arena;
-    self.arena_bytes = cfg.arena_bytes;
-    self.rx_cb = cfg.rx_cb;
+    self.* = .{
+        .link = cfg.link,
+        .transport = cfg.transport,
+        .arena = cfg.arena,
+        .arena_bytes = cfg.arena_bytes,
+        .rx_cb = cfg.rx_cb,
+    };
 }
 
 /// Clear the association flags ahead of a join so a stale disconnect from the
