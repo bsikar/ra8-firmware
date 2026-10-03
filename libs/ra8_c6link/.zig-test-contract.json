@@ -7,6 +7,8 @@
     "tests/field_copy_test.zig",
     "tests/frame_test.zig",
     "tests/internal_test.zig",
+    "tests/pump_abi_test.zig",
+    "tests/pump_test.zig",
     "tests/rpc_wait_test.zig",
     "tests/rx_route_test.zig",
     "tests/sta_cfg_test.zig",
@@ -20,6 +22,7 @@
     "src/internal/caps.zig",
     "src/internal/field_copy.zig",
     "src/internal/frame.zig",
+    "src/internal/pump.zig",
     "src/internal/root.zig",
     "src/internal/rpc_wait.zig",
     "src/internal/rx_route.zig",
@@ -31,10 +34,13 @@
     "src/internal/wifi_init.zig",
     "src/ra8_c6link_abi.zig",
     "src/ra8_c6link_arena_abi.zig",
+    "src/ra8_c6link_pump_abi.zig",
     "tests/abi_test.zig",
     "tests/caps_test.zig",
     "tests/frame_test.zig",
-    "tests/internal_test.zig"
+    "tests/internal_test.zig",
+    "tests/pump_abi_test.zig",
+    "tests/pump_test.zig"
   ],
-  "minimum_tests": 155
+  "minimum_tests": 166
 }

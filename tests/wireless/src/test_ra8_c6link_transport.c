@@ -106,7 +106,7 @@ RA8_INTERNAL static void internal_test_eth_data_plane(void)
  * @par MC/DC:
  * (no compound decision under test -- an inactive handshake and a refusing
  * transport are each driven to their own return code)
- * Decisions: libs/ra8_c6link/src/ra8_c6link_pump.c@priv_c6link_pump @brief Verify transport faults behavior. @details Executes the transport faults scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_pump_abi.zig@priv_c6link_pump @brief Verify transport faults behavior. @details Executes the transport faults scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_transport_faults(void)
 {
   TEST_BEGIN("c6link transport faults");

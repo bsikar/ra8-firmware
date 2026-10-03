@@ -16,10 +16,11 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
-        .root_source_file = b.path("src/ra8_c6link_abi.zig"),
+        .root_source_file = b.path("src/ra8_c6link_lib.zig"),
         .target = target,
         .optimize = optimize,
     });
+    addHeaders(library_module, b);
 
     const library = b.addLibrary(.{
         .name = "ra8_c6link",
@@ -171,4 +172,42 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sta_policy_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&b.addRunArtifact(arena_tests).step);
+    addPumpTests(b, test_step, target, optimize, implementation_module);
+}
+
+/// The public headers the pump's ABI reads `ra8_c6link_t` from.
+fn addHeaders(module: *std.Build.Module, b: *std.Build) void {
+    module.addIncludePath(b.path("inc"));
+    module.addIncludePath(b.path("../ra8_core/inc"));
+}
+
+/// The poll pump: its loop on a scripted port, and its C ABI on a real handle.
+fn addPumpTests(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    implementation_module: *std.Build.Module,
+) void {
+    const pump_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/pump_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    pump_test_module.addImport("implementation", implementation_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = pump_test_module })).step);
+
+    const pump_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_c6link_pump_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addHeaders(pump_abi_module, b);
+    const pump_abi_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/pump_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    pump_abi_test_module.addImport("pump_abi", pump_abi_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = pump_abi_test_module })).step);
 }
