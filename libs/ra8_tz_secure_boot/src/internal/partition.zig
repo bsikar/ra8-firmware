@@ -75,10 +75,12 @@ fn validateRegion(region: SauRegion) u32 {
 }
 
 /// The EK-RA8D2 board map: NS upper MRAM, NS upper SRAM, NS SDRAM and the
-/// NSC veneer alias. The SRAM boundary is left as boot ROM set it.
+/// NSC veneer alias. MRAM and SRAM are named at their bit-28 Non-secure
+/// aliases, because the RA8 IDAU keeps every bit-28-clear address Secure
+/// (RA8FW-510). The SDRAM alias is not yet read from the HUM. The SRAM boundary is left as boot ROM set it.
 pub const board_regions = [_]SauRegion{
-    .{ .base = 0x02080000, .size = 0x80000, .attr = .ns },
-    .{ .base = 0x22100000, .size = 0x100000, .attr = .ns },
+    .{ .base = 0x12080000, .size = 0x80000, .attr = .ns },
+    .{ .base = 0x32100000, .size = 0x100000, .attr = .ns },
     .{ .base = 0x6A000000, .size = 0x2000000, .attr = .ns },
     .{ .base = 0x10000000, .size = 0x100000, .attr = .nsc },
 };
