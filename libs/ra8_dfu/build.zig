@@ -128,6 +128,7 @@ pub fn build(b: *std.Build) void {
     });
     boot_root_module.addImport("dfu_boot_abi", boot_abi_module);
     boot_root_module.addImport("launch_abi", launch_abi_module);
+    boot_root_module.addImport("program_abi", program_abi_module);
     const boot_library = b.addLibrary(.{
         .name = "ra8_dfu_boot",
         .linkage = .static,

@@ -80,7 +80,7 @@ const Mram = struct {
     /// masked across the pair so no ISR fetches code-MRAM while the array is
     /// busy. Code-MRAM cannot be reliably re-programmed over stale contents
     /// with ECC on, so the erased baseline goes down first.
-    fn programPage(_: Mram, addr: u32, erased: []const u8, body: []const u8) error{Flash}!void {
+    pub fn programPage(_: Mram, addr: u32, erased: []const u8, body: []const u8) error{Flash}!void {
         const saved = maskInterrupts();
         defer restoreInterrupts(saved);
 
