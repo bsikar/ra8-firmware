@@ -12,6 +12,7 @@ const rpc = @import("ra8_rpc");
 comptime {
     _ = @import("messages.zig");
     _ = @import("mock_queue.zig");
+    _ = @import("mock_signal.zig");
     _ = @import("service.zig");
 }
 
