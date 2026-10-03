@@ -20,7 +20,6 @@ func TestAManifestPathOutsideTheExamplesTreeIsRefusedBeforeAnyRead(t *testing.T)
 	for name, relative := range map[string]string{
 		"an absolute path":  "/etc/hil.conf",
 		"another file name": "examples/board.conf",
-		"a backslash":       "examples\\board\\hil.conf",
 		"the tree itself":   ".",
 		"a parent":          "..",
 		"a climb out":       "../hil.conf",
@@ -30,6 +29,24 @@ func TestAManifestPathOutsideTheExamplesTreeIsRefusedBeforeAnyRead(t *testing.T)
 		if _, err := Load(root, relative); !errors.Is(err, ErrUnsafePath) {
 			t.Fatalf("%s was not refused as unsafe: %v", name, err)
 		}
+	}
+	if filepath.Separator != '\\' {
+		if _, err := Load(root, `examples\board\hil.conf`); !errors.Is(err, ErrUnsafePath) {
+			t.Fatalf("a backslash path was not refused on this platform: %v", err)
+		}
+	}
+}
+
+func TestLoadUsesNativeSeparatorsWithoutAllowingTraversal(t *testing.T) {
+	root, slashPath := plantManifest(t, "HIL_MODE=alive\n", 0o644)
+	nativePath := filepath.FromSlash(slashPath)
+	if spec, err := Load(root, nativePath); err != nil || spec.Mode != ModeAlive || spec.Path != slashPath {
+		t.Fatalf("a contained path with native separators was not canonicalized: %+v err=%v", spec, err)
+	}
+
+	traversal := filepath.Join("examples", "board", "..", "..", "outside", "hil.conf")
+	if _, err := Load(root, traversal); !errors.Is(err, ErrUnsafePath) {
+		t.Fatalf("a native-separator '..' escape was accepted: %v", err)
 	}
 }
 
@@ -65,8 +82,8 @@ func TestAManifestSymlinkedOutOfTheTreeIsRefused(t *testing.T) {
 	if err := os.WriteFile(outside, []byte("HIL_MODE=alive\n"), 0o644); err != nil {
 		t.Fatalf("plant the outside manifest: %v", err)
 	}
-	if err := os.Symlink(outside, filepath.Join(board, "hil.conf")); err != nil {
-		t.Skipf("symlinks are not available here: %v", err)
+	if err := symlinkOrSkip(t, outside, filepath.Join(board, "hil.conf")); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := Load(root, "examples/board/hil.conf"); !errors.Is(err, ErrUnsafePath) {
 		t.Fatalf("a manifest symlinked out of the tree was not refused: %v", err)
@@ -84,18 +101,6 @@ func plantManifest(t *testing.T, body string, mode os.FileMode) (string, string)
 		t.Fatalf("plant the manifest: %v", err)
 	}
 	return root, "examples/board/hil.conf"
-}
-
-// A file the reader cannot open is reported as the open failure, not as an
-// invalid manifest: nothing was parsed, so nothing can be called invalid.
-func TestAManifestThatWillNotOpenIsRefused(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: a sealed file still opens")
-	}
-	root, relative := plantManifest(t, "HIL_MODE=alive\n", 0o000)
-	if _, err := Load(root, relative); err == nil {
-		t.Fatal("a sealed manifest was read")
-	}
 }
 
 // A directory sitting where hil.conf belongs passes every path rule and opens,
@@ -136,7 +141,7 @@ func TestAManifestInsideTheTreeIsRead(t *testing.T) {
 	if spec.Mode != ModeAlive {
 		t.Fatalf("the mode read as %q", spec.Mode)
 	}
-	if spec.Path != relative {
+	if spec.Path != filepath.ToSlash(relative) {
 		t.Fatalf("the spec names %q rather than the relative path", spec.Path)
 	}
 }

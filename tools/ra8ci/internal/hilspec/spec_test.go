@@ -37,7 +37,7 @@ func TestParsesEveryCurrentHILManifestAsData(t *testing.T) {
 			t.Errorf("%s: %v", relative, err)
 			return nil
 		}
-		if spec.Path != relative || spec.Mode == "" || len(spec.Values) == 0 {
+		if spec.Path != filepath.ToSlash(relative) || spec.Mode == "" || len(spec.Values) == 0 {
 			t.Errorf("%s: incomplete parsed spec %+v", relative, spec)
 		}
 		count++
@@ -144,14 +144,14 @@ func TestLoadRejectsTraversalAndSymlinkEscape(t *testing.T) {
 	if err := os.WriteFile(outside, []byte("HIL_MODE=alive\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, filepath.Join(examples, "app", "escape")); err != nil {
+	if err := symlinkOrSkip(t, outside, filepath.Join(examples, "app", "escape")); err != nil {
 		t.Fatal(err)
 	}
 	// The symlink itself must be the expected filename to exercise Load.
 	if err := os.MkdirAll(filepath.Join(examples, "escape-app"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(outside, filepath.Join(examples, "escape-app", "hil.conf")); err != nil {
+	if err := symlinkOrSkip(t, outside, filepath.Join(examples, "escape-app", "hil.conf")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Load(root, "examples/escape-app/hil.conf"); !errors.Is(err, ErrUnsafePath) {
