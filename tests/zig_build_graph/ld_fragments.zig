@@ -163,23 +163,26 @@ fn nsInlineImage(b: *std.Build, board: []const u8) []const u8 {
 
     const mram_origin = vars.get("RA8_NS_INLINE_MRAM_ORIGIN", map_path);
     const mram_length = vars.get("RA8_NS_INLINE_MRAM_LENGTH", map_path);
+    const mram_load = vars.get("RA8_NS_INLINE_MRAM_LOAD", map_path);
     const sram_origin = vars.get("RA8_NS_INLINE_SRAM_ORIGIN", map_path);
     const sram_length = vars.get("RA8_NS_INLINE_SRAM_LENGTH", map_path);
 
     return b.fmt(
         "SECTIONS\n" ++
             "{{\n" ++
-            "    .ns_vectors {s} : ALIGN(8)\n" ++
+            "    .ns_vectors {s} : AT({s}) ALIGN(8)\n" ++
             "    {{\n" ++
             "        KEEP(*(.ns_vectors))\n" ++
             "        KEEP(*(.ns_vectors.*))\n" ++
             "    }}\n" ++
-            "    .ns_text ADDR(.ns_vectors) + SIZEOF(.ns_vectors) : ALIGN(4)\n" ++
+            "    .ns_text ADDR(.ns_vectors) + SIZEOF(.ns_vectors) :\n" ++
+            "        AT(LOADADDR(.ns_vectors) + SIZEOF(.ns_vectors)) ALIGN(4)\n" ++
             "    {{\n" ++
             "        *(.ns_text)\n" ++
             "        *(.ns_text.*)\n" ++
             "    }}\n" ++
-            "    .ns_rodata ADDR(.ns_text) + SIZEOF(.ns_text) : ALIGN(4)\n" ++
+            "    .ns_rodata ADDR(.ns_text) + SIZEOF(.ns_text) :\n" ++
+            "        AT(LOADADDR(.ns_text) + SIZEOF(.ns_text)) ALIGN(4)\n" ++
             "    {{\n" ++
             "        *(.ns_rodata)\n" ++
             "        *(.ns_rodata.*)\n" ++
@@ -198,9 +201,14 @@ fn nsInlineImage(b: *std.Build, board: []const u8) []const u8 {
             "ASSERT(ADDR(.ns_rodata) + SIZEOF(.ns_rodata)\n" ++
             "       <= {s} + {s},\n" ++
             "       \"FATAL: the NS image overran its window\")\n" ++
+            // The image runs at the alias and loads at the physical bytes; a
+            // section whose VMA and LMA drifted apart would run the wrong code.
+            "ASSERT(ADDR(.ns_text) - LOADADDR(.ns_text) == ADDR(.ns_vectors) - LOADADDR(.ns_vectors)\n" ++
+            "       && ADDR(.ns_rodata) - LOADADDR(.ns_rodata) == ADDR(.ns_vectors) - LOADADDR(.ns_vectors),\n" ++
+            "       \"FATAL: the NS image's run and load addresses drifted apart\")\n" ++
             "ASSERT(g_ra8_ls_ns_bss_end <= g_ra8_ls_ns_stack_top,\n" ++
             "       \"FATAL: NS .bss collided with the NS stack\")\n",
-        .{ mram_origin, sram_origin, sram_origin, sram_length, mram_origin, mram_length },
+        .{ mram_origin, mram_load, sram_origin, sram_origin, sram_length, mram_origin, mram_length },
     );
 }
 

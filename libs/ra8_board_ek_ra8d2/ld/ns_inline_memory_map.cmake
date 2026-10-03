@@ -20,7 +20,12 @@
 # carries, because a single-image dual-core app also flashes the CPU1 image at
 # 0x020C0000: 0x02080000 + 512K would run straight through it. Tiling is
 # 512K Secure | 256K NS | 256K CPU1.
-set(RA8_NS_INLINE_MRAM_ORIGIN 0x02080000)
+# The window RUNS at the bit-28 Non-secure alias and LOADS at the physical
+# address: the RA8 IDAU keeps every bit-28-clear address Secure and the SAU
+# cannot lower it (RA8FW-510), while a flasher writes physical MRAM and the
+# tiling above is physical. The two name the same bytes.
+set(RA8_NS_INLINE_MRAM_ORIGIN 0x12080000)
+set(RA8_NS_INLINE_MRAM_LOAD 0x02080000)
 set(RA8_NS_INLINE_MRAM_LENGTH 256K)
 
 # NS data. Capped so it ends at 0x22190000, which is ON-chip (the physical ECC
@@ -35,5 +40,7 @@ set(RA8_NS_INLINE_MRAM_LENGTH 256K)
 # before the .ns_bss zero loop had run. ra8_emulator did not reproduce it: its
 # flat SRAM window makes 0x22200000 a perfectly valid address. Do not widen
 # this to fill the placeholder.
-set(RA8_NS_INLINE_SRAM_ORIGIN 0x22100000)
+# Named at the bit-28 alias for the same reason: 0x32100000..0x32190000 is
+# 0x22100000..0x22190000, the bound below still applies to it.
+set(RA8_NS_INLINE_SRAM_ORIGIN 0x32100000)
 set(RA8_NS_INLINE_SRAM_LENGTH 576K)
