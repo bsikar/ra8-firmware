@@ -111,6 +111,11 @@ endfunction()
 # keeps the two archives of one library apart, and the guard below keeps a
 # second request for the same (library, cpu) pair from declaring a duplicate
 # OUTPUT rule.
+#
+# An optional trailing OFF_TARGET builds the library with -Doff-target=true:
+# the Zig spelling of the RA8_OFF_TARGET define that OFF_TARGET_LIBS gives a C
+# library. That variant is a different archive, so it gets its own prefix and
+# its own rule, and an app naming the library in LIBS still gets the real one.
 function(
   _ra8_zig_build_archive
   _lib
@@ -130,13 +135,20 @@ function(
 
   set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")
 
-  set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_zig_cpu}")
+  set(_variant "${_zig_cpu}")
+  set(_variant_args "")
+  if("OFF_TARGET" IN_LIST ARGN)
+    set(_variant "${_zig_cpu}_off_target")
+    set(_variant_args "-Doff-target=true")
+  endif()
+
+  set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_variant}")
   set(_archive "${_prefix}/lib/lib${_lib}.a")
 
-  # One OUTPUT rule per (library, cpu) pair, however many targets ask for it.
-  # The rule lives in the binary dir of the first app that asked, so a later
-  # app reuses that archive path rather than its own, which has no rule.
-  get_property(_declared GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}")
+  # One OUTPUT rule per (library, variant) pair, however many targets ask for
+  # it. The rule lives in the binary dir of the first app that asked, so a
+  # later app reuses that archive path rather than its own, which has no rule.
+  get_property(_declared GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_variant}")
   if(_declared)
     set(${_out_archive}
         "${_declared}"
@@ -144,7 +156,7 @@ function(
     )
     return()
   endif()
-  set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}" "${_archive}")
+  set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_variant}" "${_archive}")
 
   file(
     GLOB_RECURSE
@@ -159,9 +171,9 @@ function(
     COMMAND
       ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build --build-file ${_lib_path}/build.zig
       --prefix ${_prefix} --cache-dir ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache -Dtarget=${_zig_target}
-      -Dcpu=${_zig_cpu} -Doptimize=${_zig_optimize}
+      -Dcpu=${_zig_cpu} -Doptimize=${_zig_optimize} ${_variant_args}
     DEPENDS ${_zig_srcs}
-    COMMENT "Building Zig library ${_lib} for ${_zig_target} ${_zig_cpu} (${_zig_optimize})"
+    COMMENT "Building Zig library ${_lib} for ${_zig_target} ${_variant} (${_zig_optimize})"
     VERBATIM
   )
 
@@ -172,7 +184,8 @@ function(
 endfunction()
 
 # Build one migrated library for THIS app's own target (core and float ABI
-# derived from the toolchain flags) and return the archive path.
+# derived from the toolchain flags) and return the archive path. A trailing
+# OFF_TARGET is passed through to _ra8_zig_build_archive().
 function(
   _ra8_app_zig_library
   _lib
@@ -187,6 +200,7 @@ function(
     ${_zig_target}
     ${_zig_cpu}
     _archive
+    ${ARGN}
   )
   set(${_out_archive}
       "${_archive}"
@@ -314,9 +328,23 @@ function(_ra8_app_link_zig_libraries _target)
     string(REPLACE "|" ";" _pair "${_entry}")
     list(GET _pair 0 _lib)
     list(GET _pair 1 _lib_path)
-    _ra8_app_zig_library(${_lib} ${_lib_path} _archive _stamp)
-    add_custom_target(${_target}_zig_${_lib} DEPENDS ${_stamp})
-    add_dependencies(${_target} ${_target}_zig_${_lib})
+    # An OFF_TARGET_LIBS entry carries a third field, "off_target".
+    set(_variant "")
+    set(_suffix "")
+    list(LENGTH _pair _fields)
+    if(_fields GREATER 2)
+      set(_variant OFF_TARGET)
+      set(_suffix "_off_target")
+    endif()
+    _ra8_app_zig_library(
+      ${_lib}
+      ${_lib_path}
+      _archive
+      _stamp
+      ${_variant}
+    )
+    add_custom_target(${_target}_zig_${_lib}${_suffix} DEPENDS ${_stamp})
+    add_dependencies(${_target} ${_target}_zig_${_lib}${_suffix})
     target_link_libraries(${_target} PRIVATE ${_archive})
   endforeach()
 endfunction()
