@@ -167,6 +167,15 @@ pub const c_flags = host_flags.c_flags;
 const build_graph_test_source = "tests/zig_build_graph/build_graph_test.zig";
 
 pub fn build(b: *std.Build) void {
+    // The one module this package exports. A consumer in another repository
+    // pins a tarball of this one and calls `dependency.module("ra8_rpc")`.
+    // No target and no optimize mode: it takes both from whatever imports it.
+    _ = b.addModule("ra8_rpc", .{
+        .root_source_file = b.path("libs/ra8_rpc/src/ra8_rpc.zig"),
+    });
+    // As a dependency, that module is all this package offers: stop before any lazy dependency.
+    if (b.pkg_hash.len != 0) return;
+
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
@@ -184,13 +193,6 @@ pub fn build(b: *std.Build) void {
         .{ build_type_name, build_type.names(b.allocator) },
     );
     arm = build_type.globals(b.allocator, selected, cross_image.base());
-
-    // The one module this package exports. A consumer in another repository
-    // pins a tarball of this one and calls `dependency.module("ra8_rpc")`.
-    // No target and no optimize mode: it takes both from whatever imports it.
-    _ = b.addModule("ra8_rpc", .{
-        .root_source_file = b.path("libs/ra8_rpc/src/ra8_rpc.zig"),
-    });
 
     const test_step = b.step("test", "Build and run the whole migrated-library slice");
     const c_test_step = b.step("test-c", "Run the unmodified C suites against the Zig archives");
