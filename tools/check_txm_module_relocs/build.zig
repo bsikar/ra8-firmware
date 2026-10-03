@@ -1,13 +1,16 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for `check_txm_module_relocs`, the host tool that holds a
-//! linked ThreadX module to one rule: no data section may keep an absolute
-//! relocation, because nothing rebases it when the module is loaded.
+//! Build graph for two host tools over a linked ThreadX module.
 //!
-//! `zig build` installs the tool and `zig build test` runs its tests, which
+//! `gen_txm_rebase_table` turns the data words that hold an absolute
+//! address into the table the module's start-up rebases them from.
+//! `check_txm_module_relocs` holds the finished module to one rule: every
+//! such word is in that table, and the table names nothing else.
+//!
+//! `zig build` installs both and `zig build test` runs their tests, which
 //! build their ELF fixtures in memory. The root build graph compiles
-//! `src/main.zig` itself to run the tool on real module images.
+//! `src/main.zig` and `src/gen_main.zig` itself to run them on real images.
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
@@ -28,6 +31,16 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(exe);
 
+    const generator = b.addExecutable(.{
+        .name = "gen_txm_rebase_table",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/gen_main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(generator);
+
     const checker = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -39,6 +52,10 @@ pub fn build(b: *std.Build) void {
         "tests/elf32_test.zig",
         "tests/check_test.zig",
         "tests/report_test.zig",
+        "tests/layout_test.zig",
+        "tests/records_test.zig",
+        "tests/table_test.zig",
+        "tests/coverage_test.zig",
     };
     for (roots) |root| {
         const test_module = b.createModule(.{

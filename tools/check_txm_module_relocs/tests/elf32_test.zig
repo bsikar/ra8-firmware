@@ -18,14 +18,14 @@ comptime {
 test "a fixture reads back as the sections and symbols it was built from" {
     const image = fixture.build(.{});
     const file = try elf32.File.init(image.bytes());
-    try testing.expectEqual(@as(u16, 14), file.section_count);
+    try testing.expectEqual(@as(u16, fixture.section_count), file.section_count);
 
-    const data = try file.section(@intFromEnum(fixture.Target.data));
+    const data = try file.section(3);
     try testing.expectEqualStrings(".data", data.name);
     try testing.expectEqual(@as(u32, 0x10000018), data.address);
     try testing.expectEqual(@as(usize, 16), data.bytes.len);
 
-    const symbols = 11;
+    const symbols = fixture.symtab_index;
     const double = try file.symbol(symbols, fixture.Symbol.double);
     try testing.expectEqualStrings("double", double.name);
     try testing.expectEqual(@as(u32, 0x30191), double.value);
@@ -67,9 +67,27 @@ test "a file cut short anywhere is an error, never a shorter file that passes" {
     }
 }
 
+test "a symbol is found by name, and a missing one is not an error" {
+    const image = fixture.build(.{});
+    const file = try elf32.File.init(image.bytes());
+    const counter = (try file.symbolNamed("counter")).?;
+    try testing.expectEqual(fixture.Address.counter, counter.value);
+    try testing.expectEqual(null, try file.symbolNamed("no_such_symbol"));
+}
+
+test "a word is read at its address, from whichever loaded section holds it" {
+    const image = fixture.build(.{ .words = .{ 1, 2, 0xAABBCCDD, 4 } });
+    const file = try elf32.File.init(image.bytes());
+    try testing.expectEqual(@as(u32, 0xAABBCCDD), (try file.wordAt(fixture.Address.data + 8)).?);
+    try testing.expectEqual(@as(u32, 4), (try file.wordAt(fixture.Address.data + 12)).?);
+    // One byte past the last whole word, and an address no section has.
+    try testing.expectEqual(null, try file.wordAt(fixture.Address.data + 13));
+    try testing.expectEqual(null, try file.wordAt(0x20000000));
+}
+
 test "a section or symbol index past the end is an error" {
     const image = fixture.build(.{});
     const file = try elf32.File.init(image.bytes());
-    try testing.expectError(error.Truncated, file.section(14));
-    try testing.expectError(error.Truncated, file.symbol(11, 5));
+    try testing.expectError(error.Truncated, file.section(fixture.section_count));
+    try testing.expectError(error.Truncated, file.symbol(fixture.symtab_index, 99));
 }

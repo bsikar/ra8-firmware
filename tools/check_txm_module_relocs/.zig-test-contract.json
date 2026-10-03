@@ -2,19 +2,32 @@
   "test_roots": [
     "tests/elf32_test.zig",
     "tests/check_test.zig",
-    "tests/report_test.zig"
+    "tests/report_test.zig",
+    "tests/layout_test.zig",
+    "tests/records_test.zig",
+    "tests/table_test.zig",
+    "tests/coverage_test.zig"
   ],
   "covered_sources": [
     "src/arm.zig",
     "src/check.zig",
+    "src/coverage.zig",
     "src/elf32.zig",
+    "src/gen_main.zig",
+    "src/layout.zig",
     "src/main.zig",
+    "src/records.zig",
     "src/report.zig",
     "src/root.zig",
+    "src/table.zig",
     "tests/check_test.zig",
+    "tests/coverage_test.zig",
     "tests/elf32_test.zig",
     "tests/elf_fixture.zig",
-    "tests/report_test.zig"
+    "tests/layout_test.zig",
+    "tests/records_test.zig",
+    "tests/report_test.zig",
+    "tests/table_test.zig"
   ],
-  "minimum_tests": 20
+  "minimum_tests": 54
 }

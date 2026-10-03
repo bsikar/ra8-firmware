@@ -55,6 +55,8 @@ pub const cpu1_threadx_modules = @import("tests/zig_build_graph/cpu1_threadx_mod
 pub const cpu1_txm_lib = @import("tests/zig_build_graph/cpu1_txm_lib.zig");
 pub const cpu1_txm_hello = @import("tests/zig_build_graph/cpu1_txm_hello.zig");
 pub const txm_module_object = @import("tests/zig_build_graph/txm_module_object.zig");
+pub const txm_module_target = @import("tests/zig_build_graph/txm_module_target.zig");
+pub const txm_module_check = @import("tests/zig_build_graph/txm_module_check.zig");
 pub const m85_threadx_modules = @import("tests/zig_build_graph/m85_threadx_modules.zig");
 pub const m85_shared_grant = @import("port/threadx/src/cortex_m85_modules/shared_grant.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
@@ -356,11 +358,11 @@ pub fn build(b: *std.Build) void {
     // arm-none-eabi-gcc found first would reject the core.
     const arm_gnu_dir = b.option(
         []const u8,
-        txm_module_object.toolchain_option,
-        "Arm GNU Toolchain 13.3 bin directory for " ++ txm_module_object.step_name ++
-            " (default " ++ txm_module_object.default_toolchain_dir ++ ")",
-    ) orelse txm_module_object.default_toolchain_dir;
-    const txm_module_check_step = b.step("txm-module-check", txm_module_object.step_description);
+        txm_module_target.toolchain_option,
+        "Arm GNU Toolchain 13.3 bin directory for " ++ txm_module_check.step_name ++
+            " (default " ++ txm_module_target.default_toolchain_dir ++ ")",
+    ) orelse txm_module_target.default_toolchain_dir;
+    const txm_module_check_step = b.step("txm-module-check", txm_module_check.step_description);
     cross_image.addTxmModuleCheck(b, txm_module_check_step, arm, arm_gnu_dir);
 
     const compile_db_step = b.step(

@@ -234,6 +234,7 @@ test "threadx_cpu1, the two Module Manager apps and cpu1_pingpong_ra8p1 are the 
         .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
         .{ .app = "txm_manager_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_fault_cpu1", .kernel = "threadx_m33_modules" },
+        .{ .app = "txm_table_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
     };
     var zig_entries: usize = 0;
@@ -261,7 +262,10 @@ test "only the Module Manager images carry a packed module, each in its own link
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         if (image.txm_module == null) continue;
-        try std.testing.expect(std.mem.eql(u8, app.name, "txm_manager_cpu1") or std.mem.eql(u8, app.name, "txm_fault_cpu1"));
+        const module_apps = [_][]const u8{ "txm_manager_cpu1", "txm_fault_cpu1", "txm_table_cpu1" };
+        var known = false;
+        for (module_apps) |name| known = known or std.mem.eql(u8, app.name, name);
+        try std.testing.expect(known);
         try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
     }
 }
