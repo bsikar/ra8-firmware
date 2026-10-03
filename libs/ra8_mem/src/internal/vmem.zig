@@ -30,8 +30,14 @@ pub const LoaderFn = *const fn (
 ) callconv(.c) u16;
 
 /// `ra8_vmem_key_t`, the page key the engine hashes and compares byte-wise.
+/// The C struct carries four bytes of implicit padding after `object_id`.
+/// Zig leaves padding undefined, so a key built field by field would carry
+/// stack garbage into the comparison and a resident page could miss. Naming
+/// the gap `reserved` makes every key literal zero it, which is the
+/// zero-filled key the header promises.
 pub const Key = extern struct {
     object_id: u32 = 0,
+    reserved: u32 = 0,
     offset: u64 = 0,
 };
 
@@ -182,6 +188,7 @@ comptime {
     // `ra8_vmem_key_t` is a uint32_t then a uint64_t, so the 8-byte member
     // forces the same 16-byte key on both widths. The engine compares keys
     // byte-wise, so a wrong size here would compare padding.
+    std.debug.assert(@offsetOf(Key, "reserved") == 4);
     std.debug.assert(@offsetOf(Key, "offset") == 8);
     std.debug.assert(@sizeOf(Key) == 16);
 

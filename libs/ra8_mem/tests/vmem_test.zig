@@ -26,6 +26,7 @@ var buckets: [frame_count]i32 = undefined;
 const Seen = struct {
     var cfg: vmem.keycache.Cfg = undefined;
     var key: Key = .{};
+    var key_raw: [@sizeOf(Key)]u8 = @splat(0);
     var released: ?[*]const u8 = null;
     var init_err: Err = .ok;
     var get_err: Err = .ok;
@@ -39,6 +40,7 @@ const Seen = struct {
     fn reset() void {
         cfg = std.mem.zeroes(vmem.keycache.Cfg);
         key = .{};
+        key_raw = @splat(0);
         released = null;
         init_err = .ok;
         get_err = .ok;
@@ -64,6 +66,7 @@ const FakeEngine = struct {
     pub fn get(_: *vmem.keycache.State, key: anytype, out_view: *vmem.keycache.View) Err {
         Seen.gets += 1;
         Seen.key = @as(*const Key, @ptrCast(@alignCast(key))).*;
+        Seen.key_raw = std.mem.asBytes(key).*;
         if (Seen.get_err != .ok) return Seen.get_err;
         out_view.* = .{ .data = Seen.view_data, .user = null };
         return .ok;
@@ -185,6 +188,19 @@ test "get rounds the offset down to a frame boundary" {
 
     try std.testing.expectEqual(Err.ok, Cache.get(&state, 9, 10 * frame_bytes, &page));
     try std.testing.expectEqual(@as(u64, 10 * frame_bytes), Seen.key.offset);
+}
+
+test "get hands the engine a key with zero bytes between its fields" {
+    var state: State = .{};
+    bind(&state);
+    var page: ?*anyopaque = null;
+
+    // The engine compares keys byte-wise, so the gap between `object_id` and
+    // `offset` must be zero on every get, not whatever the stack held.
+    try std.testing.expectEqual(Err.ok, Cache.get(&state, 0xFFFF_FFFF, 3 * frame_bytes, &page));
+    const gap = Seen.key_raw[@sizeOf(u32)..@offsetOf(Key, "offset")];
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 0, 0, 0, 0 }, gap);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), Seen.key.object_id);
 }
 
 test "get returns the engine error and a null view is invalid state" {
