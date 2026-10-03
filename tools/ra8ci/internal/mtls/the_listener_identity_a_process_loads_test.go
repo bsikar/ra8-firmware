@@ -11,6 +11,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -140,6 +141,9 @@ func TestALeafThatCannotBeParsedIsRefusedRatherThanHandedBackEmpty(t *testing.T)
 }
 
 func TestLoadServerIdentityStillRefusesAKeyEveryAccountCanRead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows ACL refusal is exercised in key_file_mode_windows_test.go")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("running as root: file modes are not enforced")
 	}

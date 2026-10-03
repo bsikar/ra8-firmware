@@ -28,6 +28,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 const (
@@ -124,6 +125,11 @@ func TestNewTLSIdentityAndRedirectPolicy(t *testing.T) {
 	} {
 		if err := os.WriteFile(path, pem.EncodeToMemory(block), 0600); err != nil {
 			t.Fatal(err)
+		}
+		if path == keyFile {
+			if err := testprivatefile.OwnerOnly(path); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	agent, err := New(Config{ServerURL: server.URL, CAFile: caFile, CertFile: certFile,

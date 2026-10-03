@@ -28,6 +28,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 const (
@@ -198,6 +199,9 @@ func testTLSCertificates(t *testing.T) tlsCertificates {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(keyPath, keyPEM, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := testprivatefile.OwnerOnly(keyPath); err != nil {
 			t.Fatal(err)
 		}
 		pair, err := tls.LoadX509KeyPair(certPath, keyPath)

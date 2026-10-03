@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // clientMaterial is one CA, one server identity signed by it, and one client
@@ -105,6 +106,9 @@ func mintClientMaterial(t *testing.T) clientMaterial {
 		}
 		if err := os.WriteFile(keyPath,
 			pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: encoded}), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := testprivatefile.OwnerOnly(keyPath); err != nil {
 			t.Fatal(err)
 		}
 		pair, err := tls.LoadX509KeyPair(certPath, keyPath)

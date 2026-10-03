@@ -10,8 +10,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // clientKeyPairPEM mints a client certificate and its key in PEM form, the
@@ -49,6 +52,11 @@ func writeKeyPair(t *testing.T, certPEM, keyPEM []byte) (string, string) {
 	}
 	if err := os.WriteFile(keyPath, keyPEM, 0o600); err != nil {
 		t.Fatalf("write key: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		if err := testprivatefile.OwnerOnly(keyPath); err != nil {
+			t.Fatalf("protect key: %v", err)
+		}
 	}
 	return certPath, keyPath
 }
