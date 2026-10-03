@@ -452,7 +452,7 @@ def _fortigate_recipe_findings(text: str) -> list[str]:
         if "HIL_OPENBAO_ENV" in body or "PYTHONPATH" in body:
             findings.append(f"{recipe} admits an ambient Python or credential path")
     signatures = {
-        "fortigate_bootstrap": "Factory-reset and reconfigure the FortiGate?",
+        "fortigate_bootstrap": "BLOCKED: declaration is historical. Do not factory-reset or replay it.",
         "fortigate_ap_configure": "Reconfigure the bench AP over the FortiGate console?",
     }
     lines = text.splitlines()
@@ -500,8 +500,8 @@ def just_recipe_selftest_checks(just_path: Path) -> list[tuple[str, bool]]:
     )
     weakened_tty = text.replace('env_args+=("FG_CONSOLE_TTY=$tty")', 'env_args+=("$tty")', 1)
     weakened_confirmation = text.replace(
-        '[confirm("Factory-reset and reconfigure the FortiGate? '
-        'This disrupts the bench network.")]\n',
+        '[confirm("BLOCKED: declaration is historical. '
+        'Do not factory-reset or replay it.")]\n',
         "",
         1,
     )

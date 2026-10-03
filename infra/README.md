@@ -41,7 +41,7 @@ fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
              the ~/.ssh fragment `just infra::ssh_config` installs.
 ansible/     configures machines (dev_box, k3s_node, openbao, hil_bench,
              c6_toolchain, ad2_tools)
-network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
+network/     the FortiGate-managed trusted, DMZ, WiFi-IoT, and Star-IoT zones
 ```
 
 `ansible/inventory/hosts.ini` is **generated** from `fleet.yml` on every
@@ -68,7 +68,7 @@ the documentation, not a footnote:
 | `k3s_node` (cluster + `helm`) | codified |
 | `openbao` (vault deployment) | codified |
 | `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
-| `network/` (bench LAN: FortiGate + AP) | codified |
+| `network/` (FortiGate + AP) | partially codified; replay blocked pending topology reconciliation |
 | vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
 | Proxmox guest topology | **hand-built** |
 
