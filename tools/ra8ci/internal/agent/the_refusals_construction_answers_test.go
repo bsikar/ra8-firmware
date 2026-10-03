@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // mintAuthority returns a self-signed CA and its key, written as PEM.
@@ -85,6 +87,11 @@ func writePEM(t *testing.T, path, kind string, der []byte) {
 	t.Helper()
 	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: kind, Bytes: der}), 0600); err != nil {
 		t.Fatal(err)
+	}
+	if kind != "CERTIFICATE" {
+		if err := testprivatefile.OwnerOnly(path); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

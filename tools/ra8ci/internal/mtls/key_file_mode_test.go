@@ -4,9 +4,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // keyPairAtMode writes a live client key pair to disk with the key file at the
@@ -19,11 +22,16 @@ func keyPairAtMode(t *testing.T, mode os.FileMode) (string, string, time.Time) {
 	if err := os.Chmod(keyPath, mode); err != nil {
 		t.Fatalf("chmod key: %v", err)
 	}
+	if runtime.GOOS == "windows" {
+		if err := testprivatefile.OwnerOnly(keyPath); err != nil {
+			t.Fatalf("protect key: %v", err)
+		}
+	}
 	return certPath, keyPath, now
 }
 
 func TestAnOwnerOnlyKeyFileIsAccepted(t *testing.T) {
-	for _, mode := range []os.FileMode{0o600, 0o400, 0o640, 0o660} {
+	for _, mode := range []os.FileMode{0o600, 0o400} {
 		certPath, keyPath, now := keyPairAtMode(t, mode)
 		if _, err := LoadClientIdentity(certPath, keyPath, now); err != nil {
 			t.Fatalf("mode %04o was refused: %v", mode, err)
@@ -31,26 +39,29 @@ func TestAnOwnerOnlyKeyFileIsAccepted(t *testing.T) {
 	}
 }
 
-// The judgement this test pins: a group-readable key is a deliberate and common
-// arrangement (owned by the account that provisions it, read by the group the
-// runner runs as), so refusing it would lock out running deployments to say
-// nothing the operator did not already decide.
-func TestAGroupReadableKeyFileIsNotRefused(t *testing.T) {
-	certPath, keyPath, now := keyPairAtMode(t, 0o640)
-	if _, err := LoadServerIdentity(certPath, keyPath, now); err != nil && errors.Is(err, ErrIdentity) &&
-		strings.Contains(err.Error(), "readable by every account") {
-		t.Fatalf("a group-readable key was refused: %v", err)
+func TestAGroupAccessibleKeyFileIsRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows file privacy is checked through the DACL")
+	}
+	for _, mode := range []os.FileMode{0o640, 0o660} {
+		certPath, keyPath, now := keyPairAtMode(t, mode)
+		if _, err := LoadServerIdentity(certPath, keyPath, now); !errors.Is(err, ErrIdentity) {
+			t.Fatalf("group-accessible key mode %04o was accepted", mode)
+		}
 	}
 }
 
 func TestAWorldReadableKeyFileIsRefused(t *testing.T) {
-	for _, mode := range []os.FileMode{0o644, 0o604, 0o666, 0o777, 0o602} {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows file privacy is checked through the DACL")
+	}
+	for _, mode := range []os.FileMode{0o644, 0o604, 0o666, 0o777, 0o602, 0o640} {
 		certPath, keyPath, now := keyPairAtMode(t, mode)
 		_, refusal := LoadClientIdentity(certPath, keyPath, now)
 		if refusal == nil {
 			t.Fatalf("mode %04o loaded", mode)
 		}
-		if !errors.Is(refusal, ErrIdentity) || !strings.Contains(refusal.Error(), "readable by every account") {
+		if !errors.Is(refusal, ErrIdentity) || !strings.Contains(refusal.Error(), "not owner-only") {
 			t.Fatalf("mode %04o: unexpected refusal %v", mode, refusal)
 		}
 		if !strings.Contains(refusal.Error(), keyPath) {
@@ -100,26 +111,7 @@ func TestAnAbsentOrDirectoryKeyPathIsRefusedBeforeTheRead(t *testing.T) {
 	}
 	dir := t.TempDir()
 	_, err := LoadClientIdentity(certPath, dir, now)
-	if !errors.Is(err, ErrIdentity) || !strings.Contains(err.Error(), "is a directory") {
+	if !errors.Is(err, ErrIdentity) || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("a directory key path: unexpected refusal %v", err)
-	}
-}
-
-// The rule reads the permission bits and nothing else, so a test that wants to
-// know what it saw reads them the same way rather than restating the mask.
-func TestTheRuleReadsThePermissionBitsItReports(t *testing.T) {
-	_, keyPath, _ := keyPairAtMode(t, 0o604)
-	info, err := os.Stat(keyPath)
-	if err != nil {
-		t.Fatalf("stat: %v", err)
-	}
-	if permissionsOf(info)&0o007 == 0 {
-		t.Fatalf("expected world bits on %s, saw %04o", keyPath, permissionsOf(info))
-	}
-	if permissionsOf(nil) != 0 {
-		t.Fatal("a missing file info reports permissions")
-	}
-	if err := checkPrivateKeyFileMode(keyPath); err == nil {
-		t.Fatal("the rule accepted a world-readable key")
 	}
 }
