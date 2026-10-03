@@ -425,7 +425,7 @@ void ra8_glcdc_dispatch(void);
 
 /* =============================================================================
  * Gamma correction (piecewise-linear LUT per colour channel)
- * Implemented in libs/ra8_hal/src/ra8_glcdc_gamma.c
+ * Implemented in libs/ra8_hal/src/glcdc_gamma_abi.zig (RA8FW-545)
  * =============================================================================
  */
 
