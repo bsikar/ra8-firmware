@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""FortiGate 81E-POE login + bench bring-up over the serial console.
+"""FortiGate configuration over the serial console.
 
-Uses the login mechanics proven on this exact unit: send the line terminated by
-a bare CR (a trailing LF submits an empty password and desyncs the login), then
+Send login lines terminated by a bare CR (a trailing LF submits an empty
+password and can desync the login), then
 read until a SUBSTRING match (case-insensitive, because FortiOS capitalises
 "New Password:"), with chunked reads into a per-step buffer that is reset each
 step so a stale echo cannot self-match.
 
-Offline modes lint or render the tracked declaration. Explicit live modes log
+Offline modes lint or render the safe example fixture. Explicit live modes log
 in, bootstrap/configure/verify the firewall, or inspect/configure the AP.
 
 Every credential is read from OpenBao and masked in the transcript.
@@ -83,6 +83,7 @@ declaration_selftest_checks = _fg_selftest.declaration_selftest_checks
 just_recipe_selftest_checks = _fg_selftest.just_recipe_selftest_checks
 live_runtime_selftest_checks = _fg_selftest.live_runtime_selftest_checks
 DEFAULT_CONF = _fortigate_config.DEFAULT_CONF
+private_config_path = _fortigate_config.private_config_path
 config_lint_errors = _fortigate_config.config_lint_errors
 load_config_lines = _fortigate_config.load_config_lines
 read_valid_config = _fortigate_config.read_valid_config
@@ -292,18 +293,7 @@ def capture(ser: serial.Serial) -> str:
 
 
 def primary_lan_name(interface_text: str) -> str:
-    """Return the PRIMARY LAN hard-switch name from a `show system interface` dump.
-
-    The bench splits the one physical switch (sw0) into two hard switches: the
-    primary (factory-named "lan" or "internal", depending on the model) carries
-    the odd ports, and a SECOND switch named "lan-even" carries the even ports.
-    Only the primary name is model-dependent, so only the primary is what gets
-    resolved here and what configure_after_wipe() rewrites the "internal" token
-    in fortigate-bench.conf to. "lan-even" is a literal we choose, and it is
-    deliberately NOT confused with the primary: the needle `edit "lan"` cannot
-    match inside `edit "lan-even"` (the closing quote differs), so the presence
-    of the second switch cannot make this misreport the primary. See --selftest.
-    """
+    """Return the primary LAN hard-switch name from an interface dump."""
     for name in ("lan", "internal"):
         if f'edit "{name}"' in interface_text:
             return name
@@ -432,7 +422,7 @@ def configure_after_wipe(
     require_valid_config(conf_lines, declaration_path)
     run_lines(ser, conf_lines, 60)
     run_lines(ser, ["get system status", f"show system interface {lan}", "get system poe"], 40)
-    status("DONE: FortiGate wiped and bench-configured (10.0.40.1/24) -- ready for AP")
+    status("DONE: FortiGate configuration replay completed")
     return 0
 
 
@@ -683,6 +673,7 @@ def run_selftest(*, config_only: bool = False) -> int:
         primary_lan_name,
         render_config_lines,
         _fortigate_config,
+        _live_declaration,
     )
     recipe_checks = just_recipe_selftest_checks(
         Path(__file__).resolve().parents[2] / "just/infra.just"
@@ -730,8 +721,8 @@ def usage_error(message: str) -> int:
 def _usage_text() -> str:
     """Return the complete command-line usage without touching live inputs."""
     return (
-        "usage: fg_bringup.py {--selftest [config]|config-lint [config]|"
-        "replay-dry-run [config] [lan]|bootstrap [config]|configure [config]|"
+        "usage: fg_bringup.py {--selftest [config]|config-lint [path]|"
+        "replay-dry-run [path] [lan]|bootstrap|configure|"
         "login|verify|ap-inspect|ap-configure|ap-status|ap-exec [command ...]}"
     )
 
@@ -785,7 +776,7 @@ def _dispatch_offline(mode: str, args: list[str]) -> int | None:
 def _live_arg_count_valid(mode: str, argument_count: int) -> bool:
     """Return whether a known live mode has a safe argument shape."""
     if mode in {"bootstrap", "configure"}:
-        return ARGC_MODE_ONLY <= argument_count <= ARGC_WITH_PATH
+        return argument_count == ARGC_MODE_ONLY
     if mode == "ap-exec":
         return argument_count >= ARGC_MODE_ONLY
     return argument_count == ARGC_MODE_ONLY
@@ -841,23 +832,17 @@ def _live_argument_error(mode: str, argument_count: int) -> int | None:
     if _live_arg_count_valid(mode, argument_count):
         return None
     if mode in {"bootstrap", "configure"}:
-        return usage_error(f"{mode} accepts at most one config path")
+        return usage_error(f"{mode} reads its declaration from RA8_FORTIGATE_CONF")
     return usage_error(f"{mode} accepts no arguments")
 
 
 def _live_declaration(mode: str, args: list[str]) -> tuple[Path, list[str]]:
     """Load and validate the declaration before any live dependency is used."""
-    declaration_path = DEFAULT_CONF
     if mode not in {"bootstrap", "configure"}:
-        return declaration_path, []
-    path_argc = ARGC_WITH_PATH - 1
-    if len(args) == path_argc:
-        declaration_path = Path(args[1])
-    declaration_text = declaration_path.read_text(encoding="ascii")
-    if "# HISTORICAL CONFIGURATION: DO NOT APPLY." in declaration_text:
-        raise ValueError(
-            "the tracked FortiGate declaration is historical and must not be replayed"
-        )
+        return DEFAULT_CONF, []
+    declaration_path = private_config_path()
+    if declaration_path is None or not declaration_path.is_file():
+        raise ValueError("private FortiGate declaration is missing; set RA8_FORTIGATE_CONF")
     return declaration_path, read_valid_config(declaration_path)
 
 

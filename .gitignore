@@ -29,6 +29,7 @@
 # same hazard as the line above applies: the file lands at the repository
 # root of whoever ran the gate by hand, and must not ride into a commit.
 /macos-host.log
+/infra/network/fortigate-bench.conf
 /build-*/
 /build_*/
 /cmake-build-*/
