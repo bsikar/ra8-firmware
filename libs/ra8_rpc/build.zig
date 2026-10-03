@@ -34,6 +34,9 @@ pub fn build(b: *std.Build) void {
         "tests/link_test.zig",
         "tests/pending_test.zig",
         "tests/session_test.zig",
+        "tests/queue_transport_test.zig",
+        "tests/queue_session_test.zig",
+        "tests/queue_fuzz_test.zig",
         "tests/fuzz_test.zig",
     };
     for (roots) |root| {

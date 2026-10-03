@@ -23,6 +23,8 @@ pub const Envelope = envelope.Envelope;
 
 pub const Transport = @import("transport.zig").Transport;
 pub const Loopback = @import("loopback.zig").Loopback;
+pub const Queue = @import("queue.zig").Queue;
+pub const QueueTransport = @import("queue_transport.zig").QueueTransport;
 pub const Pending = @import("pending.zig").Pending;
 pub const Client = @import("client.zig").Client;
 pub const Server = @import("server.zig").Server;

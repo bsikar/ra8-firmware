@@ -12,6 +12,7 @@ const Blob = messages.Blob;
 
 comptime {
     _ = @import("messages.zig");
+    _ = @import("mock_queue.zig");
     _ = @import("service.zig");
 }
 

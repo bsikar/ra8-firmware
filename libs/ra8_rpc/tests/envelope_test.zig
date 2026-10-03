@@ -12,6 +12,7 @@ const Env = messages.Env;
 
 comptime {
     _ = @import("messages.zig");
+    _ = @import("mock_queue.zig");
     _ = @import("service.zig");
 }
 

@@ -8,6 +8,9 @@
     "tests/link_test.zig",
     "tests/pending_test.zig",
     "tests/session_test.zig",
+    "tests/queue_transport_test.zig",
+    "tests/queue_session_test.zig",
+    "tests/queue_fuzz_test.zig",
     "tests/fuzz_test.zig"
   ],
   "covered_sources": [
@@ -18,6 +21,8 @@
     "src/link.zig",
     "src/loopback.zig",
     "src/pending.zig",
+    "src/queue.zig",
+    "src/queue_transport.zig",
     "src/ra8_rpc.zig",
     "src/server.zig",
     "src/transport.zig",
@@ -29,9 +34,13 @@
     "tests/link_test.zig",
     "tests/loopback_test.zig",
     "tests/messages.zig",
+    "tests/mock_queue.zig",
     "tests/pending_test.zig",
+    "tests/queue_fuzz_test.zig",
+    "tests/queue_session_test.zig",
+    "tests/queue_transport_test.zig",
     "tests/service.zig",
     "tests/session_test.zig"
   ],
-  "minimum_tests": 70
+  "minimum_tests": 95
 }

@@ -7,8 +7,9 @@ heap and no libc; every buffer belongs to the caller.
 
 Message sets are not in here. The firmware's app messages and the emulator's
 session messages each live with their owner and share only this library, and
-so do the transports that carry them. The one transport in this directory is
-the in-memory loopback the tests run on.
+so do the transports that touch an operating system or a wire. This directory
+holds two that touch neither: the in-memory loopback the tests run on, and a
+transport over any queue of fixed-size messages.
 
 ## The frame
 
@@ -186,7 +187,7 @@ way the rest of the firmware injects its dependencies:
 |-----------|---------------------------------------------------------------|
 | `send`    | Queue all of the bytes, or none of them and `LinkFull`        |
 | `receive` | Copy waiting bytes into the buffer; zero if there are none    |
-| `poll`    | Give the transport a turn; return how many bytes are waiting  |
+| `poll`    | Give the transport a turn; zero if no bytes are waiting       |
 
 A transport moves bytes and knows nothing about frames. It may deliver them in
 any pieces; the session reassembles them in its receive buffer. A frame longer
@@ -195,9 +196,77 @@ than that buffer is `Oversize`.
 `rpc.Loopback` joins two transports back to back over two caller-owned byte
 rings. It is what the tests run on.
 
+### Over a message queue
+
+`rpc.QueueTransport` carries the byte stream over two queues of fixed-size
+messages, one for each direction. The queue is injected as `rpc.Queue`: a
+context pointer, the message size, and a vtable of four functions.
+
+| Function  | Contract                                                     |
+|-----------|--------------------------------------------------------------|
+| `send`    | Queue one whole message without waiting, or `QueueFull`      |
+| `receive` | Take the oldest message; false if the queue is empty         |
+| `waiting` | Messages waiting to be received                              |
+| `free`    | Messages that can still be sent before the queue is full     |
+
+Nothing here names an operating system. A ThreadX queue, or any other, goes
+behind that vtable in the code that owns it.
+
+Each message is packed the same way:
+
+| Offset | Field  | Type  | Meaning                                         |
+|-------:|--------|-------|-------------------------------------------------|
+| 0      | `used` | `u16` | Bytes in use after this field, little-endian    |
+| 2      | bytes  |       | `used` bytes of the stream, then zeroes         |
+
+A write is cut into as many messages as it needs. All of them are full except
+possibly the last, which is zero-padded. A message is never sent empty.
+
+- **All or nothing.** A write that needs more messages than the queue has free
+  is `LinkFull` and sends none of them. This relies on the transport being the
+  only sender on its outgoing queue.
+- **A bad length is an error.** A message whose `used` is zero, or more than
+  the message has room for, is `BadMessage`. None of its bytes are handed on.
+  Bytes from good messages ahead of it are delivered first.
+- **Failures stick.** After `BadMessage`, after a queue reports itself gone
+  (`LinkDown`), or after a queue refuses part of a write it had room for
+  (`LinkDown`), every send and receive returns the same error until the
+  transport is reset.
+
+```zig
+var tx_message: [message_bytes]u8 = undefined;
+var rx_message: [message_bytes]u8 = undefined;
+var link = try rpc.QueueTransport.init(out_queue, in_queue, &tx_message, &rx_message);
+var client = Client.init(link.transport(), &rx, my_caps);
+```
+
+### Resetting a link
+
+Two errors cannot be recovered from in place, because the byte stream has lost
+its framing and nothing later on it can be trusted:
+
+- a transport failure that sticks, as above;
+- `Oversize` from a session's `poll`: a frame longer than the receive buffer.
+  It is refused from its header and stays refused, because the stream cannot
+  be read past a frame that was never taken in.
+
+The owner of the link brings it back. With both sides stopped:
+
+1. Empty both queues. `QueueTransport.reset()` empties the queue that end
+   receives from, drops the bytes it was holding and clears the failure; call
+   it on both ends, or flush the queues directly.
+2. Start both sessions again with `Client.init` and `Server.init`. That gives
+   each an empty receive buffer and the client an empty pending table.
+3. Fail the calls that were in flight. Their waiters will never get a
+   response, and the client no longer knows about them.
+4. Run the handshake again before any other traffic.
+
+A transport that has no `reset` of its own, such as the loopback, is replaced
+with a fresh one at step 1.
+
 ## Tests
 
-`zig build test --summary all` runs nine roots:
+`zig build test --summary all` runs twelve roots:
 
 - `codec_test`, `frame_test`, `envelope_test`: sizes, pinned numbers, and each
   refusal.
@@ -209,6 +278,12 @@ rings. It is what the tests run on.
 - `session_test`: a client and a server over loopback through calls,
   out-of-order responses, interleaved events, a full table, an unknown id, an
   unknown method and a version mismatch in each direction.
+- `queue_transport_test`, `queue_session_test`: the message packing on a
+  mocked queue, and a client and a server over two of them: frames split
+  across messages, a frame exactly one message long, a full queue, interleaved
+  events, a bad length, and the reset after each kind of failure.
+- `queue_fuzz_test`: random writes through the packing and back, and random
+  messages through the unpacking.
 - `fuzz_test`: damaged golden frames and random bytes through the decoder,
   then onto the wire of a live session towards each side. The seeded loops run
   every time; `zig build test --fuzz` drives the same properties with coverage
