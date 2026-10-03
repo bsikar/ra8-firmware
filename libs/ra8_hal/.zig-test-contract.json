@@ -17,7 +17,13 @@
     "src/internal/icu.zig",
     "tests/icu_test.zig",
     "src/internal/iwdt.zig",
-    "tests/iwdt_test.zig"
+    "tests/iwdt_test.zig",
+    "src/abi_common.zig",
+    "src/eth_abi.zig",
+    "src/canfd_abi.zig",
+    "src/layer3_switch_abi.zig",
+    "src/icu_abi.zig",
+    "src/iwdt_abi.zig"
   ],
   "minimum_tests": 28
 }
