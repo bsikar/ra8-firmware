@@ -12,9 +12,9 @@
  * the ``cmse_nonsecure_entry`` veneers in ``libs/ra8_nsc/``.
  *
  * @details
- * `SystemInit()` follows the CMSIS naming convention and runs as the
- * first C function out of reset, *before* `Reset_Handler` copies
- * .data or zeroes .bss. Its responsibilities are strictly CPU-core
+ * `SystemInit()` follows the CMSIS naming convention and runs out of
+ * reset right *after* `Reset_Handler` copies .data and zeroes .bss
+ * (see `Reset_Handler()`). Its responsibilities are strictly CPU-core
  * level -- anything peripheral-bus-side belongs in
  * `ra8_infrastructure_init()` called from `main()` after the C
  * runtime is live.
@@ -338,7 +338,7 @@ static void internal_mpu_init(void)
  * @pre Reached from SystemInit, before the SAU + BLXNS world switch.
  * @pre Global interrupts are masked (ra8_boot_disable_irq ran first).
  * @post The CPU is parked with interrupts masked; no NS code runs.
- * @post No global state is touched (safe before .data/.bss init).
+ * @post No global state is touched.
  *
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
@@ -354,9 +354,8 @@ static void internal_mpu_init(void)
  * Public entry point
  * =============================================================================
  *
- * Called from `Reset_Handler` before the .data copy and .bss zero.
- * Must therefore not touch any global variables -- everything here
- * runs on the stack and writes to CPU / SCB memory only.
+ * Called from `Reset_Handler` after the .data copy and .bss zero, which
+ * the Secure clock bring-up and the TrustZone hand-off below rely on.
  */
 
 void SystemInit(void)

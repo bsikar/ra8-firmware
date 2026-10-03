@@ -465,18 +465,18 @@ const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
 };
 
 /* =============================================================================
- * Reset handler: copy .data from MRAM to SRAM, zero .bss, call main()
+ * Reset handler: copy .data from MRAM to SRAM, zero .bss, SystemInit(), main()
  * =============================================================================
  */
 
 /**
  * @brief Enter an EK-RA8D2 firmware image after processor reset.
- * @details Clears stale low-power state, performs the core-only system setup,
- *          copies initialised data, clears BSS, and transfers control to the
- *          firmware entry point. If control returns, the handler parks the core.
+ * @details Clears stale low-power state, copies initialised data, clears BSS,
+ *          performs the system setup, and transfers control to the firmware
+ *          entry point. If control returns, the handler parks the core.
  * @pre The linker-provided data, BSS, and stack boundaries are valid.
  * @pre The processor entered through vector slot 1 with the initial MSP loaded.
- * @post C runtime storage is initialised before `main()` consumes it.
+ * @post C runtime storage is initialised before `SystemInit()` runs.
  * @post Control reaches `main()` or the terminal fallback loop.
  * @note Single-core boot entry; not thread-safe and not expected to return.
  * @since 0.1.0
@@ -489,25 +489,28 @@ void Reset_Handler(void)
    * a separate reset domain).  See libs/ra8_hal/inc/ra8_lpm_safe_boot.h. */
   ra8_lpm_safe_boot();
 
-  /* Step 1: core-level init (VTOR, FPU, caches, priority grouping,
-   * interrupts masked). Runs before we touch .data or .bss so it
-   * must not read or write any global variables. */
-  SystemInit();
-
-  /* Step 2: copy initialized data from flash/MRAM to SRAM. */
+  /* Step 1: copy initialized data from flash/MRAM to SRAM. The C runtime is
+   * set up BEFORE SystemInit() because the TrustZone variants of SystemInit()
+   * run ra8_cgc_init() and ra8_trustzone_init(), and the latter BLXNS-es into
+   * the Non-Secure image without returning. Run after SystemInit(), as in the
+   * CMSIS order, this copy would never execute on those images and every
+   * Secure driver -- and every NSC veneer the NS side calls later -- would
+   * read uninitialised SRAM. The stack is already usable (SP is loaded from
+   * the vector table) and these loops are plain word loads/stores, so they
+   * need neither the FPU nor the caches SystemInit() enables. */
   const uint32_t* src = &g_ra8_ls_sidata;
   uint32_t*       dst = &g_ra8_ls_sdata;
   while (dst < &g_ra8_ls_edata) {
     *dst++ = *src++;
   }
 
-  /* Step 3: zero BSS. */
+  /* Step 2: zero BSS. */
   dst = &g_ra8_ls_sbss;
   while (dst < &g_ra8_ls_ebss) {
     *dst++ = 0U;
   }
 
-  /* Step 3b: copy `.sram_text` from MRAM into SRAM, for the apps that run code
+  /* Step 3: copy `.sram_text` from MRAM into SRAM, for the apps that run code
    * out of SRAM while they reprogram MRAM. Skipped (zero iterations) on every
    * app whose linker script does not define the region -- see the weak
    * declarations above. */
@@ -517,7 +520,11 @@ void Reset_Handler(void)
     *dst++ = *src++;
   }
 
-  /* Step 4: enter C. `main()` is responsible for enabling interrupts
+  /* Step 4: core-level init (VTOR, FPU, caches, priority grouping,
+   * interrupts masked). Does not return on the TrustZone hand-off images. */
+  SystemInit();
+
+  /* Step 5: enter C. `main()` is responsible for enabling interrupts
    * via `__enable_irq()` once all drivers are ready. */
   main();
   /* main() should never return; if it does, halt. */

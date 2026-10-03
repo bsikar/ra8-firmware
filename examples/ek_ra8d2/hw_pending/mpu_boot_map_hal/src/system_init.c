@@ -13,9 +13,9 @@
  * files shows exactly the raw-pokes-vs-HAL boot difference, and the two apps
  * can be compared on HIL.
  *
- * `SystemInit()` follows the CMSIS naming convention and runs as the first C
- * function out of reset, *before* `Reset_Handler` copies .data or zeroes .bss.
- * `ra8_mpu_apply_boot_map()` is safe in that window: it reads only the
+ * `SystemInit()` follows the CMSIS naming convention and runs out of reset
+ * right *after* `Reset_Handler` copies .data and zeroes .bss. Even so,
+ * `ra8_mpu_apply_boot_map()` would be safe before RAM init: it reads only the
  * driver-owned `const` region table (in `.rodata`) and MMIO, writes no
  * `.data`/`.bss`, and never logs -- exactly as this same function already calls
  * `ra8_cache_dcache_invalidate_all()` from boot.
@@ -311,10 +311,9 @@ static void internal_set_priority_grouping(void)
  * Public entry point
  * =============================================================================
  *
- * Called from `Reset_Handler` before the .data copy and .bss zero.
- * Must therefore not touch any global variables -- everything here
- * runs on the stack and writes to CPU / SCB memory only. The MPU HAL call
- * reads a `const` .rodata table only, so it is safe in this window.
+ * Called from `Reset_Handler` after the .data copy and .bss zero.
+ * Everything here runs on the stack and writes to CPU / SCB memory only. The
+ * MPU HAL call reads a `const` .rodata table only.
  */
 
 void SystemInit(void)
