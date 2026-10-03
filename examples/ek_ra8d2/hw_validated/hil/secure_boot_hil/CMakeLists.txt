@@ -32,7 +32,7 @@ ra8_add_app(
   NAME secure_boot_hil
   STACK_BYTES 32768
   DESCRIPTION "On-silicon enforcing secure boot (verify + anti-rollback via ra8_dfu_launch)"
-  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto ra8_rot ra8_rot_launch
+  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto ra8_rot_launch ra8_rot
        MRAM_LENGTH
        128K
        SRAM_TEXT
