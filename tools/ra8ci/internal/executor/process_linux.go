@@ -19,7 +19,7 @@ import (
 const (
 	waitIDProcess = 1
 	waitExited    = 4
-	waitNoWait    = 0x01000000
+	waitNoReap    = 0x01000000
 )
 
 func runCommand(ctx context.Context, program string, args []string, root string, env []string, stdout, stderr io.Writer, grace time.Duration) (commandResult, error) {
@@ -108,12 +108,12 @@ func runCommand(ctx context.Context, program string, args []string, root string,
 func observeUnreapedExit(pid int) error {
 	var info [16]uint64
 	for {
-		_, _, errno := syscall.RawSyscall6(
+		_, _, errno := syscall.Syscall6(
 			syscall.SYS_WAITID,
 			waitIDProcess,
 			uintptr(pid),
 			uintptr(unsafe.Pointer(&info[0])),
-			waitExited|waitNoWait,
+			waitExited|waitNoReap,
 			0,
 			0,
 		)
