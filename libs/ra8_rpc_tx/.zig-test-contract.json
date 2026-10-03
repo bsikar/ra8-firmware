@@ -1,0 +1,30 @@
+{
+  "test_roots": [
+    "tests/queue_test.zig",
+    "tests/session_test.zig"
+  ],
+  "covered_sources": [
+    "src/api.zig",
+    "src/kernel.zig",
+    "src/queue.zig",
+    "src/ra8_rpc_tx.zig",
+    "tests/fake_threadx.zig",
+    "tests/queue_test.zig",
+    "tests/session_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/queue.zig": [
+      "--dep",
+      "ra8_rpc",
+      "-Mroot=src/queue.zig",
+      "-Mra8_rpc=../ra8_rpc/src/ra8_rpc.zig"
+    ],
+    "src/ra8_rpc_tx.zig": [
+      "--dep",
+      "ra8_rpc",
+      "-Mroot=src/ra8_rpc_tx.zig",
+      "-Mra8_rpc=../ra8_rpc/src/ra8_rpc.zig"
+    ]
+  },
+  "minimum_tests": 21
+}
