@@ -295,9 +295,9 @@ fn addCrossApp(
     }
 
     // Every OTHER library the app names in LIBS that contributes an archive,
-    // decided by cmake/ra8_app/sources.cmake:371's rule rather than by a copy
-    // of its output: build.zig present AND the library's primary src/<lib>.c
-    // gone. See migrated_libs.zig for why the second clause is the real test.
+    // decided by cmake/ra8_app/sources.cmake's rule rather than by a copy of
+    // its output: build.zig present. See migrated_libs.zig for why a surviving
+    // primary src/<lib>.c does not keep the archive out.
     //
     // app_table.zig's zig_libraries held the OUTPUT of that rule by hand, and
     // a hand-kept copy of a derived set cannot drift loudly: eleven of twelve

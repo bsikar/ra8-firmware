@@ -369,10 +369,12 @@ macro(_ra8_app_collect_sources)
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
       set(_ra8_lib_has_archive "")
-      if(EXISTS "${_ra8_lib_path}/build.zig" AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
-        # A first-half port retains its primary C implementation for ARM.
-        # The later ARM flip removes that file; support C sources may remain.
-        # Only then link the Zig archive beside any support C objects.
+      if(EXISTS "${_ra8_lib_path}/build.zig")
+        # A library with a build.zig always links its Zig archive beside any C
+        # it still has. A port deletes each C file as its slice lands, so the
+        # remaining C calls into Zig even while src/<lib>.c survives:
+        # ra8_c6link kept that file while its priv_c6link_* helpers and handle
+        # lifecycle moved to Zig, and every app naming it lost them at link.
         list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
         set(_ra8_lib_has_archive ON)
       endif()
@@ -410,7 +412,7 @@ macro(_ra8_app_collect_sources)
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
       set(_ra8_lib_has_archive "")
-      if(EXISTS "${_ra8_lib_path}/build.zig" AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
+      if(EXISTS "${_ra8_lib_path}/build.zig")
         # The archive must be the off-target build, the Zig spelling of the
         # RA8_OFF_TARGET define the C sources below receive. Registering the
         # plain archive linked ra8_psa_crypto's on-target TF-PSA-Crypto
