@@ -958,5 +958,6 @@ test {
     _ = @import("cpu1_txm_hello_test.zig");
     _ = @import("m85_threadx_modules_test.zig");
     _ = @import("header_patch_test.zig");
+    _ = @import("ra8p1_cpu1_ld_test.zig");
     _ = @import("zig_main_test.zig");
 }
