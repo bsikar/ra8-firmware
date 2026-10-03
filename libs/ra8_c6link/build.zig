@@ -173,6 +173,25 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&b.addRunArtifact(arena_tests).step);
     addPumpTests(b, test_step, target, optimize, implementation_module);
+    addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_field_abi.zig", "tests/field_abi_test.zig", "field_abi");
+    addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_emit_abi.zig", "tests/emit_abi_test.zig", "emit_abi");
+}
+
+/// A C ABI file that reads the public header, tested on its own.
+fn addHeaderAbiTest(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    source: []const u8,
+    test_source: []const u8,
+    import_name: []const u8,
+) void {
+    const abi = b.createModule(.{ .root_source_file = b.path(source), .target = target, .optimize = optimize });
+    addHeaders(abi, b);
+    const tests = b.createModule(.{ .root_source_file = b.path(test_source), .target = target, .optimize = optimize });
+    tests.addImport(import_name, abi);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tests })).step);
 }
 
 /// The public headers the pump's ABI reads `ra8_c6link_t` from.

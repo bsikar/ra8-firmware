@@ -414,8 +414,8 @@ RA8_INTERNAL static void internal_test_tlv_rejects(void)
  * - Vector 4: length 5                          -> true (varies len only)
  * Vector 1 paired with each of 2, 3 and 4 proves the corresponding condition
  * independently decides. N+1 = 4 vectors for N=3: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_copy_mac
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_copy_str @brief Verify copy helpers behavior. @details Executes the copy helpers scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_field_abi.zig@priv_c6link_copy_mac
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_field_abi.zig@priv_c6link_copy_str @brief Verify copy helpers behavior. @details Executes the copy helpers scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_copy_helpers(void)
 {
   TEST_BEGIN("c6link binary-field copies");
@@ -536,7 +536,7 @@ RA8_INTERNAL static void internal_test_wire_literals(void)
  * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_seal
  * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_classify
  * Decisions: libs/ra8_c6link/src/internal/tlv.zig@named
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_copy_str @brief Verify mcdc wire guards behavior. @details Executes the mcdc wire guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_field_abi.zig@priv_c6link_copy_str @brief Verify mcdc wire guards behavior. @details Executes the mcdc wire guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_wire_guards(void)
 {
   TEST_BEGIN("c6link wire guard vectors");

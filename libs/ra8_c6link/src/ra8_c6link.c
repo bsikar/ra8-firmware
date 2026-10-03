@@ -49,55 +49,6 @@ static_assert((uint16_t)k_ra8_c6link_max_payload ==
                 ((uint16_t)k_ra8_c6link_frame_bytes - (uint16_t)k_ra8_c6link_header_bytes),
               "k_ra8_c6link_max_payload must be the frame size less the header");
 
-RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBinaryData* src)
-{
-  if ((dst == nullptr) || (cap == 0U)) {
-    return 0U;
-  }
-  dst[0] = '\0';
-  if ((src == nullptr) || (src->data == nullptr)) {
-    return 0U;
-  }
-
-  const size_t take = priv_c6link_field_take(src->len, cap);
-  for (size_t i = 0U; i < take; i++) {
-    dst[i] = (char)src->data[i];
-  }
-  dst[take] = '\0';
-  return (uint8_t)take;
-}
-
-RA8_PRIV bool priv_c6link_copy_mac(ra8_c6link_mac_t* dst, const ProtobufCBinaryData* src)
-{
-  if (dst == nullptr) {
-    return false;
-  }
-  *dst = (ra8_c6link_mac_t){};
-  if ((src == nullptr) || (src->data == nullptr) || !priv_c6link_field_is_mac(src->len)) {
-    return false;
-  }
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_mac_bytes; i++) {
-    dst->octet[i] = src->data[i];
-  }
-  return true;
-}
-
-RA8_PRIV void priv_c6link_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev)
-{
-  if ((link == nullptr) || (ev == nullptr)) {
-    return;
-  }
-  if (ev->kind == k_ra8_c6link_event_boot) {
-    link->boot_seen = true;
-  }
-  if (link->stats != nullptr) {
-    link->stats->events++;
-  }
-  if (link->event_cb != nullptr) {
-    link->event_cb(link->cb_ctx, ev);
-  }
-}
-
 /**
  * @brief Reject a configuration the link cannot honour.
  * @details Rejects a seam with a missing row here rather than discovering it

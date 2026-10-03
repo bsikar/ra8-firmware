@@ -11,4 +11,6 @@ comptime {
     _ = @import("ra8_c6link_abi.zig");
     _ = @import("ra8_c6link_pump_abi.zig");
     _ = @import("ra8_c6link_dispatch_abi.zig");
+    _ = @import("ra8_c6link_field_abi.zig");
+    _ = @import("ra8_c6link_emit_abi.zig");
 }

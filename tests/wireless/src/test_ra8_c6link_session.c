@@ -428,7 +428,7 @@ RA8_INTERNAL static void internal_test_mac_and_ap_info(void)
  * delivered when the co-processor sends one, and readiness is established
  * whether or not it does.
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@ra8_c6link_await_ready
- * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_emit @brief Verify events behavior. @details Executes the events scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_emit_abi.zig@priv_c6link_emit @brief Verify events behavior. @details Executes the events scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_events(void)
 {
   TEST_BEGIN("c6link announcements");
