@@ -578,6 +578,19 @@ ra8_add_zig_library(
 # root key and the anti-rollback counter. Its port left it unregistered here,
 # so test_ra8_root_of_trust could not link. libs/ra8_rot has no inc/; its
 # headers (ra8_rot.h, ra8_dfu_antirollback.h) still live in libs/ra8_dfu/inc.
+# ra8_dfu's boot, launch and program logic. The full ra8_dfu archive also
+# carries the USB host DFU driver, whose ra8_usb_host_* seam has no host
+# implementation, so the suites link the ra8_dfu_boot archive the same
+# build.zig installs without it (see libs/ra8_dfu/src/boot_root.zig).
+ra8_add_zig_library(
+  NAME
+  ra8_dfu_boot
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_dfu
+  LIBRARY_NAME
+  ra8_dfu_boot
+)
+
 ra8_add_zig_library(
   NAME
   ra8_rot
@@ -873,6 +886,7 @@ link_libraries(
   ra8_zig::ra8_ota
   ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_rot
+  ra8_zig::ra8_dfu_boot
   ra8_zig::ra8_camera_io
   ra8_zig::ra8_xml
   ra8_zig::ra8_net_policy
