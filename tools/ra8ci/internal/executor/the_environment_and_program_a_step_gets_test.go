@@ -108,6 +108,29 @@ func TestEveryPathEntryIsJudgedOnItsOwn(t *testing.T) {
 	})
 }
 
+func TestEmptyPathEntriesAreDropped(t *testing.T) {
+	root := aCheckout(t)
+	first := aCheckout(t)
+	second := aCheckout(t)
+	separator := string(os.PathListSeparator)
+	want := strings.Join([]string{first, second}, separator)
+	t.Setenv("PATH", strings.Join([]string{first, "", second, ""}, separator))
+
+	env, err := cleanEnvironment(root)
+	if err != nil {
+		t.Fatalf("empty PATH entries were refused: %v", err)
+	}
+	for _, item := range env {
+		if strings.HasPrefix(item, "PATH=") {
+			if got := strings.TrimPrefix(item, "PATH="); got != want {
+				t.Fatalf("PATH = %q, want empty entries removed: %q", got, want)
+			}
+			return
+		}
+	}
+	t.Fatal("clean environment omitted PATH")
+}
+
 // A name that resolves to something other than a runnable file is refused as
 // unreviewed, naming the program, rather than handed to the operating system to
 // fail with whatever it happens to say. Every name here carries a slash: a bare
