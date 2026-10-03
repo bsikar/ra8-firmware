@@ -69,23 +69,24 @@ endif()
 
 # The RA8 chip adapter for that same port. Unlike the port's own vectors this
 # one is *allowed* the chip headers -- bridging to them is its whole job -- and
-# it needs the fake MMIO mock, because ra8_mstp polls a hardware bit for
-# read-back and there is no real peripheral block on a host.
+# it relies on the fake MMIO mock, because ra8_mstp polls a hardware bit for
+# read-back and there is no real peripheral block on a host. ra8_core_hal
+# already compiles that mock into every host test, so only its header
+# directory is added here; adding the source again defines it twice.
 if(TARGET test_fw_if_clock_ra8)
   target_include_directories(
     test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_cgc/inc
                                  ${FW_ROOT}/tests/mocks/inc)
-  target_sources(test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
 # The RA8 GPT adapter behind the timer port. Allowed the chip headers like the
 # clock adapter, and it reads register state back through the fake memory map
-# the GPT driver tests use, plus the fake MMIO mock for the module-stop poll.
+# the GPT driver tests use, plus the fake MMIO mock (from ra8_core_hal, as
+# above) for the module-stop poll.
 if(TARGET test_fw_if_timer_ra8)
   target_include_directories(
     test_fw_if_timer_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
                                  ${FW_ROOT}/tests/mocks/inc)
-  target_sources(test_fw_if_timer_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
 # The PWM twin of that adapter, in the same library. Same includes and mock;
@@ -94,7 +95,6 @@ if(TARGET test_fw_if_pwm_ra8)
   target_include_directories(
     test_fw_if_pwm_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
                                ${FW_ROOT}/tests/mocks/inc)
-  target_sources(test_fw_if_pwm_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
 # The board's own answer to that same port: which chip instance each board-level
