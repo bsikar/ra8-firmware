@@ -11,5 +11,7 @@ pub const invalid_state: u16 = 0x104;
 pub const invalid_size: u16 = 0x105;
 pub const busy: u16 = 0x109;
 pub const not_initialized: u16 = 0x10F;
+pub const hw_timeout: u16 = 0x203;
+pub const spi_error: u16 = 0x402;
 pub const null_ptr: u16 = 0x504;
 pub const protocol_error: u16 = 0x406;

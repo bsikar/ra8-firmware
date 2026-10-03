@@ -780,7 +780,7 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
                                                   int32_t       resp);
 
 /* ==========================================================================
- * ra8_c6link_pump.c -- the transaction loop
+ * ra8_c6link_pump_abi.zig -- the transaction loop
  * ==========================================================================
  */
 
