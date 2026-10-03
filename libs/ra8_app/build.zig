@@ -99,6 +99,39 @@ pub fn build(b: *std.Build) void {
     appimg_pack_test_module.addImport("appimg_pack", appimg_pack_module);
     const appimg_pack_tests = b.addTest(.{ .root_module = appimg_pack_test_module });
 
+    // A ThreadX module binary into a signed `.ra8app` (RA8FW-474). The tool
+    // runs on the build machine whatever this library is built for.
+    const module_pack_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/module_pack.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const pack_tool = b.addExecutable(.{
+        .name = "ra8app_pack",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/ra8app_pack.zig"),
+            .target = b.graph.host,
+            .optimize = optimize,
+        }),
+    });
+    pack_tool.root_module.addImport("module_pack", b.createModule(.{
+        .root_source_file = b.path("src/internal/module_pack.zig"),
+        .target = b.graph.host,
+        .optimize = optimize,
+    }));
+    b.installArtifact(pack_tool);
+
+    var module_pack_tests: [2]*std.Build.Step.Compile = undefined;
+    inline for (.{ "tests/txm_preamble_test.zig", "tests/module_pack_test.zig" }, 0..) |path, index| {
+        const test_module = b.createModule(.{
+            .root_source_file = b.path(path),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_module.addImport("module_pack", module_pack_module);
+        module_pack_tests[index] = b.addTest(.{ .root_module = test_module });
+    }
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_appimg_tests = b.addRunArtifact(appimg_tests);
@@ -110,4 +143,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_appimg_tests.step);
     test_step.dependOn(&run_appimg_verify_tests.step);
     test_step.dependOn(&run_appimg_pack_tests.step);
+    for (module_pack_tests) |compile| test_step.dependOn(&b.addRunArtifact(compile).step);
+    // The tool must at least build on every test run.
+    test_step.dependOn(&pack_tool.step);
 }
