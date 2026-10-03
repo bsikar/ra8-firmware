@@ -71,7 +71,7 @@ them as "formats" would imply a stability guarantee none of them has.
 | Magic | What it actually is | Why no spec |
 |-------|--------------------|-------------|
 | `RBK1` | A four-byte stamp (`k_rabook_import_stamp_magic`, `0x52424B31`) the importer writes to mark a blob as having passed import | Not a container. It is one word inside a structure the same library owns end to end -- there is no independent reader, so there is no wire contract. Covered where it is used, in `rabook_import.h`. |
-| `NPUQ` | A four-character tag on the NPU quantisation helper (`s_tag` in `ra8_npu_quant.c`) | A logging/identification string in one translation unit. It is never serialised to a file. |
+| `NPUQ` | A four-character tag on the NPU quantisation helper (`tag` in `libs/ra8_hal/src/npu_quant_abi.zig`) | A logging/identification string in one translation unit. It is never serialised to a file. |
 | `SE55` | "Emu-Ethos-U55" marker in the high bits of a emulated NPU command word (`ra8_npu_fake_cmd.h`) | A *register-level convention* between the firmware and `ra8_emulator`, not an on-disk format. It exists so a host test can distinguish a emulated command from noise. Specified where it belongs, in `ra8_npu_fake_cmd.h`. |
 
 Two more four-character strings turn up in a naive grep and are **not** magics
