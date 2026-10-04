@@ -12,6 +12,7 @@
     "src/ra8_wifi_types.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
+    "tests/log_fixture.zig",
     "tests/c6link_test.zig"
   ],
   "minimum_tests": 10

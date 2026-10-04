@@ -25,12 +25,10 @@ const err_null_ptr: u16 = 0x0504;
 const join_polls: u16 = 200;
 const poll_gap_ms: u16 = 50;
 
-extern fn ra8_wifi_test_reset_log() callconv(.c) void;
-extern fn ra8_wifi_test_last_log() callconv(.c) [*]const u8;
-extern fn ra8_wifi_test_last_log_len() callconv(.c) usize;
+const log_fixture = @import("log_fixture.zig");
 
 fn lastLog() []const u8 {
-    return ra8_wifi_test_last_log()[0..ra8_wifi_test_last_log_len()];
+    return log_fixture.last();
 }
 
 /// What the mock backend did and what it should answer next, the same shape
@@ -189,7 +187,7 @@ fn reset() void {
         .gateway = 0xC0A80101,
         .dhcp_server = 0xC0A801FE,
     };
-    ra8_wifi_test_reset_log();
+    log_fixture.reset();
 }
 
 fn config() abi.Config {
