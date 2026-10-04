@@ -138,6 +138,8 @@ _pcc_python_authority() (
   /bin/bash -p scripts/dev/provision_dev_box_toolchain.sh --selftest-uv-cache-contract
   /bin/bash -p scripts/dev/setup_ansible.sh --selftest
   python3 scripts/checks/check_ansible_collections.py --selftest
+  python3 scripts/checks/check_k3s_arm64_preflight.py --selftest --ansible-selftest
+  python3 scripts/checks/check_k3s_arm64_preflight.py
   python3 scripts/dev/verify_locked_environment.py --selftest
   /bin/bash -p scripts/hil/lib/python_env.sh --selftest
   python3 scripts/checks/check_python_lock_policy.py --selftest

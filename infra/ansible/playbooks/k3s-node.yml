@@ -14,6 +14,16 @@
 - name: Provision the k3s node and its vault
   hosts: k3s_nodes
   gather_facts: true
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Refuse OpenBao outside amd64
+      ansible.builtin.assert:
+        that:
+          - ansible_architecture == 'x86_64'
+        fail_msg: >-
+          The full K3s and OpenBao play is amd64-only. Arm64 K3s support is
+          limited to the separate structural preflight until OpenBao has
+          multi-architecture image evidence.
   roles:
     - k3s_node
     - openbao
