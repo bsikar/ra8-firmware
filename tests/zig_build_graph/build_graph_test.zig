@@ -281,6 +281,27 @@ test "an app-local boot copy replaces the board copy, and only when it exists" {
     try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c", bare_copy);
 }
 
+test "a board Zig boot unit replaces the board C copy but never an app copy" {
+    const allocator = std.testing.allocator;
+
+    const zig_unit = sources.resolveBootUnit(allocator, bare_app, "secure_exception.c", false, true);
+    defer allocator.free(zig_unit.zig);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/secure_exception.zig", zig_unit.zig);
+
+    // An app-local C copy still wins over a board Zig unit (the override rule).
+    const app_unit = sources.resolveBootUnit(allocator, dual_core_app, "trustzone_init.c", true, true);
+    defer allocator.free(app_unit.c);
+    try std.testing.expectEqualStrings(
+        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/trustzone_init.c",
+        app_unit.c,
+    );
+
+    // With no Zig unit the board's C copy is linked, exactly as before.
+    const c_unit = sources.resolveBootUnit(allocator, bare_app, "nmi_exception.c", false, false);
+    defer allocator.free(c_unit.c);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/nmi_exception.c", c_unit.c);
+}
+
 test "the replaced vendored unit is matched whole, not by prefix" {
     // cmake/threadx.cmake drops exactly one upstream unit, because the project
     // ships its own copy of it. Three files in that directory share the

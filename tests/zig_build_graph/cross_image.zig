@@ -450,6 +450,12 @@ fn addCrossApp(
     if (app.zig_main) |root| {
         objects.append(zigMain(b, app, root, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
     }
+    // Board boot units written in Zig, each its own object where the C one
+    // would sit (RA8FW-616): a strong handler has to beat the vector table's
+    // weak alias, which an archive member cannot.
+    for (cross_sources.crossBootZigUnits(b, app)) |unit| {
+        objects.append(zigBootObject(b, app, unit, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+    }
     for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
@@ -669,6 +675,26 @@ fn zigMain(
     }
     const object = b.addObject(.{
         .name = b.fmt("{s}_main", .{app.name}),
+        .root_module = module,
+    });
+    return object.getEmittedBin();
+}
+
+fn zigBootObject(
+    b: *std.Build,
+    app: CrossApp,
+    unit: []const u8,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) std.Build.LazyPath {
+    const module = b.createModule(.{
+        .root_source_file = b.path(unit),
+        .target = target,
+        .optimize = optimize,
+        .unwind_tables = .none,
+    });
+    const object = b.addObject(.{
+        .name = b.fmt("{s}_{s}", .{ app.name, std.fs.path.stem(unit) }),
         .root_module = module,
     });
     return object.getEmittedBin();

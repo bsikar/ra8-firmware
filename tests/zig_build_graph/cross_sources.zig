@@ -278,6 +278,58 @@ pub fn bootSourcePath(
         std.fmt.allocPrint(allocator, "{s}/src/boot/{s}", .{ app.board, boot }) catch @panic("OOM");
 }
 
+/// Where one boot unit comes from (RA8FW-616): a C translation unit compiled
+/// at the app's bar, or a board unit written in Zig and built as its OWN
+/// object. Never the board archive: both vector tables define the handlers as
+/// weak aliases of Default_Handler, so a handler has to arrive as a strong
+/// definition in an object of its own (RA8FW-615), and an app-local C copy
+/// still has to be able to replace it.
+pub const BootUnit = union(enum) {
+    c: []const u8,
+    zig: []const u8,
+};
+
+/// The board layer's Zig spelling of one boot unit: `<board>/src/boot/<stem>.zig`.
+pub fn bootZigPath(allocator: std.mem.Allocator, app: CrossApp, boot: []const u8) []const u8 {
+    const stem = boot[0 .. boot.len - ".c".len];
+    return std.fmt.allocPrint(allocator, "{s}/src/boot/{s}.zig", .{ app.board, stem }) catch @panic("OOM");
+}
+
+/// ra8_add_app()'s order: the app's own C copy, then the board's Zig unit,
+/// then the board's C copy. Pure, like bootSourcePath; the caller probes.
+pub fn resolveBootUnit(
+    allocator: std.mem.Allocator,
+    app: CrossApp,
+    boot: []const u8,
+    app_has_copy: bool,
+    board_has_zig: bool,
+) BootUnit {
+    if (!app_has_copy and board_has_zig) return .{ .zig = bootZigPath(allocator, app, boot) };
+    return .{ .c = bootSourcePath(allocator, app, boot, app_has_copy) };
+}
+
+fn bootPathExists(b: *std.Build, path: []const u8) bool {
+    return if (b.build_root.handle.access(path, .{})) |_| true else |_| false;
+}
+
+fn resolveBoot(b: *std.Build, app: CrossApp, boot: []const u8) BootUnit {
+    const app_has_copy = bootPathExists(b, b.fmt("{s}/src/{s}", .{ app.dir, boot }));
+    const board_has_zig = bootPathExists(b, bootZigPath(b.allocator, app, boot));
+    return resolveBootUnit(b.allocator, app, boot, app_has_copy, board_has_zig);
+}
+
+/// The board boot units this app links as standalone Zig objects.
+pub fn crossBootZigUnits(b: *std.Build, app: CrossApp) []const []const u8 {
+    var units = std.ArrayList([]const u8).init(b.allocator);
+    for (cross_boot_sources) |boot| {
+        switch (resolveBoot(b, app, boot)) {
+            .zig => |path| units.append(path) catch @panic("OOM"),
+            .c => {},
+        }
+    }
+    return units.items;
+}
+
 /// Include path, in the order ra8_add_app() adds it. Order is preserved
 /// because a header shadowed by an earlier directory resolves differently, and
 /// a parity claim that only holds for one ordering is not a parity claim.
@@ -369,9 +421,11 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     if (hasCMain(app)) sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
 
     for (cross_boot_sources) |boot| {
-        const app_copy = b.fmt("{s}/src/{s}", .{ app.dir, boot });
-        const app_has_copy = if (b.build_root.handle.access(app_copy, .{})) |_| true else |_| false;
-        sources.append(bootSourcePath(b.allocator, app, boot, app_has_copy)) catch @panic("OOM");
+        switch (resolveBoot(b, app, boot)) {
+            .c => |path| sources.append(path) catch @panic("OOM"),
+            // Built as its own object in cross_image.zig, not a C unit.
+            .zig => {},
+        }
     }
 
     // Everything else the app keeps under `src/`: ra8_add_app() globs that

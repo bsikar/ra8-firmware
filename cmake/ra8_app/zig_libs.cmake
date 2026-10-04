@@ -183,6 +183,57 @@ function(
   )
 endfunction()
 
+# Build one board boot unit written in Zig (src/boot/<unit>.zig) as a
+# standalone object for THIS app's core and return its path (RA8FW-616).
+#
+# An object, never an archive member: both board vector tables define the
+# exception handlers as weak aliases of Default_Handler, and that weak
+# definition is already in the link, so a handler in an archive would never
+# be pulled in and the fault would land in Default_Handler. The rule is
+# de-duplicated per directory, not globally like the archives above: a
+# generated object is only buildable from the directory that declared it.
+function(
+  _ra8_app_zig_boot_object
+  _board_dir
+  _unit
+  _out_object
+)
+  if(NOT RA8_ZIG_EXECUTABLE)
+    message(
+      FATAL_ERROR
+        "ra8: ${_board_dir}/src/boot/${_unit} is a Zig boot unit but no zig "
+        "binary was found on PATH. Install the pinned toolchain "
+        "(just setup) before configuring an app that links it."
+    )
+  endif()
+  _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)
+  get_filename_component(_board "${_board_dir}" NAME)
+  get_filename_component(_stem "${_unit}" NAME_WE)
+  set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/boot/${_board}/${_zig_cpu}")
+  set(_object "${_dir}/${_stem}.o")
+  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}")
+  if(NOT _declared)
+    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}" ON)
+    set(_source "${_board_dir}/src/boot/${_unit}")
+    add_custom_command(
+      OUTPUT ${_object}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
+      COMMAND
+        ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build-obj ${_source} -target ${_zig_target}
+        -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE} -fno-unwind-tables --cache-dir
+        ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache -femit-bin=${_object}
+      DEPENDS ${_source}
+      COMMENT "Building Zig boot unit ${_board}/${_unit} for ${_zig_target} ${_zig_cpu}"
+      VERBATIM
+    )
+    set_source_files_properties(${_object} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+  endif()
+  set(${_out_object}
+      "${_object}"
+      PARENT_SCOPE
+  )
+endfunction()
+
 # Build one migrated library for THIS app's own target (core and float ABI
 # derived from the toolchain flags) and return the archive path. A trailing
 # OFF_TARGET is passed through to _ra8_zig_build_archive().
