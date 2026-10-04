@@ -8,7 +8,8 @@
     "tests/npu_quant_test.zig",
     "tests/glcdc_gamma_test.zig",
     "tests/elc_test.zig",
-    "tests/epaper_devinfo_test.zig"
+    "tests/epaper_devinfo_test.zig",
+    "tests/eth_coma_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -39,7 +40,10 @@
     "src/elc_abi.zig",
     "src/internal/epaper_devinfo.zig",
     "tests/epaper_devinfo_test.zig",
-    "src/epaper_devinfo_abi.zig"
+    "src/epaper_devinfo_abi.zig",
+    "src/internal/eth_coma.zig",
+    "tests/eth_coma_test.zig",
+    "src/eth_coma_abi.zig"
   ],
-  "minimum_tests": 51
+  "minimum_tests": 60
 }
