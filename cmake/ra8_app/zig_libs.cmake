@@ -209,20 +209,35 @@ function(
   _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)
   get_filename_component(_board "${_board_dir}" NAME)
   get_filename_component(_stem "${_unit}" NAME_WE)
-  set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/boot/${_board}/${_zig_cpu}")
+  # The unit reads `@import("boot_options")`, so the object is also keyed on
+  # what that module says: one build per TrustZone setting (RA8FW-622). The
+  # Zig graph writes the same fields from cross_sources.BootOptions.
+  if(RA8_TRUSTZONE_ENABLE)
+    set(_tz tz)
+    set(_tz_zig true)
+  else()
+    set(_tz notz)
+    set(_tz_zig false)
+  endif()
+  set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/boot/${_board}/${_zig_cpu}/${_tz}")
   set(_object "${_dir}/${_stem}.o")
-  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}")
+  set(_options "${_dir}/boot_options.zig")
+  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}")
   if(NOT _declared)
-    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}" ON)
+    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}" ON)
+    file(WRITE "${_options}" "pub const trust_zone: bool = ${_tz_zig};\n")
     set(_source "${_board_dir}/src/boot/${_unit}")
+    set(_module_flags -target ${_zig_target} -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE}
+                      -fno-unwind-tables
+    )
     add_custom_command(
       OUTPUT ${_object}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
       COMMAND
-        ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build-obj ${_source} -target ${_zig_target}
-        -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE} -fno-unwind-tables --cache-dir
+        ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build-obj ${_module_flags} --dep
+        boot_options -Mroot=${_source} ${_module_flags} -Mboot_options=${_options} --cache-dir
         ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache -femit-bin=${_object}
-      DEPENDS ${_source}
+      DEPENDS ${_source} ${_options}
       COMMENT "Building Zig boot unit ${_board}/${_unit} for ${_zig_target} ${_zig_cpu}"
       VERBATIM
     )
