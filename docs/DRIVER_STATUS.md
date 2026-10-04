@@ -48,7 +48,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_acmphs` | 0 | 1 | 12 | 3 | 1 |
 | `ra8_adc` | 2 | 1 | 20 | 5 | 2 |
 | `ra8_agt` | 1 | 1 | 11 | 2 | 3 |
-| `ra8_bkup` | 2 | 1 | 23 | 2 | 1 |
+| `ra8_bkup` | 1 | 1 | 23 | 2 | 1 |
 | `ra8_ble` | 1 | 1 | 11 | 1 | 1 |
 | `ra8_bscan` | 0 | 1 | 6 | 1 | 1 |
 | `ra8_cac` | 0 | 1 | 9 | 1 | 1 |
