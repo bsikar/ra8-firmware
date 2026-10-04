@@ -12,8 +12,8 @@ could not tell which third of it was true.
 
 So the page is DERIVED now, and it derives only what the tree can answer.
 
-**A driver is a source family, not a file.** ``libs/ra8_hal/src/ra8_ceu.c``,
-``ra8_ceu_init_regs.c`` and the headers ``ra8_ceu.h`` / ``ra8_ceu_api.h`` /
+**A driver is a source family, not a file.** ``libs/ra8_hal/src/ra8_ceu.c``
+and the headers ``ra8_ceu.h`` / ``ra8_ceu_api.h`` /
 ``ra8_ceu_types.h`` are one driver, ``ra8_ceu``. The family root is the shortest
 base name no other base name is a prefix of, matched at an underscore boundary
 so ``ra8_etha`` stays separate from ``ra8_eth``. Keying on the header stem
@@ -272,7 +272,7 @@ parity, whether a driver has run on real silicon, when it was last audited -- is
 written down nowhere the generator can read, so it is not guessed at here. That
 belongs in the [issue tracker](https://github.com/bsikar/ra8-firmware/issues).
 
-A driver is a source FAMILY: `ra8_ceu.c` and `ra8_ceu_init_regs.c`, with the
+A driver is a source FAMILY: `ra8_ceu.c`, with the
 headers `ra8_ceu.h`, `ra8_ceu_api.h` and `ra8_ceu_types.h`, are one row. The
 family root is the shortest header name no other is a prefix of, matched at an
 underscore boundary so `ra8_etha` stays separate from `ra8_eth`. A source whose
