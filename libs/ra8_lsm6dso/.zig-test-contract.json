@@ -11,6 +11,7 @@
     "src/ra8_lsm6dso_bind_abi.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
+    "tests/abi_fixture.zig",
     "tests/bind_test.zig"
   ],
   "minimum_tests": 10

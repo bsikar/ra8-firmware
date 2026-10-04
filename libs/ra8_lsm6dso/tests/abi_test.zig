@@ -3,8 +3,8 @@
 //!
 //! Zig-native tests for the C ABI membrane. A canned-response mock transport
 //! stands in for the I2C / SPI bus exactly as the host C suite's mock does,
-//! and a test-only C `ra8_log_emit_error` sink lets each guard assert both the
-//! `ra8_err_t` code and the message the C emitted.
+//! and a test-only Zig `ra8_log_emit_error` sink lets each guard assert both
+//! the `ra8_err_t` code and the message the C ABI emitted.
 
 const std = @import("std");
 const testing = std.testing;
@@ -21,12 +21,10 @@ const err_null_ptr: u16 = 0x504;
 // binary substitutes its own recorder at the same link-time seam.
 // ---------------------------------------------------------------------------
 
-extern fn ra8_test_fixture_reset() void;
-extern fn ra8_test_log_count() u32;
-extern fn ra8_test_log_last() [*:0]const u8;
+const log_fixture = @import("abi_fixture.zig");
 
 fn lastLogIs(expected: []const u8) !void {
-    try testing.expectEqualStrings(expected, std.mem.span(ra8_test_log_last()));
+    try testing.expectEqualStrings(expected, std.mem.span(log_fixture.last()));
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +80,7 @@ fn mockWrite(ctx: ?*anyopaque, reg: u8, buf: ?[*]const u8, len: u32) callconv(.c
 
 fn freshBus() abi.Bus {
     mock = .{};
-    ra8_test_fixture_reset();
+    log_fixture.reset();
     return .{ .read_regs = &mockRead, .write_regs = &mockWrite, .ctx = null };
 }
 
@@ -103,7 +101,7 @@ test "init binds the transport and seeds the reset defaults" {
     try testing.expectEqual(@as(u8, 0x00), dev.accel_fs_code);
     try testing.expectEqual(@as(u8, 0x01), dev.gyro_fs_code);
     try testing.expectEqual(@as(u8, 0x00), dev.odr_code);
-    try testing.expectEqual(@as(u32, 0), ra8_test_log_count());
+    try testing.expectEqual(@as(u32, 0), log_fixture.count());
 }
 
 test "init rejects a NULL out_dev first" {
