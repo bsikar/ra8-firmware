@@ -122,7 +122,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 |---------|-----------|------------|
 | ADC_B | Analog-to-Digital Converter, version B                    | `adc.c` |
 | DAC_B | Digital-to-Analog Converter, version B                    | `ra8_dac_b.c` |
-| ACMPHS| High-Speed Analog Comparator                              | `ra8_acmphs.c` |
+| ACMPHS| High-Speed Analog Comparator                              | `internal/acmphs.zig` |
 
 ## 8. Timers, motor / power
 

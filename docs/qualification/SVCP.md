@@ -50,7 +50,7 @@ truth, while the rows below are representative trace anchors.
 
 | Test ID | Source                              | Subject under test                       |
 |--------:|-------------------------------------|------------------------------------------|
-| UT-HAL-ACMPHS-001 | `tests/misc/src/test_ra8_acmphs.c`  | `libs/ra8_hal/src/ra8_acmphs.c`            |
+| UT-HAL-ACMPHS-001 | `tests/misc/src/test_ra8_acmphs.c`  | `libs/ra8_hal/src/internal/acmphs.zig`     |
 | UT-HAL-ADC-001    | `tests/hal/src/test_ra8_adc.c`     | `libs/ra8_hal/src/adc.c`                   |
 | UT-HAL-AGT-001    | `tests/misc/src/test_ra8_agt.c`     | `libs/ra8_hal/src/ra8_agt.c`               |
 | UT-HAL-BKUP-001   | `tests/misc/src/test_ra8_bkup.c`    | `libs/ra8_hal/src/ra8_bkup.c`              |

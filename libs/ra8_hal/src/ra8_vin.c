@@ -49,7 +49,7 @@
  *
  * @details
  * Static storage so it cannot be modified from outside this file.
- * Matches the convention from ra8_glcdc.c and ra8_acmphs.c.
+ * Matches the convention from ra8_glcdc.c and acmphs_abi.zig.
  *
  * @note Read-only after init; safe from any context.
  * @since 0.1.0

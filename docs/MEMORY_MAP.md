@@ -163,7 +163,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | ADC_B      | `0x40338000`| FSP R_ADC_B0_BASE     | `adc.c`           |
 | DAC_B0     | `0x40233000`| FSP R_DAC_B0_BASE     | `ra8_dac_b.c`      |
 | DAC_B1     | `0x40233100`| FSP R_DAC_B1_BASE     | `ra8_dac_b.c`      |
-| ACMPHS0    | `0x40236000`| Hi-speed comparator   | `ra8_acmphs.c`     |
+| ACMPHS0    | `0x40236000`| Hi-speed comparator   | `internal/acmphs.zig` |
 
 ### 2.5 Crypto and external flash
 
