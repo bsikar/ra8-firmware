@@ -3,7 +3,7 @@
  * @brief Unit tests for the MIPI D-PHY observers, pure helpers and dual mode
  *
  * @details
- * Covers the surface implemented in ``libs/ra8_hal/src/ra8_mipi_phy_ops.c``:
+ * Covers the surface implemented in ``libs/ra8_hal/src/mipi_phy_ops_abi.zig``:
  * the derived lifecycle / mode observers, the decoded DPHYSFR snapshot, the
  * PLL-frequency and line-rate arithmetic, the dry-run timing lookup and the
  * dual-mode arbitration shadow. Every prototype exercised here had no
