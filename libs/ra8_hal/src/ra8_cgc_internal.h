@@ -11,7 +11,7 @@
  *                         wait states, SCICLK) plus runtime reconfigure and
  *                         oscillation-stop detection.
  *  - `ra8_cgc_usb.c`    -- PLL2 bring-up and the USB-FS / USB-HS clock paths.
- *  - `ra8_cgc_eswclk.c` -- the Ethernet-switch (ESWCLK / ESWPHYCLK) path.
+ *  - `cgc_eswclk_abi.zig` -- the Ethernet-switch (ESWCLK / ESWPHYCLK) path.
  *
  * Any symbol referenced by more than one of those units is declared here so
  * there is exactly one definition and no implicit cross-TU reference. The
@@ -122,7 +122,7 @@ RA8_PRIV ra8_err_t priv_ra8_cgc_wait_oscsf_clear(uint8_t bit);
  * under a PRCR-CGC unlock window (HOCOCR IS PRCR-protected; writes outside
  * the window are silently dropped) and then waits OSCSF.HOCOSF outside the
  * PRCR window (read-only). Defined in `ra8_cgc_usb.c` and reused by
- * `ra8_cgc_eswclk.c`.
+ * `cgc_eswclk_abi.zig` (RA8FW-584).
  *
  * @return ::ra8_err_t error code.
  * @retval k_ra8_ok HOCO running, OSCSF.HOCOSF asserted.
