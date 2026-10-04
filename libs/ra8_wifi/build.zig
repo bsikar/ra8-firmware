@@ -78,12 +78,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     abi_test_module.addImport("abi", abi_module);
-    abi_test_module.addIncludePath(b.path("../ra8_core/inc"));
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
-    abi_tests.addCSourceFile(.{
-        .file = b.path("tests/log_fixture.c"),
-        .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },
-    });
 
     const c6link_test_module = b.createModule(.{
         .root_source_file = b.path("tests/c6link_test.zig"),
