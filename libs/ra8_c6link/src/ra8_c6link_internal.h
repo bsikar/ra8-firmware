@@ -742,6 +742,38 @@ typedef struct ra8_c6link_take_ctx {
 priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len);
 
 /**
+ * @brief Decode one announcement and hand it to the link's callback.
+ *
+ * @details
+ * One switch over the four announcements this facade models: boot,
+ * station-connected, station-disconnected and the argument-free Wi-Fi event.
+ * Everything else the protocol defines returns before a record is built.
+ * Implemented in Zig (`ra8_c6link_event_abi.zig`).
+ *
+ * @param[in,out] link Open handle; null emits nothing.
+ * @param[in] msg_v Decoded `Rpc` whose `msg_type` is `Event`; null emits
+ *        nothing.
+ *
+ * @return Nothing.
+ *
+ * @pre @p msg_v is still owned by the decoder and its arena is live.
+ * @pre @p link is open.
+ * @post A modelled announcement was passed to ::priv_c6link_emit exactly once.
+ * @post An unmodelled announcement changed no link state.
+ *
+ * @note Not thread-safe; runs inside the pump.
+ *
+ * @par Example:
+ * @code
+ * priv_c6link_rpc_event(link, msg);
+ * @endcode
+ *
+ * @see priv_c6link_emit
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_c6link_rpc_event(ra8_c6link_t* link, const void* msg_v);
+
+/**
  * @brief Map a co-processor result code onto an ra8 error, recording it.
  *
  * @details
