@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // The self-test proves this gate still reads what it claims to read, and it
@@ -33,12 +35,28 @@ func withExcludedPrefixes(t *testing.T, replacement []string) {
 	t.Cleanup(func() { excludedPrefixes = original })
 }
 
+func setMissingTempDirectory(t *testing.T) {
+	t.Helper()
+	blocked := t.TempDir()
+	if err := testprivatefile.DenyDirectoryCreate(blocked); err != nil {
+		t.Fatalf("denying temporary-directory creation: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := testprivatefile.RestoreDirectory(blocked); err != nil {
+			t.Errorf("restoring temporary-directory ACL: %v", err)
+		}
+	})
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, blocked)
+	}
+}
+
 // The fixtures are staged under the system temporary directory. A box that
 // cannot give the gate one has to be told apart from a gate that failed its
 // own checks, so the refusal names the staging step.
 func TestASelfTestThatCannotStageItsFixturesSaysSo(t *testing.T) {
 	root := plantRepo(t, "1.4.0", firstParty)
-	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "no-such-directory"))
+	setMissingTempDirectory(t)
 
 	got := gate(t, root, "--selftest")
 	if got.code != 2 || got.stdout != "" {
@@ -117,7 +135,7 @@ func TestTheVersionIsReadBeforeAnyFixtureIsStaged(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "VERSION")); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "no-such-directory"))
+	setMissingTempDirectory(t)
 
 	got := gate(t, root, "--selftest")
 	if got.code != 2 || !strings.Contains(got.stderr, "VERSION") {

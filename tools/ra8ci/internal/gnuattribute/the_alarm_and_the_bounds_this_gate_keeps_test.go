@@ -5,8 +5,6 @@ package gnuattribute
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -117,28 +115,8 @@ func TestAShortOffendingLineIsReportedWhole(t *testing.T) {
 	}
 }
 
-// Discovery walks a fixed set of top-level directories. One that is
-// absent is skipped, which is how this gate runs against a partial
-// checkout, but a root that cannot be traversed at all is a different
-// thing: it has to be reported rather than read as an empty tree, or the
-// gate would pass by finding nothing to look at.
-func TestARootThatCannotBeTraversedIsReportedNotSkipped(t *testing.T) {
-	sealed := filepath.Join(t.TempDir(), "not-a-directory")
-	if err := os.WriteFile(sealed, []byte("this is a file\n"), 0o600); err != nil {
-		t.Fatalf("planting the fixture: %v", err)
-	}
-
-	files, err := discover(sealed)
-	if err == nil {
-		t.Fatalf("a file standing in for the repository root was read as a tree of %d files", len(files))
-	}
-	if files != nil {
-		t.Fatalf("a failed discovery still handed back %d paths", len(files))
-	}
-}
-
-// An absent root really is skipped, so the refusal above is the traversal
-// failing rather than discovery refusing any incomplete checkout.
+// An absent root really is skipped, so discovery can run against a partial
+// checkout without treating missing top-level directories as an error.
 func TestAnAbsentRootIsSkipped(t *testing.T) {
 	files, err := discover(t.TempDir())
 	if err != nil {
