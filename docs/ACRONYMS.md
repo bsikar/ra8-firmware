@@ -73,7 +73,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | ETHA  | Ethernet adapter (gigabit MAC top-level)                  | `ra8_etha.c`, `ra8_eth.c` |
 | RMAC  | Reduced Media Access Controller (per-port MAC)            | `ra8_rmac.c`, `ra8_rmac_phy.c` |
 | GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
-| MFWD  | MAC ForWarDing engine                                     | `ra8_eth_mfwd.c` |
+| MFWD  | MAC ForWarDing engine                                     | `eth_mfwd_abi.zig`|
 | ESWM  | Ethernet SWitch Management                                | `ra8_layer3_switch.c` |
 | GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `ra8_eth_gptp.c` |
 | TSN   | Time-Sensitive Networking                                 | `ra8_tsn.c` |
