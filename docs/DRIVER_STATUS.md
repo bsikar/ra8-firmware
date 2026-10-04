@@ -88,7 +88,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
 | `ra8_lpm` | 1 | 2 | 27 | 9 | 11 |
-| `ra8_lvd` | 3 | 3 | 27 | 2 | 1 |
+| `ra8_lvd` | 2 | 3 | 27 | 2 | 1 |
 | `ra8_mipi_csi` | 2 | 4 | 46 | 2 | 0 |
 | `ra8_mipi_dsi` | 3 | 3 | 40 | 5 | 0 |
 | `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
