@@ -39,9 +39,10 @@ WHAT IT ENFORCES, PRECISELY
 
 THE DOCUMENTED LEAVES
 ---------------------
-``libs/ra8_hal/src/ra8_sram_security.c`` holds three public setters --
-``ra8_sram_set_security``, ``ra8_sram_set_ecc_security``,
-``ra8_sram_set_boundary`` -- that write one register each and document, in
+``libs/ra8_hal/src/internal/sram_security.zig`` holds the three leaves behind
+the public setters ``ra8_sram_set_security``, ``ra8_sram_set_ecc_security`` and
+``ra8_sram_set_boundary`` (``setSecurity``, ``setEccSecurity``, ``setBoundary``,
+RA8FW-554) -- each writes one register and they document, in
 ``ra8_sram.h``, a ``@pre`` that the caller already holds PRC4 open.  They are
 deliberately gate-free so a caller programming several banks pays for one
 window rather than four, and they are listed in ``ALLOWED_LEAVES`` by file and
@@ -95,9 +96,9 @@ SEARCH_ROOTS = ("libs",)
 #: caller holds the PRC4 window open.
 ALLOWED_LEAVES = frozenset(
     {
-        ("libs/ra8_hal/src/ra8_sram_security.c", "ra8_sram_set_security"),
-        ("libs/ra8_hal/src/ra8_sram_security.c", "ra8_sram_set_ecc_security"),
-        ("libs/ra8_hal/src/ra8_sram_security.c", "ra8_sram_set_boundary"),
+        ("libs/ra8_hal/src/internal/sram_security.zig", "setSecurity"),
+        ("libs/ra8_hal/src/internal/sram_security.zig", "setEccSecurity"),
+        ("libs/ra8_hal/src/internal/sram_security.zig", "setBoundary"),
     }
 )
 

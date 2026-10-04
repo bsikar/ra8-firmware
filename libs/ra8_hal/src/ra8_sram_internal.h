@@ -12,11 +12,11 @@
  *
  *  - ``ra8_sram.c``           -- lifecycle, ECC mode, status/clear,
  *                               zero-init, self-test, introspection.
- *  - ``ra8_sram_security.c``  -- TrustZone security attribution + the ECC
+ *  - ``sram_security_abi.zig``  -- TrustZone security attribution + the ECC
  *                               error callback fan-out.
  *
  * The per-(global, bank) ECC error callback table lives in
- * ``ra8_sram_security.c`` (the callback owner) and is referenced from
+ * ``sram_security_abi.zig`` (the callback owner) and is referenced from
  * ``ra8_sram.c`` only so ``ra8_sram_deinit`` can clear it on teardown.
  * These ``extern`` declarations give that one cross-TU reference a
  * single, documented home instead of a stray forward declaration.
@@ -39,7 +39,7 @@ extern "C" {
  * @brief Registered global ECC error callback (NULL until attach).
  *
  * @details
- * Defined in ``ra8_sram_security.c``. Referenced by ``ra8_sram_deinit``
+ * Defined in ``sram_security_abi.zig``. Referenced by ``ra8_sram_deinit``
  * in ``ra8_sram.c`` to drop the registration on teardown.
  *
  * @note Not thread-safe; mutate under the same single-threaded context
@@ -53,7 +53,7 @@ extern ra8_sram_error_fn_t g_sram_on_error;
  * @var g_sram_on_error_ctx
  * @brief Caller context forwarded to ``g_sram_on_error``.
  *
- * @details Defined in ``ra8_sram_security.c``.
+ * @details Defined in ``sram_security_abi.zig``.
  *
  * @note Not thread-safe.
  * @warning Do not assign directly outside the SRAM driver TUs.
@@ -65,7 +65,7 @@ extern void* g_sram_on_error_ctx;
  * @var g_sram_on_error_bank
  * @brief Per-bank ECC error callback table (NULL until attach).
  *
- * @details Defined in ``ra8_sram_security.c``.
+ * @details Defined in ``sram_security_abi.zig``.
  *
  * @note Not thread-safe.
  * @warning Do not assign directly outside the SRAM driver TUs.
@@ -77,7 +77,7 @@ extern ra8_sram_error_fn_t g_sram_on_error_bank[k_ra8_sram_bank_count];
  * @var g_sram_on_error_bank_ctx
  * @brief Per-bank context forwarded to ``g_sram_on_error_bank``.
  *
- * @details Defined in ``ra8_sram_security.c``.
+ * @details Defined in ``sram_security_abi.zig``.
  *
  * @note Not thread-safe.
  * @warning Do not assign directly outside the SRAM driver TUs.
