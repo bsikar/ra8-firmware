@@ -76,7 +76,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `ra8_lpm.c`                               |
 | DMAC0           | `0x4000A000`  | Direct Memory Access Controller, ch 0                | `ra8_dmac.c`                              |
 | DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `ra8_dma.c`                               |
-| DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `ra8_dtc.c`                               |
+| DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `dtc.zig`                                 |
 | RTC             | `0x40202000`  | Real-Time Clock                                      | `ra8_rtc.c`                               |
 | IWDT            | `0x40202200`  | Independent Watchdog                                 | `ra8_iwdt.c`                              |
 | CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `cac.zig`                                 |
