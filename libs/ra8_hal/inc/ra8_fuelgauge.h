@@ -100,7 +100,7 @@ typedef enum : uint8_t {
  *
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused; both members
- * are read in ::ra8_fuelgauge_open in `libs/ra8_hal/src/ra8_fuelgauge.c`.
+ * are read in ::ra8_fuelgauge_open in `libs/ra8_hal/src/internal/fuelgauge.zig`.
  *
  * @invariant Whatever `bus.ctx` references out-lives the opened handle.
  *
