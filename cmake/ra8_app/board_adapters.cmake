@@ -30,7 +30,7 @@ macro(_ra8_app_board_adapter_sources)
     list(APPEND _ra8_board_adapter_zig "if|${RA8_REPO_ROOT}/libs/if")
   endif()
   # The GPT timer and PWM adapters travel with the board for the same reason:
-  # ra8_board_ek_ra8d2_gpt_profile.c (RA8FW-299) binds them, so every board app
+  # the board GPT profile (RA8FW-299, Zig since RA8FW-611) binds them, so every board app
   # needs libs/if_ra8_gpt and the two ports' facades. On zig/dev all of it is
   # Zig: libs/if_ra8_gpt has no C left, and fw_if_timer.c / fw_if_pwm.c became
   # libs/if/src/fw_if_{timer,pwm}_abi.zig, already in the "if" archive above.
@@ -49,7 +49,7 @@ macro(_ra8_app_board_adapter_includes)
   if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc")
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc)
   endif()
-  # And the GPT adapters' header, which the board's gpt_profile.c includes.
+  # And the GPT adapters' header, which the board's gpt_profile.h includes.
   if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_gpt/inc")
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/if_ra8_gpt/inc)
   endif()
