@@ -12,6 +12,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // Every Terraform command the control plane runs goes through one session and
@@ -173,7 +176,7 @@ func TestInitRunsThePinnedCommandInTheSourceEnvironment(t *testing.T) {
 	// exactly what the session handed it.
 	handed := make([]string, 0, len(session.environment))
 	for _, entry := range strings.Split(recorder.recorded(t, "env"), "\n") {
-		if strings.HasPrefix(entry, "PWD=") {
+		if strings.HasPrefix(entry, "PWD=") || strings.HasPrefix(entry, "SYSTEMROOT=") {
 			continue
 		}
 		handed = append(handed, entry)
@@ -265,12 +268,12 @@ func TestAPlanIsBoundToOneOperationAndItsOwnDigest(t *testing.T) {
 	if digest != hex.EncodeToString(sum[:]) {
 		t.Fatalf("digest %q is not the saved plan's own digest", digest)
 	}
-	info, err := os.Lstat(planFile)
+	_, err = os.Lstat(planFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("saved plan mode %v want 0600", info.Mode().Perm())
+	if err := privatefile.Check(planFile); err != nil {
+		t.Fatalf("saved plan is not private: %v", err)
 	}
 	got := strings.Join(recorder.arguments(t), " ")
 	want := "plan -input=false -no-color -lock-timeout=30s -var-file=" + variableFile + " -out=" + planFile
@@ -339,6 +342,9 @@ func TestAPlanIsRefusedBeforeTerraformRuns(t *testing.T) {
 		session := recorder.session(t)
 		variableFile := filepath.Join(session.workspace, "runner.tfvars.json")
 		if err := os.WriteFile(variableFile, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := testprivatefile.OtherUsersReadable(variableFile); err != nil {
 			t.Fatal(err)
 		}
 		_, _, err := session.Plan(context.Background(), mustProvisionID(t), variableFile, false)

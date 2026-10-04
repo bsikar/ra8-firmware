@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -116,7 +117,7 @@ func (keys *SSHAccessStore) Remove(reservationID string) error {
 		return nil
 	}
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 ||
-		info.Mode().Perm()&0o077 != 0 {
+		privatefile.Check(file) != nil {
 		return errors.New("refusing to remove an unsafe SSH key file")
 	}
 	if err := os.Remove(file); err != nil {
@@ -132,7 +133,7 @@ func loadSSHAccessKey(file, reservationID string) (SSHAccessKey, error) {
 	}
 	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 ||
 		info.Size() < 1 || info.Size() > maxSSHPrivateKeyBytes ||
-		info.Mode().Perm()&0o077 != 0 {
+		privatefile.Check(file) != nil {
 		return SSHAccessKey{}, errors.New("reservation SSH key violates private-file policy")
 	}
 	handle, err := os.Open(file)
@@ -142,7 +143,7 @@ func loadSSHAccessKey(file, reservationID string) (SSHAccessKey, error) {
 	opened, err := handle.Stat()
 	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) ||
 		opened.Size() != info.Size() || opened.Size() < 1 || opened.Size() > maxSSHPrivateKeyBytes ||
-		opened.Mode().Perm()&0o077 != 0 {
+		privatefile.CheckFile(handle) != nil {
 		_ = handle.Close()
 		return SSHAccessKey{}, errors.New("reservation SSH key changed or violates private-file policy")
 	}

@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 // The spool is a private outbox and says so at every door it has opened so
@@ -37,6 +39,9 @@ func readRegularFile(path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("spool record %q is not a regular file", path)
 	}
+	if err := privatefile.Check(path); err != nil {
+		return nil, fmt.Errorf("spool record %q is not private: %w", path, err)
+	}
 	return os.ReadFile(path)
 }
 
@@ -58,6 +63,9 @@ func syncReceiptPresent(path string) (bool, error) {
 	}
 	if !info.Mode().IsRegular() {
 		return false, fmt.Errorf("sync receipt %q is not a regular file", path)
+	}
+	if err := privatefile.Check(path); err != nil {
+		return false, fmt.Errorf("sync receipt %q is not private: %w", path, err)
 	}
 	return true, nil
 }

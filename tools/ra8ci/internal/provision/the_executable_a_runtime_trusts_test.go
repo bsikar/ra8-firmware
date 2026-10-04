@@ -29,9 +29,9 @@ func trustedProbeScript(t *testing.T, directory, body string) (string, string) {
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		t.Fatalf("prepare probe directory: %v", err)
 	}
-	path := filepath.Join(directory, "terraform")
-	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
-		t.Fatalf("write probe script: %v", err)
+	path, err := installTerraformProbe(t, directory, body)
+	if err != nil {
+		t.Fatalf("install probe fixture: %v", err)
 	}
 	digest, err := fileSHA256(path, maxTerraformBinaryBytes)
 	if err != nil {
@@ -280,12 +280,21 @@ func TestTheSourceEnvironmentMayLiveInsideTheStateDirectory(t *testing.T) {
 }
 
 func TestTheVersionProbeRunsInsideTheSourceEnvironment(t *testing.T) {
-	config := trustedRuntimeConfig(t)
+	root := t.TempDir()
+	environment := filepath.Join(root, "environment")
+	if err := os.MkdirAll(environment, 0o700); err != nil {
+		t.Fatalf("prepare source environment: %v", err)
+	}
 	record := filepath.Join(t.TempDir(), "probe-directory")
 	body := "#!/bin/sh\npwd > '" + record + "'\nprintf '%s' '{\"terraform_version\":\"" +
 		trustedProbeVersion + "\"}'\n"
-	binary, digest := trustedProbeScript(t, filepath.Dir(config.BinaryPath), body)
-	config.BinaryPath, config.BinarySHA256 = binary, digest
+	binary, digest := trustedProbeScript(t, filepath.Join(root, "bin"), body)
+	config := TerraformConfig{
+		BinaryPath: binary, BinarySHA256: digest, Version: trustedProbeVersion,
+		EnvironmentDirectory: environment,
+		StateDirectory:       filepath.Join(root, "state"),
+		PluginCacheDirectory: filepath.Join(root, "cache"),
+	}
 	trustedRuntime(t, config)
 	observed, err := os.ReadFile(record)
 	if err != nil {

@@ -31,7 +31,7 @@ func TestCheckRequiresOwnerOnlyModeOnUnix(t *testing.T) {
 	}
 }
 
-func TestCheckRefusesDirectories(t *testing.T) {
+func TestCheckEnforcesDirectoryPrivacy(t *testing.T) {
 	if err := Check(t.TempDir()); err == nil {
 		t.Fatal("directory was accepted as a private file")
 	}

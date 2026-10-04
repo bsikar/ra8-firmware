@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -106,7 +107,7 @@ func (g *SignedBackupGate) Check(ctx context.Context, approvalID string) error {
 		return fmt.Errorf("stat signed backup attestation: %w", err)
 	}
 	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() <= 0 ||
-		info.Size() > maxBackupAttestationBytes || info.Mode().Perm()&0022 != 0 {
+		info.Size() > maxBackupAttestationBytes || privatefile.CheckNoUntrustedWrite(g.path) != nil {
 		return errors.New("backup attestation must be a bounded, non-writable regular file")
 	}
 	file, err := os.Open(g.path)
@@ -115,7 +116,8 @@ func (g *SignedBackupGate) Check(ctx context.Context, approvalID string) error {
 	}
 	defer file.Close()
 	opened, err := file.Stat()
-	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) || opened.Size() > maxBackupAttestationBytes {
+	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) ||
+		opened.Size() > maxBackupAttestationBytes || privatefile.CheckFileNoUntrustedWrite(file) != nil {
 		return errors.New("backup attestation changed while opening")
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, maxBackupAttestationBytes+1))

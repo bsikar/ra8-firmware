@@ -107,10 +107,7 @@ func TestAnAttestationPathHeldByADirectoryIsReportedAsAFailedPublication(t *test
 // and not as a missing backup.
 func TestAPgBackRestThatExitsNonZeroSignsNothing(t *testing.T) {
 	config, _ := backupMonitorFixture(t, 0o750)
-	if err := os.WriteFile(config.PgBackRestPath, []byte("#!/bin/sh\nexit 3\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(config.PgBackRestPath, 0o750); err != nil {
+	if err := rewritePgBackRestFixture(t, config.PgBackRestPath, "#!/bin/sh\nexit 3\n", 0o750); err != nil {
 		t.Fatal(err)
 	}
 	err := RefreshBackupAttestation(context.Background(), config)
@@ -131,10 +128,7 @@ func TestAPgBackRestThatExitsNonZeroSignsNothing(t *testing.T) {
 func TestAPgBackRestAnsweringAnotherStanzaSignsNothing(t *testing.T) {
 	config, _ := backupMonitorFixture(t, 0o750)
 	script := "#!/bin/sh\nprintf '[{\"name\":\"other\",\"backup\":[{\"type\":\"full\",\"timestamp\":{\"stop\":1}}]}]'\n"
-	if err := os.WriteFile(config.PgBackRestPath, []byte(script), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(config.PgBackRestPath, 0o750); err != nil {
+	if err := rewritePgBackRestFixture(t, config.PgBackRestPath, script, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	if err := RefreshBackupAttestation(context.Background(), config); err == nil {

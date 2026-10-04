@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // privateStateDirectory is a state directory the constructor will accept. A
@@ -20,6 +22,9 @@ func privateStateDirectory(t *testing.T) string {
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0o700); err != nil {
 		t.Fatal(err)
+	}
+	if err := testprivatefile.OwnerOnly(directory); err != nil {
+		t.Fatalf("protect state directory fixture: %v", err)
 	}
 	return directory
 }
@@ -46,6 +51,9 @@ func TestAdvanceRefusesToBuildOnARecordItCannotRead(t *testing.T) {
 	record := "schema_version=1\nboard_id=ek-ra8d1\nhigh_water=007\n"
 	if err := os.WriteFile(path, []byte(record), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	if err := testprivatefile.OwnerOnly(path); err != nil {
+		t.Fatalf("protect malformed state fixture: %v", err)
 	}
 	store, err := NewFileHighWater(path, "ek-ra8d1")
 	if err != nil {

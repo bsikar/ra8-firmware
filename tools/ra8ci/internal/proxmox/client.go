@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 const maxResponseBytes = 1 << 20
@@ -195,7 +196,7 @@ func loadToken(path, envName string) (string, error) {
 	var raw string
 	if path != "" {
 		info, err := os.Lstat(path)
-		if err != nil || !info.Mode().IsRegular() || info.Size() > 4096 || info.Mode().Perm()&0077 != 0 {
+		if err != nil || !info.Mode().IsRegular() || info.Size() > 4096 || privatefile.Check(path) != nil {
 			return "", fmt.Errorf("%w: token file must be private, regular, and <= 4096 bytes", ErrInvalid)
 		}
 		bytes, err := os.ReadFile(path)

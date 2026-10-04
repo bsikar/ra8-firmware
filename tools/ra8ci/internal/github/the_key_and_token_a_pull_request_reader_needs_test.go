@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // appKeyAt writes a well-formed App key where the caller wants it, at the
@@ -33,6 +35,11 @@ func appKeyAt(t *testing.T, path string, perm os.FileMode) string {
 	}
 	if err := os.Chmod(path, perm); err != nil {
 		t.Fatalf("chmod key: %v", err)
+	}
+	if perm&0o077 != 0 {
+		if err := testprivatefile.OtherUsersReadable(path); err != nil {
+			t.Fatalf("make shared-key fixture readable: %v", err)
+		}
 	}
 	return path
 }

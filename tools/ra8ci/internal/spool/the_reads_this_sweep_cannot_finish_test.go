@@ -6,8 +6,11 @@ package spool
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // Every read in this package looks at a name before it reads it, and the look
@@ -28,11 +31,28 @@ import (
 // is neither absent nor present and the sweep says so rather than guessing.
 func TestAReceiptThatCannotBeLookedAtIsNeitherAbsentNorPresent(t *testing.T) {
 	root := t.TempDir()
-	notADirectory := filepath.Join(root, "outbox")
-	if err := os.WriteFile(notADirectory, []byte("this is a file"), 0o600); err != nil {
+	if runtime.GOOS != "windows" {
+		notADirectory := filepath.Join(root, "outbox")
+		if err := os.WriteFile(notADirectory, []byte("this is a file"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		present, err := syncReceiptPresent(filepath.Join(notADirectory, "x.synced.json"))
+		if err == nil {
+			t.Fatal("a receipt that could not be looked at was answered for")
+		}
+		if present {
+			t.Fatal("a receipt that could not be looked at was read as present")
+		}
+		return
+	}
+	receipt := filepath.Join(root, "receipt.synced.json")
+	if err := os.WriteFile(receipt, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	present, err := syncReceiptPresent(filepath.Join(notADirectory, "x.synced.json"))
+	if err := testprivatefile.Unreadable(receipt); err != nil {
+		t.Fatalf("make receipt unreadable: %v", err)
+	}
+	present, err := syncReceiptPresent(receipt)
 	if err == nil {
 		t.Fatal("a receipt that could not be looked at was answered for")
 	}

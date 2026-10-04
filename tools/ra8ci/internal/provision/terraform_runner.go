@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
@@ -600,6 +601,11 @@ func writeTerraformVariables(workspace, operationID string, body []byte) (string
 	handle, err := os.OpenFile(file, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return "", errors.New("create private Terraform runner input")
+	}
+	if err := privatefile.RestrictFile(handle); err != nil {
+		_ = handle.Close()
+		_ = os.Remove(file)
+		return "", errors.New("protect private Terraform runner input")
 	}
 	written, writeErr := handle.Write(body)
 	syncErr := handle.Sync()
