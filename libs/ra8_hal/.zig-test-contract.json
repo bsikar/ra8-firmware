@@ -99,7 +99,8 @@
     "src/pwr_abi.zig",
     "src/internal/sau.zig",
     "tests/sau_test.zig",
+    "tests/ethosu_shim_test.zig",
     "src/sau_abi.zig"
   ],
-  "minimum_tests": 134
+  "minimum_tests": 140
 }
