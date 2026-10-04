@@ -2,7 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the IPC semaphore, NMI and ring functions in ra8_ipc_sync.h
-//! (RA8FW-606). ra8_ipc_send_event stays in ra8_ipc.c.
+//! (RA8FW-606). ra8_ipc_send_event stays in ra8_ipc.c. Hosted builds route
+//! IPCSEMn accesses through the ra8_fake_mmio seams (RA8FW-607).
 
 const builtin = @import("builtin");
 const common = @import("abi_common.zig");
@@ -14,12 +15,30 @@ extern fn ra8_ipc_send_event(channel: u8, event_id: u8) u16;
 
 var nmi_slot: ipc.NmiSlot = .{};
 
+/// Host C tests map IPCSEMn onto plain RAM, which cannot latch LOCK on a
+/// read or clear it on a write of 1; the ra8_fake_mmio seams model both
+/// (RA8FW-607). Freestanding builds never see this branch.
+const hosted = builtin.os.tag != .freestanding;
+const seam = struct {
+    extern fn ra8_fake_mmio_read_to_set32(reg: *volatile u32, set_mask: u32) u32;
+    extern fn ra8_fake_mmio_write1_clear32(reg: *volatile u32, w1c_mask: u32, value: u32) void;
+};
+const sem_lock: u32 = 1;
+
+fn isSem(addr: usize) bool {
+    return addr >= ipc.base and addr < ipc.semAddr(ipc.sem_count);
+}
+
 const Hw = struct {
     pub fn read32(_: Hw, addr: usize) u32 {
-        return @as(*volatile u32, @ptrFromInt(addr)).*;
+        const reg: *volatile u32 = @ptrFromInt(addr);
+        if (hosted and isSem(addr)) return seam.ra8_fake_mmio_read_to_set32(reg, sem_lock);
+        return reg.*;
     }
     pub fn write32(_: Hw, addr: usize, value: u32) void {
-        @as(*volatile u32, @ptrFromInt(addr)).* = value;
+        const reg: *volatile u32 = @ptrFromInt(addr);
+        if (hosted and isSem(addr)) return seam.ra8_fake_mmio_write1_clear32(reg, sem_lock, value);
+        reg.* = value;
     }
     /// DMB 0xF on target, nothing off target (ra8_ipc_sync.h).
     pub fn barrier(_: Hw) void {
