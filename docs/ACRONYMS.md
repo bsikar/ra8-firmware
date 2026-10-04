@@ -20,9 +20,9 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | LVD   | Low-Voltage Detection                                   | `ra8_lvd.c` |
 | MSTP  | Module-Stop control (clock-gating)                      | `ra8_mstp.c` |
 | OFS   | Option-Function Select (boot configuration words)       | `ra8_ofs.c` |
-| PWR   | Power-management glue                                   | `ra8_pwr.c` |
+| PWR   | Power-management glue                                   | `pwr.zig`   |
 | RESET | Reset controller (RSTSR1/2 + cold/warm flags)           | `ra8_reset.c` |
-| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `ra8_pwr.c`, `ra8_reset.c`, `ra8_vreg.c`, `ra8_lpm.c`) |
+| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `ra8_reset.c`, `ra8_vreg.c`, `ra8_lpm.c`) |
 | VBATT | Battery-backup domain (VBATT pin / VBTBKR registers)    | `ra8_bkup.c` |
 | VREG  | Internal voltage regulator                              | `ra8_vreg.c` |
 | BKUP  | Battery-backup function (alias for VBATT block)         | `ra8_bkup.c` |

@@ -21,7 +21,8 @@
     "tests/mpc_test.zig",
     "tests/doc_test.zig",
     "tests/cac_test.zig",
-    "tests/epaper_geom_test.zig"
+    "tests/epaper_geom_test.zig",
+    "tests/pwr_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -92,7 +93,10 @@
     "src/cac_abi.zig",
     "src/internal/epaper_geom.zig",
     "tests/epaper_geom_test.zig",
-    "src/epaper_geom_abi.zig"
+    "src/epaper_geom_abi.zig",
+    "src/internal/pwr.zig",
+    "tests/pwr_test.zig",
+    "src/pwr_abi.zig"
   ],
-  "minimum_tests": 124
+  "minimum_tests": 129
 }
