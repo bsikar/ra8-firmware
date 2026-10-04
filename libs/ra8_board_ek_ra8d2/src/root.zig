@@ -6,7 +6,9 @@
 //! reached through there, not from here.
 
 pub const abi = @import("ra8_board_ek_ra8d2_abi.zig");
+pub const gpt_abi = @import("ra8_board_ek_ra8d2_gpt_abi.zig");
 
 comptime {
     _ = abi;
+    _ = gpt_abi;
 }

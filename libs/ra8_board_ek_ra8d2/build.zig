@@ -235,6 +235,12 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "gpt_profile",
+            .source = "src/internal/gpt_profile.zig",
+            .root = "tests/gpt_profile_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "console_stream",
             .source = "src/internal/console_stream.zig",
             .root = "tests/console_stream_test.zig",
