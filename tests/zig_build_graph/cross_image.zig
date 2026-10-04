@@ -693,6 +693,12 @@ fn zigBootObject(
         .optimize = optimize,
         .unwind_tables = .none,
     });
+    const options = b.addOptions();
+    const values = cross_sources.bootOptions(app);
+    inline for (std.meta.fields(cross_sources.BootOptions)) |field| {
+        options.addOption(field.type, field.name, @field(values, field.name));
+    }
+    module.addOptions("boot_options", options);
     const object = b.addObject(.{
         .name = b.fmt("{s}_{s}", .{ app.name, std.fs.path.stem(unit) }),
         .root_module = module,

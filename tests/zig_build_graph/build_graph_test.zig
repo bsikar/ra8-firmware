@@ -984,3 +984,9 @@ test {
     _ = @import("ra8p1_cpu1_ld_test.zig");
     _ = @import("zig_main_test.zig");
 }
+
+test "a Zig boot unit learns TrustZone from its app and nothing else" {
+    try std.testing.expect(sources.bootOptions(trust_zone_app).trust_zone);
+    try std.testing.expect(!sources.bootOptions(bare_app).trust_zone);
+    try std.testing.expectEqual(1, std.meta.fields(sources.BootOptions).len);
+}

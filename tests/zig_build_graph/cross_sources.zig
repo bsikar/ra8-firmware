@@ -290,6 +290,15 @@ pub const BootUnit = union(enum) {
 };
 
 /// The board layer's Zig spelling of one boot unit: `<board>/src/boot/<stem>.zig`.
+/// What a Zig boot unit learns about the app it is linked into, as
+/// `@import("boot_options")`. CMake's `_ra8_app_zig_boot_object` writes the
+/// same fields from the app's RA8_TRUSTZONE_ENABLE (RA8FW-622).
+pub const BootOptions = struct { trust_zone: bool };
+
+pub fn bootOptions(app: CrossApp) BootOptions {
+    return .{ .trust_zone = app.trust_zone };
+}
+
 pub fn bootZigPath(allocator: std.mem.Allocator, app: CrossApp, boot: []const u8) []const u8 {
     const stem = boot[0 .. boot.len - ".c".len];
     return std.fmt.allocPrint(allocator, "{s}/src/boot/{s}.zig", .{ app.board, stem }) catch @panic("OOM");
