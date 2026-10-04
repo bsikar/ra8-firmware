@@ -83,7 +83,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_i2c` | 3 | 2 | 16 | 9 | 4 |
 | `ra8_i3c` | 3 | 3 | 50 | 15 | 8 |
 | `ra8_icu` | 0 | 1 | 7 | 7 | 4 |
-| `ra8_ipc` | 2 | 4 | 43 | 6 | 2 |
+| `ra8_ipc` | 1 | 4 | 43 | 6 | 2 |
 | `ra8_isr` | 1 | 1 | 9 | 11 | 200 |
 | `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
