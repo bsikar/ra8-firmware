@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -65,6 +65,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "elc", .source = "src/internal/elc.zig", .root = "tests/elc_test.zig" },
         .{ .name = "epaper_devinfo", .source = "src/internal/epaper_devinfo.zig", .root = "tests/epaper_devinfo_test.zig" },
         .{ .name = "eth_coma", .source = "src/internal/eth_coma.zig", .root = "tests/eth_coma_test.zig" },
+        .{ .name = "bscan", .source = "src/internal/bscan.zig", .root = "tests/bscan_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{

@@ -54,7 +54,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-ADC-001    | `tests/hal/src/test_ra8_adc.c`     | `libs/ra8_hal/src/adc.c`                   |
 | UT-HAL-AGT-001    | `tests/misc/src/test_ra8_agt.c`     | `libs/ra8_hal/src/ra8_agt.c`               |
 | UT-HAL-BKUP-001   | `tests/misc/src/test_ra8_bkup.c`    | `libs/ra8_hal/src/ra8_bkup.c`              |
-| UT-HAL-BSCAN-001  | `tests/misc/src/test_ra8_bscan.c`   | `libs/ra8_hal/src/ra8_bscan.c`             |
+| UT-HAL-BSCAN-001  | `tests/misc/src/test_ra8_bscan.c`   | `libs/ra8_hal/src/bscan_abi.zig`            |
 | UT-HAL-CAC-001    | `tests/misc/src/test_ra8_cac.c`     | `libs/ra8_hal/src/ra8_cac.c`               |
 | UT-HAL-CANFD-001  | `tests/hal/src/test_ra8_canfd.c`   | `libs/ra8_hal/src/ra8_canfd.c`             |
 | UT-HAL-CEU-001    | `tests/misc/src/test_ra8_ceu_capture.c`, `tests/misc/src/test_ra8_ceu_config.c` | `libs/ra8_hal/src/ra8_ceu.c`               |

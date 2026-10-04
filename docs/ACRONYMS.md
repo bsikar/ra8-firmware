@@ -165,7 +165,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| BSCAN | Boundary Scan controller                                  | `ra8_bscan.c` |
+| BSCAN | Boundary Scan controller                                  | `bscan_abi.zig`|
 | HW ERR| Hardware-Error reporter                                   | `ra8_hw_err.h` |
 | MMIO  | Memory-Mapped I/O (generic term, not a Renesas IP)        | -- |
 | NVIC  | Nested Vectored Interrupt Controller (Cortex-M core)      | (used by `ra8_icu.c`) |

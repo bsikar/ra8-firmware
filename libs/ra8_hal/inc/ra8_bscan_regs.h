@@ -30,7 +30,7 @@
  * firmware needs to validate / report the TAP configuration to a host
  * tool that drives the actual scan vectors over the four JTAG pins.
  *
- * The driver in ``ra8_bscan.c`` keeps a small CPU-side state object
+ * The driver in ``bscan_abi.zig`` keeps a small CPU-side state object
  * (initialized / not-initialized, last-instruction-loaded if the host
  * tool tells us, expected ID code) so a unit test can exercise the
  * lifecycle and constant-equivalence checks even though it cannot
