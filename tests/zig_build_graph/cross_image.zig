@@ -563,8 +563,16 @@ fn addCrossApp(
     for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
     // order CMake's link line uses.
+    // One group, so ld rescans: a Zig ABI unit lives only in its library's
+    // archive, and a board archive later on the line can be the first to
+    // need it (RA8FW-560: io_expander -> ra8_mpc_set_open_drain). When its C
+    // predecessor was an app object this never came up. A rescan only
+    // resolves what is still undefined, so links that already closed pull
+    // the same members as before.
+    link.addArg("-Wl,--start-group");
     for (middleware_archives.items) |archive| link.addFileArg(archive);
     for (archives.items) |archive| link.addFileArg(archive);
+    link.addArg("-Wl,--end-group");
     link.addArg("-lgcc");
     // After -lgcc, which is where CMake puts it: target_link_libraries() in
     // the app's own CMakeLists appends to a list that already holds -lgcc, and

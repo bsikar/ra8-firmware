@@ -42,7 +42,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PWPR  | Pin Write-Protect Register (PFS unlock)                   | `gpio.c` |
 | PWPRS | Secure Pin Write-Protect Register                         | `gpio.c` |
 | PMISC | Pin Miscellaneous (contains PWPR/PWPRS)                   | `gpio.c` |
-| MPC   | Multi-function Pin Controller                             | `ra8_mpc.c` |
+| MPC   | Multi-function Pin Controller                             | `internal/mpc.zig` |
 | ELC   | Event Link Controller (peripheral-to-peripheral events)   | `elc_abi.zig` |
 | ICU   | Interrupt Controller Unit                                 | `ra8_icu.c` |
 | ISR   | Interrupt Service Routine (HAL ISR-table glue)            | `ra8_isr.c` |

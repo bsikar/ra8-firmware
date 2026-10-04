@@ -17,7 +17,8 @@
     "tests/bkup_security_test.zig",
     "tests/lpm_graphics_test.zig",
     "tests/i3c_i2c_peripheral_test.zig",
-    "tests/ether_phy_test.zig"
+    "tests/ether_phy_test.zig",
+    "tests/mpc_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -76,7 +77,10 @@
     "src/i3c_i2c_peripheral_abi.zig",
     "src/internal/ether_phy.zig",
     "tests/ether_phy_test.zig",
-    "src/ether_phy_abi.zig"
+    "src/ether_phy_abi.zig",
+    "src/internal/mpc.zig",
+    "tests/mpc_test.zig",
+    "src/mpc_abi.zig"
   ],
-  "minimum_tests": 104
+  "minimum_tests": 109
 }
