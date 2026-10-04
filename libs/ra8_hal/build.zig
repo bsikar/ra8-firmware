@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -70,6 +70,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "fuelgauge", .source = "src/internal/fuelgauge.zig", .root = "tests/fuelgauge_test.zig" },
         .{ .name = "sram_security", .source = "src/internal/sram_security.zig", .root = "tests/sram_security_test.zig" },
         .{ .name = "bkup_security", .source = "src/internal/bkup_security.zig", .root = "tests/bkup_security_test.zig" },
+        .{ .name = "lpm_graphics", .source = "src/internal/lpm_graphics.zig", .root = "tests/lpm_graphics_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{

@@ -13,6 +13,16 @@ const Fake = struct {
     }
 };
 
+/// Seed the registers the way firmware must: inside a PRC4 window.
+fn seed(b: sec.Block) void {
+    const window = prcr.open(b.prcrReg(), prcr.unlock_sar);
+    defer window.close();
+    b.ra8_bkup_bbfsar().* = 0xFFFF_FFFF;
+    b.ra8_bkup_vbrsabar().* = 0x0040;
+    b.ra8_bkup_vbrpabars().* = 0x0060;
+    b.ra8_bkup_vbrpabarns().* = 0x0080;
+}
+
 const good = sec.Config{ .bbfsar = 0x55, .saba = 0x0100, .pabas = 0x0200, .pabans = 0xFFE0 };
 
 test "apply writes all four registers and re-locks PRCR" {
@@ -52,10 +62,7 @@ test "apply names the first misaligned boundary" {
 test "get reads back with BBFSAR masked" {
     var f = Fake{};
     const b = f.block();
-    b.ra8_bkup_bbfsar().* = 0xFFFF_FFFF;
-    b.ra8_bkup_vbrsabar().* = 0x0040;
-    b.ra8_bkup_vbrpabars().* = 0x0060;
-    b.ra8_bkup_vbrpabarns().* = 0x0080;
+    seed(b);
     const got = sec.get(b);
     try std.testing.expectEqual(@as(u32, 0x7F), got.bbfsar);
     try std.testing.expectEqual(@as(u16, 0x0040), got.saba);
