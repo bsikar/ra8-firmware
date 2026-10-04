@@ -77,7 +77,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | ESWM  | Ethernet SWitch Management                                | `ra8_layer3_switch.c` |
 | GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `ra8_eth_gptp.c` |
 | TSN   | Time-Sensitive Networking                                 | `ra8_tsn.c` |
-| PHY   | Physical-layer transceiver (Ethernet PHY)                 | `ra8_ether_phy.c`, `ra8_rmac_phy.c` |
+| PHY   | Physical-layer transceiver (Ethernet PHY)                 | `internal/ether_phy.zig`, `ra8_rmac_phy.c` |
 | BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `port/nimble` |
 | IPC   | Inter-Processor Communication (M85 <-> M33 mailbox)       | `ra8_ipc.c` |
 
