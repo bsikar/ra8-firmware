@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Read-only architecture eligibility check. This play does not converge K3s or
+# deploy OpenBao; the latter remains amd64-only pending multi-arch evidence.
+- name: Check Arm64 K3s host eligibility without converging a host
+  hosts: k3s_nodes
+  gather_facts: true
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Refuse unsupported K3s preflight OS or architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_architecture in ['aarch64', 'x86_64']
+          - >-
+            ansible_architecture != 'aarch64' or
+            (ansible_distribution == 'Debian' and
+             ansible_distribution_major_version == '12') or
+            (ansible_distribution == 'Ubuntu' and
+             ansible_distribution_version == '24.04')
+        fail_msg: >-
+          Arm64 K3s preflight supports Debian 12 and Ubuntu 24.04 only;
+          unsupported OS or architecture was detected.
+  tasks:
+    - name: Report supported Arm64 K3s preflight
+      ansible.builtin.debug:
+        msg: >-
+          Host is eligible for the structural K3s preflight. This check does
+          not install K3s or deploy OpenBao.
