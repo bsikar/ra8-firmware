@@ -60,6 +60,18 @@ written inside, not the window that is open when the write executes:
     still pass.  Nothing in the tree does that, and the helper itself re-locks
     only on scope exit.
 
+ZIG SOURCES (RA8FW-546)
+-----------------------
+``.zig`` files under ``libs/`` are held to the same rule.  The Zig window is
+``prcr.open(...)`` followed by a ``defer`` that closes it, the counterpart of the
+macro's scope-exit relock: every line from the ``prcr.open(`` call to the end
+of its enclosing block counts as gated.  Flagged Zig stores are
+``x.SRAMSAR = v`` / ``x.SRAMSABAR[i] = v`` (an identifier, ``]`` or ``)`` must
+precede the dot, so a ``.{ .BUSSAR = v }`` struct literal is not judged) and
+``ra8_bkup_bbfsar().* = v``.  Leaves are named by ``(path, fn)`` exactly as for
+C.  A store routed through an MMIO helper call is not seen, the same lexical
+limit the C side has.
+
 The five hand-rolled ``trustzone_init.c`` app forks are **out of scope**: they
 write PRCR_S with raw hex literals rather than the helper, and reconciling them
 against the library path is the dual-image scaffold's item (b).  Scoping this checker to ``libs/``
@@ -112,6 +124,25 @@ ACCESSOR_WRITE_RE = re.compile(
 )
 
 PROTECTED_RE = re.compile(r"\bRA8_PROTECTED_WRITE\s*\(")
+
+#: Zig ``cpscu.SRAMSAR = x``; the dot follows a name, ``]`` or ``)``.
+ZIG_MEMBER_WRITE_RE = re.compile(
+    r"[A-Za-z0-9_\])]\s*\.\s*(" + "|".join(MEMBER_REGISTERS) + r")\s*(?:\[[^\]]*\])?\s*" + _ASSIGN
+)
+
+#: Zig ``ra8_bkup_bbfsar().* = x``.
+ZIG_ACCESSOR_WRITE_RE = re.compile(
+    r"[A-Za-z_][A-Za-z0-9_]*(" + "|".join(ACCESSOR_REGISTERS) + r")\s*\(\s*\)\s*\.\*\s*" + _ASSIGN
+)
+
+#: Zig window opener: ``prcr.open(...)``, closed by a ``defer`` at scope exit.
+ZIG_PROTECTED_RE = re.compile(r"\bprcr\s*\.\s*open\s*\(")
+
+#: Zig function definition, nested or not: ``fn name(``.
+ZIG_FN_RE = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+#: Generated trees that are never first-party source.
+SKIPPED_DIRS = frozenset({".zig-cache", "zig-cache", "zig-out"})
 
 #: Attribute sequences that may precede a definition's return type.
 ATTRIBUTE_RE = re.compile(r"\[\[[^\]]*\]\]")
@@ -225,26 +256,83 @@ def enclosing_functions(text: str) -> dict[int, str]:
     return owner
 
 
-def audit_text(text: str) -> list[tuple[int, str, str]]:
+def zig_protected_lines(text: str) -> set[int]:
+    """Lines from each ``prcr.open(`` to the end of its enclosing Zig block."""
+    inside: set[int] = set()
+    for match in ZIG_PROTECTED_RE.finditer(text):
+        depth = 0
+        j = match.start()
+        while j < len(text):
+            if text[j] == "{":
+                depth += 1
+            elif text[j] == "}":
+                depth -= 1
+                if depth < 0:
+                    break
+            j += 1
+        first = text.count("\n", 0, match.start()) + 1
+        last = text.count("\n", 0, min(j, len(text) - 1)) + 1
+        inside.update(range(first, last + 1))
+    return inside
+
+
+def zig_enclosing_functions(text: str) -> dict[int, str]:
+    """Map each 1-based line to the innermost Zig ``fn`` whose body holds it."""
+    owner: dict[int, str] = {}
+    stack: list[tuple[str, int]] = []
+    depth = 0
+    pending: str | None = None
+    for idx, line in enumerate(text.split("\n"), start=1):
+        found = ZIG_FN_RE.search(line)
+        if found is not None:
+            pending = found.group(1)
+        for ch in line:
+            if ch == "{":
+                depth += 1
+                if pending is not None:
+                    stack.append((pending, depth))
+                    pending = None
+            elif ch == "}":
+                if stack and stack[-1][1] == depth:
+                    stack.pop()
+                depth = max(depth - 1, 0)
+        if pending is not None and line.rstrip().endswith(";"):
+            pending = None
+        owner[idx] = stack[-1][0] if stack else ""
+    return owner
+
+
+def audit_text(text: str, zig: bool = False) -> list[tuple[int, str, str]]:
     """Return (line, register, enclosing function) for every ungated write."""
     code = strip_comments(text)
-    gated = protected_lines(code)
-    owners = enclosing_functions(code)
+    if zig:
+        gated = zig_protected_lines(code)
+        owners = zig_enclosing_functions(code)
+        patterns = (ZIG_MEMBER_WRITE_RE, ZIG_ACCESSOR_WRITE_RE)
+    else:
+        gated = protected_lines(code)
+        owners = enclosing_functions(code)
+        patterns = (MEMBER_WRITE_RE, ACCESSOR_WRITE_RE)
     findings: list[tuple[int, str, str]] = []
     for idx, line in enumerate(code.split("\n"), start=1):
         if idx in gated:
             continue
-        match = MEMBER_WRITE_RE.search(line) or ACCESSOR_WRITE_RE.search(line)
+        match = patterns[0].search(line) or patterns[1].search(line)
         if match:
             findings.append((idx, match.group(1), owners.get(idx, "")))
     return findings
 
 
 def sources() -> list[Path]:
-    """Every C source under the search roots, sorted for stable output."""
+    """Every C and Zig source under the search roots, sorted for stable output."""
     found: list[Path] = []
     for root in SEARCH_ROOTS:
-        found.extend((REPO_ROOT / root).rglob("*.c"))
+        for pattern in ("*.c", "*.zig"):
+            found.extend(
+                path
+                for path in (REPO_ROOT / root).rglob(pattern)
+                if not SKIPPED_DIRS.intersection(path.parts)
+            )
     return sorted(found)
 
 
@@ -291,7 +379,56 @@ void apply(void)
   *ra8_bkup_vbrsabar() = cfg->saba;
 }
 """
+    zig_ungated = """
+pub fn apply(cpscu: *volatile Cpscu, sar: u32) void {
+    cpscu.SRAMSAR = sar;
+}
+"""
+    zig_gated = """
+pub fn apply(cpscu: *volatile Cpscu, off: [4]u32) void {
+    const window = prcr.open(.sar);
+    defer window.close();
+    for (off, 0..) |o, b| {
+        cpscu.SRAMSABAR[b] = o;
+    }
+}
+fn after(cpscu: *volatile Cpscu) void {
+    cpscu.BUSSAR = 0;
+}
+"""
+    zig_misc = """
+const cfg: Cpscu = .{ .BUSSAR = 0, .SRAMSAR = 1 };
+fn get(cfg: *Cfg) void {
+    // cpscu.SRAMSAR = 0; was the old code
+    cfg.bbfsar = ra8_bkup_bbfsar().*;
+    const ok = cpscu.SRAMSAR == 0;
+    _ = ok;
+}
+"""
+    zig_accessor = """
+const Unit = struct {
+    pub fn apply(v: u32) void {
+        ra8_bkup_vbrsabar().* = v;
+    }
+};
+"""
     cases = [
+        (
+            "a Zig ungated write is caught",
+            [f[1:] for f in audit_text(zig_ungated, zig=True)] == [("SRAMSAR", "apply")],
+        ),
+        (
+            "a Zig write ends its window at the block close",
+            [f[1:] for f in audit_text(zig_gated, zig=True)] == [("BUSSAR", "after")],
+        ),
+        (
+            "a Zig literal, read, compare or comment is not judged",
+            audit_text(zig_misc, zig=True) == [],
+        ),
+        (
+            "the Zig accessor form is caught in a nested fn",
+            [f[1:] for f in audit_text(zig_accessor, zig=True)] == [("vbrsabar", "apply")],
+        ),
         ("an ungated write is caught", [f[1] for f in audit_text(ungated)] == ["SRAMSAR"]),
         ("a gated write passes", audit_text(gated) == []),
         ("a read is not judged", audit_text(read_only) == []),
@@ -327,7 +464,7 @@ def main() -> int:
         rel = path.relative_to(REPO_ROOT).as_posix()
         scanned += 1
         text = path.read_text(encoding="utf-8", errors="replace")
-        for line, register, func in audit_text(text):
+        for line, register, func in audit_text(text, zig=path.suffix == ".zig"):
             if (rel, func) in ALLOWED_LEAVES:
                 allowed += 1
                 continue
@@ -345,6 +482,7 @@ def main() -> int:
             "no fault, no flag, and the attribution keeps its reset value while\n"
             "the caller reports success. That is RA8FW-254. Wrap the write:\n"
             "\n    RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar) { ... }\n"
+            "\nor in Zig: const window = prcr.open(...); defer window.close();\n"
             "\nIf the function is deliberately a gate-free leaf whose caller holds\n"
             "the window, document that as a @pre and add it to ALLOWED_LEAVES in\n"
             "this checker, so the obligation is recorded rather than lost.\n"
