@@ -79,7 +79,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `ra8_dtc.c`                               |
 | RTC             | `0x40202000`  | Real-Time Clock                                      | `ra8_rtc.c`                               |
 | IWDT            | `0x40202200`  | Independent Watchdog                                 | `ra8_iwdt.c`                              |
-| CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `ra8_cac.c`                               |
+| CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `cac.zig`                                 |
 | WDT0            | `0x40202600`  | Watchdog (M85 side)                                  | `ra8_wdt.c`                               |
 | WDT1            | `0x40202700`  | Watchdog (M33 side)                                  | `ra8_wdt.c`                               |
 | MSTP            | `0x40203000`  | Module-stop (clock-gate) registers                   | `ra8_mstp.c`                              |

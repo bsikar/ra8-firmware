@@ -15,7 +15,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
 | CGC   | Clock Generation Circuit                                | `ra8_cgc.c` |
-| CAC   | Clock-frequency Accuracy-measurement Circuit            | `ra8_cac.c` |
+| CAC   | Clock-frequency Accuracy-measurement Circuit            | `cac.zig`   |
 | LPM   | Low Power Mode controller                               | `ra8_lpm.c` |
 | LVD   | Low-Voltage Detection                                   | `ra8_lvd.c` |
 | MSTP  | Module-Stop control (clock-gating)                      | `ra8_mstp.c` |

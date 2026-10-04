@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -75,6 +75,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ether_phy", .source = "src/internal/ether_phy.zig", .root = "tests/ether_phy_test.zig" },
         .{ .name = "mpc", .source = "src/internal/mpc.zig", .root = "tests/mpc_test.zig" },
         .{ .name = "doc", .source = "src/internal/doc.zig", .root = "tests/doc_test.zig" },
+        .{ .name = "cac", .source = "src/internal/cac.zig", .root = "tests/cac_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
