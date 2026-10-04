@@ -314,15 +314,6 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_
 # as test_ra8_rsip_devsec_failclosed above.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_npu.c)
 
-# test_ra8_ethosu_shim.c drives the Arm ethos-u-core-driver -> ra8_npu
-# adapter (ra8_ethosu_shim.c), whose body -- like ra8_npu.c -- is device-gated behind
-# RA8_HAS_NPU (RA8P1-only). The shared ra8_core_hal object library is compiled for the
-# default RA8D2, so its ra8_ethosu_shim.c / ra8_npu.c are EMPTY TUs. It is registered by
-# hand below with -DRA8_DEVICE_RA8P1 (same pattern as test_ra8_npu) so live adapter +
-# driver bodies are compiled and linked; the auto-glob would build it for the RA8D2 and
-# fail to resolve the ethosu_* / ra8_npu_* API.
-list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_ethosu_shim.c)
-
 # test_ra8_npu_loader.c drives the .npub Vela-blob loader
 # (ra8_npu_loader.c), which -- like ra8_npu.c -- is device-gated behind
 # RA8_HAS_NPU (RA8P1-only) and turns a committed golden model container

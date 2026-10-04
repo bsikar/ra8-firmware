@@ -34,7 +34,7 @@
  * RA8P1-only: the whole surface is guarded behind `RA8_HAS_NPU` (defined only
  * for `-DRA8_DEVICE_RA8P1`, see `ra8_device.h`), exactly like `ra8_npu.h`. There
  * is no RA8P1 board yet, so the adapter is host-tested for the exact NPU
- * register-programming contract only (see `tests/misc/src/test_ra8_ethosu_shim.c`); a real
+ * register-programming contract only (see `libs/ra8_hal/tests/ethosu_shim_test.zig`); a real
  * Vela-compiled inference on silicon is a follow-up on the RA8P1 NPU epic. This
  * shim intentionally does NOT enable the dormant TFLite-micro C++ stack
  * (`RA8_USE_TFLITE_MICRO`, OFF by default): it only PROVIDES the symbols that
@@ -58,7 +58,7 @@
 #include "ra8_device.h"
 
 /* RA8P1-only. On a device without an NPU this header declares nothing (its
- * matching ra8_ethosu_shim.c is an empty translation unit), so it stays safe to
+ * Zig object in libra8_hal.a is never pulled in), so it stays safe to
  * include anywhere: using an ethosu_* symbol on the RA8D2 is then a link error,
  * not a compile-time #error that would trip whole-tree tooling (clang-tidy). */
 #ifdef RA8_HAS_NPU
@@ -77,7 +77,7 @@ extern "C" {
  * OPAQUE token: it reserves one, threads it through ::ethosu_invoke_v3, then
  * releases it, and never reads a field. This shim therefore only forward-
  * declares the tag here and keeps its minimal concrete definition private to
- * `ra8_ethosu_shim.c`. Keeping the type incomplete in this header means the
+ * `src/internal/ethosu_shim.zig`. Keeping the type incomplete in this header means the
  * header stays compatible with the real Arm `ethosu_driver.h` -- an incomplete
  * type is compatible with that header's complete definition, so nothing
  * conflicts if both are ever visible.

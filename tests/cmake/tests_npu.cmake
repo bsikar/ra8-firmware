@@ -3,8 +3,8 @@
 #
 # Arm Ethos-U55 NPU tests (RA8P1 only).
 #
-# ra8_npu.c, ra8_ethosu_shim.c and ra8_npu_loader.c are device-gated behind
-# RA8_HAS_NPU, so all three are recompiled here with -DRA8_DEVICE_RA8P1 to make
+# ra8_npu.c and ra8_npu_loader.c are device-gated behind
+# RA8_HAS_NPU, so both are recompiled here with -DRA8_DEVICE_RA8P1 to make
 # the driver bodies live. The auto-glob would build them for the RA8D2, where
 # the ra8_npu_* API does not resolve.
 #
@@ -39,36 +39,6 @@ if(REFLOW_USE_LITEHTML)
   target_link_libraries(test_ra8_npu PRIVATE litehtml gumbo)
 endif()
 add_test(NAME test_ra8_npu COMMAND test_ra8_npu)
-
-# ---------------------------------------------------------------------------
-# test_ra8_ethosu_shim: Arm ethos-u-core-driver C API adapter over
-# ra8_npu. Both ra8_ethosu_shim.c and ra8_npu.c are device-gated behind RA8_HAS_NPU,
-# so both are recompiled here with -DRA8_DEVICE_RA8P1 (ra8_device.h then defines
-# RA8_HAS_NPU) to make the adapter + driver bodies live. It links ra8_core_hal for
-# ra8_mstp / ra8_log / ra8_err and the host MMIO backing store (tests/mocks/
-# ra8_fake_mmap.c) -- the NPU window 0x40140000 lies inside the emulated peripheral
-# region, so the adapter's register writes (via ra8_npu) land in RAM and the test
-# asserts the QBASE / QSIZE / BASEPn / CMD programming plus the int return code.
-# Only these two TUs and the test see RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal
-# stays RA8D2, so its own (empty) ra8_npu / ra8_ethosu_shim TUs never collide with
-# these. LINKER_LANGUAGE CXX because ra8_core_hal bundles C++ translation units.
-# ---------------------------------------------------------------------------
-add_executable(
-  test_ra8_ethosu_shim
-  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_ethosu_shim.c ${FW_ROOT}/libs/ra8_hal/src/ra8_npu.c
-  ${FW_ROOT}/libs/ra8_hal/src/ra8_ethosu_shim.c $<TARGET_OBJECTS:ra8_core_hal>
-)
-set_target_properties(test_ra8_ethosu_shim PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_definitions(test_ra8_ethosu_shim PRIVATE RA8_DEVICE_RA8P1)
-target_compile_options(test_ra8_ethosu_shim PRIVATE -Wall -Wextra -Werror)
-target_include_directories(
-  test_ra8_ethosu_shim PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
-                               ${FW_ROOT}/libs/ra8_hal/inc ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
-)
-if(REFLOW_USE_LITEHTML)
-  target_link_libraries(test_ra8_ethosu_shim PRIVATE litehtml gumbo)
-endif()
-add_test(NAME test_ra8_ethosu_shim COMMAND test_ra8_ethosu_shim)
 
 # ---------------------------------------------------------------------------
 # test_ra8_npu_loader: the .npub Vela-blob loader. ra8_npu_loader.c
