@@ -644,18 +644,16 @@ pub const cross_apps = [_]CrossApp{
         // this app's cpu1_main.c reaches core and HAL headers only.
         .cpu1 = .{
             .entry_source = "src/cpu1_main.c",
-            // Both files its CMakeLists hands ra8_cpu1_add_first_party_sources().
-            // ra8_sau.c is not optional here: cpu1_main.c:190 calls
-            // ra8_sau_configure() from the M33 reset handler, because this app
-            // is the TrustZone one and the M33 programmes its own SAU.
+            // The file its CMakeLists hands ra8_cpu1_add_first_party_sources().
             .shared_sources = &.{
                 "libs/ra8_hal/src/ra8_ipc.c",
-                "libs/ra8_hal/src/ra8_sau.c",
             },
             .linker_script = "linker_script_cpu1.ld",
             .board_include_dir = false,
-            // ra8_hal's M33 archive (RA8FW-572), so the SAU driver can leave
-            // the C list above for its Zig port (RA8FW-571).
+            // ra8_hal's M33 archive (RA8FW-572). It is not optional here:
+            // cpu1_main.c:190 calls ra8_sau_configure() from the M33 reset
+            // handler, because this app is the TrustZone one and the M33
+            // programmes its own SAU, which is Zig since RA8FW-571.
             .zig_libraries = &.{"ra8_hal"},
         },
     },

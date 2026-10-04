@@ -96,7 +96,10 @@
     "src/epaper_geom_abi.zig",
     "src/internal/pwr.zig",
     "tests/pwr_test.zig",
-    "src/pwr_abi.zig"
+    "src/pwr_abi.zig",
+    "src/internal/sau.zig",
+    "tests/sau_test.zig",
+    "src/sau_abi.zig"
   ],
-  "minimum_tests": 129
+  "minimum_tests": 134
 }
