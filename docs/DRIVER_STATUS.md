@@ -68,7 +68,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_dual_core` | 1 | 2 | 1 | 1 | 0 |
 | `ra8_elc` | 0 | 1 | 6 | 2 | 4 |
 | `ra8_epaper` | 1 | 1 | 16 | 5 | 1 |
-| `ra8_eth` | 5 | 5 | 73 | 11 | 5 |
+| `ra8_eth` | 4 | 5 | 73 | 11 | 5 |
 | `ra8_etha` | 1 | 4 | 35 | 8 | 2 |
 | `ra8_ether_phy` | 0 | 1 | 6 | 2 | 0 |
 | `ra8_ethosu_kernel` | 0 | 1 | 1 | 0 | 1 |
