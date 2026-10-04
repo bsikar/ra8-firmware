@@ -13,7 +13,8 @@
     "tests/bscan_test.zig",
     "tests/eth_mfwd_test.zig",
     "tests/fuelgauge_test.zig",
-    "tests/sram_security_test.zig"
+    "tests/sram_security_test.zig",
+    "tests/bkup_security_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -59,7 +60,11 @@
     "src/fuelgauge_abi.zig",
     "src/internal/sram_security.zig",
     "tests/sram_security_test.zig",
-    "src/sram_security_abi.zig"
+    "src/sram_security_abi.zig",
+    "src/internal/bkup_security.zig",
+    "src/internal/prcr.zig",
+    "tests/bkup_security_test.zig",
+    "src/bkup_security_abi.zig"
   ],
-  "minimum_tests": 84
+  "minimum_tests": 89
 }

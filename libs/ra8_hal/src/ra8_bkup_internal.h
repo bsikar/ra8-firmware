@@ -14,7 +14,7 @@
  *                              the VBTBKRn backup store, the VBATT analog
  *                              voltage monitor, and the interrupt path.
  * - ``ra8_bkup_tamper.c``   -- tamper detection and RTCIC pad wiring.
- * - ``ra8_bkup_security.c`` -- the TrustZone attribution registers.
+ * - ``internal/bkup_security.zig`` (exported by ``bkup_security_abi.zig``) -- the TrustZone attribution registers.
  *
  * This src/-local header carries the handful of symbols those TUs share:
  * the driver-wide log tag, the init latch that gates the ISR, and the

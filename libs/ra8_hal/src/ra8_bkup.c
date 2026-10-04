@@ -20,7 +20,7 @@
  * fit under the per-file line cap, and both are self-contained:
  *
  * - ``ra8_bkup_tamper.c``   -- tamper detection and the RTCIC pad wiring.
- * - ``ra8_bkup_security.c`` -- the TrustZone attribution registers.
+ * - ``internal/bkup_security.zig`` (exported by ``bkup_security_abi.zig``) -- the TrustZone attribution registers.
  *
  * The handful of symbols those TUs share with this one are declared in
  * ``ra8_bkup_internal.h``.
