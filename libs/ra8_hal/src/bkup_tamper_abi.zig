@@ -2,13 +2,13 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for ra8_bkup_tamper_init / _disable, ra8_bkup_read_input and
-//! ra8_bkup_set_input_enable (RA8FW-599). ra8_bkup.c is still C and owns
-//! s_bkup_initialized and priv_ra8_bkup_internal_rmw8 (ra8_bkup_internal.h).
+//! ra8_bkup_set_input_enable (RA8FW-599). The shared domain state
+//! s_bkup_initialized and priv_ra8_bkup_internal_rmw8 come from bkup_abi.zig.
 
 const common = @import("abi_common.zig");
 const tamper = @import("internal/bkup_tamper.zig");
 
-/// `g_bkup_tag` (src/ra8_bkup.c).
+/// Log tag, as `g_bkup_tag` was.
 const tag = "BKUP";
 
 extern var s_bkup_initialized: bool;
