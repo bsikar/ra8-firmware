@@ -63,7 +63,7 @@ typedef enum : uint8_t {
  * Mirrors FSP `dac_b_extended_cfg_t` plus the per-channel enable
  * flags. cppcheck cannot see tests/ so it flags every field as
  * unused; each member is read in ``ra8_dac_b_init_configured`` in
- * ``libs/ra8_hal/src/ra8_dac_b.c``.
+ * ``libs/ra8_hal/src/internal/dac_b.zig``.
  */
 typedef struct {
   ra8_dac_b_vref_t        vref;                    /**< VREFH range (DACR2.OFSSEL).             */
