@@ -248,7 +248,7 @@ extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
  * ra8_canfd: split between ra8_canfd.c (clock / MSTP / global+channel mode state
  * machine, AFL / RX-FIFO bring-up, lifecycle, status / IRQ / filter / test-mode
  * / power) and two siblings: ra8_canfd_frame.c (TX/RX frame data path) and
- * ra8_canfd_timing.c (bit-timing solver + bitrate / BRS configuration). The
+ * canfd_timing_abi.zig (Zig, RA8FW-580: bit-timing solver + bitrate / BRS). The
  * timing TU has to drive the channel mode state machine to land NCFG / DCFG
  * edits in CH_RESET, so the channel-mode helper -- whose definition stays in
  * ra8_canfd.c next to the rest of the mode machinery -- is promoted to
@@ -261,7 +261,7 @@ extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
  *
  * @details
  * Promoted from a file-scope ``static`` helper in ``ra8_canfd.c`` to TU-external
- * linkage so the bit-timing TU (``ra8_canfd_timing.c``) can transition the
+ * linkage so the bit-timing unit (``canfd_timing_abi.zig``) can transition the
  * channel through CH_RESET / CH_OPERATION around an NCFG / DCFG edit, which is
  * only writable while the channel is halted or in reset. The single definition
  * stays in ``ra8_canfd.c`` beside the rest of the mode-transition machinery
