@@ -76,7 +76,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_flash` | 3 | 4 | 43 | 6 | 3 |
 | `ra8_fpu_probe` | 1 | 1 | 0 | 0 | 0 |
 | `ra8_fuelgauge` | 0 | 1 | 3 | 1 | 0 |
-| `ra8_glcdc` | 2 | 1 | 21 | 3 | 1 |
+| `ra8_glcdc` | 1 | 1 | 21 | 3 | 1 |
 | `ra8_gpt` | 1 | 2 | 30 | 13 | 10 |
 | `ra8_hw_err` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_hw_intrinsics` | 0 | 1 | 0 | 0 | 0 |
