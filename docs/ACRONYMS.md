@@ -88,7 +88,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | RSIP  | Renesas Secure IP (HW crypto + key vault, RSIP-E50D)     | `ra8_rsip.c`, `ra8_rsip_protected.c`, `ra8_rsip_key_injection.c` |
 | DOTF  | Decryption-On-The-Fly (XIP-decrypt for xSPI)             | `ra8_dotf.c` |
 | CRC   | Cyclic-Redundancy-Check engine                           | `ra8_crc.c` |
-| DOC   | Data Operation Circuit (compare/add for tamper checks)   | `ra8_doc.c` |
+| DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
 | MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
 | CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `ra8_lvd.c`, `ra8_sram.c` |
 | BBFSAR| Battery-Backup Full Security Attribute Register          | `ra8_bkup.c` |
