@@ -5,8 +5,9 @@
 //! `ra8_c6link_wifi_stop` and `ra8_c6link_wifi_leave`, as `ra8_c6link.h`
 //! declares them. Start builds `Req_WifiInit` and `Req_SetWifiMode` with the
 //! vendored codec's own initialisers (RA8FW-638); everything else is a guard
-//! plus bare requests. `priv_c6link_rpc_call`, `priv_c6link_take_resp` and
-//! `priv_c6link_bare_req` stay in C with the rest of the RPC layer for now.
+//! plus bare requests. The shared extractor is `ra8_c6link_take_abi.zig` and
+//! the bare requests are `ra8_c6link_bare_abi.zig`; `priv_c6link_rpc_call`
+//! stays in C with the rest of the RPC layer for now.
 
 const Err = @import("abi_err.zig");
 const header = @import("c6link_rpc_c.zig");

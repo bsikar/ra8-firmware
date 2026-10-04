@@ -5,7 +5,7 @@
 //! is empty, built with the vendored codec's own initialiser and issued through
 //! `priv_c6link_rpc_call` with the shared `priv_c6link_take_resp` extractor.
 //! Which answer pairs with which request is `internal/bare_rpc.zig`'s rule.
-//! The RPC layer and the extractor stay in C for now (RA8FW-640).
+//! The extractor is `ra8_c6link_take_abi.zig`; the RPC layer stays in C.
 
 const Err = @import("abi_err.zig");
 const header = @import("c6link_rpc_c.zig");
