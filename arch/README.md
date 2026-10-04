@@ -89,7 +89,7 @@ Armv8-M core wrappers that do not. The split is the point of the migration, not 
 side effect of it.
 
 Two more pieces sit outside `ra8_core` and still belong to this tier:
-`libs/ra8_mpu/` (PMSAv8) and `libs/ra8_hal/src/ra8_cache.c` (L1 maintenance).
+`libs/ra8_mpu/` (PMSAv8) and `libs/ra8_hal/src/internal/cache.zig` (L1 maintenance).
 Cache in particular is filed under the HAL today as though it were a peripheral;
 it is a core block, and a core block that CPU1 does not have.
 
@@ -109,8 +109,8 @@ CPU1 is not hypothetical: `examples/ek_ra8d2/hw_validated/hil/blink_m33`,
 
 Three things that look like they belong here and do not:
 
-- **The SoC event router.** `libs/ra8_hal/src/ra8_icu.c` and
-  `libs/ra8_hal/src/ra8_elc.c` implement the RA8's two-level event routing. That
+- **The SoC event router.** `libs/ra8_hal/src/internal/icu.zig` and
+  `libs/ra8_hal/src/internal/elc.zig` implement the RA8's two-level event routing. That
   routing does not generalise across vendors, let alone across ISAs. The arch
   owns the CPU-side controller (NVIC); the SoC owns what feeds it.
 - **The peripheral IRQ count and the option bytes.** The arch supplies the fixed

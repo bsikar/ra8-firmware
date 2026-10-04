@@ -41,7 +41,7 @@ Notes on the core memory layout:
   leaving the upper banks to the M33 and to the cross-core mailbox.
 - External SDRAM is at `0x68000000` (NOT `0x90000000`). On EK-RA8D2 v1
   the SDRAM controller drives a populated 64 MiB SDRAM at this address;
-  see `libs/ra8_hal/src/ra8_sdramc.c`
+  see `libs/ra8_hal/src/internal/sdramc.zig`
   (`"sdramc_init (64 MiB @ 0x68000000)"`).
 - The xSPI / Octo-SPI memory-mapped (XIP) read windows are pinned as typed
   enums in `libs/ra8_core/inc/ra8_device.h`: `k_ra8_mem_ospi_cs0_base =
@@ -65,11 +65,11 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | MMPU            | `0x40000000`  | Bus-initiator MPU                                       | (no driver, used by HAL init)           |
 | SPMON           | `0x40000D00`  | Bus / stack monitor                                  | (no driver)                              |
 | SRAM control    | `0x40002000`  | SRAM register window                                  | `ra8_sram.c`                              |
-| SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `ra8_sdramc.c`                            |
-| ICU             | `0x40006000`  | Interrupt Controller Unit                            | `ra8_icu.c`                               |
+| SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `internal/sdramc.zig`                            |
+| ICU             | `0x40006000`  | Interrupt Controller Unit                            | `internal/icu.zig`                               |
 | CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `ra8_lvd.c`, `ra8_sram.c`                  |
 | LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `ra8_lpm.c`, `pwr.zig`                     |
-| BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `ra8_bkup.c`                              |
+| BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
 | SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `ra8_reset.c`                   |
 | VREG            | `0x4001E000`  | Voltage regulator (within SYSC)                      | `ra8_vreg.c`                              |
 | IPC             | `0x40020000`  | Inter-processor communication (M85 <-> M33)          | `ra8_ipc.c`                               |
@@ -78,7 +78,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `ra8_dma.c`                               |
 | DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `dtc.zig`                                 |
 | RTC             | `0x40202000`  | Real-Time Clock                                      | `ra8_rtc.c`                               |
-| IWDT            | `0x40202200`  | Independent Watchdog                                 | `ra8_iwdt.c`                              |
+| IWDT            | `0x40202200`  | Independent Watchdog                                 | `internal/iwdt.zig`                              |
 | CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `cac.zig`                                 |
 | WDT0            | `0x40202600`  | Watchdog (M85 side)                                  | `ra8_wdt.c`                               |
 | WDT1            | `0x40202700`  | Watchdog (M33 side)                                  | `ra8_wdt.c`                               |
@@ -112,9 +112,9 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | GPT OPS    | `0x40323F00`| Output Phase Switching         | `ra8_gpt.c`        |
 | GPT ODC    | `0x40324000`| Output Disable Control         | `ra8_gpt.c`        |
 | AGT0       | `0x40221000`| Async General-Purpose Timer    | `ra8_agt.c`        |
-| ULPT0      | `0x40220000`| Ultra-Low-Power Timer          | `ra8_ulpt.c`       |
-| ULPT1      | `0x40220100`|                                | `ra8_ulpt.c`       |
-| POEG0..3   | `0x40212000` + `n*0x100` | Port Output Enable for GPT | `ra8_poeg.c` |
+| ULPT0      | `0x40220000`| Ultra-Low-Power Timer          | `internal/ulpt.zig`       |
+| ULPT1      | `0x40220100`|                                | `internal/ulpt.zig`       |
+| POEG0..3   | `0x40212000` + `n*0x100` | Port Output Enable for GPT | `internal/poeg.zig` |
 | PDG        | `0x40324000`| GPT Phase Delay Generator (S)  | `ra8_pdg.c`        |
 | PDG NS     | `0x50324000`| Non-secure alias               | `ra8_pdg.c`        |
 
@@ -140,7 +140,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | RMAC1      | `0x403CD000`|                              | `ra8_rmac.c`       |
 | GWCA0      | `0x403CE000`| Gateway CPU agent            | `ra8_eth_gwca.c`   |
 | MFWD       | `0x403C0000`| MAC forwarding               | `eth_mfwd_abi.zig` |
-| ESWM       | `0x403C8000`| Ethernet switch mgmt         | `ra8_layer3_switch.c` |
+| ESWM       | `0x403C8000`| Ethernet switch mgmt         | `internal/layer3_switch.zig` |
 | GPTP       | `0x403E0000`| Generic PTP timer (HUM Ch 35)| `eth_gptp.zig`     |
 | TSN ctrl   | `0x40235000`| TSN control block            | `internal/tsn.zig` |
 
@@ -159,7 +159,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | CEU        | `0x40348000`| Capture Engine Unit (parallel camera) | `ra8_ceu.c` |
 | SSIE0      | `0x4025D000`| Serial Sound full-dup | `ra8_ssie.c`       |
 | SSIE1      | `0x4025D100`| Serial Sound half-dup | `ra8_ssie.c`       |
-| PDM        | `0x40256000`| Pulse-density mic     | `ra8_pdm.c`        |
+| PDM        | `0x40256000`| Pulse-density mic     | `internal/pdm.zig`        |
 | ADC_B      | `0x40338000`| FSP R_ADC_B0_BASE     | `adc.c`           |
 | DAC_B0     | `0x40233000`| FSP R_DAC_B0_BASE     | `dac_b.zig`        |
 | DAC_B1     | `0x40233100`| FSP R_DAC_B1_BASE     | `dac_b.zig`        |
@@ -185,7 +185,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | Peripheral | Secure base | Notes                | HAL driver |
 |------------|-------------|----------------------|------------|
 | CRC        | `0x40310000`| HUM Ch 48 p 3180     | `internal/crc.zig` |
-| DOC        | `0x40311000`| Data Operation Ckt   | `ra8_doc.c` |
+| DOC        | `0x40311000`| Data Operation Ckt   | `internal/doc.zig` |
 | Core MPU   | `0xE000ED90`| Cortex-M85 MPU regs  | (HAL init) |
 
 ## 3. EK-RA8D2 v1 board population (what's actually wired)
@@ -197,7 +197,7 @@ Source: `docs/reference/ek-ra8d2-v1-users-manual.pdf`.
 | MRAM (1 MiB)     | `0x02000000`                    | On-chip, always present                                                |
 | SRAM ECC (1664 KiB) | `0x22000000`                 | On-chip, always present                                                |
 | ITCM / DTCM      | `0x00000000` / `0x20000000`     | On-chip                                                                |
-| External SDRAM   | `0x68000000`                    | Populated, 64 MiB, driven by SDRAMC (`ra8_sdramc.c`)                    |
+| External SDRAM   | `0x68000000`                    | Populated, 64 MiB, driven by SDRAMC (`internal/sdramc.zig`)                    |
 | External xSPI    | XIP window `0x80000000` (CS0)   | 64 MB IS25LX512M; regs at `0x40268000`                                 |
 | GLCDC parallel   | `0x40342000` -> connector J1    | Parallel Graphics Expansion Port; 7.0" 1024x600 TFT via add-on board   |
 | MIPI DSI / CSI   | `0x40346000` / `0x40347000`     | Pads brought out via MIPI Graphics Expansion Board (separate add-on)   |

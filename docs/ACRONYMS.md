@@ -23,9 +23,9 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PWR   | Power-management glue                                   | `pwr.zig`   |
 | RESET | Reset controller (RSTSR1/2 + cold/warm flags)           | `ra8_reset.c` |
 | SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `ra8_reset.c`, `ra8_vreg.c`, `ra8_lpm.c`) |
-| VBATT | Battery-backup domain (VBATT pin / VBTBKR registers)    | `ra8_bkup.c` |
+| VBATT | Battery-backup domain (VBATT pin / VBTBKR registers)    | `internal/bkup.zig` |
 | VREG  | Internal voltage regulator                              | `ra8_vreg.c` |
-| BKUP  | Battery-backup function (alias for VBATT block)         | `ra8_bkup.c` |
+| BKUP  | Battery-backup function (alias for VBATT block)         | `internal/bkup.zig` |
 
 ## 2. IO and pin-mux
 
@@ -44,9 +44,9 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PMISC | Pin Miscellaneous (contains PWPR/PWPRS)                   | `gpio.c` |
 | MPC   | Multi-function Pin Controller                             | `internal/mpc.zig` |
 | ELC   | Event Link Controller (peripheral-to-peripheral events)   | `elc_abi.zig` |
-| ICU   | Interrupt Controller Unit                                 | `ra8_icu.c` |
+| ICU   | Interrupt Controller Unit                                 | `internal/icu.zig` |
 | ISR   | Interrupt Service Routine (HAL ISR-table glue)            | `ra8_isr.c` |
-| IRQ   | Interrupt Request line (NVIC vector entry)                | `ra8_icu.c` |
+| IRQ   | Interrupt Request line (NVIC vector entry)                | `internal/icu.zig` |
 | WUPEN | Wake-Up Enable register                                   | `ra8_lpm.c` |
 
 ## 3. Communication
@@ -68,13 +68,13 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | MSC   | USB Mass Storage Class                                    | `ra8_usb_pmsc.c`, `ra8_usb_hmsc.c` |
 | HHUB  | USB Host Hub class driver                                 | `ra8_usb_hhub.c` |
 | PVND  | USB Peripheral Vendor-class                               | `usb_pvnd_abi.zig` |
-| PAUD/HAUD | USB Peripheral / Host Audio class                     | `ra8_usb_paud.c`, `ra8_usb_haud.c` |
+| PAUD/HAUD | USB Peripheral / Host Audio class                     | `internal/usb_paud.zig`, `ra8_usb_haud.c` |
 | PPRN  | USB Peripheral Printer class                              | `usb_pprn.zig`   |
 | ETHA  | Ethernet adapter (gigabit MAC top-level)                  | `ra8_etha.c`, `ra8_eth.c` |
 | RMAC  | Reduced Media Access Controller (per-port MAC)            | `ra8_rmac.c`, `ra8_rmac_phy.c` |
 | GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
 | MFWD  | MAC ForWarDing engine                                     | `eth_mfwd_abi.zig`|
-| ESWM  | Ethernet SWitch Management                                | `ra8_layer3_switch.c` |
+| ESWM  | Ethernet SWitch Management                                | `internal/layer3_switch.zig` |
 | GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `eth_gptp.zig`   |
 | TSN   | Time-Sensitive Networking                                 | `internal/tsn.zig` |
 | PHY   | Physical-layer transceiver (Ethernet PHY)                 | `internal/ether_phy.zig`, `ra8_rmac_phy.c` |
@@ -91,7 +91,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
 | MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
 | CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `ra8_lvd.c`, `ra8_sram.c` |
-| BBFSAR| Battery-Backup Full Security Attribute Register          | `ra8_bkup.c` |
+| BBFSAR| Battery-Backup Full Security Attribute Register          | `internal/bkup.zig` |
 
 ## 5. Display, video, graphics
 
@@ -113,7 +113,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
 | SSIE  | Serial Sound Interface Enhanced (I2S/TDM)                 | `ra8_ssie.c` |
-| PDM   | Pulse-Density Modulation microphone interface             | `ra8_pdm.c` |
+| PDM   | Pulse-Density Modulation microphone interface             | `internal/pdm.zig` |
 | DAI   | Digital Audio Interface (CODEC-side I2S signals)          | (used in board pin-mux) |
 
 ## 7. Analog
@@ -131,11 +131,11 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | GPT   | General PWM Timer (32-bit, motor / general-purpose)       | `ra8_gpt.c`, `timer.c` |
 | GTIOC | GPT IO Channel pin (GTIOCnA/B output)                     | `ra8_gpt.c` |
 | AGT   | Asynchronous General-purpose Timer (16-bit)               | `ra8_agt.c` |
-| ULPT  | Ultra-Low-Power Timer                                     | `ra8_ulpt.c` |
-| POEG  | Port Output Enable for GPT (motor-fault shut-off)         | `ra8_poeg.c` |
+| ULPT  | Ultra-Low-Power Timer                                     | `internal/ulpt.zig` |
+| POEG  | Port Output Enable for GPT (motor-fault shut-off)         | `internal/poeg.zig` |
 | PDG   | Phase Delay Generator (multi-channel motor sync)          | `ra8_pdg.c` |
 | WDT   | Watchdog Timer                                            | `ra8_wdt.c` |
-| IWDT  | Independent Watchdog Timer                                | `ra8_iwdt.c` |
+| IWDT  | Independent Watchdog Timer                                | `internal/iwdt.zig` |
 | RTC   | Real-Time Clock                                           | `ra8_rtc.c` |
 
 ## 9. Memory / storage
@@ -149,8 +149,8 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | DTCM  | Data Tightly-Coupled Memory                               | (linker only) |
 | ITCM  | Instruction Tightly-Coupled Memory                        | (linker only) |
 | TCM   | Tightly-Coupled Memory (umbrella for ITCM + DTCM)         | (linker only) |
-| SDRAM | Synchronous Dynamic RAM (external, 64 MiB on EK)          | `ra8_sdramc.c` |
-| SDRAMC| SDRAM Controller                                          | `ra8_sdramc.c` |
+| SDRAM | Synchronous Dynamic RAM (external, 64 MiB on EK)          | `internal/sdramc.zig` |
+| SDRAMC| SDRAM Controller                                          | `internal/sdramc.zig` |
 | OSPI  | Octo-SPI (Renesas register block name)                    | `ra8_xspi.c` |
 | XSPI  | eXpanded SPI (xSPI = HUM term for the OSPI controller)    | `ra8_xspi.c` |
 | XIP   | eXecute-In-Place (memory-mapped read of external flash)   | `ra8_xspi.c` |
@@ -168,7 +168,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | BSCAN | Boundary Scan controller                                  | `bscan_abi.zig`|
 | HW ERR| Hardware-Error reporter                                   | `ra8_hw_err.h` |
 | MMIO  | Memory-Mapped I/O (generic term, not a Renesas IP)        | -- |
-| NVIC  | Nested Vectored Interrupt Controller (Cortex-M core)      | (used by `ra8_icu.c`) |
+| NVIC  | Nested Vectored Interrupt Controller (Cortex-M core)      | (used by `internal/icu.zig`) |
 | SCB   | System Control Block (Cortex-M core)                      | (used by HAL fault handlers) |
 | MPU   | Memory Protection Unit (core MPU at `0xE000ED90`)         | (HAL init) |
 | MMPU  | Bus-initiator MPU (chip-level, distinct from core MPU)    | (HAL init) |
