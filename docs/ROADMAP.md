@@ -783,7 +783,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 48 p 3180 (CRCCR0/CRCCR1/CRCDIR/CRCDOR)
 [x] Unit tests -- tests/misc/src/test_ra8_crc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 48 register notes in libs/ra8_hal/src/ra8_crc.c
+[x] HUM cross-ref -- all Ch 48 register notes in libs/ra8_hal/src/internal/crc.zig (Zig since RA8FW-574)
 [x] Doxygen -- full file + member coverage
 ```
 
