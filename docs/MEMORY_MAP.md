@@ -184,7 +184,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 
 | Peripheral | Secure base | Notes                | HAL driver |
 |------------|-------------|----------------------|------------|
-| CRC        | `0x40310000`| HUM Ch 48 p 3180     | `ra8_crc.c` |
+| CRC        | `0x40310000`| HUM Ch 48 p 3180     | `internal/crc.zig` |
 | DOC        | `0x40311000`| Data Operation Ckt   | `ra8_doc.c` |
 | Core MPU   | `0xE000ED90`| Cortex-M85 MPU regs  | (HAL init) |
 
