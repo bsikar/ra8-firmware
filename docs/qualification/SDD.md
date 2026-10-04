@@ -225,7 +225,7 @@ exceeds its declared bucket (REQ-PERF-008).
 | Active firmware image       | MRAM bank A or B at `0x02000000`         | `libs/ra8_ota/` + `libs/ra8_secure_app/src/ota_commit.c`  |
 | Wrapped key blobs           | Last MRAM block, S-only                  | `libs/ra8_secure_app/src/key_import.c` + `key_vault.c`   |
 | OFS bytes                   | MRAM offset per HUM Ch 6                 | `libs/ra8_hal/src/ra8_ofs.c` + per-app linker script        |
-| TSN factory cal             | `0x02C1EDA0`                             | `libs/ra8_hal/src/ra8_tsn.c`                                |
+| TSN factory cal             | `0x02C1EDA0`                             | `libs/ra8_hal/src/internal/tsn.zig`                         |
 | External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `port/levelx/` + `libs/ra8_cache_store/`     |
 | External SD card data       | FAT volume on SD-card via SDHI            | first-party `libs/ra8_fs/src/ra8_fs_fat.c`                  |
 

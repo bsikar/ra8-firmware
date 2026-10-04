@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_tsn.c
- * @brief Unit tests for ra8_tsn.c (on-chip temperature sensor driver)
+ * @brief Unit tests for the ra8_tsn driver, internal/tsn.zig + tsn_abi.zig (on-chip temperature sensor driver)
  *
  * @details
  * The TSN driver only owns TSCR (HUM Ch 55.2.1 p 3498) plus the
@@ -348,7 +348,7 @@ static void test_power_transition(void)
  *
  * @par MC/DC:
  * Decision A: ``internal_validate_cfg`` line 120,
- * libs/ra8_hal/src/ra8_tsn.c:
+ * libs/ra8_hal/src/tsn_abi.zig:
  * ``if ((cfg->high_ref_degc == 125) || (cfg->high_ref_degc == 105))``
  * (2 conditions, ``||``). N+1 = 3:
  * - V1: 125 -> dec T (high_ok)
