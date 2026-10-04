@@ -622,7 +622,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 56 p 3508 (CMPCTL/CMPSEL/CMPSEL+/CMPMON)
 [x] Unit tests -- tests/misc/src/test_ra8_acmphs.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 56 register notes in libs/ra8_hal/src/ra8_acmphs.c
+[x] HUM cross-ref -- all Ch 56 register notes in libs/ra8_hal/src/internal/acmphs.zig
 [x] Doxygen -- full file + member coverage
 ```
 

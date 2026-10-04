@@ -46,7 +46,7 @@ typedef enum : uint8_t {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_acmphs_channel_init`` in
- * ``libs/ra8_hal/src/ra8_acmphs.c``.
+ * ``libs/ra8_hal/src/acmphs_abi.zig``.
  */
 typedef struct {
   uint8_t           ivpsel;     /**< Plus-input select (CMPSEL0).  */

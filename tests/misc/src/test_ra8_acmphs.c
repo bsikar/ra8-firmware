@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_acmphs.c
- * @brief Unit tests for ra8_acmphs.c (High-Speed Analog Comparator driver)
+ * @brief Unit tests for acmphs_abi.zig (High-Speed Analog Comparator driver)
  * @details Drives comparator configuration, status, callback, and invalid-input paths against deterministic hosted register storage.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
