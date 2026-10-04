@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_sci_spi.c
  * @brief Unit tests for the SCI Simple-SPI controller driver
- *        (libs/ra8_hal/src/ra8_sci_spi.c).
+ *        (libs/ra8_hal/src/sci_spi_abi.zig).
  *
  * @details
  * Exercises all five public entry points of the SCI_B Simple-SPI driver
