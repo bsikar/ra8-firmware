@@ -9,21 +9,18 @@ const std = @import("std");
 const abi = @import("abi");
 const impl = abi.internal;
 
-extern fn ra8_ota_test_log_reset() callconv(.c) void;
-extern fn ra8_ota_test_log_calls() callconv(.c) usize;
-extern fn ra8_ota_test_log_tag() callconv(.c) [*:0]const u8;
-extern fn ra8_ota_test_log_message() callconv(.c) [*:0]const u8;
+const log_stub = @import("abi_log_stub.zig");
 
 fn resetLog() void {
-    ra8_ota_test_log_reset();
+    log_stub.reset();
 }
 
 fn loggedTag() [:0]const u8 {
-    return std.mem.span(ra8_ota_test_log_tag());
+    return log_stub.tag();
 }
 
 fn loggedMessage() [:0]const u8 {
-    return std.mem.span(ra8_ota_test_log_message());
+    return log_stub.message();
 }
 
 const ok: u16 = 0;
@@ -89,13 +86,13 @@ test "a fully wired configuration validates with no log line" {
     resetLog();
     var cfg = goodCfg();
     try std.testing.expectEqual(ok, abi.priv_ota_validate_cfg(&cfg));
-    try std.testing.expectEqual(@as(usize, 0), ra8_ota_test_log_calls());
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
 }
 
 test "a null configuration is refused first, under the ra8_ota tag" {
     resetLog();
     try std.testing.expectEqual(null_ptr, abi.priv_ota_validate_cfg(null));
-    try std.testing.expectEqual(@as(usize, 1), ra8_ota_test_log_calls());
+    try std.testing.expectEqual(@as(usize, 1), log_stub.calls());
     try std.testing.expectEqualStrings("ra8_ota", loggedTag());
     try std.testing.expectEqualStrings("cfg", loggedMessage());
 }
@@ -156,13 +153,13 @@ test "the bank size gates answer invalid_arg and emit no log line" {
     var zero = goodCfg();
     zero.flash.bank_size_bytes = 0;
     try std.testing.expectEqual(invalid_arg, abi.priv_ota_validate_cfg(&zero));
-    try std.testing.expectEqual(@as(usize, 0), ra8_ota_test_log_calls());
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
 
     resetLog();
     var over = goodCfg();
     over.flash.bank_size_bytes = impl.max_image_bytes + 1;
     try std.testing.expectEqual(invalid_arg, abi.priv_ota_validate_cfg(&over));
-    try std.testing.expectEqual(@as(usize, 0), ra8_ota_test_log_calls());
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
 
     var edge = goodCfg();
     edge.flash.bank_size_bytes = impl.max_image_bytes;
@@ -174,7 +171,7 @@ test "an empty manifest URL is the last gate and answers invalid_arg silently" {
     var cfg = goodCfg();
     cfg.manifest_url[0] = 0;
     try std.testing.expectEqual(invalid_arg, abi.priv_ota_validate_cfg(&cfg));
-    try std.testing.expectEqual(@as(usize, 0), ra8_ota_test_log_calls());
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
 }
 
 test "the exported MC/DC predicates carry the C semantics across the membrane" {

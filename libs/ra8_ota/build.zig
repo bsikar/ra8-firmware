@@ -75,11 +75,6 @@ pub fn build(b: *std.Build) void {
     });
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
-    abi_tests.addCSourceFile(.{
-        .file = b.path("tests/abi_log_stub.c"),
-        .flags = &.{},
-    });
-    abi_tests.linkLibC();
 
     const orchestration_test_module = b.createModule(.{
         .root_source_file = b.path("tests/orchestration_test.zig"),
