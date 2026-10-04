@@ -121,7 +121,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
 | ADC_B | Analog-to-Digital Converter, version B                    | `adc.c` |
-| DAC_B | Digital-to-Analog Converter, version B                    | `ra8_dac_b.c` |
+| DAC_B | Digital-to-Analog Converter, version B                    | `dac_b.zig`   |
 | ACMPHS| High-Speed Analog Comparator                              | `internal/acmphs.zig` |
 
 ## 8. Timers, motor / power
