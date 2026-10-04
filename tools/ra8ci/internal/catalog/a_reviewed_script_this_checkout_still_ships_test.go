@@ -6,6 +6,7 @@ package catalog
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -48,7 +49,7 @@ func TestEveryReviewedScriptExistsInThisCheckout(t *testing.T) {
 		if !info.Mode().IsRegular() {
 			t.Fatalf("reviewed script %q is not a regular file", script)
 		}
-		if info.Mode().Perm()&0111 == 0 {
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
 			t.Fatalf("reviewed script %q is not executable, so bash dispatch would fail on a runner", script)
 		}
 		if info.Size() == 0 {
