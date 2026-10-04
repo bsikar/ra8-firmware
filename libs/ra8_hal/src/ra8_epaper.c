@@ -477,7 +477,7 @@ RA8_INTERNAL
     }
   }
   /* Buffer the whole block, then decode it in one pure pass -- the decode
-   * lives in ra8_epaper_devinfo.c so it is testable without a bus. */
+   * lives in epaper_devinfo_abi.zig so it is testable without a bus. */
   return ra8_epaper_decode_dev_info(words, (size_t)k_ra8_epaper_dev_info_words, out);
 }
 
