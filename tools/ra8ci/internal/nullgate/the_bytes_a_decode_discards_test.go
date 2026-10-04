@@ -5,9 +5,10 @@ package nullgate
 
 import (
 	"bytes"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // This gate has to agree with Python's UTF-8 decoder about how much of a bad
@@ -70,8 +71,18 @@ func TestABadSequenceDoesNotShiftTheLinesAfterIt(t *testing.T) {
 // fixtures it never wrote. Pointing TMPDIR at an absent path reaches this on
 // any box, including one running as root.
 func TestTheSelfTestRefusesWhenItCannotCreateItsFixture(t *testing.T) {
-	absent := filepath.Join(t.TempDir(), "no-such-directory")
-	t.Setenv("TMPDIR", absent)
+	blocked := t.TempDir()
+	if err := testprivatefile.DenyDirectoryCreate(blocked); err != nil {
+		t.Fatalf("denying temporary-directory creation: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := testprivatefile.RestoreDirectory(blocked); err != nil {
+			t.Errorf("restoring temporary-directory ACL: %v", err)
+		}
+	})
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(key, blocked)
+	}
 
 	var out, errOut bytes.Buffer
 	if code := selfTest(&out, &errOut); code != 1 {

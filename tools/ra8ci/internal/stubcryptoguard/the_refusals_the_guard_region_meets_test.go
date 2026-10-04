@@ -5,7 +5,6 @@ package stubcryptoguard
 
 import (
 	"bytes"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -58,8 +57,7 @@ func TestAnUnterminatedGuardIsNotAGuard(t *testing.T) {
 // directory cannot be made it must say so and fail, rather than report on a
 // fixture it never wrote.
 func TestTheSelfTestRefusesWhenItCannotBuildItsFixture(t *testing.T) {
-	absent := filepath.Join(t.TempDir(), "no-such-directory")
-	t.Setenv("TMPDIR", absent)
+	setMissingTempDirectory(t)
 
 	var stdout, stderr bytes.Buffer
 	if selfTest(&stdout, &stderr) {
@@ -77,8 +75,7 @@ func TestTheSelfTestRefusesWhenItCannotBuildItsFixture(t *testing.T) {
 // error: the gate answers 1, the code that says its own checks did not hold.
 func TestRunAnswersOneWhenTheSelfTestCannotRun(t *testing.T) {
 	root := t.TempDir()
-	absent := filepath.Join(t.TempDir(), "no-such-directory")
-	t.Setenv("TMPDIR", absent)
+	setMissingTempDirectory(t)
 
 	code, stdout, stderr := ran(t, root, "--selftest")
 	if code != 1 {
