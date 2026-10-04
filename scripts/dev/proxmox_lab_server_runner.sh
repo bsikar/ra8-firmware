@@ -9,27 +9,269 @@
 set -euo pipefail
 umask 077
 
+runner_linux_guest_ip() {
+  local vmid="$1"
+  [[ "$vmid" =~ ^90[0-9]{2}$ ]] && ((vmid >= 9000 && vmid <= 9099)) &&
+    ((vmid != 9001 && vmid != 9010 && vmid != 9011)) || return 1
+  printf '10.250.9.%s\n' "$((vmid - 9000 + 10))"
+}
+
+runner_run_dir() { printf '/var/lib/ra8-lab/%s/%s\n' "$1" "$2"; }
+runner_log_dir() { printf '/var/log/ra8-lab/%s\n' "$1"; }
+runner_run_file() { printf '%s/%s.%s\n' "$(runner_log_dir "$1")" "$2" "$3"; }
+runner_lock_file() { printf '/var/lock/ra8-lab-%s-%s.lock\n' "$1" "$2"; }
+
+shared_network_marker_action() {
+  local state_dir="$1" state="$2"
+  if [[ -e "$state_dir" || -L "$state_dir" ]]; then
+    [[ -e "$state" || -L "$state" ]] || return 1
+    printf 'validate\n'
+  else
+    [[ ! -e "$state" && ! -L "$state" ]] || return 1
+    printf 'adopt\n'
+  fi
+}
+
+validate_shared_linux_marker() {
+  local state_dir="$1" state="$2" expected_uid="$3" expected_gateway="$4" expected_subnet="$5"
+  python3 - "$state_dir" "$state" "$expected_uid" "$expected_gateway" "$expected_subnet" <<'PY'
+import os
+import stat
+import sys
+
+state_dir, state, uid_text, gateway, subnet = sys.argv[1:]
+expected_uid = int(uid_text)
+
+try:
+    directory = os.lstat(state_dir)
+    marker = os.lstat(state)
+    if not (
+        stat.S_ISDIR(directory.st_mode)
+        and directory.st_uid == expected_uid
+        and stat.S_IMODE(directory.st_mode) == 0o700
+        and stat.S_ISREG(marker.st_mode)
+        and marker.st_uid == expected_uid
+        and stat.S_IMODE(marker.st_mode) == 0o600
+    ):
+        raise ValueError("unsafe marker path metadata")
+    descriptor = os.open(state, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(descriptor, "r", encoding="ascii") as marker:
+        fields = marker.read().split()
+    if len(fields) != 3:
+        raise ValueError("marker must contain exactly three fields")
+    old_forward, saved_gateway, saved_subnet = fields
+    if old_forward not in {"0", "1"} or saved_gateway != gateway or saved_subnet != subnet:
+        raise ValueError("marker does not match the managed lab network")
+    print(old_forward)
+except (OSError, ValueError, UnicodeError):
+    raise SystemExit(1)
+PY
+}
+
+legacy_bridge_adoptable() {
+  local vmid="$1" run_id="$2" vm_status="$3" vm_name="$4" description="$5"
+  local tags="$6" pool="$7" template="$8" net0="$9" bridge_address="${10}"
+  local ipconfig0="${11}" bridge_type="${12}" nft_tables="${13}" bridge_ports="${14}" forward="${15}"
+  local tag network_option
+  local -a tag_array=() network_array=() ipconfig_array=()
+  [[ "$vmid" =~ ^90[0-9]{2}$ ]] && ((vmid >= 9000 && vmid <= 9099)) &&
+    ((vmid != 9001 && vmid != 9010 && vmid != 9011)) || return 1
+  [[ "$run_id" =~ ^[0-9a-f]{16}$ && "$vm_status" == running &&
+     "$vm_name" == "ra8-lab-linux-$run_id" &&
+     "$description" == "Disposable RA8 lab VM; RA8_LAB_RUN=$run_id" &&
+     "$pool" == ra8-tf-lab && ( -z "$template" || "$template" == 0 ) &&
+     "$bridge_address" == 10.250.9.1/24 && "$bridge_type" == bridge &&
+     "$nft_tables" == "ra8_lab_ci_$run_id" && "$bridge_ports" == "tap${vmid}i0" &&
+     "$forward" == 1 ]] || return 1
+
+  local found_lab=0 found_run=0
+  IFS=',;' read -r -a tag_array <<<"$tags"
+  for tag in "${tag_array[@]}"; do
+    [[ "$tag" == ra8-lab ]] && found_lab=1
+    [[ "$tag" == "run-$run_id" ]] && found_run=1
+  done
+  ((found_lab && found_run)) || return 1
+
+  IFS=',' read -r -a network_array <<<"$net0"
+  for network_option in "${network_array[@]}"; do
+    [[ "$network_option" == bridge=vmbr9 ]] || continue
+    IFS=',' read -r -a ipconfig_array <<<"$ipconfig0"
+    local expected_guest_ip="10.250.9.$((vmid - 9000 + 10))" guest_address="" guest_gateway=""
+    for network_option in "${ipconfig_array[@]}"; do
+      [[ "$network_option" == ip=* ]] && guest_address="${network_option#ip=}"
+      [[ "$network_option" == gw=* ]] && guest_gateway="${network_option#gw=}"
+    done
+    [[ "$guest_address" == "$expected_guest_ip/24" && "$guest_gateway" == 10.250.9.1 ]]
+    return $?
+  done
+  return 1
+}
+
+adopt_legacy_shared_linux_network() {
+  local state_dir="$1" state="$2" bridge="$3" gateway="$4" subnet="$5"
+  local current_forward bridge_address bridge_type bridge_ports nft_tables vmid run_id
+  local config status name description tags pool template net0 ipconfig0 config_value
+  local -a bridge_addresses=()
+  [[ ! -e "$state_dir" && ! -L "$state_dir" && ! -e "$state" && ! -L "$state" ]] || return 1
+  # The legacy runner enabled forwarding without recording its prior value.
+  # Adoption is limited to the controller's already-enabled configured state,
+  # which is saved as 1 so final cleanup preserves that baseline.
+  current_forward="$(sysctl -n net.ipv4.ip_forward)"
+  [[ "$current_forward" == 1 ]] || return 1
+  mapfile -t bridge_addresses < <(ip -o -4 addr show dev "$bridge" | awk '{print $4}')
+  [[ "${#bridge_addresses[@]}" == 1 ]] || return 1
+  bridge_address="${bridge_addresses[0]}"
+  bridge_type="$(ip -j -d link show dev "$bridge" | jq -r '.[0].linkinfo.info_kind // ""')"
+  [[ "$bridge_type" == bridge ]] || return 1
+  bridge_ports="$(ip -o link show master "$bridge" | awk -F': ' '{name=$2; sub(/@.*/, "", name); print name}')"
+  [[ "$bridge_ports" =~ ^tap(90[0-9]{2})i0$ ]] || return 1
+  vmid="${BASH_REMATCH[1]}"
+  [[ "$vmid" != 9001 && "$vmid" != 9010 && "$vmid" != 9011 ]] || return 1
+
+  nft_tables="$(nft list tables | awk '$1 == "table" && $2 == "ip" && $3 ~ /^ra8_lab_ci_[0-9a-f]+$/ {print $3}')"
+  [[ "$(printf '%s\n' "$nft_tables" | wc -l | tr -d ' ')" == 1 ]] || return 1
+  run_id="${nft_tables#ra8_lab_ci_}"
+  [[ "$run_id" =~ ^[0-9a-f]{16}$ ]] || return 1
+
+  config="$(qm config "$vmid")" || return 1
+  status="$(qm status "$vmid" | awk '{print $2}')"
+  config_value() { awk -F': ' -v key="$1" '$1 == key {print substr($0, index($0, ": ") + 2); exit}' <<<"$config"; }
+  name="$(config_value name)"
+  description="$(config_value description)"
+  tags="$(config_value tags)"
+  template="$(config_value template)"
+  net0="$(config_value net0)"
+  ipconfig0="$(config_value ipconfig0)"
+  pool="$(pvesh get /cluster/resources --type vm --output-format json | jq -r --arg vmid "$vmid" '.[] | select((.vmid | tostring) == $vmid) | .pool // ""')"
+  legacy_bridge_adoptable "$vmid" "$run_id" "$status" "$name" "$description" \
+    "$tags" "$pool" "$template" "$net0" "$bridge_address" "$ipconfig0" "$bridge_type" \
+    "$nft_tables" "$bridge_ports" "$current_forward" || return 1
+
+  install -d -m 700 "$state_dir"
+  local temp_state
+  temp_state="$(mktemp "$state_dir/vmbr9.state.XXXXXX")"
+  printf '%s %s %s\n' "$current_forward" "$gateway" "$subnet" >"$temp_state"
+  chmod 600 "$temp_state"
+  mv -- "$temp_state" "$state"
+  printf '%s\n' "$current_forward"
+}
+
+runner_selftest() {
+  [[ "$(runner_linux_guest_ip 9000)" == 10.250.9.10 ]] || return 1
+  [[ "$(runner_linux_guest_ip 9002)" == 10.250.9.12 ]] || return 1
+  [[ "$(runner_linux_guest_ip 9099)" == 10.250.9.109 ]] || return 1
+  for vmid in 9001 9010 9011 9100; do
+    runner_linux_guest_ip "$vmid" >/dev/null 2>&1 && return 1
+  done
+  [[ "$(runner_run_dir linux aaaaaaaaaaaaaaaa)" != "$(runner_run_dir linux bbbbbbbbbbbbbbbb)" ]] || return 1
+  for suffix in log status pid; do
+    [[ "$(runner_run_file linux aaaaaaaaaaaaaaaa "$suffix")" != "$(runner_run_file linux bbbbbbbbbbbbbbbb "$suffix")" ]] || return 1
+  done
+  [[ "$(runner_lock_file linux 9000)" != "$(runner_lock_file linux 9002)" ]] || return 1
+  local marker_dir marker_file owner
+  marker_dir="$(mktemp -d)" || return 1
+  marker_file="$marker_dir/vmbr9.state"
+  owner="$(id -u)"
+  chmod 700 "$marker_dir"
+  printf '0 10.250.9.1 10.250.9.0/24\n' >"$marker_file"
+  chmod 600 "$marker_file"
+  [[ "$(validate_shared_linux_marker "$marker_dir" "$marker_file" "$owner" 10.250.9.1 10.250.9.0/24)" == 0 ]] || {
+    rm -rf -- "$marker_dir"
+    return 1
+  }
+  chmod 620 "$marker_file"
+  if validate_shared_linux_marker "$marker_dir" "$marker_file" "$owner" 10.250.9.1 10.250.9.0/24 >/dev/null 2>&1; then
+    rm -rf -- "$marker_dir"
+    return 1
+  fi
+  chmod 600 "$marker_file"
+  chmod 720 "$marker_dir"
+  if validate_shared_linux_marker "$marker_dir" "$marker_file" "$owner" 10.250.9.1 10.250.9.0/24 >/dev/null 2>&1; then
+    rm -rf -- "$marker_dir"
+    return 1
+  fi
+  rm -rf -- "$marker_dir"
+  marker_dir="$(mktemp -d)" || return 1
+  marker_file="$marker_dir/vmbr9.state"
+  [[ "$(shared_network_marker_action "$marker_dir/absent" "$marker_dir/absent/vmbr9.state")" == adopt ]] || {
+    rm -rf -- "$marker_dir"
+    return 1
+  }
+  mkdir "$marker_dir/managed"
+  printf '1 10.250.9.1 10.250.9.0/24\n' >"$marker_dir/managed/vmbr9.state"
+  [[ "$(shared_network_marker_action "$marker_dir/managed" "$marker_dir/managed/vmbr9.state")" == validate ]] || {
+    rm -rf -- "$marker_dir"
+    return 1
+  }
+  rm "$marker_dir/managed/vmbr9.state"
+  if shared_network_marker_action "$marker_dir/managed" "$marker_dir/managed/vmbr9.state" >/dev/null 2>&1; then
+    rm -rf -- "$marker_dir"
+    return 1
+  fi
+  rm -rf -- "$marker_dir"
+  legacy_bridge_adoptable 9000 0d24d95baf22ff15 running \
+    ra8-lab-linux-0d24d95baf22ff15 \
+    'Disposable RA8 lab VM; RA8_LAB_RUN=0d24d95baf22ff15' \
+    'terraform;ra8-lab;run-0d24d95baf22ff15' ra8-tf-lab 0 \
+    'virtio=02:00:00:00:00:01,bridge=vmbr9,firewall=0' \
+    10.250.9.1/24 'ip=10.250.9.10/24,gw=10.250.9.1' bridge \
+    ra8_lab_ci_0d24d95baf22ff15 tap9000i0 1 || return 1
+  if legacy_bridge_adoptable 9000 0d24d95baf22ff15 running \
+    ra8-lab-linux-0d24d95baf22ff15 \
+    'Disposable RA8 lab VM; RA8_LAB_RUN=0d24d95baf22ff15' \
+    'terraform;ra8-lab;run-0d24d95baf22ff15' ra8-tf-lab 0 \
+    'virtio=02:00:00:00:00:01,bridge=vmbr9,firewall=0' \
+    10.250.9.1/24 'ip=10.250.9.10/24,gw=10.250.9.1' bridge \
+    ra8_lab_ci_0d24d95baf22ff15 'tap9000i0 tap9002i0' 1; then
+    return 1
+  fi
+  if legacy_bridge_adoptable 9000 0d24d95baf22ff15 running \
+    ra8-lab-linux-0d24d95baf22ff15 \
+    'Disposable RA8 lab VM; RA8_LAB_RUN=0d24d95baf22ff15' \
+    'terraform;ra8-lab;run-0d24d95baf22ff15' ra8-tf-lab 0 \
+    'virtio=02:00:00:00:00:01,bridge=vmbr9,firewall=0' \
+    10.250.9.1/24 'ip=10.250.9.11/24,gw=10.250.9.1' bridge \
+    ra8_lab_ci_0d24d95baf22ff15 tap9000i0 1; then
+    return 1
+  fi
+  if legacy_bridge_adoptable 9000 0d24d95baf22ff15 running \
+    ra8-lab-linux-0d24d95baf22ff15 \
+    'Disposable RA8 lab VM; RA8_LAB_RUN=0d24d95baf22ff15' \
+    'terraform;ra8-lab;run-0d24d95baf22ff15' ra8-tf-lab 0 \
+    'virtio=02:00:00:00:00:01,bridge=vmbr9,firewall=0' \
+    10.250.9.2/24 'ip=10.250.9.10/24,gw=10.250.9.1' bridge \
+    ra8_lab_ci_0d24d95baf22ff15 tap9000i0 1; then
+    return 1
+  fi
+  printf '%s\n' 'proxmox_lab_server_runner.sh --selftest: PASS'
+}
+
+if [[ "${1:-}" == --selftest ]]; then
+  runner_selftest
+  exit $?
+fi
+
 PROFILE="${1:-linux}"
 RUN_ID="${2:-$(od -An -N8 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')}"
-ARCHIVE_PATH="${3:-/var/lib/ra8-lab/$PROFILE/source.tar}"
+ARCHIVE_PATH="${3:-}"
 KEEP="${4:-false}"
+REQUESTED_VM_ID="${5:-}"
+REQUESTED_GUEST_IP="${6:-}"
 
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
-LOG_DIR="/var/log/ra8-lab"
-RUN_DIR="/var/lib/ra8-lab/$PROFILE"
-mkdir -p "$LOG_DIR" "$RUN_DIR"
-
-LOG_FILE="$LOG_DIR/$PROFILE.log"
-STATUS_FILE="$LOG_DIR/$PROFILE.status"
-PID_FILE="$LOG_DIR/$PROFILE.pid"
-
-# Truncate or initialize log for this run
-echo "=== Starting disposable $PROFILE CI run $RUN_ID ===" > "$LOG_FILE"
-exec >> "$LOG_FILE" 2>&1
-
-echo "$$" > "$PID_FILE"
-echo "RUNNING" > "$STATUS_FILE"
+if [[ "$PROFILE" != linux && "$PROFILE" != windows ]]; then
+  echo "error: unknown profile '$PROFILE'" >&2
+  exit 2
+fi
+if [[ ! "$RUN_ID" =~ ^[0-9a-f]{16}$ ]]; then
+  echo "error: run ID must be exactly 16 lowercase hexadecimal characters" >&2
+  exit 2
+fi
+if [[ "$KEEP" != true && "$KEEP" != false ]]; then
+  echo "error: keep must be true or false" >&2
+  exit 2
+fi
 
 ts() { date +"[%Y-%m-%d %H:%M:%S]"; }
 
@@ -59,14 +301,32 @@ windows_credential_present() {
 echo "$(ts) Initializing background execution for profile '$PROFILE' (PID: $$)..."
 
 if [[ "$PROFILE" == "linux" ]]; then
-  VM_ID=9000
+  REQUESTED_VM_ID="${REQUESTED_VM_ID:-9000}"
+  if [[ ! "$REQUESTED_VM_ID" =~ ^90[0-9]{2}$ ]] ||
+     ((REQUESTED_VM_ID < 9000 || REQUESTED_VM_ID > 9099 || REQUESTED_VM_ID == 9001 || REQUESTED_VM_ID == 9010 || REQUESTED_VM_ID == 9011)); then
+    echo "$(ts) error: Linux VMID is outside the disposable guest allowlist."
+    exit 2
+  fi
+  VM_ID="$REQUESTED_VM_ID"
   TEMPLATE_ID=9001
   BRIDGE="vmbr9"
   SUBNET="10.250.9.0/24"
   GATEWAY="10.250.9.1"
-  GUEST_IP="10.250.9.10"
+  GUEST_IP="$(runner_linux_guest_ip "$VM_ID")" || {
+    echo "$(ts) error: Linux VMID is outside the disposable guest allowlist."
+    exit 2
+  }
+  if [[ -n "$REQUESTED_GUEST_IP" && "$REQUESTED_GUEST_IP" != "$GUEST_IP" ]]; then
+    echo "$(ts) error: requested guest address does not match VMID $VM_ID."
+    exit 2
+  fi
   GUEST_USER="terraform-lab"
 elif [[ "$PROFILE" == "windows" ]]; then
+  REQUESTED_VM_ID="${REQUESTED_VM_ID:-9010}"
+  [[ "$REQUESTED_VM_ID" == 9010 && ( -z "$REQUESTED_GUEST_IP" || "$REQUESTED_GUEST_IP" == "10.250.8.20" ) ]] || {
+    echo "$(ts) error: Windows runner target must remain VMID 9010 at 10.250.8.20."
+    exit 2
+  }
   VM_ID=9010
   TEMPLATE_ID=9011
   BRIDGE="vmbr8"
@@ -86,9 +346,6 @@ elif [[ "$PROFILE" == "windows" ]]; then
     exit 1
   fi
   echo "$(ts) Windows lab credential present. Value not read at this point and never logged."
-else
-  echo "$(ts) error: unknown profile '$PROFILE'"
-  exit 1
 fi
 
 NFT_TABLE="ra8_lab_ci_${RUN_ID}"
@@ -108,22 +365,170 @@ derive_uplink_from_route() {
   printf '%s\n' "$interface"
 }
 
-# The lifecycle driver normally prevents duplicate starts, but the server-side
-# runner is also an entry point in its own right. Hold a profile-scoped lock so
-# a retried launcher cannot create two runners for the same fixed VMID.
-LOCK_FILE="/var/lock/ra8-lab-${PROFILE}.lock"
+NETWORK_READY=0
+VM_CREATED=0
+setup_shared_linux_network() {
+  exec 8>/run/lock/ra8-lab-ci-vmbr9.lock
+  flock -x 8
+  local state_dir=/run/ra8-lab-ci state=/run/ra8-lab-ci/vmbr9.state
+  local old_forward="" route uplink temp_state bridge_created=0
+  route="$(ip -o route get 1.1.1.1)"
+  uplink="$(derive_uplink_from_route "$route")" || { echo "$(ts) error: unsafe uplink route: $route"; return 1; }
+  if nft list table ip "$NFT_TABLE" >/dev/null 2>&1; then
+    echo "$(ts) error: run firewall table already exists: $NFT_TABLE"
+    return 1
+  fi
+  if ip link show "$BRIDGE" >/dev/null 2>&1; then
+    case "$(shared_network_marker_action "$state_dir" "$state")" in
+      validate)
+        old_forward="$(validate_shared_linux_marker "$state_dir" "$state" 0 "$GATEWAY" "$SUBNET")" || {
+          echo "$(ts) error: vmbr9 lifecycle marker is mismatched or unsafe"; return 1;
+        }
+        ;;
+      adopt)
+        old_forward="$(adopt_legacy_shared_linux_network "$state_dir" "$state" "$BRIDGE" "$GATEWAY" "$SUBNET")" || {
+          echo "$(ts) error: refusing to adopt vmbr9 without the exact legacy lab guest topology"; return 1;
+        }
+        echo "$(ts) Adopted the validated legacy vmbr9 run; preserving ip_forward=$old_forward as its restore baseline."
+        ;;
+      *)
+        echo "$(ts) error: vmbr9 lifecycle state is incomplete or unsafe"; return 1;
+        ;;
+    esac
+    [[ "$(ip -o -4 addr show dev "$BRIDGE" | awk 'NR == 1 {print $4}')" == "$GATEWAY/24" &&
+       "$(sysctl -n net.ipv4.ip_forward)" == 1 ]] || {
+      echo "$(ts) error: vmbr9 does not match the managed lab network"; return 1;
+    }
+  else
+    [[ ! -e "$state" && ! -L "$state" ]] || { echo "$(ts) error: stale vmbr9 lifecycle marker"; return 1; }
+    if [[ -e "$state_dir" || -L "$state_dir" ]]; then
+      [[ -d "$state_dir" && ! -L "$state_dir" && "$(stat -c %u "$state_dir")" == 0 && "$(stat -c %a "$state_dir")" == 700 &&
+         -z "$(find "$state_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]] || {
+        echo "$(ts) error: vmbr9 lifecycle directory is unsafe or nonempty"; return 1;
+      }
+    else
+      install -d -m 700 "$state_dir"
+    fi
+    old_forward="$(sysctl -n net.ipv4.ip_forward)"
+    [[ "$old_forward" == 0 || "$old_forward" == 1 ]] || { echo "$(ts) error: unexpected ip_forward value"; return 1; }
+    temp_state="$(mktemp "$state_dir/vmbr9.state.XXXXXX")"
+    printf '%s %s %s\n' "$old_forward" "$GATEWAY" "$SUBNET" >"$temp_state"
+    chmod 600 "$temp_state"
+    mv -- "$temp_state" "$state"
+    if ! ip link add "$BRIDGE" type bridge; then
+      rm -f -- "$state"
+      return 1
+    fi
+    bridge_created=1
+    ip addr add "$GATEWAY/24" dev "$BRIDGE"
+    ip link set "$BRIDGE" up
+    sysctl -w net.ipv4.ip_forward=1 >/dev/null
+  fi
+  NETWORK_READY=1
+  if ! nft -f - <<EOF
+table ip $NFT_TABLE {
+  set lab_ingress { type ifname; elements = { "$BRIDGE", "fwbr${VM_ID}i0", "fwln${VM_ID}i0", "fwpr${VM_ID}p0" } }
+  chain input {
+    type filter hook input priority -100; policy accept;
+    ct state established,related accept
+    iifname @lab_ingress tcp dport { 3142, 8080 } accept
+    iifname @lab_ingress drop
+  }
+  chain forward {
+    type filter hook forward priority -100; policy accept;
+    ct state established,related accept
+    iifname != @lab_ingress accept
+    iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
+    iifname @lab_ingress oifname "$uplink" udp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport { 80, 443 } accept
+    iifname @lab_ingress drop
+  }
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "$uplink" ip saddr $SUBNET masquerade
+  }
+}
+EOF
+  then
+    if ((bridge_created)); then
+      ip addr flush dev "$BRIDGE" scope global >/dev/null 2>&1 || true
+      ip link delete "$BRIDGE" type bridge >/dev/null 2>&1 || true
+      sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null 2>&1 || true
+      rm -f -- "$state"
+    fi
+    NETWORK_READY=0
+    flock -u 8
+    return 1
+  fi
+  flock -u 8
+}
+
+cleanup_shared_linux_network() {
+  ((NETWORK_READY)) || return 0
+  exec 8>/run/lock/ra8-lab-ci-vmbr9.lock
+  flock -x 8
+  local state_dir=/run/ra8-lab-ci state=/run/ra8-lab-ci/vmbr9.state
+  local old_forward remaining_tables children
+  old_forward="$(validate_shared_linux_marker "$state_dir" "$state" 0 "$GATEWAY" "$SUBNET")" || {
+    echo "$(ts) error: refusing vmbr9 cleanup without its trusted marker"; return 1;
+  }
+  nft delete table ip "$NFT_TABLE" >/dev/null 2>&1 || true
+  remaining_tables="$(nft list tables | awk -v current="$NFT_TABLE" '$1 == "table" && $2 == "ip" && $3 ~ /^ra8_lab_ci_[0-9a-f]{16}$/ && $3 != current {print $3}')"
+  children="$(ip -o link show master "$BRIDGE" 2>/dev/null | awk -F': ' '{print $2}')"
+  if [[ -n "$remaining_tables" || -n "$children" ]]; then
+    echo "$(ts) Preserving shared $BRIDGE; other run tables or guest ports remain."
+    NETWORK_READY=0
+    flock -u 8
+    return 0
+  fi
+  ip addr flush dev "$BRIDGE" scope global
+  ip link set "$BRIDGE" down
+  ip link delete "$BRIDGE" type bridge
+  sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null
+  rm -f -- "$state"
+  NETWORK_READY=0
+  flock -u 8
+}
+
+RUN_DIR="$(runner_run_dir "$PROFILE" "$RUN_ID")"
+LOG_DIR="$(runner_log_dir "$PROFILE")"
+LOG_FILE="$(runner_run_file "$PROFILE" "$RUN_ID" log)"
+STATUS_FILE="$(runner_run_file "$PROFILE" "$RUN_ID" status)"
+PID_FILE="$(runner_run_file "$PROFILE" "$RUN_ID" pid)"
+
+# Acquire VM ownership before this run writes any RUNNING/PID/log metadata.
+# Distinct Linux VMIDs therefore have independent locks and can run together.
+LOCK_FILE="$(runner_lock_file "$PROFILE" "$VM_ID")"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
-  echo "$(ts) Another $PROFILE CI runner already owns $LOCK_FILE."
+  mkdir -p "$LOG_DIR"
+  printf '=== Starting disposable %s CI run %s ===\n' "$PROFILE" "$RUN_ID" > "$LOG_FILE"
+  printf 'FAILED\n' > "$STATUS_FILE"
+  printf 'Another %s CI runner already owns VM %s (%s).\n' "$PROFILE" "$VM_ID" "$LOCK_FILE" >> "$LOG_FILE"
+  echo "Another $PROFILE CI runner already owns VM $VM_ID ($LOCK_FILE)." >&2
+  rm -f -- "$PID_FILE"
   exit 75
 fi
+
+mkdir -p "$LOG_DIR" "$RUN_DIR"
+echo "=== Starting disposable $PROFILE CI run $RUN_ID ===" > "$LOG_FILE"
+exec >> "$LOG_FILE" 2>&1
+echo "$$" > "$PID_FILE"
+echo "RUNNING" > "$STATUS_FILE"
 
 cleanup() {
   local exit_code=$?
   echo "$(ts) Cleaning up $PROFILE CI run $RUN_ID (exit code $exit_code)..."
-  if [[ "$KEEP" != "true" ]]; then
-    if qm status "$VM_ID" >/dev/null 2>&1; then
-      echo "$(ts) Stopping and destroying VM $VM_ID..."
+  if [[ "$KEEP" == true && "$VM_CREATED" == 1 ]]; then
+    echo "$(ts) Preserving VM $VM_ID and network $BRIDGE (--keep=true)"
+  else
+    config="$(qm config "$VM_ID" 2>/dev/null || true)"
+    vm_name="$(awk -F': ' '$1 == "name" {print substr($0, index($0, ": ") + 2); exit}' <<<"$config")"
+    vm_description="$(awk -F': ' '$1 == "description" {print substr($0, index($0, ": ") + 2); exit}' <<<"$config")"
+    if [[ -n "$config" && "$VM_CREATED" == 1 && "$vm_name" == "ra8-lab-$PROFILE-$RUN_ID" &&
+          ( -z "$vm_description" || "$vm_description" == *"RA8_LAB_RUN=$RUN_ID"* ) ]]; then
+      echo "$(ts) Stopping and destroying run-owned VM $VM_ID..."
       qm stop "$VM_ID" --timeout 15 >/dev/null 2>&1 || true
       for _ in {1..30}; do
         [[ "$(qm status "$VM_ID" 2>/dev/null | awk '{print $2}')" == "stopped" ]] && break
@@ -131,15 +536,19 @@ cleanup() {
       done
       qm set "$VM_ID" --protection 0 >/dev/null 2>&1 || true
       qm destroy "$VM_ID" --purge 1 >/dev/null 2>&1 || true
+    elif [[ -n "$config" ]]; then
+      echo "$(ts) Refusing to alter VM $VM_ID because it is not owned by run $RUN_ID."
     fi
-    if ip link show "$BRIDGE" >/dev/null 2>&1; then
-      echo "$(ts) Tearing down $BRIDGE and firewall..."
-      ip addr flush dev "$BRIDGE" scope global >/dev/null 2>&1 || true
-      ip link delete "$BRIDGE" type bridge >/dev/null 2>&1 || true
+    if [[ "$PROFILE" == linux ]]; then
+      cleanup_shared_linux_network || exit_code=1
+    else
+      if ip link show "$BRIDGE" >/dev/null 2>&1; then
+        echo "$(ts) Tearing down $BRIDGE and firewall..."
+        ip addr flush dev "$BRIDGE" scope global >/dev/null 2>&1 || true
+        ip link delete "$BRIDGE" type bridge >/dev/null 2>&1 || true
+      fi
+      nft delete table ip "$NFT_TABLE" >/dev/null 2>&1 || true
     fi
-    nft delete table ip "$NFT_TABLE" >/dev/null 2>&1 || true
-  else
-    echo "$(ts) Preserving VM $VM_ID and network $BRIDGE (--keep=true)"
   fi
   # The Windows inventory carries the credential at the point of use, so it does
   # not outlive the run that needed it.
@@ -160,35 +569,29 @@ trap 'exit 143' TERM
 
 # 1. Setup network isolation
 echo "$(ts) Configuring network isolation ($BRIDGE, $SUBNET)..."
-UPLINK_ROUTE="$(ip -o route get 1.1.1.1)" || {
-  echo "$(ts) error: could not determine the Proxmox uplink route."
+if qm status "$VM_ID" >/dev/null 2>&1; then
+  echo "$(ts) error: reserved VMID $VM_ID is already occupied; refusing to reuse it."
   exit 1
-}
-UPLINK="$(derive_uplink_from_route "$UPLINK_ROUTE")" || {
-  echo "$(ts) error: could not derive a safe uplink interface from route output: $UPLINK_ROUTE"
-  exit 1
-}
-if ! ip link show "$BRIDGE" >/dev/null 2>&1; then
-  ip link add "$BRIDGE" type bridge
 fi
-ip addr replace "$GATEWAY/24" dev "$BRIDGE"
-ip link set "$BRIDGE" up
-sysctl -w net.ipv4.ip_forward=1 >/dev/null
-
-nft -f - <<EOF
+if [[ "$PROFILE" == linux ]]; then
+  setup_shared_linux_network
+else
+  UPLINK_ROUTE="$(ip -o route get 1.1.1.1)" || { echo "$(ts) error: no Proxmox uplink route."; exit 1; }
+  UPLINK="$(derive_uplink_from_route "$UPLINK_ROUTE")" || { echo "$(ts) error: unsafe uplink route: $UPLINK_ROUTE"; exit 1; }
+  [[ ! -e /sys/class/net/"$BRIDGE" ]] || { echo "$(ts) error: $BRIDGE already exists."; exit 1; }
+  ip link add "$BRIDGE" type bridge
+  ip addr add "$GATEWAY/24" dev "$BRIDGE"
+  ip link set "$BRIDGE" up
+  sysctl -w net.ipv4.ip_forward=1 >/dev/null
+  nft -f - <<EOF
 table ip $NFT_TABLE {
-  set lab_ingress {
-    type ifname
-    elements = { "$BRIDGE", "fwbr${VM_ID}i0", "fwln${VM_ID}i0", "fwpr${VM_ID}p0" }
-  }
-
+  set lab_ingress { type ifname; elements = { "$BRIDGE", "fwbr${VM_ID}i0", "fwln${VM_ID}i0", "fwpr${VM_ID}p0" } }
   chain input {
     type filter hook input priority -100; policy accept;
     ct state established,related accept
     iifname @lab_ingress tcp dport { 3142, 8080 } accept
     iifname @lab_ingress drop
   }
-
   chain forward {
     type filter hook forward priority -100; policy accept;
     ct state established,related accept
@@ -199,13 +602,13 @@ table ip $NFT_TABLE {
     iifname @lab_ingress oifname "$UPLINK" tcp dport { 80, 443 } accept
     iifname @lab_ingress drop
   }
-
   chain postrouting {
     type nat hook postrouting priority srcnat; policy accept;
     oifname "$UPLINK" ip saddr $SUBNET masquerade
   }
 }
 EOF
+fi
 
 # 2. SSH key generation for this run
 KEY_FILE="$RUN_DIR/id_ed25519"
@@ -225,6 +628,8 @@ if ((clone_full)); then
   clone_args+=(--storage ra8-tf-lab)
 fi
 "${clone_args[@]}"
+VM_CREATED=1
+qm set "$VM_ID" --description "Disposable RA8 lab VM; RA8_LAB_RUN=$RUN_ID"
 if [[ "$PROFILE" == "windows" ]]; then
   # Server Core, the native toolchain, WSL2, and Podman builds exceed the
   # template's 8 GiB once Windows and the Linux VM are resident together.
@@ -244,7 +649,6 @@ if [[ "$PROFILE" == "windows" ]]; then
   # more working space than the 64 GiB base template provides.
   qm resize "$VM_ID" sata0 +64G
 fi
-qm set "$VM_ID" --description "Disposable RA8 lab VM; RA8_LAB_RUN=$RUN_ID"
 tags="terraform,ra8-lab,run-$RUN_ID"
 if [[ "$PROFILE" == "windows" ]]; then
   tags+=",windows"

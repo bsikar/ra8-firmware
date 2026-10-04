@@ -44,16 +44,16 @@ start profile="linux" keep="false":
     python3 scripts/dev/proxmox_lab_manage.py start {{ quote(profile) }} $keep_flag
 
 # Stream live logs from an active or recent Proxmox CI run. Ctrl+C only exits the log view.
-logs profile="linux":
-    python3 scripts/dev/proxmox_lab_manage.py logs {{ quote(profile) }}
+logs profile="linux" run_id="":
+    python3 scripts/dev/proxmox_lab_manage.py logs {{ quote(profile) }} {{ quote(run_id) }}
 
 # Show status of running background CI jobs on Proxmox.
 status:
     python3 scripts/dev/proxmox_lab_manage.py status
 
 # Stop and tear down an active CI run on Proxmox.
-stop profile="all":
-    python3 scripts/dev/proxmox_lab_manage.py stop {{ quote(profile) }}
+stop profile="all" run_id="":
+    python3 scripts/dev/proxmox_lab_manage.py stop {{ quote(profile) }} {{ quote(run_id) }}
 
 # Run CI via the local Terraform/Ansible driver (synchronous foreground lifecycle)
 ci-terraform profile="linux" keep="false":

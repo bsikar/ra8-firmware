@@ -19,12 +19,25 @@ import subprocess
 import threading
 
 SSH_ALIAS = "pve"
-TARGETS = {
+FIXED_TARGETS = {
     "api": ("127.0.0.1", "8006"),
-    "guest": ("10.250.9.10", "22"),
     "guest_windows": ("10.250.8.20", "22"),
     "guest_windows_winrm": ("10.250.8.20", "5985"),
 }
+
+
+def resolve_target(target: str, vmid: int | None) -> tuple[str, str]:
+    """Resolve only fixed allowlisted endpoints or a reserved Linux guest VMID."""
+    if target == "guest":
+        if vmid is None or not 9000 <= vmid <= 9099 or vmid in (9001, 9010, 9011):
+            raise ValueError("Linux guest target requires a non-template VMID from 9000 to 9099")
+        return (f"10.250.9.{vmid - 9000 + 10}", "22")
+    if vmid is not None:
+        raise ValueError("--vmid is supported only with --target guest")
+    try:
+        return FIXED_TARGETS[target]
+    except KeyError as exc:
+        raise ValueError("target is not allowlisted") from exc
 
 
 def copy_socket_to_child(connection: socket.socket, child: subprocess.Popen[bytes]) -> None:
@@ -107,12 +120,40 @@ class ProxyServer(socketserver.ThreadingTCPServer):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--target", choices=sorted(TARGETS), required=True)
+    parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--port", type=int)
+    parser.add_argument("--target", choices=sorted((*FIXED_TARGETS, "guest")))
+    parser.add_argument("--vmid", type=int)
     args = parser.parse_args()
-    if not 1024 <= args.port <= 65535:
+    if args.selftest:
+        args.port = args.port or 12345
+    if args.port is None or not 1024 <= args.port <= 65535:
         parser.error("--port must be an unprivileged local port")
-    with ProxyServer(args.port, TARGETS[args.target]) as server:
+    if args.selftest:
+        expected = {
+            9000: ("10.250.9.10", "22"),
+            9002: ("10.250.9.12", "22"),
+            9099: ("10.250.9.109", "22"),
+        }
+        if any(resolve_target("guest", vmid) != address for vmid, address in expected.items()):
+            parser.error("selftest failed VMID address mapping")
+        for vmid in (None, 9001, 9010, 9011, 9100):
+            try:
+                resolve_target("guest", vmid)
+            except ValueError:
+                continue
+            parser.error(f"selftest accepted invalid guest VMID {vmid}")
+        if resolve_target("api", None) != ("127.0.0.1", "8006"):
+            parser.error("selftest changed API allowlist")
+        print("ssh_loopback_proxy.py --selftest: PASS")
+        return
+    if args.target is None:
+        parser.error("--target is required")
+    try:
+        target = resolve_target(args.target, args.vmid)
+    except ValueError as exc:
+        parser.error(str(exc))
+    with ProxyServer(args.port, target) as server:
         server.serve_forever()
 
 
