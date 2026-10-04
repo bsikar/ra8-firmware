@@ -318,7 +318,7 @@ typedef enum : uint32_t {
  *
  * @details
  * Shared between ``ra8_spi_b.c`` (core ops + ISR dispatch) and
- * ``ra8_spi_b_dma.c`` (DMA pipes) so both translation units bound their
+ * ``spi_b_dma_abi.zig`` (DMA pipes) so both translation units bound their
  * per-channel tables and channel-range checks against the same constant.
  */
 typedef enum : uint8_t {
