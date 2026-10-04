@@ -16,7 +16,7 @@
  * PRCR re-lock always happens, even on early-return paths. The bounded OSCSF
  * poll helpers and the shared PLL-multiplier scale factor live in
  * `ra8_cgc_internal.h`; `priv_ra8_cgc_ensure_hoco_running_for_usb_ck` is defined
- * here and reused by `ra8_cgc_eswclk.c`.
+ * here and reused by `cgc_eswclk_abi.zig`.
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
