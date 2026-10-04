@@ -40,7 +40,7 @@ Where each column comes from:
 A driver with no sources is a contract declared but not implemented here. One
 with no tests and no apps is exactly the gap this page exists to make visible.
 
-80 drivers: 73 named by a host test, 58 named by an app, 6 by neither, 24 declared but not implemented here.
+80 drivers: 73 named by a host test, 58 named by an app, 6 by neither, 25 declared but not implemented here.
 
 | Driver | Src | Hdr | API | Tests | Apps |
 |---|---:|---:|---:|---:|---:|
@@ -98,7 +98,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_ofs` | 1 | 1 | 1 | 1 | 0 |
 | `ra8_pcntr` | 0 | 1 | 2 | 1 | 1 |
 | `ra8_pdg` | 1 | 1 | 23 | 2 | 1 |
-| `ra8_pdm` | 1 | 1 | 9 | 2 | 0 |
+| `ra8_pdm` | 0 | 1 | 9 | 2 | 0 |
 | `ra8_poeg` | 1 | 1 | 9 | 2 | 1 |
 | `ra8_port_utils` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_pwr` | 0 | 1 | 9 | 1 | 0 |
@@ -119,7 +119,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_touch` | 1 | 1 | 7 | 6 | 9 |
 | `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 1 | 1 | 10 | 3 | 3 |
-| `ra8_usb` | 20 | 16 | 149 | 46 | 31 |
+| `ra8_usb` | 19 | 16 | 149 | 46 | 31 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 1 | 1 | 17 | 1 | 0 |
 | `ra8_wdt` | 1 | 1 | 22 | 9 | 5 |
