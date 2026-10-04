@@ -7,6 +7,7 @@
 
 pub const k_ra8_ok: u16 = 0;
 pub const k_ra8_err_invalid_arg: u16 = 0x103;
+pub const k_ra8_err_invalid_size: u16 = 0x105;
 pub const k_ra8_err_invalid_state: u16 = 0x104;
 pub const k_ra8_err_not_supported: u16 = 0x107;
 pub const k_ra8_err_exists: u16 = 0x10C;
