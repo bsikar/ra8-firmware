@@ -4,7 +4,8 @@
 //! C ABI for ra8_mipi_dsi_soft_reset, hs_clock_start/stop, ulps_enter/exit
 //! and priv_ra8_mipi_dsi_internal_wait_eq (RA8FW-643), replacing that part
 //! of ra8_mipi_dsi.c. The three lane-state flags are defined here and
-//! declared extern in ra8_mipi_dsi_internal.h; C init/deinit still set them.
+//! declared extern in ra8_mipi_dsi_internal.h; init/deinit in
+//! mipi_dsi_lifecycle_abi.zig (RA8FW-645) set them.
 
 const common = @import("abi_common.zig");
 const ln = @import("internal/mipi_dsi_lanes.zig");

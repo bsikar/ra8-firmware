@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! MIPI DSI command path (RA8FW-630), ported from ra8_mipi_dsi_cmd.c.
-//! Registers and the pending-RX globals in ra8_mipi_dsi.c are reached
+//! Registers and the pending-RX globals (mipi_dsi_lifecycle_abi.zig) are reached
 //! through a `dsi` ops value so host tests can use a fake register file.
 
 pub const ok: u16 = 0;
