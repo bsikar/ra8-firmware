@@ -27,7 +27,8 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # USES pulls in ThreadX, NetX Duo (the IP stack the DHCP client sits on) and the
 # vendored esp-hosted host driver plus its RA8 port. LIBS globs the board layer
 # in so the app reads its pin map from the board, plus ra8_c6link -- the facade
-# the join runs through. `USES netxduo` also links the on-chip Ethernet driver
+# the join runs through -- and ra8_wifi, whose header c6_join_net.c and the
+# port's ra8_ipif.h include. `USES netxduo` also links the on-chip Ethernet driver
 # (`netxduo_port_ra8_eth`); that driver is dead-stripped here because this app
 # names `nx_ether_driver_c6` to `nx_ip_create` instead.
 ra8_add_app(
@@ -36,7 +37,7 @@ ra8_add_app(
   STACK_BYTES 8192
   DESCRIPTION "Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP"
   USES threadx netxduo esp_hosted
-  LIBS ra8_board_ek_ra8d2 ra8_c6link
+  LIBS ra8_board_ek_ra8d2 ra8_c6link ra8_wifi
   EXTRA_SRCS "${_d}/examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c"
 )
 
@@ -52,7 +53,13 @@ if(TARGET c6_wifi_join.elf)
     c6_wifi_join.elf PRIVATE "${_d}/examples/ek_ra8d2/common/network_provision/inc"
                              "${_d}/port/netxduo/inc" "${_nx_dir}/addons/dhcp"
   )
-  target_link_libraries(c6_wifi_join.elf PRIVATE netxduo_port_c6)
+  # c6_join_net.c binds through ra8_ipif / ra8_ipif_wifi in port/netxduo, the
+  # same bring-up wifi_hal_join uses; netxduo_ipif_wifi pulls in netxduo_ipif
+  # and netxduo_port_c6, so one target names all three.
+  get_property(_ipif_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES)
+  get_property(_ipif_wifi_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES)
+  target_sources(c6_wifi_join.elf PRIVATE ${_ipif_src} ${_ipif_wifi_src})
+  target_link_libraries(c6_wifi_join.elf PRIVATE netxduo_ipif_wifi)
   # Vendored SOUP. All three names were measured on nxd_dhcp_client.c under the
   # pinned cross toolchain arm-none-eabi-gcc 13.3.1 at -O0 by removing one at a
   # time with the others still applied: -Wdiscarded-qualifiers fires where the
