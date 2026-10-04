@@ -23,9 +23,9 @@ SSH_ALIAS="pve"
 LINUX_BRIDGE="vmbr9"
 LINUX_SUBNET="10.250.9.0/24"
 LINUX_GATEWAY="10.250.9.1"
-LINUX_VM_ID=9000
+LINUX_VM_ID="${RA8_LAB_LINUX_VM_ID:-9000}"
 LINUX_TEMPLATE_ID=9001
-LINUX_HOST="10.250.9.10"
+LINUX_HOST=""
 
 WINDOWS_BRIDGE="vmbr8"
 WINDOWS_SUBNET="10.250.8.0/24"
@@ -69,9 +69,9 @@ The CI profile requires:
   RA8_LAB_EGRESS_APPROVED=1    explicit approval of controlled guest egress
 
 Proxmox is addressed only as the SSH alias `pve`; the Terraform API endpoint
-and guest SSH endpoint are created locally as 127.0.0.1 tunnels. The guest is
-always pinned to the temporary 10.250.9.0/24 lab network; no guest address is
-accepted as an input.
+and guest SSH endpoint are created locally as 127.0.0.1 tunnels. Linux guest
+addresses are derived from their reserved VMID within the temporary
+10.250.9.0/24 lab network; no guest address is accepted as input.
 EOF
 }
 
@@ -94,6 +94,21 @@ validate_user() {
 
 validate_node() {
   [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$ ]] || die "Proxmox node name is not a safe declared name"
+}
+
+linux_guest_ip() {
+  local vmid="$1"
+  [[ "$vmid" =~ ^90[0-9]{2}$ ]] && ((vmid >= 9000 && vmid <= 9099)) &&
+    ((vmid != LINUX_TEMPLATE_ID && vmid != WINDOWS_TEMPLATE_ID && vmid != WINDOWS_VM_ID)) || return 1
+  printf '10.250.9.%s\n' "$((vmid - 9000 + 10))"
+}
+
+shared_network_cleanup_action() {
+  if [[ -n "$1" || -n "$2" ]]; then
+    printf 'preserve\n'
+  else
+    printf 'remove\n'
+  fi
 }
 
 derive_uplink_from_route() {
@@ -185,6 +200,43 @@ check_template_fixtures() {
 check_lab_bridge_absent() {
   local bridge="${1:-$LAB_BRIDGE}"
   [[ -n "$bridge" ]] || bridge="$LINUX_BRIDGE"
+  if [[ "$bridge" == "$LINUX_BRIDGE" ]]; then
+    remote_root "$bridge" "$LINUX_GATEWAY" "$LINUX_SUBNET" <<'REMOTE'
+set -euo pipefail
+bridge="$1"
+gateway="$2"
+subnet="$3"
+state_dir="/run/ra8-lab-ci"
+state="$state_dir/vmbr9.state"
+exec 9>/run/lock/ra8-lab-ci-vmbr9.lock
+flock -x 9
+if ! ip link show "$bridge" >/dev/null 2>&1; then
+  [[ ! -e "$state" && ! -L "$state" ]] || { printf '%s\n' 'stale managed vmbr9 state exists without its bridge'; exit 1; }
+  exit 0
+fi
+[[ -d "$state_dir" && ! -L "$state_dir" && "$(stat -c %u "$state_dir")" == 0 && "$(stat -c %a "$state_dir")" == 700 ]] || {
+  printf '%s\n' 'vmbr9 lifecycle directory is not root-owned mode 0700'; exit 1;
+}
+[[ -f "$state" && ! -L "$state" && "$(stat -c %u "$state")" == 0 && "$(stat -c %a "$state")" == 600 ]] || {
+  printf '%s\n' 'vmbr9 exists without a valid root-owned lab lifecycle marker'; exit 1;
+}
+read -r old_forward saved_gateway saved_subnet <"$state"
+[[ "$old_forward" == 0 || "$old_forward" == 1 ]] || { printf '%s\n' 'invalid saved ip_forward state'; exit 1; }
+[[ "$saved_gateway" == "$gateway" && "$saved_subnet" == "$subnet" ]] || {
+  printf '%s\n' 'managed vmbr9 marker does not match the requested lab network'; exit 1;
+}
+[[ "$(ip -o -4 addr show dev "$bridge" | awk 'NR == 1 {print $4}')" == "$gateway/24" ]] || {
+  printf '%s\n' 'managed vmbr9 has an unexpected address'; exit 1;
+}
+ip -d link show dev "$bridge" | grep -q 'bridge' || {
+  printf '%s\n' 'managed vmbr9 is not a bridge'; exit 1;
+}
+nft list tables | awk '$1 == "table" && $2 == "ip" && $3 ~ /^ra8_lab_ci_[0-9a-f]{16}$/ {found=1} END {exit !found}' || {
+  printf '%s\n' 'managed vmbr9 has no active per-run lab firewall table'; exit 1;
+}
+REMOTE
+    return
+  fi
   remote_root "$bridge" <<'REMOTE'
 set -euo pipefail
 bridge="$1"
@@ -202,13 +254,168 @@ REMOTE
 
 setup_lab_network() {
   NFT_TABLE="ra8_lab_ci_${run_id}"
-  network_ip_forward_before="$(remote_root "$NFT_TABLE" "$LAB_GATEWAY" "$LAB_SUBNET" "$LAB_BRIDGE" "$LAB_VM_ID" <<'REMOTE'
+  if [[ "$LAB_BRIDGE" == "$LINUX_BRIDGE" ]]; then
+    remote_root "$NFT_TABLE" "$LAB_GATEWAY" "$LAB_SUBNET" "$LAB_BRIDGE" "$LAB_VM_ID" <<'REMOTE'
 set -euo pipefail
 table="$1"
 gateway="$2"
 subnet="$3"
 bridge="$4"
 vmid="$5"
+state="/run/ra8-lab-ci/vmbr9.state"
+state_dir="/run/ra8-lab-ci"
+lock="/run/lock/ra8-lab-ci-vmbr9.lock"
+exec 9>"$lock"
+flock -x 9
+
+derive_uplink_from_route() {
+  local route="$1" interface="" found=0 index
+  local -a fields=()
+  read -r -a fields <<<"$route"
+  for ((index = 0; index < ${#fields[@]}; index++)); do
+    if [[ "${fields[index]}" == dev ]]; then
+      ((found == 0 && index + 1 < ${#fields[@]})) || return 1
+      interface="${fields[index + 1]}"
+      found=1
+    fi
+  done
+  [[ "$interface" =~ ^[[:alnum:]_.:-]{1,15}$ ]] || return 1
+  printf '%s\n' "$interface"
+}
+
+route="$(ip -o route get 1.1.1.1)" || { printf '%s\n' 'could not determine the Proxmox uplink route' >&2; exit 1; }
+uplink="$(derive_uplink_from_route "$route")" || {
+  printf 'could not derive a safe uplink interface from route output: %s\n' "$route" >&2
+  exit 1
+}
+if nft list table ip "$table" >/dev/null 2>&1; then
+  printf '%s\n' 'the run-specific nft table already exists; refusing to reuse it' >&2
+  exit 1
+fi
+
+created_bridge=0
+marker_created=0
+old_forward=""
+rollback_shared_network() {
+  local rc=$?
+  trap - ERR
+  set +e
+  nft delete table ip "$table" >/dev/null 2>&1
+  if ((created_bridge)); then
+    ip addr flush dev "$bridge" scope global >/dev/null 2>&1
+    ip link delete "$bridge" type bridge >/dev/null 2>&1
+    [[ -z "$old_forward" ]] || sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null 2>&1
+  fi
+  if ((marker_created)); then
+    rm -f -- "$state"
+  fi
+  exit "$rc"
+}
+trap rollback_shared_network ERR
+
+if ip link show "$bridge" >/dev/null 2>&1; then
+  [[ -d "$state_dir" && ! -L "$state_dir" && "$(stat -c %u "$state_dir")" == 0 && "$(stat -c %a "$state_dir")" == 700 ]] || {
+    printf '%s\n' 'vmbr9 lifecycle directory is not root-owned mode 0700' >&2; exit 1;
+  }
+  [[ -f "$state" && ! -L "$state" && "$(stat -c %u "$state")" == 0 && "$(stat -c %a "$state")" == 600 ]] || {
+    printf '%s\n' 'vmbr9 exists without a valid root-owned lab lifecycle marker' >&2; exit 1;
+  }
+  read -r old_forward saved_gateway saved_subnet <"$state"
+  [[ "$old_forward" == 0 || "$old_forward" == 1 ]] || { printf '%s\n' 'invalid saved ip_forward state' >&2; exit 1; }
+  [[ "$saved_gateway" == "$gateway" && "$saved_subnet" == "$subnet" ]] || {
+    printf '%s\n' 'managed vmbr9 marker does not match the requested lab network' >&2; exit 1;
+  }
+  [[ "$(ip -o -4 addr show dev "$bridge" | awk 'NR == 1 {print $4}')" == "$gateway/24" ]] || {
+    printf '%s\n' 'managed vmbr9 has an unexpected address' >&2; exit 1;
+  }
+  [[ "$(ip -d link show dev "$bridge" | grep -c bridge)" -gt 0 ]] || {
+    printf '%s\n' 'managed vmbr9 is not a bridge' >&2; exit 1;
+  }
+  [[ "$(sysctl -n net.ipv4.ip_forward)" == 1 ]] || {
+    printf '%s\n' 'managed vmbr9 exists while IPv4 forwarding is disabled' >&2; exit 1;
+  }
+else
+  [[ ! -e "$state" && ! -L "$state" ]] || { printf '%s\n' 'stale managed vmbr9 state exists without its bridge' >&2; exit 1; }
+  if [[ -e "$state_dir" || -L "$state_dir" ]]; then
+    [[ -d "$state_dir" && ! -L "$state_dir" && "$(stat -c %u "$state_dir")" == 0 && "$(stat -c %a "$state_dir")" == 700 ]] || {
+      printf '%s\n' 'existing vmbr9 lifecycle directory is unsafe' >&2; exit 1;
+    }
+    [[ -z "$(find "$state_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]] || {
+      printf '%s\n' 'unexpected contents exist in the vmbr9 lifecycle directory' >&2; exit 1;
+    }
+  else
+    install -d -m 700 "$state_dir"
+  fi
+  old_forward="$(sysctl -n net.ipv4.ip_forward)"
+  [[ "$old_forward" == 0 || "$old_forward" == 1 ]] || { printf '%s\n' 'unexpected ip_forward value' >&2; exit 1; }
+  temp_state="$(mktemp "$state_dir/vmbr9.state.XXXXXX")"
+  printf '%s %s %s\n' "$old_forward" "$gateway" "$subnet" >"$temp_state"
+  chmod 600 "$temp_state"
+  mv -- "$temp_state" "$state"
+  marker_created=1
+  ip link add "$bridge" type bridge
+  created_bridge=1
+  ip addr add "${gateway}/24" dev "$bridge"
+  ip link set "$bridge" up
+  sysctl -w net.ipv4.ip_forward=1 >/dev/null
+fi
+
+nft -f - <<EOF
+table ip $table {
+  set lab_ingress {
+    type ifname
+    elements = { "$bridge", "fwbr${vmid}i0", "fwln${vmid}i0", "fwpr${vmid}p0" }
+  }
+
+  chain input {
+    type filter hook input priority -100; policy accept;
+    ct state established,related accept
+    iifname @lab_ingress drop
+  }
+
+  chain forward {
+    type filter hook forward priority -100; policy accept;
+    ct state established,related accept
+    iifname != @lab_ingress accept
+    iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
+    iifname @lab_ingress oifname "$uplink" udp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport { 80, 443 } accept
+    iifname @lab_ingress drop
+  }
+
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "$uplink" ip saddr $subnet masquerade
+  }
+}
+EOF
+trap - ERR
+REMOTE
+    network_ready=1
+    return
+  fi
+network_ip_forward_before="$(remote_root "$NFT_TABLE" "$LAB_GATEWAY" "$LAB_SUBNET" "$LAB_BRIDGE" "$LAB_VM_ID" <<'REMOTE'
+set -euo pipefail
+table="$1"
+gateway="$2"
+subnet="$3"
+bridge="$4"
+vmid="$5"
+derive_uplink_from_route() {
+  local route="$1" interface="" found=0 index
+  local -a fields=()
+  read -r -a fields <<<"$route"
+  for ((index = 0; index < ${#fields[@]}; index++)); do
+    if [[ "${fields[index]}" == dev ]]; then
+      ((found == 0 && index + 1 < ${#fields[@]})) || return 1
+      interface="${fields[index + 1]}"
+      found=1
+    fi
+  done
+  [[ "$interface" =~ ^[[:alnum:]_.:-]{1,15}$ ]] || return 1
+  printf '%s\n' "$interface"
+}
 route="$(ip -o route get 1.1.1.1)" || {
   printf '%s\n' 'could not determine the Proxmox uplink route' >&2
   exit 1
@@ -280,6 +487,51 @@ REMOTE
 
 cleanup_lab_network() {
   ((network_ready)) || return 0
+  if [[ "$LAB_BRIDGE" == "$LINUX_BRIDGE" ]]; then
+    remote_root "$NFT_TABLE" "$LAB_BRIDGE" "$LAB_GATEWAY" "$LAB_SUBNET" <<'REMOTE'
+set -euo pipefail
+table="$1"
+bridge="$2"
+gateway="$3"
+subnet="$4"
+state="/run/ra8-lab-ci/vmbr9.state"
+state_dir="/run/ra8-lab-ci"
+lock="/run/lock/ra8-lab-ci-vmbr9.lock"
+exec 9>"$lock"
+flock -x 9
+
+[[ -f "$state" && ! -L "$state" && "$(stat -c %u "$state")" == 0 && "$(stat -c %a "$state")" == 600 ]] || {
+  printf '%s\n' 'refusing shared network cleanup without its root-owned lifecycle marker' >&2; exit 1;
+}
+[[ -d "$state_dir" && ! -L "$state_dir" && "$(stat -c %u "$state_dir")" == 0 && "$(stat -c %a "$state_dir")" == 700 ]] || {
+  printf '%s\n' 'refusing shared network cleanup with an unsafe lifecycle directory' >&2; exit 1;
+}
+read -r old_forward saved_gateway saved_subnet <"$state"
+[[ "$old_forward" == 0 || "$old_forward" == 1 ]] || { printf '%s\n' 'invalid saved ip_forward state' >&2; exit 1; }
+[[ "$saved_gateway" == "$gateway" && "$saved_subnet" == "$subnet" ]] || {
+  printf '%s\n' 'shared network marker does not match the active lab network' >&2; exit 1;
+}
+ip link show "$bridge" >/dev/null 2>&1 || { printf '%s\n' 'managed lab bridge disappeared before cleanup' >&2; exit 1; }
+
+if nft list table ip "$table" >/dev/null 2>&1; then
+  nft delete table ip "$table"
+fi
+remaining_tables="$(nft list tables | awk -v current="$table" '$1 == "table" && $2 == "ip" && $3 ~ /^ra8_lab_ci_[0-9a-f]{16}$/ && $3 != current {print $3}')"
+children="$(ip -o link show master "$bridge" 2>/dev/null | awk -F': ' '{print $2}')"
+if [[ -n "$remaining_tables" || -n "$children" ]]; then
+  printf 'preserving shared %s; other lab firewall tables or bridge ports remain\n' "$bridge"
+  exit 0
+fi
+
+ip addr flush dev "$bridge" scope global
+ip link set "$bridge" down
+ip link delete "$bridge" type bridge
+sysctl -w "net.ipv4.ip_forward=$old_forward" >/dev/null
+rm -f -- "$state"
+REMOTE
+    network_ready=0
+    return
+  fi
   remote_root "$NFT_TABLE" "$network_ip_forward_before" "$LAB_BRIDGE" <<'REMOTE'
 set -euo pipefail
 table="$1"
@@ -348,7 +600,11 @@ stop_api_proxy() {
 start_guest_ssh_proxy() {
   local target="${1:-guest}"
   guest_ssh_port="$(local_port)"
-  python3 "$LOOPBACK_PROXY" --port "$guest_ssh_port" --target "$target" >/dev/null 2>&1 &
+  if [[ "$target" == "guest" ]]; then
+    python3 "$LOOPBACK_PROXY" --port "$guest_ssh_port" --target "$target" --vmid "$LAB_VM_ID" >/dev/null 2>&1 &
+  else
+    python3 "$LOOPBACK_PROXY" --port "$guest_ssh_port" --target "$target" >/dev/null 2>&1 &
+  fi
   guest_proxy_pid=$!
   for _ in {1..30}; do
     kill -0 "$guest_proxy_pid" 2>/dev/null || die "the localhost guest SSH tunnel exited early"
@@ -461,6 +717,7 @@ build_linux_tfvar() {
   local public_key
   public_key="$(<"$run_dir/id_ed25519.pub")"
   jq -cn \
+    --argjson vm_id "$LAB_VM_ID" \
     --arg run_id "$run_id" \
     --arg name "ra8-lab-linux-$run_id" \
     --arg node "$RA8_LAB_NODE" \
@@ -470,7 +727,7 @@ build_linux_tfvar() {
       enabled: true,
       name: $name,
       run_id: $run_id,
-      vm_id: 9000,
+      vm_id: $vm_id,
       template_vm_id: 9001,
       pool_id: "ra8-tf-lab",
       datastore_id: "ra8-tf-lab",
@@ -478,7 +735,7 @@ build_linux_tfvar() {
       cores: 4,
       memory_mb: 8192,
       bridge: "vmbr9",
-      ipv4_address: "10.250.9.10/24",
+      ipv4_address: "${LAB_HOST}/24",
       ipv4_gateway: "10.250.9.1",
       ssh_public_keys: [$public_key],
       user_name: $user,
@@ -746,7 +1003,18 @@ selftest() {
   if (validate_hex_id bad) >/dev/null 2>&1; then
     die "selftest accepted a malformed run ID"
   fi
-  [[ "$LINUX_HOST" == "10.250.9.10" ]] || die "selftest changed the pinned lab guest address"
+  [[ "$(linux_guest_ip 9000)" == "10.250.9.10" ]] || die "selftest failed VMID 9000 address mapping"
+  [[ "$(linux_guest_ip 9002)" == "10.250.9.12" ]] || die "selftest failed VMID 9002 address mapping"
+  [[ "$(linux_guest_ip 9099)" == "10.250.9.109" ]] || die "selftest failed VMID 9099 address mapping"
+  if linux_guest_ip 9001 >/dev/null 2>&1 || linux_guest_ip 9010 >/dev/null 2>&1 || linux_guest_ip 9011 >/dev/null 2>&1 || linux_guest_ip 9100 >/dev/null 2>&1; then
+    die "selftest accepted a protected or out-of-range VMID"
+  fi
+  [[ "$(shared_network_cleanup_action ra8_lab_ci_0123456789abcdef '')" == preserve ]] ||
+    die "selftest failed to preserve vmbr9 while another run table remains"
+  [[ "$(shared_network_cleanup_action '' fwpr9002p0)" == preserve ]] ||
+    die "selftest failed to preserve vmbr9 while a guest port remains"
+  [[ "$(shared_network_cleanup_action '' '')" == remove ]] ||
+    die "selftest failed to remove vmbr9 after the last run and guest"
   [[ "$LINUX_GATEWAY" == "10.250.9.1" ]] || die "selftest changed the pinned lab gateway"
   [[ "$(derive_uplink_from_route '1.1.1.1 via 10.0.10.1 dev vmbr1 src 10.0.10.2')" == "vmbr1" ]] ||
     die "selftest failed to derive a route uplink"
@@ -813,7 +1081,7 @@ run_ci() {
     LAB_SUBNET="$LINUX_SUBNET"
     LAB_GATEWAY="$LINUX_GATEWAY"
     LAB_VM_ID="$LINUX_VM_ID"
-    LAB_HOST="$LINUX_HOST"
+    LAB_HOST="$(linux_guest_ip "$LINUX_VM_ID")" || die "Linux guest VMID must be an available ID from 9000 to 9099"
   elif [[ "$profile" == "windows" ]]; then
     RA8_LAB_WINDOWS_USER="${RA8_LAB_WINDOWS_USER:-Administrator}"
     LAB_BRIDGE="$WINDOWS_BRIDGE"
