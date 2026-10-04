@@ -1,25 +1,17 @@
 /**
  * @file ra8_c6link_wifi.c
- * @brief Radio lifecycle: initialise, choose station mode, start, tear down.
+ * @brief Shared Wi-Fi response extractor and the bare-request machinery.
  * @ingroup grp_net
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Five of the eleven RPC ids a station join needs live here, plus the shared
- * machinery for the requests whose body is empty and whose answer is a bare
- * result code.
- *
- * @par The initialisation configuration, field by field
- * `Req_WifiInit` is the one request that carries real numbers rather than a
- * credential. On an ESP-IDF host those numbers come from
- * `WIFI_INIT_CONFIG_DEFAULT()`, a macro this host does not have; the
- * co-processor validates the `magic` word and then uses the rest to size its
- * own buffers. ::ra8_c6link_wifi_init_t restates that default set for an
- * ESP32-C6 built at the pinned IDF version, with the reason for each value
- * beside it, so a mismatch is visible rather than buried in a macro expansion
- * nobody in this tree can read.
+ * The response extractor every Wi-Fi request hands the RPC layer, plus the
+ * shared machinery for the requests whose body is empty and whose answer is a
+ * bare result code. The lifecycle exports themselves (start, stop, leave) are
+ * Zig now, in `ra8_c6link_wifi_abi.zig`, and the `Req_WifiInit` configuration
+ * is documented field by field in `internal/wifi_init.zig`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,35 +25,6 @@
 #include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
-
-/**
- * @enum ra8_c6link_wifi_mode_t
- * @brief The co-processor's own `wifi_mode_t` values, as transmitted.
- *
- * @details
- * These cross the link as a plain `int32_t`, so they are the co-processor's
- * numbering and not this host's choice. Only the station value is used; the
- * others are named so the transmitted number is never a bare literal.
- *
- * @invariant ::k_ra8_c6link_mode_sta is what `Req_SetWifiMode` must carry for
- *            a station.
- * @invariant The numbering matches ESP-IDF's `wifi_mode_t`, which the
- *            co-processor decodes it as.
- *
- * @par Example:
- * @code
- * body.mode = (int32_t)k_ra8_c6link_mode_sta;
- * @endcode
- *
- * @see ra8_c6link_wifi_start
- * @since 0.1.0
- */
-typedef enum : int32_t {
-  k_ra8_c6link_mode_null = 0, /**< Radio configured for neither role. */
-  k_ra8_c6link_mode_sta  = 1, /**< Station.                           */
-  k_ra8_c6link_mode_ap   = 2, /**< Access point.                      */
-} ra8_c6link_wifi_mode_t;
-
 
 RA8_PRIV ra8_err_t priv_c6link_take_resp(void* ctx, const void* msg_v)
 {
@@ -216,131 +179,4 @@ RA8_PRIV ra8_err_t priv_c6link_bare_req(ra8_c6link_t* link, uint32_t req_id)
 
   ra8_c6link_take_ctx_t take = {.link = link, .out = nullptr, .rpc_id = req_id};
   return priv_c6link_rpc_call(link, &req, resp_id, priv_c6link_take_resp, &take);
-}
-
-/**
- * @brief Send `Req_WifiInit` carrying the default configuration set.
- * @details The one request that carries real numbers rather than a credential.
- *        Every value is documented in ::ra8_c6link_wifi_init_t, and the
- *        co-processor's own `esp_wifi_init()` is what validates them.
- * @param[in,out] link Open handle; must be non-null.
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok The co-processor initialised its Wi-Fi stack.
- * @retval k_ra8_err_timeout It did not answer within the budget.
- * @retval k_ra8_err_protocol_error It refused; the fault slot carries its
- *         `esp_err_t`, and `ESP_ERR_INVALID_ARG` there means the magic word or
- *         a buffer count was not one this co-processor build accepts.
- * @retval k_ra8_err_spi_error The transport refused a transfer.
- * @pre @p link is open and the co-processor has booted.
- * @pre The radio is not already initialised.
- * @post On success the co-processor's Wi-Fi stack exists but is not started.
- * @post On failure the fault slot names this request.
- * @note Every value transmitted is documented in ::ra8_c6link_wifi_init_t.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6link_wifi_do_init(ra8_c6link_t* link)
-{
-  priv_c6link_wifi_init_cfg_t set;
-  priv_c6link_wifi_init_cfg(&set);
-
-  WifiInitConfig cfg;
-  wifi_init_config__init(&cfg);
-  cfg.static_rx_buf_num      = set.static_rx_buf_num;
-  cfg.dynamic_rx_buf_num     = set.dynamic_rx_buf_num;
-  cfg.tx_buf_type            = set.tx_buf_type;
-  cfg.static_tx_buf_num      = set.static_tx_buf_num;
-  cfg.dynamic_tx_buf_num     = set.dynamic_tx_buf_num;
-  cfg.rx_mgmt_buf_type       = set.rx_mgmt_buf_type;
-  cfg.rx_mgmt_buf_num        = set.rx_mgmt_buf_num;
-  cfg.ampdu_rx_enable        = set.ampdu_rx_enable;
-  cfg.ampdu_tx_enable        = set.ampdu_tx_enable;
-  cfg.nvs_enable             = set.nvs_enable;
-  cfg.rx_ba_win              = set.rx_ba_win;
-  cfg.beacon_max_len         = set.beacon_max_len;
-  cfg.mgmt_sbuf_num          = set.mgmt_sbuf_num;
-  cfg.feature_caps           = set.feature_caps;
-  cfg.sta_disconnected_pm    = (set.sta_disconnected_pm != 0);
-  cfg.espnow_max_encrypt_num = set.espnow_max_encrypt_num;
-  cfg.tx_hetb_queue_num      = set.tx_hetb_queue_num;
-  cfg.magic                  = set.magic;
-
-  RpcReqWifiInit body;
-  rpc__req__wifi_init__init(&body);
-  body.cfg = &cfg;
-
-  Rpc req;
-  rpc__init(&req);
-  req.msg_type      = RPC_TYPE__Req;
-  req.msg_id        = RPC_ID__Req_WifiInit;
-  req.payload_case  = RPC__PAYLOAD_REQ_WIFI_INIT;
-  req.req_wifi_init = &body;
-
-  ra8_c6link_take_ctx_t take = {.link   = link,
-                                .out    = nullptr,
-                                .rpc_id = (uint32_t)RPC_ID__Req_WifiInit};
-  return priv_c6link_rpc_call(link,
-                              &req,
-                              (uint32_t)RPC_ID__Resp_WifiInit,
-                              priv_c6link_take_resp,
-                              &take);
-}
-
-/**
- * @brief Send `Req_SetWifiMode` selecting station mode.
- * @details Fixes the radio's role before any credential is sent, which is the
- *        order ESP-IDF's own station bring-up uses.
- * @param[in,out] link Open handle; must be non-null.
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok The co-processor is in station mode.
- * @retval k_ra8_err_timeout It did not answer within the budget.
- * @retval k_ra8_err_protocol_error It refused the mode.
- * @retval k_ra8_err_spi_error The transport refused a transfer.
- * @pre ::internal_c6link_wifi_do_init has succeeded.
- * @pre @p link is open.
- * @post On success the radio's role is fixed until it is set again.
- * @post On failure the fault slot names this request.
- * @note The mode number is the co-processor's `wifi_mode_t`, not a local id.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6link_wifi_do_mode(ra8_c6link_t* link)
-{
-  RpcReqSetMode body;
-  rpc__req__set_mode__init(&body);
-  body.mode = (int32_t)k_ra8_c6link_mode_sta;
-
-  Rpc req;
-  rpc__init(&req);
-  req.msg_type          = RPC_TYPE__Req;
-  req.msg_id            = RPC_ID__Req_SetWifiMode;
-  req.payload_case      = RPC__PAYLOAD_REQ_SET_WIFI_MODE;
-  req.req_set_wifi_mode = &body;
-
-  ra8_c6link_take_ctx_t take = {.link   = link,
-                                .out    = nullptr,
-                                .rpc_id = (uint32_t)RPC_ID__Req_SetWifiMode};
-  return priv_c6link_rpc_call(link,
-                              &req,
-                              (uint32_t)RPC_ID__Resp_SetWifiMode,
-                              priv_c6link_take_resp,
-                              &take);
-}
-
-ra8_err_t ra8_c6link_wifi_start(ra8_c6link_t* link)
-{
-  if (link == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (!ra8_c6link_is_open(link)) {
-    return k_ra8_err_not_initialized;
-  }
-
-  const ra8_err_t inited = internal_c6link_wifi_do_init(link);
-  if (inited != k_ra8_ok) {
-    return inited;
-  }
-  const ra8_err_t moded = internal_c6link_wifi_do_mode(link);
-  if (moded != k_ra8_ok) {
-    return moded;
-  }
-  return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
 }
