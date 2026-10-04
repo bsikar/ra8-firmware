@@ -26,23 +26,9 @@ const null_ptr: u16 = 0x504;
 
 const frame_max: u16 = 1518;
 
-const EthHandler = ?*const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
+const EthHandler = fixture.EthHandler;
 
-extern fn ra8_test_fixture_reset() void;
-extern fn ra8_test_set_eth_init_result(result: u16) void;
-extern fn ra8_test_set_eth_deinit_result(result: u16) void;
-extern fn ra8_test_eth_init_calls() u32;
-extern fn ra8_test_eth_deinit_calls() u32;
-extern fn ra8_test_eth_attach_calls() u32;
-extern fn ra8_test_set_eth_link_result(result: u16) void;
-extern fn ra8_test_set_eth_link_up(link_up: u8) void;
-extern fn ra8_test_eth_link_calls() u32;
-extern fn ra8_test_attached_handler() EthHandler;
-extern fn ra8_test_log_error_calls() u32;
-extern fn ra8_test_log_info_calls() u32;
-extern fn ra8_test_log_error_val_calls() u32;
-extern fn ra8_test_log_last_error_message() [*:0]const u8;
-extern fn ra8_test_log_last_error_value() u32;
+const fixture = @import("abi_fixture.zig");
 
 var event_calls: u32 = 0;
 var last_event_mask: u32 = 0;
@@ -59,17 +45,17 @@ const test_mac: abi.Mac = .{ .bytes = .{ 0x02, 0x11, 0x22, 0x33, 0x44, 0x55 } };
 /// Force the singleton back to its pre-init state, as the C suite's
 /// `internal_prep` does, and clear every observation counter.
 fn prep() void {
-    ra8_test_set_eth_init_result(ok);
-    ra8_test_set_eth_deinit_result(ok);
+    fixture.setEthInitResult(ok);
+    fixture.setEthDeinitResult(ok);
     _ = abi.ra8_net_pal_deinit();
-    ra8_test_fixture_reset();
+    fixture.reset();
     event_calls = 0;
     last_event_mask = 0;
     last_event_ctx = null;
 }
 
 fn messageEquals(expected: []const u8) bool {
-    return std.mem.eql(u8, std.mem.span(ra8_test_log_last_error_message()), expected);
+    return std.mem.eql(u8, std.mem.span(fixture.logLastErrorMessage()), expected);
 }
 
 test "init stores the supplied mac and starts the link down" {
@@ -96,26 +82,26 @@ test "init with a null mac keeps the all-zero default" {
 test "init attaches the driver handler and logs the ready line" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_eth_init_calls());
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_eth_attach_calls());
-    try std.testing.expect(ra8_test_attached_handler() != null);
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_log_info_calls());
+    try std.testing.expectEqual(@as(u32, 1), fixture.ethInitCalls());
+    try std.testing.expectEqual(@as(u32, 1), fixture.ethAttachCalls());
+    try std.testing.expect(fixture.attachedHandler() != null);
+    try std.testing.expectEqual(@as(u32, 1), fixture.logInfoCalls());
 }
 
 test "init reports hw_init_failed with the driver code when the driver fails" {
     prep();
-    ra8_test_set_eth_init_result(0x0207);
+    fixture.setEthInitResult(0x0207);
     try std.testing.expectEqual(hw_init_failed, abi.ra8_net_pal_init(&test_mac));
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_log_error_val_calls());
-    try std.testing.expectEqual(@as(u32, 0x0207), ra8_test_log_last_error_value());
+    try std.testing.expectEqual(@as(u32, 1), fixture.logErrorValCalls());
+    try std.testing.expectEqual(@as(u32, 0x0207), fixture.logLastErrorValue());
     try std.testing.expect(messageEquals("ra8_eth_init failed"));
 }
 
 test "a failed init leaves the PAL uninitialized and attaches nothing" {
     prep();
-    ra8_test_set_eth_init_result(0x0207);
+    fixture.setEthInitResult(0x0207);
     try std.testing.expectEqual(hw_init_failed, abi.ra8_net_pal_init(null));
-    try std.testing.expectEqual(@as(u32, 0), ra8_test_eth_attach_calls());
+    try std.testing.expectEqual(@as(u32, 0), fixture.ethAttachCalls());
     var got: abi.Mac = abi.Mac.zero;
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_get_mac_addr(&got));
 }
@@ -123,21 +109,21 @@ test "a failed init leaves the PAL uninitialized and attaches nothing" {
 test "deinit before init reports invalid_state and does not call the driver" {
     prep();
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_deinit());
-    try std.testing.expectEqual(@as(u32, 0), ra8_test_eth_deinit_calls());
+    try std.testing.expectEqual(@as(u32, 0), fixture.ethDeinitCalls());
 }
 
 test "deinit detaches the driver handler" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_deinit());
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_eth_deinit_calls());
-    try std.testing.expect(ra8_test_attached_handler() == null);
+    try std.testing.expectEqual(@as(u32, 1), fixture.ethDeinitCalls());
+    try std.testing.expect(fixture.attachedHandler() == null);
 }
 
 test "deinit passes the driver's own error code back" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    ra8_test_set_eth_deinit_result(0x0204);
+    fixture.setEthDeinitResult(0x0204);
     try std.testing.expectEqual(@as(u16, 0x0204), abi.ra8_net_pal_deinit());
     var link: abi.LinkState = .up;
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_link_status(&link));
@@ -147,7 +133,7 @@ test "set_mac_addr rejects a null descriptor with its own log line" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(null_ptr, abi.ra8_net_pal_set_mac_addr(null));
-    try std.testing.expectEqual(@as(u32, 1), ra8_test_log_error_calls());
+    try std.testing.expectEqual(@as(u32, 1), fixture.logErrorCalls());
     try std.testing.expect(messageEquals("set_mac_addr: mac"));
 }
 
@@ -353,7 +339,7 @@ test "mcdc: driver dispatch guard, handler attached and status non-zero" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
     event_calls = 0;
     handler(null, 0x0000_0004);
     try std.testing.expectEqual(@as(u32, 1), event_calls);
@@ -364,7 +350,7 @@ test "mcdc: driver dispatch guard, handler attached and status clear" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
     event_calls = 0;
     handler(null, 0);
     try std.testing.expectEqual(@as(u32, 0), event_calls);
@@ -373,7 +359,7 @@ test "mcdc: driver dispatch guard, handler attached and status clear" {
 test "mcdc: driver dispatch guard, no handler and status non-zero" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
     event_calls = 0;
     handler(null, 0xFFFF_FFFF);
     try std.testing.expectEqual(@as(u32, 0), event_calls);
@@ -383,7 +369,7 @@ test "driver dispatch after deinit reaches nobody" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_deinit());
     event_calls = 0;
     handler(null, 0xFFFF_FFFF);
@@ -410,7 +396,7 @@ test "dispatch with an empty ring reports the controller half alone" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
     event_calls = 0;
     handler(null, 0x0000_0002);
@@ -422,7 +408,7 @@ test "dispatch with a queued frame ORs rx_ready into the reported mask" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
     var frame = [_]u8{0xA5} ** 64;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
@@ -437,7 +423,7 @@ test "a queued frame alone is enough to dispatch on a clear status word" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
     var frame = [_]u8{0x5A} ** 64;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
@@ -452,7 +438,7 @@ test "draining the ring takes rx_ready back out of the dispatched mask" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+    const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
     var frame = [_]u8{0x11} ** 64;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
@@ -482,8 +468,8 @@ test "link_status with a readable PHY that agrees raises nothing" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(0);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(0);
 
     event_calls = 0;
     var link: abi.LinkState = .up;
@@ -496,8 +482,8 @@ test "link_status raises link_up once when the PHY comes up" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
 
     event_calls = 0;
     var link: abi.LinkState = .down;
@@ -517,12 +503,12 @@ test "link_status raises link_down when the PHY drops again" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
     var link: abi.LinkState = .down;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
 
-    ra8_test_set_eth_link_up(0);
+    fixture.setEthLinkUp(0);
     event_calls = 0;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
     try std.testing.expectEqual(abi.LinkState.down, link);
@@ -533,8 +519,8 @@ test "link_status raises link_down when the PHY drops again" {
 test "a link edge with no handler attached updates the cache anyway" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
 
     event_calls = 0;
     var link: abi.LinkState = .down;
@@ -546,37 +532,37 @@ test "a link edge with no handler attached updates the cache anyway" {
 test "link_status rejects a null output before it touches the PHY" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
 
-    const before = ra8_test_eth_link_calls();
+    const before = fixture.ethLinkCalls();
     try std.testing.expectEqual(null_ptr, abi.ra8_net_pal_link_status(null));
-    try std.testing.expectEqual(before, ra8_test_eth_link_calls());
+    try std.testing.expectEqual(before, fixture.ethLinkCalls());
 }
 
 test "a pre-init link_status never reads the PHY" {
     prep();
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
 
-    const before = ra8_test_eth_link_calls();
+    const before = fixture.ethLinkCalls();
     var link: abi.LinkState = .up;
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_link_status(&link));
-    try std.testing.expectEqual(before, ra8_test_eth_link_calls());
+    try std.testing.expectEqual(before, fixture.ethLinkCalls());
 }
 
 test "deinit forgets a link the PHY had brought up" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    ra8_test_set_eth_link_result(ok);
-    ra8_test_set_eth_link_up(1);
+    fixture.setEthLinkResult(ok);
+    fixture.setEthLinkUp(1);
     var link: abi.LinkState = .down;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
     try std.testing.expectEqual(abi.LinkState.up, link);
 
     try std.testing.expectEqual(ok, abi.ra8_net_pal_deinit());
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
-    ra8_test_set_eth_link_result(0x010F);
+    fixture.setEthLinkResult(0x010F);
 
     link = .up;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
