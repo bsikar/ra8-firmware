@@ -69,7 +69,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | HHUB  | USB Host Hub class driver                                 | `ra8_usb_hhub.c` |
 | PVND  | USB Peripheral Vendor-class                               | `usb_pvnd_abi.zig` |
 | PAUD/HAUD | USB Peripheral / Host Audio class                     | `ra8_usb_paud.c`, `ra8_usb_haud.c` |
-| PPRN  | USB Peripheral Printer class                              | `ra8_usb_pprn.c` |
+| PPRN  | USB Peripheral Printer class                              | `usb_pprn.zig`   |
 | ETHA  | Ethernet adapter (gigabit MAC top-level)                  | `ra8_etha.c`, `ra8_eth.c` |
 | RMAC  | Reduced Media Access Controller (per-port MAC)            | `ra8_rmac.c`, `ra8_rmac_phy.c` |
 | GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
