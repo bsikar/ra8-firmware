@@ -257,7 +257,7 @@ typedef enum : uint8_t {
  *
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in ``ra8_canfd_set_accept_filter`` in
- * ``libs/ra8_hal/src/ra8_canfd_afl.c``.
+ * ``libs/ra8_hal/src/canfd_afl_abi.zig``.
  *
  * @invariant If @p extended is false, @p id and @p mask fit in 11 bits.
  * @invariant If @p extended is true, @p id and @p mask fit in 29 bits.
