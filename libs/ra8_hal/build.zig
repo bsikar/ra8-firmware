@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -105,6 +105,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "etha_tas", .source = "src/internal/etha_tas.zig", .root = "tests/etha_tas_test.zig" },
         .{ .name = "etha_stats", .source = "src/internal/etha_stats.zig", .root = "tests/etha_stats_test.zig" },
         .{ .name = "sci_dma_isr", .source = "src/internal/sci_dma_isr.zig", .root = "tests/sci_dma_isr_test.zig" },
+        .{ .name = "ceu_init_regs", .source = "src/internal/ceu_init_regs.zig", .root = "tests/ceu_init_regs_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{

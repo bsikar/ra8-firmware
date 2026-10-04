@@ -17,7 +17,7 @@ parity, whether a driver has run on real silicon, when it was last audited -- is
 written down nowhere the generator can read, so it is not guessed at here. That
 belongs in the [issue tracker](https://github.com/bsikar/ra8-firmware/issues).
 
-A driver is a source FAMILY: `ra8_ceu.c` and `ra8_ceu_init_regs.c`, with the
+A driver is a source FAMILY: `ra8_ceu.c`, with the
 headers `ra8_ceu.h`, `ra8_ceu_api.h` and `ra8_ceu_types.h`, are one row. The
 family root is the shortest header name no other is a prefix of, matched at an
 underscore boundary so `ra8_etha` stays separate from `ra8_eth`. A source whose
@@ -40,86 +40,87 @@ Where each column comes from:
 A driver with no sources is a contract declared but not implemented here. One
 with no tests and no apps is exactly the gap this page exists to make visible.
 
-79 drivers: 71 named by a host test, 58 named by an app, 6 by neither, 6 declared but not implemented here.
+80 drivers: 73 named by a host test, 58 named by an app, 6 by neither, 24 declared but not implemented here.
 
 | Driver | Src | Hdr | API | Tests | Apps |
 |---|---:|---:|---:|---:|---:|
 | `gpio` | 1 | 0 | 0 | 1 | 0 |
-| `ra8_acmphs` | 1 | 1 | 12 | 3 | 1 |
+| `ra8_acmphs` | 0 | 1 | 12 | 3 | 1 |
 | `ra8_adc` | 2 | 1 | 20 | 5 | 2 |
 | `ra8_agt` | 1 | 1 | 11 | 2 | 3 |
-| `ra8_bkup` | 3 | 1 | 23 | 2 | 1 |
+| `ra8_bkup` | 2 | 1 | 23 | 2 | 1 |
 | `ra8_ble` | 1 | 1 | 11 | 1 | 1 |
-| `ra8_bscan` | 1 | 1 | 6 | 1 | 1 |
-| `ra8_cac` | 1 | 1 | 9 | 1 | 1 |
-| `ra8_cache` | 1 | 1 | 11 | 3 | 7 |
-| `ra8_canfd` | 5 | 1 | 18 | 11 | 4 |
-| `ra8_ceu` | 2 | 3 | 27 | 4 | 0 |
-| `ra8_cgc` | 3 | 1 | 12 | 20 | 227 |
+| `ra8_bscan` | 0 | 1 | 6 | 1 | 1 |
+| `ra8_cac` | 0 | 1 | 9 | 1 | 1 |
+| `ra8_cache` | 1 | 1 | 11 | 3 | 8 |
+| `ra8_canfd` | 1 | 1 | 18 | 11 | 4 |
+| `ra8_ceu` | 1 | 3 | 27 | 4 | 0 |
+| `ra8_cgc` | 2 | 1 | 12 | 20 | 220 |
 | `ra8_cnecc` | 1 | 1 | 25 | 4 | 0 |
-| `ra8_crc` | 1 | 1 | 8 | 3 | 1 |
-| `ra8_dac_b` | 1 | 1 | 12 | 3 | 2 |
+| `ra8_crc` | 0 | 1 | 8 | 3 | 1 |
+| `ra8_dac_b` | 0 | 1 | 12 | 3 | 2 |
 | `ra8_dma` | 1 | 1 | 7 | 7 | 1 |
 | `ra8_dmac` | 1 | 1 | 12 | 5 | 3 |
-| `ra8_doc` | 1 | 1 | 5 | 3 | 1 |
-| `ra8_dotf` | 2 | 1 | 22 | 3 | 1 |
+| `ra8_doc` | 0 | 1 | 5 | 3 | 1 |
+| `ra8_dotf` | 1 | 1 | 22 | 3 | 1 |
 | `ra8_drw` | 2 | 2 | 33 | 2 | 3 |
-| `ra8_dtc` | 1 | 1 | 13 | 1 | 3 |
+| `ra8_dtc` | 0 | 1 | 13 | 1 | 3 |
 | `ra8_dual_core` | 1 | 2 | 1 | 1 | 0 |
-| `ra8_elc` | 1 | 1 | 6 | 2 | 4 |
-| `ra8_epaper` | 3 | 1 | 16 | 5 | 1 |
-| `ra8_eth` | 9 | 5 | 73 | 11 | 5 |
-| `ra8_etha` | 3 | 4 | 35 | 8 | 2 |
-| `ra8_ether_phy` | 1 | 1 | 6 | 2 | 0 |
+| `ra8_elc` | 0 | 1 | 6 | 2 | 4 |
+| `ra8_epaper` | 1 | 1 | 16 | 5 | 1 |
+| `ra8_eth` | 5 | 5 | 73 | 11 | 5 |
+| `ra8_etha` | 1 | 4 | 35 | 8 | 2 |
+| `ra8_ether_phy` | 0 | 1 | 6 | 2 | 0 |
 | `ra8_ethosu_kernel` | 0 | 1 | 1 | 0 | 1 |
-| `ra8_ethosu_shim` | 1 | 1 | 0 | 0 | 0 |
+| `ra8_ethosu_shim` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_flash` | 3 | 4 | 43 | 6 | 3 |
 | `ra8_fpu_probe` | 1 | 1 | 0 | 0 | 0 |
-| `ra8_glcdc` | 3 | 1 | 21 | 3 | 2 |
-| `ra8_gpt` | 1 | 2 | 29 | 10 | 11 |
+| `ra8_fuelgauge` | 0 | 1 | 3 | 1 | 0 |
+| `ra8_glcdc` | 2 | 1 | 21 | 3 | 1 |
+| `ra8_gpt` | 1 | 2 | 30 | 13 | 10 |
 | `ra8_hw_err` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_hw_intrinsics` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_i2c` | 3 | 2 | 16 | 9 | 4 |
-| `ra8_i3c` | 4 | 3 | 50 | 15 | 8 |
-| `ra8_icu` | 1 | 1 | 7 | 7 | 4 |
+| `ra8_i3c` | 3 | 3 | 50 | 15 | 8 |
+| `ra8_icu` | 0 | 1 | 7 | 7 | 4 |
 | `ra8_ipc` | 2 | 4 | 43 | 6 | 2 |
-| `ra8_isr` | 1 | 1 | 9 | 10 | 204 |
-| `ra8_iwdt` | 1 | 1 | 7 | 3 | 2 |
-| `ra8_layer3_switch` | 1 | 1 | 5 | 1 | 1 |
-| `ra8_lpm` | 2 | 2 | 27 | 9 | 11 |
+| `ra8_isr` | 1 | 1 | 9 | 11 | 200 |
+| `ra8_iwdt` | 0 | 1 | 7 | 3 | 2 |
+| `ra8_layer3_switch` | 0 | 1 | 5 | 1 | 1 |
+| `ra8_lpm` | 1 | 2 | 27 | 9 | 11 |
 | `ra8_lvd` | 3 | 3 | 27 | 2 | 1 |
 | `ra8_mipi_csi` | 2 | 4 | 46 | 2 | 0 |
 | `ra8_mipi_dsi` | 3 | 3 | 40 | 5 | 0 |
-| `ra8_mipi_phy` | 3 | 4 | 40 | 4 | 0 |
-| `ra8_mpc` | 1 | 1 | 7 | 1 | 2 |
-| `ra8_mstp` | 1 | 1 | 5 | 153 | 97 |
-| `ra8_npu` | 3 | 5 | 19 | 4 | 3 |
+| `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
+| `ra8_mpc` | 0 | 1 | 7 | 1 | 2 |
+| `ra8_mstp` | 1 | 1 | 5 | 154 | 97 |
+| `ra8_npu` | 2 | 5 | 20 | 3 | 3 |
 | `ra8_ofs` | 1 | 1 | 1 | 1 | 0 |
 | `ra8_pcntr` | 0 | 1 | 2 | 1 | 1 |
 | `ra8_pdg` | 1 | 1 | 23 | 2 | 1 |
 | `ra8_pdm` | 1 | 1 | 9 | 2 | 0 |
 | `ra8_poeg` | 1 | 1 | 9 | 2 | 1 |
 | `ra8_port_utils` | 0 | 1 | 0 | 0 | 0 |
-| `ra8_pwr` | 1 | 1 | 9 | 1 | 0 |
+| `ra8_pwr` | 0 | 1 | 9 | 1 | 0 |
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_reset` | 1 | 1 | 9 | 3 | 3 |
 | `ra8_rmac` | 3 | 2 | 36 | 9 | 0 |
-| `ra8_rsip` | 8 | 8 | 69 | 13 | 7 |
+| `ra8_rsip` | 8 | 8 | 69 | 13 | 4 |
 | `ra8_rtc` | 1 | 1 | 13 | 2 | 6 |
-| `ra8_sci` | 4 | 3 | 42 | 15 | 26 |
+| `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
+| `ra8_sci` | 2 | 3 | 42 | 15 | 28 |
 | `ra8_sdcard` | 1 | 1 | 6 | 3 | 3 |
 | `ra8_sdhi` | 1 | 1 | 16 | 5 | 0 |
 | `ra8_sdramc` | 1 | 1 | 8 | 3 | 14 |
 | `ra8_smbus` | 1 | 1 | 11 | 2 | 2 |
-| `ra8_spi` | 3 | 2 | 20 | 10 | 2 |
-| `ra8_sram` | 2 | 1 | 20 | 4 | 2 |
-| `ra8_ssie` | 2 | 1 | 24 | 6 | 1 |
+| `ra8_spi` | 2 | 2 | 20 | 10 | 2 |
+| `ra8_sram` | 1 | 1 | 20 | 5 | 2 |
+| `ra8_ssie` | 2 | 1 | 24 | 5 | 1 |
 | `ra8_touch` | 1 | 1 | 7 | 6 | 9 |
-| `ra8_tsn` | 1 | 1 | 9 | 2 | 1 |
+| `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 1 | 1 | 10 | 3 | 3 |
-| `ra8_usb` | 22 | 16 | 149 | 44 | 27 |
+| `ra8_usb` | 20 | 16 | 149 | 46 | 31 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 1 | 1 | 17 | 1 | 0 |
-| `ra8_wdt` | 1 | 1 | 22 | 8 | 5 |
+| `ra8_wdt` | 1 | 1 | 22 | 9 | 5 |
 | `ra8_xspi` | 2 | 1 | 22 | 11 | 6 |
-| `timer` | 1 | 0 | 0 | 0 | 10 |
