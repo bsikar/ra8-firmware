@@ -9,6 +9,7 @@ pub const no_mem: u16 = 0x102;
 pub const invalid_arg: u16 = 0x103;
 pub const invalid_state: u16 = 0x104;
 pub const invalid_size: u16 = 0x105;
+pub const not_supported: u16 = 0x107;
 pub const busy: u16 = 0x109;
 pub const not_initialized: u16 = 0x10F;
 pub const hw_timeout: u16 = 0x203;
