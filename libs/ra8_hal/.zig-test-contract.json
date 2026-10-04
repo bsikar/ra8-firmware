@@ -12,7 +12,8 @@
     "tests/eth_coma_test.zig",
     "tests/bscan_test.zig",
     "tests/eth_mfwd_test.zig",
-    "tests/fuelgauge_test.zig"
+    "tests/fuelgauge_test.zig",
+    "tests/sram_security_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -55,7 +56,10 @@
     "src/eth_mfwd_abi.zig",
     "src/internal/fuelgauge.zig",
     "tests/fuelgauge_test.zig",
-    "src/fuelgauge_abi.zig"
+    "src/fuelgauge_abi.zig",
+    "src/internal/sram_security.zig",
+    "tests/sram_security_test.zig",
+    "src/sram_security_abi.zig"
   ],
-  "minimum_tests": 79
+  "minimum_tests": 84
 }

@@ -128,7 +128,7 @@ static const uint32_t s_sram_ecc_off_table[k_ra8_sram_bank_count] = {
 static bool s_initialized = false;
 
 /* The ECC error callback table (``g_sram_on_error*``) lives in
- * ``ra8_sram_security.c`` and is reached from ``ra8_sram_deinit`` below
+ * ``sram_security_abi.zig`` and is reached from ``ra8_sram_deinit`` below
  * through the ``extern`` declarations in ``ra8_sram_internal.h``. */
 
 /* =============================================================================
@@ -864,5 +864,5 @@ ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, boo
 
 /*
  * TrustZone security attribution + the ECC error callback fan-out live
- * in ``ra8_sram_security.c`` (split for the 1000-line file-size cap).
+ * in ``sram_security_abi.zig`` (split for the 1000-line file-size cap).
  */
