@@ -11,7 +11,7 @@
  * input monitor. Split out of ``ra8_bkup.c`` to stay under the per-file
  * line cap; the core lifecycle, backup store and interrupt path stay
  * there, and the TrustZone attribution registers live in
- * ``ra8_bkup_security.c``.
+ * ``internal/bkup_security.zig``.
  *
  * Everything here concerns the VBTICTLR / VBTICTLR2 / VBTIMONR /
  * VBTADCR1-3 / VBTNCWCR register group. The channel-bit helper and the
