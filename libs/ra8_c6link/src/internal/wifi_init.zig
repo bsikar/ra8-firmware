@@ -52,8 +52,8 @@ pub const Init = struct {
     pub const sta_disconnected_pm: i32 = 1;
 };
 
-/// The set as one object, in the shape `ra8_c6link_wifi.c` copies into the
-/// generated `WifiInitConfig`.
+/// The set as one object, in the shape `ra8_c6link_wifi_abi.zig` copies into
+/// the generated `WifiInitConfig`.
 ///
 /// The 64-bit field leads so the layout is the same on both sides without an
 /// interior pad, and the one boolean travels as an `i32` rather than relying

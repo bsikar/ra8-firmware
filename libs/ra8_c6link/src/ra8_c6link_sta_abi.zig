@@ -4,9 +4,9 @@
 //! C ABI for the station credentials and the join: `ra8_c6link_sta_cfg_set`
 //! and `ra8_c6link_wifi_join`, as `ra8_c6link_wifi.h` declares them. The
 //! credentials go up in `Req_WifiSetConfig`, built with the vendored codec's
-//! own initialisers, and a bare `Req_WifiConnect` follows. Both go through
-//! `priv_c6link_rpc_call` and `priv_c6link_bare_req`, which stay in C with
-//! the rest of the RPC layer for now.
+//! own initialisers, and a bare `Req_WifiConnect` follows through
+//! `priv_c6link_bare_req`. Both reach `priv_c6link_rpc_call`, which stays in C
+//! with the rest of the RPC layer for now.
 //!
 //! `WifiStaConfig` carries a scan threshold and a PMF configuration as nested
 //! messages that protobuf allows to be absent. Upstream's own host always
