@@ -96,6 +96,21 @@ validate_node() {
   [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$ ]] || die "Proxmox node name is not a safe declared name"
 }
 
+derive_uplink_from_route() {
+  local route="$1" interface="" found=0 index
+  local -a fields=()
+  read -r -a fields <<<"$route"
+  for ((index = 0; index < ${#fields[@]}; index++)); do
+    if [[ "${fields[index]}" == "dev" ]]; then
+      ((found == 0 && index + 1 < ${#fields[@]})) || return 1
+      interface="${fields[index + 1]}"
+      found=1
+    fi
+  done
+  [[ "$interface" =~ ^[[:alnum:]_.:-]{1,15}$ ]] || return 1
+  printf '%s\n' "$interface"
+}
+
 new_run_id() {
   od -An -N8 -tx1 /dev/urandom | tr -d ' \n'
 }
@@ -194,6 +209,14 @@ gateway="$2"
 subnet="$3"
 bridge="$4"
 vmid="$5"
+route="$(ip -o route get 1.1.1.1)" || {
+  printf '%s\n' 'could not determine the Proxmox uplink route' >&2
+  exit 1
+}
+uplink="$(derive_uplink_from_route "$route")" || {
+  printf 'could not derive a safe uplink interface from route output: %s\n' "$route" >&2
+  exit 1
+}
 
 [[ ! -e /sys/class/net/"$bridge" ]] || {
   printf '%s appeared after preflight; refusing to touch it\n' "$bridge" >&2
@@ -236,15 +259,15 @@ table ip $table {
     ct state established,related accept
     iifname != @lab_ingress accept
     iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
-    iifname @lab_ingress oifname "vmbr0" udp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport { 80, 443 } accept
+    iifname @lab_ingress oifname "$uplink" udp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport 53 accept
+    iifname @lab_ingress oifname "$uplink" tcp dport { 80, 443 } accept
     iifname @lab_ingress drop
   }
 
   chain postrouting {
     type nat hook postrouting priority srcnat; policy accept;
-    oifname "vmbr0" ip saddr $subnet masquerade
+    oifname "$uplink" ip saddr $subnet masquerade
   }
 }
 EOF
@@ -725,6 +748,17 @@ selftest() {
   fi
   [[ "$LINUX_HOST" == "10.250.9.10" ]] || die "selftest changed the pinned lab guest address"
   [[ "$LINUX_GATEWAY" == "10.250.9.1" ]] || die "selftest changed the pinned lab gateway"
+  [[ "$(derive_uplink_from_route '1.1.1.1 via 10.0.10.1 dev vmbr1 src 10.0.10.2')" == "vmbr1" ]] ||
+    die "selftest failed to derive a route uplink"
+  if derive_uplink_from_route 'unreachable 1.1.1.1' >/dev/null 2>&1; then
+    die "selftest accepted a route without a device"
+  fi
+  if derive_uplink_from_route '1.1.1.1 dev bad/interface' >/dev/null 2>&1; then
+    die "selftest accepted a malformed interface name"
+  fi
+  if derive_uplink_from_route '1.1.1.1 dev eth0 dev eth1' >/dev/null 2>&1; then
+    die "selftest accepted an ambiguous route"
+  fi
   printf '%s\n' 'proxmox_lab_ci.sh --selftest: PASS'
 }
 
