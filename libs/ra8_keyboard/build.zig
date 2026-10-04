@@ -55,12 +55,6 @@ pub fn build(b: *std.Build) void {
     });
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
-    abi_tests.root_module.addIncludePath(b.path("../ra8_core/inc"));
-    abi_tests.root_module.addIncludePath(b.path("../ra8_ui/inc"));
-    abi_tests.root_module.addCSourceFile(.{
-        .file = b.path("tests/abi_fixture.c"),
-        .flags = &.{"-std=c23"},
-    });
 
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);

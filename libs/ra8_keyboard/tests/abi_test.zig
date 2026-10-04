@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Tests for the exported C ABI. The linked C fixture supplies the two symbols
+//! Tests for the exported C ABI. The Zig fixture supplies the two symbols
 //! the library leaves undefined, `ra8_log_emit_error` and
 //! `ra8_ui_rect_contains`, and exposes fixture state for the guard-order and
 //! MC/DC assertions below.
@@ -9,10 +9,7 @@
 const std = @import("std");
 const abi = @import("abi");
 
-extern var ra8_keyboard_test_log_calls: usize;
-extern var ra8_keyboard_test_last_message: [*:0]const u8;
-extern var ra8_keyboard_test_contains_calls: usize;
-extern fn ra8_keyboard_test_reset() void;
+const fixture = @import("abi_fixture.zig");
 
 const ok: u16 = 0;
 const invalid_arg: u16 = 0x103;
@@ -24,7 +21,7 @@ const frame_w: i32 = 1024;
 const frame_h: i32 = 360;
 
 fn reset() void {
-    ra8_keyboard_test_reset();
+    fixture.reset();
 }
 
 fn testFrame() abi.Rect {
@@ -39,7 +36,7 @@ fn laidOut() abi.Layout {
 }
 
 fn expectMessage(expected: []const u8) !void {
-    try std.testing.expectEqualStrings(expected, std.mem.span(ra8_keyboard_test_last_message));
+    try std.testing.expectEqualStrings(expected, std.mem.span(fixture.last_message));
 }
 
 fn indexOfChar(kb: *const abi.Layout, ch: u8) u8 {
@@ -86,7 +83,7 @@ test "layout_init rejects a null layout with the C's message" {
     reset();
     const frame = testFrame();
     try std.testing.expectEqual(null_ptr, abi.ra8_kbd_layout_init(null, &frame));
-    try std.testing.expectEqual(@as(usize, 1), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 1), fixture.log_calls);
     try expectMessage("kb must not be nullptr");
 }
 
@@ -94,7 +91,7 @@ test "layout_init rejects a null frame with the C's message" {
     reset();
     var kb = std.mem.zeroes(abi.Layout);
     try std.testing.expectEqual(null_ptr, abi.ra8_kbd_layout_init(&kb, null));
-    try std.testing.expectEqual(@as(usize, 1), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 1), fixture.log_calls);
     try expectMessage("frame must not be nullptr");
 }
 
@@ -111,7 +108,7 @@ test "layout_init lays 31 letter keys on an acceptable frame" {
     try std.testing.expectEqual(ok, abi.ra8_kbd_layout_init(&kb, &frame));
     try std.testing.expectEqual(@as(u8, 31), kb.count);
     try std.testing.expectEqual(@intFromEnum(abi.Layer.letters), kb.layer);
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "frame-reject MC/DC V1: a real frame is accepted" {
@@ -125,7 +122,7 @@ test "frame-reject MC/DC V2: zero width alone rejects" {
     var kb = std.mem.zeroes(abi.Layout);
     const v2 = abi.Rect{ .x = frame_x, .y = frame_y, .w = 0, .h = frame_h };
     try std.testing.expectEqual(invalid_arg, abi.ra8_kbd_layout_init(&kb, &v2));
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "frame-reject MC/DC V3: zero height alone rejects" {
@@ -133,7 +130,7 @@ test "frame-reject MC/DC V3: zero height alone rejects" {
     var kb = std.mem.zeroes(abi.Layout);
     const v3 = abi.Rect{ .x = frame_x, .y = frame_y, .w = frame_w, .h = 0 };
     try std.testing.expectEqual(invalid_arg, abi.ra8_kbd_layout_init(&kb, &v3));
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "a rejected frame leaves the previous layout untouched" {
@@ -148,8 +145,8 @@ test "a rejected frame leaves the previous layout untouched" {
 test "hit reports no key for a null layout and never calls the rectangle test" {
     reset();
     try std.testing.expectEqual(abi.no_hit, abi.ra8_kbd_hit(null, 0, 0));
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_contains_calls);
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.contains_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "hit resolves the centre of every key through the rectangle seam" {
@@ -162,7 +159,7 @@ test "hit resolves the centre of every key through the rectangle seam" {
         const cy = rect.y + @divTrunc(rect.h, 2);
         try std.testing.expectEqual(index, abi.ra8_kbd_hit(&kb, cx, cy));
     }
-    try std.testing.expect(ra8_keyboard_test_contains_calls >= kb.count);
+    try std.testing.expect(fixture.contains_calls >= kb.count);
 }
 
 test "hit reports no key outside the frame" {
@@ -174,7 +171,7 @@ test "hit scans every key before giving up" {
     const kb = laidOut();
     reset();
     try std.testing.expectEqual(abi.no_hit, abi.ra8_kbd_hit(&kb, -1, -1));
-    try std.testing.expectEqual(@as(usize, kb.count), ra8_keyboard_test_contains_calls);
+    try std.testing.expectEqual(@as(usize, kb.count), fixture.contains_calls);
 }
 
 test "key-glyph guard MC/DC V1: a laid-out key returns its glyph" {
@@ -186,7 +183,7 @@ test "key-glyph guard MC/DC V1: a laid-out key returns its glyph" {
 test "key-glyph guard MC/DC V2: a null layout returns nothing" {
     reset();
     try std.testing.expectEqual(@as(c_char, 0), abi.ra8_kbd_key_glyph(null, 0));
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "key-glyph guard MC/DC V3: an index at the count returns nothing" {
@@ -212,7 +209,7 @@ test "key_glyph reports nothing for a special key" {
 test "text_init rejects a null buffer with the C's message" {
     reset();
     try std.testing.expectEqual(null_ptr, abi.ra8_kbd_text_init(null));
-    try std.testing.expectEqual(@as(usize, 1), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 1), fixture.log_calls);
     try expectMessage("t must not be nullptr");
 }
 
@@ -243,7 +240,7 @@ test "apply rejects a null layout with its own message" {
 test "apply checks the text buffer before the layout" {
     reset();
     try std.testing.expectEqual(null_ptr, abi.ra8_kbd_apply(null, null, 0));
-    try std.testing.expectEqual(@as(usize, 1), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 1), fixture.log_calls);
     try expectMessage("t must not be nullptr");
 }
 
@@ -254,7 +251,7 @@ test "apply accepts the no-hit sentinel as a no-op" {
     try std.testing.expectEqual(ok, abi.ra8_kbd_text_init(&t));
     try std.testing.expectEqual(ok, abi.ra8_kbd_apply(&t, &kb, abi.no_hit));
     try std.testing.expectEqual(@as(u8, 0), t.len);
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
 test "apply types lowercase through the public API" {
@@ -370,5 +367,5 @@ test "no guard on the happy path emits a log line" {
     try std.testing.expectEqual(ok, abi.ra8_kbd_apply(&t, &kb, indexOfChar(&kb, 'a')));
     _ = abi.ra8_kbd_key_glyph(&kb, 0);
     _ = abi.ra8_kbd_hit(&kb, 0, frame_y);
-    try std.testing.expectEqual(@as(usize, 0), ra8_keyboard_test_log_calls);
+    try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
