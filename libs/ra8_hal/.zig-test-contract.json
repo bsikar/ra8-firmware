@@ -102,5 +102,5 @@
     "tests/ethosu_shim_test.zig",
     "src/sau_abi.zig"
   ],
-  "minimum_tests": 560
+  "minimum_tests": 569
 }
