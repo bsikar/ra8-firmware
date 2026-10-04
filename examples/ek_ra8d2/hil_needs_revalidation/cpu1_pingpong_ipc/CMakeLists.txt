@@ -65,7 +65,6 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   ra8_cpu1_add_first_party_sources(
     ${CPU1_NAME}.elf
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_sau.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
   # ra8_log is Zig now and ra8_scb followed with the fault block,
@@ -81,8 +80,8 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     CPU cortex_m33
     FLOAT hard
   )
-  # ra8_hal's M33 archive (RA8FW-572), linked after ra8_core the way this
-  # function appends, so the SAU driver can move to Zig (RA8FW-571).
+  # ra8_hal's M33 archive (RA8FW-572): the SAU driver cpu1_main.c calls
+  # from the M33 reset handler is Zig since RA8FW-571.
   ra8_link_zig_library_for_cpu(
     TARGET ${CPU1_NAME}.elf
     LIB ra8_hal

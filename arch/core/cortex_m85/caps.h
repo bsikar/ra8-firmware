@@ -75,7 +75,7 @@
  * @brief Armv8-M Security Extension is present; the SAU is programmable.
  *
  * @details
- * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_sau.c`. Moves to
+ * MIGRATION: implemented today by `libs/ra8_hal/src/internal/sau.zig`. Moves to
  * `arch/armv8m/trustzone/` in a later slice of RA8FW-300, where it stays gated by
  * this flag because no other ISA has an analogue.
  */

@@ -17,6 +17,10 @@ pub fn build(b: *std.Build) void {
         .default_target = ra8_build.hostDefaultTargetQuery(b),
     });
     const optimize = b.standardOptimizeOption(.{});
+    // No unwind tables in a freestanding archive, as in ra8_core's: an
+    // .ARM.exidx entry names __aeabi_unwind_cpp_pr0, which a -nostdlib CPU1
+    // link (no -lgcc) cannot resolve (RA8FW-571).
+    const unwind: ?std.builtin.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
 
     const library = b.addLibrary(.{
         .name = "ra8_hal",
@@ -26,6 +30,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .pic = true,
+            .unwind_tables = unwind,
         }),
     });
     library.bundle_compiler_rt = false;
@@ -33,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -42,6 +47,7 @@ pub fn build(b: *std.Build) void {
                 .target = target,
                 .optimize = optimize,
                 .pic = true,
+                .unwind_tables = unwind,
             }),
         });
         object.bundle_compiler_rt = false;
@@ -78,6 +84,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "cac", .source = "src/internal/cac.zig", .root = "tests/cac_test.zig" },
         .{ .name = "epaper_geom", .source = "src/internal/epaper_geom.zig", .root = "tests/epaper_geom_test.zig" },
         .{ .name = "pwr", .source = "src/internal/pwr.zig", .root = "tests/pwr_test.zig" },
+        .{ .name = "sau", .source = "src/internal/sau.zig", .root = "tests/sau_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
