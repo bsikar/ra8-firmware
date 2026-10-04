@@ -169,7 +169,18 @@ macro(_ra8_app_collect_sources)
     )
       list(APPEND _ra8_src "${_ra8_board_dir}/src/boot/${_RA8_APP_BOOT_PROFILE}/${_ra8_boot}")
     else()
-      list(APPEND _ra8_src "${_ra8_board_dir}/src/boot/${_ra8_boot}")
+      # A board unit written in Zig is built as its own object for this app's
+      # core and linked where the C object would be (RA8FW-616). Not through
+      # the board archive: the vector table's weak alias to Default_Handler
+      # would win over an archive member, and an app copy above must still be
+      # able to replace it.
+      string(REGEX REPLACE "\\.c$" ".zig" _ra8_boot_zig "${_ra8_boot}")
+      if(EXISTS "${_ra8_board_dir}/src/boot/${_ra8_boot_zig}")
+        _ra8_app_zig_boot_object("${_ra8_board_dir}" "${_ra8_boot_zig}" _ra8_boot_obj)
+        list(APPEND _ra8_src "${_ra8_boot_obj}")
+      else()
+        list(APPEND _ra8_src "${_ra8_board_dir}/src/boot/${_ra8_boot}")
+      endif()
     endif()
   endforeach()
 
