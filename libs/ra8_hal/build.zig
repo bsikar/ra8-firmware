@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd", "mipi_csi_status" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -126,6 +126,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "lvd_events", .source = "src/internal/lvd_events.zig", .root = "tests/lvd_events_test.zig" },
         .{ .name = "mipi_csi_irq", .source = "src/internal/mipi_csi_irq.zig", .root = "tests/mipi_csi_irq_test.zig" },
         .{ .name = "mipi_dsi_cmd", .source = "src/internal/mipi_dsi_cmd.zig", .root = "tests/mipi_dsi_cmd_test.zig" },
+        .{ .name = "mipi_csi_status", .source = "src/internal/mipi_csi_status.zig", .root = "tests/mipi_csi_status_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
