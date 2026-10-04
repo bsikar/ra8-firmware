@@ -93,6 +93,21 @@ fi
 
 NFT_TABLE="ra8_lab_ci_${RUN_ID}"
 
+derive_uplink_from_route() {
+  local route="$1" interface="" found=0 index
+  local -a fields=()
+  read -r -a fields <<<"$route"
+  for ((index = 0; index < ${#fields[@]}; index++)); do
+    if [[ "${fields[index]}" == "dev" ]]; then
+      ((found == 0 && index + 1 < ${#fields[@]})) || return 1
+      interface="${fields[index + 1]}"
+      found=1
+    fi
+  done
+  [[ "$interface" =~ ^[[:alnum:]_.:-]{1,15}$ ]] || return 1
+  printf '%s\n' "$interface"
+}
+
 # The lifecycle driver normally prevents duplicate starts, but the server-side
 # runner is also an entry point in its own right. Hold a profile-scoped lock so
 # a retried launcher cannot create two runners for the same fixed VMID.
@@ -145,6 +160,14 @@ trap 'exit 143' TERM
 
 # 1. Setup network isolation
 echo "$(ts) Configuring network isolation ($BRIDGE, $SUBNET)..."
+UPLINK_ROUTE="$(ip -o route get 1.1.1.1)" || {
+  echo "$(ts) error: could not determine the Proxmox uplink route."
+  exit 1
+}
+UPLINK="$(derive_uplink_from_route "$UPLINK_ROUTE")" || {
+  echo "$(ts) error: could not derive a safe uplink interface from route output: $UPLINK_ROUTE"
+  exit 1
+}
 if ! ip link show "$BRIDGE" >/dev/null 2>&1; then
   ip link add "$BRIDGE" type bridge
 fi
@@ -171,15 +194,15 @@ table ip $NFT_TABLE {
     ct state established,related accept
     iifname != @lab_ingress accept
     iifname @lab_ingress ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 240.0.0.0/4 } drop
-    iifname @lab_ingress oifname "vmbr0" udp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport 53 accept
-    iifname @lab_ingress oifname "vmbr0" tcp dport { 80, 443 } accept
+    iifname @lab_ingress oifname "$UPLINK" udp dport 53 accept
+    iifname @lab_ingress oifname "$UPLINK" tcp dport 53 accept
+    iifname @lab_ingress oifname "$UPLINK" tcp dport { 80, 443 } accept
     iifname @lab_ingress drop
   }
 
   chain postrouting {
     type nat hook postrouting priority srcnat; policy accept;
-    oifname "vmbr0" ip saddr $SUBNET masquerade
+    oifname "$UPLINK" ip saddr $SUBNET masquerade
   }
 }
 EOF
