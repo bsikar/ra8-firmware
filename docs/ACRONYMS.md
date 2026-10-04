@@ -67,7 +67,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | HID   | USB Human Interface Device                                | `ra8_usb_phid.c`, `ra8_usb_hhid.c` |
 | MSC   | USB Mass Storage Class                                    | `ra8_usb_pmsc.c`, `ra8_usb_hmsc.c` |
 | HHUB  | USB Host Hub class driver                                 | `ra8_usb_hhub.c` |
-| PVND  | USB Peripheral Vendor-class                               | `ra8_usb_pvnd.c` |
+| PVND  | USB Peripheral Vendor-class                               | `usb_pvnd_abi.zig` |
 | PAUD/HAUD | USB Peripheral / Host Audio class                     | `ra8_usb_paud.c`, `ra8_usb_haud.c` |
 | PPRN  | USB Peripheral Printer class                              | `ra8_usb_pprn.c` |
 | ETHA  | Ethernet adapter (gigabit MAC top-level)                  | `ra8_etha.c`, `ra8_eth.c` |
