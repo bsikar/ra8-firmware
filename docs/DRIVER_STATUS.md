@@ -115,7 +115,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_smbus` | 1 | 1 | 11 | 2 | 2 |
 | `ra8_spi` | 1 | 2 | 20 | 10 | 2 |
 | `ra8_sram` | 1 | 1 | 20 | 5 | 2 |
-| `ra8_ssie` | 2 | 1 | 24 | 5 | 1 |
+| `ra8_ssie` | 1 | 1 | 24 | 5 | 1 |
 | `ra8_touch` | 1 | 1 | 7 | 6 | 9 |
 | `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 0 | 1 | 10 | 3 | 3 |
