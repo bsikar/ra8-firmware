@@ -15,7 +15,8 @@
     "tests/fuelgauge_test.zig",
     "tests/sram_security_test.zig",
     "tests/bkup_security_test.zig",
-    "tests/lpm_graphics_test.zig"
+    "tests/lpm_graphics_test.zig",
+    "tests/i3c_i2c_peripheral_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -68,7 +69,10 @@
     "src/bkup_security_abi.zig",
     "src/internal/lpm_graphics.zig",
     "tests/lpm_graphics_test.zig",
-    "src/lpm_graphics_abi.zig"
+    "src/lpm_graphics_abi.zig",
+    "src/internal/i3c_i2c_peripheral.zig",
+    "tests/i3c_i2c_peripheral_test.zig",
+    "src/i3c_i2c_peripheral_abi.zig"
   ],
-  "minimum_tests": 94
+  "minimum_tests": 99
 }
