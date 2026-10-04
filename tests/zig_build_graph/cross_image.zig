@@ -122,6 +122,21 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
 }
 
 /// The packed module a CPU1 image names, else nothing (RA8FW-431, RA8FW-458).
+/// `image.zig_libraries`, each built for the M33 the way ra8_core's CPU1
+/// archive is (RA8FW-572).
+fn cpu1ZigArchives(b: *std.Build, image: cpu1_image.Cpu1Image, globals: build_type.Globals) []const std.Build.LazyPath {
+    const target = b.resolveTargetQuery(cpu1_image.zig_target_query);
+    var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    for (image.zig_libraries) |lib_name| {
+        const dependency = b.dependency(lib_name, .{
+            .target = target,
+            .optimize = globals.configuration.zig_optimize,
+        });
+        archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
+    }
+    return archives.items;
+}
+
 fn txmModuleObjects(b: *std.Build, image: cpu1_image.Cpu1Image, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
     const wanted = image.txm_module orelse return &.{};
     const module = cpu1_txm_hello.find(wanted) orelse @panic("CPU1 image names a ThreadX module with no entry in cpu1_txm_hello.modules");
@@ -502,6 +517,7 @@ fn addCrossApp(
             cross_build.middlewareToolchain(tools, globals, &arm_global_defines),
         ),
         .extra_objects = txmModuleObjects(b, image, tools, globals),
+        .zig_archives = cpu1ZigArchives(b, image, globals),
     }) else null;
 
     // An app that does not link in a Debug configure under EITHER build system

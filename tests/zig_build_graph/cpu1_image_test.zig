@@ -303,3 +303,18 @@ test "the RA8P1 ping-pong pair links CPU1 from the RA8P1 board layer (RA8FW-496)
     }
     try std.testing.expect(found);
 }
+
+test "only cpu1_pingpong_ipc's M33 image links a Zig library beyond ra8_core (RA8FW-572)" {
+    var found = false;
+    for (graph.cross_apps) |app| {
+        const image = app.cpu1 orelse continue;
+        if (!std.mem.eql(u8, app.name, "cpu1_pingpong_ipc")) {
+            try std.testing.expectEqual(@as(usize, 0), image.zig_libraries.len);
+            continue;
+        }
+        found = true;
+        try std.testing.expectEqual(@as(usize, 1), image.zig_libraries.len);
+        try std.testing.expectEqualStrings("ra8_hal", image.zig_libraries[0]);
+    }
+    try std.testing.expect(found);
+}
