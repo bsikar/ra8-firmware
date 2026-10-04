@@ -25,13 +25,13 @@
  *  - ``priv_mipi_phy_compute_freq``: defined in
  *    ``ra8_mipi_phy_timing.c`` and used by ``ra8_mipi_phy_validate_pll_band``
  *    in ``ra8_mipi_phy.c`` and by ``ra8_mipi_phy_compute_pll_freq`` in
- *    ``ra8_mipi_phy_ops.c``;
+ *    ``mipi_phy_ops_abi.zig``;
  *  - ``priv_mipi_phy_find_timing``: defined in ``ra8_mipi_phy_timing.c``,
  *    the register-free half of ``ra8_mipi_phy_select_timing``, shared with
- *    ``ra8_mipi_phy_lookup_timing`` in ``ra8_mipi_phy_ops.c``;
+ *    ``ra8_mipi_phy_lookup_timing`` in ``mipi_phy_ops_abi.zig``;
  *  - ``k_ra8_mipi_phy_mstpc_bit``: the provisional module-stop slot, written
  *    by ``ra8_mipi_phy.c`` and read by the lifecycle observers in
- *    ``ra8_mipi_phy_ops.c``.
+ *    ``mipi_phy_ops_abi.zig``.
  *
  * Read-only constants (the log tag) and the file-scope mutable driver
  * state are intentionally NOT shared: each is confined to the single TU
@@ -104,7 +104,7 @@ RA8_PRIV uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint
  * does NOT yet have a ``k_ra8_mipi_phy`` entry, and this driver must not
  * extend that file. As a stop-gap the driver clears MSTPCRC bit 13 (the
  * MIPI PHY slot in MSTPCRC -- HUM Ch 64.4.2 p 3838 references MSTPCRC for
- * the block) directly, and the observers in ``ra8_mipi_phy_ops.c`` read the
+ * the block) directly, and the observers in ``mipi_phy_ops_abi.zig`` read the
  * same bit to tell "module stopped" from "idle".
  *
  * TODO: When ``ra8_mstp_regs.h`` gains an explicit ``k_ra8_mstp_mipi_phy``
@@ -122,7 +122,7 @@ typedef enum : uint8_t {
  * Defined in ``ra8_mipi_phy_timing.c``. The argument validation and the
  * linear table scan of ``ra8_mipi_phy_select_timing`` without the
  * DPHYTIM1..6 write, so that the public dry-run entry point
- * ``ra8_mipi_phy_lookup_timing`` (``ra8_mipi_phy_ops.c``) and the
+ * ``ra8_mipi_phy_lookup_timing`` (``mipi_phy_ops_abi.zig``) and the
  * programming entry point share one matcher.
  *
  * @param[in]  mode       Active mode; DSI and CSI use different tables.

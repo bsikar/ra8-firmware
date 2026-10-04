@@ -76,7 +76,7 @@ typedef enum : uint16_t {
 
 /* ``k_ra8_mipi_phy_mstpc_bit``, the provisional MSTPCRC slot this driver
  * ungates, is declared in ``ra8_mipi_phy_internal.h`` because the lifecycle
- * observers in ``ra8_mipi_phy_ops.c`` read the same bit. */
+ * observers in ``mipi_phy_ops_abi.zig`` read the same bit. */
 
 /**
  * @enum ra8_mipi_phy_lane_bit_t

@@ -16,7 +16,7 @@
  *  - The linear-scan lookup walker that picks the correct row for a
  *    requested ``(mode, pclka, rate)`` tuple.
  *  - ``priv_mipi_phy_find_timing``, the register-free matcher shared with
- *    the public dry-run lookup in ``ra8_mipi_phy_ops.c``.
+ *    the public dry-run lookup in ``mipi_phy_ops_abi.zig``.
  *  - ``ra8_mipi_phy_select_timing``, the public table-driven entry point
  *    that selects a row and programs DPHYTIM1..6.
  *  - ``priv_mipi_phy_compute_freq``, the HUM 64.2.2 PLL-frequency
