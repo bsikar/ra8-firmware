@@ -11,6 +11,7 @@
     "src/reset_hook.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
+    "tests/abi_log_stub.zig",
     "tests/orchestration_test.zig"
   ],
   "minimum_tests": 10
