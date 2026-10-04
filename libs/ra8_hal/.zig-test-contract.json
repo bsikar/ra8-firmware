@@ -10,7 +10,8 @@
     "tests/elc_test.zig",
     "tests/epaper_devinfo_test.zig",
     "tests/eth_coma_test.zig",
-    "tests/bscan_test.zig"
+    "tests/bscan_test.zig",
+    "tests/eth_mfwd_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -47,7 +48,10 @@
     "src/eth_coma_abi.zig",
     "src/internal/bscan.zig",
     "tests/bscan_test.zig",
-    "src/bscan_abi.zig"
+    "src/bscan_abi.zig",
+    "src/internal/eth_mfwd.zig",
+    "tests/eth_mfwd_test.zig",
+    "src/eth_mfwd_abi.zig"
   ],
-  "minimum_tests": 67
+  "minimum_tests": 74
 }
