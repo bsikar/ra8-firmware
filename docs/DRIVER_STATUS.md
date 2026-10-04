@@ -46,7 +46,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 |---|---:|---:|---:|---:|---:|
 | `gpio` | 1 | 0 | 0 | 1 | 0 |
 | `ra8_acmphs` | 0 | 1 | 12 | 3 | 1 |
-| `ra8_adc` | 2 | 1 | 20 | 5 | 2 |
+| `ra8_adc` | 1 | 1 | 20 | 5 | 2 |
 | `ra8_agt` | 1 | 1 | 11 | 2 | 3 |
 | `ra8_bkup` | 0 | 1 | 23 | 2 | 1 |
 | `ra8_ble` | 1 | 1 | 11 | 1 | 1 |
