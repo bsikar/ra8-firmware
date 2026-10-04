@@ -8,10 +8,12 @@ import (
 	"encoding/binary"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -77,8 +79,11 @@ func TestSSHAccessStorePersistsOnePrivateKeyPerReservation(t *testing.T) {
 	if err != nil || loaded.PublicKey != first.PublicKey {
 		t.Fatalf("Load changed or failed the reservation key: %+v, %v", loaded, err)
 	}
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("private key mode is not 0600: %v, %v", info, err)
+	if err != nil || privatefile.Check(first.PrivateKeyFile) != nil {
+		t.Fatalf("private key is not owner-only: %v, %v", info, err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("private key mode is not 0600: %v", info.Mode().Perm())
 	}
 	again, err := keys.Ensure(reservationID)
 	if err != nil || again.PublicKey != first.PublicKey {

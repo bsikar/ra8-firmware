@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 // A spool record is read back by a sweep that no longer has the run in front
@@ -126,8 +129,11 @@ func TestAWrittenRecordIsPrivateAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("mode = %v, want 0600", perm)
+	if err := privatefile.Check(path); err != nil {
+		t.Fatalf("written spool record is not private: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode = %v, want 0600", info.Mode().Perm())
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {

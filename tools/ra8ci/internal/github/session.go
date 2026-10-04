@@ -17,6 +17,7 @@ import (
 
 	"github.com/actions/scaleset"
 	"github.com/actions/scaleset/listener"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 const maxGitHubPrivateKeyBytes = 64 << 10
@@ -122,7 +123,7 @@ func OpenSession(ctx context.Context, config SessionConfig) (*Session, error) {
 	if !keyInfo.Mode().IsRegular() || keyInfo.Size() < 1 || keyInfo.Size() > maxGitHubPrivateKeyBytes {
 		return nil, errors.New("GitHub App private key must be a bounded regular file")
 	}
-	if keyInfo.Mode().Perm()&0077 != 0 {
+	if privatefile.Check(config.PrivateKeyFile) != nil {
 		return nil, errors.New("GitHub App private key file must not be accessible by group or others")
 	}
 	keyFile, err := os.Open(config.PrivateKeyFile)
@@ -132,7 +133,8 @@ func OpenSession(ctx context.Context, config SessionConfig) (*Session, error) {
 	defer keyFile.Close()
 	openedInfo, err := keyFile.Stat()
 	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(keyInfo, openedInfo) ||
-		openedInfo.Size() < 1 || openedInfo.Size() > maxGitHubPrivateKeyBytes || openedInfo.Mode().Perm()&0077 != 0 {
+		openedInfo.Size() < 1 || openedInfo.Size() > maxGitHubPrivateKeyBytes ||
+		privatefile.CheckFile(keyFile) != nil {
 		return nil, errors.New("GitHub App private key changed or is not a private regular file")
 	}
 	privateKey, err := io.ReadAll(io.LimitReader(keyFile, maxGitHubPrivateKeyBytes+1))

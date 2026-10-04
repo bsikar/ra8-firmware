@@ -8,8 +8,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // What the gate actually reports once it has a scope: the verdict lines a
@@ -152,6 +156,9 @@ func TestACheckoutRewriteKeepsTheFileMode(t *testing.T) {
 	if err := os.WriteFile(path, []byte("5 \u00b0C\n"), 0o600); err != nil {
 		t.Fatalf("plant: %v", err)
 	}
+	if err := testprivatefile.OwnerOnly(path); err != nil {
+		t.Fatalf("protect fixture: %v", err)
+	}
 	code, out, errs := ranGate(t, root, "--checkout", "tight.md")
 	if code != 0 {
 		t.Fatalf("code = %d, want 0 (stderr %q)", code, errs)
@@ -159,12 +166,17 @@ func TestACheckoutRewriteKeepsTheFileMode(t *testing.T) {
 	if !strings.Contains(out, "[FIXED] tight.md: 1 replacements") {
 		t.Fatalf("stdout = %q, want the rewrite named", out)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("stat: %v", err)
+	if err := privatefile.Check(path); err != nil {
+		t.Fatalf("rewrite widened file access: %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode = %v, want 0600 kept", info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat rewritten file: %v", err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("mode = %v, %v; want 0600 kept", info.Mode().Perm(), err)
+		}
 	}
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -178,7 +190,7 @@ func TestACheckoutRewriteKeepsTheFileMode(t *testing.T) {
 // A target that is neither a regular file nor a directory is refused rather
 // than walked: the walk has nothing to say about a device or a socket.
 func TestATargetThatIsNeitherFileNorDirectoryIsRefused(t *testing.T) {
-	code, out, errs := ranGate(t, t.TempDir(), "--check", "/dev/null")
+	code, out, errs := ranGate(t, t.TempDir(), "--check", os.DevNull)
 	if code != 2 {
 		t.Fatalf("code = %d, want 2 (stdout %q)", code, out)
 	}

@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 // A GitHub App installation token is minted the same way wherever this plane
@@ -122,7 +124,8 @@ func loadAppPrivateKey(file string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("stat GitHub App private key: %w", err)
 	}
-	if !keyInfo.Mode().IsRegular() || keyInfo.Size() < 1 || keyInfo.Size() > maxGitHubPrivateKeyBytes || keyInfo.Mode().Perm()&0077 != 0 {
+	if !keyInfo.Mode().IsRegular() || keyInfo.Size() < 1 || keyInfo.Size() > maxGitHubPrivateKeyBytes ||
+		privatefile.Check(file) != nil {
 		return nil, errors.New("GitHub App private key must be a private bounded regular file")
 	}
 	keyFile, err := os.Open(file)
@@ -131,7 +134,8 @@ func loadAppPrivateKey(file string) (*rsa.PrivateKey, error) {
 	}
 	defer keyFile.Close()
 	openedInfo, err := keyFile.Stat()
-	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(keyInfo, openedInfo) || openedInfo.Mode().Perm()&0077 != 0 {
+	if err != nil || !openedInfo.Mode().IsRegular() || !os.SameFile(keyInfo, openedInfo) ||
+		privatefile.CheckFile(keyFile) != nil {
 		return nil, errors.New("GitHub App private key changed or is not private regular file")
 	}
 	keyPEM, err := io.ReadAll(io.LimitReader(keyFile, maxGitHubPrivateKeyBytes+1))

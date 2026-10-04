@@ -8,8 +8,11 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 // The three pure inputs a Terraform run is handed before anything is planned:
@@ -107,14 +110,20 @@ func TestVariablesAreWrittenPrivatelyUnderTheirOwnOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat variables: %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if err := privatefile.Check(file); err != nil {
+		t.Fatalf("variables are not private: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("variables carry credentials and must be private, got %v", info.Mode().Perm())
 	}
 	directory, err := os.Lstat(filepath.Dir(file))
 	if err != nil {
 		t.Fatalf("stat variables directory: %v", err)
 	}
-	if directory.Mode().Perm() != 0o700 {
+	if err := privatefile.CheckDirectory(filepath.Dir(file)); err != nil {
+		t.Fatalf("operation directory is not private: %v", err)
+	}
+	if runtime.GOOS != "windows" && directory.Mode().Perm() != 0o700 {
 		t.Fatalf("the operation directory must be private, got %v", directory.Mode().Perm())
 	}
 }

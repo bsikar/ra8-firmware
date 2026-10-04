@@ -7,7 +7,19 @@ package testprivatefile
 
 import "os"
 
-func ownerOnly(path string) error { return os.Chmod(path, 0o600) }
+// ownerOnly keeps a directory traversable by its owner (0700) and a file
+// readable and writable by its owner (0600). A directory at 0600 loses its
+// search bit, so nothing inside it can be opened.
+func ownerOnly(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return os.Chmod(path, 0o700)
+	}
+	return os.Chmod(path, 0o600)
+}
 
 func denyDirectoryRead(path string) error   { return os.Chmod(path, 0o000) }
 func denyDirectoryCreate(path string) error { return os.Chmod(path, 0o500) }

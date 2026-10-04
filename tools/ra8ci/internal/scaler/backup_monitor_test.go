@@ -32,10 +32,10 @@ func TestRefreshBackupAttestationEndToEnd(t *testing.T) {
 	if err := os.WriteFile(drillPath, receipt, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	commandPath := filepath.Join(root, "pgbackrest")
 	command := []byte("#!/bin/sh\nprintf '[{\"name\":\"ra8ci\",\"backup\":[{\"type\":\"full\",\"timestamp\":{\"stop\":%s}}]}]' \"$(date +%s)\"\n")
-	if err := os.WriteFile(commandPath, command, 0o750); err != nil {
-		t.Fatal(err)
+	commandPath, err := installPgBackRestFixture(t, root, string(command), 0o750)
+	if err != nil {
+		t.Fatalf("install pgBackRest fixture: %v", err)
 	}
 	outputDir := filepath.Join(root, "out")
 	if err := os.Mkdir(outputDir, 0o750); err != nil {

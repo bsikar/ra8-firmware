@@ -17,6 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 const (
@@ -369,6 +371,9 @@ func TestConstructorAndTransportFailClosed(t *testing.T) {
 	}
 	badToken := filepath.Join(t.TempDir(), "world-readable")
 	if err := os.WriteFile(badToken, []byte("ra8ci@pve!client=secret-token"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := testprivatefile.OtherUsersReadable(badToken); err != nil {
 		t.Fatal(err)
 	}
 	config.TokenEnv = ""

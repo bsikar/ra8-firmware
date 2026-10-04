@@ -37,14 +37,9 @@ func backupMonitorFixture(t *testing.T, binaryMode os.FileMode) (BackupMonitorCo
 	if err := os.WriteFile(drillPath, receipt, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	commandPath := filepath.Join(root, "pgbackrest")
 	command := []byte("#!/bin/sh\nprintf '[{\"name\":\"ra8ci\",\"backup\":[{\"type\":\"full\",\"timestamp\":{\"stop\":%s}}]}]' \"$(date +%s)\"\n")
-	if err := os.WriteFile(commandPath, command, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	// Chmod explicitly: the create mode is masked by the process umask, which
-	// would quietly strip the very bits these tests are about.
-	if err := os.Chmod(commandPath, binaryMode); err != nil {
+	commandPath, err := installPgBackRestFixture(t, root, string(command), binaryMode)
+	if err != nil {
 		t.Fatal(err)
 	}
 	outputDir := filepath.Join(root, "out")

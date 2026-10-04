@@ -15,3 +15,6 @@ func DenyDirectoryCreate(path string) error { return denyDirectoryCreate(path) }
 
 // RestoreDirectory restores owner-only access so tests can clean up their fixtures.
 func RestoreDirectory(path string) error { return restoreDirectory(path) }
+
+// Unreadable makes a file unreadable by its owner for permission tests.
+func Unreadable(path string) error { return unreadable(path) }

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -173,7 +174,7 @@ func readRegularFile(file string, limit int64, private bool) ([]byte, error) {
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > limit {
 		return nil, errors.New("credential must be a bounded regular file")
 	}
-	if private && info.Mode().Perm()&0o077 != 0 {
+	if private && privatefile.Check(file) != nil {
 		return nil, errors.New("private key file must not be accessible by group or others")
 	}
 	handle, err := os.Open(file)
@@ -184,7 +185,7 @@ func readRegularFile(file string, limit int64, private bool) ([]byte, error) {
 	opened, err := handle.Stat()
 	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) ||
 		opened.Size() < 1 || opened.Size() > limit ||
-		(private && opened.Mode().Perm()&0o077 != 0) {
+		(private && privatefile.CheckFile(handle) != nil) {
 		return nil, errors.New("credential file changed or violates file policy")
 	}
 	content, err := io.ReadAll(io.LimitReader(handle, limit+1))

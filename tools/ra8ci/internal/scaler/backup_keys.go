@@ -10,6 +10,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"strings"
 )
 
@@ -30,7 +32,7 @@ func CreateBackupSigningKeyPair(privatePath, publicPath string) error {
 		// cannot stop an account that can write the directory from renaming
 		// the new key away and leaving its own pair at the path, which keys
 		// the gate to an attacker from the moment it is generated.
-		if info.Mode().Perm()&0022 != 0 {
+		if privatefile.CheckDirectoryNoUntrustedWrite(filepath.Dir(path)) != nil {
 			return errors.New("backup signing key parent must not be group or world writable")
 		}
 		if _, err := os.Lstat(path); err == nil || !os.IsNotExist(err) {

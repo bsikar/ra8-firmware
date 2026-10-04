@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 var (
@@ -52,12 +54,12 @@ func NewFileHighWater(path, boardID string) (*FileHighWater, error) {
 	}
 	dirInfo, err := os.Lstat(directory)
 	if err != nil || !dirInfo.IsDir() || dirInfo.Mode()&os.ModeSymlink != 0 ||
-		dirInfo.Mode().Perm()&0o077 != 0 {
+		privatefile.CheckDirectory(directory) != nil {
 		return nil, ErrUnsafeState
 	}
 	if fileInfo, err := os.Lstat(absolute); err == nil {
 		if !fileInfo.Mode().IsRegular() || fileInfo.Mode()&os.ModeSymlink != 0 ||
-			fileInfo.Mode().Perm()&0o077 != 0 {
+			privatefile.Check(absolute) != nil {
 			return nil, ErrUnsafeState
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -88,7 +90,7 @@ func (s *FileHighWater) loadLocked() (uint64, error) {
 		return 0, nil
 	}
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 ||
-		info.Size() < 1 || info.Size() > 512 || info.Mode().Perm()&0o077 != 0 {
+		info.Size() < 1 || info.Size() > 512 || privatefile.Check(s.path) != nil {
 		return 0, ErrUnsafeState
 	}
 	file, err := os.Open(s.path)
@@ -98,7 +100,7 @@ func (s *FileHighWater) loadLocked() (uint64, error) {
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) ||
-		opened.Size() < 1 || opened.Size() > 512 || opened.Mode().Perm()&0o077 != 0 {
+		opened.Size() < 1 || opened.Size() > 512 || privatefile.CheckFile(file) != nil {
 		return 0, ErrUnsafeState
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, 513))
@@ -157,9 +159,9 @@ func (s *FileHighWater) Advance(generation uint64) error {
 	}
 	tempPath := temporary.Name()
 	defer func() { _ = os.Remove(tempPath) }()
-	if err := temporary.Chmod(0o600); err != nil {
+	if err := privatefile.RestrictFile(temporary); err != nil {
 		_ = temporary.Close()
-		return ErrUnsafeState
+		return fmt.Errorf("%w: protect temporary record: %v", ErrUnsafeState, err)
 	}
 	if _, err := temporary.WriteString(data); err != nil {
 		_ = temporary.Close()
@@ -175,12 +177,7 @@ func (s *FileHighWater) Advance(generation uint64) error {
 	if err := os.Rename(tempPath, s.path); err != nil {
 		return ErrUnsafeState
 	}
-	dir, err := os.Open(directory)
-	if err != nil {
-		return ErrUnsafeState
-	}
-	defer dir.Close()
-	if err := dir.Sync(); err != nil {
+	if err := syncBoardStateDirectory(directory); err != nil {
 		return ErrUnsafeState
 	}
 	return nil

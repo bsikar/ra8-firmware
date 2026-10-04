@@ -72,9 +72,7 @@ func TestPublishingAnAttestationReplacesWhatWasThereAtOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o640 {
-		t.Fatalf("published mode %v, want 0640", info.Mode().Perm())
-	}
+	assertPublishedAttestationProtection(t, path, info)
 	left, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -54,11 +55,11 @@ func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) e
 	if err != nil || !drillDirInfo.IsDir() || drillDirInfo.Mode()&os.ModeSymlink != 0 {
 		return errors.New("restore drill receipt directory must be a real directory")
 	}
-	if drillDirInfo.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckDirectoryNoUntrustedWrite(filepath.Dir(config.RestoreDrillPath)) != nil {
 		return errors.New("restore drill receipt directory must not be group or world writable")
 	}
 	drillInfo, err := os.Lstat(config.RestoreDrillPath)
-	if err != nil || !drillInfo.Mode().IsRegular() || drillInfo.Mode().Perm()&0022 != 0 || drillInfo.Size() <= 0 || drillInfo.Size() > 4096 {
+	if err != nil || !drillInfo.Mode().IsRegular() || privatefile.CheckNoUntrustedWrite(config.RestoreDrillPath) != nil || drillInfo.Size() <= 0 || drillInfo.Size() > 4096 {
 		return errors.New("restore drill receipt must be a bounded, protected regular file")
 	}
 	drillFile, err := os.Open(config.RestoreDrillPath)
@@ -88,11 +89,11 @@ func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) e
 	if err != nil || !keyDirInfo.IsDir() || keyDirInfo.Mode()&os.ModeSymlink != 0 {
 		return errors.New("backup signing key directory must be a real directory")
 	}
-	if keyDirInfo.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckDirectoryNoUntrustedWrite(filepath.Dir(config.PrivateKeyPath)) != nil {
 		return errors.New("backup signing key directory must not be group or world writable")
 	}
 	keyInfo, err := os.Lstat(config.PrivateKeyPath)
-	if err != nil || !keyInfo.Mode().IsRegular() || keyInfo.Mode().Perm()&0077 != 0 || keyInfo.Size() > 256 {
+	if err != nil || !keyInfo.Mode().IsRegular() || privatefile.Check(config.PrivateKeyPath) != nil || keyInfo.Size() > 256 {
 		return errors.New("backup signing key must be a bounded private regular file")
 	}
 	keyFile, err := os.Open(config.PrivateKeyPath)
@@ -116,17 +117,18 @@ func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) e
 	}
 	defer clear(keyBytes)
 	binaryInfo, err := os.Lstat(config.PgBackRestPath)
-	if err != nil || !binaryInfo.Mode().IsRegular() || binaryInfo.Mode()&os.ModeSymlink != 0 || binaryInfo.Mode().Perm()&0111 == 0 {
+	if err != nil || !binaryInfo.Mode().IsRegular() || binaryInfo.Mode()&os.ModeSymlink != 0 ||
+		!pgBackRestExecutable(config.PgBackRestPath, binaryInfo) {
 		return errors.New("pgBackRest executable must be an executable regular file")
 	}
-	if binaryInfo.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckNoUntrustedWrite(config.PgBackRestPath) != nil {
 		return errors.New("pgBackRest executable must not be group or world writable")
 	}
 	commandDirInfo, err := os.Lstat(filepath.Dir(config.PgBackRestPath))
 	if err != nil || !commandDirInfo.IsDir() || commandDirInfo.Mode()&os.ModeSymlink != 0 {
 		return errors.New("pgBackRest executable directory must be a real directory")
 	}
-	if commandDirInfo.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckDirectoryNoUntrustedWrite(filepath.Dir(config.PgBackRestPath)) != nil {
 		return errors.New("pgBackRest executable directory must not be group or world writable")
 	}
 	commandCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -184,7 +186,7 @@ func writeBackupAttestation(path string, data []byte) error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("backup attestation directory must be a protected real directory")
 	}
-	if info.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckDirectoryNoUntrustedWrite(directory) != nil {
 		return errors.New("backup attestation directory must not be group or world writable")
 	}
 	temporary, err := os.CreateTemp(directory, ".ra8ci-backup-attestation-*")
@@ -211,12 +213,7 @@ func writeBackupAttestation(path string, data []byte) error {
 	if err := os.Rename(temporaryPath, path); err != nil {
 		return fmt.Errorf("publish backup attestation: %w", err)
 	}
-	directoryFile, err := os.Open(directory)
-	if err != nil {
-		return errors.New("open backup attestation directory")
-	}
-	defer directoryFile.Close()
-	if err := directoryFile.Sync(); err != nil {
+	if err := syncBackupAttestationDirectory(directory); err != nil {
 		return errors.New("sync backup attestation directory")
 	}
 	return nil
@@ -235,11 +232,11 @@ func LoadBackupPublicKey(path string) (ed25519.PublicKey, error) {
 	if err != nil || !directoryInfo.IsDir() || directoryInfo.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("backup public key directory must be a real directory")
 	}
-	if directoryInfo.Mode().Perm()&0022 != 0 {
+	if privatefile.CheckDirectoryNoUntrustedWrite(filepath.Dir(path)) != nil {
 		return nil, errors.New("backup public key directory must not be group or world writable")
 	}
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0022 != 0 || info.Size() <= 0 || info.Size() > 256 {
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || privatefile.CheckNoUntrustedWrite(path) != nil || info.Size() <= 0 || info.Size() > 256 {
 		return nil, errors.New("backup public key must be a bounded non-writable regular file")
 	}
 	file, err := os.Open(path)

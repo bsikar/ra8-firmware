@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 const schemaVersion = 2
@@ -110,7 +111,7 @@ func Open(directory string) (*Spool, error) {
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("spool path is not a real directory")
 	}
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0077 != 0 {
+	if err := privatefile.CheckDirectory(directory); err != nil {
 		return nil, errors.New("spool directory is accessible to other users")
 	}
 	return &Spool{directory: directory}, nil

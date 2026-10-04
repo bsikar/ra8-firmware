@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -199,6 +200,11 @@ func (session *TerraformSession) Plan(ctx context.Context, operationID, variable
 	if err != nil {
 		return "", "", errors.New("create private Terraform plan file")
 	}
+	if err := privatefile.RestrictFile(planHandle); err != nil {
+		_ = planHandle.Close()
+		_ = os.Remove(planFile)
+		return "", "", errors.New("protect Terraform plan file")
+	}
 	if err := planHandle.Close(); err != nil {
 		_ = os.Remove(planFile)
 		return "", "", errors.New("close Terraform plan file")
@@ -305,7 +311,7 @@ func requirePrivateFileInside(root, file string, limit int64) error {
 	}
 	info, err := os.Lstat(file)
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 ||
-		info.Size() < 1 || info.Size() > limit || info.Mode().Perm()&0o077 != 0 {
+		info.Size() < 1 || info.Size() > limit || privatefile.Check(file) != nil {
 		return errors.New("Terraform file must be private, bounded, and regular")
 	}
 	return nil

@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
+
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -51,6 +53,11 @@ func planted(t *testing.T, root, reservationID string, mode os.FileMode, content
 	}
 	if err := os.Chmod(file, mode); err != nil {
 		t.Fatalf("plant key mode: %v", err)
+	}
+	if mode&0o077 != 0 {
+		if err := testprivatefile.OtherUsersReadable(file); err != nil {
+			t.Fatalf("make shared-key fixture readable: %v", err)
+		}
 	}
 	return file
 }
