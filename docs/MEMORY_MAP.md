@@ -141,7 +141,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | GWCA0      | `0x403CE000`| Gateway CPU agent            | `ra8_eth_gwca.c`   |
 | MFWD       | `0x403C0000`| MAC forwarding               | `eth_mfwd_abi.zig` |
 | ESWM       | `0x403C8000`| Ethernet switch mgmt         | `ra8_layer3_switch.c` |
-| GPTP       | `0x403E0000`| Generic PTP timer (HUM Ch 35)| `ra8_eth_gptp.c`   |
+| GPTP       | `0x403E0000`| Generic PTP timer (HUM Ch 35)| `eth_gptp.zig`     |
 | TSN ctrl   | `0x40235000`| TSN control block            | `internal/tsn.zig` |
 
 ### 2.4 Display, video, audio

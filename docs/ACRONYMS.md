@@ -75,7 +75,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
 | MFWD  | MAC ForWarDing engine                                     | `eth_mfwd_abi.zig`|
 | ESWM  | Ethernet SWitch Management                                | `ra8_layer3_switch.c` |
-| GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `ra8_eth_gptp.c` |
+| GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `eth_gptp.zig`   |
 | TSN   | Time-Sensitive Networking                                 | `internal/tsn.zig` |
 | PHY   | Physical-layer transceiver (Ethernet PHY)                 | `internal/ether_phy.zig`, `ra8_rmac_phy.c` |
 | BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `port/nimble` |

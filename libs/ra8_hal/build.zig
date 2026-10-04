@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -101,6 +101,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "usb_pprn", .source = "src/internal/usb_pprn.zig", .root = "tests/usb_pprn_test.zig" },
         .{ .name = "canfd_frame", .source = "src/internal/canfd_frame.zig", .root = "tests/canfd_frame_test.zig" },
         .{ .name = "dtc", .source = "src/internal/dtc.zig", .root = "tests/dtc_test.zig" },
+        .{ .name = "eth_gptp", .source = "src/internal/eth_gptp.zig", .root = "tests/eth_gptp_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
