@@ -11,7 +11,8 @@
  * The MIPI DSI-2 host driver is implemented across more than one
  * translation unit so that no single file exceeds the
  * ``scripts/checks/check_file_size.py`` cap. The configuration / link /
- * sequence-channel path lives in ``ra8_mipi_dsi.c``; the status, IRQ
+ * lifecycle path is in Zig (src/mipi_dsi_lifecycle_abi.zig and
+ * src/mipi_dsi_lanes_abi.zig, RA8FW-643/645); the status, IRQ
  * dispatch, video-mode, and convenience surfaces live in
  * ``ra8_mipi_dsi_dispatch.c``. A handful of file-scope mutable state
  * words and one bounded-poll helper are read and written from both TUs.
@@ -48,7 +49,7 @@
  * @details
  * Following the project's "no magic numbers" rule -- every literal
  * embedded in the driver code path lives here as a typed enum value.
- * Shared between ``ra8_mipi_dsi.c`` and ``ra8_mipi_dsi_dispatch.c``.
+ * Used by ``ra8_mipi_dsi_dispatch.c``; the Zig ports mirror the values.
  */
 typedef enum : uint32_t {
   k_ra8_mipi_dsi_clear_all = 0xFFFFFFFFUL, /**< RW1C all-ones write mask. */
@@ -66,8 +67,8 @@ typedef enum : uint32_t {
  * @brief Common shift positions used across the MIPI DSI-2 driver.
  *
  * @details
- * Shared between ``ra8_mipi_dsi.c`` and ``ra8_mipi_dsi_dispatch.c`` so
- * both TUs agree on the bit-field positions of the link, ULPS, DSI,
+ * Used by ``ra8_mipi_dsi_dispatch.c``; the Zig ports mirror them so
+ * both sides agree on the bit-field positions of the link, ULPS, DSI,
  * receive-result, and ack/error registers.
  */
 typedef enum : uint8_t {
@@ -86,7 +87,7 @@ typedef enum : uint8_t {
  * @brief Currently registered IRQ callback, or `nullptr`.
  *
  * @details
- * Single definition lives in ``ra8_mipi_dsi.c``. Mutated from the
+ * Defined in Zig (src/mipi_dsi_lifecycle_abi.zig, RA8FW-645). Mutated from the
  * single-threaded init / deinit / attach-handler call sites; read from
  * IRQ context inside ``ra8_mipi_dsi_dispatch.c``.
  *
@@ -101,7 +102,7 @@ extern ra8_mipi_dsi_event_fn_t s_mipi_dsi_event_fn;
  * @brief Opaque context handed back to the IRQ callback.
  *
  * @details
- * Single definition lives in ``ra8_mipi_dsi.c``. Lifetime is owned by
+ * Defined in Zig (src/mipi_dsi_lifecycle_abi.zig, RA8FW-645). Lifetime is owned by
  * the caller of ``ra8_mipi_dsi_attach_handler``.
  *
  * @note May be NULL if the user never attached.
@@ -115,7 +116,7 @@ extern void* s_mipi_dsi_event_ctx;
  * @brief Cache of `cfg->clock_mode == continuous` from the last init.
  *
  * @details
- * Defined in Zig (src/mipi_dsi_lanes_abi.zig, RA8FW-643). Set by
+ * Defined in Zig (src/mipi_dsi_lanes_abi.zig, RA8FW-643). Set by Zig
  * ``ra8_mipi_dsi_init``; read by HS-clock start and ULPS enter, which
  * reject a clock-lane ULPS request in continuous-clock mode.
  *
@@ -147,7 +148,7 @@ extern bool s_mipi_dsi_data_lanes_in_ulps;
  * @brief Buffer the caller passed to ``ra8_mipi_dsi_read_packet()``.
  *
  * @details
- * Single definition lives in ``ra8_mipi_dsi.c``. The receive ISR in
+ * Defined in Zig (src/mipi_dsi_lifecycle_abi.zig, RA8FW-645). The receive ISR in
  * ``ra8_mipi_dsi_dispatch.c`` copies long-packet payload bytes into this
  * buffer once the response arrives and then clears it to avoid
  * stale-pointer use.
@@ -163,7 +164,7 @@ extern uint8_t* s_mipi_dsi_pending_rx_buffer;
  * @brief Capacity of ``s_mipi_dsi_pending_rx_buffer`` in bytes.
  *
  * @details
- * Single definition lives in ``ra8_mipi_dsi.c``. Cleared to zero once the
+ * Defined in Zig (src/mipi_dsi_lifecycle_abi.zig, RA8FW-645). Cleared to zero once the
  * response is consumed by the RX dispatch.
  *
  * @note Treat as undefined when ``s_mipi_dsi_pending_rx_buffer`` is NULL.
@@ -176,7 +177,7 @@ extern uint16_t s_mipi_dsi_pending_rx_len;
  * @brief Bounded poll waiting for `(reg & mask) == expect`.
  *
  * @details
- * Defined in ``ra8_mipi_dsi.c`` and shared with the video-mode path in
+ * Defined in Zig (src/mipi_dsi_lanes_abi.zig, RA8FW-643) and used by the video-mode path in
  * ``ra8_mipi_dsi_dispatch.c``. Spins at most
  * ``k_ra8_mipi_dsi_busy_loop_max`` iterations so the loop bound is
  * statically provable (NASA Power of 10 Rule 2).

@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ra8_mipi_dsi.h command functions (RA8FW-630), replacing
-//! ra8_mipi_dsi_cmd.c. The pending-RX globals stay in ra8_mipi_dsi.c.
+//! ra8_mipi_dsi_cmd.c. The pending-RX globals live in mipi_dsi_lifecycle_abi.zig.
 
 const common = @import("abi_common.zig");
 const cmd = @import("internal/mipi_dsi_cmd.zig");

@@ -90,7 +90,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_lpm` | 1 | 2 | 27 | 9 | 11 |
 | `ra8_lvd` | 2 | 3 | 27 | 2 | 1 |
 | `ra8_mipi_csi` | 0 | 4 | 46 | 2 | 0 |
-| `ra8_mipi_dsi` | 2 | 3 | 40 | 5 | 0 |
+| `ra8_mipi_dsi` | 1 | 3 | 40 | 5 | 0 |
 | `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
 | `ra8_mpc` | 0 | 1 | 7 | 1 | 2 |
 | `ra8_mstp` | 1 | 1 | 5 | 154 | 97 |
