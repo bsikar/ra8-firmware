@@ -119,7 +119,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_touch` | 1 | 1 | 7 | 6 | 9 |
 | `ra8_tsn` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_ulpt` | 0 | 1 | 10 | 3 | 3 |
-| `ra8_usb` | 19 | 16 | 149 | 46 | 31 |
+| `ra8_usb` | 18 | 16 | 149 | 46 | 31 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 1 | 1 | 17 | 1 | 0 |
 | `ra8_wdt` | 1 | 1 | 22 | 9 | 5 |
