@@ -42,7 +42,7 @@ extern "C" {
  *
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_canfd_transmit`` and
- * ``ra8_canfd_receive`` in ``libs/ra8_hal/src/ra8_canfd.c``.
+ * ``ra8_canfd_receive`` in ``libs/ra8_hal/src/internal/canfd_frame.zig``.
  *
  * @invariant `dlc <= 15`
  * @invariant If `is_extended == 0`, `id` fits in 11 bits.
