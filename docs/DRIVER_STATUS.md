@@ -40,7 +40,7 @@ Where each column comes from:
 A driver with no sources is a contract declared but not implemented here. One
 with no tests and no apps is exactly the gap this page exists to make visible.
 
-80 drivers: 73 named by a host test, 58 named by an app, 6 by neither, 26 declared but not implemented here.
+80 drivers: 73 named by a host test, 58 named by an app, 6 by neither, 27 declared but not implemented here.
 
 | Driver | Src | Hdr | API | Tests | Apps |
 |---|---:|---:|---:|---:|---:|
@@ -99,7 +99,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_pcntr` | 0 | 1 | 2 | 1 | 1 |
 | `ra8_pdg` | 1 | 1 | 23 | 2 | 1 |
 | `ra8_pdm` | 0 | 1 | 9 | 2 | 0 |
-| `ra8_poeg` | 1 | 1 | 9 | 2 | 1 |
+| `ra8_poeg` | 0 | 1 | 9 | 2 | 1 |
 | `ra8_port_utils` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_pwr` | 0 | 1 | 9 | 1 | 0 |
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
