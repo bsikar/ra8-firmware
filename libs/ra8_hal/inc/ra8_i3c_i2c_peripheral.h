@@ -46,7 +46,7 @@ extern "C" {
  *
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in ``ra8_i3c_i2c_peripheral_open`` /
- * ``libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c``.
+ * ``libs/ra8_hal/src/internal/i3c_i2c_peripheral.zig`` (exported by ``i3c_i2c_peripheral_abi.zig``).
  */
 typedef struct {
   uint8_t peripheral_addr_7b; /**< 7-bit own address.                       */
