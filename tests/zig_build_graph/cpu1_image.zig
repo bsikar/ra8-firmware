@@ -86,6 +86,10 @@ pub const Cpu1Image = struct {
     /// Whether the Zig entry imports `ra8_rpc` and `ra8_rpc_tx`, for an
     /// image that serves calls from its module (RA8FW-544).
     rpc: bool = false,
+    /// Migrated Zig libraries this image links, by name, each built for the
+    /// M33 (RA8FW-572). Mirrors the image's ra8_link_zig_library_for_cpu()
+    /// lines in CMake beyond ra8_core, which every CPU1 image gets anyway.
+    zig_libraries: []const []const u8 = &.{},
 };
 
 pub const EntryLanguage = enum { c, zig };
@@ -243,6 +247,9 @@ pub const Options = struct {
     /// Prebuilt objects linked after the image's own, such as the packed
     /// module of `image.txm_module`.
     extra_objects: []const std.Build.LazyPath = &.{},
+    /// The archives of `image.zig_libraries`, built for the M33, in order.
+    /// Linked ahead of ra8_core's archive, since a hal unit can call ra8_log.
+    zig_archives: []const std.Build.LazyPath = &.{},
 };
 
 /// Build the M33 image, install its `.elf` / `.hex` / `.bin` / `.map` beside
@@ -312,6 +319,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     for (options.extra_objects) |object| link.addFileArg(object);
     for (options.middleware_archives) |archive| link.addFileArg(archive);
     link.addArgs(middleware.appLinkOptions(b.allocator, cpu1_threadx.resolve(b.allocator, options.image.uses)));
+    for (options.zig_archives) |archive| link.addFileArg(archive);
     link.addFileArg(options.core_archive orelse @panic("ra8: the CPU1 link needs ra8_core's archive built for cortex_m33"));
 
     const hex = objcopyTo(b, options.objcopy, "ihex", elf, b.fmt("{s}.hex", .{name}));

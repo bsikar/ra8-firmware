@@ -81,6 +81,14 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     CPU cortex_m33
     FLOAT hard
   )
+  # ra8_hal's M33 archive (RA8FW-572), linked after ra8_core the way this
+  # function appends, so the SAU driver can move to Zig (RA8FW-571).
+  ra8_link_zig_library_for_cpu(
+    TARGET ${CPU1_NAME}.elf
+    LIB ra8_hal
+    CPU cortex_m33
+    FLOAT hard
+  )
   target_compile_options(
     ${CPU1_NAME}.elf
     PRIVATE -mcpu=cortex-m33

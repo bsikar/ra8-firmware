@@ -654,6 +654,9 @@ pub const cross_apps = [_]CrossApp{
             },
             .linker_script = "linker_script_cpu1.ld",
             .board_include_dir = false,
+            // ra8_hal's M33 archive (RA8FW-572), so the SAU driver can leave
+            // the C list above for its Zig port (RA8FW-571).
+            .zig_libraries = &.{"ra8_hal"},
         },
     },
     .{
