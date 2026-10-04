@@ -34,7 +34,7 @@
  * @brief Bound-check a DOTF channel index.
  *
  * @details
- * Shared between ``ra8_dotf.c`` and ``ra8_dotf_power.c``. Defined ``static
+ * Shared within ``ra8_dotf.c`` (the open/close layer moved to Zig, RA8FW-581). Defined ``static
  * inline`` in this private header so each translation unit gets its own
  * copy with no external linkage symbol, keeping the split link-clean while
  * preserving the original single-definition behavior.
