@@ -57,10 +57,6 @@ pub fn build(b: *std.Build) void {
     });
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
-    abi_tests.addCSourceFiles(.{
-        .files = &.{"tests/abi_fixture.c"},
-        .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },
-    });
 
     const bind_module = b.createModule(.{
         .root_source_file = b.path("src/bind.zig"),
