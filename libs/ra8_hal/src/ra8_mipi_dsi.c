@@ -121,48 +121,6 @@ ra8_mipi_dsi_event_fn_t s_mipi_dsi_event_fn;
 void* s_mipi_dsi_event_ctx;
 
 /**
- * @var s_continuous_clock
- * @brief Cache of `cfg->clock_mode == continuous` from the last init.
- *
- * @details
- * Needed because the ULPS-enter helper must reject a clock-lane ULPS
- * request when continuous-clock mode is on -- the FSP source enforces
- * the same rule. Snap-shotting it once at init avoids an extra
- * register read on every `ra8_mipi_dsi_ulps_enter()` call.
- *
- * @note Mutated only from `ra8_mipi_dsi_init()`.
- * @warning Stale across reinit if `init` is skipped.
- * @since 0.1.0
- */
-static bool s_continuous_clock;
-
-/**
- * @var s_clock_lanes_in_ulps
- * @brief Software shadow of clock-lane ULPS state.
- *
- * @details
- * The hardware does not expose a "currently in ULPS" bit cheaply, so
- * the driver tracks it. Pulsing CLENT a second time while already in
- * ULPS is a no-op in HW but FSP guards against it for symmetry; we do
- * the same.
- *
- * @note Updated only from ULPS enter / exit helpers.
- * @warning Reset by `ra8_mipi_dsi_init()` and `_deinit()`.
- * @since 0.1.0
- */
-static bool s_clock_lanes_in_ulps;
-
-/**
- * @var s_data_lanes_in_ulps
- * @brief Software shadow of data-lane ULPS state.
- *
- * @note Updated only from ULPS enter / exit helpers.
- * @warning Reset by `ra8_mipi_dsi_init()` and `_deinit()`.
- * @since 0.1.0
- */
-static bool s_data_lanes_in_ulps;
-
-/**
  * @var s_mipi_dsi_pending_rx_buffer
  * @brief Single definition of the shared pending receive buffer.
  *
@@ -344,18 +302,6 @@ RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_d
   return v;
 }
 
-/** @brief Implementation of `priv_ra8_mipi_dsi_internal_wait_eq()` -- bounded busy-poll. */
-ra8_err_t
-priv_ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
-{
-  for (uint32_t i = 0U; i < k_ra8_mipi_dsi_busy_loop_max; ++i) {
-    if ((*reg & mask) == expect) {
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_err_hw_timeout;
-}
-
 /* =============================================================================
  * Public API -- lifecycle
  * =============================================================================
@@ -450,9 +396,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
   internal_program_timeouts(cfg);
   internal_ra8_mipi_dsi_clear_all_status();
 
-  s_continuous_clock           = (cfg->clock_mode == k_ra8_mipi_dsi_clock_continuous);
-  s_clock_lanes_in_ulps        = false;
-  s_data_lanes_in_ulps         = false;
+  s_mipi_dsi_continuous_clock           = (cfg->clock_mode == k_ra8_mipi_dsi_clock_continuous);
+  s_mipi_dsi_clock_lanes_in_ulps        = false;
+  s_mipi_dsi_data_lanes_in_ulps         = false;
   s_mipi_dsi_event_fn          = nullptr;
   s_mipi_dsi_event_ctx         = nullptr;
   s_mipi_dsi_pending_rx_buffer = nullptr;
@@ -478,9 +424,9 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
 
   s_mipi_dsi_event_fn          = nullptr;
   s_mipi_dsi_event_ctx         = nullptr;
-  s_continuous_clock           = false;
-  s_clock_lanes_in_ulps        = false;
-  s_data_lanes_in_ulps         = false;
+  s_mipi_dsi_continuous_clock           = false;
+  s_mipi_dsi_clock_lanes_in_ulps        = false;
+  s_mipi_dsi_data_lanes_in_ulps         = false;
   s_mipi_dsi_pending_rx_buffer = nullptr;
   s_mipi_dsi_pending_rx_len    = 0U;
 
@@ -519,94 +465,4 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
     s_initialized = true;
   }
   return err;
-}
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_soft_reset(void)
-{
-  volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
-  reg->RSTCR = k_ra8_mipi_dsi_rstcr_swrst;
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
-  reg->RSTCR = 0U;
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * HS clock control
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_hs_clock_start(void)
-{
-  volatile r_mipi_dsi_regs_t* reg   = ra8_mipi_dsi();
-  uint32_t                    hsclk = k_ra8_mipi_dsi_hsclk_start;
-  if (s_continuous_clock) {
-    hsclk |= k_ra8_mipi_dsi_hsclk_continuous;
-  }
-  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
-  reg->HSCLKSETR = hsclk;
-  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
-  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
-                                            k_ra8_mipi_dsi_plsr_cllp2hs,
-                                            k_ra8_mipi_dsi_plsr_cllp2hs);
-}
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_hs_clock_stop(void)
-{
-  volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3843 */
-  reg->HSCLKSETR = 0U;
-  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
-  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->PLSR,
-                                            k_ra8_mipi_dsi_plsr_clhs2lp,
-                                            k_ra8_mipi_dsi_plsr_clhs2lp);
-}
-
-/* =============================================================================
- * ULPS
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_ulps_enter(uint8_t lanes)
-{
-  if (lanes == k_ra8_mipi_dsi_lane_none) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* Continuous clock mode forbids clock-lane ULPS -- HUM Ch 65 lists
-   * this constraint and FSP enforces the same precondition. */
-  if (((lanes & k_ra8_mipi_dsi_lane_clock) != 0U) && s_continuous_clock) {
-    ra8_log_error(s_tag, "ulps_enter: clock lane + continuous mode rejected");
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t ulpscr = 0U;
-  if (((lanes & k_ra8_mipi_dsi_lane_data) != 0U) && !s_data_lanes_in_ulps) {
-    ulpscr |= k_ra8_mipi_dsi_ulpscr_dlent;
-    s_data_lanes_in_ulps = true;
-  }
-  if (((lanes & k_ra8_mipi_dsi_lane_clock) != 0U) && !s_clock_lanes_in_ulps) {
-    ulpscr |= k_ra8_mipi_dsi_ulpscr_clent;
-    s_clock_lanes_in_ulps = true;
-  }
-  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3844 */
-  ra8_mipi_dsi()->ULPSCR = ulpscr;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_ulps_exit(uint8_t lanes)
-{
-  if (lanes == k_ra8_mipi_dsi_lane_none) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t ulpscr = 0U;
-  if (((lanes & k_ra8_mipi_dsi_lane_data) != 0U) && s_data_lanes_in_ulps) {
-    ulpscr |= k_ra8_mipi_dsi_ulpscr_dlexit;
-    s_data_lanes_in_ulps = false;
-  }
-  if (((lanes & k_ra8_mipi_dsi_lane_clock) != 0U) && s_clock_lanes_in_ulps) {
-    ulpscr |= k_ra8_mipi_dsi_ulpscr_clexit;
-    s_clock_lanes_in_ulps = false;
-  }
-  /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3844 */
-  ra8_mipi_dsi()->ULPSCR = ulpscr;
-  return k_ra8_ok;
 }

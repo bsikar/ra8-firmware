@@ -111,6 +111,38 @@ extern ra8_mipi_dsi_event_fn_t s_mipi_dsi_event_fn;
 extern void* s_mipi_dsi_event_ctx;
 
 /**
+ * @var s_mipi_dsi_continuous_clock
+ * @brief Cache of `cfg->clock_mode == continuous` from the last init.
+ *
+ * @details
+ * Defined in Zig (src/mipi_dsi_lanes_abi.zig, RA8FW-643). Set by
+ * ``ra8_mipi_dsi_init``; read by HS-clock start and ULPS enter, which
+ * reject a clock-lane ULPS request in continuous-clock mode.
+ *
+ * @warning Direct access from outside the MIPI DSI-2 driver is forbidden.
+ * @since 0.1.0
+ */
+extern bool s_mipi_dsi_continuous_clock;
+
+/**
+ * @var s_mipi_dsi_clock_lanes_in_ulps
+ * @brief Software shadow of clock-lane ULPS state (defined in Zig).
+ *
+ * @warning Reset by ``ra8_mipi_dsi_init`` and ``ra8_mipi_dsi_deinit``.
+ * @since 0.1.0
+ */
+extern bool s_mipi_dsi_clock_lanes_in_ulps;
+
+/**
+ * @var s_mipi_dsi_data_lanes_in_ulps
+ * @brief Software shadow of data-lane ULPS state (defined in Zig).
+ *
+ * @warning Reset by ``ra8_mipi_dsi_init`` and ``ra8_mipi_dsi_deinit``.
+ * @since 0.1.0
+ */
+extern bool s_mipi_dsi_data_lanes_in_ulps;
+
+/**
  * @var s_mipi_dsi_pending_rx_buffer
  * @brief Buffer the caller passed to ``ra8_mipi_dsi_read_packet()``.
  *
