@@ -16,12 +16,13 @@ bridge, switch VLAN, firewall, template, or API ACL is safe.
   read-only AppRole and an ephemeral KV v2 value. The AppRole cannot create
   child tokens, and the OpenTofu wrapper supplies its credentials only at
   runtime.
-- Keep Proxmox TLS verification enabled. `proxmox_insecure=true` is permitted
-  only for a deliberate, read-only smoke test when the private endpoint's CA
-  is not available to the provider; never use it for an apply.
-- `vmbr9` is configured persistently as a host-only bridge with no physical
-  port, address, or gateway, but it is not currently active because host
-  networking has not been reloaded.
+- Keep Proxmox TLS verification enabled for direct connections.
+  `proxmox_insecure=true` is permitted only for the controller-local API
+  tunnel after the wrapper verifies the Proxmox certificate fingerprint over
+  SSH; never use it for a direct endpoint.
+- `vmbr9` is a temporary bridge created by an approved lab recipe run. It has
+  no physical port; the recipe removes its run-specific firewall and bridge
+  after the last guest exits. Do not add a persistent bridge through OpenTofu.
 - `ra8-tf-lab` is a dedicated datastore with capacity appropriate for the full
   test matrix and a separate storage boundary from production. Keep exact
   disk names, capacities, hostnames, and credential identifiers in local
@@ -35,11 +36,12 @@ Do not change these defaults as part of a routine OpenTofu test.
 
 ## State and plan encryption keys
 
-All three roots (`lab`, `ra8ci-runner`, and `ra8ci-service`) enforce AES-GCM
-encryption for state and saved plans using a PBKDF2-derived key. On the
+All four roots (`lab`, `lab-guest`, `ra8ci-runner`, and `ra8ci-service`)
+enforce AES-GCM encryption for state and saved plans using a PBKDF2-derived
+key. On the
 controller Mac, keep each key in the login Keychain under its matching service
-`ra8-firmware/opentofu/state-encryption/{lab,ra8ci-runner,ra8ci-service}` and
-account `terraform-proxmox`. The lab wrapper reads the `lab` item and exports
+`ra8-firmware/opentofu/state-encryption/{lab,lab-guest,ra8ci-runner,ra8ci-service}`
+and account `terraform-proxmox`. The wrapper reads the selected root's item and exports
 it as `TF_VAR_state_encryption_passphrase`; automation for the other roots
 must inject the corresponding Keychain item under the same environment
 variable. Use a distinct key per environment and back it up in the protected
@@ -69,9 +71,10 @@ Before enabling a guest NIC, verify all of the following outside OpenTofu:
   any other production bridge.
 - `ra8-tf-lab` is a dedicated datastore with an explicit capacity and physical
   disk boundary; do not use the production datastore as a fallback.
-- For a host-only lab, the bridge has no physical port (`bridge-ports none`),
-  no host address, and no gateway. Provide a dedicated lab DHCP service only
-  if the guest needs an address.
+- For this recipe-managed host-only lab, the bridge has no physical port
+  (`bridge-ports none`), and its temporary host address is limited to the lab
+  subnet. The guest has no default gateway unless the reviewed recipe
+  explicitly configures one.
 - For a VLAN-backed lab, the switch/firewall places the VLAN in a separate
   security zone. Do not rely on a VLAN tag alone if the switch permits routing
   between the lab and personal zones.
