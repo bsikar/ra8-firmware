@@ -24,6 +24,7 @@
         .ra8_usb_pal = .{ .path = "libs/ra8_usb_pal" },
         .ra8_hal = .{ .path = "libs/ra8_hal" },
         .ra8_io = .{ .path = "libs/ra8_io" },
+        .ra8_fs = .{ .path = "libs/ra8_fs" },
         .if_ra8_cgc = .{ .path = "libs/if_ra8_cgc" },
         .@"if" = .{ .path = "libs/if" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
