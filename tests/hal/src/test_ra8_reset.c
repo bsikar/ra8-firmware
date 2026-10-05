@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_reset.c
- * @brief Unit tests for ra8_reset.c (Reset cause + software reset driver)
+ * @brief Unit tests for the ra8_reset driver (reset_abi.zig: reset cause + software reset)
  *
  * @details
  * Exercises the reset HAL driver against the host-side ``ra8_fake_mmap``
@@ -730,7 +730,7 @@ static void test_get_cause_rstsr3_remaining_flags(void)
  * @details
  * When ra8_reset_init has been called the driver caches RSTSR0/1/2/3.
  * ra8_reset_get_raw must return the *snapshot*, not the live register value.
- * This exercises the cached branch at lines 365-366 of ra8_reset.c.
+ * This exercises the cached branch in ra8_reset_get_raw (reset_abi.zig).
  *
  * @par MC/DC:
  * Decision: s_state.initialized (single condition). This case makes it
@@ -772,7 +772,7 @@ static void test_get_raw_cached_path(void)
  *
  * @details
  * ra8_reset_clear_cause bit 31 (k_ra8_reset_test_clear_cwsf) maps to
- * k_ra8_reset_mask_rstsr2_cwsf inside ra8_reset.c.  When set, the driver
+ * k_ra8_reset_mask_rstsr2_cwsf inside internal/reset.zig (clear).  When set, the driver
  * writes 1 to RSTSR2 (HUM Ch 6.2.4 Note 2, p 261: CWSF is set by
  * writing 1).  Exercises lines 396-397.
  *
@@ -801,7 +801,7 @@ static void test_clear_cause_rstsr2_cwsf_path(void)
  * When ra8_reset_init has already been called, ra8_reset_clear_cause must
  * re-read and re-decode the registers into the cached snapshot so that
  * the next ra8_reset_get_cause call sees the post-clear state.
- * Exercises lines 402-404 of ra8_reset.c.
+ * Exercises the invalid-source path of internal/reset.zig (sourceLoc).
  *
  * @par MC/DC:
  * Decision: s_state.initialized in clear_cause (single condition).

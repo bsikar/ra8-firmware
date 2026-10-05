@@ -420,7 +420,7 @@ spins or resets after a fatal error.
 registered task heartbeat is `overdue`. The IWDT therefore expires
 and resets the chip rather than letting a wedged task hold the system
 indefinitely. Reset cause is preserved in the RSTSR registers and
-read back by `ra8_reset.c` (REQ-DRV-057) on the next boot.
+read back by `reset_abi.zig` (REQ-DRV-057) on the next boot.
 
 ### 7.4 SecureFault
 

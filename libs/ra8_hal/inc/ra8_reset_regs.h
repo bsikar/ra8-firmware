@@ -14,7 +14,7 @@
  * map of SYSC and includes pointer accessors for ``RSTSR0``, ``RSTSR1``
  * and ``RSTSR2``. The shared brief explicitly forbids editing the
  * shared system header from a per-driver task, so this header
- * **mirrors** the subset of reset registers needed by ``ra8_reset.c``
+ * **mirrors** the subset of reset registers needed by ``reset_abi.zig``
  * (the three RSTSR flags plus ``RSTSR3``, plus ``RSTSAR`` for security
  * attribution) without duplicating or changing anything in
  * ``ra8_system_regs.h``.
