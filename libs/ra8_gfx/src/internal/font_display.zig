@@ -4,6 +4,7 @@
 //! Native-resolution display glyph atlases for ra8-ui labels.
 
 const std = @import("std");
+const coverage_rle = @import("coverage_rle.zig");
 
 pub const Glyph = struct {
     codepoint: u32,
@@ -23,7 +24,7 @@ pub const Atlas = struct {
     glyph_count: usize,
 
     pub fn glyphAt(self: Atlas, index: usize) Glyph {
-        const base = 8 + index * 16;
+        const base = 10 + index * 16;
         return .{
             .codepoint = readU32(self.bytes, base),
             .left = @bitCast(readU16(self.bytes, base + 4)),
@@ -35,9 +36,9 @@ pub const Atlas = struct {
         };
     }
 
-    pub fn coverageByte(self: Atlas, pixel_index: u32) u8 {
-        const coverage_offset = 8 + self.glyph_count * 16;
-        return self.bytes[coverage_offset + pixel_index / 4];
+    pub fn decoder(self: Atlas, offset: u32) coverage_rle.Decoder {
+        const coverage_offset = 10 + self.glyph_count * 16;
+        return coverage_rle.Decoder.init(self.bytes[coverage_offset..], offset);
     }
 };
 
@@ -67,11 +68,12 @@ pub fn get(face: u8, weight: u8, size: u8) ?Atlas {
         8 => select(clock, face, weight),
         else => return null,
     };
+    if (!std.mem.eql(u8, selected[0..4], "R8LA") or selected[4] != 2 or selected[5] != 1) return null;
     return .{
         .bytes = selected,
-        .glyph_count = readU16(selected, 4),
-        .ascent = selected[6],
-        .descent = selected[7],
+        .glyph_count = readU16(selected, 6),
+        .ascent = selected[8],
+        .descent = selected[9],
     };
 }
 

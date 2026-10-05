@@ -8,6 +8,9 @@ from pathlib import Path
 from PIL import ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
+# R8LA v2 header uses version 2 and flag bit 0 for RLE2 coverage.
+R8LA_VERSION = 2
+R8LA_FLAG_RLE2 = 1
 OUTPUT = ROOT / "libs/ra8_gfx/src/internal/display_atlases"
 SERIF = ROOT / "libs/ra8_fonts/Literata-Regular.ttf"
 SANS_REGULAR = ROOT / "libs/ra8_fonts/RA8UISans/RA8UISans-Regular.ttf"
@@ -29,13 +32,16 @@ def codepoints(kind: str) -> list[int]:
 
 
 def packed_coverage(values: bytes) -> bytes:
+    levels = [min(3, (coverage * 3 + 127) // 255) for coverage in values]
     packed = bytearray()
-    for start in range(0, len(values), 4):
-        value = 0
-        for slot, coverage in enumerate(values[start : start + 4]):
-            level = min(3, (coverage * 3 + 127) // 255)
-            value |= level << (6 - 2 * slot)
-        packed.append(value)
+    index = 0
+    while index < len(levels):
+        level = levels[index]
+        run = 1
+        while index + run < len(levels) and levels[index + run] == level and run < 64:
+            run += 1
+        packed.append((level << 6) | (run - 1))
+        index += run
     return bytes(packed)
 
 
@@ -49,8 +55,7 @@ def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke:
     records = bytearray()
     coverage = bytearray()
     for cp in codepoints_:
-        pixel_offset = (len(coverage) + 3) & ~3
-        coverage.extend(b"\0" * (pixel_offset - len(coverage)))
+        pixel_offset = len(coverage)
         character = chr(cp)
         left, top, right, bottom = font.getbbox(character, stroke_width=stroke)
         stroked_mask = font.getmask(character, stroke_width=stroke)
@@ -80,8 +85,8 @@ def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke:
         if advance > 32767:
             raise ValueError(f"glyph advance exceeds atlas format for U+{cp:04X}")
         records.extend(struct.pack("<IhhhBBI", cp, left, top, advance, width, height, pixel_offset))
-        coverage.extend(mask)
-    return b"R8LA" + struct.pack("<HBB", len(codepoints_), ascent, descent) + records + packed_coverage(bytes(coverage))
+        coverage.extend(packed_coverage(mask))
+    return b"R8LA" + struct.pack("<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(codepoints_), ascent, descent) + records + coverage
 
 
 def outputs() -> dict[Path, bytes]:
