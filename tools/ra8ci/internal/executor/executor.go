@@ -399,6 +399,17 @@ func resolvePath(path string) (string, error) {
 		if parent == path {
 			return "", err
 		}
+		// Windows may report PATH_NOT_FOUND when a path crosses a regular
+		// file, which is indistinguishable from a missing leaf at this level.
+		// Check each existing ancestor before treating the remaining suffix as
+		// a legitimate not-yet-created path.
+		parentInfo, parentErr := os.Stat(parent)
+		if parentErr == nil && !parentInfo.IsDir() {
+			return "", fmt.Errorf("parent path %s is not a directory", parent)
+		}
+		if parentErr != nil && !errors.Is(parentErr, os.ErrNotExist) {
+			return "", parentErr
+		}
 		missing = append(missing, filepath.Base(path))
 		path = parent
 	}

@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -37,9 +38,16 @@ const (
 )
 
 func testAssignment() protocol.Assignment {
+	// format-check is reviewed for Linux only. Use a catalog task that is
+	// explicitly reviewed for Windows when these protocol fixtures run there;
+	// the executor's catalog OS admission check remains unchanged.
+	taskName := "format-check"
+	if runtime.GOOS == "windows" {
+		taskName = "assert-casts"
+	}
 	return protocol.Assignment{SchemaVersion: protocol.Version, AssignmentID: testAssignmentID,
 		AttemptID: testAttemptID, AssignmentVersion: 7, FencingToken: 11,
-		Task:          protocol.TaskRef{Name: "format-check", Version: 1},
+		Task:          protocol.TaskRef{Name: taskName, Version: 1},
 		CatalogSHA256: strings.Repeat("a", 64),
 		Source: protocol.SourceRef{Algorithm: source.Algorithm, Commit: strings.Repeat("a", 40),
 			SnapshotSHA256: strings.Repeat("b", 64)},
@@ -492,6 +500,9 @@ func TestRunOnceEndToEndReadOnly(t *testing.T) {
 }
 
 func TestRunOnceDeadlineReportsTerminal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the timeout fixture invokes POSIX sleep; the reviewed read-only Windows tasks have no blocking fixture command")
+	}
 	root, snapshot := fixtureCheckout(t, "sleep 5\n")
 	a := testAssignment()
 	definitions, err := catalog.Load()

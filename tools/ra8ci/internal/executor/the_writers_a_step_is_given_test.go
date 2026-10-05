@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	embedded "github.com/bsikar/ra8-firmware/tools/ra8ci/catalog"
@@ -36,12 +38,23 @@ func plantedCheckout(t *testing.T, script string) string {
 	if err := os.WriteFile(filepath.Join(manifestDir, "sha256.txt"), embedded.Digest(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	scriptDir := filepath.Join(root, "scripts", "checks")
-	if err := os.MkdirAll(scriptDir, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(scriptDir, "format_tree.sh"), []byte(script), 0700); err != nil {
-		t.Fatal(err)
+	if runtime.GOOS == "windows" {
+		fixtureDir := filepath.Join(root, "tests")
+		if err := os.MkdirAll(fixtureDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(fixtureDir, "agent_fixture.c"),
+			[]byte("TEST_ASSERT_EQ(actual, expected);\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		scriptDir := filepath.Join(root, "scripts", "checks")
+		if err := os.MkdirAll(scriptDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(scriptDir, "format_tree.sh"), []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return root
 }
@@ -52,9 +65,15 @@ func formatCheck(t *testing.T) catalog.Task {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, found := definitions.Task("format-check")
+	taskName := "format-check"
+	if runtime.GOOS == "windows" {
+		// format-check is Linux-only; assert-casts is a read-only task reviewed
+		// for Windows and exercises the same executor writer-routing path.
+		taskName = "assert-casts"
+	}
+	task, found := definitions.Task(taskName)
 	if !found {
-		t.Skip("the catalog no longer declares format-check")
+		t.Skipf("the catalog no longer declares %s", taskName)
 	}
 	return task
 }
@@ -79,10 +98,18 @@ func TestASuppliedStepWriterSelectorDecidesWhereAStepIsWritten(t *testing.T) {
 	if result.ExitCode != 0 {
 		t.Fatalf("result = %+v, want a clean run", result)
 	}
-	if len(asked) != 1 || asked[0] != "format-tree-check" {
+	if runtime.GOOS == "windows" {
+		if len(asked) != 2 || asked[0] != "assert-casts-selftest" || asked[1] != "assert-casts-scan" {
+			t.Fatalf("selector was asked for %v, want both reviewed assert-casts steps", asked)
+		}
+	} else if len(asked) != 1 || asked[0] != "format-tree-check" {
 		t.Fatalf("selector was asked for %v, want the reviewed step name once", asked)
 	}
-	if chosenOut.String() != "chosen-out\n" || chosenErr.String() != "chosen-err\n" {
+	if runtime.GOOS == "windows" {
+		if !strings.Contains(chosenOut.String(), "all cases pass") || chosenErr.Len() != 0 {
+			t.Fatalf("selector writers got out=%q err=%q", chosenOut.String(), chosenErr.String())
+		}
+	} else if chosenOut.String() != "chosen-out\n" || chosenErr.String() != "chosen-err\n" {
 		t.Fatalf("selector writers got out=%q err=%q", chosenOut.String(), chosenErr.String())
 	}
 	if fallbackOut.Len() != 0 || fallbackErr.Len() != 0 {
@@ -101,7 +128,11 @@ func TestWithoutASelectorTheStepWritesToTheWritersItWasHanded(t *testing.T) {
 	if err != nil || result.ExitCode != 0 {
 		t.Fatalf("result = %+v, error = %v", result, err)
 	}
-	if stdout.String() != "plain-out\n" {
+	if runtime.GOOS == "windows" {
+		if !strings.Contains(stdout.String(), "all cases pass") || stderr.Len() != 0 {
+			t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
+		}
+	} else if stdout.String() != "plain-out\n" {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 }

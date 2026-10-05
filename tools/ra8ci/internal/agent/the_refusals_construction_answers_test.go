@@ -18,6 +18,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -161,11 +162,11 @@ func TestNewRefusesMaterialItCannotRead(t *testing.T) {
 		}
 	})
 	t.Run("unreadable authority", func(t *testing.T) {
-		if os.Geteuid() == 0 {
+		if runtime.GOOS != "windows" && os.Geteuid() == 0 {
 			t.Skip("root reads a sealed file")
 		}
 		config := soundConfig(t)
-		if err := os.Chmod(config.CAFile, 0o000); err != nil {
+		if err := testprivatefile.Unreadable(config.CAFile); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := New(config); err == nil {
