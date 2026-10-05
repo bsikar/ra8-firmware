@@ -19,6 +19,12 @@ pub const paint = @import("widget_paint_abi.zig");
 /// The CPU greyscale-image renderer.
 pub const image = @import("widget_image.zig");
 
+/// The greyscale image leaf widget.
+pub const image_widget = @import("widget_image_abi.zig");
+
+/// Generated greyscale icon atlas and painter.
+pub const icons = @import("widget_icons.zig");
+
 /// The text-label leaf widget: `ra8_widget_label_vtable` / `_init`.
 pub const label = @import("widget_label_abi.zig");
 
@@ -79,6 +85,8 @@ pub const core = @import("widget_core_abi.zig");
 comptime {
     _ = types;
     _ = image;
+    _ = image_widget;
+    _ = icons;
     _ = paint;
     _ = label;
     _ = button;

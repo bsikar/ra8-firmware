@@ -121,6 +121,7 @@ pub fn build(b: *std.Build) void {
     });
     host_render_abi_module.addImport("debug", debug_module);
     host_render_test_module.addImport("abi", host_render_abi_module);
+    host_render_test_module.addImport("debug", debug_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
     const toggle_module = b.createModule(.{
         .root_source_file = b.path("src/widget_toggle_abi.zig"),
@@ -294,6 +295,19 @@ pub fn build(b: *std.Build) void {
     image_test_module.addImport("image", image_module);
     const image_tests = b.addTest(.{ .root_module = image_test_module });
 
+    const image_widget_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_image_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const image_widget_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/image_widget_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    image_widget_test_module.addImport("abi", image_widget_module);
+    const image_widget_tests = b.addTest(.{ .root_module = image_widget_test_module });
+
     const book_module = b.createModule(.{
         .root_source_file = b.path("src/widget_book_abi.zig"),
         .target = target,
@@ -313,6 +327,7 @@ pub fn build(b: *std.Build) void {
     list_test_module.addImport("abi", list_module);
     const list_tests = b.addTest(.{ .root_module = list_test_module });
 
+    const run_image_widget_tests = b.addRunArtifact(image_widget_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
@@ -335,6 +350,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_host_render_tests.step);
     test_step.dependOn(&run_internal_tests.step);
+    test_step.dependOn(&run_image_widget_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_label_tests.step);
     test_step.dependOn(&run_button_tests.step);

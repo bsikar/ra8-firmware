@@ -45,8 +45,8 @@ const Draw = struct {
 
 /// Recording paint backend.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 8) = .{};
-    var draws: std.BoundedArray(Draw, 8) = .{};
+    var fills: std.BoundedArray(Fill, 512) = .{};
+    var draws: std.BoundedArray(Draw, 32) = .{};
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
         fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
@@ -151,6 +151,30 @@ test "the descriptor mirrors ra8_widget_nav_bar_t" {
     try std.testing.expectEqual(3 * ptr + 12, @offsetOf(abi.NavBar, "count"));
     try std.testing.expectEqual(3 * ptr + 14, @offsetOf(abi.NavBar, "active"));
     try std.testing.expectEqual(3 * ptr + 16, @offsetOf(abi.NavBar, "selected"));
+    try std.testing.expectEqual(((3 * ptr + 18 + ptr - 1) / ptr) * ptr, @offsetOf(abi.NavBar, "icons"));
+}
+
+test "the atlas contains every requested nav icon" {
+    for (1..10) |raw| {
+        const icon: abi.Icon = @enumFromInt(raw);
+        var ink: usize = 0;
+        for (0..16) |y| for (0..16) |x| {
+            if (abi.icons.sample(icon, x, y) > 0) ink += 1;
+        };
+        try std.testing.expect(ink > 0);
+    }
+}
+
+test "an assigned icon paints through fill_rect and none stays transparent" {
+    reset();
+    const icon_backend = abi.Paint{ .user = null, .fill_rect = Recorder.fillRect, .draw_text = null, .text_size = null };
+    abi.icons.draw(&icon_backend, .play, .{ .x = 0, .y = 0, .w = 16, .h = 16 }, active_color, bg_color);
+    try std.testing.expect(Recorder.fills.len > 0);
+    const before_none = Recorder.fills.len;
+    abi.icons.draw(&icon_backend, .none, .{ .x = 0, .y = 0, .w = 16, .h = 16 }, active_color, bg_color);
+    try std.testing.expectEqual(before_none, Recorder.fills.len);
+    try std.testing.expect(abi.icons.sample(.play, 8, 8) > 0);
+    try std.testing.expectEqual(@as(u2, 0), abi.icons.sample(.none, 8, 8));
 }
 
 test "cells tile the strip with no gap and no overlap" {
