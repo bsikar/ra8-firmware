@@ -318,7 +318,7 @@ static void test_open_invalid_address(void)
  * @test test_mcdc_open_bus_seam
  *
  * @par MC/DC:
- * Decision libs/ra8_hal/src/ra8_touch.c@internal_validate_cfg:
+ * Decision libs/ra8_hal/src/touch_abi.zig@validate:
  * ``if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr))``
  * (2 conditions, ``||``). N+1 = 3:
  * - V1: write=valid, transfer=valid -> F||F -> F (open proceeds; the
@@ -518,7 +518,7 @@ static void test_calibrate_noop(void)
  *
  * @par MC/DC:
  * Decision A: ``priv_validate_cfg`` line 254,
- * libs/ra8_hal/src/ra8_touch.c:
+ * libs/ra8_hal/src/internal/touch.zig:
  * ``if ((target_7b != GT911_LOW) && (target_7b != GT911_HIGH))``
  * (2 conditions, ``&&``). N+1 = 3:
  * - V1: addr=0x5D -> dec F (accept)
@@ -683,7 +683,7 @@ static void test_open_product_id_transfer_error(void)
  * @test test_mcdc_open_product_id_value
  *
  * @par MC/DC:
- * Decisions in ``priv_check_product_id``, libs/ra8_hal/src/ra8_touch.c.
+ * Decisions in ``checkProductId``, libs/ra8_hal/src/internal/touch.zig.
  * Both are single-condition, so MC/DC degenerates to branch coverage:
  * both outcomes of each decision (DO-178C 6.4.4.3).
  * Decision A: ``if (pid_err != k_ra8_ok)``
