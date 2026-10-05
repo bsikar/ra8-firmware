@@ -7,6 +7,9 @@ package testprivatefile
 // OwnerOnly applies the platform's owner-only file permissions.
 func OwnerOnly(path string) error { return ownerOnly(path) }
 
+// OtherUsersWritable adds a write grant that a protected-file check must reject.
+func OtherUsersWritable(path string) error { return otherUsersWritable(path) }
+
 // DenyDirectoryRead prevents the current user from listing a directory.
 func DenyDirectoryRead(path string) error { return denyDirectoryRead(path) }
 
