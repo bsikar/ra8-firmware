@@ -91,23 +91,23 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 
 | Peripheral | Secure base | Notes                          | HAL driver        |
 |------------|-------------|--------------------------------|-------------------|
-| PORT0      | `0x40400000`| 0x20-byte stride per PORTn     | `gpio.c`          |
-| PORT1      | `0x40400020`|                                | `gpio.c`          |
-| PORT2      | `0x40400040`|                                | `gpio.c`          |
-| PORT3      | `0x40400060`|                                | `gpio.c`          |
-| PORT4      | `0x40400080`|                                | `gpio.c`          |
-| PORT5      | `0x404000A0`|                                | `gpio.c`          |
-| PORT6      | `0x404000C0`|                                | `gpio.c`          |
-| PORT7      | `0x404000E0`|                                | `gpio.c`          |
-| PORT8      | `0x40400100`|                                | `gpio.c`          |
-| PORT9      | `0x40400120`|                                | `gpio.c`          |
-| PORT10     | `0x40400140`|                                | `gpio.c`          |
-| PORT11     | `0x40400160`|                                | `gpio.c`          |
-| PORT12     | `0x40400180`|                                | `gpio.c`          |
-| PORT13     | `0x404001A0`|                                | `gpio.c`          |
-| PORT14     | `0x404001C0`|                                | `gpio.c`          |
-| PFS        | `0x40400800`| Pin Function Select array      | `gpio.c`          |
-| PMISC      | `0x40400D00`| PWPR / PWPRS write-protect     | `gpio.c`          |
+| PORT0      | `0x40400000`| 0x20-byte stride per PORTn     | `gpio_pins_abi.zig` |
+| PORT1      | `0x40400020`|                                | `gpio_pins_abi.zig` |
+| PORT2      | `0x40400040`|                                | `gpio_pins_abi.zig` |
+| PORT3      | `0x40400060`|                                | `gpio_pins_abi.zig` |
+| PORT4      | `0x40400080`|                                | `gpio_pins_abi.zig` |
+| PORT5      | `0x404000A0`|                                | `gpio_pins_abi.zig` |
+| PORT6      | `0x404000C0`|                                | `gpio_pins_abi.zig` |
+| PORT7      | `0x404000E0`|                                | `gpio_pins_abi.zig` |
+| PORT8      | `0x40400100`|                                | `gpio_pins_abi.zig` |
+| PORT9      | `0x40400120`|                                | `gpio_pins_abi.zig` |
+| PORT10     | `0x40400140`|                                | `gpio_pins_abi.zig` |
+| PORT11     | `0x40400160`|                                | `gpio_pins_abi.zig` |
+| PORT12     | `0x40400180`|                                | `gpio_pins_abi.zig` |
+| PORT13     | `0x404001A0`|                                | `gpio_pins_abi.zig` |
+| PORT14     | `0x404001C0`|                                | `gpio_pins_abi.zig` |
+| PFS        | `0x40400800`| Pin Function Select array      | `gpio_pins_abi.zig` |
+| PMISC      | `0x40400D00`| PWPR / PWPRS write-protect     | `gpio_pins_abi.zig` |
 | GPT0       | `0x40322000`| GPT channel 0 (rest by stride) | `ra8_gpt.c`, `timer.c` |
 | GPT OPS    | `0x40323F00`| Output Phase Switching         | `ra8_gpt.c`        |
 | GPT ODC    | `0x40324000`| Output Disable Control         | `ra8_gpt.c`        |

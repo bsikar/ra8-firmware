@@ -67,3 +67,49 @@ test "unlock then lock write PWPR and PWPRS in order" {
     try std.testing.expectEqualSlices(usize, &want_a, r.addrs[0..r.n]);
     try std.testing.expectEqualSlices(u8, &want_v, r.vals[0..r.n]);
 }
+
+const Pfs = struct {
+    w8: usize = 0,
+    vals: [4]u32 = undefined,
+    n32: usize = 0,
+    order: [16]u8 = undefined,
+    n: usize = 0,
+    pub fn write8(self: *Pfs, _: usize, _: u8) void {
+        self.w8 += 1;
+        self.order[self.n] = 8;
+        self.n += 1;
+    }
+    pub fn write32(self: *Pfs, addr: usize, value: u32) void {
+        std.debug.assert(addr == 0x4040_0804);
+        self.vals[self.n32] = value;
+        self.n32 += 1;
+        self.order[self.n] = 32;
+        self.n += 1;
+    }
+};
+
+test "init values: PDR and PODR for output, PCR only for pull-up input" {
+    try std.testing.expectEqual(@as(u32, 0x5), gp.outputValue(true));
+    try std.testing.expectEqual(@as(u32, 0x4), gp.outputValue(false));
+    try std.testing.expectEqual(@as(u32, 0x10), gp.inputValue(1));
+    try std.testing.expectEqual(@as(u32, 0), gp.inputValue(0));
+    try std.testing.expectEqual(@as(u32, 0), gp.inputValue(2));
+}
+
+test "peripheral route clears PMR, writes PSEL, then sets PMR" {
+    const s = gp.routeSteps(0x04);
+    try std.testing.expectEqualSlices(u32, &.{ 0, 0x0400_0000, 0x0401_0000 }, &s);
+    try std.testing.expectEqual(@as(u32, 0x1F01_0000), gp.routeSteps(0x1F)[2]);
+}
+
+test "IRQn maps to ELC event n + 1" {
+    try std.testing.expectEqual(@as(u16, 1), gp.irqEvent(0));
+    try std.testing.expectEqual(@as(u16, 16), gp.irqEvent(gp.irq_num_max));
+}
+
+test "program writes between unlock and lock" {
+    var f = Pfs{};
+    gp.program(&f, 0x4040_0804, &gp.routeSteps(0x04));
+    try std.testing.expectEqualSlices(u8, &.{ 8, 8, 8, 8, 32, 32, 32, 8, 8, 8, 8 }, f.order[0..f.n]);
+    try std.testing.expectEqualSlices(u32, &.{ 0, 0x0400_0000, 0x0401_0000 }, f.vals[0..f.n32]);
+}

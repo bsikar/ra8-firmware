@@ -154,7 +154,7 @@ Cross-cutting design points:
 
 | Module              | Public API                                                                                    | Depends on                                                  | Implements           |
 |---------------------|-----------------------------------------------------------------------------------------------|-------------------------------------------------------------|----------------------|
-| ra8_board_ek_ra8d2   | `ra8_board_ek_ra8d2.h`                                                                          | `ra8_cgc`, `ra8_sdramc`, `ra8_glcdc`, `ra8_mpc`, `gpio.c`, `ra8_pin_validator` | REQ-BSP-001..004    |
+| ra8_board_ek_ra8d2   | `ra8_board_ek_ra8d2.h`                                                                          | `ra8_cgc`, `ra8_sdramc`, `ra8_glcdc`, `ra8_mpc`, `gpio_abi.zig`, `ra8_pin_validator` | REQ-BSP-001..004    |
 
 ### 2.6 Ring 4 -- NSC veneers
 

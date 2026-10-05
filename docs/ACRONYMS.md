@@ -31,17 +31,17 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| GPIO  | General-Purpose Input / Output                            | `gpio.c` |
-| PORT  | Parallel I/O port (PORT0..PORT14 register banks)          | `gpio.c` |
-| PFS   | Pin Function Select (per-pin alternate-function register) | `gpio.c` |
-| PSEL  | Pin Select (PFS bitfield choosing the alternate function) | `gpio.c` |
-| PMR   | Port Mode Register (digital vs peripheral)                | `gpio.c` |
-| PDR   | Port Direction Register                                   | `gpio.c` |
-| PODR  | Port Output Data Register                                 | `gpio.c` |
-| PIDR  | Port Input Data Register                                  | `gpio.c` |
-| PWPR  | Pin Write-Protect Register (PFS unlock)                   | `gpio.c` |
-| PWPRS | Secure Pin Write-Protect Register                         | `gpio.c` |
-| PMISC | Pin Miscellaneous (contains PWPR/PWPRS)                   | `gpio.c` |
+| GPIO  | General-Purpose Input / Output                            | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PORT  | Parallel I/O port (PORT0..PORT14 register banks)          | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PFS   | Pin Function Select (per-pin alternate-function register) | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PSEL  | Pin Select (PFS bitfield choosing the alternate function) | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PMR   | Port Mode Register (digital vs peripheral)                | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PDR   | Port Direction Register                                   | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PODR  | Port Output Data Register                                 | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PIDR  | Port Input Data Register                                  | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PWPR  | Pin Write-Protect Register (PFS unlock)                   | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PWPRS | Secure Pin Write-Protect Register                         | `gpio_abi.zig`, `gpio_pins_abi.zig` |
+| PMISC | Pin Miscellaneous (contains PWPR/PWPRS)                   | `gpio_abi.zig`, `gpio_pins_abi.zig` |
 | MPC   | Multi-function Pin Controller                             | `internal/mpc.zig` |
 | ELC   | Event Link Controller (peripheral-to-peripheral events)   | `elc_abi.zig` |
 | ICU   | Interrupt Controller Unit                                 | `internal/icu.zig` |
