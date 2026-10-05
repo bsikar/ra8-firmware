@@ -23,6 +23,7 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
 }
 
 const expected = @embedFile("golden/font_faces.ppm");
+const pager_expected = @embedFile("golden/pager.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -59,4 +60,18 @@ test "host backend renders selectable serif and sans faces into panel golden" {
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, expected, written);
+}
+
+test "host backend writes panel PPM matching pager golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
+    var pager = abi.pager.Pager{ .paint = &paint, .item_count = 42, .page_capacity = 10, .page = 2, .bg = 0x00FFFFFF, .fg = 0x00101010, .fg_disabled = 0x00808080 };
+    var pager_widget = widget(.{ .x = 24, .y = 1280, .w = 1024, .h = 80 });
+    try std.testing.expectEqual(abi.types.err.ok, abi.pager.ra8_widget_pager_init(&pager_widget, &pager));
+    pager_widget.vt.?.render.?(&pager_widget);
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    try std.testing.expectEqualSlices(u8, pager_expected, rendered);
 }

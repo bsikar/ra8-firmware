@@ -37,6 +37,9 @@ pub const keyboard = @import("widget_keyboard_abi.zig");
 /// The navigation-strip leaf widget: `ra8_widget_nav_bar_vtable` / `_init`.
 pub const nav_bar = @import("widget_nav_bar_abi.zig");
 
+/// The Previous/Next page-count leaf widget.
+pub const pager = @import("widget_pager_abi.zig");
+
 /// The container panel: `ra8_widget_panel_vtable` / `_init` / `_compose`.
 pub const panel = @import("widget_panel_abi.zig");
 
@@ -65,6 +68,7 @@ comptime {
     _ = toolbar;
     _ = keyboard;
     _ = nav_bar;
+    _ = pager;
     _ = panel;
     _ = reflow_view;
     _ = book;
