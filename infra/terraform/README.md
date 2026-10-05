@@ -28,6 +28,26 @@ and removes the matching guest in an exit trap. `--keep` is an explicit
 debugging exception. Windows and `both` are intentionally rejected until the
 Windows template, WinRM boundary, and Windows CI command are reviewed.
 
+`infra/terraform/lab-guest.sh` exposes a separate, short-lived VM 9020
+lifecycle for the OpenTofu/provisioning acceptance. It sources the CI driver's
+network functions, so `vmbr9`, its run-specific firewall table, and forwarding
+state are created and removed by the same guarded recipe. OpenTofu manages
+only the VM. The lifecycle checks the reviewed template, bridge, pool,
+datastore, run marker, resource ceilings, and post-copy config digest before
+destruction. Its encrypted state, digest metadata, and per-run SSH private key
+stay in a private controller-side run directory; only the matching public key
+is injected into the guest to prove OS/SSH readiness. The key is removed when
+the lifecycle is destroyed. Before a destroy, it rechecks VM 9020's run identity
+and current config digest, then clears only that VM's inherited protection bit
+with a digest precondition. It verifies the updated digest before OpenTofu
+removes the guest; the template is never modified.
+
+Run `infra/terraform/lab-guest.sh --selftest` for local policy checks. For a
+scheduled lab acceptance, invoke `check`, `create`, then `destroy` from the
+controller Mac with `RA8_LAB_NETWORK_APPROVED=1`,
+`RA8_LAB_EGRESS_APPROVED=1`, and `RA8_LAB_NODE=pve1`. The create command keeps
+the temporary bridge and firewall active until destroy.
+
 ## Safety contract
 
 - `lab_enabled` defaults to `false`.
@@ -48,13 +68,14 @@ Windows template, WinRM boundary, and Windows CI command are reviewed.
   operator notes, not in this repository.
 - The VM is capped at 4 vCPUs/8192 MB and the optional container at 2
   vCPUs/4096 MB; both have a 10 MB/s interface limit.
-- Enabled guests must use the exact `vmbr9` lab bridge. That bridge must be
-  pre-created outside this OpenTofu configuration with no physical bridge
-  port and no route to the personal LAN, or be an explicitly isolated VLAN.
+- Enabled guests must use the exact `vmbr9` lab bridge. The disposable CI
+  recipe creates it for the duration of a run with no physical bridge port,
+  adds a per-run firewall table, and removes both after the last guest exits.
   The name check is an additional guard, not proof that the host network is
   safe.
-- The configuration accepts a pre-existing `vmbr9` bridge; it never creates or edits
-  a bridge, VLAN, firewall, storage pool, or host setting.
+- The regular VM configuration never creates or edits a bridge, VLAN,
+  firewall, storage pool, or host setting. Only the lab recipe owns its
+  temporary bridge/firewall lifecycle.
 - There are no shell, SSH, Ansible, or `local-exec` provisioners.
 - No cloud-init commands, hooks, device passthrough, bind mounts, or nested
   container features are configured.
@@ -104,9 +125,11 @@ guest network.
 
 ## Provider credentials
 
-The wrapper reads OpenBao credentials and the lab state key from the
-controller’s protected Keychain. Supply the endpoint through approved runtime
-configuration. Do not put credentials in `.tfvars` files:
+The wrapper reads OpenBao credentials and the selected root's distinct state
+key from the controller's protected Keychain. Set `RA8_TOFU_ENV=lab-guest`
+for the VM 9020 entrypoint; its key is stored under the `lab-guest` service.
+Supply the endpoint through approved runtime configuration. Do not put
+credentials in `.tfvars` files:
 
 ```text
 TF_VAR_proxmox_endpoint
