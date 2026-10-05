@@ -237,6 +237,7 @@ test "threadx_cpu1, cpu1_pingpong_ra8p1 and the Module Manager apps are the Zig 
         .{ .app = "txm_table_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
         .{ .app = "txm_rpc_cpu1", .kernel = "threadx_m33_modules" },
+        .{ .app = "txm_reload_cpu1", .kernel = "threadx_m33_modules" },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -265,6 +266,7 @@ test "only the Module Manager images carry a packed module, each in its own link
         if (image.txm_module == null) continue;
         const module_apps = [_][]const u8{
             "txm_manager_cpu1", "txm_fault_cpu1", "txm_table_cpu1", "txm_rpc_cpu1",
+            "txm_reload_cpu1",
         };
         var known = false;
         for (module_apps) |name| known = known or std.mem.eql(u8, app.name, name);

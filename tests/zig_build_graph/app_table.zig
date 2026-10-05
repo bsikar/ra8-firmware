@@ -953,4 +953,26 @@ pub const cross_apps = [_]CrossApp{
         .threadx_heap = "SDRAM",
         .zig_main = "src/main.zig",
     },
+    .{
+        // The load/unload round trip: CPU1's Module Manager loads, stops,
+        // unloads and reloads the hello-world module (RA8FW-774). Zig
+        // throughout, so no CMakeLists. Appended last so the positional
+        // picks stay put.
+        .name = "txm_reload_cpu1",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_reload_cpu1",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .uses = &.{"threadx_m33_modules"},
+            .txm_module = "txm_hello_m33",
+        },
+    },
 };
