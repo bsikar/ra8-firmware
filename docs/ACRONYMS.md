@@ -156,7 +156,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | XIP   | eXecute-In-Place (memory-mapped read of external flash)   | `ra8_xspi.c` |
 | FLASH | Generic flash controller surface                          | `ra8_flash.c` |
 | SDHI  | SD Host Interface                                         | `ra8_sdhi.c`, `ra8_sdcard.c` |
-| DMA   | Direct Memory Access (top-level umbrella)                 | `ra8_dma.c` |
+| DMA   | Direct Memory Access (top-level umbrella)                 | `dma_abi.zig` |
 | DMAC  | Direct Memory Access Controller                           | `ra8_dmac.c` |
 | DTC   | Data Transfer Controller (lighter-weight than DMAC)       | `dtc.zig`   |
 | DOTF  | Decryption-On-The-Fly (covered under crypto above)        | `ra8_dotf.c` |

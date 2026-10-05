@@ -1,10 +1,10 @@
 /**
  * @file test_ra8_dma_cov.c
- * @brief Coverage-gap tests for libs/ra8_hal/src/ra8_dma.c.
+ * @brief Coverage-gap tests for libs/ra8_hal/src/dma_abi.zig (internal/dma.zig).
  *
  * @details
  * This file is a standalone test executable that exercises the branches
- * in ra8_dma.c that are NOT reached by test_ra8_dma.c.  It is auto-
+ * in the DMA allocator that are NOT reached by test_ra8_dma.c.  It is auto-
  * discovered by the GLOB in tests/CMakeLists.txt and linked against
  * the same ra8_core_hal OBJECT library.  gcovr merges the resulting
  * .gcda files so the coverage figures are additive.

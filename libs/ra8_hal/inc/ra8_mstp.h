@@ -208,7 +208,7 @@ extern "C" {
  * or ``k_ra8_mstp_dmac1_dtc1`` (the shared DMAC/DTC bits),
  * the caller must first stop every channel of both DMAC and
  * DTC. ra8_mstp does not enforce this; the substrate driver
- * ``libs/ra8_hal/src/ra8_dma.c`` is responsible.
+ * ``libs/ra8_hal/src/dma_abi.zig`` is responsible.
  *
  * @note Thread safety: not thread-safe.
  *

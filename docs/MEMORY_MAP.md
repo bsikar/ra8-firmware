@@ -75,7 +75,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | IPC             | `0x40020000`  | Inter-processor communication (M85 <-> M33)          | `ra8_ipc.c`                               |
 | LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `ra8_lpm.c`                               |
 | DMAC0           | `0x4000A000`  | Direct Memory Access Controller, ch 0                | `ra8_dmac.c`                              |
-| DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `ra8_dma.c`                               |
+| DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `dma_abi.zig`                             |
 | DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `dtc.zig`                                 |
 | RTC             | `0x40202000`  | Real-Time Clock                                      | `ra8_rtc.c`                               |
 | IWDT            | `0x40202200`  | Independent Watchdog                                 | `internal/iwdt.zig`                              |
