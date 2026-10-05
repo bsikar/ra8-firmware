@@ -323,6 +323,7 @@ fn bootPathExists(b: *std.Build, path: []const u8) bool {
 
 fn resolveBoot(b: *std.Build, app: CrossApp, boot: []const u8) BootUnit {
     const app_has_copy = bootPathExists(b, b.fmt("{s}/src/{s}", .{ app.dir, boot }));
+    if (!app_has_copy) if (profileBootUnit(b, app, boot)) |unit| return unit;
     const board_has_zig = bootPathExists(b, bootZigPath(b.allocator, app, boot));
     return resolveBootUnit(b.allocator, app, boot, app_has_copy, board_has_zig);
 }
@@ -337,6 +338,27 @@ pub fn crossBootZigUnits(b: *std.Build, app: CrossApp) []const []const u8 {
         }
     }
     return units.items;
+}
+
+/// The middle rung of the boot resolver: the board's `src/boot/<profile>/`
+/// copy of one boot unit, or null when the app names no `BOOT_PROFILE`. A
+/// profile directory holds only the units it overrides, so the caller probes
+/// the returned path and falls through to the board default when it is absent.
+pub fn profileBootPath(allocator: std.mem.Allocator, app: CrossApp, boot: []const u8) ?[]const u8 {
+    const profile = app.boot_profile orelse return null;
+    return std.fmt.allocPrint(allocator, "{s}/src/boot/{s}/{s}", .{ app.board, profile, boot }) catch @panic("OOM");
+}
+
+/// The profile rung as cmake/ra8_app/sources.cmake walks it: the profile's C
+/// copy, else its Zig spelling (RA8FW-659), else null so the board default
+/// applies.
+fn profileBootUnit(b: *std.Build, app: CrossApp, boot: []const u8) ?BootUnit {
+    const c_path = profileBootPath(b.allocator, app, boot) orelse return null;
+    if (bootPathExists(b, c_path)) return .{ .c = c_path };
+    const stem = c_path[0 .. c_path.len - ".c".len];
+    const zig_path = b.fmt("{s}.zig", .{stem});
+    if (bootPathExists(b, zig_path)) return .{ .zig = zig_path };
+    return null;
 }
 
 /// Include path, in the order ra8_add_app() adds it. Order is preserved
