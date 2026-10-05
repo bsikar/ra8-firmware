@@ -35,6 +35,7 @@ pub fn build(b: *std.Build) void {
         "tests/log_abi_test.zig",
         "tests/stream_ram_abi_test.zig",
         "tests/stream_uart_abi_test.zig",
+        "tests/stream_usbcdc_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
