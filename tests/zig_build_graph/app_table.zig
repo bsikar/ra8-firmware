@@ -46,6 +46,11 @@ pub const CrossApp = struct {
     /// has one. Null for a single-core app, which is every app whose whole
     /// CMakeLists is one ra8_add_app() call. See cpu1_image.zig.
     cpu1: ?cpu1_image.Cpu1Image = null,
+    /// The ThreadX module an M85 Module Manager app loads, by its name in
+    /// `cpu1_txm_hello.modules` (RA8FW-796). Set, the M85 image links
+    /// `threadx_m85_modules` in place of `threadx` and packs the module into
+    /// `.txm_module`; see m85_txm_manager.zig. Null for every other app.
+    txm_module: ?[]const u8 = null,
     /// The per-function stack-frame budget this app names in `STACK_BYTES`,
     /// which ra8_add_app() forwards to ra8_target_enable_project_warnings() as
     /// `STACK_USAGE_BYTES` and which becomes `-Wstack-usage=<n>` on every one

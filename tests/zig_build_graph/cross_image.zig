@@ -29,6 +29,7 @@ const txm_ra8app = @import("txm_ra8app.zig");
 const txm_module_target = @import("txm_module_target.zig");
 const txm_module_check = @import("txm_module_check.zig");
 const m85_threadx_modules = @import("m85_threadx_modules.zig");
+const m85_txm_manager = @import("m85_txm_manager.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
 const interface_archive = @import("interface_archive.zig");
@@ -138,9 +139,12 @@ fn cpu1ZigArchives(b: *std.Build, image: cpu1_image.Cpu1Image, globals: build_ty
     return archives.items;
 }
 
-fn txmModuleObjects(b: *std.Build, image: cpu1_image.Cpu1Image, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
-    const wanted = image.txm_module orelse return &.{};
-    const module = cpu1_txm_hello.find(wanted) orelse @panic("CPU1 image names a ThreadX module with no entry in cpu1_txm_hello.modules");
+/// The packed `.txm_module` object for the module `named` names, else
+/// nothing. A CPU1 manager image passes its `txm_module`, an M85 manager app
+/// its own (RA8FW-796); the blob and the packing are the same for both.
+fn txmModuleObjects(b: *std.Build, named: ?[]const u8, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
+    const wanted = named orelse return &.{};
+    const module = cpu1_txm_hello.find(wanted) orelse @panic("an image names a ThreadX module with no entry in cpu1_txm_hello.modules");
     const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
     const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
     return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, built.bin)}) catch @panic("OOM");
@@ -427,7 +431,13 @@ fn addCrossApp(
     // exported define and include directories below are not decoration, an
     // app compiled without them gets a different kernel configuration and no
     // diagnostic about it.
-    const middlewares = middleware.resolve(b.allocator, app.uses);
+    // An M85 Module Manager app links threadx_m85_modules where threadx
+    // would go (RA8FW-796); every other app resolves unchanged.
+    const middlewares = m85_txm_manager.kernelFor(
+        b.allocator,
+        middleware.resolve(b.allocator, app.uses),
+        app.txm_module != null,
+    );
     // Most hand the app an archive. USBX hands it its objects, every one of
     // which joins the link (middleware.Middleware.link_objects).
     var middleware_archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
@@ -543,7 +553,7 @@ fn addCrossApp(
             image.uses,
             cross_build.middlewareToolchain(tools, globals, &arm_global_defines),
         ),
-        .extra_objects = txmModuleObjects(b, image, tools, globals),
+        .extra_objects = txmModuleObjects(b, image.txm_module, tools, globals),
         .zig_archives = cpu1ZigArchives(b, image, globals),
     }) else null;
 
@@ -602,6 +612,9 @@ fn addCrossApp(
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
     if (cpu1_blob) |blob| link.addFileArg(blob);
+    // The M85 manager's own module blob, pinned by the app script's
+    // `.txm_module` section the way the CPU1 image pins its own.
+    for (txmModuleObjects(b, app.txm_module, tools, globals)) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
     for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
