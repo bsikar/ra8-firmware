@@ -9,13 +9,37 @@ const abi = @import("abi");
 const host = @import("host");
 
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {}
-export fn ra8_box_tree_init(_: *abi.core.BoxTree, _: [*]abi.core.Box, _: u16) callconv(.c) u16 {
+export fn ra8_box_tree_init(tree: *abi.core.BoxTree, storage: [*]abi.core.Box, cap: u16) callconv(.c) u16 {
+    tree.nodes = storage;
+    tree.cap = cap;
+    tree.count = 0;
     return 0;
 }
-export fn ra8_box_add(_: *abi.core.BoxTree, _: i16, _: *const abi.core.Box) callconv(.c) i16 {
-    return -1;
+export fn ra8_box_add(tree: *abi.core.BoxTree, _: i16, node: *const abi.core.Box) callconv(.c) i16 {
+    if (tree.count >= tree.cap) return -1;
+    const index = tree.count;
+    tree.nodes.?[index] = node.*;
+    tree.count += 1;
+    return @intCast(index);
 }
-export fn ra8_box_layout(_: *abi.core.BoxTree, _: i16, _: *const abi.types.Rect) callconv(.c) u16 {
+export fn ra8_box_layout(tree: *abi.core.BoxTree, root: i16, frame: *const abi.types.Rect) callconv(.c) u16 {
+    const nodes = tree.nodes.?[0..tree.count];
+    const root_index: usize = @intCast(root);
+    nodes[root_index].rect = frame.*;
+    const stack = nodes[root_index];
+    const children = nodes.len - 1;
+    if (children == 0) return 0;
+    const vertical = stack.kind == abi.core.box.stack_v;
+    const extent = if (vertical) frame.h else frame.w;
+    const inner = @max(extent - 2 * @as(i32, stack.pad) - @as(i32, stack.gap) * @as(i32, @intCast(children - 1)), 0);
+    const cell = @divTrunc(inner, @as(i32, @intCast(children)));
+    for (nodes[1..], 0..) |*child, index| {
+        const offset = @as(i32, stack.pad) + @as(i32, @intCast(index)) * (cell + @as(i32, stack.gap));
+        child.rect = if (vertical)
+            .{ .x = frame.x + stack.pad, .y = frame.y + offset, .w = frame.w - 2 * stack.pad, .h = cell }
+        else
+            .{ .x = frame.x + offset, .y = frame.y + stack.pad, .w = cell, .h = frame.h - 2 * stack.pad };
+    }
     return 0;
 }
 export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) callconv(.c) bool {
@@ -445,4 +469,80 @@ test "a serif label survives the image widget below it clearing its own rect" {
         }
     }
     try std.testing.expect(inked_label_pixels > 0);
+}
+
+const panel_recompose_expected = @embedFile("golden/panel_recompose.ppm");
+
+test "full panel compose clears gaps left by the previous screen" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 128, 96, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = null,
+        .text_size = null,
+    };
+
+    var first = abi.label.Label{ .paint = &paint, .text = null, .fg = 0, .bg = 0x333333, .pad = 0, .alignment = .left, .face = .sans };
+    var second = abi.label.Label{ .paint = &paint, .text = null, .fg = 0, .bg = 0x666666, .pad = 0, .alignment = .left, .face = .sans };
+    var kids = [_]abi.label.Widget{ widget(.{ .x = 0, .y = 0, .w = 0, .h = 0 }), widget(.{ .x = 0, .y = 0, .w = 0, .h = 0 }) };
+    try std.testing.expectEqual(abi.types.err.ok, abi.label.ra8_widget_label_init(&kids[0], &first));
+    try std.testing.expectEqual(abi.types.err.ok, abi.label.ra8_widget_label_init(&kids[1], &second));
+    kids[1].visible = false;
+
+    var scratch: [3]abi.core.Box = @splat(.{});
+    var descriptor = abi.panel.Panel{
+        .children = &kids,
+        .box_scratch = @ptrCast(&scratch),
+        .count = 2,
+        .box_cap = 3,
+        .gap = 8,
+        .pad = 0,
+        .axis = .col,
+        .reserved = 0,
+        .paint = &paint,
+        .bg = 0xffffff,
+    };
+    var panel_widget = widget(.{ .x = 0, .y = 0, .w = 0, .h = 0 });
+    try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_init(&panel_widget, &descriptor));
+
+    const frame: abi.types.Rect = .{ .x = 0, .y = 0, .w = 128, .h = 96 };
+    var damage: abi.types.Rect = undefined;
+    var hint: abi.types.Refresh = .none;
+    var dirty: u16 = 0;
+    kids[0].dirty = true;
+    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
+
+    descriptor.pad = 10;
+    kids[0].dirty = true;
+    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[1].visible = true;
+    kids[1].dirty = true;
+    kids[1].refresh = @intFromEnum(abi.types.Refresh.quality);
+    try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
+
+    var expected_canvas = try host.Canvas.init(allocator, 128, 96, 255);
+    defer expected_canvas.deinit(allocator);
+    host.Canvas.fillRect(&expected_canvas, kids[0].rect.x, kids[0].rect.y, kids[0].rect.w, kids[0].rect.h, first.bg);
+    host.Canvas.fillRect(&expected_canvas, kids[1].rect.x, kids[1].rect.y, kids[1].rect.w, kids[1].rect.h, second.bg);
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    const expected_ppm = try expected_canvas.ppm(allocator);
+    defer allocator.free(expected_ppm);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/panel_recompose.ppm", .data = expected_ppm });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, panel_recompose_expected, expected_ppm);
+    }
+    try std.testing.expectEqualSlices(u8, panel_recompose_expected, rendered);
+    try std.testing.expectEqual(frame, damage);
+
+    first.bg = 0x222222;
+    kids[0].dirty = true;
+    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
+    try std.testing.expectEqual(kids[0].rect, damage);
 }

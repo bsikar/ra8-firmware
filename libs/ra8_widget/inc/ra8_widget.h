@@ -439,13 +439,16 @@ typedef enum : uint8_t {
  * panel is itself a ::ra8_widget_t (bind it with ::ra8_widget_panel_init), so a
  * panel can be a child of another panel -- the dwm-style composition the issue
  * asks for, where the screen is a tree of opt-in pieces. Rendering a panel lays
- * its children out inside the panel's *own* `rect` and composites them; routing
- * offers an input event to those children. Everything is caller-owned (the
- * child array and the `ra8_box` scratch), so a panel allocates nothing
+ * its children out inside the panel's *own* `rect` and composites them. A
+ * full compose fills that rect with `bg` through `paint->fill_rect` before
+ * drawing children and reports the whole rect as damage; a partial compose
+ * keeps the child-only damage. Routing offers events to children. Everything
+ * is caller-owned (the child array and the `ra8_box` scratch), so a panel allocates nothing
  * (NASA Rule 3) and the same tree runs on the host and on the board.
  *
  * @invariant `box_scratch` holds at least `count + 1` nodes.
  * @invariant `children` covers `count` entries.
+ * @invariant `paint` may be NULL; if set, it is borrowed through compose.
  *
  * @par Example:
  * @code
@@ -471,6 +474,8 @@ typedef struct ra8_widget_panel {
   int16_t           pad;         /**< Inner padding inset on the panel (pixels). */
   ra8_widget_axis_t axis;        /**< Stack main axis (col / row).               */
   uint8_t           reserved;    /**< Padding to a 4-byte boundary.              */
+  const struct ra8_widget_paint* paint; /**< Optional borrowed face backend.    */
+  uint32_t          bg;          /**< Panel background, 0xRRGGBB.                */
 } ra8_widget_panel_t;
 
 /**
@@ -512,6 +517,7 @@ const ra8_widget_vtable_t* ra8_widget_panel_vtable(void);
  *
  * @param[in,out] w     Widget to turn into a panel (non-NULL).
  * @param[in]     panel Panel descriptor (non-NULL; `children` covers `count`).
+ *                         `paint` and `bg` configure the panel face.
  *
  * @return ra8_err_t
  * @retval k_ra8_ok               Bound; @p w renders/routes @p panel's children.
