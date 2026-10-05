@@ -435,16 +435,3 @@ ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
   *ielsr = next;
   return k_ra8_ok;
 }
-
-void ra8_isr_globals_enable(void)
-{
-  /* PRIMASK clear -- maskable IRQs may now dispatch (host no-op via seam). */
-  ra8_hw_irq_enable();
-}
-
-void ra8_isr_globals_disable(void)
-{
-  /* PRIMASK set -- subsequent maskable IRQs pend until re-enabled (host
-   * no-op via seam). */
-  ra8_hw_irq_disable();
-}
