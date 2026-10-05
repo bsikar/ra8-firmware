@@ -714,6 +714,7 @@ typedef struct ra8_c6link_take_ctx {
  * Unwraps the envelope, decodes the message into the arena, then either
  * satisfies the outstanding wait, delivers an announcement, or drops it. The
  * arena is reset before returning however that goes.
+ * Implemented in Zig (`ra8_c6link_consume_abi.zig`).
  *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] payload Frame payload; must be non-null.

@@ -22,6 +22,7 @@ comptime {
     _ = @import("ra8_c6link_take_abi.zig");
     _ = @import("ra8_c6link_resp_abi.zig");
     _ = @import("ra8_c6link_event_abi.zig");
+    _ = @import("ra8_c6link_consume_abi.zig");
     _ = @import("ra8_c6link_ap_info_abi.zig");
     _ = @import("ra8_c6link_mac_abi.zig");
     _ = @import("ra8_c6link_sta_abi.zig");
