@@ -128,3 +128,14 @@ test "detach clears the sink" {
 }
 
 const err_io: c_int = 0x10A;
+
+// The spi_b unit in the same archive needs these to link; unused here.
+export fn ra8_spi_xfer8(_: u8, _: u8, _: ?*u8) c_int {
+    return 0;
+}
+export fn ra8_spi_write_read(_: u8, _: ?*const anyopaque, _: ?*anyopaque, _: u32, _: u8) c_int {
+    return 0;
+}
+export fn ra8_spi_set_clock(_: u8, _: u32, _: u32) c_int {
+    return 0;
+}
