@@ -49,6 +49,7 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
 const expected = @embedFile("golden/font_faces.ppm");
 const expected_weights = @embedFile("golden/font_weights.ppm");
 const pager_expected = @embedFile("golden/pager.ppm");
+const pager_range_expected = @embedFile("golden/pager_range.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 const expected_image = @embedFile("golden/image_widget.ppm");
 const list_expected = @embedFile("golden/list.ppm");
@@ -112,13 +113,48 @@ test "host backend writes panel PPM matching pager golden" {
     var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
     defer canvas.deinit(allocator);
     const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
-    var pager = abi.pager.Pager{ .paint = &paint, .item_count = 42, .page_capacity = 10, .page = 2, .bg = 0x00FFFFFF, .fg = 0x00101010, .fg_disabled = 0x00808080 };
+    var pager = abi.pager.Pager{ .paint = &paint, .item_count = 42, .page_capacity = 10, .page = 2, .label_format = .page, .bg = 0x00FFFFFF, .fg = 0x00101010, .fg_disabled = 0x00808080 };
     var pager_widget = widget(.{ .x = 24, .y = 1280, .w = 1024, .h = 80 });
     try std.testing.expectEqual(abi.types.err.ok, abi.pager.ra8_widget_pager_init(&pager_widget, &pager));
     pager_widget.vt.?.render.?(&pager_widget);
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
     try std.testing.expectEqualSlices(u8, pager_expected, rendered);
+}
+
+test "host backend writes panel PPM matching pager range golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
+    const ranges = [_]struct { count: u16, capacity: u16, page: u16, y: i32 }{
+        .{ .count = 14, .capacity = 8, .page = 0, .y = 1040 },
+        .{ .count = 42, .capacity = 10, .page = 2, .y = 1120 },
+        .{ .count = 14, .capacity = 8, .page = 1, .y = 1200 },
+    };
+    for (ranges) |range| {
+        var pager = abi.pager.Pager{
+            .paint = &paint,
+            .item_count = range.count,
+            .page_capacity = range.capacity,
+            .page = range.page,
+            .label_format = .range,
+            .bg = 0x00FFFFFF,
+            .fg = 0x00101010,
+            .fg_disabled = 0x00808080,
+        };
+        var pager_widget = widget(.{ .x = 24, .y = range.y, .w = 1024, .h = 64 });
+        try std.testing.expectEqual(abi.types.err.ok, abi.pager.ra8_widget_pager_init(&pager_widget, &pager));
+        pager_widget.vt.?.render.?(&pager_widget);
+    }
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/pager_range.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, pager_range_expected, rendered);
+    }
 }
 
 test "host backend writes panel PPM matching toggle and segmented golden" {

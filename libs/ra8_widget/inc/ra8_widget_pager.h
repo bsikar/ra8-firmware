@@ -4,7 +4,7 @@
  * @ingroup grp_ereader
  *
  * @details
- * The pager shows Previous, Page X of Y, and Next. Its page is zero-based in
+ * The pager shows Previous, a page-count or item-range label, and Next. Its page is zero-based in
  * caller-owned state while its label is one-based. Touches in the left and
  * right thirds request one page backward or forward. A successful page change
  * uses the fast refresh hint and reports the widget rectangle as damage.
@@ -28,14 +28,21 @@ extern "C" {
 #include "ra8_err.h"
 #include "ra8_widget.h"
 
+/** Pager label style; zero selects the existing page-count format. */
+typedef enum : uint8_t {
+  k_ra8_widget_pager_label_page = 0U,
+  k_ra8_widget_pager_label_range = 1U,
+} ra8_widget_pager_label_t;
+
 /**
  * @struct ra8_widget_pager_t
  * @brief Caller-owned state for a page-count navigation control.
  *
  * @details
  * `item_count` rows/items are split into pages of `page_capacity`. A zero
- * item count or capacity has zero pages and displays "Page 0 of 0". The current
- * page is zero-based; initialization clamps it into the available range.
+ * item count or capacity has zero pages. Page format displays "Page 0 of 0";
+ * range format displays "0 to 0 of 0". The current page is zero-based;
+ * initialization clamps it into the available range.
  * Render and input use only the injected paint backend and widget rectangle.
  *
  * @invariant The descriptor outlives every render or input dispatch.
@@ -46,6 +53,7 @@ typedef struct ra8_widget_pager {
   uint16_t                  item_count;    /**< Total rows or items across all pages. */
   uint16_t                  page_capacity; /**< Items shown on each page. */
   uint16_t                  page;          /**< Current zero-based page. */
+  ra8_widget_pager_label_t  label_format;  /**< Page count (default) or item range. */
   uint32_t                  bg;            /**< Background color, 0xRRGGBB. */
   uint32_t                  fg;            /**< Available control and label color. */
   uint32_t                  fg_disabled;   /**< Color for unavailable directions. */
