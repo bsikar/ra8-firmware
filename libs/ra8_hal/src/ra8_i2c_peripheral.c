@@ -16,7 +16,7 @@
  * Mirrors FSP ``r_iic_slave`` collapsed into synchronous helpers -- no DTC
  * fast path and no interrupt path. Own-address matching, clock stretching and
  * both transfer directions are implemented; the controller transfer plane in
- * ``ra8_i2c.c`` and the bring-up plane in ``ra8_i2c_config.c`` are unchanged.
+ * ``ra8_i2c.c`` and the bring-up plane in ``i2c_config_abi.zig`` are unchanged.
  * Both planes share ``s_i2c_state`` and the log tag via ``ra8_i2c_internal.h``.
  *
  * Target-role state machine (synchronous reduction of HUM Ch 39.3.5 /

@@ -84,7 +84,7 @@ ra8_err_t priv_ra8_i2c_internal_bitrate(uint32_t bus_hz,
  *
  * @details
  * Defined once in ``ra8_i2c.c`` (the data-transfer translation unit) and
- * consumed by both ``ra8_i2c.c`` and ``ra8_i2c_config.c`` so the two halves
+ * consumed by both ``ra8_i2c.c`` and ``i2c_config_abi.zig`` so the two halves
  * of the split driver log under the same "I2C" tag.
  *
  * @note Read-only string pointer; not mutated after static init.
@@ -132,7 +132,7 @@ typedef struct {
  * @brief Per-channel state table indexed by channel.
  *
  * @details
- * Defined once in ``ra8_i2c.c`` and shared with ``ra8_i2c_config.c`` so the
+ * Defined once in ``ra8_i2c.c`` and shared with ``i2c_config_abi.zig`` so the
  * bring-up and transfer planes observe the same bus-ownership state.
  *
  * @warning Mutated only by the driver under the not-thread-safe contract.

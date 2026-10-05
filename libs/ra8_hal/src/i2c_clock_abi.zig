@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the RIIC bit-rate solver and ra8_i2c_set_clock (RA8FW-695),
-//! moved out of ra8_i2c_config.c. ra8_i2c_init stays C and calls
+//! moved out of ra8_i2c_config.c. ra8_i2c_init (i2c_config_abi.zig, RA8FW-702) calls
 //! priv_ra8_i2c_internal_bitrate through ra8_i2c_internal.h.
 
 const common = @import("abi_common.zig");
