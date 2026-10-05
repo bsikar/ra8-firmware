@@ -31,6 +31,7 @@ const Draw = struct {
     fg: u32,
     bg: u32,
     text: [*:0]const u8,
+    face: ?u8 = null,
 };
 
 /// Recording paint backend: every primitive appends to a module-level log, so
@@ -40,12 +41,18 @@ const Recorder = struct {
     var draws: std.BoundedArray(Draw, 8) = .{};
     var measured_w: i32 = 0;
     var measured_h: i32 = 0;
+    var styled_w: i32 = 0;
+    var styled_h: i32 = 0;
+    var styled_face: ?u8 = null;
 
     fn reset() void {
         fills = .{};
         draws = .{};
         measured_w = 0;
         measured_h = 0;
+        styled_w = 0;
+        styled_h = 0;
+        styled_face = null;
         last_message = null;
     }
 
@@ -68,6 +75,17 @@ const Recorder = struct {
         out_w.* = measured_w;
         out_h.* = measured_h;
     }
+
+    fn drawTextFace(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, fg: u32, bg: u32) callconv(.c) void {
+        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face }) catch unreachable;
+        styled_face = face;
+    }
+
+    fn textSizeFace(_: ?*anyopaque, _: [*:0]const u8, face: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+        styled_face = face;
+        out_w.* = styled_w;
+        out_h.* = styled_h;
+    }
 };
 
 const full_backend: abi.Paint = .{
@@ -75,6 +93,15 @@ const full_backend: abi.Paint = .{
     .fill_rect = Recorder.fillRect,
     .draw_text = Recorder.drawText,
     .text_size = Recorder.textSize,
+};
+
+const styled_backend: abi.Paint = .{
+    .user = null,
+    .fill_rect = Recorder.fillRect,
+    .draw_text = Recorder.drawText,
+    .text_size = Recorder.textSize,
+    .draw_text_face = Recorder.drawTextFace,
+    .text_size_face = Recorder.textSizeFace,
 };
 
 const fill_only_backend: abi.Paint = .{
@@ -113,7 +140,7 @@ fn labelOn(backend: *const abi.Paint, text: ?[*:0]const u8) abi.Label {
         .bg = 0x445566,
         .pad = 4,
         .alignment = .left,
-        .reserved = 0,
+        .face = .sans,
     };
 }
 
@@ -246,4 +273,34 @@ test "the mirrored C layouts are the ones the header publishes" {
     try std.testing.expectEqual(2 * ptr + 24, @offsetOf(abi.Widget, "dirty"));
     try std.testing.expectEqual(2 * ptr, @offsetOf(abi.Label, "fg"));
     try std.testing.expectEqual(2 * ptr + 10, @offsetOf(abi.Label, "alignment"));
+}
+
+test "serif label uses styled measure and draw callbacks with matching face advances" {
+    Recorder.reset();
+    Recorder.styled_w = 37;
+    Recorder.styled_h = 13;
+    var w = emptyWidget();
+    var label = labelOn(&styled_backend, "Caf\u{00E9} \u{201C}book\u{201D}");
+    label.face = .serif;
+    label.alignment = .center;
+    try renderBound(&w, &label);
+    const draw = Recorder.draws.get(0);
+    try std.testing.expectEqual(@as(i32, 41), draw.x);
+    try std.testing.expectEqual(@as(i32, 33), draw.y);
+    try std.testing.expectEqual(@as(?u8, 1), draw.face);
+    try std.testing.expectEqual(@as(?u8, 1), Recorder.styled_face);
+}
+
+test "styled drawing without styled measurement falls back to inset placement" {
+    Recorder.reset();
+    const backend: abi.Paint = .{ .user = null, .fill_rect = Recorder.fillRect, .draw_text = Recorder.drawText, .text_size = Recorder.textSize, .draw_text_face = Recorder.drawTextFace, .text_size_face = null };
+    var w = emptyWidget();
+    var label = labelOn(&backend, "book");
+    label.face = .serif;
+    label.alignment = .center;
+    try renderBound(&w, &label);
+    const draw = Recorder.draws.get(0);
+    try std.testing.expectEqual(@as(i32, 14), draw.x);
+    try std.testing.expectEqual(@as(i32, 24), draw.y);
+    try std.testing.expectEqual(@as(?u8, 1), draw.face);
 }

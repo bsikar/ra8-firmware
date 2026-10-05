@@ -97,6 +97,8 @@ fn renderButton(w: *Widget) callconv(.c) void {
         text,
         button.pad,
         button.alignment,
+        .sans,
+        false,
         &pen_x,
         &pen_y,
     );

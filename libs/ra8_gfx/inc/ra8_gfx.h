@@ -446,6 +446,72 @@ ra8_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool filled);
 ra8_gfx_text_size(const char* str, const ra8_gfx_font_t* font, uint32_t* out_w, uint32_t* out_h);
 
 /**
+/**
+ * @brief Draw text using the selected bundled sans or Literata serif face.
+ *
+ * @details The serif path decodes bounded UTF-8 and renders the checked-in
+ *          Latin-1/common-punctuation Literata atlas. Invalid sequences and
+ *          valid but unsupported code points draw as a question-mark. The
+ *          sans face retains the legacy ASCII IBM 8x16 renderer.
+ *
+ * @param[in] x        Left edge of the first glyph cell.
+ * @param[in] y        Top edge of the face line box.
+ * @param[in] str      NUL-terminated text; at most 4096 input bytes are read.
+ * @param[in] face     Selected ra8_gfx_text_face_t.
+ * @param[in] fg_color Foreground colour in 0x00RRGGBB format.
+ * @param[in] bg_color Background colour in 0x00RRGGBB format.
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok                  Text was drawn.
+ * @retval k_ra8_err_null_ptr        str was NULL.
+ * @retval k_ra8_err_invalid_arg     face is not supported.
+ * @retval k_ra8_err_not_initialized ra8_gfx_init was not called.
+ *
+ * @pre ra8_gfx_init() has bound a valid framebuffer.
+ * @pre face is the sans or serif enumerator.
+ * @post Glyphs are clipped to the active framebuffer clip rectangle.
+ * @post The panel pixels represent the requested face and colors.
+ *
+ * @note Not thread-safe; uses the module-wide framebuffer binding.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_text_out_face(int32_t             x,
+                                              int32_t             y,
+                                              const char*         str,
+                                              ra8_gfx_text_face_t face,
+                                              uint32_t            fg_color,
+                                              uint32_t            bg_color);
+
+/**
+ * @brief Measure text with the same selected face used by ra8_gfx_text_out_face.
+ *
+ * @details Serif measurement sums the exact advances used by the Literata
+ *          raster path. Invalid and unsupported UTF-8 uses the replacement
+ *          glyph, so measuring and drawing the same run agree.
+ *
+ * @param[in]  str    NUL-terminated input text, at most 4096 bytes.
+ * @param[in]  face   Selected text face.
+ * @param[out] out_w  Receives the total advance width in pixels.
+ * @param[out] out_h  Receives the line-box height in pixels.
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok              Dimensions were written.
+ * @retval k_ra8_err_null_ptr    Any pointer argument was NULL.
+ * @retval k_ra8_err_invalid_arg face is not supported.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre face is a supported text face.
+ * @post out_w is the sum of the draw path glyph advances.
+ * @post out_h is the draw path line-box height.
+ *
+ * @note Thread-safe; reads only immutable font tables.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_text_size_face(const char*         str,
+                                               ra8_gfx_text_face_t face,
+                                               uint32_t*           out_w,
+                                               uint32_t*           out_h);
+
  * @brief Copy a sub-image from `src_buf` into the framebuffer at (dst_x,dst_y).
  *
  * @param[in] src_buf    Source image bytes.

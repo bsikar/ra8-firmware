@@ -1,0 +1,4 @@
+The generated literata_atlas.bin is derived from Literata-Regular.ttf.
+Copyright 2017 The Literata Project Authors.
+It is distributed under the SIL Open Font License, Version 1.1; see literata_atlas.OFL.txt.
+The deterministic generator is scripts/gen/literata_atlas.py.
