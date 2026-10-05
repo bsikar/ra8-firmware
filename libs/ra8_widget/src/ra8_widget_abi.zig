@@ -22,6 +22,12 @@ pub const label = @import("widget_label_abi.zig");
 /// The push-button leaf widget: `ra8_widget_button_vtable` / `_init`.
 pub const button = @import("widget_button_abi.zig");
 
+/// The checkbox toggle leaf widget: `ra8_widget_toggle_vtable` / `_init`.
+pub const toggle = @import("widget_toggle_abi.zig");
+
+/// The one-of-N segmented leaf widget: `ra8_widget_segmented_vtable` / `_init`.
+pub const segmented = @import("widget_segmented_abi.zig");
+
 /// The progress-bar leaf widget: `ra8_widget_progress_bar_vtable` / `_init`.
 pub const progress_bar = @import("widget_progress_bar_abi.zig");
 
@@ -63,6 +69,8 @@ comptime {
     _ = paint;
     _ = label;
     _ = button;
+    _ = toggle;
+    _ = segmented;
     _ = progress_bar;
     _ = status_bar;
     _ = toolbar;

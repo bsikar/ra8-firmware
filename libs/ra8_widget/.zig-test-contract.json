@@ -11,7 +11,10 @@
     "tests/nav_bar_test.zig",
     "tests/pager_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig"
+    "tests/reflow_view_test.zig",
+    "tests/host_render_test.zig",
+    "tests/toggle_test.zig",
+    "tests/segmented_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -39,8 +42,14 @@
     "tests/nav_bar_test.zig",
     "tests/pager_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig"
+    "tests/reflow_view_test.zig",
+    "src/host_paint.zig",
+    "tests/host_render_test.zig",
+    "src/widget_toggle_abi.zig",
+    "src/widget_segmented_abi.zig",
+    "tests/toggle_test.zig",
+    "tests/segmented_test.zig"
   ],
-  "minimum_tests": 171
+  "minimum_tests": 182
 }
 
