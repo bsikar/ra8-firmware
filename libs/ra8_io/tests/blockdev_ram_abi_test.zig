@@ -247,3 +247,17 @@ export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
 export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
     return 0;
 }
+
+// ra8_io_vfs_namespace_abi.zig reaches these in ra8_io_vfs.c; unused here.
+export fn priv_ra8_io_vfs_streq(_: [*:0]const u8, _: [*:0]const u8) bool {
+    return false;
+}
+export fn priv_ra8_io_vfs_find(_: [*:0]const u8, _: ?*u8) ?*io.vfs_namespace.Slot {
+    return null;
+}
+export fn priv_ra8_io_vfs_split(_: [*:0]const u8, _: [*]u8, _: *?[*:0]const u8) c_int {
+    return 0;
+}
+export fn priv_ra8_io_vfs_resolve(_: [*:0]const u8, _: *?*io.vfs_namespace.Slot, _: ?*u8, _: *?[*:0]const u8) c_int {
+    return 0;
+}
