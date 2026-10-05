@@ -174,37 +174,3 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
   }
   return k_ra8_err_not_found;
 }
-
-/* `priv_free_chain()`: see header for the documented contract. */
-ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start)
-{
-  uint32_t cur   = start;
-  uint32_t guard = 0;
-  while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count_of_clusters) {
-    uint32_t  next = 0;
-    ra8_err_t err  = priv_fat_get(m, cur, &next);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    err = priv_fat_set(m, cur, k_cluster_free);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    /* The volume just got a cluster back, so say so: the free count
-     * feeds FSInfo, and pulling the hint back is what makes the freed space
-     * the next thing allocated rather than something only found after a full
-     * wrap of the scan. */
-    priv_free_count_gave(m, 1U);
-    priv_alloc_hint_lower(m, cur);
-    if (priv_is_eoc(m, next) != 0U) {
-      break;
-    }
-    cur = next;
-    /* Bounded loop -- can't visit more clusters than exist. */
-    guard++;
-    if (guard > m->count_of_clusters) {
-      return k_ra8_err_protocol_error;
-    }
-  }
-  return k_ra8_ok;
-}

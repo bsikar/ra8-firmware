@@ -59,6 +59,10 @@ pub var free_calls: u32 = 0;
 pub var free_err: u16 = 0;
 pub var flush_calls: u32 = 0;
 pub var flush_err: u16 = 0;
+pub var fat_set_err: u16 = 0;
+pub var fat_sets: u32 = 0;
+pub var gave: u32 = 0;
+pub var hint_low: u32 = 0xFFFF_FFFF;
 export var g_fs_scratch: [4096]u8 = undefined;
 
 pub fn mount() *const c.ra8_fs_mount_t {
@@ -106,6 +110,10 @@ pub fn reset(fs_type: u8) void {
     link_count = 3;
     free_calls = 0;
     free_err = 0;
+    fat_set_err = 0;
+    fat_sets = 0;
+    gave = 0;
+    hint_low = 0xFFFF_FFFF;
     flush_calls = 0;
     flush_err = 0;
 }
@@ -332,4 +340,22 @@ export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.C) u16 {
     _ = file;
     flush_calls += 1;
     return flush_err;
+}
+
+export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.C) u16 {
+    _ = m;
+    if (fat_set_err != 0) return fat_set_err;
+    fat_sets += 1;
+    fat[clus] = value;
+    return 0;
+}
+
+export fn priv_free_count_gave(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.C) void {
+    _ = m;
+    gave += n;
+}
+
+export fn priv_alloc_hint_lower(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.C) void {
+    _ = m;
+    if (clus < hint_low) hint_low = clus;
 }
