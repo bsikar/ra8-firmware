@@ -16,6 +16,8 @@
  *  - MACI command sequencer for configuration-set / OFS programming and
  *    extra-MRAM (data flash) write / erase (HUM Ch 59.4.4 p 3550 + HUM
  *    Ch 7 p 278..299 for OFS layout).
+ *  - Start-up area control and the configuration-set write moved to
+ *    flash_cfgset_abi.zig (RA8FW-808).
  *  - Anti-rollback counters moved to flash_arc_abi.zig (RA8FW-802).
  *  - Zeroize, MSAR, ECC controls, error addresses, the update transfer
  *    (RA8FW-806), the MSUINITR kick and the clock-frequency update
@@ -47,139 +49,8 @@ typedef enum : uint32_t {
   k_flash_blank_byte = 0xFFU, /**< Erased-flash fill byte. */
 } flash_const_t;
 
-/**
- * @enum ra8_flash_cfg_word_const_t
- * @brief Bit patterns for the configuration-set word vector.
- *
- * @details
- * HUM Ch 7 "Option-Setting Memory" p 278. The configuration-set
- * vector is written as a sequence of 16-bit words; we OR in only the
- * bits we want to drive low, keeping the remaining bits as 1 to
- * preserve unused fields.
- */
-typedef enum : uint16_t {
-  k_ra8_flash_cfg_word_all_ones = 0xFFFFU, /**< Word filler when no bits drive low. */
-  k_ra8_flash_btflg_default     = 0x8000U, /**< BTFLG bit 15 selects default boot.  */
-  k_ra8_flash_btflg_alternate   = 0x0000U, /**< BTFLG cleared selects alternate.    */
-  k_ra8_flash_btflg_word_keep   = 0x1FFFU, /**< Bits 12:0 kept as ones (unused).    */
-} ra8_flash_cfg_word_const_t;
-
-/* =============================================================================
- * Public API: start-up area control
- * =============================================================================
- */
-
-ra8_err_t ra8_flash_set_startup_area(ra8_flash_startup_t target, bool temporary)
-{
-  if (target > k_ra8_flash_startup_btflg) {
-    return k_ra8_err_invalid_arg;
-  }
-  ra8_err_t err = ra8_flash_enter_pe_mode();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  if (temporary) {
-    /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3574 */
-    const uint16_t swap_bit                = (target == k_ra8_flash_startup_alternate)
-                                               ? k_ra8_msuacr_swap_alternate
-                                               : k_ra8_msuacr_swap_default;
-    *ra8_mram_reg16(k_ra8_mram_off_msuacr) = (uint16_t)(k_ra8_msuacr_key | swap_bit);
-  } else {
-    /* Permanent: configuration-set write to BTFLG. */
-    /* HUM Ch 7 "Option-Setting Memory" p 278 */
-    uint16_t cfg_words[k_ra8_mram_config_set_word_count];
-    for (uint32_t i = 0U; i < k_ra8_mram_config_set_word_count; ++i) {
-      cfg_words[i] = k_ra8_flash_cfg_word_all_ones;
-    }
-    /* BTFLG occupies bit 15 of word index 3 (FSP MRAM_PRV_CONFIG_SET_BTFLG_OFFSET).
-     * 0 selects alternate, 1 selects default (HUM Ch 7 p 278). */
-    uint16_t btflg_bit = k_ra8_flash_btflg_alternate;
-    if (target == k_ra8_flash_startup_default) {
-      btflg_bit = k_ra8_flash_btflg_default;
-    }
-    /* HUM Ch 7 "OFS SAS region" p 278 */
-    cfg_words[3] = (uint16_t)(btflg_bit | k_ra8_flash_btflg_word_keep);
-    err          = ra8_flash_config_set_write(k_ra8_msaddr_config_set_startup, cfg_words);
-  }
-
-  ra8_err_t exit_err = ra8_flash_exit_pe_mode();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return exit_err;
-}
-
-ra8_err_t ra8_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
-{
-  RA8_CHECK_NULL_PTR(out_btflg, g_flash_tag, "out_btflg must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_fspr, g_flash_tag, "out_fspr must not be nullptr");
-  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3573 */
-  const uint32_t v = *ra8_mram_reg32(k_ra8_mram_off_msuasmon);
-  *out_btflg       = (uint8_t)((v & k_ra8_msuasmon_mask_btflg) != 0U);
-  *out_fspr        = (uint8_t)((v & k_ra8_msuasmon_mask_fspr) != 0U);
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Public API: configuration-set write (low-level OFS update)
- * =============================================================================
- */
-
-ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
-{
-  RA8_CHECK_NULL_PTR(words, g_flash_tag, "words must not be nullptr");
-  /* One MACI byte-stream shape -- ``<opener>, N, 8 halfwords, 0xD0`` -- serves
-   * two target regions, and the opener opcode is chosen per region below:
-   *   - OFS configuration area (HUM Ch 7 "Option-Setting Memory" p 278) at
-   *     0x02C9F000: the Configuration Set command (HUM Ch 59.7.4.8 p 3594).
-   *   - Extra-MRAM option-setting / OTP area (HUM Ch 59.7.4.5 Table 59.15
-   *     p 3592) at 0x02E07600: the Program command (HUM Ch 59.7.4.5 "Program
-   *     Command" Fig 59.13 p 3591). Config-Set is NOT valid for the data area
-   *     -- it raises
-   *     MSTATR.CFGSETERR and leaves the target blank, so a later read of the
-   *     un-programmed cells bus-faults on the blank-MRAM ECC error.
-   * Accept both ranges; reject everything else. */
-  const uint32_t ofs_end   = (uint32_t)k_ra8_flash_ofs_start + (uint32_t)k_ra8_flash_ofs_size;
-  const uint32_t extra_end = (uint32_t)k_ra8_flash_extra_start + (uint32_t)k_ra8_flash_extra_size;
-  const bool     in_ofs =
-    (bool)((target_addr >= (uint32_t)k_ra8_flash_ofs_start) && (target_addr < ofs_end));
-  const bool in_extra =
-    (bool)((target_addr >= (uint32_t)k_ra8_flash_extra_start) && (target_addr < extra_end));
-  if (!in_ofs && !in_extra) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3564 */
-  *ra8_mram_reg32(k_ra8_mram_off_msaddr) = target_addr;
-  /* Opener: Program (0xE8) for the extra-MRAM data area, else Configuration
-   * Set (0x40) for the OFS config area. HUM Ch 59.7.4.5 Fig 59.13 p 3591 /
-   * HUM Ch 59.7.4.8 p 3594. */
-  const uint8_t opener =
-    in_extra ? (uint8_t)k_ra8_maci_cmd_program : (uint8_t)k_ra8_maci_cmd_config_set;
-  priv_ra8_flash_internal_maci_cmd8(opener);
-  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_word_count_n);
-
-  /* N = k_ra8_mram_config_set_word_count halfwords of payload.
-   * HUM Ch 59.7.4.5 Fig 59.13 p 3592 / HUM Ch 59.7.4.8 p 3595. */
-  for (uint32_t i = 0U; i < k_ra8_mram_config_set_word_count; ++i) {
-    priv_ra8_flash_internal_maci_cmd16(words[i]);
-  }
-  /* Trailer 0xD0 starts command processing. HUM Ch 59.7.4.5 Fig 59.13 p 3592. */
-  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_final);
-
-  ra8_err_t err = priv_ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
-  const uint32_t s = *ra8_mram_reg32(k_ra8_mram_off_mstatr);
-  if ((s & k_ra8_mstatr_mask_any_err) != 0U) {
-    return k_ra8_err_hw_error;
-  }
-  return k_ra8_ok;
-}
+/* Start-up area control and the configuration-set write live in
+ * libs/ra8_hal/src/flash_cfgset_abi.zig (RA8FW-808). */
 
 /* Anti-rollback counters (ra8_flash_arc_increment / ra8_flash_arc_read)
  * live in libs/ra8_hal/src/flash_arc_abi.zig (RA8FW-802). */
