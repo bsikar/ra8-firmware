@@ -66,7 +66,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | CDC   | USB Communications Device Class (virtual COM)             | `ra8_usb_cdc.c`, `ra8_usb_hcdc.c`, `ra8_usb_hcdc_ecm.c` |
 | HID   | USB Human Interface Device                                | `usb_phid_abi.zig`, `ra8_usb_hhid.c` |
 | MSC   | USB Mass Storage Class                                    | `usb_pmsc_abi.zig`, `ra8_usb_hmsc.c` |
-| HHUB  | USB Host Hub class driver                                 | `ra8_usb_hhub.c` |
+| HHUB  | USB Host Hub class driver                                 | `usb_hhub_abi.zig` |
 | PVND  | USB Peripheral Vendor-class                               | `usb_pvnd_abi.zig` |
 | PAUD/HAUD | USB Peripheral / Host Audio class                     | `internal/usb_paud.zig`, `ra8_usb_haud.c` |
 | PPRN  | USB Peripheral Printer class                              | `usb_pprn.zig`   |
