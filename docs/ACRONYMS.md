@@ -78,7 +78,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `eth_gptp.zig`   |
 | TSN   | Time-Sensitive Networking                                 | `internal/tsn.zig` |
 | PHY   | Physical-layer transceiver (Ethernet PHY)                 | `internal/ether_phy.zig`, `ra8_rmac_phy.c` |
-| BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ra8_ble.c`, `port/nimble` |
+| BLE   | Bluetooth Low Energy (HCI transport seam; controller on the ESP32-C6 companion) | `ble_abi.zig`, `port/nimble` |
 | IPC   | Inter-Processor Communication (M85 <-> M33 mailbox)       | `ra8_ipc.c` |
 
 ## 4. Crypto and secure-storage

@@ -27,7 +27,7 @@
  *     | type | handle (LE16) | data-len (LE16) | payload | ACL  (0x02)
  *
  * @note The RA8D2 has no on-chip Bluetooth radio, so there is no on-chip
- *       controller backend. The current implementation (``ra8_ble.c``) is an
+ *       controller backend. The current implementation (``src/ble_abi.zig``) is an
  *       in-memory loopback used by the host-stack unit tests. The production
  *       backend is an ESP32-C6 companion IC: the C6 runs the BLE controller
  *       (below HCI) and this seam carries HCI over the companion link, with

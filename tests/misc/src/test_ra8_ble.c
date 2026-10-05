@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_ble.c
- * @brief Unit tests for ra8_ble.c (RA8D2 BLE controller / HCI driver)
+ * @brief Unit tests for ra8_ble (libs/ra8_hal/src/ble_abi.zig, RA8D2 BLE controller / HCI driver)
  *
  * @details
  * Exercises the HCI framing exposed by the driver via its TX-capture
@@ -425,7 +425,7 @@ static void test_attach_handlers_idempotent(void)
  * @test test_mcdc_ble
  *
  * @par MC/DC:
- * Three 2-condition decisions in libs/ra8_hal/src/ra8_ble.c:
+ * Three 2-condition decisions, now in libs/ra8_hal/src/ble_abi.zig:
  *
  * Decision A (line 238, ``ra8_ble_hci_send_command``):
  * ``if ((params == NULL) && (params_len > 0U))``
@@ -482,7 +482,7 @@ static void test_mcdc_ble(void)
  * @test test_mcdc_ble_acl_inject_args
  *
  * @par MC/DC:
- * Decision A (libs/ra8_hal/src/ra8_ble.c ra8_ble_hci_send_acl_data):
+ * Decision A (libs/ra8_hal/src/ble_abi.zig ra8_ble_hci_send_acl_data):
  *   ``if ((payload == NULL) && (len > 0U))``
  * 2-cond AND short-circuit: N+1 = 3 vectors.
  * - V1: payload=valid, len=4 -> C1=F short -> dec F (proceeds, ok).
@@ -490,7 +490,7 @@ static void test_mcdc_ble(void)
  * - V3: payload=NULL,  len=4 -> C1=T, C2=T -> dec T -> null_ptr.
  * V1+V3 isolate C1; V2+V3 isolate C2.
  *
- * Decision B (libs/ra8_hal/src/ra8_ble.c ra8_ble_test_inject_rx):
+ * Decision B (libs/ra8_hal/src/ble_abi.zig ra8_ble_test_inject_rx):
  *   ``if ((bytes == NULL) || (len == 0U))``
  * 2-cond OR short-circuit: N+1 = 3 vectors.
  * - V1: bytes=valid, len>0  -> C1=F, C2=F -> dec F (injects).
