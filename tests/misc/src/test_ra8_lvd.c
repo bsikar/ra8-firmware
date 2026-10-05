@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_lvd.c
- * @brief Unit tests for ra8_lvd.c (Programmable Voltage Detection driver)
+ * @brief Unit tests for the PVD driver (libs/ra8_hal/src/lvd_abi.zig) (Programmable Voltage Detection driver)
  *
  * @details
  * Round-3 coverage: every public entry point in `ra8_lvd.h` is exercised

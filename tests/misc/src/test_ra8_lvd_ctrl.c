@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_lvd_ctrl.c
- * @brief Runtime-control tests for ra8_lvd.c (PVD driver)
+ * @brief Runtime-control tests for the PVD driver (lvd_abi.zig) (PVD driver)
  *
  * @details
  * Split out of test_ra8_lvd.c to keep each test translation unit under the
@@ -586,7 +586,7 @@ RA8_INTERNAL static void internal_test_every_threshold_value(void)
  *
  * @par MC/DC:
  * Decision: ``ra8_lvd_set_hysteresis_mode`` line 794,
- * libs/ra8_hal/src/ra8_lvd.c:
+ * libs/ra8_hal/src/internal/lvd.zig:
  * ``if (map.has_irq && (hyst == k_ra8_lvd_hysteresis_hvd))``
  * (2 conditions, ``&&`` short-circuit).
  *
@@ -626,8 +626,8 @@ RA8_INTERNAL static void internal_test_mcdc_lvd(void)
  * @test internal_test_mcdc_lvd_internal_reject_hvd_after
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_lvd.c (call site) -> helper at
- * libs/ra8_hal/src/ra8_lvd.c:
+ * Decision at libs/ra8_hal/src/internal/lvd.zig (call site) -> helper at
+ * libs/ra8_hal/src/internal/lvd.zig:
  *   ``hyst == hvd && negate == after_assert`` (2 conditions, AND).
  * - V1: hyst=lvd, negate=after  -> false
  * - V2: hyst=hvd, negate=after  -> true  (varies hyst)
@@ -655,8 +655,8 @@ RA8_INTERNAL static void internal_test_mcdc_lvd_internal_reject_hvd_after(void)
  * @test internal_test_mcdc_lvd_internal_set_ri_bit
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_lvd.c (call site) -> helper at
- * libs/ra8_hal/src/ra8_lvd.c:
+ * Decision at libs/ra8_hal/src/internal/lvd.zig (call site) -> helper at
+ * libs/ra8_hal/src/internal/lvd.zig:
  *   ``response == reset || response == reset_on_rise`` (2 conditions, OR).
  * - V1: resp=interrupt     -> false
  * - V2: resp=reset         -> true (varies left)

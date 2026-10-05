@@ -17,7 +17,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | CGC   | Clock Generation Circuit                                | `ra8_cgc.c` |
 | CAC   | Clock-frequency Accuracy-measurement Circuit            | `cac.zig`   |
 | LPM   | Low Power Mode controller                               | `lpm_abi.zig` |
-| LVD   | Low-Voltage Detection                                   | `ra8_lvd.c` |
+| LVD   | Low-Voltage Detection                                   | `internal/lvd.zig` |
 | MSTP  | Module-Stop control (clock-gating)                      | `ra8_mstp.c` |
 | OFS   | Option-Function Select (boot configuration words)       | `ra8_ofs.c` |
 | PWR   | Power-management glue                                   | `pwr.zig`   |
@@ -90,7 +90,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | CRC   | Cyclic-Redundancy-Check engine                           | `internal/crc.zig` |
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
 | MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
-| CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `ra8_lvd.c`, `ra8_sram.c` |
+| CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `lvd_events.zig`, `ra8_sram.c` |
 | BBFSAR| Battery-Backup Full Security Attribute Register          | `internal/bkup.zig` |
 
 ## 5. Display, video, graphics

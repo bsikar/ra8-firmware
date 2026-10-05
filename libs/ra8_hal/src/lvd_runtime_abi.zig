@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ra8_lvd.h runtime controls (RA8FW-739), replacing
-//! ra8_lvd_runtime.c. The channel map and helpers stay in ra8_lvd.c.
+//! ra8_lvd_runtime.c. The channel map and helpers are in lvd_abi.zig.
 
 const common = @import("abi_common.zig");
 const rt = @import("internal/lvd_runtime.zig");

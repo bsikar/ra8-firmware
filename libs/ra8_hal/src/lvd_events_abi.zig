@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ra8_lvd.h event functions (RA8FW-625), replacing
-//! ra8_lvd_events.c. The channel map and CR0 helpers stay in ra8_lvd.c.
+//! ra8_lvd_events.c. The channel map and CR0 helpers are in lvd_abi.zig.
 
 const common = @import("abi_common.zig");
 const ev = @import("internal/lvd_events.zig");
