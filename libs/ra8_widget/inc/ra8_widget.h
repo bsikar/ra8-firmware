@@ -592,6 +592,16 @@ typedef enum : uint8_t {
   k_ra8_widget_text_face_serif = 1U, /**< Serif reading text.      */
 } ra8_widget_text_face_t;
 
+/** Reading text size. Zero-initialized labels select size 3. */
+typedef enum : uint8_t {
+  k_ra8_widget_text_size_default = 0U,
+  k_ra8_widget_text_size_1       = 1U,
+  k_ra8_widget_text_size_2       = 2U,
+  k_ra8_widget_text_size_3       = 3U,
+  k_ra8_widget_text_size_4       = 4U,
+  k_ra8_widget_text_size_5       = 5U,
+} ra8_widget_text_size_t;
+
 /**
  * @struct ra8_widget_paint_t
  * @brief Drawing backend the concrete leaf widgets paint through (a DI seam).
@@ -652,6 +662,23 @@ typedef struct ra8_widget_paint {
                          ra8_widget_text_face_t face,
                          int32_t*               out_w,
                          int32_t*               out_h);
+  /** Draw and measure with the selected face, weight, and reading size. */
+  void (*draw_text_style)(void*                    user,
+                          int32_t                  x,
+                          int32_t                  y,
+                          const char*              str,
+                          ra8_widget_text_face_t   face,
+                          ra8_widget_text_weight_t weight,
+                          ra8_widget_text_size_t   size,
+                          uint32_t                 fg,
+                          uint32_t                 bg);
+  void (*text_size_style)(void*                    user,
+                          const char*              str,
+                          ra8_widget_text_face_t   face,
+                          ra8_widget_text_weight_t weight,
+                          ra8_widget_text_size_t   size,
+                          int32_t*                 out_w,
+                          int32_t*                 out_h);
 } ra8_widget_paint_t;
 
 /**
@@ -685,13 +712,15 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct ra8_widget_label {
-  const ra8_widget_paint_t* paint; /**< Draw backend (NULL -> draws nothing).   */
-  const char*               text;  /**< NUL-terminated UTF-8 (NULL -> bg only). */
-  uint32_t                  fg;    /**< Text colour, 0xRRGGBB.                  */
-  uint32_t                  bg;    /**< Background fill colour, 0xRRGGBB.       */
-  int16_t                   pad;   /**< Inner text inset, pixels.               */
-  ra8_widget_align_t        align; /**< Horizontal text alignment.              */
-  ra8_widget_text_face_t    face;  /**< Sans by default; serif for reading text. */
+  const ra8_widget_paint_t* paint;  /**< Draw backend (NULL -> draws nothing).   */
+  const char*               text;   /**< NUL-terminated UTF-8 (NULL -> bg only). */
+  uint32_t                  fg;     /**< Text colour, 0xRRGGBB.                  */
+  uint32_t                  bg;     /**< Background fill colour, 0xRRGGBB.       */
+  int16_t                   pad;    /**< Inner text inset, pixels.               */
+  ra8_widget_align_t        align;  /**< Horizontal text alignment.              */
+  ra8_widget_text_face_t    face;   /**< Sans by default; serif for reading text. */
+  ra8_widget_text_weight_t  weight; /**< Regular by default; bold for headings. */
+  ra8_widget_text_size_t    size;   /**< Reading size; zero defaults to size 3. */
 } ra8_widget_label_t;
 
 /**

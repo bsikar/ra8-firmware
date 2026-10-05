@@ -45,6 +45,7 @@ pub const Label = extern struct {
     alignment: Alignment,
     face: paint_abi.Face,
     weight: paint_abi.Weight = .regular,
+    size: paint_abi.TextSize = .default,
 };
 
 comptime {
@@ -59,6 +60,7 @@ comptime {
     if (@offsetOf(Label, "alignment") != 2 * ptr + 10) @compileError("ra8_widget_label_t align offset");
     if (@offsetOf(Label, "face") != 2 * ptr + 11) @compileError("ra8_widget_label_t face offset");
     if (@offsetOf(Label, "weight") != 2 * ptr + 12) @compileError("ra8_widget_label_t weight offset");
+    if (@offsetOf(Label, "size") != 2 * ptr + 13) @compileError("ra8_widget_label_t size offset");
 }
 
 /// Vtable `render`: fill the background, then draw the aligned text.
@@ -80,6 +82,7 @@ fn renderLabel(w: *Widget) callconv(.c) void {
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
+    const size = normalizedSize(label.size);
     paint_abi.priv_widget_text_pos(
         backend,
         &w.rect,
@@ -88,17 +91,30 @@ fn renderLabel(w: *Widget) callconv(.c) void {
         label.alignment,
         label.face,
         label.weight,
+        size,
         weight_draw != null or styled_draw != null,
         &pen_x,
         &pen_y,
     );
     if (weight_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), @intFromEnum(label.weight), label.fg, label.bg);
+        draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(size), label.fg, label.bg);
     } else if (styled_draw) |draw| {
         draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), label.fg, label.bg);
     } else if (legacy_draw) |draw| {
         draw(backend.user, pen_x, pen_y, text, label.fg, label.bg);
     }
+}
+
+fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
+    return switch (@intFromEnum(size)) {
+        0 => .size_3,
+        1 => .size_1,
+        2 => .size_2,
+        3 => .size_3,
+        4 => .size_4,
+        5 => .size_5,
+        else => .size_3,
+    };
 }
 
 /// The single immutable vtable shared by every text label: display only, so

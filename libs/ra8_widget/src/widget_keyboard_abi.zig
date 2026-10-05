@@ -112,6 +112,7 @@ fn drawKey(kbd: *const Keyboard, backend: *const Paint, info: *const KeyInfo) vo
         .center,
         .sans,
         .regular,
+        .size_3,
         false,
         &pen_x,
         &pen_y,

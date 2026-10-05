@@ -18,6 +18,8 @@ pub const Alignment = paint.Alignment;
 pub const Face = enum(u8) { sans = 0, serif = 1 };
 /// Text stroke weight selector.
 pub const Weight = enum(u8) { regular = 0, bold = 1 };
+/// Reading size selector. Zero-initialized labels resolve to size three.
+pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5 };
 
 /// Draw backend of the published ABI (`ra8_widget_paint_t`). Every member is
 /// optional because the C struct is zero-initialised by callers that bind only
@@ -69,6 +71,7 @@ pub const Paint = extern struct {
         str: [*:0]const u8,
         face: u8,
         weight: u8,
+        size: u8,
         fg: u32,
         bg: u32,
     ) callconv(.c) void = null,
@@ -77,6 +80,7 @@ pub const Paint = extern struct {
         str: [*:0]const u8,
         face: u8,
         weight: u8,
+        size: u8,
         out_w: *i32,
         out_h: *i32,
     ) callconv(.c) void = null,
@@ -127,6 +131,7 @@ pub export fn priv_widget_text_pos(
     alignment: Alignment,
     face: Face,
     weight: Weight,
+    size: TextSize,
     styled: bool,
     out_x: *i32,
     out_y: *i32,
@@ -140,7 +145,7 @@ pub export fn priv_widget_text_pos(
     var text_h: i32 = 0;
     if (styled) {
         if (backend.text_size_style) |measure| {
-            measure(backend.user, text, @intFromEnum(face), @intFromEnum(weight), &text_w, &text_h);
+            measure(backend.user, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(size), &text_w, &text_h);
         } else {
             const measure = backend.text_size_face orelse return;
             measure(backend.user, text, @intFromEnum(face), &text_w, &text_h);

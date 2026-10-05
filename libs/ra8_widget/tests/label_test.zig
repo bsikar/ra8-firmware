@@ -33,6 +33,7 @@ const Draw = struct {
     text: [*:0]const u8,
     face: ?u8 = null,
     weight: ?u8 = null,
+    size: ?u8 = null,
 };
 
 /// Recording paint backend: every primitive appends to a module-level log, so
@@ -46,6 +47,7 @@ const Recorder = struct {
     var styled_h: i32 = 0;
     var styled_face: ?u8 = null;
     var styled_weight: ?u8 = null;
+    var styled_size: ?u8 = null;
 
     fn reset() void {
         fills = .{};
@@ -56,6 +58,7 @@ const Recorder = struct {
         styled_h = 0;
         styled_face = null;
         styled_weight = null;
+        styled_size = null;
         last_message = null;
     }
 
@@ -90,17 +93,26 @@ const Recorder = struct {
         out_h.* = styled_h;
     }
 
-    fn drawTextStyle(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, weight: u8, fg: u32, bg: u32) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face, .weight = weight }) catch unreachable;
+    fn drawTextStyle(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, weight: u8, size: u8, fg: u32, bg: u32) callconv(.c) void {
+        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face, .weight = weight, .size = size }) catch unreachable;
         styled_face = face;
         styled_weight = weight;
+        styled_size = size;
     }
 
-    fn textSizeStyle(_: ?*anyopaque, _: [*:0]const u8, face: u8, weight: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+    fn textSizeStyle(_: ?*anyopaque, _: [*:0]const u8, face: u8, weight: u8, size: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
         styled_face = face;
         styled_weight = weight;
-        out_w.* = styled_w;
-        out_h.* = styled_h;
+        styled_size = size;
+        const numerator: i32 = switch (size) {
+            1 => 4,
+            2 => 5,
+            4 => 7,
+            5 => 8,
+            else => 6,
+        };
+        out_w.* = @divTrunc(styled_w * numerator, 6);
+        out_h.* = @divTrunc(styled_h * numerator, 6);
     }
 };
 
@@ -291,6 +303,8 @@ test "the mirrored C layouts are the ones the header publishes" {
     try std.testing.expectEqual(2 * ptr + 24, @offsetOf(abi.Widget, "dirty"));
     try std.testing.expectEqual(2 * ptr, @offsetOf(abi.Label, "fg"));
     try std.testing.expectEqual(2 * ptr + 10, @offsetOf(abi.Label, "alignment"));
+    try std.testing.expectEqual(2 * ptr + 12, @offsetOf(abi.Label, "weight"));
+    try std.testing.expectEqual(2 * ptr + 13, @offsetOf(abi.Label, "size"));
 }
 
 test "serif label uses styled measure and draw callbacks with matching face advances" {
@@ -307,6 +321,7 @@ test "serif label uses styled measure and draw callbacks with matching face adva
     try std.testing.expectEqual(@as(i32, 33), draw.y);
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
     try std.testing.expectEqual(@as(?u8, 1), Recorder.styled_face);
+    try std.testing.expectEqual(@as(?u8, 3), Recorder.styled_size);
 }
 
 test "styled drawing without styled measurement falls back to inset placement" {
@@ -341,5 +356,26 @@ test "bold label uses matching family and weight for measurement and drawing" {
     try std.testing.expectEqual(@as(?u8, 1), Recorder.styled_weight);
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
     try std.testing.expectEqual(@as(?u8, 1), draw.weight);
+    try std.testing.expectEqual(@as(?u8, 3), draw.size);
     try std.testing.expectEqual(@as(i32, 10 + (100 - 37) / 2), draw.x);
+}
+
+test "bold labels pass non-default size through the combined style callbacks" {
+    Recorder.reset();
+    Recorder.styled_w = 36;
+    Recorder.styled_h = 18;
+    var widget = emptyWidget();
+    var label = labelOn(&styled_backend, "Reader");
+    label.face = .serif;
+    label.weight = .bold;
+    label.size = .size_4;
+    label.alignment = .center;
+    try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_label_init(&widget, &label));
+    widget.vt.?.render.?(&widget);
+    const draw = Recorder.draws.get(0);
+    try std.testing.expectEqual(@as(?u8, 1), draw.face);
+    try std.testing.expectEqual(@as(?u8, 1), draw.weight);
+    try std.testing.expectEqual(@as(?u8, 4), draw.size);
+    try std.testing.expectEqual(@as(?u8, 4), Recorder.styled_size);
+    try std.testing.expectEqual(@divTrunc(100 - 42, 2) + 10, draw.x);
 }
