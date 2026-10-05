@@ -153,3 +153,17 @@ pub fn path(b: *std.Build, image_name: []const u8, layout: Layout) std.Build.Laz
     const files = b.addWriteFiles();
     return files.add(fileName(b, image_name), configure(b, layout));
 }
+
+/// `ra8_ns_memory_map_defines(<app>.elf)`: the NS memory map put on a Secure
+/// target as compile definitions, read from the same ns_memory_map.cmake the
+/// NS linker script is configured from, so the Secure boot code and the NS
+/// link never disagree about where the image lives (RA8FW-626).
+pub fn memoryMapDefines(b: *std.Build) []const []const u8 {
+    const map_path = b.fmt("{s}/{s}", .{ board_dir, memory_map_name });
+    const vars = cmake_vars.parse(b.allocator, read(b, map_path));
+    const out = b.allocator.alloc([]const u8, 3) catch @panic("OOM");
+    out[0] = b.fmt("-DRA8_NS_MRAM_BASE={s}U", .{vars.get("RA8_NS_MRAM_ORIGIN", map_path)});
+    out[1] = b.fmt("-DRA8_NS_OSPI_BASE={s}U", .{vars.get("RA8_NS_OSPI_ORIGIN", map_path)});
+    out[2] = b.fmt("-DRA8_NS_SRAM_BASE={s}U", .{vars.get("RA8_NS_SRAM_ORIGIN", map_path)});
+    return out;
+}
