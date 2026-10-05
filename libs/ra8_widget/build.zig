@@ -83,6 +83,24 @@ pub fn build(b: *std.Build) void {
     button_test_module.addImport("abi", button_module);
     const button_tests = b.addTest(.{ .root_module = button_test_module });
 
+    const host_paint_module = b.createModule(.{
+        .root_source_file = b.path("src/host_paint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const host_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/host_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    host_render_test_module.addImport("host", host_paint_module);
+    host_render_test_module.addImport("abi", b.createModule(.{
+        .root_source_file = b.path("src/ra8_widget_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
+
     const progress_bar_module = b.createModule(.{
         .root_source_file = b.path("src/widget_progress_bar_abi.zig"),
         .target = target,
@@ -200,6 +218,7 @@ pub fn build(b: *std.Build) void {
     book_test_module.addImport("abi", book_module);
     const book_tests = b.addTest(.{ .root_module = book_test_module });
 
+    const run_host_render_tests = b.addRunArtifact(host_render_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
@@ -214,6 +233,7 @@ pub fn build(b: *std.Build) void {
     const run_book_tests = b.addRunArtifact(book_tests);
     const run_core_tests = b.addRunArtifact(core_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
+    test_step.dependOn(&run_host_render_tests.step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_label_tests.step);
