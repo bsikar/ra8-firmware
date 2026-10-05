@@ -29,6 +29,14 @@ export fn ra8_io_stream_write(_: *Stream, _: [*]const u8, _: u32, _: ?*u32) c_in
     return ram.ok;
 }
 
+// The uart unit in the same archive needs these to link; unused here.
+export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sci_flush(_: u8) c_int {
+    return 0;
+}
+
 extern fn ra8_io_stream_ram_init(s: ?*Stream, state: ?*ram.State, buf: ?[*]u8, cap: u32) c_int;
 extern fn ra8_io_stream_ram_used(state: ?*const ram.State, out_used: ?*u32) c_int;
 

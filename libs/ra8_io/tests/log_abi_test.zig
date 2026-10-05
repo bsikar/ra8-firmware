@@ -37,6 +37,14 @@ export fn ra8_io_stream_bind(_: *log.Stream, _: *const anyopaque, _: ?*anyopaque
     return log.ok;
 }
 
+// The uart unit in the same archive needs these to link; unused here.
+export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sci_flush(_: u8) c_int {
+    return 0;
+}
+
 extern fn ra8_io_log_attach(s: ?*log.Stream) c_int;
 extern fn ra8_io_log_detach() void;
 
