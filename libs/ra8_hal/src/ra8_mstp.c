@@ -127,21 +127,6 @@ typedef enum : uintptr_t {
 static uint8_t s_refcount[k_ra8_mstp_reg_count][k_ra8_mstp_bit_count];
 
 /* =============================================================================
- * Public id decoders (declared in ra8_mstp_regs.h)
- * =============================================================================
- */
-
-ra8_mstp_reg_t ra8_mstp_id_reg(ra8_mstp_t id)
-{
-  return (ra8_mstp_reg_t)(((uint16_t)id >> k_ra8_bits_per_byte) & k_ra8_mask_byte);
-}
-
-uint8_t ra8_mstp_id_bit(ra8_mstp_t id)
-{
-  return (uint8_t)((uint16_t)id & k_ra8_mask_byte);
-}
-
-/* =============================================================================
  * Internal helpers
  * =============================================================================
  */
