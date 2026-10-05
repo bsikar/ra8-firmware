@@ -29,12 +29,15 @@ pub const Segmented = extern struct {
     count: u8,
     selected: u8,
     pad: u16,
+    text_face: paint_abi.Face = .sans,
+    text_weight: paint_abi.Weight = .regular,
+    text_size: paint_abi.TextSize = .default,
 };
 
 comptime {
     const ptr = @sizeOf(usize);
     if (@alignOf(Segmented) != @alignOf(usize)) @compileError("ra8_widget_segmented_t alignment");
-    if (@sizeOf(Segmented) != 2 * ptr + 24) @compileError("ra8_widget_segmented_t size");
+    if (@sizeOf(Segmented) != 2 * ptr + 32) @compileError("ra8_widget_segmented_t size");
     if (@offsetOf(Segmented, "paint") != 0) @compileError("ra8_widget_segmented_t paint offset");
     if (@offsetOf(Segmented, "labels") != ptr) @compileError("ra8_widget_segmented_t labels offset");
     if (@offsetOf(Segmented, "fg") != 2 * ptr) @compileError("ra8_widget_segmented_t fg offset");
@@ -85,12 +88,14 @@ fn renderSegmented(w: *Widget) callconv(.c) void {
         };
         if (content.w > 0 and content.h > 0) {
             fill_rect(backend.user, content.x, content.y, content.w, content.h, bg);
-            if (backend.draw_text) |draw_text| {
+            const styled = backend.draw_text_style;
+            if (styled != null or backend.draw_text != null) {
                 var pen_x: i32 = 0;
                 var pen_y: i32 = 0;
                 const pad: i16 = @intCast(@min(control.pad, @as(u16, 32767)));
-                paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-                draw_text(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
+                const size: paint_abi.TextSize = if (control.text_size == .default) .size_3 else control.text_size;
+                paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, control.text_face, control.text_weight, size, styled != null, &pen_x, &pen_y);
+                if (styled) |draw| draw(backend.user, pen_x, pen_y, labels[index], @intFromEnum(control.text_face), @intFromEnum(control.text_weight), @intFromEnum(size), if (selected) control.selected_fg else control.fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
             }
         }
     }

@@ -54,6 +54,12 @@ const expected_image = @embedFile("golden/image_widget.ppm");
 const list_expected = @embedFile("golden/list.ppm");
 const reading_sizes_expected = @embedFile("golden/reading_sizes.ppm");
 const display_sizes_expected = @embedFile("golden/display_sizes.ppm");
+const ui_button_expected = @embedFile("golden/ui_button.ppm");
+const ui_list_expected = @embedFile("golden/ui_list.ppm");
+const ui_nav_bar_expected = @embedFile("golden/ui_nav_bar.ppm");
+const ui_pager_expected = @embedFile("golden/ui_pager.ppm");
+const ui_segmented_expected = @embedFile("golden/ui_segmented.ppm");
+const ui_toggle_expected = @embedFile("golden/ui_toggle.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -419,6 +425,141 @@ test "host backend renders native display text sizes into panel golden" {
     } else |_| {
         try std.testing.expectEqualSlices(u8, display_sizes_expected, rendered);
     }
+}
+
+fn styledPaint(canvas: *host.Canvas) abi.types.Paint {
+    return .{
+        .user = canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+}
+
+fn compareUiGolden(allocator: std.mem.Allocator, canvas: *host.Canvas, golden: []const u8, path: []const u8) !void {
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, golden, rendered);
+    }
+}
+
+test "host backend renders buttons with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    var regular = abi.button.Button{ .paint = &paint, .text = "Continue", .on_press = null, .fg = 0x111111, .face = 0xffffff, .face_pressed = 0xdddddd, .border = 0x333333, .presses = 0, .pad = 16, .border_w = 2, .alignment = .center, .pressed = false, .reserved = 0, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 160, .y = 160, .w = 752, .h = 112 });
+    var second = widget(.{ .x = 160, .y = 392, .w = 752, .h = 120 });
+    try std.testing.expectEqual(abi.button.err.ok, abi.button.ra8_widget_button_init(&first, &regular));
+    try std.testing.expectEqual(abi.button.err.ok, abi.button.ra8_widget_button_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_button_expected, "tests/golden/ui_button.ppm");
+}
+
+test "host backend renders list rows with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    const rows = [_]abi.list.Row{.{ .title = "Settings", .subtitle = "Display and account", .trailing_text = "Open", .action_id = 1, .trailing = .value }};
+    var regular = abi.list.List{ .paint = &paint, .rows = &rows, .count = 1, .on_select = null, .bg = 0xffffff, .title_fg = 0x111111, .subtitle_fg = 0x333333, .trailing_fg = 0x111111, .divider = 0xcccccc, .row_height = 180, .pad = 24, .selected = 0, .has_selection = false, .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 }, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 96, .y = 160, .w = 880, .h = 180 });
+    var second = widget(.{ .x = 96, .y = 400, .w = 880, .h = 180 });
+    try std.testing.expectEqual(abi.list.err.ok, abi.list.ra8_widget_list_init(&first, &regular));
+    try std.testing.expectEqual(abi.list.err.ok, abi.list.ra8_widget_list_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_list_expected, "tests/golden/ui_list.ppm");
+}
+
+test "host backend renders navigation bars with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    const items = [_]?[*:0]const u8{ "Books", "Listen", "Settings" };
+    var regular = abi.nav_bar.NavBar{ .paint = &paint, .items = &items, .on_select = null, .bg = 0xffffff, .fg_active = 0x111111, .fg_muted = 0x555555, .count = 3, .active = 0, .selected = 0, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 96, .y = 160, .w = 880, .h = 88 });
+    var second = widget(.{ .x = 96, .y = 360, .w = 880, .h = 104 });
+    try std.testing.expectEqual(abi.nav_bar.err.ok, abi.nav_bar.ra8_widget_nav_bar_init(&first, &regular));
+    try std.testing.expectEqual(abi.nav_bar.err.ok, abi.nav_bar.ra8_widget_nav_bar_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_nav_bar_expected, "tests/golden/ui_nav_bar.ppm");
+}
+
+test "host backend renders pagers with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    var regular = abi.pager.Pager{ .paint = &paint, .item_count = 48, .page_capacity = 8, .page = 2, .bg = 0xffffff, .fg = 0x111111, .fg_disabled = 0x888888, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 96, .y = 160, .w = 880, .h = 88 });
+    var second = widget(.{ .x = 96, .y = 360, .w = 880, .h = 104 });
+    try std.testing.expectEqual(abi.pager.err.ok, abi.pager.ra8_widget_pager_init(&first, &regular));
+    try std.testing.expectEqual(abi.pager.err.ok, abi.pager.ra8_widget_pager_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_pager_expected, "tests/golden/ui_pager.ppm");
+}
+
+test "host backend renders segmented controls with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    const labels = [_][*:0]const u8{ "Serif", "Sans", "System" };
+    var regular = abi.segmented.Segmented{ .paint = &paint, .labels = &labels, .fg = 0x111111, .selected_fg = 0xffffff, .bg = 0xffffff, .selected_bg = 0x333333, .border = 0x111111, .count = 3, .selected = 1, .pad = 12, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 96, .y = 160, .w = 880, .h = 96 });
+    var second = widget(.{ .x = 96, .y = 360, .w = 880, .h = 112 });
+    try std.testing.expectEqual(abi.segmented.err.ok, abi.segmented.ra8_widget_segmented_init(&first, &regular));
+    try std.testing.expectEqual(abi.segmented.err.ok, abi.segmented.ra8_widget_segmented_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_segmented_expected, "tests/golden/ui_segmented.ppm");
+}
+
+test "host backend renders toggles with native UI text sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = styledPaint(&canvas);
+    var regular = abi.toggle.Toggle{ .paint = &paint, .label = "Airplane mode", .fg = 0x111111, .bg = 0xffffff, .border = 0x333333, .mark = 0x111111, .box_size = 32, .gap = 20, .checked = true, .reserved = .{ 0, 0, 0 }, .text_size = .ui_26 };
+    var bold = regular;
+    bold.text_weight = .bold;
+    bold.text_size = .ui_30;
+    var first = widget(.{ .x = 128, .y = 160, .w = 816, .h = 96 });
+    var second = widget(.{ .x = 128, .y = 360, .w = 816, .h = 112 });
+    try std.testing.expectEqual(abi.toggle.err.ok, abi.toggle.ra8_widget_toggle_init(&first, &regular));
+    try std.testing.expectEqual(abi.toggle.err.ok, abi.toggle.ra8_widget_toggle_init(&second, &bold));
+    first.vt.?.render.?(&first);
+    second.vt.?.render.?(&second);
+    try compareUiGolden(allocator, &canvas, ui_toggle_expected, "tests/golden/ui_toggle.ppm");
 }
 
 test "a serif label survives the image widget below it clearing its own rect" {

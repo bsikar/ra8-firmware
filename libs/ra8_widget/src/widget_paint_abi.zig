@@ -19,7 +19,7 @@ pub const Face = enum(u8) { sans = 0, serif = 1 };
 /// Text stroke weight selector.
 pub const Weight = enum(u8) { regular = 0, bold = 1 };
 /// Reading size selector. Zero-initialized labels resolve to size three.
-pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5, body_38 = 6, title_68 = 7, clock_120 = 8 };
+pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5, body_38 = 6, title_68 = 7, clock_120 = 8, ui_26 = 9, ui_30 = 10 };
 
 /// Draw backend of the published ABI (`ra8_widget_paint_t`). Every member is
 /// optional because the C struct is zero-initialised by callers that bind only

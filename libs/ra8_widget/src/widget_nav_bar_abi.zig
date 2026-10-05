@@ -55,6 +55,9 @@ pub const NavBar = extern struct {
     count: u16,
     active: u16,
     selected: u16,
+    text_face: paint_abi.Face = .sans,
+    text_weight: paint_abi.Weight = .regular,
+    text_size: paint_abi.TextSize = .default,
 };
 
 /// Offset of cell `idx`'s left edge from the strip's own left edge.
@@ -95,14 +98,15 @@ pub fn hitCell(strip: Rect, count: u16, px: i32) ?u16 {
 }
 
 /// Draw one item's label centred in its cell. An item with no label is a gap.
-fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, fg: u32, bg: u32) void {
+fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, fg: u32, bg: u32, face: paint_abi.Face, weight: paint_abi.Weight, size: paint_abi.TextSize) void {
     const text = label orelse return;
-    const draw_text = backend.draw_text orelse return;
-
+    const styled = backend.draw_text_style;
+    if (styled == null and backend.draw_text == null) return;
+    const selected_size = if (size == .default) paint_abi.TextSize.size_3 else size;
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &cell, text, geometry.no_pad, .center, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-    draw_text(backend.user, pen_x, pen_y, text, fg, bg);
+    paint_abi.priv_widget_text_pos(backend, &cell, text, geometry.no_pad, .center, face, weight, selected_size, styled != null, &pen_x, &pen_y);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, text, fg, bg);
 }
 
 /// Fill the strip, then centre each item's label in its own cell.
@@ -113,13 +117,13 @@ fn render(w: *Widget) callconv(.c) void {
     paint_abi.priv_widget_fill_box(backend, &w.rect, nav.bg, nav.bg, geometry.no_pad);
 
     if (nav.count == geometry.no_cells) return;
-    if (backend.draw_text == null) return;
+    if (backend.draw_text == null and backend.draw_text_style == null) return;
     const items = nav.items orelse return;
 
     for (items[0..nav.count], 0..) |label, i| {
         const idx: u16 = @intCast(i);
         const fg = if (idx == nav.active) nav.fg_active else nav.fg_muted;
-        drawItem(backend, cellRect(w.rect, idx, nav.count), label, fg, nav.bg);
+        drawItem(backend, cellRect(w.rect, idx, nav.count), label, fg, nav.bg, nav.text_face, nav.text_weight, nav.text_size);
     }
 }
 

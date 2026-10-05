@@ -38,6 +38,9 @@ typedef struct ra8_widget_toggle {
   uint16_t                  gap; /**< Space between box and label in pixels. */
   bool                      checked; /**< Current checked state. */
   uint8_t                   reserved[3]; /**< ABI padding; initialize to zero. */
+  ra8_widget_text_face_t text_face;    /**< Text family; zero keeps sans. */
+  ra8_widget_text_weight_t text_weight; /**< Text weight; zero keeps regular. */
+  ra8_widget_text_size_t text_size;    /**< Text size; zero keeps size three. */
 } ra8_widget_toggle_t;
 
 /** @brief Return the shared toggle vtable. @return Non-NULL static vtable. */

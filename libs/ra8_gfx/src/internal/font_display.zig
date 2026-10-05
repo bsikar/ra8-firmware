@@ -60,12 +60,22 @@ const clock = struct {
     const sans_regular = @embedFile("display_atlases/sans_regular_clock.bin");
     const sans_bold = @embedFile("display_atlases/sans_bold_clock.bin");
 };
+const ui_26 = struct {
+    const sans_regular = @embedFile("display_atlases/sans_regular_ui_26.bin");
+    const sans_bold = @embedFile("display_atlases/sans_bold_ui_26.bin");
+};
+const ui_30 = struct {
+    const sans_regular = @embedFile("display_atlases/sans_regular_ui_30.bin");
+    const sans_bold = @embedFile("display_atlases/sans_bold_ui_30.bin");
+};
 
 pub fn get(face: u8, weight: u8, size: u8) ?Atlas {
     const selected = switch (size) {
         6 => select(body, face, weight),
         7 => select(title, face, weight),
         8 => select(clock, face, weight),
+        9 => if (face == 1) return null else selectUi(ui_26, weight),
+        10 => if (face == 1) return null else selectUi(ui_30, weight),
         else => return null,
     };
     if (!std.mem.eql(u8, selected[0..4], "R8LA") or selected[4] != 2 or selected[5] != 1) return null;
@@ -75,6 +85,10 @@ pub fn get(face: u8, weight: u8, size: u8) ?Atlas {
         .ascent = selected[8],
         .descent = selected[9],
     };
+}
+
+fn selectUi(comptime set: type, weight: u8) []const u8 {
+    return if (weight == 1) set.sans_bold else set.sans_regular;
 }
 
 fn select(comptime set: type, face: u8, weight: u8) []const u8 {

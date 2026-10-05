@@ -40,6 +40,9 @@ pub const Pager = extern struct {
     bg: u32,
     fg: u32,
     fg_disabled: u32,
+    text_face: paint_abi.Face = .sans,
+    text_weight: paint_abi.Weight = .regular,
+    text_size: paint_abi.TextSize = .default,
 };
 
 comptime {
@@ -66,12 +69,14 @@ pub fn clampPage(page: u16, pages: u16) u16 {
     return @min(page, pages - geometry.step);
 }
 
-fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg: u32) void {
-    const draw_text = backend.draw_text orelse return;
+fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg: u32, face: paint_abi.Face, weight: paint_abi.Weight, size: paint_abi.TextSize) void {
+    const styled = backend.draw_text_style;
+    if (styled == null and backend.draw_text == null) return;
+    const selected_size = if (size == .default) paint_abi.TextSize.size_3 else size;
     var x: i32 = 0;
     var y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, .sans, .regular, .size_3, false, &x, &y);
-    draw_text(backend.user, x, y, text, fg, bg);
+    paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, face, weight, selected_size, styled != null, &x, &y);
+    if (styled) |draw| draw(backend.user, x, y, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg) else backend.draw_text.?(backend.user, x, y, text, fg, bg);
 }
 
 /// Format into stack storage so rendering never allocates.
@@ -84,7 +89,7 @@ fn render(w: *Widget) callconv(.c) void {
     const pager: *const Pager = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = pager.paint orelse return;
     paint_abi.priv_widget_fill_box(backend, &w.rect, pager.bg, pager.bg, geometry.no_inset);
-    if (backend.draw_text == null) return;
+    if (backend.draw_text == null and backend.draw_text_style == null) return;
 
     const left_edge = @divTrunc(w.rect.w, geometry.divisions);
     const right_edge = @divTrunc(w.rect.w * 2, geometry.divisions);
@@ -94,9 +99,9 @@ fn render(w: *Widget) callconv(.c) void {
     const next_color = if (pages == 0 or page + 1 >= pages) pager.fg_disabled else pager.fg;
     var label: [24:0]u8 = undefined;
 
-    drawText(backend, .{ .x = w.rect.x, .y = w.rect.y, .w = left_edge, .h = w.rect.h }, previous_label, prev_color, pager.bg);
-    drawText(backend, .{ .x = w.rect.x + left_edge, .y = w.rect.y, .w = right_edge - left_edge, .h = w.rect.h }, pageLabel(&label, page, pages), pager.fg, pager.bg);
-    drawText(backend, .{ .x = w.rect.x + right_edge, .y = w.rect.y, .w = w.rect.w - right_edge, .h = w.rect.h }, next_label, next_color, pager.bg);
+    drawText(backend, .{ .x = w.rect.x, .y = w.rect.y, .w = left_edge, .h = w.rect.h }, previous_label, prev_color, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
+    drawText(backend, .{ .x = w.rect.x + left_edge, .y = w.rect.y, .w = right_edge - left_edge, .h = w.rect.h }, pageLabel(&label, page, pages), pager.fg, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
+    drawText(backend, .{ .x = w.rect.x + right_edge, .y = w.rect.y, .w = w.rect.w - right_edge, .h = w.rect.h }, next_label, next_color, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
 }
 
 fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {

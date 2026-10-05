@@ -41,6 +41,9 @@ typedef struct {
   uint16_t selected;
   bool has_selection;
   ra8_ui_rect_t damage;
+  ra8_widget_text_face_t text_face;    /**< Text family; zero keeps sans. */
+  ra8_widget_text_weight_t text_weight; /**< Text weight; zero keeps regular. */
+  ra8_widget_text_size_t text_size;    /**< Text size; zero keeps size three. */
 } ra8_widget_list_t;
 
 const ra8_widget_vtable_t* ra8_widget_list_vtable(void);

@@ -30,12 +30,15 @@ pub const Toggle = extern struct {
     gap: u16,
     checked: bool,
     reserved: [3]u8,
+    text_face: paint_abi.Face = .sans,
+    text_weight: paint_abi.Weight = .regular,
+    text_size: paint_abi.TextSize = .default,
 };
 
 comptime {
     const ptr = @sizeOf(usize);
     if (@alignOf(Toggle) != @alignOf(usize)) @compileError("ra8_widget_toggle_t alignment");
-    if (@sizeOf(Toggle) != 2 * ptr + 24) @compileError("ra8_widget_toggle_t size");
+    if (@sizeOf(Toggle) != 2 * ptr + 32) @compileError("ra8_widget_toggle_t size");
     if (@offsetOf(Toggle, "paint") != 0) @compileError("ra8_widget_toggle_t paint offset");
     if (@offsetOf(Toggle, "label") != ptr) @compileError("ra8_widget_toggle_t label offset");
     if (@offsetOf(Toggle, "fg") != 2 * ptr) @compileError("ra8_widget_toggle_t fg offset");
@@ -66,7 +69,8 @@ fn renderToggle(w: *Widget) callconv(.c) void {
     }
 
     const label = toggle.label orelse return;
-    const draw_text = backend.draw_text orelse return;
+    const styled = backend.draw_text_style;
+    if (styled == null and backend.draw_text == null) return;
     const label_rect: Rect = .{
         .x = x + side + toggle.gap,
         .y = w.rect.y,
@@ -75,8 +79,9 @@ fn renderToggle(w: *Widget) callconv(.c) void {
     };
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-    draw_text(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
+    const size: paint_abi.TextSize = if (toggle.text_size == .default) .size_3 else toggle.text_size;
+    paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, toggle.text_face, toggle.text_weight, size, styled != null, &pen_x, &pen_y);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, label, @intFromEnum(toggle.text_face), @intFromEnum(toggle.text_weight), @intFromEnum(size), toggle.fg, toggle.bg) else backend.draw_text.?(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
 }
 
 fn onToggleInput(w: *Widget, event: *const Event) callconv(.c) bool {
