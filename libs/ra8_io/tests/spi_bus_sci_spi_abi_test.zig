@@ -73,9 +73,6 @@ export fn ra8_usb_pal_ep_send(_: u8, _: [*]const u8, _: u16) c_int {
 export fn ra8_sdramc_init() c_int {
     return 0;
 }
-export fn ra8_io_blockdev_ram_init(_: *anyopaque, _: *anyopaque, _: [*]u8, _: u32, _: bool) c_int {
-    return 0;
-}
 export fn ra8_spi_xfer8(_: u8, _: u8, _: ?*u8) c_int {
     return 0;
 }

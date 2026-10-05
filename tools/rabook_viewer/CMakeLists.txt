@@ -228,7 +228,6 @@ ra8_viewer_read_path(
   DROP ra8_io_blockdev.c
        ra8_io_blockdev_cache.c
        ra8_io_blockdev_mram.c
-       ra8_io_blockdev_ram.c
        ra8_io_blockdev_vsource.c
        ra8_io_blockdev_xspi.c
        ra8_io_fsfmt.c

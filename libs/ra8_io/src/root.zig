@@ -19,6 +19,7 @@ pub const blockdev_usbmsc = @import("ra8_io_blockdev_usbmsc_abi.zig");
 pub const blockdev_sdhi = @import("ra8_io_blockdev_sdhi_abi.zig");
 pub const stream_blockdev = @import("ra8_io_stream_blockdev_abi.zig");
 pub const blockdev_sdspi = @import("ra8_io_blockdev_sdspi_abi.zig");
+pub const blockdev_ram = @import("ra8_io_blockdev_ram_abi.zig");
 
 comptime {
     _ = log;
@@ -36,4 +37,5 @@ comptime {
     _ = blockdev_sdhi;
     _ = stream_blockdev;
     _ = blockdev_sdspi;
+    _ = blockdev_ram;
 }

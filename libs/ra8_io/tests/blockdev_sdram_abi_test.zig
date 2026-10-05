@@ -1,38 +1,26 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! ra8_io_blockdev_sdram_init against fake ra8_sdramc, RAM-backend and
-//! ra8_log entry points (RA8FW-697). The window pointer is only compared,
-//! never dereferenced.
+//! ra8_io_blockdev_sdram_init against fake ra8_sdramc and ra8_log entry
+//! points (RA8FW-697), observed through the real Zig RAM backend
+//! (RA8FW-722). The window pointer is only compared, never dereferenced.
 
 const std = @import("std");
 const io = @import("ra8_io");
 const sdram = io.blockdev_sdram;
 const log = io.log;
+const ram = io.blockdev_ram;
 
 const err_io: c_int = 0x10A;
 
 var sdramc_calls: u32 = 0;
 var sdramc_status: c_int = sdram.ok;
-var ram_calls: u32 = 0;
-var ram_status: c_int = sdram.ok;
-var ram_storage: usize = 0;
-var ram_blocks: u32 = 0;
-var ram_read_only: bool = true;
 var errors_logged: u32 = 0;
 var error_value: u32 = 0;
 
 export fn ra8_sdramc_init() c_int {
     sdramc_calls += 1;
     return sdramc_status;
-}
-
-export fn ra8_io_blockdev_ram_init(_: *anyopaque, _: *anyopaque, storage: [*]u8, block_count: u32, read_only: bool) c_int {
-    ram_calls += 1;
-    ram_storage = @intFromPtr(storage);
-    ram_blocks = block_count;
-    ram_read_only = read_only;
-    return ram_status;
 }
 
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
@@ -51,17 +39,14 @@ export fn ra8_io_stream_write(_: *log.Stream, _: [*]const u8, _: u32, _: ?*u32) 
 
 extern fn ra8_io_blockdev_sdram_init(bd: ?*anyopaque, state: ?*anyopaque, block_count: u32) c_int;
 
-var device: [16]u8 = undefined;
-var state: [16]u8 = undefined;
+var device: ram.Device = .{ .iface = null, .ctx = null };
+var state: ram.State = .{ .storage = null, .block_count = 0, .read_only = true };
 
 fn reset() void {
     sdramc_calls = 0;
     sdramc_status = sdram.ok;
-    ram_calls = 0;
-    ram_status = sdram.ok;
-    ram_storage = 0;
-    ram_blocks = 0;
-    ram_read_only = true;
+    device = .{ .iface = null, .ctx = null };
+    state = .{ .storage = null, .block_count = 0, .read_only = true };
     errors_logged = 0;
     error_value = 0;
 }
@@ -70,7 +55,7 @@ fn expectRejectedEarly(expected: c_int, rc: c_int, logged: u32) !void {
     try std.testing.expectEqual(expected, rc);
     try std.testing.expectEqual(logged, errors_logged);
     try std.testing.expectEqual(@as(u32, 0), sdramc_calls);
-    try std.testing.expectEqual(@as(u32, 0), ram_calls);
+    try std.testing.expect(device.iface == null);
 }
 
 test "null bd logs and returns null_ptr before touching the controller" {
@@ -97,7 +82,7 @@ test "one block past the window is invalid_size" {
 test "the whole window is accepted" {
     reset();
     try std.testing.expectEqual(sdram.ok, ra8_io_blockdev_sdram_init(&device, &state, 131072));
-    try std.testing.expectEqual(@as(u32, 131072), ram_blocks);
+    try std.testing.expectEqual(@as(u32, 131072), state.block_count);
 }
 
 test "controller failure is logged and returned, RAM backend untouched" {
@@ -106,24 +91,19 @@ test "controller failure is logged and returned, RAM backend untouched" {
     try std.testing.expectEqual(err_io, ra8_io_blockdev_sdram_init(&device, &state, 64));
     try std.testing.expectEqual(@as(u32, 1), errors_logged);
     try std.testing.expectEqual(@as(u32, 0x10A), error_value);
-    try std.testing.expectEqual(@as(u32, 0), ram_calls);
+    try std.testing.expect(device.iface == null);
 }
 
 test "success binds the window as a writable RAM device" {
     reset();
     try std.testing.expectEqual(sdram.ok, ra8_io_blockdev_sdram_init(&device, &state, 64));
     try std.testing.expectEqual(@as(u32, 1), sdramc_calls);
-    try std.testing.expectEqual(@as(u32, 1), ram_calls);
-    try std.testing.expectEqual(@as(usize, 0x68000000), ram_storage);
-    try std.testing.expectEqual(@as(u32, 64), ram_blocks);
-    try std.testing.expect(!ram_read_only);
+    try std.testing.expect(device.iface == &ram.iface);
+    try std.testing.expect(device.ctx == @as(?*anyopaque, @ptrCast(&state)));
+    try std.testing.expectEqual(@as(usize, 0x68000000), @intFromPtr(state.storage.?));
+    try std.testing.expectEqual(@as(u32, 64), state.block_count);
+    try std.testing.expect(!state.read_only);
     try std.testing.expectEqual(@as(u32, 0), errors_logged);
-}
-
-test "a RAM backend error comes back unchanged" {
-    reset();
-    ram_status = sdram.err_invalid_size;
-    try std.testing.expectEqual(sdram.err_invalid_size, ra8_io_blockdev_sdram_init(&device, &state, 64));
 }
 
 // The stream_ram unit in the same archive needs this to link; unused here.

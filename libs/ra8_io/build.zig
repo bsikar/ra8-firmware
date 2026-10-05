@@ -53,6 +53,7 @@ pub fn build(b: *std.Build) void {
         "tests/blockdev_sdhi_abi_test.zig",
         "tests/stream_blockdev_abi_test.zig",
         "tests/blockdev_sdspi_abi_test.zig",
+        "tests/blockdev_ram_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
