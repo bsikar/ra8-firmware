@@ -80,6 +80,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "i3c_i2c_peripheral", .source = "src/internal/i3c_i2c_peripheral.zig", .root = "tests/i3c_i2c_peripheral_test.zig" },
         .{ .name = "i3c_i2c_errors", .source = "src/internal/i3c_i2c_errors.zig", .root = "tests/i3c_i2c_errors_test.zig" },
         .{ .name = "i3c_i2c_scan", .source = "src/internal/i3c_i2c_scan.zig", .root = "tests/i3c_i2c_scan_test.zig" },
+        .{ .name = "i3c_i2c_abort", .source = "src/internal/i3c_i2c_abort.zig", .root = "tests/i3c_i2c_abort_test.zig" },
         .{ .name = "ether_phy", .source = "src/internal/ether_phy.zig", .root = "tests/ether_phy_test.zig" },
         .{ .name = "mpc", .source = "src/internal/mpc.zig", .root = "tests/mpc_test.zig" },
         .{ .name = "doc", .source = "src/internal/doc.zig", .root = "tests/doc_test.zig" },
