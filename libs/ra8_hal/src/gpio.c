@@ -9,6 +9,11 @@
  * re-locks PWPR, and then uses the PORT atomic set/reset registers
  * to drive or read the pin.
  *
+ * ra8_gpio_write, ra8_gpio_toggle, ra8_gpio_read and
+ * ra8_pfs_set_drive_strength live in libs/ra8_hal/src/gpio_pins_abi.zig
+ * (RA8FW-763); this file keeps claim/init, peripheral routing, IRQ
+ * attach and the pin interface.
+ *
  * ## Why PFS and not PCNTR1 bitfields
  *
  * On RA-family chips the pin mux (PSEL), drive strength, pull-up,
@@ -151,85 +156,6 @@ ra8_err_t ra8_gpio_input_init(ra8_port_pin_t pin, ra8_pin_pull_t pull)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_gpio_write(ra8_port_pin_t pin, ra8_level_t level)
-{
-  const ra8_port_t port = RA8_PIN_PORT(pin);
-  const ra8_pin_t  bit  = RA8_PIN_PIN(pin);
-  if ((uint8_t)port > k_ra8_port_max) {
-    return k_ra8_err_gpio_invalid_port;
-  }
-  if ((uint8_t)bit > k_ra8_pin_max) {
-    return k_ra8_err_gpio_invalid_pin;
-  }
-
-  volatile r_port_regs_t* port_regs = ra8_port(port);
-  if (port_regs == nullptr) {
-    return k_ra8_err_hw_unmapped;
-  }
-
-  /* PCNTR3 high half = PORR (clear), low half = POSR (set). Writing
-   * a 1 to the relevant half drives the pin; writing 0 leaves other
-   * pins alone -- race-free. */
-  const uint32_t bit_mask = (uint32_t)(1UL << (uint32_t)bit);
-  if (level == k_ra8_level_high) {
-    port_regs->PCNTR3 = bit_mask; /* POSR in low half. */
-  } else {
-    port_regs->PCNTR3 = bit_mask << (uint32_t)k_ra8_pcntr_high_half_shift;
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_gpio_toggle(ra8_port_pin_t pin)
-{
-  const ra8_port_t port = RA8_PIN_PORT(pin);
-  const ra8_pin_t  bit  = RA8_PIN_PIN(pin);
-  if ((uint8_t)port > k_ra8_port_max) {
-    return k_ra8_err_gpio_invalid_port;
-  }
-  if ((uint8_t)bit > k_ra8_pin_max) {
-    return k_ra8_err_gpio_invalid_pin;
-  }
-
-  volatile r_port_regs_t* port_regs = ra8_port(port);
-  if (port_regs == nullptr) {
-    return k_ra8_err_hw_unmapped;
-  }
-
-  /* Read PODR (high half of PCNTR1) and invert the bit. */
-  const uint32_t pcntr1_val = port_regs->PCNTR1;
-  const uint32_t podr       = (pcntr1_val >> (uint32_t)k_ra8_pcntr_high_half_shift);
-  const uint32_t bit_mask   = (uint32_t)(1UL << (uint32_t)bit);
-  if ((podr & bit_mask) != 0U) {
-    port_regs->PCNTR3 = bit_mask << (uint32_t)k_ra8_pcntr_high_half_shift; /* PORR clear */
-  } else {
-    port_regs->PCNTR3 = bit_mask; /* POSR set */
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_gpio_read(ra8_port_pin_t pin, ra8_level_t* out_level)
-{
-  RA8_CHECK_NULL_PTR(out_level, s_tag, "out_level must not be nullptr");
-  const ra8_port_t port = RA8_PIN_PORT(pin);
-  const ra8_pin_t  bit  = RA8_PIN_PIN(pin);
-  if ((uint8_t)port > k_ra8_port_max) {
-    return k_ra8_err_gpio_invalid_port;
-  }
-  if ((uint8_t)bit > k_ra8_pin_max) {
-    return k_ra8_err_gpio_invalid_pin;
-  }
-
-  volatile const r_port_regs_t* port_regs = ra8_port(port);
-  if (port_regs == nullptr) {
-    return k_ra8_err_hw_unmapped;
-  }
-
-  const uint32_t pidr     = port_regs->PCNTR2;
-  const uint32_t bit_mask = (uint32_t)(1UL << (uint32_t)bit);
-  *out_level              = ((pidr & bit_mask) != 0U) ? k_ra8_level_high : k_ra8_level_low;
-  return k_ra8_ok;
-}
-
 ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner)
 {
   RA8_CHECK_NULL_PTR(owner, s_tag, "owner must not be nullptr");
@@ -276,37 +202,6 @@ ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const ch
   ra8_pfs_pwpr_lock();
 
   ra8_log_info_val(s_tag, "peripheral route pin", (uint32_t)pin);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_pfs_set_drive_strength(ra8_port_pin_t pin, ra8_pfs_dscr_t dscr)
-{
-  const ra8_port_t port = RA8_PIN_PORT(pin);
-  const ra8_pin_t  bit  = RA8_PIN_PIN(pin);
-  if ((uint8_t)port > k_ra8_port_max) {
-    return k_ra8_err_gpio_invalid_port;
-  }
-  if ((uint8_t)bit > k_ra8_pin_max) {
-    return k_ra8_err_gpio_invalid_pin;
-  }
-
-  volatile uint32_t* pfs = ra8_pfs_pmn(port, bit);
-  if (pfs == nullptr) {
-    return k_ra8_err_hw_unmapped;
-  }
-
-  /* Read-modify-write only the DSCR[1:0] field; PSEL / PMR / direction
-   * are preserved so an already-routed pin keeps its function.
-   * HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 -- the
-   * PMR-clear dance is required only when PSEL changes; a DSCR-only
-   * update of an in-function pin does not retouch PSEL. */
-  const uint32_t dscr_field =
-    ((uint32_t)dscr << (uint32_t)k_ra8_pfs_bit_dscr0) & (uint32_t)k_ra8_pfs_mask_dscr;
-  ra8_pfs_pwpr_unlock();
-  *pfs = (*pfs & ~(uint32_t)k_ra8_pfs_mask_dscr) | dscr_field;
-  ra8_pfs_pwpr_lock();
-
-  ra8_log_info_val(s_tag, "pin drive strength", (uint32_t)pin);
   return k_ra8_ok;
 }
 
