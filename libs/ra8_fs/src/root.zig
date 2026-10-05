@@ -14,6 +14,7 @@ pub const gpt = @import("ra8_fs_gpt_abi.zig");
 pub const lfn = @import("ra8_fs_lfn_abi.zig");
 pub const utf = @import("ra8_fs_utf_abi.zig");
 pub const upcase = @import("ra8_fs_upcase_abi.zig");
+pub const exfat_openw = @import("ra8_fs_exfat_openw_abi.zig");
 
 comptime {
     _ = lock;
@@ -25,4 +26,5 @@ comptime {
     _ = lfn;
     _ = utf;
     _ = upcase;
+    _ = exfat_openw;
 }

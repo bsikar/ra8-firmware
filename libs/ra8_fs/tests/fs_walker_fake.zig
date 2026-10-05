@@ -43,6 +43,22 @@ pub var io_reads: u32 = 0;
 
 // GPT side: LBAs 1..4 (header, then three entry sectors) and the scratch buffer.
 pub var disk: [4][512]u8 = undefined;
+
+// Open-for-write side: a two-handle slot pool and the stream walkers' knobs.
+pub var file_pool: [2]c.ra8_fs_file_t = undefined;
+pub var slots_left: u32 = 2;
+pub var set_copies: bool = false;
+pub var set_file: [entry_bytes]u8 = undefined;
+pub var set_strm: [entry_bytes]u8 = undefined;
+pub var name_units: u32 = 3;
+pub var name_err: u16 = 0;
+pub var parent_err: u16 = 0;
+pub var link_err: u16 = 0;
+pub var link_count: u32 = 3;
+pub var free_calls: u32 = 0;
+pub var free_err: u16 = 0;
+pub var flush_calls: u32 = 0;
+pub var flush_err: u16 = 0;
 export var g_fs_scratch: [4096]u8 = undefined;
 
 pub fn mount() *const c.ra8_fs_mount_t {
@@ -78,6 +94,20 @@ pub fn reset(fs_type: u8) void {
     bitmap_err = 0;
     io_reads = 0;
     for (&disk) |*d| d.* = [_]u8{0} ** 512;
+    for (&file_pool) |*f| f.* = std.mem.zeroes(c.ra8_fs_file_t);
+    slots_left = 2;
+    set_copies = false;
+    set_file = [_]u8{0} ** entry_bytes;
+    set_strm = [_]u8{0} ** entry_bytes;
+    name_units = 3;
+    name_err = 0;
+    parent_err = 0;
+    link_err = 0;
+    link_count = 3;
+    free_calls = 0;
+    free_err = 0;
+    flush_calls = 0;
+    flush_err = 0;
 }
 
 export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.C) void {
@@ -111,8 +141,12 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
 }
 
 export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.C) u16 {
-    _ = .{ m, path, file_copy, strm_copy };
+    _ = .{ m, path };
     if (find_set_err != 0) return find_set_err;
+    if (set_copies) {
+        @memcpy(file_copy[0..entry_bytes], &set_file);
+        @memcpy(strm_copy[0..entry_bytes], &set_strm);
+    }
     const n = @min(set_count, max_pos);
     for (0..n) |k| pos[k] = .{ .cluster = d.*.cluster, .index = @intCast(2 + k) };
     out_count.* = n;
@@ -250,4 +284,52 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.C) u
     var sum = cs;
     for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
     return sum;
+}
+
+export fn priv_alloc_file_slot() callconv(.C) [*c]c.ra8_fs_file_t {
+    if (slots_left == 0) return null;
+    slots_left -= 1;
+    return &file_pool[slots_left];
+}
+
+export fn priv_is_eoc(m: [*c]const c.ra8_fs_mount_t, value: u32) callconv(.C) u8 {
+    _ = m;
+    return if (value >= 0x0FFF_FFF8) 1 else 0;
+}
+
+export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.C) u16 {
+    _ = m;
+    if (parent_err != 0) return parent_err;
+    out_parent.* = std.mem.zeroes(c.exfat_dir_t);
+    out_parent.*.cluster = 5;
+    out_leaf.* = path;
+    return 0;
+}
+
+export fn priv_exfat_name_to_units(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]u16, out_units: [*c]u32) callconv(.C) u16 {
+    _ = .{ m, path };
+    if (name_err != 0) return name_err;
+    for (0..name_units) |i| out[i] = 'a';
+    out_units.* = name_units;
+    return 0;
+}
+
+export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, out_head: [*c]c.exfat_setpos_t, out_count: [*c]u32) callconv(.C) u16 {
+    _ = .{ m, name, nlen };
+    if (link_err != 0) return link_err;
+    out_head.* = .{ .cluster = d.*.cluster, .index = 6 };
+    out_count.* = link_count;
+    return 0;
+}
+
+export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.C) u16 {
+    _ = .{ m, strm };
+    free_calls += 1;
+    return free_err;
+}
+
+export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.C) u16 {
+    _ = file;
+    flush_calls += 1;
+    return flush_err;
 }
