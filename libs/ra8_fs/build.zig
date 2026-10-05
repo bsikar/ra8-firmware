@@ -35,6 +35,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig ra8_fs tests");
     const roots = [_][]const u8{
         "tests/lock_abi_test.zig",
+        "tests/exfat_label_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
