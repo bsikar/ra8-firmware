@@ -706,6 +706,13 @@ typedef enum : uint8_t {
   k_ra8_widget_align_right  = 2U, /**< Hug the right inner inset.       */
 } ra8_widget_align_t;
 
+/** Label line breaking and overflow behavior. */
+typedef enum : uint8_t {
+  k_ra8_widget_label_wrap_none = 0U,  /**< Preserve the original single line. */
+  k_ra8_widget_label_wrap_word = 1U,  /**< Wrap at spaces; hard-break long words. */
+  k_ra8_widget_label_wrap_clip = 2U,  /**< Clip with an ellipsis. */
+} ra8_widget_label_wrap_t;
+
 /**
  * @struct ra8_widget_label_t
  * @brief A text-label leaf widget: a background fill plus an aligned string.
@@ -732,6 +739,7 @@ typedef struct ra8_widget_label {
   ra8_widget_text_face_t    face;   /**< Sans by default; serif for reading text. */
   ra8_widget_text_weight_t  weight; /**< Regular by default; bold for headings. */
   ra8_widget_text_size_t    size;   /**< Reading or display size; zero defaults to size 3. */
+  ra8_widget_label_wrap_t   wrap;   /**< None by default; word wrap or ellipsis clip. */
 } ra8_widget_label_t;
 
 /**

@@ -34,6 +34,8 @@ const Draw = struct {
     face: ?u8 = null,
     weight: ?u8 = null,
     size: ?u8 = null,
+    copied: [40]u8 = [_]u8{0} ** 40,
+    copied_len: usize = 0,
 };
 
 /// Recording paint backend: every primitive appends to a module-level log, so
@@ -66,15 +68,16 @@ const Recorder = struct {
         fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
-    fn drawText(
-        _: ?*anyopaque,
-        x: i32,
-        y: i32,
-        str: [*:0]const u8,
-        fg: u32,
-        bg: u32,
-    ) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str }) catch unreachable;
+    fn record(x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32, face: ?u8, weight: ?u8, size: ?u8) void {
+        var draw: Draw = .{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face, .weight = weight, .size = size };
+        const bytes = std.mem.span(str);
+        draw.copied_len = @min(bytes.len, draw.copied.len);
+        @memcpy(draw.copied[0..draw.copied_len], bytes[0..draw.copied_len]);
+        draws.append(draw) catch unreachable;
+    }
+
+    fn drawText(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32) callconv(.c) void {
+        record(x, y, str, fg, bg, null, null, null);
     }
 
     fn textSize(_: ?*anyopaque, _: [*:0]const u8, out_w: *i32, out_h: *i32) callconv(.c) void {
@@ -83,7 +86,7 @@ const Recorder = struct {
     }
 
     fn drawTextFace(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, fg: u32, bg: u32) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face }) catch unreachable;
+        record(x, y, str, fg, bg, face, null, null);
         styled_face = face;
     }
 
@@ -94,7 +97,7 @@ const Recorder = struct {
     }
 
     fn drawTextStyle(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, weight: u8, size: u8, fg: u32, bg: u32) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg, .text = str, .face = face, .weight = weight, .size = size }) catch unreachable;
+        record(x, y, str, fg, bg, face, weight, size);
         styled_face = face;
         styled_weight = weight;
         styled_size = size;
@@ -378,4 +381,63 @@ test "bold labels pass non-default size through the combined style callbacks" {
     try std.testing.expectEqual(@as(?u8, 4), draw.size);
     try std.testing.expectEqual(@as(?u8, 4), Recorder.styled_size);
     try std.testing.expectEqual(@divTrunc(100 - 42, 2) + 10, draw.x);
+}
+
+test "word wrap hard-breaks long words and respects explicit newlines" {
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var w = emptyWidget();
+    w.rect.w = 20;
+    var label = labelOn(&styled_backend, "abcd");
+    label.wrap = .word;
+    try renderBound(&w, &label);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
+    try std.testing.expectEqualStrings("ab", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+    try std.testing.expectEqualStrings("cd", Recorder.draws.get(1).copied[0..Recorder.draws.get(1).copied_len]);
+    try std.testing.expectEqual(Recorder.draws.get(0).y + 12, Recorder.draws.get(1).y);
+
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var exact_widget = emptyWidget();
+    exact_widget.rect.w = 32;
+    var exact_label = labelOn(&styled_backend, "abcd");
+    exact_label.wrap = .word;
+    try renderBound(&exact_widget, &exact_label);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
+    try std.testing.expectEqualStrings("abcd", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var newline_widget = emptyWidget();
+    var newline_label = labelOn(&styled_backend, "ab\ncd");
+    newline_label.wrap = .word;
+    try renderBound(&newline_widget, &newline_label);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
+    try std.testing.expectEqualStrings("ab", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+    try std.testing.expectEqualStrings("cd", Recorder.draws.get(1).copied[0..Recorder.draws.get(1).copied_len]);
+}
+
+test "clip preserves an exact fit and appends an ellipsis on overflow" {
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var w = emptyWidget();
+    w.rect.w = 44;
+    var exact = labelOn(&styled_backend, "abcdef");
+    exact.wrap = .clip;
+    try renderBound(&w, &exact);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
+    try std.testing.expectEqualStrings("abcdef", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var overflow = labelOn(&styled_backend, "abcdefg");
+    overflow.wrap = .clip;
+    try renderBound(&w, &overflow);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
+    try std.testing.expectEqualSlices(u8, "abcde\xe2\x80\xa6", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
 }
