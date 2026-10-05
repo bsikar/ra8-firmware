@@ -439,9 +439,9 @@ RA8_INTERNAL static void internal_expect_single_op_cap_mismatches3(void)
  * @brief Every capability-to-operation invariant is checked independently.
  *
  * @par MC/DC:
- * Covers `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_caps`,
- * `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_single_op_caps`, and
- * `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_dir_cursor_caps`.
+ * Covers `libs/ra8_io/src/ra8_io_fsfmt_abi.zig@validateCaps`,
+ * `libs/ra8_io/src/ra8_io_fsfmt_abi.zig@validateSingleOpCaps`, and
+ * `libs/ra8_io/src/ra8_io_fsfmt_abi.zig@validateDirCursorCaps`.
  * `internal_validate_caps` and `internal_validate_single_op_caps` use nested
  * single-condition decisions, not `&&` or `||`, for every capability except
  * dir-cursor support: each mismatch below sets only that capability true and

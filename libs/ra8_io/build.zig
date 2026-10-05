@@ -59,6 +59,7 @@ pub fn build(b: *std.Build) void {
         "tests/blockdev_cache_abi_test.zig",
         "tests/vfs_namespace_abi_test.zig",
         "tests/vfs_abi_test.zig",
+        "tests/fsfmt_abi_test.zig",
         "tests/stream_abi_test.zig",
     };
     for (roots) |path| {

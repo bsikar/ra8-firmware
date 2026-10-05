@@ -5,10 +5,11 @@
 //! (RA8FW-736): named mounts (native ra8_fs or a probed format), the
 //! generic open-file facade, capability and free-space queries, and the
 //! name/path resolvers the namespace unit reaches as externs. Replaces
-//! ra8_io_vfs.c, which is deleted. ra8_io_fsfmt.c is still C and is reached
-//! through ra8_io_fsfmt_get_builtin and ra8_io_fsfmt_probe.
+//! ra8_io_vfs.c, which is deleted. Formats come from the registry in
+//! ra8_io_fsfmt_abi.zig.
 
 const ns = @import("ra8_io_vfs_namespace_abi.zig");
+const fsfmt = @import("ra8_io_fsfmt_abi.zig");
 
 const tag = "ra8_io_vfs";
 
@@ -82,8 +83,6 @@ fn zeroSlot() Slot {
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 extern fn ra8_log_emit_error_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
-extern fn ra8_io_fsfmt_get_builtin(fs_type: u8, out: *?*const Format) c_int;
-extern fn ra8_io_fsfmt_probe(backend: *const anyopaque, out: *?*const Format) c_int;
 
 fn nullPtr(message: [*:0]const u8) c_int {
     ra8_log_emit_error(tag, message);
@@ -175,9 +174,9 @@ export fn priv_ra8_io_vfs_resolve(path: [*:0]const u8, out_slot: *?*Slot, out_in
 /// Native means the slot's format is the built-in FAT or exFAT descriptor.
 fn isNative(format: *const Format) bool {
     var native: ?*const Format = null;
-    _ = ra8_io_fsfmt_get_builtin(fs_type_fat16, &native);
+    _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_fat16, &native);
     if (native == format) return true;
-    _ = ra8_io_fsfmt_get_builtin(fs_type_exfat, &native);
+    _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_exfat, &native);
     return native == format;
 }
 
@@ -246,7 +245,7 @@ pub export fn ra8_io_vfs_mount(name: ?[*:0]const u8, mount: ?*FsMount) c_int {
     const c = claim(n, &slot);
     if (c != ok) return c;
     var format: ?*const Format = null;
-    const rc = ra8_io_fsfmt_get_builtin(m.type, &format);
+    const rc = fsfmt.ra8_io_fsfmt_get_builtin(m.type, &format);
     if (rc != ok) return logged(rc, "native type");
     storeMount(slot, n, format.?, m, false);
     return ok;
@@ -259,7 +258,7 @@ pub export fn ra8_io_vfs_mount_auto(name: ?[*:0]const u8, backend: ?*const anyop
     const c = claim(n, &slot);
     if (c != ok) return c;
     var format: ?*const Format = null;
-    const probed = ra8_io_fsfmt_probe(b, &format);
+    const probed = fsfmt.ra8_io_fsfmt_probe(b, &format);
     if (probed != ok) return logged(probed, "probe format");
     var ctx: ?*anyopaque = null;
     const mounted = op(MountFn, format.?.ops.mount).?(b, &ctx);
