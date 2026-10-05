@@ -465,12 +465,6 @@ ra8_err_t ra8_ceu_enter_stop(void)
   return ra8_mstp_disable(k_ra8_mstp_ceu);
 }
 
-ra8_err_t ra8_ceu_exit_stop(void)
-{
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
-  return ra8_mstp_enable(k_ra8_mstp_ceu);
-}
-
 /**
  * @brief Common arming sequence for capture_start / capture_start_ex.
  *

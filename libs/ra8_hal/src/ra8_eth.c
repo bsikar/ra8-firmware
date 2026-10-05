@@ -557,11 +557,6 @@ ra8_err_t ra8_eth_enter_stop(void)
   return ra8_mstp_disable(k_ra8_mstp_eswm);
 }
 
-ra8_err_t ra8_eth_exit_stop(void)
-{
-  return ra8_mstp_enable(k_ra8_mstp_eswm);
-}
-
 /* -----------------------------------------------------------------------
  * Frame-level NIC API.
  * -------------------------------------------------------------------- */

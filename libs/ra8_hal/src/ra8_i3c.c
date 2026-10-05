@@ -457,11 +457,6 @@ ra8_err_t ra8_i3c_enter_stop(void)
   return ra8_mstp_disable(k_ra8_mstp_i3c);
 }
 
-ra8_err_t ra8_i3c_exit_stop(void)
-{
-  return ra8_mstp_enable(k_ra8_mstp_i3c);
-}
-
 /* =============================================================================
  * Dynamic Address Assignment (ENTDAA / SETDASA / RSTDAA)
  * =============================================================================
