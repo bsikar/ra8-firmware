@@ -66,102 +66,11 @@ static const char* const s_tag = "MIPI_DSI";
 
 /* =============================================================================
  * Video mode
+ *
+ * video_configure, video_start, video_stop and set_video_timing live in Zig
+ * (mipi_dsi_video_abi.zig, RA8FW-652).
  * =============================================================================
  */
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_video_configure(const ra8_mipi_dsi_video_cfg_t* vcfg)
-{
-  RA8_CHECK_NULL_PTR(vcfg, s_tag, "vcfg must not be nullptr");
-  if ((uint32_t)vcfg->virtual_channel > (uint32_t)k_ra8_mipi_dsi_vc3) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-
-  /* HUM Ch 65.2 "VMSET1R : Video Mode Setting 1", p 3892 */
-  reg->VMSET1R = (((uint32_t)vcfg->video_mode_delay) << k_ra8_mipi_dsi_vmset1_dly_shift) &
-                 k_ra8_mipi_dsi_vmset1_dly_mask;
-
-  /* HUM Ch 65.2 "VMPPSETR : Video Mode Pixel Packet Setting", p 3896 */
-  uint32_t vmpp =
-    (((uint32_t)vcfg->pixel_format) << k_ra8_mipi_dsi_vmpp_dt_shift) & k_ra8_mipi_dsi_vmpp_dt_mask;
-  vmpp |= (((uint32_t)vcfg->virtual_channel) << k_ra8_mipi_dsi_vmpp_vc_shift) &
-          k_ra8_mipi_dsi_vmpp_vc_mask;
-  if (vcfg->sync_pulse) {
-    vmpp |= k_ra8_mipi_dsi_vmpp_txesync;
-  }
-  reg->VMPPSETR = vmpp;
-
-  /* HUM Ch 65.2 "VMVSSETR : Video Mode Vertical Sync Setting", p 3897 */
-  uint32_t vmvs = (((uint32_t)vcfg->vertical_sync_lines) & k_ra8_mipi_dsi_vmvs_vsa_mask);
-  vmvs |= (((uint32_t)vcfg->vertical_active_lines) << k_ra8_mipi_dsi_vmvs_vact_shift) &
-          k_ra8_mipi_dsi_vmvs_vact_mask;
-  if (vcfg->vsync_active_high) {
-    vmvs |= k_ra8_mipi_dsi_vmvs_vspol;
-  }
-  reg->VMVSSETR = vmvs;
-
-  /* HUM Ch 65.2 "VMVPSETR : Video Mode Vertical Porch Setting", p 3898 */
-  uint32_t vmvp = ((uint32_t)vcfg->vertical_back_porch) & k_ra8_mipi_dsi_vmvp_vbp_mask;
-  vmvp |= (((uint32_t)vcfg->vertical_front_porch) << k_ra8_mipi_dsi_vmvp_vfp_shift) &
-          k_ra8_mipi_dsi_vmvp_vfp_mask;
-  reg->VMVPSETR = vmvp;
-
-  /* HUM Ch 65.2 "VMHSSETR : Video Mode Horizontal Sync Setting", p 3899 */
-  uint32_t vmhs = ((uint32_t)vcfg->horizontal_sync_lines) & k_ra8_mipi_dsi_vmhs_hsa_mask;
-  vmhs |= (((uint32_t)vcfg->horizontal_active_pixels) << k_ra8_mipi_dsi_vmhs_hact_shift) &
-          k_ra8_mipi_dsi_vmhs_hact_mask;
-  if (vcfg->hsync_active_high) {
-    vmhs |= k_ra8_mipi_dsi_vmhs_hspol;
-  }
-  reg->VMHSSETR = vmhs;
-
-  /* HUM Ch 65.2 "VMHPSETR : Video Mode Horizontal Porch Setting", p 3899 */
-  uint32_t vmhp = ((uint32_t)vcfg->horizontal_back_porch) & k_ra8_mipi_dsi_vmhp_hbp_mask;
-  vmhp |= (((uint32_t)vcfg->horizontal_front_porch) << k_ra8_mipi_dsi_vmhp_hfp_shift) &
-          k_ra8_mipi_dsi_vmhp_hfp_mask;
-  reg->VMHPSETR = vmhp;
-
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_video_start(const ra8_mipi_dsi_video_cfg_t* vcfg)
-{
-  RA8_CHECK_NULL_PTR(vcfg, s_tag, "vcfg must not be nullptr");
-  volatile r_mipi_dsi_regs_t* reg   = ra8_mipi_dsi();
-  uint32_t                    vmset = k_ra8_mipi_dsi_vmset0_vstart;
-  if (vcfg->hsa_no_lp) {
-    vmset |= k_ra8_mipi_dsi_vmset0_hsanolp;
-  }
-  if (vcfg->hbp_no_lp) {
-    vmset |= k_ra8_mipi_dsi_vmset0_hbpnolp;
-  }
-  if (vcfg->hfp_no_lp) {
-    vmset |= k_ra8_mipi_dsi_vmset0_hfpnolp;
-  }
-  /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
-  reg->VMSET0R = vmset;
-  /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
-  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->VMSR,
-                                            k_ra8_mipi_dsi_vmsr_virdy,
-                                            k_ra8_mipi_dsi_vmsr_virdy);
-}
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_video_stop(void)
-{
-  volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
-  reg->VMSET0R = k_ra8_mipi_dsi_vmset0_vstop;
-  /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
-  const ra8_err_t err = priv_ra8_mipi_dsi_internal_wait_eq(&reg->VMSR,
-                                                           k_ra8_mipi_dsi_vmsr_stop,
-                                                           k_ra8_mipi_dsi_vmsr_stop);
-  if (err == k_ra8_ok) {
-    /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
-    reg->VMSCR = k_ra8_mipi_dsi_vmsr_clear_all;
-  }
-  return err;
-}
 
 /* =============================================================================
  * Status / IRQ
@@ -329,66 +238,6 @@ void ra8_mipi_dsi_dispatch(void)
  * Sweep 6 convenience surfaces
  * =============================================================================
  */
-
-/**
- * @enum ra8_mipi_dsi_timing_limits_t
- * @brief Per-field bit-width caps for ::ra8_mipi_dsi_video_timing_t.
- *
- * @details
- * HUM Ch 65.2 register fields impose these maxima:
- * VSA/HSA = 12 bits, V/HBP + V/HFP = 13 bits, V/HACT = 15 bits.
- * Used by ::ra8_mipi_dsi_set_video_timing to range-check inputs.
- */
-typedef enum : uint16_t {
-  k_ra8_mipi_dsi_timing_max_sync   = 0x0FFFU, /**< 12-bit field. */
-  k_ra8_mipi_dsi_timing_max_porch  = 0x1FFFU, /**< 13-bit field. */
-  k_ra8_mipi_dsi_timing_max_active = 0x7FFFU, /**< 15-bit field. */
-} ra8_mipi_dsi_timing_limits_t;
-
-[[nodiscard]] ra8_err_t ra8_mipi_dsi_set_video_timing(const ra8_mipi_dsi_video_timing_t* timing)
-{
-  RA8_CHECK_NULL_PTR(timing, s_tag, "timing must not be nullptr");
-
-  /* Range-check every field against its register-width limit. */
-  if ((timing->horizontal_sync > k_ra8_mipi_dsi_timing_max_sync) ||
-      (timing->vertical_sync > k_ra8_mipi_dsi_timing_max_sync)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((timing->horizontal_back_porch > k_ra8_mipi_dsi_timing_max_porch) ||
-      (timing->horizontal_front_porch > k_ra8_mipi_dsi_timing_max_porch) ||
-      (timing->vertical_back_porch > k_ra8_mipi_dsi_timing_max_porch) ||
-      (timing->vertical_front_porch > k_ra8_mipi_dsi_timing_max_porch)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((timing->horizontal_active > k_ra8_mipi_dsi_timing_max_active) ||
-      (timing->vertical_active > k_ra8_mipi_dsi_timing_max_active)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* Build a full video config with sensible defaults: RGB888 on VC0,
-   * sync-pulse off, blanking stays HS so the panel does not drop the
-   * link between lines. */
-  const ra8_mipi_dsi_video_cfg_t v = {
-    .pixel_format             = k_ra8_mipi_dsi_dt_pixel_rgb888,
-    .virtual_channel          = k_ra8_mipi_dsi_vc0,
-    .sync_pulse               = false,
-    .hsa_no_lp                = true,
-    .hbp_no_lp                = true,
-    .hfp_no_lp                = true,
-    .vsync_active_high        = true,
-    .hsync_active_high        = true,
-    .vertical_sync_lines      = timing->vertical_sync,
-    .vertical_active_lines    = timing->vertical_active,
-    .vertical_back_porch      = timing->vertical_back_porch,
-    .vertical_front_porch     = timing->vertical_front_porch,
-    .horizontal_sync_lines    = timing->horizontal_sync,
-    .horizontal_active_pixels = timing->horizontal_active,
-    .horizontal_back_porch    = timing->horizontal_back_porch,
-    .horizontal_front_porch   = timing->horizontal_front_porch,
-    .video_mode_delay         = 0U,
-  };
-  return ra8_mipi_dsi_video_configure(&v);
-}
 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_send_command_short(ra8_mipi_dsi_dt_t dt,
                                                         const uint8_t     params[2])
