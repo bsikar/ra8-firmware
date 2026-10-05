@@ -229,7 +229,6 @@ ra8_viewer_read_path(
        ra8_io_blockdev_cache.c
        ra8_io_blockdev_mram.c
        ra8_io_blockdev_ram.c
-       ra8_io_blockdev_sdhi.c
        ra8_io_blockdev_sdspi.c
        ra8_io_blockdev_usbmsc.c
        ra8_io_blockdev_vsource.c

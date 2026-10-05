@@ -172,3 +172,14 @@ export fn ra8_i3c_read(_: u8, _: u8, _: ?[*]u8, _: u32, _: bool) c_int {
 export fn ra8_i3c_transfer(_: u8, _: u8, _: ?[*]const u8, _: u32, _: ?[*]u8, _: u32) c_int {
     return 0;
 }
+
+// The archive root also emits the SDHI block device (RA8FW-715).
+export fn ra8_sdcard_read_blocks(_: u32, _: [*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdcard_write_blocks(_: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdcard_get_capacity(_: *u32) c_int {
+    return 0;
+}
