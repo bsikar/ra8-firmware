@@ -236,7 +236,6 @@ ra8_viewer_read_path(
        ra8_io_blockdev_xspi.c
        ra8_io_fsfmt.c
        ra8_io_i2c_bus.c
-       ra8_io_i2c_bus_i3c_compat.c
        ra8_io_stream_blockdev.c
        ra8_io_vfs.c
        ra8_io_vfs_namespace.c
