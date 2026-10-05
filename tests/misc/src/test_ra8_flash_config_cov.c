@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_flash_config_cov.c
- * @brief Coverage-completion tests for ra8_flash_config.c (ARC counters).
+ * @brief Coverage-completion tests for the flash ARC counters (libs/ra8_hal/src/flash_arc_abi.zig, moved from ra8_flash_config.c by RA8FW-802).
  *
  * @details
  * ra8_flash_config.c is exercised broadly by test_ra8_flash.c, but the
