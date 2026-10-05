@@ -58,9 +58,6 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
 
 // The archive root also emits the log unit; satisfy its imports.
 export fn ra8_log_set_byte_sink(_: ?log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *log.Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return 0;
-}
 
 // The archive root emits every other unit too; satisfy their imports.
 export fn ra8_sdramc_init() c_int {
@@ -68,11 +65,6 @@ export fn ra8_sdramc_init() c_int {
 }
 export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, value: u32) void {
     error_value = value;
-}
-
-// The stream_ram unit in the same archive needs this to link; unused here.
-export fn ra8_io_stream_bind(_: *anyopaque, _: *const anyopaque, _: ?*anyopaque) c_int {
-    return 0;
 }
 
 // The stream_uart unit in the same archive needs these to link; unused here.

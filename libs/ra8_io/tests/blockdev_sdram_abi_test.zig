@@ -33,9 +33,6 @@ export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, value: u32)
 
 // The archive root also emits the log unit; satisfy its imports.
 export fn ra8_log_set_byte_sink(_: ?log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *log.Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return 0;
-}
 
 extern fn ra8_io_blockdev_sdram_init(bd: ?*anyopaque, state: ?*anyopaque, block_count: u32) c_int;
 
@@ -104,11 +101,6 @@ test "success binds the window as a writable RAM device" {
     try std.testing.expectEqual(@as(u32, 64), state.block_count);
     try std.testing.expect(!state.read_only);
     try std.testing.expectEqual(@as(u32, 0), errors_logged);
-}
-
-// The stream_ram unit in the same archive needs this to link; unused here.
-export fn ra8_io_stream_bind(_: *anyopaque, _: *const anyopaque, _: ?*anyopaque) c_int {
-    return 0;
 }
 
 // The stream_uart unit in the same archive needs these to link; unused here.

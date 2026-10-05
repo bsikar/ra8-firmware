@@ -4,8 +4,8 @@
 //! C ABI of inc/ra8_io_stream_usbcdc.h (RA8FW-700): a write-only stream
 //! backend that sends on a USB CDC bulk-IN endpoint through
 //! ra8_usb_pal_ep_send. Replaces ra8_io_stream_usbcdc.c, which is deleted.
-//! The vtable is bound through ra8_io_stream_bind, which stays in
-//! ra8_io_stream.c.
+//! The vtable is bound through ra8_io_stream_bind, in
+//! ra8_io_stream_abi.zig.
 
 const log = @import("ra8_io_log_abi.zig");
 const ram = @import("ra8_io_stream_ram_abi.zig");

@@ -4,7 +4,7 @@
 //! C ABI of inc/ra8_io_stream_ram.h (RA8FW-698): a stream backend that
 //! captures written bytes into a caller-owned buffer. Replaces
 //! ra8_io_stream_ram.c, which is deleted. The vtable is bound through
-//! ra8_io_stream_bind, which stays in ra8_io_stream.c.
+//! ra8_io_stream_bind in ra8_io_stream_abi.zig.
 
 const Stream = @import("ra8_io_log_abi.zig").Stream;
 

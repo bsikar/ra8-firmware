@@ -121,9 +121,6 @@ export fn priv_ra8_io_vfs_resolve(path: [*:0]const u8, out: *?*ns.Slot, _: ?*u8,
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
-export fn ra8_io_stream_bind(_: *Stream, _: *const Iface, _: ?*anyopaque) c_int {
-    return 0;
-}
 export fn ra8_usb_hmsc_read10(_: u8, _: u32, _: u16, _: ?[*]u8) c_int {
     return 0;
 }
@@ -276,9 +273,6 @@ test "a directory cursor opens, steps and closes" {
 // The other units in the same archive need these to link; unused here.
 // The other units in the same archive need these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *io.log.Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return 0;
-}
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
     return 0;
 }

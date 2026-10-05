@@ -224,8 +224,7 @@ ra8_viewer_read_path(
 
 ra8_viewer_read_path(
   RA8_IO_SRC ${FW_ROOT}/libs/ra8_io/src
-  KEEP ra8_io_stream.c
-       ra8_io_blockdev_vsource.c
+  DROP ra8_io_blockdev_vsource.c
        ra8_io_blockdev_xspi.c
        ra8_io_fsfmt.c
        ra8_io_vfs.c

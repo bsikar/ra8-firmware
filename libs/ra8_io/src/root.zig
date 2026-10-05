@@ -24,6 +24,7 @@ pub const blockdev = @import("ra8_io_blockdev_abi.zig");
 pub const blockdev_mram = @import("ra8_io_blockdev_mram_abi.zig");
 pub const blockdev_cache = @import("ra8_io_blockdev_cache_abi.zig");
 pub const vfs_namespace = @import("ra8_io_vfs_namespace_abi.zig");
+pub const stream = @import("ra8_io_stream_abi.zig");
 
 comptime {
     _ = log;
@@ -46,4 +47,5 @@ comptime {
     _ = blockdev_mram;
     _ = blockdev_cache;
     _ = vfs_namespace;
+    _ = stream;
 }

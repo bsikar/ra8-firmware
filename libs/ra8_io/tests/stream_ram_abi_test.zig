@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! ra8_io_stream_ram_init/used and the bound write against fake ra8_log and
-//! ra8_io_stream entry points (RA8FW-698).
+//! ra8_io_stream_ram_init/used and the bound write against fake ra8_log entry points and
+//! the real ra8_io_stream_bind (RA8FW-698).
 
 const std = @import("std");
 const io = @import("ra8_io");
@@ -17,17 +17,8 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
 
-export fn ra8_io_stream_bind(_: *Stream, iface: *const ram.Iface, context: ?*anyopaque) c_int {
-    bound_iface = iface;
-    bound_ctx = context;
-    return ram.ok;
-}
-
 // The log unit in the same archive needs these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return ram.ok;
-}
 
 // The uart unit in the same archive needs these to link; unused here.
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
@@ -51,6 +42,12 @@ fn reset() void {
     bound_ctx = null;
 }
 
+/// Reads back what the real ra8_io_stream_bind stored in the handle.
+fn capture(s: *const Stream) void {
+    bound_iface = @ptrCast(@alignCast(s.iface));
+    bound_ctx = s.ctx;
+}
+
 fn write(bytes: []const u8, out: ?*u32) c_int {
     return bound_iface.?.write.?(bound_ctx, bytes.ptr, @intCast(bytes.len), out);
 }
@@ -62,7 +59,9 @@ test "init rejects each null argument and logs once per call" {
     var buf: [4]u8 = undefined;
     try std.testing.expectEqual(ram.err_null_ptr, ra8_io_stream_ram_init(null, &st, &buf, 4));
     try std.testing.expectEqual(ram.err_null_ptr, ra8_io_stream_ram_init(&s, null, &buf, 4));
+    capture(&s);
     try std.testing.expectEqual(ram.err_null_ptr, ra8_io_stream_ram_init(&s, &st, null, 4));
+    capture(&s);
     try std.testing.expectEqual(@as(u32, 3), errors_logged);
     try std.testing.expect(bound_iface == null);
 }
@@ -73,6 +72,7 @@ test "init rejects a zero capacity without logging" {
     var st: ram.State = undefined;
     var buf: [4]u8 = undefined;
     try std.testing.expectEqual(ram.err_invalid_size, ra8_io_stream_ram_init(&s, &st, &buf, 0));
+    capture(&s);
     try std.testing.expectEqual(@as(u32, 0), errors_logged);
 }
 
@@ -82,6 +82,7 @@ test "init binds the ram vtable with the state as context" {
     var st: ram.State = undefined;
     var buf: [4]u8 = undefined;
     try std.testing.expectEqual(ram.ok, ra8_io_stream_ram_init(&s, &st, &buf, 4));
+    capture(&s);
     try std.testing.expect(bound_iface == &ram.iface);
     try std.testing.expect(bound_ctx == @as(?*anyopaque, &st));
     try std.testing.expect(ram.iface.flush == null);
@@ -94,6 +95,7 @@ test "writes append and used reports the count" {
     var st: ram.State = undefined;
     var buf: [8]u8 = undefined;
     _ = ra8_io_stream_ram_init(&s, &st, &buf, 8);
+    capture(&s);
     var n: u32 = 0;
     try std.testing.expectEqual(ram.ok, write("ab", &n));
     try std.testing.expectEqual(ram.ok, write("cd", null));
@@ -110,6 +112,7 @@ test "a write past capacity keeps what fits and returns no_mem" {
     var st: ram.State = undefined;
     var buf: [3]u8 = undefined;
     _ = ra8_io_stream_ram_init(&s, &st, &buf, 3);
+    capture(&s);
     var n: u32 = 99;
     try std.testing.expectEqual(ram.err_no_mem, write("wxyz", &n));
     try std.testing.expectEqual(@as(u32, 3), n);
