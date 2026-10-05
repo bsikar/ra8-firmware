@@ -110,7 +110,7 @@ typedef void (*ra8_dma_complete_fn_t)(void* ctx);
  * - ``ctx`` : Passed to ``on_complete``.
  */
 /* cppcheck cannot see tests/ so it flags every ra8_dma_request_t
- * field as unused; the fields are read in ra8_dma.c and in
+ * field as unused; the fields are read in dma_abi.zig and in
  * tests/mocks/src/ra8_fake_dma.c. */
 typedef struct {
   uintptr_t             src_addr;    /**< Src address. */
