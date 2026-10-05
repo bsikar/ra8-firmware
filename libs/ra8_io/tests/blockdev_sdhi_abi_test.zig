@@ -216,3 +216,14 @@ test "caps pass a capacity failure through and reject a null out" {
     try std.testing.expectEqual(sdhi.err_null_ptr, vt.get_caps.?(null, null));
     try std.testing.expectEqual(@as(u32, 1), cap_calls);
 }
+
+// The blockdev_usbmsc unit in the same archive needs these to link; unused here.
+export fn ra8_usb_hmsc_read10(_: u8, _: u32, _: u16, _: ?[*]u8) c_int {
+    return 0;
+}
+export fn ra8_usb_hmsc_write10(_: u8, _: u32, _: u16, _: ?[*]const u8) c_int {
+    return 0;
+}
+export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
+    return 0;
+}
