@@ -26,7 +26,8 @@
     "tests/i2c_config_test.zig",
     "tests/dma_test.zig",
     "tests/usb_phid_test.zig",
-    "tests/rmac_phy_test.zig"
+    "tests/rmac_phy_test.zig",
+    "tests/rmac_mgmt_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -109,5 +110,5 @@
     "tests/i2c_config_test.zig",
     "src/i2c_config_abi.zig"
   ],
-  "minimum_tests": 673
+  "minimum_tests": 677
 }

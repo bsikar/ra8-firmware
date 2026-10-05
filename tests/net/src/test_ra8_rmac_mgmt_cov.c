@@ -4,7 +4,8 @@
  *
  * @details
  * Companion coverage test to test_ra8_rmac.c. It targets the
- * host-reachable branches of ra8_rmac_mgmt.c that the existing suite
+ * host-reachable branches of the former ra8_rmac_mgmt.c (now
+ * libs/ra8_hal/src/internal/rmac_mgmt.zig and rmac_phy.zig) that the existing suite
  * leaves uncovered, using the same pure-RAM MMIO backing
  * (::ra8_fake_mmap) that every RMAC test relies on:
  *

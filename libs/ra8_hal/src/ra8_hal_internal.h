@@ -57,12 +57,10 @@ RA8_INTERNAL static inline bool internal_ra8_dotf_internal_channel_in_range(uint
 }
 
 /* =============================================================================
- * ra8_rmac: split between ra8_rmac.c (lifecycle / config / MDIO primitives /
- * status / dispatch) and ra8_rmac_mgmt.c (statistic-counter snapshot + IEEE
- * 802.3 Clause-22 PHY management). Both translation units range-check the
- * port argument before touching the RMAC register window, so the port-bounds
- * predicate is shared here as a header ``static inline`` -- each TU gets its
- * own copy with no external linkage symbol, keeping the split link-clean.
+ * ra8_rmac: ra8_rmac.c keeps lifecycle / config / MDIO primitives / status /
+ * dispatch. The status read/clear, statistic snapshot and Clause-22 PHY
+ * helpers are Zig (rmac_mgmt_abi.zig, rmac_phy_abi.zig, RA8FW-744/748). The
+ * port-bounds predicate stays a header ``static inline`` for ra8_rmac.c.
  * =============================================================================
  */
 
@@ -70,7 +68,7 @@ RA8_INTERNAL static inline bool internal_ra8_dotf_internal_channel_in_range(uint
  * @brief Range-check an RMAC port argument.
  *
  * @details
- * Shared between ``ra8_rmac.c`` and ``ra8_rmac_mgmt.c``. Defined ``static
+ * Used by ``ra8_rmac.c`` (once shared with ra8_rmac_mgmt.c). Defined ``static
  * inline`` in this private header so each translation unit gets its own copy
  * with no external linkage symbol, keeping the split link-clean while
  * preserving the original single-definition behavior.
