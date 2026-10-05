@@ -32,29 +32,25 @@ pub const app_table = @import("app_table.zig");
 pub const CrossApp = app_table.CrossApp;
 pub const cross_apps = app_table.cross_apps;
 
-/// A name in `LIBS` that contributes translation units from somewhere other
-/// than `libs/<name>/src`. `ra8_io_bus` is the only one today and it is the
-/// sharp case: there is no `libs/ra8_io_bus` directory at all, so the LIBS
-/// loop's glob for it is silently empty and a graph built from the directory
-/// listing compiles NOTHING for it. cmake/ra8_app/sources.cmake instead
-/// compiles just the SPI/I2C bus facades out of `libs/ra8_io` and puts
-/// `libs/ra8_io/inc` on the include path -- the bus contracts without the rest
-/// of the ra8_io fabric (no ra8_fs, no ra8_sdmmc_spi, no stream layer).
+/// A name in `LIBS` with no `libs/<name>` directory of its own. `ra8_io_bus`
+/// is the only one today: it is the narrow way to reach the ra8_io SPI/I2C bus
+/// facades without the rest of the ra8_io fabric (no ra8_fs, no ra8_sdmmc_spi,
+/// no stream layer). Since RA8FW-714 those facades are all Zig, so the alias
+/// contributes no C translation units: cmake/ra8_app/sources.cmake puts
+/// `libs/ra8_io/inc` on the include path and links the ra8_io Zig archive.
 ///
 /// Encoded here for the same reason the board opt-in gate is: nothing on disk
-/// says a library with no directory contributes sources, and getting it wrong
-/// is a link failure at the end of a 200-TU cross-build rather than anything
-/// that names the rule.
+/// says a library with no directory contributes an include path and an
+/// archive, and getting it wrong is a link failure at the end of a 200-TU
+/// cross-build rather than anything that names the rule.
 pub const LibraryAlias = struct {
     name: []const u8,
     /// Skipped when the app also names one of these: the fuller library
     /// already compiles the same translation units.
     superseded_by: []const []const u8,
-    source_dir: []const u8,
-    source_prefixes: []const []const u8,
     include_dir: []const u8,
-    /// The Zig archive the alias links beside its C units, because some of
-    /// its units are Zig now (RA8FW-709: the RIIC binder). Null when none.
+    /// The Zig archive the alias links, because the units it stands for are
+    /// Zig now (RA8FW-709 onward; all of them since RA8FW-714). Null when none.
     zig_archive: ?[]const u8,
 };
 
@@ -62,8 +58,6 @@ pub const library_aliases = [_]LibraryAlias{
     .{
         .name = "ra8_io_bus",
         .superseded_by = &.{"ra8_io"},
-        .source_dir = "libs/ra8_io/src",
-        .source_prefixes = &.{ "ra8_io_spi_bus", "ra8_io_i2c_bus" },
         .include_dir = "libs/ra8_io/inc",
         .zig_archive = "ra8_io",
     },
@@ -512,25 +506,6 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         const library_dir = b.fmt("libs/{s}/src", .{library});
         const exists = if (b.build_root.handle.access(library_dir, .{})) |_| true else |_| false;
         if (exists) collectCSources(b, library_dir, &sources);
-    }
-    for (library_aliases) |alias| {
-        if (!declaresLibrary(app, alias.name)) continue;
-        var superseded = false;
-        for (alias.superseded_by) |fuller| {
-            if (declaresLibrary(app, fuller)) superseded = true;
-        }
-        if (superseded) continue;
-        var aliased = std.ArrayList([]const u8).init(b.allocator);
-        collectCSources(b, alias.source_dir, &aliased);
-        for (aliased.items) |source| {
-            const name = std.fs.path.basename(source);
-            for (alias.source_prefixes) |prefix| {
-                if (std.mem.startsWith(u8, name, prefix)) {
-                    sources.append(source) catch @panic("OOM");
-                    break;
-                }
-            }
-        }
     }
 
     // OFF_TARGET_LIBS, last of the whole list and at their own preprocessor

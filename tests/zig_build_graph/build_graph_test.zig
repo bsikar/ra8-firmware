@@ -85,24 +85,22 @@ test "board opt-in gate opens for the app that names the library" {
     );
 }
 
-test "a library with no directory of its own still contributes sources" {
+test "a library with no directory of its own still contributes an archive" {
     // ra8_io_bus has no libs/ra8_io_bus at all, so a graph built from the
-    // directory listing compiles nothing for it and the link fails 200 TUs
-    // later. The alias is what makes it six real translation units out of
-    // libs/ra8_io, plus that library's include directory.
+    // directory listing gives it nothing and the link fails 200 TUs later.
+    // Its bus facades are all Zig now (RA8FW-714), so the alias contributes
+    // no C: it is libs/ra8_io's include directory plus the ra8_io archive.
     const alias = sources.library_aliases[0];
     try std.testing.expectEqualStrings("ra8_io_bus", alias.name);
-    try std.testing.expectEqualStrings("libs/ra8_io/src", alias.source_dir);
     try std.testing.expectEqualStrings("libs/ra8_io/inc", alias.include_dir);
     try std.testing.expect(sources.declaresLibrary(library_app, "ra8_io_bus"));
     try std.testing.expect(!sources.declaresLibrary(bare_app, "ra8_io_bus"));
 
     // And it is skipped for an app that names the fuller library, which
-    // already compiles the same TUs -- compiling them twice is a duplicate
-    // symbol at the link, not a warning.
+    // already links the same archive.
     try std.testing.expectEqualStrings("ra8_io", alias.superseded_by[0]);
 
-    // Its RIIC binder is Zig now, so the alias links the ra8_io archive too.
+    // The facades it stands for live in the ra8_io archive.
     try std.testing.expectEqualStrings("ra8_io", alias.zig_archive.?);
 }
 

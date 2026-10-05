@@ -842,33 +842,22 @@ macro(_ra8_app_collect_sources)
     )
   endif()
 
-  # A bare "ra8_io_bus" in LIBS pulls in just the ra8_io SPI/I2C bus facades
-  # (ra8_io_spi_bus*.c, ra8_io_i2c_bus*.c) plus the libs/ra8_io/inc include
-  # path, for apps that bind a device driver's bus seam (ra8_spi_bus_ops_t /
-  # ra8_i2c_bus_ops_t) without the rest of the ra8_io fabric. The bus facade
-  # TUs depend only on ra8_hal drivers, which every app already compiles, so
-  # -- unlike the full "ra8_io" -- this needs no ra8_fs / ra8_sdmmc_spi /
-  # ra8_usb_pal companions. Mirrors the bare-"miniz" pseudo-lib above; the
-  # LIBS loop's libs/ra8_io_bus/src glob is harmlessly empty. Skipped when
-  # the full "ra8_io" is present, which already compiles these TUs. A bare
-  # "ra8_camera" gets the same treatment: the board camera adapter it needs
-  # (below) is written against the same I2C facade, and camera_capture
+  # A bare "ra8_io_bus" in LIBS gets just the ra8_io SPI/I2C bus facades,
+  # for apps that bind a device driver's bus seam (ra8_spi_bus_ops_t /
+  # ra8_i2c_bus_ops_t) without the rest of the ra8_io fabric (no ra8_fs /
+  # ra8_sdmmc_spi / ra8_usb_pal companions). The facades are all Zig now
+  # (RA8FW-707, RA8FW-709, RA8FW-711, RA8FW-714), so this adds no C: only the
+  # libs/ra8_io/inc include path and the ra8_io archive, which is built with
+  # one section per function so the link keeps only the bus units these apps
+  # reach. The LIBS loop's libs/ra8_io_bus/src glob is harmlessly empty.
+  # Skipped when the full "ra8_io" is present, which links the same archive.
+  # A bare "ra8_camera" gets the same treatment: the board camera adapter it
+  # needs (below) is written against the same I2C facade, and camera_capture
   # declares only "ra8_camera ra8_ov5640".
   if((("ra8_io_bus" IN_LIST _RA8_APP_LIBS) OR ("ra8_camera" IN_LIST _RA8_APP_LIBS))
      AND (NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
   )
-    file(
-      GLOB
-      _ra8_io_bus_srcs
-      CONFIGURE_DEPENDS
-      ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_spi_bus*.c
-      ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_i2c_bus*.c
-    )
-    list(APPEND _ra8_lib_extra ${_ra8_io_bus_srcs})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_io/inc)
-    # Part of the facade is Zig now (RA8FW-709: the RIIC binder), so link the
-    # ra8_io archive too. It is built with one section per function, so the
-    # link keeps only the bus units these apps reach.
     list(APPEND _ra8_lib_zig "ra8_io|${RA8_REPO_ROOT}/libs/ra8_io")
   endif()
 
