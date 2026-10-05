@@ -7,8 +7,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // boardAgentSurface sets the whole board-agent environment to values that
@@ -18,16 +21,18 @@ import (
 // taken before any of them is read.
 func boardAgentSurface(t *testing.T) string {
 	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("board-agent service configuration and state checks run only on Linux; other hosts are refused before service setup")
+	}
 	// The state store refuses any directory the rest of the machine can read
-	// or write, and a temporary directory is created against the process
-	// umask, which on a root build box leaves it 0755. So the fixture makes
-	// its own private directory rather than trusting the one it was given.
+	// or write. Protect the fixture explicitly rather than relying on its
+	// inherited ACL or mode.
 	home := filepath.Join(t.TempDir(), "private")
 	if err := os.Mkdir(home, 0o700); err != nil {
 		t.Fatalf("plant private directory: %v", err)
 	}
-	if err := os.Chmod(home, 0o700); err != nil {
-		t.Fatalf("seal private directory: %v", err)
+	if err := testprivatefile.OwnerOnly(home); err != nil {
+		t.Fatalf("restrict private directory to its owner: %v", err)
 	}
 	t.Setenv(envServerURL, "https://ra8ci.invalid:8443")
 	t.Setenv(envServerCA, filepath.Join(home, "ca.pem"))
@@ -159,8 +164,11 @@ func TestTheBoardAgentRefusesAStateFileItCouldNotTrust(t *testing.T) {
 	t.Run("a directory the rest of the machine can write", func(t *testing.T) {
 		home := boardAgentSurface(t)
 		shared := filepath.Join(home, "shared")
-		if err := os.Mkdir(shared, 0o755); err != nil {
+		if err := os.Mkdir(shared, 0o700); err != nil {
 			t.Fatalf("plant shared directory: %v", err)
+		}
+		if err := testprivatefile.OtherUsersWritable(shared); err != nil {
+			t.Fatalf("grant broad write access to state directory: %v", err)
 		}
 		t.Setenv(envBoardStateFile, filepath.Join(shared, "highwater.json"))
 		err := runBoardAgent(context.Background())
@@ -172,8 +180,11 @@ func TestTheBoardAgentRefusesAStateFileItCouldNotTrust(t *testing.T) {
 	t.Run("a state file the rest of the machine can read", func(t *testing.T) {
 		home := boardAgentSurface(t)
 		loose := filepath.Join(home, "loose.json")
-		if err := os.WriteFile(loose, []byte("{}"), 0o644); err != nil {
+		if err := os.WriteFile(loose, []byte("{}"), 0o600); err != nil {
 			t.Fatalf("plant loose state: %v", err)
+		}
+		if err := testprivatefile.OtherUsersReadable(loose); err != nil {
+			t.Fatalf("grant broad read access to state file: %v", err)
 		}
 		t.Setenv(envBoardStateFile, loose)
 		err := runBoardAgent(context.Background())

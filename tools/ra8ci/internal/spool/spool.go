@@ -359,9 +359,9 @@ func (s *Spool) write(name string, value any) error {
 		return err
 	}
 	defer os.Remove(file.Name())
-	if err := file.Chmod(0600); err != nil {
+	if err := privatefile.RestrictFile(file); err != nil {
 		file.Close()
-		return err
+		return fmt.Errorf("restrict private spool record: %w", err)
 	}
 	enc := json.NewEncoder(file)
 	if err := enc.Encode(value); err != nil {

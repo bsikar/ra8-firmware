@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // plantedCapture writes a capture file that passes every shape check
@@ -39,10 +41,14 @@ func TestHILVerifyCaptureRefusesACaptureItCannotOpen(t *testing.T) {
 		t.Skip("running as root, which ignores the permission bits under test")
 	}
 	capture := plantedCapture(t)
-	if err := os.Chmod(capture, 0o000); err != nil {
-		t.Fatalf("seal capture: %v", err)
+	if err := testprivatefile.Unreadable(capture); err != nil {
+		t.Fatalf("deny owner read access to capture: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(capture, 0o600) })
+	t.Cleanup(func() {
+		if err := testprivatefile.OwnerOnly(capture); err != nil {
+			t.Errorf("restore owner-only capture access: %v", err)
+		}
+	})
 
 	err := hilVerifyCaptureCommand(context.Background(), []string{
 		"--manifest", "examples/does-not-matter/hil.conf", "--capture", capture,

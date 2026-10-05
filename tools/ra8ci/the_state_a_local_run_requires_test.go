@@ -7,7 +7,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // A local task run spends the box: it shells out to real scripts and it writes
@@ -21,7 +24,7 @@ import (
 // arranged and hands back the exit code.
 func refusedLocalRun(t *testing.T) int {
 	t.Helper()
-	return runLocalTask(context.Background(), []string{"ascii"})
+	return runLocalTask(context.Background(), []string{"assert-casts"})
 }
 
 func TestALocalTaskRefusesAStateDirectoryItCannotTrust(t *testing.T) {
@@ -45,8 +48,11 @@ func TestALocalTaskRefusesAStateDirectoryItCannotTrust(t *testing.T) {
 		},
 		"a state directory other users can read": func(t *testing.T) string {
 			outbox := filepath.Join(t.TempDir(), "outbox")
-			if err := os.MkdirAll(outbox, 0o755); err != nil {
+			if err := os.MkdirAll(outbox, 0o700); err != nil {
 				t.Fatal(err)
+			}
+			if err := testprivatefile.OtherUsersReadable(outbox); err != nil {
+				t.Fatalf("grant broad access to state directory: %v", err)
 			}
 			return outbox
 		},
@@ -77,23 +83,29 @@ func TestALocalTaskRefusesAStateDirectoryItCannotTrust(t *testing.T) {
 // same path is taken once it is private, which is what keeps the refusal from
 // reading as this code sometimes declining a directory it made itself.
 func TestALocalTaskTakesAStateDirectoryOnceItIsPrivate(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("assert-casts is catalog-supported on Linux and Windows, not macOS")
+	}
 	submittableCheckout(t)
 	outbox := filepath.Join(t.TempDir(), "outbox")
-	if err := os.MkdirAll(outbox, 0o755); err != nil {
+	if err := os.MkdirAll(outbox, 0o700); err != nil {
 		t.Fatal(err)
+	}
+	if err := testprivatefile.OtherUsersReadable(outbox); err != nil {
+		t.Fatalf("grant broad access to state directory: %v", err)
 	}
 	t.Setenv("RA8CI_STATE_DIR", outbox)
 
 	if status := refusedLocalRun(t); status != 1 {
 		t.Fatalf("exit=%d; want 1 while the directory is readable by others", status)
 	}
-	if err := os.Chmod(outbox, 0o700); err != nil {
-		t.Fatal(err)
+	if err := testprivatefile.OwnerOnly(outbox); err != nil {
+		t.Fatalf("restrict state directory to its owner: %v", err)
 	}
 
-	// Now the run reaches the task itself. The fixture checkout carries the
-	// catalog and no scripts, so the task fails; what matters is that it got
-	// far enough to record an attempt.
+	// Now the run reaches a Windows-supported task. The task result matters
+	// less than proving the attempt was recorded after the directory passed
+	// its privacy check.
 	if status := refusedLocalRun(t); status == 1 {
 		t.Fatal("a private state directory was still refused as untrusted")
 	}
