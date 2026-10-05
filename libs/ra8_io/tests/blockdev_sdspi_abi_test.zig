@@ -265,3 +265,17 @@ test "caps pass a capacity failure through and reject a null out" {
     try std.testing.expectEqual(sdspi.err_null_ptr, vt.get_caps.?(null, null));
     try std.testing.expectEqual(@as(u32, 1), cap_calls);
 }
+
+// ra8_io_vfs_namespace_abi.zig reaches these in ra8_io_vfs.c; unused here.
+export fn priv_ra8_io_vfs_streq(_: [*:0]const u8, _: [*:0]const u8) bool {
+    return false;
+}
+export fn priv_ra8_io_vfs_find(_: [*:0]const u8, _: ?*u8) ?*io.vfs_namespace.Slot {
+    return null;
+}
+export fn priv_ra8_io_vfs_split(_: [*:0]const u8, _: [*]u8, _: *?[*:0]const u8) c_int {
+    return 0;
+}
+export fn priv_ra8_io_vfs_resolve(_: [*:0]const u8, _: *?*io.vfs_namespace.Slot, _: ?*u8, _: *?[*:0]const u8) c_int {
+    return 0;
+}

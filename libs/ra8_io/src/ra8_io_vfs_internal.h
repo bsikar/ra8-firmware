@@ -10,7 +10,7 @@
  * The named-mount dispatcher is implemented by two translation units. The mount
  * table, its fixed storage, and the open-stream facade live in `ra8_io_vfs.c`;
  * the path-namespace operations (removal, rename, metadata, listing, directory
- * cursors, and directory creation) live in `ra8_io_vfs_namespace.c`. Both need
+ * cursors, and directory creation) live in `ra8_io_vfs_namespace_abi.zig`. Both need
  * the fixed slot layout and the bounded name/path resolvers declared here.
  *
  * The mount and open-file tables themselves stay private to `ra8_io_vfs.c`: the
