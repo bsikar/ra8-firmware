@@ -269,17 +269,25 @@ SECTIONS
     .option_setting_otp_pbps_sec OTP_PBPS_SEC_ADDR : { KEEP(*(.option_setting_otp_pbps_sec)) } > OFS_OTP
     .option_setting_otp_zhuk OTP_ZHUK_ADDR : { KEEP(*(.option_setting_otp_zhuk)) } > OFS_OTP
 
+    /* ---- GOT: read-only, in MRAM ----
+     * The libraries build with pic = true, so Zig code reaches externs
+     * through GOT slots. This image is statically linked at fixed addresses,
+     * so every slot is a link-time constant: keeping it in MRAM makes it valid
+     * before Reset_Handler copies .data. SystemInit's ns_usb_handoff profile
+     * calls Zig board code at that point (RA8FW-691). */
+    .got : ALIGN(4)
+    {
+        *(.got)
+        *(.got.*)
+        *(.got.plt)
+    } > MRAM
+
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)
     {
         g_ra8_ls_sdata = .;
         *(.data)
         *(.data.*)
-        /* The GOT is initialised data too: left outside this section it
-         * lands past g_ra8_ls_edata, and Reset_Handler never copies it. */
-        *(.got)
-        *(.got.*)
-        *(.got.plt)
         g_ra8_ls_edata = .;
     } > SRAM AT > MRAM
 
