@@ -81,3 +81,75 @@ test "tap outside rows is declined without changing state or damage" {
     try std.testing.expect(!list.has_selection);
     try std.testing.expectEqual(abi.Rect{ .x = 0, .y = 0, .w = 0, .h = 0 }, list.damage);
 }
+
+var routed_row: u16 = 0;
+var routed_element: u8 = 0;
+var routed_element_action: u16 = 0;
+
+fn selectedElement(_: *abi.Widget, row: u16, element: u8, action_id: u16) callconv(.c) void {
+    routed_row = row;
+    routed_element = element;
+    routed_element_action = action_id;
+}
+
+test "two-button rows report each element and limit damage to that button" {
+    const variant_rows = [_]abi.Row{.{
+        .title = "Apps",
+        .subtitle = null,
+        .trailing_text = null,
+        .action_id = 30,
+        .trailing = .none,
+        .variant = .two_buttons,
+        .button_1_text = "Open",
+        .button_1_action_id = 31,
+        .button_2_text = "Remove",
+        .button_2_action_id = 32,
+    }};
+    var w = widget();
+    var list = listDescriptor();
+    list.rows = &variant_rows;
+    list.count = variant_rows.len;
+    list.on_select_element = selectedElement;
+    try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_list_init(&w, &list));
+
+    const first = abi.Event{ .kind = .touch, .reserved = 0, .button_id = 0, .x = 85, .y = 35 };
+    try std.testing.expect(w.vt.?.on_input.?(&w, &first));
+    try std.testing.expectEqual(@as(u16, 0), routed_row);
+    try std.testing.expectEqual(@intFromEnum(abi.Element.button_1), routed_element);
+    try std.testing.expectEqual(@as(u16, 31), routed_element_action);
+    try std.testing.expectEqual(abi.Rect{ .x = 70, .y = 20, .w = 30, .h = 40 }, list.damage);
+
+    const second = abi.Event{ .kind = .touch, .reserved = 0, .button_id = 0, .x = 110, .y = 35 };
+    try std.testing.expect(w.vt.?.on_input.?(&w, &second));
+    try std.testing.expectEqual(@intFromEnum(abi.Element.button_2), routed_element);
+    try std.testing.expectEqual(@as(u16, 32), routed_element_action);
+    try std.testing.expectEqual(abi.Rect{ .x = 100, .y = 20, .w = 30, .h = 40 }, list.damage);
+}
+
+test "toggle-help rows flip the value and damage only the checkbox" {
+    var checked = false;
+    const variant_rows = [_]abi.Row{.{
+        .title = "Airplane mode",
+        .subtitle = null,
+        .trailing_text = null,
+        .action_id = 41,
+        .trailing = .none,
+        .variant = .toggle_help,
+        .help_text = "Disable wireless radios",
+        .toggle_value = &checked,
+    }};
+    var w = widget();
+    var list = listDescriptor();
+    list.rows = &variant_rows;
+    list.count = variant_rows.len;
+    list.on_select_element = selectedElement;
+    try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_list_init(&w, &list));
+
+    const event = abi.Event{ .kind = .touch, .reserved = 0, .button_id = 0, .x = 94, .y = 30 };
+    try std.testing.expect(w.vt.?.on_input.?(&w, &event));
+    try std.testing.expect(checked);
+    try std.testing.expectEqual(@as(u16, 0), routed_row);
+    try std.testing.expectEqual(@intFromEnum(abi.Element.toggle), routed_element);
+    try std.testing.expectEqual(@as(u16, 41), routed_element_action);
+    try std.testing.expectEqual(abi.Rect{ .x = 90, .y = 26, .w = 28, .h = 28 }, list.damage);
+}
