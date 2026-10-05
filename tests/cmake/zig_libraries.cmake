@@ -815,6 +815,17 @@ ra8_add_zig_library(
   ra8_hal
 )
 
+# Partly migrated (RA8FW-654, RA8FW-697): ported ra8_io units (the log sink
+# adapter, the SDRAM block-device backend), beside its remaining C.
+ra8_add_zig_library(
+  NAME
+  ra8_io
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_io
+  LIBRARY_NAME
+  ra8_io
+)
+
 include(${CMAKE_CURRENT_LIST_DIR}/zig_link_order.cmake)
 
 # Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved
