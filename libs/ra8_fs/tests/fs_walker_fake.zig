@@ -30,6 +30,17 @@ pub var checksum_bytes: u32 = 0;
 pub var stamped: [3]?*const c.ra8_fs_datetime_t = .{ null, null, null };
 pub var stamp_calls: u32 = 0;
 
+// Free-space side: a 32-entry FAT, a two-sector exFAT bitmap at LBA 100.
+pub const bitmap_lba: u64 = 100;
+pub var fat: [32]u32 = undefined;
+pub var fat_err: u16 = 0;
+pub var fat_reads: u32 = 0;
+pub var free_cached: u32 = 0xFFFF_FFFF;
+pub var bitmap: [1024]u8 = undefined;
+pub var bitmap_err: u16 = 0;
+pub var io_sector: [512]u8 = undefined;
+pub var io_reads: u32 = 0;
+
 pub fn mount() *const c.ra8_fs_mount_t {
     return &mount_store;
 }
@@ -55,6 +66,13 @@ pub fn reset(fs_type: u8) void {
     checksum_bytes = 0;
     stamped = .{ null, null, null };
     stamp_calls = 0;
+    fat = [_]u32{0} ** 32;
+    fat_err = 0;
+    fat_reads = 0;
+    free_cached = 0xFFFF_FFFF;
+    bitmap = [_]u8{0} ** 1024;
+    bitmap_err = 0;
+    io_reads = 0;
 }
 
 export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.C) void {
@@ -140,8 +158,14 @@ export fn priv_sec_walk() callconv(.C) [*c]u8 {
 }
 
 export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.C) u16 {
-    _ = .{ m, lba, buf };
-    return sector_read_err;
+    _ = m;
+    if (sector_read_err != 0) return sector_read_err;
+    if (lba >= bitmap_lba and lba < bitmap_lba + 2) {
+        const at: usize = @intCast((lba - bitmap_lba) * 512);
+        @memcpy(buf[0..512], bitmap[at..][0..512]);
+        io_reads += 1;
+    }
+    return 0;
 }
 
 export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]const u8) callconv(.C) u16 {
@@ -166,4 +190,48 @@ export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_dat
 
 export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.C) void {
     stamp(entry, create, modify, access);
+}
+
+export fn priv_sec_io() callconv(.C) [*c]u8 {
+    return &io_sector;
+}
+
+export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+    _ = m;
+    return 512;
+}
+
+export fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+    _ = m;
+    return 4096;
+}
+
+export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.C) u64 {
+    _ = m;
+    return if (clus == 3) bitmap_lba else @as(u64, clus) * 8;
+}
+
+export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.C) u16 {
+    _ = m;
+    out_clus.* = 3;
+    out_len.* = 1024;
+    return bitmap_err;
+}
+
+export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) callconv(.C) u16 {
+    _ = m;
+    fat_reads += 1;
+    if (fat_err != 0) return fat_err;
+    out.* = fat[clus];
+    return 0;
+}
+
+export fn priv_free_count_peek(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+    _ = m;
+    return free_cached;
+}
+
+export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.C) void {
+    _ = m;
+    free_cached = n;
 }

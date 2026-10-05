@@ -9,10 +9,12 @@ pub const lock = @import("ra8_fs_lock_abi.zig");
 pub const exfat_label = @import("ra8_fs_exfat_label_abi.zig");
 pub const attr = @import("ra8_fs_attr_abi.zig");
 pub const utime = @import("ra8_fs_utime_abi.zig");
+pub const space = @import("ra8_fs_space_abi.zig");
 
 comptime {
     _ = lock;
     _ = exfat_label;
     _ = attr;
     _ = utime;
+    _ = space;
 }
