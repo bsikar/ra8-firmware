@@ -489,7 +489,7 @@ test "a gated library unit is dropped unless its companion library is named" {
 
     // Every other unit out of the same directory stays.
     try std.testing.expect(
-        !sources.isGatedOutLibrarySource(deep_stack_app, "libs/ra8_io/src/ra8_io_fsfmt.c"),
+        !sources.isGatedOutLibrarySource(deep_stack_app, "libs/ra8_io/src/ra8_io_blockdev_xspi.c"),
     );
 
     // And the gate is keyed on the whole path, not on a name fragment: an

@@ -65,6 +65,13 @@ fn dir_close_op(_: ?*anyopaque) callconv(.c) c_int {
 }
 
 const full_ops = ns.Ops{
+    .probe = @ptrCast(&probe_op),
+    .open = @ptrCast(&noop_op),
+    .close = @ptrCast(&noop_op),
+    .read = @ptrCast(&noop_op),
+    .seek = @ptrCast(&noop_op),
+    .tell = @ptrCast(&noop_op),
+    .size = @ptrCast(&noop_op),
     .mount = @ptrCast(&mount_op),
     .unmount = @ptrCast(&unmount_op),
     .stat = &stat_op,
@@ -91,7 +98,7 @@ const rw_caps = ns.Caps{
     .directory_workspace_align = 8,
     .max_open_directories = 2,
 };
-var format = ns.Format{ .caps = rw_caps, .ops = &full_ops };
+var format = ns.Format{ .name = "fake", .caps = rw_caps, .ops = &full_ops };
 
 /// The real mount table holds one mount, "sd", mounted through these fakes.
 fn mount_op(_: *const anyopaque, out: *?*anyopaque) callconv(.c) c_int {
@@ -101,12 +108,14 @@ fn mount_op(_: *const anyopaque, out: *?*anyopaque) callconv(.c) c_int {
 fn unmount_op(_: ?*anyopaque) callconv(.c) c_int {
     return 0;
 }
-export fn ra8_io_fsfmt_probe(_: *const anyopaque, out: *?*const ns.Format) c_int {
-    out.* = &format;
+fn probe_op(_: *const anyopaque) callconv(.c) bool {
+    return true;
+}
+fn noop_op() callconv(.c) c_int {
     return 0;
 }
-export fn ra8_io_fsfmt_get_builtin(_: u8, _: *?*const ns.Format) c_int {
-    return ns.err_not_supported;
+comptime {
+    _ = @import("fs_stubs.zig");
 }
 var backend: [5]usize = .{0} ** 5;
 
@@ -127,8 +136,10 @@ fn resetFakes() void {
     errors_logged = 0;
     calls = 0;
     stat_rc = 0;
-    format = .{ .caps = rw_caps, .ops = &full_ops };
+    format = .{ .name = "fake", .caps = rw_caps, .ops = &full_ops };
     std.debug.assert(io.vfs.ra8_io_vfs_init() == 0);
+    std.debug.assert(io.fsfmt.ra8_io_fsfmt_init() == 0);
+    std.debug.assert(io.fsfmt.ra8_io_fsfmt_register(&format) == 0);
     std.debug.assert(io.vfs.ra8_io_vfs_mount_auto("sd", &backend) == 0);
     errors_logged = 0;
 }
@@ -162,7 +173,7 @@ test "read-only mounts, missing capabilities and missing ops are refused" {
     format.caps = .{};
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_mkdir("sd:/d"));
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_rmdir("sd:/d"));
-    format = .{ .caps = rw_caps, .ops = &bare_ops };
+    format = .{ .name = "fake", .caps = rw_caps, .ops = &bare_ops };
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_unlink("sd:/a"));
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_mkdir("sd:/d"));
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_rename("sd:/a", "sd:/b"));

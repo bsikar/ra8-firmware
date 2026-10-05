@@ -253,12 +253,9 @@ test "caps pass a capacity failure through and reject a null out" {
     try std.testing.expectEqual(@as(u32, 1), cap_calls);
 }
 
-// The VFS mount table reaches the C format registry (ra8_io_fsfmt.c); unused here.
-export fn ra8_io_fsfmt_get_builtin(_: u8, _: *?*const anyopaque) c_int {
-    return 0x107;
-}
-export fn ra8_io_fsfmt_probe(_: *const anyopaque, _: *?*const anyopaque) c_int {
-    return 0x107;
+// The format registry forwards to ra8_fs; these stubs stand in for it.
+comptime {
+    _ = @import("fs_stubs.zig");
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).

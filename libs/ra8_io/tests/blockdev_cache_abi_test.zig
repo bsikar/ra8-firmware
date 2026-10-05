@@ -277,12 +277,9 @@ export fn ra8_usb_hmsc_write10(_: u8, _: u32, _: u16, _: ?[*]const u8) c_int {
 export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
     return 0;
 }
-// The VFS mount table reaches the C format registry (ra8_io_fsfmt.c); unused here.
-export fn ra8_io_fsfmt_get_builtin(_: u8, _: *?*const anyopaque) c_int {
-    return 0x107;
-}
-export fn ra8_io_fsfmt_probe(_: *const anyopaque, _: *?*const anyopaque) c_int {
-    return 0x107;
+// The format registry forwards to ra8_fs; these stubs stand in for it.
+comptime {
+    _ = @import("fs_stubs.zig");
 }
 
 // The blockdev_mram unit in the same archive needs these to link; unused here.
