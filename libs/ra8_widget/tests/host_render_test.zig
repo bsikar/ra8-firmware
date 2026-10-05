@@ -26,6 +26,7 @@ const expected = @embedFile("golden/font_faces.ppm");
 const pager_expected = @embedFile("golden/pager.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 const expected_image = @embedFile("golden/image_widget.ppm");
+const list_expected = @embedFile("golden/list.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -143,4 +144,49 @@ test "host backend writes panel PPM matching the image-widget golden" {
     } else |_| {
         try std.testing.expectEqualSlices(u8, expected_image, rendered);
     }
+}
+
+test "host backend writes panel PPM matching list widget golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+    };
+    const rows = [_]abi.list.Row{
+        .{ .title = "Settings", .subtitle = "Account and display", .trailing_text = null, .action_id = 11, .trailing = .chevron },
+        .{ .title = "Listen", .subtitle = "Continue audiobook", .trailing_text = "12 min", .action_id = 22, .trailing = .value },
+        .{ .title = "Activity", .subtitle = "Reading history", .trailing_text = null, .action_id = 33, .trailing = .chevron },
+    };
+    var list = abi.list.List{
+        .paint = &paint,
+        .rows = &rows,
+        .count = rows.len,
+        .on_select = null,
+        .bg = 0xFFFFFF,
+        .title_fg = 0x111111,
+        .subtitle_fg = 0x666666,
+        .trailing_fg = 0x333333,
+        .divider = 0xDDDDDD,
+        .row_height = 130,
+        .pad = 18,
+        .selected = 0,
+        .has_selection = false,
+        .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+    };
+    var list_widget = widget(.{ .x = 70, .y = 180, .w = 932, .h = 390 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.list.ra8_widget_list_init(&list_widget, &list));
+    list_widget.vt.?.render.?(&list_widget);
+
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    var temp = std.testing.tmpDir(.{});
+    defer temp.cleanup();
+    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    defer allocator.free(written);
+    try std.testing.expectEqualSlices(u8, list_expected, written);
 }

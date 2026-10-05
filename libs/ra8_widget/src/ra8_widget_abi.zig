@@ -59,6 +59,9 @@ pub const reflow_view = @import("widget_reflow_view_abi.zig");
 /// The book-grid leaf widget: `ra8_widget_book_grid_vtable` / `_init`.
 pub const book = @import("widget_book_abi.zig");
 
+/// The settings/list screen leaf widget.
+pub const list = @import("widget_list_abi.zig");
+
 /// The flat container ops: `ra8_widget_layout_stack`, `_dispatch`,
 /// `_invalidate`, `_damage`, `_render_dirty`.
 pub const core = @import("widget_core_abi.zig");
@@ -84,5 +87,6 @@ comptime {
     _ = panel;
     _ = reflow_view;
     _ = book;
+    _ = list;
     _ = core;
 }
