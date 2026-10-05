@@ -118,7 +118,10 @@
     "tests/sci_lin_test.zig",
     "src/sci_lin_abi.zig",
     "tests/flash_irq_test.zig",
-    "src/flash_irq_abi.zig"
+    "src/flash_irq_abi.zig",
+    "src/internal/ble.zig",
+    "tests/ble_test.zig",
+    "src/ble_abi.zig"
   ],
-  "minimum_tests": 744
+  "minimum_tests": 752
 }
