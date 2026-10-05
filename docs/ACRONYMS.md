@@ -45,7 +45,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | MPC   | Multi-function Pin Controller                             | `internal/mpc.zig` |
 | ELC   | Event Link Controller (peripheral-to-peripheral events)   | `elc_abi.zig` |
 | ICU   | Interrupt Controller Unit                                 | `internal/icu.zig` |
-| ISR   | Interrupt Service Routine (HAL ISR-table glue)            | `ra8_isr.c` |
+| ISR   | Interrupt Service Routine (HAL ISR-table glue)            | `isr_abi.zig` |
 | IRQ   | Interrupt Request line (NVIC vector entry)                | `internal/icu.zig` |
 | WUPEN | Wake-Up Enable register                                   | `ra8_lpm.c` |
 

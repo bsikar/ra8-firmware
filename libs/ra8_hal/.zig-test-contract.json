@@ -126,5 +126,5 @@
     "tests/gpio_pins_test.zig",
     "src/gpio_pins_abi.zig"
   ],
-  "minimum_tests": 758
+  "minimum_tests": 766
 }
