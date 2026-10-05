@@ -11,7 +11,7 @@
  * stay under the per-file line-count cap: ra8_eth_gwca.c holds the
  * lifecycle / status / dispatch surface plus the GWCA state-machine
  * bring-up (set_operation_mode / axi_init / install_linkfix /
- * bring_up); ra8_eth_gwca_queue.c holds the per-queue descriptor and
+ * bring_up); src/internal/eth_gwca_queue.zig holds the per-queue descriptor and
  * ring primitives (configure_queue / reload_queue / init_ring /
  * attach_buffers / kick_tx / find_slot / tx_frame); and
  * ra8_eth_gwca_default.c holds the one-call default-state API
@@ -45,7 +45,7 @@ extern "C" {
  * on real silicon. On host (RA8_OFF_TARGET) the loops run against
  * the mmap'd peri region and the bits flip immediately, so the
  * budget is mostly hit-once. Shared because ra8_eth_gwca.c spins on
- * GWMS.OPS / GWARIRM.ARR, ra8_eth_gwca_queue.c spins on GWDCCi.BALR,
+ * GWMS.OPS / GWARIRM.ARR, eth_gwca_queue.zig spins on GWDCCi.BALR,
  * and ra8_eth_gwca_default.c spins on TX descriptor write-back.
  */
 enum : uint32_t {
@@ -140,7 +140,7 @@ extern volatile uint32_t g_ra8_eth_gwca_bring_up_step;
  * @details Splits the 40-bit chain-head address into ptr_h (high 8
  * bits) + ptr_l (low 32 bits) and writes them with dt = LINKFIX.
  * No MMIO is touched -- caller-owned table memory only. Defined in
- * ra8_eth_gwca_queue.c and shared with ra8_eth_gwca_default.c
+ * src/internal/eth_gwca_queue.zig and shared with ra8_eth_gwca_default.c
  * (the re-arm path restores a LINK terminator through it).
  *
  * @param[in,out] entry      LINKFIX entry to rewrite.
@@ -167,7 +167,7 @@ RA8_PRIV void priv_ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* e
  * @details Reverses the ptr_h / ptr_l split applied by
  * ::ra8_eth_gwca_set_descriptor_buffer. On a 32-bit MCU like the
  * RA8D2 the high byte is always zero, but the function handles the
- * 40-bit format generically. Defined in ra8_eth_gwca_queue.c and
+ * 40-bit format generically. Defined in src/internal/eth_gwca_queue.zig and
  * shared with ra8_eth_gwca_default.c (the RX drain path decodes the
  * filled slot's buffer pointer through it).
  *

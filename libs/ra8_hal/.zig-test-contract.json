@@ -129,5 +129,5 @@
     "tests/rmac_phy_drv_test.zig",
     "src/rmac_phy_drv_abi.zig"
   ],
-  "minimum_tests": 773
+  "minimum_tests": 776
 }

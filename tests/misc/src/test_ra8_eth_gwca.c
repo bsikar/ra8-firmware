@@ -428,7 +428,7 @@ static void test_reload_queue(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_eth_gwca_queue.c@ra8_eth_gwca_init_ring):
+ * Decision (libs/ra8_hal/src/internal/eth_gwca_queue.zig@ra8_eth_gwca_init_ring):
  *   ``if (ring_depth < min || slot_bytes > max)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: depth = 4, bytes = 1500  -> ok
@@ -478,7 +478,7 @@ static void test_set_descriptor_buffer(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_eth_gwca_queue.c@ra8_eth_gwca_attach_buffers):
+ * Decision (libs/ra8_hal/src/internal/eth_gwca_queue.zig@ra8_eth_gwca_attach_buffers):
  *   ``if (ring_depth < 2U || slot_bytes == 0U)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: depth = 4, bytes = 64  -> ok
@@ -581,7 +581,7 @@ static void test_find_slot(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_eth_gwca_queue.c@ra8_eth_gwca_tx_frame):
+ * Decision (libs/ra8_hal/src/internal/eth_gwca_queue.zig@ra8_eth_gwca_tx_frame):
  *   ``if (frame_len == 0U || frame_len > slot_bytes)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: frame_len = 64, slot_bytes = 1500 -> ok

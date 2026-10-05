@@ -10,7 +10,7 @@
  * lifecycle / status / dispatch surface plus the GWCA state-machine
  * bring-up (set_operation_mode / axi_init / install_linkfix /
  * bring_up); the per-queue descriptor primitives live in
- * ra8_eth_gwca_queue.c and the one-call default-state API in
+ * src/internal/eth_gwca_queue.zig and the one-call default-state API in
  * ra8_eth_gwca_default.c. Every register access carries a HUM Ch 34
  * citation.
  *

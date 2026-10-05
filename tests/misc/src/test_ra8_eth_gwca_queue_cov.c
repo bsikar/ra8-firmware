@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_eth_gwca_queue_cov.c
- * @brief Coverage-focused unit tests for ra8_eth_gwca_queue.c
+ * @brief Coverage-focused unit tests for the GWCA queue helpers (libs/ra8_hal/src/internal/eth_gwca_queue.zig)
  *
  * @details
  * Companion to test_ra8_eth_gwca.c. That base suite deliberately skips

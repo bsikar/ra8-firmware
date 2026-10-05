@@ -3,8 +3,9 @@
 //!
 //! C ABI for the GWCA queue and ring helpers in ra8_eth_gwca.h (RA8FW-749).
 //! Logic lives in internal/eth_gwca_queue.zig. ra8_eth_gwca_reload_queue
-//! stays in ra8_eth_gwca_queue.c.
+//! joined it in RA8FW-764, replacing ra8_eth_gwca_queue.c.
 
+const builtin = @import("builtin");
 const common = @import("abi_common.zig");
 const q = @import("internal/eth_gwca_queue.zig");
 
@@ -14,6 +15,13 @@ const gwca0_base: usize = 0x403CE000;
 const off_gwtrc0: usize = 0x0200;
 const off_gwtrc1: usize = 0x0204;
 const off_gwdcc_base: usize = 0x0400;
+
+/// Host builds link the C fake-MMIO wait seam (ra8_hw_err.h) so the C
+/// suites can inject a stuck BALR. Freestanding builds never see it.
+const hosted = builtin.os.tag != .freestanding;
+const seam = struct {
+    extern fn ra8_fake_mmio_wait_eval(reg: *const volatile anyopaque, iter: u32, real_cond: bool) bool;
+};
 
 const Hw = struct {
     pub fn gwdcc(_: Hw, queue: u32) ?*volatile u32 {
@@ -26,6 +34,13 @@ const Hw = struct {
     pub fn nullPtr(_: Hw, msg: [*:0]const u8) u16 {
         common.ra8_log_emit_error(tag, msg);
         return q.null_ptr;
+    }
+    pub fn balrClear(_: Hw, reg: *volatile u32, iter: u32) bool {
+        const cond = (reg.* & q.gwdcc_balr) == 0;
+        return if (hosted) seam.ra8_fake_mmio_wait_eval(reg, iter, cond) else cond;
+    }
+    pub fn logError(_: Hw, msg: [*:0]const u8) void {
+        common.ra8_log_emit_error(tag, msg);
     }
 };
 
@@ -63,4 +78,8 @@ export fn ra8_eth_gwca_find_slot(chain: ?[*]const volatile q.Desc, ring_depth: u
 
 export fn ra8_eth_gwca_tx_frame(chain: ?[*]volatile q.Desc, ring_depth: u32, tail_idx: ?*u32, frame: ?[*]const u8, frame_len: u32, slot_bytes: u32) u16 {
     return q.txFrame(Hw{}, chain, ring_depth, tail_idx, frame, frame_len, slot_bytes);
+}
+
+export fn ra8_eth_gwca_reload_queue(queue_index: u32) u16 {
+    return q.reloadQueue(Hw{}, queue_index);
 }
