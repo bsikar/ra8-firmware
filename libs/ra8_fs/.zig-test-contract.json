@@ -6,7 +6,8 @@
     "tests/utime_abi_test.zig",
     "tests/space_abi_test.zig",
     "tests/gpt_abi_test.zig",
-    "tests/lfn_abi_test.zig"
+    "tests/lfn_abi_test.zig",
+    "tests/utf_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
@@ -16,6 +17,7 @@
     "src/ra8_fs_lfn_abi.zig",
     "src/ra8_fs_lock_abi.zig",
     "src/ra8_fs_space_abi.zig",
+    "src/ra8_fs_utf_abi.zig",
     "src/ra8_fs_utime_abi.zig",
     "src/root.zig",
     "tests/attr_abi_test.zig",
@@ -25,7 +27,8 @@
     "tests/lfn_abi_test.zig",
     "tests/lock_abi_test.zig",
     "tests/space_abi_test.zig",
+    "tests/utf_abi_test.zig",
     "tests/utime_abi_test.zig"
   ],
-  "minimum_tests": 42
+  "minimum_tests": 48
 }

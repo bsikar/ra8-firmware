@@ -26,9 +26,7 @@ get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # on macOS where the unit-test harness cannot. Mirrors tools/mkfontimg and the
 # same glob in tests/cmake/tests_storage.cmake.
 file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_fs_fat*.c)
-# The UTF codec is named for the encoding, not the ra8_fs_fat* family, so the
-# glob above misses it; the ra8_fs_fat*.c TUs call into it. Name it explicitly.
-list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
+# The UTF codec is Zig now (RA8FW-747); it comes from the ra8_fs archive below.
 
 add_executable(
   exfat_mkimage ${CMAKE_CURRENT_SOURCE_DIR}/src/exfat_mkimage.c ${_ra8_fs_fat_tu_sources}
