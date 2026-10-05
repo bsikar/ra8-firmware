@@ -4,9 +4,9 @@
 //! C ABI of inc/ra8_io_spi_bus_spi_b.h (RA8FW-701): binds the SPI_B
 //! peripheral (SPI0, SPI1) behind the ra8_io SPI bus vtable. Each trampoline
 //! forwards to the unmodified ra8_spi_* driver with the channel carried in
-//! ctx. Replaces ra8_io_spi_bus_spi_b.c, which is deleted. The bus front end
-//! (ra8_io_spi_bus.c) still reads the vtable through
-//! src/ra8_io_spi_bus_internal.h, so Iface mirrors that struct.
+//! ctx. Replaces ra8_io_spi_bus_spi_b.c, which is deleted. Iface mirrors
+//! struct ra8_io_spi_bus_iface (src/ra8_io_spi_bus_internal.h); the Zig front
+//! end (ra8_io_spi_bus_abi.zig, RA8FW-707) dispatches through it.
 
 const tag = "ra8_io_spi_bus_spi_b";
 
