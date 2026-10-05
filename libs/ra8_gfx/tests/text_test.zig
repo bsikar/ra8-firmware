@@ -48,10 +48,16 @@ test "invalid UTF-8 and valid unsupported scalars use replacement metrics" {
 const PixelRecorder = struct {
     ink_pixels: usize = 0,
     rightmost: i32 = -1,
+    topmost: i32 = std.math.maxInt(i32),
+    bottommost: i32 = std.math.minInt(i32),
 
-    fn putPixel(user: ?*anyopaque, x: i32, _: i32, color: u32) callconv(.c) void {
+    fn putPixel(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
         const recorder: *PixelRecorder = @ptrCast(@alignCast(user.?));
-        if (color != 0xFFFFFF) recorder.ink_pixels += 1;
+        if (color != 0xFFFFFF) {
+            recorder.ink_pixels += 1;
+            recorder.topmost = @min(recorder.topmost, y);
+            recorder.bottommost = @max(recorder.bottommost, y);
+        }
         recorder.rightmost = @max(recorder.rightmost, x);
     }
 };
@@ -100,4 +106,31 @@ test "native display atlases measure and draw sans and serif at all display size
         text.drawStyle("09:41", 10, 12, case.face, case.weight, case.size, 0, 0xFFFFFF, &pixels, PixelRecorder.putPixel);
         try std.testing.expect(pixels.ink_pixels > 0);
     }
+}
+
+test "serif and every native display atlas keep ink inside the line box" {
+    const line_y: i32 = 200;
+    var reading_pixels = PixelRecorder{};
+    text.drawSerif("Hj", 10, line_y, 0, 0xFFFFFF, &reading_pixels, PixelRecorder.putPixel);
+    const reading_height: i32 = @intCast(text.measure("Hj", .serif).height);
+    try std.testing.expect(reading_pixels.ink_pixels > 0);
+    try std.testing.expect(reading_pixels.topmost >= line_y);
+    try std.testing.expect(reading_pixels.bottommost < line_y + reading_height);
+
+    for (0..2) |face_index| {
+        for (0..2) |weight_index| {
+            for (6..9) |size| {
+                var pixels = PixelRecorder{};
+                const face: text.Face = if (face_index == 0) .sans else .serif;
+                const weight: text.Weight = if (weight_index == 0) .regular else .bold;
+                const sample: [*:0]const u8 = if (size == 8) "09:41" else "Hj";
+                text.drawStyle(sample, 10, line_y, face, weight, @intCast(size), 0, 0xFFFFFF, &pixels, PixelRecorder.putPixel);
+                const height: i32 = @intCast(text.measureStyle(sample, face, weight, @intCast(size)).height);
+                try std.testing.expect(pixels.ink_pixels > 0);
+                try std.testing.expect(pixels.topmost >= line_y);
+                try std.testing.expect(pixels.bottommost < line_y + height);
+            }
+        }
+    }
+    try std.testing.expectEqual(@as(usize, 12), 2 * 2 * 3);
 }
