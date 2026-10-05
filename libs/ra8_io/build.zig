@@ -46,6 +46,7 @@ pub fn build(b: *std.Build) void {
         "tests/spi_bus_spi_b_abi_test.zig",
         "tests/spi_bus_sci_spi_abi_test.zig",
         "tests/blockdev_sdram_abi_test.zig",
+        "tests/blockdev_usbmsc_abi_test.zig",
         "tests/i2c_bus_riic_abi_test.zig",
         "tests/i2c_bus_i3c_compat_abi_test.zig",
         "tests/i2c_bus_abi_test.zig",

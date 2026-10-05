@@ -181,3 +181,14 @@ export fn ra8_i3c_read(_: u8, _: u8, _: ?[*]u8, _: u32, _: bool) c_int {
 export fn ra8_i3c_transfer(_: u8, _: u8, _: ?[*]const u8, _: u32, _: ?[*]u8, _: u32) c_int {
     return 0;
 }
+
+// The blockdev_usbmsc unit in the same archive needs these to link; unused here.
+export fn ra8_usb_hmsc_read10(_: u8, _: u32, _: u16, _: ?[*]u8) c_int {
+    return 0;
+}
+export fn ra8_usb_hmsc_write10(_: u8, _: u32, _: u16, _: ?[*]const u8) c_int {
+    return 0;
+}
+export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
+    return 0;
+}

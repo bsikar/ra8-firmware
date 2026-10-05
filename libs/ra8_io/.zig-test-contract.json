@@ -10,10 +10,12 @@
     "tests/spi_bus_abi_test.zig",
     "tests/i2c_bus_riic_abi_test.zig",
     "tests/i2c_bus_i3c_compat_abi_test.zig",
-    "tests/i2c_bus_abi_test.zig"
+    "tests/i2c_bus_abi_test.zig",
+    "tests/blockdev_usbmsc_abi_test.zig"
   ],
   "covered_sources": [
     "src/blockdev_sdram_abi.zig",
+    "src/ra8_io_blockdev_usbmsc_abi.zig",
     "src/ra8_io_i2c_bus_abi.zig",
     "src/ra8_io_i2c_bus_i3c_compat_abi.zig",
     "src/ra8_io_i2c_bus_riic_abi.zig",
@@ -26,6 +28,7 @@
     "src/ra8_io_stream_usbcdc_abi.zig",
     "src/root.zig",
     "tests/blockdev_sdram_abi_test.zig",
+    "tests/blockdev_usbmsc_abi_test.zig",
     "tests/i2c_bus_abi_test.zig",
     "tests/i2c_bus_i3c_compat_abi_test.zig",
     "tests/i2c_bus_riic_abi_test.zig",
@@ -37,5 +40,5 @@
     "tests/stream_uart_abi_test.zig",
     "tests/stream_usbcdc_abi_test.zig"
   ],
-  "minimum_tests": 78
+  "minimum_tests": 85
 }
