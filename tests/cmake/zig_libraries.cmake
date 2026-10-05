@@ -562,9 +562,9 @@ ra8_add_zig_library(
 # libs/ra8_tz_secure_boot/src has no .c left and the RA8_TZ_SECURE_BOOT_SOURCES
 # glob is gone from library_sources.cmake and core_hal.cmake. The private src
 # include dir went with the .c files: no test includes a private header from
-# this library. ns/ra8_ns_rot_header.c stays C and is untouched here, because
-# it is not part of this library at all: ra8_add_ns_image.cmake compiles it
-# into the Non-Secure image as its root-of-trust header data.
+# this library. ns/ra8_ns_rot_header.zig (Zig since RA8FW-639) is not part of
+# this library at all: ra8_add_ns_image.cmake builds it into the Non-Secure
+# image as its root-of-trust header data.
 ra8_add_zig_library(
   NAME
   ra8_tz_secure_boot

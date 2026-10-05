@@ -99,6 +99,48 @@ function(ra8_ns_linker_script _out)
   set(${_out} ${_script} PARENT_SCOPE)
 endfunction()
 
+# The NS image's `.ns_rot_header` record as a Zig object (RA8FW-639; the C it
+# replaces was ns/ra8_ns_rot_header.c). Built once per binary dir for this
+# toolchain's core. The unit imports the Secure verifier's register constants
+# as `tz_regs` because ns/ cannot reach ../src by relative import; the Zig
+# graph (tests/zig_build_graph/ns_image.zig rotHeaderObject) builds it the
+# same way.
+function(ra8_ns_rot_header_object _out)
+  if(NOT COMMAND _ra8_zig_target_for_toolchain)
+    include("${RA8_REPO_ROOT}/cmake/ra8_app/zig_libs.cmake")
+  endif()
+  if(NOT RA8_ZIG_EXECUTABLE)
+    message(FATAL_ERROR "ra8: the NS RoT header is a Zig object but no zig binary was found on PATH. "
+                        "Install the pinned toolchain (just setup) before configuring an NS image."
+    )
+  endif()
+  _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)
+  set(_lib ${RA8_REPO_ROOT}/libs/ra8_tz_secure_boot)
+  set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/ns_rot_header/${_zig_cpu}")
+  set(_object "${_dir}/ra8_ns_rot_header.o")
+  get_property(_declared DIRECTORY PROPERTY "ra8_ns_rot_header_${_zig_cpu}")
+  if(NOT _declared)
+    set_property(DIRECTORY PROPERTY "ra8_ns_rot_header_${_zig_cpu}" ON)
+    set(_flags -target ${_zig_target} -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE} -fno-unwind-tables)
+    add_custom_command(
+      OUTPUT ${_object}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
+      COMMAND
+        ${RA8_ZIG_EXECUTABLE} build-obj ${_flags} --dep tz_regs -Mroot=${_lib}/ns/ra8_ns_rot_header.zig
+        ${_flags} -Mtz_regs=${_lib}/src/internal/regs.zig --cache-dir ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache
+        -femit-bin=${_object}
+      DEPENDS ${_lib}/ns/ra8_ns_rot_header.zig ${_lib}/src/internal/regs.zig
+      COMMENT "Building the NS RoT header for ${_zig_target} ${_zig_cpu}"
+      VERBATIM
+    )
+    set_source_files_properties(${_object} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+  endif()
+  set(${_out}
+      "${_object}"
+      PARENT_SCOPE
+  )
+endfunction()
+
 function(ra8_add_ns_image)
   set(_opts XIP)
   set(_one SECURE_TARGET NAME LINKER STACK_BYTES MERGED_HEX IMPLIB)
@@ -155,13 +197,15 @@ function(ra8_add_ns_image)
 
   # ---- Non-Secure image ---------------------------------------------------
   # Every NS image carries the RoT header the Secure verifier looks for at
-  # k_ra8_tz_ns_rot_header_offset. It is a C object rather than LONG() words in
-  # the linker script, so the magic and layout come from
-  # ra8_ns_rot_header_t, and the link needs the translation unit plus the header
-  # it reads those from. Added here, not asked of every caller: forgetting it is
-  # an undefined g_ra8_ns_rot_header at link, which is loud but pointless.
+  # k_ra8_tz_ns_rot_header_offset. It is a compiled object rather than LONG()
+  # words in the linker script, so the magic comes from the verifier's own
+  # constant (ra8_ns_rot_header_object() above). Added here, not asked of every
+  # caller: forgetting it is an undefined g_ra8_ns_rot_header at link, which is
+  # loud but pointless. The inc/ path stays for the app sources that read
+  # ra8_tz_secure_boot.h.
   set(_ns_rot_dir ${RA8_REPO_ROOT}/libs/ra8_tz_secure_boot)
-  add_executable(${_ns_elf} ${_NS_SOURCES} ${_ns_rot_dir}/ns/ra8_ns_rot_header.c)
+  ra8_ns_rot_header_object(_ns_rot_obj)
+  add_executable(${_ns_elf} ${_NS_SOURCES} ${_ns_rot_obj})
   target_include_directories(${_ns_elf} PRIVATE ${_ns_rot_dir}/inc)
   if(_NS_DEFINES)
     target_compile_definitions(${_ns_elf} PRIVATE ${_NS_DEFINES})

@@ -129,13 +129,13 @@ pub const NsImage = struct {
     link_flags: []const []const u8,
 };
 
-/// The RoT header translation unit every NS image carries, and the include
-/// directory it reads `ra8_ns_rot_header_t` from.
+/// The RoT header unit every NS image carries (a Zig object since RA8FW-639),
+/// and the include directory the app sources read `ra8_tz_secure_boot.h` from.
 ///
-/// `ra8_add_ns_image.cmake:163-165` adds both to the target it creates rather
-/// than asking each caller for them: the record is a C object so that its magic
-/// comes from `k_ra8_tz_ns_rot_header_magic` and its layout from the struct,
-/// instead of `LONG()` words hand-copied into each script. Forgetting it is an
+/// `ra8_add_ns_image.cmake` adds both to the target it creates rather than
+/// asking each caller for them: the record is a compiled object so that its
+/// magic comes from the verifier's own constant (`regs.NsRot.magic`), instead
+/// of `LONG()` words hand-copied into each script. Forgetting it is an
 /// undefined `g_ra8_ns_rot_header` at link, which is loud but pointless, so the
 /// graph adds it by construction too.
 ///
@@ -143,7 +143,10 @@ pub const NsImage = struct {
 /// globs that directory into the four apps that name the library for their
 /// SECURE image, and a `.ns_rot_header` section in a Secure ELF is an orphan
 /// its script never places.
-pub const rot_header_source = "libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c";
+pub const rot_header_source = "libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.zig";
+/// The register constants the record reads its magic from, imported as
+/// `tz_regs`: `ns/` cannot reach `../src` by relative import.
+pub const rot_header_regs = "libs/ra8_tz_secure_boot/src/internal/regs.zig";
 pub const rot_header_include_dir = "libs/ra8_tz_secure_boot/inc";
 
 /// `-fshort-enums -ffreestanding`, in the order the NS target declares them
@@ -208,9 +211,8 @@ pub fn units(b: *std.Build, app_dir: []const u8, image: NsImage) []const Unit {
     for (image.app_sources) |source| {
         out.append(.{ .path = b.pathJoin(&.{ app_dir, source }) }) catch @panic("OOM");
     }
-    // Last argument of the same `add_executable`, so it follows the app's own
-    // sources and precedes every `target_sources` append below.
-    out.append(.{ .path = rot_header_source }) catch @panic("OOM");
+    // The RoT header is a Zig object now (RA8FW-639): `add` links it right
+    // after these, where CMake's `add_executable` names it.
     for (image.vendored) |set| collectVendored(b, set, &out);
     for (image.private_sources) |source| out.append(.{ .path = source }) catch @panic("OOM");
     return out.items;
@@ -348,7 +350,34 @@ pub const Context = struct {
     /// (`ra8_add_ns_image.cmake:203-211`). Optional for the same reason as the
     /// archives: a compile database has no merge.
     merge_tool: ?*std.Build.Step.Compile = null,
+    /// The Arm target and optimize mode the RoT header's Zig object is built
+    /// with. Optional for the compile database, which has no Zig rows.
+    zig_target: ?std.Build.ResolvedTarget = null,
+    zig_optimize: std.builtin.OptimizeMode = .ReleaseSmall,
 };
+
+/// The `.ns_rot_header` record as a Zig object, built the way CMake's
+/// `ra8_ns_rot_header_object()` builds it.
+fn rotHeaderObject(b: *std.Build, ctx: Context) std.Build.LazyPath {
+    const target = ctx.zig_target orelse @panic("ra8: the NS link needs the Arm Zig target");
+    const regs = b.createModule(.{
+        .root_source_file = pkg_path.lazy(b, rot_header_regs),
+        .target = target,
+        .optimize = ctx.zig_optimize,
+    });
+    const module = b.createModule(.{
+        .root_source_file = pkg_path.lazy(b, rot_header_source),
+        .target = target,
+        .optimize = ctx.zig_optimize,
+        .unwind_tables = .none,
+        .imports = &.{.{ .name = "tz_regs", .module = regs }},
+    });
+    const object = b.addObject(.{
+        .name = b.fmt("{s}_rot_header", .{ctx.image.name}),
+        .root_module = module,
+    });
+    return object.getEmittedBin();
+}
 
 /// `tools/merge_ihex` built for the machine running the build. The merge_ihex port moved the
 /// merger from `scripts/gen/merge_ihex.py` into that Zig tool, and CMake runs
@@ -416,6 +445,7 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
+    objects.insert(image.app_sources.len, rotHeaderObject(b, ctx)) catch @panic("OOM");
 
     const link = b.addSystemCommand(&.{ctx.gcc});
     link.addArgs(ctx.global_link_flags);
