@@ -529,7 +529,7 @@ RA8_INTERNAL static void internal_test_handle_setup_callback_stalls(void)
 
 /* =============================================================================
  * MC/DC vector tests for the compound boolean decisions flagged in
- * docs/MCDC_GAPS.csv against libs/ra8_hal/src/ra8_usb_phid.c.
+ * docs/MCDC_GAPS.csv against libs/ra8_hal/src/internal/usb_phid.zig.
  * =============================================================================
  */
 
@@ -648,7 +648,7 @@ RA8_INTERNAL static void internal_phid_mcdc_handle_setup(void)
  *
  * @par MC/DC:
  * Covers every compound decision flagged in docs/MCDC_GAPS.csv for
- * libs/ra8_hal/src/ra8_usb_phid.c.
+ * libs/ra8_hal/src/internal/usb_phid.zig.
  *
  * Decision A (line 223, 2 conds): init speed gate
  *   `(speed != FS) && (speed != HS)` -- N+1=3:
@@ -706,7 +706,7 @@ RA8_INTERNAL static void internal_test_mcdc_phid(void)
  * @test internal_test_mcdc_phid_known_class_request_or_chain
  *
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_usb_phid.c lines 220-222,
+ * Decision (libs/ra8_hal/src/internal/usb_phid.zig lines 220-222,
  * internal_is_known_class_request):
  *   ``(b_request == GET_REPORT) || (b_request == SET_REPORT) ||
  *    (b_request == GET_IDLE)   || (b_request == SET_IDLE)   ||

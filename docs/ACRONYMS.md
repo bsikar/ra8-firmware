@@ -64,7 +64,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | USB FS| USB Full-Speed (12 Mbps)                                  | `ra8_usb.c`, `ra8_usb_*.c` |
 | USB HS| USB High-Speed (480 Mbps)                                 | `ra8_usb.c`, `ra8_usb_*.c` |
 | CDC   | USB Communications Device Class (virtual COM)             | `ra8_usb_cdc.c`, `ra8_usb_hcdc.c`, `ra8_usb_hcdc_ecm.c` |
-| HID   | USB Human Interface Device                                | `ra8_usb_phid.c`, `ra8_usb_hhid.c` |
+| HID   | USB Human Interface Device                                | `usb_phid_abi.zig`, `ra8_usb_hhid.c` |
 | MSC   | USB Mass Storage Class                                    | `ra8_usb_pmsc.c`, `ra8_usb_hmsc.c` |
 | HHUB  | USB Host Hub class driver                                 | `ra8_usb_hhub.c` |
 | PVND  | USB Peripheral Vendor-class                               | `usb_pvnd_abi.zig` |
