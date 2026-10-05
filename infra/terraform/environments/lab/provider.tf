@@ -20,6 +20,7 @@ provider "vault" {
 # Terraform state. Terraform still needs protected state and plan handling for
 # any downstream provider that receives secret-derived configuration.
 ephemeral "vault_kv_secret_v2" "proxmox_api" {
+  count = var.lab_enabled ? 1 : 0
   mount = var.openbao_kv_mount
   name  = var.openbao_secret_path
 }
@@ -27,8 +28,10 @@ ephemeral "vault_kv_secret_v2" "proxmox_api" {
 provider "proxmox" {
   # The endpoint is intentionally supplied at runtime. No production endpoint
   # belongs in the repository.
-  endpoint  = var.proxmox_endpoint
-  api_token = ephemeral.vault_kv_secret_v2.proxmox_api.data["api_token"]
+  endpoint = var.lab_enabled ? var.proxmox_endpoint : "https://127.0.0.1:8006"
+  # The disabled plan needs a syntactically present, deliberately invalid
+  # credential because the provider validates its configuration eagerly.
+  api_token = var.lab_enabled ? ephemeral.vault_kv_secret_v2.proxmox_api[0].data["api_token"] : "disabled@pve!none=00000000-0000-0000-0000-000000000000"
   insecure  = var.proxmox_insecure
 
   # Do not let the provider pick an ID that happens to collide with an

@@ -1,3 +1,10 @@
+variable "state_encryption_passphrase" {
+  description = "Per-environment OpenTofu state and plan key injected from protected operator storage."
+  type        = string
+  sensitive   = true
+  nullable    = false
+}
+
 variable "proxmox_endpoint" {
   description = "Lab-only Proxmox API endpoint, supplied through TF_VAR_proxmox_endpoint."
   type        = string

@@ -4,13 +4,14 @@ provider "vault" {
 }
 
 ephemeral "vault_kv_secret_v2" "proxmox_api" {
+  count = var.runner_enabled ? 1 : 0
   mount = var.openbao_kv_mount
   name  = var.openbao_secret_path
 }
 
 provider "proxmox" {
-  endpoint      = var.proxmox_endpoint
-  api_token     = ephemeral.vault_kv_secret_v2.proxmox_api.data["api_token"]
+  endpoint      = var.runner_enabled ? var.proxmox_endpoint : "https://127.0.0.1:8006"
+  api_token     = var.runner_enabled ? ephemeral.vault_kv_secret_v2.proxmox_api[0].data["api_token"] : "disabled@pve!none=00000000-0000-0000-0000-000000000000"
   insecure      = false
   random_vm_ids = false
 }

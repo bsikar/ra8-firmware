@@ -6,7 +6,7 @@
 #
 # This driver is intentionally narrower than the persistent fleet tooling:
 # it talks to Proxmox only through the `pve` SSH alias, uses a run-local
-# Terraform state file, and will destroy only a matching reserved lab guest.
+# OpenTofu state file, and will destroy only a matching reserved lab guest.
 
 set -euo pipefail
 umask 077
@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 TF_ROOT="$REPO_ROOT/infra/terraform/environments/lab"
 TF_WRAPPER="$REPO_ROOT/infra/terraform/run-with-openbao.sh"
-IAC_BIN="${RA8_IAC_BIN:-terraform}"
+IAC_BIN="${RA8_IAC_BIN:-tofu}"
 PLAYBOOK="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-linux.yml"
 PLAYBOOK_WINDOWS="$REPO_ROOT/infra/ansible/playbooks/proxmox-lab-windows.yml"
 LOOPBACK_PROXY="$REPO_ROOT/scripts/dev/ssh_loopback_proxy.py"
@@ -143,6 +143,14 @@ PY
 
 remote_root() {
   ssh -o BatchMode=yes -o RequestTTY=no "$SSH_ALIAS" sudo -n /bin/bash -s -- "$@"
+}
+
+run_iac() {
+  if [[ -n "${RA8_IAC_BIN:-}" ]]; then
+    "$IAC_BIN" -chdir="$TF_ROOT" "$@"
+  else
+    "$TF_WRAPPER" "$@"
+  fi
 }
 
 template_check() {
@@ -922,8 +930,8 @@ remove_state_address() {
   local address="$1"
   local state_file="$run_dir/terraform.tfstate"
   [[ -f "$state_file" ]] || return 0
-  if TF_DATA_DIR="$run_dir/tf-data" "$IAC_BIN" -chdir="$TF_ROOT" state list 2>/dev/null | grep -Fxq "$address"; then
-    TF_DATA_DIR="$run_dir/tf-data" "$IAC_BIN" -chdir="$TF_ROOT" state rm "$address" >/dev/null
+  if TF_DATA_DIR="$run_dir/tf-data" run_iac state list 2>/dev/null | grep -Fxq "$address"; then
+    TF_DATA_DIR="$run_dir/tf-data" run_iac state rm "$address" >/dev/null
   fi
 }
 
@@ -989,8 +997,8 @@ preflight_local() {
     bridge="$LINUX_BRIDGE"
   fi
   preflight_tools "$profile" || return 1
-  "$IAC_BIN" -chdir="$TF_ROOT" init -backend=false -input=false -lockfile=readonly >/dev/null || return 1
-  "$IAC_BIN" -chdir="$TF_ROOT" validate >/dev/null || return 1
+  run_iac init -backend=false -input=false -lockfile=readonly >/dev/null || return 1
+  run_iac validate >/dev/null || return 1
   ssh -o BatchMode=yes -o RequestTTY=no "$SSH_ALIAS" /bin/true >/dev/null || return 1
   check_lab_bridge_absent "$bridge" || return 1
   check_template_fixtures "$profile" || return 1
