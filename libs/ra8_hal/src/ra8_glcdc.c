@@ -864,8 +864,3 @@ ra8_err_t ra8_glcdc_enter_stop(void)
   *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg) = 0U;
   return ra8_mstp_disable(k_ra8_mstp_glcdc);
 }
-
-ra8_err_t ra8_glcdc_exit_stop(void)
-{
-  return ra8_mstp_enable(k_ra8_mstp_glcdc);
-}

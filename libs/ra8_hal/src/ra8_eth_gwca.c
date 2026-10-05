@@ -142,11 +142,6 @@ ra8_err_t ra8_eth_gwca_enter_stop(void)
   return ra8_mstp_disable(k_ra8_mstp_eswm);
 }
 
-ra8_err_t ra8_eth_gwca_exit_stop(void)
-{
-  return ra8_mstp_enable(k_ra8_mstp_eswm);
-}
-
 /**
  * @var g_ra8_eth_gwca_open_step
  * @brief Bench-side debug trail bumped by ::ra8_eth_gwca_default_open.

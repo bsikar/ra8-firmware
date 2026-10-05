@@ -596,11 +596,6 @@ ra8_err_t ra8_adc_enter_stop(void)
   return ra8_mstp_disable(k_ra8_mstp_adc16h);
 }
 
-ra8_err_t ra8_adc_exit_stop(void)
-{
-  return ra8_mstp_enable(k_ra8_mstp_adc16h);
-}
-
 RA8_ISR_SAFE
 void ra8_adc_dispatch_cnv_end(uint8_t channel)
 {
