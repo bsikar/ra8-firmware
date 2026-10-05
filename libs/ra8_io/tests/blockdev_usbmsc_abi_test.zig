@@ -249,3 +249,17 @@ export fn ra8_sdcard_get_capacity(_: *u32) c_int {
 export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
     return 0;
 }
+
+// The archive root also emits the SPI-mode SD block device (RA8FW-718).
+export fn ra8_sdmmc_spi_read_blocks(_: u32, _: [*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_write_blocks(_: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_erase_blocks(_: u32, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
+    return 0;
+}
