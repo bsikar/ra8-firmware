@@ -13,8 +13,6 @@ const Stream = io.log.Stream;
 const Iface = io.stream_ram.Iface;
 
 var errors_logged: u32 = 0;
-var resolve_rc: c_int = 0;
-var split_rc: c_int = 0;
 var calls: u32 = 0;
 var last_sub: [32]u8 = undefined;
 var last_new: [32]u8 = undefined;
@@ -67,6 +65,8 @@ fn dir_close_op(_: ?*anyopaque) callconv(.c) c_int {
 }
 
 const full_ops = ns.Ops{
+    .mount = @ptrCast(&mount_op),
+    .unmount = @ptrCast(&unmount_op),
     .stat = &stat_op,
     .listdir = &listdir_op,
     .dir_open = &dir_open_op,
@@ -77,7 +77,12 @@ const full_ops = ns.Ops{
     .mkdir = &path_op,
     .rmdir = &path_op,
 };
-const bare_ops = ns.Ops{ .stat = &stat_op, .listdir = &listdir_op };
+const bare_ops = ns.Ops{
+    .mount = @ptrCast(&mount_op),
+    .unmount = @ptrCast(&unmount_op),
+    .stat = &stat_op,
+    .listdir = &listdir_op,
+};
 const rw_caps = ns.Caps{
     .supports_mkdir = true,
     .supports_rmdir = true,
@@ -87,36 +92,23 @@ const rw_caps = ns.Caps{
     .max_open_directories = 2,
 };
 var format = ns.Format{ .caps = rw_caps, .ops = &full_ops };
-var slot = ns.Slot{ .format = &format, .mount_ctx = &fake_ctx, .in_use = true };
 
-/// The fake mount table holds one mount, "sd"; split takes "name:sub".
-fn splitPath(path: [*:0]const u8, name: [*]u8, sub: *?[*:0]const u8) c_int {
-    const s = std.mem.span(path);
-    const colon = std.mem.indexOfScalar(u8, s, ':') orelse return 0x103;
-    @memcpy(name[0..colon], s[0..colon]);
-    name[colon] = 0;
-    sub.* = path + colon + 1;
+/// The real mount table holds one mount, "sd", mounted through these fakes.
+fn mount_op(_: *const anyopaque, out: *?*anyopaque) callconv(.c) c_int {
+    out.* = &fake_ctx;
     return 0;
 }
-
-export fn priv_ra8_io_vfs_streq(a: [*:0]const u8, b: [*:0]const u8) bool {
-    return std.mem.orderZ(u8, a, b) == .eq;
-}
-export fn priv_ra8_io_vfs_find(name: [*:0]const u8, _: ?*u8) ?*ns.Slot {
-    return if (std.mem.orderZ(u8, name, "sd") == .eq) &slot else null;
-}
-export fn priv_ra8_io_vfs_split(path: [*:0]const u8, name: [*]u8, sub: *?[*:0]const u8) c_int {
-    if (split_rc != 0) return split_rc;
-    return splitPath(path, name, sub);
-}
-export fn priv_ra8_io_vfs_resolve(path: [*:0]const u8, out: *?*ns.Slot, _: ?*u8, sub: *?[*:0]const u8) c_int {
-    if (resolve_rc != 0) return resolve_rc;
-    var name: [16]u8 = undefined;
-    const rc = splitPath(path, &name, sub);
-    if (rc != 0) return rc;
-    out.* = priv_ra8_io_vfs_find(@ptrCast(&name), null) orelse return 0x106;
+fn unmount_op(_: ?*anyopaque) callconv(.c) c_int {
     return 0;
 }
+export fn ra8_io_fsfmt_probe(_: *const anyopaque, out: *?*const ns.Format) c_int {
+    out.* = &format;
+    return 0;
+}
+export fn ra8_io_fsfmt_get_builtin(_: u8, _: *?*const ns.Format) c_int {
+    return ns.err_not_supported;
+}
+var backend: [5]usize = .{0} ** 5;
 
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
@@ -133,11 +125,12 @@ export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
 
 fn resetFakes() void {
     errors_logged = 0;
-    resolve_rc = 0;
-    split_rc = 0;
     calls = 0;
     stat_rc = 0;
     format = .{ .caps = rw_caps, .ops = &full_ops };
+    std.debug.assert(io.vfs.ra8_io_vfs_init() == 0);
+    std.debug.assert(io.vfs.ra8_io_vfs_mount_auto("sd", &backend) == 0);
+    errors_logged = 0;
 }
 fn lastSub() []const u8 {
     return std.mem.sliceTo(&last_sub, 0);
@@ -157,7 +150,6 @@ test "path mutations dispatch the sub-path and log null paths" {
 
 test "a resolve failure is returned and logged with its code" {
     resetFakes();
-    resolve_rc = 0x106;
     try std.testing.expectEqual(@as(c_int, 0x106), ns.ra8_io_vfs_rmdir("zz:/d"));
     try std.testing.expectEqual(@as(u32, 1), errors_logged);
 }
@@ -186,8 +178,7 @@ test "rename stays inside one mount" {
     try std.testing.expectEqual(ns.err_not_found, ns.ra8_io_vfs_rename("fl:/a", "fl:/b"));
     try std.testing.expectEqual(ns.err_null_ptr, ns.ra8_io_vfs_rename(null, "sd:/b"));
     try std.testing.expectEqual(ns.err_null_ptr, ns.ra8_io_vfs_rename("sd:/a", null));
-    split_rc = 0x103;
-    try std.testing.expectEqual(@as(c_int, 0x103), ns.ra8_io_vfs_rename("sd:/a", "sd:/b"));
+    try std.testing.expectEqual(@as(c_int, 0x103), ns.ra8_io_vfs_rename("sd", "sd:/b"));
     try std.testing.expectEqual(@as(u32, 1), calls);
 }
 
@@ -236,8 +227,7 @@ test "dir requirements report the format's cursor needs" {
     try std.testing.expectEqual(ns.err_not_supported, ns.ra8_io_vfs_dir_requirements("sd:/", &bytes, &alignment, &max_open));
     try std.testing.expectEqual(@as(u32, 0), bytes);
     try std.testing.expectEqual(ns.err_null_ptr, ns.ra8_io_vfs_dir_requirements("sd:/", null, &alignment, &max_open));
-    resolve_rc = 0x106;
-    try std.testing.expectEqual(@as(c_int, 0x106), ns.ra8_io_vfs_dir_requirements("sd:/", &bytes, &alignment, &max_open));
+    try std.testing.expectEqual(@as(c_int, 0x106), ns.ra8_io_vfs_dir_requirements("zz:/", &bytes, &alignment, &max_open));
     try std.testing.expectEqual(@as(u32, 0), errors_logged);
 }
 
@@ -270,7 +260,6 @@ test "a directory cursor opens, steps and closes" {
     try std.testing.expectEqual(ns.err_null_ptr, ns.ra8_io_vfs_dir_close(null));
 }
 
-// The other units in the same archive need these to link; unused here.
 // The other units in the same archive need these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {

@@ -215,18 +215,12 @@ export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
     return 0;
 }
 
-// ra8_io_vfs_namespace_abi.zig reaches these in ra8_io_vfs.c; unused here.
-export fn priv_ra8_io_vfs_streq(_: [*:0]const u8, _: [*:0]const u8) bool {
-    return false;
+// The VFS mount table reaches the C format registry (ra8_io_fsfmt.c); unused here.
+export fn ra8_io_fsfmt_get_builtin(_: u8, _: *?*const anyopaque) c_int {
+    return 0x107;
 }
-export fn priv_ra8_io_vfs_find(_: [*:0]const u8, _: ?*u8) ?*io.vfs_namespace.Slot {
-    return null;
-}
-export fn priv_ra8_io_vfs_split(_: [*:0]const u8, _: [*]u8, _: *?[*:0]const u8) c_int {
-    return 0;
-}
-export fn priv_ra8_io_vfs_resolve(_: [*:0]const u8, _: *?*io.vfs_namespace.Slot, _: ?*u8, _: *?[*:0]const u8) c_int {
-    return 0;
+export fn ra8_io_fsfmt_probe(_: *const anyopaque, _: *?*const anyopaque) c_int {
+    return 0x107;
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).

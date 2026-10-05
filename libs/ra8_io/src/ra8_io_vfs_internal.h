@@ -8,12 +8,12 @@
  *
  * @details
  * The named-mount dispatcher is implemented by two translation units. The mount
- * table, its fixed storage, and the open-stream facade live in `ra8_io_vfs.c`;
+ * table, its fixed storage, and the open-stream facade live in `ra8_io_vfs_abi.zig`;
  * the path-namespace operations (removal, rename, metadata, listing, directory
  * cursors, and directory creation) live in `ra8_io_vfs_namespace_abi.zig`. Both need
  * the fixed slot layout and the bounded name/path resolvers declared here.
  *
- * The mount and open-file tables themselves stay private to `ra8_io_vfs.c`: the
+ * The mount and open-file tables themselves stay private to `ra8_io_vfs_abi.zig`: the
  * namespace unit reaches a mount only through ::priv_ra8_io_vfs_find and
  * ::priv_ra8_io_vfs_resolve, so there is exactly one owner of that state.
  *
@@ -64,7 +64,7 @@ typedef struct {
  * @note Not thread-safe; single-threaded host test use only.
  * @par MC/DC:
  * Exposes `internal_vfs_init_slot()`'s `slot->in_use && slot->owned` decision
- * (`libs/ra8_io/src/ra8_io_vfs.c@internal_vfs_init_slot`) for direct N+1
+ * (`libs/ra8_io/src/ra8_io_vfs_abi.zig@initSlot`) for direct N+1
  * vectors; see `internal_test_vfs_init_slot_mcdc` in
  * `tests/storage/src/test_ra8_io_vfs.c`.
  * @since Version 0.1.0
