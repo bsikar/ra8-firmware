@@ -25,6 +25,7 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
 const expected = @embedFile("golden/font_faces.ppm");
 const pager_expected = @embedFile("golden/pager.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
+const expected_image = @embedFile("golden/image_widget.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -102,4 +103,44 @@ test "host backend writes panel PPM matching toggle and segmented golden" {
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, toggle_segmented_expected, written);
+}
+
+test "host backend writes panel PPM matching the image-widget golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = null, .text_size = null };
+    const pixels = [_]u8{
+        24,  48,  72,  96,  120, 144, 168, 192,
+        48,  72,  96,  120, 144, 168, 192, 216,
+        72,  96,  120, 144, 168, 192, 216, 232,
+        96,  120, 144, 168, 192, 216, 232, 248,
+        120, 144, 168, 192, 216, 232, 248, 232,
+        144, 168, 192, 216, 232, 248, 232, 216,
+        168, 192, 216, 232, 248, 232, 216, 192,
+        192, 216, 232, 248, 232, 216, 192, 168,
+    };
+    abi.image.render(
+        &paint,
+        .{ .x = 356, .y = 420, .w = 360, .h = 360 },
+        .{ .pixels = &pixels, .width = 8, .height = 8 },
+        .fit,
+        .{},
+    );
+    abi.image.render(
+        &paint,
+        .{ .x = 780, .y = 1030, .w = 120, .h = 160 },
+        null,
+        .fit,
+        .{ .fill = 255, .border = 64, .border_width = 3 },
+    );
+
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/image_widget.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, expected_image, rendered);
+    }
 }

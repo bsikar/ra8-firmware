@@ -14,7 +14,8 @@
     "tests/reflow_view_test.zig",
     "tests/host_render_test.zig",
     "tests/toggle_test.zig",
-    "tests/segmented_test.zig"
+    "tests/segmented_test.zig",
+    "tests/image_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -49,7 +50,10 @@
     "src/widget_segmented_abi.zig",
     "tests/toggle_test.zig",
     "tests/segmented_test.zig"
+  ,
+    "src/widget_image.zig",
+    "tests/image_test.zig"
   ],
-  "minimum_tests": 182
+  "minimum_tests": 186
 }
 
