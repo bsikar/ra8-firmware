@@ -160,7 +160,7 @@ typedef enum : uint8_t {
  *
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in ``ra8_sci_lin_init`` in
- * ``libs/ra8_hal/src/ra8_sci_lin.c``.
+ * ``libs/ra8_hal/src/sci_lin_abi.zig``.
  *
  * @invariant ``break_field_len`` <= ``k_ra8_sci_xcr2_bflw_max`` (0xFFFE).
  */

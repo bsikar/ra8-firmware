@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_sci_lin.c
  * @brief Unit tests for the LIN commander + responder driver
- *        (libs/ra8_hal/src/ra8_sci_lin.c).
+ *        (libs/ra8_hal/src/sci_lin_abi.zig).
  *
  * @details
  * Exercises ``ra8_sci_lin_init`` for both roles (the Simple-LIN register
@@ -533,7 +533,7 @@ static void test_lin_clear_status(void)
  *
  * @par MC/DC:
  * Decision ``*out_valid = sync_ok && pid_ok;`` (2 conditions) in
- * libs/ra8_hal/src/ra8_sci_lin.c@ra8_sci_lin_check_header, covered with an
+ * libs/ra8_hal/src/sci_lin_abi.zig@ra8_sci_lin_check_header, covered with an
  * N+1 = 3 vector subset (DO-178C 6.4.4.3). ``sync_ok`` is
  * ``(sync == 0x55)`` and ``pid_ok`` is
  * ``(ra8_sci_lin_pid(pid & 0x3F) == pid)``; id 0 has PID 0x80.
