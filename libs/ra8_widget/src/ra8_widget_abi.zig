@@ -6,8 +6,7 @@
 //! membrane below stays a single-purpose file and porting the next widget
 //! translation unit adds one line here instead of growing a sibling.
 //!
-//! The library's public C ABI (`inc/ra8_widget.h`) is unchanged. With the
-//! flat container ops below, no C translation unit is left in this library;
+//! The existing widget C ABI stays stable; a debug-only channel is optional. no C translation unit is left in this library;
 //! its C consumers elsewhere in the tree link every one of these symbols out
 //! of the archive.
 

@@ -16,6 +16,7 @@
 //! raw pointer. That is the shape every container in this library uses.
 
 const types = @import("widget_abi_types.zig");
+const builtin = @import("builtin");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -29,6 +30,12 @@ pub const Event = types.Event;
 pub const Refresh = types.Refresh;
 /// The `ra8_err_t` values this membrane answers with.
 pub const err = types.err;
+
+const DebugWidget = if (builtin.mode == .Debug) @import("debug").SnapshotWidget else struct {};
+const DebugChildrenFn = *const fn (*DebugWidget) ?[]DebugWidget;
+const debug_channel = if (builtin.mode == .Debug) @import("debug") else struct {
+    pub fn publish(_: *Widget, _: DebugChildrenFn) void {}
+};
 
 /// The `ra8_box_t` layout scratch node. A panel only forwards the array to
 /// the box engine, so its contents stay opaque here.
@@ -97,6 +104,16 @@ pub fn children(w: *Widget) ?[]Widget {
     const panel: *Panel = @ptrCast(@alignCast(w.ctx orelse return null));
     const base = panel.children orelse return null;
     return base[0..panel.count];
+}
+
+/// Return children only when the instance is a panel; leaf contexts have other
+/// layouts and must never be interpreted as a `Panel`.
+fn debugChildren(raw: *DebugWidget) ?[]DebugWidget {
+    const w: *Widget = @ptrCast(@alignCast(raw));
+    if (w.vt != &vtable) return null;
+    const kids = children(w) orelse return null;
+    const base: [*]DebugWidget = @ptrCast(@alignCast(kids.ptr));
+    return base[0..kids.len];
 }
 
 /// Lay a panel's children out inside `rect`. Shared by `render` and
@@ -207,6 +224,9 @@ pub export fn ra8_widget_panel_compose(
 
     widget.dirty = false;
     widget.refresh = @intFromEnum(Refresh.none);
+    if (builtin.mode == .Debug) {
+        debug_channel.publish(@ptrCast(widget), debugChildren);
+    }
     return err.ok;
 }
 
@@ -226,4 +246,12 @@ comptime {
     if (@sizeOf(Axis) != 1) @compileError("ra8_widget_axis_t width");
     if (@intFromEnum(Axis.col) != 0) @compileError("ra8_widget_axis_t col value");
     if (@intFromEnum(Axis.row) != 1) @compileError("ra8_widget_axis_t row value");
+}
+
+comptime {
+    if (builtin.mode == .Debug) {
+        if (@sizeOf(DebugWidget) != @sizeOf(Widget)) @compileError("debug widget size mismatch");
+        if (@offsetOf(DebugWidget, "rect") != @offsetOf(Widget, "rect")) @compileError("debug widget rect offset");
+        if (@offsetOf(DebugWidget, "visible") != @offsetOf(Widget, "visible")) @compileError("debug widget visible offset");
+    }
 }

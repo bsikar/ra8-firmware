@@ -15,6 +15,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const debug_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_debug_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const library = b.addLibrary(.{
         .name = "ra8_widget",
         .linkage = .static,
@@ -28,6 +34,7 @@ pub fn build(b: *std.Build) void {
     // `zig cc`, so nothing else on that link line provides Zig's runtime
     // helpers. Without this the archive leaves `__zig_probe_stack` undefined.
     library.bundle_compiler_rt = true;
+    if (optimize == .Debug) library.root_module.addImport("debug", debug_module);
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -94,11 +101,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     host_render_test_module.addImport("host", host_paint_module);
-    host_render_test_module.addImport("abi", b.createModule(.{
+    const host_render_abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_widget_abi.zig"),
         .target = target,
         .optimize = optimize,
-    }));
+    });
+    host_render_abi_module.addImport("debug", debug_module);
+    host_render_test_module.addImport("abi", host_render_abi_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
 
     const progress_bar_module = b.createModule(.{
@@ -171,12 +180,14 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    if (optimize == .Debug) panel_module.addImport("debug", debug_module);
     const panel_test_module = b.createModule(.{
         .root_source_file = b.path("tests/panel_test.zig"),
         .target = target,
         .optimize = optimize,
     });
     panel_test_module.addImport("abi", panel_module);
+    panel_test_module.addImport("debug", debug_module);
     const panel_tests = b.addTest(.{ .root_module = panel_test_module });
 
     const reflow_view_module = b.createModule(.{

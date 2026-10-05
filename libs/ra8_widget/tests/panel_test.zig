@@ -9,7 +9,9 @@
 //! order, and what it does with the answer.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const abi = @import("abi");
+const debug = @import("debug");
 
 const Op = enum { layout, damage, render_dirty, dispatch, invalidate };
 
@@ -662,4 +664,68 @@ test "a panel nests in a panel and the inner subtree repaints too" {
     // Three leaves painted: the outer panel's own leaf child, then the two
     // grandchildren the inner panel composites.
     try std.testing.expectEqual(3, leaf_renders);
+}
+
+test "a successful compose publishes its visible named widget tree" {
+    if (builtin.mode != .Debug) return error.SkipZigTest;
+    reset();
+
+    var grandchildren = [_]abi.Widget{leaf()};
+    grandchildren[0].rect = .{ .x = 11, .y = 22, .w = 33, .h = 44 };
+    var child = leaf();
+    var child_panel = panelOf(&grandchildren);
+    try bound(&child, &child_panel);
+    var kids = [_]abi.Widget{ child, leaf() };
+    kids[1].visible = false;
+    var w = leaf();
+    var panel = panelOf(&kids);
+    try bound(&w, &panel);
+
+    try std.testing.expectEqual(
+        abi.err.ok,
+        debug.ra8_widget_debug_register(@ptrCast(&w), "screen.home", "panel", "active"),
+    );
+    try std.testing.expectEqual(
+        abi.err.ok,
+        debug.ra8_widget_debug_register(@ptrCast(&kids[0]), "reader.body", "panel", "active"),
+    );
+    try std.testing.expectEqual(
+        abi.err.ok,
+        debug.ra8_widget_debug_register(@ptrCast(&grandchildren[0]), "reader.next", "button", "ready"),
+    );
+
+    var damage: abi.Rect = .{ .x = 0, .y = 0, .w = 0, .h = 0 };
+    var hint: abi.Refresh = .none;
+    var dirty: u16 = 0;
+    try std.testing.expectEqual(
+        abi.err.ok,
+        abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
+    );
+
+    const tree = debug.ra8_widget_debug_tree;
+    try std.testing.expectEqual(debug.protocol.magic, tree.magic);
+    try std.testing.expectEqual(@as(u16, 3), tree.count);
+    try std.testing.expect(!tree.truncated);
+    try std.testing.expectEqualStrings("screen.home", std.mem.sliceTo(&tree.records[0].name, 0));
+    try std.testing.expectEqualStrings("panel", std.mem.sliceTo(&tree.records[0].kind, 0));
+    try std.testing.expectEqualStrings("reader.body", std.mem.sliceTo(&tree.records[1].name, 0));
+    try std.testing.expectEqualStrings("panel", std.mem.sliceTo(&tree.records[1].kind, 0));
+    try std.testing.expectEqualStrings("reader.next", std.mem.sliceTo(&tree.records[2].name, 0));
+    try std.testing.expectEqualStrings("button", std.mem.sliceTo(&tree.records[2].kind, 0));
+    try std.testing.expectEqual(@as(i32, 11), tree.records[2].rect.x);
+    const first_generation = tree.generation;
+    try std.testing.expectEqual(
+        abi.err.ok,
+        debug.ra8_widget_debug_set_state(@ptrCast(&grandchildren[0]), "pressed"),
+    );
+    try std.testing.expectEqual(
+        abi.err.ok,
+        abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
+    );
+    const next_tree = debug.ra8_widget_debug_tree;
+    try std.testing.expectEqual(first_generation + 1, next_tree.generation);
+    try std.testing.expectEqualStrings("pressed", std.mem.sliceTo(&next_tree.records[2].state, 0));
+    try std.testing.expectEqual(abi.err.ok, debug.ra8_widget_debug_unregister(@ptrCast(&w)));
+    try std.testing.expectEqual(abi.err.ok, debug.ra8_widget_debug_unregister(@ptrCast(&kids[0])));
+    try std.testing.expectEqual(abi.err.ok, debug.ra8_widget_debug_unregister(@ptrCast(&grandchildren[0])));
 }

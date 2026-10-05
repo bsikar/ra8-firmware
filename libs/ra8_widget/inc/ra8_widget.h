@@ -180,6 +180,83 @@ typedef struct ra8_widget {
 } ra8_widget_t;
 
 /**
+ * @brief Opt in to the debug-only widget tree memory channel.
+ *
+ * @details
+ * Define `RA8_WIDGET_DEBUG_CHANNEL` for the debug firmware build that links
+ * the Debug Zig library. The channel is omitted from non-Debug Zig builds.
+ * Its exported `ra8_widget_debug_tree` symbol is a versioned, fixed-capacity
+ * snapshot in SRAM for an emulator or debugger to read after compose.
+ */
+#if defined(RA8_WIDGET_DEBUG_CHANNEL)
+typedef enum : uint16_t {
+  k_ra8_widget_debug_name_bytes  = 32U, /**< Maximum name bytes including NUL. */
+  k_ra8_widget_debug_kind_bytes  = 16U, /**< Maximum kind bytes including NUL. */
+  k_ra8_widget_debug_state_bytes = 24U, /**< Maximum state bytes including NUL. */
+  k_ra8_widget_debug_record_cap  = 64U, /**< Records per published tree. */
+} ra8_widget_debug_size_t;
+
+/**
+ * @struct ra8_widget_debug_record_t
+ * @brief One named widget in a published visible tree.
+ */
+typedef struct {
+  char          name[k_ra8_widget_debug_name_bytes];   /**< Stable widget name. */
+  char          kind[k_ra8_widget_debug_kind_bytes];   /**< Widget kind label. */
+  char          state[k_ra8_widget_debug_state_bytes]; /**< Readable widget state. */
+  ra8_ui_rect_t rect;                                  /**< Current panel pixels. */
+} ra8_widget_debug_record_t;
+
+/**
+ * @struct ra8_widget_debug_tree_t
+ * @brief Versioned latest-snapshot channel for emulator memory inspection.
+ *
+ * @details The producer clears `magic` before writing and stores it last.
+ * Consumers accept only the published magic and version. A count at capacity
+ * with `truncated == true` indicates that not every visible widget fit.
+ */
+typedef struct {
+  uint32_t                  magic;       /**< 0x52385754 (R8WT) when valid. */
+  uint16_t                  version;     /**< Protocol version, currently 1. */
+  uint16_t                  count;       /**< Number of initialized records. */
+  uint32_t                  generation;  /**< Incremented on each compose. */
+  bool                      truncated;   /**< Capacity or nesting limit reached. */
+  uint8_t                   reserved[3]; /**< Reserved; currently zero. */
+  ra8_widget_debug_record_t records[k_ra8_widget_debug_record_cap]; /**< Snapshot. */
+} ra8_widget_debug_tree_t;
+
+/** @brief Latest debug tree snapshot, readable after successful compose. */
+extern ra8_widget_debug_tree_t ra8_widget_debug_tree;
+
+/**
+ * @brief Register the stable name, kind, and state for a widget.
+ * @param[in] w Widget identity.
+ * @param[in] name NUL-terminated stable name, at most 31 bytes.
+ * @param[in] kind NUL-terminated kind label, at most 15 bytes.
+ * @param[in] state NUL-terminated state label, at most 23 bytes.
+ * @return ra8_err_t; null for missing arguments, invalid_arg for oversized
+ *         strings or exhausted registry.
+ */
+[[nodiscard]] ra8_err_t
+ra8_widget_debug_register(ra8_widget_t* w, const char* name, const char* kind, const char* state);
+
+/**
+ * @brief Update a registered widget's readable state.
+ * @param[in] w Registered widget identity.
+ * @param[in] state New NUL-terminated state label, at most 23 bytes.
+ * @return ra8_err_t; invalid_arg if unregistered or oversized.
+ */
+[[nodiscard]] ra8_err_t ra8_widget_debug_set_state(ra8_widget_t* w, const char* state);
+
+/**
+ * @brief Remove a widget from the debug registry before its storage is reused.
+ * @param[in] w Registered widget identity.
+ * @return ra8_err_t; invalid_arg if unregistered.
+ */
+[[nodiscard]] ra8_err_t ra8_widget_debug_unregister(ra8_widget_t* w);
+#endif
+
+/**
  * @enum ra8_widget_axis_t
  * @brief Main axis a container stacks its children along.
  */
