@@ -67,6 +67,8 @@ pub const Panel = extern struct {
     pad: i16,
     axis: Axis,
     reserved: u8,
+    paint: ?*const types.Paint = null,
+    bg: u32 = 0,
 };
 
 /// The flat container ops of the still-C `src/ra8_widget.c`. A panel is the
@@ -95,6 +97,23 @@ pub extern fn ra8_widget_damage(
     out_count: *u16,
 ) callconv(.c) u16;
 pub extern fn ra8_widget_render_dirty(widgets: [*]Widget, count: u16) callconv(.c) u16;
+
+/// Paint the panel face through its optional caller-owned backend.
+fn fillBackground(rect: Rect, panel: *const Panel) void {
+    const backend = panel.paint orelse return;
+    const fill = backend.fill_rect orelse return;
+    fill(backend.user, rect.x, rect.y, rect.w, rect.h, panel.bg);
+}
+
+/// True when a compose will redraw every visible child.
+fn allVisibleChildrenDirty(kids: []const Widget, dirty: u16) bool {
+    if (dirty == 0) return false;
+    var visible: u16 = 0;
+    for (kids) |child| {
+        if (child.visible) visible += 1;
+    }
+    return dirty == visible;
+}
 
 /// The panel's children as a slice, or null when the widget is not a panel.
 ///
@@ -146,6 +165,7 @@ fn render(w: *Widget) callconv(.c) void {
     const panel: *Panel = @ptrCast(@alignCast(w.ctx.?));
     if (layoutInto(panel, kids, &w.rect) != err.ok) return;
 
+    fillBackground(w.rect, panel);
     const hint = subtreeHint(w);
     for (kids) |*child| {
         if (child.visible) _ = types.ra8_widget_invalidate(child, hint);
@@ -218,6 +238,10 @@ pub export fn ra8_widget_panel_compose(
 
     const damaged = ra8_widget_damage(kids.ptr, @intCast(kids.len), damage, hint, dirty);
     if (damaged != err.ok) return damaged;
+    if (allVisibleChildrenDirty(kids, dirty.*)) {
+        fillBackground(widget.rect, panel);
+        damage.* = widget.rect;
+    }
 
     const rendered = ra8_widget_render_dirty(kids.ptr, @intCast(kids.len));
     if (rendered != err.ok) return rendered;
@@ -241,6 +265,9 @@ comptime {
     if (@offsetOf(Panel, "pad") != 2 * ptr + 6) @compileError("ra8_widget_panel_t pad offset");
     if (@offsetOf(Panel, "axis") != 2 * ptr + 8) @compileError("ra8_widget_panel_t axis offset");
     if (@offsetOf(Panel, "reserved") != 2 * ptr + 9) @compileError("ra8_widget_panel_t reserved offset");
+    const paint_offset = ((2 * ptr + 10 + ptr - 1) / ptr) * ptr;
+    if (@offsetOf(Panel, "paint") != paint_offset) @compileError("ra8_widget_panel_t paint offset");
+    if (@offsetOf(Panel, "bg") != paint_offset + ptr) @compileError("ra8_widget_panel_t bg offset");
     if (@alignOf(Panel) != @alignOf(usize)) @compileError("ra8_widget_panel_t alignment");
 
     if (@sizeOf(Axis) != 1) @compileError("ra8_widget_axis_t width");

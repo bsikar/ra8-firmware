@@ -193,6 +193,9 @@ test "the descriptor matches the C layout" {
     try std.testing.expectEqual(2 * ptr + 6, @offsetOf(abi.Panel, "pad"));
     try std.testing.expectEqual(2 * ptr + 8, @offsetOf(abi.Panel, "axis"));
     try std.testing.expectEqual(2 * ptr + 9, @offsetOf(abi.Panel, "reserved"));
+    const paint_offset = ((2 * ptr + 10 + ptr - 1) / ptr) * ptr;
+    try std.testing.expectEqual(paint_offset, @offsetOf(abi.Panel, "paint"));
+    try std.testing.expectEqual(paint_offset + ptr, @offsetOf(abi.Panel, "bg"));
     try std.testing.expectEqual(@alignOf(usize), @alignOf(abi.Panel));
 }
 
@@ -423,7 +426,7 @@ test "compose lays out, then reports damage, then composites" {
     );
     try std.testing.expectEqual(abi.Refresh.fast, hint);
     try std.testing.expectEqual(2, dirty);
-    try std.testing.expectEqual(@as(i32, 3), damage.w);
+    try std.testing.expectEqual(screen, damage);
 }
 
 test "compose forwards a layout failure and stops there" {
