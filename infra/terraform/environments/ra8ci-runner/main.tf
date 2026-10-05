@@ -1,4 +1,5 @@
 module "runner" {
+  count  = var.runner_enabled ? 1 : 0
   source = "../../modules/ra8ci_ephemeral_runner"
 
   reservation_id        = var.runner.reservation_id

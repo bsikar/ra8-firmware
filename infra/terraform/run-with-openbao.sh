@@ -1,5 +1,5 @@
 #!/bin/bash -p
-# Load the Terraform/OpenBao runtime context without putting secret values in
+# Load the OpenTofu/OpenBao runtime context without putting secret values in
 # the repository, command arguments, or shell history.
 
 set -euo pipefail
@@ -30,16 +30,20 @@ terraform_role_id="$(security find-generic-password \
 terraform_secret_id="$(security find-generic-password \
   -s 'ra8-firmware/openbao/terraform-proxmox-secret' \
   -a 'terraform-proxmox' -w)"
+terraform_state_key="$(security find-generic-password \
+  -s 'ra8-firmware/opentofu/state-encryption/lab' \
+  -a 'terraform-proxmox' -w)"
 
-if [[ -z "$terraform_role_id" || -z "$terraform_secret_id" ]]; then
-  printf '%s\n' 'error: Terraform OpenBao AppRole credentials are unavailable.' >&2
+if [[ -z "$terraform_role_id" || -z "$terraform_secret_id" || -z "$terraform_state_key" ]]; then
+  printf '%s\n' 'error: protected OpenBao credentials or the lab state key are unavailable.' >&2
   exit 1
 fi
 
 export TF_VAR_openbao_address="$bao_address"
 export TF_VAR_openbao_role_id="$terraform_role_id"
 export TF_VAR_openbao_secret_id="$terraform_secret_id"
+export TF_VAR_state_encryption_passphrase="$terraform_state_key"
 unset TF_VAR_proxmox_api_token
+unset terraform_role_id terraform_secret_id terraform_state_key
 
-iac_bin="${RA8_IAC_BIN:-terraform}"
-exec "$iac_bin" -chdir="$repo_root/infra/terraform/environments/lab" "$@"
+exec tofu -chdir="$repo_root/infra/terraform/environments/lab" "$@"

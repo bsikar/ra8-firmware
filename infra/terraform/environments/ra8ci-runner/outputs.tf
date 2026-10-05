@@ -1,11 +1,11 @@
 output "vm_id" {
-  value = module.runner.vm_id
+  value = var.runner_enabled ? module.runner[0].vm_id : null
 }
 
 output "name" {
-  value = module.runner.name
+  value = var.runner_enabled ? module.runner[0].name : null
 }
 
 output "reservation_id" {
-  value = module.runner.reservation_id
+  value = var.runner_enabled ? module.runner[0].reservation_id : null
 }

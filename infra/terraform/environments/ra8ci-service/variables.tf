@@ -1,3 +1,10 @@
+variable "state_encryption_passphrase" {
+  description = "Per-environment OpenTofu state and plan key injected from protected operator storage."
+  type        = string
+  sensitive   = true
+  nullable    = false
+}
+
 variable "service_enabled" {
   description = "Explicit gate for the protected, persistent ra8ci control VM."
   type        = bool

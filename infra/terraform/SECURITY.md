@@ -1,19 +1,20 @@
-# Proxmox lab security gate
+# Proxmox lab security gate for OpenTofu
 
-This runbook is part of the Terraform review. It is intentionally separate
-from the resource definitions because Terraform cannot prove that a Proxmox
+This runbook is part of the OpenTofu review. It is intentionally separate
+from the resource definitions because OpenTofu cannot prove that a Proxmox
 bridge, switch VLAN, firewall, template, or API ACL is safe.
 
 ## Current safe state
 
 - `lab_enabled` is `false`.
 - The VM NIC is disconnected and the LXC NIC is disabled.
-- No API endpoint or API token is present in the repository or exported
-  environment. Credentials belong in a protected local or runtime secret
-  store; do not document their storage location here.
-- Terraform reads the Proxmox token from OpenBao through a dedicated,
+- No API endpoint or API token is checked into the repository. Supply the
+  endpoint and credentials only through protected runtime configuration.
+  The state-key source is documented below; do not record API credentials or
+  their storage paths in repository files.
+- OpenTofu reads the Proxmox token from OpenBao through a dedicated,
   read-only AppRole and an ephemeral KV v2 value. The AppRole cannot create
-  child tokens, and the Terraform wrapper supplies its credentials only at
+  child tokens, and the OpenTofu wrapper supplies its credentials only at
   runtime.
 - Keep Proxmox TLS verification enabled. `proxmox_insecure=true` is permitted
   only for a deliberate, read-only smoke test when the private endpoint's CA
@@ -30,7 +31,23 @@ bridge, switch VLAN, firewall, template, or API ACL is safe.
   allocation; it must not create or modify storage definitions.
 - No current guest occupies the reserved `9000-9099` ID range.
 
-Do not change these defaults as part of a routine Terraform test.
+Do not change these defaults as part of a routine OpenTofu test.
+
+## State and plan encryption keys
+
+All three roots (`lab`, `ra8ci-runner`, and `ra8ci-service`) enforce AES-GCM
+encryption for state and saved plans using a PBKDF2-derived key. On the
+controller Mac, keep each key in the login Keychain under its matching service
+`ra8-firmware/opentofu/state-encryption/{lab,ra8ci-runner,ra8ci-service}` and
+account `terraform-proxmox`. The lab wrapper reads the `lab` item and exports
+it as `TF_VAR_state_encryption_passphrase`; automation for the other roots
+must inject the corresponding Keychain item under the same environment
+variable. Use a distinct key per environment and back it up in the protected
+operator secret store. Keys must never be checked in, copied to a guest, or
+written to a plan or state file. For disposable validation only, a fresh
+random value may be supplied in the current shell environment and discarded
+after the run. A missing key must fail closed; do not add an unencrypted
+fallback.
 
 ## Threat model
 
@@ -39,14 +56,14 @@ There are four separate compromise paths:
 1. A malicious or vulnerable template executes code inside the guest.
 2. A guest compromise reaches the personal LAN or Proxmox management plane.
 3. A stolen or over-privileged API token changes production resources.
-4. A provider or local Terraform process is compromised and uses the token.
+4. A provider or local OpenTofu process is compromised and uses the token.
 
-`prevent_destroy`, pool names, VM-ID ranges, and Terraform validation reduce
+`prevent_destroy`, pool names, VM-ID ranges, and OpenTofu validation reduce
 operator error. They are not substitutes for network isolation or Proxmox ACLs.
 
 ## Network gate
 
-Before enabling a guest NIC, verify all of the following outside Terraform:
+Before enabling a guest NIC, verify all of the following outside OpenTofu:
 
 - `vmbr9` is a dedicated bridge or VLAN and is not `vmbr0`, `vmbr1`, or
   any other production bridge.
@@ -64,7 +81,7 @@ Before enabling a guest NIC, verify all of the following outside Terraform:
   policy or disposable NAT gateway. Do not bridge the guest directly to the
   home/personal LAN.
 - IPv6 is either isolated by the same policy or disabled for the lab guest;
-  the Terraform resources explicitly request manual IPv6 configuration.
+  the OpenTofu resources explicitly request manual IPv6 configuration.
 - Do not reload host networking merely to activate this bridge until the
   dedicated datastore and first plan have been reviewed; the bridge can stay
   inactive while the control plane is prepared.
@@ -91,7 +108,7 @@ Create the credential only after the network gate passes:
 - Verify both the backing user and the token's effective permissions before
   using the token. The token must be weaker than the backing user.
 - Keep the token in a protected runtime environment, never in `.tfvars`, shell
-  history, CI logs, Terraform plans, or this repository. Revoke it after the
+  history, CI logs, OpenTofu plans, or this repository. Revoke it after the
   experiment if it is no longer needed.
 - Treat the OpenBao AppRole credentials as sensitive runtime credentials too;
   rotate them independently from the Proxmox API token.
@@ -112,10 +129,10 @@ documentation](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf).
 - Prefer the QEMU VM path. The LXC path requires `allow_lxc = true` because an
   unprivileged LXC still shares the Proxmox host kernel.
 
-## Terraform gate
+## OpenTofu gate
 
-1. Run `terraform fmt -check -recursive infra/terraform`.
-2. Run `terraform -chdir=infra/terraform/environments/lab validate`.
+1. Run `tofu fmt -check -recursive infra/terraform`.
+2. Run `tofu -chdir=infra/terraform/environments/lab validate`.
 3. Confirm the saved plan contains only a new, stopped lab guest with a
    reserved ID, the dedicated pool, the dedicated bridge, and expected small
    resource allocations.
@@ -141,14 +158,14 @@ or the host network. Before clearing Proxmox protection and purging a guest,
 the cleanup trap verifies the exact run ID in the description and tag, the
 `ra8-lab-linux-*` name, the `ra8-tf-lab` pool/storage, non-template status, and
 stopped state. A mismatch leaves the object and its temporary state for manual
-review. The Windows profile currently refuses before Terraform apply.
+review. The Windows profile currently refuses before OpenTofu apply.
 
 ## Windows template gate
 
 The Windows Server path is not an ISO installer. It clones a reviewed amd64
 template and assumes that Cloudbase-Init and the intended WinRM policy were
 prepared before the template was sealed. Do not place a Windows password,
-certificate private key, WinRM secret, or unattested answer file in Terraform.
+certificate private key, WinRM secret, or unattested answer file in OpenTofu.
 Keep those values in OpenBao and have the later Ansible bootstrap retrieve them
 at runtime.
 

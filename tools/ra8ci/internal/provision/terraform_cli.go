@@ -103,6 +103,7 @@ func OpenTerraformRuntime(ctx context.Context, config TerraformConfig) (*Terrafo
 		return nil, errors.New("pinned Terraform version probe failed")
 	}
 	var version struct {
+		// OpenTofu preserves this Terraform-compatible JSON field name.
 		TerraformVersion string `json:"terraform_version"`
 	}
 	if err := json.Unmarshal(output.data, &version); err != nil || version.TerraformVersion != config.Version {

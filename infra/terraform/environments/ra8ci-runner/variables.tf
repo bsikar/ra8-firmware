@@ -1,3 +1,16 @@
+variable "state_encryption_passphrase" {
+  description = "Per-environment OpenTofu state and plan key injected from protected operator storage."
+  type        = string
+  sensitive   = true
+  nullable    = false
+}
+
+variable "runner_enabled" {
+  description = "Explicit gate for declaring an ephemeral runner VM in this root."
+  type        = bool
+  default     = false
+}
+
 variable "proxmox_endpoint" {
   description = "Reviewed Proxmox API origin supplied from protected runtime configuration."
   type        = string
@@ -39,4 +52,12 @@ variable "runner" {
     started               = bool
     network_enabled       = bool
   })
+
+  default  = null
+  nullable = true
+
+  validation {
+    condition     = !var.runner_enabled || var.runner != null
+    error_message = "runner must be set when runner_enabled is true."
+  }
 }
