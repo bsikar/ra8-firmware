@@ -949,6 +949,7 @@ test "the app that excludes the NSC set names nothing else that could explain it
 test {
     _ = @import("cpu1_image_test.zig");
     _ = @import("zig_entry_test.zig");
+    _ = @import("boot_profile_test.zig");
     _ = @import("analysis_test.zig");
     _ = @import("command_surface_test.zig");
     _ = @import("zig_archive_test.zig");
