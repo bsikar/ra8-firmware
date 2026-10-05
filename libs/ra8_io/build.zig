@@ -37,6 +37,7 @@ pub fn build(b: *std.Build) void {
         "tests/stream_ram_abi_test.zig",
         "tests/stream_uart_abi_test.zig",
         "tests/stream_usbcdc_abi_test.zig",
+        "tests/spi_bus_spi_b_abi_test.zig",
         "tests/blockdev_sdram_abi_test.zig",
     };
     for (roots) |path| {

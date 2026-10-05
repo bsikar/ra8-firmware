@@ -240,7 +240,6 @@ ra8_viewer_read_path(
        ra8_io_i2c_bus_riic.c
        ra8_io_spi_bus.c
        ra8_io_spi_bus_sci_spi.c
-       ra8_io_spi_bus_spi_b.c
        ra8_io_stream_blockdev.c
        ra8_io_vfs.c
        ra8_io_vfs_namespace.c
