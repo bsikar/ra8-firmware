@@ -4,7 +4,7 @@
  * @ingroup grp_storage
  *
  * @details
- * The two entry points `ra8_fs_fat_gpt.c` offers the mount path: locate the
+ * The two entry points `ra8_fs_gpt_abi.zig` offers the mount path: locate the
  * first mountable partition on a GPT disk, and locate one by entry index.
  * Split out as a themed sub-header (like the exFAT stream and directory
  * seams) rather than grown onto the alphabetical prototype headers, which sit

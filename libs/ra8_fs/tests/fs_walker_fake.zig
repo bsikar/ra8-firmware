@@ -41,6 +41,10 @@ pub var bitmap_err: u16 = 0;
 pub var io_sector: [512]u8 = undefined;
 pub var io_reads: u32 = 0;
 
+// GPT side: LBAs 1..4 (header, then three entry sectors) and the scratch buffer.
+pub var disk: [4][512]u8 = undefined;
+export var g_fs_scratch: [4096]u8 = undefined;
+
 pub fn mount() *const c.ra8_fs_mount_t {
     return &mount_store;
 }
@@ -73,6 +77,7 @@ pub fn reset(fs_type: u8) void {
     bitmap = [_]u8{0} ** 1024;
     bitmap_err = 0;
     io_reads = 0;
+    for (&disk) |*d| d.* = [_]u8{0} ** 512;
 }
 
 export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.C) void {
@@ -160,6 +165,10 @@ export fn priv_sec_walk() callconv(.C) [*c]u8 {
 export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.C) u16 {
     _ = m;
     if (sector_read_err != 0) return sector_read_err;
+    if (lba >= 1 and lba < 5) {
+        @memcpy(buf[0..512], &disk[@intCast(lba - 1)]);
+        return 0;
+    }
     if (lba >= bitmap_lba and lba < bitmap_lba + 2) {
         const at: usize = @intCast((lba - bitmap_lba) * 512);
         @memcpy(buf[0..512], bitmap[at..][0..512]);
