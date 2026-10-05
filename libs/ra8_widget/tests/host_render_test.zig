@@ -58,6 +58,7 @@ const list_value_chevron_expected = @embedFile("golden/list_value_chevron.ppm");
 const list_toggle_help_expected = @embedFile("golden/list_toggle_help.ppm");
 const reading_sizes_expected = @embedFile("golden/reading_sizes.ppm");
 const display_sizes_expected = @embedFile("golden/display_sizes.ppm");
+const level_bar_expected = @embedFile("golden/level_bar.ppm");
 const ui_button_expected = @embedFile("golden/ui_button.ppm");
 const ui_list_expected = @embedFile("golden/ui_list.ppm");
 const ui_nav_bar_expected = @embedFile("golden/ui_nav_bar.ppm");
@@ -915,4 +916,38 @@ test "host backend renders toggle and help text to its golden" {
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
     try checkListGolden(allocator, rendered, list_toggle_help_expected, "list_toggle_help");
+}
+
+test "host backend renders negative, neutral and positive level bars to a golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = null, .text_size = null };
+    const rects = [_]abi.types.Rect{
+        .{ .x = 136, .y = 180, .w = 88, .h = 286 },
+        .{ .x = 492, .y = 180, .w = 88, .h = 286 },
+        .{ .x = 848, .y = 180, .w = 88, .h = 286 },
+    };
+    const values = [_]i8{ -6, 0, 6 };
+    for (rects, values) |rect, value| {
+        var level = abi.level_bar.LevelBar{
+            .paint = &paint,
+            .track = 0x00D8D8D8,
+            .fill = 0x00101010,
+            .center_mark = 0x00707070,
+            .value = value,
+            .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+        };
+        var level_widget = widget(rect);
+        try std.testing.expectEqual(abi.types.err.ok, abi.level_bar.ra8_widget_level_bar_init(&level_widget, &level));
+        level_widget.vt.?.render.?(&level_widget);
+    }
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/level_bar.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, level_bar_expected, rendered);
+    }
 }

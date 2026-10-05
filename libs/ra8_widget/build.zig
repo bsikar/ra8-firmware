@@ -154,6 +154,19 @@ pub fn build(b: *std.Build) void {
     progress_bar_test_module.addImport("abi", progress_bar_module);
     const progress_bar_tests = b.addTest(.{ .root_module = progress_bar_test_module });
 
+    const level_bar_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_level_bar_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const level_bar_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/level_bar_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    level_bar_test_module.addImport("abi", level_bar_module);
+    const level_bar_tests = b.addTest(.{ .root_module = level_bar_test_module });
+
     const status_bar_module = b.createModule(.{
         .root_source_file = b.path("src/widget_status_bar_abi.zig"),
         .target = target,
@@ -300,6 +313,7 @@ pub fn build(b: *std.Build) void {
     const run_toggle_tests = b.addRunArtifact(toggle_tests);
     const run_segmented_tests = b.addRunArtifact(segmented_tests);
     const run_progress_bar_tests = b.addRunArtifact(progress_bar_tests);
+    const run_level_bar_tests = b.addRunArtifact(level_bar_tests);
     const run_status_bar_tests = b.addRunArtifact(status_bar_tests);
     const run_toolbar_tests = b.addRunArtifact(toolbar_tests);
     const run_keyboard_tests = b.addRunArtifact(keyboard_tests);
@@ -321,6 +335,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_segmented_tests.step);
     test_step.dependOn(&run_progress_bar_tests.step);
     test_step.dependOn(&run_status_bar_tests.step);
+    test_step.dependOn(&run_level_bar_tests.step);
     test_step.dependOn(&run_toolbar_tests.step);
     test_step.dependOn(&run_keyboard_tests.step);
     test_step.dependOn(&run_nav_bar_tests.step);
