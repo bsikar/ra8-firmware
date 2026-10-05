@@ -25,14 +25,16 @@ pub const InquiryFn = *const fn (ctx: ?*anyopaque, vendor8: [*]u8, product16: [*
 
 /// `ra8_usb_pmsc_storage_t`.
 pub const Storage = extern struct {
-    read_block: ReadFn,
-    write_block: WriteFn,
-    get_capacity: CapacityFn,
-    get_inquiry: InquiryFn,
+    read_block: ?ReadFn,
+    write_block: ?WriteFn,
+    get_capacity: ?CapacityFn,
+    get_inquiry: ?InquiryFn,
     ctx: ?*anyopaque,
 };
 
-/// `ra8_usb_pmsc_state_data_t`; storage stays in ra8_usb_pmsc.c.
+/// `ra8_usb_pmsc_state_data_t`; g_usb_pmsc_state is defined in usb_pmsc_abi.zig.
+/// Callbacks are optional so the global zero-initializes; attach_storage
+/// rejects null ones, so the handlers unwrap them.
 pub const State = extern struct {
     initialized: bool,
     storage_attached: bool,
@@ -72,7 +74,7 @@ pub fn inquiry(s: *const Storage, buf: [*]u8, capacity: u32, out_len: *u32) u16 
     buf[4] = 0x1F; // 36 - 5
     // Pad the strings first so a backend that writes fewer bytes still conforms.
     @memset(buf[inq_vendor..inquiry_len], ' ');
-    const err = s.get_inquiry(s.ctx, buf + inq_vendor, buf + inq_product, buf + inq_revision);
+    const err = s.get_inquiry.?(s.ctx, buf + inq_vendor, buf + inq_product, buf + inq_revision);
     if (err != ok) return err;
     out_len.* = inquiry_len;
     return ok;
@@ -82,7 +84,7 @@ pub fn readCapacity(s: *const Storage, buf: [*]u8, capacity: u32, out_len: *u32)
     if (capacity < read_capacity_len) return err_invalid_size;
     var count: u32 = 0;
     var size: u32 = 0;
-    const err = s.get_capacity(s.ctx, &count, &size);
+    const err = s.get_capacity.?(s.ctx, &count, &size);
     if (err != ok) return err;
     packBe(if (count == 0) 0 else count - 1, buf);
     packBe(size, buf + 4);
@@ -111,7 +113,7 @@ pub fn modeSense(buf: [*]u8, capacity: u32, out_len: *u32) u16 {
 
 fn blockSize(s: *const Storage, size: *u32) u16 {
     var count: u32 = 0;
-    const err = s.get_capacity(s.ctx, &count, size);
+    const err = s.get_capacity.?(s.ctx, &count, size);
     if (err == ok and size.* == 0) size.* = block_size_default;
     return err;
 }
@@ -127,7 +129,7 @@ pub fn read10(s: *const Storage, cdb: *const [16]u8, buf: [*]u8, capacity: u32, 
     if (cap_err != ok) return cap_err;
     const bytes = rw.count *% size;
     if (bytes > capacity) return err_invalid_size;
-    const err = s.read_block(s.ctx, rw.lba, rw.count, buf);
+    const err = s.read_block.?(s.ctx, rw.lba, rw.count, buf);
     if (err != ok) return err;
     out_len.* = bytes;
     return ok;
@@ -142,7 +144,7 @@ pub fn write10(s: *const Storage, cdb: *const [16]u8, buf: [*]const u8, out_len:
     var size: u32 = 0;
     const cap_err = blockSize(s, &size);
     if (cap_err != ok) return cap_err;
-    const err = s.write_block(s.ctx, rw.lba, rw.count, buf);
+    const err = s.write_block.?(s.ctx, rw.lba, rw.count, buf);
     if (err != ok) return err;
     out_len.* = rw.count *% size;
     return ok;

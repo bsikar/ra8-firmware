@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI for the PMSC SCSI handlers ra8_usb_pmsc.c dispatches to
-//! (RA8FW-594). g_usb_pmsc_state stays defined in ra8_usb_pmsc.c; the logic
+//! C ABI for the PMSC SCSI handlers (RA8FW-594), kept for the C coverage
+//! suite. g_usb_pmsc_state is defined in usb_pmsc_abi.zig (RA8FW-756); the logic
 //! is in internal/usb_pmsc_scsi.zig.
 
 const scsi = @import("internal/usb_pmsc_scsi.zig");

@@ -2,7 +2,7 @@
  * @file ra8_usb_pmsc_internal.h
  * @brief Cross-TU surface shared between the device-MSC BOT state
  * @ingroup grp_hal_usb
- *        machine (ra8_usb_pmsc.c) and the SCSI command handlers
+ *        machine (usb_pmsc_abi.zig) and the SCSI command handlers
  *        (ra8_usb_pmsc_scsi.c).
  *
  * @par Tag
@@ -88,7 +88,7 @@ typedef enum : uint32_t {
  * @enum ra8_usb_pmsc_cdb_opcode_offset_t
  * @brief Offset of the SCSI operation code inside the cached CDB.
  *
- * @details Shared by the BOT dispatcher (`ra8_usb_pmsc.c`) and the
+ * @details Shared by the BOT dispatcher (`usb_pmsc_abi.zig`) and the
  * SCSI handler TU (`ra8_usb_pmsc_scsi.c`). Per SPC-4 the CDB
  * operation code is always byte 0.
  */
@@ -119,7 +119,7 @@ typedef struct {
  * @var g_usb_pmsc_state
  * @brief Singleton shadow state shared by both device-MSC TUs.
  *
- * @details Defined in `ra8_usb_pmsc.c`; the SCSI handler TU reads the
+ * @details Defined in `usb_pmsc_abi.zig`; the SCSI handler TU reads the
  * cached CDB and storage backend through this extern declaration.
  *
  * @note Single-instance, single-LUN; not thread-safe.
@@ -133,7 +133,7 @@ extern ra8_usb_pmsc_state_data_t g_usb_pmsc_state;
  *
  * @details Avoids `memset` so the project's clang-tidy
  * `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
- * gate stays clean. Defined in `ra8_usb_pmsc.c`, shared with the SCSI
+ * gate stays clean. Defined in `usb_pmsc_abi.zig`, shared with the SCSI
  * handler TU.
  *
  * @param[out] dst Destination buffer (non-null, at least `len` bytes).
