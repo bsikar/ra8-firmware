@@ -38,6 +38,8 @@ def generate() -> bytes:
     pixels: list[int] = []
     pixel_offset = 0
     for cp in codepoints():
+        # Each glyph payload is rounded to whole bytes; keep its pixel offset aligned.
+        pixel_offset = (pixel_offset + 3) & ~3
         character = chr(cp)
         left, top, right, bottom = font.getbbox(character)
         mask = font.getmask(character)
