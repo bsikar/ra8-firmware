@@ -27,6 +27,7 @@ const interface_archive = @import("interface_archive.zig");
 const migrated_libs = @import("migrated_libs.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
+const zig_entry = @import("zig_entry.zig");
 const device = @import("device.zig");
 const ld_fragments = @import("ld_fragments.zig");
 const middleware = @import("middleware.zig");
@@ -328,6 +329,11 @@ fn addCrossApp(
     app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    // First in the link, where main.c would be: a Zig-entry app has none.
+    if (app.zig_entry) {
+        const optimize = globals.configuration.zig_optimize;
+        objects.append(zig_entry.object(b, app, arm_target, optimize)) catch @panic("OOM");
+    }
     for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);

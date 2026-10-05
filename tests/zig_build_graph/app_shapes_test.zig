@@ -148,6 +148,10 @@ test "every cross-built app is in the ledger with the shape its table row declar
     const entries = try ledger(allocator);
 
     for (app_table.cross_apps) |app| {
+        // The ledger is read out of ra8_add_app() calls. A Zig-entry app has
+        // no CMakeLists.txt and no call to read (RA8FW-503); zig_entry_test.zig
+        // holds its rules instead.
+        if (app.zig_entry) continue;
         const row = rowNamed(entries, app.name) orelse {
             std.debug.print("ra8: cross-built app {s} is not in the ledger\n", .{app.name});
             return error.CrossAppMissingFromLedger;

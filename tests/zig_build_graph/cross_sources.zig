@@ -351,7 +351,9 @@ pub fn declaresLibrary(app: CrossApp, library: []const u8) bool {
 pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     var sources = std.ArrayList([]const u8).init(b.allocator);
 
-    sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
+    // A Zig-entry app has no main.c: zig_entry.zig links its src/main.zig
+    // object in this slot instead.
+    if (!app.zig_entry) sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
 
     for (cross_boot_sources) |boot| {
         const app_copy = b.fmt("{s}/src/{s}", .{ app.dir, boot });

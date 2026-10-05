@@ -50,6 +50,7 @@ pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
 pub const app_local = @import("tests/zig_build_graph/app_local.zig");
 pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
+pub const zig_entry = @import("tests/zig_build_graph/zig_entry.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
