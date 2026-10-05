@@ -61,3 +61,24 @@ test "zeroize times out when WHUKEXE never clears" {
     try expectEqual(false, ctl.zeroize(&hw, 5));
     try expectEqual(@as(u32, 5), hw.polls);
 }
+
+test "clock-frequency bounds are 250 MHz code and 125 MHz extra" {
+    try expectEqual(true, ctl.freqOk(250, 125));
+    try expectEqual(true, ctl.freqOk(0, 0));
+    try expectEqual(false, ctl.freqOk(251, 125));
+    try expectEqual(false, ctl.freqOk(250, 126));
+}
+
+test "MRCFREQ and MREFREQ carry their keys in bits 31:24" {
+    try expectEqual(@as(u32, 0x1E0000FA), ctl.mrcfreqWord(250));
+    try expectEqual(@as(u32, 0xE1000064), ctl.mrefreqWord(100));
+    try expectEqual(@as(usize, 0x4013C004), ctl.reg(ctl.off_mrcfreq));
+    try expectEqual(@as(usize, 0x4013C008), ctl.reg(ctl.off_mrefreq));
+}
+
+test "MSUINITR kick word, SUINIT bit and address" {
+    try expectEqual(@as(u16, 0xAA01), ctl.msuinitr_full_init);
+    try expectEqual(@as(u16, 0x0001), ctl.msuinitr_suinit);
+    try expectEqual(@as(usize, 0x4013E08C), ctl.reg(ctl.off_msuinitr));
+    try expectEqual(@as(u32, 0x10000), ctl.pe_spin_limit);
+}
