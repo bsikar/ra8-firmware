@@ -80,8 +80,8 @@ p 204).
 +-------------------+                 +-------------------+
 ```
 
-The release sequence matches `libs/ra8_hal/src/ra8_dual_core.c` (the source of
-truth) and HUM Ch 2.9.1 "CPU control registers" (p 128-130). All three
+The release sequence matches `libs/ra8_hal/src/internal/dual_core.zig` (the source of
+truth; it replaced `ra8_dual_core.c` in RA8FW-766) and HUM Ch 2.9.1 "CPU control registers" (p 128-130). All three
 registers live in the CPU_CTRL block at base `0x4000F000`:
 
 1. Write the CPU1 reset vector base into `CPU1INITVTOR` (@ 0x044, 128-byte
@@ -99,7 +99,8 @@ To halt CPU1 again, `ra8_cpu1_halt()` re-asserts the inactive state.
 Earlier drafts named FSP-style `LPCSR` / `VTORC1` / `MSPC1` registers at
 `0x4001E000` -- those do NOT exist on the RA8D2, and writes there are silently
 dropped. The RA8D2 HUM Ch 2.9.1 names the CPU_CTRL registers above explicitly,
-and `ra8_dual_core.c` is JTAG-confirmed against them. The shared-SRAM mailbox
+and the release sequence (first JTAG-confirmed in `ra8_dual_core.c`, now
+`internal/dual_core.zig`) is checked against them. The shared-SRAM mailbox
 (rather than the IPC peripheral) is the validated cross-core path: IPC is
 blocked by `IPCSAR` secure-only attribution while the M33 boots Non-Secure.
 

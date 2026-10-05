@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_dual_core_cov.c
- * @brief Coverage-lift tests for libs/ra8_hal/src/ra8_dual_core.c
+ * @brief Coverage-lift tests for libs/ra8_hal/src/dual_core_abi.zig
  *
  * @par Tag
  * [Test / Host] {World: N/A}
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
  *
  * @details
  * Calls ra8_fake_mmap_reset() to zero the peripheral-window RAM.  The
- * module-internal s_fake struct is file-static to ra8_dual_core.c and is
+ * module-internal s_fake struct is file-private to dual_core_abi.zig and is
  * NOT reset by this call; tests in this file are ordered so that the
  * "not yet activated" (ACT=0) test always runs first, before any
  * ra8_cpu1_release() can set the ACT bit.
@@ -97,7 +97,7 @@ static void reset_mmio(void)
  *
  * @pre s_fake.actcsr == 0 (fresh process, no prior ra8_cpu1_release call).
  * @pre ra8_fake_mmap_reset() has not altered s_fake (it does not -- s_fake is
- *      private to ra8_dual_core.c).
+ *      private to dual_core_abi.zig).
  * @post ra8_cpu1_is_running() returned false.
  * @post s_fake is unchanged.
  * @note Must execute before any ra8_cpu1_release() in this process.
