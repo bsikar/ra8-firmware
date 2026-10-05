@@ -111,6 +111,7 @@ fn drawKey(kbd: *const Keyboard, backend: *const Paint, info: *const KeyInfo) vo
         geometry.no_pad,
         .center,
         .sans,
+        .regular,
         false,
         &pen_x,
         &pen_y,

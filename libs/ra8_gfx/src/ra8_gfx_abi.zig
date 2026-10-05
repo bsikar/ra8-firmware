@@ -638,6 +638,49 @@ pub export fn ra8_gfx_text_out_face(
     return impl.err.ok;
 }
 
+/// ra8_gfx_text_out_style
+pub export fn ra8_gfx_text_out_style(
+    x: i32,
+    y: i32,
+    str: ?[*:0]const u8,
+    face: u8,
+    weight: u8,
+    fg_color: u32,
+    bg_color: u32,
+) callconv(.c) u16 {
+    const text_value = str orelse return impl.err.null_ptr;
+    if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
+    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+    const stroke = std.meta.intToEnum(text_impl.Weight, weight) catch return impl.err.invalid_arg;
+
+    if (family == .serif) {
+        text_impl.drawSerifWeight(text_value, x, y, fg_color, bg_color, stroke, null, textPixel);
+        return impl.err.ok;
+    }
+
+    text_impl.drawSansWeight(text_value, x, y, fg_color, bg_color, stroke, null, textPixel);
+    return impl.err.ok;
+}
+
+/// ra8_gfx_text_size_style
+pub export fn ra8_gfx_text_size_style(
+    str: ?[*:0]const u8,
+    face: u8,
+    weight: u8,
+    out_w: ?*u32,
+    out_h: ?*u32,
+) callconv(.c) u16 {
+    const text_value = str orelse return impl.err.null_ptr;
+    const width = out_w orelse return impl.err.null_ptr;
+    const height = out_h orelse return impl.err.null_ptr;
+    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+    const stroke = std.meta.intToEnum(text_impl.Weight, weight) catch return impl.err.invalid_arg;
+    const extent = text_impl.measureWeight(text_value, family, stroke);
+    width.* = extent.width;
+    height.* = extent.height;
+    return impl.err.ok;
+}
+
 /// ra8_gfx_text_size_face
 pub export fn ra8_gfx_text_size_face(
     str: ?[*:0]const u8,

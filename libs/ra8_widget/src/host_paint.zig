@@ -88,6 +88,22 @@ pub const Canvas = struct {
         }
     }
 
+    pub fn drawTextStyle(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, weight: u8, fg: u32, bg: u32) callconv(.c) void {
+        const family: text.Face = if (face == 1) .serif else .sans;
+        const stroke: text.Weight = if (weight == 1) .bold else .regular;
+        if (family == .serif) {
+            text.drawSerifWeight(str, x, y, fg, bg, stroke, user, putPixel);
+        } else {
+            text.drawSansWeight(str, x, y, fg, bg, stroke, user, putPixel);
+        }
+    }
+
+    pub fn textSizeStyle(_: ?*anyopaque, str: [*:0]const u8, face: u8, weight: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+        const extent = text.measureWeight(str, if (face == 1) .serif else .sans, if (weight == 1) .bold else .regular);
+        out_w.* = @intCast(extent.width);
+        out_h.* = @intCast(extent.height);
+    }
+
     pub fn textSize(_: ?*anyopaque, str: [*:0]const u8, out_w: *i32, out_h: *i32) callconv(.c) void {
         const extent = text.measure(str, .sans);
         out_w.* = @intCast(extent.width);

@@ -70,7 +70,7 @@ fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg:
     const draw_text = backend.draw_text orelse return;
     var x: i32 = 0;
     var y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, .sans, false, &x, &y);
+    paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, .sans, .regular, false, &x, &y);
     draw_text(backend.user, x, y, text, fg, bg);
 }
 
