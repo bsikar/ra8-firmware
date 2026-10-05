@@ -10,6 +10,9 @@ from pathlib import Path
 from PIL import ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
+# R8LA v2 header uses version 2 and flag bit 0 for RLE2 coverage.
+R8LA_VERSION = 2
+R8LA_FLAG_RLE2 = 1
 FONT = ROOT / "libs/ra8_fonts/Literata-Regular.ttf"
 OUTPUT = ROOT / "libs/ra8_gfx/src/internal/literata_atlas.bin"
 PIXEL_SIZE = 20
@@ -20,26 +23,27 @@ def codepoints() -> list[int]:
     return list(range(0x20, 0x7F)) + list(range(0xA0, 0x100)) + list(EXTRA_CODEPOINTS)
 
 
-def packed_coverage(values: bytes) -> list[int]:
-    packed: list[int] = []
-    for start in range(0, len(values), 4):
-        value = 0
-        for slot, coverage in enumerate(values[start : start + 4]):
-            level = min(3, (coverage * 3 + 127) // 255)
-            value |= level << (6 - 2 * slot)
-        packed.append(value)
-    return packed
+def packed_coverage(values: bytes) -> bytes:
+    levels = [min(3, (coverage * 3 + 127) // 255) for coverage in values]
+    packed = bytearray()
+    index = 0
+    while index < len(levels):
+        level = levels[index]
+        run = 1
+        while index + run < len(levels) and levels[index + run] == level and run < 64:
+            run += 1
+        packed.append((level << 6) | (run - 1))
+        index += run
+    return bytes(packed)
 
 
 def generate() -> bytes:
     font = ImageFont.truetype(str(FONT), PIXEL_SIZE)
     ascent, descent = font.getmetrics()
     glyphs: list[tuple[int, int, int, int, int, int, int]] = []
-    pixels: list[int] = []
-    pixel_offset = 0
+    pixels = bytearray()
     for cp in codepoints():
-        # Each glyph payload is rounded to whole bytes; keep its pixel offset aligned.
-        pixel_offset = (pixel_offset + 3) & ~3
+        pixel_offset = len(pixels)
         character = chr(cp)
         left, top, right, bottom = font.getbbox(character)
         mask = font.getmask(character)
@@ -49,12 +53,11 @@ def generate() -> bytes:
         advance = round(font.getlength(character))
         glyphs.append((cp, left, top, advance, mask.size[0], mask.size[1], pixel_offset))
         pixels.extend(packed)
-        pixel_offset += mask.size[0] * mask.size[1]
 
     records = bytearray()
     for cp, left, top, advance, width, height, offset in glyphs:
         records.extend(struct.pack("<IhhhBBI", cp, left, top, advance, width, height, offset))
-    header = b"R8LA" + struct.pack("<HBB", len(glyphs), ascent, descent)
+    header = b"R8LA" + struct.pack("<BBHBB", R8LA_VERSION, R8LA_FLAG_RLE2, len(glyphs), ascent, descent)
     return header + records + bytes(pixels)
 
 

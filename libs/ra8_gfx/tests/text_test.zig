@@ -82,10 +82,15 @@ test "bold face expands visible bounds and adds ink for sans and serif" {
 
 const atlas = @import("../src/internal/font_literata.zig");
 
-test "Literata glyph data begins at a packed coverage byte boundary" {
+test "Literata v2 decodes every glyph to its declared pixel count" {
+    try std.testing.expectEqual(@as(u8, 2), atlas.bytes[4]);
+    try std.testing.expectEqual(@as(u8, 1), atlas.bytes[5]);
     for (0..atlas.glyph_count) |index| {
         const glyph = atlas.glyphAt(index);
-        try std.testing.expectEqual(@as(u32, 0), glyph.offset % 4);
+        var decoder = atlas.decoder(glyph.offset);
+        for (0..@as(usize, glyph.width) * glyph.height) |_| {
+            try std.testing.expect(decoder.next() <= 3);
+        }
     }
 }
 
@@ -181,10 +186,9 @@ fn findDisplayGlyph(atlas_value: display_atlas.Atlas, codepoint: u32) ?display_a
 
 fn displayInk(atlas_value: display_atlas.Atlas, glyph: display_atlas.Glyph) u32 {
     var total: u32 = 0;
-    for (0..glyph.height) |y| {
-        for (0..glyph.width) |x| {
-            if (displayCoverage(atlas_value, glyph, x, y) != 0) total += 1;
-        }
+    var decoder = atlas_value.decoder(glyph.offset);
+    for (0..@as(usize, glyph.width) * glyph.height) |_| {
+        if (decoder.next() != 0) total += 1;
     }
     return total;
 }
@@ -195,7 +199,27 @@ fn displayCoverage(
     x: usize,
     y: usize,
 ) u8 {
-    const pixel_index = glyph.offset + @as(u32, @intCast(y * glyph.width + x));
-    const shift: u3 = @intCast(6 - 2 * (pixel_index % 4));
-    return (atlas_value.coverageByte(pixel_index) >> shift) & 0x03;
+    var decoder = atlas_value.decoder(glyph.offset);
+    const pixel_index = y * @as(usize, glyph.width) + x;
+    for (0..pixel_index) |_| _ = decoder.next();
+    return decoder.next();
+}
+
+test "every native display atlas decodes each glyph without allocation" {
+    for (0..2) |face_index| {
+        for (0..2) |weight_index| {
+            for (6..9) |size| {
+                const selected = display_atlas.get(@intCast(face_index), @intCast(weight_index), @intCast(size)).?;
+                try std.testing.expectEqual(@as(u8, 2), selected.bytes[4]);
+                try std.testing.expectEqual(@as(u8, 1), selected.bytes[5]);
+                for (0..selected.glyph_count) |glyph_index| {
+                    const glyph = selected.glyphAt(glyph_index);
+                    var decoder = selected.decoder(glyph.offset);
+                    for (0..@as(usize, glyph.width) * glyph.height) |_| {
+                        try std.testing.expect(decoder.next() <= 3);
+                    }
+                }
+            }
+        }
+    }
 }

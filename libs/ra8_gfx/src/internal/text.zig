@@ -292,14 +292,12 @@ fn paintDisplayGlyph(
     put_pixel: PixelFn,
 ) void {
     const top = line_y +% glyph.top;
+    var decoder = selected.decoder(glyph.offset);
     var row: usize = 0;
     while (row < glyph.height) : (row += 1) {
         var col: usize = 0;
         while (col < glyph.width) : (col += 1) {
-            const index = glyph.offset + @as(u32, @intCast(row * glyph.width + col));
-            const bits = selected.coverageByte(index);
-            const shift: u3 = @intCast(6 - (index % 4) * 2);
-            const alpha = coverage_levels[@intCast((bits >> shift) & 3)];
+            const alpha = coverage_levels[decoder.next()];
             if (alpha == 0) continue;
             put_pixel(
                 user,
@@ -482,28 +480,21 @@ fn paintGlyph(
 ) void {
     const top = line_y +% glyph.top;
     const output_width = @as(usize, glyph.width) + @intFromBool(bold_expand);
+    var decoder = atlas.decoder(glyph.offset);
     var row: usize = 0;
     while (row < glyph.height) : (row += 1) {
+        var previous: u8 = 0;
         var col: usize = 0;
         while (col < output_width) : (col += 1) {
-            const current = coverage(glyph, row, col);
-            const previous = if (bold_expand and col > 0) coverage(glyph, row, col - 1) else 0;
-            const level = @max(current, previous);
+            const current = if (col < glyph.width) decoder.next() else 0;
+            const level = coverage_levels[@max(current, if (bold_expand) previous else 0)];
+            previous = current;
             if (level == 0) continue;
             const px = pen_x +% glyph.left +% @as(i32, @intCast(col));
             const py = top +% @as(i32, @intCast(row));
             put_pixel(user, px, py, blend(fg, bg, level));
         }
     }
-}
-
-/// Two-bit coverage at one glyph-local pixel, or zero outside its bitmap.
-fn coverage(glyph: atlas.Glyph, row: usize, col: usize) u32 {
-    if (col >= glyph.width) return 0;
-    const index = glyph.offset + @as(u32, @intCast((row * glyph.width) + col));
-    const packed_byte = atlas.coverageByte(index);
-    const shift: u3 = @intCast(6 - (index % 4) * 2);
-    return coverage_levels[@intCast((packed_byte >> shift) & 3)];
 }
 
 /// Interpolate 24-bit RGB channels for one 2-bit atlas coverage level.

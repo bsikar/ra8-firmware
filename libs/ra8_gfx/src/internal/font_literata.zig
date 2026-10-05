@@ -4,18 +4,19 @@
 //! Constant-time access to the generated, compact Literata glyph atlas.
 
 const std = @import("std");
+const coverage_rle = @import("coverage_rle.zig");
 
 /// The atlas bytes generated from the licensed 20 px Literata face.
 pub const bytes = @embedFile("literata_atlas.bin");
 
 /// Number of glyph records stored after the header.
-pub const glyph_count: usize = readU16(4);
+pub const glyph_count: usize = readU16(6);
 
 /// Typographic ascent used by both drawing and measurement.
-pub const ascent: i16 = bytes[6];
+pub const ascent: i16 = bytes[8];
 
 /// Typographic descent used by both drawing and measurement.
-pub const descent: i16 = bytes[7];
+pub const descent: i16 = bytes[9];
 
 /// One glyph record decoded from the fixed-width atlas directory.
 pub const Glyph = struct {
@@ -29,13 +30,14 @@ pub const Glyph = struct {
     offset: u32,
 };
 
-const header_bytes: usize = 8;
+const header_bytes: usize = 10;
 const record_bytes: usize = 16;
 const coverage_offset: usize = header_bytes + glyph_count * record_bytes;
 
 comptime {
     if (bytes.len < header_bytes) @compileError("Literata atlas is shorter than its header");
     if (!std.mem.eql(u8, bytes[0..4], "R8LA")) @compileError("Literata atlas magic mismatch");
+    if (bytes[4] != 2 or bytes[5] != 1) @compileError("Literata atlas must use R8LA v2 RLE coverage");
     if (bytes.len < coverage_offset) @compileError("Literata atlas directory is truncated");
 }
 
@@ -53,9 +55,9 @@ pub fn glyphAt(index: usize) Glyph {
     };
 }
 
-/// Read one packed coverage byte for a pixel index in the flat glyph atlas.
-pub fn coverageByte(pixel_index: u32) u8 {
-    return bytes[coverage_offset + pixel_index / 4];
+/// Create a decoder positioned at a glyph coverage stream offset.
+pub fn decoder(offset: u32) coverage_rle.Decoder {
+    return coverage_rle.Decoder.init(bytes[coverage_offset..], offset);
 }
 
 fn readU16(offset: usize) u16 {
