@@ -231,3 +231,17 @@ test "null ctx or buffer logs and returns null_ptr" {
     try std.testing.expectEqual(sbd.err_null_ptr, it.flush.?(null));
     try std.testing.expectEqual(@as(u32, 3), errors_logged);
 }
+
+// The archive root also emits the SPI-mode SD block device (RA8FW-718).
+export fn ra8_sdmmc_spi_read_blocks(_: u32, _: [*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_write_blocks(_: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_erase_blocks(_: u32, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
+    return 0;
+}
