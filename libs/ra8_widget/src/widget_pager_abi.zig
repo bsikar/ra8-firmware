@@ -2,7 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Page-count navigation leaf for lists and grids. The caller owns the current
-//! page and item counts; this widget paints Previous, Page X of Y, and Next,
+//! page and item counts; this widget paints Previous, a page or item-range
+//! label, and Next,
 //! routes taps, and invalidates only its own rectangle after a page turn.
 
 const std = @import("std");
@@ -16,6 +17,12 @@ pub const Vtable = types.Vtable;
 pub const Event = types.Event;
 pub const Refresh = types.Refresh;
 pub const err = types.err;
+
+/// Label shown between Previous and Next.
+pub const LabelFormat = enum(u8) {
+    page = 0,
+    range = 1,
+};
 
 pub const geometry = struct {
     pub const no_items: u16 = 0;
@@ -37,6 +44,7 @@ pub const Pager = extern struct {
     item_count: u16,
     page_capacity: u16,
     page: u16,
+    label_format: LabelFormat = .page,
     bg: u32,
     fg: u32,
     fg_disabled: u32,
@@ -52,6 +60,7 @@ comptime {
     if (@offsetOf(Pager, "item_count") != ptr) @compileError("ra8_widget_pager_t item_count offset");
     if (@offsetOf(Pager, "page_capacity") != ptr + 2) @compileError("ra8_widget_pager_t page_capacity offset");
     if (@offsetOf(Pager, "page") != ptr + 4) @compileError("ra8_widget_pager_t page offset");
+    if (@offsetOf(Pager, "label_format") != ptr + 6) @compileError("ra8_widget_pager_t label_format offset");
     if (@offsetOf(Pager, "bg") != ptr + 8) @compileError("ra8_widget_pager_t bg offset");
     if (@offsetOf(Pager, "fg") != ptr + 12) @compileError("ra8_widget_pager_t fg offset");
     if (@offsetOf(Pager, "fg_disabled") != ptr + 16) @compileError("ra8_widget_pager_t fg_disabled offset");
@@ -80,9 +89,19 @@ fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg:
 }
 
 /// Format into stack storage so rendering never allocates.
-fn pageLabel(buffer: []u8, page: u16, pages: u16) [*:0]const u8 {
-    const label = std.fmt.bufPrintZ(buffer, "Page {d} of {d}", .{ if (pages == 0) 0 else page + 1, pages }) catch return "Page 0 of 0";
+fn pageLabel(buffer: []u8, pager: *const Pager, page: u16, pages: u16) [*:0]const u8 {
+    const label = switch (pager.label_format) {
+        .page => std.fmt.bufPrintZ(buffer, "Page {d} of {d}", .{ if (pages == 0) 0 else page + 1, pages }),
+        .range => rangeLabel(buffer, pager, page, pages),
+    } catch return "Page 0 of 0";
     return label.ptr;
+}
+
+fn rangeLabel(buffer: []u8, pager: *const Pager, page: u16, pages: u16) ![:0]u8 {
+    if (pages == 0) return std.fmt.bufPrintZ(buffer, "0 to 0 of 0", .{});
+    const first = @as(u32, page) * pager.page_capacity + 1;
+    const last = @min(first + pager.page_capacity - 1, pager.item_count);
+    return std.fmt.bufPrintZ(buffer, "{d} to {d} of {d}", .{ first, last, pager.item_count });
 }
 
 fn render(w: *Widget) callconv(.c) void {
@@ -100,7 +119,7 @@ fn render(w: *Widget) callconv(.c) void {
     var label: [24:0]u8 = undefined;
 
     drawText(backend, .{ .x = w.rect.x, .y = w.rect.y, .w = left_edge, .h = w.rect.h }, previous_label, prev_color, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
-    drawText(backend, .{ .x = w.rect.x + left_edge, .y = w.rect.y, .w = right_edge - left_edge, .h = w.rect.h }, pageLabel(&label, page, pages), pager.fg, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
+    drawText(backend, .{ .x = w.rect.x + left_edge, .y = w.rect.y, .w = right_edge - left_edge, .h = w.rect.h }, pageLabel(&label, pager, page, pages), pager.fg, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
     drawText(backend, .{ .x = w.rect.x + right_edge, .y = w.rect.y, .w = w.rect.w - right_edge, .h = w.rect.h }, next_label, next_color, pager.bg, pager.text_face, pager.text_weight, pager.text_size);
 }
 

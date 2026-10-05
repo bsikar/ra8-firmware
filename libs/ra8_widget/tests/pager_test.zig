@@ -61,6 +61,7 @@ fn pagerOf(item_count: u16, capacity: u16, page: u16) abi.Pager {
         .item_count = item_count,
         .page_capacity = capacity,
         .page = page,
+        .label_format = .page,
         .bg = bg_color,
         .fg = fg_color,
         .fg_disabled = disabled_color,
@@ -162,6 +163,48 @@ test "render labels the page and dims unavailable directions" {
     try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
     try std.testing.expectEqualStrings("Next", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[2].text))));
     try std.testing.expectEqual(fg_color, Recorder.draws.buffer[2].fg);
+}
+
+test "range format reports first, middle, and partial last item ranges" {
+    const cases = [_]struct { count: u16, capacity: u16, page: u16, expected: []const u8 }{
+        .{ .count = 14, .capacity = 8, .page = 0, .expected = "1 to 8 of 14" },
+        .{ .count = 42, .capacity = 10, .page = 2, .expected = "21 to 30 of 42" },
+        .{ .count = 14, .capacity = 8, .page = 1, .expected = "9 to 14 of 14" },
+    };
+    for (cases) |case| {
+        Recorder.reset();
+        var pager = pagerOf(case.count, case.capacity, case.page);
+        pager.label_format = .range;
+        var widget = widgetAt();
+        _ = abi.ra8_widget_pager_init(&widget, &pager);
+        abi.ra8_widget_pager_vtable().render.?(&widget);
+        try std.testing.expectEqualStrings(case.expected, std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
+    }
+}
+
+test "range format with no pages displays a zero range" {
+    Recorder.reset();
+    var pager = pagerOf(14, 0, 0);
+    pager.label_format = .range;
+    var widget = widgetAt();
+    _ = abi.ra8_widget_pager_init(&widget, &pager);
+    abi.ra8_widget_pager_vtable().render.?(&widget);
+    try std.testing.expectEqualStrings("0 to 0 of 0", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
+}
+
+test "zero-initialized label format preserves the page label" {
+    Recorder.reset();
+    var pager = std.mem.zeroes(abi.Pager);
+    pager.paint = &paint;
+    pager.item_count = 21;
+    pager.page_capacity = 10;
+    pager.bg = bg_color;
+    pager.fg = fg_color;
+    pager.fg_disabled = disabled_color;
+    var widget = widgetAt();
+    _ = abi.ra8_widget_pager_init(&widget, &pager);
+    abi.ra8_widget_pager_vtable().render.?(&widget);
+    try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
 }
 
 test "empty content displays zero of zero and disables both directions" {
