@@ -6,7 +6,7 @@
 //! consumer include path moves.
 //!
 //! This board is only partly ported: `src/*.c` still holds the pin/LED/switch
-//! core, the camera, MIPI panel and audio-USB layers, and `src/boot/`.
+//! core, the camera and audio-USB layers, and `src/boot/`.
 //! Those stay C and are recorded in the parallel-tree allowlist. The archive
 //! and the remaining objects link side by side, which is why
 //! `cmake/ra8_app/sources.cmake` grew a partial-port case.
@@ -208,6 +208,12 @@ pub fn build(b: *std.Build) void {
             .name = "panel",
             .source = "src/internal/panel.zig",
             .root = "tests/panel_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "mipi_panel",
+            .source = "src/internal/mipi_panel.zig",
+            .root = "tests/mipi_panel_test.zig",
             .needs_config = false,
         },
         .{

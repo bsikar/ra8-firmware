@@ -272,7 +272,7 @@ macro(_ra8_app_collect_sources)
   # archive, exactly as the two LIBS loops below do for any other ported
   # library. Register it whenever the build.zig is there, whether the flip is
   # finished (no C left outside src/boot/, ra8_board_ra8p1) or only
-  # partway (support C such as ra8_board_ek_ra8d2_mipi_panel.c still compiles
+  # partway (support C such as src/boot/ still compiles
   # beside the archive, ra8_board_ek_ra8d2, RA8FW-365/#3033).
   #
   # Either way the archive is the board's link path, so _ra8_board_zig tells
