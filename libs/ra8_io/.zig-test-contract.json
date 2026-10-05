@@ -1,20 +1,23 @@
 {
   "test_roots": [
+    "tests/blockdev_sdram_abi_test.zig",
     "tests/log_abi_test.zig",
     "tests/stream_ram_abi_test.zig",
     "tests/stream_uart_abi_test.zig",
     "tests/stream_usbcdc_abi_test.zig"
   ],
   "covered_sources": [
+    "src/blockdev_sdram_abi.zig",
     "src/ra8_io_log_abi.zig",
     "src/ra8_io_stream_ram_abi.zig",
     "src/ra8_io_stream_uart_abi.zig",
     "src/ra8_io_stream_usbcdc_abi.zig",
     "src/root.zig",
+    "tests/blockdev_sdram_abi_test.zig",
     "tests/log_abi_test.zig",
     "tests/stream_ram_abi_test.zig",
     "tests/stream_uart_abi_test.zig",
     "tests/stream_usbcdc_abi_test.zig"
   ],
-  "minimum_tests": 28
+  "minimum_tests": 36
 }

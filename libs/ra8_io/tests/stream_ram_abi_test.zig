@@ -134,3 +134,12 @@ test "used rejects null arguments" {
     try std.testing.expectEqual(ram.err_null_ptr, ra8_io_stream_ram_used(&st, null));
     try std.testing.expectEqual(@as(u32, 2), errors_logged);
 }
+
+// The SDRAM block-device unit in the same archive needs these to link; unused here.
+export fn ra8_sdramc_init() c_int {
+    return 0;
+}
+export fn ra8_io_blockdev_ram_init(_: *anyopaque, _: *anyopaque, _: [*]u8, _: u32, _: bool) c_int {
+    return 0;
+}
+export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, _: u32) void {}
