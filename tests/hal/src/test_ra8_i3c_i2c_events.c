@@ -33,19 +33,6 @@ static const ra8_i3c_i2c_cfg_t s_iic_b_cfg = {
 };
 
 /**
- * @brief Pre-arm NTST so the driver's address + data wait loops fall
- *        through immediately, and BCST.BFREF so the bus-busy gate
- *        passes. @details Implements the prime ntst fixture operation used only by this focused test executable. @param[in] channel Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_prime_ntst(uint8_t channel)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  /* HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
-  reg->NTST = (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
-  /* HUM Ch 40.2.58 "BCST : Bus Condition Status Register" p 2512 */
-  reg->BCST = (uint32_t)k_ra8_i3c_i2c_msk_bcst_bfref;
-}
-
-/**
  * @brief Reset the fake and ensure MSTP / channel state is fresh. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_prep(void)
 {
@@ -63,49 +50,6 @@ RA8_INTERNAL static void internal_prep(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-
-/** @brief Poll hook that models a target acknowledging the address. @since 0.1.0 */
-RA8_INTERNAL static void internal_i3c_scan_ack_hook(void)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
-  if (reg != nullptr) {
-    /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-    reg->BST = reg->BST | (uint32_t)k_ra8_i3c_i2c_msk_bst_tendf;
-  }
-}
-
-/** @brief Verify scan no response behavior. @details Executes the scan no response scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_scan_no_response(void)
-{
-  TEST_BEGIN("ra8_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
-  internal_prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
-  internal_prime_ntst(0U);
-  /* No bus activity in the fake; the scan times out waiting for
-   * either TENDF or NACKDF, which is the correct behaviour for an
-   * empty bus. */
-  bool acked = true;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 ra8_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &acked));
-  TEST_ASSERT(!acked);
-  TEST_END("ra8_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
-}
-
-/** @brief A target TENDF response makes scan report an ACK. @since 0.1.0 */
-RA8_INTERNAL static void internal_test_scan_ack(void)
-{
-  TEST_BEGIN("ra8_i3c_i2c_scan: TENDF reports acked");
-  internal_prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
-  internal_prime_ntst(0U);
-  ra8_fake_mmio_set_poll_hook(internal_i3c_scan_ack_hook);
-  bool            acked = false;
-  const ra8_err_t err   = ra8_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &acked);
-  ra8_fake_mmio_set_poll_hook(nullptr);
-  TEST_ASSERT_EQ(k_ra8_ok, err);
-  TEST_ASSERT(acked);
-  TEST_END("ra8_i3c_i2c_scan: TENDF reports acked");
-}
 
 /**
  * @par MC/DC:
@@ -220,9 +164,7 @@ RA8_INTERNAL static void internal_test_dispatch_eri_fires_callback(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  internal_test_scan_no_response,
   internal_test_scan_bad_args,
-  internal_test_scan_ack,
   internal_test_attach_handler_toggles_iers,
   internal_test_dispatch_eri_fires_callback,
 };

@@ -10,7 +10,6 @@
  * non-data-path operations of the polling IIC_B driver:
  *
  * - ``ra8_i3c_i2c_abort``        cancel an in-flight transaction.
- * - ``ra8_i3c_i2c_scan``         single-byte address-only bus probe.
  *                                     latched bus-status decode + scrub.
  * - ``ra8_i3c_i2c_attach_handler`` register a completion / error
  *                                     callback and toggle the IIC_B IRQ
@@ -40,24 +39,6 @@
 #include "ra8_i3c_i2c_internal.h"
 #include "ra8_i3c_i2c_regs.h"
 
-/** @brief Log tag for this driver's control-plane TU. */
-static const char* const s_tag = "IIC_B";
-
-/**
- * @enum internal_i3c_i2c_control_t
- * @brief Implementation constants for the control-plane TU.
- */
-typedef enum : uint32_t {
-  /** Generic spin budget for status-flag polls. ~200k iters keeps the
-   * worst-case stall under ~5ms at 250MHz with the load/branch pair
-   * the compiler emits for the wait helpers. */
-  k_ra8_i3c_i2c_ctrl_poll_limit = 200000U,
-  /** Shift count to convert a 7-bit address into the on-the-wire byte. */
-  k_ra8_i3c_i2c_ctrl_addr_shift = 1U,
-  /** R/W bit value for a write transaction (0 in LSB). */
-  k_ra8_i3c_i2c_ctrl_addr_rw_write = 0U,
-} internal_i3c_i2c_control_t;
-
 /* =============================================================================
  * Abort -- cancel an in-flight transaction.
  * =============================================================================
@@ -79,54 +60,6 @@ ra8_err_t ra8_i3c_i2c_abort(uint8_t channel)
   priv_i3c_i2c_clear_bst(reg);
   s_iic_b_state[channel].bus_held = false;
   return k_ra8_ok;
-}
-
-/* =============================================================================
- * Bus probe -- single-byte address-only transaction.
- * =============================================================================
- */
-
-ra8_err_t ra8_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "iic_b_scan: channel");
-  RA8_CHECK_NULL_PTR(out_acked, s_tag, "iic_b_scan: out_acked");
-
-  *out_acked = false;
-  priv_i3c_i2c_clear_bst(reg);
-  priv_i3c_i2c_start(reg);
-
-  const uint8_t address_byte = (uint8_t)(((uint32_t)target_7b << k_ra8_i3c_i2c_ctrl_addr_shift) |
-                                         k_ra8_i3c_i2c_ctrl_addr_rw_write);
-  ra8_err_t     err          = priv_i3c_i2c_send_address(reg, address_byte);
-  if (err != k_ra8_ok) {
-    priv_i3c_i2c_stop(reg);
-    return err;
-  }
-
-  /* Wait for either TENDF (peripheral ACKed the address) or NACKDF. */
-  err = k_ra8_err_hw_timeout;
-  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_ctrl_poll_limit; i++) {
-    const uint32_t bst = reg->BST;
-    const bool     transfer_done =
-      (bst & (k_ra8_i3c_i2c_msk_bst_tendf | k_ra8_i3c_i2c_msk_bst_nackdf)) != 0U;
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-    const bool observed = ra8_fake_mmio_poll(&reg->BST, i, transfer_done);
-#else
-    const bool observed = transfer_done;
-#endif
-    if (observed) {
-      *out_acked = (bst & k_ra8_i3c_i2c_msk_bst_nackdf) == 0U;
-      err        = k_ra8_ok;
-      break;
-    }
-  }
-
-  /* Stop is best-effort -- record the outcome of the probe regardless. */
-  priv_i3c_i2c_stop(reg);
-  priv_i3c_i2c_clear_bst(reg);
-  return err;
 }
 
 /* =============================================================================
