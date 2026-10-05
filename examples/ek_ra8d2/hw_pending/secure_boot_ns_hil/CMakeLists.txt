@@ -143,7 +143,7 @@ target_include_directories(
 # Secure side (cpu flags from the toolchain, C23 global), but no startup files
 # (the Secure boot copies it and ns_reset_handler is the entry) and its own
 # NS-image linker script.
-# ra8_ns_rot_header.c emits the .ns_rot_header record this app's whole point
+# ra8_ns_rot_header_object() emits the .ns_rot_header record this app's whole point
 # depends on (the Secure side reads it to learn body_len before it will BLXNS).
 # ra8_add_ns_image() adds it for the three apps that use the helper; this
 # hand-rolled link names it itself.
@@ -153,11 +153,12 @@ target_include_directories(
 # with this board's one NS memory map.
 include(${RA8_REPO_ROOT}/cmake/ra8_add_ns_image.cmake)
 ra8_ns_linker_script(_sbnh_ns_linker NAME secure_boot_ns_hil_ns)
+ra8_ns_rot_header_object(_sbnh_ns_rot_obj)
 
 add_executable(
   secure_boot_ns_hil_ns.elf
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-  ${_d}/libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c
+  ${_sbnh_ns_rot_obj}
 )
 # The freestanding runtime primitives (memcpy / memset / str* / abs) are Zig
 # now, so the NS image takes them from ra8_core's archive built for

@@ -326,7 +326,7 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # ra8_tz_secure_boot has no C sources left: the secure-boot sequence, the SAU
 # and IPC partitioning, the PSAR gate and the NS root-of-trust reader are all
 # Zig now, linked via tests/cmake/zig_libraries.cmake. The NS-side
-# ns/ra8_ns_rot_header.c is a different artifact: it is data compiled into the
+# ns/ra8_ns_rot_header.zig is a different artifact: it is data built into the
 # Non-Secure image by ra8_add_ns_image.cmake, never into this library.
 # ra8_dfu is partially migrated. The polled host-side DFU driver and
 # the pure boot logic are Zig and this glob no longer matches them,

@@ -22,7 +22,8 @@ const arm_flags = @import("arm_flags.zig");
 const build_type = @import("build_type.zig");
 const middleware = @import("middleware.zig");
 const ns_image = @import("ns_image.zig");
-const CrossApp = @import("cross_sources.zig").CrossApp;
+const cross_sources = @import("cross_sources.zig");
+const CrossApp = cross_sources.CrossApp;
 
 /// The three cross tools this slice drives.
 pub const Tools = struct {
@@ -97,5 +98,7 @@ pub fn nsContext(
         .global_compile_flags = arm.c_flags,
         .warning_flags = arm_flags.warningFlagsForStack(b.allocator, image.stack_bytes),
         .global_link_flags = arm.link_flags,
+        .zig_target = b.resolveTargetQuery(cross_sources.zig_target_query),
+        .zig_optimize = arm.configuration.zig_optimize,
     };
 }
