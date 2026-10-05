@@ -133,9 +133,6 @@ test "flush rejects a null context" {
 export fn ra8_sdramc_init() c_int {
     return 0;
 }
-export fn ra8_io_blockdev_ram_init(_: *anyopaque, _: *anyopaque, _: [*]u8, _: u32, _: bool) c_int {
-    return 0;
-}
 export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, _: u32) void {}
 
 // The spi_b unit in the same archive needs these to link; unused here.
