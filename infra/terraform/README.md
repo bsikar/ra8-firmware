@@ -28,8 +28,15 @@ and removes the matching guest in an exit trap. `--keep` is an explicit
 debugging exception. Windows and `both` are intentionally rejected until the
 Windows template, WinRM boundary, and Windows CI command are reviewed.
 
-`infra/terraform/lab-guest.sh` exposes a separate, short-lived VM 9020
-lifecycle for the OpenTofu/provisioning acceptance. It sources the CI driver's
+`infra/terraform/lab-guest.sh` exposes separate, short-lived Linux and Windows
+lifecycles for the OpenTofu/provisioning acceptance. Linux defaults to VMID
+9020 and accepts reservation IDs 9020–9039 except 9021, which is reserved for
+Windows. Linux uses template 9001; Windows uses VMID 9021 and template 9011.
+Set `RA8_TOFU_GUEST_PROFILE` and
+`RA8_TOFU_GUEST_VM_ID` to select a profile and reservation explicitly. An
+occupied VMID is refused before planning. Each profile/VMID has its own
+default state directory, overridden by `RA8_TOFU_GUEST_STATE_DIR`.
+The entrypoint sources the CI driver's
 network functions, so `vmbr9`, its run-specific firewall table, and forwarding
 state are created and removed by the same guarded recipe. OpenTofu manages
 only the VM. The lifecycle checks the reviewed template, bridge, pool,
@@ -37,10 +44,10 @@ datastore, run marker, resource ceilings, and post-copy config digest before
 destruction. Its encrypted state, digest metadata, and per-run SSH private key
 stay in a private controller-side run directory; only the matching public key
 is injected into the guest to prove OS/SSH readiness. The key is removed when
-the lifecycle is destroyed. Before a destroy, it rechecks VM 9020's run identity
-and current config digest, then clears only that VM's inherited protection bit
-with a digest precondition. It verifies the updated digest before OpenTofu
-removes the guest; the template is never modified.
+the lifecycle is destroyed. Before a destroy, it rechecks the selected guest's
+run identity and current config digest, then clears only that guest's inherited
+protection bit with a digest precondition. It verifies the updated digest
+before OpenTofu removes the guest; templates are never modified.
 
 Run `infra/terraform/lab-guest.sh --selftest` for local policy checks. For a
 scheduled lab acceptance, invoke `check`, `create`, then `destroy` from the
@@ -127,7 +134,8 @@ guest network.
 
 The wrapper reads OpenBao credentials and the selected root's distinct state
 key from the controller's protected Keychain. Set `RA8_TOFU_ENV=lab-guest`
-for the VM 9020 entrypoint; its key is stored under the `lab-guest` service.
+for the standalone guest entrypoint; its key is stored under the `lab-guest`
+service.
 Supply the endpoint through approved runtime configuration. Do not put
 credentials in `.tfvars` files:
 
