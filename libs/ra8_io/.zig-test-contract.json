@@ -1,0 +1,11 @@
+{
+  "test_roots": [
+    "tests/log_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/ra8_io_log_abi.zig",
+    "src/root.zig",
+    "tests/log_abi_test.zig"
+  ],
+  "minimum_tests": 7
+}
