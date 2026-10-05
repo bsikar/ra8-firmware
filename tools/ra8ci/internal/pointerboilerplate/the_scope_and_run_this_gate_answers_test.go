@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // The gate's detector was already held both directions. What was not held is
@@ -369,15 +371,16 @@ func TestAnUndecodableSourceFileIsRefusedAheadOfTheFloor(t *testing.T) {
 }
 
 func TestAnUnreadableSourceFileIsRefusedNamingIt(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root reads a sealed file regardless of its mode")
-	}
 	root := plantRepo(t, map[string]string{"apps/sealed.c": "void f(void);\n"})
 	sealed := filepath.Join(root, "apps", "sealed.c")
-	if err := os.Chmod(sealed, 0o000); err != nil {
-		t.Fatalf("seal: %v", err)
+	if err := testprivatefile.Unreadable(sealed); err != nil {
+		t.Fatalf("make source unreadable: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(sealed, 0o644) })
+	t.Cleanup(func() {
+		if err := testprivatefile.OwnerOnly(sealed); err != nil {
+			t.Errorf("restore source permissions: %v", err)
+		}
+	})
 	got := run(t, context.Background(), root)
 	if got.code != 2 {
 		t.Fatalf("= %d, want 2", got.code)
