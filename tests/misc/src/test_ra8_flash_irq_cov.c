@@ -1,9 +1,9 @@
 /**
  * @file test_ra8_flash_irq_cov.c
- * @brief Coverage booster for ra8_flash_irq.c.
+ * @brief Coverage booster for flash_irq_abi.zig.
  *
  * @details
- * Drives the branches in ra8_flash_irq.c left uncovered by the primary test
+ * Drives the branches in flash_irq_abi.zig left uncovered by the primary test
  * suite (test_ra8_flash.c + test_ra8_flash_edge_cases.c):
  *
  *   - MASTAT.MREAE delivery in ra8_flash_dispatch_isr (lines 301-303).
@@ -151,7 +151,7 @@ static ra8_flash_cfg_t cfg_make(void)
  * Sets MASTAT.MREAE to 1 and registers a callback, then calls
  * ra8_flash_dispatch_isr.  Asserts that exactly one callback was delivered
  * with src == k_ra8_flash_irq_extra_err, covering lines 301-303 in
- * ra8_flash_irq.c.
+ * flash_irq_abi.zig.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- the if at line 300 is a single
@@ -587,7 +587,7 @@ RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
  * @return 0 on success (individual test failures exit via TEST_FAIL_FMT).
  *
  * @pre Host test binary linked against ra8_core_hal with RA8_OFF_TARGET.
- * @post All uncovered branches in ra8_flash_irq.c are exercised.
+ * @post All uncovered branches in flash_irq_abi.zig are exercised.
  *
  * @note Not thread-safe.
  * @since 0.1.0

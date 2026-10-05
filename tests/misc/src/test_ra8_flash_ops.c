@@ -690,7 +690,7 @@ static void test_mcdc_flash_status_or_pairs(void)
  * Decision: `(address >= k_ra8_flash_code_start) &&
  *            (end_excl <= k_ra8_flash_code_start + k_ra8_flash_code_size)`
  * -- the `in_code` window-membership AND in
- * libs/ra8_hal/src/ra8_flash_irq.c@ra8_flash_blank_check (2 conditions).
+ * libs/ra8_hal/src/flash_irq_abi.zig@ra8_flash_blank_check (2 conditions).
  * - V1: address = code_start, len = 4 -> C1=T, C2=T -> in_code = true, the
  *   region gate passes and the call returns k_ra8_ok (control).
  * - V2: address = 0x01000000, len = 4 -> C1=F, C2 masked (short-circuit) ->

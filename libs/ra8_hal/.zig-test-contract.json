@@ -29,7 +29,8 @@
     "tests/rmac_phy_test.zig",
     "tests/rmac_mgmt_test.zig",
     "tests/reset_test.zig",
-    "tests/sci_lin_test.zig"
+    "tests/sci_lin_test.zig",
+    "tests/flash_irq_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -115,7 +116,9 @@
     "tests/reset_test.zig",
     "src/reset_abi.zig",
     "tests/sci_lin_test.zig",
-    "src/sci_lin_abi.zig"
+    "src/sci_lin_abi.zig",
+    "tests/flash_irq_test.zig",
+    "src/flash_irq_abi.zig"
   ],
-  "minimum_tests": 725
+  "minimum_tests": 732
 }
