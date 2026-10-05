@@ -10,14 +10,14 @@
  * Declares the module-private state shared between the two SRAM driver
  * translation units:
  *
- *  - ``ra8_sram.c``           -- lifecycle, ECC mode, status/clear,
+ *  - ``sram_abi.zig``         -- lifecycle, ECC mode, status/clear,
  *                               zero-init, self-test, introspection.
  *  - ``sram_security_abi.zig``  -- TrustZone security attribution + the ECC
  *                               error callback fan-out.
  *
  * The per-(global, bank) ECC error callback table lives in
  * ``sram_security_abi.zig`` (the callback owner) and is referenced from
- * ``ra8_sram.c`` only so ``ra8_sram_deinit`` can clear it on teardown.
+ * ``sram_abi.zig`` only so ``ra8_sram_deinit`` can clear it on teardown.
  * These ``extern`` declarations give that one cross-TU reference a
  * single, documented home instead of a stray forward declaration.
  *
@@ -40,7 +40,7 @@ extern "C" {
  *
  * @details
  * Defined in ``sram_security_abi.zig``. Referenced by ``ra8_sram_deinit``
- * in ``ra8_sram.c`` to drop the registration on teardown.
+ * in ``sram_abi.zig`` to drop the registration on teardown.
  *
  * @note Not thread-safe; mutate under the same single-threaded context
  *       as the rest of the driver.

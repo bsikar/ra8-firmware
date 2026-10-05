@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_sram.c
- * @brief Unit tests for ra8_sram.c (SRAM with ECC driver)
+ * @brief Unit tests for the SRAM driver (libs/ra8_hal/src/sram_abi.zig) (SRAM with ECC driver)
  *
  * @details
  * This sibling owns the init / deinit / stop contract tests; the setter,

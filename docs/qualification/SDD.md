@@ -64,7 +64,7 @@ Reset
   -> SystemInit                 (board boot system_init.c or app override)
        -> ra8_cgc PLL bring-up       (libs/ra8_hal/src/ra8_cgc.c)
        -> SAU + IDAU partition      (board boot trustzone_init.c or app override)
-       -> ECC SRAM enable           (libs/ra8_hal/src/ra8_sram.c)
+       -> ECC SRAM enable           (libs/ra8_hal/src/sram_abi.zig)
   -> __libc_init_array          (newlib startup glue)
   -> ra8_infrastructure_init     (libs/ra8_core/src/ra8_infrastructure.c)
        -> ra8_log_init

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_sram_ecc.c
- * @brief ECC / runtime-control tests for ra8_sram.c (SRAM with ECC driver)
+ * @brief ECC / runtime-control tests for the SRAM driver, sram_abi.zig (SRAM with ECC driver)
  *
  * @details
  * Split out of test_ra8_sram.c to keep each test translation unit under the
@@ -815,7 +815,7 @@ static void test_dispatch_from_esr_walks_all_bits(void)
  *
  * @par MC/DC:
  * Decision A: ``ra8_sram_set_wait_state_for_clock`` line 582,
- * libs/ra8_hal/src/ra8_sram.c:
+ * libs/ra8_hal/src/internal/sram.zig:
  * ``if ((iclk_hz == 0U) || (iclk_max_hz == 0U))`` (2 conditions, ``||``).
  * N+1 = 3:
  * - V1: iclk=200M, max=250M  -> dec F (compute wait)

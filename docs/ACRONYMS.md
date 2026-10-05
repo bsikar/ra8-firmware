@@ -90,7 +90,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | CRC   | Cyclic-Redundancy-Check engine                           | `internal/crc.zig` |
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
 | MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
-| CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `lvd_events.zig`, `ra8_sram.c` |
+| CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `lvd_events.zig`, `internal/sram.zig` |
 | BBFSAR| Battery-Backup Full Security Attribute Register          | `internal/bkup.zig` |
 
 ## 5. Display, video, graphics
@@ -144,8 +144,8 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 |---------|-----------|------------|
 | MRAM  | Magnetoresistive RAM (1 MiB on-chip, code memory)         | `ra8_flash.c` |
 | MRMS  | MRAM Module Sequencer (MRAM controller)                   | `ra8_flash.c` |
-| SRAM  | Static RAM (1664 KiB on-chip, ECC-protected)              | `ra8_sram.c` |
-| ECC   | Error-Correcting Code (SRAM/MRAM single-bit correction)   | `ra8_sram.c`, `cnecc_abi.zig` |
+| SRAM  | Static RAM (1664 KiB on-chip, ECC-protected)              | `internal/sram.zig` |
+| ECC   | Error-Correcting Code (SRAM/MRAM single-bit correction)   | `internal/sram.zig`, `cnecc_abi.zig` |
 | DTCM  | Data Tightly-Coupled Memory                               | (linker only) |
 | ITCM  | Instruction Tightly-Coupled Memory                        | (linker only) |
 | TCM   | Tightly-Coupled Memory (umbrella for ITCM + DTCM)         | (linker only) |
