@@ -354,3 +354,11 @@ export fn ra8_sdmmc_spi_erase_blocks(_: u32, _: u32) c_int {
 export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
     return 0;
 }
+
+// The archive root also emits the MRAM block device (RA8FW-726).
+export fn ra8_flash_extra_mram_write(_: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_flash_extra_mram_erase(_: u32) c_int {
+    return 0;
+}
