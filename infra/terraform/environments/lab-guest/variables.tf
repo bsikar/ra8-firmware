@@ -72,13 +72,26 @@ variable "run_id" {
   }
 }
 
+variable "guest_profile" {
+  description = "Reviewed guest profile selecting exactly one template, VMID, and disk ceiling."
+  type        = string
+  default     = "linux"
+
+  validation {
+    condition     = contains(["linux", "windows"], var.guest_profile)
+    error_message = "guest_profile must be linux or windows."
+  }
+}
+
 variable "vm_id" {
   type    = number
   default = 9020
 
   validation {
-    condition     = var.vm_id == 9020 && var.vm_id >= 9000 && var.vm_id <= 9099
-    error_message = "This lifecycle uses its assigned VMID 9020 inside the reserved 9000-9099 range."
+    condition = (
+      var.guest_profile == "windows" ? var.vm_id == 9021 : (var.vm_id >= 9020 && var.vm_id <= 9039 && var.vm_id != 9021)
+    )
+    error_message = "Linux uses reservation VMIDs 9020-9039 except 9021, which is reserved for Windows."
   }
 }
 
@@ -87,8 +100,8 @@ variable "template_vm_id" {
   default = 9001
 
   validation {
-    condition     = var.template_vm_id == 9001
-    error_message = "This lifecycle may clone only the reviewed Debian template 9001."
+    condition     = var.template_vm_id == (var.guest_profile == "windows" ? 9011 : 9001)
+    error_message = "Linux may clone only template 9001; Windows may clone only template 9011."
   }
 }
 
@@ -97,8 +110,8 @@ variable "template_name" {
   default = "ra8-lab-debian-template"
 
   validation {
-    condition     = var.template_name == "ra8-lab-debian-template"
-    error_message = "Template 9001 must have the exact reviewed Debian template name."
+    condition     = var.template_name == (var.guest_profile == "windows" ? "ra8-lab-windows-template" : "ra8-lab-debian-template")
+    error_message = "The selected template must have the exact reviewed profile name."
   }
 }
 
@@ -133,24 +146,37 @@ variable "datastore_id" {
 }
 
 variable "ipv4_address" {
-  description = "Static address derived from VMID 9020 on the recipe-created lab bridge."
+  description = "Static address derived from the selected VMID on the recipe-created lab bridge."
   type        = string
   default     = "10.250.9.30/24"
 
   validation {
-    condition     = var.ipv4_address == "10.250.9.30/24"
-    error_message = "VMID 9020 is pinned to its derived lab address."
+    condition     = var.ipv4_address == format("10.250.9.%d/24", var.vm_id - 8990)
+    error_message = "The guest address must be derived from its reserved VMID on the temporary lab subnet."
   }
 }
 
 variable "guest_username" {
-  description = "The precreated non-root account used for the recipe's SSH readiness probe."
+  description = "The template account used for the recipe's SSH readiness probe."
   type        = string
   default     = "terraform-lab"
 
   validation {
-    condition     = var.guest_username == "terraform-lab"
-    error_message = "The disposable guest must use the reviewed terraform-lab account."
+    condition     = var.guest_username == (var.guest_profile == "windows" ? "Administrator" : "terraform-lab")
+    error_message = "The disposable guest must use the reviewed account for its selected profile."
+  }
+}
+
+variable "disk_size_gb" {
+  description = "Profile-specific root disk ceiling: 32 GiB for Linux or 64 GiB for Windows."
+  type        = number
+  default     = 32
+
+  validation {
+    condition = (
+      var.guest_profile == "windows" ? var.disk_size_gb == 64 : var.disk_size_gb == 32
+    )
+    error_message = "Linux guests use a 32 GiB disk and Windows guests use a 64 GiB disk."
   }
 }
 

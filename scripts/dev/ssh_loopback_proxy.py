@@ -21,15 +21,15 @@ import threading
 SSH_ALIAS = "pve"
 FIXED_TARGETS = {
     "api": ("127.0.0.1", "8006"),
-    "guest_windows": ("10.250.8.20", "22"),
-    "guest_windows_winrm": ("10.250.8.20", "5985"),
+    "guest_windows": ("10.250.9.31", "22"),
+    "guest_windows_winrm": ("10.250.9.31", "5985"),
 }
 
 
 def resolve_target(target: str, vmid: int | None) -> tuple[str, str]:
     """Resolve only fixed allowlisted endpoints or a reserved Linux guest VMID."""
     if target == "guest":
-        if vmid is None or not 9000 <= vmid <= 9099 or vmid in (9001, 9010, 9011):
+        if vmid is None or not 9000 <= vmid <= 9099 or vmid in (9001, 9011, 9021):
             raise ValueError("Linux guest target requires a non-template VMID from 9000 to 9099")
         return (f"10.250.9.{vmid - 9000 + 10}", "22")
     if vmid is not None:
@@ -133,11 +133,13 @@ def main() -> None:
         expected = {
             9000: ("10.250.9.10", "22"),
             9002: ("10.250.9.12", "22"),
+            9010: ("10.250.9.20", "22"),
+            9020: ("10.250.9.30", "22"),
             9099: ("10.250.9.109", "22"),
         }
         if any(resolve_target("guest", vmid) != address for vmid, address in expected.items()):
             parser.error("selftest failed VMID address mapping")
-        for vmid in (None, 9001, 9010, 9011, 9100):
+        for vmid in (None, 9001, 9011, 9021, 9100):
             try:
                 resolve_target("guest", vmid)
             except ValueError:
@@ -145,6 +147,8 @@ def main() -> None:
             parser.error(f"selftest accepted invalid guest VMID {vmid}")
         if resolve_target("api", None) != ("127.0.0.1", "8006"):
             parser.error("selftest changed API allowlist")
+        if resolve_target("guest_windows", None) != ("10.250.9.31", "22") or resolve_target("guest_windows_winrm", None) != ("10.250.9.31", "5985"):
+            parser.error("selftest changed the Windows guest address")
         print("ssh_loopback_proxy.py --selftest: PASS")
         return
     if args.target is None:

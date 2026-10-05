@@ -32,10 +32,9 @@ DEFAULT_USER = "terraform-lab"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 
-WINDOWS_VM_ID = 9010
-WINDOWS_VM_IP = "10.250.8.20"
+WINDOWS_VM_ID = 9021
 PROTECTED_TEMPLATE_IDS = {9001, 9011}
-LINUX_RESERVED_IDS = {9001, 9010, 9011}
+LINUX_RESERVED_IDS = {9001, 9011, WINDOWS_VM_ID}
 
 
 def linux_vm_identity(value: str | int) -> tuple[int, str]:
@@ -70,8 +69,6 @@ def run_paths(profile: str, run_id: str, vmid: int) -> dict[str, str]:
 
 def vm_ip(vmid: int) -> str:
     """Resolve an approved lab VMID to its guest address."""
-    if vmid == WINDOWS_VM_ID:
-        return WINDOWS_VM_IP
     if 9000 <= vmid <= 9099 and vmid not in PROTECTED_TEMPLATE_IDS:
         return f"10.250.9.{vmid - 9000 + 10}"
     raise ValueError(f"VMID {vmid} is outside the guest address allowlist")
@@ -122,7 +119,7 @@ def get_active_vms(*, strict: bool = False) -> list[dict[str, Any]]:
             run_id = run_match.group(1) if run_match else ""
             if "template" in name or vmid in (9001, 9011):
                 vm_type = "template"
-            elif "windows" in name or vmid == 9010:
+            elif "windows" in name or vmid == WINDOWS_VM_ID:
                 vm_type = "windows"
             else:
                 vm_type = "linux"
@@ -315,7 +312,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        vmid, guest_ip = linux_vm_identity(os.environ.get("RA8_LAB_LINUX_VM_ID", "9000")) if profile == "linux" else (WINDOWS_VM_ID, WINDOWS_VM_IP)
+        vmid, guest_ip = linux_vm_identity(os.environ.get("RA8_LAB_LINUX_VM_ID", "9000")) if profile == "linux" else (WINDOWS_VM_ID, vm_ip(WINDOWS_VM_ID))
     except ValueError as err:
         sys.stderr.write(f"error: {err}\n")
         return 1
@@ -815,7 +812,8 @@ def main() -> None:
         assert vm_ip(9000) == "10.250.9.10"
         assert vm_ip(9002) == "10.250.9.12"
         assert vm_ip(9099) == "10.250.9.109"
-        assert vm_ip(9010) == WINDOWS_VM_IP
+        assert vm_ip(9021) == "10.250.9.31"
+        assert vm_ip(9010) == "10.250.9.20"
         assert linux_vm_identity("9002") == (9002, "10.250.9.12")
         paths_a = run_paths("linux", "aaaaaaaaaaaaaaaa", 9000)
         paths_b = run_paths("linux", "bbbbbbbbbbbbbbbb", 9002)
@@ -835,7 +833,7 @@ def main() -> None:
         stop_parser.add_argument("profile", nargs="?", default="all")
         stop_parser.add_argument("run_id", nargs="?")
         assert parser.parse_args(["stop", "linux", "aaaaaaaaaaaaaaaa"]).run_id == "aaaaaaaaaaaaaaaa"
-        for protected in ("9001", "9010", "9011", "9100", "09002"):
+        for protected in ("9001", "9011", "9021", "9100", "09002"):
             try:
                 linux_vm_identity(protected)
             except ValueError:
@@ -855,7 +853,7 @@ def main() -> None:
         assert 'nft delete table ip "$table"' in cleanup_script
         assert 'other_tables=$(nft list tables' in cleanup_script
         assert 'ip link delete "$bridge" type bridge' in cleanup_script
-        for invalid_vmid in (9001, 9010, 9011, 9100):
+        for invalid_vmid in (9001, 9011, 9021, 9100):
             try:
                 linux_run_cleanup_script(invalid_vmid, "0123456789abcdef")
             except ValueError:

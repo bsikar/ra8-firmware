@@ -27,12 +27,12 @@ LINUX_VM_ID="${RA8_LAB_LINUX_VM_ID:-9000}"
 LINUX_TEMPLATE_ID=9001
 LINUX_HOST=""
 
-WINDOWS_BRIDGE="vmbr8"
-WINDOWS_SUBNET="10.250.8.0/24"
-WINDOWS_GATEWAY="10.250.8.1"
-WINDOWS_VM_ID=9010
+WINDOWS_BRIDGE="vmbr9"
+WINDOWS_SUBNET="10.250.9.0/24"
+WINDOWS_GATEWAY="10.250.9.1"
+WINDOWS_VM_ID=9021
 WINDOWS_TEMPLATE_ID=9011
-WINDOWS_HOST="10.250.8.20"
+WINDOWS_HOST="10.250.9.31"
 
 LAB_BRIDGE=""
 LAB_SUBNET=""
@@ -249,7 +249,7 @@ REMOTE
 set -euo pipefail
 bridge="$1"
 if ip link show "$bridge" >/dev/null 2>&1; then
-  if qm list 2>/dev/null | awk '$3 == "running" && ($1 == "9000" || $1 == "9010") {found=1} END {exit !found}'; then
+  if qm list 2>/dev/null | awk '$3 == "running" && ($1 == "9000" || $1 == "9021") {found=1} END {exit !found}'; then
     printf 'note: an active CI run is currently using the %s lab bridge. (Run `just infra::lab::list` to view running lab guests).\n' "$bridge" >&2
     exit 1
   else
@@ -699,21 +699,25 @@ build_windows_tfvar() {
     --arg name "ra8-lab-win-$run_id" \
     --arg node "$RA8_LAB_NODE" \
     --arg user "${RA8_LAB_WINDOWS_USER:-Administrator}" \
+    --arg bridge "$WINDOWS_BRIDGE" \
+    --arg address "$WINDOWS_HOST/24" \
+    --arg gateway "$WINDOWS_GATEWAY" \
+    --argjson vm_id "$WINDOWS_VM_ID" \
     --arg public_key "$public_key" \
     '{
       enabled: true,
       name: $name,
       run_id: $run_id,
-      vm_id: 9010,
+      vm_id: $vm_id,
       template_vm_id: 9011,
       pool_id: "ra8-tf-lab",
       datastore_id: "ra8-tf-lab",
       node_name: $node,
       cores: 4,
       memory_mb: 8192,
-      bridge: "vmbr8",
-      ipv4_address: "10.250.8.20/24",
-      ipv4_gateway: "10.250.8.1",
+      bridge: $bridge,
+      ipv4_address: $address,
+      ipv4_gateway: $gateway,
       ssh_public_keys: [$public_key],
       user_name: $user,
       started: true,
@@ -1014,7 +1018,7 @@ selftest() {
   [[ "$(linux_guest_ip 9000)" == "10.250.9.10" ]] || die "selftest failed VMID 9000 address mapping"
   [[ "$(linux_guest_ip 9002)" == "10.250.9.12" ]] || die "selftest failed VMID 9002 address mapping"
   [[ "$(linux_guest_ip 9099)" == "10.250.9.109" ]] || die "selftest failed VMID 9099 address mapping"
-  if linux_guest_ip 9001 >/dev/null 2>&1 || linux_guest_ip 9010 >/dev/null 2>&1 || linux_guest_ip 9011 >/dev/null 2>&1 || linux_guest_ip 9100 >/dev/null 2>&1; then
+  if linux_guest_ip 9001 >/dev/null 2>&1 || linux_guest_ip 9011 >/dev/null 2>&1 || linux_guest_ip 9021 >/dev/null 2>&1 || linux_guest_ip 9100 >/dev/null 2>&1; then
     die "selftest accepted a protected or out-of-range VMID"
   fi
   [[ "$(shared_network_cleanup_action ra8_lab_ci_0123456789abcdef '')" == preserve ]] ||
@@ -1024,6 +1028,9 @@ selftest() {
   [[ "$(shared_network_cleanup_action '' '')" == remove ]] ||
     die "selftest failed to remove vmbr9 after the last run and guest"
   [[ "$LINUX_GATEWAY" == "10.250.9.1" ]] || die "selftest changed the pinned lab gateway"
+  [[ "$WINDOWS_VM_ID" == 9021 && "$WINDOWS_TEMPLATE_ID" == 9011 &&
+     "$WINDOWS_BRIDGE" == vmbr9 && "$WINDOWS_HOST" == 10.250.9.31 ]] ||
+    die "selftest changed the Windows disposable guest identity or network"
   [[ "$(derive_uplink_from_route '1.1.1.1 via 10.0.10.1 dev vmbr1 src 10.0.10.2')" == "vmbr1" ]] ||
     die "selftest failed to derive a route uplink"
   if derive_uplink_from_route 'unreachable 1.1.1.1' >/dev/null 2>&1; then

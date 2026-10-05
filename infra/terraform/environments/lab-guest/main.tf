@@ -4,7 +4,7 @@ data "proxmox_virtual_environment_vm" "template" {
 }
 
 resource "proxmox_virtual_environment_vm" "guest" {
-  name        = "ra8-lab-linux-${var.run_id}"
+  name        = "ra8-lab-${var.guest_profile}-${var.run_id}"
   node_name   = var.node_name
   vm_id       = var.vm_id
   description = "Disposable RA8 CI lifecycle guest; RA8_LAB_RUN=${var.run_id}"
@@ -31,8 +31,10 @@ resource "proxmox_virtual_environment_vm" "guest" {
 
   disk {
     datastore_id = var.datastore_id
-    interface    = "scsi0"
-    size         = 32
+    # Windows 9011 already has its 64 GiB boot disk on sata0. Manage that
+    # cloned disk in place instead of attaching a second 64 GiB disk.
+    interface    = var.guest_profile == "windows" ? "sata0" : "scsi0"
+    size         = var.disk_size_gb
     discard      = "on"
     iothread     = true
   }
@@ -68,7 +70,7 @@ resource "proxmox_virtual_environment_vm" "guest" {
         data.proxmox_virtual_environment_vm.template.template &&
         data.proxmox_virtual_environment_vm.template.status == "stopped"
       )
-      error_message = "Clone source must be the stopped, named Debian template 9001."
+      error_message = "Clone source must be the stopped, named template assigned to the selected profile."
     }
 
     precondition {
@@ -77,8 +79,11 @@ resource "proxmox_virtual_environment_vm" "guest" {
     }
 
     precondition {
-      condition     = var.vm_id == 9020 && var.vm_id >= 9000 && var.vm_id <= 9099
-      error_message = "The guest VMID must be the assigned ID 9020 within the reserved range."
+      condition = (
+        (var.guest_profile == "windows" ? var.vm_id == 9021 : (var.vm_id >= 9020 && var.vm_id <= 9039 && var.vm_id != 9021)) &&
+        var.template_vm_id == (var.guest_profile == "windows" ? 9011 : 9001)
+      )
+      error_message = "The guest and template VMIDs must match the selected profile inside the reserved range."
     }
 
   }
