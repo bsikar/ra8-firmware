@@ -68,12 +68,12 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `internal/sdramc.zig`                            |
 | ICU             | `0x40006000`  | Interrupt Controller Unit                            | `internal/icu.zig`                               |
 | CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `ra8_lvd.c`, `ra8_sram.c`                  |
-| LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `ra8_lpm.c`, `pwr.zig`                     |
+| LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `lpm_abi.zig`, `pwr.zig`                   |
 | BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
 | SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `reset_abi.zig`                 |
 | VREG            | `0x4001E000`  | Voltage regulator (within SYSC)                      | `vreg_abi.zig`                            |
 | IPC             | `0x40020000`  | Inter-processor communication (M85 <-> M33)          | `ra8_ipc.c`                               |
-| LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `ra8_lpm.c`                               |
+| LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `lpm_abi.zig`                             |
 | DMAC0           | `0x4000A000`  | Direct Memory Access Controller, ch 0                | `dmac.zig`                              |
 | DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `dma_abi.zig`                             |
 | DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `dtc.zig`                                 |

@@ -16,13 +16,13 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 |---------|-----------|------------|
 | CGC   | Clock Generation Circuit                                | `ra8_cgc.c` |
 | CAC   | Clock-frequency Accuracy-measurement Circuit            | `cac.zig`   |
-| LPM   | Low Power Mode controller                               | `ra8_lpm.c` |
+| LPM   | Low Power Mode controller                               | `lpm_abi.zig` |
 | LVD   | Low-Voltage Detection                                   | `ra8_lvd.c` |
 | MSTP  | Module-Stop control (clock-gating)                      | `ra8_mstp.c` |
 | OFS   | Option-Function Select (boot configuration words)       | `ra8_ofs.c` |
 | PWR   | Power-management glue                                   | `pwr.zig`   |
 | RESET | Reset controller (RSTSR1/2 + cold/warm flags)           | `reset_abi.zig` |
-| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `reset_abi.zig`, `vreg_abi.zig`, `ra8_lpm.c`) |
+| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `reset_abi.zig`, `vreg_abi.zig`, `lpm_abi.zig`) |
 | VBATT | Battery-backup domain (VBATT pin / VBTBKR registers)    | `internal/bkup.zig` |
 | VREG  | Internal voltage regulator                              | `vreg_abi.zig` |
 | BKUP  | Battery-backup function (alias for VBATT block)         | `internal/bkup.zig` |
@@ -47,7 +47,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | ICU   | Interrupt Controller Unit                                 | `internal/icu.zig` |
 | ISR   | Interrupt Service Routine (HAL ISR-table glue)            | `isr_abi.zig` |
 | IRQ   | Interrupt Request line (NVIC vector entry)                | `internal/icu.zig` |
-| WUPEN | Wake-Up Enable register                                   | `ra8_lpm.c` |
+| WUPEN | Wake-Up Enable register                                   | `lpm_abi.zig` |
 
 ## 3. Communication
 

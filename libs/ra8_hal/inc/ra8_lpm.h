@@ -91,7 +91,7 @@ extern "C" {
  *
  * cppcheck does not see test sources so it sometimes flags fields
  * as unused; every member is consumed in ``ra8_lpm_init`` in
- * ``libs/ra8_hal/src/ra8_lpm.c``.
+ * ``libs/ra8_hal/src/lpm_abi.zig``.
  */
 typedef struct {
   bool                  io_port_keep;     /**< DPSBYCR.IOKEEP -- retain IOs across DSBY. */
