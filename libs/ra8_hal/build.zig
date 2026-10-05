@@ -135,6 +135,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "mipi_dsi_status", .source = "src/internal/mipi_dsi_status.zig", .root = "tests/mipi_dsi_status_test.zig" },
         .{ .name = "mipi_dsi_video", .source = "src/internal/mipi_dsi_video.zig", .root = "tests/mipi_dsi_video_test.zig" },
         .{ .name = "mipi_dsi_dispatch", .source = "src/internal/mipi_dsi_dispatch.zig", .root = "tests/mipi_dsi_dispatch_test.zig" },
+        .{ .name = "fpu_probe", .source = "src/fpu_probe_abi.zig", .root = "tests/fpu_probe_test.zig" },
     };
     for (units) |unit| {
         const test_module = b.createModule(.{
@@ -150,4 +151,35 @@ pub fn build(b: *std.Build) void {
         const tests = b.addTest(.{ .root_module = test_module });
         test_step.dependOn(&b.addRunArtifact(tests).step);
     }
+    addFpuLoweringCheck(b, test_step);
+}
+
+/// Compile the FPU probe for the default cortex_m85 target (single-precision
+/// FPU, hard-float ABI) and require its f64 math to call __aeabi_d* helpers.
+fn addFpuLoweringCheck(b: *std.Build, test_step: *std.Build.Step) void {
+    const arm = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabihf,
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
+    });
+    const probe = b.addObject(.{
+        .name = "ra8_hal_fpu_probe_witness",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/fpu_probe_abi.zig"),
+            .target = arm,
+            .optimize = .ReleaseSmall,
+        }),
+    });
+    probe.bundle_compiler_rt = false;
+    const checker = b.addExecutable(.{
+        .name = "fpu_lowering_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/fpu_lowering_check.zig"),
+            .target = b.graph.host,
+        }),
+    });
+    const run = b.addRunArtifact(checker);
+    run.addFileArg(probe.getEmittedBin());
+    test_step.dependOn(&run.step);
 }
