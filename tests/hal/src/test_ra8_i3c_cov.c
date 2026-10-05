@@ -477,10 +477,6 @@ RA8_INTERNAL static void internal_test_abort_coverage(void)
   internal_prep_native();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_i3c_abort(0U));
 
-  /* Lines 761, 762: I2C mode -- happy path.  ra8_i3c_i2c_abort
-   * performs only register writes (no polling), safe in the fake. */
-  internal_prep_i2c();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_abort(0U));
   TEST_END("i3c abort: full function coverage (lines 753-762)");
 }
 

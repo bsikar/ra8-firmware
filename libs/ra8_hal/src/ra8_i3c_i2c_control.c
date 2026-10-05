@@ -9,7 +9,6 @@
  * Control-plane companion translation unit to ``ra8_i3c_i2c.c``. Holds the
  * non-data-path operations of the polling IIC_B driver:
  *
- * - ``ra8_i3c_i2c_abort``        cancel an in-flight transaction.
  *                                     latched bus-status decode + scrub.
  * - ``ra8_i3c_i2c_attach_handler`` register a completion / error
  *                                     callback and toggle the IIC_B IRQ
@@ -38,29 +37,6 @@
 #include "ra8_i3c_i2c.h"
 #include "ra8_i3c_i2c_internal.h"
 #include "ra8_i3c_i2c_regs.h"
-
-/* =============================================================================
- * Abort -- cancel an in-flight transaction.
- * =============================================================================
- */
-
-ra8_err_t ra8_i3c_i2c_abort(uint8_t channel)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* Mask interrupts before tearing down (mirrors FSP
-   * controller abort-sequence helper).
-   * HUM Ch 40.2.48 "BIE", p 2495 / Ch 40.2.52 "NTIE" p 2504. */
-  reg->BIE  = 0U;
-  reg->NTIE = 0U;
-
-  priv_i3c_i2c_stop(reg);
-  priv_i3c_i2c_clear_bst(reg);
-  s_iic_b_state[channel].bus_held = false;
-  return k_ra8_ok;
-}
 
 /* =============================================================================
  * Interrupt handler attach + ERI dispatch.

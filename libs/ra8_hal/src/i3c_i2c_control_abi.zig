@@ -2,14 +2,15 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI exports for the I3C legacy-I2C controller error flags
-//! (internal/i3c_i2c_errors.zig) and bus probe (internal/i3c_i2c_scan.zig),
-//! RA8FW-693. Check order and log line
+//! (internal/i3c_i2c_errors.zig), bus probe (internal/i3c_i2c_scan.zig) and
+//! abort (internal/i3c_i2c_abort.zig), RA8FW-693. Check order and log line
 //! match the deleted C in ra8_i3c_i2c_control.c.
 
 const common = @import("abi_common.zig");
 const p = @import("internal/i3c_i2c_peripheral.zig");
 const errs = @import("internal/i3c_i2c_errors.zig");
 const scan = @import("internal/i3c_i2c_scan.zig");
+const abort = @import("internal/i3c_i2c_abort.zig");
 
 const tag = "IIC_B";
 
@@ -71,4 +72,22 @@ export fn ra8_i3c_i2c_scan(channel: u8, target_7b: u8, out_acked: ?*bool) u16 {
     };
     const bus = CBus{ .reg = @ptrFromInt(block.base) };
     return scan.run(bus, block.reg(p.off_bst), target_7b, out);
+}
+
+/// Layout of `ra8_i3c_i2c_state_t` (ra8_i3c_i2c_internal.h).
+const State = extern struct {
+    cb: ?*const anyopaque,
+    ctx: ?*anyopaque,
+    initialized: bool,
+    bus_held: bool,
+};
+
+extern var s_iic_b_state: [p.channel_count]State;
+
+/// `ra8_err_t ra8_i3c_i2c_abort(uint8_t)`.
+export fn ra8_i3c_i2c_abort(channel: u8) u16 {
+    const block = p.regsFor(channel) orelse return common.k_ra8_err_invalid_arg;
+    const bus = CBus{ .reg = @ptrFromInt(block.base) };
+    abort.run(bus, block.reg(abort.off_bie), block.reg(abort.off_ntie), &s_iic_b_state[channel].bus_held);
+    return common.k_ra8_ok;
 }
