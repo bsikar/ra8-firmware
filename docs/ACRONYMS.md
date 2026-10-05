@@ -182,7 +182,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| TOUCH | Capacitive-touch driver (GT911 panel, parallel TFT)       | `ra8_touch.c` |
+| TOUCH | Capacitive-touch driver (GT911 panel, parallel TFT)       | `touch_abi.zig` |
 
 ## 12. Vendor / family acronyms
 

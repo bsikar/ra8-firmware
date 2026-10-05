@@ -104,7 +104,7 @@ typedef struct {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in ``ra8_touch_open`` in
- * ``libs/ra8_hal/src/ra8_touch.c``.
+ * ``libs/ra8_hal/src/touch_abi.zig``.
  */
 typedef struct {
   ra8_i2c_bus_ops_t bus;        /**< Injected I2C transfer seam (app-bound). */
