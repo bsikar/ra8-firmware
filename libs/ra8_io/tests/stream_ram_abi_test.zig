@@ -37,6 +37,11 @@ export fn ra8_sci_flush(_: u8) c_int {
     return 0;
 }
 
+// The usbcdc unit in the same archive needs this to link; unused here.
+export fn ra8_usb_pal_ep_send(_: u8, _: [*]const u8, _: u16) c_int {
+    return 0;
+}
+
 extern fn ra8_io_stream_ram_init(s: ?*Stream, state: ?*ram.State, buf: ?[*]u8, cap: u32) c_int;
 extern fn ra8_io_stream_ram_used(state: ?*const ram.State, out_used: ?*u32) c_int;
 

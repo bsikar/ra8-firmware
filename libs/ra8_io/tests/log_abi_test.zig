@@ -45,6 +45,11 @@ export fn ra8_sci_flush(_: u8) c_int {
     return 0;
 }
 
+// The usbcdc unit in the same archive needs this to link; unused here.
+export fn ra8_usb_pal_ep_send(_: u8, _: [*]const u8, _: u16) c_int {
+    return 0;
+}
+
 extern fn ra8_io_log_attach(s: ?*log.Stream) c_int;
 extern fn ra8_io_log_detach() void;
 
