@@ -209,6 +209,19 @@ pub fn build(b: *std.Build) void {
     reflow_view_test_module.addImport("abi", reflow_view_module);
     const reflow_view_tests = b.addTest(.{ .root_module = reflow_view_test_module });
 
+    const pager_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_pager_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const pager_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/pager_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    pager_module.addImport("debug", debug_module);
+    pager_test_module.addImport("abi", pager_module);
+
     const core_module = b.createModule(.{
         .root_source_file = b.path("src/widget_core_abi.zig"),
         .target = target,
@@ -221,6 +234,7 @@ pub fn build(b: *std.Build) void {
     });
     core_test_module.addImport("abi", core_module);
     const core_tests = b.addTest(.{ .root_module = core_test_module });
+    const pager_tests = b.addTest(.{ .root_module = pager_test_module });
 
     const book_module = b.createModule(.{
         .root_source_file = b.path("src/widget_book_abi.zig"),
@@ -249,6 +263,7 @@ pub fn build(b: *std.Build) void {
     const run_reflow_view_tests = b.addRunArtifact(reflow_view_tests);
     const run_book_tests = b.addRunArtifact(book_tests);
     const run_core_tests = b.addRunArtifact(core_tests);
+    const run_pager_tests = b.addRunArtifact(pager_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_host_render_tests.step);
     test_step.dependOn(&run_internal_tests.step);
@@ -264,4 +279,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_reflow_view_tests.step);
     test_step.dependOn(&run_book_tests.step);
     test_step.dependOn(&run_core_tests.step);
+    test_step.dependOn(&run_pager_tests.step);
 }

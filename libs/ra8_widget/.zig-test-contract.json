@@ -9,9 +9,9 @@
     "tests/toolbar_test.zig",
     "tests/keyboard_test.zig",
     "tests/nav_bar_test.zig",
+    "tests/pager_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig",
-    "tests/host_render_test.zig"
+    "tests/reflow_view_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -25,8 +25,8 @@
     "src/widget_toolbar_abi.zig",
     "src/widget_keyboard_abi.zig",
     "src/widget_nav_bar_abi.zig",
+    "src/widget_pager_abi.zig",
     "src/widget_panel_abi.zig",
-    "src/widget_debug_abi.zig",
     "src/widget_reflow_view_abi.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
@@ -37,10 +37,10 @@
     "tests/toolbar_test.zig",
     "tests/keyboard_test.zig",
     "tests/nav_bar_test.zig",
+    "tests/pager_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig",
-    "src/host_paint.zig",
-    "tests/host_render_test.zig"
+    "tests/reflow_view_test.zig"
   ],
-  "minimum_tests": 164
+  "minimum_tests": 171
 }
+
