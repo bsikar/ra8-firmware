@@ -8,6 +8,7 @@ pub const log = @import("ra8_io_log_abi.zig");
 pub const stream_ram = @import("ra8_io_stream_ram_abi.zig");
 pub const stream_uart = @import("ra8_io_stream_uart_abi.zig");
 pub const stream_usbcdc = @import("ra8_io_stream_usbcdc_abi.zig");
+pub const spi_bus = @import("ra8_io_spi_bus_abi.zig");
 pub const spi_bus_spi_b = @import("ra8_io_spi_bus_spi_b_abi.zig");
 pub const spi_bus_sci_spi = @import("ra8_io_spi_bus_sci_spi_abi.zig");
 pub const blockdev_sdram = @import("blockdev_sdram_abi.zig");
@@ -17,6 +18,7 @@ comptime {
     _ = stream_ram;
     _ = stream_uart;
     _ = stream_usbcdc;
+    _ = spi_bus;
     _ = spi_bus_spi_b;
     _ = spi_bus_sci_spi;
     _ = blockdev_sdram;
