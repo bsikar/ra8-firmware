@@ -22,7 +22,7 @@
  * range so the cite-check stays consistent.
  *
  * This header mirrors only the VREG-related offsets inside the SYSC
- * window (`0x4001E000`) so the driver in `libs/ra8_hal/src/ra8_vreg.c`
+ * window (`0x4001E000`) so the driver in `libs/ra8_hal/src/vreg_abi.zig`
  * can stay self-contained without extending the shared
  * `ra8_system_regs.h`. The offsets are taken from the FSP CMSIS
  * device header `R7KA8D2KF_core0.h` (R_SYSTEM struct, lines 16168 ff.):

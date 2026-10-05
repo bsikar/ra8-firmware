@@ -71,7 +71,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `ra8_lpm.c`, `pwr.zig`                     |
 | BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
 | SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `reset_abi.zig`                 |
-| VREG            | `0x4001E000`  | Voltage regulator (within SYSC)                      | `ra8_vreg.c`                              |
+| VREG            | `0x4001E000`  | Voltage regulator (within SYSC)                      | `vreg_abi.zig`                            |
 | IPC             | `0x40020000`  | Inter-processor communication (M85 <-> M33)          | `ra8_ipc.c`                               |
 | LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `ra8_lpm.c`                               |
 | DMAC0           | `0x4000A000`  | Direct Memory Access Controller, ch 0                | `dmac.zig`                              |

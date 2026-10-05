@@ -211,7 +211,7 @@ typedef enum : uint8_t {
  *
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused; each
- * member is read in `ra8_vreg_init` in `libs/ra8_hal/src/ra8_vreg.c`.
+ * member is read in `ra8_vreg_init` in `libs/ra8_hal/src/vreg_abi.zig`.
  */
 typedef struct {
   ra8_vreg_mode_t       mode;         /**< Initial regulator mode.                         */
