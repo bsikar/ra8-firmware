@@ -99,6 +99,7 @@ fn renderButton(w: *Widget) callconv(.c) void {
         button.alignment,
         .sans,
         .regular,
+        .size_3,
         false,
         &pen_x,
         &pen_y,

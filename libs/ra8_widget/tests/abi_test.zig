@@ -54,7 +54,7 @@ test "text pos places an unmeasurable string at the inner inset" {
 
     var x: i32 = -1;
     var y: i32 = -1;
-    abi.priv_widget_text_pos(&backend, &rect, text, 3, .center, .sans, .regular, false, &x, &y);
+    abi.priv_widget_text_pos(&backend, &rect, text, 3, .center, .sans, .regular, .size_3, false, &x, &y);
 
     try std.testing.expectEqual(@as(i32, 13), x);
     try std.testing.expectEqual(@as(i32, 23), y);
@@ -67,7 +67,7 @@ test "text pos never measures a left-aligned string" {
 
     var x: i32 = -1;
     var y: i32 = -1;
-    abi.priv_widget_text_pos(&backend, &rect, text, 3, .left, .sans, .regular, false, &x, &y);
+    abi.priv_widget_text_pos(&backend, &rect, text, 3, .left, .sans, .regular, .size_3, false, &x, &y);
 
     try std.testing.expectEqual(@as(i32, 13), x);
     try std.testing.expectEqual(@as(i32, 23), y);
@@ -80,7 +80,7 @@ test "text pos centres a measured string on both axes" {
 
     var x: i32 = -1;
     var y: i32 = -1;
-    abi.priv_widget_text_pos(&backend, &rect, text, 3, .center, .sans, .regular, false, &x, &y);
+    abi.priv_widget_text_pos(&backend, &rect, text, 3, .center, .sans, .regular, .size_3, false, &x, &y);
 
     try std.testing.expectEqual(@as(i32, 10 + (100 - 16) / 2), x);
     try std.testing.expectEqual(@as(i32, 20 + (40 - 12) / 2), y);
@@ -93,7 +93,7 @@ test "text pos right-aligns a measured string against the inset" {
 
     var x: i32 = -1;
     var y: i32 = -1;
-    abi.priv_widget_text_pos(&backend, &rect, text, 3, .right, .sans, .regular, false, &x, &y);
+    abi.priv_widget_text_pos(&backend, &rect, text, 3, .right, .sans, .regular, .size_3, false, &x, &y);
 
     try std.testing.expectEqual(@as(i32, (10 + 100) - 3 - 16), x);
     try std.testing.expectEqual(@as(i32, 20 + (40 - 12) / 2), y);

@@ -174,6 +174,103 @@ pub fn drawSerifWeight(
     }
 }
 
+/// Measure one of the five reading sizes using the matching face metrics.
+pub fn measureScaled(text: [*:0]const u8, face: Face, size: u8) Extent {
+    return measureScaledWeight(text, face, .regular, size);
+}
+
+/// Measure a face and stroke weight at the selected reading size.
+pub fn measureScaledWeight(text: [*:0]const u8, face: Face, weight: Weight, size: u8) Extent {
+    const numerator: u32 = @intCast(scaleNumerator(size));
+    const base = measureWeight(text, face, weight);
+    return .{
+        .width = @intCast((@as(u64, base.width) * numerator + 5) / 6),
+        .height = @intCast((@as(u64, base.height) * numerator + 5) / 6),
+    };
+}
+
+const ScaledSink = struct {
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+    origin_x: i32,
+    origin_y: i32,
+    numerator: i32,
+};
+
+fn scaleCoordinate(value: i32, origin: i32, numerator: i32) i32 {
+    return origin +% @divFloor((value -% origin) *% numerator, 6);
+}
+
+/// Map a source pixel to all output pixels covered by its scaled cell.
+fn putScaled(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
+    const sink: *const ScaledSink = @ptrCast(@alignCast(user orelse return));
+    const x0 = scaleCoordinate(x, sink.origin_x, sink.numerator);
+    const x1 = scaleCoordinate(x +% 1, sink.origin_x, sink.numerator);
+    const y0 = scaleCoordinate(y, sink.origin_y, sink.numerator);
+    const y1 = scaleCoordinate(y +% 1, sink.origin_y, sink.numerator);
+    var py = y0;
+    while (py < y1) : (py += 1) {
+        var px = x0;
+        while (px < x1) : (px += 1) sink.put_pixel(sink.user, px, py, color);
+    }
+}
+
+/// Draw sans or Literata text at one of five sizes while preserving each face's
+/// glyph shapes. Size three is the original face metric.
+pub fn drawScaled(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    face: Face,
+    size: u8,
+    fg: u32,
+    bg: u32,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
+    drawScaledWeight(text, x, y, face, .regular, size, fg, bg, user, put_pixel);
+}
+
+/// Draw a weighted face at one of five reading sizes.
+pub fn drawScaledWeight(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    face: Face,
+    weight: Weight,
+    size: u8,
+    fg: u32,
+    bg: u32,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
+    const sink = ScaledSink{
+        .user = user,
+        .put_pixel = put_pixel,
+        .origin_x = x,
+        .origin_y = y,
+        .numerator = scaleNumerator(size),
+    };
+    const sink_ptr: ?*anyopaque = @ptrCast(@constCast(&sink));
+    if (face == .sans) {
+        drawSansWeight(text, x, y, fg, bg, weight, sink_ptr, putScaled);
+    } else {
+        drawSerifWeight(text, x, y, fg, bg, weight, sink_ptr, putScaled);
+    }
+}
+
+/// Sizes 1-5 span two-thirds through four-thirds of the base face metrics.
+fn scaleNumerator(size: u8) i32 {
+    return switch (size) {
+        0, 3 => 6,
+        1 => 4,
+        2 => 5,
+        4 => 7,
+        5 => 8,
+        else => 6,
+    };
+}
+
 /// Return the byte length capped at the existing ra8_gfx text walk limit.
 fn byteLength(text: [*:0]const u8) usize {
     var length: usize = 0;

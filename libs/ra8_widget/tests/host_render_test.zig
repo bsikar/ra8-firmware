@@ -28,6 +28,7 @@ const pager_expected = @embedFile("golden/pager.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 const expected_image = @embedFile("golden/image_widget.ppm");
 const list_expected = @embedFile("golden/list.ppm");
+const reading_sizes_expected = @embedFile("golden/reading_sizes.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -234,4 +235,93 @@ test "host backend renders regular and bold headings beside each other" {
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, expected_weights, written);
+}
+
+test "host backend renders the five reading sizes with matching face metrics" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+    var previous_w: i32 = 0;
+    var previous_h: i32 = 0;
+    for (1..6) |size_value| {
+        const size: abi.paint.TextSize = @enumFromInt(size_value);
+        const label_text: [*:0]const u8 = switch (size_value) {
+            1 => "Size 1",
+            2 => "Size 2",
+            3 => "Size 3",
+            4 => "Size 4",
+            else => "Size 5",
+        };
+        var label = abi.label.Label{
+            .paint = &paint,
+            .text = label_text,
+            .fg = 0x111111,
+            .bg = 0xffffff,
+            .pad = 0,
+            .alignment = .center,
+            .face = .serif,
+            .weight = .regular,
+            .size = size,
+        };
+        const y: i32 = 120 + @as(i32, @intCast(size_value - 1)) * 250;
+        var label_widget = widget(.{ .x = 72, .y = y, .w = 928, .h = 180 });
+        try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
+        label_widget.vt.?.render.?(&label_widget);
+        var measured_w: i32 = 0;
+        var measured_h: i32 = 0;
+        host.Canvas.textSizeStyle(&canvas, label_text, @intFromEnum(abi.paint.Face.serif), @intFromEnum(abi.paint.Weight.regular), @intFromEnum(size), &measured_w, &measured_h);
+        try std.testing.expect(measured_w > previous_w);
+        try std.testing.expect(measured_h > previous_h);
+        previous_w = measured_w;
+        previous_h = measured_h;
+    }
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/reading_sizes.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, reading_sizes_expected, rendered);
+    }
+}
+
+test "host backend renders bold text at a non-default reading size" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+    var label = abi.label.Label{
+        .paint = &paint,
+        .text = "Bold size four",
+        .fg = 0x111111,
+        .bg = 0xffffff,
+        .pad = 8,
+        .alignment = .left,
+        .face = .serif,
+        .weight = .bold,
+        .size = .size_4,
+    };
+    var label_widget = widget(.{ .x = 40, .y = 80, .w = 900, .h = 100 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
+    label_widget.vt.?.render.?(&label_widget);
+    try std.testing.expect(std.mem.indexOfNone(u8, canvas.pixels, &.{255}) != null);
 }

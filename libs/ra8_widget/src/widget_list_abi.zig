@@ -49,7 +49,7 @@ fn drawText(b: *const Paint, r: Rect, s: ?[*:0]const u8, fg: u32, bg: u32, pad: 
     const draw = b.draw_text orelse return;
     var x: i32 = 0;
     var y: i32 = 0;
-    paint.priv_widget_text_pos(b, &r, value, pad, alignment, .sans, .regular, false, &x, &y);
+    paint.priv_widget_text_pos(b, &r, value, pad, alignment, .sans, .regular, .size_3, false, &x, &y);
     draw(b.user, x, y, value, fg, bg);
 }
 fn render(w: *Widget) callconv(.c) void {

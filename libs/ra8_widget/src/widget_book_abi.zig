@@ -154,7 +154,7 @@ fn drawLabel(backend: *const Paint, row: Rect, text: ?[*:0]const u8, fg: u32, bg
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &row, label, geometry.no_pad, .left, .sans, .regular, false, &pen_x, &pen_y);
+    paint_abi.priv_widget_text_pos(backend, &row, label, geometry.no_pad, .left, .sans, .regular, .size_3, false, &pen_x, &pen_y);
     draw_text(backend.user, pen_x, pen_y, label, fg, bg);
 }
 
