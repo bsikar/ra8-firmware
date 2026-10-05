@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_cnecc.c
- * @brief Unit tests for ra8_cnecc.c (CANFD ECC driver)
+ * @brief Unit tests for the ra8_cnecc ABI (libs/ra8_hal/src/cnecc_abi.zig, CANFD ECC driver)
  *
  * @details
  * Covers every public API entry point in ``ra8_cnecc.h`` plus every

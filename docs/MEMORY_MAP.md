@@ -130,8 +130,8 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | I3C1       | `0x4035F100`|                              | `ra8_i3c.c`        |
 | CANFD0     | `0x40380000`| HUM Ch 41 p 2702             | `ra8_canfd.c`      |
 | CANFD1     | `0x40382000`|                              | `ra8_canfd.c`      |
-| CNECC0     | `0x4036F200`| ECCMB0 (CAN0 MRAM ECC)       | `ra8_cnecc.c`      |
-| CNECC1     | `0x4036F300`| ECCMB1 (CAN1 MRAM ECC)       | `ra8_cnecc.c`      |
+| CNECC0     | `0x4036F200`| ECCMB0 (CAN0 MRAM ECC)       | `cnecc_abi.zig`    |
+| CNECC1     | `0x4036F300`| ECCMB1 (CAN1 MRAM ECC)       | `cnecc_abi.zig`    |
 | USB FS     | `0x40250000`| Full-Speed                   | `ra8_usb.c`, `ra8_usb_*.c` |
 | USB HS     | `0x40351000`| High-Speed                   | `ra8_usb.c`, `ra8_usb_*.c` |
 | ETHA0      | `0x403CA000`| Ethernet adapter ch 0        | `ra8_etha.c`, `ra8_eth.c` |

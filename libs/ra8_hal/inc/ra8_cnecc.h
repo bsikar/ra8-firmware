@@ -87,7 +87,7 @@ extern "C" {
  * Mirrors the HUM 42.3.1 procedure (figure 42.1 p 2874): set
  * ``correct_1bit`` / ``irq_1bit`` / ``irq_2bit``, then enable error
  * judgment (``ECERVF``). ``cppcheck`` is not aware of the cross-TU
- * read in ``ra8_cnecc.c`` and flags every member as unused -- the
+ * read in ``cnecc_abi.zig`` and flags every member as unused -- the
  * suppression below silences it.
  */
 typedef struct {
