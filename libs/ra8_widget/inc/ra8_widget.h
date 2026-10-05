@@ -186,14 +186,16 @@ typedef struct ra8_widget {
  * Define `RA8_WIDGET_DEBUG_CHANNEL` for the debug firmware build that links
  * the Debug Zig library. The channel is omitted from non-Debug Zig builds.
  * Its exported `ra8_widget_debug_tree` symbol is a versioned, fixed-capacity
- * snapshot in SRAM for an emulator or debugger to read after compose.
+ * snapshot in SRAM for an emulator or debugger to read after compose. Version
+ * 2 reserves 256 records; the Zig build option `-Dwidget-debug-record-cap=N`
+ * may lower how many records a debug build publishes without changing the ABI.
  */
 #if defined(RA8_WIDGET_DEBUG_CHANNEL)
 typedef enum : uint16_t {
   k_ra8_widget_debug_name_bytes  = 32U, /**< Maximum name bytes including NUL. */
   k_ra8_widget_debug_kind_bytes  = 16U, /**< Maximum kind bytes including NUL. */
   k_ra8_widget_debug_state_bytes = 24U, /**< Maximum state bytes including NUL. */
-  k_ra8_widget_debug_record_cap  = 64U, /**< Records per published tree. */
+  k_ra8_widget_debug_record_cap  = 256U, /**< Maximum records in the ABI payload. */
 } ra8_widget_debug_size_t;
 
 /**
@@ -217,7 +219,7 @@ typedef struct {
  */
 typedef struct {
   uint32_t                  magic;       /**< 0x52385754 (R8WT) when valid. */
-  uint16_t                  version;     /**< Protocol version, currently 1. */
+  uint16_t                  version;     /**< Protocol version, currently 2. */
   uint16_t                  count;       /**< Number of initialized records. */
   uint32_t                  generation;  /**< Incremented on each compose. */
   bool                      truncated;   /**< Capacity or nesting limit reached. */

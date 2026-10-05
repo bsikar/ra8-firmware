@@ -40,8 +40,8 @@ pub const err = struct {
 pub const limits = struct {
     /// Maximum number of registered widget identities.
     pub const registrations: usize = 64;
-    /// Maximum records in one published screen.
-    pub const records: usize = 64;
+    /// Maximum records published in one screen, configured by the build.
+    pub const records: usize = @import("build_options").widget_debug_record_cap;
     /// Bytes including the terminator in a widget name.
     pub const name_bytes: usize = 32;
     /// Bytes including the terminator in a widget kind.
@@ -68,13 +68,15 @@ pub const Channel = extern struct {
     generation: u32,
     truncated: bool,
     reserved: [3]u8,
-    records: [limits.records]Record,
+    records: [protocol.max_records]Record,
 };
 
 /// Magic identifying a valid widget-tree snapshot (`R8WT`).
 pub const protocol = struct {
     pub const magic: u32 = 0x52385754;
-    pub const version: u16 = 1;
+    pub const version: u16 = 2;
+    /// Maximum records reserved in the version 2 ABI payload.
+    pub const max_records: usize = 256;
 };
 
 const Registration = struct {
