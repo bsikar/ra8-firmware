@@ -49,6 +49,7 @@ pub fn build(b: *std.Build) void {
         "tests/i2c_bus_riic_abi_test.zig",
         "tests/i2c_bus_i3c_compat_abi_test.zig",
         "tests/i2c_bus_abi_test.zig",
+        "tests/blockdev_sdhi_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
