@@ -951,3 +951,7 @@ test "host backend renders negative, neutral and positive level bars to a golden
         try std.testing.expectEqualSlices(u8, level_bar_expected, rendered);
     }
 }
+
+test {
+    _ = @import("text_field_render_test.zig");
+}

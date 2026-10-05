@@ -116,9 +116,14 @@ const Engine = struct {
 };
 
 var commits: u32 = 0;
+var field_submits: u32 = 0;
 
 fn noteCommit(_: *abi.Widget) callconv(.c) void {
     commits += 1;
+}
+
+fn noteFieldSubmit(_: *abi.Widget) callconv(.c) void {
+    field_submits += 1;
 }
 
 fn reset() void {
@@ -134,6 +139,7 @@ fn reset() void {
     invalidations = 0;
     last_refresh = 0xFF;
     commits = 0;
+    field_submits = 0;
 }
 
 const full_backend: abi.Paint = .{
@@ -164,7 +170,7 @@ const key_border_color: u32 = 0x00101010;
 const key_fg_color: u32 = 0x00FFFFFF;
 
 fn charKey(rect: abi.Rect, glyph: u8) abi.KeyInfo {
-    return .{ .rect = rect, .label = null, .glyph = glyph, .pad0 = 0, .pad1 = 0 };
+    return .{ .rect = rect, .label = null, .glyph = glyph, .pad0 = 0, .pad1 = 0, .action = .character };
 }
 
 fn labelKey(rect: abi.Rect, label: [*:0]const u8) abi.KeyInfo {
@@ -498,4 +504,72 @@ test "a widget with no context declines input and renders nothing" {
     try std.testing.expect(!abi.ra8_widget_keyboard_vtable().on_input.?(&w, &event));
     abi.ra8_widget_keyboard_vtable().render.?(&w);
     try std.testing.expectEqual(0, Recorder.fills.len);
+}
+
+test "keyboard keys update the focused fixed-buffer field and report bounded damage" {
+    reset();
+    Engine.keys.append(charKey(.{ .x = 4, .y = 204, .w = 20, .h = 20 }, 'r')) catch unreachable;
+    Engine.keys.append(charKey(.{ .x = 28, .y = 204, .w = 20, .h = 20 }, 'e')) catch unreachable;
+    Engine.keys.append(charKey(.{ .x = 52, .y = 204, .w = 20, .h = 20 }, 'a')) catch unreachable;
+    Engine.keys.append(charKey(.{ .x = 76, .y = 204, .w = 20, .h = 20 }, 'd')) catch unreachable;
+    Engine.keys.append(charKey(.{ .x = 100, .y = 204, .w = 20, .h = 20 }, 'x')) catch unreachable;
+    var backspace = labelKey(.{ .x = 124, .y = 204, .w = 28, .h = 20 }, "delete");
+    backspace.action = .backspace;
+    Engine.keys.append(backspace) catch unreachable;
+    var enter = labelKey(.{ .x = 156, .y = 204, .w = 28, .h = 20 }, "enter");
+    enter.action = .enter;
+    Engine.keys.append(enter) catch unreachable;
+
+    var buffer = [_]u8{0} ** 5;
+    var field = abi.text_field.TextField{
+        .paint = &full_backend,
+        .buffer = &buffer,
+        .capacity = @intCast(buffer.len),
+        .len = 0,
+        .placeholder = "Search",
+        .fg = 0,
+        .bg = 0xffffff,
+        .caret = 0,
+        .pad = 8,
+        .face = .sans,
+        .focused = false,
+        .on_submit = noteFieldSubmit,
+    };
+    var field_widget = widgetAt(.{ .x = 20, .y = 30, .w = 120, .h = 40 });
+    try std.testing.expectEqual(abi.err.ok, abi.text_field.ra8_widget_text_field_init(&field_widget, &field));
+    var kbd = keyboardAt(&full_backend, &full_ops);
+    kbd.focused_field = &field_widget;
+    var keyboard_widget = widgetAt(band);
+    _ = abi.ra8_widget_keyboard_init(&keyboard_widget, &kbd);
+
+    Engine.hit_answer = 0;
+    const ignored_event = touchAt(5, 205);
+    _ = abi.ra8_widget_keyboard_vtable().on_input.?(&keyboard_widget, &ignored_event);
+    try std.testing.expectEqual(@as(u16, 0), field.len);
+    const field_tap = touchAt(30, 40);
+    try std.testing.expect(abi.text_field.ra8_widget_text_field_vtable().on_input.?(&field_widget, &field_tap));
+
+    for (0..5) |index| {
+        Engine.hit_answer = @intCast(index);
+        const event = touchAt(5, 205);
+        try std.testing.expect(abi.ra8_widget_keyboard_vtable().on_input.?(&keyboard_widget, &event));
+    }
+    try std.testing.expectEqualStrings("read", buffer[0..4]);
+    try std.testing.expectEqual(@as(u16, 4), field.len);
+    try std.testing.expectEqual(field_widget.rect.x + 8, field.damage.x);
+    try std.testing.expectEqual(field_widget.rect.w - 16, field.damage.w);
+    try std.testing.expectEqual(Engine.keys.get(4).rect, kbd.damage);
+
+    Engine.hit_answer = 5;
+    const backspace_event = touchAt(130, 205);
+    _ = abi.ra8_widget_keyboard_vtable().on_input.?(&keyboard_widget, &backspace_event);
+    try std.testing.expectEqualStrings("rea", buffer[0..3]);
+    try std.testing.expectEqual(@as(u8, 0), buffer[3]);
+
+    Engine.hit_answer = 6;
+    Engine.commit_answer = true;
+    const enter_event = touchAt(160, 205);
+    _ = abi.ra8_widget_keyboard_vtable().on_input.?(&keyboard_widget, &enter_event);
+    try std.testing.expect(field.submitted);
+    try std.testing.expectEqual(@as(u32, 1), field_submits);
 }
