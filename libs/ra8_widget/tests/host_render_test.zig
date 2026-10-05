@@ -52,6 +52,9 @@ const pager_expected = @embedFile("golden/pager.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 const expected_image = @embedFile("golden/image_widget.ppm");
 const list_expected = @embedFile("golden/list.ppm");
+const list_two_buttons_expected = @embedFile("golden/list_two_buttons.ppm");
+const list_value_chevron_expected = @embedFile("golden/list_value_chevron.ppm");
+const list_toggle_help_expected = @embedFile("golden/list_toggle_help.ppm");
 const reading_sizes_expected = @embedFile("golden/reading_sizes.ppm");
 const display_sizes_expected = @embedFile("golden/display_sizes.ppm");
 const ui_button_expected = @embedFile("golden/ui_button.ppm");
@@ -789,4 +792,91 @@ test "host backend renders word-wrapped and clipped labels at reading and title 
     } else |_| {
         try std.testing.expectEqualSlices(u8, label_wrap_expected, rendered);
     }
+}
+
+fn checkListGolden(allocator: std.mem.Allocator, rendered: []const u8, expected_bytes: []const u8, name: []const u8) !void {
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        const path = try std.fmt.allocPrint(allocator, "tests/golden/{s}.ppm", .{name});
+        defer allocator.free(path);
+        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, expected_bytes, rendered);
+    }
+}
+
+fn listPaint(canvas: *host.Canvas) abi.types.Paint {
+    return .{ .user = canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
+}
+
+test "host backend renders two-button list row to its golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = listPaint(&canvas);
+    const rows = [_]abi.list.Row{.{
+        .title = "Quick actions",
+        .subtitle = null,
+        .trailing_text = null,
+        .action_id = 1,
+        .trailing = .none,
+        .variant = .two_buttons,
+        .button_1_text = "Apps",
+        .button_1_action_id = 2,
+        .button_2_text = "Activity",
+        .button_2_action_id = 3,
+    }};
+    var list = abi.list.List{ .paint = &paint, .rows = &rows, .count = 1, .on_select = null, .bg = 0xffffff, .title_fg = 0x111111, .subtitle_fg = 0x555555, .trailing_fg = 0x333333, .divider = 0xcccccc, .row_height = 128, .pad = 16, .selected = 0, .has_selection = false, .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 } };
+    var list_widget = widget(.{ .x = 80, .y = 240, .w = 912, .h = 128 });
+    try std.testing.expectEqual(abi.types.err.ok, abi.list.ra8_widget_list_init(&list_widget, &list));
+    list_widget.vt.?.render.?(&list_widget);
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    try checkListGolden(allocator, rendered, list_two_buttons_expected, "list_two_buttons");
+}
+
+test "host backend renders combined value and chevron to its golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = listPaint(&canvas);
+    const rows = [_]abi.list.Row{.{
+        .title = "Network",
+        .subtitle = "Home connection",
+        .trailing_text = "Connected",
+        .action_id = 1,
+        .trailing = .value_chevron,
+    }};
+    var list = abi.list.List{ .paint = &paint, .rows = &rows, .count = 1, .on_select = null, .bg = 0xffffff, .title_fg = 0x111111, .subtitle_fg = 0x555555, .trailing_fg = 0x333333, .divider = 0xcccccc, .row_height = 144, .pad = 16, .selected = 0, .has_selection = false, .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 } };
+    var list_widget = widget(.{ .x = 80, .y = 440, .w = 912, .h = 144 });
+    try std.testing.expectEqual(abi.types.err.ok, abi.list.ra8_widget_list_init(&list_widget, &list));
+    list_widget.vt.?.render.?(&list_widget);
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    try checkListGolden(allocator, rendered, list_value_chevron_expected, "list_value_chevron");
+}
+
+test "host backend renders toggle and help text to its golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = listPaint(&canvas);
+    var enabled = true;
+    const rows = [_]abi.list.Row{.{
+        .title = "Airplane mode",
+        .subtitle = null,
+        .trailing_text = null,
+        .action_id = 1,
+        .trailing = .none,
+        .variant = .toggle_help,
+        .help_text = "Turn off wireless radios",
+        .toggle_value = &enabled,
+    }};
+    var list = abi.list.List{ .paint = &paint, .rows = &rows, .count = 1, .on_select = null, .bg = 0xffffff, .title_fg = 0x111111, .subtitle_fg = 0x555555, .trailing_fg = 0x333333, .divider = 0xcccccc, .row_height = 120, .pad = 16, .selected = 0, .has_selection = false, .damage = .{ .x = 0, .y = 0, .w = 0, .h = 0 } };
+    var list_widget = widget(.{ .x = 80, .y = 640, .w = 912, .h = 120 });
+    try std.testing.expectEqual(abi.types.err.ok, abi.list.ra8_widget_list_init(&list_widget, &list));
+    list_widget.vt.?.render.?(&list_widget);
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    try checkListGolden(allocator, rendered, list_toggle_help_expected, "list_toggle_help");
 }
