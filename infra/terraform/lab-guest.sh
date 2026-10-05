@@ -171,6 +171,40 @@ configure_network() {
   NFT_TABLE="ra8_lab_ci_${run_id}"
 }
 
+network_action() {
+  local action="$1" requested_run_id="$2"
+  [[ "$action" == up || "$action" == down ]] || say_error "network action must be up or down"
+  validate_hex_id "$requested_run_id" || say_error "run ID must be exactly 16 lowercase hexadecimal characters"
+  check_operator_boundary
+  run_id="$requested_run_id"
+  configure_network
+  case "$action" in
+    up)
+      check_lab_bridge_absent "$BRIDGE"
+      setup_lab_network
+      if ! policy check-network "$run_id"; then
+        say_error "network setup did not pass the per-run policy check"
+      fi
+      printf 'lab network up: bridge=%s table=%s run=%s\n' "$BRIDGE" "$NFT_TABLE" "$run_id"
+      ;;
+    down)
+      policy check-network "$run_id"
+      network_ready=1
+      cleanup_lab_network
+      printf 'lab network down: bridge/table cleanup complete for run=%s\n' "$run_id"
+      ;;
+  esac
+}
+
+finish_network_action() {
+  local rc=$?
+  trap - EXIT INT TERM
+  if ((rc != 0 && network_ready)); then
+    cleanup_lab_network || printf '%s\n' 'error: temporary lab network cleanup needs review' >&2
+  fi
+  exit "$rc"
+}
+
 start_guest_winrm_proxy() {
   WINRM_PROXY_PORT="$(local_port)"
   python3 "$REPO_ROOT/scripts/dev/ssh_loopback_proxy.py" --port "$WINRM_PROXY_PORT" --target guest_windows_winrm >/dev/null 2>&1 &
@@ -474,14 +508,51 @@ EOF
     *) say_error "guest profile selftest failed its allowlist" ;;
   esac
   policy --selftest
+  selftest_network_actions
   printf 'lab-guest.sh --selftest: PASS (profile=%s, vmid=%s, template=%s)\n' "$PROFILE" "$VM_ID" "$TEMPLATE_ID"
+}
+
+selftest_network_actions() {
+  local test_run_id=0123456789abcdef
+  local -a network_test_calls=()
+  check_operator_boundary() { network_test_calls+=(boundary); }
+  configure_network() {
+    LAB_BRIDGE="$BRIDGE"
+    LAB_SUBNET="$SUBNET"
+    LAB_GATEWAY="$GATEWAY"
+    LAB_VM_ID="$VM_ID"
+    LAB_HOST="$GUEST_ADDRESS"
+    NFT_TABLE="ra8_lab_ci_${run_id}"
+    network_test_calls+=(configure)
+  }
+  check_lab_bridge_absent() { [[ "$1" == "$BRIDGE" ]] || return 1; network_test_calls+=(check-bridge); }
+  setup_lab_network() { network_ready=1; network_test_calls+=(setup); }
+  cleanup_lab_network() { network_ready=0; network_test_calls+=(cleanup); }
+  policy() {
+    [[ "$1" == check-network && "$2" == "$test_run_id" ]] || return 1
+    network_test_calls+=(policy)
+  }
+
+  network_action up "$test_run_id"
+  [[ "${network_test_calls[*]}" == "boundary configure check-bridge setup policy" && "$network_ready" == 1 ]] ||
+    say_error "network up selftest failed its operator, bridge, setup, or policy path"
+  network_test_calls=()
+  network_action down "$test_run_id"
+  [[ "${network_test_calls[*]}" == "boundary configure policy cleanup" && "$network_ready" == 0 ]] ||
+    say_error "network down selftest failed its operator, policy, or cleanup path"
 }
 
 main() {
   local profile="$PROFILE" action="${1:-}"
+  local network_subaction="" network_run_id=""
   if [[ "$action" == linux || "$action" == windows ]]; then
     profile="$action"
     action="${2:-}"
+  fi
+  if [[ "$action" == network ]]; then
+    [[ $# -eq 3 ]] || { printf 'Usage: %s network {up|down} <16-hex-run-id>\n' "$0" >&2; return 2; }
+    network_subaction="$2"
+    network_run_id="$3"
   fi
   # The selftest exercises the pin check against fixtures, so it must not
   # require the real pinned binary on the host that runs it.
@@ -489,7 +560,7 @@ main() {
     check_pinned_tofu
   fi
   select_profile "$profile" "$action"
-  if [[ -z "${RA8_LAB_NODE:-}" && "$action" != "--selftest" ]]; then
+  if [[ -z "${RA8_LAB_NODE:-}" && "$action" != "--selftest" && "$action" != "network" ]]; then
     RA8_LAB_NODE="$(ssh -o BatchMode=yes -o RequestTTY=no -o ConnectTimeout=5 pve hostname 2>/dev/null || true)"
   fi
   case "$action" in
@@ -517,8 +588,15 @@ main() {
       trap 'exit 143' TERM
       destroy_guest
       ;;
+    network)
+      ACTION=network
+      trap finish_network_action EXIT
+      trap 'exit 130' INT
+      trap 'exit 143' TERM
+      network_action "$network_subaction" "$network_run_id"
+      ;;
     *)
-      printf 'Usage: %s [linux|windows] {check|create|destroy|--selftest}\n' "$0" >&2
+      printf 'Usage: %s [linux|windows] {check|create|destroy|network up|network down|--selftest}\n' "$0" >&2
       return 2
       ;;
   esac

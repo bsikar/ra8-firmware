@@ -19,6 +19,18 @@ resource "proxmox_virtual_environment_vm" "runner" {
   on_boot     = false
   protection  = false
 
+  # Every config change lands while the guest is stopped; the Start apply only
+  # flips started and connects the NIC. bpg/proxmox still flags those changes
+  # as needing a reboot and reboots the freshly started guest with an ACPI
+  # shutdown it ignores during early boot, which hangs apply for 30 minutes.
+  reboot_after_update = false
+
+  # Fail a stuck power operation in minutes, not the provider's 30-minute default.
+  timeout_start_vm    = 300
+  timeout_shutdown_vm = 300
+  timeout_stop_vm     = 300
+  timeout_reboot      = 300
+
   # This module manages only a pre-created template and an explicitly assigned
   # disposable VMID. It never uploads images or changes host storage/networking.
   clone {

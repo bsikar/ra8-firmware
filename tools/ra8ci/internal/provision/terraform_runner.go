@@ -28,7 +28,11 @@ import (
 )
 
 var terraformRunnerVersionPattern = regexp.MustCompile("^[0-9]+[.][0-9]+[.][0-9]+$")
-var terraformRunnerLineagePattern = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+
+// OpenTofu mints lineage with hashicorp/go-uuid, which formats 16 random bytes
+// in the 8-4-4-4-12 shape without RFC 4122 version or variant bits, so only the
+// shape and lowercase hex are checked.
+var terraformRunnerLineagePattern = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 var terraformRunnerConfigDigestPattern = regexp.MustCompile("^[0-9a-f]{40}$")
 var terraformRunnerNodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 var terraformRunnerRunIDPattern = regexp.MustCompile("^[0-9a-f]{16}$")
@@ -158,6 +162,7 @@ type TerraformRunnerProvisioner struct {
 	observer interface {
 		Get(context.Context, proxmox.Identity) (proxmox.VM, error)
 		GetTemplate(context.Context, int) (proxmox.Template, error)
+		BridgePresent(context.Context, string) (bool, error)
 		OccupiedVMIDs(context.Context) ([]int, error)
 	}
 	keys   *SSHAccessStore
@@ -183,6 +188,7 @@ func NewTerraformRunnerProvisioner(runtime interface {
 	observer interface {
 		Get(context.Context, proxmox.Identity) (proxmox.VM, error)
 		GetTemplate(context.Context, int) (proxmox.Template, error)
+		BridgePresent(context.Context, string) (bool, error)
 		OccupiedVMIDs(context.Context) ([]int, error)
 	}, keys *SSHAccessStore, config TerraformRunnerConfig) (*TerraformRunnerProvisioner, error) {
 	endpoint, err := validateTerraformOrigin(config.ProxmoxEndpoint)
@@ -360,8 +366,22 @@ func (p *TerraformRunnerProvisioner) Reserve(ctx context.Context, input store.Ru
 
 // Clone creates one immutable Terraform plan and consumes its one-way apply intent.
 func (p *TerraformRunnerProvisioner) Clone(ctx context.Context, action proxmox.Action, spec proxmox.CloneSpec) (proxmox.Result, error) {
-	if spec.Target.CreationOperationID != action.ID || spec.Target.VMID == spec.TemplateVMID {
+	profile, ok := p.config.Profiles[spec.Target.VMID]
+	if !ok {
 		return proxmox.Result{}, proxmox.ErrInvalid
+	}
+	present, err := p.observer.BridgePresent(ctx, profile.Bridge)
+	if err != nil {
+		return proxmox.Result{}, fmt.Errorf("check runner bridge %s on %s before clone: %w", profile.Bridge, profile.Node, err)
+	}
+	if !present {
+		return proxmox.Result{}, fmt.Errorf("bridge %s is absent on %s; nothing was cloned", profile.Bridge, profile.Node)
+	}
+	if spec.Target.CreationOperationID != action.ID {
+		return proxmox.Result{}, fmt.Errorf("%w: clone action is not the reservation's creation operation", proxmox.ErrInvalid)
+	}
+	if spec.Target.VMID == spec.TemplateVMID {
+		return proxmox.Result{}, fmt.Errorf("%w: clone target VMID equals the template VMID", proxmox.ErrInvalid)
 	}
 	vm, err := p.reservation(ctx, spec.Target)
 	if err != nil || vm.TemplateVMID != spec.TemplateVMID ||
@@ -889,16 +909,22 @@ func terraformStateHasRunner(body []byte, vm store.RunnerVM) (bool, error) {
 	if err := json.Unmarshal(body, &state); err != nil {
 		return false, errors.New("Terraform state is malformed")
 	}
+	if _, encrypted := state["encrypted_data"]; encrypted {
+		return false, errors.New("Terraform state identity is malformed: state is still encrypted")
+	}
 	var version int
 	var serial int64
 	var lineage, terraformVersion string
-	if json.Unmarshal(state["version"], &version) != nil ||
-		json.Unmarshal(state["serial"], &serial) != nil ||
-		json.Unmarshal(state["lineage"], &lineage) != nil ||
-		json.Unmarshal(state["terraform_version"], &terraformVersion) != nil ||
-		version != 4 || serial < 0 || !terraformRunnerLineagePattern.MatchString(lineage) ||
-		!terraformRunnerVersionPattern.MatchString(terraformVersion) {
-		return false, errors.New("Terraform state identity is malformed")
+	switch {
+	case json.Unmarshal(state["version"], &version) != nil || version != 4:
+		return false, errors.New("Terraform state identity is malformed: version is not 4")
+	case json.Unmarshal(state["serial"], &serial) != nil || serial < 0:
+		return false, errors.New("Terraform state identity is malformed: serial is not a non-negative integer")
+	case json.Unmarshal(state["lineage"], &lineage) != nil || !terraformRunnerLineagePattern.MatchString(lineage):
+		return false, errors.New("Terraform state identity is malformed: lineage is not lowercase 8-4-4-4-12 hex")
+	case json.Unmarshal(state["terraform_version"], &terraformVersion) != nil ||
+		!terraformRunnerVersionPattern.MatchString(terraformVersion):
+		return false, errors.New("Terraform state identity is malformed: terraform_version is not MAJOR.MINOR.PATCH")
 	}
 	count := 0
 	var visit func(map[string]json.RawMessage) error

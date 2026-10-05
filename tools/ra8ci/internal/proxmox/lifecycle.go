@@ -224,6 +224,33 @@ func (c *Client) GetTemplate(ctx context.Context, vmid int) (Template, error) {
 		Status: entry.Status, Template: isTemplate, ConfigDigest: digest}, nil
 }
 
+// BridgePresent reports whether Proxmox currently sees the named configured
+// bridge as active on the client’s pinned node. An inactive interface entry
+// is not sufficient for a guest clone: QEMU must be able to attach its tap.
+func (c *Client) BridgePresent(ctx context.Context, name string) (bool, error) {
+	if c == nil {
+		return false, ErrInvalid
+	}
+	if _, allowed := c.bridges[name]; !allowed {
+		return false, ErrInvalid
+	}
+	var interfaces []struct {
+		Name   string `json:"iface"`
+		Type   string `json:"type"`
+		Active int    `json:"active"`
+	}
+	path := "/nodes/" + url.PathEscape(c.node) + "/network"
+	if _, err := c.request(ctx, http.MethodGet, path, nil, &interfaces); err != nil {
+		return false, err
+	}
+	for _, iface := range interfaces {
+		if iface.Name == name && iface.Type == "bridge" && iface.Active == 1 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // OccupiedVMIDs returns cluster-wide IDs so allocation refuses a slot before
 // Terraform discovers a collision. Proxmox VMIDs are cluster-unique, even
 // though the reviewed lifecycle itself is pinned to one node.

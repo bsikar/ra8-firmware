@@ -72,6 +72,8 @@ func (policyObserver) GetTemplate(context.Context, int) (proxmox.Template, error
 		Status: "stopped", Template: true, ConfigDigest: strings.Repeat("a", 40)}, nil
 }
 
+func (policyObserver) BridgePresent(context.Context, string) (bool, error) { return true, nil }
+
 func (policyObserver) OccupiedVMIDs(context.Context) ([]int, error) { return nil, nil }
 
 // reviewedProfile is the healthy shape every refusal below is one edit away
@@ -103,6 +105,33 @@ func reviewedConfig(t *testing.T) TerraformRunnerConfig {
 		OpenBaoSecretPath: "ra8ci/proxmox",
 		Profiles:          map[int]TerraformRunnerProfile{9020: reviewedProfile()},
 		ModuleDirectory:   t.TempDir(),
+	}
+}
+
+type absentBridgeObserver struct {
+	policyObserver
+	called bool
+}
+
+func (o *absentBridgeObserver) BridgePresent(context.Context, string) (bool, error) {
+	o.called = true
+	return false, nil
+}
+
+func TestCloneRefusesBeforeDispatchWhenConfiguredBridgeIsAbsent(t *testing.T) {
+	provisioner, ledger := reservedProvisioner(t)
+	observer := &absentBridgeObserver{}
+	provisioner.observer = observer
+	identity := reservedIdentity()
+	_, err := provisioner.Clone(context.Background(), proxmox.Action{ID: identity.CreationOperationID},
+		proxmox.CloneSpec{Target: identity, TemplateVMID: 9001,
+			TemplateName: "ra8-lab-debian-template", TemplateDigest: strings.Repeat("a", 40)})
+	if err == nil || err.Error() != "bridge vmbr9 is absent on pve1; nothing was cloned" {
+		t.Fatalf("clone with absent bridge error = %v", err)
+	}
+	if !observer.called || ledger.reads != 0 {
+		t.Fatalf("bridge preflight did not stop clone before reservation reads: called=%t ledger reads=%d",
+			observer.called, ledger.reads)
 	}
 }
 
