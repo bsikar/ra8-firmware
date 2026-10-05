@@ -24,6 +24,7 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
 
 const expected = @embedFile("golden/font_faces.ppm");
 const pager_expected = @embedFile("golden/pager.ppm");
+const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -74,4 +75,31 @@ test "host backend writes panel PPM matching pager golden" {
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
     try std.testing.expectEqualSlices(u8, pager_expected, rendered);
+}
+
+test "host backend writes panel PPM matching toggle and segmented golden" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
+
+    var toggle = abi.toggle.Toggle{ .paint = &paint, .label = "Wi-Fi", .fg = 0x111111, .bg = 0xffffff, .border = 0x333333, .mark = 0x111111, .box_size = 32, .gap = 16, .checked = true, .reserved = .{ 0, 0, 0 } };
+    var toggle_widget = widget(.{ .x = 96, .y = 160, .w = 440, .h = 88 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.toggle.ra8_widget_toggle_init(&toggle_widget, &toggle));
+    toggle_widget.vt.?.render.?(&toggle_widget);
+
+    const labels = [_][*:0]const u8{ "Serif", "Sans", "Mono" };
+    var segmented = abi.segmented.Segmented{ .paint = &paint, .labels = &labels, .fg = 0x111111, .selected_fg = 0xffffff, .bg = 0xffffff, .selected_bg = 0x333333, .border = 0x111111, .count = 3, .selected = 0, .pad = 8 };
+    var segmented_widget = widget(.{ .x = 96, .y = 320, .w = 720, .h = 96 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.segmented.ra8_widget_segmented_init(&segmented_widget, &segmented));
+    segmented_widget.vt.?.render.?(&segmented_widget);
+
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    var temp = std.testing.tmpDir(.{});
+    defer temp.cleanup();
+    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    defer allocator.free(written);
+    try std.testing.expectEqualSlices(u8, toggle_segmented_expected, written);
 }

@@ -115,6 +115,31 @@ pub fn build(b: *std.Build) void {
     host_render_abi_module.addImport("debug", debug_module);
     host_render_test_module.addImport("abi", host_render_abi_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
+    const toggle_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_toggle_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const toggle_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/toggle_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    toggle_test_module.addImport("abi", toggle_module);
+    const toggle_tests = b.addTest(.{ .root_module = toggle_test_module });
+
+    const segmented_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_segmented_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const segmented_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/segmented_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    segmented_test_module.addImport("abi", segmented_module);
+    const segmented_tests = b.addTest(.{ .root_module = segmented_test_module });
 
     const progress_bar_module = b.createModule(.{
         .root_source_file = b.path("src/widget_progress_bar_abi.zig"),
@@ -254,6 +279,8 @@ pub fn build(b: *std.Build) void {
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
     const run_button_tests = b.addRunArtifact(button_tests);
+    const run_toggle_tests = b.addRunArtifact(toggle_tests);
+    const run_segmented_tests = b.addRunArtifact(segmented_tests);
     const run_progress_bar_tests = b.addRunArtifact(progress_bar_tests);
     const run_status_bar_tests = b.addRunArtifact(status_bar_tests);
     const run_toolbar_tests = b.addRunArtifact(toolbar_tests);
@@ -270,6 +297,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_label_tests.step);
     test_step.dependOn(&run_button_tests.step);
+    test_step.dependOn(&run_toggle_tests.step);
+    test_step.dependOn(&run_segmented_tests.step);
     test_step.dependOn(&run_progress_bar_tests.step);
     test_step.dependOn(&run_status_bar_tests.step);
     test_step.dependOn(&run_toolbar_tests.step);
