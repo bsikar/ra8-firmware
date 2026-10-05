@@ -2,7 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Start-up area and configuration-set words moved out of
-//! ra8_flash_config.c (RA8FW-808). HUM Ch 7 p 278, Ch 59.7.4.5 / 59.7.4.8.
+//! ra8_flash_config.c (RA8FW-808), plus the extra-MRAM write / erase
+//! bounds and packing (RA8FW-810). HUM Ch 7 p 278, Ch 59.7.4.5 / 59.7.4.8.
 
 pub const mram_base: usize = 0x4013C000;
 pub const off_msaddr: usize = 0x2030;
@@ -15,6 +16,11 @@ pub const ofs_size: u32 = 0x00001000;
 pub const extra_start: u32 = 0x02E07600;
 pub const extra_size: u32 = 0x00010400;
 pub const startup_addr: u32 = 0x02C9F070;
+/// PBPS, POFSPS, REVOKE, HUK-zeroize enable and ARC start here; the general
+/// write path stops short of them. HUM Ch 59.7.4.5 Table 59.15 p 3592.
+pub const extra_locked_start: u32 = 0x02E17700;
+pub const page_bytes: u32 = 32;
+pub const set_bytes: u32 = 16;
 
 pub const word_count: usize = 8;
 pub const cmd_program: u8 = 0xE8;
@@ -69,4 +75,28 @@ pub fn startupFlags(v: u32) Flags {
         .btflg = @intFromBool(v & 0x80000000 != 0),
         .fspr = @intFromBool(v & 0x00008000 != 0),
     };
+}
+
+/// ra8_flash_extra_mram_write bounds, in the C's order: 1..32 bytes, at or
+/// above the extra window, ending at or before the locked area, one page.
+pub fn writeOk(addr: u32, len: u32) bool {
+    if (len == 0 or len > page_bytes) return false;
+    if (addr < extra_start) return false;
+    const end_excl = addr +% len;
+    if (end_excl > extra_locked_start) return false;
+    const page = ~(page_bytes - 1);
+    return addr & page == (end_excl -% 1) & page;
+}
+
+/// One config set: src[done..done+16] as little-endian halfwords, with any
+/// byte at or past src.len padded to 0xFF.
+pub fn packWords(src: []const u8, done: u32) [word_count]u16 {
+    var words: [word_count]u16 = undefined;
+    for (&words, 0..) |*w, i| {
+        const at = done + @as(u32, @intCast(i)) * 2;
+        const lo: u16 = if (at < src.len) src[at] else 0xFF;
+        const hi: u16 = if (at + 1 < src.len) src[at + 1] else 0xFF;
+        w.* = lo | hi << 8;
+    }
+    return words;
 }

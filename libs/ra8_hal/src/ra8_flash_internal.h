@@ -134,7 +134,7 @@ typedef enum : uint32_t {
  * @brief Set MRCPFB.MPFBEN to enable/disable the prefetch buffer.
  *
  * @details Promoted from TU-private static linkage so the configuration
- *          TU (``ra8_flash_config.c``) can drive prefetch around the
+ *          unit (``flash_ctl_abi.zig``) can drive prefetch around the
  *          clock-frequency-update sequence. Defined in ``ra8_flash.c``.
  *
  * @param[in] enable ``true`` => prefetch on.
