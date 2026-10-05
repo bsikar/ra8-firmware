@@ -81,3 +81,42 @@ pub fn lock(hw: anytype) void {
     hw.write8(pwprs_addr, 0);
     hw.write8(pwprs_addr, pwpr_b0wi);
 }
+
+// ---- Init, routing and IRQ helpers (RA8FW-767) ------------------------
+
+pub const pfs_podr: u32 = 0x0000_0001;
+pub const pfs_pdr: u32 = 0x0000_0004;
+pub const pfs_pcr: u32 = 0x0000_0010;
+pub const pfs_pmr: u32 = 0x0001_0000;
+pub const psel_shift: u5 = 24;
+pub const pull_up: u8 = 1;
+pub const irq_num_max: u8 = 15;
+pub const irq_event_base: u16 = 1;
+
+/// Output: PDR, plus PODR when the initial level is high.
+pub fn outputValue(high: bool) u32 {
+    return pfs_pdr | (if (high) pfs_podr else 0);
+}
+
+/// Input: PDR clear; PCR only for pull-up (pull-down has no PFS bit).
+pub fn inputValue(pull: u8) u32 {
+    return if (pull == pull_up) pfs_pcr else 0;
+}
+
+/// HUM 20.2.4: clear PMR, write PSEL with PMR = 0, then set PMR.
+pub fn routeSteps(psel: u8) [3]u32 {
+    const sel = @as(u32, psel) << psel_shift;
+    return .{ 0, sel, pfs_pmr | sel };
+}
+
+/// ELC event for external IRQn (IRQ0 is event 1).
+pub fn irqEvent(irq_num: u8) u16 {
+    return irq_event_base + irq_num;
+}
+
+/// Unlock PWPR/PWPRS, write each value to the PmnPFS register, re-lock.
+pub fn program(hw: anytype, addr: usize, values: []const u32) void {
+    unlock(hw);
+    for (values) |v| hw.write32(addr, v);
+    lock(hw);
+}

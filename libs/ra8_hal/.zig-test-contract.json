@@ -127,7 +127,8 @@
     "src/gpio_pins_abi.zig",
     "src/internal/rmac_phy_drv.zig",
     "tests/rmac_phy_drv_test.zig",
-    "src/rmac_phy_drv_abi.zig"
+    "src/rmac_phy_drv_abi.zig",
+    "src/gpio_abi.zig"
   ],
-  "minimum_tests": 776
+  "minimum_tests": 780
 }

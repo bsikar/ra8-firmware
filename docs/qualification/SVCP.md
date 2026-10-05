@@ -70,7 +70,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-DTC-001    | `tests/misc/src/test_ra8_dtc.c`     | `libs/ra8_hal/src/internal/dtc.zig`        |
 | UT-HAL-ELC-001    | `tests/misc/src/test_ra8_elc.c`     | `libs/ra8_hal/src/elc_abi.zig`             |
 | UT-HAL-FLASH-001  | `tests/misc/src/test_ra8_flash.c`   | `libs/ra8_hal/src/ra8_flash.c`             |
-| UT-HAL-GPIO-001   | `tests/hal/src/test_ra8_gpio.c`    | `libs/ra8_hal/src/gpio.c`                  |
+| UT-HAL-GPIO-001   | `tests/hal/src/test_ra8_gpio.c`    | `libs/ra8_hal/src/gpio_abi.zig`            |
 | UT-HAL-IPC-001    | `tests/hal/src/test_ra8_ipc.c`     | `libs/ra8_hal/src/ra8_ipc.c`               |
 | UT-HAL-ISR-001    | `tests/hal/src/test_ra8_isr.c`     | `libs/ra8_hal/src/isr_abi.zig`               |
 | UT-HAL-MIPI-DSI-001 | `tests/hal/src/test_ra8_mipi_dsi_cmd.c`, `tests/hal/src/test_ra8_mipi_dsi_video.c`, `tests/hal/src/test_ra8_mipi_dsi_mcdc.c` | `libs/ra8_hal/src/ra8_mipi_dsi.c`     |
