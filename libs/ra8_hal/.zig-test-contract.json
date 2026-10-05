@@ -120,5 +120,5 @@
     "tests/flash_irq_test.zig",
     "src/flash_irq_abi.zig"
   ],
-  "minimum_tests": 732
+  "minimum_tests": 744
 }
