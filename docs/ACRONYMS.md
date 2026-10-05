@@ -22,9 +22,9 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | OFS   | Option-Function Select (boot configuration words)       | `ra8_ofs.c` |
 | PWR   | Power-management glue                                   | `pwr.zig`   |
 | RESET | Reset controller (RSTSR1/2 + cold/warm flags)           | `reset_abi.zig` |
-| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `reset_abi.zig`, `ra8_vreg.c`, `ra8_lpm.c`) |
+| SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `reset_abi.zig`, `vreg_abi.zig`, `ra8_lpm.c`) |
 | VBATT | Battery-backup domain (VBATT pin / VBTBKR registers)    | `internal/bkup.zig` |
-| VREG  | Internal voltage regulator                              | `ra8_vreg.c` |
+| VREG  | Internal voltage regulator                              | `vreg_abi.zig` |
 | BKUP  | Battery-backup function (alias for VBATT block)         | `internal/bkup.zig` |
 
 ## 2. IO and pin-mux

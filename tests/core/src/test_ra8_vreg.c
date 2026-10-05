@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_vreg.c
- * @brief Unit tests for ra8_vreg.c (Internal Voltage Regulator driver)
+ * @brief Unit tests for vreg_abi.zig (Internal Voltage Regulator driver)
  *
  * @details
  * Exercises every public entry point defined in `ra8_vreg.h`:
@@ -726,7 +726,7 @@ static void test_deinit_clears_regs(void)
  *
  * @par MC/DC:
  * Decision A: ``ra8_vreg_set_mode`` line 365,
- * libs/ra8_hal/src/ra8_vreg.c:
+ * libs/ra8_hal/src/vreg_abi.zig (logic in internal/vreg.zig):
  * ``if ((mode != k_ra8_vreg_mode_ldo) && (mode != k_ra8_vreg_mode_dcdc))``
  * (2 conditions, ``&&``). N+1 = 3:
  * - V1: mode=ldo  -> C1=F (short)        -> dec F (accept)
