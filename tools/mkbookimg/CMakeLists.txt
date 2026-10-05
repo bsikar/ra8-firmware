@@ -32,6 +32,18 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
+# ra8_imgdec's Zig archive calls ra8_arena_carve/ra8_arena_remaining, which the
+# ra8_mem archive provides now (RA8FW-727), so link it right after ra8_imgdec.
+if(NOT TARGET ra8_zig::ra8_mem)
+  include(${_repo}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_mem
+    ZIG_ROOT ${_repo}/libs/ra8_mem
+    LIBRARY_NAME ra8_mem
+  )
+endif()
+link_libraries(ra8_zig::ra8_mem)
+
 # The library lock is Zig now (RA8FW-724): the ra8_fs*.c sources below no longer
 # define ra8_fs_set_lock or priv_lock_*, so link the ra8_fs archive beside them.
 if(NOT TARGET ra8_zig::ra8_fs)
