@@ -288,6 +288,11 @@ pub fn build(b: *std.Build) void {
     const book_tests = b.addTest(.{ .root_module = book_test_module });
 
     const run_host_render_tests = b.addRunArtifact(host_render_tests);
+    const list_module = b.createModule(.{ .root_source_file = b.path("src/widget_list_abi.zig"), .target = target, .optimize = optimize });
+    const list_test_module = b.createModule(.{ .root_source_file = b.path("tests/list_test.zig"), .target = target, .optimize = optimize });
+    list_test_module.addImport("abi", list_module);
+    const list_tests = b.addTest(.{ .root_module = list_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
@@ -303,6 +308,7 @@ pub fn build(b: *std.Build) void {
     const run_reflow_view_tests = b.addRunArtifact(reflow_view_tests);
     const run_book_tests = b.addRunArtifact(book_tests);
     const run_image_tests = b.addRunArtifact(image_tests);
+    const run_list_tests = b.addRunArtifact(list_tests);
     const run_core_tests = b.addRunArtifact(core_tests);
     const run_pager_tests = b.addRunArtifact(pager_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
@@ -322,6 +328,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_reflow_view_tests.step);
     test_step.dependOn(&run_book_tests.step);
     test_step.dependOn(&run_image_tests.step);
+    test_step.dependOn(&run_list_tests.step);
     test_step.dependOn(&run_core_tests.step);
     test_step.dependOn(&run_pager_tests.step);
 }
