@@ -17,6 +17,7 @@ pub const i2c_bus = @import("ra8_io_i2c_bus_abi.zig");
 pub const blockdev_sdram = @import("blockdev_sdram_abi.zig");
 pub const blockdev_usbmsc = @import("ra8_io_blockdev_usbmsc_abi.zig");
 pub const blockdev_sdhi = @import("ra8_io_blockdev_sdhi_abi.zig");
+pub const stream_blockdev = @import("ra8_io_stream_blockdev_abi.zig");
 
 comptime {
     _ = log;
@@ -32,4 +33,5 @@ comptime {
     _ = blockdev_sdram;
     _ = blockdev_usbmsc;
     _ = blockdev_sdhi;
+    _ = stream_blockdev;
 }
