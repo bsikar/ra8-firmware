@@ -94,7 +94,7 @@ bodies in `libs/ra8_hal/src/ra8_rsip_asym.c`.
 
 Wrapper / consumer layers:
 
-- `libs/ra8_hal/src/ra8_rsip_protected.c` (drives the
+- `libs/ra8_hal/src/rsip_protected_abi.zig` (drives the
   `*_install_plain` functions for AES, RSA, ECDSA flows)
 - `libs/ra8_hal/src/ra8_rsip_key_injection.c` (wrapped-key blob
   pack / validate; the wrapping is explicitly not cryptographic)

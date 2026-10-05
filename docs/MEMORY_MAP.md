@@ -169,7 +169,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 
 | Peripheral   | Secure base   | Notes                                     | HAL driver               |
 |--------------|---------------|-------------------------------------------|--------------------------|
-| RSIP-E50D    | `0x403B0000`  | Renesas Secure IP mailbox                 | `ra8_rsip.c`, `ra8_rsip_protected.c`, `ra8_rsip_key_injection.c` |
+| RSIP-E50D    | `0x403B0000`  | Renesas Secure IP mailbox                 | `ra8_rsip.c`, `rsip_protected_abi.zig`, `ra8_rsip_key_injection.c` |
 | DOTF0 (S)    | `0x40268800`  | Decryption-on-the-fly ch 0 secure         | `ra8_dotf.c`              |
 | DOTF0 (NS)   | `0x50268800`  | DOTF ch 0 non-secure alias                | `ra8_dotf.c`              |
 | DOTF1 (S)    | `0x40268900`  | DOTF ch 1 secure                          | `ra8_dotf.c`              |

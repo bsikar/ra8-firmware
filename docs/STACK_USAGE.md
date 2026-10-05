@@ -102,10 +102,10 @@ frame is the per-app `STACK_USAGE_BYTES` override that sizes the
 consuming app's main stack -- not an edit to `libs/third_party/`.
 
 The largest first-party frames are the RSIP protected-mode routines in
-`libs/ra8_hal/src/ra8_rsip_protected.c`, and that is deliberate: each
+`libs/ra8_hal/src/rsip_protected_abi.zig`, and that is deliberate: each
 holds an unwrapped key or modulus scratch buffer plus a full
 `ra8_rsip_key_handle_t` on the stack, so the secret material is scrubbed
-via `p_scrub` when the frame unwinds. Moving those buffers into `.bss`
+via `scrub` (internal/rsip_protected.zig) when the frame unwinds. Moving those buffers into `.bss`
 would either persist the secret across calls or require an explicit
 clear-on-exit path that doubles the attack surface. Each carries an
 inline `RA8_STACK_BUDGET(N)` matching its `.su` value and a

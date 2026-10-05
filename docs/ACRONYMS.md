@@ -85,7 +85,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| RSIP  | Renesas Secure IP (HW crypto + key vault, RSIP-E50D)     | `ra8_rsip.c`, `ra8_rsip_protected.c`, `ra8_rsip_key_injection.c` |
+| RSIP  | Renesas Secure IP (HW crypto + key vault, RSIP-E50D)     | `ra8_rsip.c`, `rsip_protected_abi.zig`, `ra8_rsip_key_injection.c` |
 | DOTF  | Decryption-On-The-Fly (XIP-decrypt for xSPI)             | `ra8_dotf.c` |
 | CRC   | Cyclic-Redundancy-Check engine                           | `internal/crc.zig` |
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
