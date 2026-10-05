@@ -180,11 +180,26 @@ func ciRunLimit(raw string) (int, error) {
 }
 
 func loadToken(ctx context.Context) (string, error) {
+	return loadTokenWith(ctx, os.Getenv, loadCLIToken)
+}
+
+func loadTokenWith(ctx context.Context, getenv func(string) string, cliToken func(context.Context) (string, error)) (string, error) {
 	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN"} {
-		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+		if value := strings.TrimSpace(getenv(name)); value != "" {
 			return value, nil
 		}
 	}
+	if cliToken == nil {
+		return "", errors.New("no GitHub API token; set GH_TOKEN or GITHUB_TOKEN, or authenticate with gh")
+	}
+	value, err := cliToken(ctx)
+	if err == nil && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value), nil
+	}
+	return "", errors.New("no GitHub API token; set GH_TOKEN or GITHUB_TOKEN, or authenticate with gh")
+}
+
+func loadCLIToken(ctx context.Context) (string, error) {
 	executable, err := exec.LookPath("gh")
 	if err == nil {
 		command := exec.CommandContext(ctx, executable, "auth", "token")
@@ -193,7 +208,7 @@ func loadToken(ctx context.Context) (string, error) {
 			return strings.TrimSpace(string(output)), nil
 		}
 	}
-	return "", errors.New("no GitHub API token; set GH_TOKEN or GITHUB_TOKEN, or authenticate with gh")
+	return "", errors.New("GitHub CLI did not provide a token")
 }
 
 func newActionsAPI(token string) (*actionsAPI, error) {

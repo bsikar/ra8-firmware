@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -24,23 +22,11 @@ import (
 // client will accept, so a misconfigured box is told what is wrong instead of
 // reaching the network with a credential it should not have used.
 
-// noCLI puts an empty directory on PATH so the GitHub CLI cannot be found,
-// which is the only way to reach loadToken's refusal on a box where gh exists.
+// noCLI puts an empty directory on PATH so Run's missing-token behavior stays
+// independent of any GitHub CLI installed on the host.
 func noCLI(t *testing.T) {
 	t.Helper()
 	t.Setenv("PATH", t.TempDir())
-}
-
-// plantCLI puts a stand-in gh on PATH whose `auth token` answer is the script
-// body handed in, so the CLI branch is exercised without a real login.
-func plantCLI(t *testing.T, body string) {
-	t.Helper()
-	home := t.TempDir()
-	script := filepath.Join(home, "gh")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", home)
 }
 
 func silentEnvironment(t *testing.T) {
@@ -50,51 +36,72 @@ func silentEnvironment(t *testing.T) {
 }
 
 func TestTheEnvironmentTokenIsPreferredOverTheCLI(t *testing.T) {
-	plantCLI(t, "echo cli-token")
-	t.Setenv("GH_TOKEN", "env-token")
-	t.Setenv("GITHUB_TOKEN", "second-token")
-	token, err := loadToken(context.Background())
+	cliCalled := false
+	lookup := func(name string) string {
+		if name == "GH_TOKEN" {
+			return "env-token"
+		}
+		return "second-token"
+	}
+	token, err := loadTokenWith(context.Background(), lookup, func(context.Context) (string, error) {
+		cliCalled = true
+		return "cli-token", nil
+	})
 	if err != nil || token != "env-token" {
-		t.Fatalf("loadToken = %q, %v", token, err)
+		t.Fatalf("loadTokenWith = %q, %v", token, err)
+	}
+	if cliCalled {
+		t.Fatal("CLI token source was called despite an environment token")
 	}
 }
 
 func TestTheSecondEnvironmentNameIsConsultedWhenTheFirstIsBlank(t *testing.T) {
-	noCLI(t)
 	for _, first := range []string{"", "   ", "\t\n"} {
-		t.Setenv("GH_TOKEN", first)
-		t.Setenv("GITHUB_TOKEN", "  second-token\n")
-		token, err := loadToken(context.Background())
+		token, err := loadTokenWith(context.Background(), func(name string) string {
+			if name == "GH_TOKEN" {
+				return first
+			}
+			return "  second-token\n"
+		}, nil)
 		if err != nil || token != "second-token" {
-			t.Fatalf("GH_TOKEN=%q: loadToken = %q, %v", first, token, err)
+			t.Fatalf("GH_TOKEN=%q: loadTokenWith = %q, %v", first, token, err)
 		}
 	}
 }
 
 func TestTheTokenIsAskedOfTheCLIWhenTheEnvironmentIsSilent(t *testing.T) {
-	silentEnvironment(t)
-	plantCLI(t, "echo '  cli-token  '")
-	token, err := loadToken(context.Background())
+	cliCalled := false
+	token, err := loadTokenWith(context.Background(), func(string) string { return " " }, func(context.Context) (string, error) {
+		cliCalled = true
+		return "  cli-token  ", nil
+	})
 	if err != nil || token != "cli-token" {
-		t.Fatalf("loadToken = %q, %v", token, err)
+		t.Fatalf("loadTokenWith = %q, %v", token, err)
+	}
+	if !cliCalled {
+		t.Fatal("CLI token source was not called after empty environment values")
 	}
 }
 
 func TestACLIThatAnswersNothingIsNotATokenSource(t *testing.T) {
-	silentEnvironment(t)
-	for _, body := range []string{"echo ''", "printf '   '", "exit 1", "echo oops 1>&2; exit 4"} {
-		plantCLI(t, body)
-		token, err := loadToken(context.Background())
-		if err == nil || token != "" || !strings.Contains(err.Error(), "GH_TOKEN") {
-			t.Fatalf("gh %q: loadToken = %q, %v", body, token, err)
-		}
+	for _, answer := range []struct {
+		name  string
+		token string
+		err   error
+	}{{"empty", "", nil}, {"blank", "   ", nil}, {"failed", "", errors.New("fake source failed")}} {
+		t.Run(answer.name, func(t *testing.T) {
+			token, err := loadTokenWith(context.Background(), func(string) string { return "" }, func(context.Context) (string, error) {
+				return answer.token, answer.err
+			})
+			if err == nil || token != "" || !strings.Contains(err.Error(), "GH_TOKEN") {
+				t.Fatalf("loadTokenWith = %q, %v", token, err)
+			}
+		})
 	}
 }
 
 func TestNoEnvironmentAndNoCLIIsRefusedByName(t *testing.T) {
-	silentEnvironment(t)
-	noCLI(t)
-	token, err := loadToken(context.Background())
+	token, err := loadTokenWith(context.Background(), func(string) string { return "" }, nil)
 	if err == nil || token != "" {
 		t.Fatalf("loadToken = %q, %v", token, err)
 	}
@@ -105,14 +112,19 @@ func TestNoEnvironmentAndNoCLIIsRefusedByName(t *testing.T) {
 	}
 }
 
-func TestACancelledScanAsksTheCLIForNothing(t *testing.T) {
-	silentEnvironment(t)
-	plantCLI(t, "echo cli-token")
+func TestACancelledContextIsPassedToTheTokenSource(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	token, err := loadToken(ctx)
+	called := false
+	token, err := loadTokenWith(ctx, func(string) string { return "" }, func(ctx context.Context) (string, error) {
+		called = true
+		return "", ctx.Err()
+	})
 	if err == nil || token != "" {
-		t.Fatalf("cancelled loadToken = %q, %v", token, err)
+		t.Fatalf("cancelled loadTokenWith = %q, %v", token, err)
+	}
+	if !called {
+		t.Fatal("token source was not called")
 	}
 }
 
