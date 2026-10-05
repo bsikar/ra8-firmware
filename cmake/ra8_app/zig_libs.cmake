@@ -208,7 +208,10 @@ function(
   endif()
   _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)
   get_filename_component(_board "${_board_dir}" NAME)
-  get_filename_component(_stem "${_unit}" NAME_WE)
+  # A BOOT_PROFILE unit arrives as "<profile>/<stem>.zig"; keep the profile
+  # in the key so it never shares an object with the board default.
+  string(REGEX REPLACE "\\.zig$" "" _stem "${_unit}")
+  string(REPLACE "/" "_" _stem "${_stem}")
   # The unit reads `@import("boot_options")`, so the object is also keyed on
   # what that module says: one build per TrustZone setting (RA8FW-622). The
   # Zig graph writes the same fields from cross_sources.BootOptions.
