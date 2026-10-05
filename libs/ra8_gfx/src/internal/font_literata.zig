@@ -21,6 +21,7 @@ pub const descent: i16 = bytes[7];
 pub const Glyph = struct {
     codepoint: u32,
     left: i16,
+    /// Vertical offset measured from the top of the line box.
     top: i16,
     advance: i16,
     width: u8,

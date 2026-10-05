@@ -396,3 +396,53 @@ test "host backend renders native display text sizes into panel golden" {
         try std.testing.expectEqualSlices(u8, display_sizes_expected, rendered);
     }
 }
+
+test "a serif label survives the image widget below it clearing its own rect" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+    const line_y: i32 = 500;
+    var text_w: i32 = 0;
+    var text_h: i32 = 0;
+    host.Canvas.textSizeStyle(&canvas, "Hj", @intFromEnum(abi.paint.Face.serif), @intFromEnum(abi.paint.Weight.regular), @intFromEnum(abi.paint.TextSize.size_3), &text_w, &text_h);
+    var label = abi.label.Label{
+        .paint = &paint,
+        .text = "Hj",
+        .fg = 0x111111,
+        .bg = 0xffffff,
+        .pad = 0,
+        .alignment = .left,
+        .face = .serif,
+    };
+    var label_widget = widget(.{ .x = 100, .y = line_y, .w = text_w, .h = text_h });
+    try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
+    label_widget.vt.?.render.?(&label_widget);
+
+    abi.image.render(
+        &paint,
+        .{ .x = 100, .y = line_y + text_h, .w = text_w, .h = 64 },
+        null,
+        .fit,
+        .{ .fill = 0, .border = 0, .border_width = 0 },
+    );
+
+    var inked_label_pixels: usize = 0;
+    var y: usize = @intCast(line_y);
+    while (y < @as(usize, @intCast(line_y + text_h))) : (y += 1) {
+        var x: usize = 100;
+        while (x < 100 + @as(usize, @intCast(text_w))) : (x += 1) {
+            if (canvas.pixels[y * canvas.width + x] < 255) inked_label_pixels += 1;
+        }
+    }
+    try std.testing.expect(inked_label_pixels > 0);
+}

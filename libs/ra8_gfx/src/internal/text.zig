@@ -291,7 +291,7 @@ fn paintDisplayGlyph(
     user: ?*anyopaque,
     put_pixel: PixelFn,
 ) void {
-    const top = line_y +% selected.ascent +% glyph.top;
+    const top = line_y +% glyph.top;
     var row: usize = 0;
     while (row < glyph.height) : (row += 1) {
         var col: usize = 0;
@@ -480,7 +480,7 @@ fn paintGlyph(
     put_pixel: PixelFn,
     bold_expand: bool,
 ) void {
-    const top = line_y +% atlas.ascent +% glyph.top;
+    const top = line_y +% glyph.top;
     const output_width = @as(usize, glyph.width) + @intFromBool(bold_expand);
     var row: usize = 0;
     while (row < glyph.height) : (row += 1) {
