@@ -210,7 +210,7 @@ RA8_PRIV ra8_err_t priv_ra8_flash_internal_wait_mrdy(uint32_t limit);
  * @brief Test whether [addr, addr+len) lies inside the soft window.
  *
  * @details Promoted from TU-private static linkage so the FSP-parity /
- *          IRQ TU (``ra8_flash_irq.c``) can run the same range-validation
+ *          IRQ TU (``flash_irq_abi.zig``) can run the same range-validation
  *          check used by the direct-programming path. Reads
  *          ``g_flash_rt`` and forwards to
  *          @ref priv_ra8_flash_internal_window_allows_pure. Defined in
