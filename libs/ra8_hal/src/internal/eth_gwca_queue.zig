@@ -4,13 +4,13 @@
 //! GWCA per-queue descriptor and ring helpers (RA8FW-749), ported from
 //! ra8_eth_gwca_queue.c. Register access and logging go through an `ops`
 //! value so host tests run on in-memory registers. HUM chapter 34.
-//! ra8_eth_gwca_reload_queue stays in C (its BALR poll needs the host
-//! fake-MMIO wait seam).
+//! reloadQueue (RA8FW-764) finished the port and the C file is gone.
 
 pub const ok: u16 = 0;
 pub const invalid_arg: u16 = 0x103;
 pub const no_data: u16 = 0x10A;
 pub const null_ptr: u16 = 0x504;
+pub const hw_timeout: u16 = 0x203;
 
 /// `ra8_gwdcc_dt_t` values (ra8_ether_regs.h).
 pub const dt_linkfix: u8 = 0;
@@ -24,6 +24,10 @@ pub const gwdcc_sl: u32 = 1 << 10;
 pub const gwdcc_dqt: u32 = 1 << 11;
 pub const gwdcc_dcp_shift: u5 = 16;
 pub const gwdcc_dcp_mask: u32 = 0x7 << 16;
+/// GWDCC.BALR, `k_ra8_gwdcc_balr` (ra8_ether_regs.h).
+pub const gwdcc_balr: u32 = 1 << 24;
+/// `k_ra8_eth_gwca_balr_spin` (ra8_eth_gwca_internal.h).
+pub const balr_spin: u32 = 2_000_000;
 
 pub const max_queues: u32 = 32;
 pub const max_tx_queues: u32 = 64;
@@ -182,4 +186,19 @@ pub fn txFrame(ops: anytype, chain: ?[*]volatile Desc, depth: u32, tail: ?*u32, 
     setDt(&ch[slot], dt_fsingle);
     t.* = (slot + 1) % (depth - 1);
     return ok;
+}
+
+/// HUM Ch 34.3 "GWDCCi" p 1811: BALR asks the GWCA to reset the AXI
+/// address RAM current_address of queue `q` to its chain base, and
+/// self-clears once that is done. `ops.balrClear(reg, iter)` reports the
+/// poll result so the host fake-MMIO seam can inject a timeout.
+pub fn reloadQueue(ops: anytype, q: u32) u16 {
+    const gwdcc = ops.gwdcc(q) orelse return invalid_arg;
+    gwdcc.* = gwdcc.* | gwdcc_balr;
+    var i: u32 = 0;
+    while (i < balr_spin) : (i += 1) {
+        if (ops.balrClear(gwdcc, i)) return ok;
+    }
+    ops.logError("reload_queue: GWDCC BALR never cleared");
+    return hw_timeout;
 }

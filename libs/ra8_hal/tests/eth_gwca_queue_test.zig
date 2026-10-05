@@ -8,6 +8,9 @@ const Fake = struct {
     gwdcc_regs: [q.max_queues]u32 = [_]u32{0} ** q.max_queues,
     gwtrc_regs: [2]u32 = .{ 0, 0 },
     nulls: u8 = 0,
+    errors: u8 = 0,
+    polls: u32 = 0,
+    clear_at: ?u32 = null,
 
     pub fn gwdcc(f: *Fake, queue: u32) ?*volatile u32 {
         if (queue >= q.max_queues) return null;
@@ -19,6 +22,14 @@ const Fake = struct {
     pub fn nullPtr(f: *Fake, _: [*:0]const u8) u16 {
         f.nulls += 1;
         return q.null_ptr;
+    }
+    pub fn balrClear(f: *Fake, reg: *volatile u32, iter: u32) bool {
+        f.polls += 1;
+        if (f.clear_at == iter) reg.* = reg.* & ~q.gwdcc_balr;
+        return (reg.* & q.gwdcc_balr) == 0;
+    }
+    pub fn logError(f: *Fake, _: [*:0]const u8) void {
+        f.errors += 1;
     }
 };
 
@@ -174,4 +185,28 @@ test "txFrame rejects bad args and a full ring" {
     try std.testing.expectEqual(q.no_data, q.txFrame(&f, &chain, 3, &tail, &frame, 1, 64));
     q.setDt(&chain[0], q.dt_fempty);
     try std.testing.expectEqual(q.invalid_arg, q.txFrame(&f, &chain, 3, &tail, &frame, 1, 64));
+}
+
+test "reloadQueue rejects a queue with no GWDCC register" {
+    var f = Fake{};
+    try std.testing.expectEqual(q.invalid_arg, q.reloadQueue(&f, q.max_queues));
+    try std.testing.expectEqual(@as(u32, 0), f.polls);
+    try std.testing.expectEqual(@as(u8, 0), f.errors);
+}
+
+test "reloadQueue pulses BALR and returns once it self-clears" {
+    var f = Fake{ .clear_at = 3 };
+    f.gwdcc_regs[5] = q.gwdcc_dqt | (2 << 16);
+    try std.testing.expectEqual(q.ok, q.reloadQueue(&f, 5));
+    try std.testing.expectEqual(@as(u32, 4), f.polls);
+    try std.testing.expectEqual(q.gwdcc_dqt | (2 << 16), f.gwdcc_regs[5]);
+    try std.testing.expectEqual(@as(u8, 0), f.errors);
+}
+
+test "reloadQueue times out and logs when BALR never clears" {
+    var f = Fake{};
+    try std.testing.expectEqual(q.hw_timeout, q.reloadQueue(&f, 0));
+    try std.testing.expectEqual(q.balr_spin, f.polls);
+    try std.testing.expectEqual(q.gwdcc_balr, f.gwdcc_regs[0]);
+    try std.testing.expectEqual(@as(u8, 1), f.errors);
 }
