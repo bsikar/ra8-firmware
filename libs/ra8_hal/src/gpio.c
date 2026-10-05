@@ -230,11 +230,6 @@ ra8_err_t ra8_gpio_read(ra8_port_pin_t pin, ra8_level_t* out_level)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_gpio_release(ra8_port_pin_t pin)
-{
-  return ra8_pin_validator_release(pin);
-}
-
 ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner)
 {
   RA8_CHECK_NULL_PTR(owner, s_tag, "owner must not be nullptr");
