@@ -43,6 +43,21 @@ extern "C" {
 #include "esp_hosted_transport.h"
 #include "protobuf-c/protobuf-c.h"
 
+/* The public header restates the transaction geometry so consumers need no
+   esp-hosted include path, and `src/internal/frame.zig` reproduces it again on
+   the Zig side. These assertions keep all three in step: if upstream ever
+   changes either size, every translation of this header (the Zig `@cImport`s
+   on host and Arm included) stops here rather than mis-framing on the wire.
+   They live here because this is the header that includes the vendored
+   declarations; the RPC layer that used to carry them is now Zig. */
+static_assert((uint16_t)k_ra8_c6link_header_bytes == (uint16_t)sizeof(struct esp_payload_header),
+              "k_ra8_c6link_header_bytes must equal sizeof(struct esp_payload_header)");
+static_assert((uint16_t)k_ra8_c6link_frame_bytes == (uint16_t)ESP_TRANSPORT_SPI_MAX_BUF_SIZE,
+              "k_ra8_c6link_frame_bytes must equal ESP_TRANSPORT_SPI_MAX_BUF_SIZE");
+static_assert((uint16_t)k_ra8_c6link_max_payload ==
+                ((uint16_t)k_ra8_c6link_frame_bytes - (uint16_t)k_ra8_c6link_header_bytes),
+              "k_ra8_c6link_max_payload must be the frame size less the header");
+
 /**
  * @enum ra8_c6link_frame_class_t
  * @brief What one received transaction turned out to be.
@@ -552,7 +567,7 @@ typedef enum : uint16_t {
 priv_c6link_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len);
 
 /* ==========================================================================
- * ra8_c6link_rpc.c -- request, response, correlation
+ * RPC layer (Zig: call, resp, consume, event ABIs) -- request, response, correlation
  * ==========================================================================
  */
 

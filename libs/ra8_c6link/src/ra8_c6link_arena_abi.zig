@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the decode arena: the four `priv_c6link_arena_*` symbols that
-//! `src/ra8_c6link_internal.h` declares and `ra8_c6link_rpc.c` calls.
+//! `src/ra8_c6link_internal.h` declares and the Zig RPC layer calls.
 //!
 //! Only the arena's four fields of `ra8_c6link_t` are touched. They sit after
 //! seven pointer-sized fields (the four-pointer transport, the event and rx

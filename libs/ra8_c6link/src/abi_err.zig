@@ -17,6 +17,7 @@ pub const not_initialized: u16 = 0x10F;
 pub const access_denied: u16 = 0x112;
 pub const hw_timeout: u16 = 0x203;
 pub const spi_error: u16 = 0x402;
+pub const validation_failed: u16 = 0x501;
 pub const checksum_mismatch: u16 = 0x502;
 pub const null_ptr: u16 = 0x504;
 pub const protocol_error: u16 = 0x406;
