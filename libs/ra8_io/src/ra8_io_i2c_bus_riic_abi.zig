@@ -6,8 +6,8 @@
 //! the unmodified ra8_i2c_* polling driver with the channel carried in ctx;
 //! argument checks stay with that driver. Replaces ra8_io_i2c_bus_riic.c,
 //! which is deleted. Iface mirrors struct ra8_io_i2c_bus_iface
-//! (src/ra8_io_i2c_bus_internal.h), which the C front end still dispatches
-//! through.
+//! (src/ra8_io_i2c_bus_internal.h), which the Zig front end
+//! (ra8_io_i2c_bus_abi.zig) dispatches through.
 
 const tag = "ra8_io_i2c_bus_riic";
 
