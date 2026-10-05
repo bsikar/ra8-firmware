@@ -162,3 +162,14 @@ test "a driver error passes straight back through every trampoline" {
     try std.testing.expectEqual(err_busy, b.iface.?.set_clock.?(b.ctx, 1, 1));
     try std.testing.expectEqual(@as(u32, 3), calls);
 }
+
+// The sci_spi unit in the same archive needs these to link; unused here.
+export fn ra8_sci_spi_xfer8(_: u8, _: u8, _: ?*u8) c_int {
+    return 0;
+}
+export fn ra8_sci_spi_xfer(_: u8, _: ?[*]const u8, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_sci_spi_set_clock(_: u8, _: u32, _: u32) c_int {
+    return 0;
+}
