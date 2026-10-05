@@ -938,14 +938,6 @@ void ra8_ssie_dispatch(uint8_t channel)
   }
 }
 
-ra8_err_t ra8_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
-{
-  /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094.
-   * Convenience wrapper named after the SSITDMR / SSIRDMR aliases used
-   * by the audio pipeline; same effect as ra8_ssie_set_thresholds. */
-  return ra8_ssie_set_thresholds(channel, tx_threshold, rx_threshold);
-}
-
 ra8_err_t ra8_ssie_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_ssie_channel_count) {

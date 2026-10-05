@@ -326,20 +326,6 @@ uint32_t ra8_flash_dispatch_isr(void)
  * =============================================================================
  */
 
-ra8_err_t ra8_flash_open(const ra8_flash_cfg_t* cfg)
-{
-  /* FSP r_mram.c L253 R_MRAM_Open delegates to mram_init; we delegate to the
-   * existing ra8_flash_init so there is one canonical bring-up path. */
-  return ra8_flash_init(cfg);
-}
-
-ra8_err_t ra8_flash_close(void)
-{
-  /* FSP r_mram.c L646 R_MRAM_Close just clears the opened flag; we delegate
-   * to ra8_flash_deinit which also returns the controller to read mode. */
-  return ra8_flash_deinit();
-}
-
 ra8_err_t ra8_flash_set_window(uintptr_t low, uintptr_t high)
 {
   if (low == 0U && high == 0U) {

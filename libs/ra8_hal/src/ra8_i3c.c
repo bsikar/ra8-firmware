@@ -880,11 +880,6 @@ ra8_err_t ra8_i3c_ibi_enable(uint8_t target_addr)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_i3c_ibi_drain(ra8_i3c_ibi_t* ibi)
-{
-  return ra8_i3c_ibi_read(ibi);
-}
-
 ra8_err_t ra8_i3c_target_open(uint8_t static_addr)
 {
   if (static_addr > (uint8_t)k_ra8_i3c_addr_mask) {
