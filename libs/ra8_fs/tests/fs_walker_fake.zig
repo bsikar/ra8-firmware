@@ -245,7 +245,9 @@ export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(
     free_cached = n;
 }
 
-/// ASCII-only up-case fold, standing in for the volume's exFAT table.
-export fn priv_exfat_upcase_unit(unit: u16) u16 {
-    return if (unit >= 'a' and unit <= 'z') unit - 32 else unit;
+/// The exFAT rotate-add checksum (spec sec 6.3.3), standing in for the C one.
+export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.C) u32 {
+    var sum = cs;
+    for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
+    return sum;
 }
