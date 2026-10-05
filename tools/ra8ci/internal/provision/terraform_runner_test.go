@@ -5,6 +5,7 @@ package provision
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -19,7 +20,7 @@ func terraformTestState(vm store.RunnerVM) []byte {
 				"type": "proxmox_virtual_environment_vm", "name": "runner",
 				"instances": []any{map[string]any{"attributes": map[string]any{
 					"vm_id": vm.VMID, "name": vm.Name,
-					"description": "RA8CI_RESERVATION=" + vm.ID + ";RA8CI_OPERATION=" + vm.CreationOperationID,
+					"description": fmt.Sprintf("RA8CI_RESERVATION=%s;RA8CI_OPERATION=%s;RA8_LAB_RUN=%016x", vm.ID, vm.CreationOperationID, uint64(vm.WorkflowRunID)),
 				}}},
 			}},
 		}},
@@ -37,7 +38,7 @@ func mustTerraformJSON(value any) []byte {
 func TestTerraformStateRequiresExactNestedRunnerMarker(t *testing.T) {
 	vm := store.RunnerVM{ID: "2f5a13ed-f770-4f68-a246-52c1e8f7e018",
 		CreationOperationID: "4e172436-ec32-4a3d-ad27-c6b0efed58f4",
-		RunnerVMInput:       store.RunnerVMInput{VMID: 9000, Name: "ra8-lab-ci-9000"}}
+		RunnerVMInput:       store.RunnerVMInput{VMID: 9020, Name: "ra8-lab-ci-9020"}}
 	found, err := terraformStateHasRunner(terraformTestState(vm), vm)
 	if err != nil || !found {
 		t.Fatalf("exact runner state rejected: found=%t err=%v", found, err)

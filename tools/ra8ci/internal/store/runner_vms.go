@@ -14,6 +14,7 @@ import (
 )
 
 var runnerVMName = regexp.MustCompile(`^ra8-lab-[a-z0-9][a-z0-9-]{0,54}$`)
+var runnerVMNode = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
 var runnerVMUPID = regexp.MustCompile(`^UPID:[A-Za-z0-9_.-]+:[A-Za-z0-9:@!_.-]+$`)
 var runnerVMTerraformVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 var runnerVMHexSHA256 = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -335,6 +336,32 @@ func (s *Store) GetRunnerVM(ctx context.Context, reservationID string) (RunnerVM
 		return RunnerVM{}, fmt.Errorf("%w: read runner VM: %v", ErrUnavailable, err)
 	}
 	return vm, nil
+}
+
+// ListActiveRunnerVMIDs returns the durable reservations that still hold a
+// VMID on one node. Released rows do not hold the slot; every other state,
+// including an unresolved operation, does.
+func (s *Store) ListActiveRunnerVMIDs(ctx context.Context, node string) ([]int, error) {
+	if s == nil || s.pool == nil || ctx == nil || !runnerVMNode.MatchString(node) {
+		return nil, ErrInvalid
+	}
+	rows, err := s.pool.Query(ctx, `SELECT vmid FROM runner_vms WHERE node=$1 AND state <> 'released' ORDER BY vmid`, node)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list active runner VMIDs: %v", ErrUnavailable, err)
+	}
+	defer rows.Close()
+	var ids []int
+	for rows.Next() {
+		var vmid int
+		if err := rows.Scan(&vmid); err != nil {
+			return nil, fmt.Errorf("%w: read active runner VMID: %v", ErrUnavailable, err)
+		}
+		ids = append(ids, vmid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: finish active runner VMID listing: %v", ErrUnavailable, err)
+	}
+	return ids, nil
 }
 
 // GetRunnerVMByJob must be called before choosing a VMID on inbox replay.

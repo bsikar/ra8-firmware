@@ -33,8 +33,8 @@ variable "vm_id" {
   type        = number
 
   validation {
-    condition     = var.vm_id >= 9000 && var.vm_id <= 9099 && floor(var.vm_id) == var.vm_id
-    error_message = "vm_id must be an integer in the disposable 9000-9099 range."
+    condition     = var.vm_id >= 9020 && var.vm_id <= 9039 && floor(var.vm_id) == var.vm_id
+    error_message = "vm_id must be an integer in the runner lifecycle range 9020-9039."
   }
 }
 
@@ -43,8 +43,18 @@ variable "template_vm_id" {
   type        = number
 
   validation {
-    condition     = var.template_vm_id >= 9000 && var.template_vm_id <= 9099 && floor(var.template_vm_id) == var.template_vm_id
-    error_message = "template_vm_id must be an integer in the reviewed 9000-9099 range."
+    condition     = var.template_vm_id == 9001
+    error_message = "template_vm_id must be the protected Debian template 9001."
+  }
+}
+
+variable "template_name" {
+  description = "Exact protected Debian template name."
+  type        = string
+
+  validation {
+    condition     = var.template_vm_id == 9001 && var.template_name == "ra8-lab-debian-template"
+    error_message = "Runner guests may clone only template 9001 named ra8-lab-debian-template."
   }
 }
 
@@ -85,30 +95,30 @@ variable "bridge" {
   type        = string
 
   validation {
-    condition     = lower(trimspace(var.bridge)) == "vmbr8" || lower(trimspace(var.bridge)) == "vmbr9"
-    error_message = "Runner VMs may use only vmbr8 or vmbr9."
+    condition     = lower(trimspace(var.bridge)) == "vmbr9"
+    error_message = "Runner VMs may use only vmbr9."
   }
 }
 
 variable "cores" {
   description = "Bounded runner vCPU count."
   type        = number
-  default     = 2
+  default     = 4
 
   validation {
-    condition     = var.cores >= 1 && var.cores <= 4 && floor(var.cores) == var.cores
-    error_message = "Runner VMs are limited to 1-4 vCPUs."
+    condition     = var.cores == 4
+    error_message = "Runner VMs must use exactly 4 vCPUs."
   }
 }
 
 variable "memory_mb" {
   description = "Bounded runner memory."
   type        = number
-  default     = 4096
+  default     = 8192
 
   validation {
-    condition     = var.memory_mb >= 512 && var.memory_mb <= 8192 && floor(var.memory_mb) == var.memory_mb
-    error_message = "Runner VMs are limited to 512-8192 MB."
+    condition     = var.memory_mb == 8192
+    error_message = "Runner VMs must use exactly 8192 MB."
   }
 }
 
@@ -117,8 +127,8 @@ variable "ipv4_address" {
   type        = string
 
   validation {
-    condition     = can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.ipv4_address)))
-    error_message = "Runner VMs must use an address in 10.250.8.0/24 or 10.250.9.0/24."
+    condition     = can(regex("^10\\.250\\.9\\.[0-9]{1,3}/24$", trimspace(var.ipv4_address)))
+    error_message = "Runner VMs must use an address in 10.250.9.0/24."
   }
 }
 
@@ -127,8 +137,8 @@ variable "ipv4_gateway" {
   type        = string
 
   validation {
-    condition     = var.ipv4_gateway == "10.250.8.1" || var.ipv4_gateway == "10.250.9.1"
-    error_message = "Runner VMs must use the exact gateway of their isolated segment."
+    condition     = var.ipv4_gateway == "10.250.9.1"
+    error_message = "Runner VMs must use the vmbr9 gateway."
   }
 }
 

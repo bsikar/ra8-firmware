@@ -21,6 +21,24 @@ variable "openbao_address" {
   type        = string
 }
 
+variable "openbao_auth_path" {
+  description = "OpenBao AppRole login path."
+  type        = string
+  default     = "auth/approle/login"
+}
+
+variable "openbao_role_id" {
+  description = "OpenBao AppRole role ID supplied by the protected runtime wrapper."
+  type        = string
+  sensitive   = true
+}
+
+variable "openbao_secret_id" {
+  description = "OpenBao AppRole secret ID supplied by the protected runtime wrapper."
+  type        = string
+  sensitive   = true
+}
+
 variable "openbao_kv_mount" {
   type    = string
   default = "secret"
@@ -39,6 +57,7 @@ variable "runner" {
     run_id                = string
     vm_id                 = number
     template_vm_id        = number
+    template_name         = string
     node_name             = string
     pool_id               = string
     datastore_id          = string

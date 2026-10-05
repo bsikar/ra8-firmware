@@ -1,6 +1,15 @@
 provider "vault" {
   address          = var.openbao_address
   skip_child_token = true
+
+  auth_login {
+    path = var.openbao_auth_path
+
+    parameters = {
+      role_id   = var.openbao_role_id
+      secret_id = var.openbao_secret_id
+    }
+  }
 }
 
 ephemeral "vault_kv_secret_v2" "proxmox_api" {

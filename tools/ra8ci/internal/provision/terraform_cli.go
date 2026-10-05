@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strings"
 	"time"
 
@@ -40,6 +41,8 @@ type TerraformConfig struct {
 	BinaryPath           string
 	BinarySHA256         string
 	Version              string
+	CommandWrapper       string
+	WrapperHome          string
 	EnvironmentDirectory string
 	StateDirectory       string
 	PluginCacheDirectory string
@@ -51,6 +54,13 @@ type TerraformConfig struct {
 // TerraformRuntime verifies the pinned executable before allowing a session.
 type TerraformRuntime struct {
 	config TerraformConfig
+}
+
+func (runtime *TerraformRuntime) runnerConfig() TerraformConfig {
+	if runtime == nil {
+		return TerraformConfig{}
+	}
+	return runtime.config
 }
 
 // TerraformSession carries one reservation-scoped backend and Vault token.
@@ -70,6 +80,15 @@ func OpenTerraformRuntime(ctx context.Context, config TerraformConfig) (*Terrafo
 		!filepath.IsAbs(config.EnvironmentDirectory) || !filepath.IsAbs(config.StateDirectory) ||
 		!filepath.IsAbs(config.PluginCacheDirectory) {
 		return nil, errors.New("invalid pinned Terraform runtime configuration")
+	}
+	if config.CommandWrapper != "" {
+		wrapperInfo, wrapperErr := os.Stat(config.CommandWrapper)
+		if goruntime.GOOS != "darwin" || filepath.Base(config.BinaryPath) != "tofu" ||
+			wrapperErr != nil || !filepath.IsAbs(config.CommandWrapper) || !wrapperInfo.Mode().IsRegular() ||
+			wrapperInfo.Mode().Perm()&0o111 == 0 || !filepath.IsAbs(config.WrapperHome) ||
+			filepath.Base(config.EnvironmentDirectory) != "ra8ci-runner" {
+			return nil, errors.New("invalid OpenBao wrapper configuration for runner lifecycle")
+		}
 	}
 	timeout := config.OperationTimeout
 	if timeout == 0 {
@@ -94,8 +113,11 @@ func OpenTerraformRuntime(ctx context.Context, config TerraformConfig) (*Terrafo
 	runtime := &TerraformRuntime{config: config}
 	versionCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	command := exec.CommandContext(versionCtx, config.BinaryPath, "version", "-json")
+	command := exec.CommandContext(versionCtx, terraformCommandPath(config), "version", "-json")
 	command.Dir = config.EnvironmentDirectory
+	if config.CommandWrapper != "" {
+		command.Env = wrapperEnvironment(config, nil)
+	}
 	output := &boundedTerraformBuffer{limit: maxTerraformOutputBytes}
 	command.Stdout = output
 	command.Stderr = io.Discard
@@ -134,28 +156,34 @@ func (runtime *TerraformRuntime) WithSession(ctx context.Context, reservationID 
 	if err != nil {
 		return err
 	}
-	token, err := LoginAppRole(ctx, runtime.config.AppRole)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-		revokeErr := token.Revoke(revokeCtx)
-		cancel()
-		token.Clear()
-		result = errors.Join(result, revokeErr)
-	}()
-	if err := checkTokenLeaseCoversOperation(token, runtime.config.OperationTimeout, time.Now()); err != nil {
-		return err
-	}
-	tokenEnvironment, err := token.TerraformEnvironment()
-	if err != nil {
-		return err
-	}
 	baseEnvironment := terraformBaseEnvironment(workspace)
 	baseEnvironment = append(baseEnvironment,
 		"TF_DATA_DIR="+filepath.Join(workspace, "tfdata"),
 		"TF_PLUGIN_CACHE_DIR="+runtime.config.PluginCacheDirectory)
+	var token *AppRoleToken
+	var tokenEnvironment []string
+	if runtime.config.CommandWrapper == "" {
+		token, err = LoginAppRole(ctx, runtime.config.AppRole)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+			revokeErr := token.Revoke(revokeCtx)
+			cancel()
+			token.Clear()
+			result = errors.Join(result, revokeErr)
+		}()
+		if err := checkTokenLeaseCoversOperation(token, runtime.config.OperationTimeout, time.Now()); err != nil {
+			return err
+		}
+		tokenEnvironment, err = token.TerraformEnvironment()
+		if err != nil {
+			return err
+		}
+	} else {
+		baseEnvironment = wrapperEnvironment(runtime.config, baseEnvironment)
+	}
 	overlay := append(backendEnvironment, tokenEnvironment...)
 	environment, err := OverlayEnvironment(baseEnvironment, overlay)
 	if err != nil {
@@ -265,7 +293,7 @@ func (session *TerraformSession) run(ctx context.Context, stdout io.Writer, args
 	}
 	commandCtx, cancel := context.WithTimeout(ctx, session.runtime.config.OperationTimeout)
 	defer cancel()
-	command := exec.CommandContext(commandCtx, session.runtime.config.BinaryPath, args...)
+	command := exec.CommandContext(commandCtx, terraformCommandPath(session.runtime.config), args...)
 	command.Dir = session.runtime.config.EnvironmentDirectory
 	command.Env = session.environment
 	command.Stdout = stdout
@@ -372,4 +400,29 @@ func terraformBaseEnvironment(workspace string) []string {
 		"LANG=C.UTF-8",
 		"TF_IN_AUTOMATION=1",
 	}
+}
+
+func wrapperEnvironment(config TerraformConfig, existing []string) []string {
+	values := make(map[string]string, len(existing)+3)
+	for _, entry := range existing {
+		key, value, found := strings.Cut(entry, "=")
+		if found {
+			values[key] = value
+		}
+	}
+	values["PATH"] = filepath.Dir(config.BinaryPath) + ":/usr/bin:/bin"
+	values["HOME"] = config.WrapperHome
+	values["RA8_TOFU_ENV"] = filepath.Base(config.EnvironmentDirectory)
+	result := make([]string, 0, len(values))
+	for key, value := range values {
+		result = append(result, key+"="+value)
+	}
+	return result
+}
+
+func terraformCommandPath(config TerraformConfig) string {
+	if config.CommandWrapper != "" {
+		return config.CommandWrapper
+	}
+	return config.BinaryPath
 }

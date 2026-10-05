@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -25,6 +26,18 @@ type policyLedger struct{}
 
 func (policyLedger) GetRunnerVM(context.Context, string) (store.RunnerVM, error) {
 	return store.RunnerVM{}, nil
+}
+
+func (policyLedger) GetRunnerVMByJob(context.Context, int64, string) (store.RunnerVM, error) {
+	return store.RunnerVM{}, store.ErrNotFound
+}
+
+func (policyLedger) ReserveRunnerVM(context.Context, string, store.RunnerVMInput, time.Time) (store.RunnerVM, bool, error) {
+	return store.RunnerVM{}, false, nil
+}
+
+func (policyLedger) ListActiveRunnerVMIDs(context.Context, string) ([]int, error) {
+	return nil, nil
 }
 
 func (policyLedger) GetRunnerVMOperation(context.Context, string) (store.RunnerVMOperation, error) {
@@ -54,20 +67,28 @@ func (policyObserver) Get(context.Context, proxmox.Identity) (proxmox.VM, error)
 	return proxmox.VM{}, proxmox.ErrNotFound
 }
 
+func (policyObserver) GetTemplate(context.Context, int) (proxmox.Template, error) {
+	return proxmox.Template{VMID: 9001, Node: "pve1", Pool: "ra8-tf-lab", Name: "ra8-lab-debian-template",
+		Status: "stopped", Template: true, ConfigDigest: strings.Repeat("a", 40)}, nil
+}
+
+func (policyObserver) OccupiedVMIDs(context.Context) ([]int, error) { return nil, nil }
+
 // reviewedProfile is the healthy shape every refusal below is one edit away
-// from: VMID 9000 cloned from template 9001, on vmbr8 and addressed inside the
+// from: VMID 9020 cloned from template 9001, on vmbr9 and addressed inside the
 // /24 that bridge carries.
 func reviewedProfile() TerraformRunnerProfile {
 	return TerraformRunnerProfile{
 		TemplateVMID: 9001,
-		Node:         "pve-lab-1",
+		TemplateName: "ra8-lab-debian-template",
+		Node:         "pve1",
 		Pool:         "ra8-tf-lab",
 		DatastoreID:  "ra8-tf-lab",
-		Bridge:       "vmbr8",
-		Cores:        2,
-		MemoryMB:     4096,
-		IPv4Address:  "10.250.8.42/24",
-		IPv4Gateway:  "10.250.8.1",
+		Bridge:       "vmbr9",
+		Cores:        4,
+		MemoryMB:     8192,
+		IPv4Address:  "10.250.9.20/24",
+		IPv4Gateway:  "10.250.9.1",
 		UserName:     "ra8ci",
 	}
 }
@@ -76,11 +97,11 @@ func reviewedConfig(t *testing.T) TerraformRunnerConfig {
 	t.Helper()
 	return TerraformRunnerConfig{
 		Actor:             "ra8ci-controller",
-		ProxmoxEndpoint:   "https://pve-lab-1.example.test:8006",
+		ProxmoxEndpoint:   "https://pve1.example.test:8006",
 		OpenBaoAddress:    "https://bao.example.test:8200",
 		OpenBaoKVMount:    "kv",
 		OpenBaoSecretPath: "ra8ci/proxmox",
-		Profiles:          map[int]TerraformRunnerProfile{9000: reviewedProfile()},
+		Profiles:          map[int]TerraformRunnerProfile{9020: reviewedProfile()},
 		ModuleDirectory:   t.TempDir(),
 	}
 }
@@ -102,7 +123,7 @@ func withProfile(t *testing.T, edit func(*TerraformRunnerProfile)) TerraformRunn
 	config := reviewedConfig(t)
 	profile := reviewedProfile()
 	edit(&profile)
-	config.Profiles = map[int]TerraformRunnerProfile{9000: profile}
+	config.Profiles = map[int]TerraformRunnerProfile{9020: profile}
 	return config
 }
 
@@ -110,6 +131,19 @@ func TestTheReviewedProfileIsAdmitted(t *testing.T) {
 	provisioner, err := openProvisioner(t, reviewedConfig(t))
 	if err != nil || provisioner == nil {
 		t.Fatalf("reviewed disposable policy refused: %v", err)
+	}
+}
+
+func TestLifecycleVMIDRangeRefusesAdjacentIDs(t *testing.T) {
+	for _, vmid := range []int{9019, 9040, 9000, 9099} {
+		if validLifecycleVMID(vmid) {
+			t.Errorf("VMID %d is outside the lifecycle sub-range and must be refused", vmid)
+		}
+	}
+	for _, vmid := range []int{9020, 9039} {
+		if !validLifecycleVMID(vmid) {
+			t.Errorf("VMID %d is inside the lifecycle sub-range and must be accepted", vmid)
+		}
 	}
 }
 
@@ -122,15 +156,18 @@ func TestTheAdmittedPolicyIsACopy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reviewed disposable policy refused: %v", err)
 	}
-	config.Profiles[9002] = reviewedProfile()
+	config.Profiles[9021] = reviewedProfile()
 	widened := reviewedProfile()
 	widened.Bridge = "vmbr0"
-	config.Profiles[9000] = widened
-	if len(provisioner.config.Profiles) != 1 {
-		t.Fatalf("admitted policy grew to %d profiles from the caller's map", len(provisioner.config.Profiles))
+	config.Profiles[9020] = widened
+	if len(provisioner.config.Profiles) != 19 {
+		t.Fatalf("admitted policy contains %d profiles, want 19 Linux VMIDs with the Windows slot excluded", len(provisioner.config.Profiles))
 	}
-	if provisioner.config.Profiles[9000].Bridge != "vmbr8" {
-		t.Fatalf("admitted profile now names bridge %q", provisioner.config.Profiles[9000].Bridge)
+	if _, exists := provisioner.config.Profiles[9021]; exists {
+		t.Fatal("Linux runner profile must not claim the fixed Windows VMID 9021")
+	}
+	if provisioner.config.Profiles[9020].Bridge != "vmbr9" {
+		t.Fatalf("admitted profile now names bridge %q", provisioner.config.Profiles[9020].Bridge)
 	}
 }
 
@@ -144,6 +181,8 @@ func TestOneFieldOutsideThePolicyRefusesTheProvisioner(t *testing.T) {
 	}{
 		{name: "template below the window", edit: func(p *TerraformRunnerProfile) { p.TemplateVMID = 8999 }},
 		{name: "template above the window", edit: func(p *TerraformRunnerProfile) { p.TemplateVMID = 9100 }},
+		{name: "wrong template name", edit: func(p *TerraformRunnerProfile) { p.TemplateName = "other-template" }},
+		{name: "another node", edit: func(p *TerraformRunnerProfile) { p.Node = "pve2" }},
 		{name: "unnamed node", edit: func(p *TerraformRunnerProfile) { p.Node = "" }},
 		{name: "node with a space", edit: func(p *TerraformRunnerProfile) { p.Node = "pve lab 1" }},
 		{name: "another pool", edit: func(p *TerraformRunnerProfile) { p.Pool = "default" }},
@@ -153,8 +192,10 @@ func TestOneFieldOutsideThePolicyRefusesTheProvisioner(t *testing.T) {
 		{name: "the management bridge", edit: func(p *TerraformRunnerProfile) { p.Bridge = "vmbr0" }},
 		{name: "an unreviewed bridge", edit: func(p *TerraformRunnerProfile) { p.Bridge = "vmbr7" }},
 		{name: "no cores", edit: func(p *TerraformRunnerProfile) { p.Cores = 0 }},
+		{name: "too few cores", edit: func(p *TerraformRunnerProfile) { p.Cores = 3 }},
 		{name: "too many cores", edit: func(p *TerraformRunnerProfile) { p.Cores = 5 }},
 		{name: "memory under the floor", edit: func(p *TerraformRunnerProfile) { p.MemoryMB = 511 }},
+		{name: "memory below ceiling", edit: func(p *TerraformRunnerProfile) { p.MemoryMB = 4096 }},
 		{name: "memory over the ceiling", edit: func(p *TerraformRunnerProfile) { p.MemoryMB = 8193 }},
 		{name: "another user", edit: func(p *TerraformRunnerProfile) { p.UserName = "root" }},
 		{name: "no user", edit: func(p *TerraformRunnerProfile) { p.UserName = "" }},
@@ -163,7 +204,7 @@ func TestOneFieldOutsideThePolicyRefusesTheProvisioner(t *testing.T) {
 			p.IPv4Address = "192.168.1.42/24"
 			p.IPv4Gateway = "192.168.1.1"
 		}},
-		{name: "gateway from another segment", edit: func(p *TerraformRunnerProfile) { p.IPv4Gateway = "10.250.9.1" }},
+		{name: "gateway from another segment", edit: func(p *TerraformRunnerProfile) { p.IPv4Gateway = "10.250.8.1" }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -174,29 +215,13 @@ func TestOneFieldOutsideThePolicyRefusesTheProvisioner(t *testing.T) {
 	}
 }
 
-// The bounds are inclusive at both ends. A profile sitting exactly on the
-// window, the core count, or the memory ceiling is reviewed policy, not an
-// edge case to be refused.
-func TestThePolicyBoundsAreInclusive(t *testing.T) {
-	tests := []struct {
-		name string
-		edit func(*TerraformRunnerProfile)
-	}{
-		{name: "template at the floor", edit: func(p *TerraformRunnerProfile) { p.TemplateVMID = 9001 }},
-		{name: "template at the ceiling", edit: func(p *TerraformRunnerProfile) { p.TemplateVMID = 9099 }},
-		{name: "one core", edit: func(p *TerraformRunnerProfile) { p.Cores = 1 }},
-		{name: "four cores", edit: func(p *TerraformRunnerProfile) { p.Cores = 4 }},
-		{name: "memory floor", edit: func(p *TerraformRunnerProfile) { p.MemoryMB = 512 }},
-		{name: "memory ceiling", edit: func(p *TerraformRunnerProfile) { p.MemoryMB = 8192 }},
-		{name: "lowest host address", edit: func(p *TerraformRunnerProfile) { p.IPv4Address = "10.250.8.2/24" }},
-		{name: "highest host address", edit: func(p *TerraformRunnerProfile) { p.IPv4Address = "10.250.8.254/24" }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := openProvisioner(t, withProfile(t, test.edit)); err != nil {
-				t.Fatalf("a profile on the reviewed bound was refused: %v", err)
-			}
-		})
+// The reviewed runner profile fixes the exact resource ceiling and subnet.
+func TestTheProfileUsesTheApprovedResourceCeiling(t *testing.T) {
+	profile := reviewedProfile()
+	if profile.TemplateVMID != 9001 || profile.TemplateName != "ra8-lab-debian-template" ||
+		profile.Bridge != "vmbr9" || profile.Cores != 4 || profile.MemoryMB != 8192 ||
+		profile.Pool != "ra8-tf-lab" || profile.DatastoreID != "ra8-tf-lab" {
+		t.Fatalf("reviewed profile does not encode the lifecycle boundary: %+v", profile)
 	}
 }
 
@@ -213,8 +238,8 @@ func TestTheDisposableVMIDIsHeldToItsOwnWindow(t *testing.T) {
 	}
 	config := reviewedConfig(t)
 	self := reviewedProfile()
-	self.TemplateVMID = 9000
-	config.Profiles = map[int]TerraformRunnerProfile{9000: self}
+	self.TemplateVMID = 9020
+	config.Profiles = map[int]TerraformRunnerProfile{9020: self}
 	if _, err := openProvisioner(t, config); err == nil {
 		t.Fatal("a profile cloning itself was admitted")
 	}
@@ -229,8 +254,8 @@ func TestARunnerVMIDIsNeverAlsoATemplate(t *testing.T) {
 	first.TemplateVMID = 9001
 	second := reviewedProfile()
 	second.TemplateVMID = 9050
-	second.IPv4Address = "10.250.8.43/24"
-	config.Profiles = map[int]TerraformRunnerProfile{9000: first, 9001: second}
+	second.IPv4Address = "10.250.9.43/24"
+	config.Profiles = map[int]TerraformRunnerProfile{9020: first, 9001: second}
 	if _, err := openProvisioner(t, config); err == nil {
 		t.Fatal("a runner VMID configured as another profile's template was admitted")
 	}
@@ -241,12 +266,12 @@ func TestARunnerVMIDIsNeverAlsoATemplate(t *testing.T) {
 // other's traffic. The refusal names both VMIDs so an operator can find them.
 func TestTwoProfilesMayNotShareAStaticAddress(t *testing.T) {
 	config := reviewedConfig(t)
-	config.Profiles = map[int]TerraformRunnerProfile{9000: reviewedProfile(), 9002: reviewedProfile()}
+	config.Profiles = map[int]TerraformRunnerProfile{9020: reviewedProfile(), 9022: reviewedProfile()}
 	_, err := openProvisioner(t, config)
 	if err == nil {
 		t.Fatal("two profiles sharing a static address were admitted")
 	}
-	if !strings.Contains(err.Error(), "9000") || !strings.Contains(err.Error(), "9002") {
+	if !strings.Contains(err.Error(), "9020") || !strings.Contains(err.Error(), "9022") {
 		t.Fatalf("the shared-address refusal names neither VMID: %v", err)
 	}
 }
