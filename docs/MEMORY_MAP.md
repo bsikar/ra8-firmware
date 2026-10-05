@@ -70,7 +70,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `ra8_lvd.c`, `ra8_sram.c`                  |
 | LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `ra8_lpm.c`, `pwr.zig`                     |
 | BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
-| SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `ra8_reset.c`                   |
+| SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `reset_abi.zig`                 |
 | VREG            | `0x4001E000`  | Voltage regulator (within SYSC)                      | `ra8_vreg.c`                              |
 | IPC             | `0x40020000`  | Inter-processor communication (M85 <-> M33)          | `ra8_ipc.c`                               |
 | LPM ICU/WUPEN   | `0x4000C000`  | Wake-up enable                                       | `ra8_lpm.c`                               |
@@ -85,7 +85,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | MSTP            | `0x40203000`  | Module-stop (clock-gate) registers                   | `ra8_mstp.c`                              |
 | ELC             | `0x40201000`  | Event Link Controller                                | `elc_abi.zig`                             |
 | MRMS / MRAM     | `0x4013C000`  | MRAM control / R_MRMS                                | `ra8_flash.c`                             |
-| RESET (SYSC)    | `0x4001E000`  | Reset control via SYSC                               | `ra8_reset.c`                             |
+| RESET (SYSC)    | `0x4001E000`  | Reset control via SYSC                               | `reset_abi.zig`                           |
 
 ### 2.2 General-purpose IO and timers
 
