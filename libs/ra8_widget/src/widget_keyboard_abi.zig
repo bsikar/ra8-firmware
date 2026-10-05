@@ -16,6 +16,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const text_field_abi = @import("widget_text_field_abi.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -31,6 +32,8 @@ pub const Event = types.Event;
 pub const Refresh = types.Refresh;
 /// The `ra8_err_t` values this membrane answers with.
 pub const err = types.err;
+pub const KeyAction = types.KeyAction;
+pub const text_field = text_field_abi;
 
 /// Key indices the seam can answer with.
 pub const key = struct {
@@ -58,6 +61,7 @@ pub const KeyInfo = extern struct {
     glyph: u8,
     pad0: u8,
     pad1: u16,
+    action: KeyAction = .other,
 };
 
 /// The injected keyboard-engine seam (`ra8_widget_keyboard_ops_t`). Every
@@ -82,6 +86,8 @@ pub const Keyboard = extern struct {
     key_fg: u32,
     border_w: i16,
     reserved: u16,
+    focused_field: ?*Widget = null,
+    damage: Rect = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
 };
 
 /// Draw one key: its bordered face, then its centred glyph or label.
@@ -145,7 +151,7 @@ fn render(w: *Widget) callconv(.c) void {
 /// The keyboard owns its whole band, so every touch is consumed even when it
 /// lands on a gap; a button event is declined so it can keep travelling.
 fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {
-    const kbd: *const Keyboard = @ptrCast(@alignCast(w.ctx orelse return false));
+    const kbd: *Keyboard = @ptrCast(@alignCast(w.ctx orelse return false));
     if (event.kind != .touch) return false;
 
     const ops = kbd.ops orelse return true;
@@ -155,6 +161,16 @@ fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {
     const idx = hit(ops.user, event.x, event.y);
     if (idx == key.no_hit) return true;
 
+    if (kbd.focused_field) |field| {
+        var info: KeyInfo = undefined;
+        @memset(@as([*]u8, @ptrCast(&info))[0..@sizeOf(KeyInfo)], 0);
+        info.action = .other;
+        if (ops.key_info) |key_info| {
+            key_info(ops.user, idx, &info);
+            kbd.damage = info.rect;
+            _ = text_field_abi.applyKey(field, info.action, info.glyph);
+        }
+    }
     const committed = apply(ops.user, idx);
     _ = types.ra8_widget_invalidate(w, .quality);
     if (committed) {
@@ -193,7 +209,10 @@ comptime {
     if (@offsetOf(KeyInfo, "glyph") != 16 + ptr) @compileError("ra8_widget_key_info_t glyph offset");
     if (@offsetOf(KeyInfo, "pad0") != 17 + ptr) @compileError("ra8_widget_key_info_t pad0 offset");
     if (@offsetOf(KeyInfo, "pad1") != 18 + ptr) @compileError("ra8_widget_key_info_t pad1 offset");
+    if (@offsetOf(KeyInfo, "action") != 20 + ptr) @compileError("ra8_widget_key_info_t action offset");
     if (@alignOf(KeyInfo) != @alignOf(usize)) @compileError("ra8_widget_key_info_t alignment");
+    const key_info_size = ((21 + ptr + ptr - 1) / ptr) * ptr;
+    if (@sizeOf(KeyInfo) != key_info_size) @compileError("ra8_widget_key_info_t size");
 
     if (@sizeOf(Ops) != 5 * ptr) @compileError("ra8_widget_keyboard_ops_t size");
     if (@offsetOf(Ops, "user") != 0) @compileError("ra8_widget_keyboard_ops_t user offset");
@@ -211,5 +230,8 @@ comptime {
     if (@offsetOf(Keyboard, "key_fg") != 3 * ptr + 12) @compileError("ra8_widget_keyboard_t key_fg offset");
     if (@offsetOf(Keyboard, "border_w") != 3 * ptr + 16) @compileError("ra8_widget_keyboard_t border_w offset");
     if (@offsetOf(Keyboard, "reserved") != 3 * ptr + 18) @compileError("ra8_widget_keyboard_t reserved offset");
+    const field_ptr_offset = ((3 * ptr + 20 + ptr - 1) / ptr) * ptr;
+    if (@offsetOf(Keyboard, "focused_field") != field_ptr_offset) @compileError("ra8_widget_keyboard_t focused_field offset");
+    if (@offsetOf(Keyboard, "damage") != field_ptr_offset + ptr) @compileError("ra8_widget_keyboard_t damage offset");
     if (@alignOf(Keyboard) != @alignOf(usize)) @compileError("ra8_widget_keyboard_t alignment");
 }

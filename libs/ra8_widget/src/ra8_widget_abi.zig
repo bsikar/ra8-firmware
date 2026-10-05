@@ -46,6 +46,9 @@ pub const toolbar = @import("widget_toolbar_abi.zig");
 /// The on-screen-keyboard leaf widget: `ra8_widget_keyboard_vtable` / `_init`.
 pub const keyboard = @import("widget_keyboard_abi.zig");
 
+/// The caller-buffer-backed single-line text-entry leaf widget.
+pub const text_field = @import("widget_text_field_abi.zig");
+
 /// The navigation-strip leaf widget: `ra8_widget_nav_bar_vtable` / `_init`.
 pub const nav_bar = @import("widget_nav_bar_abi.zig");
 
@@ -86,6 +89,7 @@ comptime {
     _ = status_bar;
     _ = toolbar;
     _ = keyboard;
+    _ = text_field;
     _ = nav_bar;
     _ = pager;
     _ = panel;

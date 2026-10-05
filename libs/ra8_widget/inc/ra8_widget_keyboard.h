@@ -62,6 +62,14 @@ typedef enum : uint8_t {
  * @see ra8_widget_keyboard_ops_t
  * @since 0.1.0
  */
+typedef enum : uint8_t {
+  k_ra8_widget_key_character = 0U,
+  k_ra8_widget_key_space = 1U,
+  k_ra8_widget_key_backspace = 2U,
+  k_ra8_widget_key_enter = 3U,
+  k_ra8_widget_key_other = 4U,
+} ra8_widget_key_action_t;
+
 typedef struct ra8_widget_key_info {
   ra8_ui_rect_t rect;  /**< Key hit / draw rectangle.                     */
   const char*   label; /**< Special-key label (NULL for a character key). */
@@ -140,6 +148,8 @@ typedef struct ra8_widget_keyboard {
   uint32_t key_fg;                         /**< Key glyph / label colour, 0xRRGGBB.   */
   int16_t  border_w;                       /**< Key border thickness, px (>= 0).      */
   uint16_t reserved;                       /**< Padding to a 4-byte boundary.         */
+  ra8_widget_t* focused_field;             /**< Optional text-field recipient.       */
+  ra8_ui_rect_t damage;                    /**< Last key rect changed by input.       */
 } ra8_widget_keyboard_t;
 
 /**

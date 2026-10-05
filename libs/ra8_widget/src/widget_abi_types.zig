@@ -47,6 +47,9 @@ pub const EventKind = enum(u8) {
     button = 1,
 };
 
+/// Semantic action supplied by the keyboard model to an editable field.
+pub const KeyAction = enum(u8) { character = 0, space = 1, backspace = 2, enter = 3, other = 4 };
+
 /// One input event of the published ABI (`ra8_widget_event_t`).
 pub const Event = extern struct {
     kind: EventKind,
