@@ -1,6 +1,6 @@
 /**
  * @file ra8_i2c_config.c
- * @brief I2C Bus Interface (IIC) bring-up and clock plane
+ * @brief I2C Bus Interface (IIC) bring-up plane
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
@@ -8,8 +8,9 @@
  * @details
  * Configuration-plane half of the RA8D2 RIIC polling driver, split out of
  * ``ra8_i2c.c`` to keep each translation unit under the file-size cap. Owns
- * the init / deinit / bit-rate sequence (HUM Ch 39.3.2 "Initial Settings"
- * p 2395) and the runtime clock re-program (``ra8_i2c_set_clock``). The
+ * the init / deinit sequence (HUM Ch 39.3.2 "Initial Settings" p 2395).
+ * The bit-rate solver and ``ra8_i2c_set_clock`` moved to
+ * ``i2c_clock_abi.zig`` (RA8FW-695). The
  * error-status helpers (``ra8_i2c_get_errors`` / ``ra8_i2c_clear_errors``)
  * moved to ``i2c_status_abi.zig`` (RA8FW-694).
  *
@@ -36,21 +37,6 @@
 #include "ra8_i2c_regs.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
-
-/**
- * @enum ra8_i2c_brate_t
- * @brief Bit-rate divider field limits (HUM Ch 39.2.15 / 39.2.16).
- */
-typedef enum : uint32_t {
-  /** ICBRL / ICBRH counter fields are 5 bits ([4:0]). */
-  k_ra8_i2c_br_field_max = 0x1FU,
-  /** Upper 3 reserved bits of ICBRL / ICBRH read as 1. */
-  k_ra8_i2c_br_reserved_hi = 0xE0U,
-  /** CKS divider exponent ceiling (CKS[2:0] selects PCLKB / 2^CKS). */
-  k_ra8_i2c_cks_max = 7U,
-  /** Period split between SCL high and low halves. */
-  k_ra8_i2c_period_split = 2U,
-} ra8_i2c_brate_t;
 
 /**
  * @brief Map a channel index to its MSTP gate id.
@@ -81,129 +67,6 @@ RA8_INTERNAL static ra8_mstp_t internal_i2c_mstp_id(uint8_t channel)
     return k_ra8_mstp_iic1;
   }
   return k_ra8_mstp_iic2;
-}
-
-/**
- * @brief Pick the smallest CKS divider and divide ``*total`` to match.
- *
- * @details
- * Repeatedly halves the candidate bit-period cycle count until a single
- * SCL half-period fits inside the 5-bit ICBRL/ICBRH field, returning the
- * CKS exponent used. The loop is bounded by ``k_ra8_i2c_cks_max + 1``
- * iterations (NASA P10 Rule 2).
- *
- * @param[in,out] total On entry the full ``PCLKB / bus_hz`` cycle count;
- *                      on return divided by ``2^CKS``.
- *
- * @return The chosen CKS exponent, clamped to ``[0, k_ra8_i2c_cks_max]``.
- * @retval 0 The full period already fits the field.
- *
- * @pre total is non-NULL.
- * @pre ``*total`` was derived from non-zero clocks.
- * @post ``*total`` reflects the divided cycle count.
- * @post Return value is in ``[0, k_ra8_i2c_cks_max]``.
- * @note Thread safety: pure on the supplied pointer; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_i2c_pick_cks(uint32_t* total)
-{
-  uint32_t cks = 0U;
-  for (uint32_t i = 0U; i <= (uint32_t)k_ra8_i2c_cks_max; i++) {
-    const uint32_t half = *total / (uint32_t)k_ra8_i2c_period_split;
-    if (half <= ((uint32_t)k_ra8_i2c_br_field_max + 1U)) {
-      break;
-    }
-    cks    = i + 1U;
-    *total = *total >> 1U;
-  }
-  if (cks > (uint32_t)k_ra8_i2c_cks_max) {
-    cks = (uint32_t)k_ra8_i2c_cks_max;
-  }
-  return (uint8_t)cks;
-}
-
-/**
- * @brief Clamp one SCL half-period count to the 5-bit BR field.
- *
- * @details
- * Splits ``total`` evenly between the SCL high and low halves, subtracts
- * the +1 the hardware adds, and clamps to ``k_ra8_i2c_br_field_max``.
- *
- * @param[in] total Divided bit-period cycle count.
- *
- * @return The 5-bit half-period field value.
- * @retval 0 The divided period collapsed to a single cycle.
- *
- * @pre total is the output of ``internal_i2c_pick_cks``.
- * @pre None.
- * @post Return value is in ``[0, k_ra8_i2c_br_field_max]``.
- * @post No state is mutated.
- * @note Thread safety: pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_i2c_clamp_half(uint32_t total)
-{
-  uint32_t half = total / (uint32_t)k_ra8_i2c_period_split;
-  if (half == 0U) {
-    half = 1U;
-  }
-  uint32_t field = half - 1U;
-  if (field > (uint32_t)k_ra8_i2c_br_field_max) {
-    field = (uint32_t)k_ra8_i2c_br_field_max;
-  }
-  return (uint8_t)field;
-}
-
-/**
- * @brief Compute the CKS divider and ICBRH/ICBRL half-period counts.
- *
- * @details
- * The RIIC internal reference clock is ``IICphi = PCLKB / 2^CKS`` (HUM
- * Ch 39.2.3 p 2374). One SCL bit period is ``(BRH + 1) + (BRL + 1)``
- * IICphi cycles for the SCLE=0 / NFE=0 transfer-rate expression (HUM
- * Ch 39.2.16 expression (1) p 2392). Delegates the CKS search and field
- * clamp to ``internal_i2c_pick_cks`` / ``internal_i2c_clamp_half``.
- *
- * @param[in]  bus_hz   Target bus clock (non-zero).
- * @param[in]  pclkb_hz PCLKB frequency (non-zero).
- * @param[out] out_cks  CKS exponent [0..7].
- * @param[out] out_brh  ICBRH register value (5-bit count + reserved hi).
- * @param[out] out_brl  ICBRL register value (5-bit count + reserved hi).
- *
- * @return ``ra8_err_t``.
- * @retval k_ra8_ok              Divider computed.
- * @retval k_ra8_err_invalid_arg A clock argument was zero.
- *
- * @pre out_cks and out_brh are non-NULL.
- * @pre bus_hz and pclkb_hz are non-zero.
- * @post On success ``*out_cks <= 7`` and the BR fields are clamped.
- * @post On error no output is written.
- * @note Thread safety: pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_i2c_bitrate(uint32_t bus_hz,
-                                                   uint32_t pclkb_hz,
-                                                   uint8_t* out_cks,
-                                                   uint8_t* out_brh,
-                                                   uint8_t* out_brl)
-{
-  RA8_CHECK_NULL_PTR(out_cks, g_i2c_tag, "bitrate: out_cks");
-  RA8_CHECK_NULL_PTR(out_brh, g_i2c_tag, "bitrate: out_brh");
-  if (priv_ra8_i2c_internal_clk_invalid(bus_hz, pclkb_hz)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* Each transferred bit needs (BRH+1)+(BRL+1) IICphi cycles. Pick the
-   * smallest CKS that fits both half-periods in the 5-bit field, then
-   * derive the clamped half-period count for ICBRL / ICBRH. */
-  uint32_t      total = pclkb_hz / bus_hz;
-  const uint8_t cks   = internal_i2c_pick_cks(&total);
-  const uint8_t field = internal_i2c_clamp_half(total);
-
-  *out_cks = cks;
-  *out_brh = (uint8_t)((uint32_t)k_ra8_i2c_br_reserved_hi | (uint32_t)field);
-  *out_brl = (uint8_t)((uint32_t)k_ra8_i2c_br_reserved_hi | (uint32_t)field);
-  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -277,7 +140,7 @@ ra8_err_t ra8_i2c_init(uint8_t channel, const ra8_i2c_cfg_t* cfg)
   uint8_t         cks    = 0U;
   uint8_t         brh    = 0U;
   uint8_t         brl    = 0U;
-  const ra8_err_t br_err = internal_i2c_bitrate(cfg->bus_hz, cfg->pclkb_hz, &cks, &brh, &brl);
+  const ra8_err_t br_err = priv_ra8_i2c_internal_bitrate(cfg->bus_hz, cfg->pclkb_hz, &cks, &brh, &brl);
   RA8_RETURN_ON_ERROR(br_err, g_i2c_tag, "i2c_init: bitrate");
 
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
@@ -313,28 +176,4 @@ ra8_err_t ra8_i2c_deinit(uint8_t channel)
   s_i2c_state[channel].initialized = false;
   s_i2c_state[channel].bus_held    = false;
   return ra8_mstp_disable(internal_i2c_mstp_id(channel));
-}
-
-ra8_err_t ra8_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
-{
-  volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint8_t         cks    = 0U;
-  uint8_t         brh    = 0U;
-  uint8_t         brl    = 0U;
-  const ra8_err_t br_err = internal_i2c_bitrate(bus_hz, pclkb_hz, &cks, &brh, &brl);
-  if (br_err != k_ra8_ok) {
-    return br_err;
-  }
-  /* HUM Ch 39.2.3 "ICMR1 : I2C Bus Mode Register 1 -- CKS[6:4]" p 2374 */
-  reg->ICMR1 = (uint8_t)(((uint32_t)reg->ICMR1 & ~((uint32_t)(uint8_t)k_ra8_i2c_cks_max
-                                                   << (uint32_t)k_ra8_i2c_icmr1_cks_pos)) |
-                         ((uint32_t)cks << (uint32_t)k_ra8_i2c_icmr1_cks_pos));
-  /* HUM Ch 39.2.15 "ICBRL : I2C Bus Bit Rate Low-Level Register" p 2391 */
-  reg->ICBRL = brl;
-  /* HUM Ch 39.2.16 "ICBRH : I2C Bus Bit Rate High-Level Register" p 2392 */
-  reg->ICBRH = brh;
-  return k_ra8_ok;
 }
