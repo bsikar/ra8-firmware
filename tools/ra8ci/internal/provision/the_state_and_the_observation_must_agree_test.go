@@ -5,6 +5,7 @@ package provision
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -23,12 +24,13 @@ func agreedVM() store.RunnerVM {
 	return store.RunnerVM{
 		ID:                  "2f5a13ed-f770-4f68-a246-52c1e8f7e018",
 		CreationOperationID: "4e172436-ec32-4a3d-ad27-c6b0efed58f4",
-		RunnerVMInput:       store.RunnerVMInput{VMID: 9000, Name: "ra8-lab-ci-9000"},
+		RunnerVMInput:       store.RunnerVMInput{VMID: 9020, Name: "ra8-lab-ci-9020"},
 	}
 }
 
 func runnerMarker(vm store.RunnerVM) string {
-	return "RA8CI_RESERVATION=" + vm.ID + ";RA8CI_OPERATION=" + vm.CreationOperationID
+	return fmt.Sprintf("RA8CI_RESERVATION=%s;RA8CI_OPERATION=%s;RA8_LAB_RUN=%016x",
+		vm.ID, vm.CreationOperationID, uint64(vm.WorkflowRunID))
 }
 
 func runnerAttributes(vm store.RunnerVM) map[string]any {
@@ -310,7 +312,7 @@ func TestRunnerIdentityMustMatchTheReservationExactly(t *testing.T) {
 		"marker absent":            {"vm_id": vm.VMID, "name": vm.Name},
 		"name absent":              {"vm_id": vm.VMID, "description": runnerMarker(vm)},
 		"vmid absent":              {"name": vm.Name, "description": runnerMarker(vm)},
-		"vmid as text":             {"vm_id": "9000", "name": vm.Name, "description": runnerMarker(vm)},
+		"vmid as text":             {"vm_id": "9020", "name": vm.Name, "description": runnerMarker(vm)},
 		"attributes absent":        nil,
 		"attributes not an object": {},
 	}

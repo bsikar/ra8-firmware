@@ -11,7 +11,7 @@ operator_home="${HOME:?HOME is required}"
 bao_env_file="${RA8_OPENBAO_ENV:-$operator_home/.config/hil/openbao.env}"
 terraform_environment="${RA8_TOFU_ENV:-lab}"
 case "$terraform_environment" in
-  lab | lab-guest) ;;
+  lab | lab-guest | ra8ci-runner) ;;
   *)
     printf '%s\n' 'error: unsupported OpenTofu environment.' >&2
     exit 1

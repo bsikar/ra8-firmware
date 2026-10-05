@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	diskKeyPattern = regexp.MustCompile(`^(scsi|virtio|sata)[0-9]+$`)
-	netKeyPattern  = regexp.MustCompile(`^net[0-9]+$`)
-	digestPattern  = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	diskKeyPattern   = regexp.MustCompile(`^(scsi|virtio|sata)[0-9]+$`)
+	netKeyPattern    = regexp.MustCompile(`^net[0-9]+$`)
+	digestPattern    = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	runMarkerPattern = regexp.MustCompile(`^[0-9a-f]{16}$`)
 )
 
 // Identity is the exact VM reservation. The creation operation marker is
@@ -33,14 +34,19 @@ type Identity struct {
 	Name                string
 	ReservationID       string
 	CreationOperationID string
+	RunID               string
 }
 
 func (i Identity) marker() string {
-	return "RA8CI_RESERVATION=" + i.ReservationID + ";RA8CI_OPERATION=" + i.CreationOperationID
+	marker := "RA8CI_RESERVATION=" + i.ReservationID + ";RA8CI_OPERATION=" + i.CreationOperationID
+	if i.RunID != "" {
+		marker += ";RA8_LAB_RUN=" + i.RunID
+	}
+	return marker
 }
 
 func (c *Client) validateIdentity(i Identity) error {
-	if _, ok := c.allowedVMIDs[i.VMID]; !ok || i.VMID < 9000 || i.Node != c.node || i.Pool != c.pool || i.Storage != c.storage || !namePattern.MatchString(i.Name) || !idPattern.MatchString(i.ReservationID) || !idPattern.MatchString(i.CreationOperationID) {
+	if _, ok := c.allowedVMIDs[i.VMID]; !ok || i.VMID < 9000 || i.Node != c.node || i.Pool != c.pool || i.Storage != c.storage || !namePattern.MatchString(i.Name) || !idPattern.MatchString(i.ReservationID) || !idPattern.MatchString(i.CreationOperationID) || (i.RunID != "" && !runMarkerPattern.MatchString(i.RunID)) {
 		return fmt.Errorf("%w: VM reservation outside approved identity", ErrInvalid)
 	}
 	return nil
@@ -94,6 +100,19 @@ type VM struct {
 	ConfigDigest string
 	Protected    bool
 	Locked       bool
+}
+
+// Template is an independently read cluster/config observation used before a
+// Terraform clone. A ledger's recorded template identity is not proof that the
+// configured source remains a protected, stopped template.
+type Template struct {
+	VMID         int
+	Node         string
+	Pool         string
+	Name         string
+	Status       string
+	Template     bool
+	ConfigDigest string
 }
 
 // Result distinguishes an accepted/verified task from an already-satisfied
@@ -167,6 +186,60 @@ func (c *Client) List(ctx context.Context) ([]VM, error) {
 	}
 	sort.Slice(result, func(a, b int) bool { return result[a].Identity.VMID < result[b].Identity.VMID })
 	return result, nil
+}
+
+// GetTemplate reads the reviewed source ID without admitting it as a guest
+// identity. It checks both the cluster listing and the VM config because the
+// template flag and stopped state are safety preconditions to a full clone.
+func (c *Client) GetTemplate(ctx context.Context, vmid int) (Template, error) {
+	if c == nil {
+		return Template{}, ErrInvalid
+	}
+	if _, allowed := c.templateVMIDs[vmid]; !allowed {
+		return Template{}, ErrInvalid
+	}
+	resources, err := c.resources(ctx)
+	if err != nil {
+		return Template{}, err
+	}
+	entry, exists := resources[vmid]
+	flag, flagErr := flagRaw(entry.Template)
+	if !exists || flagErr != nil || entry.Type != "qemu" || entry.Node != c.node ||
+		entry.Pool != c.pool || entry.Status != "stopped" || !flag || entry.Name == "" {
+		return Template{}, fmt.Errorf("%w: source template is not the stopped protected template", ErrConflict)
+	}
+	var config map[string]json.RawMessage
+	if _, err := c.request(ctx, http.MethodGet, vmPath(c.node, vmid)+"/config", nil, &config); err != nil {
+		return Template{}, err
+	}
+	name, nameErr := stringField(config, "name")
+	digest, digestErr := stringField(config, "digest")
+	isTemplate, templateErr := boolField(config, "template")
+	if nameErr != nil || digestErr != nil || templateErr != nil || !isTemplate || name != entry.Name ||
+		!digestPattern.MatchString(digest) {
+		return Template{}, fmt.Errorf("%w: source template config identity is invalid", ErrConflict)
+	}
+	return Template{VMID: vmid, Node: entry.Node, Pool: entry.Pool, Name: name,
+		Status: entry.Status, Template: isTemplate, ConfigDigest: digest}, nil
+}
+
+// OccupiedVMIDs returns cluster-wide IDs so allocation refuses a slot before
+// Terraform discovers a collision. Proxmox VMIDs are cluster-unique, even
+// though the reviewed lifecycle itself is pinned to one node.
+func (c *Client) OccupiedVMIDs(ctx context.Context) ([]int, error) {
+	if c == nil {
+		return nil, ErrInvalid
+	}
+	resources, err := c.resources(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int, 0, len(resources))
+	for vmid := range resources {
+		ids = append(ids, vmid)
+	}
+	sort.Ints(ids)
+	return ids, nil
 }
 
 func (c *Client) resources(ctx context.Context) (map[int]resource, error) {

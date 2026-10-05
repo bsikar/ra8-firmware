@@ -7,6 +7,7 @@ module "runner" {
   run_id                = var.runner.run_id
   vm_id                 = var.runner.vm_id
   template_vm_id        = var.runner.template_vm_id
+  template_name         = var.runner.template_name
   node_name             = var.runner.node_name
   pool_id               = var.runner.pool_id
   datastore_id          = var.runner.datastore_id

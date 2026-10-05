@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -37,6 +38,61 @@ type reservationLedger struct {
 	reads int
 }
 
+type allocatingLedger struct {
+	policyLedger
+	active []int
+}
+
+func (l allocatingLedger) ListActiveRunnerVMIDs(context.Context, string) ([]int, error) {
+	return append([]int(nil), l.active...), nil
+}
+
+type allocatingObserver struct {
+	policyObserver
+	occupied []int
+}
+
+type reservingLedger struct {
+	policyLedger
+	active     []int
+	reserved   *store.RunnerVM
+	reserveErr error
+}
+
+func (l *reservingLedger) ListActiveRunnerVMIDs(context.Context, string) ([]int, error) {
+	ids := append([]int(nil), l.active...)
+	if l.reserved != nil {
+		ids = append(ids, l.reserved.VMID)
+	}
+	return ids, nil
+}
+
+func (l *reservingLedger) GetRunnerVMByJob(_ context.Context, scaleSetID int64, jobID string) (store.RunnerVM, error) {
+	if l.reserved != nil && l.reserved.ScaleSetID == scaleSetID && l.reserved.JobID == jobID {
+		return *l.reserved, nil
+	}
+	return store.RunnerVM{}, store.ErrNotFound
+}
+
+func (l *reservingLedger) ReserveRunnerVM(_ context.Context, _ string, input store.RunnerVMInput,
+	_ time.Time) (store.RunnerVM, bool, error) {
+	if l.reserveErr != nil {
+		return store.RunnerVM{}, false, l.reserveErr
+	}
+	for _, vmid := range l.active {
+		if vmid == input.VMID {
+			return store.RunnerVM{}, false, store.ErrConflict
+		}
+	}
+	vm := store.RunnerVM{ID: tfReservationID, RunnerVMInput: input, CreationOperationID: tfCreationID}
+	l.reserved = &vm
+	return vm, true, nil
+}
+
+func (o allocatingObserver) OccupiedVMIDs(context.Context) ([]int, error) {
+	return append([]int(nil), o.occupied...), nil
+}
+
 func (l *reservationLedger) GetRunnerVM(context.Context, string) (store.RunnerVM, error) {
 	l.reads++
 	return l.vm, l.err
@@ -44,13 +100,14 @@ func (l *reservationLedger) GetRunnerVM(context.Context, string) (store.RunnerVM
 
 func reservedIdentity() proxmox.Identity {
 	return proxmox.Identity{
-		VMID:                9000,
-		Node:                "pve-lab-1",
+		VMID:                9020,
+		Node:                "pve1",
 		Pool:                "ra8-tf-lab",
 		Storage:             "ra8-tf-lab",
-		Name:                "ra8-lab-ci-9000",
+		Name:                "ra8-lab-ci-9020",
 		ReservationID:       tfReservationID,
 		CreationOperationID: tfCreationID,
+		RunID:               "0000000000000000",
 	}
 }
 
@@ -84,7 +141,7 @@ func reservationProvisioner(t *testing.T, ledger *reservationLedger,
 }
 
 // reservedProvisioner is the healthy pairing every refusal below is one edit
-// away from: the reviewed 9000 profile, a durable row that agrees with it, and
+// away from: the reviewed 9020 profile, a durable row that agrees with it, and
 // an identity that names both.
 func reservedProvisioner(t *testing.T) (*TerraformRunnerProvisioner, *reservationLedger) {
 	t.Helper()
@@ -99,7 +156,7 @@ func TestTheAgreedReservationIsReturnedWhole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an agreed reservation must be accepted: %v", err)
 	}
-	if vm.ID != tfReservationID || vm.VMID != 9000 || vm.TemplateVMID != 9001 {
+	if vm.ID != tfReservationID || vm.VMID != 9020 || vm.TemplateVMID != 9001 {
 		t.Fatalf("the durable row must be returned as it stands, got %+v", vm)
 	}
 	if ledger.reads != 1 {
@@ -137,7 +194,7 @@ func TestAnInadmissibleIdentityNeverReachesTheLedger(t *testing.T) {
 }
 
 // The disposable window is checked on its own rather than being left to the
-// profile map, so a profile filed under a VMID outside 9000-9099 cannot pull a
+// profile map, so a profile filed under a VMID outside 9020-9039 cannot pull a
 // guest onto an ID the lab reserves for something else.
 func TestTheDisposableWindowIsCheckedBesideTheProfileMap(t *testing.T) {
 	for _, vmid := range []int{8999, 9100} {
@@ -161,8 +218,13 @@ func TestTheDisposableWindowIsCheckedBesideTheProfileMap(t *testing.T) {
 			t.Fatalf("VMID %d must be refused before the ledger is read", vmid)
 		}
 	}
+	config := reviewedConfig(t)
+	config.Profiles = map[int]TerraformRunnerProfile{9021: reviewedProfile()}
+	if _, err := openProvisioner(t, config); err == nil {
+		t.Fatal("Linux lifecycle profile must refuse Windows-reserved VMID 9021")
+	}
 	// Both ends of the window are admissible identities.
-	for _, vmid := range []int{9000, 9099} {
+	for _, vmid := range []int{9020, 9039} {
 		config := reviewedConfig(t)
 		config.Profiles = map[int]TerraformRunnerProfile{vmid: reviewedProfile()}
 		identity := reservedIdentity()
@@ -173,6 +235,58 @@ func TestTheDisposableWindowIsCheckedBesideTheProfileMap(t *testing.T) {
 		if _, err := provisioner.reservation(context.Background(), identity); err != nil {
 			t.Fatalf("VMID %d sits inside the disposable window and must be admitted, got %v", vmid, err)
 		}
+	}
+}
+
+func TestAllocationTakesLowestUnoccupiedUnreservedVMID(t *testing.T) {
+	config := reviewedConfig(t)
+	keys := mustKeys(t)
+	provisioner, err := NewTerraformRunnerProvisioner(&TerraformRuntime{},
+		allocatingLedger{active: []int{9020}},
+		allocatingObserver{occupied: []int{9022}}, keys, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vmid, err := provisioner.LowestAvailableVMID(context.Background())
+	if err != nil || vmid != 9023 {
+		t.Fatalf("lowest free VMID = %d, %v; want 9023 with 9021 reserved for Windows", vmid, err)
+	}
+}
+
+func TestAllocationRefusesWhenEveryLifecycleVMIDIsHeld(t *testing.T) {
+	config := reviewedConfig(t)
+	keys := mustKeys(t)
+	active := make([]int, 0, 20)
+	for vmid := 9020; vmid <= 9039; vmid++ {
+		active = append(active, vmid)
+	}
+	provisioner, err := NewTerraformRunnerProvisioner(&TerraformRuntime{},
+		allocatingLedger{active: active}, policyObserver{}, keys, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vmid, err := provisioner.LowestAvailableVMID(context.Background()); err == nil || vmid != 0 {
+		t.Fatalf("full lifecycle range returned VMID %d, %v", vmid, err)
+	}
+}
+
+func TestReserveRecordsLowestFreeIdentityBeforeClone(t *testing.T) {
+	ledger := &reservingLedger{active: []int{9020}}
+	observer := allocatingObserver{occupied: []int{9022}}
+	config := reviewedConfig(t)
+	provisioner, err := NewTerraformRunnerProvisioner(&TerraformRuntime{}, ledger, observer, mustKeys(t), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := store.RunnerVMInput{ScaleSetID: 17, JobID: "job-1", RunnerRequestID: 9,
+		WorkflowRunID: 123, WorkflowAttempt: 1, Repository: "owner/repo", WorkflowRef: "refs/heads/dev",
+		CommitSHA: strings.Repeat("a", 40)}
+	vm, created, err := provisioner.Reserve(context.Background(), input, time.Now().Add(time.Minute))
+	if err != nil || !created || ledger.reserved == nil || vm.VMID != 9023 ||
+		vm.Node != "pve1" || vm.Pool != "ra8-tf-lab" || vm.Storage != "ra8-tf-lab" ||
+		vm.TemplateVMID != 9001 || vm.TemplateName != "ra8-lab-debian-template" ||
+		vm.TemplateDigest != strings.Repeat("a", 40) {
+		t.Fatalf("reservation was not durably written with the reviewed identity: vm=%+v created=%t err=%v", vm, created, err)
 	}
 }
 
@@ -229,7 +343,7 @@ func TestEveryClaimedFieldIsHeldAgainstTheDurableRow(t *testing.T) {
 		"another node":               func(vm *store.RunnerVM) { vm.Node = "pve-lab-2" },
 		"another pool":               func(vm *store.RunnerVM) { vm.Pool = "ra8-other" },
 		"another datastore":          func(vm *store.RunnerVM) { vm.Storage = "local-lvm" },
-		"another name":               func(vm *store.RunnerVM) { vm.Name = "ra8-lab-ci-9099" },
+		"another name":               func(vm *store.RunnerVM) { vm.Name = "ra8-lab-ci-9039" },
 		"another creation operation": func(vm *store.RunnerVM) { vm.CreationOperationID = tfReservationID },
 		"an empty row":               func(vm *store.RunnerVM) { *vm = store.RunnerVM{} },
 	} {
@@ -254,7 +368,7 @@ func TestEveryClaimedFieldIsHeldAgainstTheDurableRow(t *testing.T) {
 func TestADurableRowFromAnotherTemplateIsRefusedAgainstTheProfile(t *testing.T) {
 	identity := reservedIdentity()
 	vm := reservedVM(identity)
-	vm.TemplateVMID = 9002
+	vm.TemplateVMID = 9021
 	ledger := &reservationLedger{vm: vm}
 	provisioner := reservationProvisioner(t, ledger, reviewedConfig(t))
 
@@ -269,16 +383,6 @@ func TestADurableRowFromAnotherTemplateIsRefusedAgainstTheProfile(t *testing.T) 
 		t.Fatalf("the refusal must name the fixed profile, got %v", err)
 	}
 
-	// The same row against a profile that does name that template is fine, so
-	// the refusal is about the disagreement and not about the template ID.
-	config := reviewedConfig(t)
-	profile := reviewedProfile()
-	profile.TemplateVMID = 9002
-	config.Profiles = map[int]TerraformRunnerProfile{9000: profile}
-	agreed := reservationProvisioner(t, &reservationLedger{vm: vm}, config)
-	if _, err := agreed.reservation(context.Background(), identity); err != nil {
-		t.Fatalf("a row matching its reviewed template must be accepted: %v", err)
-	}
 }
 
 // The policy the row is held against is the provisioner's own copy, taken at
@@ -291,8 +395,8 @@ func TestTheReservationIsHeldAgainstTheAdmittedCopyOfThePolicy(t *testing.T) {
 	provisioner := reservationProvisioner(t, ledger, config)
 
 	drifted := reviewedProfile()
-	drifted.TemplateVMID = 9002
-	config.Profiles[9000] = drifted
+	drifted.TemplateVMID = 9021
+	config.Profiles[9020] = drifted
 
 	if _, err := provisioner.reservation(context.Background(), identity); err != nil {
 		t.Fatalf("an edit to the caller's map must not reach the admitted policy: %v", err)

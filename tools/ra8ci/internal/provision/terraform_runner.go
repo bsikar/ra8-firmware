@@ -31,6 +31,13 @@ var terraformRunnerVersionPattern = regexp.MustCompile("^[0-9]+[.][0-9]+[.][0-9]
 var terraformRunnerLineagePattern = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 var terraformRunnerConfigDigestPattern = regexp.MustCompile("^[0-9a-f]{40}$")
 var terraformRunnerNodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+var terraformRunnerRunIDPattern = regexp.MustCompile("^[0-9a-f]{16}$")
+
+const windowsLifecycleVMID = 9021
+
+func validLifecycleVMID(vmid int) bool {
+	return proxmox.LifecycleVMIDAllowed(vmid)
+}
 
 // reviewedRunnerBridges is the closed set of guest bridges a Terraform runner
 // profile may name. It stays a literal here, and it is deliberately NOT read
@@ -99,6 +106,9 @@ func runnerAddressOnBridge(bridge, address, gateway string) bool {
 // provisioner and the PostgreSQL control store.
 type TerraformRunnerLedger interface {
 	GetRunnerVM(context.Context, string) (store.RunnerVM, error)
+	GetRunnerVMByJob(context.Context, int64, string) (store.RunnerVM, error)
+	ReserveRunnerVM(context.Context, string, store.RunnerVMInput, time.Time) (store.RunnerVM, bool, error)
+	ListActiveRunnerVMIDs(context.Context, string) ([]int, error)
 	GetRunnerVMOperation(context.Context, string) (store.RunnerVMOperation, error)
 	RecordRunnerVMTerraformPlan(context.Context, string, string, int64, string, store.RunnerVMTerraformPlanEvidence) error
 	BeginRunnerVMTerraformApply(context.Context, string, string, int64, string, string) (bool, error)
@@ -113,6 +123,7 @@ type TerraformRunnerLedger interface {
 // stay separate.
 type TerraformRunnerProfile struct {
 	TemplateVMID int
+	TemplateName string
 	Node         string
 	Pool         string
 	DatastoreID  string
@@ -139,10 +150,15 @@ type TerraformRunnerConfig struct {
 // TerraformRunnerProvisioner runs the fixed Terraform module and reconciles
 // results against both encrypted PostgreSQL state and independent Proxmox facts.
 type TerraformRunnerProvisioner struct {
-	runtime  *TerraformRuntime
+	runtime interface {
+		WithSession(context.Context, string, func(*TerraformSession) error) error
+		runnerConfig() TerraformConfig
+	}
 	ledger   TerraformRunnerLedger
 	observer interface {
 		Get(context.Context, proxmox.Identity) (proxmox.VM, error)
+		GetTemplate(context.Context, int) (proxmox.Template, error)
+		OccupiedVMIDs(context.Context) ([]int, error)
 	}
 	keys   *SSHAccessStore
 	config TerraformRunnerConfig
@@ -160,9 +176,14 @@ type terraformVMProvisioner interface {
 
 var _ terraformVMProvisioner = (*TerraformRunnerProvisioner)(nil)
 
-func NewTerraformRunnerProvisioner(runtime *TerraformRuntime, ledger TerraformRunnerLedger,
+func NewTerraformRunnerProvisioner(runtime interface {
+	WithSession(context.Context, string, func(*TerraformSession) error) error
+	runnerConfig() TerraformConfig
+}, ledger TerraformRunnerLedger,
 	observer interface {
 		Get(context.Context, proxmox.Identity) (proxmox.VM, error)
+		GetTemplate(context.Context, int) (proxmox.Template, error)
+		OccupiedVMIDs(context.Context) ([]int, error)
 	}, keys *SSHAccessStore, config TerraformRunnerConfig) (*TerraformRunnerProvisioner, error) {
 	endpoint, err := validateTerraformOrigin(config.ProxmoxEndpoint)
 	if runtime == nil || ledger == nil || observer == nil || keys == nil || err != nil ||
@@ -177,18 +198,46 @@ func NewTerraformRunnerProvisioner(runtime *TerraformRuntime, ledger TerraformRu
 		return nil, errors.New("fixed Terraform runner module directory is unavailable")
 	}
 	profiles := make(map[int]TerraformRunnerProfile, len(config.Profiles))
+	configuredProfileCount := len(config.Profiles)
 	for vmid, profile := range config.Profiles {
+		if vmid == windowsLifecycleVMID {
+			return nil, errors.New("VMID 9021 is reserved for the fixed Windows lifecycle profile")
+		}
 		profiles[vmid] = profile
+	}
+	baseVMID := 0
+	for vmid := range profiles {
+		if baseVMID == 0 || vmid < baseVMID {
+			baseVMID = vmid
+		}
+	}
+	base := profiles[baseVMID]
+	for vmid := 9020; vmid <= 9039; vmid++ {
+		if vmid == windowsLifecycleVMID {
+			continue
+		}
+		profile, exists := profiles[vmid]
+		if !exists {
+			profile = base
+		}
+		if !exists {
+			profile.IPv4Address = fmt.Sprintf("10.250.9.%d/24", vmid-8970)
+		}
+		profiles[vmid] = profile
+	}
+	if configuredProfileCount == 1 && baseVMID > 9020 && base.IPv4Address == "10.250.9.20/24" {
+		profile := profiles[baseVMID]
+		profile.IPv4Address = fmt.Sprintf("10.250.9.%d/24", baseVMID-8970)
+		profiles[baseVMID] = profile
 	}
 	config.Profiles = profiles
 	config.ProxmoxEndpoint = endpoint
 	for vmid, profile := range config.Profiles {
-		if vmid < 9000 || vmid > 9099 || profile.TemplateVMID < 9000 || profile.TemplateVMID > 9099 || vmid == profile.TemplateVMID ||
-			!terraformRunnerNodePattern.MatchString(profile.Node) || profile.Pool != "ra8-tf-lab" ||
+		if !validLifecycleVMID(vmid) || profile.TemplateVMID != 9001 || profile.TemplateName != "ra8-lab-debian-template" || vmid == profile.TemplateVMID ||
+			profile.Node != "pve1" || !terraformRunnerNodePattern.MatchString(profile.Node) || profile.Pool != "ra8-tf-lab" ||
 			profile.DatastoreID != "ra8-tf-lab" ||
-			!reviewedRunnerBridge(profile.Bridge) ||
-			profile.Cores < 1 || profile.Cores > 4 ||
-			profile.MemoryMB < 512 || profile.MemoryMB > 8192 ||
+			profile.Bridge != "vmbr9" ||
+			profile.Cores != 4 || profile.MemoryMB != 8192 ||
 			profile.UserName != "ra8ci" ||
 			!runnerAddressOnBridge(profile.Bridge, profile.IPv4Address, profile.IPv4Gateway) {
 			return nil, errors.New("Terraform runner profile is outside the reviewed disposable policy")
@@ -247,6 +296,68 @@ func (p *TerraformRunnerProvisioner) Get(ctx context.Context, identity proxmox.I
 	return p.observer.Get(ctx, identity)
 }
 
+// Reserve chooses and durably records one Linux lifecycle VMID before any
+// clone can be planned. A repeated job attempt returns its prior exact row;
+// a competing reservation that wins the selected VMID is a refusal, never a
+// silent move to a different slot.
+func (p *TerraformRunnerProvisioner) Reserve(ctx context.Context, input store.RunnerVMInput,
+	deadline time.Time) (store.RunnerVM, bool, error) {
+	if p == nil || ctx == nil || input.ScaleSetID <= 0 || input.JobID == "" {
+		return store.RunnerVM{}, false, errors.New("invalid Terraform runner reservation request")
+	}
+	existing, err := p.ledger.GetRunnerVMByJob(ctx, input.ScaleSetID, input.JobID)
+	if err == nil {
+		requested := input
+		requested.VMID = existing.VMID
+		requested.Node = existing.Node
+		requested.Pool = existing.Pool
+		requested.Storage = existing.Storage
+		requested.Name = existing.Name
+		requested.TemplateVMID = existing.TemplateVMID
+		requested.TemplateName = existing.TemplateName
+		requested.TemplateDigest = existing.TemplateDigest
+		if !validLifecycleVMID(existing.VMID) || existing.VMID == windowsLifecycleVMID ||
+			existing.Node != "pve1" || existing.Pool != "ra8-tf-lab" || existing.Storage != "ra8-tf-lab" ||
+			existing.TemplateVMID != 9001 || existing.TemplateName != "ra8-lab-debian-template" ||
+			requested != existing.RunnerVMInput {
+			return store.RunnerVM{}, false, errors.New("existing runner reservation differs from the reviewed Linux lifecycle")
+		}
+		return existing, false, nil
+	}
+	if !errors.Is(err, store.ErrNotFound) {
+		return store.RunnerVM{}, false, err
+	}
+	vmid, err := p.LowestAvailableVMID(ctx)
+	if err != nil {
+		return store.RunnerVM{}, false, err
+	}
+	template, err := p.observer.GetTemplate(ctx, 9001)
+	if err != nil || template.VMID != 9001 || template.Name != "ra8-lab-debian-template" ||
+		!template.Template || template.Status != "stopped" || template.Node != "pve1" ||
+		template.Pool != "ra8-tf-lab" || !terraformRunnerConfigDigestPattern.MatchString(template.ConfigDigest) {
+		return store.RunnerVM{}, false, errors.New("runner reservation requires the stopped, protected Debian template 9001")
+	}
+	profile := p.config.Profiles[vmid]
+	input.VMID = vmid
+	input.Node = profile.Node
+	input.Pool = profile.Pool
+	input.Storage = profile.DatastoreID
+	input.Name = fmt.Sprintf("ra8-lab-ci-%d", vmid)
+	input.TemplateVMID = profile.TemplateVMID
+	input.TemplateName = profile.TemplateName
+	input.TemplateDigest = template.ConfigDigest
+	reserved, created, err := p.ledger.ReserveRunnerVM(ctx, p.config.Actor, input, deadline)
+	if err != nil {
+		return store.RunnerVM{}, false, err
+	}
+	if reserved.VMID != vmid || reserved.Node != "pve1" || reserved.Pool != "ra8-tf-lab" ||
+		reserved.Storage != "ra8-tf-lab" || reserved.TemplateVMID != 9001 ||
+		reserved.TemplateName != "ra8-lab-debian-template" || reserved.TemplateDigest != template.ConfigDigest {
+		return store.RunnerVM{}, false, store.ErrConflict
+	}
+	return reserved, created, nil
+}
+
 // Clone creates one immutable Terraform plan and consumes its one-way apply intent.
 func (p *TerraformRunnerProvisioner) Clone(ctx context.Context, action proxmox.Action, spec proxmox.CloneSpec) (proxmox.Result, error) {
 	if spec.Target.CreationOperationID != action.ID || spec.Target.VMID == spec.TemplateVMID {
@@ -256,6 +367,13 @@ func (p *TerraformRunnerProvisioner) Clone(ctx context.Context, action proxmox.A
 	if err != nil || vm.TemplateVMID != spec.TemplateVMID ||
 		vm.TemplateName != spec.TemplateName || vm.TemplateDigest != spec.TemplateDigest {
 		return proxmox.Result{}, proxmox.ErrConflict
+	}
+	template, err := p.observer.GetTemplate(ctx, spec.TemplateVMID)
+	if err != nil || template.VMID != 9001 || template.Name != "ra8-lab-debian-template" ||
+		!template.Template || template.Status != "stopped" || template.Node != "pve1" ||
+		template.Pool != "ra8-tf-lab" || template.ConfigDigest != spec.TemplateDigest ||
+		spec.TemplateName != template.Name {
+		return proxmox.Result{}, errors.New("runner clone requires the stopped, protected Debian template 9001")
 	}
 	// Last before the apply intent is consumed, and the only observation in
 	// this method: the other three lifecycle steps each read Proxmox and
@@ -336,7 +454,8 @@ func (p *TerraformRunnerProvisioner) reservation(ctx context.Context, identity p
 	}
 	if vm.ID != identity.ReservationID || vm.VMID != identity.VMID || vm.Node != identity.Node ||
 		vm.Pool != identity.Pool || vm.Storage != identity.Storage || vm.Name != identity.Name ||
-		vm.CreationOperationID != identity.CreationOperationID {
+		vm.CreationOperationID != identity.CreationOperationID ||
+		identity.RunID != fmt.Sprintf("%016x", uint64(vm.WorkflowRunID)) {
 		return store.RunnerVM{}, proxmox.ErrConflict
 	}
 	profile, ok := p.config.Profiles[vm.VMID]
@@ -349,10 +468,11 @@ func (p *TerraformRunnerProvisioner) reservation(ctx context.Context, identity p
 
 func (p *TerraformRunnerProvisioner) validIdentity(identity proxmox.Identity) bool {
 	profile, ok := p.config.Profiles[identity.VMID]
-	return ok && identity.VMID >= 9000 && identity.VMID <= 9099 &&
+	return ok && validLifecycleVMID(identity.VMID) &&
 		identity.Name == fmt.Sprintf("ra8-lab-ci-%d", identity.VMID) && identity.Node == profile.Node &&
 		identity.Pool == profile.Pool && identity.Storage == profile.DatastoreID &&
 		store.ValidID(identity.ReservationID) && store.ValidID(identity.CreationOperationID) &&
+		terraformRunnerRunIDPattern.MatchString(identity.RunID) &&
 		len(identity.Name) > 0 && len(identity.Name) <= 64
 }
 
@@ -370,6 +490,10 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 		op.ProviderKind != "proxmox" || op.UPID != "" {
 		return proxmox.Result{}, store.ErrConflict
 	}
+	runtimeConfig := p.runtime.runnerConfig()
+	if filepath.Base(runtimeConfig.EnvironmentDirectory) != "ra8ci-runner" {
+		return proxmox.Result{}, errors.New("Terraform runner lifecycle must use the ra8ci-runner environment")
+	}
 	var key SSHAccessKey
 	if kind == "clone" {
 		key, err = p.keys.Ensure(vm.ID)
@@ -381,6 +505,7 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 	}
 	profile := p.config.Profiles[vm.VMID]
 	variables := map[string]any{
+		"runner_enabled":      true,
 		"proxmox_endpoint":    p.config.ProxmoxEndpoint,
 		"openbao_address":     p.config.OpenBaoAddress,
 		"openbao_kv_mount":    p.config.OpenBaoKVMount,
@@ -391,6 +516,7 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 			"run_id":                fmt.Sprintf("%016x", uint64(vm.WorkflowRunID)),
 			"vm_id":                 vm.VMID,
 			"template_vm_id":        profile.TemplateVMID,
+			"template_name":         profile.TemplateName,
 			"node_name":             profile.Node,
 			"pool_id":               profile.Pool,
 			"datastore_id":          profile.DatastoreID,
@@ -419,11 +545,11 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 		if err != nil {
 			return err
 		}
-		moduleSHA, err := terraformModuleDigest(p.runtime.config.EnvironmentDirectory, p.config.ModuleDirectory)
+		moduleSHA, err := terraformModuleDigest(runtimeConfig.EnvironmentDirectory, p.config.ModuleDirectory)
 		if err != nil {
 			return err
 		}
-		lockSHA, err := fileSHA256(filepath.Join(p.runtime.config.EnvironmentDirectory, ".terraform.lock.hcl"), 1<<20)
+		lockSHA, err := fileSHA256(filepath.Join(runtimeConfig.EnvironmentDirectory, ".terraform.lock.hcl"), 1<<20)
 		if err != nil {
 			return errors.New("fixed Terraform provider lockfile is unavailable")
 		}
@@ -436,7 +562,7 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 			return err
 		}
 		evidence := store.RunnerVMTerraformPlanEvidence{
-			TerraformVersion: p.runtime.config.Version, PlanSHA256: digest,
+			TerraformVersion: runtimeConfig.Version, PlanSHA256: digest,
 			ModuleSHA256: moduleSHA, InputSHA256: inputSHA,
 			ProviderLockSHA256: lockSHA, StateIdentitySHA256: stateIdentity,
 			PreparedAt: time.Now().UTC(),
@@ -461,7 +587,50 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 	return p.Reconcile(ctx, action.ID, proxmox.Identity{
 		VMID: vm.VMID, Node: vm.Node, Pool: vm.Pool, Storage: vm.Storage,
 		Name: vm.Name, ReservationID: vm.ID, CreationOperationID: vm.CreationOperationID,
+		RunID: fmt.Sprintf("%016x", uint64(vm.WorkflowRunID)),
 	}, kind, "")
+}
+
+// LowestAvailableVMID selects the first reviewed slot absent from both the
+// Proxmox cluster and the durable active-reservation ledger. The caller must
+// persist the reservation before invoking Clone; the ledger's unique active
+// VMID index is the final collision fence if two allocators race.
+func (p *TerraformRunnerProvisioner) LowestAvailableVMID(ctx context.Context) (int, error) {
+	if p == nil || ctx == nil {
+		return 0, errors.New("invalid lifecycle VMID allocation request")
+	}
+	active, err := p.ledger.ListActiveRunnerVMIDs(ctx, "pve1")
+	if err != nil {
+		return 0, err
+	}
+	reserved := make(map[int]struct{}, len(active))
+	for _, vmid := range active {
+		if !validLifecycleVMID(vmid) {
+			continue
+		}
+		reserved[vmid] = struct{}{}
+	}
+	occupied, err := p.observer.OccupiedVMIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, vmid := range occupied {
+		if !validLifecycleVMID(vmid) {
+			continue
+		}
+		reserved[vmid] = struct{}{}
+	}
+	for vmid := 9020; vmid <= 9039; vmid++ {
+		if vmid == windowsLifecycleVMID {
+			continue
+		}
+		if _, held := reserved[vmid]; !held {
+			if _, reviewed := p.config.Profiles[vmid]; reviewed {
+				return vmid, nil
+			}
+		}
+	}
+	return 0, errors.New("no free VMID remains in the reviewed lifecycle range")
 }
 
 // Reconcile never repeats Terraform Apply. It requires the one-way apply intent
@@ -747,7 +916,8 @@ func terraformStateHasRunner(body []byte, vm store.RunnerVM) (bool, error) {
 				json.Unmarshal(attributes["name"], &name) != nil ||
 				json.Unmarshal(attributes["description"], &description) != nil ||
 				vmid != vm.VMID || name != vm.Name ||
-				description != "RA8CI_RESERVATION="+vm.ID+";RA8CI_OPERATION="+vm.CreationOperationID {
+				description != fmt.Sprintf("RA8CI_RESERVATION=%s;RA8CI_OPERATION=%s;RA8_LAB_RUN=%016x",
+					vm.ID, vm.CreationOperationID, uint64(vm.WorkflowRunID)) {
 				return errors.New("Terraform state runner identity differs from reservation")
 			}
 			count++

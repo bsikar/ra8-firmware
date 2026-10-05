@@ -64,3 +64,23 @@ func TestListStillSkipsTheReviewedTemplateID(t *testing.T) {
 		t.Fatalf("reviewed template or foreign guest leaked into the list: %+v, %v", listed, err)
 	}
 }
+
+func TestGetTemplateReturnsTheStoppedNamedTemplateAndDigest(t *testing.T) {
+	f := newFake()
+	client, _ := testClient(t, f)
+	template, err := client.GetTemplate(context.Background(), 9001)
+	if err != nil || template.VMID != 9001 || template.Node != "pve" ||
+		template.Name != "ra8-lab-template" || template.Status != "stopped" ||
+		!template.Template || template.ConfigDigest != testDigest {
+		t.Fatalf("reviewed template observation = %+v, %v", template, err)
+	}
+}
+
+func TestOccupiedVMIDsIncludesClusterWideIDsInOrder(t *testing.T) {
+	f := newFake()
+	client, _ := testClient(t, f)
+	ids, err := client.OccupiedVMIDs(context.Background())
+	if err != nil || len(ids) != 2 || ids[0] != 9001 || ids[1] != 9199 {
+		t.Fatalf("cluster occupied VMIDs = %v, %v", ids, err)
+	}
+}
