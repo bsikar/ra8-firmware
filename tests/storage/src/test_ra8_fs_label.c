@@ -404,7 +404,7 @@ RA8_INTERNAL static void internal_test_mcdc_set_label_fat(void)
  * @test test_mcdc_exfat_get_label
  * @par MC/DC:
  * Decision: `if (!present || entry[0] != k_exfat_entry_label)` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_label.c@priv_exfat_get_label`.
+ * `libs/ra8_fs/src/ra8_fs_exfat_label_abi.zig@priv_exfat_get_label`.
  * - V1 present, entry is 0x83 -> C1=F, C2=F -> decode the label.
  * - V2 no label entry present -> C1=T -> empty (a zeroed/absent entry).
  * - V3 present, entry is 0x03 -> C1=F, C2=T -> empty (a cleared entry).

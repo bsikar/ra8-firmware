@@ -7,6 +7,10 @@ const std = @import("std");
 const fs = @import("ra8_fs");
 const lock = fs.lock;
 
+comptime {
+    _ = @import("exfat_dir_fake.zig"); // C walkers the label unit links against
+}
+
 var acquires: u32 = 0;
 var releases: u32 = 0;
 var last_ctx: ?*anyopaque = null;
