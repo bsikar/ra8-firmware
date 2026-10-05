@@ -361,6 +361,7 @@ _pcc_security_invariants() (
   # scan here, so only its --selftest runs -- it asserts a lockdown image is
   # refused and a benign one allowed, both directions.
   python3 scripts/checks/check_image_no_antirecovery.py --selftest
+  python3 scripts/checks/check_image_headroom.py --selftest
 )
 
 # Cross-reference integrity: every in-tree reference points at something that
