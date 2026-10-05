@@ -3,33 +3,16 @@
 //!
 //! C ABI for ra8_flash_arc_increment / ra8_flash_arc_read (RA8FW-802),
 //! moved out of ra8_flash_config.c. The logic is in internal/flash_arc.zig.
-//! ra8_flash.c still owns g_flash_rt, g_flash_tag, PE mode and the MACI
-//! helpers, reached as externs.
+//! ra8_flash.c still owns the runtime state (flash_rt.zig), PE mode and
+//! the MACI helpers, reached as externs.
 
 const common = @import("abi_common.zig");
 const arc = @import("internal/flash_arc.zig");
+const rt = @import("flash_rt.zig");
 
 const ok = common.k_ra8_ok;
 const invalid_arg = common.k_ra8_err_invalid_arg;
 
-const Callback = *const fn (?*const anyopaque) callconv(.c) void;
-
-/// ra8_flash_runtime_t.
-const Runtime = extern struct {
-    cb: ?Callback,
-    user_ctx: ?*anyopaque,
-    initialized: bool,
-    prefetch_on: bool,
-    win_low: usize,
-    win_high: usize,
-};
-
-comptime {
-    if (@offsetOf(Runtime, "initialized") != 2 * @sizeOf(usize)) @compileError("ra8_flash_runtime_t layout");
-}
-
-extern var g_flash_rt: Runtime;
-extern var g_flash_tag: [*:0]const u8;
 extern fn ra8_flash_enter_pe_mode() u16;
 extern fn ra8_flash_exit_pe_mode() u16;
 extern fn priv_ra8_flash_internal_maci_cmd8(byte: u8) void;
@@ -52,11 +35,8 @@ const Hw = struct {
 
 const hw = Hw{};
 
-/// RA8_VALIDATE_INIT.
 fn notReady(msg: [*:0]const u8) bool {
-    if (g_flash_rt.initialized) return false;
-    common.ra8_log_emit_error(g_flash_tag, msg);
-    return true;
+    return !rt.ready(msg);
 }
 
 /// MCNTSELR, the counter command, the 0xD0 trailer, MRDY, then CMDLK.
@@ -101,7 +81,7 @@ export fn ra8_flash_arc_increment(counter: u8) u16 {
 
 export fn ra8_flash_arc_read(counter: u8, out_count: ?*u32) u16 {
     const out = out_count orelse {
-        common.ra8_log_emit_error(g_flash_tag, "out_count must not be nullptr");
+        _ = rt.present(null, "out_count must not be nullptr");
         return common.k_ra8_err_null_ptr;
     };
     if (counter >= arc.arc_count) return invalid_arg;
