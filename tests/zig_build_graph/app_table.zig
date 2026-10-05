@@ -514,7 +514,7 @@ pub const cross_apps = [_]CrossApp{
             },
             // ns_usb.c calls ra8_usb_device_compose, Zig in ra8_usb_pal's
             // archive since 3c676497; the app links it for cortex_m85.
-            .zig_libraries = &.{"ra8_usb_pal"},
+            .zig_libraries = &.{ "ra8_usb_pal", "ra8_hal" },
             .app_include_dirs = &.{ "inc", "src" },
             .include_dirs = &.{
                 "libs/ra8_core/inc",

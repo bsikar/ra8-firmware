@@ -231,7 +231,7 @@ typedef enum : uint16_t {
  * @details
  * Real (non-inline) function so coverage tooling can attribute
  * line counts to a single defining translation unit. The body
- * is in ``libs/ra8_hal/src/ra8_mstp.c``.
+ * is in ``libs/ra8_hal/src/mstp_ids_abi.zig``.
  *
  * @since 0.1.0
  *
