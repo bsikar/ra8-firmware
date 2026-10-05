@@ -79,7 +79,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-RSIP-001   | `tests/security/src/test_ra8_rsip_core.c`, `tests/security/src/test_ra8_rsip_sym.c`, `tests/security/src/test_ra8_rsip_devsec.c` | `libs/ra8_hal/src/ra8_rsip.c`              |
 | UT-HAL-RTC-001    | `tests/hal/src/test_ra8_rtc.c`     | `libs/ra8_hal/src/ra8_rtc.c`               |
 | UT-HAL-SCI-001    | `tests/hal/src/test_ra8_sci.c`     | `libs/ra8_hal/src/ra8_sci.c`               |
-| UT-HAL-SDCARD-001 | `tests/storage/src/test_ra8_sdcard.c`  | `libs/ra8_hal/src/ra8_sdcard.c`            |
+| UT-HAL-SDCARD-001 | `tests/storage/src/test_ra8_sdcard.c`  | `libs/ra8_hal/src/sdcard_abi.zig`          |
 | UT-HAL-SMBUS-001  | `tests/misc/src/test_ra8_smbus.c`   | `libs/ra8_hal/src/ra8_smbus.c`             |
 | UT-HAL-SPI-001    | `tests/hal/src/test_ra8_spi.c`     | `libs/ra8_hal/src/ra8_spi_b.c`             |
 | UT-HAL-USB-001    | `tests/usb/src/test_ra8_usb.c`     | `libs/ra8_hal/src/ra8_usb.c`               |

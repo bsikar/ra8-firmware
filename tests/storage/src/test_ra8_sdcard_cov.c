@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_sdcard_cov.c
- * @brief Coverage-extension tests for ra8_sdcard.c -- targets 26 uncovered lines
+ * @brief Coverage-extension tests for sdcard_abi.zig (was ra8_sdcard.c) -- targets 26 uncovered lines
  *
  * @details
  * Dedicated test binary that exercises the error and alternate-path branches
