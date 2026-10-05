@@ -264,3 +264,11 @@ export fn priv_ra8_io_vfs_split(_: [*:0]const u8, _: [*]u8, _: *?[*:0]const u8) 
 export fn priv_ra8_io_vfs_resolve(_: [*:0]const u8, _: *?*io.vfs_namespace.Slot, _: ?*u8, _: *?[*:0]const u8) c_int {
     return 0;
 }
+
+// The archive root also emits the MRAM block device (RA8FW-726).
+export fn ra8_flash_extra_mram_write(_: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_flash_extra_mram_erase(_: u32) c_int {
+    return 0;
+}

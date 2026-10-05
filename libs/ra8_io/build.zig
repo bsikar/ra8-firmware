@@ -55,6 +55,7 @@ pub fn build(b: *std.Build) void {
         "tests/blockdev_sdspi_abi_test.zig",
         "tests/blockdev_ram_abi_test.zig",
         "tests/blockdev_abi_test.zig",
+        "tests/blockdev_mram_abi_test.zig",
         "tests/vfs_namespace_abi_test.zig",
     };
     for (roots) |path| {

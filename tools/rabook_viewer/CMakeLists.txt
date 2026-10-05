@@ -226,7 +226,6 @@ ra8_viewer_read_path(
   RA8_IO_SRC ${FW_ROOT}/libs/ra8_io/src
   KEEP ra8_io_stream.c
   DROP ra8_io_blockdev_cache.c
-       ra8_io_blockdev_mram.c
        ra8_io_blockdev_vsource.c
        ra8_io_blockdev_xspi.c
        ra8_io_fsfmt.c
