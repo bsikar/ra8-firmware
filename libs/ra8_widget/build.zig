@@ -14,12 +14,19 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const debug_record_cap = b.option(usize, "widget-debug-record-cap", "Maximum number of widget-tree records published in a debug build") orelse 256;
+    if (debug_record_cap == 0 or debug_record_cap > 256) {
+        @panic("widget-debug-record-cap must be between 1 and 256");
+    }
+    const debug_build_options = b.addOptions();
+    debug_build_options.addOption(usize, "widget_debug_record_cap", debug_record_cap);
 
     const debug_module = b.createModule(.{
         .root_source_file = b.path("src/widget_debug_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    debug_module.addOptions("build_options", debug_build_options);
 
     const library = b.addLibrary(.{
         .name = "ra8_widget",

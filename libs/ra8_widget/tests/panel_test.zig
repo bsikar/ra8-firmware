@@ -732,3 +732,35 @@ test "a successful compose publishes its visible named widget tree" {
     try std.testing.expectEqual(abi.err.ok, debug.ra8_widget_debug_unregister(@ptrCast(&kids[0])));
     try std.testing.expectEqual(abi.err.ok, debug.ra8_widget_debug_unregister(@ptrCast(&grandchildren[0])));
 }
+
+test "debug channel publishes 256 records and flags records beyond its cap" {
+    if (builtin.mode != .Debug) return error.SkipZigTest;
+    reset();
+
+    var kids: [debug.limits.records + 2]abi.Widget = undefined;
+    for (&kids, 0..) |*kid, index| {
+        kid.* = leaf();
+        kid.rect.x = @intCast(index);
+    }
+    try std.testing.expect(debug.limits.records > 64);
+    var w = leaf();
+    var panel = panelOf(&kids);
+    try bound(&w, &panel);
+
+    var damage: abi.Rect = .{ .x = 0, .y = 0, .w = 0, .h = 0 };
+    var hint: abi.Refresh = .none;
+    var dirty: u16 = 0;
+    try std.testing.expectEqual(
+        abi.err.ok,
+        abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
+    );
+
+    const tree = debug.ra8_widget_debug_tree;
+    try std.testing.expectEqual(@as(u16, debug.protocol.version), tree.version);
+    try std.testing.expectEqual(@as(u16, @intCast(debug.limits.records)), tree.count);
+    try std.testing.expect(tree.truncated);
+    try std.testing.expectEqual(screen.x, tree.records[0].rect.x);
+    for (tree.records[1..tree.count], 0..) |record, index| {
+        try std.testing.expectEqual(@as(i32, @intCast(index)), record.rect.x);
+    }
+}
