@@ -264,7 +264,7 @@ RA8_INTERNAL static void internal_test_i2c_finish_tx_mcdc(void)
 }
 
 /* ===========================================================================
- * Group 3 -- priv_ra8_i2c_internal_target_drain_rx (libs/ra8_hal/src/ra8_i2c_peripheral.c)
+ * Group 3 -- priv_ra8_i2c_internal_target_drain_rx (libs/ra8_hal/src/internal/i2c_target.zig)
  * ===========================================================================
  */
 
@@ -308,7 +308,7 @@ RA8_INTERNAL static void internal_tgt_prep(void)
  * @par MC/DC:
  * Decision: `if (((icsr2 & rdrf) != 0) && (count < capacity))` (2 conditions,
  * AND; the final-pending-byte drain guard,
- * libs/ra8_hal/src/ra8_i2c_peripheral.c@priv_ra8_i2c_internal_target_drain_rx). The
+ * libs/ra8_hal/src/internal/i2c_target.zig@priv_ra8_i2c_internal_target_drain_rx). The
  * guard is exercised by calling the promoted drain helper DIRECTLY: the ra8_fake
  * MMIO window is side-effect-free, so the public ra8_i2c_peripheral_receive path
  * cannot present RDRF set at its address-phase wait and clear at this guard,

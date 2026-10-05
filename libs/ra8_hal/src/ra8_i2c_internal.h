@@ -146,7 +146,7 @@ extern ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
 /* =============================================================================
  * Target (peripheral) role -- pure decision predicates promoted to TU-external
  * linkage so their compound decisions can be exercised under MC/DC. Production
- * callers live in ``ra8_i2c_peripheral.c``; the only out-of-TU consumers are the
+ * callers live in ``i2c_target_abi.zig``; the only out-of-TU consumers are the
  * host tests under ``tests/``.
  * =============================================================================
  */

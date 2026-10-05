@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_riic_peripheral.c
- * @brief Unit tests for the RIIC (I2C) target/peripheral role in ra8_i2c_peripheral.c
+ * @brief Unit tests for the RIIC (I2C) target/peripheral role in i2c_target_abi.zig
  *
  * @details
  * Exercises the own-address bring-up (``ra8_i2c_peripheral_init`` /

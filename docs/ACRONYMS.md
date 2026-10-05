@@ -56,7 +56,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | SCI   | Serial Communications Interface (UART/I2C/SPI super-mode) | `ra8_sci.c` |
 | UART  | Universal Asynchronous Receiver/Transmitter               | `ra8_sci.c` |
 | SPI   | Serial Peripheral Interface (controller/peripheral)       | `ra8_spi_b.c` |
-| IIC_B | I2C bus controller, version B (RIIC)                     | `ra8_i2c.c`, `ra8_i2c_peripheral.c` |
+| IIC_B | I2C bus controller, version B (RIIC)                     | `ra8_i2c.c`, `i2c_target_abi.zig` |
 | I3C   | Improved Inter-Integrated Circuit (MIPI I3C)              | `ra8_i3c.c` |
 | SMBUS | System Management Bus (I2C-compatible)                    | `ra8_smbus.c` |
 | CANFD | Controller Area Network with Flexible Data-rate           | `ra8_canfd.c` |
