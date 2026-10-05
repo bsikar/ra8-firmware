@@ -111,7 +111,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | GPT0       | `0x40322000`| GPT channel 0 (rest by stride) | `ra8_gpt.c`, `timer.c` |
 | GPT OPS    | `0x40323F00`| Output Phase Switching         | `ra8_gpt.c`        |
 | GPT ODC    | `0x40324000`| Output Disable Control         | `ra8_gpt.c`        |
-| AGT0       | `0x40221000`| Async General-Purpose Timer    | `ra8_agt.c`        |
+| AGT0       | `0x40221000`| Async General-Purpose Timer    | `agt.zig`          |
 | ULPT0      | `0x40220000`| Ultra-Low-Power Timer          | `internal/ulpt.zig`       |
 | ULPT1      | `0x40220100`|                                | `internal/ulpt.zig`       |
 | POEG0..3   | `0x40212000` + `n*0x100` | Port Output Enable for GPT | `internal/poeg.zig` |

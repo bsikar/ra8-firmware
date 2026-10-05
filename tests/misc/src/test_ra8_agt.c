@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_agt.c
- * @brief Unit tests for ra8_agt.c (Asynchronous General-Purpose Timer)
+ * @brief Unit tests for the ra8_agt driver (src/agt_abi.zig) (Asynchronous General-Purpose Timer)
  * @details Covers AGT channel validation, timer configuration, counter access, and callback behavior through fake peripheral registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -409,7 +409,7 @@ static void test_start_pulse_output_bad_channel(void)
  * Decision: ``(cfg->compare != k_ra8_agt_pulse_compare_none) &&
  *             (cfg->compare != k_ra8_agt_pulse_compare_a) &&
  *             (cfg->compare != k_ra8_agt_pulse_compare_b)``
- * (3 conditions, libs/ra8_hal/src/ra8_agt.c@internal_agt_pulse_validate_cfg)
+ * (3 conditions, libs/ra8_hal/src/internal/agt.zig@pulseCfgOk)
  * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 4 vectors:
  * three pulse-mode happy-path tests (compare_a, compare_b,
  * compare_none) cover each operand evaluating false in turn, and the
@@ -438,7 +438,7 @@ static void test_start_pulse_output_bad_compare(void)
  * @par MC/DC:
  * Decision: ``(cfg->polarity != k_ra8_agt_output_polarity_active_high) &&
  *             (cfg->polarity != k_ra8_agt_output_polarity_active_low)``
- * (2 conditions, libs/ra8_hal/src/ra8_agt.c@internal_agt_pulse_validate_cfg)
+ * (2 conditions, libs/ra8_hal/src/internal/agt.zig@pulseCfgOk)
  * Per DO-178C 6.4.4.3 the representative-subset is N+1 = 3 vectors:
  * active_high happy-path covers operand 1 = false, active_low happy-
  * path covers operand 2 = false (both upstream pulse-mode tests),
@@ -664,7 +664,7 @@ static void test_agt_cascade_mstp_failures(void)
 /**
  * @par MC/DC:
  * Decision: `if (err != k_ra8_ok)` in `internal_agt_mstp_acquire()`
- * (libs/ra8_hal/src/ra8_agt.c) -- 1 condition.
+ * (libs/ra8_hal/src/agt_abi.zig) -- 1 condition.
  * - Vector 1: the MSTPCRD read-back settles -> `ra8_mstp_enable()` returns
  *   k_ra8_ok -> false, the reference is marked held and the timer is
  *   programmed (control; the disarmed call at the end of this case, and every
