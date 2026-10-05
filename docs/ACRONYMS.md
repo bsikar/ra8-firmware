@@ -155,7 +155,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | XSPI  | eXpanded SPI (xSPI = HUM term for the OSPI controller)    | `ra8_xspi.c` |
 | XIP   | eXecute-In-Place (memory-mapped read of external flash)   | `ra8_xspi.c` |
 | FLASH | Generic flash controller surface                          | `ra8_flash.c` |
-| SDHI  | SD Host Interface                                         | `ra8_sdhi.c`, `ra8_sdcard.c` |
+| SDHI  | SD Host Interface                                         | `ra8_sdhi.c`, `sdcard_abi.zig` |
 | DMA   | Direct Memory Access (top-level umbrella)                 | `dma_abi.zig` |
 | DMAC  | Direct Memory Access Controller                           | `dmac.zig` |
 | DTC   | Data Transfer Controller (lighter-weight than DMAC)       | `dtc.zig`   |

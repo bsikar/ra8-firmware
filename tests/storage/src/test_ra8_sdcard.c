@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_sdcard.c
- * @brief Unit tests for ra8_sdcard.c (SD card high-level driver)
+ * @brief Unit tests for sdcard_abi.zig (SD card high-level driver)
  *
  * @details
  * The SDHI hardware is faked via tests/mocks/src/ra8_fake_mmap.c -- writes
