@@ -28,7 +28,7 @@ extern "C" {
  *
  * @details
  * Reusable for both the 1000FULL and 1000HALF speed-decode tests at
- * libs/ra8_hal/src/ra8_rmac_phy.c lines 352 and 356 inside
+ * libs/ra8_hal/src/internal/rmac_phy_drv.zig (resolve) behind
  * @c ra8_rmac_phy_link_status_get.
  *
  * @param[in] err       Result of the prior MIIM read.

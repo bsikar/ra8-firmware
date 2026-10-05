@@ -14,7 +14,7 @@ part of the public API. Examples:
 
 * `priv_ra8_drw_internal_rect_below_min()` in `libs/ra8_hal/src/ra8_drw.c`
 * `priv_ra8_dmac_internal_mode_disables_dts()` in `libs/ra8_hal/src/internal/dmac.zig`
-* `priv_ra8_rmac_phy_internal_speed_ok()` in `libs/ra8_hal/src/ra8_rmac_phy.c`
+* `priv_ra8_rmac_phy_internal_speed_ok()` in `libs/ra8_hal/src/rmac_phy_drv_abi.zig`
 
 These helpers are exactly where the most condition-dense `if (a && b
 && c)` lines live, because the public API typically delegates

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rmac_phy.c
- * @brief Unit tests for ra8_rmac_phy.c
+ * @brief Unit tests for the RMAC PHY driver (rmac_phy_drv_abi.zig, RA8FW-765)
  *
  * @details Exercises PHY management, negotiation, reset, timeout, and link-mode decoding with a deterministic MDIO fixture.
  *
@@ -300,7 +300,7 @@ RA8_INTERNAL static void internal_test_not_initialized(void)
  *
  * @par MC/DC:
  * Decision: `if ((out->link_up != 0U) && (out->auto_neg_done != 0U))`
- * (2 conditions, libs/ra8_hal/src/ra8_rmac_phy.c line 346)
+ * (2 conditions, libs/ra8_hal/src/rmac_phy_drv_abi.zig)
  * BMSR.LINK is bit 2 (0x0004); BMSR.AN_COMPLETE is bit 5 (0x0020).
  * - Vector 1: BMSR=0x0000 -> link_up=0, an_done=0 -> C1=F short-circuit.
  *   Decision F -> speed=no_link.
@@ -348,8 +348,8 @@ RA8_INTERNAL static void internal_test_mcdc_link_status_link_and_an(void)
  * @test internal_test_mcdc_rmac_phy_internal_speed_ok
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_rmac_phy.c (call sites) -> helper at
- * libs/ra8_hal/src/ra8_rmac_phy.c:
+ * Decision at libs/ra8_hal/src/rmac_phy_drv_abi.zig (call sites) -> helper at
+ * libs/ra8_hal/src/rmac_phy_drv_abi.zig:
  *   ``err == k_ra8_ok && (reg & mask) != 0`` (2 conditions, AND).
  * - V1: err=ok, mask&val=0    -> false
  * - V2: err=ok, mask&val!=0   -> true (varies right)
