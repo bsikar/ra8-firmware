@@ -60,6 +60,7 @@ const ui_nav_bar_expected = @embedFile("golden/ui_nav_bar.ppm");
 const ui_pager_expected = @embedFile("golden/ui_pager.ppm");
 const ui_segmented_expected = @embedFile("golden/ui_segmented.ppm");
 const ui_toggle_expected = @embedFile("golden/ui_toggle.ppm");
+const label_wrap_expected = @embedFile("golden/label_wrap_clip.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
@@ -747,4 +748,45 @@ test "full panel compose clears gaps left by the previous screen" {
     kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
     try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
     try std.testing.expectEqual(kids[0].rect, damage);
+}
+
+test "host backend renders word-wrapped and clipped labels at reading and title sizes" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+    const paragraph: [*:0]const u8 = "A title wraps at spaces and extraordinarilylongwords break.";
+    const clipped: [*:0]const u8 = "This long label ends with an ellipsis when the text does not fit.";
+    var serif_wrap = abi.label.Label{ .paint = &paint, .text = paragraph, .fg = 0x111111, .bg = 0xffffff, .pad = 18, .alignment = .left, .face = .serif, .size = .size_3, .wrap = .word };
+    var serif_clip = abi.label.Label{ .paint = &paint, .text = clipped, .fg = 0x111111, .bg = 0xffffff, .pad = 18, .alignment = .left, .face = .serif, .size = .size_3, .wrap = .clip };
+    var title_wrap = abi.label.Label{ .paint = &paint, .text = paragraph, .fg = 0x111111, .bg = 0xffffff, .pad = 18, .alignment = .left, .face = .sans, .size = .title_68, .wrap = .word };
+    var title_clip = abi.label.Label{ .paint = &paint, .text = clipped, .fg = 0x111111, .bg = 0xffffff, .pad = 18, .alignment = .left, .face = .sans, .size = .title_68, .wrap = .clip };
+    var widgets = [_]abi.label.Widget{
+        widget(.{ .x = 64, .y = 64, .w = 440, .h = 600 }),
+        widget(.{ .x = 568, .y = 64, .w = 440, .h = 600 }),
+        widget(.{ .x = 64, .y = 760, .w = 440, .h = 600 }),
+        widget(.{ .x = 568, .y = 760, .w = 440, .h = 600 }),
+    };
+    const labels = [_]*abi.label.Label{ &serif_wrap, &serif_clip, &title_wrap, &title_clip };
+    for (&widgets, labels) |*w, label| {
+        try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(w, label));
+        w.vt.?.render.?(w);
+    }
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/label_wrap_clip.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, label_wrap_expected, rendered);
+    }
 }

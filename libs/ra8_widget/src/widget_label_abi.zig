@@ -9,8 +9,10 @@
 //!
 //! Guard order, log lines and error codes are the C's, byte for byte.
 
+const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const text_layout = @import("internal/text_layout.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -24,6 +26,8 @@ pub const Widget = types.Widget;
 pub const Vtable = types.Vtable;
 /// The `ra8_err_t` values this membrane answers with.
 pub const err = types.err;
+/// Label overflow behavior. Zero preserves the original one-line rendering.
+pub const WrapMode = text_layout.Mode;
 
 /// A plain label paints exactly one fill, so it asks the shared box helper for
 /// no frame at all. The bordered face belongs to the button, not here.
@@ -46,6 +50,7 @@ pub const Label = extern struct {
     face: paint_abi.Face,
     weight: paint_abi.Weight = .regular,
     size: paint_abi.TextSize = .default,
+    wrap: WrapMode = .none,
 };
 
 comptime {
@@ -61,6 +66,7 @@ comptime {
     if (@offsetOf(Label, "face") != 2 * ptr + 11) @compileError("ra8_widget_label_t face offset");
     if (@offsetOf(Label, "weight") != 2 * ptr + 12) @compileError("ra8_widget_label_t weight offset");
     if (@offsetOf(Label, "size") != 2 * ptr + 13) @compileError("ra8_widget_label_t size offset");
+    if (@offsetOf(Label, "wrap") != 2 * ptr + 14) @compileError("ra8_widget_label_t wrap offset");
 }
 
 /// Vtable `render`: fill the background, then draw the aligned text.
@@ -83,6 +89,10 @@ fn renderLabel(w: *Widget) callconv(.c) void {
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
     const size = normalizedSize(label.size);
+    if (label.wrap != .none) {
+        renderWrapped(backend, &w.rect, text, label, size);
+        return;
+    }
     paint_abi.priv_widget_text_pos(
         backend,
         &w.rect,
@@ -103,6 +113,118 @@ fn renderLabel(w: *Widget) callconv(.c) void {
     } else if (legacy_draw) |draw| {
         draw(backend.user, pen_x, pen_y, text, label.fg, label.bg);
     }
+}
+
+const MeasureContext = struct {
+    backend: *const Paint,
+    label: *const Label,
+    size: paint_abi.TextSize,
+};
+
+fn renderWrapped(backend: *const Paint, rect: *const Rect, text: [*:0]const u8, label: *const Label, size: paint_abi.TextSize) void {
+    const bytes = std.mem.span(text);
+    if (bytes.len == 0) return;
+    const inner_width = @max(rect.w - 2 * @as(i32, label.pad), 0);
+    const inner_height = @max(rect.h - 2 * @as(i32, label.pad), 0);
+    if (inner_width == 0 or inner_height == 0) return;
+    const context = MeasureContext{ .backend = backend, .label = label, .size = size };
+    const line_height = @max(measureBytes(context, "M").height, 1);
+    const max_width: u32 = @intCast(inner_width);
+    const max_lines: usize = @intCast(@divTrunc(inner_height, @as(i32, @intCast(line_height))));
+    if (max_lines == 0) return;
+    const line_count = countLines(bytes, max_width, label.wrap, context);
+    const visible = @min(max_lines, line_count);
+    const block_height: i32 = @intCast(visible * line_height);
+    var y = rect.y + label.pad + @divTrunc(inner_height - block_height, 2);
+    var line_buffer: [4097]u8 = undefined;
+    var offset: usize = 0;
+    var index: usize = 0;
+    while (offset < bytes.len and index < visible) : (index += 1) {
+        const line = text_layout.nextLine(bytes, offset, max_width, label.wrap, context, measureScalar);
+        const width = line.width;
+        var add_vertical_ellipsis = label.wrap == .clip and index + 1 == visible and line.next < bytes.len and !line.ellipsis;
+        const ellipsis_width = measureBytes(context, "\xe2\x80\xa6").width;
+        if (add_vertical_ellipsis and width +| ellipsis_width > max_width) add_vertical_ellipsis = false;
+        const draw_width = width +| @as(u32, if (add_vertical_ellipsis) ellipsis_width else 0);
+        const x = switch (label.alignment) {
+            .left => rect.x + label.pad,
+            .center => rect.x + @divTrunc(rect.w - @as(i32, @intCast(draw_width)), 2),
+            .right => rect.x + rect.w - label.pad - @as(i32, @intCast(draw_width)),
+        };
+        drawLine(context, bytes, line, x, y, &line_buffer);
+        if (add_vertical_ellipsis) drawScalar(backend, label, size, x + @as(i32, @intCast(width)), y, "\xe2\x80\xa6");
+        y += @intCast(line_height);
+        offset = line.next;
+        if (offset <= line.start) break;
+    }
+}
+
+fn countLines(bytes: []const u8, max_width: u32, mode: WrapMode, context: MeasureContext) usize {
+    var offset: usize = 0;
+    var count: usize = 0;
+    while (offset < bytes.len) {
+        const line = text_layout.nextLine(bytes, offset, max_width, mode, context, measureScalar);
+        count += 1;
+        if (line.next <= offset) break;
+        offset = line.next;
+    }
+    return count;
+}
+
+fn measureScalar(context: MeasureContext, bytes: []const u8) u32 {
+    return measureBytes(context, bytes).width;
+}
+
+const Extent = struct { width: u32, height: u32 };
+
+fn measureBytes(context: MeasureContext, bytes: []const u8) Extent {
+    var terminated: [5:0]u8 = undefined;
+    @memcpy(terminated[0..bytes.len], bytes);
+    terminated[bytes.len] = 0;
+    const text: [*:0]const u8 = @ptrCast(&terminated);
+    var width: i32 = 0;
+    var height: i32 = 0;
+    const backend = context.backend;
+    const label = context.label;
+    if (backend.text_size_style) |measure| {
+        measure(backend.user, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(context.size), &width, &height);
+    } else if (backend.text_size_face) |measure| {
+        measure(backend.user, text, @intFromEnum(label.face), &width, &height);
+    } else if (backend.text_size) |measure| {
+        measure(backend.user, text, &width, &height);
+    } else {
+        width = @intCast(bytes.len * 8);
+        height = 16;
+    }
+    return .{ .width = @intCast(@max(width, 0)), .height = @intCast(@max(height, 0)) };
+}
+
+fn drawLine(context: MeasureContext, bytes: []const u8, line: text_layout.Line, x: i32, y: i32, storage: *[4097]u8) void {
+    var length = @min(line.end - line.start, storage.len - 1);
+    @memcpy(storage[0..length], bytes[line.start .. line.start + length]);
+    if (line.ellipsis and length + 3 < storage.len) {
+        @memcpy(storage[length .. length + 3], "\xe2\x80\xa6");
+        length += 3;
+    }
+    storage[length] = 0;
+    drawRun(context.backend, context.label, context.size, x, y, @ptrCast(storage));
+}
+
+fn drawRun(backend: *const Paint, label: *const Label, size: paint_abi.TextSize, x: i32, y: i32, text: [*:0]const u8) void {
+    if (backend.draw_text_style) |draw| {
+        draw(backend.user, x, y, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(size), label.fg, label.bg);
+    } else if (backend.draw_text_face) |draw| {
+        draw(backend.user, x, y, text, @intFromEnum(label.face), label.fg, label.bg);
+    } else if (backend.draw_text) |draw| {
+        draw(backend.user, x, y, text, label.fg, label.bg);
+    }
+}
+
+fn drawScalar(backend: *const Paint, label: *const Label, size: paint_abi.TextSize, x: i32, y: i32, bytes: []const u8) void {
+    var terminated: [5:0]u8 = undefined;
+    @memcpy(terminated[0..bytes.len], bytes);
+    terminated[bytes.len] = 0;
+    drawRun(backend, label, size, x, y, @ptrCast(&terminated));
 }
 
 fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
