@@ -38,6 +38,13 @@ const o = gpt.off;
 const unlock = Op{ .addr = o.gtwp, .val = 0xA500 };
 const lock = Op{ .addr = o.gtwp, .val = 0xA501 };
 
+test "error codes match ra8_err.h" {
+    try expectEqual(@as(u16, 0), gpt.codes.ok);
+    try expectEqual(@as(u16, 0x103), gpt.codes.invalid_arg);
+    try expectEqual(@as(u16, 0x104), gpt.codes.invalid_state);
+    try expectEqual(@as(u16, 0x504), gpt.codes.null_ptr);
+}
+
 test "channel map, bits and MSTP ids" {
     try expectEqual(@as(?usize, 0x40322000), gpt.regs(0));
     try expectEqual(@as(?usize, 0x40322D00), gpt.regs(13));
