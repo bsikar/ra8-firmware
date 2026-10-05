@@ -92,6 +92,12 @@ pub const CrossApp = struct {
     /// so `zig build arm` reports a known upstream-equal limit instead of
     /// going red on a defect it did not introduce.
     links_in_debug: bool = true,
+    /// The app's entry is `src/main.zig`, not `src/main.c`. The Zig root is
+    /// compiled as one cortex_m85 object and linked first, where main.c would
+    /// sit, and the app keeps no main.c at all. Lets an example be written
+    /// with no first-party C (RA8FW-503). CMake has no equivalent: an app that
+    /// sets this exists only in the Zig graph.
+    zig_entry: bool = false,
     /// What the app's own CMakeLists adds on top of its ra8_add_app() call:
     /// extra defines, extra include directories, and a vendored static
     /// library it declares and links. Null for an app that is one
@@ -702,5 +708,21 @@ pub const cross_apps = [_]CrossApp{
         .uses = &.{ "threadx", "usbx" },
         .threadx_heap = "SDRAM",
         .stack_bytes = 4000,
+    },
+    .{
+        // The first app with a Zig entry and no main.c (RA8FW-503). It starts
+        // ThreadX on CPU0, lets one thread recurse through its PSPLIM-guarded
+        // stack and reports the STKOF UsageFault on the console, so the
+        // emulator can run a real firmware image through RA8EMU-243. ThreadX
+        // only, nothing in LIBS: the rest is threadx_blink's set.
+        .name = "threadx_stkof",
+        .dir = "examples/ek_ra8d2/hil_needs_revalidation/threadx_stkof",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_entry = true,
     },
 };
