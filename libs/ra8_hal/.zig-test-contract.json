@@ -134,5 +134,5 @@
     "tests/dual_core_test.zig",
     "src/dual_core_abi.zig"
   ],
-  "minimum_tests": 889
+  "minimum_tests": 895
 }

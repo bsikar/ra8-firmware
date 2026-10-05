@@ -13,6 +13,7 @@ pub const k_ra8_err_not_supported: u16 = 0x107;
 pub const k_ra8_err_exists: u16 = 0x10C;
 pub const k_ra8_err_not_initialized: u16 = 0x10F;
 pub const k_ra8_err_hw_timeout: u16 = 0x203;
+pub const k_ra8_err_hw_error: u16 = 0x204;
 pub const k_ra8_err_out_of_range: u16 = 0x208;
 pub const k_ra8_err_null_ptr: u16 = 0x504;
 
