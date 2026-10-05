@@ -5,13 +5,15 @@
     "tests/attr_abi_test.zig",
     "tests/utime_abi_test.zig",
     "tests/space_abi_test.zig",
-    "tests/gpt_abi_test.zig"
+    "tests/gpt_abi_test.zig",
+    "tests/lfn_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
     "src/ra8_fs_attr_abi.zig",
     "src/ra8_fs_exfat_label_abi.zig",
     "src/ra8_fs_gpt_abi.zig",
+    "src/ra8_fs_lfn_abi.zig",
     "src/ra8_fs_lock_abi.zig",
     "src/ra8_fs_space_abi.zig",
     "src/ra8_fs_utime_abi.zig",
@@ -20,9 +22,10 @@
     "tests/exfat_label_abi_test.zig",
     "tests/fs_walker_fake.zig",
     "tests/gpt_abi_test.zig",
+    "tests/lfn_abi_test.zig",
     "tests/lock_abi_test.zig",
     "tests/space_abi_test.zig",
     "tests/utime_abi_test.zig"
   ],
-  "minimum_tests": 36
+  "minimum_tests": 42
 }
