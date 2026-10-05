@@ -853,7 +853,3 @@ ra8_err_t ra8_ceu_capture_start(uint32_t num_frames)
   return ra8_ceu_capture_arm(s_ceu_dma_buf);
 }
 
-ra8_err_t ra8_ceu_capture_stop(void)
-{
-  return ra8_ceu_capture_disarm();
-}

@@ -588,18 +588,6 @@ void ra8_mipi_phy_dispatch(void)
   }
 }
 
-ra8_err_t ra8_mipi_phy_enter_stop(void)
-{
-  /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
-  return ra8_mipi_phy_deinit();
-}
-
-ra8_err_t ra8_mipi_phy_exit_stop(const ra8_mipi_phy_config_t* cfg)
-{
-  /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
-  return ra8_mipi_phy_init(cfg);
-}
-
 ra8_err_t ra8_mipi_phy_ldo_enable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
