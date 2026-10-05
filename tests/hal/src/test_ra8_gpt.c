@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gpt.c
- * @brief Unit tests for ra8_gpt.c (General PWM Timer)
+ * @brief Unit tests for ra8_gpt (src/gpt_abi.zig) (General PWM Timer)
  *
  * @details
  * This sibling owns the basic start / stop / read / init / dispatch contract

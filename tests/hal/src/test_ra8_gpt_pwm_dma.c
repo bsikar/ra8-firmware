@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gpt_pwm_dma.c
- * @brief DMA, runtime-PWM, and three-phase tests for ra8_gpt.c
+ * @brief DMA, runtime-PWM, and three-phase tests for ra8_gpt (src/gpt_abi.zig)
  *
  * @details
  * Split out of test_ra8_gpt.c to keep each test translation unit under the
@@ -604,7 +604,7 @@ static void test_gpt_three_phase_arg_validation(void)
  * @par MC/DC:
  * Decision: `if ((channel >= (uint8_t)k_ra8_gpt_channel_count) ||
  *               (count == 0U))`
- * (2 conditions, libs/ra8_hal/src/ra8_gpt.c line 634 -- gap row 369 in CSV;
+ * (2 conditions, the former ra8_gpt.c line 634 -- gap row 369 in CSV;
  * the same shape repeats at line 688 for ra8_gpt_read_dma)
  * - Vector 1: channel=valid, count=1   -> F,F decision F -> ok.
  * - Vector 2: channel=99, count=1      -> T,_ decision T -> invalid_arg.
@@ -651,7 +651,7 @@ static void test_mcdc_write_dma_arg_guard(void)
  * @par MC/DC:
  * Decision: `reg->GTDTCR = ((rising_dt != 0U) || (falling_dt != 0U))
  *                          ? k_ra8_gpt_gtdtcr_tde : 0U;`
- * (2 conditions, libs/ra8_hal/src/ra8_gpt.c line 931 -- gap row 545 in CSV)
+ * (2 conditions, the former ra8_gpt.c line 931 -- gap row 545 in CSV)
  * Decision is observed via the GTDTCR register value after the call.
  * - Vector 1: rising=0,    falling=0    -> F,F decision F -> GTDTCR=0
  * - Vector 2: rising!=0,   falling=0    -> T,_ decision T -> GTDTCR=TDE

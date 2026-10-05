@@ -108,9 +108,9 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | PORT14     | `0x404001C0`|                                | `gpio_pins_abi.zig` |
 | PFS        | `0x40400800`| Pin Function Select array      | `gpio_pins_abi.zig` |
 | PMISC      | `0x40400D00`| PWPR / PWPRS write-protect     | `gpio_pins_abi.zig` |
-| GPT0       | `0x40322000`| GPT channel 0 (rest by stride) | `ra8_gpt.c`, `timer.c` |
-| GPT OPS    | `0x40323F00`| Output Phase Switching         | `ra8_gpt.c`        |
-| GPT ODC    | `0x40324000`| Output Disable Control         | `ra8_gpt.c`        |
+| GPT0       | `0x40322000`| GPT channel 0 (rest by stride) | `internal/gpt.zig`, `timer.c` |
+| GPT OPS    | `0x40323F00`| Output Phase Switching         | `internal/gpt.zig` |
+| GPT ODC    | `0x40324000`| Output Disable Control         | `internal/gpt.zig` |
 | AGT0       | `0x40221000`| Async General-Purpose Timer    | `agt.zig`          |
 | ULPT0      | `0x40220000`| Ultra-Low-Power Timer          | `internal/ulpt.zig`       |
 | ULPT1      | `0x40220100`|                                | `internal/ulpt.zig`       |

@@ -510,7 +510,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 22 p 878
 [x] Unit tests -- tests/hal/src/test_ra8_gpt.c (26 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 22 register notes in libs/ra8_hal/src/ra8_gpt.c
+[x] HUM cross-ref -- all Ch 22 register notes in libs/ra8_hal/src/internal/gpt.zig
 [x] Doxygen -- full file + member coverage
 ```
 

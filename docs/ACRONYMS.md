@@ -128,8 +128,8 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
-| GPT   | General PWM Timer (32-bit, motor / general-purpose)       | `ra8_gpt.c`, `timer.c` |
-| GTIOC | GPT IO Channel pin (GTIOCnA/B output)                     | `ra8_gpt.c` |
+| GPT   | General PWM Timer (32-bit, motor / general-purpose)       | `internal/gpt.zig`, `timer.c` |
+| GTIOC | GPT IO Channel pin (GTIOCnA/B output)                     | `internal/gpt.zig` |
 | AGT   | Asynchronous General-purpose Timer (16-bit)               | `agt.zig` |
 | ULPT  | Ultra-Low-Power Timer                                     | `internal/ulpt.zig` |
 | POEG  | Port Output Enable for GPT (motor-fault shut-off)         | `internal/poeg.zig` |
