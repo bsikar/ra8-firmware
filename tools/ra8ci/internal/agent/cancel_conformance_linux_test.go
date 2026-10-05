@@ -29,9 +29,11 @@ import (
 func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	pidPath := filepath.Join(t.TempDir(), "step.pid")
 	// The step announces itself, records its own pid, then outlives the
-	// test by a wide margin: nothing but the cancel can end it in time.
+	// test by a wide margin: nothing but the cancel can end it in time. Its
+	// sleeper redirects both streams so it cannot keep the executor's output
+	// pipes open and turn this teardown check into a WaitDelay measurement.
 	root, snapshot := fixtureCheckout(t, fmt.Sprintf(
-		"echo $$ > %q\nprintf 'agent-log\\n'\nsleep 60\n", pidPath))
+		"echo $$ > %q\nprintf 'agent-log\\n'\nsleep 60 >/dev/null 2>&1\n", pidPath))
 	assignment := testAssignment()
 	definitions, err := catalog.Load()
 	if err != nil {
