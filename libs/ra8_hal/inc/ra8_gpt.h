@@ -79,7 +79,7 @@ typedef enum : uint8_t {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_gpt_init`` in
- * ``libs/ra8_hal/src/ra8_gpt.c``.
+ * ``libs/ra8_hal/src/internal/gpt.zig``.
  */
 typedef struct {
   ra8_gpt_mode_t      mode;       /**< Counter mode.                */
@@ -195,7 +195,7 @@ typedef enum : uint8_t {
  * (HUM Ch 22.2.13). See ``ra8_gpt_pwm_pin_configure`` for the
  * field-by-field semantics. The structure is consumed by
  * ``ra8_gpt_pwm_pin_configure`` in
- * ``libs/ra8_hal/src/ra8_gpt.c``.
+ * ``libs/ra8_hal/src/internal/gpt.zig``.
  */
 typedef struct {
   bool                     output_enable;    /**< OAE / OBE -- enable pin.   */
@@ -234,7 +234,7 @@ typedef enum : uint8_t {
  * on the same PCLKD edge.
  *
  * Each member is read inside ``ra8_gpt_three_phase_open`` in
- * ``libs/ra8_hal/src/ra8_gpt.c``.
+ * ``libs/ra8_hal/src/internal/gpt.zig``.
  */
 typedef struct {
   uint8_t             channels[k_ra8_gpt_three_phase_count]; /**< U/V/W ch ids.   */
