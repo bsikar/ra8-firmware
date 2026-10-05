@@ -234,3 +234,6 @@ tests/fuzz/corpus/**
 /.compile_commands_scratch/
 # Codegraph indexes are local workspace artifacts, not firmware source.
 /.codegraph/
+
+# Generated ra8_widget icon atlas is checked in as source data.
+!libs/ra8_widget/src/icons_atlas.bin

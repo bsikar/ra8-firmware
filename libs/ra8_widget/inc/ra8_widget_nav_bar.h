@@ -43,7 +43,9 @@ extern "C" {
  * NUL-terminated labels; `active` is the highlighted (inked) index; `selected`
  * records the last cell a touch hit. `render` splits the rect into `count`
  * equal-width cells and centres each label (active -> `fg_active`, else
- * `fg_muted`). `on_input` maps a touch X to a cell index, stores it in
+ * `fg_muted`). Optional `icons[i]` draws the selected atlas icon above that
+ * cell's label; NULL or `k_ra8_widget_icon_none` keeps text-only layout.
+ * `on_input` maps a touch X to a cell index, stores it in
  * `selected`, and fires `on_select` -- the caller decides whether to move
  * `active` in response.
  *
@@ -63,6 +65,20 @@ extern "C" {
  * @see ra8_widget_nav_bar_init
  * @since 0.1.0
  */
+/** Small greyscale icon available to a navigation cell. */
+typedef enum : uint8_t {
+  k_ra8_widget_icon_none = 0,
+  k_ra8_widget_icon_back = 1,
+  k_ra8_widget_icon_chevron_right = 2,
+  k_ra8_widget_icon_play = 3,
+  k_ra8_widget_icon_pause = 4,
+  k_ra8_widget_icon_home = 5,
+  k_ra8_widget_icon_library = 6,
+  k_ra8_widget_icon_music = 7,
+  k_ra8_widget_icon_settings = 8,
+  k_ra8_widget_icon_search = 9,
+} ra8_widget_icon_t;
+
 typedef struct ra8_widget_nav_bar {
   const ra8_widget_paint_t* paint; /**< Draw backend (NULL -> draws nothing). */
   const char* const*        items; /**< Array of `count` label strings.       */
@@ -77,6 +93,7 @@ typedef struct ra8_widget_nav_bar {
   ra8_widget_text_face_t text_face;    /**< Text family; zero keeps sans. */
   ra8_widget_text_weight_t text_weight; /**< Text weight; zero keeps regular. */
   ra8_widget_text_size_t text_size;    /**< Text size; zero keeps size three. */
+  const ra8_widget_icon_t* icons;      /**< Optional `count` icons (NULL -> text only). */
 } ra8_widget_nav_bar_t;
 
 /**
