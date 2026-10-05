@@ -33,8 +33,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 
 WINDOWS_VM_ID = 9021
-PROTECTED_TEMPLATE_IDS = {9001, 9011}
-LINUX_RESERVED_IDS = {9001, 9011, WINDOWS_VM_ID}
+PROTECTED_TEMPLATE_IDS = {9001, 9011, 9012}
+LINUX_RESERVED_IDS = {9001, 9011, 9012, WINDOWS_VM_ID}
 
 
 def linux_vm_identity(value: str | int) -> tuple[int, str]:
@@ -117,7 +117,7 @@ def get_active_vms(*, strict: bool = False) -> list[dict[str, Any]]:
             status = parts[2]
             run_match = re.search(r"-([0-9a-f]{16})$", name)
             run_id = run_match.group(1) if run_match else ""
-            if "template" in name or vmid in (9001, 9011):
+            if "template" in name or vmid in (9001, 9011, 9012):
                 vm_type = "template"
             elif "windows" in name or vmid == WINDOWS_VM_ID:
                 vm_type = "windows"
@@ -833,13 +833,13 @@ def main() -> None:
         stop_parser.add_argument("profile", nargs="?", default="all")
         stop_parser.add_argument("run_id", nargs="?")
         assert parser.parse_args(["stop", "linux", "aaaaaaaaaaaaaaaa"]).run_id == "aaaaaaaaaaaaaaaa"
-        for protected in ("9001", "9011", "9021", "9100", "09002"):
+        for protected in ("9001", "9011", "9012", "9021", "9100", "09002"):
             try:
                 linux_vm_identity(protected)
             except ValueError:
                 continue
             raise AssertionError(f"accepted protected/out-of-range Linux VMID {protected}")
-        for protected_or_invalid in (9001, 9011, 9100):
+        for protected_or_invalid in (9001, 9011, 9012, 9100):
             try:
                 vm_ip(protected_or_invalid)
             except ValueError:
@@ -853,7 +853,7 @@ def main() -> None:
         assert 'nft delete table ip "$table"' in cleanup_script
         assert 'other_tables=$(nft list tables' in cleanup_script
         assert 'ip link delete "$bridge" type bridge' in cleanup_script
-        for invalid_vmid in (9001, 9011, 9021, 9100):
+        for invalid_vmid in (9001, 9011, 9012, 9021, 9100):
             try:
                 linux_run_cleanup_script(invalid_vmid, "0123456789abcdef")
             except ValueError:

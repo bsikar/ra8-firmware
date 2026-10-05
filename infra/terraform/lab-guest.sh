@@ -34,8 +34,6 @@ NODE="pve1"
 NETWORK_READY=0
 API_READY=0
 GUEST_SSH_READY=0
-WINRM_PROXY_PID=""
-WINRM_PROXY_PORT=""
 SUCCESS=0
 ACTION=""
 STATE_CREATED=0
@@ -134,7 +132,7 @@ select_profile() {
     windows)
       PROFILE=windows
       [[ -z "$VM_ID" || "$VM_ID" == 9021 ]] || say_error "Windows profile is assigned VMID 9021"
-      VM_ID=9021 TEMPLATE_ID=9011
+      VM_ID=9021 TEMPLATE_ID=9012
       TEMPLATE_NAME=ra8-lab-windows-template TEMPLATE_MARKER=RA8_LAB_TEMPLATE=windows-ci-v1
       DISK_SIZE_GB=64 GUEST_USERNAME=Administrator GUEST_ADDRESS=10.250.9.31
       ;;
@@ -171,48 +169,6 @@ configure_network() {
   NFT_TABLE="ra8_lab_ci_${run_id}"
 }
 
-start_guest_winrm_proxy() {
-  WINRM_PROXY_PORT="$(local_port)"
-  python3 "$REPO_ROOT/scripts/dev/ssh_loopback_proxy.py" --port "$WINRM_PROXY_PORT" --target guest_windows_winrm >/dev/null 2>&1 &
-  WINRM_PROXY_PID=$!
-  for _ in {1..30}; do
-    kill -0 "$WINRM_PROXY_PID" 2>/dev/null || say_error "the localhost WinRM tunnel exited early"
-    if (echo >/dev/tcp/127.0.0.1/"$WINRM_PROXY_PORT") >/dev/null 2>&1; then
-      return
-    fi
-    sleep 1
-  done
-  say_error "the localhost WinRM tunnel did not become reachable"
-}
-
-stop_guest_winrm_proxy() {
-  if [[ -n "$WINRM_PROXY_PID" ]] && kill -0 "$WINRM_PROXY_PID" 2>/dev/null; then
-    kill "$WINRM_PROXY_PID" 2>/dev/null || true
-    wait "$WINRM_PROXY_PID" 2>/dev/null || true
-  fi
-  WINRM_PROXY_PID=""
-  WINRM_PROXY_PORT=""
-}
-
-check_guest_winrm() {
-  local response_code
-  response_code="$(python3 - "$WINRM_PROXY_PORT" <<'PY'
-from http.client import HTTPConnection
-import sys
-
-connection = HTTPConnection("127.0.0.1", int(sys.argv[1]), timeout=8)
-try:
-    connection.request("POST", "/wsman", body=b"", headers={"Content-Type": "application/soap+xml;charset=UTF-8"})
-    response = connection.getresponse()
-    print(response.status)
-finally:
-    connection.close()
-PY
-)" || say_error "the Windows WinRM endpoint did not answer over the loopback proxy"
-  [[ "$response_code" == 401 ]] || say_error "the Windows WinRM endpoint returned HTTP $response_code instead of the expected unauthenticated 401"
-  printf 'Windows WinRM endpoint reachable through loopback proxy (HTTP %s).\n' "$response_code"
-}
-
 start_api_tunnel() {
   api_port="$(local_port)"
   start_api_proxy "$api_port"
@@ -232,6 +188,8 @@ start_api_tunnel() {
   export TF_VAR_ipv4_address="${GUEST_ADDRESS}/24"
   export TF_VAR_guest_username="$GUEST_USERNAME"
   export TF_VAR_disk_size_gb="$DISK_SIZE_GB"
+  # The provider writes this controller-only key into the Proxmox configdrive;
+  # Cloudbase-Init's SSH public-key plugin installs it for Administrator.
   export TF_VAR_ssh_public_key="$(<"$STATE_DIR/id_ed25519.pub")"
   export RA8_TOFU_ENV=lab-guest
   export TF_DATA_DIR="$STATE_DIR/tf-data"
@@ -333,21 +291,23 @@ create_guest() {
 
   if [[ "$PROFILE" == windows ]]; then
     start_guest_ssh_proxy guest_windows
+    GUEST_SSH_READY=1
+    wait_for_guest_ssh "$GUEST_USERNAME"
   else
     start_guest_ssh_proxy guest
-  fi
-  GUEST_SSH_READY=1
-  wait_for_guest_ssh "$GUEST_USERNAME"
-  if [[ "$PROFILE" == windows ]]; then
-    start_guest_winrm_proxy
-    check_guest_winrm
+    GUEST_SSH_READY=1
+    wait_for_guest_ssh "$GUEST_USERNAME"
   fi
   guest_digest="$(policy check-guest "$run_id")"
   write_metadata
   [[ "$(policy digest-template)" == "$source_template_digest" ]] ||
     say_error "source template digest changed while the clone was being created"
   SUCCESS=1
-  printf "%s VM %s accepted the recipe SSH readiness probe at %s on %s in pool %s; source and copied config digests are bound to this run.\n" "$PROFILE" "$VM_ID" "$GUEST_ADDRESS" "$BRIDGE" "$POOL"
+  if [[ "$PROFILE" == windows ]]; then
+    printf "Windows VM %s accepted the SSH loopback-proxy probe at %s on %s in pool %s; source and copied config digests are bound to this run.\n" "$VM_ID" "$GUEST_ADDRESS" "$BRIDGE" "$POOL"
+  else
+    printf "Linux VM %s accepted the recipe SSH readiness probe at %s on %s in pool %s; source and copied config digests are bound to this run.\n" "$VM_ID" "$GUEST_ADDRESS" "$BRIDGE" "$POOL"
+  fi
   printf 'guest_profile=%s\nguest_vmid=%s\nguest_address=%s\n' "$PROFILE" "$VM_ID" "$GUEST_ADDRESS"
   printf 'encrypted state: %s/terraform.tfstate\n' "$STATE_DIR"
   printf 'run ID: %s\n' "$run_id"
@@ -468,11 +428,15 @@ EOF
         say_error "Linux profile selftest failed its VMID address mapping"
       ;;
     windows)
-      [[ "$VM_ID" == 9021 && "$TEMPLATE_ID" == 9011 && "$DISK_SIZE_GB" == 64 && "$GUEST_ADDRESS" == 10.250.9.31 ]] ||
+      [[ "$VM_ID" == 9021 && "$TEMPLATE_ID" == 9012 && "$DISK_SIZE_GB" == 64 && "$GUEST_ADDRESS" == 10.250.9.31 ]] ||
         say_error "Windows profile selftest failed its VMID, template, address, or disk selection"
       ;;
     *) say_error "guest profile selftest failed its allowlist" ;;
   esac
+  grep -Fq 'TF_VAR_ssh_public_key=' "$0" && grep -Fq 'id_ed25519.pub' "$0" ||
+    say_error "controller SSH-key export selftest failed"
+  grep -Fq 'keys     = [var.ssh_public_key]' "$REPO_ROOT/infra/terraform/environments/lab-guest/main.tf" ||
+    say_error "Proxmox configdrive SSH-key selftest failed"
   policy --selftest
   printf 'lab-guest.sh --selftest: PASS (profile=%s, vmid=%s, template=%s)\n' "$PROFILE" "$VM_ID" "$TEMPLATE_ID"
 }

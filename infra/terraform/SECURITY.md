@@ -156,12 +156,12 @@ test, not as a normal deployment.
 ## Disposable CI cleanup gate
 
 `just infra::lab::ci linux` uses only guest ID `9000`. It never targets the
-template IDs `9001` or `9011`, production guests, LXCs, storage definitions,
+template IDs `9001`, `9011`, or `9012`, production guests, LXCs, storage definitions,
 or the host network. Before clearing Proxmox protection and purging a guest,
 the cleanup trap verifies the exact run ID in the description and tag, the
 `ra8-lab-linux-*` name, the `ra8-tf-lab` pool/storage, non-template status, and
 stopped state. A mismatch leaves the object and its temporary state for manual
-review. The Windows profile uses template 9011 and a separate disposable guest
+review. The Windows profile uses template 9012 and a separate disposable guest
 VMID.
 
 ## Windows template gate
