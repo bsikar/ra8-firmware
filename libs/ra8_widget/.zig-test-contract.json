@@ -26,6 +26,7 @@
     "src/widget_keyboard_abi.zig",
     "src/widget_nav_bar_abi.zig",
     "src/widget_panel_abi.zig",
+    "src/widget_debug_abi.zig",
     "src/widget_reflow_view_abi.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
