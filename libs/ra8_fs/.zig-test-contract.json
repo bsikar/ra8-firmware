@@ -9,13 +9,15 @@
     "tests/lfn_abi_test.zig",
     "tests/utf_abi_test.zig",
     "tests/upcase_abi_test.zig",
-    "tests/exfat_openw_abi_test.zig"
+    "tests/exfat_openw_abi_test.zig",
+    "tests/free_chain_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
     "src/ra8_fs_attr_abi.zig",
     "src/ra8_fs_exfat_label_abi.zig",
     "src/ra8_fs_exfat_openw_abi.zig",
+    "src/ra8_fs_free_chain_abi.zig",
     "src/ra8_fs_gpt_abi.zig",
     "src/ra8_fs_lfn_abi.zig",
     "src/ra8_fs_lock_abi.zig",
@@ -36,5 +38,5 @@
     "tests/utf_abi_test.zig",
     "tests/utime_abi_test.zig"
   ],
-  "minimum_tests": 60
+  "minimum_tests": 66
 }
