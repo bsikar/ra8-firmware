@@ -153,7 +153,7 @@ typedef enum : uint8_t {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_pdg_init`` in
- * ``libs/ra8_hal/src/ra8_pdg.c``.
+ * ``libs/ra8_hal/src/internal/pdg.zig`` (C ABI in ``src/pdg_abi.zig``).
  *
  * @invariant ``frange`` must be one of the ``k_ra8_pdg_frange_*``
  * enum values (the others are "Setting prohibited" per

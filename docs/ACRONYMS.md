@@ -133,7 +133,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | AGT   | Asynchronous General-purpose Timer (16-bit)               | `ra8_agt.c` |
 | ULPT  | Ultra-Low-Power Timer                                     | `internal/ulpt.zig` |
 | POEG  | Port Output Enable for GPT (motor-fault shut-off)         | `internal/poeg.zig` |
-| PDG   | Phase Delay Generator (multi-channel motor sync)          | `ra8_pdg.c` |
+| PDG   | Phase Delay Generator (multi-channel motor sync)          | `pdg.zig` |
 | WDT   | Watchdog Timer                                            | `ra8_wdt.c` |
 | IWDT  | Independent Watchdog Timer                                | `internal/iwdt.zig` |
 | RTC   | Real-Time Clock                                           | `ra8_rtc.c` |

@@ -115,8 +115,8 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | ULPT0      | `0x40220000`| Ultra-Low-Power Timer          | `internal/ulpt.zig`       |
 | ULPT1      | `0x40220100`|                                | `internal/ulpt.zig`       |
 | POEG0..3   | `0x40212000` + `n*0x100` | Port Output Enable for GPT | `internal/poeg.zig` |
-| PDG        | `0x40324000`| GPT Phase Delay Generator (S)  | `ra8_pdg.c`        |
-| PDG NS     | `0x50324000`| Non-secure alias               | `ra8_pdg.c`        |
+| PDG        | `0x40324000`| GPT Phase Delay Generator (S)  | `pdg.zig`          |
+| PDG NS     | `0x50324000`| Non-secure alias               | `pdg.zig`          |
 
 ### 2.3 Communication peripherals
 

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_pdg.c
- * @brief Unit tests for ra8_pdg.c (PWM Delay Generation Circuit driver)
+ * @brief Unit tests for the ra8_pdg driver (src/pdg_abi.zig) (PWM Delay Generation Circuit driver)
  *
  * @details
  * This sibling owns the init / auto-tune / delay setter contract tests.
