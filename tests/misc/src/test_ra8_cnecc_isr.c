@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_cnecc_isr.c
- * @brief Fault-handling tests for ra8_cnecc.c (CANFD ECC driver)
+ * @brief Fault-handling tests for the ra8_cnecc ABI (libs/ra8_hal/src/cnecc_abi.zig, CANFD ECC driver)
  *
  * @details
  * Split out of test_ra8_cnecc.c to keep each test translation unit under

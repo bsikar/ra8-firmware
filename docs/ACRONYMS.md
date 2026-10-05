@@ -60,7 +60,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | I3C   | Improved Inter-Integrated Circuit (MIPI I3C)              | `ra8_i3c.c` |
 | SMBUS | System Management Bus (I2C-compatible)                    | `ra8_smbus.c` |
 | CANFD | Controller Area Network with Flexible Data-rate           | `ra8_canfd.c` |
-| CNECC | CAN Message-RAM ECC controller                            | `ra8_cnecc.c` |
+| CNECC | CAN Message-RAM ECC controller                            | `cnecc_abi.zig` |
 | USB FS| USB Full-Speed (12 Mbps)                                  | `ra8_usb.c`, `ra8_usb_*.c` |
 | USB HS| USB High-Speed (480 Mbps)                                 | `ra8_usb.c`, `ra8_usb_*.c` |
 | CDC   | USB Communications Device Class (virtual COM)             | `ra8_usb_cdc.c`, `ra8_usb_hcdc.c`, `ra8_usb_hcdc_ecm.c` |
@@ -145,7 +145,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | MRAM  | Magnetoresistive RAM (1 MiB on-chip, code memory)         | `ra8_flash.c` |
 | MRMS  | MRAM Module Sequencer (MRAM controller)                   | `ra8_flash.c` |
 | SRAM  | Static RAM (1664 KiB on-chip, ECC-protected)              | `ra8_sram.c` |
-| ECC   | Error-Correcting Code (SRAM/MRAM single-bit correction)   | `ra8_sram.c`, `ra8_cnecc.c` |
+| ECC   | Error-Correcting Code (SRAM/MRAM single-bit correction)   | `ra8_sram.c`, `cnecc_abi.zig` |
 | DTCM  | Data Tightly-Coupled Memory                               | (linker only) |
 | ITCM  | Instruction Tightly-Coupled Memory                        | (linker only) |
 | TCM   | Tightly-Coupled Memory (umbrella for ITCM + DTCM)         | (linker only) |

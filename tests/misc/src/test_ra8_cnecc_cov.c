@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_cnecc_cov.c
- * @brief Coverage-closure unit tests for ra8_cnecc.c (CANFD ECC driver)
+ * @brief Coverage-closure unit tests for the ra8_cnecc ABI (libs/ra8_hal/src/cnecc_abi.zig, CANFD ECC driver)
  *
  * @details
  * Companion to ``test_ra8_cnecc.c``. Drives the handful of branches the
