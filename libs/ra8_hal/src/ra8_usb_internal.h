@@ -22,7 +22,7 @@
  *  - ``ra8_usb_irq.c``       -- IRQ dispatch / callbacks / power +
  *                              host-mode bring-up.
  *  - ``ra8_usb_host_ctrl.c`` -- host-mode control-transfer engine.
- *  - ``ra8_usb_host_bulk.c`` -- host-mode bulk-transfer engine.
+ *  - ``src/usb_host_bulk_abi.zig`` -- host-mode bulk-transfer engine (Zig).
  *
  * This header declares every symbol referenced by more than one of
  * those TUs: the shared bound enums, the byte-mask helpers, the host
@@ -427,7 +427,7 @@ RA8_PRIV ra8_err_t priv_usbfs_module_bringup(volatile r_usb_regs_t* reg);
  *
  * @details Promoted from a TU-private static so the host control engine
  * (``ra8_usb_host_ctrl.c``) and the host bulk engine
- * (``ra8_usb_host_bulk.c``) share one DEVADDn programmer. The DEVADDn
+ * (``usb_host_bulk_abi.zig``) share one DEVADDn programmer. The DEVADDn
  * registers sit past the modelled register window, so this addresses the
  * slot by raw offset (0xD0 + 2n) and copies DVSTCTR0.RHST into USBSPD[7:6].
  *

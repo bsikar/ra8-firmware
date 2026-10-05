@@ -117,5 +117,5 @@
     "tests/sci_lin_test.zig",
     "src/sci_lin_abi.zig"
   ],
-  "minimum_tests": 714
+  "minimum_tests": 725
 }

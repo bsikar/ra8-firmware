@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_usb_host_bulk_cov.c
  * @brief Coverage unit tests for the USB host-mode bulk engine
- *        (libs/ra8_hal/src/ra8_usb_host_bulk.c).
+ *        (libs/ra8_hal/src/internal/usb_host_bulk.zig).
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

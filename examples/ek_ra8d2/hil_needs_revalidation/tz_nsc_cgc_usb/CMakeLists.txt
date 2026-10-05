@@ -178,7 +178,6 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_xfer.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_irq.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_ctrl.c
-    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_bulk.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_mstp.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
