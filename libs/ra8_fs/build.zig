@@ -43,6 +43,7 @@ pub fn build(b: *std.Build) void {
         "tests/attr_abi_test.zig",
         "tests/utime_abi_test.zig",
         "tests/space_abi_test.zig",
+        "tests/gpt_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
