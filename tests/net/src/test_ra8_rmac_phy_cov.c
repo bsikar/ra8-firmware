@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rmac_phy_cov.c
- * @brief Line-coverage top-up for ra8_rmac_phy.c
+ * @brief Line-coverage top-up for the RMAC PHY driver (rmac_phy_drv_abi.zig)
  *
  * @details
  * Sibling to test_ra8_rmac_phy.c. That test covers the happy paths and
@@ -14,7 +14,7 @@
  * value or a per-register callback failure. No MCU register block is
  * touched, so no GCOVR_EXCL markers are required.
  *
- * Uncovered lines targeted (libs/ra8_hal/src/ra8_rmac_phy.c):
+ * Uncovered lines targeted (libs/ra8_hal/src/rmac_phy_drv_abi.zig):
  *   146  BMCR.RESET write callback fails
  *   152  reset-poll read callback fails
  *   188  ANAR (reg 4) write callback fails
