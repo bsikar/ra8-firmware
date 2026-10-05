@@ -2,8 +2,9 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI exports for the I3C legacy-I2C controller error flags
-//! (internal/i3c_i2c_errors.zig), bus probe (internal/i3c_i2c_scan.zig) and
-//! abort (internal/i3c_i2c_abort.zig), RA8FW-693. Check order and log line
+//! (internal/i3c_i2c_errors.zig), bus probe (internal/i3c_i2c_scan.zig),
+//! abort (internal/i3c_i2c_abort.zig) and interrupt plumbing
+//! (internal/i3c_i2c_irq.zig), RA8FW-693. Check order and log line
 //! match the deleted C in ra8_i3c_i2c_control.c.
 
 const common = @import("abi_common.zig");
@@ -11,6 +12,7 @@ const p = @import("internal/i3c_i2c_peripheral.zig");
 const errs = @import("internal/i3c_i2c_errors.zig");
 const scan = @import("internal/i3c_i2c_scan.zig");
 const abort = @import("internal/i3c_i2c_abort.zig");
+const irq = @import("internal/i3c_i2c_irq.zig");
 
 const tag = "IIC_B";
 
@@ -75,8 +77,11 @@ export fn ra8_i3c_i2c_scan(channel: u8, target_7b: u8, out_acked: ?*bool) u16 {
 }
 
 /// Layout of `ra8_i3c_i2c_state_t` (ra8_i3c_i2c_internal.h).
+/// `ra8_i3c_i2c_complete_fn_t`.
+const CompleteFn = *const fn (ctx: ?*anyopaque, err_mask: u8) callconv(.C) void;
+
 const State = extern struct {
-    cb: ?*const anyopaque,
+    cb: ?CompleteFn,
     ctx: ?*anyopaque,
     initialized: bool,
     bus_held: bool,
@@ -90,4 +95,24 @@ export fn ra8_i3c_i2c_abort(channel: u8) u16 {
     const bus = CBus{ .reg = @ptrFromInt(block.base) };
     abort.run(bus, block.reg(abort.off_bie), block.reg(abort.off_ntie), &s_iic_b_state[channel].bus_held);
     return common.k_ra8_ok;
+}
+
+/// `ra8_err_t ra8_i3c_i2c_attach_handler(uint8_t, ra8_i3c_i2c_complete_fn_t, void*)`.
+export fn ra8_i3c_i2c_attach_handler(channel: u8, cb: ?CompleteFn, ctx: ?*anyopaque) u16 {
+    const block = p.regsFor(channel) orelse return common.k_ra8_err_invalid_arg;
+    s_iic_b_state[channel].cb = cb;
+    s_iic_b_state[channel].ctx = ctx;
+    irq.setEnables(block.reg(abort.off_bie), block.reg(abort.off_ntie), cb != null);
+    return common.k_ra8_ok;
+}
+
+/// `void ra8_i3c_i2c_dispatch_eri(uint8_t)`: decode, clear, then notify.
+export fn ra8_i3c_i2c_dispatch_eri(channel: u8) void {
+    if (channel >= p.channel_count) return;
+    var mask: u8 = 0;
+    _ = ra8_i3c_i2c_get_errors(channel, &mask);
+    _ = ra8_i3c_i2c_clear_errors(channel);
+    const state = &s_iic_b_state[channel];
+    if (!irq.shouldDispatch(mask, state.cb != null)) return;
+    state.cb.?(state.ctx, mask);
 }

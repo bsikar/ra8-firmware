@@ -127,7 +127,7 @@ typedef enum : uint32_t {
  * @details
  * The ``ra8_i3c_i2c_state_t`` type and the matching ``extern`` declaration
  * live in ``ra8_i3c_i2c_internal.h`` so the control-plane TU
- * (``ra8_i3c_i2c_control.c``) can share this single definition.
+ * (``i3c_i2c_control_abi.zig``, through ``extern var``) can share this single definition.
  */
 ra8_i3c_i2c_state_t s_iic_b_state[k_ra8_i3c_i2c_channel_count];
 
