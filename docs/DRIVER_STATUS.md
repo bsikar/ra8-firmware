@@ -60,7 +60,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_crc` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_dac_b` | 0 | 1 | 12 | 3 | 2 |
 | `ra8_dma` | 1 | 1 | 7 | 7 | 1 |
-| `ra8_dmac` | 1 | 1 | 12 | 5 | 3 |
+| `ra8_dmac` | 0 | 1 | 12 | 5 | 3 |
 | `ra8_doc` | 0 | 1 | 5 | 3 | 1 |
 | `ra8_dotf` | 1 | 1 | 22 | 3 | 1 |
 | `ra8_drw` | 2 | 2 | 33 | 2 | 3 |

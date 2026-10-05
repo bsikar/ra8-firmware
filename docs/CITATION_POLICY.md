@@ -15,7 +15,7 @@ Use the function or symbol name instead:
 
 - `priv_ra8_drw_internal_rect_below_min`
 - `ra8_dmac::priv_ra8_dmac_internal_mode_disables_dts`
-- `see priv_ra8_dmac_internal_mode_disables_dts in libs/ra8_hal/src/ra8_dmac.c`
+- `see priv_ra8_dmac_internal_mode_disables_dts in libs/ra8_hal/src/internal/dmac.zig`
 
 The pre-commit gate `scripts/checks/check_line_citations.py` enforces
 this rule strictly: any new in-tree `<file>:<line>` reference inside

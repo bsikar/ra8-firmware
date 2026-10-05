@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_dmac.c
- * @brief Unit tests for ra8_dmac.c (Direct Memory Access Controller)
+ * @brief Unit tests for the ra8_dmac driver (Direct Memory Access Controller)
  *
  * @details Exercises channel configuration, transfer lifecycle, callback dispatch, and invalid-input handling against the bounded fake register map.
  *
@@ -473,7 +473,7 @@ RA8_INTERNAL static void internal_test_attach_per_channel_callback(void)
  * @par MC/DC:
  * Decision: `if ((src_mode > k_ra8_dmac_addr_decrement) ||
  *               (dest_mode > k_ra8_dmac_addr_decrement))`
- * (2 conditions, libs/ra8_hal/src/ra8_dmac.c line 629 -- gap row 337 in CSV)
+ * (2 conditions, libs/ra8_hal/src/internal/dmac.zig line 629 -- gap row 337 in CSV)
  * - Vector 1: src=fixed (0), dest=fixed (0) -> F,F decision F -> ok.
  * - Vector 2: src=99 (out of range), dest=fixed -> T,_ short-circuit
  *   decision T -> invalid_arg (varies C1 vs V1).
@@ -512,8 +512,8 @@ RA8_INTERNAL static void internal_test_mcdc_set_address_mode_bounds(void)
  * @test internal_test_mcdc_dmac_internal_mode_disables_dts
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_dmac.c (call site) -> helper at
- * libs/ra8_hal/src/ra8_dmac.c:
+ * Decision at libs/ra8_hal/src/internal/dmac.zig (call site) -> helper at
+ * libs/ra8_hal/src/internal/dmac.zig:
  *   ``mode == k_ra8_dmac_mode_normal || mode == k_ra8_dmac_mode_repeat_block``
  *   (2 conditions, OR). Direct-call vectors:
  * - V1: mode=REPEAT(1)        -> false (both false-side)
@@ -539,8 +539,8 @@ RA8_INTERNAL static void internal_test_mcdc_dmac_internal_mode_disables_dts(void
  * @test internal_test_mcdc_dmac_internal_dmint_extra_irq
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_dmac.c (call site) -> helper at
- * libs/ra8_hal/src/ra8_dmac.c:
+ * Decision at libs/ra8_hal/src/internal/dmac.zig (call site) -> helper at
+ * libs/ra8_hal/src/internal/dmac.zig:
  *   ``cfg->irq_each && cfg->mode != k_ra8_dmac_mode_repeat_block``
  *   (2 conditions, AND). Direct-call vectors:
  * - V1: irq_each=false, mode=NORMAL        -> false (both false-side)
