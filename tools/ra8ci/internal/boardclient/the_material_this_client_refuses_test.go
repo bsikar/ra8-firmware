@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // New is the only thing that builds a client able to reach the server, so
@@ -25,6 +27,9 @@ func copiedTo(t *testing.T, name string, content []byte, mode os.FileMode) strin
 		t.Fatal(err)
 	}
 	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := testprivatefile.OwnerOnly(path); err != nil {
 		t.Fatal(err)
 	}
 	return path
@@ -84,15 +89,24 @@ func TestNewRefusesAnIdentityItCannotPresent(t *testing.T) {
 			CertFile: copiedTo(t, "cert.pem", []byte("not a certificate\n"), 0o600),
 			KeyFile:  material.clientKeyPath,
 		},
-		"a key the whole host can read": {
-			CertFile: copiedTo(t, "cert.pem", certPEM, 0o600),
-			KeyFile:  copiedTo(t, "key.pem", keyPEM, 0o644),
-		},
 	} {
 		config.ServerURL = "https://localhost"
 		config.CAFile = material.caPath
 		if _, err := New(config); !errors.Is(err, ErrInvalidConfig) {
 			t.Fatalf("%s = %v, want the identity refused before it opens a socket", name, err)
 		}
+	}
+
+	broadKey := copiedTo(t, "broad-key.pem", keyPEM, 0o600)
+	if err := grantBroadAccess(broadKey); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := New(Config{
+		ServerURL: "https://localhost",
+		CAFile:    material.caPath,
+		CertFile:  copiedTo(t, "broad-cert.pem", certPEM, 0o600),
+		KeyFile:   broadKey,
+	}); !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("a broadly accessible key = %v, want the identity refused before it opens a socket", err)
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -74,6 +75,9 @@ func New(config Config) (*Client, error) {
 	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
+	}
+	if err := privatefile.Check(config.KeyFile); err != nil {
+		return nil, fmt.Errorf("%w: client private key is not private: %v", ErrInvalidConfig, err)
 	}
 	certificate, err := mtls.LoadClientIdentity(config.CertFile, config.KeyFile, time.Now())
 	if err != nil {
