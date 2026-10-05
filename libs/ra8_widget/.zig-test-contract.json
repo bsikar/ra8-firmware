@@ -10,7 +10,8 @@
     "tests/keyboard_test.zig",
     "tests/nav_bar_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig"
+    "tests/reflow_view_test.zig",
+    "tests/host_render_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -36,8 +37,9 @@
     "tests/keyboard_test.zig",
     "tests/nav_bar_test.zig",
     "tests/panel_test.zig",
-    "tests/reflow_view_test.zig"
+    "tests/reflow_view_test.zig",
+    "src/host_paint.zig",
+    "tests/host_render_test.zig"
   ],
-  "minimum_tests": 163
+  "minimum_tests": 164
 }
-
