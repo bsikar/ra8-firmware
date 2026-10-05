@@ -5,7 +5,9 @@
 //! exports are emitted.
 
 pub const log = @import("ra8_io_log_abi.zig");
+pub const stream_ram = @import("ra8_io_stream_ram_abi.zig");
 
 comptime {
     _ = log;
+    _ = stream_ram;
 }

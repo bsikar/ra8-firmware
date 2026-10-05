@@ -32,6 +32,11 @@ export fn ra8_io_stream_write(_: *log.Stream, buf: [*]const u8, len: u32, _: ?*u
     return write_status;
 }
 
+// The stream_ram unit in the same archive needs this to link; unused here.
+export fn ra8_io_stream_bind(_: *log.Stream, _: *const anyopaque, _: ?*anyopaque) c_int {
+    return log.ok;
+}
+
 extern fn ra8_io_log_attach(s: ?*log.Stream) c_int;
 extern fn ra8_io_log_detach() void;
 

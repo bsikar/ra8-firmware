@@ -243,7 +243,6 @@ ra8_viewer_read_path(
        ra8_io_spi_bus_sci_spi.c
        ra8_io_spi_bus_spi_b.c
        ra8_io_stream_blockdev.c
-       ra8_io_stream_ram.c
        ra8_io_stream_uart.c
        ra8_io_stream_usbcdc.c
        ra8_io_vfs.c
@@ -298,7 +297,16 @@ set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
-set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
+# ra8_io_stream_ram is Zig now (RA8FW-698): test_viewer_output links the
+# ra8_io archive instead of compiling the deleted .c by path.
+if(NOT TARGET ra8_zig::ra8_io)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_io
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_io
+    LIBRARY_NAME ra8_io
+  )
+endif()
 
 add_library(
   ra8_reader STATIC
@@ -420,13 +428,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_viewer_comic_workspace PRIVATE ra8_reader)
   target_compile_options(test_viewer_comic_workspace PRIVATE -Wall -Wextra -Werror)
   add_executable(
-    test_viewer_output tests/src/test_viewer_output.c src/ra8_viewer_output.c ${RA8_STREAM_RAM_SRC}
-                       ${RA8_STREAM_POSIX_SRC}
+    test_viewer_output tests/src/test_viewer_output.c src/ra8_viewer_output.c ${RA8_STREAM_POSIX_SRC}
   )
   target_include_directories(
     test_viewer_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/port/posix/inc
   )
-  target_link_libraries(test_viewer_output PRIVATE ra8_reader)
+  target_link_libraries(test_viewer_output PRIVATE ra8_zig::ra8_io ra8_reader ra8_zig::ra8_core)
   target_compile_options(test_viewer_output PRIVATE -Wall -Wextra -Werror)
   add_test(NAME viewer_workspace
            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_workspace_test.sh

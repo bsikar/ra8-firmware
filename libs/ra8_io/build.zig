@@ -31,7 +31,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig ra8_io tests");
-    const roots = [_][]const u8{"tests/log_abi_test.zig"};
+    const roots = [_][]const u8{ "tests/log_abi_test.zig", "tests/stream_ram_abi_test.zig" };
     for (roots) |path| {
         const test_module = b.createModule(.{
             .root_source_file = b.path(path),
