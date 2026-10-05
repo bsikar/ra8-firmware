@@ -311,7 +311,7 @@ static void test_phy_reset_mdio_error_legs(void)
  * @test test_phy_reset_readback_timeout
  * @par MC/DC:
  * The valid-port/valid-address vector makes both conditions of
- * ``libs/ra8_hal/src/ra8_rmac_mgmt.c@internal_phy_args_ok`` true; the
+ * ``libs/ra8_hal/src/internal/rmac_phy.zig@argsOk`` true; the
  * companion bad-argument vectors vary each condition independently. This
  * test then keeps the single-condition BMCR.RESET check true to exhaustion.
  * @details Models a PHY that never self-clears BMCR.RESET, proving the bounded
@@ -365,7 +365,7 @@ static void test_auto_neg_wait_mdio_error_leg(void)
  * @test test_auto_neg_wait_readback
  * @par MC/DC:
  * The valid-port/valid-address vector holds
- * ``libs/ra8_hal/src/ra8_rmac_mgmt.c@internal_phy_args_ok`` true while the
+ * ``libs/ra8_hal/src/internal/rmac_phy.zig@argsOk`` true while the
  * companion bad-argument suite varies both inputs. Ready BMSR takes the
  * single-condition readiness branch and a successful ANLPAR read takes the
  * success leg.
@@ -393,7 +393,7 @@ static void test_auto_neg_wait_readback(void)
  * @test test_auto_neg_wait_anlpar_error
  * @par MC/DC:
  * The valid argument vector holds both conditions of
- * ``libs/ra8_hal/src/ra8_rmac_mgmt.c@internal_phy_args_ok`` true; companion
+ * ``libs/ra8_hal/src/internal/rmac_phy.zig@argsOk`` true; companion
  * tests supply its masking pairs. Ready BMSR enters the body and the injected
  * ANLPAR failure takes the single-condition transport-error leg.
  * @details Reaches the ready-link body, then fails the ANLPAR pre-drain so the
@@ -448,7 +448,7 @@ static void test_link_status_mdio_error_leg(void)
 /**
  * @test test_link_status_readback
  * @par MC/DC:
- * For ``libs/ra8_hal/src/ra8_rmac_mgmt.c@ra8_rmac_phy_link_status``, ready
+ * For ``libs/ra8_hal/src/internal/rmac_phy.zig@linkStatus``, ready
  * BMSR supplies C1=T,C2=T for ``link_up && an_done``. The existing down-link
  * test supplies C1=F; the hardware-ordering rationale on the decision records
  * why C1=F,C2=T is infeasible on a conforming PHY.
@@ -473,7 +473,7 @@ static void test_link_status_readback(void)
 /**
  * @test test_link_status_anlpar_error
  * @par MC/DC:
- * For ``libs/ra8_hal/src/ra8_rmac_mgmt.c@ra8_rmac_phy_link_status``, ready
+ * For ``libs/ra8_hal/src/internal/rmac_phy.zig@linkStatus``, ready
  * BMSR again supplies C1=T,C2=T for ``link_up && an_done``; this vector then
  * drives the ANLPAR read's single-condition error leg while the existing
  * down-link test supplies C1=F.
