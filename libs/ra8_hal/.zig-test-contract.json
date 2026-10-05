@@ -22,7 +22,8 @@
     "tests/doc_test.zig",
     "tests/cac_test.zig",
     "tests/epaper_geom_test.zig",
-    "tests/pwr_test.zig"
+    "tests/pwr_test.zig",
+    "tests/i2c_config_test.zig"
   ],
   "covered_sources": [
     "src/internal/eth_media.zig",
@@ -100,7 +101,10 @@
     "src/internal/sau.zig",
     "tests/sau_test.zig",
     "tests/ethosu_shim_test.zig",
-    "src/sau_abi.zig"
+    "src/sau_abi.zig",
+    "src/internal/i2c_config.zig",
+    "tests/i2c_config_test.zig",
+    "src/i2c_config_abi.zig"
   ],
-  "minimum_tests": 597
+  "minimum_tests": 604
 }

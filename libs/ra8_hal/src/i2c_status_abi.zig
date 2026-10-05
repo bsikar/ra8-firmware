@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ra8_i2c.h error-status helpers (RA8FW-694), moved out of
-//! ra8_i2c_config.c. Init, deinit and set_clock stay in that C file.
+//! ra8_i2c_config.c. Init and deinit moved to i2c_config_abi.zig (RA8FW-702).
 
 const common = @import("abi_common.zig");
 const st = @import("internal/i2c_status.zig");

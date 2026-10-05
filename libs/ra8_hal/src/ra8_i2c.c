@@ -52,7 +52,7 @@
 
 /**
  * @var g_i2c_tag
- * @brief Log tag for this driver, shared with ``ra8_i2c_config.c``.
+ * @brief Log tag for this driver, shared with ``i2c_config_abi.zig``.
  *
  * @details
  * Owning definition for the ``g_i2c_tag`` symbol declared ``extern`` in
@@ -122,7 +122,7 @@ bool priv_ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz)
  *
  * @details
  * Owning definition for the ``s_i2c_state`` array declared ``extern`` in
- * ``ra8_i2c_internal.h`` so the bring-up plane in ``ra8_i2c_config.c`` and
+ * ``ra8_i2c_internal.h`` so the bring-up plane in ``i2c_config_abi.zig`` and
  * the transfer plane here observe identical bus-ownership state.
  *
  * @warning Mutated only by the driver under the not-thread-safe contract.
