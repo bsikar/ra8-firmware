@@ -16,7 +16,7 @@ SERIF = ROOT / "libs/ra8_fonts/Literata-Regular.ttf"
 SANS_REGULAR = ROOT / "libs/ra8_fonts/RA8UISans/RA8UISans-Regular.ttf"
 SANS_BOLD = ROOT / "libs/ra8_fonts/RA8UISans/RA8UISans-Bold.ttf"
 EXTRA_CODEPOINTS = (0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D, 0x2026, 0x20AC)
-SIZES = {"body": (38, "body"), "title": (68, "title"), "clock": (120, "clock")}
+SIZES = {"body": (38, "body"), "title": (68, "title"), "clock": (120, "clock"), "ui_26": (26, "ui"), "ui_30": (30, "ui")}
 FONTS = {
     ("serif", "regular"): (SERIF, 0),
     ("serif", "bold"): (SERIF, 1),
@@ -93,7 +93,8 @@ def outputs() -> dict[Path, bytes]:
     result: dict[Path, bytes] = {}
     for size_name, (pixel_size, glyph_kind) in SIZES.items():
         cps = codepoints(glyph_kind)
-        for (face, weight), (font_path, stroke) in FONTS.items():
+        fonts = FONTS.items() if glyph_kind != "ui" else ((key, value) for key, value in FONTS.items() if key[0] == "sans")
+        for (face, weight), (font_path, stroke) in fonts:
             filename = f"{face}_{weight}_{size_name}.bin"
             result[OUTPUT / filename] = make_atlas(font_path, pixel_size, cps, stroke)
     return result

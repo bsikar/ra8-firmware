@@ -48,6 +48,9 @@ pub const Button = extern struct {
     alignment: Alignment,
     pressed: bool,
     reserved: u8,
+    text_face: paint_abi.Face = .sans,
+    text_weight: paint_abi.Weight = .regular,
+    text_size: paint_abi.TextSize = .default,
 
     /// The face fill for the current latch state: the C's
     /// `internal_button_face`, kept a single decision.
@@ -87,24 +90,14 @@ fn renderButton(w: *Widget) callconv(.c) void {
     paint_abi.priv_widget_fill_box(backend, &w.rect, face, button.border, button.border_w);
 
     const text = button.text orelse return;
-    const draw_text = backend.draw_text orelse return;
+    const styled = backend.draw_text_style;
+    if (styled == null and backend.draw_text == null) return;
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(
-        backend,
-        &w.rect,
-        text,
-        button.pad,
-        button.alignment,
-        .sans,
-        .regular,
-        .size_3,
-        false,
-        &pen_x,
-        &pen_y,
-    );
-    draw_text(backend.user, pen_x, pen_y, text, button.fg, face);
+    const size: paint_abi.TextSize = if (button.text_size == .default) .size_3 else button.text_size;
+    paint_abi.priv_widget_text_pos(backend, &w.rect, text, button.pad, button.alignment, button.text_face, button.text_weight, size, styled != null, &pen_x, &pen_y);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @intFromEnum(button.text_face), @intFromEnum(button.text_weight), @intFromEnum(size), button.fg, face) else backend.draw_text.?(backend.user, pen_x, pen_y, text, button.fg, face);
 }
 
 /// Vtable `on_input`: latch a touch, decline everything else.

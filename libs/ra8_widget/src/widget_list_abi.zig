@@ -31,6 +31,9 @@ pub const List = extern struct {
     selected: u16,
     has_selection: bool,
     damage: Rect,
+    text_face: paint.Face = .sans,
+    text_weight: paint.Weight = .regular,
+    text_size: paint.TextSize = .default,
 };
 
 pub fn rowRect(r: Rect, h: i32, i: u16) Rect {
@@ -44,13 +47,17 @@ pub fn hitRow(r: Rect, h: i32, count: usize, y: i32) ?u16 {
     if (i >= count or i > std.math.maxInt(u16)) return null;
     return @intCast(i);
 }
-fn drawText(b: *const Paint, r: Rect, s: ?[*:0]const u8, fg: u32, bg: u32, pad: i16, alignment: paint.Alignment) void {
+fn drawText(b: *const Paint, r: Rect, s: ?[*:0]const u8, fg: u32, bg: u32, pad: i16, alignment: paint.Alignment, face: paint.Face, weight: paint.Weight, size: paint.TextSize) void {
     const value = s orelse return;
-    const draw = b.draw_text orelse return;
+    const styled = b.draw_text_style;
+    if (styled == null and b.draw_text == null) return;
+    const selected_size = if (size == .default) paint.TextSize.size_3 else size;
     var x: i32 = 0;
     var y: i32 = 0;
-    paint.priv_widget_text_pos(b, &r, value, pad, alignment, .sans, .regular, .size_3, false, &x, &y);
-    draw(b.user, x, y, value, fg, bg);
+    paint.priv_widget_text_pos(b, &r, value, pad, alignment, face, weight, selected_size, styled != null, &x, &y);
+    if (styled) |draw| {
+        draw(b.user, x, y, value, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg);
+    } else b.draw_text.?(b.user, x, y, value, fg, bg);
 }
 fn render(w: *Widget) callconv(.c) void {
     const list: *const List = @ptrCast(@alignCast(w.ctx orelse return));
@@ -70,12 +77,12 @@ fn render(w: *Widget) callconv(.c) void {
         const title_area = Rect{ .x = bounds.x, .y = bounds.y, .w = text_width, .h = half };
         const sub_area = Rect{ .x = bounds.x, .y = bounds.y + half, .w = text_width, .h = bounds.h - half };
         const trailing_area = Rect{ .x = bounds.x + text_width, .y = bounds.y, .w = trailing_width, .h = bounds.h };
-        drawText(b, title_area, row.title, list.title_fg, bg, list.pad, .left);
-        drawText(b, sub_area, row.subtitle, list.subtitle_fg, bg, list.pad, .left);
+        drawText(b, title_area, row.title, list.title_fg, bg, list.pad, .left, list.text_face, list.text_weight, list.text_size);
+        drawText(b, sub_area, row.subtitle, list.subtitle_fg, bg, list.pad, .left, list.text_face, list.text_weight, list.text_size);
         switch (row.trailing) {
             .none => {},
-            .value => drawText(b, trailing_area, row.trailing_text, list.trailing_fg, bg, list.pad, .right),
-            .chevron => drawText(b, trailing_area, ">", list.trailing_fg, bg, list.pad, .right),
+            .value => drawText(b, trailing_area, row.trailing_text, list.trailing_fg, bg, list.pad, .right, list.text_face, list.text_weight, list.text_size),
+            .chevron => drawText(b, trailing_area, ">", list.trailing_fg, bg, list.pad, .right, list.text_face, list.text_weight, list.text_size),
         }
     }
 }

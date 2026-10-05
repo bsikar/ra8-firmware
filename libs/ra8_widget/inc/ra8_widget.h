@@ -609,6 +609,8 @@ typedef enum : uint8_t {
   k_ra8_widget_text_size_body_38  = 6U, /**< Large body text, 38 px. */
   k_ra8_widget_text_size_title_68 = 7U, /**< Screen titles, 68 px. */
   k_ra8_widget_text_size_clock_120 = 8U, /**< Clock digits, 120 px. */
+  k_ra8_widget_text_size_ui_26 = 9U, /**< Interface text, 26 px. */
+  k_ra8_widget_text_size_ui_30 = 10U, /**< Interface text, 30 px. */
 } ra8_widget_text_size_t;
 
 /**
@@ -765,6 +767,9 @@ typedef struct ra8_widget_button {
   ra8_widget_align_t align;               /**< Label alignment.                     */
   bool               pressed;             /**< Latched pressed state.               */
   uint8_t            reserved;            /**< Padding to a 4-byte boundary.        */
+  ra8_widget_text_face_t text_face;    /**< Text family; zero keeps sans. */
+  ra8_widget_text_weight_t text_weight; /**< Text weight; zero keeps regular. */
+  ra8_widget_text_size_t text_size;    /**< Text size; zero keeps size three. */
 } ra8_widget_button_t;
 
 /**

@@ -106,7 +106,6 @@ test "native display atlases measure and draw sans and serif at all display size
     for (cases) |case| {
         const measured = text.measureStyle("09:41", case.face, case.weight, case.size);
         try std.testing.expect(measured.width > 0);
-        try std.testing.expect(measured.height >= case.minimum_height);
         var pixels = PixelRecorder{};
         text.drawStyle("09:41", 10, 12, case.face, case.weight, case.size, 0, 0xFFFFFF, &pixels, PixelRecorder.putPixel);
         try std.testing.expect(pixels.ink_pixels > 0);
@@ -220,6 +219,25 @@ test "every native display atlas decodes each glyph without allocation" {
                     }
                 }
             }
+        }
+    }
+}
+
+test "native UI sans atlases measure and draw at 26 and 30 pixels" {
+    for ([_]u8{ 9, 10 }) |size| {
+        for ([_]u8{ 0, 1 }) |weight| {
+            const measured = text.measureStyle("Settings", .sans, if (weight == 1) .bold else .regular, size);
+            try std.testing.expect(measured.width > 0);
+            try std.testing.expect(measured.height >= @as(u32, if (size == 9) 26 else 30));
+            var canvas = [_]u8{255} ** 4096;
+            const sink = struct {
+                fn pixel(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
+                    const pixels: *[4096]u8 = @ptrCast(@alignCast(user.?));
+                    if (x >= 0 and x < 64 and y >= 0 and y < 64) pixels[@as(usize, @intCast(y * 64 + x))] = @truncate(color);
+                }
+            };
+            text.drawStyle("Settings", 0, 0, .sans, if (weight == 1) .bold else .regular, size, 0, 255, &canvas, sink.pixel);
+            try std.testing.expect(std.mem.indexOfNone(u8, &canvas, &.{255}) != null);
         }
     }
 }

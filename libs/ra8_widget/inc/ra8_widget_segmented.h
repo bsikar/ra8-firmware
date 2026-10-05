@@ -39,6 +39,9 @@ typedef struct ra8_widget_segmented {
   uint8_t                   count; /**< Number of options, from 1 to 255. */
   uint8_t                   selected; /**< Selected option index. */
   uint16_t                  pad; /**< Text inset in pixels. */
+  ra8_widget_text_face_t text_face;    /**< Text family; zero keeps sans. */
+  ra8_widget_text_weight_t text_weight; /**< Text weight; zero keeps regular. */
+  ra8_widget_text_size_t text_size;    /**< Text size; zero keeps size three. */
 } ra8_widget_segmented_t;
 
 /** @brief Return the shared segmented-control vtable. @return Static vtable. */
