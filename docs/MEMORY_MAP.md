@@ -64,10 +64,10 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 |-----------------|---------------|------------------------------------------------------|------------------------------------------|
 | MMPU            | `0x40000000`  | Bus-initiator MPU                                       | (no driver, used by HAL init)           |
 | SPMON           | `0x40000D00`  | Bus / stack monitor                                  | (no driver)                              |
-| SRAM control    | `0x40002000`  | SRAM register window                                  | `ra8_sram.c`                              |
+| SRAM control    | `0x40002000`  | SRAM register window                                  | `internal/sram.zig`                       |
 | SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `internal/sdramc.zig`                            |
 | ICU             | `0x40006000`  | Interrupt Controller Unit                            | `internal/icu.zig`                               |
-| CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `lvd_events.zig`, `ra8_sram.c`             |
+| CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `lvd_events.zig`, `internal/sram.zig`      |
 | LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `lpm_abi.zig`, `pwr.zig`                   |
 | BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
 | SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `reset_abi.zig`                 |
