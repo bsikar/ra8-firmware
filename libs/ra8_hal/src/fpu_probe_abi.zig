@@ -8,6 +8,6 @@
 //! carries fp_armv8d16, emits .f64 opcodes. Host builds run it on native
 //! binary64 hardware.
 
-export fn ra8_fpu_dp_madd(a: f64, b: f64, c: f64) f64 {
+pub export fn ra8_fpu_dp_madd(a: f64, b: f64, c: f64) f64 {
     return (a * b) + c;
 }
