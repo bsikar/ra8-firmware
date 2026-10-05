@@ -167,16 +167,34 @@ func TestInitRunsThePinnedCommandInTheSourceEnvironment(t *testing.T) {
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Fatalf("init ran %q want %q", got, want)
 	}
-	if cwd := recorder.recorded(t, "cwd"); cwd != recorder.config.EnvironmentDirectory {
-		t.Fatalf("init ran in %q want the source environment %q", cwd, recorder.config.EnvironmentDirectory)
+	gotCWD, err := filepath.EvalSymlinks(recorder.recorded(t, "cwd"))
+	if err != nil {
+		t.Fatalf("resolve command working directory: %v", err)
 	}
-	// The stand-in is a shell script and /bin/sh exports PWD into its own
-	// environment before the body runs, so that one entry is the shell's
-	// rather than the plane's. Everything else the child sees has to be
-	// exactly what the session handed it.
+	wantCWD, err := filepath.EvalSymlinks(recorder.config.EnvironmentDirectory)
+	if err != nil {
+		t.Fatalf("resolve source environment directory: %v", err)
+	}
+	if gotCWD != wantCWD {
+		t.Fatalf("init ran in %q want the source environment %q", gotCWD, wantCWD)
+	}
+	// The stand-in is a shell script. /bin/sh adds PWD, SHLVL and _ while
+	// starting env, so those entries are shell metadata rather than values
+	// handed to the command by the plane. Check the latter two have their
+	// expected shell-generated values before excluding them from the assertion.
 	handed := make([]string, 0, len(session.environment))
 	for _, entry := range strings.Split(recorder.recorded(t, "env"), "\n") {
-		if strings.HasPrefix(entry, "PWD=") || strings.HasPrefix(entry, "SYSTEMROOT=") {
+		if strings.HasPrefix(entry, "SHLVL=") && entry != "SHLVL=1" {
+			t.Fatalf("the shell reported unexpected metadata %q", entry)
+		}
+		if strings.HasPrefix(entry, "_=") {
+			program := strings.TrimPrefix(entry, "_=")
+			if !filepath.IsAbs(program) || filepath.Base(program) != "env" {
+				t.Fatalf("the shell reported unexpected command metadata %q", entry)
+			}
+		}
+		if strings.HasPrefix(entry, "PWD=") || strings.HasPrefix(entry, "SHLVL=") ||
+			strings.HasPrefix(entry, "_=") || strings.HasPrefix(entry, "SYSTEMROOT=") {
 			continue
 		}
 		handed = append(handed, entry)
