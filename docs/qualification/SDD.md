@@ -317,7 +317,7 @@ NimBLE host code is SOUP (see `docs/SOUP/nimble.md`).
 ### 5.4 Power profile (`libs/ra8_power_profile/`)
 
 States mirror the RA8D2 LPM modes: `run -> sleep -> standby -> deep_standby ->
-software_standby`. Wake events route through `ra8_lpm.c`. Test:
+software_standby`. Wake events route through `lpm_abi.zig`. Test:
 `tests/misc/src/test_ra8_power_profile.c`.
 
 ### 5.5 Watchdog supervisor (`libs/ra8_wdt_supervisor/`)
@@ -349,7 +349,7 @@ Every Ring 3 driver cites the HUM section it implements via an
 | `ra8_sci.c`    | UART baud-rate divisor selection                     | HUM Ch 35 ("SCI")                   |
 | `ra8_flash.c`  | MRAM erase + program (HP-flash semantics)            | HUM Ch 50 ("Flash Memory")          |
 | `ra8_iwdt.c`   | IWDT enable + refresh window                         | HUM Ch 32 ("IWDT")                  |
-| `ra8_lpm.c`    | LPM transition gating (sleep/standby/deep-standby)    | HUM Ch 12 ("LPM")                   |
+| `lpm_abi.zig`  | LPM transition gating (sleep/standby/deep-standby)    | HUM Ch 12 ("LPM")                   |
 
 `cite_check.py --strict` enforces citation presence as a fail-closed gate.
 

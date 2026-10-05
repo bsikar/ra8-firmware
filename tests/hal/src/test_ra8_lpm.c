@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_lpm.c
- * @brief Unit tests for ra8_lpm.c (Low Power Mode HAL driver)
+ * @brief Unit tests for the ra8_lpm ABI (libs/ra8_hal/src/lpm_abi.zig)
  *
  * @details
  * Drives every public API in ``ra8_lpm.h`` through the host fake mmap
@@ -557,7 +557,7 @@ static void test_enter_sleep_modes(void)
   TEST_ASSERT_EQ(0, (*ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off)));
 
   /* Software standby / deep standby: the driver clears LPSCR back to 0
-   * after WFI returns (see ra8_lpm.c).  This guarantees the *next* WFI
+   * after WFI returns (see internal/lpm.zig disarmSleep).  This guarantees the *next* WFI
    * is a plain CPU sleep, not a re-entry into standby with no wake
    * source -- the latter is what J-Link's RAMCode helper trips over
    * after a debugger SYSRESETREQ, since the SYSC LPM block is in a

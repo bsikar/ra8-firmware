@@ -8,7 +8,7 @@
  *
  * @details
  * Hand-derived register map covering every register the LPM HAL
- * driver in ``libs/ra8_hal/src/ra8_lpm.c`` touches. Sources:
+ * driver in ``libs/ra8_hal/src/lpm_abi.zig`` touches. Sources:
  *
  *  - HUM Ch 11 "Low Power Mode" (pages 429..497) covers SBYCR,
  *    DPSBYCR, LPSCR, SSCR1, OPCCR, PDRAMSCR0/1, DPSIER0..3,
