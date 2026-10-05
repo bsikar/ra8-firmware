@@ -982,6 +982,7 @@ test {
     _ = @import("cpu1_txm_lib_test.zig");
     _ = @import("cpu1_txm_hello_test.zig");
     _ = @import("m85_threadx_modules_test.zig");
+    _ = @import("m85_txm_manager_test.zig");
     _ = @import("m85_shared_grant_test.zig");
     _ = @import("header_patch_test.zig");
     _ = @import("middleware_zig_test.zig");

@@ -58,6 +58,7 @@ pub const txm_module_object = @import("tests/zig_build_graph/txm_module_object.z
 pub const txm_module_target = @import("tests/zig_build_graph/txm_module_target.zig");
 pub const txm_module_check = @import("tests/zig_build_graph/txm_module_check.zig");
 pub const m85_threadx_modules = @import("tests/zig_build_graph/m85_threadx_modules.zig");
+pub const m85_txm_manager = @import("tests/zig_build_graph/m85_txm_manager.zig");
 pub const m85_shared_grant = @import("port/threadx/src/cortex_m85_modules/shared_grant.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
