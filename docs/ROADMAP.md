@@ -737,7 +737,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 24 p 1164 (AGTCR/MR1/MR2/AGT)
 [x] Unit tests -- tests/misc/src/test_ra8_agt.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 24 register notes in libs/ra8_hal/src/ra8_agt.c
+[x] HUM cross-ref -- all Ch 24 register notes in libs/ra8_hal/src/internal/agt.zig
 [x] Doxygen -- full file + member coverage
 ```
 
