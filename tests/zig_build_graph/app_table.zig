@@ -501,7 +501,6 @@ pub const cross_apps = [_]CrossApp{
                 "libs/ra8_hal/src/ra8_usb_xfer.c",
                 "libs/ra8_hal/src/ra8_usb_irq.c",
                 "libs/ra8_hal/src/ra8_usb_host_ctrl.c",
-                "libs/ra8_hal/src/ra8_usb_host_bulk.c",
                 "libs/ra8_hal/src/ra8_mstp.c",
             },
             // RA8_PERIPH_NS_ALIAS routes ra8_usb/ra8_mstp at the IDAU
