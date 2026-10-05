@@ -2,7 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the start-up area and configuration-set write moved out of
-//! ra8_flash_config.c (RA8FW-808). Words are in internal/flash_cfgset.zig.
+//! ra8_flash_config.c (RA8FW-808) and the extra-MRAM write / erase built
+//! on it (RA8FW-810). Words are in internal/flash_cfgset.zig.
 
 const common = @import("abi_common.zig");
 const rt = @import("flash_rt.zig");
@@ -57,4 +58,26 @@ export fn ra8_flash_config_set_write(target_addr: u32, words: ?[*]const u16) u16
     if (err != ok) return err;
     if (read32(cfg.reg(cfg.off_mstatr)) & cfg.mstatr_any_err != 0) return common.k_ra8_err_hw_error;
     return ok;
+}
+
+export fn ra8_flash_extra_mram_write(mram_addr: u32, src: ?[*]const u8, len: u32) u16 {
+    if (!rt.present(src, "src must not be nullptr")) return common.k_ra8_err_null_ptr;
+    if (!cfg.writeOk(mram_addr, len)) return common.k_ra8_err_invalid_arg;
+    var err = ra8_flash_enter_pe_mode();
+    if (err != ok) return err;
+    const bytes = src.?[0..len];
+    var done: u32 = 0;
+    while (done < len) : (done += cfg.set_bytes) {
+        const words = cfg.packWords(bytes, done);
+        err = ra8_flash_config_set_write(mram_addr + done, &words);
+        if (err != ok) break;
+    }
+    const exit_err = ra8_flash_exit_pe_mode();
+    return if (err != ok) err else exit_err;
+}
+
+export fn ra8_flash_extra_mram_erase(mram_addr: u32) u16 {
+    if (mram_addr & (cfg.page_bytes - 1) != 0) return common.k_ra8_err_invalid_arg;
+    const ones = [_]u8{0xFF} ** cfg.page_bytes;
+    return ra8_flash_extra_mram_write(mram_addr, &ones, cfg.page_bytes);
 }

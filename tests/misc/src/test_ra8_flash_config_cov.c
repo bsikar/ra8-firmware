@@ -3,7 +3,8 @@
  * @brief Coverage-completion tests for the flash ARC counters (libs/ra8_hal/src/flash_arc_abi.zig, moved from ra8_flash_config.c by RA8FW-802).
  *
  * @details
- * ra8_flash_config.c is exercised broadly by test_ra8_flash.c, but the
+ * The flash configuration ABI (now flash_cfgset_abi.zig, flash_ctl_abi.zig
+ * and flash_arc_abi.zig) is exercised broadly by test_ra8_flash.c, but the
  * anti-rollback-counter (ARC) read / increment paths were left
  * uncovered on the host. The reason is memory topology: the ARCCS,
  * ARC_SEC and ARC_NSEC counter pages live at ``0x02E17932`` and
@@ -15,7 +16,7 @@
  * This file backs those two counter pages itself with a ``MAP_FIXED``
  * mmap in a module constructor (exactly the mechanism ``ra8_fake_mmap``
  * uses for the windows it does own), then drives the *real*
- * ra8_flash_config.c code with seeded register / counter contents and
+ * flash configuration code with seeded register / counter contents and
  * injected error bits. No statements are split; nothing is excluded.
  *
  * Two invariant legs stay out of reach on the host and are not chased:

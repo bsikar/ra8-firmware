@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Tests for internal/flash_cfgset.zig (RA8FW-808).
+//! Tests for internal/flash_cfgset.zig (RA8FW-808, RA8FW-810).
 
 const std = @import("std");
 const cfg = @import("flash_cfgset");
@@ -46,4 +46,31 @@ test "MSUASMON decodes BTFLG bit 31 and FSPR bit 15" {
     const none = cfg.startupFlags(0x7FFF7FFF);
     try expectEqual(@as(u8, 0), none.btflg);
     try expectEqual(@as(u8, 0), none.fspr);
+}
+
+test "extra-MRAM write accepts 1..32 bytes inside one page below the lock" {
+    try expectEqual(true, cfg.writeOk(0x02E07600, 32));
+    try expectEqual(true, cfg.writeOk(0x02E07610, 16));
+    try expectEqual(true, cfg.writeOk(0x02E176E0, 32));
+    try expectEqual(false, cfg.writeOk(0x02E07600, 0));
+    try expectEqual(false, cfg.writeOk(0x02E07600, 33));
+    try expectEqual(false, cfg.writeOk(0x02E075E0, 32));
+    try expectEqual(false, cfg.writeOk(0x02E17700, 1));
+    try expectEqual(false, cfg.writeOk(0x02E07610, 32));
+}
+
+test "packWords packs little-endian halfwords and pads past len" {
+    const src = [_]u8{ 0x11, 0x22, 0x33 };
+    const w = cfg.packWords(&src, 0);
+    try expectEqual(@as(u16, 0x2211), w[0]);
+    try expectEqual(@as(u16, 0xFF33), w[1]);
+    for (w[2..]) |x| try expectEqual(@as(u16, 0xFFFF), x);
+}
+
+test "packWords takes the second config set from offset 16" {
+    var src: [32]u8 = undefined;
+    for (&src, 0..) |*b, i| b.* = @intCast(i);
+    const w = cfg.packWords(&src, cfg.set_bytes);
+    try expectEqual(@as(u16, 0x1110), w[0]);
+    try expectEqual(@as(u16, 0x1F1E), w[7]);
 }
