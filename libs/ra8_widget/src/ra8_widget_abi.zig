@@ -34,6 +34,9 @@ pub const segmented = @import("widget_segmented_abi.zig");
 /// The progress-bar leaf widget: `ra8_widget_progress_bar_vtable` / `_init`.
 pub const progress_bar = @import("widget_progress_bar_abi.zig");
 
+/// The signed 13-cell equalizer level bar.
+pub const level_bar = @import("widget_level_bar_abi.zig");
+
 /// The status-bar leaf widget: `ra8_widget_status_bar_vtable` / `_init`.
 pub const status_bar = @import("widget_status_bar_abi.zig");
 
@@ -79,6 +82,7 @@ comptime {
     _ = toggle;
     _ = segmented;
     _ = progress_bar;
+    _ = level_bar;
     _ = status_bar;
     _ = toolbar;
     _ = keyboard;
