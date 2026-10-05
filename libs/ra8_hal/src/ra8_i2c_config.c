@@ -1,6 +1,6 @@
 /**
  * @file ra8_i2c_config.c
- * @brief I2C Bus Interface (IIC) bring-up, clock and error-status plane
+ * @brief I2C Bus Interface (IIC) bring-up and clock plane
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
@@ -9,8 +9,9 @@
  * Configuration-plane half of the RA8D2 RIIC polling driver, split out of
  * ``ra8_i2c.c`` to keep each translation unit under the file-size cap. Owns
  * the init / deinit / bit-rate sequence (HUM Ch 39.3.2 "Initial Settings"
- * p 2395), the runtime clock re-program (``ra8_i2c_set_clock``) and the
- * error-status helpers (``ra8_i2c_get_errors`` / ``ra8_i2c_clear_errors``).
+ * p 2395) and the runtime clock re-program (``ra8_i2c_set_clock``). The
+ * error-status helpers (``ra8_i2c_get_errors`` / ``ra8_i2c_clear_errors``)
+ * moved to ``i2c_status_abi.zig`` (RA8FW-694).
  *
  * The data-transfer plane (start / write / read / stop / scan) lives in
  * ``ra8_i2c.c``. Both translation units share ``s_i2c_state`` and the log
@@ -205,41 +206,6 @@ RA8_INTERNAL static ra8_err_t internal_i2c_bitrate(uint32_t bus_hz,
   return k_ra8_ok;
 }
 
-/**
- * @brief Decode latched ICSR2 error bits into a ``k_ra8_i2c_err_*`` mask.
- *
- * @details
- * Tests the AL, NACKF and TMOF flags independently and ORs the matching
- * ``k_ra8_i2c_err_*`` bit into the result so a caller sees every latched
- * fault in a single mask.
- *
- * @param[in] icsr2 Snapshot of ICSR2.
- * @return OR of ``k_ra8_i2c_err_*`` bits.
- * @retval k_ra8_i2c_err_none No fault bit set.
- *
- * @pre None.
- * @pre None.
- * @post No state mutated.
- * @post Return depends solely on the input snapshot.
- * @note Thread safety: pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_i2c_decode_errors(uint8_t icsr2)
-{
-  uint8_t mask = (uint8_t)k_ra8_i2c_err_none;
-  if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_al) != 0U) {
-    mask |= (uint8_t)k_ra8_i2c_err_arb_lost;
-  }
-  if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) != 0U) {
-    mask |= (uint8_t)k_ra8_i2c_err_nack;
-  }
-  /* TMOF lives in ICSR2 bit 0; reuse the timeout mask via the position. */
-  if ((icsr2 & (uint8_t)(1U << (uint8_t)k_ra8_i2c_icsr2_tmof_pos)) != 0U) {
-    mask |= (uint8_t)k_ra8_i2c_err_timeout;
-  }
-  return mask;
-}
-
 /* =============================================================================
  * Init / deinit -- mirrors HUM Ch 39.3.2 "Initial Settings" p 2395.
  * =============================================================================
@@ -370,38 +336,5 @@ ra8_err_t ra8_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
   reg->ICBRL = brl;
   /* HUM Ch 39.2.16 "ICBRH : I2C Bus Bit Rate High-Level Register" p 2392 */
   reg->ICBRH = brh;
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Status helpers.
- * =============================================================================
- */
-
-ra8_err_t ra8_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, g_i2c_tag, "i2c_get_errors: out_mask");
-  volatile const r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  *out_mask = internal_i2c_decode_errors(reg->ICSR2);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i2c_clear_errors(uint8_t channel)
-{
-  volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  enum : uint8_t {
-    k_ra8_i2c_err_clear_mask =
-      ((uint8_t)k_ra8_i2c_msk_icsr2_al | (uint8_t)k_ra8_i2c_msk_icsr2_nackf |
-       (uint8_t)(1U << (uint8_t)k_ra8_i2c_icsr2_tmof_pos)), /**< RA8 I2C error clear mask. */
-  };
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_err_clear_mask);
   return k_ra8_ok;
 }
