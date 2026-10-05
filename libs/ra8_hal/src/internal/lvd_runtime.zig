@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Voltage-monitor runtime controls (RA8FW-739), ported from
-//! ra8_lvd_runtime.c. Registers and the ra8_lvd.c channel-map helpers are
+//! ra8_lvd_runtime.c. Registers and the lvd_abi.zig channel-map helpers are
 //! reached through an `lvd` ops value so host tests can stand in for the
 //! hardware.
 

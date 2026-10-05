@@ -67,7 +67,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | SRAM control    | `0x40002000`  | SRAM register window                                  | `ra8_sram.c`                              |
 | SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `internal/sdramc.zig`                            |
 | ICU             | `0x40006000`  | Interrupt Controller Unit                            | `internal/icu.zig`                               |
-| CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `ra8_lvd.c`, `ra8_sram.c`                  |
+| CPSCU           | `0x40008000`  | Secure security control (LVD/SRAM CPSCU window)      | `lvd_events.zig`, `ra8_sram.c`             |
 | LPM SYSC alias  | `0x4001E000`  | SYSC base (also used by LVD, BKUP, RESET, VREG)      | `lpm_abi.zig`, `pwr.zig`                   |
 | BKUP / VBATT    | `0x4001E000`  | Battery backup, shares SYSC window                   | `internal/bkup.zig`                              |
 | SYSTEM (SYSC)   | `0x4001E000`  | R_SYSTEM register block                              | `pwr.zig`, `reset_abi.zig`                 |

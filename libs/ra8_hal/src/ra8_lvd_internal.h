@@ -31,10 +31,10 @@ extern "C" {
  * Cross-TU channel-map sharing
  *
  * The ra8_lvd driver is split across multiple translation units
- * (ra8_lvd.c plus the Zig lvd_runtime / lvd_events units). The channel-map
+ * (src/lvd_abi.zig plus the Zig lvd_runtime / lvd_events units). The channel-map
  * descriptor, its index enum, the lookup table, and the handful of
  * register helpers below are referenced by more than one TU, so they
- * live here -- defined once in ra8_lvd.c, declared for every consumer.
+ * live here -- defined once in src/lvd_abi.zig, declared for every consumer.
  * =============================================================================
  */
 
@@ -74,7 +74,7 @@ typedef enum : uint8_t {
  * @brief Lookup table from ``ra8_lvd_map_idx_t`` to register offsets.
  *
  * @details
- * Defined once in ra8_lvd.c; declared here so the runtime / events
+ * Defined once in src/lvd_abi.zig; declared here so the runtime / events
  * translation units can read the same descriptor table.
  *
  * @note PRIVATE to the ra8_lvd driver TUs.
@@ -187,7 +187,7 @@ RA8_PRIV void priv_ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
  * @details
  * Returns true iff @p hysteresis equals the HVD code AND @p negate
  * equals the after-assert code.  Promoted from the inline compound
- * AND at libs/ra8_hal/src/ra8_lvd.c.
+ * AND at libs/ra8_hal/src/src/lvd_abi.zig.
  *
  * @param[in] hvd_val           Numeric value of @c k_ra8_lvd_hysteresis_hvd.
  * @param[in] after_assert_val  Numeric value of @c k_ra8_lvd_negate_after_assert.
@@ -224,7 +224,7 @@ RA8_PRIV bool priv_ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
  * @details
  * Returns true iff @p response equals the reset code OR equals the
  * reset-on-rise code.  Promoted from the inline compound OR at
- * libs/ra8_hal/src/ra8_lvd.c inside @c internal_compose_cr0.
+ * libs/ra8_hal/src/src/lvd_abi.zig inside @c internal_compose_cr0.
  *
  * @param[in] reset_val          Numeric value of @c k_ra8_lvd_response_reset.
  * @param[in] reset_on_rise_val  Numeric value of @c k_ra8_lvd_response_reset_on_rise.

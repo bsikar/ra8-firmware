@@ -203,7 +203,7 @@ typedef enum : uint8_t {
  * @details
  * cppcheck cannot see tests/ so it flags struct fields as unused;
  * each member is consumed in ``ra8_lvd_channel_init`` in
- * ``libs/ra8_hal/src/ra8_lvd.c``.
+ * ``libs/ra8_hal/src/internal/lvd.zig``.
  */
 typedef struct {
   ra8_lvd_pvdlvl_t     threshold;    /**< PVDLVL[4:0] encoding (see enum).         */
