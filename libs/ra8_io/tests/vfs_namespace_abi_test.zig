@@ -124,9 +124,6 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
 export fn ra8_io_stream_bind(_: *Stream, _: *const Iface, _: ?*anyopaque) c_int {
     return 0;
 }
-export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
-    return 0;
-}
 export fn ra8_usb_hmsc_read10(_: u8, _: u32, _: u16, _: ?[*]u8) c_int {
     return 0;
 }

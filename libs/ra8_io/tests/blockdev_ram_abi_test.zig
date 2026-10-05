@@ -243,11 +243,6 @@ export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
     return 0;
 }
 
-// The stream_blockdev unit in the same archive needs this to link; unused here.
-export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
-    return 0;
-}
-
 // ra8_io_vfs_namespace_abi.zig reaches these in ra8_io_vfs.c; unused here.
 export fn priv_ra8_io_vfs_streq(_: [*:0]const u8, _: [*:0]const u8) bool {
     return false;

@@ -20,6 +20,7 @@ pub const blockdev_sdhi = @import("ra8_io_blockdev_sdhi_abi.zig");
 pub const stream_blockdev = @import("ra8_io_stream_blockdev_abi.zig");
 pub const blockdev_sdspi = @import("ra8_io_blockdev_sdspi_abi.zig");
 pub const blockdev_ram = @import("ra8_io_blockdev_ram_abi.zig");
+pub const blockdev = @import("ra8_io_blockdev_abi.zig");
 pub const vfs_namespace = @import("ra8_io_vfs_namespace_abi.zig");
 
 comptime {
@@ -39,5 +40,6 @@ comptime {
     _ = stream_blockdev;
     _ = blockdev_sdspi;
     _ = blockdev_ram;
+    _ = blockdev;
     _ = vfs_namespace;
 }
