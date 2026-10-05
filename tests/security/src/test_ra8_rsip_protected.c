@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rsip_protected.c
- * @brief Unit tests for ra8_rsip_protected.c (RSIP wrapped-key crypto)
+ * @brief Unit tests for rsip_protected_abi.zig (RSIP wrapped-key crypto)
  *
  * @details
  * Mirrors the ``test_ra8_sce.c`` protected-side tests for the RSIP
