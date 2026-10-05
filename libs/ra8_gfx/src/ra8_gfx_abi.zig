@@ -26,6 +26,7 @@ const tone_impl = @import("internal/tone.zig");
 const dither_impl = @import("internal/dither.zig");
 const bind_impl = @import("internal/bind.zig");
 const font_abi = @import("ra8_gfx_font_abi.zig");
+const text_impl = @import("internal/text.zig");
 
 comptime {
     // An export in a non-root file only reaches the archive when the root
@@ -41,6 +42,9 @@ pub const tone = tone_impl;
 
 /// The dither's own pure half, re-exported for the same reason.
 pub const dither = dither_impl;
+
+/// Face-aware text metrics and rasterisation for the standalone text tests.
+pub const text_renderer = text_impl;
 
 /// The lifecycle's own pure half, re-exported for the same reason.
 pub const bind = bind_impl;
@@ -609,6 +613,48 @@ pub export fn ra8_gfx_text_out(
 }
 
 /// `ra8_gfx_text_size`
+/// Plotter adapted to the pure Literata atlas renderer.
+fn textPixel(_: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
+    priv_gfx_text_plot(x, y, color);
+}
+
+/// ra8_gfx_text_out_face
+pub export fn ra8_gfx_text_out_face(
+    x: i32,
+    y: i32,
+    str: ?[*:0]const u8,
+    face: u8,
+    fg_color: u32,
+    bg_color: u32,
+) callconv(.c) u16 {
+    const text_value = str orelse return impl.err.null_ptr;
+    if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
+    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+
+    if (family == .sans) {
+        return ra8_gfx_text_out(x, y, text_value, &font_abi.ra8_gfx_font_8x16, fg_color, bg_color);
+    }
+    text_impl.drawSerif(text_value, x, y, fg_color, bg_color, null, textPixel);
+    return impl.err.ok;
+}
+
+/// ra8_gfx_text_size_face
+pub export fn ra8_gfx_text_size_face(
+    str: ?[*:0]const u8,
+    face: u8,
+    out_w: ?*u32,
+    out_h: ?*u32,
+) callconv(.c) u16 {
+    const text_value = str orelse return impl.err.null_ptr;
+    const width = out_w orelse return impl.err.null_ptr;
+    const height = out_h orelse return impl.err.null_ptr;
+    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+    const extent = text_impl.measure(text_value, family);
+    width.* = extent.width;
+    height.* = extent.height;
+    return impl.err.ok;
+}
+
 pub export fn ra8_gfx_text_size(
     str: ?[*:0]const u8,
     font: ?*const impl.Font,

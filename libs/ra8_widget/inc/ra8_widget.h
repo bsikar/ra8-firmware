@@ -584,6 +584,15 @@ const ra8_widget_vtable_t* ra8_widget_panel_vtable(void);
  */
 
 /**
+ * @enum ra8_widget_text_face_t
+ * @brief Text family selected by a text-bearing widget.
+ */
+typedef enum : uint8_t {
+  k_ra8_widget_text_face_sans  = 0U, /**< Sans UI text (default). */
+  k_ra8_widget_text_face_serif = 1U, /**< Serif reading text.      */
+} ra8_widget_text_face_t;
+
+/**
  * @struct ra8_widget_paint_t
  * @brief Drawing backend the concrete leaf widgets paint through (a DI seam).
  *
@@ -624,6 +633,20 @@ typedef struct ra8_widget_paint {
   void (*draw_text)(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg);
   /** @brief Measure a string's pixel size; NULL disables centre/right align. */
   void (*text_size)(void* user, const char* str, int32_t* out_w, int32_t* out_h);
+  /** @brief Optional face-aware text draw callback (appended after the legacy ABI). */
+  void (*draw_text_face)(void*                  user,
+                         int32_t                x,
+                         int32_t                y,
+                         const char*            str,
+                         ra8_widget_text_face_t face,
+                         uint32_t               fg,
+                         uint32_t               bg);
+  /** @brief Optional matching measure callback; paired with draw_text_face. */
+  void (*text_size_face)(void*                  user,
+                         const char*            str,
+                         ra8_widget_text_face_t face,
+                         int32_t*               out_w,
+                         int32_t*               out_h);
 } ra8_widget_paint_t;
 
 /**
@@ -657,13 +680,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct ra8_widget_label {
-  const ra8_widget_paint_t* paint;    /**< Draw backend (NULL -> draws nothing).   */
-  const char*               text;     /**< NUL-terminated ASCII (NULL -> bg only). */
-  uint32_t                  fg;       /**< Text colour, 0xRRGGBB.                  */
-  uint32_t                  bg;       /**< Background fill colour, 0xRRGGBB.       */
-  int16_t                   pad;      /**< Inner text inset, pixels.               */
-  ra8_widget_align_t        align;    /**< Horizontal text alignment.              */
-  uint8_t                   reserved; /**< Padding to a 4-byte boundary.           */
+  const ra8_widget_paint_t* paint; /**< Draw backend (NULL -> draws nothing).   */
+  const char*               text;  /**< NUL-terminated UTF-8 (NULL -> bg only). */
+  uint32_t                  fg;    /**< Text colour, 0xRRGGBB.                  */
+  uint32_t                  bg;    /**< Background fill colour, 0xRRGGBB.       */
+  int16_t                   pad;   /**< Inner text inset, pixels.               */
+  ra8_widget_align_t        align; /**< Horizontal text alignment.              */
+  ra8_widget_text_face_t    face;  /**< Sans by default; serif for reading text. */
 } ra8_widget_label_t;
 
 /**

@@ -3350,6 +3350,16 @@
           "ownership": "measures a caller-owned string and writes the two caller-owned extent words"
         },
         {
+          "name": "ra8_gfx_text_out_face",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "renders a caller-owned UTF-8 string with the selected built-in face into the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_text_size_face",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "measures a caller-owned UTF-8 string with the selected built-in face and writes caller-owned extent words"
+        },
+        {
           "name": "ra8_gfx_tone_lut_validate",
           "calling_context": "task-safe-reentrant",
           "ownership": "reads the caller's curve and retains no reference to it"

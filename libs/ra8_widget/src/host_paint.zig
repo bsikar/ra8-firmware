@@ -5,6 +5,7 @@
 //! per pixel; PPM output expands each grey sample to RGB for broad viewer support.
 
 const std = @import("std");
+const text = @import("text");
 
 pub const Canvas = struct {
     width: usize,
@@ -70,69 +71,32 @@ pub const Canvas = struct {
         }
     }
 
-    fn glyph(ch: u8) [5]u8 {
-        const upper = std.ascii.toUpper(ch);
-        return switch (upper) {
-            65 => .{ 14, 17, 17, 31, 17 },
-            66 => .{ 30, 17, 30, 17, 30 },
-            67 => .{ 14, 17, 16, 17, 14 },
-            68 => .{ 30, 17, 17, 17, 30 },
-            69 => .{ 31, 16, 30, 16, 31 },
-            70 => .{ 31, 16, 30, 16, 16 },
-            71 => .{ 14, 17, 23, 17, 15 },
-            72 => .{ 17, 17, 31, 17, 17 },
-            73 => .{ 14, 4, 4, 4, 14 },
-            74 => .{ 7, 2, 2, 18, 12 },
-            75 => .{ 17, 18, 28, 18, 17 },
-            76 => .{ 16, 16, 16, 16, 31 },
-            77 => .{ 17, 27, 21, 17, 17 },
-            78 => .{ 17, 25, 21, 19, 17 },
-            79 => .{ 14, 17, 17, 17, 14 },
-            80 => .{ 30, 17, 30, 16, 16 },
-            81 => .{ 14, 17, 17, 19, 15 },
-            82 => .{ 30, 17, 30, 18, 17 },
-            83 => .{ 15, 16, 14, 1, 30 },
-            84 => .{ 31, 4, 4, 4, 4 },
-            85 => .{ 17, 17, 17, 17, 14 },
-            86 => .{ 17, 17, 17, 10, 4 },
-            87 => .{ 17, 17, 21, 27, 17 },
-            88 => .{ 17, 10, 4, 10, 17 },
-            89 => .{ 17, 10, 4, 4, 4 },
-            90 => .{ 31, 2, 4, 8, 31 },
-            48 => .{ 14, 17, 19, 17, 14 },
-            49 => .{ 4, 12, 4, 4, 14 },
-            50 => .{ 14, 17, 2, 4, 31 },
-            51 => .{ 30, 1, 14, 1, 30 },
-            52 => .{ 18, 18, 31, 2, 2 },
-            53 => .{ 31, 16, 30, 1, 30 },
-            54 => .{ 14, 16, 30, 17, 14 },
-            55 => .{ 31, 1, 2, 4, 4 },
-            56 => .{ 14, 17, 14, 17, 14 },
-            57 => .{ 14, 17, 15, 1, 14 },
-            45 => .{ 0, 0, 31, 0, 0 },
-            46 => .{ 0, 0, 0, 0, 4 },
-            else => .{ 0, 0, 0, 0, 0 },
-        };
-    }
-    pub fn drawText(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, fg: u32, _: u32) callconv(.c) void {
+    fn putPixel(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
         const self: *Canvas = @ptrCast(@alignCast(user orelse return));
-        const text = std.mem.span(str);
-        const value = shade(fg);
-        for (text, 0..) |ch, index| {
-            if (ch == 32) continue;
-            const columns = glyph(ch);
-            for (columns, 0..) |row, cy| {
-                for (0..5) |cx| {
-                    if ((row & (@as(u8, 1) << @intCast(4 - cx))) != 0) {
-                        self.set(x + @as(i32, @intCast(index * 6 + cx)), y + @as(i32, @intCast(cy)), value);
-                    }
-                }
-            }
+        self.set(x, y, shade(color));
+    }
+
+    pub fn drawText(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32) callconv(.c) void {
+        text.drawSans(str, x, y, fg, bg, user, putPixel);
+    }
+
+    pub fn drawTextFace(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, face: u8, fg: u32, bg: u32) callconv(.c) void {
+        if (face == 1) {
+            text.drawSerif(str, x, y, fg, bg, user, putPixel);
+        } else {
+            text.drawSans(str, x, y, fg, bg, user, putPixel);
         }
     }
 
     pub fn textSize(_: ?*anyopaque, str: [*:0]const u8, out_w: *i32, out_h: *i32) callconv(.c) void {
-        out_w.* = @intCast(std.mem.span(str).len * 6);
-        out_h.* = 5;
+        const extent = text.measure(str, .sans);
+        out_w.* = @intCast(extent.width);
+        out_h.* = @intCast(extent.height);
+    }
+
+    pub fn textSizeFace(_: ?*anyopaque, str: [*:0]const u8, face: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+        const extent = text.measure(str, if (face == 1) .serif else .sans);
+        out_w.* = @intCast(extent.width);
+        out_h.* = @intCast(extent.height);
     }
 };

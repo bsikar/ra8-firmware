@@ -110,6 +110,8 @@ fn drawKey(kbd: *const Keyboard, backend: *const Paint, info: *const KeyInfo) vo
         text,
         geometry.no_pad,
         .center,
+        .sans,
+        false,
         &pen_x,
         &pen_y,
     );

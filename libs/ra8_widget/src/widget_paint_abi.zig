@@ -14,6 +14,8 @@ const paint = @import("internal/paint.zig");
 pub const Rect = paint.Rect;
 /// Alignment selector of the published ABI (`ra8_widget_align_t`).
 pub const Alignment = paint.Alignment;
+/// Text family selector of the published ra8_widget_text_face_t.
+pub const Face = enum(u8) { sans = 0, serif = 1 };
 
 /// Draw backend of the published ABI (`ra8_widget_paint_t`). Every member is
 /// optional because the C struct is zero-initialised by callers that bind only
@@ -42,6 +44,22 @@ pub const Paint = extern struct {
         out_w: *i32,
         out_h: *i32,
     ) callconv(.c) void,
+    draw_text_face: ?*const fn (
+        user: ?*anyopaque,
+        x: i32,
+        y: i32,
+        str: [*:0]const u8,
+        face: u8,
+        fg: u32,
+        bg: u32,
+    ) callconv(.c) void = null,
+    text_size_face: ?*const fn (
+        user: ?*anyopaque,
+        str: [*:0]const u8,
+        face: u8,
+        out_w: *i32,
+        out_h: *i32,
+    ) callconv(.c) void = null,
 };
 
 comptime {
@@ -54,12 +72,17 @@ comptime {
     if (@offsetOf(Rect, "w") != 8) @compileError("ra8_ui_rect_t w offset");
     if (@offsetOf(Rect, "h") != 12) @compileError("ra8_ui_rect_t h offset");
 
-    if (@sizeOf(Paint) != 4 * ptr) @compileError("ra8_widget_paint_t size");
+    if (@sizeOf(Paint) != 6 * ptr) @compileError("ra8_widget_paint_t size");
     if (@alignOf(Paint) != @alignOf(usize)) @compileError("ra8_widget_paint_t alignment");
     if (@offsetOf(Paint, "user") != 0) @compileError("ra8_widget_paint_t user offset");
     if (@offsetOf(Paint, "fill_rect") != ptr) @compileError("ra8_widget_paint_t fill_rect offset");
     if (@offsetOf(Paint, "draw_text") != 2 * ptr) @compileError("ra8_widget_paint_t draw_text offset");
     if (@offsetOf(Paint, "text_size") != 3 * ptr) @compileError("ra8_widget_paint_t text_size offset");
+    if (@offsetOf(Paint, "draw_text_face") != 4 * ptr) @compileError("ra8_widget_paint_t draw_text_face offset");
+    if (@offsetOf(Paint, "text_size_face") != 5 * ptr) @compileError("ra8_widget_paint_t text_size_face offset");
+    if (@sizeOf(Face) != 1 or @intFromEnum(Face.sans) != 0 or @intFromEnum(Face.serif) != 1) {
+        @compileError("ra8_widget_text_face_t representation");
+    }
 
     if (@sizeOf(Alignment) != 1) @compileError("ra8_widget_align_t width");
     if (@intFromEnum(Alignment.left) != 0) @compileError("ra8_widget_align_t left value");
@@ -79,6 +102,8 @@ pub export fn priv_widget_text_pos(
     text: [*:0]const u8,
     pad: i16,
     alignment: Alignment,
+    face: Face,
+    styled: bool,
     out_x: *i32,
     out_y: *i32,
 ) callconv(.c) void {
@@ -87,11 +112,15 @@ pub export fn priv_widget_text_pos(
     out_y.* = inset.y;
 
     if (alignment == .left) return;
-    const measure = backend.text_size orelse return;
-
     var text_w: i32 = 0;
     var text_h: i32 = 0;
-    measure(backend.user, text, &text_w, &text_h);
+    if (styled) {
+        const measure = backend.text_size_face orelse return;
+        measure(backend.user, text, @intFromEnum(face), &text_w, &text_h);
+    } else {
+        const measure = backend.text_size orelse return;
+        measure(backend.user, text, &text_w, &text_h);
+    }
 
     const pen = paint.measuredPen(rect.*, pad, alignment, text_w, text_h);
     out_x.* = pen.x;

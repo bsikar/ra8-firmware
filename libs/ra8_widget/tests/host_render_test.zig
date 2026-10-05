@@ -22,27 +22,34 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
     return x >= rect.x and y >= rect.y and x < rect.x + rect.w and y < rect.y + rect.h;
 }
 
-const expected = @embedFile("golden/label_button.ppm");
+const expected = @embedFile("golden/font_faces.ppm");
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };
 }
 
-test "host backend writes panel PPM matching label and button golden" {
+test "host backend renders selectable serif and sans faces into panel golden" {
     const allocator = std.testing.allocator;
     var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
     defer canvas.deinit(allocator);
-    const paint = abi.types.Paint{ .user = &canvas, .fill_rect = host.Canvas.fillRect, .draw_text = host.Canvas.drawText, .text_size = host.Canvas.textSize };
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+    };
 
-    var title = abi.label.Label{ .paint = &paint, .text = "RA8 READER", .fg = 0x111111, .bg = 0xffffff, .pad = 32, .alignment = .left, .reserved = 0 };
-    var title_widget = widget(.{ .x = 0, .y = 0, .w = 1072, .h = 120 });
+    var title = abi.label.Label{ .paint = &paint, .text = "A Quiet Reader", .fg = 0x111111, .bg = 0xffffff, .pad = 24, .alignment = .left, .face = .serif };
+    var title_widget = widget(.{ .x = 64, .y = 96, .w = 944, .h = 120 });
     try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&title_widget, &title));
     title_widget.vt.?.render.?(&title_widget);
 
-    var button = abi.button.Button{ .paint = &paint, .text = "OPEN BOOK", .on_press = null, .fg = 0xffffff, .face = 0x333333, .face_pressed = 0x555555, .border = 0x111111, .presses = 0, .pad = 12, .border_w = 3, .alignment = .center, .pressed = false, .reserved = 0 };
-    var button_widget = widget(.{ .x = 256, .y = 1280, .w = 560, .h = 100 });
-    try std.testing.expectEqual(abi.label.err.ok, abi.button.ra8_widget_button_init(&button_widget, &button));
-    button_widget.vt.?.render.?(&button_widget);
+    var subtitle = abi.label.Label{ .paint = &paint, .text = "Settings | Books | Listen", .fg = 0x222222, .bg = 0xffffff, .pad = 24, .alignment = .left, .face = .sans };
+    var subtitle_widget = widget(.{ .x = 64, .y = 264, .w = 944, .h = 120 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&subtitle_widget, &subtitle));
+    subtitle_widget.vt.?.render.?(&subtitle_widget);
 
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);

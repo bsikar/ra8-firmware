@@ -43,7 +43,7 @@ pub const Label = extern struct {
     bg: u32,
     pad: i16,
     alignment: Alignment,
-    reserved: u8,
+    face: paint_abi.Face,
 };
 
 comptime {
@@ -56,7 +56,7 @@ comptime {
     if (@offsetOf(Label, "bg") != 2 * ptr + 4) @compileError("ra8_widget_label_t bg offset");
     if (@offsetOf(Label, "pad") != 2 * ptr + 8) @compileError("ra8_widget_label_t pad offset");
     if (@offsetOf(Label, "alignment") != 2 * ptr + 10) @compileError("ra8_widget_label_t align offset");
-    if (@offsetOf(Label, "reserved") != 2 * ptr + 11) @compileError("ra8_widget_label_t reserved offset");
+    if (@offsetOf(Label, "face") != 2 * ptr + 11) @compileError("ra8_widget_label_t face offset");
 }
 
 /// Vtable `render`: fill the background, then draw the aligned text.
@@ -71,7 +71,9 @@ fn renderLabel(w: *Widget) callconv(.c) void {
     paint_abi.priv_widget_fill_box(backend, &w.rect, label.bg, label.bg, geometry.no_border);
 
     const text = label.text orelse return;
-    const draw_text = backend.draw_text orelse return;
+    const styled_draw = backend.draw_text_face;
+    const legacy_draw = backend.draw_text;
+    if (styled_draw == null and legacy_draw == null) return;
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
@@ -81,10 +83,16 @@ fn renderLabel(w: *Widget) callconv(.c) void {
         text,
         label.pad,
         label.alignment,
+        label.face,
+        styled_draw != null,
         &pen_x,
         &pen_y,
     );
-    draw_text(backend.user, pen_x, pen_y, text, label.fg, label.bg);
+    if (styled_draw) |draw| {
+        draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), label.fg, label.bg);
+    } else if (legacy_draw) |draw| {
+        draw(backend.user, pen_x, pen_y, text, label.fg, label.bg);
+    }
 }
 
 /// The single immutable vtable shared by every text label: display only, so

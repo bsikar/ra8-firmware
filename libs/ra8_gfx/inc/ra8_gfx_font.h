@@ -53,6 +53,20 @@ typedef struct {
 } ra8_gfx_font_t;
 
 /**
+ * @enum ra8_gfx_text_face_t
+ * @brief Text face selectable by the face-aware draw and measure calls.
+ *
+ * @details The sans face retains the bundled IBM 8x16 face. The serif face
+ *          uses the Literata Latin-1/common-punctuation atlas generated from
+ *          the project's licensed font asset. Unsupported Unicode scalars
+ *          draw as the question-mark replacement glyph.
+ */
+typedef enum : uint8_t {
+  k_ra8_gfx_text_face_sans  = 0U, /**< Bundled IBM 8x16 sans face. */
+  k_ra8_gfx_text_face_serif = 1U, /**< Literata regular serif face. */
+} ra8_gfx_text_face_t;
+
+/**
  * @brief Bundled 8x16 IBM PC VGA bitmap font, ASCII 0x20..0x7E.
  *
  * @details

@@ -104,6 +104,19 @@ pub fn build(b: *std.Build) void {
     font_test_module.addImport("font", font_module);
     const font_tests = b.addTest(.{ .root_module = font_test_module });
 
+    const text_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/text_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const text_implementation_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/text.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    text_test_module.addImport("implementation", text_implementation_module);
+    const text_tests = b.addTest(.{ .root_module = text_test_module });
+
     const bind_module = b.createModule(.{
         .root_source_file = b.path("src/internal/bind.zig"),
         .target = target,
@@ -122,6 +135,7 @@ pub fn build(b: *std.Build) void {
     const run_tone_tests = b.addRunArtifact(tone_tests);
     const run_dither_tests = b.addRunArtifact(dither_tests);
     const run_bind_tests = b.addRunArtifact(bind_tests);
+    const run_text_tests = b.addRunArtifact(text_tests);
     const run_font_tests = b.addRunArtifact(font_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_gfx tests");
@@ -129,6 +143,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tone_tests.step);
     test_step.dependOn(&run_dither_tests.step);
     test_step.dependOn(&run_bind_tests.step);
+    test_step.dependOn(&run_text_tests.step);
     test_step.dependOn(&run_font_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

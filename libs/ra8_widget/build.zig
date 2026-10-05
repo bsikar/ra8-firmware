@@ -95,11 +95,17 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const host_font_module = b.createModule(.{
+        .root_source_file = b.path("../ra8_gfx/src/internal/text.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const host_render_test_module = b.createModule(.{
         .root_source_file = b.path("tests/host_render_test.zig"),
         .target = target,
         .optimize = optimize,
     });
+    host_paint_module.addImport("text", host_font_module);
     host_render_test_module.addImport("host", host_paint_module);
     const host_render_abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_widget_abi.zig"),
