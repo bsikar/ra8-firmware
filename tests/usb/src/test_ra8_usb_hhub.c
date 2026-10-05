@@ -357,7 +357,7 @@ static void test_clear_port_feature_envelope(void)
  *
  * @par MC/DC:
  * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
- * libs/ra8_hal/src/ra8_usb_hhub.c.
+ * libs/ra8_hal/src/internal/usb_hhub.zig.
  *
  * Decision A (line 300, 2 conds): hhub_init speed gate
  *   `(speed != FS) && (speed != HS)` -- N+1=3.
