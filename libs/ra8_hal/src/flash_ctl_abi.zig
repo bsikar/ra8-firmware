@@ -2,14 +2,24 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the MRAM control calls moved out of ra8_flash_config.c
-//! (RA8FW-806). Register words are in internal/flash_ctl.zig.
+//! (RA8FW-806, RA8FW-807). Register words are in internal/flash_ctl.zig.
 
+const builtin = @import("builtin");
 const common = @import("abi_common.zig");
 const rt = @import("flash_rt.zig");
 const ctl = @import("internal/flash_ctl.zig");
 
 const ok = common.k_ra8_ok;
 const null_ptr = common.k_ra8_err_null_ptr;
+
+extern fn priv_ra8_flash_internal_set_prefetch(enable: bool) void;
+
+/// Host C tests arm failures through this seam, as the C waits do under
+/// UNIT_TEST. Freestanding builds never see it.
+const hosted = builtin.os.tag != .freestanding;
+const seam = struct {
+    extern fn ra8_fake_mmio_wait_eval(reg: *const volatile anyopaque, iter: u32, real_cond: bool) bool;
+};
 
 const Hw = struct {
     pub fn read8(_: Hw, a: usize) u8 {
@@ -26,6 +36,9 @@ const Hw = struct {
     }
     pub fn write16(_: Hw, a: usize, v: u16) void {
         @as(*volatile u16, @ptrFromInt(a)).* = v;
+    }
+    pub fn write32(_: Hw, a: usize, v: u32) void {
+        @as(*volatile u32, @ptrFromInt(a)).* = v;
     }
 };
 
@@ -87,5 +100,27 @@ export fn ra8_flash_get_update_status(busy: ?*u8, done: ?*u8, err: ?*u8) u16 {
     busy.?.* = s.busy;
     done.?.* = s.done;
     err.?.* = s.err;
+    return ok;
+}
+
+export fn ra8_flash_msuinitr_kick() u16 {
+    const reg: *volatile u16 = @ptrFromInt(ctl.reg(ctl.off_msuinitr));
+    reg.* = ctl.msuinitr_full_init;
+    var i: u32 = 0;
+    while (i < ctl.pe_spin_limit) : (i += 1) {
+        const cond = reg.* & ctl.msuinitr_suinit == 0;
+        const done = if (hosted) seam.ra8_fake_mmio_wait_eval(reg, i, cond) else cond;
+        if (done) return ok;
+    }
+    return common.k_ra8_err_hw_timeout;
+}
+
+export fn ra8_flash_update_clock_freq(mrcfreq_mhz: u16, mrefreq_mhz: u8) u16 {
+    if (!ctl.freqOk(mrcfreq_mhz, mrefreq_mhz)) return common.k_ra8_err_invalid_arg;
+    const prefetch_was = rt.g_flash_rt.prefetch_on;
+    priv_ra8_flash_internal_set_prefetch(false);
+    hw.write32(ctl.reg(ctl.off_mrcfreq), ctl.mrcfreqWord(mrcfreq_mhz));
+    hw.write32(ctl.reg(ctl.off_mrefreq), ctl.mrefreqWord(mrefreq_mhz));
+    priv_ra8_flash_internal_set_prefetch(prefetch_was);
     return ok;
 }

@@ -17,9 +17,9 @@
  *    extra-MRAM (data flash) write / erase (HUM Ch 59.4.4 p 3550 + HUM
  *    Ch 7 p 278..299 for OFS layout).
  *  - Anti-rollback counters moved to flash_arc_abi.zig (RA8FW-802).
- *  - MSUINITR kick and clock-frequency update (HUM Ch 59 p 3551..3572).
- *    Zeroize, MSAR, ECC controls, error addresses and the update
- *    transfer moved to flash_ctl_abi.zig (RA8FW-806).
+ *  - Zeroize, MSAR, ECC controls, error addresses, the update transfer
+ *    (RA8FW-806), the MSUINITR kick and the clock-frequency update
+ *    (RA8FW-807) live in flash_ctl_abi.zig.
  *
  * Cross-TU shared runtime state, the shared constant blocks, and the
  * promoted low-level MACI / prefetch / wait helpers live in
@@ -183,60 +183,6 @@ ra8_err_t ra8_flash_config_set_write(uint32_t target_addr, const uint16_t* words
 
 /* Anti-rollback counters (ra8_flash_arc_increment / ra8_flash_arc_read)
  * live in libs/ra8_hal/src/flash_arc_abi.zig (RA8FW-802). */
-
-/* =============================================================================
- * Public API: MSUINITR kick, clock-frequency update
- * =============================================================================
- */
-
-ra8_err_t ra8_flash_msuinitr_kick(void)
-{
-  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3572 */
-  *ra8_mram_reg16(k_ra8_mram_off_msuinitr) = k_ra8_msuinitr_full_init;
-
-  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3572 */
-    const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_msuinitr);
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* Host MMIO fault seam: on real HW the sequencer auto-clears
-     * SUINIT once the init completes; host RAM cannot, so the seam
-     * owns the loop-exit decision (first-poll success unless a test
-     * arms a fault to drive the retry / timeout legs). */
-    if (ra8_fake_mmio_wait_eval(ra8_mram_reg16(k_ra8_mram_off_msuinitr),
-                                i,
-                                ((v & k_ra8_msuinitr_mask_suinit) == 0U))) {
-      return k_ra8_ok;
-    }
-#else
-    if ((v & k_ra8_msuinitr_mask_suinit) == 0U) {
-      return k_ra8_ok;
-    }
-#endif
-  }
-  return k_ra8_err_hw_timeout;
-}
-
-ra8_err_t ra8_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz)
-{
-  if (mrcfreq_mhz > (uint16_t)k_ra8_flash_max_mrcfreq_mhz) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (mrefreq_mhz > (uint8_t)k_ra8_flash_max_mrefreq_mhz) {
-    return k_ra8_err_invalid_arg;
-  }
-  const bool prefetch_was = g_flash_rt.prefetch_on;
-  priv_ra8_flash_internal_set_prefetch(false);
-
-  /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
-  *ra8_mram_reg32(k_ra8_mram_off_mrcfreq) =
-    (k_ra8_flash_mrcfreq_key << k_ra8_flash_freq_key_shift) | (uint32_t)mrcfreq_mhz;
-  /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
-  *ra8_mram_reg32(k_ra8_mram_off_mrefreq) =
-    (k_ra8_flash_mrefreq_key << k_ra8_flash_freq_key_shift) | (uint32_t)mrefreq_mhz;
-
-  priv_ra8_flash_internal_set_prefetch(prefetch_was);
-  return k_ra8_ok;
-}
 
 /* =============================================================================
  * Public API: extra-MRAM (data flash) program / erase
