@@ -121,7 +121,7 @@ Cross-cutting design points:
 - Every driver returns `ra8_err_t` and propagates via `RA8_RETURN_ON_ERROR`.
 - Every driver consumes its peripheral base via the typed enum in
   the matching `ra8_<name>_regs.h` header (no magic numbers).
-- IRQ-bearing drivers register their handlers through `ra8_isr.c`, not
+- IRQ-bearing drivers register their handlers through `isr_abi.zig`, not
   by direct vector-table writes.
 - All `MSTPCRx` clear/set operations route through `ra8_mstp.c` so that
   the bit-position is declared once.
@@ -450,7 +450,7 @@ from the main loop only after `ra8_wdt_supervisor` confirms heartbeats.
 ### 8.3 IRQ priority assignment
 
 NVIC installation and priority validation are centralised in
-`libs/ra8_hal/src/ra8_isr.c` (REQ-DRV-040). The public contract and current
+`libs/ra8_hal/src/isr_abi.zig` (REQ-DRV-040). The public contract and current
 typed bounds (`k_ra8_isr_prio_max` and `k_ra8_isr_prio_default`) are in
 `libs/ra8_hal/inc/ra8_isr.h`; drivers provide the priority when they call the
 installation API. A source-class priority allocation table has not yet been
