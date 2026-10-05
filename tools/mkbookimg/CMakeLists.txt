@@ -32,6 +32,18 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
+# The library lock is Zig now (RA8FW-724): the ra8_fs*.c sources below no longer
+# define ra8_fs_set_lock or priv_lock_*, so link the ra8_fs archive beside them.
+if(NOT TARGET ra8_zig::ra8_fs)
+  include(${_repo}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_fs
+    ZIG_ROOT ${_repo}/libs/ra8_fs
+    LIBRARY_NAME ra8_fs
+  )
+endif()
+link_libraries(ra8_zig::ra8_fs)
+
 # ra8_fs is split across ra8_fs_fat*.c TUs (file-size gate); glob them so the
 # tool keeps linking as the library gains/renames TUs.
 file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)

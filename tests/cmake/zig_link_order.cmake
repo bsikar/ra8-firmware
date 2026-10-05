@@ -24,6 +24,7 @@ target_link_libraries(
          ra8_zig::ra8_board_ek_ra8d2
          ra8_zig::ra8_hal
          ra8_zig::ra8_io
+         ra8_zig::ra8_fs
          ra8_zig::ra8_usb_pal
          ra8_zig::ra8_keyboard
          ra8_zig::ra8_audio
@@ -75,6 +76,7 @@ link_libraries(
   ra8_zig::ra8_board_ek_ra8d2
   ra8_zig::ra8_hal
   ra8_zig::ra8_io
+  ra8_zig::ra8_fs
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio

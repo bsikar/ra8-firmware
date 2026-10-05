@@ -47,6 +47,8 @@ add_executable(
   test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/src/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
 )
 add_dependencies(test_ra8_fs_exfat ra8_exfat_fixture)
+# The library lock left ra8_fs_fat_lock.c for the ra8_fs archive (RA8FW-724).
+target_link_libraries(test_ra8_fs_exfat PRIVATE ra8_zig::ra8_fs)
 target_compile_options(test_ra8_fs_exfat PRIVATE -Wall -Wextra)
 target_include_directories(
   test_ra8_fs_exfat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/inc ${FW_ROOT}/libs/ra8_fs/inc

@@ -305,7 +305,7 @@ RA8_INTERNAL static void internal_count_cb(const char* name, uint8_t attr, uint6
  *
  * @par MC/DC:
  * Decision: `if (lock->acquire == nullptr || lock->release == nullptr)` in
- * `libs/ra8_fs/src/ra8_fs_fat_lock.c@ra8_fs_set_lock` (2 conditions). A
+ * `libs/ra8_fs/src/ra8_fs_lock_abi.zig@ra8_fs_set_lock` (2 conditions). A
  * half-filled binding must be refused outright: installing one would leave the
  * library able to take a lock it has no way to drop.
  * - V1: acquire=fake_acquire, release=fake_release -> A=F, B=F -> installed

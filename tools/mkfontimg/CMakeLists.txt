@@ -46,6 +46,18 @@ target_include_directories(
 # vendored SOUP is compiled quietly.
 target_compile_options(mkfontimg PRIVATE -Wall -Wextra -Werror)
 
+# The library lock is Zig now (RA8FW-724): the ra8_fs*.c sources below no longer
+# define ra8_fs_set_lock or priv_lock_*, so link the ra8_fs archive beside them.
+if(NOT TARGET ra8_zig::ra8_fs)
+  include(${_repo}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_fs
+    ZIG_ROOT ${_repo}/libs/ra8_fs
+    LIBRARY_NAME ra8_fs
+  )
+endif()
+target_link_libraries(mkfontimg PRIVATE ra8_zig::ra8_fs)
+
 include(CTest)
 if(BUILD_TESTING)
   add_test(NAME mkfontimg_integration COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh

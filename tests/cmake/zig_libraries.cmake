@@ -826,6 +826,16 @@ ra8_add_zig_library(
   ra8_io
 )
 
+# Partly migrated (RA8FW-724): the library lock, beside ra8_fs's remaining C.
+ra8_add_zig_library(
+  NAME
+  ra8_fs
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_fs
+  LIBRARY_NAME
+  ra8_fs
+)
+
 include(${CMAKE_CURRENT_LIST_DIR}/zig_link_order.cmake)
 
 # Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved
