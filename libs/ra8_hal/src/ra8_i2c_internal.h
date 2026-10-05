@@ -59,6 +59,26 @@ RA8_PRIV
 bool priv_ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz);
 
 /**
+ * @brief Solve ICMR1.CKS and the ICBRH / ICBRL fields for a bus rate.
+ *
+ * @details
+ * Defined in ``i2c_clock_abi.zig`` (RA8FW-695); ``ra8_i2c_init`` and
+ * ``ra8_i2c_set_clock`` both use it.
+ *
+ * @param[in]  bus_hz   Target SCL rate in Hz.
+ * @param[in]  pclkb_hz PCLKB in Hz.
+ * @param[out] out_cks  CKS[2:0] divider exponent.
+ * @param[out] out_brh  ICBRH value, reserved bits set.
+ * @param[out] out_brl  ICBRL value, reserved bits set.
+ * @return k_ra8_ok, k_ra8_err_null_ptr, or k_ra8_err_invalid_arg for a zero clock.
+ */
+ra8_err_t priv_ra8_i2c_internal_bitrate(uint32_t bus_hz,
+                                        uint32_t pclkb_hz,
+                                        uint8_t* out_cks,
+                                        uint8_t* out_brh,
+                                        uint8_t* out_brl);
+
+/**
  * @var g_i2c_tag
  * @brief Log tag shared by the I2C transfer and configuration planes.
  *
