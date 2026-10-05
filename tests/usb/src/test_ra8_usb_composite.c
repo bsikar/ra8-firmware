@@ -638,7 +638,7 @@ static void test_close_invokes_each_class_close(void)
  *
  * @par MC/DC:
  * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
- * libs/ra8_hal/src/ra8_usb_composite.c.
+ * libs/ra8_hal/src/usb_composite_abi.zig (logic in internal/usb_composite.zig).
  *
  * Decision A (line 338, 2 conds): composite_init speed gate
  *   `(speed != FS) && (speed != HS)` -- N+1=3.
