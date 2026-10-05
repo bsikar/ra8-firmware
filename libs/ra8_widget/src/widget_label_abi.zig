@@ -113,6 +113,9 @@ fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
         3 => .size_3,
         4 => .size_4,
         5 => .size_5,
+        6 => .body_38,
+        7 => .title_68,
+        8 => .clock_120,
         else => .size_3,
     };
 }

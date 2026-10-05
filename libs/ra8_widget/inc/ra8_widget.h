@@ -600,6 +600,9 @@ typedef enum : uint8_t {
   k_ra8_widget_text_size_3       = 3U,
   k_ra8_widget_text_size_4       = 4U,
   k_ra8_widget_text_size_5       = 5U,
+  k_ra8_widget_text_size_body_38  = 6U, /**< Large body text, 38 px. */
+  k_ra8_widget_text_size_title_68 = 7U, /**< Screen titles, 68 px. */
+  k_ra8_widget_text_size_clock_120 = 8U, /**< Clock digits, 120 px. */
 } ra8_widget_text_size_t;
 
 /**
@@ -720,7 +723,7 @@ typedef struct ra8_widget_label {
   ra8_widget_align_t        align;  /**< Horizontal text alignment.              */
   ra8_widget_text_face_t    face;   /**< Sans by default; serif for reading text. */
   ra8_widget_text_weight_t  weight; /**< Regular by default; bold for headings. */
-  ra8_widget_text_size_t    size;   /**< Reading size; zero defaults to size 3. */
+  ra8_widget_text_size_t    size;   /**< Reading or display size; zero defaults to size 3. */
 } ra8_widget_label_t;
 
 /**

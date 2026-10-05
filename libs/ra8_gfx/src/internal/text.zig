@@ -8,6 +8,7 @@
 const std = @import("std");
 const atlas = @import("font_literata.zig");
 const bitmap = @import("font_8x16.zig");
+const display_atlas = @import("font_display.zig");
 
 /// Font family selected by a text rendering call.
 pub const Face = enum(u8) {
@@ -187,6 +188,127 @@ pub fn measureScaledWeight(text: [*:0]const u8, face: Face, weight: Weight, size
         .width = @intCast((@as(u64, base.width) * numerator + 5) / 6),
         .height = @intCast((@as(u64, base.height) * numerator + 5) / 6),
     };
+}
+
+/// Measure a complete face, weight and size selection for widget style callbacks.
+pub fn measureStyle(text: [*:0]const u8, face: Face, weight: Weight, size: u8) Extent {
+    if (display_atlas.get(@intFromEnum(face), @intFromEnum(weight), size)) |selected| {
+        return measureDisplay(text, selected);
+    }
+    return measureScaledWeight(text, face, weight, size);
+}
+
+fn measureDisplay(text: [*:0]const u8, selected: display_atlas.Atlas) Extent {
+    var extent = Extent{ .width = 0, .height = @intCast(selected.ascent + selected.descent) };
+    var offset: usize = 0;
+    while (offset < max_bytes and text[offset] != 0) {
+        const decoded = decode(text, offset);
+        extent.width +|= @intCast(lookupDisplay(selected, decoded.codepoint).advance);
+        offset += decoded.byte_count;
+    }
+    return extent;
+}
+
+/// Draw face, weight and size selections without stretching the reading atlas.
+pub fn drawStyle(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    face: Face,
+    weight: Weight,
+    size: u8,
+    fg: u32,
+    bg: u32,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
+    if (display_atlas.get(@intFromEnum(face), @intFromEnum(weight), size)) |selected| {
+        drawDisplay(text, x, y, selected, fg, bg, user, put_pixel);
+        return;
+    }
+    drawScaledWeight(text, x, y, face, weight, size, fg, bg, user, put_pixel);
+}
+
+fn drawDisplay(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    selected: display_atlas.Atlas,
+    fg: u32,
+    bg: u32,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
+    const line_height = selected.ascent + selected.descent;
+    var pen_x = x;
+    var offset: usize = 0;
+    while (offset < max_bytes and text[offset] != 0) {
+        const decoded = decode(text, offset);
+        const glyph = lookupDisplay(selected, decoded.codepoint);
+        paintBackground(pen_x, y, glyph.advance, line_height, bg, user, put_pixel);
+        pen_x +%= glyph.advance;
+        offset += decoded.byte_count;
+    }
+
+    pen_x = x;
+    offset = 0;
+    while (offset < max_bytes and text[offset] != 0) {
+        const decoded = decode(text, offset);
+        const glyph = lookupDisplay(selected, decoded.codepoint);
+        paintDisplayGlyph(pen_x, y, selected, glyph, fg, bg, user, put_pixel);
+        pen_x +%= glyph.advance;
+        offset += decoded.byte_count;
+    }
+}
+
+fn lookupDisplay(selected: display_atlas.Atlas, codepoint: u32) display_atlas.Glyph {
+    return lookupDisplayExact(selected, codepoint) orelse lookupDisplayExact(selected, replacement_codepoint).?;
+}
+
+fn lookupDisplayExact(selected: display_atlas.Atlas, codepoint: u32) ?display_atlas.Glyph {
+    var low: usize = 0;
+    var high: usize = selected.glyph_count;
+    while (low < high) {
+        const middle = low + (high - low) / 2;
+        const current = selected.glyphAt(middle);
+        if (current.codepoint < codepoint) {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    if (low < selected.glyph_count and selected.glyphAt(low).codepoint == codepoint) return selected.glyphAt(low);
+    return null;
+}
+
+fn paintDisplayGlyph(
+    pen_x: i32,
+    line_y: i32,
+    selected: display_atlas.Atlas,
+    glyph: display_atlas.Glyph,
+    fg: u32,
+    bg: u32,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
+    const top = line_y +% selected.ascent +% glyph.top;
+    var row: usize = 0;
+    while (row < glyph.height) : (row += 1) {
+        var col: usize = 0;
+        while (col < glyph.width) : (col += 1) {
+            const index = glyph.offset + @as(u32, @intCast(row * glyph.width + col));
+            const bits = selected.coverageByte(index);
+            const shift: u3 = @intCast(6 - (index % 4) * 2);
+            const alpha = coverage_levels[@intCast((bits >> shift) & 3)];
+            if (alpha == 0) continue;
+            put_pixel(
+                user,
+                pen_x +% glyph.left +% @as(i32, @intCast(col)),
+                top +% @as(i32, @intCast(row)),
+                blend(fg, bg, alpha),
+            );
+        }
+    }
 }
 
 const ScaledSink = struct {

@@ -1,7 +1,7 @@
 # libs/ra8_fonts/
 
 The project's curated font assets for the rendering stack: Literata Regular,
-its SIL OFL 1.1 licence text, and a subset of the face.
+RA8UISans regular and bold, and their redistribution notices.
 
 Literata is an open serif family drawn for long-form on-screen reading, which
 is what the e-reader stack wants. The reflow engine rasterises its outlines at
@@ -16,5 +16,7 @@ committed: only the `.ttf` it is generated from, and the header declaring the
 symbols. Host reflow tests load these files straight off disk; on the target
 the bytes are either embedded or read from storage.
 
-The licence text ships beside the font because the OFL requires it. Provenance
-is catalogued in the SBOM and `THIRD_PARTY_LICENSES.md`.
+The font licences ship beside the assets. Display atlases are generated at their
+native 38, 68 and 120 px sizes by `scripts/gen/display_atlases.py`; its `--check`
+mode verifies the checked-in data against the source TTFs. Provenance and notices
+are catalogued in the SBOM and `THIRD_PARTY_LICENSES.md`.

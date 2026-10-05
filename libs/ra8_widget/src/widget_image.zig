@@ -5,7 +5,7 @@
 //! slice for the duration of render; no image decoding or allocation occurs here.
 
 const std = @import("std");
-const types = @import("widget_abi_types.zig");
+pub const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
 
 /// Scaling policy for an image placed in a destination rectangle.

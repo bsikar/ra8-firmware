@@ -19,7 +19,7 @@ pub const Face = enum(u8) { sans = 0, serif = 1 };
 /// Text stroke weight selector.
 pub const Weight = enum(u8) { regular = 0, bold = 1 };
 /// Reading size selector. Zero-initialized labels resolve to size three.
-pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5 };
+pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5, body_38 = 6, title_68 = 7, clock_120 = 8 };
 
 /// Draw backend of the published ABI (`ra8_widget_paint_t`). Every member is
 /// optional because the C struct is zero-initialised by callers that bind only
@@ -107,6 +107,7 @@ comptime {
     if (@offsetOf(Paint, "draw_text_style") != 6 * ptr) @compileError("ra8_widget_paint_t draw_text_style offset");
     if (@offsetOf(Paint, "text_size_style") != 7 * ptr) @compileError("ra8_widget_paint_t text_size_style offset");
     if (@sizeOf(Weight) != 1 or @intFromEnum(Weight.regular) != 0 or @intFromEnum(Weight.bold) != 1) @compileError("ra8_widget_text_weight_t representation");
+    if (@intFromEnum(TextSize.body_38) != 6 or @intFromEnum(TextSize.title_68) != 7 or @intFromEnum(TextSize.clock_120) != 8) @compileError("ra8_widget_text_size_t display representation");
     if (@sizeOf(Face) != 1 or @intFromEnum(Face.sans) != 0 or @intFromEnum(Face.serif) != 1) {
         @compileError("ra8_widget_text_face_t representation");
     }

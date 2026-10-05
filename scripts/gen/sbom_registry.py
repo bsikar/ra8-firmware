@@ -756,6 +756,32 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
+        key="fonts/RA8UISans",
+        name="DejaVu Sans (RA8 UI regular and bold raster sources)",
+        version="2.37",
+        ctype="data",
+        group="dejavu-fonts",
+        url="https://github.com/dejavu-fonts/dejavu-fonts",
+        path="libs/ra8_fonts/RA8UISans",
+        provenance=PROV_OPEN_ASSET,
+        description="Open sans source outlines rasterized into native-size UI display atlases.",
+        purl="pkg:github/dejavu-fonts/dejavu-fonts",
+        upstream_commit="0eda8a319c08835009849583cd090bb5b141ce25",
+        upstream_ref="version_2_37",
+        spdx="Bitstream-Vera",
+        license_file="libs/ra8_fonts/DejaVu-LICENSE.txt",
+        copyright="Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. DejaVu changes are in public domain.",
+        extra_notes=(
+            "The regular and bold DejaVu Sans TTF sources are renamed "
+            "RA8UISans-Regular.ttf and RA8UISans-Bold.ttf. The Bitstream Vera notice allows redistribution and "
+            "requires modified fonts to use names that do not contain Bitstream or Vera.",
+            "The 38 px and 68 px Latin-1 and the 120 px clock glyph atlases are "
+            "deterministically generated from these sources plus Literata using "
+            "scripts/gen/display_atlases.py; the generated tables are in "
+            "libs/ra8_gfx/src/internal/display_atlases/.",
+        ),
+    ),
+    Component(
         key="fonts/Literata",
         name="Literata (Literata-Regular.ttf)",
         version="3.103 (TTF name table)",
