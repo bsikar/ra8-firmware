@@ -8,7 +8,7 @@ const fs = @import("ra8_fs");
 const lock = fs.lock;
 
 comptime {
-    _ = @import("exfat_dir_fake.zig"); // C walkers the label unit links against
+    _ = @import("fs_walker_fake.zig"); // C walkers the ported units link against
 }
 
 var acquires: u32 = 0;

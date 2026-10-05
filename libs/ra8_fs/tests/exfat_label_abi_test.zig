@@ -8,16 +8,12 @@ const std = @import("std");
 const fs = @import("ra8_fs");
 const lbl = fs.exfat_label;
 
-const fake = @import("exfat_dir_fake.zig");
+const fake = @import("fs_walker_fake.zig");
 const dir = &fake.dir;
 const mount = fake.mount;
 
 fn reset() void {
-    for (dir) |*e| e.* = [_]u8{0} ** lbl.entry_bytes;
-    dir[0][0] = 0x81; // allocation bitmap
-    dir[1][0] = 0x82; // up-case table
-    fake.read_error = lbl.ok;
-    fake.written_index = null;
+    fake.reset(0);
 }
 
 fn getLabel(buf: []u8) ![]const u8 {
