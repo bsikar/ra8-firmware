@@ -4,8 +4,9 @@
 //! C ABI of inc/ra8_io_stream_blockdev.h (RA8FW-720): a stream sink that
 //! gathers bytes into one 512-byte sector and writes each full sector to a
 //! block device, zero-padding the last partial sector on flush. Replaces
-//! ra8_io_stream_blockdev.c, which is deleted. ra8_io_stream_bind and
-//! ra8_io_blockdev_write still live in C and are reached as externs.
+//! ra8_io_stream_blockdev.c, which is deleted. ra8_io_stream_bind still
+//! lives in C and ra8_io_blockdev_write in ra8_io_blockdev_abi.zig; both are
+//! reached as externs.
 
 const Stream = @import("ra8_io_log_abi.zig").Stream;
 const ram = @import("ra8_io_stream_ram_abi.zig");

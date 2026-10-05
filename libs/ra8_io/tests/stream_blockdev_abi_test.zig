@@ -1,9 +1,10 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The stream-over-block-device sink (RA8FW-720) against a fake
-//! ra8_io_blockdev_write: init validation, sector gathering across writes,
-//! a write error mid-stream, and zero-padded flush.
+//! The stream-over-block-device sink (RA8FW-720) writing through the real
+//! block-device front end (RA8FW-723) into a capturing backend: init
+//! validation, sector gathering across writes, a write error mid-stream, and
+//! zero-padded flush.
 
 const std = @import("std");
 const io = @import("ra8_io");
@@ -30,14 +31,21 @@ export fn ra8_io_stream_bind(_: *Stream, iface: *const Iface, context: ?*anyopaq
     bound_ctx = context;
     return 0;
 }
-export fn ra8_io_blockdev_write(_: *const anyopaque, lba: u32, count: u32, buf: [*]const u8) c_int {
+fn captureWrite(_: ?*anyopaque, lba: u32, count: u32, buf: ?[*]const u8) callconv(.c) c_int {
     writes += 1;
     if (fail_on_write == writes) return err_io;
     std.debug.assert(count == 1);
     last_lba = lba;
-    @memcpy(&last_sector, buf[0..512]);
+    @memcpy(&last_sector, buf.?[0..512]);
     return 0;
 }
+const capture_iface: io.blockdev.Iface = .{
+    .read = null,
+    .write = captureWrite,
+    .erase = null,
+    .get_caps = null,
+    .sync = null,
+};
 export fn ra8_usb_hmsc_read10(_: u8, _: u32, _: u16, _: ?[*]u8) c_int {
     return 0;
 }
@@ -117,7 +125,7 @@ export fn ra8_sdcard_get_capacity(_: *u32) c_int {
     return 0;
 }
 
-var fake_bd: u32 = 0;
+var fake_bd: io.blockdev.Device = .{ .iface = &capture_iface, .ctx = null };
 
 fn reset() void {
     errors_logged = 0;
