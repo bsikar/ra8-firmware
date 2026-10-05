@@ -101,7 +101,10 @@ def main() -> int:
 
     for size_name, (pixel_size, glyph_kind) in display_atlases.SIZES.items():
         cps = display_atlases.codepoints(glyph_kind)
-        for (face, weight), (font_path, stroke) in display_atlases.FONTS.items():
+        fonts = display_atlases.FONTS.items()
+        if glyph_kind == "reader":
+            fonts = ((key, value) for key, value in fonts if key[1] == "regular")
+        for (face, weight), (font_path, stroke) in fonts:
             name = f"{face}_{weight}_{size_name}.bin"
             v2 = display_atlases.make_atlas(font_path, pixel_size, cps, stroke)
             ascent, descent, expected_rows = expected_display(font_path, pixel_size, cps, stroke)

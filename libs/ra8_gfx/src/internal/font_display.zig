@@ -42,6 +42,22 @@ pub const Atlas = struct {
     }
 };
 
+const reader_30 = struct {
+    const serif_regular = @embedFile("display_atlases/serif_regular_reader_30.bin");
+    const sans_regular = @embedFile("display_atlases/sans_regular_reader_30.bin");
+};
+const reader_34 = struct {
+    const serif_regular = @embedFile("display_atlases/serif_regular_reader_34.bin");
+    const sans_regular = @embedFile("display_atlases/sans_regular_reader_34.bin");
+};
+const reader_44 = struct {
+    const serif_regular = @embedFile("display_atlases/serif_regular_reader_44.bin");
+    const sans_regular = @embedFile("display_atlases/sans_regular_reader_44.bin");
+};
+const reader_52 = struct {
+    const serif_regular = @embedFile("display_atlases/serif_regular_reader_52.bin");
+    const sans_regular = @embedFile("display_atlases/sans_regular_reader_52.bin");
+};
 const body = struct {
     const serif_regular = @embedFile("display_atlases/serif_regular_body.bin");
     const serif_bold = @embedFile("display_atlases/serif_bold_body.bin");
@@ -71,7 +87,11 @@ const ui_30 = struct {
 
 pub fn get(face: u8, weight: u8, size: u8) ?Atlas {
     const selected = switch (size) {
-        6 => select(body, face, weight),
+        1 => if (weight == 0) selectRegular(reader_30, face) else return null,
+        2 => if (weight == 0) selectRegular(reader_34, face) else return null,
+        0, 3, 6 => select(body, face, weight),
+        4 => if (weight == 0) selectRegular(reader_44, face) else return null,
+        5 => if (weight == 0) selectRegular(reader_52, face) else return null,
         7 => select(title, face, weight),
         8 => select(clock, face, weight),
         9 => if (face == 1) return null else selectUi(ui_26, weight),
@@ -89,6 +109,10 @@ pub fn get(face: u8, weight: u8, size: u8) ?Atlas {
 
 fn selectUi(comptime set: type, weight: u8) []const u8 {
     return if (weight == 1) set.sans_bold else set.sans_regular;
+}
+
+fn selectRegular(comptime set: type, face: u8) []const u8 {
+    return if (face == 1) set.serif_regular else set.sans_regular;
 }
 
 fn select(comptime set: type, face: u8, weight: u8) []const u8 {
