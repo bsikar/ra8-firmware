@@ -85,7 +85,7 @@ extern "C" {
  *
  * @details
  * These are protocol facts, not tuning knobs. Each is cross-checked against the
- * vendored esp-hosted headers by a `static_assert` in `ra8_c6link_rpc.c`, so
+ * vendored esp-hosted headers by a `static_assert` in `ra8_c6link_internal.h`, so
  * an upstream change breaks the build here instead of silently mis-framing.
  * They are restated rather than included so that this public header -- and
  * therefore every consumer of the facade, including the NetX Duo glue -- needs

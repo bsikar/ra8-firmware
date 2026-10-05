@@ -127,8 +127,8 @@ RA8_INTERNAL static void internal_test_fw_version_roundtrip(void)
  * - Vector 4: armed, UID matches, id differs -> true (varies id only)
  * Vector 1 paired with each of 2, 3 and 4 proves the corresponding condition
  * independently decides. N+1 = 4 vectors for N=3: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@internal_c6link_rpc_answer
- * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@priv_c6link_rpc_consume @brief Verify answer correlation behavior. @details Executes the answer correlation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_consume_abi.zig@answer
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_consume_abi.zig@priv_c6link_rpc_consume @brief Verify answer correlation behavior. @details Executes the answer correlation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_answer_correlation(void)
 {
   TEST_BEGIN("c6link answer correlation");
@@ -518,7 +518,7 @@ RA8_INTERNAL static void internal_test_events(void)
  * @par MC/DC:
  * (no compound decision under test -- the two remaining announcement kinds are
  * decoded from real protobuf events and compared field by field)
- * Decisions: libs/ra8_c6link/src/ra8_c6link_rpc.c@internal_c6link_rpc_event @brief Verify events remaining behavior. @details Executes the events remaining scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_event_abi.zig@priv_c6link_rpc_event @brief Verify events remaining behavior. @details Executes the events remaining scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_events_remaining(void)
 {
   TEST_BEGIN("c6link association announcements");

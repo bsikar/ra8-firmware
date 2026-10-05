@@ -5,7 +5,7 @@
 //! decode it into the link's arena, and either satisfy the outstanding wait,
 //! deliver an announcement, or count it as undecodable and drop it. The
 //! arena is reset before returning however that goes. Request staging and
-//! the pump-driven call stay in C for now (RA8FW-649).
+//! the pump-driven call are in `ra8_c6link_call_abi.zig`.
 
 const header = @import("c6link_rpc_c.zig");
 
