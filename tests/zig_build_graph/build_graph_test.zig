@@ -101,6 +101,9 @@ test "a library with no directory of its own still contributes sources" {
     // already compiles the same TUs -- compiling them twice is a duplicate
     // symbol at the link, not a warning.
     try std.testing.expectEqualStrings("ra8_io", alias.superseded_by[0]);
+
+    // Its RIIC binder is Zig now, so the alias links the ra8_io archive too.
+    try std.testing.expectEqualStrings("ra8_io", alias.zig_archive.?);
 }
 
 test "host C bar keeps -Werror and both off-target definitions" {

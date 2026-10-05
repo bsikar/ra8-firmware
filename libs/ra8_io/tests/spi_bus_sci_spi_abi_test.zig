@@ -165,3 +165,14 @@ test "set_clock forwards and a driver error passes straight back" {
     try std.testing.expectEqual(err_busy, b.iface.?.write_read.?(b.ctx, null, null, 0, sci.width_8));
     try std.testing.expectEqual(err_busy, b.iface.?.set_clock.?(b.ctx, 1, 1));
 }
+
+// The i2c_bus_riic unit in the same archive needs these to link; unused here.
+export fn ra8_i2c_write(_: u8, _: u8, _: ?[*]const u8, _: u32, _: bool) c_int {
+    return 0;
+}
+export fn ra8_i2c_read(_: u8, _: u8, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_i2c_transfer(_: u8, _: u8, _: ?[*]const u8, _: u32, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}

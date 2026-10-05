@@ -53,6 +53,9 @@ pub const LibraryAlias = struct {
     source_dir: []const u8,
     source_prefixes: []const []const u8,
     include_dir: []const u8,
+    /// The Zig archive the alias links beside its C units, because some of
+    /// its units are Zig now (RA8FW-709: the RIIC binder). Null when none.
+    zig_archive: ?[]const u8,
 };
 
 pub const library_aliases = [_]LibraryAlias{
@@ -62,6 +65,7 @@ pub const library_aliases = [_]LibraryAlias{
         .source_dir = "libs/ra8_io/src",
         .source_prefixes = &.{ "ra8_io_spi_bus", "ra8_io_i2c_bus" },
         .include_dir = "libs/ra8_io/inc",
+        .zig_archive = "ra8_io",
     },
 };
 
