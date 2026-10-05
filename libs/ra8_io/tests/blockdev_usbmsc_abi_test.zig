@@ -244,3 +244,8 @@ export fn ra8_sdcard_write_blocks(_: u32, _: [*]const u8, _: u32) c_int {
 export fn ra8_sdcard_get_capacity(_: *u32) c_int {
     return 0;
 }
+
+// The stream_blockdev unit in the same archive needs this to link; unused here.
+export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
+    return 0;
+}

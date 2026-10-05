@@ -227,3 +227,8 @@ export fn ra8_usb_hmsc_write10(_: u8, _: u32, _: u16, _: ?[*]const u8) c_int {
 export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
     return 0;
 }
+
+// The stream_blockdev unit in the same archive needs this to link; unused here.
+export fn ra8_io_blockdev_write(_: *const anyopaque, _: u32, _: u32, _: [*]const u8) c_int {
+    return 0;
+}
