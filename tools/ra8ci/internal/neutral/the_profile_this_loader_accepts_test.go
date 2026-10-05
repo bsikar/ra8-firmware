@@ -10,13 +10,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // A neutral profile is reviewed data that decides when a board may be handed
 // to another holder, so the loader refuses anything it cannot prove was
 // installed from a reviewed source, and the JSON inspection refuses a
 // document whose meaning depends on which duplicate key a parser keeps.
-// The exact digest, the group-writable file, the symlink, the trailing
+// The exact digest, the other-writable file, the symlink, the trailing
 // document and the duplicate top-level key are already held by
 // profile_test.go; these are the ones around them.
 
@@ -24,6 +26,9 @@ func writtenProfile(t *testing.T, name string, raw []byte, mode os.FileMode) str
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
 	if err := os.WriteFile(path, raw, mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := testprivatefile.OwnerOnly(path); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(path, mode); err != nil {
@@ -38,12 +43,16 @@ func TestLoadProfileRefusesAFileItCannotProveWasReviewed(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
+	worldWritable := writtenProfile(t, "open.json", raw, 0606)
+	if err := testprivatefile.OtherUsersWritable(worldWritable); err != nil {
+		t.Fatal(err)
+	}
 
 	for name, path := range map[string]string{
 		"a profile that is not there": filepath.Join(directory, "absent.json"),
 		"a directory standing in":     directory,
 		"an empty file":               writtenProfile(t, "empty.json", nil, 0600),
-		"a world-writable profile":    writtenProfile(t, "open.json", raw, 0606),
+		"a world-writable profile":    worldWritable,
 		"a profile past the size bound": writtenProfile(t, "huge.json",
 			append(raw, []byte(strings.Repeat(" ", MaxProfileBytes))...), 0600),
 	} {

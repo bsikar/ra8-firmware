@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"path"
 	"regexp"
 	"strings"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 const (
@@ -66,8 +68,7 @@ type RangeCheck struct {
 // content digest. The caller must install it from a reviewed deployment source.
 func LoadProfile(path string) (Profile, string, error) {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > MaxProfileBytes ||
-		info.Mode().Perm()&0022 != 0 {
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > MaxProfileBytes {
 		return Profile{}, "", ErrInvalidProfile
 	}
 	file, err := os.Open(path)
@@ -76,8 +77,11 @@ func LoadProfile(path string) (Profile, string, error) {
 	}
 	defer file.Close()
 	openedInfo, statErr := file.Stat()
-	if statErr != nil || !os.SameFile(info, openedInfo) || !openedInfo.Mode().IsRegular() || openedInfo.Mode().Perm()&0022 != 0 {
+	if statErr != nil || !os.SameFile(info, openedInfo) || !openedInfo.Mode().IsRegular() {
 		return Profile{}, "", ErrInvalidProfile
+	}
+	if err := privatefile.CheckFileNoUntrustedWrite(file); err != nil {
+		return Profile{}, "", fmt.Errorf("%w: profile file privacy check: %v", ErrInvalidProfile, err)
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, MaxProfileBytes+1))
 	if err != nil || len(raw) == 0 || len(raw) > MaxProfileBytes {
@@ -232,7 +236,9 @@ func validateSignalSet(checks []SignalCheck, set string) (map[string]bool, error
 }
 
 func validRelativePath(value string) bool {
-	if !profilePathRE.MatchString(value) || filepath.IsAbs(value) || filepath.Clean(value) != value ||
+	// Profile paths are slash-separated logical paths (for example, sysfs
+	// paths), independent of the host OS that validates the profile.
+	if !profilePathRE.MatchString(value) || path.IsAbs(value) || path.Clean(value) != value ||
 		value == "." || strings.HasPrefix(value, "..") {
 		return false
 	}

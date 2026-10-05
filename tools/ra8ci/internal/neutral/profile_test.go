@@ -10,8 +10,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 func validProfileFixture() Profile {
@@ -63,6 +67,20 @@ func TestValidateProfileRequiresCompleteFixtureEvidence(t *testing.T) {
 	}
 }
 
+func TestValidRelativePathUsesSlashSeparatedProfileSyntax(t *testing.T) {
+	for value, want := range map[string]bool{
+		"bus/usb/001/serial":     true,
+		"class/gpio/reset/value": true,
+		"/etc/passwd":            false,
+		"../outside":             false,
+		`bus\usb\001\serial`:     false,
+	} {
+		if got := validRelativePath(value); got != want {
+			t.Errorf("validRelativePath(%q) = %t, want %t", value, got, want)
+		}
+	}
+}
+
 func TestLoadProfileReturnsExactDigestAndRejectsUnsafeFiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "neutral.json")
@@ -74,6 +92,9 @@ func TestLoadProfileReturnsExactDigestAndRejectsUnsafeFiles(t *testing.T) {
 	if err := os.WriteFile(path, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
+	if err := testprivatefile.OwnerOnly(path); err != nil {
+		t.Fatal(err)
+	}
 	profile, digest, err := LoadProfile(path)
 	if err != nil || profile.BoardID != "ek-ra8d2" {
 		t.Fatalf("profile load = %+v, %q, %v", profile, digest, err)
@@ -82,17 +103,20 @@ func TestLoadProfileReturnsExactDigestAndRejectsUnsafeFiles(t *testing.T) {
 	if digest != hex.EncodeToString(sum[:]) {
 		t.Fatalf("digest=%s, want exact-file digest %x", digest, sum)
 	}
-	if err := os.Chmod(path, 0660); err != nil {
+	if err := testprivatefile.OtherUsersWritable(path); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := LoadProfile(path); !errors.Is(err, ErrInvalidProfile) {
-		t.Fatalf("group-writable profile accepted: %v", err)
+		t.Fatalf("profile writable by other users accepted: %v", err)
 	}
-	if err := os.Chmod(path, 0600); err != nil {
+	if err := testprivatefile.OwnerOnly(path); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(dir, "linked.json")
 	if err := os.Symlink(path, link); err != nil {
+		if runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
+			t.Skip("os.Symlink returned ERROR_PRIVILEGE_NOT_HELD; this non-admin Windows account lacks symlink privilege")
+		}
 		t.Fatal(err)
 	}
 	if _, _, err := LoadProfile(link); !errors.Is(err, ErrInvalidProfile) {
