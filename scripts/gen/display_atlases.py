@@ -53,17 +53,34 @@ def make_atlas(font_path: Path, pixel_size: int, codepoints_: list[int], stroke:
         coverage.extend(b"\0" * (pixel_offset - len(coverage)))
         character = chr(cp)
         left, top, right, bottom = font.getbbox(character, stroke_width=stroke)
-        mask = font.getmask(character, stroke_width=stroke)
+        stroked_mask = font.getmask(character, stroke_width=stroke)
+        mask = bytearray(stroked_mask)
         width, height = right - left, bottom - top
-        if mask.size != (width, height) or width > 255 or height > 255:
-            raise ValueError(f"invalid glyph bounds for U+{cp:04X}: {mask.size} vs {(width, height)}")
+        if stroked_mask.size != (width, height) or width > 255 or height > 255:
+            raise ValueError(f"invalid glyph bounds for U+{cp:04X}: {stroked_mask.size} vs {(width, height)}")
+        if stroke > 0:
+            fill_left, fill_top, fill_right, fill_bottom = font.getbbox(character)
+            fill_mask = font.getmask(character)
+            fill_width, fill_height = fill_right - fill_left, fill_bottom - fill_top
+            if fill_mask.size != (fill_width, fill_height):
+                raise ValueError(f"invalid fill bounds for U+{cp:04X}: {fill_mask.size} vs {(fill_width, fill_height)}")
+            offset_x, offset_y = fill_left - left, fill_top - top
+            for fill_y in range(fill_height):
+                for fill_x in range(fill_width):
+                    target_x, target_y = offset_x + fill_x, offset_y + fill_y
+                    if 0 <= target_x < width and 0 <= target_y < height:
+                        target = target_y * width + target_x
+                        source = fill_y * fill_width + fill_x
+                        mask[target] = max(mask[target], fill_mask[source])
+        if len(mask) != width * height:
+            raise ValueError(f"invalid glyph mask for U+{cp:04X}: {len(mask)} pixels vs {(width, height)}")
         if left < -32768 or top < -32768 or left > 32767 or top > 32767:
             raise ValueError(f"glyph offset exceeds atlas format for U+{cp:04X}")
         advance = round(font.getlength(character)) + 2 * stroke
         if advance > 32767:
             raise ValueError(f"glyph advance exceeds atlas format for U+{cp:04X}")
         records.extend(struct.pack("<IhhhBBI", cp, left, top, advance, width, height, pixel_offset))
-        coverage.extend(bytes(mask))
+        coverage.extend(mask)
     return b"R8LA" + struct.pack("<HBB", len(codepoints_), ascent, descent) + records + packed_coverage(bytes(coverage))
 
 

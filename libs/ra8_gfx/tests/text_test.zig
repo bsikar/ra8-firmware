@@ -134,3 +134,68 @@ test "serif and every native display atlas keep ink inside the line box" {
     }
     try std.testing.expectEqual(@as(usize, 12), 2 * 2 * 3);
 }
+
+const display_atlas = @import("../src/internal/font_display.zig");
+
+test "synthetic serif bold display glyphs retain fill and solid H stems" {
+    const samples = "Hoen0123456789";
+    for (6..9) |size| {
+        const regular = display_atlas.get(1, 0, @intCast(size)).?;
+        const bold = display_atlas.get(1, 1, @intCast(size)).?;
+        for (samples) |character| {
+            const codepoint: u32 = character;
+            const regular_glyph = findDisplayGlyph(regular, codepoint) orelse continue;
+            try std.testing.expect(findDisplayGlyph(bold, codepoint) != null);
+            const bold_glyph = findDisplayGlyph(bold, codepoint).?;
+            try std.testing.expect(
+                displayInk(bold, bold_glyph) >= displayInk(regular, regular_glyph),
+            );
+        }
+
+        if (findDisplayGlyph(bold, 'H')) |glyph| {
+            const first_stem_y = glyph.height / 4;
+            var first_x: ?usize = null;
+            var last_x: ?usize = null;
+            for (0..glyph.width) |x| {
+                if (displayCoverage(bold, glyph, x, first_stem_y) != 0) {
+                    first_x = first_x orelse x;
+                    last_x = x;
+                }
+            }
+            try std.testing.expect(first_x != null and last_x != null);
+            const middle_y = glyph.height / 2;
+            for (first_x.?..last_x.? + 1) |x| {
+                try std.testing.expect(displayCoverage(bold, glyph, x, middle_y) != 0);
+            }
+        }
+    }
+}
+
+fn findDisplayGlyph(atlas_value: display_atlas.Atlas, codepoint: u32) ?display_atlas.Glyph {
+    for (0..atlas_value.glyph_count) |index| {
+        const glyph = atlas_value.glyphAt(index);
+        if (glyph.codepoint == codepoint) return glyph;
+    }
+    return null;
+}
+
+fn displayInk(atlas_value: display_atlas.Atlas, glyph: display_atlas.Glyph) u32 {
+    var total: u32 = 0;
+    for (0..glyph.height) |y| {
+        for (0..glyph.width) |x| {
+            if (displayCoverage(atlas_value, glyph, x, y) != 0) total += 1;
+        }
+    }
+    return total;
+}
+
+fn displayCoverage(
+    atlas_value: display_atlas.Atlas,
+    glyph: display_atlas.Glyph,
+    x: usize,
+    y: usize,
+) u8 {
+    const pixel_index = glyph.offset + @as(u32, @intCast(y * glyph.width + x));
+    const shift: u3 = @intCast(6 - 2 * (pixel_index % 4));
+    return (atlas_value.coverageByte(pixel_index) >> shift) & 0x03;
+}
