@@ -28,6 +28,11 @@ pub fn build(b: *std.Build) void {
         .unwind_tables = unwind,
     });
     const library = b.addLibrary(.{ .name = "ra8_io", .linkage = .static, .root_module = root });
+    // One section per function and datum, as if/gfx/hal do, so an image that
+    // needs one ra8_io unit (esp-hosted's SPI binder) can --gc-sections the
+    // rest instead of inheriting their unresolved references (RA8FW-705).
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     library.bundle_compiler_rt = false;
     b.installArtifact(library);
 
