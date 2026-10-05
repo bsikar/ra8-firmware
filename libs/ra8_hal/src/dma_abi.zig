@@ -3,7 +3,7 @@
 //!
 //! C ABI for the ra8_dma_* channel allocator (RA8FW-741). The channel
 //! table lives here; the logic is in internal/dma.zig. The DMAC channel
-//! driver (ra8_dmac.c) and ra8_mstp stay C.
+//! driver is dmac_abi.zig (RA8FW-746); ra8_mstp stays C.
 
 const builtin = @import("builtin");
 const common = @import("abi_common.zig");

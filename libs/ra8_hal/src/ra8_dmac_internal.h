@@ -32,7 +32,7 @@ extern "C" {
  * @details
  * Returns true iff the transfer mode is NORMAL or REPEAT_BLOCK
  * (the two modes that disable DTS).  Promoted from the inline
- * compound OR at libs/ra8_hal/src/ra8_dmac.c inside
+ * compound OR at libs/ra8_hal/src/internal/dmac.zig inside
  * @c internal_dts_code so the decision can be driven directly under
  * @c -fcoverage-mcdc.  Both inputs are plain integers (the enum
  * values from @c ra8_dmac_mode_t); the helper performs no register
@@ -72,7 +72,7 @@ bool priv_ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
  * @details
  * Returns true iff @p irq_each is set AND @p mode is not
  * REPEAT_BLOCK.  Promoted from the inline compound AND at
- * libs/ra8_hal/src/ra8_dmac.c inside @c internal_dmint_value.
+ * libs/ra8_hal/src/internal/dmac.zig inside @c internal_dmint_value.
  *
  * @param[in] irq_each               Boolean: per-block IRQ enable.
  * @param[in] mode_repeat_block_val  Numeric value of @c k_ra8_dmac_mode_repeat_block.
