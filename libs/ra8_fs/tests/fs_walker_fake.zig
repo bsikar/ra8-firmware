@@ -27,6 +27,8 @@ pub var sector_written: ?u64 = null;
 pub var find_set_err: u16 = 0;
 pub var set_count: u32 = 2;
 pub var checksum_bytes: u32 = 0;
+pub var stamped: [3]?*const c.ra8_fs_datetime_t = .{ null, null, null };
+pub var stamp_calls: u32 = 0;
 
 pub fn mount() *const c.ra8_fs_mount_t {
     return &mount_store;
@@ -51,6 +53,8 @@ pub fn reset(fs_type: u8) void {
     find_set_err = 0;
     set_count = 2;
     checksum_bytes = 0;
+    stamped = .{ null, null, null };
+    stamp_calls = 0;
 }
 
 export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.C) void {
@@ -148,4 +152,18 @@ export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]co
 
 export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.C) void {
     entry[11] = (entry[11] & ~clear_mask) | set_mask;
+}
+
+fn stamp(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) void {
+    stamped = .{ create, modify, access };
+    stamp_calls += 1;
+    if (modify) |mt| entry[22] = mt.*.minute; // marker byte the tests read back
+}
+
+export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.C) void {
+    stamp(entry, create, modify, access);
+}
+
+export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.C) void {
+    stamp(entry, create, modify, access);
 }

@@ -41,6 +41,7 @@ pub fn build(b: *std.Build) void {
         "tests/lock_abi_test.zig",
         "tests/exfat_label_abi_test.zig",
         "tests/attr_abi_test.zig",
+        "tests/utime_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
