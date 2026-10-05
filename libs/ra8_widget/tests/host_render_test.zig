@@ -64,7 +64,12 @@ test "host backend renders selectable serif and sans faces into panel golden" {
     try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
-    try std.testing.expectEqualSlices(u8, expected, written);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/font_faces.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, expected, written);
+    }
 }
 
 test "host backend writes panel PPM matching pager golden" {

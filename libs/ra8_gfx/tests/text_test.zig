@@ -73,3 +73,12 @@ test "bold face expands visible bounds and adds ink for sans and serif" {
     const bold_sans = text.measureWeight("Head", .sans, .bold);
     try std.testing.expectEqual(regular_sans.width + 1, bold_sans.width);
 }
+
+const atlas = @import("../src/internal/font_literata.zig");
+
+test "Literata glyph data begins at a packed coverage byte boundary" {
+    for (0..atlas.glyph_count) |index| {
+        const glyph = atlas.glyphAt(index);
+        try std.testing.expectEqual(@as(u32, 0), glyph.offset % 4);
+    }
+}
