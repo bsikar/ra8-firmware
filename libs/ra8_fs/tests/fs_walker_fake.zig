@@ -244,3 +244,8 @@ export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(
     _ = m;
     free_cached = n;
 }
+
+/// ASCII-only up-case fold, standing in for the volume's exFAT table.
+export fn priv_exfat_upcase_unit(unit: u16) u16 {
+    return if (unit >= 'a' and unit <= 'z') unit - 32 else unit;
+}

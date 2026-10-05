@@ -12,6 +12,7 @@ pub const utime = @import("ra8_fs_utime_abi.zig");
 pub const space = @import("ra8_fs_space_abi.zig");
 pub const gpt = @import("ra8_fs_gpt_abi.zig");
 pub const lfn = @import("ra8_fs_lfn_abi.zig");
+pub const utf = @import("ra8_fs_utf_abi.zig");
 
 comptime {
     _ = lock;
@@ -21,4 +22,5 @@ comptime {
     _ = space;
     _ = gpt;
     _ = lfn;
+    _ = utf;
 }
