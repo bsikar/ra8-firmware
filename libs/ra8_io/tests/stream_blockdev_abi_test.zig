@@ -26,11 +26,6 @@ var fail_on_write: u32 = 0;
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
-export fn ra8_io_stream_bind(_: *Stream, iface: *const Iface, context: ?*anyopaque) c_int {
-    bound_iface = iface;
-    bound_ctx = context;
-    return 0;
-}
 fn captureWrite(_: ?*anyopaque, lba: u32, count: u32, buf: ?[*]const u8) callconv(.c) c_int {
     writes += 1;
     if (fail_on_write == writes) return err_io;
@@ -59,9 +54,6 @@ export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
 // The other units in the same archive need these to link; unused here.
 // The other units in the same archive need these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *io.log.Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return 0;
-}
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
     return 0;
 }
@@ -136,9 +128,17 @@ fn reset() void {
     fail_on_write = 0;
 }
 
+// The real ra8_io_stream_bind (RA8FW-725) fills the Stream; read the bound
+// sink back from it.
+fn capture(s: *const Stream) void {
+    bound_iface = @ptrCast(@alignCast(s.iface));
+    bound_ctx = s.ctx;
+}
+
 fn bindFresh(st: *State, s: *Stream, lba: u32) !void {
     reset();
     try std.testing.expectEqual(sbd.ok, sbd.ra8_io_stream_blockdev_init(s, st, &fake_bd, lba));
+    capture(s);
 }
 
 fn write(buf: []const u8, out: ?*u32) c_int {
@@ -157,7 +157,9 @@ test "init rejects null arguments and logs" {
     var s: Stream = .{ .iface = null, .ctx = null };
     try std.testing.expectEqual(sbd.err_null_ptr, sbd.ra8_io_stream_blockdev_init(null, &st, &fake_bd, 0));
     try std.testing.expectEqual(sbd.err_null_ptr, sbd.ra8_io_stream_blockdev_init(&s, null, &fake_bd, 0));
+    capture(&s);
     try std.testing.expectEqual(sbd.err_null_ptr, sbd.ra8_io_stream_blockdev_init(&s, &st, null, 0));
+    capture(&s);
     try std.testing.expectEqual(@as(u32, 3), errors_logged);
     try std.testing.expect(bound_iface == null);
 }

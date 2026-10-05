@@ -25,12 +25,6 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
 
-export fn ra8_io_stream_bind(_: *Stream, iface: *const Iface, context: ?*anyopaque) c_int {
-    bound_iface = iface;
-    bound_ctx = context;
-    return cdc.ok;
-}
-
 export fn ra8_usb_pal_ep_send(ep_addr: u8, data: [*]const u8, len: u16) c_int {
     sends += 1;
     if (sends == fail_on_send) return err_busy;
@@ -44,9 +38,6 @@ export fn ra8_usb_pal_ep_send(ep_addr: u8, data: [*]const u8, len: u16) c_int {
 
 // The other units in the same archive need these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return cdc.ok;
-}
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
     return cdc.ok;
 }
@@ -67,6 +58,12 @@ fn reset() void {
     sent_ptrs = .{ 0, 0, 0, 0 };
 }
 
+/// Reads back what the real ra8_io_stream_bind stored in the handle.
+fn capture(s: *const Stream) void {
+    bound_iface = @ptrCast(@alignCast(s.iface));
+    bound_ctx = s.ctx;
+}
+
 var big: [cdc.max_chunk + 10]u8 = undefined;
 
 test "init rejects each null argument and logs once per call" {
@@ -75,6 +72,7 @@ test "init rejects each null argument and logs once per call" {
     var st: cdc.State = undefined;
     try std.testing.expectEqual(cdc.err_null_ptr, ra8_io_stream_usbcdc_init(null, &st, 0x81));
     try std.testing.expectEqual(cdc.err_null_ptr, ra8_io_stream_usbcdc_init(&s, null, 0x81));
+    capture(&s);
     try std.testing.expectEqual(@as(u32, 2), errors_logged);
     try std.testing.expect(bound_iface == null);
 }
@@ -84,6 +82,7 @@ test "init records the endpoint and binds a write-only vtable" {
     var s = Stream{ .iface = null, .ctx = null };
     var st: cdc.State = undefined;
     try std.testing.expectEqual(cdc.ok, ra8_io_stream_usbcdc_init(&s, &st, 0x82));
+    capture(&s);
     try std.testing.expectEqual(@as(u8, 0x82), st.ep_addr);
     try std.testing.expect(bound_iface == &cdc.iface);
     try std.testing.expect(bound_ctx == @as(?*anyopaque, &st));

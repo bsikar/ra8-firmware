@@ -39,13 +39,22 @@ endif()
 # libs/ra8_mem is Zig apart from the arena, which this bench does not use, so
 # there is nothing left to compile by path: the archive defines every ra8_mem
 # symbol the bench references.
-add_executable(
-  glyph_bench
-  ${GLYPH_BENCH_SOURCES}
-  ${RA8_ROOT}/libs/ra8_io/src/ra8_io_stream.c
-  ${RA8_ROOT}/port/posix/src/ra8_io_stream_posix.c
-)
-target_link_libraries(glyph_bench PRIVATE ra8_zig::ra8_mem ra8_zig::ra8_core)
+# ra8_io_stream is Zig now (RA8FW-725), so the bench links the ra8_io archive
+# instead of compiling libs/ra8_io/src/ra8_io_stream.c by path.
+if(NOT TARGET ra8_zig::ra8_io)
+  include(${RA8_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_io
+    ZIG_ROOT ${RA8_ROOT}/libs/ra8_io
+    LIBRARY_NAME ra8_io
+  )
+endif()
+
+add_executable(glyph_bench ${GLYPH_BENCH_SOURCES} ${RA8_ROOT}/port/posix/src/ra8_io_stream_posix.c)
+target_link_libraries(glyph_bench PRIVATE ra8_zig::ra8_io ra8_zig::ra8_mem ra8_zig::ra8_core)
+# The ra8_io archive is one object built with function sections; drop the
+# block-device units the bench never reaches so their driver symbols stay unneeded.
+target_link_options(glyph_bench PRIVATE -Wl,--gc-sections)
 target_include_directories(
   glyph_bench PRIVATE ${RA8_ROOT}/libs/ra8_core/inc ${RA8_ROOT}/libs/ra8_mem/inc
                       ${RA8_ROOT}/libs/ra8_io/inc ${RA8_ROOT}/port/posix/inc

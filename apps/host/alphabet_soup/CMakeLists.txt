@@ -31,8 +31,8 @@ if(NOT TARGET ra8_zig::ra8_core)
   )
 endif()
 
-# ra8_io_stream_ram is Zig now (RA8FW-698), so the ra8_io archive replaces
-# the libs/ra8_io/src/ra8_io_stream_ram.c row that used to be compiled here.
+# ra8_io_stream_ram (RA8FW-698) and ra8_io_stream (RA8FW-725) are Zig now, so
+# the ra8_io archive replaces the .c rows that used to be compiled here.
 if(NOT TARGET ra8_zig::ra8_io)
   include(${ALPHABET_SOUP_REPO_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -43,7 +43,6 @@ if(NOT TARGET ra8_zig::ra8_io)
 endif()
 
 set(ALPHABET_SOUP_PORT_SRC
-    ${FW}/ra8_io/src/ra8_io_stream.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix_common.c
@@ -73,6 +72,9 @@ target_include_directories(
 
 target_compile_definitions(alphabet_soup PRIVATE RA8_OFF_TARGET)
 target_link_libraries(alphabet_soup PRIVATE ra8_zig::fw_if_fs ra8_zig::ra8_io ra8_zig::ra8_core)
+# ra8_io is one function-sectioned object; drop the block-device units
+# this target never reaches so their driver symbols stay unneeded.
+target_link_options(alphabet_soup PRIVATE -Wl,--gc-sections)
 
 target_compile_options(
   alphabet_soup
@@ -112,6 +114,7 @@ target_include_directories(
 
 target_compile_definitions(test_alphabet_soup PRIVATE RA8_OFF_TARGET)
 target_link_libraries(test_alphabet_soup PRIVATE ra8_zig::fw_if_fs ra8_zig::ra8_io ra8_zig::ra8_core)
+target_link_options(test_alphabet_soup PRIVATE -Wl,--gc-sections)
 
 target_compile_options(
   test_alphabet_soup

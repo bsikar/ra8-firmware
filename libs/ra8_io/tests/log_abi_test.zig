@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! ra8_io_log_attach/detach against fake ra8_log and ra8_io_stream entry
-//! points (RA8FW-654).
+//! ra8_io_log_attach/detach against fake ra8_log entry points and a capturing
+//! sink behind the real ra8_io_stream_write (RA8FW-654).
 
 const std = @import("std");
 const io = @import("ra8_io");
@@ -24,18 +24,6 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
 
-export fn ra8_io_stream_write(_: *log.Stream, buf: [*]const u8, len: u32, _: ?*u32) c_int {
-    for (buf[0..len]) |byte| {
-        written[written_len] = byte;
-        written_len += 1;
-    }
-    return write_status;
-}
-
-// The stream_ram unit in the same archive needs this to link; unused here.
-export fn ra8_io_stream_bind(_: *log.Stream, _: *const anyopaque, _: ?*anyopaque) c_int {
-    return log.ok;
-}
 // The archive root also emits the SDRAM block-device unit; satisfy its imports.
 export fn ra8_sdramc_init() c_int {
     return 0;
@@ -58,7 +46,18 @@ export fn ra8_usb_pal_ep_send(_: u8, _: [*]const u8, _: u16) c_int {
 extern fn ra8_io_log_attach(s: ?*log.Stream) c_int;
 extern fn ra8_io_log_detach() void;
 
-const vtable: u8 = 0;
+/// Capturing sink bound through the real ra8_io_stream_write.
+fn captureWrite(_: ?*anyopaque, buf: ?[*]const u8, len: u32, out_written: ?*u32) callconv(.c) c_int {
+    for (buf.?[0..len]) |byte| {
+        written[written_len] = byte;
+        written_len += 1;
+    }
+    if (out_written) |out| out.* = len;
+    return write_status;
+}
+
+const vtable = io.stream_ram.Iface{ .write = &captureWrite, .flush = null };
+var sink_ctx: u8 = 0;
 
 fn reset() void {
     installed_sink = null;
@@ -85,7 +84,7 @@ test "attach rejects an unbound stream" {
 
 test "attach installs the sink with the stream as its context" {
     reset();
-    var s = log.Stream{ .iface = &vtable, .ctx = null };
+    var s = log.Stream{ .iface = &vtable, .ctx = &sink_ctx };
     try std.testing.expectEqual(log.ok, ra8_io_log_attach(&s));
     try std.testing.expect(installed_sink == log.sink);
     try std.testing.expect(installed_ctx == @as(?*anyopaque, &s));
@@ -93,7 +92,7 @@ test "attach installs the sink with the stream as its context" {
 
 test "the sink forwards each byte to the stream" {
     reset();
-    var s = log.Stream{ .iface = &vtable, .ctx = null };
+    var s = log.Stream{ .iface = &vtable, .ctx = &sink_ctx };
     _ = ra8_io_log_attach(&s);
     installed_sink.?(installed_ctx, 'o');
     installed_sink.?(installed_ctx, 'k');
@@ -102,7 +101,7 @@ test "the sink forwards each byte to the stream" {
 
 test "the sink ignores a stream write error" {
     reset();
-    var s = log.Stream{ .iface = &vtable, .ctx = null };
+    var s = log.Stream{ .iface = &vtable, .ctx = &sink_ctx };
     _ = ra8_io_log_attach(&s);
     write_status = err_io;
     installed_sink.?(installed_ctx, 'x');
@@ -117,7 +116,7 @@ test "the sink drops a byte with no context" {
 
 test "detach clears the sink" {
     reset();
-    var s = log.Stream{ .iface = &vtable, .ctx = null };
+    var s = log.Stream{ .iface = &vtable, .ctx = &sink_ctx };
     _ = ra8_io_log_attach(&s);
     ra8_io_log_detach();
     try std.testing.expect(installed_sink == null);

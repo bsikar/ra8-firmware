@@ -56,12 +56,6 @@ export fn ra8_spi_set_clock(channel: u8, baud_hz: u32, pclka_hz: u32) c_int {
 
 // The other units in the same archive need these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *io.log.Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return 0;
-}
-export fn ra8_io_stream_bind(_: *io.log.Stream, _: *const io.stream_ram.Iface, _: ?*anyopaque) c_int {
-    return 0;
-}
 export fn ra8_sci_write_polling(_: u8, _: [*]const u8, _: u32) c_int {
     return 0;
 }

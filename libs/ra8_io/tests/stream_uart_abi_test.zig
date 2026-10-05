@@ -24,12 +24,6 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
 }
 
-export fn ra8_io_stream_bind(_: *Stream, iface: *const Iface, context: ?*anyopaque) c_int {
-    bound_iface = iface;
-    bound_ctx = context;
-    return uart.ok;
-}
-
 export fn ra8_sci_write_polling(channel: u8, _: [*]const u8, len: u32) c_int {
     sci_channel = channel;
     sci_len = len;
@@ -43,9 +37,6 @@ export fn ra8_sci_flush(channel: u8) c_int {
 
 // The log unit in the same archive needs these to link; unused here.
 export fn ra8_log_set_byte_sink(_: ?io.log.ByteSink, _: ?*anyopaque) void {}
-export fn ra8_io_stream_write(_: *Stream, _: [*]const u8, _: u32, _: ?*u32) c_int {
-    return uart.ok;
-}
 
 // The usbcdc unit in the same archive needs this to link; unused here.
 export fn ra8_usb_pal_ep_send(_: u8, _: [*]const u8, _: u16) c_int {
@@ -64,12 +55,19 @@ fn reset() void {
     flushed_channel = 0xFF;
 }
 
+/// Reads back what the real ra8_io_stream_bind stored in the handle.
+fn capture(s: *const Stream) void {
+    bound_iface = @ptrCast(@alignCast(s.iface));
+    bound_ctx = s.ctx;
+}
+
 test "init rejects each null argument and logs once per call" {
     reset();
     var s = Stream{ .iface = null, .ctx = null };
     var st: uart.State = undefined;
     try std.testing.expectEqual(uart.err_null_ptr, ra8_io_stream_uart_init(null, &st, 2));
     try std.testing.expectEqual(uart.err_null_ptr, ra8_io_stream_uart_init(&s, null, 2));
+    capture(&s);
     try std.testing.expectEqual(@as(u32, 2), errors_logged);
     try std.testing.expect(bound_iface == null);
 }
@@ -79,6 +77,7 @@ test "init records the channel and binds the uart vtable" {
     var s = Stream{ .iface = null, .ctx = null };
     var st: uart.State = undefined;
     try std.testing.expectEqual(uart.ok, ra8_io_stream_uart_init(&s, &st, 3));
+    capture(&s);
     try std.testing.expectEqual(@as(u8, 3), st.channel);
     try std.testing.expect(bound_iface == &uart.iface);
     try std.testing.expect(bound_ctx == @as(?*anyopaque, &st));

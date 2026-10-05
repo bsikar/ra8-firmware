@@ -4,8 +4,8 @@
 //! C ABI of inc/ra8_io_stream_uart.h (RA8FW-699): a stream backend that
 //! writes to an SCI channel with ra8_sci_write_polling and flushes with
 //! ra8_sci_flush. Replaces ra8_io_stream_uart.c, which is deleted. The
-//! vtable is bound through ra8_io_stream_bind, which stays in
-//! ra8_io_stream.c.
+//! vtable is bound through ra8_io_stream_bind, in
+//! ra8_io_stream_abi.zig.
 
 const log = @import("ra8_io_log_abi.zig");
 const ram = @import("ra8_io_stream_ram_abi.zig");
