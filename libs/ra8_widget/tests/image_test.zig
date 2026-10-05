@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const image = @import("image");
-const types = @import("../src/widget_abi_types.zig");
+const types = image.types;
 
 const Fill = struct { x: i32, y: i32, w: i32, h: i32, color: u32 };
 var fills: std.BoundedArray(Fill, 64) = .{};

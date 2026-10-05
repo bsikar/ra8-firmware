@@ -32,7 +32,7 @@ and that cross-check.
 
 - **Covered here:** Software Of Unknown Provenance (SOUP) pinned in
   `build.zig.zon` or vendored under `apps/shared_libs/third_party/`, plus the
-  one bundled font data asset under `libs/ra8_fonts/`. The pinned packages are
+  bundled font data assets under `libs/ra8_fonts/`. The pinned packages are
   the platform-wide dependencies; the vendored root contains dependencies used
   only by application products and their companion host tools.
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
@@ -90,11 +90,12 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `build.zig.zon` (pinned tarball) | <https://github.com/espressif/esp-hosted-mcu> |
 | protobuf-c (esp-hosted RPC runtime) | 1.4.1 (git `abc67a11` + RA8 patch, fork `bsikar/protobuf-c` `c61bb2e3`) | BSD-2-Clause | `build.zig.zon` (pinned tarball) | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
+| DejaVu Sans (**bundled font**) | 2.37 | Bitstream Vera | `libs/ra8_fonts/RA8UISans/*.ttf` | <https://github.com/dejavu-fonts/dejavu-fonts> |
 
-Counts: **18 vendored source components** + **1 bundled font asset**. One of
+Counts: **18 vendored source components** + **2 bundled font assets**. One of
 the eighteen (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
 submodule, so it is pinned and licensed in its own right rather than folded
-into its parent. Eight of the nineteen carry a declared deviation from
+into its parent. Eight of the twenty carry a declared deviation from
 their upstream pin -- libwebp and stb each carry an in-tree code patch, the
 four Eclipse ThreadX-family trees a `.gitattributes` edit, and Mbed TLS /
 TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
@@ -110,7 +111,7 @@ linked into nothing -- see the build-tools note below and
 
 ## Provenance and integrity
 
-**All nineteen vendored components are now pinned to an upstream revision and
+**All twenty vendored components are now pinned to an upstream revision and
 verified against it file by file.** Ten of them had no upstream pin at all
 until the upstream-pin sweep -- their version was read out of a header in our own tree, which
 says what the code calls itself, not where it came from. Each was resolved by
@@ -138,8 +139,9 @@ permitted to differ.
 | esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
+| DejaVu Sans | tag `version_2_37` `0eda8a319c08835009849583cd090bb5b141ce25` | 2/2 | none |
 
-**Totals: 19 components, 8938 vendored files, 8918 byte-identical to their
+**Totals: 20 components, 8940 vendored files, 8920 byte-identical to their
 pinned upstream revision, 20 declared deviations.**
 
 ### Why there are no hash values in this table
@@ -245,6 +247,11 @@ below); this section reproduces the copyright line and points to that text.
   (https://github.com/googlefonts/literata)." Licensed under the SIL Open Font
   License, Version 1.1; the full license text ships at
   `libs/ra8_fonts/Literata-OFL.txt`.
+
+- **DejaVu Sans** -- Copyright (c) 2003 by Bitstream, Inc.; DejaVu changes are
+  public domain. The Bitstream Vera redistribution license and notice ship at
+  `libs/ra8_fonts/DejaVu-LICENSE.txt`. The regular and bold fonts are renamed
+  `RA8UISans` and used as deterministic sources for display atlases.
 
 ### Co-processor firmware (not linked into firmware)
 

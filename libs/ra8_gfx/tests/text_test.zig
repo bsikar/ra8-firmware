@@ -82,3 +82,22 @@ test "Literata glyph data begins at a packed coverage byte boundary" {
         try std.testing.expectEqual(@as(u32, 0), glyph.offset % 4);
     }
 }
+
+test "native display atlases measure and draw sans and serif at all display sizes" {
+    const cases = [_]struct { face: text.Face, weight: text.Weight, size: u8, minimum_height: u32 }{
+        .{ .face = .serif, .weight = .regular, .size = 6, .minimum_height = 38 },
+        .{ .face = .sans, .weight = .bold, .size = 6, .minimum_height = 38 },
+        .{ .face = .serif, .weight = .bold, .size = 7, .minimum_height = 68 },
+        .{ .face = .sans, .weight = .regular, .size = 7, .minimum_height = 68 },
+        .{ .face = .serif, .weight = .regular, .size = 8, .minimum_height = 120 },
+        .{ .face = .sans, .weight = .bold, .size = 8, .minimum_height = 120 },
+    };
+    for (cases) |case| {
+        const measured = text.measureStyle("09:41", case.face, case.weight, case.size);
+        try std.testing.expect(measured.width > 0);
+        try std.testing.expect(measured.height >= case.minimum_height);
+        var pixels = PixelRecorder{};
+        text.drawStyle("09:41", 10, 12, case.face, case.weight, case.size, 0, 0xFFFFFF, &pixels, PixelRecorder.putPixel);
+        try std.testing.expect(pixels.ink_pixels > 0);
+    }
+}

@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:ecc83389-f9e1-5bc8-ab17-923de91a10df",
+  "serialNumber": "urn:uuid:8ea57bc5-537e-5266-b3af-3859f1ac0e4c",
   "version": 1,
   "metadata": {
     "tools": [
@@ -1217,6 +1217,77 @@
         {
           "name": "ra8:note1",
           "value": "Host build tool: it shapes a build input (the Ethos-U command stream) but is not part of the RA8 linked image -- hence scope=excluded. Recorded here so the SBOM-driven osv-scan issues a pkg:pypi query for the pin; PyPI is an OSV-supported ecosystem, so this purl resolves advisories today, unlike the pkg:github purls of the git-vendored C/C++ components."
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "fonts/RA8UISans",
+      "name": "DejaVu Sans (RA8 UI regular and bold raster sources)",
+      "group": "dejavu-fonts",
+      "version": "2.37",
+      "description": "Open sans source outlines rasterized into native-size UI display atlases.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Bitstream-Vera"
+          }
+        }
+      ],
+      "purl": "pkg:github/dejavu-fonts/dejavu-fonts",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d6945bdb9de6e20320d7b21d9095fd14bb10a48ff8f9e2af057eb87027f0c982"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/dejavu-fonts/dejavu-fonts"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "open-asset-versioned"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/ra8_fonts/RA8UISans"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "2"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "0eda8a319c08835009849583cd090bb5b141ce25"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "version_2_37"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/ra8_fonts/DejaVu-LICENSE.txt"
+        },
+        {
+          "name": "ra8:copyright",
+          "value": "Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. DejaVu changes are in public domain."
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "The regular and bold DejaVu Sans TTF sources are renamed RA8UISans-Regular.ttf and RA8UISans-Bold.ttf. The Bitstream Vera notice allows redistribution and requires modified fonts to use names that do not contain Bitstream or Vera."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "The 38 px and 68 px Latin-1 and the 120 px clock glyph atlases are deterministically generated from these sources plus Literata using scripts/gen/display_atlases.py; the generated tables are in libs/ra8_gfx/src/internal/display_atlases/."
         }
       ]
     },
