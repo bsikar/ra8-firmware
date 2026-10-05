@@ -866,6 +866,10 @@ macro(_ra8_app_collect_sources)
     )
     list(APPEND _ra8_lib_extra ${_ra8_io_bus_srcs})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_io/inc)
+    # Part of the facade is Zig now (RA8FW-709: the RIIC binder), so link the
+    # ra8_io archive too. It is built with one section per function, so the
+    # link keeps only the bus units these apps reach.
+    list(APPEND _ra8_lib_zig "ra8_io|${RA8_REPO_ROOT}/libs/ra8_io")
   endif()
 
   # The board glob above compiles EVERY BSP translation unit into EVERY app,

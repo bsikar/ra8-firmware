@@ -404,6 +404,24 @@ fn addCrossApp(
         }
     }
 
+    // A LIBS alias with no directory of its own (ra8_io_bus) still links the
+    // Zig archive of the library it borrows from, as sources.cmake does,
+    // unless the app names that library and so links it above (RA8FW-709).
+    for (cross_sources.library_aliases) |alias| {
+        const archive = alias.zig_archive orelse continue;
+        if (!cross_sources.declaresLibrary(app, alias.name)) continue;
+        var superseded = false;
+        for (alias.superseded_by) |fuller| {
+            if (cross_sources.declaresLibrary(app, fuller)) superseded = true;
+        }
+        if (superseded) continue;
+        const dependency = b.dependency(archive, .{
+            .target = arm_target,
+            .optimize = globals.configuration.zig_optimize,
+        });
+        archives.append(dependency.artifact(archive).getEmittedBin()) catch @panic("OOM");
+    }
+
     // Everything the app names in USES. Each one is built as its own archive
     // AND changes how the app's own translation units are compiled: the
     // exported define and include directories below are not decoration, an

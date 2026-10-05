@@ -217,3 +217,14 @@ test "as_ops rejects a null out, then bridges xfer8 through the bus" {
     try std.testing.expectEqual(front.err_null_ptr, ops.xfer8.?(null, 0, null));
     try std.testing.expectEqual(@as(u32, 2), errors_logged);
 }
+
+// The i2c_bus_riic unit in the same archive needs these to link; unused here.
+export fn ra8_i2c_write(_: u8, _: u8, _: ?[*]const u8, _: u32, _: bool) c_int {
+    return 0;
+}
+export fn ra8_i2c_read(_: u8, _: u8, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_i2c_transfer(_: u8, _: u8, _: ?[*]const u8, _: u32, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}

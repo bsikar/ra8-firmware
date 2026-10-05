@@ -150,3 +150,14 @@ export fn ra8_sci_spi_xfer(_: u8, _: ?[*]const u8, _: ?[*]u8, _: u32) c_int {
 export fn ra8_sci_spi_set_clock(_: u8, _: u32, _: u32) c_int {
     return 0;
 }
+
+// The i2c_bus_riic unit in the same archive needs these to link; unused here.
+export fn ra8_i2c_write(_: u8, _: u8, _: ?[*]const u8, _: u32, _: bool) c_int {
+    return 0;
+}
+export fn ra8_i2c_read(_: u8, _: u8, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}
+export fn ra8_i2c_transfer(_: u8, _: u8, _: ?[*]const u8, _: u32, _: ?[*]u8, _: u32) c_int {
+    return 0;
+}
