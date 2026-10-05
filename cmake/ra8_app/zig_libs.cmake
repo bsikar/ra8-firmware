@@ -84,6 +84,14 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
     set(_cpu "cortex-m33")
   endif()
   string(REPLACE "-" "_" _zig_cpu "${_cpu}")
+  # RA8P1_DP_FPU=ON appends -mfpu=fpv5-d16 to the C flags. Zig's cortex_m85
+  # model is single-precision (f64 lowers to __aeabi_d* calls), so without the
+  # double-precision feature every Zig object in a DP image would stay
+  # soft-float for double while the C beside it runs .f64 opcodes. The pattern
+  # does not match the default fpv5-sp-d16.
+  if(CMAKE_C_FLAGS MATCHES "-mfpu=fpv5-d16" AND _cpu STREQUAL "cortex-m85")
+    string(APPEND _zig_cpu "+fp_armv8d16")
+  endif()
   if(_hard_float)
     set(${_out_target}
         "thumb-freestanding-eabihf"
