@@ -46,7 +46,7 @@ static const ra8_io_fsfmt_t s_init_slot_fmt = {.name = "init_slot_fixture",
  * reach every combination.
  * @par MC/DC:
  * Decision: `if (slot->in_use && slot->owned)`
- * (2 conditions, libs/ra8_io/src/ra8_io_vfs.c@internal_vfs_init_slot)
+ * (2 conditions, libs/ra8_io/src/ra8_io_vfs_abi.zig@initSlot)
  * - Vector 1: in_use=true,  owned=true  -> true  -> unmount dispatched once.
  * - Vector 2: in_use=false, owned=true  -> false -> unmount not dispatched.
  * - Vector 3: in_use=true,  owned=false -> false -> unmount not dispatched.

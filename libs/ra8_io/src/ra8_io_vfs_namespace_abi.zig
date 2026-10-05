@@ -7,8 +7,8 @@
 //! advertised capability, then dispatches to that format's ops table. A
 //! rename across two mounts is refused, since this facade does no
 //! cross-format copy. Replaces ra8_io_vfs_namespace.c, which is deleted; the
-//! mount table and its resolve/split/find/streq helpers stay in
-//! ra8_io_vfs.c and are reached as externs.
+//! mount table and its resolve/split/find/streq helpers live in
+//! ra8_io_vfs_abi.zig and are reached as externs.
 
 const tag = "ra8_io_vfs_namespace";
 
