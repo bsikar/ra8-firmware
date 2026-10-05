@@ -15,6 +15,12 @@ pub const Face = enum(u8) {
     serif = 1,
 };
 
+/// Stroke weight selected independently from the text family.
+pub const Weight = enum(u8) {
+    regular = 0,
+    bold = 1,
+};
+
 /// Legacy IBM font dimensions retained for sans measurement.
 pub const sans = struct {
     pub const width: u8 = 8;
@@ -39,9 +45,16 @@ const rgba_shifts = [_]u5{ 16, 8, 0 };
 /// Measure a NUL-terminated run. Invalid or unsupported Unicode scalars each
 /// occupy the replacement glyph, matching the draw path exactly.
 pub fn measure(text: [*:0]const u8, face: Face) Extent {
+    return measureWeight(text, face, .regular);
+}
+
+/// Measure the visible bounds of a run at the selected weight. Bold expands
+/// the final visible edge by one pixel, matching the rasterizer.
+pub fn measureWeight(text: [*:0]const u8, face: Face, weight: Weight) Extent {
     if (face == .sans) {
         const bytes = byteLength(text);
-        return .{ .width = @as(u32, @intCast(bytes)) * sans.width, .height = sans.height };
+        const width = @as(u32, @intCast(bytes)) * sans.width;
+        return .{ .width = width + @intFromBool(weight == .bold and bytes > 0), .height = sans.height };
     }
 
     var extent = Extent{ .width = 0, .height = @as(u32, atlas.ascent + atlas.descent) };
@@ -52,6 +65,7 @@ pub fn measure(text: [*:0]const u8, face: Face) Extent {
         extent.width +|= @intCast(glyph.advance);
         offset += decoded.byte_count;
     }
+    if (weight == .bold and extent.width > 0) extent.width += 1;
     return extent;
 }
 
@@ -65,6 +79,20 @@ pub fn drawSans(
     user: ?*anyopaque,
     put_pixel: PixelFn,
 ) void {
+    drawSansWeight(text, x, y, fg, bg, .regular, user, put_pixel);
+}
+
+/// Draw the IBM bitmap face and expand bold strokes by one pixel rightward.
+pub fn drawSansWeight(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    fg: u32,
+    bg: u32,
+    weight: Weight,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
     var offset: usize = 0;
     while (offset < max_bytes and text[offset] != 0) : (offset += 1) {
         const glyph = bitmap.glyph(text[offset]) orelse bitmap.glyph(0x3F).?;
@@ -72,6 +100,26 @@ pub fn drawSans(
             for (0..bitmap.geometry.width) |col| {
                 const on = row_bits & (@as(u8, 1) << @intCast(7 - col)) != 0;
                 put_pixel(user, x + @as(i32, @intCast(offset * bitmap.geometry.width + col)), y + @as(i32, @intCast(row)), if (on) fg else bg);
+            }
+        }
+    }
+
+    if (weight == .bold) {
+        offset = 0;
+        while (offset < max_bytes and text[offset] != 0) : (offset += 1) {
+            const glyph = bitmap.glyph(text[offset]) orelse bitmap.glyph(0x3F).?;
+            for (glyph, 0..) |row_bits, row| {
+                for (0..bitmap.geometry.width) |col| {
+                    const on = row_bits & (@as(u8, 1) << @intCast(7 - col)) != 0;
+                    if (on) {
+                        put_pixel(
+                            user,
+                            x + @as(i32, @intCast(offset * bitmap.geometry.width + col + 1)),
+                            y + @as(i32, @intCast(row)),
+                            fg,
+                        );
+                    }
+                }
             }
         }
     }
@@ -88,6 +136,20 @@ pub fn drawSerif(
     user: ?*anyopaque,
     put_pixel: PixelFn,
 ) void {
+    drawSerifWeight(text, x, y, fg, bg, .regular, user, put_pixel);
+}
+
+/// Draw a Literata run with a one-pixel rightward stroke expansion for bold.
+pub fn drawSerifWeight(
+    text: [*:0]const u8,
+    x: i32,
+    y: i32,
+    fg: u32,
+    bg: u32,
+    weight: Weight,
+    user: ?*anyopaque,
+    put_pixel: PixelFn,
+) void {
     const line_height: i32 = atlas.ascent + atlas.descent;
     var pen_x = x;
     var offset: usize = 0;
@@ -95,7 +157,18 @@ pub fn drawSerif(
         const decoded = decode(text, offset);
         const glyph = lookup(decoded.codepoint);
         paintBackground(pen_x, y, glyph.advance, line_height, bg, user, put_pixel);
-        paintGlyph(pen_x, y, glyph, fg, bg, user, put_pixel);
+        if (weight == .bold) paintBackground(pen_x +% glyph.advance, y, 1, line_height, bg, user, put_pixel);
+        pen_x +%= glyph.advance;
+        offset += decoded.byte_count;
+    }
+
+    pen_x = x;
+    offset = 0;
+    while (offset < max_bytes and text[offset] != 0) {
+        const decoded = decode(text, offset);
+        const glyph = lookup(decoded.codepoint);
+        paintGlyph(pen_x, y, glyph, fg, bg, user, put_pixel, false);
+        if (weight == .bold) paintGlyph(pen_x, y, glyph, fg, bg, user, put_pixel, true);
         pen_x +%= glyph.advance;
         offset += decoded.byte_count;
     }
@@ -186,25 +259,32 @@ fn paintGlyph(
     bg: u32,
     user: ?*anyopaque,
     put_pixel: PixelFn,
+    bold_expand: bool,
 ) void {
     const top = line_y +% atlas.ascent +% glyph.top;
+    const output_width = @as(usize, glyph.width) + @intFromBool(bold_expand);
     var row: usize = 0;
     while (row < glyph.height) : (row += 1) {
         var col: usize = 0;
-        while (col < glyph.width) : (col += 1) {
-            const index = glyph.offset + @as(u32, @intCast((row * glyph.width) + col));
-            const packed_byte = atlas.coverageByte(index);
-            const shift: u3 = @intCast(6 - (index % 4) * 2);
-            const level = coverage_levels[@intCast((packed_byte >> shift) & 3)];
+        while (col < output_width) : (col += 1) {
+            const current = coverage(glyph, row, col);
+            const previous = if (bold_expand and col > 0) coverage(glyph, row, col - 1) else 0;
+            const level = @max(current, previous);
             if (level == 0) continue;
-            put_pixel(
-                user,
-                pen_x +% glyph.left +% @as(i32, @intCast(col)),
-                top +% @as(i32, @intCast(row)),
-                blend(fg, bg, level),
-            );
+            const px = pen_x +% glyph.left +% @as(i32, @intCast(col));
+            const py = top +% @as(i32, @intCast(row));
+            put_pixel(user, px, py, blend(fg, bg, level));
         }
     }
+}
+
+/// Two-bit coverage at one glyph-local pixel, or zero outside its bitmap.
+fn coverage(glyph: atlas.Glyph, row: usize, col: usize) u32 {
+    if (col >= glyph.width) return 0;
+    const index = glyph.offset + @as(u32, @intCast((row * glyph.width) + col));
+    const packed_byte = atlas.coverageByte(index);
+    const shift: u3 = @intCast(6 - (index % 4) * 2);
+    return coverage_levels[@intCast((packed_byte >> shift) & 3)];
 }
 
 /// Interpolate 24-bit RGB channels for one 2-bit atlas coverage level.

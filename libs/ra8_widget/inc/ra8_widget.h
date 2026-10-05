@@ -624,6 +624,11 @@ typedef enum : uint8_t {
  * @see ra8_widget_button_init
  * @since 0.1.0
  */
+typedef enum : uint8_t {
+  k_ra8_widget_text_weight_regular = 0U,
+  k_ra8_widget_text_weight_bold    = 1U,
+} ra8_widget_text_weight_t;
+
 typedef struct ra8_widget_paint {
   /** @brief Opaque backend handle handed back to every callback below. */
   void* user;

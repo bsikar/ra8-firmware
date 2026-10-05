@@ -101,7 +101,7 @@ fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, fg: u32, b
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &cell, text, geometry.no_pad, .center, .sans, false, &pen_x, &pen_y);
+    paint_abi.priv_widget_text_pos(backend, &cell, text, geometry.no_pad, .center, .sans, .regular, false, &pen_x, &pen_y);
     draw_text(backend.user, pen_x, pen_y, text, fg, bg);
 }
 

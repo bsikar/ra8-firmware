@@ -66,6 +66,12 @@ typedef enum : uint8_t {
   k_ra8_gfx_text_face_serif = 1U, /**< Literata regular serif face. */
 } ra8_gfx_text_face_t;
 
+/** @brief Text stroke weight selected by style-aware draw and measure calls. */
+typedef enum : uint8_t {
+  k_ra8_gfx_text_weight_regular = 0U,
+  k_ra8_gfx_text_weight_bold    = 1U,
+} ra8_gfx_text_weight_t;
+
 /**
  * @brief Bundled 8x16 IBM PC VGA bitmap font, ASCII 0x20..0x7E.
  *

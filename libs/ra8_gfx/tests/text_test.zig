@@ -55,3 +55,21 @@ const PixelRecorder = struct {
         recorder.rightmost = @max(recorder.rightmost, x);
     }
 };
+
+test "bold face expands visible bounds and adds ink for sans and serif" {
+    const regular_serif = text.measure("Head", .serif);
+    const bold_serif = text.measureWeight("Head", .serif, .bold);
+    try std.testing.expectEqual(regular_serif.width + 1, bold_serif.width);
+    try std.testing.expectEqual(regular_serif.height, bold_serif.height);
+
+    var regular_pixels = PixelRecorder{};
+    var bold_pixels = PixelRecorder{};
+    text.drawSerif("Head", 3, 4, 0, 0xFFFFFF, &regular_pixels, PixelRecorder.putPixel);
+    text.drawSerifWeight("Head", 3, 4, 0, 0xFFFFFF, .bold, &bold_pixels, PixelRecorder.putPixel);
+    try std.testing.expect(bold_pixels.ink_pixels > regular_pixels.ink_pixels);
+    try std.testing.expectEqual(3 + @as(i32, @intCast(bold_serif.width)) - 1, bold_pixels.rightmost);
+
+    const regular_sans = text.measure("Head", .sans);
+    const bold_sans = text.measureWeight("Head", .sans, .bold);
+    try std.testing.expectEqual(regular_sans.width + 1, bold_sans.width);
+}

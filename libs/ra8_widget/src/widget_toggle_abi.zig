@@ -75,7 +75,7 @@ fn renderToggle(w: *Widget) callconv(.c) void {
     };
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, .sans, false, &pen_x, &pen_y);
+    paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, .sans, .regular, false, &pen_x, &pen_y);
     draw_text(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
 }
 

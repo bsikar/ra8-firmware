@@ -118,7 +118,7 @@ fn drawAligned(
 
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, rect, string, pad, alignment, .sans, false, &pen_x, &pen_y);
+    paint_abi.priv_widget_text_pos(backend, rect, string, pad, alignment, .sans, .regular, false, &pen_x, &pen_y);
     draw_text(backend.user, pen_x, pen_y, string, fg, bg);
 }
 

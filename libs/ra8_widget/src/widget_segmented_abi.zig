@@ -89,7 +89,7 @@ fn renderSegmented(w: *Widget) callconv(.c) void {
                 var pen_x: i32 = 0;
                 var pen_y: i32 = 0;
                 const pad: i16 = @intCast(@min(control.pad, @as(u16, 32767)));
-                paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, .sans, false, &pen_x, &pen_y);
+                paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, .sans, .regular, false, &pen_x, &pen_y);
                 draw_text(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
             }
         }

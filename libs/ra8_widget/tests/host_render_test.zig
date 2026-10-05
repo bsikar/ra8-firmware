@@ -23,6 +23,7 @@ export fn ra8_ui_rect_contains(rect: *const abi.types.Rect, x: i32, y: i32) call
 }
 
 const expected = @embedFile("golden/font_faces.ppm");
+const expected_weights = @embedFile("golden/font_weights.ppm");
 const pager_expected = @embedFile("golden/pager.ppm");
 const toggle_segmented_expected = @embedFile("golden/toggle_segmented.ppm");
 const expected_image = @embedFile("golden/image_widget.ppm");
@@ -189,4 +190,48 @@ test "host backend writes panel PPM matching list widget golden" {
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, list_expected, written);
+}
+test "host backend renders regular and bold headings beside each other" {
+    const allocator = std.testing.allocator;
+    var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
+    defer canvas.deinit(allocator);
+    const paint = abi.types.Paint{
+        .user = &canvas,
+        .fill_rect = host.Canvas.fillRect,
+        .draw_text = host.Canvas.drawText,
+        .text_size = host.Canvas.textSize,
+        .draw_text_face = host.Canvas.drawTextFace,
+        .text_size_face = host.Canvas.textSizeFace,
+        .draw_text_style = host.Canvas.drawTextStyle,
+        .text_size_style = host.Canvas.textSizeStyle,
+    };
+
+    var regular = abi.label.Label{
+        .paint = &paint,
+        .text = "Screen title",
+        .fg = 0x111111,
+        .bg = 0xffffff,
+        .pad = 24,
+        .alignment = .left,
+        .face = .sans,
+        .weight = .regular,
+    };
+    var regular_widget = widget(.{ .x = 64, .y = 96, .w = 456, .h = 120 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&regular_widget, &regular));
+    regular_widget.vt.?.render.?(&regular_widget);
+
+    var bold = regular;
+    bold.weight = .bold;
+    var bold_widget = widget(.{ .x = 552, .y = 96, .w = 456, .h = 120 });
+    try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&bold_widget, &bold));
+    bold_widget.vt.?.render.?(&bold_widget);
+
+    const rendered = try canvas.ppm(allocator);
+    defer allocator.free(rendered);
+    var temp = std.testing.tmpDir(.{});
+    defer temp.cleanup();
+    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    defer allocator.free(written);
+    try std.testing.expectEqualSlices(u8, expected_weights, written);
 }
