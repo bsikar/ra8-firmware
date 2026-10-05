@@ -83,3 +83,13 @@ test "a null binding uninstalls the lock" {
     lock.priv_lock_release();
     try std.testing.expectEqual(@as(u32, 0), acquires + releases);
 }
+
+// The exfat_label unit in the same archive needs these to link; unused here.
+export fn priv_exfat_dir_root(_: ?*const fs.exfat_label.Mount, _: *fs.exfat_label.Dir) void {}
+export fn priv_exfat_cursor_init(_: *const fs.exfat_label.Dir, _: *fs.exfat_label.Cursor) void {}
+export fn priv_exfat_next_entry(_: ?*const fs.exfat_label.Mount, _: *fs.exfat_label.Cursor, _: [*]u8) c_int {
+    return 0;
+}
+export fn priv_exfat_write_dir_set(_: ?*const fs.exfat_label.Mount, _: u32, _: u32, _: [*]const u8, _: u32) c_int {
+    return 0;
+}

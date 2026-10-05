@@ -1,11 +1,14 @@
 {
   "test_roots": [
-    "tests/lock_abi_test.zig"
+    "tests/lock_abi_test.zig",
+    "tests/exfat_label_abi_test.zig"
   ],
   "covered_sources": [
+    "src/ra8_fs_exfat_label_abi.zig",
     "src/ra8_fs_lock_abi.zig",
     "src/root.zig",
-    "tests/lock_abi_test.zig"
+    "tests/lock_abi_test.zig",
+    "tests/exfat_label_abi_test.zig"
   ],
-  "minimum_tests": 5
+  "minimum_tests": 13
 }

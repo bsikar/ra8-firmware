@@ -12,7 +12,7 @@
  * root entry. Reading prefers the root entry, falling back to `BS_VolLab`, and
  * reports the unlabelled sentinel as the empty string.
  *
- * The exFAT half of both operations lives in `ra8_fs_fat_exfat_label.c`; this
+ * The exFAT half of both operations lives in `ra8_fs_exfat_label_abi.zig`; this
  * file owns the FAT path and the public lock-bracketed entry points that
  * dispatch to one or the other.
  *
