@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_pdg_ctrl.c
- * @brief Runtime-control tests for ra8_pdg.c (PWM Delay Generation Circuit)
+ * @brief Runtime-control tests for the ra8_pdg driver (src/pdg_abi.zig) (PWM Delay Generation Circuit)
  *
  * @details
  * Split out of test_ra8_pdg.c to keep each test translation unit under the
@@ -630,7 +630,7 @@ static void test_deinit(void)
  *
  * @par MC/DC:
  * Decision A: ``ra8_pdg_check_constraints`` line 805,
- * libs/ra8_hal/src/ra8_pdg.c:
+ * libs/ra8_hal/src/pdg_abi.zig:
  * ``if ((mode != k_ra8_pdg_wave_saw) && (mode != k_ra8_pdg_wave_triangle))``
  * (2 conditions). N+1 = 3 vectors:
  * - V1: mode=saw      -> C1=F (short-circuits)        -> dec F (->ok)
@@ -671,7 +671,7 @@ static void test_mcdc_pdg(void)
  *
  * @par MC/DC:
  * Decision: ``if ((count == 0U) || (count > k_ra8_pdg_slot_count))``
- * (2 conditions, libs/ra8_hal/src/ra8_pdg.c ra8_pdg_set_delay_batch). N+1 = 3.
+ * (2 conditions, libs/ra8_hal/src/pdg_abi.zig ra8_pdg_set_delay_batch). N+1 = 3.
  * - V1: count=1 (in range)               -> C1=F short-circuits   -> F (proceeds)
  * - V2: count=k_ra8_pdg_slot_count (max)  -> C1=F, C2=F            -> F (proceeds)
  * - V3: count=k_ra8_pdg_slot_count+1 (oor) -> C1=F, C2=T           -> T -> invalid_arg
@@ -710,7 +710,7 @@ static void test_mcdc_set_delay_batch_count(void)
  *
  * @par MC/DC:
  * Decision: ``if ((pin != k_ra8_pdg_pin_a) && (pin != k_ra8_pdg_pin_b))``
- * (2 conditions, libs/ra8_hal/src/ra8_pdg.c ra8_pdg_pin_disable). N+1 = 3.
+ * (2 conditions, libs/ra8_hal/src/pdg_abi.zig ra8_pdg_pin_disable). N+1 = 3.
  * - V1: pin=pin_a   -> C1=F short-circuits          -> F (proceeds, ok)
  * - V2: pin=pin_b   -> C1=T, C2=F                   -> F (proceeds, ok)
  * - V3: pin=0xFE    -> C1=T, C2=T                   -> T -> invalid_arg
