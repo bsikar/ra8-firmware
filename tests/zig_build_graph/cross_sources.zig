@@ -278,6 +278,15 @@ pub fn bootSourcePath(
         std.fmt.allocPrint(allocator, "{s}/src/boot/{s}", .{ app.board, boot }) catch @panic("OOM");
 }
 
+/// The middle rung of the boot resolver: the board's `src/boot/<profile>/`
+/// copy of one boot unit, or null when the app names no `BOOT_PROFILE`. A
+/// profile directory holds only the units it overrides, so the caller probes
+/// the returned path and falls through to the board default when it is absent.
+pub fn profileBootPath(allocator: std.mem.Allocator, app: CrossApp, boot: []const u8) ?[]const u8 {
+    const profile = app.boot_profile orelse return null;
+    return std.fmt.allocPrint(allocator, "{s}/src/boot/{s}/{s}", .{ app.board, profile, boot }) catch @panic("OOM");
+}
+
 /// Include path, in the order ra8_add_app() adds it. Order is preserved
 /// because a header shadowed by an earlier directory resolves differently, and
 /// a parity claim that only holds for one ordering is not a parity claim.
@@ -358,6 +367,12 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     for (cross_boot_sources) |boot| {
         const app_copy = b.fmt("{s}/src/{s}", .{ app.dir, boot });
         const app_has_copy = if (b.build_root.handle.access(app_copy, .{})) |_| true else |_| false;
+        if (!app_has_copy) if (profileBootPath(b.allocator, app, boot)) |profiled| {
+            if (b.build_root.handle.access(profiled, .{})) |_| {
+                sources.append(profiled) catch @panic("OOM");
+                continue;
+            } else |_| {}
+        };
         sources.append(bootSourcePath(b.allocator, app, boot, app_has_copy)) catch @panic("OOM");
     }
 

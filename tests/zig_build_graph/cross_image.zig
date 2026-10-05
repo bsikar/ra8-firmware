@@ -36,6 +36,7 @@ const pkg_path = @import("pkg_path.zig");
 /// The universal library whose C left the universal glob for a Zig archive.
 const universal_usb_pal = "ra8_usb_pal";
 const ns_image = @import("ns_image.zig");
+const ns_linker_script = @import("ns_linker_script.zig");
 
 const CrossApp = cross_sources.CrossApp;
 
@@ -316,6 +317,7 @@ fn addCrossApp(
     else
         null;
     const local_defines = app_local.appDefines(b.allocator, app.local);
+    const ns_memory_map_defines = ns_linker_script.memoryMapDefines(b);
     const local_system_dirs = app_local.appSystemIncludeDirs(app.local);
 
     var include_dirs = std.ArrayList([]const u8).init(b.allocator);
@@ -346,6 +348,7 @@ fn addCrossApp(
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
         compile.addArgs(middleware_defines);
         compile.addArgs(local_defines);
+        if (app.local.ns_memory_map) compile.addArgs(ns_memory_map_defines);
         // A SOURCE-scope define, so it lands after every target-scope one and
         // on these units alone: OFF_TARGET_LIBS is the only rule here that
         // compiles one executable at two preprocessor views.

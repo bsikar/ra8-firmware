@@ -62,6 +62,10 @@ pub const AppLocal = struct {
     include_dirs: []const []const u8 = &.{},
     /// The vendored static library the app declares and links, if any.
     vendored: ?VendoredLibrary = null,
+    /// The app calls `ra8_ns_memory_map_defines(<app>.elf)`, which puts the
+    /// NS image's load and run bases on every one of its units. See
+    /// ns_linker_script.memoryMapDefines.
+    ns_memory_map: bool = false,
 };
 
 /// The tools and global flag sets a vendored library is built with. The global
