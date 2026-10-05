@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -51,13 +52,18 @@ func ranLocally(t *testing.T, ctx context.Context, args []string) (string, strin
 }
 
 func TestACancelledLocalTaskAnswersOneHundredAndThirty(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("the cancellation fixture uses assert-casts, whose catalog support is Linux and Windows")
+	}
 	offline(t)
 	submittableCheckout(t)
 
 	cancelled, stop := context.WithCancel(context.Background())
 	stop()
 
-	_, complained, status := ranLocally(t, cancelled, []string{"ascii"})
+	// assert-casts is reviewed for both Linux and Windows. Using ascii here
+	// would stop at the catalog OS gate before the cancellation could be seen.
+	_, complained, status := ranLocally(t, cancelled, []string{"assert-casts"})
 	if status != 130 {
 		t.Fatalf("exit=%d stderr=%q; want 130 for a cancelled run", status, complained)
 	}

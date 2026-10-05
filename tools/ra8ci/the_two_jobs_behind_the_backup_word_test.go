@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/privatefile"
 )
 
 // `ra8ci backup` is two quite different jobs behind one word: keygen mints the
@@ -32,12 +34,8 @@ func TestBackupKeygenMintsAPairAtThePathsTheEnvironmentNames(t *testing.T) {
 
 	// The private half is the whole secret, so it may not be readable by
 	// anyone else on the box.
-	info, err := os.Lstat(private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("private key mode=%v; want owner-only", info.Mode().Perm())
+	if err := privatefile.Check(private); err != nil {
+		t.Fatalf("private signing key is not owner-only: %v", err)
 	}
 	for _, path := range []string{private, public} {
 		body, err := os.ReadFile(path)

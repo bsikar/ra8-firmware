@@ -7,9 +7,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // bindBoardAgentEnvironment gives the service mode everything it asks for: a
@@ -21,6 +24,9 @@ import (
 // file holds the far side of them, which no case reached before.
 func bindBoardAgentEnvironment(t *testing.T, boardID string) {
 	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("board-agent service execution is Linux-only and is refused before service setup on other hosts")
+	}
 	material := mintReportMaterial(t)
 	t.Setenv(envServerURL, "https://ra8ci.example:8443")
 	t.Setenv(envServerCA, material.caPath)
@@ -42,6 +48,9 @@ func boardAgentStateDirectory(t *testing.T) string {
 	directory := filepath.Join(t.TempDir(), "state.d")
 	if err := os.Mkdir(directory, 0o700); err != nil {
 		t.Fatalf("plant a private state directory: %v", err)
+	}
+	if err := testprivatefile.OwnerOnly(directory); err != nil {
+		t.Fatalf("restrict state directory to its owner: %v", err)
 	}
 	return directory
 }

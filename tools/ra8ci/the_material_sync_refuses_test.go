@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testprivatefile"
 )
 
 // Sync reports historical evidence and can schedule nothing, so every refusal
@@ -20,17 +22,16 @@ import (
 // later one.
 
 // privateStateDirectory returns an absolute directory the spool will accept.
-// A temporary directory is created against the process umask, which on a root
-// build box leaves it 0755, and the spool refuses anything the rest of the
-// machine can reach.
+// The platform helper applies an owner-only policy explicitly instead of
+// relying on a temporary directory's inherited ACL or mode.
 func privateStateDirectory(t *testing.T) string {
 	t.Helper()
 	directory := filepath.Join(t.TempDir(), "outbox")
 	if err := os.Mkdir(directory, 0o700); err != nil {
 		t.Fatalf("plant state directory: %v", err)
 	}
-	if err := os.Chmod(directory, 0o700); err != nil {
-		t.Fatalf("seal state directory: %v", err)
+	if err := testprivatefile.OwnerOnly(directory); err != nil {
+		t.Fatalf("restrict state directory to its owner: %v", err)
 	}
 	return directory
 }
@@ -98,8 +99,8 @@ func TestSyncRefusesAnIdentityItCannotPresent(t *testing.T) {
 		if err := os.WriteFile(loose, keyPEM, 0o644); err != nil {
 			t.Fatalf("plant loose key: %v", err)
 		}
-		if err := os.Chmod(loose, 0o644); err != nil {
-			t.Fatalf("loosen key: %v", err)
+		if err := testprivatefile.OtherUsersReadable(loose); err != nil {
+			t.Fatalf("grant broad read access to key: %v", err)
 		}
 		bindReportEnvironment(t, material, "https://ra8ci.invalid:8443")
 		t.Setenv(roleOperator.keyEnv, loose)
@@ -131,11 +132,11 @@ func TestSyncRefusesALocalSpoolItCannotTrust(t *testing.T) {
 
 	t.Run("a state directory the rest of the machine can reach", func(t *testing.T) {
 		shared := filepath.Join(t.TempDir(), "shared")
-		if err := os.Mkdir(shared, 0o755); err != nil {
+		if err := os.Mkdir(shared, 0o700); err != nil {
 			t.Fatalf("plant shared directory: %v", err)
 		}
-		if err := os.Chmod(shared, 0o755); err != nil {
-			t.Fatalf("loosen directory: %v", err)
+		if err := testprivatefile.OtherUsersReadable(shared); err != nil {
+			t.Fatalf("grant broad read access to directory: %v", err)
 		}
 		bindReportEnvironment(t, material, "https://ra8ci.invalid:8443")
 		t.Setenv("RA8CI_STATE_DIR", shared)
