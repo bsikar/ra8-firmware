@@ -270,10 +270,15 @@ test "host backend renders regular and bold headings beside each other" {
     try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
     const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
     defer allocator.free(written);
-    try std.testing.expectEqualSlices(u8, expected_weights, written);
+    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+        defer allocator.free(update);
+        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/font_weights.ppm", .data = rendered });
+    } else |_| {
+        try std.testing.expectEqualSlices(u8, expected_weights, written);
+    }
 }
 
-test "host backend renders the five reading sizes with matching face metrics" {
+test "host backend renders both reader faces at five native sizes" {
     const allocator = std.testing.allocator;
     var canvas = try host.Canvas.init(allocator, 1072, 1448, 255);
     defer canvas.deinit(allocator);
@@ -287,39 +292,54 @@ test "host backend renders the five reading sizes with matching face metrics" {
         .draw_text_style = host.Canvas.drawTextStyle,
         .text_size_style = host.Canvas.textSizeStyle,
     };
-    var previous_w: i32 = 0;
-    var previous_h: i32 = 0;
+    const sentences = [_][*:0]const u8{
+        "A quiet reader turns the page.",
+        "Light rests across the printed words.",
+    };
+    const line_heights = [_][2]i32{
+        .{ 46, 36 },
+        .{ 52, 41 },
+        .{ 57, 45 },
+        .{ 66, 52 },
+        .{ 79, 62 },
+    };
     for (1..6) |size_value| {
         const size: abi.paint.TextSize = @enumFromInt(size_value);
-        const label_text: [*:0]const u8 = switch (size_value) {
-            1 => "Size 1",
-            2 => "Size 2",
-            3 => "Size 3",
-            4 => "Size 4",
-            else => "Size 5",
-        };
-        var label = abi.label.Label{
-            .paint = &paint,
-            .text = label_text,
-            .fg = 0x111111,
-            .bg = 0xffffff,
-            .pad = 0,
-            .alignment = .center,
-            .face = .serif,
-            .weight = .regular,
-            .size = size,
-        };
-        const y: i32 = 120 + @as(i32, @intCast(size_value - 1)) * 250;
-        var label_widget = widget(.{ .x = 72, .y = y, .w = 928, .h = 180 });
-        try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
-        label_widget.vt.?.render.?(&label_widget);
-        var measured_w: i32 = 0;
-        var measured_h: i32 = 0;
-        host.Canvas.textSizeStyle(&canvas, label_text, @intFromEnum(abi.paint.Face.serif), @intFromEnum(abi.paint.Weight.regular), @intFromEnum(size), &measured_w, &measured_h);
-        try std.testing.expect(measured_w > previous_w);
-        try std.testing.expect(measured_h > previous_h);
-        previous_w = measured_w;
-        previous_h = measured_h;
+        const row_y: i32 = 32 + @as(i32, @intCast(size_value - 1)) * 255;
+        for (0..2) |face_index| {
+            const face: abi.paint.Face = if (face_index == 0) .serif else .sans;
+            const face_y = row_y + @as(i32, @intCast(face_index)) * 174;
+            for (sentences, 0..) |sentence, line_index| {
+                var label = abi.label.Label{
+                    .paint = &paint,
+                    .text = sentence,
+                    .fg = 0x111111,
+                    .bg = 0xffffff,
+                    .pad = 0,
+                    .alignment = .left,
+                    .face = face,
+                    .weight = .regular,
+                    .size = size,
+                };
+                const line_y = face_y + @as(i32, @intCast(line_index)) * 82;
+                var label_widget = widget(.{ .x = 64, .y = line_y, .w = 944, .h = 80 });
+                try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
+                label_widget.vt.?.render.?(&label_widget);
+            }
+            var measured_w: i32 = 0;
+            var measured_h: i32 = 0;
+            host.Canvas.textSizeStyle(
+                &canvas,
+                "Hj",
+                @intFromEnum(face),
+                @intFromEnum(abi.paint.Weight.regular),
+                @intFromEnum(size),
+                &measured_w,
+                &measured_h,
+            );
+            try std.testing.expectEqual(line_heights[size_value - 1][face_index], measured_h);
+            try std.testing.expect(measured_w > 0);
+        }
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
@@ -329,6 +349,47 @@ test "host backend renders the five reading sizes with matching face metrics" {
     } else |_| {
         try std.testing.expectEqualSlices(u8, reading_sizes_expected, rendered);
     }
+}
+
+test "zero reader size renders exactly like step three and body 38" {
+    const allocator = std.testing.allocator;
+    var canvases = [_]host.Canvas{
+        try host.Canvas.init(allocator, 280, 100, 255),
+        try host.Canvas.init(allocator, 280, 100, 255),
+        try host.Canvas.init(allocator, 280, 100, 255),
+    };
+    defer {
+        for (&canvases) |*canvas| canvas.deinit(allocator);
+    }
+    const sizes = [_]abi.paint.TextSize{ .default, .size_3, .body_38 };
+    for (&canvases, sizes) |*canvas, size| {
+        const paint = abi.types.Paint{
+            .user = canvas,
+            .fill_rect = host.Canvas.fillRect,
+            .draw_text = host.Canvas.drawText,
+            .text_size = host.Canvas.textSize,
+            .draw_text_face = host.Canvas.drawTextFace,
+            .text_size_face = host.Canvas.textSizeFace,
+            .draw_text_style = host.Canvas.drawTextStyle,
+            .text_size_style = host.Canvas.textSizeStyle,
+        };
+        var label = abi.label.Label{
+            .paint = &paint,
+            .text = "A quiet reader",
+            .fg = 0x111111,
+            .bg = 0xffffff,
+            .pad = 0,
+            .alignment = .left,
+            .face = .serif,
+            .weight = .regular,
+            .size = size,
+        };
+        var label_widget = widget(.{ .x = 0, .y = 0, .w = 280, .h = 80 });
+        try std.testing.expectEqual(abi.label.err.ok, abi.label.ra8_widget_label_init(&label_widget, &label));
+        label_widget.vt.?.render.?(&label_widget);
+    }
+    try std.testing.expectEqualSlices(u8, canvases[0].pixels, canvases[1].pixels);
+    try std.testing.expectEqualSlices(u8, canvases[1].pixels, canvases[2].pixels);
 }
 
 test "host backend renders bold text at a non-default reading size" {

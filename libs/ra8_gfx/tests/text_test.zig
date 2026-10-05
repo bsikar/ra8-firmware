@@ -141,6 +141,58 @@ test "serif and every native display atlas keep ink inside the line box" {
 
 const display_atlas = @import("../src/internal/font_display.zig");
 
+test "reader atlases provide five native regular sizes for both faces" {
+    const expected_heights = [_][2]u32{
+        .{ 46, 36 },
+        .{ 52, 41 },
+        .{ 57, 45 },
+        .{ 66, 52 },
+        .{ 79, 62 },
+    };
+    for (1..6) |size| {
+        for (0..2) |face_index| {
+            const face: text.Face = if (face_index == 0) .serif else .sans;
+            const measured = text.measureStyle("Hj", face, .regular, @intCast(size));
+            try std.testing.expectEqual(expected_heights[size - 1][face_index], measured.height);
+            var pixels = PixelRecorder{};
+            text.drawStyle("Hj", 10, 20, face, .regular, @intCast(size), 0, 0xFFFFFF, &pixels, PixelRecorder.putPixel);
+            try std.testing.expect(pixels.ink_pixels > 0);
+            try std.testing.expect(pixels.topmost >= 20);
+            try std.testing.expect(pixels.bottommost < 20 + @as(i32, @intCast(measured.height)));
+        }
+    }
+}
+
+test "default reader size, step three and body 38 use the same native atlas" {
+    for (0..2) |face_index| {
+        const face: text.Face = if (face_index == 0) .serif else .sans;
+        const default = text.measureStyle("reader", face, .regular, 0);
+        const step_three = text.measureStyle("reader", face, .regular, 3);
+        const body_38 = text.measureStyle("reader", face, .regular, 6);
+        try std.testing.expectEqual(step_three.width, default.width);
+        try std.testing.expectEqual(body_38.width, step_three.width);
+        try std.testing.expectEqual(step_three.height, default.height);
+        try std.testing.expectEqual(body_38.height, step_three.height);
+    }
+}
+
+test "all native reader atlases decode every glyph" {
+    for (0..2) |face_index| {
+        for ([_]u8{ 1, 2, 4, 5 }) |size| {
+            const selected = display_atlas.get(@intCast(face_index), 0, size).?;
+            try std.testing.expectEqual(@as(u8, 2), selected.bytes[4]);
+            try std.testing.expectEqual(@as(u8, 1), selected.bytes[5]);
+            for (0..selected.glyph_count) |glyph_index| {
+                const glyph = selected.glyphAt(glyph_index);
+                var decoder = selected.decoder(glyph.offset);
+                for (0..@as(usize, glyph.width) * glyph.height) |_| {
+                    try std.testing.expect(decoder.next() <= 3);
+                }
+            }
+        }
+    }
+}
+
 test "synthetic serif bold display glyphs retain fill and solid H stems" {
     const samples = "Hoen0123456789";
     for (6..9) |size| {
