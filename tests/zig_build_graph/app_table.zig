@@ -924,4 +924,20 @@ pub const cross_apps = [_]CrossApp{
             .rpc = true,
         },
     },
+    .{
+        // A ThreadX image on CPU0 whose one thread recurses through its
+        // PSPLIM-guarded stack and reports the STKOF UsageFault on the
+        // console, so the emulator can run a real firmware image through
+        // RA8EMU-243 (RA8FW-503). Zig main, no C of its own; ThreadX only,
+        // nothing in LIBS. Appended last so the positional picks stay put.
+        .name = "threadx_stkof",
+        .dir = "examples/ek_ra8d2/hil_needs_revalidation/threadx_stkof",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+    },
 };
