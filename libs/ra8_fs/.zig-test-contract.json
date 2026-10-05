@@ -1,15 +1,19 @@
 {
   "test_roots": [
     "tests/lock_abi_test.zig",
-    "tests/exfat_label_abi_test.zig"
+    "tests/exfat_label_abi_test.zig",
+    "tests/attr_abi_test.zig"
   ],
   "covered_sources": [
+    "src/fs_c.zig",
+    "src/ra8_fs_attr_abi.zig",
     "src/ra8_fs_exfat_label_abi.zig",
     "src/ra8_fs_lock_abi.zig",
     "src/root.zig",
-    "tests/exfat_dir_fake.zig",
+    "tests/attr_abi_test.zig",
     "tests/exfat_label_abi_test.zig",
+    "tests/fs_walker_fake.zig",
     "tests/lock_abi_test.zig"
   ],
-  "minimum_tests": 12
+  "minimum_tests": 18
 }

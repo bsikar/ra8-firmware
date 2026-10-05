@@ -27,38 +27,16 @@ pub const label_max: u32 = 11;
 pub const lbl_cnt: u32 = 1;
 pub const lbl_name: u32 = 2;
 
-/// Mirrors C `exfat_dir_t` (ra8_fs_fat_types_internal.h).
-pub const Dir = extern struct {
-    cluster: u32 = 0,
-    contig_end: u32 = 0,
-    self_cluster: u32 = 0,
-    self_index: u32 = 0,
-};
+const std = @import("std");
+const c = @import("fs_c.zig").c;
 
-/// Mirrors C `exfat_cursor_t`.
-pub const Cursor = extern struct {
-    cluster: u32 = 0,
-    entry_in_cluster: u32 = 0,
-    scanned: u32 = 0,
-    contig_end: u32 = 0,
-};
-
-/// Mirrors C `exfat_setpos_t`.
-pub const SetPos = extern struct {
-    cluster: u32 = 0,
-    index: u32 = 0,
-};
-
-/// `ra8_fs_mount_t` is only ever passed through.
-pub const Mount = opaque {};
-
-extern fn priv_exfat_dir_root(m: *const Mount, out: *Dir) callconv(.C) void;
-extern fn priv_exfat_cursor_init(dir: *const Dir, out: *Cursor) callconv(.C) void;
-extern fn priv_exfat_next_entry(m: *const Mount, cur: *Cursor, out: [*]u8) callconv(.C) u16;
-extern fn priv_exfat_write_dir_set(m: *const Mount, cluster: u32, idx: u32, set: [*]const u8, bytes: u32) callconv(.C) u16;
+pub const Dir = c.exfat_dir_t;
+pub const Cursor = c.exfat_cursor_t;
+pub const SetPos = c.exfat_setpos_t;
+pub const Mount = c.ra8_fs_mount_t;
 
 const Located = struct {
-    pos: SetPos = .{},
+    pos: SetPos = .{ .cluster = 0, .index = 0 },
     entry: [entry_bytes]u8 = [_]u8{0} ** entry_bytes,
     present: bool = false,
 };
@@ -67,14 +45,14 @@ const Located = struct {
 /// the end-of-directory slot a new one would go in. Reads only.
 fn locateLabel(m: *const Mount, out: *Located) u16 {
     const label_type: u8 = entry_label & ~inuse_bit;
-    var root: Dir = .{};
-    priv_exfat_dir_root(m, &root);
-    var cur: Cursor = .{};
-    priv_exfat_cursor_init(&root, &cur);
+    var root = std.mem.zeroes(Dir);
+    c.priv_exfat_dir_root(m, &root);
+    var cur = std.mem.zeroes(Cursor);
+    c.priv_exfat_cursor_init(&root, &cur);
     while (cur.scanned < scan_limit) {
         const at: SetPos = .{ .cluster = cur.cluster, .index = cur.entry_in_cluster };
         var e = [_]u8{0} ** entry_bytes;
-        const err = priv_exfat_next_entry(m, &cur, &e);
+        const err = c.priv_exfat_next_entry(m, &cur, &e);
         if (err != ok) return err;
         if (e[0] == entry_eod) {
             out.* = .{ .pos = at, .present = false };
@@ -133,5 +111,5 @@ pub export fn priv_exfat_set_label(m: *const Mount, label: ?[*:0]const u8) callc
     const err = locateLabel(m, &found);
     if (err != ok) return err;
     const entry = encodeLabel(label);
-    return priv_exfat_write_dir_set(m, found.pos.cluster, found.pos.index, &entry, entry_bytes);
+    return c.priv_exfat_write_dir_set(m, found.pos.cluster, found.pos.index, &entry, entry_bytes);
 }

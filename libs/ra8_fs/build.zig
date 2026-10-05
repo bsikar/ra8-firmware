@@ -26,6 +26,10 @@ pub fn build(b: *std.Build) void {
         .pic = true,
         .unwind_tables = unwind,
     });
+    // fs_c.zig @cImports the C headers so Zig units share their exact layouts.
+    root.addIncludePath(b.path("inc"));
+    root.addIncludePath(b.path("src"));
+    root.addIncludePath(b.path("../ra8_core/inc"));
     const library = b.addLibrary(.{ .name = "ra8_fs", .linkage = .static, .root_module = root });
     library.link_function_sections = true;
     library.link_data_sections = true;
@@ -36,6 +40,7 @@ pub fn build(b: *std.Build) void {
     const roots = [_][]const u8{
         "tests/lock_abi_test.zig",
         "tests/exfat_label_abi_test.zig",
+        "tests/attr_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
