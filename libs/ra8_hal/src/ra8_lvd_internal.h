@@ -31,7 +31,7 @@ extern "C" {
  * Cross-TU channel-map sharing
  *
  * The ra8_lvd driver is split across multiple translation units
- * (ra8_lvd.c plus ra8_lvd_runtime.c / ra8_lvd_events.c). The channel-map
+ * (ra8_lvd.c plus the Zig lvd_runtime / lvd_events units). The channel-map
  * descriptor, its index enum, the lookup table, and the handful of
  * register helpers below are referenced by more than one TU, so they
  * live here -- defined once in ra8_lvd.c, declared for every consumer.
