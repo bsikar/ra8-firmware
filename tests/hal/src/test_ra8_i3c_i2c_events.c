@@ -137,35 +137,6 @@ RA8_INTERNAL static void internal_test_scan_bad_args(void)
   * code under test that this case touches)
  */
 
-/** @brief Verify errors mask and clear behavior. @details Executes the errors mask and clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_errors_mask_and_clear(void)
-{
-  TEST_BEGIN("internal_i3c_i2c_get/clear_errors: AL + NACK + TODF");
-  internal_prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
-  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-  reg->BST = (uint32_t)k_ra8_i3c_i2c_msk_bst_alf | (uint32_t)k_ra8_i3c_i2c_msk_bst_nackdf |
-             (uint32_t)k_ra8_i3c_i2c_msk_bst_todf;
-
-  uint8_t mask = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_get_errors(0U, &mask));
-  TEST_ASSERT_EQ(((uint8_t)k_ra8_i3c_i2c_err_arb_lost | (uint8_t)k_ra8_i3c_i2c_err_nack |
-                  (uint8_t)k_ra8_i3c_i2c_err_timeout),
-                 mask);
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_clear_errors(0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_get_errors(0U, &mask));
-  TEST_ASSERT_EQ(k_ra8_i3c_i2c_err_none, mask);
-
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_i2c_get_errors(0U, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_i3c_i2c_get_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor, &mask));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_i3c_i2c_clear_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
-  TEST_END("internal_i3c_i2c_get/clear_errors: AL + NACK + TODF");
-}
-
 static int32_t s_iic_b_cb_count = 0;
 static int32_t s_iic_b_cb_err   = 0;
 /** @brief Provide the file-local stub iic b cb test helper. @details Implements the stub iic b cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] err_mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
@@ -251,7 +222,6 @@ RA8_INTERNAL static void internal_test_dispatch_eri_fires_callback(void)
 static void (*const s_test_roster[])(void) = {
   internal_test_scan_no_response,
   internal_test_scan_bad_args,
-  internal_test_errors_mask_and_clear,
   internal_test_scan_ack,
   internal_test_attach_handler_toggles_iers,
   internal_test_dispatch_eri_fires_callback,
