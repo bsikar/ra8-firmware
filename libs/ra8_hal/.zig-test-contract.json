@@ -110,5 +110,5 @@
     "tests/i2c_config_test.zig",
     "src/i2c_config_abi.zig"
   ],
-  "minimum_tests": 688
+  "minimum_tests": 700
 }
