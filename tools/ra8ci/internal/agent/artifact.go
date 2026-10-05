@@ -122,8 +122,14 @@ func (collector *ArtifactCollector) collectOne(ctx context.Context, stepName, ou
 // Checking only the final path with Lstat misses a symlink in an ancestor,
 // which would make Open read a file outside the checkout.
 func (collector *ArtifactCollector) refuseSymlinkParents(root *os.Root, name, output string) error {
-	parent := filepath.Dir(name)
-	for parent != "." {
+	var parents []string
+	for parent := filepath.Dir(name); parent != "." && parent != string(filepath.Separator); parent = filepath.Dir(parent) {
+		parents = append(parents, parent)
+	}
+	for left, right := 0, len(parents)-1; left < right; left, right = left+1, right-1 {
+		parents[left], parents[right] = parents[right], parents[left]
+	}
+	for _, parent := range parents {
 		info, err := root.Lstat(parent)
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -134,7 +140,6 @@ func (collector *ArtifactCollector) refuseSymlinkParents(root *os.Root, name, ou
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return fmt.Errorf("%w: parent of %q is not a plain directory", ErrUnsafeArtifact, output)
 		}
-		parent = filepath.Dir(parent)
 	}
 	return nil
 }

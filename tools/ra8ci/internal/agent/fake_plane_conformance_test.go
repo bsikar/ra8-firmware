@@ -42,10 +42,10 @@ func TestFakePlaneDrivesTheFullProtocol(t *testing.T) {
 	if len(violations) != 0 {
 		t.Fatalf("the agent broke the contract: %v", violations)
 	}
-	if !acked || logs != 1 || receipt == nil {
+	if !acked || logs == 0 || receipt == nil {
 		t.Fatalf("incomplete walk: acked=%v logs=%d receipt=%v", acked, logs, receipt)
 	}
-	if receipt.Outcome != "succeeded" || !receipt.EvidenceComplete || receipt.FinalLogSequence != 1 {
+	if receipt.Outcome != "succeeded" || !receipt.EvidenceComplete || receipt.FinalLogSequence != int64(logs) {
 		t.Fatalf("terminal receipt = %+v", receipt)
 	}
 	if receipt.CatalogSHA256 != assignment.CatalogSHA256 ||

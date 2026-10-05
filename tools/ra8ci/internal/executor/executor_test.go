@@ -293,24 +293,44 @@ func TestRunExecutesOnlyReviewedTaskFromVerifiedCheckout(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(manifestDir, "sha256.txt"), embedded.Digest(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	scriptDir := filepath.Join(root, "scripts", "checks")
-	if err := os.MkdirAll(scriptDir, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(scriptDir, "format_tree.sh"), []byte("#!/bin/sh\n[ \"$1\" = --check ] || exit 31\nprintf 'fixture-pass\\n'\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
 	c, err := catalog.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, found := c.Task("format-check")
+	taskName := "format-check"
+	if runtime.GOOS == "windows" {
+		// format-check dispatches through bash and is intentionally Linux-only.
+		// assert-casts is an existing read-only catalog task reviewed for both
+		// operating systems, so this exercises the real admission path on Windows.
+		taskName = "assert-casts"
+		fixtureDir := filepath.Join(root, "tests")
+		if err := os.MkdirAll(fixtureDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(fixtureDir, "agent_fixture.c"),
+			[]byte("TEST_ASSERT_EQ(actual, expected);\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		scriptDir := filepath.Join(root, "scripts", "checks")
+		if err := os.MkdirAll(scriptDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(scriptDir, "format_tree.sh"), []byte("#!/bin/sh\n[ \"$1\" = --check ] || exit 31\nprintf 'fixture-pass\\n'\n"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	task, found := c.Task(taskName)
 	if !found {
-		t.Fatal("format-check absent")
+		t.Fatalf("%s absent", taskName)
 	}
 	var stdout bytes.Buffer
 	result, err := Run(context.Background(), root, task, &stdout, io.Discard)
-	if err != nil || result.ExitCode != 0 || stdout.String() != "fixture-pass\n" {
+	if runtime.GOOS == "windows" {
+		if err != nil || result.ExitCode != 0 || !strings.Contains(stdout.String(), "all cases pass") {
+			t.Fatalf("result = %+v, output = %q, error = %v", result, stdout.String(), err)
+		}
+	} else if err != nil || result.ExitCode != 0 || stdout.String() != "fixture-pass\n" {
 		t.Fatalf("result = %+v, output = %q, error = %v", result, stdout.String(), err)
 	}
 	task.Steps[0].Args = []string{"scripts/checks/format_tree.sh"}

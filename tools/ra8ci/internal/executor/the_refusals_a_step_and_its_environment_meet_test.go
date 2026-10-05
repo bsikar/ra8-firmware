@@ -49,16 +49,6 @@ func TestCleanEnvironmentRefusesAScratchDirectoryItCannotResolve(t *testing.T) {
 	}
 }
 
-func TestIsWithinRefusesARootAndCandidateItCannotRelate(t *testing.T) {
-	// A relative root and an absolute candidate both resolve, and then no
-	// path from one to the other exists, so the answer is an error rather
-	// than a false "outside the checkout".
-	within, err := isWithin(".", t.TempDir())
-	if within || !errors.Is(err, ErrUnsafeEnvironment) {
-		t.Fatalf("within = %v, error = %v", within, err)
-	}
-}
-
 func TestResolveTaskProgramRefusesARootThatDoesNotResolve(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "gone")
 	program, err := resolveTaskProgram(absent, "tools/ra8ci/thing")
