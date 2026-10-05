@@ -449,6 +449,19 @@ macro(ra8_add_app)
     if(_ra8_port)
       target_sources(${_ra8_elf} PRIVATE ${_ra8_port})
     endif()
+    # A port whose bridge is partly Zig names those archives in
+    # RA8_<USE>_PORT_ZIG_LIBS; link each one built for this image's M85.
+    get_property(_ra8_port_zig GLOBAL PROPERTY RA8_${_ra8_use_up}_PORT_ZIG_LIBS)
+    foreach(_ra8_port_zig_lib ${_ra8_port_zig})
+      if(NOT TARGET ${_ra8_elf}_zig_${_ra8_port_zig_lib}_cortex_m85)
+        ra8_link_zig_library_for_cpu(
+          TARGET ${_ra8_elf}
+          LIB ${_ra8_port_zig_lib}
+          CPU cortex_m85
+          FLOAT hard
+        )
+      endif()
+    endforeach()
   endforeach()
   target_link_libraries(${_ra8_elf} PRIVATE gcc)
 

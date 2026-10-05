@@ -110,10 +110,14 @@ set_property(
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_rtos_pool.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_rtos_sync.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_esp_hosted_spi.c
-           # The ra8_io SPI bus facade the transport slice drives. Named here
-           # rather than pulled in with `LIBS ra8_io` because that glob would
-           # also bring the block-device and file-system layers, which no
-           # esp-hosted consumer needs.
+           # The C half of the ra8_io SPI bus facade the transport slice
+           # drives. Named here rather than pulled in with `LIBS ra8_io`
+           # because that glob would also bring the block-device and
+           # file-system layers, which no esp-hosted consumer needs.
            ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_io/src/ra8_io_spi_bus.c
-           ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_io/src/ra8_io_spi_bus_sci_spi.c
 )
+
+# The Zig half of the same facade: the SCI Simple-SPI binder is in the
+# ra8_io archive now (RA8FW-703). ra8_add_app links the M85 archive of every
+# library named here for each app that USES esp_hosted (RA8FW-705).
+set_property(GLOBAL PROPERTY RA8_ESP_HOSTED_PORT_ZIG_LIBS ra8_io)
