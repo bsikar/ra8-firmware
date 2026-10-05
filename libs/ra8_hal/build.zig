@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd", "mipi_csi_status", "mipi_csi_config", "mipi_csi_info", "mipi_csi_lifecycle", "mipi_dsi_lanes", "mipi_dsi_lifecycle", "mipi_dsi_status", "mipi_dsi_video", "mipi_dsi_dispatch", "fpu_probe", "mipi_dsi_command" };
+    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd", "mipi_csi_status", "mipi_csi_config", "mipi_csi_info", "mipi_csi_lifecycle", "mipi_dsi_lanes", "mipi_dsi_lifecycle", "mipi_dsi_status", "mipi_dsi_video", "mipi_dsi_dispatch", "fpu_probe", "mipi_dsi_command", "i3c_i2c_control" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -78,6 +78,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "bkup_security", .source = "src/internal/bkup_security.zig", .root = "tests/bkup_security_test.zig" },
         .{ .name = "lpm_graphics", .source = "src/internal/lpm_graphics.zig", .root = "tests/lpm_graphics_test.zig" },
         .{ .name = "i3c_i2c_peripheral", .source = "src/internal/i3c_i2c_peripheral.zig", .root = "tests/i3c_i2c_peripheral_test.zig" },
+        .{ .name = "i3c_i2c_errors", .source = "src/internal/i3c_i2c_errors.zig", .root = "tests/i3c_i2c_errors_test.zig" },
         .{ .name = "ether_phy", .source = "src/internal/ether_phy.zig", .root = "tests/ether_phy_test.zig" },
         .{ .name = "mpc", .source = "src/internal/mpc.zig", .root = "tests/mpc_test.zig" },
         .{ .name = "doc", .source = "src/internal/doc.zig", .root = "tests/doc_test.zig" },

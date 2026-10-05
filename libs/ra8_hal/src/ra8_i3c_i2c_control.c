@@ -11,7 +11,6 @@
  *
  * - ``ra8_i3c_i2c_abort``        cancel an in-flight transaction.
  * - ``ra8_i3c_i2c_scan``         single-byte address-only bus probe.
- * - ``ra8_i3c_i2c_get_errors`` / ``ra8_i3c_i2c_clear_errors``
  *                                     latched bus-status decode + scrub.
  * - ``ra8_i3c_i2c_attach_handler`` register a completion / error
  *                                     callback and toggle the IIC_B IRQ
@@ -58,38 +57,6 @@ typedef enum : uint32_t {
   /** R/W bit value for a write transaction (0 in LSB). */
   k_ra8_i3c_i2c_ctrl_addr_rw_write = 0U,
 } internal_i3c_i2c_control_t;
-
-/**
- * @brief Decode latched BST error bits into a ``k_ra8_i3c_i2c_err_*`` mask.
- *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] bst See header declaration for direction and constraints.
- * @return ``ra8_err_t`` error code (or void if the signature returns void).
- * @retval k_ra8_ok Success path.
- * @retval k_ra8_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
-{
-  uint8_t mask = k_ra8_i3c_i2c_err_none;
-  if ((bst & k_ra8_i3c_i2c_msk_bst_alf) != 0U) {
-    mask |= k_ra8_i3c_i2c_err_arb_lost;
-  }
-  if ((bst & k_ra8_i3c_i2c_msk_bst_nackdf) != 0U) {
-    mask |= k_ra8_i3c_i2c_err_nack;
-  }
-  if ((bst & k_ra8_i3c_i2c_msk_bst_todf) != 0U) {
-    mask |= k_ra8_i3c_i2c_err_timeout;
-  }
-  return mask;
-}
 
 /* =============================================================================
  * Abort -- cancel an in-flight transaction.
@@ -160,37 +127,6 @@ ra8_err_t ra8_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
   priv_i3c_i2c_stop(reg);
   priv_i3c_i2c_clear_bst(reg);
   return err;
-}
-
-/* =============================================================================
- * Status helpers.
- * =============================================================================
- */
-
-ra8_err_t ra8_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
-  volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  *out_mask = internal_i3c_i2c_decode_errors(reg->BST);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_i2c_clear_errors(uint8_t channel)
-{
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
-  enum : uint32_t {
-    k_ra8_i3c_i2c_err_clear_mask = k_ra8_i3c_i2c_msk_bst_alf | k_ra8_i3c_i2c_msk_bst_nackdf |
-                                   k_ra8_i3c_i2c_msk_bst_todf, /**< RA8 I3C I2C error clear mask. */
-  };
-  reg->BST = reg->BST & ~k_ra8_i3c_i2c_err_clear_mask;
-  return k_ra8_ok;
 }
 
 /* =============================================================================
