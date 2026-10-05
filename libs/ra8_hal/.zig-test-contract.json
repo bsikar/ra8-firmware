@@ -121,7 +121,10 @@
     "src/flash_irq_abi.zig",
     "src/internal/ble.zig",
     "tests/ble_test.zig",
-    "src/ble_abi.zig"
+    "src/ble_abi.zig",
+    "src/internal/gpio_pins.zig",
+    "tests/gpio_pins_test.zig",
+    "src/gpio_pins_abi.zig"
   ],
-  "minimum_tests": 752
+  "minimum_tests": 758
 }
