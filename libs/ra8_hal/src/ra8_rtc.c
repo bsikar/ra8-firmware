@@ -42,6 +42,9 @@
 
 static const char* const s_tag = "RTC";
 
+/** Bounded RCR poll; defined in src/rtc_stop_abi.zig (RA8FW-853). */
+void priv_ra8_rtc_internal_wait_bit(volatile uint8_t* reg, uint8_t mask, uint8_t expect);
+
 typedef enum : uint8_t {
   k_ra8_bcd_digit_mask  = 0x0FU, /**< RA8 bcd digit mask.  */
   k_ra8_bcd_digit_shift = 4U,    /**< RA8 bcd digit shift. */
@@ -51,21 +54,6 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_ra8_rtc_year_base = 2000U, /**< Base year for ra8_rtc_datetime_t. */
 } ra8_rtc_year_t;
-
-/**
- * @enum ra8_rtc_wait_t
- * @brief Bounded-loop limits for register-change waits.
- *
- * @details
- * The RTC sub-clock is at most a few kHz, so a few thousand CPU
- * spin-iterations is plenty (FSP uses `FSP_HARDWARE_REGISTER_WAIT`
- * which itself spins with no upper bound). We pick an explicit
- * ceiling here to satisfy NASA Rule 2 (bounded loops) and to fail
- * loudly if the hardware never honours the write.
- */
-typedef enum : uint16_t {
-  k_ra8_rtc_wait_iters = 10000U, /**< RA8 rtc wait iters. */
-} ra8_rtc_wait_t;
 
 typedef enum : uint8_t {
   k_ra8_rtc_byte_mask_all = 0xFFU, /**< Whole-byte mask for wait loops. */
@@ -109,40 +97,6 @@ RA8_INTERNAL static uint8_t internal_bin_to_bcd(uint8_t bin)
   const uint8_t high = (uint8_t)(bin / k_ra8_bcd_digit_base);
   const uint8_t low  = (uint8_t)(bin % k_ra8_bcd_digit_base);
   return (uint8_t)((high << k_ra8_bcd_digit_shift) | low);
-}
-
-/**
- * @brief Spin until `(*reg & mask) == expect`, up to `k_ra8_rtc_wait_iters`.
- *
- * @details
- * FSP uses `FSP_HARDWARE_REGISTER_WAIT(...)` which hard-loops with
- * no time-out. We bound the loop instead so the driver still passes
- * NASA Rule 2 even when the hardware never matches (test mock).
- *
- * @param[in] reg    Register pointer to poll.
- * @param[in] mask   Bits to mask before comparing.
- * @param[in] expect Expected masked value.
- *
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static void
-internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
-{
-  for (uint16_t i = 0U; i < k_ra8_rtc_wait_iters; ++i) {
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    const bool matched = ra8_fake_mmio_poll(reg, i, ((*reg) & mask) == expect);
-#else
-    const bool matched = ((*reg) & mask) == expect;
-#endif
-    if (matched) {
-      return;
-    }
-  }
 }
 
 /* =============================================================================
@@ -283,7 +237,7 @@ ra8_err_t ra8_rtc_clock_init(ra8_rtc_clk_src_t src)
    * prescaler (START = 0) before the frequency register and software
    * reset, and wait for the bit to fall. */
   rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
 
   if (src == k_ra8_rtc_clk_loco) {
     /* HUM Ch 26.2.25 "RFRH : Frequency Register H" p 1237 -- clear RFRH
@@ -299,7 +253,7 @@ ra8_err_t ra8_rtc_clock_init(ra8_rtc_clk_src_t src)
    * source; the bit auto-clears when the reset completes. */
   rtc->RCR2 = (uint8_t)(1U << k_ra8_rcr2_bit_reset);
   ra8_delay_ms((uint32_t)k_ra8_rtc_clk_reset_ms);
-  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_reset), 0U);
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_reset), 0U);
 
   ra8_log_info_val(s_tag, "rtc clock init src", (uint32_t)src);
   return k_ra8_ok;
@@ -314,25 +268,25 @@ ra8_err_t ra8_rtc_init(void)
    * FSP r_rtc.c r_rtc_software_reset writes RCR2 = 0 and waits for
    * CNTMD == 0 to confirm the mode change. */
   rtc->RCR2 = 0U;
-  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_cntmd), 0U);
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_cntmd), 0U);
 
   /* HUM Ch 26.2.20 "RCR1 : RTC Control Register 1" p 1231 -- mask
    * every IRQ source (AIE/CIE/PIE) and clear PES. FSP waits for the
    * write to land. */
   rtc->RCR1 = 0U;
-  internal_wait_bit(&rtc->RCR1, k_ra8_rtc_byte_mask_all, 0U);
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR1, k_ra8_rtc_byte_mask_all, 0U);
 
   /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- HR24=1
    * selects 24-hour mode. FSP also polls until HR24 reads back 1. */
   rtc->RCR2 = (uint8_t)(1U << k_ra8_rcr2_bit_hr24);
-  internal_wait_bit(&rtc->RCR2,
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra8_rcr2_bit_hr24),
                     (uint8_t)(1U << k_ra8_rcr2_bit_hr24));
 
   /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- START=1
    * starts the counter. */
   rtc->RCR2 = (uint8_t)((1U << k_ra8_rcr2_bit_hr24) | (1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2,
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra8_rcr2_bit_start),
                     (uint8_t)(1U << k_ra8_rcr2_bit_start));
 
@@ -354,7 +308,7 @@ ra8_err_t ra8_rtc_set(const ra8_rtc_datetime_t* dt)
    * wait for the hardware to honour it (FSP's r_rtc_start_bit_update). */
   const uint8_t saved = rtc->RCR2;
   rtc->RCR2           = (uint8_t)(saved & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
 
   /* HUM Ch 26.2.2 "RSECCNT : Second Counter" p 1221 */
   rtc->RSECCNT = internal_bin_to_bcd(dt->second);
@@ -374,7 +328,7 @@ ra8_err_t ra8_rtc_set(const ra8_rtc_datetime_t* dt)
   /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- restore
    * START to its prior value (always 1 if init has run) and wait. */
   rtc->RCR2 = (uint8_t)(saved | (1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2,
+  priv_ra8_rtc_internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra8_rcr2_bit_start),
                     (uint8_t)(1U << k_ra8_rcr2_bit_start));
 
@@ -459,30 +413,5 @@ ra8_err_t ra8_rtc_set_alarm(const ra8_rtc_datetime_t* alarm)
   rtc->RYRAR   = 0U;
   rtc->RYRAREN = 0U;
 
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * full build-out
- * =============================================================================
- */
-
-ra8_err_t ra8_rtc_enter_stop(void)
-{
-  volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.21 "RCR2.START" p 1232 */ /* clear START to halt counter. */
-  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_rtc_exit_stop(void)
-{
-  volatile r_rtc_regs_t* rtc = ra8_rtc();
-  /* HUM Ch 26.2.21 "RCR2.START" p 1232 */ /* set START to resume. */
-  rtc->RCR2 = (uint8_t)(rtc->RCR2 | (1U << k_ra8_rcr2_bit_start));
-  internal_wait_bit(&rtc->RCR2,
-                    (uint8_t)(1U << k_ra8_rcr2_bit_start),
-                    (uint8_t)(1U << k_ra8_rcr2_bit_start));
   return k_ra8_ok;
 }
