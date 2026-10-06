@@ -349,62 +349,6 @@ ra8_err_t ra8_eth_gwca_default_open(ra8_eth_gwca_default_state_t* state)
 }
 
 /**
- * @brief Re-arm a descriptor queue if the GWCA has disabled it.
- *
- * @details When a descriptor ring runs dry the GWCA disables the
- * queue by rewriting the ring's LINK terminator to LEMPTY. Once
- * disabled the GWCA never resumes scanning, so the queue stays dead
- * (RX stops delivering / TX stops sending) even after the
- * application services every data descriptor. This helper detects
- * that state (terminator dt == LEMPTY), restores the terminator to
- * LINK pointing at chain[0], and re-pulses GWDCC[i].BALR so the GWCA
- * reloads the chain base and resumes. It is a no-op while the queue
- * is still live.
- *
- * Critically, the BALR reload resets the GWCA's AXI address-RAM
- * current_address for the queue back to the chain base (chain[0]) --
- * see HUM Ch 34.3 "GWDCCi". The caller's software ring cursor must be
- * snapped back to 0 in lockstep, or the app fills / drains a slot the
- * GWCA is no longer looking at and the frame is silently lost. FSP
- * r_layer3_switch.c::R_LAYER3_SWITCH_StartDescriptorQueue does the
- * same: it pulses BALR and resets head/tail to 0 together. ``cursor``
- * is that software ring index (tx_tail for a TX queue, rx_head for
- * RX); it is zeroed only when an actual re-arm happens.
- *
- * @param[in,out] chain       Descriptor ring (RX or TX).
- * @param[in]     ring_depth  Ring depth (data slots + LINK terminator).
- * @param[in]     queue_index GWCA queue number for the BALR reload.
- * @param[in,out] cursor      Software ring cursor; zeroed on re-arm.
- *
- * @pre Caller is in GWMC.OPC = OPERATION.
- * @pre chain[ring_depth - 1] is the ring's LINK/LEMPTY terminator.
- * @post If the queue was disabled it is re-armed, scanning again, and
- *       ``*cursor`` is 0 (re-synced with the GWCA scan position).
- * @post If the queue was already live nothing is changed.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_rearm_queue_if_disabled(ra8_gwca_basic_descriptor_t* chain,
-                                             uint32_t                     ring_depth,
-                                             uint32_t                     queue_index,
-                                             uint32_t*                    cursor)
-{
-  ra8_gwca_basic_descriptor_t* const term = &chain[ring_depth - 1U];
-  if (term->dt != (uint8_t)k_ra8_gwdcc_dt_lempty) {
-    return;
-  }
-  /* Restore the LINK terminator (PTR -> chain[0], dt = LINK), reload
-   * the queue so the GWCA resumes from the chain base, and snap the
-   * software cursor to 0 so it tracks the GWCA's reset scan position. */
-  priv_ra8_eth_gwca_set_linkfix_entry(term, &chain[0]);
-  term->dt = (uint8_t)k_ra8_gwdcc_dt_link;
-  *cursor  = 0U;
-  (void)ra8_eth_gwca_reload_queue(queue_index);
-}
-
-/**
  * @brief Compose the INFO1_hi word of a TX extended descriptor.
  *
  * @details Pure helper: places the destination vector (a one-hot
@@ -551,53 +495,5 @@ ra8_eth_gwca_default_send(ra8_eth_gwca_default_state_t* state, const uint8_t* fr
   /* Block until the GWCA writes slot 0 back (FSINGLE -> FEMPTY) or the spin
    * budget is exhausted; extracted so this send stays under the complexity cap. */
   return internal_wait_tx0_done(state);
-}
-
-/**
- * @brief One-call RX: dequeue next frame.
- *
- * @details See header. Wraps rx_frame using state->rx_chain/head.
- * When no frame is waiting it also self-heals a GWCA-disabled RX
- * queue via ::internal_rearm_rx_if_disabled.
- *
- * @param[in,out] state        Initialized by default_open.
- * @param[out]    out_frame    Destination buffer.
- * @param[in]     out_capacity Size of out_frame.
- * @param[out]    out_len      Frame length written.
- *
- * @return ra8_err_t Error code propagated from rx_frame.
- * @retval k_ra8_ok              Frame copied; slot reset to FEMPTY.
- * @retval k_ra8_err_no_data     No inbound frame waiting.
- * @retval k_ra8_err_invalid_arg capacity 0 or frame too large.
- * @retval k_ra8_err_null_ptr    state, out_frame, or out_len null.
- *
- * @pre default_open returned ok.
- * @pre state remains in its post-default_open layout.
- * @post On success state->rx_head advanced.
- * @post On success *out_len reflects the received frame size.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-ra8_err_t ra8_eth_gwca_default_recv(ra8_eth_gwca_default_state_t* state,
-                                    uint8_t*                      out_frame,
-                                    uint32_t                      out_capacity,
-                                    uint32_t*                     out_len)
-{
-  RA8_CHECK_NULL_PTR(state, s_tag, "default_recv: state null");
-  const ra8_err_t err = ra8_eth_gwca_rx_frame(state->rx_chain,
-                                              state->rx_depth,
-                                              &state->rx_head,
-                                              out_frame,
-                                              out_capacity,
-                                              state->rx_slot_bytes,
-                                              out_len);
-  if (err == k_ra8_err_no_data) {
-    internal_rearm_queue_if_disabled(state->rx_chain,
-                                     state->rx_depth,
-                                     state->rx_queue_index,
-                                     &state->rx_head);
-  }
-  return err;
 }
 
