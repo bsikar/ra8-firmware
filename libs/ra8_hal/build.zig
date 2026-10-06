@@ -17,6 +17,14 @@ pub fn build(b: *std.Build) void {
         .default_target = ra8_build.hostDefaultTargetQuery(b),
     });
     const optimize = b.standardOptimizeOption(.{});
+    // A TrustZone Non-secure image reaches peripherals through the IDAU
+    // bit[28]=1 alias, the C's RA8_PERIPH_NS_ALIAS (RA8FW-833). Units read it
+    // as `@import("ra8_hal_options").periph_ns_alias` at comptime, so the
+    // default archive is unchanged.
+    const ns_alias = b.option(bool, "periph_ns_alias", "Reach peripherals through the IDAU bit[28]=1 Non-secure alias") orelse false;
+    const options = b.addOptions();
+    options.addOption(bool, "periph_ns_alias", ns_alias);
+    const options_module = options.createModule();
     // No unwind tables in a freestanding archive, as in ra8_core's: an
     // .ARM.exidx entry names __aeabi_unwind_cpp_pr0, which a -nostdlib CPU1
     // link (no -lgcc) cannot resolve (RA8FW-571).
@@ -33,6 +41,7 @@ pub fn build(b: *std.Build) void {
             .unwind_tables = unwind,
         }),
     });
+    library.root_module.addImport("ra8_hal_options", options_module);
     library.bundle_compiler_rt = false;
     // One archive member per ported unit (RA8FW-542): the linker pulls only
     // the members an image references. Zig merges an object's string
@@ -50,6 +59,7 @@ pub fn build(b: *std.Build) void {
                 .unwind_tables = unwind,
             }),
         });
+        object.root_module.addImport("ra8_hal_options", options_module);
         object.bundle_compiler_rt = false;
         object.link_function_sections = true;
         object.link_data_sections = true;
@@ -83,6 +93,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "i3c_i2c_abort", .source = "src/internal/i3c_i2c_abort.zig", .root = "tests/i3c_i2c_abort_test.zig" },
         .{ .name = "i3c_i2c_irq", .source = "src/internal/i3c_i2c_irq.zig", .root = "tests/i3c_i2c_irq_test.zig" },
         .{ .name = "mstp_ids", .source = "src/internal/mstp_ids.zig", .root = "tests/mstp_ids_test.zig" },
+        .{ .name = "periph_alias", .source = "src/internal/periph_alias.zig", .root = "tests/periph_alias_test.zig" },
         .{ .name = "isr_globals", .source = "src/internal/isr_globals.zig", .root = "tests/isr_globals_test.zig" },
         .{ .name = "exit_stop", .source = "src/internal/exit_stop.zig", .root = "tests/exit_stop_test.zig" },
         .{ .name = "ether_phy", .source = "src/internal/ether_phy.zig", .root = "tests/ether_phy_test.zig" },
