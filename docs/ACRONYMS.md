@@ -72,7 +72,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PPRN  | USB Peripheral Printer class                              | `usb_pprn.zig`   |
 | ETHA  | Ethernet adapter (gigabit MAC top-level)                  | `etha_*_abi.zig`, `ra8_eth.c` |
 | RMAC  | Reduced Media Access Controller (per-port MAC)            | `ra8_rmac.c`, `rmac_phy_drv_abi.zig` |
-| GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `ra8_eth_gwca.c` |
+| GWCA  | GateWay CPU Agent (Ethernet DMA gateway)                  | `eth_gwca_*.zig` |
 | MFWD  | MAC ForWarDing engine                                     | `eth_mfwd_abi.zig`|
 | ESWM  | Ethernet SWitch Management                                | `internal/layer3_switch.zig` |
 | GPTP  | Generic Precision Time Protocol timer (HUM Ch 35; a timer, not a 1588 message engine) | `eth_gptp.zig`   |

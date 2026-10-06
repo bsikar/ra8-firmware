@@ -138,7 +138,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | ETHA1      | `0x403CC000`|                              | `etha_*_abi.zig`   |
 | RMAC0      | `0x403CB000`| Reduced MAC ch 0             | `ra8_rmac.c`       |
 | RMAC1      | `0x403CD000`|                              | `ra8_rmac.c`       |
-| GWCA0      | `0x403CE000`| Gateway CPU agent            | `ra8_eth_gwca.c`   |
+| GWCA0      | `0x403CE000`| Gateway CPU agent            | `eth_gwca_*.zig`   |
 | MFWD       | `0x403C0000`| MAC forwarding               | `eth_mfwd_abi.zig` |
 | ESWM       | `0x403C8000`| Ethernet switch mgmt         | `internal/layer3_switch.zig` |
 | GPTP       | `0x403E0000`| Generic PTP timer (HUM Ch 35)| `eth_gptp.zig`     |
