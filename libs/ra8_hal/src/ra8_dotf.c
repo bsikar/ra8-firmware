@@ -116,17 +116,17 @@ static const char* const s_tag = "DOTF";
 
 /**
  * @var s_dotf_fn
- * @brief Active fault / event callback. ``nullptr`` means "no callback".
+ * @brief Active fault / event callback, defined in src/dotf_handler_abi.zig.
  *
  * @warning Do not modify directly; use ``ra8_dotf_attach_handler``.
  */
-static ra8_dotf_event_fn_t s_dotf_fn;
+extern ra8_dotf_event_fn_t s_dotf_fn;
 
 /**
  * @var s_dotf_ctx
- * @brief Caller-supplied context handed to ``s_dotf_fn``.
+ * @brief Caller-supplied context handed to ``s_dotf_fn`` (defined in Zig).
  */
-static void* s_dotf_ctx;
+extern void* s_dotf_ctx;
 
 /**
  * @var s_dotf_state
@@ -897,29 +897,4 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
   reg->REG00                    = k_ra8_dotf_reg00_disable_value;
   s_dotf_state[channel].enabled = 0U;
   return k_ra8_ok;
-}
-
-/* =============================================================================
- * IRQ glue
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_dotf_attach_handler(ra8_dotf_event_fn_t fn, void* ctx)
-{
-  s_dotf_fn  = fn;
-  s_dotf_ctx = ctx;
-  return k_ra8_ok;
-}
-
-RA8_ISR_SAFE
-void ra8_dotf_dispatch(uint8_t channel)
-{
-  if (!internal_channel_in_range(channel)) {
-    return;
-  }
-  const ra8_dotf_event_fn_t fn  = s_dotf_fn;
-  void* const               ctx = s_dotf_ctx;
-  if (fn != nullptr) {
-    fn(ctx, channel);
-  }
 }
