@@ -333,6 +333,33 @@ bool priv_ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
 RA8_PRIV
 bool priv_ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
 
+/**
+ * @brief RIIC controller bus primitives, defined in Zig.
+ *
+ * @details
+ * ``i2c_bus_abi.zig`` (RA8FW-886). ``wait_icsr2`` spins until any bit of
+ * ``mask`` is set in ICSR2 (200000 polls, then ::k_ra8_err_hw_timeout);
+ * ``status`` maps NACKF to ::k_ra8_err_nack and AL to
+ * ::k_ra8_err_hw_error; ``clear_status`` writes START/STOP/NACKF/AL back
+ * as 0; ``open`` issues START, or a repeated START and waits for RS to
+ * clear when ``bus_held``; ``stop`` requests STOP then waits for BBSY to
+ * drop; ``set_nack`` sets ACKBT through ACKWP; ``busy_gate`` returns
+ * ::k_ra8_err_busy when BBSY is set and the bus is not held;
+ * ``send_address`` waits for TDRE, writes ICDRT and reports ``status``.
+ * HUM Ch 39.2.2, 39.2.5, 39.2.10, 39.2.17.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_ra8_i2c_bus_wait_icsr2(volatile r_i2c_regs_t* reg, uint8_t mask);
+RA8_PRIV ra8_err_t priv_ra8_i2c_bus_status(uint8_t icsr2);
+RA8_PRIV void      priv_ra8_i2c_bus_clear_status(volatile r_i2c_regs_t* reg);
+RA8_PRIV void      priv_ra8_i2c_bus_open(volatile r_i2c_regs_t* reg, bool bus_held);
+RA8_PRIV void      priv_ra8_i2c_bus_stop_request(volatile r_i2c_regs_t* reg);
+RA8_PRIV void      priv_ra8_i2c_bus_stop(volatile r_i2c_regs_t* reg);
+RA8_PRIV void      priv_ra8_i2c_bus_wait_free(volatile r_i2c_regs_t* reg);
+RA8_PRIV void      priv_ra8_i2c_bus_set_nack(volatile r_i2c_regs_t* reg);
+RA8_PRIV ra8_err_t priv_ra8_i2c_bus_busy_gate(volatile r_i2c_regs_t* reg, bool bus_held);
+RA8_PRIV ra8_err_t priv_ra8_i2c_bus_send_address(volatile r_i2c_regs_t* reg, uint8_t byte);
+
 #ifdef __cplusplus
 }
 #endif
