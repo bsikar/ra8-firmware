@@ -45,8 +45,7 @@
  * @brief Internal small constants (no magic numbers).
  */
 typedef enum : uint8_t {
-  k_ra8_dotf_no_region      = 0xFFU, /**< Sentinel for "no region active".       */
-  k_ra8_dotf_self_test_spin = 8U,    /**< Bounded poll budget for self-test bit. */
+  k_ra8_dotf_no_region = 0xFFU, /**< Sentinel for "no region active". */
 } ra8_dotf_misc_t;
 
 /**
@@ -880,50 +879,10 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
   return k_ra8_ok;
 }
 
-[[nodiscard]] ra8_err_t ra8_dotf_run_self_test(uint8_t channel, uint32_t* out_status)
-{
-  RA8_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
-
-  /* Save current REG00 so the function is observably side-effect-free
-   * once the self-test completes. */
-  const uint32_t saved = reg->REG00;
-  /* HUM Ch 45.1 p 3048 ("Supports self-test function").
-   * REG00 bit 20 triggers BIST; the bit auto-clears in real silicon.
-   * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00               = saved | k_ra8_dotf_reg00_self_test;
-  const ra8_err_t wait_err = ra8_hw_wait_flag_clear32(&reg->REG00,
-                                                      k_ra8_dotf_reg00_self_test,
-                                                      (uint32_t)k_ra8_dotf_self_test_spin);
-  *out_status              = reg->REG00;
-  /* HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00 = saved;
-  return wait_err;
-}
-
 /* =============================================================================
  * Status
  * =============================================================================
  */
-
-[[nodiscard]] ra8_err_t ra8_dotf_get_status(uint8_t channel, uint32_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
-
-  /* Raw REG00 read for diagnostics.
-   * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  *out_mask = reg->REG00;
-  return k_ra8_ok;
-}
 
 [[nodiscard]] ra8_err_t ra8_dotf_clear_status(uint8_t channel)
 {
