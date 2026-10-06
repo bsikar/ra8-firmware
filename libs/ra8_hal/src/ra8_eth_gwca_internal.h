@@ -15,7 +15,7 @@
  * bring_up); src/internal/eth_gwca_queue.zig holds the per-queue descriptor and
  * ring primitives (configure_queue / reload_queue / init_ring /
  * attach_buffers / kick_tx / find_slot / tx_frame); and
- * ra8_eth_gwca_default.c holds the one-call default-state API
+ * src/eth_gwca_open/send/recv_abi.zig hold the one-call default-state API
  * (default_open / default_send / default_recv / rx_frame). This
  * src/-local header carries only the handful of symbols those TUs
  * share: the poll-budget enum, the bench-side step trail (enum +
@@ -47,7 +47,7 @@ extern "C" {
  * the mmap'd peri region and the bits flip immediately, so the
  * budget is mostly hit-once. Shared because eth_gwca_mode.zig spins on
  * GWMS.OPS / GWARIRM.ARR, eth_gwca_queue.zig spins on GWDCCi.BALR,
- * and ra8_eth_gwca_default.c spins on TX descriptor write-back.
+ * and src/internal/eth_gwca_send.zig spins on TX descriptor write-back.
  */
 enum : uint32_t {
   k_ra8_eth_gwca_mode_spin    = 2000000UL, /**< GWMS.OPS / GWARIRM.ARR poll budget.   */
@@ -64,7 +64,7 @@ enum : uint32_t {
  * ``0x10 | N`` so a JTAG-attached operator can tell at a glance whether
  * the chip parked on a happy-path step or an error path. Shared
  * because eth_gwca_bringup.zig bumps the bring-up trail while
- * ra8_eth_gwca_default.c bumps the open / pre trails.
+ * src/internal/eth_gwca_open.zig bumps the open / pre trails.
  */
 typedef enum : uint32_t {
   k_ra8_eth_gwca_step_ok_1   = 1U,    /**< RA8 Ethernet gwca step ok 1.   */
@@ -91,7 +91,7 @@ typedef enum : uint32_t {
  *   2 = internal_default_open_queues ok (RX/TX cfgs written).
  *   3 = set_operation_mode(OPERATION) ok (final).
  * Plus the symmetric error codes ``0x10|N`` for failures at step N.
- * Defined in src/eth_gwca_bringup_abi.zig; bumped from ra8_eth_gwca_default.c.
+ * Defined in src/eth_gwca_bringup_abi.zig; bumped from src/internal/eth_gwca_open.zig.
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
@@ -109,7 +109,7 @@ extern volatile uint32_t g_ra8_eth_gwca_open_step;
  *   3 = ra8_eth_gwca_bring_up ok.
  *   4 = set_operation_mode(CONFIG) ok.
  * Error codes ``0x10|N`` for failures at step N. Defined in
- * src/eth_gwca_bringup_abi.zig; bumped from ra8_eth_gwca_default.c.
+ * src/eth_gwca_bringup_abi.zig; bumped from src/internal/eth_gwca_open.zig.
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
@@ -141,7 +141,7 @@ extern volatile uint32_t g_ra8_eth_gwca_bring_up_step;
  * @details Splits the 40-bit chain-head address into ptr_h (high 8
  * bits) + ptr_l (low 32 bits) and writes them with dt = LINKFIX.
  * No MMIO is touched -- caller-owned table memory only. Defined in
- * src/internal/eth_gwca_queue.zig and shared with ra8_eth_gwca_default.c
+ * src/internal/eth_gwca_queue.zig and shared with the default-state Zig (eth_gwca_rx/recv/send/open)
  * (the re-arm path restores a LINK terminator through it).
  *
  * @param[in,out] entry      LINKFIX entry to rewrite.
@@ -169,7 +169,7 @@ RA8_PRIV void priv_ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* e
  * ::ra8_eth_gwca_set_descriptor_buffer. On a 32-bit MCU like the
  * RA8D2 the high byte is always zero, but the function handles the
  * 40-bit format generically. Defined in src/internal/eth_gwca_queue.zig and
- * shared with ra8_eth_gwca_default.c (the RX drain path decodes the
+ * shared with the default-state Zig (eth_gwca_rx/recv/send/open) (the RX drain path decodes the
  * filled slot's buffer pointer through it).
  *
  * @param[in] desc Descriptor whose PTR to decode.
