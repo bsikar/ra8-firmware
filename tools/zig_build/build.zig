@@ -103,10 +103,7 @@ pub fn hostDefaultTargetQuery(b: *std.Build) std.Target.Query {
 /// subprocess.
 pub fn hostMacosVersion() ?std.SemanticVersion {
     if (builtin.os.tag != .macos) return null;
-    return switch (builtin.os.version_range) {
-        .semver => |range| range.min,
-        else => null,
-    };
+    return builtin.os.version_range.semver.min;
 }
 
 /// Read the host SDK's `libSystem.tbd`, when there is one to read. Every failure
