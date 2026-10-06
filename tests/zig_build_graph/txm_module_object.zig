@@ -78,7 +78,7 @@ fn compile(
     gcc.addArgs(&target.c_flags);
     gcc.addArgs(&cpu1_txm_lib.pic_flags);
     gcc.addArgs(extra_flags);
-    gcc.addArg(b.fmt("-I{s}", .{b.graph.zig_lib_directory.path orelse "."}));
+    gcc.addPrefixedDirectoryArg("-I", std.Build.LazyPath.zig_lib);
     gcc.addArg("-c");
     gcc.addFileArg(emitted.getEmittedBin());
     gcc.addArg("-o");
