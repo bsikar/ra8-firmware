@@ -134,23 +134,6 @@ extern void* s_dotf_ctx;
  */
 extern ra8_dotf_chan_state_t s_dotf_state[k_ra8_dotf_channel_count];
 
-/**
- * @var s_dotf_mstp_table
- * @brief Channel-index -> MSTP id lookup.
- *
- * @details
- * DOTF0 + XSPI0 share ``MSTPB16``; DOTF1 + XSPI1 share ``MSTPB17``
- * (HUM Ch 11.2.7 MSTPCRB description references both peripherals).
- * The MSTP wrapper enums in ``ra8_mstp_regs.h`` already encode this
- * as ``k_ra8_mstp_ospi0`` / ``k_ra8_mstp_ospi1`` -- the comments call
- * them out as "OSPI0+DOTF0" / "OSPI1+DOTF1" so we just reuse them
- * here rather than minting DOTF-specific aliases.
- */
-static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
-  k_ra8_mstp_ospi0,
-  k_ra8_mstp_ospi1,
-};
-
 /* =============================================================================
  * Internal helpers
  * =============================================================================
@@ -450,114 +433,6 @@ static void internal_stage_iv(volatile ra8_dotf_regs_t* reg, const uint32_t* iv)
      * Descriptions" p 3049. */
     reg->REG03 = internal_bswap32(iv[i]);
   }
-}
-
-/**
- * @brief Reset one channel's hardware to power-on state.
- *
- * @details See implementation.
- * @param[in] reg See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static inline void internal_channel_reset(volatile ra8_dotf_regs_t* reg)
-{
-  /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
-  reg->CONVAREAST = 0U;
-  /* HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */
-  reg->CONVAREAD = 0U;
-  /* REG00 holds the AES core enable + mode select.
-   * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00 = k_ra8_dotf_reg00_disable_value;
-}
-
-/**
- * @brief Wipe all software state for one channel.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_state_reset(uint8_t channel)
-{
-  ra8_dotf_chan_state_t* st = &s_dotf_state[channel];
-  for (uint8_t i = 0U; i < k_ra8_dotf_max_regions; ++i) {
-    st->region_valid[i]       = 0U;
-    st->regions[i].start_addr = 0U;
-    st->regions[i].end_addr   = 0U;
-    st->regions[i].key_index  = 0U;
-    st->regions[i].region_id  = 0U;
-  }
-  st->active_region_id = k_ra8_dotf_no_region;
-  st->key.size         = k_ra8_dotf_key_size_128;
-  st->key.key_index    = 0U;
-  st->key.valid        = 0U;
-  for (uint8_t i = 0U; i < 8U; ++i) {
-    st->key.words[i] = 0U;
-  }
-  for (uint8_t i = 0U; i < k_ra8_dotf_iv_word_count; ++i) {
-    st->iv_cache[i] = 0U;
-  }
-  st->iv_valid        = 0U;
-  st->cached_key_size = k_ra8_dotf_key_size_128;
-  st->cached_sca      = k_ra8_dotf_sca_standard;
-  st->enabled         = 0U;
-}
-
-/* =============================================================================
- * Lifecycle
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_dotf_init(void)
-{
-  for (uint8_t ch = 0U; ch < k_ra8_dotf_channel_count; ++ch) {
-    /* DOTF clock gating: shared MSTPB16/17 with the matching XSPI.
-     * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
-    const ra8_err_t mst_err = ra8_mstp_enable(s_dotf_mstp_table[ch]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "dotf_init: mstp enable failed");
-
-    volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(ch);
-    if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- loop proves ch<2; accessor nulls only ch>=2 */
-      return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE -- same bounded-channel accessor invariant */
-    }
-    internal_channel_reset(reg);
-    internal_state_reset(ch);
-  }
-  s_dotf_fn  = nullptr;
-  s_dotf_ctx = nullptr;
-  ra8_log_info(s_tag, "dotf_init");
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_dotf_deinit(void)
-{
-  for (uint8_t ch = 0U; ch < k_ra8_dotf_channel_count; ++ch) {
-    volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(ch);
-    if (reg != nullptr) {
-      /* Force bypass on teardown.
-       * HUM Ch 45.3 "Register Descriptions" p 3049 */
-      reg->REG00 = k_ra8_dotf_reg00_disable_value;
-    }
-    internal_state_reset(ch);
-    /* Gate the shared OSPI/DOTF clock.
-     * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
-    (void)ra8_mstp_disable(s_dotf_mstp_table[ch]);
-  }
-  s_dotf_fn  = nullptr;
-  s_dotf_ctx = nullptr;
-  return k_ra8_ok;
 }
 
 /* =============================================================================

@@ -9,6 +9,10 @@ pub const max_regions = 4;
 pub const iv_words = 4;
 pub const no_region: u8 = 0xFF;
 pub const reg00_disable: u32 = 0;
+/// k_ra8_dotf_key_size_128 (REG00 key-size field, FSP default).
+pub const key_size_128: u32 = 0x0200_0000;
+/// k_ra8_dotf_sca_standard.
+pub const sca_standard: u8 = 1;
 
 /// ra8_dotf_region_t.
 pub const Region = extern struct {
@@ -53,4 +57,15 @@ comptime {
 pub fn clearStatus(reg: anytype, st: *ChanState) void {
     reg.write(reg00_disable);
     st.enabled = 0;
+}
+
+/// internal_state_reset: every slot disarmed, no active region, a cleared
+/// 128-bit key, no IV, standard side-channel level, channel disarmed.
+pub fn reset(st: *ChanState) void {
+    st.* = .{
+        .active_region_id = no_region,
+        .key = .{ .size = key_size_128 },
+        .cached_key_size = key_size_128,
+        .cached_sca = sca_standard,
+    };
 }

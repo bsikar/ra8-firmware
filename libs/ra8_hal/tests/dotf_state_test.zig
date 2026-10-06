@@ -48,3 +48,24 @@ test "clearStatus zeroes REG00 once and disarms only enabled" {
     try std.testing.expectEqual(@as(u8, 1), st.iv_valid);
     try std.testing.expectEqual(@as(u8, 2), st.active_region_id);
 }
+
+test "reset matches internal_state_reset" {
+    var st = state.ChanState{};
+    st.enabled = 1;
+    st.iv_valid = 1;
+    st.region_valid[3] = 1;
+    st.regions[3].end_addr = 0x1FFF;
+    st.key.words[7] = 0xDEAD;
+    st.key.valid = 1;
+    state.reset(&st);
+    try std.testing.expectEqual(state.no_region, st.active_region_id);
+    try std.testing.expectEqual(state.key_size_128, st.key.size);
+    try std.testing.expectEqual(state.key_size_128, st.cached_key_size);
+    try std.testing.expectEqual(state.sca_standard, st.cached_sca);
+    try std.testing.expectEqual(@as(u8, 0), st.enabled);
+    try std.testing.expectEqual(@as(u8, 0), st.iv_valid);
+    try std.testing.expectEqual(@as(u8, 0), st.region_valid[3]);
+    try std.testing.expectEqual(@as(u32, 0), st.regions[3].end_addr);
+    try std.testing.expectEqual(@as(u32, 0), st.key.words[7]);
+    try std.testing.expectEqual(@as(u8, 0), st.key.valid);
+}
