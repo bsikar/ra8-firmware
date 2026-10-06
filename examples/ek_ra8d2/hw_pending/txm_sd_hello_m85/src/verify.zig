@@ -48,3 +48,14 @@ pub fn admitted(bytes: []const u8) bool {
     _ = appimg_verify.verify(backend, bytes) catch return false;
     return true;
 }
+
+/// True when the gate refuses `bytes` with its last payload byte flipped.
+/// The byte is restored before returning, so an admitted image stays
+/// admitted (RA8FW-831).
+pub fn refusesTamper(bytes: []u8) bool {
+    if (bytes.len <= header_bytes) return false;
+    const last = bytes.len - 1;
+    bytes[last] ^= 0x01;
+    defer bytes[last] ^= 0x01;
+    return !admitted(bytes);
+}
