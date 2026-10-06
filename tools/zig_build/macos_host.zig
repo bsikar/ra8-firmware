@@ -156,6 +156,10 @@ pub const SdkProbe = struct {
 /// The stub target an arm64 Mac needs to see declared in `libSystem.tbd`.
 pub const required_target = "arm64-macos";
 
+/// The slice Zig's own linker accepts in place of `required_target` when it
+/// reads its bundled stub (see `classifyBundledStub`).
+pub const bundled_stand_in_target = "arm64e-macos";
+
 /// Where Zig keeps its own `libSystem` stub, relative to the Zig lib
 /// directory (`zig env` reports it as `lib_dir`).
 ///
@@ -214,6 +218,12 @@ pub const BundledStubState = enum {
 /// goes through, so the two stubs are never judged by different rules.
 pub fn classifyBundledStub(tbd_text: ?[]const u8, lib_dir_known: bool) BundledStubState {
     const text = tbd_text orelse return if (lib_dir_known) .unreadable else .lib_dir_unknown;
+    // Zig 0.17.0's stub lists arm64e-macos and not arm64-macos, and Zig's own
+    // linker still links an aarch64-macos image against it (an arm64,
+    // subtype ALL, libSystem.B.dylib Mach-O, checked on 0.17.0). Only Zig's
+    // linker reads this file, so arm64e stands in for arm64 here, never for
+    // the SDK stub.
+    if (classifyTbd(text, bundled_stand_in_target) == .declares) return .declares;
     return switch (classifyTbd(text, required_target)) {
         .declares => .declares,
         .omits => .omits,

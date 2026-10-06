@@ -325,8 +325,8 @@ test "the three pinning states are reported as three different reasons" {
 }
 
 test "every reason explains itself in one non-empty line" {
-    inline for (@typeInfo(Reason).@"enum".fields) |field| {
-        const reason: Reason = @enumFromInt(field.value);
+    inline for (@typeInfo(Reason).@"enum".field_values) |value| {
+        const reason: Reason = @fromBackingInt(@intCast(value));
         const text = reason.explain();
         try testing.expect(text.len > 0);
         try testing.expect(std.mem.indexOfScalar(u8, text, '\n') == null);
@@ -444,8 +444,8 @@ test "off macOS a force still resolves, and the observation stays honest" {
 }
 
 test "every selection is handled and each maps to one effective choice" {
-    inline for (@typeInfo(Selection).@"enum".fields) |field| {
-        const selection: Selection = @enumFromInt(field.value);
+    inline for (@typeInfo(Selection).@"enum".field_values) |value| {
+        const selection: Selection = @fromBackingInt(@intCast(value));
         const r = resolve(selection, .aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = healthy_tbd });
         const expected: Choice = switch (selection) {
             .auto, .sdk => .native,
@@ -524,6 +524,20 @@ test "the bundled stub zig ships declares the pinned target" {
     try testing.expect(BundledStubState.declares.linksRequiredTarget());
 }
 
+test "zig 0.17's arm64e-only bundled stub still links the pinned target" {
+    // Zig 0.17.0 ships `[ x86_64-macos, x86_64-maccatalyst, arm64e-macos,
+    // arm64e-maccatalyst, ... ]` with no arm64-macos, and its linker links an
+    // aarch64-macos image against that file.
+    const zig_017 =
+        \\--- !tapi-tbd
+        \\tbd-version:     4
+        \\targets:         [ x86_64-macos, x86_64-maccatalyst, arm64e-macos, arm64e-maccatalyst ]
+        \\install-name:    '/usr/lib/libSystem.B.dylib'
+        \\
+    ;
+    try testing.expectEqual(BundledStubState.declares, classifyBundledStub(zig_017, true));
+}
+
 test "a bundled stub that dropped arm64-macos is caught, not assumed away" {
     // The regression this step exists for: a toolchain bump ships a stub
     // without our slice, the pinned query links nothing, and the failure is
@@ -531,7 +545,7 @@ test "a bundled stub that dropped arm64-macos is caught, not assumed away" {
     const dropped =
         \\--- !tapi-tbd
         \\tbd-version:     4
-        \\targets:         [ x86_64-macos, arm64e-macos ]
+        \\targets:         [ x86_64-macos, x86_64-maccatalyst ]
         \\
     ;
     const state = classifyBundledStub(dropped, true);
@@ -590,14 +604,14 @@ test "both stubs are judged by the same reader" {
 
 test "a nested re-export list never answers for the stub that carries it" {
     // The shape of the real file, and the hole the first end-to-end run fell
-    // through: document one's own `targets:` drops arm64-macos, while the
+    // through: document one's own `targets:` drops every arm64 slice, while the
     // `reexported-libraries:` entries inside that same document still name it.
     // Scoping to the first document is not enough; the stub's own field is the
     // only one that says what the stub provides.
     const dropped_but_reexported =
         \\--- !tapi-tbd
         \\tbd-version:     4
-        \\targets:         [ x86_64-macos, arm64e-macos ]
+        \\targets:         [ x86_64-macos, x86_64-maccatalyst ]
         \\install-name:    '/usr/lib/libSystem.B.dylib'
         \\reexported-libraries:
         \\  - targets:         [ x86_64-macos, arm64-macos, arm64e-macos ]

@@ -85,7 +85,7 @@ pub const Description = struct {
 pub fn expectedFormat(os: std.Target.Os.Tag) Format {
     return switch (os) {
         .macos, .ios, .tvos, .watchos, .visionos => .mach_o,
-        .linux, .freebsd, .openbsd, .netbsd, .dragonfly, .solaris, .illumos => .elf,
+        .linux, .freebsd, .openbsd, .netbsd, .dragonfly, .illumos => .elf,
         .windows => .coff,
         .wasi, .freestanding => .unknown,
         else => .unknown,
@@ -187,7 +187,7 @@ pub fn firstObject(bytes: []const u8) ReadError![]const u8 {
         // A raw name is padded with spaces; System V also terminates it with a
         // slash, and the BSD form stores a long name at the head of the data
         // after a `#1/<length>` marker.
-        var name = std.mem.trimRight(u8, header[0..16], " ");
+        var name = std.mem.trimEnd(u8, header[0..16], " ");
         if (std.mem.startsWith(u8, name, "#1/")) {
             const name_len = std.fmt.parseInt(usize, std.mem.trim(u8, name[3..], " "), 10) catch
                 return error.MalformedMember;

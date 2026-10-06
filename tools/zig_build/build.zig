@@ -147,44 +147,6 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     };
 }
 
-/// What Zig's own bundled `libSystem` stub turned out to be.
-pub const BundledStubProbe = struct {
-    /// Where the stub was looked for, when the Zig lib directory is known.
-    path: ?[]const u8 = null,
-    /// The file contents, when it could be read.
-    text: ?[]const u8 = null,
-    /// Whether the build runner knew where the Zig lib directory is.
-    lib_dir_known: bool = false,
-
-    pub fn state(self: BundledStubProbe) macos_host.BundledStubState {
-        return macos_host.classifyBundledStub(self.text, self.lib_dir_known);
-    }
-};
-
-/// Read the `libSystem.tbd` that Zig ships with itself.
-///
-/// This is the other half of the RA8FW-330 rule and the half nothing checked. The
-/// workaround is "pin an explicit `aarch64-macos` query so Zig links its own
-/// stub rather than the SDK's"; that is a fix only while Zig's own stub
-/// declares `arm64-macos`. If a future toolchain bump ships a stub that does
-/// not, the pinned build fails with the same `undefined symbol: _abort` the
-/// issue is about, now caused by the workaround itself, and the build graph
-/// would still be reporting that it had worked around the problem.
-///
-/// Unlike the SDK probe this runs on every host, because the bundled stub is
-/// also what a Linux checkout links when it cross-builds `-Dtarget=aarch64-macos`:
-/// the assumption is checkable from anywhere, so it is checked from anywhere.
-pub fn probeBundledStub(b: *std.Build) BundledStubProbe {
-    const lib_dir = b.graph.zig_lib_directory.path orelse return .{};
-    const path = std.fs.path.join(
-        b.allocator,
-        &.{ lib_dir, macos_host.bundled_stub_relative_path },
-    ) catch return .{ .lib_dir_known = true };
-    const text = std.fs.cwd().readFileAlloc(b.allocator, path, 8 * 1024 * 1024) catch
-        return .{ .path = path, .lib_dir_known = true };
-    return .{ .path = path, .text = text, .lib_dir_known = true };
-}
-
 /// A step that refuses a toolchain whose bundled `libSystem` stub cannot link
 /// the pinned target (RA8FW-330).
 ///
@@ -193,44 +155,18 @@ pub fn probeBundledStub(b: *std.Build) BundledStubProbe {
 /// `-Dtarget=aarch64-macos` links the very same file: catching it here means
 /// catching it on the machine that does the upgrade, rather than on the next
 /// nightly run of the one Mac in the CI suite.
-pub fn addVerifyBundledStubStep(b: *std.Build) *std.Build.Step {
-    const verify = b.allocator.create(VerifyBundledStub) catch @panic("OOM");
-    verify.* = .{
-        .step = std.Build.Step.init(.{
-            .id = .custom,
-            .name = "verify bundled libSystem stub",
-            .owner = b,
-            .makeFn = VerifyBundledStub.make,
-        }),
-        .probe = probeBundledStub(b),
-    };
-    return &verify.step;
+///
+/// The stub is read by `check` when the step runs, not at configure time:
+/// Zig 0.17's build graph does not expose the Zig lib directory to build.zig,
+/// so the tool receives it as `LazyPath.zig_lib` instead.
+pub fn addVerifyBundledStubStep(b: *std.Build, check: *std.Build.Step.Compile) *std.Build.Step {
+    const run = b.addRunArtifact(check);
+    run.setName("verify bundled libSystem stub");
+    run.has_side_effects = true;
+    run.addArg("bundled-stub");
+    run.addDirectoryArg(.zig_lib);
+    return &run.step;
 }
-
-const VerifyBundledStub = struct {
-    step: std.Build.Step,
-    probe: BundledStubProbe,
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const self: *VerifyBundledStub = @fieldParentPtr("step", step);
-        const state = self.probe.state();
-        const where = self.probe.path orelse "(the Zig lib directory is unknown)";
-        if (!state.linksRequiredTarget()) {
-            return step.fail(
-                "{s}: {s}. The RA8FW-330 workaround pins an explicit {s} target so this stub is " ++
-                    "linked instead of the SDK one, so a toolchain whose own stub cannot link " ++
-                    "{s} breaks the pinned path as well as the native one. Check the Zig version " ++
-                    "pin in .devcontainer/Dockerfile.",
-                .{ where, state.explain(), macos_host.required_target, macos_host.required_target },
-            );
-        }
-        std.debug.print(
-            "verify-bundled-stub: {s} declares {s}, so the pinned host target links against it\n",
-            .{ where, macos_host.required_target },
-        );
-    }
-};
 
 /// One phrase naming a `Choice`, for a sentence about a road not taken.
 fn describeChoice(choice: macos_host.Choice) []const u8 {
@@ -240,6 +176,13 @@ fn describeChoice(choice: macos_host.Choice) []const u8 {
     };
 }
 
+/// `describeHostTarget`'s report, split where `check explain` inserts the
+/// bundled-stub lines it reads when the step runs.
+pub const HostReport = struct {
+    head: []const u8,
+    tail: []const u8,
+};
+
 /// The host-target decision as a short report, for a build log or a gate.
 ///
 /// This is the one place the answer is spelled out for a human: which machine
@@ -247,10 +190,9 @@ fn describeChoice(choice: macos_host.Choice) []const u8 {
 /// therefore targets. A gate that only prints the stub's `targets:` line cannot
 /// distinguish "the stub omits us" from "there was no stub to read", and those
 /// need different fixes.
-pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
-    var text: std.ArrayListUnmanaged(u8) = .empty;
-    const out = text.writer(b.allocator);
-    const bundled_probe = probeBundledStub(b);
+pub fn describeHostTarget(b: *std.Build, host: HostTarget) HostReport {
+    var text: std.Io.Writer.Allocating = .init(b.allocator);
+    const out = &text.writer;
 
     out.print("ra8 host target (RA8FW-330)\n", .{}) catch @panic("OOM");
     out.print("  host:      {s}-{s}\n", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) }) catch @panic("OOM");
@@ -266,8 +208,8 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     // The SDK stub is what RA8FW-330 reports; Zig's own stub is what the fix
     // links instead. A report that names only the first cannot say whether
     // the workaround still has anything to stand on.
-    out.print("  bundled:   {s}\n", .{bundled_probe.path orelse "(not located)"}) catch @panic("OOM");
-    out.print("  bundled finding: {s}\n", .{bundled_probe.state().explain()}) catch @panic("OOM");
+    // `check explain` prints those two lines between head and tail.
+    const head_len = text.written().len;
 
     // The finding is always what the machine said. A force changes what the
     // build does, not what the SDK stub contains, and printing the forced
@@ -295,36 +237,27 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
             }
         },
     }
-    return text.items;
+    const report = text.written();
+    return .{ .head = report[0..head_len], .tail = report[head_len..] };
 }
 
 /// A step that prints `describeHostTarget`. Printing at configure time would
 /// put this in front of every `zig build` on every host; a step prints it when
 /// someone actually asks.
-pub fn addExplainHostTargetStep(b: *std.Build, host: HostTarget) *std.Build.Step {
-    const explain = b.allocator.create(ExplainHostTarget) catch @panic("OOM");
-    explain.* = .{
-        .step = std.Build.Step.init(.{
-            .id = .custom,
-            .name = "explain host target",
-            .owner = b,
-            .makeFn = ExplainHostTarget.make,
-        }),
-        .text = describeHostTarget(b, host),
-    };
-    return &explain.step;
+pub fn addExplainHostTargetStep(
+    b: *std.Build,
+    check: *std.Build.Step.Compile,
+    host: HostTarget,
+) *std.Build.Step {
+    const report = describeHostTarget(b, host);
+    const run = b.addRunArtifact(check);
+    run.setName("explain host target");
+    run.has_side_effects = true;
+    run.addArg("explain");
+    run.addDirectoryArg(.zig_lib);
+    run.addArgs(&.{ report.head, report.tail });
+    return &run.step;
 }
-
-const ExplainHostTarget = struct {
-    step: std.Build.Step,
-    text: []const u8,
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const self: *ExplainHostTarget = @fieldParentPtr("step", step);
-        std.debug.print("{s}", .{self.text});
-    }
-};
 
 /// Wire a test binary into `test_step` so a cross-configured build root still
 /// proves what it can.
@@ -657,6 +590,21 @@ const RequireArchiveForTarget = struct {
     }
 };
 
+/// The host tool the check steps run (`check.zig`). It always targets the
+/// build host: it runs during the build, whatever `-Dtarget=` says.
+fn addCheckTool(b: *std.Build) *std.Build.Step.Compile {
+    const host_rule = b.createModule(.{
+        .root_source_file = b.path("macos_host.zig"),
+        .target = b.graph.host,
+    });
+    const root = b.createModule(.{
+        .root_source_file = b.path("check.zig"),
+        .target = b.graph.host,
+    });
+    root.addImport("macos_host", host_rule);
+    return b.addExecutable(.{ .name = "ra8-build-check", .root_module = root });
+}
+
 pub fn build(b: *std.Build) void {
     // This package's own test graph is a host build like any other, so it takes
     // the same macOS host target rule it hands to the apps (RA8FW-330).
@@ -691,7 +639,8 @@ pub fn build(b: *std.Build) void {
         "explain-host-target",
         "Print how the macOS host target was chosen on this machine (RA8FW-330)",
     );
-    explain_step.dependOn(addExplainHostTargetStep(b, hostTarget(b)));
+    const check = addCheckTool(b);
+    explain_step.dependOn(addExplainHostTargetStep(b, check, hostTarget(b)));
 
     // The pinned target is only a workaround while Zig's own libSystem stub
     // declares arm64-macos, and that is a property of the toolchain, not of
@@ -700,5 +649,5 @@ pub fn build(b: *std.Build) void {
         "verify-bundled-stub",
         "Check that this Zig's own libSystem stub can link the pinned host target (RA8FW-330)",
     );
-    bundled_step.dependOn(addVerifyBundledStubStep(b));
+    bundled_step.dependOn(addVerifyBundledStubStep(b, check));
 }
