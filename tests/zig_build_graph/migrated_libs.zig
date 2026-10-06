@@ -31,6 +31,7 @@
 //! cannot see; it is unioned with what this returns.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// Where a `LIBS` name resolves on disk, in the order sources.cmake tries:
 /// `libs/<name>` first, then `apps/shared_libs/<name>`. Null when neither
@@ -42,7 +43,7 @@ pub fn pathFor(b: *std.Build, name: []const u8) ?[]const u8 {
         b.fmt("apps/shared_libs/{s}", .{name}),
     };
     for (candidates) |candidate| {
-        if (b.build_root.handle.access(candidate, .{})) |_| return candidate else |_| {}
+        if (src_tree.exists(b, candidate)) return candidate;
     }
     return null;
 }
@@ -51,5 +52,5 @@ pub fn pathFor(b: *std.Build, name: []const u8) ?[]const u8 {
 pub fn contributesArchive(b: *std.Build, name: []const u8) bool {
     const path = pathFor(b, name) orelse return false;
     const build_file = b.fmt("{s}/build.zig", .{path});
-    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
+    return src_tree.exists(b, build_file);
 }

@@ -29,6 +29,7 @@
 //! real configure's `compile_commands.json`, not read off the listfile.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 const cpu1_threadx = @import("cpu1_threadx.zig");
 const middleware = @import("middleware.zig");
 const pkg_path = @import("pkg_path.zig");
@@ -270,9 +271,7 @@ pub const Options = struct {
 /// EK-RA8D2 windows.
 pub fn linkerScript(b: *std.Build, app: App, name: []const u8) []const u8 {
     const in_app = b.pathJoin(&.{ app.dir, name });
-    b.build_root.handle.access(in_app, .{}) catch {
-        return boardLinkerScript(b.allocator, app.board, name);
-    };
+    if (!src_tree.exists(b, in_app)) return boardLinkerScript(b.allocator, app.board, name);
     return in_app;
 }
 

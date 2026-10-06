@@ -28,6 +28,7 @@
 //! be handed the M85 archive.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// `libs/ra8_board_ek_ra8d2` -> `ra8_board_ek_ra8d2`. The directory basename
 /// IS the dependency name, the artifact name and the archive basename, the
@@ -42,7 +43,7 @@ pub fn nameFor(board_dir: []const u8) []const u8 {
 /// a board with no `build.zig` is pure C and contributes no archive.
 pub fn has(b: *std.Build, board_dir: []const u8) bool {
     const build_file = b.fmt("{s}/build.zig", .{board_dir});
-    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
+    return src_tree.exists(b, build_file);
 }
 
 /// The board archive for an image whose target the caller already resolved.
@@ -83,7 +84,7 @@ pub const chip_clock_adapter = "if_ra8_cgc";
 /// Whether the chip clock adapter is present as a Zig layer to link.
 pub fn hasChipClockAdapter(b: *std.Build) bool {
     const build_file = b.fmt("libs/{s}/build.zig", .{chip_clock_adapter});
-    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
+    return src_tree.exists(b, build_file);
 }
 
 /// The chip clock adapter archive, built for the consuming image's target.

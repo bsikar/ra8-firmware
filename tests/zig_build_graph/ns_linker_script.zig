@@ -22,6 +22,7 @@
 //! script rather than a third fork.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 const cmake_vars = @import("cmake_vars.zig");
 
@@ -116,7 +117,7 @@ fn substitutions(
 }
 
 fn read(b: *std.Build, file: []const u8) []const u8 {
-    return b.build_root.handle.readFileAlloc(b.allocator, file, 1 << 20) catch |err|
+    return src_tree.readFile(b, file, 1 << 20) catch |err|
         std.debug.panic("ns_linker_script: cannot read {s}: {s}", .{ file, @errorName(err) });
 }
 
