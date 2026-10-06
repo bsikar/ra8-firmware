@@ -52,6 +52,10 @@ pub const CrossApp = struct {
     /// `threadx_m85_modules` in place of `threadx` and packs the module into
     /// `.txm_module`; see m85_txm_manager.zig. Null for every other app.
     txm_module: ?[]const u8 = null,
+    /// Links `threadx_m85_modules` like `txm_module` does, but packs no
+    /// module: the app loads one at run time with
+    /// `_txm_module_manager_memory_load` (RA8FW-830).
+    txm_manager: bool = false,
     /// The per-function stack-frame budget this app names in `STACK_BYTES`,
     /// which ra8_add_app() forwards to ra8_target_enable_project_warnings() as
     /// `STACK_USAGE_BYTES` and which becomes `-Wstack-usage=<n>` on every one
