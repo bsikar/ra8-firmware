@@ -21,7 +21,8 @@
  *    SPTEF, write SPDR, wait for SPRF, read SPDR, clear SPSR via
  *    SPSRC. Driver explicitly polls SPSR (HUM Ch 43.2.9 p 2898) and
  *    write-1-clears via SPSRC (HUM Ch 43.2.13 p 2905).
- *  - ``ra8_spi_set_clock`` rewrites SPCR3.SPBR (HUM Ch 43.2.6 p 2891).
+ *  - ``ra8_spi_set_clock`` rewrites SPCR3.SPBR (HUM Ch 43.2.6 p 2891);
+ *    it and the error-status calls are Zig (src/spi_b_clock_abi.zig).
  *  - ``ra8_spi_attach_transfer_handler`` registers a callback that
  *    fires from the SPEI dispatch path; SPI_B status flags are
  *    cleared via SPSRC (write-1).
@@ -139,47 +140,8 @@ static ra8_spi_state_t s_spi_state[k_ra8_spi_b_channel_count];
  * =============================================================================
  */
 
-/**
- * @brief Compute SPCR3.SPBR for a requested bit-rate.
- *
- * @details
- * SPI_B bit-rate equation (HUM Ch 43.2.6 p 2891 + FSP
- * ``R_SPI_B_CalculateBitrate``):
- *
- *   ``f_RSPCK = TCLK / (2 * (SPBR + 1) * 2^N)``
- *
- * where ``N = SPCMDn.BRDV``. The bring-up driver leaves BRDV = 0 so
- * the equation reduces to ``SPBR = (TCLK / (2 * baud)) - 1``.
- *
- * @param[in] baud_hz Desired bit-rate in Hz.
- * @param[in] pclka_hz Active PCLKA frequency in Hz.
- *
- * @return SPBR value, clamped to [0, 0xFF].
- *
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
-{
-  if ((baud_hz == 0U) || (pclka_hz == 0U)) {
-    return 0U;
-  }
-  const uint32_t divisor = 2U * baud_hz;
-  const uint32_t n       = pclka_hz / divisor;
-  if (n == 0U) {
-    return 0U;
-  }
-  const uint32_t result = n - 1U;
-  if (result > (uint32_t)k_ra8_spbr_max) {
-    return k_ra8_spbr_max;
-  }
-  return (uint8_t)result;
-}
+/* SPBR divider: Zig export in src/spi_b_clock_abi.zig (RA8FW-892). */
+uint8_t priv_ra8_spi_b_spbr(uint32_t baud_hz, uint32_t pclka_hz);
 
 /**
  * @brief Build SPCMD0 from a ``ra8_spi_cfg_t``.
@@ -317,7 +279,7 @@ RA8_INTERNAL static void internal_spi_program_regs(volatile r_spi_regs_t* reg,
   reg->SPSRC = k_ra8_spsrc_mask_all;
 
   /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
-  const uint8_t spbr = internal_spbr(cfg->baud_hz, cfg->pclka_hz);
+  const uint8_t spbr = priv_ra8_spi_b_spbr(cfg->baud_hz, cfg->pclka_hz);
   reg->SPCR3         = ((uint32_t)spbr << k_ra8_spcr3_bit_spbr) & k_ra8_spcr3_mask_spbr;
 
   /* HUM Ch 43.2.3 "SPDECR : SPI Delay Control Register" p 2883 */
@@ -733,79 +695,8 @@ ra8_err_t ra8_spi_write_read(uint8_t             channel,
   return internal_xfer_common(channel, tx, rx, len, bit_width);
 }
 
-/* =============================================================================
- * Runtime reconfigure
- * =============================================================================
- */
-
-ra8_err_t ra8_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-  if (baud_hz == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* Update SPCR3.SPBR[15:8]. */
-  /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
-  const uint8_t  spbr     = internal_spbr(baud_hz, pclka_hz);
-  const uint32_t spcr3_in = reg->SPCR3 & ~k_ra8_spcr3_mask_spbr;
-  reg->SPCR3 = spcr3_in | (((uint32_t)spbr << k_ra8_spcr3_bit_spbr) & k_ra8_spcr3_mask_spbr);
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Error status
- * =============================================================================
- */
-
-ra8_err_t ra8_spi_get_errors(uint8_t channel, uint8_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "spi get_errors");
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile const r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-  const uint32_t ss = reg->SPSR;
-  uint8_t        m  = k_ra8_spi_err_none;
-  if ((ss & k_ra8_spsr_mask_ovrf) != 0U) {
-    m |= k_ra8_spi_err_overrun;
-  }
-  if ((ss & k_ra8_spsr_mask_modf) != 0U) {
-    m |= k_ra8_spi_err_mode;
-  }
-  if ((ss & k_ra8_spsr_mask_perf) != 0U) {
-    m |= k_ra8_spi_err_parity;
-  }
-  if ((ss & k_ra8_spsr_mask_udrf) != 0U) {
-    m |= k_ra8_spi_err_underrun;
-  }
-  *out_mask = m;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_spi_clear_errors(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-  /* SPI_B status flags clear via SPSRC (write-1). */
-  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
-  reg->SPSRC = k_ra8_spsr_mask_errs;
-  return k_ra8_ok;
-}
-
+/* ra8_spi_set_clock, ra8_spi_get_errors and ra8_spi_clear_errors live in
+ * src/spi_b_clock_abi.zig (RA8FW-892). */
 ra8_err_t ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void* ctx)
 {
   if (channel >= k_ra8_spi_b_channel_count) {
