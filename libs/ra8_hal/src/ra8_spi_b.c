@@ -11,10 +11,9 @@
  * polling flow from FSP ``r_spi_b.c`` (FSP ``R_SPI_B_Open`` /
  * ``r_spi_b_hw_config`` / ``r_spi_b_start_transfer``):
  *
- *  - ``ra8_spi_init`` mirrors ``R_SPI_B_Open`` + ``r_spi_b_hw_config``:
- *    enables MSTP, clears SPSR, programmes SPCR3 (SPBR), SPDECR
- *    (delays), SPCR2, SPCMD0 (CPHA/CPOL/SPB/LSBF), SPDCR, then
- *    asserts SPCR with MSTR + SPE.
+ *  - ``ra8_spi_init`` / ``ra8_spi_deinit`` / ``ra8_spi_controller_init``
+ *    (the ``R_SPI_B_Open`` + ``r_spi_b_hw_config`` sequence) are Zig
+ *    (src/spi_b_setup_abi.zig).
  *  - ``ra8_spi_xfer8`` is a single-frame full-duplex polled xfer that
  *    follows HUM Ch 43.3.13 controller-mode operation section (p 2911) and the
  *    FSP ``r_spi_b_transmit`` / ``r_spi_b_receive`` pair: wait for
@@ -23,9 +22,8 @@
  *    write-1-clears via SPSRC (HUM Ch 43.2.13 p 2905).
  *  - ``ra8_spi_set_clock`` rewrites SPCR3.SPBR (HUM Ch 43.2.6 p 2891);
  *    it and the error-status calls are Zig (src/spi_b_clock_abi.zig).
- *  - ``ra8_spi_attach_transfer_handler`` registers a callback that
- *    fires from the SPEI dispatch path; SPI_B status flags are
- *    cleared via SPSRC (write-1).
+ *  - ``ra8_spi_attach_transfer_handler``, Stop mode and the ISR
+ *    dispatchers are Zig (src/spi_b_events_abi.zig).
  *
  * The legacy 8-bit SPI block ``SPCR/SPPCR/SPBR/SSLND/SPND/SPCKD``
  * register set has been removed -- those registers do not exist on
@@ -42,7 +40,6 @@
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
 #include "ra8_log.h"
-#include "ra8_mstp.h"
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 
@@ -54,36 +51,12 @@ static const char* const s_tag = "SPI_B";
  */
 
 /**
- * @var s_spi_mstp_table
- * @brief Channel-index -> MSTP id (HUM Ch 11.2.7 "MSTPCRB", p 444).
- */
-static const ra8_mstp_t s_spi_mstp_table[k_ra8_spi_b_channel_count] = {
-  k_ra8_mstp_spi0,
-  k_ra8_mstp_spi1,
-};
-
-/**
  * @enum ra8_spi_b_poll_t
  * @brief Polling-loop budget. Used to bound HW waits.
  */
 typedef enum : uint32_t {
   k_ra8_spi_b_poll_limit = 200000U, /**< RA8 SPI b poll limit. */
 } ra8_spi_b_poll_t;
-
-/**
- * @enum ra8_spi_b_default_t
- * @brief Default register values for the legacy ``ra8_spi_controller_init`` shim.
- *
- * @details
- * These are the pre-existing defaults retained so the legacy
- * ``ra8_spi_controller_init`` API continues to work (mode 0, no LSB
- * first, ~1.9 MHz at PCLKA = 125 MHz). FSP encodes the same
- * concept in its default extended config.
- */
-typedef enum : uint32_t {
-  k_ra8_spi_b_default_baud_hz  = 1900000UL,   /**< RA8 SPI b default baud Hz.  */
-  k_ra8_spi_b_default_pclka_hz = 125000000UL, /**< RA8 SPI b default pclka Hz. */
-} ra8_spi_b_default_t;
 
 /**
  * @enum ra8_spi_b_unit_bytes_t
@@ -115,98 +88,9 @@ typedef enum : uint32_t {
 } ra8_spi_b_dummy_t;
 
 /* =============================================================================
- * Per-channel runtime state
+ * SPSR wait helper
  * =============================================================================
  */
-
-/**
- * @struct ra8_spi_state_t
- * @brief Per-channel dispatch state owned by this driver.
- */
-typedef struct {
-  ra8_spi_complete_fn_t cb;          /**< Transfer-complete callback.  */
-  void*                 ctx;         /**< Callback context.            */
-  bool                  initialized; /**< True after ``ra8_spi_init``. */
-} ra8_spi_state_t;
-
-/* Per-channel state table: Zig export in src/spi_b_events_abi.zig
- * (RA8FW-894); init and deinit below still write it. */
-extern ra8_spi_state_t s_spi_state[k_ra8_spi_b_channel_count];
-
-/* =============================================================================
- * Bit-rate helper
- * =============================================================================
- */
-
-/* SPBR divider: Zig export in src/spi_b_clock_abi.zig (RA8FW-892). */
-uint8_t priv_ra8_spi_b_spbr(uint32_t baud_hz, uint32_t pclka_hz);
-
-/**
- * @brief Build SPCMD0 from a ``ra8_spi_cfg_t``.
- *
- * @details
- * Bit-mapping (HUM Ch 43.2.7 p 2893, FSP ``r_spi_b_hw_config``):
- *  - ``CPHA``  (bit 0)  from ``cfg->mode``.
- *  - ``CPOL``  (bit 1)  from ``cfg->mode``.
- *  - ``LSBF``  (bit 12) from ``cfg->lsb_first``.
- *  - ``SPB``   [20:16]  set to 8-bit frame (k_ra8_spcmd_spb_8bit).
- *  - Delay enables (SPNDEN/SLNDEN/SCKDEN) are left clear; the
- *    bring-up driver does not gate delay registers.
- *
- * @param[in] cfg See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_spcmd(const ra8_spi_cfg_t* cfg)
-{
-  uint32_t v = 0U;
-  /* CPHA / CPOL match SPI mode 0..3. */
-  if ((cfg->mode == k_ra8_spi_mode_1) || (cfg->mode == k_ra8_spi_mode_3)) {
-    v |= k_ra8_spcmd_mask_cpha;
-  }
-  if ((cfg->mode == k_ra8_spi_mode_2) || (cfg->mode == k_ra8_spi_mode_3)) {
-    v |= k_ra8_spcmd_mask_cpol;
-  }
-  if (cfg->lsb_first) {
-    v |= k_ra8_spcmd_mask_lsbf;
-  }
-  /* 8-bit frame. */
-  v |= ((uint32_t)k_ra8_spcmd_spb_8bit << k_ra8_spcmd_bit_spb_lo) & k_ra8_spcmd_mask_spb;
-  return v;
-}
-
-/**
- * @brief Build SPCR (control register 1) for controller polling mode.
- *
- * @details
- * Mirrors the controller-mode subset of FSP ``r_spi_b_hw_config`` (lines
- * 525-670). Sets MSTR + SCKASE + SPE; leaves IRQ-enable bits
- * (SPRIE/SPTIE/SPEIE/CENDIE) clear because the polling driver
- * services SPSR directly.
- *
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_spcr_controller(void)
-{
-  uint32_t v = 0U;
-  v |= k_ra8_spcr_mask_mstr;   /* Controller mode. */
-  v |= k_ra8_spcr_mask_sckase; /* Auto-stop SCK.   */
-  v |= k_ra8_spcr_mask_spe;    /* SPI enable.      */
-  return v;
-}
 
 /**
  * @brief Wait for an SPSR flag to assert.
@@ -247,136 +131,9 @@ RA8_INTERNAL static ra8_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uin
 }
 
 /* =============================================================================
- * Lifecycle: init / deinit
- * =============================================================================
- */
-
-/**
- * @brief Programme the polling-controller register set with SPE=0.
- *
- * @details Writes SPCR3 / SPDECR / SPCR2 / SPCMD0 / SPDCR(2) / SPFCR
- * in the order the HUM allows while SPE is still 0. SPCR2 carries the
- * loopback knob (SPLP2 non-inverting); SPSR flags are cleared once
- * before and once after SPFRST so the first ra8_spi_xfer8 sees a clean
- * SPRF.
- *
- * @param[in] reg Channel's register block.
- * @param[in] cfg Caller-supplied config (already null-checked).
- *
- * @pre SPCR.SPE has been cleared.
- * @pre MSTP is already enabled for the channel.
- * @post All control registers programmed; SPSR flags clear.
- * @post SPE is still 0 -- caller writes SPCR with SPE=1.
- * @note Not thread-safe; caller must serialize access to the channel.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_spi_program_regs(volatile r_spi_regs_t* reg,
-                                                   const ra8_spi_cfg_t*   cfg)
-{
-  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
-  reg->SPSRC = k_ra8_spsrc_mask_all;
-
-  /* HUM Ch 43.2.6 "SPCR3 : SPI Control Register 3" p 2891 */
-  const uint8_t spbr = priv_ra8_spi_b_spbr(cfg->baud_hz, cfg->pclka_hz);
-  reg->SPCR3         = ((uint32_t)spbr << k_ra8_spcr3_bit_spbr) & k_ra8_spcr3_mask_spbr;
-
-  /* HUM Ch 43.2.3 "SPDECR : SPI Delay Control Register" p 2883 */
-  reg->SPDECR = 0U;
-
-  /* SPCR2 only honors writes while SPE=0; SPLP2 (bit 17) is the */
-  /* non-inverting loopback (rx = tx). */
-  /* HUM Ch 43.2.4 "SPCR2 : SPI Control Register 2" p 2889 */
-  reg->SPCR2 = (cfg->loopback ? (uint32_t)k_ra8_spcr2_mask_splp2 : 0U);
-
-  /* HUM Ch 43.2.7 "SPCMDm : SPI Command Register" p 2893 */
-  reg->SPCMD[0] = internal_spcmd(cfg);
-
-  /* HUM Ch 43.2.10 "SPDCR : SPI Data Control Register" p 2896 */
-  reg->SPDCR  = 0U;
-  reg->SPDCR2 = 0U;
-
-  /* HUM Ch 43.2.14 "SPFCR : SPI FIFO Clear Register" p 2906 */
-  reg->SPFCR = k_ra8_spfcr_mask_spfrst;
-
-  /* SPFRST drains residual FIFO contents through the shifter and */
-  /* can leave SPRF set with a stale 0x00, so the first xfer8 */
-  /* would race; re-clear SPSR right before the SPE assert. */
-  /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
-  reg->SPSRC = k_ra8_spsrc_mask_all;
-}
-
-ra8_err_t ra8_spi_init(uint8_t channel, const ra8_spi_cfg_t* cfg)
-{
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-
-  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
-  const ra8_err_t mst_err = ra8_mstp_enable(s_spi_mstp_table[channel]);
-  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp");
-  /* GCOVR_EXCL_BR_STOP */
-
-  /* Disable (SPE=0) before reprogramming. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  reg->SPCR = 0U;
-
-  internal_spi_program_regs(reg, cfg);
-
-  /* Re-enable with SPE+MSTR set. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  reg->SPCR = internal_spcr_controller();
-
-  s_spi_state[channel].cb          = nullptr;
-  s_spi_state[channel].ctx         = nullptr;
-  s_spi_state[channel].initialized = true;
-  ra8_log_info_val(s_tag, "spi_init channel", (uint32_t)channel);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_spi_deinit(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-  /* Clear SPE. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  reg->SPCR                        = 0U;
-  s_spi_state[channel].cb          = nullptr;
-  s_spi_state[channel].ctx         = nullptr;
-  s_spi_state[channel].initialized = false;
-  return ra8_mstp_disable(s_spi_mstp_table[channel]);
-}
-
-/* =============================================================================
  * Legacy polling shim
  * =============================================================================
  */
-
-ra8_err_t ra8_spi_controller_init(uint8_t channel)
-{
-  const ra8_spi_cfg_t cfg = {
-    .baud_hz   = k_ra8_spi_b_default_baud_hz,
-    .pclka_hz  = k_ra8_spi_b_default_pclka_hz,
-    .mode      = k_ra8_spi_mode_0,
-    .lsb_first = false,
-  };
-  /* The pre-existing test contract distinguishes "channel out of range"
-   * with k_ra8_err_null_ptr (because ra8_spi() returns nullptr). Preserve. */
-  if (ra8_spi(channel) == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  return ra8_spi_init(channel, &cfg);
-}
 
 ra8_err_t ra8_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
 {
@@ -698,3 +455,5 @@ ra8_err_t ra8_spi_write_read(uint8_t             channel,
 /* ra8_spi_attach_transfer_handler, ra8_spi_enter_stop, ra8_spi_exit_stop and
  * the SPTI / SPRI / SPEI dispatchers live in src/spi_b_events_abi.zig
  * (RA8FW-894). */
+/* ra8_spi_init, ra8_spi_deinit and ra8_spi_controller_init live in
+ * src/spi_b_setup_abi.zig (RA8FW-898). */
