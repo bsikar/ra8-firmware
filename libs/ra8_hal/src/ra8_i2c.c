@@ -69,9 +69,6 @@ const char* const g_i2c_tag = "I2C";
  * @brief Implementation constants -- spin budgets and addressing helpers.
  */
 typedef enum : uint32_t {
-  /** Generic spin budget for status-flag polls. ~200k iterations keeps
-   * the worst-case stall under a few ms at the slowest PCLKB. */
-  k_ra8_i2c_poll_limit = 200000U,
   /** Shift count to convert a 7-bit address into the on-the-wire byte. */
   k_ra8_i2c_addr_shift = 1U,
   /** R/W bit value for a write transaction (0 in LSB). */
@@ -132,367 +129,6 @@ bool priv_ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz)
 ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
 
 /**
- * @brief Wait for a flag in ICSR2 to set, with a bounded spin budget.
- *
- * @details
- * Spins up to ``k_ra8_i2c_poll_limit`` iterations reading ICSR2 and
- * returning success the moment the masked flag is observed set. The
- * fixed bound satisfies NASA P10 Rule 2.
- *
- * @param[in] reg  Channel register block.
- * @param[in] mask Bit mask to test against ICSR2.
- * @return ``ra8_err_t`` outcome of the poll.
- * @retval k_ra8_ok            Masked flag observed set.
- * @retval k_ra8_err_hw_timeout Spin budget exhausted before the flag set.
- *
- * @pre reg is non-NULL.
- * @pre mask is a non-zero single- or multi-bit mask.
- * @post On success the masked flag was observed set.
- * @post On timeout no register write occurs.
- * @note Thread safety: not thread-safe (reads a single channel).
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg,
-                                                      uint8_t                      mask)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
-    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    if (ra8_fake_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) {
-#else
-    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    if ((reg->ICSR2 & mask) != 0U) {
-#endif
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_err_hw_timeout;
-}
-
-/**
- * @brief Map latched ICSR2 error bits to a high-level status code.
- *
- * @details
- * NACK and arbitration-loss carry distinct codes so a caller can
- * distinguish "peripheral declined" from "another controller won the
- * bus".
- *
- * @param[in] icsr2 Snapshot of ICSR2.
- * @return ``ra8_err_t`` mapped from the highest-priority latched fault.
- * @retval k_ra8_ok       No fault latched.
- * @retval k_ra8_err_nack ICSR2.NACKF set.
- * @retval k_ra8_err_hw_error ICSR2.AL set (arbitration lost).
- *
- * @pre None.
- * @pre None.
- * @post No state mutated.
- * @post Return depends solely on the input snapshot.
- * @note Thread safety: pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_i2c_status_from_icsr2(uint8_t icsr2)
-{
-  if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) != 0U) {
-    return k_ra8_err_nack;
-  }
-  if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_al) != 0U) {
-    return k_ra8_err_hw_error;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Clear the START / STOP / NACK status flags ahead of a transfer.
- *
- * @details
- * Writes 0 to the W0C condition-detect and fault flags (START, STOP,
- * NACKF, AL) so the next transaction observes fresh edges. TDRE / TEND /
- * RDRF are left untouched.
- *
- * @param[in] reg Channel register block.
- *
- * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post ICSR2.START / STOP / NACKF / AL read back zero.
- * @post ICSR2.TDRE / TEND / RDRF are preserved.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
-{
-  enum : uint8_t {
-    k_ra8_i2c_status_clear_mask =
-      ((1U << (uint8_t)k_ra8_i2c_icsr2_start_pos) | (uint8_t)k_ra8_i2c_msk_icsr2_stop |
-       (uint8_t)k_ra8_i2c_msk_icsr2_nackf |
-       (uint8_t)k_ra8_i2c_msk_icsr2_al), /**< RA8 I2C status clear mask. */
-  };
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_status_clear_mask);
-}
-
-/**
- * @brief Issue a START condition (HUM Ch 39.3.3 step 2 p 2396).
- *
- * @details
- * Sets ICCR2.ST; the hardware issues the START once BBSY is clear and
- * automatically transitions to controller-transmit mode.
- *
- * @param[in] reg Channel register block.
- *
- * @pre reg is non-NULL and the bus is free.
- * @pre Channel previously initialized.
- * @post ICCR2.ST is set; hardware issues a START when BBSY clears.
- * @post No other register is modified.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_start(volatile r_i2c_regs_t* reg)
-{
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-  reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_st);
-}
-
-/**
- * @brief Issue a repeated-START condition (HUM Ch 39.11 p 2434).
- *
- * @details
- * Sets ICCR2.RS; the hardware issues the restart while BBSY = 1 and
- * MST = 1, keeping the bus held without an intervening STOP.
- *
- * @param[in] reg Channel register block.
- *
- * @pre reg is non-NULL and the bus is held by this controller.
- * @pre Channel previously initialized.
- * @post ICCR2.RS is set; hardware issues a restart on the held bus.
- * @post No other register is modified.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
-{
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-  reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_rs);
-  /* RS auto-clears once the restart condition is issued. The peripheral
-   * address must be written to ICDRT only after RS reads 0 -- a write
-   * while RS = 1 is silently dropped (HUM Ch 39.11 "Issuing a Restart
-   * Condition" Note, p 2434). After a send_stop=false write TDRE is
-   * already 1, so without this wait send_address would write the address
-   * before the restart completed and the transmit would never happen. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
-    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-    const bool restart_complete = (reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_rs) == 0U;
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-    const bool observed = ra8_fake_mmio_poll(&reg->ICCR2, i, restart_complete);
-#else
-    const bool observed = restart_complete;
-#endif
-    if (observed) {
-      break;
-    }
-  }
-}
-
-/**
- * @brief Spin (bounded) until the bus is free (ICCR2.BBSY clears).
- *
- * @details
- * BBSY -- not the ICSR2.STOP flag -- is what the next transaction's busy
- * gate checks, and it clears a few cycles after the STOP edge. Waiting on
- * it before returning keeps a following START from racing a busy bus
- * (k_ra8_err_busy).
- *
- * @param[in] reg Channel register block.
- * @pre reg is non-NULL.
- * @pre A STOP has been requested (or the bus is otherwise idle).
- * @post BBSY is observed clear, or the bounded poll expired.
- * @post No register is modified (read-only spin).
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
-{
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
-    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-    if ((reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_bbsy) == 0U) {
-      break;
-    }
-  }
-}
-
-/**
- * @brief Request a STOP condition without waiting for it to complete.
- *
- * @details
- * Clears the prior ICSR2.STOP flag (W0C) so the next transaction sees a
- * fresh edge, then sets ICCR2.SP to request the STOP. The receive path
- * must use this form: during a controller read the STOP only actually fires
- * after the final ICDRR read and the WAIT clear (HUM Ch 39.3.4 step 7),
- * so waiting for BBSY here would deadlock before the last byte is read.
- *
- * @param[in] reg Channel register block.
- * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post ICCR2.SP is set; the STOP fires once preconditions are met.
- * @post ICSR2.STOP is cleared so the next STOP edge is detectable.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
-{
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
-  reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_sp);
-}
-
-/**
- * @brief Issue a STOP condition and wait for the bus to be released.
- *
- * @details
- * Requests the STOP then spins until BBSY clears. Used by the transmit
- * path, where the STOP fires immediately after TEND; returning before
- * BBSY clears lets the next START race a busy bus and fail with
- * k_ra8_err_busy.
- *
- * @param[in] reg Channel register block.
- * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post Hardware has issued a STOP and BBSY is observed clear.
- * @post The bus is idle and ready for the next START.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
-{
-  internal_i2c_stop_request(reg);
-  internal_i2c_wait_bus_free(reg);
-}
-
-/**
- * @brief Set ICMR3.ACKBT (transmit NACK) under ACKWP write-enable.
- *
- * @details
- * ACKBT is write-protected by ACKWP; per HUM Ch 39.2.5 Note 1 the
- * write-enable, the ACKBT set, and the write-disable must be separate
- * register writes. Used by the receive path to NACK the final byte so
- * the peripheral stops driving the bus.
- *
- * @param[in] reg Channel register block.
- * @pre reg is non-NULL.
- * @pre The controller is in controller-receive.
- * @post ICMR3.ACKBT is set; ACKWP is left clear (write-protected again).
- * @post The next received byte will be answered with a NACK.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
-{
-  /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- ACKWP/ACKBT" p 2376 */
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_ackbt);
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
-}
-
-/**
- * @brief Issue START or RESTART based on whether the bus is held.
- *
- * @details
- * Dispatches to ``internal_i2c_restart`` when the channel already holds
- * the bus from a prior ``send_stop = false`` write, otherwise issues a
- * fresh START.
- *
- * @param[in] reg      Channel register block.
- * @param[in] bus_held True to inject a repeated-START.
- *
- * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post Exactly one of ICCR2.ST / ICCR2.RS is requested.
- * @post No data register is touched.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_i2c_open_phase(volatile r_i2c_regs_t* reg, bool bus_held)
-{
-  if (bus_held) {
-    internal_i2c_restart(reg);
-  } else {
-    internal_i2c_start(reg);
-  }
-}
-
-/**
- * @brief Bus-busy gate: reject a fresh transaction while BBSY is set,
- *        unless the channel currently holds the bus for a restart.
- *
- * @details
- * A held bus (mid-RESTART) always proceeds; otherwise the gate reads
- * ICCR2.BBSY and accepts only when the bus is free.
- *
- * @param[in] reg      Channel register block.
- * @param[in] bus_held True when a prior call left the bus held.
- * @return ``k_ra8_ok`` when a transaction may proceed, else
- *         ``k_ra8_err_busy``.
- * @retval k_ra8_ok       Bus is held or free.
- * @retval k_ra8_err_busy Bus is busy and not held by this controller.
- *
- * @pre reg is non-NULL.
- * @pre Channel previously initialized.
- * @post No register write occurs.
- * @post No driver state is mutated.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_i2c_busy_gate(volatile const r_i2c_regs_t* reg,
-                                                     bool                         bus_held)
-{
-  if (bus_held) {
-    return k_ra8_ok;
-  }
-  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
-  return ((reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_bbsy) == 0U) ? k_ra8_ok : k_ra8_err_busy;
-}
-
-/**
- * @brief Transmit one address byte (HUM Ch 39.3.3 step 3 p 2396).
- *
- * @details
- * Waits for ICSR2.TDRE, writes the pre-shifted address byte to ICDRT,
- * then maps the freshly latched ICSR2 status so an immediate
- * address-phase NACK is reported.
- *
- * @param[in] reg          Channel register block.
- * @param[in] address_byte Pre-shifted 7-bit address with R/W bit.
- * @return ``k_ra8_ok`` once TDRE re-arms, else timeout / NACK status.
- * @retval k_ra8_ok            Address queued, no fault latched.
- * @retval k_ra8_err_hw_timeout TDRE never set within the spin budget.
- * @retval k_ra8_err_nack      ICSR2.NACKF latched after the write.
- * @retval k_ra8_err_hw_error  ICSR2.AL latched (arbitration lost).
- *
- * @pre reg is non-NULL.
- * @pre A START / RESTART was issued before this call.
- * @post The address byte was written to ICDRT.
- * @post On NACK the latched ICSR2.NACKF is reflected in the return.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_i2c_send_address(volatile r_i2c_regs_t* reg,
-                                                        uint8_t                address_byte)
-{
-  /* Wait for TDRE (set after START issues and TRS = transmit).
-   * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  ra8_err_t err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_tdre);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
-  reg->ICDRT = address_byte;
-  return internal_i2c_status_from_icsr2(reg->ICSR2);
-}
-
-/**
  * @brief Push ``len`` bytes from ``data`` into ICDRT.
  *
  * @details
@@ -519,7 +155,7 @@ internal_i2c_drain_tx(volatile r_i2c_regs_t* reg, const uint8_t* data, uint32_t 
 {
   ra8_err_t err = k_ra8_ok;
   for (uint32_t i = 0U; i < len; i++) {
-    err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_tdre);
+    err = priv_ra8_i2c_bus_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_tdre);
     if (err != k_ra8_ok) {
       break;
     }
@@ -564,11 +200,11 @@ internal_i2c_finish_tx(volatile r_i2c_regs_t* reg, uint8_t channel, ra8_err_t er
   if (err == k_ra8_ok) {
     /* Wait for TEND before issuing STOP (Controller Transmit step 5).
      * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_tend);
+    err = priv_ra8_i2c_bus_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_tend);
   }
   if ((err != k_ra8_ok) || send_stop) {
-    internal_i2c_stop(reg);
-    internal_i2c_clear_status(reg);
+    priv_ra8_i2c_bus_stop(reg);
+    priv_ra8_i2c_bus_clear_status(reg);
     s_i2c_state[channel].bus_held = false;
   } else {
     s_i2c_state[channel].bus_held = true;
@@ -587,20 +223,20 @@ ra8_err_t ra8_i2c_write(uint8_t        channel,
   RA8_CHECK_NULL_PTR(data, g_i2c_tag, "i2c_write: data");
 
   const bool      bus_held  = s_i2c_state[channel].bus_held;
-  const ra8_err_t busy_gate = internal_i2c_busy_gate(reg, bus_held);
+  const ra8_err_t busy_gate = priv_ra8_i2c_bus_busy_gate(reg, bus_held);
   if (busy_gate != k_ra8_ok) {
     return busy_gate;
   }
 
-  internal_i2c_clear_status(reg);
-  internal_i2c_open_phase(reg, bus_held);
+  priv_ra8_i2c_bus_clear_status(reg);
+  priv_ra8_i2c_bus_open(reg, bus_held);
 
   const uint8_t address_byte =
     (uint8_t)(((uint32_t)peripheral_7b << (uint32_t)k_ra8_i2c_addr_shift) |
               (uint32_t)k_ra8_i2c_addr_rw_write);
-  ra8_err_t err = internal_i2c_send_address(reg, address_byte);
+  ra8_err_t err = priv_ra8_i2c_bus_send_address(reg, address_byte);
   if (err != k_ra8_ok) {
-    internal_i2c_stop(reg);
+    priv_ra8_i2c_bus_stop(reg);
     s_i2c_state[channel].bus_held = false;
     return err;
   }
@@ -642,7 +278,7 @@ internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
   /* First RDRF marks the address-phase completion. Arm the short-read
    * end-of-frame controls before the dummy read kicks off the data clock.
    * HUM Ch 39.3.4 "Controller Receive Operation" p 2400 */
-  ra8_err_t err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
+  ra8_err_t err = priv_ra8_i2c_bus_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -651,14 +287,14 @@ internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
     reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_wait);
   }
   if (len == (uint32_t)k_ra8_i2c_rx_single_len) {
-    internal_i2c_set_nack(reg);
+    priv_ra8_i2c_bus_set_nack(reg);
   }
   /* Dummy read starts the data clock.
    * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
   (void)reg->ICDRR;
 
   for (uint32_t loaded = 0U; loaded < len; loaded++) {
-    err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
+    err = priv_ra8_i2c_bus_wait_icsr2(reg, (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
     if (err != k_ra8_ok) {
       break;
     }
@@ -667,9 +303,9 @@ internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
       /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
       reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_wait);
     } else if (remain == (uint32_t)k_ra8_i2c_rx_remain_nack) {
-      internal_i2c_set_nack(reg);
+      priv_ra8_i2c_bus_set_nack(reg);
     } else if (remain == (uint32_t)k_ra8_i2c_rx_remain_stop) {
-      internal_i2c_stop_request(reg);
+      priv_ra8_i2c_bus_stop_request(reg);
     } else {
       /* Mid-stream byte: no end-of-frame control to arm. */
     }
@@ -681,7 +317,7 @@ internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, uint32_t len)
    * HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)((uint8_t)k_ra8_i2c_msk_icmr3_wait |
                                                           (uint8_t)k_ra8_i2c_msk_icmr3_ackbt));
-  internal_i2c_wait_bus_free(reg);
+  priv_ra8_i2c_bus_wait_free(reg);
   return err;
 }
 
@@ -695,30 +331,30 @@ ra8_err_t ra8_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, ui
   }
 
   const bool      bus_held  = s_i2c_state[channel].bus_held;
-  const ra8_err_t busy_gate = internal_i2c_busy_gate(reg, bus_held);
+  const ra8_err_t busy_gate = priv_ra8_i2c_bus_busy_gate(reg, bus_held);
   if (busy_gate != k_ra8_ok) {
     return busy_gate;
   }
 
-  internal_i2c_clear_status(reg);
-  internal_i2c_open_phase(reg, bus_held);
+  priv_ra8_i2c_bus_clear_status(reg);
+  priv_ra8_i2c_bus_open(reg, bus_held);
 
   const uint8_t address_byte =
     (uint8_t)(((uint32_t)peripheral_7b << (uint32_t)k_ra8_i2c_addr_shift) |
               (uint32_t)k_ra8_i2c_addr_rw_read);
-  ra8_err_t err = internal_i2c_send_address(reg, address_byte);
+  ra8_err_t err = priv_ra8_i2c_bus_send_address(reg, address_byte);
   if (err != k_ra8_ok) {
-    internal_i2c_stop(reg);
+    priv_ra8_i2c_bus_stop(reg);
     s_i2c_state[channel].bus_held = false;
     return err;
   }
 
   err                        = internal_i2c_drain_rx(reg, data, len);
-  const ra8_err_t status_err = internal_i2c_status_from_icsr2(reg->ICSR2);
+  const ra8_err_t status_err = priv_ra8_i2c_bus_status(reg->ICSR2);
   if (status_err != k_ra8_ok) {
     err = status_err;
   }
-  internal_i2c_clear_status(reg);
+  priv_ra8_i2c_bus_clear_status(reg);
   s_i2c_state[channel].bus_held = false;
   return err;
 }
@@ -766,36 +402,36 @@ ra8_err_t ra8_i2c_scan(uint8_t channel, uint8_t peripheral_7b, bool* out_acked)
   RA8_CHECK_NULL_PTR(out_acked, g_i2c_tag, "i2c_scan: out_acked");
 
   *out_acked                = false;
-  const ra8_err_t busy_gate = internal_i2c_busy_gate(reg, s_i2c_state[channel].bus_held);
+  const ra8_err_t busy_gate = priv_ra8_i2c_bus_busy_gate(reg, s_i2c_state[channel].bus_held);
   if (busy_gate != k_ra8_ok) {
     return busy_gate;
   }
 
-  internal_i2c_clear_status(reg);
-  internal_i2c_start(reg);
+  priv_ra8_i2c_bus_clear_status(reg);
+  priv_ra8_i2c_bus_open(reg, false);
 
   const uint8_t address_byte =
     (uint8_t)(((uint32_t)peripheral_7b << (uint32_t)k_ra8_i2c_addr_shift) |
               (uint32_t)k_ra8_i2c_addr_rw_write);
-  ra8_err_t err = internal_i2c_send_address(reg, address_byte);
+  ra8_err_t err = priv_ra8_i2c_bus_send_address(reg, address_byte);
   /* Address NACK is a valid probe outcome, not a hard failure. */
   if ((err != k_ra8_ok) && (err != k_ra8_err_nack)) {
-    internal_i2c_stop(reg);
+    priv_ra8_i2c_bus_stop(reg);
     s_i2c_state[channel].bus_held = false;
     return err;
   }
 
   /* Wait for TEND (peripheral ACKed) or NACKF (no peripheral answered).
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  err = internal_i2c_wait_icsr2(
+  err = priv_ra8_i2c_bus_wait_icsr2(
     reg,
     (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tend | (uint8_t)k_ra8_i2c_msk_icsr2_nackf));
   if (err == k_ra8_ok) {
     *out_acked = (reg->ICSR2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) == 0U;
   }
 
-  internal_i2c_stop(reg);
-  internal_i2c_clear_status(reg);
+  priv_ra8_i2c_bus_stop(reg);
+  priv_ra8_i2c_bus_clear_status(reg);
   s_i2c_state[channel].bus_held = false;
   return err;
 }
