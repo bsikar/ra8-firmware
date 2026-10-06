@@ -44,6 +44,7 @@
 //! the gate that reads it lives.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// The committed ledger, repo-relative. `zig build shapes` diffs the tree
 /// against this file.
@@ -824,25 +825,21 @@ pub const Summary = struct {
 pub fn collect(b: *std.Build) []Entry {
     var entries: std.ArrayList(Entry) = .empty;
     for (roots) |tree| {
-        var dir = b.build_root.handle.openDir(tree, .{ .iterate = true }) catch |err| std.debug.panic(
+        var dir = src_tree.openTree(b, tree) catch |err| std.debug.panic(
             "ra8: cannot read {s}/ for the app-shape ledger: {s}",
             .{ tree, @errorName(err) },
         );
-        defer dir.close();
+        defer dir.close(b.graph.io);
         var walker = dir.walk(b.allocator) catch @panic("OOM");
         defer walker.deinit();
-        while (walker.next() catch |err| std.debug.panic(
+        while (walker.next(b.graph.io) catch |err| std.debug.panic(
             "ra8: cannot walk {s}/ for the app-shape ledger: {s}",
             .{ tree, @errorName(err) },
         )) |entry| {
             if (entry.kind != .file) continue;
             if (!std.mem.eql(u8, std.fs.path.basename(entry.path), "CMakeLists.txt")) continue;
             const listfile = b.fmt("{s}/{s}", .{ tree, entry.path });
-            const text = b.build_root.handle.readFileAlloc(
-                b.allocator,
-                listfile,
-                max_listfile_bytes,
-            ) catch |err| std.debug.panic(
+            const text = src_tree.readFile(b, listfile, max_listfile_bytes) catch |err| std.debug.panic(
                 "ra8: cannot read {s} for the app-shape ledger: {s}",
                 .{ listfile, @errorName(err) },
             );

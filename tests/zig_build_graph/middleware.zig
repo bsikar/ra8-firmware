@@ -439,11 +439,11 @@ fn collect(
     out: *std.ArrayList(Unit),
 ) void {
     var dir = pkg_path.openDir(b, dir_path) orelse return;
-    defer dir.close();
+    defer dir.close(b.graph.io);
 
     var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
-    while (it.next() catch |err| {
+    while (it.next(b.graph.io) catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file) continue;
@@ -457,7 +457,7 @@ fn collect(
         }
     }.lessThan);
     for (names.items) |name| {
-        out.append(.{
+        out.append(b.allocator, .{
             .path = b.fmt("{s}/{s}", .{ dir_path, name }),
             .language = if (std.mem.eql(u8, extension, ".c"))
                 .c
@@ -471,11 +471,11 @@ fn collect(
 
 fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
     var dir = pkg_path.openDir(b, glob.dir) orelse return;
-    defer dir.close();
+    defer dir.close(b.graph.io);
 
     var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
-    while (it.next() catch |err| {
+    while (it.next(b.graph.io) catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ glob.dir, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file or !globSelects(glob, entry.name)) continue;
@@ -487,7 +487,7 @@ fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
         }
     }.lessThan);
     for (names.items) |name| {
-        out.append(.{ .path = b.fmt("{s}/{s}", .{ glob.dir, name }), .language = .c }) catch @panic("OOM");
+        out.append(b.allocator, .{ .path = b.fmt("{s}/{s}", .{ glob.dir, name }), .language = .c }) catch @panic("OOM");
     }
 }
 

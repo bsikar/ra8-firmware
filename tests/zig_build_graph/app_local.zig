@@ -29,6 +29,7 @@
 //!
 //! Only (4) announces itself, and only when a symbol is missing entirely.
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// A static library declared in an app's own CMakeLists, built from globbed
 /// vendored sources, with usage requirements that reach the app.
@@ -87,10 +88,10 @@ pub fn sources(b: *std.Build, lib: VendoredLibrary) []const []const u8 {
     var out: std.ArrayList([]const u8) = .empty;
     for (lib.source_dirs) |dir_path| {
         var names: std.ArrayList([]const u8) = .empty;
-        var dir = b.build_root.handle.openDir(dir_path, .{ .iterate = true }) catch continue;
-        defer dir.close();
+        var dir = src_tree.openDir(b, dir_path) catch continue;
+        defer dir.close(b.graph.io);
         var it = dir.iterate();
-        while (it.next() catch null) |entry| {
+        while (it.next(b.graph.io) catch null) |entry| {
             if (entry.kind != .file) continue;
             if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
             names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");

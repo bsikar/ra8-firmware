@@ -18,6 +18,7 @@
 //! construction.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// The CMake library name, the directory under `libs/`, and the artifact
 /// `libs/if/build.zig` installs are all `if`. The build file says why in its
@@ -27,7 +28,7 @@ pub const name = "if";
 /// Whether the interface layer is present as a Zig archive to link.
 pub fn has(b: *std.Build) bool {
     const build_file = b.fmt("libs/{s}/build.zig", .{name});
-    return if (b.build_root.handle.access(build_file, .{})) |_| true else |_| false;
+    return src_tree.exists(b, build_file);
 }
 
 /// The interface archive, built for the consuming image's target.

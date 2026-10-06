@@ -14,6 +14,7 @@
 //! per-slice knowledge the file exists to hold.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 const pkg_path = @import("pkg_path.zig");
 
 /// One compile command: the TU, the driver that compiles it, the flags it is
@@ -108,7 +109,7 @@ pub fn deduplicate(b: *std.Build, candidates: []const Entry) []const Entry {
 
 /// Render the deduplicated set as a standard JSON compilation database.
 pub fn render(b: *std.Build, entries: []const Entry) []const u8 {
-    const directory = b.build_root.path orelse ".";
+    const directory = src_tree.absolute(b, ".");
 
     var json: std.ArrayList(u8) = .empty;
     json.appendSlice(b.allocator, "[\n") catch @panic("OOM");

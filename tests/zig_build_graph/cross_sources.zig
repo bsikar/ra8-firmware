@@ -17,6 +17,7 @@
 //! belongs to a second image and must be kept OUT of this one.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
 const ns_image_mod = @import("ns_image.zig");
@@ -316,7 +317,7 @@ pub fn resolveBootUnit(
 }
 
 fn bootPathExists(b: *std.Build, path: []const u8) bool {
-    return if (b.build_root.handle.access(path, .{})) |_| true else |_| false;
+    return src_tree.exists(b, path);
 }
 
 fn resolveBoot(b: *std.Build, app: CrossApp, boot: []const u8) BootUnit {
@@ -394,14 +395,14 @@ pub const board_adapter_include_dirs = [_][]const u8{
 /// Collect `*.c` from one directory, sorted, so the link order is stable
 /// across machines and two builds of the same tree produce the same ELF.
 pub fn collectCSources(b: *std.Build, dir_path: []const u8, out: *std.ArrayList([]const u8)) void {
-    var dir = b.build_root.handle.openDir(dir_path, .{ .iterate = true }) catch |err| {
+    var dir = src_tree.openDir(b, dir_path) catch |err| {
         std.debug.panic("ra8: cannot read source directory '{s}': {s}", .{ dir_path, @errorName(err) });
     };
-    defer dir.close();
+    defer dir.close(b.graph.io);
 
     var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
-    while (it.next() catch |err| {
+    while (it.next(b.graph.io) catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file) continue;
@@ -504,7 +505,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     // decides those), so it lands as duplicates and is deduplicated below.
     for (app.libraries) |library| {
         const library_dir = b.fmt("libs/{s}/src", .{library});
-        const exists = if (b.build_root.handle.access(library_dir, .{})) |_| true else |_| false;
+        const exists = src_tree.exists(b, library_dir);
         if (exists) collectCSources(b, library_dir, &sources);
     }
 
@@ -553,13 +554,13 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     // library, where cmake/ra8_app/sources.cmake puts them through
     // _ra8_app_board_adapter_includes(). No app names an adapter in LIBS.
     for (board_adapter_include_dirs) |adapter_inc| {
-        const exists = if (b.build_root.handle.access(adapter_inc, .{})) |_| true else |_| false;
+        const exists = src_tree.exists(b, adapter_inc);
         if (exists) dirs.append(b.allocator, adapter_inc) catch @panic("OOM");
     }
 
     for (app.libraries) |library| {
         const library_inc = b.fmt("libs/{s}/inc", .{library});
-        const exists = if (b.build_root.handle.access(library_inc, .{})) |_| true else |_| false;
+        const exists = src_tree.exists(b, library_inc);
         if (exists) dirs.append(b.allocator, library_inc) catch @panic("OOM");
     }
     // The include directory a gated library unit's companion brings with it,

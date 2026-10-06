@@ -186,16 +186,16 @@ pub fn vendoredSelects(set: VendoredSet, basename: []const u8) bool {
 
 fn collectVendored(b: *std.Build, set: VendoredSet, out: *std.ArrayList(Unit)) void {
     var dir = pkg_path.openDir(b, set.dir) orelse return;
-    defer dir.close();
+    defer dir.close(b.graph.io);
 
     const first = out.items.len;
     var it = dir.iterate();
-    while (it.next() catch |err| {
+    while (it.next(b.graph.io) catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ set.dir, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file) continue;
         if (!vendoredSelects(set, entry.name)) continue;
-        out.append(.{
+        out.append(b.allocator, .{
             .path = b.fmt("{s}/{s}", .{ set.dir, b.dupe(entry.name) }),
             .suppressions = set.suppressions,
         }) catch @panic("OOM");
