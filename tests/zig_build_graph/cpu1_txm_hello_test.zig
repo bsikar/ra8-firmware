@@ -76,19 +76,29 @@ test "txm_table_cpu1 packs the table module, the one built through C" {
     }
 }
 
-test "txm_rpc_cpu1 packs the RPC module, built through C, and only the two RPC servers import ra8_rpc" {
+test "txm_rpc_cpu1 packs the RPC module, built through C, and only its image imports ra8_rpc" {
     try std.testing.expectEqualStrings("txm_rpc_m33", hello.find("txm_rpc_m33").?.name);
     try std.testing.expect(hello.rpc.through_c);
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         const is_rpc = std.mem.eql(u8, app.name, "txm_rpc_cpu1");
-        // txm_dual_mailbox's CPU1 serves the M85 module's calls over the
-        // mailbox while its own module is txm_hello_m33 (RA8FW-844).
-        const serves_m85 = std.mem.eql(u8, app.name, "txm_dual_mailbox");
-        try std.testing.expectEqual(is_rpc or serves_m85, image.rpc);
+        try std.testing.expectEqual(is_rpc, image.rpc);
         if (is_rpc) try std.testing.expectEqualStrings(hello.rpc.name, image.txm_module.?);
-        if (serves_m85) try std.testing.expectEqualStrings(hello.rpc.name, app.txm_module.?);
     }
+}
+
+test "txm_dual_mailbox's CPU1 packs the server module, built through C, for the M85's RPC module" {
+    try std.testing.expectEqualStrings("txm_dual_server_m33", hello.find("txm_dual_server_m33").?.name);
+    try std.testing.expect(hello.dual_server.through_c);
+    try std.testing.expect(std.mem.endsWith(u8, hello.dual_server.entry_source, "txm_dual_mailbox/src/server_module.zig"));
+    var found = false;
+    for (graph.cross_apps) |app| {
+        if (!std.mem.eql(u8, app.name, "txm_dual_mailbox")) continue;
+        found = true;
+        try std.testing.expectEqualStrings(hello.dual_server.name, app.cpu1.?.txm_module.?);
+        try std.testing.expectEqualStrings(hello.rpc.name, app.txm_module.?);
+    }
+    try std.testing.expect(found);
 }
 
 test "txm_fault_cpu1 packs the negative module, whose code is Zig beside the hello module's" {
@@ -106,7 +116,7 @@ test "txm_helium_m85 is built through C for the M85, and every other module stay
     try std.testing.expectEqual(graph.txm_module_target.Core.cortex_m85, helium.core);
     try std.testing.expect(mentions(helium.core.cpuFlags(), "-mcpu=cortex-m85"));
     try std.testing.expect(std.mem.endsWith(u8, helium.entry_source, "txm_helium_m85/module_start.zig"));
-    for ([_]hello.Module{ hello.hello_world, hello.fault, hello.table, hello.rpc }) |module| {
+    for ([_]hello.Module{ hello.hello_world, hello.fault, hello.table, hello.rpc, hello.dual_server }) |module| {
         try std.testing.expectEqual(graph.txm_module_target.Core.cortex_m33, module.core);
     }
 }

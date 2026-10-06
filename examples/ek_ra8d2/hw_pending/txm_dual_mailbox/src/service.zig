@@ -7,8 +7,9 @@
 //! to stay byte-for-byte the same below this header: the method, its
 //! messages, the queue geometry and the application requests.
 //!
-//! The module is the client. Here the server is CPU1's resident image, and
-//! every queue message crosses the mailbox block between the two.
+//! The M85's module is the client. The server is CPU1's module,
+//! txm_dual_server_m33 (RA8FW-849), and every queue message crosses the
+//! mailbox block between the two.
 
 /// The methods the resident image serves.
 pub const Method = struct {

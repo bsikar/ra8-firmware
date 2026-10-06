@@ -80,9 +80,9 @@ pub const apps = [_]CrossApp{
     .{
         // A ThreadX module on each core of one image (RA8FW-843, under
         // RA8EMU-159): the M85's Module Manager runs txm_rpc_m33 from its
-        // own `.txm_module`, CPU1's runs txm_hello_m33 from MRAM_CPU1, and
-        // the M85 module's calls cross the shared mailbox block to CPU1's
-        // ra8_rpc server and back (RA8FW-844).
+        // own `.txm_module`, CPU1's runs txm_dual_server_m33 from MRAM_CPU1,
+        // and the M85 module's calls cross the shared mailbox block to the
+        // CPU1 module's ra8_rpc server and back (RA8FW-844, RA8FW-849).
         .name = "txm_dual_mailbox",
         .dir = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox",
         .cpu1_image = true,
@@ -100,8 +100,7 @@ pub const apps = [_]CrossApp{
             .linker_script = "linker_script_cpu1.ld",
             .entry_language = .zig,
             .uses = &.{"threadx_m33_modules"},
-            .txm_module = "txm_hello_m33",
-            .rpc = true,
+            .txm_module = "txm_dual_server_m33",
         },
     },
 };

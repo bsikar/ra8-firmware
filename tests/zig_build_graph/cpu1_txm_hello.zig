@@ -80,8 +80,17 @@ pub const helium = Module{
     .core = .cortex_m85,
 };
 
+/// txm_dual_mailbox's CPU1 module (RA8FW-849): the `ra8_rpc` server the
+/// M85's module calls over the mailbox. Like `rpc`, its server reaches its
+/// queues through vtables in its data, so it goes through C.
+pub const dual_server = Module{
+    .name = "txm_dual_server_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox/src/server_module.zig",
+    .through_c = true,
+};
+
 /// Every module an image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table, rpc, helium };
+pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
