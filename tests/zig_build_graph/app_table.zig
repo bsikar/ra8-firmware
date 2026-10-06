@@ -21,6 +21,7 @@ const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
 const ns_image_mod = @import("ns_image.zig");
 const m85_txm = @import("app_table_m85_txm.zig");
+const tail = @import("app_table_tail.zig");
 
 /// One named module a Zig main imports: `@import(name)` resolves to `path`,
 /// a root source file spelled relative to the repo root.
@@ -985,23 +986,4 @@ pub const cross_apps = [_]CrossApp{
             .txm_module = "txm_hello_m33",
         },
     },
-    .{
-        // RA8FW-809: CPU0 routes GPT0's overflow (event 0xC1) to CPU1 through
-        // INTSELR; CPU1's IRQ handler records it in shared SRAM and CPU0
-        // prints the verdict. Zig on both cores, so no CMakeLists.
-        .name = "cpu1_routed_irq",
-        .dir = "examples/ek_ra8d2/hw_pending/cpu1_routed_irq",
-        .cpu1_image = true,
-        .board = "libs/ra8_board_ek_ra8d2",
-        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
-        .libraries = &.{"ra8_hal"},
-        .zig_libraries = &.{"ra8_hal"},
-        .zig_main = "src/main.zig",
-        .cpu1 = .{
-            .entry_source = "src/cpu1_main.zig",
-            .shared_sources = &.{},
-            .linker_script = "linker_script_cpu1.ld",
-            .entry_language = .zig,
-        },
-    },
-} ++ m85_txm.apps;
+} ++ m85_txm.apps ++ tail.apps;
