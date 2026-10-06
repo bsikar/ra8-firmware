@@ -58,11 +58,11 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_net_pal.h"
@@ -75,17 +75,18 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_npf_uart_chan   = 8U,    /**< SCI8 J-Link OB console.               */
-  k_npf_ring_probe  = 64U,   /**< Cap on the ring-depth discovery loop. */
-  k_npf_len_small   = 64U,   /**< Minimum untagged ethernet frame.      */
-  k_npf_len_mid     = 128U,  /**< Second round-trip length.             */
-  k_npf_len_zero    = 0U,    /**< Refused: a frame must carry bytes.    */
-  k_npf_fill_a      = 0xA5U, /**< Fill byte for the first frame.        */
-  k_npf_fill_b      = 0x5AU, /**< Fill byte for the second frame.       */
-  k_npf_fill_c      = 0x3CU, /**< Fill byte for the max-length frame.   */
-  k_npf_fill_probe  = 0x11U, /**< Fill byte for guard-leg probes.       */
-  k_npf_seed_mul    = 31U,   /**< Per-index pattern multiplier.         */
-  k_npf_expect_txok = 3U,    /**< Accepted sends in the event leg.      */
+  k_npf_uart_chan    = 8U,      /**< SCI8 J-Link OB console.               */
+  k_npf_console_baud = 115200U, /**< J-Link OB VCOM line rate.             */
+  k_npf_ring_probe   = 64U,     /**< Cap on the ring-depth discovery loop. */
+  k_npf_len_small    = 64U,     /**< Minimum untagged ethernet frame.      */
+  k_npf_len_mid      = 128U,    /**< Second round-trip length.             */
+  k_npf_len_zero     = 0U,      /**< Refused: a frame must carry bytes.    */
+  k_npf_fill_a       = 0xA5U,   /**< Fill byte for the first frame.        */
+  k_npf_fill_b       = 0x5AU,   /**< Fill byte for the second frame.       */
+  k_npf_fill_c       = 0x3CU,   /**< Fill byte for the max-length frame.   */
+  k_npf_fill_probe   = 0x11U,   /**< Fill byte for guard-leg probes.       */
+  k_npf_seed_mul     = 31U,     /**< Per-index pattern multiplier.         */
+  k_npf_expect_txok  = 3U,      /**< Accepted sends in the event leg.      */
 } npf_const_t;
 
 /**
@@ -135,7 +136,6 @@ static const ra8_net_pal_mac_t k_npf_mac_b = {
 };
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /** @brief Transmit scratch, sized to the PAL frame ceiling. */
 static uint8_t s_tx[(uint16_t)k_ra8_net_pal_frame_max];
@@ -647,14 +647,14 @@ static void internal_verdict(const char* label, ra8_err_t err, bool* pass)
 }
 
 /**
- * @brief Bring up the clocks and the module-stop controller the PAL needs.
+ * @brief Bring up clocks, module stop, the timebase and the SCI8 console.
  *
  * @details ::ra8_net_pal_init calls `ra8_eth_init`, which releases the ESWM
  *          module-stop gate, so the MSTP controller must be initialised first
  *          (the PAL documents exactly this precondition).
  *
  * @return ra8_err_t Error code from the first failing bring-up call.
- * @retval k_ra8_ok CGC and MSTP are up.
+ * @retval k_ra8_ok Clocks, MSTP, SysTick and the SCI8 console are up.
  * @retval (other)  The failing call's code.
  * @pre Running after Reset_Handler with `.data` / `.bss` initialised.
  * @post On success the ESWM gate can be released by the PAL.
@@ -663,12 +663,9 @@ static void internal_verdict(const char* label, ra8_err_t err, bool* pass)
  */
 static ra8_err_t internal_setup(void)
 {
-  ra8_board_clock_rates_t rates      = {};
-  const ra8_err_t         clocks_err = ra8_board_clocks_init(&rates);
-  if (clocks_err != k_ra8_ok) {
-    return clocks_err;
-  }
-  return ra8_mstp_init();
+  const ra8_board_bringup_cfg_t cfg   = {.console_baud = (uint32_t)k_npf_console_baud};
+  ra8_board_bringup_out_t       rates = {};
+  return ra8_board_bringup(&cfg, &rates);
 }
 
 /**
@@ -684,13 +681,12 @@ static ra8_err_t internal_setup(void)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_npf_uart_chan);
+  const ra8_err_t setup_err = internal_setup();
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("net_pal_frame_demo: boot\r\n");
 
   bool pass = true;
-
-  const ra8_err_t setup_err = internal_setup();
   internal_verdict("setup", setup_err, &pass);
 
   if (setup_err == k_ra8_ok) {
