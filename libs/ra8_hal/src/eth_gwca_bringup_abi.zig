@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for GWCA LINKFIX install and bring-up (RA8FW-850). The J-Link step
-//! globals are defined here under their C names; ra8_eth_gwca_default.c
-//! writes open/pre_step through ra8_eth_gwca_internal.h.
+//! globals are defined here under their C names; eth_gwca_open_abi.zig
+//! writes open/pre_step through extern vars.
 
 const common = @import("abi_common.zig");
 const q = @import("internal/eth_gwca_queue.zig");
