@@ -583,15 +583,15 @@ const host_c_driver = "clang";
 /// tests/zig_build_graph/compile_db.zig; what stays here is the part that
 /// cannot move, which translation units this graph compiles and at which bars.
 fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
-    var candidates = std.ArrayList(compile_db.Entry).init(b.allocator);
+    var candidates: std.ArrayList(compile_db.Entry) = .empty;
 
     // --- the host slice --------------------------------------------
     for (slice) |member| {
-        var include_dirs = std.ArrayList([]const u8).init(b.allocator);
-        include_dirs.append(member.include_path) catch @panic("OOM");
-        include_dirs.appendSlice(&shared_include_paths) catch @panic("OOM");
+        var include_dirs: std.ArrayList([]const u8) = .empty;
+        include_dirs.append(b.allocator, member.include_path) catch @panic("OOM");
+        include_dirs.appendSlice(b.allocator, &shared_include_paths) catch @panic("OOM");
 
-        candidates.append(.{
+        candidates.append(b.allocator, .{
             .file = member.c_suite_path,
             .driver = host_c_driver,
             .flags = &c_flags,
@@ -603,7 +603,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
         }) catch @panic("OOM");
 
         for (support_c_sources) |support| {
-            candidates.append(.{
+            candidates.append(b.allocator, .{
                 .file = support,
                 .driver = host_c_driver,
                 .flags = &c_flags,
@@ -621,7 +621,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     // with the narrow SOUP suppression, the first-party drivers beside them at
     // the stricter bar, then the suite at the plain host set.
     for (vendored_soup.c_sources) |source| {
-        candidates.append(.{
+        candidates.append(b.allocator, .{
             .file = source,
             .driver = host_c_driver,
             .flags = &vendored_soup.soup_flags,
@@ -630,7 +630,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
         }) catch @panic("OOM");
     }
     for (vendored_soup.first_party_sources) |source| {
-        candidates.append(.{
+        candidates.append(b.allocator, .{
             .file = source,
             .driver = host_c_driver,
             .flags = &vendored_soup.first_party_flags,
@@ -638,7 +638,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(source)}),
         }) catch @panic("OOM");
     }
-    candidates.append(.{
+    candidates.append(b.allocator, .{
         .file = vendored_soup.slice.c_suite_path,
         .driver = host_c_driver,
         .flags = &c_flags,
@@ -661,17 +661,17 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // gate reading this database sees the same preprocessor view the
             // compiler had. Get this wrong and clang-tidy parses the app
             // against a different tx_api.h than the build does.
-            var app_flags = std.ArrayList([]const u8).init(b.allocator);
-            app_flags.appendSlice(&arm_cpu_flags) catch @panic("OOM");
-            app_flags.appendSlice(device.compileFlags(app.board)) catch @panic("OOM");
-            app_flags.appendSlice(arm.config_flags) catch @panic("OOM");
-            app_flags.appendSlice(&arm_dialect_flags) catch @panic("OOM");
-            if (app.trust_zone) app_flags.append(arm_flags.trust_zone.define) catch @panic("OOM");
-            app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
+            var app_flags: std.ArrayList([]const u8) = .empty;
+            app_flags.appendSlice(b.allocator, &arm_cpu_flags) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, device.compileFlags(app.board)) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, arm.config_flags) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, &arm_dialect_flags) catch @panic("OOM");
+            if (app.trust_zone) app_flags.append(b.allocator, arm_flags.trust_zone.define) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
             // Same reason for the app's own CMakeLists: its vendored
             // library's PUBLIC defines and its own PRIVATE ones are part of
             // the preprocessor view the compiler had.
-            app_flags.appendSlice(app_local.appDefines(b.allocator, app.local)) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, app_local.appDefines(b.allocator, app.local)) catch @panic("OOM");
             // Where a source-scope define belongs: after every target-scope
             // one. The off-target rows are the same vector with it spliced in
             // here, so an analysis gate reading this database preprocesses
@@ -680,24 +680,24 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // At this app's own frame budget, in the position the compile step
             // puts it: a database row whose -Wstack-usage disagrees with the
             // build would hand clang-tidy a different bar than the compiler had.
-            app_flags.appendSlice(armWarningFlags(b.allocator, app)) catch @panic("OOM");
-            app_flags.appendSlice(&arm_target_dialect_flags) catch @panic("OOM");
-            if (app.trust_zone) app_flags.append(arm_flags.trust_zone.cmse) catch @panic("OOM");
-            var include_dirs = std.ArrayList([]const u8).init(b.allocator);
-            include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
-            include_dirs.appendSlice(middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
-            var system_dirs = std.ArrayList([]const u8).init(b.allocator);
-            system_dirs.appendSlice(middleware.appSystemIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
-            system_dirs.appendSlice(app_local.appSystemIncludeDirs(app.local)) catch @panic("OOM");
-            var off_target_flags = std.ArrayList([]const u8).init(b.allocator);
-            off_target_flags.appendSlice(app_flags.items[0..defines_end]) catch @panic("OOM");
-            off_target_flags.append(cross_sources.off_target_define) catch @panic("OOM");
-            off_target_flags.appendSlice(app_flags.items[defines_end..]) catch @panic("OOM");
-            var app_sources = std.ArrayList([]const u8).init(b.allocator);
-            app_sources.appendSlice(cross_sources.crossSources(b, app)) catch @panic("OOM");
-            app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, armWarningFlags(b.allocator, app)) catch @panic("OOM");
+            app_flags.appendSlice(b.allocator, &arm_target_dialect_flags) catch @panic("OOM");
+            if (app.trust_zone) app_flags.append(b.allocator, arm_flags.trust_zone.cmse) catch @panic("OOM");
+            var include_dirs: std.ArrayList([]const u8) = .empty;
+            include_dirs.appendSlice(b.allocator, cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
+            include_dirs.appendSlice(b.allocator, middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
+            var system_dirs: std.ArrayList([]const u8) = .empty;
+            system_dirs.appendSlice(b.allocator, middleware.appSystemIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
+            system_dirs.appendSlice(b.allocator, app_local.appSystemIncludeDirs(app.local)) catch @panic("OOM");
+            var off_target_flags: std.ArrayList([]const u8) = .empty;
+            off_target_flags.appendSlice(b.allocator, app_flags.items[0..defines_end]) catch @panic("OOM");
+            off_target_flags.append(b.allocator, cross_sources.off_target_define) catch @panic("OOM");
+            off_target_flags.appendSlice(b.allocator, app_flags.items[defines_end..]) catch @panic("OOM");
+            var app_sources: std.ArrayList([]const u8) = .empty;
+            app_sources.appendSlice(b.allocator, cross_sources.crossSources(b, app)) catch @panic("OOM");
+            app_sources.appendSlice(b.allocator, middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
             for (app_sources.items) |source| {
-                candidates.append(.{
+                candidates.append(b.allocator, .{
                     .file = source,
                     .driver = tools.gcc,
                     .flags = if (cross_sources.isOffTargetSource(app, source))

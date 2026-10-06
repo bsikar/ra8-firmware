@@ -52,16 +52,16 @@ pub const threadx_m33 = middleware.Middleware{
 /// target flags last (gcc keeps the last -mcpu). Assembly takes the global
 /// assembly flags, then the CPU1 defines and target flags, in the same order.
 pub fn toolchain(allocator: std.mem.Allocator, base: middleware.Toolchain) middleware.Toolchain {
-    var asm_flags = std.ArrayList([]const u8).init(allocator);
-    asm_flags.appendSlice(&cpu1_image.defines) catch @panic("OOM");
-    asm_flags.appendSlice(base.asm_flags) catch @panic("OOM");
-    asm_flags.appendSlice(&cpu1_image.target_flags) catch @panic("OOM");
+    var asm_flags: std.ArrayList([]const u8) = .empty;
+    asm_flags.appendSlice(allocator, &cpu1_image.defines) catch @panic("OOM");
+    asm_flags.appendSlice(allocator, base.asm_flags) catch @panic("OOM");
+    asm_flags.appendSlice(allocator, &cpu1_image.target_flags) catch @panic("OOM");
     return .{
         .gcc = base.gcc,
         .ar = base.ar,
         .global_defines = base.global_defines,
         .c_flags = cpu1_image.compileFlags(allocator, base.c_flags),
-        .asm_flags = asm_flags.toOwnedSlice() catch @panic("OOM"),
+        .asm_flags = asm_flags.toOwnedSlice(allocator) catch @panic("OOM"),
     };
 }
 
@@ -135,21 +135,21 @@ pub fn resolve(allocator: std.mem.Allocator, uses: []const []const u8) []const m
         "ra8: a CPU1 image names more than one ThreadX kernel in USES; pick threadx_m33 or threadx_m33_modules",
         .{},
     );
-    var out = std.ArrayList(middleware.Middleware).init(allocator);
+    var out: std.ArrayList(middleware.Middleware) = .empty;
     for (uses) |name| {
         const record = find(name) orelse std.debug.panic(
             "ra8: a CPU1 image names USES {s}, which the CPU1 graph does not know",
             .{name},
         );
-        out.append(record) catch @panic("OOM");
+        out.append(allocator, record) catch @panic("OOM");
     }
-    return out.toOwnedSlice() catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// One archive per named middleware, built with the CPU1 toolchain.
 pub fn archives(b: *std.Build, uses: []const []const u8, base: middleware.Toolchain) []const std.Build.LazyPath {
     const tc = toolchain(b.allocator, base);
-    var out = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (resolve(b.allocator, uses)) |mw| out.append(middleware.add(b, mw, tc)) catch @panic("OOM");
+    var out: std.ArrayList(std.Build.LazyPath) = .empty;
+    for (resolve(b.allocator, uses)) |mw| out.append(b.allocator, middleware.add(b, mw, tc)) catch @panic("OOM");
     return out.items;
 }

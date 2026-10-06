@@ -28,16 +28,16 @@ pub fn apply(allocator: std.mem.Allocator, text: []const u8, rewrites: []const R
         if (count(text, rewrite.old) == 0) return error.RewriteNotFound;
         if (count(text, rewrite.old) > 1) return error.RewriteNotUnique;
     }
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
     var lines = std.mem.splitScalar(u8, text, '\n');
     var first = true;
     while (lines.next()) |line| {
-        if (!first) try out.append('\n');
+        if (!first) try out.append(allocator, '\n');
         first = false;
-        try out.appendSlice(replacement(line, rewrites));
+        try out.appendSlice(allocator, replacement(line, rewrites));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 fn replacement(line: []const u8, rewrites: []const Rewrite) []const u8 {
@@ -66,9 +66,9 @@ pub fn main() !void {
         std.debug.print("usage: header_patch IN OUT OLD NEW [OLD NEW]...\n", .{});
         std.process.exit(2);
     }
-    var rewrites = std.ArrayList(Rewrite).init(allocator);
+    var rewrites: std.ArrayList(Rewrite) = .empty;
     var i: usize = 3;
-    while (i < args.len) : (i += 2) try rewrites.append(.{ .old = args[i], .new = args[i + 1] });
+    while (i < args.len) : (i += 2) try rewrites.append(allocator, .{ .old = args[i], .new = args[i + 1] });
     const text = try std.fs.cwd().readFileAlloc(allocator, args[1], 1 << 20);
     const patched = apply(allocator, text, rewrites.items) catch |err| {
         std.debug.print("header_patch: {s}: {s}\n", .{ args[1], @errorName(err) });

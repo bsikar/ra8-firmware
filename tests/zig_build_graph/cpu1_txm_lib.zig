@@ -56,10 +56,10 @@ pub const txm_m33 = middleware.Middleware{
 /// The CPU1 toolchain with the module PIC flags appended to the C line.
 pub fn toolchain(allocator: std.mem.Allocator, base: middleware.Toolchain) middleware.Toolchain {
     var tc = cpu1_threadx.toolchain(allocator, base);
-    var c_flags = std.ArrayList([]const u8).init(allocator);
-    c_flags.appendSlice(tc.c_flags) catch @panic("OOM");
-    c_flags.appendSlice(&pic_flags) catch @panic("OOM");
-    tc.c_flags = c_flags.toOwnedSlice() catch @panic("OOM");
+    var c_flags: std.ArrayList([]const u8) = .empty;
+    c_flags.appendSlice(allocator, tc.c_flags) catch @panic("OOM");
+    c_flags.appendSlice(allocator, &pic_flags) catch @panic("OOM");
+    tc.c_flags = c_flags.toOwnedSlice(allocator) catch @panic("OOM");
     return tc;
 }
 

@@ -207,14 +207,14 @@ fn collectVendored(b: *std.Build, set: VendoredSet, out: *std.ArrayList(Unit)) v
 /// sources from `add_executable`, then each vendored set as `target_sources`
 /// appends it, then the named first-party recompiles.
 pub fn units(b: *std.Build, app_dir: []const u8, image: NsImage) []const Unit {
-    var out = std.ArrayList(Unit).init(b.allocator);
+    var out: std.ArrayList(Unit) = .empty;
     for (image.app_sources) |source| {
-        out.append(.{ .path = b.pathJoin(&.{ app_dir, source }) }) catch @panic("OOM");
+        out.append(b.allocator, .{ .path = b.pathJoin(&.{ app_dir, source }) }) catch @panic("OOM");
     }
     // The RoT header is a Zig object now (RA8FW-639): `add` links it right
     // after these, where CMake's `add_executable` names it.
     for (image.vendored) |set| collectVendored(b, set, &out);
-    for (image.private_sources) |source| out.append(.{ .path = source }) catch @panic("OOM");
+    for (image.private_sources) |source| out.append(b.allocator, .{ .path = source }) catch @panic("OOM");
     return out.items;
 }
 
@@ -239,16 +239,16 @@ pub fn defines(
     mw: middleware_mod.Middleware,
     global_defines: []const []const u8,
 ) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(global_defines) catch @panic("OOM");
-    out.appendSlice(image.defines) catch @panic("OOM");
-    out.appendSlice(mw.public_defines) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, global_defines) catch @panic("OOM");
+    out.appendSlice(allocator, image.defines) catch @panic("OOM");
+    out.appendSlice(allocator, mw.public_defines) catch @panic("OOM");
     std.mem.sort([]const u8, out.items, {}, lessThanString);
 
-    var deduped = std.ArrayList([]const u8).init(allocator);
+    var deduped: std.ArrayList([]const u8) = .empty;
     for (out.items) |define| {
         if (deduped.items.len != 0 and std.mem.eql(u8, deduped.items[deduped.items.len - 1], define)) continue;
-        deduped.append(define) catch @panic("OOM");
+        deduped.append(allocator, define) catch @panic("OOM");
     }
     return deduped.items;
 }
@@ -262,15 +262,15 @@ pub fn includeDirs(
     image: NsImage,
     mw: middleware_mod.Middleware,
 ) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(b.allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     // First: ra8_add_ns_image.cmake:165 makes this call before it forwards the
     // caller's own INCLUDES.
-    out.append(rot_header_include_dir) catch @panic("OOM");
+    out.append(b.allocator, rot_header_include_dir) catch @panic("OOM");
     for (image.app_include_dirs) |dir_path| {
-        out.append(b.pathJoin(&.{ app_dir, dir_path })) catch @panic("OOM");
+        out.append(b.allocator, b.pathJoin(&.{ app_dir, dir_path })) catch @panic("OOM");
     }
-    out.appendSlice(image.include_dirs) catch @panic("OOM");
-    out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+    out.appendSlice(b.allocator, image.include_dirs) catch @panic("OOM");
+    out.appendSlice(b.allocator, mw.public_include_dirs) catch @panic("OOM");
     return out.items;
 }
 
@@ -281,9 +281,9 @@ pub fn systemIncludeDirs(
     image: NsImage,
     mw: middleware_mod.Middleware,
 ) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(image.system_include_dirs) catch @panic("OOM");
-    out.appendSlice(mw.public_system_include_dirs) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, image.system_include_dirs) catch @panic("OOM");
+    out.appendSlice(allocator, mw.public_system_include_dirs) catch @panic("OOM");
     return out.items;
 }
 
@@ -297,11 +297,11 @@ pub fn compileFlags(
     warning_flags: []const []const u8,
     unit: Unit,
 ) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(global_flags) catch @panic("OOM");
-    out.appendSlice(&target_dialect_flags) catch @panic("OOM");
-    out.appendSlice(warning_flags) catch @panic("OOM");
-    out.appendSlice(unit.suppressions) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, global_flags) catch @panic("OOM");
+    out.appendSlice(allocator, &target_dialect_flags) catch @panic("OOM");
+    out.appendSlice(allocator, warning_flags) catch @panic("OOM");
+    out.appendSlice(allocator, unit.suppressions) catch @panic("OOM");
     return out.items;
 }
 
@@ -429,7 +429,7 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     const system_dirs = systemIncludeDirs(b.allocator, image, ctx.middleware);
     const define_flags = defines(b.allocator, image, ctx.middleware, ctx.global_defines);
 
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     for (units(b, ctx.app_dir, image)) |unit| {
         const compile = b.addSystemCommand(&.{ctx.gcc});
         compile.addArgs(define_flags);
@@ -443,9 +443,9 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
         compile.addFileArg(pkg_path.lazy(b, unit.path));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
+        objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
-    objects.insert(image.app_sources.len, rotHeaderObject(b, ctx)) catch @panic("OOM");
+    objects.insert(b.allocator, image.app_sources.len, rotHeaderObject(b, ctx)) catch @panic("OOM");
 
     const link = b.addSystemCommand(&.{ctx.gcc});
     link.addArgs(ctx.global_link_flags);
@@ -524,10 +524,10 @@ pub fn appendCompileDbEntries(
     const system_dirs = systemIncludeDirs(b.allocator, image, ctx.middleware);
     const define_flags = defines(b.allocator, image, ctx.middleware, ctx.global_defines);
     for (units(b, ctx.app_dir, image)) |unit| {
-        var flags = std.ArrayList([]const u8).init(b.allocator);
-        flags.appendSlice(define_flags) catch @panic("OOM");
-        flags.appendSlice(compileFlags(b.allocator, ctx.global_compile_flags, ctx.warning_flags, unit)) catch @panic("OOM");
-        out.append(.{
+        var flags: std.ArrayList([]const u8) = .empty;
+        flags.appendSlice(b.allocator, define_flags) catch @panic("OOM");
+        flags.appendSlice(b.allocator, compileFlags(b.allocator, ctx.global_compile_flags, ctx.warning_flags, unit)) catch @panic("OOM");
+        out.append(b.allocator, .{
             .file = unit.path,
             .driver = ctx.gcc,
             .flags = flags.items,

@@ -135,18 +135,18 @@ pub fn negativeArguments(
     library_path: []const u8,
     output_path: []const u8,
 ) []const []const u8 {
-    var arguments = std.ArrayList([]const u8).init(allocator);
-    arguments.appendSlice(&.{ zig_exe, "cc", negative_dialect_flag }) catch @panic("OOM");
+    var arguments: std.ArrayList([]const u8) = .empty;
+    arguments.appendSlice(allocator, &.{ zig_exe, "cc", negative_dialect_flag }) catch @panic("OOM");
     for (include_paths) |include_path| {
-        arguments.appendSlice(&.{ "-I", include_path }) catch @panic("OOM");
+        arguments.appendSlice(allocator, &.{ "-I", include_path }) catch @panic("OOM");
     }
-    arguments.append(fixture.source) catch @panic("OOM");
+    arguments.append(allocator, fixture.source) catch @panic("OOM");
     switch (fixture.kind) {
-        .layout => arguments.append("-c") catch @panic("OOM"),
-        .missing_symbol => arguments.append(library_path) catch @panic("OOM"),
+        .layout => arguments.append(allocator, "-c") catch @panic("OOM"),
+        .missing_symbol => arguments.append(allocator, library_path) catch @panic("OOM"),
     }
-    arguments.appendSlice(&.{ "-o", output_path }) catch @panic("OOM");
-    return arguments.toOwnedSlice() catch @panic("OOM");
+    arguments.appendSlice(allocator, &.{ "-o", output_path }) catch @panic("OOM");
+    return arguments.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// A build step that requires its compile to fail, and to fail for the stated
@@ -276,7 +276,7 @@ pub fn appendCompileDbEntries(
     candidates: *std.ArrayList(Entry),
     driver: []const u8,
 ) void {
-    candidates.append(.{
+    candidates.append(b.allocator, .{
         .file = c_consumer_path,
         .driver = driver,
         .flags = &consumer_flags,

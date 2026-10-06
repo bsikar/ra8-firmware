@@ -128,13 +128,13 @@ pub fn addTxmM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globa
 /// archive is (RA8FW-572).
 fn cpu1ZigArchives(b: *std.Build, image: cpu1_image.Cpu1Image, globals: build_type.Globals) []const std.Build.LazyPath {
     const target = b.resolveTargetQuery(cpu1_image.zig_target_query);
-    var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var archives: std.ArrayList(std.Build.LazyPath) = .empty;
     for (image.zig_libraries) |lib_name| {
         const dependency = b.dependency(lib_name, .{
             .target = target,
             .optimize = globals.configuration.zig_optimize,
         });
-        archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
+        archives.append(b.allocator, dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
     return archives.items;
 }
@@ -219,7 +219,7 @@ fn addCrossApp(
     // was written when the graph only had Debug (the build-type slice gave it the other two)
     // and nothing failed in between, because an archive at the wrong
     // optimisation links perfectly well.
-    var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var archives: std.ArrayList(std.Build.LazyPath) = .empty;
     var names_core = false;
     var names_board = false;
     const board_lib = board_archive.nameFor(app.board);
@@ -230,7 +230,7 @@ fn addCrossApp(
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
         });
-        archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
+        archives.append(b.allocator, dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
 
     // ra8_core, which is not optional and is not in the table above.
@@ -246,7 +246,7 @@ fn addCrossApp(
     // list(REMOVE_DUPLICATES) for the same reason: an app free to name a
     // library the universal set already carries would otherwise link it twice.
     if (!names_core) {
-        archives.append(core_archive.forTarget(
+        archives.append(b.allocator, core_archive.forTarget(
             b,
             arm_target,
             globals.configuration.zig_optimize,
@@ -268,7 +268,7 @@ fn addCrossApp(
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
         });
-        archives.append(dependency.artifact(universal_usb_pal).getEmittedBin()) catch @panic("OOM");
+        archives.append(b.allocator, dependency.artifact(universal_usb_pal).getEmittedBin()) catch @panic("OOM");
     }
 
     // ra8_hal, the same footing as ra8_usb_pal, registered beside
@@ -283,7 +283,7 @@ fn addCrossApp(
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
         });
-        archives.append(dependency.artifact(universal_hal).getEmittedBin()) catch @panic("OOM");
+        archives.append(b.allocator, dependency.artifact(universal_hal).getEmittedBin()) catch @panic("OOM");
     }
 
     // The selected board's own archive, on the same unconditional footing.
@@ -300,7 +300,7 @@ fn addCrossApp(
     // Same dedupe as ra8_core, for the same reason: a board named in LIBS
     // would otherwise be linked twice.
     if (!names_board and board_archive.has(b, app.board)) {
-        archives.append(board_archive.forTarget(
+        archives.append(b.allocator, board_archive.forTarget(
             b,
             app.board,
             arm_target,
@@ -324,7 +324,7 @@ fn addCrossApp(
             if (std.mem.eql(u8, lib_name, board_archive.chip_clock_adapter)) names_adapter = true;
         }
         if (!names_adapter) {
-            archives.append(board_archive.chipClockAdapterForTarget(
+            archives.append(b.allocator, board_archive.chipClockAdapterForTarget(
                 b,
                 arm_target,
                 globals.configuration.zig_optimize,
@@ -350,7 +350,7 @@ fn addCrossApp(
             if (std.mem.eql(u8, lib_name, interface_archive.name)) names_interface = true;
         }
         if (!names_interface) {
-            archives.append(interface_archive.forTarget(
+            archives.append(b.allocator, interface_archive.forTarget(
                 b,
                 arm_target,
                 globals.configuration.zig_optimize,
@@ -409,7 +409,7 @@ fn addCrossApp(
                 .target = arm_target,
                 .optimize = globals.configuration.zig_optimize,
             });
-            archives.append(dependency.artifact(library).getEmittedBin()) catch @panic("OOM");
+            archives.append(b.allocator, dependency.artifact(library).getEmittedBin()) catch @panic("OOM");
         }
     }
 
@@ -428,7 +428,7 @@ fn addCrossApp(
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
         });
-        archives.append(dependency.artifact(archive).getEmittedBin()) catch @panic("OOM");
+        archives.append(b.allocator, dependency.artifact(archive).getEmittedBin()) catch @panic("OOM");
     }
 
     // Everything the app names in USES. Each one is built as its own archive
@@ -445,14 +445,14 @@ fn addCrossApp(
     );
     // Most hand the app an archive. USBX hands it its objects, every one of
     // which joins the link (middleware.Middleware.link_objects).
-    var middleware_archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    var middleware_objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var middleware_archives: std.ArrayList(std.Build.LazyPath) = .empty;
+    var middleware_objects: std.ArrayList(std.Build.LazyPath) = .empty;
     for (middlewares) |mw| {
         const mw_toolchain = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
         if (mw.link_objects) {
-            middleware_objects.appendSlice(middleware.addObjects(b, mw, mw_toolchain)) catch @panic("OOM");
+            middleware_objects.appendSlice(b.allocator, middleware.addObjects(b, mw, mw_toolchain)) catch @panic("OOM");
         } else {
-            middleware_archives.append(middleware.add(b, mw, mw_toolchain)) catch @panic("OOM");
+            middleware_archives.append(b.allocator, middleware.add(b, mw, mw_toolchain)) catch @panic("OOM");
         }
     }
     const middleware_defines = middleware.appDefines(b.allocator, middlewares);
@@ -470,26 +470,26 @@ fn addCrossApp(
     const ns_memory_map_defines = ns_linker_script.memoryMapDefines(b);
     const local_system_dirs = app_local.appSystemIncludeDirs(app.local);
 
-    var include_dirs = std.ArrayList([]const u8).init(b.allocator);
-    include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
-    include_dirs.appendSlice(middleware_include_dirs) catch @panic("OOM");
+    var include_dirs: std.ArrayList([]const u8) = .empty;
+    include_dirs.appendSlice(b.allocator, cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
+    include_dirs.appendSlice(b.allocator, middleware_include_dirs) catch @panic("OOM");
 
     // The middleware's port sources (port/usbx/src) are the app's own TUs as
     // far as CMake is concerned, compiled at the app's -Werror bar.
-    var app_sources = std.ArrayList([]const u8).init(b.allocator);
-    app_sources.appendSlice(cross_sources.crossSources(b, app)) catch @panic("OOM");
-    app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
+    var app_sources: std.ArrayList([]const u8) = .empty;
+    app_sources.appendSlice(b.allocator, cross_sources.crossSources(b, app)) catch @panic("OOM");
+    app_sources.appendSlice(b.allocator, middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
 
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     // A Zig main goes first, where main.c would (RA8FW-408).
     if (app.zig_main) |root| {
-        objects.append(zigMain(b, app, root, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+        objects.append(b.allocator, zigMain(b, app, root, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
     }
     // Board boot units written in Zig, each its own object where the C one
     // would sit (RA8FW-616): a strong handler has to beat the vector table's
     // weak alias, which an archive member cannot.
     for (cross_sources.crossBootZigUnits(b, app)) |unit| {
-        objects.append(zigBootObject(b, app, unit, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
+        objects.append(b.allocator, zigBootObject(b, app, unit, arm_target, globals.configuration.zig_optimize)) catch @panic("OOM");
     }
     for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
@@ -533,7 +533,7 @@ fn addCrossApp(
         compile.addFileArg(b.path(source));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(source)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
+        objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
 
     // A dual-core app's second image is built first and linked in as an

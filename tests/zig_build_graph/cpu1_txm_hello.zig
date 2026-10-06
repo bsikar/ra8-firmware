@@ -146,10 +146,10 @@ pub const link_flags = [_][]const u8{
 /// The CPU1 target flags with the module PIC flags appended, for the
 /// preamble and `gcc_setup`.
 pub fn asmFlags(allocator: std.mem.Allocator) []const []const u8 {
-    var flags = std.ArrayList([]const u8).init(allocator);
-    flags.appendSlice(&cpu1_image.target_flags) catch @panic("OOM");
-    flags.appendSlice(&cpu1_txm_lib.pic_flags) catch @panic("OOM");
-    return flags.toOwnedSlice() catch @panic("OOM");
+    var flags: std.ArrayList([]const u8) = .empty;
+    flags.appendSlice(allocator, &cpu1_image.target_flags) catch @panic("OOM");
+    flags.appendSlice(allocator, &cpu1_txm_lib.pic_flags) catch @panic("OOM");
+    return flags.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The module's link outputs. A module built through C has no map.
