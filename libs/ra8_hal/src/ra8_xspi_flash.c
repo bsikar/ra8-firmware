@@ -10,7 +10,6 @@
  * Owns the JEDEC SPI NOR-flash operations layered on the xSPI
  * manual-command engine:
  *
- * - ``ra8_xspi_flash_read()``         -- 0x03 read + CMDCMP poll.
  * - ``ra8_xspi_flash_program()``      -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
  * - ``ra8_xspi_flash_erase_sector()`` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
  *
@@ -18,6 +17,8 @@
  * ``priv_ra8_xspi_kick_command()``, ``priv_ra8_xspi_issue_simple_opcode()``)
  * and ``ra8_xspi_flash_read_status()`` / ``ra8_xspi_flash_read_id()`` are
  * Zig (``xspi_cmd_abi.zig``, RA8FW-869), declared in ``ra8_xspi_internal.h``.
+ * ``ra8_xspi_flash_read()``, the 3-byte range check and the chunk header
+ * are Zig too (``xspi_read_abi.zig``, RA8FW-870).
  *
  * Every build runs the identical register sequence. On the host the
  * CMDCMP poll consults the ``ra8_fake_mmio`` seam
@@ -54,7 +55,6 @@ static const char* const s_tag = "XSPI";
 typedef enum : uint8_t {
   k_ra8_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN.            */
   k_ra8_spi_flash_op_page_program = 0x02U, /**< 0x02 page program.    */
-  k_ra8_spi_flash_op_read         = 0x03U, /**< 0x03 normal read.     */
   k_ra8_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase.    */
 } ra8_spi_flash_op_t;
 
@@ -68,192 +68,12 @@ typedef enum : uint8_t {
 } ra8_flash_status_bit_t;
 
 /**
- * @enum ra8_xspi_addr_space_t
- * @brief Reachable flash address space for the 3-byte JEDEC commands.
- *
- * @details
- * Every read / program / erase this driver issues encodes its address
- * phase as ``ADDSIZE=3`` (24 bits on the wire), so a ``flash_addr`` at or
- * beyond 2^24 cannot be transmitted -- the controller would silently
- * truncate it to the low 24 bits and the command would land on the wrong
- * sector. The public operations validate the whole ``[flash_addr,
- * flash_addr + len)`` window against this bound up front and reject the
- * call instead.
- */
-typedef enum : uint32_t {
-  k_ra8_xspi_addr_space_3byte = 0x1000000UL, /**< 2^24: 3-byte address limit. */
-} ra8_xspi_addr_space_t;
-
-/**
  * @enum ra8_xspi_cdt_limits_t
  * @brief Per-transaction byte-size limits encodable in ``CDT``.
  */
 typedef enum : uint8_t {
   k_ra8_xspi_cdt_max_data_bytes = 8U, /**< CDD0 + CDD1 = 8 bytes per slot. */
 } ra8_xspi_cdt_limits_t;
-
-/**
- * @brief Validate a ``[flash_addr, flash_addr + len)`` window against the
- *        3-byte JEDEC address space.
- *
- * @details
- * Two single-condition checks (no compound decision): the start address
- * must lie inside the 2^24-byte window ``ADDSIZE=3`` can encode, and the
- * transfer must not run past its end. The subtraction form of the second
- * check cannot overflow because the first check already bounded
- * ``flash_addr``. Rejecting here prevents the controller from silently
- * truncating the address to 24 bits on the wire and landing the command
- * on the wrong sector.
- *
- * @param[in] flash_addr First flash byte address of the transfer.
- * @param[in] len        Transfer length in bytes (0 allowed for erase).
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok              The whole window is 3-byte addressable.
- * @retval k_ra8_err_invalid_arg The window starts or ends past 2^24.
- *
- * @pre ``len`` was already bounded by the caller (<= ``k_ra8_xspi_max_xfer``).
- * @pre The caller passes the transfer's true byte extent.
- * @post No state is modified (pure comparison).
- * @post The return reflects only the addressability comparison.
- *
- * @note Thread-safe (pure comparison).
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_flash_range_check(uint32_t flash_addr, uint32_t len)
-{
-  if (flash_addr >= (uint32_t)k_ra8_xspi_addr_space_3byte) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (len > ((uint32_t)k_ra8_xspi_addr_space_3byte - flash_addr)) {
-    return k_ra8_err_invalid_arg;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Build CDBUF[0] for a single CDD0/CDD1 chunk of an opcode + addr.
- *
- * @details
- * Used by the read path (TRTYPE=read) and by the program path
- * (TRTYPE=write) to programme the per-chunk header. Address phase
- * is fixed at 3 bytes for the JEDEC opcodes in use; ``data_bytes``
- * is 0..8 (one slot's worth). FSP equivalent: the body of
- * ``r_ospi_b_direct_transfer`` that builds ``cdtbuf0``.
- * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
- * @param[in] opcode See declaration: ``uint8_t                 opcode``.
- * @param[in] addr See declaration: ``uint32_t                addr``.
- * @param[in] data_bytes See declaration: ``uint8_t                 data_bytes``.
- * @param[in] is_write See declaration: ``uint8_t                 is_write``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
-                                        uint8_t                 opcode,
-                                        uint32_t                addr,
-                                        uint8_t                 data_bytes,
-                                        uint8_t                 is_write)
-{
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] = priv_ra8_xspi_make_cdt(opcode,
-                                                           k_ra8_xspi_cdt_cmdsize_1,
-                                                           k_ra8_xspi_cdt_addsize_3,
-                                                           data_bytes,
-                                                           is_write);
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr] = addr;
-}
-
-/**
- * @brief Read one manual-command slot (<= 8 bytes) from flash into ``buf``.
- *
- * @details
- * Issues a single JEDEC 0x03 read of ``chunk`` bytes at ``flash_addr``
- * and copies the CDBUF data words (CDD0 = bytes 0..3, CDD1 = bytes 4..7)
- * into ``buf``. ``chunk`` must be <= ``k_ra8_xspi_cdt_max_data_bytes`` (8)
- * because the manual-command engine only carries 8 data bytes per
- * transfer; ``ra8_xspi_flash_read`` loops this helper to cover arbitrary
- * lengths.
- *
- * @param[in]  reg        xSPI register block (already gated open).
- * @param[in]  flash_addr Source flash byte address for this chunk.
- * @param[out] buf        Destination buffer for ``chunk`` bytes.
- * @param[in]  chunk      Byte count for this transfer (1..8).
- *
- * @return ::ra8_err_t outcome of the chunk read.
- * @retval k_ra8_ok             Chunk read and copied.
- * @retval k_ra8_err_hw_timeout CMDCMP timeout from the read command.
- *
- * @pre ``reg != nullptr`` and ``buf != nullptr``.
- * @pre ``chunk`` is in ``[1..8]``.
- * @post On success ``buf[0..chunk-1]`` holds the flash data.
- * @post No state outside ``buf`` and the CDBUF slot is modified.
- *
- * @note Not thread-safe; caller serialises bus access.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_flash_read_chunk(volatile r_xspi_regs_t* reg,
-                                           uint32_t                flash_addr,
-                                           uint8_t*                buf,
-                                           uint32_t                chunk)
-{
-  internal_build_chunk_header(reg,
-                              k_ra8_spi_flash_op_read,
-                              flash_addr,
-                              (uint8_t)chunk,
-                              k_ra8_xspi_cdt_trtype_read);
-  const ra8_err_t wait = priv_ra8_xspi_kick_command(reg);
-  if (wait != k_ra8_ok) {
-    return wait;
-  }
-  for (uint32_t i = 0U; i < chunk; i++) {
-    const uint8_t cdbuf_word_idx =
-      (i < 4U) ? (uint8_t)k_ra8_xspi_cdbuf_idx_data0 : (uint8_t)k_ra8_xspi_cdbuf_idx_data1;
-    /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-    /* CDBUF data words: bytes 0..3 in CDD0, bytes 4..7 in CDD1. */
-    const uint32_t word = reg->CDBUF[cdbuf_word_idx];
-    buf[i]              = (uint8_t)(word >> ((i % 4U) * 8U));
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
-{
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  if ((len == 0U) || (len > k_ra8_xspi_max_xfer)) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  const ra8_err_t rng = internal_flash_range_check(flash_addr, len);
-  if (rng != k_ra8_ok) {
-    return rng;
-  }
-
-  /* The manual-command engine carries only k_ra8_xspi_cdt_max_data_bytes
-   * (8) data bytes per transfer, so walk the request in 8-byte chunks.
-   * (HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986.) */
-  uint32_t off = 0U;
-  while (off < len) {
-    uint32_t chunk = len - off;
-    if (chunk > (uint32_t)k_ra8_xspi_cdt_max_data_bytes) {
-      chunk = (uint32_t)k_ra8_xspi_cdt_max_data_bytes;
-    }
-    const ra8_err_t e = internal_flash_read_chunk(reg, flash_addr + off, &buf[off], chunk);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    off += chunk;
-  }
-  return k_ra8_ok;
-}
 
 /**
  * @brief Stage WREN + page-program header (CDT + CDA only) without kicking.
@@ -316,8 +136,8 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
    * see this helper's @details for the rationale. */
   const uint8_t chunk =
     (len > (uint32_t)k_ra8_xspi_cdt_max_data_bytes) ? k_ra8_xspi_cdt_max_data_bytes : (uint8_t)len;
-  internal_build_chunk_header(reg,
-                              k_ra8_spi_flash_op_page_program,
+  priv_ra8_xspi_build_chunk_header(reg,
+                                   k_ra8_spi_flash_op_page_program,
                               flash_addr,
                               chunk,
                               k_ra8_xspi_cdt_trtype_write);
@@ -486,7 +306,7 @@ ra8_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* dat
   }
   volatile r_xspi_regs_t* reg = ra8_xspi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  const ra8_err_t rng = internal_flash_range_check(flash_addr, len);
+  const ra8_err_t rng = priv_ra8_xspi_flash_range_check(flash_addr, len);
   if (rng != k_ra8_ok) {
     return rng;
   }
@@ -521,7 +341,7 @@ ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
 {
   volatile r_xspi_regs_t* reg = ra8_xspi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  const ra8_err_t rng = internal_flash_range_check(flash_addr, 0U);
+  const ra8_err_t rng = priv_ra8_xspi_flash_range_check(flash_addr, 0U);
   if (rng != k_ra8_ok) {
     return rng;
   }
@@ -533,8 +353,8 @@ ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
 
   /* Programme a JEDEC 0x20 sector-erase with 3-byte address.
    * Erase has no payload, so DATASIZE=0 and TRTYPE=write. */
-  internal_build_chunk_header(reg,
-                              k_ra8_spi_flash_op_erase_sector,
+  priv_ra8_xspi_build_chunk_header(reg,
+                                   k_ra8_spi_flash_op_erase_sector,
                               flash_addr,
                               0U,
                               k_ra8_xspi_cdt_trtype_write);
