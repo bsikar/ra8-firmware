@@ -45,3 +45,12 @@ ra8_add_app(
   USES threadx esp_hosted
   LIBS ra8_board_ek_ra8d2 ra8_c6link
 )
+
+# Capture configuration for RA8FW-895/897: wraps the transport with
+# ra8_c6link_capture_bind so every frame is printed as a c6cap line for
+# libs/ra8_c6link/scripts/c6cap_to_bin.py. Off by default, so the plain image
+# carries no capture code.
+option(C6_WIFI_CAPTURE "Print every C6 link frame as a c6cap console line" OFF)
+if(C6_WIFI_CAPTURE)
+  target_compile_definitions(c6_wifi_link.elf PRIVATE C6_WIFI_CAPTURE)
+endif()
