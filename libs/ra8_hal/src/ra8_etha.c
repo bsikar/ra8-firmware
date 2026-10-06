@@ -85,24 +85,18 @@ static const char* const s_tag = "ETHA";
  */
 volatile uint32_t g_ra8_etha_diag_last_eams[2] = {0U, 0U};
 
-/** @brief EAVCC field constants. */
-typedef enum : uint32_t {
-  k_etha_vem_mask = 0x7U, /**< 3-bit VLAN egress mode field. */
-} etha_field_t;
-
 /**
  * @enum ra8_etha_local_mask_t
  * @brief Local mask helpers used inside this driver.
  *
  * @details
- * Names the wide bit-clear / single-byte / 9-bit-field literal masks
- * used by the ETHA driver. Keeps the source file free of bare magic
+ * Names the wide bit-clear literal mask used by the ETHA driver (the
+ * queue/VLAN setters that needed the byte and 9-bit masks moved to
+ * etha_cfg_abi.zig in RA8FW-814). Keeps the source file free of bare magic
  * numbers so clang-tidy is happy.
  */
 typedef enum : uint32_t {
   k_ra8_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.   */
-  k_ra8_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask. */
-  k_ra8_etha_local_9bit_mask    = 0x1FFUL,      /**< 9-bit field mask. */
 } ra8_etha_local_mask_t;
 
 /**
@@ -501,180 +495,6 @@ ra8_err_t ra8_etha_set_mode(ra8_etha_port_t port, ra8_etha_opc_t mode)
   /* HUM Ch 32.3.1.1 "EAMC : Mode Configuration Register" p 1630 */
   reg->EAMC = (uint32_t)mode & k_ra8_etha_mask_opc;
   return internal_etha_wait_for_mode(port, reg, mode);
-}
-
-ra8_err_t ra8_etha_set_queue_arb(ra8_etha_port_t port, ra8_etha_tc_t tc, uint8_t arb)
-{
-  if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)arb > k_ra8_etha_mask_tdqa) {
-    ra8_log_error(s_tag, "etha_set_queue_arb: bad arg");
-    return k_ra8_err_invalid_arg;
-  }
-
-  volatile r_etha_regs_t* reg = ra8_etha(port);
-  /* HUM Ch 32.3.2.4 "EATDQAC : TX Descriptor Queue Arbitration Configuration Register" p 1634 */
-  const uint32_t shift = (uint32_t)((uint8_t)tc * 4U);
-  /* HUM Ch 32.3.2.4 "EATDQAC : TX Descriptor Queue Arbitration Configuration Register" p 1634 */
-  const uint32_t mask = k_ra8_etha_mask_tdqa << shift;
-  /* HUM Ch 32.3.2.4 "EATDQAC : TX Descriptor Queue Arbitration Configuration Register" p 1634 */
-  reg->EATDQAC = (reg->EATDQAC & ~mask) | (((uint32_t)arb & k_ra8_etha_mask_tdqa) << shift);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_queue_depth(ra8_etha_port_t port, ra8_etha_tc_t tc, uint16_t depth)
-{
-  if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)depth > k_ra8_etha_mask_dqd) {
-    ra8_log_error(s_tag, "etha_set_queue_depth: bad arg");
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 32.3.2.7 "EATDQDCq" p 1636 */
-  ra8_etha(port)->EATDQDC[(uint8_t)tc] = (uint32_t)depth & k_ra8_etha_mask_dqd;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_get_queue_level(ra8_etha_port_t port,
-                                   ra8_etha_tc_t   tc,
-                                   uint16_t*       cur_level,
-                                   uint16_t*       peak)
-{
-  RA8_CHECK_NULL_PTR(cur_level, s_tag, "etha_get_queue_level: cur_level null");
-  RA8_CHECK_NULL_PTR(peak, s_tag, "etha_get_queue_level: peak null");
-  if (!internal_port_ok(port) || !internal_tc_ok(tc)) {
-    ra8_log_error(s_tag, "etha_get_queue_level: bad arg");
-    return k_ra8_err_invalid_arg;
-  }
-
-  volatile r_etha_regs_t* reg = ra8_etha(port);
-  /* HUM Ch 32.3.2.8 "EATDQMq : Transmission Descriptor Queue q Monitoring (q = 0 to 7)" p 1636 */
-  *cur_level = (uint16_t)(reg->EATDQM[(uint8_t)tc] & k_ra8_etha_mask_dnq);
-  /* HUM Ch 32.3.2.9 "EATDQMLMq : Transmission Descriptor Queue q Max Level Monitoring" p 1637 */
-  *peak = (uint16_t)(reg->EATDQMLM[(uint8_t)tc] & k_ra8_etha_mask_dnq);
-  return k_ra8_ok;
-}
-
-ra8_err_t
-ra8_etha_set_preemption(ra8_etha_port_t port, uint8_t preempt, uint8_t cut_thru, ra8_etha_afs_t afs)
-{
-  if (!internal_port_ok(port)) {
-    ra8_log_error(s_tag, "etha_set_preemption: port out of range");
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 32.3.2.5 "EATPEC : TX Preemption Configuration Register" p 1635 */
-  uint32_t v = (uint32_t)preempt & k_ra8_etha_local_byte_mask;
-  if (cut_thru != 0U) {
-    v |= (1U << 8); /* TTQ8 cut-through preemptable */
-  }
-  v |= ((uint32_t)afs & 0x3U) << (uint32_t)k_ra8_etha_eatpec_afs_pos;
-  /* HUM Ch 32.3.2.5 "EATPEC : TX Preemption Configuration Register" p 1635 */
-  ra8_etha(port)->EATPEC = v;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_max_frame_size(ra8_etha_port_t port, ra8_etha_tc_t tc, uint16_t max_bytes)
-{
-  if (!internal_port_ok(port) || !internal_tc_ok(tc)) {
-    ra8_log_error(s_tag, "etha_set_max_frame_size: bad arg");
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 32.3.2.6 "EATMFSCq" p 1635 */
-  ra8_etha(port)->EATMFSC[(uint8_t)tc] = (uint32_t)max_bytes & k_ra8_etha_mask_mfs;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_ipv_remap(ra8_etha_port_t port, const uint8_t* map)
-{
-  RA8_CHECK_NULL_PTR(map, s_tag, "etha_set_ipv_remap: map null");
-  if (!internal_port_ok(port)) {
-    ra8_log_error(s_tag, "etha_set_ipv_remap: port out of range");
-    return k_ra8_err_invalid_arg;
-  }
-  /* Validate every entry first so we never write a partial value. */
-  for (uint8_t i = 0U; i < k_ra8_etha_tc_count; ++i) {
-    if ((uint32_t)map[i] > k_ra8_etha_mask_ipv) {
-      ra8_log_error(s_tag, "etha_set_ipv_remap: entry > 7");
-      return k_ra8_err_invalid_arg;
-    }
-  }
-  /* HUM Ch 32.3.2.1 "EAIRC : IPV Remapping Configuration Register [802.1Q]" p 1631 */
-  uint32_t packed = 0U;
-  for (uint8_t i = 0U; i < k_ra8_etha_tc_count; ++i) {
-    /* HUM Ch 32.3.2.1 "EAIRC : IPV Remapping Configuration Register [802.1Q]" p 1631 */
-    const uint32_t shift = (uint32_t)i * 4U;
-    packed |= ((uint32_t)map[i] & k_ra8_etha_mask_ipv) << shift;
-  }
-  /* HUM Ch 32.3.2.1 "EAIRC : IPV Remapping Configuration Register [802.1Q]" p 1631 */
-  ra8_etha(port)->EAIRC = packed;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_vlan_mode(ra8_etha_port_t port, ra8_etha_vim_t vim, ra8_etha_vem_t vem)
-{
-  if (!internal_port_ok(port)) {
-    ra8_log_error(s_tag, "etha_set_vlan_mode: port out of range");
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 32.3.3.1 "EAVCC : VLAN Control Configuration Register" p 1639 */
-  const uint32_t v = ((uint32_t)vim & 0x1U) |
-                     (((uint32_t)vem & k_etha_vem_mask) << (uint32_t)k_ra8_etha_eavcc_vem_pos);
-  /* HUM Ch 32.3.3.1 "EAVCC : VLAN Control Configuration Register" p 1639 */
-  ra8_etha(port)->EAVCC = v;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_vlan_tag(ra8_etha_port_t            port,
-                                const ra8_etha_vlan_tag_t* c_tag,
-                                const ra8_etha_vlan_tag_t* s_tag_in)
-{
-  RA8_CHECK_NULL_PTR(c_tag, s_tag, "etha_set_vlan_tag: c_tag null");
-  RA8_CHECK_NULL_PTR(s_tag_in, s_tag, "etha_set_vlan_tag: s_tag null");
-  if (!internal_port_ok(port)) {
-    ra8_log_error(s_tag, "etha_set_vlan_tag: port out of range");
-    return k_ra8_err_invalid_arg;
-  }
-  if ((uint32_t)c_tag->vid > k_ra8_etha_mask_vlan_vid ||
-      (uint32_t)s_tag_in->vid > k_ra8_etha_mask_vlan_vid ||
-      (uint32_t)c_tag->pcp > k_ra8_etha_mask_vlan_pcp ||
-      (uint32_t)s_tag_in->pcp > k_ra8_etha_mask_vlan_pcp ||
-      (uint32_t)c_tag->dei > k_ra8_etha_mask_vlan_dei ||
-      (uint32_t)s_tag_in->dei > k_ra8_etha_mask_vlan_dei) {
-    ra8_log_error(s_tag, "etha_set_vlan_tag: tag fields out of range");
-    return k_ra8_err_invalid_arg;
-  }
-
-  const uint32_t v =
-    (((uint32_t)c_tag->vid & k_ra8_etha_mask_vlan_vid) << (uint32_t)k_ra8_etha_eavtc_ctv_pos) |
-    (((uint32_t)c_tag->pcp & k_ra8_etha_mask_vlan_pcp) << (uint32_t)k_ra8_etha_eavtc_ctp_pos) |
-    (((uint32_t)c_tag->dei & k_ra8_etha_mask_vlan_dei) << (uint32_t)k_ra8_etha_eavtc_ctd_pos) |
-    (((uint32_t)s_tag_in->vid & k_ra8_etha_mask_vlan_vid) << (uint32_t)k_ra8_etha_eavtc_stv_pos) |
-    (((uint32_t)s_tag_in->pcp & k_ra8_etha_mask_vlan_pcp) << (uint32_t)k_ra8_etha_eavtc_stp_pos) |
-    (((uint32_t)s_tag_in->dei & k_ra8_etha_mask_vlan_dei) << (uint32_t)k_ra8_etha_eavtc_std_pos);
-  /* HUM Ch 32.3.3.2 "EAVTC : VLAN TAG Configuration Register" p 1640 */
-  ra8_etha(port)->EAVTC = v;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_set_rx_tag_filter(ra8_etha_port_t port, uint32_t mask)
-{
-  if (!internal_port_ok(port)) {
-    ra8_log_error(s_tag, "etha_set_rx_tag_filter: port out of range");
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 32.3.3.3 "EARTFC : Reception TAG Filtering Configuration Register" p 1641 */
-  ra8_etha(port)->EARTFC = mask & k_ra8_etha_local_9bit_mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd)
-{
-  if (!internal_port_ok(port) || (uint32_t)dqd > k_ra8_etha_mask_ctdqd) {
-    ra8_log_error(s_tag, "etha_configure_cut_through: bad arg");
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_etha_regs_t* reg = ra8_etha(port);
-  /* HUM Ch 32.3.2.10 "EACTQC : Cut-Through Queue Configuration Register" p 1637 */
-  reg->EACTQC = (uint32_t)qd & k_ra8_etha_mask_ctqd;
-  /* HUM Ch 32.3.2.11 "EACTDQDC : Cut-Through Descriptor Queue Depth Configuration" p 1638 */
-  reg->EACTDQDC = (uint32_t)dqd & k_ra8_etha_mask_ctdqd;
-  return k_ra8_ok;
 }
 
 ra8_err_t ra8_etha_configure_cbs(ra8_etha_port_t             port,
