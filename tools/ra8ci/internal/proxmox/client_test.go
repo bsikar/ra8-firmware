@@ -38,6 +38,7 @@ var testIdentity = Identity{
 type fakePVE struct {
 	mu                 sync.Mutex
 	exists             bool
+	vmid               int
 	status             string
 	marker             string
 	pool               string
@@ -58,7 +59,10 @@ type fakePVE struct {
 }
 
 func newFake() *fakePVE {
-	return &fakePVE{status: "stopped", marker: testIdentity.marker(), pool: testIdentity.Pool}
+	return &fakePVE{
+		status: "stopped", marker: testIdentity.marker(),
+		pool: testIdentity.Pool, vmid: testIdentity.VMID,
+	}
 }
 
 func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +91,10 @@ func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		resources := []map[string]any{{"vmid": 9001, "type": "qemu", "node": "pve", "name": "ra8-lab-template", "pool": "ra8-tf-lab", "status": "stopped", "template": true}, {"vmid": 9199, "type": "qemu", "node": "pve", "name": "someone-else", "pool": "other", "status": "running", "template": 0}}
 		if f.exists {
-			entry := map[string]any{"vmid": 9000, "type": "qemu", "node": "pve", "name": testIdentity.Name, "pool": f.pool, "status": f.status, "template": 0}
+			entry := map[string]any{
+				"vmid": f.vmid, "type": "qemu", "node": "pve", "name": testIdentity.Name,
+				"pool": f.pool, "status": f.status, "template": 0,
+			}
 			mergeMap(entry, f.resourceOverride)
 			resources = append(resources, entry)
 		}
@@ -96,10 +103,23 @@ func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeData(w, resources)
-	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/config" && f.exists:
-		entry := map[string]any{"name": testIdentity.Name, "description": f.marker, "digest": testDigest, "protection": boolInt(f.protected), "template": 0, "lock": f.lock, "scsi0": "ra8-tf-lab:vm-9000-disk-0", "net0": "virtio=AA:BB:CC:DD:EE:01,bridge=vmbr8,firewall=1"}
+	case r.Method == http.MethodGet && path == vmConfigPath(f.vmid) && f.exists:
+		entry := map[string]any{
+			"name": testIdentity.Name, "description": f.marker,
+			"digest": testDigest, "protection": boolInt(f.protected),
+			"template": 0, "lock": f.lock,
+			"scsi0": fmt.Sprintf("ra8-tf-lab:vm-%d-disk-0", f.vmid),
+			"net0":  "virtio=AA:BB:CC:DD:EE:01,bridge=vmbr8,firewall=1",
+		}
 		mergeMap(entry, f.configOverride)
 		writeData(w, entry)
+	case r.Method == http.MethodPut && path == vmConfigPath(f.vmid) && f.exists:
+		_ = r.ParseForm()
+		f.form = map[string]string{"delete": r.Form.Get("delete")}
+		if r.Form.Get("delete") == "protection" {
+			f.protected = false
+		}
+		writeData(w, nil)
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9001/config":
 		digest := testDigest
 		if f.templateDigest != "" {
@@ -108,8 +128,8 @@ func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
 		entry := map[string]any{"name": "ra8-lab-template", "digest": digest, "template": 1, "net0": "virtio=AA:BB:CC:DD:EE:00,bridge=vmbr8,firewall=1"}
 		mergeMap(entry, f.templateConfig)
 		writeData(w, entry)
-	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/status/current" && f.exists:
-		entry := map[string]any{"vmid": 9000, "status": f.status}
+	case r.Method == http.MethodGet && path == vmStatusPath(f.vmid) && f.exists:
+		entry := map[string]any{"vmid": f.vmid, "status": f.status}
 		mergeMap(entry, f.statusOverride)
 		writeData(w, entry)
 	case r.Method == http.MethodPost && path == "/api2/json/nodes/pve/qemu/9001/clone":
@@ -173,6 +193,14 @@ func fakeUPID(kind string) string {
 	return "UPID:pve:00000001:00000000:ABCD:" + kind + ":9000:api@pve!token:"
 }
 
+func vmConfigPath(vmid int) string {
+	return fmt.Sprintf("/api2/json/nodes/pve/qemu/%d/config", vmid)
+}
+
+func vmStatusPath(vmid int) string {
+	return fmt.Sprintf("/api2/json/nodes/pve/qemu/%d/status/current", vmid)
+}
+
 func writeData(w http.ResponseWriter, data any) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
 }
@@ -193,7 +221,13 @@ func testClient(t *testing.T, f *fakePVE) (*Client, *httptest.Server) {
 	if err := os.WriteFile(token, []byte("ra8ci@pve!client=secret-token\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	client, err := New(Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: time.Second, OperationTimeout: time.Second, TaskPollInterval: time.Millisecond})
+	client, err := New(Config{
+		Endpoint: server.URL, CAFile: ca, TokenFile: token,
+		Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab",
+		AllowedVMIDs: []int{9000, 9020}, TemplateVMIDs: []int{9001},
+		Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: time.Second,
+		OperationTimeout: time.Second, TaskPollInterval: time.Millisecond,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

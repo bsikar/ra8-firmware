@@ -382,7 +382,21 @@ func (p *TerraformRunnerProvisioner) Clone(ctx context.Context, action proxmox.A
 	if err := checkCloneTargetIsFree(ctx, p.Get, spec.Target); err != nil {
 		return proxmox.Result{}, err
 	}
-	return p.apply(ctx, action, vm, "clone", false, false)
+	spec.Target.RunID = fmt.Sprintf("%016x", uint64(vm.WorkflowRunID))
+	result, err := p.apply(ctx, action, vm, "clone", false, false)
+	if err != nil {
+		return proxmox.Result{}, err
+	}
+	protector, ok := p.observer.(interface {
+		ClearInheritedProtection(context.Context, proxmox.Identity) error
+	})
+	if !ok {
+		return proxmox.Result{}, errors.New("Proxmox API cannot clear inherited clone protection")
+	}
+	if err := protector.ClearInheritedProtection(ctx, spec.Target); err != nil {
+		return proxmox.Result{}, err
+	}
+	return result, nil
 }
 
 // Start connects only the isolated, reserved runner NIC while powering up.
@@ -426,8 +440,20 @@ func (p *TerraformRunnerProvisioner) Destroy(ctx context.Context, action proxmox
 		return proxmox.Result{}, errors.New("Terraform destroy requires reviewed runner cleanup evidence")
 	}
 	observed, err := p.Get(ctx, identity)
-	if err != nil || observed.Status != "stopped" || observed.Protected || observed.Locked || observed.ConfigDigest != proof.ExpectedConfigDigest {
-		return proxmox.Result{}, errors.New("runner identity or configuration changed before Terraform destroy")
+	if err != nil {
+		return proxmox.Result{}, fmt.Errorf("read runner before Terraform destroy: %w", err)
+	}
+	if observed.Protected {
+		return proxmox.Result{}, errors.New("runner protection flag is enabled before Terraform destroy")
+	}
+	if observed.Locked {
+		return proxmox.Result{}, fmt.Errorf("runner lock %q is held before destroy", observed.Lock)
+	}
+	if observed.Status != "stopped" {
+		return proxmox.Result{}, fmt.Errorf("runner is %s before destroy, not stopped", observed.Status)
+	}
+	if observed.ConfigDigest != proof.ExpectedConfigDigest {
+		return proxmox.Result{}, errors.New("runner configuration changed before Terraform destroy")
 	}
 	vm, err := p.reservation(ctx, identity)
 	if err != nil {

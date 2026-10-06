@@ -100,6 +100,7 @@ type VM struct {
 	ConfigDigest string
 	Protected    bool
 	Locked       bool
+	Lock         string
 }
 
 // Template is an independently read cluster/config observation used before a
@@ -276,10 +277,64 @@ func (c *Client) Get(ctx context.Context, identity Identity) (VM, error) {
 	return c.inspect(ctx, identity, r)
 }
 
+// ClearInheritedProtection removes only the protection flag from a verified
+// disposable clone. The independent read before and after the update bounds
+// this mutation to the reserved, stopped guest and proves the flag is absent.
+func (c *Client) ClearInheritedProtection(ctx context.Context, identity Identity) error {
+	if identity.VMID < 9020 || identity.VMID > 9039 {
+		return fmt.Errorf("protection clear refused: VMID check failed (%d outside 9020-9039)",
+			identity.VMID)
+	}
+	if identity.Pool != "ra8-tf-lab" {
+		return errors.New("protection clear refused: pool check failed (outside ra8-tf-lab)")
+	}
+	if !runMarkerPattern.MatchString(identity.RunID) {
+		return errors.New("protection clear refused: run marker check failed")
+	}
+	vm, err := c.Get(ctx, identity)
+	if err != nil {
+		return fmt.Errorf("protection clear refused: guest identity or marker check failed: %w", err)
+	}
+	if vm.Status != "stopped" {
+		return fmt.Errorf("protection clear refused: stopped check failed (status %q)", vm.Status)
+	}
+	if vm.Locked {
+		return errors.New("protection clear refused: lock check failed (guest is locked)")
+	}
+	if !vm.Protected {
+		return nil
+	}
+	form := url.Values{"delete": {"protection"}}
+	if _, err := c.request(ctx, http.MethodPut,
+		vmPath(identity.Node, identity.VMID)+"/config", form, nil); err != nil {
+		return fmt.Errorf("clear inherited guest protection: %w", err)
+	}
+	verified, err := c.Get(ctx, identity)
+	if err != nil {
+		return fmt.Errorf("verify cleared guest protection: %w", err)
+	}
+	if verified.Protected {
+		return errors.New("verify cleared guest protection: protection remains enabled")
+	}
+	return nil
+}
+
 func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM, error) {
 	resourceTemplate, flagErr := flagRaw(r.Template)
-	if flagErr != nil || r.Type != "qemu" || r.Node != identity.Node || r.Pool != identity.Pool || r.Name != identity.Name || resourceTemplate {
+	if flagErr != nil || r.Type != "qemu" {
 		return VM{}, fmt.Errorf("%w: cluster identity differs from reservation", ErrConflict)
+	}
+	if r.Node != identity.Node {
+		return VM{}, fmt.Errorf("%w: guest node differs from reservation", ErrConflict)
+	}
+	if r.Pool != identity.Pool {
+		return VM{}, fmt.Errorf("%w: guest pool differs from reservation", ErrConflict)
+	}
+	if r.Name != identity.Name {
+		return VM{}, fmt.Errorf("%w: guest name differs from reservation", ErrConflict)
+	}
+	if resourceTemplate {
+		return VM{}, fmt.Errorf("%w: target is a template", ErrConflict)
 	}
 	var config map[string]json.RawMessage
 	if _, err := c.request(ctx, http.MethodGet, vmPath(identity.Node, identity.VMID)+"/config", nil, &config); err != nil {
@@ -331,7 +386,10 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 	if state.VMID != identity.VMID || (state.Status != "running" && state.Status != "stopped") || (r.Status != "" && r.Status != state.Status) {
 		return VM{}, fmt.Errorf("%w: inconsistent VM status", ErrProtocol)
 	}
-	return VM{Identity: identity, Status: state.Status, ConfigDigest: digest, Protected: protected, Locked: lock != ""}, nil
+	return VM{
+		Identity: identity, Status: state.Status, ConfigDigest: digest,
+		Protected: protected, Locked: lock != "", Lock: lock,
+	}, nil
 }
 
 // checkNetworks requires every interface a guest carries to sit on a reviewed
@@ -588,8 +646,17 @@ func (c *Client) Destroy(ctx context.Context, action Action, identity Identity, 
 	if err != nil {
 		return Result{}, err
 	}
-	if vm.Status != "stopped" || vm.Protected || vm.Locked || vm.ConfigDigest != proof.ExpectedConfigDigest {
-		return Result{}, fmt.Errorf("%w: VM not safe for deletion", ErrConflict)
+	if vm.Protected {
+		return Result{}, fmt.Errorf("%w: VM protection flag is enabled", ErrConflict)
+	}
+	if vm.Locked {
+		return Result{}, fmt.Errorf("%w: VM lock is %q", ErrConflict, vm.Lock)
+	}
+	if vm.Status != "stopped" {
+		return Result{}, fmt.Errorf("%w: VM is %s, not stopped", ErrConflict, vm.Status)
+	}
+	if vm.ConfigDigest != proof.ExpectedConfigDigest {
+		return Result{}, fmt.Errorf("%w: VM configuration digest changed", ErrConflict)
 	}
 	if err := checkIdleProofStillFresh(proof.IdleProof, time.Now()); err != nil {
 		return Result{}, err
