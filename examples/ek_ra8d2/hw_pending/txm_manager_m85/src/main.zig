@@ -28,9 +28,15 @@ pub const thread_bytes = 256;
 /// sizeof(TXM_MODULE_INSTANCE) is 1196 on the same port and defines.
 pub const instance_bytes = 1280;
 /// offsetof(TXM_MODULE_INSTANCE, txm_module_instance_start_stop_thread) is
-/// 0xD0 and offsetof(TX_THREAD, tx_thread_run_count) is 4, measured on the
-/// same port header and defines the M85 archive compiles.
-pub const start_run_count_offset = 0xD0 + 4;
+/// 0xC0 in the M85 archive, read off a run: the thread the scheduler
+/// switches to sits at main.instance + 0xC0 and carries TX_THREAD_ID. 0xD0
+/// is that thread's stack end, and 0xD4 its constant stack size
+/// (RA8FW-825).
+pub const start_thread_offset = 0xC0;
+/// TX_THREAD_ID, the first word of a created TX_THREAD.
+pub const tx_thread_id: u32 = 0x5448_5244;
+/// offsetof(TX_THREAD, tx_thread_run_count).
+pub const start_run_count_offset = start_thread_offset + 4;
 pub const stack_bytes = 2048;
 pub const module_ram_bytes = 16 * 1024;
 pub const object_pool_bytes = 4 * 1024;
@@ -85,12 +91,17 @@ fn loadAndStart() bool {
     if (_txm_module_manager_initialize(&module_ram, module_ram_bytes) != tx_success) return false;
     if (_txm_module_manager_object_pool_create(&object_pool, object_pool_bytes) != tx_success) return false;
     if (_txm_module_manager_in_place_load(&instance, "txm_hello_m33", &g_ra8_ls_txm_module_start) != tx_success) return false;
-    return _txm_module_manager_start(&instance) == tx_success;
+    if (_txm_module_manager_start(&instance) != tx_success) return false;
+    return startWord(start_thread_offset) == tx_thread_id;
+}
+
+fn startWord(offset: usize) u32 {
+    const word: *align(1) volatile u32 = @ptrCast(&instance[offset]);
+    return word.*;
 }
 
 fn startRunCount() u32 {
-    const count: *align(1) volatile u32 = @ptrCast(&instance[start_run_count_offset]);
-    return count.*;
+    return startWord(start_run_count_offset);
 }
 
 fn waitRuns() bool {
