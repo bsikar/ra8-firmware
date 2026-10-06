@@ -83,9 +83,9 @@ ra8_err_t priv_ra8_i2c_internal_bitrate(uint32_t bus_hz,
  * @brief Log tag shared by the I2C transfer and configuration planes.
  *
  * @details
- * Defined once in ``ra8_i2c.c`` (the data-transfer translation unit) and
- * consumed by both ``ra8_i2c.c`` and ``i2c_config_abi.zig`` so the two halves
- * of the split driver log under the same "I2C" tag.
+ * Defined once in ``i2c_xfer_abi.zig`` (the data-transfer unit, RA8FW-887)
+ * and consumed by the config, clock, status and target units so every part
+ * of the split driver logs under the same "I2C" tag.
  *
  * @note Read-only string pointer; not mutated after static init.
  *
@@ -132,8 +132,9 @@ typedef struct {
  * @brief Per-channel state table indexed by channel.
  *
  * @details
- * Defined once in ``ra8_i2c.c`` and shared with ``i2c_config_abi.zig`` so the
- * bring-up and transfer planes observe the same bus-ownership state.
+ * Defined once in ``i2c_xfer_abi.zig`` (RA8FW-887) and shared with the config
+ * and target units so the bring-up and transfer planes observe the same
+ * bus-ownership state.
  *
  * @warning Mutated only by the driver under the not-thread-safe contract.
  *
@@ -332,33 +333,6 @@ bool priv_ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
  */
 RA8_PRIV
 bool priv_ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
-
-/**
- * @brief RIIC controller bus primitives, defined in Zig.
- *
- * @details
- * ``i2c_bus_abi.zig`` (RA8FW-886). ``wait_icsr2`` spins until any bit of
- * ``mask`` is set in ICSR2 (200000 polls, then ::k_ra8_err_hw_timeout);
- * ``status`` maps NACKF to ::k_ra8_err_nack and AL to
- * ::k_ra8_err_hw_error; ``clear_status`` writes START/STOP/NACKF/AL back
- * as 0; ``open`` issues START, or a repeated START and waits for RS to
- * clear when ``bus_held``; ``stop`` requests STOP then waits for BBSY to
- * drop; ``set_nack`` sets ACKBT through ACKWP; ``busy_gate`` returns
- * ::k_ra8_err_busy when BBSY is set and the bus is not held;
- * ``send_address`` waits for TDRE, writes ICDRT and reports ``status``.
- * HUM Ch 39.2.2, 39.2.5, 39.2.10, 39.2.17.
- * @since 0.1.0
- */
-RA8_PRIV ra8_err_t priv_ra8_i2c_bus_wait_icsr2(volatile r_i2c_regs_t* reg, uint8_t mask);
-RA8_PRIV ra8_err_t priv_ra8_i2c_bus_status(uint8_t icsr2);
-RA8_PRIV void      priv_ra8_i2c_bus_clear_status(volatile r_i2c_regs_t* reg);
-RA8_PRIV void      priv_ra8_i2c_bus_open(volatile r_i2c_regs_t* reg, bool bus_held);
-RA8_PRIV void      priv_ra8_i2c_bus_stop_request(volatile r_i2c_regs_t* reg);
-RA8_PRIV void      priv_ra8_i2c_bus_stop(volatile r_i2c_regs_t* reg);
-RA8_PRIV void      priv_ra8_i2c_bus_wait_free(volatile r_i2c_regs_t* reg);
-RA8_PRIV void      priv_ra8_i2c_bus_set_nack(volatile r_i2c_regs_t* reg);
-RA8_PRIV ra8_err_t priv_ra8_i2c_bus_busy_gate(volatile r_i2c_regs_t* reg, bool bus_held);
-RA8_PRIV ra8_err_t priv_ra8_i2c_bus_send_address(volatile r_i2c_regs_t* reg, uint8_t byte);
 
 #ifdef __cplusplus
 }

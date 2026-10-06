@@ -125,7 +125,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | SCI0..SCI9 | `0x40358000` + `n*0x100` | UART/I2C/SPI super-mode | `ra8_sci.c`        |
 | SPI0       | `0x4035C000`| HUM Ch 43, SPI0              | `ra8_spi_b.c`      |
 | SPI1       | `0x4035C100`|                              | `ra8_spi_b.c`      |
-| IIC_B0     | `0x4035F000`| HUM Ch 40.2 p 2452           | `ra8_i2c.c`        |
+| IIC_B0     | `0x4035F000`| HUM Ch 40.2 p 2452           | `i2c_xfer_abi.zig` |
 | I3C0       | `0x4035F000`| Shares window with IIC_B0    | `i3c_*_abi.zig`    |
 | I3C1       | `0x4035F100`|                              | `i3c_*_abi.zig`    |
 | CANFD0     | `0x40380000`| HUM Ch 41 p 2702             | `canfd_*_abi.zig`  |
