@@ -558,54 +558,6 @@ ra8_err_t ra8_canfd_deinit(uint8_t channel)
  * =============================================================================
  */
 
-static ra8_canfd_event_fn_t s_canfd_fn;
-static void*                s_canfd_ctx;
-
-ra8_err_t ra8_canfd_get_status(uint8_t channel, uint32_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_canfd_t* reg = ra8_canfd(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 41 "CFDCnSTS" p 2766 */ /* "CFDCnSTS". */
-  *out_mask = reg->CFDC[0].STS;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_canfd_clear_status(uint8_t channel, uint32_t mask)
-{
-  volatile r_canfd_t* reg = ra8_canfd(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 41 p 2772 "CFDCnERFL" -- error flags are W0C: writing 0
-   * clears, writing 1 leaves untouched. We compute the inverse mask
-   * to match the previous behaviour ("clear bits in mask"). */
-  reg->CFDC[0].ERFL = reg->CFDC[0].ERFL & ~mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_canfd_attach_handler(ra8_canfd_event_fn_t fn, void* ctx)
-{
-  s_canfd_fn  = fn;
-  s_canfd_ctx = ctx;
-  return k_ra8_ok;
-}
-
-RA8_ISR_SAFE
-void ra8_canfd_dispatch(uint8_t channel)
-{
-  volatile r_canfd_t* reg = ra8_canfd(channel);
-  if (reg == nullptr) {
-    return;
-  }
-  /* HUM Ch 41 "CFDCnERFL" p 2772 */ /* "CFDCnERFL" snapshot then ack. */
-  const uint32_t             mask = reg->CFDC[0].ERFL;
-  const ra8_canfd_event_fn_t fn   = s_canfd_fn;
-  void* const                ctx  = s_canfd_ctx;
-  reg->CFDC[0].ERFL               = 0U;
-  if (fn != nullptr) {
-    fn(ctx, channel, mask);
-  }
-}
-
 /** @brief Number of AFL slots that live on page 0. */
 enum : uint16_t {
   k_ra8_canfd_afl_per_page = 16U, /**< RA8 CANFD afl per page. */
