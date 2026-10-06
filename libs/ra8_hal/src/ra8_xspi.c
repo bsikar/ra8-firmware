@@ -16,10 +16,13 @@
  *
  * - ``ra8_xspi_init()`` -- select a protocol mode + clear pending IRQs.
  * - ``ra8_xspi_direct_command()`` -- raw CDBUF poke.
- * - ``ra8_xspi_deinit / get_status / clear_status / attach_handler /
- * enter_stop / exit_stop`` lifecycle + IRQ + power surface.
- * - ``ra8_xspi_set_xip_mode / set_dtr_mode / calibrate_dqs / suspend /
- * resume / software_reset`` extended controller surface.
+ * - ``ra8_xspi_deinit()`` -- lifecycle teardown.
+ * - ``ra8_xspi_suspend / resume / software_reset`` extended controller
+ * surface.
+ *
+ * Status, handler, dispatch and stop are Zig (src/xspi_events_abi.zig,
+ * RA8FW-865); XIP enter/exit, XIP mode, DTR mode and DQS calibration are
+ * Zig (src/xspi_xip_abi.zig, RA8FW-866).
  *
  * The manual-command engine and the JEDEC NOR-flash read / program /
  * erase / status / id operations live in the sibling translation unit
@@ -461,43 +464,6 @@ ra8_err_t ra8_xspi_deinit(uint8_t instance)
   return ra8_mstp_disable(s_xspi_mstp_table[instance]);
 }
 
-ra8_err_t ra8_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* FSP r_ospi_b_xip(true) flow:
-   *   1. Stage XIP enter/exit codes in CMCTLCH for both channels.
-   *   2. Map the target window read-only via BMCTL0 = 0x55.
-   *   3. Set CMCTLCH.XIPEN to arm execute-in-place.
-   * The first read on the memory-mapped window then transmits the
-   * enter code. We omit the bus-bridge prefetch dance because the
-   * driver does not enable prefetch by default. */
-  const uint32_t code_word = ((uint32_t)enter_code << k_ra8_xspi_cmctlch_xipencode_pos) |
-                             ((uint32_t)exit_code << k_ra8_xspi_cmctlch_xipexcode_pos);
-
-  reg->BMCTL0     = k_ra8_xspi_bmctl0_read_only;
-  reg->CMCTLCH[0] = code_word | k_ra8_xspi_cmctlch_xipen_mask;
-  reg->CMCTLCH[1] = code_word | k_ra8_xspi_cmctlch_xipen_mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_xip_exit(uint8_t instance)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* FSP r_ospi_b_xip(false) flow: clear XIPEN, drop the codes,
-   * and put BMCTL0 back to read/write so direct-command transfers
-   * are no longer blocked by the memory-mapped path. */
-  reg->CMCTLCH[0] = 0U;
-  reg->CMCTLCH[1] = 0U;
-  reg->BMCTL0     = k_ra8_xspi_bmctl0_read_write;
-  return k_ra8_ok;
-}
-
 /* =============================================================================
  * Sweep 6 extensions: XIP mode select, DTR, DQS calibration, suspend/resume
  * =============================================================================
@@ -527,89 +493,6 @@ typedef enum : uint8_t {
   k_ra8_xspi_reset_cmd_bytes_1s = 1U, /**< 1-byte opcode for 1S-1S-1S.      */
   k_ra8_xspi_reset_cmd_bytes_8d = 2U, /**< 2-byte opcode pair for 8D-8D-8D. */
 } ra8_xspi_reset_cmd_bytes_t;
-
-/**
- * @enum ra8_xspi_addr_bytes_t
- * @brief Allowed address-byte widths for ``ra8_xspi_set_xip_mode``.
- */
-typedef enum : uint8_t {
-  k_ra8_xspi_addr_bytes_3 = 3U, /**< 24-bit JEDEC address. */
-  k_ra8_xspi_addr_bytes_4 = 4U, /**< 32-bit JEDEC address. */
-} ra8_xspi_addr_bytes_t;
-
-/**
- * @enum ra8_xspi_calib_spin_t
- * @brief Bounded spin budget for the auto-calibration handshake.
- */
-typedef enum : uint32_t {
-  k_ra8_xspi_calib_spin = 1024U, /**< CCCTL0.CAEN poll budget. */
-} ra8_xspi_calib_spin_t;
-
-ra8_err_t ra8_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t addr_bytes)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  if ((addr_bytes != k_ra8_xspi_addr_bytes_3) && (addr_bytes != k_ra8_xspi_addr_bytes_4)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* CMCFGCS slot 0 = (mode, read-cmd-word, write-cmd-word, addr-word).
-   * For XIP we only need read + addr; write opcode stays zero. */
-  const uint8_t base                                    = 0U; /* slot 0 base index */
-  reg->CMCFGCS[base + k_ra8_xspi_cmcfgcs_word_read_cmd] = (uint32_t)read_cmd
-                                                          << k_ra8_xspi_cmcfgcs_pos_cmd;
-  reg->CMCFGCS[base + k_ra8_xspi_cmcfgcs_word_addr]     = (uint32_t)addr_bytes
-                                                          << k_ra8_xspi_cmcfgcs_pos_addr_size;
-
-  if (enable) {
-    /* Mirror FSP r_ospi_b_xip(true): map read-only and arm XIPEN. */
-    reg->BMCTL0     = k_ra8_xspi_bmctl0_read_only;
-    reg->CMCTLCH[0] = k_ra8_xspi_cmctlch_xipen_mask;
-    reg->CMCTLCH[1] = k_ra8_xspi_cmctlch_xipen_mask;
-  } else {
-    /* FSP r_ospi_b_xip(false): clear XIPEN and re-open the bus. */
-    reg->CMCTLCH[0] = 0U;
-    reg->CMCTLCH[1] = 0U;
-    reg->BMCTL0     = k_ra8_xspi_bmctl0_read_write;
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_set_dtr_mode(uint8_t instance, bool enable)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  uint32_t v = reg->LIOCFGCS[0];
-  if (enable) {
-    v |= k_ra8_xspi_liocfgcs_mask_ddren;
-  } else {
-    v &= ~k_ra8_xspi_liocfgcs_mask_ddren;
-  }
-  reg->LIOCFGCS[0] = v;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_calibrate_dqs(uint8_t instance)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Mirror FSP R_OSPI_B_AutoCalibrate: arm CAEN and wait for the
-   * controller to clear it once the phase-scan completes. The full
-   * preamble-pattern + CARDCMD descriptor is owned by board-level
-   * code in higher-level callers. On host tests the bounded wait
-   * consults the ra8_fake_mmio seam (first-poll success unless a test
-   * arms a fault); the CAEN bit itself stays set in host RAM because
-   * only the real controller clears it. */
-  reg->CCCTLCS[0] |= k_ra8_xspi_ccctl0_mask_caen;
-  return ra8_hw_wait_flag_clear32(&reg->CCCTLCS[0],
-                                  (uint32_t)k_ra8_xspi_ccctl0_mask_caen,
-                                  (uint32_t)k_ra8_xspi_calib_spin);
-}
 
 ra8_err_t ra8_xspi_suspend(uint8_t instance)
 {
