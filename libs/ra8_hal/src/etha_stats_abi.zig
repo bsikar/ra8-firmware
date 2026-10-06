@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ETHA ring/stats/open entry points (RA8FW-591). The per-port
-//! slots stay defined in ra8_etha.c; the logic is in internal/etha_stats.zig.
+//! slots are defined in etha_life_abi.zig; the logic is in internal/etha_stats.zig.
 
 const common = @import("abi_common.zig");
 const st = @import("internal/etha_stats.zig");

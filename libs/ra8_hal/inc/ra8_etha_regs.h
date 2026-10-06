@@ -410,7 +410,7 @@ typedef enum : uint8_t {
  *
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is accessed via ``ra8_etha(port)`` in
- * ``libs/ra8_hal/src/ra8_etha.c``.
+ * ``libs/ra8_hal/src/etha_*_abi.zig``.
  */
 typedef struct {
   volatile uint32_t EAMC;       /**< +0x0000 Mode command.                   */

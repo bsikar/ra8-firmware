@@ -19,7 +19,7 @@
  * v
  * +-----------------------+ ETHA +-------------------------+
  * | ETHA (Ch 32, here) | <-----> | per-port queue / FIFO |
- * | ra8_etha.c (one per m) | | preemption, IPV remap |
+ * | etha_*_abi.zig (per m)  | | preemption, IPV remap |
  * +-----------------------+ +-------------------------+
  * | per-port MAC bus
  * v

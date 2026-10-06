@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the ETHA error-IRQ entry points (RA8FW-815). The per-port slots
-//! stay defined in ra8_etha.c; the logic is in internal/etha_irq.zig.
+//! are defined in etha_life_abi.zig; the logic is in internal/etha_irq.zig.
 
 const common = @import("abi_common.zig");
 const irq = @import("internal/etha_irq.zig");
