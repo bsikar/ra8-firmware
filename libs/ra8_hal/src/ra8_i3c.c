@@ -106,49 +106,6 @@ RA8_INTERNAL static uint32_t internal_ra8_i3c_xfer_cmd_word(uint8_t target_addr,
 }
 
 RA8_INTERNAL static void
-internal_ra8_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uint32_t len)
-{
-  uint32_t       i           = 0U;
-  const uint32_t k_word_size = k_ra8_i3c_word_size;
-  while (i + k_word_size <= len) {
-    uint32_t w = (uint32_t)data[i];
-    w |= ((uint32_t)data[i + 1U]) << k_ra8_i3c_shift_b1;
-    w |= ((uint32_t)data[i + 2U]) << k_ra8_i3c_shift_b2;
-    w |= ((uint32_t)data[i + 3U]) << k_ra8_i3c_shift_b3;
-    reg->NTDTBP0 = w;
-    i += k_word_size;
-  }
-  if (i < len) {
-    uint32_t w = 0U;
-    uint32_t s = 0U;
-    while (i < len) {
-      w |= ((uint32_t)data[i]) << s;
-      s += k_ra8_i3c_byte_shift;
-      ++i;
-    }
-    reg->NTDTBP0 = w;
-  }
-}
-
-/**
- * @brief Drain @p len bytes from NTDTBP0 into @p out.
- *
- * @details
- * Hardware exposes the receive buffer as a 32-bit FIFO -- the
- * driver reads one word and unpacks LE bytes; trailing partial
- * words are masked to the requested length.
- *
- * @param[in] reg See implementation.
- * @param[in] out See implementation.
- * @param[in] len See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static void
 internal_ra8_i3c_fifo_read(volatile const r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   uint32_t       i           = 0U;
@@ -173,107 +130,9 @@ internal_ra8_i3c_fifo_read(volatile const r_i3c_regs_t* reg, uint8_t* out, uint3
 }
 
 /* =============================================================================
- * Private read / write
- * =============================================================================
- */
-
-ra8_err_t
-ra8_i3c_write(uint8_t channel, uint8_t addr, const uint8_t* data, uint32_t len, bool restart)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (!s_i3c_chan[channel].initialized) {
-    return k_ra8_err_invalid_state;
-  }
-  if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    return ra8_i3c_i2c_write(channel, addr, data, len, restart);
-  }
-  (void)restart;
-  const uint8_t target_addr = addr;
-  if (target_addr > (uint8_t)k_ra8_i3c_addr_mask) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((len > 0U) && (data == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (len > k_ra8_i3c_cmd_xfer_length_max) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = internal_ra8_i3c_xfer_cmd_word(target_addr, false);
-
-  if (len <= k_ra8_i3c_immediate_max_bytes) {
-    cmd |= k_ra8_i3c_cmd_attr_immed << k_ra8_i3c_cmd_attr_shift;
-    cmd |= len << k_ra8_i3c_cmd_immed_bytes_shift;
-    reg->NCMDQP = cmd;
-    uint32_t w  = 0U;
-    for (uint32_t i = 0U; i < len; ++i) {
-      w |= (uint32_t)data[i] << (i * k_ra8_i3c_byte_shift);
-    }
-    reg->NCMDQP = w;
-  } else {
-    reg->NCMDQP = cmd;
-    reg->NCMDQP = (len << k_ra8_i3c_cmd_xfer_length_shift) &
-                  (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
-    internal_ra8_i3c_fifo_write(reg, data, len);
-  }
-  reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len, bool restart)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (!s_i3c_chan[channel].initialized) {
-    return k_ra8_err_invalid_state;
-  }
-  if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    return ra8_i3c_i2c_read(channel, addr, buf, len, restart);
-  }
-  (void)restart;
-  const uint8_t target_addr = addr;
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  if (target_addr > (uint8_t)k_ra8_i3c_addr_mask) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((len == 0U) || (len > k_ra8_i3c_cmd_xfer_length_max)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  volatile r_i3c_regs_t* reg = ra8_i3c();
-  uint32_t               cmd = internal_ra8_i3c_xfer_cmd_word(target_addr, true);
-  reg->NCMDQP                = cmd;
-  reg->NCMDQP                = (len << k_ra8_i3c_cmd_xfer_length_shift) &
-                               (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
-  internal_ra8_i3c_fifo_read(reg, buf, len);
-  reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
-  return k_ra8_ok;
-}
-
-/* =============================================================================
  * I2C-compatibility mode (delegates to the legacy IIC_B path)
  * =============================================================================
  */
-
-ra8_err_t ra8_i3c_transfer(uint8_t        channel,
-                           uint8_t        addr,
-                           const uint8_t* wr,
-                           uint32_t       wr_len,
-                           uint8_t*       rd,
-                           uint32_t       rd_len)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (s_i3c_chan[channel].mode != k_ra8_i3c_mode_i2c) {
-    return k_ra8_err_invalid_state;
-  }
-  return ra8_i3c_i2c_transfer(channel, addr, wr, wr_len, rd, rd_len);
-}
 
 ra8_err_t ra8_i3c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
 {
