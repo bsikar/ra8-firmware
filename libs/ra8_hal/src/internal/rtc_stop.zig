@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! RTC bounded register wait and enter/exit stop (RA8FW-853, was part of
-//! ra8_rtc.c). Exports live in src/rtc_stop_abi.zig. `hw` supplies
+//! ra8_rtc.c, now deleted). Exports live in src/rtc_stop_abi.zig. `hw` supplies
 //! eval(reg, iter, cond), the host fake-MMIO seam on hosted builds.
 
 /// `k_ra8_rtc_wait_iters`. Bounded per NASA Rule 2; a timeout returns

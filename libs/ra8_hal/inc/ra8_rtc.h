@@ -29,7 +29,7 @@ extern "C" {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_rtc_get`` and ``ra8_rtc_set`` in
- * ``libs/ra8_hal/src/ra8_rtc.c``.
+ * ``libs/ra8_hal/src/rtc_*_abi.zig`` (logic in ``src/internal/rtc_*.zig``).
  */
 typedef struct {
   uint16_t year;    /**< 2000..2099.         */

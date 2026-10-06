@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! RTC calendar set/get and the hh:mm:ss alarm (RA8FW-854, was part of
-//! ra8_rtc.c). Exports live in src/rtc_calendar_abi.zig. `hw` supplies
+//! ra8_rtc.c, now deleted). Exports live in src/rtc_calendar_abi.zig. `hw` supplies
 //! wait(reg, mask, expect) and infoVal(msg, value).
 
 pub const ok: u16 = 0;

@@ -77,7 +77,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-MIPI-PHY-001 | `tests/hal/src/test_ra8_mipi_phy_init.c`, `tests/hal/src/test_ra8_mipi_phy_lanes.c` | `libs/ra8_hal/src/ra8_mipi_phy.c`     |
 | UT-HAL-MPU-001    | `tests/misc/src/test_ra8_mpu.c`     | `libs/ra8_mpu/src/ra8_mpu.c`               |
 | UT-HAL-RSIP-001   | `tests/security/src/test_ra8_rsip_core.c`, `tests/security/src/test_ra8_rsip_sym.c`, `tests/security/src/test_ra8_rsip_devsec.c` | `libs/ra8_hal/src/ra8_rsip.c`              |
-| UT-HAL-RTC-001    | `tests/hal/src/test_ra8_rtc.c`     | `libs/ra8_hal/src/ra8_rtc.c`               |
+| UT-HAL-RTC-001    | `tests/hal/src/test_ra8_rtc.c`     | `libs/ra8_hal/src/internal/rtc_*.zig`      |
 | UT-HAL-SCI-001    | `tests/hal/src/test_ra8_sci.c`     | `libs/ra8_hal/src/ra8_sci.c`               |
 | UT-HAL-SDCARD-001 | `tests/storage/src/test_ra8_sdcard.c`  | `libs/ra8_hal/src/sdcard_abi.zig`          |
 | UT-HAL-SMBUS-001  | `tests/misc/src/test_ra8_smbus.c`   | `libs/ra8_hal/src/ra8_smbus.c`             |
