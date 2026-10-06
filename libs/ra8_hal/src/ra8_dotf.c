@@ -130,9 +130,9 @@ extern void* s_dotf_ctx;
 
 /**
  * @var s_dotf_state
- * @brief Per-channel state table.
+ * @brief Per-channel state table, defined in src/dotf_state_abi.zig.
  */
-static ra8_dotf_chan_state_t s_dotf_state[k_ra8_dotf_channel_count];
+extern ra8_dotf_chan_state_t s_dotf_state[k_ra8_dotf_channel_count];
 
 /**
  * @var s_dotf_mstp_table
@@ -876,25 +876,5 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
     /* HUM Ch 45.3 "Register Descriptions" p 3049 */
     reg->REG00 = internal_assemble_reg00(st, true);
   }
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Status
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_dotf_clear_status(uint8_t channel)
-{
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
-
-  /* Clearing REG00 wipes the AES enable + status bits.
-   * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00                    = k_ra8_dotf_reg00_disable_value;
-  s_dotf_state[channel].enabled = 0U;
   return k_ra8_ok;
 }
