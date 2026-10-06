@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! DOTF open/close orchestration, region window and module stop
-//! (RA8FW-581, was ra8_dotf_power.c). Pure: the ra8_dotf.c primitives,
+//! (RA8FW-581, was ra8_dotf_power.c). Pure: the DOTF primitives,
 //! MSTP and logging come in through an `ops` value. HUM Ch 45.
 
 pub const channel_count: u8 = 2;

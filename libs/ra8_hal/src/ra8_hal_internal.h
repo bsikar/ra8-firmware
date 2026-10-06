@@ -30,32 +30,6 @@
 #include "ra8_ssie_regs.h"
 #include "ra8_usb_hmsc.h"
 
-/**
- * @brief Bound-check a DOTF channel index.
- *
- * @details
- * Shared within ``ra8_dotf.c`` (the open/close layer moved to Zig, RA8FW-581). Defined ``static
- * inline`` in this private header so each translation unit gets its own
- * copy with no external linkage symbol, keeping the split link-clean while
- * preserving the original single-definition behavior.
- *
- * @param[in] channel Caller-provided channel value.
- * @return ``true`` if ``channel`` is in [0, k_ra8_dotf_channel_count).
- *
- * @retval true  Channel index is in range.
- * @retval false Channel index is out of range.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static inline bool internal_ra8_dotf_internal_channel_in_range(uint8_t channel)
-{
-  return (uint16_t)channel < (uint16_t)k_ra8_dotf_channel_count;
-}
-
 /* =============================================================================
  * ra8_rmac: ra8_rmac.c keeps lifecycle / config / MDIO primitives / status /
  * dispatch. The status read/clear, statistic snapshot and Clause-22 PHY

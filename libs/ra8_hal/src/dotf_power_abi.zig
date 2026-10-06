@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for ra8_dotf_open / close / set_region_window / enter_stop /
-//! exit_stop (RA8FW-581). The DOTF primitives stay in ra8_dotf.c.
+//! exit_stop (RA8FW-581). The DOTF primitives are in the other dotf_*_abi.zig units.
 
 const common = @import("abi_common.zig");
 const power = @import("internal/dotf_power.zig");

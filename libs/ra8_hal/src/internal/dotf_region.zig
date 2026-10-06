@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! DOTF region staging (RA8FW-839, part of ra8_dotf.c): validate a region
+//! DOTF region staging (RA8FW-839, was part of ra8_dotf.c): validate a region
 //! against its channel's XSPI window, refuse overlap with the other
 //! channel's live region, arm a slot, and program the active one. Pure over
 //! the state table and a register sink; the exports are in

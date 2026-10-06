@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the DOTF state table and ra8_dotf_clear_status (RA8FW-835).
-//! s_dotf_state is defined here under its C name; ra8_dotf.c reads and
-//! writes it through an extern declaration until the rest of the driver moves.
+//! s_dotf_state is defined here under its C name; the other dotf_*_abi.zig
+//! units read and write it through an extern declaration.
 
 const common = @import("abi_common.zig");
 const power = @import("internal/dotf_power.zig");

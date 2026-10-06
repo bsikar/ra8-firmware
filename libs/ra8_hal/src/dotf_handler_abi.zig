@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for DOTF handler attach and dispatch (RA8FW-834). s_dotf_fn and
-//! s_dotf_ctx are defined here under their C names; ra8_dotf.c clears them
-//! in init/deinit through extern declarations.
+//! s_dotf_ctx are defined here under their C names; dotf_life_abi.zig clears
+//! them in init/deinit through extern declarations.
 
 const common = @import("abi_common.zig");
 const handler = @import("internal/dotf_handler.zig");

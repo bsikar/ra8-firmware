@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! DOTF event dispatch (RA8FW-834, part of ra8_dotf.c). The handler state and
+//! DOTF event dispatch (RA8FW-834, was part of ra8_dotf.c). The handler state and
 //! exports live in src/dotf_handler_abi.zig.
 
 const power = @import("dotf_power.zig");

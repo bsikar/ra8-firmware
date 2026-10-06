@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! DOTF init/deinit (RA8FW-838, part of ra8_dotf.c). Pure over an `ops`
+//! DOTF init/deinit (RA8FW-838, was part of ra8_dotf.c). Pure over an `ops`
 //! value; the exports and the register binding are in src/dotf_life_abi.zig.
 
 const power = @import("dotf_power.zig");
