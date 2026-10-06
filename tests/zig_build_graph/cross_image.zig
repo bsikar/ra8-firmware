@@ -152,7 +152,9 @@ fn txmModuleObjects(b: *std.Build, named: ?[]const u8, tools: cross_build.Tools,
 
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
 /// Also signs it into arm/txm_hello_m33.ra8app and checks that file in
-/// `test_step` (RA8FW-479); both skip without an ARM toolchain.
+/// `test_step` (RA8FW-479), and signs the faulting module into
+/// arm/txm_fault_m33.ra8app for txm_sd_hello_m85's card (RA8FW-837); all
+/// skip without an ARM toolchain.
 pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Build.Step, globals: build_type.Globals) void {
     const tools = findArmTools(b) orelse {
         const notice = b.addSystemCommand(&.{ "echo", "txm-hello-m33: skipped -- no arm-none-eabi toolchain on PATH" });
@@ -160,8 +162,11 @@ pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Buil
         test_step.dependOn(&notice.step);
         return;
     };
-    const built = cpu1_txm_hello.add(b, step, cross_build.middlewareToolchain(tools, globals, &arm_global_defines), tools.objcopy, cpu1_txm_hello.hello_world);
-    txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, built.bin));
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.hello_world);
+    txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, cpu1_txm_hello.hello_world.name, built.bin));
+    const fault = cpu1_txm_hello.image(b, module_tc, tools.objcopy, cpu1_txm_hello.fault);
+    _ = txm_ra8app.add(b, step, cpu1_txm_hello.fault.name, fault.bin);
 }
 
 /// The `txm-module-check` step: Zig built as module objects through the C
