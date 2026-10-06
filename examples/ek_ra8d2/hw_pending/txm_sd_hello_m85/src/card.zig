@@ -3,12 +3,14 @@
 //!
 //! The card half of txm_sd_hello_m85 (RA8FW-829): bring up the micro-SD card
 //! on SDHI0, mount its FAT volume through ra8_fs over a Zig block backend,
-//! and read `txm_hello_m33.ra8app` into RAM with its header checked.
+//! and read a signed `.ra8app` (`txm_hello_m33.ra8app`, then
+//! `txm_fault_m33.ra8app`, RA8FW-837) into RAM with its header checked.
 
 const std = @import("std");
 
-/// The file the build installs as arm/txm_hello_m33.ra8app (RA8FW-479).
-pub const file_name = "txm_hello_m33.ra8app";
+/// The files the build installs under arm/ (RA8FW-479, RA8FW-837).
+pub const hello_name = "txm_hello_m33.ra8app";
+pub const fault_name = "txm_fault_m33.ra8app";
 /// Largest image read into RAM.
 pub const file_max = 64 * 1024;
 /// sizeof(appimg.Header): eight u32 fields, app_id 32, display_name 32,
@@ -88,21 +90,25 @@ pub fn headerOk(bytes: []const u8) bool {
     return @as(u64, header_bytes) + code + data == bytes.len;
 }
 
+var mounted: ?*anyopaque = null;
+
 fn openCard() Fail!?*anyopaque {
+    if (mounted) |mount| return mount;
     if (ra8_board_sdhi_pins_init() != ok) return error.pins;
     const cfg = SdCfg{ .instance = sdhi_instance, .bus_width = bus_width_4bit };
     if (ra8_sdcard_init(&cfg) != ok) return error.card;
     var mount: ?*anyopaque = null;
     if (ra8_fs_mount(&backend, &mount) != ok) return error.mount;
+    mounted = mount;
     return mount;
 }
 
-/// Reads `file_name` off the card into `buf` and checks its header; returns
-/// the file length.
-pub fn readApp(buf: []u8) Fail!usize {
+/// Reads `name` off the card into `buf` and checks its header; returns the
+/// file length. The card is brought up and mounted on the first call only.
+pub fn readApp(name: [*:0]const u8, buf: []u8) Fail!usize {
     const mount = try openCard();
     var file: ?*anyopaque = null;
-    if (ra8_fs_open(mount, file_name, mode_read, &file) != ok) return error.open;
+    if (ra8_fs_open(mount, name, mode_read, &file) != ok) return error.open;
     defer _ = ra8_fs_close(file);
     var size: u64 = 0;
     if (ra8_fs_size(file, &size) != ok or size > buf.len) return error.size;

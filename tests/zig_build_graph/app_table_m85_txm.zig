@@ -59,9 +59,10 @@ pub const apps = [_]CrossApp{
     },
     .{
         // The SD hello-world PoC (RA8FW-829 and RA8FW-830, under
-        // RA8FW-290): the M85 reads txm_hello_m33.ra8app off the micro-SD
-        // card through ra8_fs, verifies its signature and memory-loads it
-        // through the Module Manager, so no module is packed in.
+        // RA8FW-290): the M85 reads txm_hello_m33.ra8app and
+        // txm_fault_m33.ra8app (RA8FW-837) off the micro-SD card through
+        // ra8_fs, verifies their signatures and memory-loads them through
+        // the Module Manager, so no module is packed in.
         .name = "txm_sd_hello_m85",
         .dir = "examples/ek_ra8d2/hw_pending/txm_sd_hello_m85",
         .board = "libs/ra8_board_ek_ra8d2",

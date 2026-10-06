@@ -1,21 +1,21 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The signed `.ra8app` of the CPU1 hello-world module (RA8FW-479). The build
-//! runs ra8_app's `ra8app_pack` on txm_hello_m33.bin with the test-only key in
-//! libs/ra8_app/tools/test_key.zig and installs arm/txm_hello_m33.ra8app; the
-//! test step admits that file with the in-tree verifier and refuses a tampered
-//! and a truncated copy (txm_ra8app_check.zig).
+//! The signed `.ra8app` files of the CPU1 modules (RA8FW-479, RA8FW-837). The
+//! build runs ra8_app's `ra8app_pack` on a module binary with the test-only
+//! key in libs/ra8_app/tools/test_key.zig and installs arm/<module>.ra8app;
+//! the test step admits txm_hello_m33.ra8app with the in-tree verifier and
+//! refuses a tampered and a truncated copy (txm_ra8app_check.zig).
 
 const std = @import("std");
 const test_key = @import("../../libs/ra8_app/tools/test_key.zig");
 
 const app_root = "libs/ra8_app/";
 const module_pack_root = app_root ++ "src/internal/module_pack.zig";
-const file_name = "txm_hello_m33.ra8app";
-
-/// Packs `bin` into the signed file and installs it under `arm/`.
-pub fn add(b: *std.Build, step: *std.Build.Step, bin: std.Build.LazyPath) std.Build.LazyPath {
+/// Packs `bin`, the binary of module `name`, into a signed `<name>.ra8app`
+/// and installs it under `arm/`.
+pub fn add(b: *std.Build, step: *std.Build.Step, name: []const u8, bin: std.Build.LazyPath) std.Build.LazyPath {
+    const file_name = b.fmt("{s}.ra8app", .{name});
     const run = b.addRunArtifact(packTool(b));
     run.addFileArg(b.addWriteFiles().add("test_seed.bin", &test_key.seed));
     run.addArgs(&.{ test_key.app_id, test_key.display_name, test_key.capabilities });
