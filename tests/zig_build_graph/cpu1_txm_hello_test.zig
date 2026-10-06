@@ -95,3 +95,14 @@ test "txm_fault_cpu1 packs the negative module, whose code is Zig beside the hel
         try std.testing.expectEqualStrings(hello.fault.name, app.cpu1.?.txm_module.?);
     }
 }
+
+test "txm_helium_m85 is built through C for the M85, and every other module stays on the M33" {
+    const helium = hello.find("txm_helium_m85").?;
+    try std.testing.expect(helium.through_c);
+    try std.testing.expectEqual(graph.txm_module_target.Core.cortex_m85, helium.core);
+    try std.testing.expect(mentions(helium.core.cpuFlags(), "-mcpu=cortex-m85"));
+    try std.testing.expect(std.mem.endsWith(u8, helium.entry_source, "txm_helium_m85/module_start.zig"));
+    for ([_]hello.Module{ hello.hello_world, hello.fault, hello.table, hello.rpc }) |module| {
+        try std.testing.expectEqual(graph.txm_module_target.Core.cortex_m33, module.core);
+    }
+}
