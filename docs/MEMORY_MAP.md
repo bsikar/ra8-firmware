@@ -174,8 +174,8 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | DOTF0 (NS)   | `0x50268800`  | DOTF ch 0 non-secure alias                | `dotf_*.zig`              |
 | DOTF1 (S)    | `0x40268900`  | DOTF ch 1 secure                          | `dotf_*.zig`              |
 | DOTF1 (NS)   | `0x50268900`  | DOTF ch 1 non-secure alias                | `dotf_*.zig`              |
-| XSPI0 regs   | `0x40268000`  | xSPI / Octo-SPI controller 0 reg window   | `ra8_xspi.c`              |
-| XSPI1 regs   | `0x40268400`  | xSPI / Octo-SPI controller 1 reg window   | `ra8_xspi.c`              |
+| XSPI0 regs   | `0x40268000`  | xSPI / Octo-SPI controller 0 reg window   | `xspi_*_abi.zig`              |
+| XSPI1 regs   | `0x40268400`  | xSPI / Octo-SPI controller 1 reg window   | `xspi_*_abi.zig`              |
 | SDHI0        | `0x40252000`  | SD host interface ch 0                    | `ra8_sdhi.c`, `sdcard_abi.zig` |
 | SDHI1        | `0x40252400`  | SD host interface ch 1                    | `ra8_sdhi.c`              |
 | FLASH ctrl   | `0x4013C000`  | MRMS / MRAM control                       | `ra8_flash.c`             |

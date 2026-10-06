@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for XSPI status, handler, dispatch and stop (RA8FW-865). Owns the
-//! per-instance callback table under its C name; ra8_xspi.c (deinit) reads
+//! per-instance callback table under its C name; xspi_init_abi.zig (deinit) clears
 //! and clears it through an extern declaration.
 
 const common = @import("abi_common.zig");
