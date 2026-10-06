@@ -256,3 +256,30 @@ extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
  */
 RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg,
                                                             ra8_chmdc_mode_t    mode);
+
+/**
+ * @brief Drive `CFDGCTR.GMDC` (clearing GSLPR) and wait for the global
+ *        state machine to latch it.
+ *
+ * @param reg        CANFD instance 0 (the global block).
+ * @param gmdc_value `k_ra8_gctr_value_operation`, `_reset` or `_halt`.
+ * @return ::k_ra8_ok, or ::k_ra8_err_hw_timeout when CFDGSTS never latched.
+ * @pre ``reg`` is non-NULL and the CANFD block clock is alive.
+ * @note Shared by ra8_canfd_init (C) and ra8_canfd_filter_set (Zig,
+ *       canfd_filter_abi.zig). Module-private to ``libs/ra8_hal/src``.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_global_mode(volatile r_canfd_t* reg,
+                                                           uint32_t            gmdc_value);
+
+/**
+ * @brief Set CFDRFCC[0].RFE so RX FIFO 0 accepts frames.
+ *
+ * @param reg CANFD instance 0.
+ * @pre Depth and payload are already programmed and the block is in global
+ *      operation (GL_RESET clears RFE).
+ * @note Shared by ra8_canfd_init (C) and ra8_canfd_filter_set (Zig).
+ *       Module-private to ``libs/ra8_hal/src``.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_ra8_canfd_internal_enable_rx_fifo0(volatile r_canfd_t* reg);
