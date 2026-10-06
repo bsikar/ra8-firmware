@@ -8,7 +8,8 @@
  *
  * @details
  * The ra8_eth_gwca driver is split across three translation units to
- * stay under the per-file line-count cap: ra8_eth_gwca.c holds the
+ * stay under the per-file line-count cap: src/internal/eth_gwca_events,
+ * eth_gwca_mode, eth_gwca_bringup and eth_gwca_life (.zig) hold the
  * lifecycle / status / dispatch surface plus the GWCA state-machine
  * bring-up (set_operation_mode / axi_init / install_linkfix /
  * bring_up); src/internal/eth_gwca_queue.zig holds the per-queue descriptor and
@@ -44,7 +45,7 @@ extern "C" {
  * state machine transitions in FSP take a handful of CANFDCLK ticks
  * on real silicon. On host (RA8_OFF_TARGET) the loops run against
  * the mmap'd peri region and the bits flip immediately, so the
- * budget is mostly hit-once. Shared because ra8_eth_gwca.c spins on
+ * budget is mostly hit-once. Shared because eth_gwca_mode.zig spins on
  * GWMS.OPS / GWARIRM.ARR, eth_gwca_queue.zig spins on GWDCCi.BALR,
  * and ra8_eth_gwca_default.c spins on TX descriptor write-back.
  */
@@ -62,7 +63,7 @@ enum : uint32_t {
  * @details Successful progression uses values 0..6. Failure codes are
  * ``0x10 | N`` so a JTAG-attached operator can tell at a glance whether
  * the chip parked on a happy-path step or an error path. Shared
- * because ra8_eth_gwca.c bumps the bring-up trail while
+ * because eth_gwca_bringup.zig bumps the bring-up trail while
  * ra8_eth_gwca_default.c bumps the open / pre trails.
  */
 typedef enum : uint32_t {
@@ -90,7 +91,7 @@ typedef enum : uint32_t {
  *   2 = internal_default_open_queues ok (RX/TX cfgs written).
  *   3 = set_operation_mode(OPERATION) ok (final).
  * Plus the symmetric error codes ``0x10|N`` for failures at step N.
- * Defined in ra8_eth_gwca.c; bumped from ra8_eth_gwca_default.c.
+ * Defined in src/eth_gwca_bringup_abi.zig; bumped from ra8_eth_gwca_default.c.
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
@@ -108,7 +109,7 @@ extern volatile uint32_t g_ra8_eth_gwca_open_step;
  *   3 = ra8_eth_gwca_bring_up ok.
  *   4 = set_operation_mode(CONFIG) ok.
  * Error codes ``0x10|N`` for failures at step N. Defined in
- * ra8_eth_gwca.c; bumped from ra8_eth_gwca_default.c.
+ * src/eth_gwca_bringup_abi.zig; bumped from ra8_eth_gwca_default.c.
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0
@@ -127,7 +128,7 @@ extern volatile uint32_t g_ra8_eth_gwca_pre_step;
  *   5 = second DISABLE ok.
  *   6 = DISABLE -> OPERATION ok.
  * Error codes ``0x10|N`` for failures at step N. Defined in
- * ra8_eth_gwca.c; bumped from ra8_eth_gwca.c (bring-up phase).
+ * src/eth_gwca_bringup_abi.zig; bumped from eth_gwca_bringup.zig (bring-up phase).
  *
  * @note Read externally by J-Link only; firmware never reads back.
  * @since 0.1.0

@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for GWCA status, handler attach and dispatch (RA8FW-847). s_gwca_fn
-//! and s_gwca_ctx are defined here under their C names; ra8_eth_gwca.c clears
-//! them in init and deinit through extern declarations.
+//! and s_gwca_ctx are defined here under their C names; eth_gwca_life_abi.zig
+//! clears them in init and deinit through extern declarations.
 
 const common = @import("abi_common.zig");
 const ev = @import("internal/eth_gwca_events.zig");

@@ -264,7 +264,7 @@ static inline volatile r_coma_regs_t* ra8_coma(void)
  * RA6 EDMAC port and are misnamed for RA8D2 ESWM. The +0x08/+0x0C
  * fields are NOT separate "IE/ICLR" registers; do not rely on
  * them. Keep the legacy names for source compatibility with the
- * existing ra8_eth_gwca.c API until the full port lands. The real
+ * existing ra8_eth_gwca API (now Zig) until the full port lands. The real
  * register set lives in r_gwca_regs_full_t below.
  */
 typedef struct {

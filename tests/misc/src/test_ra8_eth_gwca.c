@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_eth_gwca.c
- * @brief Unit tests for ra8_eth_gwca.c (GWCA sub-driver)
+ * @brief Unit tests for ra8_eth_gwca (GWCA sub-driver, Zig since RA8FW-851)
  * @details Exercises GWCA descriptor validation, queue configuration, status handling, and error paths using bounded fake registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -211,7 +211,7 @@ static void test_axi_init(void)
  * @test test_mcdc_install_linkfix_count_range
  *
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_eth_gwca.c@ra8_eth_gwca_install_linkfix):
+ * Decision (libs/ra8_hal/src/internal/eth_gwca_bringup.zig@installLinkfix):
  *   ``if (entry_count == 0U || entry_count > k_ra8_gwca_linkfix_max_entries)``
  * Two atomic conditions, N+1 = 3 vectors:
  *   V_F_F: count = 8   -> false || false  (returns ok)
