@@ -9,6 +9,7 @@
 //! nothing back, zig fetches it, and the configure runs again with it there.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 pub const prefix = "pkg:";
 
@@ -37,9 +38,9 @@ fn owner(b: *std.Build, path: []const u8) ?Owner {
 
 /// The directory to glob, or null while its package is not fetched yet, in
 /// which case the caller contributes nothing to a graph zig throws away.
-pub fn openDir(b: *std.Build, path: []const u8) ?std.fs.Dir {
+pub fn openDir(b: *std.Build, path: []const u8) ?std.Io.Dir {
     const root, const rel = owner(b, path) orelse return null;
-    return root.build_root.handle.openDir(rel, .{ .iterate = true }) catch |err| {
+    return src_tree.openDir(root, rel) catch |err| {
         std.debug.panic("ra8: cannot read directory '{s}': {s}", .{ path, @errorName(err) });
     };
 }
@@ -55,5 +56,5 @@ pub fn lazy(b: *std.Build, path: []const u8) std.Build.LazyPath {
 /// The absolute path, as the compile database writes it.
 pub fn absolute(b: *std.Build, path: []const u8) []const u8 {
     const root, const rel = owner(b, path) orelse return path;
-    return root.pathFromRoot(rel);
+    return src_tree.absolute(root, rel);
 }

@@ -17,6 +17,7 @@
 //! feeds, and therefore lands on every translation unit in the app.
 
 const std = @import("std");
+const src_tree = @import("src_tree.zig");
 
 /// The define `OFF_TARGET_LIBS` puts on the named libraries' own translation
 /// units and on nothing else.
@@ -63,7 +64,7 @@ pub fn isOffTargetSource(libraries: []const []const u8, source: []const u8) bool
 pub fn appendSources(b: *std.Build, libraries: []const []const u8, out: *std.ArrayList([]const u8), collect: fn (*std.Build, []const u8, *std.ArrayList([]const u8)) void) void {
     for (libraries) |library| {
         const dir = b.fmt("libs/{s}/src", .{library});
-        const exists = if (b.build_root.handle.access(dir, .{})) |_| true else |_| false;
+        const exists = src_tree.exists(b, dir);
         if (exists) collect(b, dir, out);
     }
 }
@@ -72,7 +73,7 @@ pub fn appendSources(b: *std.Build, libraries: []const []const u8, out: *std.Arr
 pub fn appendIncludeDirs(b: *std.Build, libraries: []const []const u8, out: *std.ArrayList([]const u8)) void {
     for (libraries) |library| {
         const dir = b.fmt("libs/{s}/inc", .{library});
-        const exists = if (b.build_root.handle.access(dir, .{})) |_| true else |_| false;
+        const exists = src_tree.exists(b, dir);
         if (exists) out.append(b.allocator, dir) catch @panic("OOM");
     }
 }
