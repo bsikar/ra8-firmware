@@ -237,7 +237,11 @@ func (h *Handler) identity(vm store.RunnerVM) (proxmox.Identity, error) {
 		vm.TemplateVMID != h.config.TemplateVMID || vm.TemplateName != h.config.TemplateName || vm.TemplateDigest != h.config.TemplateDigest || !containsID(h.config.VMIDs, vm.VMID) {
 		return proxmox.Identity{}, errors.New("durable VM identity differs from current approvals")
 	}
-	return proxmox.Identity{VMID: vm.VMID, Node: vm.Node, Pool: vm.Pool, Storage: vm.Storage, Name: vm.Name, ReservationID: vm.ID, CreationOperationID: vm.CreationOperationID}, nil
+	return proxmox.Identity{
+		VMID: vm.VMID, Node: vm.Node, Pool: vm.Pool, Storage: vm.Storage,
+		Name: vm.Name, ReservationID: vm.ID, CreationOperationID: vm.CreationOperationID,
+		RunID: fmt.Sprintf("%016x", uint64(vm.WorkflowRunID)),
+	}, nil
 }
 
 func containsID(ids []int, id int) bool {

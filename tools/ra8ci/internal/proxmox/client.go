@@ -266,11 +266,17 @@ func (c *Client) request(ctx context.Context, method, path string, form url.Valu
 	}
 	var result envelope
 	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if err := decoder.Decode(&result); err != nil || len(result.Data) == 0 || string(result.Data) == "null" || len(result.Errors) != 0 {
+	if err := decoder.Decode(&result); err != nil || len(result.Data) == 0 || len(result.Errors) != 0 {
 		return resp.StatusCode, ErrProtocol
 	}
 	var trailing any
 	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return resp.StatusCode, ErrProtocol
+	}
+	if out == nil {
+		return resp.StatusCode, nil
+	}
+	if string(result.Data) == "null" {
 		return resp.StatusCode, ErrProtocol
 	}
 	if err := json.Unmarshal(result.Data, out); err != nil {

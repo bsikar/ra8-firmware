@@ -102,6 +102,12 @@ func TestAStopAndADestroyRefuseAGuestTheyCannotEstablish(t *testing.T) {
 				_, err := c.Destroy(context.Background(), Action{ID: testAction}, testIdentity, reviewedCleanup())
 				return err
 			}, ErrConflict},
+		{"a destroy over a protected guest", func(f *fakePVE) { f.exists = true; f.protected = true },
+			func(c *Client) error {
+				_, err := c.Destroy(context.Background(), Action{ID: testAction},
+					testIdentity, reviewedCleanup())
+				return err
+			}, ErrConflict},
 	} {
 		t.Run(attempt.name, func(t *testing.T) {
 			f := newFake()
@@ -111,6 +117,14 @@ func TestAStopAndADestroyRefuseAGuestTheyCannotEstablish(t *testing.T) {
 			err := attempt.call(client)
 			if !errors.Is(err, attempt.want) {
 				t.Fatalf("error = %v, want %v", err, attempt.want)
+			}
+			if attempt.name == "a destroy over a locked guest" &&
+				!strings.Contains(err.Error(), `lock is "backup"`) {
+				t.Fatalf("destroy refusal = %v, want the actual lock name", err)
+			}
+			if attempt.name == "a destroy over a protected guest" &&
+				!strings.Contains(err.Error(), "protection flag is enabled") {
+				t.Fatalf("destroy refusal = %v, want the actual protection reason", err)
 			}
 			var unknown *UnknownOutcomeError
 			if errors.As(err, &unknown) {
