@@ -152,6 +152,24 @@ SECTIONS
      * puts that dir on the linker's search path, so it is found by bare name.
      * It is empty unless the app asked for something; see SRAM_TEXT.
      */
+    /* SRAM_TEXT bounds, always defined even when no app asked.
+     *
+     * ra8_add_app(SRAM_TEXT ...) assigns all three in the fragment below. With
+     * an empty fragment these zeroes stand in, so vector_table.c's copy loop
+     * reads three zeroes and does not run, and check_linker_scripts sees an
+     * in-tree definition (LD006, RA8FW-309).
+     *
+     * They sit HERE, inside SECTIONS and ahead of the INCLUDE, on purpose
+     * (RA8FW-900). Placed after SECTIONS, ld 2.42 let the PROVIDE beat the
+     * fragment's statement-level `g_ra8_ls_sram_text_load =
+     * LOADADDR(.sram_text)` whenever the image linked through a composed
+     * script (THREADX_HEAP and friends) or with --gc-sections: the load
+     * address came out 0 and Reset_Handler copied .sram_text from address 0.
+     * Ahead of the fragment, the fragment's later assignment always wins. */
+    PROVIDE(g_ra8_ls_ssram_text = 0);
+    PROVIDE(g_ra8_ls_esram_text = 0);
+    PROVIDE(g_ra8_ls_sram_text_load = 0);
+
     INCLUDE ra8_app_pre_text.ld
 
     /* ---- Code + const data ---- */
@@ -388,23 +406,5 @@ ASSERT(g_ra8_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
 ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
 
-/* ---- SRAM_TEXT bounds: always defined, even when no app asked ----
- *
- * ra8_add_app(SRAM_TEXT ...) generates a .sram_text placement into
- * ra8_app_pre_text.ld and that assigns these three. An app that asked for
- * nothing gets an empty fragment, and then these names have no definition at
- * all: vector_table.c declares them [[gnu::weak]], so the copy loop reads
- * three zeroes and does not run.
- *
- * That worked, but it left the contract implicit and it left check_linker_scripts
- * with no in-tree script defining them once the last hand-written fork that did
- * was retired (RA8FW-309), which reads as LD006 "referenced by C but no linker script
- * defines it". PROVIDE the same zeroes here instead: PROVIDE yields to the real
- * assignment whenever a fragment makes one, so this changes no image that uses
- * SRAM_TEXT and reproduces the exact undefined-weak behaviour for every image
- * that does not. */
-PROVIDE(g_ra8_ls_ssram_text = 0);
-PROVIDE(g_ra8_ls_esram_text = 0);
-PROVIDE(g_ra8_ls_sram_text_load = 0);
 ASSERT(g_ra8_ls_noinit_end <= ORIGIN(NOINIT) + LENGTH(NOINIT),
        "FATAL: .noinit crash-log record overran its 256-byte NOINIT region")
