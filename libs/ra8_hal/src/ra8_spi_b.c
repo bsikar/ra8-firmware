@@ -129,11 +129,9 @@ typedef struct {
   bool                  initialized; /**< True after ``ra8_spi_init``. */
 } ra8_spi_state_t;
 
-/**
- * @var s_spi_state
- * @brief Per-channel state table indexed by channel.
- */
-static ra8_spi_state_t s_spi_state[k_ra8_spi_b_channel_count];
+/* Per-channel state table: Zig export in src/spi_b_events_abi.zig
+ * (RA8FW-894); init and deinit below still write it. */
+extern ra8_spi_state_t s_spi_state[k_ra8_spi_b_channel_count];
 
 /* =============================================================================
  * Bit-rate helper
@@ -697,78 +695,6 @@ ra8_err_t ra8_spi_write_read(uint8_t             channel,
 
 /* ra8_spi_set_clock, ra8_spi_get_errors and ra8_spi_clear_errors live in
  * src/spi_b_clock_abi.zig (RA8FW-892). */
-ra8_err_t ra8_spi_attach_transfer_handler(uint8_t channel, ra8_spi_complete_fn_t fn, void* ctx)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  s_spi_state[channel].cb  = fn;
-  s_spi_state[channel].ctx = ctx;
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Power transition
- * =============================================================================
- */
-
-ra8_err_t ra8_spi_enter_stop(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
-  }
-  /* Clear SPE. */
-  /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  reg->SPCR = 0U;
-  return ra8_mstp_disable(s_spi_mstp_table[channel]);
-}
-
-ra8_err_t ra8_spi_exit_stop(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  return ra8_mstp_enable(s_spi_mstp_table[channel]);
-}
-
-/* =============================================================================
- * ISR dispatch -- placeholder; real IRQ routing lands with NVIC wiring.
- * =============================================================================
- */
-
-RA8_ISR_SAFE
-void ra8_spi_dispatch_spti(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return;
-  }
-  (void)s_spi_state[channel].cb;
-}
-
-RA8_ISR_SAFE
-void ra8_spi_dispatch_spri(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return;
-  }
-  (void)s_spi_state[channel].cb;
-}
-
-RA8_ISR_SAFE
-void ra8_spi_dispatch_spei(uint8_t channel)
-{
-  if (channel >= k_ra8_spi_b_channel_count) {
-    return;
-  }
-  uint8_t mask = 0U;
-  (void)ra8_spi_get_errors(channel, &mask);
-  (void)ra8_spi_clear_errors(channel);
-  const ra8_spi_complete_fn_t cb = s_spi_state[channel].cb;
-  if ((mask != 0U) && (cb != nullptr)) {
-    cb(s_spi_state[channel].ctx, mask);
-  }
-}
+/* ra8_spi_attach_transfer_handler, ra8_spi_enter_stop, ra8_spi_exit_stop and
+ * the SPTI / SPRI / SPEI dispatchers live in src/spi_b_events_abi.zig
+ * (RA8FW-894). */
