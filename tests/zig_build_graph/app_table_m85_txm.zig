@@ -1,8 +1,9 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The CPU0 ThreadX Module Manager apps: the M85 links threadx_m85_modules and
-//! carries one module in `.txm_module` (RA8FW-796). Split out of app_table.zig
+//! The CPU0 ThreadX module apps: the M85 links threadx_m85_modules and carries
+//! one module in `.txm_module` (RA8FW-796), plus the SD hello-world PoC that
+//! reads its module off the card (RA8FW-829). Split out of app_table.zig
 //! to keep that file under the line limit (RA8FW-805); app_table appends these
 //! last, so the positional picks stay put.
 
@@ -55,5 +56,19 @@ pub const apps = [_]CrossApp{
         .threadx_heap = "SDRAM",
         .zig_main = "src/main.zig",
         .txm_module = "txm_helium_m85",
+    },
+    .{
+        // Slice 1 of the SD hello-world PoC (RA8FW-829, under RA8FW-290):
+        // the M85 mounts the micro-SD card on SDHI0 through ra8_fs and reads
+        // and header-checks txm_hello_m33.ra8app. No ThreadX yet; RA8FW-830
+        // adds the Module Manager load.
+        .name = "txm_sd_hello_m85",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_sd_hello_m85",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_fs"},
+        .zig_libraries = &.{},
+        .zig_main = "src/main.zig",
+        .stack_bytes = 8192,
     },
 };
