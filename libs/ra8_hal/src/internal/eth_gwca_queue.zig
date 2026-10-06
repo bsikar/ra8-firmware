@@ -72,9 +72,14 @@ fn setDsH(d: *volatile Desc, v: u32) void {
     d.b1 = (d.b1 & 0xF0) | @as(u8, @truncate(v & 0xF));
 }
 
-fn setDs(d: *volatile Desc, len: u32) void {
+pub fn setDs(d: *volatile Desc, len: u32) void {
     d.ds_l = @truncate(len & 0xFF);
     setDsH(d, len >> 8);
+}
+
+/// DS: ds_l | ds_h[3:0] << 8 (12-bit frame length).
+pub fn getDs(d: *const volatile Desc) u32 {
+    return @as(u32, d.ds_l) | (@as(u32, d.b1 & 0x0F) << 8);
 }
 
 pub fn composeGwdcc(cfg: *const QueueCfg) u32 {
