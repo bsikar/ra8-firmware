@@ -37,10 +37,10 @@ pub const Step = struct {
     pub const start: u32 = 4;
     /// The start thread was not at `cpu1_start_thread_offset`.
     pub const thread: u32 = 5;
-    /// Creating or binding one of CPU1's two server queues failed.
-    pub const queue: u32 = 6;
-    /// CPU1's `ra8_rpc` server failed; `result` is its error code.
-    pub const server: u32 = 7;
+    /// CPU1's server module never attached its queues.
+    pub const attach: u32 = 6;
+    /// CPU1's server module reported a failure; `result` is its stage.
+    pub const module: u32 = 7;
 };
 
 /// One direction of the mailbox: one queue message in flight at a time.
@@ -64,7 +64,7 @@ pub const Block = extern struct {
     request: Slot = .{},
     /// CPU1 to M85: the server's answers.
     reply: Slot = .{},
-    /// Calls CPU1's server answered.
+    /// Calls CPU1's server module answered.
     answered: u32 = 0,
 };
 

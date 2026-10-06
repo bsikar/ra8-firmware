@@ -28,7 +28,7 @@ pub fn send(queue: *anyopaque, slot: *volatile shared.Slot) bool {
     if (slot.ack != slot.seq) return false;
     var message: Message = undefined;
     if (_txe_queue_receive(queue, &message, no_wait) != tx_success) return false;
-    for (message, 0..) |word, i| slot.words[i] = word;
+    for (&message, 0..) |*word, i| slot.words[i] = word.*;
     barrier();
     slot.seq +%= 1;
     barrier();

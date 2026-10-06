@@ -1,19 +1,18 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! txm_dual_mailbox, CPU1 half (RA8FW-843). The `threadx_cpu1` glue owns the
-//! vector table and reset path and enters the kernel; `tx_application_define`
-//! creates the Module Manager thread. That thread initializes the manager,
-//! makes the object pool, loads txm_hello_m33 in place from `.txm_module` and
-//! starts it, checks the start thread sits at its measured offset, and makes
-//! the two kernel queues an `ra8_rpc` server answers on (RA8FW-844). Then,
-//! once per tick, it copies the start thread's run count into the mailbox
-//! block, takes the M85 module's calls out of the request slot, lets the
-//! server answer them, and puts the answers in the reply slot (pump.zig).
+//! txm_dual_mailbox, CPU1 half (RA8FW-843, RA8FW-849). The `threadx_cpu1`
+//! glue owns the vector table and reset path and enters the kernel;
+//! `tx_application_define` creates the Module Manager thread. That thread
+//! initializes the manager, makes the object pool, loads txm_dual_server_m33
+//! in place from `.txm_module` and starts it, checks the start thread sits at
+//! its measured offset, and waits for the module to attach its two queues.
+//! The module is the `ra8_rpc` server; this image only moves messages. Once
+//! per tick it copies the start thread's run count into the mailbox block,
+//! moves the M85 module's calls from the request slot into the module's
+//! request queue, and the module's answers into the reply slot (pump.zig).
 
 const glue = @import("threadx_cpu1");
-const rpc = @import("ra8_rpc");
-const rpc_tx = @import("ra8_rpc_tx");
 const shared = @import("shared.zig");
 const service = @import("service.zig");
 const pump = @import("pump.zig");
@@ -62,14 +61,6 @@ extern fn _txm_module_manager_initialize(ram: *anyopaque, size: u32) callconv(.c
 extern fn _txm_module_manager_object_pool_create(pool: *anyopaque, size: u32) callconv(.c) u32;
 extern fn _txm_module_manager_in_place_load(module: *anyopaque, name: [*:0]const u8, location: *const anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_start(module: *anyopaque) callconv(.c) u32;
-extern fn _txe_queue_create(
-    queue: *anyopaque,
-    name: [*:0]const u8,
-    message_words: c_uint,
-    storage: *anyopaque,
-    storage_bytes: c_ulong,
-    control_block_bytes: c_uint,
-) callconv(.c) c_uint;
 
 fn passed(block: *volatile shared.Block, step: u32, result: u32) bool {
     if (result == tx_success) return true;
@@ -82,90 +73,72 @@ fn loadAndStart(block: *volatile shared.Block) bool {
     const Step = shared.Step;
     if (!passed(block, Step.initialize, _txm_module_manager_initialize(&module_ram, module_ram_bytes))) return false;
     if (!passed(block, Step.object_pool, _txm_module_manager_object_pool_create(&object_pool, object_pool_bytes))) return false;
-    if (!passed(block, Step.load, _txm_module_manager_in_place_load(&instance, "txm_hello_m33", &g_ra8_ls_cpu1_txm_module_start))) return false;
+    if (!passed(block, Step.load, _txm_module_manager_in_place_load(&instance, "txm_dual_server_m33", &g_ra8_ls_cpu1_txm_module_start))) return false;
     if (!passed(block, Step.start, _txm_module_manager_start(&instance))) return false;
     const id = shared.instanceWord(&instance, shared.cpu1_start_thread_offset);
     return passed(block, Step.thread, if (id == shared.tx_thread_id) tx_success else id);
 }
 
-/// sizeof(TX_QUEUE) with the Module Manager configuration and the M33 flags
-/// (measured, 0x44, as txm_rpc_m33 uses); `_txe_queue_create` checks it.
-const queue_block_bytes = 68;
-const Storage = [service.queue_depth * service.message_words]u32;
-const KernelQueue = rpc_tx.TxQueue(rpc_tx.kernel.api);
+/// The two queues the module created, once it has attached them: requests
+/// in, then replies out. Written on the module's thread.
+var attached: [2]usize = .{ 0, 0 };
 
-const Answers = struct {
-    block: *volatile shared.Block,
-};
-
-fn add(context: *Answers, args: service.Add) rpc.Outcome(service.Sum) {
-    context.block.answered += 1;
-    return .{ .ok = .{ .value = args.a +% args.b } };
-}
-
-const Server = rpc.Server(Answers, service.max_body, .{.{ service.Method.add, add }});
-
-/// Everything below must not move once bound, so it lives here.
-var request_queue: [queue_block_bytes]u8 align(8) = undefined;
-var reply_queue: [queue_block_bytes]u8 align(8) = undefined;
-var request_storage: Storage = undefined;
-var reply_storage: Storage = undefined;
-var requests: KernelQueue = undefined;
-var replies: KernelQueue = undefined;
-var tx_message: [service.message_bytes]u8 = undefined;
-var rx_message: [service.message_bytes]u8 = undefined;
-var wire: rpc.QueueTransport = undefined;
-var answers: Answers = undefined;
-var server: Server = undefined;
-var rx: [Server.Env.max_frame]u8 = undefined;
-var tx: [Server.Env.max_frame]u8 = undefined;
-
-fn createQueue(block: *volatile shared.Block, queue: *anyopaque, name: [*:0]const u8, storage: *Storage) bool {
-    const created = _txe_queue_create(queue, name, service.message_words, storage, @sizeOf(Storage), queue_block_bytes);
-    return passed(block, shared.Step.queue, created);
-}
-
-/// Make the two queues the mailbox feeds and bind a server to them.
-fn bindServer(block: *volatile shared.Block) bool {
-    if (!createQueue(block, &request_queue, "mailbox requests", &request_storage)) return false;
-    if (!createQueue(block, &reply_queue, "mailbox replies", &reply_storage)) return false;
-    const bytes = service.message_bytes;
-    requests = KernelQueue.init(&request_queue, bytes) catch return passed(block, shared.Step.queue, 1);
-    replies = KernelQueue.init(&reply_queue, bytes) catch return passed(block, shared.Step.queue, 2);
-    wire = rpc.QueueTransport.init(replies.queue(), requests.queue(), &tx_message, &rx_message) catch
-        return passed(block, shared.Step.queue, 3);
-    answers = .{ .block = block };
-    server = Server.init(wire.transport(), &rx, &answers, service.caps);
-    return true;
-}
-
-/// Take the waiting call, answer what has arrived, and send the answers.
-/// Returns false once the server fails, with the failure in the block.
-fn serveOnce(block: *volatile shared.Block) bool {
-    while (pump.take(&block.request, &request_queue)) {}
-    while (true) {
-        const step = server.poll(&tx) catch |err| {
-            block.result = @intFromError(err);
-            block.failed_step = shared.Step.server;
-            return false;
-        };
-        if (step == .idle) break;
+/// The manager's hook for a module's application requests, less
+/// `service.Report.base`. It runs on the module's thread, in the resident
+/// image.
+export fn _txm_module_manager_application_request(
+    request: u32,
+    param_1: u32,
+    param_2: u32,
+    param_3: u32,
+) callconv(.c) u32 {
+    _ = param_3;
+    const block = shared.block();
+    switch (request) {
+        service.Report.attach => {
+            attached[1] = param_2;
+            @atomicStore(usize, &attached[0], param_1, .release);
+        },
+        // param_1 is the sum the module answered, param_2 its count.
+        service.Report.value => block.answered += 1,
+        service.Report.failed => {
+            block.result = param_1;
+            block.failed_step = shared.Step.module;
+        },
+        else => {},
     }
-    while (pump.send(&reply_queue, &block.reply)) {}
+    return tx_success;
+}
+
+/// Wait for the module's queues. False, with the step in the block, if
+/// they never come.
+fn awaitQueues(block: *volatile shared.Block) bool {
+    var ticks: u32 = 0;
+    while (@atomicLoad(usize, &attached[0], .acquire) == 0) : (ticks += 1) {
+        if (ticks == service.patience_ticks) return passed(block, shared.Step.attach, 1);
+        _ = _tx_thread_sleep(1);
+    }
     return true;
+}
+
+/// Move the M85's waiting call into the module's request queue, and the
+/// module's answers into the reply slot.
+fn pumpOnce(block: *volatile shared.Block) void {
+    while (pump.take(&block.request, @ptrFromInt(attached[0]))) {}
+    while (pump.send(@ptrFromInt(attached[1]), &block.reply)) {}
 }
 
 fn manager(input: u32) callconv(.c) void {
     _ = input;
     const block = shared.block();
     block.signature = shared.signature;
-    if (loadAndStart(block) and bindServer(block)) {
+    if (loadAndStart(block) and awaitQueues(block)) {
         while (true) {
             // Rewritten every tick, so the M85 sees CPU1 alive whatever order
             // the two cores reached the block in.
             block.signature = shared.signature;
             block.module_runs = shared.instanceWord(&instance, shared.cpu1_start_thread_offset + shared.run_count_offset);
-            if (!serveOnce(block)) break;
+            pumpOnce(block);
             _ = _tx_thread_sleep(1);
         }
     }
