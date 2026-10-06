@@ -77,7 +77,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | DMAC0           | `0x4000A000`  | Direct Memory Access Controller, ch 0                | `dmac.zig`                              |
 | DMA shared      | `0x4000A800`  | Shared DMA module regs                               | `dma_abi.zig`                             |
 | DTC0            | `0x4000AC00`  | Data Transfer Controller                             | `dtc.zig`                                 |
-| RTC             | `0x40202000`  | Real-Time Clock                                      | `ra8_rtc.c`                               |
+| RTC             | `0x40202000`  | Real-Time Clock                                      | `rtc_*_abi.zig`                           |
 | IWDT            | `0x40202200`  | Independent Watchdog                                 | `internal/iwdt.zig`                              |
 | CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `cac.zig`                                 |
 | WDT0            | `0x40202600`  | Watchdog (M85 side)                                  | `ra8_wdt.c`                               |

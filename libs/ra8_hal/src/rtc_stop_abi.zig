@@ -3,7 +3,7 @@
 //!
 //! C ABI for ra8_rtc_enter_stop/exit_stop and the RTC register wait
 //! (RA8FW-853). Logic lives in internal/rtc_stop.zig.
-//! priv_ra8_rtc_internal_wait_bit serves the C left in ra8_rtc.c.
+//! priv_ra8_rtc_internal_wait_bit serves rtc_calendar_abi.zig and rtc_init_abi.zig.
 
 const builtin = @import("builtin");
 const common = @import("abi_common.zig");

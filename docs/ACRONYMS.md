@@ -136,7 +136,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | PDG   | Phase Delay Generator (multi-channel motor sync)          | `pdg.zig` |
 | WDT   | Watchdog Timer                                            | `ra8_wdt.c` |
 | IWDT  | Independent Watchdog Timer                                | `internal/iwdt.zig` |
-| RTC   | Real-Time Clock                                           | `ra8_rtc.c` |
+| RTC   | Real-Time Clock                                           | `rtc_*.zig` |
 
 ## 9. Memory / storage
 

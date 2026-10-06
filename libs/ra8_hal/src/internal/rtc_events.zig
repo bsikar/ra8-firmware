@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! RTC IRQ enable, status, handler dispatch and deinit (RA8FW-852, was part of
-//! ra8_rtc.c). Exports live in src/rtc_events_abi.zig. RCR1 holds the
+//! ra8_rtc.c, now deleted). Exports live in src/rtc_events_abi.zig. RCR1 holds the
 //! AIE/CIE/PIE bits 0..2 (HUM Ch 26.2.20 p 1231).
 
 /// `k_ra8_rtc_irq_all`: alarm | carry | periodic.

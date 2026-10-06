@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_rtc.c
- * @brief Unit tests for the BCD RTC driver (ra8_rtc.c)
+ * @brief Unit tests for the BCD RTC driver (libs/ra8_hal/src/rtc_*_abi.zig)
  * @details Exercises BCD calendar conversion, alarm validation, rollover, control state, and register publication through fake RTC storage.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -65,7 +65,7 @@ static void test_init_happy_path(void)
  * @brief Exercise delayed and exhausted RTC synchronization waits.
  * @par MC/DC:
  * No compound decision is exercised in
- * ``libs/ra8_hal/src/ra8_rtc.c@ra8_rtc_init``. The two vectors make each
+ * ``libs/ra8_hal/src/internal/rtc_init.zig@init``. The two vectors make each
  * single-condition register wait settle late and exhaust its full budget.
  * @since 0.1.0
  */
@@ -92,7 +92,7 @@ static void test_init_wait_seam(void)
  * @brief Count-source stop bits that never acknowledge return init failure.
  * @par MC/DC:
  * No compound decision is exercised in
- * ``libs/ra8_hal/src/ra8_rtc.c@ra8_rtc_clock_init``. LOCO and sub-clock
+ * ``libs/ra8_hal/src/internal/rtc_init.zig@clockInit``. LOCO and sub-clock
  * vectors independently force the single-condition oscillator-running check
  * false after the corresponding bounded wait.
  * @since 0.1.0
@@ -371,7 +371,7 @@ static void test_power_transition(void)
  * @brief MC/DC for ra8_rtc_set_alarm range guard.
  *
  * @par MC/DC:
- * Decision under test (libs/ra8_hal/src/ra8_rtc.c@ra8_rtc_set_alarm):
+ * Decision under test (libs/ra8_hal/src/internal/rtc_calendar.zig@setAlarm):
  * ``alarm->hour > k_ra8_rtc_alarm_max_hr || alarm->minute >
  * k_ra8_rtc_alarm_max_min || alarm->second > k_ra8_rtc_alarm_max_sec``.
  * Three atomic conditions x N+1 = 4 vectors:
