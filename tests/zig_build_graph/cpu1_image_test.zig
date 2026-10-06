@@ -228,7 +228,7 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
 }
 
-test "threadx_cpu1, cpu1_pingpong_ra8p1 and the Module Manager apps are the Zig CPU1 entries" {
+test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Zig CPU1 entries" {
     // A null kernel is a bare-metal CPU1 half that owns its own vector table.
     const expected = [_]struct { app: []const u8, kernel: ?[]const u8 }{
         .{ .app = "threadx_cpu1", .kernel = "threadx_m33" },
@@ -238,6 +238,7 @@ test "threadx_cpu1, cpu1_pingpong_ra8p1 and the Module Manager apps are the Zig 
         .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
         .{ .app = "txm_rpc_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_reload_cpu1", .kernel = "threadx_m33_modules" },
+        .{ .app = "cpu1_routed_irq", .kernel = null },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
