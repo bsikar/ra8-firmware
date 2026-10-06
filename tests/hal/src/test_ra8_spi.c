@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_spi.c
- * @brief Unit tests for the SPI_B controller driver (``ra8_spi_b.c``)
+ * @brief Unit tests for the SPI_B controller driver (``spi_b_*_abi.zig``)
  *
  * @details
  * Validates the SPI_B-flavoured public ``ra8_spi`` API against the

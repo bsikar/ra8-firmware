@@ -20,7 +20,7 @@ const spcr_off = 0x08;
 const spsr_off = 0x50;
 const spsrc_off = 0x68;
 
-/// Written by ra8_spi_init / ra8_spi_deinit in ra8_spi_b.c until they move.
+/// Also written by ra8_spi_init / ra8_spi_deinit (src/spi_b_setup_abi.zig).
 export var s_spi_state: [channel_count]events.State = std.mem.zeroes([channel_count]events.State);
 
 fn reg(channel: u8, off: usize) *volatile u32 {
