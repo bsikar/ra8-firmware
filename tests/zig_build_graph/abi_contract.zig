@@ -149,61 +149,6 @@ pub fn negativeArguments(
     return arguments.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
-/// A build step that requires its compile to fail, and to fail for the stated
-/// reason. There is no `addExecutable` shape for this: the graph has to run the
-/// compiler itself and inspect the result, exactly as expect_c_failure.cmake
-/// runs it through `execute_process` and matches the message.
-const NegativeStep = struct {
-    step: std.Build.Step,
-    fixture: NegativeFixture,
-    library: std.Build.LazyPath,
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const self: *NegativeStep = @fieldParentPtr("step", step);
-        const b = step.owner;
-        const kind = @tagName(self.fixture.kind);
-
-        const output_path = b.pathJoin(&.{ b.makeTempPath(), "negative.out" });
-        const arguments = negativeArguments(
-            b.allocator,
-            b.graph.zig_exe,
-            self.fixture,
-            self.library.getPath2(b, step),
-            output_path,
-        );
-
-        const result = std.process.Child.run(.{
-            .allocator = b.allocator,
-            .argv = arguments,
-            .max_output_bytes = 4 * 1024 * 1024,
-        }) catch |err| return step.fail(
-            "ABI negative {s}: could not run the compiler: {s}",
-            .{ kind, @errorName(err) },
-        );
-
-        const compiler_failed = switch (result.term) {
-            .Exited => |code| code != 0,
-            else => true,
-        };
-        return switch (classifyNegative(
-            compiler_failed,
-            result.stderr,
-            self.fixture.expected_diagnostic,
-        )) {
-            .expected_failure => {},
-            .unexpected_success => step.fail(
-                "ABI negative {s}: expected a failure, but {s} compiled cleanly",
-                .{ kind, self.fixture.source },
-            ),
-            .missing_diagnostic => step.fail(
-                "ABI negative {s}: failed without the expected diagnostic '{s}':\n{s}",
-                .{ kind, self.fixture.expected_diagnostic, result.stderr },
-            ),
-        };
-    }
-};
-
 /// Wire the whole slice onto `step`, and add its row to the parity manifest.
 pub fn add(
     b: *std.Build,
@@ -240,19 +185,25 @@ pub fn add(
     run_consumer.expectExitCode(0);
     step.dependOn(&run_consumer.step);
 
+    // There is no addExecutable shape for a compile that must fail, so a host
+    // tool runs the compiler and checks why it failed. See abi_negative.zig.
+    const negative_tool = b.addExecutable(.{
+        .name = "abi_negative",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/abi_negative.zig"),
+            .target = b.graph.host,
+        }),
+    });
     for (negative_fixtures) |fixture| {
-        const negative = b.allocator.create(NegativeStep) catch @panic("OOM");
-        negative.* = .{
-            .step = std.Build.Step.init(.{
-                .id = .custom,
-                .name = b.fmt("abi negative {s}", .{@tagName(fixture.kind)}),
-                .owner = b,
-                .makeFn = NegativeStep.make,
-            }),
-            .fixture = fixture,
-            .library = archive.getEmittedBin(),
-        };
-        negative.library.addStepDependencies(&negative.step);
+        const negative = b.addRunArtifact(negative_tool);
+        negative.setName(b.fmt("abi negative {s}", .{@tagName(fixture.kind)}));
+        negative.setCwd(b.path("."));
+        negative.has_side_effects = true;
+        negative.addArg(@tagName(fixture.kind));
+        negative.addFileArg(std.Build.LazyPath.zig_exe);
+        negative.addFileArg(archive.getEmittedBin());
+        _ = negative.addOutputFileArg("negative.out");
+        negative.expectExitCode(0);
         step.dependOn(&negative.step);
     }
 
