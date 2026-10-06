@@ -76,14 +76,18 @@ test "txm_table_cpu1 packs the table module, the one built through C" {
     }
 }
 
-test "txm_rpc_cpu1 packs the RPC module, built through C, and only its image imports ra8_rpc" {
+test "txm_rpc_cpu1 packs the RPC module, built through C, and only the two RPC servers import ra8_rpc" {
     try std.testing.expectEqualStrings("txm_rpc_m33", hello.find("txm_rpc_m33").?.name);
     try std.testing.expect(hello.rpc.through_c);
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         const is_rpc = std.mem.eql(u8, app.name, "txm_rpc_cpu1");
-        try std.testing.expectEqual(is_rpc, image.rpc);
+        // txm_dual_mailbox's CPU1 serves the M85 module's calls over the
+        // mailbox while its own module is txm_hello_m33 (RA8FW-844).
+        const serves_m85 = std.mem.eql(u8, app.name, "txm_dual_mailbox");
+        try std.testing.expectEqual(is_rpc or serves_m85, image.rpc);
         if (is_rpc) try std.testing.expectEqualStrings(hello.rpc.name, image.txm_module.?);
+        if (serves_m85) try std.testing.expectEqualStrings(hello.rpc.name, app.txm_module.?);
     }
 }
 

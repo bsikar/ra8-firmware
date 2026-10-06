@@ -5,11 +5,18 @@
 //! vector table and reset path and enters the kernel; `tx_application_define`
 //! creates the Module Manager thread. That thread initializes the manager,
 //! makes the object pool, loads txm_hello_m33 in place from `.txm_module` and
-//! starts it, checks the start thread sits at its measured offset, then
-//! copies the start thread's run count into the mailbox block once per tick.
+//! starts it, checks the start thread sits at its measured offset, and makes
+//! the two kernel queues an `ra8_rpc` server answers on (RA8FW-844). Then,
+//! once per tick, it copies the start thread's run count into the mailbox
+//! block, takes the M85 module's calls out of the request slot, lets the
+//! server answer them, and puts the answers in the reply slot (pump.zig).
 
 const glue = @import("threadx_cpu1");
+const rpc = @import("ra8_rpc");
+const rpc_tx = @import("ra8_rpc_tx");
 const shared = @import("shared.zig");
+const service = @import("service.zig");
+const pump = @import("pump.zig");
 
 /// CPU1's clock (the RA8D2's M33 maximum). A slower real clock only makes the
 /// ticks slower, never wrong in count.
@@ -55,6 +62,14 @@ extern fn _txm_module_manager_initialize(ram: *anyopaque, size: u32) callconv(.c
 extern fn _txm_module_manager_object_pool_create(pool: *anyopaque, size: u32) callconv(.c) u32;
 extern fn _txm_module_manager_in_place_load(module: *anyopaque, name: [*:0]const u8, location: *const anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_start(module: *anyopaque) callconv(.c) u32;
+extern fn _txe_queue_create(
+    queue: *anyopaque,
+    name: [*:0]const u8,
+    message_words: c_uint,
+    storage: *anyopaque,
+    storage_bytes: c_ulong,
+    control_block_bytes: c_uint,
+) callconv(.c) c_uint;
 
 fn passed(block: *volatile shared.Block, step: u32, result: u32) bool {
     if (result == tx_success) return true;
@@ -73,20 +88,88 @@ fn loadAndStart(block: *volatile shared.Block) bool {
     return passed(block, Step.thread, if (id == shared.tx_thread_id) tx_success else id);
 }
 
+/// sizeof(TX_QUEUE) with the Module Manager configuration and the M33 flags
+/// (measured, 0x44, as txm_rpc_m33 uses); `_txe_queue_create` checks it.
+const queue_block_bytes = 68;
+const Storage = [service.queue_depth * service.message_words]u32;
+const KernelQueue = rpc_tx.TxQueue(rpc_tx.kernel.api);
+
+const Answers = struct {
+    block: *volatile shared.Block,
+};
+
+fn add(context: *Answers, args: service.Add) rpc.Outcome(service.Sum) {
+    context.block.answered += 1;
+    return .{ .ok = .{ .value = args.a +% args.b } };
+}
+
+const Server = rpc.Server(Answers, service.max_body, .{.{ service.Method.add, add }});
+
+/// Everything below must not move once bound, so it lives here.
+var request_queue: [queue_block_bytes]u8 align(8) = undefined;
+var reply_queue: [queue_block_bytes]u8 align(8) = undefined;
+var request_storage: Storage = undefined;
+var reply_storage: Storage = undefined;
+var requests: KernelQueue = undefined;
+var replies: KernelQueue = undefined;
+var tx_message: [service.message_bytes]u8 = undefined;
+var rx_message: [service.message_bytes]u8 = undefined;
+var wire: rpc.QueueTransport = undefined;
+var answers: Answers = undefined;
+var server: Server = undefined;
+var rx: [Server.Env.max_frame]u8 = undefined;
+var tx: [Server.Env.max_frame]u8 = undefined;
+
+fn createQueue(block: *volatile shared.Block, queue: *anyopaque, name: [*:0]const u8, storage: *Storage) bool {
+    const created = _txe_queue_create(queue, name, service.message_words, storage, @sizeOf(Storage), queue_block_bytes);
+    return passed(block, shared.Step.queue, created);
+}
+
+/// Make the two queues the mailbox feeds and bind a server to them.
+fn bindServer(block: *volatile shared.Block) bool {
+    if (!createQueue(block, &request_queue, "mailbox requests", &request_storage)) return false;
+    if (!createQueue(block, &reply_queue, "mailbox replies", &reply_storage)) return false;
+    const bytes = service.message_bytes;
+    requests = KernelQueue.init(&request_queue, bytes) catch return passed(block, shared.Step.queue, 1);
+    replies = KernelQueue.init(&reply_queue, bytes) catch return passed(block, shared.Step.queue, 2);
+    wire = rpc.QueueTransport.init(replies.queue(), requests.queue(), &tx_message, &rx_message) catch
+        return passed(block, shared.Step.queue, 3);
+    answers = .{ .block = block };
+    server = Server.init(wire.transport(), &rx, &answers, service.caps);
+    return true;
+}
+
+/// Take the waiting call, answer what has arrived, and send the answers.
+/// Returns false once the server fails, with the failure in the block.
+fn serveOnce(block: *volatile shared.Block) bool {
+    while (pump.take(&block.request, &request_queue)) {}
+    while (true) {
+        const step = server.poll(&tx) catch |err| {
+            block.result = @intFromError(err);
+            block.failed_step = shared.Step.server;
+            return false;
+        };
+        if (step == .idle) break;
+    }
+    while (pump.send(&reply_queue, &block.reply)) {}
+    return true;
+}
+
 fn manager(input: u32) callconv(.c) void {
     _ = input;
     const block = shared.block();
     block.signature = shared.signature;
-    if (!loadAndStart(block)) {
-        while (true) _ = _tx_thread_sleep(idle_ticks);
+    if (loadAndStart(block) and bindServer(block)) {
+        while (true) {
+            // Rewritten every tick, so the M85 sees CPU1 alive whatever order
+            // the two cores reached the block in.
+            block.signature = shared.signature;
+            block.module_runs = shared.instanceWord(&instance, shared.cpu1_start_thread_offset + shared.run_count_offset);
+            if (!serveOnce(block)) break;
+            _ = _tx_thread_sleep(1);
+        }
     }
-    while (true) {
-        // Rewritten every tick, so the M85 sees CPU1 alive whatever order
-        // the two cores reached the block in.
-        block.signature = shared.signature;
-        block.module_runs = shared.instanceWord(&instance, shared.cpu1_start_thread_offset + shared.run_count_offset);
-        _ = _tx_thread_sleep(1);
-    }
+    while (true) _ = _tx_thread_sleep(idle_ticks);
 }
 
 export fn tx_application_define(first_unused: ?*anyopaque) callconv(.c) void {
