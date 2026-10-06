@@ -344,7 +344,7 @@ Every Ring 3 driver cites the HUM section it implements via an
 | `ra8_xspi.c`   | xSPI calibration + 8-line DDR mode select            | HUM Ch 56 ("xSPI")                  |
 | `ra8_glcdc.c`  | Layer config + dot-clock divisor calculation         | HUM Ch 60 ("GLCDC")                 |
 | `ra8_mipi_dsi.c`| DSI link bring-up + low-power escape                 | HUM Ch 61 ("MIPI DSI")              |
-| `ra8_etha.c`   | ETHA descriptor-ring init + frame TX/RX              | HUM Ch 39 ("Ethernet Agent")        |
+| `etha_*_abi.zig` | ETHA descriptor-ring init + frame TX/RX              | HUM Ch 39 ("Ethernet Agent")        |
 | `ra8_i3c_i2c.c` | I2C controller-mode bit-timing                      | HUM Ch 36 ("IIC-B")                 |
 | `ra8_sci.c`    | UART baud-rate divisor selection                     | HUM Ch 35 ("SCI")                   |
 | `ra8_flash.c`  | MRAM erase + program (HP-flash semantics)            | HUM Ch 50 ("Flash Memory")          |

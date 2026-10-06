@@ -134,8 +134,8 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | CNECC1     | `0x4036F300`| ECCMB1 (CAN1 MRAM ECC)       | `cnecc_abi.zig`    |
 | USB FS     | `0x40250000`| Full-Speed                   | `ra8_usb.c`, `ra8_usb_*.c` |
 | USB HS     | `0x40351000`| High-Speed                   | `ra8_usb.c`, `ra8_usb_*.c` |
-| ETHA0      | `0x403CA000`| Ethernet adapter ch 0        | `ra8_etha.c`, `ra8_eth.c` |
-| ETHA1      | `0x403CC000`|                              | `ra8_etha.c`       |
+| ETHA0      | `0x403CA000`| Ethernet adapter ch 0        | `etha_*_abi.zig`, `ra8_eth.c` |
+| ETHA1      | `0x403CC000`|                              | `etha_*_abi.zig`   |
 | RMAC0      | `0x403CB000`| Reduced MAC ch 0             | `ra8_rmac.c`       |
 | RMAC1      | `0x403CD000`|                              | `ra8_rmac.c`       |
 | GWCA0      | `0x403CE000`| Gateway CPU agent            | `ra8_eth_gwca.c`   |
