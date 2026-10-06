@@ -155,7 +155,7 @@ test "the reported line is the line of the invocation" {
 }
 
 test "a long argument is quoted to sixty characters" {
-    const long = "(int)" ++ "a" ** 100;
+    const long = "(int)" ++ &@as([100:0]u8, @splat('a'));
     const text = "TEST_ASSERT_EQ(" ++ long ++ ", b);\n";
     const found = try implementation.scanText(std.testing.allocator, text);
     defer std.testing.allocator.free(found);

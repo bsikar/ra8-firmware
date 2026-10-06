@@ -143,7 +143,7 @@ test "strings export treats a null string field as an unpublished slot" {
 
 test "strings export refuses a run-on string" {
     var device = c_device;
-    device.product = "x" ** 65;
+    device.product = &@as([65:0]u8, @splat('x'));
     var buf: [256]u8 = undefined;
     var len: u32 = 0;
     try testing.expectEqual(

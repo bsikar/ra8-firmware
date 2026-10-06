@@ -60,7 +60,7 @@ pub const Slot = extern struct {
     seq: u32 = 0,
     /// Set to `seq` by the receiving core once it has taken the message.
     ack: u32 = 0,
-    words: [message_words]u32 = [_]u32{0} ** message_words,
+    words: [message_words]u32 = @splat(0),
 };
 
 pub const Block = extern struct {

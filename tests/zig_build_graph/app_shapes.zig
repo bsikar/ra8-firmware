@@ -561,7 +561,7 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         const stack_field = fields.next() orelse return LedgerError.WrongFieldCount;
         if (fields.next() != null) return LedgerError.WrongFieldCount;
         var shape = Shape{ .board = board, .uses = try parseList(allocator, uses_field) };
-        var flag_values = [_]bool{false} ** flag_names.len;
+        var flag_values: [flag_names.len]bool = @splat(false);
         if (!std.mem.eql(u8, flags_field, "-")) {
             var named = std.mem.splitScalar(u8, flags_field, ',');
             while (named.next()) |flag| {

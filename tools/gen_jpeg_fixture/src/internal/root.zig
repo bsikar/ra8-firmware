@@ -87,7 +87,7 @@ const sos_payload = [_]u8{ 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00 };
 /// Entropy-coded data. Deliberately all zero: a 0xFF byte inside the entropy
 /// segment would need 0x00 stuffing behind it, and avoiding 0xFF entirely
 /// keeps the stream trivially well formed.
-const entropy = [_]u8{0x00} ** 16;
+const entropy: [16]u8 = @splat(0x00);
 
 /// Append a marker segment: 0xFF, the marker, the big-endian length including
 /// the two length bytes themselves, then the payload.

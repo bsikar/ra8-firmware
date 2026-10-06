@@ -266,11 +266,21 @@ fn initModule() !void {
     try std.testing.expectEqual(ok, abi.ra8_ota_init(&cfg));
 }
 
+/// Comptime string repetition; Zig 0.17 removed the `**` operator.
+fn repeat(comptime unit: []const u8, comptime count: usize) *const [unit.len * count]u8 {
+    comptime {
+        var out: [unit.len * count]u8 = undefined;
+        for (0..count) |i| @memcpy(out[i * unit.len ..][0..unit.len], unit);
+        const final = out;
+        return &final;
+    }
+}
+
 const manifest_json =
     "{\"version\": \"1.2.3\", \"url\": \"https://example.invalid/fw.bin\", " ++
     "\"size\": 8192, " ++
-    "\"sha256\": \"" ++ "ab" ** 32 ++ "\", " ++
-    "\"signature\": \"" ++ "cd" ** 64 ++ "\"}";
+    "\"sha256\": \"" ++ repeat("ab", 32) ++ "\", " ++
+    "\"signature\": \"" ++ repeat("cd", 64) ++ "\"}";
 
 // =============================================================================
 // Lifecycle

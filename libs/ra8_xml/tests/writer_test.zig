@@ -130,7 +130,7 @@ test "a name longer than a frame holds is refused" {
     var harness = Harness{};
     var w = harness.open();
 
-    const long = "a" ** 64;
+    const long = &@as([64:0]u8, @splat('a'));
     try std.testing.expectError(writer.Error.NoSpace, w.startElement(long));
 }
 
@@ -138,7 +138,7 @@ test "a name that exactly fills a frame is accepted and closed by name" {
     var harness = Harness{};
     var w = harness.open();
 
-    const exact = "a" ** 63;
+    const exact = &@as([63:0]u8, @splat('a'));
     try w.startElement(exact);
     try w.text("x");
     try w.endElement();

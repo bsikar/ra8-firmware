@@ -23,7 +23,7 @@ pub const max_bytes: usize = 32;
 pub const Callback = *const fn (?*anyopaque, ?[*]const u8, u32) callconv(.c) u16;
 
 pub const Handle = struct {
-    bytes: [max_bytes]u8 = [_]u8{0} ** max_bytes,
+    bytes: [max_bytes]u8 = @splat(0),
     bytes_live: bool = false,
     callback: ?Callback = null,
     callback_context: ?*anyopaque = null,

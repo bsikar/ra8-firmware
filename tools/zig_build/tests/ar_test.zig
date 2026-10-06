@@ -24,7 +24,7 @@ const Archive = struct {
     }
 
     fn member(self: *Archive, name: []const u8, data: []const u8) !void {
-        var header: [ar.member_header_len]u8 = [_]u8{' '} ** ar.member_header_len;
+        var header: [ar.member_header_len]u8 = @splat(' ');
         @memcpy(header[0..name.len], name);
         var size_text: [10]u8 = undefined;
         const size = try std.fmt.bufPrint(&size_text, "{d}", .{data.len});
@@ -39,7 +39,7 @@ const Archive = struct {
 
 /// A 64-bit little-endian ELF header, which is all the reader looks at.
 fn elfObject(machine: u16, class: u8) [64]u8 {
-    var bytes: [64]u8 = [_]u8{0} ** 64;
+    var bytes: [64]u8 = @splat(0);
     @memcpy(bytes[0..4], "\x7fELF");
     bytes[4] = class;
     bytes[5] = 1; // little endian
@@ -264,7 +264,7 @@ test "every format names itself for a failure message" {
 test "a fat Mach-O archive member reads as Mach-O with no single architecture" {
     var archive = try Archive.init(std.testing.allocator);
     defer archive.deinit();
-    var fat: [32]u8 = [_]u8{0} ** 32;
+    var fat: [32]u8 = @splat(0);
     std.mem.writeInt(u32, fat[0..4], 0xcafebabe, .little);
     try archive.member("fixture.o/", &fat);
 

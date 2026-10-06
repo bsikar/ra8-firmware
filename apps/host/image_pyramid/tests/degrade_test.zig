@@ -54,7 +54,7 @@ test "discard strips rejects malformed RGB images" {
     const allocator = std.testing.allocator;
     var empty = [_]u8{};
     var short = [_]u8{ 1, 2 };
-    var long = [_]u8{0} ** 6;
+    var long: [6]u8 = @splat(0);
     try std.testing.expectError(error.InvalidImage, degrade.discardStrips(allocator, .{ .width = 0, .height = 1, .pixels = &empty, .allocator = allocator }, .columns));
     try std.testing.expectError(error.InvalidImage, degrade.discardStrips(allocator, .{ .width = 1, .height = 1, .pixels = &short, .allocator = allocator }, .columns));
     try std.testing.expectError(error.InvalidImage, degrade.discardStrips(allocator, .{ .width = 1, .height = 1, .pixels = &long, .allocator = allocator }, .columns));

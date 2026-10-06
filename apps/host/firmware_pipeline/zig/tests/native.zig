@@ -8,7 +8,7 @@ const adapter = @import("adapter");
 const c = adapter.c;
 
 fn sentinel() c.firmware_pipeline_result_t {
-    return std.mem.bytesToValue(c.firmware_pipeline_result_t, &([_]u8{0xa5} ** @sizeOf(c.firmware_pipeline_result_t)));
+    return std.mem.bytesToValue(c.firmware_pipeline_result_t, &(@as([@sizeOf(c.firmware_pipeline_result_t)]u8, @splat(0xa5))));
 }
 
 test "Zig and Rust stages publish a combined result" {

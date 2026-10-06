@@ -14,7 +14,7 @@ test "Zig consumer exercises the exported lifecycle ABI" {
     var handle: ?*AbiHandle = null;
     try std.testing.expectEqual(AbiError.ok, ra8_abi_fixture_create(&handle));
 
-    var output = [_]u8{0} ** 3;
+    var output: [3]u8 = @splat(0);
     var output_len: u32 = 99;
     try std.testing.expectEqual(
         AbiError.ok,
