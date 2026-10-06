@@ -59,7 +59,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | IIC_B | I2C bus controller, version B (RIIC)                     | `ra8_i2c.c`, `i2c_target_abi.zig` |
 | I3C   | Improved Inter-Integrated Circuit (MIPI I3C)              | `i3c_*_abi.zig` |
 | SMBUS | System Management Bus (I2C-compatible)                    | `ra8_smbus.c` |
-| CANFD | Controller Area Network with Flexible Data-rate           | `ra8_canfd.c` |
+| CANFD | Controller Area Network with Flexible Data-rate           | `canfd_*_abi.zig` |
 | CNECC | CAN Message-RAM ECC controller                            | `cnecc_abi.zig` |
 | USB FS| USB Full-Speed (12 Mbps)                                  | `ra8_usb.c`, `ra8_usb_*.c` |
 | USB HS| USB High-Speed (480 Mbps)                                 | `ra8_usb.c`, `ra8_usb_*.c` |
