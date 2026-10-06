@@ -52,7 +52,7 @@ test "a well-formed image parses and round-trips its fields" {
 }
 
 test "an image shorter than the header is refused before anything is read" {
-    const short = [_]u8{0} ** (header_bytes - 1);
+    const short: [header_bytes - 1]u8 = @splat(0);
     try std.testing.expectError(appimg.Error.ShortImage, appimg.parse(&short));
 }
 

@@ -84,7 +84,7 @@ test "classifyFinal does not match a longer line with an OK prefix" {
 }
 
 test "appendCh keeps room for the terminator" {
-    var buf = [_]u8{0} ** 4;
+    var buf: [4]u8 = @splat(0);
     var used: usize = 0;
     core.appendCh(&buf, buf.len, &used, 'a');
     core.appendCh(&buf, buf.len, &used, 'b');
@@ -104,7 +104,7 @@ test "appendCh writes nothing into a one-byte buffer" {
 }
 
 test "captureLine newline-separates successive lines" {
-    var buf = [_]u8{0} ** 32;
+    var buf: [32]u8 = @splat(0);
     var used: usize = 0;
     core.captureLine(z("+CSQ: 20,99"), &buf, buf.len, &used);
     core.captureLine(z("second"), &buf, buf.len, &used);
@@ -113,7 +113,7 @@ test "captureLine newline-separates successive lines" {
 }
 
 test "captureLine truncates silently and stays NUL terminated" {
-    var buf = [_]u8{0} ** 6;
+    var buf: [6]u8 = @splat(0);
     var used: usize = 0;
     core.captureLine(z("0123456789"), &buf, buf.len, &used);
     try std.testing.expectEqual(@as(usize, 5), used);
@@ -125,7 +125,7 @@ test "captureLine is a no-op for a NULL buffer or a zero capacity" {
     var used: usize = 0;
     core.captureLine(z("x"), null, 8, &used);
     try std.testing.expectEqual(@as(usize, 0), used);
-    var buf = [_]u8{0xAA} ** 2;
+    var buf: [2]u8 = @splat(0xAA);
     core.captureLine(z("x"), &buf, 0, &used);
     try std.testing.expectEqual(@as(usize, 0), used);
     try std.testing.expectEqual(@as(u8, 0xAA), buf[0]);
@@ -167,7 +167,7 @@ test "seenExpSeed starts satisfied when no prefix was asked for" {
 }
 
 test "accumulator emits a line on CR and on LF" {
-    var buf = [_]u8{0} ** 32;
+    var buf: [32]u8 = @splat(0);
     var acc = core.Accumulator{ .buf = &buf, .cap = buf.len };
     try std.testing.expect(acc.push('O') == null);
     try std.testing.expect(acc.push('K') == null);
@@ -180,14 +180,14 @@ test "accumulator emits a line on CR and on LF" {
 }
 
 test "accumulator swallows a bare CRLF pair without emitting an empty line" {
-    var buf = [_]u8{0} ** 16;
+    var buf: [16]u8 = @splat(0);
     var acc = core.Accumulator{ .buf = &buf, .cap = buf.len };
     try std.testing.expect(acc.push('\r') == null);
     try std.testing.expect(acc.push('\n') == null);
 }
 
 test "accumulator emits early on overflow and drops the overflowing byte" {
-    var buf = [_]u8{0} ** 4;
+    var buf: [4]u8 = @splat(0);
     var acc = core.Accumulator{ .buf = &buf, .cap = buf.len };
     try std.testing.expect(acc.push('a') == null);
     try std.testing.expect(acc.push('b') == null);

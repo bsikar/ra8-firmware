@@ -26,7 +26,7 @@ const Fault = struct {
 };
 
 var fault: Fault = .{};
-var pixels = [_]u8{0} ** 64;
+var pixels: [64]u8 = @splat(0);
 
 fn faultGetInfo(ctx: ?*anyopaque, out_info: ?*core.Info) callconv(.c) u16 {
     _ = ctx;
@@ -224,7 +224,7 @@ test "capture: a backend error is forwarded and clears the output" {
 
 test "capture: a frame that does not alias the buffer is invalid_size" {
     reset();
-    var elsewhere = [_]u8{0} ** 8;
+    var elsewhere: [8]u8 = @splat(0);
     fault.frame = .{
         .data = &elsewhere,
         .bytes = 3,

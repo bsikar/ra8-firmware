@@ -10,7 +10,7 @@ const gate = @import("appimg_verify");
 const appimg = gate.image;
 
 const header_bytes = @sizeOf(appimg.Header);
-const key: [gate.pubkey_bytes]u8 = [_]u8{0x11} ** gate.pubkey_bytes;
+const key: [gate.pubkey_bytes]u8 = @splat(0x11);
 
 /// Backend stand-in: records whether it was called, answers as told.
 const Spy = struct {

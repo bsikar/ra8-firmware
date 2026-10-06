@@ -40,7 +40,7 @@ comptime {
 
 /// `ra8_c6link_mac_t`.
 pub const Mac = extern struct {
-    octet: [c6.mac_bytes]u8 = .{0} ** c6.mac_bytes,
+    octet: [c6.mac_bytes]u8 = @splat(0),
 };
 
 /// `ra8_c6link_transport_t`: the SPI seam the link clocks through.
@@ -78,13 +78,13 @@ pub const Event = extern struct {
     wifi_event_id: i32 = 0,
     reset_reason: u32 = 0,
     bssid: Mac = .{},
-    ssid: [c6.ssid_max + 1]u8 = .{0} ** (c6.ssid_max + 1),
+    ssid: [c6.ssid_max + 1]u8 = @splat(0),
 };
 
 /// `ra8_c6link_sta_cfg_t`. Held by value on the join stack and zeroed after.
 pub const StaCfg = extern struct {
-    ssid: [c6.ssid_max + 1]u8 = .{0} ** (c6.ssid_max + 1),
-    pass: [c6.pass_max + 1]u8 = .{0} ** (c6.pass_max + 1),
+    ssid: [c6.ssid_max + 1]u8 = @splat(0),
+    pass: [c6.pass_max + 1]u8 = @splat(0),
     bssid: Mac = .{},
     ssid_len: u8 = 0,
     pass_len: u8 = 0,
@@ -95,7 +95,7 @@ pub const StaCfg = extern struct {
 /// `ra8_c6link_ap_info_t`: the record `get_ap` copies out of.
 pub const ApInfo = extern struct {
     bssid: Mac = .{},
-    ssid: [c6.ssid_max + 1]u8 = .{0} ** (c6.ssid_max + 1),
+    ssid: [c6.ssid_max + 1]u8 = @splat(0),
     ssid_len: u8 = 0,
     channel: u8 = 0,
     rssi: i8 = 0,
@@ -123,7 +123,7 @@ pub const FwVersion = extern struct {
     minor: u32 = 0,
     patch: u32 = 0,
     chip_id: u32 = 0,
-    target: [16]u8 = .{0} ** 16,
+    target: [16]u8 = @splat(0),
     target_len: u8 = 0,
 };
 

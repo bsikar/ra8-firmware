@@ -59,12 +59,12 @@ fn renderTextFieldGolden(name: []const u8, buffer: []u8, len: u16, golden: []con
 }
 
 test "host text-field states match empty, mid-entry and full-buffer goldens" {
-    var empty: [32]u8 = [_]u8{0} ** 32;
+    var empty: [32]u8 = @splat(0);
     try renderTextFieldGolden("text_field_empty.ppm", &empty, 0, field_empty_expected);
-    var mid: [32]u8 = [_]u8{0} ** 32;
+    var mid: [32]u8 = @splat(0);
     @memcpy(mid[0..5], "shelf");
     try renderTextFieldGolden("text_field_mid.ppm", &mid, 5, field_mid_expected);
-    var full: [8]u8 = [_]u8{0} ** 8;
+    var full: [8]u8 = @splat(0);
     @memcpy(full[0..7], "archive");
     try renderTextFieldGolden("text_field_full.ppm", &full, 7, field_full_expected);
 }

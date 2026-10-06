@@ -18,7 +18,7 @@ pub const Owner = enum(u8) {
     pwm = 2,
 };
 
-var owners = [_]Owner{.none} ** channel_count;
+var owners: [channel_count]Owner = @splat(.none);
 
 /// Take a free channel for `owner`.
 pub fn claim(channel: u8, owner: Owner) u16 {
@@ -40,5 +40,5 @@ pub fn release(channel: u8, owner: Owner) void {
 
 /// Free every channel. Test-only: the adapters have no global reset.
 pub fn resetForTest() void {
-    owners = [_]Owner{.none} ** channel_count;
+    owners = @splat(.none);
 }

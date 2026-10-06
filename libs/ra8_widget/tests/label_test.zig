@@ -34,7 +34,7 @@ const Draw = struct {
     face: ?u8 = null,
     weight: ?u8 = null,
     size: ?u8 = null,
-    copied: [40]u8 = [_]u8{0} ** 40,
+    copied: [40]u8 = @splat(0),
     copied_len: usize = 0,
 };
 

@@ -21,7 +21,7 @@ const identity: module_pack.Identity = .{
 };
 
 fn module() [image_len]u8 {
-    var bytes = [_]u8{0x5A} ** image_len;
+    var bytes: [image_len]u8 = @splat(0x5A);
     const words = [_]u32{
         preamble.id, 6, 1,     32,    0x12345678, 0x02000007, 0x211,     0x175,
         0,           1, 0x400, 0x16D, 1,          0x400,      image_len, 0x9C,
@@ -33,7 +33,7 @@ fn module() [image_len]u8 {
 }
 
 fn keyPair() !Ed25519.KeyPair {
-    return Ed25519.KeyPair.generateDeterministic([_]u8{0x24} ** Ed25519.KeyPair.seed_length);
+    return Ed25519.KeyPair.generateDeterministic(@as([Ed25519.KeyPair.seed_length]u8, @splat(0x24)));
 }
 
 fn admit(bytes: []const u8, key_pair: Ed25519.KeyPair) gate.Error!appimg.Header {

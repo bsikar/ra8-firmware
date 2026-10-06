@@ -224,7 +224,7 @@ test "a segment length that walks off the buffer is rejected" {
 }
 
 test "a run of FF fill bytes before a marker is skipped" {
-    const stream = [_]u8{ 0xFF, 0xD8 } ++ [_]u8{0xFF} ** 4 ++ [_]u8{
+    const stream = [_]u8{ 0xFF, 0xD8 } ++ @as([4]u8, @splat(0xFF)) ++ [_]u8{
         0xC0, 0x00, 0x0B, 0x08, 0x00, 0x05, 0x00, 0x07, 0x01, 0x01, 0x11, 0x00,
     };
     const found = try dims.probe(&stream);

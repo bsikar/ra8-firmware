@@ -104,7 +104,7 @@ test "a full queue is QueueFull: nothing is lost and the queue is not down" {
 test "an empty queue is no message, and the buffer is left alone" {
     var bench: Bench = .{};
     try bench.init();
-    var got = [_]u8{0x7E} ** message_bytes;
+    var got: [message_bytes]u8 = @splat(0x7E);
     try testing.expect(!try bench.bound.queue().receive(&got));
     for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
     try testing.expectEqual(null, bench.bound.failure);
@@ -137,7 +137,7 @@ test "any other status on receive takes the queue down and hands nothing over" {
     try queue.send("abcdefgh");
     bench.kernel.force_receive = fake.Status.queue_error;
 
-    var got = [_]u8{0x7E} ** message_bytes;
+    var got: [message_bytes]u8 = @splat(0x7E);
     try testing.expectError(error.QueueDown, queue.receive(&got));
     for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
     try testing.expectEqual(fake.Status.queue_error, bench.bound.failure.?);

@@ -18,7 +18,7 @@ const State = struct {
     latched: bool = false,
 };
 
-var states = [_]State{.{}} ** claim.channel_count;
+var states: [claim.channel_count]State = @splat(.{});
 
 /// Whether `source_mask` names at least one source and only legal ones.
 pub fn validSources(source_mask: u32) bool {

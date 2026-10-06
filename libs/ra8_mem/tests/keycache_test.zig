@@ -58,7 +58,7 @@ fn Fixture(comptime n: u32) type {
         cells: [n * cell_bytes]u8 = @splat(0),
         keys: [n * key_bytes]u8 = @splat(0),
         users: [n]u8 = @splat(0),
-        meta: [n]Cell = [_]Cell{.{}} ** n,
+        meta: [n]Cell = @splat(.{}),
         buckets: [n]i32 = @splat(-1),
 
         fn cfg(self: *Self, evict: keycache.Evict, user_bytes: u32) Cfg {

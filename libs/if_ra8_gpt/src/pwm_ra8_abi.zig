@@ -64,7 +64,7 @@ const Out = struct {
     running: bool = false,
 };
 
-var outs = [_]Out{.{}} ** Limits.channel_count;
+var outs: [Limits.channel_count]Out = @splat(.{});
 
 fn isOpen(ch: Ch) bool {
     return claim.ownedBy(ch.index, .pwm);

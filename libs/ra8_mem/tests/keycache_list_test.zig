@@ -13,7 +13,7 @@ const Segment = list.Segment;
 
 /// A fresh, fully detached metadata array.
 fn cells(comptime n: usize) [n]Cell {
-    return [_]Cell{.{}} ** n;
+    return @as([n]Cell, @splat(.{}));
 }
 
 /// The list from head to tail, as cell indices.

@@ -44,7 +44,7 @@ pub const Error = appimg.Error || std.mem.Allocator.Error || error{
 /// Copy `text` into a NUL-padded fixed-width field.
 fn field(comptime width: usize, text: []const u8) Error![width]u8 {
     if (text.len >= width) return Error.NameTooLong;
-    var out = [_]u8{0} ** width;
+    var out: [width]u8 = @splat(0);
     @memcpy(out[0..text.len], text);
     return out;
 }
@@ -64,7 +64,7 @@ pub fn header(manifest: Manifest, code_len: usize, data_len: usize) Error!Header
         .capabilities = manifest.capabilities,
         .app_id = try field(appimg.Width.app_id, manifest.app_id),
         .display_name = try field(appimg.Width.display_name, manifest.display_name),
-        .signature = [_]u8{0} ** appimg.Width.signature,
+        .signature = @splat(0),
     };
 }
 

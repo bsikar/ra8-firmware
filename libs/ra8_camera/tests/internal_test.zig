@@ -324,7 +324,7 @@ test "prepare: a flat rgb input fills the whole workspace with one pixel" {
         source[index + 1] = 20;
         source[index + 2] = 30;
     }
-    var workspace = [_]u8{0} ** (2 * 2 * 3);
+    var workspace: [2 * 2 * 3]u8 = @splat(0);
     core.prepareRgb(&source, rgb888, 4 * 3, 4, 4, &workspace, 2, 2);
     var offset: usize = 0;
     while (offset < workspace.len) : (offset += 3) {
@@ -349,7 +349,7 @@ test "prepare: downscaling picks the nearest source pixel per output pixel" {
             source[at + 2] = quadrant + 200;
         }
     }
-    var workspace = [_]u8{0} ** (2 * 2 * 3);
+    var workspace: [2 * 2 * 3]u8 = @splat(0);
     core.prepareRgb(&source, rgb888, 12, 4, 4, &workspace, 2, 2);
     var slot: u8 = 0;
     while (slot < 4) : (slot += 1) {
@@ -362,7 +362,7 @@ test "prepare: downscaling picks the nearest source pixel per output pixel" {
 
 test "prepare: upscaling repeats source pixels and writes every output byte" {
     var source = [_]u8{ 1, 2, 3, 250, 251, 252 };
-    var workspace = [_]u8{0xAA} ** (4 * 1 * 3);
+    var workspace: [4 * 1 * 3]u8 = @splat(0xAA);
     core.prepareRgb(&source, rgb888, 6, 2, 1, &workspace, 4, 1);
     try std.testing.expectEqual([3]u8{ 1, 2, 3 }, workspace[0..3].*);
     try std.testing.expectEqual([3]u8{ 1, 2, 3 }, workspace[3..6].*);
@@ -373,13 +373,13 @@ test "prepare: upscaling repeats source pixels and writes every output byte" {
 test "prepare: a uyvy source sampled at an odd width saturates every pixel" {
     // The C suite's colour-clamp vector: every pair is Cb/Cr 255 with sub-black
     // luma, and width 12 into an 8-wide output makes some sampled columns odd.
-    var source = [_]u8{0} ** (12 * 16 * 2);
+    var source: [12 * 16 * 2]u8 = @splat(0);
     var index: usize = 0;
     while (index < source.len) : (index += 2) {
         source[index] = 255;
         source[index + 1] = 0;
     }
-    var workspace = [_]u8{0} ** (8 * 8 * 3);
+    var workspace: [8 * 8 * 3]u8 = @splat(0);
     core.prepareRgb(&source, uyvy422, 12 * 2, 12, 16, &workspace, 8, 8);
     var offset: usize = 0;
     while (offset < workspace.len) : (offset += 3) {

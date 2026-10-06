@@ -324,7 +324,7 @@ fn readCsd(out_blocks: *u32) u16 {
         _ = priv_sdmmc_spi_cs_release();
         return rc;
     }
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     var i: u32 = 0;
     while (i < core.csd_response_len) : (i += 1) {
         rc = priv_sdmmc_spi_xfer_one(core.token.idle, @ptrCast(&csd[i]));

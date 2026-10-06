@@ -22,9 +22,9 @@ pub const max_luma_tile: usize = Limit.mcu_max_dim * Limit.mcu_max_dim;
 /// Scratch an MCU decode needs, owned by the driver so the decode itself
 /// allocates nothing.
 pub const Tiles = struct {
-    luma: [max_luma_tile]u8 = .{0} ** max_luma_tile,
-    cb: [spec.Block.size]u8 = .{0} ** spec.Block.size,
-    cr: [spec.Block.size]u8 = .{0} ** spec.Block.size,
+    luma: [max_luma_tile]u8 = @splat(0),
+    cb: [spec.Block.size]u8 = @splat(0),
+    cr: [spec.Block.size]u8 = @splat(0),
 };
 
 /// Place one decoded block at its position inside the luma tile.

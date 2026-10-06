@@ -43,7 +43,7 @@ const Fake = struct {
 test "a full block is programmed as is at block * 64" {
     var state = device.State{};
     var fake = Fake{};
-    const block = [_]u8{0xA5} ** device.block_bytes;
+    const block: [device.block_bytes]u8 = @splat(0xA5);
     state.write(&fake, 3, &block);
     try std.testing.expectEqual(@as(u32, 192), fake.calls[0].offset);
     try std.testing.expectEqual(device.block_bytes, fake.calls[0].len);
@@ -66,7 +66,7 @@ test "a short final block is padded to a 32-byte page with 0xFF" {
 test "the first program error latches and stops counting" {
     var state = device.State{};
     var fake = Fake{ .fail_at = 1 };
-    const block = [_]u8{0} ** device.block_bytes;
+    const block: [device.block_bytes]u8 = @splat(0);
     state.write(&fake, 0, &block);
     state.write(&fake, 1, &block);
     try std.testing.expectEqual(@as(u16, 0x405), state.prog_err);

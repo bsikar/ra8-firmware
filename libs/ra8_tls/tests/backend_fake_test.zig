@@ -12,7 +12,7 @@ const Err = backend.Status;
 /// A scripted transport: records what the backend handed it and replays the
 /// status the case under test wants back.
 const Wire = struct {
-    var sent: [8]u8 = [_]u8{0} ** 8;
+    var sent: [8]u8 = @splat(0);
     var sent_len: usize = 0;
     var send_status: u16 = Err.ok;
     var recv_status: u16 = Err.ok;
@@ -105,7 +105,7 @@ test "payloads pass straight through to the transport" {
     try std.testing.expectEqualStrings("hey", Wire.sent[0..3]);
 
     Wire.recv_byte = 'z';
-    var inbox: [4]u8 = [_]u8{0} ** 4;
+    var inbox: [4]u8 = @splat(0);
     try std.testing.expectEqual(Err.ok, backend.recv(&state, &config, &inbox, &moved));
     try std.testing.expectEqual(@as(usize, 1), moved);
     try std.testing.expectEqual(@as(u8, 'z'), inbox[0]);

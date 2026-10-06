@@ -17,7 +17,7 @@ const none: i32 = -1;
 /// has it.
 const Fixture = struct {
     buckets: [4]i32 = .{ none, none, none, none },
-    meta: [4]Cell = [_]Cell{.{}} ** 4,
+    meta: [4]Cell = @splat(.{}),
     keys: [4 * 2]u8 = @splat(0),
 
     fn table(self: *Fixture, hash: ?index.HashFn, ctx: ?*anyopaque) Table {

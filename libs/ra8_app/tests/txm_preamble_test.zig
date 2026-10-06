@@ -12,7 +12,7 @@ const image_len: usize = 0x2D4;
 
 /// A module image with the preamble words txm_hello_m33 carries.
 fn module() [image_len]u8 {
-    var bytes = [_]u8{0} ** image_len;
+    var bytes: [image_len]u8 = @splat(0);
     const words = [_]u32{
         preamble.id, 6, 1,     32,    0x12345678, 0x02000007, 0x211,     0x175,
         0,           1, 0x400, 0x16D, 1,          0x400,      image_len, 0x9C,

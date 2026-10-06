@@ -520,7 +520,7 @@ test "keyboard keys update the focused fixed-buffer field and report bounded dam
     enter.action = .enter;
     Engine.keys.append(enter) catch unreachable;
 
-    var buffer = [_]u8{0} ** 5;
+    var buffer: [5]u8 = @splat(0);
     var field = abi.text_field.TextField{
         .paint = &full_backend,
         .buffer = &buffer,

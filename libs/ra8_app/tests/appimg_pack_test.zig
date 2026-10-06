@@ -25,7 +25,7 @@ const manifest: pack.Manifest = .{
 };
 
 fn keyPair(fill: u8) !Ed25519.KeyPair {
-    return Ed25519.KeyPair.generateDeterministic([_]u8{fill} ** Ed25519.KeyPair.seed_length);
+    return Ed25519.KeyPair.generateDeterministic(@as([Ed25519.KeyPair.seed_length]u8, @splat(fill)));
 }
 
 fn signedImage(key_pair: Ed25519.KeyPair) ![]u8 {

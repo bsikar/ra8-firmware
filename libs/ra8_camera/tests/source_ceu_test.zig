@@ -18,7 +18,7 @@ const hw_unmapped: u16 = 0x209;
 
 /// Modelled CEU peripheral. One flat block of state, reset before each case.
 const model = struct {
-    var events_by_poll: [8]u32 = .{0} ** 8;
+    var events_by_poll: [8]u32 = @splat(0);
     var data_size: u32 = 0;
     var polls: u32 = 0;
     var status_err: u16 = 0;
@@ -35,7 +35,7 @@ const model = struct {
     var armed_address: usize = 0;
 
     fn reset() void {
-        events_by_poll = .{0} ** 8;
+        events_by_poll = @splat(0);
         data_size = 0;
         polls = 0;
         status_err = 0;
@@ -54,7 +54,7 @@ const model = struct {
 
     /// Every poll observes the same event bits unless a case staged a sequence.
     fn stage(events: u32) void {
-        events_by_poll = .{events} ** 8;
+        events_by_poll = @splat(events);
     }
 };
 
@@ -201,7 +201,7 @@ test "wait: sync traffic alone never terminates the bounded poll" {
 
 test "wait: completion on a later poll still reports the frame" {
     model.reset();
-    model.events_by_poll = .{ policy.events.hd, policy.events.hd, policy.events.cpe } ++ .{0} ** 5;
+    model.events_by_poll = .{ policy.events.hd, policy.events.hd, policy.events.cpe } ++ @as([5]u32, @splat(0));
     var state = bareState(256, policy.capture_format.image_capture, 8);
     var bytes: u32 = 0;
     try std.testing.expectEqual(err.ok, source.priv_cam_ceu_wait_for_frame(&state, &bytes));

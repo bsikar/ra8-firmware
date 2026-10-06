@@ -37,13 +37,13 @@ test "different lengths are not equal" {
 }
 
 test "the scrub clears every byte" {
-    var secret = [_]u8{0xA5} ** 16;
+    var secret: [16]u8 = @splat(0xA5);
     scrub.zeroize(&secret);
     for (secret) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
 }
 
 test "the scrub clears exactly the slice it is given" {
-    var buf = [_]u8{0xA5} ** 8;
+    var buf: [8]u8 = @splat(0xA5);
     scrub.zeroize(buf[2..6]);
     for (buf[0..2]) |byte| try std.testing.expectEqual(@as(u8, 0xA5), byte);
     for (buf[2..6]) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
@@ -51,7 +51,7 @@ test "the scrub clears exactly the slice it is given" {
 }
 
 test "an empty scrub writes nothing" {
-    var buf = [_]u8{0xA5} ** 4;
+    var buf: [4]u8 = @splat(0xA5);
     scrub.zeroize(buf[2..2]);
     for (buf) |byte| try std.testing.expectEqual(@as(u8, 0xA5), byte);
 }

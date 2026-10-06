@@ -193,7 +193,7 @@ test "a full queue is QueueFull and an empty one is no message, as on the reside
     var bench: Bench = .{};
     try bench.init();
     const queue = bench.bound.queue();
-    var got = [_]u8{0x7E} ** message_bytes;
+    var got: [message_bytes]u8 = @splat(0x7E);
     try testing.expect(!try queue.receive(&got));
     for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
 

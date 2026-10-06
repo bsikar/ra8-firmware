@@ -46,7 +46,7 @@ pub const Mac = extern struct {
     octet: [mac_bytes]u8,
 
     /// The all-zero address the C returns on an unanswerable read.
-    pub const zero: Mac = .{ .octet = .{0} ** mac_bytes };
+    pub const zero: Mac = .{ .octet = @splat(0) };
 };
 
 /// What an IP provider handed back (`ra8_wifi_lease_t`).
@@ -64,7 +64,7 @@ pub const Lease = extern struct {
 /// What the radio knows about the associated AP (`ra8_wifi_ap_t`).
 pub const Ap = extern struct {
     bssid: Mac = Mac.zero,
-    ssid: [ssid_max + 1]u8 = .{0} ** (ssid_max + 1),
+    ssid: [ssid_max + 1]u8 = @splat(0),
     ssid_len: u8 = 0,
     channel: u8 = 0,
     rssi: i8 = 0,

@@ -41,9 +41,9 @@ const WriteRecord = struct { address: u8 = 0, reg: u16 = 0, value: u8 = 0 };
 
 /// Mock SCCB device: a flat register file plus the fixture's injection knobs.
 const Mock = struct {
-    regs: [0x10000]u8 = [_]u8{0} ** 0x10000,
-    writes: [512]WriteRecord = [_]WriteRecord{.{}} ** 512,
-    delays: [64]u32 = [_]u32{0} ** 64,
+    regs: [0x10000]u8 = @splat(0),
+    writes: [512]WriteRecord = @splat(.{}),
+    delays: [64]u32 = @splat(0),
     read_count: u32 = 0,
     write_count: u32 = 0,
     delay_count: u32 = 0,

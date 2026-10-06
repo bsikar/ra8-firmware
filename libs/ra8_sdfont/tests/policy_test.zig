@@ -102,7 +102,7 @@ test "a font already on the card is read without provisioning" {
 }
 
 test "an absent font is written from the blob, then read back off the card" {
-    var blob = [_]u8{0x4F} ** 32;
+    var blob: [32]u8 = @splat(0x4F);
     var fake: FakeVolume = .{ .open_results = &.{ err.not_found, err.ok } };
     var file: ?policy.File = null;
     var source: policy.Source = .card;
@@ -137,7 +137,7 @@ test "no blob means a missing font stays missing" {
 }
 
 test "an empty blob means a missing font stays missing" {
-    var blob = [_]u8{0x4F} ** 4;
+    var blob: [4]u8 = @splat(0x4F);
     var fake: FakeVolume = .{ .open_results = &.{err.not_found} };
     var file: ?policy.File = null;
     var source: policy.Source = .card;
@@ -166,7 +166,7 @@ test "an open failure other than not-found is forwarded untouched" {
 }
 
 test "a failed provisioning write is reported rather than retried" {
-    var blob = [_]u8{0x4F} ** 8;
+    var blob: [8]u8 = @splat(0x4F);
     var fake: FakeVolume = .{ .open_results = &.{err.not_found}, .write_result = err.no_data };
     var file: ?policy.File = null;
     var source: policy.Source = .card;

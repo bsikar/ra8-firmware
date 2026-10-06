@@ -31,7 +31,7 @@ const range = struct {
 
 /// Parse a canonical dotted-quad literal spanning the whole of `text`.
 pub fn parse(text: []const u8) ?[limits.v4_bytes]u8 {
-    var out: [limits.v4_bytes]u8 = .{0} ** limits.v4_bytes;
+    var out: [limits.v4_bytes]u8 = @splat(0);
     var at: usize = 0;
     for (0..limits.v4_bytes) |octet| {
         if (octet != 0) {

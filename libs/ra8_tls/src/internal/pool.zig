@@ -15,7 +15,7 @@ pub fn Pool(comptime Slot: type, comptime capacity: usize) type {
         pub const slot_count = capacity;
 
         slots: [capacity]Slot = std.mem.zeroes([capacity]Slot),
-        used: [capacity]bool = [_]bool{false} ** capacity,
+        used: [capacity]bool = @splat(false),
 
         /// Index of `slot` in this pool, or null when the pointer is forged,
         /// stale, or simply not ours. Rejects an interior pointer too.

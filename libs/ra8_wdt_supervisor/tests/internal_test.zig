@@ -111,7 +111,7 @@ test "copyName accepts an empty name" {
 }
 
 test "copyName zero-fills stale bytes" {
-    var dst: [core.name_max]u8 = [_]u8{'x'} ** core.name_max;
+    var dst: [core.name_max]u8 = @splat('x');
     core.copyName(&dst, "ab");
     try std.testing.expectEqualStrings("ab", std.mem.sliceTo(&dst, 0));
     try std.testing.expectEqual(@as(u8, 0), dst[2]);
