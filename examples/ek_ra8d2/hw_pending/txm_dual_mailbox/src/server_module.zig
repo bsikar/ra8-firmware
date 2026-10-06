@@ -9,7 +9,8 @@
 //! The resident image only moves queue messages between them and the mailbox
 //! block (pump.zig). The module answers `add` on them once a tick, through
 //! `ra8_rpc_tx`'s module Api, and reports each sum so the resident image can
-//! count it in the block.
+//! count it in the block. Its `fault` method stores outside its MPU regions,
+//! so the manager kills it (RA8FW-842).
 //!
 //! The server reaches its transport, and the transport its queues, through
 //! constant vtables of function pointers in the module's data, so the module
@@ -63,7 +64,20 @@ fn add(context: *Answers, args: service.Add) rpc.Outcome(service.Sum) {
     return .{ .ok = .{ .value = sum } };
 }
 
-const Server = rpc.Server(Answers, service.max_body, .{.{ service.Method.add, add }});
+/// Store where the client asked. Behind the MPU this never returns: the
+/// store takes MemManage and the manager terminates this thread. If it does
+/// return, isolation did not hold, and the client hears `failed`.
+fn poke(context: *Answers, args: service.Poke) rpc.Outcome(service.Sum) {
+    _ = context;
+    const target: *volatile u32 = @ptrFromInt(args.address);
+    target.* = service.poke_value;
+    return .{ .err = .failed };
+}
+
+const Server = rpc.Server(Answers, service.max_body, .{
+    .{ service.Method.add, add },
+    .{ service.Method.fault, poke },
+});
 
 /// Everything below must not move once bound, so it lives here.
 var request_storage: Storage = undefined;

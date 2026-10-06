@@ -1,22 +1,32 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The service txm_dual_mailbox's calls use (RA8FW-844). The M85's module is
-//! txm_rpc_m33, built from txm_rpc_cpu1/src/module_start.zig against
-//! txm_rpc_cpu1/src/service.zig, so this file is a copy of that one and has
-//! to stay byte-for-byte the same below this header: the method, its
-//! messages, the queue geometry and the application requests.
+//! The service txm_dual_mailbox's calls use (RA8FW-844, RA8FW-842). It began
+//! as a copy of txm_rpc_cpu1's and adds `fault`: the call the M85's module
+//! makes after its round trips, which asks CPU1's server module to store
+//! outside its MPU regions.
 //!
-//! The M85's module is the client. The server is CPU1's module,
-//! txm_dual_server_m33 (RA8FW-849), and every queue message crosses the
-//! mailbox block between the two.
+//! The M85's module, txm_dual_client_m33, is the client. The server is CPU1's
+//! module, txm_dual_server_m33 (RA8FW-849), and every queue message crosses
+//! the mailbox block between the two. Once that module has faulted, CPU1's
+//! resident image answers in its place with a fault frame carrying
+//! `module_gone`.
 
 /// The methods the resident image serves.
 pub const Method = struct {
     pub const add: u16 = 1;
+    /// Store at `Poke.address`; the server module's MPU should stop it.
+    pub const fault: u16 = 2;
 };
 
 pub const Add = struct { a: u32, b: u32 };
+pub const Poke = struct { address: u32 };
+
+/// The word the server module tries to leave at `Poke.address`: "FAUL".
+pub const poke_value: u32 = 0x4641_554C;
+/// The `ra8_rpc` code CPU1's resident image refuses calls with once its
+/// module is gone: the first code the library leaves to applications.
+pub const module_gone: u16 = 0x0100;
 pub const Sum = struct { value: u32 };
 
 /// The largest call or reply body: `Add` is the largest message.
@@ -52,6 +62,9 @@ pub const Report = struct {
     pub const value: u32 = 2;
     /// The module failed: param_1 the `Stage`, param_2 the detail.
     pub const failed: u32 = 3;
+    /// The client's `fault` call came back refused, as it should once CPU1's
+    /// module is gone.
+    pub const gone: u32 = 4;
 };
 
 /// Where the module failed, reported with `Report.failed`.
