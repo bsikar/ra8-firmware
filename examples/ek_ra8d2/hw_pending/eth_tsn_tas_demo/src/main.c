@@ -99,6 +99,13 @@ typedef enum : uint8_t {
   k_tsn_gate_entries = 2U,  /**< Gate-control-list entry count.     */
 } tsn_fmt_t;
 
+/** @brief Hex serialiser constants for the ``err=0x`` failure field. */
+typedef enum : uint8_t {
+  k_tsn_hex_u32_digits  = 8U,   /**< Hex digits in a uint32_t.  */
+  k_tsn_hex_nibble_bits = 4U,   /**< Bits per hex digit.        */
+  k_tsn_hex_nibble_mask = 0x0FU /**< Low-nibble mask.           */
+} tsn_hex_t;
+
 /** @brief gPTP time-base check parameters. */
 typedef enum : uint32_t {
   k_tsn_gptp_window_ms = 200U,       /**< SysTick-timed measurement window. */
@@ -140,6 +147,26 @@ static const uint8_t k_tsn_base_sep[]     = " sys_ms=";
 static const uint8_t k_tsn_crlf[]         = "\r\n";
 static const uint8_t k_tsn_verdict_pass[] = "tsn: schedule PASS\r\n";
 static const uint8_t k_tsn_verdict_fail[] = "tsn: schedule FAIL\r\n";
+
+/* Failure lines: one per failed check, so a FAIL verdict names its cause.
+ * A passing cycle prints none of these. */
+static const uint8_t k_tsn_fail_prefix[]      = "tsn: fail step=";
+static const uint8_t k_tsn_fail_err[]         = " err=0x";
+static const uint8_t k_tsn_fail_idx[]         = " idx=";
+static const uint8_t k_tsn_fail_got[]         = " got=";
+static const uint8_t k_tsn_fail_want[]        = " want=";
+static const uint8_t k_tsn_fail_band[]        = " band=";
+static const uint8_t k_tsn_fail_open[]        = "/open=";
+static const uint8_t k_tsn_step_gptp_time[]   = "gptp_get_time";
+static const uint8_t k_tsn_step_gptp_window[] = "gptp_window";
+static const uint8_t k_tsn_step_gptp_band[]   = "gptp_band";
+static const uint8_t k_tsn_step_ram_reset[]   = "tas_ram_reset";
+static const uint8_t k_tsn_step_schedule[]    = "set_tas_schedule";
+static const uint8_t k_tsn_step_read_entry[]  = "read_tas_entry";
+static const uint8_t k_tsn_step_enable_tas[]  = "enable_tas";
+static const uint8_t k_tsn_step_cbs_config[]  = "configure_cbs";
+static const uint8_t k_tsn_step_cbs_state[]   = "get_cbs_state";
+static const uint8_t k_tsn_step_status[]      = "get_status";
 
 /**
  * @brief Park forever after a fatal init error.
@@ -294,6 +321,131 @@ static uint64_t tsn_flatten_ns(uint64_t sec, uint32_t nsec)
 }
 
 /**
+ * @brief Log a NUL-terminated console fragment.
+ *
+ * @param[in] text NUL-terminated byte string (the NUL is not sent).
+ *
+ * @pre The console has been initialised.
+ * @post The bytes before the NUL have been queued to the console.
+ * @since 0.1.0
+ */
+static void tsn_write_text(const uint8_t* text)
+{
+  uint32_t len = 0U;
+  while (text[len] != 0U) {
+    len++;
+  }
+  tsn_write(text, len);
+}
+
+/**
+ * @brief Log one unsigned 32-bit value as eight lowercase hex digits.
+ *
+ * @param[in] val Value to print (an ``ra8_err_t`` code, read like its header).
+ *
+ * @pre The console has been initialised.
+ * @post Exactly eight hex digits have been queued to the console.
+ * @since 0.1.0
+ */
+static void tsn_write_hex32(uint32_t val)
+{
+  uint8_t buf[k_tsn_hex_u32_digits];
+  for (uint32_t i = 0U; i < (uint32_t)k_tsn_hex_u32_digits; i++) {
+    const uint32_t shift = ((uint32_t)k_tsn_hex_u32_digits - 1U - i) * k_tsn_hex_nibble_bits;
+    const uint8_t  nib   = (uint8_t)((val >> shift) & k_tsn_hex_nibble_mask);
+    buf[i] = (nib < (uint8_t)k_tsn_radix) ? (uint8_t)('0' + nib)
+                                          : (uint8_t)('a' + (nib - (uint8_t)k_tsn_radix));
+  }
+  tsn_write(buf, (uint32_t)k_tsn_hex_u32_digits);
+}
+
+/**
+ * @brief Start a ``tsn: fail step=<step>`` line.
+ *
+ * @param[in] step NUL-terminated step name.
+ *
+ * @pre The console has been initialised.
+ * @post The prefix and step name are queued; the caller ends the line.
+ * @since 0.1.0
+ */
+static void tsn_fail_begin(const uint8_t* step)
+{
+  tsn_write(k_tsn_fail_prefix, (uint32_t)(sizeof(k_tsn_fail_prefix) - 1U));
+  tsn_write_text(step);
+}
+
+/**
+ * @brief Log ``tsn: fail step=<step> err=0x<code>`` for a call that failed.
+ *
+ * @param[in] step NUL-terminated step name.
+ * @param[in] err  The error the step returned.
+ *
+ * @pre The console has been initialised.
+ * @post One complete failure line has been queued.
+ * @since 0.1.0
+ */
+static void tsn_fail_err(const uint8_t* step, ra8_err_t err)
+{
+  tsn_fail_begin(step);
+  tsn_write(k_tsn_fail_err, (uint32_t)(sizeof(k_tsn_fail_err) - 1U));
+  tsn_write_hex32((uint32_t)err);
+  tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
+}
+
+/**
+ * @brief Log one TAS entry as ``<gate_time_ns>/open=<0|1>``.
+ *
+ * @param[in] entry Entry to print.
+ *
+ * @pre The console has been initialised.
+ * @post The entry's two fields have been queued.
+ * @since 0.1.0
+ */
+static void tsn_write_entry(const ra8_etha_tas_entry_t* entry)
+{
+  tsn_write_u32(entry->gate_time_ns);
+  tsn_write(k_tsn_fail_open, (uint32_t)(sizeof(k_tsn_fail_open) - 1U));
+  tsn_write_u32(entry->gate_open ? 1U : 0U);
+}
+
+/**
+ * @brief Log a TAS read-back failure for one entry.
+ *
+ * @details
+ * A read error prints ``err=0x..``; a value mismatch prints the entry read
+ * back and the entry programmed, e.g.
+ * ``tsn: fail step=read_tas_entry idx=1 got=0/open=0 want=500/open=0``.
+ *
+ * @param[in] index Entry address that failed.
+ * @param[in] err   The read's return code.
+ * @param[in] got   What the read returned (ignored when ``err`` is set).
+ * @param[in] want  What was programmed there.
+ *
+ * @pre The console has been initialised.
+ * @post One complete failure line has been queued.
+ * @since 0.1.0
+ */
+static void tsn_fail_entry(uint8_t                     index,
+                           ra8_err_t                   err,
+                           const ra8_etha_tas_entry_t* got,
+                           const ra8_etha_tas_entry_t* want)
+{
+  tsn_fail_begin(k_tsn_step_read_entry);
+  tsn_write(k_tsn_fail_idx, (uint32_t)(sizeof(k_tsn_fail_idx) - 1U));
+  tsn_write_u32((uint32_t)index);
+  if (err != k_ra8_ok) {
+    tsn_write(k_tsn_fail_err, (uint32_t)(sizeof(k_tsn_fail_err) - 1U));
+    tsn_write_hex32((uint32_t)err);
+  } else {
+    tsn_write(k_tsn_fail_got, (uint32_t)(sizeof(k_tsn_fail_got) - 1U));
+    tsn_write_entry(got);
+    tsn_write(k_tsn_fail_want, (uint32_t)(sizeof(k_tsn_fail_want) - 1U));
+    tsn_write_entry(want);
+  }
+  tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
+}
+
+/**
  * @brief Verify the gPTP time base the TAS scheduler references is running.
  *
  * @details
@@ -322,12 +474,16 @@ static bool tsn_check_time_base(void)
   uint32_t nsec1 = 0U;
   bool     ok    = true;
 
-  const uint32_t ms0 = ra8_time_ms();
-  if (ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec0, &nsec0) != k_ra8_ok) {
+  const uint32_t  ms0    = ra8_time_ms();
+  const ra8_err_t t0_err = ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec0, &nsec0);
+  if (t0_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_gptp_time, t0_err);
     ok = false;
   }
   ra8_delay_ms((uint32_t)k_tsn_gptp_window_ms);
-  if (ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec1, &nsec1) != k_ra8_ok) {
+  const ra8_err_t t1_err = ra8_eth_gptp_get_time(k_ra8_gptp_timer_0, &sec1, &nsec1);
+  if (t1_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_gptp_time, t1_err);
     ok = false;
   }
   const uint32_t elapsed_ms  = ra8_time_ms() - ms0;
@@ -344,12 +500,17 @@ static bool tsn_check_time_base(void)
   tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
 
   if (elapsed_ms == 0U) {
+    tsn_fail_begin(k_tsn_step_gptp_window);
+    tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
     return false;
   }
-  if (advance_ns > (expected_ns + band_ns)) {
-    ok = false;
-  }
-  if (advance_ns < (expected_ns - band_ns)) {
+  if ((advance_ns > (expected_ns + band_ns)) || (advance_ns < (expected_ns - band_ns))) {
+    tsn_fail_begin(k_tsn_step_gptp_band);
+    tsn_write(k_tsn_fail_want, (uint32_t)(sizeof(k_tsn_fail_want) - 1U));
+    tsn_write_u64(expected_ns);
+    tsn_write(k_tsn_fail_band, (uint32_t)(sizeof(k_tsn_fail_band) - 1U));
+    tsn_write_u64(band_ns);
+    tsn_write(k_tsn_crlf, (uint32_t)(sizeof(k_tsn_crlf) - 1U));
     ok = false;
   }
   return ok;
@@ -361,8 +522,8 @@ static bool tsn_check_time_base(void)
  * @details
  * The read-back half of the TAS verdict. Split into its own predicate so the
  * caller has a single failure branch: a read error and a value mismatch are
- * the same outcome to the demo, and expressing them as two branches with
- * identical bodies is what clang-tidy's bugprone-branch-clone objects to.
+ * the same outcome to the verdict. Either way it logs one
+ * ``tsn: fail step=read_tas_entry`` line naming the index.
  *
  * @param[in] index TAS RAM entry address to read.
  * @param[in] want  The entry that was programmed at that address.
@@ -376,14 +537,14 @@ static bool tsn_check_time_base(void)
  */
 static bool tsn_tas_entry_matches(uint8_t index, const ra8_etha_tas_entry_t* want)
 {
-  ra8_etha_tas_entry_t got = {};
-  if (ra8_etha_read_tas_entry(k_ra8_etha_port_0, index, &got) != k_ra8_ok) {
-    return false;
+  ra8_etha_tas_entry_t got  = {};
+  const ra8_err_t      err  = ra8_etha_read_tas_entry(k_ra8_etha_port_0, index, &got);
+  const bool           same = (err == k_ra8_ok) && (got.gate_time_ns == want->gate_time_ns) &&
+                              (got.gate_open == want->gate_open);
+  if (!same) {
+    tsn_fail_entry(index, err, &got, want);
   }
-  if (got.gate_time_ns != want->gate_time_ns) {
-    return false;
-  }
-  return got.gate_open == want->gate_open;
+  return same;
 }
 
 /**
@@ -422,7 +583,9 @@ static bool tsn_program_tas(void)
   queues[k_ra8_etha_tc_7].entries                  = entries;
   queues[k_ra8_etha_tc_7].count                    = (uint16_t)k_tsn_gate_entries;
 
-  if (ra8_etha_tas_ram_reset(k_ra8_etha_port_0) != k_ra8_ok) {
+  const ra8_err_t reset_err = ra8_etha_tas_ram_reset(k_ra8_etha_port_0);
+  if (reset_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_ram_reset, reset_err);
     ok = false;
   }
   const ra8_err_t sched_err = ra8_etha_set_tas_schedule(k_ra8_etha_port_0,
@@ -431,6 +594,7 @@ static bool tsn_program_tas(void)
                                                         (uint32_t)k_tsn_cycle_units,
                                                         0U);
   if (sched_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_schedule, sched_err);
     ok = false;
   }
   /* Read every entry back: this is what makes the verdict mean something. */
@@ -439,7 +603,9 @@ static bool tsn_program_tas(void)
       ok = false;
     }
   }
-  if (ra8_etha_enable_tas(k_ra8_etha_port_0, 1U) != k_ra8_ok) {
+  const ra8_err_t enable_err = ra8_etha_enable_tas(k_ra8_etha_port_0, 1U);
+  if (enable_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_enable_tas, enable_err);
     ok = false;
   }
   tsn_write(k_tsn_tas_prefix, (uint32_t)(sizeof(k_tsn_tas_prefix) - 1U));
@@ -471,7 +637,9 @@ static bool tsn_program_cbs(void)
     .increment = (uint32_t)k_tsn_cbs_increment,
     .upper_lim = (uint32_t)k_tsn_cbs_upper_lim,
   };
-  if (ra8_etha_configure_cbs(k_ra8_etha_port_0, k_ra8_etha_tc_2, 1U, &param) != k_ra8_ok) {
+  const ra8_err_t cfg_err = ra8_etha_configure_cbs(k_ra8_etha_port_0, k_ra8_etha_tc_2, 1U, &param);
+  if (cfg_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_cbs_config, cfg_err);
     ok = false;
   }
   uint8_t              enabled   = 0U;
@@ -480,6 +648,7 @@ static bool tsn_program_cbs(void)
   const ra8_err_t      st_err =
     ra8_etha_get_cbs_state(k_ra8_etha_port_0, k_ra8_etha_tc_2, &enabled, &gate_open, &oper);
   if (st_err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_cbs_state, st_err);
     ok = false;
   }
   tsn_write(k_tsn_cbs_prefix, (uint32_t)(sizeof(k_tsn_cbs_prefix) - 1U));
@@ -507,6 +676,7 @@ static bool tsn_log_status(void)
   ra8_etha_status_t sts = {};
   const ra8_err_t   err = ra8_etha_get_status(k_ra8_etha_port_0, &sts);
   if (err != k_ra8_ok) {
+    tsn_fail_err(k_tsn_step_status, err);
     ok = false;
   }
   tsn_write(k_tsn_cyc_prefix, (uint32_t)(sizeof(k_tsn_cyc_prefix) - 1U));
