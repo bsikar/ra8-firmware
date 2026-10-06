@@ -120,10 +120,27 @@ typedef enum : uint8_t {
 } ra8_xspi_cdbuf_idx_t;
 
 /**
+ * @brief Encode a manual-command CDT word (CDBUF slot word 0).
+ *
+ * @details
+ * Defined in Zig (``xspi_cmd_abi.zig``, RA8FW-869). CMDSIZE[1:0],
+ * ADDSIZE[4:2], DATASIZE[8:5], TRTYPE[15], CMD[31:16]; a 1-byte opcode
+ * sits in CMD's upper byte. HUM Ch 44 p 2986.
+ *
+ * @return The CDT word.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t priv_ra8_xspi_make_cdt(uint8_t opcode,
+                                         uint8_t cmd_bytes,
+                                         uint8_t addr_bytes,
+                                         uint8_t data_bytes,
+                                         uint8_t is_write);
+
+/**
  * @brief Kick a prepared manual-command transfer by raising TRREQ.
  *
  * @details
- * Defined in ``ra8_xspi_flash.c``. FSP ``r_ospi_b_direct_transfer`` waits
+ * Defined in Zig (``xspi_cmd_abi.zig``, RA8FW-869). FSP ``r_ospi_b_direct_transfer`` waits
  * for any prior in-flight TRREQ to self-clear before pushing a new
  * request, then sets TRREQ=1 and waits for it to self-clear again. We
  * mirror the FSP "self-clear" semantics by polling ``INTS.CMDCMP``.
@@ -150,7 +167,7 @@ RA8_PRIV ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
  * @brief Build CDBUF[0] for a 1-byte opcode with no address / no data.
  *
  * @details
- * Defined in ``ra8_xspi_flash.c``. Populates CDBUF slot 0 per FSP
+ * Defined in Zig (``xspi_cmd_abi.zig``, RA8FW-869). Populates CDBUF slot 0 per FSP
  * ``r_ospi_b_direct_transfer`` (CDT carries opcode + size encoding,
  * CDA/CDD0/CDD1 zeroed) and kicks the transfer. Promoted to
  * TU-external linkage so the lifecycle surface in ``xspi_reset_abi.zig``
