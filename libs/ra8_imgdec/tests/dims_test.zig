@@ -17,7 +17,7 @@ const Format = struct {
 };
 
 fn pngOf(width: u32, height: u32) [24]u8 {
-    var out = [_]u8{0} ** 24;
+    var out: [24]u8 = @splat(0);
     const sig = [_]u8{ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
     @memcpy(out[0..8], &sig);
     @memcpy(out[12..16], "IHDR");
@@ -62,7 +62,7 @@ test "dim_max itself is accepted" {
 }
 
 test "gif reads the logical screen descriptor, little endian" {
-    var bytes = [_]u8{0} ** 10;
+    var bytes: [10]u8 = @splat(0);
     @memcpy(bytes[0..6], "GIF89a");
     std.mem.writeInt(u16, bytes[6..8], 320, .little);
     std.mem.writeInt(u16, bytes[8..10], 200, .little);
@@ -73,7 +73,7 @@ test "gif reads the logical screen descriptor, little endian" {
 }
 
 test "a gif cut inside the screen descriptor is unsupported" {
-    var bytes = [_]u8{0} ** 9;
+    var bytes: [9]u8 = @splat(0);
     @memcpy(bytes[0..6], "GIF89a");
     bytes[6] = 4;
     bytes[8] = 4;
@@ -81,7 +81,7 @@ test "a gif cut inside the screen descriptor is unsupported" {
 }
 
 fn bmpCore(width: u16, height: u16) [22]u8 {
-    var out = [_]u8{0} ** 22;
+    var out: [22]u8 = @splat(0);
     @memcpy(out[0..2], "BM");
     std.mem.writeInt(u32, out[14..18], 12, .little);
     std.mem.writeInt(u16, out[18..20], width, .little);
@@ -90,7 +90,7 @@ fn bmpCore(width: u16, height: u16) [22]u8 {
 }
 
 fn bmpInfo(width: i32, height: i32) [26]u8 {
-    var out = [_]u8{0} ** 26;
+    var out: [26]u8 = @splat(0);
     @memcpy(out[0..2], "BM");
     std.mem.writeInt(u32, out[14..18], 40, .little);
     std.mem.writeInt(i32, out[18..22], width, .little);
@@ -130,7 +130,7 @@ test "a bmp core header cut inside its dimensions is unsupported" {
 }
 
 fn webpOf(chunk: []const u8, payload: []const u8) [40]u8 {
-    var out = [_]u8{0} ** 40;
+    var out: [40]u8 = @splat(0);
     @memcpy(out[0..4], "RIFF");
     @memcpy(out[8..12], "WEBP");
     @memcpy(out[12..16], chunk);
@@ -139,7 +139,7 @@ fn webpOf(chunk: []const u8, payload: []const u8) [40]u8 {
 }
 
 test "a lossy vp8 frame header masks each dimension to fourteen bits" {
-    var payload = [_]u8{0} ** 10;
+    var payload: [10]u8 = @splat(0);
     std.mem.writeInt(u16, payload[6..8], 0xC000 | 300, .little);
     std.mem.writeInt(u16, payload[8..10], 0xC000 | 200, .little);
     const bytes = webpOf("VP8 ", &payload);
@@ -150,7 +150,7 @@ test "a lossy vp8 frame header masks each dimension to fourteen bits" {
 }
 
 test "a lossless vp8l stream packs both dimensions minus one into one word" {
-    var payload = [_]u8{0} ** 5;
+    var payload: [5]u8 = @splat(0);
     payload[0] = 0x2F;
     const packed_dims: u32 = (299) | (@as(u32, 199) << 14);
     std.mem.writeInt(u32, payload[1..5], packed_dims, .little);
@@ -161,14 +161,14 @@ test "a lossless vp8l stream packs both dimensions minus one into one word" {
 }
 
 test "a vp8l chunk without its signature byte is unsupported" {
-    var payload = [_]u8{0} ** 5;
+    var payload: [5]u8 = @splat(0);
     payload[0] = 0x30;
     const bytes = webpOf("VP8L", &payload);
     try std.testing.expectError(error.NotSupported, dims.dims(&bytes));
 }
 
 test "an extended vp8x canvas stores three bytes per dimension, minus one" {
-    var payload = [_]u8{0} ** 10;
+    var payload: [10]u8 = @splat(0);
     payload[4] = 0x0F;
     payload[5] = 0x27;
     payload[7] = 0x1F;
@@ -179,12 +179,12 @@ test "an extended vp8x canvas stores three bytes per dimension, minus one" {
 }
 
 test "a webp whose first chunk is no vp8 flavour is unsupported" {
-    const bytes = webpOf("ICCP", &[_]u8{0} ** 10);
+    const bytes = webpOf("ICCP", &@as([10]u8, @splat(0)));
     try std.testing.expectError(error.NotSupported, dims.dims(&bytes));
 }
 
 fn jpegSof(marker: u8, height: u16, width: u16) [13]u8 {
-    var out = [_]u8{0} ** 13;
+    var out: [13]u8 = @splat(0);
     out[0] = 0xFF;
     out[1] = 0xD8;
     out[2] = 0xFF;
@@ -219,7 +219,7 @@ test "dht, jpg and dac sit in the sofn range without being frame headers" {
 
 test "a segment before the frame header is skipped by its length" {
     // SOI, APP0 of length 6, then an SOF0.
-    var bytes = [_]u8{0} ** 21;
+    var bytes: [21]u8 = @splat(0);
     bytes[0] = 0xFF;
     bytes[1] = 0xD8;
     bytes[2] = 0xFF;
@@ -237,7 +237,7 @@ test "a segment before the frame header is skipped by its length" {
 }
 
 test "a run of 0xff before a marker is legal fill" {
-    var bytes = [_]u8{0} ** 15;
+    var bytes: [15]u8 = @splat(0);
     bytes[0] = 0xFF;
     bytes[1] = 0xD8;
     bytes[2] = 0xFF;
@@ -264,7 +264,7 @@ test "reaching the end of image with no frame header is unsupported" {
 }
 
 test "a restart marker is standalone and carries no length to skip" {
-    var bytes = [_]u8{0} ** 15;
+    var bytes: [15]u8 = @splat(0);
     bytes[0] = 0xFF;
     bytes[1] = 0xD8;
     bytes[2] = 0xFF;
@@ -315,6 +315,6 @@ test "an empty buffer is a size fault" {
 }
 
 test "tga is sniffable by nothing, so it never reaches a reader" {
-    const tga = [_]u8{0} ** 18;
+    const tga: [18]u8 = @splat(0);
     try std.testing.expectError(error.NotFound, dims.dims(&tga));
 }

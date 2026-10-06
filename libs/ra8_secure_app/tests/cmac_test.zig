@@ -93,7 +93,7 @@ test "the empty message is one padded block, not a skipped one" {
     var empty: cmac.Tag = undefined;
     var zeros: cmac.Tag = undefined;
     try std.testing.expectEqual(.ok, cmac.compute(&key_128, &.{}, &empty));
-    try std.testing.expectEqual(.ok, cmac.compute(&key_128, &[_]u8{0} ** 16, &zeros));
+    try std.testing.expectEqual(.ok, cmac.compute(&key_128, &@as([16]u8, @splat(0)), &zeros));
     try std.testing.expect(!std.mem.eql(u8, &empty, &zeros));
 }
 
@@ -122,7 +122,7 @@ test "a truncated tag is rejected without being padded out" {
 }
 
 test "an over-long tag is rejected too" {
-    var long = [_]u8{0} ** 17;
+    var long: [17]u8 = @splat(0);
     @memcpy(long[0..16], &kats[1].tag);
     try std.testing.expectEqual(.invalid_arg, cmac.verify(&key_128, message[0..16], &long));
 }
@@ -140,21 +140,21 @@ test "the wrong key rejects an otherwise authentic tag" {
 test "the wrong key length is refused before any hashing" {
     var out: cmac.Tag = undefined;
     for ([_]usize{ 0, 1, 15, 17, 24, 31, 33 }) |len| {
-        const key = ([_]u8{0x11} ** 33)[0..len];
+        const key = (@as([33]u8, @splat(0x11)))[0..len];
         try std.testing.expectEqual(.invalid_arg, cmac.compute(key, message[0..16], &out));
         try std.testing.expectEqual(.invalid_arg, cmac.verify(key, message[0..16], &kats[1].tag));
     }
 }
 
 test "a message past the static cap is refused" {
-    const big = [_]u8{0xa5} ** (cmac.Limits.max_msg_bytes + 1);
+    const big: [cmac.Limits.max_msg_bytes + 1]u8 = @splat(0xa5);
     var out: cmac.Tag = undefined;
     try std.testing.expectEqual(.invalid_size, cmac.compute(&key_128, &big, &out));
     try std.testing.expectEqual(.invalid_size, cmac.verify(&key_128, &big, &kats[1].tag));
 }
 
 test "a message exactly at the cap is accepted" {
-    const at_cap = [_]u8{0xa5} ** cmac.Limits.max_msg_bytes;
+    const at_cap: [cmac.Limits.max_msg_bytes]u8 = @splat(0xa5);
     var out: cmac.Tag = undefined;
     try std.testing.expectEqual(.ok, cmac.compute(&key_128, &at_cap, &out));
     try std.testing.expectEqual(.ok, cmac.verify(&key_128, &at_cap, &out));
@@ -166,7 +166,7 @@ test "checkArgs is the same gate both entry points take" {
     try std.testing.expectEqual(.invalid_arg, cmac.checkArgs(key_128[0..15], message[0..16]));
     try std.testing.expectEqual(
         .invalid_size,
-        cmac.checkArgs(&key_128, &[_]u8{0} ** (cmac.Limits.max_msg_bytes + 1)),
+        cmac.checkArgs(&key_128, &@as([cmac.Limits.max_msg_bytes + 1]u8, @splat(0))),
     );
 }
 
@@ -175,7 +175,7 @@ test "a partial final block differs from the same bytes zero-padded" {
     // zero-pad would collide.
     var partial: cmac.Tag = undefined;
     var padded_out: cmac.Tag = undefined;
-    var padded = [_]u8{0} ** 16;
+    var padded: [16]u8 = @splat(0);
     @memcpy(padded[0..8], message[0..8]);
     try std.testing.expectEqual(.ok, cmac.compute(&key_128, message[0..8], &partial));
     try std.testing.expectEqual(.ok, cmac.compute(&key_128, &padded, &padded_out));

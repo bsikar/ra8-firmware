@@ -54,18 +54,18 @@ pub const Limits = struct {
 
 const Key = [Limits.key_bytes]u8;
 
-var slots: [Limits.slots]Key = .{.{0} ** Limits.key_bytes} ** Limits.slots;
+var slots: [Limits.slots]Key = @splat(@splat(0));
 
 /// The KAK lives in its own store, deliberately not in `slots`: nothing an NS
 /// caller can reach through the import path may overwrite or read it.
-var mac_key: [Limits.mac_key_bytes]u8 = .{0} ** Limits.mac_key_bytes;
+var mac_key: [Limits.mac_key_bytes]u8 = @splat(0);
 var mac_key_len: u16 = 0;
 
 /// Zero every slot and drop the provisioned KAK.
 pub fn init() Err {
     if (!enabled) return .not_supported;
-    slots = .{.{0} ** Limits.key_bytes} ** Limits.slots;
-    mac_key = .{0} ** Limits.mac_key_bytes;
+    slots = @splat(@splat(0));
+    mac_key = @splat(0);
     mac_key_len = 0;
     return .ok;
 }
@@ -105,7 +105,7 @@ pub fn setMacKey(key: []const u8) Err {
     if (!enabled) return .not_supported;
     const len: u16 = @intCast(key.len);
     if (len != Limits.mac_key_128 and len != Limits.mac_key_256) return .invalid_arg;
-    mac_key = .{0} ** Limits.mac_key_bytes;
+    mac_key = @splat(0);
     @memcpy(mac_key[0..key.len], key);
     mac_key_len = len;
     return .ok;

@@ -7,7 +7,7 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 
 fn mountBuffer(name: []const u8) [core.io_vfs_name_max]u8 {
-    var buf = [_]u8{0} ** core.io_vfs_name_max;
+    var buf: [core.io_vfs_name_max]u8 = @splat(0);
     @memcpy(buf[0..name.len], name);
     return buf;
 }
@@ -82,7 +82,7 @@ test "len: empty string is zero" {
 }
 
 test "len: unterminated input returns the cap" {
-    const raw = [_]u8{'x'} ** 8;
+    const raw: [8]u8 = @splat('x');
     try expectEqual(@as(u16, 8), core.len(&raw, 8));
 }
 
@@ -94,7 +94,7 @@ test "len: a zero cap never reads" {
 
 test "fullPath: prefixes the mount name and a colon" {
     const mount = mountBuffer("ram");
-    var out = [_]u8{0xAA} ** core.full_path_cap;
+    var out: [core.full_path_cap]u8 = @splat(0xAA);
     try expectEqual(core.ok, core.fullPath(&mount, "/books/a.cbz", &out));
     try expect(std.mem.eql(u8, out[0..16], "ram:/books/a.cbz"));
     try expectEqual(@as(u8, 0), out[16]);
@@ -102,31 +102,31 @@ test "fullPath: prefixes the mount name and a colon" {
 
 test "fullPath: root path becomes name:/" {
     const mount = mountBuffer("sd0");
-    var out = [_]u8{0} ** core.full_path_cap;
+    var out: [core.full_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.fullPath(&mount, "/", &out));
     try expect(std.mem.eql(u8, out[0..5], "sd0:/"));
     try expectEqual(@as(u8, 0), out[5]);
 }
 
 test "fullPath: an unterminated mount name is invalid_state" {
-    const mount = [_]u8{'m'} ** core.io_vfs_name_max;
-    var out = [_]u8{0} ** core.full_path_cap;
+    const mount: [core.io_vfs_name_max]u8 = @splat('m');
+    var out: [core.full_path_cap]u8 = @splat(0);
     try expectEqual(core.err_invalid_state, core.fullPath(&mount, "/a", &out));
 }
 
 test "fullPath: an unterminated path is invalid_size" {
     const mount = mountBuffer("ram");
-    var path = [_]u8{'p'} ** core.fw_path_cap;
-    var out = [_]u8{0} ** core.full_path_cap;
+    var path: [core.fw_path_cap]u8 = @splat('p');
+    var out: [core.full_path_cap]u8 = @splat(0);
     try expectEqual(core.err_invalid_size, core.fullPath(&mount, &path, &out));
 }
 
 test "fullPath: the longest legal path still fits the scratch" {
     const mount = mountBuffer("mountnamefifte");
-    var path = [_]u8{'a'} ** core.fw_path_cap;
+    var path: [core.fw_path_cap]u8 = @splat('a');
     path[0] = '/';
     path[core.fw_path_cap - 2] = 0;
-    var out = [_]u8{0} ** core.full_path_cap;
+    var out: [core.full_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.fullPath(&mount, &path, &out));
     try expectEqual(@as(u16, 14 + 1 + core.fw_path_cap - 2), core.len(&out, core.full_path_cap));
 }
@@ -168,57 +168,57 @@ test "dirCursorBase: matches the cursor under the cursor's own alignment" {
 // --- hex6 / stagePath ------------------------------------------------------
 
 test "hex6: renders six uppercase digits, most significant first" {
-    var out = [_]u8{0} ** core.stage_hex_digits;
+    var out: [core.stage_hex_digits]u8 = @splat(0);
     core.hex6(&out, 0xABCDEF);
     try expect(std.mem.eql(u8, &out, "ABCDEF"));
 }
 
 test "hex6: pads a small value with leading zeroes" {
-    var out = [_]u8{0} ** core.stage_hex_digits;
+    var out: [core.stage_hex_digits]u8 = @splat(0);
     core.hex6(&out, 1);
     try expect(std.mem.eql(u8, &out, "000001"));
 }
 
 test "stagePath: replaces the leaf with an 8.3 sibling" {
-    var out = [_]u8{0} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.stagePath("/books/a.cbz", 0x2A, &out));
     try expect(std.mem.eql(u8, out[0..19], "/books/TX00002A.TMP"));
     try expectEqual(@as(u8, 0), out[19]);
 }
 
 test "stagePath: a root-level destination stages beside it" {
-    var out = [_]u8{0} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.stagePath("/a.bin", 1, &out));
     try expect(std.mem.eql(u8, out[0..13], "/TX000001.TMP"));
 }
 
 test "stagePath: the identifier is masked to six hex digits" {
-    var out = [_]u8{0} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.stagePath("/a", 0xFF123456, &out));
     try expect(std.mem.eql(u8, out[0..13], "/TX123456.TMP"));
 }
 
 test "stagePath: an unterminated destination is invalid_size" {
-    const destination = [_]u8{'d'} ** core.fw_path_cap;
-    var out = [_]u8{0} ** core.fw_path_cap;
+    const destination: [core.fw_path_cap]u8 = @splat('d');
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.err_invalid_size, core.stagePath(&destination, 0, &out));
 }
 
 test "stagePath: a leaf too deep for the stage name is invalid_size" {
-    var destination = [_]u8{'d'} ** core.fw_path_cap;
+    var destination: [core.fw_path_cap]u8 = @splat('d');
     destination[0] = '/';
     destination[core.fw_path_cap - 12] = '/';
     destination[core.fw_path_cap - 2] = 0;
-    var out = [_]u8{0} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.err_invalid_size, core.stagePath(&destination, 0, &out));
 }
 
 test "stagePath: the deepest directory that still fits is accepted" {
-    var destination = [_]u8{'d'} ** core.fw_path_cap;
+    var destination: [core.fw_path_cap]u8 = @splat('d');
     destination[0] = '/';
     destination[core.fw_path_cap - 14] = '/';
     destination[core.fw_path_cap - 2] = 0;
-    var out = [_]u8{0} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.ok, core.stagePath(&destination, 0, &out));
     try expectEqual(@as(u16, core.fw_path_cap - 1), core.len(&out, core.fw_path_cap));
 }
@@ -226,46 +226,46 @@ test "stagePath: the deepest directory that still fits is accepted" {
 // --- copyPath / mountName --------------------------------------------------
 
 test "copyPath: copies through the terminator" {
-    var out = [_]u8{0xFF} ** core.fw_path_cap;
+    var out: [core.fw_path_cap]u8 = @splat(0xFF);
     try expectEqual(core.ok, core.copyPath(&out, "/x/y"));
     try expect(std.mem.eql(u8, out[0..5], "/x/y\x00"));
 }
 
 test "copyPath: an unterminated path is invalid_size" {
-    const path = [_]u8{'p'} ** core.fw_path_cap;
-    var out = [_]u8{0} ** core.fw_path_cap;
+    const path: [core.fw_path_cap]u8 = @splat('p');
+    var out: [core.fw_path_cap]u8 = @splat(0);
     try expectEqual(core.err_invalid_size, core.copyPath(&out, &path));
 }
 
 test "mountName: accepts a bounded separator-free name" {
-    var out = [_]u8{0xFF} ** core.io_vfs_name_max;
+    var out: [core.io_vfs_name_max]u8 = @splat(0xFF);
     try expectEqual(core.ok, core.mountName(&out, "ram"));
     try expect(std.mem.eql(u8, out[0..4], "ram\x00"));
 }
 
 test "mountName: rejects an empty name" {
-    var out = [_]u8{0} ** core.io_vfs_name_max;
+    var out: [core.io_vfs_name_max]u8 = @splat(0);
     try expectEqual(core.err_invalid_arg, core.mountName(&out, ""));
 }
 
 test "mountName: rejects a colon" {
-    var out = [_]u8{0} ** core.io_vfs_name_max;
+    var out: [core.io_vfs_name_max]u8 = @splat(0);
     try expectEqual(core.err_invalid_arg, core.mountName(&out, "ra:m"));
 }
 
 test "mountName: rejects a slash" {
-    var out = [_]u8{0} ** core.io_vfs_name_max;
+    var out: [core.io_vfs_name_max]u8 = @splat(0);
     try expectEqual(core.err_invalid_arg, core.mountName(&out, "ra/m"));
 }
 
 test "mountName: rejects an unterminated name" {
-    const name = [_]u8{'n'} ** core.io_vfs_name_max;
-    var out = [_]u8{0} ** core.io_vfs_name_max;
+    const name: [core.io_vfs_name_max]u8 = @splat('n');
+    var out: [core.io_vfs_name_max]u8 = @splat(0);
     try expectEqual(core.err_invalid_arg, core.mountName(&out, &name));
 }
 
 test "mountName: the longest legal name is fifteen bytes plus NUL" {
-    var out = [_]u8{0} ** core.io_vfs_name_max;
+    var out: [core.io_vfs_name_max]u8 = @splat(0);
     try expectEqual(core.ok, core.mountName(&out, "mountnamefiftee"));
     try expectEqual(@as(u8, 0), out[15]);
 }
@@ -437,7 +437,7 @@ test "ListState: a callback error is recorded and stops delivery" {
 test "ListState: an overlong native name fails closed without a callback" {
     var collector = Collector{};
     var bridge = bridgeFor(&collector, 8);
-    const long = [_]u8{'n'} ** (core.fw_path_cap + 4);
+    const long: [core.fw_path_cap + 4]u8 = @splat('n');
     bridge.entry(@ptrCast(&long), 0, 0);
     try expectEqual(core.err_invalid_size, bridge.callback_error);
     try expect(bridge.stopped);

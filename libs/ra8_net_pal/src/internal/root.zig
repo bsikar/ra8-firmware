@@ -33,7 +33,7 @@ pub const Mac = extern struct {
     bytes: [mac_addr_len]u8,
 
     /// The all-zero default `ra8_net_pal_init` programmes for a NULL mac.
-    pub const zero: Mac = .{ .bytes = [_]u8{0} ** mac_addr_len };
+    pub const zero: Mac = .{ .bytes = @splat(0) };
 };
 
 /// Event bits handed to the stack callback (`ra8_net_pal_event_t`).
@@ -108,7 +108,7 @@ pub fn recvCapacityValid(capacity: u16) bool {
 pub const Slot = struct {
     /// Zero means the slot is empty.
     len: u16 = 0,
-    data: [frame_max]u8 = [_]u8{0} ** frame_max,
+    data: [frame_max]u8 = @splat(0),
 };
 
 /// Fixed-depth frame FIFO shared by the send and receive primitives.
@@ -116,7 +116,7 @@ pub const Slot = struct {
 /// `head` is the next slot to pop, `tail` the next to push, and `count` the
 /// live frame total; the cursors wrap modulo `ring_slots`.
 pub const Ring = struct {
-    slots: [ring_slots]Slot = [_]Slot{.{}} ** ring_slots,
+    slots: [ring_slots]Slot = @splat(.{}),
     head: u16 = 0,
     tail: u16 = 0,
     count: u16 = 0,

@@ -194,7 +194,7 @@ test "the byte count is compared before the sample count" {
 }
 
 test "a buffer with storage and capacity is usable" {
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = core.Buffer{ .data = &storage, .capacity = storage.len };
     try std.testing.expectEqual(core.BufferFault.ok, core.bufferFault(&buffer));
 }
@@ -205,7 +205,7 @@ test "an absent buffer pointer is rejected before its capacity" {
 }
 
 test "a zero-capacity buffer is rejected" {
-    var storage = [_]u8{0} ** 4;
+    var storage: [4]u8 = @splat(0);
     const buffer = core.Buffer{ .data = &storage, .capacity = 0 };
     try std.testing.expectEqual(core.BufferFault.zero_capacity, core.bufferFault(&buffer));
 }
@@ -285,7 +285,7 @@ const StepReader = struct {
 };
 
 test "the fill loop completes in one attempt when the FIFO is full" {
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     var reader = StepReader{ .per_call = 8 };
     try std.testing.expectEqual(core.FillStatus.complete, core.fillSamples(&reader, &storage, 4));
     try std.testing.expectEqual(@as(u32, 1), reader.calls);
@@ -293,7 +293,7 @@ test "the fill loop completes in one attempt when the FIFO is full" {
 }
 
 test "the fill loop accumulates across attempts" {
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     var reader = StepReader{ .per_call = 3 };
     try std.testing.expectEqual(core.FillStatus.complete, core.fillSamples(&reader, &storage, 8));
     // Three reads fill it, and a fourth pass observes the span is complete.
@@ -301,21 +301,21 @@ test "the fill loop accumulates across attempts" {
 }
 
 test "an empty FIFO spends the attempt budget and times out" {
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     var reader = StepReader{ .per_call = 0 };
     try std.testing.expectEqual(core.FillStatus.timeout, core.fillSamples(&reader, &storage, 5));
     try std.testing.expectEqual(@as(u32, 5), reader.calls);
 }
 
 test "a zero attempt budget times out without reading" {
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     var reader = StepReader{ .per_call = 8 };
     try std.testing.expectEqual(core.FillStatus.timeout, core.fillSamples(&reader, &storage, 0));
     try std.testing.expectEqual(@as(u32, 0), reader.calls);
 }
 
 test "a transport error stops the fill and is forwarded verbatim" {
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     var reader = StepReader{ .per_call = 2, .status = 0x407, .fail_after = 1 };
     const status = core.fillSamples(&reader, &storage, 8);
     try std.testing.expectEqual(@as(u16, 0x407), status.failed);
@@ -323,7 +323,7 @@ test "a transport error stops the fill and is forwarded verbatim" {
 }
 
 test "an over-reporting reader cannot walk past the caller's span" {
-    var storage = [_]i32{0} ** 4;
+    var storage: [4]i32 = @splat(0);
     var reader = StepReader{ .per_call = 64 };
     try std.testing.expectEqual(core.FillStatus.complete, core.fillSamples(&reader, &storage, 4));
 }

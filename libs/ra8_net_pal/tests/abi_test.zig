@@ -184,14 +184,14 @@ test "send_frame checks the null guard before the init guard" {
 
 test "send_frame before init reports invalid_state" {
     prep();
-    var buf = [_]u8{0} ** 64;
+    var buf: [64]u8 = @splat(0);
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_send_frame(&buf, 64));
 }
 
 test "mcdc: send_frame length decision (len == 0 or len > frame_max)" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     // V1: both conditions false, the frame is accepted.
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&buf, 64));
     // V2: first condition true, short-circuits.
@@ -205,7 +205,7 @@ test "mcdc: send_frame length decision (len == 0 or len > frame_max)" {
 test "send_frame reports no_mem once the ring is full" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0x5A} ** 64;
+    var buf: [64]u8 = @splat(0x5A);
     var i: u16 = 0;
     while (i < 4) : (i += 1) {
         try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&buf, 64));
@@ -224,14 +224,14 @@ test "recv_frame rejects a null buffer before a null length" {
 test "recv_frame rejects a null length with its own log line" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     try std.testing.expectEqual(null_ptr, abi.ra8_net_pal_recv_frame(&buf, null));
     try std.testing.expect(messageEquals("recv_frame: inout_len"));
 }
 
 test "recv_frame before init reports invalid_state" {
     prep();
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_recv_frame(&buf, &len));
 }
@@ -239,7 +239,7 @@ test "recv_frame before init reports invalid_state" {
 test "recv_frame demands full frame capacity" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var short_len: u16 = 64;
     try std.testing.expectEqual(invalid_arg, abi.ra8_net_pal_recv_frame(&buf, &short_len));
     var edge_len: u16 = frame_max - 1;
@@ -249,7 +249,7 @@ test "recv_frame demands full frame capacity" {
 test "recv_frame on an empty ring reports no_data" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
     try std.testing.expectEqual(no_data, abi.ra8_net_pal_recv_frame(&buf, &len));
 }
@@ -261,7 +261,7 @@ test "send then recv loops a frame back with its length" {
     for (&frame, 0..) |*byte, i| byte.* = @intCast(0xA0 +% i);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
 
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_recv_frame(&buf, &len));
     try std.testing.expectEqual(@as(u16, 64), len);
@@ -274,13 +274,13 @@ test "send then recv loops a frame back with its length" {
 test "init resets a ring left full by the previous session" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var buf = [_]u8{0x11} ** 64;
+    var buf: [64]u8 = @splat(0x11);
     var i: u16 = 0;
     while (i < 4) : (i += 1) {
         try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&buf, 64));
     }
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
-    var out = [_]u8{0} ** frame_max;
+    var out: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
     try std.testing.expectEqual(no_data, abi.ra8_net_pal_recv_frame(&out, &len));
 }
@@ -308,7 +308,7 @@ test "a successful send fans out tx_done to the attached handler" {
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
     var ctx_marker: u32 = 0xC0FFEE;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, &ctx_marker));
-    var buf = [_]u8{0} ** 64;
+    var buf: [64]u8 = @splat(0);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&buf, 64));
     try std.testing.expectEqual(@as(u32, 1), event_calls);
     try std.testing.expectEqual(@as(u32, 0x08), last_event_mask);
@@ -321,7 +321,7 @@ test "detaching the handler stops the send fan-out" {
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(null, null));
     event_calls = 0;
-    var buf = [_]u8{0} ** 64;
+    var buf: [64]u8 = @splat(0);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&buf, 64));
     try std.testing.expectEqual(@as(u32, 0), event_calls);
 }
@@ -330,7 +330,7 @@ test "a failed send does not fan out an event" {
     prep();
     try std.testing.expectEqual(ok, abi.ra8_net_pal_init(null));
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
-    var buf = [_]u8{0} ** 64;
+    var buf: [64]u8 = @splat(0);
     try std.testing.expectEqual(invalid_arg, abi.ra8_net_pal_send_frame(&buf, 0));
     try std.testing.expectEqual(@as(u32, 0), event_calls);
 }
@@ -380,7 +380,7 @@ test "every pre-init entry point reports invalid_state" {
     prep();
     var mac: abi.Mac = abi.Mac.zero;
     var link: abi.LinkState = .up;
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
 
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_set_mac_addr(&test_mac));
@@ -410,7 +410,7 @@ test "dispatch with a queued frame ORs rx_ready into the reported mask" {
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
     const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
-    var frame = [_]u8{0xA5} ** 64;
+    var frame: [64]u8 = @splat(0xA5);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
 
     event_calls = 0;
@@ -425,7 +425,7 @@ test "a queued frame alone is enough to dispatch on a clear status word" {
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
     const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
-    var frame = [_]u8{0x5A} ** 64;
+    var frame: [64]u8 = @splat(0x5A);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
 
     event_calls = 0;
@@ -440,9 +440,9 @@ test "draining the ring takes rx_ready back out of the dispatched mask" {
     try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
     const handler = fixture.attachedHandler() orelse return error.TestUnexpectedResult;
 
-    var frame = [_]u8{0x11} ** 64;
+    var frame: [64]u8 = @splat(0x11);
     try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
-    var buf = [_]u8{0} ** frame_max;
+    var buf: [frame_max]u8 = @splat(0);
     var len: u16 = frame_max;
     try std.testing.expectEqual(ok, abi.ra8_net_pal_recv_frame(&buf, &len));
 

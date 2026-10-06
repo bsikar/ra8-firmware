@@ -76,7 +76,7 @@ test "stream: write, seek, tell, size, read and close round trip" {
     try expectEqual(core.ok, streams().size.?(fake.g_bound_ctx, &file, &size));
     try expectEqual(@as(u64, 5), size);
     try expectEqual(core.ok, streams().seek.?(fake.g_bound_ctx, &file, 1));
-    var buf = [_]u8{0} ** 8;
+    var buf: [8]u8 = @splat(0);
     var got: u32 = 0;
     try expectEqual(core.ok, streams().read.?(fake.g_bound_ctx, &file, &buf, buf.len, &got));
     try expectEqual(@as(u32, 4), got);
@@ -140,7 +140,7 @@ const Validator = struct {
     fn run(ctx: ?*anyopaque, staged: *abi.File) callconv(.c) u16 {
         const self: *Validator = @ptrCast(@alignCast(ctx.?));
         self.calls += 1;
-        var buf = [_]u8{0} ** 32;
+        var buf: [32]u8 = @splat(0);
         var got: u32 = 0;
         const iface = staged.iface.?;
         const read_rc = iface.read.?(staged.ctx, staged.state, &buf, buf.len, &got);
