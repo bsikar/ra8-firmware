@@ -17,19 +17,18 @@
  * - ``ra8_xspi_init()`` -- select a protocol mode + clear pending IRQs.
  * - ``ra8_xspi_direct_command()`` -- raw CDBUF poke.
  * - ``ra8_xspi_deinit()`` -- lifecycle teardown.
- * - ``ra8_xspi_suspend / resume / software_reset`` extended controller
- * surface.
  *
  * Status, handler, dispatch and stop are Zig (src/xspi_events_abi.zig,
  * RA8FW-865); XIP enter/exit, XIP mode, DTR mode and DQS calibration are
- * Zig (src/xspi_xip_abi.zig, RA8FW-866).
+ * Zig (src/xspi_xip_abi.zig, RA8FW-866); suspend, resume and software
+ * reset are Zig (src/xspi_reset_abi.zig, RA8FW-867).
  *
  * The manual-command engine and the JEDEC NOR-flash read / program /
  * erase / status / id operations live in the sibling translation unit
  * ``ra8_xspi_flash.c``; the two manual-command primitives it exports
  * (``priv_ra8_xspi_kick_command`` / ``priv_ra8_xspi_issue_simple_opcode``) are
- * declared in ``ra8_xspi_internal.h`` and reused here by the
- * suspend / resume / software-reset paths.
+ * declared in ``ra8_xspi_internal.h`` and called from
+ * src/xspi_reset_abi.zig for suspend / resume / software reset.
  *
  * ## CDBUF convention used by this driver
  *
@@ -462,129 +461,4 @@ ra8_err_t ra8_xspi_deinit(uint8_t instance)
   s_xspi_state[instance].fn  = nullptr;
   s_xspi_state[instance].ctx = nullptr;
   return ra8_mstp_disable(s_xspi_mstp_table[instance]);
-}
-
-/* =============================================================================
- * Sweep 6 extensions: XIP mode select, DTR, DQS calibration, suspend/resume
- * =============================================================================
- */
-
-/**
- * @enum ra8_xspi_jedec_extra_t
- * @brief Extra JEDEC opcodes used by suspend/resume control.
- */
-typedef enum : uint8_t {
-  k_ra8_spi_flash_op_suspend   = 0x75U, /**< 0x75 erase/program suspend.             */
-  k_ra8_spi_flash_op_resume    = 0x7AU, /**< 0x7A erase/program resume.              */
-  k_ra8_spi_flash_op_reset_en  = 0x66U, /**< 0x66 RSTEN  -- IS25LX512M Ch 8.20 p 39. */
-  k_ra8_spi_flash_op_reset_dev = 0x99U, /**< 0x99 RST    -- IS25LX512M Ch 8.21 p 39. */
-} ra8_xspi_jedec_extra_t;
-
-/**
- * @enum ra8_xspi_reset_cmd_bytes_t
- * @brief Allowed ``cmd_bytes`` values for ``ra8_xspi_software_reset``.
- *
- * @details
- * 1-byte opcodes are used in 1S-1S-1S extended SPI mode, 2-byte
- * opcodes (``opcode | (~opcode << 8)``) in 8D-8D-8D OPI/DDR mode.
- * Cite: IS25LX512M datasheet Ch 7.3 "Operating Protocols" p 27.
- */
-typedef enum : uint8_t {
-  k_ra8_xspi_reset_cmd_bytes_1s = 1U, /**< 1-byte opcode for 1S-1S-1S.      */
-  k_ra8_xspi_reset_cmd_bytes_8d = 2U, /**< 2-byte opcode pair for 8D-8D-8D. */
-} ra8_xspi_reset_cmd_bytes_t;
-
-ra8_err_t ra8_xspi_suspend(uint8_t instance)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  return priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_suspend);
-}
-
-ra8_err_t ra8_xspi_resume(uint8_t instance)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  return priv_ra8_xspi_issue_simple_opcode(reg, k_ra8_spi_flash_op_resume);
-}
-
-/**
- * @brief Issue a single RSTEN-or-RST opcode in either 1S or 8D form.
- *
- * @details
- * In 1S-1S-1S mode the opcode is a single byte placed at CDT.CMD bits
- * [31..16] with CMDSIZE=1. In 8D-8D-8D mode the chip expects the
- * opcode followed by its bitwise complement so the controller has to
- * ship two bytes; we encode that as ``opcode | (~opcode << 8)`` in
- * the same CMD field with CMDSIZE=2. The CDT.CMD field is 16 bits
- * wide ([31..16]) so both forms fit cleanly. No address phase, no
- * data phase. IS25LX512M datasheet Ch 7.3 p 27 ("Operating Protocols")
- * + Ch 8.20/8.21 p 39 (RSTEN/RST opcodes); HUM Ch 44 p 2986 for the
- * CDT layout.
- *
- * @param[in] reg       xSPI register block.
- * @param[in] opcode    JEDEC reset opcode (0x66 RSTEN or 0x99 RST).
- * @param[in] cmd_bytes 1 (1S) or 2 (8D); chosen by the caller based
- *                      on the protocol mode the chip *might* be in.
- *
- * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_timeout`` on CMDCMP
- *         timeout.
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t cmd_bytes)
-{
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Build the CMD half-word for either 1S (just the opcode) or 8D
-   * (opcode + complement). The complement form is what 8D-mode SPI
-   * NOR devices require so they can distinguish "real opcode" from
-   * "garbage on the bus". */
-  /* CMD is transmitted MSB-first from CDT[31:16]; a 1-byte opcode must
-   * be left-justified to CDT[31:24] (cmd_word << 8), a 2-byte 8D pair
-   * fills the full [31:16] field. Same rule as internal_make_cdt. */
-  uint16_t cmd_word = (uint16_t)(opcode << 8U);
-  if (cmd_bytes == (uint8_t)k_ra8_xspi_reset_cmd_bytes_8d) {
-    cmd_word = (uint16_t)(opcode | (((uint16_t)(uint8_t)~opcode) << 8U));
-  }
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] =
-    (((uint32_t)cmd_bytes & k_ra8_xspi_cdt_mask_cmdsize) << k_ra8_xspi_cdt_pos_cmdsize) |
-    (((uint32_t)k_ra8_xspi_cdt_addsize_0 & k_ra8_xspi_cdt_mask_addsize)
-     << k_ra8_xspi_cdt_pos_addsize) |
-    (((uint32_t)k_ra8_xspi_cdt_trtype_write & k_ra8_xspi_cdt_mask_trtype)
-     << k_ra8_xspi_cdt_pos_trtype) |
-    (((uint32_t)cmd_word) << k_ra8_xspi_cdt_pos_cmd);
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return priv_ra8_xspi_kick_command(reg);
-}
-
-ra8_err_t ra8_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  if ((cmd_bytes != (uint8_t)k_ra8_xspi_reset_cmd_bytes_1s) &&
-      (cmd_bytes != (uint8_t)k_ra8_xspi_reset_cmd_bytes_8d)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* IS25LX512M Ch 8.20-8.21 p 39: RSTEN must be the immediately
-   * preceding command before RST or the device ignores RST. */
-  const ra8_err_t en = internal_issue_reset_opcode(reg, k_ra8_spi_flash_op_reset_en, cmd_bytes);
-  if (en != k_ra8_ok) {
-    return en;
-  }
-  const ra8_err_t rst = internal_issue_reset_opcode(reg, k_ra8_spi_flash_op_reset_dev, cmd_bytes);
-  if (rst != k_ra8_ok) {
-    return rst;
-  }
-  return k_ra8_ok;
 }
