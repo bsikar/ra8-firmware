@@ -369,49 +369,6 @@ ra8_err_t ra8_i3c_deinit(uint8_t channel)
   return err;
 }
 
-ra8_err_t ra8_i3c_set_address(uint32_t addr)
-{
-  if (addr > k_ra8_i3c_msdvad_addr_max) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 40 MSDVAD device address register pp 2445-2701
-   * MDYAD occupies bits [22:16]; MDYADV (bit 31) marks the address
-   * as valid. */
-  const uint32_t mdyad = (addr << k_ra8_i3c_msdvad_mdyad_shift) & k_ra8_i3c_msdvad_mdyad_mask;
-  ra8_i3c()->MSDVAD    = mdyad | k_ra8_i3c_msdvad_mdyadv_mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_bus_enable(bool enable)
-{
-  volatile r_i3c_regs_t* reg = ra8_i3c();
-  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 -- BCTL.BUSE
-   * is bit 31, not bit 0; toggling it gates bus primary operation. */
-  if (enable) {
-    reg->BCTL = reg->BCTL | k_ra8_i3c_bctl_buse_mask;
-  } else {
-    reg->BCTL = reg->BCTL & ~k_ra8_i3c_bctl_buse_mask;
-  }
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_get_status(uint32_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  /* HUM Ch 40 "INST : Internal Status Register" p 2445-2701 */
-  *out_mask = ra8_i3c()->INST;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_clear_status(uint32_t mask)
-{
-  volatile r_i3c_regs_t* reg = ra8_i3c();
-  /* HUM Ch 40 "INST : Internal Status Register" pp 2445-2701 -- the
-   * sticky flags are cleared by writing 0 to the matching bit. */
-  reg->INST = reg->INST & ~mask;
-  return k_ra8_ok;
-}
-
 ra8_err_t ra8_i3c_attach_handler(uint8_t channel, ra8_i3c_event_fn_t fn, void* ctx)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
@@ -447,14 +404,6 @@ void ra8_i3c_dispatch(uint8_t channel)
   if (fn != nullptr) {
     fn(ctx, mask);
   }
-}
-
-ra8_err_t ra8_i3c_enter_stop(void)
-{
-  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
-  ra8_i3c()->BCTL  = 0U;
-  ra8_i3c()->CECTL = 0U;
-  return ra8_mstp_disable(k_ra8_mstp_i3c);
 }
 
 /* =============================================================================
