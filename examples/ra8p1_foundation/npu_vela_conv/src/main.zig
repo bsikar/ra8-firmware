@@ -28,7 +28,7 @@ pub const Job = extern struct {
     cmd_stream: ?*const anyopaque = null,
     cmd_stream_bytes: u32 = 0,
     region_count: u8 = 0,
-    region_base: [region_slots]u64 = [_]u64{0} ** region_slots,
+    region_base: [region_slots]u64 = @splat(0),
 };
 
 /// Mirrors ra8_npu_arena_t (libs/ra8_hal/inc/ra8_npu_loader.h).

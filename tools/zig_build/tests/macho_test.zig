@@ -313,7 +313,7 @@ test "a 32-bit Mach-O, an ELF, and a short file each fail with their own error" 
     std.mem.writeInt(u32, bytes[0..4], macho.magic_32_le, .little);
     try std.testing.expectError(error.NotSixtyFourBit, macho.read(&bytes));
 
-    const elf = [_]u8{ 0x7f, 'E', 'L', 'F' } ++ [_]u8{0} ** 28;
+    const elf = [_]u8{ 0x7f, 'E', 'L', 'F' } ++ @as([28]u8, @splat(0));
     try std.testing.expectError(error.NotMachO, macho.read(&elf));
 
     try std.testing.expectError(error.TooShort, macho.read(&[_]u8{ 0xcf, 0xfa }));

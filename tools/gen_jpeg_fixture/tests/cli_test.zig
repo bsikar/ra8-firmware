@@ -143,7 +143,7 @@ test "an existing seed is overwritten rather than appended to" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "seed.jpg", .data = "x" ** 5000 });
+    try tmp.dir.writeFile(.{ .sub_path = "seed.jpg", .data = &@as([5000:0]u8, @splat('x')) });
     const status = try run(tmp.dir, &streams, &[_][]const u8{
         "gen_jpeg_fixture", "-o", "seed.jpg",
     });

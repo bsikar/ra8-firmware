@@ -8,7 +8,7 @@ const degrade = app.degrade;
 
 test "real codec round trip preserves dimensions" {
     const allocator = std.testing.allocator;
-    var pixels = [_]u8{255} ** (16 * 16 * 3);
+    var pixels: [16 * 16 * 3]u8 = @splat(255);
     const source = degrade.Image{ .width = 16, .height = 16, .pixels = &pixels, .allocator = allocator };
     const encoded = switch (try codec.encode(allocator, source)) {
         .value => |value| value,
@@ -28,7 +28,7 @@ test "encoder rejects malformed RGB images before calling C" {
     const allocator = std.testing.allocator;
     var empty = [_]u8{};
     var short = [_]u8{ 1, 2 };
-    var long = [_]u8{0} ** 6;
+    var long: [6]u8 = @splat(0);
     try std.testing.expectError(error.InvalidImage, codec.encode(allocator, .{ .width = 0, .height = 1, .pixels = &empty, .allocator = allocator }));
     try std.testing.expectError(error.InvalidImage, codec.encode(allocator, .{ .width = 1, .height = 1, .pixels = &short, .allocator = allocator }));
     try std.testing.expectError(error.InvalidImage, codec.encode(allocator, .{ .width = 1, .height = 1, .pixels = &long, .allocator = allocator }));

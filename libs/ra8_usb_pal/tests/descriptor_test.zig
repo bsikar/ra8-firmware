@@ -87,14 +87,14 @@ test "strings skips an empty slot and keeps the indices of the rest" {
 
 test "strings refuses a slot longer than a descriptor can carry" {
     var device = base_device;
-    device.product = "x" ** 65;
+    device.product = &@as([65:0]u8, @splat('x'));
     var buf: [256]u8 = undefined;
     try testing.expectError(descriptor.Error.RangeCheck, descriptor.strings(device, &buf));
 }
 
 test "strings takes a slot of exactly the cap" {
     var device = base_device;
-    device.product = "x" ** 64;
+    device.product = &@as([64:0]u8, @splat('x'));
     var buf: [256]u8 = undefined;
     _ = try descriptor.strings(device, &buf);
 }

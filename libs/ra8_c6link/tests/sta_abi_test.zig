@@ -145,11 +145,13 @@ test "sta_cfg_set wipes the record on every refusal" {
 
 test "sta_cfg_set refuses an SSID over 32 octets and a passphrase over 64" {
     var cfg = std.mem.zeroes(c.ra8_c6link_sta_cfg_t);
-    const long_ssid = "a" ** 33;
-    const long_pass = "p" ** 65;
-    try std.testing.expectEqual(Code.invalid_size, sta.ra8_c6link_sta_cfg_set(&cfg, long_ssid, null));
-    try std.testing.expectEqual(Code.invalid_size, sta.ra8_c6link_sta_cfg_set(&cfg, "ok", long_pass));
-    try std.testing.expectEqual(Code.ok, sta.ra8_c6link_sta_cfg_set(&cfg, "a" ** 32, "p" ** 64));
+    const long_ssid: [33:0]u8 = @splat('a');
+    const ok_ssid: [32:0]u8 = @splat('a');
+    const long_pass: [65:0]u8 = @splat('p');
+    const ok_pass: [64:0]u8 = @splat('p');
+    try std.testing.expectEqual(Code.invalid_size, sta.ra8_c6link_sta_cfg_set(&cfg, &long_ssid, null));
+    try std.testing.expectEqual(Code.invalid_size, sta.ra8_c6link_sta_cfg_set(&cfg, "ok", &long_pass));
+    try std.testing.expectEqual(Code.ok, sta.ra8_c6link_sta_cfg_set(&cfg, &ok_ssid, &ok_pass));
 }
 
 test "wifi_join guards a null or closed link and a bad record" {

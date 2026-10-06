@@ -107,7 +107,7 @@ test "packing the same input twice gives the same bytes" {
 
 test "a name that fills its whole field is refused" {
     var long = manifest;
-    long.app_id = "a" ** appimg.Width.app_id;
+    long.app_id = &@as([appimg.Width.app_id:0]u8, @splat('a'));
     try std.testing.expectError(
         pack.Error.NameTooLong,
         pack.assemble(std.testing.allocator, long, &code, &data),
