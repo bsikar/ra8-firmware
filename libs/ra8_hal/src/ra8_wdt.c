@@ -61,7 +61,6 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
-#include "ra8_icu.h"
 #include "ra8_log.h"
 #include "ra8_wdt_regs.h"
 
@@ -76,47 +75,6 @@
  * @note Read-only; do not modify.
  */
 static const char* const s_tag = "WDT";
-
-/**
- * @struct ra8_wdt_sub_t
- * @brief One entry in the multi-subscriber dispatch table.
- *
- * @details
- * ``fn == nullptr`` marks a free slot. The driver linearly scans the
- * table -- with ``k_ra8_wdt_max_subs == 6`` that is well within the
- * NMI-handler latency budget.
- */
-typedef struct {
-  ra8_wdt_event_fn_t fn;  /**< Subscriber callback or ``nullptr`` if slot is free. */
-  void*              ctx; /**< Opaque pointer forwarded to ``fn``.                 */
-} ra8_wdt_sub_t;
-
-/**
- * @enum ra8_wdt_legacy_slot_t
- * @brief Slot reserved for the legacy single-callback API.
- *
- * @details
- * ``ra8_wdt_attach_handler`` shares the same dispatch table as the
- * multi-subscriber API but always lives in slot 0; that way both
- * APIs can coexist without one tearing down the other's entry.
- */
-typedef enum : uint8_t {
-  k_ra8_wdt_legacy_slot = 0U, /**< RA8 wdt legacy slot. */
-} ra8_wdt_legacy_slot_t;
-
-/**
- * @var s_wdt_subs
- * @brief Dispatch table of registered subscribers.
- *
- * @details
- * Static storage; cleared at C startup and again during
- * ``ra8_wdt_deinit``. Slot 0 is owned by the legacy single-callback
- * API; slots 1..k_ra8_wdt_max_subs-1 are claimed by ``ra8_wdt_subscribe``.
- *
- * @warning Do not write directly -- always go through the public
- *          ``ra8_wdt_*`` API.
- */
-static ra8_wdt_sub_t s_wdt_subs[k_ra8_wdt_max_subs];
 
 /**
  * @enum ra8_wdt_status_combined_t
@@ -229,25 +187,6 @@ RA8_INTERNAL static uint16_t internal_pack_wdtcr(const ra8_wdt_cfg_t* cfg)
   return word;
 }
 
-/**
- * @brief Clear every subscriber slot.
- *
- * @details See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_subs_clear_all(void)
-{
-  for (uint8_t i = 0U; i < k_ra8_wdt_max_subs; ++i) {
-    s_wdt_subs[i].fn  = nullptr;
-    s_wdt_subs[i].ctx = nullptr;
-  }
-}
-
 /* =============================================================================
  * Lifecycle
  * =============================================================================
@@ -286,19 +225,6 @@ RA8_INTERNAL static void internal_subs_clear_all(void)
   ra8_wdt_refresh();
 
   ra8_log_info(s_tag, "wdt_init armed");
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_deinit(void)
-{
-  volatile r_wdt_regs_t* reg = ra8_wdt();
-  /* HUM Ch 27.2.5 "WDTCSTPR : WDT Count Stop Control Register",
-   * p 1262 -- the strongest "off" the driver can request is to halt
-   * the counter while the CPU is asleep. The peripheral itself
-   * cannot be disarmed once started. */
-  reg->WDTCSTPR = k_ra8_wdt_cstpr_slcstp;
-  internal_subs_clear_all();
-  ra8_log_info(s_tag, "wdt_deinit (sleep-stop set)");
   return k_ra8_ok;
 }
 
@@ -398,137 +324,9 @@ void ra8_wdt_refresh_deferred(void)
  * ra8_wdt_total_pclkb_cycles are defined in src/wdt_timing_abi.zig
  * (RA8FW-889). */
 
-/* =============================================================================
- * Single + multi-subscriber callback API
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_wdt_attach_handler(ra8_wdt_event_fn_t fn, void* ctx)
-{
-  /* The legacy attach API maps to the reserved slot 0 -- that way
-   * both APIs share the same dispatch table without stomping each
-   * other. ``fn == nullptr`` clears the slot. */
-  s_wdt_subs[k_ra8_wdt_legacy_slot].fn  = fn;
-  s_wdt_subs[k_ra8_wdt_legacy_slot].ctx = ctx;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_subscribe(ra8_wdt_event_fn_t fn, void* ctx, uint8_t* out_slot)
-{
-  RA8_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
-
-  /* Walk the table starting at the first non-legacy slot; slot 0 is
-   * reserved for ``ra8_wdt_attach_handler``. */
-  for (uint8_t i = 1U; i < k_ra8_wdt_max_subs; ++i) {
-    if (s_wdt_subs[i].fn == nullptr) {
-      s_wdt_subs[i].fn  = fn;
-      s_wdt_subs[i].ctx = ctx;
-      if (out_slot != nullptr) {
-        *out_slot = i;
-      }
-      return k_ra8_ok;
-    }
-  }
-
-  ra8_log_error(s_tag, "wdt_subscribe table full");
-  return k_ra8_err_no_mem;
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_unsubscribe(uint8_t slot)
-{
-  if (slot >= k_ra8_wdt_max_subs) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (s_wdt_subs[slot].fn == nullptr) {
-    return k_ra8_err_not_found;
-  }
-  s_wdt_subs[slot].fn  = nullptr;
-  s_wdt_subs[slot].ctx = nullptr;
-  return k_ra8_ok;
-}
-
-uint8_t ra8_wdt_subscriber_count(void)
-{
-  uint8_t count = 0U;
-  for (uint8_t i = 0U; i < k_ra8_wdt_max_subs; ++i) {
-    if (s_wdt_subs[i].fn != nullptr) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-RA8_ISR_SAFE
-void ra8_wdt_dispatch(void)
-{
-  volatile r_wdt_regs_t* reg = ra8_wdt();
-  /* HUM Ch 27.2.3 "WDTSR : WDT Status Register", p 1260 -- snapshot
-   * the flags before clearing, then hand the latched mask to every
-   * registered subscriber. */
-  const uint16_t mask = (uint16_t)(reg->WDTSR & k_ra8_wdt_status_all);
-  reg->WDTSR          = (uint16_t)(reg->WDTSR & (uint16_t)~mask);
-
-  for (uint8_t i = 0U; i < k_ra8_wdt_max_subs; ++i) {
-    const ra8_wdt_event_fn_t fn  = s_wdt_subs[i].fn;
-    void* const              ctx = s_wdt_subs[i].ctx;
-    if (fn != nullptr) {
-      fn(ctx, mask);
-    }
-  }
-}
-
-/* =============================================================================
- * NMI vector wiring (HUM Ch 14.2.14 p 542)
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_wdt_install_nmi(void)
-{
-  /* HUM Ch 14.2.15 "NMICLR" p 544 -- W1C any stale WDT NMI status
-   * before unmasking the source so we don't immediately fire on a
-   * pre-existing latched flag. */
-  const ra8_err_t e_clr = ra8_icu_nmi_clear(k_ra8_wdt_nmier_wdten_mask);
-  if (e_clr != k_ra8_ok) {
-    return e_clr;
-  }
-  /* HUM Ch 14.2.14 "NMIER" p 542 -- WDTEN bit 1 (0x2) routes the
-   * WDT0 underflow / refresh-error to the Cortex-M85 NMI line. */
-  return ra8_icu_nmi_enable(k_ra8_wdt_nmier_wdten_mask);
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_uninstall_nmi(void)
-{
-  /* HUM Ch 14.2.14 "NMIER" p 542 */
-  const ra8_err_t e_dis = ra8_icu_nmi_disable(k_ra8_wdt_nmier_wdten_mask);
-  if (e_dis != k_ra8_ok) {
-    return e_dis;
-  }
-  /* HUM Ch 14.2.15 "NMICLR" p 544 */
-  return ra8_icu_nmi_clear(k_ra8_wdt_nmier_wdten_mask);
-}
-
-/* =============================================================================
- * Sleep-mode stop control
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_wdt_enter_stop(void)
-{
-  volatile r_wdt_regs_t* reg = ra8_wdt();
-  /* HUM Ch 27.2.5 "WDTCSTPR : WDT Count Stop Control Register",
-   * p 1262 -- set SLCSTP to halt the counter on Sleep entry. */
-  reg->WDTCSTPR = k_ra8_wdt_cstpr_slcstp;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_exit_stop(void)
-{
-  volatile r_wdt_regs_t* reg = ra8_wdt();
-  /* HUM Ch 27.2.5 "WDTCSTPR : WDT Count Stop Control Register",
-   * p 1262 -- clear SLCSTP so the counter keeps running in Sleep. */
-  reg->WDTCSTPR = 0U;
-  return k_ra8_ok;
-}
+/* The subscriber table, ra8_wdt_dispatch, ra8_wdt_deinit, the NMI
+ * wiring and ra8_wdt_enter_stop / ra8_wdt_exit_stop are defined in
+ * src/wdt_subs_abi.zig (RA8FW-890). */
 
 /* ra8_wdt_ofs_get and ra8_wdt_ofs_reader_set (the OFS0 / OFS3 read-only
  * decode) are defined in src/wdt_ofs_abi.zig (RA8FW-888). */
