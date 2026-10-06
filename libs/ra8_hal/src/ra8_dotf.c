@@ -161,46 +161,6 @@ static inline bool internal_channel_in_range(uint8_t channel)
 }
 
 /**
- * @brief XSPI window low bound for a given DOTF channel.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static inline uint32_t internal_window_lo(uint8_t channel)
-{
-  return (channel == 0U) ? k_ra8_dotf0_window_lo : k_ra8_dotf1_window_lo;
-}
-
-/**
- * @brief XSPI window high bound for a given DOTF channel.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static inline uint32_t internal_window_hi(uint8_t channel)
-{
-  return (channel == 0U) ? k_ra8_dotf0_window_hi : k_ra8_dotf1_window_hi;
-}
-
-/**
  * @brief Word count for a given AES key size.
  *
  * @details See implementation.
@@ -281,84 +241,6 @@ static inline uint32_t internal_bswap32(uint32_t v)
 }
 
 /**
- * @brief Validate region range / alignment / window.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @param[in] region See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_validate_region(uint8_t channel, const ra8_dotf_region_t* region)
-{
-  if ((region->start_addr & k_ra8_dotf_addr_low_mask) != 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((region->end_addr & k_ra8_dotf_addr_low_mask) != 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (region->start_addr > region->end_addr) {
-    /* HUM Ch 45.3.1 p 3049: "Setting CONVAREAST[31:12] >
-     * CONVAREAED[31:12] is prohibited." */
-    return k_ra8_err_invalid_arg;
-  }
-  if (region->region_id >= k_ra8_dotf_max_regions) {
-    return k_ra8_err_invalid_arg;
-  }
-  const uint32_t lo = internal_window_lo(channel);
-  const uint32_t hi = internal_window_hi(channel);
-  if ((region->start_addr < lo) || (region->end_addr > hi)) {
-    /* HUM Ch 45.3 p 3049 ("Image of decryption area setting"):
-     * conversion area must lie inside the matching XSPI window. */
-    return k_ra8_err_invalid_arg;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Reject a region that overlaps the live region of the OTHER channel.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @param[in] region See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_check_overlap(uint8_t channel, const ra8_dotf_region_t* region)
-{
-  for (uint8_t other = 0U; other < k_ra8_dotf_channel_count; ++other) {
-    if (other == channel) {
-      continue;
-    }
-    const ra8_dotf_chan_state_t* st = &s_dotf_state[other];
-    if (st->active_region_id == k_ra8_dotf_no_region) {
-      continue;
-    }
-    const ra8_dotf_region_t* live = &st->regions[st->active_region_id];
-    /* Ranges overlap if: start_a <= end_b && start_b <= end_a. */
-    /* mcdc-deactivated: ra8_dotf overlap-detection AND; the four DOTF channels are bound to disjoint XSPI windows by HUM 45.1, and ra8_dotf_set_region rejects regions outside the per-channel window upstream. As a result the cross-channel overlap helper is only entered for region pairs that the HUM windows make non-overlapping by construction -- the AND's two inequalities are co-dependent and cannot independently flip on any reachable input. */
-    if ((region->start_addr <= live->end_addr) && (live->start_addr <= region->end_addr)) {
-      return k_ra8_err_conflict;
-    }
-  }
-  return k_ra8_ok;
-}
-
-/**
  * @brief Assemble the REG00 word for the channel's cached state.
  *
  * @details See implementation.
@@ -433,74 +315,6 @@ static void internal_stage_iv(volatile ra8_dotf_regs_t* reg, const uint32_t* iv)
      * Descriptions" p 3049. */
     reg->REG03 = internal_bswap32(iv[i]);
   }
-}
-
-/* =============================================================================
- * Region staging
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_dotf_set_region(uint8_t channel, const ra8_dotf_region_t* region)
-{
-  RA8_CHECK_NULL_PTR(region, s_tag, "region must not be nullptr");
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  const ra8_err_t verr = internal_validate_region(channel, region);
-  if (verr != k_ra8_ok) {
-    return verr;
-  }
-  const ra8_err_t cerr = internal_check_overlap(channel, region);
-  if (cerr != k_ra8_ok) {
-    ra8_log_warn_val(s_tag, "set_region overlaps other channel", (uint32_t)channel);
-    return cerr;
-  }
-  ra8_dotf_chan_state_t* st           = &s_dotf_state[channel];
-  st->regions[region->region_id]      = *region;
-  st->region_valid[region->region_id] = 1U;
-  ra8_log_info_val(s_tag, "set_region staged channel", (uint32_t)channel);
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_dotf_select_region(uint8_t channel, uint8_t region_id)
-{
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (region_id >= k_ra8_dotf_max_regions) {
-    return k_ra8_err_invalid_arg;
-  }
-  ra8_dotf_chan_state_t* st = &s_dotf_state[channel];
-  if (st->region_valid[region_id] == 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
-
-  const ra8_dotf_region_t* r = &st->regions[region_id];
-  /* FSP r_ospi_b.c "Set the end and start area for DOTF
-   * conversion in that order to ensure that end address is always
-   * higher than start address."
-   * HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */
-  reg->CONVAREAD = r->end_addr & k_ra8_dotf_addr_mask;
-  /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
-  reg->CONVAREAST      = r->start_addr & k_ra8_dotf_addr_mask;
-  st->active_region_id = region_id;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_dotf_get_active_region(uint8_t channel, ra8_dotf_region_t* region)
-{
-  RA8_CHECK_NULL_PTR(region, s_tag, "region must not be nullptr");
-  if (!internal_channel_in_range(channel)) {
-    return k_ra8_err_invalid_arg;
-  }
-  const ra8_dotf_chan_state_t* st = &s_dotf_state[channel];
-  if (st->active_region_id == k_ra8_dotf_no_region) {
-    return k_ra8_err_invalid_state;
-  }
-  *region = st->regions[st->active_region_id];
-  return k_ra8_ok;
 }
 
 /* =============================================================================
