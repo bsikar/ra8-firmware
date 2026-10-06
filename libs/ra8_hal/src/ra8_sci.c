@@ -84,6 +84,10 @@ uint32_t priv_ra8_sci_ccr1(const ra8_sci_cfg_t* cfg);
 uint32_t priv_ra8_sci_ccr2(const ra8_sci_cfg_t* cfg);
 uint32_t priv_ra8_sci_ccr3(const ra8_sci_cfg_t* cfg);
 
+/* Handler attach, error status, stop and the MSTP id table live in Zig
+ * (RA8FW-906, src/internal/sci_ctl.zig + src/sci_ctl_abi.zig). */
+ra8_mstp_t priv_ra8_sci_mstp_id(uint8_t channel);
+
 /* =============================================================================
  * Per-channel state
  * =============================================================================
@@ -99,23 +103,6 @@ uint32_t priv_ra8_sci_ccr3(const ra8_sci_cfg_t* cfg);
  * mutates the same storage from the ISR dispatch path.
  */
 ra8_sci_state_t s_sci_state[k_ra8_sci_channel_count_val];
-
-/**
- * @var s_mstp_table
- * @brief Channel-index -> MSTP id lookup.
- */
-static const ra8_mstp_t s_mstp_table[k_ra8_sci_channel_count_val] = {
-  k_ra8_mstp_sci0,
-  k_ra8_mstp_sci1,
-  k_ra8_mstp_sci2,
-  k_ra8_mstp_sci3,
-  k_ra8_mstp_sci4,
-  k_ra8_mstp_sci5,
-  k_ra8_mstp_sci6,
-  k_ra8_mstp_sci7,
-  k_ra8_mstp_sci8,
-  k_ra8_mstp_sci9,
-};
 
 /* =============================================================================
  * Internal helpers
@@ -271,7 +258,7 @@ ra8_err_t ra8_sci_init(uint8_t channel, const ra8_sci_cfg_t* cfg)
   }
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
-  const ra8_err_t mst_err = ra8_mstp_enable(s_mstp_table[channel]);
+  const ra8_err_t mst_err = ra8_mstp_enable(priv_ra8_sci_mstp_id(channel));
   if (mst_err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "sci_init: mstp enable failed", (uint32_t)mst_err);
     return k_ra8_err_hw_init_failed;
@@ -323,7 +310,7 @@ ra8_err_t ra8_sci_deinit(uint8_t channel)
   s_sci_state[channel].rx_len      = 0U;
   s_sci_state[channel].rx_idx      = 0U;
   ra8_register_guard_exit(&guard);
-  return ra8_mstp_disable(s_mstp_table[channel]);
+  return ra8_mstp_disable(priv_ra8_sci_mstp_id(channel));
 }
 
 /* ---- Polling TX / RX -------------------------------------------------- */
@@ -408,96 +395,6 @@ ra8_err_t ra8_sci_flush(uint8_t channel)
   return internal_wait_tx_end(reg);
 }
 
-/* ---- Interrupt handler attach ---------------------------------------- */
-
-ra8_err_t ra8_sci_attach_rx_handler(uint8_t channel, ra8_sci_rx_fn_t fn, void* ctx)
-{
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* The RXI ISR reads rx_fn/rx_ctx and read-modify-writes CCR0; mask it
-   * while we publish the handler and toggle RIE so neither a torn callback
-   * pointer nor a lost CCR0 update is observable. */
-  const uint32_t       rie = (1U << k_ra8_sci_ccr0_bit_rie);
-  ra8_register_guard_t guard;
-  ra8_register_guard_enter(&guard);
-  s_sci_state[channel].rx_fn  = fn;
-  s_sci_state[channel].rx_ctx = ctx;
-  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
-   * RIE (bit 16). */
-  if (fn != nullptr) {
-    reg->CCR0 = reg->CCR0 | rie;
-  } else {
-    reg->CCR0 = reg->CCR0 & ~rie;
-  }
-  ra8_register_guard_exit(&guard);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_sci_attach_tx_handler(uint8_t channel, ra8_sci_tx_fn_t fn, void* ctx)
-{
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* The TXI ISR reads tx_fn/tx_ctx and read-modify-writes CCR0; mask it
-   * while we publish the handler and toggle TIE. */
-  const uint32_t       tie = (1U << k_ra8_sci_ccr0_bit_tie);
-  ra8_register_guard_t guard;
-  ra8_register_guard_enter(&guard);
-  s_sci_state[channel].tx_fn  = fn;
-  s_sci_state[channel].tx_ctx = ctx;
-  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
-   * TIE (bit 20). */
-  if (fn != nullptr) {
-    reg->CCR0 = reg->CCR0 | tie;
-  } else {
-    reg->CCR0 = reg->CCR0 & ~tie;
-  }
-  ra8_register_guard_exit(&guard);
-  return k_ra8_ok;
-}
-
-/* ---- Error status ----------------------------------------------------- */
-
-ra8_err_t ra8_sci_get_errors(uint8_t channel, uint8_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "get_errors: out");
-  volatile const r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint8_t mask = k_ra8_sci_err_none;
-  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- read the
-   * three error flags out of the 32-bit status word. */
-  const uint32_t csr = reg->CSR;
-  if ((csr & (1U << k_ra8_sci_csr_bit_orer)) != 0U) {
-    mask |= k_ra8_sci_err_overrun;
-  }
-  if ((csr & (1U << k_ra8_sci_csr_bit_fer)) != 0U) {
-    mask |= k_ra8_sci_err_framing;
-  }
-  if ((csr & (1U << k_ra8_sci_csr_bit_per)) != 0U) {
-    mask |= k_ra8_sci_err_parity;
-  }
-  *out_mask = mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_sci_clear_errors(uint8_t channel)
-{
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 --
-   * write-1-to-clear lines for ORER / FER / PER. */
-  reg->CFCLR = (1U << k_ra8_sci_cfclr_bit_orerc) | (1U << k_ra8_sci_cfclr_bit_ferc) |
-               (1U << k_ra8_sci_cfclr_bit_perc);
-  return k_ra8_ok;
-}
-
 /* ---- Runtime reconfigure --------------------------------------------- */
 
 ra8_err_t ra8_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
@@ -525,27 +422,6 @@ ra8_err_t ra8_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
   reg->CCR2 = v;
   ra8_register_guard_exit(&guard);
   return k_ra8_ok;
-}
-
-/* ---- Power transition ------------------------------------------------- */
-
-ra8_err_t ra8_sci_enter_stop(uint8_t channel)
-{
-  volatile r_sci_regs_t* reg = internal_reg(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-  reg->CCR0 = 0U;
-  return ra8_mstp_disable(s_mstp_table[channel]);
-}
-
-ra8_err_t ra8_sci_exit_stop(uint8_t channel)
-{
-  if (channel > k_ra8_sci_channel_max_index) {
-    return k_ra8_err_invalid_arg;
-  }
-  return ra8_mstp_enable(s_mstp_table[channel]);
 }
 
 /* ---- Async byte-stream TX / RX (FSP Read/Write parity) --------------- */
