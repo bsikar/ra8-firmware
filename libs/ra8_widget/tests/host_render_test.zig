@@ -955,4 +955,5 @@ test "host backend renders negative, neutral and positive level bars to a golden
 test {
     _ = @import("text_field_render_test.zig");
     _ = @import("icon_render_test.zig");
+    _ = @import("label_ui_size_render_test.zig");
 }

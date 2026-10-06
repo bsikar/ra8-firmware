@@ -441,3 +441,31 @@ test "clip preserves an exact fit and appends an ellipsis on overflow" {
     try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
     try std.testing.expectEqualSlices(u8, "abcde\xe2\x80\xa6", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
 }
+
+test "ui_26 and ui_30 labels measure and draw at their own size" {
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var clip_widget = emptyWidget();
+    clip_widget.rect.w = 440;
+    clip_widget.rect.h = 32;
+    var clipped = labelOn(&styled_backend, "Short text");
+    clipped.pad = 0;
+    clipped.size = .ui_26;
+    clipped.wrap = .clip;
+    try renderBound(&clip_widget, &clipped);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
+    try std.testing.expectEqual(@as(?u8, 9), Recorder.draws.get(0).size);
+
+    Recorder.reset();
+    Recorder.styled_w = 6;
+    Recorder.styled_h = 12;
+    var wrap_widget = emptyWidget();
+    var wrapped = labelOn(&styled_backend, "ab\ncd");
+    wrapped.size = .ui_30;
+    wrapped.wrap = .word;
+    try renderBound(&wrap_widget, &wrapped);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
+    try std.testing.expectEqual(@as(?u8, 10), Recorder.draws.get(0).size);
+    try std.testing.expectEqual(@as(?u8, 10), Recorder.styled_size);
+}

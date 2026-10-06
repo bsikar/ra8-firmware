@@ -238,6 +238,8 @@ fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
         6 => .body_38,
         7 => .title_68,
         8 => .clock_120,
+        9 => .ui_26,
+        10 => .ui_30,
         else => .size_3,
     };
 }
