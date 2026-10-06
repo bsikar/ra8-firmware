@@ -145,7 +145,7 @@ ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_
    * the next mode write times out. JTAG dump after the original
    * init showed CTR=0x05 / STS=0x05 (CHMDC=01 RESET + CSLPR=1 +
    * CRSTSTS=1 + CSLPSTS=1) confirming the channel never woke.
-   * Mirrors the GSLPR clear in internal_set_global_mode.
+   * Mirrors the GSLPR clear in priv_ra8_canfd_internal_set_global_mode.
    * HUM Ch 41 p 2762 "CFDCnCTR.CHMDC" + "CFDCnCTR.CSLPR" */
   uint32_t ctr = reg->CFDC[0].CTR;
   ctr &= ~(k_ra8_cnctr_mask_chmdc | k_ra8_cnctr_mask_cslpr);
@@ -200,8 +200,7 @@ ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_value)
+ra8_err_t priv_ra8_canfd_internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_value)
 {
   /* HUM Ch 41 "CFDGCTR.GMDC" p 2742 */ /* "CFDGCTR.GMDC" + GSLPR clear. */
   uint32_t gctr = reg->CFDGCTR;
@@ -331,8 +330,7 @@ static void internal_configure_rx_fifo0(volatile r_canfd_t* reg)
  * @note Not thread-safe; caller serialises ra8_canfd_init.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
+void priv_ra8_canfd_internal_enable_rx_fifo0(volatile r_canfd_t* reg)
 {
   /* HUM Ch 41 "CFDRFCCa.RFE" p 2742 -- separate write after the rest of
    * the CFDRFCCa register has been set, while in GL_OPERATION. */
@@ -491,19 +489,19 @@ static ra8_err_t internal_canfd_clock_block_init(void)
 RA8_INTERNAL
 static ra8_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
 {
-  (void)internal_set_global_mode(reg, k_ra8_gctr_value_reset);
+  (void)priv_ra8_canfd_internal_set_global_mode(reg, k_ra8_gctr_value_reset);
   (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
 
   internal_install_default_afl(reg);
   internal_configure_rx_fifo0(reg);
 
-  const ra8_err_t gop_err = internal_set_global_mode(reg, k_ra8_gctr_value_operation);
+  const ra8_err_t gop_err = priv_ra8_canfd_internal_set_global_mode(reg, k_ra8_gctr_value_operation);
   if (gop_err != k_ra8_ok) {
     return gop_err;
   }
   /* RFE is only writable in GL_HALT / GL_OPERATION, so enable RX FIFO
    * 0 only after the global block has actually transitioned. */
-  internal_enable_rx_fifo0(reg);
+  priv_ra8_canfd_internal_enable_rx_fifo0(reg);
   return priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
 }
 
@@ -550,132 +548,5 @@ ra8_err_t ra8_canfd_deinit(uint8_t channel)
 
   /* HUM Ch 41 "CFDCnCTR.CHMDC" p 2762 */ /* "CFDCnCTR.CHMDC" -- park channel in reset. */
   (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * status + IRQ + power transition
- * =============================================================================
- */
-
-/** @brief Number of AFL slots that live on page 0. */
-enum : uint16_t {
-  k_ra8_canfd_afl_per_page = 16U, /**< RA8 CANFD afl per page. */
-};
-
-/**
- * @brief Bump CFDGAFLCFG0.RNC0 to cover @p filter_id rules on page 0.
- * @details Caller must already have placed the global block in
- * GL_RESET; RNC0 is RESET-only per HUM Ch 41.2.18 p 2735.
- * @param[in] reg       CANFD register block (channel 0).
- * @param[in] filter_id Filter slot index in [0, k_ra8_canfd_afl_total).
- * @pre Block is in GL_RESET.
- * @pre filter_id < k_ra8_canfd_afl_per_page (page-0 only).
- * @post RNC0 >= filter_id + 1.
- * @post No global state outside CFDGAFLCFG0 is modified.
- * @note Not thread-safe; serialise filter edits.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_id)
-{
-  if (filter_id >= (uint16_t)k_ra8_canfd_afl_per_page) {
-    return;
-  }
-  const uint32_t cur_rnc =
-    (reg->CFDGAFLCFG0 >> k_ra8_gaflcfg0_shift_rnc0) & k_ra8_gaflcfg0_mask_rnc0;
-  const uint32_t new_rnc = ((uint32_t)filter_id + 1U) & k_ra8_gaflcfg0_mask_rnc0;
-  if (cur_rnc < new_rnc) {
-    const uint32_t cfg0 = reg->CFDGAFLCFG0;
-    reg->CFDGAFLCFG0    = (cfg0 & ~(k_ra8_gaflcfg0_mask_rnc0 << k_ra8_gaflcfg0_shift_rnc0)) |
-                          ((new_rnc & k_ra8_gaflcfg0_mask_rnc0) << k_ra8_gaflcfg0_shift_rnc0);
-  }
-}
-
-/**
- * @brief Write one CFDGAFL slot (ID/M/P0/P1) with the loopback +
- * FIFO-0 routing bits set.
- * @details Mask register OR-includes GAFLLB (bit 29) so the entry is
- * valid under Self-test mode 0/1 (HUM Ch 41.5.5 Table 41.22); P1
- * OR-includes GAFLFDP0 so matched frames land in RX FIFO 0 (HUM Ch
- * 41.2.22 p 2740).
- * @param[in] reg       CANFD register block.
- * @param[in] slot      Slot index inside the unlocked page (0..15).
- * @param[in] accept_id 11/29-bit accept ID.
- * @param[in] mask      11/29-bit ID mask (caller-provided bits only).
- * @param[in] dlc       DLC value 0..15.
- * @pre Global block is in GL_RESET (CFDGAFL entries are RESET-only).
- * @pre Caller holds the AFL data window unlock (CFDGAFLECTR.AFLDAE=1).
- * @post CFDGAFL[slot] reflects the caller's accept_id / mask / dlc
- *       with GAFLLB and GAFLFDP0 set.
- * @post No other AFL slot is modified.
- * @note Not thread-safe; caller serialises AFL edits.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_write_afl_slot(volatile r_canfd_t* reg,
-                                    uint16_t            slot,
-                                    uint32_t            accept_id,
-                                    uint32_t            mask,
-                                    uint8_t             dlc)
-{
-  reg->CFDGAFL[slot].ID = accept_id;
-  reg->CFDGAFL[slot].M  = mask | (uint32_t)k_ra8_gaflm_bit_gafllb;
-  reg->CFDGAFL[slot].P0 = 0U;
-  reg->CFDGAFL[slot].P1 =
-    (((uint32_t)dlc & k_ra8_canfd_ptr_mask_dlc) << k_ra8_canfd_ptr_shift_dlc) |
-    (uint32_t)k_ra8_gaflp1_bit_gaflfdp0;
-}
-
-/* ra8_canfd_filter_set -- see header for full description.
- *
- * HUM Ch 41.2.18 / 41.2.20 / 41.2.22 p 2735-2742: CFDGAFLCFG0.RNC0
- * and the per-slot CFDGAFL.{ID,M,P0,P1} registers are only writable
- * while the global block is in GL_RESET. Writing them in
- * GL_OPERATION lands the bits in the register file but the AFL
- * lookup engine never resamples them, so live filtering keeps using
- * the snapshot taken at the most recent GL_RESET -> GL_OPERATION
- * transition. install_default_afl in internal_canfd_open_channel
- * runs in GL_RESET for that reason; we mirror the same RESET ->
- * write -> OPERATION transaction here so updates take effect. */
-ra8_err_t ra8_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc)
-{
-  if (filter_id >= k_ra8_canfd_afl_total) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (dlc > k_ra8_canfd_dlc_max) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((accept_id & ~k_ra8_canfd_id_ext_mask) != 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  const uint16_t page = (uint16_t)(filter_id / k_ra8_canfd_afl_per_page);
-  const uint16_t slot = (uint16_t)(filter_id % k_ra8_canfd_afl_per_page);
-
-  /* AFL is global across instances; access via channel 0. */
-  volatile r_canfd_t* reg = ra8_canfd(0U);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "filter_set: channel0 unavailable");
-
-  const ra8_err_t reset_err = internal_set_global_mode(reg, k_ra8_gctr_value_reset);
-  if (reset_err != k_ra8_ok) {
-    return reset_err;
-  }
-
-  internal_bump_rnc0_locked(reg, filter_id);
-
-  /* Unlock AFL data window via AFLDAE bit. */
-  /* HUM Ch 41.2 "CFDGAFLECTR : AFL Entry Control Register" p 2734 */
-  reg->CFDGAFLECTR = ((uint32_t)page & k_ra8_gaflectr_mask_aflpn) | k_ra8_gaflectr_bit_afldae;
-  internal_write_afl_slot(reg, slot, accept_id, mask, dlc);
-  reg->CFDGAFLECTR = 0U;
-
-  const ra8_err_t op_err = internal_set_global_mode(reg, k_ra8_gctr_value_operation);
-  if (op_err != k_ra8_ok) {
-    return op_err;
-  }
-  /* GL_RESET cleared CFDRFCCa.RFE (HUM Ch 41 p 2742); re-enable so
-   * matched frames have a landing FIFO once we resume operation. */
-  internal_enable_rx_fifo0(reg);
   return k_ra8_ok;
 }
