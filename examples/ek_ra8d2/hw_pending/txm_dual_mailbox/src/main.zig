@@ -1,17 +1,19 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! txm_dual_mailbox, M85 half (RA8FW-843 and RA8FW-844, under RA8EMU-159): a
-//! ThreadX module on each core of one image, and calls between them. The M85
-//! links `threadx_m85_modules` and carries txm_rpc_m33, the `ra8_rpc` client
-//! module, in its own `.txm_module` (linker_append.ld). main clears the
+//! txm_dual_mailbox, M85 half (RA8FW-843, RA8FW-844 and RA8FW-842, under
+//! RA8EMU-159): a ThreadX module on each core of one image, and calls between
+//! them. The M85 links `threadx_m85_modules` and carries txm_dual_client_m33,
+//! the `ra8_rpc` client module, in its own `.txm_module` (linker_append.ld). main clears the
 //! mailbox block, releases CPU1 and enters the kernel. The manager thread
 //! loads and starts the module, which attaches its two queues through an
 //! application request. Once a tick the thread pumps the module's calls into
 //! the block's request slot and CPU1's answers from the reply slot into the
 //! module's queue (pump.zig). It prints one line once both modules have run
-//! `pass_runs` times, and the verdict once the module has reported
-//! `pass_calls` checked sums.
+//! `pass_runs` times, and one once the module has reported `pass_calls`
+//! checked sums. Then the module asks CPU1's module to fault; once CPU1 has
+//! counted exactly one fault and the module reports the refusal CPU1 sent in
+//! its place, the M85 ticks `pass_ticks` more times and prints the verdict.
 
 const std = @import("std");
 const shared = @import("shared.zig");
@@ -25,6 +27,7 @@ pub const baud: u32 = 115_200;
 pub const tick_limit: u32 = 2000;
 pub const modules_line = std.fmt.comptimePrint("txm_dual_mailbox: modules ran {d} times on both cores PASS\r\n", .{shared.pass_runs});
 pub const pass_line = std.fmt.comptimePrint("txm_dual_mailbox: {d} requests crossed the mailbox PASS\r\n", .{shared.pass_calls});
+pub const fault_line = "txm_dual_mailbox: CPU1 module faulted, M85 ran on PASS\r\n";
 pub const fail_line = "txm_dual_mailbox: FAIL\r\n";
 pub const cpu1_fail_line = "txm_dual_mailbox: FAIL cpu1\r\n";
 
@@ -89,7 +92,7 @@ fn park() noreturn {
 fn loadAndStart() bool {
     if (_txm_module_manager_initialize(&module_ram, module_ram_bytes) != tx_success) return false;
     if (_txm_module_manager_object_pool_create(&object_pool, object_pool_bytes) != tx_success) return false;
-    if (_txm_module_manager_in_place_load(&instance, "txm_rpc_m33", &g_ra8_ls_txm_module_start) != tx_success) return false;
+    if (_txm_module_manager_in_place_load(&instance, "txm_dual_client_m33", &g_ra8_ls_txm_module_start) != tx_success) return false;
     if (_txm_module_manager_start(&instance) != tx_success) return false;
     return shared.instanceWord(&instance, shared.m85_start_thread_offset) == shared.tx_thread_id;
 }
@@ -101,6 +104,8 @@ var attached: [2]usize = .{ 0, 0 };
 var reports: u32 = 0;
 var mismatches: u32 = 0;
 var module_failed: bool = false;
+/// The module heard CPU1 refuse its `fault` call.
+var gone: bool = false;
 
 /// The manager's hook for the module's application requests, less
 /// `service.Report.base`. It runs on the module's thread, in this image.
@@ -123,6 +128,7 @@ export fn _txm_module_manager_application_request(
             @atomicStore(u32, &reports, step + 1, .release);
         },
         service.Report.failed => @atomicStore(bool, &module_failed, true, .release),
+        service.Report.gone => @atomicStore(bool, &gone, true, .release),
         else => _ = @atomicRmw(u32, &mismatches, .Add, 1, .release),
     }
     return tx_success;
@@ -143,34 +149,51 @@ fn modulesRan(block: *volatile shared.Block) bool {
     return block.signature == shared.signature and block.module_runs >= shared.pass_runs;
 }
 
-const Verdict = enum { waiting, pass, failed, cpu1_failed };
+/// The line to stop on, once anything has failed.
+fn failure(block: *volatile shared.Block) ?[]const u8 {
+    if (block.signature == shared.signature and block.failed_step != shared.Step.none) return cpu1_fail_line;
+    if (block.cpu1_faults > 1) return cpu1_fail_line;
+    if (@atomicLoad(bool, &module_failed, .acquire)) return fail_line;
+    if (@atomicLoad(u32, &mismatches, .acquire) != 0) return fail_line;
+    return null;
+}
 
-fn verdict(block: *volatile shared.Block) Verdict {
-    if (block.signature == shared.signature and block.failed_step != shared.Step.none) return .cpu1_failed;
-    if (@atomicLoad(bool, &module_failed, .acquire)) return .failed;
-    if (@atomicLoad(u32, &mismatches, .acquire) != 0) return .failed;
-    if (!modulesRan(block)) return .waiting;
-    if (@atomicLoad(u32, &reports, .acquire) < shared.pass_calls) return .waiting;
-    return .pass;
+fn callsCrossed(block: *volatile shared.Block) bool {
+    return modulesRan(block) and @atomicLoad(u32, &reports, .acquire) >= shared.pass_calls;
+}
+
+fn moduleGone(block: *volatile shared.Block) bool {
+    return @atomicLoad(bool, &gone, .acquire) and block.cpu1_faults == 1;
+}
+
+/// Pump and tick until `ready` holds: null once it does, else the line to
+/// stop on.
+fn waitUntil(block: *volatile shared.Block, ready: *const fn (*volatile shared.Block) bool, said_modules: *bool) ?[]const u8 {
+    var ticks: u32 = 0;
+    while (ticks < tick_limit) : (ticks += 1) {
+        pumpOnce(block);
+        if (!said_modules.* and modulesRan(block)) {
+            say(modules_line);
+            said_modules.* = true;
+        }
+        if (failure(block)) |line| return line;
+        if (ready(block)) return null;
+        _ = _tx_thread_sleep(1);
+    }
+    return fail_line;
 }
 
 fn waitAll(block: *volatile shared.Block) []const u8 {
     var said_modules = false;
-    var ticks: u32 = 0;
-    while (ticks < tick_limit) : (ticks += 1) {
+    if (waitUntil(block, &callsCrossed, &said_modules)) |line| return line;
+    say(pass_line);
+    if (waitUntil(block, &moduleGone, &said_modules)) |line| return line;
+    var after: u32 = 0;
+    while (after < shared.pass_ticks) : (after += 1) {
         pumpOnce(block);
-        if (!said_modules and modulesRan(block)) {
-            say(modules_line);
-            said_modules = true;
-        }
-        switch (verdict(block)) {
-            .waiting => _ = _tx_thread_sleep(1),
-            .pass => return pass_line,
-            .failed => return fail_line,
-            .cpu1_failed => return cpu1_fail_line,
-        }
+        _ = _tx_thread_sleep(1);
     }
-    return fail_line;
+    return failure(block) orelse fault_line;
 }
 
 fn manager(input: u32) callconv(.c) void {

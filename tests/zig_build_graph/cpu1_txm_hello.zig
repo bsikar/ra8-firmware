@@ -89,8 +89,18 @@ pub const dual_server = Module{
     .through_c = true,
 };
 
+/// txm_dual_mailbox's M85 module (RA8FW-842): the client that calls
+/// `dual_server` over the mailbox, then asks it to fault. Through C for the
+/// same reason as `rpc`; M33 code, which the M85's manager runs as it ran
+/// txm_rpc_m33.
+pub const dual_client = Module{
+    .name = "txm_dual_client_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox/src/client_module.zig",
+    .through_c = true,
+};
+
 /// Every module an image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server };
+pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server, dual_client };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;

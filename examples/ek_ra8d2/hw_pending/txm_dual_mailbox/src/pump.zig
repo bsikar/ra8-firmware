@@ -48,3 +48,13 @@ pub fn take(slot: *volatile shared.Slot, queue: *anyopaque) bool {
     barrier();
     return true;
 }
+
+/// Take the message waiting in `slot`, if there is one, and drop it. Returns
+/// whether there was one.
+pub fn discard(slot: *volatile shared.Slot) bool {
+    const seq = slot.seq;
+    if (slot.ack == seq) return false;
+    slot.ack = seq;
+    barrier();
+    return true;
+}
