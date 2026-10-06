@@ -35,8 +35,9 @@
 
 static const char* const s_tag = "ETHGWC";
 
-static ra8_eth_gwca_event_fn_t s_gwca_fn;
-static void*                   s_gwca_ctx;
+/* Defined in src/eth_gwca_events_abi.zig (RA8FW-847); init/deinit clear them. */
+extern ra8_eth_gwca_event_fn_t s_gwca_fn;
+extern void*                   s_gwca_ctx;
 
 /**
  * @enum ra8_eth_gwca_init_layout_t
@@ -94,45 +95,6 @@ ra8_err_t ra8_eth_gwca_deinit(void)
   s_gwca_fn      = nullptr;
   s_gwca_ctx     = nullptr;
   return ra8_mstp_disable(k_ra8_mstp_eswm);
-}
-
-ra8_err_t ra8_eth_gwca_get_status(uint32_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  *out_mask = ra8_gwca()->GWCA_STS;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_eth_gwca_clear_status(uint32_t mask)
-{
-  volatile r_gwca_regs_t* reg = ra8_gwca();
-  /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  reg->GWCA_ICLR = mask;
-  reg->GWCA_STS  = reg->GWCA_STS & ~mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_eth_gwca_attach_handler(ra8_eth_gwca_event_fn_t fn, void* ctx)
-{
-  s_gwca_fn  = fn;
-  s_gwca_ctx = ctx;
-  return k_ra8_ok;
-}
-
-RA8_ISR_SAFE
-void ra8_eth_gwca_dispatch(void)
-{
-  volatile r_gwca_regs_t* reg = ra8_gwca();
-  /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
-  const uint32_t                mask = reg->GWCA_STS;
-  const ra8_eth_gwca_event_fn_t fn   = s_gwca_fn;
-  void* const                   ctx  = s_gwca_ctx;
-  reg->GWCA_ICLR                     = mask;
-  reg->GWCA_STS                      = 0U;
-  if (fn != nullptr) {
-    fn(ctx, mask);
-  }
 }
 
 ra8_err_t ra8_eth_gwca_enter_stop(void)
