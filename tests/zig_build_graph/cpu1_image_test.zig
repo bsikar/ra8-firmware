@@ -238,8 +238,8 @@ test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Z
         .{ .app = "cpu1_pingpong_ra8p1", .kernel = null },
         .{ .app = "txm_rpc_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_reload_cpu1", .kernel = "threadx_m33_modules" },
-        .{ .app = "cpu1_routed_irq", .kernel = null },
         .{ .app = "txm_dual_mailbox", .kernel = "threadx_m33_modules" },
+        .{ .app = "cpu1_routed_irq", .kernel = null },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
