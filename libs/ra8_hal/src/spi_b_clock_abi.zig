@@ -19,7 +19,7 @@ const spcr3_off = 0x10;
 const spsr_off = 0x50;
 const spsrc_off = 0x68;
 
-/// Shared with ra8_spi_init in ra8_spi_b.c until init moves too.
+/// Shared with ra8_spi_init in src/spi_b_setup_abi.zig.
 export fn priv_ra8_spi_b_spbr(baud_hz: u32, pclka_hz: u32) u8 {
     return clock.spbr(baud_hz, pclka_hz);
 }

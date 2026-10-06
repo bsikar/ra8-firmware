@@ -6,7 +6,7 @@
 
 pub const CompleteFn = *const fn (ctx: ?*anyopaque, err_mask: u8) callconv(.c) void;
 
-/// Mirrors `ra8_spi_state_t` in ra8_spi_b.c field for field.
+/// Per-channel handler state; C never sees its layout.
 pub const State = extern struct {
     cb: ?CompleteFn,
     ctx: ?*anyopaque,
