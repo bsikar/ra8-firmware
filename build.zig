@@ -178,7 +178,8 @@ pub fn build(b: *std.Build) void {
     _ = b.addModule("ra8_rpc", .{
         .root_source_file = b.path("libs/ra8_rpc/src/ra8_rpc.zig"),
     });
-    // As a dependency, that module is all this package offers: stop before any lazy dependency.
+    addWidgetModules(b);
+    // As a dependency, those modules are all this package offers: stop before any lazy dependency.
     if (b.pkg_hash.len != 0) return;
 
     const target = b.standardTargetOptions(.{});
@@ -749,4 +750,29 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
 /// so `zig build parity` can print the count without rebuilding the list.
 fn addCompileDb(b: *std.Build, step: *std.Build.Step) usize {
     return compile_db.add(b, step, compileDbEntries(b));
+}
+
+/// The ra8_widget exports (RA8FW-828): `ra8_widget`, the widgets themselves,
+/// which paint through the `Paint` callbacks and touch no board; and
+/// `ra8_widget_host`, the CPU canvas plus the Zig box, rect and widget core
+/// symbols the widgets link against. Like `ra8_rpc`, both take target and
+/// optimize from whatever imports them.
+fn addWidgetModules(b: *std.Build) void {
+    const options = b.addOptions();
+    options.addOption(usize, "widget_debug_record_cap", 256);
+    const debug = b.createModule(.{ .root_source_file = b.path("libs/ra8_widget/src/widget_debug_abi.zig") });
+    debug.addOptions("build_options", options);
+    const widget = b.addModule("ra8_widget", .{
+        .root_source_file = b.path("libs/ra8_widget/src/ra8_widget_abi.zig"),
+        .imports = &.{.{ .name = "debug", .module = debug }},
+    });
+    _ = b.addModule("ra8_widget_host", .{
+        .root_source_file = b.path("libs/ra8_widget/src/host_package.zig"),
+        .imports = &.{
+            .{ .name = "text", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_gfx/src/internal/text.zig") }) },
+            .{ .name = "box", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_box/src/ra8_box_abi.zig") }) },
+            .{ .name = "ui", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_ui/src/ra8_ui_abi.zig") }) },
+            .{ .name = "ra8_widget", .module = widget },
+        },
+    });
 }
