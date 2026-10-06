@@ -441,7 +441,7 @@ every per-peripheral driver that follows.
 [x] Register coverage-- HUM Ch 39 p 2367
 [x] Unit tests -- tests/hal/src/test_ra8_i2c.c (20 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 39 register notes in libs/ra8_hal/src/ra8_i2c.c
+[x] HUM cross-ref -- all Ch 39 register notes in libs/ra8_hal/src/internal/i2c_bus.zig and i2c_xfer.zig
 [x] Doxygen -- full file + member coverage
 ```
 

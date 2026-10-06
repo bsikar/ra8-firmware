@@ -546,7 +546,7 @@ RA8_INTERNAL static void internal_test_errors_get_clear(void)
  * @test internal_test_mcdc_clk_invalid
  *
  * @par MC/DC:
- * Decision in ``priv_ra8_i2c_internal_clk_invalid``, libs/ra8_hal/src/ra8_i2c.c@priv_ra8_i2c_internal_clk_invalid
+ * Decision in ``priv_ra8_i2c_internal_clk_invalid``, libs/ra8_hal/src/i2c_xfer_abi.zig@priv_ra8_i2c_internal_clk_invalid
  *   ``(bus_hz == 0) || (pclkb_hz == 0)`` (2 conditions, OR).
  * - V1: bus!=0, pclkb!=0 -> C1=F,C2=F -> dec F
  * - V2: bus=0,  pclkb!=0 -> C1=T (short-circuits) -> dec T (varies left)
@@ -566,15 +566,15 @@ RA8_INTERNAL static void internal_test_mcdc_clk_invalid(void)
  *
  * @par MC/DC:
  * Three 2-condition decisions in ``ra8_i2c_transfer``:
- * Decision A libs/ra8_hal/src/ra8_i2c.c@ra8_i2c_transfer: ``(wr_len == 0) && (rd_len == 0)``
+ * Decision A libs/ra8_hal/src/i2c_xfer_abi.zig@ra8_i2c_transfer: ``(wr_len == 0) && (rd_len == 0)``
  * - V1: wr=0, rd=0       -> C1=T,C2=T -> dec T (-> invalid_arg)
  * - V2: wr!=0            -> C1=F (short-circuits) -> dec F
  * - V3: wr=0, rd!=0      -> C1=T,C2=F -> dec F
- * Decision B libs/ra8_hal/src/ra8_i2c.c@ra8_i2c_transfer: ``(wr_len != 0) && (wr == nullptr)``
+ * Decision B libs/ra8_hal/src/i2c_xfer_abi.zig@ra8_i2c_transfer: ``(wr_len != 0) && (wr == nullptr)``
  * - V1: wr_len=0          -> C1=F (short-circuits) -> dec F
  * - V2: wr_len!=0, wr!=0  -> C1=T,C2=F -> dec F
  * - V3: wr_len!=0, wr=NULL-> C1=T,C2=T -> dec T (null_ptr)
- * Decision C libs/ra8_hal/src/ra8_i2c.c@ra8_i2c_transfer: ``(rd_len != 0) && (rd == nullptr)``
+ * Decision C libs/ra8_hal/src/i2c_xfer_abi.zig@ra8_i2c_transfer: ``(rd_len != 0) && (rd == nullptr)``
  * mirrors B with rd_len/rd; same N+1 = 3 vectors. @brief Verify mcdc transfer behavior. @details Executes the mcdc transfer scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_transfer(void)
 {
@@ -625,7 +625,7 @@ RA8_INTERNAL static void internal_test_mcdc_transfer(void)
  * @par MC/DC:
  * Happy-path masking pairs (decision F vectors) for the three
  * ``ra8_i2c_transfer`` decisions and the write-finish OR at
- * libs/ra8_hal/src/ra8_i2c.c@internal_i2c_finish_tx:
+ * libs/ra8_hal/src/internal/i2c_xfer.zig@finishTx:
  *   ``(err != k_ra8_ok) || send_stop`` (2 conditions, OR).
  * - V1 (write+read combined, send_stop=false on write phase): C1=F,C2=F
  *   -> dec F (bus held for the RESTART read phase)
@@ -672,7 +672,7 @@ RA8_INTERNAL static void internal_test_mcdc_transfer_combined(void)
  *
  * @par MC/DC:
  * Error-path arm (C1=T) of the write-finish OR at
- * libs/ra8_hal/src/ra8_i2c.c@internal_i2c_finish_tx
+ * libs/ra8_hal/src/internal/i2c_xfer.zig@finishTx
  *   ``(err != k_ra8_ok) || send_stop``: with TDRE never pre-armed the
  *   address send times out, so ``err != k_ra8_ok`` (C1=T) forces STOP
  *   regardless of send_stop. Complements the C1=F vectors in
@@ -719,7 +719,7 @@ RA8_INTERNAL static void internal_test_read_timeout(void)
  * @test internal_test_mcdc_scan_addr_err
  *
  * @par MC/DC:
- * Decision in ``ra8_i2c_scan``, libs/ra8_hal/src/ra8_i2c.c@ra8_i2c_scan
+ * Decision in ``ra8_i2c_scan``, libs/ra8_hal/src/internal/i2c_xfer.zig@scan
  *   ``(err != k_ra8_ok) && (err != k_ra8_err_nack)`` (2 conditions, AND).
  * - V1 (address timeout): err=hw_timeout -> C1=T,C2=T -> dec T (hard
  *   error returned). TDRE never armed.

@@ -7,7 +7,7 @@
 const common = @import("abi_common.zig");
 const st = @import("internal/i2c_status.zig");
 
-/// Owned by ra8_i2c.c, declared in ra8_i2c_internal.h.
+/// Owned by i2c_xfer_abi.zig, declared in ra8_i2c_internal.h.
 extern const g_i2c_tag: [*:0]const u8;
 
 fn icsr2(channel: u8) ?*volatile u8 {

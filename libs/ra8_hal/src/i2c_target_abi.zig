@@ -3,7 +3,7 @@
 //!
 //! C ABI for the RIIC target (peripheral) role (RA8FW-769), which replaces
 //! ra8_i2c_peripheral.c. Same symbols, check order and error codes as the
-//! C. s_i2c_state and g_i2c_tag stay owned by ra8_i2c.c. Logic is in
+//! C. s_i2c_state and g_i2c_tag are owned by i2c_xfer_abi.zig. Logic is in
 //! internal/i2c_target.zig.
 
 const common = @import("abi_common.zig");

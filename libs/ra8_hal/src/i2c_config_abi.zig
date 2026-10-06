@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for ra8_i2c_init / ra8_i2c_deinit (RA8FW-702), the last part of
-//! ra8_i2c_config.c. The per-channel state table stays defined in
-//! ra8_i2c.c, shared with the transfer and peripheral planes.
+//! ra8_i2c_config.c. The per-channel state table is defined in
+//! i2c_xfer_abi.zig, shared with the transfer and peripheral planes.
 
 const common = @import("abi_common.zig");
 const cfg = @import("internal/i2c_config.zig");
@@ -23,7 +23,7 @@ pub const Cfg = extern struct {
     pclkb_hz: u32,
 };
 
-/// Owned by ra8_i2c.c, declared in ra8_i2c_internal.h.
+/// Owned by i2c_xfer_abi.zig, declared in ra8_i2c_internal.h.
 extern const g_i2c_tag: [*:0]const u8;
 extern var s_i2c_state: [cfg.channel_count]State;
 /// Exported by i2c_clock_abi.zig (RA8FW-695).

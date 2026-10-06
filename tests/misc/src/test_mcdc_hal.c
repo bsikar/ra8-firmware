@@ -165,7 +165,7 @@ RA8_INTERNAL static void internal_test_gfx_blit_gray8_clip_mcdc(void)
 }
 
 /* ===========================================================================
- * Group 2 -- internal_i2c_finish_tx (libs/ra8_hal/src/ra8_i2c.c)
+ * Group 2 -- finishTx (libs/ra8_hal/src/internal/i2c_xfer.zig)
  * ===========================================================================
  */
 
@@ -202,7 +202,7 @@ RA8_INTERNAL static void internal_i2c_prime_all(uint8_t channel)
  *
  * @par MC/DC:
  * Decision: `if ((err != k_ra8_ok) || send_stop)` (2 conditions, OR;
- * libs/ra8_hal/src/ra8_i2c.c@internal_i2c_finish_tx).
+ * libs/ra8_hal/src/internal/i2c_xfer.zig@finishTx).
  * Vectors (N+1 = 3 for N=2):
  *  - V1: data phase ok, send_stop=false -> C1 F, C2 F -> false (bus held).
  *  - V2: data phase ok, send_stop=true  -> C1 F, C2 T -> true  (STOP issued).

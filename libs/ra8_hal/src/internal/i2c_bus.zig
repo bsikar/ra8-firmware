@@ -3,8 +3,8 @@
 //!
 //! RIIC controller bus primitives (RA8FW-886, was part of ra8_i2c.c):
 //! ICSR2 flag waits, status mapping and clear, START / repeated START,
-//! STOP, NACK, the BBSY busy gate and the address byte. Exports live in
-//! src/i2c_bus_abi.zig. HUM Ch 39.
+//! STOP, NACK, the BBSY busy gate and the address byte. Used by
+//! i2c_xfer.zig. HUM Ch 39.
 
 pub const off_iccr2: usize = 0x01;
 pub const off_icmr3: usize = 0x04;
