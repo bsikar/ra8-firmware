@@ -239,6 +239,7 @@ test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Z
         .{ .app = "txm_rpc_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_reload_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "cpu1_routed_irq", .kernel = null },
+        .{ .app = "txm_dual_mailbox", .kernel = "threadx_m33_modules" },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -266,8 +267,8 @@ test "only the Module Manager images carry a packed module, each in its own link
         const image = app.cpu1 orelse continue;
         if (image.txm_module == null) continue;
         const module_apps = [_][]const u8{
-            "txm_manager_cpu1", "txm_fault_cpu1", "txm_table_cpu1", "txm_rpc_cpu1",
-            "txm_reload_cpu1",
+            "txm_manager_cpu1", "txm_fault_cpu1",   "txm_table_cpu1", "txm_rpc_cpu1",
+            "txm_reload_cpu1",  "txm_dual_mailbox",
         };
         var known = false;
         for (module_apps) |name| known = known or std.mem.eql(u8, app.name, name);
