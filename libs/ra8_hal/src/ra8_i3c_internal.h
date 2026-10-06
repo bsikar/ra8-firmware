@@ -1,6 +1,9 @@
 /**
  * @file ra8_i3c_internal.h
- * @brief Test-access surface for ra8_i3c internal helpers (MC/DC).
+ * @brief C view of the Zig-defined I3C state and test helpers (MC/DC).
+ *
+ * s_i3c_chan is defined in i3c_life_abi.zig, the priv_* predicates in
+ * i3c_ccc_abi.zig and i3c_ibi_abi.zig (ra8_i3c.c is gone, RA8FW-826).
  *
  * @details Declares bounded module-private predicates used to validate I3C controller operations and expose focused coverage seams.
  * @ingroup grp_hal_comms
@@ -65,7 +68,7 @@ typedef struct {
 /**
  * @var s_i3c_chan
  * @brief Channel state, defined in src/i3c_life_abi.zig (RA8FW-819) and read
- *        by the transfer and peripheral paths still in ra8_i3c.c.
+ *        by the other i3c_*_abi.zig units and the C unit tests.
  */
 extern ra8_i3c_chan_state_t s_i3c_chan[k_ra8_i3c_i2c_channel_count];
 

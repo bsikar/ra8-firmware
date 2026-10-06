@@ -902,7 +902,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 40 p 2445 (PRTS/BCTL/MSDVAD/INST/INSTE/IE/BST/BSTE/BIE)
 [x] Unit tests -- tests/hal/src/test_ra8_i3c.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 40 register notes in libs/ra8_hal/src/ra8_i3c.c
+[x] HUM cross-ref -- all Ch 40 register notes in libs/ra8_hal/src/internal/i3c_*.zig
 [x] Doxygen -- full file + member coverage
 ```
 

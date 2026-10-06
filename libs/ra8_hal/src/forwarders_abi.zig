@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for seven one-line forwarders (RA8FW-712), moved out of ra8_ceu.c,
-//! flash_irq_abi.zig (was ra8_flash_irq.c), ra8_i3c.c, ra8_mipi_phy.c and ra8_ssie.c, plus
+//! flash_irq_abi.zig (was ra8_flash_irq.c), ra8_i3c.c (now Zig), ra8_mipi_phy.c and ra8_ssie.c, plus
 //! ra8_gpio_release from gpio.c. Prototypes stay
 //! in the driver headers; every target stays in C. Struct arguments pass
 //! through as opaque pointers.

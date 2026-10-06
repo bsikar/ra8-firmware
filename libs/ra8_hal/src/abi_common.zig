@@ -15,6 +15,7 @@ pub const k_ra8_err_not_initialized: u16 = 0x10F;
 pub const k_ra8_err_hw_timeout: u16 = 0x203;
 pub const k_ra8_err_hw_error: u16 = 0x204;
 pub const k_ra8_err_out_of_range: u16 = 0x208;
+pub const k_ra8_err_no_data: u16 = 0x10A;
 pub const k_ra8_err_null_ptr: u16 = 0x504;
 
 pub extern fn ra8_log_emit_info(tag: [*:0]const u8, message: [*:0]const u8) void;

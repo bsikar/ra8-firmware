@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for the one-line `*_exit_stop` wrappers (RA8FW-710), moved out of
-//! adc.c, ra8_ceu.c, ra8_eth.c, ra8_eth_gwca.c, ra8_glcdc.c and ra8_i3c.c.
+//! adc.c, ra8_ceu.c, ra8_eth.c, ra8_eth_gwca.c, ra8_glcdc.c and ra8_i3c.c (now Zig).
 //! Prototypes stay in each driver header; module stop stays in C.
 
 const ids = @import("internal/exit_stop.zig");
