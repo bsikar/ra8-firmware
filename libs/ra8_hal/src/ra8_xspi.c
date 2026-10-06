@@ -444,7 +444,7 @@ typedef struct {
 } ra8_xspi_state_t;
 
 /** @brief Per-instance callback state (s_ prefix for file-static). */
-static ra8_xspi_state_t s_xspi_state[k_ra8_xspi_instance_count];
+extern ra8_xspi_state_t s_xspi_state[k_ra8_xspi_instance_count]; /* Zig: xspi_events_abi.zig */
 
 ra8_err_t ra8_xspi_deinit(uint8_t instance)
 {
@@ -459,75 +459,6 @@ ra8_err_t ra8_xspi_deinit(uint8_t instance)
   s_xspi_state[instance].fn  = nullptr;
   s_xspi_state[instance].ctx = nullptr;
   return ra8_mstp_disable(s_xspi_mstp_table[instance]);
-}
-
-ra8_err_t ra8_xspi_get_status(uint8_t instance, uint32_t* out_mask)
-{
-  RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile const r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  *out_mask = reg->COMSTT;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_clear_status(uint8_t instance, uint32_t mask)
-{
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->INTC = mask;
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_attach_handler(uint8_t instance, ra8_xspi_event_fn_t fn, void* ctx)
-{
-  if (instance >= k_ra8_xspi_instance_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  s_xspi_state[instance].fn  = fn;
-  s_xspi_state[instance].ctx = ctx;
-  return k_ra8_ok;
-}
-
-RA8_ISR_SAFE
-void ra8_xspi_dispatch(uint8_t instance)
-{
-  if (instance >= k_ra8_xspi_instance_count) {
-    return;
-  }
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- instance bounded above */
-    return;             /* GCOVR_EXCL_LINE -- MSTP fail is HW-only      */
-  }
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Snapshot INTS + COMSTT, clear every pending interrupt flag,
-   * then hand the INTS mask off to the user callback so it can
-   * decide whether the transfer was successful or errored. */
-  const uint32_t mask = reg->INTS;
-  reg->INTC           = k_ra8_xspi_ints_mask_all;
-
-  const ra8_xspi_event_fn_t fn  = s_xspi_state[instance].fn;
-  void* const               ctx = s_xspi_state[instance].ctx;
-  if (fn != nullptr) {
-    fn(ctx, mask);
-  }
-}
-
-ra8_err_t ra8_xspi_enter_stop(uint8_t instance)
-{
-  if (instance >= k_ra8_xspi_instance_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  return ra8_mstp_disable(s_xspi_mstp_table[instance]);
-}
-
-ra8_err_t ra8_xspi_exit_stop(uint8_t instance)
-{
-  if (instance >= k_ra8_xspi_instance_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  return ra8_mstp_enable(s_xspi_mstp_table[instance]);
 }
 
 ra8_err_t ra8_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code)
