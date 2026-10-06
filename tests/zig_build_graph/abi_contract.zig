@@ -235,7 +235,7 @@ pub fn add(
         .name = "c_abi_consumer_ra8_abi_fixture",
         .root_module = module,
     });
-    consumer.linkLibrary(archive);
+    consumer.root_module.linkLibrary(archive);
     const run_consumer = b.addRunArtifact(consumer);
     run_consumer.expectExitCode(0);
     step.dependOn(&run_consumer.step);
