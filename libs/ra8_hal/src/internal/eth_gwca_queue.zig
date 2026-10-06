@@ -60,6 +60,17 @@ pub const QueueCfg = extern struct {
     chain_head: ?*anyopaque = null,
 };
 
+/// Mirror of `ra8_gwca_ext_descriptor_t`: the basic 8 bytes, then INFO1.
+pub const ExtDesc = extern struct {
+    base: Desc = .{},
+    info1_lo: u32 = 0,
+    info1_hi: u32 = 0,
+};
+
+comptime {
+    if (@sizeOf(ExtDesc) != 16 or @offsetOf(ExtDesc, "info1_lo") != 8 or @offsetOf(ExtDesc, "info1_hi") != 12) @compileError("ExtDesc layout");
+}
+
 pub fn getDt(d: *const volatile Desc) u8 {
     return d.b2 >> 4;
 }

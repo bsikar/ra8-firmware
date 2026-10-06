@@ -21,7 +21,7 @@ pub const DefaultState = extern struct {
     rx_slot_bytes: u32,
     rx_queue_index: u32,
     rx_head: u32,
-    tx_chain: ?*anyopaque,
+    tx_chain: ?[*]volatile q.ExtDesc,
     tx_depth: u32,
     tx_pool: ?[*]u8,
     tx_slot_bytes: u32,
