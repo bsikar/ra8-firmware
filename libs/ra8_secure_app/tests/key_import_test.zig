@@ -11,7 +11,7 @@ const key_import = @import("key_import");
 const vault = key_import.vault;
 const Blob = key_import.Blob;
 
-const kak = [_]u8{0x40} ** 16;
+const kak: [16]u8 = @splat(0x40);
 
 fn pattern(seed: u8) [Blob.key_bytes]u8 {
     var key: [Blob.key_bytes]u8 = undefined;
@@ -119,7 +119,7 @@ test "a blob sealed under another KAK is refused" {
     var blob: key_import.Sealed = undefined;
     _ = key_import.buildBlob(&key, &blob);
 
-    const other = [_]u8{0x41} ** 16;
+    const other: [16]u8 = @splat(0x41);
     try std.testing.expectEqual(vault.Err.ok, vault.setMacKey(&other));
     try std.testing.expectEqual(key_import.Err.invalid_arg, key_import.authenticate(&blob));
 }
@@ -147,7 +147,7 @@ test "with no KAK provisioned every path fails closed" {
     try std.testing.expectEqual(key_import.Err.ok, key_import.reset());
 
     const key = pattern(0xAA);
-    var blob: key_import.Sealed = .{0} ** Blob.bytes;
+    var blob: key_import.Sealed = @splat(0);
     try std.testing.expectEqual(key_import.Err.not_found, key_import.buildBlob(&key, &blob));
     try std.testing.expectEqual(key_import.Err.not_found, key_import.authenticate(&blob));
     var handle: u32 = 0;
@@ -208,7 +208,7 @@ test "reset frees the slots for reuse" {
 
 test "an empty-looking blob of the right length is still refused" {
     try provision();
-    const blob: key_import.Sealed = .{0} ** Blob.bytes;
+    const blob: key_import.Sealed = @splat(0);
     var handle: u32 = 0;
     try std.testing.expectEqual(key_import.Err.invalid_arg, key_import.seal(&blob, &handle));
 }

@@ -16,7 +16,7 @@ const Scratch = extern struct {
 };
 
 fn store() [256]u8 {
-    return [_]u8{0} ** 256;
+    return @as([256]u8, @splat(0));
 }
 
 test "init points the cursor at the caller's store" {

@@ -130,13 +130,13 @@ test "tail bytes are computed wide, so a huge tail cannot wrap into range" {
 }
 
 test "a blank tail reads as erased" {
-    const blank = [_]u8{0xFF} ** 8;
+    const blank: [8]u8 = @splat(0xFF);
     try std.testing.expect(implementation.allErased(&blank, 0xFF));
     try std.testing.expect(!implementation.allErased(&blank, 0x00));
 }
 
 test "one programmed byte anywhere means the tail is not blank" {
-    var buf = [_]u8{0xFF} ** 8;
+    var buf: [8]u8 = @splat(0xFF);
     buf[7] = 0xFE;
     try std.testing.expect(!implementation.allErased(&buf, 0xFF));
     try std.testing.expect(implementation.allErased(buf[0..7], 0xFF));

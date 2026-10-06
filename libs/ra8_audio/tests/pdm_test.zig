@@ -339,7 +339,7 @@ test "an uninitialized state answers not_initialized on every row" {
 
     var info: abi.Info = .{};
     try std.testing.expectEqual(abi.err.not_initialized, abi.ra8_audio_source_get_info(&source, &info));
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.not_initialized, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -357,7 +357,7 @@ test "polled capture fills the caller buffer and timestamps the frame" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.ok, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -375,7 +375,7 @@ test "capture collects a frame across several partial FIFO reads" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.ok, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -390,7 +390,7 @@ test "capture times out when the attempt budget is spent" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var frame: abi.Frame = .{};
     // Four attempts, one sample each, eight samples wanted.
@@ -405,7 +405,7 @@ test "capture forwards a FIFO read error" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(err_nack, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -417,7 +417,7 @@ test "capture checks the buffer size before its alignment" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage align(4) = [_]u8{0} ** 64;
+    var storage: [64]u8 align(4) = @splat(0);
     var frame: abi.Frame = .{};
     const small = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 28 };
     try std.testing.expectEqual(abi.err.invalid_size, abi.ra8_audio_source_capture(&source, &small, &frame));
@@ -433,7 +433,7 @@ test "stream_start refuses a misaligned assembly buffer and a second stream" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage align(4) = [_]u8{0} ** 64;
+    var storage: [64]u8 align(4) = @splat(0);
     const misaligned = abi.Buffer{ .data = @ptrCast(storage[2..].ptr), .capacity = 32 };
     try std.testing.expectEqual(
         abi.err.invalid_arg,
@@ -455,7 +455,7 @@ test "a failing stream enable clears every retained stream pointer" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var storage align(4) = [_]i32{0} ** 8;
+    var storage: [8]i32 align(4) = @splat(0);
     const good = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     try std.testing.expectEqual(
         err_invalid_arg,
@@ -475,7 +475,7 @@ test "the installed FIFO handler assembles and publishes whole frames" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var assembly = [_]i32{0} ** 8;
+    var assembly: [8]i32 = @splat(0);
     const good = abi.Buffer{ .data = @ptrCast(&assembly), .capacity = 32 };
     var token: u32 = 3;
     try std.testing.expectEqual(
@@ -519,7 +519,7 @@ test "the handler ignores spans once the stream is no longer active" {
     var state = pdm.PdmState{};
     try openSource(&source, &state);
 
-    var assembly = [_]i32{0} ** 8;
+    var assembly: [8]i32 = @splat(0);
     const good = abi.Buffer{ .data = @ptrCast(&assembly), .capacity = 32 };
     try std.testing.expectEqual(abi.err.ok, abi.ra8_audio_source_stream_start(&source, &good, frameSink, null));
     const handler = hal.installed.?;

@@ -70,7 +70,7 @@ test "bmp is two bytes" {
 
 test "tga has no signature, so it is never sniffed" {
     // A plausible 18-byte TGA header: no signature anywhere in it.
-    const tga = [_]u8{0} ** 18;
+    const tga: [18]u8 = @splat(0);
     try std.testing.expectError(error.NotFound, sniff.sniff(&tga));
 }
 

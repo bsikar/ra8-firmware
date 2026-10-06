@@ -72,7 +72,7 @@ const Subkeys = struct {
     ///
     /// `L` recovers both subkeys, so it is wiped before this returns.
     fn derive(schedule: *const aes.Schedule) Subkeys {
-        var l = aes.encryptBlock(schedule, [_]u8{0} ** aes.Dim.block_bytes);
+        var l = aes.encryptBlock(schedule, @as([aes.Dim.block_bytes]u8, @splat(0)));
         defer std.crypto.secureZero(u8, &l);
         const k1 = double(l);
         return .{ .complete = k1, .padded = double(k1) };
@@ -119,7 +119,7 @@ pub fn tag(key: []const u8, msg: []const u8) Tag {
     const last_off = (block_count - 1) * aes.Dim.block_bytes;
     const last = buildLast(msg[last_off..], keys);
 
-    var x = [_]u8{0} ** aes.Dim.block_bytes;
+    var x: [aes.Dim.block_bytes]u8 = @splat(0);
     var b: usize = 0;
     while (b + 1 < block_count) : (b += 1) {
         var y: aes.Block = undefined;

@@ -115,7 +115,7 @@ fn plainBackend() Backend {
 const png_head = [_]u8{ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
 
 fn pngOf(width: u32, height: u32) [24]u8 {
-    var out = [_]u8{0} ** 24;
+    var out: [24]u8 = @splat(0);
     @memcpy(out[0..8], &png_head);
     @memcpy(out[12..16], "IHDR");
     std.mem.writeInt(u32, out[16..20], width, .big);
@@ -259,7 +259,7 @@ test "a declared format the backend opens reaches it unchanged" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     req.format = Format.png;
@@ -273,7 +273,7 @@ test "format none is sniffed and the backend is handed the resolved bit" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     var out: Image = .{};
@@ -285,7 +285,7 @@ test "bytes carrying no signature are unsupported, never handed on" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = [_]u8{ 1, 2, 3, 4 };
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     var out: Image = .{};
@@ -296,9 +296,9 @@ test "bytes carrying no signature are unsupported, never handed on" {
 test "a format the backend did not advertise never reaches it" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
-    var bytes = [_]u8{0} ** 10;
+    var bytes: [10]u8 = @splat(0);
     @memcpy(bytes[0..6], "GIF89a");
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     var out: Image = .{};
@@ -310,7 +310,7 @@ test "a pixel layout the backend cannot write never reaches it" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     req.want = Pixel.grey8;
@@ -323,7 +323,7 @@ test "the request contract is checked before any dispatch" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
     var out: Image = .{};
 
     var req = reqFor(&bytes, &dst);
@@ -349,7 +349,7 @@ test "a stride or destination too small for one pixel is a size fault" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
     var out: Image = .{};
 
     var req = reqFor(&bytes, &dst);
@@ -365,7 +365,7 @@ test "a backend that needs scratch is refused a request with no arena" {
     backend.caps.scratch_bytes = 1024;
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     var out: Image = .{};
@@ -377,7 +377,7 @@ test "an arena too small for the advertised scratch is out of memory" {
     backend.caps.scratch_bytes = 1024;
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     req.arena = &dummy_arena;
@@ -390,7 +390,7 @@ test "the arena's own error code travels back untranslated" {
     backend.caps.scratch_bytes = 16;
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     req.arena = &dummy_arena;
@@ -402,7 +402,7 @@ test "a backend that needs no scratch is never asked about the arena" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     arena_seen = 0;
     var req = reqFor(&bytes, &dst);
@@ -417,7 +417,7 @@ test "a failed decode leaves the result zeroed, not half written" {
     backend.produced = .{ .width_px = 99, .height_px = 99 };
     const dec = handleFor(&backend);
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
 
     var req = reqFor(&bytes, &dst);
     var out: Image = .{};
@@ -457,7 +457,7 @@ test "probe enforces the backend's own dim_max, which decode cannot" {
 test "probe refuses a container this backend does not advertise" {
     var backend = plainBackend();
     const dec = handleFor(&backend);
-    var bytes = [_]u8{0} ** 10;
+    var bytes: [10]u8 = @splat(0);
     @memcpy(bytes[0..6], "GIF89a");
     bytes[6] = 4;
     bytes[8] = 4;

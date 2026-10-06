@@ -128,7 +128,7 @@ test "push then pop round-trips the payload and its length" {
 
 test "push fills every slot and then reports the ring full" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x11} ** 64;
+    const frame: [64]u8 = @splat(0x11);
     var i: u16 = 0;
     while (i < implementation.ring_slots) : (i += 1) {
         try std.testing.expect(ring.push(&frame));
@@ -140,7 +140,7 @@ test "push fills every slot and then reports the ring full" {
 
 test "a refused push leaves the cursors untouched" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x22} ** 32;
+    const frame: [32]u8 = @splat(0x22);
     var i: u16 = 0;
     while (i < implementation.ring_slots) : (i += 1) {
         try std.testing.expect(ring.push(&frame));
@@ -156,7 +156,7 @@ test "frames come back in the order they went in" {
     var ring: implementation.Ring = .{};
     var slot: u8 = 0;
     while (slot < 4) : (slot += 1) {
-        const frame = [_]u8{slot} ** 16;
+        const frame: [16]u8 = @splat(slot);
         try std.testing.expect(ring.push(&frame));
     }
     var out: [implementation.frame_max]u8 = undefined;
@@ -164,7 +164,7 @@ test "frames come back in the order they went in" {
     while (expected < 4) : (expected += 1) {
         const written = ring.pop(&out) orelse return error.TestUnexpectedResult;
         try std.testing.expectEqual(@as(u16, 16), written);
-        try std.testing.expectEqualSlices(u8, &[_]u8{expected} ** 16, out[0..16]);
+        try std.testing.expectEqualSlices(u8, &@as([16]u8, @splat(expected)), out[0..16]);
     }
     try std.testing.expect(ring.isEmpty());
 }
@@ -174,7 +174,7 @@ test "cursors wrap without losing order across many cycles" {
     var out: [implementation.frame_max]u8 = undefined;
     var round: u8 = 0;
     while (round < 20) : (round += 1) {
-        const frame = [_]u8{round} ** 8;
+        const frame: [8]u8 = @splat(round);
         try std.testing.expect(ring.push(&frame));
         const written = ring.pop(&out) orelse return error.TestUnexpectedResult;
         try std.testing.expectEqual(@as(u16, 8), written);
@@ -186,7 +186,7 @@ test "cursors wrap without losing order across many cycles" {
 
 test "pop frees the slot it drained" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x33} ** 20;
+    const frame: [20]u8 = @splat(0x33);
     try std.testing.expect(ring.push(&frame));
     const drained_head = ring.head;
     var out: [implementation.frame_max]u8 = undefined;
@@ -196,7 +196,7 @@ test "pop frees the slot it drained" {
 
 test "reset clears the cursors and every slot length" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x44} ** 128;
+    const frame: [128]u8 = @splat(0x44);
     var i: u16 = 0;
     while (i < 3) : (i += 1) {
         try std.testing.expect(ring.push(&frame));
@@ -212,7 +212,7 @@ test "reset clears the cursors and every slot length" {
 
 test "reset mid-ring makes the next push land in slot zero" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x55} ** 12;
+    const frame: [12]u8 = @splat(0x55);
     try std.testing.expect(ring.push(&frame));
     try std.testing.expect(ring.push(&frame));
     ring.reset();
@@ -242,7 +242,7 @@ test "a frame_max frame survives the ring" {
 
 test "count tracks pushes and pops one for one" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x66} ** 24;
+    const frame: [24]u8 = @splat(0x66);
     var out: [implementation.frame_max]u8 = undefined;
     try std.testing.expect(ring.push(&frame));
     try std.testing.expect(ring.push(&frame));
@@ -256,13 +256,13 @@ test "count tracks pushes and pops one for one" {
 test "interleaved push and pop keeps distinct payloads matched" {
     var ring: implementation.Ring = .{};
     var out: [implementation.frame_max]u8 = undefined;
-    const first = [_]u8{0xA1} ** 10;
-    const second = [_]u8{0xB2} ** 20;
+    const first: [10]u8 = @splat(0xA1);
+    const second: [20]u8 = @splat(0xB2);
     try std.testing.expect(ring.push(&first));
     try std.testing.expect(ring.push(&second));
     try std.testing.expectEqual(@as(?u16, 10), ring.pop(&out));
     try std.testing.expectEqualSlices(u8, &first, out[0..10]);
-    const third = [_]u8{0xC3} ** 30;
+    const third: [30]u8 = @splat(0xC3);
     try std.testing.expect(ring.push(&third));
     try std.testing.expectEqual(@as(?u16, 20), ring.pop(&out));
     try std.testing.expectEqualSlices(u8, &second, out[0..20]);
@@ -272,7 +272,7 @@ test "interleaved push and pop keeps distinct payloads matched" {
 
 test "pop reports the frame length, not the buffer capacity" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x77} ** 100;
+    const frame: [100]u8 = @splat(0x77);
     try std.testing.expect(ring.push(&frame));
     var out: [implementation.frame_max]u8 = undefined;
     try std.testing.expectEqual(@as(?u16, 100), ring.pop(&out));
@@ -280,7 +280,7 @@ test "pop reports the frame length, not the buffer capacity" {
 
 test "a full ring drains completely and accepts a fresh round" {
     var ring: implementation.Ring = .{};
-    const frame = [_]u8{0x88} ** 40;
+    const frame: [40]u8 = @splat(0x88);
     var out: [implementation.frame_max]u8 = undefined;
     var round: u8 = 0;
     while (round < 3) : (round += 1) {

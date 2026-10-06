@@ -61,7 +61,7 @@ test "a partial word is the prefix of the whole word" {
 
 test "a length that is not a multiple of eight still fills exactly" {
     try std.testing.expectEqual(trng.Err.ok, trng.reset());
-    var out: [13]u8 = .{0} ** 13;
+    var out: [13]u8 = @splat(0);
     try std.testing.expectEqual(trng.Err.ok, trng.read(&out));
 
     var nonzero: usize = 0;

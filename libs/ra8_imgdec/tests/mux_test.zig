@@ -115,7 +115,7 @@ fn plainBackend() Backend {
 const png_head = [_]u8{ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
 
 fn pngOf(width: u32, height: u32) [24]u8 {
-    var out = [_]u8{0} ** 24;
+    var out: [24]u8 = @splat(0);
     @memcpy(out[0..8], &png_head);
     @memcpy(out[12..16], "IHDR");
     std.mem.writeInt(u32, out[16..20], width, .big);
@@ -287,7 +287,7 @@ test "decode sniffs, routes, and hands the member a resolved format" {
     _ = mux.add(@ptrCast(&set), @ptrCast(&b));
 
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
     var req = Req{
         .bytes = (&bytes).ptr,
         .byte_count = bytes.len,
@@ -310,7 +310,7 @@ test "decode refuses bytes nothing in the set opens" {
     _ = mux.add(@ptrCast(&set), @ptrCast(&dec));
 
     const bytes = pngOf(16, 16);
-    var dst = [_]u8{0} ** 64;
+    var dst: [64]u8 = @splat(0);
     var req = Req{
         .bytes = (&bytes).ptr,
         .byte_count = bytes.len,

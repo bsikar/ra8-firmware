@@ -191,7 +191,7 @@ test "get_info forwards the backend metadata and its errors" {
 test "capture rejects each absent argument in order" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     var buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.null_ptr, abi.ra8_audio_source_capture(null, &buffer, &frame));
@@ -202,7 +202,7 @@ test "capture rejects each absent argument in order" {
 
 test "capture zeroes its output before reporting an unbound source" {
     var source = abi.Source{};
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame = fixture();
     try std.testing.expectEqual(abi.err.not_initialized, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -213,7 +213,7 @@ test "capture zeroes its output before reporting an unbound source" {
 test "capture treats a data-less or zero-capacity buffer as absent" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     var frame: abi.Frame = .{};
     const no_data = abi.Buffer{ .data = null, .capacity = 32 };
     try std.testing.expectEqual(abi.err.null_ptr, abi.ra8_audio_source_capture(&source, &no_data, &frame));
@@ -234,7 +234,7 @@ test "capture reports not_initialized for a capture row with no info row" {
     const partial_iface = abi.SourceIface{ .capture = Fake.capture };
     var fake = newFake();
     var source = abi.Source{ .iface = &partial_iface, .ctx = @ptrCast(&fake) };
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.not_initialized, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -245,7 +245,7 @@ test "capture forwards a metadata error without dispatching" {
     var fake = newFake();
     fake.info_status = 0x203;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(@as(u16, 0x203), abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -255,7 +255,7 @@ test "capture forwards a metadata error without dispatching" {
 test "capture rejects a buffer smaller than one source frame" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const small = abi.Buffer{ .data = &storage, .capacity = 28 };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.invalid_size, abi.ra8_audio_source_capture(&source, &small, &frame));
@@ -266,7 +266,7 @@ test "capture zeroes its output when the backend fails" {
     var fake = newFake();
     fake.capture_status = 0x204;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame = fixture();
     try std.testing.expectEqual(@as(u16, 0x204), abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -277,7 +277,7 @@ test "capture rejects a frame that does not alias the caller's buffer" {
     var fake = newFake();
     fake.alias_buffer = false;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.invalid_state, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -288,7 +288,7 @@ test "capture revalidates the returned descriptor" {
     var fake = newFake();
     fake.frame.valid_bits = 0;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.invalid_arg, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -299,7 +299,7 @@ test "capture rejects a frame that disagrees with the advertised geometry" {
     var fake = newFake();
     fake.info.sample_rate_hz = 8000;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.invalid_state, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -309,7 +309,7 @@ test "capture rejects a frame that disagrees with the advertised geometry" {
 test "capture publishes a frame aliasing the caller's buffer" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const buffer = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var frame: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.ok, abi.ra8_audio_source_capture(&source, &buffer, &frame));
@@ -323,7 +323,7 @@ test "capture publishes a frame aliasing the caller's buffer" {
 test "stream_start rejects each absent argument in order" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     const no_data = abi.Buffer{ .data = null, .capacity = 32 };
     try std.testing.expectEqual(
@@ -347,7 +347,7 @@ test "stream_start rejects each absent argument in order" {
 
 test "stream_start reports not_initialized for an unbound source" {
     var source = abi.Source{};
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     try std.testing.expectEqual(
         abi.err.not_initialized,
@@ -359,7 +359,7 @@ test "stream_start reports not_supported when only the stream row is absent" {
     const no_stream = abi.SourceIface{ .get_info = Fake.getInfo, .capture = Fake.capture, .stop = Fake.stop };
     var fake = newFake();
     var source = abi.Source{ .iface = &no_stream, .ctx = @ptrCast(&fake) };
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     try std.testing.expectEqual(
         abi.err.not_supported,
@@ -372,7 +372,7 @@ test "stream_start reports not_initialized when the info row is absent too" {
     const only_stream = abi.SourceIface{ .stream_start = Fake.streamStart };
     var fake = newFake();
     var source = abi.Source{ .iface = &only_stream, .ctx = @ptrCast(&fake) };
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     try std.testing.expectEqual(
         abi.err.not_initialized,
@@ -383,7 +383,7 @@ test "stream_start reports not_initialized when the info row is absent too" {
 test "stream_start rejects a buffer smaller than one frame and forwards info errors" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const small = abi.Buffer{ .data = &storage, .capacity = 28 };
     try std.testing.expectEqual(
         abi.err.invalid_size,
@@ -401,7 +401,7 @@ test "stream_start rejects a buffer smaller than one frame and forwards info err
 test "stream_start dispatches the buffer and context it was given" {
     var fake = newFake();
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     var token: u32 = 5;
     try std.testing.expectEqual(
@@ -423,7 +423,7 @@ test "stream_start forwards a backend refusal" {
     var fake = newFake();
     fake.stream_status = abi.err.exists;
     var source = sourceFor(&fake);
-    var storage = [_]u8{0} ** 32;
+    var storage: [32]u8 = @splat(0);
     const good = abi.Buffer{ .data = &storage, .capacity = storage.len };
     try std.testing.expectEqual(
         abi.err.exists,
@@ -492,7 +492,7 @@ test "memory source replays the fixture into caller storage" {
     try std.testing.expectEqual(@as(u8, 1), info.channels);
     try std.testing.expectEqual(@as(u8, 20), info.valid_bits);
 
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     var captured: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.ok, abi.ra8_audio_source_capture(&source, &buffer, &captured));
@@ -511,7 +511,7 @@ test "memory source has no streaming row" {
     var state = memory.MemoryState{};
     var frame = fixture();
     try std.testing.expectEqual(abi.err.ok, memory.ra8_audio_source_memory_init(&source, &state, &frame));
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const buffer = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 32 };
     try std.testing.expectEqual(
         abi.err.not_supported,
@@ -524,7 +524,7 @@ test "memory source rejects a buffer it cannot fill and stops cleanly" {
     var state = memory.MemoryState{};
     var frame = fixture();
     try std.testing.expectEqual(abi.err.ok, memory.ra8_audio_source_memory_init(&source, &state, &frame));
-    var storage = [_]i32{0} ** 8;
+    var storage: [8]i32 = @splat(0);
     const small = abi.Buffer{ .data = @ptrCast(&storage), .capacity = 28 };
     var captured: abi.Frame = .{};
     try std.testing.expectEqual(abi.err.invalid_size, abi.ra8_audio_source_capture(&source, &small, &captured));

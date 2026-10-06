@@ -14,7 +14,7 @@ const vault = @import("vault");
 
 extern fn ra8_key_vault_set_mac_key(key: ?[*]const u8, key_len: u16) u16;
 
-const key: [vault.Limits.mac_key_256]u8 = .{0x5A} ** vault.Limits.mac_key_256;
+const key: [vault.Limits.mac_key_256]u8 = @splat(0x5A);
 
 /// The 192-bit length `secure_app_vault_kat` sends: neither AES-128 nor AES-256.
 const bad_len: u16 = 24;

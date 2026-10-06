@@ -8,7 +8,7 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 
 fn freshPblocks(comptime n: usize) [n]core.Pblock {
-    return [_]core.Pblock{.{}} ** n;
+    return @as([n]core.Pblock, @splat(.{}));
 }
 
 test "layout: Pblock matches the C ABI" {
@@ -234,7 +234,7 @@ test "checkpoint constants keep their C values" {
 }
 
 test "wire codec: little-endian round trips independent of host order" {
-    var buf = [_]u8{0} ** 8;
+    var buf: [8]u8 = @splat(0);
     core.putLe16(buf[0..], 0xBEEF);
     core.putLe32(buf[2..], 0xDEADC0DE);
     try expectEqual(@as(u8, 0xEF), buf[0]);
@@ -248,8 +248,8 @@ test "wire codec: little-endian round trips independent of host order" {
 }
 
 test "wire codec: the saturated ends decode as the C documents" {
-    const zeros = [_]u8{0} ** 4;
-    const ones = [_]u8{0xFF} ** 4;
+    const zeros: [4]u8 = @splat(0);
+    const ones: [4]u8 = @splat(0xFF);
     try expectEqual(@as(u16, 0), core.getLe16(zeros[0..]));
     try expectEqual(@as(u32, 0), core.getLe32(zeros[0..]));
     try expectEqual(@as(u16, 0xFFFF), core.getLe16(ones[0..]));
@@ -299,7 +299,7 @@ test "size values: header, map and physical records add up exactly" {
 }
 
 test "bitmap: a bit reports its prior state and then stays set" {
-    var bitmap = [_]u8{0} ** 8;
+    var bitmap: [8]u8 = @splat(0);
     try expect(!core.bitIsSet(bitmap[0..], 9));
     try expect(!core.bitWasSet(bitmap[0..], 9));
     try expect(core.bitIsSet(bitmap[0..], 9));
@@ -309,7 +309,7 @@ test "bitmap: a bit reports its prior state and then stays set" {
 }
 
 test "window mark: out of range is fatal, out of window is a later pass" {
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
     try expectEqual(core.err_invalid_state, core.windowMark(6, scratch[0..], 0, 6, 6));
     try expectEqual(core.ok, core.windowMark(8192, scratch[0..], 4096, 4096, 3));
     try expectEqual(core.ok, core.windowMark(8192, scratch[0..], 0, 4096, 5000));
@@ -317,22 +317,22 @@ test "window mark: out of range is fatal, out of window is a later pass" {
 }
 
 test "window mark: a second claim on one physical block is a duplicate" {
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
     try expectEqual(core.ok, core.windowMark(6, scratch[0..], 0, 6, 2));
     try expectEqual(core.err_invalid_state, core.windowMark(6, scratch[0..], 0, 6, 2));
 }
 
 test "validate native: a consistent cold-start table passes" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
     try expectEqual(core.ok, core.validateNative(map[0..], pblocks[0..], scratch[0..]));
 }
 
 test "validate native: a mapped block must be LIVE and a LIVE block mapped" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
 
     map[1] = 3;
     try expectEqual(core.err_invalid_state, core.validateNative(map[0..], pblocks[0..], scratch[0..]));
@@ -346,17 +346,17 @@ test "validate native: a mapped block must be LIVE and a LIVE block mapped" {
 }
 
 test "validate native: an unknown physical state is rejected" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
     pblocks[2].state = core.pstate_stale + 1;
     try expectEqual(core.err_invalid_state, core.validateNative(map[0..], pblocks[0..], scratch[0..]));
 }
 
 test "validate native: two logical blocks may not share a physical block" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
-    var scratch = [_]u8{0} ** 512;
+    var scratch: [512]u8 = @splat(0);
     map[0] = 1;
     map[2] = 1;
     pblocks[1].state = core.pstate_live;
@@ -371,7 +371,7 @@ test "encode/decode: a checkpoint round trips through the wire format" {
     pblocks[4] = .{ .erase_count = 1, .state = core.pstate_stale };
 
     const need = try sized(4, 6);
-    var wire = [_]u8{0} ** 64;
+    var wire: [64]u8 = @splat(0);
     core.encode(map[0..], pblocks[0..], wire[0..need], need);
 
     try expectEqual(core.ck_magic, core.getLe32(wire[0..]));
@@ -381,7 +381,7 @@ test "encode/decode: a checkpoint round trips through the wire format" {
     try expectEqual(@as(u32, 4), core.getLe32(wire[core.ck_off_logical_blocks..]));
     try expectEqual(@as(u32, 6), core.getLe32(wire[core.ck_off_physical_blocks..]));
 
-    var back_map = [_]u16{0} ** 4;
+    var back_map: [4]u16 = @splat(0);
     var back_pblocks = freshPblocks(6);
     core.decodeCommit(back_map[0..], back_pblocks[0..], wire[0..need]);
     try expectEqual(map, back_map);
@@ -392,16 +392,16 @@ test "encode/decode: a checkpoint round trips through the wire format" {
 }
 
 test "validate header: the happy path accepts an encoded checkpoint" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
     const need = try sized(4, 6);
-    var wire = [_]u8{0} ** 64;
+    var wire: [64]u8 = @splat(0);
     core.encode(map[0..], pblocks[0..], wire[0..need], need);
     try expectEqual(core.ok, core.validateHeader(wire[0..need], need, need, 4, 6));
 }
 
 test "validate header: both legacy byte orders are not_supported" {
-    var wire = [_]u8{0} ** 64;
+    var wire: [64]u8 = @splat(0);
     core.putLe32(wire[0..], core.ck_legacy_magic_le);
     try expectEqual(core.err_not_supported, core.validateHeader(wire[0..24], 24, 24, 4, 6));
     core.putLe32(wire[0..], core.ck_legacy_magic_swapped);
@@ -409,10 +409,10 @@ test "validate header: both legacy byte orders are not_supported" {
 }
 
 test "validate header: the rejection order from magic to CRC" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
     const need = try sized(4, 6);
-    var wire = [_]u8{0} ** 64;
+    var wire: [64]u8 = @splat(0);
     core.encode(map[0..], pblocks[0..], wire[0..need], need);
 
     // Too short to even hold a trailer.
@@ -422,7 +422,7 @@ test "validate header: the rejection order from magic to CRC" {
     core.putLe32(alien[0..], 0x11223344);
     try expectEqual(core.err_invalid_state, core.validateHeader(alien[0..need], need, need, 4, 6));
     // Right magic, but shorter than the fixed header plus trailer.
-    var stub = [_]u8{0} ** 8;
+    var stub: [8]u8 = @splat(0);
     core.putLe32(stub[0..], core.ck_magic);
     try expectEqual(core.err_invalid_size, core.validateHeader(stub[0..8], 8, need, 4, 6));
     // Unknown version.
@@ -451,10 +451,10 @@ test "validate header: the rejection order from magic to CRC" {
 }
 
 test "validate header: a length that is not this geometry's is invalid_size" {
-    var map = [_]u16{core.unmapped} ** 4;
+    var map: [4]u16 = @splat(core.unmapped);
     var pblocks = freshPblocks(6);
     const need = try sized(4, 6);
-    var wire = [_]u8{0} ** 64;
+    var wire: [64]u8 = @splat(0);
     core.encode(map[0..], pblocks[0..], wire[0..need], need);
     try expectEqual(core.err_invalid_size, core.validateHeader(wire[0..need], need, need + 5, 4, 6));
 }
@@ -464,8 +464,8 @@ test "validate wire: the payload invariants are checked without live state" {
     var pblocks = freshPblocks(6);
     pblocks[2].state = core.pstate_live;
     const need = try sized(4, 6);
-    var wire = [_]u8{0} ** 64;
-    var scratch = [_]u8{0} ** 512;
+    var wire: [64]u8 = @splat(0);
+    var scratch: [512]u8 = @splat(0);
     core.encode(map[0..], pblocks[0..], wire[0..need], need);
     try expectEqual(core.ok, core.validateWire(wire[0..need], 4, 6, scratch[0..]));
 

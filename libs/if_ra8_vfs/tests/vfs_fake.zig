@@ -27,9 +27,9 @@ const node_data_cap = 128;
 
 const Node = struct {
     used: bool = false,
-    name: [node_name_cap]u8 = [_]u8{0} ** node_name_cap,
+    name: [node_name_cap]u8 = @splat(0),
     is_dir: bool = false,
-    data: [node_data_cap]u8 = [_]u8{0} ** node_data_cap,
+    data: [node_data_cap]u8 = @splat(0),
     length: u32 = 0,
 };
 

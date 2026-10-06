@@ -131,7 +131,7 @@ const Rig = struct {
         self.fake.init();
         self.raw = .{ .iface = &Fake.iface, .ctx = &self.fake };
         self.map = undefined;
-        self.pblocks = [_]core.Pblock{.{}} ** 6;
+        self.pblocks = @splat(.{});
         self.ftl = .{};
         return abi.ra8_ftl_init(&self.ftl, &self.raw, &self.map, 4, &self.pblocks, 6, &self.scratch);
     }
@@ -222,7 +222,7 @@ test "init: a failing caps query propagates before any table is touched" {
     rig.fake.init();
     rig.fake.caps_status = 0x201;
     rig.raw = .{ .iface = &Fake.iface, .ctx = &rig.fake };
-    rig.pblocks = [_]core.Pblock{.{}} ** 6;
+    rig.pblocks = @splat(.{});
     try expectEqual(@as(core.Err, 0x201), abi.ra8_ftl_init(&rig.ftl, &rig.raw, &rig.map, 4, &rig.pblocks, 6, &rig.scratch));
     try expect(rig.ftl.raw == null);
 }
@@ -605,7 +605,7 @@ test "checkpoint_size: every bound span is required" {
 
 test "checkpoint_save: NULL guards, then the sizing status is propagated" {
     var rig: Rig = .{};
-    var buf = [_]u8{0} ** 128;
+    var buf: [128]u8 = @splat(0);
 
     resetLog();
     try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_save(null, &buf, buf.len));
@@ -679,7 +679,7 @@ test "checkpoint: a power cycle survives save, discard and load" {
     try ck.init();
     try expectEqual(core.ok, ck.rig.bind());
 
-    var payload = [_]u8{0} ** block;
+    var payload: [block]u8 = @splat(0);
     for (&payload, 0..) |*byte, i| {
         byte.* = @truncate(i *% 17 +% 100);
     }
@@ -708,14 +708,14 @@ test "checkpoint: a power cycle survives save, discard and load" {
     try expectEqual(mapped, ck.rig.map[1]);
     try expectEqual(core.pstate_live, ck.rig.pblocks[mapped].state);
 
-    var read_back = [_]u8{0} ** block;
+    var read_back: [block]u8 = @splat(0);
     try expectEqual(core.ok, abi.ftl_iface.read.?(&ck.rig.ftl, 1, 1, &read_back));
     try expect(std.mem.eql(u8, &payload, &read_back));
 }
 
 test "checkpoint_load: NULL guards and an unbound handle" {
     var rig: Rig = .{};
-    var buf = [_]u8{0} ** 64;
+    var buf: [64]u8 = @splat(0);
 
     resetLog();
     try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_load(null, &buf, buf.len));
