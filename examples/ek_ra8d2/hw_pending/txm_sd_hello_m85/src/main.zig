@@ -3,7 +3,8 @@
 //!
 //! txm_sd_hello_m85 (RA8FW-829 and RA8FW-830, under RA8FW-290): CPU0 reads
 //! the signed hello-world module `txm_hello_m33.ra8app` off the micro-SD card
-//! (card.zig), admits it against the pinned key (verify.zig), and runs it
+//! (card.zig), admits it against the pinned key and checks a tampered copy
+//! is refused (verify.zig, RA8FW-831), and runs it
 //! unprivileged through the ThreadX Module Manager (module.zig): memory load,
 //! start, ten runs of its start thread, stop, unload. The verdict goes to the
 //! SCI8 VCOM console. Zig throughout; ra8_fs is the existing C library.
@@ -17,6 +18,7 @@ pub const panic = std.debug.no_panic;
 
 pub const baud: u32 = 115_200;
 pub const pass_line = "txm_sd_hello_m85: signed module loaded, ran, exited PASS\r\n";
+pub const tamper_line = "txm_sd_hello_m85: tampered image refused PASS\r\n";
 pub const stack_bytes = 4096;
 pub const priority: u32 = 1;
 
@@ -61,10 +63,13 @@ fn fail(err: anyerror) void {
     say(text catch "txm_sd_hello_m85: FAIL\r\n");
 }
 
-/// Reads and admits the module before the kernel starts.
+/// Reads and admits the module before the kernel starts, then proves the
+/// gate refuses a copy with one payload byte flipped (RA8FW-831).
 fn admit() anyerror!usize {
     const len = try card.readApp(&image);
     if (!verify.admitted(image[0..len])) return error.signature;
+    if (!verify.refusesTamper(image[0..len])) return error.tamper;
+    say(tamper_line);
     return len;
 }
 
