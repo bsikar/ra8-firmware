@@ -123,12 +123,12 @@ pub fn warningFlags(allocator: std.mem.Allocator, app: CrossApp) []const []const
 /// add_executable() that calls ra8_target_enable_project_warnings() itself,
 /// so it has a frame budget without being a CrossApp.
 pub fn warningFlagsForStack(allocator: std.mem.Allocator, stack_bytes: u32) []const []const u8 {
-    var flags = std.ArrayList([]const u8).init(allocator);
-    flags.appendSlice(&warning_flags) catch @panic("OOM");
+    var flags: std.ArrayList([]const u8) = .empty;
+    flags.appendSlice(allocator, &warning_flags) catch @panic("OOM");
     const gate = std.fmt.allocPrint(allocator, "-Wstack-usage={d}", .{stack_bytes}) catch @panic("OOM");
-    flags.append(gate) catch @panic("OOM");
-    flags.append("-fstack-usage") catch @panic("OOM");
-    return flags.toOwnedSlice() catch @panic("OOM");
+    flags.append(allocator, gate) catch @panic("OOM");
+    flags.append(allocator, "-fstack-usage") catch @panic("OOM");
+    return flags.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// Link flags from the toolchain file: no hosted runtime, prune unused

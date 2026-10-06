@@ -84,23 +84,23 @@ pub const Toolchain = struct {
 /// The library's globbed translation units, sorted within each directory so
 /// the object list is stable across filesystems.
 pub fn sources(b: *std.Build, lib: VendoredLibrary) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(b.allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     for (lib.source_dirs) |dir_path| {
-        var names = std.ArrayList([]const u8).init(b.allocator);
+        var names: std.ArrayList([]const u8) = .empty;
         var dir = b.build_root.handle.openDir(dir_path, .{ .iterate = true }) catch continue;
         defer dir.close();
         var it = dir.iterate();
         while (it.next() catch null) |entry| {
             if (entry.kind != .file) continue;
             if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-            names.append(b.dupe(entry.name)) catch @panic("OOM");
+            names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");
         }
         std.mem.sort([]const u8, names.items, {}, lessThan);
         for (names.items) |name| {
-            out.append(b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
+            out.append(b.allocator, b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
         }
     }
-    return out.toOwnedSlice() catch @panic("OOM");
+    return out.toOwnedSlice(b.allocator) catch @panic("OOM");
 }
 
 fn lessThan(_: void, a: []const u8, b_name: []const u8) bool {
@@ -116,22 +116,22 @@ pub fn compileFlags(
     tc: Toolchain,
     lib: VendoredLibrary,
 ) []const []const u8 {
-    var flags = std.ArrayList([]const u8).init(allocator);
-    flags.appendSlice(tc.global_flags) catch @panic("OOM");
-    flags.appendSlice(tc.global_defines) catch @panic("OOM");
-    flags.appendSlice(lib.defines) catch @panic("OOM");
-    flags.appendSlice(lib.compile_options) catch @panic("OOM");
-    return flags.toOwnedSlice() catch @panic("OOM");
+    var flags: std.ArrayList([]const u8) = .empty;
+    flags.appendSlice(allocator, tc.global_flags) catch @panic("OOM");
+    flags.appendSlice(allocator, tc.global_defines) catch @panic("OOM");
+    flags.appendSlice(allocator, lib.defines) catch @panic("OOM");
+    flags.appendSlice(allocator, lib.compile_options) catch @panic("OOM");
+    return flags.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The defines an app takes from its own CMakeLists: the vendored library's
 /// PUBLIC set first, then the app target's own PRIVATE set, which is the order
 /// a real configure's database shows.
 pub fn appDefines(allocator: std.mem.Allocator, local: AppLocal) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    if (local.vendored) |lib| out.appendSlice(lib.defines) catch @panic("OOM");
-    out.appendSlice(local.defines) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    if (local.vendored) |lib| out.appendSlice(allocator, lib.defines) catch @panic("OOM");
+    out.appendSlice(allocator, local.defines) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The -isystem directories an app takes from the vendored library it links.
@@ -143,7 +143,7 @@ pub fn appSystemIncludeDirs(local: AppLocal) []const []const u8 {
 /// Compile the library and hand back the archive the app links.
 pub fn add(b: *std.Build, lib: VendoredLibrary, tc: Toolchain) std.Build.LazyPath {
     const flags = compileFlags(b.allocator, tc, lib);
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     for (sources(b, lib)) |source| {
         const compile = b.addSystemCommand(&.{tc.gcc});
         compile.addArgs(flags);
@@ -155,7 +155,7 @@ pub fn add(b: *std.Build, lib: VendoredLibrary, tc: Toolchain) std.Build.LazyPat
         compile.addFileArg(b.path(source));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(source)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
+        objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
     const archive_step = b.addSystemCommand(&.{ tc.ar, "rcs" });
     const archive = archive_step.addOutputFileArg(b.fmt("lib{s}.a", .{lib.name}));
@@ -174,7 +174,7 @@ pub fn appendCompileDbEntries(
 ) void {
     const flags = compileFlags(b.allocator, tc, lib);
     for (sources(b, lib)) |source| {
-        out.append(.{
+        out.append(b.allocator, .{
             .file = source,
             .driver = tc.gcc,
             .flags = flags,

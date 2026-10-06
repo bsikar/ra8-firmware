@@ -145,16 +145,16 @@ test "vendored suppression is narrow and ordered" {
 }
 
 test "compile database escapes the bytes JSON cannot carry raw" {
-    var out = std.ArrayList(u8).init(std.testing.allocator);
-    defer out.deinit();
-    db.appendJsonString(&out, "a\"b\\c\nd\te");
+    var out: std.ArrayList(u8) = .empty;
+    defer out.deinit(std.testing.allocator);
+    db.appendJsonString(std.testing.allocator, &out, "a\"b\\c\nd\te");
     try std.testing.expectEqualStrings("\"a\\\"b\\\\c\\nd\\te\"", out.items);
 }
 
 test "compile database leaves an ordinary path untouched" {
-    var out = std.ArrayList(u8).init(std.testing.allocator);
-    defer out.deinit();
-    db.appendJsonString(&out, "libs/ra8_core/src/ra8_scb.c");
+    var out: std.ArrayList(u8) = .empty;
+    defer out.deinit(std.testing.allocator);
+    db.appendJsonString(std.testing.allocator, &out, "libs/ra8_core/src/ra8_scb.c");
     try std.testing.expectEqualStrings("\"libs/ra8_core/src/ra8_scb.c\"", out.items);
 }
 

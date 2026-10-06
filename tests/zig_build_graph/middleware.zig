@@ -324,13 +324,13 @@ pub fn find(name: []const u8) ?Middleware {
 
 /// Every middleware an app uses, in the order it names them.
 pub fn resolve(allocator: std.mem.Allocator, uses: []const []const u8) []const Middleware {
-    var out = std.ArrayList(Middleware).init(allocator);
+    var out: std.ArrayList(Middleware) = .empty;
     for (uses) |name| {
         const record = find(name) orelse std.debug.panic(
             "ra8: app names USES {s}, which the root build graph does not know yet",
             .{name},
         );
-        out.append(record) catch @panic("OOM");
+        out.append(allocator, record) catch @panic("OOM");
     }
     return out.items;
 }
@@ -339,40 +339,40 @@ pub fn resolve(allocator: std.mem.Allocator, uses: []const []const u8) []const M
 /// translation units. Missing one is not a compile error, it is a different
 /// kernel configuration.
 pub fn appDefines(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (mws) |mw| out.appendSlice(mw.public_defines) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (mws) |mw| out.appendSlice(allocator, mw.public_defines) catch @panic("OOM");
     return out.items;
 }
 
 /// The `-I` directories appended to the app's include path, after everything
 /// `crossIncludeDirs` already put there.
 pub fn appIncludeDirs(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     for (mws) |mw| {
-        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
-        out.appendSlice(mw.app_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.public_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.app_include_dirs) catch @panic("OOM");
     }
     return out.items;
 }
 
 /// The project-owned sources the middleware set adds to the app's own.
 pub fn appSources(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (mws) |mw| out.appendSlice(mw.app_sources) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (mws) |mw| out.appendSlice(allocator, mw.app_sources) catch @panic("OOM");
     return out.items;
 }
 
 /// The `-isystem` directories, which come after every `-I` on the app line.
 pub fn appSystemIncludeDirs(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (mws) |mw| out.appendSlice(mw.public_system_include_dirs) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (mws) |mw| out.appendSlice(allocator, mw.public_system_include_dirs) catch @panic("OOM");
     return out.items;
 }
 
 /// The link options the middleware set forces onto the app link.
 pub fn appLinkOptions(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (mws) |mw| out.appendSlice(mw.link_options) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (mws) |mw| out.appendSlice(allocator, mw.link_options) catch @panic("OOM");
     return out.items;
 }
 
@@ -380,33 +380,33 @@ pub fn appLinkOptions(allocator: std.mem.Allocator, mws: []const Middleware) []c
 /// then the system directories. The app's path is a different list entirely
 /// (this one has no board, no app directory, no net/usb PAL).
 pub fn includeDirs(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     if (mw.public_include_dirs_first) {
-        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
-        out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.public_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.private_include_dirs) catch @panic("OOM");
     } else {
-        out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
-        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.private_include_dirs) catch @panic("OOM");
+        out.appendSlice(allocator, mw.public_include_dirs) catch @panic("OOM");
     }
-    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_include_dirs) catch @panic("OOM");
+    for (required(allocator, mw)) |dep| out.appendSlice(allocator, dep.public_include_dirs) catch @panic("OOM");
     return out.items;
 }
 
 /// The middleware's own `-isystem` path: its directories, then each required
 /// middleware's, the order the usbx_objs compile line has.
 pub fn systemIncludeDirs(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(mw.public_system_include_dirs) catch @panic("OOM");
-    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_system_include_dirs) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, mw.public_system_include_dirs) catch @panic("OOM");
+    for (required(allocator, mw)) |dep| out.appendSlice(allocator, dep.public_system_include_dirs) catch @panic("OOM");
     return out.items;
 }
 
 /// The defines on the middleware's own TUs: each required middleware's
 /// PUBLIC ones first, then its own.
 pub fn unitDefines(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_defines) catch @panic("OOM");
-    out.appendSlice(mw.public_defines) catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (required(allocator, mw)) |dep| out.appendSlice(allocator, dep.public_defines) catch @panic("OOM");
+    out.appendSlice(allocator, mw.public_defines) catch @panic("OOM");
     return out.items;
 }
 
@@ -441,7 +441,7 @@ fn collect(
     var dir = pkg_path.openDir(b, dir_path) orelse return;
     defer dir.close();
 
-    var names = std.ArrayList([]const u8).init(b.allocator);
+    var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
     while (it.next() catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
@@ -449,7 +449,7 @@ fn collect(
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.name, extension)) continue;
         if (isReplaced(mw, entry.name)) continue;
-        names.append(b.dupe(entry.name)) catch @panic("OOM");
+        names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");
     }
     std.mem.sort([]const u8, names.items, {}, struct {
         fn lessThan(_: void, a: []const u8, c: []const u8) bool {
@@ -473,13 +473,13 @@ fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
     var dir = pkg_path.openDir(b, glob.dir) orelse return;
     defer dir.close();
 
-    var names = std.ArrayList([]const u8).init(b.allocator);
+    var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
     while (it.next() catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ glob.dir, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file or !globSelects(glob, entry.name)) continue;
-        names.append(b.dupe(entry.name)) catch @panic("OOM");
+        names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");
     }
     std.mem.sort([]const u8, names.items, {}, struct {
         fn lessThan(_: void, a: []const u8, c: []const u8) bool {
@@ -494,13 +494,13 @@ fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
 /// Every translation unit compiled into the middleware archive: the vendored
 /// globs with the replaced basenames dropped, then the project-owned sources.
 pub fn units(b: *std.Build, mw: Middleware) []const Unit {
-    var out = std.ArrayList(Unit).init(b.allocator);
+    var out: std.ArrayList(Unit) = .empty;
     for (mw.soup_c_dirs) |dir_path| collect(b, dir_path, ".c", mw, &out);
     for (mw.soup_c_globs) |glob| collectGlob(b, glob, &out);
     for (mw.soup_asm_dirs) |dir_path| collect(b, dir_path, ".S", mw, &out);
     for (mw.soup_cpp_asm_dirs) |dir_path| collect(b, dir_path, ".s", mw, &out);
     for (mw.project_sources) |source| {
-        out.append(.{
+        out.append(b.allocator, .{
             .path = source,
             .language = if (std.mem.endsWith(u8, source, ".S")) .assembly else .c,
         }) catch @panic("OOM");
@@ -594,7 +594,7 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
 
     const patched_dirs = patchedHeaderDirs(b, mw);
 
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     for (units(b, mw)) |unit| {
         const compile = b.addSystemCommand(&.{tc.gcc});
         compile.addArgs(tc.global_defines);
@@ -613,10 +613,10 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
         compile.addFileArg(pkg_path.lazy(b, unit.path));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
+        objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
     for (mw.zig_sources) |source| {
-        objects.append(addZigObject(b, mw, tc, source)) catch @panic("OOM");
+        objects.append(b.allocator, addZigObject(b, mw, tc, source)) catch @panic("OOM");
     }
     return objects.items;
 }
@@ -669,13 +669,13 @@ pub fn patchedHeaderDirs(b: *std.Build, mw: Middleware) []const std.Build.LazyPa
             .target = b.graph.host,
         }),
     });
-    var dirs = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var dirs: std.ArrayList(std.Build.LazyPath) = .empty;
     for (mw.patched_headers) |patch| {
         const run = b.addRunArtifact(tool);
         run.addFileArg(pkg_path.lazy(b, patch.header));
         const out = run.addOutputFileArg(std.fs.path.basename(patch.header));
         for (patch.rewrites) |rewrite| run.addArgs(&.{ rewrite.old, rewrite.new });
-        dirs.append(out.dirname()) catch @panic("OOM");
+        dirs.append(b.allocator, out.dirname()) catch @panic("OOM");
     }
     return dirs.items;
 }
@@ -692,12 +692,12 @@ pub fn appendCompileDbEntries(
 ) void {
     const include_dirs = includeDirs(b.allocator, mw);
     for (units(b, mw)) |unit| {
-        var flags = std.ArrayList([]const u8).init(b.allocator);
-        flags.appendSlice(tc.global_defines) catch @panic("OOM");
-        flags.appendSlice(unitDefines(b.allocator, mw)) catch @panic("OOM");
-        flags.appendSlice(unitFlags(tc, mw, unit)) catch @panic("OOM");
-        flags.appendSlice(languageFlags(unit)) catch @panic("OOM");
-        out.append(.{
+        var flags: std.ArrayList([]const u8) = .empty;
+        flags.appendSlice(b.allocator, tc.global_defines) catch @panic("OOM");
+        flags.appendSlice(b.allocator, unitDefines(b.allocator, mw)) catch @panic("OOM");
+        flags.appendSlice(b.allocator, unitFlags(tc, mw, unit)) catch @panic("OOM");
+        flags.appendSlice(b.allocator, languageFlags(unit)) catch @panic("OOM");
+        out.append(b.allocator, .{
             .file = unit.path,
             .driver = tc.gcc,
             .flags = flags.items,

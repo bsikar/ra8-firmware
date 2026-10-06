@@ -106,12 +106,12 @@ pub fn parse(name: []const u8) ?BuildType {
 /// Every CMAKE_BUILD_TYPE this graph accepts, comma-joined, for the option
 /// description and for the error a bad name gets.
 pub fn names(allocator: std.mem.Allocator) []const u8 {
-    var out = std.ArrayList(u8).init(allocator);
+    var out: std.ArrayList(u8) = .empty;
     for (configurations, 0..) |configuration, index| {
-        if (index != 0) out.appendSlice(", ") catch @panic("OOM");
-        out.appendSlice(configuration.cmake_name) catch @panic("OOM");
+        if (index != 0) out.appendSlice(allocator, ", ") catch @panic("OOM");
+        out.appendSlice(allocator, configuration.cmake_name) catch @panic("OOM");
     }
-    return out.toOwnedSlice() catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The sets that do NOT vary by configuration, handed in rather than imported
@@ -160,9 +160,9 @@ pub fn globals(allocator: std.mem.Allocator, build_type: BuildType, base: Base) 
 }
 
 fn join(allocator: std.mem.Allocator, sets: []const []const []const u8) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    for (sets) |set| out.appendSlice(set) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    for (sets) |set| out.appendSlice(allocator, set) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The flag list of one `set(CMAKE_<LANG>_FLAGS_<CONFIG> "...")` call in a
@@ -178,17 +178,17 @@ pub fn cmakeFlags(allocator: std.mem.Allocator, source: []const u8, variable: []
         const open = std.mem.indexOfScalar(u8, text, '"') orelse continue;
         const close = std.mem.lastIndexOfScalar(u8, text, '"') orelse continue;
         if (close <= open) continue;
-        var out = std.ArrayList([]const u8).init(allocator);
+        var out: std.ArrayList([]const u8) = .empty;
         var flags = std.mem.tokenizeAny(u8, text[open + 1 .. close], " \t");
-        while (flags.next()) |flag| out.append(flag) catch @panic("OOM");
-        return out.toOwnedSlice() catch @panic("OOM");
+        while (flags.next()) |flag| out.append(allocator, flag) catch @panic("OOM");
+        return out.toOwnedSlice(allocator) catch @panic("OOM");
     }
     return null;
 }
 
 test "every build type has exactly one configuration" {
     inline for (@typeInfo(BuildType).@"enum".fields) |field| {
-        const build_type: BuildType = @enumFromInt(field.value);
+        const build_type: BuildType = @fromBackingInt(@intCast(field.value));
         var seen: usize = 0;
         for (configurations) |configuration| {
             if (configuration.build_type == build_type) seen += 1;

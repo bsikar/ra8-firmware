@@ -62,8 +62,8 @@ pub const Recipe = struct {
 /// argument is not a string literal is an error rather than a skip: a step
 /// this parser cannot see is a step the parity rules would silently excuse.
 pub fn declaredSteps(allocator: std.mem.Allocator, build_zig: []const u8) ![][]const u8 {
-    var names = std.ArrayList([]const u8).init(allocator);
-    errdefer names.deinit();
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(allocator);
 
     const needle = "b.step(";
     var cursor: usize = 0;
@@ -75,10 +75,10 @@ pub fn declaredSteps(allocator: std.mem.Allocator, build_zig: []const u8) ![][]c
         const start = index;
         while (index < build_zig.len and build_zig[index] != '"') index += 1;
         if (index >= build_zig.len) return error.UnparsableStepName;
-        try names.append(build_zig[start..index]);
+        try names.append(allocator, build_zig[start..index]);
         cursor = index + 1;
     }
-    return names.toOwnedSlice();
+    return names.toOwnedSlice(allocator);
 }
 
 /// Parse the recipes of a justfile module, in declaration order.
@@ -87,8 +87,8 @@ pub fn declaredSteps(allocator: std.mem.Allocator, build_zig: []const u8) ![][]c
 /// lines are assignments and imports, not recipes, and `:=` is what tells
 /// them apart from a recipe whose name happens to end the same way.
 pub fn parseRecipes(allocator: std.mem.Allocator, just_source: []const u8) ![]Recipe {
-    var recipes = std.ArrayList(Recipe).init(allocator);
-    errdefer recipes.deinit();
+    var recipes: std.ArrayList(Recipe) = .empty;
+    errdefer recipes.deinit(allocator);
 
     var lines = std.mem.splitScalar(u8, just_source, '\n');
     while (lines.next()) |line| {
@@ -113,9 +113,9 @@ pub fn parseRecipes(allocator: std.mem.Allocator, just_source: []const u8) ![]Re
         if (name.len == 0) continue;
         if (name.len + 1 > line.len or line[name.len] != ':') continue;
         if (name.len + 1 < line.len and line[name.len + 1] == '=') continue;
-        try recipes.append(.{ .name = name });
+        try recipes.append(allocator, .{ .name = name });
     }
-    return recipes.toOwnedSlice();
+    return recipes.toOwnedSlice(allocator);
 }
 
 /// The recipe names the `default` help menu advertises, in printed order.
@@ -123,8 +123,8 @@ pub fn parseRecipes(allocator: std.mem.Allocator, just_source: []const u8) ![]Re
 /// Every menu line spells the fully qualified command, so `just zig::` is the
 /// anchor and what follows it is the recipe name.
 pub fn helpMenuEntries(allocator: std.mem.Allocator, just_source: []const u8) ![][]const u8 {
-    var entries = std.ArrayList([]const u8).init(allocator);
-    errdefer entries.deinit();
+    var entries: std.ArrayList([]const u8) = .empty;
+    errdefer entries.deinit(allocator);
 
     const needle = "just zig::";
     var cursor: usize = 0;
@@ -132,10 +132,10 @@ pub fn helpMenuEntries(allocator: std.mem.Allocator, just_source: []const u8) ![
         var index = hit + needle.len;
         const start = index;
         while (index < just_source.len and isNameByte(just_source[index])) index += 1;
-        if (index > start) try entries.append(just_source[start..index]);
+        if (index > start) try entries.append(allocator, just_source[start..index]);
         cursor = if (index > start) index else hit + needle.len;
     }
-    return entries.toOwnedSlice();
+    return entries.toOwnedSlice(allocator);
 }
 
 /// Declared steps no recipe dispatches to: a step reachable only by typing
@@ -145,17 +145,17 @@ pub fn stepsWithoutRecipe(
     steps: []const []const u8,
     recipes: []const Recipe,
 ) ![][]const u8 {
-    var missing = std.ArrayList([]const u8).init(allocator);
-    errdefer missing.deinit();
+    var missing: std.ArrayList([]const u8) = .empty;
+    errdefer missing.deinit(allocator);
     for (steps) |step| {
         var covered = false;
         for (recipes) |recipe| {
             const dispatch = recipe.dispatch orelse continue;
             if (std.mem.eql(u8, dispatch, step)) covered = true;
         }
-        if (!covered) try missing.append(step);
+        if (!covered) try missing.append(allocator, step);
     }
-    return missing.toOwnedSlice();
+    return missing.toOwnedSlice(allocator);
 }
 
 /// Recipes that dispatch to a step `build.zig` does not declare: a recipe
@@ -165,8 +165,8 @@ pub fn recipesWithUnknownStep(
     steps: []const []const u8,
     recipes: []const Recipe,
 ) ![][]const u8 {
-    var unknown = std.ArrayList([]const u8).init(allocator);
-    errdefer unknown.deinit();
+    var unknown: std.ArrayList([]const u8) = .empty;
+    errdefer unknown.deinit(allocator);
     for (recipes) |recipe| {
         const dispatch = recipe.dispatch orelse continue;
         if (dispatch.len == 0) continue; // the default install step
@@ -174,9 +174,9 @@ pub fn recipesWithUnknownStep(
         for (steps) |step| {
             if (std.mem.eql(u8, dispatch, step)) declared = true;
         }
-        if (!declared) try unknown.append(recipe.name);
+        if (!declared) try unknown.append(allocator, recipe.name);
     }
-    return unknown.toOwnedSlice();
+    return unknown.toOwnedSlice(allocator);
 }
 
 /// Recipes passing anything beyond a step name to `zig build`.
@@ -184,12 +184,12 @@ pub fn recipesWithExtraArgs(
     allocator: std.mem.Allocator,
     recipes: []const Recipe,
 ) ![][]const u8 {
-    var offenders = std.ArrayList([]const u8).init(allocator);
-    errdefer offenders.deinit();
+    var offenders: std.ArrayList([]const u8) = .empty;
+    errdefer offenders.deinit(allocator);
     for (recipes) |recipe| {
-        if (recipe.extra_args) try offenders.append(recipe.name);
+        if (recipe.extra_args) try offenders.append(allocator, recipe.name);
     }
-    return offenders.toOwnedSlice();
+    return offenders.toOwnedSlice(allocator);
 }
 
 /// Public recipes the help menu never mentions. `default` is the menu itself
@@ -199,8 +199,8 @@ pub fn recipesMissingHelp(
     recipes: []const Recipe,
     entries: []const []const u8,
 ) ![][]const u8 {
-    var missing = std.ArrayList([]const u8).init(allocator);
-    errdefer missing.deinit();
+    var missing: std.ArrayList([]const u8) = .empty;
+    errdefer missing.deinit(allocator);
     for (recipes) |recipe| {
         if (recipe.isPrivate()) continue;
         if (std.mem.eql(u8, recipe.name, "default")) continue;
@@ -208,9 +208,9 @@ pub fn recipesMissingHelp(
         for (entries) |entry| {
             if (std.mem.eql(u8, entry, recipe.name)) listed = true;
         }
-        if (!listed) try missing.append(recipe.name);
+        if (!listed) try missing.append(allocator, recipe.name);
     }
-    return missing.toOwnedSlice();
+    return missing.toOwnedSlice(allocator);
 }
 
 /// Help-menu lines naming a recipe that does not exist: the other drift
@@ -220,16 +220,16 @@ pub fn helpEntriesWithoutRecipe(
     recipes: []const Recipe,
     entries: []const []const u8,
 ) ![][]const u8 {
-    var stale = std.ArrayList([]const u8).init(allocator);
-    errdefer stale.deinit();
+    var stale: std.ArrayList([]const u8) = .empty;
+    errdefer stale.deinit(allocator);
     for (entries) |entry| {
         var exists = false;
         for (recipes) |recipe| {
             if (std.mem.eql(u8, recipe.name, entry)) exists = true;
         }
-        if (!exists) try stale.append(entry);
+        if (!exists) try stale.append(allocator, entry);
     }
-    return stale.toOwnedSlice();
+    return stale.toOwnedSlice(allocator);
 }
 
 fn leadingName(line: []const u8) []const u8 {

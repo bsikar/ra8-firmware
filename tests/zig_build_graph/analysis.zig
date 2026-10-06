@@ -43,19 +43,19 @@ pub const install_path = "zig-out/" ++ install_dir ++ "/" ++ install_name;
 /// Deliberately NOT compile_db.signature, which includes the file and is there
 /// to tell two ROWS apart. This tells two COMMANDS apart.
 pub fn commandClass(allocator: std.mem.Allocator, entry: compile_db.Entry) []const u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    out.appendSlice(entry.driver) catch @panic("OOM");
+    var out: std.ArrayList(u8) = .empty;
+    out.appendSlice(allocator, entry.driver) catch @panic("OOM");
     for (entry.flags) |flag| {
-        out.appendSlice("\x00") catch @panic("OOM");
-        out.appendSlice(flag) catch @panic("OOM");
+        out.appendSlice(allocator, "\x00") catch @panic("OOM");
+        out.appendSlice(allocator, flag) catch @panic("OOM");
     }
     for (entry.include_dirs) |include_dir| {
-        out.appendSlice("\x00-I") catch @panic("OOM");
-        out.appendSlice(include_dir) catch @panic("OOM");
+        out.appendSlice(allocator, "\x00-I") catch @panic("OOM");
+        out.appendSlice(allocator, include_dir) catch @panic("OOM");
     }
     for (entry.system_include_dirs) |include_dir| {
-        out.appendSlice("\x00-isystem") catch @panic("OOM");
-        out.appendSlice(include_dir) catch @panic("OOM");
+        out.appendSlice(allocator, "\x00-isystem") catch @panic("OOM");
+        out.appendSlice(allocator, include_dir) catch @panic("OOM");
     }
     return out.items;
 }
@@ -65,13 +65,13 @@ pub fn representatives(
     allocator: std.mem.Allocator,
     entries: []const compile_db.Entry,
 ) []const compile_db.Entry {
-    var chosen = std.ArrayList(compile_db.Entry).init(allocator);
+    var chosen: std.ArrayList(compile_db.Entry) = .empty;
     var seen = std.StringHashMap(void).init(allocator);
     for (entries) |entry| {
         const key = commandClass(allocator, entry);
         if (seen.contains(key)) continue;
         seen.put(key, {}) catch @panic("OOM");
-        chosen.append(entry) catch @panic("OOM");
+        chosen.append(allocator, entry) catch @panic("OOM");
     }
     return chosen.items;
 }
@@ -110,12 +110,12 @@ pub fn add(b: *std.Build, step: *std.Build.Step, entries: []const compile_db.Ent
     const chosen = representatives(b.allocator, entries);
 
     var verified: usize = 0;
-    var unrunnable = std.ArrayList([]const u8).init(b.allocator);
+    var unrunnable: std.ArrayList([]const u8) = .empty;
     var previous: ?*std.Build.Step = null;
 
     for (chosen) |entry| {
         if (!isRunnableDriver(entry.driver)) {
-            unrunnable.append(entry.driver) catch @panic("OOM");
+            unrunnable.append(b.allocator, entry.driver) catch @panic("OOM");
             continue;
         }
         const run = b.addSystemCommand(verificationArgv(b, entry));

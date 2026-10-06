@@ -81,14 +81,14 @@ fn substitutions(
     vars: cmake_vars.Vars,
     source: []const u8,
 ) []const Substitution {
-    var out = std.ArrayList(Substitution).init(b.allocator);
-    out.appendSlice(&.{
+    var out: std.ArrayList(Substitution) = .empty;
+    out.appendSlice(b.allocator, &.{
         .{ .placeholder = "@RA8_NS_SRAM_ORIGIN@", .value = vars.get("RA8_NS_SRAM_ORIGIN", source) },
         .{ .placeholder = "@RA8_NS_SRAM_LENGTH@", .value = vars.get("RA8_NS_SRAM_LENGTH", source) },
     }) catch @panic("OOM");
 
     switch (layout) {
-        .sram_run => out.appendSlice(&.{
+        .sram_run => out.appendSlice(b.allocator, &.{
             .{ .placeholder = "@RA8_NS_ROM_NAME@", .value = "NS_LOAD" },
             .{ .placeholder = "@RA8_NS_ROM_ORIGIN@", .value = vars.get("RA8_NS_MRAM_ORIGIN", source) },
             .{ .placeholder = "@RA8_NS_ROM_LENGTH@", .value = vars.get("RA8_NS_MRAM_LENGTH", source) },
@@ -100,7 +100,7 @@ fn substitutions(
             .{ .placeholder = "@RA8_NS_DATA_PLACE@", .value = "> NS_SRAM_RUN AT > NS_LOAD" },
             .{ .placeholder = "@RA8_NS_MODE_DOC@", .value = sram_run_mode_doc },
         }) catch @panic("OOM"),
-        .xip => out.appendSlice(&.{
+        .xip => out.appendSlice(b.allocator, &.{
             .{ .placeholder = "@RA8_NS_ROM_NAME@", .value = "NS_XIP" },
             .{ .placeholder = "@RA8_NS_ROM_ORIGIN@", .value = vars.get("RA8_NS_OSPI_ORIGIN", source) },
             .{ .placeholder = "@RA8_NS_ROM_LENGTH@", .value = vars.get("RA8_NS_OSPI_LENGTH", source) },

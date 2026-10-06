@@ -60,15 +60,15 @@ fn fromMarker(text: []const u8, marker: []const u8) ![]const u8 {
 
 /// Every `set(` line, in order, joined by newlines.
 fn setLines(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
     var lines = std.mem.splitScalar(u8, text, '\n');
     while (lines.next()) |line| {
         if (!std.mem.startsWith(u8, line, "set(")) continue;
-        try out.appendSlice(line);
-        try out.append('\n');
+        try out.appendSlice(allocator, line);
+        try out.append(allocator, '\n');
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 test "the RA8P1 CPU1 image fragment is the EK-RA8D2 one below its header" {
