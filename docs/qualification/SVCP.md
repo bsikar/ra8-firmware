@@ -65,7 +65,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-DMA-001    | `tests/hal/src/test_ra8_dma.c`     | `libs/ra8_hal/src/dma_abi.zig`              |
 | UT-HAL-DMAC-001   | `tests/hal/src/test_ra8_dmac.c`    | `libs/ra8_hal/src/internal/dmac.zig`              |
 | UT-HAL-DOC-001    | `tests/misc/src/test_ra8_doc.c`     | `libs/ra8_hal/src/ra8_doc.c`               |
-| UT-HAL-DOTF-001   | `tests/misc/src/test_ra8_dotf.c`    | `libs/ra8_hal/src/ra8_dotf.c`              |
+| UT-HAL-DOTF-001   | `tests/misc/src/test_ra8_dotf.c`    | `libs/ra8_hal/src/dotf_*.zig`              |
 | UT-HAL-DRW-001    | `tests/misc/src/test_ra8_drw.c`     | `libs/ra8_hal/src/ra8_drw.c`               |
 | UT-HAL-DTC-001    | `tests/misc/src/test_ra8_dtc.c`     | `libs/ra8_hal/src/internal/dtc.zig`        |
 | UT-HAL-ELC-001    | `tests/misc/src/test_ra8_elc.c`     | `libs/ra8_hal/src/elc_abi.zig`             |

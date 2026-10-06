@@ -86,7 +86,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | Acronym | Expansion | HAL driver |
 |---------|-----------|------------|
 | RSIP  | Renesas Secure IP (HW crypto + key vault, RSIP-E50D)     | `ra8_rsip.c`, `rsip_protected_abi.zig`, `ra8_rsip_key_injection.c` |
-| DOTF  | Decryption-On-The-Fly (XIP-decrypt for xSPI)             | `ra8_dotf.c` |
+| DOTF  | Decryption-On-The-Fly (XIP-decrypt for xSPI)             | `dotf_*.zig` |
 | CRC   | Cyclic-Redundancy-Check engine                           | `internal/crc.zig` |
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `internal/doc.zig` |
 | MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
@@ -159,7 +159,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | DMA   | Direct Memory Access (top-level umbrella)                 | `dma_abi.zig` |
 | DMAC  | Direct Memory Access Controller                           | `dmac.zig` |
 | DTC   | Data Transfer Controller (lighter-weight than DMAC)       | `dtc.zig`   |
-| DOTF  | Decryption-On-The-Fly (covered under crypto above)        | `ra8_dotf.c` |
+| DOTF  | Decryption-On-The-Fly (covered under crypto above)        | `dotf_*.zig` |
 
 ## 10. Debug, test, NVIC / core
 

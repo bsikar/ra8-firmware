@@ -170,10 +170,10 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | Peripheral   | Secure base   | Notes                                     | HAL driver               |
 |--------------|---------------|-------------------------------------------|--------------------------|
 | RSIP-E50D    | `0x403B0000`  | Renesas Secure IP mailbox                 | `ra8_rsip.c`, `rsip_protected_abi.zig`, `ra8_rsip_key_injection.c` |
-| DOTF0 (S)    | `0x40268800`  | Decryption-on-the-fly ch 0 secure         | `ra8_dotf.c`              |
-| DOTF0 (NS)   | `0x50268800`  | DOTF ch 0 non-secure alias                | `ra8_dotf.c`              |
-| DOTF1 (S)    | `0x40268900`  | DOTF ch 1 secure                          | `ra8_dotf.c`              |
-| DOTF1 (NS)   | `0x50268900`  | DOTF ch 1 non-secure alias                | `ra8_dotf.c`              |
+| DOTF0 (S)    | `0x40268800`  | Decryption-on-the-fly ch 0 secure         | `dotf_*.zig`              |
+| DOTF0 (NS)   | `0x50268800`  | DOTF ch 0 non-secure alias                | `dotf_*.zig`              |
+| DOTF1 (S)    | `0x40268900`  | DOTF ch 1 secure                          | `dotf_*.zig`              |
+| DOTF1 (NS)   | `0x50268900`  | DOTF ch 1 non-secure alias                | `dotf_*.zig`              |
 | XSPI0 regs   | `0x40268000`  | xSPI / Octo-SPI controller 0 reg window   | `ra8_xspi.c`              |
 | XSPI1 regs   | `0x40268400`  | xSPI / Octo-SPI controller 1 reg window   | `ra8_xspi.c`              |
 | SDHI0        | `0x40252000`  | SD host interface ch 0                    | `ra8_sdhi.c`, `sdcard_abi.zig` |

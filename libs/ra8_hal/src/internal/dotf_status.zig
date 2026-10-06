@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! DOTF REG00 self-test and raw status read (RA8FW-827, part of ra8_dotf.c).
+//! DOTF REG00 self-test and raw status read (RA8FW-827, was part of ra8_dotf.c).
 //! Pure over a `regs` value; the exports live in src/dotf_status_abi.zig.
 
 pub const base: usize = 0x4026_8800;

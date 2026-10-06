@@ -1,9 +1,9 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! DOTF per-channel software state (RA8FW-835, part of ra8_dotf.c). The
-//! layout matches ra8_dotf_chan_state_t in ra8_dotf.c, which still reads the
-//! table; the table itself is exported from src/dotf_state_abi.zig.
+//! DOTF per-channel software state (RA8FW-835, was part of ra8_dotf.c). The
+//! layout matches the old ra8_dotf_chan_state_t (the C tests still see it
+//! only through the API); the table is exported from src/dotf_state_abi.zig.
 
 pub const max_regions = 4;
 pub const iv_words = 4;

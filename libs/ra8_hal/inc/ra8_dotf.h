@@ -685,7 +685,7 @@ void ra8_dotf_dispatch(uint8_t channel);
  * semantics mirror the underlying setters.
  *
  * cppcheck cannot see tests/ so it flags every member as unused; all
- * fields are read by ``ra8_dotf_open`` in ``ra8_dotf.c``.
+ * fields are read by ``ra8_dotf_open`` in ``internal/dotf_power.zig``.
  */
 typedef struct {
   uint8_t               channel;      /**< 0 = DOTF0, 1 = DOTF1.          */
