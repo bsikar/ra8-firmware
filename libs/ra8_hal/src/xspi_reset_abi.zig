@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for XSPI suspend, resume and software reset (RA8FW-867). The
-//! manual-command helpers stay in ra8_xspi_flash.c.
+//! manual-command helpers are Zig exports in xspi_cmd_abi.zig.
 
 const common = @import("abi_common.zig");
 const ev = @import("internal/xspi_events.zig");

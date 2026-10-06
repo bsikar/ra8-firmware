@@ -7,24 +7,17 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Not part of the public API. The OSPI / xSPI driver is split across two
- * translation units for file-size reasons:
+ * Not part of the public API. The OSPI / xSPI driver is Zig
+ * (``xspi_*_abi.zig``): clock/reset bring-up, init, raw direct-command and
+ * deinit (xspi_init), IRQ + power (xspi_events), XIP/DTR/DQS (xspi_xip),
+ * suspend/resume/software-reset (xspi_reset), the manual-command engine
+ * plus RDSR/RDID (xspi_cmd, RA8FW-869), read (xspi_read, RA8FW-870) and
+ * program/erase (xspi_program, RA8FW-871). ``ra8_xspi_flash.c`` was
+ * deleted by RA8FW-871.
  *
- * - ``xspi_*_abi.zig``  -- Zig: clock/reset bring-up, init, raw
- *                          direct-command, deinit (xspi_init), IRQ + power
- *                          (xspi_events), XIP/DTR/DQS (xspi_xip) and
- *                          suspend/resume/software-reset (xspi_reset).
- * - ``ra8_xspi_flash.c`` -- the manual-command engine (CDT/CDBUF builders +
- *                          CMDCMP poll + TRREQ kick) and the JEDEC NOR-flash
- *                          read / program / erase / status / id operations.
- *
- * This header carries exactly the symbols that cross that TU boundary:
- *
- * - The ``ra8_xspi_timeouts_t`` and ``ra8_xspi_cdbuf_idx_t`` file-scope enum
- *   blocks, which both TUs reference.
- * - Prototypes for the two manual-command helpers defined in
- *   ``ra8_xspi_flash.c`` but also called from the lifecycle surface in
- *   ``xspi_reset_abi.zig`` (suspend / resume / software-reset).
+ * This header keeps the shared ``ra8_xspi_timeouts_t`` and
+ * ``ra8_xspi_cdbuf_idx_t`` enums and the C prototypes of the Zig
+ * manual-command exports.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -189,33 +182,6 @@ RA8_PRIV ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t priv_ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode);
-
-/**
- * @brief Check a ``[flash_addr, flash_addr + len)`` window against 2^24.
- *
- * @details
- * Defined in Zig (``xspi_read_abi.zig``, RA8FW-870). The JEDEC commands
- * use a 3-byte address phase, so a window that starts at or runs past
- * 2^24 is rejected instead of being truncated on the wire.
- *
- * @return ::k_ra8_ok, or ::k_ra8_err_invalid_arg when out of reach.
- * @since 0.1.0
- */
-RA8_PRIV ra8_err_t priv_ra8_xspi_flash_range_check(uint32_t flash_addr, uint32_t len);
-
-/**
- * @brief Write CDT (1-byte opcode, 3-byte address) and CDA for slot 0.
- *
- * @details
- * Defined in Zig (``xspi_read_abi.zig``, RA8FW-870). ``data_bytes`` is
- * 0..8. HUM Ch 44 p 2986.
- * @since 0.1.0
- */
-RA8_PRIV void priv_ra8_xspi_build_chunk_header(volatile r_xspi_regs_t* reg,
-                                               uint8_t                 opcode,
-                                               uint32_t                addr,
-                                               uint8_t                 data_bytes,
-                                               uint8_t                 is_write);
 
 #ifdef __cplusplus
 }

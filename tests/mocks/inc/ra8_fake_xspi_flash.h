@@ -10,7 +10,7 @@
  * flash at REGISTER level for the host unit-test build, mirroring the
  * ra8_emulator peripheral model in ``tools/ra8_emulator/src/periph/board_periph_xspi.c``.
  * It replaces the deleted in-driver ``RA8_OFF_TARGET`` fake-flash
- * short-circuits: with the model installed, ``ra8_xspi_flash.c``
+ * short-circuits: with the model installed, the Zig XSPI driver
  * runs its real "fill CDBUF, set CDCTL0.TRREQ, poll INTS.CMDCMP, read
  * CDBUF" MMIO sequence on the host and the data genuinely round-trips.
  *

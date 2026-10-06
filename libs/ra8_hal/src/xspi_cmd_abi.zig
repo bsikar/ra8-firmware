@@ -4,7 +4,7 @@
 //! C ABI for the XSPI manual-command core, ra8_xspi_flash_read_status and
 //! ra8_xspi_flash_read_id (RA8FW-869). Logic lives in internal/xspi_cmd.zig.
 //! The priv_ exports keep their C names and prototypes in
-//! ra8_xspi_internal.h; ra8_xspi_flash.c and xspi_reset_abi.zig call them.
+//! ra8_xspi_internal.h; xspi_reset_abi.zig calls them through C externs.
 
 const builtin = @import("builtin");
 const common = @import("abi_common.zig");
