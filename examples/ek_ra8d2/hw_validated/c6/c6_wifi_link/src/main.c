@@ -21,7 +21,12 @@
  *      against the ESP32-C6 chip id;
  *   4. start the Wi-Fi station -- ``Req_WifiInit``, ``Req_SetWifiMode``,
  *      ``Req_WifiStart`` -- and read the station's MAC address back;
- *   5. stop the station and print one PASS or FAIL line.
+ *   5. scan once and print every AP reported (zero is a pass);
+ *   6. stop the station and print one PASS or FAIL line.
+ *
+ * Built as ``c6_wifi_link_capture`` (``C6_WIFI_CAPTURE``), the transport is
+ * wrapped with ``ra8_c6link_capture_bind`` and every frame is printed as a
+ * ``c6cap`` line for ``libs/ra8_c6link/scripts/c6cap_to_bin.py``.
  *
  * @par What only silicon can answer
  * `Req_WifiInit` carries twenty scalars that the co-processor's own
@@ -55,6 +60,9 @@
 #include "ra8_boot_entry.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
+#ifdef C6_WIFI_CAPTURE
+#include "ra8_c6link_capture.h"
+#endif
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_c6link.h"
@@ -311,6 +319,54 @@ static bool c6_wifi_phase_identity(const ra8_c6link_fw_version_t* fw_in)
 }
 
 /**
+ * @brief Most AP records one scan reports; extra APs are counted, not kept.
+ * @since 0.1.0
+ */
+enum : uint8_t {
+  k_c6_wifi_scan_max = 8U,
+};
+
+/** @brief Records the scan phase fills; static so they stay off the worker stack. */
+static ra8_c6link_ap_info_t s_c6_wifi_aps[k_c6_wifi_scan_max];
+
+/**
+ * @brief Scan once with the station started and print every AP reported.
+ * @return true if the co-processor ran the scan and returned its records.
+ * @pre The station is started.
+ * @post One `c6_wifi: scan aps=<n>` line, then one line per kept record.
+ * @note Zero APs in range is a pass: the phase proves the scan RPCs, not the
+ *       radio environment. RA8FW-895's capture records this exchange for the
+ *       emulator's scan fixture.
+ * @since 0.1.0
+ */
+static bool c6_wifi_phase_scan(void)
+{
+  uint16_t        found = 0U;
+  const ra8_err_t scanned =
+    ra8_c6link_wifi_scan(&s_c6_wifi_link, s_c6_wifi_aps, (uint16_t)k_c6_wifi_scan_max, &found);
+  if (scanned != k_ra8_ok) {
+    c6_wifi_report_fault("wifi_scan", scanned);
+    return false;
+  }
+  c6_wifi_puts("c6_wifi: scan aps=");
+  c6_wifi_put_u32((uint32_t)found);
+  c6_wifi_puts("\r\n");
+  for (uint16_t i = 0U; i < found; ++i) {
+    const ra8_c6link_ap_info_t* ap = &s_c6_wifi_aps[i];
+    c6_wifi_puts("c6_wifi: ap ssid=");
+    c6_wifi_put_text(ap->ssid, (size_t)ap->ssid_len);
+    c6_wifi_puts(" channel=");
+    c6_wifi_put_u32((uint32_t)ap->channel);
+    c6_wifi_puts(" rssi=");
+    c6_wifi_put_i32((int32_t)ap->rssi);
+    c6_wifi_puts(" authmode=");
+    c6_wifi_put_i32(ap->authmode);
+    c6_wifi_puts("\r\n");
+  }
+  return true;
+}
+
+/**
  * @brief Start the station, read its address, then stop it again.
  * @return true when the radio started and reported a non-zero address.
  * @retval true The co-processor accepted the whole start sequence.
@@ -350,14 +406,50 @@ static bool c6_wifi_phase_station(void)
   c6_wifi_put_mac(&mac);
   c6_wifi_puts("\r\n");
 
+  const bool      scanned = c6_wifi_phase_scan();
   const ra8_err_t stopped = ra8_c6link_wifi_stop(&s_c6_wifi_link);
   if (stopped != k_ra8_ok) {
     c6_wifi_report_fault("wifi_stop", stopped);
     return false;
   }
   c6_wifi_puts("c6_wifi: station stopped (WifiStop + WifiDeinit accepted)\r\n");
-  return true;
+  return scanned;
 }
+
+#ifdef C6_WIFI_CAPTURE
+/**
+ * @brief Capture state wrapping the port's transport in the capture target.
+ * @since 0.1.0
+ */
+static ra8_c6link_capture_t s_c6_wifi_capture;
+
+/**
+ * @brief Longest piece ra8_c6link_capture hands its sink: a 64-byte hex chunk.
+ * @since 0.1.0
+ */
+enum : uint8_t {
+  k_c6_wifi_capture_piece = 128U,
+};
+
+/**
+ * @brief Capture sink: one piece of a `c6cap` line, straight to the console.
+ * @param[in] ctx  Unused.
+ * @param[in] text Piece bytes, not NUL-terminated.
+ * @param[in] len  Piece length, at most ::k_c6_wifi_capture_piece.
+ * @since 0.1.0
+ */
+static void c6_wifi_capture_sink(void* ctx, const char* text, uint16_t len)
+{
+  (void)ctx;
+  char           piece[k_c6_wifi_capture_piece + 1U] = {};
+  const uint16_t n =
+    (len < (uint16_t)k_c6_wifi_capture_piece) ? len : (uint16_t)k_c6_wifi_capture_piece;
+  for (uint16_t i = 0U; i < n; ++i) {
+    piece[i] = text[i];
+  }
+  c6_wifi_puts(piece);
+}
+#endif
 
 /**
  * @brief Open the link over the port's transport seam.
@@ -380,6 +472,17 @@ static ra8_err_t c6_wifi_open_link(void)
   if (seam != k_ra8_ok) {
     return seam;
   }
+#ifdef C6_WIFI_CAPTURE
+  const ra8_c6link_transport_t port  = cfg.transport;
+  const ra8_err_t              bound = ra8_c6link_capture_bind(&s_c6_wifi_capture,
+                                                               &port,
+                                                               c6_wifi_capture_sink,
+                                                               nullptr,
+                                                               &cfg.transport);
+  if (bound != k_ra8_ok) {
+    return bound;
+  }
+#endif
   cfg.arena       = s_c6_wifi_arena;
   cfg.arena_bytes = (uint32_t)sizeof(s_c6_wifi_arena);
   cfg.event_cb    = c6_wifi_on_event;
