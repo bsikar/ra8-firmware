@@ -83,7 +83,7 @@ truth, while the rows below are representative trace anchors.
 | UT-HAL-SMBUS-001  | `tests/misc/src/test_ra8_smbus.c`   | `libs/ra8_hal/src/ra8_smbus.c`             |
 | UT-HAL-SPI-001    | `tests/hal/src/test_ra8_spi.c`     | `libs/ra8_hal/src/ra8_spi_b.c`             |
 | UT-HAL-USB-001    | `tests/usb/src/test_ra8_usb.c`     | `libs/ra8_hal/src/ra8_usb.c`               |
-| UT-HAL-WDT-001    | `tests/hal/src/test_ra8_wdt.c`     | `libs/ra8_hal/src/ra8_wdt.c`               |
+| UT-HAL-WDT-001    | `tests/hal/src/test_ra8_wdt.c`     | `libs/ra8_hal/src/wdt_ctrl_abi.zig`         |
 | UT-HAL-XSPI-001   | `tests/hal/src/test_ra8_xspi.c`    | `libs/ra8_hal/src/xspi_*_abi.zig`              |
 
 (Truncated for brevity. The complete row set is derived from the distributed

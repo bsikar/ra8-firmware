@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_wdt_extended.c
- * @brief Extended unit tests for ra8_wdt.c covering previously uncovered paths
+ * @brief Extended unit tests for the HAL WDT driver covering previously uncovered paths
  *
  * @details
  * The OFSm option-setting decode (``ra8_wdt_ofs_get`` and its reader hook)
@@ -353,7 +353,7 @@ static void test_wdt_clear_status_blocking_already_clear(void)
  * @brief Verify a status bit that never acknowledges its clear times out.
  * @par MC/DC:
  * No compound decision is exercised in
- * ``libs/ra8_hal/src/ra8_wdt.c@ra8_wdt_clear_status_blocking``. This is the
+ * ``libs/ra8_hal/src/wdt_ctrl_abi.zig@ra8_wdt_clear_status_blocking``. This is the
  * false vector for the single-condition ``cleared`` decision; the companion
  * already-clear test supplies its true vector.
  * @since 0.1.0

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_wdt.c
- * @brief Unit tests for ra8_wdt.c (software WDT driver)
+ * @brief Unit tests for the HAL WDT driver (wdt_*_abi.zig, was ra8_wdt.c)
  * @details Checks watchdog configuration, refresh key sequencing, status reads, and invalid configuration using hosted registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

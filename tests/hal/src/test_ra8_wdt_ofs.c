@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_wdt_ofs.c
- * @brief Unit tests for the OFSm option-setting decode in ra8_wdt.c
+ * @brief Unit tests for the OFSm option-setting decode in wdt_ofs_abi.zig (was ra8_wdt.c)
  *
  * @details
  * Split out of test_ra8_wdt_extended.c, which the 1000-line file-size cap
@@ -430,7 +430,7 @@ static void test_wdt_ofs_get_wdt1_sel_mixed_muxes(void)
  *
  * @par MC/DC:
  * Decision: `uniform(TOPS) && uniform(CKS) && uniform(RPES) && uniform(RPSS)`
- * cites libs/ra8_hal/src/ra8_wdt.c@internal_ofs3_sel_is_legal
+ * cites libs/ra8_hal/src/internal/wdt_ofs.zig@selLegal
  * (4 conditions) -- N+1 = 5 vectors:
  * - V1: all four uniform          -> true  (control).
  * - V2: TOPS mixed, rest uniform  -> false (varies TOPS only).
@@ -440,7 +440,7 @@ static void test_wdt_ofs_get_wdt1_sel_mixed_muxes(void)
  * V1 paired with each of V2..V5 proves that condition independently affects
  * the outcome.
  * Decision: `(field == 0U) || (field == mask)`
- * cites libs/ra8_hal/src/ra8_wdt.c@internal_sel_field_uniform
+ * cites libs/ra8_hal/src/internal/wdt_ofs.zig@mux
  * (2 conditions) -- N+1 = 3 vectors, supplied by the same call sequence:
  * - V1a: field=0    -> true  (first condition true; control for the second).
  * - V1b: field=mask -> true  (varies the second condition only; V1 sets TOPS

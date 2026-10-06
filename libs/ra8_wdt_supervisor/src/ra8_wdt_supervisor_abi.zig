@@ -53,9 +53,17 @@ comptime {
     std.debug.assert(@alignOf(Cfg) == word);
 }
 
-/// The WDT kick the default refresh hook wraps. Declared on every target, as
-/// the C declared it: the host unit image already supplies this symbol.
+/// The WDT kick the default refresh hook wraps. The host unit image supplies
+/// it, so host builds keep a strong reference. On silicon it is weak
+/// (RA8FW-891): an image that links the HAL resolves it as before, and an
+/// image without the HAL (the e-reader NS world, which installs its own hook)
+/// links without it. With neither the HAL nor a hook the kick is skipped and
+/// the WDT fires, which fails safe.
 extern fn ra8_wdt_refresh_deferred() void;
+const weak_refresh = @extern(?*const fn () callconv(.c) void, .{
+    .name = "ra8_wdt_refresh_deferred",
+    .linkage = .weak,
+});
 
 /// ThreadX seam.
 ///
@@ -255,7 +263,8 @@ fn defaultNow() callconv(.c) u32 {
 
 /// Default WDT-refresh hook.
 fn defaultRefresh() callconv(.c) void {
-    ra8_wdt_refresh_deferred();
+    if (off_target) return ra8_wdt_refresh_deferred();
+    if (weak_refresh) |kick| kick();
 }
 
 /// Read the monotonic clock through the installed hook.

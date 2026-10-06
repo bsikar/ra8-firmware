@@ -4,7 +4,7 @@
  *
  * @details
  * The existing test_ra8_wdt.c and test_ra8_wdt_extended.c suites exercise
- * ra8_wdt.c (the high-level driver) but leave the non-default arms of the
+ * the HAL WDT driver (the high-level driver) but leave the non-default arms of the
  * header's switch-dispatch inline ra8_wdt_for() uncovered -- both the
  * k_ra8_wdt1 arm and the k_ra8_wdt_instance_count/default arm.
  *
