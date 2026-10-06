@@ -302,17 +302,17 @@ pub fn build(b: *std.Build) void {
             .name = b.fmt("c_suite_{s}", .{member.artifact_name}),
             .root_module = suite_module,
         });
-        suite.linkLibrary(archive);
+        suite.root_module.linkLibrary(archive);
         // The log backend the archives call into.
-        suite.linkLibrary(core_archive);
+        suite.root_module.linkLibrary(core_archive);
         for (member.extra_dependency_names) |extra_name| {
-            suite.linkLibrary(b.dependency(extra_name, .{
+            suite.root_module.linkLibrary(b.dependency(extra_name, .{
                 .target = target,
                 .optimize = optimize,
             }).artifact(extra_name));
         }
         for (member.host_seam_roots) |seam_root| {
-            suite.linkLibrary(b.addLibrary(.{
+            suite.root_module.linkLibrary(b.addLibrary(.{
                 .name = b.fmt("{s}_seam", .{std.fs.path.stem(member.c_suite_path)}),
                 .linkage = .static,
                 .root_module = b.createModule(.{
