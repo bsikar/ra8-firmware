@@ -406,7 +406,7 @@ static void test_flash_program_command_timeout_legs(void)
     src[i] = (uint8_t)(i + k_xspi_program_lit_x40);
   }
 
-  /* Leg 1: the WREN command never retires -> internal_flash_stage_program
+  /* Leg 1: the WREN command never retires -> the Zig programChunk (xspi_program.zig)
    * propagates the CMDCMP timeout before any payload is staged. */
   prep_flash();
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);
@@ -420,7 +420,7 @@ static void test_flash_program_command_timeout_legs(void)
                                         (uint32_t)k_test_xspi_len_small));
 
   /* Leg 2: WREN retires but the PP kick never does ->
-   * internal_flash_program_chunk propagates the kick timeout. */
+   * programChunk propagates the kick timeout. */
   prep_flash();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)&reg->INTS,
@@ -432,7 +432,7 @@ static void test_flash_program_command_timeout_legs(void)
                                         (uint32_t)k_test_xspi_len_small));
 
   /* Leg 3: WREN + PP retire but the first WIP-poll RDSR command never
-   * does -> internal_poll_wip_clear propagates read_status's fault. */
+   * does -> pollWipClear propagates read_status's fault. */
   prep_flash();
   TEST_ASSERT_EQ(
     k_ra8_ok,
