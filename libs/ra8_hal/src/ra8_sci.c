@@ -33,7 +33,7 @@
  *   - **`r_sci_b_uart.c` (CCR0 IDSEL pre-seed).** FSP pre-loads
  *     CCR0 with the IDSEL bit when the multi-processor bit is being
  *     turned on. IDSEL is only meaningful when CCR3.MP=1; this driver
- *     never enables multi-processor mode (see `internal_ccr3` -- MOD
+ *     never enables multi-processor mode (see `ccr3` in internal/sci_cfg.zig -- MOD
  *     stays 000 / async and MP stays 0), so the bit is dead and we
  *     skip the extra write.
  *   - **`r_sci_b_uart.c` (`r_sci_b_uart_synchronization_delay_cfg`).**
@@ -41,7 +41,7 @@
  *     SCICLK and PCLK when those clocks are sourced independently.
  *     In our async-UART configuration the on-chip baud generator is
  *     fed from PCLKB (CCR3.CKE = 00, CCR3.BPEN = 1 -- see
- *     `internal_ccr3`), so SCICLK and PCLK are the same edge and FSP's
+ *     `ccr3` in internal/sci_cfg.zig), so SCICLK and PCLK are the same edge and FSP's
  *     own delay-count formula evaluates to zero. The wait is a no-op
  *     for us and is intentionally not ported.
  *   - **`r_sci_b_uart.c` (`SCI_B_UART_FCR_DEFAULT_VALUE = 0x1F1F0000`).**
@@ -76,6 +76,13 @@
 #include "ra8_sci_regs.h"
 
 static const char* const s_tag = "SCI";
+
+/* Config encoders and ra8_sci_baud_calculate live in Zig (RA8FW-905,
+ * src/internal/sci_cfg.zig + src/sci_cfg_abi.zig). */
+uint8_t  priv_ra8_sci_brr(uint32_t pclk_hz, uint32_t baud);
+uint32_t priv_ra8_sci_ccr1(const ra8_sci_cfg_t* cfg);
+uint32_t priv_ra8_sci_ccr2(const ra8_sci_cfg_t* cfg);
+uint32_t priv_ra8_sci_ccr3(const ra8_sci_cfg_t* cfg);
 
 /* =============================================================================
  * Per-channel state
@@ -125,130 +132,6 @@ RA8_INTERNAL static inline volatile r_sci_regs_t* internal_reg(uint8_t channel)
     return nullptr;
   }
   return ra8_sci(channel);
-}
-
-/**
- * @brief Compute the 8-bit BRR value from a target baud and PCLKB.
- *
- * @details
- * HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189
- * Table 38.7. For the default Asynchronous-mode 16x base-clock path
- * (CCR2.BGDM = ABCS = ABCSE = ABCSE2 = 0, CCR3.CKE = 0, CCR2.CKS = 0
- * -> n = 0):
- *
- * @f[ N = \frac{TCLK}{64 \cdot 2^{(2n - 1)} \cdot B} - 1
- *       = \frac{TCLK}{32 \cdot B} - 1 @f]
- *
- * Saturates at 0 if the requested baud is unreachable.
- * @param[in] pclk_hz See declaration: ``uint32_t pclk_hz``.
- * @param[in] baud See declaration: ``uint32_t baud``.
- * @return ::ra8_err_t outcome (or scalar return value).
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
-{
-  if ((baud == 0U) || (pclk_hz == 0U)) {
-    return 0U;
-  }
-  const uint32_t divisor = k_ra8_sci_brr_async_divisor * baud;
-  const uint32_t n       = pclk_hz / divisor;
-  if (n == 0U) {
-    return 0U;
-  }
-  return (uint8_t)(n - 1U);
-}
-
-/**
- * @brief Build the CCR1 value for an async-UART config descriptor.
- *
- * @details HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185.
- * Always sets SPB2DT + SPB2IO so TXD idles HIGH while TE=0 -- without
- * those bits the line floats low and a host UART sees a permanent
- * break, blocking the very first frame. FSP r_sci_b_uart does the
- * same write unconditionally for async-UART configs. Parity is set
- * per `cfg->parity`; the rest (CTSE/CTSPEN/TINV/RINV/SPLP/SHARPS/
- * NFEN) stay at their reset value.
- * @param[in] cfg See declaration: ``const ra8_sci_cfg_t* cfg``.
- * @return ::ra8_err_t outcome (or scalar return value).
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_ccr1(const ra8_sci_cfg_t* cfg)
-{
-  uint32_t ccr1 = (1U << k_ra8_sci_ccr1_bit_spb2dt) | (1U << k_ra8_sci_ccr1_bit_spb2io);
-  if (cfg->parity != k_ra8_sci_parity_none) {
-    ccr1 |= (1U << k_ra8_sci_ccr1_bit_pe);
-    if (cfg->parity == k_ra8_sci_parity_odd) {
-      ccr1 |= (1U << k_ra8_sci_ccr1_bit_pm);
-    }
-  }
-  return ccr1;
-}
-
-/**
- * @brief Build the CCR3 value for an async-UART config descriptor.
- *
- * @details HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203.
- * MOD = 000 (asynchronous), CHR = 8-bit / 7-bit, STP = 0/1 stop bit
- * = 1 / 2 stop bits. CKE = 00 (on-chip baud generator). FM = 0
- * (non-FIFO). MP = 0 (single-processor). All other bits stay 0.
- * @param[in] cfg See declaration: ``const ra8_sci_cfg_t* cfg``.
- * @return ::ra8_err_t outcome (or scalar return value).
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_ccr3(const ra8_sci_cfg_t* cfg)
-{
-  /* LSBF = 1 (LSB-first) is the UART standard wire order. SCI_B's
-   * reset state is MSB-first; without this bit the host receives
-   * each byte bit-reversed (e.g. 'h' = 0x68 transmits as 0x16). FSP
-   * r_sci_b_uart sets LSBF unconditionally for async configs.
-   *
-   * BPEN = 1 (Synchronizer Bypass Enable) is required when the bus
-   * clock (PCLK) is also used as the operation clock (TCLK) -- which
-   * is what we're doing in async mode with the on-chip baud-rate
-   * generator on the synchronized clock. Without BPEN the SCI's
-   * shift state machine waits forever for an independent SCICLK
-   * edge that never arrives, and the chip looks alive at the
-   * register level (TDR latches, CCR0.TE=1) but never advances --
-   * CSR.TDRE and CSR.TEND stay 0 indefinitely. HUM Ch 38.2.8 p 2207
-   * "BPEN bit" is the authoritative source. */
-  uint32_t ccr3 = (1U << k_ra8_sci_ccr3_bit_lsbf) | (1U << k_ra8_sci_ccr3_bit_bpen);
-
-  /* MOD = 000 (Asynchronous) -- already 0. */
-
-  /* CHR[1:0]. 8-bit -> 10b, 7-bit -> 11b. */
-  if (cfg->data_bits == k_ra8_sci_data_7) {
-    ccr3 |= (k_ra8_sci_ccr3_chr_7bit << k_ra8_sci_ccr3_shift_chr);
-  } else {
-    ccr3 |= (k_ra8_sci_ccr3_chr_8bit << k_ra8_sci_ccr3_shift_chr);
-  }
-
-  /* STP -- 1 = 2 stop bits. */
-  if (cfg->stop_bits == k_ra8_sci_stop_2) {
-    ccr3 |= (1U << k_ra8_sci_ccr3_bit_stp);
-  }
-
-  return ccr3;
 }
 
 /**
@@ -319,34 +202,6 @@ RA8_INTERNAL static ra8_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
   return ra8_hw_wait_flag_set32(&reg->CSR, mask, k_ra8_hw_budget_medium);
 }
 
-/**
- * @brief Build the CCR2 value with BRR programmed.
- *
- * @details HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189.
- * MDDR field reset value is 0xFF (modulation-disabled equivalent),
- * so we keep it at 0xFF and program BRR[15:8] only. CKS = 0,
- * BGDM = ABCS = ABCSE = ABCSE2 = 0 -- the 16x base-clock path.
- * @param[in] cfg See declaration: ``const ra8_sci_cfg_t* cfg``.
- * @return ::ra8_err_t outcome (or scalar return value).
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_ccr2(const ra8_sci_cfg_t* cfg)
-{
-  const uint8_t brr  = internal_brr(cfg->pclk_hz, cfg->baud);
-  uint32_t      ccr2 = 0U;
-  ccr2 |= ((uint32_t)brr << k_ra8_sci_ccr2_shift_brr);
-  /* MDDR reset value -- keep modulation off. */
-  ccr2 |= (k_ra8_sci_mddr_default << k_ra8_sci_ccr2_shift_mddr);
-  return ccr2;
-}
-
 /* =============================================================================
  * Public API
  * =============================================================================
@@ -386,15 +241,15 @@ RA8_INTERNAL static void internal_program_ccr_bank(volatile r_sci_regs_t* reg,
   reg->FCR = 0U;
 
   /* HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185 */
-  reg->CCR1 = internal_ccr1(cfg);
+  reg->CCR1 = priv_ra8_sci_ccr1(cfg);
 
   /* HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203 -- mode
    * + framing must be programmed before TE/RE go high. */
-  reg->CCR3 = internal_ccr3(cfg);
+  reg->CCR3 = priv_ra8_sci_ccr3(cfg);
 
   /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- BRR
    * derived from cfg->pclk_hz and cfg->baud. */
-  reg->CCR2 = internal_ccr2(cfg);
+  reg->CCR2 = priv_ra8_sci_ccr2(cfg);
 
   /* HUM Ch 38.2.9 "CCR4 : Common Control Register 4", p 2210 -- no
    * sample / transmit timing adjustment for async UART. */
@@ -654,7 +509,7 @@ ra8_err_t ra8_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
   if (baud == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  const uint8_t brr = internal_brr(pclk_hz, baud);
+  const uint8_t brr = priv_ra8_sci_brr(pclk_hz, baud);
   /* Guard the CCR2 read-modify-write against any SCI ISR that stores to
    * this channel's control registers: an interrupt landing between the
    * CCR2 read and the write-back would otherwise drop the freshly merged
@@ -694,55 +549,6 @@ ra8_err_t ra8_sci_exit_stop(uint8_t channel)
 }
 
 /* ---- Async byte-stream TX / RX (FSP Read/Write parity) --------------- */
-
-/**
- * @enum ra8_sci_baud_calc_const_t
- * @brief Constants used by ``ra8_sci_baud_calculate``.
- *
- * @details
- * HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 Table 38.7:
- * the 16x base-clock formula divides PCLKB by ``32 * 2^(2n)`` where
- * ``n`` is the CKS divider (0..3). With ``n = 0`` the divisor is 32;
- * with ``n = 1`` it is 128; with ``n = 2`` it is 512; with ``n = 3``
- * it is 2048. ``k_ra8_sci_baud_brr_max`` is the 8-bit ceiling for BRR.
- */
-typedef enum : uint16_t {
-  k_ra8_sci_baud_brr_max    = 255U, /**< BRR is 8 bits wide.      */
-  k_ra8_sci_baud_cks_max    = 3U,   /**< CKS field is 2 bits.     */
-  k_ra8_sci_baud_div_step   = 4U,   /**< Multiplier per CKS step. */
-  k_ra8_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0).            */
-} ra8_sci_baud_calc_const_t;
-
-ra8_err_t
-ra8_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_t* clk_div_out)
-{
-  RA8_CHECK_NULL_PTR(brr_out, s_tag, "baud_calc: brr_out");
-  RA8_CHECK_NULL_PTR(clk_div_out, s_tag, "baud_calc: clk_div_out");
-  if ((baud == 0U) || (pclk_hz == 0U)) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- walk
-   * CKS = 0..3 and pick the smallest divider that yields a BRR <= 255.
-   * Mirrors the FSP `R_SCI_B_UART_BaudCalculate` outer loop
-   * (r_sci_b_uart.c) but without the bit-rate-modulation pass
-   * since the project always programs BRME=0. */
-  uint64_t divisor = (uint64_t)k_ra8_sci_baud_n0_divisor;
-  for (uint8_t n = 0U; n <= (uint8_t)k_ra8_sci_baud_cks_max; ++n) {
-    const uint64_t denom    = divisor * (uint64_t)baud;
-    const uint64_t quotient = (uint64_t)pclk_hz / denom;
-    if (quotient > 0U) {
-      const uint64_t candidate = quotient - 1U;
-      if (candidate <= (uint64_t)k_ra8_sci_baud_brr_max) {
-        *brr_out     = (uint16_t)candidate;
-        *clk_div_out = n;
-        return k_ra8_ok;
-      }
-    }
-    divisor *= (uint64_t)k_ra8_sci_baud_div_step;
-  }
-  return k_ra8_err_invalid_arg;
-}
 
 ra8_err_t ra8_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
 {
