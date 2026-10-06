@@ -856,7 +856,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 41 p 2702 (CFDC*+CFDG*+CFDRF*+CFDTM* covered)
 [x] Unit tests -- tests/hal/src/test_ra8_canfd.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 41 register notes in libs/ra8_hal/src/ra8_canfd.c
+[x] HUM cross-ref -- all Ch 41 register notes in libs/ra8_hal/src/internal/canfd_*.zig
 [x] Doxygen -- full file + member coverage
 ```
 

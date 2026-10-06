@@ -217,14 +217,10 @@ typedef struct {
 extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
 
 /* =============================================================================
- * ra8_canfd: split between ra8_canfd.c (clock / MSTP / global+channel mode state
- * machine, AFL / RX-FIFO bring-up, lifecycle, status / IRQ / filter / test-mode
- * / power) and two siblings: canfd_frame.zig (TX/RX frame data path) and
- * canfd_timing_abi.zig (Zig, RA8FW-580: bit-timing solver + bitrate / BRS). The
- * timing TU has to drive the channel mode state machine to land NCFG / DCFG
- * edits in CH_RESET, so the channel-mode helper -- whose definition stays in
- * ra8_canfd.c next to the rest of the mode machinery -- is promoted to
- * TU-external linkage here. No mutable state crosses the split.
+ * ra8_canfd: Zig since RA8FW-864 deleted ra8_canfd.c. The mode handshakes and
+ * open_channel live in canfd_mode_abi.zig and keep their priv_ names here so
+ * the C test suites and the other canfd_*_abi.zig units link against one
+ * definition. No mutable state crosses the split.
  * =============================================================================
  */
 
@@ -232,11 +228,9 @@ extern ra8_usb_hmsc_state_t g_usb_hmsc_state;
  * @brief Drive ``CFDC[0].CTR.CHMDC`` and wait for the matching status bit.
  *
  * @details
- * Promoted from a file-scope ``static`` helper in ``ra8_canfd.c`` to TU-external
- * linkage so the bit-timing unit (``canfd_timing_abi.zig``) can transition the
+ * TU-external (now a Zig export in ``canfd_mode_abi.zig``) so the bit-timing unit (``canfd_timing_abi.zig``) can transition the
  * channel through CH_RESET / CH_OPERATION around an NCFG / DCFG edit, which is
- * only writable while the channel is halted or in reset. The single definition
- * stays in ``ra8_canfd.c`` beside the rest of the mode-transition machinery
+ * only writable while the channel is halted or in reset
  * (HUM Ch 41 p 2762 "CFDCnCTR.CHMDC", p 2766 "CFDCnSTS").
  *
  * @param[in] reg  CANFD channel register block.
