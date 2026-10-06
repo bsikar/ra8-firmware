@@ -97,10 +97,10 @@ include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 # static archive rather than as sources compiled into the image. It is named
 # in LINK_LIBS ahead of threadx_ns because the supervisor calls into ThreadX:
 # appended after it, _tx_time_get and the six _txe_* entry points go
-# unresolved. ra8_wdt.c still comes in as a source: the supervisor's default
-# refresh hook references ra8_wdt_refresh_deferred, so the symbol must resolve
-# -- it is dead code once ns_main routes the hook through the
-# ra8_nsc_wdt_refresh veneer.
+# unresolved. The supervisor's default refresh hook takes
+# ra8_wdt_refresh_deferred as a weak reference on silicon (RA8FW-891), so the
+# NS image no longer compiles the HAL WDT driver: ns_main routes the hook
+# through the ra8_nsc_wdt_refresh veneer instead.
 ra8_zig_archive_for_cpu(
   _ra8_ns_wdt_sup
   LIB
@@ -125,7 +125,6 @@ ra8_add_ns_image(
   ra8d2-ereader.hex
   SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-  ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
   DEFINES
   RA8_TRUSTZONE_ENABLE
   RA8_PERIPH_NS_ALIAS

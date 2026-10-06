@@ -668,7 +668,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 27 p 1256 (WDTRR + WDTSR; WDTCR/WDTRCR locked by OFS0)
 [x] Unit tests -- tests/hal/src/test_ra8_wdt.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 27 register notes in libs/ra8_hal/src/ra8_wdt.c
+[x] HUM cross-ref -- all Ch 27 register notes in libs/ra8_hal/src/wdt_*_abi.zig and src/internal/wdt_*.zig
 [x] Doxygen -- full file + member coverage
 ```
 
