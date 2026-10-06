@@ -178,8 +178,8 @@ test "every kind of app in the tree is either cross-built or written down as unc
     const allocator = arena.allocator();
     const entries = try ledger(allocator);
 
-    var built = std.ArrayList(Shape).init(allocator);
-    for (app_table.cross_apps) |app| try built.append(try shapeOfTableApp(allocator, app));
+    var built: std.ArrayList(Shape) = .empty;
+    for (app_table.cross_apps) |app| try built.append(allocator, try shapeOfTableApp(allocator, app));
 
     var covered_rows: usize = 0;
     var uncovered_rows: usize = 0;

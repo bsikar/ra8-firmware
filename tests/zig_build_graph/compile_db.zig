@@ -34,20 +34,20 @@ pub const Entry = struct {
 /// include path, then the TU and its output. Absolute paths, as CMake writes
 /// them, so a consumer that ignores the `directory` field still resolves.
 pub fn arguments(b: *std.Build, entry: Entry) []const []const u8 {
-    var argv = std.ArrayList([]const u8).init(b.allocator);
-    argv.append(entry.driver) catch @panic("OOM");
-    for (entry.flags) |flag| argv.append(flag) catch @panic("OOM");
+    var argv: std.ArrayList([]const u8) = .empty;
+    argv.append(b.allocator, entry.driver) catch @panic("OOM");
+    for (entry.flags) |flag| argv.append(b.allocator, flag) catch @panic("OOM");
     for (entry.include_dirs) |include_dir| {
-        argv.append(b.fmt("-I{s}", .{pkg_path.absolute(b, include_dir)})) catch @panic("OOM");
+        argv.append(b.allocator, b.fmt("-I{s}", .{pkg_path.absolute(b, include_dir)})) catch @panic("OOM");
     }
     for (entry.system_include_dirs) |include_dir| {
-        argv.append("-isystem") catch @panic("OOM");
-        argv.append(pkg_path.absolute(b, include_dir)) catch @panic("OOM");
+        argv.append(b.allocator, "-isystem") catch @panic("OOM");
+        argv.append(b.allocator, pkg_path.absolute(b, include_dir)) catch @panic("OOM");
     }
-    argv.append("-c") catch @panic("OOM");
-    argv.append(pkg_path.absolute(b, entry.file)) catch @panic("OOM");
-    argv.append("-o") catch @panic("OOM");
-    argv.append(entry.object) catch @panic("OOM");
+    argv.append(b.allocator, "-c") catch @panic("OOM");
+    argv.append(b.allocator, pkg_path.absolute(b, entry.file)) catch @panic("OOM");
+    argv.append(b.allocator, "-o") catch @panic("OOM");
+    argv.append(b.allocator, entry.object) catch @panic("OOM");
     return argv.items;
 }
 
@@ -60,48 +60,48 @@ pub fn arguments(b: *std.Build, entry: Entry) []const []const u8 {
 /// the host bar and again at the stricter -Wconversion bar the SOUP drivers
 /// take.
 pub fn signature(b: *std.Build, entry: Entry) []const u8 {
-    var out = std.ArrayList(u8).init(b.allocator);
-    out.appendSlice(entry.driver) catch @panic("OOM");
-    out.appendSlice("\x00") catch @panic("OOM");
-    out.appendSlice(entry.file) catch @panic("OOM");
+    var out: std.ArrayList(u8) = .empty;
+    out.appendSlice(b.allocator, entry.driver) catch @panic("OOM");
+    out.appendSlice(b.allocator, "\x00") catch @panic("OOM");
+    out.appendSlice(b.allocator, entry.file) catch @panic("OOM");
     for (entry.flags) |flag| {
-        out.appendSlice("\x00") catch @panic("OOM");
-        out.appendSlice(flag) catch @panic("OOM");
+        out.appendSlice(b.allocator, "\x00") catch @panic("OOM");
+        out.appendSlice(b.allocator, flag) catch @panic("OOM");
     }
     for (entry.include_dirs) |include_dir| {
-        out.appendSlice("\x00") catch @panic("OOM");
-        out.appendSlice(include_dir) catch @panic("OOM");
+        out.appendSlice(b.allocator, "\x00") catch @panic("OOM");
+        out.appendSlice(b.allocator, include_dir) catch @panic("OOM");
     }
     for (entry.system_include_dirs) |include_dir| {
-        out.appendSlice("\x00") catch @panic("OOM");
-        out.appendSlice(include_dir) catch @panic("OOM");
+        out.appendSlice(b.allocator, "\x00") catch @panic("OOM");
+        out.appendSlice(b.allocator, include_dir) catch @panic("OOM");
     }
     return out.items;
 }
 
-pub fn appendJsonString(out: *std.ArrayList(u8), value: []const u8) void {
-    out.append('"') catch @panic("OOM");
+pub fn appendJsonString(gpa: std.mem.Allocator, out: *std.ArrayList(u8), value: []const u8) void {
+    out.append(gpa, '"') catch @panic("OOM");
     for (value) |byte| switch (byte) {
-        '"' => out.appendSlice("\\\"") catch @panic("OOM"),
-        '\\' => out.appendSlice("\\\\") catch @panic("OOM"),
-        '\n' => out.appendSlice("\\n") catch @panic("OOM"),
-        '\t' => out.appendSlice("\\t") catch @panic("OOM"),
-        else => out.append(byte) catch @panic("OOM"),
+        '"' => out.appendSlice(gpa, "\\\"") catch @panic("OOM"),
+        '\\' => out.appendSlice(gpa, "\\\\") catch @panic("OOM"),
+        '\n' => out.appendSlice(gpa, "\\n") catch @panic("OOM"),
+        '\t' => out.appendSlice(gpa, "\\t") catch @panic("OOM"),
+        else => out.append(gpa, byte) catch @panic("OOM"),
     };
-    out.append('"') catch @panic("OOM");
+    out.append(gpa, '"') catch @panic("OOM");
 }
 
 /// Drop the entries that are the same compile command written twice, keeping
 /// the first of each. Order is otherwise preserved: the database reads in the
 /// order the graph compiles.
 pub fn deduplicate(b: *std.Build, candidates: []const Entry) []const Entry {
-    var entries = std.ArrayList(Entry).init(b.allocator);
+    var entries: std.ArrayList(Entry) = .empty;
     var seen = std.StringHashMap(void).init(b.allocator);
     for (candidates) |entry| {
         const key = signature(b, entry);
         if (seen.contains(key)) continue;
         seen.put(key, {}) catch @panic("OOM");
-        entries.append(entry) catch @panic("OOM");
+        entries.append(b.allocator, entry) catch @panic("OOM");
     }
     return entries.items;
 }
@@ -110,25 +110,25 @@ pub fn deduplicate(b: *std.Build, candidates: []const Entry) []const Entry {
 pub fn render(b: *std.Build, entries: []const Entry) []const u8 {
     const directory = b.build_root.path orelse ".";
 
-    var json = std.ArrayList(u8).init(b.allocator);
-    json.appendSlice("[\n") catch @panic("OOM");
+    var json: std.ArrayList(u8) = .empty;
+    json.appendSlice(b.allocator, "[\n") catch @panic("OOM");
     for (entries, 0..) |entry, index| {
-        json.appendSlice("  {\n    \"directory\": ") catch @panic("OOM");
-        appendJsonString(&json, directory);
-        json.appendSlice(",\n    \"file\": ") catch @panic("OOM");
-        appendJsonString(&json, pkg_path.absolute(b, entry.file));
-        json.appendSlice(",\n    \"output\": ") catch @panic("OOM");
-        appendJsonString(&json, entry.object);
-        json.appendSlice(",\n    \"arguments\": [") catch @panic("OOM");
+        json.appendSlice(b.allocator, "  {\n    \"directory\": ") catch @panic("OOM");
+        appendJsonString(b.allocator, &json, directory);
+        json.appendSlice(b.allocator, ",\n    \"file\": ") catch @panic("OOM");
+        appendJsonString(b.allocator, &json, pkg_path.absolute(b, entry.file));
+        json.appendSlice(b.allocator, ",\n    \"output\": ") catch @panic("OOM");
+        appendJsonString(b.allocator, &json, entry.object);
+        json.appendSlice(b.allocator, ",\n    \"arguments\": [") catch @panic("OOM");
         for (arguments(b, entry), 0..) |argument, argument_index| {
-            if (argument_index != 0) json.appendSlice(", ") catch @panic("OOM");
-            appendJsonString(&json, argument);
+            if (argument_index != 0) json.appendSlice(b.allocator, ", ") catch @panic("OOM");
+            appendJsonString(b.allocator, &json, argument);
         }
-        json.appendSlice("]\n  }") catch @panic("OOM");
-        if (index + 1 != entries.len) json.append(',') catch @panic("OOM");
-        json.append('\n') catch @panic("OOM");
+        json.appendSlice(b.allocator, "]\n  }") catch @panic("OOM");
+        if (index + 1 != entries.len) json.append(b.allocator, ',') catch @panic("OOM");
+        json.append(b.allocator, '\n') catch @panic("OOM");
     }
-    json.appendSlice("]\n") catch @panic("OOM");
+    json.appendSlice(b.allocator, "]\n") catch @panic("OOM");
     return json.items;
 }
 

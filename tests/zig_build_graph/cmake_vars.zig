@@ -55,15 +55,15 @@ pub fn parse(allocator: std.mem.Allocator, text: []const u8) Vars {
 /// `${NAME}` -> its value. An unknown name is left as written rather than
 /// blanked, so it reaches the linker as a visible error instead of as a hole.
 fn expand(allocator: std.mem.Allocator, vars: Vars, value: []const u8) []const u8 {
-    var out = std.ArrayList(u8).init(allocator);
+    var out: std.ArrayList(u8) = .empty;
     var rest = value;
     while (std.mem.indexOf(u8, rest, "${")) |open| {
         const close = std.mem.indexOfScalarPos(u8, rest, open, '}') orelse break;
-        out.appendSlice(rest[0..open]) catch @panic("OOM");
+        out.appendSlice(allocator, rest[0..open]) catch @panic("OOM");
         const name = rest[open + 2 .. close];
-        out.appendSlice(vars.map.get(name) orelse rest[open .. close + 1]) catch @panic("OOM");
+        out.appendSlice(allocator, vars.map.get(name) orelse rest[open .. close + 1]) catch @panic("OOM");
         rest = rest[close + 1 ..];
     }
-    out.appendSlice(rest) catch @panic("OOM");
+    out.appendSlice(allocator, rest) catch @panic("OOM");
     return out.items;
 }

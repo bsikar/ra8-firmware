@@ -147,12 +147,12 @@ pub fn imageName(allocator: std.mem.Allocator, app: App) []const u8 {
 /// Every translation unit the M33 image compiles: its entry point under the
 /// app, then the shared first-party units.
 pub fn sources(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     if (image.entry_language == .c) {
-        out.append(join(allocator, app.dir, image.entry_source)) catch @panic("OOM");
+        out.append(allocator, join(allocator, app.dir, image.entry_source)) catch @panic("OOM");
     }
-    out.appendSlice(image.shared_sources) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    out.appendSlice(allocator, image.shared_sources) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 fn join(allocator: std.mem.Allocator, left: []const u8, right: []const u8) []const u8 {
@@ -169,18 +169,18 @@ fn join(allocator: std.mem.Allocator, left: []const u8, right: []const u8) []con
 /// The compile flags plus the public defines of every middleware the image
 /// uses, which ride after the CPU1 flags exactly as an M85 app's do.
 pub fn unitFlags(allocator: std.mem.Allocator, image: Cpu1Image, global_flags: []const []const u8) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(compileFlags(allocator, global_flags)) catch @panic("OOM");
-    out.appendSlice(middleware.appDefines(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, compileFlags(allocator, global_flags)) catch @panic("OOM");
+    out.appendSlice(allocator, middleware.appDefines(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The image's own include path, then its middleware's public directories.
 pub fn unitIncludeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(includeDirs(allocator, app, image)) catch @panic("OOM");
-    out.appendSlice(middleware.appIncludeDirs(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, includeDirs(allocator, app, image)) catch @panic("OOM");
+    out.appendSlice(allocator, middleware.appIncludeDirs(allocator, cpu1_threadx.resolve(allocator, image.uses))) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The middleware's `-isystem` directories, after every `-I`.
@@ -189,15 +189,15 @@ pub fn systemIncludeDirs(allocator: std.mem.Allocator, image: Cpu1Image) []const
 }
 
 pub fn includeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.append(join(allocator, app.dir, "inc")) catch @panic("OOM");
-    out.append(join(allocator, app.dir, "src")) catch @panic("OOM");
-    out.append("libs/ra8_core/inc") catch @panic("OOM");
-    out.append("libs/ra8_hal/inc") catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.append(allocator, join(allocator, app.dir, "inc")) catch @panic("OOM");
+    out.append(allocator, join(allocator, app.dir, "src")) catch @panic("OOM");
+    out.append(allocator, "libs/ra8_core/inc") catch @panic("OOM");
+    out.append(allocator, "libs/ra8_hal/inc") catch @panic("OOM");
     if (image.board_include_dir) {
-        out.append(join(allocator, app.board, "inc")) catch @panic("OOM");
+        out.append(allocator, join(allocator, app.board, "inc")) catch @panic("OOM");
     }
-    return out.toOwnedSlice() catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// The compile flags for one CPU1 translation unit: the target's defines, then
@@ -210,11 +210,11 @@ pub fn compileFlags(
     allocator: std.mem.Allocator,
     global_flags: []const []const u8,
 ) []const []const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(&defines) catch @panic("OOM");
-    out.appendSlice(global_flags) catch @panic("OOM");
-    out.appendSlice(&target_flags) catch @panic("OOM");
-    return out.toOwnedSlice() catch @panic("OOM");
+    var out: std.ArrayList([]const u8) = .empty;
+    out.appendSlice(allocator, &defines) catch @panic("OOM");
+    out.appendSlice(allocator, global_flags) catch @panic("OOM");
+    out.appendSlice(allocator, &target_flags) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
 }
 
 /// What `add()` needs from the graph around it.
@@ -287,9 +287,9 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
     const include_dirs = unitIncludeDirs(b.allocator, options.app, options.image);
     const system_dirs = systemIncludeDirs(b.allocator, options.image);
 
-    var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var objects: std.ArrayList(std.Build.LazyPath) = .empty;
     if (options.image.entry_language == .zig) {
-        objects.append(zigEntry(b, options, name)) catch @panic("OOM");
+        objects.append(b.allocator, zigEntry(b, options, name)) catch @panic("OOM");
     }
     for (sources(b.allocator, options.app, options.image)) |source| {
         const compile = b.addSystemCommand(&.{options.gcc});
@@ -305,7 +305,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.Laz
         compile.addFileArg(b.path(source));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(source)});
-        objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
+        objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
 
     const link = b.addSystemCommand(&.{options.gcc});
@@ -421,7 +421,7 @@ pub fn appendCompileDbEntries(
     const include_dirs = unitIncludeDirs(b.allocator, options.app, options.image);
     const system_dirs = systemIncludeDirs(b.allocator, options.image);
     for (sources(b.allocator, options.app, options.image)) |source| {
-        out.append(.{
+        out.append(b.allocator, .{
             .file = source,
             .driver = driver,
             .flags = flags,

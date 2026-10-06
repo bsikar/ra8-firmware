@@ -73,7 +73,7 @@ pub fn appendIncludeDirs(b: *std.Build, libraries: []const []const u8, out: *std
     for (libraries) |library| {
         const dir = b.fmt("libs/{s}/inc", .{library});
         const exists = if (b.build_root.handle.access(dir, .{})) |_| true else |_| false;
-        if (exists) out.append(dir) catch @panic("OOM");
+        if (exists) out.append(b.allocator, dir) catch @panic("OOM");
     }
 }
 

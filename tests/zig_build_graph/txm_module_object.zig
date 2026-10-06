@@ -184,9 +184,9 @@ pub fn checker(b: *std.Build) *std.Build.Step.Compile {
 
 /// A rebase table with nothing in it, for the first of the two links.
 fn emptyTable(b: *std.Build) std.Build.LazyPath {
-    var text = std.ArrayList(u8).init(b.allocator);
-    table.write(text.writer(), &.{}, null) catch @panic("OOM");
-    return b.addWriteFiles().add("txm_rebase_empty.s", text.items);
+    var text: std.Io.Writer.Allocating = .init(b.allocator);
+    table.write(&text.writer, &.{}, null) catch @panic("OOM");
+    return b.addWriteFiles().add("txm_rebase_empty.s", text.written());
 }
 
 /// The rebase table of `first`, a module already linked with an empty one.

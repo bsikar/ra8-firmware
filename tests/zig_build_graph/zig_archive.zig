@@ -128,7 +128,7 @@ pub fn cacheDefault(source: []const u8, name: []const u8) ?[]const u8 {
 /// rules below would be holding the graph to nothing, and reporting clean
 /// against nothing is the failure this whole slice exists to prevent.
 pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const u8) ?Mapping {
-    var named = std.ArrayList(NamedOptimize).init(allocator);
+    var named: std.ArrayList(NamedOptimize) = .empty;
     var fallback: ?std.builtin.OptimizeMode = null;
     // Which arm the walk is inside: a name it matched, or the else().
     var arm: ?[]const u8 = null;
@@ -163,7 +163,7 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const
         if (in_else) {
             fallback = mode;
         } else if (arm) |name| {
-            named.append(.{ .cmake_name = name, .optimize = mode }) catch @panic("OOM");
+            named.append(allocator, .{ .cmake_name = name, .optimize = mode }) catch @panic("OOM");
         } else {
             // An unconditional set: the mapping stopped varying at all, which
             // is a real answer for every configuration.
@@ -173,7 +173,7 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const
 
     if (named.items.len == 0 and fallback == null) return null;
     return .{
-        .named = named.toOwnedSlice() catch @panic("OOM"),
+        .named = named.toOwnedSlice(allocator) catch @panic("OOM"),
         .fallback = fallback orelse return null,
     };
 }

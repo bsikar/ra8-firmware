@@ -328,10 +328,10 @@ fn resolveBoot(b: *std.Build, app: CrossApp, boot: []const u8) BootUnit {
 
 /// The board boot units this app links as standalone Zig objects.
 pub fn crossBootZigUnits(b: *std.Build, app: CrossApp) []const []const u8 {
-    var units = std.ArrayList([]const u8).init(b.allocator);
+    var units: std.ArrayList([]const u8) = .empty;
     for (cross_boot_sources) |boot| {
         switch (resolveBoot(b, app, boot)) {
-            .zig => |path| units.append(path) catch @panic("OOM"),
+            .zig => |path| units.append(b.allocator, path) catch @panic("OOM"),
             .c => {},
         }
     }
@@ -399,14 +399,14 @@ pub fn collectCSources(b: *std.Build, dir_path: []const u8, out: *std.ArrayList(
     };
     defer dir.close();
 
-    var names = std.ArrayList([]const u8).init(b.allocator);
+    var names: std.ArrayList([]const u8) = .empty;
     var it = dir.iterate();
     while (it.next() catch |err| {
         std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
     }) |entry| {
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-        names.append(b.dupe(entry.name)) catch @panic("OOM");
+        names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");
     }
     std.mem.sort([]const u8, names.items, {}, struct {
         fn lessThan(_: void, a: []const u8, c: []const u8) bool {
@@ -414,7 +414,7 @@ pub fn collectCSources(b: *std.Build, dir_path: []const u8, out: *std.ArrayList(
         }
     }.lessThan);
     for (names.items) |name| {
-        out.append(b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
+        out.append(b.allocator, b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
     }
 }
 
@@ -445,13 +445,13 @@ pub fn hasCMain(app: CrossApp) bool {
 /// the app's main.c, the resolved boot files, the globbed universal set, then
 /// whatever the app's `LIBS` add on top.
 pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
-    var sources = std.ArrayList([]const u8).init(b.allocator);
+    var sources: std.ArrayList([]const u8) = .empty;
 
-    if (hasCMain(app)) sources.append(b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
+    if (hasCMain(app)) sources.append(b.allocator, b.fmt("{s}/src/main.c", .{app.dir})) catch @panic("OOM");
 
     for (cross_boot_sources) |boot| {
         switch (resolveBoot(b, app, boot)) {
-            .c => |path| sources.append(path) catch @panic("OOM"),
+            .c => |path| sources.append(b.allocator, path) catch @panic("OOM"),
             // Built as its own object in cross_image.zig, not a C unit.
             .zig => {},
         }
@@ -462,17 +462,17 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     // units the resolver just placed, and the app's AUX_SRCS are taken out of
     // it. Globbing without those three subtractions is not a smaller parity
     // claim, it is a different image.
-    var app_local = std.ArrayList([]const u8).init(b.allocator);
+    var app_local: std.ArrayList([]const u8) = .empty;
     collectCSources(b, b.fmt("{s}/src", .{app.dir}), &app_local);
     for (app_local.items) |source| {
         if (!appLocalIsCompiled(app, source[app.dir.len + 1 ..])) continue;
-        sources.append(source) catch @panic("OOM");
+        sources.append(b.allocator, source) catch @panic("OOM");
     }
 
     // EXTRA_SRCS, appended in the order the app names them and BEFORE the
     // library globs, which is the order cmake/ra8_app/sources.cmake builds the
     // list in and therefore the order the objects reach the linker.
-    for (app.extra_srcs) |source| sources.append(source) catch @panic("OOM");
+    for (app.extra_srcs) |source| sources.append(b.allocator, source) catch @panic("OOM");
 
     for (cross_source_dirs) |dir_path| {
         // NO_NSC drops the whole libs/ra8_nsc/src glob, ahead of NSC_SRCS and
@@ -488,7 +488,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         // build succeeds either way.
         if (std.mem.eql(u8, dir_path, nsc_source_dir) and app.nsc_srcs.len > 0) {
             for (app.nsc_srcs) |name| {
-                sources.append(b.fmt("{s}/{s}", .{ nsc_source_dir, name })) catch @panic("OOM");
+                sources.append(b.allocator, b.fmt("{s}/{s}", .{ nsc_source_dir, name })) catch @panic("OOM");
             }
             continue;
         }
@@ -514,14 +514,14 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 
     // Drop the opt-in board units this app did not opt into (see
     // board_opt_in_sources), then the duplicates a named board produces.
-    var kept = std.ArrayList([]const u8).init(b.allocator);
+    var kept: std.ArrayList([]const u8) = .empty;
     var seen = std.StringHashMap(void).init(b.allocator);
     for (sources.items) |source| {
         if (isGatedOutBoardSource(app, source)) continue;
         if (isGatedOutLibrarySource(app, source)) continue;
         if (seen.contains(source)) continue;
         seen.put(source, {}) catch @panic("OOM");
-        kept.append(source) catch @panic("OOM");
+        kept.append(b.allocator, source) catch @panic("OOM");
     }
     return kept.items;
 }
@@ -530,7 +530,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 /// directories, the universal first-party set, then one directory per named
 /// library that has headers.
 pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
-    var dirs = std.ArrayList([]const u8).init(b.allocator);
+    var dirs: std.ArrayList([]const u8) = .empty;
     // CMake adds `<app>/inc` UNCONDITIONALLY, and it is FIRST, ahead of the
     // app's own src/ and every library: an app-local header shadows a
     // same-named one further down the path. cpu1_pingpong is the app that
@@ -544,30 +544,30 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     // which ships no inc/; the step spells an absent directory as a plain -I
     // string, because only an existing directory can be declared as a step
     // input.
-    dirs.append(b.fmt("{s}/inc", .{app.dir})) catch @panic("OOM");
-    dirs.append(b.fmt("{s}/src", .{app.dir})) catch @panic("OOM");
-    dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
-    dirs.append(b.fmt("{s}/inc", .{app.board})) catch @panic("OOM");
+    dirs.append(b.allocator, b.fmt("{s}/inc", .{app.dir})) catch @panic("OOM");
+    dirs.append(b.allocator, b.fmt("{s}/src", .{app.dir})) catch @panic("OOM");
+    dirs.appendSlice(b.allocator, &cross_include_dirs) catch @panic("OOM");
+    dirs.append(b.allocator, b.fmt("{s}/inc", .{app.board})) catch @panic("OOM");
 
     // The chip adapters' headers ride with the board, ahead of every named
     // library, where cmake/ra8_app/sources.cmake puts them through
     // _ra8_app_board_adapter_includes(). No app names an adapter in LIBS.
     for (board_adapter_include_dirs) |adapter_inc| {
         const exists = if (b.build_root.handle.access(adapter_inc, .{})) |_| true else |_| false;
-        if (exists) dirs.append(adapter_inc) catch @panic("OOM");
+        if (exists) dirs.append(b.allocator, adapter_inc) catch @panic("OOM");
     }
 
     for (app.libraries) |library| {
         const library_inc = b.fmt("libs/{s}/inc", .{library});
         const exists = if (b.build_root.handle.access(library_inc, .{})) |_| true else |_| false;
-        if (exists) dirs.append(library_inc) catch @panic("OOM");
+        if (exists) dirs.append(b.allocator, library_inc) catch @panic("OOM");
     }
     // The include directory a gated library unit's companion brings with it,
     // added where cmake/ra8_app/sources.cmake adds it: after the per-library
     // directories, before the alias one.
     for (library_source_gates) |gate| {
         if (declaresLibrary(app, gate.satisfied_by)) {
-            dirs.append(gate.include_dir) catch @panic("OOM");
+            dirs.append(b.allocator, gate.include_dir) catch @panic("OOM");
         }
     }
     for (library_aliases) |alias| {
@@ -576,7 +576,7 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
         for (alias.superseded_by) |fuller| {
             if (declaresLibrary(app, fuller)) superseded = true;
         }
-        if (!superseded) dirs.append(alias.include_dir) catch @panic("OOM");
+        if (!superseded) dirs.append(b.allocator, alias.include_dir) catch @panic("OOM");
     }
 
     // Every OFF_TARGET_LIBS entry's `inc`, which lands on EVERY unit in the
@@ -588,18 +588,18 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     // spells `${_ra8_extra_inc}` after `${_ra8_lib_inc}` in the same
     // target_include_directories call).
     for (app.extra_srcs) |source| {
-        dirs.append(std.fs.path.dirname(source) orelse ".") catch @panic("OOM");
+        dirs.append(b.allocator, std.fs.path.dirname(source) orelse ".") catch @panic("OOM");
     }
     // Then whatever the app's own CMakeLists adds, which lands after
     // ra8_add_app() has already run.
-    dirs.appendSlice(app.local.include_dirs) catch @panic("OOM");
+    dirs.appendSlice(b.allocator, app.local.include_dirs) catch @panic("OOM");
 
-    var kept = std.ArrayList([]const u8).init(b.allocator);
+    var kept: std.ArrayList([]const u8) = .empty;
     var seen = std.StringHashMap(void).init(b.allocator);
     for (dirs.items) |dir_path| {
         if (seen.contains(dir_path)) continue;
         seen.put(dir_path, {}) catch @panic("OOM");
-        kept.append(dir_path) catch @panic("OOM");
+        kept.append(b.allocator, dir_path) catch @panic("OOM");
     }
     return kept.items;
 }
