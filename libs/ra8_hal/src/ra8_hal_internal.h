@@ -265,8 +265,8 @@ RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* 
  * @param gmdc_value `k_ra8_gctr_value_operation`, `_reset` or `_halt`.
  * @return ::k_ra8_ok, or ::k_ra8_err_hw_timeout when CFDGSTS never latched.
  * @pre ``reg`` is non-NULL and the CANFD block clock is alive.
- * @note Shared by ra8_canfd_init (C) and ra8_canfd_filter_set (Zig,
- *       canfd_filter_abi.zig). Module-private to ``libs/ra8_hal/src``.
+ * @note Implemented in Zig (canfd_mode_abi.zig); used by open_channel and
+ *       ra8_canfd_filter_set. Module-private to ``libs/ra8_hal/src``.
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_global_mode(volatile r_canfd_t* reg,
@@ -278,8 +278,25 @@ RA8_PRIV ra8_err_t priv_ra8_canfd_internal_set_global_mode(volatile r_canfd_t* r
  * @param reg CANFD instance 0.
  * @pre Depth and payload are already programmed and the block is in global
  *      operation (GL_RESET clears RFE).
- * @note Shared by ra8_canfd_init (C) and ra8_canfd_filter_set (Zig).
- *       Module-private to ``libs/ra8_hal/src``.
+ * @note Implemented in Zig (canfd_mode_abi.zig); used by open_channel and
+ *       ra8_canfd_filter_set. Module-private to ``libs/ra8_hal/src``.
  * @since 0.1.0
  */
 RA8_PRIV void priv_ra8_canfd_internal_enable_rx_fifo0(volatile r_canfd_t* reg);
+
+/**
+ * @brief Bring channel 0 to operation with the default accept-all rule.
+ *
+ * Global and channel reset, one AFL rule on page 0 routing every ID to RX
+ * FIFO 0, FIFO 0 depth 4 / 64-byte payload, global operation, RFE, then
+ * channel operation.
+ *
+ * @param reg CANFD instance.
+ * @return ::k_ra8_ok, or ::k_ra8_err_hw_timeout when global or channel
+ *         operation never latched.
+ * @pre The CANFD block clock is stable and the channel MSTP gate is open.
+ * @note Implemented in Zig (canfd_mode_abi.zig); called by ra8_canfd_init.
+ *       Module-private to ``libs/ra8_hal/src``.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_ra8_canfd_internal_open_channel(volatile r_canfd_t* reg);
