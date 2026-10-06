@@ -85,94 +85,14 @@ bool priv_ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
   return (mode != sdr_val) && (mode != ddr_val) && (mode != ts_val);
 }
 
-/** @brief Logging tag for this module. */
+/** @brief Log tag for this driver. */
 static const char* const s_tag = "I3C";
-
-/** @brief Currently registered IRQ callback (NULL when detached). */
-static ra8_i3c_event_fn_t s_i3c_fn;
-
-/** @brief Opaque context handed back to ``s_i3c_fn``. */
-static void* s_i3c_ctx;
-
-/**
- * @struct ra8_i3c_chan_state_t
- * @brief Per-channel driver bookkeeping for the unified driver.
- */
-typedef struct {
-  bool           initialized; /**< Set between ``ra8_i3c_init`` / ``_deinit``. */
-  ra8_i3c_mode_t mode;        /**< Native vs I2C-compat for this channel.      */
-} ra8_i3c_chan_state_t;
-
-/** @brief One state slot per I3C channel (RA8D2 exposes I3C0 only). */
-static ra8_i3c_chan_state_t s_i3c_chan[k_ra8_i3c_i2c_channel_count];
 
 /* =============================================================================
  * Private helpers
  * =============================================================================
  */
 
-/**
- * @brief Internal-error reset bring-up sequence per FSP R_I3C_Open.
- *
- * @details
- * 1. Enable the module clock via CECTL.CLKE.
- * 2. Drop BCTL.BUSE so the bus is idle before any reset.
- * 3. Pulse RSTCTL.RI3CRST -- on real silicon the bit auto-clears
- *    when the I3C internal reset completes; here we issue an
- *    explicit clear so the fake-mmap unit-test back-end does
- *    not spin forever (FSP relies on
- *    ``FSP_HARDWARE_REGISTER_WAIT`` for the same thing on target).
- * 4. Pulse RSTCTL.INTLRST to flush the internal state machines.
- * 5. Clear PRTS so we start in I2C-fast/I3C-mixed mode 0.
- *
- * Each step follows HUM Ch 40 "RSTCTL : Reset Control Register"
- * description (pp 2445-2701).
- *
- * @param[in] reg See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_ra8_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
-{
-  /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
-  reg->CECTL = 1U;
-  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
-  reg->BCTL = 0U;
-  /* HUM Ch 40 "RSTCTL : Reset Control Register" p 2445-2701 */
-  reg->RSTCTL = k_ra8_i3c_rstctl_ri3crst_mask;
-  reg->RSTCTL = 0U; /* fake-mmap clear / target HW already auto-cleared */
-  reg->RSTCTL = k_ra8_i3c_rstctl_intlrst_mask;
-  reg->RSTCTL = 0U;
-  reg->PRTS   = 0U;
-}
-
-/**
- * @brief Build the first word of a regular-transfer command descriptor.
- *
- * @details
- * Mirrors the FSP ``i3c_xfer_command_calculate`` helper (HUM Ch 40
- * "Command Descriptor" pp 2445-2701).  The device-table index is
- * encoded directly as the dynamic address -- the FSP driver looks
- * the index up in DATBASn first, but until the device-address
- * table is wired in, plumbing the address through the index field
- * lets the test harness verify the round-trip.
- *
- * @param[in] target_addr 7-bit dynamic address.
- * @param[in] rnw         True for read transfers.
- * @return Word 0 of the command descriptor (Word 1 is the length).
- *
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 RA8_INTERNAL static uint32_t internal_ra8_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
 {
   uint32_t cmd = 0U;
@@ -307,104 +227,6 @@ internal_ra8_i3c_fifo_read(volatile const r_i3c_regs_t* reg, uint8_t* out, uint3
  * Lifecycle / status / IRQ
  * =============================================================================
  */
-
-ra8_err_t ra8_i3c_init(uint8_t channel, const ra8_i3c_cfg_t* cfg)
-{
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "i3c_init: cfg");
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-
-  if (cfg->mode == k_ra8_i3c_mode_i2c) {
-    /* I2C-compat: delegate bring-up to the legacy IIC_B path. */
-    const ra8_i3c_i2c_cfg_t bcfg = {.bus_hz = cfg->bus_hz, .pclka_hz = cfg->pclka_hz};
-    const ra8_err_t         e    = ra8_i3c_i2c_init(channel, &bcfg);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-  } else {
-    /* Native I3C bring-up. HUM Ch 11.2.7 "MSTPCRB" p 444 + Ch 40. */
-    const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_i3c);
-    /* GCOVR_EXCL_BR_START -- MSTP HW readback */
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable");
-    /* GCOVR_EXCL_BR_STOP */
-    volatile r_i3c_regs_t* reg = ra8_i3c();
-    internal_ra8_i3c_reset_sequence(reg);
-    /* Clear every status / enable register to a deterministic state.
-     * INSTFC is write-only (force-clear), so we treat it as a clear. */
-    reg->INST   = 0U;
-    reg->INSTE  = 0U;
-    reg->INIE   = 0U;
-    reg->INSTFC = 0U;
-    reg->MSDVAD = 0U;
-  }
-
-  s_i3c_chan[channel].mode        = cfg->mode;
-  s_i3c_chan[channel].initialized = true;
-  ra8_log_info(s_tag, "i3c_init");
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_i3c_deinit(uint8_t channel)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  ra8_err_t err;
-  if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    err = ra8_i3c_i2c_deinit(channel);
-  } else {
-    volatile r_i3c_regs_t* reg = ra8_i3c();
-    /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
-    reg->INIE  = 0U;
-    reg->INSTE = 0U;
-    reg->BCTL  = 0U;
-    /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
-    reg->CECTL = 0U;
-    s_i3c_fn   = nullptr;
-    s_i3c_ctx  = nullptr;
-    err        = ra8_mstp_disable(k_ra8_mstp_i3c);
-  }
-  s_i3c_chan[channel].initialized = false;
-  return err;
-}
-
-ra8_err_t ra8_i3c_attach_handler(uint8_t channel, ra8_i3c_event_fn_t fn, void* ctx)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return k_ra8_err_invalid_arg;
-  }
-  s_i3c_fn  = fn;
-  s_i3c_ctx = ctx;
-  return k_ra8_ok;
-}
-
-RA8_ISR_SAFE
-void ra8_i3c_dispatch(uint8_t channel)
-{
-  if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {
-    return;
-  }
-  const ra8_i3c_event_fn_t fn  = s_i3c_fn;
-  void* const              ctx = s_i3c_ctx;
-  if (s_i3c_chan[channel].mode == k_ra8_i3c_mode_i2c) {
-    /* Surface the latched I2C error mask through the public IIC_B API. */
-    uint8_t mask = 0U;
-    (void)ra8_i3c_i2c_get_errors(channel, &mask);
-    (void)ra8_i3c_i2c_clear_errors(channel);
-    if (fn != nullptr) {
-      fn(ctx, (uint32_t)mask);
-    }
-    return;
-  }
-  volatile r_i3c_regs_t* reg = ra8_i3c();
-  /* HUM Ch 40 "INST : Internal Status Register" p 2445-2701 */
-  const uint32_t mask = reg->INST;
-  reg->INST           = 0U;
-  if (fn != nullptr) {
-    fn(ctx, mask);
-  }
-}
 
 /* =============================================================================
  * Dynamic Address Assignment (ENTDAA / SETDASA / RSTDAA)
