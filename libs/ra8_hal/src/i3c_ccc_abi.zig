@@ -32,6 +32,11 @@ fn nullPtr(msg: [*:0]const u8) u16 {
     return common.k_ra8_err_null_ptr;
 }
 
+/// Kept under its C name for the C unit tests (ra8_i3c_internal.h).
+export fn priv_ra8_i3c_internal_recv_ccc_invalid(addr_mask: u8, target: u8, max_len: u8) bool {
+    return target > addr_mask or max_len == 0;
+}
+
 export fn ra8_i3c_dynamic_address_assign(targets: ?[*]Target, count: u8) u16 {
     const t = targets orelse return nullPtr("targets must not be nullptr");
     if (count == 0 or count > ccc_.max_targets) return common.k_ra8_err_invalid_arg;
@@ -62,7 +67,7 @@ export fn ra8_i3c_recv_ccc(ccc: u8, target_addr: u8, buf: ?[*]u8, max_len: u8, g
     const b = buf orelse return nullPtr("buf must not be nullptr");
     const got = got_len orelse return nullPtr("got_len must not be nullptr");
     if (ccc & ccc_.ccc_direct == 0) return common.k_ra8_err_invalid_arg;
-    if (target_addr > ccc_.addr_mask or max_len == 0) return common.k_ra8_err_invalid_arg;
+    if (priv_ra8_i3c_internal_recv_ccc_invalid(ccc_.addr_mask, target_addr, max_len)) return common.k_ra8_err_invalid_arg;
     ccc_.recv(Mmio{}, ccc, target_addr, b[0..max_len]);
     got.* = max_len;
     return common.k_ra8_ok;

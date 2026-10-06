@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for I3C init/deinit, attach_handler and dispatch (RA8FW-819).
-//! Defines `s_i3c_chan`, which the rest of ra8_i3c.c reads through
+//! Defines `s_i3c_chan`, which the other i3c_*_abi.zig units read through
 //! ra8_i3c_internal.h. Register sequences are in internal/i3c_life.zig.
 
 const common = @import("abi_common.zig");
@@ -26,7 +26,7 @@ const Chan = extern struct { initialized: bool = false, mode: u8 = 0 };
 /// `ra8_i3c_event_fn_t`.
 const EventFn = *const fn (ctx: ?*anyopaque, status: u32) callconv(.c) void;
 
-/// Per-channel mode and init flag; ra8_i3c.c reads it by this name.
+/// Per-channel mode and init flag; the other I3C units and the C tests read it by this name.
 export var s_i3c_chan: [channel_count]Chan = .{.{}};
 var handler_fn: ?EventFn = null;
 var handler_ctx: ?*anyopaque = null;

@@ -126,8 +126,8 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | SPI0       | `0x4035C000`| HUM Ch 43, SPI0              | `ra8_spi_b.c`      |
 | SPI1       | `0x4035C100`|                              | `ra8_spi_b.c`      |
 | IIC_B0     | `0x4035F000`| HUM Ch 40.2 p 2452           | `ra8_i2c.c`        |
-| I3C0       | `0x4035F000`| Shares window with IIC_B0    | `ra8_i3c.c`        |
-| I3C1       | `0x4035F100`|                              | `ra8_i3c.c`        |
+| I3C0       | `0x4035F000`| Shares window with IIC_B0    | `i3c_*_abi.zig`    |
+| I3C1       | `0x4035F100`|                              | `i3c_*_abi.zig`    |
 | CANFD0     | `0x40380000`| HUM Ch 41 p 2702             | `ra8_canfd.c`      |
 | CANFD1     | `0x40382000`|                              | `ra8_canfd.c`      |
 | CNECC0     | `0x4036F200`| ECCMB0 (CAN0 MRAM ECC)       | `cnecc_abi.zig`    |
