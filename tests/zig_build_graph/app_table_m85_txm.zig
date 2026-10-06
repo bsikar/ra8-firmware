@@ -40,4 +40,20 @@ pub const apps = [_]CrossApp{
         .zig_main = "src/main.zig",
         .txm_module = "txm_fault_m33",
     },
+    .{
+        // Helium state across a kernel/module switch on CPU0 (RA8FW-821,
+        // under RA8FW-428): the manager thread holds its own Q0-Q7 and VPR
+        // while txm_helium_m85, built for the M85 with MVE, spins checking
+        // its own.
+        .name = "txm_helium_m85",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_helium_m85",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+        .txm_module = "txm_helium_m85",
+    },
 };
