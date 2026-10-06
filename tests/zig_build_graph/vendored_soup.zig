@@ -137,20 +137,20 @@ pub fn addSuite(
         .root_module = module,
     });
     // unarch_xz_pool.c calls ra8_imgdec_scratch_*, which is Zig now.
-    suite.linkLibrary(b.dependency("ra8_imgdec", .{
+    suite.root_module.linkLibrary(b.dependency("ra8_imgdec", .{
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_imgdec"));
     // The suite's bound checks (ra8_decomp_*) and the log backend under them
     // are both Zig now, so they arrive as this archive.
-    suite.linkLibrary(b.dependency("ra8_core", .{
+    suite.root_module.linkLibrary(b.dependency("ra8_core", .{
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_core_zig"));
     // And the bump arena the pool carves from: ra8_mem's last C went
     // (ra8_arena.c), so the seven ra8_arena_* entry points this suite resolves
     // are ra8_mem_abi.zig's exports now.
-    suite.linkLibrary(b.dependency("ra8_mem", .{
+    suite.root_module.linkLibrary(b.dependency("ra8_mem", .{
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_mem"));

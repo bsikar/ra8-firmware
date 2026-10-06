@@ -63,7 +63,7 @@ pub fn build(b: *std.Build) void {
         object.bundle_compiler_rt = false;
         object.link_function_sections = true;
         object.link_data_sections = true;
-        library.addObject(object);
+        library.root_module.addObject(object);
     }
     library.link_function_sections = true;
     library.link_data_sections = true;
