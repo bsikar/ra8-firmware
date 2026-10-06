@@ -60,12 +60,12 @@ pub fn fifoRead(regs: anytype, out: []u8) void {
     }
 }
 
-fn push(regs: anytype, w0: u32, w1: u32) void {
+pub fn push(regs: anytype, w0: u32, w1: u32) void {
     regs.write32(off_ncmdqp, w0);
     regs.write32(off_ncmdqp, w1);
 }
 
-fn clearCmdqEmpty(regs: anytype) void {
+pub fn clearCmdqEmpty(regs: anytype) void {
     regs.write32(off_ntst, regs.read32(off_ntst) & ~ntst_cmdqef);
 }
 
