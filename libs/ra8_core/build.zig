@@ -263,7 +263,7 @@ pub fn build(b: *std.Build) void {
     // log it persists through, and the SCB window both read. Splitting them
     // would put one record layout across a language boundary at the moment
     // the system is already broken.
-    const fault_units = [_][]const u8{ "scb", "record", "crc32", "crashlog", "halt" };
+    const fault_units = [_][]const u8{ "scb", "record", "decode", "crc32", "crashlog", "halt" };
     var fault_modules_by_unit = std.StringHashMap(*std.Build.Module).init(b.allocator);
     inline for (fault_units) |unit| {
         const module = b.createModule(.{

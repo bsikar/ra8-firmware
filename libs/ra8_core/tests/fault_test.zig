@@ -12,6 +12,7 @@ const testing = std.testing;
 
 const crashlog = @import("fault_crashlog");
 const crc32 = @import("fault_crc32");
+const decode = @import("fault_decode");
 const record = @import("fault_record");
 const scb = @import("fault_scb");
 
@@ -204,6 +205,45 @@ test "peek leaves the stored record untouched" {
     try testing.expectEqual(before.crc, rec.crc);
     try testing.expectEqual(before.magic, rec.magic);
     try testing.expectEqual(before.boot_loops, rec.boot_loops);
+}
+
+// ---- CFSR decoding --------------------------------------------------------
+
+test "CFSR decoder names every asserted cause in architectural order" {
+    const cfsr: u32 = (1 << 0) | (1 << 9) | (1 << 25);
+    const expected = [_][]const u8{
+        "cause=IACCVIOL",
+        "cause=PRECISERR",
+        "cause=DIVBYZERO",
+    };
+
+    var index: usize = 0;
+    for (decode.causes) |cause| {
+        if (!cause.asserted(cfsr)) continue;
+        try testing.expect(index < expected.len);
+        try testing.expectEqualStrings(expected[index], cause.message);
+        index += 1;
+    }
+    try testing.expectEqual(expected.len, index);
+}
+
+test "CFSR cause masks are unique and exclude address validity bits" {
+    var seen: u32 = 0;
+    for (decode.causes) |cause| {
+        try testing.expectEqual(@as(u32, 0), seen & cause.mask);
+        seen |= cause.mask;
+    }
+    try testing.expectEqual(@as(u32, 0), seen & (decode.valid.mmfar | decode.valid.bfar));
+}
+
+test "fault addresses are present only when CFSR marks them valid" {
+    const mmfar: u32 = 0x2000_1234;
+    const bfar: u32 = 0x3000_5678;
+
+    try testing.expectEqual(@as(?u32, null), decode.mmFaultAddress(1 << 1, mmfar));
+    try testing.expectEqual(@as(?u32, null), decode.busFaultAddress(1 << 9, bfar));
+    try testing.expectEqual(@as(?u32, mmfar), decode.mmFaultAddress(decode.valid.mmfar, mmfar));
+    try testing.expectEqual(@as(?u32, bfar), decode.busFaultAddress(decode.valid.bfar, bfar));
 }
 
 // ---- the register map -----------------------------------------------------

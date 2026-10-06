@@ -8,11 +8,11 @@ fails loudly rather than appearing to pass -- then executes a guarded run-time
 
 The divide never completes. The CPU takes UsageFault, the per-app vector-table
 trampoline forwards the stacked frame into `ra8_exception_report()`, and the
-decoded dump prints before the CPU parks in `ra8_exception_halt_loop`. What
-matters in that dump is the true UsageFault class rather than an anonymous
-HardFault, with `CFSR.DIVBYZERO` (`0x02000000`) set. The full snapshot -- frame,
-CFSR, HFSR, BFAR, MMFAR, SFSR, SFAR -- also lands in `g_ra8_exception_last`
-(magic `0xFA17DEAD`) for a post-mortem J-Link attach.
+decoded dump prints before the CPU parks in `ra8_exception_halt_loop`. It names
+`cause=DIVBYZERO`, reports the stacked return PC as `stacked_pc`, and retains
+the raw `CFSR` value (`0x02000000`). MMFAR and BFAR are reported as fault
+addresses only when their CFSR validity bits are set. The full snapshot still
+lands in `g_ra8_exception_last` (magic `0xFA17DEAD`) for post-mortem inspection.
 
 The console is registered as the `ra8_log` byte sink deliberately: the default
 ITM log path drops every byte from fault context, so the dump would otherwise be
