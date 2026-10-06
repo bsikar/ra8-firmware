@@ -36,6 +36,9 @@ pub const Module = struct {
     /// module that keeps any address in its data needs this; one that keeps
     /// none, like the two below, is built natively as before.
     through_c: bool = false,
+    /// The core the module runs on. Only a module built through C can be
+    /// for the M85 (RA8FW-820); the native recipe is M33 only.
+    core: module_object.Core = .cortex_m33,
 };
 
 /// The hello-world module, and the one the `txm-hello-m33` step installs.
@@ -68,8 +71,17 @@ pub const rpc = Module{
     .through_c = true,
 };
 
-/// Every module a CPU1 image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table, rpc };
+/// The M85 module with MVE that checks its own Q0-Q7 and VPR across
+/// preemption, for txm_helium_m85 (RA8FW-820, under RA8FW-428).
+pub const helium = Module{
+    .name = "txm_helium_m85",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_helium_m85/module_start.zig",
+    .through_c = true,
+    .core = .cortex_m85,
+};
+
+/// Every module an image can name in `txm_module`.
+pub const modules = [_]Module{ hello_world, fault, table, rpc, helium };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
@@ -149,6 +161,7 @@ pub fn add(b: *std.Build, step: *std.Build.Step, base: middleware.Toolchain, obj
 /// Links `module` and converts it to a raw binary.
 pub fn image(b: *std.Build, base: middleware.Toolchain, objcopy: []const u8, module: Module) Artifacts {
     if (module.through_c) return imageThroughC(b, base, objcopy, module);
+    if (module.core != .cortex_m33) @panic("a module for the M85 must be built through C");
     const archive = middleware.add(b, cpu1_txm_lib.txm_m33, cpu1_txm_lib.toolchain(b.allocator, base));
     const flags = asmFlags(b.allocator);
 
@@ -178,7 +191,7 @@ fn imageThroughC(
 ) Artifacts {
     const ctx: module_object.Context = .{
         .gnu = .{ .gcc = base.gcc, .ar = base.ar, .objcopy = objcopy },
-        .core = .cortex_m33,
+        .core = module.core,
         .base = base,
     };
     const root = module_object.rootModule(b, ctx.core, module.entry_source);
