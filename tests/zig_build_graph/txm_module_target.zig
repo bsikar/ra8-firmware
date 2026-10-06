@@ -27,7 +27,8 @@ pub const Gnu = struct {
 /// The toolchain in `dir`, or null when its gcc is not there.
 pub fn findGnu(b: *std.Build, dir: []const u8) ?Gnu {
     const gcc = b.pathJoin(&.{ dir, "arm-none-eabi-gcc" });
-    std.fs.cwd().access(gcc, .{}) catch return null;
+    b.dependOnFileMetadata(b.graph.cwdRelativePath(gcc));
+    std.Io.Dir.cwd().access(b.graph.io, gcc, .{}) catch return null;
     return .{
         .gcc = gcc,
         .ar = b.pathJoin(&.{ dir, "arm-none-eabi-ar" }),
