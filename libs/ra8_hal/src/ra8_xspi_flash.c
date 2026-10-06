@@ -7,20 +7,17 @@
  *
  * @details
  * Sibling of the Zig XSPI units (``xspi_*_abi.zig``) (split out for file size).
- * Owns the xSPI manual-command engine -- the ``CDT``/``CDBUF`` builders,
- * the ``INTS.CMDCMP`` poll, and the ``CDCTL0.TRREQ`` kick -- and the
- * JEDEC SPI NOR-flash operations layered on top of it:
+ * Owns the JEDEC SPI NOR-flash operations layered on the xSPI
+ * manual-command engine:
  *
  * - ``ra8_xspi_flash_read()``         -- 0x03 read + CMDCMP poll.
  * - ``ra8_xspi_flash_program()``      -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
  * - ``ra8_xspi_flash_erase_sector()`` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
- * - ``ra8_xspi_flash_read_status()``  -- 0x05.
- * - ``ra8_xspi_flash_read_id()``      -- 0x9F JEDEC ID.
  *
- * The two manual-command primitives ``priv_ra8_xspi_kick_command()`` and
- * ``priv_ra8_xspi_issue_simple_opcode()`` are exported via
- * ``ra8_xspi_internal.h`` because the lifecycle surface in ``xspi_reset_abi.zig``
- * (suspend / resume / software-reset) reuses them.
+ * The engine itself (``priv_ra8_xspi_make_cdt()``,
+ * ``priv_ra8_xspi_kick_command()``, ``priv_ra8_xspi_issue_simple_opcode()``)
+ * and ``ra8_xspi_flash_read_status()`` / ``ra8_xspi_flash_read_id()`` are
+ * Zig (``xspi_cmd_abi.zig``, RA8FW-869), declared in ``ra8_xspi_internal.h``.
  *
  * Every build runs the identical register sequence. On the host the
  * CMDCMP poll consults the ``ra8_fake_mmio`` seam
@@ -50,11 +47,6 @@
 /** @brief Logging tag for this driver. */
 static const char* const s_tag = "XSPI";
 
-/** @brief Low-byte mask for status/JEDEC-id extraction. */
-typedef enum : uint32_t {
-  k_xspi_byte_mask = 0xFFUL, /**< XSPI byte mask. */
-} xspi_mask_t;
-
 /**
  * @enum ra8_spi_flash_op_t
  * @brief Standard JEDEC NOR-flash command opcodes used by this driver.
@@ -62,8 +54,6 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_ra8_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN.            */
   k_ra8_spi_flash_op_page_program = 0x02U, /**< 0x02 page program.    */
-  k_ra8_spi_flash_op_read_status  = 0x05U, /**< 0x05 read status reg. */
-  k_ra8_spi_flash_op_read_id      = 0x9FU, /**< 0x9F JEDEC ID read.   */
   k_ra8_spi_flash_op_read         = 0x03U, /**< 0x03 normal read.     */
   k_ra8_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase.    */
 } ra8_spi_flash_op_t;
@@ -101,77 +91,6 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_ra8_xspi_cdt_max_data_bytes = 8U, /**< CDD0 + CDD1 = 8 bytes per slot. */
 } ra8_xspi_cdt_limits_t;
-
-/**
- * @brief Encode a manual-command CDT word (opcode + size/type fields).
- *
- * @details
- * Mirrors FSP ``r_ospi_b_direct_transfer`` (line ~1311 of
- * ``r_ospi_b.c``): builds the ``CDBUF[0].CDT`` word from
- * CMDSIZE/ADDSIZE/DATASIZE/TRTYPE plus the JEDEC opcode at bits
- * [31..16]. Latency is fixed at zero for the simple JEDEC opcodes
- * this driver issues. HUM Ch 44 p 2986.
- * @param[in] opcode See declaration: ``uint8_t opcode``.
- * @param[in] cmd_bytes See declaration: ``uint8_t cmd_bytes``.
- * @param[in] addr_bytes See declaration: ``uint8_t addr_bytes``.
- * @param[in] data_bytes See declaration: ``uint8_t data_bytes``.
- * @param[in] is_write See declaration: ``uint8_t is_write``.
- * @return ::ra8_err_t outcome (or scalar return value).
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint32_t internal_make_cdt(uint8_t opcode,
-                                  uint8_t cmd_bytes,
-                                  uint8_t addr_bytes,
-                                  uint8_t data_bytes,
-                                  uint8_t is_write)
-{
-  /* CMD is a 16-bit field at CDT[31:16]. The command-manual engine
-   * transmits CMDSIZE bytes MSB-first starting at bit 31, so an
-   * N-byte command must be LEFT-justified inside the 16-bit field:
-   * a 1-byte opcode belongs at bits [31:24], a 2-byte opcode pair at
-   * [31:16]. Placing a 1-byte opcode at [23:16] (a bare ``opcode <<
-   * 16``) makes the controller clock out the zero byte at [31:24]
-   * instead -- the flash then sees command 0x00 for every 0x9F /
-   * 0x05 / 0x06 / 0x02 / 0x20 op, never answers, and RDID floats to
-   * 0x00FFFFFF even though CMDCMP fires. Mirrors FSP
-   * ``r_ospi_b_direct_transfer`` which stores ``command`` already
-   * left-aligned in the 16-bit CMD field. HUM Ch 44 p 2986. */
-  const uint8_t  cmd_shift = (uint8_t)(8U * (2U - (cmd_bytes & k_ra8_xspi_cdt_mask_cmdsize)));
-  const uint32_t cmd_word  = ((uint32_t)opcode << cmd_shift) & (uint32_t)k_ra8_xspi_cdt_mask_cmd;
-  return (((uint32_t)cmd_bytes & k_ra8_xspi_cdt_mask_cmdsize) << k_ra8_xspi_cdt_pos_cmdsize) |
-         (((uint32_t)addr_bytes & k_ra8_xspi_cdt_mask_addsize) << k_ra8_xspi_cdt_pos_addsize) |
-         (((uint32_t)data_bytes & k_ra8_xspi_cdt_mask_datasize) << k_ra8_xspi_cdt_pos_datasize) |
-         (((uint32_t)is_write & k_ra8_xspi_cdt_mask_trtype) << k_ra8_xspi_cdt_pos_trtype) |
-         (cmd_word << k_ra8_xspi_cdt_pos_cmd);
-}
-
-/**
- * @enum ra8_spi_flash_resp_bytes_t
- * @brief Per-opcode response-byte counts for read-direction commands.
- *
- * @details
- * The xSPI manual-command engine drives DATASIZE clocks on the bus
- * after the opcode (and address, if any) so the device can stream
- * its response bytes into CDD0/CDD1. For 0x05 RDSR the device sends
- * 1 byte; for 0x9F RDID it sends the JEDEC triplet (3 bytes). With
- * DATASIZE=0 the controller never clocks the response phase and
- * CDD0 stays at whatever it held before the transfer -- which is
- * why an earlier version of this driver always read WIP=0 and
- * tripped LevelX into believing erases had completed instantly.
- * IS25LX512M datasheet Ch 8.6 (RDSR) + Ch 8.13 (RDID).
- */
-typedef enum : uint8_t {
-  k_ra8_xspi_resp_bytes_status = 1U, /**< RDSR returns 1 status byte. */
-  k_ra8_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP.  */
-} ra8_spi_flash_resp_bytes_t;
 
 /**
  * @brief Validate a ``[flash_addr, flash_addr + len)`` window against the
@@ -214,129 +133,6 @@ static ra8_err_t internal_flash_range_check(uint32_t flash_addr, uint32_t len)
 }
 
 /**
- * @brief Wait for a manual XSPI command to retire, then clear its status bits.
- *
- * @details
- * Bounded poll of the XSPI ``INTS`` register for the ``CMDCMP`` (command
- * complete) flag. On the host build each poll iteration consults the
- * ``ra8_fake_mmio`` seam (the i2c / i3c / sdhi status-poll pattern): the
- * ``tests/mocks/src/ra8_fake_xspi_flash.c`` model services the pending ``TRREQ``
- * kick synchronously inside the consult and the loop then observes the
- * CMDCMP flag the model raised, while a fault test arms the seam on
- * ``INTS`` to force the timeout / continuation legs. On completion it
- * clears every pending status bit via ``INTC = INTS``, mirroring FSP
- * ``r_ospi_b_direct_transfer``.
- *
- * @param[in,out] reg XSPI register block; ``INTS`` is polled and ``INTC`` written.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok             ``CMDCMP`` was observed and the retired status
- *                              bits cleared.
- * @retval k_ra8_err_hw_timeout ``CMDCMP`` never asserted within the spin budget.
- *
- * @pre ``reg`` is a valid, powered XSPI register block.
- * @pre A manual command was just issued (``CDCTL0.TRREQ`` set).
- * @post On success every retired ``INTS`` status bit is cleared.
- * @post On failure the register state is left unchanged.
- *
- * @note Not thread-safe; the XSPI manual-command path is single-owner.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
-{
-  ra8_err_t wait = k_ra8_err_hw_timeout;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_xspi_cmd_spin; i++) {
-    /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-    const bool cmdcmp = ((reg->INTS & (uint32_t)k_ra8_xspi_ints_mask_cmdcmp) != 0U);
-#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-    if (ra8_fake_mmio_poll(&reg->INTS, i, cmdcmp)) {
-#else
-    if (cmdcmp) {
-#endif
-      wait = k_ra8_ok;
-      break;
-    }
-  }
-  if (wait != k_ra8_ok) {
-    return wait;
-  }
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* FSP r_ospi_b_direct_transfer clears every pending status bit at the
-   * end of a manual command via ``INTC = INTS``. */
-  reg->INTC = reg->INTS;
-  return k_ra8_ok;
-}
-
-ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg)
-{
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDCTL0 |= k_ra8_xspi_cdctl0_mask_trreq;
-  return internal_wait_command_done(reg);
-}
-
-ra8_err_t priv_ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
-{
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Populate CDBUF slot 0 per FSP ``r_ospi_b_direct_transfer``:
-   * CDT carries opcode + size encoding, CDA/CDD0/CDD1 are zeroed
-   * because there is no address phase and no payload. CDCTL1/CDCTL2
-   * are periodic-mode fields (PEREXP / PERMSK in FSP) -- leave
-   * them at zero for one-shot manual commands. */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] = internal_make_cdt(opcode,
-                                                           k_ra8_xspi_cdt_cmdsize_1,
-                                                           k_ra8_xspi_cdt_addsize_0,
-                                                           0U,
-                                                           k_ra8_xspi_cdt_trtype_read);
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return priv_ra8_xspi_kick_command(reg);
-}
-
-/**
- * @brief Issue a 1-byte opcode that returns 1..8 response data bytes.
- *
- * @details
- * Used by RDSR (0x05) / RDID (0x9F): no address phase, but we MUST
- * tell the controller how many response bytes to clock in via
- * ``DATASIZE``. Caller reads the response out of CDBUF[CDD0/CDD1]
- * after CMDCMP. HUM Ch 44 p 2986; IS25LX512M datasheet Ch 8.6 + 8.13.
- *
- * @param[in] reg        xSPI register block.
- * @param[in] opcode     JEDEC opcode (0x05 or 0x9F).
- * @param[in] resp_bytes 1..8 response bytes to clock into CDBUF.
- *
- * @return ``k_ra8_ok`` on success or the underlying CMDCMP timeout.
- * @retval k_ra8_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t resp_bytes)
-{
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] = internal_make_cdt(opcode,
-                                                           k_ra8_xspi_cdt_cmdsize_1,
-                                                           k_ra8_xspi_cdt_addsize_0,
-                                                           resp_bytes,
-                                                           k_ra8_xspi_cdt_trtype_read);
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_addr]  = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data0] = 0U;
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_data1] = 0U;
-  return priv_ra8_xspi_kick_command(reg);
-}
-
-/**
  * @brief Build CDBUF[0] for a single CDD0/CDD1 chunk of an opcode + addr.
  *
  * @details
@@ -365,7 +161,7 @@ static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
                                         uint8_t                 is_write)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] = internal_make_cdt(opcode,
+  reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt] = priv_ra8_xspi_make_cdt(opcode,
                                                            k_ra8_xspi_cdt_cmdsize_1,
                                                            k_ra8_xspi_cdt_addsize_3,
                                                            data_bytes,
@@ -748,48 +544,4 @@ ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
     return wait;
   }
   return internal_poll_wip_clear(instance);
-}
-
-ra8_err_t ra8_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
-{
-  RA8_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* RDSR returns 1 status byte; DATASIZE must be 1, not 0, or the
-   * controller never clocks the response and CDD0 stays stale. See
-   * IS25LX512M datasheet Ch 8.6. */
-  const ra8_err_t e = internal_issue_read_opcode(reg,
-                                                 k_ra8_spi_flash_op_read_status,
-                                                 (uint8_t)k_ra8_xspi_resp_bytes_status);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  *out_status = (uint8_t)(reg->CDBUF[(uint8_t)k_ra8_xspi_cdbuf_idx_data0] & k_xspi_byte_mask);
-  return k_ra8_ok;
-}
-
-ra8_err_t ra8_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
-{
-  RA8_CHECK_NULL_PTR(out_id, s_tag, "out_id must not be nullptr");
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
-  RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
-
-  /* RDID returns 3 JEDEC bytes (MFR/TYPE/CAP); DATASIZE must be 3.
-   * IS25LX512M datasheet Ch 8.13 "Read Identification (RDID)". */
-  const ra8_err_t e = internal_issue_read_opcode(reg,
-                                                 k_ra8_spi_flash_op_read_id,
-                                                 (uint8_t)k_ra8_xspi_resp_bytes_jedec);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* JEDEC 0x9F returns MFR, MEMTYPE, CAPACITY in that byte order.
-   * Repack into ``(mfr << 16) | (type << 8) | cap`` as documented
-   * in the public API header. */
-  const uint32_t word = reg->CDBUF[(uint8_t)k_ra8_xspi_cdbuf_idx_data0];
-  *out_id = ((word & k_xspi_byte_mask) << 16U) | (((word >> 8U) & k_xspi_byte_mask) << 8U) |
-            ((word >> 16U) & k_xspi_byte_mask);
-  return k_ra8_ok;
 }
