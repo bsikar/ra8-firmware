@@ -36,7 +36,7 @@ const Dev = struct {
 };
 
 fn cbw(tag: u32, len: u32, dir_in: bool, cdb: []const u8) [31]u8 {
-    var b = [_]u8{0} ** 31;
+    var b: [31]u8 = @splat(0);
     std.mem.writeInt(u32, b[0..4], pmsc.cbw_signature, .little);
     std.mem.writeInt(u32, b[4..8], tag, .little);
     std.mem.writeInt(u32, b[8..12], len, .little);
@@ -176,7 +176,7 @@ test "buildCsw packs signature, tag, residue and status" {
     var st = ready(&dev);
     st.cbw_tag = 0xA1B2C3D4;
     st.bot_state = pmsc.state_csw_tx;
-    var out = [_]u8{0xEE} ** 13;
+    var out: [13]u8 = @splat(0xEE);
     try std.testing.expectEqual(pmsc.ok, pmsc.buildCsw(&st, pmsc.csw_failed, 0x10, &out));
     try std.testing.expectEqualSlices(u8, &.{ 0x55, 0x53, 0x42, 0x53, 0xD4, 0xC3, 0xB2, 0xA1, 0x10, 0, 0, 0, 1 }, &out);
     try std.testing.expectEqual(pmsc.state_idle, st.bot_state);

@@ -20,8 +20,8 @@ pub const DevInfo = extern struct {
     panel_width: u16 = 0,
     panel_height: u16 = 0,
     image_buf_base: u32 = 0,
-    fw_version: [ver_chars + 1]u8 = [_]u8{0} ** (ver_chars + 1),
-    lut_version: [ver_chars + 1]u8 = [_]u8{0} ** (ver_chars + 1),
+    fw_version: [ver_chars + 1]u8 = @splat(0),
+    lut_version: [ver_chars + 1]u8 = @splat(0),
 };
 
 comptime {

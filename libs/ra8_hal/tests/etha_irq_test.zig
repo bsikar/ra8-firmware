@@ -8,7 +8,7 @@ const irq = @import("etha_irq");
 
 /// One port's ETHA block; writes are logged in order.
 const Regs = struct {
-    mem: [0x180]u32 = [_]u32{0} ** 0x180,
+    mem: [0x180]u32 = @splat(0),
     log: [16][2]u32 = undefined,
     n: usize = 0,
     pub fn read32(self: *Regs, off: usize) u32 {

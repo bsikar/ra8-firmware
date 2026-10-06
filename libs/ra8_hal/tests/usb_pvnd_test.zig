@@ -125,7 +125,7 @@ test "send bounds the length by the bulk packet size" {
     var closed: pvnd.State = .{};
     try std.testing.expectEqual(codes.invalid_state, closed.send(&fake, null, 1));
     const s = ready(&fake, pvnd.speed_fs);
-    const data = [_]u8{0} ** 65;
+    const data: [65]u8 = @splat(0);
     try std.testing.expectEqual(codes.null_ptr, s.send(&fake, null, 1));
     try std.testing.expectEqual(codes.invalid_arg, s.send(&fake, null, 0));
     try std.testing.expectEqual(codes.invalid_arg, s.send(&fake, &data, 65));

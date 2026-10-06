@@ -149,7 +149,7 @@ pub fn Smbus(comptime Bus: type) type {
         pub fn blockRead(s: *Self, target_7b: u8, cmd: u8, buf: [*]u8, cap: u8, out_len: *u8) u16 {
             if (!s.initialized) return not_initialized;
             if (cap == 0) return invalid_arg;
-            var rx = [_]u8{0} ** rx_bytes;
+            var rx: [rx_bytes]u8 = @splat(0);
             const want = @as(usize, cap) + 1 + @as(usize, @intFromBool(s.pec_enabled));
             const err = s.bus.transfer(target_7b, &[1]u8{cmd}, rx[0..want]);
             if (err != ok) return err;

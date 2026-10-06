@@ -99,7 +99,7 @@ test "send_frame checks null, then size against the FS packet" {
     var s = pa.State{};
     var f = Fake{};
     try ready(&s, &f, pa.speed_fs);
-    var b = [_]u8{0} ** 200;
+    var b: [200]u8 = @splat(0);
     try std.testing.expectEqual(pa.null_ptr, pa.sendFrame(&s, &f, null, 4));
     try std.testing.expectEqual(pa.invalid_arg, pa.sendFrame(&s, &f, null, 0));
     try std.testing.expectEqual(pa.invalid_arg, pa.sendFrame(&s, &f, &b, 193));
@@ -110,7 +110,7 @@ test "send_frame checks null, then size against the FS packet" {
 test "recv_frame checks pointers first and zeroes got_len on error" {
     var s = pa.State{};
     var f = Fake{ .out_len = 7 };
-    var b = [_]u8{0} ** 8;
+    var b: [8]u8 = @splat(0);
     var got: u16 = 99;
     try std.testing.expectEqual(pa.null_ptr, pa.recvFrame(&s, &f, null, 8, &got));
     try std.testing.expectEqual(pa.invalid_state, pa.recvFrame(&s, &f, &b, 8, &got));

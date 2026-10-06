@@ -105,7 +105,7 @@ export fn ra8_ble_set_random_address(addr: ?[*]const u8) u16 {
 export fn ra8_ble_set_advertising_data(data: ?[*]const u8, len: u8) u16 {
     if (len > ble.adv_data_max) return common.k_ra8_err_invalid_arg;
     if (data == null and len > 0) return common.k_ra8_err_null_ptr;
-    var buf = [_]u8{0} ** (1 + ble.adv_data_max);
+    var buf: [1 + ble.adv_data_max]u8 = @splat(0);
     buf[0] = len;
     @memcpy(buf[1 .. 1 + len], bytes(data, len));
     return ra8_ble_hci_send_command(ble.op_adv_data, &buf, 1 + len);

@@ -10,7 +10,7 @@ const Fake = struct {
     wrote_addr: u8 = 0,
     wrote_stop: bool = false,
     cmd: ?u8 = null,
-    rx: [sm.rx_bytes]u8 = [_]u8{0} ** sm.rx_bytes,
+    rx: [sm.rx_bytes]u8 = @splat(0),
     rd_len: usize = 0,
     rd_addr: u8 = 0,
     ret: u16 = 0,
@@ -130,7 +130,7 @@ test "block write checks len before data and frames cmd, count, data, PEC" {
 test "block write carries the full 255-byte payload" {
     var f: Fake = .{};
     var d = ready(&f, true);
-    const data = [_]u8{0x5A} ** 255;
+    const data: [255]u8 = @splat(0x5A);
     try std.testing.expectEqual(sm.ok, d.blockWrite(0x50, 1, &data, 255));
     try std.testing.expectEqual(@as(usize, sm.frame_bytes), f.wrote_len);
 }

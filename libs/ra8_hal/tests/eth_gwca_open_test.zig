@@ -60,7 +60,7 @@ var pool: [3 * 64]u8 = undefined;
 fn freshState() !o.DefaultState {
     if (@intFromPtr(&tx) >= (@as(usize, 1) << 40)) return error.SkipZigTest;
     if (@intFromPtr(&pool) >= (@as(usize, 1) << 40)) return error.SkipZigTest;
-    tx = [_]o.ExtDesc{.{ .info1_lo = 0xAA, .info1_hi = 0xBB }} ** 3;
+    tx = @splat(.{ .info1_lo = 0xAA, .info1_hi = 0xBB });
     var s = std.mem.zeroes(o.DefaultState);
     s.tx_chain = &tx;
     s.tx_depth = 3;

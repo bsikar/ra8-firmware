@@ -40,7 +40,7 @@ test "classic and enhanced checksums fold the carries" {
     try std.testing.expectEqual(@as(u8, 0xE6), lin.checksum(lin.checksum_classic, 0, &data));
     try std.testing.expectEqual(@as(u8, 0x96), lin.checksum(lin.checksum_enhanced, 0x50, &data));
     try std.testing.expectEqual(@as(u8, 0xFF), lin.checksum(lin.checksum_classic, 0x12, &.{}));
-    const full = [_]u8{0xFF} ** 8;
+    const full: [8]u8 = @splat(0xFF);
     try std.testing.expectEqual(@as(u8, 0x00), lin.checksum(lin.checksum_classic, 0, &full));
 }
 

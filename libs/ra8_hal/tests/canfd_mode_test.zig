@@ -7,7 +7,7 @@ const std = @import("std");
 const mode = @import("canfd_mode");
 
 const Fake = struct {
-    regs: [0x140 / 4]u32 = [_]u32{0} ** (0x140 / 4),
+    regs: [0x140 / 4]u32 = @splat(0),
     stuck_off: ?usize = null,
     trail: [64]u8 = undefined,
     n: usize = 0,

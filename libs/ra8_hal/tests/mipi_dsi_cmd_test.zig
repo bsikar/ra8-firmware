@@ -5,7 +5,7 @@ const std = @import("std");
 const dsi = @import("mipi_dsi_cmd");
 
 const Fake = struct {
-    regs: [0x810 / 4]u32 = [_]u32{0} ** (0x810 / 4),
+    regs: [0x810 / 4]u32 = @splat(0),
     msgs: u8 = 0,
     vals: u8 = 0,
     pending: ?[*]u8 = null,
@@ -80,7 +80,7 @@ test "validate rejects bad VC, missing buffer and oversize payloads" {
     c = base(0x39);
     c.tx_len = 1;
     try std.testing.expectEqual(dsi.null_ptr, dsi.validate(&c));
-    var buf = [_]u8{0} ** 4;
+    var buf: [4]u8 = @splat(0);
     c.p_tx_buffer = &buf;
     c.tx_len = 129;
     try std.testing.expectEqual(dsi.invalid_arg, dsi.validate(&c));
@@ -137,7 +137,7 @@ test "short packet descriptor A takes one byte when tx_len is 1" {
 
 test "read_packet arms pending RX with the caller length and points D at it" {
     var f = Fake{};
-    var rx = [_]u8{0} ** 8;
+    var rx: [8]u8 = @splat(0);
     try std.testing.expectEqual(dsi.ok, dsi.readPacket(&f, 0x06, 0, 0x0A, 0, &rx, 8));
     try std.testing.expectEqual(@as(?[*]u8, &rx), f.pending);
     try std.testing.expectEqual(dsi.payload_max, f.pending_len);
@@ -147,7 +147,7 @@ test "read_packet arms pending RX with the caller length and points D at it" {
 
 test "read_packet rejects a null sink and a zero length" {
     var f = Fake{};
-    var rx = [_]u8{0} ** 2;
+    var rx: [2]u8 = @splat(0);
     try std.testing.expectEqual(dsi.null_ptr, dsi.readPacket(&f, 0x06, 0, 0, 0, null, 2));
     try std.testing.expectEqual(@as(u8, 1), f.msgs);
     try std.testing.expectEqual(dsi.invalid_arg, dsi.readPacket(&f, 0x06, 0, 0, 0, &rx, 0));

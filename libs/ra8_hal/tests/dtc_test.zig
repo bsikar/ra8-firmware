@@ -8,7 +8,7 @@ const dtc = @import("dtc");
 
 /// DTC0 register block as bytes; records the order of 8-bit writes.
 const Regs = struct {
-    mem: [0x18]u8 = [_]u8{0} ** 0x18,
+    mem: [0x18]u8 = @splat(0),
     w8: [8][2]u8 = undefined,
     n8: usize = 0,
 
@@ -79,7 +79,7 @@ const Ops = struct {
     }
 };
 
-const Table = struct { entry: [dtc.vector_entries]u32 align(1024) = [_]u32{0} ** dtc.vector_entries };
+const Table = struct { entry: [dtc.vector_entries]u32 align(1024) = @splat(0) };
 
 var src_buf: [8]u8 = undefined;
 var dst_buf: [8]u8 = undefined;

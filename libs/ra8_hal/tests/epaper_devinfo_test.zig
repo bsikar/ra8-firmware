@@ -5,7 +5,7 @@ const std = @import("std");
 const devinfo = @import("epaper_devinfo");
 
 fn response() [devinfo.word_count]u16 {
-    var w = [_]u16{0} ** devinfo.word_count;
+    var w: [devinfo.word_count]u16 = @splat(0);
     w[0] = 1872;
     w[1] = 1404;
     w[2] = 0x2345;

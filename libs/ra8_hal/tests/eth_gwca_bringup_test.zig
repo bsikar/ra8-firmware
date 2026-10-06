@@ -41,13 +41,13 @@ const Ops = struct {
 
 fn run(fail_at: u32, step: *u32, trace: *std.ArrayList(u32)) u16 {
     var calls: u32 = 0;
-    var table = [_]q.Desc{.{}} ** 2;
+    var table: [2]q.Desc = @splat(.{});
     return b.bringUp(Ops{ .trace = trace, .calls = &calls, .fail_at = fail_at, .last_step = step }, &table, 2);
 }
 
 test "installLinkfix marks entries LEMPTY and splits the address" {
     var errs: u32 = 0;
-    var table = [_]q.Desc{.{ .ds_l = 9, .ptr_l = 7 }} ** 3;
+    var table: [3]q.Desc = @splat(.{ .ds_l = 9, .ptr_l = 7 });
     var hi: u32 = 0xDEAD;
     var lo: u32 = 0;
     try std.testing.expectEqual(b.ok, b.installLinkfix(Log{ .count = &errs }, &table, 3, &hi, &lo));
@@ -65,7 +65,7 @@ test "installLinkfix rejects a null table and bad counts" {
     var errs: u32 = 0;
     var hi: u32 = 0;
     var lo: u32 = 0;
-    var table = [_]q.Desc{.{}} ** 1;
+    var table: [1]q.Desc = @splat(.{});
     try std.testing.expectEqual(b.null_ptr, b.installLinkfix(Log{ .count = &errs }, null, 1, &hi, &lo));
     try std.testing.expectEqual(b.invalid_arg, b.installLinkfix(Log{ .count = &errs }, &table, 0, &hi, &lo));
     try std.testing.expectEqual(b.invalid_arg, b.installLinkfix(Log{ .count = &errs }, &table, 33, &hi, &lo));

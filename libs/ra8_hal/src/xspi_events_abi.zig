@@ -13,7 +13,7 @@ const tag = "XSPI";
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
-export var s_xspi_state: [ev.instance_count]ev.State = [_]ev.State{.{}} ** ev.instance_count;
+export var s_xspi_state: [ev.instance_count]ev.State = @splat(.{});
 
 const Regs = struct {
     base: usize,

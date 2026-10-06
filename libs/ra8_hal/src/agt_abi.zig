@@ -13,7 +13,7 @@ const ok = agt.codes.ok;
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
-var held = [_]bool{false} ** agt.mstp_count;
+var held: [agt.mstp_count]bool = @splat(false);
 var event_fn: ?agt.EventFn = null;
 var event_ctx: ?*anyopaque = null;
 

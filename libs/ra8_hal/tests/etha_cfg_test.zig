@@ -7,7 +7,7 @@ const std = @import("std");
 const cfg = @import("etha_cfg");
 
 const Regs = struct {
-    mem: [0x50]u32 = [_]u32{0} ** 0x50,
+    mem: [0x50]u32 = @splat(0),
     pub fn read32(self: *Regs, off: usize) u32 {
         return self.mem[off / 4];
     }

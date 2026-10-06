@@ -9,7 +9,7 @@ const b = @import("bkup");
 const Op = struct { kind: u8, off: usize, value: u32 };
 
 const Fake = struct {
-    mem: [0x1000]u8 = [_]u8{0} ** 0x1000,
+    mem: [0x1000]u8 = @splat(0),
     ops: [160]Op = undefined,
     n: usize = 0,
     reads: usize = 0,

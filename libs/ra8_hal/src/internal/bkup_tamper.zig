@@ -45,7 +45,7 @@ pub const ChanCfg = extern struct {
 /// `ra8_bkup_tamper_config_t`, 22 bytes.
 pub const Config = extern struct {
     nc_width: u8 = 0,
-    channels: [chan_count]ChanCfg = [_]ChanCfg{.{}} ** chan_count,
+    channels: [chan_count]ChanCfg = @splat(.{}),
 };
 
 const range_msg = "tamper_init: channel cfg out of range";

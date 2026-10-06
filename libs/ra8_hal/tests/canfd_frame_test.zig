@@ -9,7 +9,7 @@ const cf = @import("canfd_frame");
 /// One channel's register file as a byte array; `done_after` sets TMTRF
 /// once TMSTS0 has been read that many times (0 = never).
 const Regs = struct {
-    mem: [0x700]u8 = [_]u8{0} ** 0x700,
+    mem: [0x700]u8 = @splat(0),
     order: [8]usize = undefined,
     n: usize = 0,
     tm_reads: u32 = 0,

@@ -6,7 +6,7 @@ const pwr = @import("pwr");
 
 /// Host RAM standing in for the SYSTEM block up to WUPEN1.
 const Fake = struct {
-    words: [(pwr.off_wupen1 / 4) + 1]u32 = [_]u32{0} ** ((pwr.off_wupen1 / 4) + 1),
+    words: [(pwr.off_wupen1 / 4) + 1]u32 = @splat(0),
 
     fn block(f: *Fake) pwr.Block {
         return .{ .base = @intFromPtr(&f.words) };

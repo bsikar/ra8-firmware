@@ -5,7 +5,7 @@ const std = @import("std");
 const ev = @import("lvd_events");
 
 const Fake = struct {
-    mem: [16]u8 = [_]u8{0} ** 16,
+    mem: [16]u8 = @splat(0),
     pvdlr: ?u8 = null,
     pvdsar: ?u32 = null,
     rmw_cr0: [4]usize = .{ 0, 0, 0, 0 },

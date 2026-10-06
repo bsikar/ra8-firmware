@@ -18,7 +18,7 @@ pub const Slot = struct {
 pub const Error = error{ Full, BadSlot, Empty };
 
 pub const Table = struct {
-    slots: [max_subs]Slot = [_]Slot{.{}} ** max_subs,
+    slots: [max_subs]Slot = @splat(.{}),
 
     /// A null func clears the legacy slot.
     pub fn attach(self: *Table, func: ?EventFn, ctx: ?*anyopaque) void {
@@ -51,7 +51,7 @@ pub const Table = struct {
     }
 
     pub fn clear(self: *Table) void {
-        self.slots = [_]Slot{.{}} ** max_subs;
+        self.slots = @splat(.{});
     }
 
     /// Calls every registered slot in index order with the latched mask.

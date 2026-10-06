@@ -11,7 +11,7 @@ const Rec = struct {
     acls: usize = 0,
     code: u8 = 0,
     handle: u16 = 0,
-    last: [8]u8 = [_]u8{0} ** 8,
+    last: [8]u8 = @splat(0),
     len: usize = 0,
     pub fn event(self: *Rec, code: u8, params: []const u8) void {
         self.events += 1;
@@ -54,7 +54,7 @@ test "TX capture drops bytes past 1024" {
 
 test "inject clamps, empty leaves the cursor, reset clears lengths" {
     var s = ble.State{};
-    var big = [_]u8{7} ** (ble.capture_bytes + 4);
+    var big: [ble.capture_bytes + 4]u8 = @splat(7);
     s.inject(&big);
     try std.testing.expectEqual(ble.capture_bytes, s.rx_len);
     _ = s.rxByte();

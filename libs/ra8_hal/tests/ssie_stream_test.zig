@@ -69,7 +69,7 @@ const Fake = struct {
 };
 
 var tx_buf = [_]u32{ 1, 2, 3 };
-var rx_buf = [_]u32{0} ** 4;
+var rx_buf: [4]u32 = @splat(0);
 
 test "layouts match the C structs" {
     try std.testing.expectEqual(@as(usize, 4), @sizeOf(s.Runtime));

@@ -9,7 +9,7 @@ const e = @import("cgc_eswclk");
 /// R_SYSTEM bytes with the two handshakes modelled: CKSRDY follows CKSREQ
 /// and clearing PDDE powers the domain (PDCSF/PDPGSF clear) unless stuck.
 const Regs = struct {
-    mem: [0x400]u8 = [_]u8{0} ** 0x400,
+    mem: [0x400]u8 = @splat(0),
     prcr: [8]u16 = undefined,
     np: usize = 0,
     ck: [8]u8 = undefined,

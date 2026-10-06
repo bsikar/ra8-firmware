@@ -65,8 +65,8 @@ pub const Mux = struct {
     speed: u8 = 0,
     phase: Phase = .idle,
     class_count: u8 = 0,
-    classes: [max_classes]Class = [_]Class{.{}} ** max_classes,
-    owner_plus_one: [max_ifs]u8 = [_]u8{0} ** max_ifs,
+    classes: [max_classes]Class = @splat(.{}),
+    owner_plus_one: [max_ifs]u8 = @splat(0),
     device_desc: ?[*]const u8 = null,
     config_desc: ?[*]const u8 = null,
     last_handler: u8 = handler_self,
@@ -82,7 +82,7 @@ pub const Mux = struct {
         m.class_count = 0;
         m.device_desc = null;
         m.config_desc = null;
-        m.owner_plus_one = [_]u8{0} ** max_ifs;
+        m.owner_plus_one = @splat(0);
     }
 
     /// First failing check of register_class after the init guard.

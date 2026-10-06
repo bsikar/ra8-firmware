@@ -12,7 +12,7 @@ const Fake = struct {
     status_err: u16 = 0,
     block_err: u16 = 0,
     product: [4]u8 = .{ '9', '1', '1', 0 },
-    block: [40]u8 = [_]u8{0} ** 40,
+    block: [40]u8 = @splat(0),
     block_len: usize = 0,
     acks: usize = 0,
     last_write: [2]u16 = .{ 0, 0 },
@@ -51,7 +51,7 @@ test "register pointer goes out big-endian" {
 }
 
 test "decodeBlock caps at max_count and five, and reports the count" {
-    var raw = [_]u8{0} ** 48;
+    var raw: [48]u8 = @splat(0);
     for (0..6) |i| record(&raw, i, @intCast(i), @intCast(100 + i), @intCast(0x1234 + i), @intCast(7 + i));
     var out: [6]t.Point = undefined;
     var got: u8 = 99;

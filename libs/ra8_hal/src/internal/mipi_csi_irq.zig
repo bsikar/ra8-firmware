@@ -82,8 +82,8 @@ pub const State = struct {
     pm: Handler(EventFn) = .{},
     gst: Handler(EventFn) = .{},
     err: Handler(ErrorFn) = .{},
-    vc_format: [vc_count]u8 = [_]u8{0} ** vc_count,
-    vcie_saved: [vc_count]u32 = [_]u32{0} ** vc_count,
+    vc_format: [vc_count]u8 = @splat(0),
+    vcie_saved: [vc_count]u32 = @splat(0),
 
     /// priv_ra8_mipi_csi_detach_all_handlers: the error handler and the
     /// VC filter state survive, as in the C.

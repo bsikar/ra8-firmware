@@ -34,8 +34,8 @@ pub const Status = extern struct {
     raw_esr: u16 = 0,
     one_bit_mask: u8 = 0,
     two_bit_mask: u8 = 0,
-    addr_1bit: [bank_count]usize = .{0} ** bank_count,
-    addr_2bit: [bank_count]usize = .{0} ** bank_count,
+    addr_1bit: [bank_count]usize = @splat(0),
+    addr_2bit: [bank_count]usize = @splat(0),
 };
 
 comptime {

@@ -7,7 +7,7 @@ const mfwd = @import("eth_mfwd");
 const words = 0x4A30 / 4;
 
 const Fake = struct {
-    mem: [words]u32 = [_]u32{0xFFFF_FFFF} ** words,
+    mem: [words]u32 = @splat(0xFFFF_FFFF),
 
     fn window(f: *Fake) mfwd.Window {
         return .{ .base = @intFromPtr(&f.mem) };

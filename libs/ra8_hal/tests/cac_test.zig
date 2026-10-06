@@ -6,7 +6,7 @@ const cac = @import("cac");
 
 /// Host RAM standing in for the CAC register file (12 bytes).
 const Fake = struct {
-    bytes: [12]u8 align(2) = [_]u8{0} ** 12,
+    bytes: [12]u8 align(2) = @splat(0),
 
     fn block(f: *Fake) cac.Block {
         return .{ .base = @intFromPtr(&f.bytes) };

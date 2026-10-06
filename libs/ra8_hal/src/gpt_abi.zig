@@ -31,7 +31,7 @@ const ThreePhase = struct {
     open: bool = false,
 };
 
-var state = [_]State{.{}} ** gpt.channel_count;
+var state: [gpt.channel_count]State = @splat(.{});
 var phase = ThreePhase{};
 var clock_on = false;
 

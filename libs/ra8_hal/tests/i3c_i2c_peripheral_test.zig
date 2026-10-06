@@ -5,7 +5,7 @@ const std = @import("std");
 const p = @import("i3c_i2c_peripheral");
 
 const Fake = struct {
-    words: [p.window_len / 4]u32 = [_]u32{0} ** (p.window_len / 4),
+    words: [p.window_len / 4]u32 = @splat(0),
 
     fn block(f: *Fake) p.Block {
         return .{ .base = @intFromPtr(&f.words) };
@@ -45,7 +45,7 @@ test "send writes each byte while TDBEF0 is set and times out otherwise" {
 test "receive masks NTDTBP0 to a byte while RDBFF0 is set and times out otherwise" {
     var f = Fake{};
     const b = f.block();
-    var buf = [_]u8{0} ** 3;
+    var buf: [3]u8 = @splat(0);
     try std.testing.expectError(error.Timeout, p.receive(b, &buf, 4));
     b.reg(p.off_ntst).* = p.ntst_rdbff0;
     b.reg(p.off_ntdtbp0).* = 0x1A5;

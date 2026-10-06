@@ -5,7 +5,7 @@ const std = @import("std");
 const dmac = @import("dmac");
 
 const Fake = struct {
-    regs: [dmac.channel_count]dmac.ChannelRegs = [_]dmac.ChannelRegs{.{}} ** dmac.channel_count,
+    regs: [dmac.channel_count]dmac.ChannelRegs = @splat(.{}),
     dmast_reg: u8 = 0,
     mstp_on: u8 = 0,
     mstp_off: u8 = 0,

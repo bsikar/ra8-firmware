@@ -9,7 +9,7 @@ const g = @import("glcdc_layer");
 const Op = struct { off: usize, value: u32 };
 
 const Fake = struct {
-    mem: [0x1300 / 4]u32 = [_]u32{0} ** (0x1300 / 4),
+    mem: [0x1300 / 4]u32 = @splat(0),
     ops: [300]Op = undefined,
     n: usize = 0,
     reads: usize = 0,
@@ -175,7 +175,7 @@ test "clut fills the inactive plane and swaps on request" {
 test "clut without swap leaves CLUTINT alone" {
     var f = Fake{};
     var c = Ctx{};
-    const clut = [_]u32{0xAA} ** 256;
+    const clut: [256]u32 = @splat(0xAA);
     try std.testing.expectEqual(g.ok, g.setClutDoubleBuffered(&f, &c, 1, &clut, 256, false));
     try std.testing.expectEqual(@as(usize, 256), f.n);
     try std.testing.expectEqual(@as(u32, 0xAA), f.at(g.off_gr2_clut1 + 255 * 4));

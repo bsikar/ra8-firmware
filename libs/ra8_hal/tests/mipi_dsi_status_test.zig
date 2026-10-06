@@ -5,7 +5,7 @@ const std = @import("std");
 const st = @import("mipi_dsi_status");
 
 const Fake = struct {
-    regs: [0x620 / 4]u32 = [_]u32{0} ** (0x620 / 4),
+    regs: [0x620 / 4]u32 = @splat(0),
     errs: u8 = 0,
 
     pub fn read32(f: *Fake, off: u16) u32 {
@@ -103,7 +103,7 @@ test "rx_result_get: bad slot, empty slot, valid slot" {
 test "rx_payload_read copies little-endian bytes capped at 16" {
     var f = Fake{};
     for (0..4) |i| f.set(st.off_rxppd0r + @as(u16, @intCast(i)) * 4, 0x0302_0100 + @as(u32, @intCast(i)) * 0x0404_0404);
-    var buf = [_]u8{0xEE} ** 20;
+    var buf: [20]u8 = @splat(0xEE);
     var n: u16 = 0;
     try std.testing.expectEqual(st.ok, st.rxPayloadRead(&f, &buf, 20, &n));
     try std.testing.expectEqual(@as(u16, 16), n);

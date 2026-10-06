@@ -37,7 +37,7 @@ fn point(d: *q.Desc, buf: []u8) void {
 test "rxFrame copies the FSINGLE slot, re-arms it FEMPTY and advances the head" {
     try lowOrSkip();
     var last: ?[]const u8 = null;
-    var chain = [_]q.Desc{.{}} ** 4;
+    var chain: [4]q.Desc = @splat(.{});
     for (0..3) |i| {
         point(&chain[i], &bufs[i]);
         q.setDt(&chain[i], q.dt_fempty);
@@ -59,7 +59,7 @@ test "rxFrame copies the FSINGLE slot, re-arms it FEMPTY and advances the head" 
 test "rxFrame rejects a frame larger than the caller's buffer and leaves the slot" {
     try lowOrSkip();
     var last: ?[]const u8 = null;
-    var chain = [_]q.Desc{.{}} ** 2;
+    var chain: [2]q.Desc = @splat(.{});
     point(&chain[0], &bufs[0]);
     q.setDs(&chain[0], 12);
     q.setDt(&chain[0], q.dt_fsingle);
@@ -73,7 +73,7 @@ test "rxFrame rejects a frame larger than the caller's buffer and leaves the slo
 
 test "rxFrame argument checks" {
     var last: ?[]const u8 = null;
-    var chain = [_]q.Desc{.{}} ** 4;
+    var chain: [4]q.Desc = @splat(.{});
     var head: u32 = 0;
     var out: [8]u8 = undefined;
     var len: u32 = 0;

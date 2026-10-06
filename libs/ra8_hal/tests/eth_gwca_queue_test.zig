@@ -5,7 +5,7 @@ const std = @import("std");
 const q = @import("eth_gwca_queue");
 
 const Fake = struct {
-    gwdcc_regs: [q.max_queues]u32 = [_]u32{0} ** q.max_queues,
+    gwdcc_regs: [q.max_queues]u32 = @splat(0),
     gwtrc_regs: [2]u32 = .{ 0, 0 },
     nulls: u8 = 0,
     errors: u8 = 0,
@@ -61,7 +61,7 @@ test "composeGwdcc packs DQT SL EDE and DCP" {
 test "configureQueue writes GWDCC and the LINKFIX entry" {
     var f = Fake{};
     const table = &g_table;
-    table.* = [_]q.Desc{.{ .b2 = 0xF3 }} ** 4;
+    table.* = @splat(.{ .b2 = 0xF3 });
     const chain = &g_chain;
     const cfg = q.QueueCfg{ .priority = 3, .is_tx = true, .chain_head = &chain[0] };
     try std.testing.expectEqual(q.ok, q.configureQueue(&f, table, 2, &cfg));
@@ -73,7 +73,7 @@ test "configureQueue writes GWDCC and the LINKFIX entry" {
 
 test "configureQueue rejects nulls, priority and queue range" {
     var f = Fake{};
-    var table = [_]q.Desc{.{}} ** 1;
+    var table: [1]q.Desc = @splat(.{});
     var head = q.Desc{};
     try std.testing.expectEqual(q.null_ptr, q.configureQueue(&f, null, 0, &q.QueueCfg{ .chain_head = &head }));
     try std.testing.expectEqual(q.null_ptr, q.configureQueue(&f, &table, 0, null));
@@ -86,7 +86,7 @@ test "configureQueue rejects nulls, priority and queue range" {
 test "initRing builds FEMPTY slots and a closing LINK" {
     var f = Fake{};
     const chain = &g_chain;
-    chain.* = [_]q.Desc{.{ .b1 = 0xFF, .b2 = 0xFF, .ptr_l = 9 }} ** 4;
+    chain.* = @splat(.{ .b1 = 0xFF, .b2 = 0xFF, .ptr_l = 9 });
     try std.testing.expectEqual(q.ok, q.initRing(&f, chain, 4, 0x5EE));
     for (chain[0..3]) |*d| {
         try std.testing.expectEqual(q.dt_fempty, q.getDt(d));
@@ -100,7 +100,7 @@ test "initRing builds FEMPTY slots and a closing LINK" {
 
 test "initRing rejects null, short rings and oversized slots" {
     var f = Fake{};
-    var chain = [_]q.Desc{.{}} ** 2;
+    var chain: [2]q.Desc = @splat(.{});
     try std.testing.expectEqual(q.null_ptr, q.initRing(&f, null, 2, 64));
     try std.testing.expectEqual(q.invalid_arg, q.initRing(&f, &chain, 1, 64));
     try std.testing.expectEqual(q.invalid_arg, q.initRing(&f, &chain, 2, 2049));
@@ -108,7 +108,7 @@ test "initRing rejects null, short rings and oversized slots" {
 
 test "attachBuffers points each data slot at its pool offset" {
     var f = Fake{};
-    var chain = [_]q.Desc{.{}} ** 3;
+    var chain: [3]q.Desc = @splat(.{});
     const pool = &g_pool;
     try std.testing.expectEqual(q.ok, q.attachBuffers(&f, &chain, 3, 64, pool));
     try std.testing.expectEqual(@intFromPtr(&pool[0]), ptrOf(&chain[0]));
@@ -141,7 +141,7 @@ test "kickTx sets the queue bit in GWTRC0 or GWTRC1" {
 
 test "findSlot wraps from start and reports no_data" {
     var f = Fake{};
-    var chain = [_]q.Desc{.{}} ** 4;
+    var chain: [4]q.Desc = @splat(.{});
     q.setDt(&chain[0], q.dt_fempty);
     var out: u32 = 99;
     try std.testing.expectEqual(q.ok, q.findSlot(&f, &chain, 4, q.dt_fempty, 1, &out));
@@ -155,9 +155,9 @@ test "findSlot wraps from start and reports no_data" {
 
 test "txFrame copies into the next FEMPTY slot and advances tail" {
     var f = Fake{};
-    var chain = [_]q.Desc{.{}} ** 3;
+    var chain: [3]q.Desc = @splat(.{});
     const pool = &g_pool;
-    pool.* = [_]u8{0} ** 600;
+    pool.* = @splat(0);
     try std.testing.expectEqual(q.ok, q.initRing(&f, &chain, 3, 300));
     try std.testing.expectEqual(q.ok, q.attachBuffers(&f, &chain, 3, 300, pool));
     var frame: [258]u8 = undefined;
@@ -173,7 +173,7 @@ test "txFrame copies into the next FEMPTY slot and advances tail" {
 
 test "txFrame rejects bad args and a full ring" {
     var f = Fake{};
-    var chain = [_]q.Desc{.{}} ** 3;
+    var chain: [3]q.Desc = @splat(.{});
     var tail: u32 = 0;
     const frame = [_]u8{1};
     try std.testing.expectEqual(q.null_ptr, q.txFrame(&f, null, 3, &tail, &frame, 1, 64));

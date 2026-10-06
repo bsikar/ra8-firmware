@@ -6,7 +6,7 @@ const gfx = @import("lpm_graphics");
 const prcr = gfx.prcr_mod;
 
 const Fake = struct {
-    words: [gfx.window_len / 4 + 1]u32 align(4) = [_]u32{0} ** (gfx.window_len / 4 + 1),
+    words: [gfx.window_len / 4 + 1]u32 align(4) = @splat(0),
 
     fn block(f: *Fake) gfx.Block {
         return .{ .base = @intFromPtr(&f.words) };

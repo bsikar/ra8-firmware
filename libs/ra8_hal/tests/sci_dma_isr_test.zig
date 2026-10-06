@@ -10,7 +10,7 @@ const sd = @import("sci_dma_isr");
 const Regs = struct {
     ccr0: u32 = sd.ccr0_tie | sd.ccr0_rie | 0x1,
     rdr: u32 = 0,
-    tdr: [8]u8 = [_]u8{0} ** 8,
+    tdr: [8]u8 = @splat(0),
     tdr_writes: usize = 0,
 
     pub fn readCcr0(self: *Regs) u32 {
@@ -28,7 +28,7 @@ const Regs = struct {
     }
 };
 
-const Seen = struct { bytes: [8]u8 = [_]u8{0} ** 8, n: usize = 0, give: u8 = 0, more: bool = true };
+const Seen = struct { bytes: [8]u8 = @splat(0), n: usize = 0, give: u8 = 0, more: bool = true };
 
 fn onRx(ctx: ?*anyopaque, byte: u8) callconv(.C) void {
     const s: *Seen = @ptrCast(@alignCast(ctx.?));
@@ -100,7 +100,7 @@ test "TXI handler path writes its byte or stops TIE" {
 
 test "RXI fills the async buffer, clears RIE when full and still calls the handler" {
     var regs = Regs{ .rdr = 0x1_37 };
-    var buf = [_]u8{0} ** 2;
+    var buf: [2]u8 = @splat(0);
     var seen = Seen{};
     var st = sd.State{ .rx_buf = &buf, .rx_len = 2, .rx_fn = onRx, .rx_ctx = &seen };
     sd.dispatchRxi(&regs, &st);

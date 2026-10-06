@@ -29,7 +29,7 @@ var ring: [4]q.Desc = undefined;
 
 fn freshRing() ![]q.Desc {
     if (@intFromPtr(&ring) >= (@as(usize, 1) << 40)) return error.SkipZigTest;
-    ring = [_]q.Desc{.{}} ** 4;
+    ring = @splat(.{});
     return &ring;
 }
 

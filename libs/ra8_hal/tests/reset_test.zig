@@ -8,7 +8,7 @@ const rs = @import("reset");
 const off = rs.off;
 
 const Regs = struct {
-    bytes: [0xB00]u8 = [_]u8{0} ** 0xB00,
+    bytes: [0xB00]u8 = @splat(0),
     prcr_writes: [4]u16 = undefined,
     nprcr: usize = 0,
 

@@ -69,7 +69,7 @@ pub fn clampEmit(status: u8, max_count: u8, cap: u8) u8 {
 
 /// PRODUCT_ID must start with '9' ("911").
 pub fn checkProductId(bus: anytype) u16 {
-    var product = [_]u8{0} ** 4;
+    var product: [4]u8 = @splat(0);
     if (bus.read(reg_product, &product) != ok) return err_hw_init_failed;
     if (product[0] != '9') return err_hw_init_failed;
     return ok;
@@ -89,7 +89,7 @@ pub fn readFrame(bus: anytype, out: [*]Point, max_count: u8, cap: u8, got: *u8) 
     }
     const emit = clampEmit(status[0], max_count, cap);
     if (emit > 0) {
-        var raw = [_]u8{0} ** (max_points * point_bytes);
+        var raw: [max_points * point_bytes]u8 = @splat(0);
         if (bus.read(reg_point0, raw[0 .. emit * point_bytes]) != ok) {
             got.* = 0;
             _ = bus.writeByte(reg_status, cmd_clear_status);

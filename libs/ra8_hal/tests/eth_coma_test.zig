@@ -5,8 +5,8 @@ const std = @import("std");
 const coma = @import("eth_coma");
 
 const Fake = struct {
-    regs: [4]u32 = [_]u32{0xFFFF_FFFF} ** 4,
-    agent: [0x144 / 4]u32 = [_]u32{0} ** (0x144 / 4),
+    regs: [4]u32 = @splat(0xFFFF_FFFF),
+    agent: [0x144 / 4]u32 = @splat(0),
 
     fn window(f: *Fake, budget: u32) coma.Window {
         return .{ .regs = @intFromPtr(&f.regs), .agent = @intFromPtr(&f.agent), .delay_iters = 0, .bpr_budget = budget };

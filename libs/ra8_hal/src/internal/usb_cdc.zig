@@ -152,7 +152,7 @@ fn pullDataStage(s: *State, usb: anytype, buf: []u8, out_len: *u16) u16 {
 fn dispatch(s: *State, usb: anytype, setup: *const Setup) u16 {
     switch (setup.b_request) {
         req_set_line_coding => {
-            var buf = [_]u8{0} ** (line_coding_len + 1);
+            var buf: [line_coding_len + 1]u8 = @splat(0);
             var plen: u16 = 0;
             if (pullDataStage(s, usb, &buf, &plen) == ok) applyLineCoding(s, &buf, plen);
             return usb.controlResponse(s.speed, true);

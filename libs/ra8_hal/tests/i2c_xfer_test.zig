@@ -18,9 +18,9 @@ const sp: u8 = 1 << 3;
 /// ICDRR reads walk `rx`; `stuck` makes every poll fail; `nack_on_tx`
 /// latches NACKF when a byte is written, as a target that does not answer.
 const Regs = struct {
-    mem: [0x16]u8 = [_]u8{0} ** 0x16,
+    mem: [0x16]u8 = @splat(0),
     icsr2: u8 = tdre | xfer.icsr2_tend | xfer.icsr2_rdrf,
-    tx: [8]u8 = [_]u8{0} ** 8,
+    tx: [8]u8 = @splat(0),
     tx_len: usize = 0,
     rx: []const u8 = &.{},
     rx_pos: usize = 0,

@@ -10,7 +10,7 @@ const codes = phy.codes;
 /// A PHY register file. `reset_reads` is how many BMCR reads still show
 /// RESET set; `fail_read_at` fails the Nth read (1-based) with 0x203.
 const Fake = struct {
-    regs: [32]u16 = [_]u16{0} ** 32,
+    regs: [32]u16 = @splat(0),
     reset_reads: u32 = 0,
     reads: u32 = 0,
     writes: u32 = 0,

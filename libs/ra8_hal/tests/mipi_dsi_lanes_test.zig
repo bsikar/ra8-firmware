@@ -5,7 +5,7 @@ const std = @import("std");
 const ln = @import("mipi_dsi_lanes");
 
 const Fake = struct {
-    regs: [0x400 / 4]u32 = [_]u32{0} ** (0x400 / 4),
+    regs: [0x400 / 4]u32 = @splat(0),
     writes: [8]struct { off: u16, value: u32 } = undefined,
     n: usize = 0,
     errs: u8 = 0,

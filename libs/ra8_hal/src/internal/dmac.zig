@@ -52,7 +52,7 @@ pub const ChannelRegs = extern struct {
     dmbwr: u8 = 0,
     _r3: u8 = 0,
     _r4: u16 = 0,
-    _r5: [12]u8 = [_]u8{0} ** 12,
+    _r5: [12]u8 = @splat(0),
 };
 
 comptime {
@@ -259,7 +259,7 @@ const Slot = struct {
 
 /// Per-channel DTIE (full) and RPTIE (half) user handlers.
 pub const Slots = struct {
-    slots: [channel_count]Slot = [_]Slot{.{}} ** channel_count,
+    slots: [channel_count]Slot = @splat(.{}),
 
     pub fn attach(self: *Slots, channel: u8, half: bool, f: ?CallbackFn, ctx: ?*anyopaque) u16 {
         if (channel >= channel_count) return out_of_range;

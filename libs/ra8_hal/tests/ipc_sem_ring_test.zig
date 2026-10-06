@@ -8,7 +8,7 @@ const ipc = @import("ipc_sem_ring");
 
 /// Models IPCSEMn read-to-set / W1C and the NMI windows.
 const Fake = struct {
-    sem: [16]u32 = [_]u32{0} ** 16,
+    sem: [16]u32 = @splat(0),
     nmista: [2]u32 = .{ 0, 0 },
     nmiset: [2]u32 = .{ 0, 0 },
     nmiclr: [2]u32 = .{ 0, 0 },
@@ -143,7 +143,7 @@ test "dispatch runs the handler only when pending, then acks" {
     ipc.dispatchNmi(&f, &slot, 2);
 }
 
-var slots = [_]u32{0} ** 4;
+var slots: [4]u32 = @splat(0);
 var head: u32 = 7;
 var tail: u32 = 7;
 

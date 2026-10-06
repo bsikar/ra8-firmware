@@ -11,7 +11,7 @@ const state = @import("internal/dotf_state.zig");
 const status = @import("internal/dotf_status.zig");
 
 /// Per-channel state, zeroed like the C static it replaces.
-export var s_dotf_state: [power.channel_count]state.ChanState = [_]state.ChanState{.{}} ** power.channel_count;
+export var s_dotf_state: [power.channel_count]state.ChanState = @splat(.{});
 
 const Reg = struct {
     p: *volatile u32,

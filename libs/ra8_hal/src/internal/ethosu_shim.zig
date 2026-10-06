@@ -13,7 +13,7 @@ pub const Job = extern struct {
     cmd_stream: ?*const anyopaque = null,
     cmd_stream_bytes: u32 = 0,
     region_count: u8 = 0,
-    region_base: [max_regions]u64 = [_]u64{0} ** max_regions,
+    region_base: [max_regions]u64 = @splat(0),
 };
 
 /// `struct ethosu_driver`, opaque to C callers.

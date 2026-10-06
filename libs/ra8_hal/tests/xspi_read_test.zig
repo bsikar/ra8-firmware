@@ -12,10 +12,10 @@ const off_ints = 0x190;
 /// Flash model: each TRREQ serves CDA's bytes (value = addr & 0xFF) into
 /// CDD0/CDD1 and logs the CDT. `fail_on` makes that kick time out.
 const Regs = struct {
-    mem: [0x200 / 4]u32 = [_]u32{0} ** (0x200 / 4),
+    mem: [0x200 / 4]u32 = @splat(0),
     kicks: u32 = 0,
     fail_on: ?u32 = null,
-    cdts: [8]u32 = [_]u32{0} ** 8,
+    cdts: [8]u32 = @splat(0),
 
     pub fn read(self: *Regs, off: usize) u32 {
         return self.mem[off / 4];
@@ -64,7 +64,7 @@ test "read walks 13 bytes as an 8-byte and a 5-byte chunk" {
 
 test "a timeout on the second chunk stops the walk" {
     var r = Regs{ .fail_on = 2 };
-    var buf = [_]u8{0} ** 16;
+    var buf: [16]u8 = @splat(0);
     try std.testing.expectEqual(@as(u16, 0x203), rd.read(&r, 0, &buf));
     try std.testing.expectEqual(@as(u32, 2), r.kicks);
     try std.testing.expectEqual(@as(u8, 0), buf[8]);

@@ -7,7 +7,7 @@ const Code = phy.Code;
 
 /// A PHY whose BMCR reset bit self-clears after `reset_reads` reads.
 const FakePhy = struct {
-    regs: [32]u16 = [_]u16{0} ** 32,
+    regs: [32]u16 = @splat(0),
     reset_reads: u32 = 2,
     fail_code: u16 = 0,
     reads: u32 = 0,

@@ -71,7 +71,7 @@ test "wait times out with no flag and poll classifies a match" {
 
 test "drainRx fills the buffer while RDRF stays set" {
     var r = t.Regs{ .icsr2 = t.msk.icsr2_rdrf, .icdrr = 0x5A };
-    var buf = [_]u8{0} ** 3;
+    var buf: [3]u8 = @splat(0);
     const rx = t.drainRx(&r, &buf);
     try eq(@as(u32, 3), rx.count);
     try expect(!rx.timed_out);
@@ -80,7 +80,7 @@ test "drainRx fills the buffer while RDRF stays set" {
 
 test "drainRx stops on STOP and keeps a last byte" {
     var r = t.Regs{ .icsr2 = t.msk.icsr2_stop, .icdrr = 0x11 };
-    var buf = [_]u8{0} ** 2;
+    var buf: [2]u8 = @splat(0);
     try eq(@as(u32, 0), t.drainRx(&r, &buf).count);
     r.icsr2 = t.msk.icsr2_stop | t.msk.icsr2_rdrf;
     const rx = t.drainRx(&r, &buf);

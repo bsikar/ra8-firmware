@@ -9,7 +9,7 @@ const t = @import("bkup_tamper");
 const Op = struct { off: usize, value: u16, kind: u8 };
 
 const Fake = struct {
-    mem: [0x1000]u8 = [_]u8{0} ** 0x1000,
+    mem: [0x1000]u8 = @splat(0),
     ops: [32]Op = undefined,
     n: usize = 0,
     fn log(self: *Fake, kind: u8, off: usize, value: u16) void {

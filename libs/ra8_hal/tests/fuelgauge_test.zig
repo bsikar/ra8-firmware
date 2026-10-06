@@ -6,7 +6,7 @@ const fg = @import("fuelgauge");
 
 /// Fake MAX17048: 256 big-endian registers, an optional failing register.
 const Chip = struct {
-    regs: [256]u16 = [_]u16{0} ** 256,
+    regs: [256]u16 = @splat(0),
     fail_reg: ?u8 = null,
     fail_code: u16 = 0x205,
     last_addr: u8 = 0,

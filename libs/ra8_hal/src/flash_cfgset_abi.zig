@@ -78,6 +78,6 @@ export fn ra8_flash_extra_mram_write(mram_addr: u32, src: ?[*]const u8, len: u32
 
 export fn ra8_flash_extra_mram_erase(mram_addr: u32) u16 {
     if (mram_addr & (cfg.page_bytes - 1) != 0) return common.k_ra8_err_invalid_arg;
-    const ones = [_]u8{0xFF} ** cfg.page_bytes;
+    const ones: [cfg.page_bytes]u8 = @splat(0xFF);
     return ra8_flash_extra_mram_write(mram_addr, &ones, cfg.page_bytes);
 }
