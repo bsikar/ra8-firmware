@@ -113,6 +113,10 @@
         // libs/ra8_hal and tests/zig_abi_fixture reach tools/zig_build by
         // path, and the cross-build graph lists examples/ and port/.
         "tools/zig_build",
+        // tests/zig_build_graph imports or builds these host tools.
+        "tools/check_txm_module_relocs",
+        "tools/merge_ihex",
+        "tools/vela",
         "examples",
         "port",
     },
