@@ -438,6 +438,52 @@ ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, const char* 
  */
 [[nodiscard]] ra8_err_t ra8_c6link_wifi_ap_info(ra8_c6link_t* link, ra8_c6link_ap_info_t* out);
 
+/**
+ * @brief Scan for access points and read back what the co-processor found.
+ *
+ * Starts a scan over every channel, waits for the co-processor to announce it
+ * has finished, asks how many APs it found, then reads up to @p max of them.
+ * Each record uses the same fields ::ra8_c6link_wifi_ap_info fills.
+ *
+ * @param[in,out] link Open handle; must be non-null.
+ * @param[out] out At least @p max records; must be non-null.
+ * @param[in] max Records @p out can hold; must be non-zero.
+ * @param[out] count Records written to @p out; must be non-null.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok @p count records are filled; zero means no AP was found.
+ * @retval k_ra8_err_null_ptr @p link, @p out or @p count was null.
+ * @retval k_ra8_err_invalid_arg @p max was zero.
+ * @retval k_ra8_err_not_initialized @p link is not open.
+ * @retval k_ra8_err_busy A request is already outstanding on @p link.
+ * @retval k_ra8_err_timeout The co-processor did not answer, or never
+ *         announced the end of the scan.
+ * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE for a
+ *         request, so no transaction was clocked.
+ * @retval k_ra8_err_protocol_error An answer reported a failure or carried a
+ *         missing record.
+ * @retval k_ra8_err_spi_error The transport refused a transfer.
+ *
+ * @pre ::ra8_c6link_wifi_start has succeeded on @p link.
+ * @post When more APs were found than @p max, only the first @p max are read.
+ * @post When fewer records arrive than were announced, @p count says how many.
+ * @post On failure @p count is zero and @p out is cleared.
+ *
+ * @note Not thread-safe; it pumps for as long as the scan runs.
+ *
+ * @par Example:
+ * @code
+ * ra8_c6link_ap_info_t aps[8] = {};
+ * uint16_t found = 0U;
+ * (void)ra8_c6link_wifi_scan(&link, aps, 8U, &found);
+ * @endcode
+ *
+ * @see ra8_c6link_wifi_ap_info
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_c6link_wifi_scan(ra8_c6link_t* link, ra8_c6link_ap_info_t* out, uint16_t max,
+                                             uint16_t* count);
+
 #ifdef __cplusplus
 }
 #endif

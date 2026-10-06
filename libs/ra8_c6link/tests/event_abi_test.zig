@@ -146,3 +146,14 @@ test "an unmodelled event, a null link or a null message emits nothing" {
     event_abi.priv_c6link_rpc_event(&link, null);
     try std.testing.expectEqual(@as(usize, 0), seen.emits);
 }
+
+test "scan_done emits its kind and latches the link for the scan call" {
+    seen = .{};
+    var msg = std.mem.zeroes(c.Rpc);
+    msg.msg_id = c.RPC_ID__Event_StaScanDone;
+    var link = std.mem.zeroes(c.ra8_c6link_t);
+    event_abi.priv_c6link_rpc_event(&link, &msg);
+    try std.testing.expectEqual(@as(usize, 1), seen.emits);
+    try std.testing.expectEqual(@as(c.ra8_c6link_event_kind_t, c.k_ra8_c6link_event_scan_done), seen.ev.kind);
+    try std.testing.expect(link.scan_done);
+}

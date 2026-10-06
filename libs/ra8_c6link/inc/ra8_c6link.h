@@ -273,6 +273,9 @@ typedef enum : uint8_t {
   k_ra8_c6link_event_wifi = 3U,
   /**< `Event_WifiEventNoArgs`: a Wi-Fi event carrying only its own id,
        reported verbatim in ::ra8_c6link_event::wifi_event_id. */
+  k_ra8_c6link_event_scan_done = 4U,
+  /**< `Event_StaScanDone`: a station scan has finished; its results are read
+       with ::ra8_c6link_wifi_scan. */
 } ra8_c6link_event_kind_t;
 
 /**
@@ -540,11 +543,11 @@ typedef struct ra8_c6link {
   ra8_c6link_wait_t      wait;        /**< The outstanding request, if any. */
   ra8_c6link_fault_t     fault;       /**< The last failing request.        */
   ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.   */
-  /* tx_len/tx_if/open/boot_seen sit AFTER the two DMA-aligned frame buffers,
+  /* tx_len/tx_if/open/boot_seen/scan_done sit AFTER the two DMA-aligned frame buffers,
      not beside the other bookkeeping fields above: the
      bookkeeping ahead of `tx` already sums to an exact multiple of
      k_ra8_c6link_dma_align, so `tx` needs no compiler-inserted padding to
-     reach its alignment boundary. Moving these four scalars back up
+     reach its alignment boundary. Moving these five scalars back up
      reintroduces 64 bytes of padding (verified via sizeof/offsetof) and
      trips clang-analyzer-optin.performance.Padding. */
   alignas(k_ra8_c6link_dma_align) uint8_t tx[k_ra8_c6link_frame_bytes];
@@ -555,6 +558,7 @@ typedef struct ra8_c6link {
   uint8_t  tx_if;     /**< Interface the staged payload uses. */
   bool     open;      /**< The handle is initialised.         */
   bool     boot_seen; /**< An `Event_ESPInit` has arrived.    */
+  bool     scan_done; /**< An `Event_StaScanDone` has arrived since the scan began. */
 } ra8_c6link_t;
 
 /**

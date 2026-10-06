@@ -188,6 +188,7 @@ pub fn build(b: *std.Build) void {
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_consume_abi.zig", "tests/consume_abi_test.zig", "consume_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_call_abi.zig", "tests/call_abi_test.zig", "call_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_ap_info_abi.zig", "tests/ap_info_abi_test.zig", "ap_info_abi");
+    addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_scan_abi.zig", "tests/scan_abi_test.zig", "scan_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_mac_abi.zig", "tests/mac_abi_test.zig", "mac_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_sta_abi.zig", "tests/sta_abi_test.zig", "sta_abi");
 }

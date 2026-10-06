@@ -9,7 +9,7 @@
 
 const std = @import("std");
 const Err = @import("abi_err.zig");
-const field = @import("ra8_c6link_field_abi.zig");
+const record = @import("ra8_c6link_ap_record.zig");
 const header = @import("c6link_rpc_c.zig");
 
 /// The private `ra8_c6link_internal.h` view, codec types included.
@@ -35,11 +35,7 @@ fn takeAp(ctx: ?*anyopaque, msg_v: ?*const anyopaque) callconv(.c) c.ra8_err_t {
     if (reported != Err.ok) return reported;
     const rec: *const c.WifiApRecord = body.ap_record orelse return Err.protocol_error;
 
-    out.ssid_len = field.priv_c6link_copy_str(&out.ssid, out.ssid.len, @ptrCast(&rec.ssid));
-    out.channel = @truncate(@as(u32, @bitCast(rec.primary)));
-    out.rssi = @truncate(rec.rssi);
-    out.authmode = @intCast(rec.authmode);
-    _ = field.priv_c6link_copy_mac(@ptrCast(&out.bssid), @ptrCast(&rec.bssid));
+    record.fill(out, rec);
     return Err.ok;
 }
 
