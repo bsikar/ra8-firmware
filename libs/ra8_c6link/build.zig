@@ -179,6 +179,7 @@ pub fn build(b: *std.Build) void {
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_lifecycle_abi.zig", "tests/lifecycle_abi_test.zig", "lifecycle_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_ready_abi.zig", "tests/ready_abi_test.zig", "ready_abi");
     addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_eth_abi.zig", "tests/eth_abi_test.zig", "eth_abi");
+    addHeaderAbiTest(b, test_step, target, optimize, "src/ra8_c6link_capture_abi.zig", "tests/capture_abi_test.zig", "capture_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_fw_abi.zig", "tests/fw_abi_test.zig", "fw_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_wifi_abi.zig", "tests/wifi_abi_test.zig", "wifi_abi");
     addCodecAbiTest(b, test_step, target, optimize, "src/ra8_c6link_bare_abi.zig", "tests/bare_abi_test.zig", "bare_abi");

@@ -28,4 +28,5 @@ comptime {
     _ = @import("ra8_c6link_mac_abi.zig");
     _ = @import("ra8_c6link_sta_abi.zig");
     _ = @import("ra8_c6link_scan_abi.zig");
+    _ = @import("ra8_c6link_capture_abi.zig");
 }
