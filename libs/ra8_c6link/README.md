@@ -65,3 +65,35 @@ bench: the WiFi init request carries a block of scalars that the far side's own
 `esp_wifi_init()` validates against limits belonging to the co-processor's
 build. This side can be proven to encode them; only the C6 can say whether it
 accepts them.
+
+## Recording bench traffic
+
+The model answers what this host sends, so it can only be as right as the
+traffic it was written from. To check it against the real part, a bench image
+wraps its transport with `ra8_c6link_capture_bind` (`ra8_c6link_capture.h`)
+and passes the result to `ra8_c6link_open`. Every transaction is then printed
+on the debug console, one line per frame:
+
+```
+c6cap 41 hs 1
+c6cap 41 tx 0200100c...
+c6cap 41 rx 01000c00...
+```
+
+`tx` and `rx` are the frames clocked out and in, with trailing zero bytes
+dropped to keep the console fast. `hs` is a HANDSHAKE level change seen before
+that transaction. DATA_READY isn't recorded, because it isn't part of the
+transport (see `ra8_c6link_transport.h`). Images that never bind the wrapper
+are unchanged.
+
+`scripts/c6cap_to_bin.py` turns a saved console log into a fixture: for each
+transaction in order, the 1600-byte frame out, then the 1600-byte frame in,
+padded back to full size. `--first` and `--last` cut out one exchange (for
+example the Wi-Fi scan) from a longer run. The script refuses a log with a
+gap in the sequence numbers, a duplicate line or a frame over 1600 bytes,
+because a fixture built from a damaged log would not be the traffic that
+crossed the wire.
+
+Before committing a scan fixture, check that the AP records hold only the
+bench's own soft-AP. A scan reports every network in range, and a
+neighbour's SSID doesn't belong in the repository.
