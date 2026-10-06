@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI for SCI DMA TX/RX and the TXI/RXI/ERI dispatchers (RA8FW-592).
-//! s_sci_state stays defined in ra8_sci.c; ra8_dma_request and
-//! ra8_sci_clear_errors stay in C. Logic is in internal/sci_dma_isr.zig.
+//! s_sci_state stays defined in ra8_sci.c; ra8_dma_request stays in C and
+//! ra8_sci_clear_errors is in sci_ctl_abi.zig. Logic is in internal/sci_dma_isr.zig.
 
 const common = @import("abi_common.zig");
 const sd = @import("internal/sci_dma_isr.zig");
