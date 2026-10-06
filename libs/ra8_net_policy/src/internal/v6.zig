@@ -31,8 +31,8 @@ const prefix = struct {
 /// The `::` run splits the groups into a head and a tail; the tail packs flush
 /// against the end of the address, so the zero fill is whatever sits between.
 const Parse = struct {
-    head: [limits.v6_groups]u16 = .{0} ** limits.v6_groups,
-    tail: [limits.v6_groups]u16 = .{0} ** limits.v6_groups,
+    head: [limits.v6_groups]u16 = @splat(0),
+    tail: [limits.v6_groups]u16 = @splat(0),
     head_count: usize = 0,
     tail_count: usize = 0,
     seen_run: bool = false,
@@ -161,7 +161,7 @@ fn finish(st: *const Parse) ?[limits.v6_bytes]u8 {
     } else if (total != limits.v6_groups) {
         return null;
     }
-    var out: [limits.v6_bytes]u8 = .{0} ** limits.v6_bytes;
+    var out: [limits.v6_bytes]u8 = @splat(0);
     for (0..st.head_count) |i| {
         out[i * 2] = @intCast(st.head[i] >> 8);
         out[(i * 2) + 1] = @intCast(st.head[i] & 0xFF);

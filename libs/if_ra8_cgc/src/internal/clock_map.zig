@@ -125,7 +125,7 @@ const Instances = struct {
 };
 
 const kinds = blk: {
-    var table = [_]KindRow{.{}} ** kind_count;
+    var table: [kind_count]KindRow = @splat(.{});
     table[@intFromEnum(Kind.core)] = .{ .domain = .cpuclk0, .instances = Instances.one };
     table[@intFromEnum(Kind.uart)] = .{ .domain = .pclka, .gate_base = Mstp.sci0, .instances = Instances.sci };
     table[@intFromEnum(Kind.spi)] = .{ .domain = .pclka, .gate_base = Mstp.spi0, .instances = Instances.two };

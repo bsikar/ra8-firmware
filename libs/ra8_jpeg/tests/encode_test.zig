@@ -21,7 +21,7 @@ const sink_mod = @import("sink");
 const dct = @import("dct");
 
 test "zigzag is a permutation of the 64 raster indices" {
-    var seen = [_]bool{false} ** spec.Block.size;
+    var seen: [spec.Block.size]bool = @splat(false);
     for (spec.zigzag) |index| {
         try testing.expect(index < spec.Block.size);
         try testing.expect(!seen[index]);

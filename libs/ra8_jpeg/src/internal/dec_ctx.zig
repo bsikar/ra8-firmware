@@ -72,10 +72,10 @@ pub const Ctx = struct {
     hmax: u8 = 0,
     vmax: u8 = 0,
 
-    comps: [Limit.max_components]Component = .{Component{}} ** Limit.max_components,
+    comps: [Limit.max_components]Component = @splat(Component{}),
 
     quant: [Limit.quant_tables][spec.Block.size]u16 =
-        .{[_]u16{0} ** spec.Block.size} ** Limit.quant_tables,
+        @splat(@as([spec.Block.size]u16, @splat(0))),
     dc_tables: [Limit.huff_ids]huffdec.Table = undefined,
     ac_tables: [Limit.huff_ids]huffdec.Table = undefined,
 
@@ -84,13 +84,13 @@ pub const Ctx = struct {
     pub fn reset(self: *Ctx) void {
         self.* = .{};
         for (&self.dc_tables) |*table| table.* = .{
-            .bits = .{0} ** spec.Huff.lengths,
-            .vals = .{0} ** spec.Huff.max_symbols,
-            .huffcode = .{0} ** spec.Huff.max_symbols,
-            .huffsize = .{0} ** spec.Huff.max_symbols,
-            .mincode = .{0} ** spec.Huff.lengths,
-            .maxcode = .{0} ** spec.Huff.lengths,
-            .valptr = .{0} ** spec.Huff.lengths,
+            .bits = @splat(0),
+            .vals = @splat(0),
+            .huffcode = @splat(0),
+            .huffsize = @splat(0),
+            .mincode = @splat(0),
+            .maxcode = @splat(0),
+            .valptr = @splat(0),
             .total = 0,
         };
         self.ac_tables = self.dc_tables;

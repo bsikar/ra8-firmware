@@ -123,12 +123,12 @@ const tx = struct {
     pub const MutexBlock = if (off_target)
         extern struct { magic: u32 = 0 }
     else
-        extern struct { words: [mutex_block_bytes / 4]u32 = [_]u32{0} ** (mutex_block_bytes / 4) };
+        extern struct { words: [mutex_block_bytes / 4]u32 = @splat(0) };
 
     pub const ThreadBlock = if (off_target)
         extern struct { magic: u32 = 0 }
     else
-        extern struct { words: [thread_block_bytes / 4]u32 = [_]u32{0} ** (thread_block_bytes / 4) };
+        extern struct { words: [thread_block_bytes / 4]u32 = @splat(0) };
 
     extern fn _txe_mutex_create(mutex: *anyopaque, name: [*:0]u8, inherit: c_uint, block_size: c_uint) c_uint;
     extern fn _txe_mutex_get(mutex: *anyopaque, wait_option: c_ulong) c_uint;

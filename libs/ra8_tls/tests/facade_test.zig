@@ -49,7 +49,7 @@ test "every entry point refuses to run before init" {
     var moved: usize = 0;
     var id: u16 = 0;
     var flags: u32 = 0;
-    var name: [8]u8 = [_]u8{0} ** 8;
+    var name: [8]u8 = @splat(0);
 
     const want = config();
     try std.testing.expectEqual(Err.not_initialized, facade.sessionOpen(&want, &handle));
@@ -144,7 +144,7 @@ test "a handshake drives the transport and traffic flows after it" {
     try std.testing.expectEqual(Err.ok, facade.send(slot, "hello", &moved));
     try std.testing.expectEqual(@as(usize, 5), moved);
 
-    var inbox: [4]u8 = [_]u8{0} ** 4;
+    var inbox: [4]u8 = @splat(0);
     try std.testing.expectEqual(Err.ok, facade.recv(slot, &inbox, &moved));
     try std.testing.expectEqual(@as(usize, 1), moved);
 }
@@ -156,13 +156,13 @@ test "the cipher suite lands in the caller's buffer and truncates to fit" {
     const slot = opened(&want);
 
     var id: u16 = 0xFFFF;
-    var roomy: [32]u8 = [_]u8{0xAA} ** 32;
+    var roomy: [32]u8 = @splat(0xAA);
     try std.testing.expectEqual(Err.ok, facade.cipherSuite(slot, &id, &roomy));
     try std.testing.expectEqual(@as(u16, 0), id);
     try std.testing.expectEqualStrings("off-target-loopback", roomy[0..19]);
     try std.testing.expectEqual(@as(u8, 0), roomy[19]);
 
-    var tight: [4]u8 = [_]u8{0xAA} ** 4;
+    var tight: [4]u8 = @splat(0xAA);
     try std.testing.expectEqual(Err.ok, facade.cipherSuite(slot, &id, &tight));
     try std.testing.expectEqualStrings("off", tight[0..3]);
     try std.testing.expectEqual(@as(u8, 0), tight[3]);

@@ -70,7 +70,7 @@ pub fn bodyWriteValid(offset: u32, len: u32) bool {
 /// faults the bus (the SRAM-resident warning in `ra8_flash.h`). Keeping it on
 /// the stack keeps every operand in SRAM.
 pub fn writePages(flash: anytype, addr: u32, src: []const u8) !void {
-    var erased = [_]u8{erased_byte} ** image.layout.page_size;
+    var erased: [image.layout.page_size]u8 = @splat(erased_byte);
     var off: u32 = 0;
     const len: u32 = @intCast(src.len);
     while (off < len) {

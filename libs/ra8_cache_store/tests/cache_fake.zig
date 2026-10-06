@@ -161,13 +161,13 @@ fn driverInit(flash: ?*anyopaque) callconv(.c) c_uint {
 
 pub const Fixture = struct {
     store: Store = .{},
-    index: [8]Entry = [_]Entry{.{}} ** 8,
-    staging: [sector_bytes]u8 = [_]u8{0} ** sector_bytes,
+    index: [8]Entry = @splat(.{}),
+    staging: [sector_bytes]u8 = @splat(0),
     flash_block: u32 = 0,
 
     pub fn bind(self: *Fixture) void {
         self.store = .{};
-        self.index = [_]Entry{.{}} ** 8;
+        self.index = @splat(.{});
         self.store.flash = @ptrCast(&self.flash_block);
         self.store.index = &self.index;
         self.store.staging = &self.staging;

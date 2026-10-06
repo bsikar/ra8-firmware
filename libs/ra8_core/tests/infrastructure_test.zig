@@ -31,13 +31,13 @@ test "the pattern is the documented sentinel" {
 }
 
 test "a seeded region reads back intact" {
-    var words = [_]u32{0} ** 8;
+    var words: [8]u32 = @splat(0);
     @memset(&words, canary.sentinel.pattern);
     for (words) |word| try std.testing.expectEqual(canary.sentinel.pattern, word);
 }
 
 test "one changed word is enough to fail the walk" {
-    var words = [_]u32{canary.sentinel.pattern} ** 8;
+    var words: [8]u32 = @splat(canary.sentinel.pattern);
     words[5] = 0;
     var ok = true;
     for (words) |word| {

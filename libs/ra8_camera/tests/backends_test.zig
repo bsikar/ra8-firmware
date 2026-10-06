@@ -324,7 +324,7 @@ test "jpeg encode: an rgb frame is sampled, encoded, and published as jpeg" {
 test "jpeg encode: a uyvy frame is converted through the colour transform" {
     encoder = .{ .produced = 4 };
     @memset(&workspace, 0);
-    var source = [_]u8{0} ** (12 * 16 * 2);
+    var source: [12 * 16 * 2]u8 = @splat(0);
     var index: usize = 0;
     while (index < source.len) : (index += 2) {
         source[index] = 255;

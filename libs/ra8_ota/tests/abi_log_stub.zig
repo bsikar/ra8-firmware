@@ -9,8 +9,8 @@
 const std = @import("std");
 
 var log_calls: usize = 0;
-var last_tag: [64]u8 = .{0} ** 64;
-var last_message: [96]u8 = .{0} ** 96;
+var last_tag: [64]u8 = @splat(0);
+var last_message: [96]u8 = @splat(0);
 
 fn keep(buffer: []u8, text: [*:0]const u8) void {
     const span = std.mem.span(text);

@@ -187,7 +187,7 @@ pub const EpSlot = struct {
     head: u16 = 0,
     tail: u16 = 0,
     count: u16 = 0,
-    ring: [ring_slots]Packet = [_]Packet{.{}} ** ring_slots,
+    ring: [ring_slots]Packet = @splat(.{}),
 
     /// Cursor + length reset. Leaves payload bytes alone, as the C did.
     pub fn resetRing(self: *EpSlot) void {
@@ -248,7 +248,7 @@ pub const EpSlot = struct {
 };
 
 pub const Table = struct {
-    eps: [ep_table_len]EpSlot = [_]EpSlot{.{}} ** ep_table_len,
+    eps: [ep_table_len]EpSlot = @splat(.{}),
 
     pub fn resetAll(self: *Table) void {
         for (&self.eps) |*slot| slot.reset();

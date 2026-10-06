@@ -52,7 +52,7 @@ test "crc16-ccitt matches the classic check vector" {
 }
 
 test "crc16 of an all-zero block is zero" {
-    const block = [_]u8{0} ** 512;
+    const block: [512]u8 = @splat(0);
     try testing.expectEqual(@as(u16, 0), core.crc16(&block, block.len));
 }
 
@@ -152,7 +152,7 @@ test "tailWord assembles four bytes big-endian" {
 
 test "csdToBlocks decodes a CSD v2 4 GiB card" {
     // version 1 in byte 0 bits 7:6, C_SIZE = 7679 -> (7679 + 1) * 1024.
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     csd[0] = 0x40;
     csd[7] = 0x00;
     csd[8] = 0x1D;
@@ -161,7 +161,7 @@ test "csdToBlocks decodes a CSD v2 4 GiB card" {
 }
 
 test "csdToBlocks masks the CSD v2 C_SIZE MSB to six bits" {
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     csd[0] = 0x40;
     csd[7] = 0xFF; // only the low six bits belong to C_SIZE
     csd[8] = 0x00;
@@ -173,7 +173,7 @@ test "csdToBlocks masks the CSD v2 C_SIZE MSB to six bits" {
 test "csdToBlocks decodes a CSD v1 card through the mult/blocklen product" {
     // version 0, C_SIZE = 3751, C_SIZE_MULT = 7, READ_BL_LEN = 9:
     // (3751 + 1) * 512 * 512 / 512 blocks.
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     csd[0] = 0x00;
     csd[5] = 0x09;
     csd[6] = 0x03;
@@ -189,7 +189,7 @@ test "csdToBlocks decodes a CSD v1 card through the mult/blocklen product" {
 }
 
 test "csdToBlocks answers zero for a reserved CSD version" {
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     csd[0] = 0x80; // version 2, reserved
     try testing.expectEqual(@as(u32, 0), core.csdToBlocks(&csd));
     csd[0] = 0xC0; // version 3, reserved
@@ -198,7 +198,7 @@ test "csdToBlocks answers zero for a reserved CSD version" {
 
 test "csdToBlocks answers zero for an all-zero CSD v1 register" {
     // c_size 0, mult 4, block_len 1 -> 4 bytes, which is under one block.
-    const csd = [_]u8{0} ** 16;
+    const csd: [16]u8 = @splat(0);
     try testing.expectEqual(@as(u32, 0), core.csdToBlocks(&csd));
 }
 

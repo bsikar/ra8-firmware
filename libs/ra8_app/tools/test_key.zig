@@ -8,7 +8,7 @@
 //! derives the same public key from it.
 
 /// The raw Ed25519 seed, the same fill module_pack_test.zig signs with.
-pub const seed = [_]u8{0x24} ** 32;
+pub const seed: [32]u8 = @splat(0x24);
 /// The manifest identity of the hello-world module.
 pub const app_id = "com.ra8.txm_hello_m33";
 pub const display_name = "Hello M33";

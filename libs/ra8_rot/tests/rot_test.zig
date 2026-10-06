@@ -19,8 +19,8 @@ fn signedTrailer(body_len: u32) rot.Trailer {
         .img_version = 7,
         .body_len = body_len,
         .sig_len = rot.Size.sig_bytes,
-        .digest = [_]u8{0xAB} ** rot.Size.digest_bytes,
-        .sig = [_]u8{0xCD} ** rot.Size.sig_bytes,
+        .digest = @splat(0xAB),
+        .sig = @splat(0xCD),
     };
 }
 
@@ -73,15 +73,15 @@ test "the screen checks the trailer before the lengths" {
 }
 
 test "constant-time compare: equal, differing, and the degenerate lengths" {
-    const a = [_]u8{0x5A} ** rot.Size.digest_bytes;
-    var b = [_]u8{0x5A} ** rot.Size.digest_bytes;
+    const a: [rot.Size.digest_bytes]u8 = @splat(0x5A);
+    var b: [rot.Size.digest_bytes]u8 = @splat(0x5A);
     try std.testing.expect(rot.equalConstantTime(&a, &b));
 
     // A difference in the last byte is as fatal as one in the first: the fold
     // has no early exit.
     b[rot.Size.digest_bytes - 1] ^= 0x01;
     try std.testing.expect(!rot.equalConstantTime(&a, &b));
-    b = [_]u8{0x5A} ** rot.Size.digest_bytes;
+    b = @splat(0x5A);
     b[0] ^= 0x80;
     try std.testing.expect(!rot.equalConstantTime(&a, &b));
 
@@ -91,7 +91,7 @@ test "constant-time compare: equal, differing, and the degenerate lengths" {
 }
 
 test "the signed material is the little-endian version ahead of the digest" {
-    const digest = [_]u8{0x11} ** rot.Size.digest_bytes;
+    const digest: [rot.Size.digest_bytes]u8 = @splat(0x11);
     const material = rot.signedMaterial(0x0403_0201, digest);
 
     try std.testing.expectEqual(@as(usize, 4 + rot.Size.digest_bytes), material.len);
@@ -100,7 +100,7 @@ test "the signed material is the little-endian version ahead of the digest" {
 }
 
 test "a different version changes the signed material, which is the point" {
-    const digest = [_]u8{0x11} ** rot.Size.digest_bytes;
+    const digest: [rot.Size.digest_bytes]u8 = @splat(0x11);
     const first = rot.signedMaterial(1, digest);
     const forged = rot.signedMaterial(2, digest);
     try std.testing.expect(!std.mem.eql(u8, &first, &forged));

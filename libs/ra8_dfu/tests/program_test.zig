@@ -79,7 +79,7 @@ test "every page is erased to all ones before its body goes down" {
     var seen: usize = 0;
 
     const page = image.layout.page_size;
-    const body = [_]u8{0xA5} ** (page * 3);
+    const body: [page * 3]u8 = @splat(0xA5);
     try program.writePages(recorder(&writes, &seen, null), 0x0202_0000, &body);
 
     try std.testing.expectEqual(@as(usize, 6), writes.items.len);
@@ -104,7 +104,7 @@ test "a short tail is written as one partial page" {
     var seen: usize = 0;
 
     const page = image.layout.page_size;
-    const body = [_]u8{0x11} ** (page + 8);
+    const body: [page + 8]u8 = @splat(0x11);
     try program.writePages(recorder(&writes, &seen, null), 0, &body);
 
     try std.testing.expectEqual(@as(usize, 4), writes.items.len);
@@ -119,7 +119,7 @@ test "the loop stops at the first failing page" {
     var seen: usize = 0;
 
     const page = image.layout.page_size;
-    const body = [_]u8{0x22} ** (page * 4);
+    const body: [page * 4]u8 = @splat(0x22);
     try std.testing.expectError(
         error.Flash,
         program.writePages(recorder(&writes, &seen, 2), 0, &body),

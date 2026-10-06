@@ -14,7 +14,7 @@ const Sets = policy.Sets;
 const Seg = policy.Seg;
 
 fn cells(comptime n: usize) [n]Cell {
-    return [_]Cell{.{}} ** n;
+    return @as([n]Cell, @splat(.{}));
 }
 
 /// One segment's cells from MRU to LRU.

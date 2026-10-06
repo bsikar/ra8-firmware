@@ -340,7 +340,7 @@ test "a card that stays busy through the ACMD41 budget fails init" {
 test "run_init_sequence rejects a CSD that decodes to zero blocks" {
     var card = Card.init(testing.allocator);
     defer card.deinit();
-    card.csd = [_]u8{0} ** 16;
+    card.csd = @splat(0);
     bindResponder(&card);
 
     try testing.expectEqual(err_protocol_error, abi.priv_sdmmc_spi_run_init_sequence());
@@ -369,7 +369,7 @@ test "a CSD v1 card publishes the mult/blocklen capacity" {
     var card = Card.init(testing.allocator);
     defer card.deinit();
     card.cmd8_r1 = 0x05;
-    var csd = [_]u8{0} ** 16;
+    var csd: [16]u8 = @splat(0);
     csd[5] = 0x09;
     csd[6] = 0x03;
     csd[7] = 0xA5;
@@ -426,7 +426,7 @@ test "only CMD9 and CMD16 failures log, and they log under the SDSPI tag" {
     // A CSD that decodes to zero blocks logs the message then the code.
     var second = Card.init(testing.allocator);
     defer second.deinit();
-    second.csd = [_]u8{0} ** 16;
+    second.csd = @splat(0);
     second.respond = true;
     bind(&second);
     _ = abi.priv_sdmmc_spi_run_init_sequence();

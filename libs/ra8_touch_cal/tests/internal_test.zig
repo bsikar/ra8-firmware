@@ -105,7 +105,7 @@ test "solve3 handles a negative determinant" {
 }
 
 test "compute rejects a sample count outside the accepted range" {
-    const pts = [_]Point{.{}} ** 6;
+    const pts: [6]Point = @splat(.{});
     try std.testing.expectError(error.SampleCountOutOfRange, implementation.compute(&pts, &pts, 2));
     try std.testing.expectError(error.SampleCountOutOfRange, implementation.compute(&pts, &pts, 6));
     try std.testing.expectError(error.SampleCountOutOfRange, implementation.compute(&pts, &pts, 0));

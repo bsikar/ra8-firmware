@@ -398,7 +398,7 @@ test "ep_send on an unopened endpoint is invalid_state" {
 test "ep_send rejects a packet larger than the endpoint's max" {
     try bringUp();
     try openBulkIn(1, 8);
-    const payload = [_]u8{0} ** 9;
+    const payload: [9]u8 = @splat(0);
     try std.testing.expectEqual(err_invalid_arg, abi.ra8_usb_pal_ep_send(1, &payload, 9));
 }
 
@@ -428,7 +428,7 @@ test "a rejected ep_send fires no event" {
     try bringUp();
     _ = abi.ra8_usb_pal_set_event_handler(palEvent, null);
     try openBulkIn(1, 8);
-    const payload = [_]u8{0} ** 9;
+    const payload: [9]u8 = @splat(0);
     _ = abi.ra8_usb_pal_ep_send(1, &payload, 9);
     try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
@@ -651,7 +651,7 @@ test "a full send/recv session over the high-speed controller" {
     try std.testing.expectEqual(err_ok, abi.ra8_usb_pal_init(speed_hs));
     try std.testing.expectEqual(err_ok, abi.ra8_usb_pal_attach(1));
     try std.testing.expectEqual(err_ok, abi.ra8_usb_pal_ep_open(0x82, 1, 2, 512));
-    const payload = [_]u8{0x5A} ** 512;
+    const payload: [512]u8 = @splat(0x5A);
     try std.testing.expectEqual(err_ok, abi.ra8_usb_pal_ep_send(2, &payload, 512));
     var buf: [512]u8 = undefined;
     var len: u16 = 512;

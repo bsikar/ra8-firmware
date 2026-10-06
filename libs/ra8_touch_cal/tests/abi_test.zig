@@ -58,7 +58,7 @@ const Stub = struct {
 };
 
 test "compute rejects each null pointer in declaration order" {
-    var pts = [_]Point{.{}} ** 5;
+    var pts: [5]Point = @splat(.{});
     var m: Matrix = .{};
     try std.testing.expectEqual(code(.null_ptr), abi.ra8_touch_cal_compute(null, &pts, 5, &m));
     try std.testing.expectEqual(code(.null_ptr), abi.ra8_touch_cal_compute(&pts, null, 5, &m));
@@ -66,7 +66,7 @@ test "compute rejects each null pointer in declaration order" {
 }
 
 test "compute rejects a sample count outside the accepted range" {
-    var pts = [_]Point{.{}} ** 6;
+    var pts: [6]Point = @splat(.{});
     var m: Matrix = .{};
     try std.testing.expectEqual(code(.invalid_arg), abi.ra8_touch_cal_compute(&pts, &pts, 2, &m));
     try std.testing.expectEqual(code(.invalid_arg), abi.ra8_touch_cal_compute(&pts, &pts, 6, &m));
@@ -80,7 +80,7 @@ test "compute reports a singular system as invalid_arg" {
 }
 
 test "compute leaves the destination untouched when it refuses" {
-    var pts = [_]Point{.{}} ** 5;
+    var pts: [5]Point = @splat(.{});
     var m: Matrix = .{ .a = 7, .b = 7, .c = 7, .d = 7, .e = 7, .f = 7 };
     try std.testing.expectEqual(code(.invalid_arg), abi.ra8_touch_cal_compute(&pts, &pts, 2, &m));
     try std.testing.expectEqual(@as(f32, 7), m.a);
@@ -149,7 +149,7 @@ test "run rejects an inset that collapses either axis" {
 }
 
 test "run maps any seam failure onto hw_error" {
-    var samples = [_]Point{.{}} ** 5;
+    var samples: [5]Point = @splat(.{});
     var draw_fails: Stub = .{ .reads = &samples, .forced_err = code(.hw_error) };
     var m: Matrix = .{};
     const cfg_draw = draw_fails.config(1024, 600, 32);

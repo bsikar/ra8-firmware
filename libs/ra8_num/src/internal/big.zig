@@ -21,7 +21,7 @@ pub const Overflow = error{Capacity};
 
 const Big = @This();
 
-word: [limits.words]u32 = .{0} ** limits.words,
+word: [limits.words]u32 = @splat(0),
 used: u8 = 1,
 
 /// The magnitude of one u64, normalized.

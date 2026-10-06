@@ -24,7 +24,7 @@ pub const addr_7b_max: u8 = 0x7F;
 
 /// One staged write frame: the register byte followed by the payload.
 pub const Frame = struct {
-    bytes: [wire.frame_bytes_max]u8 = .{0} ** wire.frame_bytes_max,
+    bytes: [wire.frame_bytes_max]u8 = @splat(0),
     len: usize = 0,
 
     /// The staged bytes, ready for one framed write.

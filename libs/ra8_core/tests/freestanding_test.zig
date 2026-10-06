@@ -29,7 +29,7 @@ test "set of an empty span touches nothing" {
 }
 
 test "copy moves every byte" {
-    var dst = [_]u8{0} ** 5;
+    var dst: [5]u8 = @splat(0);
     mem.copy(&dst, "hello");
     try testing.expectEqualSlices(u8, "hello", &dst);
 }
@@ -127,24 +127,24 @@ test "indexOfString does not run off the end on a partial tail match" {
 }
 
 test "copy writes the terminator" {
-    var dst = [_]u8{0xFF} ** 8;
+    var dst: [8]u8 = @splat(0xFF);
     str.copy(&dst, "abc");
     try testing.expectEqualSlices(u8, &[_]u8{ 'a', 'b', 'c', 0, 0xFF, 0xFF, 0xFF, 0xFF }, &dst);
 }
 
 test "copyBounded pads short sources and truncates long ones" {
-    var dst = [_]u8{0xFF} ** 6;
+    var dst: [6]u8 = @splat(0xFF);
     str.copyBounded(&dst, "ab", 6);
     try testing.expectEqualSlices(u8, &[_]u8{ 'a', 'b', 0, 0, 0, 0 }, &dst);
 
-    var tight = [_]u8{0xFF} ** 3;
+    var tight: [3]u8 = @splat(0xFF);
     str.copyBounded(&tight, "abcdef", 3);
     // No terminator: exactly what strncpy does when it runs out of room.
     try testing.expectEqualSlices(u8, &[_]u8{ 'a', 'b', 'c' }, &tight);
 }
 
 test "copyBounded with n of zero writes nothing" {
-    var dst = [_]u8{0xFF} ** 2;
+    var dst: [2]u8 = @splat(0xFF);
     str.copyBounded(&dst, "abc", 0);
     try testing.expectEqualSlices(u8, &[_]u8{ 0xFF, 0xFF }, &dst);
 }

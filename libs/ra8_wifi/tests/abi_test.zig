@@ -64,7 +64,7 @@ const Mock = struct {
     mac: abi.Mac = .{ .octet = .{ 0x02, 0, 0, 0, 0, 0x2A } },
     ap: abi.Ap = .{},
     lease: abi.Lease = .{},
-    last_ssid: [64]u8 = .{0} ** 64,
+    last_ssid: [64]u8 = @splat(0),
     last_ssid_len: usize = 0,
     saw_psk_null: bool = false,
 };

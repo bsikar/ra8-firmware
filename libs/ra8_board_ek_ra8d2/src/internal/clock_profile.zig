@@ -22,7 +22,7 @@ const max_wired = 4;
 /// One kind's wiring: board index -> chip instance, in board order.
 const Wiring = struct {
     count: u8 = 0,
-    chip_index: [max_wired]u8 = .{0} ** max_wired,
+    chip_index: [max_wired]u8 = @splat(0),
 };
 
 /// Each wired row takes its chip instance from the board constant that already
@@ -40,7 +40,7 @@ const Wiring = struct {
 /// routes none: spi (both Pmods take SPI from SCI in Simple-SPI mode), can,
 /// adc, dac, usb, timer, pwm, dma, rtc, watchdog, crypto.
 const wiring = blk: {
-    var table = [_]Wiring{.{}} ** Kind.count;
+    var table: [Kind.count]Wiring = @splat(.{});
     table[Kind.core] = .{ .count = 1, .chip_index = .{ 0, 0, 0, 0 } };
     table[Kind.uart] = .{ .count = 4, .chip_index = .{ 0, 2, 7, 8 } };
     table[Kind.i2c] = .{ .count = 1, .chip_index = .{ 1, 0, 0, 0 } };

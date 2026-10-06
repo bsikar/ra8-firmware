@@ -31,7 +31,7 @@ pub const slot_used: u8 = 1;
 /// part of the ABI; it stays `extern` only to keep the field order readable.
 pub const Slot = extern struct {
     state: u8 = slot_free,
-    name: [name_max]u8 = [_]u8{0} ** name_max,
+    name: [name_max]u8 = @splat(0),
     deadline_ms: u32 = 0,
     last_checkin_ms: u32 = 0,
 };
@@ -97,7 +97,7 @@ pub const Verdict = struct {
 
 /// The statically-allocated check-in registry.
 pub const Registry = extern struct {
-    slots: [max_threads]Slot = [_]Slot{.{}} ** max_threads,
+    slots: [max_threads]Slot = @splat(.{}),
 
     /// Return every slot to the free state.
     pub fn clear(self: *Registry) void {
