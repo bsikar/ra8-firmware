@@ -50,7 +50,7 @@ test "the length counts the payload and not the header" {
 }
 
 test "a buffer too small for the header or the payload is refused and left alone" {
-    var out = [_]u8{0x7E} ** 32;
+    var out: [32]u8 = @splat(0x7E);
     const need = Header.bytes + try rpc.codec.size(Blob, blob);
     for (0..need) |len| {
         try testing.expectError(error.NoSpace, frame.encode(Blob, 9, blob, out[0..len]));
@@ -60,7 +60,7 @@ test "a buffer too small for the header or the payload is refused and left alone
 }
 
 test "anything shorter than a header is truncated" {
-    const bytes = [_]u8{0} ** Header.bytes;
+    const bytes: [Header.bytes]u8 = @splat(0);
     for (0..Header.bytes) |len| {
         try testing.expectError(error.Truncated, frame.split(bytes[0..len], 0));
     }

@@ -65,7 +65,7 @@ test "body rejects null payload and null proto_len" {
 }
 
 test "body zeroes proto_len on a malformed envelope" {
-    var buf: [64]u8 = .{0} ** 64;
+    var buf: [64]u8 = @splat(0);
     var proto_len: u16 = 0xFFFF;
 
     try std.testing.expectEqual(@as(?[*]const u8, null), abi.priv_c6link_tlv_body(&buf, 32, &proto_len));

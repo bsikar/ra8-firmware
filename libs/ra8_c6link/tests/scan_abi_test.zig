@@ -22,7 +22,7 @@ const Code = struct {
 };
 
 const Script = struct {
-    order: [4]u32 = [_]u32{0} ** 4,
+    order: [4]u32 = @splat(0),
     calls: usize = 0,
     pumps: usize = 0,
     done_after: usize = 1,
@@ -35,7 +35,7 @@ const Script = struct {
     asked: i32 = -1,
     n_records: usize = 0,
     recs: [4]c.WifiApRecord = std.mem.zeroes([4]c.WifiApRecord),
-    ptrs: [4][*c]c.WifiApRecord = [_][*c]c.WifiApRecord{null} ** 4,
+    ptrs: [4][*c]c.WifiApRecord = @as([4][*c]c.WifiApRecord, @splat(null)),
 };
 
 var script: Script = .{};

@@ -11,7 +11,7 @@ const impl = abi.internal;
 
 /// A host framebuffer big enough for a 16x8 surface at any depth.
 const Surface = struct {
-    bytes: [16 * 8 * 4]u8 = [_]u8{0} ** (16 * 8 * 4),
+    bytes: [16 * 8 * 4]u8 = @splat(0),
 
     /// Publish this surface the way `ra8_gfx_init()`
     /// does: packed rows, full-surface clip. The bind TU stays C, so these
@@ -308,7 +308,7 @@ test "blit_gray8 rejects a null source and a non-positive extent" {
     var s = Surface{};
     s.bind(16, 8, impl.format.rgb565);
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit_gray8(null, 1, 1, 0, 0));
-    const pixels = [_]u8{0xFF} ** 4;
+    const pixels: [4]u8 = @splat(0xFF);
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit_gray8(&pixels, 0, 1, 0, 0));
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit_gray8(&pixels, 1, 0, 0, 0));
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit_gray8(&pixels, -1, 1, 0, 0));
@@ -329,7 +329,7 @@ test "blit_gray8 clips the fast path to the clip box" {
     var s = Surface{};
     s.bind(16, 8, impl.format.rgb565);
     try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(4, 2, 2, 2));
-    const pixels = [_]u8{0xFF} ** (8 * 8);
+    const pixels: [8 * 8]u8 = @splat(0xFF);
     try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_blit_gray8(&pixels, 8, 8, 0, 0));
     try std.testing.expectEqual(@as(usize, 4), s.nonZeroCount());
 }
@@ -337,7 +337,7 @@ test "blit_gray8 clips the fast path to the clip box" {
 test "a fast-path blit fully outside the clip writes nothing" {
     var s = Surface{};
     s.bind(16, 8, impl.format.rgb565);
-    const pixels = [_]u8{0xFF} ** 4;
+    const pixels: [4]u8 = @splat(0xFF);
     try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_blit_gray8(&pixels, 2, 2, 40, 40));
     try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
 }
@@ -357,14 +357,14 @@ test "blit_gray8 takes the per-pixel path for a non-RGB565 surface" {
 test "blit judges null before init" {
     unbind();
     try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_gfx_blit(null, 1, 1, 2, 0, 0));
-    const src = [_]u8{0} ** 8;
+    const src: [8]u8 = @splat(0);
     try std.testing.expectEqual(impl.err.not_initialized, abi.ra8_gfx_blit(&src, 1, 1, 2, 0, 0));
 }
 
 test "blit rejects an empty source or an unknown source format" {
     var s = Surface{};
     s.bind(16, 8, impl.format.rgb565);
-    const src = [_]u8{0} ** 8;
+    const src: [8]u8 = @splat(0);
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit(&src, 0, 1, 2, 0, 0));
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit(&src, 1, 0, 2, 0, 0));
     try std.testing.expectEqual(impl.err.invalid_arg, abi.ra8_gfx_blit(&src, 1, 1, 1, 0, 0));
@@ -394,7 +394,7 @@ test "blit drops source pixels that fall outside the clip" {
     var s = Surface{};
     s.bind(16, 8, impl.format.rgb565);
     try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(0, 0, 1, 1));
-    const src = [_]u8{0xFF} ** (4 * 4 * 2);
+    const src: [4 * 4 * 2]u8 = @splat(0xFF);
     try std.testing.expectEqual(
         impl.err.ok,
         abi.ra8_gfx_blit(&src, 4, 4, impl.format.rgb565, 0, 0),
@@ -518,7 +518,7 @@ test "blit_gray4_zoom at 1:1 reproduces every level as a gray pixel" {
     s.bind(16, 8, impl.format.rgb565);
 
     const levels = [_]u8{ 0x0, 0x5, 0xA, 0xF };
-    var pixels = [_]u8{0} ** 2;
+    var pixels: [2]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(
@@ -538,7 +538,7 @@ test "blit_gray4_zoom magnifies one source pixel into a zoom-square block" {
     s.bind(16, 8, impl.format.rgb565);
 
     const levels = [_]u8{ 0xF, 0x0 };
-    var pixels = [_]u8{0} ** 1;
+    var pixels: [1]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(
@@ -560,9 +560,9 @@ test "blit_gray4_zoom places a sub-rectangle at dst plus offset times zoom" {
     s.bind(16, 8, impl.format.rgb565);
 
     // 4x2 image, all white except the pixel at (2, 1), which is black.
-    var levels = [_]u8{0xF} ** 8;
+    var levels: [8]u8 = @splat(0xF);
     levels[(1 * 4) + 2] = 0x0;
-    var pixels = [_]u8{0} ** 4;
+    var pixels: [4]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     // Sample the 2x1 window at (2, 1) at zoom 2, landing its first column at
@@ -585,7 +585,7 @@ test "blit_gray4_zoom draws only the in-image part of an off-image window" {
     s.bind(16, 8, impl.format.rgb565);
 
     const levels = [_]u8{ 0xF, 0xF, 0xF, 0xF };
-    var pixels = [_]u8{0} ** 2;
+    var pixels: [2]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     // Ask for four columns of a two-column image, starting one column left.
@@ -607,7 +607,7 @@ test "blit_gray4_zoom with a collapsed window draws nothing and still reports ok
     s.bind(16, 8, impl.format.rgb565);
 
     const levels = [_]u8{ 0xF, 0xF };
-    var pixels = [_]u8{0} ** 1;
+    var pixels: [1]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(
@@ -627,7 +627,7 @@ test "blit_gray4_zoom is clipped like every other draw" {
     try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(0, 0, 2, 2));
 
     const levels = [_]u8{0xF};
-    var pixels = [_]u8{0} ** 1;
+    var pixels: [1]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     // A 4x4 magnified block against a 2x2 clip leaves four pixels.
@@ -647,7 +647,7 @@ test "blit_gray4_zoom honours the surface pitch on a padded framebuffer" {
     s.bindPitch(4, 4, impl.format.rgb565, 16 * 2);
 
     const levels = [_]u8{ 0xF, 0xF };
-    var pixels = [_]u8{0} ** 1;
+    var pixels: [1]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(
@@ -668,7 +668,7 @@ test "blit_gray4_zoom takes the per-pixel path on a non-RGB565 surface" {
     s.bind(16, 8, impl.format.argb8888);
 
     const levels = [_]u8{ 0x3, 0xC };
-    var pixels = [_]u8{0} ** 1;
+    var pixels: [1]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(
@@ -686,7 +686,7 @@ test "blit_gray4_zoom reads the odd nibble of the last byte of an odd-width row"
     // 3x2 image: flat indices 0..5 span three bytes, and index 5 (the last
     // pixel) is the low nibble of the last one.
     const levels = [_]u8{ 0x1, 0x2, 0x3, 0x4, 0x5, 0xF };
-    var pixels = [_]u8{0} ** 3;
+    var pixels: [3]u8 = @splat(0);
     packGray4(&levels, &pixels);
 
     try std.testing.expectEqual(

@@ -18,25 +18,25 @@ test "the frame is two header octets and five three-octet tags" {
 }
 
 test "a full-size buffer takes the whole announcement" {
-    var out = [_]u8{0} ** Caps.bytes;
+    var out: [Caps.bytes]u8 = @splat(0);
     try testing.expectEqual(@as(?u8, Caps.bytes), caps.write(&out));
 }
 
 test "a buffer one octet short is refused and left untouched" {
-    var out = [_]u8{0xCC} ** (Caps.bytes - 1);
+    var out: [Caps.bytes - 1]u8 = @splat(0xCC);
     try testing.expectEqual(@as(?u8, null), caps.write(&out));
     for (out) |byte| try testing.expectEqual(@as(u8, 0xCC), byte);
 }
 
 test "the frame announces itself as an init event of the tag bytes that follow" {
-    var out = [_]u8{0} ** Caps.bytes;
+    var out: [Caps.bytes]u8 = @splat(0);
     _ = caps.write(&out).?;
     try testing.expectEqual(Tag.event_init, out[Caps.type_at]);
     try testing.expectEqual(@as(u8, 15), out[Caps.len_at]);
 }
 
 test "the five tags are emitted in upstream's order with their values" {
-    var out = [_]u8{0} ** Caps.bytes;
+    var out: [Caps.bytes]u8 = @splat(0);
     _ = caps.write(&out).?;
 
     const expected = [_][2]u8{
@@ -74,7 +74,7 @@ test "the flow-control marks leave the co-processor room to recover" {
 }
 
 test "a longer buffer is written exactly as far as the frame reaches" {
-    var out = [_]u8{0xEE} ** (Caps.bytes + 8);
+    var out: [Caps.bytes + 8]u8 = @splat(0xEE);
     try testing.expectEqual(@as(?u8, Caps.bytes), caps.write(&out));
     for (out[Caps.bytes..]) |byte| try testing.expectEqual(@as(u8, 0xEE), byte);
 }

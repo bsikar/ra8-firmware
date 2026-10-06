@@ -12,7 +12,7 @@ const ns = io.vfs_namespace;
 const fs = @import("fs_stubs.zig");
 
 var errors_logged: u32 = 0;
-var backend: [5]usize = .{0} ** 5;
+var backend: [5]usize = @splat(0);
 
 fn probe_op(_: *const anyopaque) callconv(.c) bool {
     return true;

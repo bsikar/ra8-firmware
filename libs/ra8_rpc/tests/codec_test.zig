@@ -45,7 +45,7 @@ test "size is the exact length of the encoding" {
 }
 
 test "a value at its bounds fills a maximum buffer exactly" {
-    const value: Blob = .{ .addr = 1, .data = &(.{0xAB} ** Blob.max_len.data) };
+    const value: Blob = .{ .addr = 1, .data = &@as([Blob.max_len.data]u8, @splat(0xAB)) };
     var out: [codec.maxSize(Blob)]u8 = undefined;
     try testing.expectEqual(out.len, (try codec.encode(Blob, value, &out)).len);
 }
@@ -56,15 +56,15 @@ test "a buffer one byte short is refused and left alone" {
         if (codec.maxSize(T) == 0) continue;
         const need = try codec.size(T, case.value);
 
-        var out = [_]u8{0x7E} ** 64;
+        var out: [64]u8 = @splat(0x7E);
         try testing.expectError(error.NoSpace, codec.encode(T, case.value, out[0 .. need - 1]));
         for (out) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
     }
 }
 
 test "a slice past its bound is refused on encode and the buffer left alone" {
-    const value: Blob = .{ .addr = 1, .data = &(.{0xAB} ** (Blob.max_len.data + 1)) };
-    var out = [_]u8{0x7E} ** 64;
+    const value: Blob = .{ .addr = 1, .data = &@as([Blob.max_len.data + 1]u8, @splat(0xAB)) };
+    var out: [64]u8 = @splat(0x7E);
     try testing.expectError(error.Oversize, codec.encode(Blob, value, &out));
     try testing.expectError(error.Oversize, codec.size(Blob, value));
     for (out) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
@@ -72,17 +72,17 @@ test "a slice past its bound is refused on encode and the buffer left alone" {
 
 test "a length past the bound is oversize even when the bytes are all there" {
     const len = Blob.max_len.data + 1;
-    const in = prefix(0) ++ prefix(len) ++ [_]u8{0xAB} ** len;
+    const in = prefix(0) ++ prefix(len) ++ @as([len]u8, @splat(0xAB));
     try testing.expectError(error.Oversize, codec.decode(Blob, &in));
 }
 
 test "a length past the end of the input is truncated" {
-    const in = prefix(0) ++ prefix(5) ++ [_]u8{0xAB} ** 4;
+    const in = prefix(0) ++ prefix(5) ++ @as([4]u8, @splat(0xAB));
     try testing.expectError(error.Truncated, codec.decode(Blob, &in));
 }
 
 test "a length of all ones is oversize, not an overflow" {
-    const in = prefix(0) ++ prefix(0xFFFF_FFFF) ++ [_]u8{0xAB} ** 4;
+    const in = prefix(0) ++ prefix(0xFFFF_FFFF) ++ @as([4]u8, @splat(0xAB));
     try testing.expectError(error.Oversize, codec.decode(Blob, &in));
 }
 
@@ -127,13 +127,13 @@ test "a union tag the union does not name is refused" {
 
 test "a union field's own rules still hold behind the tag" {
     const Reply = messages.Reply;
-    const long = prefix(9) ++ [_]u8{0xAB} ** 9;
+    const long = prefix(9) ++ @as([9]u8, @splat(0xAB));
     try testing.expectError(error.Oversize, codec.decode(Reply, &([_]u8{ 1, 0, 4 } ++ long)));
     try testing.expectError(error.Truncated, codec.decode(Reply, &.{ 1, 0, 1, 0xEF }));
     try testing.expectError(error.Trailing, codec.decode(Reply, &.{ 1, 0, 0, 0 }));
 
     const value: Reply = .{ .seq = 1, .body = .{ .text = "nine long" } };
-    var out = [_]u8{0x7E} ** 32;
+    var out: [32]u8 = @splat(0x7E);
     try testing.expectError(error.Oversize, codec.encode(Reply, value, &out));
     for (out) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
 }

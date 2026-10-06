@@ -26,7 +26,7 @@ fn entry(index: usize, guid: [16]u8, first: u64) void {
     std.mem.writeInt(u64, e[0x20..][0..8], first, .little);
 }
 
-const other_guid = [_]u8{0x11} ** 16;
+const other_guid: [16]u8 = @splat(0x11);
 
 fn volume() struct { u16, u64 } {
     var base: u64 = 0;

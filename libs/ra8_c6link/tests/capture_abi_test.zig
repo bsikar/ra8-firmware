@@ -67,7 +67,7 @@ test "bound rows forward and report edges, tx and rx with trailing zeros dropped
     const rows = innerRows(&inner);
     try std.testing.expectEqual(@as(c.ra8_err_t, 0), capture.ra8_c6link_capture_bind(&cap, &rows, sink, &text, &bound));
 
-    var tx = [_]u8{0} ** frame_bytes;
+    var tx: [frame_bytes]u8 = @splat(0);
     tx[0] = 0x02;
     tx[1] = 0x00;
     tx[2] = 0x10;
@@ -95,7 +95,7 @@ test "an all-zero frame has no hex, a failed transfer logs tx only, and long fra
     const rows = innerRows(&inner);
     try std.testing.expectEqual(@as(c.ra8_err_t, 0), capture.ra8_c6link_capture_bind(&cap, &rows, sink, &text, &bound));
 
-    var tx = [_]u8{0} ** frame_bytes;
+    var tx: [frame_bytes]u8 = @splat(0);
     var rx: [frame_bytes]u8 = undefined;
     try std.testing.expectEqual(@as(c.ra8_err_t, 0x402), bound.transfer.?(bound.ctx, &tx, &rx, frame_bytes));
     try std.testing.expectEqualStrings("c6cap 0 tx\n", text.slice());

@@ -70,13 +70,13 @@ pub fn mount() *const c.ra8_fs_mount_t {
 }
 
 pub fn reset(fs_type: u8) void {
-    for (&dir) |*e| e.* = [_]u8{0} ** entry_bytes;
+    for (&dir) |*e| e.* = @splat(0);
     dir[0][0] = 0x81; // allocation bitmap
     dir[1][0] = 0x82; // up-case table
     mount_store = std.mem.zeroes(c.ra8_fs_mount_t);
     mount_store.in_use = 1;
     mount_store.type = fs_type;
-    sector = [_]u8{0} ** 512;
+    sector = @splat(0);
     read_error = 0;
     written_index = null;
     have83 = 1;
@@ -90,19 +90,19 @@ pub fn reset(fs_type: u8) void {
     checksum_bytes = 0;
     stamped = .{ null, null, null };
     stamp_calls = 0;
-    fat = [_]u32{0} ** 32;
+    fat = @splat(0);
     fat_err = 0;
     fat_reads = 0;
     free_cached = 0xFFFF_FFFF;
-    bitmap = [_]u8{0} ** 1024;
+    bitmap = @splat(0);
     bitmap_err = 0;
     io_reads = 0;
-    for (&disk) |*d| d.* = [_]u8{0} ** 512;
+    for (&disk) |*d| d.* = @splat(0);
     for (&file_pool) |*f| f.* = std.mem.zeroes(c.ra8_fs_file_t);
     slots_left = 2;
     set_copies = false;
-    set_file = [_]u8{0} ** entry_bytes;
-    set_strm = [_]u8{0} ** entry_bytes;
+    set_file = @splat(0);
+    set_strm = @splat(0);
     name_units = 3;
     name_err = 0;
     parent_err = 0;
@@ -133,7 +133,7 @@ export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_
     _ = m;
     if (read_error != 0) return read_error;
     const i = cur.*.entry_in_cluster;
-    const src: [entry_bytes]u8 = if (i < slots) dir[i] else [_]u8{0x85} ** entry_bytes;
+    const src: [entry_bytes]u8 = if (i < slots) dir[i] else @as([entry_bytes]u8, @splat(0x85));
     @memcpy(out[0..entry_bytes], &src);
     cur.*.entry_in_cluster += 1;
     cur.*.scanned += 1;

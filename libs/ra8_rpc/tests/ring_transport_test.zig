@@ -199,7 +199,7 @@ test "a header that is not this layout is refused on every path" {
         try wire.send("abc");
         loop.setWord(field, loop.word(field) + 1);
 
-        var got = [_]u8{0x7E} ** 8;
+        var got: [8]u8 = @splat(0x7E);
         try testing.expect(wire.poll() != 0);
         try testing.expectError(error.BadMessage, wire.receive(&got));
         for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
@@ -216,7 +216,7 @@ test "an index at or past the capacity is refused, whichever index it is" {
             loop.setWord(field, index);
             const before = loop.mem;
 
-            var got = [_]u8{0x7E} ** 8;
+            var got: [8]u8 = @splat(0x7E);
             try testing.expectError(error.BadMessage, wire.receive(&got));
             for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
             loop.link.reset();

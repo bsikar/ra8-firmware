@@ -75,7 +75,7 @@ const ops = ns.Ops{
 };
 const rw_caps = ns.Caps{ .supports_streaming_write = true, .supports_sync = true };
 var format = ns.Format{ .name = "fake", .caps = rw_caps, .ops = &ops };
-var backend: [5]usize = .{0} ** 5;
+var backend: [5]usize = @splat(0);
 
 comptime {
     _ = @import("fs_stubs.zig");
@@ -201,7 +201,7 @@ test "mount_auto fills the table and refuses duplicates and overflow" {
 
 test "a native mount needs a built-in type and is not unmounted by the table" {
     try reset();
-    var m = vfs.FsMount{ .backend = .{0} ** 5, .type = 0 };
+    var m = vfs.FsMount{ .backend = @splat(0), .type = 0 };
     try std.testing.expectEqual(ns.err_invalid_arg, vfs.ra8_io_vfs_mount("fl", &m));
     try std.testing.expectEqual(@as(u32, 1), errors_logged);
     m.type = vfs.fs_type_exfat;
@@ -251,7 +251,7 @@ test "open refuses bad modes, read-only writes and a full handle table" {
 
 test "raw open reaches the native format and caps follow it" {
     try reset();
-    var m = vfs.FsMount{ .backend = .{0} ** 5, .type = vfs.fs_type_exfat };
+    var m = vfs.FsMount{ .backend = @splat(0), .type = vfs.fs_type_exfat };
     try std.testing.expectEqual(ns.ok, vfs.ra8_io_vfs_mount("fl", &m));
     var raw: ?*anyopaque = null;
     // The stubbed ra8_fs refuses the open; the error comes back unchanged.

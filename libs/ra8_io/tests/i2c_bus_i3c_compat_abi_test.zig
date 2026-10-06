@@ -139,7 +139,7 @@ test "write inverts send_stop into the driver's restart flag" {
 test "read forwards address, buffer and length and never asks for a restart" {
     reset();
     const b = try bound(0);
-    var rx = [_]u8{0} ** 6;
+    var rx: [6]u8 = @splat(0);
     last_restart = true;
     try std.testing.expectEqual(i3c.ok, b.iface.?.read.?(b.ctx, 0x36, &rx, 6));
     try std.testing.expect(!last_restart);
@@ -153,7 +153,7 @@ test "transfer forwards both phases" {
     reset();
     const b = try bound(0);
     const reg = [_]u8{0x0F};
-    var rx = [_]u8{0} ** 2;
+    var rx: [2]u8 = @splat(0);
     try std.testing.expectEqual(i3c.ok, b.iface.?.transfer.?(b.ctx, 0x6A, &reg, 1, &rx, 2));
     try std.testing.expectEqual(@as(u8, 0), last_channel);
     try std.testing.expectEqual(@as(u8, 0x6A), last_addr);

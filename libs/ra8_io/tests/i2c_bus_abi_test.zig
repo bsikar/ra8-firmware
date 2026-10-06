@@ -134,7 +134,7 @@ test "write, read and transfer dispatch to the backend with its ctx" {
     reset();
     const b = boundBus();
     const tx = [_]u8{ 0x0F, 0x01 };
-    var rx = [_]u8{0} ** 4;
+    var rx: [4]u8 = @splat(0);
     try std.testing.expectEqual(front.ok, ra8_io_i2c_bus_write(&b, 0x5D, &tx, 2, false));
     try std.testing.expect(last_ctx == @as(?*anyopaque, &cookie));
     try std.testing.expectEqual(@as(u8, 0x5D), last_addr);
@@ -179,7 +179,7 @@ test "as_ops trampolines forward through the bus to the backend" {
     try std.testing.expectEqual(front.ok, ra8_io_i2c_bus_as_ops(&b, &ops));
     try std.testing.expect(ops.ctx == @as(?*anyopaque, @constCast(@ptrCast(&b))));
     const tx = [_]u8{0xAA};
-    var rx = [_]u8{0} ** 2;
+    var rx: [2]u8 = @splat(0);
     try std.testing.expectEqual(front.ok, ops.write.?(ops.ctx, 0x48, &tx, 1, true));
     try std.testing.expect(last_stop);
     try std.testing.expect(last_ctx == @as(?*anyopaque, &cookie));

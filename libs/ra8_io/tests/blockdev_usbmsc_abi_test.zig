@@ -123,7 +123,7 @@ test "read and write go to the bound LUN with the block count" {
     var bd: Bd = undefined;
     var st: State = undefined;
     try bound(&bd, &st, 2);
-    var buf = [_]u8{0} ** 512;
+    var buf: [512]u8 = @splat(0);
     try std.testing.expectEqual(usbmsc.ok, bd.iface.?.read.?(bd.ctx, 77, 1, &buf));
     try std.testing.expectEqual(@as(u8, 2), last_lun);
     try std.testing.expectEqual(@as(u32, 77), last_lba);
@@ -138,7 +138,7 @@ test "a transfer past the READ(10)/WRITE(10) ceiling is out of range" {
     var bd: Bd = undefined;
     var st: State = undefined;
     try bound(&bd, &st, 0);
-    var buf = [_]u8{0} ** 512;
+    var buf: [512]u8 = @splat(0);
     try std.testing.expectEqual(usbmsc.err_out_of_range, bd.iface.?.read.?(bd.ctx, 0, 65536, &buf));
     try std.testing.expectEqual(usbmsc.err_out_of_range, bd.iface.?.write.?(bd.ctx, 0, 65536, &buf));
     try std.testing.expectEqual(@as(u32, 0), calls);
@@ -149,7 +149,7 @@ test "null ctx or buffer is logged and reported before the driver" {
     var bd: Bd = undefined;
     var st: State = undefined;
     try bound(&bd, &st, 0);
-    var buf = [_]u8{0} ** 512;
+    var buf: [512]u8 = @splat(0);
     var caps: Caps = undefined;
     try std.testing.expectEqual(usbmsc.err_null_ptr, bd.iface.?.read.?(null, 0, 1, &buf));
     try std.testing.expectEqual(usbmsc.err_null_ptr, bd.iface.?.read.?(bd.ctx, 0, 1, null));
@@ -166,7 +166,7 @@ test "a driver error passes straight back" {
     var bd: Bd = undefined;
     var st: State = undefined;
     try bound(&bd, &st, 1);
-    var buf = [_]u8{0} ** 512;
+    var buf: [512]u8 = @splat(0);
     var caps: Caps = undefined;
     result = err_timeout;
     try std.testing.expectEqual(err_timeout, bd.iface.?.read.?(bd.ctx, 0, 1, &buf));

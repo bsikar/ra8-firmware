@@ -31,7 +31,7 @@ test "mask is the committed 64x64 texture" {
 }
 
 test "mask is a permutation of the byte range, 16 of each value" {
-    var histogram = [_]u16{0} ** 256;
+    var histogram: [256]u16 = @splat(0);
     for (dither.mask) |value| histogram[value] += 1;
     for (histogram) |count| try std.testing.expectEqual(@as(u16, 16), count);
 }
@@ -165,7 +165,7 @@ test "an odd-length tile leaves the trailing low nibble clear" {
 }
 
 test "tile phase is continuous across abutting tiles" {
-    const flat = [_]u8{128} ** 16;
+    const flat: [16]u8 = @splat(128);
     var left: [8]u8 = undefined;
     var right: [8]u8 = undefined;
     dither.packTile(null, flat[0..16], 4, 4, 60, 0, &left);

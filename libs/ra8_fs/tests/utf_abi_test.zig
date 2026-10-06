@@ -56,7 +56,7 @@ test "decoder overflow and null arguments" {
 test "unpaired surrogates are refused by the encoder" {
     const cases = [_][]const u16{ &.{0xDC00}, &.{ 'a', 0xD800 }, &.{ 0xD800, 'b' } };
     for (cases) |u| {
-        var out: [16]u8 = .{0xAA} ** 16;
+        var out: [16]u8 = @splat(0xAA);
         try std.testing.expectEqual(utf.err_invalid_arg, utf.priv_utf16_to_utf8(u.ptr, @intCast(u.len), &out, out.len));
     }
 }

@@ -116,7 +116,7 @@ test "a length longer than the message is an error and nothing of it is read" {
     var end: End = .{};
     try end.init();
     try end.in.inject(&.{ 5, 0, 'a', 'b', 'c', 'd' });
-    var got = [_]u8{0x7E} ** 8;
+    var got: [8]u8 = @splat(0x7E);
     try testing.expectError(error.BadMessage, end.link.transport().receive(&got));
     for (got) |byte| try testing.expectEqual(@as(u8, 0x7E), byte);
 }

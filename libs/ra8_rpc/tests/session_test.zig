@@ -153,7 +153,7 @@ test "a request the wire cannot take holds no slot" {
     var rig: Rig = undefined;
     rig.init();
     try rig.open();
-    const junk = [_]u8{0} ** 32;
+    const junk: [32]u8 = @splat(0);
     while (rig.loop.a().send(&junk)) |_| {} else |_| {}
 
     const args: service.Add = .{ .a = 1, .b = 1 };

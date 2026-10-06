@@ -89,7 +89,7 @@ const Rig = struct {
 fn consume(rig: *Rig) bool {
     seen = .{};
     rig.link.stats = &rig.stats;
-    const payload = [_]u8{0} ** 8;
+    const payload: [8]u8 = @splat(0);
     return consume_abi.priv_c6link_rpc_consume(&rig.link, &payload, payload.len);
 }
 
@@ -176,7 +176,7 @@ test "a bad envelope is counted before the arena is touched" {
 test "null arguments and a link without stats are safe" {
     reset(c.RPC_TYPE__Req);
     var link = std.mem.zeroes(c.ra8_c6link_t);
-    const payload = [_]u8{0} ** 4;
+    const payload: [4]u8 = @splat(0);
     try std.testing.expect(!consume_abi.priv_c6link_rpc_consume(null, &payload, payload.len));
     try std.testing.expect(!consume_abi.priv_c6link_rpc_consume(&link, null, 0));
     seen = .{};

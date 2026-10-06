@@ -126,7 +126,7 @@ test "write_read forwards buffers, length and frame width" {
     reset();
     const b = try bound(0);
     var tx = [_]u8{ 1, 2, 3, 4 };
-    var rx = [_]u8{0} ** 4;
+    var rx: [4]u8 = @splat(0);
     try std.testing.expectEqual(spib.ok, b.iface.?.write_read.?(b.ctx, &tx, &rx, 2, 15));
     try std.testing.expectEqual(@as(u8, 0), last_channel);
     try std.testing.expect(last_tx_buf == @as(?*const anyopaque, &tx));

@@ -35,9 +35,9 @@ pub const Id = struct {
 /// the caller's record `const` instead of casting it away. Every field is
 /// sized to the protocol maximum, so a copy bounded by validated lengths fits.
 pub const WireBuf = struct {
-    ssid: [sta_cfg.Bound.ssid_max]u8 = [_]u8{0} ** sta_cfg.Bound.ssid_max,
-    pass: [sta_cfg.Bound.pass_max]u8 = [_]u8{0} ** sta_cfg.Bound.pass_max,
-    bssid: [field_copy.Bound.mac_octets]u8 = [_]u8{0} ** field_copy.Bound.mac_octets,
+    ssid: [sta_cfg.Bound.ssid_max]u8 = @splat(0),
+    pass: [sta_cfg.Bound.pass_max]u8 = @splat(0),
+    bssid: [field_copy.Bound.mac_octets]u8 = @splat(0),
 
     /// Copy the declared octets of `cfg`; its lengths were validated already.
     pub fn stage(self: *WireBuf, cfg: *const c.ra8_c6link_sta_cfg_t) void {
