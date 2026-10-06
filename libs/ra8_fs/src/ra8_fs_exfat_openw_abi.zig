@@ -173,7 +173,7 @@ pub export fn priv_exfat_open_write(m: *Mount, path: [*:0]const u8, mode: c.ra8_
     var leaf: [*c]const u8 = null;
     var e = c.priv_exfat_resolve_parent(m, path, &parent, &leaf);
     if (e != ok) return e;
-    var name = [_]u16{0} ** name_cap;
+    var name: [name_cap]u16 = @splat(0);
     var nlen: u32 = 0;
     e = c.priv_exfat_name_to_units(m, leaf, &name, &nlen);
     if (e == err_no_mem) return err_invalid_arg; // a name too long to store
@@ -181,8 +181,8 @@ pub export fn priv_exfat_open_write(m: *Mount, path: [*:0]const u8, mode: c.ra8_
     if (nlen == 0) return err_invalid_arg;
     var pos = std.mem.zeroes([set_max]c.exfat_setpos_t);
     var count: u32 = 0;
-    var file_e = [_]u8{0} ** entry_bytes;
-    var strm = [_]u8{0} ** entry_bytes;
+    var file_e: [entry_bytes]u8 = @splat(0);
+    var strm: [entry_bytes]u8 = @splat(0);
     e = c.priv_exfat_find_set(m, &parent, leaf, &pos, set_max, &count, &file_e, &strm);
     if (e == ok) return openFound(m, mode, &pos[0], count, &file_e, &strm, out);
     if (e != err_not_found) return e;

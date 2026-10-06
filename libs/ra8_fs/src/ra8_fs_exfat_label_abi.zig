@@ -37,7 +37,7 @@ pub const Mount = c.ra8_fs_mount_t;
 
 const Located = struct {
     pos: SetPos = .{ .cluster = 0, .index = 0 },
-    entry: [entry_bytes]u8 = [_]u8{0} ** entry_bytes,
+    entry: [entry_bytes]u8 = @splat(0),
     present: bool = false,
 };
 
@@ -51,7 +51,7 @@ fn locateLabel(m: *const Mount, out: *Located) u16 {
     c.priv_exfat_cursor_init(&root, &cur);
     while (cur.scanned < scan_limit) {
         const at: SetPos = .{ .cluster = cur.cluster, .index = cur.entry_in_cluster };
-        var e = [_]u8{0} ** entry_bytes;
+        var e: [entry_bytes]u8 = @splat(0);
         const err = c.priv_exfat_next_entry(m, &cur, &e);
         if (err != ok) return err;
         if (e[0] == entry_eod) {
@@ -82,7 +82,7 @@ pub fn decodeLabel(entry: *const [entry_bytes]u8, out: [*]u8, out_len: u32) void
 /// Build an in-use label entry from a NUL-terminated ASCII label (null means
 /// empty), capped at `label_max` characters.
 pub fn encodeLabel(label: ?[*:0]const u8) [entry_bytes]u8 {
-    var entry = [_]u8{0} ** entry_bytes;
+    var entry: [entry_bytes]u8 = @splat(0);
     entry[0] = entry_label;
     var n: u32 = 0;
     if (label) |s| {

@@ -51,7 +51,7 @@ pub const Caps = extern struct {
 pub const Timestamp = extern struct {
     year: u16 = 0,
     utc_offset_min: i16 = 0,
-    fields: [6]u8 = .{0} ** 6,
+    fields: [6]u8 = @splat(0),
     valid: bool = false,
     utc_offset_valid: bool = false,
 };
@@ -122,7 +122,7 @@ pub const Format = extern struct {
 
 /// Mirror of vfs_slot_t (ra8_io_vfs_internal.h).
 pub const Slot = extern struct {
-    name: [name_max]u8 = .{0} ** name_max,
+    name: [name_max]u8 = @splat(0),
     format: *const Format,
     mount_ctx: ?*anyopaque = null,
     owned: bool = false,

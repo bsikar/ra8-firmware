@@ -97,7 +97,7 @@ const Bench = struct {
 fn holds(bench: *Bench, ops: []const u8) !bool {
     const wire = bench.link.transport();
     const refused = !bench.sound();
-    var scratch = [_]u8{0x3C} ** (Limits.max_capacity + 2);
+    var scratch: [Limits.max_capacity + 2]u8 = @splat(0x3C);
 
     for (ops) |op| {
         const size = (op >> 1) % (bench.capacity + 2);
@@ -222,7 +222,7 @@ test "fuzz: a ring header of any bytes is refused for good, or is a sound one" {
     }.one;
     // A sound header for an eight-byte ring, then one with its head past the
     // end, each followed by a few steps.
-    const sound = [_]u8{6} ++ "RA8B".* ++ [_]u8{ 1, 0, 0, 0, 8, 0, 0, 0 } ++ [_]u8{0} ** 84;
+    const sound = [_]u8{6} ++ "RA8B".* ++ [_]u8{ 1, 0, 0, 0, 8, 0, 0, 0 } ++ @as([84]u8, @splat(0));
     var past = sound;
     past[1 + Layout.At.head] = 8;
     const steps = [_]u8{ 6, 3, 14, 9, 2 };

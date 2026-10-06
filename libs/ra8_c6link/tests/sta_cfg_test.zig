@@ -17,7 +17,7 @@ test "an empty string measures zero" {
 }
 
 test "an unterminated buffer measures as the whole buffer" {
-    const packed_full = [_]u8{'x'} ** 33;
+    const packed_full: [33]u8 = @splat('x');
     try std.testing.expectEqual(@as(u8, 33), sta_cfg.length(&packed_full));
 }
 

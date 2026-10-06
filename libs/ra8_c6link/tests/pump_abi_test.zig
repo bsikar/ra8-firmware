@@ -14,7 +14,7 @@ const frame_bytes: u16 = c.k_ra8_c6link_frame_bytes;
 const Bench = struct {
     armed: bool = true,
     fail: bool = false,
-    reply: [frame_bytes]u8 = [_]u8{0} ** frame_bytes,
+    reply: [frame_bytes]u8 = @splat(0),
     dispatched: usize = 0,
     stats_seen: bool = false,
 };
@@ -56,7 +56,7 @@ fn openLink() c.ra8_c6link_t {
 
 /// A data reply: header offset 12, payload length 8, serial interface, checksum.
 fn sealedReply() [frame_bytes]u8 {
-    var buf = [_]u8{0} ** frame_bytes;
+    var buf: [frame_bytes]u8 = @splat(0);
     buf[0] = 3;
     std.mem.writeInt(u16, buf[2..4], 8, .little);
     std.mem.writeInt(u16, buf[4..6], 12, .little);

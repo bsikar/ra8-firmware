@@ -14,21 +14,21 @@ fn field(bytes: []const u8) BinaryData {
 }
 
 test "a text field that fits is copied whole and terminated" {
-    var dst = [_]u8{0xFF} ** 8;
+    var dst: [8]u8 = @splat(0xFF);
     const src = field("abc");
     try std.testing.expectEqual(@as(u8, 3), field_abi.priv_c6link_copy_str(&dst, dst.len, &src));
     try std.testing.expectEqualSlices(u8, "abc\x00", dst[0..4]);
 }
 
 test "a long text field is truncated to leave room for the terminator" {
-    var dst = [_]u8{0xFF} ** 4;
+    var dst: [4]u8 = @splat(0xFF);
     const src = field("abcdefgh");
     try std.testing.expectEqual(@as(u8, 3), field_abi.priv_c6link_copy_str(&dst, dst.len, &src));
     try std.testing.expectEqualSlices(u8, "abc\x00", &dst);
 }
 
 test "a missing field still terminates; no room or no destination copies nothing" {
-    var dst = [_]u8{0xFF} ** 4;
+    var dst: [4]u8 = @splat(0xFF);
     try std.testing.expectEqual(@as(u8, 0), field_abi.priv_c6link_copy_str(&dst, dst.len, null));
     try std.testing.expectEqual(@as(u8, 0), dst[0]);
 

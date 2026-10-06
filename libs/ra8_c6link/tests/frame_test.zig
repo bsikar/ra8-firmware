@@ -13,7 +13,7 @@ const Hdr = frame.Hdr;
 
 /// A transaction buffer, the only size the header writer accepts.
 fn buffer() [Frame.bytes]u8 {
-    return [_]u8{0} ** Frame.bytes;
+    return @as([Frame.bytes]u8, @splat(0));
 }
 
 fn readLe(buf: []const u8, at: u16) u16 {

@@ -35,13 +35,13 @@ pub const fs_type_exfat: c_int = 64;
 
 /// Mirror of ra8_fs_dir_t: 640 bytes of u64-aligned cursor state plus a guard.
 pub const FsDir = extern struct {
-    state: [640]u8 align(8) = .{0} ** 640,
+    state: [640]u8 align(8) = @splat(0),
     is_open: bool = false,
 };
 
 /// Mirror of ra8_fs_dirent_t.
 pub const FsDirent = extern struct {
-    name: [742]u8 = .{0} ** 742,
+    name: [742]u8 = @splat(0),
     size_bytes: u64 = 0,
     attr: u8 = 0,
 };

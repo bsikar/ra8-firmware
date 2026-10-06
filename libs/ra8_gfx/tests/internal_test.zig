@@ -199,7 +199,7 @@ test "pixelOffset walks rows by stride and columns by depth" {
 }
 
 test "putPixel writes RGB565 little-endian" {
-    var fb = [_]u8{0} ** 16;
+    var fb: [16]u8 = @splat(0);
     impl.putPixel(&fb, 8, impl.format.rgb565, 1, 1, 0x00FF_FFFF);
     try std.testing.expectEqual(@as(u8, 0xFF), fb[10]);
     try std.testing.expectEqual(@as(u8, 0xFF), fb[11]);
@@ -207,7 +207,7 @@ test "putPixel writes RGB565 little-endian" {
 }
 
 test "putPixel writes RGB888 in R, G, B order" {
-    var fb = [_]u8{0} ** 32;
+    var fb: [32]u8 = @splat(0);
     impl.putPixel(&fb, 12, impl.format.rgb888, 2, 1, 0x0011_2233);
     try std.testing.expectEqual(@as(u8, 0x11), fb[18]);
     try std.testing.expectEqual(@as(u8, 0x22), fb[19]);
@@ -215,7 +215,7 @@ test "putPixel writes RGB888 in R, G, B order" {
 }
 
 test "putPixel writes ARGB8888 in B, G, R, A order" {
-    var fb = [_]u8{0} ** 32;
+    var fb: [32]u8 = @splat(0);
     impl.putPixel(&fb, 16, impl.format.argb8888, 1, 1, 0x8811_2233);
     try std.testing.expectEqual(@as(u8, 0x33), fb[20]);
     try std.testing.expectEqual(@as(u8, 0x22), fb[21]);
@@ -224,7 +224,7 @@ test "putPixel writes ARGB8888 in B, G, R, A order" {
 }
 
 test "putPixel writes nothing for an unrecognised format" {
-    var fb = [_]u8{0xAA} ** 16;
+    var fb: [16]u8 = @splat(0xAA);
     impl.putPixel(&fb, 8, 9, 0, 0, 0x00FF_FFFF);
     for (fb) |byte| try std.testing.expectEqual(@as(u8, 0xAA), byte);
 }
@@ -236,7 +236,7 @@ test "getPixel round trips every addressable format through putPixel" {
         .{ .fmt = impl.format.argb8888, .color = 0x8811_2233, .want = 0x8811_2233 },
     };
     for (cases) |c| {
-        var buf = [_]u8{0} ** 64;
+        var buf: [64]u8 = @splat(0);
         const stride = 4 * @as(usize, impl.bppOf(c.fmt));
         impl.putPixel(&buf, stride, c.fmt, 2, 1, c.color);
         try std.testing.expectEqual(c.want, impl.getPixel(&buf, stride, c.fmt, 2, 1));
@@ -244,7 +244,7 @@ test "getPixel round trips every addressable format through putPixel" {
 }
 
 test "getPixel reads zero for an unrecognised format" {
-    const buf = [_]u8{0xFF} ** 16;
+    const buf: [16]u8 = @splat(0xFF);
     try std.testing.expectEqual(@as(u32, 0), impl.getPixel(&buf, 8, 0, 0, 0));
 }
 
@@ -533,7 +533,7 @@ test "textLength stops at the NUL" {
 }
 
 test "textLength caps at the glyph ceiling" {
-    const long = [_]u8{'x'} ** (impl.max_chars + 8);
+    const long: [impl.max_chars + 8]u8 = @splat('x');
     try std.testing.expectEqual(impl.max_chars, impl.textLength(&long));
 }
 

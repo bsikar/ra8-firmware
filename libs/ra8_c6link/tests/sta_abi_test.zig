@@ -24,7 +24,7 @@ const Seen = struct {
     resp_id: u32 = 0,
     iface: i32 = -1,
     u_case: u32 = 0,
-    ssid: [32]u8 = [_]u8{0} ** 32,
+    ssid: [32]u8 = @splat(0),
     ssid_len: usize = 0,
     pass_len: usize = 0,
     bssid_set: i32 = -1,
@@ -38,7 +38,7 @@ const Seen = struct {
 
 const Script = struct {
     calls: usize = 0,
-    bare: [4]u32 = [_]u32{0} ** 4,
+    bare: [4]u32 = @splat(0),
     bare_calls: usize = 0,
     config_verdict: u16 = 0,
     bare_verdict: u16 = 0,

@@ -73,12 +73,12 @@ comptime {
     if (@offsetOf(File, "mount_index") != 2 * p or @offsetOf(File, "in_use") != 2 * p + 1) @compileError("File layout");
 }
 
-var table: [max_mounts]Slot = .{zeroSlot()} ** max_mounts;
-var files: [max_files]File = .{File{}} ** max_files;
+var table: [max_mounts]Slot = @splat(zeroSlot());
+var files: [max_files]File = @splat(File{});
 
 /// The all-zero slot `(vfs_slot_t){}` is; its format pointer is null.
 fn zeroSlot() Slot {
-    return @bitCast([_]u8{0} ** @sizeOf(Slot));
+    return @bitCast(@as([@sizeOf(Slot)]u8, @splat(0)));
 }
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;

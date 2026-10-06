@@ -281,7 +281,7 @@ test "native UI sans atlases measure and draw at 26 and 30 pixels" {
             const measured = text.measureStyle("Settings", .sans, if (weight == 1) .bold else .regular, size);
             try std.testing.expect(measured.width > 0);
             try std.testing.expect(measured.height >= @as(u32, if (size == 9) 26 else 30));
-            var canvas = [_]u8{255} ** 4096;
+            var canvas: [4096]u8 = @splat(255);
             const sink = struct {
                 fn pixel(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
                     const pixels: *[4096]u8 = @ptrCast(@alignCast(user.?));

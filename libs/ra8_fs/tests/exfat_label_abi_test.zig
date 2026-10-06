@@ -23,7 +23,7 @@ fn getLabel(buf: []u8) ![]const u8 {
 
 test "unlabelled volume reads as empty" {
     reset();
-    var buf = [_]u8{'x'} ** 16;
+    var buf: [16]u8 = @splat('x');
     try std.testing.expectEqualStrings("", try getLabel(&buf));
 }
 

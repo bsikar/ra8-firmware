@@ -117,7 +117,7 @@ fn noop_op() callconv(.c) c_int {
 comptime {
     _ = @import("fs_stubs.zig");
 }
-var backend: [5]usize = .{0} ** 5;
+var backend: [5]usize = @splat(0);
 
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;

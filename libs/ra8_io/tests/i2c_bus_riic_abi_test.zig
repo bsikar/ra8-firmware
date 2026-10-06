@@ -129,7 +129,7 @@ test "write forwards channel, address, payload and the stop flag" {
 test "read forwards channel, address, buffer and length" {
     reset();
     const b = try bound(2);
-    var rx = [_]u8{0} ** 6;
+    var rx: [6]u8 = @splat(0);
     try std.testing.expectEqual(riic.ok, b.iface.?.read.?(b.ctx, 0x36, &rx, 6));
     try std.testing.expectEqual(@as(u8, 2), last_channel);
     try std.testing.expectEqual(@as(u8, 0x36), last_addr);
@@ -141,7 +141,7 @@ test "transfer forwards both phases" {
     reset();
     const b = try bound(0);
     const reg = [_]u8{0x0F};
-    var rx = [_]u8{0} ** 2;
+    var rx: [2]u8 = @splat(0);
     try std.testing.expectEqual(riic.ok, b.iface.?.transfer.?(b.ctx, 0x6A, &reg, 1, &rx, 2));
     try std.testing.expectEqual(@as(u8, 0), last_channel);
     try std.testing.expectEqual(@as(u8, 0x6A), last_addr);

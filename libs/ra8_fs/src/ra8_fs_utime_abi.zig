@@ -43,11 +43,11 @@ fn utimeFat(m: *const Mount, path: [*:0]const u8, s: Stamps) u16 {
     var leaf: [*c]const u8 = null;
     const rerr = c.priv_resolve_parent(m, path, &parent, &leaf);
     if (rerr != ok) return rerr;
-    var name83 = [_]u8{0} ** name83_len;
+    var name83: [name83_len]u8 = @splat(0);
     const have83 = c.priv_path_to_83(leaf, &name83);
     var lba: u64 = 0;
     var off: u32 = 0;
-    var entry = [_]u8{0} ** dirent_len;
+    var entry: [dirent_len]u8 = @splat(0);
     var err: u16 = err_not_found;
     if (have83 != 0) err = c.priv_dir_find(m, &parent, &name83, &lba, &off, &entry);
     if (err == err_not_found) err = c.priv_dir_find_long(m, &parent, leaf, &lba, &off, &entry);
@@ -64,11 +64,11 @@ fn utimeExfat(m: *const Mount, path: [*:0]const u8, s: Stamps) u16 {
     c.priv_exfat_dir_root(m, &root);
     var pos = std.mem.zeroes([set_max]c.exfat_setpos_t);
     var count: u32 = 0;
-    var file_e = [_]u8{0} ** entry_len;
-    var strm_e = [_]u8{0} ** entry_len;
+    var file_e: [entry_len]u8 = @splat(0);
+    var strm_e: [entry_len]u8 = @splat(0);
     var err = c.priv_exfat_find_set(m, &root, path, &pos, set_max, &count, &file_e, &strm_e);
     if (err != ok) return err;
-    var set = [_]u8{0} ** (set_max * entry_len);
+    var set: [set_max * entry_len]u8 = @splat(0);
     const n: usize = @min(count, set_max);
     for (pos[0..n], 0..) |p, k| {
         var one: c.exfat_cursor_t = .{

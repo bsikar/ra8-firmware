@@ -27,7 +27,7 @@ test "8.3 checksum matches the spec's rotate-and-add" {
 }
 
 test "fill_slot lays out the first group, NUL then 0xFFFF padding" {
-    var ent = [_]u8{0xAA} ** 32;
+    var ent: [32]u8 = @splat(0xAA);
     const name = [_]u16{ 'h', 'e', 'l', 'l', 'o', 0x00E9 };
     lfn.priv_lfn_fill_slot(&ent, &name, name.len, 1, 1, 0x5C);
     try std.testing.expectEqual(@as(u8, 0x41), ent[0]);
@@ -76,7 +76,7 @@ test "fill then add round-trips a two-group name and binds by checksum" {
 test "add ignores out-of-range orders; units_for needs a collected chain" {
     var s: lfn.LfnState = undefined;
     lfn.priv_lfn_reset(&s);
-    var ent = [_]u8{0} ** 32;
+    var ent: [32]u8 = @splat(0);
     ent[1] = 'x';
     ent[0] = 0x40; // order 0
     lfn.priv_lfn_add(&s, &ent);

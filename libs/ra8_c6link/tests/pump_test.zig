@@ -14,16 +14,16 @@ const Frame = frame.Frame;
 /// A scripted co-processor: a handshake pattern, one canned reply frame and a
 /// transport that can be told to fail.
 const Model = struct {
-    tx_buf: [Frame.bytes]u8 = [_]u8{0xAA} ** Frame.bytes,
-    rx_buf: [Frame.bytes]u8 = [_]u8{0} ** Frame.bytes,
-    reply: [Frame.bytes]u8 = [_]u8{0} ** Frame.bytes,
+    tx_buf: [Frame.bytes]u8 = @splat(0xAA),
+    rx_buf: [Frame.bytes]u8 = @splat(0),
+    reply: [Frame.bytes]u8 = @splat(0),
     armed: bool = true,
     miss_pattern: []const bool = &.{},
     samples: usize = 0,
     slept_ms: u32 = 0,
     staged: ?pump.Staged = null,
     fail_transfer: bool = false,
-    sent_len: [8]u16 = [_]u16{0} ** 8,
+    sent_len: [8]u16 = @splat(0),
     sent: usize = 0,
     dispatched: usize = 0,
     stop_on_dispatch: bool = true,
@@ -133,7 +133,7 @@ test "frames that fail integrity are counted and never routed" {
 }
 
 test "a handshake that comes back resets the give-up count" {
-    const pattern = [_]bool{false} ** 400 ++ [_]bool{true} ++ [_]bool{false} ** 400 ++ [_]bool{true};
+    const pattern = @as([400]bool, @splat(false)) ++ [_]bool{true} ++ @as([400]bool, @splat(false)) ++ [_]bool{true};
     var model: Model = .{ .miss_pattern = &pattern, .armed = false };
     frame.filler(&model.reply);
     var stats: pump.Stats = .{};
