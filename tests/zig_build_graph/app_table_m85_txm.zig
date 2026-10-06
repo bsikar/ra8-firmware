@@ -58,17 +58,23 @@ pub const apps = [_]CrossApp{
         .txm_module = "txm_helium_m85",
     },
     .{
-        // Slice 1 of the SD hello-world PoC (RA8FW-829, under RA8FW-290):
-        // the M85 mounts the micro-SD card on SDHI0 through ra8_fs and reads
-        // and header-checks txm_hello_m33.ra8app. No ThreadX yet; RA8FW-830
-        // adds the Module Manager load.
+        // The SD hello-world PoC (RA8FW-829 and RA8FW-830, under
+        // RA8FW-290): the M85 reads txm_hello_m33.ra8app off the micro-SD
+        // card through ra8_fs, verifies its signature and memory-loads it
+        // through the Module Manager, so no module is packed in.
         .name = "txm_sd_hello_m85",
         .dir = "examples/ek_ra8d2/hw_pending/txm_sd_hello_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{"ra8_fs"},
         .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
         .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            .{ .name = "appimg_verify", .path = "libs/ra8_app/src/internal/appimg_verify.zig" },
+        },
+        .txm_manager = true,
         .stack_bytes = 8192,
     },
 };

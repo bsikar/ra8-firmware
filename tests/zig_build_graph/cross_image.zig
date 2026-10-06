@@ -436,7 +436,7 @@ fn addCrossApp(
     const middlewares = m85_txm_manager.kernelFor(
         b.allocator,
         middleware.resolve(b.allocator, app.uses),
-        app.txm_module != null,
+        app.txm_module != null or app.txm_manager,
     );
     // Most hand the app an archive. USBX hands it its objects, every one of
     // which joins the link (middleware.Middleware.link_objects).
