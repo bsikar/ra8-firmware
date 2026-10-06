@@ -190,6 +190,33 @@ RA8_PRIV ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
  */
 RA8_PRIV ra8_err_t priv_ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode);
 
+/**
+ * @brief Check a ``[flash_addr, flash_addr + len)`` window against 2^24.
+ *
+ * @details
+ * Defined in Zig (``xspi_read_abi.zig``, RA8FW-870). The JEDEC commands
+ * use a 3-byte address phase, so a window that starts at or runs past
+ * 2^24 is rejected instead of being truncated on the wire.
+ *
+ * @return ::k_ra8_ok, or ::k_ra8_err_invalid_arg when out of reach.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_ra8_xspi_flash_range_check(uint32_t flash_addr, uint32_t len);
+
+/**
+ * @brief Write CDT (1-byte opcode, 3-byte address) and CDA for slot 0.
+ *
+ * @details
+ * Defined in Zig (``xspi_read_abi.zig``, RA8FW-870). ``data_bytes`` is
+ * 0..8. HUM Ch 44 p 2986.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_ra8_xspi_build_chunk_header(volatile r_xspi_regs_t* reg,
+                                               uint8_t                 opcode,
+                                               uint32_t                addr,
+                                               uint8_t                 data_bytes,
+                                               uint8_t                 is_write);
+
 #ifdef __cplusplus
 }
 #endif
