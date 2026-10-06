@@ -151,9 +151,9 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | TCM   | Tightly-Coupled Memory (umbrella for ITCM + DTCM)         | (linker only) |
 | SDRAM | Synchronous Dynamic RAM (external, 64 MiB on EK)          | `internal/sdramc.zig` |
 | SDRAMC| SDRAM Controller                                          | `internal/sdramc.zig` |
-| OSPI  | Octo-SPI (Renesas register block name)                    | `ra8_xspi.c` |
-| XSPI  | eXpanded SPI (xSPI = HUM term for the OSPI controller)    | `ra8_xspi.c` |
-| XIP   | eXecute-In-Place (memory-mapped read of external flash)   | `ra8_xspi.c` |
+| OSPI  | Octo-SPI (Renesas register block name)                    | `xspi_*_abi.zig` |
+| XSPI  | eXpanded SPI (xSPI = HUM term for the OSPI controller)    | `xspi_*_abi.zig` |
+| XIP   | eXecute-In-Place (memory-mapped read of external flash)   | `xspi_*_abi.zig` |
 | FLASH | Generic flash controller surface                          | `ra8_flash.c` |
 | SDHI  | SD Host Interface                                         | `ra8_sdhi.c`, `sdcard_abi.zig` |
 | DMA   | Direct Memory Access (top-level umbrella)                 | `dma_abi.zig` |

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Sibling translation unit of ``ra8_xspi.c`` (split out for file size).
+ * Sibling of the Zig XSPI units (``xspi_*_abi.zig``) (split out for file size).
  * Owns the xSPI manual-command engine -- the ``CDT``/``CDBUF`` builders,
  * the ``INTS.CMDCMP`` poll, and the ``CDCTL0.TRREQ`` kick -- and the
  * JEDEC SPI NOR-flash operations layered on top of it:
@@ -19,7 +19,7 @@
  *
  * The two manual-command primitives ``priv_ra8_xspi_kick_command()`` and
  * ``priv_ra8_xspi_issue_simple_opcode()`` are exported via
- * ``ra8_xspi_internal.h`` because the lifecycle surface in ``ra8_xspi.c``
+ * ``ra8_xspi_internal.h`` because the lifecycle surface in ``xspi_reset_abi.zig``
  * (suspend / resume / software-reset) reuses them.
  *
  * Every build runs the identical register sequence. On the host the

@@ -19,7 +19,7 @@ pub const mstp_ids = [_]u16{ (1 << 8) | 16, (1 << 8) | 17 };
 
 pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.C) void;
 
-/// C `ra8_xspi_state_t` (still typedef'd in ra8_xspi.c for deinit).
+/// C `ra8_xspi_state_t` (the C typedef went with ra8_xspi.c, RA8FW-868).
 pub const State = extern struct {
     func: ?EventFn = null,
     ctx: ?*anyopaque = null,

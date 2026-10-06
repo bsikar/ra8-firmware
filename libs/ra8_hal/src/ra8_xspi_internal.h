@@ -10,9 +10,10 @@
  * Not part of the public API. The OSPI / xSPI driver is split across two
  * translation units for file-size reasons:
  *
- * - ``ra8_xspi.c``       -- block/clock/reset bring-up, ``ra8_xspi_init``,
- *                          raw direct-command, lifecycle + IRQ + power +
- *                          XIP/DTR/DQS-calibration + software-reset surface.
+ * - ``xspi_*_abi.zig``  -- Zig: clock/reset bring-up, init, raw
+ *                          direct-command, deinit (xspi_init), IRQ + power
+ *                          (xspi_events), XIP/DTR/DQS (xspi_xip) and
+ *                          suspend/resume/software-reset (xspi_reset).
  * - ``ra8_xspi_flash.c`` -- the manual-command engine (CDT/CDBUF builders +
  *                          CMDCMP poll + TRREQ kick) and the JEDEC NOR-flash
  *                          read / program / erase / status / id operations.
@@ -23,7 +24,7 @@
  *   blocks, which both TUs reference.
  * - Prototypes for the two manual-command helpers defined in
  *   ``ra8_xspi_flash.c`` but also called from the lifecycle surface in
- *   ``ra8_xspi.c`` (suspend / resume / software-reset).
+ *   ``xspi_reset_abi.zig`` (suspend / resume / software-reset).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -127,7 +128,7 @@ typedef enum : uint8_t {
  * request, then sets TRREQ=1 and waits for it to self-clear again. We
  * mirror the FSP "self-clear" semantics by polling ``INTS.CMDCMP``.
  * Promoted to TU-external linkage so the lifecycle surface in
- * ``ra8_xspi.c`` (software-reset path) can reuse it. HUM Ch 44 p 2986.
+ * ``xspi_reset_abi.zig`` (software-reset path) can reuse it. HUM Ch 44 p 2986.
  *
  * @param[in] reg xSPI register block (already gated open by the caller).
  *
@@ -152,7 +153,7 @@ RA8_PRIV ra8_err_t priv_ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
  * Defined in ``ra8_xspi_flash.c``. Populates CDBUF slot 0 per FSP
  * ``r_ospi_b_direct_transfer`` (CDT carries opcode + size encoding,
  * CDA/CDD0/CDD1 zeroed) and kicks the transfer. Promoted to
- * TU-external linkage so the lifecycle surface in ``ra8_xspi.c``
+ * TU-external linkage so the lifecycle surface in ``xspi_reset_abi.zig``
  * (suspend / resume) can reuse it. HUM Ch 44 p 2986.
  *
  * @param[in] reg    xSPI register block (already gated open by the caller).

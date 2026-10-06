@@ -205,7 +205,7 @@ The salient SDD-level placement decisions are:
 | SRAM-S (1664 KiB) | `0x22000000` | `.data`, `.bss`, ThreadX pools (when ThreadX is linked), framebuffers spilled out of SDRAM.              | `libs/ra8_core/inc/ra8_device.h`                      |
 | SRAM-NS alias (640 KiB) | `0x22100000` | NS-side `.data`/`.bss` for the single-image build.                                                | Linker script.                                      |
 | SDRAM (64 MiB)    | `0x68000000` | Primary framebuffer (1024x600x4 = 2.34 MiB per layer x N), GLCDC layer ping-pong.             | `ra8_sdramc.c`, `ra8_glcdc.c`.                        |
-| Octo-SPI XIP      | (TBD enum)   | Optional XIP read window for large rodata blobs (apps that need it).                                     | `ra8_xspi.c`.                                        |
+| Octo-SPI XIP      | (TBD enum)   | Optional XIP read window for large rodata blobs (apps that need it).                                     | `xspi_*_abi.zig`.                                        |
 | Peripheral window | `0x40000000` | Hand-written register layouts in `libs/ra8_hal/inc/ra8_*_regs.h`.                                         | HUM Ch 7+.                                          |
 | Core MPU regs     | `0xE000ED90` | Cortex-M85 MPU control accessed by `libs/ra8_mpu/`.                                                       | Armv8-M ARM.                                        |
 
@@ -341,7 +341,7 @@ Every Ring 3 driver cites the HUM section it implements via an
 |---------------|------------------------------------------------------|-------------------------------------|
 | `ra8_cgc.c`    | PLL-from-MOSC bring-up sequence                      | HUM Ch 9 ("Clock Generation")       |
 | `ra8_sdramc.c` | SDRAM mode-register write + auto-refresh setup       | HUM Ch 53 ("SDRAMC")                |
-| `ra8_xspi.c`   | xSPI calibration + 8-line DDR mode select            | HUM Ch 56 ("xSPI")                  |
+| `xspi_*_abi.zig`   | xSPI calibration + 8-line DDR mode select            | HUM Ch 56 ("xSPI")                  |
 | `ra8_glcdc.c`  | Layer config + dot-clock divisor calculation         | HUM Ch 60 ("GLCDC")                 |
 | `ra8_mipi_dsi.c`| DSI link bring-up + low-power escape                 | HUM Ch 61 ("MIPI DSI")              |
 | `etha_*_abi.zig` | ETHA descriptor-ring init + frame TX/RX              | HUM Ch 39 ("Ethernet Agent")        |

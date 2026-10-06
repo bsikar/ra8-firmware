@@ -810,7 +810,7 @@ peripherals that do not exist on this MCU.
 [x] Register coverage-- HUM Ch 44 p 2986 (WRAPCFG/COMCFG/LIOCFG/INTC/CMDCFG0..2/CMDBUF/RDBUF/COMSTT)
 [x] Unit tests -- tests/hal/src/test_ra8_xspi.c (emu-flash round trip)
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 44 register notes in libs/ra8_hal/src/ra8_xspi.c
+[x] HUM cross-ref -- all Ch 44 register notes in libs/ra8_hal/src/xspi_*_abi.zig
 [x] Doxygen -- full file + member coverage
 ```
 
