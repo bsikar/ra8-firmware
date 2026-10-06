@@ -626,7 +626,7 @@ pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Buil
 /// libc of its own. Asked of the toolchain, never a guessed path.
 fn libcInclude(b: *std.Build, tc: Toolchain) []const u8 {
     var code: u8 = 0;
-    const out = b.runAllowFail(&.{ tc.gcc, "-print-sysroot" }, &code, .Ignore) catch
+    const out = b.runAllowFail(&.{ tc.gcc, "-print-sysroot" }, &code, .ignore) catch
         std.debug.panic("{s} -print-sysroot failed, so a Zig source cannot see newlib", .{tc.gcc});
     return b.pathJoin(&.{ std.mem.trim(u8, out, " \r\n"), "include" });
 }

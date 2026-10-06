@@ -37,10 +37,10 @@ pub const Tools = struct {
 };
 
 pub fn findTools(b: *std.Build) ?Tools {
-    const gcc = b.findProgram(&.{"arm-none-eabi-gcc"}, &.{}) catch return null;
-    const objcopy = b.findProgram(&.{"arm-none-eabi-objcopy"}, &.{}) catch return null;
-    const size = b.findProgram(&.{"arm-none-eabi-size"}, &.{}) catch return null;
-    const ar = b.findProgram(&.{"arm-none-eabi-ar"}, &.{}) catch return null;
+    const gcc = b.findProgram(.{ .names = &.{"arm-none-eabi-gcc"} }) orelse return null;
+    const objcopy = b.findProgram(.{ .names = &.{"arm-none-eabi-objcopy"} }) orelse return null;
+    const size = b.findProgram(.{ .names = &.{"arm-none-eabi-size"} }) orelse return null;
+    const ar = b.findProgram(.{ .names = &.{"arm-none-eabi-ar"} }) orelse return null;
     return .{ .gcc = gcc, .objcopy = objcopy, .size = size, .ar = ar };
 }
 
