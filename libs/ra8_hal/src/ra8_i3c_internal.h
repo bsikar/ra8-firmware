@@ -21,6 +21,8 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_i3c.h"
+#include "ra8_i3c_i2c_regs.h"
 
 /**
  * @brief Pure predicate: target_addr out of range OR max_len is zero.
@@ -52,6 +54,21 @@ extern "C" {
  *
  * @since 0.1.0
  */
+/**
+ * @brief Per-channel mode and init flag.
+ */
+typedef struct {
+  bool           initialized; /**< Set between ``ra8_i3c_init`` / ``_deinit``. */
+  ra8_i3c_mode_t mode;        /**< Native vs I2C-compat for this channel.      */
+} ra8_i3c_chan_state_t;
+
+/**
+ * @var s_i3c_chan
+ * @brief Channel state, defined in src/i3c_life_abi.zig (RA8FW-819) and read
+ *        by the transfer and peripheral paths still in ra8_i3c.c.
+ */
+extern ra8_i3c_chan_state_t s_i3c_chan[k_ra8_i3c_i2c_channel_count];
+
 RA8_PRIV
 bool priv_ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len);
 
