@@ -39,3 +39,24 @@ co-processor, which boots happily on its own USB and answers on its own console.
 In that state every app in this tier reads `0xff` off CIPO and fails
 identically, so a red here means "look at the bench", not "look at the
 firmware".
+
+## Wi-Fi scan and the bench capture
+
+After reading the station MAC, the app scans once and prints
+`c6_wifi: scan aps=<n>` followed by one `c6_wifi: ap ssid=... channel=... rssi=... authmode=...`
+line for each AP, up to 8. Finding no APs still passes, because the phase
+proves the scan RPCs (ScanStart, Event_StaScanDone, ScanGetApNum,
+ScanGetApRecords) rather than the radio environment.
+
+To record the exchange for the emulator's scan fixture:
+
+1. Flash the second C6 (C6-B) as a soft-AP with a fixed SSID and channel.
+2. Configure this app with `-DC6_WIFI_CAPTURE=ON` and flash it. The transport
+   is wrapped with `ra8_c6link_capture_bind`, and every frame is printed as a
+   `c6cap` line.
+3. Save the console log, find the transactions around the scan lines, and run
+   `python3 libs/ra8_c6link/scripts/c6cap_to_bin.py --first N --last M console.log scan.bin`.
+4. Check that the AP records hold only C6-B's record, then commit `scan.bin`
+   to the emulator's `tests/fixtures/esp_hosted/`.
+
+The plain build carries no capture code.
