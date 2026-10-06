@@ -27,4 +27,18 @@ pub const apps = [_]CrossApp{
             .entry_language = .zig,
         },
     },
+    .{
+        // RA8FW-624: two ThreadX workers keep distinct S0-S31 values live
+        // across real M85 PendSV switches with lazy stacking on. Zig main
+        // (its switch routine is module-level asm), ThreadX only.
+        .name = "threadx_fpu_context",
+        .dir = "examples/ek_ra8d2/hil_needs_revalidation/threadx_fpu_context",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+    },
 };
