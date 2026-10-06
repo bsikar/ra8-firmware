@@ -7,7 +7,7 @@ const std = @import("std");
 const filter = @import("canfd_filter");
 
 const Fake = struct {
-    regs: [0x240 / 4]u32 = [_]u32{0} ** (0x240 / 4),
+    regs: [0x240 / 4]u32 = @splat(0),
     reset_err: u16 = 0,
     op_err: u16 = 0,
     trail: [32]u8 = undefined,

@@ -88,7 +88,7 @@ test "init returns the mstp error and leaves POEGG alone" {
 test "deinit clears POEGG and the slot and ignores the mstp result" {
     var r = Regs{ .poegg = .{ 0, 0x1700, 0, 0 } };
     var c = Svc{};
-    var slots = [_]poeg.Slot{.{}} ** poeg.group_count;
+    var slots: [poeg.group_count]poeg.Slot = @splat(.{});
     var dummy: u8 = 0;
     slots[1].ctx = &dummy;
     try std.testing.expectEqual(poeg.ok, poeg.deinit(&r, &c, &slots, 1));
@@ -144,7 +144,7 @@ fn record(ctx: ?*anyopaque, mask: u32) callconv(.C) void {
 
 test "dispatch hands the latched status to the attached handler" {
     var r = Regs{ .poegg = .{ 0, 0, 0x0001_1709, 0 } };
-    var slots = [_]poeg.Slot{.{}} ** poeg.group_count;
+    var slots: [poeg.group_count]poeg.Slot = @splat(.{});
     var token: u8 = 7;
     try std.testing.expectEqual(poeg.ok, poeg.attachHandler(&slots, 2, record, &token));
     try std.testing.expectEqual(poeg.err_invalid_arg, poeg.attachHandler(&slots, 4, record, null));

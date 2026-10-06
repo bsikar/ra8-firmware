@@ -24,7 +24,7 @@ const FakeRegs = struct {
 };
 
 fn fresh() [2]state.ChanState {
-    var s = [_]state.ChanState{.{}} ** 2;
+    var s: [2]state.ChanState = @splat(.{});
     for (&s) |*st| state.reset(st);
     return s;
 }

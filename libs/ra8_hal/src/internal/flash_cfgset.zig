@@ -61,7 +61,7 @@ pub fn msuacrWord(target: u8) u16 {
 
 /// The BTFLG configuration set: all ones, word 3 bit 15 = 1 for default.
 pub fn startupWords(target: u8) [word_count]u16 {
-    var words = [_]u16{0xFFFF} ** word_count;
+    var words: [word_count]u16 = @splat(0xFFFF);
     const btflg: u16 = if (target == startup_default) 0x8000 else 0x0000;
     words[3] = btflg | 0x1FFF;
     return words;

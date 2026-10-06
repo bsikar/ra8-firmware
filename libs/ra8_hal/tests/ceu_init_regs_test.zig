@@ -8,8 +8,8 @@ const ceu = @import("ceu_init_regs");
 
 /// Records every write in order.
 const Regs = struct {
-    offs: [8]usize = [_]usize{0} ** 8,
-    vals: [8]u32 = [_]u32{0} ** 8,
+    offs: [8]usize = @splat(0),
+    vals: [8]u32 = @splat(0),
     n: usize = 0,
 
     pub fn write32(self: *Regs, off: usize, v: u32) void {

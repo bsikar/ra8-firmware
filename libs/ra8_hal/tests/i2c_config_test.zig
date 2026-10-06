@@ -24,7 +24,7 @@ test "icferValue sets MALE, NACKE, SCLE and FMPE only for Fm+" {
 }
 
 test "applyInit leaves the channel out of reset with the rate programmed" {
-    var block = [_]u8{0xAA} ** c.regs_span;
+    var block: [c.regs_span]u8 = @splat(0xAA);
     c.applyInit(@ptrCast(&block), .{ .cks = 3, .brh = 0x12, .brl = 0x34 }, false);
     try std.testing.expectEqual(c.iccr1_ice, block[c.off_iccr1]);
     try std.testing.expectEqual(@as(u8, 0x30), block[c.off_icmr1]);
@@ -34,19 +34,19 @@ test "applyInit leaves the channel out of reset with the rate programmed" {
 }
 
 test "applyInit enables FMPE at Fast-mode Plus" {
-    var block = [_]u8{0} ** c.regs_span;
+    var block: [c.regs_span]u8 = @splat(0);
     c.applyInit(@ptrCast(&block), .{ .cks = 0, .brh = 1, .brl = 1 }, true);
     try std.testing.expectEqual(@as(u8, 0xD2), block[c.off_icfer]);
 }
 
 test "applyInit truncates CKS into ICMR1 like the C cast" {
-    var block = [_]u8{0} ** c.regs_span;
+    var block: [c.regs_span]u8 = @splat(0);
     c.applyInit(@ptrCast(&block), .{ .cks = 7, .brh = 0, .brl = 0 }, false);
     try std.testing.expectEqual(@as(u8, 0x70), block[c.off_icmr1]);
 }
 
 test "applyInit leaves bytes outside the sequence alone" {
-    var block = [_]u8{0xAA} ** c.regs_span;
+    var block: [c.regs_span]u8 = @splat(0xAA);
     c.applyInit(@ptrCast(&block), .{ .cks = 1, .brh = 2, .brl = 3 }, false);
     try std.testing.expectEqual(@as(u8, 0xAA), block[0x01]);
     try std.testing.expectEqual(@as(u8, 0xAA), block[0x03]);

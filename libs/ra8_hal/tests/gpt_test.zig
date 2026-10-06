@@ -12,7 +12,7 @@ const Op = struct { addr: usize, val: u32 };
 
 /// Register file for one channel window plus a write log.
 const Fake = struct {
-    mem: [64]u32 = [_]u32{0} ** 64,
+    mem: [64]u32 = @splat(0),
     ops: [32]Op = undefined,
     n: usize = 0,
 

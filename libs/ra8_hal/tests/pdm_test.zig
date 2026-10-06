@@ -8,8 +8,8 @@ const pdm = @import("pdm");
 
 /// 1 KiB register block; PDDRR reads pop from `fifo`, PDCSR reads count down.
 const Regs = struct {
-    mem: [256]u32 = [_]u32{0} ** 256,
-    fifo: [40]u32 = [_]u32{0} ** 40,
+    mem: [256]u32 = @splat(0),
+    fifo: [40]u32 = @splat(0),
     head: usize = 0,
     busy_reads: u32 = 0,
     pddrr_reads: u32 = 0,
@@ -165,7 +165,7 @@ test "read checks its arguments and drains min(fill, max)" {
 test "stream enable registers once, sets IDRE and rolls back on failure" {
     var r = Regs{};
     var c = Svc{};
-    var s = [_]pdm.Stream{.{}} ** 3;
+    var s: [3]pdm.Stream = @splat(.{});
     try std.testing.expectEqual(pdm.err_null_ptr, pdm.streamEnable(&r, &c, &s, 0, null, null, 1));
     try std.testing.expectEqual(pdm.ok, pdm.streamEnable(&r, &c, &s, 1, sink, null, 1));
     try std.testing.expectEqual(@as(?u16, 0x0C0), c.registered);
@@ -180,7 +180,7 @@ test "stream enable registers once, sets IDRE and rolls back on failure" {
 test "stream disable clears IDRE and refuses an idle channel" {
     var r = Regs{};
     var c = Svc{};
-    var s = [_]pdm.Stream{.{}} ** 3;
+    var s: [3]pdm.Stream = @splat(.{});
     try std.testing.expectEqual(pdm.err_not_initialized, pdm.streamDisable(&r, &c, &s, 0));
     _ = pdm.streamEnable(&r, &c, &s, 0, sink, null, 1);
     try std.testing.expectEqual(pdm.ok, pdm.streamDisable(&r, &c, &s, 0));
@@ -192,7 +192,7 @@ test "stream disable clears IDRE and refuses an idle channel" {
 test "stop tears down a stream, then polls PDCSR and times out" {
     var r = Regs{};
     var c = Svc{};
-    var s = [_]pdm.Stream{.{}} ** 3;
+    var s: [3]pdm.Stream = @splat(.{});
     _ = pdm.streamEnable(&r, &c, &s, 2, sink, null, 1);
     r.busy_reads = 5;
     try std.testing.expectEqual(pdm.ok, pdm.stop(&r, &c, &s, 2));
@@ -204,7 +204,7 @@ test "stop tears down a stream, then polls PDCSR and times out" {
 
 test "dataIsr clamps to the FIFO depth and skips empty or unbound channels" {
     var r = Regs{};
-    var s = [_]pdm.Stream{.{}} ** 3;
+    var s: [3]pdm.Stream = @splat(.{});
     got_count = 0;
     r.mem[pdm.chOff(1, pdm.pddsr) / 4] = 0xFF;
     pdm.dataIsr(&r, &s, 1);

@@ -7,8 +7,8 @@ const std = @import("std");
 const sd = @import("sdramc");
 
 const Fake = struct {
-    regs: [0x60]u8 = [_]u8{0} ** 0x60,
-    prcr_log: [4]u16 = [_]u16{0} ** 4,
+    regs: [0x60]u8 = @splat(0),
+    prcr_log: [4]u16 = @splat(0),
     prcr_n: usize = 0,
     sdckocr_val: u8 = 0,
     routed: usize = 0,

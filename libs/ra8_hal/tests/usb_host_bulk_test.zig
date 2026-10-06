@@ -5,7 +5,7 @@ const std = @import("std");
 const hb = @import("usb_host_bulk");
 
 const Fake = struct {
-    regs: [0x82 / 2]u16 align(4) = [_]u16{0} ** (0x82 / 2),
+    regs: [0x82 / 2]u16 align(4) = @splat(0),
     present: bool = true,
     devadd: ?u8 = null,
     quiesced: u8 = 0,

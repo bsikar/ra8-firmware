@@ -7,7 +7,7 @@ const std = @import("std");
 const ini = @import("xspi_init");
 
 const Regs = struct {
-    mem: [0x200 / 4]u32 = [_]u32{0} ** (0x200 / 4),
+    mem: [0x200 / 4]u32 = @splat(0),
     writes: usize = 0,
     spins: usize = 0,
     lioctl: [2]u32 = .{ 0, 0 },

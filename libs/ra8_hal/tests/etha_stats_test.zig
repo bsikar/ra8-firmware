@@ -9,7 +9,7 @@ const st = @import("etha_stats");
 /// One port's ETHA block. EAMS reads OPERATION after `settle` reads; a
 /// negative count never settles.
 const Regs = struct {
-    mem: [0x40]u32 = [_]u32{0} ** 0x40,
+    mem: [0x40]u32 = @splat(0),
     settle: i32 = 2,
     eams_reads: u32 = 0,
 

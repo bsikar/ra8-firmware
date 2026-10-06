@@ -8,7 +8,7 @@ const std = @import("std");
 const ad = @import("adc_selfdiag");
 
 const Fake = struct {
-    regs: [0x2200 / 4]u32 = [_]u32{0} ** (0x2200 / 4),
+    regs: [0x2200 / 4]u32 = @splat(0),
     busy: bool = false,
     adstr_writes: usize = 0,
     diag_seen: u32 = 0,

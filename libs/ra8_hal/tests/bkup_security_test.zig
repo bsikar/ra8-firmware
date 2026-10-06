@@ -6,7 +6,7 @@ const sec = @import("bkup_security");
 const prcr = sec.prcr_mod;
 
 const Fake = struct {
-    words: [sec.window_len / 4 + 1]u32 align(4) = [_]u32{0} ** (sec.window_len / 4 + 1),
+    words: [sec.window_len / 4 + 1]u32 align(4) = @splat(0),
 
     fn block(f: *Fake) sec.Block {
         return .{ .base = @intFromPtr(&f.words) };

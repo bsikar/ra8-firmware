@@ -6,7 +6,7 @@ const doc = @import("doc");
 
 /// Host RAM standing in for the DOC_B register file (no arithmetic engine).
 const Fake = struct {
-    words: [6]u32 align(4) = [_]u32{0} ** 6,
+    words: [6]u32 align(4) = @splat(0),
 
     fn block(f: *Fake) doc.Block {
         return .{ .base = @intFromPtr(&f.words) };

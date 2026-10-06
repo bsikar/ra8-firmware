@@ -199,7 +199,7 @@ pub fn injectRegs(hw: anytype, instance: u8, substitute: u32) void {
 pub const State = struct {
     counts: [2]Counters = .{ .{}, .{} },
     mirror: [2]?*Counters = .{ null, null },
-    cfg: Config = .{ .instances = [_]InstanceCfg{.{ .correct_1bit = false, .irq_1bit = false, .irq_2bit = false, .enable = false }} ** 2 },
+    cfg: Config = .{ .instances = @splat(.{ .correct_1bit = false, .irq_1bit = false, .irq_2bit = false, .enable = false }) },
     handler: ?ErrorFn = null,
     ctx: ?*anyopaque = null,
     initialized: bool = false,

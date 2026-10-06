@@ -7,7 +7,7 @@ const std = @import("std");
 const drv = @import("rmac_phy_drv");
 
 const Fake = struct {
-    regs: [32]u16 = [_]u16{0} ** 32,
+    regs: [32]u16 = @splat(0),
     fail_read: ?u8 = null,
     fail_write: ?u8 = null,
     reset_reads: u16 = 0,

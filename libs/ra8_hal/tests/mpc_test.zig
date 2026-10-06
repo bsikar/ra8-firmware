@@ -7,7 +7,7 @@ const Code = mpc.Code;
 
 /// Host RAM standing in for PFS (0x000..0x3C0) and PMISC (0x500..0x518).
 const Fake = struct {
-    words: [0x518 / 4]u32 align(4) = [_]u32{0} ** (0x518 / 4),
+    words: [0x518 / 4]u32 align(4) = @splat(0),
 
     fn block(f: *Fake) mpc.Block {
         return .{ .base = @intFromPtr(&f.words) };

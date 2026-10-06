@@ -72,7 +72,7 @@ pub fn ibiRead(regs: anytype, out: *Ibi) bool {
     out.address = id >> 1;
     out.type = ibiType(status);
     out.payload_len = n;
-    out.payload = .{0} ** 8;
+    out.payload = @splat(0);
     if (n > 0) ccc.fifoRead(regs, out.payload[0..n]);
     out.last = @truncate((status >> 24) & 1);
     regs.write32(ccc.off_ntst, regs.read32(ccc.off_ntst) & ~ntst_ibiqeff);

@@ -8,8 +8,8 @@ const std = @import("std");
 const sd = @import("sdcard");
 
 const Fake = struct {
-    cmds: [8]u32 = [_]u32{0} ** 8,
-    args: [8]u32 = [_]u32{0} ** 8,
+    cmds: [8]u32 = @splat(0),
+    args: [8]u32 = @splat(0),
     sends: usize = 0,
     fail_cmd: u32 = 0xFF,
     echo: u32 = 0x1AA,

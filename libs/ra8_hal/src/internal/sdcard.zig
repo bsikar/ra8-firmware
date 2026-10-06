@@ -66,7 +66,7 @@ pub fn cardAddress(kind: u8, lba: u32) u32 {
 
 /// CMD0, then CMD8 with the low 12 bits echoed back.
 pub fn identify(host: anytype) u16 {
-    var rsp = [_]u32{0} ** 4;
+    var rsp: [4]u32 = @splat(0);
     const e0 = host.send(cmd0_go_idle, 0, &rsp);
     if (host.failed(e0, "cmd0")) return e0;
     const e8 = host.send(cmd8_send_if_cond, cmd8_pattern, &rsp);
@@ -77,7 +77,7 @@ pub fn identify(host: anytype) u16 {
 
 /// CMD55 + ACMD41 until OCR.busy sets, at most retry_max rounds.
 pub fn acmd41(host: anytype, out_ocr: *u32) u16 {
-    var rsp = [_]u32{0} ** 4;
+    var rsp: [4]u32 = @splat(0);
     var i: u32 = 0;
     while (i < retry_max) : (i += 1) {
         const e55 = host.send(cmd55_app, 0, &rsp);
@@ -94,7 +94,7 @@ pub fn acmd41(host: anytype, out_ocr: *u32) u16 {
 
 /// CMD2, CMD3 (RCA in rsp0[31:16]).
 fn publishRca(host: anytype, out_rca: *u16) u16 {
-    var rsp = [_]u32{0} ** 4;
+    var rsp: [4]u32 = @splat(0);
     const e2 = host.send(cmd2_all_send_cid, 0, &rsp);
     if (host.failed(e2, "cmd2")) return e2;
     const e3 = host.send(cmd3_send_rca, 0, &rsp);
@@ -109,7 +109,7 @@ pub fn publishAndSelect(host: anytype, out_rca: *u16, out_blocks: *u32) u16 {
     const rca_err = publishRca(host, &rca);
     if (rca_err != ok) return rca_err;
     const rca_arg = @as(u32, rca) << 16;
-    var rsp = [_]u32{0} ** 4;
+    var rsp: [4]u32 = @splat(0);
     const e9 = host.send(cmd9_send_csd, rca_arg, &rsp);
     if (host.failed(e9, "cmd9")) return e9;
     const dec = decodeCsd(&rsp, out_blocks);

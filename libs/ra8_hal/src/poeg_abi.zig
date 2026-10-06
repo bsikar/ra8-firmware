@@ -13,7 +13,7 @@ const tag = "POEG";
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
-var s_slots: [poeg.group_count]poeg.Slot = [_]poeg.Slot{.{}} ** poeg.group_count;
+var s_slots: [poeg.group_count]poeg.Slot = @splat(.{});
 
 const Mmio = struct {
     fn reg(group: u8) *volatile u32 {

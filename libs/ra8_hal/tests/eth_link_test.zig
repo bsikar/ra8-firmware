@@ -5,10 +5,10 @@ const std = @import("std");
 const el = @import("eth_link");
 
 const Fake = struct {
-    regs: [16]u16 = [_]u16{0} ** 16,
+    regs: [16]u16 = @splat(0),
     fail_reg: ?u8 = null,
     set_link_ret: u16 = 0,
-    modes: [8]u8 = [_]u8{0} ** 8,
+    modes: [8]u8 = @splat(0),
     n_modes: usize = 0,
     pis: ?u8 = null,
     delays: u32 = 0,

@@ -17,7 +17,7 @@ const RxCtx = struct {
     user_ctx: ?*anyopaque = null,
 };
 
-var rx_ctx = [_]RxCtx{.{}} ** dma.channel_count;
+var rx_ctx: [dma.channel_count]RxCtx = @splat(.{});
 
 extern fn ra8_dma_request(req: *const dma.Request, out_channel: *u8) u16;
 extern fn ra8_cache_dcache_line_bytes() u32;

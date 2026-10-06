@@ -27,16 +27,16 @@ pub const KeyHandle = extern struct {
     size: u32 = 0,
     key_index: u8 = 0,
     valid: u8 = 0,
-    words: [8]u32 = [_]u32{0} ** 8,
+    words: [8]u32 = @splat(0),
 };
 
 /// ra8_dotf_chan_state_t.
 pub const ChanState = extern struct {
-    regions: [max_regions]Region = [_]Region{.{}} ** max_regions,
-    region_valid: [max_regions]u8 = [_]u8{0} ** max_regions,
+    regions: [max_regions]Region = @splat(.{}),
+    region_valid: [max_regions]u8 = @splat(0),
     active_region_id: u8 = 0,
     key: KeyHandle = .{},
-    iv_cache: [iv_words]u32 = [_]u32{0} ** iv_words,
+    iv_cache: [iv_words]u32 = @splat(0),
     iv_valid: u8 = 0,
     cached_key_size: u32 = 0,
     cached_sca: u8 = 0,

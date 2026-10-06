@@ -9,7 +9,7 @@ const expectEqual = std.testing.expectEqual;
 const hw_timeout: u16 = 0x203;
 
 const Fake = struct {
-    regs: [0x440 / 4]u32 = [_]u32{0} ** (0x440 / 4),
+    regs: [0x440 / 4]u32 = @splat(0),
     errs: u8 = 0,
     waits: u8 = 0,
     wait_mask: u32 = 0,

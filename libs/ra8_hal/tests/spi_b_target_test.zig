@@ -8,7 +8,7 @@ const tgt = @import("spi_b_target");
 
 /// Two 256-byte channel banks; SPSR reads report `ready` after `busy` polls.
 const Regs = struct {
-    mem: [2][64]u32 = .{[_]u32{0} ** 64} ** 2,
+    mem: [2][64]u32 = @splat(@as([64]u32, @splat(0))),
     busy: u32 = 0,
     ready: u32 = 0xA000_0000,
     rx_byte: u32 = 0x1A5,

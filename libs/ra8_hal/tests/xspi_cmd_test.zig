@@ -7,7 +7,7 @@ const std = @import("std");
 const cmd = @import("xspi_cmd");
 
 const Regs = struct {
-    mem: [0x200 / 4]u32 = [_]u32{0} ** (0x200 / 4),
+    mem: [0x200 / 4]u32 = @splat(0),
     done_at: ?u32 = 0,
     reply: u32 = 0,
 

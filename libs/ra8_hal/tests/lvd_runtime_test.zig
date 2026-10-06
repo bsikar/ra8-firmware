@@ -7,9 +7,9 @@ const rt = @import("lvd_runtime");
 /// Registers live in `mem`: channel idx i has sr=i, cmpcr=4+i, fcr=8+i,
 /// cr0=12+i. Channels 1/2 (idx 0/1) are m channels, 4/5 (idx 2/3) are n.
 const Fake = struct {
-    mem: [16]u8 = [_]u8{0} ** 16,
-    writes: [8]usize = [_]usize{0} ** 8,
-    write_vals: [8]u8 = [_]u8{0} ** 8,
+    mem: [16]u8 = @splat(0),
+    writes: [8]usize = @splat(0),
+    write_vals: [8]u8 = @splat(0),
     write_calls: u8 = 0,
     rmw_clr: [4]u8 = .{ 0, 0, 0, 0 },
     rmw_set: [4]u8 = .{ 0, 0, 0, 0 },

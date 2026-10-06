@@ -19,8 +19,8 @@ const ErrFn = *const fn (ctx: ?*anyopaque, bank: u8, is_2bit: bool, err_addr: us
 extern fn ra8_sram_get_status(out: *sec.Status) u16;
 
 const tag = "SRAM";
-const none = [_]?ErrFn{null} ** sec.bank_count;
-const no_ctx = [_]?*anyopaque{null} ** sec.bank_count;
+const none: [sec.bank_count]?ErrFn = @splat(null);
+const no_ctx: [sec.bank_count]?*anyopaque = @splat(null);
 
 export var g_sram_on_error: ?ErrFn = null;
 export var g_sram_on_error_ctx: ?*anyopaque = null;

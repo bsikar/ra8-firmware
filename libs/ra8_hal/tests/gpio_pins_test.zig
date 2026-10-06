@@ -62,7 +62,10 @@ test "unlock then lock write PWPR and PWPRS in order" {
     var r = Rec{};
     gp.unlock(&r);
     gp.lock(&r);
-    const want_a = [_]usize{ 0x4040_0D0C, 0x4040_0D0C, 0x4040_0D14, 0x4040_0D14 } ** 2;
+    const want_a = [_]usize{
+        0x4040_0D0C, 0x4040_0D0C, 0x4040_0D14, 0x4040_0D14,
+        0x4040_0D0C, 0x4040_0D0C, 0x4040_0D14, 0x4040_0D14,
+    };
     const want_v = [_]u8{ 0, 0x40, 0, 0x40, 0, 0x80, 0, 0x80 };
     try std.testing.expectEqualSlices(usize, &want_a, r.addrs[0..r.n]);
     try std.testing.expectEqualSlices(u8, &want_v, r.vals[0..r.n]);

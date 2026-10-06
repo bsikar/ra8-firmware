@@ -7,7 +7,7 @@ const std = @import("std");
 const fi = @import("flash_irq");
 
 const Regs = struct {
-    mem: [0x3100]u8 = [_]u8{0} ** 0x3100,
+    mem: [0x3100]u8 = @splat(0),
     pub fn read8(self: *Regs, o: u16) u8 {
         return self.mem[o];
     }

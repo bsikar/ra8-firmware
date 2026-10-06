@@ -37,7 +37,7 @@ test "eccParams for the four supported curves" {
 }
 
 test "scrub zeroes only the given slice" {
-    var buf = [_]u8{0xAA} ** 8;
+    var buf: [8]u8 = @splat(0xAA);
     p.scrub(buf[2..6]);
     try std.testing.expectEqualSlices(u8, &.{ 0xAA, 0xAA, 0, 0, 0, 0, 0xAA, 0xAA }, &buf);
 }

@@ -19,9 +19,9 @@ const off_sqch0scr: u16 = 0x5D4;
 const off_sqch1scr: u16 = 0x614;
 
 const Fake = struct {
-    regs: [0x640 / 4]u32 = [_]u32{0} ** (0x640 / 4),
+    regs: [0x640 / 4]u32 = @splat(0),
     calls: u8 = 0,
-    events: [8]u8 = [_]u8{0xFF} ** 8,
+    events: [8]u8 = @splat(0xFF),
     last_mask: u32 = 0,
     rstcr_writes: u8 = 0,
     rstcr_last: u32 = 0xFFFF_FFFF,
@@ -90,7 +90,7 @@ test "video overflow and underflow pulse the soft reset" {
 
 test "receive drains an armed buffer on a response and disarms it" {
     var f = Fake{};
-    var out = [_]u8{0} ** 6;
+    var out: [6]u8 = @splat(0);
     var rx = Rx{ .buf = &out, .len = 6 };
     f.regs[off_rxsr / 4] = dp.rxsr_rxresp;
     f.regs[off_rxppd0r / 4] = 0x4433_2211;
@@ -107,7 +107,7 @@ test "receive drains an armed buffer on a response and disarms it" {
 
 test "receive leaves the buffer armed without a response or with zero length" {
     var f = Fake{};
-    var out = [_]u8{0xAA} ** 2;
+    var out: [2]u8 = @splat(0xAA);
     var rx = Rx{ .buf = &out, .len = 2 };
     dp.receive(&f, rx.view());
     try expect(rx.buf != null);

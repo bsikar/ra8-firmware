@@ -17,7 +17,7 @@ const ok = p.ok;
 const Handle = extern struct {
     alg: u32 = 0,
     body_words: u32 = 0,
-    body: [260]u32 = [_]u32{0} ** 260,
+    body: [260]u32 = @splat(0),
 };
 
 comptime {
@@ -34,7 +34,7 @@ extern fn ra8_rsip_rsa_sign(key: *const Handle, size: u16, digest: [*]const u8, 
 extern fn ra8_rsip_ecdsa_sign(key: *const Handle, curve: u8, digest: [*]const u8, len: u32, sig: [*]u8) u16;
 
 var aes_handle: Handle = .{};
-var aes_iv: [p.iv_bytes]u8 = [_]u8{0} ** p.iv_bytes;
+var aes_iv: [p.iv_bytes]u8 = @splat(0);
 var aes_iv_set = false;
 var aes_mode: u8 = 0;
 var aes_active = false;
@@ -69,7 +69,7 @@ export fn ra8_rsip_protected_aes_init(wrapped_key: ?[*]const u8, key_bits: u16, 
     const wk = wrapped_key.?;
     const rc = ra8_rsip_key_validate(wk, p.type_aes);
     if (rc != ok) return rc;
-    var raw = [_]u8{0} ** p.aes_max_bytes;
+    var raw: [p.aes_max_bytes]u8 = @splat(0);
     const n = p.keyBytes(key_bits) orelse return p.err_invalid_arg;
     @memcpy(raw[0..n], wk[p.off_payload..][0..n]);
     var handle: Handle = .{};
@@ -117,9 +117,9 @@ fn rsaValidate(wrapped: [*]const u8) u16 {
 }
 
 fn rsaInstall(wrapped: [*]const u8, size: u16, mod_bytes: u32, out: *Handle) u16 {
-    var modulus = [_]u8{0} ** p.wrapped_max_payload;
+    var modulus: [p.wrapped_max_payload]u8 = @splat(0);
     @memcpy(modulus[0..mod_bytes], wrapped[p.off_payload..][0..mod_bytes]);
-    const iv = [_]u8{0} ** p.iv_bytes;
+    const iv: [p.iv_bytes]u8 = @splat(0);
     const rc = ra8_rsip_oem_install(p.installCmd(size), &iv, &modulus, mod_bytes, out);
     p.scrub(modulus[0..mod_bytes]);
     return rc;

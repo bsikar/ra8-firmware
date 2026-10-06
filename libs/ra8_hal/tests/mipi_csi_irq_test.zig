@@ -5,7 +5,7 @@ const std = @import("std");
 const irq = @import("mipi_csi_irq");
 
 const Fake = struct {
-    regs: [0x300 / 4]u32 = [_]u32{0} ** (0x300 / 4),
+    regs: [0x300 / 4]u32 = @splat(0),
     errs: u8 = 0,
 
     pub fn read32(f: *Fake, off: u16) u32 {
@@ -27,8 +27,8 @@ const Fake = struct {
 
 const Rec = struct {
     calls: u8 = 0,
-    ids: [20]u8 = [_]u8{0} ** 20,
-    vals: [20]u32 = [_]u32{0} ** 20,
+    ids: [20]u8 = @splat(0),
+    vals: [20]u32 = @splat(0),
     reports: u8 = 0,
     last: irq.ErrorReport = .{ .vc = 0, .ecc_corrected = false, .ecc_two_bit_error = false, .crc_error = false, .raw_vcst = 0 },
 };

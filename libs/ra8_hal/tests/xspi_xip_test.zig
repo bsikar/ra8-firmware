@@ -7,7 +7,7 @@ const std = @import("std");
 const xip = @import("xspi_xip");
 
 const Fake = struct {
-    mem: [0x140 / 4]u32 = [_]u32{0} ** (0x140 / 4),
+    mem: [0x140 / 4]u32 = @splat(0),
     log: [8]usize = undefined,
     n: usize = 0,
     clears_after: ?u32 = 0,

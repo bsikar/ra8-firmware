@@ -42,7 +42,7 @@ test "CCC and ENTDAA descriptor words" {
 
 test "DAA drains PID, BCR and DCR per target and keeps the address" {
     var r = Regs{ .rx = &.{ 0x4433_2211, 0x7766_6655, 0x0D0C_0B0A, 0x2120_0F0E } };
-    var t = [_]ccc.Target{ .{ .pid = .{0} ** 6, .bcr = 0, .dcr = 0, .dynamic_address = 0x09 }, .{ .pid = .{0} ** 6, .bcr = 0, .dcr = 0, .dynamic_address = 0x0A } };
+    var t = [_]ccc.Target{ .{ .pid = @splat(0), .bcr = 0, .dcr = 0, .dynamic_address = 0x09 }, .{ .pid = @splat(0), .bcr = 0, .dcr = 0, .dynamic_address = 0x0A } };
     ccc.daa(&r, &t);
     try expectLog(&r, &.{ .{ 0x150, ccc.entdaaWord(2) }, .{ 0x150, 0 } });
     try std.testing.expectEqualSlices(u8, &.{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 }, &t[0].pid);

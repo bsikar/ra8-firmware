@@ -5,7 +5,7 @@ const std = @import("std");
 const info = @import("mipi_csi_info");
 
 const Fake = struct {
-    regs: [0x80 / 4]u32 = [_]u32{0} ** (0x80 / 4),
+    regs: [0x80 / 4]u32 = @splat(0),
     errs: u8 = 0,
 
     pub fn read32(f: *Fake, off: u16) u32 {

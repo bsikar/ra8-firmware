@@ -7,7 +7,7 @@ const std = @import("std");
 const crc = @import("crc");
 
 const Fake = struct {
-    regs: [crc.block_size / 4]u32 align(4) = [_]u32{0} ** (crc.block_size / 4),
+    regs: [crc.block_size / 4]u32 align(4) = @splat(0),
 
     fn block(f: *Fake) crc.Block {
         return .{ .base = @intFromPtr(&f.regs) };

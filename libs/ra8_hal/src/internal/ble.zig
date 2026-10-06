@@ -65,13 +65,13 @@ pub fn scanParams(active: u8, interval: u16, window: u16) [7]u8 {
 
 pub const State = struct {
     open: bool = false,
-    tx: [capture_bytes]u8 = [_]u8{0} ** capture_bytes,
+    tx: [capture_bytes]u8 = @splat(0),
     tx_len: u16 = 0,
-    rx: [capture_bytes]u8 = [_]u8{0} ** capture_bytes,
+    rx: [capture_bytes]u8 = @splat(0),
     rx_len: u16 = 0,
     rx_pos: u16 = 0,
-    evt: [max_evt_params]u8 = [_]u8{0} ** max_evt_params,
-    acl: [max_acl_payload]u8 = [_]u8{0} ** max_acl_payload,
+    evt: [max_evt_params]u8 = @splat(0),
+    acl: [max_acl_payload]u8 = @splat(0),
 
     pub fn reset(self: *State) void {
         self.tx_len = 0;

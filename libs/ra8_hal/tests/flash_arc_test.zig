@@ -13,7 +13,7 @@ const expectEqual = std.testing.expectEqual;
 const Fake = struct {
     arccs: u16 = 0,
     sec: [2]u32 = .{ 0, 0 },
-    nsec: [64]u32 = [_]u32{0} ** 64,
+    nsec: [64]u32 = @splat(0),
 
     pub fn read16(self: *const Fake, a: usize) u16 {
         std.debug.assert(a == arc.arccs_addr);

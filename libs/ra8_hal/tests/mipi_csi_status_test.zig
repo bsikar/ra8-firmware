@@ -5,7 +5,7 @@ const std = @import("std");
 const st = @import("mipi_csi_status");
 
 const Fake = struct {
-    regs: [0x300 / 4]u32 = [_]u32{0} ** (0x300 / 4),
+    regs: [0x300 / 4]u32 = @splat(0),
     errs: u8 = 0,
     writes: u8 = 0,
     gcd_after: ?u16 = null,

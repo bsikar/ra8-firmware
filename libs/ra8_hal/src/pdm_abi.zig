@@ -16,7 +16,7 @@ extern fn ra8_mstp_disable(id: u16) u16;
 extern fn ra8_isr_register(event: u16, handler: IsrFn, ctx: ?*anyopaque, priority: u8, out_slot: ?*u16) u16;
 extern fn ra8_isr_unregister(event: u16) u16;
 
-var streams = [_]pdm.Stream{.{}} ** pdm.ch_count;
+var streams: [pdm.ch_count]pdm.Stream = @splat(.{});
 
 const Mmio = struct {
     pub fn read32(_: Mmio, off: usize) u32 {

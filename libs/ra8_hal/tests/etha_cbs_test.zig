@@ -8,7 +8,7 @@ const cbs = @import("etha_cbs");
 
 /// One port's ETHA block; writes are logged in order.
 const Regs = struct {
-    mem: [0x110]u32 = [_]u32{0} ** 0x110,
+    mem: [0x110]u32 = @splat(0),
     log: [8][2]u32 = undefined,
     n: usize = 0,
     pub fn read32(self: *Regs, off: usize) u32 {

@@ -10,7 +10,7 @@ const tas = @import("etha_tas");
 /// each GL1/GR write; RIRM reports ready after `ready_reads` reads. A
 /// negative count never settles. Writes are logged in order.
 const Regs = struct {
-    mem: [0x400]u32 = [_]u32{0} ** 0x400,
+    mem: [0x400]u32 = @splat(0),
     log: [64][2]u32 = undefined,
     n: usize = 0,
     busy_reads: i32 = 2,
@@ -64,7 +64,7 @@ const two = [_]tas.Entry{ .{ .gate_time_ns = 500, .gate_open = true }, .{ .gate_
 const one = [_]tas.Entry{.{ .gate_time_ns = 0x0FFF_FFFF, .gate_open = true }};
 
 fn queuesOf() tas.Queues {
-    var q: tas.Queues = [_]tas.Queue{.{ .entries = null, .count = 0 }} ** tas.tc_count;
+    var q: tas.Queues = @splat(.{ .entries = null, .count = 0 });
     q[0] = .{ .entries = &two, .count = 2 };
     q[3] = .{ .entries = &one, .count = 1 };
     return q;
@@ -106,7 +106,7 @@ test "validate rejects null entries, wide gate times and an over-full RAM" {
     q[5] = .{ .entries = &wide, .count = 1 };
     try std.testing.expectEqual(tas.invalid_arg, tas.validate(&o, &q));
     try std.testing.expectEqualStrings("etha_tas: gate time exceeds TASGTL[27:0]", o.err.?);
-    var many: [120]tas.Entry = [_]tas.Entry{.{ .gate_time_ns = 1, .gate_open = false }} ** 120;
+    var many: [120]tas.Entry = @splat(.{ .gate_time_ns = 1, .gate_open = false });
     q = queuesOf();
     q[7] = .{ .entries = &many, .count = 117 };
     try std.testing.expectEqual(tas.invalid_arg, tas.validate(&o, &q));

@@ -40,7 +40,7 @@ var pool: [64]u8 = undefined;
 
 fn freshState() !t.DefaultState {
     if (@intFromPtr(&ring) >= (@as(usize, 1) << 40)) return error.SkipZigTest;
-    ring = [_]t.ExtDesc{.{}} ** 4;
+    ring = @splat(.{});
     var s = std.mem.zeroes(t.DefaultState);
     s.tx_chain = &ring;
     s.tx_depth = 4;
@@ -71,7 +71,7 @@ test "send rejects bad args and times out" {
     var log = std.ArrayList(u8).init(std.testing.allocator);
     defer log.deinit();
     var s = try freshState();
-    const frame = [_]u8{0} ** 65;
+    const frame: [65]u8 = @splat(0);
     const hw = Hw{ .log = &log, .done_at = std.math.maxInt(u32) };
     try std.testing.expectEqual(q.null_ptr, t.send(hw, null, &frame, 1));
     try std.testing.expectEqual(q.null_ptr, t.send(hw, &s, null, 1));

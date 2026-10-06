@@ -48,7 +48,7 @@ const Dev = struct {
 };
 
 fn cdb10(lba: u32, n: u16) [16]u8 {
-    var c = [_]u8{0} ** 16;
+    var c: [16]u8 = @splat(0);
     std.mem.writeInt(u32, c[2..6], lba, .big);
     std.mem.writeInt(u16, c[7..9], n, .big);
     return c;
@@ -64,7 +64,7 @@ test "decodeRw10 reads the big-endian LBA and count" {
 test "inquiry fills the header, pads with spaces and lets the backend write" {
     var d = Dev{};
     const s = d.storage();
-    var buf = [_]u8{0xEE} ** 40;
+    var buf: [40]u8 = @splat(0xEE);
     var n: u32 = 0;
     try std.testing.expectEqual(scsi.err_invalid_size, scsi.inquiry(&s, &buf, 35, &n));
     try std.testing.expectEqual(scsi.ok, scsi.inquiry(&s, &buf, 40, &n));
@@ -78,7 +78,7 @@ test "inquiry fills the header, pads with spaces and lets the backend write" {
 test "inquiry passes a backend error through without setting the length" {
     var d = Dev{ .fail = 0x201 };
     const s = d.storage();
-    var buf = [_]u8{0} ** 36;
+    var buf: [36]u8 = @splat(0);
     var n: u32 = 7;
     try std.testing.expectEqual(@as(u16, 0x201), scsi.inquiry(&s, &buf, 36, &n));
     try std.testing.expectEqual(@as(u32, 7), n);
@@ -87,7 +87,7 @@ test "inquiry passes a backend error through without setting the length" {
 test "readCapacity packs last LBA and block size, clamping an empty device" {
     var d = Dev{ .count = 0x1_0000, .size = 512 };
     var s = d.storage();
-    var buf = [_]u8{0xEE} ** 8;
+    var buf: [8]u8 = @splat(0xEE);
     var n: u32 = 0;
     try std.testing.expectEqual(scsi.err_invalid_size, scsi.readCapacity(&s, &buf, 7, &n));
     try std.testing.expectEqual(scsi.ok, scsi.readCapacity(&s, &buf, 8, &n));
@@ -100,7 +100,7 @@ test "readCapacity packs last LBA and block size, clamping an empty device" {
 }
 
 test "requestSense and modeSense build fixed responses" {
-    var buf = [_]u8{0xEE} ** 18;
+    var buf: [18]u8 = @splat(0xEE);
     var n: u32 = 0;
     try std.testing.expectEqual(scsi.err_invalid_size, scsi.requestSense(&buf, 17, &n));
     try std.testing.expectEqual(scsi.ok, scsi.requestSense(&buf, 18, &n));
@@ -117,7 +117,7 @@ test "requestSense and modeSense build fixed responses" {
 test "read10 reads, checks the buffer size and defaults a zero block size" {
     var d = Dev{ .size = 0 };
     const s = d.storage();
-    var buf = [_]u8{0} ** 1024;
+    var buf: [1024]u8 = @splat(0);
     var n: u32 = 9;
     var c = cdb10(7, 0);
     try std.testing.expectEqual(scsi.ok, scsi.read10(&s, &c, &buf, 1024, &n));
@@ -134,7 +134,7 @@ test "read10 reads, checks the buffer size and defaults a zero block size" {
 test "write10 writes and reports the byte count, passing errors through" {
     var d = Dev{ .size = 4096 };
     const s = d.storage();
-    const buf = [_]u8{0} ** 4;
+    const buf: [4]u8 = @splat(0);
     var n: u32 = 0;
     const c = cdb10(0x10, 4);
     try std.testing.expectEqual(scsi.ok, scsi.write10(&s, &c, &buf, &n));

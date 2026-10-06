@@ -9,7 +9,7 @@ const bus = @import("i2c_bus");
 /// Byte register file. `rs_spins` keeps ICCR2.RS set for that many polls;
 /// `stuck` makes every poll fail.
 const Regs = struct {
-    mem: [0x16]u8 = [_]u8{0} ** 0x16,
+    mem: [0x16]u8 = @splat(0),
     polls: u32 = 0,
     rs_spins: u32 = 0,
     stuck: bool = false,

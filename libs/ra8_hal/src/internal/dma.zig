@@ -83,8 +83,8 @@ pub fn pack(req: *const Request) Config {
 }
 
 pub const State = struct {
-    channels: [channel_count]Channel = [_]Channel{.{}} ** channel_count,
-    requests: [channel_count]Request = [_]Request{.{}} ** channel_count,
+    channels: [channel_count]Channel = @splat(.{}),
+    requests: [channel_count]Request = @splat(.{}),
     initialized: bool = false,
 
     pub fn init(self: *State, ops: anytype) u16 {

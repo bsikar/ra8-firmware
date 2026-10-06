@@ -9,9 +9,9 @@ const isr = @import("isr");
 const Op = enum { enable, disable, clear, prio, ielsr };
 
 const Fake = struct {
-    ielsr: [isr.slot_count]u32 = [_]u32{0xFFFF_FFFF} ** isr.slot_count,
-    enabled: [isr.slot_count]bool = [_]bool{true} ** isr.slot_count,
-    prio: [isr.slot_count]u8 = [_]u8{0} ** isr.slot_count,
+    ielsr: [isr.slot_count]u32 = @splat(0xFFFF_FFFF),
+    enabled: [isr.slot_count]bool = @splat(true),
+    prio: [isr.slot_count]u8 = @splat(0),
     log: [8]Op = undefined,
     n: usize = 0,
 

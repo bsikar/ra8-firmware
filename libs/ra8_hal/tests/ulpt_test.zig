@@ -8,7 +8,7 @@ const ulpt = @import("ulpt");
 
 /// Two 20-byte channel banks; ULPTCR reads keep TCSTF set for `busy` reads.
 const Regs = struct {
-    mem: [2][20]u8 = .{[_]u8{0xEE} ** 20} ** 2,
+    mem: [2][20]u8 = @splat(@as([20]u8, @splat(0xEE))),
     cnt: [2]u32 = .{ 0xDEAD, 0xBEEF },
     busy: u32 = 0,
     writes: u32 = 0,

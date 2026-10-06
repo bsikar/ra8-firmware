@@ -8,7 +8,7 @@ const g = @import("eth_gptp");
 
 /// The GPTP block as words; records every write in order.
 const Regs = struct {
-    mem: [0x40]u32 = [_]u32{0} ** 0x40,
+    mem: [0x40]u32 = @splat(0),
     log: [32][2]u32 = undefined,
     n: usize = 0,
     reads: [4]usize = undefined,

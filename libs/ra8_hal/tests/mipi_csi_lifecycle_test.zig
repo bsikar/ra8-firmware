@@ -5,7 +5,7 @@ const std = @import("std");
 const lc = @import("mipi_csi_lifecycle");
 
 const Fake = struct {
-    regs: [0x300 / 4]u32 = [_]u32{0} ** (0x300 / 4),
+    regs: [0x300 / 4]u32 = @splat(0),
     rtst_busy_reads: u16 = 0,
     mstp_rc: u16 = 0,
     mstp_on: bool = false,

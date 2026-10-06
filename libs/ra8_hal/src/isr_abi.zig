@@ -17,7 +17,7 @@ const nvic_ipr: usize = 0xE000_E400;
 const prio_shift: u3 = 4;
 const icu_ielsr0: usize = 0x4000_6000 + 0x6300;
 
-var pool: isr.Pool = [_]isr.Slot{.{}} ** isr.slot_count;
+var pool: isr.Pool = @splat(.{});
 
 fn nvicWord(base: usize, n: u16) void {
     const reg: *volatile u32 = @ptrFromInt(base + @as(usize, n / 32) * 4);
