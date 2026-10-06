@@ -25,11 +25,13 @@
 //! ordering depends on.
 
 const halt = @import("fault_halt");
+const decode = @import("fault_decode");
 const record = @import("fault_record");
 const scb = @import("fault_scb");
 
 const tag: [*:0]const u8 = "EXC";
 
+extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 extern fn ra8_log_emit_error_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
 extern fn ra8_fatal_error(tag: [*:0]const u8, message: [*:0]const u8, err: u32) callconv(.c) noreturn;
 
@@ -100,7 +102,7 @@ fn logFaultDump(
     ra8_log_emit_error_val(tag, "exception", exc_number);
 
     if (frame) |f| {
-        ra8_log_emit_error_val(tag, "pc  ", f.pc);
+        ra8_log_emit_error_val(tag, "stacked_pc", f.pc);
         ra8_log_emit_error_val(tag, "lr  ", f.lr);
         ra8_log_emit_error_val(tag, "xpsr", f.xpsr);
         ra8_log_emit_error_val(tag, "r0  ", f.r0);
@@ -111,9 +113,16 @@ fn logFaultDump(
     }
 
     ra8_log_emit_error_val(tag, "cfsr ", diag.cfsr);
+    for (decode.causes) |cause| {
+        if (cause.asserted(diag.cfsr)) ra8_log_emit_error(tag, cause.message.ptr);
+    }
+    if (decode.mmFaultAddress(diag.cfsr, diag.mmfar)) |address| {
+        ra8_log_emit_error_val(tag, "mm_fault_addr", address);
+    }
+    if (decode.busFaultAddress(diag.cfsr, diag.bfar)) |address| {
+        ra8_log_emit_error_val(tag, "bus_fault_addr", address);
+    }
     ra8_log_emit_error_val(tag, "hfsr ", diag.hfsr);
-    ra8_log_emit_error_val(tag, "bfar ", diag.bfar);
-    ra8_log_emit_error_val(tag, "mmfar", diag.mmfar);
     ra8_log_emit_error_val(tag, "sfsr ", diag.sfsr);
     ra8_log_emit_error_val(tag, "sfar ", diag.sfar);
     if (exc_number == record.exc.nmi) {

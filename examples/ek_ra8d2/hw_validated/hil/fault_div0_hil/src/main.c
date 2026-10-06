@@ -21,20 +21,20 @@
  * 3. Perform a guarded volatile `u32 / 0`.
  *
  * On silicon the divide never completes: the CPU takes UsageFault,
- * the decoded dump prints (`exception=6`, `cfsr =33554432` -- that is
- * 0x02000000 = CFSR.DIVBYZERO -- plus pc/lr/xpsr), and the handler
- * parks at `ra8_exception_halt_loop`. The `hil.conf` gate scrapes that
+ * the decoded dump prints `exception=6`, `cfsr =33554432`,
+ * `cause=DIVBYZERO`, and the stacked return PC as `stacked_pc`; the handler
+ * then parks at `ra8_exception_halt_loop`. The `hil.conf` gate scrapes that
  * dump.
  *
  * @note **Headless-emulator status.** `tools/ra8_emulator` models this trap:
  * a DIV_0_TRP-gated UDIV/SDIV seam takes the decoded UsageFault when (and
  * only when) the firmware has armed `CCR.DIV_0_TRP` and the divisor is
  * zero, so the emulator run reproduces the silicon dump headlessly
- * (`exception=6`, `cfsr =33554432`). The `survived divide` branch below is
- * therefore the on-silicon negative fallback -- reached only if the trap
- * ever fails to fire -- not the fake's normal path. The bench has captured
- * the real fault dump on silicon (tracker issue RA8FW-255), so the app lives in
- * `hw_validated/hil/`.
+ * (`exception=6`, `cfsr =33554432`, `cause=DIVBYZERO`). The `survived divide`
+ * branch below is therefore the on-silicon negative fallback -- reached only
+ * if the trap ever fails to fire -- not the fake's normal path. The bench has
+ * captured the real fault dump on silicon (tracker issue RA8FW-255), so the app
+ * lives in `hw_validated/hil/`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -11,6 +11,9 @@ pure 7-bit ASCII per the project character-encoding policy.
 
 ### Changed
 
+- **Decoded CPU fault reports** -- the shared exception handler now names every
+  asserted CFSR cause and reports MMFAR or BFAR as fault addresses only when
+  their architectural validity bits are set.
 - **Task runner and source-layout migration** -- developer and CI task entry
   points now use Just, and first-party applications, examples, tests, and
   compiled tools use `src/` and `inc/` ownership conventions. The repository
