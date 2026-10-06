@@ -394,82 +394,9 @@ void ra8_wdt_refresh_deferred(void)
   return k_ra8_ok;
 }
 
-/* =============================================================================
- * Timeout decoding (FSP timeoutGet analogue)
- * =============================================================================
- */
-
-[[nodiscard]] ra8_err_t ra8_wdt_timeout_cycles_get(ra8_wdt_timeout_sel_t sel, uint16_t* out_cycles)
-{
-  RA8_CHECK_NULL_PTR(out_cycles, s_tag, "out_cycles must not be nullptr");
-  /* HUM Ch 27.2.2 "WDTCR" p 1259 */
-  switch (sel) {
-    case k_ra8_wdt_timeout_1024:
-      *out_cycles = k_ra8_wdt_cycles_1024;
-      return k_ra8_ok;
-    case k_ra8_wdt_timeout_4096:
-      *out_cycles = k_ra8_wdt_cycles_4096;
-      return k_ra8_ok;
-    case k_ra8_wdt_timeout_8192:
-      *out_cycles = k_ra8_wdt_cycles_8192;
-      return k_ra8_ok;
-    case k_ra8_wdt_timeout_16384:
-      *out_cycles = k_ra8_wdt_cycles_16384;
-      return k_ra8_ok;
-    default:
-      return k_ra8_err_invalid_arg;
-  }
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_pclkb_divisor(ra8_wdt_clock_div_t div, uint16_t* out_divisor)
-{
-  RA8_CHECK_NULL_PTR(out_divisor, s_tag, "out_divisor must not be nullptr");
-  /* HUM Ch 27.2.2 "WDTCR" p 1258 */
-  switch (div) {
-    case k_ra8_wdt_clkdiv_4:
-      *out_divisor = k_ra8_wdt_div_value_4;
-      return k_ra8_ok;
-    case k_ra8_wdt_clkdiv_64:
-      *out_divisor = k_ra8_wdt_div_value_64;
-      return k_ra8_ok;
-    case k_ra8_wdt_clkdiv_128:
-      *out_divisor = k_ra8_wdt_div_value_128;
-      return k_ra8_ok;
-    case k_ra8_wdt_clkdiv_512:
-      *out_divisor = k_ra8_wdt_div_value_512;
-      return k_ra8_ok;
-    case k_ra8_wdt_clkdiv_2048:
-      *out_divisor = k_ra8_wdt_div_value_2048;
-      return k_ra8_ok;
-    case k_ra8_wdt_clkdiv_8192:
-      *out_divisor = k_ra8_wdt_div_value_8192;
-      return k_ra8_ok;
-    default:
-      return k_ra8_err_invalid_arg;
-  }
-}
-
-[[nodiscard]] ra8_err_t ra8_wdt_total_pclkb_cycles(ra8_wdt_timeout_sel_t sel,
-                                                   ra8_wdt_clock_div_t   div,
-                                                   uint32_t*             out_pclkb_cycles)
-{
-  RA8_CHECK_NULL_PTR(out_pclkb_cycles, s_tag, "out_pclkb_cycles must not be nullptr");
-
-  uint16_t        cycles  = 0U;
-  uint16_t        divisor = 0U;
-  const ra8_err_t e1      = ra8_wdt_timeout_cycles_get(sel, &cycles);
-  if (e1 != k_ra8_ok) {
-    return e1;
-  }
-  const ra8_err_t e2 = ra8_wdt_pclkb_divisor(div, &divisor);
-  if (e2 != k_ra8_ok) {
-    return e2;
-  }
-
-  /* Largest product is 16384 * 8192 = 134_217_728 -- fits 32 bits. */
-  *out_pclkb_cycles = (uint32_t)cycles * (uint32_t)divisor;
-  return k_ra8_ok;
-}
+/* ra8_wdt_timeout_cycles_get, ra8_wdt_pclkb_divisor and
+ * ra8_wdt_total_pclkb_cycles are defined in src/wdt_timing_abi.zig
+ * (RA8FW-889). */
 
 /* =============================================================================
  * Single + multi-subscriber callback API
