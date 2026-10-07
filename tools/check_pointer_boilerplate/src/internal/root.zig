@@ -186,15 +186,15 @@ pub const LineIterator = struct {
 
 /// One-based line numbers carrying the banned comment, in order.
 pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]usize {
-    var hits = std.ArrayList(usize).init(allocator);
-    errdefer hits.deinit();
+    var hits: std.ArrayList(usize) = .empty;
+    errdefer hits.deinit(allocator);
     var lines = LineIterator.init(text);
     var number: usize = 0;
     while (lines.next()) |line| {
         number += 1;
-        if (isBanned(line)) try hits.append(number);
+        if (isBanned(line)) try hits.append(allocator, number);
     }
-    return hits.toOwnedSlice();
+    return hits.toOwnedSlice(allocator);
 }
 
 /// Render one finding as the gate has always printed it: `path:line`.
@@ -247,17 +247,17 @@ pub fn selectScoped(
 ) ![][]const u8 {
     var seen = std.StringHashMap(void).init(allocator);
     defer seen.deinit();
-    var selected = std.ArrayList([]const u8).init(allocator);
-    errdefer selected.deinit();
+    var selected: std.ArrayList([]const u8) = .empty;
+    errdefer selected.deinit(allocator);
     for (census) |rel| {
         if (!isScopedPrefix(rel)) continue;
         if (!hasSourceSuffix(rel)) continue;
         if (!resolver.isFile(rel)) continue;
         if (seen.contains(rel)) continue;
         try seen.put(rel, {});
-        try selected.append(rel);
+        try selected.append(allocator, rel);
     }
-    const paths = try selected.toOwnedSlice();
+    const paths = try selected.toOwnedSlice(allocator);
     std.mem.sort([]const u8, paths, {}, lessThanPath);
     return paths;
 }
@@ -302,12 +302,12 @@ pub const selftest_cases = [_]struct {
 
 /// Labels of the detector cases that did not answer as documented.
 pub fn selftestFailures(allocator: std.mem.Allocator) ![][]const u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    errdefer failures.deinit();
+    var failures: std.ArrayList([]const u8) = .empty;
+    errdefer failures.deinit(allocator);
     for (selftest_cases) |case| {
         const hits = try scanText(allocator, case.line);
         defer allocator.free(hits);
-        if ((hits.len != 0) != case.expected) try failures.append(case.label);
+        if ((hits.len != 0) != case.expected) try failures.append(allocator, case.label);
     }
-    return failures.toOwnedSlice();
+    return failures.toOwnedSlice(allocator);
 }
