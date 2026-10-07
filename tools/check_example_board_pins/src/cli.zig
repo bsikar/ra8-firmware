@@ -39,19 +39,19 @@ fn isAbsolute(path: []const u8) bool {
 /// `pathlib.Path(raw)`: collapse repeated slashes and drop `.` components,
 /// keeping `..` exactly as written.
 fn pathlibNormalize(allocator: std.mem.Allocator, raw: []const u8) ![]const u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
-    if (isAbsolute(raw)) try out.append('/');
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
+    if (isAbsolute(raw)) try out.append(allocator, '/');
     var parts = std.mem.splitScalar(u8, raw, '/');
     var wrote = false;
     while (parts.next()) |part| {
         if (part.len == 0 or std.mem.eql(u8, part, ".")) continue;
-        if (wrote) try out.append('/');
-        try out.appendSlice(part);
+        if (wrote) try out.append(allocator, '/');
+        try out.appendSlice(allocator, part);
         wrote = true;
     }
-    if (!wrote and !isAbsolute(raw)) try out.appendSlice(".");
-    return out.toOwnedSlice();
+    if (!wrote and !isAbsolute(raw)) try out.appendSlice(allocator, ".");
+    return out.toOwnedSlice(allocator);
 }
 
 fn joinRepo(allocator: std.mem.Allocator, repo_root: []const u8, relative: []const u8) ![]const u8 {
@@ -69,14 +69,14 @@ const Collector = struct {
 
     fn init(allocator: std.mem.Allocator) Collector {
         var self: Collector = .{ .allocator = allocator, .buckets = undefined };
-        for (&self.buckets) |*bucket| bucket.* = std.ArrayList([]const u8).init(allocator);
+        for (&self.buckets) |*bucket| bucket.* = .empty;
         return self;
     }
 
     fn offer(self: *Collector, relative: []const u8) !void {
         for (implementation.source_suffixes, 0..) |suffix, index| {
             if (implementation.globMatchesSuffix(baseName(relative), suffix)) {
-                try self.buckets[index].append(relative);
+                try self.buckets[index].append(self.allocator, relative);
                 return;
             }
         }
@@ -85,10 +85,10 @@ const Collector = struct {
     /// The four `rglob("*" ++ suffix)` passes concatenated in suffix order,
     /// which is the order the predecessor's loop produced.
     fn flatten(self: *Collector) !std.ArrayList([]const u8) {
-        var out = std.ArrayList([]const u8).init(self.allocator);
+        var out: std.ArrayList([]const u8) = .empty;
         for (&self.buckets) |*bucket| {
-            try out.appendSlice(bucket.items);
-            bucket.deinit();
+            try out.appendSlice(self.allocator, bucket.items);
+            bucket.deinit(self.allocator);
         }
         return out;
     }
@@ -101,24 +101,26 @@ const Collector = struct {
 /// descended into, matching `pathlib`'s recursive glob.
 fn walkTree(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     relative_root: []const u8,
     collector: *Collector,
 ) !void {
-    var handle = dir.openDir(relative_root, .{ .iterate = true }) catch return;
-    defer handle.close();
+    var handle = dir.openDir(io, relative_root, .{ .iterate = true }) catch return;
+    defer handle.close(io);
 
-    var names = std.ArrayList(std.fs.Dir.Entry).init(allocator);
-    defer names.deinit();
+    var names: std.ArrayList(std.Io.Dir.Entry) = .empty;
+    defer names.deinit(allocator);
     var iterator = handle.iterate();
-    while (try iterator.next()) |entry| {
-        try names.append(.{
+    while (try iterator.next(io)) |entry| {
+        try names.append(allocator, .{
             .name = try allocator.dupe(u8, entry.name),
             .kind = entry.kind,
+            .inode = entry.inode,
         });
     }
-    std.mem.sort(std.fs.Dir.Entry, names.items, {}, struct {
-        fn lessThan(_: void, a: std.fs.Dir.Entry, b: std.fs.Dir.Entry) bool {
+    std.mem.sort(std.Io.Dir.Entry, names.items, {}, struct {
+        fn lessThan(_: void, a: std.Io.Dir.Entry, b: std.Io.Dir.Entry) bool {
             return std.mem.order(u8, a.name, b.name) == .lt;
         }
     }.lessThan);
@@ -126,7 +128,7 @@ fn walkTree(
     for (names.items) |entry| {
         const relative = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ relative_root, entry.name });
         try collector.offer(relative);
-        if (entry.kind == .directory) try walkTree(allocator, dir, relative, collector);
+        if (entry.kind == .directory) try walkTree(allocator, io, dir, relative, collector);
     }
 }
 
@@ -134,22 +136,23 @@ fn walkTree(
 /// sweep when there is not, with build output filtered out of both.
 pub fn enumerateTargets(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     paths: []const []const u8,
 ) !std.ArrayList(Target) {
-    var targets = std.ArrayList(Target).init(allocator);
-    errdefer targets.deinit();
+    var targets: std.ArrayList(Target) = .empty;
+    errdefer targets.deinit(allocator);
 
     if (paths.len == 0) {
         var collector = Collector.init(allocator);
-        try walkTree(allocator, dir, implementation.scan_root, &collector);
+        try walkTree(allocator, io, dir, implementation.scan_root, &collector);
         var flat = try collector.flatten();
-        defer flat.deinit();
+        defer flat.deinit(allocator);
         for (flat.items) |relative| {
             const absolute = try joinRepo(allocator, repo_root, relative);
             if (implementation.isBuildOutputPath(absolute, repo_root)) continue;
-            try targets.append(.{ .display = relative, .path = relative, .absolute = false });
+            try targets.append(allocator, .{ .display = relative, .path = relative, .absolute = false });
         }
         return targets;
     }
@@ -164,11 +167,11 @@ pub fn enumerateTargets(
 
         var is_directory = false;
         if (absolute_path) {
-            if (std.fs.cwd().statFile(probe)) |stat| {
+            if (std.Io.Dir.cwd().statFile(io, probe, .{})) |stat| {
                 is_directory = stat.kind == .directory;
             } else |_| {}
         } else {
-            if (dir.statFile(probe)) |stat| {
+            if (dir.statFile(io, probe, .{})) |stat| {
                 is_directory = stat.kind == .directory;
             } else |_| {}
         }
@@ -176,21 +179,21 @@ pub fn enumerateTargets(
         if (is_directory) {
             var collector = Collector.init(allocator);
             if (absolute_path) {
-                var opened = std.fs.cwd().openDir(probe, .{}) catch continue;
-                opened.close();
-                try walkTree(allocator, std.fs.cwd(), probe, &collector);
+                var opened = std.Io.Dir.cwd().openDir(io, probe, .{}) catch continue;
+                opened.close(io);
+                try walkTree(allocator, io, std.Io.Dir.cwd(), probe, &collector);
             } else {
-                try walkTree(allocator, dir, probe, &collector);
+                try walkTree(allocator, io, dir, probe, &collector);
             }
             var flat = try collector.flatten();
-            defer flat.deinit();
+            defer flat.deinit(allocator);
             for (flat.items) |relative| {
                 const full = if (absolute_path)
                     relative
                 else
                     try joinRepo(allocator, repo_root, relative);
                 if (implementation.isBuildOutputPath(full, repo_root)) continue;
-                try targets.append(.{
+                try targets.append(allocator, .{
                     .display = if (absolute_path) relative else relative,
                     .path = relative,
                     .absolute = absolute_path,
@@ -211,7 +214,7 @@ pub fn enumerateTargets(
         {
             display = normalized[repo_root.len + 1 ..];
         }
-        try targets.append(.{ .display = display, .path = open_path, .absolute = absolute_path });
+        try targets.append(allocator, .{ .display = display, .path = open_path, .absolute = absolute_path });
     }
     return targets;
 }
@@ -222,19 +225,21 @@ pub fn enumerateTargets(
 /// skipped silently while still counting toward the scanned total, i.e. a
 /// file nobody read reported as carrying no hand-encoded pin.  The read is
 /// bounded by the file itself.
-fn readTarget(allocator: std.mem.Allocator, dir: std.fs.Dir, target: Target) ?[]u8 {
-    var file = if (target.absolute)
-        std.fs.cwd().openFile(target.path, .{}) catch return null
-    else
-        dir.openFile(target.path, .{}) catch return null;
-    defer file.close();
-    const raw = file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch return null;
+fn readTarget(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, target: Target) ?[]u8 {
+    const base = if (target.absolute) std.Io.Dir.cwd() else dir;
+    const raw = base.readFileAlloc(io, target.path, allocator, .unlimited) catch return null;
     return implementation.decodeLossy(allocator, raw) catch null;
 }
 
-fn expect(writer: anytype, condition: bool, label: []const u8, failures: *std.ArrayList([]const u8)) !void {
+fn expect(
+    allocator: std.mem.Allocator,
+    writer: anytype,
+    condition: bool,
+    label: []const u8,
+    failures: *std.ArrayList([]const u8),
+) !void {
     try writer.print("  [{s}] {s}\n", .{ if (condition) "ok" else "FAIL", label });
-    if (!condition) try failures.append(label);
+    if (!condition) try failures.append(allocator, label);
 }
 
 /// `selftest()`: the gate proving itself in both directions before a clean run
@@ -244,59 +249,63 @@ fn expect(writer: anytype, condition: bool, label: []const u8, failures: *std.Ar
 /// clear the floor with nothing from a build tree in it.
 pub fn selftest(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     stdout: anytype,
     stderr: anytype,
 ) !u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    defer failures.deinit();
+    var failures: std.ArrayList([]const u8) = .empty;
+    defer failures.deinit(allocator);
 
     try expect(
+        allocator,
         stdout,
         implementation.matchEncoding(implementation.selftest_idiom),
         "MUST FIRE: hand-encoded (port << 8) | pin",
         &failures,
     );
     try expect(
+        allocator,
         stdout,
         !implementation.matchEncoding(implementation.selftest_board_reference),
         "MUST NOT FIRE: a board-symbol reference",
         &failures,
     );
 
-    var enumerated = try enumerateTargets(allocator, dir, repo_root, &[_][]const u8{
+    var enumerated = try enumerateTargets(allocator, io, dir, repo_root, &[_][]const u8{
         "examples/x/build/gen.c",
         "examples/x/src/main.c",
     });
-    defer enumerated.deinit();
+    defer enumerated.deinit(allocator);
     var saw_source = false;
     var saw_build = false;
     for (enumerated.items) |target| {
         if (std.mem.endsWith(u8, target.display, "examples/x/src/main.c")) saw_source = true;
         if (std.mem.endsWith(u8, target.display, "examples/x/build/gen.c")) saw_build = true;
     }
-    try expect(stdout, saw_source, "MUST FIRE: a real example source is enumerated", &failures);
+    try expect(allocator, stdout, saw_source, "MUST FIRE: a real example source is enumerated", &failures);
     try expect(
+        allocator,
         stdout,
         !saw_build,
         "MUST NOT FIRE: an in-source build file is excluded from the scope",
         &failures,
     );
 
-    var live = try enumerateTargets(allocator, dir, repo_root, &[_][]const u8{});
-    defer live.deinit();
+    var live = try enumerateTargets(allocator, io, dir, repo_root, &[_][]const u8{});
+    defer live.deinit(allocator);
     const floor_label = try std.fmt.allocPrint(
         allocator,
         "live sweep sees {d} example file(s) (floor {d})",
         .{ live.items.len, file_floor },
     );
-    try expect(stdout, live.items.len >= file_floor, floor_label, &failures);
+    try expect(allocator, stdout, live.items.len >= file_floor, floor_label, &failures);
     var all_source = true;
     for (live.items) |target| {
         if (implementation.isBuildOutput(target.display)) all_source = false;
     }
-    try expect(stdout, all_source, "no enumerated file lives in a build tree", &failures);
+    try expect(allocator, stdout, all_source, "no enumerated file lives in a build tree", &failures);
 
     if (failures.items.len != 0) {
         try stderr.print("\nSELFTEST FAILED: {d} assertion(s)\n", .{failures.items.len});
@@ -310,7 +319,8 @@ pub fn selftest(
 /// The whole gate: argv in, exit status out.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     stdout: anytype,
@@ -318,11 +328,11 @@ pub fn run(
 ) !u8 {
     for (argv) |argument| {
         if (std.mem.eql(u8, argument, "--selftest"))
-            return selftest(allocator, dir, repo_root, stdout, stderr);
+            return selftest(allocator, io, dir, repo_root, stdout, stderr);
     }
 
-    var targets = try enumerateTargets(allocator, dir, repo_root, argv);
-    defer targets.deinit();
+    var targets = try enumerateTargets(allocator, io, dir, repo_root, argv);
+    defer targets.deinit(allocator);
 
     if (argv.len == 0 and targets.items.len < file_floor) {
         try implementation.renderFatalFloor(stderr, targets.items.len);
@@ -333,13 +343,13 @@ pub fn run(
         return 0;
     }
 
-    var findings = std.ArrayList(implementation.Finding).init(allocator);
-    defer findings.deinit();
+    var findings: std.ArrayList(implementation.Finding) = .empty;
+    defer findings.deinit(allocator);
     for (targets.items) |target| {
-        const text = readTarget(allocator, dir, target) orelse continue;
+        const text = readTarget(allocator, io, dir, target) orelse continue;
         var found = try implementation.scanText(allocator, target.display, text);
-        defer found.deinit();
-        try findings.appendSlice(found.items);
+        defer found.deinit(allocator);
+        try findings.appendSlice(allocator, found.items);
     }
 
     if (findings.items.len == 0) {

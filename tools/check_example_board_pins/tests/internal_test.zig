@@ -267,7 +267,7 @@ test "scanText numbers findings by line and strips the snippet" {
         "examples/x/src/main.c",
         "ok\n" ++ implementation.selftest_idiom ++ "\nok\n",
     );
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 1), findings.items.len);
     try testing.expectEqual(@as(usize, 2), findings.items[0].line_number);
     try testing.expectEqualStrings("examples/x/src/main.c", findings.items[0].path);
@@ -280,7 +280,7 @@ test "scanText numbers findings by line and strips the snippet" {
 test "scanText reports every offending line, not just the first" {
     const body = implementation.selftest_idiom ++ "\nclean\n" ++ implementation.selftest_idiom ++ "\n";
     var findings = try implementation.scanText(testing.allocator, "p.c", body);
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 2), findings.items.len);
     try testing.expectEqual(@as(usize, 1), findings.items[0].line_number);
     try testing.expectEqual(@as(usize, 3), findings.items[1].line_number);
@@ -288,7 +288,7 @@ test "scanText reports every offending line, not just the first" {
 
 test "scanText finds nothing in a clean body" {
     var findings = try implementation.scanText(testing.allocator, "p.c", "int main(void) { return 0; }\n");
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 0), findings.items.len);
 }
 
@@ -298,7 +298,7 @@ test "an idiom split across two lines is not a finding, because the scan is per 
         "p.c",
         "  cfg.pin = ((uint16_t)k_ra8_port_6 << 8)\n | (uint16_t)k_ra8_pin_11;\n",
     );
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 0), findings.items.len);
 }
 
@@ -360,42 +360,42 @@ test "a finding survives an undecodable byte elsewhere on the line" {
 }
 
 test "the clean line names the scanned count on one line" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.renderClean(buffer.writer(), 408);
+    try implementation.renderClean(&buffer.writer, 408);
     try testing.expectEqualStrings(
         "check_example_board_pins: 408 example file(s) scanned, none hand-encode a board pin.\n",
-        buffer.items,
+        buffer.written(),
     );
 }
 
 test "the floor message names the count and the floor" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.renderFatalFloor(buffer.writer(), 3);
-    try testing.expect(std.mem.indexOf(u8, buffer.items, "only 3 example file(s) in scope") != null);
-    try testing.expect(std.mem.indexOf(u8, buffer.items, "floor is 320") != null);
+    try implementation.renderFatalFloor(&buffer.writer, 3);
+    try testing.expect(std.mem.indexOf(u8, buffer.written(), "only 3 example file(s) in scope") != null);
+    try testing.expect(std.mem.indexOf(u8, buffer.written(), "floor is 320") != null);
 }
 
 test "the finding header ends with a blank line, as the Python print did" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.renderFindingHeader(buffer.writer(), 2);
+    try implementation.renderFindingHeader(&buffer.writer, 2);
     try testing.expectEqualStrings(
         "check_example_board_pins: 2 hand-encoded board pin(s) in examples:\n\n",
-        buffer.items,
+        buffer.written(),
     );
 }
 
 test "a finding line carries path, line number and the stripped source" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.renderFinding(buffer.writer(), .{
+    try implementation.renderFinding(&buffer.writer, .{
         .path = "examples/x/src/main.c",
         .line_number = 42,
         .snippet = "cfg.pin = 1;",
     });
-    try testing.expectEqualStrings("  examples/x/src/main.c:42  cfg.pin = 1;\n", buffer.items);
+    try testing.expectEqualStrings("  examples/x/src/main.c:42  cfg.pin = 1;\n", buffer.written());
 }
 
 test "the guidance names the board layer as the fix" {
