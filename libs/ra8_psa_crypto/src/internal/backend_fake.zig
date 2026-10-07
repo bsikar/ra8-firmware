@@ -62,7 +62,7 @@ pub fn verifyHash(slot: *const Slot, digest: []const u8, signature: []const u8) 
     var bound: [Limits.sha256_len]u8 = undefined;
     bind(slot, digest, &bound);
     const std = @import("std");
-    if (!std.crypto.utils.timingSafeEql(
+    if (!std.crypto.timing_safe.eql(
         [Limits.sha256_len]u8,
         bound,
         signature[0..Limits.sha256_len].*,
