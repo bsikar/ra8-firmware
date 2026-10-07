@@ -7,7 +7,7 @@
 //! One request is outstanding at a time; a second is refused as busy rather
 //! than queued. The transmit buffer is wiped on every exit.
 //! The frame-geometry assertions that used to sit beside this in C now live
-//! in `ra8_c6link_internal.h`, so the `@cImport` above still checks them.
+//! in `ra8_c6link_internal.h`, so its translation still checks them.
 
 const std = @import("std");
 const Err = @import("abi_err.zig");

@@ -24,7 +24,7 @@ const fs_header =
 fn translateHeaders(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) *std.Build.Module {
     const header = b.addWriteFiles().add("fs_c.h", fs_header);
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{

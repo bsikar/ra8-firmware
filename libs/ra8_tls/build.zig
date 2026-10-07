@@ -43,7 +43,7 @@ fn addMbedtlsHeaders(
     b: *std.Build,
     module: *std.Build.Module,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) void {
     const header = b.addWriteFiles().add("mbedtls_c.h", mbedtls_header);
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
