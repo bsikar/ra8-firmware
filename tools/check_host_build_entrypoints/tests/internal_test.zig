@@ -13,11 +13,11 @@ const impl = @import("implementation");
 const testing = std.testing;
 
 fn collectLines(allocator: std.mem.Allocator, text: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList([]const u8) = .empty;
+    errdefer out.deinit(allocator);
     var it = impl.LineIterator{ .text = text };
-    while (it.next()) |line| try out.append(line);
-    return out.toOwnedSlice();
+    while (it.next()) |line| try out.append(allocator, line);
+    return out.toOwnedSlice(allocator);
 }
 
 fn bodyOf(recipes: []impl.Recipe, name: []const u8) ?[]const u8 {

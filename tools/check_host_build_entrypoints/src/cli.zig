@@ -60,7 +60,7 @@ pub fn parseArgs(argv: []const []const u8) Action {
     return if (want_selftest) .selftest else .audit;
 }
 
-fn printHelp(out: anytype) !void {
+fn printHelp(out: *std.Io.Writer) !void {
     try out.print("{s}\n\n", .{usage_line});
     try out.print("Keep native Just builds on the C23 compiler and complete tool registry.\n\n", .{});
     try out.print("options:\n", .{});
@@ -70,109 +70,109 @@ fn printHelp(out: anytype) !void {
 
 // -- discovery ---------------------------------------------------------------
 
-fn readFileAt(allocator: std.mem.Allocator, repo_root: []const u8, rel: []const u8) !?[]const u8 {
+fn readFileAt(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8, rel: []const u8) !?[]const u8 {
     const path = try std.fs.path.join(allocator, &.{ repo_root, rel });
     defer allocator.free(path);
-    return std.fs.cwd().readFileAlloc(allocator, path, max_file_bytes) catch |e| switch (e) {
-        error.FileNotFound, error.IsDir, error.AccessDenied, error.NotDir => null,
+    return std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .limited(max_file_bytes + 1)) catch |e| switch (e) {
+        error.FileNotFound, error.IsDir, error.AccessDenied, error.PermissionDenied, error.NotDir => null,
         else => e,
     };
 }
 
 /// `_just_files`: the root entry point, then every module, sorted.
-pub fn justFiles(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+pub fn justFiles(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    try out.append(try allocator.dupe(u8, "justfile"));
+    try out.append(allocator, try allocator.dupe(u8, "justfile"));
 
     const just_dir = try std.fs.path.join(allocator, &.{ repo_root, "just" });
     defer allocator.free(just_dir);
-    var dir = std.fs.cwd().openDir(just_dir, .{ .iterate = true }) catch |e| switch (e) {
-        error.FileNotFound, error.NotDir, error.AccessDenied => return out.toOwnedSlice(),
+    var dir = std.Io.Dir.cwd().openDir(io, just_dir, .{ .iterate = true }) catch |e| switch (e) {
+        error.FileNotFound, error.NotDir, error.AccessDenied, error.PermissionDenied => return out.toOwnedSlice(allocator),
         else => return e,
     };
-    defer dir.close();
+    defer dir.close(io);
 
-    var names = std.ArrayList([]const u8).init(allocator);
+    var names: std.ArrayList([]const u8) = .empty;
     defer {
         for (names.items) |item| allocator.free(item);
-        names.deinit();
+        names.deinit(allocator);
     }
     var it = dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(io)) |entry| {
         if (entry.kind == .directory) continue;
         if (!std.mem.endsWith(u8, entry.name, ".just")) continue;
-        try names.append(try allocator.dupe(u8, entry.name));
+        try names.append(allocator, try allocator.dupe(u8, entry.name));
     }
     std.mem.sort([]const u8, names.items, {}, lessThan);
     for (names.items) |name| {
-        try out.append(try std.fmt.allocPrint(allocator, "just/{s}", .{name}));
+        try out.append(allocator, try std.fmt.allocPrint(allocator, "just/{s}", .{name}));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
-fn toolRootNames(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+fn toolRootNames(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
     const tools_dir = try std.fs.path.join(allocator, &.{ repo_root, "tools" });
     defer allocator.free(tools_dir);
-    var dir = std.fs.cwd().openDir(tools_dir, .{ .iterate = true }) catch |e| switch (e) {
-        error.FileNotFound, error.NotDir, error.AccessDenied => return out.toOwnedSlice(),
+    var dir = std.Io.Dir.cwd().openDir(io, tools_dir, .{ .iterate = true }) catch |e| switch (e) {
+        error.FileNotFound, error.NotDir, error.AccessDenied, error.PermissionDenied => return out.toOwnedSlice(allocator),
         else => return e,
     };
-    defer dir.close();
+    defer dir.close(io);
     var it = dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(io)) |entry| {
         if (entry.kind != .directory) continue;
-        try out.append(try allocator.dupe(u8, entry.name));
+        try out.append(allocator, try allocator.dupe(u8, entry.name));
     }
     std.mem.sort([]const u8, out.items, {}, lessThan);
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// `_compiled_tools`: tool roots holding authored compiled implementation
 /// anywhere under `src/`. pathlib's glob sees dotted names, so a hidden root
 /// still counts.
-pub fn compiledTools(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+pub fn compiledTools(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    const roots = try toolRootNames(allocator, repo_root);
+    const roots = try toolRootNames(allocator, io, repo_root);
     defer impl.freeStrings(allocator, roots);
 
     for (roots) |name| {
         const src = try std.fs.path.join(allocator, &.{ repo_root, "tools", name, "src" });
         defer allocator.free(src);
-        var dir = std.fs.cwd().openDir(src, .{ .iterate = true }) catch continue;
-        defer dir.close();
+        var dir = std.Io.Dir.cwd().openDir(io, src, .{ .iterate = true }) catch continue;
+        defer dir.close(io);
         var walker = try dir.walk(allocator);
         defer walker.deinit();
-        while (try walker.next()) |entry| {
+        while (try walker.next(io)) |entry| {
             if (entry.kind != .file) continue;
             if (!impl.isCompiledSuffix(entry.basename)) continue;
-            try out.append(try allocator.dupe(u8, name));
+            try out.append(allocator, try allocator.dupe(u8, name));
             break;
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// `_cmake_tools`: tool roots the CMake dispatcher manages.
-pub fn cmakeTools(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+pub fn cmakeTools(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    const roots = try toolRootNames(allocator, repo_root);
+    const roots = try toolRootNames(allocator, io, repo_root);
     defer impl.freeStrings(allocator, roots);
     for (roots) |name| {
         const listfile = try std.fs.path.join(
@@ -180,33 +180,33 @@ pub fn cmakeTools(allocator: std.mem.Allocator, repo_root: []const u8) ![][]cons
             &.{ repo_root, "tools", name, "CMakeLists.txt" },
         );
         defer allocator.free(listfile);
-        const stat = std.fs.cwd().statFile(listfile) catch continue;
+        const stat = std.Io.Dir.cwd().statFile(io, listfile, .{}) catch continue;
         if (stat.kind != .file) continue;
-        try out.append(try allocator.dupe(u8, name));
+        try out.append(allocator, try allocator.dupe(u8, name));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// `_inventory_errors`.
-pub fn inventoryErrors(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+pub fn inventoryErrors(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    const compiled = try compiledTools(allocator, repo_root);
+    const compiled = try compiledTools(allocator, io, repo_root);
     defer impl.freeStrings(allocator, compiled);
-    const managed = try cmakeTools(allocator, repo_root);
+    const managed = try cmakeTools(allocator, io, repo_root);
     defer impl.freeStrings(allocator, managed);
     for (compiled) |name| {
         if (impl.containsString(managed, name)) continue;
-        try out.append(try std.fmt.allocPrint(
+        try out.append(allocator, try std.fmt.allocPrint(
             allocator,
             "tools/{s}: compiled tool has no CMakeLists.txt",
             .{name},
         ));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 fn appendMissingContract(
@@ -218,31 +218,31 @@ fn appendMissingContract(
 ) !void {
     for (required) |needle| {
         if (std.mem.indexOf(u8, text, needle) != null) continue;
-        try errors.append(try std.fmt.allocPrint(allocator, template, .{needle}));
+        try errors.append(allocator, try std.fmt.allocPrint(allocator, template, .{needle}));
     }
 }
 
 /// `_shared_dispatch_errors`.
-pub fn sharedDispatchErrors(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+pub fn sharedDispatchErrors(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    const just_text = try readFileAt(allocator, repo_root, "just/shared.just");
+    const just_text = try readFileAt(allocator, io, repo_root, "just/shared.just");
     defer if (just_text) |t| allocator.free(t);
     if (just_text) |text| {
         if (std.mem.indexOf(u8, text, impl.shared_just_delegation) == null) {
-            try out.append(try allocator.dupe(
+            try out.append(allocator, try allocator.dupe(
                 u8,
                 "just/shared.just does not delegate to the shared-library dispatcher",
             ));
         }
     } else {
-        try out.append(try allocator.dupe(u8, "just/shared.just is unreadable"));
+        try out.append(allocator, try allocator.dupe(u8, "just/shared.just is unreadable"));
     }
 
-    const dispatcher = try readFileAt(allocator, repo_root, "scripts/builders/build_shared_libs.sh");
+    const dispatcher = try readFileAt(allocator, io, repo_root, "scripts/builders/build_shared_libs.sh");
     defer if (dispatcher) |t| allocator.free(t);
     try appendMissingContract(
         allocator,
@@ -251,7 +251,7 @@ pub fn sharedDispatchErrors(allocator: std.mem.Allocator, repo_root: []const u8)
         &impl.shared_dispatcher_contract,
         "shared-library dispatcher lacks contract: {s}",
     );
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 pub const Dispatch = struct {
@@ -260,16 +260,16 @@ pub const Dispatch = struct {
 };
 
 /// `_live_dispatch`: the read-only `build_host_tools.sh list` mode.
-pub fn liveDispatch(allocator: std.mem.Allocator, repo_root: []const u8) !Dispatch {
-    var listed = std.ArrayList([]const u8).init(allocator);
+pub fn liveDispatch(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) !Dispatch {
+    var listed: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (listed.items) |item| allocator.free(item);
-        listed.deinit();
+        listed.deinit(allocator);
     }
-    var errors = std.ArrayList([]const u8).init(allocator);
+    var errors: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (errors.items) |item| allocator.free(item);
-        errors.deinit();
+        errors.deinit(allocator);
     }
 
     const script = try std.fs.path.join(
@@ -278,67 +278,68 @@ pub fn liveDispatch(allocator: std.mem.Allocator, repo_root: []const u8) !Dispat
     );
     defer allocator.free(script);
 
-    const result = std.process.Child.run(.{
-        .allocator = allocator,
+    const result = std.process.run(allocator, io, .{
         .argv = &.{ script, "list" },
-        .cwd = repo_root,
-        .max_output_bytes = max_file_bytes,
+        .cwd = .{ .path = repo_root },
+        .stdout_limit = .limited(max_file_bytes),
+        .stderr_limit = .limited(max_file_bytes),
     }) catch |e| {
-        try errors.append(try std.fmt.allocPrint(
+        try errors.append(allocator, try std.fmt.allocPrint(
             allocator,
             "tool dispatcher list failed: {s}",
             .{@errorName(e)},
         ));
-        return .{ .listed = try listed.toOwnedSlice(), .errors = try errors.toOwnedSlice() };
+        return .{ .listed = try listed.toOwnedSlice(allocator), .errors = try errors.toOwnedSlice(allocator) };
     };
     defer allocator.free(result.stdout);
     defer allocator.free(result.stderr);
 
     const failed = switch (result.term) {
-        .Exited => |code| code != 0,
+        .exited => |code| code != 0,
         else => true,
     };
     if (failed) {
-        try errors.append(try std.fmt.allocPrint(
+        try errors.append(allocator, try std.fmt.allocPrint(
             allocator,
             "tool dispatcher list failed: {s}",
             .{impl.strip(result.stderr)},
         ));
-        return .{ .listed = try listed.toOwnedSlice(), .errors = try errors.toOwnedSlice() };
+        return .{ .listed = try listed.toOwnedSlice(allocator), .errors = try errors.toOwnedSlice(allocator) };
     }
 
     var it = impl.LineIterator{ .text = result.stdout };
     while (it.next()) |line| {
         if (impl.containsString(listed.items, line)) continue;
-        try listed.append(try allocator.dupe(u8, line));
+        try listed.append(allocator, try allocator.dupe(u8, line));
     }
     std.mem.sort([]const u8, listed.items, {}, lessThan);
-    return .{ .listed = try listed.toOwnedSlice(), .errors = try errors.toOwnedSlice() };
+    return .{ .listed = try listed.toOwnedSlice(allocator), .errors = try errors.toOwnedSlice(allocator) };
 }
 
 /// `_dispatcher_errors`.
 pub fn dispatcherErrors(
     allocator: std.mem.Allocator,
+    io: std.Io,
     repo_root: []const u8,
     listed: []const []const u8,
 ) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    const expected = try cmakeTools(allocator, repo_root);
+    const expected = try cmakeTools(allocator, io, repo_root);
     defer impl.freeStrings(allocator, expected);
     for (expected) |name| {
         if (impl.containsString(listed, name)) continue;
-        try out.append(try std.fmt.allocPrint(allocator, "tool dispatcher omits {s}", .{name}));
+        try out.append(allocator, try std.fmt.allocPrint(allocator, "tool dispatcher omits {s}", .{name}));
     }
     for (listed) |name| {
         if (impl.containsString(expected, name)) continue;
-        try out.append(try std.fmt.allocPrint(allocator, "tool dispatcher invents {s}", .{name}));
+        try out.append(allocator, try std.fmt.allocPrint(allocator, "tool dispatcher invents {s}", .{name}));
     }
 
-    const tools_just = try readFileAt(allocator, repo_root, "just/tools.just");
+    const tools_just = try readFileAt(allocator, io, repo_root, "just/tools.just");
     defer if (tools_just) |t| allocator.free(t);
     try appendMissingContract(
         allocator,
@@ -348,7 +349,7 @@ pub fn dispatcherErrors(
         "just/tools.just lacks discovery contract: {s}",
     );
 
-    const wrapper = try readFileAt(allocator, repo_root, "scripts/builders/host_cmake.sh");
+    const wrapper = try readFileAt(allocator, io, repo_root, "scripts/builders/host_cmake.sh");
     defer if (wrapper) |t| allocator.free(t);
     try appendMissingContract(
         allocator,
@@ -358,7 +359,7 @@ pub fn dispatcherErrors(
         "host_cmake.sh lacks compiler/cache contract: {s}",
     );
 
-    const dispatcher = try readFileAt(allocator, repo_root, "scripts/builders/build_host_tools.sh");
+    const dispatcher = try readFileAt(allocator, io, repo_root, "scripts/builders/build_host_tools.sh");
     defer if (dispatcher) |t| allocator.free(t);
     try appendMissingContract(
         allocator,
@@ -367,7 +368,7 @@ pub fn dispatcherErrors(
         &impl.dispatcher_clean_contract,
         "tool dispatcher lacks legacy-clean contract: {s}",
     );
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 // -- the audit ---------------------------------------------------------------
@@ -378,41 +379,42 @@ fn extend(
     items: [][]const u8,
 ) !void {
     defer allocator.free(items);
-    for (items) |item| try errors.append(item);
+    for (items) |item| try errors.append(allocator, item);
 }
 
 pub fn audit(
     allocator: std.mem.Allocator,
+    io: std.Io,
     repo_root: []const u8,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
-    var errors = std.ArrayList([]const u8).init(allocator);
+    var errors: std.ArrayList([]const u8) = .empty;
     defer {
         for (errors.items) |item| allocator.free(item);
-        errors.deinit();
+        errors.deinit(allocator);
     }
 
-    const just_paths = try justFiles(allocator, repo_root);
+    const just_paths = try justFiles(allocator, io, repo_root);
     defer impl.freeStrings(allocator, just_paths);
     for (just_paths) |rel| {
-        const text = try readFileAt(allocator, repo_root, rel);
+        const text = try readFileAt(allocator, io, repo_root, rel);
         defer if (text) |t| allocator.free(t);
         if (text) |t| {
             try extend(allocator, &errors, try impl.recipeErrors(allocator, rel, t));
         } else {
-            try errors.append(try std.fmt.allocPrint(allocator, "{s} is unreadable", .{rel}));
+            try errors.append(allocator, try std.fmt.allocPrint(allocator, "{s} is unreadable", .{rel}));
         }
     }
 
-    try extend(allocator, &errors, try inventoryErrors(allocator, repo_root));
-    try extend(allocator, &errors, try sharedDispatchErrors(allocator, repo_root));
+    try extend(allocator, &errors, try inventoryErrors(allocator, io, repo_root));
+    try extend(allocator, &errors, try sharedDispatchErrors(allocator, io, repo_root));
 
-    const dispatch = try liveDispatch(allocator, repo_root);
+    const dispatch = try liveDispatch(allocator, io, repo_root);
     defer impl.freeStrings(allocator, dispatch.listed);
     const listed_count = dispatch.listed.len;
     try extend(allocator, &errors, dispatch.errors);
-    try extend(allocator, &errors, try dispatcherErrors(allocator, repo_root, dispatch.listed));
+    try extend(allocator, &errors, try dispatcherErrors(allocator, io, repo_root, dispatch.listed));
 
     if (errors.items.len > 0) {
         try err.print("{s}: host build contract violations:\n", .{tool});
@@ -452,81 +454,84 @@ fn fixtureErrorCount(
 
 fn writeFixture(
     allocator: std.mem.Allocator,
+    io: std.Io,
     root: []const u8,
     rel: []const u8,
     contents: []const u8,
 ) !void {
     const path = try std.fs.path.join(allocator, &.{ root, rel });
     defer allocator.free(path);
-    if (std.fs.path.dirname(path)) |parent| try std.fs.cwd().makePath(parent);
-    try std.fs.cwd().writeFile(.{ .sub_path = path, .data = contents });
+    if (std.fs.path.dirname(path)) |parent| try std.Io.Dir.cwd().createDirPath(io, parent);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = contents });
 }
 
-pub fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    defer failures.deinit();
+pub fn selftest(allocator: std.mem.Allocator, io: std.Io, out: *std.Io.Writer, err: *std.Io.Writer) !u8 {
+    var failures: std.ArrayList([]const u8) = .empty;
+    defer failures.deinit(allocator);
 
     if (try recipeErrorCount(allocator, "good", good_fixture) > 0 or
         try recipeErrorCount(allocator, "cross", cross_fixture) > 0)
     {
-        try failures.append("wrapper or ARM-toolchain fixture was rejected");
+        try failures.append(allocator, "wrapper or ARM-toolchain fixture was rejected");
     }
     if (try recipeErrorCount(allocator, "bad-cmake", bad_cmake_fixture) == 0) {
-        try failures.append("raw native CMake fixture was accepted");
+        try failures.append(allocator, "raw native CMake fixture was accepted");
     }
     if (try recipeErrorCount(allocator, "mixed-cmake", mixed_cmake_fixture) == 0) {
-        try failures.append("raw native CMake hidden beside an ARM configure was accepted");
+        try failures.append(allocator, "raw native CMake hidden beside an ARM configure was accepted");
     }
     if (try recipeErrorCount(allocator, "bad-cc", bad_cc_fixture) == 0) {
-        try failures.append("raw compiler fixture was accepted");
+        try failures.append(allocator, "raw compiler fixture was accepted");
     }
     if (impl.standaloneCmake("target_sources(app PRIVATE src/x.c)\n")) {
-        try failures.append("consumer CMake fragment was classified as standalone");
+        try failures.append(allocator, "consumer CMake fragment was classified as standalone");
     }
     if (!impl.standaloneCmake("project(shared LANGUAGES C)\n")) {
-        try failures.append("standalone shared CMake project was classified as a fragment");
+        try failures.append(allocator, "standalone shared CMake project was classified as a fragment");
     }
 
+    var seed: [4]u8 = undefined;
+    io.random(&seed);
     var name_buf: [96]u8 = undefined;
     const leaf = try std.fmt.bufPrint(
         &name_buf,
         "ra8-{s}-{x}",
-        .{ tool, std.crypto.random.int(u32) },
+        .{ tool, std.mem.readInt(u32, &seed, .little) },
     );
     const tmp = try std.fs.path.join(allocator, &.{ "/tmp", leaf });
     defer allocator.free(tmp);
-    try std.fs.cwd().makePath(tmp);
-    defer std.fs.cwd().deleteTree(tmp) catch {};
+    try std.Io.Dir.cwd().createDirPath(io, tmp);
+    defer std.Io.Dir.cwd().deleteTree(io, tmp) catch {};
 
-    try writeFixture(allocator, tmp, "justfile", "default:\n    true\n");
-    try writeFixture(allocator, tmp, "just/future.just", bad_cmake_fixture);
+    try writeFixture(allocator, io, tmp, "justfile", "default:\n    true\n");
+    try writeFixture(allocator, io, tmp, "just/future.just", bad_cmake_fixture);
     {
-        const discovered = try justFiles(allocator, tmp);
+        const discovered = try justFiles(allocator, io, tmp);
         defer impl.freeStrings(allocator, discovered);
         const ok = discovered.len == 2 and
             std.mem.eql(u8, discovered[0], "justfile") and
             std.mem.eql(u8, discovered[1], "just/future.just");
-        if (!ok) try failures.append("new Just module was omitted from discovery");
+        if (!ok) try failures.append(allocator, "new Just module was omitted from discovery");
     }
 
-    try writeFixture(allocator, tmp, "tools/native/src/main.c", "int main(void){}\n");
+    try writeFixture(allocator, io, tmp, "tools/native/src/main.c", "int main(void){}\n");
     {
-        const errors = try inventoryErrors(allocator, tmp);
+        const errors = try inventoryErrors(allocator, io, tmp);
         defer impl.freeStrings(allocator, errors);
-        if (errors.len == 0) try failures.append("compiled tool without CMake was accepted");
+        if (errors.len == 0) try failures.append(allocator, "compiled tool without CMake was accepted");
     }
-    try writeFixture(allocator, tmp, "tools/native/CMakeLists.txt", "project(native C)\n");
+    try writeFixture(allocator, io, tmp, "tools/native/CMakeLists.txt", "project(native C)\n");
     {
-        const errors = try inventoryErrors(allocator, tmp);
+        const errors = try inventoryErrors(allocator, io, tmp);
         defer impl.freeStrings(allocator, errors);
-        if (errors.len > 0) try failures.append("compiled tool with CMake was rejected");
+        if (errors.len > 0) try failures.append(allocator, "compiled tool with CMake was rejected");
     }
 
     if (try fixtureErrorCount(allocator, &.{"native"}, &.{}) == 0) {
-        try failures.append("dispatcher omission was accepted");
+        try failures.append(allocator, "dispatcher omission was accepted");
     }
     if (try fixtureErrorCount(allocator, &.{"native"}, &.{"native"}) > 0) {
-        try failures.append("complete dispatcher fixture was rejected");
+        try failures.append(allocator, "complete dispatcher fixture was rejected");
     }
 
     if (failures.items.len > 0) {
@@ -542,10 +547,11 @@ pub fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
 
 pub fn run(
     allocator: std.mem.Allocator,
+    io: std.Io,
     argv: []const []const u8,
     repo_root: []const u8,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     switch (parseArgs(argv)) {
         .help => {
@@ -557,7 +563,7 @@ pub fn run(
             try err.print("{s}: error: unrecognized arguments: {s}\n", .{ tool, arg });
             return 2;
         },
-        .selftest => return selftest(allocator, out, err),
-        .audit => return audit(allocator, repo_root, out, err),
+        .selftest => return selftest(allocator, io, out, err),
+        .audit => return audit(allocator, io, repo_root, out, err),
     }
 }
