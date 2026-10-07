@@ -8,6 +8,7 @@
         "build.zig",
         "build.zig.zon",
         "check.zig",
+        "check_artifact.zig",
         "macos_host.zig",
         "macho.zig",
         "ar.zig",

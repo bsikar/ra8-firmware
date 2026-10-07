@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) void {
     ).dependOn(ra8_build.addVerifyHostArtifactStep(b, executable));
 
     const run_app = b.addRunArtifact(executable);
-    if (b.args) |args| run_app.addArgs(args);
+    run_app.addPassthruArgs();
     b.step("run", "Create deliberately degraded JPEG levels").dependOn(&run_app.step);
 
     const test_module = b.createModule(.{
