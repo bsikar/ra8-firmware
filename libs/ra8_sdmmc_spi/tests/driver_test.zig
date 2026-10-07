@@ -35,7 +35,7 @@ const pins: abi.SciPins = .{ .sck = 0x0102, .cipo = 0x0103, .copi = 0x0104, .cs 
 /// `card_type`, so setting them directly keeps each test to one subject.
 fn openWith(card: *Card, card_type: abi.CardType, capacity: u32) void {
     bind(card);
-    abi.g_sdmmc_spi_state.card_type = @intFromEnum(card_type);
+    abi.g_sdmmc_spi_state.card_type = @backingInt(card_type);
     abi.g_sdmmc_spi_state.capacity_blocks = capacity;
     abi.g_sdmmc_spi_state.initialized = true;
 }
@@ -196,7 +196,7 @@ test "deinit closes the handle and clears the probe results" {
     try testing.expect(!abi.g_sdmmc_spi_state.initialized);
     try testing.expectEqual(@as(u32, 0), abi.g_sdmmc_spi_state.capacity_blocks);
     try testing.expectEqual(
-        @intFromEnum(abi.CardType.unknown),
+        @backingInt(abi.CardType.unknown),
         abi.g_sdmmc_spi_state.card_type,
     );
 }
@@ -211,7 +211,7 @@ test "the queries publish capacity and card type only while open" {
     try testing.expectEqual(err_ok, abi.ra8_sdmmc_spi_get_capacity(&blocks));
     try testing.expectEqual(@as(u32, 4096), blocks);
     try testing.expectEqual(err_ok, abi.ra8_sdmmc_spi_get_card_type(&kind));
-    try testing.expectEqual(@intFromEnum(abi.CardType.sdhc), kind);
+    try testing.expectEqual(@backingInt(abi.CardType.sdhc), kind);
 
     try testing.expectEqual(err_null_ptr, abi.ra8_sdmmc_spi_get_capacity(null));
     try testing.expectEqual(err_null_ptr, abi.ra8_sdmmc_spi_get_card_type(null));

@@ -71,7 +71,7 @@ pub const descriptor: partition.Partition = .{
 
 /// The window at a published index.
 pub fn window(region: Region) partition.SauRegion {
-    return regions[@intFromEnum(region)];
+    return regions[@backingInt(region)];
 }
 
 test "the published region order is what the table actually holds" {

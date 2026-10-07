@@ -30,7 +30,7 @@ const Err = enum(u16) {
     null_ptr = 0x504,
 
     fn raw(self: Err) u16 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 };
 
@@ -112,8 +112,7 @@ fn restoreInterrupts(saved: u32) void {
     asm volatile ("msr primask, %[in]"
         :
         : [in] "r" (saved),
-        : "memory"
-    );
+        : "memory");
 }
 
 /// The header a slot carries, or null when the slot has no base. A plain

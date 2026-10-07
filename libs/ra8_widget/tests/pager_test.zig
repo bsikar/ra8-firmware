@@ -89,7 +89,7 @@ fn touch(x: i32) abi.Event {
 fn pageDamage(widget: *abi.Widget) struct { rect: abi.Rect, hint: abi.Refresh, count: u16 } {
     return .{
         .rect = widget.rect,
-        .hint = @enumFromInt(widget.refresh),
+        .hint = @fromBackingInt(@intCast(widget.refresh)),
         .count = if (widget.visible and widget.dirty) 1 else 0,
     };
 }

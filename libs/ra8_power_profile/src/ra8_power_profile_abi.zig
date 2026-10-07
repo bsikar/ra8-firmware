@@ -51,11 +51,11 @@ var initialized: bool = false;
 
 comptime {
     if (@sizeOf(ProfileError) != 2) @compileError("ra8_power_profile error width");
-    if (@intFromEnum(ProfileError.ok) != 0) @compileError("ra8_power_profile success value");
-    if (@intFromEnum(ProfileError.invalid_state) != 0x104) @compileError("ra8_power_profile invalid-state value");
-    if (@intFromEnum(ProfileError.not_initialized) != 0x10F) @compileError("ra8_power_profile not-initialized value");
-    if (@intFromEnum(ProfileError.range_check_failed) != 0x503) @compileError("ra8_power_profile range-check value");
-    if (@intFromEnum(ProfileError.null_ptr) != 0x504) @compileError("ra8_power_profile null-pointer value");
+    if (@backingInt(ProfileError.ok) != 0) @compileError("ra8_power_profile success value");
+    if (@backingInt(ProfileError.invalid_state) != 0x104) @compileError("ra8_power_profile invalid-state value");
+    if (@backingInt(ProfileError.not_initialized) != 0x10F) @compileError("ra8_power_profile not-initialized value");
+    if (@backingInt(ProfileError.range_check_failed) != 0x503) @compileError("ra8_power_profile range-check value");
+    if (@backingInt(ProfileError.null_ptr) != 0x504) @compileError("ra8_power_profile null-pointer value");
 
     if (@sizeOf(RegionStats) != 40) @compileError("ra8_power_profile_region_stats_t size");
     if (@alignOf(RegionStats) != 8) @compileError("ra8_power_profile_region_stats_t alignment");
@@ -109,32 +109,32 @@ fn requireInitialized() ProfileError {
 pub export fn ra8_power_profile_init(cfg: ?*const Config) callconv(.c) u16 {
     const source = cfg orelse {
         ra8_log_emit_error(tag, "cfg must not be nullptr");
-        return @intFromEnum(ProfileError.null_ptr);
+        return @backingInt(ProfileError.null_ptr);
     };
     config = source.*;
     state.reset();
     initialized = true;
-    return @intFromEnum(ProfileError.ok);
+    return @backingInt(ProfileError.ok);
 }
 
 /// `ra8_power_profile_mark_enter`
 pub export fn ra8_power_profile_mark_enter(region_id: u8) callconv(.c) u16 {
     const init_err = requireInitialized();
-    if (init_err != .ok) return @intFromEnum(init_err);
+    if (init_err != .ok) return @backingInt(init_err);
     const range_err = validateRegion(region_id);
-    if (range_err != .ok) return @intFromEnum(range_err);
+    if (range_err != .ok) return @backingInt(range_err);
 
     state.markEnter(region_id, nowUs());
     firePulse(region_id, true);
-    return @intFromEnum(ProfileError.ok);
+    return @backingInt(ProfileError.ok);
 }
 
 /// `ra8_power_profile_mark_exit`
 pub export fn ra8_power_profile_mark_exit(region_id: u8) callconv(.c) u16 {
     const init_err = requireInitialized();
-    if (init_err != .ok) return @intFromEnum(init_err);
+    if (init_err != .ok) return @backingInt(init_err);
     const range_err = validateRegion(region_id);
-    if (range_err != .ok) return @intFromEnum(range_err);
+    if (range_err != .ok) return @backingInt(range_err);
 
     const outcome = state.markExit(region_id, nowUs());
     const result: ProfileError = switch (outcome) {
@@ -146,27 +146,27 @@ pub export fn ra8_power_profile_mark_exit(region_id: u8) callconv(.c) u16 {
     };
 
     firePulse(region_id, false);
-    return @intFromEnum(result);
+    return @backingInt(result);
 }
 
 /// `ra8_power_profile_get_stats`
 pub export fn ra8_power_profile_get_stats(out_stats: ?*Stats) callconv(.c) u16 {
     const init_err = requireInitialized();
-    if (init_err != .ok) return @intFromEnum(init_err);
+    if (init_err != .ok) return @backingInt(init_err);
     const destination = out_stats orelse {
         ra8_log_emit_error(tag, "out_stats must not be nullptr");
-        return @intFromEnum(ProfileError.null_ptr);
+        return @backingInt(ProfileError.null_ptr);
     };
     destination.* = state.stats;
-    return @intFromEnum(ProfileError.ok);
+    return @backingInt(ProfileError.ok);
 }
 
 /// `ra8_power_profile_reset_stats`
 pub export fn ra8_power_profile_reset_stats() callconv(.c) u16 {
     const init_err = requireInitialized();
-    if (init_err != .ok) return @intFromEnum(init_err);
+    if (init_err != .ok) return @backingInt(init_err);
     state.reset();
-    return @intFromEnum(ProfileError.ok);
+    return @backingInt(ProfileError.ok);
 }
 
 /// Test-only reset of the module-static state, so a Zig test can observe the

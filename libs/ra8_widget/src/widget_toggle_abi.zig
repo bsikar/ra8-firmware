@@ -81,7 +81,7 @@ fn renderToggle(w: *Widget) callconv(.c) void {
     var pen_y: i32 = 0;
     const size: paint_abi.TextSize = if (toggle.text_size == .default) .size_3 else toggle.text_size;
     paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, toggle.text_face, toggle.text_weight, size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, label, @intFromEnum(toggle.text_face), @intFromEnum(toggle.text_weight), @intFromEnum(size), toggle.fg, toggle.bg) else backend.draw_text.?(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, label, @backingInt(toggle.text_face), @backingInt(toggle.text_weight), @backingInt(size), toggle.fg, toggle.bg) else backend.draw_text.?(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
 }
 
 fn onToggleInput(w: *Widget, event: *const Event) callconv(.c) bool {

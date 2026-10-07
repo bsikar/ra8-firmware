@@ -25,8 +25,8 @@ export fn ra8_net_urlguard_scheme_allowed(url: ?[*:0]const u8) bool {
 
 /// Classify a peer address literal.
 export fn ra8_net_urlguard_classify_ip(ip: ?[*:0]const u8) u8 {
-    const text = ip orelse return @intFromEnum(AddrClass.unknown);
-    return @intFromEnum(policy.classifyIp(std.mem.span(text)));
+    const text = ip orelse return @backingInt(AddrClass.unknown);
+    return @backingInt(policy.classifyIp(std.mem.span(text)));
 }
 
 /// Whether an address of this class may be fetched.

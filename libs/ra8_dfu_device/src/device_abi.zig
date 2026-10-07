@@ -39,17 +39,17 @@ var class_name = "ux_slave_class_dfu".*;
 /// Binds `device.State` to the real `ra8_dfu` programmer.
 const Mram = struct {
     pub fn image(_: Mram, target: device.Slot, offset: u32, bytes: []const u8) u16 {
-        return ra8_dfu_program_image(@intFromEnum(target), offset, bytes.ptr, @intCast(bytes.len));
+        return ra8_dfu_program_image(@backingInt(target), offset, bytes.ptr, @intCast(bytes.len));
     }
 
     pub fn commit(_: Mram, target: device.Slot, img_len: u32, seq: u32) u16 {
-        return ra8_dfu_program_commit(@intFromEnum(target), img_len, seq);
+        return ra8_dfu_program_commit(@backingInt(target), img_len, seq);
     }
 
     /// Zero when the other slot has no valid header, as the C did.
     pub fn otherSeq(_: Mram, target: device.Slot) u32 {
         var seq: u32 = 0;
-        _ = ra8_dfu_slot_seq(ra8_dfu_other_slot(@intFromEnum(target)), &seq);
+        _ = ra8_dfu_slot_seq(ra8_dfu_other_slot(@backingInt(target)), &seq);
         return seq;
     }
 };
@@ -74,7 +74,7 @@ fn onRead(_: ?*anyopaque, block: c_ulong, data: [*]u8, length: c_ulong, actual: 
         actual.* = 0;
         return usbx.success;
     };
-    const src: [*]const u8 = @ptrFromInt(ra8_dfu_slot_base(@intFromEnum(state.target)) + span.offset);
+    const src: [*]const u8 = @ptrFromInt(ra8_dfu_slot_base(@backingInt(state.target)) + span.offset);
     @memcpy(data[0..span.len], src[0..span.len]);
     actual.* = span.len;
     return usbx.success;
@@ -133,7 +133,7 @@ export fn ra8_dfu_device_start(
     // Opened here, in thread context, so the per-block program path never
     // runs the controller bring-up (which logs over UART) from a USB
     // control request.
-    const prep_err = ra8_dfu_program_prepare(@intFromEnum(state.target));
+    const prep_err = ra8_dfu_program_prepare(@backingInt(state.target));
     if (prep_err != device.ok) return prep_err;
     state.prepared = true;
     return ra8_usb_device_attach(speed, true);

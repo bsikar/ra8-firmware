@@ -645,7 +645,7 @@ test "invalidate marks the widget dirty and records the hint" {
     var w = widgetOf(null, 0);
     try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_invalidate(&w, .fast));
     try std.testing.expect(w.dirty);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.fast), w.refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.fast), w.refresh);
 }
 
 test "a weaker hint never downgrades one already asked for" {
@@ -653,7 +653,7 @@ test "a weaker hint never downgrades one already asked for" {
     var w = widgetOf(null, 0);
     _ = abi.ra8_widget_invalidate(&w, .quality);
     _ = abi.ra8_widget_invalidate(&w, .fast);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), w.refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), w.refresh);
 }
 
 test "a stronger hint upgrades the one already asked for" {
@@ -661,7 +661,7 @@ test "a stronger hint upgrades the one already asked for" {
     var w = widgetOf(null, 0);
     _ = abi.ra8_widget_invalidate(&w, .fast);
     _ = abi.ra8_widget_invalidate(&w, .quality);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), w.refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), w.refresh);
 }
 
 // ---------------------------------------------------------------------------
@@ -747,9 +747,9 @@ test "the reported hint is the strongest any dirty widget asked for" {
     reset();
     var ws = [_]abi.Widget{ widgetOf(null, 0), widgetOf(null, 1), widgetOf(null, 2) };
     for (&ws) |*w| w.dirty = true;
-    ws[0].refresh = @intFromEnum(abi.Refresh.fast);
-    ws[1].refresh = @intFromEnum(abi.Refresh.quality);
-    ws[2].refresh = @intFromEnum(abi.Refresh.fast);
+    ws[0].refresh = @backingInt(abi.Refresh.fast);
+    ws[1].refresh = @backingInt(abi.Refresh.quality);
+    ws[2].refresh = @backingInt(abi.Refresh.fast);
 
     var rect: abi.Rect = undefined;
     var hint: abi.Refresh = undefined;
@@ -763,9 +763,9 @@ test "a clean widget's hint is ignored however strong it is" {
     reset();
     var ws = [_]abi.Widget{ widgetOf(null, 0), widgetOf(null, 1) };
     ws[0].dirty = true;
-    ws[0].refresh = @intFromEnum(abi.Refresh.fast);
+    ws[0].refresh = @backingInt(abi.Refresh.fast);
     ws[1].dirty = false;
-    ws[1].refresh = @intFromEnum(abi.Refresh.quality);
+    ws[1].refresh = @backingInt(abi.Refresh.quality);
 
     var rect: abi.Rect = undefined;
     var hint: abi.Refresh = undefined;
@@ -788,7 +788,7 @@ test "render_dirty renders the dirty widgets and clears them" {
     reset();
     var ws = [_]abi.Widget{ widgetOf(&render_only_vt, 10), widgetOf(&render_only_vt, 11) };
     ws[0].dirty = true;
-    ws[0].refresh = @intFromEnum(abi.Refresh.quality);
+    ws[0].refresh = @backingInt(abi.Refresh.quality);
 
     try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_render_dirty(&ws, 2));
     try std.testing.expectEqual(1, renders);
@@ -829,7 +829,7 @@ test "a dirty widget with no render callback is still cleared" {
     var ws = [_]abi.Widget{ widgetOf(null, 10), widgetOf(&input_only_vt, 11) };
     for (&ws) |*w| {
         w.dirty = true;
-        w.refresh = @intFromEnum(abi.Refresh.fast);
+        w.refresh = @backingInt(abi.Refresh.fast);
     }
 
     try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_render_dirty(&ws, 2));

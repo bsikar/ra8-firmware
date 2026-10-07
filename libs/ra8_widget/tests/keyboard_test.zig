@@ -413,7 +413,7 @@ test "a tap on a key applies it and invalidates for a quality refresh" {
     try std.testing.expectEqual(1, Engine.applied.len);
     try std.testing.expectEqual(0, Engine.applied.get(0));
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), last_refresh);
     try std.testing.expect(w.dirty);
     try std.testing.expectEqual(0, commits);
 }

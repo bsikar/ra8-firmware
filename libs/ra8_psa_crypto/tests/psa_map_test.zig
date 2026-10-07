@@ -46,7 +46,7 @@ test "every key type reaches its own psa peer" {
 }
 
 test "an unknown key type falls back to raw data" {
-    try std.testing.expectEqual(Stub.key_type_raw_data, map.keyType(Stub, @enumFromInt(0x7F)));
+    try std.testing.expectEqual(Stub.key_type_raw_data, map.keyType(Stub, @fromBackingInt(@intCast(0x7F))));
 }
 
 test "every algorithm reaches its own psa peer" {
@@ -57,7 +57,7 @@ test "every algorithm reaches its own psa peer" {
 
 test "none and an unknown algorithm map to zero" {
     try std.testing.expectEqual(@as(u32, 0), map.algorithm(Stub, .none));
-    try std.testing.expectEqual(@as(u32, 0), map.algorithm(Stub, @enumFromInt(0x7F)));
+    try std.testing.expectEqual(@as(u32, 0), map.algorithm(Stub, @fromBackingInt(@intCast(0x7F))));
 }
 
 test "each usage bit lights its own psa flag" {

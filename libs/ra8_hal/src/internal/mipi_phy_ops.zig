@@ -70,7 +70,7 @@ pub fn activeMode(stopped: bool, mdc: u32) u8 {
 
 pub fn dualFromInt(raw: u8) ?Dual {
     return switch (raw) {
-        0...3 => @enumFromInt(raw),
+        0...3 => @fromBackingInt(@intCast(raw)),
         else => null,
     };
 }

@@ -151,6 +151,6 @@ test "a still viewport and a forged direction both warm nothing" {
 
     // The enum is non-exhaustive on purpose: a byte the membrane never
     // defined must reach the default arm rather than be illegal behaviour.
-    const forged = request(@enumFromInt(200));
+    const forged = request(@fromBackingInt(@intCast(200)));
     try std.testing.expect(geometry.panLine(&forged) == null);
 }

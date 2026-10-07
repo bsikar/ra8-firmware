@@ -68,7 +68,7 @@ pub fn validate(cfg: *const Partition, implemented: u8) u32 {
 fn validateRegion(region: SauRegion) u32 {
     if (region.base % Limits.sau_granule != 0) return regs.Err.invalid_arg;
     if (region.size == 0 or region.size % Limits.sau_granule != 0) return regs.Err.invalid_arg;
-    if (@intFromEnum(region.attr) > @intFromEnum(SauAttr.nsc)) return regs.Err.invalid_arg;
+    if (@backingInt(region.attr) > @backingInt(SauAttr.nsc)) return regs.Err.invalid_arg;
     const top: u64 = @as(u64, region.base) + @as(u64, region.size);
     if (top > Limits.address_ceiling) return regs.Err.invalid_arg;
     return regs.Err.ok;
@@ -163,7 +163,7 @@ test "an unnamed attribute is a caller error" {
     try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
         .base = 0x02080000,
         .size = 0x80000,
-        .attr = @enumFromInt(9),
+        .attr = @fromBackingInt(@intCast(9)),
     }));
 }
 

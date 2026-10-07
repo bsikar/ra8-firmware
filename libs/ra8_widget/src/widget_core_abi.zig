@@ -107,8 +107,8 @@ comptime {
     if (@offsetOf(BoxTree, "cap") != @sizeOf(usize)) @compileError("ra8_box_tree_t cap offset");
 
     if (@sizeOf(Axis) != 1) @compileError("ra8_widget_axis_t width");
-    if (@intFromEnum(Axis.col) != 0) @compileError("ra8_widget_axis_t col value");
-    if (@intFromEnum(Axis.row) != 1) @compileError("ra8_widget_axis_t row value");
+    if (@backingInt(Axis.col) != 0) @compileError("ra8_widget_axis_t col value");
+    if (@backingInt(Axis.row) != 1) @compileError("ra8_widget_axis_t row value");
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +294,7 @@ pub export fn ra8_widget_invalidate(w: ?*Widget, refresh: Refresh) callconv(.c) 
     const wg = w orelse return types.refuseNull(tag, "w must not be nullptr");
     if (refresh == .none) return err.invalid_arg;
     wg.dirty = true;
-    const hint = @intFromEnum(refresh);
+    const hint = @backingInt(refresh);
     if (hint > wg.refresh) wg.refresh = hint;
     return err.ok;
 }
@@ -315,7 +315,7 @@ pub export fn ra8_widget_damage(
     if (count > 0 and widgets == null) return err.null_ptr;
 
     var acc: Rect = .{ .x = 0, .y = 0, .w = 0, .h = 0 };
-    var hint: u8 = @intFromEnum(Refresh.none);
+    var hint: u8 = @backingInt(Refresh.none);
     var dirty: u16 = 0;
 
     const wids: []const Widget = if (widgets) |p| p[0..count] else &.{};
@@ -326,7 +326,7 @@ pub export fn ra8_widget_damage(
         dirty += 1;
     }
     rect.* = acc;
-    hint_out.* = @enumFromInt(hint);
+    hint_out.* = @fromBackingInt(@intCast(hint));
     count_out.* = dirty;
     return err.ok;
 }
@@ -343,7 +343,7 @@ pub export fn ra8_widget_render_dirty(widgets: ?[*]Widget, count: u16) callconv(
             if (vt.render) |render| render(wg);
         }
         wg.dirty = false;
-        wg.refresh = @intFromEnum(Refresh.none);
+        wg.refresh = @backingInt(Refresh.none);
     }
     return err.ok;
 }

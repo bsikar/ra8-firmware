@@ -24,7 +24,7 @@ const Hw = struct {
     base: usize,
 
     pub fn setMode(self: Hw, mode: ctrl.Mode) u16 {
-        return priv_ra8_canfd_internal_set_channel_mode(@ptrFromInt(self.base), @intFromEnum(mode));
+        return priv_ra8_canfd_internal_set_channel_mode(@ptrFromInt(self.base), @backingInt(mode));
     }
     pub fn readCtr(self: Hw) u32 {
         return reg32(self.base, ctrl.off_ctr).*;

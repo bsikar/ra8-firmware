@@ -102,6 +102,6 @@ export fn ra8_io_i2c_bus_as_ops(bus: ?*const Bus, out: ?*Ops) c_int {
     o.write = &opsWrite;
     o.read = &opsRead;
     o.transfer = &opsTransfer;
-    o.ctx = @constCast(@ptrCast(bus.?));
+    o.ctx = @ptrCast(@constCast(bus.?));
     return ok;
 }

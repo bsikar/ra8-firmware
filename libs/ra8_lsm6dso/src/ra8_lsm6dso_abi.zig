@@ -73,25 +73,25 @@ comptime {
     std.debug.assert(@offsetOf(Xyz, "z") == 4);
 }
 
-const ok = @intFromEnum(Lsm6dsoError.ok);
+const ok = @backingInt(Lsm6dsoError.ok);
 
 /// Reject a NULL argument with the C log line and `ra8_err_t` code.
 fn rejectNull(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(Lsm6dsoError.null_ptr);
+    return @backingInt(Lsm6dsoError.null_ptr);
 }
 
 /// Reject a call made before `ra8_lsm6dso_init`.
 fn rejectUninitialized(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(Lsm6dsoError.not_initialized);
+    return @backingInt(Lsm6dsoError.not_initialized);
 }
 
 /// Reject an out-of-range enumerator. `RA8_CHECK_RANGE_TAG` logs this exact
 /// fixed string rather than a per-call message, so the port keeps it.
 fn rejectRange() u16 {
     ra8_log_emit_error(tag, "Range check failed");
-    return @intFromEnum(Lsm6dsoError.invalid_arg);
+    return @backingInt(Lsm6dsoError.invalid_arg);
 }
 
 /// Transport read. The seam pointers are non-NULL for any device that came
@@ -308,7 +308,7 @@ fn fifoCheckArgs(dev: ?*Device, out_buf: ?[*]u8, max_words: u32, out_words: ?*u3
     }
     if (max_words == 0) {
         ra8_log_emit_error(tag, "read_fifo: max_words is zero");
-        return @intFromEnum(Lsm6dsoError.invalid_arg);
+        return @backingInt(Lsm6dsoError.invalid_arg);
     }
     return ok;
 }

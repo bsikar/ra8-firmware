@@ -140,14 +140,14 @@ fn awaitAssociation(wifi: *Wifi) u16 {
 
     var i: u16 = 0;
     while (i < implementation.join_polls) : (i += 1) {
-        var link: u8 = @intFromEnum(Link.down);
+        var link: u8 = @backingInt(Link.down);
         const serviced = wifi.backend.?.service.?(wifi.backend_ctx, &link);
         if (serviced != implementation.err_ok) {
             last_fault = serviced;
         } else {
             answered = true;
-            if (link == @intFromEnum(Link.up)) {
-                wifi.state = @intFromEnum(State.associated);
+            if (link == @backingInt(Link.up)) {
+                wifi.state = @backingInt(State.associated);
                 return implementation.err_ok;
             }
         }
@@ -174,7 +174,7 @@ pub export fn ra8_wifi_init(wifi: ?*Wifi, cfg: ?*const Config) callconv(.c) u16 
     handle.backend_ctx = config.backend_ctx;
     handle.ip_bind = config.ip_bind;
     handle.ip_ctx = config.ip_ctx;
-    handle.state = @intFromEnum(State.down);
+    handle.state = @backingInt(State.down);
     handle.open = true;
     return implementation.err_ok;
 }
@@ -186,7 +186,7 @@ pub export fn ra8_wifi_deinit(wifi: ?*Wifi) callconv(.c) u16 {
     const closed = handle.backend.?.close.?(handle.backend_ctx);
     handle.open = false;
     handle.radio_on = false;
-    handle.state = @intFromEnum(State.down);
+    handle.state = @backingInt(State.down);
     return closed;
 }
 
@@ -202,7 +202,7 @@ pub export fn ra8_wifi_connect(wifi: ?*Wifi, ssid: ?[*:0]const u8, psk: ?[*:0]co
     if (got_mac != implementation.err_ok) return got_mac;
     handle.mac_valid = true;
 
-    handle.state = @intFromEnum(State.associating);
+    handle.state = @backingInt(State.associating);
     const asked = handle.backend.?.join.?(handle.backend_ctx, ssid, psk);
     if (asked != implementation.err_ok) return asked;
     return awaitAssociation(handle);
@@ -215,7 +215,7 @@ pub export fn ra8_wifi_disconnect(wifi: ?*Wifi) callconv(.c) u16 {
     const left = handle.backend.?.leave.?(handle.backend_ctx);
     const stopped = handle.backend.?.radio_down.?(handle.backend_ctx);
     handle.radio_on = false;
-    handle.state = @intFromEnum(State.down);
+    handle.state = @backingInt(State.down);
     handle.lease = .{};
     return if (left != implementation.err_ok) left else stopped;
 }
@@ -240,7 +240,7 @@ pub export fn ra8_wifi_wait_ip(wifi: ?*Wifi, out: ?*Lease) callconv(.c) u16 {
     }
 
     handle.lease = lease;
-    handle.state = @intFromEnum(State.ip_bound);
+    handle.state = @backingInt(State.ip_bound);
     sink.* = lease;
     return implementation.err_ok;
 }
@@ -265,11 +265,11 @@ pub export fn ra8_wifi_status(wifi: ?*const Wifi, out: ?*Status) callconv(.c) u1
 pub export fn ra8_wifi_poll(wifi: ?*Wifi, out: ?*u8) callconv(.c) u16 {
     const handle = wifi orelse return nullPtr("wifi");
     const sink = out orelse return nullPtr("out");
-    sink.* = @intFromEnum(Link.down);
+    sink.* = @backingInt(Link.down);
     if (!handle.open) return implementation.err_not_initialized;
     if (implementation.isIpBound(handle.state)) return implementation.err_invalid_state;
 
-    var link: u8 = @intFromEnum(Link.down);
+    var link: u8 = @backingInt(Link.down);
     const serviced = handle.backend.?.service.?(handle.backend_ctx, &link);
     if (serviced != implementation.err_ok) return serviced;
 

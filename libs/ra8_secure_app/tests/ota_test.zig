@@ -10,7 +10,7 @@ const ota = @import("ota");
 
 test "reset clears a pending swap and the config shadow" {
     try std.testing.expectEqual(ota.Err.ok, ota.reset());
-    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@intFromEnum(ota.Bank.b)));
+    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@backingInt(ota.Bank.b)));
     try std.testing.expectEqual(ota.Err.ok, ota.setBankConfig(0x3));
 
     try std.testing.expectEqual(ota.Err.ok, ota.reset());
@@ -22,7 +22,7 @@ test "reset clears a pending swap and the config shadow" {
 
 test "an armed swap reads back as the bank that was requested" {
     try std.testing.expectEqual(ota.Err.ok, ota.reset());
-    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@intFromEnum(ota.Bank.b)));
+    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@backingInt(ota.Bank.b)));
 
     var target: ota.Bank = undefined;
     try std.testing.expectEqual(ota.Err.ok, ota.pendingTarget(&target));
@@ -31,8 +31,8 @@ test "an armed swap reads back as the bank that was requested" {
 
 test "arming is single-shot" {
     try std.testing.expectEqual(ota.Err.ok, ota.reset());
-    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@intFromEnum(ota.Bank.a)));
-    try std.testing.expectEqual(ota.Err.invalid_state, ota.swapBank(@intFromEnum(ota.Bank.b)));
+    try std.testing.expectEqual(ota.Err.ok, ota.swapBank(@backingInt(ota.Bank.a)));
+    try std.testing.expectEqual(ota.Err.invalid_state, ota.swapBank(@backingInt(ota.Bank.b)));
 
     // The second request must not have overwritten the first.
     var target: ota.Bank = undefined;

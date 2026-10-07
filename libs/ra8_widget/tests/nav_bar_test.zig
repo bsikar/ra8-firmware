@@ -156,7 +156,7 @@ test "the descriptor mirrors ra8_widget_nav_bar_t" {
 
 test "the atlas contains every requested nav icon" {
     for (1..10) |raw| {
-        const icon: abi.Icon = @enumFromInt(raw);
+        const icon: abi.Icon = @fromBackingInt(@intCast(raw));
         var ink: usize = 0;
         for (0..16) |y| for (0..16) |x| {
             if (abi.icons.sample(icon, x, y) > 0) ink += 1;
@@ -424,7 +424,7 @@ test "a tap records the cell, invalidates fast and notifies once" {
     try std.testing.expect(abi.ra8_widget_nav_bar_vtable().on_input.?(&w, &event));
     try std.testing.expectEqual(2, nav.selected);
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.fast), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.fast), last_refresh);
     try std.testing.expect(w.dirty);
     try std.testing.expectEqual(1, selections.len);
     try std.testing.expectEqual(2, selections.get(0));

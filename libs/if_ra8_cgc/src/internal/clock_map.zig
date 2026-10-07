@@ -40,7 +40,7 @@ pub const Mstp = struct {
     pub const Reg = enum(u16) { a = 0, b = 1, c = 2, d = 3, e = 4 };
 
     fn id(reg: Reg, bit: u8) u16 {
-        return (@as(u16, @intFromEnum(reg)) << 8) | bit;
+        return (@as(u16, @backingInt(reg)) << 8) | bit;
     }
 
     pub const sram0: u16 = id(.a, 0);
@@ -126,19 +126,19 @@ const Instances = struct {
 
 const kinds = blk: {
     var table: [kind_count]KindRow = @splat(.{});
-    table[@intFromEnum(Kind.core)] = .{ .domain = .cpuclk0, .instances = Instances.one };
-    table[@intFromEnum(Kind.uart)] = .{ .domain = .pclka, .gate_base = Mstp.sci0, .instances = Instances.sci };
-    table[@intFromEnum(Kind.spi)] = .{ .domain = .pclka, .gate_base = Mstp.spi0, .instances = Instances.two };
-    table[@intFromEnum(Kind.i2c)] = .{ .domain = .pclka, .gate_base = Mstp.iic0, .instances = Instances.three };
-    table[@intFromEnum(Kind.can)] = .{ .domain = .pclka, .gate_base = Mstp.canfd0, .instances = Instances.two };
-    table[@intFromEnum(Kind.adc)] = .{ .gate_base = Mstp.adc16h, .instances = Instances.one };
-    table[@intFromEnum(Kind.dac)] = .{ .gate_base = Mstp.dac12_0, .instances = Instances.two };
-    table[@intFromEnum(Kind.display)] = .{ .gate_base = Mstp.glcdc, .instances = Instances.one };
-    table[@intFromEnum(Kind.camera)] = .{ .domain = .pclkd, .gate_base = Mstp.ceu, .instances = Instances.one };
-    table[@intFromEnum(Kind.ethernet)] = .{ .gate_base = Mstp.eswm, .instances = Instances.one };
-    table[@intFromEnum(Kind.sdhost)] = .{ .domain = .pclka, .gate_base = Mstp.sdhi0, .instances = Instances.two };
-    table[@intFromEnum(Kind.crypto)] = .{ .gate_base = Mstp.rsip, .instances = Instances.one };
-    table[@intFromEnum(Kind.memory)] = .{ .domain = .fclk, .instances = Instances.one };
+    table[@backingInt(Kind.core)] = .{ .domain = .cpuclk0, .instances = Instances.one };
+    table[@backingInt(Kind.uart)] = .{ .domain = .pclka, .gate_base = Mstp.sci0, .instances = Instances.sci };
+    table[@backingInt(Kind.spi)] = .{ .domain = .pclka, .gate_base = Mstp.spi0, .instances = Instances.two };
+    table[@backingInt(Kind.i2c)] = .{ .domain = .pclka, .gate_base = Mstp.iic0, .instances = Instances.three };
+    table[@backingInt(Kind.can)] = .{ .domain = .pclka, .gate_base = Mstp.canfd0, .instances = Instances.two };
+    table[@backingInt(Kind.adc)] = .{ .gate_base = Mstp.adc16h, .instances = Instances.one };
+    table[@backingInt(Kind.dac)] = .{ .gate_base = Mstp.dac12_0, .instances = Instances.two };
+    table[@backingInt(Kind.display)] = .{ .gate_base = Mstp.glcdc, .instances = Instances.one };
+    table[@backingInt(Kind.camera)] = .{ .domain = .pclkd, .gate_base = Mstp.ceu, .instances = Instances.one };
+    table[@backingInt(Kind.ethernet)] = .{ .gate_base = Mstp.eswm, .instances = Instances.one };
+    table[@backingInt(Kind.sdhost)] = .{ .domain = .pclka, .gate_base = Mstp.sdhi0, .instances = Instances.two };
+    table[@backingInt(Kind.crypto)] = .{ .gate_base = Mstp.rsip, .instances = Instances.one };
+    table[@backingInt(Kind.memory)] = .{ .domain = .fclk, .instances = Instances.one };
     break :blk table;
 };
 
@@ -158,5 +158,5 @@ pub fn resolve(kind_raw: u8, index: u8) Fault!Row {
 
 test "the table length is the port's kind count" {
     try std.testing.expectEqual(kind_count, kinds.len);
-    try std.testing.expectEqual(kind_count, @intFromEnum(Kind.memory) + 1);
+    try std.testing.expectEqual(kind_count, @backingInt(Kind.memory) + 1);
 }

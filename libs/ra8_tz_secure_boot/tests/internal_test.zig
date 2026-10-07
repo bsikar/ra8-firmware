@@ -65,9 +65,9 @@ test "arming the jump records the vector table the NS world will use" {
 }
 
 test "the step values are the contract a bench probe indexes against" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(boot.Step.idle));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(boot.Step.sau_done));
-    try std.testing.expectEqual(@as(u8, 6), @intFromEnum(boot.Step.branched));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(boot.Step.idle));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(boot.Step.sau_done));
+    try std.testing.expectEqual(@as(u8, 6), @backingInt(boot.Step.branched));
 }
 
 test "a PSAR request on the IPC block plans an apply, not a reject" {

@@ -62,7 +62,7 @@ pub const Sets = extern struct {
 
     /// The segment cell `f` currently belongs to.
     fn segmentOf(self: *Sets, meta: []const Cell, f: u32) *Segment {
-        return if (meta[f].seg == @intFromEnum(Seg.protected)) &self.pt else &self.pb;
+        return if (meta[f].seg == @backingInt(Seg.protected)) &self.pt else &self.pb;
     }
 
     /// Re-reference cell `f` under `policy`.
@@ -77,14 +77,14 @@ pub const Sets = extern struct {
             self.pb.pushHead(meta, f);
             return;
         }
-        if (meta[f].seg == @intFromEnum(Seg.protected)) {
+        if (meta[f].seg == @backingInt(Seg.protected)) {
             self.pt.unlink(meta, f);
             self.pt.pushHead(meta, f);
             return;
         }
         self.pb.unlink(meta, f);
         if (self.protected_count >= self.protected_cap) self.demoteLru(meta);
-        meta[f].seg = @intFromEnum(Seg.protected);
+        meta[f].seg = @backingInt(Seg.protected);
         self.pt.pushHead(meta, f);
         self.protected_count += 1;
     }
@@ -96,7 +96,7 @@ pub const Sets = extern struct {
         if (d == list.none) return;
         const idx: u32 = @intCast(d);
         self.pt.unlink(meta, idx);
-        meta[idx].seg = @intFromEnum(Seg.probation);
+        meta[idx].seg = @backingInt(Seg.probation);
         self.pb.pushHead(meta, idx);
         self.protected_count -= 1;
     }
@@ -114,7 +114,7 @@ pub const Sets = extern struct {
     /// Take cell `f` out of whichever segment holds it, keeping the protected
     /// accounting straight. The caller re-links it once it has been refilled.
     pub fn detach(self: *Sets, meta: []Cell, f: u32) void {
-        const protected = meta[f].seg == @intFromEnum(Seg.protected);
+        const protected = meta[f].seg == @backingInt(Seg.protected);
         self.segmentOf(meta, f).unlink(meta, f);
         if (protected) self.protected_count -= 1;
     }
@@ -128,7 +128,7 @@ pub const Sets = extern struct {
         for (meta, 0..) |*cell, i| {
             cell.valid = 0;
             cell.pin_count = 0;
-            cell.seg = @intFromEnum(Seg.probation);
+            cell.seg = @backingInt(Seg.probation);
             cell.hash_next = list.none;
             self.pb.pushHead(meta, @intCast(i));
         }

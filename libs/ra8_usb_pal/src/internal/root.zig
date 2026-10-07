@@ -154,17 +154,17 @@ pub fn maskEpAddr(ep_addr: u8) u8 {
 
 /// `ra8_usb_pal_init` accepts exactly the two controller selectors.
 pub fn speedValid(raw: u8) bool {
-    return raw == @intFromEnum(Speed.fs) or raw == @intFromEnum(Speed.hs);
+    return raw == @backingInt(Speed.fs) or raw == @backingInt(Speed.hs);
 }
 
 /// Direction byte carried into `ra8_usb_pal_ep_open` by value.
 pub fn dirValid(raw: u8) bool {
-    return raw == @intFromEnum(EpDir.out) or raw == @intFromEnum(EpDir.in);
+    return raw == @backingInt(EpDir.out) or raw == @backingInt(EpDir.in);
 }
 
 /// Transfer type plus packet-size rule, exactly the C's single `if`.
 pub fn typeAndPacketValid(raw_type: u8, max_packet: u16) bool {
-    return !(raw_type > @intFromEnum(EpType.intr) or max_packet == 0 or max_packet > xfer_max);
+    return !(raw_type > @backingInt(EpType.intr) or max_packet == 0 or max_packet > xfer_max);
 }
 
 // =============================================================================

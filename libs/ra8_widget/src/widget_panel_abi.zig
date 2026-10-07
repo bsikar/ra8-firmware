@@ -153,8 +153,8 @@ fn layoutInto(panel: *const Panel, kids: []Widget, rect: *const Rect) u16 {
 /// The hint a dirty panel repaints its subtree with: its own, or quality when
 /// it carries none.
 fn subtreeHint(w: *const Widget) Refresh {
-    if (w.refresh == @intFromEnum(Refresh.none)) return .quality;
-    return @enumFromInt(w.refresh);
+    if (w.refresh == @backingInt(Refresh.none)) return .quality;
+    return @fromBackingInt(@intCast(w.refresh));
 }
 
 /// Vtable render: lay the subtree out, mark every visible child dirty with
@@ -247,7 +247,7 @@ pub export fn ra8_widget_panel_compose(
     if (rendered != err.ok) return rendered;
 
     widget.dirty = false;
-    widget.refresh = @intFromEnum(Refresh.none);
+    widget.refresh = @backingInt(Refresh.none);
     if (builtin.mode == .Debug) {
         debug_channel.publish(@ptrCast(widget), debugChildren);
     }
@@ -271,8 +271,8 @@ comptime {
     if (@alignOf(Panel) != @alignOf(usize)) @compileError("ra8_widget_panel_t alignment");
 
     if (@sizeOf(Axis) != 1) @compileError("ra8_widget_axis_t width");
-    if (@intFromEnum(Axis.col) != 0) @compileError("ra8_widget_axis_t col value");
-    if (@intFromEnum(Axis.row) != 1) @compileError("ra8_widget_axis_t row value");
+    if (@backingInt(Axis.col) != 0) @compileError("ra8_widget_axis_t col value");
+    if (@backingInt(Axis.row) != 1) @compileError("ra8_widget_axis_t row value");
 }
 
 comptime {

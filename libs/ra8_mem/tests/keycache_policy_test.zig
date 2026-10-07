@@ -54,7 +54,7 @@ test "seed puts every cell cold in probation, tail first by index" {
     for (meta) |c| {
         try std.testing.expectEqual(@as(u8, 0), c.valid);
         try std.testing.expectEqual(@as(u16, 0), c.pin_count);
-        try std.testing.expectEqual(@intFromEnum(Seg.probation), c.seg);
+        try std.testing.expectEqual(@backingInt(Seg.probation), c.seg);
     }
 }
 
@@ -75,7 +75,7 @@ test "LRU access moves the cell to the MRU and touches no segment tag" {
 
     var buf: [3]u32 = undefined;
     try std.testing.expectEqualSlices(u32, &.{ 0, 2, 1 }, order(sets.pb, &meta, &buf));
-    try std.testing.expectEqual(@intFromEnum(Seg.probation), meta[0].seg);
+    try std.testing.expectEqual(@backingInt(Seg.probation), meta[0].seg);
     try std.testing.expectEqual(@as(u32, 0), sets.protected_count);
 }
 
@@ -99,7 +99,7 @@ test "SLRU promotes a probationary cell into the protected segment" {
 
     sets.access(&meta, .slru, 1);
 
-    try std.testing.expectEqual(@intFromEnum(Seg.protected), meta[1].seg);
+    try std.testing.expectEqual(@backingInt(Seg.protected), meta[1].seg);
     try std.testing.expectEqual(@as(i32, 1), sets.pt.head);
     try std.testing.expectEqual(@as(u32, 1), sets.protected_count);
 }
@@ -130,7 +130,7 @@ test "a full protected segment demotes its LRU back to probation" {
     sets.access(&meta, .slru, 2);
 
     // 0 was the protected LRU, so it is the one that went back.
-    try std.testing.expectEqual(@intFromEnum(Seg.probation), meta[0].seg);
+    try std.testing.expectEqual(@backingInt(Seg.probation), meta[0].seg);
     try std.testing.expectEqual(@as(u32, 2), sets.protected_count);
     var buf: [4]u32 = undefined;
     try std.testing.expectEqualSlices(u32, &.{ 2, 1 }, order(sets.pt, &meta, &buf));
@@ -145,7 +145,7 @@ test "a zero-capacity protected segment promotes without demoting anything" {
 
     sets.access(&meta, .slru, 0);
 
-    try std.testing.expectEqual(@intFromEnum(Seg.protected), meta[0].seg);
+    try std.testing.expectEqual(@backingInt(Seg.protected), meta[0].seg);
     try std.testing.expectEqual(@as(u32, 1), sets.protected_count);
 }
 
@@ -228,12 +228,12 @@ test "a scan of cold keys cannot displace the protected set" {
         const v = sets.pickVictim(&meta).?;
         try std.testing.expect(v == 2 or v == 3);
         sets.detach(&meta, v);
-        meta[v].seg = @intFromEnum(Seg.probation);
+        meta[v].seg = @backingInt(Seg.probation);
         sets.pb.pushHead(&meta, v);
     }
 
-    try std.testing.expectEqual(@intFromEnum(Seg.protected), meta[0].seg);
-    try std.testing.expectEqual(@intFromEnum(Seg.protected), meta[1].seg);
+    try std.testing.expectEqual(@backingInt(Seg.protected), meta[0].seg);
+    try std.testing.expectEqual(@backingInt(Seg.protected), meta[1].seg);
 }
 
 test "the grouped recency words are the six the C state spelled loose" {

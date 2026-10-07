@@ -21,6 +21,6 @@ pub const Err = enum(u16) {
 
     /// The wire value, for an `export fn` that has to hand back a bare `u16`.
     pub fn code(self: Err) u16 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 };

@@ -274,7 +274,7 @@ test "wakeIdleBytes rounds the spec's 74-clock floor up to whole bytes" {
 
 test "the state object starts unprobed and unbound" {
     const s = core.State{};
-    try testing.expectEqual(@as(u8, @intFromEnum(core.CardType.unknown)), s.card_type);
+    try testing.expectEqual(@as(u8, @backingInt(core.CardType.unknown)), s.card_type);
     try testing.expectEqual(@as(u32, 0), s.capacity_blocks);
     try testing.expect(!s.initialized);
     try testing.expect(s.transport.xfer == null);
@@ -316,7 +316,7 @@ test "data-response classes sit behind the five-bit mask" {
 // ---------------------------------------------------------------------------
 
 test "lba_to_arg passes the block number through on a block-addressed card" {
-    const sdhc = @intFromEnum(core.CardType.sdhc);
+    const sdhc = @backingInt(core.CardType.sdhc);
     try testing.expectEqual(@as(u32, 0), core.lbaToArg(sdhc, 0));
     try testing.expectEqual(@as(u32, 1), core.lbaToArg(sdhc, 1));
     try testing.expectEqual(@as(u32, 0x00FF_FFFF), core.lbaToArg(sdhc, 0x00FF_FFFF));
@@ -324,7 +324,7 @@ test "lba_to_arg passes the block number through on a block-addressed card" {
 
 test "lba_to_arg converts to a byte offset on a byte-addressed card" {
     for ([_]core.CardType{ .unknown, .sdv1, .sdv2 }) |kind| {
-        const t = @intFromEnum(kind);
+        const t = @backingInt(kind);
         try testing.expectEqual(@as(u32, 0), core.lbaToArg(t, 0));
         try testing.expectEqual(@as(u32, 512), core.lbaToArg(t, 1));
         try testing.expectEqual(@as(u32, 1024), core.lbaToArg(t, 2));
@@ -334,7 +334,7 @@ test "lba_to_arg converts to a byte offset on a byte-addressed card" {
 test "lba_to_arg keeps the C's wrapping multiplication" {
     // Unreachable through the public API (the bounds checks run first), but
     // the C wrapped here rather than trapping, so the port must too.
-    const t = @intFromEnum(core.CardType.sdv2);
+    const t = @backingInt(core.CardType.sdv2);
     try testing.expectEqual(@as(u32, 0), core.lbaToArg(t, 0x0080_0000));
     try testing.expectEqual(@as(u32, 512), core.lbaToArg(t, 0x0080_0001));
 }

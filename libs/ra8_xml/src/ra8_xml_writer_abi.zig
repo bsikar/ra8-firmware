@@ -47,10 +47,10 @@ pub const Writer = extern struct {
 
 comptime {
     if (@sizeOf(XmlError) != 2) @compileError("ra8_err_t width");
-    if (@intFromEnum(XmlError.ok) != 0) @compileError("k_ra8_ok value");
-    if (@intFromEnum(XmlError.no_mem) != 0x102) @compileError("k_ra8_err_no_mem");
-    if (@intFromEnum(XmlError.invalid_arg) != 0x103) @compileError("k_ra8_err_invalid_arg");
-    if (@intFromEnum(XmlError.invalid_state) != 0x104) @compileError("k_ra8_err_invalid_state");
+    if (@backingInt(XmlError.ok) != 0) @compileError("k_ra8_ok value");
+    if (@backingInt(XmlError.no_mem) != 0x102) @compileError("k_ra8_err_no_mem");
+    if (@backingInt(XmlError.invalid_arg) != 0x103) @compileError("k_ra8_err_invalid_arg");
+    if (@backingInt(XmlError.invalid_state) != 0x104) @compileError("k_ra8_err_invalid_state");
 
     if (@sizeOf(Frame) != name.limits.name_cap) @compileError("frame size");
     if (@alignOf(Frame) != 1) @compileError("frame alignment");

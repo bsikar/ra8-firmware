@@ -35,10 +35,10 @@ extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 pub export fn ra8_batt_monitor_init(mon: ?*Monitor) callconv(.c) u16 {
     const monitor = mon orelse {
         ra8_log_emit_error(tag, "mon must not be nullptr");
-        return @intFromEnum(BattError.null_ptr);
+        return @backingInt(BattError.null_ptr);
     };
     monitor.reset();
-    return @intFromEnum(BattError.ok);
+    return @backingInt(BattError.ok);
 }
 
 /// Fold one SOC reading into the monitor and report the nag to raise.
@@ -54,15 +54,15 @@ pub export fn ra8_batt_update(
 ) callconv(.c) u16 {
     const monitor = mon orelse {
         ra8_log_emit_error(tag, "mon must not be nullptr");
-        return @intFromEnum(BattError.null_ptr);
+        return @backingInt(BattError.null_ptr);
     };
     const out = out_nag orelse {
         ra8_log_emit_error(tag, "out_nag must not be nullptr");
-        return @intFromEnum(BattError.null_ptr);
+        return @backingInt(BattError.null_ptr);
     };
 
     out.* = implementation.step(monitor, soc_pct, charging);
-    return @intFromEnum(BattError.ok);
+    return @backingInt(BattError.ok);
 }
 
 /// Map a nag level to a short, stable upper-case label.
@@ -77,12 +77,12 @@ pub export fn ra8_batt_nag_str(nag: u8) callconv(.c) [*:0]const u8 {
 comptime {
     // `ra8_err_t` is 16-bit across the repo; these two are the only codes the
     // library can return.
-    std.debug.assert(@intFromEnum(BattError.ok) == 0);
-    std.debug.assert(@intFromEnum(BattError.null_ptr) == 0x504);
+    std.debug.assert(@backingInt(BattError.ok) == 0);
+    std.debug.assert(@backingInt(BattError.null_ptr) == 0x504);
     // The nag enumerators are public API: consumers switch on the numbers.
-    std.debug.assert(@intFromEnum(Nag.none) == 0);
-    std.debug.assert(@intFromEnum(Nag.low) == 1);
-    std.debug.assert(@intFromEnum(Nag.critical) == 2);
+    std.debug.assert(@backingInt(Nag.none) == 0);
+    std.debug.assert(@backingInt(Nag.low) == 1);
+    std.debug.assert(@backingInt(Nag.critical) == 2);
     std.debug.assert(@sizeOf(Nag) == 1);
     std.debug.assert(@sizeOf(Monitor) == 2);
 }

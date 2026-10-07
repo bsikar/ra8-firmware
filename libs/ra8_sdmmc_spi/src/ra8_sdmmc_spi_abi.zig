@@ -392,7 +392,7 @@ pub export fn priv_sdmmc_spi_run_init_sequence() callconv(.c) u16 {
         logError("CMD16 SET_BLOCKLEN", rc);
         return rc;
     }
-    g_sdmmc_spi_state.card_type = @intFromEnum(core.classifyCard(is_v2, is_hc));
+    g_sdmmc_spi_state.card_type = @backingInt(core.classifyCard(is_v2, is_hc));
     g_sdmmc_spi_state.capacity_blocks = blocks;
     return core.err.ok;
 }
@@ -526,7 +526,7 @@ fn prepareInit(transport: *const Transport) u16 {
         return core.err.invalid_state;
     }
     g_sdmmc_spi_state.transport = transport.*;
-    g_sdmmc_spi_state.card_type = @intFromEnum(CardType.unknown);
+    g_sdmmc_spi_state.card_type = @backingInt(CardType.unknown);
     g_sdmmc_spi_state.capacity_blocks = 0;
     const f = g_sdmmc_spi_state.transport.set_clock orelse return core.err.null_ptr;
     return f(g_sdmmc_spi_state.transport.ctx, core.clock_init_hz);
@@ -568,7 +568,7 @@ pub export fn ra8_sdmmc_spi_init(transport: ?*const Transport) callconv(.c) u16 
 
 pub export fn ra8_sdmmc_spi_deinit() callconv(.c) u16 {
     g_sdmmc_spi_state.initialized = false;
-    g_sdmmc_spi_state.card_type = @intFromEnum(CardType.unknown);
+    g_sdmmc_spi_state.card_type = @backingInt(CardType.unknown);
     g_sdmmc_spi_state.capacity_blocks = 0;
     return core.err.ok;
 }

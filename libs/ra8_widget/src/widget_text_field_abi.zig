@@ -70,9 +70,9 @@ fn render(w: *Widget) callconv(.c) void {
     paint_abi.priv_widget_text_pos(backend, &w.rect, value, field.pad, .left, field.face, field.weight, size, true, &x, &y);
     const text_x = x + @as(i32, if (showing_placeholder and field.focused) 2 else 0);
     if (backend.draw_text_style) |draw| {
-        draw(backend.user, text_x, y, value, @intFromEnum(field.face), @intFromEnum(field.weight), @intFromEnum(size), field.fg, field.bg);
+        draw(backend.user, text_x, y, value, @backingInt(field.face), @backingInt(field.weight), @backingInt(size), field.fg, field.bg);
     } else if (backend.draw_text_face) |draw| {
-        draw(backend.user, text_x, y, value, @intFromEnum(field.face), field.fg, field.bg);
+        draw(backend.user, text_x, y, value, @backingInt(field.face), field.fg, field.bg);
     } else if (backend.draw_text) |draw| {
         draw(backend.user, text_x, y, value, field.fg, field.bg);
     }
@@ -86,16 +86,16 @@ fn render(w: *Widget) callconv(.c) void {
 
 fn measure(backend: *const paint_abi.Paint, value: [*:0]const u8, face: paint_abi.Face, weight: paint_abi.Weight, size: paint_abi.TextSize, out_w: *i32, out_h: *i32) void {
     if (backend.text_size_style) |measure_text| {
-        measure_text(backend.user, value, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(size), out_w, out_h);
+        measure_text(backend.user, value, @backingInt(face), @backingInt(weight), @backingInt(size), out_w, out_h);
     } else if (backend.text_size_face) |measure_text| {
-        measure_text(backend.user, value, @intFromEnum(face), out_w, out_h);
+        measure_text(backend.user, value, @backingInt(face), out_w, out_h);
     } else if (backend.text_size) |measure_text| {
         measure_text(backend.user, value, out_w, out_h);
     }
 }
 
 fn normalizeSize(size: paint_abi.TextSize) paint_abi.TextSize {
-    return if (@intFromEnum(size) == 0) .size_3 else size;
+    return if (@backingInt(size) == 0) .size_3 else size;
 }
 
 fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {

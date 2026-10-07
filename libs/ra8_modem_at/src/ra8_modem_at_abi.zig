@@ -370,7 +370,7 @@ pub fn priv_modem_classify(
     cmd_echo: ?[*:0]const u8,
     expected_response: ?[*:0]const u8,
 ) callconv(.c) u8 {
-    return @intFromEnum(classify(line, cmd_echo, expected_response));
+    return @backingInt(classify(line, cmd_echo, expected_response));
 }
 
 pub fn priv_modem_capture_line(

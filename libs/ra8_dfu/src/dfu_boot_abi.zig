@@ -25,7 +25,7 @@ export fn ra8_dfu_run_target_valid(entry: u32, img_len: u32) bool {
 }
 
 export fn ra8_dfu_select_slot(a_valid: bool, a_seq: u32, b_valid: bool, b_seq: u32) u8 {
-    return @intFromEnum(slot.select(
+    return @backingInt(slot.select(
         .{ .valid = a_valid, .seq = a_seq },
         .{ .valid = b_valid, .seq = b_seq },
     ));
@@ -38,7 +38,7 @@ export fn ra8_dfu_boot_decide(
     b_valid: bool,
     b_seq: u32,
 ) u8 {
-    return @intFromEnum(slot.decide(
+    return @backingInt(slot.decide(
         dfu_trigger,
         .{ .valid = a_valid, .seq = a_seq },
         .{ .valid = b_valid, .seq = b_seq },

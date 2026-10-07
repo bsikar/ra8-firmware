@@ -345,7 +345,7 @@ test "host backend renders both reader faces at five native sizes" {
         .{ 79, 62 },
     };
     for (1..6) |size_value| {
-        const size: abi.paint.TextSize = @enumFromInt(size_value);
+        const size: abi.paint.TextSize = @fromBackingInt(@intCast(size_value));
         const row_y: i32 = 32 + @as(i32, @intCast(size_value - 1)) * 255;
         for (0..2) |face_index| {
             const face: abi.paint.Face = if (face_index == 0) .serif else .sans;
@@ -372,9 +372,9 @@ test "host backend renders both reader faces at five native sizes" {
             host.Canvas.textSizeStyle(
                 &canvas,
                 "Hj",
-                @intFromEnum(face),
-                @intFromEnum(abi.paint.Weight.regular),
-                @intFromEnum(size),
+                @backingInt(face),
+                @backingInt(abi.paint.Weight.regular),
+                @backingInt(size),
                 &measured_w,
                 &measured_h,
             );
@@ -510,7 +510,7 @@ test "host backend renders native display text sizes into panel golden" {
         label_widget.vt.?.render.?(&label_widget);
         var width: i32 = 0;
         var height: i32 = 0;
-        host.Canvas.textSizeStyle(&canvas, sample.text, @intFromEnum(sample.face), @intFromEnum(sample.weight), @intFromEnum(sample.size), &width, &height);
+        host.Canvas.textSizeStyle(&canvas, sample.text, @backingInt(sample.face), @backingInt(sample.weight), @backingInt(sample.size), &width, &height);
         try std.testing.expect(width > 0);
         try std.testing.expect(height >= @as(i32, switch (sample.size) {
             .body_38 => 38,
@@ -681,7 +681,7 @@ test "a serif label survives the image widget below it clearing its own rect" {
     const line_y: i32 = 500;
     var text_w: i32 = 0;
     var text_h: i32 = 0;
-    host.Canvas.textSizeStyle(&canvas, "Hj", @intFromEnum(abi.paint.Face.serif), @intFromEnum(abi.paint.Weight.regular), @intFromEnum(abi.paint.TextSize.size_3), &text_w, &text_h);
+    host.Canvas.textSizeStyle(&canvas, "Hj", @backingInt(abi.paint.Face.serif), @backingInt(abi.paint.Weight.regular), @backingInt(abi.paint.TextSize.size_3), &text_w, &text_h);
     var label = abi.label.Label{
         .paint = &paint,
         .text = "Hj",
@@ -755,15 +755,15 @@ test "full panel compose clears gaps left by the previous screen" {
     var hint: abi.types.Refresh = .none;
     var dirty: u16 = 0;
     kids[0].dirty = true;
-    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[0].refresh = @backingInt(abi.types.Refresh.quality);
     try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
 
     descriptor.pad = 10;
     kids[0].dirty = true;
-    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[0].refresh = @backingInt(abi.types.Refresh.quality);
     kids[1].visible = true;
     kids[1].dirty = true;
-    kids[1].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[1].refresh = @backingInt(abi.types.Refresh.quality);
     try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
 
     var expected_canvas = try host.Canvas.init(allocator, 128, 96, 255);
@@ -785,7 +785,7 @@ test "full panel compose clears gaps left by the previous screen" {
 
     first.bg = 0x222222;
     kids[0].dirty = true;
-    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[0].refresh = @backingInt(abi.types.Refresh.quality);
     try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
     try std.testing.expectEqual(kids[0].rect, damage);
 }

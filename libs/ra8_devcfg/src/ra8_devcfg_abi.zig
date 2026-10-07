@@ -60,10 +60,10 @@ const tag: [*:0]const u8 = "DEVCFG";
 
 comptime {
     if (@sizeOf(CfgError) != 2) @compileError("ra8_err_t width");
-    if (@intFromEnum(CfgError.ok) != 0) @compileError("k_ra8_ok value");
-    if (@intFromEnum(CfgError.not_initialized) != 0x10F) @compileError("k_ra8_err_not_initialized");
-    if (@intFromEnum(CfgError.validation_failed) != 0x501) @compileError("k_ra8_err_validation");
-    if (@intFromEnum(CfgError.null_ptr) != 0x504) @compileError("k_ra8_err_null_ptr");
+    if (@backingInt(CfgError.ok) != 0) @compileError("k_ra8_ok value");
+    if (@backingInt(CfgError.not_initialized) != 0x10F) @compileError("k_ra8_err_not_initialized");
+    if (@backingInt(CfgError.validation_failed) != 0x501) @compileError("k_ra8_err_validation");
+    if (@backingInt(CfgError.null_ptr) != 0x504) @compileError("k_ra8_err_null_ptr");
 
     // Pointer-width aware, so the same asserts hold for the 64-bit host build
     // and the 32-bit Arm cross build.
@@ -83,7 +83,7 @@ var s_state: State = .unloaded;
 var s_record: Record = .{};
 
 fn raw(err: CfgError) RawErr {
-    return @intFromEnum(err);
+    return @backingInt(err);
 }
 
 /// Read one copy through the store and validate it. A read fault or blank

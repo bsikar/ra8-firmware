@@ -23,8 +23,8 @@ const BindError = enum(u16) {
     null_ptr = 0x504,
 };
 
-const ok: u16 = @intFromEnum(BindError.ok);
-const null_ptr: u16 = @intFromEnum(BindError.null_ptr);
+const ok: u16 = @backingInt(BindError.ok);
+const null_ptr: u16 = @backingInt(BindError.null_ptr);
 
 /// Component tag on this file's log lines, matching the C's call sites.
 const tag: [*:0]const u8 = "ov5640_bind";

@@ -351,10 +351,10 @@ test "limit constants match the public header" {
 }
 
 test "pal state enumerators match the public header" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(core.PalState.detached));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(core.PalState.attached));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(core.PalState.default));
-    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(core.PalState.addressed));
-    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(core.PalState.configd));
-    try std.testing.expectEqual(@as(u8, 5), @intFromEnum(core.PalState.suspended));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(core.PalState.detached));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(core.PalState.attached));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(core.PalState.default));
+    try std.testing.expectEqual(@as(u8, 3), @backingInt(core.PalState.addressed));
+    try std.testing.expectEqual(@as(u8, 4), @backingInt(core.PalState.configd));
+    try std.testing.expectEqual(@as(u8, 5), @backingInt(core.PalState.suspended));
 }

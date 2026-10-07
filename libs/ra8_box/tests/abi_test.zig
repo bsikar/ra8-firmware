@@ -13,9 +13,9 @@ export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void {
 }
 
 test "error values match the published ra8_err_t codes" {
-    try std.testing.expectEqual(@as(u16, 0), @intFromEnum(abi.BoxError.ok));
-    try std.testing.expectEqual(@as(u16, 0x103), @intFromEnum(abi.BoxError.invalid_arg));
-    try std.testing.expectEqual(@as(u16, 0x504), @intFromEnum(abi.BoxError.null_ptr));
+    try std.testing.expectEqual(@as(u16, 0), @backingInt(abi.BoxError.ok));
+    try std.testing.expectEqual(@as(u16, 0x103), @backingInt(abi.BoxError.invalid_arg));
+    try std.testing.expectEqual(@as(u16, 0x504), @backingInt(abi.BoxError.null_ptr));
 }
 
 test "tree_init rejects null arguments and a zero capacity" {

@@ -186,7 +186,7 @@ fn bindGone(block: *volatile shared.Block) bool {
 
 /// Queue one fault frame saying the module is gone.
 fn refuse(block: *volatile shared.Block) bool {
-    const fault: rpc.Fault = .{ .code = @enumFromInt(service.module_gone) };
+    const fault: rpc.Fault = .{ .code = @fromBackingInt(@intCast(service.module_gone)) };
     rpc.link.post(gone_wire.transport(), rpc.Fault, rpc.Kind.fault, fault, &gone_frame) catch |err| {
         block.result = @intFromError(err);
         block.failed_step = shared.Step.refuse;

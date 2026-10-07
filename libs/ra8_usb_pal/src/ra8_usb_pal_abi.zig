@@ -165,7 +165,7 @@ pub export fn ra8_usb_pal_attach(attached: u8) callconv(.c) u16 {
 pub export fn ra8_usb_pal_get_state(out_state: ?*u8) callconv(.c) u16 {
     if (rejectNull(out_state, "get_state: out_state")) return err_null_ptr;
     if (!s_state.initialized) return err_invalid_state;
-    out_state.?.* = @intFromEnum(s_state.state);
+    out_state.?.* = @backingInt(s_state.state);
     return err_ok;
 }
 
@@ -186,8 +186,8 @@ pub export fn ra8_usb_pal_ep_open(
     if (!core.typeAndPacketValid(ep_type, max_packet)) return err_invalid_arg;
 
     s_state.table.at(ep_addr).open(
-        @enumFromInt(dir),
-        @enumFromInt(ep_type),
+        @fromBackingInt(@intCast(dir)),
+        @fromBackingInt(@intCast(ep_type)),
         max_packet,
     );
     return err_ok;

@@ -12,7 +12,7 @@ const Point = abi.Point;
 const Matrix = abi.Matrix;
 
 fn code(value: abi.CalError) u16 {
-    return @intFromEnum(value);
+    return @backingInt(value);
 }
 
 const identity: Matrix = .{ .a = 1, .b = 0, .c = 0, .d = 0, .e = 1, .f = 0 };

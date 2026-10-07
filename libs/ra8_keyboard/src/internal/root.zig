@@ -186,7 +186,7 @@ pub fn add(
         .rect = .{ .x = x, .y = y, .w = w, .h = h },
         .ch_lower = lower,
         .ch_upper = upper,
-        .kind = @intFromEnum(kind),
+        .kind = @backingInt(kind),
         .aux = aux,
     };
     kb.count += 1;
@@ -295,7 +295,7 @@ pub fn buildLetters(kb: *Layout, frame: *const Rect, row_height: i32) void {
     span(kb, 0, wide_hu, frame, row2_y, row_height, .shift, 0);
     place(kb, letters_row2_lower, letters_row2_upper, r2_letters, wide_hu, frame, row2_y, row_height);
     span(kb, hu_div - wide_hu, hu_div, frame, row2_y, row_height, .backspace, 0);
-    rowBottom(kb, frame, top + (3 * row_height), row_height, @intFromEnum(Layer.numbers));
+    rowBottom(kb, frame, top + (3 * row_height), row_height, @backingInt(Layer.numbers));
 }
 
 /// Build the numbers layer: digits, common symbols, `#+=` toggle.
@@ -303,8 +303,8 @@ pub fn buildNumbers(kb: *Layout, frame: *const Rect, row_height: i32) void {
     const top = frame.y;
     place(kb, numbers_row0, null, top_keys, 0, frame, top, row_height);
     place(kb, numbers_row1, null, top_keys, 0, frame, top + row_height, row_height);
-    rowPunct(kb, frame, top + (2 * row_height), row_height, @intFromEnum(Layer.symbols));
-    rowBottom(kb, frame, top + (3 * row_height), row_height, @intFromEnum(Layer.letters));
+    rowPunct(kb, frame, top + (2 * row_height), row_height, @backingInt(Layer.symbols));
+    rowBottom(kb, frame, top + (3 * row_height), row_height, @backingInt(Layer.letters));
 }
 
 /// Build the symbols layer: brackets, math operators, `123` toggle.
@@ -312,8 +312,8 @@ pub fn buildSymbols(kb: *Layout, frame: *const Rect, row_height: i32) void {
     const top = frame.y;
     place(kb, symbols_row0, null, top_keys, 0, frame, top, row_height);
     place(kb, symbols_row1, null, sym1_n, sym1_hu0, frame, top + row_height, row_height);
-    rowPunct(kb, frame, top + (2 * row_height), row_height, @intFromEnum(Layer.numbers));
-    rowBottom(kb, frame, top + (3 * row_height), row_height, @intFromEnum(Layer.letters));
+    rowPunct(kb, frame, top + (2 * row_height), row_height, @backingInt(Layer.numbers));
+    rowBottom(kb, frame, top + (3 * row_height), row_height, @backingInt(Layer.letters));
 }
 
 /// Rebuild the grid for whatever layer `kb.layer` currently names.
@@ -324,9 +324,9 @@ pub fn buildLayer(kb: *Layout) void {
     kb.count = 0;
     const row_height = @divTrunc(kb.frame.h, rows);
     const frame = kb.frame;
-    if (kb.layer == @intFromEnum(Layer.numbers)) {
+    if (kb.layer == @backingInt(Layer.numbers)) {
         buildNumbers(kb, &frame, row_height);
-    } else if (kb.layer == @intFromEnum(Layer.symbols)) {
+    } else if (kb.layer == @backingInt(Layer.symbols)) {
         buildSymbols(kb, &frame, row_height);
     } else {
         buildLetters(kb, &frame, row_height);
@@ -344,7 +344,7 @@ pub fn layoutInit(kb: *Layout, frame: *const Rect) FrameFault!void {
     if ((frame.w <= 0) or (frame.h <= 0)) return error.NoArea;
     kb.frame = frame.*;
     kb.shift = false;
-    kb.layer = @intFromEnum(Layer.letters);
+    kb.layer = @backingInt(Layer.letters);
     buildLayer(kb);
 }
 
@@ -364,7 +364,7 @@ pub fn hit(kb: *const Layout, px: i32, py: i32, contains: ContainsFn) u8 {
 pub fn glyphOf(kb: *const Layout, key_idx: u8) u8 {
     if (key_idx >= kb.count) return 0;
     const key = &kb.keys[key_idx];
-    if (key.kind != @intFromEnum(KeyKind.char)) return 0;
+    if (key.kind != @backingInt(KeyKind.char)) return 0;
     return if (kb.shift) key.ch_upper else key.ch_lower;
 }
 
@@ -394,23 +394,23 @@ pub fn applyKey(t: *Text, kb: *Layout, key_idx: u8) void {
     if (key_idx >= kb.count) return;
     const key = kb.keys[key_idx];
     switch (key.kind) {
-        @intFromEnum(KeyKind.char) => {
+        @backingInt(KeyKind.char) => {
             append(t, if (kb.shift) key.ch_upper else key.ch_lower);
             kb.shift = false;
         },
-        @intFromEnum(KeyKind.space) => {
+        @backingInt(KeyKind.space) => {
             append(t, ' ');
             kb.shift = false;
         },
-        @intFromEnum(KeyKind.backspace) => {
+        @backingInt(KeyKind.backspace) => {
             if (t.len > 0) {
                 t.len -= 1;
                 t.buf[t.len] = 0;
             }
         },
-        @intFromEnum(KeyKind.enter) => t.committed = true,
-        @intFromEnum(KeyKind.shift) => kb.shift = !kb.shift,
-        @intFromEnum(KeyKind.layer) => {
+        @backingInt(KeyKind.enter) => t.committed = true,
+        @backingInt(KeyKind.shift) => kb.shift = !kb.shift,
+        @backingInt(KeyKind.layer) => {
             kb.layer = key.aux;
             kb.shift = false;
             buildLayer(kb);

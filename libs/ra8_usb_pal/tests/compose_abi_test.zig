@@ -265,9 +265,9 @@ test "the frameworks structure keeps the C layout" {
 }
 
 test "the kind enumeration matches the header's values" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(abi.CKind.none));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(abi.CKind.cdc_acm));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(abi.CKind.hid));
-    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(abi.CKind.msc));
-    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(abi.CKind.dfu));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(abi.CKind.none));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(abi.CKind.cdc_acm));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(abi.CKind.hid));
+    try std.testing.expectEqual(@as(u8, 3), @backingInt(abi.CKind.msc));
+    try std.testing.expectEqual(@as(u8, 4), @backingInt(abi.CKind.dfu));
 }
