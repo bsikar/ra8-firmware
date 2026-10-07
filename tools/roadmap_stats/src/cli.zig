@@ -163,7 +163,7 @@ pub fn parseArgs(argv: []const []const u8) Action {
     return .{ .audit = options };
 }
 
-fn printHelp(out: anytype) !void {
+fn printHelp(out: *std.Io.Writer) !void {
     try out.print("{s}\n\n", .{usage_line});
     try out.print("Refresh the summary of the closed historical HAL completion record.\n\n", .{});
     try out.print("options:\n", .{});
@@ -173,7 +173,7 @@ fn printHelp(out: anytype) !void {
     try out.print("  --repo-root REPO_ROOT  repository root (default: $RA8_REPO_ROOT, else the cwd)\n", .{});
 }
 
-fn printUsageError(err: anytype, failure: UsageError) !void {
+fn printUsageError(err: *std.Io.Writer, failure: UsageError) !void {
     try err.print("{s}\n", .{usage_line});
     switch (failure.kind) {
         .unrecognized => try err.print(
@@ -214,15 +214,19 @@ pub fn resolveRoadmapPath(
 /// summary current, refuse it as stale, or write it back.
 pub fn audit(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     options: Options,
     repo_root_env: ?[]const u8,
-    err: anytype,
+    err: *std.Io.Writer,
 ) !u8 {
     const path = try resolveRoadmapPath(allocator, options, repo_root_env);
     defer allocator.free(path);
 
-    const text = dir.readFileAlloc(allocator, path, max_file_bytes) catch |failure| switch (failure) {
+    // 0.14 rejected only a roadmap larger than the cap; a 0.17 limit fails
+    // once it is reached, so the +1 keeps an exactly-cap roadmap readable.
+    const limit: std.Io.Limit = .limited(max_file_bytes + 1);
+    const text = dir.readFileAlloc(io, path, allocator, limit) catch |failure| switch (failure) {
         // `path.exists()` was False: the predecessor's own exit 2.
         error.FileNotFound, error.NotDir => {
             try err.print("{s}: not found: {s}\n", .{ tool, path });
@@ -281,7 +285,7 @@ pub fn audit(
         return 1;
     }
 
-    dir.writeFile(.{ .sub_path = path, .data = updated }) catch |failure| {
+    dir.writeFile(io, .{ .sub_path = path, .data = updated }) catch |failure| {
         try err.print("{s}: cannot write {s}: {s}\n", .{ tool, path, @errorName(failure) });
         return 1;
     };
@@ -293,11 +297,12 @@ pub fn audit(
 /// the two streams, and the status to exit with.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     repo_root_env: ?[]const u8,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     const tail = if (argv.len > 0) argv[1..] else argv;
     switch (parseArgs(tail)) {
@@ -309,6 +314,6 @@ pub fn run(
             try printUsageError(err, failure);
             return 2;
         },
-        .audit => |options| return audit(allocator, dir, options, repo_root_env, err),
+        .audit => |options| return audit(allocator, io, dir, options, repo_root_env, err),
     }
 }
