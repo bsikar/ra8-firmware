@@ -50,8 +50,13 @@ const check_lanes = blk: {
     break :blk text;
 };
 
-const spin = load_lanes ++ std.fmt.comptimePrint("movw r3, #{d}\nvmsr p0, r3\n", .{vpr_p0}) ++
-    "1:\nvmrs r2, p0\ncmp r2, r3\nbne 2f\n" ++ check_lanes ++ "b 1b\n2:\n";
+/// The block keeps APSR in r12 and puts it back at its only exit, so it
+/// leaves the flags as it found them and names no flags clobber: Zig's C
+/// backend writes `.cpsr` into the C as is, and GCC knows the flags only
+/// as "cc" (RA8FW-920).
+const spin = "mrs r12, apsr\n" ++ load_lanes ++
+    std.fmt.comptimePrint("movw r3, #{d}\nvmsr p0, r3\n", .{vpr_p0}) ++
+    "1:\nvmrs r2, p0\ncmp r2, r3\nbne 2f\n" ++ check_lanes ++ "b 1b\n2:\nmsr apsr_nzcvq, r12\n";
 
 /// The module's start thread, entered with the module's ID.
 export fn demo_module_start(id: u32) callconv(.c) noreturn {
@@ -59,6 +64,6 @@ export fn demo_module_start(id: u32) callconv(.c) noreturn {
     // Only the core registers are named: this thread never returns and
     // holds no FP value of its own, so S0-S31 being taken over is nothing
     // the compiler has to preserve (and naming all 32 is past Zig's limit).
-    asm volatile (spin ::: .{ .r1 = true, .r2 = true, .r3 = true, .cpsr = true, .memory = true });
+    asm volatile (spin ::: .{ .r1 = true, .r2 = true, .r3 = true, .r12 = true, .memory = true });
     while (true) _ = _tx_thread_sleep(forever);
 }
