@@ -24,9 +24,10 @@ test "the enum crosses the ABI as uint16_t" {
 
 test "success is the only zero value" {
     try std.testing.expectEqual(@as(u16, 0), vocab.Err.ok.code());
-    inline for (@typeInfo(vocab.Err).@"enum".fields) |field| {
-        if (!std.mem.eql(u8, field.name, "ok")) {
-            try std.testing.expect(field.value != 0);
+    const info = @typeInfo(vocab.Err).@"enum";
+    inline for (info.field_names, info.field_values) |name, value| {
+        if (!std.mem.eql(u8, name, "ok")) {
+            try std.testing.expect(value != 0);
         }
     }
 }
