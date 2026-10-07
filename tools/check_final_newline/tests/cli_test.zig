@@ -13,19 +13,21 @@ const cli = @import("cli");
 /// captured stdout and stderr.
 const Harness = struct {
     tmp: std.testing.TmpDir,
-    root: []const u8,
-    out: std.ArrayList(u8),
-    err: std.ArrayList(u8),
+    /// Sentinel-terminated as `realPathFileAlloc` returns it, so the free
+    /// matches the allocation.
+    root: [:0]const u8,
+    out: std.Io.Writer.Allocating,
+    err: std.Io.Writer.Allocating,
     allocator: std.mem.Allocator,
 
     fn init(allocator: std.mem.Allocator) !Harness {
         var tmp = std.testing.tmpDir(.{});
-        const root = try tmp.dir.realpathAlloc(allocator, ".");
+        const root = try tmp.dir.realPathFileAlloc(std.testing.io, ".", allocator);
         return .{
             .tmp = tmp,
             .root = root,
-            .out = std.ArrayList(u8).init(allocator),
-            .err = std.ArrayList(u8).init(allocator),
+            .out = .init(allocator),
+            .err = .init(allocator),
             .allocator = allocator,
         };
     }
@@ -38,20 +40,22 @@ const Harness = struct {
     }
 
     fn write(self: *Harness, rel: []const u8, body: []const u8) !void {
-        if (std.fs.path.dirname(rel)) |parent| try self.tmp.dir.makePath(parent);
-        try self.tmp.dir.writeFile(.{ .sub_path = rel, .data = body });
+        if (std.fs.path.dirname(rel)) |parent| try self.tmp.dir.createDirPath(std.testing.io, parent);
+        try self.tmp.dir.writeFile(std.testing.io, .{ .sub_path = rel, .data = body });
     }
 
     fn run(self: *Harness, argv: []const []const u8, census: []const []const u8, policy: cli.Policy) !u8 {
         return cli.run(
             self.allocator,
-            std.fs.cwd(),
+            std.testing.io,
+            std.Io.Dir.cwd(),
+            self.root,
             self.root,
             argv,
             .{ .provided = census },
             policy,
-            self.out.writer(),
-            self.err.writer(),
+            &self.out.writer,
+            &self.err.writer,
         );
     }
 };
@@ -69,8 +73,8 @@ test "a clean sweep exits 0 and reports the scanned count" {
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "2 file(s) scanned, all end in a newline.") != null);
-    try std.testing.expectEqualStrings("", harness.err.items);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "2 file(s) scanned, all end in a newline.") != null);
+    try std.testing.expectEqualStrings("", harness.err.written());
 }
 
 test "a file with no trailing newline exits 1 and is listed" {
@@ -82,9 +86,9 @@ test "a file with no trailing newline exits 1 and is listed" {
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "1 file(s) missing a trailing newline:") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "  scripts/dev/tool.py\n") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "Add a single newline at end of file.") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "1 file(s) missing a trailing newline:") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "  scripts/dev/tool.py\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "Add a single newline at end of file.") != null);
 }
 
 test "findings are listed in sorted order" {
@@ -96,8 +100,8 @@ test "findings are listed in sorted order" {
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 1), status);
-    const first = std.mem.indexOf(u8, harness.err.items, "libs/a/a.c").?;
-    const second = std.mem.indexOf(u8, harness.err.items, "libs/z/z.c").?;
+    const first = std.mem.indexOf(u8, harness.err.written(), "libs/a/a.c").?;
+    const second = std.mem.indexOf(u8, harness.err.written(), "libs/z/z.c").?;
     try std.testing.expect(first < second);
 }
 
@@ -118,8 +122,8 @@ test "a collapsed sweep exits 2 rather than reporting a clean tree" {
 
     const status = try harness.run(&.{}, &census, .{ .file_floor = 2200, .tracked_floor = 1 });
     try std.testing.expectEqual(@as(u8, 2), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "only 1 file(s) in scope, floor is 2200") != null);
-    try std.testing.expectEqualStrings("", harness.out.items);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "only 1 file(s) in scope, floor is 2200") != null);
+    try std.testing.expectEqualStrings("", harness.out.written());
 }
 
 test "a collapsed census exits 2 before any file is read" {
@@ -130,7 +134,7 @@ test "a collapsed census exits 2 before any file is read" {
 
     const status = try harness.run(&.{}, &census, .{ .file_floor = 1, .tracked_floor = 1000 });
     try std.testing.expectEqual(@as(u8, 2), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "only 1 tracked path(s), floor is 1000") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "only 1 tracked path(s), floor is 1000") != null);
 }
 
 test "a sweep whose scope is empty exits 2, never 0" {
@@ -150,7 +154,7 @@ test "an argv list that filters to nothing exits 0" {
 
     const status = try harness.run(&.{"docs/guide.md"}, &census, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "no files to scan") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "no files to scan") != null);
 }
 
 test "an argv list bypasses the sweep floor entirely" {
@@ -160,7 +164,7 @@ test "an argv list bypasses the sweep floor entirely" {
 
     const status = try harness.run(&.{"libs/a/x.c"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "1 file(s) scanned") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "1 file(s) scanned") != null);
 }
 
 test "an argv file with no trailing newline exits 1" {
@@ -170,7 +174,7 @@ test "an argv file with no trailing newline exits 1" {
 
     const status = try harness.run(&.{"libs/a/x.c"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "  libs/a/x.c\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "  libs/a/x.c\n") != null);
 }
 
 test "an argv directory expands to its source files at any depth" {
@@ -182,8 +186,8 @@ test "an argv directory expands to its source files at any depth" {
 
     const status = try harness.run(&.{"libs/a"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "1 file(s) missing a trailing newline:") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "libs/a/deep/y.py") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "1 file(s) missing a trailing newline:") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "libs/a/deep/y.py") != null);
 }
 
 test "an argv path that does not exist is not a finding" {
@@ -192,7 +196,7 @@ test "an argv path that does not exist is not a finding" {
 
     const status = try harness.run(&.{"libs/a/absent.c"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "1 file(s) scanned") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "1 file(s) scanned") != null);
 }
 
 test "an unknown flag is treated as a path, not a usage error" {
@@ -201,7 +205,7 @@ test "an unknown flag is treated as a path, not a usage error" {
 
     const status = try harness.run(&.{"--all"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "no files to scan") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "no files to scan") != null);
 }
 
 test "an excluded vendored path is dropped from an argv list" {
@@ -211,7 +215,7 @@ test "an excluded vendored path is dropped from an argv list" {
 
     const status = try harness.run(&.{"libs/third_party/lz4/lz4.c"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "no files to scan") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "no files to scan") != null);
 }
 
 test "build output is dropped from an argv directory expansion" {
@@ -222,7 +226,7 @@ test "build output is dropped from an argv directory expansion" {
 
     const status = try harness.run(&.{"tools/demo"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "1 file(s) scanned") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "1 file(s) scanned") != null);
 }
 
 test "the sweep drops vendored trees the census still carries" {
@@ -234,7 +238,7 @@ test "the sweep drops vendored trees the census still carries" {
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "1 file(s) scanned") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "1 file(s) scanned") != null);
 }
 
 test "a listfile with no suffix is in the sweep" {
@@ -246,7 +250,7 @@ test "a listfile with no suffix is in the sweep" {
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "apps/a/CMakeLists.txt") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "apps/a/CMakeLists.txt") != null);
 }
 
 test "an absolute argv path is accepted and printed repo-relative" {
@@ -258,7 +262,7 @@ test "an absolute argv path is accepted and printed repo-relative" {
 
     const status = try harness.run(&.{absolute}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "  libs/a/x.c\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "  libs/a/x.c\n") != null);
 }
 
 test "the selftest passes and prints both directions when the scope is real" {
@@ -270,12 +274,12 @@ test "the selftest passes and prints both directions when the scope is real" {
 
     const status = try harness.run(&.{"--selftest"}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[ok] MUST NOT FIRE: a newline-terminated file") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[ok] MUST NOT FIRE: an empty file") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[ok] MUST FIRE: a file with no trailing newline") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[ok] the derived scope reaches just/ (previously omitted)") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[ok] the derived scope reaches infra/ (previously omitted)") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "selftest: all assertions held (both directions).") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[ok] MUST NOT FIRE: a newline-terminated file") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[ok] MUST NOT FIRE: an empty file") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[ok] MUST FIRE: a file with no trailing newline") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[ok] the derived scope reaches just/ (previously omitted)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[ok] the derived scope reaches infra/ (previously omitted)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "selftest: all assertions held (both directions).") != null);
 }
 
 test "the selftest fails when the derived scope never reaches the dropped roots" {
@@ -286,8 +290,8 @@ test "the selftest fails when the derived scope never reaches the dropped roots"
 
     const status = try harness.run(&.{"--selftest"}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[FAIL] the derived scope reaches just/") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "SELFTEST FAILED: 2 assertion(s)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[FAIL] the derived scope reaches just/") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "SELFTEST FAILED: 2 assertion(s)") != null);
 }
 
 test "the selftest fails when the derived scope collapses below the floor" {
@@ -299,8 +303,8 @@ test "the selftest fails when the derived scope collapses below the floor" {
 
     const status = try harness.run(&.{"--selftest"}, &census, .{ .file_floor = 2200, .tracked_floor = 1 });
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "[FAIL] derived scope sees 2 file(s) (floor 2200)") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "SELFTEST FAILED: 1 assertion(s)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "[FAIL] derived scope sees 2 file(s) (floor 2200)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "SELFTEST FAILED: 1 assertion(s)") != null);
 }
 
 test "the selftest wins over a file list, wherever it sits in argv" {
@@ -313,26 +317,25 @@ test "the selftest wins over a file list, wherever it sits in argv" {
 
     const status = try harness.run(&.{ "libs/a/x.c", "--selftest" }, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.out.items, "selftest: all assertions held (both directions).") != null);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "missing a trailing newline") == null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.out.written(), "selftest: all assertions held (both directions).") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "missing a trailing newline") == null);
 }
 
 test "a file far past any read ceiling still reports its missing newline" {
     var harness = try Harness.init(std.testing.allocator);
     defer harness.deinit();
-    try harness.tmp.dir.makePath("libs/a");
+    try harness.tmp.dir.createDirPath(std.testing.io, "libs/a");
     // Sparse: the size is what matters, not the bytes. A detector that reads
     // the whole file to find its last byte needs a ceiling, and a ceiling
     // makes a file above it answer "fine" -- a clean verdict over a file the
     // gate never looked at.
-    var file = try harness.tmp.dir.createFile("libs/a/huge.c", .{});
-    defer file.close();
-    try file.seekTo(96 * 1024 * 1024);
-    try file.writeAll("int x;");
+    var file = try harness.tmp.dir.createFile(std.testing.io, "libs/a/huge.c", .{});
+    defer file.close(std.testing.io);
+    try file.writePositionalAll(std.testing.io, "int x;", 96 * 1024 * 1024);
 
     const status = try harness.run(&.{"libs/a/huge.c"}, &.{}, cli.Policy.default);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, harness.err.items, "  libs/a/huge.c\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, harness.err.written(), "  libs/a/huge.c\n") != null);
 }
 
 test "the live policy carries the inherited floors" {
