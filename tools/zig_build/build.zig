@@ -67,7 +67,7 @@ pub fn hostTarget(b: *std.Build) HostTarget {
     // `-Dmacos-libsystem=sdk` run exists to record what the SDK stub does on
     // that runner, which is unreadable if the forced choice is reported as the
     // probe's own conclusion.
-    const probe = probeHostSdk(b.allocator);
+    const probe = probeHostSdk(b.allocator, b.graph.io);
 
     cached_host_target = .{
         .forced = forced,
@@ -106,11 +106,14 @@ pub fn hostMacosVersion() ?std.SemanticVersion {
     return builtin.os.version_range.semver.min;
 }
 
+/// The largest `libSystem.tbd` the probe reads, inclusive.
+const max_tbd_bytes = 4 * 1024 * 1024;
+
 /// Read the host SDK's `libSystem.tbd`, when there is one to read. Every failure
 /// is a partial probe, and `macos_host.decide` turns each one into its own named
 /// reason: "no SDK at all" and "an SDK whose stub I could not read" both pin the
 /// target, but they are different things to have found.
-pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
+pub fn probeHostSdk(allocator: std.mem.Allocator, io: std.Io) macos_host.SdkProbe {
     if (builtin.os.tag != .macos) return .{};
 
     // Name the SDK, exactly as the compiler does. Zig resolves its own sysroot
@@ -122,13 +125,12 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     // whose targets are `arm64-ios` and friends, and report `arm64-macos`
     // absent -- RA8FW-330's own signature, about an SDK no macOS link would use.
     const queried_sdk = macos_host.host_sdk_name;
-    const sdk_run = std.process.Child.run(.{
-        .allocator = allocator,
+    const sdk_run = std.process.run(allocator, io, .{
         .argv = &.{ "xcrun", "--sdk", queried_sdk, "--show-sdk-path" },
     }) catch return .{ .queried_sdk = queried_sdk };
     defer allocator.free(sdk_run.stdout);
     defer allocator.free(sdk_run.stderr);
-    if (sdk_run.term != .Exited or sdk_run.term.Exited != 0) return .{ .queried_sdk = queried_sdk };
+    if (!sdk_run.term.success()) return .{ .queried_sdk = queried_sdk };
 
     const sdk_path = allocator.dupe(u8, std.mem.trim(u8, sdk_run.stdout, " \t\r\n")) catch
         return .{ .queried_sdk = queried_sdk };
@@ -137,7 +139,7 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     const tbd_path = std.fs.path.join(allocator, &.{ sdk_path, "usr", "lib", "libSystem.tbd" }) catch
         return .{ .sdk_path = sdk_path, .queried_sdk = queried_sdk };
 
-    const tbd = std.fs.cwd().readFileAlloc(allocator, tbd_path, 4 * 1024 * 1024) catch
+    const tbd = std.Io.Dir.cwd().readFileAlloc(io, tbd_path, allocator, .limited(max_tbd_bytes + 1)) catch
         return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path, .queried_sdk = queried_sdk };
     return .{
         .sdk_path = sdk_path,
