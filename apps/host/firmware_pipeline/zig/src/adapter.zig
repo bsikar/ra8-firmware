@@ -3,12 +3,7 @@
 //!
 //! Zig validation and composition stage for the firmware pipeline.
 
-pub const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cDefine("alignof", "_Alignof");
-    @cInclude("firmware_pipeline.h");
-    @cInclude("firmware_pipeline_rust.h");
-});
+pub const c = @import("firmware_pipeline_h");
 
 const max_image_size: usize = 16 * 1024 * 1024;
 const zig_stage_marker: u8 = 0x5a;
