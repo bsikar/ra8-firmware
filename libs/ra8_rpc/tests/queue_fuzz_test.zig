@@ -19,6 +19,7 @@ const testing = std.testing;
 
 const rpc = @import("ra8_rpc");
 const MockQueue = @import("mock_queue.zig").MockQueue;
+const fuzz_corpus = @import("fuzz_corpus.zig");
 
 comptime {
     _ = @import("messages.zig");
@@ -163,7 +164,9 @@ test "random messages unpack to exactly their used bytes or stop the stream" {
 
 test "fuzz: queue messages unpack to their used bytes or stop the stream" {
     const one = struct {
-        fn one(_: void, input: []const u8) anyerror!void {
+        fn one(_: void, smith: *testing.Smith) anyerror!void {
+            var buf: [2 + 4 * Limits.max_message]u8 = undefined;
+            const input = buf[0..smith.slice(&buf)];
             if (input.len < 2) return;
             const span = Limits.max_message - Limits.used;
             const message_bytes = Limits.used + 1 + input[0] % span;
@@ -175,5 +178,6 @@ test "fuzz: queue messages unpack to their used bytes or stop the stream" {
         &.{ 3, 9, 5, 0, 'a', 'b', 'c', 'd' },
         &.{ 3, 1, 0, 0, 0, 0, 0, 0 },
     };
-    try testing.fuzz({}, one, .{ .corpus = &corpus });
+    const seeds = comptime fuzz_corpus.all(&corpus);
+    try testing.fuzz({}, one, .{ .corpus = &seeds });
 }

@@ -35,7 +35,7 @@ export fn ra8_net_urlguard_classify_ip(ip: ?[*:0]const u8) u8 {
 /// public nor unknown, so it rides the caller's opt-in rather than being let
 /// through on its own.
 export fn ra8_net_urlguard_addr_fetchable(cls: u8, allow_private: bool) bool {
-    const class = std.meta.intToEnum(AddrClass, cls) catch return allow_private;
+    const class = std.enums.fromInt(AddrClass, cls) orelse return allow_private;
     return policy.fetchable(class, allow_private);
 }
 

@@ -154,12 +154,12 @@ fn put(comptime how: Shape, value: anytype, out: []u8, at: *usize) void {
 fn take(comptime T: type, comptime how: Shape, rest: *[]const u8) Error!T {
     switch (how) {
         .int => |Int| return takeInt(Int, rest),
-        .tag => |Int| return std.meta.intToEnum(T, try takeInt(Int, rest)) catch error.BadTag,
+        .tag => |Int| return std.enums.fromInt(T, try takeInt(Int, rest)) orelse error.BadTag,
         .none => return {},
         .bytes => |max| return takeBytes(max, rest),
         .choice => {
             const raw = try takeInt(TagInt(T), rest);
-            const tag = std.meta.intToEnum(std.meta.Tag(T), raw) catch return error.BadTag;
+            const tag = std.enums.fromInt(std.meta.Tag(T), raw) orelse return error.BadTag;
             switch (tag) {
                 inline else => |which| {
                     const name = @tagName(which);

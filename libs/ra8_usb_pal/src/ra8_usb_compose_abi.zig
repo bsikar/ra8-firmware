@@ -102,7 +102,7 @@ comptime {
 /// One class entry as a tagged union. An unset or unknown kind has no arm,
 /// which is the C's `default:` refusal.
 fn class(entry: *const CClass) compose.Error!compose.Class {
-    const kind = std.meta.intToEnum(CKind, entry.kind) catch return compose.Error.InvalidArg;
+    const kind = std.enums.fromInt(CKind, entry.kind) orelse return compose.Error.InvalidArg;
     return switch (kind) {
         .cdc_acm => .{ .cdc_acm = desc_abi.cdcAcmOf(&entry.body.cdc_acm) },
         .hid => .{ .hid = try desc_abi.hidOf(&entry.body.hid) },

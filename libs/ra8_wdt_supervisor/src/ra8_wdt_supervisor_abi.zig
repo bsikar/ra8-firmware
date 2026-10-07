@@ -247,7 +247,7 @@ var state: State = .{};
 /// private slot. The Zig archive has one slot, but the C suites still need a
 /// way to reach it, so the symbol keeps its name and its host-only linkage.
 fn forceRtosFailure(call: u32) callconv(.c) void {
-    tx.arm(std.meta.intToEnum(tx.Call, call) catch .none);
+    tx.arm(std.enums.fromInt(tx.Call, call) orelse .none);
 }
 
 comptime {
