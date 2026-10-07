@@ -25,6 +25,7 @@
 
 const std = @import("std");
 const pkg_path = @import("pkg_path.zig");
+const Translator = @import("translate_c").Translator;
 pub const header_patch = @import("header_patch.zig");
 
 /// One vendored middleware, as `cmake/<name>.cmake` defines it.
@@ -517,6 +518,9 @@ pub fn units(b: *std.Build, mw: Middleware) []const Unit {
 pub const ZigSource = struct {
     path: []const u8,
     cpu: *const std.Target.Cpu.Model,
+    /// Headers translate-c turns into the root's `c` import, translated with
+    /// the archive's own include path and defines.
+    c_headers: []const []const u8 = &.{},
 };
 
 /// A `-DNAME` or `-DNAME=VALUE` flag as the name and value translate-c is
@@ -631,30 +635,64 @@ fn libcInclude(b: *std.Build, tc: Toolchain) []const u8 {
     return b.pathJoin(&.{ std.mem.trim(u8, out, " \r\n"), "include" });
 }
 
-/// One Zig root built for the archive's target, with the same patched,
-/// -I, -isystem and -D set the C units get, in the same order.
+/// gcc's own freestanding headers (stddef.h, stdint.h), searched before
+/// newlib as gcc searches them. newlib's sys/_types.h asks stddef.h for
+/// wint_t through __need_wint_t, which only gcc's copy answers.
+fn gccInclude(b: *std.Build, tc: Toolchain) []const u8 {
+    var code: u8 = 0;
+    const out = b.runAllowFail(&.{ tc.gcc, "-print-file-name=include" }, &code, .ignore) catch
+        std.debug.panic("{s} -print-file-name=include failed, so a Zig source cannot see stddef.h", .{tc.gcc});
+    return std.mem.trim(u8, out, " \r\n");
+}
+
+/// One Zig root built for the archive's target. Its `c` import is the
+/// translate-c view of `source.c_headers` under the same patched, -I,
+/// -isystem and -D set the C units get, in the same order.
 fn addZigObject(b: *std.Build, mw: Middleware, tc: Toolchain, source: ZigSource) std.Build.LazyPath {
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabihf,
+        .cpu_model = .{ .explicit = source.cpu },
+    });
     const module = b.createModule(.{
         .root_source_file = pkg_path.lazy(b, source.path),
-        .target = b.resolveTargetQuery(.{
-            .cpu_arch = .thumb,
-            .os_tag = .freestanding,
-            .abi = .eabihf,
-            .cpu_model = .{ .explicit = source.cpu },
-        }),
+        .target = target,
         .optimize = .ReleaseSmall,
         .single_threaded = true,
     });
-    for (patchedHeaderDirs(b, mw)) |dir| module.addIncludePath(dir);
-    for (includeDirs(b.allocator, mw)) |dir| module.addIncludePath(pkg_path.lazy(b, dir));
-    for (systemIncludeDirs(b.allocator, mw)) |dir| module.addSystemIncludePath(pkg_path.lazy(b, dir));
-    module.addSystemIncludePath(.{ .cwd_relative = libcInclude(b, tc) });
-    for ([_][]const []const u8{ tc.global_defines, unitDefines(b.allocator, mw) }) |set| {
-        for (set) |flag| if (splitDefine(flag)) |d| module.addCMacro(d.name, d.value);
-    }
+    if (source.c_headers.len != 0) module.addImport("c", translateHeaders(b, mw, tc, source, target));
     const object = b.addObject(.{ .name = std.fs.path.stem(source.path), .root_module = module });
     object.bundle_compiler_rt = false;
     return object.getEmittedBin();
+}
+
+/// translate-c over a generated include list (no committed C) for one Zig root.
+fn translateHeaders(
+    b: *std.Build,
+    mw: Middleware,
+    tc: Toolchain,
+    source: ZigSource,
+    target: std.Build.ResolvedTarget,
+) *std.Build.Module {
+    var text: std.ArrayList(u8) = .empty;
+    for (source.c_headers) |header| text.print(b.allocator, "#include \"{s}\"\n", .{header}) catch @panic("OOM");
+    const name = b.fmt("{s}_c.h", .{std.fs.path.stem(source.path)});
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = b.addWriteFiles().add(name, text.items),
+        .target = target,
+        .optimize = .ReleaseSmall,
+        .link_libc = false,
+    });
+    for (patchedHeaderDirs(b, mw)) |dir| translator.addIncludePath(dir);
+    for (includeDirs(b.allocator, mw)) |dir| translator.addIncludePath(pkg_path.lazy(b, dir));
+    for (systemIncludeDirs(b.allocator, mw)) |dir| translator.addSystemIncludePath(pkg_path.lazy(b, dir));
+    translator.addSystemIncludePath(.{ .cwd_relative = gccInclude(b, tc) });
+    translator.addSystemIncludePath(.{ .cwd_relative = libcInclude(b, tc) });
+    for ([_][]const []const u8{ tc.global_defines, unitDefines(b.allocator, mw) }) |set| {
+        for (set) |flag| if (splitDefine(flag)) |d| translator.defineCMacro(d.name, d.value);
+    }
+    return translator.mod;
 }
 
 /// One generated directory per patched header, each holding the rewritten
