@@ -11,6 +11,7 @@
 const std = @import("std");
 const arm_flags = @import("arm_flags.zig");
 const cpu1_image = @import("cpu1_image.zig");
+const src_tree = @import("src_tree.zig");
 
 /// Where the Arm GNU Toolchain 13.3 lives unless `-Darm-gnu-toolchain` says
 /// otherwise.
@@ -27,8 +28,7 @@ pub const Gnu = struct {
 /// The toolchain in `dir`, or null when its gcc is not there.
 pub fn findGnu(b: *std.Build, dir: []const u8) ?Gnu {
     const gcc = b.pathJoin(&.{ dir, "arm-none-eabi-gcc" });
-    b.dependOnFileMetadata(b.graph.cwdRelativePath(gcc));
-    std.Io.Dir.cwd().access(b.graph.io, gcc, .{}) catch return null;
+    if (!src_tree.existsOutside(b, gcc)) return null;
     return .{
         .gcc = gcc,
         .ar = b.pathJoin(&.{ dir, "arm-none-eabi-ar" }),
