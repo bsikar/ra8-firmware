@@ -9,9 +9,9 @@ const sm = @import("internal/smbus.zig");
 
 const tag = "SMBUS";
 
-const WriteFn = *const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.C) u16;
-const ReadFn = *const fn (?*anyopaque, u8, [*]u8, u32) callconv(.C) u16;
-const TransferFn = *const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.C) u16;
+const WriteFn = *const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.c) u16;
+const ReadFn = *const fn (?*anyopaque, u8, [*]u8, u32) callconv(.c) u16;
+const TransferFn = *const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.c) u16;
 
 /// ra8_i2c_bus_ops_t: write, read, transfer, ctx.
 const BusOps = extern struct {

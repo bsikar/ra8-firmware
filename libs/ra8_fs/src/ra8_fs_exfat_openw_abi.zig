@@ -168,7 +168,7 @@ fn openCreated(m: *Mount, dir: *const c.exfat_dir_t, name: [*]const u16, nlen: u
 }
 
 /// Opens `path` for `mode` (write or append), creating the leaf if missing.
-pub export fn priv_exfat_open_write(m: *Mount, path: [*:0]const u8, mode: c.ra8_fs_mode_t, out: *?*File) callconv(.C) u16 {
+pub export fn priv_exfat_open_write(m: *Mount, path: [*:0]const u8, mode: c.ra8_fs_mode_t, out: *?*File) callconv(.c) u16 {
     var parent = std.mem.zeroes(c.exfat_dir_t);
     var leaf: [*c]const u8 = null;
     var e = c.priv_exfat_resolve_parent(m, path, &parent, &leaf);

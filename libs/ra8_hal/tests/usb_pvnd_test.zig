@@ -152,13 +152,13 @@ test "recv checks pointers before state and reports the length" {
     try std.testing.expectEqual(@as(u16, 0), got);
 }
 
-fn okHandler(ctx: ?*anyopaque, _: *const pvnd.Setup) callconv(.C) u16 {
+fn okHandler(ctx: ?*anyopaque, _: *const pvnd.Setup) callconv(.c) u16 {
     const n: *u32 = @ptrCast(@alignCast(ctx.?));
     n.* += 1;
     return 0;
 }
 
-fn failHandler(_: ?*anyopaque, _: *const pvnd.Setup) callconv(.C) u16 {
+fn failHandler(_: ?*anyopaque, _: *const pvnd.Setup) callconv(.c) u16 {
     return 0x107;
 }
 

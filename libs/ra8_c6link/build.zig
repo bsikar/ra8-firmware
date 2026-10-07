@@ -199,7 +199,7 @@ fn addCodecAbiTest(
     b: *std.Build,
     test_step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
     source: []const u8,
     test_source: []const u8,
     import_name: []const u8,
@@ -217,7 +217,7 @@ fn addHeaderAbiTest(
     b: *std.Build,
     test_step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
     source: []const u8,
     test_source: []const u8,
     import_name: []const u8,
@@ -254,7 +254,7 @@ fn addPumpTests(
     b: *std.Build,
     test_step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
     implementation_module: *std.Build.Module,
 ) void {
     const pump_test_module = b.createModule(.{

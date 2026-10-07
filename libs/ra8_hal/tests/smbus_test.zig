@@ -165,7 +165,7 @@ test "block read copies data and checks PEC" {
 
 var seen_addr: u8 = 0;
 var seen_status: u8 = 0;
-fn onAlert(_: ?*anyopaque, addr: u8, status: u8) callconv(.C) void {
+fn onAlert(_: ?*anyopaque, addr: u8, status: u8) callconv(.c) void {
     seen_addr = addr;
     seen_status = status;
 }

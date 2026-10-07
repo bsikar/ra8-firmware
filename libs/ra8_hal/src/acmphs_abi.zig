@@ -9,7 +9,7 @@ const acmphs = @import("internal/acmphs.zig");
 
 const tag = "ACMPHS";
 
-const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.c) void;
 
 var handler: ?EventFn = null;
 var handler_ctx: ?*anyopaque = null;

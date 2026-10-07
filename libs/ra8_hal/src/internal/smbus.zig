@@ -22,7 +22,7 @@ const rw_write: u1 = 0;
 const rw_read: u1 = 1;
 
 /// SMBALERT# callback: (ctx, responding 7-bit address, status bit).
-pub const AlertFn = *const fn (ctx: ?*anyopaque, target_7b: u8, status: u8) callconv(.C) void;
+pub const AlertFn = *const fn (ctx: ?*anyopaque, target_7b: u8, status: u8) callconv(.c) void;
 
 /// One CRC-8 (poly 0x07) step over byte `b`.
 pub fn pecUpdate(crc: u8, b: u8) u8 {

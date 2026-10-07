@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
     // No unwind tables in a freestanding archive, as in ra8_core's: an
     // .ARM.exidx entry names __aeabi_unwind_cpp_pr0, which a -nostdlib CPU1
     // link (no -lgcc) cannot resolve (RA8FW-571).
-    const unwind: ?std.builtin.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
+    const unwind: ?std.lang.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
 
     const library = b.addLibrary(.{
         .name = "ra8_hal",

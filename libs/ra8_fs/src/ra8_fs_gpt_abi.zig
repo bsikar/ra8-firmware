@@ -97,14 +97,14 @@ fn scanEntries(m: *const Mount, g: Geom, out_base: *u64) u16 {
     return ok;
 }
 
-pub export fn priv_gpt_locate_volume(m: *const Mount, out_base: *u64) callconv(.C) u16 {
+pub export fn priv_gpt_locate_volume(m: *const Mount, out_base: *u64) callconv(.c) u16 {
     var g: Geom = undefined;
     const err = readGeom(m, &g);
     if (err != ok) return err;
     return scanEntries(m, g, out_base);
 }
 
-pub export fn priv_gpt_locate_partition(m: *const Mount, index: u8, out_base: *u64) callconv(.C) u16 {
+pub export fn priv_gpt_locate_partition(m: *const Mount, index: u8, out_base: *u64) callconv(.c) u16 {
     var g: Geom = undefined;
     const err = readGeom(m, &g);
     if (err != ok) return err;

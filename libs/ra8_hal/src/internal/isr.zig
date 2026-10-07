@@ -20,7 +20,7 @@ pub const iels_mask: u32 = 0x0000_03FF;
 pub const ir_bit: u5 = 16;
 pub const dtce_mask: u32 = 0x0100_0000;
 
-pub const Handler = *const fn (ctx: ?*anyopaque) callconv(.C) void;
+pub const Handler = *const fn (ctx: ?*anyopaque) callconv(.c) void;
 
 pub const Slot = struct {
     handler: ?Handler = null,

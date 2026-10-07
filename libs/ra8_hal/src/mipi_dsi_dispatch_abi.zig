@@ -13,7 +13,7 @@ const tag = "MIPI_DSI";
 const base_addr: usize = 0x40346000;
 
 /// `ra8_mipi_dsi_event_fn_t`; the event enum is 1 byte under -fshort-enums.
-const EventFn = *const fn (ctx: ?*anyopaque, event: u8, mask: u32) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, event: u8, mask: u32) callconv(.c) void;
 
 extern var s_mipi_dsi_event_fn: ?*const anyopaque;
 extern var s_mipi_dsi_event_ctx: ?*anyopaque;

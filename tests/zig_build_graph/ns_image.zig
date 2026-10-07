@@ -353,7 +353,7 @@ pub const Context = struct {
     /// The Arm target and optimize mode the RoT header's Zig object is built
     /// with. Optional for the compile database, which has no Zig rows.
     zig_target: ?std.Build.ResolvedTarget = null,
-    zig_optimize: std.builtin.OptimizeMode = .ReleaseSmall,
+    zig_optimize: std.lang.OptimizeMode = .ReleaseSmall,
 };
 
 /// The `.ns_rot_header` record as a Zig object, built the way CMake's

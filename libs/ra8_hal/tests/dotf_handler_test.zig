@@ -8,7 +8,7 @@ const handler = @import("dotf_handler");
 
 const Seen = struct { calls: u32 = 0, channel: u8 = 0xFF };
 
-fn record(ctx: ?*anyopaque, channel: u8) callconv(.C) void {
+fn record(ctx: ?*anyopaque, channel: u8) callconv(.c) void {
     const s: *Seen = @ptrCast(@alignCast(ctx.?));
     s.calls += 1;
     s.channel = channel;

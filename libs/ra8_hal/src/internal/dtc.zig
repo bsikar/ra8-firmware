@@ -53,7 +53,7 @@ pub const Cfg = extern struct {
     block_count: u16,
 };
 
-pub const EventFn = *const fn (ctx: ?*anyopaque, status: u16) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, status: u16) callconv(.c) void;
 
 fn modeValid(m: u8) bool {
     return m == mode_normal or m == mode_block;

@@ -11,7 +11,7 @@ const tag = "ETHA";
 const port_bases = [_]usize{ 0x403C_A000, 0x403C_C000 };
 
 /// `ra8_etha_event_fn_t`.
-const EventFn = *const fn (ctx: ?*anyopaque, port: u8, s0: u32, s1: u32, s2: u32) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, port: u8, s0: u32, s1: u32, s2: u32) callconv(.c) void;
 /// `ra8_etha_slot_t`; stats (28 B) is not touched here.
 const Slot = extern struct { cb: ?EventFn, ctx: ?*anyopaque, stats: [7]u32 };
 

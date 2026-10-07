@@ -244,7 +244,7 @@ pub const Options = struct {
     middleware_archives: []const std.Build.LazyPath = &.{},
     /// The optimize mode a `.zig` entry is built at: the configuration's
     /// `zig_optimize`, the same one ra8_core's archive takes.
-    zig_optimize: std.builtin.OptimizeMode = .ReleaseSmall,
+    zig_optimize: std.lang.OptimizeMode = .ReleaseSmall,
     /// Prebuilt objects linked after the image's own, such as the packed
     /// module of `image.txm_module`.
     extra_objects: []const std.Build.LazyPath = &.{},

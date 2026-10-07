@@ -12,7 +12,7 @@ const tag = "SRAM";
 const ok = sram.codes.ok;
 const invalid_arg = sram.codes.invalid_arg;
 
-const ErrFn = *const fn (ctx: ?*anyopaque, bank: u8, is_2bit: bool, err_addr: usize) callconv(.C) void;
+const ErrFn = *const fn (ctx: ?*anyopaque, bank: u8, is_2bit: bool, err_addr: usize) callconv(.c) void;
 
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;

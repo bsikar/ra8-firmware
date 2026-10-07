@@ -15,7 +15,7 @@ const sleep_ticks: u32 = 1;
 extern fn _tx_thread_sleep(timer_ticks: u32) u32;
 
 /// The module's start thread, entered with the module's ID.
-export fn demo_module_start(id: u32) callconv(.C) noreturn {
+export fn demo_module_start(id: u32) callconv(.c) noreturn {
     _ = id;
     while (true) _ = _tx_thread_sleep(sleep_ticks);
 }

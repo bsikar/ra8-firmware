@@ -87,7 +87,7 @@ test "apply, standby and inject write in the HUM order" {
 
 var seen: struct { ctx: ?*anyopaque = null, inst: u8 = 0xFF, two: bool = false, addr: u16 = 0, calls: u32 = 0 } = .{};
 
-fn onError(ctx: ?*anyopaque, inst: u8, two: bool, addr: u16) callconv(.C) void {
+fn onError(ctx: ?*anyopaque, inst: u8, two: bool, addr: u16) callconv(.c) void {
     seen = .{ .ctx = ctx, .inst = inst, .two = two, .addr = addr, .calls = seen.calls + 1 };
 }
 

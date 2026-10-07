@@ -17,7 +17,7 @@ pub const ints_mask_all: u32 = 0xFFFF_FFFF;
 /// MSTPB16 (OSPI0 + DOTF0), MSTPB17 (OSPI1 + DOTF1).
 pub const mstp_ids = [_]u16{ (1 << 8) | 16, (1 << 8) | 17 };
 
-pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
 
 /// C `ra8_xspi_state_t` (the C typedef went with ra8_xspi.c, RA8FW-868).
 pub const State = extern struct {

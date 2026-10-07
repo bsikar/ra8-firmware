@@ -16,12 +16,12 @@ var releases: u32 = 0;
 var last_ctx: ?*anyopaque = null;
 var cookie: u32 = 0;
 
-fn fakeAcquire(ctx: ?*anyopaque) callconv(.C) void {
+fn fakeAcquire(ctx: ?*anyopaque) callconv(.c) void {
     acquires += 1;
     last_ctx = ctx;
 }
 
-fn fakeRelease(ctx: ?*anyopaque) callconv(.C) void {
+fn fakeRelease(ctx: ?*anyopaque) callconv(.c) void {
     releases += 1;
     last_ctx = ctx;
 }

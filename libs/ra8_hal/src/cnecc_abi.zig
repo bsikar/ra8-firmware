@@ -31,7 +31,7 @@ const Hw = struct {
 };
 
 const hw = Hw{};
-const IsrFn = *const fn (ctx: ?*anyopaque) callconv(.C) void;
+const IsrFn = *const fn (ctx: ?*anyopaque) callconv(.c) void;
 
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;

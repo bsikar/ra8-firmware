@@ -17,7 +17,7 @@ extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
 /// `ra8_cac_event_fn_t`.
-const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u8) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u8) callconv(.c) void;
 
 var handler: ?EventFn = null;
 var handler_ctx: ?*anyopaque = null;

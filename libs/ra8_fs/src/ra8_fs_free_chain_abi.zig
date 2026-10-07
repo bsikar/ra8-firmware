@@ -28,7 +28,7 @@ fn inData(m: *const Mount, clus: u32) bool {
 }
 
 /// Free every cluster in the chain that starts at `start`.
-pub export fn priv_free_chain(m: *const Mount, start: u32) callconv(.C) u16 {
+pub export fn priv_free_chain(m: *const Mount, start: u32) callconv(.c) u16 {
     var cur = start;
     var guard: u32 = 0;
     while (inData(m, cur)) {
