@@ -31,7 +31,7 @@ pub fn build(b: *std.Build) void {
     library_step.dependOn(&install_library.step);
 
     const supplied_rust_lib_dir = b.option([]const u8, "rust-lib-dir", "Rust archive directory");
-    const rust_lib_dir = supplied_rust_lib_dir orelse b.pathFromRoot("../rust/target/debug");
+    const rust_lib_dir = supplied_rust_lib_dir orelse b.root.joinString(b.allocator, "../rust/target/debug") catch @panic("OOM");
     const rust_archive = b.pathJoin(&.{ rust_lib_dir, "libfirmware_pipeline_rust.a" });
 
     const executable_module = b.createModule(.{
@@ -47,15 +47,15 @@ pub fn build(b: *std.Build) void {
         .name = "firmware_pipeline_zig_main",
         .root_module = executable_module,
     });
-    executable.addObjectFile(library.getEmittedBin());
-    executable.addCSourceFiles(.{
+    executable.root_module.addObjectFile(library.getEmittedBin());
+    executable.root_module.addCSourceFiles(.{
         .files = &.{
             "../src/firmware_pipeline_cli.c",
             "../src/firmware_pipeline_io.c",
         },
         .flags = &.{ "-std=gnu2x", "-Wall", "-Wextra", "-Werror" },
     });
-    executable.addObjectFile(.{ .cwd_relative = rust_archive });
+    executable.root_module.addObjectFile(.{ .cwd_relative = rust_archive });
     // `cargo` builds for the machine it runs on, so read the archive before
     // the link and refuse a mismatch by name rather than by linker error
     // (RA8FW-330).
@@ -63,12 +63,12 @@ pub fn build(b: *std.Build) void {
     executable.step.dependOn(require_archive_for_executable);
     switch (target.result.os.tag) {
         .linux => {
-            executable.linkSystemLibrary("gcc_s");
-            executable.linkSystemLibrary("pthread");
-            executable.linkSystemLibrary("dl");
-            executable.linkSystemLibrary("m");
+            executable.root_module.linkSystemLibrary("gcc_s", .{});
+            executable.root_module.linkSystemLibrary("pthread", .{});
+            executable.root_module.linkSystemLibrary("dl", .{});
+            executable.root_module.linkSystemLibrary("m", .{});
         },
-        .macos => executable.linkSystemLibrary("System"),
+        .macos => executable.root_module.linkSystemLibrary("System", .{}),
         else => @panic("firmware_pipeline supports Linux and macOS hosts"),
     }
     const install_executable = b.addInstallArtifact(executable, .{});
@@ -84,17 +84,17 @@ pub fn build(b: *std.Build) void {
     test_module.addImport("adapter", adapter);
     test_module.addIncludePath(b.path("../inc"));
     const tests = b.addTest(.{ .root_module = test_module });
-    tests.addObjectFile(.{ .cwd_relative = rust_archive });
+    tests.root_module.addObjectFile(.{ .cwd_relative = rust_archive });
     const require_archive_for_tests = ra8_build.addRequireArchiveForTargetStep(b, tests, rust_archive, "-Drust-lib-dir=");
     tests.step.dependOn(require_archive_for_tests);
     switch (target.result.os.tag) {
         .linux => {
-            tests.linkSystemLibrary("gcc_s");
-            tests.linkSystemLibrary("pthread");
-            tests.linkSystemLibrary("dl");
-            tests.linkSystemLibrary("m");
+            tests.root_module.linkSystemLibrary("gcc_s", .{});
+            tests.root_module.linkSystemLibrary("pthread", .{});
+            tests.root_module.linkSystemLibrary("dl", .{});
+            tests.root_module.linkSystemLibrary("m", .{});
         },
-        .macos => tests.linkSystemLibrary("System"),
+        .macos => tests.root_module.linkSystemLibrary("System", .{}),
         else => @panic("firmware_pipeline Zig tests support Linux and macOS hosts"),
     }
     if (supplied_rust_lib_dir == null) {
@@ -104,9 +104,9 @@ pub fn build(b: *std.Build) void {
             "--locked",
             "--lib",
             "--manifest-path",
-            b.pathFromRoot("../rust/Cargo.toml"),
+            b.root.joinString(b.allocator, "../rust/Cargo.toml") catch @panic("OOM"),
         });
-        cargo.setEnvironmentVariable("CARGO_TARGET_DIR", b.pathFromRoot("../rust/target"));
+        cargo.setEnvironmentVariable("CARGO_TARGET_DIR", b.root.joinString(b.allocator, "../rust/target") catch @panic("OOM"));
         require_archive_for_tests.dependOn(&cargo.step);
         require_archive_for_executable.dependOn(&cargo.step);
     }
