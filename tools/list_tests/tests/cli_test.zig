@@ -23,22 +23,23 @@ const Capture = struct {
     }
 };
 
-fn invoke(dir: std.fs.Dir, argv: []const []const u8, env: ?[]const u8) !Capture {
+fn invoke(dir: std.Io.Dir, argv: []const []const u8, env: ?[]const u8) !Capture {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
 
-    var out = std.ArrayList(u8).init(testing.allocator);
-    errdefer out.deinit();
-    var err = std.ArrayList(u8).init(testing.allocator);
-    errdefer err.deinit();
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer out.deinit();
+    var err: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer err.deinit();
 
     const status = try cli.run(
         arena.allocator(),
+        testing.io,
         dir,
         argv,
         env,
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -47,9 +48,9 @@ fn invoke(dir: std.fs.Dir, argv: []const []const u8, env: ?[]const u8) !Capture 
     };
 }
 
-fn writeSource(dir: std.fs.Dir, path: []const u8, body: []const u8) !void {
-    if (std.fs.path.dirname(path)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = path, .data = body });
+fn writeSource(dir: std.Io.Dir, path: []const u8, body: []const u8) !void {
+    if (std.fs.path.dirname(path)) |parent| try dir.createDirPath(testing.io, parent);
+    try dir.writeFile(testing.io, .{ .sub_path = path, .data = body });
 }
 
 test "no category prints the usage line on stdout and exits 1" {
@@ -77,7 +78,7 @@ test "an unknown category reports no tests on stdout and exits 1" {
 test "a category directory that exists but holds no test file still exits 1" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("tests/hal");
+    try tmp.dir.createDirPath(testing.io, "tests/hal");
     try writeSource(tmp.dir, "tests/hal/helper.c", "int helper(void);\n");
     var capture = try invoke(tmp.dir, &[_][]const u8{ "list_tests", "hal" }, null);
     defer capture.deinit();
@@ -366,16 +367,17 @@ test "a source past the read prefix keeps its row and its @brief" {
     // a target was listed. A `readFileAlloc` capped at `max_source_bytes` used
     // to fail outright here and drop the row: a generated suite past the cap
     // vanished from `just tests::hal` with nothing printed to say so.
-    try tmp.dir.makePath("tests/hal");
-    var file = try tmp.dir.createFile("tests/hal/test_huge.c", .{});
-    defer file.close();
-    try file.writeAll("/** @brief huge generated suite */\n");
+    try tmp.dir.createDirPath(testing.io, "tests/hal");
+    var file = try tmp.dir.createFile(testing.io, "tests/hal/test_huge.c", .{});
+    defer file.close(testing.io);
+    const header = "/** @brief huge generated suite */\n";
+    try file.writePositionalAll(testing.io, header, 0);
     const filler = try testing.allocator.alloc(u8, 1024 * 1024);
     defer testing.allocator.free(filler);
     @memset(filler, 'a');
     var written: usize = 0;
     while (written <= cli.max_source_bytes) : (written += filler.len) {
-        try file.writeAll(filler);
+        try file.writePositionalAll(testing.io, filler, header.len + written);
     }
 
     var capture = try invoke(tmp.dir, &[_][]const u8{ "list_tests", "hal" }, null);

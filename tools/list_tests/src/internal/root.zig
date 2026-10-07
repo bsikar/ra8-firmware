@@ -176,13 +176,13 @@ pub fn briefIn(text: []const u8) ?[]const u8 {
 /// valid UTF-8 rather than failing, so a stray byte in a comment cannot make
 /// the listing fail.
 pub fn decodeIgnoringInvalid(allocator: std.mem.Allocator, bytes: []const u8) ![]u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < bytes.len) {
         const byte = bytes[index];
         if (byte == '\r') {
-            try out.append('\n');
+            try out.append(allocator, '\n');
             index += 1;
             if (index < bytes.len and bytes[index] == '\n') index += 1;
             continue;
@@ -199,10 +199,10 @@ pub fn decodeIgnoringInvalid(allocator: std.mem.Allocator, bytes: []const u8) ![
             index += 1;
             continue;
         };
-        try out.appendSlice(bytes[index .. index + length]);
+        try out.appendSlice(allocator, bytes[index .. index + length]);
         index += length;
     }
-    return try out.toOwnedSlice();
+    return try out.toOwnedSlice(allocator);
 }
 
 /// `<stem> unit tests`, the description used when a source carries no
@@ -247,7 +247,7 @@ pub fn writeHeader(
 pub fn writeRow(writer: anytype, entry: Entry) !void {
     try writer.print("  {s}", .{entry.name});
     if (entry.name.len < name_column_width) {
-        try writer.writeByteNTimes(' ', name_column_width - entry.name.len);
+        try writer.splatByteAll(' ', name_column_width - entry.name.len);
     }
     try writer.print(" {s}\n", .{entry.description});
 }

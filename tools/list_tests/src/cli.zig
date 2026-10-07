@@ -54,7 +54,8 @@ const Found = struct {
 /// the ordinary path.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     repo_root_env: ?[]const u8,
     stdout: anytype,
@@ -92,16 +93,16 @@ pub fn run(
     defer allocator.free(category);
 
     const root_path = repo_root_flag orelse repo_root_env orelse ".";
-    var root = dir.openDir(root_path, .{ .iterate = true }) catch {
+    var root = dir.openDir(io, root_path, .{ .iterate = true }) catch {
         try stderr.print("list_tests: cannot open repository root '{s}'\n", .{root_path});
         return exit_error;
     };
-    defer root.close();
+    defer root.close(io);
 
     const patterns = try listing.searchPatterns(allocator, category);
 
-    var entries = std.ArrayList(listing.Entry).init(allocator);
-    defer entries.deinit();
+    var entries: std.ArrayList(listing.Entry) = .empty;
+    defer entries.deinit(allocator);
 
     for (patterns) |pattern| {
         for (listing.test_suffixes) |suffix| {
@@ -111,7 +112,7 @@ pub fn run(
                 .{ pattern, suffix },
             );
             defer allocator.free(glob);
-            try collect(allocator, root, glob, &entries);
+            try collect(allocator, io, root, glob, &entries);
         }
     }
 
@@ -134,22 +135,23 @@ pub fn run(
 /// Walk one glob and append an entry per matching source file.
 fn collect(
     allocator: std.mem.Allocator,
-    root: std.fs.Dir,
+    io: std.Io,
+    root: std.Io.Dir,
     glob: []const u8,
     entries: *std.ArrayList(listing.Entry),
 ) !void {
-    var components = std.ArrayList([]const u8).init(allocator);
-    defer components.deinit();
+    var components: std.ArrayList([]const u8) = .empty;
+    defer components.deinit(allocator);
     var parts = std.mem.splitScalar(u8, glob, '/');
     while (parts.next()) |part| {
         if (part.len == 0) continue;
-        try components.append(part);
+        try components.append(allocator, part);
     }
     if (components.items.len == 0) return;
 
-    var found = std.ArrayList(Found).init(allocator);
-    defer found.deinit();
-    try walk(allocator, root, components.items, &found);
+    var found: std.ArrayList(Found) = .empty;
+    defer found.deinit(allocator);
+    try walk(allocator, io, root, components.items, &found);
 
     for (found.items) |file| {
         const name = listing.stem(file.file_name);
@@ -158,7 +160,7 @@ fn collect(
             try allocator.dupe(u8, brief)
         else
             try listing.defaultDescription(allocator, name);
-        try entries.append(.{ .name = name, .description = description });
+        try entries.append(allocator, .{ .name = name, .description = description });
     }
 }
 
@@ -172,13 +174,18 @@ fn lessThanName(_: void, left: []const u8, right: []const u8) bool {
 /// A plain `readFileAlloc` fails outright on a file past the cap, which would
 /// drop the row; this truncates instead, so only bytes past the prefix are
 /// lost and the `@brief` in the header block is still found.
-fn readPrefix(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) ?[]u8 {
-    var file = dir.openFile(name, .{}) catch return null;
-    defer file.close();
-    const size = (file.stat() catch return null).size;
+fn readPrefix(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    dir: std.Io.Dir,
+    name: []const u8,
+) ?[]u8 {
+    var file = dir.openFile(io, name, .{}) catch return null;
+    defer file.close(io);
+    const size = (file.stat(io) catch return null).size;
     const wanted: usize = @intCast(@min(size, max_source_bytes));
     const buffer = allocator.alloc(u8, wanted) catch return null;
-    const read = file.readAll(buffer) catch return null;
+    const read = file.readPositionalAll(io, buffer, 0) catch return null;
     return buffer[0..read];
 }
 
@@ -193,7 +200,8 @@ fn readPrefix(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) ?
 /// tie deterministically.
 fn walk(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     components: []const []const u8,
     found: *std.ArrayList(Found),
 ) !void {
@@ -205,20 +213,20 @@ fn walk(
             // No directory listing established this name, so an unopenable
             // file here means the glob matched nothing rather than a source
             // whose description is missing.
-            const bytes = readPrefix(allocator, dir, head) orelse return;
-            try found.append(.{ .file_name = try allocator.dupe(u8, head), .bytes = bytes });
+            const bytes = readPrefix(allocator, io, dir, head) orelse return;
+            try found.append(allocator, .{ .file_name = try allocator.dupe(u8, head), .bytes = bytes });
             return;
         }
-        var sub = dir.openDir(head, .{ .iterate = true }) catch return;
-        defer sub.close();
-        try walk(allocator, sub, components[1..], found);
+        var sub = dir.openDir(io, head, .{ .iterate = true }) catch return;
+        defer sub.close(io);
+        try walk(allocator, io, sub, components[1..], found);
         return;
     }
 
-    var names = std.ArrayList([]const u8).init(allocator);
-    defer names.deinit();
+    var names: std.ArrayList([]const u8) = .empty;
+    defer names.deinit(allocator);
     var iterator = dir.iterate();
-    while (try iterator.next()) |entry| {
+    while (try iterator.next(io)) |entry| {
         if (!listing.componentMatches(head, entry.name)) continue;
         const usable = switch (entry.kind) {
             .directory, .sym_link => true,
@@ -226,7 +234,7 @@ fn walk(
             else => false,
         };
         if (!usable) continue;
-        try names.append(try allocator.dupe(u8, entry.name));
+        try names.append(allocator, try allocator.dupe(u8, entry.name));
     }
     std.mem.sort([]const u8, names.items, {}, lessThanName);
 
@@ -236,12 +244,12 @@ fn walk(
             // for a file that cannot be read: an unreadable source loses its
             // description, not its place in the listing. The Python raised on
             // one instead, which failed the whole category.
-            const bytes = readPrefix(allocator, dir, name) orelse &[_]u8{};
-            try found.append(.{ .file_name = name, .bytes = bytes });
+            const bytes = readPrefix(allocator, io, dir, name) orelse &[_]u8{};
+            try found.append(allocator, .{ .file_name = name, .bytes = bytes });
             continue;
         }
-        var sub = dir.openDir(name, .{ .iterate = true }) catch continue;
-        defer sub.close();
-        try walk(allocator, sub, components[1..], found);
+        var sub = dir.openDir(io, name, .{ .iterate = true }) catch continue;
+        defer sub.close(io);
+        try walk(allocator, io, sub, components[1..], found);
     }
 }
