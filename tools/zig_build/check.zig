@@ -8,14 +8,18 @@
 //! Usage:
 //!   check bundled-stub <zig lib dir>
 //!   check explain <zig lib dir> <report head> <report tail>
+//!   check host-artifact <binary> <name> <arch> <os> <macOS minimum or ->
+//!   check archive <archive> <consumer> <arch> <os> <option hint>
 
 const std = @import("std");
 const macos_host = @import("macos_host");
+const check_artifact = @import("check_artifact.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     const args = try init.minimal.args.toSlice(arena);
     if (args.len < 3) usage();
+    if (args.len == 7) return checkOutput(arena, init.io, args);
     const stub = readBundledStub(arena, init.io, args[2]);
     if (std.mem.eql(u8, args[1], "bundled-stub") and args.len == 3) {
         return verifyBundledStub(stub);
@@ -32,9 +36,26 @@ pub fn main(init: std.process.Init) !void {
 
 fn usage() noreturn {
     std.process.fatal(
-        "usage: check bundled-stub <zig lib dir> | check explain <zig lib dir> <head> <tail>",
+        "usage: check bundled-stub <zig lib dir> | check explain <zig lib dir> <head> <tail> | " ++
+            "check host-artifact <binary> <name> <arch> <os> <min|-> | " ++
+            "check archive <archive> <consumer> <arch> <os> <hint>",
         .{},
     );
+}
+
+/// `host-artifact` and `archive`: the checks that read a build output.
+fn checkOutput(arena: std.mem.Allocator, io: std.Io, args: []const []const u8) void {
+    const target = check_artifact.Target.parse(args[4], args[5]) orelse
+        std.process.fatal("unknown target {s}-{s}", .{ args[4], args[5] });
+    if (std.mem.eql(u8, args[1], "host-artifact")) {
+        const minimum: ?std.SemanticVersion = if (std.mem.eql(u8, args[6], "-")) null else std.SemanticVersion.parse(args[6]) catch
+            std.process.fatal("bad macOS minimum {s}", .{args[6]});
+        return check_artifact.verifyHostArtifact(arena, io, args[2], args[3], target, minimum);
+    }
+    if (std.mem.eql(u8, args[1], "archive")) {
+        return check_artifact.requireArchive(arena, io, args[2], args[3], target, args[6]);
+    }
+    usage();
 }
 
 /// Zig's own bundled `libSystem` stub: where it was looked for and what it held.

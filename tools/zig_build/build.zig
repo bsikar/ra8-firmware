@@ -324,169 +324,19 @@ pub fn addVerifyHostArtifactStep(
     compile: *std.Build.Step.Compile,
 ) *std.Build.Step {
     const resolved = compile.rootModuleTarget();
-    const verify = b.allocator.create(VerifyHostArtifact) catch @panic("OOM");
-    verify.* = .{
-        .step = std.Build.Step.init(.{
-            .id = .custom,
-            .name = b.fmt("verify host artifact {s}", .{compile.name}),
-            .owner = b,
-            .makeFn = VerifyHostArtifact.make,
-        }),
-        .binary = compile.getEmittedBin(),
-        .name = compile.name,
-        .target_os = resolved.os.tag,
-        .target_arch = resolved.cpu.arch,
-        // `VersionRange` is an untagged union, so the os tag is what says
-        // which member is live; for macOS that is always the semver range.
-        .expected_minimum_os = switch (resolved.os.tag) {
-            .macos => resolved.os.version_range.semver.min,
-            else => null,
-        },
-    };
-    verify.step.dependOn(&compile.step);
-    return &verify.step;
-}
-
-const VerifyHostArtifact = struct {
-    step: std.Build.Step,
-    binary: std.Build.LazyPath,
-    name: []const u8,
-    target_os: std.Target.Os.Tag,
-    target_arch: std.Target.Cpu.Arch,
-    expected_minimum_os: ?std.SemanticVersion,
-
-    fn sameVersion(a: std.SemanticVersion, e: std.SemanticVersion) bool {
-        return a.major == e.major and a.minor == e.minor and a.patch == e.patch;
-    }
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const self: *VerifyHostArtifact = @fieldParentPtr("step", step);
-        const b = step.owner;
-
-        if (self.target_os != .macos) {
-            std.debug.print(
-                "verify-host-artifact: {s} targets {s}-{s}; no Mach-O image to read\n",
-                .{ self.name, @tagName(self.target_arch), @tagName(self.target_os) },
-            );
-            return;
-        }
-
-        const path = self.binary.getPath2(b, step);
-        const bytes = std.fs.cwd().readFileAlloc(b.allocator, path, 64 * 1024 * 1024) catch |err|
-            return step.fail("cannot read the emitted binary {s}: {s}", .{ path, @errorName(err) });
-
-        const image = macho.read(bytes) catch |err|
-            return step.fail("{s} is not a readable single-architecture Mach-O image: {s}", .{ path, @errorName(err) });
-
-        const actual_arch = image.arch();
-        if (actual_arch == null or actual_arch.? != self.target_arch) {
-            return step.fail(
-                "{s} was built for {s} but the image is cpu type 0x{x:0>8}",
-                .{ path, @tagName(self.target_arch), @as(u32, @bitCast(image.cpu_type)) },
-            );
-        }
-
-        if (!image.isMacosPlatform()) {
-            return step.fail(
-                "{s} carries no macOS platform stamp (LC_BUILD_VERSION platform {?d})",
-                .{ path, image.platform },
-            );
-        }
-
-        if (self.expected_minimum_os) |expected| {
-            const actual = image.minimum_os orelse
-                return step.fail("{s} carries no minimum OS version, expected {d}.{d}.{d}", .{
-                    path, expected.major, expected.minor, expected.patch,
-                });
-            if (!sameVersion(actual, expected)) {
-                return step.fail(
-                    "{s} is stamped for macOS {d}.{d}.{d} but the build was configured for {d}.{d}.{d}; " ++
-                        "the pinned target and the emitted deployment target have drifted apart (RA8FW-330)",
-                    .{
-                        path,           actual.major,   actual.minor,   actual.patch,
-                        expected.major, expected.minor, expected.patch,
-                    },
-                );
-            }
-        }
-
-        if (!image.links_system_libsystem) {
-            var buffer: [16][]const u8 = undefined;
-            const names = macho.dylibNames(bytes, &buffer) catch &.{};
-            var listed: std.ArrayListUnmanaged(u8) = .empty;
-            for (names) |dylib| listed.writer(b.allocator).print("\n    {s}", .{dylib}) catch {};
-            return step.fail(
-                "{s} does not link {s}; it links {d} dylib(s):{s}",
-                .{ path, macho.system_libsystem, image.dylib_count, listed.items },
-            );
-        }
-
-        const signature = macho.readSignature(bytes) catch |err| {
-            if (!signatureRequired(self.target_arch)) {
-                const minimum_unsigned = image.minimum_os.?;
-                std.debug.print(
-                    "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}; " ++
-                        "no readable code signature ({s}), which {s} does not require\n",
-                    .{
-                        self.name,              @tagName(actual_arch.?),    minimum_unsigned.major,
-                        minimum_unsigned.minor, minimum_unsigned.patch,     macho.system_libsystem,
-                        @errorName(err),        @tagName(self.target_arch),
-                    },
-                );
-                return;
-            }
-            return step.fail(
-                "{s} carries no usable code signature ({s}); arm64 macOS refuses to execute an " ++
-                    "unsigned image, so this binary links but cannot run on the host it was built for (RA8FW-330)",
-                .{ path, @errorName(err) },
-            );
-        };
-
-        if (!signature.coversImage()) {
-            return step.fail(
-                "{s} has a code signature covering {d} bytes while the signature itself starts at {d}; " ++
-                    "the image was modified after the link, so macOS will reject the signature at exec (RA8FW-330)",
-                .{ path, signature.code_limit, signature.region.data_offset },
-            );
-        }
-
-        if (signatureRequired(self.target_arch) and !signature.isAdhoc() and !signature.isLinkerSigned()) {
-            return step.fail(
-                "{s} carries a code signature with neither the ad-hoc nor the linker-signed flag " ++
-                    "(flags 0x{x:0>8}); nothing in this build signs with an identity, so this is not " ++
-                    "the signature the link should have produced (RA8FW-330)",
-                .{ path, signature.flags },
-            );
-        }
-
-        const minimum = image.minimum_os.?;
-        std.debug.print(
-            "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}, " ++
-                "{s} signed as \"{s}\" over all {d} bytes\n",
-            .{
-                self.name,
-                @tagName(actual_arch.?),
-                minimum.major,
-                minimum.minor,
-                minimum.patch,
-                macho.system_libsystem,
-                if (signature.isLinkerSigned()) "linker ad-hoc" else "ad-hoc",
-                signature.identifier,
-                signature.code_limit,
-            },
-        );
-    }
-};
-
-/// Is a code signature mandatory for this target?
-///
-/// arm64 macOS is the case that matters: the kernel refuses to execute an
-/// unsigned image there, so an unsigned artifact is a build that cannot run.
-/// x86_64 macOS still runs unsigned binaries, so absence there is reported
-/// rather than failed.
-fn signatureRequired(arch: std.Target.Cpu.Arch) bool {
-    return arch == .aarch64;
+    const run = b.addRunArtifact(checkTool(b));
+    run.setName(b.fmt("verify host artifact {s}", .{compile.name}));
+    run.has_side_effects = true;
+    run.addArg("host-artifact");
+    run.addFileArg(compile.getEmittedBin());
+    run.addArgs(&.{ compile.name, @tagName(resolved.cpu.arch), @tagName(resolved.os.tag) });
+    // `VersionRange` is an untagged union, so the os tag is what says which
+    // member is live; for macOS that is always the semver range.
+    run.addArg(switch (resolved.os.tag) {
+        .macos => b.fmt("{f}", .{resolved.os.version_range.semver.min}),
+        else => "-",
+    });
+    return &run.step;
 }
 
 /// Refuse a static archive that this build's target cannot link, and say why
@@ -513,82 +363,27 @@ pub fn addRequireArchiveForTargetStep(
     option_hint: []const u8,
 ) *std.Build.Step {
     const resolved = compile.rootModuleTarget();
-    const require = b.allocator.create(RequireArchiveForTarget) catch @panic("OOM");
-    require.* = .{
-        .step = std.Build.Step.init(.{
-            .id = .custom,
-            .name = b.fmt("require archive for {s}", .{compile.name}),
-            .owner = b,
-            .makeFn = RequireArchiveForTarget.make,
-        }),
-        .archive_path = archive_path,
-        .consumer = compile.name,
-        .target_os = resolved.os.tag,
-        .target_arch = resolved.cpu.arch,
-        .option_hint = option_hint,
-    };
-    return &require.step;
+    const run = b.addRunArtifact(checkTool(b));
+    run.setName(b.fmt("require archive for {s}", .{compile.name}));
+    run.has_side_effects = true;
+    run.addArg("archive");
+    // The archive comes from a separate cargo run, so it is a path the build
+    // reads, not a build output; the tool reports a missing one.
+    run.addArgs(&.{
+        archive_path,
+        compile.name,
+        @tagName(resolved.cpu.arch),
+        @tagName(resolved.os.tag),
+        option_hint,
+    });
+    return &run.step;
 }
 
-const RequireArchiveForTarget = struct {
-    step: std.Build.Step,
-    archive_path: []const u8,
-    consumer: []const u8,
-    target_os: std.Target.Os.Tag,
-    target_arch: std.Target.Cpu.Arch,
-    option_hint: []const u8,
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const self: *RequireArchiveForTarget = @fieldParentPtr("step", step);
-        const b = step.owner;
-        const target = b.fmt("{s}-{s}", .{ @tagName(self.target_arch), @tagName(self.target_os) });
-
-        const bytes = std.fs.cwd().readFileAlloc(b.allocator, self.archive_path, 256 * 1024 * 1024) catch |err| {
-            if (err == error.FileNotFound) return step.fail(
-                "{s} links {s}, which does not exist. Build it for {s}, or point {s} at one that is.",
-                .{ self.consumer, self.archive_path, target, self.option_hint },
-            );
-            return step.fail("cannot read {s}: {s}", .{ self.archive_path, @errorName(err) });
-        };
-
-        const description = ar.describe(bytes) catch |err| return step.fail(
-            "{s} is not a readable static archive: {s}",
-            .{ self.archive_path, @errorName(err) },
-        );
-
-        if (!description.suits(self.target_arch, self.target_os)) {
-            const wanted = ar.expectedFormat(self.target_os);
-            return step.fail(
-                "{s} holds {s} {s} objects, but {s} is linked for {s}, which needs {s} {s} objects. " ++
-                    "The archive was built for a different host than this build targets; " ++
-                    "build it for {s}, or point {s} at one that is (RA8FW-330).",
-                .{
-                    self.archive_path,
-                    description.format.label(),
-                    if (description.arch) |arch| @tagName(arch) else "unrecognised-architecture",
-                    self.consumer,
-                    target,
-                    wanted.label(),
-                    @tagName(self.target_arch),
-                    target,
-                    self.option_hint,
-                },
-            );
-        }
-
-        std.debug.print(
-            "require-archive: {s} holds {s} {s} objects, which {s} can link for {s}\n",
-            .{
-                self.archive_path,
-                description.format.label(),
-                @tagName(self.target_arch),
-                self.consumer,
-                target,
-            },
-        );
-    }
-};
+/// The check tool as built by this package, for a consumer that imports
+/// `ra8_zig_build` as a dependency.
+fn checkTool(b: *std.Build) *std.Build.Step.Compile {
+    return b.dependencyFromBuildZig(@This(), .{}).artifact("ra8-build-check");
+}
 
 /// The host tool the check steps run (`check.zig`). It always targets the
 /// build host: it runs during the build, whatever `-Dtarget=` says.
@@ -602,6 +397,10 @@ fn addCheckTool(b: *std.Build) *std.Build.Step.Compile {
         .target = b.graph.host,
     });
     root.addImport("macos_host", host_rule);
+    root.addImport("ar", b.createModule(.{
+        .root_source_file = b.path("ar.zig"),
+        .target = b.graph.host,
+    }));
     return b.addExecutable(.{ .name = "ra8-build-check", .root_module = root });
 }
 
@@ -640,6 +439,8 @@ pub fn build(b: *std.Build) void {
         "Print how the macOS host target was chosen on this machine (RA8FW-330)",
     );
     const check = addCheckTool(b);
+    // Installed so a consumer's `checkTool` finds it by name.
+    b.installArtifact(check);
     explain_step.dependOn(addExplainHostTargetStep(b, check, hostTarget(b)));
 
     // The pinned target is only a workaround while Zig's own libSystem stub
