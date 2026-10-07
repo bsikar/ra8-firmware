@@ -12,52 +12,55 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-fn scratchName(allocator: std.mem.Allocator) ![]const u8 {
+fn scratchName(allocator: std.mem.Allocator, io: std.Io) ![]const u8 {
     var seed: [8]u8 = undefined;
-    std.crypto.random.bytes(&seed);
+    io.random(&seed);
     return std.fmt.allocPrint(allocator, "ra8-shard-union-selftest-{s}", .{
         std.fmt.bytesToHex(seed, .lower),
     });
 }
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const argv = try std.process.argsAlloc(allocator);
-    const default_root = std.process.getEnvVarOwned(allocator, "RA8_REPO_ROOT") catch
-        try allocator.dupe(u8, ".");
+    const sentinel_argv = try init.minimal.args.toSlice(allocator);
+    const argv = try allocator.alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
+    const default_root = init.environ_map.get("RA8_REPO_ROOT") orelse ".";
 
-    const temporary_root = std.process.getEnvVarOwned(allocator, "TMPDIR") catch
-        try allocator.dupe(u8, "/tmp");
-    const name = try scratchName(allocator);
+    const temporary_root = init.environ_map.get("TMPDIR") orelse "/tmp";
+    const name = try scratchName(allocator, io);
     const scratch_path = try std.fs.path.join(allocator, &.{ temporary_root, name });
 
-    var temporary = std.fs.cwd().openDir(temporary_root, .{}) catch null;
-    var scratch: ?std.fs.Dir = null;
-    if (temporary) |*base| {
-        base.makePath(name) catch {};
-        scratch = base.openDir(name, .{}) catch null;
+    const cwd = std.Io.Dir.cwd();
+    const temporary: ?std.Io.Dir = cwd.openDir(io, temporary_root, .{}) catch null;
+    var scratch: ?std.Io.Dir = null;
+    if (temporary) |base| {
+        base.createDirPath(io, name) catch {};
+        scratch = base.openDir(io, name, .{}) catch null;
     }
     defer {
-        if (scratch) |*open| open.close();
-        std.fs.cwd().deleteTree(scratch_path) catch {};
-        if (temporary) |*base| base.close();
+        if (scratch) |open| open.close(io);
+        cwd.deleteTree(io, scratch_path) catch {};
+        if (temporary) |base| base.close(io);
     }
 
-    var out = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var err = std.io.bufferedWriter(std.io.getStdErr().writer());
+    var out_buffer: [4096]u8 = undefined;
+    var err_buffer: [4096]u8 = undefined;
+    var out = std.Io.File.stdout().writer(io, &out_buffer);
+    var err = std.Io.File.stderr().writer(io, &err_buffer);
     const status = try cli.run(
         allocator,
-        std.fs.cwd(),
+        io,
+        cwd,
         scratch,
         argv[1..],
         default_root,
-        out.writer(),
-        err.writer(),
+        &out.interface,
+        &err.interface,
     );
-    try out.flush();
-    try err.flush();
+    try out.interface.flush();
+    try err.interface.flush();
     return status;
 }
