@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) void {
 
     const run_tool = b.addRunArtifact(executable);
     run_tool.step.dependOn(b.getInstallStep());
-    if (b.args) |args| run_tool.addArgs(args);
+    run_tool.addPassthruArgs();
     const run_step = b.step("run", "Fail any HAL driver that guards bare asm on RA8_OFF_TARGET");
     run_step.dependOn(&run_tool.step);
 
