@@ -10,7 +10,7 @@
 pub const ok: u16 = 0;
 pub const err_invalid_arg: u16 = 0x103;
 
-pub const LockFn = *const fn (ctx: ?*anyopaque) callconv(.C) void;
+pub const LockFn = *const fn (ctx: ?*anyopaque) callconv(.c) void;
 
 /// Mirror of ra8_fs_lock_t: acquire, release, ctx.
 pub const Lock = extern struct {

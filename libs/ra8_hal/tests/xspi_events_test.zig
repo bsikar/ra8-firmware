@@ -23,7 +23,7 @@ const Fake = struct {
 var seen: u32 = 0;
 var seen_ctx: ?*anyopaque = null;
 
-fn record(ctx: ?*anyopaque, mask: u32) callconv(.C) void {
+fn record(ctx: ?*anyopaque, mask: u32) callconv(.c) void {
     seen = mask;
     seen_ctx = ctx;
 }

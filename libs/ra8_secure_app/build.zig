@@ -104,7 +104,7 @@ pub fn build(b: *std.Build) void {
 fn addAbiTests(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
     test_step: *std.Build.Step,
 ) void {
     // `vault.enabled` is `off_target or insecure_stub_crypto`; with the second

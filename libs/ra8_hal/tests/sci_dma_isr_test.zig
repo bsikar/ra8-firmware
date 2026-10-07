@@ -30,13 +30,13 @@ const Regs = struct {
 
 const Seen = struct { bytes: [8]u8 = @splat(0), n: usize = 0, give: u8 = 0, more: bool = true };
 
-fn onRx(ctx: ?*anyopaque, byte: u8) callconv(.C) void {
+fn onRx(ctx: ?*anyopaque, byte: u8) callconv(.c) void {
     const s: *Seen = @ptrCast(@alignCast(ctx.?));
     s.bytes[s.n] = byte;
     s.n += 1;
 }
 
-fn onTx(ctx: ?*anyopaque, byte: *u8) callconv(.C) bool {
+fn onTx(ctx: ?*anyopaque, byte: *u8) callconv(.c) bool {
     const s: *Seen = @ptrCast(@alignCast(ctx.?));
     s.bytes[s.n] = byte.*;
     s.n += 1;

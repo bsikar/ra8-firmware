@@ -10,7 +10,7 @@ var seen_mask: u32 = 0;
 var seen_ctx: ?*anyopaque = null;
 var calls: u32 = 0;
 
-fn record(ctx: ?*anyopaque, mask: u32) callconv(.C) void {
+fn record(ctx: ?*anyopaque, mask: u32) callconv(.c) void {
     seen_ctx = ctx;
     seen_mask = mask;
     calls += 1;

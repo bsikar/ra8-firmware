@@ -695,7 +695,7 @@ fn zigMain(
     app: CrossApp,
     root: []const u8,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const module = b.createModule(.{
         .root_source_file = b.path(b.pathJoin(&.{ app.dir, root })),
@@ -724,7 +724,7 @@ fn zigBootObject(
     app: CrossApp,
     unit: []const u8,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const module = b.createModule(.{
         .root_source_file = b.path(unit),

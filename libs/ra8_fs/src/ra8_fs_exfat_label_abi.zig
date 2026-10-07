@@ -94,7 +94,7 @@ pub fn encodeLabel(label: ?[*:0]const u8) [entry_bytes]u8 {
     return entry;
 }
 
-pub export fn priv_exfat_get_label(m: *const Mount, out: [*]u8, out_len: u32) callconv(.C) u16 {
+pub export fn priv_exfat_get_label(m: *const Mount, out: [*]u8, out_len: u32) callconv(.c) u16 {
     var found: Located = .{};
     const err = locateLabel(m, &found);
     if (err != ok) return err;
@@ -106,7 +106,7 @@ pub export fn priv_exfat_get_label(m: *const Mount, out: [*]u8, out_len: u32) ca
     return ok;
 }
 
-pub export fn priv_exfat_set_label(m: *const Mount, label: ?[*:0]const u8) callconv(.C) u16 {
+pub export fn priv_exfat_set_label(m: *const Mount, label: ?[*:0]const u8) callconv(.c) u16 {
     var found: Located = .{};
     const err = locateLabel(m, &found);
     if (err != ok) return err;

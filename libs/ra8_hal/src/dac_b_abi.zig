@@ -13,7 +13,7 @@ extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
 /// `ra8_dac_b_update_fn_t`.
-const UpdateFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.C) void;
+const UpdateFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.c) void;
 
 var handler: ?UpdateFn = null;
 var handler_ctx: ?*anyopaque = null;

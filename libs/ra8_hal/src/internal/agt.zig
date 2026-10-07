@@ -50,7 +50,7 @@ pub const compare_none: u8 = 0;
 pub const compare_a: u8 = 1;
 pub const compare_b: u8 = 2;
 
-pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.c) void;
 
 /// ra8_agt_pulse_cfg_t.
 pub const PulseCfg = extern struct {

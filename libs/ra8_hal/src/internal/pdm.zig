@@ -71,7 +71,7 @@ pub const Config = extern struct {
 };
 
 /// `ra8_pdm_data_callback_t`.
-pub const DataFn = *const fn (ctx: ?*anyopaque, samples: [*]const i32, count: u32) callconv(.C) void;
+pub const DataFn = *const fn (ctx: ?*anyopaque, samples: [*]const i32, count: u32) callconv(.c) void;
 
 pub const Stream = struct { callback: ?DataFn = null, ctx: ?*anyopaque = null };
 

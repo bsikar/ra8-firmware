@@ -39,7 +39,7 @@ const Disk = struct {
     fail_at: ?u32 = null,
 };
 
-fn writeBlock(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.C) u16 {
+fn writeBlock(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
     const d: *Disk = @ptrCast(@alignCast(ctx.?));
     if (d.fail_at) |f| if (d.writes == f) return c.k_ra8_err_hw_error;
     std.debug.assert(count == 1);

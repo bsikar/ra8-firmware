@@ -29,7 +29,7 @@ const seam = struct {
 
 var fake: dc.Fake = .{};
 
-fn actcsrTestKey() callconv(.C) *const volatile anyopaque {
+fn actcsrTestKey() callconv(.c) *const volatile anyopaque {
     return &fake.actcsr;
 }
 

@@ -403,7 +403,7 @@ fn word(w: u32) u16 {
 }
 
 /// Upper-case form of one UTF-16 unit; identity for units the table leaves alone.
-pub export fn priv_exfat_upcase_unit(unit: u16) callconv(.C) u16 {
+pub export fn priv_exfat_upcase_unit(unit: u16) callconv(.c) u16 {
     if (unit <= 0x7F) return std.ascii.toUpper(@intCast(unit));
     var idx: u32 = 0;
     var w: u32 = 0;
@@ -425,13 +425,13 @@ pub export fn priv_exfat_upcase_unit(unit: u16) callconv(.C) u16 {
 }
 
 /// Checksum of the canonical table, as the formatter records it.
-pub export fn priv_exfat_upcase_checksum() callconv(.C) u32 {
+pub export fn priv_exfat_upcase_checksum() callconv(.c) u32 {
     return c.priv_exfat_csum32(0, &table, table_bytes);
 }
 
 /// Writes the table to `abs_lba..`, zero-padding the last sector, and returns
 /// its checksum in `out_csum`. Stops at the first failed sector write.
-pub export fn priv_exfat_write_upcase(backend: *const c.ra8_fs_backend_t, abs_lba: u64, bps: u32, out_csum: *u32) callconv(.C) u16 {
+pub export fn priv_exfat_write_upcase(backend: *const c.ra8_fs_backend_t, abs_lba: u64, bps: u32, out_csum: *u32) callconv(.c) u16 {
     const scratch: [*]u8 = &c.g_fs_scratch;
     const secs = (table_bytes + bps - 1) / bps;
     var cs: u32 = 0;

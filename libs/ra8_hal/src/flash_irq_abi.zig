@@ -14,7 +14,7 @@ const ok = common.k_ra8_ok;
 const hosted = builtin.os.tag != .freestanding;
 const world_ns: u8 = 0;
 
-const Callback = *const fn (ev: *const fi.Event) callconv(.C) void;
+const Callback = *const fn (ev: *const fi.Event) callconv(.c) void;
 
 /// ra8_flash_runtime_t.
 const Runtime = extern struct {

@@ -20,7 +20,7 @@ extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
 
 /// `ra8_eth_mfwd_event_fn_t`.
-const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
 
 const tag = "ETHMFW";
 const window: mfwd.Window = .{};

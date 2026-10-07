@@ -158,7 +158,7 @@ test "reconfigure swaps the table and toggles RRS" {
 var seen_mask: u16 = 0;
 var seen_ctx: ?*anyopaque = null;
 
-fn handler(ctx: ?*anyopaque, mask: u16) callconv(.C) void {
+fn handler(ctx: ?*anyopaque, mask: u16) callconv(.c) void {
     seen_mask = mask;
     seen_ctx = ctx;
 }

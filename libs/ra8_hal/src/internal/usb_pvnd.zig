@@ -36,7 +36,7 @@ pub const Setup = extern struct {
     w_length: u16,
 };
 
-pub const SetupFn = *const fn (?*anyopaque, *const Setup) callconv(.C) u16;
+pub const SetupFn = *const fn (?*anyopaque, *const Setup) callconv(.c) u16;
 
 const vendor_envelopes = [_]u8{ 0xC0, 0x40, 0xC1, 0x41, 0xC2, 0x42 };
 

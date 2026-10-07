@@ -14,7 +14,7 @@ const k_ra8_err_null_ptr = common.k_ra8_err_null_ptr;
 const ra8_log_emit_error = common.ra8_log_emit_error;
 
 /// `ra8_sram_error_fn_t`.
-const ErrFn = *const fn (ctx: ?*anyopaque, bank: u8, is_2bit: bool, err_addr: usize) callconv(.C) void;
+const ErrFn = *const fn (ctx: ?*anyopaque, bank: u8, is_2bit: bool, err_addr: usize) callconv(.c) void;
 
 extern fn ra8_sram_get_status(out: *sec.Status) u16;
 

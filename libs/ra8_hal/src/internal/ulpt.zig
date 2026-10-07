@@ -27,7 +27,7 @@ pub const cr_tcstf: u8 = 0x02;
 pub const cr_tstop: u8 = 0x04;
 
 /// `ra8_ulpt_event_fn_t`.
-pub const Handler = ?*const fn (?*anyopaque, u8) callconv(.C) void;
+pub const Handler = ?*const fn (?*anyopaque, u8) callconv(.c) void;
 
 /// MSTPE9 ULPT0, MSTPE8 ULPT1.
 pub fn mstpId(channel: u8) u16 {

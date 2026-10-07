@@ -18,7 +18,7 @@ comptime {
 }
 
 /// `ra8_eth_gwca_event_fn_t`.
-pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
 
 /// Write `mask` to ICLR, then clear those bits in STS.
 pub fn clearStatus(regs: *volatile Regs, mask: u32) void {

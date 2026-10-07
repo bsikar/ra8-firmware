@@ -27,9 +27,9 @@ const probe_float: u16 = 0xFFFF;
 
 /// `ra8_i2c_bus_ops_t`.
 pub const BusOps = extern struct {
-    write: ?*const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.C) u16 = null,
-    read: ?*const fn (?*anyopaque, u8, [*]u8, u32) callconv(.C) u16 = null,
-    transfer: ?*const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.C) u16 = null,
+    write: ?*const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.c) u16 = null,
+    read: ?*const fn (?*anyopaque, u8, [*]u8, u32) callconv(.c) u16 = null,
+    transfer: ?*const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.c) u16 = null,
     ctx: ?*anyopaque = null,
 };
 
@@ -68,7 +68,7 @@ pub fn decode(vcell: u16, soc: u16, crate: u16) State {
 fn readReg16(bus: *const BusOps, addr: u8, reg: u8, out: *u16) Status {
     var ptr = [1]u8{reg};
     var raw = [2]u8{ 0, 0 };
-    const code: Status = @enumFromInt(bus.transfer.?(bus.ctx, addr, &ptr, 1, &raw, 2));
+    const code: Status = @fromBackingInt(@intCast(bus.transfer.?(bus.ctx, addr, &ptr, 1, &raw, 2)));
     if (code != .ok) return code;
     out.* = (@as(u16, raw[0]) << 8) | raw[1];
     return .ok;

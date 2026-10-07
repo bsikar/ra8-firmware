@@ -30,7 +30,7 @@ pub const lib_name = "ra8_core";
 pub fn forCpu(
     b: *std.Build,
     cpu_model: *const std.Target.Cpu.Model,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const target = b.resolveTargetQuery(.{
         .cpu_arch = .thumb,
@@ -45,7 +45,7 @@ pub fn forCpu(
 pub fn forTarget(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const dependency = b.dependency(lib_name, .{
         .target = target,

@@ -35,7 +35,7 @@ pub fn has(b: *std.Build) bool {
 pub fn forTarget(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const dependency = b.dependency(name, .{
         .target = target,

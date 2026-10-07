@@ -12,7 +12,7 @@ const Chip = struct {
     last_addr: u8 = 0,
     reads: u32 = 0,
 
-    fn transfer(ctx: ?*anyopaque, addr: u8, wr: [*]const u8, wr_len: u32, rd: [*]u8, rd_len: u32) callconv(.C) u16 {
+    fn transfer(ctx: ?*anyopaque, addr: u8, wr: [*]const u8, wr_len: u32, rd: [*]u8, rd_len: u32) callconv(.c) u16 {
         const chip: *Chip = @ptrCast(@alignCast(ctx.?));
         if (wr_len != 1 or rd_len != 2) return 0x103;
         chip.last_addr = addr;
@@ -58,7 +58,7 @@ test "open rejects a missing transfer, a stuck bus and passes bus errors through
     chip.regs[fg.reg_version] = 0xFFFF;
     try std.testing.expectEqual(fg.Status.hw_not_ready, fg.open(&h, &c));
     chip.fail_reg = fg.reg_version;
-    try std.testing.expectEqual(@as(u16, 0x205), @intFromEnum(fg.open(&h, &c)));
+    try std.testing.expectEqual(@as(u16, 0x205), @backingInt(fg.open(&h, &c)));
     try std.testing.expect(!h.opened);
 }
 
@@ -91,6 +91,6 @@ test "read stops at the first failing register" {
     chip.fail_reg = fg.reg_soc;
     chip.reads = 0;
     var s: fg.State = undefined;
-    try std.testing.expectEqual(@as(u16, 0x205), @intFromEnum(fg.read(&h, &s)));
+    try std.testing.expectEqual(@as(u16, 0x205), @backingInt(fg.read(&h, &s)));
     try std.testing.expectEqual(@as(u32, 2), chip.reads);
 }

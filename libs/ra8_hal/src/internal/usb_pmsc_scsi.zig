@@ -18,10 +18,10 @@ const inq_vendor = 8;
 const inq_product = 16;
 const inq_revision = 32;
 
-pub const ReadFn = *const fn (ctx: ?*anyopaque, lba: u32, count: u32, buf: [*]u8) callconv(.C) u16;
-pub const WriteFn = *const fn (ctx: ?*anyopaque, lba: u32, count: u32, buf: [*]const u8) callconv(.C) u16;
-pub const CapacityFn = *const fn (ctx: ?*anyopaque, count: *u32, size: *u32) callconv(.C) u16;
-pub const InquiryFn = *const fn (ctx: ?*anyopaque, vendor8: [*]u8, product16: [*]u8, revision4: [*]u8) callconv(.C) u16;
+pub const ReadFn = *const fn (ctx: ?*anyopaque, lba: u32, count: u32, buf: [*]u8) callconv(.c) u16;
+pub const WriteFn = *const fn (ctx: ?*anyopaque, lba: u32, count: u32, buf: [*]const u8) callconv(.c) u16;
+pub const CapacityFn = *const fn (ctx: ?*anyopaque, count: *u32, size: *u32) callconv(.c) u16;
+pub const InquiryFn = *const fn (ctx: ?*anyopaque, vendor8: [*]u8, product16: [*]u8, revision4: [*]u8) callconv(.c) u16;
 
 /// `ra8_usb_pmsc_storage_t`.
 pub const Storage = extern struct {

@@ -17,7 +17,7 @@ comptime {
 }
 
 /// `ra8_canfd_event_fn_t`.
-pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8, status_mask: u32) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8, status_mask: u32) callconv(.c) void;
 
 pub const Handler = struct {
     func: ?EventFn = null,

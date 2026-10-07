@@ -35,7 +35,7 @@ const std = @import("std");
 pub const NamedOptimize = struct {
     /// The CMAKE_BUILD_TYPE spelling the listfile compares against.
     cmake_name: []const u8,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 };
 
 /// The whole mapping zig_libs.cmake applies, as its text spells it.
@@ -44,10 +44,10 @@ pub const Mapping = struct {
     named: []const NamedOptimize,
     /// The `else()` arm: what every configuration it does NOT name gets.
     /// Absent only if the listfile stopped having one, which `parse` refuses.
-    fallback: std.builtin.OptimizeMode,
+    fallback: std.lang.OptimizeMode,
 
     /// What a configure of `cmake_name` gets a migrated archive built at.
-    pub fn forName(self: Mapping, cmake_name: []const u8) std.builtin.OptimizeMode {
+    pub fn forName(self: Mapping, cmake_name: []const u8) std.lang.OptimizeMode {
         for (self.named) |arm| {
             // CMake's STREQUAL is exact, so this is too.
             if (std.mem.eql(u8, arm.cmake_name, cmake_name)) return arm.optimize;
@@ -60,7 +60,7 @@ pub const Mapping = struct {
 /// this graph does not know. Null rather than a default on purpose: a listfile
 /// that started asking for ReleaseFast should fail loudly here, not be read as
 /// whatever this file guesses.
-pub fn optimizeFromName(name: []const u8) ?std.builtin.OptimizeMode {
+pub fn optimizeFromName(name: []const u8) ?std.lang.OptimizeMode {
     if (std.mem.eql(u8, name, "Debug")) return .Debug;
     if (std.mem.eql(u8, name, "ReleaseSmall")) return .ReleaseSmall;
     if (std.mem.eql(u8, name, "ReleaseSafe")) return .ReleaseSafe;
@@ -129,7 +129,7 @@ pub fn cacheDefault(source: []const u8, name: []const u8) ?[]const u8 {
 /// against nothing is the failure this whole slice exists to prevent.
 pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const u8) ?Mapping {
     var named: std.ArrayList(NamedOptimize) = .empty;
-    var fallback: ?std.builtin.OptimizeMode = null;
+    var fallback: ?std.lang.OptimizeMode = null;
     // Which arm the walk is inside: a name it matched, or the else().
     var arm: ?[]const u8 = null;
     var in_else = false;
@@ -221,15 +221,15 @@ test "a listfile's own mapping is read, arms and else alike" {
     defer std.testing.allocator.free(mapping.named);
     try std.testing.expectEqual(@as(usize, 1), mapping.named.len);
     try std.testing.expectEqualStrings("Debug", mapping.named[0].cmake_name);
-    try std.testing.expectEqual(std.builtin.OptimizeMode.Debug, mapping.named[0].optimize);
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.fallback);
+    try std.testing.expectEqual(std.lang.OptimizeMode.Debug, mapping.named[0].optimize);
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.fallback);
     // The three the repo configures, through the accessor a caller uses.
-    try std.testing.expectEqual(std.builtin.OptimizeMode.Debug, mapping.forName("Debug"));
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("Release"));
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("RelWithDebInfo"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.Debug, mapping.forName("Debug"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("Release"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("RelWithDebInfo"));
     // CMake's STREQUAL is exact, so a differently-cased spelling is NOT the
     // Debug arm, and falls to the else the way a real configure would.
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("debug"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("debug"));
 }
 
 test "a mapping this graph cannot read is null, not a guess" {
@@ -271,8 +271,8 @@ test "a set through a cache knob resolves to the knob's default" {
     const mapping = parse(std.testing.allocator, source, "_zig_optimize").?;
     defer std.testing.allocator.free(mapping.named);
     try std.testing.expectEqual(@as(usize, 0), mapping.named.len);
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("Debug"));
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("RelWithDebInfo"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("Debug"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("RelWithDebInfo"));
 }
 
 test "a reference this graph cannot resolve is null, not a guess" {
@@ -303,7 +303,7 @@ test "an unconditional set answers for every configuration" {
     const mapping = parse(std.testing.allocator, source, "_zig_optimize").?;
     defer std.testing.allocator.free(mapping.named);
     try std.testing.expectEqual(@as(usize, 0), mapping.named.len);
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("Debug"));
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, mapping.forName("Debug"));
 }
 
 test "the archive request is read out of the loop that makes it" {

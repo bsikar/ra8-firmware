@@ -109,7 +109,7 @@ pub fn addSuite(
     b: *std.Build,
     step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) void {
     const module = b.createModule(.{
         .target = target,
