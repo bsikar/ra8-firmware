@@ -46,13 +46,11 @@ fn hasUndefined(elf: []const u8, name: []const u8) bool {
     return false;
 }
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const gpa = arena.allocator();
-    const args = try std.process.argsAlloc(gpa);
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.arena.allocator();
+    const args = try init.minimal.args.toSlice(gpa);
     if (args.len != 2) return error.Usage;
-    const elf = try std.fs.cwd().readFileAlloc(gpa, args[1], 1 << 20);
+    const elf = try std.Io.Dir.cwd().readFileAlloc(init.io, args[1], gpa, .limited(1 << 20));
     if (elf.len < 0x34 or !std.mem.eql(u8, elf[0..4], "\x7fELF") or elf[4] != 1) return error.NotElf32;
     for (required) |name| {
         if (!hasUndefined(elf, name)) {

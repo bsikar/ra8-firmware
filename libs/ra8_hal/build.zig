@@ -277,7 +277,7 @@ fn addFpuLoweringCheck(b: *std.Build, test_step: *std.Build.Step) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/fpu_probe_abi.zig"),
             .target = arm,
-            .optimize = .ReleaseSmall,
+            .optimize = .small,
         }),
     });
     probe.bundle_compiler_rt = false;

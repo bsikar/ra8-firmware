@@ -40,13 +40,13 @@ const Recorder = struct {
     log: *std.ArrayList([3]usize),
 
     pub fn fire(r: Recorder, bank: u8, is_2bit: bool, addr: usize) void {
-        r.log.append(.{ bank, @intFromBool(is_2bit), addr }) catch unreachable;
+        r.log.append(std.testing.allocator, .{ bank, @intFromBool(is_2bit), addr }) catch unreachable;
     }
 };
 
 test "dispatchEsr fires 1-bit then 2-bit per bank and returns the fired mask" {
-    var log = std.ArrayList([3]usize).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList([3]usize) = .empty;
+    defer log.deinit(std.testing.allocator);
     var s: sec.Status = .{ .raw_esr = 0b1100_0001 };
     s.addr_1bit = .{ 0x100, 0, 0, 0x400 };
     s.addr_2bit = .{ 0, 0, 0, 0x440 };
@@ -56,8 +56,8 @@ test "dispatchEsr fires 1-bit then 2-bit per bank and returns the fired mask" {
 }
 
 test "dispatchEsr ignores bits above the four banks" {
-    var log = std.ArrayList([3]usize).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList([3]usize) = .empty;
+    defer log.deinit(std.testing.allocator);
     const s: sec.Status = .{ .raw_esr = 0xFF00 };
     try std.testing.expectEqual(@as(u16, 0), sec.dispatchEsr(&s, Recorder{ .log = &log }));
     try std.testing.expectEqual(@as(usize, 0), log.items.len);

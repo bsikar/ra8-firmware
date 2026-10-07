@@ -13,14 +13,14 @@ const Hw = struct {
     done_at: u32,
     kick: u16 = q.ok,
     pub fn dsb(self: Hw) void {
-        self.log.append('d') catch unreachable;
+        self.log.append(std.testing.allocator, 'd') catch unreachable;
     }
     pub fn reloadQueue(self: Hw, _: u32) u16 {
-        self.log.append('r') catch unreachable;
+        self.log.append(std.testing.allocator, 'r') catch unreachable;
         return q.ok;
     }
     pub fn kickTx(self: Hw, _: u32) u16 {
-        self.log.append('k') catch unreachable;
+        self.log.append(std.testing.allocator, 'k') catch unreachable;
         return self.kick;
     }
     pub fn txDone(self: Hw, _: *volatile t.ExtDesc, iter: u32) bool {
@@ -30,7 +30,7 @@ const Hw = struct {
         return q.null_ptr;
     }
     pub fn logError(self: Hw, _: [*:0]const u8) void {
-        self.log.append('e') catch unreachable;
+        self.log.append(std.testing.allocator, 'e') catch unreachable;
     }
 };
 
@@ -53,8 +53,8 @@ fn freshState() !t.DefaultState {
 }
 
 test "send fills slot 0 and kicks after the barrier" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var s = try freshState();
     const frame = [_]u8{ 1, 2, 3, 4, 5 };
     try std.testing.expectEqual(q.ok, t.send(Hw{ .log = &log, .done_at = 3 }, &s, &frame, frame.len));
@@ -68,8 +68,8 @@ test "send fills slot 0 and kicks after the barrier" {
 }
 
 test "send rejects bad args and times out" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var s = try freshState();
     const frame: [65]u8 = @splat(0);
     const hw = Hw{ .log = &log, .done_at = std.math.maxInt(u32) };
@@ -82,8 +82,8 @@ test "send rejects bad args and times out" {
 }
 
 test "send re-arms an idle ring and info1Hi stays in DV" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var s = try freshState();
     q.setDt(&ring[3].base, 12);
     const frame = [_]u8{9};
