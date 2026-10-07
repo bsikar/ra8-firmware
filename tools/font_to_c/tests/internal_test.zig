@@ -143,10 +143,10 @@ test "the symbol name is used for both the array and the length" {
 }
 
 test "appendRow indents two spaces and comma-terminates every literal" {
-    var out = std.ArrayList(u8).init(std.testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer out.deinit();
 
-    try implementation.appendRow(&out, &.{ 0xDE, 0xAD });
+    try implementation.appendRow(&out.writer, &.{ 0xDE, 0xAD });
 
-    try std.testing.expectEqualStrings("  0xDE, 0xAD,", out.items);
+    try std.testing.expectEqualStrings("  0xDE, 0xAD,", out.written());
 }
