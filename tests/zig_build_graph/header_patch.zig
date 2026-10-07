@@ -57,11 +57,10 @@ pub fn count(text: []const u8, line: []const u8) usize {
     return n;
 }
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-    const args = try std.process.argsAlloc(allocator);
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const allocator = init.arena.allocator();
+    const args = try init.minimal.args.toSlice(allocator);
     if (args.len < 5 or (args.len - 3) % 2 != 0) {
         std.debug.print("usage: header_patch IN OUT OLD NEW [OLD NEW]...\n", .{});
         std.process.exit(2);
@@ -69,10 +68,11 @@ pub fn main() !void {
     var rewrites: std.ArrayList(Rewrite) = .empty;
     var i: usize = 3;
     while (i < args.len) : (i += 2) try rewrites.append(allocator, .{ .old = args[i], .new = args[i + 1] });
-    const text = try std.fs.cwd().readFileAlloc(allocator, args[1], 1 << 20);
+    const cwd = std.Io.Dir.cwd();
+    const text = try cwd.readFileAlloc(io, args[1], allocator, .limited(1 << 20));
     const patched = apply(allocator, text, rewrites.items) catch |err| {
-        std.debug.print("header_patch: {s}: {s}\n", .{ args[1], @errorName(err) });
+        std.debug.print("header_patch: {s}: {t}\n", .{ args[1], err });
         std.process.exit(1);
     };
-    try std.fs.cwd().writeFile(.{ .sub_path = args[2], .data = patched });
+    try cwd.writeFile(io, .{ .sub_path = args[2], .data = patched });
 }
