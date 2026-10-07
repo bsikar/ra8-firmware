@@ -41,7 +41,8 @@ fn shapeMessage(err: implementation.ShapeError) []const u8 {
 /// Dispatch one read mode against the state file named in `argv[0]`.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     out: anytype,
     err: anytype,
@@ -55,17 +56,12 @@ pub fn run(
     const arg: []const u8 = if (argv.len > 2) argv[2] else "";
 
     // No ceiling on this read. The Python opened the state file and handed it
-    // to `json.load` with no size limit, and `readFileAlloc` does not
-    // truncate at one: it fails `error.FileTooBig`, which this caller turns
+    // to `json.load` with no size limit, and a limited `readFileAlloc` does
+    // not truncate: it fails `error.StreamTooLong`, which this caller turns
     // into "cannot read" and status 1. A document the monitor can still
     // answer from must not become a read error here just because it grew, so
-    // the whole file is read and only a real read failure fails.
-    const file = dir.openFile(path, .{}) catch |open_err| {
-        try err.print("ci_status: cannot read {s}: {s}\n", .{ path, @errorName(open_err) });
-        return 1;
-    };
-    defer file.close();
-    const text = file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch |read_err| {
+    // the whole file is read and only a real open or read failure fails.
+    const text = dir.readFileAlloc(io, path, allocator, .unlimited) catch |read_err| {
         try err.print("ci_status: cannot read {s}: {s}\n", .{ path, @errorName(read_err) });
         return 1;
     };
