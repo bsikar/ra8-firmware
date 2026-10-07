@@ -112,20 +112,20 @@ pub fn isLineBreak(cp: u21) bool {
 
 /// Fold CRLF and a lone CR into LF, the way Python's text mode reads a file.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, text.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, text.len);
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < text.len) {
         const byte = text[index];
         if (byte == '\r') {
-            try out.append('\n');
+            try out.append(allocator, '\n');
             index += if (index + 1 < text.len and text[index + 1] == '\n') 2 else 1;
             continue;
         }
-        try out.append(byte);
+        try out.append(allocator, byte);
         index += 1;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Walk a text as `str.splitlines()` does: no terminators, no trailing empty
@@ -156,11 +156,11 @@ pub const LineIterator = struct {
 
 /// `str.splitlines()` over an already-folded text.
 pub fn splitLines(allocator: std.mem.Allocator, text: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList([]const u8) = .empty;
+    errdefer out.deinit(allocator);
     var lines = LineIterator.init(text);
-    while (lines.next()) |line| try out.append(line);
-    return out.toOwnedSlice();
+    while (lines.next()) |line| try out.append(allocator, line);
+    return out.toOwnedSlice(allocator);
 }
 
 /// Index of the first character that is not Python whitespace, from `start`.
@@ -307,20 +307,20 @@ pub fn checkLines(
     token: []const u8,
     lines: []const []const u8,
 ) ![][]const u8 {
-    var problems = std.ArrayList([]const u8).init(allocator);
-    errdefer problems.deinit();
+    var problems: std.ArrayList([]const u8) = .empty;
+    errdefer problems.deinit(allocator);
 
     const region = findGuardRegion(lines) orelse {
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{s}: missing the stub-crypto guard '{s}' with a matching #else / #endif",
             .{ rel, guard_spelling },
         ));
-        return problems.toOwnedSlice();
+        return problems.toOwnedSlice(allocator);
     };
 
     if (!isFailClosed(lines[region.else_idx + 1 .. region.endif_idx])) {
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{s}: the #else branch is not fail-closed " ++
                 "(needs a #error or a k_ra8_err_* hard return, not k_ra8_ok)",
@@ -331,19 +331,19 @@ pub fn checkLines(
     // A hit ON the `#if` line itself is an escape, not an inside hit: the
     // bounds are strict on both sides, inherited and pinned by a test.
     var inside: usize = 0;
-    var escaped = std.ArrayList(usize).init(allocator);
-    errdefer escaped.deinit();
+    var escaped: std.ArrayList(usize) = .empty;
+    errdefer escaped.deinit(allocator);
     for (lines, 0..) |line, index| {
         if (std.mem.indexOf(u8, line, token) == null) continue;
         if (region.if_idx < index and index < region.else_idx) {
             inside += 1;
         } else {
-            try escaped.append(index);
+            try escaped.append(allocator, index);
         }
     }
 
     if (inside == 0) {
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{s}: insecure signature '{s}' not found inside the guarded " ++
                 "#if region (is the insecure body still present and guarded?)",
@@ -351,21 +351,21 @@ pub fn checkLines(
         ));
     }
     if (escaped.items.len != 0) {
-        var where = std.ArrayList(u8).init(allocator);
+        var where: std.Io.Writer.Allocating = .init(allocator);
         errdefer where.deinit();
         for (escaped.items, 0..) |index, ordinal| {
-            if (ordinal != 0) try where.appendSlice(", ");
-            try where.writer().print("line {d}", .{index + 1});
+            if (ordinal != 0) try where.writer.writeAll(", ");
+            try where.writer.print("line {d}", .{index + 1});
         }
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{s}: insecure signature '{s}' appears OUTSIDE the guard ({s}) " ++
                 "-- the insecure body must be fully inside the {s} block",
-            .{ rel, token, where.items, guard_spelling },
+            .{ rel, token, where.written(), guard_spelling },
         ));
     }
 
-    return problems.toOwnedSlice();
+    return problems.toOwnedSlice(allocator);
 }
 
 /// Findings for one stub TU's source text, read as Python text mode reads it.

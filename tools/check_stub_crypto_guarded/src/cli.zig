@@ -42,35 +42,34 @@ fn resolve(allocator: std.mem.Allocator, repo_root: []const u8, rel: []const u8)
 
 /// Whether `path` is a regular file, as `pathlib.Path.is_file` answers it:
 /// a missing path and a directory are both false, and symlinks are followed.
-fn isRegularFile(dir: std.fs.Dir, path: []const u8) bool {
-    const stat = dir.statFile(path) catch return false;
+fn isRegularFile(io: std.Io, dir: std.Io.Dir, path: []const u8) bool {
+    const stat = dir.statFile(io, path, .{}) catch return false;
     return stat.kind == .file;
 }
 
 /// Read one stub TU whole.
 ///
 /// There is deliberately NO size ceiling. The predecessor called `read_text()`
-/// with none, and a ceiling here does not truncate: `readToEndAlloc` fails
-/// with `error.FileTooBig`, the caller turns that into "cannot read stub TU"
+/// with none, and a ceiling here does not truncate: a limited read fails
+/// with `error.StreamTooLong`, the caller turns that into "cannot read stub TU"
 /// and returns 1 without a finding, so a TU past the ceiling loses its
 /// findings and takes every TU listed after it down with it. A gate that
 /// cannot read a file must say what it failed to prove, never report less
 /// than the predecessor did.
-fn readSource(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) ![]const u8 {
-    var file = try dir.openFile(path, .{});
-    defer file.close();
-    return file.readToEndAlloc(allocator, std.math.maxInt(usize));
+fn readSource(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, path: []const u8) ![]const u8 {
+    return dir.readFileAlloc(io, path, allocator, .unlimited);
 }
 
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     caller_allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     stubs: []const implementation.Stub,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     // One arena per run: the read sources, the split lines and the rendered
     // findings all live exactly as long as the run does.
@@ -84,14 +83,14 @@ pub fn run(
         return 2;
     }
 
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     for (stubs) |stub| {
         const path = try resolve(allocator, repo_root, stub.rel);
-        if (!isRegularFile(dir, path)) {
-            try problems.append(try implementation.renderMissingFile(allocator, stub.rel));
+        if (!isRegularFile(io, dir, path)) {
+            try problems.append(allocator, try implementation.renderMissingFile(allocator, stub.rel));
             continue;
         }
-        const raw = readSource(allocator, dir, path) catch {
+        const raw = readSource(allocator, io, dir, path) catch {
             try err.print("{s}: cannot read stub TU: {s}\n", .{ tool, path });
             return 1;
         };
@@ -100,7 +99,7 @@ pub fn run(
             return 1;
         }
         for (try implementation.checkText(allocator, stub.rel, stub.token, raw)) |problem| {
-            try problems.append(problem);
+            try problems.append(allocator, problem);
         }
     }
 
@@ -122,7 +121,7 @@ pub fn run(
 }
 
 /// Prove both detector directions, printing one line per case.
-pub fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
+pub fn selftest(allocator: std.mem.Allocator, out: *std.Io.Writer, err: *std.Io.Writer) !u8 {
     const cases = try implementation.selftestCases(allocator);
     var failures: usize = 0;
     for (cases) |case| {
