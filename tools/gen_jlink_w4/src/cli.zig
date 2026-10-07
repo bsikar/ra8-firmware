@@ -32,14 +32,15 @@ pub const max_image_bytes: usize = 64 * 1024 * 1024;
 
 /// Where diagnostics and the script go.
 pub const Streams = struct {
-    out: std.io.AnyWriter,
-    err: std.io.AnyWriter,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 };
 
-/// What the process shell supplies: the directory relative paths resolve
-/// against and the program name the usage line names.
+/// What the process shell supplies: the I/O implementation, the directory
+/// relative paths resolve against and the program name the usage line names.
 pub const Context = struct {
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     program_name: []const u8,
 };
 
@@ -87,7 +88,14 @@ pub fn run(
         return 1;
     }
 
-    const image = context.dir.readFileAlloc(arena, image_path, max_image_bytes) catch |err| {
+    // `readFileAlloc` fails once the limit is reached, so the extra byte keeps
+    // an image of exactly `max_image_bytes` readable.
+    const image = context.dir.readFileAlloc(
+        context.io,
+        image_path,
+        arena,
+        .limited(max_image_bytes + 1),
+    ) catch |err| {
         try streams.err.print(
             "gen_jlink_w4: cannot read '{s}': {s}\n",
             .{ image_path, @errorName(err) },

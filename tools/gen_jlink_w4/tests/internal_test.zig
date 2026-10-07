@@ -309,9 +309,9 @@ test "the padded 0xFF tail reaches the reset handler" {
 }
 
 fn renderWith(comptime write: anytype, argument: anytype) ![]u8 {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     errdefer buffer.deinit();
-    try write(buffer.writer(), argument);
+    try write(&buffer.writer, argument);
     return buffer.toOwnedSlice();
 }
 
@@ -334,24 +334,24 @@ test "the preamble prints an unusual device name verbatim" {
 }
 
 test "a word write names its address and its word" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.writeWordWrite(buffer.writer(), "02000004", 0xDEADBEEF);
-    try testing.expectEqualStrings("w4 0x02000004 0xDEADBEEF\n", buffer.items);
+    try implementation.writeWordWrite(&buffer.writer, "02000004", 0xDEADBEEF);
+    try testing.expectEqualStrings("w4 0x02000004 0xDEADBEEF\n", buffer.written());
 }
 
 test "a word write carries a negative address through unchanged" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.writeWordWrite(buffer.writer(), "-0000001", 0);
-    try testing.expectEqualStrings("w4 0x-0000001 0x00000000\n", buffer.items);
+    try implementation.writeWordWrite(&buffer.writer, "-0000001", 0);
+    try testing.expectEqualStrings("w4 0x-0000001 0x00000000\n", buffer.written());
 }
 
 test "a register write formats both operands as words" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try implementation.writeRegisterWrite(buffer.writer(), implementation.dcrsr_address, implementation.dcrsr_write_pc);
-    try testing.expectEqualStrings("w4 0xE000EDF4 0x0001000F\n", buffer.items);
+    try implementation.writeRegisterWrite(&buffer.writer, implementation.dcrsr_address, implementation.dcrsr_write_pc);
+    try testing.expectEqualStrings("w4 0xE000EDF4 0x0001000F\n", buffer.written());
 }
 
 test "the injection sequence is DCRDR then DCRSR, four times, then g and q" {
