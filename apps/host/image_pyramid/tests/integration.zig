@@ -4,57 +4,58 @@
 const std = @import("std");
 const app = @import("image_pyramid");
 
+/// Accepts one complete line, then fails every later write.
 const FailingWriter = struct {
-    const Error = error{InjectedFailure};
     completed_lines: usize = 0,
+    interface: std.Io.Writer = .{ .vtable = &.{ .drain = drain }, .buffer = &.{} },
 
-    fn write(self: *FailingWriter, bytes: []const u8) Error!usize {
-        if (self.completed_lines >= 1) return error.InjectedFailure;
+    fn drain(writer: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const self: *FailingWriter = @alignCast(@fieldParentPtr("interface", writer));
+        if (self.completed_lines >= 1) return error.WriteFailed;
+        const bytes = for (data[0 .. data.len - 1]) |slice| {
+            if (slice.len != 0) break slice;
+        } else if (splat == 0) return 0 else data[data.len - 1];
         if (std.mem.indexOfScalar(u8, bytes, '\n')) |newline| {
             self.completed_lines += 1;
             return newline + 1;
         }
         return bytes.len;
     }
-
-    fn writer(self: *FailingWriter) std.io.Writer(*FailingWriter, Error, write) {
-        return .{ .context = self };
-    }
 };
 
 test "help is stable" {
-    var output = std.ArrayList(u8).init(std.testing.allocator);
+    var output: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer output.deinit();
-    var errors = std.ArrayList(u8).init(std.testing.allocator);
+    var errors: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer errors.deinit();
     const args = [_][]const u8{ "image_pyramid", "--help" };
-    const status = try app.execute(std.testing.allocator, &args, output.writer(), errors.writer());
+    const status = try app.execute(std.testing.allocator, std.testing.io, &args, &output.writer, &errors.writer);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expectEqualStrings("usage: image_pyramid <input.jpg> --out-dir <dir> [--levels <1..16>]\n", output.items);
-    try std.testing.expectEqual(@as(usize, 0), errors.items.len);
+    try std.testing.expectEqualStrings("usage: image_pyramid <input.jpg> --out-dir <dir> [--levels <1..16>]\n", output.written());
+    try std.testing.expectEqual(@as(usize, 0), errors.written().len);
 }
 
 test "missing output directory is a usage error" {
-    var output = std.ArrayList(u8).init(std.testing.allocator);
+    var output: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer output.deinit();
-    var errors = std.ArrayList(u8).init(std.testing.allocator);
+    var errors: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer errors.deinit();
     const args = [_][]const u8{ "image_pyramid", "dog.jpg" };
-    const status = try app.execute(std.testing.allocator, &args, output.writer(), errors.writer());
+    const status = try app.execute(std.testing.allocator, std.testing.io, &args, &output.writer, &errors.writer);
     try std.testing.expectEqual(@as(u8, 2), status);
-    try std.testing.expect(std.mem.startsWith(u8, errors.items, "error: missing-output-dir\n"));
+    try std.testing.expect(std.mem.startsWith(u8, errors.written(), "error: missing-output-dir\n"));
 }
 
 test "dog fixture produces the intentionally degraded eight-level pyramid" {
     const allocator = std.testing.allocator;
     var temporary = std.testing.tmpDir(.{});
     defer temporary.cleanup();
-    const output_path = try temporary.dir.realpathAlloc(allocator, ".");
+    const output_path = try temporary.dir.realPathFileAlloc(std.testing.io, ".", allocator);
     defer allocator.free(output_path);
 
-    var output = std.ArrayList(u8).init(allocator);
+    var output: std.Io.Writer.Allocating = .init(allocator);
     defer output.deinit();
-    var errors = std.ArrayList(u8).init(allocator);
+    var errors: std.Io.Writer.Allocating = .init(allocator);
     defer errors.deinit();
     const args = [_][]const u8{
         "image_pyramid",
@@ -62,9 +63,9 @@ test "dog fixture produces the intentionally degraded eight-level pyramid" {
         "--out-dir",
         output_path,
     };
-    const status = try app.execute(allocator, &args, output.writer(), errors.writer());
+    const status = try app.execute(allocator, std.testing.io, &args, &output.writer, &errors.writer);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expectEqual(@as(usize, 0), errors.items.len);
+    try std.testing.expectEqual(@as(usize, 0), errors.written().len);
 
     const names = [_][]const u8{
         "level-01-165x247-q25.jpg",
@@ -87,7 +88,7 @@ test "dog fixture produces the intentionally degraded eight-level pyramid" {
         "eeabda13201198619c6bbc8e5582151db52117ad79083548e3904f8321591910",
     };
     for (names, hashes) |name, expected_hash| {
-        const bytes = try temporary.dir.readFileAlloc(allocator, name, 16 * 1024 * 1024);
+        const bytes = try temporary.dir.readFileAlloc(std.testing.io, name, allocator, .limited(16 * 1024 * 1024));
         defer allocator.free(bytes);
         try std.testing.expect(bytes.len > 4);
         try std.testing.expectEqualSlices(u8, &.{ 0xff, 0xd8 }, bytes[0..2]);
@@ -97,18 +98,18 @@ test "dog fixture produces the intentionally degraded eight-level pyramid" {
         const actual_hash = std.fmt.bytesToHex(digest, .lower);
         try std.testing.expectEqualStrings(expected_hash, &actual_hash);
     }
-    try std.testing.expectEqual(@as(usize, 8), std.mem.count(u8, output.items, "level="));
+    try std.testing.expectEqual(@as(usize, 8), std.mem.count(u8, output.written(), "level="));
 }
 
 test "manifest failure rolls back every published output" {
     const allocator = std.testing.allocator;
     var temporary = std.testing.tmpDir(.{});
     defer temporary.cleanup();
-    const output_path = try temporary.dir.realpathAlloc(allocator, ".");
+    const output_path = try temporary.dir.realPathFileAlloc(std.testing.io, ".", allocator);
     defer allocator.free(output_path);
 
     var failing = FailingWriter{};
-    var errors = std.ArrayList(u8).init(allocator);
+    var errors: std.Io.Writer.Allocating = .init(allocator);
     defer errors.deinit();
     const args = [_][]const u8{
         "image_pyramid",
@@ -118,26 +119,26 @@ test "manifest failure rolls back every published output" {
         "--levels",
         "2",
     };
-    try std.testing.expectError(error.InjectedFailure, app.execute(allocator, &args, failing.writer(), errors.writer()));
+    try std.testing.expectError(error.WriteFailed, app.execute(allocator, std.testing.io, &args, &failing.interface, &errors.writer));
     try std.testing.expectEqual(@as(usize, 1), failing.completed_lines);
 
-    var iterable = try temporary.dir.openDir(".", .{ .iterate = true });
-    defer iterable.close();
+    var iterable = try temporary.dir.openDir(std.testing.io, ".", .{ .iterate = true });
+    defer iterable.close(std.testing.io);
     var entries = iterable.iterate();
-    try std.testing.expect((try entries.next()) == null);
+    try std.testing.expect((try entries.next(std.testing.io)) == null);
 }
 
 test "existing output is preserved and prevents publication" {
     const allocator = std.testing.allocator;
     var temporary = std.testing.tmpDir(.{});
     defer temporary.cleanup();
-    const output_path = try temporary.dir.realpathAlloc(allocator, ".");
+    const output_path = try temporary.dir.realPathFileAlloc(std.testing.io, ".", allocator);
     defer allocator.free(output_path);
-    try temporary.dir.writeFile(.{ .sub_path = "level-01-165x247-q25.jpg", .data = "keep-me" });
+    try temporary.dir.writeFile(std.testing.io, .{ .sub_path = "level-01-165x247-q25.jpg", .data = "keep-me" });
 
-    var output = std.ArrayList(u8).init(allocator);
+    var output: std.Io.Writer.Allocating = .init(allocator);
     defer output.deinit();
-    var errors = std.ArrayList(u8).init(allocator);
+    var errors: std.Io.Writer.Allocating = .init(allocator);
     defer errors.deinit();
     const args = [_][]const u8{
         "image_pyramid",
@@ -147,10 +148,10 @@ test "existing output is preserved and prevents publication" {
         "--levels",
         "1",
     };
-    const status = try app.execute(allocator, &args, output.writer(), errors.writer());
+    const status = try app.execute(allocator, std.testing.io, &args, &output.writer, &errors.writer);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.startsWith(u8, errors.items, "error: output-collision:"));
-    const existing = try temporary.dir.readFileAlloc(allocator, "level-01-165x247-q25.jpg", 64);
+    try std.testing.expect(std.mem.startsWith(u8, errors.written(), "error: output-collision:"));
+    const existing = try temporary.dir.readFileAlloc(std.testing.io, "level-01-165x247-q25.jpg", allocator, .limited(64));
     defer allocator.free(existing);
     try std.testing.expectEqualStrings("keep-me", existing);
 }
