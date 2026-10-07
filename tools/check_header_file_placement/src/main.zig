@@ -14,58 +14,56 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const args = try std.process.argsAlloc(allocator);
+    const sentinel_args = try init.minimal.args.toSlice(allocator);
+    const args = try allocator.alloc([]const u8, sentinel_args.len);
+    for (args, sentinel_args) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
-    const override = std.process.getEnvVarOwned(allocator, "RA8_REPO_ROOT") catch null;
-    const repo_root = if (override) |value|
-        try std.fs.cwd().realpathAlloc(allocator, value)
-    else
-        try std.fs.cwd().realpathAlloc(allocator, ".");
+    const cwd = std.Io.Dir.cwd();
+    const repo_root = try cwd.realPathFileAlloc(io, init.environ_map.get("RA8_REPO_ROOT") orelse ".", allocator);
 
     // The selftest builds its fixture tree in a private directory and removes
     // it on the way out, as tempfile.TemporaryDirectory did.
-    const temp_dir = std.process.getEnvVarOwned(allocator, "TMPDIR") catch
-        try allocator.dupe(u8, "/tmp");
+    const temp_dir = init.environ_map.get("TMPDIR") orelse "/tmp";
     var seed: [8]u8 = undefined;
-    std.crypto.random.bytes(&seed);
+    io.random(&seed);
     const scratch_root = try std.fmt.allocPrint(
         allocator,
         "{s}/ra8-header-placement-{x}",
-        .{ std.mem.trimRight(u8, temp_dir, "/"), std.mem.readInt(u64, &seed, .little) },
+        .{ std.mem.trimEnd(u8, temp_dir, "/"), std.mem.readInt(u64, &seed, .little) },
     );
 
     // Every path this tool handles is absolute, as the predecessor's were:
     // REPO_ROOT-joined arguments, the scan roots beneath it, and the
     // selftest's fixture tree. A POSIX *at call ignores its directory handle
     // for an absolute path, so the working directory stays irrelevant.
-    var root_dir = std.fs.cwd();
-
-    var stdout_buffered = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var stderr_buffered = std.io.bufferedWriter(std.io.getStdErr().writer());
+    var stdout_buffer: [4096]u8 = undefined;
+    var stderr_buffer: [4096]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(io, &stdout_buffer);
+    var stderr = std.Io.File.stderr().writer(io, &stderr_buffer);
 
     const status = cli.run(
         allocator,
-        root_dir,
+        io,
+        cwd,
         repo_root,
         scratch_root,
         args[1..],
-        stdout_buffered.writer(),
-        stderr_buffered.writer(),
+        &stdout.interface,
+        &stderr.interface,
     ) catch |err| {
         std.debug.print("check_header_file_placement: {s}\n", .{@errorName(err)});
-        stdout_buffered.flush() catch {};
-        stderr_buffered.flush() catch {};
+        stdout.interface.flush() catch {};
+        stderr.interface.flush() catch {};
         return 1;
     };
 
-    root_dir.deleteTree(scratch_root) catch {};
+    cwd.deleteTree(io, scratch_root) catch {};
 
-    try stdout_buffered.flush();
-    try stderr_buffered.flush();
+    try stdout.interface.flush();
+    try stderr.interface.flush();
     return status;
 }

@@ -11,10 +11,9 @@ const implementation = @import("implementation");
 const testing = std.testing;
 
 fn render(comptime call: anytype, args: anytype) ![]u8 {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     errdefer buffer.deinit();
-    const writer = buffer.writer();
-    try @call(.auto, call, .{writer} ++ args);
+    try @call(.auto, call, .{&buffer.writer} ++ args);
     return buffer.toOwnedSlice();
 }
 

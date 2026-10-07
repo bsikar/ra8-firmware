@@ -15,21 +15,21 @@ const Harness = struct {
     tmp: std.testing.TmpDir,
     arena: std.heap.ArenaAllocator,
     root: []const u8,
-    out: std.ArrayList(u8),
-    err: std.ArrayList(u8),
+    out: std.Io.Writer.Allocating,
+    err: std.Io.Writer.Allocating,
 
     fn init() !Harness {
         var tmp = std.testing.tmpDir(.{});
         errdefer tmp.cleanup();
         var arena = std.heap.ArenaAllocator.init(testing.allocator);
         const scratch = arena.allocator();
-        const real_root = try tmp.dir.realpathAlloc(scratch, ".");
+        const real_root = try tmp.dir.realPathFileAlloc(testing.io, ".", scratch);
         return .{
             .tmp = tmp,
             .arena = arena,
             .root = real_root,
-            .out = std.ArrayList(u8).init(testing.allocator),
-            .err = std.ArrayList(u8).init(testing.allocator),
+            .out = .init(testing.allocator),
+            .err = .init(testing.allocator),
         };
     }
 
@@ -45,14 +45,14 @@ const Harness = struct {
     }
 
     fn write(self: *Harness, relative: []const u8) !void {
-        if (std.fs.path.dirname(relative)) |parent| try self.tmp.dir.makePath(parent);
-        var file = try self.tmp.dir.createFile(relative, .{ .truncate = true });
-        defer file.close();
-        try file.writeAll("#pragma once\n");
+        if (std.fs.path.dirname(relative)) |parent| try self.tmp.dir.createDirPath(testing.io, parent);
+        var file = try self.tmp.dir.createFile(testing.io, relative, .{ .truncate = true });
+        defer file.close(testing.io);
+        try file.writeStreamingAll(testing.io, "#pragma once\n");
     }
 
     fn mkdir(self: *Harness, relative: []const u8) !void {
-        try self.tmp.dir.makePath(relative);
+        try self.tmp.dir.createDirPath(testing.io, relative);
     }
 
     fn absolute(self: *Harness, relative: []const u8) ![]const u8 {
@@ -60,24 +60,24 @@ const Harness = struct {
     }
 
     fn run(self: *Harness, argv: []const []const u8) !u8 {
-        const host = std.fs.cwd();
         return cli.run(
             self.allocator(),
-            host,
+            testing.io,
+            std.Io.Dir.cwd(),
             self.root,
             self.root,
             argv,
-            self.out.writer(),
-            self.err.writer(),
+            &self.out.writer,
+            &self.err.writer,
         );
     }
 
     fn stdout(self: *Harness) []const u8 {
-        return self.out.items;
+        return self.out.written();
     }
 
     fn stderr(self: *Harness) []const u8 {
-        return self.err.items;
+        return self.err.written();
     }
 };
 
@@ -198,21 +198,22 @@ test "--selftest passes on its own fixture tree" {
     // excludes, so a fixture built there would be filtered out before it was
     // ever audited.
     var seed: [8]u8 = undefined;
-    std.crypto.random.bytes(&seed);
+    testing.io.random(&seed);
     const scratch = try std.fmt.allocPrint(
         harness.allocator(),
         "/tmp/ra8-hfp-selftest-{x}",
         .{std.mem.readInt(u64, &seed, .little)},
     );
-    const host = std.fs.cwd();
-    defer host.deleteTree(scratch) catch {};
+    const host = std.Io.Dir.cwd();
+    defer host.deleteTree(testing.io, scratch) catch {};
     const status = try cli.runSelftest(
         harness.allocator(),
+        testing.io,
         host,
         "/nonexistent-repo-root",
         scratch,
-        harness.out.writer(),
-        harness.err.writer(),
+        &harness.out.writer,
+        &harness.err.writer,
     );
     try testing.expectEqual(@as(u8, 0), status);
     try testing.expect(std.mem.indexOf(u8, harness.stdout(), "PASS (fire, quiet, tests, exclusions)") != null);
