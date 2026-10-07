@@ -4,12 +4,7 @@
 //! Zig entry point for the C, Zig, and Rust firmware pipeline.
 
 const std = @import("std");
-const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cDefine("alignof", "_Alignof");
-    @cInclude("firmware_pipeline.h");
-    @cInclude("firmware_pipeline_io_internal.h");
-});
+const c = @import("firmware_pipeline_main_h");
 
 extern fn firmware_pipeline_analyze(
     config: ?*const c.firmware_pipeline_config_t,
@@ -23,10 +18,8 @@ fn fail(message: []const u8) u8 {
     return 2;
 }
 
-pub fn main() u8 {
-    const allocator = std.heap.page_allocator;
-    const arguments = std.process.argsAlloc(allocator) catch return fail("cannot read arguments");
-    defer std.process.argsFree(allocator, arguments);
+pub fn main(init: std.process.Init) u8 {
+    const arguments = init.minimal.args.toSlice(init.arena.allocator()) catch return fail("cannot read arguments");
     if (arguments.len != 2 or arguments[1].len == 0) {
         std.debug.print("usage: firmware_pipeline <firmware-image>\n", .{});
         return 2;
@@ -53,7 +46,9 @@ pub fn main() u8 {
         else
             "language pipeline failed");
     }
-    std.io.getStdOut().writer().print(
+    var stdout_buffer: [256]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
+    stdout.interface.print(
         "bytes={d}\nzero={d}\nerased={d}\nfnv1a64={x:0>16}\nzig_xor8={x:0>2}\nzig_stage={x:0>2}\n",
         .{
             result.byte_count,
@@ -64,5 +59,6 @@ pub fn main() u8 {
             result.zig_stage_marker,
         },
     ) catch return fail("cannot write output");
+    stdout.interface.flush() catch return fail("cannot write output");
     return 0;
 }
