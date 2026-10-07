@@ -21,15 +21,19 @@ const Exit = struct {
     const unusable = 2;
 };
 
-pub fn main() u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const out = std.io.getStdOut().writer();
-    const args = std.process.argsAlloc(allocator) catch return Exit.unusable;
+    var buffer: [4096]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(io, &buffer);
+    const out = &stdout.interface;
+    defer out.flush() catch {};
+
+    const args = init.minimal.args.toSlice(allocator) catch return Exit.unusable;
     if (args.len < 2) {
-        std.io.getStdErr().writer().writeAll(
+        std.Io.File.stderr().writeStreamingAll(
+            io,
             "usage: check_txm_module_relocs <module.elf>...\n",
         ) catch {};
         return Exit.unusable;
@@ -37,19 +41,19 @@ pub fn main() u8 {
 
     var worst: u8 = Exit.pass;
     for (args[1..]) |path| {
-        const status = checkOne(allocator, out, path);
+        const status = checkOne(allocator, io, out, path);
         worst = @max(worst, status);
     }
     return worst;
 }
 
-fn checkOne(allocator: std.mem.Allocator, out: anytype, path: []const u8) u8 {
-    const image = std.fs.cwd().readFileAlloc(allocator, path, max_image_bytes) catch |err| {
-        out.print("{s}: cannot read: {s}\n", .{ path, @errorName(err) }) catch {};
+fn checkOne(allocator: std.mem.Allocator, io: std.Io, out: *std.Io.Writer, path: []const u8) u8 {
+    const image = std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .limited(max_image_bytes)) catch |err| {
+        out.print("{s}: cannot read: {t}\n", .{ path, err }) catch {};
         return Exit.unusable;
     };
     const count = report.write(out, path, image) catch |err| {
-        out.print("{s}: cannot check: {s}\n", .{ path, @errorName(err) }) catch {};
+        out.print("{s}: cannot check: {t}\n", .{ path, err }) catch {};
         return Exit.unusable;
     };
     return if (count == 0) Exit.pass else Exit.findings;

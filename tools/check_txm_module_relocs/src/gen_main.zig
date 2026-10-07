@@ -23,13 +23,18 @@ const Exit = struct {
     const unusable = 2;
 };
 
-pub fn main() u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-    const err = std.io.getStdErr().writer();
+pub fn main(init: std.process.Init) u8 {
+    var buffer: [1024]u8 = undefined;
+    var stderr = std.Io.File.stderr().writer(init.io, &buffer);
+    const status = generate(init, &stderr.interface);
+    stderr.interface.flush() catch {};
+    return status;
+}
 
-    const args = std.process.argsAlloc(allocator) catch return Exit.unusable;
+fn generate(init: std.process.Init, err: *std.Io.Writer) u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
+    const args = init.minimal.args.toSlice(allocator) catch return Exit.unusable;
     if (args.len < 3 or args.len > 4) return usage(err);
     var leave_out: ?usize = null;
     if (args.len == 4) {
@@ -38,8 +43,9 @@ pub fn main() u8 {
         leave_out = std.fmt.parseInt(usize, digits, 10) catch return usage(err);
     }
 
-    const image = std.fs.cwd().readFileAlloc(allocator, args[1], max_image_bytes) catch |e| {
-        err.print("{s}: cannot read: {s}\n", .{ args[1], @errorName(e) }) catch {};
+    const cwd = std.Io.Dir.cwd();
+    const image = cwd.readFileAlloc(io, args[1], allocator, .limited(max_image_bytes)) catch |e| {
+        err.print("{s}: cannot read: {t}\n", .{ args[1], e }) catch {};
         return Exit.unusable;
     };
     var storage: [table.max_sites]u32 = undefined;
@@ -53,10 +59,10 @@ pub fn main() u8 {
         return Exit.unusable;
     };
 
-    var text = std.ArrayList(u8).init(allocator);
-    table.write(text.writer(), addresses, leave_out) catch return Exit.unusable;
-    std.fs.cwd().writeFile(.{ .sub_path = args[2], .data = text.items }) catch |e| {
-        err.print("{s}: cannot write: {s}\n", .{ args[2], @errorName(e) }) catch {};
+    var text: std.Io.Writer.Allocating = .init(allocator);
+    table.write(&text.writer, addresses, leave_out) catch return Exit.unusable;
+    cwd.writeFile(io, .{ .sub_path = args[2], .data = text.written() }) catch |e| {
+        err.print("{s}: cannot write: {t}\n", .{ args[2], e }) catch {};
         return Exit.unusable;
     };
     return Exit.written;
@@ -78,7 +84,7 @@ fn refuse(err: anytype, path: []const u8, cause: table.Error, problem: ?table.Pr
         error.NotAModule => "the image does not name its link ranges",
         error.TooManySites => "more sites than one table holds",
         else => {
-            err.print("{s}: cannot read: {s}\n", .{ path, @errorName(cause) }) catch {};
+            err.print("{s}: cannot read: {t}\n", .{ path, cause }) catch {};
             return Exit.unusable;
         },
     };

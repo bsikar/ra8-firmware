@@ -123,9 +123,9 @@ test "more sites than there is room for is an error, not a shorter table" {
 
 test "the table is one word for each entry between its two symbols" {
     var buf: [1024]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
-    try table.write(stream.writer(), &.{ 0x10000020, 0x10000024 }, null);
-    const text = stream.getWritten();
+    var writer: std.Io.Writer = .fixed(&buf);
+    try table.write(&writer, &.{ 0x10000020, 0x10000024 }, null);
+    const text = writer.buffered();
     const section = ".section .rodata.txm_rebase,\"a\",%progbits";
     try testing.expect(std.mem.indexOf(u8, text, section) != null);
     try testing.expect(std.mem.endsWith(u8, text,
@@ -139,18 +139,18 @@ test "the table is one word for each entry between its two symbols" {
 
 test "an empty table is the two symbols at one address" {
     var buf: [1024]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
-    try table.write(stream.writer(), &.{}, null);
-    const text = stream.getWritten();
+    var writer: std.Io.Writer = .fixed(&buf);
+    try table.write(&writer, &.{}, null);
+    const text = writer.buffered();
     try testing.expect(std.mem.endsWith(u8, text, "__txm_rebase_start__:\n__txm_rebase_end__:\n"));
     try testing.expect(std.mem.indexOf(u8, text, ".word") == null);
 }
 
 test "leaving one entry out drops exactly that one" {
     var buf: [1024]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
-    try table.write(stream.writer(), &.{ 0x10000020, 0x10000024 }, 0);
-    const text = stream.getWritten();
+    var writer: std.Io.Writer = .fixed(&buf);
+    try table.write(&writer, &.{ 0x10000020, 0x10000024 }, 0);
+    const text = writer.buffered();
     try testing.expect(std.mem.indexOf(u8, text, "0x10000020") == null);
     try testing.expect(std.mem.indexOf(u8, text, "    .word 0x10000024\n") != null);
 }

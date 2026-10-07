@@ -26,9 +26,9 @@ const table_words = [4]u32{ 0, 5, Address.double, Address.square };
 
 fn run(spec: fixture.Spec, buf: []u8) !struct { usize, []const u8 } {
     const image = fixture.build(spec);
-    var stream = std.io.fixedBufferStream(buf);
-    const wrong = try report.write(stream.writer(), "m.elf", image.bytes());
-    return .{ wrong, stream.getWritten() };
+    var writer: std.Io.Writer = .fixed(buf);
+    const wrong = try report.write(&writer, "m.elf", image.bytes());
+    return .{ wrong, writer.buffered() };
 }
 
 test "two sites, both in the records: a pass that says how many" {

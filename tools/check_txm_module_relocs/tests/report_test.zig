@@ -19,9 +19,9 @@ comptime {
 
 fn text(spec: fixture.Spec, buf: []u8) !struct { usize, []const u8 } {
     const image = fixture.build(spec);
-    var stream = std.io.fixedBufferStream(buf);
-    const count = try report.write(stream.writer(), "m.elf", image.bytes());
-    return .{ count, stream.getWritten() };
+    var writer: std.Io.Writer = .fixed(buf);
+    const count = try report.write(&writer, "m.elf", image.bytes());
+    return .{ count, writer.buffered() };
 }
 
 test "a clean image is one line saying so, and no findings" {
@@ -57,9 +57,9 @@ test "a type the name table does not carry is shown by its number" {
 
 test "an image that cannot be read is an error, not a clean report" {
     var buf: [512]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buf);
-    try testing.expectError(error.NotElf, report.write(stream.writer(), "m.elf", "nonsense"));
-    try testing.expectEqual(@as(usize, 0), stream.getWritten().len);
+    var writer: std.Io.Writer = .fixed(&buf);
+    try testing.expectError(error.NotElf, report.write(&writer, "m.elf", "nonsense"));
+    try testing.expectEqual(@as(usize, 0), writer.buffered().len);
 }
 
 test "the name table and the allow-list agree on what they know" {
