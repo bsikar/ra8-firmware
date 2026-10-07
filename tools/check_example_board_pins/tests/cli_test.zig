@@ -17,19 +17,19 @@ const clean = "  cfg.pin = ra8_board_sw_pin(k_ra8_board_sw_user);\n";
 const Harness = struct {
     tmp: std.testing.TmpDir,
     arena: std.heap.ArenaAllocator,
-    stdout: std.ArrayList(u8),
-    stderr: std.ArrayList(u8),
-    root: []const u8,
+    stdout: std.Io.Writer.Allocating,
+    stderr: std.Io.Writer.Allocating,
+    root: [:0]const u8,
 
     fn init() !Harness {
         var tmp = std.testing.tmpDir(.{});
         var arena = std.heap.ArenaAllocator.init(testing.allocator);
-        const root = try tmp.dir.realpathAlloc(arena.allocator(), ".");
+        const root = try tmp.dir.realPathFileAlloc(testing.io, ".", arena.allocator());
         return .{
             .tmp = tmp,
             .arena = arena,
-            .stdout = std.ArrayList(u8).init(testing.allocator),
-            .stderr = std.ArrayList(u8).init(testing.allocator),
+            .stdout = .init(testing.allocator),
+            .stderr = .init(testing.allocator),
             .root = root,
         };
     }
@@ -42,8 +42,8 @@ const Harness = struct {
     }
 
     fn write(self: *Harness, path: []const u8, body: []const u8) !void {
-        if (std.fs.path.dirname(path)) |parent| try self.tmp.dir.makePath(parent);
-        try self.tmp.dir.writeFile(.{ .sub_path = path, .data = body });
+        if (std.fs.path.dirname(path)) |parent| try self.tmp.dir.createDirPath(testing.io, parent);
+        try self.tmp.dir.writeFile(testing.io, .{ .sub_path = path, .data = body });
     }
 
     /// `count` example sources, so a sweep can clear the floor.
@@ -62,11 +62,12 @@ const Harness = struct {
     fn run(self: *Harness, argv: []const []const u8) !u8 {
         return cli.run(
             self.arena.allocator(),
+            testing.io,
             self.tmp.dir,
             self.root,
             argv,
-            self.stdout.writer(),
-            self.stderr.writer(),
+            &self.stdout.writer,
+            &self.stderr.writer,
         );
     }
 };
@@ -76,8 +77,8 @@ test "a clean sweep over enough files exits 0 and reports the count on stdout" {
     defer harness.deinit();
     try harness.populate(cli.file_floor, clean);
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{}));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "none hand-encode a board pin") != null);
-    try testing.expectEqualStrings("", harness.stderr.items);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "none hand-encode a board pin") != null);
+    try testing.expectEqualStrings("", harness.stderr.written());
 }
 
 test "one hand-encoded pin in the sweep exits 1 and reports on stderr" {
@@ -86,9 +87,9 @@ test "one hand-encoded pin in the sweep exits 1 and reports on stderr" {
     try harness.populate(cli.file_floor, clean);
     try harness.write("examples/bad/src/main.c", idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "1 hand-encoded board pin(s)") != null);
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/bad/src/main.c:1") != null);
-    try testing.expectEqualStrings("", harness.stdout.items);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "1 hand-encoded board pin(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/bad/src/main.c:1") != null);
+    try testing.expectEqualStrings("", harness.stdout.written());
 }
 
 test "the findings carry the guidance tail" {
@@ -97,7 +98,7 @@ test "the findings carry the guidance tail" {
     try harness.populate(cli.file_floor, clean);
     try harness.write("examples/bad/src/main.c", idiom);
     _ = try harness.run(&[_][]const u8{});
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "libs/ra8_board_ek_ra8d2") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "libs/ra8_board_ek_ra8d2") != null);
 }
 
 test "a sweep below the floor exits 2 rather than reporting a clean tree" {
@@ -105,8 +106,8 @@ test "a sweep below the floor exits 2 rather than reporting a clean tree" {
     defer harness.deinit();
     try harness.populate(10, clean);
     try testing.expectEqual(@as(u8, 2), try harness.run(&[_][]const u8{}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "FATAL") != null);
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "floor is 320") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "FATAL") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "floor is 320") != null);
 }
 
 test "an empty examples tree exits 2, not 0" {
@@ -119,7 +120,7 @@ test "the floor applies to the sweep only, so an argv list that filters to nothi
     var harness = try Harness.init();
     defer harness.deinit();
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"README.md"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "no files to scan") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "no files to scan") != null);
 }
 
 test "an argv file with the idiom exits 1 with no floor in the way" {
@@ -134,7 +135,7 @@ test "an argv file that is clean exits 0 and counts itself as scanned" {
     defer harness.deinit();
     try harness.write("examples/ok/src/main.c", clean);
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"examples/ok/src/main.c"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "1 example file(s) scanned") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "1 example file(s) scanned") != null);
 }
 
 test "an argv directory is swept recursively" {
@@ -143,7 +144,7 @@ test "an argv directory is swept recursively" {
     try harness.write("examples/tree/a/main.c", clean);
     try harness.write("examples/tree/b/deep/other.cpp", idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{"examples/tree"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/tree/b/deep/other.cpp:1") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/tree/b/deep/other.cpp:1") != null);
 }
 
 test "an in-source build tree under examples is excluded from an argv list" {
@@ -155,7 +156,7 @@ test "an in-source build tree under examples is excluded from an argv list" {
         "examples/x/build/gen.c",
         "examples/x/src/main.c",
     }));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "1 example file(s) scanned") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "1 example file(s) scanned") != null);
 }
 
 test "an in-source build tree is excluded from the sweep too" {
@@ -180,31 +181,31 @@ test "a non-source suffix in argv is dropped rather than scanned" {
     defer harness.deinit();
     try harness.write("examples/x/notes.txt", idiom);
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"examples/x/notes.txt"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "no files to scan") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "no files to scan") != null);
 }
 
 test "an argv path that does not exist still counts as scanned and reads as nothing" {
     var harness = try Harness.init();
     defer harness.deinit();
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"examples/gone/main.c"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "1 example file(s) scanned") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "1 example file(s) scanned") != null);
 }
 
 test "an unknown flag is treated as a path, so there is no usage status" {
     var harness = try Harness.init();
     defer harness.deinit();
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"--nonsense"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "no files to scan") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "no files to scan") != null);
 }
 
 test "a directory named like a source file is listed, unreadable, and skipped" {
     var harness = try Harness.init();
     defer harness.deinit();
     try harness.populate(cli.file_floor, clean);
-    try harness.tmp.dir.makePath("examples/odd/weird.c");
+    try harness.tmp.dir.createDirPath(testing.io, "examples/odd/weird.c");
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{}));
     // It counted toward the sweep even though nothing could be read from it.
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "321 example file(s) scanned") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "321 example file(s) scanned") != null);
 }
 
 test "a dot-prefixed source file is swept, because pathlib's glob hides nothing" {
@@ -220,7 +221,7 @@ test "a file named exactly .c is swept but is not source on the argv path" {
     defer harness.deinit();
     try harness.write("examples/x/.c", idiom);
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"examples/x/.c"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "no files to scan") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "no files to scan") != null);
 }
 
 test "findings from several files are all reported" {
@@ -229,7 +230,7 @@ test "findings from several files are all reported" {
     try harness.write("examples/a/main.c", idiom);
     try harness.write("examples/b/main.c", idiom ++ idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{ "examples/a", "examples/b" }));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "3 hand-encoded board pin(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "3 hand-encoded board pin(s)") != null);
 }
 
 test "the same argv path twice is scanned twice, as the predecessor counted it" {
@@ -240,7 +241,7 @@ test "the same argv path twice is scanned twice, as the predecessor counted it" 
         "examples/x/main.c",
         "examples/x/main.c",
     }));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "2 example file(s) scanned") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "2 example file(s) scanned") != null);
 }
 
 test "a ./ prefix on an argv path resolves the same way" {
@@ -248,7 +249,7 @@ test "a ./ prefix on an argv path resolves the same way" {
     defer harness.deinit();
     try harness.write("examples/x/main.c", idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{"./examples/x/main.c"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/x/main.c:1") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/x/main.c:1") != null);
 }
 
 test "an absolute argv path inside the tree reports repo-relative" {
@@ -261,7 +262,7 @@ test "an absolute argv path inside the tree reports repo-relative" {
         .{harness.root},
     );
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{absolute}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/x/main.c:1") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/x/main.c:1") != null);
 }
 
 test "the four suffixes are all scanned" {
@@ -272,7 +273,7 @@ test "the four suffixes are all scanned" {
     try harness.write("examples/x/c.hpp", idiom);
     try harness.write("examples/x/d.c", idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{"examples/x"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "4 hand-encoded board pin(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "4 hand-encoded board pin(s)") != null);
 }
 
 test "the sweep enumerates .c before .h, as the suffix loop did" {
@@ -281,8 +282,8 @@ test "the sweep enumerates .c before .h, as the suffix loop did" {
     try harness.write("examples/x/zzz.c", idiom);
     try harness.write("examples/x/aaa.h", idiom);
     _ = try harness.run(&[_][]const u8{"examples/x"});
-    const c_at = std.mem.indexOf(u8, harness.stderr.items, "zzz.c").?;
-    const h_at = std.mem.indexOf(u8, harness.stderr.items, "aaa.h").?;
+    const c_at = std.mem.indexOf(u8, harness.stderr.written(), "zzz.c").?;
+    const h_at = std.mem.indexOf(u8, harness.stderr.written(), "aaa.h").?;
     try testing.expect(c_at < h_at);
 }
 
@@ -293,7 +294,7 @@ test "an undecodable file cannot abort the sweep" {
     try harness.write("examples/x/bad.c", "\xff\xfe\x00 not utf-8\n");
     try harness.write("examples/x/pin.c", idiom);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/x/pin.c:1") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/x/pin.c:1") != null);
 }
 
 test "the selftest holds in both directions over a tree that clears the floor" {
@@ -301,8 +302,8 @@ test "the selftest holds in both directions over a tree that clears the floor" {
     defer harness.deinit();
     try harness.populate(cli.file_floor, clean);
     try testing.expectEqual(@as(u8, 0), try harness.run(&[_][]const u8{"--selftest"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "all assertions held") != null);
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "[ok] MUST FIRE") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "all assertions held") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "[ok] MUST FIRE") != null);
 }
 
 test "the selftest fails when the live sweep cannot clear the floor" {
@@ -310,8 +311,8 @@ test "the selftest fails when the live sweep cannot clear the floor" {
     defer harness.deinit();
     try harness.populate(5, clean);
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{"--selftest"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "SELFTEST FAILED") != null);
-    try testing.expect(std.mem.indexOf(u8, harness.stdout.items, "[FAIL] live sweep sees 5") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "SELFTEST FAILED") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stdout.written(), "[FAIL] live sweep sees 5") != null);
 }
 
 test "--selftest anywhere in argv wins over the path list" {
@@ -332,7 +333,7 @@ test "the selftest proves the build-output exclusion, not just the matcher" {
     _ = try harness.run(&[_][]const u8{"--selftest"});
     try testing.expect(std.mem.indexOf(
         u8,
-        harness.stdout.items,
+        harness.stdout.written(),
         "[ok] MUST NOT FIRE: an in-source build file is excluded from the scope",
     ) != null);
 }
@@ -342,11 +343,12 @@ test "enumerateTargets keeps the real source and drops the build file" {
     defer harness.deinit();
     var targets = try cli.enumerateTargets(
         harness.arena.allocator(),
+        testing.io,
         harness.tmp.dir,
         harness.root,
         &[_][]const u8{ "examples/x/build/gen.c", "examples/x/src/main.c" },
     );
-    defer targets.deinit();
+    defer targets.deinit(harness.arena.allocator());
     try testing.expectEqual(@as(usize, 1), targets.items.len);
     try testing.expectEqualStrings("examples/x/src/main.c", targets.items[0].display);
 }
@@ -357,13 +359,12 @@ test "a source far past any read ceiling still reports its hand-encoded pin" {
     // read. Written sparse, so this costs neither disk nor runtime.
     var harness = try Harness.init();
     defer harness.deinit();
-    try harness.tmp.dir.makePath("examples/huge/src");
-    var file = try harness.tmp.dir.createFile("examples/huge/src/main.c", .{});
-    defer file.close();
-    try file.seekTo(96 * 1024 * 1024);
-    try file.writeAll(idiom);
+    try harness.tmp.dir.createDirPath(testing.io, "examples/huge/src");
+    var file = try harness.tmp.dir.createFile(testing.io, "examples/huge/src/main.c", .{});
+    defer file.close(testing.io);
+    try file.writePositionalAll(testing.io, idiom, 96 * 1024 * 1024);
 
     try testing.expectEqual(@as(u8, 1), try harness.run(&[_][]const u8{"examples/huge/src/main.c"}));
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "hand-encoded board pin(s)") != null);
-    try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/huge/src/main.c") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "hand-encoded board pin(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, harness.stderr.written(), "examples/huge/src/main.c") != null);
 }
