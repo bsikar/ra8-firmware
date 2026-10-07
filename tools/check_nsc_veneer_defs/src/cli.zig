@@ -53,12 +53,13 @@ fn resolve(allocator: std.mem.Allocator, repo_root: []const u8, rel: []const u8)
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     caller_allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     paths: Paths,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     // One arena per run: the declarations, the source texts and the rendered
     // report all live exactly as long as the run does.
@@ -79,7 +80,7 @@ pub fn run(
     // A header that is not a regular file exits 1, never 0: with nothing to
     // parse there are zero declarations, and "zero declared, zero missing"
     // would pass while verifying nothing.
-    const stat = dir.statFile(header_path) catch {
+    const stat = dir.statFile(io, header_path, .{}) catch {
         try err.print("{s}: header not found: {s}\n", .{ tool, header_path });
         return 1;
     };
@@ -88,22 +89,22 @@ pub fn run(
         return 1;
     }
 
-    const header_text = readText(allocator, dir, header_path) catch {
+    const header_text = readText(allocator, io, dir, header_path) catch {
         try err.print("{s}: cannot read header: {s}\n", .{ tool, header_path });
         return 1;
     };
 
-    const sources = try listSources(allocator, dir, repo_root, paths.src_dir);
+    const sources = try listSources(allocator, io, dir, repo_root, paths.src_dir);
     const veneers = try implementation.declaredVeneers(allocator, header_text);
 
-    var missing = std.ArrayList([]const u8).init(allocator);
+    var missing: std.ArrayList([]const u8) = .empty;
     for (veneers) |name| {
         var defined = false;
         // Sources are visited in sorted order and reading stops at the first
         // definition, which is the order the gate has always read them in.
         for (sources) |*source| {
             const text = source.text orelse blk: {
-                const raw = readText(allocator, dir, source.path) catch {
+                const raw = readText(allocator, io, dir, source.path) catch {
                     try err.print("{s}: cannot read source: {s}\n", .{ tool, source.path });
                     return 1;
                 };
@@ -115,7 +116,7 @@ pub fn run(
                 break;
             }
         }
-        if (!defined) try missing.append(name);
+        if (!defined) try missing.append(allocator, name);
     }
 
     if (missing.items.len != 0) {
@@ -148,12 +149,12 @@ pub fn run(
 /// before scanning. Both terminators are whitespace to the matcher, so this
 /// changes no verdict; it is done because the gate's meaning is "the text
 /// Python saw", and a future line-numbered finding would depend on it.
-fn readText(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) ![]const u8 {
+fn readText(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, path: []const u8) ![]const u8 {
     // No constant ceiling: the Python called `read()` with no limit, so size
     // never decided whether a source was scanned. A ceiling turns the first
     // source past it into `cannot read` and hides every phantom veneer behind
     // it, so the allocation is bounded by the file itself.
-    const raw = try dir.readFileAlloc(allocator, path, std.math.maxInt(usize));
+    const raw = try dir.readFileAlloc(io, path, allocator, .unlimited);
     if (!std.unicode.utf8ValidateSlice(raw)) return error.InvalidUtf8;
     return normalizeTerminators(allocator, raw);
 }
@@ -161,7 +162,7 @@ fn readText(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) ![]
 /// Collapse CRLF and a lone CR to LF, as text-mode reading did.
 fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]const u8 {
     if (std.mem.indexOfScalar(u8, raw, '\r') == null) return raw;
-    var translated = try std.ArrayList(u8).initCapacity(allocator, raw.len);
+    var translated: std.ArrayList(u8) = try .initCapacity(allocator, raw.len);
     var index: usize = 0;
     while (index < raw.len) : (index += 1) {
         if (raw[index] == '\r') {
@@ -171,7 +172,7 @@ fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]const 
             translated.appendAssumeCapacity(raw[index]);
         }
     }
-    return translated.toOwnedSlice();
+    return translated.toOwnedSlice(allocator);
 }
 
 /// The `*.c` entries of the source directory, sorted by name.
@@ -183,26 +184,27 @@ fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]const 
 /// that reading it fails loudly rather than being skipped.
 fn listSources(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     src_dir: []const u8,
 ) ![]Source {
-    var sources = std.ArrayList(Source).init(allocator);
+    var sources: std.ArrayList(Source) = .empty;
     const dir_path = try resolve(allocator, repo_root, src_dir);
-    var opened = dir.openDir(dir_path, .{ .iterate = true }) catch return sources.toOwnedSlice();
-    defer opened.close();
+    var opened = dir.openDir(io, dir_path, .{ .iterate = true }) catch return sources.toOwnedSlice(allocator);
+    defer opened.close(io);
 
-    var names = std.ArrayList([]const u8).init(allocator);
+    var names: std.ArrayList([]const u8) = .empty;
     var walker = opened.iterate();
-    while (try walker.next()) |entry| {
+    while (try walker.next(io)) |entry| {
         if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-        try names.append(try allocator.dupe(u8, entry.name));
+        try names.append(allocator, try allocator.dupe(u8, entry.name));
     }
     std.mem.sort([]const u8, names.items, {}, lessThanByBytes);
     for (names.items) |name| {
-        try sources.append(.{ .path = try std.fs.path.join(allocator, &.{ dir_path, name }) });
+        try sources.append(allocator, .{ .path = try std.fs.path.join(allocator, &.{ dir_path, name }) });
     }
-    return sources.toOwnedSlice();
+    return sources.toOwnedSlice(allocator);
 }
 
 /// Byte order, which is the order `sorted()` put the globbed paths in.
@@ -212,7 +214,7 @@ fn lessThanByBytes(_: void, left: []const u8, right: []const u8) bool {
 
 /// Prove the detector fires on a phantom veneer and stays quiet on a defined
 /// one, in both directions, before the gate is trusted on the real tree.
-fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
+fn selftest(allocator: std.mem.Allocator, out: *std.Io.Writer, err: *std.Io.Writer) !u8 {
     const cases = try implementation.selftestCases(allocator);
     var failures: usize = 0;
     for (cases) |case| {

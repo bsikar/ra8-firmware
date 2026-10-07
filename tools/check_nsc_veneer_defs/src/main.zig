@@ -8,30 +8,34 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const argv = try std.process.argsAlloc(allocator);
+    const sentinel_argv = try init.minimal.args.toSlice(allocator);
+    const argv = try allocator.alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
     // A compiled tool has no `__file__.parents[2]`, so the root comes from the
     // launcher and falls back to the working directory when the gate is run by
     // hand from the repository root.
-    const repo_root = std.process.getEnvVarOwned(allocator, "RA8_REPO_ROOT") catch ".";
+    const repo_root = init.environ_map.get("RA8_REPO_ROOT") orelse ".";
 
-    var out = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var err = std.io.bufferedWriter(std.io.getStdErr().writer());
+    var out_buffer: [4096]u8 = undefined;
+    var err_buffer: [4096]u8 = undefined;
+    var out = std.Io.File.stdout().writer(io, &out_buffer);
+    var err = std.Io.File.stderr().writer(io, &err_buffer);
     const status = try cli.run(
         allocator,
-        std.fs.cwd(),
+        io,
+        std.Io.Dir.cwd(),
         repo_root,
         argv[1..],
         cli.Paths.default,
-        out.writer(),
-        err.writer(),
+        &out.interface,
+        &err.interface,
     );
-    try out.flush();
-    try err.flush();
+    try out.interface.flush();
+    try err.interface.flush();
     return status;
 }

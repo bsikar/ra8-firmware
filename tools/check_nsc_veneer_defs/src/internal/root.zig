@@ -210,8 +210,8 @@ pub fn nextMatch(text: []const u8, from: usize, target: Target) ?Match {
 
 /// Veneer names declared in the header, in first-seen order, de-duplicated.
 pub fn declaredVeneers(allocator: std.mem.Allocator, text: []const u8) ![]const []const u8 {
-    var seen = std.ArrayList([]const u8).init(allocator);
-    errdefer seen.deinit();
+    var seen: std.ArrayList([]const u8) = .empty;
+    errdefer seen.deinit(allocator);
     var cursor: usize = 0;
     while (nextMatch(text, cursor, .any)) |match| {
         cursor = match.end;
@@ -219,9 +219,9 @@ pub fn declaredVeneers(allocator: std.mem.Allocator, text: []const u8) ![]const 
         for (seen.items) |name| {
             if (std.mem.eql(u8, name, match.name)) already = true;
         }
-        if (!already) try seen.append(match.name);
+        if (!already) try seen.append(allocator, match.name);
     }
-    return seen.toOwnedSlice();
+    return seen.toOwnedSlice(allocator);
 }
 
 /// Whether one source text defines `name`.
@@ -267,15 +267,15 @@ pub fn selftestCases(allocator: std.mem.Allocator) ![]const SelftestCase {
     const declared = try declaredVeneers(allocator, selftest_header);
     defer allocator.free(declared);
 
-    var defined = std.ArrayList([]const u8).init(allocator);
-    defer defined.deinit();
-    var missing = std.ArrayList([]const u8).init(allocator);
-    defer missing.deinit();
+    var defined: std.ArrayList([]const u8) = .empty;
+    defer defined.deinit(allocator);
+    var missing: std.ArrayList([]const u8) = .empty;
+    defer missing.deinit(allocator);
     for (declared) |name| {
         if (definesVeneer(selftest_source, name)) {
-            try defined.append(name);
+            try defined.append(allocator, name);
         } else {
-            try missing.append(name);
+            try missing.append(allocator, name);
         }
     }
 
