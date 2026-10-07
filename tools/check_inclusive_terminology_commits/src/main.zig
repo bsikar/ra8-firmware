@@ -11,21 +11,28 @@ const cli = @import("cli.zig");
 /// Ceiling on one scan, far above any plausible push.
 const max_input_bytes = 64 * 1024 * 1024;
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const argv = try std.process.argsAlloc(allocator);
+    const sentinel_argv = try init.minimal.args.toSlice(allocator);
+    const argv = try allocator.alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
     // Read stdin up front, exactly as the predecessor's `sys.stdin.read()`
     // did, so an empty pipe scans empty text rather than blocking a rule.
-    const input = try std.io.getStdIn().reader().readAllAlloc(allocator, max_input_bytes);
+    // `allocRemaining` fails only once the limit is exceeded, so exactly
+    // `max_input_bytes` is still accepted, as `readAllAlloc` accepted it.
+    var stdin_buffer: [4096]u8 = undefined;
+    var stdin = std.Io.File.stdin().readerStreaming(io, &stdin_buffer);
+    const input = try stdin.interface.allocRemaining(allocator, .limited(max_input_bytes));
 
-    var out = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var err = std.io.bufferedWriter(std.io.getStdErr().writer());
-    const status = try cli.run(allocator, argv[1..], input, out.writer(), err.writer());
-    try out.flush();
-    try err.flush();
+    var out_buffer: [4096]u8 = undefined;
+    var err_buffer: [4096]u8 = undefined;
+    var out = std.Io.File.stdout().writer(io, &out_buffer);
+    var err = std.Io.File.stderr().writer(io, &err_buffer);
+    const status = try cli.run(allocator, argv[1..], input, &out.interface, &err.interface);
+    try out.interface.flush();
+    try err.interface.flush();
     return status;
 }

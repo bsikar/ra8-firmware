@@ -131,30 +131,30 @@ pub fn foldCase(cp: u21) u21 {
 
 /// Decode `bytes` the way `sys.stdin` does: UTF-8, stray bytes escaped.
 pub fn decode(allocator: std.mem.Allocator, bytes: []const u8) ![]Char {
-    var chars = std.ArrayList(Char).init(allocator);
-    errdefer chars.deinit();
+    var chars: std.ArrayList(Char) = .empty;
+    errdefer chars.deinit(allocator);
 
     var index: usize = 0;
     while (index < bytes.len) {
         const width = std.unicode.utf8ByteSequenceLength(bytes[index]) catch {
-            try chars.append(.{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
+            try chars.append(allocator, .{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
             index += 1;
             continue;
         };
         if (index + width > bytes.len) {
-            try chars.append(.{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
+            try chars.append(allocator, .{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
             index += 1;
             continue;
         }
         const cp = std.unicode.utf8Decode(bytes[index .. index + width]) catch {
-            try chars.append(.{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
+            try chars.append(allocator, .{ .cp = surrogate_base + bytes[index], .start = index, .len = 1 });
             index += 1;
             continue;
         };
-        try chars.append(.{ .cp = cp, .start = index, .len = @intCast(width) });
+        try chars.append(allocator, .{ .cp = cp, .start = index, .len = @intCast(width) });
         index += width;
     }
-    return chars.toOwnedSlice();
+    return chars.toOwnedSlice(allocator);
 }
 
 /// Split decoded text into lines exactly as `str.splitlines` does.
@@ -162,8 +162,8 @@ pub fn decode(allocator: std.mem.Allocator, bytes: []const u8) ![]Char {
 /// Terminators are dropped, `\r\n` counts once, and a trailing break does not
 /// invent an empty final line.
 pub fn splitLines(allocator: std.mem.Allocator, chars: []const Char) ![][]const Char {
-    var lines = std.ArrayList([]const Char).init(allocator);
-    errdefer lines.deinit();
+    var lines: std.ArrayList([]const Char) = .empty;
+    errdefer lines.deinit(allocator);
 
     var start: usize = 0;
     var index: usize = 0;
@@ -172,7 +172,7 @@ pub fn splitLines(allocator: std.mem.Allocator, chars: []const Char) ![][]const 
             index += 1;
             continue;
         }
-        try lines.append(chars[start..index]);
+        try lines.append(allocator, chars[start..index]);
         if (chars[index].cp == '\r' and index + 1 < chars.len and chars[index + 1].cp == '\n') {
             index += 2;
         } else {
@@ -180,8 +180,8 @@ pub fn splitLines(allocator: std.mem.Allocator, chars: []const Char) ![][]const 
         }
         start = index;
     }
-    if (start < chars.len) try lines.append(chars[start..]);
-    return lines.toOwnedSlice();
+    if (start < chars.len) try lines.append(allocator, chars[start..]);
+    return lines.toOwnedSlice(allocator);
 }
 
 /// The line with leading and trailing Python whitespace removed.
@@ -310,8 +310,8 @@ pub fn findViolations(allocator: std.mem.Allocator, bytes: []const u8) ![]Violat
     const chars = try decode(allocator, bytes);
     const lines = try splitLines(allocator, chars);
 
-    var violations = std.ArrayList(Violation).init(allocator);
-    errdefer violations.deinit();
+    var violations: std.ArrayList(Violation) = .empty;
+    errdefer violations.deinit(allocator);
 
     var paragraph_start: usize = 0;
     var index: usize = 0;
@@ -324,7 +324,7 @@ pub fn findViolations(allocator: std.mem.Allocator, bytes: []const u8) ![]Violat
             for (paragraph, 0..) |line, offset| {
                 for (banned) |term| {
                     if (!lineMatches(term.id, line)) continue;
-                    try violations.append(.{
+                    try violations.append(allocator, .{
                         .line = paragraph_start + offset + 1,
                         .message = term.message,
                         .text = textOf(bytes, strip(line)),
@@ -335,7 +335,7 @@ pub fn findViolations(allocator: std.mem.Allocator, bytes: []const u8) ![]Violat
         }
         paragraph_start = index + 1;
     }
-    return violations.toOwnedSlice();
+    return violations.toOwnedSlice(allocator);
 }
 
 /// True when any line of the paragraph carries the opt-out.
