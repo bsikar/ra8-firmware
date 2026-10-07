@@ -34,10 +34,10 @@ const Outcome = struct {
 };
 
 fn runIn(arena: std.mem.Allocator, argv: []const []const u8, root: []const u8) !Outcome {
-    var out = std.ArrayList(u8).init(arena);
-    var err = std.ArrayList(u8).init(arena);
-    const status = try cli.run(arena, argv, root, out.writer(), err.writer());
-    return .{ .status = status, .out = out.items, .err = err.items };
+    var out: std.Io.Writer.Allocating = .init(arena);
+    var err: std.Io.Writer.Allocating = .init(arena);
+    const status = try cli.run(arena, testing.io, argv, root, &out.writer, &err.writer);
+    return .{ .status = status, .out = out.written(), .err = err.written() };
 }
 
 const Tree = struct {
@@ -46,7 +46,7 @@ const Tree = struct {
 
     fn init(arena: std.mem.Allocator) !Tree {
         var tmp = std.testing.tmpDir(.{});
-        const root = try tmp.dir.realpathAlloc(arena, ".");
+        const root = try tmp.dir.realPathFileAlloc(testing.io, ".", arena);
         return .{ .tmp = tmp, .root = root };
     }
 
@@ -55,8 +55,8 @@ const Tree = struct {
     }
 
     fn write(self: *Tree, rel: []const u8, text: []const u8) !void {
-        if (std.fs.path.dirname(rel)) |dir| try self.tmp.dir.makePath(dir);
-        try self.tmp.dir.writeFile(.{ .sub_path = rel, .data = text });
+        if (std.fs.path.dirname(rel)) |dir| try self.tmp.dir.createDirPath(testing.io, dir);
+        try self.tmp.dir.writeFile(testing.io, .{ .sub_path = rel, .data = text });
     }
 };
 
@@ -285,11 +285,11 @@ test "selftest: exits 0 on its own and says so" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
-    var out = std.ArrayList(u8).init(alloc);
-    var err = std.ArrayList(u8).init(alloc);
+    var out: std.Io.Writer.Allocating = .init(alloc);
+    var err: std.Io.Writer.Allocating = .init(alloc);
 
-    try testing.expectEqual(@as(u8, 0), try cli.selftest(alloc, out.writer(), err.writer()));
-    try testing.expect(out.items.len > 0);
+    try testing.expectEqual(@as(u8, 0), try cli.selftest(alloc, testing.io, &out.writer, &err.writer));
+    try testing.expect(out.written().len > 0);
 }
 
 test "run: an audit of an empty tree never reports a clean tree" {
@@ -328,7 +328,7 @@ test "justFiles: the root justfile comes first, then just/*.just sorted" {
     try tree.write("just/zebra.just", "z:\n    true\n");
     try tree.write("just/alpha.just", "a:\n    true\n");
 
-    const files = try cli.justFiles(alloc, tree.root);
+    const files = try cli.justFiles(alloc, testing.io, tree.root);
     try testing.expectEqual(@as(usize, 3), files.len);
     try testing.expect(std.mem.indexOf(u8, files[0], "justfile") != null);
     try testing.expect(std.mem.indexOf(u8, files[1], "alpha.just") != null);
@@ -347,7 +347,7 @@ test "justFiles: the root justfile is listed even when it is absent" {
     // unconditionally and let the read fail open, so an absent root justfile
     // is an empty body rather than a missing entry. Inherited deliberately:
     // dropping it here would change how many Just files the clean line counts.
-    const files = try cli.justFiles(alloc, tree.root);
+    const files = try cli.justFiles(alloc, testing.io, tree.root);
     try testing.expectEqual(@as(usize, 2), files.len);
     try testing.expect(std.mem.indexOf(u8, files[0], "justfile") != null);
     try testing.expect(std.mem.indexOf(u8, files[1], "alpha.just") != null);
@@ -361,7 +361,7 @@ test "justFiles: a non-.just file in just/ is not a Just file" {
     defer tree.deinit();
     try tree.write("just/notes.txt", "not a recipe\n");
 
-    const files = try cli.justFiles(alloc, tree.root);
+    const files = try cli.justFiles(alloc, testing.io, tree.root);
     try testing.expectEqual(@as(usize, 1), files.len);
     try testing.expect(std.mem.indexOf(u8, files[0], "notes.txt") == null);
 }
@@ -373,7 +373,7 @@ test "justFiles: an empty tree still enumerates the root justfile path" {
     var tree = try Tree.init(alloc);
     defer tree.deinit();
 
-    const files = try cli.justFiles(alloc, tree.root);
+    const files = try cli.justFiles(alloc, testing.io, tree.root);
     try testing.expectEqual(@as(usize, 1), files.len);
     try testing.expect(std.mem.endsWith(u8, files[0], "justfile"));
 }
@@ -386,7 +386,7 @@ test "compiledTools: a tool root with authored sources under src/ is compiled" {
     defer tree.deinit();
     try tree.write("tools/widget/src/main.c", "int main(void){return 0;}\n");
 
-    const compiled = try cli.compiledTools(alloc, tree.root);
+    const compiled = try cli.compiledTools(alloc, testing.io, tree.root);
     try testing.expect(anyContains(compiled, "widget"));
 }
 
@@ -398,7 +398,7 @@ test "compiledTools: a tool root with no compiled source is not compiled" {
     defer tree.deinit();
     try tree.write("tools/notes/README.md", "prose\n");
 
-    const compiled = try cli.compiledTools(alloc, tree.root);
+    const compiled = try cli.compiledTools(alloc, testing.io, tree.root);
     try testing.expect(!anyContains(compiled, "notes"));
 }
 
@@ -410,7 +410,7 @@ test "cmakeTools: a root carrying CMakeLists.txt is registered" {
     defer tree.deinit();
     try tree.write("tools/widget/CMakeLists.txt", "# registered\n");
 
-    const registered = try cli.cmakeTools(alloc, tree.root);
+    const registered = try cli.cmakeTools(alloc, testing.io, tree.root);
     try testing.expect(anyContains(registered, "widget"));
 }
 
@@ -422,7 +422,7 @@ test "inventoryErrors: a compiled tool with no CMakeLists.txt is a finding" {
     defer tree.deinit();
     try tree.write("tools/widget/src/main.c", "int main(void){return 0;}\n");
 
-    const errors = try cli.inventoryErrors(alloc, tree.root);
+    const errors = try cli.inventoryErrors(alloc, testing.io, tree.root);
     try testing.expect(anyContains(errors, "widget"));
 }
 
@@ -435,7 +435,7 @@ test "inventoryErrors: the same tool with CMakeLists.txt is not a finding" {
     try tree.write("tools/widget/src/main.c", "int main(void){return 0;}\n");
     try tree.write("tools/widget/CMakeLists.txt", "# registered\n");
 
-    const errors = try cli.inventoryErrors(alloc, tree.root);
+    const errors = try cli.inventoryErrors(alloc, testing.io, tree.root);
     try testing.expect(!anyContains(errors, "widget"));
 }
 
@@ -446,7 +446,7 @@ test "inventoryErrors: an empty tree has nothing to report" {
     var tree = try Tree.init(alloc);
     defer tree.deinit();
 
-    const errors = try cli.inventoryErrors(alloc, tree.root);
+    const errors = try cli.inventoryErrors(alloc, testing.io, tree.root);
     try testing.expectEqual(@as(usize, 0), errors.len);
 }
 
@@ -457,7 +457,7 @@ test "sharedDispatchErrors: a missing shared.just is a finding" {
     var tree = try Tree.init(alloc);
     defer tree.deinit();
 
-    const errors = try cli.sharedDispatchErrors(alloc, tree.root);
+    const errors = try cli.sharedDispatchErrors(alloc, testing.io, tree.root);
     try testing.expect(errors.len > 0);
 }
 
@@ -468,7 +468,7 @@ test "liveDispatch: a missing dispatcher script is a finding, not a crash" {
     var tree = try Tree.init(alloc);
     defer tree.deinit();
 
-    if (cli.liveDispatch(alloc, tree.root)) |dispatch| {
+    if (cli.liveDispatch(alloc, testing.io, tree.root)) |dispatch| {
         try testing.expect(dispatch.errors.len > 0);
     } else |_| {}
 }

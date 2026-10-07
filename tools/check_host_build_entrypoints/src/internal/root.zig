@@ -200,13 +200,13 @@ pub fn freeStrings(allocator: std.mem.Allocator, items: []const []const u8) void
 /// non-indented, non-header line does not close the current recipe, and a
 /// comment line inside a body is dropped.
 pub fn recipeBodies(allocator: std.mem.Allocator, text: []const u8) ![]Recipe {
-    var out = std.ArrayList(Recipe).init(allocator);
+    var out: std.ArrayList(Recipe) = .empty;
     errdefer {
         for (out.items) |recipe| allocator.free(recipe.body);
-        out.deinit();
+        out.deinit(allocator);
     }
-    var lines = std.ArrayList([]const u8).init(allocator);
-    defer lines.deinit();
+    var lines: std.ArrayList([]const u8) = .empty;
+    defer lines.deinit(allocator);
 
     var name: ?[]const u8 = null;
     var it = LineIterator{ .text = text };
@@ -215,7 +215,7 @@ pub fn recipeBodies(allocator: std.mem.Allocator, text: []const u8) ![]Recipe {
             if (name) |current| {
                 const body = try std.mem.join(allocator, "\n", lines.items);
                 errdefer allocator.free(body);
-                try out.append(.{ .name = current, .body = body });
+                try out.append(allocator, .{ .name = current, .body = body });
             }
             name = strip(matched);
             lines.clearRetainingCapacity();
@@ -223,53 +223,53 @@ pub fn recipeBodies(allocator: std.mem.Allocator, text: []const u8) ![]Recipe {
             (std.mem.startsWith(u8, line, " ") or std.mem.startsWith(u8, line, "\t") or
                 strip(line).len == 0))
         {
-            if (!std.mem.startsWith(u8, lstrip(line), "#")) try lines.append(line);
+            if (!std.mem.startsWith(u8, lstrip(line), "#")) try lines.append(allocator, line);
         }
     }
     if (name) |current| {
         const body = try std.mem.join(allocator, "\n", lines.items);
         errdefer allocator.free(body);
-        try out.append(.{ .name = current, .body = body });
+        try out.append(allocator, .{ .name = current, .body = body });
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// `_shell_commands`: join shell continuation lines into command units.
 pub fn shellCommands(allocator: std.mem.Allocator, body: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
-    var current = std.ArrayList(u8).init(allocator);
-    defer current.deinit();
-    var scratch = std.ArrayList(u8).init(allocator);
-    defer scratch.deinit();
+    var current: std.ArrayList(u8) = .empty;
+    defer current.deinit(allocator);
+    var scratch: std.ArrayList(u8) = .empty;
+    defer scratch.deinit(allocator);
 
     var it = LineIterator{ .text = body };
     while (it.next()) |raw| {
         const line = strip(raw);
         scratch.clearRetainingCapacity();
-        try scratch.appendSlice(current.items);
-        try scratch.append(' ');
-        try scratch.appendSlice(line);
+        try scratch.appendSlice(allocator, current.items);
+        try scratch.append(allocator, ' ');
+        try scratch.appendSlice(allocator, line);
         const stripped = strip(scratch.items);
         const keep = stripped.len;
         std.mem.copyForwards(u8, scratch.items[0..keep], stripped);
         current.clearRetainingCapacity();
-        try current.appendSlice(scratch.items[0..keep]);
+        try current.appendSlice(allocator, scratch.items[0..keep]);
 
         if (current.items.len > 0 and current.items[current.items.len - 1] == '\\') {
             current.shrinkRetainingCapacity(current.items.len - 1);
             const trimmed = rstrip(current.items);
             current.shrinkRetainingCapacity(trimmed.len);
         } else if (current.items.len > 0) {
-            try out.append(try allocator.dupe(u8, current.items));
+            try out.append(allocator, try allocator.dupe(u8, current.items));
             current.clearRetainingCapacity();
         }
     }
-    if (current.items.len > 0) try out.append(try allocator.dupe(u8, current.items));
-    return out.toOwnedSlice();
+    if (current.items.len > 0) try out.append(allocator, try allocator.dupe(u8, current.items));
+    return out.toOwnedSlice(allocator);
 }
 
 // -- RAW_CMAKE_CONFIGURE -----------------------------------------------------
@@ -445,10 +445,10 @@ pub fn rawCompiler(body: []const u8) bool {
 /// `_recipe_errors`: reject raw native CMake configure and compile-driver
 /// bodies in one Just module.
 pub fn recipeErrors(allocator: std.mem.Allocator, label: []const u8, text: []const u8) ![][]const u8 {
-    var errors = std.ArrayList([]const u8).init(allocator);
+    var errors: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (errors.items) |item| allocator.free(item);
-        errors.deinit();
+        errors.deinit(allocator);
     }
     const recipes = try recipeBodies(allocator, text);
     defer freeRecipes(allocator, recipes);
@@ -460,7 +460,7 @@ pub fn recipeErrors(allocator: std.mem.Allocator, label: []const u8, text: []con
             if (rawCmakeConfigure(command) and
                 std.mem.indexOf(u8, command, "CMAKE_TOOLCHAIN_FILE") == null)
             {
-                try errors.append(try std.fmt.allocPrint(
+                try errors.append(allocator, try std.fmt.allocPrint(
                     allocator,
                     "{s}: recipe {s}: raw native CMake bypasses host_cmake.sh",
                     .{ label, recipe.name },
@@ -468,14 +468,14 @@ pub fn recipeErrors(allocator: std.mem.Allocator, label: []const u8, text: []con
             }
         }
         if (rawCompiler(recipe.body)) {
-            try errors.append(try std.fmt.allocPrint(
+            try errors.append(allocator, try std.fmt.allocPrint(
                 allocator,
                 "{s}: recipe {s}: raw host compiler invocation bypasses CMake",
                 .{ label, recipe.name },
             ));
         }
     }
-    return errors.toOwnedSlice();
+    return errors.toOwnedSlice(allocator);
 }
 
 /// `_standalone_cmake`: whether a listfile declares a top-level CMake project.
@@ -536,20 +536,20 @@ pub fn dispatcherFixtureErrors(
     expected: []const []const u8,
     listed: []const []const u8,
 ) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
     for (expected) |name| {
         if (!containsString(listed, name)) {
-            try out.append(try std.fmt.allocPrint(allocator, "missing {s}", .{name}));
+            try out.append(allocator, try std.fmt.allocPrint(allocator, "missing {s}", .{name}));
         }
     }
     for (listed) |name| {
         if (!containsString(expected, name)) {
-            try out.append(try std.fmt.allocPrint(allocator, "extra {s}", .{name}));
+            try out.append(allocator, try std.fmt.allocPrint(allocator, "extra {s}", .{name}));
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
