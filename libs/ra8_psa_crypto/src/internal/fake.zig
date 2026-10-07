@@ -109,7 +109,7 @@ pub fn aeadDecrypt(
     const plain_len = cipher.len - Limits.gcm_tag_len;
     var expected: [Limits.gcm_tag_len]u8 = undefined;
     tag(key, nonce, aad, cipher[0..plain_len], &expected);
-    if (!std.crypto.utils.timingSafeEql(
+    if (!std.crypto.timing_safe.eql(
         [Limits.gcm_tag_len]u8,
         expected,
         cipher[plain_len..][0..Limits.gcm_tag_len].*,
