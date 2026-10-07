@@ -12,13 +12,13 @@ const testing = std.testing;
 const cli = @import("cli");
 
 const Streams = struct {
-    out: std.ArrayList(u8),
-    err: std.ArrayList(u8),
+    out: std.Io.Writer.Allocating,
+    err: std.Io.Writer.Allocating,
 
     fn init() Streams {
         return .{
-            .out = std.ArrayList(u8).init(testing.allocator),
-            .err = std.ArrayList(u8).init(testing.allocator),
+            .out = .init(testing.allocator),
+            .err = .init(testing.allocator),
         };
     }
 
@@ -42,8 +42,8 @@ const Tree = struct {
     }
 
     fn write(self: *Tree, rel: []const u8, text: []const u8) !void {
-        if (std.fs.path.dirname(rel)) |parent| try self.dir.dir.makePath(parent);
-        try self.dir.dir.writeFile(.{ .sub_path = rel, .data = text });
+        if (std.fs.path.dirname(rel)) |parent| try self.dir.dir.createDirPath(testing.io, parent);
+        try self.dir.dir.writeFile(testing.io, .{ .sub_path = rel, .data = text });
     }
 };
 
@@ -56,13 +56,14 @@ fn runWith(
 ) !u8 {
     return cli.run(
         testing.allocator,
+        testing.io,
         tree.dir.dir,
         ".",
         argv,
         .{ .provided = census },
         policy,
-        streams.out.writer(),
-        streams.err.writer(),
+        &streams.out.writer,
+        &streams.err.writer,
     );
 }
 
@@ -83,9 +84,9 @@ test "a lone --selftest passes and reports its case count" {
     try testing.expectEqual(@as(u8, 0), status);
     try testing.expectEqualStrings(
         "check_no_legacy_make --selftest: PASS (19 both-direction cases)\n",
-        streams.out.items,
+        streams.out.written(),
     );
-    try testing.expectEqualStrings("", streams.err.items);
+    try testing.expectEqualStrings("", streams.err.written());
 }
 
 test "an unknown argument is a usage error" {
@@ -95,7 +96,7 @@ test "an unknown argument is a usage error" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{"--all"}, &.{}, .{}, &streams);
     try testing.expectEqual(@as(u8, 2), status);
-    try testing.expectEqualStrings("usage: check_no_legacy_make [--selftest]\n", streams.err.items);
+    try testing.expectEqualStrings("usage: check_no_legacy_make [--selftest]\n", streams.err.written());
 }
 
 test "--selftest beside another argument is a usage error" {
@@ -105,7 +106,7 @@ test "--selftest beside another argument is a usage error" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{ "--selftest", "extra" }, &.{}, .{}, &streams);
     try testing.expectEqual(@as(u8, 2), status);
-    try testing.expectEqualStrings("usage: check_no_legacy_make [--selftest]\n", streams.err.items);
+    try testing.expectEqualStrings("usage: check_no_legacy_make [--selftest]\n", streams.err.written());
 }
 
 test "a positional path is a usage error, this gate takes no file list" {
@@ -132,8 +133,8 @@ test "a clean scope exits 0 and prints the file count" {
         &streams,
     );
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (3 authored files)\n", streams.out.items);
-    try testing.expectEqualStrings("", streams.err.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (3 authored files)\n", streams.out.written());
+    try testing.expectEqualStrings("", streams.err.written());
 }
 
 test "a finding exits 1 and names the path, line and invocation" {
@@ -144,12 +145,12 @@ test "a finding exits 1 and names the path, line and invocation" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/a.sh"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 1), status);
-    try testing.expectEqualStrings("", streams.out.items);
+    try testing.expectEqualStrings("", streams.out.written());
     try testing.expectEqualStrings(
         "check_no_legacy_make: legacy repository task references:\n" ++
             "  scripts/a.sh:2: legacy repository task: make ci\n" ++
             "Use the authoritative namespaced Just recipe instead.\n",
-        streams.err.items,
+        streams.err.written(),
     );
 }
 
@@ -168,8 +169,8 @@ test "findings are reported in sorted path order" {
         &streams,
     );
     try testing.expectEqual(@as(u8, 1), status);
-    const first = std.mem.indexOf(u8, streams.err.items, "docs/a.md").?;
-    const second = std.mem.indexOf(u8, streams.err.items, "scripts/b.sh").?;
+    const first = std.mem.indexOf(u8, streams.err.written(), "docs/a.md").?;
+    const second = std.mem.indexOf(u8, streams.err.written(), "scripts/b.sh").?;
     try testing.expect(first < second);
 }
 
@@ -181,8 +182,8 @@ test "a scope below the floor is an error, never a pass" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/a.sh"}, .{ .floor = 650 }, &streams);
     try testing.expectEqual(@as(u8, 2), status);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, "scope collapsed to 2 file(s)") != null);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, self_rel) != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), "scope collapsed to 2 file(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), self_rel) != null);
 }
 
 test "a scope missing this gate's own source is an error" {
@@ -193,7 +194,7 @@ test "a scope missing this gate's own source is an error" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/a.sh"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 2), status);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, "scope collapsed to 1 file(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), "scope collapsed to 1 file(s)") != null);
 }
 
 test "this gate's own source is force-added even when the census omits it" {
@@ -203,7 +204,7 @@ test "this gate's own source is force-added even when the census omits it" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.written());
 }
 
 test "an unselected path is not scanned" {
@@ -214,7 +215,7 @@ test "an unselected path is not scanned" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"libs/ra8_ui/src/ui.c"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.written());
 }
 
 test "a vendored path is excluded before selection" {
@@ -236,7 +237,7 @@ test "a vendored path is excluded before selection" {
 test "a census entry that is not a regular file is dropped" {
     var tree = try seededTree();
     defer tree.deinit();
-    try tree.dir.dir.makePath("scripts/subdir.sh");
+    try tree.dir.dir.createDirPath(testing.io, "scripts/subdir.sh");
     var streams = Streams.init();
     defer streams.deinit();
     const status = try runWith(
@@ -264,7 +265,7 @@ test "an exact-named surface is selected" {
         &streams,
     );
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (3 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (3 authored files)\n", streams.out.written());
 }
 
 test "a Dockerfile anywhere is selected and scanned as an active surface" {
@@ -277,7 +278,7 @@ test "a Dockerfile anywhere is selected and scanned as an active surface" {
     try testing.expectEqual(@as(u8, 1), status);
     try testing.expect(std.mem.indexOf(
         u8,
-        streams.err.items,
+        streams.err.written(),
         "ci/images/Dockerfile:2: legacy repository task: make coverage",
     ) != null);
 }
@@ -310,7 +311,7 @@ test "a source that does not decode is skipped, not scanned" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"docs/binary.md"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (2 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (2 authored files)\n", streams.out.written());
 }
 
 test "a duplicated census entry is counted once" {
@@ -327,7 +328,7 @@ test "a duplicated census entry is counted once" {
         &streams,
     );
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (2 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (2 authored files)\n", streams.out.written());
 }
 
 test "the empty census entry git prints after its final NUL is ignored" {
@@ -337,7 +338,7 @@ test "the empty census entry git prints after its final NUL is ignored" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{ "", "" }, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 0), status);
-    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.items);
+    try testing.expectEqualStrings("check_no_legacy_make: clean (1 authored files)\n", streams.out.written());
 }
 
 test "a CRLF source keeps the predecessor's line numbers" {
@@ -348,7 +349,7 @@ test "a CRLF source keeps the predecessor's line numbers" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/a.sh"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 1), status);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, "scripts/a.sh:3:") != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), "scripts/a.sh:3:") != null);
 }
 
 test "every finding in a source is reported, not just the first" {
@@ -359,7 +360,7 @@ test "every finding in a source is reported, not just the first" {
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/a.sh"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 1), status);
-    try testing.expectEqual(@as(usize, 3), std.mem.count(u8, streams.err.items, "legacy repository task: "));
+    try testing.expectEqual(@as(usize, 3), std.mem.count(u8, streams.err.written(), "legacy repository task: "));
 }
 
 test "the gate's own source is scanned, and stays quiet" {
@@ -369,8 +370,10 @@ test "the gate's own source is scanned, and stays quiet" {
     defer streams.deinit();
     // The test runner is invoked from the tool directory by hand and from the
     // repository root by the build graph, so both spellings are tried.
-    const real = std.fs.cwd().readFileAlloc(testing.allocator, "src/internal/root.zig", 4 * 1024 * 1024) catch
-        try std.fs.cwd().readFileAlloc(testing.allocator, self_rel, 4 * 1024 * 1024);
+    const cwd = std.Io.Dir.cwd();
+    const limit: std.Io.Limit = .limited(4 * 1024 * 1024);
+    const real = cwd.readFileAlloc(testing.io, "src/internal/root.zig", testing.allocator, limit) catch
+        try cwd.readFileAlloc(testing.io, self_rel, testing.allocator, limit);
     defer testing.allocator.free(real);
     try tree.write(self_rel, real);
     const status = try runWith(&tree, &.{}, &.{}, .{ .floor = 1 }, &streams);
@@ -383,17 +386,16 @@ test "a source far past any read ceiling is still scanned" {
     // Written sparse, so the case costs no real disk: the finding sits past
     // any ceiling a read cap could impose, and the predecessor's read_text()
     // had no cap at all.
-    try tree.dir.dir.makePath("scripts");
+    try tree.dir.dir.createDirPath(testing.io, "scripts");
     {
-        const file = try tree.dir.dir.createFile("scripts/big.sh", .{});
-        defer file.close();
-        try file.seekTo(17 * 1024 * 1024);
-        try file.writeAll("\nmake ci\n");
+        const file = try tree.dir.dir.createFile(testing.io, "scripts/big.sh", .{});
+        defer file.close(testing.io);
+        try file.writePositionalAll(testing.io, "\nmake ci\n", 17 * 1024 * 1024);
     }
     var streams = Streams.init();
     defer streams.deinit();
     const status = try runWith(&tree, &.{}, &.{"scripts/big.sh"}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 1), status);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, "scripts/big.sh:2: legacy repository task: make ci") != null);
-    try testing.expect(std.mem.indexOf(u8, streams.err.items, "cannot read") == null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), "scripts/big.sh:2: legacy repository task: make ci") != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.written(), "cannot read") == null);
 }

@@ -117,17 +117,17 @@ pub fn isWordChar(cp: u21) bool {
 /// once this runs first.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
     var out = try std.ArrayList(u8).initCapacity(allocator, text.len);
-    errdefer out.deinit();
+    errdefer out.deinit(allocator);
     var i: usize = 0;
     while (i < text.len) : (i += 1) {
         if (text[i] == '\r') {
-            try out.append('\n');
+            try out.append(allocator, '\n');
             if (i + 1 < text.len and text[i + 1] == '\n') i += 1;
         } else {
-            try out.append(text[i]);
+            try out.append(allocator, text[i]);
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// `str.splitlines` over already-normalised text: the terminator is dropped
@@ -573,7 +573,7 @@ pub fn scanText(
     while (lines.next()) |line| {
         number += 1;
         if (legacyInvocation(line, active)) |invocation| {
-            try findings.append(try renderFinding(allocator, rel, number, invocation));
+            try findings.append(allocator, try renderFinding(allocator, rel, number, invocation));
         }
     }
 }
@@ -611,11 +611,11 @@ pub const selftest_cases = [_]SelftestCase{
 
 /// Labels of the cases whose detector answer disagrees with the contract.
 pub fn selftestFailures(allocator: std.mem.Allocator) ![][]const u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    errdefer failures.deinit();
+    var failures: std.ArrayList([]const u8) = .empty;
+    errdefer failures.deinit(allocator);
     for (selftest_cases) |case| {
         const fired = legacyInvocation(case.line, true) != null;
-        if (fired != case.expected) try failures.append(case.label);
+        if (fired != case.expected) try failures.append(allocator, case.label);
     }
-    return failures.toOwnedSlice();
+    return failures.toOwnedSlice(allocator);
 }
