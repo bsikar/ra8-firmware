@@ -13,13 +13,13 @@ const std = @import("std");
 const cli = @import("cli");
 
 const Streams = struct {
-    out: std.ArrayList(u8),
-    err: std.ArrayList(u8),
+    out: std.Io.Writer.Allocating,
+    err: std.Io.Writer.Allocating,
 
     fn init(allocator: std.mem.Allocator) Streams {
         return .{
-            .out = std.ArrayList(u8).init(allocator),
-            .err = std.ArrayList(u8).init(allocator),
+            .out = .init(allocator),
+            .err = .init(allocator),
         };
     }
 
@@ -29,13 +29,14 @@ const Streams = struct {
     }
 };
 
-fn run(dir: std.fs.Dir, streams: *Streams, argv: []const []const u8) !u8 {
+fn run(dir: std.Io.Dir, streams: *Streams, argv: []const []const u8) !u8 {
     return cli.run(
         std.testing.allocator,
+        std.testing.io,
         dir,
         argv,
-        streams.out.writer(),
-        streams.err.writer(),
+        &streams.out.writer,
+        &streams.err.writer,
     );
 }
 
@@ -47,9 +48,9 @@ test "no arguments writes the default 8x8 seed to stdout" {
 
     const status = try run(tmp.dir, &streams, &[_][]const u8{"gen_jpeg_fixture"});
     try std.testing.expectEqual(cli.exit_ok, status);
-    try std.testing.expectEqual(@as(usize, 346), streams.out.items.len);
-    try std.testing.expectEqualSlices(u8, &[_]u8{ 0xFF, 0xD8 }, streams.out.items[0..2]);
-    try std.testing.expectEqualStrings("", streams.err.items);
+    try std.testing.expectEqual(@as(usize, 346), streams.out.written().len);
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 0xFF, 0xD8 }, streams.out.written()[0..2]);
+    try std.testing.expectEqualStrings("", streams.err.written());
 }
 
 test "an explicit - output also writes the blob to stdout" {
@@ -62,7 +63,7 @@ test "an explicit - output also writes the blob to stdout" {
         "gen_jpeg_fixture", "--width", "16", "--height", "16", "-o", "-",
     });
     try std.testing.expectEqual(cli.exit_ok, status);
-    try std.testing.expectEqual(@as(usize, 346), streams.out.items.len);
+    try std.testing.expectEqual(@as(usize, 346), streams.out.written().len);
 }
 
 test "the requested dimensions reach SOF0" {
@@ -75,11 +76,11 @@ test "the requested dimensions reach SOF0" {
         "gen_jpeg_fixture", "--width", "32", "--height", "24",
     });
     try std.testing.expectEqual(cli.exit_ok, status);
-    const sof0 = std.mem.indexOf(u8, streams.out.items, &[_]u8{ 0xFF, 0xC0 }).?;
+    const sof0 = std.mem.indexOf(u8, streams.out.written(), &[_]u8{ 0xFF, 0xC0 }).?;
     try std.testing.expectEqualSlices(
         u8,
         &[_]u8{ 0x00, 0x18, 0x00, 0x20 },
-        streams.out.items[sof0 + 5 ..][0..4],
+        streams.out.written()[sof0 + 5 ..][0..4],
     );
 }
 
@@ -93,11 +94,11 @@ test "the --width=N spelling is accepted" {
         "gen_jpeg_fixture", "--width=64", "--height=64",
     });
     try std.testing.expectEqual(cli.exit_ok, status);
-    const sof0 = std.mem.indexOf(u8, streams.out.items, &[_]u8{ 0xFF, 0xC0 }).?;
+    const sof0 = std.mem.indexOf(u8, streams.out.written(), &[_]u8{ 0xFF, 0xC0 }).?;
     try std.testing.expectEqualSlices(
         u8,
         &[_]u8{ 0x00, 0x40, 0x00, 0x40 },
-        streams.out.items[sof0 + 5 ..][0..4],
+        streams.out.written()[sof0 + 5 ..][0..4],
     );
 }
 
@@ -112,14 +113,14 @@ test "-o writes the seed to a file and keeps the blob off stdout" {
     });
     try std.testing.expectEqual(cli.exit_ok, status);
 
-    const written = try tmp.dir.readFileAlloc(std.testing.allocator, "seed_8x8.jpg", 4096);
+    const written = try tmp.dir.readFileAlloc(std.testing.io, "seed_8x8.jpg", std.testing.allocator, .limited(4096));
     defer std.testing.allocator.free(written);
     try std.testing.expectEqual(@as(usize, 346), written.len);
     try std.testing.expectEqualSlices(u8, &[_]u8{ 0xFF, 0xD9 }, written[written.len - 2 ..]);
 
-    try std.testing.expect(std.mem.indexOf(u8, streams.out.items, "seed_8x8.jpg") != null);
-    try std.testing.expect(std.mem.indexOf(u8, streams.out.items, &[_]u8{0xFF}) == null);
-    try std.testing.expectEqualStrings("", streams.err.items);
+    try std.testing.expect(std.mem.indexOf(u8, streams.out.written(), "seed_8x8.jpg") != null);
+    try std.testing.expect(std.mem.indexOf(u8, streams.out.written(), &[_]u8{0xFF}) == null);
+    try std.testing.expectEqualStrings("", streams.err.written());
 }
 
 test "the --output=PATH spelling is accepted" {
@@ -132,7 +133,7 @@ test "the --output=PATH spelling is accepted" {
         "gen_jpeg_fixture", "--output=seed.jpg",
     });
     try std.testing.expectEqual(cli.exit_ok, status);
-    const written = try tmp.dir.readFileAlloc(std.testing.allocator, "seed.jpg", 4096);
+    const written = try tmp.dir.readFileAlloc(std.testing.io, "seed.jpg", std.testing.allocator, .limited(4096));
     defer std.testing.allocator.free(written);
     try std.testing.expectEqual(@as(usize, 346), written.len);
 }
@@ -143,12 +144,12 @@ test "an existing seed is overwritten rather than appended to" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "seed.jpg", .data = &@as([5000:0]u8, @splat('x')) });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "seed.jpg", .data = &@as([5000:0]u8, @splat('x')) });
     const status = try run(tmp.dir, &streams, &[_][]const u8{
         "gen_jpeg_fixture", "-o", "seed.jpg",
     });
     try std.testing.expectEqual(cli.exit_ok, status);
-    const written = try tmp.dir.readFileAlloc(std.testing.allocator, "seed.jpg", 8192);
+    const written = try tmp.dir.readFileAlloc(std.testing.io, "seed.jpg", std.testing.allocator, .limited(8192));
     defer std.testing.allocator.free(written);
     try std.testing.expectEqual(@as(usize, 346), written.len);
 }
@@ -163,8 +164,8 @@ test "an unrecognised flag is a usage error" {
         "gen_jpeg_fixture", "--depth", "8",
     });
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expectEqualStrings("", streams.out.items);
-    try std.testing.expect(std.mem.indexOf(u8, streams.err.items, "--depth") != null);
+    try std.testing.expectEqualStrings("", streams.out.written());
+    try std.testing.expect(std.mem.indexOf(u8, streams.err.written(), "--depth") != null);
 }
 
 test "a stray positional argument is a usage error" {
@@ -207,7 +208,7 @@ test "a non-integer dimension is a usage error" {
         "gen_jpeg_fixture", "--height", "eight",
     });
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expect(std.mem.indexOf(u8, streams.err.items, "eight") != null);
+    try std.testing.expect(std.mem.indexOf(u8, streams.err.written(), "eight") != null);
 }
 
 test "a zero dimension fails, and fails differently from a usage error" {
@@ -218,8 +219,8 @@ test "a zero dimension fails, and fails differently from a usage error" {
 
     const status = try run(tmp.dir, &streams, &[_][]const u8{ "gen_jpeg_fixture", "--width", "0" });
     try std.testing.expectEqual(cli.exit_error, status);
-    try std.testing.expectEqualStrings("", streams.out.items);
-    try std.testing.expect(std.mem.indexOf(u8, streams.err.items, "1..65535") != null);
+    try std.testing.expectEqualStrings("", streams.out.written());
+    try std.testing.expect(std.mem.indexOf(u8, streams.err.written(), "1..65535") != null);
 }
 
 test "a dimension above the SOF0 field fails" {
@@ -256,8 +257,8 @@ test "an unwritable output path fails without touching stdout" {
         "gen_jpeg_fixture", "-o", "no_such_dir/seed.jpg",
     });
     try std.testing.expectEqual(cli.exit_error, status);
-    try std.testing.expectEqualStrings("", streams.out.items);
-    try std.testing.expect(std.mem.indexOf(u8, streams.err.items, "no_such_dir/seed.jpg") != null);
+    try std.testing.expectEqualStrings("", streams.out.written());
+    try std.testing.expect(std.mem.indexOf(u8, streams.err.written(), "no_such_dir/seed.jpg") != null);
 }
 
 test "no seed is left behind when the dimensions are refused" {
@@ -270,7 +271,7 @@ test "no seed is left behind when the dimensions are refused" {
         "gen_jpeg_fixture", "--width", "0", "-o", "seed.jpg",
     });
     try std.testing.expectEqual(cli.exit_error, status);
-    try std.testing.expectError(error.FileNotFound, tmp.dir.access("seed.jpg", .{}));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.access(std.testing.io, "seed.jpg", .{}));
 }
 
 test "--help prints the usage line and succeeds" {
@@ -281,8 +282,8 @@ test "--help prints the usage line and succeeds" {
 
     const status = try run(tmp.dir, &streams, &[_][]const u8{ "gen_jpeg_fixture", "--help" });
     try std.testing.expectEqual(cli.exit_ok, status);
-    try std.testing.expect(std.mem.indexOf(u8, streams.out.items, "usage:") != null);
-    try std.testing.expectEqualStrings("", streams.err.items);
+    try std.testing.expect(std.mem.indexOf(u8, streams.out.written(), "usage:") != null);
+    try std.testing.expectEqualStrings("", streams.err.written());
 }
 
 test "the five committed corpus sizes all succeed" {
@@ -303,7 +304,7 @@ test "the five committed corpus sizes all succeed" {
             "gen_jpeg_fixture", "--width", size[0], "--height", size[1], "-o", "seed.jpg",
         });
         try std.testing.expectEqual(cli.exit_ok, status);
-        const written = try tmp.dir.readFileAlloc(std.testing.allocator, "seed.jpg", 4096);
+        const written = try tmp.dir.readFileAlloc(std.testing.io, "seed.jpg", std.testing.allocator, .limited(4096));
         defer std.testing.allocator.free(written);
         try std.testing.expectEqual(@as(usize, 346), written.len);
     }
@@ -322,8 +323,8 @@ test "an abbreviated option is refused rather than guessed at" {
         "gen_jpeg_fixture", "--wid", "8",
     });
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expectEqualStrings("", streams.out.items);
-    try std.testing.expect(std.mem.indexOf(u8, streams.err.items, "--wid") != null);
+    try std.testing.expectEqualStrings("", streams.out.written());
+    try std.testing.expect(std.mem.indexOf(u8, streams.err.written(), "--wid") != null);
 }
 
 test "an attached short-option value is refused" {
@@ -338,7 +339,7 @@ test "an attached short-option value is refused" {
         "gen_jpeg_fixture", "-oseed.jpg",
     });
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expectError(error.FileNotFound, tmp.dir.access("seed.jpg", .{}));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.access(std.testing.io, "seed.jpg", .{}));
 }
 
 test "-o=PATH is refused rather than written to a literal =PATH" {
@@ -353,5 +354,5 @@ test "-o=PATH is refused rather than written to a literal =PATH" {
         "gen_jpeg_fixture", "-o=seed.jpg",
     });
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expectError(error.FileNotFound, tmp.dir.access("=seed.jpg", .{}));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.access(std.testing.io, "=seed.jpg", .{}));
 }

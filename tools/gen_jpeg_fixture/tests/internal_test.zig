@@ -93,10 +93,10 @@ test "only the SOF0 dimension bytes vary between two sizes" {
     const second = try build(16, 16);
     defer std.testing.allocator.free(second);
 
-    var differing = std.ArrayList(usize).init(std.testing.allocator);
-    defer differing.deinit();
+    var differing: std.ArrayList(usize) = .empty;
+    defer differing.deinit(std.testing.allocator);
     for (first, second, 0..) |left, right, index| {
-        if (left != right) try differing.append(index);
+        if (left != right) try differing.append(std.testing.allocator, index);
     }
 
     const sof0 = std.mem.indexOf(u8, first, &[_]u8{ 0xFF, 0xC0 }).?;
