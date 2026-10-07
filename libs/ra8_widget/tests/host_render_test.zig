@@ -98,12 +98,12 @@ test "host backend renders selectable serif and sans faces into panel golden" {
     defer allocator.free(rendered);
     var temp = std.testing.tmpDir(.{});
     defer temp.cleanup();
-    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
-    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    try temp.dir.writeFile(std.testing.io, .{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(std.testing.io, "rendered.ppm", allocator, .limited(rendered.len + 1));
     defer allocator.free(written);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/font_faces.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/font_faces.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, expected, written);
     }
@@ -150,9 +150,9 @@ test "host backend writes panel PPM matching pager range golden" {
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/pager_range.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/pager_range.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, pager_range_expected, rendered);
     }
@@ -179,8 +179,8 @@ test "host backend writes panel PPM matching toggle and segmented golden" {
     defer allocator.free(rendered);
     var temp = std.testing.tmpDir(.{});
     defer temp.cleanup();
-    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
-    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    try temp.dir.writeFile(std.testing.io, .{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(std.testing.io, "rendered.ppm", allocator, .limited(rendered.len + 1));
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, toggle_segmented_expected, written);
 }
@@ -217,9 +217,9 @@ test "host backend writes panel PPM matching the image-widget golden" {
 
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/image_widget.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/image_widget.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, expected_image, rendered);
     }
@@ -264,8 +264,8 @@ test "host backend writes panel PPM matching list widget golden" {
     defer allocator.free(rendered);
     var temp = std.testing.tmpDir(.{});
     defer temp.cleanup();
-    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
-    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    try temp.dir.writeFile(std.testing.io, .{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(std.testing.io, "rendered.ppm", allocator, .limited(rendered.len + 1));
     defer allocator.free(written);
     try std.testing.expectEqualSlices(u8, list_expected, written);
 }
@@ -308,12 +308,12 @@ test "host backend renders regular and bold headings beside each other" {
     defer allocator.free(rendered);
     var temp = std.testing.tmpDir(.{});
     defer temp.cleanup();
-    try temp.dir.writeFile(.{ .sub_path = "rendered.ppm", .data = rendered });
-    const written = try temp.dir.readFileAlloc(allocator, "rendered.ppm", rendered.len);
+    try temp.dir.writeFile(std.testing.io, .{ .sub_path = "rendered.ppm", .data = rendered });
+    const written = try temp.dir.readFileAlloc(std.testing.io, "rendered.ppm", allocator, .limited(rendered.len + 1));
     defer allocator.free(written);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/font_weights.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/font_weights.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, expected_weights, written);
     }
@@ -384,9 +384,9 @@ test "host backend renders both reader faces at five native sizes" {
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/reading_sizes.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/reading_sizes.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, reading_sizes_expected, rendered);
     }
@@ -521,9 +521,9 @@ test "host backend renders native display text sizes into panel golden" {
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/display_sizes.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/display_sizes.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, display_sizes_expected, rendered);
     }
@@ -545,9 +545,9 @@ fn styledPaint(canvas: *host.Canvas) abi.types.Paint {
 fn compareUiGolden(allocator: std.mem.Allocator, canvas: *host.Canvas, golden: []const u8, path: []const u8) !void {
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = path, .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, golden, rendered);
     }
@@ -774,9 +774,9 @@ test "full panel compose clears gaps left by the previous screen" {
     defer allocator.free(rendered);
     const expected_ppm = try expected_canvas.ppm(allocator);
     defer allocator.free(expected_ppm);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/panel_recompose.ppm", .data = expected_ppm });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/panel_recompose.ppm", .data = expected_ppm });
     } else |_| {
         try std.testing.expectEqualSlices(u8, panel_recompose_expected, expected_ppm);
     }
@@ -823,20 +823,20 @@ test "host backend renders word-wrapped and clipped labels at reading and title 
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/label_wrap_clip.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/label_wrap_clip.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, label_wrap_expected, rendered);
     }
 }
 
 fn checkListGolden(allocator: std.mem.Allocator, rendered: []const u8, expected_bytes: []const u8, name: []const u8) !void {
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
         const path = try std.fmt.allocPrint(allocator, "tests/golden/{s}.ppm", .{name});
         defer allocator.free(path);
-        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = path, .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, expected_bytes, rendered);
     }
@@ -944,9 +944,9 @@ test "host backend renders negative, neutral and positive level bars to a golden
     }
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/level_bar.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/level_bar.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, level_bar_expected, rendered);
     }

@@ -53,11 +53,13 @@ const Draw = struct {
 
 /// Recording paint backend.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 16) = .{};
-    var draws: std.BoundedArray(Draw, 16) = .{};
+    var fills_buffer: [16]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [16]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn drawText(
@@ -72,7 +74,7 @@ const Recorder = struct {
         const seen = std.mem.span(str);
         record.len = @min(seen.len, record.text.len);
         @memcpy(record.text[0..record.len], seen[0..record.len]);
-        draws.append(record) catch unreachable;
+        draws.appendBounded(record) catch unreachable;
     }
 
     /// Fixed-width measurement so centring has something to halve.
@@ -84,22 +86,24 @@ const Recorder = struct {
 
 /// Recording keyboard-engine seam: a flat key list the test supplies.
 const Engine = struct {
-    var keys: std.BoundedArray(abi.KeyInfo, 8) = .{};
+    var keys_buffer: [8]abi.KeyInfo = undefined;
+    var keys: std.ArrayList(abi.KeyInfo) = .initBuffer(&keys_buffer);
     var hit_answer: u8 = abi.key.no_hit;
     var hit_calls: u32 = 0;
     var last_hit_x: i32 = 0;
     var last_hit_y: i32 = 0;
-    var applied: std.BoundedArray(u8, 8) = .{};
+    var applied_buffer: [8]u8 = undefined;
+    var applied: std.ArrayList(u8) = .initBuffer(&applied_buffer);
     var commit_answer: bool = false;
     var info_calls: u32 = 0;
 
     fn count(_: ?*anyopaque) callconv(.c) u8 {
-        return @intCast(keys.len);
+        return @intCast(keys.items.len);
     }
 
     fn keyInfo(_: ?*anyopaque, idx: u8, out: *abi.KeyInfo) callconv(.c) void {
         info_calls += 1;
-        out.* = keys.get(idx);
+        out.* = keys.items[idx];
     }
 
     fn hit(_: ?*anyopaque, x: i32, y: i32) callconv(.c) u8 {
@@ -110,7 +114,7 @@ const Engine = struct {
     }
 
     fn apply(_: ?*anyopaque, idx: u8) callconv(.c) bool {
-        applied.append(idx) catch unreachable;
+        applied.appendBounded(idx) catch unreachable;
         return commit_answer;
     }
 };
@@ -127,12 +131,12 @@ fn noteFieldSubmit(_: *abi.Widget) callconv(.c) void {
 }
 
 fn reset() void {
-    Recorder.fills = .{};
-    Recorder.draws = .{};
-    Engine.keys = .{};
+    Recorder.fills.clearRetainingCapacity();
+    Recorder.draws.clearRetainingCapacity();
+    Engine.keys.clearRetainingCapacity();
     Engine.hit_answer = abi.key.no_hit;
     Engine.hit_calls = 0;
-    Engine.applied = .{};
+    Engine.applied.clearRetainingCapacity();
     Engine.commit_answer = false;
     Engine.info_calls = 0;
     last_message = null;
@@ -268,8 +272,8 @@ test "the vtable measures nothing and is shared by every keyboard" {
 
 test "render fills the band, then one framed face per key" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 4, .y = 204, .w = 20, .h = 20 }, 'a')) catch unreachable;
-    Engine.keys.append(charKey(.{ .x = 28, .y = 204, .w = 20, .h = 20 }, 'b')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 4, .y = 204, .w = 20, .h = 20 }, 'a')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 28, .y = 204, .w = 20, .h = 20 }, 'b')) catch unreachable;
 
     var kbd = keyboardAt(&full_backend, &full_ops);
     var w = widgetAt(band);
@@ -277,57 +281,57 @@ test "render fills the band, then one framed face per key" {
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
     // band, then border+face for each of the two keys.
-    try std.testing.expectEqual(5, Recorder.fills.len);
-    try std.testing.expectEqual(bg_color, Recorder.fills.get(0).color);
-    try std.testing.expectEqual(band.w, Recorder.fills.get(0).w);
-    try std.testing.expectEqual(key_border_color, Recorder.fills.get(1).color);
-    try std.testing.expectEqual(face_color, Recorder.fills.get(2).color);
+    try std.testing.expectEqual(5, Recorder.fills.items.len);
+    try std.testing.expectEqual(bg_color, Recorder.fills.items[0].color);
+    try std.testing.expectEqual(band.w, Recorder.fills.items[0].w);
+    try std.testing.expectEqual(key_border_color, Recorder.fills.items[1].color);
+    try std.testing.expectEqual(face_color, Recorder.fills.items[2].color);
     // The face is inset by border_w on every edge.
-    try std.testing.expectEqual(5, Recorder.fills.get(2).x);
-    try std.testing.expectEqual(18, Recorder.fills.get(2).w);
+    try std.testing.expectEqual(5, Recorder.fills.items[2].x);
+    try std.testing.expectEqual(18, Recorder.fills.items[2].w);
     try std.testing.expectEqual(2, Engine.info_calls);
 }
 
 test "a character key draws its glyph centred, a label key its label" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'q')) catch unreachable;
-    Engine.keys.append(labelKey(.{ .x = 24, .y = 200, .w = 60, .h = 24 }, "space")) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'q')) catch unreachable;
+    Engine.keys.appendBounded(labelKey(.{ .x = 24, .y = 200, .w = 60, .h = 24 }, "space")) catch unreachable;
 
     var kbd = keyboardAt(&full_backend, &full_ops);
     var w = widgetAt(band);
     _ = abi.ra8_widget_keyboard_init(&w, &kbd);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(2, Recorder.draws.len);
-    try std.testing.expectEqualStrings("q", Recorder.draws.get(0).str());
-    try std.testing.expectEqualStrings("space", Recorder.draws.get(1).str());
+    try std.testing.expectEqual(2, Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("q", Recorder.draws.items[0].str());
+    try std.testing.expectEqualStrings("space", Recorder.draws.items[1].str());
     // 24 wide, one 6px glyph: (24 - 6) / 2. Vertically (24 - 12) / 2 below the top.
-    try std.testing.expectEqual(9, Recorder.draws.get(0).x);
-    try std.testing.expectEqual(206, Recorder.draws.get(0).y);
+    try std.testing.expectEqual(9, Recorder.draws.items[0].x);
+    try std.testing.expectEqual(206, Recorder.draws.items[0].y);
     // 60 wide, five glyphs at 6px: (60 - 30) / 2 from x = 24.
-    try std.testing.expectEqual(39, Recorder.draws.get(1).x);
-    try std.testing.expectEqual(key_fg_color, Recorder.draws.get(0).fg);
-    try std.testing.expectEqual(face_color, Recorder.draws.get(0).bg);
+    try std.testing.expectEqual(39, Recorder.draws.items[1].x);
+    try std.testing.expectEqual(key_fg_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqual(face_color, Recorder.draws.items[0].bg);
 }
 
 test "a glyph wins over a label on the same key" {
     reset();
     var both = labelKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, "shift");
     both.glyph = 'z';
-    Engine.keys.append(both) catch unreachable;
+    Engine.keys.appendBounded(both) catch unreachable;
 
     var kbd = keyboardAt(&full_backend, &full_ops);
     var w = widgetAt(band);
     _ = abi.ra8_widget_keyboard_init(&w, &kbd);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(1, Recorder.draws.len);
-    try std.testing.expectEqualStrings("z", Recorder.draws.get(0).str());
+    try std.testing.expectEqual(1, Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("z", Recorder.draws.items[0].str());
 }
 
 test "a key with neither glyph nor label draws only its face" {
     reset();
-    Engine.keys.append(.{
+    Engine.keys.appendBounded(.{
         .rect = .{ .x = 0, .y = 200, .w = 24, .h = 24 },
         .label = null,
         .glyph = abi.key.no_glyph,
@@ -340,33 +344,33 @@ test "a key with neither glyph nor label draws only its face" {
     _ = abi.ra8_widget_keyboard_init(&w, &kbd);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(3, Recorder.fills.len);
-    try std.testing.expectEqual(0, Recorder.draws.len);
+    try std.testing.expectEqual(3, Recorder.fills.items.len);
+    try std.testing.expectEqual(0, Recorder.draws.items.len);
 }
 
 test "a backend with no draw_text still paints the grid" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
 
     var kbd = keyboardAt(&fill_only_backend, &full_ops);
     var w = widgetAt(band);
     _ = abi.ra8_widget_keyboard_init(&w, &kbd);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(3, Recorder.fills.len);
-    try std.testing.expectEqual(0, Recorder.draws.len);
+    try std.testing.expectEqual(3, Recorder.fills.items.len);
+    try std.testing.expectEqual(0, Recorder.draws.items.len);
 }
 
 test "render draws nothing at all without a paint backend" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
 
     var kbd = keyboardAt(null, &full_ops);
     var w = widgetAt(band);
     _ = abi.ra8_widget_keyboard_init(&w, &kbd);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(0, Recorder.fills.len);
+    try std.testing.expectEqual(0, Recorder.fills.items.len);
     try std.testing.expectEqual(0, Engine.info_calls);
 }
 
@@ -377,8 +381,8 @@ test "an inert seam still fills the band" {
     _ = abi.ra8_widget_keyboard_init(&w, &no_ops);
     abi.ra8_widget_keyboard_vtable().render.?(&w);
 
-    try std.testing.expectEqual(1, Recorder.fills.len);
-    try std.testing.expectEqual(bg_color, Recorder.fills.get(0).color);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
+    try std.testing.expectEqual(bg_color, Recorder.fills.items[0].color);
 
     reset();
     const partial: abi.Ops = .{
@@ -393,12 +397,12 @@ test "an inert seam still fills the band" {
     _ = abi.ra8_widget_keyboard_init(&w2, &half);
     abi.ra8_widget_keyboard_vtable().render.?(&w2);
 
-    try std.testing.expectEqual(1, Recorder.fills.len);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
 }
 
 test "a tap on a key applies it and invalidates for a quality refresh" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 0, .y = 200, .w = 24, .h = 24 }, 'a')) catch unreachable;
     Engine.hit_answer = 0;
 
     var kbd = keyboardAt(&full_backend, &full_ops);
@@ -410,8 +414,8 @@ test "a tap on a key applies it and invalidates for a quality refresh" {
     try std.testing.expectEqual(1, Engine.hit_calls);
     try std.testing.expectEqual(12, Engine.last_hit_x);
     try std.testing.expectEqual(212, Engine.last_hit_y);
-    try std.testing.expectEqual(1, Engine.applied.len);
-    try std.testing.expectEqual(0, Engine.applied.get(0));
+    try std.testing.expectEqual(1, Engine.applied.items.len);
+    try std.testing.expectEqual(0, Engine.applied.items[0]);
     try std.testing.expectEqual(1, invalidations);
     try std.testing.expectEqual(@backingInt(abi.Refresh.quality), last_refresh);
     try std.testing.expect(w.dirty);
@@ -429,7 +433,7 @@ test "on_commit fires exactly on the commit edge" {
 
     const event = touchAt(1, 201);
     try std.testing.expect(abi.ra8_widget_keyboard_vtable().on_input.?(&w, &event));
-    try std.testing.expectEqual(3, Engine.applied.get(0));
+    try std.testing.expectEqual(3, Engine.applied.items[0]);
     try std.testing.expectEqual(1, commits);
 
     Engine.commit_answer = false;
@@ -450,7 +454,7 @@ test "a commit with no callback bound is still applied" {
 
     const event = touchAt(1, 201);
     try std.testing.expect(abi.ra8_widget_keyboard_vtable().on_input.?(&w, &event));
-    try std.testing.expectEqual(1, Engine.applied.len);
+    try std.testing.expectEqual(1, Engine.applied.items.len);
     try std.testing.expectEqual(1, invalidations);
     try std.testing.expectEqual(0, commits);
 }
@@ -466,7 +470,7 @@ test "a tap on a gap is consumed but changes nothing" {
     const event = touchAt(5, 205);
     try std.testing.expect(abi.ra8_widget_keyboard_vtable().on_input.?(&w, &event));
     try std.testing.expectEqual(1, Engine.hit_calls);
-    try std.testing.expectEqual(0, Engine.applied.len);
+    try std.testing.expectEqual(0, Engine.applied.items.len);
     try std.testing.expectEqual(0, invalidations);
     try std.testing.expect(!w.dirty);
 }
@@ -503,22 +507,22 @@ test "a widget with no context declines input and renders nothing" {
     const event = touchAt(5, 205);
     try std.testing.expect(!abi.ra8_widget_keyboard_vtable().on_input.?(&w, &event));
     abi.ra8_widget_keyboard_vtable().render.?(&w);
-    try std.testing.expectEqual(0, Recorder.fills.len);
+    try std.testing.expectEqual(0, Recorder.fills.items.len);
 }
 
 test "keyboard keys update the focused fixed-buffer field and report bounded damage" {
     reset();
-    Engine.keys.append(charKey(.{ .x = 4, .y = 204, .w = 20, .h = 20 }, 'r')) catch unreachable;
-    Engine.keys.append(charKey(.{ .x = 28, .y = 204, .w = 20, .h = 20 }, 'e')) catch unreachable;
-    Engine.keys.append(charKey(.{ .x = 52, .y = 204, .w = 20, .h = 20 }, 'a')) catch unreachable;
-    Engine.keys.append(charKey(.{ .x = 76, .y = 204, .w = 20, .h = 20 }, 'd')) catch unreachable;
-    Engine.keys.append(charKey(.{ .x = 100, .y = 204, .w = 20, .h = 20 }, 'x')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 4, .y = 204, .w = 20, .h = 20 }, 'r')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 28, .y = 204, .w = 20, .h = 20 }, 'e')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 52, .y = 204, .w = 20, .h = 20 }, 'a')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 76, .y = 204, .w = 20, .h = 20 }, 'd')) catch unreachable;
+    Engine.keys.appendBounded(charKey(.{ .x = 100, .y = 204, .w = 20, .h = 20 }, 'x')) catch unreachable;
     var backspace = labelKey(.{ .x = 124, .y = 204, .w = 28, .h = 20 }, "delete");
     backspace.action = .backspace;
-    Engine.keys.append(backspace) catch unreachable;
+    Engine.keys.appendBounded(backspace) catch unreachable;
     var enter = labelKey(.{ .x = 156, .y = 204, .w = 28, .h = 20 }, "enter");
     enter.action = .enter;
-    Engine.keys.append(enter) catch unreachable;
+    Engine.keys.appendBounded(enter) catch unreachable;
 
     var buffer: [5]u8 = @splat(0);
     var field = abi.text_field.TextField{
@@ -558,7 +562,7 @@ test "keyboard keys update the focused fixed-buffer field and report bounded dam
     try std.testing.expectEqual(@as(u16, 4), field.len);
     try std.testing.expectEqual(field_widget.rect.x + 8, field.damage.x);
     try std.testing.expectEqual(field_widget.rect.w - 16, field.damage.w);
-    try std.testing.expectEqual(Engine.keys.get(4).rect, kbd.damage);
+    try std.testing.expectEqual(Engine.keys.items[4].rect, kbd.damage);
 
     Engine.hit_answer = 5;
     const backspace_event = touchAt(130, 205);

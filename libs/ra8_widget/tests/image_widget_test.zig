@@ -9,10 +9,11 @@ const abi = @import("abi");
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {}
 
 const Fill = struct { x: i32, y: i32, w: i32, h: i32, color: u32 };
-var fills: std.BoundedArray(Fill, 64) = .{};
+var fills_buffer: [64]Fill = undefined;
+var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
 
 fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-    fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+    fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
 }
 
 const paint: abi.Paint = .{ .user = null, .fill_rect = fillRect, .draw_text = null, .text_size = null };
@@ -45,7 +46,7 @@ test "image widget binds its paint callback and draws in its assigned rect" {
     try std.testing.expect(widget.visible);
     try std.testing.expect(widget.vt != null);
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 2), fills.len);
-    try std.testing.expectEqual(Fill{ .x = 10, .y = 20, .w = 2, .h = 1, .color = 0x141414 }, fills.get(0));
-    try std.testing.expectEqual(Fill{ .x = 10, .y = 21, .w = 2, .h = 1, .color = 0x505050 }, fills.get(1));
+    try std.testing.expectEqual(@as(usize, 2), fills.items.len);
+    try std.testing.expectEqual(Fill{ .x = 10, .y = 20, .w = 2, .h = 1, .color = 0x141414 }, fills.items[0]);
+    try std.testing.expectEqual(Fill{ .x = 10, .y = 21, .w = 2, .h = 1, .color = 0x505050 }, fills.items[1]);
 }
