@@ -11,11 +11,22 @@
 //! hosted build gets the stand-in and a freestanding build gets Mbed TLS
 //! without CMake passing anything.
 //!
-//! The on-target backend reaches the vendored headers through `@cImport`, so
-//! the include roots and the two config-file defines below mirror what
+//! The on-target backend reaches the vendored headers through translate-c: the
+//! build writes the include list and translates it into the `mbedtls_h`
+//! module. The include roots and the two config-file defines below mirror what
 //! `cmake/mbedtls.cmake` already gives the C compiler.
 
 const std = @import("std");
+const Translator = @import("translate_c").Translator;
+
+/// The headers mbedtls_c.zig exposes; the build writes them, so no C is added.
+const mbedtls_header =
+    \\#include <mbedtls/error.h>
+    \\#include <mbedtls/ssl.h>
+    \\#include <mbedtls/x509_crt.h>
+    \\#include <psa/crypto.h>
+    \\
+;
 
 /// Package (pinned in build.zig.zon) and the include root inside it.
 const VendorRoot = struct { package: []const u8, dir: []const u8 };
@@ -28,14 +39,27 @@ const vendor_include_roots = [_]VendorRoot{
 
 /// On the configure pass that first asks for a package zig fetches it and
 /// runs the configure again, so a missing one is skipped here.
-fn addVendorHeaders(b: *std.Build, module: *std.Build.Module) void {
+fn addMbedtlsHeaders(
+    b: *std.Build,
+    module: *std.Build.Module,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const header = b.addWriteFiles().add("mbedtls_c.h", mbedtls_header);
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = target,
+        .optimize = optimize,
+        .link_libc = false,
+    });
     for (vendor_include_roots) |root| {
         const dep = b.lazyDependency(root.package, .{}) orelse continue;
-        module.addIncludePath(dep.path(root.dir));
+        translator.addIncludePath(dep.path(root.dir));
     }
-    module.addIncludePath(b.path("../../port/mbedtls/inc"));
-    module.addCMacro("TF_PSA_CRYPTO_CONFIG_FILE", "\"tf_psa_crypto_config.h\"");
-    module.addCMacro("MBEDTLS_CONFIG_FILE", "\"mbedtls_config.h\"");
+    translator.addIncludePath(b.path("../../port/mbedtls/inc"));
+    translator.defineCMacro("TF_PSA_CRYPTO_CONFIG_FILE", "\"tf_psa_crypto_config.h\"");
+    translator.defineCMacro("MBEDTLS_CONFIG_FILE", "\"mbedtls_config.h\"");
+    module.addImport("mbedtls_h", translator.mod);
 }
 
 pub fn build(b: *std.Build) void {
@@ -58,7 +82,7 @@ pub fn build(b: *std.Build) void {
         .pic = true,
     });
     library_module.addOptions("build_config", build_options);
-    if (!off_target) addVendorHeaders(b, library_module);
+    if (!off_target) addMbedtlsHeaders(b, library_module, target, optimize);
 
     const library = b.addLibrary(.{
         .name = "ra8_tls",
