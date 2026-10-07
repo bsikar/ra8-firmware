@@ -55,18 +55,18 @@ pub fn isExcluded(rel: []const u8) bool {
 /// The gate reports the line numbers it counted after that translation, so a
 /// CRLF file has to collapse here or every finding below the first CR shifts.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, raw.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, raw.len);
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < raw.len) : (index += 1) {
         if (raw[index] != '\r') {
-            try out.append(raw[index]);
+            try out.append(allocator, raw[index]);
             continue;
         }
-        try out.append('\n');
+        try out.append(allocator, '\n');
         if (index + 1 < raw.len and raw[index + 1] == '\n') index += 1;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Length in bytes of the line boundary at `index`, or 0 when there is none.
@@ -97,8 +97,8 @@ pub fn boundaryLen(text: []const u8, index: usize) usize {
 /// Lines are cut exactly where `str.splitlines` cut them, and a trailing
 /// boundary does not open a further empty line.
 pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]usize {
-    var hits = std.ArrayList(usize).init(allocator);
-    errdefer hits.deinit();
+    var hits: std.ArrayList(usize) = .empty;
+    errdefer hits.deinit(allocator);
     var number: usize = 1;
     var start: usize = 0;
     var index: usize = 0;
@@ -108,15 +108,15 @@ pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]usize {
             index += 1;
             continue;
         }
-        if (std.mem.indexOf(u8, text[start..index], forbidden) != null) try hits.append(number);
+        if (std.mem.indexOf(u8, text[start..index], forbidden) != null) try hits.append(allocator, number);
         number += 1;
         index += width;
         start = index;
     }
     if (start < text.len and std.mem.indexOf(u8, text[start..], forbidden) != null) {
-        try hits.append(number);
+        try hits.append(allocator, number);
     }
-    return hits.toOwnedSlice();
+    return hits.toOwnedSlice(allocator);
 }
 
 /// Injected answer to "is this census entry a readable file in the tree?".
@@ -144,17 +144,17 @@ pub fn selectScoped(
     resolver: Resolver,
     self_rel: []const u8,
 ) ![][]const u8 {
-    var kept = std.ArrayList([]const u8).init(allocator);
-    errdefer kept.deinit();
+    var kept: std.ArrayList([]const u8) = .empty;
+    errdefer kept.deinit(allocator);
     for (rels) |rel| {
         if (rel.len == 0) continue;
         if (isExcluded(rel)) continue;
         if (!resolver.isFile(rel)) continue;
-        try kept.append(rel);
+        try kept.append(allocator, rel);
     }
-    if (resolver.isFile(self_rel)) try kept.append(self_rel);
+    if (resolver.isFile(self_rel)) try kept.append(allocator, self_rel);
 
-    const items = try kept.toOwnedSlice();
+    const items = try kept.toOwnedSlice(allocator);
     std.mem.sort([]const u8, items, {}, lessThanPath);
     var unique: usize = 0;
     for (items) |item| {
@@ -229,12 +229,12 @@ pub const selftest_cases = [_]SelftestCase{
 
 /// Labels of the selftest cases whose detector result is wrong.
 pub fn selftestFailures(allocator: std.mem.Allocator) ![][]const u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    errdefer failures.deinit();
+    var failures: std.ArrayList([]const u8) = .empty;
+    errdefer failures.deinit(allocator);
     for (selftest_cases) |case| {
         const hits = try scanText(allocator, case.text);
         defer allocator.free(hits);
-        if (!std.mem.eql(usize, hits, case.expected)) try failures.append(case.label);
+        if (!std.mem.eql(usize, hits, case.expected)) try failures.append(allocator, case.label);
     }
-    return failures.toOwnedSlice();
+    return failures.toOwnedSlice(allocator);
 }
