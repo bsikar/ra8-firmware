@@ -5,15 +5,11 @@
 //! other file in the library sees the names below, never an `MBEDTLS_*`
 //! macro, which is what keeps the rest of the port host-testable.
 //!
-//! `build.zig` supplies the include roots and the two config-file defines
-//! that `cmake/mbedtls.cmake` already gives the C compiler.
+//! `build.zig` translates these headers into the `mbedtls_h` module with the
+//! include roots and the two config-file defines that `cmake/mbedtls.cmake`
+//! already gives the C compiler.
 
-pub const c = @cImport({
-    @cInclude("mbedtls/error.h");
-    @cInclude("mbedtls/ssl.h");
-    @cInclude("mbedtls/x509_crt.h");
-    @cInclude("psa/crypto.h");
-});
+pub const c = @import("mbedtls_h");
 
 pub const psa_success = c.PSA_SUCCESS;
 

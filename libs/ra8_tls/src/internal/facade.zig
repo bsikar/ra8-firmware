@@ -17,7 +17,7 @@ const Limits = vocab.Limits;
 
 /// The C chose its stack with `#ifdef RA8_OFF_TARGET`; this is the same
 /// switch. Only the taken arm is analysed, so a host build never reaches the
-/// `@cImport` of the vendored Mbed TLS headers.
+/// translate-c module of the vendored Mbed TLS headers.
 const backend = if (build_config.off_target)
     @import("backend_fake.zig")
 else
