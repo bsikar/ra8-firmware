@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    library.addObject(reset_hook_object);
+    library.root_module.addObject(reset_hook_object);
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
