@@ -116,7 +116,7 @@ pub fn isBuildOutputPath(allocator: std.mem.Allocator, path: []const u8, repo_ro
 
 /// The final path component, as `pathlib.PurePath.name` yields it.
 pub fn pathName(path: []const u8) []const u8 {
-    const trimmed = std.mem.trimRight(u8, path, "/");
+    const trimmed = std.mem.trimEnd(u8, path, "/");
     if (std.mem.lastIndexOfScalar(u8, trimmed, '/')) |cut| return trimmed[cut + 1 ..];
     return trimmed;
 }
@@ -171,7 +171,7 @@ pub fn isInternal(path: []const u8) bool {
 /// The closest one to the file decides, so a module may nest an `inc` inside a
 /// `src` tree and the deeper `inc` wins.
 pub fn governingDir(path: []const u8) ?[]const u8 {
-    const trimmed = std.mem.trimRight(u8, path, "/");
+    const trimmed = std.mem.trimEnd(u8, path, "/");
     const cut = std.mem.lastIndexOfScalar(u8, trimmed, '/') orelse return null;
     const parent = trimmed[0..cut];
     var index: usize = parent.len;
@@ -207,7 +207,7 @@ pub fn isExcluded(allocator: std.mem.Allocator, path: []const u8, repo_root: []c
 /// path unchanged.
 pub fn relativeTo(path: []const u8, repo_root: []const u8) []const u8 {
     if (repo_root.len == 0) return path;
-    const root = std.mem.trimRight(u8, repo_root, "/");
+    const root = std.mem.trimEnd(u8, repo_root, "/");
     if (std.mem.eql(u8, path, root)) return ".";
     if (path.len > root.len + 1 and std.mem.startsWith(u8, path, root) and path[root.len] == '/') {
         return path[root.len + 1 ..];
@@ -237,16 +237,16 @@ pub fn auditTargets(
     repo_root: []const u8,
 ) !Audit {
     var scanned: usize = 0;
-    var offenders = std.ArrayList([]const u8).init(allocator);
-    errdefer offenders.deinit();
+    var offenders: std.ArrayList([]const u8) = .empty;
+    errdefer offenders.deinit(allocator);
     for (targets) |path| {
         if (!underSrc(path)) continue;
         scanned += 1;
         if (!isInternal(path)) {
-            try offenders.append(relativeTo(path, repo_root));
+            try offenders.append(allocator, relativeTo(path, repo_root));
         }
     }
-    const owned = try offenders.toOwnedSlice();
+    const owned = try offenders.toOwnedSlice(allocator);
     std.mem.sort([]const u8, owned, {}, pythonLessThan);
     return .{ .scanned = scanned, .offenders = owned };
 }
