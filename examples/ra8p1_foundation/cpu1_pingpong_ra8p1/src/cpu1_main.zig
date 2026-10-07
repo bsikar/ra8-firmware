@@ -30,7 +30,7 @@ fn initMemory() void {
 fn pong(block: *volatile shared.Block, seq: u32) void {
     const good = block.ping_payload == shared.magic_ping;
     block.pong_payload = if (good) shared.magic_pong else 0;
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     block.pong_seq = seq;
 }
 

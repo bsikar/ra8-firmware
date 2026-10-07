@@ -100,7 +100,7 @@ fn nullPtr(message: [*:0]const u8) u16 {
 /// `dsb sy` is the assembler spelling of the C's `dsb 0xF`: option 0xF is SY.
 inline fn dsb() void {
     if (!build_config.off_target) {
-        asm volatile ("dsb sy" ::: "memory");
+        asm volatile ("dsb sy" ::: .{ .memory = true });
     }
 }
 

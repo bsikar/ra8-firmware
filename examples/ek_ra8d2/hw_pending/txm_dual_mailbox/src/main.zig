@@ -216,7 +216,7 @@ export fn tx_application_define(first_unused: ?*anyopaque) callconv(.c) void {
 export fn main() callconv(.c) c_int {
     const block = shared.block();
     block.* = .{};
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     // CGC first: tx_initialize_low_level.S programs SysTick off the core clock.
     if (ra8_cgc_init() != ok) park();
     _ = ra8_board_uart_console_init(baud);

@@ -97,7 +97,7 @@ export fn ra8_reset_software_reset() void {
     common.ra8_log_emit_info(tag, "software reset");
     @as(*volatile u32, @ptrFromInt(rs.aircr_addr)).* = rs.aircr_reset;
     if (comptime on_target) {
-        asm volatile ("dsb 0xF" ::: "memory");
+        asm volatile ("dsb 0xF" ::: .{ .memory = true });
         while (true) {}
     } else host.ra8_hw_wait_for_reset();
 }

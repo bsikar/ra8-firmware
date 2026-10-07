@@ -19,10 +19,10 @@ const Hw = struct {
         @as(*volatile u32, @ptrFromInt(addr)).* = value;
     }
     pub fn dsb(_: Hw) void {
-        if (comptime is_arm) asm volatile ("dsb 0xF" ::: "memory");
+        if (comptime is_arm) asm volatile ("dsb 0xF" ::: .{ .memory = true });
     }
     pub fn isb(_: Hw) void {
-        if (comptime is_arm) asm volatile ("isb 0xF" ::: "memory");
+        if (comptime is_arm) asm volatile ("isb 0xF" ::: .{ .memory = true });
     }
     pub fn err(_: Hw, msg: [*:0]const u8) void {
         common.ra8_log_emit_error(tag, msg);

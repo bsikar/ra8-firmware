@@ -28,14 +28,14 @@ fn gpt0Handler() callconv(.c) void {
     reg(shared.cpu1_ielsr0).* &= ~shared.ielsr_ir;
     reg(nvic_icer0).* = line0;
     shared.block().irq_count = 1;
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
 }
 
 export fn cpu1_reset_handler() callconv(.c) noreturn {
     reg(shared.cpu1_ielsr0).* = shared.event;
     reg(nvic_iser0).* = line0;
     shared.block().armed = 1;
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     while (true) asm volatile ("wfi");
 }
 

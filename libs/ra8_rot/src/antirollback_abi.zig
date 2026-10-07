@@ -49,7 +49,7 @@ extern fn ra8_flash_extra_mram_write(mram_addr: u32, src: [*]const u8, len: u32)
 /// instructions only exist on the target, and the host build of this archive
 /// links the C suite, so the barrier compiles away there.
 fn barrier() void {
-    if (comptime !off_target) asm volatile ("dsb 0xF\n isb 0xF\n" ::: "memory");
+    if (comptime !off_target) asm volatile ("dsb 0xF\n isb 0xF\n" ::: .{ .memory = true });
 }
 
 /// Mirrors `ra8_rot_antirollback_store_t`: two function pointers, either of

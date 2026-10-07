@@ -59,6 +59,6 @@ export fn demo_module_start(id: u32) callconv(.c) noreturn {
     // Only the core registers are named: this thread never returns and
     // holds no FP value of its own, so S0-S31 being taken over is nothing
     // the compiler has to preserve (and naming all 32 is past Zig's limit).
-    asm volatile (spin ::: "r1", "r2", "r3", "cc", "memory");
+    asm volatile (spin ::: .{ .r1 = true, .r2 = true, .r3 = true, .cpsr = true, .memory = true });
     while (true) _ = _tx_thread_sleep(forever);
 }

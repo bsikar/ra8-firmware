@@ -26,7 +26,7 @@ extern fn ra8_scb_set_vtor(base: usize) void;
 /// Order the image stores against the fetch that follows them. The
 /// instructions only exist on the target.
 fn barrier() void {
-    asm volatile ("dsb 0xF\n isb 0xF\n" ::: "memory");
+    asm volatile ("dsb 0xF\n isb 0xF\n" ::: .{ .memory = true });
 }
 
 export fn ra8_dfu_launch_unverified(src: usize, img_len: u32, entry: u32) void {
@@ -37,11 +37,11 @@ export fn ra8_dfu_launch_unverified(src: usize, img_len: u32, entry: u32) void {
     const source: []const volatile u32 = @as([*]const volatile u32, @ptrFromInt(src))[0..words];
     const run: []volatile u32 = @as([*]volatile u32, @ptrFromInt(image.layout.run_base))[0..words];
 
-    asm volatile ("cpsid i" ::: "memory");
+    asm volatile ("cpsid i" ::: .{ .memory = true });
     // Bounded by img_len, which `mayCopy` has already held to
     // `image.layout.img_max`: a statically bounded copy, NASA Rule 2.
     for (run, source) |*word, value| word.* = value;
-    asm volatile ("dsb 0xF" ::: "memory"); // stores reach SRAM before the fetch
+    asm volatile ("dsb 0xF" ::: .{ .memory = true }); // stores reach SRAM before the fetch
 
     const initial_sp = run[0];
     const reset_entry = run[1];
@@ -54,6 +54,6 @@ export fn ra8_dfu_launch_unverified(src: usize, img_len: u32, entry: u32) void {
         :
         : [sp] "r" (initial_sp),
           [entry] "r" (reset_entry),
-        : "memory");
+        : .{ .memory = true });
     unreachable;
 }

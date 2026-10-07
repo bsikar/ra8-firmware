@@ -48,7 +48,7 @@ fn park() noreturn {
 export fn main() callconv(.c) c_int {
     const block = shared.block();
     block.* = .{ .signature = 0, .failed_step = shared.Step.none, .result = 0, .module_runs = 0 };
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     if (ra8_cgc_init() != ok) park();
     const console = ra8_board_uart_console_init(baud) == ok;
     if (ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top) != ok) {

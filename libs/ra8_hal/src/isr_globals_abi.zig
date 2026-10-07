@@ -15,10 +15,10 @@ extern fn ra8_hw_irq_disable() void;
 
 const Hw = struct {
     pub fn irqEnable() void {
-        if (hosted) ra8_hw_irq_enable() else asm volatile ("cpsie i" ::: "memory");
+        if (hosted) ra8_hw_irq_enable() else asm volatile ("cpsie i" ::: .{ .memory = true });
     }
     pub fn irqDisable() void {
-        if (hosted) ra8_hw_irq_disable() else asm volatile ("cpsid i" ::: "memory");
+        if (hosted) ra8_hw_irq_disable() else asm volatile ("cpsid i" ::: .{ .memory = true });
     }
 };
 

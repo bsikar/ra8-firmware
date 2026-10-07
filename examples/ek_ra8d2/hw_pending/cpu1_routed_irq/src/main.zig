@@ -76,7 +76,7 @@ fn run(block: *volatile shared.Block) bool {
 export fn main() callconv(.c) c_int {
     const block = shared.block();
     block.* = .{ .armed = 0, .irq_count = 0 };
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     if (ra8_cgc_init() != ok) park();
     const console = ra8_board_uart_console_init(baud) == ok;
     const passed = run(block);
