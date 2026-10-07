@@ -275,22 +275,23 @@ const Outcome = struct {
     }
 };
 
-fn invoke(dir: std.fs.Dir, argv: []const []const u8) !Outcome {
-    var out = std.ArrayList(u8).init(testing.allocator);
-    errdefer out.deinit();
-    var err = std.ArrayList(u8).init(testing.allocator);
-    errdefer err.deinit();
+fn invoke(dir: std.Io.Dir, argv: []const []const u8) !Outcome {
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer out.deinit();
+    var err: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer err.deinit();
 
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
 
     const status = try cli.run(
         arena.allocator(),
+        testing.io,
         dir,
         argv,
         null,
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -335,7 +336,7 @@ test "a missing roadmap exits 2 and says so" {
 test "a roadmap that is a directory exits 1 rather than a traceback" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makeDir("ROADMAP.md");
+    try tmp.dir.createDirPath(testing.io, "ROADMAP.md");
     const outcome = try invoke(
         tmp.dir,
         &[_][]const u8{ "roadmap_stats", "--roadmap", "ROADMAP.md" },
@@ -348,7 +349,7 @@ test "a roadmap that is a directory exits 1 rather than a traceback" {
 test "a roadmap that is not UTF-8 exits 1" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = "\xff\xfe not text" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = "\xff\xfe not text" });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 1), outcome.status);
@@ -358,13 +359,13 @@ test "a roadmap that is not UTF-8 exits 1" {
 test "a roadmap with no markers exits 2 and writes nothing" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = body });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = body });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 2), outcome.status);
     try testing.expect(std.mem.indexOf(u8, outcome.err, "missing the BEGIN/END SUMMARY markers") != null);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 4096);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(4096));
     defer testing.allocator.free(after);
     try testing.expectEqualStrings(body, after);
 }
@@ -375,13 +376,13 @@ test "an END before the BEGIN exits 2 and does NOT truncate the document" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const inverted = "head\n" ++ end_mark ++ "\nmiddle\n" ++ begin_mark ++ "\nold\ntail\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = inverted });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = inverted });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 2), outcome.status);
     try testing.expect(std.mem.indexOf(u8, outcome.err, "END SUMMARY before BEGIN SUMMARY") != null);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 4096);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(4096));
     defer testing.allocator.free(after);
     try testing.expectEqualStrings(inverted, after);
 }
@@ -390,7 +391,7 @@ test "a current summary exits 0 with the unchanged census" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ "\n" ++ current_summary ++ "\ntail\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 0), outcome.status);
@@ -406,7 +407,7 @@ test "a current summary is reported unchanged in check mode too" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ "\n" ++ current_summary ++ "\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(
         tmp.dir,
         &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md", "--check" },
@@ -420,7 +421,7 @@ test "a stale summary in check mode exits 1, names the refresh recipe and writes
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ "\n" ++ begin_mark ++ "\nstale\n" ++ end_mark ++ "\ntail\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(
         tmp.dir,
         &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md", "--check" },
@@ -430,7 +431,7 @@ test "a stale summary in check mode exits 1, names the refresh recipe and writes
     try testing.expect(std.mem.indexOf(u8, outcome.err, "summary is stale") != null);
     try testing.expect(std.mem.indexOf(u8, outcome.err, "just docs::record_stats") != null);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 4096);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(4096));
     defer testing.allocator.free(after);
     try testing.expectEqualStrings(document, after);
 }
@@ -439,13 +440,13 @@ test "a stale summary without --check is rewritten in place" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ "\n" ++ begin_mark ++ "\nstale\n" ++ end_mark ++ "\ntail\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 0), outcome.status);
     try testing.expect(std.mem.indexOf(u8, outcome.err, "rewrote summary (drivers=1") != null);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 8192);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(8192));
     defer testing.allocator.free(after);
     try testing.expectEqualStrings(body ++ "\n" ++ current_summary ++ "\ntail\n", after);
 }
@@ -454,7 +455,7 @@ test "the rewrite is idempotent: a second run reports unchanged" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ "\n" ++ begin_mark ++ "\nstale\n" ++ end_mark ++ "\ntail\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
 
     const first = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer first.deinit();
@@ -478,12 +479,12 @@ test "the rewrite preserves everything outside the markers byte for byte" {
     defer tmp.cleanup();
     const document = "# Title\r\n\r\n" ++ body ++ begin_mark ++ "\nstale\n" ++ end_mark ++
         "\r\nappendix\ttabbed\r\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 0), outcome.status);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 8192);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(8192));
     defer testing.allocator.free(after);
     try testing.expect(std.mem.startsWith(u8, after, "# Title\r\n\r\n"));
     try testing.expect(std.mem.endsWith(u8, after, "\r\nappendix\ttabbed\r\n"));
@@ -493,12 +494,12 @@ test "a document with no drivers still rewrites to a zeroed summary" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = "prose only\n" ++ begin_mark ++ "\nwrong\n" ++ end_mark ++ "\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(tmp.dir, &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md" });
     defer outcome.deinit();
     try testing.expectEqual(@as(u8, 0), outcome.status);
 
-    const after = try tmp.dir.readFileAlloc(testing.allocator, "R.md", 4096);
+    const after = try tmp.dir.readFileAlloc(testing.io, "R.md", testing.allocator, .limited(4096));
     defer testing.allocator.free(after);
     try testing.expect(std.mem.indexOf(u8, after, "- Total drivers tracked: 0") != null);
     try testing.expect(std.mem.indexOf(u8, after, "0/0 boxes ticked (0.0%)") != null);
@@ -507,9 +508,9 @@ test "a document with no drivers still rewrites to a zeroed summary" {
 test "--repo-root finds docs/ROADMAP.md under that root" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("repo/docs");
+    try tmp.dir.createDirPath(testing.io, "repo/docs");
     const document = body ++ "\n" ++ current_summary ++ "\n";
-    try tmp.dir.writeFile(.{ .sub_path = "repo/docs/ROADMAP.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "repo/docs/ROADMAP.md", .data = document });
     const outcome = try invoke(
         tmp.dir,
         &[_][]const u8{ "roadmap_stats", "--repo-root", "repo", "--check" },
@@ -535,7 +536,7 @@ test "check mode never reports a stale summary as current" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     const document = body ++ body ++ "\n" ++ current_summary ++ "\n";
-    try tmp.dir.writeFile(.{ .sub_path = "R.md", .data = document });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "R.md", .data = document });
     const outcome = try invoke(
         tmp.dir,
         &[_][]const u8{ "roadmap_stats", "--roadmap", "R.md", "--check" },
