@@ -127,11 +127,8 @@ test "set forwards the controller's refusal" {
 test "config is pure: two calls agree" {
     const a = backdrop.config();
     const b = backdrop.config();
-    try std.testing.expectEqualSlices(
-        u8,
-        std.mem.asBytes(&a),
-        std.mem.asBytes(&b),
-    );
+    // Field by field: the padding bytes of an extern struct are undefined.
+    try std.testing.expectEqual(a, b);
 }
 
 test "the configuration matches the C struct the controller reads" {
