@@ -5,12 +5,11 @@
 //! else in the library sees the constant names below, never a `PSA_*` macro,
 //! so `psa_map.zig` stays testable against a stub provider.
 //!
-//! `build.zig` supplies the include roots and the two config-file defines the
-//! CMake build already passes to the C (`cmake/mbedtls.cmake`).
+//! `build.zig` translates `psa/crypto.h` into the `psa_h` module with the
+//! include roots and the two config-file defines the CMake build already
+//! passes to the C (`cmake/mbedtls.cmake`).
 
-pub const c = @cImport({
-    @cInclude("psa/crypto.h");
-});
+pub const c = @import("psa_h");
 
 pub const status_t = c.psa_status_t;
 pub const key_id_t = c.psa_key_id_t;
