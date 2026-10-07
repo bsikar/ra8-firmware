@@ -5,9 +5,8 @@
 //! closest upstream status (there is no TX_INVALID_MEMORY_REGION). The
 //! register writes are upstream's: base | sanitized attributes | XN, then
 //! limit | attribute index | enable.
-const c = @cImport({
-    @cInclude("txm_module.h");
-});
+/// txm_module.h, translated by the build with the archive's include path.
+const c = @import("c");
 const grant = @import("shared_grant.zig");
 
 export fn _txm_module_manager_external_memory_enable(
