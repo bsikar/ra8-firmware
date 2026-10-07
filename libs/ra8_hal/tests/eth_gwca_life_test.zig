@@ -11,27 +11,27 @@ const Ops = struct {
     log: *std.ArrayList(u8),
     enable_err: u16 = 0,
     pub fn mstpEnable(self: Ops) u16 {
-        self.log.append('E') catch unreachable;
+        self.log.append(std.testing.allocator, 'E') catch unreachable;
         return self.enable_err;
     }
     pub fn mstpDisable(self: Ops) u16 {
-        self.log.append('D') catch unreachable;
+        self.log.append(std.testing.allocator, 'D') catch unreachable;
         return 0;
     }
     pub fn fail(self: Ops, _: [*:0]const u8, _: u16) void {
-        self.log.append('F') catch unreachable;
+        self.log.append(std.testing.allocator, 'F') catch unreachable;
     }
     pub fn info(self: Ops, _: [*:0]const u8) void {
-        self.log.append('I') catch unreachable;
+        self.log.append(std.testing.allocator, 'I') catch unreachable;
     }
     pub fn clearHandler(self: Ops) void {
-        self.log.append('C') catch unreachable;
+        self.log.append(std.testing.allocator, 'C') catch unreachable;
     }
 };
 
 test "init clears GWCA, sets DDE on every agent and logs once" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var g: life.events.Regs = .{ .ctrl = 5, .sts = 6, .ie = 7, .iclr = 8 };
     var f = [3]u32{ 0x10, 0x11, 0xFFFF_FFFE };
     const v = life.View{ .gwca = &g, .fwpc = .{ &f[0], &f[1], &f[2] } };
@@ -42,8 +42,8 @@ test "init clears GWCA, sets DDE on every agent and logs once" {
 }
 
 test "init stops before touching registers when MSTP fails" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var g: life.events.Regs = .{ .ctrl = 5, .sts = 6, .ie = 7, .iclr = 8 };
     var f = [3]u32{ 0, 0, 0 };
     const v = life.View{ .gwca = &g, .fwpc = .{ &f[0], &f[1], &f[2] } };
@@ -54,8 +54,8 @@ test "init stops before touching registers when MSTP fails" {
 }
 
 test "deinit drops the handler before gating; enter_stop keeps it" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var g: life.events.Regs = .{ .ctrl = 3, .sts = 1, .ie = 9, .iclr = 0 };
     var f = [3]u32{ 0, 0, 0 };
     const v = life.View{ .gwca = &g, .fwpc = .{ &f[0], &f[1], &f[2] } };

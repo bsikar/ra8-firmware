@@ -22,7 +22,7 @@ const Ops = struct {
     last_step: *u32,
     fn next(self: Ops, tag: u32) u16 {
         self.calls.* += 1;
-        self.trace.append(tag) catch unreachable;
+        self.trace.append(std.testing.allocator, tag) catch unreachable;
         return if (self.calls.* == self.fail_at) 0x203 else 0;
     }
     pub fn setMode(self: Ops, mode: u32) u16 {
@@ -73,8 +73,8 @@ test "installLinkfix rejects a null table and bad counts" {
 }
 
 test "bringUp runs the full sequence and ends on step 6" {
-    var trace = std.ArrayList(u32).init(std.testing.allocator);
-    defer trace.deinit();
+    var trace: std.ArrayList(u32) = .empty;
+    defer trace.deinit(std.testing.allocator);
     var step: u32 = 0xFF;
     try std.testing.expectEqual(b.ok, run(0, &step, &trace));
     try std.testing.expectEqualSlices(u32, &.{ 1, 2, 0xA, 0xF, 1, 3 }, trace.items);
@@ -82,8 +82,8 @@ test "bringUp runs the full sequence and ends on step 6" {
 }
 
 test "bringUp failures record the step and fall back to DISABLE" {
-    var trace = std.ArrayList(u32).init(std.testing.allocator);
-    defer trace.deinit();
+    var trace: std.ArrayList(u32) = .empty;
+    defer trace.deinit(std.testing.allocator);
     var step: u32 = 0;
     try std.testing.expectEqual(@as(u16, 0x203), run(1, &step, &trace));
     try std.testing.expectEqual(@as(u32, 0x11), step);

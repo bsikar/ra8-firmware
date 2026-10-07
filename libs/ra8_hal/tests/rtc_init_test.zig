@@ -17,7 +17,8 @@ const Box = struct {
     sosccr: u8 = 1,
     somcr: u8 = 0xFF,
     osc_ok: bool = true,
-    log: std.ArrayList(u8),
+    gpa: std.mem.Allocator,
+    log: std.ArrayList(u8) = .empty,
 
     fn view(self: *Box) r.View {
         return .{ .rcr1 = &self.rcr1, .rcr2 = &self.rcr2, .rcr4 = &self.rcr4, .rfrh = &self.rfrh, .rfrl = &self.rfrl, .lococr = &self.lococr, .sosccr = &self.sosccr, .somcr = &self.somcr };
@@ -27,7 +28,7 @@ const Box = struct {
 const Hw = struct {
     box: *Box,
     fn put(self: Hw, s: []const u8) void {
-        self.box.log.appendSlice(s) catch unreachable;
+        self.box.log.appendSlice(self.box.gpa, s) catch unreachable;
     }
     fn putf(self: Hw, comptime f: []const u8, args: anytype) void {
         var buf: [32]u8 = undefined;
@@ -59,7 +60,7 @@ const Hw = struct {
 test "init leaves 24h mode running with IRQs masked" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var box = Box{ .log = std.ArrayList(u8).init(arena.allocator()) };
+    var box = Box{ .gpa = arena.allocator() };
     try std.testing.expectEqual(r.ok, r.init(Hw{ .box = &box }, box.view()));
     try std.testing.expectEqual(@as(u8, 0), box.rcr1);
     try std.testing.expectEqual(@as(u8, 0x41), box.rcr2);
@@ -69,7 +70,7 @@ test "init leaves 24h mode running with IRQs masked" {
 test "clockInit LOCO programs RFR and soft-resets in order" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var box = Box{ .rcr2 = 0x41, .log = std.ArrayList(u8).init(arena.allocator()) };
+    var box = Box{ .rcr2 = 0x41, .gpa = arena.allocator() };
     try std.testing.expectEqual(r.ok, r.clockInit(Hw{ .box = &box }, box.view(), r.clk_loco));
     try std.testing.expectEqual(@as(u8, 0), box.lococr);
     try std.testing.expectEqual(@as(u8, 1), box.rcr4);
@@ -82,7 +83,7 @@ test "clockInit LOCO programs RFR and soft-resets in order" {
 test "clockInit sub-clock leaves RFR alone and waits for the crystal" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var box = Box{ .log = std.ArrayList(u8).init(arena.allocator()) };
+    var box = Box{ .gpa = arena.allocator() };
     try std.testing.expectEqual(r.ok, r.clockInit(Hw{ .box = &box }, box.view(), r.clk_subclock));
     try std.testing.expectEqual(@as(u8, 0), box.sosccr | box.somcr | box.rcr4);
     try std.testing.expectEqual(@as(u16, 0xFFFF), box.rfrl);
@@ -92,7 +93,7 @@ test "clockInit sub-clock leaves RFR alone and waits for the crystal" {
 test "clockInit rejects a bad source and reports a dead oscillator" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var box = Box{ .osc_ok = false, .log = std.ArrayList(u8).init(arena.allocator()) };
+    var box = Box{ .osc_ok = false, .gpa = arena.allocator() };
     try std.testing.expectEqual(r.invalid_arg, r.clockInit(Hw{ .box = &box }, box.view(), 2));
     try std.testing.expectEqual(r.hw_init_failed, r.clockInit(Hw{ .box = &box }, box.view(), r.clk_loco));
     try std.testing.expectEqual(@as(u8, 0xFF), box.rcr4);

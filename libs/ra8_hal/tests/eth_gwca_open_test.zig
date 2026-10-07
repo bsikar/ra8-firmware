@@ -14,7 +14,7 @@ const Hw = struct {
     pre: *u32,
     opn: *u32,
     fn step(self: Hw, c: u8) u16 {
-        self.log.append(c) catch unreachable;
+        self.log.append(std.testing.allocator, c) catch unreachable;
         return if (c == self.fail_on) q.invalid_arg else q.ok;
     }
     pub fn init(self: Hw) u16 {
@@ -48,7 +48,7 @@ const Hw = struct {
         return q.null_ptr;
     }
     pub fn fail(self: Hw, _: [*:0]const u8, code: u16) u16 {
-        self.log.append('!') catch unreachable;
+        self.log.append(std.testing.allocator, '!') catch unreachable;
         return code;
     }
 };
@@ -74,8 +74,8 @@ fn freshState() !o.DefaultState {
 }
 
 test "open runs every step in order and primes the TX chain" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var pre: u32 = 99;
     var opn: u32 = 99;
     var s = try freshState();
@@ -107,8 +107,8 @@ test "open records the failing step on both trails" {
         .{ .fail_on = 'y', .log = "inabcRToxy", .pre = 4, .opn = 0x13 },
     };
     for (cases) |c| {
-        var log = std.ArrayList(u8).init(std.testing.allocator);
-        defer log.deinit();
+        var log: std.ArrayList(u8) = .empty;
+        defer log.deinit(std.testing.allocator);
         var pre: u32 = 99;
         var opn: u32 = 99;
         var s = try freshState();
@@ -120,8 +120,8 @@ test "open records the failing step on both trails" {
 }
 
 test "txExtInit guards" {
-    var log = std.ArrayList(u8).init(std.testing.allocator);
-    defer log.deinit();
+    var log: std.ArrayList(u8) = .empty;
+    defer log.deinit(std.testing.allocator);
     var pre: u32 = 0;
     var opn: u32 = 0;
     const hw = Hw{ .log = &log, .pre = &pre, .opn = &opn };

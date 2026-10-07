@@ -22,9 +22,24 @@ const Regs = struct {
     }
 };
 
+/// A fixed 32-byte call trace. std.BoundedArray is gone in Zig 0.17.
+const Trace = struct {
+    buf: [32]u8 = undefined,
+    len: usize = 0,
+
+    fn append(self: *Trace, c: u8) error{Overflow}!void {
+        if (self.len == self.buf.len) return error.Overflow;
+        self.buf[self.len] = c;
+        self.len += 1;
+    }
+    fn slice(self: *const Trace) []const u8 {
+        return self.buf[0..self.len];
+    }
+};
+
 const Hw = struct {
     r: *Regs,
-    trace: std.BoundedArray(u8, 32) = .{},
+    trace: Trace = .{},
     srdy_ok: bool = true,
     mstp_rc: u16 = 0,
 
