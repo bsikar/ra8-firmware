@@ -4,6 +4,12 @@
     .fingerprint = 0x6e720f9dd119442c,
     .minimum_zig_version = "0.14.1",
     .dependencies = .{
+        // Translates the public, capture and private headers into the
+        // c6link_h, c6link_capture_h and c6link_rpc_h modules.
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
+            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+        },
         .esp_hosted = .{
             .url = "https://github.com/espressif/esp-hosted-mcu/archive/949bb30612747a3bd9e402eda8d01fbfa1f8503e.tar.gz",
             .hash = "N-V-__8AAPk7yQDK2oreQ5VXoxAgGf5nMpSFAB6_6Dialtw4",

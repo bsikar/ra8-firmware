@@ -34,7 +34,7 @@ fn addPsaHeaders(
     b: *std.Build,
     module: *std.Build.Module,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) void {
     const header = b.addWriteFiles().add("psa_c.h", "#include <psa/crypto.h>\n");
     const translator: Translator = .init(b.dependency("translate_c", .{}), .{
