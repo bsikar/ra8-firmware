@@ -293,14 +293,14 @@ pub const Finding = struct {
 
 /// Every finding in one decoded file body, in line order.
 pub fn scanText(allocator: std.mem.Allocator, path: []const u8, text: []const u8) !std.ArrayList(Finding) {
-    var findings = std.ArrayList(Finding).init(allocator);
-    errdefer findings.deinit();
+    var findings: std.ArrayList(Finding) = .empty;
+    errdefer findings.deinit(allocator);
     var lines = LineIterator{ .text = text };
     var line_number: usize = 0;
     while (lines.next()) |line| {
         line_number += 1;
         if (matchEncoding(line)) {
-            try findings.append(.{
+            try findings.append(allocator, .{
                 .path = path,
                 .line_number = line_number,
                 .snippet = strip(line),
@@ -407,21 +407,21 @@ fn invalidSubpartLength(bytes: []const u8, index: usize) usize {
 /// subpart, not per byte, because that is what CPython emitted and the
 /// snippet of a finding on such a line is printed verbatim.
 pub fn decodeLossy(allocator: std.mem.Allocator, bytes: []const u8) ![]u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < bytes.len) {
         if (std.unicode.utf8ByteSequenceLength(bytes[index])) |length| {
             if (index + length <= bytes.len) {
                 if (std.unicode.utf8Decode(bytes[index .. index + length])) |_| {
-                    try out.appendSlice(bytes[index .. index + length]);
+                    try out.appendSlice(allocator, bytes[index .. index + length]);
                     index += length;
                     continue;
                 } else |_| {}
             }
         } else |_| {}
-        try out.appendSlice("\u{FFFD}");
+        try out.appendSlice(allocator, "\u{FFFD}");
         index += invalidSubpartLength(bytes, index);
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
