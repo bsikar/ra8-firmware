@@ -39,28 +39,27 @@ pub const Outcome = struct {
 /// One source, read and scanned. A read or decode failure answers "no
 /// findings", exactly as inherited.
 ///
-/// The read carries NO size ceiling, deliberately. `readFileAlloc` does not
-/// truncate at its limit, it fails with `error.FileTooBig`, and that failure
+/// The read carries NO size ceiling, deliberately. A limited read does not
+/// truncate at its limit, it fails with `error.StreamTooLong`, and that failure
 /// lands in the same `catch` as a missing file: a source above any ceiling
 /// would be reported as carrying no attribute without ever being read, while
 /// still counting towards the floor. The predecessor's `read_text()` had no
 /// ceiling either, so a ceiling here is a fail-OPEN divergence, not a guard.
 fn scanOne(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     path: []const u8,
-    stdout: anytype,
+    stdout: *std.Io.Writer,
 ) !usize {
-    var file = dir.openFile(path, .{}) catch return 0;
-    defer file.close();
-    const raw = file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch return 0;
+    const raw = dir.readFileAlloc(io, path, allocator, .unlimited) catch return 0;
     defer allocator.free(raw);
     if (!std.unicode.utf8ValidateSlice(raw)) return 0;
     const text = try implementation.normalizeTerminators(allocator, raw);
     defer allocator.free(text);
 
     var findings = try implementation.scanText(allocator, text);
-    defer findings.deinit();
+    defer findings.deinit(allocator);
     for (findings.items) |finding| {
         try implementation.renderFinding(stdout, path, finding.line, finding.snippet);
     }
@@ -76,27 +75,28 @@ fn scanOne(
 /// are not descended into, matching `recurse_symlinks=False`.
 pub fn discover(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
 ) !std.ArrayList([]const u8) {
-    var out = std.ArrayList([]const u8).init(allocator);
+    var out: std.ArrayList([]const u8) = .empty;
     errdefer {
         for (out.items) |item| allocator.free(item);
-        out.deinit();
+        out.deinit(allocator);
     }
     for (implementation.roots) |root| {
-        var opened = dir.openDir(root, .{ .iterate = true }) catch continue;
-        defer opened.close();
+        var opened = dir.openDir(io, root, .{ .iterate = true }) catch continue;
+        defer opened.close(io);
         var walker = try opened.walk(allocator);
         defer walker.deinit();
-        while (walker.next() catch null) |entry| {
+        while (walker.next(io) catch null) |entry| {
             if (!implementation.hasScannedExt(entry.path)) continue;
             const joined = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ root, entry.path });
             var keep = true;
             if (try implementation.isBuildOutputPath(allocator, joined, repo_root)) keep = false;
             if (keep and implementation.isExemptPath(joined)) keep = false;
             if (keep) {
-                try out.append(joined);
+                try out.append(allocator, joined);
             } else {
                 allocator.free(joined);
             }
@@ -105,7 +105,7 @@ pub fn discover(
     return out;
 }
 
-fn runSelftest(allocator: std.mem.Allocator, stdout: anytype, stderr: anytype) !u8 {
+fn runSelftest(allocator: std.mem.Allocator, stdout: *std.Io.Writer, stderr: *std.Io.Writer) !u8 {
     const cases = try implementation.selftestCases(allocator);
     var failed: usize = 0;
     for (cases) |case| {
@@ -123,11 +123,12 @@ fn runSelftest(allocator: std.mem.Allocator, stdout: anytype, stderr: anytype) !
 /// The whole gate, minus the process.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     args: []const []const u8,
-    stdout: anytype,
-    stderr: anytype,
+    stdout: *std.Io.Writer,
+    stderr: *std.Io.Writer,
 ) !Outcome {
     if (args.len == 1 and std.mem.eql(u8, args[0], "--selftest")) {
         return .{ .status = try runSelftest(allocator, stdout, stderr) };
@@ -140,17 +141,17 @@ pub fn run(
     }
 
     const whole_tree = args.len == 0;
-    var owned = std.ArrayList([]const u8).init(allocator);
+    var owned: std.ArrayList([]const u8) = .empty;
     defer {
         for (owned.items) |item| allocator.free(item);
-        owned.deinit();
+        owned.deinit(allocator);
     }
     if (whole_tree) {
-        var discovered = try discover(allocator, dir, repo_root);
-        defer discovered.deinit();
-        try owned.appendSlice(discovered.items);
+        var discovered = try discover(allocator, io, dir, repo_root);
+        defer discovered.deinit(allocator);
+        try owned.appendSlice(allocator, discovered.items);
     } else {
-        for (args) |arg| try owned.append(try allocator.dupe(u8, arg));
+        for (args) |arg| try owned.append(allocator, try allocator.dupe(u8, arg));
     }
 
     if (whole_tree and owned.items.len < implementation.file_floor) {
@@ -173,7 +174,7 @@ pub fn run(
         if (try implementation.isBuildOutputPath(allocator, path, repo_root)) continue;
         if (implementation.isExemptPath(path)) continue;
         scanned += 1;
-        total += try scanOne(allocator, dir, path, stdout);
+        total += try scanOne(allocator, io, dir, path, stdout);
     }
 
     if (total != 0) {
