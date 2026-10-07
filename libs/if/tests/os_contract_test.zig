@@ -4,7 +4,7 @@
 //! Conformance of the `fw_os` port contract in `inc/fw_os.h`.
 //!
 //! No binding implements the seam inside this library, so nothing here would
-//! ever feed the header to a compiler on its own. Importing it does: clang
+//! ever feed the header to a compiler on its own. Translating it does: clang
 //! parses `fw_os.h` and evaluates its own `static_assert`s, and the tests
 //! below check what the header cannot say about itself. The header is read
 //! twice, once with the default caps and once with the queue block enabled,
@@ -12,18 +12,10 @@
 
 const std = @import("std");
 
-// The tree builds C as C23, where static_assert is a keyword; the importer
-// does not, so the keyword is spelled as the C11 one it replaced.
-const os = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cInclude("fw_os.h");
-});
-
-const os_queue = @cImport({
-    @cDefine("FW_OS_HAS_QUEUE", "1");
-    @cDefine("static_assert", "_Static_assert");
-    @cInclude("fw_os.h");
-});
+// Both translations come from build.zig: `os` with the default caps,
+// `os_queue` with FW_OS_HAS_QUEUE set.
+const os = @import("fw_os_h");
+const os_queue = @import("fw_os_queue_h");
 
 const word_bytes = @sizeOf(u64);
 
