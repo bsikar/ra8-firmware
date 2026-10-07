@@ -100,23 +100,23 @@ pub const opaque_byte: u8 = 0xFF;
 /// becomes its ASCII digit, and anything else becomes a byte the parser must
 /// reject. The result is therefore pure ASCII and one byte per code point.
 pub fn transformForInt(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < text.len) {
         const decoded = decodeAt(text, index);
         index += decoded.len;
         if (decoded.code_point < 0x80) {
-            try out.append(@intCast(decoded.code_point));
+            try out.append(allocator, @intCast(decoded.code_point));
         } else if (isNonAsciiSpace(decoded.code_point)) {
-            try out.append(' ');
+            try out.append(allocator, ' ');
         } else if (nonAsciiDigitValue(decoded.code_point)) |value| {
-            try out.append('0' + @as(u8, value));
+            try out.append(allocator, '0' + @as(u8, value));
         } else {
-            try out.append(opaque_byte);
+            try out.append(allocator, opaque_byte);
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// What CPython raises for a malformed literal.
@@ -169,15 +169,15 @@ pub fn parseHexLiteral(allocator: std.mem.Allocator, transformed: []const u8) !H
     // why int("0x_1", 16) is 1 while int("_1", 16) raises.
     if (had_prefix and index < transformed.len and transformed[index] == '_') index += 1;
 
-    var digits = std.ArrayList(u8).init(allocator);
-    errdefer digits.deinit();
+    var digits: std.ArrayList(u8) = .empty;
+    errdefer digits.deinit(allocator);
     if (index >= transformed.len or hexValue(transformed[index]) == null) return ParseError.InvalidLiteral;
-    try digits.append(transformed[index]);
+    try digits.append(allocator, transformed[index]);
     index += 1;
     while (index < transformed.len) {
         const byte = transformed[index];
         if (hexValue(byte) != null) {
-            try digits.append(byte);
+            try digits.append(allocator, byte);
             index += 1;
             continue;
         }
@@ -185,7 +185,7 @@ pub fn parseHexLiteral(allocator: std.mem.Allocator, transformed: []const u8) !H
             if (index + 1 >= transformed.len or hexValue(transformed[index + 1]) == null) {
                 return ParseError.InvalidLiteral;
             }
-            try digits.append(transformed[index + 1]);
+            try digits.append(allocator, transformed[index + 1]);
             index += 2;
             continue;
         }
@@ -202,7 +202,7 @@ pub fn parseHexLiteral(allocator: std.mem.Allocator, transformed: []const u8) !H
     const significant = digits.items[first_significant..];
     const normalized = try allocator.alloc(u8, significant.len);
     for (significant, 0..) |byte, offset| normalized[offset] = std.ascii.toUpper(byte);
-    digits.deinit();
+    digits.deinit(allocator);
 
     const zero = normalized.len == 1 and normalized[0] == '0';
     return .{ .negative = negative and !zero, .digits = normalized };
@@ -226,19 +226,19 @@ fn nibblesFromDigits(allocator: std.mem.Allocator, digits: []const u8) ![]u4 {
 }
 
 fn addOffset(allocator: std.mem.Allocator, nibbles: []const u4, offset: u64) ![]u4 {
-    var out = std.ArrayList(u4).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u4) = .empty;
+    errdefer out.deinit(allocator);
     var carry: u64 = offset;
     for (nibbles) |nibble| {
         const sum = @as(u64, nibble) + (carry & 0xF);
-        try out.append(@intCast(sum & 0xF));
+        try out.append(allocator, @intCast(sum & 0xF));
         carry = (carry >> 4) + (sum >> 4);
     }
     while (carry != 0) {
-        try out.append(@intCast(carry & 0xF));
+        try out.append(allocator, @intCast(carry & 0xF));
         carry >>= 4;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 fn compareWithOffset(nibbles: []const u4, offset: u64) std.math.Order {
@@ -264,8 +264,8 @@ fn compareWithOffset(nibbles: []const u4, offset: u64) std.math.Order {
 }
 
 fn subtractSmaller(allocator: std.mem.Allocator, nibbles: []const u4, offset: u64) ![]u4 {
-    var out = std.ArrayList(u4).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u4) = .empty;
+    errdefer out.deinit(allocator);
     var borrow: i64 = 0;
     var remaining = offset;
     for (nibbles) |nibble| {
@@ -275,14 +275,14 @@ fn subtractSmaller(allocator: std.mem.Allocator, nibbles: []const u4, offset: u6
             value += 16;
             borrow = 1;
         } else borrow = 0;
-        try out.append(@intCast(value));
+        try out.append(allocator, @intCast(value));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 fn subtractFromOffset(allocator: std.mem.Allocator, offset: u64, nibbles: []const u4) ![]u4 {
-    var out = std.ArrayList(u4).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList(u4) = .empty;
+    errdefer out.deinit(allocator);
     var borrow: i64 = 0;
     var remaining = offset;
     var index: usize = 0;
@@ -294,11 +294,11 @@ fn subtractFromOffset(allocator: std.mem.Allocator, offset: u64, nibbles: []cons
             value += 16;
             borrow = 1;
         } else borrow = 0;
-        try out.append(@intCast(value));
+        try out.append(allocator, @intCast(value));
         remaining >>= 4;
         index += 1;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 fn renderNibbles(allocator: std.mem.Allocator, nibbles: []const u4, negative: bool, width: usize) ![]u8 {

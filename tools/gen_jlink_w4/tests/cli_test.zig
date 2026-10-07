@@ -21,16 +21,16 @@ const Result = struct {
     }
 };
 
-fn runIn(dir: std.fs.Dir, arguments: []const []const u8) !Result {
-    var out = std.ArrayList(u8).init(testing.allocator);
-    errdefer out.deinit();
-    var err = std.ArrayList(u8).init(testing.allocator);
-    errdefer err.deinit();
+fn runIn(dir: std.Io.Dir, arguments: []const []const u8) !Result {
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer out.deinit();
+    var err: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer err.deinit();
     const status = try cli.run(
         testing.allocator,
         arguments,
-        .{ .dir = dir, .program_name = "scripts/gen/gen_jlink_w4.py" },
-        .{ .out = out.writer().any(), .err = err.writer().any() },
+        .{ .io = testing.io, .dir = dir, .program_name = "scripts/gen/gen_jlink_w4.py" },
+        .{ .out = &out.writer, .err = &err.writer },
     );
     return .{
         .status = status,
@@ -45,7 +45,7 @@ const vector_image = [_]u8{ 0x00, 0x00, 0x01, 0x20, 0x0D, 0x00, 0x00, 0x02 };
 fn withImage(image: []const u8, arguments: []const []const u8) !Result {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "firmware.bin", .data = image });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "firmware.bin", .data = image });
     return runIn(tmp.dir, arguments);
 }
 
@@ -204,7 +204,7 @@ test "a missing image exits 1 with no partial script" {
 test "a directory in place of the image exits 1" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makeDir("firmware.bin");
+    try tmp.dir.createDirPath(testing.io, "firmware.bin");
     const result = try runIn(tmp.dir, &.{ "firmware.bin", "0x0" });
     defer result.deinit();
     try testing.expectEqual(@as(u8, 1), result.status);
@@ -299,8 +299,8 @@ test "the script ends with g then q and nothing after" {
 test "an image path may sit in a subdirectory" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makeDir("build");
-    try tmp.dir.writeFile(.{ .sub_path = "build/firmware.bin", .data = &vector_image });
+    try tmp.dir.createDirPath(testing.io, "build");
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "build/firmware.bin", .data = &vector_image });
     const result = try runIn(tmp.dir, &.{ "build/firmware.bin", "0x02000000" });
     defer result.deinit();
     try testing.expectEqual(@as(u8, 0), result.status);

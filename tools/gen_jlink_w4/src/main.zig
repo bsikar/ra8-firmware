@@ -9,25 +9,25 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-pub fn main() !u8 {
-    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa_state.deinit();
-    const gpa = gpa_state.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const gpa = init.gpa;
 
-    const argv = try std.process.argsAlloc(gpa);
-    defer std.process.argsFree(gpa, argv);
+    const sentinel_argv = try init.minimal.args.toSlice(init.arena.allocator());
+    const argv = try init.arena.allocator().alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
-    var stdout_buffered = std.io.bufferedWriter(std.io.getStdOut().writer());
-    const stdout = stdout_buffered.writer().any();
-    const stderr = std.io.getStdErr().writer().any();
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(io, &stdout_buffer);
+    var stderr = std.Io.File.stderr().writer(io, &.{});
 
     const program_name = if (argv.len > 0) argv[0] else "gen_jlink_w4";
     const status = try cli.run(
         gpa,
         argv[@min(argv.len, 1)..],
-        .{ .dir = std.fs.cwd(), .program_name = program_name },
-        .{ .out = stdout, .err = stderr },
+        .{ .io = io, .dir = std.Io.Dir.cwd(), .program_name = program_name },
+        .{ .out = &stdout.interface, .err = &stderr.interface },
     );
-    try stdout_buffered.flush();
+    try stdout.interface.flush();
     return status;
 }
