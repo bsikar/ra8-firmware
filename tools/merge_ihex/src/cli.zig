@@ -33,15 +33,16 @@ const max_input_bytes = 64 * 1024 * 1024;
 
 /// Merge two Intel HEX files, returning the process exit status.
 ///
-/// `dir` is the directory relative paths resolve against. The output path may
+/// `dir` is the directory relative paths resolve against, through `io`. The output path may
 /// name one of the inputs: both inputs are read fully before anything is
 /// written, exactly as the Python tool documented.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
-    argv: []const []const u8,
-    stdout: anytype,
-    stderr: anytype,
+    io: std.Io,
+    dir: std.Io.Dir,
+    argv: []const [:0]const u8,
+    stdout: *std.Io.Writer,
+    stderr: *std.Io.Writer,
 ) !u8 {
     if (argv.len != expected_argc) {
         try stderr.print("{s}\n", .{usage});
@@ -52,13 +53,13 @@ pub fn run(
     const in_b = argv[2];
     const out = argv[3];
 
-    const first = dir.readFileAlloc(allocator, in_a, max_input_bytes) catch |err| {
+    const first = dir.readFileAlloc(io, in_a, allocator, .limited(max_input_bytes)) catch |err| {
         try stderr.print("merge_ihex: {s}: {s}\n", .{ in_a, @errorName(err) });
         return exit_io_error;
     };
     defer allocator.free(first);
 
-    const second = dir.readFileAlloc(allocator, in_b, max_input_bytes) catch |err| {
+    const second = dir.readFileAlloc(io, in_b, allocator, .limited(max_input_bytes)) catch |err| {
         try stderr.print("merge_ihex: {s}: {s}\n", .{ in_b, @errorName(err) });
         return exit_io_error;
     };
@@ -67,7 +68,7 @@ pub fn run(
     const merged = try merge_ihex.merge(allocator, first, second);
     defer merged.deinit(allocator);
 
-    dir.writeFile(.{ .sub_path = out, .data = merged.text }) catch |err| {
+    dir.writeFile(io, .{ .sub_path = out, .data = merged.text }) catch |err| {
         try stderr.print("merge_ihex: {s}: {s}\n", .{ out, @errorName(err) });
         return exit_io_error;
     };

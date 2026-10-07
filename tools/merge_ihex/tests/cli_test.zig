@@ -10,14 +10,11 @@ const std = @import("std");
 const cli = @import("cli");
 
 const Streams = struct {
-    out: std.ArrayList(u8),
-    err: std.ArrayList(u8),
+    out: std.Io.Writer.Allocating,
+    err: std.Io.Writer.Allocating,
 
     fn init(allocator: std.mem.Allocator) Streams {
-        return .{
-            .out = std.ArrayList(u8).init(allocator),
-            .err = std.ArrayList(u8).init(allocator),
-        };
+        return .{ .out = .init(allocator), .err = .init(allocator) };
     }
 
     fn deinit(self: *Streams) void {
@@ -26,13 +23,14 @@ const Streams = struct {
     }
 };
 
-fn run(dir: std.fs.Dir, streams: *Streams, argv: []const []const u8) !u8 {
+fn run(dir: std.Io.Dir, streams: *Streams, argv: []const [:0]const u8) !u8 {
     return cli.run(
         std.testing.allocator,
+        std.testing.io,
         dir,
         argv,
-        streams.out.writer(),
-        streams.err.writer(),
+        &streams.out.writer,
+        &streams.err.writer,
     );
 }
 
@@ -45,8 +43,8 @@ test "exit 2 and usage on stderr when the argument count is wrong" {
     const status = try run(tmp.dir, &streams, &.{ "merge_ihex", "only_one.hex" });
 
     try std.testing.expectEqual(cli.exit_usage, status);
-    try std.testing.expectEqualStrings(cli.usage ++ "\n", streams.err.items);
-    try std.testing.expectEqualStrings("", streams.out.items);
+    try std.testing.expectEqualStrings(cli.usage ++ "\n", streams.err.written());
+    try std.testing.expectEqualStrings("", streams.out.written());
 }
 
 test "exit 2 when an extra argument is supplied" {
@@ -66,13 +64,13 @@ test "exit 1 and a named path on stderr when an input is missing" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "a.hex", .data = ":00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "a.hex", .data = ":00000001FF\n" });
 
     const status = try run(tmp.dir, &streams, &.{ "merge_ihex", "a.hex", "missing.hex", "out.hex" });
 
     try std.testing.expectEqual(cli.exit_io_error, status);
-    try std.testing.expect(std.mem.startsWith(u8, streams.err.items, "merge_ihex: missing.hex:"));
-    try std.testing.expectEqualStrings("", streams.out.items);
+    try std.testing.expect(std.mem.startsWith(u8, streams.err.written(), "merge_ihex: missing.hex:"));
+    try std.testing.expectEqualStrings("", streams.out.written());
 }
 
 test "a failed merge writes no output file" {
@@ -83,7 +81,7 @@ test "a failed merge writes no output file" {
 
     _ = try run(tmp.dir, &streams, &.{ "merge_ihex", "missing.hex", "missing.hex", "out.hex" });
 
-    try std.testing.expectError(error.FileNotFound, tmp.dir.access("out.hex", .{}));
+    try std.testing.expectError(error.FileNotFound, tmp.dir.access(std.testing.io, "out.hex", .{}));
 }
 
 test "exit 0 writes the merged image and reports the record count" {
@@ -92,16 +90,16 @@ test "exit 0 writes the merged image and reports the record count" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "secure.hex", .data = ":020000040200F8\n:10000000AA33\n:00000001FF\n" });
-    try tmp.dir.writeFile(.{ .sub_path = "ns.hex", .data = ":020000040208F0\n:10000000BB22\n:00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "secure.hex", .data = ":020000040200F8\n:10000000AA33\n:00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "ns.hex", .data = ":020000040208F0\n:10000000BB22\n:00000001FF\n" });
 
     const status = try run(tmp.dir, &streams, &.{ "merge_ihex", "secure.hex", "ns.hex", "merged.hex" });
 
     try std.testing.expectEqual(cli.exit_ok, status);
-    try std.testing.expectEqualStrings("merge_ihex: wrote 4 records -> merged.hex\n", streams.out.items);
-    try std.testing.expectEqualStrings("", streams.err.items);
+    try std.testing.expectEqualStrings("merge_ihex: wrote 4 records -> merged.hex\n", streams.out.written());
+    try std.testing.expectEqualStrings("", streams.err.written());
 
-    const written = try tmp.dir.readFileAlloc(std.testing.allocator, "merged.hex", 4096);
+    const written = try tmp.dir.readFileAlloc(std.testing.io, "merged.hex", std.testing.allocator, .limited(4096));
     defer std.testing.allocator.free(written);
     try std.testing.expectEqualStrings(
         ":020000040200F8\n:10000000AA33\n:020000040208F0\n:10000000BB22\n:00000001FF\n",
@@ -115,13 +113,13 @@ test "the output path may be one of the inputs" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "app.hex", .data = ":10000000AA33\n:00000001FF\n" });
-    try tmp.dir.writeFile(.{ .sub_path = "ns.hex", .data = ":10001000BB22\n:00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "app.hex", .data = ":10000000AA33\n:00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "ns.hex", .data = ":10001000BB22\n:00000001FF\n" });
 
     const status = try run(tmp.dir, &streams, &.{ "merge_ihex", "app.hex", "ns.hex", "app.hex" });
 
     try std.testing.expectEqual(cli.exit_ok, status);
-    const written = try tmp.dir.readFileAlloc(std.testing.allocator, "app.hex", 4096);
+    const written = try tmp.dir.readFileAlloc(std.testing.io, "app.hex", std.testing.allocator, .limited(4096));
     defer std.testing.allocator.free(written);
     try std.testing.expectEqualStrings(":10000000AA33\n:10001000BB22\n:00000001FF\n", written);
 }
@@ -132,10 +130,10 @@ test "an unwritable output path exits 1 rather than reporting success" {
     var streams = Streams.init(std.testing.allocator);
     defer streams.deinit();
 
-    try tmp.dir.writeFile(.{ .sub_path = "a.hex", .data = ":00000001FF\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "a.hex", .data = ":00000001FF\n" });
 
     const status = try run(tmp.dir, &streams, &.{ "merge_ihex", "a.hex", "a.hex", "no_such_dir/out.hex" });
 
     try std.testing.expectEqual(cli.exit_io_error, status);
-    try std.testing.expect(std.mem.startsWith(u8, streams.err.items, "merge_ihex: no_such_dir/out.hex:"));
+    try std.testing.expect(std.mem.startsWith(u8, streams.err.written(), "merge_ihex: no_such_dir/out.hex:"));
 }
