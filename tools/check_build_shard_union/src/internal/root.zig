@@ -144,15 +144,15 @@ pub fn parseManifest(
     text: []const u8,
 ) (std.mem.Allocator.Error || ManifestError)![][]const u8 {
     if (!isAscii(text)) return error.NonAsciiManifest;
-    var entries = std.ArrayList([]const u8).init(allocator);
-    errdefer entries.deinit();
+    var entries: std.ArrayList([]const u8) = .empty;
+    errdefer entries.deinit(allocator);
     var lines = LineIterator{ .text = text };
     while (lines.next()) |line| {
         const trimmed = strip(line);
         if (trimmed.len == 0) continue;
-        try entries.append(trimmed);
+        try entries.append(allocator, trimmed);
     }
-    return entries.toOwnedSlice();
+    return entries.toOwnedSlice(allocator);
 }
 
 /// A code point of a filesystem name as Python sees it: valid UTF-8 decodes,
@@ -233,14 +233,14 @@ pub fn splitParts(
     allocator: std.mem.Allocator,
     relative: []const u8,
 ) std.mem.Allocator.Error![][]const u8 {
-    var parts = std.ArrayList([]const u8).init(allocator);
-    errdefer parts.deinit();
+    var parts: std.ArrayList([]const u8) = .empty;
+    errdefer parts.deinit(allocator);
     var it = std.mem.splitScalar(u8, relative, '/');
     while (it.next()) |part| {
         if (part.len == 0 or std.mem.eql(u8, part, ".")) continue;
-        try parts.append(part);
+        try parts.append(allocator, part);
     }
-    return parts.toOwnedSlice();
+    return parts.toOwnedSlice(allocator);
 }
 
 /// `"::".join(rel.parts)`.
@@ -288,20 +288,20 @@ pub fn normalizePath(
         else => "/",
     };
 
-    var text = std.ArrayList(u8).init(allocator);
-    errdefer text.deinit();
-    try text.appendSlice(root);
+    var text: std.ArrayList(u8) = .empty;
+    errdefer text.deinit(allocator);
+    try text.appendSlice(allocator, root);
 
     var wrote = false;
     var it = std.mem.splitScalar(u8, raw[leading..], '/');
     while (it.next()) |part| {
         if (part.len == 0 or std.mem.eql(u8, part, ".")) continue;
-        if (wrote) try text.append('/');
-        try text.appendSlice(part);
+        if (wrote) try text.append(allocator, '/');
+        try text.appendSlice(allocator, part);
         wrote = true;
     }
-    if (!wrote and root.len == 0) try text.append('.');
-    return text.toOwnedSlice();
+    if (!wrote and root.len == 0) try text.append(allocator, '.');
+    return text.toOwnedSlice(allocator);
 }
 
 /// `Path(base) / rest`, rendered as `str()` would render it.
@@ -353,20 +353,20 @@ pub fn auditShardContents(
 ) std.mem.Allocator.Error!void {
     var seen = std.StringHashMap(usize).init(allocator);
     defer seen.deinit();
-    var keys = std.ArrayList([]const u8).init(allocator);
-    defer keys.deinit();
+    var keys: std.ArrayList([]const u8) = .empty;
+    defer keys.deinit(allocator);
 
     for (shards) |shard| {
         for (shard.apps) |app| {
             if (seen.get(app)) |first| {
-                try problems.append(try std.fmt.allocPrint(
+                try problems.append(allocator, try std.fmt.allocPrint(
                     allocator,
                     "app '{s}' claimed by both shard {d} and shard {d}",
                     .{ app, first, shard.index },
                 ));
             } else {
                 try seen.put(app, shard.index);
-                try keys.append(app);
+                try keys.append(allocator, app);
             }
         }
     }
@@ -384,14 +384,14 @@ pub fn auditShardContents(
     }
 
     if (missing > 0) {
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{d} firmware configuration(s) never built by any shard",
             .{missing},
         ));
     }
     if (extra > 0) {
-        try problems.append(try std.fmt.allocPrint(
+        try problems.append(allocator, try std.fmt.allocPrint(
             allocator,
             "{d} configuration(s) claimed in manifests are not structural",
             .{extra},

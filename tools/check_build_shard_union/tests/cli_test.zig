@@ -20,40 +20,40 @@ const Captured = struct {
     err: []const u8,
 };
 
-fn writeFile(dir: std.fs.Dir, path: []const u8, data: []const u8) !void {
-    if (std.fs.path.dirname(path)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = path, .data = data });
+fn writeFile(dir: std.Io.Dir, path: []const u8, data: []const u8) !void {
+    if (std.fs.path.dirname(path)) |parent| try dir.createDirPath(testing.io, parent);
+    try dir.writeFile(testing.io, .{ .sub_path = path, .data = data });
 }
 
 /// One example app: examples/<tier>/<app>/src/main.c plus its CMakeLists.
-fn addExample(allocator: std.mem.Allocator, dir: std.fs.Dir, root: []const u8, tier: []const u8, app: []const u8) !void {
+fn addExample(allocator: std.mem.Allocator, dir: std.Io.Dir, root: []const u8, tier: []const u8, app: []const u8) !void {
     const main_c = try std.fmt.allocPrint(allocator, "{s}/examples/{s}/{s}/src/main.c", .{ root, tier, app });
     try writeFile(dir, main_c, "int main(void){return 0;}\n");
     const lists = try std.fmt.allocPrint(allocator, "{s}/examples/{s}/{s}/CMakeLists.txt", .{ root, tier, app });
     try writeFile(dir, lists, "add_executable(test src/main.c)\n");
 }
 
-fn addBoard(allocator: std.mem.Allocator, dir: std.fs.Dir, root: []const u8, product: []const u8) !void {
+fn addBoard(allocator: std.mem.Allocator, dir: std.Io.Dir, root: []const u8, product: []const u8) !void {
     const main_c = try std.fmt.allocPrint(allocator, "{s}/apps/board/stand_alone/{s}/src/main.c", .{ root, product });
     try writeFile(dir, main_c, "void main(void) {}\n");
     const lists = try std.fmt.allocPrint(allocator, "{s}/apps/board/stand_alone/{s}/CMakeLists.txt", .{ root, product });
     try writeFile(dir, lists, "add_executable(p src/main.c)\n");
 }
 
-fn addManifest(allocator: std.mem.Allocator, dir: std.fs.Dir, root: []const u8, name: []const u8, body: []const u8) !void {
+fn addManifest(allocator: std.mem.Allocator, dir: std.Io.Dir, root: []const u8, name: []const u8, body: []const u8) !void {
     const path = try std.fmt.allocPrint(allocator, "{s}/build/build_all_examples/.shard/{s}", .{ root, name });
     try writeFile(dir, path, body);
 }
 
 fn invoke(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
-    scratch: ?std.fs.Dir,
+    dir: std.Io.Dir,
+    scratch: ?std.Io.Dir,
     argv: []const []const u8,
 ) !Captured {
-    var out = std.ArrayList(u8).init(allocator);
-    var err = std.ArrayList(u8).init(allocator);
-    const status = try cli.run(allocator, dir, scratch, argv, ".", out.writer(), err.writer());
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
+    const status = try cli.run(allocator, testing.io, dir, scratch, argv, ".", &out.writer, &err.writer);
     return .{
         .status = status,
         .out = try out.toOwnedSlice(),

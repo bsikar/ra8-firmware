@@ -13,10 +13,10 @@ const testing = std.testing;
 const implementation = @import("implementation");
 
 fn lines(allocator: std.mem.Allocator, text: []const u8) ![][]const u8 {
-    var collected = std.ArrayList([]const u8).init(allocator);
+    var collected: std.ArrayList([]const u8) = .empty;
     var it = implementation.LineIterator{ .text = text };
-    while (it.next()) |line| try collected.append(line);
-    return collected.toOwnedSlice();
+    while (it.next()) |line| try collected.append(allocator, line);
+    return collected.toOwnedSlice(allocator);
 }
 
 test "the C0 whitespace block plus the information separators strip" {
@@ -298,7 +298,7 @@ test "a complete union reports no problem at all" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{ "tier::a", "tier::b" };
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{"tier::a"} },
@@ -312,7 +312,7 @@ test "a configuration claimed twice names both shards, first claimer first" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{ "tier::a", "tier::b" };
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{ "tier::a", "tier::b" } },
@@ -330,7 +330,7 @@ test "an unbuilt configuration is counted, never named away" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{ "tier::a", "tier::b", "tier::c" };
     const shards = [_]implementation.Shard{.{ .index = 1, .apps = &[_][]const u8{"tier::a"} }};
     try implementation.auditShardContents(allocator, &shards, &expected, &problems);
@@ -345,7 +345,7 @@ test "a configuration nobody discovered is reported as not structural" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{"tier::a"};
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{ "tier::a", "ghost" } },
@@ -362,7 +362,7 @@ test "missing and extra are two problems in that order" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{ "tier::a", "tier::b" };
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{ "tier::a", "ghost" } },
@@ -377,7 +377,7 @@ test "an empty shard is a shard that covered nothing, so the set disagrees" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{ "tier::a", "tier::b" };
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{"tier::a"} },
@@ -391,7 +391,7 @@ test "a duplicate inside one shard is still reported against that shard" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     const expected = [_][]const u8{"tier::a"};
     const shards = [_]implementation.Shard{
         .{ .index = 1, .apps = &[_][]const u8{ "tier::a", "tier::a" } },

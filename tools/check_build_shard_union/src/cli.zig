@@ -198,41 +198,46 @@ pub fn parseArgs(allocator: std.mem.Allocator, argv: []const []const u8) std.mem
 /// regular file (the Python's `is_file()` guard).
 fn readManifest(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     path: []const u8,
 ) !?[][]const u8 {
-    const stat = dir.statFile(path) catch return null;
+    const stat = dir.statFile(io, path, .{}) catch return null;
     if (stat.kind != .file) return null;
-    const text = try dir.readFileAlloc(allocator, path, max_manifest_bytes);
+    // 0.14 rejected only a manifest larger than the cap; a 0.17 limit fails
+    // once it is reached, so the +1 keeps an exactly-cap manifest readable.
+    const limit: std.Io.Limit = .limited(max_manifest_bytes + 1);
+    const text = try dir.readFileAlloc(io, path, allocator, limit);
     return try implementation.parseManifest(allocator, text);
 }
 
-fn isDirectory(dir: std.fs.Dir, path: []const u8) bool {
-    const stat = dir.statFile(path) catch return false;
+fn isDirectory(io: std.Io, dir: std.Io.Dir, path: []const u8) bool {
+    const stat = dir.statFile(io, path, .{}) catch return false;
     return stat.kind == .directory;
 }
 
-fn isRegularFile(dir: std.fs.Dir, path: []const u8) bool {
-    const stat = dir.statFile(path) catch return false;
+fn isRegularFile(io: std.Io, dir: std.Io.Dir, path: []const u8) bool {
+    const stat = dir.statFile(io, path, .{}) catch return false;
     return stat.kind == .file;
 }
 
 fn collectFrom(
     allocator: std.mem.Allocator,
-    root: std.fs.Dir,
+    io: std.Io,
+    root: std.Io.Dir,
     subdirectory: []const u8,
     board: bool,
     set: *std.StringHashMap(void),
 ) !void {
-    var tree = root.openDir(subdirectory, .{ .iterate = true }) catch |err| switch (err) {
+    var tree = root.openDir(io, subdirectory, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound, error.NotDir => return,
         else => return err,
     };
-    defer tree.close();
+    defer tree.close(io);
 
     var walker = try tree.walk(allocator);
     defer walker.deinit();
-    while (try walker.next()) |entry| {
+    while (try walker.next(io)) |entry| {
         if (!std.mem.eql(u8, entry.basename, "main.c")) continue;
         const parent = std.fs.path.dirname(entry.path) orelse continue;
         if (!std.mem.eql(u8, std.fs.path.basename(parent), "src")) continue;
@@ -240,7 +245,7 @@ fn collectFrom(
 
         const manifest = try std.fs.path.join(allocator, &.{ app_relative, "CMakeLists.txt" });
         defer allocator.free(manifest);
-        if (!isRegularFile(tree, manifest)) continue;
+        if (!isRegularFile(io, tree, manifest)) continue;
 
         if (board) {
             const relative: []const u8 = if (std.mem.eql(u8, app_relative, ".")) "" else app_relative;
@@ -283,25 +288,26 @@ fn collectFrom(
 /// `all-configs.txt` a shard wrote.
 pub fn discoverApps(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
 ) ![][]const u8 {
-    var root = dir.openDir(repo_root, .{}) catch |err| switch (err) {
+    var root = dir.openDir(io, repo_root, .{}) catch |err| switch (err) {
         error.FileNotFound, error.NotDir => return allocator.alloc([]const u8, 0),
         else => return err,
     };
-    defer root.close();
+    defer root.close(io);
 
     var set = std.StringHashMap(void).init(allocator);
     defer set.deinit();
-    try collectFrom(allocator, root, "examples", false, &set);
-    try collectFrom(allocator, root, "apps/board/stand_alone", true, &set);
+    try collectFrom(allocator, io, root, "examples", false, &set);
+    try collectFrom(allocator, io, root, "apps/board/stand_alone", true, &set);
 
-    var names = std.ArrayList([]const u8).init(allocator);
-    errdefer names.deinit();
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(allocator);
     var it = set.keyIterator();
-    while (it.next()) |key| try names.append(key.*);
-    const owned = try names.toOwnedSlice();
+    while (it.next()) |key| try names.append(allocator, key.*);
+    const owned = try names.toOwnedSlice(allocator);
     implementation.sortNames(owned);
     return owned;
 }
@@ -317,29 +323,30 @@ pub const Verdict = struct {
 /// it, so a passing selftest case reports in the same order.
 pub fn checkUnion(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     shards: usize,
-    out: anytype,
+    out: *std.Io.Writer,
 ) !Verdict {
-    var problems = std.ArrayList([]const u8).init(allocator);
-    errdefer problems.deinit();
+    var problems: std.ArrayList([]const u8) = .empty;
+    errdefer problems.deinit(allocator);
 
-    const expected = try discoverApps(allocator, dir, repo_root);
+    const expected = try discoverApps(allocator, io, dir, repo_root);
     if (expected.len == 0) {
-        try problems.append(try allocator.dupe(u8, implementation.empty_discovery_problem));
-        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice() };
+        try problems.append(allocator, try allocator.dupe(u8, implementation.empty_discovery_problem));
+        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice(allocator) };
     }
 
     const shard_dir = try implementation.joinPath(allocator, repo_root, implementation.shard_subdir);
-    if (!isDirectory(dir, shard_dir)) {
-        try problems.append(try implementation.renderMissingShardDir(allocator, shard_dir));
-        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice() };
+    if (!isDirectory(io, dir, shard_dir)) {
+        try problems.append(allocator, try implementation.renderMissingShardDir(allocator, shard_dir));
+        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice(allocator) };
     }
 
     const all_configs = try implementation.joinPath(allocator, shard_dir, implementation.all_configs_name);
-    if (!isRegularFile(dir, all_configs)) {
-        try problems.append(try implementation.renderMissingAllConfigs(allocator, all_configs));
+    if (!isRegularFile(io, dir, all_configs)) {
+        try problems.append(allocator, try implementation.renderMissingAllConfigs(allocator, all_configs));
     } else {
         // A read that finds no regular file is an EMPTY matrix, never a
         // skipped comparison: `read_manifest` returned `[]` there and `[] !=
@@ -347,9 +354,9 @@ pub fn checkUnion(
         // read, so it can stop being a regular file in between, and silently
         // dropping the comparison on that path would let the one artefact
         // this gate cross-checks vanish and still report a clean union.
-        const claimed = (try readManifest(allocator, dir, all_configs)) orelse &[_][]const u8{};
+        const claimed = (try readManifest(allocator, io, dir, all_configs)) orelse &[_][]const u8{};
         if (!implementation.sameList(claimed, expected)) {
-            try problems.append(try allocator.dupe(u8, implementation.disagreement_problem));
+            try problems.append(allocator, try allocator.dupe(u8, implementation.disagreement_problem));
         }
     }
 
@@ -357,28 +364,28 @@ pub fn checkUnion(
     for (0..shards) |offset| {
         const name = try implementation.shardFileName(allocator, offset + 1, shards);
         shard_paths[offset] = try implementation.joinPath(allocator, shard_dir, name);
-        if (!isRegularFile(dir, shard_paths[offset])) {
-            try problems.append(try implementation.renderMissingShard(allocator, name));
+        if (!isRegularFile(io, dir, shard_paths[offset])) {
+            try problems.append(allocator, try implementation.renderMissingShard(allocator, name));
         }
     }
 
     if (problems.items.len > 0) {
-        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice() };
+        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice(allocator) };
     }
 
     var collected = try allocator.alloc(Shard, shards);
     for (shard_paths, 0..) |path, offset| {
-        const apps = (try readManifest(allocator, dir, path)) orelse &[_][]const u8{};
+        const apps = (try readManifest(allocator, io, dir, path)) orelse &[_][]const u8{};
         collected[offset] = .{ .index = offset + 1, .apps = apps };
     }
     try implementation.auditShardContents(allocator, collected, expected, &problems);
     if (problems.items.len > 0) {
-        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice() };
+        return .{ .status = implementation.rc_violation, .problems = try problems.toOwnedSlice(allocator) };
     }
 
     const line = try implementation.renderCleanLine(allocator, shards, expected.len);
     try out.print("{s}\n", .{line});
-    return .{ .status = implementation.rc_ok, .problems = try problems.toOwnedSlice() };
+    return .{ .status = implementation.rc_ok, .problems = try problems.toOwnedSlice(allocator) };
 }
 
 const SelftestCase = struct {
@@ -458,7 +465,8 @@ const selftest_cases = [_]SelftestCase{
 
 fn writeTree(
     allocator: std.mem.Allocator,
-    scratch: std.fs.Dir,
+    io: std.Io,
+    scratch: std.Io.Dir,
     root: []const u8,
     examples: []const []const u8,
     ereader: bool,
@@ -466,17 +474,17 @@ fn writeTree(
     for (examples) |app| {
         const source_dir = try std.fmt.allocPrint(allocator, "{s}/examples/tier/{s}/src", .{ root, app });
         defer allocator.free(source_dir);
-        try scratch.makePath(source_dir);
+        try scratch.createDirPath(io, source_dir);
         const main_c = try std.fmt.allocPrint(allocator, "{s}/main.c", .{source_dir});
         defer allocator.free(main_c);
-        try scratch.writeFile(.{ .sub_path = main_c, .data = "int main(void){return 0;}\n" });
+        try scratch.writeFile(io, .{ .sub_path = main_c, .data = "int main(void){return 0;}\n" });
         const lists = try std.fmt.allocPrint(
             allocator,
             "{s}/examples/tier/{s}/CMakeLists.txt",
             .{ root, app },
         );
         defer allocator.free(lists);
-        try scratch.writeFile(.{ .sub_path = lists, .data = "add_executable(test src/main.c)\n" });
+        try scratch.writeFile(io, .{ .sub_path = lists, .data = "add_executable(test src/main.c)\n" });
     }
     if (!ereader) return;
 
@@ -488,18 +496,19 @@ fn writeTree(
     defer allocator.free(board);
     const board_src = try std.fmt.allocPrint(allocator, "{s}/src", .{board});
     defer allocator.free(board_src);
-    try scratch.makePath(board_src);
+    try scratch.createDirPath(io, board_src);
     const board_main = try std.fmt.allocPrint(allocator, "{s}/main.c", .{board_src});
     defer allocator.free(board_main);
-    try scratch.writeFile(.{ .sub_path = board_main, .data = "void main(void) {}\n" });
+    try scratch.writeFile(io, .{ .sub_path = board_main, .data = "void main(void) {}\n" });
     const board_lists = try std.fmt.allocPrint(allocator, "{s}/CMakeLists.txt", .{board});
     defer allocator.free(board_lists);
-    try scratch.writeFile(.{ .sub_path = board_lists, .data = "add_executable(ereader src/main.c)\n" });
+    try scratch.writeFile(io, .{ .sub_path = board_lists, .data = "add_executable(ereader src/main.c)\n" });
 }
 
 fn writeShardManifests(
     allocator: std.mem.Allocator,
-    scratch: std.fs.Dir,
+    io: std.Io,
+    scratch: std.Io.Dir,
     root: []const u8,
     shards: usize,
     slices: []const []const []const u8,
@@ -510,22 +519,22 @@ fn writeShardManifests(
         .{ root, implementation.shard_subdir },
     );
     defer allocator.free(shard_dir);
-    try scratch.makePath(shard_dir);
+    try scratch.createDirPath(io, shard_dir);
 
-    var every = std.ArrayList([]const u8).init(allocator);
-    defer every.deinit();
+    var every: std.ArrayList([]const u8) = .empty;
+    defer every.deinit(allocator);
     for (slices) |slice| {
         for (slice) |app| {
-            if (!implementation.containsName(every.items, app)) try every.append(app);
+            if (!implementation.containsName(every.items, app)) try every.append(allocator, app);
         }
     }
     implementation.sortNames(every.items);
 
-    var body = std.ArrayList(u8).init(allocator);
-    defer body.deinit();
+    var body: std.ArrayList(u8) = .empty;
+    defer body.deinit(allocator);
     for (every.items) |app| {
-        try body.appendSlice(app);
-        try body.append('\n');
+        try body.appendSlice(allocator, app);
+        try body.append(allocator, '\n');
     }
     const all_configs = try std.fmt.allocPrint(
         allocator,
@@ -533,20 +542,20 @@ fn writeShardManifests(
         .{ shard_dir, implementation.all_configs_name },
     );
     defer allocator.free(all_configs);
-    try scratch.writeFile(.{ .sub_path = all_configs, .data = body.items });
+    try scratch.writeFile(io, .{ .sub_path = all_configs, .data = body.items });
 
     for (slices, 0..) |slice, offset| {
-        var shard_body = std.ArrayList(u8).init(allocator);
-        defer shard_body.deinit();
+        var shard_body: std.ArrayList(u8) = .empty;
+        defer shard_body.deinit(allocator);
         for (slice) |app| {
-            try shard_body.appendSlice(app);
-            try shard_body.append('\n');
+            try shard_body.appendSlice(allocator, app);
+            try shard_body.append(allocator, '\n');
         }
         const name = try implementation.shardFileName(allocator, offset + 1, shards);
         defer allocator.free(name);
         const path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ shard_dir, name });
         defer allocator.free(path);
-        try scratch.writeFile(.{ .sub_path = path, .data = shard_body.items });
+        try scratch.writeFile(io, .{ .sub_path = path, .data = shard_body.items });
     }
 }
 
@@ -554,20 +563,21 @@ fn writeShardManifests(
 /// a complete matrix. Fixtures are materialised under `scratch`.
 pub fn selftest(
     allocator: std.mem.Allocator,
-    scratch: std.fs.Dir,
-    out: anytype,
-    err: anytype,
+    io: std.Io,
+    scratch: std.Io.Dir,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     var failures: usize = 0;
 
     for (selftest_cases, 0..) |case, number| {
         const root = try std.fmt.allocPrint(allocator, "case-{d}", .{number});
         defer allocator.free(root);
-        try scratch.makePath(root);
-        try writeTree(allocator, scratch, root, case.examples, case.ereader);
-        try writeShardManifests(allocator, scratch, root, case.shards, case.slices);
+        try scratch.createDirPath(io, root);
+        try writeTree(allocator, io, scratch, root, case.examples, case.ereader);
+        try writeShardManifests(allocator, io, scratch, root, case.shards, case.slices);
 
-        const verdict = try checkUnion(allocator, scratch, root, case.shards, out);
+        const verdict = try checkUnion(allocator, io, scratch, root, case.shards, out);
         const behaved = if (case.expect_pass)
             verdict.status == implementation.rc_ok
         else
@@ -588,9 +598,9 @@ pub fn selftest(
     // manifest directory with nothing to discover. Neither may pass.
     {
         const root = "boundary-absent-manifests";
-        try scratch.makePath(root);
-        try writeTree(allocator, scratch, root, &.{"a"}, false);
-        const verdict = try checkUnion(allocator, scratch, root, 1, out);
+        try scratch.createDirPath(io, root);
+        try writeTree(allocator, io, scratch, root, &.{"a"}, false);
+        const verdict = try checkUnion(allocator, io, scratch, root, 1, out);
         const behaved = verdict.status == implementation.rc_violation;
         try out.print("  [{s}] absent manifest dir: expected to fire, rc={d}\n", .{
             if (behaved) "ok" else "FAIL",
@@ -606,8 +616,8 @@ pub fn selftest(
             .{ root, implementation.shard_subdir },
         );
         defer allocator.free(shard_dir);
-        try scratch.makePath(shard_dir);
-        const verdict = try checkUnion(allocator, scratch, root, 1, out);
+        try scratch.createDirPath(io, shard_dir);
+        const verdict = try checkUnion(allocator, io, scratch, root, 1, out);
         const behaved = verdict.status == implementation.rc_violation;
         try out.print("  [{s}] empty tree: expected to fire, rc={d}\n", .{
             if (behaved) "ok" else "FAIL",
@@ -627,12 +637,13 @@ pub fn selftest(
 /// Dispatch one invocation. `scratch` is only touched by `--selftest`.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
-    scratch: ?std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
+    scratch: ?std.Io.Dir,
     argv: []const []const u8,
     default_root: []const u8,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     const parsed = try parseArgs(allocator, argv);
     switch (parsed) {
@@ -651,7 +662,7 @@ pub fn run(
                     try err.print("{s}: no scratch directory for --selftest\n", .{implementation.tool_name});
                     return implementation.rc_violation;
                 };
-                return selftest(allocator, scratch_dir, out, err);
+                return selftest(allocator, io, scratch_dir, out, err);
             }
             if (options.shards == null or options.shards.? < 1) {
                 try err.writeAll(usage);
@@ -665,6 +676,7 @@ pub fn run(
             const root = options.repo_root orelse default_root;
             const verdict = checkUnion(
                 allocator,
+                io,
                 dir,
                 root,
                 @intCast(options.shards.?),
