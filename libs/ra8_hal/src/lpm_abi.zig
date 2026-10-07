@@ -44,8 +44,8 @@ extern fn ra8_hw_wfi() void;
 
 fn waitForInterrupt() void {
     if (freestanding) {
-        asm volatile ("dsb 0xF" ::: "memory");
-        asm volatile ("wfi" ::: "memory");
+        asm volatile ("dsb 0xF" ::: .{ .memory = true });
+        asm volatile ("wfi" ::: .{ .memory = true });
     } else {
         ra8_hw_dsb();
         ra8_hw_wfi();

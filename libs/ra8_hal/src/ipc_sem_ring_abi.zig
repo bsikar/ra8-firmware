@@ -42,7 +42,7 @@ const Hw = struct {
     }
     /// DMB 0xF on target, nothing off target (ra8_ipc_sync.h).
     pub fn barrier(_: Hw) void {
-        if (comptime (builtin.cpu.arch.isArm() or builtin.cpu.arch.isThumb())) asm volatile ("dmb 0xF" ::: "memory");
+        if (comptime (builtin.cpu.arch.isArm() or builtin.cpu.arch.isThumb())) asm volatile ("dmb 0xF" ::: .{ .memory = true });
     }
     pub fn sendEvent(_: Hw, channel: u8, event_id: u8) u16 {
         return ra8_ipc_send_event(channel, event_id);

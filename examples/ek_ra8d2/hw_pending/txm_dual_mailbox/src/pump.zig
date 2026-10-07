@@ -19,7 +19,7 @@ const no_wait: c_ulong = 0;
 const Message = [shared.message_words]u32;
 
 fn barrier() void {
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
 }
 
 /// Move one message from `queue` into `slot`, once the other core has taken

@@ -87,7 +87,7 @@ export fn cpu1_reset_handler() callconv(.c) noreturn {
     initMemory();
     const cpacr: *volatile u32 = @ptrFromInt(reg.cpacr);
     cpacr.* |= cpacr_fpu;
-    asm volatile ("dsb\n\tisb" ::: "memory");
+    asm volatile ("dsb\n\tisb" ::: .{ .memory = true });
     _tx_initialize_kernel_enter();
     while (true) asm volatile ("wfi");
 }

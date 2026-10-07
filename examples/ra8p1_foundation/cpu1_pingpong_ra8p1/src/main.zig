@@ -33,7 +33,7 @@ fn say(line: []const u8) void {
 
 fn roundTrip(block: *volatile shared.Block, seq: u32) bool {
     block.ping_payload = shared.magic_ping;
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     block.ping_seq = seq;
     var polls: u32 = 0;
     while (polls < poll_budget) : (polls += 1) {
@@ -58,7 +58,7 @@ fn park() noreturn {
 export fn main() callconv(.c) c_int {
     const block = shared.block();
     block.* = .{ .ping_seq = 0, .pong_seq = 0, .ping_payload = 0, .pong_payload = 0 };
-    asm volatile ("dsb" ::: "memory");
+    asm volatile ("dsb" ::: .{ .memory = true });
     if (ra8_cgc_init() != ok) park();
     const console = ra8_board_uart_console_init(baud) == ok;
     if (ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top) != ok) {

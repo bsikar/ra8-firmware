@@ -103,7 +103,7 @@ fn maskInterrupts() u32 {
     const primask = asm volatile ("mrs %[out], primask"
         : [out] "=r" (-> u32),
     );
-    asm volatile ("cpsid i" ::: "memory");
+    asm volatile ("cpsid i" ::: .{ .memory = true });
     return primask;
 }
 
@@ -112,7 +112,7 @@ fn restoreInterrupts(saved: u32) void {
     asm volatile ("msr primask, %[in]"
         :
         : [in] "r" (saved),
-        : "memory");
+        : .{ .memory = true });
 }
 
 /// The header a slot carries, or null when the slot has no base. A plain

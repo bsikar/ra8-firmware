@@ -51,5 +51,5 @@ pub fn read32(addr: usize) u32 {
 
 /// Order the stores above against what follows.
 pub fn barrier() void {
-    if (comptime on_target) asm volatile ("dsb sy" ::: "memory");
+    if (comptime on_target) asm volatile ("dsb sy" ::: .{ .memory = true });
 }

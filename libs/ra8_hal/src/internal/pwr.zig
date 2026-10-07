@@ -65,5 +65,5 @@ pub const Block = struct {
 /// Idle until the next interrupt; a no-op in a host test binary.
 pub fn waitForInterrupt() void {
     if (!on_target) return;
-    asm volatile ("wfi" ::: "memory");
+    asm volatile ("wfi" ::: .{ .memory = true });
 }

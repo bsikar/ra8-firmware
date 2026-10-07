@@ -86,11 +86,11 @@ pub fn rlarFor(r: *const Region) u32 {
 }
 
 pub fn dsb() void {
-    if (on_target) asm volatile ("dsb 0xF" ::: "memory");
+    if (on_target) asm volatile ("dsb 0xF" ::: .{ .memory = true });
 }
 
 pub fn isb() void {
-    if (on_target) asm volatile ("isb 0xF" ::: "memory");
+    if (on_target) asm volatile ("isb 0xF" ::: .{ .memory = true });
 }
 
 pub const Block = struct {

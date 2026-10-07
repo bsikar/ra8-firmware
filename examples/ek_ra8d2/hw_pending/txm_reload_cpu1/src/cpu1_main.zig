@@ -108,7 +108,7 @@ fn waitRuns(block: *volatile shared.Block) void {
 /// Opens the next round: its run count reads 0 before its number shows.
 fn beginRound(block: *volatile shared.Block, round: u32) void {
     block.module_runs = 0;
-    asm volatile ("dmb" ::: "memory");
+    asm volatile ("dmb" ::: .{ .memory = true });
     block.round = round;
 }
 

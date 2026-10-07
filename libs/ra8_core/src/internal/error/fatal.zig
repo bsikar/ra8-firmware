@@ -25,7 +25,7 @@ pub const on_target = builtin.target.os.tag == .freestanding;
 /// Mask every maskable interrupt: PRIMASK.PM = 1.
 pub fn maskInterrupts() void {
     if (comptime !on_target) return;
-    asm volatile ("cpsid i" ::: "memory");
+    asm volatile ("cpsid i" ::: .{ .memory = true });
 }
 
 /// Halt under an attached debugger; faults to HardFault without one.
