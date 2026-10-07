@@ -5,6 +5,25 @@
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
+const Translator = @import("translate_c").Translator;
+
+/// The public C23 header as a Zig module. translate-c does not know the
+/// C23 keywords static_assert and alignof, so they are spelled as the C11
+/// keywords they replaced.
+fn translateHeader(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.lang.OptimizeMode) *std.Build.Module {
+    const header = b.addWriteFiles().add("rust_abi_c.h", "#include <stdbool.h>\n#include \"ra8_rust_abi_fixture.h\"\n");
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    translator.defineCMacro("static_assert", "_Static_assert");
+    translator.defineCMacro("alignof", "_Alignof");
+    translator.addIncludePath(b.path("../inc"));
+    translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    return translator.mod;
+}
 
 pub fn build(b: *std.Build) void {
     // Default target comes from the shared host probe so a native arm64 macOS
@@ -21,8 +40,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     test_module.link_libc = true;
-    test_module.addIncludePath(b.path("../inc"));
-    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    test_module.addImport("rust_abi_h", translateHeader(b, target, optimize));
 
     const tests = b.addTest(.{ .root_module = test_module });
     tests.root_module.addObjectFile(.{ .cwd_relative = rust_archive });

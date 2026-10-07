@@ -3,12 +3,7 @@
 //!
 //! Test-private adapter imported from the authoritative public C23 header.
 
-const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cDefine("alignof", "_Alignof");
-    @cInclude("stdbool.h");
-    @cInclude("ra8_rust_abi_fixture.h");
-});
+const c = @import("rust_abi_h");
 
 pub const Config = c.ra8_rust_abi_fixture_config_t;
 pub const Handle = c.ra8_rust_abi_fixture_t;
