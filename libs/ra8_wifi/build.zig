@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
             .pic = true,
         }),
     });
-    library.addObject(c6link_backend);
+    library.root_module.addObject(c6link_backend);
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
