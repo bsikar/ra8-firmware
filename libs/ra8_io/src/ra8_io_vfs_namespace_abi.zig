@@ -120,10 +120,11 @@ pub const Format = extern struct {
     ops: *const Ops,
 };
 
-/// Mirror of vfs_slot_t (ra8_io_vfs_internal.h).
+/// Mirror of vfs_slot_t (ra8_io_vfs_internal.h). A free slot in the zeroed
+/// table holds a NULL format, so the pointer is optional here as it is in C.
 pub const Slot = extern struct {
     name: [name_max]u8 = @splat(0),
-    format: *const Format,
+    format: ?*const Format = null,
     mount_ctx: ?*anyopaque = null,
     owned: bool = false,
     native: bool = false,
@@ -188,7 +189,7 @@ fn mutatePath(path: ?[*:0]const u8, comptime op: []const u8, comptime cap: ?[]co
     var t: Target = undefined;
     const rc = resolve(p, &t, true);
     if (rc != ok) return rc;
-    const fmt = t.slot.format;
+    const fmt = t.slot.format.?;
     if (fmt.caps.read_only) return err_not_supported;
     if (cap) |c| if (!@field(fmt.caps, c)) return err_not_supported;
     const f = @field(fmt.ops.*, op) orelse return err_not_supported;
@@ -221,8 +222,8 @@ pub export fn ra8_io_vfs_rename(old_path: ?[*:0]const u8, new_path: ?[*:0]const 
     const old_z: [*:0]const u8 = @ptrCast(&old_name);
     if (!priv_ra8_io_vfs_streq(old_z, @ptrCast(&new_name))) return err_invalid_arg;
     const slot = priv_ra8_io_vfs_find(old_z, null) orelse return err_not_found;
-    if (slot.format.caps.read_only) return err_not_supported;
-    const f = slot.format.ops.rename orelse return err_not_supported;
+    if (slot.format.?.caps.read_only) return err_not_supported;
+    const f = slot.format.?.ops.rename orelse return err_not_supported;
     return f(slot.mount_ctx, old_sub.?, new_sub.?);
 }
 
@@ -234,7 +235,7 @@ pub export fn ra8_io_vfs_stat(path: ?[*:0]const u8, out: ?*VfsStat) callconv(.c)
     const rc = resolve(p, &t, true);
     if (rc != ok) return rc;
     var st: FsStat = .{};
-    const e = t.slot.format.ops.stat.?(t.slot.mount_ctx, t.sub, &st);
+    const e = t.slot.format.?.ops.stat.?(t.slot.mount_ctx, t.sub, &st);
     if (e == err_not_found) return ok;
     if (e != ok) return e;
     o.* = .{
@@ -255,7 +256,7 @@ pub export fn ra8_io_vfs_listdir(path: ?[*:0]const u8, cb: ?ListdirCb, ctx: ?*an
     var t: Target = undefined;
     const rc = resolve(p, &t, true);
     if (rc != ok) return rc;
-    return t.slot.format.ops.listdir.?(t.slot.mount_ctx, t.sub, callback, ctx);
+    return t.slot.format.?.ops.listdir.?(t.slot.mount_ctx, t.sub, callback, ctx);
 }
 
 pub export fn ra8_io_vfs_dir_requirements(
@@ -274,7 +275,7 @@ pub export fn ra8_io_vfs_dir_requirements(
     var t: Target = undefined;
     const rc = resolve(p, &t, false);
     if (rc != ok) return rc;
-    const caps = &t.slot.format.caps;
+    const caps = &t.slot.format.?.caps;
     if (!caps.supports_dir_cursor) return err_not_supported;
     bytes.* = caps.directory_workspace_bytes;
     alignment.* = caps.directory_workspace_align;
@@ -295,7 +296,7 @@ pub export fn ra8_io_vfs_dir_open(
     var t: Target = undefined;
     const rc = resolve(p, &t, false);
     if (rc != ok) return rc;
-    const fmt = t.slot.format;
+    const fmt = t.slot.format.?;
     if (!fmt.caps.supports_dir_cursor) return err_not_supported;
     if (workspace_bytes < fmt.caps.directory_workspace_bytes) return err_no_mem;
     // An align of 0 imposes nothing (the C modulo by 0 is UDIV's 0 on the M85).

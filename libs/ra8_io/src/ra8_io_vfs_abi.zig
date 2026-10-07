@@ -78,7 +78,7 @@ var files: [max_files]File = @splat(File{});
 
 /// The all-zero slot `(vfs_slot_t){}` is; its format pointer is null.
 fn zeroSlot() Slot {
-    return @bitCast(@as([@sizeOf(Slot)]u8, @splat(0)));
+    return .{};
 }
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
@@ -102,7 +102,7 @@ fn op(comptime T: type, raw: ?*const anyopaque) ?T {
 
 /// The slot's format; a slot in use always has one.
 fn fmtOf(slot: *const Slot) *const Format {
-    return slot.format;
+    return slot.format.?;
 }
 
 export fn priv_ra8_io_vfs_streq(a: [*:0]const u8, b: [*:0]const u8) bool {
@@ -211,7 +211,7 @@ fn liveFile(file: *const File) bool {
 /// Unmount an owned slot, then zero it; returns the unmount status.
 fn initSlot(slot: *Slot) c_int {
     var e: c_int = ok;
-    if (slot.in_use and slot.owned) e = op(UnmountFn, slot.format.ops.unmount).?(slot.mount_ctx);
+    if (slot.in_use and slot.owned) e = op(UnmountFn, slot.format.?.ops.unmount).?(slot.mount_ctx);
     slot.* = zeroSlot();
     return e;
 }
@@ -273,7 +273,7 @@ pub export fn ra8_io_vfs_unmount(name: ?[*:0]const u8) c_int {
     const slot = priv_ra8_io_vfs_find(n, &index) orelse return err_not_found;
     for (&files) |*f| if (f.in_use and f.mount_index == index) return err_busy;
     var e: c_int = ok;
-    if (slot.owned) e = op(UnmountFn, slot.format.ops.unmount).?(slot.mount_ctx);
+    if (slot.owned) e = op(UnmountFn, slot.format.?.ops.unmount).?(slot.mount_ctx);
     slot.* = zeroSlot();
     return e;
 }
@@ -290,7 +290,7 @@ fn openTarget(path: [*:0]const u8, index: ?*u8, out_slot: **Slot, out_sub: *[*:0
 }
 
 fn dispatchOpen(slot: *Slot, sub: [*:0]const u8, mode: u8, out_ctx: *?*anyopaque) c_int {
-    const rc = op(OpenFn, slot.format.ops.open).?(slot.mount_ctx, sub, mode, out_ctx);
+    const rc = op(OpenFn, slot.format.?.ops.open).?(slot.mount_ctx, sub, mode, out_ctx);
     return if (rc != ok) logged(rc, "open") else ok;
 }
 
@@ -402,7 +402,7 @@ pub export fn ra8_io_vfs_get_caps(name: ?[*:0]const u8, out: ?*Caps) c_int {
     const n = name orelse return nullPtr("name must not be nullptr");
     const o = out orelse return nullPtr("out must not be nullptr");
     const slot = priv_ra8_io_vfs_find(n, null) orelse return err_not_found;
-    o.* = slot.format.caps;
+    o.* = slot.format.?.caps;
     return ok;
 }
 
@@ -410,7 +410,7 @@ pub export fn ra8_io_vfs_free_space(name: ?[*:0]const u8, out: ?*anyopaque) c_in
     const n = name orelse return nullPtr("name must not be nullptr");
     const o = out orelse return nullPtr("out must not be nullptr");
     const slot = priv_ra8_io_vfs_find(n, null) orelse return err_not_found;
-    if (!slot.format.caps.supports_free_space) return err_not_supported;
-    const f = op(SpaceFn, slot.format.ops.free_space) orelse return err_not_supported;
+    if (!slot.format.?.caps.supports_free_space) return err_not_supported;
+    const f = op(SpaceFn, slot.format.?.ops.free_space) orelse return err_not_supported;
     return f(slot.mount_ctx, o);
 }
