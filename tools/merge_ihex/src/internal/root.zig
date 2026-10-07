@@ -54,13 +54,13 @@ pub fn isEofRecord(line: []const u8) bool {
 
 /// Append every non-EOF record of `text` to `out`, stripped of surrounding
 /// whitespace. The appended slices borrow `text`; they do not outlive it.
-pub fn appendDataRecords(out: *std.ArrayList([]const u8), text: []const u8) !void {
+pub fn appendDataRecords(gpa: std.mem.Allocator, out: *std.ArrayList([]const u8), text: []const u8) !void {
     var lines = std.mem.splitAny(u8, text, line_terminators);
     while (lines.next()) |raw| {
         const line = std.mem.trim(u8, raw, whitespace);
         if (!isRecord(line)) continue;
         if (isEofRecord(line)) continue;
-        try out.append(line);
+        try out.append(gpa, line);
     }
 }
 
@@ -82,21 +82,21 @@ pub const Merged = struct {
 /// of `second`, then one canonical EOF record. Each line is newline
 /// terminated, including the last.
 pub fn merge(allocator: std.mem.Allocator, first: []const u8, second: []const u8) !Merged {
-    var records = std.ArrayList([]const u8).init(allocator);
-    defer records.deinit();
+    var records: std.ArrayList([]const u8) = .empty;
+    defer records.deinit(allocator);
 
-    try appendDataRecords(&records, first);
-    try appendDataRecords(&records, second);
+    try appendDataRecords(allocator, &records, first);
+    try appendDataRecords(allocator, &records, second);
 
-    var text = std.ArrayList(u8).init(allocator);
-    errdefer text.deinit();
+    var text: std.ArrayList(u8) = .empty;
+    errdefer text.deinit(allocator);
 
     for (records.items) |record| {
-        try text.appendSlice(record);
-        try text.append('\n');
+        try text.appendSlice(allocator, record);
+        try text.append(allocator, '\n');
     }
-    try text.appendSlice(eof_record);
-    try text.append('\n');
+    try text.appendSlice(allocator, eof_record);
+    try text.append(allocator, '\n');
 
-    return .{ .text = try text.toOwnedSlice(), .record_count = records.items.len };
+    return .{ .text = try text.toOwnedSlice(allocator), .record_count = records.items.len };
 }

@@ -30,10 +30,10 @@ test "isEofRecord keeps records too short to carry a type field" {
 }
 
 test "appendDataRecords drops EOF records and blank filler" {
-    var records = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer records.deinit();
+    var records: std.ArrayList([]const u8) = .empty;
+    defer records.deinit(std.testing.allocator);
 
-    try merge_ihex.appendDataRecords(&records,
+    try merge_ihex.appendDataRecords(std.testing.allocator, &records,
         \\:020000040200F8
         \\
         \\:10000000AABBCCDD11223344556677889900AABB33
@@ -48,20 +48,20 @@ test "appendDataRecords drops EOF records and blank filler" {
 }
 
 test "appendDataRecords strips surrounding whitespace, carriage returns included" {
-    var records = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer records.deinit();
+    var records: std.ArrayList([]const u8) = .empty;
+    defer records.deinit(std.testing.allocator);
 
-    try merge_ihex.appendDataRecords(&records, "  :020000040200F8\r\n\t:00000001FF\r\n");
+    try merge_ihex.appendDataRecords(std.testing.allocator, &records, "  :020000040200F8\r\n\t:00000001FF\r\n");
 
     try std.testing.expectEqual(@as(usize, 1), records.items.len);
     try std.testing.expectEqualStrings(":020000040200F8", records.items[0]);
 }
 
 test "appendDataRecords splits on a lone carriage return, as Python text mode did" {
-    var records = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer records.deinit();
+    var records: std.ArrayList([]const u8) = .empty;
+    defer records.deinit(std.testing.allocator);
 
-    try merge_ihex.appendDataRecords(&records, ":020000040200F8\r:10000000AA33\r:00000001FF\r");
+    try merge_ihex.appendDataRecords(std.testing.allocator, &records, ":020000040200F8\r:10000000AA33\r:00000001FF\r");
 
     try std.testing.expectEqual(@as(usize, 2), records.items.len);
     try std.testing.expectEqualStrings(":020000040200F8", records.items[0]);
