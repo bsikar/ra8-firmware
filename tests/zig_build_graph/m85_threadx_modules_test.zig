@@ -59,10 +59,11 @@ test "the M85 module MPU budget leaves one region for the board (RA8FW-484)" {
 }
 
 test "the M85 scheduler programs the module's 7 regions and the board's shared one (RA8FW-484)" {
-    const schedule = try std.fs.cwd().readFileAlloc(
-        std.testing.allocator,
+    const schedule = try std.Io.Dir.cwd().readFileAlloc(
+        std.testing.io,
         "port/threadx/src/cortex_m85_modules/tx_thread_schedule.S",
-        1 << 20,
+        std.testing.allocator,
+        .limited(1 << 20),
     );
     defer std.testing.allocator.free(schedule);
     const expected = [_][]const u8{

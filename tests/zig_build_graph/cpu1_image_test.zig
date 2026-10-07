@@ -286,8 +286,8 @@ test "an M33 image without its own linker script falls back to its board layer (
     defer allocator.free(ra8p1);
     try std.testing.expectEqualStrings("libs/ra8_board_ra8p1/ld/linker_script_cpu1.ld", ra8p1);
     // Both fallbacks are real files in the tree.
-    try std.fs.cwd().access(ek, .{});
-    try std.fs.cwd().access(ra8p1, .{});
+    try std.Io.Dir.cwd().access(std.testing.io, ek, .{});
+    try std.Io.Dir.cwd().access(std.testing.io, ra8p1, .{});
 }
 
 test "the RA8P1 ping-pong pair links CPU1 from the RA8P1 board layer (RA8FW-496)" {
