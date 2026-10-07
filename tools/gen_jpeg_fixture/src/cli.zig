@@ -83,7 +83,8 @@ fn usageError(stderr: anytype, message: []const u8, detail: []const u8) !u8 {
 /// Write one minimal baseline JPEG seed, returning the exit status.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     stdout: anytype,
     stderr: anytype,
@@ -152,15 +153,15 @@ pub fn run(
         return exit_ok;
     }
 
-    const file = dir.createFile(output, .{ .truncate = true }) catch |err| {
+    const file = dir.createFile(io, output, .{ .truncate = true }) catch |err| {
         try stderr.print(
             "gen_jpeg_fixture: cannot write {s}: {s}\n",
             .{ output, @errorName(err) },
         );
         return exit_error;
     };
-    defer file.close();
-    file.writeAll(blob) catch |err| {
+    defer file.close(io);
+    file.writeStreamingAll(io, blob) catch |err| {
         try stderr.print(
             "gen_jpeg_fixture: cannot write {s}: {s}\n",
             .{ output, @errorName(err) },

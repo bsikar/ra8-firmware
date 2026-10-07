@@ -91,11 +91,16 @@ const entropy: [16]u8 = @splat(0x00);
 
 /// Append a marker segment: 0xFF, the marker, the big-endian length including
 /// the two length bytes themselves, then the payload.
-fn appendSegment(out: *std.ArrayList(u8), marker: u8, payload: []const u8) !void {
+fn appendSegment(
+    allocator: std.mem.Allocator,
+    out: *std.ArrayList(u8),
+    marker: u8,
+    payload: []const u8,
+) !void {
     const length: u16 = @intCast(payload.len + 2);
-    try out.appendSlice(&[_]u8{ 0xFF, marker });
-    try out.appendSlice(&[_]u8{ @intCast(length >> 8), @truncate(length) });
-    try out.appendSlice(payload);
+    try out.appendSlice(allocator, &[_]u8{ 0xFF, marker });
+    try out.appendSlice(allocator, &[_]u8{ @intCast(length >> 8), @truncate(length) });
+    try out.appendSlice(allocator, payload);
 }
 
 /// Build one minimal baseline JPEG carrying `width` x `height` in its SOF0.
@@ -112,11 +117,11 @@ pub fn buildMinimalJpeg(allocator: std.mem.Allocator, width: u32, height: u32) !
     if (height < min_dimension or height > max_dimension) return Error.DimensionOutOfRange;
 
     var out = try std.ArrayList(u8).initCapacity(allocator, blob_len);
-    errdefer out.deinit();
+    errdefer out.deinit(allocator);
 
-    try out.appendSlice(&[_]u8{ 0xFF, marker_soi });
-    try appendSegment(&out, marker_app0, &app0_payload);
-    try appendSegment(&out, marker_dqt, &dqt_payload);
+    try out.appendSlice(allocator, &[_]u8{ 0xFF, marker_soi });
+    try appendSegment(allocator, &out, marker_app0, &app0_payload);
+    try appendSegment(allocator, &out, marker_dqt, &dqt_payload);
 
     const height16: u16 = @intCast(height);
     const width16: u16 = @intCast(width);
@@ -131,13 +136,13 @@ pub fn buildMinimalJpeg(allocator: std.mem.Allocator, width: u32, height: u32) !
         0x11,
         0x00,
     };
-    try appendSegment(&out, marker_sof0, &sof0_payload);
+    try appendSegment(allocator, &out, marker_sof0, &sof0_payload);
 
-    try appendSegment(&out, marker_dht, &dht_dc_payload);
-    try appendSegment(&out, marker_dht, &dht_ac_payload);
-    try appendSegment(&out, marker_sos, &sos_payload);
-    try out.appendSlice(&entropy);
-    try out.appendSlice(&[_]u8{ 0xFF, marker_eoi });
+    try appendSegment(allocator, &out, marker_dht, &dht_dc_payload);
+    try appendSegment(allocator, &out, marker_dht, &dht_ac_payload);
+    try appendSegment(allocator, &out, marker_sos, &sos_payload);
+    try out.appendSlice(allocator, &entropy);
+    try out.appendSlice(allocator, &[_]u8{ 0xFF, marker_eoi });
 
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
