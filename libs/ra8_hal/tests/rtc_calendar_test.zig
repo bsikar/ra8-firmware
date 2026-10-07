@@ -11,7 +11,7 @@ const Hw = struct {
     waits: *std.ArrayList(u8),
     year: *u32,
     pub fn wait(self: Hw, _: *volatile u8, _: u8, expect: u8) void {
-        self.waits.append(expect) catch unreachable;
+        self.waits.append(std.testing.allocator, expect) catch unreachable;
     }
     pub fn infoVal(self: Hw, _: [*:0]const u8, value: u32) void {
         self.year.* = value;
@@ -29,8 +29,8 @@ test "BCD round trips 0..99" {
 }
 
 test "set writes BCD counters with START dropped then restored, and get reads them back" {
-    var waits = std.ArrayList(u8).init(std.testing.allocator);
-    defer waits.deinit();
+    var waits: std.ArrayList(u8) = .empty;
+    defer waits.deinit(std.testing.allocator);
     var year: u32 = 0;
     var cal = zeroCal();
     var rcr2: u8 = 0x41;
@@ -47,8 +47,8 @@ test "set writes BCD counters with START dropped then restored, and get reads th
 }
 
 test "set rejects a year before 2000 without touching registers" {
-    var waits = std.ArrayList(u8).init(std.testing.allocator);
-    defer waits.deinit();
+    var waits: std.ArrayList(u8) = .empty;
+    defer waits.deinit(std.testing.allocator);
     var year: u32 = 0;
     var cal = zeroCal();
     var rcr2: u8 = 0x41;
