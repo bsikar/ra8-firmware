@@ -171,7 +171,7 @@ pub fn hidOf(c: *const CHid) descriptor.Error!descriptor.Hid {
         .poll_interval_ms = c.poll_interval_ms,
         .report_bytes = c.report_bytes,
         .boot_interface = c.boot_interface != 0,
-        .protocol = std.meta.intToEnum(descriptor.HidProtocol, c.protocol) catch
+        .protocol = std.enums.fromInt(descriptor.HidProtocol, c.protocol) orelse
             return descriptor.Error.InvalidArg,
     };
 }

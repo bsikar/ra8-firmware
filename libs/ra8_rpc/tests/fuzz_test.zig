@@ -19,6 +19,7 @@ const testing = std.testing;
 const rpc = @import("ra8_rpc");
 const messages = @import("messages.zig");
 const service = @import("service.zig");
+const fuzz_corpus = @import("fuzz_corpus.zig");
 const Env = service.Env;
 const Kind = rpc.Kind;
 
@@ -212,12 +213,15 @@ test "a live session fed damaged frames sends only whole frames of its own" {
 
 test "fuzz: frames are refused or decode canonically, alone and in a session" {
     const one = struct {
-        fn one(_: void, input: []const u8) anyerror!void {
+        fn one(_: void, smith: *testing.Smith) anyerror!void {
+            var buf: [Limits.input + 1]u8 = undefined;
+            const input = buf[0..smith.slice(&buf)];
             _ = try check(input);
             if (input.len > Limits.input) return;
             _ = try serverHolds(input);
             _ = try clientHolds(input);
         }
     }.one;
-    try testing.fuzz({}, one, .{ .corpus = &corpus });
+    const seeds = comptime fuzz_corpus.all(&corpus);
+    try testing.fuzz({}, one, .{ .corpus = &seeds });
 }

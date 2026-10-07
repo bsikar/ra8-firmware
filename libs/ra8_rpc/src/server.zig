@@ -89,7 +89,7 @@ pub fn Server(comptime Context: type, comptime max_body: usize, comptime routes:
 
         fn run(self: *Self, comptime handler: anytype, request: Env.Request, tx: []u8) Error!void {
             const signature = @typeInfo(@TypeOf(handler)).@"fn";
-            const Args = signature.params[1].type.?;
+            const Args = signature.param_types[1].?;
             const Reply = @FieldType(signature.return_type.?, "ok");
 
             const args = codec.decode(Args, request.args) catch

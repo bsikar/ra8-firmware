@@ -22,6 +22,7 @@ const testing = std.testing;
 const rpc = @import("ra8_rpc");
 const Layout = rpc.ring.Layout;
 const MockSignal = @import("mock_signal.zig").MockSignal;
+const fuzz_corpus = @import("fuzz_corpus.zig");
 
 comptime {
     _ = @import("messages.zig");
@@ -210,7 +211,9 @@ test "a header of random words is refused for good, or is a sound one" {
 
 test "fuzz: a ring header of any bytes is refused for good, or is a sound one" {
     const one = struct {
-        fn one(_: void, input: []const u8) anyerror!void {
+        fn one(_: void, smith: *testing.Smith) anyerror!void {
+            var buf: [1 + Layout.header_bytes + Limits.ops_per_round]u8 = undefined;
+            const input = buf[0..smith.slice(&buf)];
             if (input.len < 1 + Layout.header_bytes) return;
             const span = Limits.max_capacity - Layout.min_capacity + 1;
             var bench: Bench = .{};
@@ -226,5 +229,7 @@ test "fuzz: a ring header of any bytes is refused for good, or is a sound one" {
     var past = sound;
     past[1 + Layout.At.head] = 8;
     const steps = [_]u8{ 6, 3, 14, 9, 2 };
-    try testing.fuzz({}, one, .{ .corpus = &.{ &(sound ++ steps), &(past ++ steps) } });
+    const seed_sound = fuzz_corpus.framed(sound.len + steps.len, sound ++ steps);
+    const seed_past = fuzz_corpus.framed(past.len + steps.len, past ++ steps);
+    try testing.fuzz({}, one, .{ .corpus = &.{ &seed_sound, &seed_past } });
 }

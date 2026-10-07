@@ -48,7 +48,7 @@ pub const State = struct {
 
     /// Ignores anything that is not slot A or B, as the C did.
     pub fn setTarget(self: *State, raw: u8) void {
-        self.target = std.meta.intToEnum(Slot, raw) catch return;
+        self.target = std.enums.fromInt(Slot, raw) orelse return;
     }
 
     /// An empty block is the host's end-of-download.

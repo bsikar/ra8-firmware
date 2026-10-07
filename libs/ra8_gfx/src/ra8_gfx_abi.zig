@@ -629,7 +629,7 @@ pub export fn ra8_gfx_text_out_face(
 ) callconv(.c) u16 {
     const text_value = str orelse return impl.err.null_ptr;
     if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
-    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+    const family = std.enums.fromInt(text_impl.Face, face) orelse return impl.err.invalid_arg;
 
     if (family == .sans) {
         return ra8_gfx_text_out(x, y, text_value, &font_abi.ra8_gfx_font_8x16, fg_color, bg_color);
@@ -650,8 +650,8 @@ pub export fn ra8_gfx_text_out_style(
 ) callconv(.c) u16 {
     const text_value = str orelse return impl.err.null_ptr;
     if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
-    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
-    const stroke = std.meta.intToEnum(text_impl.Weight, weight) catch return impl.err.invalid_arg;
+    const family = std.enums.fromInt(text_impl.Face, face) orelse return impl.err.invalid_arg;
+    const stroke = std.enums.fromInt(text_impl.Weight, weight) orelse return impl.err.invalid_arg;
 
     if (family == .serif) {
         text_impl.drawSerifWeight(text_value, x, y, fg_color, bg_color, stroke, null, textPixel);
@@ -673,8 +673,8 @@ pub export fn ra8_gfx_text_size_style(
     const text_value = str orelse return impl.err.null_ptr;
     const width = out_w orelse return impl.err.null_ptr;
     const height = out_h orelse return impl.err.null_ptr;
-    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
-    const stroke = std.meta.intToEnum(text_impl.Weight, weight) catch return impl.err.invalid_arg;
+    const family = std.enums.fromInt(text_impl.Face, face) orelse return impl.err.invalid_arg;
+    const stroke = std.enums.fromInt(text_impl.Weight, weight) orelse return impl.err.invalid_arg;
     const extent = text_impl.measureWeight(text_value, family, stroke);
     width.* = extent.width;
     height.* = extent.height;
@@ -691,7 +691,7 @@ pub export fn ra8_gfx_text_size_face(
     const text_value = str orelse return impl.err.null_ptr;
     const width = out_w orelse return impl.err.null_ptr;
     const height = out_h orelse return impl.err.null_ptr;
-    const family = std.meta.intToEnum(text_impl.Face, face) catch return impl.err.invalid_arg;
+    const family = std.enums.fromInt(text_impl.Face, face) orelse return impl.err.invalid_arg;
     const extent = text_impl.measure(text_value, family);
     width.* = extent.width;
     height.* = extent.height;
