@@ -28,6 +28,11 @@
         .if_ra8_cgc = .{ .path = "libs/if_ra8_cgc" },
         .@"if" = .{ .path = "libs/if" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
+        // Translates C headers for the Zig roots in middleware archives.
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
+            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+        },
         // Third-party, fetched by cmake/zig_package.cmake; nothing in build.zig imports it.
         .flatbuffers = .{
             .url = "https://github.com/google/flatbuffers/archive/187240970746d00bbd26b0f5873ed54d2477f9f3.tar.gz",

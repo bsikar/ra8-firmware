@@ -86,7 +86,11 @@ pub const threadx_m85_modules = middleware.Middleware{
     .public_defines = modules.threadx_m33_modules.public_defines,
     .link_options = kernel.link_options,
     .patched_headers = &.{port_header},
-    .zig_sources = &.{.{ .path = external_memory_source, .cpu = &std.Target.arm.cpu.cortex_m85 }},
+    .zig_sources = &.{.{
+        .path = external_memory_source,
+        .cpu = &std.Target.arm.cpu.cortex_m85,
+        .c_headers = &.{"txm_module.h"},
+    }},
 };
 
 /// Builds the archive with the M85 middleware toolchain and installs it as
