@@ -9,28 +9,32 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const argv = try std.process.argsAlloc(allocator);
+    const sentinel_argv = try init.minimal.args.toSlice(allocator);
+    const argv = try allocator.alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
-    const repo_root_env = std.process.getEnvVarOwned(allocator, "RA8_REPO_ROOT") catch null;
+    const repo_root_env = init.environ_map.get("RA8_REPO_ROOT");
 
-    var stdout_buffer = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var stderr_buffer = std.io.bufferedWriter(std.io.getStdErr().writer());
+    var stdout_buffer: [4096]u8 = undefined;
+    var stderr_buffer: [4096]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(io, &stdout_buffer);
+    var stderr = std.Io.File.stderr().writer(io, &stderr_buffer);
 
     const status = try cli.run(
         allocator,
-        std.fs.cwd(),
+        io,
+        std.Io.Dir.cwd(),
         argv,
         repo_root_env,
-        stdout_buffer.writer(),
-        stderr_buffer.writer(),
+        &stdout.interface,
+        &stderr.interface,
     );
 
-    try stdout_buffer.flush();
-    try stderr_buffer.flush();
+    try stdout.interface.flush();
+    try stderr.interface.flush();
     return status;
 }

@@ -182,11 +182,11 @@ pub const LineIterator = struct {
 /// `text.splitlines()` as a slice. The returned slice is owned; the lines
 /// themselves point into `text`.
 pub fn splitLines(allocator: std.mem.Allocator, text: []const u8) ![][]const u8 {
-    var lines = std.ArrayList([]const u8).init(allocator);
-    errdefer lines.deinit();
+    var lines: std.ArrayList([]const u8) = .empty;
+    errdefer lines.deinit(allocator);
     var iterator = LineIterator{ .text = text };
-    while (iterator.next()) |line| try lines.append(line);
-    return lines.toOwnedSlice();
+    while (iterator.next()) |line| try lines.append(allocator, line);
+    return lines.toOwnedSlice(allocator);
 }
 
 // -- the three patterns ------------------------------------------------------
