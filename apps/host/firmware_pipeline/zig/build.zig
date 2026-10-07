@@ -3,6 +3,32 @@
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
+const Translator = @import("translate_c").Translator;
+
+/// Turns `includes` into a Zig module. translate-c does not know the C23
+/// keywords static_assert and alignof, so they are spelled as the C11
+/// keywords they replaced.
+fn translateHeaders(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    name: []const u8,
+    includes: []const u8,
+) *std.Build.Module {
+    const header = b.addWriteFiles().add(name, includes);
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    translator.defineCMacro("static_assert", "_Static_assert");
+    translator.defineCMacro("alignof", "_Alignof");
+    translator.addIncludePath(b.path("../inc"));
+    translator.addIncludePath(b.path("../src"));
+    translator.addIncludePath(b.path("../../../../libs/ra8_core/inc"));
+    return translator.mod;
+}
 
 pub fn build(b: *std.Build) void {
     // Default target comes from the shared host probe so a native arm64 macOS
@@ -15,7 +41,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    adapter.addIncludePath(b.path("../inc"));
+    const firmware_pipeline_h = translateHeaders(b, target, optimize, "firmware_pipeline_c.h",
+        \\#include "firmware_pipeline.h"
+        \\#include "firmware_pipeline_rust.h"
+        \\
+    );
+    adapter.addImport("firmware_pipeline_h", firmware_pipeline_h);
     const library = b.addLibrary(.{
         .name = "firmware_pipeline_zig",
         .linkage = .static,
@@ -40,6 +71,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
+    executable_module.addImport("firmware_pipeline_main_h", translateHeaders(b, target, optimize, "firmware_pipeline_main_c.h",
+        \\#include "firmware_pipeline.h"
+        \\#include "firmware_pipeline_io_internal.h"
+        \\
+    ));
+    // The C sources compiled into the executable still need the headers.
     executable_module.addIncludePath(b.path("../inc"));
     executable_module.addIncludePath(b.path("../src"));
     executable_module.addIncludePath(b.path("../../../../libs/ra8_core/inc"));
@@ -82,7 +119,6 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     test_module.addImport("adapter", adapter);
-    test_module.addIncludePath(b.path("../inc"));
     const tests = b.addTest(.{ .root_module = test_module });
     tests.root_module.addObjectFile(.{ .cwd_relative = rust_archive });
     const require_archive_for_tests = ra8_build.addRequireArchiveForTargetStep(b, tests, rust_archive, "-Drust-lib-dir=");
