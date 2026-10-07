@@ -54,15 +54,15 @@ fn beforeByName(_: void, left: []const u8, right: []const u8) bool {
 /// `glob("*.c")` did: a dot-prefixed name is NOT hidden, and a DIRECTORY
 /// whose name ends in `.c` is listed and then fails to read, which is a
 /// status 1 rather than a silent skip.
-fn listDrivers(allocator: std.mem.Allocator, dir: std.fs.Dir) ![][]const u8 {
-    var names = std.ArrayList([]const u8).init(allocator);
-    errdefer names.deinit();
+fn listDrivers(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir) ![][]const u8 {
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(allocator);
     var walker = dir.iterate();
-    while (try walker.next()) |entry| {
+    while (try walker.next(io)) |entry| {
         if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-        try names.append(try allocator.dupe(u8, entry.name));
+        try names.append(allocator, try allocator.dupe(u8, entry.name));
     }
-    const owned = try names.toOwnedSlice();
+    const owned = try names.toOwnedSlice(allocator);
     std.mem.sort([]const u8, owned, {}, beforeByName);
     return owned;
 }
@@ -70,15 +70,17 @@ fn listDrivers(allocator: std.mem.Allocator, dir: std.fs.Dir) ![][]const u8 {
 /// Read one driver, rejecting an undecodable one the way strict UTF-8 did.
 ///
 /// There is deliberately NO size ceiling. The predecessor called `read_text()`
-/// with none, and a ceiling here does not truncate: `readToEndAlloc` fails
-/// with `error.FileTooBig`, the caller turns any read error into "cannot read
+/// with none, and a ceiling here does not truncate: `allocRemaining` fails
+/// with `error.StreamTooLong`, the caller turns any read error into "cannot read
 /// driver", and the scan stops there. A driver past the ceiling would lose its
 /// findings and take every driver sorted after it down with it, which is the
 /// one thing a gate must never do quietly.
-fn readSource(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) ![]const u8 {
-    var file = try dir.openFile(path, .{});
-    defer file.close();
-    const raw = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
+fn readSource(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, path: []const u8) ![]const u8 {
+    var file = try dir.openFile(io, path, .{});
+    defer file.close(io);
+    var buffer: [4096]u8 = undefined;
+    var reader = file.reader(io, &buffer);
+    const raw = try reader.interface.allocRemaining(allocator, .unlimited);
     if (!std.unicode.utf8ValidateSlice(raw)) return error.InvalidUtf8;
     return implementation.normalizeTerminators(allocator, raw);
 }
@@ -86,12 +88,13 @@ fn readSource(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) !
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     caller_allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     paths: Paths,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     // One arena per run: the listing, the stripped lines and the rendered
     // report all live exactly as long as the run does.
@@ -106,24 +109,24 @@ pub fn run(
     }
 
     const dir_path = try resolve(allocator, repo_root, paths.driver_dir);
-    var drivers_dir = dir.openDir(dir_path, .{ .iterate = true }) catch {
+    var drivers_dir = dir.openDir(io, dir_path, .{ .iterate = true }) catch {
         try out.print("{s}: driver dir not found: {s}\n", .{ tool, dir_path });
         return 1;
     };
-    defer drivers_dir.close();
+    defer drivers_dir.close(io);
 
-    const names = try listDrivers(allocator, drivers_dir);
+    const names = try listDrivers(allocator, io, drivers_dir);
 
-    var problems = std.ArrayList([]const u8).init(allocator);
+    var problems: std.ArrayList([]const u8) = .empty;
     for (names) |name| {
         const read_path = try std.fs.path.join(allocator, &.{ dir_path, name });
         const rel = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ paths.driver_dir, name });
-        const text = readSource(allocator, drivers_dir, name) catch {
+        const text = readSource(allocator, io, drivers_dir, name) catch {
             try err.print("{s}: cannot read driver: {s}\n", .{ tool, read_path });
             return 1;
         };
         for (try implementation.scanText(allocator, text)) |finding| {
-            try problems.append(try implementation.renderFinding(allocator, rel, finding));
+            try problems.append(allocator, try implementation.renderFinding(allocator, rel, finding));
         }
     }
 
@@ -145,7 +148,7 @@ pub fn run(
 }
 
 /// Prove both detector directions, printing one line per case.
-pub fn selftest(allocator: std.mem.Allocator, out: anytype) !u8 {
+pub fn selftest(allocator: std.mem.Allocator, out: *std.Io.Writer) !u8 {
     const cases = try implementation.selftestCases(allocator);
     var failures: usize = 0;
     for (cases) |case| {
