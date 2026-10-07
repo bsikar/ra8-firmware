@@ -158,7 +158,7 @@ const Fixture = struct {
     }
 
     fn reader(self: *const Fixture) zip.Reader {
-        return .{ .ctx = @constCast(@ptrCast(self)), .read = Fixture.read };
+        return .{ .ctx = @ptrCast(@constCast(self)), .read = Fixture.read };
     }
 };
 

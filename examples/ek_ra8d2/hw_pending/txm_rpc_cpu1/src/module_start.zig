@@ -125,7 +125,7 @@ fn add(step: u32) u32 {
     if (response.id != id or response.waiter != step) fail(Stage.reply, step);
     const bytes = switch (response.result) {
         .ok => |bytes| bytes,
-        .err => |code| fail(Stage.refused, @intFromEnum(code)),
+        .err => |code| fail(Stage.refused, @backingInt(code)),
     };
     const sum = rpc.codec.decode(service.Sum, bytes) catch |err| fail(Stage.reply, errorCode(err));
     return sum.value;

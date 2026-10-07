@@ -101,12 +101,12 @@ comptime {
     if (@offsetOf(Event, "y") != 8) @compileError("ra8_widget_event_t y offset");
 
     if (@sizeOf(EventKind) != 1) @compileError("ra8_widget_ev_kind_t width");
-    if (@intFromEnum(EventKind.touch) != 0) @compileError("ra8_widget_ev_kind_t touch value");
-    if (@intFromEnum(EventKind.button) != 1) @compileError("ra8_widget_ev_kind_t button value");
+    if (@backingInt(EventKind.touch) != 0) @compileError("ra8_widget_ev_kind_t touch value");
+    if (@backingInt(EventKind.button) != 1) @compileError("ra8_widget_ev_kind_t button value");
 
     if (@sizeOf(Refresh) != 1) @compileError("ra8_widget_refresh_t width");
-    if (@intFromEnum(Refresh.fast) != 1) @compileError("ra8_widget_refresh_t fast value");
-    if (@intFromEnum(Refresh.quality) != 2) @compileError("ra8_widget_refresh_t quality value");
+    if (@backingInt(Refresh.fast) != 1) @compileError("ra8_widget_refresh_t fast value");
+    if (@backingInt(Refresh.quality) != 2) @compileError("ra8_widget_refresh_t quality value");
 
     if (@sizeOf(Vtable) != 3 * ptr) @compileError("ra8_widget_vtable_t size");
     if (@offsetOf(Vtable, "measure") != 0) @compileError("ra8_widget_vtable_t measure offset");

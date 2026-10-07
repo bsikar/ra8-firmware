@@ -299,7 +299,7 @@ test "a touch inside the field latches, invalidates fast and notifies" {
 
     try std.testing.expectEqual(@as(u32, 1), bar.searches);
     try std.testing.expectEqual(@as(u32, 1), invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.fast), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.fast), last_refresh);
     try std.testing.expect(widget.dirty);
     // The callback sees the already-incremented counter, as in the C.
     try std.testing.expectEqual(@as(u32, 1), searches_seen);

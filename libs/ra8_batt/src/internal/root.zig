@@ -107,9 +107,9 @@ pub fn step(mon: *Monitor, soc_pct: u8, charging: bool) Nag {
 /// 200 to check it.
 pub fn label(nag: u8) [*:0]const u8 {
     return switch (nag) {
-        @intFromEnum(Nag.none) => "OK",
-        @intFromEnum(Nag.low) => "LOW",
-        @intFromEnum(Nag.critical) => "CRITICAL",
+        @backingInt(Nag.none) => "OK",
+        @backingInt(Nag.low) => "LOW",
+        @backingInt(Nag.critical) => "CRITICAL",
         else => "?",
     };
 }

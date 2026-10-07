@@ -27,12 +27,12 @@ test "the frame kinds keep their numbers" {
 
 test "the refusal codes keep their numbers" {
     const Code = rpc.Code;
-    try testing.expectEqual(@as(u16, 1), @intFromEnum(Code.unknown_method));
-    try testing.expectEqual(@as(u16, 2), @intFromEnum(Code.bad_args));
-    try testing.expectEqual(@as(u16, 3), @intFromEnum(Code.failed));
-    try testing.expectEqual(@as(u16, 4), @intFromEnum(Code.version_mismatch));
-    try testing.expectEqual(@as(u16, 5), @intFromEnum(Code.bad_magic));
-    try testing.expectEqual(@as(u16, 6), @intFromEnum(Code.not_ready));
+    try testing.expectEqual(@as(u16, 1), @backingInt(Code.unknown_method));
+    try testing.expectEqual(@as(u16, 2), @backingInt(Code.bad_args));
+    try testing.expectEqual(@as(u16, 3), @backingInt(Code.failed));
+    try testing.expectEqual(@as(u16, 4), @backingInt(Code.version_mismatch));
+    try testing.expectEqual(@as(u16, 5), @backingInt(Code.bad_magic));
+    try testing.expectEqual(@as(u16, 6), @backingInt(Code.not_ready));
     try testing.expectEqual(@as(u16, 0x0100), Code.first_app);
 }
 

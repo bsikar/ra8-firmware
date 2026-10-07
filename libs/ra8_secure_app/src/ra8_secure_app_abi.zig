@@ -105,7 +105,7 @@ export fn ra8_ota_commit_pending(out_target: ?*u8) u16 {
     var bank: ota.Bank = undefined;
     const err = ota.pendingTarget(&bank);
     if (err != .ok) return err.code();
-    dst.* = @intFromEnum(bank);
+    dst.* = @backingInt(bank);
     return Err.ok.code();
 }
 

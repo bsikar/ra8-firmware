@@ -177,7 +177,7 @@ test "as_ops trampolines forward through the bus to the backend" {
     const b = boundBus();
     var ops: Ops = undefined;
     try std.testing.expectEqual(front.ok, ra8_io_i2c_bus_as_ops(&b, &ops));
-    try std.testing.expect(ops.ctx == @as(?*anyopaque, @constCast(@ptrCast(&b))));
+    try std.testing.expect(ops.ctx == @as(?*anyopaque, @ptrCast(@constCast(&b))));
     const tx = [_]u8{0xAA};
     var rx: [2]u8 = @splat(0);
     try std.testing.expectEqual(front.ok, ops.write.?(ops.ctx, 0x48, &tx, 1, true));

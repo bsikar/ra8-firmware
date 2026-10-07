@@ -107,9 +107,9 @@ fn renderLabel(w: *Widget) callconv(.c) void {
         &pen_y,
     );
     if (weight_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(size), label.fg, label.bg);
+        draw(backend.user, pen_x, pen_y, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(size), label.fg, label.bg);
     } else if (styled_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, @intFromEnum(label.face), label.fg, label.bg);
+        draw(backend.user, pen_x, pen_y, text, @backingInt(label.face), label.fg, label.bg);
     } else if (legacy_draw) |draw| {
         draw(backend.user, pen_x, pen_y, text, label.fg, label.bg);
     }
@@ -187,9 +187,9 @@ fn measureBytes(context: MeasureContext, bytes: []const u8) Extent {
     const backend = context.backend;
     const label = context.label;
     if (backend.text_size_style) |measure| {
-        measure(backend.user, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(context.size), &width, &height);
+        measure(backend.user, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(context.size), &width, &height);
     } else if (backend.text_size_face) |measure| {
-        measure(backend.user, text, @intFromEnum(label.face), &width, &height);
+        measure(backend.user, text, @backingInt(label.face), &width, &height);
     } else if (backend.text_size) |measure| {
         measure(backend.user, text, &width, &height);
     } else {
@@ -212,9 +212,9 @@ fn drawLine(context: MeasureContext, bytes: []const u8, line: text_layout.Line, 
 
 fn drawRun(backend: *const Paint, label: *const Label, size: paint_abi.TextSize, x: i32, y: i32, text: [*:0]const u8) void {
     if (backend.draw_text_style) |draw| {
-        draw(backend.user, x, y, text, @intFromEnum(label.face), @intFromEnum(label.weight), @intFromEnum(size), label.fg, label.bg);
+        draw(backend.user, x, y, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(size), label.fg, label.bg);
     } else if (backend.draw_text_face) |draw| {
-        draw(backend.user, x, y, text, @intFromEnum(label.face), label.fg, label.bg);
+        draw(backend.user, x, y, text, @backingInt(label.face), label.fg, label.bg);
     } else if (backend.draw_text) |draw| {
         draw(backend.user, x, y, text, label.fg, label.bg);
     }
@@ -228,7 +228,7 @@ fn drawScalar(backend: *const Paint, label: *const Label, size: paint_abi.TextSi
 }
 
 fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
-    return switch (@intFromEnum(size)) {
+    return switch (@backingInt(size)) {
         0 => .size_3,
         1 => .size_1,
         2 => .size_2,

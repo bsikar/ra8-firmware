@@ -37,7 +37,7 @@ fn laidOut() core.Layout {
 
 fn onLayer(layer: core.Layer) core.Layout {
     var kb = laidOut();
-    kb.layer = @intFromEnum(layer);
+    kb.layer = @backingInt(layer);
     core.buildLayer(&kb);
     return kb;
 }
@@ -46,7 +46,7 @@ fn indexOfChar(kb: *const core.Layout, ch: u8) ?u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
         const key = kb.keys[index];
-        if ((key.kind == @intFromEnum(core.KeyKind.char)) and (key.ch_lower == ch)) return index;
+        if ((key.kind == @backingInt(core.KeyKind.char)) and (key.ch_lower == ch)) return index;
     }
     return null;
 }
@@ -54,7 +54,7 @@ fn indexOfChar(kb: *const core.Layout, ch: u8) ?u8 {
 fn indexOfKind(kb: *const core.Layout, kind: core.KeyKind) ?u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
-        if (kb.keys[index].kind == @intFromEnum(kind)) return index;
+        if (kb.keys[index].kind == @backingInt(kind)) return index;
     }
     return null;
 }
@@ -63,7 +63,7 @@ fn indexOfLayerKey(kb: *const core.Layout, aux: core.Layer) ?u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
         const key = kb.keys[index];
-        if ((key.kind == @intFromEnum(core.KeyKind.layer)) and (key.aux == @intFromEnum(aux))) {
+        if ((key.kind == @backingInt(core.KeyKind.layer)) and (key.aux == @backingInt(aux))) {
             return index;
         }
     }
@@ -172,7 +172,7 @@ test "span covers its half-unit range and carries no glyphs" {
 test "the letters layer lays 31 keys" {
     const kb = laidOut();
     try std.testing.expectEqual(@as(u8, 31), kb.count);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.letters), kb.layer);
+    try std.testing.expectEqual(@backingInt(core.Layer.letters), kb.layer);
     try std.testing.expect(!kb.shift);
 }
 
@@ -188,17 +188,17 @@ test "the letters layer carries QWERTY in both cases" {
 
 test "the letters layer puts SHIFT and BACKSPACE around row two" {
     const kb = laidOut();
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.shift), kb.keys[19].kind);
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.backspace), kb.keys[27].kind);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.shift), kb.keys[19].kind);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.backspace), kb.keys[27].kind);
     try std.testing.expectEqual(@as(i32, 153), kb.keys[19].rect.w);
 }
 
 test "the letters bottom row is 123, SPACE, RETURN" {
     const kb = laidOut();
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.layer), kb.keys[28].kind);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.numbers), kb.keys[28].aux);
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.space), kb.keys[29].kind);
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.enter), kb.keys[30].kind);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.layer), kb.keys[28].kind);
+    try std.testing.expectEqual(@backingInt(core.Layer.numbers), kb.keys[28].aux);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.space), kb.keys[29].kind);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.enter), kb.keys[30].kind);
 }
 
 test "digits are not reachable on the letters layer" {
@@ -251,11 +251,11 @@ test "the numbers second row carries the common symbols unshifted" {
 
 test "the numbers punctuation row toggles to symbols" {
     const kb = onLayer(.numbers);
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.layer), kb.keys[20].kind);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.symbols), kb.keys[20].aux);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.layer), kb.keys[20].kind);
+    try std.testing.expectEqual(@backingInt(core.Layer.symbols), kb.keys[20].aux);
     try std.testing.expectEqual(@as(u8, '.'), kb.keys[21].ch_lower);
     try std.testing.expectEqual(@as(u8, '\''), kb.keys[25].ch_lower);
-    try std.testing.expectEqual(@intFromEnum(core.KeyKind.backspace), kb.keys[26].kind);
+    try std.testing.expectEqual(@backingInt(core.KeyKind.backspace), kb.keys[26].kind);
 }
 
 test "the symbols layer lays 27 keys" {
@@ -274,8 +274,8 @@ test "the symbols second row is centred on the grid" {
 
 test "the symbols punctuation row toggles back to numbers" {
     const kb = onLayer(.symbols);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.numbers), kb.keys[17].aux);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.letters), kb.keys[24].aux);
+    try std.testing.expectEqual(@backingInt(core.Layer.numbers), kb.keys[17].aux);
+    try std.testing.expectEqual(@backingInt(core.Layer.letters), kb.keys[24].aux);
 }
 
 test "rebuilding a layer resets the key count first" {
@@ -465,7 +465,7 @@ test "a layer key switches the layer, clears SHIFT, and re-lays the grid" {
     core.textInit(&t);
     kb.shift = true;
     core.applyKey(&t, &kb, indexOfLayerKey(&kb, .numbers).?);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.numbers), kb.layer);
+    try std.testing.expectEqual(@backingInt(core.Layer.numbers), kb.layer);
     try std.testing.expectEqual(@as(u8, 30), kb.count);
     try std.testing.expect(!kb.shift);
 }
@@ -495,9 +495,9 @@ test "typing across layers reproduces the C suite's sequence" {
     core.applyKey(&t, &kb, indexOfChar(&kb, '[').?);
     try std.testing.expectEqualStrings("Hi 9[", typed(&t));
     core.applyKey(&t, &kb, indexOfLayerKey(&kb, .numbers).?);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.numbers), kb.layer);
+    try std.testing.expectEqual(@backingInt(core.Layer.numbers), kb.layer);
     core.applyKey(&t, &kb, indexOfLayerKey(&kb, .letters).?);
-    try std.testing.expectEqual(@intFromEnum(core.Layer.letters), kb.layer);
+    try std.testing.expectEqual(@backingInt(core.Layer.letters), kb.layer);
     core.applyKey(&t, &kb, indexOfKind(&kb, .backspace).?);
     try std.testing.expectEqualStrings("Hi 9", typed(&t));
 }
@@ -508,12 +508,12 @@ test "every printable ASCII symbol and digit is reachable across the layers" {
         var kb = laidOut();
         var found = indexOfChar(&kb, wanted) != null;
         if (!found) {
-            kb.layer = @intFromEnum(core.Layer.numbers);
+            kb.layer = @backingInt(core.Layer.numbers);
             core.buildLayer(&kb);
             found = indexOfChar(&kb, wanted) != null;
         }
         if (!found) {
-            kb.layer = @intFromEnum(core.Layer.symbols);
+            kb.layer = @backingInt(core.Layer.symbols);
             core.buildLayer(&kb);
             found = indexOfChar(&kb, wanted) != null;
         }
@@ -526,10 +526,10 @@ test "no glyph is reachable twice within one layer" {
         const kb = onLayer(layer);
         var outer: usize = 0;
         while (outer < kb.count) : (outer += 1) {
-            if (kb.keys[outer].kind != @intFromEnum(core.KeyKind.char)) continue;
+            if (kb.keys[outer].kind != @backingInt(core.KeyKind.char)) continue;
             var inner: usize = outer + 1;
             while (inner < kb.count) : (inner += 1) {
-                if (kb.keys[inner].kind != @intFromEnum(core.KeyKind.char)) continue;
+                if (kb.keys[inner].kind != @backingInt(core.KeyKind.char)) continue;
                 try std.testing.expect(kb.keys[outer].ch_lower != kb.keys[inner].ch_lower);
             }
         }

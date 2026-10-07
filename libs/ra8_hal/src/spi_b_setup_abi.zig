@@ -34,7 +34,7 @@ const Reg = enum(usize) {
 };
 
 fn put(channel: u8, r: Reg, value: u32) void {
-    const p: *volatile u32 = @ptrFromInt(bases[channel] + @intFromEnum(r));
+    const p: *volatile u32 = @ptrFromInt(bases[channel] + @backingInt(r));
     p.* = value;
 }
 

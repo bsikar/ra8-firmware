@@ -16,11 +16,11 @@ export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callcon
     _ = message;
 }
 
-const ok = @intFromEnum(abi.ProfileError.ok);
-const invalid_state = @intFromEnum(abi.ProfileError.invalid_state);
-const not_initialized = @intFromEnum(abi.ProfileError.not_initialized);
-const range_check_failed = @intFromEnum(abi.ProfileError.range_check_failed);
-const null_ptr = @intFromEnum(abi.ProfileError.null_ptr);
+const ok = @backingInt(abi.ProfileError.ok);
+const invalid_state = @backingInt(abi.ProfileError.invalid_state);
+const not_initialized = @backingInt(abi.ProfileError.not_initialized);
+const range_check_failed = @backingInt(abi.ProfileError.range_check_failed);
+const null_ptr = @backingInt(abi.ProfileError.null_ptr);
 
 /// Mock GPIO log, standing in for the C suite's `s_gpio`.
 const PulseLog = struct {

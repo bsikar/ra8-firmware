@@ -20,9 +20,9 @@ export fn ra8_log_emit_error(_: [*:0]const u8, message: [*:0]const u8) void {
 
 export fn ra8_widget_invalidate(w: *abi.Widget, refresh: abi.Refresh) callconv(.c) u16 {
     invalidations += 1;
-    last_refresh = @intFromEnum(refresh);
+    last_refresh = @backingInt(refresh);
     w.dirty = true;
-    w.refresh = @intFromEnum(refresh);
+    w.refresh = @backingInt(refresh);
     return abi.err.ok;
 }
 
@@ -390,7 +390,7 @@ test "a tap opens the card it is drawn inside" {
     try std.testing.expectEqual(1, open_count);
     try std.testing.expectEqual(1, opened[0]);
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.fast), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.fast), last_refresh);
 }
 
 test "every card's own pixels route to that card" {

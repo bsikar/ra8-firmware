@@ -36,7 +36,7 @@ pub const Row = extern struct {
 // The C header's placeholders for a row that carries no domain and no gate.
 // A caller reading `domain` without checking `has_domain` gets these, exactly
 // as it did from the C.
-const no_domain: u8 = @intFromEnum(map.Domain.cpuclk0);
+const no_domain: u8 = @backingInt(map.Domain.cpuclk0);
 const no_gate: u16 = map.Mstp.sram0;
 
 comptime {
@@ -64,7 +64,7 @@ pub fn fill(module: Module, out_row: ?*Row) u32 {
     };
 
     if (resolved.domain) |domain| {
-        row.domain = @intFromEnum(domain);
+        row.domain = @backingInt(domain);
         row.has_domain = true;
     }
     if (resolved.gate) |gate| {

@@ -55,10 +55,10 @@ test "an unknown hint falls back to GC16" {
 }
 
 test "waveform numbering matches the HAL enum" {
-    try std.testing.expectEqual(@as(u32, 0), @intFromEnum(implementation.Waveform.init));
-    try std.testing.expectEqual(@as(u32, 2), @intFromEnum(implementation.Waveform.gc16));
-    try std.testing.expectEqual(@as(u32, 3), @intFromEnum(implementation.Waveform.a2));
-    try std.testing.expectEqual(@as(u32, 2), @intFromEnum(implementation.PixelFormat.bpp4));
+    try std.testing.expectEqual(@as(u32, 0), @backingInt(implementation.Waveform.init));
+    try std.testing.expectEqual(@as(u32, 2), @backingInt(implementation.Waveform.gc16));
+    try std.testing.expectEqual(@as(u32, 3), @backingInt(implementation.Waveform.a2));
+    try std.testing.expectEqual(@as(u32, 2), @backingInt(implementation.PixelFormat.bpp4));
 }
 
 test "a good cfg is accepted" {

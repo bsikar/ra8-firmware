@@ -328,7 +328,7 @@ test "a second init on an open handle is refused" {
     try std.testing.expectEqual(@as(i32, 1), m.open_n);
     var st: abi.Status = .{};
     try std.testing.expectEqual(ok, abi.ra8_wifi_status(&wifi, &st));
-    try std.testing.expectEqual(@intFromEnum(abi.State.down), st.state);
+    try std.testing.expectEqual(@backingInt(abi.State.down), st.state);
 }
 
 test "deinit guards, surfaces the close result and stays closed" {
@@ -358,7 +358,7 @@ test "connect associates and does not restart a radio already up" {
 
     var st: abi.Status = .{};
     try std.testing.expectEqual(ok, abi.ra8_wifi_status(&wifi, &st));
-    try std.testing.expectEqual(@intFromEnum(abi.State.associated), st.state);
+    try std.testing.expectEqual(@backingInt(abi.State.associated), st.state);
     try std.testing.expect(st.associated);
     try std.testing.expect(!st.ip_bound);
 
@@ -473,7 +473,7 @@ test "a real lease binds the handle and get_ip serves it without the provider" {
 
     var st: abi.Status = .{};
     try std.testing.expectEqual(ok, abi.ra8_wifi_status(&wifi, &st));
-    try std.testing.expectEqual(@intFromEnum(abi.State.ip_bound), st.state);
+    try std.testing.expectEqual(@backingInt(abi.State.ip_bound), st.state);
     try std.testing.expect(st.ip_bound);
 
     const before = m.ip_n;
@@ -512,12 +512,12 @@ test "poll guards, surfaces service failures and tracks the link" {
     m.link = 1;
     try std.testing.expectEqual(ok, abi.ra8_wifi_poll(&wifi, &link));
     try std.testing.expectEqual(@as(u8, 1), link);
-    try std.testing.expectEqual(@intFromEnum(abi.State.associated), wifi.state);
+    try std.testing.expectEqual(@backingInt(abi.State.associated), wifi.state);
 
     m.link = 0;
     try std.testing.expectEqual(ok, abi.ra8_wifi_poll(&wifi, &link));
     try std.testing.expectEqual(@as(u8, 0), link);
-    try std.testing.expectEqual(@intFromEnum(abi.State.down), wifi.state);
+    try std.testing.expectEqual(@backingInt(abi.State.down), wifi.state);
 }
 
 test "poll refuses once an IP is bound so it cannot pre-empt the IP stack" {
@@ -613,7 +613,7 @@ test "disconnect surfaces a leave failure but still tears the session down" {
 
     var st: abi.Status = .{};
     try std.testing.expectEqual(ok, abi.ra8_wifi_status(&wifi, &st));
-    try std.testing.expectEqual(@intFromEnum(abi.State.down), st.state);
+    try std.testing.expectEqual(@backingInt(abi.State.down), st.state);
     try std.testing.expect(!st.ip_bound);
     var cleared: abi.Lease = .{};
     try std.testing.expectEqual(ok, abi.ra8_wifi_get_ip(&wifi, &cleared));

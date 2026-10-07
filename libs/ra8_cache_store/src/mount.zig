@@ -197,7 +197,7 @@ pub export fn priv_cache_store_sector_write(
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     const in = in512 orelse return reject("in512", abi.err_null_ptr);
     // LevelX writes take a mutable buffer pointer but do not modify it.
-    const rc = _lx_nor_flash_sector_write(store.flash, sector, @constCast(@ptrCast(in)));
+    const rc = _lx_nor_flash_sector_write(store.flash, sector, @ptrCast(@constCast(in)));
     if (rc != lx_success) return abi.err_hw_init_failed;
     return abi.ok;
 }

@@ -43,7 +43,7 @@ fn indexOfChar(kb: *const abi.Layout, ch: u8) u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
         const key = kb.keys[index];
-        if ((key.kind == @intFromEnum(abi.KeyKind.char)) and (key.ch_lower == ch)) return index;
+        if ((key.kind == @backingInt(abi.KeyKind.char)) and (key.ch_lower == ch)) return index;
     }
     return abi.no_hit;
 }
@@ -51,7 +51,7 @@ fn indexOfChar(kb: *const abi.Layout, ch: u8) u8 {
 fn indexOfKind(kb: *const abi.Layout, kind: abi.KeyKind) u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
-        if (kb.keys[index].kind == @intFromEnum(kind)) return index;
+        if (kb.keys[index].kind == @backingInt(kind)) return index;
     }
     return abi.no_hit;
 }
@@ -60,7 +60,7 @@ fn indexOfLayerKey(kb: *const abi.Layout, aux: abi.Layer) u8 {
     var index: u8 = 0;
     while (index < kb.count) : (index += 1) {
         const key = kb.keys[index];
-        if ((key.kind == @intFromEnum(abi.KeyKind.layer)) and (key.aux == @intFromEnum(aux))) {
+        if ((key.kind == @backingInt(abi.KeyKind.layer)) and (key.aux == @backingInt(aux))) {
             return index;
         }
     }
@@ -107,7 +107,7 @@ test "layout_init lays 31 letter keys on an acceptable frame" {
     const frame = testFrame();
     try std.testing.expectEqual(ok, abi.ra8_kbd_layout_init(&kb, &frame));
     try std.testing.expectEqual(@as(u8, 31), kb.count);
-    try std.testing.expectEqual(@intFromEnum(abi.Layer.letters), kb.layer);
+    try std.testing.expectEqual(@backingInt(abi.Layer.letters), kb.layer);
     try std.testing.expectEqual(@as(usize, 0), fixture.log_calls);
 }
 
@@ -280,13 +280,13 @@ test "the layer keys walk letters, numbers, and symbols" {
     var t = std.mem.zeroes(abi.Text);
     try std.testing.expectEqual(ok, abi.ra8_kbd_text_init(&t));
     try std.testing.expectEqual(ok, abi.ra8_kbd_apply(&t, &kb, indexOfLayerKey(&kb, .numbers)));
-    try std.testing.expectEqual(@intFromEnum(abi.Layer.numbers), kb.layer);
+    try std.testing.expectEqual(@backingInt(abi.Layer.numbers), kb.layer);
     try std.testing.expectEqual(@as(u8, 30), kb.count);
     try std.testing.expectEqual(ok, abi.ra8_kbd_apply(&t, &kb, indexOfLayerKey(&kb, .symbols)));
-    try std.testing.expectEqual(@intFromEnum(abi.Layer.symbols), kb.layer);
+    try std.testing.expectEqual(@backingInt(abi.Layer.symbols), kb.layer);
     try std.testing.expectEqual(@as(u8, 27), kb.count);
     try std.testing.expectEqual(ok, abi.ra8_kbd_apply(&t, &kb, indexOfLayerKey(&kb, .letters)));
-    try std.testing.expectEqual(@intFromEnum(abi.Layer.letters), kb.layer);
+    try std.testing.expectEqual(@backingInt(abi.Layer.letters), kb.layer);
     try std.testing.expectEqual(@as(u8, 31), kb.count);
 }
 

@@ -72,8 +72,8 @@ export fn ra8_mipi_phy_get_status_decoded(out: ?*ops.Status) u16 {
 }
 
 export fn ra8_mipi_phy_get_state() u8 {
-    if (isStopped()) return @intFromEnum(ops.State.off);
-    return @intFromEnum(ops.state(false, reg(ops.off_sfr), reg(ops.off_ocr)));
+    if (isStopped()) return @backingInt(ops.State.off);
+    return @backingInt(ops.state(false, reg(ops.off_sfr), reg(ops.off_ocr)));
 }
 
 export fn ra8_mipi_phy_get_active_mode() u8 {
@@ -87,7 +87,7 @@ export fn ra8_mipi_phy_set_dual_mode(mode: u8) u16 {
 }
 
 export fn ra8_mipi_phy_get_dual_mode() u8 {
-    return @intFromEnum(dual_mode);
+    return @backingInt(dual_mode);
 }
 
 export fn ra8_mipi_phy_dual_mode_can_acquire(requestor: u8) bool {

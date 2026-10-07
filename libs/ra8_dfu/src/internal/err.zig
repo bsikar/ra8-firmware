@@ -19,11 +19,11 @@ pub const Err = enum(u16) {
     /// pass through untouched: a HAL failure is the caller's to read, not
     /// this driver's to reinterpret.
     pub fn from(code: u16) Err {
-        return @enumFromInt(code);
+        return @fromBackingInt(@intCast(code));
     }
 
     pub fn raw(self: Err) u16 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub fn isOk(self: Err) bool {

@@ -113,17 +113,17 @@ comptime {
     }
 
     if (@sizeOf(CalError) != 2) @compileError("ra8_err_t width");
-    if (@intFromEnum(CalError.ok) != 0) @compileError("k_ra8_ok value");
-    if (@intFromEnum(CalError.invalid_arg) != 0x103) @compileError("k_ra8_err_invalid_arg value");
-    if (@intFromEnum(CalError.invalid_state) != 0x104) @compileError("k_ra8_err_invalid_state value");
-    if (@intFromEnum(CalError.invalid_size) != 0x105) @compileError("k_ra8_err_invalid_size value");
-    if (@intFromEnum(CalError.not_found) != 0x106) @compileError("k_ra8_err_not_found value");
-    if (@intFromEnum(CalError.not_supported) != 0x107) @compileError("k_ra8_err_not_supported value");
-    if (@intFromEnum(CalError.hw_error) != 0x204) @compileError("k_ra8_err_hw_error value");
-    if (@intFromEnum(CalError.crc_mismatch) != 0x405) @compileError("k_ra8_err_crc_mismatch value");
-    if (@intFromEnum(CalError.validation_failed) != 0x501) @compileError("k_ra8_err_validation_failed value");
-    if (@intFromEnum(CalError.range_check_failed) != 0x503) @compileError("k_ra8_err_range_check_failed value");
-    if (@intFromEnum(CalError.null_ptr) != 0x504) @compileError("k_ra8_err_null_ptr value");
+    if (@backingInt(CalError.ok) != 0) @compileError("k_ra8_ok value");
+    if (@backingInt(CalError.invalid_arg) != 0x103) @compileError("k_ra8_err_invalid_arg value");
+    if (@backingInt(CalError.invalid_state) != 0x104) @compileError("k_ra8_err_invalid_state value");
+    if (@backingInt(CalError.invalid_size) != 0x105) @compileError("k_ra8_err_invalid_size value");
+    if (@backingInt(CalError.not_found) != 0x106) @compileError("k_ra8_err_not_found value");
+    if (@backingInt(CalError.not_supported) != 0x107) @compileError("k_ra8_err_not_supported value");
+    if (@backingInt(CalError.hw_error) != 0x204) @compileError("k_ra8_err_hw_error value");
+    if (@backingInt(CalError.crc_mismatch) != 0x405) @compileError("k_ra8_err_crc_mismatch value");
+    if (@backingInt(CalError.validation_failed) != 0x501) @compileError("k_ra8_err_validation_failed value");
+    if (@backingInt(CalError.range_check_failed) != 0x503) @compileError("k_ra8_err_range_check_failed value");
+    if (@backingInt(CalError.null_ptr) != 0x504) @compileError("k_ra8_err_null_ptr value");
 
     if (@sizeOf(Source) != 1) @compileError("ra8_epd_cal_source_t width");
     if (@sizeOf(Result) != 4) @compileError("ra8_epd_cal_result_t size");
@@ -141,7 +141,7 @@ comptime {
 }
 
 fn err(code: CalError) RawErr {
-    return @intFromEnum(code);
+    return @backingInt(code);
 }
 
 /// Read and validate the per-device record through the store seam.

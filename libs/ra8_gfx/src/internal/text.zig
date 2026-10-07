@@ -192,7 +192,7 @@ pub fn measureScaledWeight(text: [*:0]const u8, face: Face, weight: Weight, size
 
 /// Measure a complete face, weight and size selection for widget style callbacks.
 pub fn measureStyle(text: [*:0]const u8, face: Face, weight: Weight, size: u8) Extent {
-    if (display_atlas.get(@intFromEnum(face), @intFromEnum(weight), size)) |selected| {
+    if (display_atlas.get(@backingInt(face), @backingInt(weight), size)) |selected| {
         return measureDisplay(text, selected);
     }
     return measureScaledWeight(text, face, weight, size);
@@ -222,7 +222,7 @@ pub fn drawStyle(
     user: ?*anyopaque,
     put_pixel: PixelFn,
 ) void {
-    if (display_atlas.get(@intFromEnum(face), @intFromEnum(weight), size)) |selected| {
+    if (display_atlas.get(@backingInt(face), @backingInt(weight), size)) |selected| {
         drawDisplay(text, x, y, selected, fg, bg, user, put_pixel);
         return;
     }

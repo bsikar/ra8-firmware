@@ -100,7 +100,7 @@ fn drawText(b: *const Paint, r: Rect, s: ?[*:0]const u8, fg: u32, bg: u32, pad: 
     var y: i32 = 0;
     paint.priv_widget_text_pos(b, &r, value, pad, alignment, face, weight, selected_size, styled != null, &x, &y);
     if (styled) |draw| {
-        draw(b.user, x, y, value, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg);
+        draw(b.user, x, y, value, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg);
     } else b.draw_text.?(b.user, x, y, value, fg, bg);
 }
 fn fill(b: *const Paint, r: Rect, color: u32) void {
@@ -192,7 +192,7 @@ fn onInput(w: *Widget, e: *const Event) callconv(.c) bool {
     }
     list.selected = i;
     list.has_selection = true;
-    list.selected_element = @intFromEnum(element);
+    list.selected_element = @backingInt(element);
     list.damage = switch (element) {
         .button_1, .button_2 => buttonRect(bounds, element),
         .toggle => toggleRect(bounds, 12),
@@ -200,7 +200,7 @@ fn onInput(w: *Widget, e: *const Event) callconv(.c) bool {
     };
     _ = types.ra8_widget_invalidate(w, .fast);
     if (list.on_select) |notify| notify(w, action_id);
-    if (list.on_select_element) |notify| notify(w, i, @intFromEnum(element), action_id);
+    if (list.on_select_element) |notify| notify(w, i, @backingInt(element), action_id);
     return true;
 }
 const vtable: Vtable = .{ .measure = null, .render = render, .on_input = onInput };

@@ -24,14 +24,14 @@ test "a default frame is the zero-initialised C aggregate" {
 }
 
 test "the format enum keeps the header's numbering" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(core.Format.rgb888));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(core.Format.uyvy422));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(core.Format.jpeg));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(core.Format.rgb888));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(core.Format.uyvy422));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(core.Format.jpeg));
 }
 
 test "an unknown format value round-trips rather than trapping" {
-    const frame: core.Frame = .{ .format = @enumFromInt(9) };
-    try std.testing.expectEqual(@as(u8, 9), @intFromEnum(frame.format));
+    const frame: core.Frame = .{ .format = @fromBackingInt(@intCast(9)) };
+    try std.testing.expectEqual(@as(u8, 9), @backingInt(frame.format));
 }
 
 test "only a successful sink can produce the bridge's own invalid_size" {

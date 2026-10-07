@@ -48,6 +48,6 @@ comptime {
     std.debug.assert(@offsetOf(Config, "provision_len") == 16 + (2 * ptr));
 
     std.debug.assert(@sizeOf(Source) == 1);
-    std.debug.assert(@intFromEnum(Source.card) == 0);
-    std.debug.assert(@intFromEnum(Source.provisioned) == 1);
+    std.debug.assert(@backingInt(Source.card) == 0);
+    std.debug.assert(@backingInt(Source.provisioned) == 1);
 }

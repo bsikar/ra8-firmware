@@ -337,7 +337,7 @@ test "a followed link adopts its destination page and skips the page turn" {
     try std.testing.expectEqual(9, view.page);
     try std.testing.expect(w.dirty);
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), last_refresh);
 }
 
 test "a link destination past the end of the book is clamped, not adopted" {
@@ -365,7 +365,7 @@ test "a declined link falls through to the page turn" {
     try std.testing.expectEqual(5, view.page);
     try std.testing.expect(w.dirty);
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), last_refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), last_refresh);
 }
 
 test "a view with no link callback turns the page directly" {

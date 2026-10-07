@@ -131,7 +131,7 @@ pub const Transport = extern struct {
 /// `g_sdmmc_spi_state.transport` directly, so the layout is load-bearing.
 pub const State = extern struct {
     transport: Transport = .{},
-    card_type: u8 = @intFromEnum(CardType.unknown),
+    card_type: u8 = @backingInt(CardType.unknown),
     capacity_blocks: u32 = 0,
     initialized: bool = false,
 };
@@ -377,7 +377,7 @@ pub fn factoryPclkOk(pclk_hz: u32) bool {
 /// the bounds checks in the callers run first, so this is unreachable in
 /// practice and kept wrapping only to stay bit-identical.
 pub fn lbaToArg(card_type: u8, lba: u32) u32 {
-    if (card_type == @intFromEnum(CardType.sdhc)) return lba;
+    if (card_type == @backingInt(CardType.sdhc)) return lba;
     return lba *% block_size;
 }
 

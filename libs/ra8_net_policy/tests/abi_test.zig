@@ -14,11 +14,11 @@ const vocab = @import("vocab");
 test "the address class is a byte-wide enum with the published values" {
     try testing.expectEqual(@as(usize, 1), @sizeOf(vocab.AddrClass));
     try testing.expectEqual(u8, @typeInfo(vocab.AddrClass).@"enum".tag_type);
-    try testing.expectEqual(@as(u8, 0), @intFromEnum(vocab.AddrClass.public));
-    try testing.expectEqual(@as(u8, 1), @intFromEnum(vocab.AddrClass.loopback));
-    try testing.expectEqual(@as(u8, 2), @intFromEnum(vocab.AddrClass.private));
-    try testing.expectEqual(@as(u8, 3), @intFromEnum(vocab.AddrClass.linklocal));
-    try testing.expectEqual(@as(u8, 4), @intFromEnum(vocab.AddrClass.unknown));
+    try testing.expectEqual(@as(u8, 0), @backingInt(vocab.AddrClass.public));
+    try testing.expectEqual(@as(u8, 1), @backingInt(vocab.AddrClass.loopback));
+    try testing.expectEqual(@as(u8, 2), @backingInt(vocab.AddrClass.private));
+    try testing.expectEqual(@as(u8, 3), @backingInt(vocab.AddrClass.linklocal));
+    try testing.expectEqual(@as(u8, 4), @backingInt(vocab.AddrClass.unknown));
 }
 
 test "the error codes match ra8_err.h" {

@@ -21,15 +21,15 @@ test "limits match the header" {
 }
 
 test "state enumerators are the C values" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(core.State.down));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(core.State.associating));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(core.State.associated));
-    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(core.State.ip_bound));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(core.State.down));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(core.State.associating));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(core.State.associated));
+    try std.testing.expectEqual(@as(u8, 3), @backingInt(core.State.ip_bound));
 }
 
 test "link enumerators are the C values" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(core.Link.down));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(core.Link.up));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(core.Link.down));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(core.Link.up));
 }
 
 test "shared records keep their C layout" {
@@ -57,33 +57,33 @@ test "a zero address is not a bound lease" {
 }
 
 test "associated covers associated and ip_bound only" {
-    try std.testing.expect(!core.isAssociated(@intFromEnum(core.State.down)));
-    try std.testing.expect(!core.isAssociated(@intFromEnum(core.State.associating)));
-    try std.testing.expect(core.isAssociated(@intFromEnum(core.State.associated)));
-    try std.testing.expect(core.isAssociated(@intFromEnum(core.State.ip_bound)));
+    try std.testing.expect(!core.isAssociated(@backingInt(core.State.down)));
+    try std.testing.expect(!core.isAssociated(@backingInt(core.State.associating)));
+    try std.testing.expect(core.isAssociated(@backingInt(core.State.associated)));
+    try std.testing.expect(core.isAssociated(@backingInt(core.State.ip_bound)));
 }
 
 test "ip_bound is the topmost state alone" {
-    try std.testing.expect(!core.isIpBound(@intFromEnum(core.State.associated)));
-    try std.testing.expect(core.isIpBound(@intFromEnum(core.State.ip_bound)));
-    try std.testing.expect(!core.isIpBound(@intFromEnum(core.State.down)));
+    try std.testing.expect(!core.isIpBound(@backingInt(core.State.associated)));
+    try std.testing.expect(core.isIpBound(@backingInt(core.State.ip_bound)));
+    try std.testing.expect(!core.isIpBound(@backingInt(core.State.down)));
 }
 
 test "a link reading maps onto associated or down" {
     try std.testing.expectEqual(
-        @intFromEnum(core.State.associated),
-        core.stateForLink(@intFromEnum(core.Link.up)),
+        @backingInt(core.State.associated),
+        core.stateForLink(@backingInt(core.Link.up)),
     );
     try std.testing.expectEqual(
-        @intFromEnum(core.State.down),
-        core.stateForLink(@intFromEnum(core.Link.down)),
+        @backingInt(core.State.down),
+        core.stateForLink(@backingInt(core.Link.down)),
     );
 }
 
 test "any byte other than up polls down" {
     var raw: u8 = 2;
     while (raw < 255) : (raw += 1) {
-        try std.testing.expectEqual(@intFromEnum(core.State.down), core.stateForLink(raw));
+        try std.testing.expectEqual(@backingInt(core.State.down), core.stateForLink(raw));
     }
 }
 
@@ -99,17 +99,17 @@ test "a radio that answered but never associated times out" {
 
 test "status derives both flags from the state" {
     const lease: core.Lease = .{ .ip = 0xC0A80164, .bound = true };
-    const down = core.statusFrom(@intFromEnum(core.State.down), -40, lease);
+    const down = core.statusFrom(@backingInt(core.State.down), -40, lease);
     try std.testing.expect(!down.associated);
     try std.testing.expect(!down.ip_bound);
     try std.testing.expectEqual(@as(i8, -40), down.rssi);
     try std.testing.expectEqual(@as(u32, 0xC0A80164), down.ip.ip);
 
-    const assoc = core.statusFrom(@intFromEnum(core.State.associated), -56, lease);
+    const assoc = core.statusFrom(@backingInt(core.State.associated), -56, lease);
     try std.testing.expect(assoc.associated);
     try std.testing.expect(!assoc.ip_bound);
 
-    const bound = core.statusFrom(@intFromEnum(core.State.ip_bound), -56, lease);
+    const bound = core.statusFrom(@backingInt(core.State.ip_bound), -56, lease);
     try std.testing.expect(bound.associated);
     try std.testing.expect(bound.ip_bound);
 }

@@ -67,7 +67,7 @@ test "security_init writes both words inside a balanced gate" {
 test "security_init_map refuses a bad descriptor before the gate opens" {
     fresh();
     var cfg = ipc.cpu1Pingpong();
-    cfg.target[0].world = @enumFromInt(7);
+    cfg.target[0].world = @fromBackingInt(@intCast(7));
     try std.testing.expectEqual(
         regs.Err.invalid_arg,
         abi.ra8_tz_secure_boot_security_init_map(&cfg),
@@ -135,7 +135,7 @@ test "jump_ns arms VTOR and captures what it would have branched to" {
     try std.testing.expectEqual(@as(u32, @truncate(@intFromPtr(&table))), boot.host.vtor_ns);
     try std.testing.expectEqual(@as(u32, 0x0208_0401), abi.ra8_tz_secure_boot_host_blxns_target());
     try std.testing.expectEqual(@as(u32, 0x2010_0000), boot.host.blxns_msp_ns);
-    try std.testing.expectEqual(@as(u8, @intFromEnum(boot.Step.branched)), abi.ra8_tz_secure_boot_get_step());
+    try std.testing.expectEqual(@as(u8, @backingInt(boot.Step.branched)), abi.ra8_tz_secure_boot_get_step());
 }
 
 test "run walks sau, security and jump in that order" {

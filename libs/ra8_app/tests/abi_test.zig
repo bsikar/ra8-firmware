@@ -29,15 +29,15 @@ fn lastMessage() []const u8 {
     return std.mem.span(last_message);
 }
 
-const ok = @intFromEnum(abi.AppError.ok);
-const null_ptr = @intFromEnum(abi.AppError.null_ptr);
-const invalid_arg = @intFromEnum(abi.AppError.invalid_arg);
-const not_found = @intFromEnum(abi.AppError.not_found);
-const not_supported = @intFromEnum(abi.AppError.not_supported);
-const busy = @intFromEnum(abi.AppError.busy);
-const no_mem = @intFromEnum(abi.AppError.no_mem);
-const conflict = @intFromEnum(abi.AppError.conflict);
-const out_of_range = @intFromEnum(abi.AppError.out_of_range);
+const ok = @backingInt(abi.AppError.ok);
+const null_ptr = @backingInt(abi.AppError.null_ptr);
+const invalid_arg = @backingInt(abi.AppError.invalid_arg);
+const not_found = @backingInt(abi.AppError.not_found);
+const not_supported = @backingInt(abi.AppError.not_supported);
+const busy = @backingInt(abi.AppError.busy);
+const no_mem = @backingInt(abi.AppError.no_mem);
+const conflict = @backingInt(abi.AppError.conflict);
+const out_of_range = @backingInt(abi.AppError.out_of_range);
 
 /// `k_ra8_err_hw_init_failed`, the code the C fixture's failing init returns.
 const hw_init_failed: u16 = 0x201;
@@ -778,8 +778,8 @@ test "ABI layouts match the published C structs" {
     try std.testing.expectEqual(2 * word, @offsetOf(abi.App, "id"));
     try std.testing.expectEqual(word + 4, @offsetOf(abi.Registry, "active"));
     try std.testing.expectEqual(2 * word + 2, @offsetOf(abi.Nav, "depth"));
-    try std.testing.expectEqual(@as(u16, 0x504), @intFromEnum(abi.AppError.null_ptr));
-    try std.testing.expectEqual(@as(u16, 0x408), @intFromEnum(abi.AppError.conflict));
-    try std.testing.expectEqual(@as(u16, 0x109), @intFromEnum(abi.AppError.busy));
+    try std.testing.expectEqual(@as(u16, 0x504), @backingInt(abi.AppError.null_ptr));
+    try std.testing.expectEqual(@as(u16, 0x408), @backingInt(abi.AppError.conflict));
+    try std.testing.expectEqual(@as(u16, 0x109), @backingInt(abi.AppError.busy));
     try std.testing.expectEqual(@as(i16, -1), abi.none_index);
 }

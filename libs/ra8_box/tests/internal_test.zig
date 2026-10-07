@@ -8,7 +8,7 @@ const implementation = @import("implementation");
 
 fn leaf(fixed: i16, flex: u16) implementation.Node {
     return .{
-        .kind = @intFromEnum(implementation.Kind.leaf),
+        .kind = @backingInt(implementation.Kind.leaf),
         .grid_cols = 1,
         .fixed = fixed,
         .flex = flex,
@@ -26,7 +26,7 @@ fn leaf(fixed: i16, flex: u16) implementation.Node {
 
 fn container(kind: implementation.Kind, pad: i16, gap: i16, cols: u8) implementation.Node {
     var node = leaf(0, 1);
-    node.kind = @intFromEnum(kind);
+    node.kind = @backingInt(kind);
     node.pad = pad;
     node.gap = gap;
     node.grid_cols = cols;

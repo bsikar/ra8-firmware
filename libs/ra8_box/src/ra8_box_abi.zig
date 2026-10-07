@@ -32,9 +32,9 @@ extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 
 comptime {
     if (@sizeOf(BoxError) != 2) @compileError("ra8_box error width");
-    if (@intFromEnum(BoxError.ok) != 0) @compileError("ra8_box success value");
-    if (@intFromEnum(BoxError.invalid_arg) != 0x103) @compileError("ra8_box invalid-arg value");
-    if (@intFromEnum(BoxError.null_ptr) != 0x504) @compileError("ra8_box null-pointer value");
+    if (@backingInt(BoxError.ok) != 0) @compileError("ra8_box success value");
+    if (@backingInt(BoxError.invalid_arg) != 0x103) @compileError("ra8_box invalid-arg value");
+    if (@backingInt(BoxError.null_ptr) != 0x504) @compileError("ra8_box null-pointer value");
 
     if (@sizeOf(implementation.Rect) != 16) @compileError("ra8_ui_rect_t size");
     if (@alignOf(implementation.Rect) != 4) @compileError("ra8_ui_rect_t alignment");

@@ -97,7 +97,7 @@ fn renderButton(w: *Widget) callconv(.c) void {
     var pen_y: i32 = 0;
     const size: paint_abi.TextSize = if (button.text_size == .default) .size_3 else button.text_size;
     paint_abi.priv_widget_text_pos(backend, &w.rect, text, button.pad, button.alignment, button.text_face, button.text_weight, size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @intFromEnum(button.text_face), @intFromEnum(button.text_weight), @intFromEnum(size), button.fg, face) else backend.draw_text.?(backend.user, pen_x, pen_y, text, button.fg, face);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @backingInt(button.text_face), @backingInt(button.text_weight), @backingInt(size), button.fg, face) else backend.draw_text.?(backend.user, pen_x, pen_y, text, button.fg, face);
 }
 
 /// Vtable `on_input`: latch a touch, decline everything else.

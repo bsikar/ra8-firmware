@@ -27,7 +27,7 @@ const spsr_sprf: u32 = 0x8000_0000;
 const Reg = enum(usize) { spdr = 0x00, spcmd0 = 0x14, spsr = 0x50, spsrc = 0x68 };
 
 fn at(channel: u8, r: Reg) *volatile u32 {
-    return @ptrFromInt(bases[channel] + @intFromEnum(r));
+    return @ptrFromInt(bases[channel] + @backingInt(r));
 }
 
 /// Bounded SPSR wait; 0x203 when the flag never shows.

@@ -200,7 +200,7 @@ test "as_ops rejects a null out, then bridges xfer8 through the bus" {
     try std.testing.expectEqual(@as(u32, 1), errors_logged);
     var ops = front.Ops{ .xfer8 = null, .ctx = null };
     try std.testing.expectEqual(front.ok, ra8_io_spi_bus_as_ops(&b, &ops));
-    try std.testing.expectEqual(@as(?*anyopaque, @constCast(@ptrCast(&b))), ops.ctx);
+    try std.testing.expectEqual(@as(?*anyopaque, @ptrCast(@constCast(&b))), ops.ctx);
     var rx: u8 = 0;
     try std.testing.expectEqual(front.ok, ops.xfer8.?(ops.ctx, 0x3C, &rx));
     try std.testing.expectEqual(@as(?*anyopaque, cookie), backend_ctx);

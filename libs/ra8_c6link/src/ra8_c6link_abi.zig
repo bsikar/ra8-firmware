@@ -176,7 +176,7 @@ pub export fn priv_c6link_sta_credentials_valid(ssid_len: u8, pass_len: u8) call
 ///
 /// Returns the `rx_route.Route` ordinal, which `priv_c6link_route_t` mirrors.
 pub export fn priv_c6link_rx_route(if_type: u8) callconv(.c) u8 {
-    return @intFromEnum(rx_route.routeFor(if_type));
+    return @backingInt(rx_route.routeFor(if_type));
 }
 
 /// `priv_c6link_field_take`: octets of a text field that fit a `cap`-octet destination.

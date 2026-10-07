@@ -54,7 +54,6 @@ export fn ra8_dfu_launch_unverified(src: usize, img_len: u32, entry: u32) void {
         :
         : [sp] "r" (initial_sp),
           [entry] "r" (reset_entry),
-        : "memory"
-    );
+        : "memory");
     unreachable;
 }

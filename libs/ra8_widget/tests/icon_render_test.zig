@@ -60,7 +60,7 @@ test "host backend composes an image widget and publishes its panel record" {
     var hint: abi.types.Refresh = .none;
     var dirty: u16 = 0;
     kids[0].dirty = true;
-    kids[0].refresh = @intFromEnum(abi.types.Refresh.quality);
+    kids[0].refresh = @backingInt(abi.types.Refresh.quality);
     try std.testing.expectEqual(abi.types.err.ok, abi.panel.ra8_widget_panel_compose(&panel_widget, &frame, &damage, &hint, &dirty));
     try std.testing.expectEqual(kids[0].rect, damage);
     try std.testing.expectEqual(@as(u16, 1), dirty);

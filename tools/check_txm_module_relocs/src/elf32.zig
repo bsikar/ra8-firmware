@@ -56,7 +56,7 @@ pub const File = struct {
 
         const header = bytes[0..@sizeOf(elf.Elf32_Ehdr)];
         const machine = field(u16, header, elf.Elf32_Ehdr, "e_machine");
-        if (machine != @intFromEnum(elf.EM.ARM)) return error.NotArm;
+        if (machine != @backingInt(elf.EM.ARM)) return error.NotArm;
         if (field(u16, header, elf.Elf32_Ehdr, "e_shentsize") != @sizeOf(elf.Elf32_Shdr)) {
             return error.Truncated;
         }

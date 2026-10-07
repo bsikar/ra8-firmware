@@ -60,9 +60,9 @@ test "exactly three interfaces route anywhere but the counter" {
 }
 
 test "the route ordinals are the ABI the C side reads back" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(rx_route.Route.rpc));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(rx_route.Route.ethernet));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(rx_route.Route.counted));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(rx_route.Route.rpc));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(rx_route.Route.ethernet));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(rx_route.Route.counted));
 }
 
 test "the interface numbers mirror the vendored header order" {

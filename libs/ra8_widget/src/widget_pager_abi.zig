@@ -85,7 +85,7 @@ fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg:
     var x: i32 = 0;
     var y: i32 = 0;
     paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, face, weight, selected_size, styled != null, &x, &y);
-    if (styled) |draw| draw(backend.user, x, y, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg) else backend.draw_text.?(backend.user, x, y, text, fg, bg);
+    if (styled) |draw| draw(backend.user, x, y, text, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg) else backend.draw_text.?(backend.user, x, y, text, fg, bg);
 }
 
 /// Format into stack storage so rendering never allocates.

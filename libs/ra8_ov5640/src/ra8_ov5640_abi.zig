@@ -28,7 +28,7 @@ pub const Ov5640Error = enum(u16) {
     null_ptr = 0x504,
 };
 
-const ok: u16 = @intFromEnum(Ov5640Error.ok);
+const ok: u16 = @backingInt(Ov5640Error.ok);
 
 /// Component tag on this library's log lines, matching the C's call sites.
 const tag: [*:0]const u8 = "ov5640";
@@ -101,7 +101,7 @@ fn rejectNull(pointer: ?*const anyopaque, message: [*:0]const u8) u8 {
 fn readRegister(device: *Device, register: u16, out_value: *u8) u16 {
     const read_fn = device.bus.read_reg orelse {
         ra8_log_emit_error(tag, "read");
-        return @intFromEnum(Ov5640Error.null_ptr);
+        return @backingInt(Ov5640Error.null_ptr);
     };
     return read_fn(device.bus.ctx, device.address, register, out_value);
 }
@@ -110,7 +110,7 @@ fn readRegister(device: *Device, register: u16, out_value: *u8) u16 {
 fn writeRegister(device: *Device, register: u16, value: u8) u16 {
     const write_fn = device.bus.write_reg orelse {
         ra8_log_emit_error(tag, "write");
-        return @intFromEnum(Ov5640Error.null_ptr);
+        return @backingInt(Ov5640Error.null_ptr);
     };
     return write_fn(device.bus.ctx, device.address, register, value);
 }
@@ -141,7 +141,7 @@ fn verify(device: *Device, expectations: []const core.RegExpect) u16 {
             return status;
         }
         if (!core.expectationMatches(actual, expectation)) {
-            return @intFromEnum(Ov5640Error.invalid_arg);
+            return @backingInt(Ov5640Error.invalid_arg);
         }
     }
     return ok;
@@ -244,13 +244,13 @@ fn readJpegStatus(device: *Device, raw: *core.JpegStatusRaw) u16 {
 
 /// `ra8_ov5640_init`: bind a transport without touching the sensor.
 pub export fn ra8_ov5640_init(dev: ?*Device, bus: ?*const Bus) callconv(.c) u16 {
-    if (rejectNull(dev, "init") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(bus, "init") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "init") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(bus, "init") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     const source = bus.?;
-    if (rejectNull(@ptrCast(source.read_reg), "init") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(@ptrCast(source.write_reg), "init") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(@ptrCast(source.delay_ms), "init") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(@ptrCast(source.read_reg), "init") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(@ptrCast(source.write_reg), "init") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(@ptrCast(source.delay_ms), "init") != 0) return @backingInt(Ov5640Error.null_ptr);
     device.* = .{
         .bus = source.*,
         .address = core.addresses[0],
@@ -261,32 +261,32 @@ pub export fn ra8_ov5640_init(dev: ?*Device, bus: ?*const Bus) callconv(.c) u16 
 
 /// `ra8_ov5640_read_reg`: one SCCB read at the selected address.
 pub export fn ra8_ov5640_read_reg(dev: ?*Device, reg: u16, out_value: ?*u8) callconv(.c) u16 {
-    if (rejectNull(dev, "read") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(out_value, "read") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "read") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(out_value, "read") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     return readRegister(device, reg, out_value.?);
 }
 
 /// `ra8_ov5640_write_reg`: one SCCB write at the selected address.
 pub export fn ra8_ov5640_write_reg(dev: ?*Device, reg: u16, value: u8) callconv(.c) u16 {
-    if (rejectNull(dev, "write") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "write") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     return writeRegister(device, reg, value);
 }
 
 /// `ra8_ov5640_probe`: try both legal addresses and verify the chip ID.
 pub export fn ra8_ov5640_probe(dev: ?*Device, out_id: ?*u16) callconv(.c) u16 {
-    if (rejectNull(dev, "probe") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(out_id, "probe") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "probe") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(out_id, "probe") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     const reported = out_id.?;
     reported.* = 0;
@@ -300,18 +300,18 @@ pub export fn ra8_ov5640_probe(dev: ?*Device, out_id: ?*u16) callconv(.c) u16 {
         reported.* = id;
     }
     device.address = core.addresses[0];
-    return @intFromEnum(Ov5640Error.not_found);
+    return @backingInt(Ov5640Error.not_found);
 }
 
 /// `ra8_ov5640_configure`: reset, program one validated mode, verify it.
 pub export fn ra8_ov5640_configure(dev: ?*Device, mode: u8) callconv(.c) u16 {
-    if (rejectNull(dev, "configure") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "configure") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     if (!core.modeSupported(mode)) {
-        return @intFromEnum(Ov5640Error.not_supported);
+        return @backingInt(Ov5640Error.not_supported);
     }
     waitMilliseconds(device, core.delay.reset_guard_ms);
     var status = writeRegister(device, core.reg.sw_reset, core.val.sw_reset_hold);
@@ -339,27 +339,27 @@ pub export fn ra8_ov5640_configure(dev: ?*Device, mode: u8) callconv(.c) u16 {
 
 /// `ra8_ov5640_set_jpeg_quantization_scale`: program CTRL07 bits [5:0].
 pub export fn ra8_ov5640_set_jpeg_quantization_scale(dev: ?*Device, quant_scale: u8) callconv(.c) u16 {
-    if (rejectNull(dev, "jpeg_quality") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "jpeg_quality") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     if (!core.quantScaleValid(quant_scale)) {
-        return @intFromEnum(Ov5640Error.invalid_arg);
+        return @backingInt(Ov5640Error.invalid_arg);
     }
     return updateBits(device, core.reg.jpeg_quality, core.val.jpeg_quant_scale_mask, quant_scale);
 }
 
 /// `ra8_ov5640_jpeg_status_get`: snapshot the JPEG pipeline registers.
 pub export fn ra8_ov5640_jpeg_status_get(dev: ?*Device, out_status: ?*JpegStatus) callconv(.c) u16 {
-    if (rejectNull(dev, "jpeg_status") != 0) return @intFromEnum(Ov5640Error.null_ptr);
-    if (rejectNull(out_status, "jpeg_status") != 0) return @intFromEnum(Ov5640Error.null_ptr);
+    if (rejectNull(dev, "jpeg_status") != 0) return @backingInt(Ov5640Error.null_ptr);
+    if (rejectNull(out_status, "jpeg_status") != 0) return @backingInt(Ov5640Error.null_ptr);
     const device = dev.?;
     const destination = out_status.?;
     // The C zeroes the snapshot before the state guard runs.
     destination.* = .{};
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     var raw: core.JpegStatusRaw = .{};
     const status = readJpegStatus(device, &raw);
@@ -374,9 +374,9 @@ pub export fn ra8_ov5640_jpeg_status_get(dev: ?*Device, out_status: ?*JpegStatus
 pub export fn ra8_ov5640_stream_set(dev: ?*Device, enabled: u8) callconv(.c) u16 {
     // The C rejected a null device here with a bare comparison, emitting no
     // log line, unlike every other entry point. Kept verbatim.
-    const device = dev orelse return @intFromEnum(Ov5640Error.null_ptr);
+    const device = dev orelse return @backingInt(Ov5640Error.null_ptr);
     if (!device.initialized) {
-        return @intFromEnum(Ov5640Error.not_initialized);
+        return @backingInt(Ov5640Error.not_initialized);
     }
     const status = writeRegister(device, core.reg.sw_reset, core.streamValue(enabled != 0));
     if (status == ok) {

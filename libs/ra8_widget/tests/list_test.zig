@@ -115,13 +115,13 @@ test "two-button rows report each element and limit damage to that button" {
     const first = abi.Event{ .kind = .touch, .reserved = 0, .button_id = 0, .x = 85, .y = 35 };
     try std.testing.expect(w.vt.?.on_input.?(&w, &first));
     try std.testing.expectEqual(@as(u16, 0), routed_row);
-    try std.testing.expectEqual(@intFromEnum(abi.Element.button_1), routed_element);
+    try std.testing.expectEqual(@backingInt(abi.Element.button_1), routed_element);
     try std.testing.expectEqual(@as(u16, 31), routed_element_action);
     try std.testing.expectEqual(abi.Rect{ .x = 70, .y = 20, .w = 30, .h = 40 }, list.damage);
 
     const second = abi.Event{ .kind = .touch, .reserved = 0, .button_id = 0, .x = 110, .y = 35 };
     try std.testing.expect(w.vt.?.on_input.?(&w, &second));
-    try std.testing.expectEqual(@intFromEnum(abi.Element.button_2), routed_element);
+    try std.testing.expectEqual(@backingInt(abi.Element.button_2), routed_element);
     try std.testing.expectEqual(@as(u16, 32), routed_element_action);
     try std.testing.expectEqual(abi.Rect{ .x = 100, .y = 20, .w = 30, .h = 40 }, list.damage);
 }
@@ -149,7 +149,7 @@ test "toggle-help rows flip the value and damage only the checkbox" {
     try std.testing.expect(w.vt.?.on_input.?(&w, &event));
     try std.testing.expect(checked);
     try std.testing.expectEqual(@as(u16, 0), routed_row);
-    try std.testing.expectEqual(@intFromEnum(abi.Element.toggle), routed_element);
+    try std.testing.expectEqual(@backingInt(abi.Element.toggle), routed_element);
     try std.testing.expectEqual(@as(u16, 41), routed_element_action);
     try std.testing.expectEqual(abi.Rect{ .x = 90, .y = 26, .w = 28, .h = 28 }, list.damage);
 }

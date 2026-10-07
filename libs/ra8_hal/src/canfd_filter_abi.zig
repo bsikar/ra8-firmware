@@ -17,7 +17,7 @@ const Hw = struct {
     const base = tdc.channel_bases[0];
 
     pub fn globalMode(_: Hw, mode: filter.GlobalMode) u16 {
-        return priv_ra8_canfd_internal_set_global_mode(@ptrFromInt(base), @intFromEnum(mode));
+        return priv_ra8_canfd_internal_set_global_mode(@ptrFromInt(base), @backingInt(mode));
     }
     pub fn read(_: Hw, off: usize) u32 {
         return @as(*volatile u32, @ptrFromInt(base + off)).*;

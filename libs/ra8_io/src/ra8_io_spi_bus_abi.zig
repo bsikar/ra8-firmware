@@ -83,6 +83,6 @@ export fn ra8_io_spi_bus_as_ops(bus: ?*const Bus, out: ?*Ops) c_int {
     }
     const o = out orelse return missing("out must not be nullptr");
     o.xfer8 = &opsXfer8;
-    o.ctx = @constCast(@ptrCast(bus.?));
+    o.ctx = @ptrCast(@constCast(bus.?));
     return ok;
 }
