@@ -79,20 +79,20 @@ pub fn isLineBreak(cp: u21) bool {
 
 /// Fold CRLF and a lone CR into LF, the way Python's text mode reads a file.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, text.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, text.len);
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < text.len) {
         const byte = text[index];
         if (byte == '\r') {
-            try out.append('\n');
+            try out.append(allocator, '\n');
             index += if (index + 1 < text.len and text[index + 1] == '\n') 2 else 1;
             continue;
         }
-        try out.append(byte);
+        try out.append(allocator, byte);
         index += 1;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Walk a text as `str.splitlines()` does: no terminators, no trailing empty
@@ -129,13 +129,13 @@ pub const LineIterator = struct {
 /// literals are NOT understood, inherited as-is: a `//` inside one truncates
 /// the line here just as it did before.
 pub fn stripComments(allocator: std.mem.Allocator, text: []const u8) ![][]const u8 {
-    var out = std.ArrayList([]const u8).init(allocator);
-    errdefer out.deinit();
+    var out: std.ArrayList([]const u8) = .empty;
+    errdefer out.deinit(allocator);
     var in_block = false;
     var lines = LineIterator.init(text);
     while (lines.next()) |line| {
-        var buffer = std.ArrayList(u8).init(allocator);
-        errdefer buffer.deinit();
+        var buffer: std.ArrayList(u8) = .empty;
+        errdefer buffer.deinit(allocator);
         var index: usize = 0;
         while (index < line.len) {
             const pair = line[index..@min(index + 2, line.len)];
@@ -154,12 +154,12 @@ pub fn stripComments(allocator: std.mem.Allocator, text: []const u8) ![][]const 
                 continue;
             }
             if (std.mem.eql(u8, pair, "//")) break;
-            try buffer.append(line[index]);
+            try buffer.append(allocator, line[index]);
             index += 1;
         }
-        try out.append(try buffer.toOwnedSlice());
+        try out.append(allocator, try buffer.toOwnedSlice(allocator));
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Index of the first character that is not Python whitespace, from `start`.
@@ -268,14 +268,14 @@ fn anyGuarded(stack: []const bool) bool {
 /// line is never asm-scanned, so asm sharing a line with `#if` stays quiet.
 pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]Finding {
     const lines = try stripComments(allocator, text);
-    var stack = std.ArrayList(bool).init(allocator);
-    defer stack.deinit();
-    var findings = std.ArrayList(Finding).init(allocator);
-    errdefer findings.deinit();
+    var stack: std.ArrayList(bool) = .empty;
+    defer stack.deinit(allocator);
+    var findings: std.ArrayList(Finding) = .empty;
+    errdefer findings.deinit(allocator);
 
     for (lines, 1..) |line, line_no| {
         if (matchIf(line)) |rest| {
-            try stack.append(std.mem.indexOf(u8, rest, off_target) != null);
+            try stack.append(allocator, std.mem.indexOf(u8, rest, off_target) != null);
             continue;
         }
         if (matchElif(line)) |rest| {
@@ -290,10 +290,10 @@ pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]Finding {
             continue;
         }
         if (hasAsm(line) and anyGuarded(stack.items)) {
-            try findings.append(.{ .line_no = line_no, .line = line });
+            try findings.append(allocator, .{ .line_no = line_no, .line = line });
         }
     }
-    return findings.toOwnedSlice();
+    return findings.toOwnedSlice(allocator);
 }
 
 /// Render one finding exactly as the gate has always reported it.
