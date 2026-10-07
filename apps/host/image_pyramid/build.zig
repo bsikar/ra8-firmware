@@ -3,29 +3,23 @@
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
+const Translator = @import("translate_c").Translator;
 
-/// Both halves of the codec are Zig now: the encoder moved first and the
-/// decoder plus its stripe driver, so the three ra8_jpeg_sw*.c paths
-/// this listed no longer exist on disk. ra8_log went the same way.
-/// What is left of the C here is ra8_error_handler.c; the rest arrives as the
-/// `ra8_jpeg` and `ra8_core` archives linked in build().
+/// Both halves of the codec are Zig, and so is ra8_core's error handler,
+/// so nothing here is compiled from C: the codec arrives as the `ra8_jpeg`
+/// and `ra8_core` archives linked in build(). Only the public
+/// ra8_jpeg_sw.h is translated, for src/codec.zig.
 fn addCodec(module: *std.Build.Module, b: *std.Build) void {
-    module.addIncludePath(b.path("../../../libs/ra8_jpeg/inc"));
-    module.addIncludePath(b.path("../../../libs/ra8_jpeg/src"));
-    module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
-    module.addCSourceFiles(.{
-        .files = &.{
-            "../../../libs/ra8_core/src/ra8_error_handler.c",
-        },
-        .flags = &.{
-            "-std=gnu2x",
-            "-DRA8_FREESTANDING",
-            "-DRA8_OFF_TARGET",
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-        },
+    const header = b.addWriteFiles().add("ra8_jpeg_sw_c.h", "#include <stdbool.h>\n#include \"ra8_jpeg_sw.h\"\n");
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = module.resolved_target.?,
+        .optimize = module.optimize.?,
+        .link_libc = true,
     });
+    translator.addIncludePath(b.path("../../../libs/ra8_jpeg/inc"));
+    translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    module.addImport("ra8_jpeg_sw_h", translator.mod);
     module.link_libc = true;
 }
 

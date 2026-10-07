@@ -7,10 +7,7 @@ const degrade = @import("degrade.zig");
 // The ra8_jpeg software implementations currently use shared static working
 // state, despite stale thread-safe declarations in the public header. This
 // single-threaded application never calls the codec concurrently.
-const c = @cImport({
-    @cInclude("stdbool.h");
-    @cInclude("ra8_jpeg_sw.h");
-});
+const c = @import("ra8_jpeg_sw_h");
 
 pub const CodecFailure = struct { code: u32 };
 pub const DimensionsResult = union(enum) { value: degrade.Dimensions, failure: CodecFailure };
