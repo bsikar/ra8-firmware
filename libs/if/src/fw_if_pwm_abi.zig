@@ -63,8 +63,8 @@ const zero_caps = std.mem.zeroes(Caps);
 
 /// A NULL op is a malformed binding; checked off the struct's own fields.
 fn complete(ops: *const Iface) bool {
-    inline for (std.meta.fields(Iface)) |field| {
-        if (@field(ops, field.name) == null) return false;
+    inline for (@typeInfo(Iface).@"struct".field_names) |name| {
+        if (@field(ops, name) == null) return false;
     }
     return true;
 }

@@ -66,8 +66,8 @@ const zero_caps = std.mem.zeroes(Caps);
 /// A NULL op is a malformed binding, not a declined capability. Every op is
 /// checked by name off the struct, so a tenth op cannot be forgotten here.
 fn complete(ops: *const Iface) bool {
-    inline for (std.meta.fields(Iface)) |field| {
-        if (@field(ops, field.name) == null) return false;
+    inline for (@typeInfo(Iface).@"struct".field_names) |name| {
+        if (@field(ops, name) == null) return false;
     }
     return true;
 }

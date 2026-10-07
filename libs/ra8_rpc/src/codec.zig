@@ -105,8 +105,9 @@ fn shapeMax(comptime how: Shape) comptime_int {
         .none => return 0,
         .choice => |Union| {
             var widest = 0;
-            for (std.meta.fields(Union)) |field| {
-                widest = @max(widest, shapeMax(shape(Union, field.name, field.type)));
+            const info = @typeInfo(Union).@"union";
+            for (info.field_names, info.field_types) |name, FieldType| {
+                widest = @max(widest, shapeMax(shape(Union, name, FieldType)));
             }
             return @sizeOf(TagInt(Union)) + widest;
         },
@@ -192,9 +193,19 @@ fn takeBytes(max: usize, rest: *[]const u8) Error![]const u8 {
     return rest.*[0..len];
 }
 
-fn fields(comptime T: type) []const std.lang.Type.StructField {
+/// One struct field as the codec walks it: 0.17's type info keeps names
+/// and types in separate slices.
+const Field = struct { name: [:0]const u8, type: type };
+
+fn fields(comptime T: type) []const Field {
     if (@typeInfo(T) != .@"struct") @compileError(@typeName(T) ++ " is not a struct");
-    return std.meta.fields(T);
+    return comptime list: {
+        const info = @typeInfo(T).@"struct";
+        var out: [info.field_names.len]Field = undefined;
+        for (&out, info.field_names, info.field_types) |*f, name, Type| f.* = .{ .name = name, .type = Type };
+        const done = out;
+        break :list &done;
+    };
 }
 
 /// How the field `name` of `Owner`, a struct or a union, travels.

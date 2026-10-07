@@ -102,11 +102,11 @@ test "bind refuses a NULL handle or ops table" {
 }
 
 test "bind refuses any single unset op" {
-    inline for (std.meta.fields(Iface)) |field| {
+    inline for (@typeInfo(Iface).@"struct".field_names) |name| {
         fake = .{};
         var pwm = std.mem.zeroes(Pwm);
         var partial = ops;
-        @field(partial, field.name) = null;
+        @field(partial, name) = null;
         try std.testing.expectEqual(err_invalid_arg, abi.fw_pwm_bind(&pwm, &partial, &fake));
         try std.testing.expect(!pwm.bound);
     }

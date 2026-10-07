@@ -993,5 +993,5 @@ test {
 test "a Zig boot unit learns TrustZone from its app and nothing else" {
     try std.testing.expect(sources.bootOptions(trust_zone_app).trust_zone);
     try std.testing.expect(!sources.bootOptions(bare_app).trust_zone);
-    try std.testing.expectEqual(1, std.meta.fields(sources.BootOptions).len);
+    try std.testing.expectEqual(1, @typeInfo(sources.BootOptions).@"struct".field_names.len);
 }

@@ -187,8 +187,8 @@ pub fn cmakeFlags(allocator: std.mem.Allocator, source: []const u8, variable: []
 }
 
 test "every build type has exactly one configuration" {
-    inline for (@typeInfo(BuildType).@"enum".fields) |field| {
-        const build_type: BuildType = @fromBackingInt(@intCast(field.value));
+    inline for (@typeInfo(BuildType).@"enum".field_values) |value| {
+        const build_type: BuildType = @fromBackingInt(value);
         var seen: usize = 0;
         for (configurations) |configuration| {
             if (configuration.build_type == build_type) seen += 1;

@@ -50,7 +50,7 @@ pub fn slotOf(packed_pin: u16) IndexError!u16 {
 /// it is not a slice: forming one would mean reading a string this module
 /// has no business reading.
 pub const Registry = struct {
-    claimed: std.StaticBitSet(limits.slot_count) = std.StaticBitSet(limits.slot_count).initEmpty(),
+    claimed: std.StaticBitSet(limits.slot_count) = .empty,
     owners: [limits.slot_count]?*const anyopaque = @splat(null),
 
     /// A slot that is already claimed cannot be claimed again.
@@ -73,7 +73,7 @@ pub const Registry = struct {
     }
 
     pub fn reset(self: *Registry) void {
-        self.claimed = std.StaticBitSet(limits.slot_count).initEmpty();
+        self.claimed = .empty;
         self.owners = @splat(null);
     }
 };
