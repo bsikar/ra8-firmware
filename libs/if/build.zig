@@ -13,6 +13,31 @@
 //! vtable, so nothing here is configured at compile time.
 
 const std = @import("std");
+const Translator = @import("translate_c").Translator;
+
+/// `fw_os.h` as a Zig module, with `queue` deciding FW_OS_HAS_QUEUE. The
+/// tree builds C as C23, where static_assert is a keyword; translate-c
+/// does not, so it is spelled as the C11 keyword it replaced.
+fn translateOs(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.lang.OptimizeMode,
+    queue: bool,
+) *std.Build.Module {
+    const header = b.addWriteFiles().add("fw_os_c.h", "#include \"fw_os.h\"\n");
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = target,
+        .optimize = optimize,
+        // libc's stdint.h, not the bare compiler one: its UINT32_MAX translates.
+        .link_libc = true,
+    });
+    translator.defineCMacro("static_assert", "_Static_assert");
+    if (queue) translator.defineCMacro("FW_OS_HAS_QUEUE", "1");
+    translator.addIncludePath(b.path("inc"));
+    translator.addIncludePath(b.path("../ra8_core/inc"));
+    return translator.mod;
+}
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -121,17 +146,15 @@ pub fn build(b: *std.Build) void {
     pwm_test_module.addImport("abi", pwm_abi_module);
     const pwm_tests = b.addTest(.{ .root_module = pwm_test_module });
 
-    // fw_os.h has no Zig implementation behind it; importing it here is what
+    // fw_os.h has no Zig implementation behind it; translating it here is what
     // makes a compiler read the port contract and its static_asserts.
     const os_contract_test_module = b.createModule(.{
         .root_source_file = b.path("tests/os_contract_test.zig"),
         .target = target,
         .optimize = optimize,
     });
-    // libc's stdint.h, not the bare compiler one: its UINT32_MAX translates.
-    os_contract_test_module.link_libc = true;
-    os_contract_test_module.addIncludePath(b.path("inc"));
-    os_contract_test_module.addIncludePath(b.path("../ra8_core/inc"));
+    os_contract_test_module.addImport("fw_os_h", translateOs(b, target, optimize, false));
+    os_contract_test_module.addImport("fw_os_queue_h", translateOs(b, target, optimize, true));
     const os_contract_tests = b.addTest(.{ .root_module = os_contract_test_module });
 
     const run_path_tests = b.addRunArtifact(path_tests);
