@@ -31,9 +31,9 @@ pub const Refresh = types.Refresh;
 /// The `ra8_err_t` values this membrane answers with.
 pub const err = types.err;
 
-const DebugWidget = if (builtin.mode == .Debug) @import("debug").SnapshotWidget else struct {};
+const DebugWidget = if (builtin.mode == .debug) @import("debug").SnapshotWidget else struct {};
 const DebugChildrenFn = *const fn (*DebugWidget) ?[]DebugWidget;
-const debug_channel = if (builtin.mode == .Debug) @import("debug") else struct {
+const debug_channel = if (builtin.mode == .debug) @import("debug") else struct {
     pub fn publish(_: *Widget, _: DebugChildrenFn) void {}
 };
 
@@ -248,7 +248,7 @@ pub export fn ra8_widget_panel_compose(
 
     widget.dirty = false;
     widget.refresh = @backingInt(Refresh.none);
-    if (builtin.mode == .Debug) {
+    if (builtin.mode == .debug) {
         debug_channel.publish(@ptrCast(widget), debugChildren);
     }
     return err.ok;
@@ -276,7 +276,7 @@ comptime {
 }
 
 comptime {
-    if (builtin.mode == .Debug) {
+    if (builtin.mode == .debug) {
         if (@sizeOf(DebugWidget) != @sizeOf(Widget)) @compileError("debug widget size mismatch");
         if (@offsetOf(DebugWidget, "rect") != @offsetOf(Widget, "rect")) @compileError("debug widget rect offset");
         if (@offsetOf(DebugWidget, "visible") != @offsetOf(Widget, "visible")) @compileError("debug widget visible offset");

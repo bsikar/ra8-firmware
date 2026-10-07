@@ -45,11 +45,13 @@ const Draw = struct {
 
 /// Recording paint backend.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 512) = .{};
-    var draws: std.BoundedArray(Draw, 32) = .{};
+    var fills_buffer: [512]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [32]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn drawText(
@@ -60,7 +62,7 @@ const Recorder = struct {
         fg: u32,
         bg: u32,
     ) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
+        draws.appendBounded(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
     }
 
     /// Fixed-width measurement so centring has something to halve.
@@ -70,16 +72,18 @@ const Recorder = struct {
     }
 };
 
-var selections: std.BoundedArray(u16, 32) = .{};
+var selections_buffer: [32]u16 = undefined;
+
+var selections: std.ArrayList(u16) = .initBuffer(&selections_buffer);
 
 fn noteSelect(_: *abi.Widget, index: u16) callconv(.c) void {
-    selections.append(index) catch unreachable;
+    selections.appendBounded(index) catch unreachable;
 }
 
 fn reset() void {
-    Recorder.fills = .{};
-    Recorder.draws = .{};
-    selections = .{};
+    Recorder.fills.clearRetainingCapacity();
+    Recorder.draws.clearRetainingCapacity();
+    selections.clearRetainingCapacity();
     last_message = null;
     invalidations = 0;
     last_refresh = 0xFF;
@@ -169,10 +173,10 @@ test "an assigned icon paints through fill_rect and none stays transparent" {
     reset();
     const icon_backend = abi.Paint{ .user = null, .fill_rect = Recorder.fillRect, .draw_text = null, .text_size = null };
     abi.icons.draw(&icon_backend, .play, .{ .x = 0, .y = 0, .w = 16, .h = 16 }, active_color, bg_color);
-    try std.testing.expect(Recorder.fills.len > 0);
-    const before_none = Recorder.fills.len;
+    try std.testing.expect(Recorder.fills.items.len > 0);
+    const before_none = Recorder.fills.items.len;
     abi.icons.draw(&icon_backend, .none, .{ .x = 0, .y = 0, .w = 16, .h = 16 }, active_color, bg_color);
-    try std.testing.expectEqual(before_none, Recorder.fills.len);
+    try std.testing.expectEqual(before_none, Recorder.fills.items.len);
     try std.testing.expect(abi.icons.sample(.play, 8, 8) > 0);
     try std.testing.expectEqual(@as(u2, 0), abi.icons.sample(.none, 8, 8));
 }
@@ -327,16 +331,16 @@ test "render fills the strip once and centres one label per cell" {
     _ = abi.ra8_widget_nav_bar_init(&w, &nav);
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
 
-    try std.testing.expectEqual(1, Recorder.fills.len);
-    try std.testing.expectEqual(bg_color, Recorder.fills.get(0).color);
-    try std.testing.expectEqual(strip.w, Recorder.fills.get(0).w);
-    try std.testing.expectEqual(4, Recorder.draws.len);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
+    try std.testing.expectEqual(bg_color, Recorder.fills.items[0].color);
+    try std.testing.expectEqual(strip.w, Recorder.fills.items[0].w);
+    try std.testing.expectEqual(4, Recorder.draws.items.len);
 
     // "read" is 4 glyphs at 6px, centred in cell 1 (x = 35, w = 25).
-    try std.testing.expectEqualStrings("read", std.mem.span(Recorder.draws.get(1).text));
-    try std.testing.expectEqual(35 + @divTrunc(25 - 24, 2), Recorder.draws.get(1).x);
-    try std.testing.expectEqual(strip.y + @divTrunc(strip.h - 12, 2), Recorder.draws.get(1).y);
-    try std.testing.expectEqual(bg_color, Recorder.draws.get(1).bg);
+    try std.testing.expectEqualStrings("read", std.mem.span(Recorder.draws.items[1].text));
+    try std.testing.expectEqual(35 + @divTrunc(25 - 24, 2), Recorder.draws.items[1].x);
+    try std.testing.expectEqual(strip.y + @divTrunc(strip.h - 12, 2), Recorder.draws.items[1].y);
+    try std.testing.expectEqual(bg_color, Recorder.draws.items[1].bg);
 }
 
 test "only the active cell gets the active colour" {
@@ -346,10 +350,10 @@ test "only the active cell gets the active colour" {
     _ = abi.ra8_widget_nav_bar_init(&w, &nav);
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
 
-    try std.testing.expectEqual(muted_color, Recorder.draws.get(0).fg);
-    try std.testing.expectEqual(active_color, Recorder.draws.get(1).fg);
-    try std.testing.expectEqual(muted_color, Recorder.draws.get(2).fg);
-    try std.testing.expectEqual(muted_color, Recorder.draws.get(3).fg);
+    try std.testing.expectEqual(muted_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqual(active_color, Recorder.draws.items[1].fg);
+    try std.testing.expectEqual(muted_color, Recorder.draws.items[2].fg);
+    try std.testing.expectEqual(muted_color, Recorder.draws.items[3].fg);
 }
 
 test "an out-of-range active index simply mutes every cell" {
@@ -361,7 +365,7 @@ test "an out-of-range active index simply mutes every cell" {
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
 
     for (0..4) |i| {
-        try std.testing.expectEqual(muted_color, Recorder.draws.get(i).fg);
+        try std.testing.expectEqual(muted_color, Recorder.draws.items[i].fg);
     }
 }
 
@@ -373,9 +377,9 @@ test "a null label is a gap, not a crash" {
     _ = abi.ra8_widget_nav_bar_init(&w, &nav);
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
 
-    try std.testing.expectEqual(2, Recorder.draws.len);
-    try std.testing.expectEqualStrings("one", std.mem.span(Recorder.draws.get(0).text));
-    try std.testing.expectEqualStrings("three", std.mem.span(Recorder.draws.get(1).text));
+    try std.testing.expectEqual(2, Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("one", std.mem.span(Recorder.draws.items[0].text));
+    try std.testing.expectEqualStrings("three", std.mem.span(Recorder.draws.items[1].text));
 }
 
 test "an empty strip, a null item array and no draw_text all stop after the fill" {
@@ -384,24 +388,24 @@ test "an empty strip, a null item array and no draw_text all stop after the fill
     var w = widgetAt(strip);
     _ = abi.ra8_widget_nav_bar_init(&w, &empty);
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
-    try std.testing.expectEqual(1, Recorder.fills.len);
-    try std.testing.expectEqual(0, Recorder.draws.len);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
+    try std.testing.expectEqual(0, Recorder.draws.items.len);
 
     reset();
     var no_items = navWith(&full_backend, null, 4);
     var w2 = widgetAt(strip);
     _ = abi.ra8_widget_nav_bar_init(&w2, &no_items);
     abi.ra8_widget_nav_bar_vtable().render.?(&w2);
-    try std.testing.expectEqual(1, Recorder.fills.len);
-    try std.testing.expectEqual(0, Recorder.draws.len);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
+    try std.testing.expectEqual(0, Recorder.draws.items.len);
 
     reset();
     var no_text = navWith(&fill_only_backend, &labels, labels.len);
     var w3 = widgetAt(strip);
     _ = abi.ra8_widget_nav_bar_init(&w3, &no_text);
     abi.ra8_widget_nav_bar_vtable().render.?(&w3);
-    try std.testing.expectEqual(1, Recorder.fills.len);
-    try std.testing.expectEqual(0, Recorder.draws.len);
+    try std.testing.expectEqual(1, Recorder.fills.items.len);
+    try std.testing.expectEqual(0, Recorder.draws.items.len);
 }
 
 test "render touches nothing without a paint backend" {
@@ -410,7 +414,7 @@ test "render touches nothing without a paint backend" {
     var w = widgetAt(strip);
     _ = abi.ra8_widget_nav_bar_init(&w, &nav);
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
-    try std.testing.expectEqual(0, Recorder.fills.len);
+    try std.testing.expectEqual(0, Recorder.fills.items.len);
 }
 
 test "a tap records the cell, invalidates fast and notifies once" {
@@ -426,8 +430,8 @@ test "a tap records the cell, invalidates fast and notifies once" {
     try std.testing.expectEqual(1, invalidations);
     try std.testing.expectEqual(@backingInt(abi.Refresh.fast), last_refresh);
     try std.testing.expect(w.dirty);
-    try std.testing.expectEqual(1, selections.len);
-    try std.testing.expectEqual(2, selections.get(0));
+    try std.testing.expectEqual(1, selections.items.len);
+    try std.testing.expectEqual(2, selections.items[0]);
 }
 
 test "a tap anywhere inside a drawn cell selects that cell" {
@@ -458,7 +462,7 @@ test "a label wider than its cell overflows without moving the tap target" {
     // of the cell it belongs to. The cell itself is unchanged, and that is
     // what the tap follows.
     const cell = abi.cellRect(strip, 3, 4);
-    try std.testing.expect(Recorder.draws.get(3).x < cell.x);
+    try std.testing.expect(Recorder.draws.items[3].x < cell.x);
     const event = touchAt(cell.x);
     try std.testing.expect(abi.ra8_widget_nav_bar_vtable().on_input.?(&w, &event));
     try std.testing.expectEqual(3, nav.selected);
@@ -474,7 +478,7 @@ test "a tap off the strip is declined and changes nothing" {
     try std.testing.expect(!abi.ra8_widget_nav_bar_vtable().on_input.?(&w, &event));
     try std.testing.expectEqual(0xFFFF, nav.selected);
     try std.testing.expectEqual(0, invalidations);
-    try std.testing.expectEqual(0, selections.len);
+    try std.testing.expectEqual(0, selections.items.len);
 }
 
 test "an empty strip declines the touch outright" {
@@ -511,7 +515,7 @@ test "a tap with no callback bound still records and invalidates" {
     try std.testing.expect(abi.ra8_widget_nav_bar_vtable().on_input.?(&w, &event));
     try std.testing.expectEqual(0, nav.selected);
     try std.testing.expectEqual(1, invalidations);
-    try std.testing.expectEqual(0, selections.len);
+    try std.testing.expectEqual(0, selections.items.len);
 }
 
 test "a widget with no context declines input and renders nothing" {
@@ -520,5 +524,5 @@ test "a widget with no context declines input and renders nothing" {
     const event = touchAt(strip.x + 1);
     try std.testing.expect(!abi.ra8_widget_nav_bar_vtable().on_input.?(&w, &event));
     abi.ra8_widget_nav_bar_vtable().render.?(&w);
-    try std.testing.expectEqual(0, Recorder.fills.len);
+    try std.testing.expectEqual(0, Recorder.fills.items.len);
 }

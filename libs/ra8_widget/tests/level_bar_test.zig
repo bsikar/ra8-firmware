@@ -21,9 +21,10 @@ export fn ra8_widget_invalidate(w: *abi.Widget, refresh: abi.Refresh) callconv(.
 
 const Fill = struct { rect: abi.Rect, color: u32 };
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 16) = .{};
+    var fills_buffer: [16]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .rect = .{ .x = x, .y = y, .w = w, .h = h }, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .rect = .{ .x = x, .y = y, .w = w, .h = h }, .color = color }) catch unreachable;
     }
 };
 const backend: abi.Paint = .{ .user = null, .fill_rect = Recorder.fillRect, .draw_text = null, .text_size = null };
@@ -96,17 +97,17 @@ test "unchanged value has empty damage and does not invalidate" {
 }
 
 test "render marks the centre and paints the selected side" {
-    Recorder.fills = .{};
+    Recorder.fills.clearRetainingCapacity();
     var w = widget(.{ .x = 0, .y = 0, .w = 10, .h = 130 });
     var b = bar(-6);
     try bind(&w, &b);
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, abi.geometry.cell_count), Recorder.fills.len);
-    try std.testing.expectEqual(@as(u32, 30), Recorder.fills.buffer[abi.geometry.center].color);
-    try std.testing.expectEqual(@as(u32, 20), Recorder.fills.buffer[7].color);
-    try std.testing.expectEqual(@as(u32, 10), Recorder.fills.buffer[5].color);
-    try std.testing.expectEqual(@as(i32, 9), Recorder.fills.buffer[0].rect.h);
-    try std.testing.expectEqual(@as(i32, 10), Recorder.fills.buffer[12].rect.h);
+    try std.testing.expectEqual(@as(usize, abi.geometry.cell_count), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(u32, 30), Recorder.fills.items[abi.geometry.center].color);
+    try std.testing.expectEqual(@as(u32, 20), Recorder.fills.items[7].color);
+    try std.testing.expectEqual(@as(u32, 10), Recorder.fills.items[5].color);
+    try std.testing.expectEqual(@as(i32, 9), Recorder.fills.items[0].rect.h);
+    try std.testing.expectEqual(@as(i32, 10), Recorder.fills.items[12].rect.h);
 }
 
 test "init rejects values outside the signed cell range" {

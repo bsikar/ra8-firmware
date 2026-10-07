@@ -91,17 +91,17 @@ fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg:
 /// Format into stack storage so rendering never allocates.
 fn pageLabel(buffer: []u8, pager: *const Pager, page: u16, pages: u16) [*:0]const u8 {
     const label = switch (pager.label_format) {
-        .page => std.fmt.bufPrintZ(buffer, "Page {d} of {d}", .{ if (pages == 0) 0 else page + 1, pages }),
+        .page => std.fmt.bufPrintSentinel(buffer, "Page {d} of {d}", .{ if (pages == 0) 0 else page + 1, pages }, 0),
         .range => rangeLabel(buffer, pager, page, pages),
     } catch return "Page 0 of 0";
     return label.ptr;
 }
 
 fn rangeLabel(buffer: []u8, pager: *const Pager, page: u16, pages: u16) ![:0]u8 {
-    if (pages == 0) return std.fmt.bufPrintZ(buffer, "0 to 0 of 0", .{});
+    if (pages == 0) return std.fmt.bufPrintSentinel(buffer, "0 to 0 of 0", .{}, 0);
     const first = @as(u32, page) * pager.page_capacity + 1;
     const last = @min(first + pager.page_capacity - 1, pager.item_count);
-    return std.fmt.bufPrintZ(buffer, "{d} to {d} of {d}", .{ first, last, pager.item_count });
+    return std.fmt.bufPrintSentinel(buffer, "{d} to {d} of {d}", .{ first, last, pager.item_count }, 0);
 }
 
 fn render(w: *Widget) callconv(.c) void {

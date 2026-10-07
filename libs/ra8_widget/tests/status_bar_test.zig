@@ -34,17 +34,19 @@ const Draw = struct {
 
 /// Recording paint backend: every primitive appends to a module-level log.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 8) = .{};
-    var draws: std.BoundedArray(Draw, 8) = .{};
+    var fills_buffer: [8]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [8]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn reset() void {
-        fills = .{};
-        draws = .{};
+        fills.clearRetainingCapacity();
+        draws.clearRetainingCapacity();
         last_message = null;
     }
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn drawText(
@@ -55,7 +57,7 @@ const Recorder = struct {
         fg: u32,
         bg: u32,
     ) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
+        draws.appendBounded(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
     }
 
     /// Fixed-width measurement so right alignment has something to subtract.
@@ -166,13 +168,13 @@ test "render is a no-op without a descriptor or a backend" {
     widget.vt = abi.ra8_widget_status_bar_vtable();
 
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 
     var no_paint = barOn(null, "left", "right", 1);
     try render(&widget, &no_paint);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a full band fills, draws both labels, then rules the bottom edge" {
@@ -182,16 +184,16 @@ test "a full band fills, draws both labels, then rules the bottom edge" {
 
     try render(&widget, &bar);
 
-    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.len);
-    try std.testing.expectEqual(Fill{ .x = 10, .y = 20, .w = 200, .h = 24, .color = bg_color }, Recorder.fills.buffer[0]);
-    try std.testing.expectEqual(Fill{ .x = 10, .y = 42, .w = 200, .h = 2, .color = rule_color }, Recorder.fills.buffer[1]);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.items.len);
+    try std.testing.expectEqual(Fill{ .x = 10, .y = 20, .w = 200, .h = 24, .color = bg_color }, Recorder.fills.items[0]);
+    try std.testing.expectEqual(Fill{ .x = 10, .y = 42, .w = 200, .h = 2, .color = rule_color }, Recorder.fills.items[1]);
 
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
-    try std.testing.expectEqualStrings("9:41", std.mem.span(Recorder.draws.buffer[0].text));
-    try std.testing.expectEqual(fg_color, Recorder.draws.buffer[0].fg);
-    try std.testing.expectEqualStrings("88%", std.mem.span(Recorder.draws.buffer[1].text));
-    try std.testing.expectEqual(fg_right_color, Recorder.draws.buffer[1].fg);
-    try std.testing.expectEqual(bg_color, Recorder.draws.buffer[1].bg);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("9:41", std.mem.span(Recorder.draws.items[0].text));
+    try std.testing.expectEqual(fg_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqualStrings("88%", std.mem.span(Recorder.draws.items[1].text));
+    try std.testing.expectEqual(fg_right_color, Recorder.draws.items[1].fg);
+    try std.testing.expectEqual(bg_color, Recorder.draws.items[1].bg);
 }
 
 test "the right label sits right of the left one" {
@@ -201,7 +203,7 @@ test "the right label sits right of the left one" {
 
     try render(&widget, &bar);
 
-    try std.testing.expect(Recorder.draws.buffer[1].x > Recorder.draws.buffer[0].x);
+    try std.testing.expect(Recorder.draws.items[1].x > Recorder.draws.items[0].x);
 }
 
 test "a null label is skipped and the other still draws" {
@@ -211,9 +213,9 @@ test "a null label is skipped and the other still draws" {
 
     try render(&widget, &bar);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualStrings("only", std.mem.span(Recorder.draws.buffer[0].text));
-    try std.testing.expectEqual(fg_right_color, Recorder.draws.buffer[0].fg);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("only", std.mem.span(Recorder.draws.items[0].text));
+    try std.testing.expectEqual(fg_right_color, Recorder.draws.items[0].fg);
 }
 
 test "a backend with no draw_text still fills the band and the rule" {
@@ -223,9 +225,9 @@ test "a backend with no draw_text still fills the band and the rule" {
 
     try render(&widget, &bar);
 
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.len);
-    try std.testing.expectEqual(@as(i32, 3), Recorder.fills.buffer[1].h);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(i32, 3), Recorder.fills.items[1].h);
 }
 
 test "a rule_h at or below zero leaves the hairline off" {
@@ -234,12 +236,12 @@ test "a rule_h at or below zero leaves the hairline off" {
 
     var flat = barOn(&full_backend, "a", "b", 0);
     try render(&widget, &flat);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
 
     Recorder.reset();
     var negative = barOn(&full_backend, "a", "b", -4);
     try render(&widget, &negative);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
 }
 
 test "a backend with no fill_rect draws the labels and no bands" {
@@ -249,8 +251,8 @@ test "a backend with no fill_rect draws the labels and no bands" {
 
     try render(&widget, &bar);
 
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
 }
 
 test "the hairline hugs the bottom edge whatever the band height" {
@@ -260,7 +262,7 @@ test "the hairline hugs the bottom edge whatever the band height" {
 
     try render(&widget, &bar);
 
-    const rule = Recorder.fills.buffer[1];
+    const rule = Recorder.fills.items[1];
     try std.testing.expectEqual(@as(i32, -5), rule.x);
     try std.testing.expectEqual(@as(i32, 42), rule.y);
     try std.testing.expectEqual(@as(i32, 64), rule.w);

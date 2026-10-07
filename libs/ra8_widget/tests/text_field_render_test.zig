@@ -48,11 +48,11 @@ fn renderTextFieldGolden(name: []const u8, buffer: []u8, len: u16, golden: []con
     field_widget.vt.?.render.?(&field_widget);
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
         const path = try std.fmt.allocPrint(allocator, "tests/golden/{s}", .{name});
         defer allocator.free(path);
-        try std.fs.cwd().writeFile(.{ .sub_path = path, .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = path, .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, golden, rendered);
     }

@@ -41,8 +41,10 @@ const Draw = struct {
 /// Recording paint backend: every primitive appends to a module-level log, so
 /// a render can be asserted call by call.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 8) = .{};
-    var draws: std.BoundedArray(Draw, 8) = .{};
+    var fills_buffer: [8]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [8]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
     var measured_w: i32 = 0;
     var measured_h: i32 = 0;
     var styled_w: i32 = 0;
@@ -52,8 +54,8 @@ const Recorder = struct {
     var styled_size: ?u8 = null;
 
     fn reset() void {
-        fills = .{};
-        draws = .{};
+        fills.clearRetainingCapacity();
+        draws.clearRetainingCapacity();
         measured_w = 0;
         measured_h = 0;
         styled_w = 0;
@@ -65,7 +67,7 @@ const Recorder = struct {
     }
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn record(x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32, face: ?u8, weight: ?u8, size: ?u8) void {
@@ -73,7 +75,7 @@ const Recorder = struct {
         const bytes = std.mem.span(str);
         draw.copied_len = @min(bytes.len, draw.copied.len);
         @memcpy(draw.copied[0..draw.copied_len], bytes[0..draw.copied_len]);
-        draws.append(draw) catch unreachable;
+        draws.appendBounded(draw) catch unreachable;
     }
 
     fn drawText(_: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32) callconv(.c) void {
@@ -222,8 +224,8 @@ test "render fills the whole rect with bg and draws the text at the inset" {
     var label = labelOn(&full_backend, "hi");
     try renderBound(&w, &label);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
-    const fill = Recorder.fills.get(0);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
+    const fill = Recorder.fills.items[0];
     try std.testing.expectEqual(abi.Rect{ .x = 10, .y = 20, .w = 100, .h = 40 }, abi.Rect{
         .x = fill.x,
         .y = fill.y,
@@ -232,8 +234,8 @@ test "render fills the whole rect with bg and draws the text at the inset" {
     });
     try std.testing.expectEqual(@as(u32, 0x445566), fill.color);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    const draw = Recorder.draws.get(0);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(i32, 14), draw.x);
     try std.testing.expectEqual(@as(i32, 24), draw.y);
     try std.testing.expectEqual(@as(u32, 0x112233), draw.fg);
@@ -250,7 +252,7 @@ test "a centred label is placed by the backend's measurement" {
     label.alignment = .center;
     try renderBound(&w, &label);
 
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(i32, 40), draw.x);
     try std.testing.expectEqual(@as(i32, 35), draw.y);
 }
@@ -261,8 +263,8 @@ test "a label with no text fills the background and draws nothing" {
     var label = labelOn(&full_backend, null);
     try renderBound(&w, &label);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a backend without draw_text still paints the background" {
@@ -271,8 +273,8 @@ test "a backend without draw_text still paints the background" {
     var label = labelOn(&fill_only_backend, "hi");
     try renderBound(&w, &label);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a backend that draws nothing touches no pixels" {
@@ -281,8 +283,8 @@ test "a backend that draws nothing touches no pixels" {
     var label = labelOn(&silent_backend, "hi");
     try renderBound(&w, &label);
 
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "render with no descriptor and with no paint backend are both no-ops" {
@@ -290,13 +292,13 @@ test "render with no descriptor and with no paint backend are both no-ops" {
     var w = emptyWidget();
     w.vt = abi.ra8_widget_label_vtable();
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
 
     var label = labelOn(&full_backend, "hi");
     label.paint = null;
     try renderBound(&w, &label);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "the mirrored C layouts are the ones the header publishes" {
@@ -319,7 +321,7 @@ test "serif label uses styled measure and draw callbacks with matching face adva
     label.face = .serif;
     label.alignment = .center;
     try renderBound(&w, &label);
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(i32, 41), draw.x);
     try std.testing.expectEqual(@as(i32, 33), draw.y);
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
@@ -335,7 +337,7 @@ test "styled drawing without styled measurement falls back to inset placement" {
     label.face = .serif;
     label.alignment = .center;
     try renderBound(&w, &label);
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(i32, 14), draw.x);
     try std.testing.expectEqual(@as(i32, 24), draw.y);
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
@@ -354,7 +356,7 @@ test "bold label uses matching family and weight for measurement and drawing" {
     try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_label_init(&widget, &label));
     widget.vt.?.render.?(&widget);
 
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(?u8, 1), Recorder.styled_face);
     try std.testing.expectEqual(@as(?u8, 1), Recorder.styled_weight);
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
@@ -375,7 +377,7 @@ test "bold labels pass non-default size through the combined style callbacks" {
     label.alignment = .center;
     try std.testing.expectEqual(abi.err.ok, abi.ra8_widget_label_init(&widget, &label));
     widget.vt.?.render.?(&widget);
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(?u8, 1), draw.face);
     try std.testing.expectEqual(@as(?u8, 1), draw.weight);
     try std.testing.expectEqual(@as(?u8, 4), draw.size);
@@ -392,10 +394,10 @@ test "word wrap hard-breaks long words and respects explicit newlines" {
     var label = labelOn(&styled_backend, "abcd");
     label.wrap = .word;
     try renderBound(&w, &label);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
-    try std.testing.expectEqualStrings("ab", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
-    try std.testing.expectEqualStrings("cd", Recorder.draws.get(1).copied[0..Recorder.draws.get(1).copied_len]);
-    try std.testing.expectEqual(Recorder.draws.get(0).y + 12, Recorder.draws.get(1).y);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("ab", Recorder.draws.items[0].copied[0..Recorder.draws.items[0].copied_len]);
+    try std.testing.expectEqualStrings("cd", Recorder.draws.items[1].copied[0..Recorder.draws.items[1].copied_len]);
+    try std.testing.expectEqual(Recorder.draws.items[0].y + 12, Recorder.draws.items[1].y);
 
     Recorder.reset();
     Recorder.styled_w = 6;
@@ -405,8 +407,8 @@ test "word wrap hard-breaks long words and respects explicit newlines" {
     var exact_label = labelOn(&styled_backend, "abcd");
     exact_label.wrap = .word;
     try renderBound(&exact_widget, &exact_label);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualStrings("abcd", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("abcd", Recorder.draws.items[0].copied[0..Recorder.draws.items[0].copied_len]);
 
     Recorder.reset();
     Recorder.styled_w = 6;
@@ -415,9 +417,9 @@ test "word wrap hard-breaks long words and respects explicit newlines" {
     var newline_label = labelOn(&styled_backend, "ab\ncd");
     newline_label.wrap = .word;
     try renderBound(&newline_widget, &newline_label);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
-    try std.testing.expectEqualStrings("ab", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
-    try std.testing.expectEqualStrings("cd", Recorder.draws.get(1).copied[0..Recorder.draws.get(1).copied_len]);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("ab", Recorder.draws.items[0].copied[0..Recorder.draws.items[0].copied_len]);
+    try std.testing.expectEqualStrings("cd", Recorder.draws.items[1].copied[0..Recorder.draws.items[1].copied_len]);
 }
 
 test "clip preserves an exact fit and appends an ellipsis on overflow" {
@@ -429,8 +431,8 @@ test "clip preserves an exact fit and appends an ellipsis on overflow" {
     var exact = labelOn(&styled_backend, "abcdef");
     exact.wrap = .clip;
     try renderBound(&w, &exact);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualStrings("abcdef", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("abcdef", Recorder.draws.items[0].copied[0..Recorder.draws.items[0].copied_len]);
 
     Recorder.reset();
     Recorder.styled_w = 6;
@@ -438,8 +440,8 @@ test "clip preserves an exact fit and appends an ellipsis on overflow" {
     var overflow = labelOn(&styled_backend, "abcdefg");
     overflow.wrap = .clip;
     try renderBound(&w, &overflow);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualSlices(u8, "abcde\xe2\x80\xa6", Recorder.draws.get(0).copied[0..Recorder.draws.get(0).copied_len]);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualSlices(u8, "abcde\xe2\x80\xa6", Recorder.draws.items[0].copied[0..Recorder.draws.items[0].copied_len]);
 }
 
 test "ui_26 and ui_30 labels measure and draw at their own size" {
@@ -454,8 +456,8 @@ test "ui_26 and ui_30 labels measure and draw at their own size" {
     clipped.size = .ui_26;
     clipped.wrap = .clip;
     try renderBound(&clip_widget, &clipped);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqual(@as(?u8, 9), Recorder.draws.get(0).size);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqual(@as(?u8, 9), Recorder.draws.items[0].size);
 
     Recorder.reset();
     Recorder.styled_w = 6;
@@ -465,7 +467,7 @@ test "ui_26 and ui_30 labels measure and draw at their own size" {
     wrapped.size = .ui_30;
     wrapped.wrap = .word;
     try renderBound(&wrap_widget, &wrapped);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
-    try std.testing.expectEqual(@as(?u8, 10), Recorder.draws.get(0).size);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
+    try std.testing.expectEqual(@as(?u8, 10), Recorder.draws.items[0].size);
     try std.testing.expectEqual(@as(?u8, 10), Recorder.styled_size);
 }

@@ -17,7 +17,8 @@ const Op = enum { layout, damage, render_dirty, dispatch, invalidate };
 
 /// Recorded call log plus the answers the stubs hand back.
 const Flat = struct {
-    var log: std.BoundedArray(Op, 32) = .{};
+    var log_buffer: [32]Op = undefined;
+    var log: std.ArrayList(Op) = .initBuffer(&log_buffer);
 
     var layout_result: u16 = abi.err.ok;
     var damage_result: u16 = abi.err.ok;
@@ -46,7 +47,8 @@ const Invalidation = struct {
     refresh: u8,
 };
 
-var invalidations: std.BoundedArray(Invalidation, 16) = .{};
+var invalidations_buffer: [16]Invalidation = undefined;
+var invalidations: std.ArrayList(Invalidation) = .initBuffer(&invalidations_buffer);
 var last_message: ?[*:0]const u8 = null;
 
 export fn ra8_log_emit_error(_: [*:0]const u8, message: [*:0]const u8) void {
@@ -54,8 +56,8 @@ export fn ra8_log_emit_error(_: [*:0]const u8, message: [*:0]const u8) void {
 }
 
 export fn ra8_widget_invalidate(w: *abi.Widget, refresh: u8) callconv(.c) u16 {
-    Flat.log.append(.invalidate) catch unreachable;
-    invalidations.append(.{ .widget = w, .refresh = refresh }) catch unreachable;
+    Flat.log.appendBounded(.invalidate) catch unreachable;
+    invalidations.appendBounded(.{ .widget = w, .refresh = refresh }) catch unreachable;
     w.dirty = true;
     w.refresh = refresh;
     return abi.err.ok;
@@ -71,7 +73,7 @@ export fn ra8_widget_layout_stack(
     box_scratch: ?*abi.Box,
     box_cap: u16,
 ) callconv(.c) u16 {
-    Flat.log.append(.layout) catch unreachable;
+    Flat.log.appendBounded(.layout) catch unreachable;
     Flat.layout_count = count;
     Flat.layout_frame = frame.*;
     Flat.layout_axis = axis;
@@ -89,7 +91,7 @@ export fn ra8_widget_damage(
     out_hint: *abi.Refresh,
     out_count: *u16,
 ) callconv(.c) u16 {
-    Flat.log.append(.damage) catch unreachable;
+    Flat.log.appendBounded(.damage) catch unreachable;
     Flat.damage_count = count;
     out_rect.* = .{ .x = 1, .y = 2, .w = 3, .h = 4 };
     out_hint.* = .fast;
@@ -98,7 +100,7 @@ export fn ra8_widget_damage(
 }
 
 export fn ra8_widget_render_dirty(widgets: [*]abi.Widget, count: u16) callconv(.c) u16 {
-    Flat.log.append(.render_dirty) catch unreachable;
+    Flat.log.appendBounded(.render_dirty) catch unreachable;
     Flat.render_count = count;
     if (Flat.render_recurses) {
         for (widgets[0..count]) |*child| {
@@ -117,20 +119,20 @@ export fn ra8_widget_dispatch(
     _: *const abi.Event,
     out_handled: *bool,
 ) callconv(.c) u16 {
-    Flat.log.append(.dispatch) catch unreachable;
+    Flat.log.appendBounded(.dispatch) catch unreachable;
     Flat.dispatch_count = count;
     out_handled.* = Flat.dispatch_handled;
     return abi.err.ok;
 }
 
 fn reset() void {
-    Flat.log = .{};
+    Flat.log.clearRetainingCapacity();
     Flat.layout_result = abi.err.ok;
     Flat.damage_result = abi.err.ok;
     Flat.render_result = abi.err.ok;
     Flat.render_recurses = false;
     Flat.dispatch_handled = false;
-    invalidations = .{};
+    invalidations.clearRetainingCapacity();
     last_message = null;
 }
 
@@ -338,7 +340,7 @@ test "compose refuses every null argument" {
         abi.err.null_ptr,
         abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, null),
     );
-    try std.testing.expectEqual(0, Flat.log.len);
+    try std.testing.expectEqual(0, Flat.log.items.len);
 }
 
 test "compose refuses a widget that is not a panel" {
@@ -352,7 +354,7 @@ test "compose refuses a widget that is not a panel" {
         abi.err.invalid_arg,
         abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
     );
-    try std.testing.expectEqual(0, Flat.log.len);
+    try std.testing.expectEqual(0, Flat.log.items.len);
 }
 
 test "compose refuses a panel with no child array" {
@@ -422,7 +424,7 @@ test "compose lays out, then reports damage, then composites" {
     try std.testing.expectEqualSlices(
         Op,
         &[_]Op{ .layout, .damage, .render_dirty },
-        Flat.log.slice(),
+        Flat.log.items,
     );
     try std.testing.expectEqual(abi.Refresh.fast, hint);
     try std.testing.expectEqual(2, dirty);
@@ -444,7 +446,7 @@ test "compose forwards a layout failure and stops there" {
         abi.err.invalid_arg,
         abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
     );
-    try std.testing.expectEqualSlices(Op, &[_]Op{.layout}, Flat.log.slice());
+    try std.testing.expectEqualSlices(Op, &[_]Op{.layout}, Flat.log.items);
 }
 
 test "compose forwards a damage failure and composites nothing" {
@@ -462,7 +464,7 @@ test "compose forwards a damage failure and composites nothing" {
         abi.err.null_ptr,
         abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
     );
-    try std.testing.expectEqualSlices(Op, &[_]Op{ .layout, .damage }, Flat.log.slice());
+    try std.testing.expectEqualSlices(Op, &[_]Op{ .layout, .damage }, Flat.log.items);
 }
 
 test "compose forwards a render failure" {
@@ -483,7 +485,7 @@ test "compose forwards a render failure" {
     try std.testing.expectEqualSlices(
         Op,
         &[_]Op{ .layout, .damage, .render_dirty },
-        Flat.log.slice(),
+        Flat.log.items,
     );
 }
 
@@ -548,14 +550,14 @@ test "a dirty panel repaints its whole subtree with its own hint" {
 
     abi.ra8_widget_panel_vtable().render.?(&w);
 
-    try std.testing.expectEqual(2, invalidations.len);
-    for (invalidations.slice()) |seen| {
+    try std.testing.expectEqual(2, invalidations.items.len);
+    for (invalidations.items) |seen| {
         try std.testing.expectEqual(@backingInt(abi.Refresh.fast), seen.refresh);
     }
     try std.testing.expectEqualSlices(
         Op,
         &[_]Op{ .layout, .invalidate, .invalidate, .render_dirty },
-        Flat.log.slice(),
+        Flat.log.items,
     );
 }
 
@@ -568,10 +570,10 @@ test "a panel carrying no hint repaints at quality" {
     w.refresh = @backingInt(abi.Refresh.none);
 
     abi.ra8_widget_panel_vtable().render.?(&w);
-    try std.testing.expectEqual(1, invalidations.len);
+    try std.testing.expectEqual(1, invalidations.items.len);
     try std.testing.expectEqual(
         @backingInt(abi.Refresh.quality),
-        invalidations.slice()[0].refresh,
+        invalidations.items[0].refresh,
     );
 }
 
@@ -584,16 +586,16 @@ test "render leaves an invisible child out of the repaint" {
     try bound(&w, &panel);
 
     abi.ra8_widget_panel_vtable().render.?(&w);
-    try std.testing.expectEqual(2, invalidations.len);
-    try std.testing.expectEqual(&kids[0], invalidations.slice()[0].widget);
-    try std.testing.expectEqual(&kids[2], invalidations.slice()[1].widget);
+    try std.testing.expectEqual(2, invalidations.items.len);
+    try std.testing.expectEqual(&kids[0], invalidations.items[0].widget);
+    try std.testing.expectEqual(&kids[2], invalidations.items[1].widget);
 }
 
 test "render on a widget that is not a panel does nothing" {
     reset();
     var w = leaf();
     abi.ra8_widget_panel_vtable().render.?(&w);
-    try std.testing.expectEqual(0, Flat.log.len);
+    try std.testing.expectEqual(0, Flat.log.items.len);
 }
 
 test "a layout failure during render composites nothing" {
@@ -605,8 +607,8 @@ test "a layout failure during render composites nothing" {
     try bound(&w, &panel);
 
     abi.ra8_widget_panel_vtable().render.?(&w);
-    try std.testing.expectEqualSlices(Op, &[_]Op{.layout}, Flat.log.slice());
-    try std.testing.expectEqual(0, invalidations.len);
+    try std.testing.expectEqualSlices(Op, &[_]Op{.layout}, Flat.log.items);
+    try std.testing.expectEqual(0, invalidations.items.len);
 }
 
 test "input is offered to the children and the answer is theirs" {
@@ -630,7 +632,7 @@ test "input on a widget that is not a panel is declined" {
     var w = leaf();
     const event: abi.Event = .{ .kind = .button, .reserved = 0, .button_id = 3, .x = 0, .y = 0 };
     try std.testing.expect(!abi.ra8_widget_panel_vtable().on_input.?(&w, &event));
-    try std.testing.expectEqual(0, Flat.log.len);
+    try std.testing.expectEqual(0, Flat.log.items.len);
 }
 
 test "a panel nests in a panel and the inner subtree repaints too" {
@@ -663,14 +665,14 @@ test "a panel nests in a panel and the inner subtree repaints too" {
         .invalidate,
         .invalidate,
         .render_dirty,
-    }, Flat.log.slice());
+    }, Flat.log.items);
     // Three leaves painted: the outer panel's own leaf child, then the two
     // grandchildren the inner panel composites.
     try std.testing.expectEqual(3, leaf_renders);
 }
 
 test "a successful compose publishes its visible named widget tree" {
-    if (builtin.mode != .Debug) return error.SkipZigTest;
+    if (builtin.mode != .debug) return error.SkipZigTest;
     reset();
 
     var grandchildren = [_]abi.Widget{leaf()};
@@ -734,7 +736,7 @@ test "a successful compose publishes its visible named widget tree" {
 }
 
 test "debug channel publishes 256 records and flags records beyond its cap" {
-    if (builtin.mode != .Debug) return error.SkipZigTest;
+    if (builtin.mode != .debug) return error.SkipZigTest;
     reset();
 
     var kids: [debug.limits.records + 2]abi.Widget = undefined;

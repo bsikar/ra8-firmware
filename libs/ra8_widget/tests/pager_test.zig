@@ -28,10 +28,11 @@ const Draw = struct {
 };
 
 const Recorder = struct {
-    var draws: std.BoundedArray(Draw, 4) = .{};
+    var draws_buffer: [4]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn reset() void {
-        draws = .{};
+        draws.clearRetainingCapacity();
         last_message = null;
     }
 
@@ -40,7 +41,7 @@ const Recorder = struct {
         const source = std.mem.span(text);
         @memcpy(draw.text[0..source.len], source);
         draw.text[source.len] = 0;
-        draws.append(draw) catch unreachable;
+        draws.appendBounded(draw) catch unreachable;
     }
 };
 
@@ -157,12 +158,12 @@ test "render labels the page and dims unavailable directions" {
     _ = abi.ra8_widget_pager_init(&widget, &pager);
     abi.ra8_widget_pager_vtable().render.?(&widget);
 
-    try std.testing.expectEqual(@as(usize, 3), Recorder.draws.len);
-    try std.testing.expectEqualStrings("Previous", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[0].text))));
-    try std.testing.expectEqual(disabled_color, Recorder.draws.buffer[0].fg);
-    try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
-    try std.testing.expectEqualStrings("Next", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[2].text))));
-    try std.testing.expectEqual(fg_color, Recorder.draws.buffer[2].fg);
+    try std.testing.expectEqual(@as(usize, 3), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("Previous", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[0].text))));
+    try std.testing.expectEqual(disabled_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[1].text))));
+    try std.testing.expectEqualStrings("Next", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[2].text))));
+    try std.testing.expectEqual(fg_color, Recorder.draws.items[2].fg);
 }
 
 test "range format reports first, middle, and partial last item ranges" {
@@ -178,7 +179,7 @@ test "range format reports first, middle, and partial last item ranges" {
         var widget = widgetAt();
         _ = abi.ra8_widget_pager_init(&widget, &pager);
         abi.ra8_widget_pager_vtable().render.?(&widget);
-        try std.testing.expectEqualStrings(case.expected, std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
+        try std.testing.expectEqualStrings(case.expected, std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[1].text))));
     }
 }
 
@@ -189,7 +190,7 @@ test "range format with no pages displays a zero range" {
     var widget = widgetAt();
     _ = abi.ra8_widget_pager_init(&widget, &pager);
     abi.ra8_widget_pager_vtable().render.?(&widget);
-    try std.testing.expectEqualStrings("0 to 0 of 0", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
+    try std.testing.expectEqualStrings("0 to 0 of 0", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[1].text))));
 }
 
 test "zero-initialized label format preserves the page label" {
@@ -204,7 +205,7 @@ test "zero-initialized label format preserves the page label" {
     var widget = widgetAt();
     _ = abi.ra8_widget_pager_init(&widget, &pager);
     abi.ra8_widget_pager_vtable().render.?(&widget);
-    try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
+    try std.testing.expectEqualStrings("Page 1 of 3", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[1].text))));
 }
 
 test "empty content displays zero of zero and disables both directions" {
@@ -214,10 +215,10 @@ test "empty content displays zero of zero and disables both directions" {
     _ = abi.ra8_widget_pager_init(&widget, &pager);
     abi.ra8_widget_pager_vtable().render.?(&widget);
 
-    try std.testing.expectEqualStrings("Previous", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[0].text))));
-    try std.testing.expectEqual(disabled_color, Recorder.draws.buffer[0].fg);
-    try std.testing.expectEqualStrings("Page 0 of 0", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.buffer[1].text))));
-    try std.testing.expectEqual(disabled_color, Recorder.draws.buffer[2].fg);
+    try std.testing.expectEqualStrings("Previous", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[0].text))));
+    try std.testing.expectEqual(disabled_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqualStrings("Page 0 of 0", std.mem.span(@as([*:0]const u8, @ptrCast(&Recorder.draws.items[1].text))));
+    try std.testing.expectEqual(disabled_color, Recorder.draws.items[2].fg);
 }
 
 test "non-touch events and touches outside the widget are declined" {
