@@ -2,7 +2,7 @@
     .name = .fw_if,
     .version = "0.1.0",
     .fingerprint = 0x51b690db361b0e94,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         // Turns fw_os.h into the modules tests/os_contract_test.zig checks.
         .translate_c = .{

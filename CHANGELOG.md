@@ -11,6 +11,9 @@ pure 7-bit ASCII per the project character-encoding policy.
 
 ### Changed
 
+- **Zig 0.17.0 toolchain** -- every build.zig.zon now requires Zig 0.17.0,
+  and the devcontainer installs the 0.17.0 release archives, replacing the
+  0.14.1 pin.
 - **Decoded CPU fault reports** -- the shared exception handler now names every
   asserted CFSR cause and reports MMFAR or BFAR as fault addresses only when
   their architectural validity bits are set.

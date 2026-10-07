@@ -57,7 +57,7 @@ _zig:
     set -euo pipefail
     if ! command -v "${RA8_ZIG}" >/dev/null 2>&1; then
         echo "error: no Zig toolchain found as '${RA8_ZIG}'." >&2
-        echo "       Install the pinned Zig 0.14.1, or set RA8_ZIG to its path." >&2
+        echo "       Install the pinned Zig 0.17.0, or set RA8_ZIG to its path." >&2
         exit 1
     fi
 

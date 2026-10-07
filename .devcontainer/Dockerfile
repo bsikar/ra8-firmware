@@ -361,9 +361,9 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 
 # zig -- compiler for the reg_gen host code generation tool.
 # Official releases: https://ziglang.org/download/
-ARG ZIG_VERSION=0.14.1
-ARG ZIG_SHA256_X86_64=24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c
-ARG ZIG_SHA256_AARCH64=f7a654acc967864f7a050ddacfaa778c7504a0eca8d2b678839c21eea47c992b
+ARG ZIG_VERSION=0.17.0
+ARG ZIG_SHA256_X86_64=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
+ARG ZIG_SHA256_AARCH64=9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8
 RUN set -eux; \
     case "$(uname -m)" in \
       x86_64)  zigarch=x86_64;  zigsha="${ZIG_SHA256_X86_64}" ;; \
