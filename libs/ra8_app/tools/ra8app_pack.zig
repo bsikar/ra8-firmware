@@ -15,21 +15,21 @@ const Ed25519 = std.crypto.sign.Ed25519;
 const usage = "usage: ra8app_pack SEED_FILE APP_ID DISPLAY_NAME CAPABILITIES MODULE.bin OUT.ra8app\n";
 const file_max: usize = 16 * 1024 * 1024;
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const allocator = init.arena.allocator();
+    const stderr = std.Io.File.stderr();
 
-    const args = try std.process.argsAlloc(allocator);
+    const args = try init.minimal.args.toSlice(allocator);
     if (args.len != 7) {
-        try std.io.getStdErr().writeAll(usage);
+        try stderr.writeStreamingAll(io, usage);
         std.process.exit(2);
     }
 
-    const cwd = std.fs.cwd();
-    const seed = try cwd.readFileAlloc(allocator, args[1], file_max);
+    const cwd = std.Io.Dir.cwd();
+    const seed = try cwd.readFileAlloc(io, args[1], allocator, .limited(file_max));
     if (seed.len != Ed25519.KeyPair.seed_length) {
-        try std.io.getStdErr().writeAll("ra8app_pack: the seed file must be exactly 32 bytes\n");
+        try stderr.writeStreamingAll(io, "ra8app_pack: the seed file must be exactly 32 bytes\n");
         std.process.exit(1);
     }
     const key_pair = try Ed25519.KeyPair.generateDeterministic(seed[0..Ed25519.KeyPair.seed_length].*);
@@ -39,7 +39,7 @@ pub fn main() !void {
         .display_name = args[3],
         .capabilities = try std.fmt.parseInt(u32, args[4], 0),
     };
-    const module = try cwd.readFileAlloc(allocator, args[5], file_max);
+    const module = try cwd.readFileAlloc(io, args[5], allocator, .limited(file_max));
     const image = try module_pack.packModule(allocator, module, identity, key_pair);
-    try cwd.writeFile(.{ .sub_path = args[6], .data = image });
+    try cwd.writeFile(io, .{ .sub_path = args[6], .data = image });
 }
