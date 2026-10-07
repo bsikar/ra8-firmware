@@ -21,9 +21,9 @@ const Run = struct {
 
 /// Run the gate over `input` with `argv`, capturing everything it writes.
 fn run(allocator: std.mem.Allocator, argv: []const []const u8, input: []const u8) !Run {
-    var out = std.ArrayList(u8).init(allocator);
-    var err = std.ArrayList(u8).init(allocator);
-    const status = try cli.run(allocator, argv, input, out.writer(), err.writer());
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
+    const status = try cli.run(allocator, argv, input, &out.writer, &err.writer);
     return .{
         .status = status,
         .out = try out.toOwnedSlice(),
@@ -175,25 +175,25 @@ test "an undecodable byte survives into the echoed line" {
 test "a whole clean history of many messages exits 0" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var text = std.ArrayList(u8).init(arena.allocator());
+    var text: std.Io.Writer.Allocating = .init(arena.allocator());
     var index: usize = 0;
     while (index < 200) : (index += 1) {
-        try text.writer().print("fix(core): change {d}\n\nBody line for {d}.\n\n", .{ index, index });
+        try text.writer.print("fix(core): change {d}\n\nBody line for {d}.\n\n", .{ index, index });
     }
-    const result = try run(arena.allocator(), &.{}, text.items);
+    const result = try run(arena.allocator(), &.{}, text.written());
     try std.testing.expectEqual(@as(u8, 0), result.status);
 }
 
 test "one bad message among many is still caught" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var text = std.ArrayList(u8).init(arena.allocator());
+    var text: std.Io.Writer.Allocating = .init(arena.allocator());
     var index: usize = 0;
     while (index < 50) : (index += 1) {
-        try text.writer().print("fix(core): change {d}\n\n", .{index});
+        try text.writer.print("fix(core): change {d}\n\n", .{index});
     }
-    try text.writer().print("fix(spi): the {s} pin\n", .{copi});
-    const result = try run(arena.allocator(), &.{}, text.items);
+    try text.writer.print("fix(spi): the {s} pin\n", .{copi});
+    const result = try run(arena.allocator(), &.{}, text.written());
     try std.testing.expectEqual(@as(u8, 1), result.status);
 }
 
@@ -204,9 +204,9 @@ test "the gate names itself without a file extension" {
 test "the selftest is callable on its own" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var out = std.ArrayList(u8).init(arena.allocator());
-    var err = std.ArrayList(u8).init(arena.allocator());
-    const status = try cli.selftest(arena.allocator(), out.writer(), err.writer());
+    var out: std.Io.Writer.Allocating = .init(arena.allocator());
+    var err: std.Io.Writer.Allocating = .init(arena.allocator());
+    const status = try cli.selftest(arena.allocator(), &out.writer, &err.writer);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expectEqualStrings("", err.items);
+    try std.testing.expectEqualStrings("", err.written());
 }
