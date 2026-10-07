@@ -10,6 +10,36 @@
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
+const Translator = @import("translate_c").Translator;
+
+/// The headers fs_c.zig exposes, translated once so every Zig unit shares
+/// their exact layouts. The build writes the include list, so no C is added.
+const fs_header =
+    \\#include <stdbool.h>
+    \\#include "ra8_fs_fat_internal.h"
+    \\#include "ra8_fs_meta.h"
+    \\
+;
+
+fn translateHeaders(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Module {
+    const header = b.addWriteFiles().add("fs_c.h", fs_header);
+    const translator: Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = header,
+        .target = target,
+        .optimize = optimize,
+        .link_libc = false,
+    });
+    translator.defineCMacro("static_assert", "_Static_assert");
+    translator.defineCMacro("alignas", "_Alignas");
+    translator.addIncludePath(b.path("inc"));
+    translator.addIncludePath(b.path("src"));
+    translator.addIncludePath(b.path("../ra8_core/inc"));
+    return translator.mod;
+}
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
@@ -26,10 +56,7 @@ pub fn build(b: *std.Build) void {
         .pic = true,
         .unwind_tables = unwind,
     });
-    // fs_c.zig @cImports the C headers so Zig units share their exact layouts.
-    root.addIncludePath(b.path("inc"));
-    root.addIncludePath(b.path("src"));
-    root.addIncludePath(b.path("../ra8_core/inc"));
+    root.addImport("fs_h", translateHeaders(b, target, optimize));
     const library = b.addLibrary(.{ .name = "ra8_fs", .linkage = .static, .root_module = root });
     library.link_function_sections = true;
     library.link_data_sections = true;
