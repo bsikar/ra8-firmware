@@ -12,8 +12,9 @@
 //! staged list that filters to nothing, while nothing about this tree can
 //! legitimately reduce the sweep to a handful of files.
 //!
-//! `run` is parameterised on a directory handle, the repository root, the
-//! census, the scope policy and both streams, so every status above is
+//! `run` is parameterised on the I/O interface, a directory handle, the
+//! repository root, the scratch base, the census, the scope policy and both
+//! streams, so every status above is
 //! provable in a test with no process and no real repository.
 
 const std = @import("std");
@@ -57,13 +58,15 @@ const Target = struct {
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     gpa: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
+    tmp_base: []const u8,
     argv: []const []const u8,
     census: Census,
     policy: Policy,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     // One scan, one lifetime: the census, the joined paths and the findings
     // all live until the verdict is printed and die together with it.
@@ -75,11 +78,11 @@ pub fn run(
     // membrane this replaces matched `"--selftest" in argv[1:]`.
     for (argv) |arg| {
         if (std.mem.eql(u8, arg, "--selftest")) {
-            return selftest(allocator, dir, repo_root, census, policy, out, err);
+            return selftest(allocator, .{ .io = io, .dir = dir, .root = repo_root }, tmp_base, census, policy, out, err);
         }
     }
 
-    const tree = Tree{ .dir = dir, .root = repo_root };
+    const tree = Tree{ .io = io, .dir = dir, .root = repo_root };
     const targets = enumerateTargets(allocator, tree, argv, census, policy, err) catch |failure| {
         return switch (failure) {
             error.CensusCollapsed, error.CensusUnavailable => 2,
@@ -100,10 +103,10 @@ pub fn run(
         return 0;
     }
 
-    var missing = std.ArrayList([]const u8).init(allocator);
+    var missing: std.ArrayList([]const u8) = .empty;
     for (targets) |target| {
         if (try tree.endsInNewline(allocator, target.absolute)) continue;
-        try missing.append(target.display);
+        try missing.append(allocator, target.display);
     }
 
     if (missing.items.len == 0) {
@@ -125,10 +128,10 @@ fn enumerateTargets(
     argv: []const []const u8,
     census: Census,
     policy: Policy,
-    err: anytype,
+    err: *std.Io.Writer,
 ) ![]const Target {
-    var targets = std.ArrayList(Target).init(allocator);
-    errdefer targets.deinit();
+    var targets: std.ArrayList(Target) = .empty;
+    errdefer targets.deinit(allocator);
 
     if (argv.len != 0) {
         for (argv) |raw| {
@@ -146,7 +149,7 @@ fn enumerateTargets(
             // and it never reaches the missing list.
             if (implementation.isSource(absolute)) try appendTarget(allocator, tree, absolute, &targets);
         }
-        return targets.toOwnedSlice();
+        return targets.toOwnedSlice(allocator);
     }
 
     const rels = switch (census) {
@@ -170,7 +173,7 @@ fn enumerateTargets(
         const absolute = try std.fs.path.join(allocator, &.{ tree.root, rel });
         try appendTarget(allocator, tree, absolute, &targets);
     }
-    return targets.toOwnedSlice();
+    return targets.toOwnedSlice(allocator);
 }
 
 /// Keep one path unless the gate's own subtraction drops it.
@@ -182,7 +185,7 @@ fn appendTarget(
 ) !void {
     if (try implementation.isBuildOutputPath(allocator, absolute, tree.root)) return;
     if (implementation.hasExcludedFragment(absolute)) return;
-    try targets.append(.{
+    try targets.append(allocator, .{
         .absolute = absolute,
         .display = implementation.displayPath(absolute, tree.root),
     });
@@ -196,10 +199,10 @@ fn collectTree(
     targets: *std.ArrayList(Target),
 ) !void {
     var opened = tree.openIterable(root) catch return;
-    defer opened.close();
+    defer opened.close(tree.io);
     var walker = try opened.walk(allocator);
     defer walker.deinit();
-    while (try walker.next()) |entry| {
+    while (try walker.next(tree.io)) |entry| {
         if (entry.kind != .file) continue;
         const absolute = try std.fs.path.join(allocator, &.{ root, entry.path });
         if (!implementation.isSource(absolute)) continue;
@@ -212,34 +215,36 @@ fn collectTree(
 /// floor and it reaches the roots a hardcoded root list had dropped.
 fn selftest(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
-    repo_root: []const u8,
+    tree: Tree,
+    tmp_base: []const u8,
     census: Census,
     policy: Policy,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
-    var failures = std.ArrayList([]const u8).init(allocator);
-    const tree = Tree{ .dir = dir, .root = repo_root };
+    var failures: std.ArrayList([]const u8) = .empty;
 
-    var scratch = try Scratch.open(allocator);
+    var scratch = try Scratch.open(allocator, tree.io, tmp_base);
     defer scratch.close();
     try scratch.write("good.py", "x = 1\n");
     try scratch.write("bad.py", "x = 1");
     try scratch.write("empty.py", "");
     try expect(
+        allocator,
         try scratch.endsInNewline(allocator, "good.py"),
         "MUST NOT FIRE: a newline-terminated file",
         &failures,
         out,
     );
     try expect(
+        allocator,
         try scratch.endsInNewline(allocator, "empty.py"),
         "MUST NOT FIRE: an empty file",
         &failures,
         out,
     );
     try expect(
+        allocator,
         !(try scratch.endsInNewline(allocator, "bad.py")),
         "MUST FIRE: a file with no trailing newline",
         &failures,
@@ -254,15 +259,16 @@ fn selftest(
         },
     };
     const scope = try implementation.derivedScope(allocator, rels);
-    var kept = std.ArrayList([]const u8).init(allocator);
+    var kept: std.ArrayList([]const u8) = .empty;
     for (scope) |rel| {
         const absolute = try std.fs.path.join(allocator, &.{ tree.root, rel });
         if (try implementation.isBuildOutputPath(allocator, absolute, tree.root)) continue;
         if (implementation.hasExcludedFragment(absolute)) continue;
-        try kept.append(rel);
+        try kept.append(allocator, rel);
     }
 
     try expect(
+        allocator,
         kept.items.len >= policy.file_floor,
         try std.fmt.allocPrint(
             allocator,
@@ -274,6 +280,7 @@ fn selftest(
     );
     for ([_][]const u8{ "just", "infra" }) |root_name| {
         try expect(
+            allocator,
             implementation.scopeReaches(kept.items, root_name),
             try std.fmt.allocPrint(
                 allocator,
@@ -296,14 +303,20 @@ fn selftest(
 
 /// Record one selftest assertion and print its pass/fail line. Accumulates
 /// rather than returning early, so one failure does not hide the rest.
-fn expect(condition: bool, label: []const u8, failures: *std.ArrayList([]const u8), out: anytype) !void {
+fn expect(
+    allocator: std.mem.Allocator,
+    condition: bool,
+    label: []const u8,
+    failures: *std.ArrayList([]const u8),
+    out: *std.Io.Writer,
+) !void {
     try out.print("  [{s}] {s}\n", .{ if (condition) "ok" else "FAIL", label });
-    if (!condition) try failures.append(label);
+    if (!condition) try failures.append(allocator, label);
 }
 
 /// The detector's read: the LAST byte of `file`, never the whole of it.
 ///
-/// A ceiling on this read is a fail-open. `readToEndAlloc` does not truncate,
+/// A ceiling on this read is a fail-open. A limited read does not truncate,
 /// it fails, and a detector that turns a failed read into "fine" reports a
 /// clean tree for a file it never looked at, which is the one lie this gate
 /// exists to prevent. Only the final byte decides the verdict, so seek to it;
@@ -312,16 +325,17 @@ fn expect(condition: bool, label: []const u8, failures: *std.ArrayList([]const u
 /// A stream with no end position (a pipe, a `/proc` entry that stats as zero
 /// bytes) falls back to draining it uncapped, as the Python's `read()` did.
 /// An unreadable file still answers true.
-fn lastByteIsNewline(allocator: std.mem.Allocator, file: std.fs.File) !bool {
-    const end = file.getEndPos() catch return true;
+fn lastByteIsNewline(allocator: std.mem.Allocator, io: std.Io, file: std.Io.File) !bool {
+    const end = file.length(io) catch return true;
     if (end != 0) {
-        file.seekTo(end - 1) catch return true;
         var last: [1]u8 = undefined;
-        const count = file.read(&last) catch return true;
+        const count = file.readPositionalAll(io, &last, end - 1) catch return true;
         if (count == 1) return implementation.endsInNewline(last[0..1]);
         return true;
     }
-    const data = file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch return true;
+    var buffer: [4096]u8 = undefined;
+    var reader = file.readerStreaming(io, &buffer);
+    const data = reader.interface.allocRemaining(allocator, .unlimited) catch return true;
     defer allocator.free(data);
     return implementation.endsInNewline(data);
 }
@@ -329,33 +343,36 @@ fn lastByteIsNewline(allocator: std.mem.Allocator, file: std.fs.File) !bool {
 /// A throwaway directory the selftest writes its three probe files into.
 const Scratch = struct {
     path: []const u8,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     allocator: std.mem.Allocator,
 
-    fn open(allocator: std.mem.Allocator) !Scratch {
-        const base = std.posix.getenv("TMPDIR") orelse "/tmp";
+    /// `base` is `$TMPDIR` (or `/tmp`) as the process shell resolved it.
+    fn open(allocator: std.mem.Allocator, io: std.Io, base: []const u8) !Scratch {
+        var nonce: [8]u8 = undefined;
+        io.random(&nonce);
         const path = try std.fmt.allocPrint(allocator, "{s}/{s}-selftest-{x}", .{
-            std.mem.trimRight(u8, base, "/"),
+            std.mem.trimEnd(u8, base, "/"),
             tool,
-            std.crypto.random.int(u64),
+            std.mem.readInt(u64, &nonce, .little),
         });
-        const dir = try std.fs.cwd().makeOpenPath(path, .{});
-        return .{ .path = path, .dir = dir, .allocator = allocator };
+        const dir = try std.Io.Dir.cwd().createDirPathOpen(io, path, .{});
+        return .{ .path = path, .io = io, .dir = dir, .allocator = allocator };
     }
 
     fn write(self: *Scratch, name: []const u8, body: []const u8) !void {
-        try self.dir.writeFile(.{ .sub_path = name, .data = body });
+        try self.dir.writeFile(self.io, .{ .sub_path = name, .data = body });
     }
 
     fn endsInNewline(self: *Scratch, allocator: std.mem.Allocator, name: []const u8) !bool {
-        const file = self.dir.openFile(name, .{}) catch return true;
-        defer file.close();
-        return lastByteIsNewline(allocator, file);
+        const file = self.dir.openFile(self.io, name, .{}) catch return true;
+        defer file.close(self.io);
+        return lastByteIsNewline(allocator, self.io, file);
     }
 
     fn close(self: *Scratch) void {
-        self.dir.close();
-        std.fs.cwd().deleteTree(self.path) catch {};
+        self.dir.close(self.io);
+        std.Io.Dir.cwd().deleteTree(self.io, self.path) catch {};
         self.allocator.free(self.path);
     }
 };
@@ -363,7 +380,8 @@ const Scratch = struct {
 /// The repository as the gate sees it: one directory handle plus the root the
 /// census paths are relative to.
 const Tree = struct {
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     root: []const u8,
 
     fn isDir(self: Tree, absolute: []const u8) bool {
@@ -371,29 +389,29 @@ const Tree = struct {
         return info.kind == .directory;
     }
 
-    fn stat(self: Tree, absolute: []const u8) ?std.fs.File.Stat {
+    fn stat(self: Tree, absolute: []const u8) ?std.Io.File.Stat {
         if (std.fs.path.isAbsolute(absolute)) {
-            return std.fs.cwd().statFile(absolute) catch return null;
+            return std.Io.Dir.cwd().statFile(self.io, absolute, .{}) catch return null;
         }
-        return self.dir.statFile(absolute) catch return null;
+        return self.dir.statFile(self.io, absolute, .{}) catch return null;
     }
 
-    fn openIterable(self: Tree, absolute: []const u8) !std.fs.Dir {
+    fn openIterable(self: Tree, absolute: []const u8) !std.Io.Dir {
         if (std.fs.path.isAbsolute(absolute)) {
-            return std.fs.openDirAbsolute(absolute, .{ .iterate = true });
+            return std.Io.Dir.openDirAbsolute(self.io, absolute, .{ .iterate = true });
         }
-        return self.dir.openDir(absolute, .{ .iterate = true });
+        return self.dir.openDir(self.io, absolute, .{ .iterate = true });
     }
 
     /// An unreadable file answers true: not this gate's problem, exactly as
     /// the `OSError` branch it replaces.
     fn endsInNewline(self: Tree, allocator: std.mem.Allocator, absolute: []const u8) !bool {
         const file = if (std.fs.path.isAbsolute(absolute))
-            std.fs.openFileAbsolute(absolute, .{}) catch return true
+            std.Io.Dir.openFileAbsolute(self.io, absolute, .{}) catch return true
         else
-            self.dir.openFile(absolute, .{}) catch return true;
-        defer file.close();
-        return lastByteIsNewline(allocator, file);
+            self.dir.openFile(self.io, absolute, .{}) catch return true;
+        defer file.close(self.io);
+        return lastByteIsNewline(allocator, self.io, file);
     }
 
     /// Every path Git knows about, tracked or newly written, that exists as a
@@ -401,30 +419,30 @@ const Tree = struct {
     /// tree; those are in the index but they are not scan targets, and
     /// handing one to the reader makes an ordinary deletion fail.
     fn gitCensus(self: Tree, allocator: std.mem.Allocator) ![][]const u8 {
-        const result = try std.process.Child.run(.{
-            .allocator = allocator,
+        const result = try std.process.run(allocator, self.io, .{
             .argv = &.{ "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard" },
-            .cwd = self.root,
-            .max_output_bytes = max_census_bytes,
+            .cwd = .{ .path = self.root },
+            .stdout_limit = .limited(max_census_bytes),
+            .stderr_limit = .limited(max_census_bytes),
         });
         defer allocator.free(result.stderr);
         errdefer allocator.free(result.stdout);
         switch (result.term) {
-            .Exited => |code| if (code != 0) return error.CensusFailed,
+            .exited => |code| if (code != 0) return error.CensusFailed,
             else => return error.CensusFailed,
         }
         if (!std.unicode.utf8ValidateSlice(result.stdout)) return error.CensusNotUtf8;
 
-        var rels = std.ArrayList([]const u8).init(allocator);
-        errdefer rels.deinit();
+        var rels: std.ArrayList([]const u8) = .empty;
+        errdefer rels.deinit(allocator);
         var parts = std.mem.splitScalar(u8, result.stdout, 0);
         while (parts.next()) |rel| {
             if (rel.len == 0) continue;
             const absolute = try std.fs.path.join(allocator, &.{ self.root, rel });
             const info = self.stat(absolute) orelse continue;
             if (info.kind != .file) continue;
-            try rels.append(rel);
+            try rels.append(allocator, rel);
         }
-        return rels.toOwnedSlice();
+        return rels.toOwnedSlice(allocator);
     }
 };
