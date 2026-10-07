@@ -103,7 +103,7 @@ pub export fn ra8_fs_utime(
     create: ?*const DateTime,
     modify: ?*const DateTime,
     access: ?*const DateTime,
-) callconv(.C) u16 {
+) callconv(.c) u16 {
     lock.priv_lock_acquire();
     defer lock.priv_lock_release();
     return utimeLocked(handle, path, .{ .create = create, .modify = modify, .access = access });

@@ -49,7 +49,7 @@ pub const Configuration = struct {
     /// compiler_rt the images cannot carry. An archive built at a different
     /// optimisation than the listfile asks for is not the artifact CMake
     /// links, which is what zig_archive_test holds these against.
-    zig_optimize: std.builtin.OptimizeMode,
+    zig_optimize: std.lang.OptimizeMode,
 };
 
 /// Measured from the root CMakeLists, and held to it by build_type_test.zig.
@@ -217,7 +217,7 @@ test "the Zig archive does not vary by configuration" {
             configuration.zig_optimize,
         );
     }
-    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, configurations[0].zig_optimize);
+    try std.testing.expectEqual(std.lang.OptimizeMode.ReleaseSmall, configurations[0].zig_optimize);
 }
 
 test "RelWithDebInfo carries neither DEBUG nor NDEBUG" {

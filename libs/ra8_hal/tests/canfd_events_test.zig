@@ -8,7 +8,7 @@ const ev = @import("canfd_events");
 
 const Seen = struct { channel: u8 = 0xFF, mask: u32 = 0, calls: u32 = 0 };
 
-fn record(ctx: ?*anyopaque, channel: u8, mask: u32) callconv(.C) void {
+fn record(ctx: ?*anyopaque, channel: u8, mask: u32) callconv(.c) void {
     const seen: *Seen = @ptrCast(@alignCast(ctx.?));
     seen.* = .{ .channel = channel, .mask = mask, .calls = seen.calls + 1 };
 }

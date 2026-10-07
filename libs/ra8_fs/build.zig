@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
     // No unwind tables in a freestanding archive, as in ra8_hal's (RA8FW-571).
-    const unwind: ?std.builtin.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
+    const unwind: ?std.lang.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
 
     const root = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),

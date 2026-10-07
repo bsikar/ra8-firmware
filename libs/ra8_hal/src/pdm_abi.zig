@@ -9,7 +9,7 @@ const pdm = @import("internal/pdm.zig");
 
 const tag = "PDM";
 
-const IsrFn = *const fn (ctx: ?*anyopaque) callconv(.C) void;
+const IsrFn = *const fn (ctx: ?*anyopaque) callconv(.c) void;
 
 extern fn ra8_mstp_enable(id: u16) u16;
 extern fn ra8_mstp_disable(id: u16) u16;
@@ -27,7 +27,7 @@ const Mmio = struct {
     }
 };
 
-fn dataIsr(ctx: ?*anyopaque) callconv(.C) void {
+fn dataIsr(ctx: ?*anyopaque) callconv(.c) void {
     const ch: u8 = @truncate(@intFromPtr(ctx));
     pdm.dataIsr(Mmio{}, &streams, ch);
 }

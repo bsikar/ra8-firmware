@@ -38,7 +38,7 @@ comptime {
     std.debug.assert(char_off.len == chars_per_ent);
 }
 
-pub export fn priv_sfn_checksum(name83: [*]const u8) callconv(.C) u8 {
+pub export fn priv_sfn_checksum(name83: [*]const u8) callconv(.c) u8 {
     var sum: u8 = 0;
     for (name83[0..name_len]) |ch| sum = ((sum & 1) << 7) +% (sum >> 1) +% ch;
     return sum;
@@ -53,7 +53,7 @@ pub export fn priv_lfn_fill_slot(
     order: u32,
     is_last: u8,
     csum: u8,
-) callconv(.C) void {
+) callconv(.c) void {
     @memset(ent[0..dirent_len], 0);
     ent[off_seq] = @truncate(order | if (is_last != 0) @as(u32, seq_last) else 0);
     ent[off_attr] = attr_lfn;
@@ -66,7 +66,7 @@ pub export fn priv_lfn_fill_slot(
     }
 }
 
-pub export fn priv_lfn_reset(s: *LfnState) callconv(.C) void {
+pub export fn priv_lfn_reset(s: *LfnState) callconv(.c) void {
     @memset(&s.units, 0);
     s.checksum = 0;
     s.have = 0;
@@ -74,7 +74,7 @@ pub export fn priv_lfn_reset(s: *LfnState) callconv(.C) void {
 
 /// Fold one LFN entry into the chain. An order outside 1..k_lfn_max_entries
 /// means a corrupt chain, so that entry is ignored.
-pub export fn priv_lfn_add(s: *LfnState, ent: [*]const u8) callconv(.C) void {
+pub export fn priv_lfn_add(s: *LfnState, ent: [*]const u8) callconv(.c) void {
     const order: u32 = ent[off_seq] & seq_order_mask;
     if (order < 1 or order > max_entries) return;
     s.checksum = ent[off_checksum];
@@ -93,7 +93,7 @@ pub export fn priv_lfn_add(s: *LfnState, ent: [*]const u8) callconv(.C) void {
 
 /// The reassembled name for the 8.3 entry `name83`, or null when no chain
 /// was collected or its checksum does not bind it to this entry.
-pub export fn priv_lfn_units_for(s: *const LfnState, name83: [*]const u8, out_units: *u32) callconv(.C) ?[*]const u16 {
+pub export fn priv_lfn_units_for(s: *const LfnState, name83: [*]const u8, out_units: *u32) callconv(.c) ?[*]const u16 {
     out_units.* = 0;
     if (s.have == 0 or s.units[0] == 0) return null;
     if (s.checksum != priv_sfn_checksum(name83)) return null;

@@ -13,20 +13,20 @@ const Dev = struct {
     fn of(ctx: ?*anyopaque) *Dev {
         return @ptrCast(@alignCast(ctx.?));
     }
-    fn read(ctx: ?*anyopaque, _: u32, n: u32, buf: [*]u8) callconv(.C) u16 {
+    fn read(ctx: ?*anyopaque, _: u32, n: u32, buf: [*]u8) callconv(.c) u16 {
         of(ctx).reads += n;
         @memset(buf[0 .. n * 512], 0xA5);
         return 0;
     }
-    fn write(_: ?*anyopaque, _: u32, _: u32, _: [*]const u8) callconv(.C) u16 {
+    fn write(_: ?*anyopaque, _: u32, _: u32, _: [*]const u8) callconv(.c) u16 {
         return 0;
     }
-    fn capacity(ctx: ?*anyopaque, n: *u32, size: *u32) callconv(.C) u16 {
+    fn capacity(ctx: ?*anyopaque, n: *u32, size: *u32) callconv(.c) u16 {
         n.* = of(ctx).blocks;
         size.* = 512;
         return 0;
     }
-    fn inquiry(_: ?*anyopaque, v: [*]u8, _: [*]u8, _: [*]u8) callconv(.C) u16 {
+    fn inquiry(_: ?*anyopaque, v: [*]u8, _: [*]u8, _: [*]u8) callconv(.c) u16 {
         v[0] = 'R';
         return 0;
     }

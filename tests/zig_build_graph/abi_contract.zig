@@ -155,7 +155,7 @@ pub fn add(
     step: *std.Build.Step,
     parity_step: *std.Build.Step,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) void {
     const dependency = b.dependency(dependency_name, .{
         .target = target,

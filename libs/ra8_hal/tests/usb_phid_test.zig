@@ -166,7 +166,7 @@ test "recv_report reports the received length, or zero on error" {
 
 var cb_rc: u16 = 0;
 var cb_hits: u32 = 0;
-fn handler(_: ?*anyopaque, _: *const phid.Setup) callconv(.C) u16 {
+fn handler(_: ?*anyopaque, _: *const phid.Setup) callconv(.c) u16 {
     cb_hits += 1;
     return cb_rc;
 }

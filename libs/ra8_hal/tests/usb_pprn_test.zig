@@ -76,11 +76,11 @@ fn ready(fake: *Fake, speed: u8) pprn.State {
     return s;
 }
 
-fn okHandler(_: ?*anyopaque, _: *const pprn.Setup) callconv(.C) u16 {
+fn okHandler(_: ?*anyopaque, _: *const pprn.Setup) callconv(.c) u16 {
     return codes.ok;
 }
 
-fn failHandler(ctx: ?*anyopaque, _: *const pprn.Setup) callconv(.C) u16 {
+fn failHandler(ctx: ?*anyopaque, _: *const pprn.Setup) callconv(.c) u16 {
     const hits: *u8 = @ptrCast(ctx.?);
     hits.* += 1;
     return codes.invalid_arg;

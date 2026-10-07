@@ -9,7 +9,7 @@
 pub const irq_all: u8 = 0x07;
 
 /// `ra8_rtc_event_fn_t`.
-pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u8) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, status_mask: u8) callconv(.c) void;
 
 pub const Handler = struct {
     func: ?EventFn = null,

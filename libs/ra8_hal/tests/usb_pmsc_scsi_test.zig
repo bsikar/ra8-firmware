@@ -17,26 +17,26 @@ const Dev = struct {
     fn of(ctx: ?*anyopaque) *Dev {
         return @ptrCast(@alignCast(ctx.?));
     }
-    fn read(ctx: ?*anyopaque, lba: u32, n: u32, buf: [*]u8) callconv(.C) u16 {
+    fn read(ctx: ?*anyopaque, lba: u32, n: u32, buf: [*]u8) callconv(.c) u16 {
         const d = of(ctx);
         d.lba = lba;
         d.blocks = n;
         buf[0] = 0xAB;
         return d.fail;
     }
-    fn write(ctx: ?*anyopaque, lba: u32, n: u32, _: [*]const u8) callconv(.C) u16 {
+    fn write(ctx: ?*anyopaque, lba: u32, n: u32, _: [*]const u8) callconv(.c) u16 {
         const d = of(ctx);
         d.lba = lba;
         d.blocks = n;
         return d.fail;
     }
-    fn capacity(ctx: ?*anyopaque, n: *u32, size: *u32) callconv(.C) u16 {
+    fn capacity(ctx: ?*anyopaque, n: *u32, size: *u32) callconv(.c) u16 {
         const d = of(ctx);
         n.* = d.count;
         size.* = d.size;
         return d.fail;
     }
-    fn inquiry(ctx: ?*anyopaque, v: [*]u8, p: [*]u8, r: [*]u8) callconv(.C) u16 {
+    fn inquiry(ctx: ?*anyopaque, v: [*]u8, p: [*]u8, r: [*]u8) callconv(.c) u16 {
         v[0] = 'R';
         p[0] = 'X';
         r[0] = '1';

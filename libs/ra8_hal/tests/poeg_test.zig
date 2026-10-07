@@ -137,7 +137,7 @@ test "stop entry and exit toggle module stop, range checked" {
 
 var seen_mask: u32 = 0;
 var seen_ctx: ?*anyopaque = null;
-fn record(ctx: ?*anyopaque, mask: u32) callconv(.C) void {
+fn record(ctx: ?*anyopaque, mask: u32) callconv(.c) void {
     seen_ctx = ctx;
     seen_mask = mask;
 }

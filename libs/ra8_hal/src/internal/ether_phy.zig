@@ -43,8 +43,8 @@ pub const Speed = struct {
     pub const s100f: u8 = 4;
 };
 
-pub const ReadFn = *const fn (ctx: ?*anyopaque, phy_addr: u8, reg_addr: u8, out: *u16) callconv(.C) u16;
-pub const WriteFn = *const fn (ctx: ?*anyopaque, phy_addr: u8, reg_addr: u8, data: u16) callconv(.C) u16;
+pub const ReadFn = *const fn (ctx: ?*anyopaque, phy_addr: u8, reg_addr: u8, out: *u16) callconv(.c) u16;
+pub const WriteFn = *const fn (ctx: ?*anyopaque, phy_addr: u8, reg_addr: u8, data: u16) callconv(.c) u16;
 
 /// `ra8_ether_phy_io_t`.
 pub const Io = extern struct {

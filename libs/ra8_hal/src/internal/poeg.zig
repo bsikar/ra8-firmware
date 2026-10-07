@@ -34,7 +34,7 @@ pub const Cfg = extern struct {
 };
 
 /// `ra8_poeg_event_fn_t`.
-pub const Handler = ?*const fn (?*anyopaque, u32) callconv(.C) void;
+pub const Handler = ?*const fn (?*anyopaque, u32) callconv(.c) void;
 
 pub const Slot = struct {
     handler: Handler = null,

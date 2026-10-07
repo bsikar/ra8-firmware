@@ -118,18 +118,18 @@ pub fn reset(fs_type: u8) void {
     flush_err = 0;
 }
 
-export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.C) void {
+export fn priv_exfat_dir_root(m: [*c]const c.ra8_fs_mount_t, out: [*c]c.exfat_dir_t) callconv(.c) void {
     _ = m;
     out.* = std.mem.zeroes(c.exfat_dir_t);
     out.*.cluster = 5;
 }
 
-export fn priv_exfat_cursor_init(d: [*c]const c.exfat_dir_t, out: [*c]c.exfat_cursor_t) callconv(.C) void {
+export fn priv_exfat_cursor_init(d: [*c]const c.exfat_dir_t, out: [*c]c.exfat_cursor_t) callconv(.c) void {
     out.* = std.mem.zeroes(c.exfat_cursor_t);
     out.*.cluster = d.*.cluster;
 }
 
-export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, out: [*c]u8) callconv(.C) u16 {
+export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, out: [*c]u8) callconv(.c) u16 {
     _ = m;
     if (read_error != 0) return read_error;
     const i = cur.*.entry_in_cluster;
@@ -140,7 +140,7 @@ export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_
     return 0;
 }
 
-export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.C) u16 {
+export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
     _ = m;
     written_cluster = cluster;
     written_index = idx;
@@ -148,7 +148,7 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
     return 0;
 }
 
-export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.C) u16 {
+export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
     _ = .{ m, path };
     if (find_set_err != 0) return find_set_err;
     if (set_copies) {
@@ -161,16 +161,16 @@ export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfa
     return 0;
 }
 
-export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.C) u16 {
+export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
     checksum_bytes = bytes;
     return 0xA000 | @as(u16, set[4]);
 }
 
-export fn priv_wr16(p: [*c]u8, v: u16) callconv(.C) void {
+export fn priv_wr16(p: [*c]u8, v: u16) callconv(.c) void {
     std.mem.writeInt(u16, p[0..2], v, .little);
 }
 
-export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.C) u16 {
+export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
     _ = m;
     if (resolve_err != 0) return resolve_err;
     out_parent.* = std.mem.zeroes(c.dir_loc_t);
@@ -179,12 +179,12 @@ export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8,
     return 0;
 }
 
-export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.C) u8 {
+export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = .{ path, out11 };
     return have83;
 }
 
-export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.C) u16 {
+export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
     _ = .{ m, loc, name83, out_entry };
     if (find83_err != 0) return find83_err;
     out_lba.* = 7;
@@ -192,7 +192,7 @@ export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_
     return 0;
 }
 
-export fn priv_dir_find_long(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, want: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.C) u16 {
+export fn priv_dir_find_long(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, want: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
     _ = .{ m, loc, want, out_entry };
     if (find_long_err != 0) return find_long_err;
     out_lba.* = 9;
@@ -200,11 +200,11 @@ export fn priv_dir_find_long(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir
     return 0;
 }
 
-export fn priv_sec_walk() callconv(.C) [*c]u8 {
+export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &sector;
 }
 
-export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.C) u16 {
+export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.c) u16 {
     _ = m;
     if (sector_read_err != 0) return sector_read_err;
     if (lba >= 1 and lba < 5) {
@@ -219,13 +219,13 @@ export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8)
     return 0;
 }
 
-export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]const u8) callconv(.C) u16 {
+export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]const u8) callconv(.c) u16 {
     _ = .{ m, buf };
     sector_written = lba;
     return 0;
 }
 
-export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.C) void {
+export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.c) void {
     entry[11] = (entry[11] & ~clear_mask) | set_mask;
 }
 
@@ -235,41 +235,41 @@ fn stamp(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const
     if (modify) |mt| entry[22] = mt.*.minute; // marker byte the tests read back
 }
 
-export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.C) void {
+export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     stamp(entry, create, modify, access);
 }
 
-export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.C) void {
+export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     stamp(entry, create, modify, access);
 }
 
-export fn priv_sec_io() callconv(.C) [*c]u8 {
+export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &io_sector;
 }
 
-export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
     _ = m;
     return 512;
 }
 
-export fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+export fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
     _ = m;
     return 4096;
 }
 
-export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.C) u64 {
+export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u64 {
     _ = m;
     return if (clus == 3) bitmap_lba else @as(u64, clus) * 8;
 }
 
-export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.C) u16 {
+export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
     out_clus.* = 3;
     out_len.* = 1024;
     return bitmap_err;
 }
 
-export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) callconv(.C) u16 {
+export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) callconv(.c) u16 {
     _ = m;
     fat_reads += 1;
     if (fat_err != 0) return fat_err;
@@ -277,35 +277,35 @@ export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) c
     return 0;
 }
 
-export fn priv_free_count_peek(m: [*c]const c.ra8_fs_mount_t) callconv(.C) u32 {
+export fn priv_free_count_peek(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
     _ = m;
     return free_cached;
 }
 
-export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.C) void {
+export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
     _ = m;
     free_cached = n;
 }
 
 /// The exFAT rotate-add checksum (spec sec 6.3.3), standing in for the C one.
-export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.C) u32 {
+export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
     var sum = cs;
     for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
     return sum;
 }
 
-export fn priv_alloc_file_slot() callconv(.C) [*c]c.ra8_fs_file_t {
+export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
     if (slots_left == 0) return null;
     slots_left -= 1;
     return &file_pool[slots_left];
 }
 
-export fn priv_is_eoc(m: [*c]const c.ra8_fs_mount_t, value: u32) callconv(.C) u8 {
+export fn priv_is_eoc(m: [*c]const c.ra8_fs_mount_t, value: u32) callconv(.c) u8 {
     _ = m;
     return if (value >= 0x0FFF_FFF8) 1 else 0;
 }
 
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.C) u16 {
+export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
     _ = m;
     if (parent_err != 0) return parent_err;
     out_parent.* = std.mem.zeroes(c.exfat_dir_t);
@@ -314,7 +314,7 @@ export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]con
     return 0;
 }
 
-export fn priv_exfat_name_to_units(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]u16, out_units: [*c]u32) callconv(.C) u16 {
+export fn priv_exfat_name_to_units(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]u16, out_units: [*c]u32) callconv(.c) u16 {
     _ = .{ m, path };
     if (name_err != 0) return name_err;
     for (0..name_units) |i| out[i] = 'a';
@@ -322,7 +322,7 @@ export fn priv_exfat_name_to_units(m: [*c]const c.ra8_fs_mount_t, path: [*c]cons
     return 0;
 }
 
-export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, out_head: [*c]c.exfat_setpos_t, out_count: [*c]u32) callconv(.C) u16 {
+export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, out_head: [*c]c.exfat_setpos_t, out_count: [*c]u32) callconv(.c) u16 {
     _ = .{ m, name, nlen };
     if (link_err != 0) return link_err;
     out_head.* = .{ .cluster = d.*.cluster, .index = 6 };
@@ -330,19 +330,19 @@ export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_di
     return 0;
 }
 
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.C) u16 {
+export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
     _ = .{ m, strm };
     free_calls += 1;
     return free_err;
 }
 
-export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.C) u16 {
+export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
     _ = file;
     flush_calls += 1;
     return flush_err;
 }
 
-export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.C) u16 {
+export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.c) u16 {
     _ = m;
     if (fat_set_err != 0) return fat_set_err;
     fat_sets += 1;
@@ -350,12 +350,12 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
     return 0;
 }
 
-export fn priv_free_count_gave(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.C) void {
+export fn priv_free_count_gave(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
     _ = m;
     gave += n;
 }
 
-export fn priv_alloc_hint_lower(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.C) void {
+export fn priv_alloc_hint_lower(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) void {
     _ = m;
     if (clus < hint_low) hint_low = clus;
 }

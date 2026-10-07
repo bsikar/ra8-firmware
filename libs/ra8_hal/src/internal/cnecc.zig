@@ -92,7 +92,7 @@ pub const Status = extern struct {
     reserved1: bool,
 };
 
-pub const ErrorFn = *const fn (ctx: ?*anyopaque, instance: u8, is_2bit: bool, err_addr: u16) callconv(.C) void;
+pub const ErrorFn = *const fn (ctx: ?*anyopaque, instance: u8, is_2bit: bool, err_addr: u16) callconv(.c) void;
 
 comptime {
     if (@sizeOf(InstanceCfg) != 4 or @sizeOf(Config) != 8) @compileError("Config");

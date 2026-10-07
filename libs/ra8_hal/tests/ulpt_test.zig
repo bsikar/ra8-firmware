@@ -153,7 +153,7 @@ test "getStatus checks out_mask before the channel" {
 
 var seen: u8 = 0xFF;
 var seen_ctx: ?*anyopaque = null;
-fn onEvent(ctx: ?*anyopaque, ch: u8) callconv(.C) void {
+fn onEvent(ctx: ?*anyopaque, ch: u8) callconv(.c) void {
     seen = ch;
     seen_ctx = ctx;
 }

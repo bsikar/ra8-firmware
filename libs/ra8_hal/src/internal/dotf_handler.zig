@@ -7,7 +7,7 @@
 const power = @import("dotf_power.zig");
 
 /// `ra8_dotf_event_fn_t`.
-pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.C) void;
+pub const EventFn = *const fn (ctx: ?*anyopaque, channel: u8) callconv(.c) void;
 
 /// Call `f(ctx, channel)` unless the channel is out of range or `f` is null.
 pub fn dispatch(f: ?EventFn, ctx: ?*anyopaque, channel: u8) void {

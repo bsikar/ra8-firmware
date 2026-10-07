@@ -107,7 +107,7 @@ fn spaceLocked(handle: ?*const Mount, dst: ?*Space) u16 {
     return ok;
 }
 
-pub export fn ra8_fs_free_space(handle: ?*const Mount, out: ?*Space) callconv(.C) u16 {
+pub export fn ra8_fs_free_space(handle: ?*const Mount, out: ?*Space) callconv(.c) u16 {
     lock.priv_lock_acquire();
     defer lock.priv_lock_release();
     return spaceLocked(handle, out);

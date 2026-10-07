@@ -9,7 +9,7 @@ const ev = @import("rtc_events");
 var seen_mask: u8 = 0xFF;
 var seen_ctx: ?*anyopaque = null;
 
-fn record(ctx: ?*anyopaque, mask: u8) callconv(.C) void {
+fn record(ctx: ?*anyopaque, mask: u8) callconv(.c) void {
     seen_ctx = ctx;
     seen_mask = mask;
 }

@@ -93,7 +93,7 @@ fn setAttrLocked(handle: ?*const Mount, path: ?[*:0]const u8, set_mask: u8, clea
     return setAttrFat(m, p, set_mask, clear_mask);
 }
 
-pub export fn ra8_fs_set_attr(handle: ?*const Mount, path: ?[*:0]const u8, set_mask: u8, clear_mask: u8) callconv(.C) u16 {
+pub export fn ra8_fs_set_attr(handle: ?*const Mount, path: ?[*:0]const u8, set_mask: u8, clear_mask: u8) callconv(.c) u16 {
     lock.priv_lock_acquire();
     defer lock.priv_lock_release();
     return setAttrLocked(handle, path, set_mask, clear_mask);

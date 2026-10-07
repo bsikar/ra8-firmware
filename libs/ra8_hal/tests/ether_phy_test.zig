@@ -13,7 +13,7 @@ const FakePhy = struct {
     reads: u32 = 0,
     last_write: u16 = 0,
 
-    fn read(ctx: ?*anyopaque, _: u8, reg: u8, out: *u16) callconv(.C) u16 {
+    fn read(ctx: ?*anyopaque, _: u8, reg: u8, out: *u16) callconv(.c) u16 {
         const f: *FakePhy = @ptrCast(@alignCast(ctx.?));
         f.reads += 1;
         if (reg == phy.reg_control and f.reads >= f.reset_reads) f.regs[0] &= ~phy.bmcr_reset;
@@ -21,7 +21,7 @@ const FakePhy = struct {
         return 0;
     }
 
-    fn write(ctx: ?*anyopaque, _: u8, reg: u8, data: u16) callconv(.C) u16 {
+    fn write(ctx: ?*anyopaque, _: u8, reg: u8, data: u16) callconv(.c) u16 {
         const f: *FakePhy = @ptrCast(@alignCast(ctx.?));
         if (f.fail_code != 0) return f.fail_code;
         f.regs[reg] = data;

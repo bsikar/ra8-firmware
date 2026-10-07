@@ -94,7 +94,7 @@ fn utf16Put(cp: u32, out: [*]u16, cap: u32, n: *u32) u16 {
 }
 
 /// UTF-8 (NUL-terminated) to UTF-16LE; `out_units` gets the unit count.
-pub export fn priv_utf8_to_utf16(in: ?[*:0]const u8, out: ?[*]u16, cap: u32, out_units: ?*u32) callconv(.C) u16 {
+pub export fn priv_utf8_to_utf16(in: ?[*:0]const u8, out: ?[*]u16, cap: u32, out_units: ?*u32) callconv(.c) u16 {
     const s = in orelse return err_null_ptr;
     const o = out orelse return err_null_ptr;
     const units = out_units orelse return err_null_ptr;
@@ -152,7 +152,7 @@ fn utf8Put(cp: u32, out: [*]u8, cap: u32, n: *u32) u16 {
 }
 
 /// UTF-16LE to NUL-terminated UTF-8. On overflow `out` is left empty.
-pub export fn priv_utf16_to_utf8(in: ?[*]const u16, units: u32, out: ?[*]u8, cap: u32) callconv(.C) u16 {
+pub export fn priv_utf16_to_utf8(in: ?[*]const u16, units: u32, out: ?[*]u8, cap: u32) callconv(.c) u16 {
     const s = in orelse return err_null_ptr;
     const o = out orelse return err_null_ptr;
     if (cap == 0) return err_null_ptr;
@@ -171,7 +171,7 @@ pub export fn priv_utf16_to_utf8(in: ?[*]const u16, units: u32, out: ?[*]u8, cap
 }
 
 /// 1 when the names match under the exFAT up-case fold.
-pub export fn priv_utf16_ieq(a: [*]const u16, an: u32, b: [*]const u16, bn: u32) callconv(.C) u8 {
+pub export fn priv_utf16_ieq(a: [*]const u16, an: u32, b: [*]const u16, bn: u32) callconv(.c) u8 {
     if (an != bn) return 0;
     for (0..an) |i| {
         if (c.priv_exfat_upcase_unit(a[i]) != c.priv_exfat_upcase_unit(b[i])) return 0;
@@ -180,7 +180,7 @@ pub export fn priv_utf16_ieq(a: [*]const u16, an: u32, b: [*]const u16, bn: u32)
 }
 
 /// 1 when every unit is 7-bit ASCII.
-pub export fn priv_utf16_all_ascii(in: [*]const u16, units: u32) callconv(.C) u8 {
+pub export fn priv_utf16_all_ascii(in: [*]const u16, units: u32) callconv(.c) u8 {
     for (in[0..units]) |u| {
         if (u > 0x7F) return 0;
     }

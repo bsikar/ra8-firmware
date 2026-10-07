@@ -11,8 +11,8 @@ const ble = @import("internal/ble.zig");
 const tag = "BLE";
 const ok = common.k_ra8_ok;
 
-const EventFn = *const fn (ctx: ?*anyopaque, code: u8, params: [*]const u8, len: u8) callconv(.C) void;
-const AclFn = *const fn (ctx: ?*anyopaque, handle: u16, payload: [*]const u8, len: u16) callconv(.C) void;
+const EventFn = *const fn (ctx: ?*anyopaque, code: u8, params: [*]const u8, len: u8) callconv(.c) void;
+const AclFn = *const fn (ctx: ?*anyopaque, handle: u16, payload: [*]const u8, len: u16) callconv(.c) void;
 
 var state: ble.State = .{};
 var evt_fn: ?EventFn = null;

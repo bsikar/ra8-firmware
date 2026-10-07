@@ -92,7 +92,7 @@ fn cfg() pdm.Config {
 
 var got_count: u32 = 0;
 var got_first: i32 = 0;
-fn sink(_: ?*anyopaque, s: [*]const i32, n: u32) callconv(.C) void {
+fn sink(_: ?*anyopaque, s: [*]const i32, n: u32) callconv(.c) void {
     got_count = n;
     got_first = s[0];
 }

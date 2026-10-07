@@ -134,7 +134,7 @@ fn shapeSize(comptime how: Shape, value: anytype) Error!usize {
 fn put(comptime how: Shape, value: anytype, out: []u8, at: *usize) void {
     switch (how) {
         .int => |Int| putInt(Int, value, out, at),
-        .tag => |Int| putInt(Int, @intFromEnum(value), out, at),
+        .tag => |Int| putInt(Int, @backingInt(value), out, at),
         .none => {},
         .bytes => {
             putInt(Len, @intCast(value.len), out, at);
@@ -143,7 +143,7 @@ fn put(comptime how: Shape, value: anytype, out: []u8, at: *usize) void {
         },
         .choice => |Union| switch (value) {
             inline else => |active, tag| {
-                putInt(TagInt(Union), @intFromEnum(tag), out, at);
+                putInt(TagInt(Union), @backingInt(tag), out, at);
                 put(comptime shape(Union, @tagName(tag), @TypeOf(active)), active, out, at);
             },
         },
@@ -192,7 +192,7 @@ fn takeBytes(max: usize, rest: *[]const u8) Error![]const u8 {
     return rest.*[0..len];
 }
 
-fn fields(comptime T: type) []const std.builtin.Type.StructField {
+fn fields(comptime T: type) []const std.lang.Type.StructField {
     if (@typeInfo(T) != .@"struct") @compileError(@typeName(T) ++ " is not a struct");
     return std.meta.fields(T);
 }

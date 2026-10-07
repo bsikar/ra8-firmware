@@ -17,9 +17,9 @@ pub const rdr_mask_data8: u32 = 0xFF;
 /// Highest SCI channel index (SCI0..SCI9).
 pub const channel_max: u8 = 9;
 
-pub const RxFn = *const fn (ctx: ?*anyopaque, byte: u8) callconv(.C) void;
-pub const TxFn = *const fn (ctx: ?*anyopaque, byte: *u8) callconv(.C) bool;
-pub const DoneFn = *const fn (ctx: ?*anyopaque) callconv(.C) void;
+pub const RxFn = *const fn (ctx: ?*anyopaque, byte: u8) callconv(.c) void;
+pub const TxFn = *const fn (ctx: ?*anyopaque, byte: *u8) callconv(.c) bool;
+pub const DoneFn = *const fn (ctx: ?*anyopaque) callconv(.c) void;
 
 /// `ra8_sci_state_t`; storage stays in ra8_sci.c.
 pub const State = extern struct {

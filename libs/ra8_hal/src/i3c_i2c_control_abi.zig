@@ -78,7 +78,7 @@ export fn ra8_i3c_i2c_scan(channel: u8, target_7b: u8, out_acked: ?*bool) u16 {
 
 /// Layout of `ra8_i3c_i2c_state_t` (ra8_i3c_i2c_internal.h).
 /// `ra8_i3c_i2c_complete_fn_t`.
-const CompleteFn = *const fn (ctx: ?*anyopaque, err_mask: u8) callconv(.C) void;
+const CompleteFn = *const fn (ctx: ?*anyopaque, err_mask: u8) callconv(.c) void;
 
 const State = extern struct {
     cb: ?CompleteFn,

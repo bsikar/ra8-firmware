@@ -51,7 +51,7 @@ pub fn forTarget(
     b: *std.Build,
     board_dir: []const u8,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const name = nameFor(board_dir);
     const dependency = b.dependency(name, .{
@@ -91,7 +91,7 @@ pub fn hasChipClockAdapter(b: *std.Build) bool {
 pub fn chipClockAdapterForTarget(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
     const dependency = b.dependency(chip_clock_adapter, .{
         .target = target,

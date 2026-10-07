@@ -11,10 +11,10 @@ const t = @import("internal/touch.zig");
 const tag = "TOUCH";
 const ok = common.k_ra8_ok;
 
-const WriteFn = *const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.C) u16;
-const ReadFn = *const fn (?*anyopaque, u8, [*]u8, u32) callconv(.C) u16;
-const TransferFn = *const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.C) u16;
-const EventFn = *const fn (?*anyopaque) callconv(.C) void;
+const WriteFn = *const fn (?*anyopaque, u8, [*]const u8, u32, bool) callconv(.c) u16;
+const ReadFn = *const fn (?*anyopaque, u8, [*]u8, u32) callconv(.c) u16;
+const TransferFn = *const fn (?*anyopaque, u8, [*]const u8, u32, [*]u8, u32) callconv(.c) u16;
+const EventFn = *const fn (?*anyopaque) callconv(.c) void;
 
 /// ra8_i2c_bus_ops_t: write, read, transfer, ctx.
 const BusOps = extern struct { write: ?WriteFn, read: ?ReadFn, transfer: ?TransferFn, ctx: ?*anyopaque };
@@ -150,7 +150,7 @@ export fn ra8_touch_calibrate() u16 {
 }
 
 /// The C kept this under UNIT_TEST; only hosted builds carry it.
-fn testDecode(raw: ?[*]const u8, n_points: u8, out_points: ?[*]t.Point, max_count: u8, got_count: ?*u8) callconv(.C) u16 {
+fn testDecode(raw: ?[*]const u8, n_points: u8, out_points: ?[*]t.Point, max_count: u8, got_count: ?*u8) callconv(.c) u16 {
     const r = raw orelse return nullPtr("test_decode: raw");
     const out = out_points orelse return nullPtr("test_decode: out_points");
     const got = got_count orelse return nullPtr("test_decode: got_count");
