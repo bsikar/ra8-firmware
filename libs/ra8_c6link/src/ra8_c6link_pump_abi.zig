@@ -20,9 +20,9 @@ pub const c = header.c;
 
 comptime {
     if (@sizeOf(pump.Stats) != @sizeOf(c.ra8_c6link_stats_t)) @compileError("ra8_c6link_stats_t size drifted");
-    for (@typeInfo(pump.Stats).@"struct".fields) |field| {
-        if (@offsetOf(pump.Stats, field.name) != @offsetOf(c.ra8_c6link_stats_t, field.name)) {
-            @compileError("ra8_c6link_stats_t." ++ field.name ++ " offset drifted");
+    for (@typeInfo(pump.Stats).@"struct".field_names) |name| {
+        if (@offsetOf(pump.Stats, name) != @offsetOf(c.ra8_c6link_stats_t, name)) {
+            @compileError("ra8_c6link_stats_t." ++ name ++ " offset drifted");
         }
     }
     if (frame.Frame.bytes != c.k_ra8_c6link_frame_bytes) @compileError("frame size drifted");
