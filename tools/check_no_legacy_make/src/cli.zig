@@ -48,31 +48,30 @@ fn resolve(allocator: std.mem.Allocator, repo_root: []const u8, rel: []const u8)
 
 /// Whether `path` is a regular file, as `pathlib.Path.is_file` answers it:
 /// a missing path and a directory are both false, and symlinks are followed.
-fn isRegularFile(dir: std.fs.Dir, path: []const u8) bool {
-    const stat = dir.statFile(path) catch return false;
+fn isRegularFile(io: std.Io, dir: std.Io.Dir, path: []const u8) bool {
+    const stat = dir.statFile(io, path, .{}) catch return false;
     return stat.kind == .file;
 }
 
 /// Enumerate the tracked and untracked tree the way the predecessor did.
-fn gitCensus(allocator: std.mem.Allocator, repo_root: []const u8) ![]const []const u8 {
-    const result = try std.process.Child.run(.{
-        .allocator = allocator,
+fn gitCensus(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![]const []const u8 {
+    const result = try std.process.run(allocator, io, .{
         .argv = &.{ "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z" },
-        .cwd = if (repo_root.len == 0) "." else repo_root,
-        .max_output_bytes = max_census_bytes,
+        .cwd = .{ .path = if (repo_root.len == 0) "." else repo_root },
+        .stdout_limit = .limited(max_census_bytes),
     });
     switch (result.term) {
-        .Exited => |code| if (code != 0) return error.GitFailed,
+        .exited => |code| if (code != 0) return error.GitFailed,
         else => return error.GitFailed,
     }
     if (!std.unicode.utf8ValidateSlice(result.stdout)) return error.InvalidUtf8;
-    var rels = std.ArrayList([]const u8).init(allocator);
+    var rels: std.ArrayList([]const u8) = .empty;
     var parts = std.mem.splitScalar(u8, result.stdout, 0);
     while (parts.next()) |rel| {
         if (rel.len == 0) continue;
-        try rels.append(rel);
+        try rels.append(allocator, rel);
     }
-    return rels.toOwnedSlice();
+    return rels.toOwnedSlice(allocator);
 }
 
 fn lessThanBytes(_: void, left: []const u8, right: []const u8) bool {
@@ -82,38 +81,40 @@ fn lessThanBytes(_: void, left: []const u8, right: []const u8) bool {
 /// The authored surfaces the contract covers, sorted and de-duplicated.
 fn scopedFiles(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     census: []const []const u8,
     policy: Policy,
 ) ![]const []const u8 {
     var seen = std.StringHashMap(void).init(allocator);
-    var selected = std.ArrayList([]const u8).init(allocator);
+    var selected: std.ArrayList([]const u8) = .empty;
     for (census) |rel| {
         if (rel.len == 0 or implementation.isExcluded(rel)) continue;
         const path = try resolve(allocator, repo_root, rel);
-        if (!isRegularFile(dir, path)) continue;
+        if (!isRegularFile(io, dir, path)) continue;
         if (!implementation.isSelected(rel)) continue;
         if (seen.contains(rel)) continue;
         try seen.put(rel, {});
-        try selected.append(rel);
+        try selected.append(allocator, rel);
     }
     // The gate may be validated before its own source is staged.
     if (!seen.contains(policy.self_source)) {
         const path = try resolve(allocator, repo_root, policy.self_source);
-        if (isRegularFile(dir, path)) {
+        if (isRegularFile(io, dir, path)) {
             try seen.put(policy.self_source, {});
-            try selected.append(policy.self_source);
+            try selected.append(allocator, policy.self_source);
         }
     }
     std.mem.sort([]const u8, selected.items, {}, lessThanBytes);
-    return selected.toOwnedSlice();
+    return selected.toOwnedSlice(allocator);
 }
 
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     caller_allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     census: Census,
@@ -146,12 +147,12 @@ pub fn run(
 
     const enumerated = switch (census) {
         .provided => |rels| rels,
-        .git => gitCensus(allocator, repo_root) catch |failure| {
+        .git => gitCensus(allocator, io, repo_root) catch |failure| {
             try err.print("{s}: cannot enumerate tracked files: {s}\n", .{ tool, @errorName(failure) });
             return 2;
         },
     };
-    const rels = try scopedFiles(allocator, dir, repo_root, enumerated, policy);
+    const rels = try scopedFiles(allocator, io, dir, repo_root, enumerated, policy);
 
     var carries_self = false;
     for (rels) |rel| {
@@ -165,7 +166,7 @@ pub fn run(
         return 2;
     }
 
-    var findings = std.ArrayList([]const u8).init(allocator);
+    var findings: std.ArrayList([]const u8) = .empty;
     // One source is held at a time: the predecessor read each file, scanned
     // it and dropped it, and a gate that swept a large tree into memory
     // instead would fall over on exactly the trees it is there to police.
@@ -176,17 +177,12 @@ pub fn run(
         defer _ = scratch_arena.reset(.retain_capacity);
         const path = try resolve(scratch, repo_root, rel);
         // Read with no ceiling, as the predecessor's `read_text()` had none.
-        // `readFileAlloc` does not truncate at a cap: it fails with
-        // error.FileTooBig, and this caller turns any read failure into a
-        // diagnostic and an immediate return, so a source above a ceiling
+        // `readFileAlloc` does not truncate at a limit: it fails with
+        // error.StreamTooLong, and this caller turns any read failure into a
+        // diagnostic and an immediate return, so a source above a limit
         // would lose its own findings and take every source sorted after it
         // down with it while still being counted as scanned.
-        const file = dir.openFile(path, .{}) catch |failure| {
-            try err.print("{s}: cannot read {s}: {s}\n", .{ tool, rel, @errorName(failure) });
-            return 1;
-        };
-        defer file.close();
-        const text = file.readToEndAlloc(scratch, std.math.maxInt(usize)) catch |failure| {
+        const text = dir.readFileAlloc(io, path, scratch, .unlimited) catch |failure| {
             try err.print("{s}: cannot read {s}: {s}\n", .{ tool, rel, @errorName(failure) });
             return 1;
         };

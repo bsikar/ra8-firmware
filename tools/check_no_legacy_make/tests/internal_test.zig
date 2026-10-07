@@ -318,10 +318,10 @@ test "non-breaking whitespace still separates a command from its argument" {
 }
 
 test "scanning a source numbers findings by line" {
-    var findings = std.ArrayList([]const u8).init(testing.allocator);
+    var findings: std.ArrayList([]const u8) = .empty;
     defer {
         for (findings.items) |item| testing.allocator.free(item);
-        findings.deinit();
+        findings.deinit(testing.allocator);
     }
     const text = "#!/usr/bin/env bash\nset -eu\nmake ci\necho done\ncmd=(gmake x)\n";
     try implementation.scanText(testing.allocator, testing.allocator, "scripts/a.sh", text, &findings);
@@ -331,10 +331,10 @@ test "scanning a source numbers findings by line" {
 }
 
 test "a documentation source is scanned without the active forms" {
-    var findings = std.ArrayList([]const u8).init(testing.allocator);
+    var findings: std.ArrayList([]const u8) = .empty;
     defer {
         for (findings.items) |item| testing.allocator.free(item);
-        findings.deinit();
+        findings.deinit(testing.allocator);
     }
     const text = "make ci\nPlease run make docs\n";
     try implementation.scanText(testing.allocator, testing.allocator, "docs/a.md", text, &findings);
@@ -343,10 +343,10 @@ test "a documentation source is scanned without the active forms" {
 }
 
 test "CRLF sources keep the predecessor's line numbers" {
-    var findings = std.ArrayList([]const u8).init(testing.allocator);
+    var findings: std.ArrayList([]const u8) = .empty;
     defer {
         for (findings.items) |item| testing.allocator.free(item);
-        findings.deinit();
+        findings.deinit(testing.allocator);
     }
     const text = "one\r\ntwo\r\nmake ci\r\n";
     try implementation.scanText(testing.allocator, testing.allocator, "scripts/a.sh", text, &findings);
