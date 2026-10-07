@@ -205,12 +205,12 @@ test "defaultDescription: the stem plus 'unit tests'" {
 }
 
 test "writeRow: a short name is padded to the description column" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try listing.writeRow(buffer.writer(), .{ .name = "test_gpio", .description = "GPIO" });
+    try listing.writeRow(&buffer.writer, .{ .name = "test_gpio", .description = "GPIO" });
     try testing.expectEqualStrings(
         "  test_gpio                                GPIO\n",
-        buffer.items,
+        buffer.written(),
     );
     // Two leading spaces, then the name padded to exactly 40 columns.
     try testing.expectEqual(@as(usize, 2 + listing.name_column_width + 1), 43);
@@ -218,35 +218,35 @@ test "writeRow: a short name is padded to the description column" {
 
 test "writeRow: a name past the column is never truncated" {
     const long = "test_a_very_long_target_name_that_exceeds_the_column";
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try listing.writeRow(buffer.writer(), .{ .name = long, .description = "desc" });
-    try testing.expectEqualStrings("  " ++ long ++ " desc\n", buffer.items);
+    try listing.writeRow(&buffer.writer, .{ .name = long, .description = "desc" });
+    try testing.expectEqualStrings("  " ++ long ++ " desc\n", buffer.written());
 }
 
 test "writeRow: an empty description still leaves the separating space" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try listing.writeRow(buffer.writer(), .{ .name = "test_x", .description = "" });
-    try testing.expect(std.mem.endsWith(u8, buffer.items, " \n"));
+    try listing.writeRow(&buffer.writer, .{ .name = "test_x", .description = "" });
+    try testing.expect(std.mem.endsWith(u8, buffer.written(), " \n"));
 }
 
 test "writeHeader: the banner carries the upper-cased category and the count" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try listing.writeHeader(buffer.writer(), testing.allocator, "hal", 7);
+    try listing.writeHeader(&buffer.writer, testing.allocator, "hal", 7);
     try testing.expectEqualStrings(
         "== HAL TESTS (7) -- local: just tests::local hal | " ++
             "container: just tests::devcontainer hal\n\n",
-        buffer.items,
+        buffer.written(),
     );
 }
 
 test "writeHeader: the blank line print() added is part of the banner" {
-    var buffer = std.ArrayList(u8).init(testing.allocator);
+    var buffer: std.Io.Writer.Allocating = .init(testing.allocator);
     defer buffer.deinit();
-    try listing.writeHeader(buffer.writer(), testing.allocator, "net", 0);
-    try testing.expect(std.mem.endsWith(u8, buffer.items, "\n\n"));
+    try listing.writeHeader(&buffer.writer, testing.allocator, "net", 0);
+    try testing.expect(std.mem.endsWith(u8, buffer.written(), "\n\n"));
 }
 
 test "lessThanByName: ordering is by name only" {
