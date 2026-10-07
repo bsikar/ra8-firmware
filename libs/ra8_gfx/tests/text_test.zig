@@ -80,7 +80,7 @@ test "bold face expands visible bounds and adds ink for sans and serif" {
     try std.testing.expectEqual(regular_sans.width + 1, bold_sans.width);
 }
 
-const atlas = @import("../src/internal/font_literata.zig");
+const atlas = text.literata;
 
 test "Literata v2 decodes every glyph to its declared pixel count" {
     try std.testing.expectEqual(@as(u8, 2), atlas.bytes[4]);
@@ -139,7 +139,7 @@ test "serif and every native display atlas keep ink inside the line box" {
     try std.testing.expectEqual(@as(usize, 12), 2 * 2 * 3);
 }
 
-const display_atlas = @import("../src/internal/font_display.zig");
+const display_atlas = text.display;
 
 test "reader atlases provide five native regular sizes for both faces" {
     const expected_heights = [_][2]u32{

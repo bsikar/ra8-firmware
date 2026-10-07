@@ -10,6 +10,10 @@ const atlas = @import("font_literata.zig");
 const bitmap = @import("font_8x16.zig");
 const display_atlas = @import("font_display.zig");
 
+/// The Literata and display atlases, for tests that check them directly.
+pub const literata = atlas;
+pub const display = display_atlas;
+
 /// Font family selected by a text rendering call.
 pub const Face = enum(u8) {
     sans = 0,
