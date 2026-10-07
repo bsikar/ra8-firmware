@@ -4,7 +4,7 @@
     .name = .ra8_psa_crypto,
     .version = "0.1.0",
     .fingerprint = 0xdfedae39362c62d6,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         // Turns the vendored PSA headers into the `psa_h` module the on-target
         // backend imports.

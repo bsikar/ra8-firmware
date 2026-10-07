@@ -4,7 +4,7 @@
     .name = .ra8_tls,
     .version = "0.1.0",
     .fingerprint = 0x74b0ea91d8d29663,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         // Turns the vendored Mbed TLS and PSA headers into the `mbedtls_h`
         // module the on-target backend imports.

@@ -2,7 +2,7 @@
     .name = .ra8_c6link,
     .version = "0.1.0",
     .fingerprint = 0x6e720f9dd119442c,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         // Translates the public, capture and private headers into the
         // c6link_h, c6link_capture_h and c6link_rpc_h modules.
