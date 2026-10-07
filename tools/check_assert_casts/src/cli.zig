@@ -20,11 +20,12 @@ const max_source_bytes = 64 * 1024 * 1024;
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     if (argv.len == 1 and std.mem.eql(u8, argv[0], "--selftest")) return selftest(allocator, out, err);
 
@@ -43,7 +44,7 @@ pub fn run(
     }
 
     const paths = if (saw_all)
-        try collectTestSources(allocator, dir, repo_root)
+        try collectTestSources(allocator, io, dir, repo_root)
     else
         argv;
 
@@ -56,18 +57,18 @@ pub fn run(
         return 1;
     }
 
-    var rows = std.ArrayList([]const u8).init(allocator);
-    defer rows.deinit();
+    var rows: std.ArrayList([]const u8) = .empty;
+    defer rows.deinit(allocator);
     for (paths) |raw| {
         const shown = try implementation.normalizePath(allocator, raw);
-        const bytes = readFileRelative(allocator, dir, raw) catch {
+        const bytes = readFileRelative(allocator, io, dir, raw) catch {
             try err.print("{s}: cannot read {s}\n", .{ tool, shown });
             return 1;
         };
         const unified = try implementation.normalizeTerminators(allocator, bytes);
         const decoded = try implementation.decodeAsciiReplace(allocator, unified);
         for (try implementation.scanText(allocator, decoded)) |finding| {
-            try rows.append(try implementation.renderFinding(allocator, shown, finding));
+            try rows.append(allocator, try implementation.renderFinding(allocator, shown, finding));
         }
     }
 
@@ -83,7 +84,7 @@ pub fn run(
 }
 
 /// Prove the detector fires on leading casts and stays quiet on clean code.
-fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
+fn selftest(allocator: std.mem.Allocator, out: *std.Io.Writer, err: *std.Io.Writer) !u8 {
     const fires = "TEST_ASSERT_EQ((int)value, (uint32_t)expected);\n";
     const quiet = "TEST_ASSERT_EQ(value, expected);\nTEST_ASSERT_EQ(load((int)value), expected);\n";
     const fired = try implementation.scanText(allocator, fires);
@@ -111,21 +112,26 @@ fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
 
 /// Every `*.c` under `<repo_root>/tests`, sorted, absolute-or-relative as the
 /// root was given. A missing tests tree yields no paths rather than an error.
-fn collectTestSources(allocator: std.mem.Allocator, dir: std.fs.Dir, repo_root: []const u8) ![][]const u8 {
+fn collectTestSources(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    dir: std.Io.Dir,
+    repo_root: []const u8,
+) ![][]const u8 {
     const root = try std.fs.path.join(allocator, &.{ repo_root, "tests" });
-    var tests_dir = openDirRelative(dir, root) catch return allocator.alloc([]const u8, 0);
-    defer tests_dir.close();
+    var tests_dir = openDirRelative(io, dir, root) catch return allocator.alloc([]const u8, 0);
+    defer tests_dir.close(io);
 
     var walker = try tests_dir.walk(allocator);
     defer walker.deinit();
-    var found = std.ArrayList([]const u8).init(allocator);
-    errdefer found.deinit();
-    while (try walker.next()) |entry| {
+    var found: std.ArrayList([]const u8) = .empty;
+    errdefer found.deinit(allocator);
+    while (try walker.next(io)) |entry| {
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.basename, ".c")) continue;
-        try found.append(try std.fs.path.join(allocator, &.{ root, entry.path }));
+        try found.append(allocator, try std.fs.path.join(allocator, &.{ root, entry.path }));
     }
-    const items = try found.toOwnedSlice();
+    const items = try found.toOwnedSlice(allocator);
     std.mem.sort([]const u8, items, {}, lessThanPath);
     return items;
 }
@@ -153,16 +159,18 @@ fn lessThanPath(_: void, left: []const u8, right: []const u8) bool {
     }
 }
 
-fn openDirRelative(dir: std.fs.Dir, path: []const u8) !std.fs.Dir {
-    if (std.fs.path.isAbsolute(path)) return std.fs.openDirAbsolute(path, .{ .iterate = true });
-    return dir.openDir(path, .{ .iterate = true });
+fn openDirRelative(io: std.Io, dir: std.Io.Dir, path: []const u8) !std.Io.Dir {
+    if (std.fs.path.isAbsolute(path)) return std.Io.Dir.openDirAbsolute(io, path, .{ .iterate = true });
+    return dir.openDir(io, path, .{ .iterate = true });
 }
 
-fn readFileRelative(allocator: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) ![]u8 {
+fn readFileRelative(allocator: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, path: []const u8) ![]u8 {
     const file = if (std.fs.path.isAbsolute(path))
-        try std.fs.openFileAbsolute(path, .{})
+        try std.Io.Dir.openFileAbsolute(io, path, .{})
     else
-        try dir.openFile(path, .{});
-    defer file.close();
-    return file.readToEndAlloc(allocator, max_source_bytes);
+        try dir.openFile(io, path, .{});
+    defer file.close(io);
+    var buffer: [4096]u8 = undefined;
+    var reader = file.reader(io, &buffer);
+    return reader.interface.allocRemaining(allocator, .limited(max_source_bytes));
 }

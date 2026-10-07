@@ -16,13 +16,13 @@ const Result = struct {
 
 fn invoke(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
 ) !Result {
-    var out = std.ArrayList(u8).init(allocator);
-    var err = std.ArrayList(u8).init(allocator);
-    const status = try cli.run(allocator, dir, repo_root, argv, out.writer(), err.writer());
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
+    const status = try cli.run(allocator, std.testing.io, dir, repo_root, argv, &out.writer, &err.writer);
     return .{ .status = status, .out = try out.toOwnedSlice(), .err = try err.toOwnedSlice() };
 }
 
@@ -81,7 +81,7 @@ test "a clean file exits 0 with no output" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "good.c", .data = good_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "good.c", .data = good_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"good.c"});
     try std.testing.expectEqual(@as(u8, 0), result.status);
     try std.testing.expectEqualStrings("", result.out);
@@ -93,7 +93,7 @@ test "a file with leading casts exits 1 and prints both rows" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "bad.c", .data = bad_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "bad.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"bad.c"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expectEqualStrings(
@@ -108,7 +108,7 @@ test "the failure summary names the fixer" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "bad.c", .data = bad_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "bad.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"bad.c"});
     try std.testing.expectEqualStrings(
         "\n2 redundant cast(s) in TEST_ASSERT_EQ.\nRun scripts/fix/strip_assert_casts.py to fix automatically.\n",
@@ -131,7 +131,7 @@ test "a row quotes the path as normalised, not as typed" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "bad.c", .data = bad_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "bad.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"./bad.c"});
     try std.testing.expect(std.mem.startsWith(u8, result.out, "bad.c:1:"));
 }
@@ -141,7 +141,7 @@ test "a CRLF source numbers its lines after translation" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "crlf.c", .data = "one\r\ntwo\r\nTEST_ASSERT_EQ((int)a, b);\r\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "crlf.c", .data = "one\r\ntwo\r\nTEST_ASSERT_EQ((int)a, b);\r\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"crlf.c"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expect(std.mem.startsWith(u8, result.out, "crlf.c:3:"));
@@ -152,8 +152,8 @@ test "several files aggregate into one report" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "one.c", .data = "TEST_ASSERT_EQ((int)a, b);\n" });
-    try tmp.dir.writeFile(.{ .sub_path = "two.c", .data = "TEST_ASSERT_EQ(a, (int)b);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "one.c", .data = "TEST_ASSERT_EQ((int)a, b);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "two.c", .data = "TEST_ASSERT_EQ(a, (int)b);\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{ "one.c", "two.c" });
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expect(std.mem.indexOf(u8, result.out, "one.c:1:") != null);
@@ -166,8 +166,8 @@ test "a clean file beside a dirty one still reports only the dirty rows" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "good.c", .data = good_source });
-    try tmp.dir.writeFile(.{ .sub_path = "bad.c", .data = "TEST_ASSERT_EQ((int)a, b);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "good.c", .data = good_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "bad.c", .data = "TEST_ASSERT_EQ((int)a, b);\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{ "good.c", "bad.c" });
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expect(std.mem.indexOf(u8, result.out, "good.c") == null);
@@ -179,8 +179,8 @@ test "--all sweeps the tests tree" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("tests/unit");
-    try tmp.dir.writeFile(.{ .sub_path = "tests/unit/test_a.c", .data = bad_source });
+    try tmp.dir.createDirPath(std.testing.io, "tests/unit");
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/unit/test_a.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"--all"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expect(std.mem.indexOf(u8, result.out, "tests/unit/test_a.c:1:") != null);
@@ -191,9 +191,9 @@ test "--all ignores sources outside the tests tree" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("tests");
-    try tmp.dir.writeFile(.{ .sub_path = "tests/test_ok.c", .data = good_source });
-    try tmp.dir.writeFile(.{ .sub_path = "elsewhere.c", .data = bad_source });
+    try tmp.dir.createDirPath(std.testing.io, "tests");
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/test_ok.c", .data = good_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "elsewhere.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"--all"});
     try std.testing.expectEqual(@as(u8, 0), result.status);
 }
@@ -213,10 +213,10 @@ test "--all reports its targets in sorted order" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("tests/b");
-    try tmp.dir.makePath("tests/a");
-    try tmp.dir.writeFile(.{ .sub_path = "tests/b/test_b.c", .data = "TEST_ASSERT_EQ((int)b, x);\n" });
-    try tmp.dir.writeFile(.{ .sub_path = "tests/a/test_a.c", .data = "TEST_ASSERT_EQ((int)a, x);\n" });
+    try tmp.dir.createDirPath(std.testing.io, "tests/b");
+    try tmp.dir.createDirPath(std.testing.io, "tests/a");
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/b/test_b.c", .data = "TEST_ASSERT_EQ((int)b, x);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/a/test_a.c", .data = "TEST_ASSERT_EQ((int)a, x);\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"--all"});
     const first = std.mem.indexOf(u8, result.out, "tests/a/test_a.c").?;
     const second = std.mem.indexOf(u8, result.out, "tests/b/test_b.c").?;
@@ -228,8 +228,8 @@ test "--all ignores non-C files in the tests tree" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("tests");
-    try tmp.dir.writeFile(.{ .sub_path = "tests/notes.md", .data = bad_source });
+    try tmp.dir.createDirPath(std.testing.io, "tests");
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/notes.md", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"--all"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expect(std.mem.indexOf(u8, result.err, "usage: check_assert_casts") != null);
@@ -240,7 +240,7 @@ test "an invocation with no top-level comma passes through the CLI quietly" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "odd.c", .data = "TEST_ASSERT_EQ((int)value);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "odd.c", .data = "TEST_ASSERT_EQ((int)value);\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"odd.c"});
     try std.testing.expectEqual(@as(u8, 0), result.status);
 }
@@ -250,7 +250,7 @@ test "a cast on the second argument alone reports once" {
     defer arena.deinit();
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "one.c", .data = "TEST_ASSERT_EQ(value, (size_t)expected);\n" });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "one.c", .data = "TEST_ASSERT_EQ(value, (size_t)expected);\n" });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"one.c"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     try std.testing.expectEqualStrings(
@@ -267,10 +267,10 @@ test "--all orders siblings by path component, not by joined bytes" {
     // `a-b` sorts BELOW `a` on joined bytes ('-' < '/') and ABOVE it on the
     // component tuple pathlib compared, so this pair pins the ordering the
     // deleted Python gate produced.
-    try tmp.dir.makePath("tests/a");
-    try tmp.dir.makePath("tests/a-b");
-    try tmp.dir.writeFile(.{ .sub_path = "tests/a/test_inner.c", .data = bad_source });
-    try tmp.dir.writeFile(.{ .sub_path = "tests/a-b/test_outer.c", .data = bad_source });
+    try tmp.dir.createDirPath(std.testing.io, "tests/a");
+    try tmp.dir.createDirPath(std.testing.io, "tests/a-b");
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/a/test_inner.c", .data = bad_source });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "tests/a-b/test_outer.c", .data = bad_source });
     const result = try invoke(arena.allocator(), tmp.dir, ".", &[_][]const u8{"--all"});
     try std.testing.expectEqual(@as(u8, 1), result.status);
     const inner = std.mem.indexOf(u8, result.out, "tests/a/test_inner.c").?;
