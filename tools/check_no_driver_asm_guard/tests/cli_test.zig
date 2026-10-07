@@ -22,19 +22,20 @@ const Run = struct {
 };
 
 /// Drive the gate over a temporary tree whose drivers live in `src/`.
-fn runGate(allocator: std.mem.Allocator, dir: std.fs.Dir, argv: []const []const u8) !Run {
-    var out = std.ArrayList(u8).init(allocator);
+fn runGate(allocator: std.mem.Allocator, dir: std.Io.Dir, argv: []const []const u8) !Run {
+    var out: std.Io.Writer.Allocating = .init(allocator);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
     errdefer err.deinit();
     const status = try cli.run(
         allocator,
+        std.testing.io,
         dir,
         ".",
         argv,
         .{ .driver_dir = "src" },
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -44,9 +45,9 @@ fn runGate(allocator: std.mem.Allocator, dir: std.fs.Dir, argv: []const []const 
 }
 
 /// Write one file, creating its directories.
-fn writeFile(dir: std.fs.Dir, rel: []const u8, contents: []const u8) !void {
-    if (std.fs.path.dirname(rel)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = rel, .data = contents });
+fn writeFile(dir: std.Io.Dir, rel: []const u8, contents: []const u8) !void {
+    if (std.fs.path.dirname(rel)) |parent| try dir.createDirPath(std.testing.io, parent);
+    try dir.writeFile(std.testing.io, .{ .sub_path = rel, .data = contents });
 }
 
 const guarded_driver =
@@ -75,7 +76,7 @@ test "a clean sweep exits 0 and reports the translation-unit count" {
 test "an empty driver directory is a clean sweep of zero drivers" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("src");
+    try tmp.dir.createDirPath(std.testing.io, "src");
 
     var result = try runGate(std.testing.allocator, tmp.dir, &.{});
     defer result.deinit(std.testing.allocator);
@@ -189,7 +190,7 @@ test "a dot-prefixed driver is NOT hidden from the sweep" {
 test "a directory whose name ends in .c is a read failure, not a skip" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("src/trap.c");
+    try tmp.dir.createDirPath(std.testing.io, "src/trap.c");
 
     var result = try runGate(std.testing.allocator, tmp.dir, &.{});
     defer result.deinit(std.testing.allocator);
@@ -317,36 +318,36 @@ test "the repository root is honoured when the gate runs from elsewhere" {
     defer tmp.cleanup();
     try writeFile(tmp.dir, "repo/src/bad.c", guarded_driver);
 
-    var out = std.ArrayList(u8).init(std.testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer out.deinit();
-    var err = std.ArrayList(u8).init(std.testing.allocator);
+    var err: std.Io.Writer.Allocating = .init(std.testing.allocator);
     defer err.deinit();
     const status = try cli.run(
         std.testing.allocator,
+        std.testing.io,
         tmp.dir,
         "repo",
         &.{},
         .{ .driver_dir = "src" },
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, out.items, "src/bad.c:2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "src/bad.c:2") != null);
 }
 
 test "a driver far past any read ceiling still reports its guarded asm" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("src");
+    try tmp.dir.createDirPath(std.testing.io, "src");
 
     // Written sparse: the hole costs no disk and reads back as NUL bytes,
     // which are valid UTF-8 and break no line, so the guarded statement lands
     // on line 3 of a file an order of magnitude past any plausible ceiling.
-    var file = try tmp.dir.createFile("src/huge.c", .{});
-    defer file.close();
-    try file.writeAll("#ifdef RA8_OFF_TARGET\n");
-    try file.seekTo(17 * 1024 * 1024);
-    try file.writeAll("\nvoid f(void) { __asm(\"nop\"); }\n#endif\n");
+    var file = try tmp.dir.createFile(std.testing.io, "src/huge.c", .{});
+    defer file.close(std.testing.io);
+    try file.writePositionalAll(std.testing.io, "#ifdef RA8_OFF_TARGET\n", 0);
+    try file.writePositionalAll(std.testing.io, "\nvoid f(void) { __asm(\"nop\"); }\n#endif\n", 17 * 1024 * 1024);
 
     var result = try runGate(std.testing.allocator, tmp.dir, &.{});
     defer result.deinit(std.testing.allocator);
