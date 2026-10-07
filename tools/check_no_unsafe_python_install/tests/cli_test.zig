@@ -27,26 +27,27 @@ const Outcome = struct {
 };
 
 fn invoke(
-    dir: std.fs.Dir,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     census: []const []const u8,
     policy: cli.Policy,
 ) !Outcome {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    var out = std.ArrayList(u8).init(std.testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(std.testing.allocator);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(std.testing.allocator);
+    var err: std.Io.Writer.Allocating = .init(std.testing.allocator);
     errdefer err.deinit();
     const status = try cli.run(
         arena.allocator(),
+        std.testing.io,
         dir,
         ".",
         argv,
         .{ .provided = census },
         policy,
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -58,9 +59,9 @@ fn invoke(
 /// Policy used by the fixtures: a one-file floor and a stand-in self source.
 const test_policy = cli.Policy{ .floor = 1, .self_source = "self.zig" };
 
-fn write(dir: std.fs.Dir, path: []const u8, data: []const u8) !void {
-    if (std.fs.path.dirname(path)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = path, .data = data });
+fn write(dir: std.Io.Dir, path: []const u8, data: []const u8) !void {
+    if (std.fs.path.dirname(path)) |parent| try dir.createDirPath(std.testing.io, parent);
+    try dir.writeFile(std.testing.io, .{ .sub_path = path, .data = data });
 }
 
 test "the live policy carries the inherited floor and self source" {
@@ -239,7 +240,7 @@ test "a directory in the census is not scanned as a file" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
     try write(tmp.dir, "self.zig", "clean\n");
-    try tmp.dir.makePath("docs");
+    try tmp.dir.createDirPath(std.testing.io, "docs");
     const result = try invoke(tmp.dir, &.{}, &.{"docs"}, test_policy);
     defer result.deinit();
     try std.testing.expectEqual(@as(u8, 0), result.status);
@@ -284,14 +285,14 @@ test "an unreadable file exits 1 rather than passing the tree" {
     try write(tmp.dir, "self.zig", "clean\n");
     try write(tmp.dir, "secret.md", "clean\n");
     {
-        const file = try tmp.dir.openFile("secret.md", .{});
-        defer file.close();
-        try file.chmod(0);
+        const file = try tmp.dir.openFile(std.testing.io, "secret.md", .{});
+        defer file.close(std.testing.io);
+        try file.setPermissions(std.testing.io, .fromMode(0));
     }
     // A privileged test runner reads it anyway, and then there is no
     // unreadable file to assert about; skip rather than assert a falsehood.
-    if (tmp.dir.openFile("secret.md", .{})) |probe| {
-        probe.close();
+    if (tmp.dir.openFile(std.testing.io, "secret.md", .{})) |probe| {
+        probe.close(std.testing.io);
         return error.SkipZigTest;
     } else |_| {}
     const result = try invoke(tmp.dir, &.{}, &.{"secret.md"}, test_policy);
@@ -311,11 +312,10 @@ test "a source past the old read ceiling is still scanned" {
     // decided whether a page was scanned; a ceiling made an oversized page
     // abort the run and hide every real finding behind it.
     {
-        try tmp.dir.makePath("docs");
-        const huge = try tmp.dir.createFile("docs/huge.md", .{});
-        defer huge.close();
-        try huge.seekTo(65 * 1024 * 1024);
-        try huge.writeAll("tail\n");
+        try tmp.dir.createDirPath(std.testing.io, "docs");
+        const huge = try tmp.dir.createFile(std.testing.io, "docs/huge.md", .{});
+        defer huge.close(std.testing.io);
+        try huge.writePositionalAll(std.testing.io, "tail\n", 65 * 1024 * 1024);
     }
     const census = [_][]const u8{ "self.zig", "docs/huge.md", "docs/small.md" };
     const outcome = try invoke(tmp.dir, &.{}, &census, test_policy);

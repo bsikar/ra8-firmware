@@ -46,13 +46,14 @@ pub const Policy = struct {
 /// Run the gate. Returns the process exit status rather than calling exit.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     repo_root: []const u8,
     argv: []const []const u8,
     census: Census,
     policy: Policy,
-    out: anytype,
-    err: anytype,
+    out: *std.Io.Writer,
+    err: *std.Io.Writer,
 ) !u8 {
     if (argv.len == 1 and std.mem.eql(u8, argv[0], "--selftest")) {
         return selftest(allocator, out, err);
@@ -64,13 +65,13 @@ pub fn run(
 
     const rels = switch (census) {
         .provided => |given| given,
-        .git => gitCensus(allocator, repo_root) catch |failure| {
+        .git => gitCensus(allocator, io, repo_root) catch |failure| {
             try err.print("cannot enumerate first-party files: {s}\n", .{@errorName(failure)});
             return 2;
         },
     };
 
-    var tree = Tree{ .dir = dir, .root = repo_root };
+    var tree = Tree{ .io = io, .dir = dir, .root = repo_root };
     const scoped = try implementation.selectScoped(
         allocator,
         rels,
@@ -89,8 +90,8 @@ pub fn run(
         return 2;
     }
 
-    var findings = std.ArrayList([]const u8).init(allocator);
-    defer findings.deinit();
+    var findings: std.ArrayList([]const u8) = .empty;
+    defer findings.deinit(allocator);
     for (scoped) |rel| {
         const raw = tree.read(allocator, rel) catch {
             try err.print("{s}: cannot read {s}\n", .{ tool, rel });
@@ -105,7 +106,7 @@ pub fn run(
         const hits = try implementation.scanText(allocator, unified);
         defer allocator.free(hits);
         for (hits) |line| {
-            try findings.append(try implementation.renderFinding(allocator, rel, line));
+            try findings.append(allocator, try implementation.renderFinding(allocator, rel, line));
         }
     }
 
@@ -121,7 +122,7 @@ pub fn run(
 
 /// Prove the detector fires on an override and stays quiet on isolated
 /// installation guidance, in both directions.
-fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
+fn selftest(allocator: std.mem.Allocator, out: *std.Io.Writer, err: *std.Io.Writer) !u8 {
     const failures = try implementation.selftestFailures(allocator);
     defer allocator.free(failures);
     if (failures.len != 0) {
@@ -138,7 +139,8 @@ fn selftest(allocator: std.mem.Allocator, out: anytype, err: anytype) !u8 {
 /// The repository as the gate sees it: one directory handle plus the root the
 /// census paths are relative to.
 const Tree = struct {
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     root: []const u8,
 
     fn resolver(self: *const Tree) implementation.Resolver {
@@ -154,9 +156,9 @@ const Tree = struct {
         var buffer: [std.fs.max_path_bytes]u8 = undefined;
         const joined = std.fmt.bufPrint(&buffer, "{s}/{s}", .{ self.root, rel }) catch return false;
         const stat = if (std.fs.path.isAbsolute(joined))
-            std.fs.cwd().statFile(joined) catch return false
+            std.Io.Dir.cwd().statFile(self.io, joined, .{}) catch return false
         else
-            self.dir.statFile(joined) catch return false;
+            self.dir.statFile(self.io, joined, .{}) catch return false;
         return stat.kind == .file;
     }
 
@@ -164,16 +166,18 @@ const Tree = struct {
         const joined = try std.fs.path.join(allocator, &.{ self.root, rel });
         defer allocator.free(joined);
         const file = if (std.fs.path.isAbsolute(joined))
-            try std.fs.openFileAbsolute(joined, .{})
+            try std.Io.Dir.openFileAbsolute(self.io, joined, .{})
         else
-            try self.dir.openFile(joined, .{});
-        defer file.close();
+            try self.dir.openFile(self.io, joined, .{});
+        defer file.close(self.io);
         // Bounded by the file, never by a constant. The Python this replaces
         // called read() with no ceiling, so size never decided whether a page
         // was scanned. A constant ceiling did: this tree already tracks a
         // 49 MB PDF, and the first source past the ceiling failed the whole
         // gate with "cannot read" while hiding every real finding behind it.
-        return file.readToEndAlloc(allocator, std.math.maxInt(usize));
+        var buffer: [4096]u8 = undefined;
+        var reader = file.reader(self.io, &buffer);
+        return reader.interface.allocRemaining(allocator, .unlimited);
     }
 };
 
@@ -182,26 +186,25 @@ const Tree = struct {
 /// The census is taken AT the repository root, never at the working
 /// directory: the gate is invoked from wherever the launcher was called, and
 /// a census of the wrong tree is the collapsed scope this gate rejects.
-fn gitCensus(allocator: std.mem.Allocator, repo_root: []const u8) ![][]const u8 {
-    const result = try std.process.Child.run(.{
-        .allocator = allocator,
+fn gitCensus(allocator: std.mem.Allocator, io: std.Io, repo_root: []const u8) ![][]const u8 {
+    const result = try std.process.run(allocator, io, .{
         .argv = &.{ "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z" },
-        .cwd = repo_root,
-        .max_output_bytes = max_census_bytes,
+        .cwd = .{ .path = repo_root },
+        .stdout_limit = .limited(max_census_bytes),
     });
     defer allocator.free(result.stderr);
     errdefer allocator.free(result.stdout);
     switch (result.term) {
-        .Exited => |code| if (code != 0) return error.CensusFailed,
+        .exited => |code| if (code != 0) return error.CensusFailed,
         else => return error.CensusFailed,
     }
     // The census was decoded strictly, so invalid bytes are an enumeration
     // failure rather than a silently shortened file set.
     if (!std.unicode.utf8ValidateSlice(result.stdout)) return error.CensusNotUtf8;
 
-    var rels = std.ArrayList([]const u8).init(allocator);
-    errdefer rels.deinit();
+    var rels: std.ArrayList([]const u8) = .empty;
+    errdefer rels.deinit(allocator);
     var parts = std.mem.splitScalar(u8, result.stdout, 0);
-    while (parts.next()) |part| try rels.append(part);
-    return rels.toOwnedSlice();
+    while (parts.next()) |part| try rels.append(allocator, part);
+    return rels.toOwnedSlice(allocator);
 }
