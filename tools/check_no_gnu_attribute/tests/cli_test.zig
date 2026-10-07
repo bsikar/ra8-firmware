@@ -24,12 +24,12 @@ const Captured = struct {
     }
 };
 
-fn runIn(dir: std.fs.Dir, root: []const u8, args: []const []const u8) !Captured {
-    var out = std.ArrayList(u8).init(testing.allocator);
+fn runIn(dir: std.Io.Dir, root: []const u8, args: []const []const u8) !Captured {
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(testing.allocator);
+    var err: std.Io.Writer.Allocating = .init(testing.allocator);
     errdefer err.deinit();
-    const outcome = try cli.run(testing.allocator, dir, root, args, out.writer(), err.writer());
+    const outcome = try cli.run(testing.allocator, testing.io, dir, root, args, &out.writer, &err.writer);
     return .{
         .status = outcome.status,
         .scanned = outcome.scanned,
@@ -39,9 +39,9 @@ fn runIn(dir: std.fs.Dir, root: []const u8, args: []const []const u8) !Captured 
     };
 }
 
-fn write(dir: std.fs.Dir, path: []const u8, body: []const u8) !void {
-    if (std.fs.path.dirname(path)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = path, .data = body });
+fn write(dir: std.Io.Dir, path: []const u8, body: []const u8) !void {
+    if (std.fs.path.dirname(path)) |parent| try dir.createDirPath(testing.io, parent);
+    try dir.writeFile(testing.io, .{ .sub_path = path, .data = body });
 }
 
 const bad_line = "void f(void) __attribute__((weak));\n";
@@ -198,7 +198,7 @@ test "a non-existent path with a scanned suffix is counted and stays quiet" {
 test "a directory named like a source is read-failed and skipped" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("libs/weird.c");
+    try tmp.dir.createDirPath(testing.io, "libs/weird.c");
     var result = try runIn(tmp.dir, "/repo", &.{"libs/weird.c"});
     defer result.deinit();
     try testing.expectEqual(@as(u8, 0), result.status);
@@ -311,10 +311,10 @@ test "discovery finds sources under every root, at any depth" {
     try write(tmp.dir, "tests/deep/nested/b.hpp", good_line);
     try write(tmp.dir, "apps/product/c.h", good_line);
     try write(tmp.dir, "port/d.cpp", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 4), found.items.len);
 }
@@ -325,10 +325,10 @@ test "discovery ignores unscanned suffixes and absent roots" {
     try write(tmp.dir, "libs/a.md", good_line);
     try write(tmp.dir, "libs/a.C", good_line);
     try write(tmp.dir, "scripts/a.c", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 0), found.items.len);
 }
@@ -341,10 +341,10 @@ test "discovery drops build output and vendored trees" {
     try write(tmp.dir, "tools/x/__pycache__/drop.c", good_line);
     try write(tmp.dir, "libs/third_party/drop.c", good_line);
     try write(tmp.dir, "libs/ra8_fonts/drop.c", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 1), found.items.len);
     try testing.expectEqualStrings("libs/keep.c", found.items[0]);
@@ -356,10 +356,10 @@ test "discovery does not hide dot-prefixed directories or files" {
     defer tmp.cleanup();
     try write(tmp.dir, "libs/.hidden/a.c", good_line);
     try write(tmp.dir, "libs/.b.c", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 2), found.items.len);
 }
@@ -367,11 +367,11 @@ test "discovery does not hide dot-prefixed directories or files" {
 test "discovery yields a directory whose name ends in a scanned suffix" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("libs/oops.c");
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    try tmp.dir.createDirPath(testing.io, "libs/oops.c");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 1), found.items.len);
 }
@@ -380,10 +380,10 @@ test "a source directory named build survives discovery" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     try write(tmp.dir, "libs/build/a.c", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 1), found.items.len);
 }
@@ -392,10 +392,10 @@ test "discovery drops a cmake-build- tree under a build root" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
     try write(tmp.dir, "tools/x/cmake-build-debug/a.c", good_line);
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
     defer {
         for (found.items) |item| testing.allocator.free(item);
-        found.deinit();
+        found.deinit(testing.allocator);
     }
     try testing.expectEqual(@as(usize, 0), found.items.len);
 }
@@ -403,25 +403,24 @@ test "discovery drops a cmake-build- tree under a build root" {
 test "an empty tree discovers nothing without erroring" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    var found = try cli.discover(testing.allocator, tmp.dir, "/repo");
-    defer found.deinit();
+    var found = try cli.discover(testing.allocator, testing.io, tmp.dir, "/repo");
+    defer found.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 0), found.items.len);
 }
 
 test "a source past any read ceiling still reports its attribute" {
-    // A ceiling on the read is a fail-OPEN divergence: readFileAlloc answers
-    // error.FileTooBig rather than truncating, and that error lands in the
+    // A ceiling on the read is a fail-OPEN divergence: a limited read answers
+    // error.StreamTooLong rather than truncating, and that error lands in the
     // same catch as a missing file, so a large source would be reported as
     // carrying no attribute while still counting as scanned. Written sparse,
     // so the fixture costs a seek rather than 64 MiB of disk.
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("libs");
+    try tmp.dir.createDirPath(testing.io, "libs");
     {
-        var file = try tmp.dir.createFile("libs/huge.c", .{});
-        defer file.close();
-        try file.seekTo(65 * 1024 * 1024);
-        try file.writeAll(bad_line);
+        var file = try tmp.dir.createFile(testing.io, "libs/huge.c", .{});
+        defer file.close(testing.io);
+        try file.writePositionalAll(testing.io, bad_line, 65 * 1024 * 1024);
     }
     var result = try runIn(tmp.dir, "/repo", &.{"libs/huge.c"});
     defer result.deinit();

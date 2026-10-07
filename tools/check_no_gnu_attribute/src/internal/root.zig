@@ -158,19 +158,19 @@ pub fn lstrip(text: []const u8) []const u8 {
 /// Text-mode read: `Path.read_text()` translates CRLF and a lone CR to LF
 /// before any splitting, so the line breaks below never see a CR.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, text.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, text.len);
+    errdefer out.deinit(allocator);
     var i: usize = 0;
     while (i < text.len) {
         if (text[i] == '\r') {
-            try out.append('\n');
+            try out.append(allocator, '\n');
             i += if (i + 1 < text.len and text[i + 1] == '\n') 2 else 1;
         } else {
-            try out.append(text[i]);
+            try out.append(allocator, text[i]);
             i += 1;
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Width of the `str.splitlines()` break at `index`, or 0. CR is absent by
@@ -372,8 +372,8 @@ pub const Finding = struct { line: usize, snippet: []const u8 };
 /// `(i, line.strip()[:100])` per match, so two matches on one line produced
 /// two IDENTICAL rows and both counted.
 pub fn scanText(allocator: std.mem.Allocator, text: []const u8) !std.ArrayList(Finding) {
-    var findings = std.ArrayList(Finding).init(allocator);
-    errdefer findings.deinit();
+    var findings: std.ArrayList(Finding) = .empty;
+    errdefer findings.deinit(allocator);
     if (std.mem.indexOf(u8, text, attr_token) == null) return findings;
     var lines = LineIterator.init(text);
     var number: usize = 0;
@@ -384,7 +384,7 @@ pub fn scanText(allocator: std.mem.Allocator, text: []const u8) !std.ArrayList(F
             if (isCommentPos(line, start)) continue;
             if (hasWaiver(line)) continue;
             if (bodyIsAllowed(attrBody(line, start))) continue;
-            try findings.append(.{ .line = number, .snippet = snippet(line) });
+            try findings.append(allocator, .{ .line = number, .snippet = snippet(line) });
         }
     }
     return findings;
@@ -487,14 +487,14 @@ pub fn pythonLessThan(_: void, a: []const u8, b: []const u8) bool {
 // Diagnostics
 // ---------------------------------------------------------------------------
 
-pub fn renderFinding(writer: anytype, path: []const u8, line: usize, text: []const u8) !void {
+pub fn renderFinding(writer: *std.Io.Writer, path: []const u8, line: usize, text: []const u8) !void {
     try writer.print(
         "{s}:{d}: GNU __attribute__ -- use the C23 [[...]] form (e.g. [[gnu::weak]]); {s}\n",
         .{ path, line, text },
     );
 }
 
-pub fn renderSummary(writer: anytype, total: usize) !void {
+pub fn renderSummary(writer: *std.Io.Writer, total: usize) !void {
     try writer.print(
         "\ncheck_no_gnu_attribute: {d} violation(s). Migrate to [[...]] (only interrupt / " ++
             "cmse_nonsecure_entry / cmse_nonsecure_call may stay __attribute__; add " ++
@@ -503,14 +503,14 @@ pub fn renderSummary(writer: anytype, total: usize) !void {
     );
 }
 
-pub fn renderClean(writer: anytype) !void {
+pub fn renderClean(writer: *std.Io.Writer) !void {
     try writer.writeAll("check_no_gnu_attribute: clean -- all attributes use the C23 [[...]] form.\n");
 }
 
 /// The collapse line drops the `.py`, as the usage line and the selftest
 /// summary do: every diagnostic names the tool that ran, and the module this
 /// one used to name is deleted in the same change.
-pub fn renderCollapsed(writer: anytype, count: usize) !void {
+pub fn renderCollapsed(writer: *std.Io.Writer, count: usize) !void {
     try writer.print(
         "check_no_gnu_attribute: FATAL -- only {d} first-party source file(s) in scope, " ++
             "floor is {d}. A collapsed sweep reports a clean tree because it scanned nothing.\n",
@@ -518,7 +518,7 @@ pub fn renderCollapsed(writer: anytype, count: usize) !void {
     );
 }
 
-pub fn renderUsage(writer: anytype) !void {
+pub fn renderUsage(writer: *std.Io.Writer) !void {
     try writer.writeAll("usage: check_no_gnu_attribute [--selftest] [file ...]\n");
 }
 
@@ -542,9 +542,9 @@ pub const SelftestCase = struct { passed: bool, label: []const u8 };
 /// Both directions, in the inherited order.
 pub fn selftestCases(allocator: std.mem.Allocator) ![2]SelftestCase {
     var bad = try scanText(allocator, selftest_bad);
-    defer bad.deinit();
+    defer bad.deinit(allocator);
     var good = try scanText(allocator, selftest_good);
-    defer good.deinit();
+    defer good.deinit(allocator);
     return .{
         .{ .passed = bad.items.len == 1, .label = "migratable GNU attribute fires" },
         .{ .passed = good.items.len == 0, .label = "C23, exact exception, waiver, and prose stay quiet" },

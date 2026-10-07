@@ -12,13 +12,13 @@ const testing = std.testing;
 
 fn findingCount(text: []const u8) !usize {
     var findings = try implementation.scanText(testing.allocator, text);
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     return findings.items.len;
 }
 
 fn firstSnippet(text: []const u8) ![]const u8 {
     var findings = try implementation.scanText(testing.allocator, text);
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expect(findings.items.len >= 1);
     return findings.items[0].snippet;
 }
@@ -208,7 +208,7 @@ test "matches are non-overlapping and left to right" {
 
 test "line numbers count from one" {
     var findings = try implementation.scanText(testing.allocator, "a\nb\nvoid f(void) __attribute__((weak));\n");
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 1), findings.items.len);
     try testing.expectEqual(@as(usize, 3), findings.items[0].line);
 }
@@ -218,7 +218,7 @@ test "CRLF folds before splitting, so it does not shift line numbers" {
     const text = try implementation.normalizeTerminators(testing.allocator, raw);
     defer testing.allocator.free(text);
     var findings = try implementation.scanText(testing.allocator, text);
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 3), findings.items[0].line);
 }
 
@@ -230,7 +230,7 @@ test "a lone CR folds to one break" {
 
 test "a form feed is a line break, as str.splitlines has it" {
     var findings = try implementation.scanText(testing.allocator, "a\x0cvoid f(void) __attribute__((weak));\n");
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 2), findings.items[0].line);
 }
 
@@ -273,12 +273,12 @@ test "the snippet is the trimmed line" {
 }
 
 test "the snippet truncates at 100 CODE POINTS, not bytes" {
-    var text = std.ArrayList(u8).init(testing.allocator);
-    defer text.deinit();
-    for (0..120) |_| try text.appendSlice("\u{e9}");
-    try text.appendSlice(" __attribute__((weak));\n");
+    var text: std.ArrayList(u8) = .empty;
+    defer text.deinit(testing.allocator);
+    for (0..120) |_| try text.appendSlice(testing.allocator, "\u{e9}");
+    try text.appendSlice(testing.allocator, " __attribute__((weak));\n");
     var findings = try implementation.scanText(testing.allocator, text.items);
-    defer findings.deinit();
+    defer findings.deinit(testing.allocator);
     try testing.expectEqual(@as(usize, 1), findings.items.len);
     try testing.expectEqual(@as(usize, 100), try std.unicode.utf8CountCodepoints(findings.items[0].snippet));
     try testing.expectEqual(@as(usize, 200), findings.items[0].snippet.len);
@@ -391,40 +391,40 @@ test "the scanned roots are the inherited six" {
 // --- diagnostics ----------------------------------------------------------
 
 test "a finding renders the inherited one-line form" {
-    var out = std.ArrayList(u8).init(testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
     defer out.deinit();
-    try implementation.renderFinding(out.writer(), "libs/a.c", 7, "void f(void) __attribute__((weak));");
+    try implementation.renderFinding(&out.writer, "libs/a.c", 7, "void f(void) __attribute__((weak));");
     try testing.expectEqualStrings(
         "libs/a.c:7: GNU __attribute__ -- use the C23 [[...]] form (e.g. [[gnu::weak]]); " ++
             "void f(void) __attribute__((weak));\n",
-        out.items,
+        out.written(),
     );
 }
 
 test "the summary names the count and the three exemptions" {
-    var out = std.ArrayList(u8).init(testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
     defer out.deinit();
-    try implementation.renderSummary(out.writer(), 3);
-    try testing.expect(std.mem.startsWith(u8, out.items, "\ncheck_no_gnu_attribute: 3 violation(s)."));
-    try testing.expect(std.mem.indexOf(u8, out.items, "cmse_nonsecure_call") != null);
-    try testing.expect(std.mem.indexOf(u8, out.items, "ATTR-OK: <reason>") != null);
+    try implementation.renderSummary(&out.writer, 3);
+    try testing.expect(std.mem.startsWith(u8, out.written(), "\ncheck_no_gnu_attribute: 3 violation(s)."));
+    try testing.expect(std.mem.indexOf(u8, out.written(), "cmse_nonsecure_call") != null);
+    try testing.expect(std.mem.indexOf(u8, out.written(), "ATTR-OK: <reason>") != null);
 }
 
 test "the collapse line names the count and the floor" {
-    var out = std.ArrayList(u8).init(testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
     defer out.deinit();
-    try implementation.renderCollapsed(out.writer(), 12);
-    try testing.expect(std.mem.indexOf(u8, out.items, "only 12 first-party source file(s)") != null);
-    try testing.expect(std.mem.indexOf(u8, out.items, "floor is 1700") != null);
+    try implementation.renderCollapsed(&out.writer, 12);
+    try testing.expect(std.mem.indexOf(u8, out.written(), "only 12 first-party source file(s)") != null);
+    try testing.expect(std.mem.indexOf(u8, out.written(), "floor is 1700") != null);
 }
 
 test "the clean line is the inherited sentence" {
-    var out = std.ArrayList(u8).init(testing.allocator);
+    var out: std.Io.Writer.Allocating = .init(testing.allocator);
     defer out.deinit();
-    try implementation.renderClean(out.writer());
+    try implementation.renderClean(&out.writer);
     try testing.expectEqualStrings(
         "check_no_gnu_attribute: clean -- all attributes use the C23 [[...]] form.\n",
-        out.items,
+        out.written(),
     );
 }
 
