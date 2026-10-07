@@ -19,7 +19,7 @@ const Ed25519 = std.crypto.sign.Ed25519;
 const header_bytes = @sizeOf(appimg.Header);
 
 fn load() ![]u8 {
-    return std.fs.cwd().readFileAlloc(std.testing.allocator, built.ra8app, 1024 * 1024);
+    return std.Io.Dir.cwd().readFileAlloc(std.testing.io, built.ra8app, std.testing.allocator, .limited(1024 * 1024));
 }
 
 fn admit(bytes: []const u8) !appimg.Header {
