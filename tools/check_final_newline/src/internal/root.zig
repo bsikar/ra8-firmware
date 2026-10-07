@@ -227,18 +227,18 @@ fn lessThanString(_: void, left: []const u8, right: []const u8) bool {
 pub fn derivedScope(allocator: std.mem.Allocator, census: []const []const u8) ![][]const u8 {
     var seen = std.StringHashMap(void).init(allocator);
     defer seen.deinit();
-    var kept = std.ArrayList([]const u8).init(allocator);
-    errdefer kept.deinit();
+    var kept: std.ArrayList([]const u8) = .empty;
+    errdefer kept.deinit(allocator);
 
     for (census) |rel| {
         const matches = hasSourceSuffix(rel) or isSourceName(rel);
         if (!matches or !isFirstParty(rel)) continue;
         const gop = try seen.getOrPut(rel);
         if (gop.found_existing) continue;
-        try kept.append(rel);
+        try kept.append(allocator, rel);
     }
 
-    const out = try kept.toOwnedSlice();
+    const out = try kept.toOwnedSlice(allocator);
     std.mem.sort([]const u8, out, {}, lessThanString);
     return out;
 }
@@ -260,7 +260,7 @@ pub fn endsInNewline(data: []const u8) bool {
 /// `check_final_newline._rel`: repo-relative when the path is under the root,
 /// otherwise the path unchanged.
 pub fn displayPath(absolute: []const u8, repo_root: []const u8) []const u8 {
-    const root = std.mem.trimRight(u8, repo_root, "/");
+    const root = std.mem.trimEnd(u8, repo_root, "/");
     if (root.len == 0) return absolute;
     if (absolute.len > root.len and
         std.mem.startsWith(u8, absolute, root) and absolute[root.len] == '/')
