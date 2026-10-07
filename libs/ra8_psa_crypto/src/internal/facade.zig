@@ -16,7 +16,7 @@ const Limits = vocab.Limits;
 
 /// The C chose its crypto with `#ifdef RA8_OFF_TARGET`; this is the same
 /// switch. Only the taken arm is analysed, so a host build never reaches the
-/// `@cImport` of the vendored PSA headers.
+/// translate-c module of the vendored PSA headers.
 const backend = if (build_config.off_target)
     @import("backend_fake.zig")
 else

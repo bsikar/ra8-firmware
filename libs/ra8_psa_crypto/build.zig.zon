@@ -6,8 +6,14 @@
     .fingerprint = 0xdfedae39362c62d6,
     .minimum_zig_version = "0.14.1",
     .dependencies = .{
+        // Turns the vendored PSA headers into the `psa_h` module the on-target
+        // backend imports.
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
+            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+        },
         // Same pins as the root build.zig.zon; the on-target backend reads
-        // their headers through @cImport.
+        // their headers through translate-c.
         .mbedtls = .{
             .url = "https://github.com/bsikar/mbedtls/archive/f06d8d7cb0ce4f9c0ebc6db3e1dbf3ca02973e00.tar.gz",
             .hash = "N-V-__8AAONGfwDjjMjSEyow7xCaH-cj9BOe1iHzR_n4TxFQ",
