@@ -24,24 +24,25 @@ const Run = struct {
 /// Drive the gate over a temporary tree.
 fn runGate(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     census: []const []const u8,
     floor: usize,
 ) !Run {
-    var out = std.ArrayList(u8).init(allocator);
+    var out: std.Io.Writer.Allocating = .init(allocator);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
     errdefer err.deinit();
     const status = try cli.run(
         allocator,
+        std.testing.io,
         dir,
         ".",
         argv,
         .{ .provided = census },
         .{ .floor = floor },
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -51,9 +52,9 @@ fn runGate(
 }
 
 /// Write one file, creating its directories.
-fn writeFile(dir: std.fs.Dir, rel: []const u8, contents: []const u8) !void {
-    if (std.fs.path.dirname(rel)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = rel, .data = contents });
+fn writeFile(dir: std.Io.Dir, rel: []const u8, contents: []const u8) !void {
+    if (std.fs.path.dirname(rel)) |parent| try dir.createDirPath(std.testing.io, parent);
+    try dir.writeFile(std.testing.io, .{ .sub_path = rel, .data = contents });
 }
 
 const clean_source = "void f(void) { return; }\n";
@@ -207,7 +208,7 @@ test "a census path that is not on disk is skipped" {
 test "a directory named like a source is skipped" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("apps/a/src/fake.c");
+    try tmp.dir.createDirPath(std.testing.io, "apps/a/src/fake.c");
     try writeFile(tmp.dir, "apps/a/src/main.c", clean_source);
 
     var result = try runGate(
@@ -260,14 +261,14 @@ test "an unreadable source stops the sweep with status 2" {
     defer tmp.cleanup();
     try writeFile(tmp.dir, "apps/a/src/main.c", clean_source);
     {
-        const file = tmp.dir.openFile("apps/a/src/main.c", .{}) catch return error.SkipZigTest;
-        defer file.close();
-        file.chmod(0o000) catch return error.SkipZigTest;
+        const file = tmp.dir.openFile(std.testing.io, "apps/a/src/main.c", .{}) catch return error.SkipZigTest;
+        defer file.close(std.testing.io);
+        file.setPermissions(std.testing.io, .fromMode(0o000)) catch return error.SkipZigTest;
     }
     // A privileged runner ignores the mode bits, and then there is nothing
     // here to prove: skip rather than assert a permission that does not apply.
-    if (tmp.dir.openFile("apps/a/src/main.c", .{})) |probe| {
-        probe.close();
+    if (tmp.dir.openFile(std.testing.io, "apps/a/src/main.c", .{})) |probe| {
+        probe.close(std.testing.io);
         return error.SkipZigTest;
     } else |_| {}
 
