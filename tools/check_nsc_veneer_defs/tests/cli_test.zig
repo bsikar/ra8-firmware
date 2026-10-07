@@ -22,19 +22,20 @@ const Run = struct {
 };
 
 /// Drive the gate over a temporary tree.
-fn runGate(allocator: std.mem.Allocator, dir: std.fs.Dir, argv: []const []const u8) !Run {
-    var out = std.ArrayList(u8).init(allocator);
+fn runGate(allocator: std.mem.Allocator, dir: std.Io.Dir, argv: []const []const u8) !Run {
+    var out: std.Io.Writer.Allocating = .init(allocator);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(allocator);
+    var err: std.Io.Writer.Allocating = .init(allocator);
     errdefer err.deinit();
     const status = try cli.run(
         allocator,
+        std.testing.io,
         dir,
         ".",
         argv,
         .{ .header = "inc/ra8_nsc.h", .src_dir = "src" },
-        out.writer(),
-        err.writer(),
+        &out.writer,
+        &err.writer,
     );
     return .{
         .status = status,
@@ -44,9 +45,9 @@ fn runGate(allocator: std.mem.Allocator, dir: std.fs.Dir, argv: []const []const 
 }
 
 /// Write one file, creating its directories.
-fn writeFile(dir: std.fs.Dir, rel: []const u8, contents: []const u8) !void {
-    if (std.fs.path.dirname(rel)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = rel, .data = contents });
+fn writeFile(dir: std.Io.Dir, rel: []const u8, contents: []const u8) !void {
+    if (std.fs.path.dirname(rel)) |parent| try dir.createDirPath(std.testing.io, parent);
+    try dir.writeFile(std.testing.io, .{ .sub_path = rel, .data = contents });
 }
 
 const two_decls =
@@ -148,7 +149,7 @@ test "a missing header exits 1 rather than passing on nothing to parse" {
 test "a directory where the header belongs exits 1" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("inc/ra8_nsc.h");
+    try tmp.dir.createDirPath(std.testing.io, "inc/ra8_nsc.h");
 
     var result = try runGate(std.testing.allocator, tmp.dir, &.{});
     defer result.deinit(std.testing.allocator);
@@ -192,7 +193,7 @@ test "a directory named like a source exits 1 when it is reached" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
     try writeFile(tmp.dir, "inc/ra8_nsc.h", "RA8_NSC_VENEER void ra8_nsc_x(void);\n");
-    try tmp.dir.makePath("src/trap.c");
+    try tmp.dir.createDirPath(std.testing.io, "src/trap.c");
 
     var result = try runGate(std.testing.allocator, tmp.dir, &.{});
     defer result.deinit(std.testing.allocator);
