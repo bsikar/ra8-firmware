@@ -56,7 +56,7 @@ test "classifyFinal recognises every error final code" {
     const cases = [_][]const u8{ "ERROR", "BUSY", "NO CARRIER" };
     for (cases) |c| {
         var is_err: u8 = 0;
-        const line = try std.testing.allocator.dupeZ(u8, c);
+        const line = try std.testing.allocator.dupeSentinel(u8, c, 0);
         defer std.testing.allocator.free(line);
         try std.testing.expectEqual(@as(u8, 1), core.classifyFinal(line.ptr, &is_err));
         try std.testing.expectEqual(@as(u8, 1), is_err);
