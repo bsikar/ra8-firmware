@@ -25,10 +25,11 @@ test "an empty or wrapping grant is refused" {
 }
 
 test "the shared SRAM bounds still match the board header" {
-    const header = try std.fs.cwd().readFileAlloc(
-        std.testing.allocator,
+    const header = try std.Io.Dir.cwd().readFileAlloc(
+        std.testing.io,
         "libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_dualcore.h",
-        1 << 20,
+        std.testing.allocator,
+        .limited(1 << 20),
     );
     defer std.testing.allocator.free(header);
     const expected = [_][]const u8{

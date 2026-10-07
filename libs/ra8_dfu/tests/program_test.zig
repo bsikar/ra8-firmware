@@ -26,13 +26,13 @@ const Recorder = struct {
             }
         }
         self.seen.* += 1;
-        self.writes.append(.{
+        self.writes.append(std.testing.allocator, .{
             .addr = addr,
             .erased = true,
             .byte = erased[0],
             .len = erased.len,
         }) catch unreachable;
-        self.writes.append(.{
+        self.writes.append(std.testing.allocator, .{
             .addr = addr,
             .erased = false,
             .byte = body[0],
@@ -74,8 +74,8 @@ test "a body write may not run past the image area" {
 }
 
 test "every page is erased to all ones before its body goes down" {
-    var writes = std.ArrayList(Recorder.Write).init(std.testing.allocator);
-    defer writes.deinit();
+    var writes: std.ArrayList(Recorder.Write) = .empty;
+    defer writes.deinit(std.testing.allocator);
     var seen: usize = 0;
 
     const page = image.layout.page_size;
@@ -99,8 +99,8 @@ test "every page is erased to all ones before its body goes down" {
 }
 
 test "a short tail is written as one partial page" {
-    var writes = std.ArrayList(Recorder.Write).init(std.testing.allocator);
-    defer writes.deinit();
+    var writes: std.ArrayList(Recorder.Write) = .empty;
+    defer writes.deinit(std.testing.allocator);
     var seen: usize = 0;
 
     const page = image.layout.page_size;
@@ -114,8 +114,8 @@ test "a short tail is written as one partial page" {
 }
 
 test "the loop stops at the first failing page" {
-    var writes = std.ArrayList(Recorder.Write).init(std.testing.allocator);
-    defer writes.deinit();
+    var writes: std.ArrayList(Recorder.Write) = .empty;
+    defer writes.deinit(std.testing.allocator);
     var seen: usize = 0;
 
     const page = image.layout.page_size;
