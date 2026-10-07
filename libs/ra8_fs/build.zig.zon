@@ -6,6 +6,11 @@
     .dependencies = .{
         // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+        // Turns the ra8_fs C headers into the `fs_h` module fs_c.zig re-exports.
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
+            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+        },
     },
     .paths = .{
         "build.zig",
