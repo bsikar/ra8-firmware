@@ -37,10 +37,15 @@ pub const exit_usage: u8 = 2;
 /// that a wrong argument cannot exhaust the build machine's memory.
 const max_font_bytes = 64 * 1024 * 1024;
 
+/// A read limit fails once it is reached, so one byte past the ceiling keeps a
+/// font of exactly `max_font_bytes` accepted.
+const font_read_limit: std.Io.Limit = .limited(max_font_bytes + 1);
+
 /// Bake a font file into a C translation unit, returning the exit status.
 pub fn run(
     allocator: std.mem.Allocator,
-    dir: std.fs.Dir,
+    io: std.Io,
+    dir: std.Io.Dir,
     argv: []const []const u8,
     stdout: anytype,
     stderr: anytype,
@@ -55,7 +60,7 @@ pub fn run(
     const symbol = argv[3];
     const header = argv[4];
 
-    const data = dir.readFileAlloc(allocator, source, max_font_bytes) catch |err| {
+    const data = dir.readFileAlloc(io, source, allocator, font_read_limit) catch |err| {
         try stderr.print("font_to_c: {s}: {s}\n", .{ source, @errorName(err) });
         return exit_error;
     };
@@ -75,7 +80,7 @@ pub fn run(
     );
     defer allocator.free(text);
 
-    dir.writeFile(.{ .sub_path = destination, .data = text }) catch |err| {
+    dir.writeFile(io, .{ .sub_path = destination, .data = text }) catch |err| {
         try stderr.print("font_to_c: {s}: {s}\n", .{ destination, @errorName(err) });
         return exit_error;
     };
