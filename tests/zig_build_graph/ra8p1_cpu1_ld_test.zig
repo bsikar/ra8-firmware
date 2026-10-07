@@ -17,7 +17,7 @@ const shram_start: u32 = 0x2210_0000;
 const shram_end: u32 = 0x221A_0000;
 
 fn readScript(path: []const u8) ![]u8 {
-    return std.fs.cwd().readFileAlloc(std.testing.allocator, path, 1 << 16);
+    return std.Io.Dir.cwd().readFileAlloc(std.testing.io, path, std.testing.allocator, .limited(1 << 16));
 }
 
 fn body(script: []const u8) ![]const u8 {
