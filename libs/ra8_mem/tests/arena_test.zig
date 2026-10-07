@@ -19,7 +19,7 @@ const Region = struct {
     storage: []align(4096) u8,
 
     fn init(bytes: u32) !Region {
-        const buf = try testing.allocator.alignedAlloc(u8, 4096, bytes);
+        const buf = try testing.allocator.alignedAlloc(u8, .fromByteUnits(4096), bytes);
         return .{ .storage = buf };
     }
 
