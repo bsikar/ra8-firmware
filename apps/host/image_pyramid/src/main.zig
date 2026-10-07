@@ -72,17 +72,23 @@ fn parseArgs(args: []const []const u8) UsageError!Options {
     return .{ .input = input, .output_dir = output_dir orelse return error.MissingOutputDir, .levels = levels };
 }
 
-fn printCodecError(writer: anytype, stage: []const u8, failure: codec.CodecFailure) !void {
+fn printCodecError(writer: *std.Io.Writer, stage: []const u8, failure: codec.CodecFailure) !void {
     try writer.print("error: {s}: 0x{x:0>8}\n", .{ stage, failure.code });
 }
 
-fn readInput(allocator: std.mem.Allocator, path: []const u8) ![]u8 {
-    const file = try std.fs.cwd().openFile(path, .{});
-    defer file.close();
-    const stat = try file.stat();
+fn readInput(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
+    const file = try std.Io.Dir.cwd().openFile(io, path, .{});
+    defer file.close(io);
+    const stat = try file.stat(io);
     if (stat.kind != .file) return error.InputNotRegular;
     if (stat.size > 16 * 1024 * 1024) return error.InputTooLarge;
-    return try file.readToEndAlloc(allocator, 16 * 1024 * 1024);
+    var buffer: [4096]u8 = undefined;
+    var reader = file.reader(io, &buffer);
+    return reader.interface.allocRemaining(allocator, .limited(16 * 1024 * 1024 + 1)) catch |err| switch (err) {
+        error.StreamTooLong => error.InputTooLarge,
+        error.ReadFailed => reader.err orelse error.ReadFailed,
+        else => |other| other,
+    };
 }
 
 fn outputNames(allocator: std.mem.Allocator, dims: degrade.Dimensions, level: usize) !struct { final: []u8, temp: []u8 } {
@@ -92,19 +98,25 @@ fn outputNames(allocator: std.mem.Allocator, dims: degrade.Dimensions, level: us
     return .{ .final = final, .temp = temp };
 }
 
-fn entryExists(dir: std.fs.Dir, name: []const u8) !bool {
-    _ = std.posix.fstatat(dir.fd, name, std.posix.AT.SYMLINK_NOFOLLOW) catch |err| switch (err) {
+fn entryExists(dir: std.Io.Dir, io: std.Io, name: []const u8) !bool {
+    _ = dir.statFile(io, name, .{ .follow_symlinks = false }) catch |err| switch (err) {
         error.FileNotFound => return false,
         else => return err,
     };
     return true;
 }
 
-fn publishWithoutReplace(dir: std.fs.Dir, temp: []const u8, final: []const u8) !void {
-    try std.posix.linkat(dir.fd, temp, dir.fd, final, 0);
+fn publishWithoutReplace(dir: std.Io.Dir, io: std.Io, temp: []const u8, final: []const u8) !void {
+    try dir.hardLink(temp, dir, final, io, .{});
 }
 
-pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: anytype, stderr: anytype) !u8 {
+pub fn execute(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    args: []const []const u8,
+    stdout: *std.Io.Writer,
+    stderr: *std.Io.Writer,
+) !u8 {
     if (args.len == 2 and std.mem.eql(u8, args[1], "--help")) {
         try stdout.writeAll(usage);
         return 0;
@@ -114,7 +126,7 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
         return 2;
     };
 
-    const input = readInput(allocator, options.input) catch |err| {
+    const input = readInput(allocator, io, options.input) catch |err| {
         try stderr.print("error: read-input: {s}\n", .{@errorName(err)});
         return 1;
     };
@@ -142,11 +154,11 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
         }
     }
 
-    var output_dir = std.fs.cwd().openDir(options.output_dir, .{ .no_follow = true }) catch |err| {
+    var output_dir = std.Io.Dir.cwd().openDir(io, options.output_dir, .{ .follow_symlinks = false }) catch |err| {
         try stderr.print("error: output-directory: {s}\n", .{@errorName(err)});
         return 1;
     };
-    defer output_dir.close();
+    defer output_dir.close(io);
 
     var published_names: [16][64]u8 = undefined;
     var published_lengths: [16]usize = undefined;
@@ -155,7 +167,7 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
     defer if (!complete) {
         var rollback_failed = false;
         for (0..published_count) |index| {
-            output_dir.deleteFile(published_names[index][0..published_lengths[index]]) catch {
+            output_dir.deleteFile(io, published_names[index][0..published_lengths[index]]) catch {
                 rollback_failed = true;
             };
         }
@@ -166,11 +178,11 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
         const names = try outputNames(allocator, dims, level);
         defer allocator.free(names.final);
         defer allocator.free(names.temp);
-        const final_exists = entryExists(output_dir, names.final) catch |err| {
+        const final_exists = entryExists(output_dir, io, names.final) catch |err| {
             try stderr.print("error: output-directory: {s}\n", .{@errorName(err)});
             return 1;
         };
-        const temp_exists = entryExists(output_dir, names.temp) catch |err| {
+        const temp_exists = entryExists(output_dir, io, names.temp) catch |err| {
             try stderr.print("error: output-directory: {s}\n", .{@errorName(err)});
             return 1;
         };
@@ -205,24 +217,24 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
         defer allocator.free(names.final);
         defer allocator.free(names.temp);
         var temp_created = false;
-        defer if (temp_created) output_dir.deleteFile(names.temp) catch {};
-        var file = output_dir.createFile(names.temp, .{ .exclusive = true }) catch |err| {
+        defer if (temp_created) output_dir.deleteFile(io, names.temp) catch {};
+        var file = output_dir.createFile(io, names.temp, .{ .exclusive = true }) catch |err| {
             try stderr.print("error: write-output: {s}\n", .{@errorName(err)});
             return 1;
         };
         temp_created = true;
-        file.writeAll(encoded) catch |err| {
-            file.close();
+        file.writeStreamingAll(io, encoded) catch |err| {
+            file.close(io);
             try stderr.print("error: write-output: {s}\n", .{@errorName(err)});
             return 1;
         };
-        file.close();
+        file.close(io);
         if (published_count >= published_names.len or
             names.final.len > published_names[published_count].len)
         {
             return error.NameTooLong;
         }
-        publishWithoutReplace(output_dir, names.temp, names.final) catch |err| {
+        publishWithoutReplace(output_dir, io, names.temp, names.final) catch |err| {
             if (err == error.PathAlreadyExists) {
                 try stderr.writeAll("error: output-collision: OutputCollision\n");
                 return 1;
@@ -233,7 +245,7 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
         @memcpy(published_names[published_count][0..names.final.len], names.final);
         published_lengths[published_count] = names.final.len;
         published_count += 1;
-        output_dir.deleteFile(names.temp) catch |err| {
+        output_dir.deleteFile(io, names.temp) catch |err| {
             try stderr.print("error: write-output: {s}\n", .{@errorName(err)});
             return 1;
         };
@@ -258,12 +270,17 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
     return 0;
 }
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-    const status = try execute(allocator, args, std.io.getStdOut().writer(), std.io.getStdErr().writer());
-    if (status != 0) std.process.exit(status);
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const sentinel_args = try init.minimal.args.toSlice(init.arena.allocator());
+    const args = try init.arena.allocator().alloc([]const u8, sentinel_args.len);
+    for (args, sentinel_args) |*arg, sentinel_arg| arg.* = sentinel_arg;
+    var stdout_buffer: [1024]u8 = undefined;
+    var stderr_buffer: [1024]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(io, &stdout_buffer);
+    var stderr = std.Io.File.stderr().writer(io, &stderr_buffer);
+    const status = execute(init.gpa, io, args, &stdout.interface, &stderr.interface);
+    stdout.interface.flush() catch {};
+    stderr.interface.flush() catch {};
+    return status;
 }
