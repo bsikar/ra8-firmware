@@ -106,16 +106,16 @@ comptime {
     if (@offsetOf(Paint, "text_size_face") != 5 * ptr) @compileError("ra8_widget_paint_t text_size_face offset");
     if (@offsetOf(Paint, "draw_text_style") != 6 * ptr) @compileError("ra8_widget_paint_t draw_text_style offset");
     if (@offsetOf(Paint, "text_size_style") != 7 * ptr) @compileError("ra8_widget_paint_t text_size_style offset");
-    if (@sizeOf(Weight) != 1 or @intFromEnum(Weight.regular) != 0 or @intFromEnum(Weight.bold) != 1) @compileError("ra8_widget_text_weight_t representation");
-    if (@intFromEnum(TextSize.body_38) != 6 or @intFromEnum(TextSize.title_68) != 7 or @intFromEnum(TextSize.clock_120) != 8) @compileError("ra8_widget_text_size_t display representation");
-    if (@sizeOf(Face) != 1 or @intFromEnum(Face.sans) != 0 or @intFromEnum(Face.serif) != 1) {
+    if (@sizeOf(Weight) != 1 or @backingInt(Weight.regular) != 0 or @backingInt(Weight.bold) != 1) @compileError("ra8_widget_text_weight_t representation");
+    if (@backingInt(TextSize.body_38) != 6 or @backingInt(TextSize.title_68) != 7 or @backingInt(TextSize.clock_120) != 8) @compileError("ra8_widget_text_size_t display representation");
+    if (@sizeOf(Face) != 1 or @backingInt(Face.sans) != 0 or @backingInt(Face.serif) != 1) {
         @compileError("ra8_widget_text_face_t representation");
     }
 
     if (@sizeOf(Alignment) != 1) @compileError("ra8_widget_align_t width");
-    if (@intFromEnum(Alignment.left) != 0) @compileError("ra8_widget_align_t left value");
-    if (@intFromEnum(Alignment.center) != 1) @compileError("ra8_widget_align_t center value");
-    if (@intFromEnum(Alignment.right) != 2) @compileError("ra8_widget_align_t right value");
+    if (@backingInt(Alignment.left) != 0) @compileError("ra8_widget_align_t left value");
+    if (@backingInt(Alignment.center) != 1) @compileError("ra8_widget_align_t center value");
+    if (@backingInt(Alignment.right) != 2) @compileError("ra8_widget_align_t right value");
 }
 
 /// Resolve the pen position for `text` drawn inside `rect`.
@@ -146,10 +146,10 @@ pub export fn priv_widget_text_pos(
     var text_h: i32 = 0;
     if (styled) {
         if (backend.text_size_style) |measure| {
-            measure(backend.user, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(size), &text_w, &text_h);
+            measure(backend.user, text, @backingInt(face), @backingInt(weight), @backingInt(size), &text_w, &text_h);
         } else {
             const measure = backend.text_size_face orelse return;
-            measure(backend.user, text, @intFromEnum(face), &text_w, &text_h);
+            measure(backend.user, text, @backingInt(face), &text_w, &text_h);
         }
     } else {
         const measure = backend.text_size orelse return;

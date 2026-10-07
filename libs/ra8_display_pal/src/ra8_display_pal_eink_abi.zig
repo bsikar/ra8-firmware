@@ -35,8 +35,8 @@ comptime {
     std.debug.assert(@sizeOf(EpaperArea) == 8);
     std.debug.assert(@offsetOf(EpaperArea, "width") == 4);
     std.debug.assert(@offsetOf(EpaperArea, "height") == 6);
-    std.debug.assert(@intFromEnum(Waveform.gc16) == 2);
-    std.debug.assert(@intFromEnum(PixelFormat.bpp4) == 2);
+    std.debug.assert(@backingInt(Waveform.gc16) == 2);
+    std.debug.assert(@backingInt(PixelFormat.bpp4) == 2);
 }
 
 extern fn ra8_epaper_init(cfg: ?*const anyopaque) u16;
@@ -115,13 +115,13 @@ fn loadRect(ctx: *const implementation.Ctx, rect: core.Rect) u16 {
 
         const area: EpaperArea = .{ .x = rect.x, .y = rect.y + row, .width = rect.w, .height = 1 };
         var need: usize = 0;
-        const serr = ra8_epaper_image_bytes(&area, @intFromEnum(PixelFormat.bpp4), &need);
+        const serr = ra8_epaper_image_bytes(&area, @backingInt(PixelFormat.bpp4), &need);
         if (serr != core.err_ok) return serr;
         const err = ra8_epaper_load_image(
             &area,
             &s_eink_line,
             need,
-            @intFromEnum(PixelFormat.bpp4),
+            @backingInt(PixelFormat.bpp4),
             endian_little,
         );
         if (err != core.err_ok) return err;
@@ -178,7 +178,7 @@ fn einkFlush(ctx: ?*implementation.Ctx, rect: core.Rect, hint: u8) callconv(.c) 
     const lerr = loadRect(c, rect);
     if (lerr != core.err_ok) return lerr;
     const area: EpaperArea = .{ .x = rect.x, .y = rect.y, .width = rect.w, .height = rect.h };
-    return ra8_epaper_display_area(&area, @intFromEnum(implementation.waveformFor(hint)));
+    return ra8_epaper_display_area(&area, @backingInt(implementation.waveformFor(hint)));
 }
 
 /// Per the PAL contract `display_clear` only writes the framebuffer; the

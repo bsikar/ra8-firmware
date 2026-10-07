@@ -107,10 +107,10 @@ test "decide: trigger wins, otherwise the selection maps" {
 }
 
 test "the C enum values the ABI returns" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(slot.Slot.a));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(slot.Slot.b));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(slot.Slot.none));
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(slot.Action.dfu));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(slot.Action.jump_a));
-    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(slot.Action.jump_b));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(slot.Slot.a));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(slot.Slot.b));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(slot.Slot.none));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(slot.Action.dfu));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(slot.Action.jump_a));
+    try std.testing.expectEqual(@as(u8, 2), @backingInt(slot.Action.jump_b));
 }

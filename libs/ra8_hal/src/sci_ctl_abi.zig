@@ -22,7 +22,7 @@ const channel_stride: usize = 0x100;
 const Reg = enum(usize) { ccr0 = 0x08, csr = 0x48, cfclr = 0x68 };
 
 fn reg(channel: u8, r: Reg) *volatile u32 {
-    return @ptrFromInt(sci0_base + @as(usize, channel) * channel_stride + @intFromEnum(r));
+    return @ptrFromInt(sci0_base + @as(usize, channel) * channel_stride + @backingInt(r));
 }
 
 /// PRIMASK save + mask on target, a no-op on host (ra8_register_guard.h).
@@ -40,8 +40,7 @@ fn guardExit(saved: u32) void {
     asm volatile ("msr primask, %[s]"
         :
         : [s] "r" (saved),
-        : "memory"
-    );
+        : "memory");
 }
 
 fn toggleIe(channel: u8, bit: u32, on: bool) void {

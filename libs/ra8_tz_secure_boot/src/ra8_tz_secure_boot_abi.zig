@@ -134,8 +134,7 @@ pub export fn ra8_tz_secure_boot_jump_ns(ns_vector_table: ?[*]const u32) callcon
             :
             : [sp] "r" (initial_sp),
               [entry] "r" (ns_entry),
-            : "memory"
-        );
+            : "memory");
         return regs.Err.ok; // Unreachable on target.
     }
 
@@ -164,7 +163,7 @@ pub export fn ra8_tz_secure_boot_run(
 
 /// How far the boot got, for a bench probe.
 pub export fn ra8_tz_secure_boot_get_step() callconv(.c) u8 {
-    return @intFromEnum(boot.step);
+    return @backingInt(boot.step);
 }
 
 /// Return the host fixtures to their power-on state.

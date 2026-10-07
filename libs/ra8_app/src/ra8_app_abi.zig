@@ -47,11 +47,11 @@ extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 
 fn rejectNull(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(AppError.null_ptr);
+    return @backingInt(AppError.null_ptr);
 }
 
 fn code(err: AppError) u16 {
-    return @intFromEnum(err);
+    return @backingInt(err);
 }
 
 /// `ra8_widget_event_t`, forwarded to the focused app untouched. The framework

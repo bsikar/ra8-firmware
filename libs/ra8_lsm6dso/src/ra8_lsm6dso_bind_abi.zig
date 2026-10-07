@@ -23,9 +23,9 @@ const BindError = enum(u16) {
     null_ptr = 0x504,
 };
 
-const ok: u16 = @intFromEnum(BindError.ok);
-const invalid_arg: u16 = @intFromEnum(BindError.invalid_arg);
-const null_ptr: u16 = @intFromEnum(BindError.null_ptr);
+const ok: u16 = @backingInt(BindError.ok);
+const invalid_arg: u16 = @backingInt(BindError.invalid_arg);
+const null_ptr: u16 = @backingInt(BindError.null_ptr);
 
 /// Component tag on this file's log lines, matching the C `s_lsm6dso_bind_tag`.
 const tag: [*:0]const u8 = "lsm6dso_bind";

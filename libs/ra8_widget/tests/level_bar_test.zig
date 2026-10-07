@@ -15,7 +15,7 @@ export fn ra8_log_emit_error(_: [*:0]const u8, message: [*:0]const u8) void {
 export fn ra8_widget_invalidate(w: *abi.Widget, refresh: abi.Refresh) callconv(.c) u16 {
     invalidations += 1;
     w.dirty = true;
-    w.refresh = @intFromEnum(refresh);
+    w.refresh = @backingInt(refresh);
     return abi.err.ok;
 }
 

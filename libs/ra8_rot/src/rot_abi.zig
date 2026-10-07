@@ -216,7 +216,7 @@ export fn ra8_rot_trailer_after(image_base: ?*const anyopaque, body_len: u32) ?*
     // Image bodies are placed at 32-byte (page) multiples, so this address
     // satisfies the trailer's alignment.
     const bytes: [*]const u8 = @ptrCast(base);
-    return @alignCast(@ptrCast(bytes + offset));
+    return @ptrCast(@alignCast(bytes + offset));
 }
 
 /// The version an authenticated trailer records, for the anti-rollback gate.

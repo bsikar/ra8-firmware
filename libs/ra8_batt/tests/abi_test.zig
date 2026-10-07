@@ -10,8 +10,8 @@
 const std = @import("std");
 const abi = @import("abi");
 
-const ok = @intFromEnum(abi.BattError.ok);
-const null_ptr = @intFromEnum(abi.BattError.null_ptr);
+const ok = @backingInt(abi.BattError.ok);
+const null_ptr = @backingInt(abi.BattError.null_ptr);
 
 var log_calls: usize = 0;
 var last_message: [*:0]const u8 = "";
@@ -201,6 +201,6 @@ test "a sweep across the ABI stays in the documented enum" {
         try std.testing.expectEqual(ok, abi.ra8_batt_monitor_init(&mon));
         var nag: abi.Nag = .none;
         try std.testing.expectEqual(ok, abi.ra8_batt_update(&mon, @intCast(soc), false, &nag));
-        try std.testing.expect(@intFromEnum(nag) <= 2);
+        try std.testing.expect(@backingInt(nag) <= 2);
     }
 }

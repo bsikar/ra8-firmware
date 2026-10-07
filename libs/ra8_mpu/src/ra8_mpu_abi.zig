@@ -173,11 +173,11 @@ fn validateCfg(cfg: *const Config) MpuError {
 pub export fn ra8_mpu_configure(cfg: ?*const Config) callconv(.c) u16 {
     const config = cfg orelse {
         ra8_log_emit_error(tag, "cfg must not be nullptr");
-        return @intFromEnum(MpuError.null_ptr);
+        return @backingInt(MpuError.null_ptr);
     };
 
     const verdict = validateCfg(config);
-    if (verdict != .ok) return @intFromEnum(verdict);
+    if (verdict != .ok) return @backingInt(verdict);
 
     // Arm Cortex-M85 TRM "MPU_CTRL": disable before reprogramming.
     writeCtrl(0);
@@ -201,21 +201,21 @@ pub export fn ra8_mpu_configure(cfg: ?*const Config) callconv(.c) u16 {
     // never runs. Callers that genuinely want the escalation clear the bit
     // again after this call.
     shcsr().* |= shcsr_memfaultena;
-    return @intFromEnum(MpuError.ok);
+    return @backingInt(MpuError.ok);
 }
 
 /// Set MPU_CTRL.ENABLE.
 pub export fn ra8_mpu_enable() callconv(.c) u16 {
     const mpu = regs();
     mpu.CTRL = mpu.CTRL | implementation.ctrl_enable;
-    return @intFromEnum(MpuError.ok);
+    return @backingInt(MpuError.ok);
 }
 
 /// Clear MPU_CTRL.ENABLE.
 pub export fn ra8_mpu_disable() callconv(.c) u16 {
     const mpu = regs();
     mpu.CTRL = mpu.CTRL & ~implementation.ctrl_enable;
-    return @intFromEnum(MpuError.ok);
+    return @backingInt(MpuError.ok);
 }
 
 /// Program a single region without disabling the MPU.
@@ -226,12 +226,12 @@ pub export fn ra8_mpu_disable() callconv(.c) u16 {
 pub export fn ra8_mpu_set_region(region: u8, region_cfg: ?*const Region) callconv(.c) u16 {
     const descriptor = region_cfg orelse {
         ra8_log_emit_error(tag, "region_cfg must not be nullptr");
-        return @intFromEnum(MpuError.null_ptr);
+        return @backingInt(MpuError.null_ptr);
     };
-    if (region >= dregionCount()) return @intFromEnum(MpuError.invalid_arg);
-    if (implementation.checkRegion(descriptor) != .ok) return @intFromEnum(MpuError.invalid_arg);
+    if (region >= dregionCount()) return @backingInt(MpuError.invalid_arg);
+    if (implementation.checkRegion(descriptor) != .ok) return @backingInt(MpuError.invalid_arg);
     programRegion(region, descriptor);
-    return @intFromEnum(MpuError.ok);
+    return @backingInt(MpuError.ok);
 }
 
 /// Return the canonical boot memory-attribute map region table.
@@ -250,7 +250,7 @@ pub export fn ra8_mpu_boot_map(out_count: ?*u8) callconv(.c) ?[*]const Region {
 pub export fn ra8_mpu_apply_boot_map() callconv(.c) u16 {
     const implemented = dregionCount();
     if (implemented < implementation.boot_region_count) {
-        return @intFromEnum(MpuError.invalid_arg);
+        return @backingInt(MpuError.invalid_arg);
     }
 
     writeCtrl(0);
@@ -271,7 +271,7 @@ pub export fn ra8_mpu_apply_boot_map() callconv(.c) u16 {
     writeCtrl(implementation.ctrl_enable | implementation.ctrl_privdefena);
     dsb();
     isb();
-    return @intFromEnum(MpuError.ok);
+    return @backingInt(MpuError.ok);
 }
 
 /// Report whether MPU_CTRL.ENABLE is set.

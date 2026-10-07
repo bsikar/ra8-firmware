@@ -108,7 +108,7 @@ fn caps(ctx: ?*anyopaque, out: ?*Caps) callconv(.c) u16 {
     _ = ctx;
     const record = out orelse {
         ra8_log_emit_error(tag, "caps: null out");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
     record.* = .{
         .formats = format.jpeg,
@@ -118,7 +118,7 @@ fn caps(ctx: ?*anyopaque, out: ?*Caps) callconv(.c) u16 {
         .dim_max = policy.limits.dim_max,
         .streams = false, // the whole frame must be resident
     };
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
 
 /// Read the frame's declared geometry and hold it to `dim_max`.
@@ -134,11 +134,11 @@ fn caps(ctx: ?*anyopaque, out: ?*Caps) callconv(.c) u16 {
 /// passed through unchanged, and the codec returns codes (a protocol error on
 /// a stream that is not a JPEG) outside the subset this backend names itself.
 fn probe(req: *const Request, out_w: *u16, out_h: *u16) u16 {
-    const bytes = req.bytes orelse return @intFromEnum(Error.null_ptr);
+    const bytes = req.bytes orelse return @backingInt(Error.null_ptr);
     const err = ra8_jpeg_sw_get_dimensions(bytes, req.byte_count, out_w, out_h);
-    if (err != @intFromEnum(Error.ok)) return err;
-    if (!policy.withinDimMax(out_w.*, out_h.*)) return @intFromEnum(Error.invalid_size);
-    return @intFromEnum(Error.ok);
+    if (err != @backingInt(Error.ok)) return err;
+    if (!policy.withinDimMax(out_w.*, out_h.*)) return @backingInt(Error.invalid_size);
+    return @backingInt(Error.ok);
 }
 
 /// Decode one baseline JPEG into the request's packed RGB888 surface.
@@ -155,29 +155,29 @@ fn decode(ctx: ?*anyopaque, req: ?*const Request, out: ?*Image) callconv(.c) u16
     _ = ctx;
     const request = req orelse {
         ra8_log_emit_error(tag, "decode: null req");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
     const image = out orelse {
         ra8_log_emit_error(tag, "decode: null out");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
 
     var width: u16 = 0;
     var height: u16 = 0;
     const probed = probe(request, &width, &height);
-    if (probed != @intFromEnum(Error.ok)) return probed;
+    if (probed != @backingInt(Error.ok)) return probed;
 
     const stride = policy.rowStride(width);
     const need = policy.surfaceBytes(width, height);
     switch (policy.destination(request.dst_stride, request.dst_bytes, stride, need)) {
         .ok => {},
-        .too_small => return @intFromEnum(Error.invalid_size),
+        .too_small => return @backingInt(Error.invalid_size),
         // the codec writes packed rows only
-        .padded => return @intFromEnum(Error.not_supported),
+        .padded => return @backingInt(Error.not_supported),
     }
 
-    const source = request.bytes orelse return @intFromEnum(Error.null_ptr);
-    const destination = request.dst orelse return @intFromEnum(Error.null_ptr);
+    const source = request.bytes orelse return @backingInt(Error.null_ptr);
+    const destination = request.dst orelse return @backingInt(Error.null_ptr);
     var decoded_w: u16 = 0;
     var decoded_h: u16 = 0;
     const err = ra8_jpeg_sw_decode(
@@ -188,7 +188,7 @@ fn decode(ctx: ?*anyopaque, req: ?*const Request, out: ?*Image) callconv(.c) u16
         &decoded_w,
         &decoded_h,
     );
-    if (err != @intFromEnum(Error.ok)) return err;
+    if (err != @backingInt(Error.ok)) return err;
 
     image.* = .{
         .width_px = decoded_w,
@@ -199,7 +199,7 @@ fn decode(ctx: ?*anyopaque, req: ?*const Request, out: ?*Image) callconv(.c) u16
         .pixel = pixel.rgb888,
         .had_alpha = false, // JPEG carries no alpha channel
     };
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
 
 /// The one vtable instance; the handle carries no state of its own.
@@ -213,8 +213,8 @@ const interface: Interface = .{ .get_caps = caps, .decode = decode };
 pub export fn ra8_jpeg_imgdec_bind(out: ?*Handle) callconv(.c) u16 {
     const handle = out orelse {
         ra8_log_emit_error(tag, "bind: null out");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
     handle.* = .{ .iface = &interface, .ctx = null };
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }

@@ -201,8 +201,8 @@ test "the descriptor matches the C layout" {
 
 test "the axis enum matches the C values" {
     try std.testing.expectEqual(1, @sizeOf(abi.Axis));
-    try std.testing.expectEqual(0, @intFromEnum(abi.Axis.col));
-    try std.testing.expectEqual(1, @intFromEnum(abi.Axis.row));
+    try std.testing.expectEqual(0, @backingInt(abi.Axis.col));
+    try std.testing.expectEqual(1, @backingInt(abi.Axis.row));
 }
 
 test "a panel routes and paints but never measures" {
@@ -493,7 +493,7 @@ test "a successful compose clears the panel's own damage" {
     var panel = panelOf(&kids);
     var w = leaf();
     w.dirty = true;
-    w.refresh = @intFromEnum(abi.Refresh.quality);
+    w.refresh = @backingInt(abi.Refresh.quality);
     try bound(&w, &panel);
 
     var damage: abi.Rect = undefined;
@@ -504,7 +504,7 @@ test "a successful compose clears the panel's own damage" {
         abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty),
     );
     try std.testing.expect(!w.dirty);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.none), w.refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.none), w.refresh);
 }
 
 test "a failed compose leaves the panel dirty" {
@@ -514,7 +514,7 @@ test "a failed compose leaves the panel dirty" {
     var panel = panelOf(&kids);
     var w = leaf();
     w.dirty = true;
-    w.refresh = @intFromEnum(abi.Refresh.quality);
+    w.refresh = @backingInt(abi.Refresh.quality);
     try bound(&w, &panel);
 
     var damage: abi.Rect = undefined;
@@ -522,7 +522,7 @@ test "a failed compose leaves the panel dirty" {
     var dirty: u16 = undefined;
     _ = abi.ra8_widget_panel_compose(&w, &screen, &damage, &hint, &dirty);
     try std.testing.expect(w.dirty);
-    try std.testing.expectEqual(@intFromEnum(abi.Refresh.quality), w.refresh);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), w.refresh);
 }
 
 test "render lays the subtree out inside the panel's own rect" {
@@ -544,13 +544,13 @@ test "a dirty panel repaints its whole subtree with its own hint" {
     var panel = panelOf(&kids);
     var w = leaf();
     try bound(&w, &panel);
-    w.refresh = @intFromEnum(abi.Refresh.fast);
+    w.refresh = @backingInt(abi.Refresh.fast);
 
     abi.ra8_widget_panel_vtable().render.?(&w);
 
     try std.testing.expectEqual(2, invalidations.len);
     for (invalidations.slice()) |seen| {
-        try std.testing.expectEqual(@intFromEnum(abi.Refresh.fast), seen.refresh);
+        try std.testing.expectEqual(@backingInt(abi.Refresh.fast), seen.refresh);
     }
     try std.testing.expectEqualSlices(
         Op,
@@ -565,12 +565,12 @@ test "a panel carrying no hint repaints at quality" {
     var panel = panelOf(&kids);
     var w = leaf();
     try bound(&w, &panel);
-    w.refresh = @intFromEnum(abi.Refresh.none);
+    w.refresh = @backingInt(abi.Refresh.none);
 
     abi.ra8_widget_panel_vtable().render.?(&w);
     try std.testing.expectEqual(1, invalidations.len);
     try std.testing.expectEqual(
-        @intFromEnum(abi.Refresh.quality),
+        @backingInt(abi.Refresh.quality),
         invalidations.slice()[0].refresh,
     );
 }
@@ -647,7 +647,7 @@ test "a panel nests in a panel and the inner subtree repaints too" {
     var outer = panelOf(&kids);
     var outer_w = leaf();
     try bound(&outer_w, &outer);
-    outer_w.refresh = @intFromEnum(abi.Refresh.quality);
+    outer_w.refresh = @backingInt(abi.Refresh.quality);
 
     abi.ra8_widget_panel_vtable().render.?(&outer_w);
 

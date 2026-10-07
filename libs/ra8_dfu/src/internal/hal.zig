@@ -55,27 +55,27 @@ extern fn ra8_delay_ms(ms: u32) callconv(.c) void;
 /// The real controller. Firmware links this; the tests do not.
 pub const Hardware = struct {
     pub fn init(speed: Speed) Err {
-        return Err.from(ra8_usb_host_init(@intFromEnum(speed)));
+        return Err.from(ra8_usb_host_init(@backingInt(speed)));
     }
 
     pub fn deinit(speed: Speed) Err {
-        return Err.from(ra8_usb_host_deinit(@intFromEnum(speed)));
+        return Err.from(ra8_usb_host_deinit(@backingInt(speed)));
     }
 
     pub fn busReset(speed: Speed, assert_reset: bool) Err {
-        return Err.from(ra8_usb_host_bus_reset(@intFromEnum(speed), assert_reset));
+        return Err.from(ra8_usb_host_bus_reset(@backingInt(speed), assert_reset));
     }
 
     pub fn setUact(speed: Speed, enable: bool) Err {
-        return Err.from(ra8_usb_host_set_uact(@intFromEnum(speed), enable));
+        return Err.from(ra8_usb_host_set_uact(@backingInt(speed), enable));
     }
 
     pub fn setTarget(speed: Speed, dev_addr: u8) Err {
-        return Err.from(ra8_usb_host_set_target(@intFromEnum(speed), dev_addr));
+        return Err.from(ra8_usb_host_set_target(@backingInt(speed), dev_addr));
     }
 
     pub fn lineState(speed: Speed) u16 {
-        return ra8_usb_host_line_state(@intFromEnum(speed));
+        return ra8_usb_host_line_state(@backingInt(speed));
     }
 
     pub fn controlXfer(
@@ -87,7 +87,7 @@ pub const Hardware = struct {
     ) Err {
         const ptr: ?[*]u8 = if (data) |slice| slice.ptr else null;
         return Err.from(ra8_usb_host_control_xfer(
-            @intFromEnum(speed),
+            @backingInt(speed),
             setup,
             ptr,
             data_len,

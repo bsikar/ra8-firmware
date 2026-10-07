@@ -220,9 +220,9 @@ pub fn layout(tree: *Tree, root: i16, frame: Rect) bool {
     var i: u16 = 0;
     while (i < tree.count) : (i += 1) {
         switch (nodes[i].kind) {
-            @intFromEnum(Kind.stack_v) => layoutStack(tree, i, false),
-            @intFromEnum(Kind.stack_h) => layoutStack(tree, i, true),
-            @intFromEnum(Kind.grid) => layoutGrid(tree, i),
+            @backingInt(Kind.stack_v) => layoutStack(tree, i, false),
+            @backingInt(Kind.stack_h) => layoutStack(tree, i, true),
+            @backingInt(Kind.grid) => layoutGrid(tree, i),
             else => {},
         }
     }

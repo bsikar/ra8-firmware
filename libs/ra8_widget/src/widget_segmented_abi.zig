@@ -95,7 +95,7 @@ fn renderSegmented(w: *Widget) callconv(.c) void {
                 const pad: i16 = @intCast(@min(control.pad, @as(u16, 32767)));
                 const size: paint_abi.TextSize = if (control.text_size == .default) .size_3 else control.text_size;
                 paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, control.text_face, control.text_weight, size, styled != null, &pen_x, &pen_y);
-                if (styled) |draw| draw(backend.user, pen_x, pen_y, labels[index], @intFromEnum(control.text_face), @intFromEnum(control.text_weight), @intFromEnum(size), if (selected) control.selected_fg else control.fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
+                if (styled) |draw| draw(backend.user, pen_x, pen_y, labels[index], @backingInt(control.text_face), @backingInt(control.text_weight), @backingInt(size), if (selected) control.selected_fg else control.fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
             }
         }
     }

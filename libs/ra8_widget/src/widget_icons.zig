@@ -29,7 +29,7 @@ const header_bytes: usize = 8;
 /// Return one 2-bit atlas sample; values range from transparent to full ink.
 pub fn sample(icon: Icon, x: usize, y: usize) u2 {
     if (icon == .none or x >= width or y >= width) return 0;
-    const index: usize = @intFromEnum(icon) - 1;
+    const index: usize = @backingInt(icon) - 1;
     const pixel = y * width + x;
     const packed_byte = atlas[header_bytes + index * packed_per_icon + pixel / 4];
     const shift: u3 = @intCast(6 - (pixel % 4) * 2);

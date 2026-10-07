@@ -221,14 +221,14 @@ test "send_cmd maps ERROR and the CME and CMS variants to hw_error" {
     for (cases) |script| {
         setup(script);
         try std.testing.expectEqual(@as(u16, 0x204), abi.ra8_modem_at_send_cmd("AT", null, 200));
-        try std.testing.expectEqual(@as(u8, 3), @intFromEnum(abi.testState().state));
+        try std.testing.expectEqual(@as(u8, 3), @backingInt(abi.testState().state));
     }
 }
 
 test "send_cmd times out when no final result code arrives" {
     setup("AT\r\n+CSQ: 20,99\r\n");
     try std.testing.expectEqual(@as(u16, 0x203), abi.ra8_modem_at_send_cmd("AT", null, 5));
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(abi.testState().state));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(abi.testState().state));
     try std.testing.expectEqual(@as(u16, 0), abi.testState().accum.len);
 }
 

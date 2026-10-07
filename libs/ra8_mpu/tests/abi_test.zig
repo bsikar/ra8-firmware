@@ -12,9 +12,9 @@ const abi = @import("abi");
 const Region = abi.Region;
 const Config = abi.Config;
 
-const ok: u16 = @intFromEnum(abi.MpuError.ok);
-const invalid_arg: u16 = @intFromEnum(abi.MpuError.invalid_arg);
-const null_ptr: u16 = @intFromEnum(abi.MpuError.null_ptr);
+const ok: u16 = @backingInt(abi.MpuError.ok);
+const invalid_arg: u16 = @backingInt(abi.MpuError.invalid_arg);
+const null_ptr: u16 = @backingInt(abi.MpuError.null_ptr);
 
 const perm_none: u8 = 0;
 const perm_ro: u8 = 1;

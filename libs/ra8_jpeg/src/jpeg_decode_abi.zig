@@ -38,7 +38,7 @@ const read_failed: i32 = -1;
 
 /// Map a parse failure onto its `ra8_err_t`.
 fn code(err: dec_ctx.Error) u16 {
-    return @intFromEnum(switch (err) {
+    return @backingInt(switch (err) {
         dec_ctx.Error.InvalidSize => Error.invalid_size,
         dec_ctx.Error.Unsupported => Error.not_supported,
         dec_ctx.Error.Protocol => Error.protocol_error,
@@ -49,7 +49,7 @@ fn code(err: dec_ctx.Error) u16 {
 /// the same message text.
 fn nullPtr(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(Error.null_ptr);
+    return @backingInt(Error.null_ptr);
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ pub export fn ra8_jpeg_sw_decode(
     const width = out_w orelse return nullPtr("out_w is NULL");
     const height = out_h orelse return nullPtr("out_h is NULL");
 
-    if (jpeg_len < whole.min_stream_len) return @intFromEnum(Error.invalid_size);
+    if (jpeg_len < whole.min_stream_len) return @backingInt(Error.invalid_size);
 
     const found = whole.decode(
         &whole_ctx,
@@ -86,7 +86,7 @@ pub export fn ra8_jpeg_sw_decode(
 
     width.* = found.width;
     height.* = found.height;
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
 
 /// Striped-decode state. Static for the same reason as `whole_ctx`.
@@ -107,7 +107,7 @@ pub export fn ra8_jpeg_sw_decode_stripes(
     const geometry = on_geom orelse return nullPtr("on_geom must not be nullptr");
     const sink = on_rows orelse return nullPtr("on_rows must not be nullptr");
 
-    if (window_cap < stream.Limit.min_window) return @intFromEnum(Error.invalid_size);
+    if (window_cap < stream.Limit.min_window) return @backingInt(Error.invalid_size);
 
     stripe_state = .{
         .pull = source,
@@ -122,7 +122,7 @@ pub export fn ra8_jpeg_sw_decode_stripes(
         stream.Error.Callback => return stripe_state.callback_err,
         else => |parse_err| return code(@errorCast(parse_err)),
     };
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
 
 /// Read a JPEG's pixel dimensions without decoding it. Re-entrant.
@@ -136,16 +136,16 @@ pub export fn ra8_jpeg_sw_get_dimensions(
     const width = out_w orelse return nullPtr("out_w is NULL");
     const height = out_h orelse return nullPtr("out_h is NULL");
 
-    if (jpeg_len < dims.min_stream_len) return @intFromEnum(Error.invalid_size);
+    if (jpeg_len < dims.min_stream_len) return @backingInt(Error.invalid_size);
 
     const found = dims.probe(buf[0..jpeg_len]) catch |err| switch (err) {
-        dims.Error.Unsupported => return @intFromEnum(Error.not_supported),
-        dims.Error.Protocol => return @intFromEnum(Error.protocol_error),
+        dims.Error.Unsupported => return @backingInt(Error.not_supported),
+        dims.Error.Protocol => return @backingInt(Error.protocol_error),
     };
 
     width.* = found.width;
     height.* = found.height;
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
 
 // ---------------------------------------------------------------------------

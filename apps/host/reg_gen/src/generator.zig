@@ -37,7 +37,7 @@ pub const RegisterSize = enum(u32) {
     }
 
     pub fn byteCount(self: RegisterSize) u32 {
-        return @intFromEnum(self) / 8;
+        return @backingInt(self) / 8;
     }
 
     pub fn cTypeName(self: RegisterSize) []const u8 {

@@ -104,20 +104,20 @@ pub fn leaseBound(ip: u32) bool {
 
 /// `wifi->state >= k_ra8_wifi_state_associated`.
 pub fn isAssociated(state: u8) bool {
-    return state >= @intFromEnum(State.associated);
+    return state >= @backingInt(State.associated);
 }
 
 /// `wifi->state == k_ra8_wifi_state_ip_bound`.
 pub fn isIpBound(state: u8) bool {
-    return state == @intFromEnum(State.ip_bound);
+    return state == @backingInt(State.ip_bound);
 }
 
 /// Where one link reading leaves a polling handle.
 pub fn stateForLink(link: u8) u8 {
-    return if (link == @intFromEnum(Link.up))
-        @intFromEnum(State.associated)
+    return if (link == @backingInt(Link.up))
+        @backingInt(State.associated)
     else
-        @intFromEnum(State.down);
+        @backingInt(State.down);
 }
 
 /// Verdict once the whole join budget is spent.

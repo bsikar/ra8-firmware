@@ -356,7 +356,7 @@ pub fn hid(device: Device, human: Hid, out: []u8) Error!usize {
         1,
         wire.Class.hid,
         if (human.boot_interface) wire.Class.subclass_boot else 0,
-        @intFromEnum(human.protocol),
+        @backingInt(human.protocol),
     );
     putHidClass(&cursor, human.report_bytes);
     cursor.endpoint(

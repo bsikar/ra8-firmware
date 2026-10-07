@@ -63,8 +63,8 @@ pub fn encode(cfg: Attribution) Words {
 /// hands these in as plain bytes, so an out-of-range one is a caller error.
 pub fn valid(cfg: Attribution) bool {
     for (cfg.target) |attr| {
-        const world = @intFromEnum(attr.world);
-        const access = @intFromEnum(attr.access);
+        const world = @backingInt(attr.world);
+        const access = @backingInt(attr.access);
         if (world > 1 or access > 1) return false;
     }
     return true;
@@ -74,8 +74,8 @@ pub fn valid(cfg: Attribution) bool {
 /// except the two channels the Non-Secure half owns.
 pub fn cpu1Pingpong() Attribution {
     var cfg: Attribution = .{};
-    cfg.target[@intFromEnum(Target.channel0)].world = .non_secure;
-    cfg.target[@intFromEnum(Target.channel2)].world = .non_secure;
+    cfg.target[@backingInt(Target.channel0)].world = .non_secure;
+    cfg.target[@backingInt(Target.channel2)].world = .non_secure;
     return cfg;
 }
 
@@ -98,7 +98,7 @@ test "each target lands on its own bit, and the two registers share the layout" 
 
 test "world and access are answered independently" {
     var cfg: Attribution = .{};
-    cfg.target[@intFromEnum(Target.sem_high)].world = .non_secure;
+    cfg.target[@backingInt(Target.sem_high)].world = .non_secure;
     const words = encode(cfg);
     try std.testing.expectEqual(@as(u32, 1) << 1, words.ipcsar);
     try std.testing.expectEqual(@as(u32, 0), words.ipcpar);
@@ -112,7 +112,7 @@ test "cpu1_pingpong hands out channel0 and channel2 only" {
 
 test "an out-of-range byte is rejected before it can be encoded" {
     var cfg: Attribution = .{};
-    cfg.target[0].world = @enumFromInt(7);
+    cfg.target[0].world = @fromBackingInt(@intCast(7));
     try std.testing.expect(!valid(cfg));
     try std.testing.expect(valid(.{}));
 }

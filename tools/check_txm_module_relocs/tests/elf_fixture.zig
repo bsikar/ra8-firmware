@@ -252,8 +252,8 @@ fn sectionTable(image: *Image, headers: *[section_count]Header, machine: elf.EM)
     file[elf.EI_CLASS] = elf.ELFCLASS32;
     file[elf.EI_DATA] = elf.ELFDATA2LSB;
     file[elf.EI_VERSION] = 1;
-    put(u16, file, "e_type", @intFromEnum(elf.ET.EXEC));
-    put(u16, file, "e_machine", @intFromEnum(machine));
+    put(u16, file, "e_type", @backingInt(elf.ET.EXEC));
+    put(u16, file, "e_machine", @backingInt(machine));
     put(u32, file, "e_version", 1);
     put(u32, file, "e_shoff", table);
     put(u16, file, "e_ehsize", @sizeOf(elf.Elf32_Ehdr));

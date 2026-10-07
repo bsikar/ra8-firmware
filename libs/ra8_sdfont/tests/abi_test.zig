@@ -9,8 +9,8 @@ const abi = @import("abi_types");
 
 test "the source enum is a byte with the documented values" {
     try std.testing.expectEqual(@as(usize, 1), @sizeOf(abi.Source));
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(abi.Source.card));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(abi.Source.provisioned));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(abi.Source.card));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(abi.Source.provisioned));
 }
 
 test "the pin block packs the first 16 bytes of the config" {

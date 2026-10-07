@@ -120,7 +120,7 @@ fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, icon: Icon
     var pen_x: i32 = 0;
     var pen_y: i32 = 0;
     paint_abi.priv_widget_text_pos(backend, &text_rect, text, geometry.no_pad, .center, face, weight, selected_size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @intFromEnum(face), @intFromEnum(weight), @intFromEnum(selected_size), fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, text, fg, bg);
+    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, text, fg, bg);
 }
 
 /// Fill the strip, then centre each item's label in its own cell.

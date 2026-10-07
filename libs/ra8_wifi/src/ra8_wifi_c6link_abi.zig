@@ -130,7 +130,7 @@ fn opService(ctx: ?*anyopaque, out_link: ?*u8) callconv(.c) u16 {
     const err = ra8_c6link_poll(self.link, implementation.c6.announce_transfers, &stats);
     if (err != core.err_ok) return err;
 
-    sink.* = @intFromEnum(implementation.linkState(self));
+    sink.* = @backingInt(implementation.linkState(self));
     return core.err_ok;
 }
 

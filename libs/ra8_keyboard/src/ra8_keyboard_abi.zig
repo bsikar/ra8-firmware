@@ -61,7 +61,7 @@ fn containsSeam(r: ?*const Rect, px: i32, py: i32) callconv(.c) bool {
 
 fn rejectNull(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(KeyboardError.null_ptr);
+    return @backingInt(KeyboardError.null_ptr);
 }
 
 /// Lay out the letters layer inside `frame`.
@@ -69,9 +69,9 @@ pub export fn ra8_kbd_layout_init(kb: ?*Layout, frame: ?*const Rect) callconv(.c
     const layout = kb orelse return rejectNull("kb must not be nullptr");
     const rect = frame orelse return rejectNull("frame must not be nullptr");
     implementation.layoutInit(layout, rect) catch |fault| return switch (fault) {
-        error.NoArea => @intFromEnum(KeyboardError.invalid_arg),
+        error.NoArea => @backingInt(KeyboardError.invalid_arg),
     };
-    return @intFromEnum(KeyboardError.ok);
+    return @backingInt(KeyboardError.ok);
 }
 
 /// Index of the key under a point, or the `no_hit` sentinel.
@@ -90,7 +90,7 @@ pub export fn ra8_kbd_key_glyph(kb: ?*const Layout, key_idx: u8) callconv(.c) c_
 pub export fn ra8_kbd_text_init(t: ?*Text) callconv(.c) u16 {
     const text = t orelse return rejectNull("t must not be nullptr");
     implementation.textInit(text);
-    return @intFromEnum(KeyboardError.ok);
+    return @backingInt(KeyboardError.ok);
 }
 
 /// Apply a key press to the text and layout state.
@@ -98,5 +98,5 @@ pub export fn ra8_kbd_apply(t: ?*Text, kb: ?*Layout, key_idx: u8) callconv(.c) u
     const text = t orelse return rejectNull("t must not be nullptr");
     const layout = kb orelse return rejectNull("kb must not be nullptr");
     implementation.applyKey(text, layout, key_idx);
-    return @intFromEnum(KeyboardError.ok);
+    return @backingInt(KeyboardError.ok);
 }

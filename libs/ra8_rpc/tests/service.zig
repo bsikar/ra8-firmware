@@ -29,7 +29,7 @@ pub const Text = struct {
 };
 
 /// The code `refuse` answers with, from the application's own range.
-pub const busy: rpc.Code = @enumFromInt(rpc.Code.first_app + 1);
+pub const busy: rpc.Code = @fromBackingInt(@intCast(rpc.Code.first_app + 1));
 
 /// What the handlers act on.
 pub const Board = struct { calls: u32 = 0 };

@@ -182,7 +182,7 @@ fn miss(self: *State, key: []const u8, out_view: *View) Err {
     if (rerr != .ok) {
         // The victim stays cold rather than holding a half-rendered entry.
         meta[v].valid = 0;
-        meta[v].seg = @intFromEnum(Seg.probation);
+        meta[v].seg = @backingInt(Seg.probation);
         self.sets.pb.pushHead(meta, v);
         return rerr;
     }
@@ -190,7 +190,7 @@ fn miss(self: *State, key: []const u8, out_view: *View) Err {
     @memcpy(self.cfg.key_mem.?[v * self.cfg.key_bytes ..][0..self.cfg.key_bytes], key);
     meta[v].valid = 1;
     meta[v].pin_count = 1;
-    meta[v].seg = @intFromEnum(Seg.probation);
+    meta[v].seg = @backingInt(Seg.probation);
     self.table().insert(v);
     self.sets.pb.pushHead(meta, v);
     out_view.* = .{ .data = cell, .user = user };

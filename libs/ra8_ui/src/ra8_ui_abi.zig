@@ -38,7 +38,7 @@ extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 
 fn rejectNull(message: [*:0]const u8) u16 {
     ra8_log_emit_error(tag, message);
-    return @intFromEnum(UiError.null_ptr);
+    return @backingInt(UiError.null_ptr);
 }
 
 /// Test whether a point lies inside a rectangle; a null rectangle is a miss.
@@ -71,54 +71,54 @@ pub export fn ra8_ui_hit_test(
         action_out.* = action;
         hit_out.* = true;
     }
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 /// Initialise a navigation stack with a root screen.
 pub export fn ra8_ui_nav_init(nav: ?*Nav, root_screen: u16) callconv(.c) u16 {
     const stack = nav orelse return rejectNull("nav must not be nullptr");
     implementation.navInit(stack, root_screen);
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 /// Push a new screen onto the stack.
 pub export fn ra8_ui_nav_push(nav: ?*Nav, screen: u16) callconv(.c) u16 {
     const stack = nav orelse return rejectNull("nav must not be nullptr");
     implementation.navPush(stack, screen) catch |fault| return switch (fault) {
-        error.Full => @intFromEnum(UiError.no_mem),
-        else => @intFromEnum(UiError.invalid_state),
+        error.Full => @backingInt(UiError.no_mem),
+        else => @backingInt(UiError.invalid_state),
     };
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 /// Pop the top screen, reporting the one revealed beneath.
 pub export fn ra8_ui_nav_pop(nav: ?*Nav, out_screen: ?*u16) callconv(.c) u16 {
     const stack = nav orelse return rejectNull("nav must not be nullptr");
     const out = out_screen orelse return rejectNull("out_screen must not be nullptr");
-    out.* = implementation.navPop(stack) catch return @intFromEnum(UiError.invalid_state);
-    return @intFromEnum(UiError.ok);
+    out.* = implementation.navPop(stack) catch return @backingInt(UiError.invalid_state);
+    return @backingInt(UiError.ok);
 }
 
 /// Replace the top screen in place.
 pub export fn ra8_ui_nav_replace(nav: ?*Nav, screen: u16) callconv(.c) u16 {
     const stack = nav orelse return rejectNull("nav must not be nullptr");
-    implementation.navReplace(stack, screen) catch return @intFromEnum(UiError.invalid_state);
-    return @intFromEnum(UiError.ok);
+    implementation.navReplace(stack, screen) catch return @backingInt(UiError.invalid_state);
+    return @backingInt(UiError.ok);
 }
 
 /// Read the current (top) screen id.
 pub export fn ra8_ui_nav_top(nav: ?*const Nav, out_screen: ?*u16) callconv(.c) u16 {
     const stack = nav orelse return rejectNull("nav must not be nullptr");
     const out = out_screen orelse return rejectNull("out_screen must not be nullptr");
-    out.* = implementation.navTop(stack) catch return @intFromEnum(UiError.invalid_state);
-    return @intFromEnum(UiError.ok);
+    out.* = implementation.navTop(stack) catch return @backingInt(UiError.invalid_state);
+    return @backingInt(UiError.ok);
 }
 
 /// Initialise a pager over `total` pages at page 0.
 pub export fn ra8_ui_pager_init(p: ?*Pager, total: u16) callconv(.c) u16 {
     const pager = p orelse return rejectNull("p must not be nullptr");
-    implementation.pagerInit(pager, total) catch return @intFromEnum(UiError.invalid_arg);
-    return @intFromEnum(UiError.ok);
+    implementation.pagerInit(pager, total) catch return @backingInt(UiError.invalid_arg);
+    return @backingInt(UiError.ok);
 }
 
 /// Advance to the next page, clamping at the last.
@@ -126,7 +126,7 @@ pub export fn ra8_ui_pager_next(p: ?*Pager, out_changed: ?*bool) callconv(.c) u1
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
     changed.* = implementation.pagerNext(pager);
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 /// Step to the previous page, clamping at page 0.
@@ -134,7 +134,7 @@ pub export fn ra8_ui_pager_prev(p: ?*Pager, out_changed: ?*bool) callconv(.c) u1
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
     changed.* = implementation.pagerPrev(pager);
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 /// Jump to an absolute page, clamping into `[0, total-1]`.
@@ -142,16 +142,16 @@ pub export fn ra8_ui_pager_goto(p: ?*Pager, page: u16, out_changed: ?*bool) call
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
     changed.* = implementation.pagerGoto(pager, page);
-    return @intFromEnum(UiError.ok);
+    return @backingInt(UiError.ok);
 }
 
 comptime {
     // `ra8_err_t` is 16-bit across the repo; these are the only codes the
     // library can return.
-    std.debug.assert(@intFromEnum(UiError.ok) == 0);
-    std.debug.assert(@intFromEnum(UiError.no_mem) == 0x102);
-    std.debug.assert(@intFromEnum(UiError.invalid_arg) == 0x103);
-    std.debug.assert(@intFromEnum(UiError.invalid_state) == 0x104);
-    std.debug.assert(@intFromEnum(UiError.null_ptr) == 0x504);
+    std.debug.assert(@backingInt(UiError.ok) == 0);
+    std.debug.assert(@backingInt(UiError.no_mem) == 0x102);
+    std.debug.assert(@backingInt(UiError.invalid_arg) == 0x103);
+    std.debug.assert(@backingInt(UiError.invalid_state) == 0x104);
+    std.debug.assert(@backingInt(UiError.null_ptr) == 0x504);
     std.debug.assert(implementation.nav_max_depth == 8);
 }

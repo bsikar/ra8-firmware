@@ -31,15 +31,15 @@ pub const AbiConfig = extern struct {
 
 comptime {
     if (@sizeOf(AbiError) != 2) @compileError("ABI fixture error width");
-    if (@intFromEnum(AbiError.ok) != 0) @compileError("ABI fixture success value");
-    if (@intFromEnum(AbiError.no_mem) != 0x102) @compileError("ABI fixture no-memory value");
-    if (@intFromEnum(AbiError.invalid_arg) != 0x103) @compileError("ABI fixture invalid arg value");
-    if (@intFromEnum(AbiError.invalid_state) != 0x104) @compileError("ABI fixture invalid-state value");
-    if (@intFromEnum(AbiError.invalid_size) != 0x105) @compileError("ABI fixture invalid size value");
-    if (@intFromEnum(AbiError.busy) != 0x109) @compileError("ABI fixture busy value");
-    if (@intFromEnum(AbiError.null_ptr) != 0x504) @compileError("ABI fixture null pointer value");
+    if (@backingInt(AbiError.ok) != 0) @compileError("ABI fixture success value");
+    if (@backingInt(AbiError.no_mem) != 0x102) @compileError("ABI fixture no-memory value");
+    if (@backingInt(AbiError.invalid_arg) != 0x103) @compileError("ABI fixture invalid arg value");
+    if (@backingInt(AbiError.invalid_state) != 0x104) @compileError("ABI fixture invalid-state value");
+    if (@backingInt(AbiError.invalid_size) != 0x105) @compileError("ABI fixture invalid size value");
+    if (@backingInt(AbiError.busy) != 0x109) @compileError("ABI fixture busy value");
+    if (@backingInt(AbiError.null_ptr) != 0x504) @compileError("ABI fixture null pointer value");
     if (@sizeOf(AbiLimit) != 4) @compileError("ABI fixture limit width");
-    if (@intFromEnum(AbiLimit.max_bytes) != implementation.max_bytes) {
+    if (@backingInt(AbiLimit.max_bytes) != implementation.max_bytes) {
         @compileError("ABI fixture maximum byte value");
     }
     if (@sizeOf(AbiConfig) != 8) @compileError("ABI fixture structure size");
@@ -189,13 +189,13 @@ pub export fn ra8_abi_fixture_callback_invoke(
     defer handle.callback_active = false;
     const raw_result = callback(handle.callback_context, bytes.ptr, input_len);
     return switch (raw_result) {
-        @intFromEnum(AbiError.ok) => .ok,
-        @intFromEnum(AbiError.no_mem) => .no_mem,
-        @intFromEnum(AbiError.invalid_arg) => .invalid_arg,
-        @intFromEnum(AbiError.invalid_state) => .invalid_state,
-        @intFromEnum(AbiError.invalid_size) => .invalid_size,
-        @intFromEnum(AbiError.busy) => .busy,
-        @intFromEnum(AbiError.null_ptr) => .null_ptr,
+        @backingInt(AbiError.ok) => .ok,
+        @backingInt(AbiError.no_mem) => .no_mem,
+        @backingInt(AbiError.invalid_arg) => .invalid_arg,
+        @backingInt(AbiError.invalid_state) => .invalid_state,
+        @backingInt(AbiError.invalid_size) => .invalid_size,
+        @backingInt(AbiError.busy) => .busy,
+        @backingInt(AbiError.null_ptr) => .null_ptr,
         else => .invalid_arg,
     };
 }

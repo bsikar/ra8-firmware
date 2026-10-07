@@ -24,12 +24,12 @@ pub const Err = enum(u16) {
 
     /// The value the C membrane returns.
     pub fn code(self: Err) u16 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     /// A code arriving from C.
     pub fn from(code_value: u16) Err {
-        return @enumFromInt(code_value);
+        return @fromBackingInt(@intCast(code_value));
     }
 };
 

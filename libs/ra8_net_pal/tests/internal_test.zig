@@ -16,8 +16,8 @@ test "constants match the header contract" {
 }
 
 test "link state enumerators keep their numbers" {
-    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(implementation.LinkState.down));
-    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(implementation.LinkState.up));
+    try std.testing.expectEqual(@as(u8, 0), @backingInt(implementation.LinkState.down));
+    try std.testing.expectEqual(@as(u8, 1), @backingInt(implementation.LinkState.up));
 }
 
 test "event bits keep their numbers" {

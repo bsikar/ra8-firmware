@@ -240,7 +240,7 @@ test "run_init_sequence identifies an SDHC card and publishes its capacity" {
 
     try testing.expectEqual(err_ok, abi.priv_sdmmc_spi_run_init_sequence());
     try testing.expectEqual(
-        @as(u8, @intFromEnum(abi.CardType.sdhc)),
+        @as(u8, @backingInt(abi.CardType.sdhc)),
         abi.g_sdmmc_spi_state.card_type,
     );
     try testing.expectEqual(@as(u32, 7680 * 1024), abi.g_sdmmc_spi_state.capacity_blocks);
@@ -299,7 +299,7 @@ test "a v1 card that rejects CMD8 skips the OCR read and drops the HCS bit" {
     try testing.expectEqual(err_ok, abi.priv_sdmmc_spi_run_init_sequence());
     try testing.expectEqual(@as(u32, 0), card.last_acmd41_arg);
     try testing.expectEqual(
-        @as(u8, @intFromEnum(abi.CardType.sdv1)),
+        @as(u8, @backingInt(abi.CardType.sdv1)),
         abi.g_sdmmc_spi_state.card_type,
     );
 }
@@ -312,7 +312,7 @@ test "a v2 card with CCS clear classifies as standard capacity" {
 
     try testing.expectEqual(err_ok, abi.priv_sdmmc_spi_run_init_sequence());
     try testing.expectEqual(
-        @as(u8, @intFromEnum(abi.CardType.sdv2)),
+        @as(u8, @backingInt(abi.CardType.sdv2)),
         abi.g_sdmmc_spi_state.card_type,
     );
 }
@@ -391,7 +391,7 @@ test "the R3/R7 tail falls back to byte-at-a-time when the bulk read fails" {
 
     try testing.expectEqual(err_ok, abi.priv_sdmmc_spi_run_init_sequence());
     try testing.expectEqual(
-        @as(u8, @intFromEnum(abi.CardType.sdhc)),
+        @as(u8, @backingInt(abi.CardType.sdhc)),
         abi.g_sdmmc_spi_state.card_type,
     );
 }

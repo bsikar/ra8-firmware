@@ -176,21 +176,21 @@ pub export fn ra8_jpeg_sw_encode(
 ) callconv(.c) u16 {
     const source = rgb_buf orelse {
         ra8_log_emit_error(tag, "rgb_buf is NULL");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
     const destination = out_buf orelse {
         ra8_log_emit_error(tag, "out_buf is NULL");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
     const written = out_len orelse {
         ra8_log_emit_error(tag, "out_len is NULL");
-        return @intFromEnum(Error.null_ptr);
+        return @backingInt(Error.null_ptr);
     };
 
     written.* = 0;
-    if (width == 0 or height == 0) return @intFromEnum(Error.invalid_arg);
+    if (width == 0 or height == 0) return @backingInt(Error.invalid_arg);
     if (quality < spec.Limits.quality_min or quality > spec.Limits.quality_max) {
-        return @intFromEnum(Error.invalid_arg);
+        return @backingInt(Error.invalid_arg);
     }
 
     state = .{};
@@ -198,8 +198,8 @@ pub export fn ra8_jpeg_sw_encode(
 
     const pixels = @as(usize, width) * @as(usize, height) * spec.Limits.rgb_channels;
     const result = run(&state, source[0..pixels], width, height, quality);
-    if (result != .ok) return @intFromEnum(result);
+    if (result != .ok) return @backingInt(result);
 
     written.* = @intCast(state.sink.pos);
-    return @intFromEnum(Error.ok);
+    return @backingInt(Error.ok);
 }
