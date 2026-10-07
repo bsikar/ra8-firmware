@@ -2,7 +2,7 @@
     .name = .ra8_rpc,
     .version = "0.1.0",
     .fingerprint = 0x8bfddb1a23881d2a,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
         .ra8_zig_build = .{ .path = "../../tools/zig_build" },

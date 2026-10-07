@@ -4,7 +4,7 @@
     .name = .ra8_firmware,
     .version = "0.1.0",
     .fingerprint = 0x44ffd43a8d30a81d,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .ra8_box = .{ .path = "libs/ra8_box" },
         .ra8_power_profile = .{ .path = "libs/ra8_power_profile" },
