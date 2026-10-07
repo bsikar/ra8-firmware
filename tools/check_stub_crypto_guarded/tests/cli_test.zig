@@ -32,17 +32,17 @@ const Fixture = struct {
     text: ?[]const u8,
 };
 
-fn write(dir: std.fs.Dir, rel: []const u8, text: []const u8) !void {
-    if (std.fs.path.dirname(rel)) |parent| try dir.makePath(parent);
-    try dir.writeFile(.{ .sub_path = rel, .data = text });
+fn write(dir: std.Io.Dir, rel: []const u8, text: []const u8) !void {
+    if (std.fs.path.dirname(rel)) |parent| try dir.createDirPath(std.testing.io, parent);
+    try dir.writeFile(std.testing.io, .{ .sub_path = rel, .data = text });
 }
 
-fn runIn(dir: std.fs.Dir, argv: []const []const u8, stubs: []const cli.Stub) !Run {
-    var out = std.ArrayList(u8).init(talloc);
+fn runIn(dir: std.Io.Dir, argv: []const []const u8, stubs: []const cli.Stub) !Run {
+    var out: std.Io.Writer.Allocating = .init(talloc);
     errdefer out.deinit();
-    var err = std.ArrayList(u8).init(talloc);
+    var err: std.Io.Writer.Allocating = .init(talloc);
     errdefer err.deinit();
-    const status = try cli.run(talloc, dir, ".", argv, stubs, out.writer(), err.writer());
+    const status = try cli.run(talloc, std.testing.io, dir, ".", argv, stubs, &out.writer, &err.writer);
     return .{
         .status = status,
         .out = try out.toOwnedSlice(),
@@ -53,11 +53,11 @@ fn runIn(dir: std.fs.Dir, argv: []const []const u8, stubs: []const cli.Stub) !Ru
 fn runFixtures(argv: []const []const u8, fixtures: []const Fixture) !Run {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    var stubs = std.ArrayList(cli.Stub).init(talloc);
-    defer stubs.deinit();
+    var stubs: std.ArrayList(cli.Stub) = .empty;
+    defer stubs.deinit(talloc);
     for (fixtures) |fixture| {
         if (fixture.text) |text| try write(tmp.dir, fixture.rel, text);
-        try stubs.append(.{ .rel = fixture.rel, .token = fixture.token });
+        try stubs.append(talloc, .{ .rel = fixture.rel, .token = fixture.token });
     }
     return runIn(tmp.dir, argv, stubs.items);
 }
@@ -97,7 +97,7 @@ test "a missing stub TU exits 1 rather than reporting a clean sweep" {
 test "a directory standing where a stub TU belongs is a finding, not a read error" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("libs/a/src/one.c");
+    try tmp.dir.createDirPath(std.testing.io, "libs/a/src/one.c");
     const stubs = [_]cli.Stub{.{ .rel = "libs/a/src/one.c", .token = "tok" }};
     const result = try runIn(tmp.dir, &.{}, &stubs);
     defer result.deinit();
@@ -247,26 +247,26 @@ test "a repository root prefixes the read path but not the reported one" {
     defer tmp.cleanup();
     try write(tmp.dir, "root/libs/a/src/one.c", clean_source);
     const stubs = [_]cli.Stub{.{ .rel = "libs/a/src/one.c", .token = "tok" }};
-    var out = std.ArrayList(u8).init(talloc);
+    var out: std.Io.Writer.Allocating = .init(talloc);
     defer out.deinit();
-    var err = std.ArrayList(u8).init(talloc);
+    var err: std.Io.Writer.Allocating = .init(talloc);
     defer err.deinit();
-    const status = try cli.run(talloc, tmp.dir, "root", &.{}, &stubs, out.writer(), err.writer());
+    const status = try cli.run(talloc, std.testing.io, tmp.dir, "root", &.{}, &stubs, &out.writer, &err.writer);
     try std.testing.expectEqual(@as(u8, 0), status);
-    try std.testing.expect(std.mem.indexOf(u8, out.items, "1 stub crypto TU(s)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "1 stub crypto TU(s)") != null);
 }
 
 test "a repository root that does not resolve makes every TU a finding" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
     const stubs = [_]cli.Stub{.{ .rel = "libs/a/src/one.c", .token = "tok" }};
-    var out = std.ArrayList(u8).init(talloc);
+    var out: std.Io.Writer.Allocating = .init(talloc);
     defer out.deinit();
-    var err = std.ArrayList(u8).init(talloc);
+    var err: std.Io.Writer.Allocating = .init(talloc);
     defer err.deinit();
-    const status = try cli.run(talloc, tmp.dir, "absent", &.{}, &stubs, out.writer(), err.writer());
+    const status = try cli.run(talloc, std.testing.io, tmp.dir, "absent", &.{}, &stubs, &out.writer, &err.writer);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, out.items, "file not found") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "file not found") != null);
 }
 
 test "the reported path is the repository-relative one, not the read path" {
@@ -274,14 +274,14 @@ test "the reported path is the repository-relative one, not the read path" {
     defer tmp.cleanup();
     try write(tmp.dir, "root/libs/a/src/one.c", "static int tok;\n");
     const stubs = [_]cli.Stub{.{ .rel = "libs/a/src/one.c", .token = "tok" }};
-    var out = std.ArrayList(u8).init(talloc);
+    var out: std.Io.Writer.Allocating = .init(talloc);
     defer out.deinit();
-    var err = std.ArrayList(u8).init(talloc);
+    var err: std.Io.Writer.Allocating = .init(talloc);
     defer err.deinit();
-    const status = try cli.run(talloc, tmp.dir, "root", &.{}, &stubs, out.writer(), err.writer());
+    const status = try cli.run(talloc, std.testing.io, tmp.dir, "root", &.{}, &stubs, &out.writer, &err.writer);
     try std.testing.expectEqual(@as(u8, 1), status);
-    try std.testing.expect(std.mem.indexOf(u8, out.items, "  libs/a/src/one.c:") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out.items, "root/libs") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "  libs/a/src/one.c:") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "root/libs") == null);
 }
 
 test "the live governed set is the eight stub TUs" {
@@ -297,20 +297,21 @@ test "every live TU path is repository-relative" {
 test "a stub TU far past any read ceiling is still checked, not skipped" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.makePath("libs/huge/src");
+    try tmp.dir.createDirPath(std.testing.io, "libs/huge/src");
 
     // Written sparse: the hole costs no disk and reads back as NUL, which is
     // valid UTF-8 and breaks no line, so the guard opens on line 1, the
     // insecure body sits inside it, and the `#else` past the hole is the one
     // thing the gate must still see.
-    var file = try tmp.dir.createFile("libs/huge/src/stub.c", .{});
-    defer file.close();
-    try file.writeAll(
+    var file = try tmp.dir.createFile(std.testing.io, "libs/huge/src/stub.c", .{});
+    defer file.close(std.testing.io);
+    try file.writePositionalAll(
+        std.testing.io,
         "#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)\n" ++
             "static int insecure_body;\n",
+        0,
     );
-    try file.seekTo(17 * 1024 * 1024);
-    try file.writeAll("\n#else\nreturn k_ra8_ok;\n#endif\n");
+    try file.writePositionalAll(std.testing.io, "\n#else\nreturn k_ra8_ok;\n#endif\n", 17 * 1024 * 1024);
 
     const stubs = [_]cli.Stub{.{ .rel = "libs/huge/src/stub.c", .token = "insecure_body" }};
     const result = try runIn(tmp.dir, &.{}, &stubs);
