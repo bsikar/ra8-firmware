@@ -66,18 +66,18 @@ pub fn isSpace(byte: u8) bool {
 /// The gate reported line numbers counted after that translation, so a CRLF
 /// source has to collapse here or every finding below the first CR shifts.
 pub fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, raw.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, raw.len);
+    errdefer out.deinit(allocator);
     var index: usize = 0;
     while (index < raw.len) : (index += 1) {
         if (raw[index] != '\r') {
-            try out.append(raw[index]);
+            try out.append(allocator, raw[index]);
             continue;
         }
-        try out.append('\n');
+        try out.append(allocator, '\n');
         if (index + 1 < raw.len and raw[index + 1] == '\n') index += 1;
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Replace every non-ASCII byte with U+FFFD, as `errors="replace"` did.
@@ -85,16 +85,16 @@ pub fn normalizeTerminators(allocator: std.mem.Allocator, raw: []const u8) ![]u8
 /// This matters for the echoed snippet: the old gate truncated at 60
 /// CHARACTERS of a decoded string, so one stray byte counted once, not three.
 pub fn decodeAsciiReplace(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
-    var out = try std.ArrayList(u8).initCapacity(allocator, raw.len);
-    errdefer out.deinit();
+    var out: std.ArrayList(u8) = try .initCapacity(allocator, raw.len);
+    errdefer out.deinit(allocator);
     for (raw) |byte| {
         if (byte < 0x80) {
-            try out.append(byte);
+            try out.append(allocator, byte);
         } else {
-            try out.appendSlice("\u{FFFD}");
+            try out.appendSlice(allocator, "\u{FFFD}");
         }
     }
-    return out.toOwnedSlice();
+    return out.toOwnedSlice(allocator);
 }
 
 /// Trim the gate's whitespace set from both ends.
@@ -177,8 +177,8 @@ pub fn lineOf(text: []const u8, index: usize) usize {
 /// is a syntax error, not a cast, and reporting it here would bury the real
 /// diagnostic. Snippets borrow from `text`, so the caller must keep it alive.
 pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]Finding {
-    var found = std.ArrayList(Finding).init(allocator);
-    errdefer found.deinit();
+    var found: std.ArrayList(Finding) = .empty;
+    errdefer found.deinit(allocator);
     var cursor: usize = 0;
     while (std.mem.indexOfPos(u8, text, cursor, macro)) |start| {
         const inner_start = start + macro.len;
@@ -188,12 +188,12 @@ pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]Finding {
             const line = lineOf(text, start);
             const first = inner[0..split];
             const second = inner[split + 1 ..];
-            if (hasLeadingCast(first)) try found.append(.{
+            if (hasLeadingCast(first)) try found.append(allocator, .{
                 .line = line,
                 .argument = .first,
                 .snippet = sliceChars(stripEnds(first), snippet_limit),
             });
-            if (hasLeadingCast(second)) try found.append(.{
+            if (hasLeadingCast(second)) try found.append(allocator, .{
                 .line = line,
                 .argument = .second,
                 .snippet = sliceChars(stripEnds(second), snippet_limit),
@@ -201,7 +201,7 @@ pub fn scanText(allocator: std.mem.Allocator, text: []const u8) ![]Finding {
         }
         cursor = close + 1;
     }
-    return found.toOwnedSlice();
+    return found.toOwnedSlice(allocator);
 }
 
 /// Render one finding as the `path:line: message` row the gate has always
@@ -236,12 +236,12 @@ pub fn normalizePath(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
         prefix = "/";
         rest = raw[1..];
     }
-    var parts = std.ArrayList([]const u8).init(allocator);
-    defer parts.deinit();
+    var parts: std.ArrayList([]const u8) = .empty;
+    defer parts.deinit(allocator);
     var iterator = std.mem.splitScalar(u8, rest, '/');
     while (iterator.next()) |part| {
         if (part.len == 0 or std.mem.eql(u8, part, ".")) continue;
-        try parts.append(part);
+        try parts.append(allocator, part);
     }
     if (parts.items.len == 0) return allocator.dupe(u8, if (prefix.len == 0) "." else prefix);
     const joined = try std.mem.join(allocator, "/", parts.items);
