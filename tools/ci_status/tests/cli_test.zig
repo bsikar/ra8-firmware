@@ -32,15 +32,15 @@ const Outcome = struct {
 };
 
 fn runWith(
-    dir: std.fs.Dir,
+    dir: std.Io.Dir,
     argv: []const []const u8,
 ) !Outcome {
     const allocator = std.testing.allocator;
-    var out = std.ArrayList(u8).init(allocator);
-    errdefer out.deinit();
-    var err = std.ArrayList(u8).init(allocator);
-    errdefer err.deinit();
-    const status = try cli.run(allocator, dir, argv, out.writer(), err.writer());
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    defer out.deinit();
+    var err: std.Io.Writer.Allocating = .init(allocator);
+    defer err.deinit();
+    const status = try cli.run(allocator, std.testing.io, dir, argv, &out.writer, &err.writer);
     return .{
         .status = status,
         .out = try out.toOwnedSlice(),
@@ -53,7 +53,7 @@ const Fixture = struct {
 
     fn init(text: []const u8) !Fixture {
         var tmp = std.testing.tmpDir(.{});
-        try tmp.dir.writeFile(.{ .sub_path = "status.json", .data = text });
+        try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "status.json", .data = text });
         return .{ .tmp = tmp };
     }
 
@@ -280,16 +280,16 @@ test "a state file past any plausible read ceiling is still answered" {
     // branches on, so the whole file is read.
     const allocator = std.testing.allocator;
     const pad_bytes: usize = 17 * 1024 * 1024;
-    var text = std.ArrayList(u8).init(allocator);
-    defer text.deinit();
-    try text.appendSlice("{\"overall\":\"PASS\",\"pad\":\"");
-    try text.appendNTimes('x', pad_bytes);
-    try text.appendSlice("\",\"runs\":[{\"name\":\"firmware\",\"status\":\"completed\"," ++
+    var text: std.ArrayList(u8) = .empty;
+    defer text.deinit(allocator);
+    try text.appendSlice(allocator, "{\"overall\":\"PASS\",\"pad\":\"");
+    try text.appendNTimes(allocator, 'x', pad_bytes);
+    try text.appendSlice(allocator, "\",\"runs\":[{\"name\":\"firmware\",\"status\":\"completed\"," ++
         "\"conclusion\":\"success\",\"sha\":\"aaaaaaaaa1\"}]}");
 
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "status.json", .data = text.items });
+    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = "status.json", .data = text.items });
 
     const judged = try runWith(tmp.dir, &.{ "status.json", "verdict", "aaaaaaaaa1" });
     defer judged.deinit(allocator);

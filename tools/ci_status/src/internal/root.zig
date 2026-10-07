@@ -117,28 +117,28 @@ pub fn pythonFloat(allocator: std.mem.Allocator, number: f64) RenderError![]cons
     const sign: []const u8 = if (negative) "-" else "";
 
     if (exponent >= -4 and exponent <= 15) {
-        var text = std.ArrayList(u8).init(allocator);
-        errdefer text.deinit();
-        try text.appendSlice(sign);
+        var text: std.ArrayList(u8) = .empty;
+        errdefer text.deinit(allocator);
+        try text.appendSlice(allocator, sign);
         if (exponent < 0) {
-            try text.appendSlice("0.");
+            try text.appendSlice(allocator, "0.");
             var zeros = -exponent - 1;
-            while (zeros > 0) : (zeros -= 1) try text.append('0');
-            try text.appendSlice(digits);
+            while (zeros > 0) : (zeros -= 1) try text.append(allocator, '0');
+            try text.appendSlice(allocator, digits);
         } else {
             const point: usize = @intCast(exponent + 1);
             if (digits.len > point) {
-                try text.appendSlice(digits[0..point]);
-                try text.append('.');
-                try text.appendSlice(digits[point..]);
+                try text.appendSlice(allocator, digits[0..point]);
+                try text.append(allocator, '.');
+                try text.appendSlice(allocator, digits[point..]);
             } else {
-                try text.appendSlice(digits);
+                try text.appendSlice(allocator, digits);
                 var pad = point - digits.len;
-                while (pad > 0) : (pad -= 1) try text.append('0');
-                try text.appendSlice(".0");
+                while (pad > 0) : (pad -= 1) try text.append(allocator, '0');
+                try text.appendSlice(allocator, ".0");
             }
         }
-        return text.toOwnedSlice();
+        return text.toOwnedSlice(allocator);
     }
 
     const tail = if (digits.len > 1) digits[1..] else "";
@@ -158,62 +158,70 @@ pub fn pythonFloat(allocator: std.mem.Allocator, number: f64) RenderError![]cons
 /// `repr()` of a string: single quotes unless the text holds one and no
 /// double quote, with the escapes Python spells and printable code points
 /// passed through untouched.
-pub fn appendStringRepr(text: *std.ArrayList(u8), value: []const u8) RenderError!void {
+pub fn appendStringRepr(
+    allocator: std.mem.Allocator,
+    text: *std.ArrayList(u8),
+    value: []const u8,
+) RenderError!void {
     const has_single = std.mem.indexOfScalar(u8, value, '\'') != null;
     const has_double = std.mem.indexOfScalar(u8, value, '"') != null;
     const quote: u8 = if (has_single and !has_double) '"' else '\'';
-    try text.append(quote);
+    try text.append(allocator, quote);
     for (value) |byte| {
         switch (byte) {
-            '\\' => try text.appendSlice("\\\\"),
-            '\n' => try text.appendSlice("\\n"),
-            '\r' => try text.appendSlice("\\r"),
-            '\t' => try text.appendSlice("\\t"),
+            '\\' => try text.appendSlice(allocator, "\\\\"),
+            '\n' => try text.appendSlice(allocator, "\\n"),
+            '\r' => try text.appendSlice(allocator, "\\r"),
+            '\t' => try text.appendSlice(allocator, "\\t"),
             else => {
                 if (byte == quote) {
-                    try text.append('\\');
-                    try text.append(byte);
+                    try text.append(allocator, '\\');
+                    try text.append(allocator, byte);
                 } else if (byte < 0x20 or byte == 0x7f) {
-                    try text.writer().print("\\x{x:0>2}", .{byte});
+                    try text.print(allocator, "\\x{x:0>2}", .{byte});
                 } else {
-                    try text.append(byte);
+                    try text.append(allocator, byte);
                 }
             },
         }
     }
-    try text.append(quote);
+    try text.append(allocator, quote);
 }
 
 /// `repr()` of any value: the same as `str()` for every scalar except a
 /// string, which gains its quotes, and this is what a container's members
 /// render with.
-pub fn appendRepr(text: *std.ArrayList(u8), value: Value) RenderError!void {
+pub fn appendRepr(
+    allocator: std.mem.Allocator,
+    text: *std.ArrayList(u8),
+    value: Value,
+) RenderError!void {
     switch (value) {
-        .string => |inner| try appendStringRepr(text, inner),
+        .string => |inner| try appendStringRepr(allocator, text, inner),
         .array => |items| {
-            try text.append('[');
+            try text.append(allocator, '[');
             for (items.items, 0..) |item, index| {
-                if (index > 0) try text.appendSlice(", ");
-                try appendRepr(text, item);
+                if (index > 0) try text.appendSlice(allocator, ", ");
+                try appendRepr(allocator, text, item);
             }
-            try text.append(']');
+            try text.append(allocator, ']');
         },
         .object => |map| {
-            try text.append('{');
+            try text.append(allocator, '{');
             var index: usize = 0;
             var entries = map.iterator();
             while (entries.next()) |entry| : (index += 1) {
-                if (index > 0) try text.appendSlice(", ");
-                try appendStringRepr(text, entry.key_ptr.*);
-                try text.appendSlice(": ");
-                try appendRepr(text, entry.value_ptr.*);
+                if (index > 0) try text.appendSlice(allocator, ", ");
+                try appendStringRepr(allocator, text, entry.key_ptr.*);
+                try text.appendSlice(allocator, ": ");
+                try appendRepr(allocator, text, entry.value_ptr.*);
             }
-            try text.append('}');
+            try text.append(allocator, '}');
         },
         else => {
-            const scalar = try pythonStr(text.allocator, value);
-            defer text.allocator.free(scalar);
-            try text.appendSlice(scalar);
+            const scalar = try pythonStr(allocator, value);
+            defer allocator.free(scalar);
+            try text.appendSlice(allocator, scalar);
         },
     }
 }
@@ -230,10 +238,10 @@ pub fn pythonStr(allocator: std.mem.Allocator, value: Value) RenderError![]const
         .number_string => |text| allocator.dupe(u8, text),
         .string => |text| allocator.dupe(u8, text),
         .array, .object => blk: {
-            var text = std.ArrayList(u8).init(allocator);
-            errdefer text.deinit();
-            try appendRepr(&text, value);
-            break :blk text.toOwnedSlice();
+            var text: std.ArrayList(u8) = .empty;
+            errdefer text.deinit(allocator);
+            try appendRepr(allocator, &text, value);
+            break :blk text.toOwnedSlice(allocator);
         },
     };
 }
@@ -311,12 +319,12 @@ pub fn matchesSha(allocator: std.mem.Allocator, run: Value, prefix: []const u8) 
 
 /// The runs whose sha starts with `prefix`, in document order.
 pub fn matching(allocator: std.mem.Allocator, runs: []const Value, prefix: []const u8) ![]Value {
-    var picked = std.ArrayList(Value).init(allocator);
-    errdefer picked.deinit();
+    var picked: std.ArrayList(Value) = .empty;
+    errdefer picked.deinit(allocator);
     for (runs) |run| {
-        if (try matchesSha(allocator, run, prefix)) try picked.append(run);
+        if (try matchesSha(allocator, run, prefix)) try picked.append(allocator, run);
     }
-    return picked.toOwnedSlice();
+    return picked.toOwnedSlice(allocator);
 }
 
 /// Count of the sha's runs whose conclusion equals `conclusion`.
@@ -389,18 +397,18 @@ fn lessByCreated(context: []const []const u8, left: usize, right: usize) bool {
 /// `created` field as a string, sorted stably, so runs with no `created` keep
 /// document order and the last one wins, exactly as Python's `sorted` left it.
 pub fn workflowVerdict(allocator: std.mem.Allocator, wf_runs: []const Value) !WorkflowVerdict {
-    var decisive = std.ArrayList(usize).init(allocator);
-    defer decisive.deinit();
-    var keys = std.ArrayList([]const u8).init(allocator);
+    var decisive: std.ArrayList(usize) = .empty;
+    defer decisive.deinit(allocator);
+    var keys: std.ArrayList([]const u8) = .empty;
     defer {
         for (keys.items) |key| allocator.free(key);
-        keys.deinit();
+        keys.deinit(allocator);
     }
 
     for (wf_runs, 0..) |run, index| {
         if (!isDecisive(run)) continue;
-        try decisive.append(index);
-        try keys.append(try runText(allocator, run, "created"));
+        try decisive.append(allocator, index);
+        try keys.append(allocator, try runText(allocator, run, "created"));
     }
 
     if (decisive.items.len > 0) {
@@ -459,22 +467,22 @@ pub fn verdict(
     defer allocator.free(got);
     if (got.len == 0) return allocator.dupe(u8, "UNKNOWN");
 
-    var groups = std.StringArrayHashMap(std.ArrayList(Value)).init(allocator);
+    var groups: std.StringArrayHashMapUnmanaged(std.ArrayList(Value)) = .empty;
     defer {
         for (groups.keys()) |key| allocator.free(key);
-        for (groups.values()) |*list| list.deinit();
-        groups.deinit();
+        for (groups.values()) |*list| list.deinit(allocator);
+        groups.deinit(allocator);
     }
 
     for (got) |run| {
         const key = try nameKey(allocator, run);
-        const entry = try groups.getOrPut(key);
+        const entry = try groups.getOrPut(allocator, key);
         if (entry.found_existing) {
             allocator.free(key);
         } else {
-            entry.value_ptr.* = std.ArrayList(Value).init(allocator);
+            entry.value_ptr.* = .empty;
         }
-        try entry.value_ptr.append(run);
+        try entry.value_ptr.append(allocator, run);
     }
 
     var running = false;
