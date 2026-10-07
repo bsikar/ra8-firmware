@@ -8,12 +8,8 @@
 const line = @import("internal/capture_line.zig");
 const Err = @import("abi_err.zig");
 
-/// The public `ra8_c6link_capture.h` view.
-pub const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cInclude("stdbool.h");
-    @cInclude("ra8_c6link_capture.h");
-});
+/// The public `ra8_c6link_capture.h` view (`c6link_capture_h`, from build.zig).
+pub const c = @import("c6link_capture_h");
 
 /// No level reported yet.
 const unknown: u8 = 0xFF;
