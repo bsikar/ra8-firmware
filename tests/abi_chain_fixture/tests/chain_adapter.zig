@@ -3,12 +3,7 @@
 //!
 //! Test-only Zig membrane forwarding documented C ABI values to Rust.
 
-const c = @cImport({
-    @cDefine("static_assert", "_Static_assert");
-    @cDefine("alignof", "_Alignof");
-    @cInclude("stdbool.h");
-    @cInclude("ra8_abi_chain.h");
-});
+const c = @import("abi_chain_h");
 
 const stage_marker: u32 = 0x100;
 
