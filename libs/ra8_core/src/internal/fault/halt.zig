@@ -22,7 +22,7 @@ pub const on_target = builtin.target.os.tag == .freestanding;
 /// being folded into the reporter.
 pub noinline fn spin() noreturn {
     if (comptime !on_target) unreachable;
-    asm volatile ("cpsid i" ::: "memory");
+    asm volatile ("cpsid i" ::: .{ .memory = true });
     while (true) {
         asm volatile ("wfi");
     }

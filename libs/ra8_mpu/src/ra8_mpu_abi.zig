@@ -43,7 +43,7 @@ inline fn dsb() void {
     if (build_config.off_target) {
         ra8_hw_dsb();
     } else {
-        asm volatile ("dsb sy" ::: "memory");
+        asm volatile ("dsb sy" ::: .{ .memory = true });
     }
 }
 
@@ -51,7 +51,7 @@ inline fn isb() void {
     if (build_config.off_target) {
         ra8_hw_isb();
     } else {
-        asm volatile ("isb sy" ::: "memory");
+        asm volatile ("isb sy" ::: .{ .memory = true });
     }
 }
 

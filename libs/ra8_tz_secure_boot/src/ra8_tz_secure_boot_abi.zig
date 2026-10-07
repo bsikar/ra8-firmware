@@ -134,7 +134,7 @@ pub export fn ra8_tz_secure_boot_jump_ns(ns_vector_table: ?[*]const u32) callcon
             :
             : [sp] "r" (initial_sp),
               [entry] "r" (ns_entry),
-            : "memory");
+            : .{ .memory = true });
         return regs.Err.ok; // Unreachable on target.
     }
 

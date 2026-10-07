@@ -31,7 +31,7 @@ fn guardEnter() u32 {
     const saved = asm volatile ("mrs %[r], primask"
         : [r] "=r" (-> u32),
     );
-    asm volatile ("cpsid i" ::: "memory");
+    asm volatile ("cpsid i" ::: .{ .memory = true });
     return saved;
 }
 
@@ -40,7 +40,7 @@ fn guardExit(saved: u32) void {
     asm volatile ("msr primask, %[s]"
         :
         : [s] "r" (saved),
-        : "memory");
+        : .{ .memory = true });
 }
 
 fn toggleIe(channel: u8, bit: u32, on: bool) void {

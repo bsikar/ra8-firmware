@@ -133,8 +133,7 @@ fn kernelKeeps() bool {
     const bad = asm volatile (switch_once
         : [bad] "=&r" (-> u32),
         :
-        : "r0", "r1", "r2", "r3", "r12", "lr", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10", "d11", "d12", "d13", "d14", "d15", "cc", "memory"
-    );
+        : .{ .r0 = true, .r1 = true, .r2 = true, .r3 = true, .r12 = true, .lr = true, .d0 = true, .d1 = true, .d2 = true, .d3 = true, .d4 = true, .d5 = true, .d6 = true, .d7 = true, .d8 = true, .d9 = true, .d10 = true, .d11 = true, .d12 = true, .d13 = true, .d14 = true, .d15 = true, .cpsr = true, .memory = true });
     return bad == 0;
 }
 
