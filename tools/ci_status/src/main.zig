@@ -9,17 +9,27 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 
-pub fn main() !u8 {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+pub fn main(init: std.process.Init) !u8 {
+    const io = init.io;
+    const allocator = init.arena.allocator();
 
-    const argv = try std.process.argsAlloc(allocator);
+    const sentinel_argv = try init.minimal.args.toSlice(allocator);
+    const argv = try allocator.alloc([]const u8, sentinel_argv.len);
+    for (argv, sentinel_argv) |*arg, sentinel_arg| arg.* = sentinel_arg;
 
-    var out = std.io.bufferedWriter(std.io.getStdOut().writer());
-    var err = std.io.bufferedWriter(std.io.getStdErr().writer());
-    const status = try cli.run(allocator, std.fs.cwd(), argv[1..], out.writer(), err.writer());
-    try out.flush();
-    try err.flush();
+    var out_buffer: [4096]u8 = undefined;
+    var err_buffer: [4096]u8 = undefined;
+    var out = std.Io.File.stdout().writer(io, &out_buffer);
+    var err = std.Io.File.stderr().writer(io, &err_buffer);
+    const status = try cli.run(
+        allocator,
+        io,
+        std.Io.Dir.cwd(),
+        argv[1..],
+        &out.interface,
+        &err.interface,
+    );
+    try out.interface.flush();
+    try err.interface.flush();
     return status;
 }
