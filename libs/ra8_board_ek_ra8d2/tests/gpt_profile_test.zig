@@ -42,8 +42,8 @@ fn note(e: u8) void {
 
 const Timer = @typeInfo(@typeInfo(@FieldType(p.FwTimer, "iface")).optional.child).pointer.child;
 const Pwm = @typeInfo(@typeInfo(@FieldType(p.FwPwm, "iface")).optional.child).pointer.child;
-const TCaps = @typeInfo(@typeInfo(@FieldType(Timer, "get_caps")).pointer.child).@"fn".params[1].type.?;
-const PCaps = @typeInfo(@typeInfo(@FieldType(Pwm, "get_caps")).pointer.child).@"fn".params[1].type.?;
+const TCaps = @typeInfo(@typeInfo(@FieldType(Timer, "get_caps")).pointer.child).@"fn".param_types[1].?;
+const PCaps = @typeInfo(@typeInfo(@FieldType(Pwm, "get_caps")).pointer.child).@"fn".param_types[1].?;
 
 fn tCaps(_: ?*anyopaque, out: TCaps) callconv(.c) ErrCode {
     out.* = .{ .channel_count = 10, .counter_bits = 32, .counter_max = 0xFFFF_FFFF };
