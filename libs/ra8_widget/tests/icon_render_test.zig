@@ -69,9 +69,9 @@ test "host backend composes an image widget and publishes its panel record" {
 
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/image_panel.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/image_panel.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, @embedFile("golden/image_panel.ppm"), rendered);
     }
@@ -101,9 +101,9 @@ test "host backend renders nav icons into the strip golden" {
     nav_widget.vt.?.render.?(&nav_widget);
     const rendered = try canvas.ppm(allocator);
     defer allocator.free(rendered);
-    if (std.process.getEnvVarOwned(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
+    if (std.testing.environ.getAlloc(allocator, "RA8_WIDGET_UPDATE_GOLDENS")) |update| {
         defer allocator.free(update);
-        try std.fs.cwd().writeFile(.{ .sub_path = "tests/golden/nav_bar_icons.ppm", .data = rendered });
+        try std.Io.Dir.cwd().writeFile(std.testing.io, .{ .sub_path = "tests/golden/nav_bar_icons.ppm", .data = rendered });
     } else |_| {
         try std.testing.expectEqualSlices(u8, @embedFile("golden/nav_bar_icons.ppm"), rendered);
     }

@@ -44,12 +44,14 @@ const Draw = struct {
 
 /// Recording paint backend: every primitive appends to a module-level log.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 8) = .{};
-    var draws: std.BoundedArray(Draw, 8) = .{};
+    var fills_buffer: [8]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [8]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn reset() void {
-        fills = .{};
-        draws = .{};
+        fills.clearRetainingCapacity();
+        draws.clearRetainingCapacity();
         last_message = null;
         invalidations = 0;
         last_refresh = 0xFF;
@@ -57,7 +59,7 @@ const Recorder = struct {
     }
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn drawText(
@@ -68,7 +70,7 @@ const Recorder = struct {
         fg: u32,
         bg: u32,
     ) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .fg = fg, .bg = bg }) catch unreachable;
+        draws.appendBounded(.{ .x = x, .y = y, .fg = fg, .bg = bg }) catch unreachable;
     }
 };
 
@@ -177,16 +179,16 @@ test "a released button paints border then face, and the label over the face" {
     try bind(&w, &button);
     w.vt.?.render.?(&w);
 
-    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.len);
-    const frame = Recorder.fills.get(0);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.items.len);
+    const frame = Recorder.fills.items[0];
     try std.testing.expectEqual(@as(u32, 0x444444), frame.color);
     try std.testing.expectEqual(@as(i32, 100), frame.w);
-    const face = Recorder.fills.get(1);
+    const face = Recorder.fills.items[1];
     try std.testing.expectEqual(@as(u32, 0x222222), face.color);
     try std.testing.expectEqual(@as(i32, 12), face.x);
     try std.testing.expectEqual(@as(i32, 96), face.w);
 
-    const draw = Recorder.draws.get(0);
+    const draw = Recorder.draws.items[0];
     try std.testing.expectEqual(@as(i32, 14), draw.x);
     try std.testing.expectEqual(@as(u32, 0x111111), draw.fg);
     try std.testing.expectEqual(@as(u32, 0x222222), draw.bg);
@@ -200,8 +202,8 @@ test "a pressed button paints the pressed face and draws the label on it" {
     try bind(&w, &button);
     w.vt.?.render.?(&w);
 
-    try std.testing.expectEqual(@as(u32, 0x333333), Recorder.fills.get(1).color);
-    try std.testing.expectEqual(@as(u32, 0x333333), Recorder.draws.get(0).bg);
+    try std.testing.expectEqual(@as(u32, 0x333333), Recorder.fills.items[1].color);
+    try std.testing.expectEqual(@as(u32, 0x333333), Recorder.draws.items[0].bg);
 }
 
 test "a borderless button paints one fill" {
@@ -212,8 +214,8 @@ test "a borderless button paints one fill" {
     try bind(&w, &button);
     w.vt.?.render.?(&w);
 
-    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.len);
-    try std.testing.expectEqual(@as(u32, 0x222222), Recorder.fills.get(0).color);
+    try std.testing.expectEqual(@as(usize, 1), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(u32, 0x222222), Recorder.fills.items[0].color);
 }
 
 test "render stops at no descriptor, no backend, no text and no draw_text" {
@@ -221,26 +223,26 @@ test "render stops at no descriptor, no backend, no text and no draw_text" {
     var w = emptyWidget();
     w.vt = abi.ra8_widget_button_vtable();
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
 
     var unpainted = buttonOn(&full_backend, "ok");
     unpainted.paint = null;
     try bind(&w, &unpainted);
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
 
     var textless = buttonOn(&full_backend, null);
     try bind(&w, &textless);
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 
     Recorder.reset();
     var mute = buttonOn(&fill_only_backend, "ok");
     try bind(&w, &mute);
     w.vt.?.render.?(&w);
-    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a touch latches: pressed flips, presses grows, the rect self-invalidates fast" {

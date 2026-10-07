@@ -52,12 +52,14 @@ const Draw = struct {
 
 /// Recording paint backend: every primitive appends to a module-level log.
 const Recorder = struct {
-    var fills: std.BoundedArray(Fill, 8) = .{};
-    var draws: std.BoundedArray(Draw, 8) = .{};
+    var fills_buffer: [8]Fill = undefined;
+    var fills: std.ArrayList(Fill) = .initBuffer(&fills_buffer);
+    var draws_buffer: [8]Draw = undefined;
+    var draws: std.ArrayList(Draw) = .initBuffer(&draws_buffer);
 
     fn reset() void {
-        fills = .{};
-        draws = .{};
+        fills.clearRetainingCapacity();
+        draws.clearRetainingCapacity();
         last_message = null;
         invalidations = 0;
         last_refresh = 0xFF;
@@ -66,7 +68,7 @@ const Recorder = struct {
     }
 
     fn fillRect(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32) callconv(.c) void {
-        fills.append(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
+        fills.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .color = color }) catch unreachable;
     }
 
     fn drawText(
@@ -77,7 +79,7 @@ const Recorder = struct {
         fg: u32,
         bg: u32,
     ) callconv(.c) void {
-        draws.append(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
+        draws.appendBounded(.{ .x = x, .y = y, .text = str, .fg = fg, .bg = bg }) catch unreachable;
     }
 
     /// Fixed-width measurement so right alignment has something to subtract.
@@ -224,13 +226,13 @@ test "render is a no-op without a descriptor or a backend" {
     widget.vt = abi.ra8_widget_toolbar_vtable();
 
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
 
     var no_paint = toolbarOn(null, "Search", "12 books", null);
     try bind(&widget, &no_paint);
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a full toolbar fills the band, frames the field, then draws hint and chip" {
@@ -242,20 +244,20 @@ test "a full toolbar fills the band, frames the field, then draws hint and chip"
     widget.vt.?.render.?(&widget);
 
     // Band fill, then the framed field: border underneath, fill inset by border_w.
-    try std.testing.expectEqual(@as(usize, 3), Recorder.fills.len);
-    try std.testing.expectEqual(Fill{ .x = 0, .y = 0, .w = 320, .h = 48, .color = bg_color }, Recorder.fills.buffer[0]);
-    try std.testing.expectEqual(border_color, Recorder.fills.buffer[1].color);
-    try std.testing.expectEqual(field_color, Recorder.fills.buffer[2].color);
-    try std.testing.expectEqual(Recorder.fills.buffer[1].x + 1, Recorder.fills.buffer[2].x);
+    try std.testing.expectEqual(@as(usize, 3), Recorder.fills.items.len);
+    try std.testing.expectEqual(Fill{ .x = 0, .y = 0, .w = 320, .h = 48, .color = bg_color }, Recorder.fills.items[0]);
+    try std.testing.expectEqual(border_color, Recorder.fills.items[1].color);
+    try std.testing.expectEqual(field_color, Recorder.fills.items[2].color);
+    try std.testing.expectEqual(Recorder.fills.items[1].x + 1, Recorder.fills.items[2].x);
 
-    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.len);
-    try std.testing.expectEqualStrings("Search", std.mem.span(Recorder.draws.buffer[0].text));
-    try std.testing.expectEqual(hint_color, Recorder.draws.buffer[0].fg);
-    try std.testing.expectEqual(field_color, Recorder.draws.buffer[0].bg);
-    try std.testing.expectEqualStrings("12 books", std.mem.span(Recorder.draws.buffer[1].text));
-    try std.testing.expectEqual(count_color, Recorder.draws.buffer[1].fg);
-    try std.testing.expectEqual(bg_color, Recorder.draws.buffer[1].bg);
-    try std.testing.expect(Recorder.draws.buffer[1].x > Recorder.draws.buffer[0].x);
+    try std.testing.expectEqual(@as(usize, 2), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("Search", std.mem.span(Recorder.draws.items[0].text));
+    try std.testing.expectEqual(hint_color, Recorder.draws.items[0].fg);
+    try std.testing.expectEqual(field_color, Recorder.draws.items[0].bg);
+    try std.testing.expectEqualStrings("12 books", std.mem.span(Recorder.draws.items[1].text));
+    try std.testing.expectEqual(count_color, Recorder.draws.items[1].fg);
+    try std.testing.expectEqual(bg_color, Recorder.draws.items[1].bg);
+    try std.testing.expect(Recorder.draws.items[1].x > Recorder.draws.items[0].x);
 }
 
 test "either string may be null and the other still draws" {
@@ -265,15 +267,15 @@ test "either string may be null and the other still draws" {
     var no_hint = toolbarOn(&full_backend, null, "12 books", null);
     try bind(&widget, &no_hint);
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualStrings("12 books", std.mem.span(Recorder.draws.buffer[0].text));
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("12 books", std.mem.span(Recorder.draws.items[0].text));
 
     Recorder.reset();
     var no_count = toolbarOn(&full_backend, "Search", null, null);
     try bind(&widget, &no_count);
     widget.vt.?.render.?(&widget);
-    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.len);
-    try std.testing.expectEqualStrings("Search", std.mem.span(Recorder.draws.buffer[0].text));
+    try std.testing.expectEqual(@as(usize, 1), Recorder.draws.items.len);
+    try std.testing.expectEqualStrings("Search", std.mem.span(Recorder.draws.items[0].text));
 }
 
 test "a backend with no draw_text still paints the band and the field" {
@@ -284,8 +286,8 @@ test "a backend with no draw_text still paints the band and the field" {
     try bind(&widget, &bar);
     widget.vt.?.render.?(&widget);
 
-    try std.testing.expectEqual(@as(usize, 3), Recorder.fills.len);
-    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.len);
+    try std.testing.expectEqual(@as(usize, 3), Recorder.fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), Recorder.draws.items.len);
 }
 
 test "a touch inside the field latches, invalidates fast and notifies" {

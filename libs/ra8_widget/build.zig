@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
     // `zig cc`, so nothing else on that link line provides Zig's runtime
     // helpers. Without this the archive leaves `__zig_probe_stack` undefined.
     library.bundle_compiler_rt = true;
-    if (optimize == .Debug) library.root_module.addImport("debug", debug_module);
+    if (optimize == .debug) library.root_module.addImport("debug", debug_module);
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -232,7 +232,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    if (optimize == .Debug) panel_module.addImport("debug", debug_module);
+    if (optimize == .debug) panel_module.addImport("debug", debug_module);
     const panel_test_module = b.createModule(.{
         .root_source_file = b.path("tests/panel_test.zig"),
         .target = target,
