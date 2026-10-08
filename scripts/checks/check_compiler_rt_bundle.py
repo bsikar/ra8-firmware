@@ -33,7 +33,6 @@ ALLOWED: dict[str, str] = {
     "apps/host/firmware_pipeline/zig/build.zig": "host adapter, linked by cmake and cargo on the host",
     "tests/abi_chain_fixture/build.zig": "host ABI fixture",
     "tests/zig_abi_fixture/build.zig": "host ABI fixture",
-    "tests/zig_build_graph/cpu1_image.zig": "M33 RPC entry object, tracked by RA8FW-944",
 }
 
 
