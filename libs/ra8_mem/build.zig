@@ -37,7 +37,9 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = library_module,
     });
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
     b.installArtifact(library);
 

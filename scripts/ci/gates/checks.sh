@@ -45,6 +45,10 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_freestanding_runtime.py --selftest
   python3 scripts/checks/check_freestanding_runtime.py --check-scripts
   python3 scripts/checks/check_freestanding_runtime.py --check-asserts
+  # Zig's compiler_rt is soft-float libm; bundled into a cortex-m archive its
+  # weak floorf/sqrtf/... shadow newlib's hard-float ones (RA8FW-943).
+  python3 scripts/checks/check_compiler_rt_bundle.py --selftest
+  python3 scripts/checks/check_compiler_rt_bundle.py
   python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /

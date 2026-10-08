@@ -30,7 +30,9 @@ pub fn build(b: *std.Build) void {
     // CMake links this archive with the system linker, so it must carry the
     // Zig runtime helpers itself.  The host ABI fixtures also consume it from
     // PIE executables.
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
     b.installArtifact(library);
 
