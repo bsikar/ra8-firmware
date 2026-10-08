@@ -121,6 +121,21 @@ static void internal_fill(uint8_t* dst, uint16_t len, uint8_t value)
 }
 
 /**
+ * @brief Report whether this image carries the key-vault body.
+ *
+ * @return bool True when the vault is live (off-target or insecure stub
+ *         crypto); false on a fail-closed image, where every vault entry
+ *         answers ::k_ra8_err_not_supported.
+ * @note Calls ra8_key_vault_init(), which zeroes the slots and drops the KAK.
+ *       Each leg provisions what it reads after this call.
+ * @since 0.1.0
+ */
+static bool internal_vault_enabled(void)
+{
+  return ra8_key_vault_init() != k_ra8_err_not_supported;
+}
+
+/**
  * @brief Store two keys and check the challenge primitive's behaviour.
  *
  * @return ra8_err_t Error code.
@@ -142,6 +157,14 @@ static ra8_err_t internal_check_vault(void)
   internal_fill(challenge, (uint16_t)sizeof(challenge), (uint8_t)k_sav_fill_chal);
 
   ra8_err_t err = ra8_key_vault_init();
+  if (err == k_ra8_err_not_supported) {
+    /* Fail-closed image: the vault body is absent, so every entry refuses. */
+    const bool closed =
+      (ra8_key_vault_store((uint16_t)k_sav_slot_a, key_a) == k_ra8_err_not_supported) &&
+      (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_a, challenge, first) ==
+       k_ra8_err_not_supported);
+    return closed ? k_ra8_ok : k_ra8_err_invalid_arg;
+  }
   if (err != k_ra8_ok) {
     return err;
   }
@@ -194,15 +217,19 @@ static ra8_err_t internal_check_guards(void)
   internal_fill(key, (uint16_t)sizeof(key), (uint8_t)k_sav_fill_a);
   internal_fill(challenge, (uint16_t)sizeof(challenge), (uint8_t)k_sav_fill_chal);
 
-  const bool refused
-      = (ra8_key_vault_store((uint16_t)k_sav_slot_bad, key) == k_ra8_err_invalid_arg)
-        && (ra8_key_vault_store((uint16_t)k_sav_slot_a, nullptr) == k_ra8_err_null_ptr)
-        && (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_bad, challenge, digest)
-            == k_ra8_err_invalid_arg)
-        && (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_a, nullptr, digest)
-            == k_ra8_err_null_ptr)
-        && (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_a, challenge, nullptr)
-            == k_ra8_err_null_ptr);
+  /* Null pointers are screened first on both flavours; a bad slot reaches the
+   * vault, which a fail-closed image answers with not_supported. */
+  const ra8_err_t bad_slot =
+    internal_vault_enabled() ? k_ra8_err_invalid_arg : k_ra8_err_not_supported;
+
+  const bool refused =
+    (ra8_key_vault_store((uint16_t)k_sav_slot_bad, key) == bad_slot) &&
+    (ra8_key_vault_store((uint16_t)k_sav_slot_a, nullptr) == k_ra8_err_null_ptr) &&
+    (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_bad, challenge, digest) == bad_slot) &&
+    (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_a, nullptr, digest) ==
+     k_ra8_err_null_ptr) &&
+    (ra8_key_vault_sha256_xor_challenge((uint16_t)k_sav_slot_a, challenge, nullptr) ==
+     k_ra8_err_null_ptr);
 
   return refused ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -227,6 +254,21 @@ static ra8_err_t internal_check_kak(void)
 
   internal_fill(kak_short, (uint16_t)sizeof(kak_short), (uint8_t)k_sav_fill_kak);
   internal_fill(kak_long, (uint16_t)sizeof(kak_long), (uint8_t)k_sav_fill_kak2);
+
+  if (!internal_vault_enabled()) {
+    /* Fail-closed image: no KAK can be provisioned or read, and the 24-byte
+     * length is refused as not_supported; null pointers still read null_ptr. */
+    const bool closed =
+      (ra8_key_vault_set_mac_key(kak_short, (uint16_t)k_sav_kak_short) ==
+       k_ra8_err_not_supported) &&
+      (ra8_key_vault_set_mac_key(kak_long, (uint16_t)k_sav_kak_bad_len) ==
+       k_ra8_err_not_supported) &&
+      (ra8_key_vault_set_mac_key(nullptr, (uint16_t)k_sav_kak_long) == k_ra8_err_null_ptr) &&
+      (ra8_key_vault_load_mac_key(out, (uint16_t)sizeof(out), &out_len) ==
+       k_ra8_err_not_supported) &&
+      (ra8_key_vault_load_mac_key(nullptr, (uint16_t)sizeof(out), &out_len) == k_ra8_err_null_ptr);
+    return closed ? k_ra8_ok : k_ra8_err_invalid_arg;
+  }
 
   ra8_err_t err = ra8_key_vault_set_mac_key(kak_short, (uint16_t)k_sav_kak_short);
   if (err != k_ra8_ok) {
