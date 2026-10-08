@@ -20,8 +20,7 @@ fn build_zig_library(manifest_dir: &Path, output_dir: &Path) -> PathBuf {
         .arg(&prefix)
         .arg("--cache-dir")
         .arg(cache)
-        .arg("--global-cache-dir")
-        .arg(global_cache)
+        .env("ZIG_GLOBAL_CACHE_DIR", global_cache)
         .current_dir(fixture_root)
         .status()
         .expect("failed to execute Zig for the Rust ABI consumer");

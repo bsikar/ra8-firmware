@@ -15,6 +15,7 @@ and never the other way.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import tempfile
@@ -178,13 +179,18 @@ def _compiled_findings(
                 str(output / "install"),
                 "--cache-dir",
                 str(Path(tmp) / "cache"),
-                "--global-cache-dir",
-                str(Path(tmp) / "global-cache"),
                 *arguments,
                 f"-Doptimize={mode}",
             ]
+            # Zig 0.17's build runner takes the global cache only from the environment.
+            environment = {**os.environ, "ZIG_GLOBAL_CACHE_DIR": str(Path(tmp) / "global-cache")}
             proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy arguments
-                command, cwd=repository_root, capture_output=True, text=True, check=False
+                command,
+                cwd=repository_root,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
             )
             if proc.returncode != 0:
                 detail = (proc.stdout + proc.stderr).strip()

@@ -47,8 +47,10 @@ function(ra8_add_zig_library)
 
   add_custom_target(
     ${RA8_ZIG_NAME}_zig_library ALL
-    COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
-            "${_ra8_output_dir}/cache" --global-cache-dir "${_ra8_output_dir}/global-cache"
+    COMMAND
+      "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_output_dir}/global-cache"
+      "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
+      "${_ra8_output_dir}/cache"
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
     BYPRODUCTS "${_ra8_library}"
     COMMENT "Building migrated Zig library ${RA8_ZIG_NAME}"
@@ -66,8 +68,8 @@ function(ra8_add_zig_library)
   # this archive stays the behavioural contract.
   add_test(
     NAME ${RA8_ZIG_NAME}_zig_tests
-    COMMAND "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_output_dir}/cache"
-            --global-cache-dir "${_ra8_output_dir}/global-cache"
+    COMMAND "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_output_dir}/global-cache"
+            "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_output_dir}/cache"
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
   )
 endfunction()
