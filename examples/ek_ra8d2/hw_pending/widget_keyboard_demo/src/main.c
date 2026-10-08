@@ -44,6 +44,7 @@
 #include <string.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_box.h"
 #include "ra8_display_pal.h"
@@ -52,11 +53,9 @@
 #include "ra8_gfx.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_isr.h"
 #include "ra8_keyboard.h"
 #include "ra8_log.h"
-#include "ra8_mstp.h"
 #include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_sci.h"
@@ -121,7 +120,6 @@ static const display_fb_cfg_t k_wkd_fb_cfg = {
 static display_handle_t*          s_display = nullptr;
 static display_fb_t               s_fb;
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 static ra8_kbd_layout_t s_kb;   /**< Real key grid (the engine's state). */
 static ra8_kbd_text_t   s_text; /**< Real typed-query buffer.            */
@@ -652,21 +650,28 @@ static ra8_err_t internal_keyboard_route(void)
 }
 
 /**
- * @brief Initialize CGC, MSTP, SysTick, and board console.
- * @return void
+ * @brief Run the board prologue and open the SCI8 console.
+ *
+ * @details ra8_board_bringup() brings up clocks, MSTP, SysTick and the
+ *          console in its audited order and enables interrupts last; the
+ *          console stream then comes from the board, not a private UART
+ *          state (RA8FW-629, RA8FW-933).
+ *
+ * @return ra8_err_t Result of ra8_board_bringup().
  * @since 0.1.0
  */
-static void internal_bringup_clocks(void)
+static ra8_err_t internal_bringup_console(void)
 {
-  ra8_board_clock_rates_t rates = {};
-  (void)ra8_board_clocks_init(&rates);
-  (void)ra8_mstp_init();
-  (void)ra8_time_init(rates.cpuclk0_hz);
-  (void)ra8_board_uart_console_init((uint32_t)k_wkd_uart_baud);
-  ra8_isr_globals_enable();
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_wkd_uart_chan);
+  const ra8_board_bringup_cfg_t cfg = {
+    .console_baud      = (uint32_t)k_wkd_uart_baud,
+    .enable_interrupts = true,
+  };
+  ra8_board_bringup_out_t out = {};
+  const ra8_err_t         err = ra8_board_bringup(&cfg, &out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
+  return err;
 }
 
 /**
@@ -757,7 +762,7 @@ static void internal_draw_chrome(void)
 /**
  * @brief Firmware entry point.
  *
- * @details Brings up clocks and display, executes the 6-leg test assertions,
+ * @details Runs the board prologue and display bring-up, executes the 6-leg test assertions,
  *          draws the interactive UI chrome, and flushes to the GLCDC panel.
  *
  * @return void
@@ -769,8 +774,14 @@ static void internal_draw_chrome(void)
  */
 void main(void)
 {
-  internal_bringup_clocks();
+  const ra8_err_t bringup_err = internal_bringup_console();
   internal_print("widget_keyboard_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("widget_keyboard_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_wkd_uart_chan);
+    while (true) {
+    }
+  }
 
   if (internal_bringup_display() != k_ra8_ok) {
     internal_print("widget_keyboard_demo: display init FAIL\r\n");
