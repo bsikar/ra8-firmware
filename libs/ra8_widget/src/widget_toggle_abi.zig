@@ -5,6 +5,7 @@
 //! through the shared widget paint backend, with all mutable state kept in the
 //! caller-owned descriptor.
 
+const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
 
@@ -38,7 +39,8 @@ pub const Toggle = extern struct {
 comptime {
     const ptr = @sizeOf(usize);
     if (@alignOf(Toggle) != @alignOf(usize)) @compileError("ra8_widget_toggle_t alignment");
-    if (@sizeOf(Toggle) != 2 * ptr + 32) @compileError("ra8_widget_toggle_t size");
+    // 27 descriptor bytes follow the two pointers; C pads the tail to pointer alignment.
+    if (@sizeOf(Toggle) != std.mem.alignForward(usize, 2 * ptr + 27, @alignOf(usize))) @compileError("ra8_widget_toggle_t size");
     if (@offsetOf(Toggle, "paint") != 0) @compileError("ra8_widget_toggle_t paint offset");
     if (@offsetOf(Toggle, "label") != ptr) @compileError("ra8_widget_toggle_t label offset");
     if (@offsetOf(Toggle, "fg") != 2 * ptr) @compileError("ra8_widget_toggle_t fg offset");

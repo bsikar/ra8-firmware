@@ -4,6 +4,7 @@
 //! C ABI membrane for the one-of-N segmented-control leaf widget. Labels and
 //! selection remain caller-owned, bounded by the descriptor's byte-sized count.
 
+const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
 
@@ -37,7 +38,8 @@ pub const Segmented = extern struct {
 comptime {
     const ptr = @sizeOf(usize);
     if (@alignOf(Segmented) != @alignOf(usize)) @compileError("ra8_widget_segmented_t alignment");
-    if (@sizeOf(Segmented) != 2 * ptr + 32) @compileError("ra8_widget_segmented_t size");
+    // 27 descriptor bytes follow the two pointers; C pads the tail to pointer alignment.
+    if (@sizeOf(Segmented) != std.mem.alignForward(usize, 2 * ptr + 27, @alignOf(usize))) @compileError("ra8_widget_segmented_t size");
     if (@offsetOf(Segmented, "paint") != 0) @compileError("ra8_widget_segmented_t paint offset");
     if (@offsetOf(Segmented, "labels") != ptr) @compileError("ra8_widget_segmented_t labels offset");
     if (@offsetOf(Segmented, "fg") != 2 * ptr) @compileError("ra8_widget_segmented_t fg offset");
