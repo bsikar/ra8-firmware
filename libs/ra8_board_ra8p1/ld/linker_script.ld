@@ -383,3 +383,9 @@ ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
 ASSERT(g_ra8_ls_noinit_end <= ORIGIN(NOINIT) + LENGTH(NOINIT),
        "FATAL: .noinit crash-log record overran its 256-byte NOINIT region")
+
+/* RA8FW-549: Reset_Handler copies .data from its load address. A non-empty
+ * span whose load symbol came out 0 would copy from address 0 and BusFault
+ * before main, so refuse to link it. */
+ASSERT(g_ra8_ls_edata == g_ra8_ls_sdata || g_ra8_ls_sidata != 0,
+       "FATAL: .data is not empty but its load address is 0")
