@@ -129,6 +129,63 @@ fn errnoLocation() callconv(.c) *i32 {
     return &math.errno_slot;
 }
 
+// -- ARM EABI memory helpers ----------------------------------------------
+//
+// GCC and LLVM lower some copies and clears on ARM to these run-time ABI
+// entry points (RTABI 4.3.4). Newlib's libc would supply them, but images
+// link no libc, and the Zig archives no longer carry compiler_rt into a
+// cortex-m link (RA8FW-943), so the firmware answers to them here. The
+// aligned variants only promise alignment; plain byte copies satisfy them.
+
+fn aeabiMemcpy(noalias dst: ?*anyopaque, noalias src: ?*const anyopaque, n: usize) callconv(.c) void {
+    _ = memcpy(dst, src, n);
+}
+
+fn aeabiMemmove(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) callconv(.c) void {
+    _ = memmove(dst, src, n);
+}
+
+/// The EABI order is (dest, n, c), not memset's (dest, c, n).
+fn aeabiMemset(dst: ?*anyopaque, n: usize, value: c_int) callconv(.c) void {
+    _ = memset(dst, value, n);
+}
+
+fn aeabiMemclr(dst: ?*anyopaque, n: usize) callconv(.c) void {
+    _ = memset(dst, 0, n);
+}
+
+/// ARM EHABI's _URC_FAILURE: "unwinding cannot proceed".
+const urc_failure: c_int = 9;
+
+/// Zig's cortex-m objects carry .ARM.exidx entries that name the EHABI
+/// personality routines. Nothing in an image unwinds (C has no exceptions
+/// and a Zig panic halts), so the routines only have to exist. Without
+/// these, libgcc's real unwinder would be pulled in, and it wants abort and
+/// __exidx_start, which an image doesn't have. Used to come from the
+/// bundled compiler_rt (RA8FW-943).
+fn aeabiUnwindPersonality() callconv(.c) c_int {
+    return urc_failure;
+}
+
+/// Every EABI helper name, each variant mapped to its plain form.
+const aeabi_surface = .{
+    .{ "__aeabi_memcpy", &aeabiMemcpy },
+    .{ "__aeabi_memcpy4", &aeabiMemcpy },
+    .{ "__aeabi_memcpy8", &aeabiMemcpy },
+    .{ "__aeabi_memmove", &aeabiMemmove },
+    .{ "__aeabi_memmove4", &aeabiMemmove },
+    .{ "__aeabi_memmove8", &aeabiMemmove },
+    .{ "__aeabi_memset", &aeabiMemset },
+    .{ "__aeabi_memset4", &aeabiMemset },
+    .{ "__aeabi_memset8", &aeabiMemset },
+    .{ "__aeabi_memclr", &aeabiMemclr },
+    .{ "__aeabi_memclr4", &aeabiMemclr },
+    .{ "__aeabi_memclr8", &aeabiMemclr },
+    .{ "__aeabi_unwind_cpp_pr0", &aeabiUnwindPersonality },
+    .{ "__aeabi_unwind_cpp_pr1", &aeabiUnwindPersonality },
+    .{ "__aeabi_unwind_cpp_pr2", &aeabiUnwindPersonality },
+};
+
 // -- the exported surface --------------------------------------------------
 
 /// Every symbol this archive answers to, in header order.
@@ -159,5 +216,8 @@ comptime {
     // Only the ARM EABI's libm asks for this, and only an ARM image links it.
     if (builtin.target.cpu.arch.isArm() or builtin.target.cpu.arch.isThumb()) {
         @export(&errnoLocation, .{ .name = options.abi_prefix ++ "__errno", .linkage = .strong });
+        for (aeabi_surface) |entry| {
+            @export(entry[1], .{ .name = options.abi_prefix ++ entry[0], .linkage = .strong });
+        }
     }
 }

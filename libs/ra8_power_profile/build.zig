@@ -23,7 +23,9 @@ pub fn build(b: *std.Build) void {
     });
     // The host C/C++ test executables are linked by the system toolchain, so
     // bundle Zig's runtime helpers into the archive they consume.
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     // Rust ABI consumers use PIE executables through the system linker.
     library.root_module.pic = true;
     b.installArtifact(library);

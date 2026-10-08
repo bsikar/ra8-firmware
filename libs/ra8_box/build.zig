@@ -24,7 +24,9 @@ pub fn build(b: *std.Build) void {
     // by `zig cc`, so nothing else on that link line provides Zig's runtime
     // helpers. Without this the archive leaves `__zig_probe_stack` undefined
     // and every test binary that pulls it in fails to link.
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

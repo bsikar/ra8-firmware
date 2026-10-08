@@ -70,6 +70,8 @@ pub fn build(b: *std.Build) void {
     // The host C test executables are linked by the system toolchain rather
     // than by `zig cc`, so nothing else on that link line provides Zig's
     // runtime helpers.
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     b.installArtifact(library);
 }

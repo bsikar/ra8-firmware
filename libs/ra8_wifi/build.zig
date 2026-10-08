@@ -29,7 +29,9 @@ pub fn build(b: *std.Build) void {
     });
     // Host tests link this archive with the system toolchain, and Rust
     // consumers link it into PIE executables.
-    library.bundle_compiler_rt = true;
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
 
     // The ESP32-C6 backend is a separate member of the same archive, so a link
