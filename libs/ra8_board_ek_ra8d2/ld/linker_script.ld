@@ -408,3 +408,13 @@ ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
 
 ASSERT(g_ra8_ls_noinit_end <= ORIGIN(NOINIT) + LENGTH(NOINIT),
        "FATAL: .noinit crash-log record overran its 256-byte NOINIT region")
+
+/* RA8FW-549: Reset_Handler copies .data and .sram_text from their load
+ * addresses. A non-empty span whose load symbol came out 0 (the old
+ * PROVIDE-ordering bug, RA8FW-900) would copy from address 0 and BusFault
+ * before main, so refuse to link it. */
+ASSERT(g_ra8_ls_edata == g_ra8_ls_sdata || g_ra8_ls_sidata != 0,
+       "FATAL: .data is not empty but its load address is 0")
+ASSERT(g_ra8_ls_esram_text == g_ra8_ls_ssram_text ||
+       g_ra8_ls_sram_text_load != 0,
+       "FATAL: .sram_text is not empty but its load address is 0")
