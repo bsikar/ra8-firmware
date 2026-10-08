@@ -375,11 +375,11 @@ fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPat
         root.addImport("ra8_rpc", rpc);
         root.addImport("ra8_rpc_tx", rpc_tx);
     }
+    // The RPC stack's message copies lower to `__aeabi_memcpy` and
+    // `__aeabi_memclr`. ra8_core's archive, which this link always carries,
+    // exports them for ARM; bundling compiler_rt here would also drag in its
+    // soft-float libm, which a hard-float caller reads from the wrong register.
     const object = b.addObject(.{ .name = b.fmt("{s}_entry", .{name}), .root_module = root });
-    // The RPC stack copies messages, and Zig lowers those copies to
-    // `__aeabi_memcpy` and `__aeabi_memclr`, which this -nostdlib link has
-    // nowhere else to find.
-    if (options.image.rpc) object.bundle_compiler_rt = true;
     return object.getEmittedBin();
 }
 
