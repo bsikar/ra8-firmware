@@ -105,6 +105,12 @@ NM_FIELD_COUNT = 3
 # tz_nsc_cgc_usb.elf. Same trip-wire as check_ruff.py.
 SYMBOL_FLOOR = 140
 
+# nm type letters of a symbol the image defines. Weak definitions (W for code,
+# V for objects) carry an address like any other: the ARM vector handlers are
+# weak, so leaving them out drops a TrustZone image under SYMBOL_FLOOR. An
+# undefined weak reference (w/v) prints no address and fails the field count.
+DEFINED_TYPES = frozenset("TtWVRrDdBb")
+
 
 def read_symbols(elf: str, nm: str) -> dict[str, int]:
     """Return {symbol: address} for every defined symbol in ``elf``."""
@@ -114,7 +120,7 @@ def read_symbols(elf: str, nm: str) -> dict[str, int]:
     syms: dict[str, int] = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) == NM_FIELD_COUNT and parts[1] in ("T", "t", "R", "r", "D", "d", "B", "b"):
+        if len(parts) == NM_FIELD_COUNT and parts[1] in DEFINED_TYPES:
             with contextlib.suppress(ValueError):
                 syms[parts[2]] = int(parts[0], 16)
     return syms
