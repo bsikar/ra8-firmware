@@ -58,8 +58,16 @@ typedef enum : uint32_t {
   k_rc_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } rc_consts_t;
 
-/** @brief RGB565 framebuffer in internal SRAM (no panel attached). */
-static uint16_t s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
+/**
+ * @brief RGB565 framebuffer in DTCM (no panel attached).
+ * @details 60 KiB, placed in the otherwise unused 64 KiB DTCM because SRAM
+ *          cannot hold it beside ::s_engine, the stb_truetype arena and the
+ *          16 KiB stack. `.dtcm_bss` is not zeroed at reset. That is safe
+ *          here: internal_rc_render_all() calls ra8_gfx_clear() before every
+ *          page, so no byte is read before it is written.
+ */
+[[gnu::section(".dtcm_bss")]] static uint16_t
+    s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
 static reflow_t s_engine;
