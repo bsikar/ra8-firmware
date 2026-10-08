@@ -53,11 +53,12 @@
 
 #include "ra8_audio.h"
 #include "ra8_audio_source_memory.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
 
@@ -72,24 +73,24 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_amr_uart_chan     = 8U,     /**< SCI8 J-Link OB console.               */
-  k_amr_channels      = 2U,     /**< Interleaved stereo.                   */
-  k_amr_samples       = 32U,    /**< Sample frames per channel.            */
-  k_amr_container     = 2U,     /**< s16le container width in bytes.       */
-  k_amr_valid_bits    = 16U,    /**< Significant bits per sample.          */
-  k_amr_rate_hz       = 16000U, /**< Fixture sample rate.                  */
-  k_amr_timestamp_ms  = 1234U,  /**< Fixture capture-start stamp.          */
-  k_amr_fixture_bytes = 128U,   /**< samples * channels * container.       */
-  k_amr_short_bytes   = 64U,    /**< Deliberately too small for one frame. */
-  k_amr_ramp_step     = 257,    /**< Per-sample ramp step (spans both      */
-                                /**< bytes of the container).              */
+  k_amr_uart_chan     = 8U,      /**< SCI8 J-Link OB console.               */
+  k_amr_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
+  k_amr_channels      = 2U,      /**< Interleaved stereo.                   */
+  k_amr_samples       = 32U,     /**< Sample frames per channel.            */
+  k_amr_container     = 2U,      /**< s16le container width in bytes.       */
+  k_amr_valid_bits    = 16U,     /**< Significant bits per sample.          */
+  k_amr_rate_hz       = 16000U,  /**< Fixture sample rate.                  */
+  k_amr_timestamp_ms  = 1234U,   /**< Fixture capture-start stamp.          */
+  k_amr_fixture_bytes = 128U,    /**< samples * channels * container.       */
+  k_amr_short_bytes   = 64U,     /**< Deliberately too small for one frame. */
+  k_amr_ramp_step     = 257,     /**< Per-sample ramp step (spans both      */
+                                 /**< bytes of the container).              */
 } amr_const_t;
 
 static int16_t s_fixture[k_amr_samples * k_amr_channels]; /**< App-owned PCM.  */
 static uint8_t s_capture[k_amr_fixture_bytes];            /**< Capture target. */
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -322,9 +323,18 @@ static ra8_err_t internal_replay_round_trip(void)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_amr_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_amr_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("audio_memory_replay_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("audio_memory_replay_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_amr_uart_chan);
+    while (true) {
+    }
+  }
 
   internal_fill_fixture();
 

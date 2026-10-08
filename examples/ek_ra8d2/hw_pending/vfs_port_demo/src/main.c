@@ -43,6 +43,8 @@
 
 #include "fw_if_fs.h"
 #include "fw_if_fs_ra8_vfs.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -50,7 +52,6 @@
 #include "ra8_io_blockdev_ram.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_io_vfs.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
@@ -62,12 +63,13 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_vfs_uart_chan   = 8U,    /**< SCI8 J-Link OB console.                  */
-  k_vfs_disk_blocks = 512U,  /**< RAM-disk sectors; FAT12 fits comfortably. */
-  k_vfs_file_work   = 64U,   /**< Backend file-handle workspace bytes.     */
-  k_vfs_txn_work    = 2048U, /**< Backend transaction workspace bytes.     */
-  k_vfs_dir_work    = 512U,  /**< Backend directory-cursor workspace.      */
-  k_vfs_list_cap    = 8U,    /**< Bounded directory-walk entry ceiling.    */
+  k_vfs_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                  */
+  k_vfs_console_baud = 115200U, /**< J-Link OB VCOM line rate. */
+  k_vfs_disk_blocks  = 512U,    /**< RAM-disk sectors; FAT12 fits comfortably. */
+  k_vfs_file_work    = 64U,     /**< Backend file-handle workspace bytes.     */
+  k_vfs_txn_work     = 2048U,   /**< Backend transaction workspace bytes.     */
+  k_vfs_dir_work     = 512U,    /**< Backend directory-cursor workspace.      */
+  k_vfs_list_cap     = 8U,      /**< Bounded directory-walk entry ceiling.    */
 } vfs_const_t;
 
 /*
@@ -129,7 +131,6 @@ static fw_fs_t               s_fs;
 static fw_fs_ra8_vfs_state_t s_adapter;
 
 static ra8_io_stream_t            s_uart;
-static ra8_io_stream_uart_state_t s_uart_state;
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -550,9 +551,18 @@ static void internal_verdict(const char* label, ra8_err_t err, bool* pass)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_vfs_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_vfs_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("vfs_port_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("vfs_port_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_vfs_uart_chan);
+    while (true) {
+    }
+  }
 
   bool pass = true;
 

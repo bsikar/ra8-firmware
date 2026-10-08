@@ -39,12 +39,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_devcfg.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
 
@@ -60,6 +61,7 @@
  */
 typedef enum : uint32_t {
   k_dc_uart_chan    = 8U,          /**< SCI8 J-Link OB console.               */
+  k_dc_console_baud = 115200U,     /**< J-Link OB VCOM line rate. */
   k_dc_medium_bytes = 448U,        /**< copy1 offset + one slot pitch.        */
   k_dc_blank_byte   = 0xFFU,       /**< Never-programmed backing byte value.  */
   k_dc_vcom_mv      = 2300U,       /**< Demo VCOM magnitude (-2.30 V).        */
@@ -74,7 +76,6 @@ typedef enum : uint32_t {
 static uint8_t s_medium[k_dc_medium_bytes]; /**< App-owned RAM backing store. */
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -275,9 +276,18 @@ static void internal_probe_unit(void)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_dc_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_dc_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("devcfg_record_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("devcfg_record_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_dc_uart_chan);
+    while (true) {
+    }
+  }
 
   if (internal_round_trip() == k_ra8_ok) {
     internal_print("devcfg_record_demo: record round trip PASS\r\n");

@@ -37,11 +37,12 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_power_profile.h"
 #include "ra8_sci.h"
@@ -58,6 +59,7 @@
  */
 typedef enum : uint32_t {
   k_pp_uart_chan     = 8U,      /**< SCI8 J-Link OB console.               */
+  k_pp_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
   k_pp_t0_us         = 1000U,   /**< Synthetic clock start, microseconds.  */
   k_pp_active_a_us   = 250U,    /**< First active stay.                    */
   k_pp_gap_us        = 40U,     /**< Idle gap between the two active stays. */
@@ -83,7 +85,6 @@ typedef struct {
 static pp_probe_t s_probe = {.now_us = k_pp_t0_us}; /**< The fake clock.   */
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -346,9 +347,18 @@ static ra8_err_t internal_check_reset(void)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_pp_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_pp_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("power_profile_stats_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("power_profile_stats_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_pp_uart_chan);
+    while (true) {
+    }
+  }
 
   bool pass = true;
 
