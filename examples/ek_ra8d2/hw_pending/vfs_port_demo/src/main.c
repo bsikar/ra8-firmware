@@ -38,6 +38,7 @@
  * @since 0.1.0
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -118,10 +119,15 @@ static uint8_t s_disk[(size_t)k_vfs_disk_blocks * (size_t)k_ra8_io_block_size_by
  * frame that then calls down through the facade into the FAT backend. The app is
  * single-threaded and the legs run one at a time, so file scope costs nothing
  * here: .bss is already dominated by the 256 KB RAM disk above.
+ *
+ * Each one is aligned to max_align_t (8 on this EABI). The facade rejects a
+ * workspace whose address is not a multiple of the reported *_workspace_align
+ * with k_ra8_err_invalid_arg; this FAT12 volume asks for 8 on the directory
+ * cursor, and a plain byte array landed at an address that was only 4-aligned.
  */
-static uint8_t s_file_work[k_vfs_file_work];
-static uint8_t s_dir_work[k_vfs_dir_work];
-static uint8_t s_txn_work[k_vfs_txn_work];
+static alignas(max_align_t) uint8_t s_file_work[k_vfs_file_work];
+static alignas(max_align_t) uint8_t s_dir_work[k_vfs_dir_work];
+static alignas(max_align_t) uint8_t s_txn_work[k_vfs_txn_work];
 
 static ra8_io_blockdev_t           s_blockdev;
 static ra8_io_blockdev_ram_state_t s_ram_state;
@@ -202,6 +208,22 @@ static ra8_err_t internal_bind_volume(void)
 }
 
 /**
+ * @brief Report whether a workspace sits on the alignment the adapter asked for.
+ *
+ * @param[in] work      Start of the workspace buffer.
+ * @param[in] alignment Alignment the caps report; 0 imposes nothing.
+ * @return bool True when the address is a multiple of `alignment`.
+ * @since 0.1.0
+ */
+static bool internal_aligned(const uint8_t* work, uint8_t alignment)
+{
+  if (alignment == 0U) {
+    return true;
+  }
+  return ((uintptr_t)work % (uintptr_t)alignment) == 0U;
+}
+
+/**
  * @brief Check the adapter advertises what this stack can really honour.
  *
  * @return ra8_err_t Error code.
@@ -231,8 +253,11 @@ static ra8_err_t internal_check_caps(void)
   const bool fits   = (caps.file_workspace_bytes <= (uint32_t)k_vfs_file_work)
                     && (caps.transaction_workspace_bytes <= (uint32_t)k_vfs_txn_work)
                     && (caps.directory_workspace_bytes <= (uint32_t)k_vfs_dir_work);
+  const bool aligned = internal_aligned(s_file_work, caps.file_workspace_align) &&
+                       internal_aligned(s_txn_work, caps.transaction_workspace_align) &&
+                       internal_aligned(s_dir_work, caps.directory_workspace_align);
 
-  return (honest && fits) ? k_ra8_ok : k_ra8_err_invalid_arg;
+  return (honest && fits && aligned) ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
 
 /**
