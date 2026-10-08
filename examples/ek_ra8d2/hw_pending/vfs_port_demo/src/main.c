@@ -68,7 +68,7 @@ typedef enum : uint32_t {
   k_vfs_disk_blocks  = 512U,    /**< RAM-disk sectors; FAT12 fits comfortably. */
   k_vfs_file_work    = 64U,     /**< Backend file-handle workspace bytes.     */
   k_vfs_txn_work     = 2048U,   /**< Backend transaction workspace bytes.     */
-  k_vfs_dir_work     = 512U,    /**< Backend directory-cursor workspace.      */
+  k_vfs_dir_work     = 1024U,   /**< Backend directory-cursor workspace.      */
   k_vfs_list_cap     = 8U,      /**< Bounded directory-walk entry ceiling.    */
 } vfs_const_t;
 
@@ -86,7 +86,8 @@ typedef enum : uint32_t {
  *                    native cursor bytes the mounted format reports through
  *                    `ra8_io_vfs_dir_requirements()`, i.e. FAT12's own cursor
  *                    state on this volume, which no build-time constant fixes.
- *                    512 is this app's ceiling, not a measured figure: if the
+ *                    This FAT12 volume asks for 671 bytes (measured through
+ *                    `fw_fs_get_caps`); 1024 is slack. If the
  *                    volume asks for more, the `caps` leg FAILS on the bound
  *                    check below (before any cursor is opened) rather than
  *                    overflowing the buffer. Change the format or the backend
