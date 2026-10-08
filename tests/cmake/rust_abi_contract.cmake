@@ -66,8 +66,10 @@ set(_ra8_chain_output "${CMAKE_CURRENT_BINARY_DIR}/abi_chain")
 set(_ra8_chain_library "${_ra8_chain_output}/lib/libra8_abi_chain.a")
 add_custom_target(
   ra8_abi_chain_library ALL
-  COMMAND "${ZIG_EXECUTABLE}" build --prefix "${_ra8_chain_output}" --cache-dir
-          "${_ra8_chain_output}/cache" --global-cache-dir "${_ra8_chain_output}/global-cache"
+  COMMAND
+    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_chain_output}/global-cache"
+    "${ZIG_EXECUTABLE}" build --prefix "${_ra8_chain_output}" --cache-dir
+    "${_ra8_chain_output}/cache"
   WORKING_DIRECTORY "${_ra8_chain_root}"
   BYPRODUCTS "${_ra8_chain_library}"
   COMMENT "Building chained Zig ABI adapter"

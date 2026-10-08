@@ -305,9 +305,10 @@ set(_ra8_modem_at_test_library
 )
 add_custom_target(
   ra8_modem_at_test_helpers_zig_library ALL
-  COMMAND "${ZIG_EXECUTABLE}" build -Dtest-helpers=true -Doptimize=Debug --prefix
-          "${_ra8_modem_at_test_dir}" --cache-dir "${_ra8_modem_at_test_dir}/cache"
-          --global-cache-dir "${_ra8_modem_at_test_dir}/global-cache"
+  COMMAND
+    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_modem_at_test_dir}/global-cache"
+    "${ZIG_EXECUTABLE}" build -Dtest-helpers=true -Doptimize=Debug --prefix
+    "${_ra8_modem_at_test_dir}" --cache-dir "${_ra8_modem_at_test_dir}/cache"
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_modem_at"
   BYPRODUCTS "${_ra8_modem_at_test_library}"
   COMMENT "Building test-only ra8_modem_at helper archive"
@@ -897,9 +898,10 @@ set(_ra8_core_prefixed_library
 )
 add_custom_target(
   ra8_core_freestanding_prefixed_zig_library ALL
-  COMMAND "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8_ -Doptimize=Debug --prefix
-          "${_ra8_core_prefixed_dir}" --cache-dir "${_ra8_core_prefixed_dir}/cache"
-          --global-cache-dir "${_ra8_core_prefixed_dir}/global-cache"
+  COMMAND
+    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_core_prefixed_dir}/global-cache"
+    "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8_ -Doptimize=Debug --prefix
+    "${_ra8_core_prefixed_dir}" --cache-dir "${_ra8_core_prefixed_dir}/cache"
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_core"
   BYPRODUCTS "${_ra8_core_prefixed_library}"
   COMMENT "Building ra8_ prefixed ra8_core archive for test_ra8_freestanding"
@@ -926,9 +928,10 @@ set(_ra8p1_prefixed_library
 )
 add_custom_target(
   ra8_board_ra8p1_prefixed_zig_library ALL
-  COMMAND "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8p1_test_ -Doptimize=Debug --prefix
-          "${_ra8p1_prefixed_dir}" --cache-dir "${_ra8p1_prefixed_dir}/cache"
-          --global-cache-dir "${_ra8p1_prefixed_dir}/global-cache"
+  COMMAND
+    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8p1_prefixed_dir}/global-cache"
+    "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8p1_test_ -Doptimize=Debug --prefix
+    "${_ra8p1_prefixed_dir}" --cache-dir "${_ra8p1_prefixed_dir}/cache"
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_board_ra8p1"
   BYPRODUCTS "${_ra8p1_prefixed_library}"
   COMMENT "Building ra8p1_test_ prefixed ra8_board_ra8p1 archive for test_ra8_board_ra8p1_cov"
