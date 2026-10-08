@@ -24,6 +24,20 @@ tree ever includes `key_vault.h` or `ota_commit.h`. This app calls both.
 | `ota`    | Arming a bank makes it readable; a second arm while pending is refused.   |
 | `ota`    | The bank-config write masks all but the two BANK_SEL bits (off-target).   |
 
+## Fail-closed vault
+
+`libs/ra8_secure_app` only carries the vault body in an off-target or
+`RA8_INSECURE_STUB_CRYPTO` image. A normal target build is fail-closed:
+`ra8_key_vault_init` and every other vault entry answer
+`k_ra8_err_not_supported`, a bad slot or a 24-byte KAK reads
+`not_supported` rather than `invalid_arg`, and null pointers are still
+screened first as `k_ra8_err_null_ptr`.
+
+The `vault`, `guards` and `kak` legs probe which side they are on and check
+that contract on a fail-closed image. The digest, slot-binding and KAK
+round-trip rows in the table above are therefore proved by the off-target
+(or insecure-stub) build only; a target build proves the refusals.
+
 ## No option-region writes
 
 The commit and bank-config paths are shadow registers by design: the real
