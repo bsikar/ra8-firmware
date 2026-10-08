@@ -208,6 +208,24 @@ static ra8_err_t internal_check_validate(void)
 }
 
 /**
+ * @brief Frame callback for the stream_start leg; never invoked.
+ *
+ * @param[in] ctx   Unused callback context.
+ * @param[in] frame Unused frame view.
+ * @return void
+ * @note The memory backend binds no stream_start, so the facade refuses the
+ *       call before any frame is delivered. A real callback is still passed
+ *       so the refusal is the backend's not_supported, not the facade's
+ *       null_ptr argument check.
+ * @since 0.1.0
+ */
+static void internal_ignore_frame(void* ctx, const ra8_audio_frame_t* frame)
+{
+  (void)ctx;
+  (void)frame;
+}
+
+/**
  * @brief Bind the fixture and drive the facade through the memory backend.
  *
  * @return ra8_err_t Error code.
@@ -289,7 +307,7 @@ static ra8_err_t internal_replay_round_trip(void)
 
   /* Leg 7: this backend binds no stream_start, and the facade says so rather
    * than dispatching into a null operation. */
-  if (ra8_audio_source_stream_start(&source, &buf, nullptr, nullptr) !=
+  if (ra8_audio_source_stream_start(&source, &buf, internal_ignore_frame, nullptr) !=
       k_ra8_err_not_supported) {
     return k_ra8_err_invalid_state;
   }
