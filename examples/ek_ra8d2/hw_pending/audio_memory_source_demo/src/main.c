@@ -45,11 +45,12 @@
 
 #include "ra8_audio.h"
 #include "ra8_audio_source_memory.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
 
@@ -64,28 +65,27 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_am_uart_chan     = 8U,     /**< SCI8 J-Link OB console.                  */
-  k_am_samples       = 64U,    /**< Sample frames per channel in the source. */
-  k_am_channels      = 2U,     /**< Interleaved channel count.               */
-  k_am_container     = 2U,     /**< Container bytes for s16le.               */
-  k_am_valid_bits    = 16U,    /**< Significant bits per sample.             */
-  k_am_rate_hz       = 16000U, /**< Sample frames per second.                */
-  k_am_timestamp_ms  = 12U,    /**< Fixed capture-start stamp for the frame. */
-  k_am_frame_bytes   = 256U,   /**< 64 samples * 2 channels * 2 bytes.       */
-  k_am_pcm_words     = 128U,   /**< 64 samples * 2 interleaved channels.     */
-  k_am_ramp_step     = 37U,    /**< Deterministic sample-ramp step.          */
-  k_am_ramp_mask     = 0x7FFFU, /**< Keeps the ramp inside int16 positives.  */
-  k_am_wipe_byte     = 0xA5U,  /**< Sentinel the capture must overwrite.     */
-  k_am_bad_bits      = 24U,    /**< Wider than the s16le container allows.   */
-  k_am_short_by      = 1U,     /**< Bytes withheld for the refusal leg.      */
+  k_am_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                  */
+  k_am_console_baud = 115200U, /**< J-Link OB VCOM line rate. */
+  k_am_samples      = 64U,     /**< Sample frames per channel in the source. */
+  k_am_channels     = 2U,      /**< Interleaved channel count.               */
+  k_am_container    = 2U,      /**< Container bytes for s16le.               */
+  k_am_valid_bits   = 16U,     /**< Significant bits per sample.             */
+  k_am_rate_hz      = 16000U,  /**< Sample frames per second.                */
+  k_am_timestamp_ms = 12U,     /**< Fixed capture-start stamp for the frame. */
+  k_am_frame_bytes  = 256U,    /**< 64 samples * 2 channels * 2 bytes.       */
+  k_am_pcm_words    = 128U,    /**< 64 samples * 2 interleaved channels.     */
+  k_am_ramp_step    = 37U,     /**< Deterministic sample-ramp step.          */
+  k_am_ramp_mask    = 0x7FFFU, /**< Keeps the ramp inside int16 positives.  */
+  k_am_wipe_byte    = 0xA5U,   /**< Sentinel the capture must overwrite.     */
+  k_am_bad_bits     = 24U,     /**< Wider than the s16le container allows.   */
+  k_am_short_by     = 1U,      /**< Bytes withheld for the refusal leg.      */
 } am_const_t;
-
 
 static int16_t s_source_pcm[k_am_pcm_words];      /**< Source PCM, app-owned.  */
 static uint8_t s_capture[k_am_frame_bytes];       /**< Capture sink, app-owned.*/
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 static bool s_callback_fired = false; /**< Set only if streaming delivered. */
 
@@ -443,9 +443,18 @@ static ra8_err_t internal_run(void)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_am_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_am_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("audio_memory_source_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("audio_memory_source_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_am_uart_chan);
+    while (true) {
+    }
+  }
 
   if (internal_run() == k_ra8_ok) {
     internal_print("audio_memory_source_demo: memory source PASS\r\n");

@@ -42,11 +42,12 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
 #include "ra8_touch_cal.h"
@@ -62,19 +63,20 @@
  * @since 0.1.0
  */
 typedef enum : int32_t {
-  k_tc_uart_chan     = 8,    /**< SCI8 J-Link OB console.                  */
-  k_tc_screen_w      = 800,  /**< Fake panel width, pixels.                */
-  k_tc_screen_h      = 480,  /**< Fake panel height, pixels.               */
-  k_tc_inset_px      = 40,   /**< Corner-target inset from the edge.       */
-  k_tc_raw_gain      = 5,    /**< Controller counts per pixel.             */
-  k_tc_raw_off_x     = 20,   /**< Controller X origin offset, pixels.      */
-  k_tc_raw_off_y     = 16,   /**< Controller Y origin offset, pixels.      */
-  k_tc_targets       = 5,    /**< Cross-hairs ra8_touch_cal_run paints.     */
-  k_tc_probe_raw_x   = 2100, /**< Fresh raw sample for the apply leg.      */
-  k_tc_probe_raw_y   = 1216, /**< Fresh raw sample for the apply leg.      */
-  k_tc_probe_pixel_x = 400,  /**< 2100 / 5 - 20, by hand.                  */
-  k_tc_probe_pixel_y = 227,  /**< 1216 / 5 - 16, truncated by hand.        */
-  k_tc_probe_tol_px  = 2,    /**< Slack on the mapped pixel.               */
+  k_tc_uart_chan     = 8,       /**< SCI8 J-Link OB console.                  */
+  k_tc_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
+  k_tc_screen_w      = 800,     /**< Fake panel width, pixels.                */
+  k_tc_screen_h      = 480,     /**< Fake panel height, pixels.               */
+  k_tc_inset_px      = 40,      /**< Corner-target inset from the edge.       */
+  k_tc_raw_gain      = 5,       /**< Controller counts per pixel.             */
+  k_tc_raw_off_x     = 20,      /**< Controller X origin offset, pixels.      */
+  k_tc_raw_off_y     = 16,      /**< Controller Y origin offset, pixels.      */
+  k_tc_targets       = 5,       /**< Cross-hairs ra8_touch_cal_run paints.     */
+  k_tc_probe_raw_x   = 2100,    /**< Fresh raw sample for the apply leg.      */
+  k_tc_probe_raw_y   = 1216,    /**< Fresh raw sample for the apply leg.      */
+  k_tc_probe_pixel_x = 400,     /**< 2100 / 5 - 20, by hand.                  */
+  k_tc_probe_pixel_y = 227,     /**< 1216 / 5 - 16, truncated by hand.        */
+  k_tc_probe_tol_px  = 2,       /**< Slack on the mapped pixel.               */
 } tc_const_t;
 
 static const float k_tc_true_gain   = 0.2F;   /**< 1 / k_tc_raw_gain.      */
@@ -104,7 +106,6 @@ typedef struct {
 static tc_panel_t s_panel = {.ordered = true}; /**< The fake panel.        */
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -342,9 +343,18 @@ static ra8_err_t internal_blob_round_trip(const ra8_touch_cal_matrix_t* mtx)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_tc_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_tc_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("touch_cal_matrix_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("touch_cal_matrix_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_tc_uart_chan);
+    while (true) {
+    }
+  }
 
   ra8_touch_cal_matrix_t mtx  = {0};
   bool                   pass = true;

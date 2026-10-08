@@ -54,11 +54,12 @@
 
 #include "key_vault.h"
 #include "ota_commit.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_uart.h"
 #include "ra8_log.h"
 #include "ra8_sci.h"
 
@@ -69,23 +70,23 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_sav_uart_chan   = 8U,          /**< SCI8 J-Link OB console.              */
-  k_sav_slot_a      = 0U,          /**< First slot exercised.                */
-  k_sav_slot_b      = 1U,          /**< Second slot, different key material. */
-  k_sav_slot_bad    = 64U,         /**< Well past k_ra8_key_vault_slots.     */
-  k_sav_kak_short   = 16U,         /**< AES-128 KAK length.                  */
-  k_sav_kak_long    = 32U,         /**< AES-256 KAK length.                  */
-  k_sav_kak_bad_len = 24U,         /**< Neither 16 nor 32; must be refused.  */
-  k_sav_cfg_raw     = 0xFFFFFFFFU, /**< All bits set; only two may survive.  */
-  k_sav_fill_a      = 0xA5U,       /**< Slot A key fill byte.                */
-  k_sav_fill_b      = 0x5AU,       /**< Slot B key fill byte.                */
-  k_sav_fill_chal   = 0x11U,       /**< Challenge fill byte.                 */
-  k_sav_fill_kak    = 0x77U,       /**< First (16-byte) KAK fill byte.      */
-  k_sav_fill_kak2   = 0x8EU,       /**< Second (32-byte) KAK fill byte.     */
+  k_sav_uart_chan    = 8U,          /**< SCI8 J-Link OB console.              */
+  k_sav_console_baud = 115200U,     /**< J-Link OB VCOM line rate. */
+  k_sav_slot_a       = 0U,          /**< First slot exercised.                */
+  k_sav_slot_b       = 1U,          /**< Second slot, different key material. */
+  k_sav_slot_bad     = 64U,         /**< Well past k_ra8_key_vault_slots.     */
+  k_sav_kak_short    = 16U,         /**< AES-128 KAK length.                  */
+  k_sav_kak_long     = 32U,         /**< AES-256 KAK length.                  */
+  k_sav_kak_bad_len  = 24U,         /**< Neither 16 nor 32; must be refused.  */
+  k_sav_cfg_raw      = 0xFFFFFFFFU, /**< All bits set; only two may survive.  */
+  k_sav_fill_a       = 0xA5U,       /**< Slot A key fill byte.                */
+  k_sav_fill_b       = 0x5AU,       /**< Slot B key fill byte.                */
+  k_sav_fill_chal    = 0x11U,       /**< Challenge fill byte.                 */
+  k_sav_fill_kak     = 0x77U,       /**< First (16-byte) KAK fill byte.      */
+  k_sav_fill_kak2    = 0x8EU,       /**< Second (32-byte) KAK fill byte.     */
 } sav_const_t;
 
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
-static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -374,9 +375,18 @@ static void internal_verdict(const char* label, ra8_err_t err, bool* pass)
 void main(void)
 {
   ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_sav_uart_chan);
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_sav_console_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const ra8_err_t               bringup_err = ra8_board_bringup(&bringup_cfg, &bringup_out);
+  (void)ra8_board_console_stream(&s_uart);
   (void)ra8_io_log_attach(&s_uart);
   internal_print("secure_app_vault_demo: boot\r\n");
+  if (bringup_err != k_ra8_ok) {
+    internal_print("secure_app_vault_demo: bringup FAIL\r\n");
+    (void)ra8_sci_flush((uint8_t)k_sav_uart_chan);
+    while (true) {
+    }
+  }
 
   bool pass = true;
 
