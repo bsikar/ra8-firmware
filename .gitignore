@@ -42,6 +42,7 @@
 /tools/**/build/
 CMakeFiles/
 .zig-cache/
+zig-pkg/
 zig-out/
 CMakeCache.txt
 cmake_install.cmake
