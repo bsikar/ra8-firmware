@@ -7,7 +7,8 @@
 //! nine leaf widgets, the container panel that nests them into a tree, and
 //! the flat container ops every one of them dispatches through. No C
 //! translation unit is left in `libs/ra8_widget/src`.
-//! The `test` step verifies the pure geometry and each membrane.
+//! The `test` step verifies the pure geometry and each membrane, and compiles
+//! the library for cortex_m85 so a 32-bit C-layout break fails it too.
 
 const std = @import("std");
 
@@ -369,4 +370,28 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_list_tests.step);
     test_step.dependOn(&run_core_tests.step);
     test_step.dependOn(&run_pager_tests.step);
+    addArmLayoutCheck(b, test_step);
+}
+
+/// Compile the library for the cortex_m85 image target as part of `test`.
+/// Host tests only build for 64-bit, so a C-layout assert that holds there
+/// but not at 32 bits (RA8FW-913) would otherwise pass the gate and break
+/// every ARM image that links ra8_widget.
+fn addArmLayoutCheck(b: *std.Build, test_step: *std.Build.Step) void {
+    const arm = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabihf,
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
+    });
+    const arm_library = b.addLibrary(.{
+        .name = "ra8_widget_arm_layout",
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ra8_widget_abi.zig"),
+            .target = arm,
+            .optimize = .small,
+        }),
+    });
+    test_step.dependOn(&arm_library.step);
 }
