@@ -207,22 +207,20 @@ static const ra8_widget_paint_t k_wk_paint = {
 static void wk_on_button_press(ra8_widget_t* w);
 
 /** @brief Title label: a centred heading over the slate band. */
-static ra8_widget_label_t s_title = {.paint    = &k_wk_paint,
-                                     .text     = "widget_kit_demo",
-                                     .fg       = (uint32_t)k_wk_col_text,
-                                     .bg       = (uint32_t)k_wk_col_title_bg,
-                                     .pad      = (int16_t)k_wk_pad,
-                                     .align    = k_ra8_widget_align_center,
-                                     .reserved = 0U};
+static ra8_widget_label_t s_title = {.paint = &k_wk_paint,
+                                     .text  = "widget_kit_demo",
+                                     .fg    = (uint32_t)k_wk_col_text,
+                                     .bg    = (uint32_t)k_wk_col_title_bg,
+                                     .pad   = (int16_t)k_wk_pad,
+                                     .align = k_ra8_widget_align_center};
 
 /** @brief Footer label: a left-aligned hint line. */
-static ra8_widget_label_t s_footer = {.paint    = &k_wk_paint,
-                                      .text     = "label + button leaves on ra8_widget_panel",
-                                      .fg       = (uint32_t)k_wk_col_dim,
-                                      .bg       = (uint32_t)k_wk_col_footer_bg,
-                                      .pad      = (int16_t)k_wk_pad,
-                                      .align    = k_ra8_widget_align_left,
-                                      .reserved = 0U};
+static ra8_widget_label_t s_footer = {.paint = &k_wk_paint,
+                                      .text  = "label + button leaves on ra8_widget_panel",
+                                      .fg    = (uint32_t)k_wk_col_dim,
+                                      .bg    = (uint32_t)k_wk_col_footer_bg,
+                                      .pad   = (int16_t)k_wk_pad,
+                                      .align = k_ra8_widget_align_left};
 
 /** @brief Button A ("Prev"): blue face, latches + flushes the body on tap. */
 static ra8_widget_button_t s_btn_a = {.paint        = &k_wk_paint,
