@@ -100,8 +100,8 @@ variable "template_vm_id" {
   default = 9001
 
   validation {
-    condition     = var.template_vm_id == (var.guest_profile == "windows" ? 9011 : 9001)
-    error_message = "Linux may clone only template 9001; Windows may clone only template 9011."
+    condition     = var.template_vm_id == (var.guest_profile == "windows" ? 9012 : 9001)
+    error_message = "Linux may clone only template 9001; Windows may clone only template 9012."
   }
 }
 

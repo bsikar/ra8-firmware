@@ -80,10 +80,10 @@ ssh *args:
 destroy target="all":
     python3 scripts/dev/proxmox_lab_manage.py destroy {{ quote(target) }}
 
-# Prepare the Windows Server 2025 lab template (VM 9011) on Proxmox
-[confirm("Build the protected Windows Server 2025 lab template (VM 9011) on Proxmox?")]
+# Prepare the Windows Server 2025 lab template (VM 9012) on Proxmox
+[confirm("Build the protected Windows Server 2025 lab template (VM 9012) on Proxmox?")]
 prepare-windows-template:
-    scripts/dev/prepare_proxmox_lab_windows_template.sh
+    scripts/dev/prepare_proxmox_lab_windows_template.sh 9012
 
 # Prepare the Debian 12 Linux cloud lab template (VM 9001) on Proxmox
 [confirm("Build the protected Debian 12 Linux lab template (VM 9001) on Proxmox?")]

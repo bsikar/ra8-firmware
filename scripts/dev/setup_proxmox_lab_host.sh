@@ -4,7 +4,7 @@
 #
 # Setup and configure a fresh Proxmox VE host for RA8 disposable CI runners.
 # Prepares host packages, sysctl, pools, datastores, and provisions the
-# Linux (VM 9001) and Windows (VM 9011) golden templates.
+# Linux (VM 9001) and Windows (VM 9012) golden templates.
 
 set -euo pipefail
 umask 077
@@ -16,7 +16,7 @@ POOL_ID="ra8-tf-lab"
 STORAGE_ID="ra8-tf-lab"
 LINUX_TEMPLATE_ID=9001
 LINUX_TEMPLATE_NAME="ra8-lab-debian-template"
-WINDOWS_TEMPLATE_ID=9011
+WINDOWS_TEMPLATE_ID=9012
 WINDOWS_TEMPLATE_NAME="ra8-lab-windows-template"
 
 die() {
@@ -156,7 +156,7 @@ provision_windows_template() {
   fi
 
   info "Building Windows Server 2025 template (VM $WINDOWS_TEMPLATE_ID)..."
-  bash "$SCRIPT_DIR/prepare_proxmox_lab_windows_template.sh"
+  bash "$SCRIPT_DIR/prepare_proxmox_lab_windows_template.sh" "$WINDOWS_TEMPLATE_ID"
   success "Windows Server 2025 template (VM $WINDOWS_TEMPLATE_ID) successfully provisioned."
 }
 
@@ -174,7 +174,7 @@ Commands:
   all       Configure host, storage/pool, install Linux & Windows templates, and verify (default)
   host      Configure Proxmox host packages, sysctl, pool, and datastore only
   linux     Ensure host is configured and build/verify Linux template (VM 9001)
-  windows   Ensure host is configured and build/verify Windows template (VM 9011)
+  windows   Ensure host is configured and build/verify Windows template (VM 9012)
   check     Run read-only preflight verification checks against templates and network
 EOF
 }

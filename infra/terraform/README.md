@@ -31,7 +31,7 @@ Windows template, WinRM boundary, and Windows CI command are reviewed.
 `infra/terraform/lab-guest.sh` exposes separate, short-lived Linux and Windows
 lifecycles for the OpenTofu/provisioning acceptance. Linux defaults to VMID
 9020 and accepts reservation IDs 9020–9039 except 9021, which is reserved for
-Windows. Linux uses template 9001; Windows uses VMID 9021 and template 9011.
+Windows. Linux uses template 9001; Windows uses VMID 9021 and template 9012.
 Set `RA8_TOFU_GUEST_PROFILE` and
 `RA8_TOFU_GUEST_VM_ID` to select a profile and reservation explicitly. An
 occupied VMID is refused before planning. Each profile/VMID has its own

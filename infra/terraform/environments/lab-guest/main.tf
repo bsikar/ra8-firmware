@@ -31,12 +31,12 @@ resource "proxmox_virtual_environment_vm" "guest" {
 
   disk {
     datastore_id = var.datastore_id
-    # Windows 9011 already has its 64 GiB boot disk on sata0. Manage that
+    # Windows 9012 already has its 64 GiB boot disk on sata0. Manage that
     # cloned disk in place instead of attaching a second 64 GiB disk.
-    interface    = var.guest_profile == "windows" ? "sata0" : "scsi0"
-    size         = var.disk_size_gb
-    discard      = "on"
-    iothread     = true
+    interface = var.guest_profile == "windows" ? "sata0" : "scsi0"
+    size      = var.disk_size_gb
+    discard   = "on"
+    iothread  = true
   }
 
   network_device {
@@ -81,7 +81,7 @@ resource "proxmox_virtual_environment_vm" "guest" {
     precondition {
       condition = (
         (var.guest_profile == "windows" ? var.vm_id == 9021 : (var.vm_id >= 9020 && var.vm_id <= 9039 && var.vm_id != 9021)) &&
-        var.template_vm_id == (var.guest_profile == "windows" ? 9011 : 9001)
+        var.template_vm_id == (var.guest_profile == "windows" ? 9012 : 9001)
       )
       error_message = "The guest and template VMIDs must match the selected profile inside the reserved range."
     }

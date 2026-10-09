@@ -27,7 +27,7 @@ PROFILES = {
         "disk_limit_mib": 32 * 1024,
     },
     "windows": {
-        "template_id": 9011,
+        "template_id": 9012,
         "template_name": "ra8-lab-windows-template",
         "template_marker": "RA8_LAB_TEMPLATE=windows-ci-v1",
         "vm_id": 9021,
