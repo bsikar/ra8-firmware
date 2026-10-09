@@ -134,8 +134,6 @@ func TestStateIdentityIsJudgedFieldByField(t *testing.T) {
 		{name: "negative serial", field: "serial", value: -1},
 		{name: "serial as text", field: "serial", value: "7"},
 		{name: "lineage uppercased", field: "lineage", value: "2F5A13ED-F770-4F68-A246-52C1E8F7E018"},
-		{name: "lineage version zero", field: "lineage", value: "2f5a13ed-f770-0f68-a246-52c1e8f7e018"},
-		{name: "lineage variant outside 89ab", field: "lineage", value: "2f5a13ed-f770-4f68-c246-52c1e8f7e018"},
 		{name: "lineage truncated", field: "lineage", value: "2f5a13ed-f770-4f68-a246-52c1e8f7e01"},
 		{name: "terraform version two parts", field: "terraform_version", value: "1.10"},
 		{name: "terraform version tagged", field: "terraform_version", value: "v1.10.5"},
@@ -155,6 +153,25 @@ func TestStateIdentityIsJudgedFieldByField(t *testing.T) {
 	body := stateEnvelope(map[string]any{"serial": 0, "resources": runner})
 	if found, err := terraformStateHasRunner(body, vm); err != nil || !found {
 		t.Fatalf("serial zero rejected: found=%t err=%v", found, err)
+	}
+
+	// OpenTofu lineages are go-uuid random hex with no RFC 4122 version or
+	// variant bits; the live run's state carried one like these.
+	for _, lineage := range []string{
+		"2f5a13ed-f770-0f68-a246-52c1e8f7e018",
+		"2f5a13ed-f770-4f68-c246-52c1e8f7e018",
+		"00000000-0000-0000-0000-000000000000",
+	} {
+		body := stateEnvelope(map[string]any{"lineage": lineage, "resources": runner})
+		if found, err := terraformStateHasRunner(body, vm); err != nil || !found {
+			t.Fatalf("lineage %s rejected: found=%t err=%v", lineage, found, err)
+		}
+	}
+
+	// A pull that returns the encrypted envelope is named as such.
+	encrypted := []byte(`{"serial":1,"lineage":"2f5a13ed-f770-4f68-a246-52c1e8f7e018","meta":{},"encrypted_data":"AA==","encryption_version":"v0"}`)
+	if _, err := terraformStateHasRunner(encrypted, vm); err == nil || !strings.Contains(err.Error(), "still encrypted") {
+		t.Fatalf("encrypted state refused as %v, want the encrypted refusal", err)
 	}
 }
 

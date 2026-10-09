@@ -49,6 +49,12 @@ type TerraformConfig struct {
 	OperationTimeout     time.Duration
 	Backend              HTTPBackendConfig
 	AppRole              AppRoleConfig
+	// DiagnosticDirectory is empty in production, where OpenTofu's stderr
+	// is always discarded. An operator-run acceptance test may set it to an
+	// existing owner-only (0700) absolute directory outside the source
+	// environment; a failed command then saves its bounded stderr there in
+	// a 0600 file and the error names that file, never its contents.
+	DiagnosticDirectory string
 }
 
 // TerraformRuntime verifies the pinned executable before allowing a session.
@@ -109,6 +115,9 @@ func OpenTerraformRuntime(ctx context.Context, config TerraformConfig) (*Terrafo
 	if filepath.Clean(config.EnvironmentDirectory) == filepath.Clean(config.StateDirectory) ||
 		pathInside(config.EnvironmentDirectory, config.StateDirectory) {
 		return nil, errors.New("Terraform runtime state must be outside the source environment")
+	}
+	if err := validTerraformDiagnosticDirectory(config); err != nil {
+		return nil, err
 	}
 	runtime := &TerraformRuntime{config: config}
 	versionCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -301,14 +310,68 @@ func (session *TerraformSession) run(ctx context.Context, stdout io.Writer, args
 		command.Stdout = io.Discard
 	}
 	command.Stderr = io.Discard
+	var diagnostics *boundedTerraformBuffer
+	if session.runtime.config.DiagnosticDirectory != "" {
+		diagnostics = &boundedTerraformBuffer{limit: maxTerraformDiagnosticBytes}
+		command.Stderr = diagnostics
+	}
 	command.WaitDelay = 2 * time.Second
 	if err := command.Run(); err != nil {
+		saved := saveTerraformDiagnostics(session.runtime.config.DiagnosticDirectory, args[0], diagnostics)
 		if errors.Is(commandCtx.Err(), context.DeadlineExceeded) {
-			return errors.New("Terraform command exceeded its deadline")
+			return errors.New("Terraform command exceeded its deadline" + saved)
 		}
-		return errors.New("Terraform command failed; reconcile state before retry")
+		return errors.New("Terraform command failed; reconcile state before retry" + saved)
+	}
+	if diagnostics != nil {
+		clear(diagnostics.data)
 	}
 	return nil
+}
+
+const maxTerraformDiagnosticBytes = 64 << 10
+
+func validTerraformDiagnosticDirectory(config TerraformConfig) error {
+	directory := config.DiagnosticDirectory
+	if directory == "" {
+		return nil
+	}
+	if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory ||
+		pathInside(config.EnvironmentDirectory, directory) ||
+		filepath.Clean(config.EnvironmentDirectory) == directory {
+		return errors.New("Terraform diagnostic directory must be absolute and outside the source environment")
+	}
+	info, err := os.Lstat(directory)
+	if err != nil || !info.IsDir() || info.Mode().Perm() != 0o700 {
+		return errors.New("Terraform diagnostic directory must be an existing owner-only directory")
+	}
+	return nil
+}
+
+// saveTerraformDiagnostics writes captured stderr to a new owner-only file
+// and returns a suffix naming it, or "" when diagnostics are disabled.
+func saveTerraformDiagnostics(directory, command string, diagnostics *boundedTerraformBuffer) string {
+	if directory == "" || diagnostics == nil {
+		return ""
+	}
+	defer clear(diagnostics.data)
+	file, err := os.CreateTemp(directory, "tofu-"+command+"-*.stderr")
+	if err != nil {
+		return " (stderr could not be saved)"
+	}
+	path := file.Name()
+	if err := file.Chmod(0o600); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return " (stderr could not be saved)"
+	}
+	_, writeErr := file.Write(diagnostics.data)
+	closeErr := file.Close()
+	if writeErr != nil || closeErr != nil {
+		_ = os.Remove(path)
+		return " (stderr could not be saved)"
+	}
+	return " (stderr saved to " + path + ")"
 }
 
 func (session *TerraformSession) validate(ctx context.Context) error {

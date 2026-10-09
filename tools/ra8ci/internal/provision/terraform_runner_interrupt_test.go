@@ -131,6 +131,10 @@ func (o *interruptedRunnerObserver) GetTemplate(context.Context, int) (proxmox.T
 		ConfigDigest: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, nil
 }
 
+func (*interruptedRunnerObserver) BridgePresent(context.Context, string) (bool, error) {
+	return true, nil
+}
+
 func (*interruptedRunnerObserver) OccupiedVMIDs(context.Context) ([]int, error) { return nil, nil }
 
 func TestInterruptedTerraformCloneReconcilesToObservedStoppedGuest(t *testing.T) {
