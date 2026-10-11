@@ -86,12 +86,12 @@ or `dynamic` in any non-critical TU) are reported but do not fail
 the script -- the per-target `-Wstack-usage=N` warning is the
 build-time gate for those.
 
-`just quality::local::stack_usage` builds every EVM-tier app (everything under
+The stack-usage check builds every EVM-tier app (everything under
 `examples/ek_ra8d2/`) and then runs the aggregator over the result.
 
 ## Where the big frames are
 
-`just quality::local::stack_usage` regenerates the report. This section describes the
+The stack-usage check regenerates the report. This section describes the
 shape the report always has, rather than what it said on one day.
 
 The largest frames in the tree belong to the vendored miniz

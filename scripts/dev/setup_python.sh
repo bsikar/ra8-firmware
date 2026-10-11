@@ -144,8 +144,6 @@ if [[ "$-" == *p* ]]; then
       ruff cmake-format cmake-lint yamllint gcovr || return 1
     PATH="$VENV_DIR/bin:$PATH" command -v vela >/dev/null ||
       die "locked Vela executable is missing from $VENV_DIR"
-    PATH="$VENV_DIR/bin:$PATH" command -v ansible-playbook >/dev/null ||
-      die "locked Ansible executable is missing from $VENV_DIR"
   }
 
   setup_python_authority() {
@@ -303,7 +301,7 @@ if [[ "$-" == *p* ]]; then
     chmod +x "$target_python"
     VENV_DIR="$tmp/venv"
     mkdir -p "$VENV_DIR/bin"
-    for tool in vela ansible-playbook; do
+    for tool in vela; do
       printf '#!/bin/sh\nexit 0\n' >"$VENV_DIR/bin/$tool"
       chmod +x "$VENV_DIR/bin/$tool"
     done

@@ -216,9 +216,9 @@ artefact:
 
 ## Running the gate itself on your own Mac
 
-    just quality::gate::run macos-host-build
+    # the macos-host-build gate lives in the ra8ci suite now
 
-`just quality::gate::run` sends a gate into the pinned Linux devcontainer on
+The gate runner sends a gate into the pinned Linux devcontainer on
 macOS, because that is where the CI toolchain lives. A gate whose subject is
 the host cannot be answered there: inside the container `macos-host-build`
 sees Linux and refuses, which is the correct answer to the wrong question.
@@ -228,9 +228,8 @@ stderr why a gate skipped the container. Every other gate on macOS still goes
 into the devcontainer, and on Linux nothing changed.
 
 A gate added later that measures the host needs a row in that list, and its
-own body must still refuse a foreign host; the list's `--selftest`, run by the
-`ci-parity` gate, checks both, plus that every declared gate is really
-registered in `scripts/ci.sh`.
+own body must still refuse a foreign host; the list's `--selftest` checks
+both.
 
 ### If the gate says your Mac is x86_64
 
@@ -248,7 +247,7 @@ The gate still refuses under translation, because a translated `zig` links the
 x86_64 path and cannot observe the missing `arm64-macos` slice at all, but it
 now names Rosetta and prints the native re-run:
 
-    arch -arm64 /bin/zsh -lc "just quality::local::gate macos-host-build"
+    arch -arm64 /bin/zsh -lc "scripts/checks/macos_host_gates.sh"   # the gate moved to the ra8ci repo; its self-check prints this line
 
 A genuine Intel Mac answers neither sysctl and is still reported as
 `Darwin/x86_64`, and an unreadable `sysctl` fails closed to whatever `uname`
@@ -551,7 +550,7 @@ shows which front end the runner resolves; and `apps/host/firmware_pipeline/zig`
 `tests/abi_chain_fixture`, `tests/rust_abi_fixture/zig`, because each links a
 cargo-built archive and the macOS workflow provisions no Rust toolchain.
 
-`bash scripts/ci/lib/macos_host_roots.sh --selftest` runs inside `ci-parity`
+The host-root self-test runs inside the CI parity gate (now in the ra8ci repo)
 and fails when a host build root exists that the manifest does not mention in
 either direction, and when the gate stops reading the list. A *host* root is
 the one `check_zig.py`'s host-target rule describes: it takes its default
@@ -671,6 +670,6 @@ reads the gate body to check it still calls `ra8_macos_sdk_link_run`.
 ## No hosted macOS runner
 
 The GitHub-hosted `macos-14` workflow is gone, along with the checks that tied
-its Zig pin and this page to it. CI is moving to `tools/ra8ci`. Until a macOS
+its Zig pin and this page to it. CI now lives in the ra8ci repo. Until a macOS
 leg lands there, run the gate on your own Mac as described above; it uses the
 Zig pinned in `.devcontainer/Dockerfile`.

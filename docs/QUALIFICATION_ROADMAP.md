@@ -46,7 +46,7 @@ firmware ships into first.
 | Architecture / design       | 7.4.3 software architecture   | Section 5.2 low-level design           | Part 6 cl. 7, sw architectural design| `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`         |
 | Coding standard             | Annex A.4 language subset     | Section 11.8 / 6.3 coding standard     | Part 6 cl. 5.4.7 language subset     | `docs/MISRA.md`, `docs/STYLE_GUIDE.md`                 |
 | Code verification (review)  | 7.9.2.7 module review         | Section 6.3.4 code reviews             | Part 6 cl. 9 verification            | PR review history + `clang-tidy` / `cppcheck` gates    |
-| Structural coverage         | Annex C statement+branch; MC/DC strongly recommended at SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, `just quality::local::mcdc`                            |
+| Structural coverage         | Annex C statement+branch; MC/DC strongly recommended at SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, the MC/DC check                            |
 | Test cases (req-based)      | 7.4.7 / 7.7 testing           | Section 6.4.2 requirements-based test  | Part 6 cl. 9 test specification      | Distributed `tests/`, `apps/**/tests/`, and `examples/**/tests/` corpus |
 | Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `docs/HIL_SUITE.md`        |
 | Configuration management    | 6.2.3 / Annex B.2             | Section 7 SCM process                  | Part 8 cl. 7 sw CM                   | git + signed tags + `docs/qualification/SCMP.md`       |

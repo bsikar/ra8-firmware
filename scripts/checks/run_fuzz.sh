@@ -24,8 +24,8 @@
 # the single source of truth. --list parses it and cross-checks it against
 # all tests/fuzz/src and app-local tests/src fuzz sources, so an unregistered harness (or a
 # registry entry whose source was deleted) fails loudly instead of being
-# silently skipped. `just quality::local::fuzz` and .github/workflows/fuzz-nightly.yml both
-# consume the registry through this script.
+# silently skipped. The fuzz runner lives in the ra8ci repo and consumes the
+# registry through this script.
 #
 # Environment:
 #

@@ -137,7 +137,7 @@ function(
       FATAL_ERROR
         "ra8: '${_lib}' is a Zig library (libs/${_lib}/build.zig) but no zig "
         "binary was found on PATH. Install the pinned toolchain "
-        "(just setup) before configuring an app that links it."
+        "(scripts/dev/setup_python.sh) before configuring an app that links it."
     )
   endif()
 
@@ -211,7 +211,7 @@ function(
       FATAL_ERROR
         "ra8: ${_board_dir}/src/boot/${_unit} is a Zig boot unit but no zig "
         "binary was found on PATH. Install the pinned toolchain "
-        "(just setup) before configuring an app that links it."
+        "(scripts/dev/setup_python.sh) before configuring an app that links it."
     )
   endif()
   _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)

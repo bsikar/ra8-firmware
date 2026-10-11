@@ -100,7 +100,7 @@ DO-178C Section 12.1.4 (previously developed software):
   target -- no such target exists. `scripts/emu/smoke.sh` behind the
   `emulator-smoke` gate boots the example applications in `ra8_emulator`, the
   `emulator-matrix` gate does the same across the full breadth ratcheted
-  downward, and `scripts/hil/all.sh` then runs the demos on real silicon.
+  downward, and the HIL suite (ra8ci repo) then runs the demos on real silicon.
 
 ## Deviations / patches
 

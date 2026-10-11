@@ -443,7 +443,6 @@ test fails on exactly that mutation.
 
 ### Running it
 
-`just quality::local::gate annotations` is the convenience recipe;
 `python3 scripts/checks/check_annotations.py` runs the same rules and
 exits non-zero on any violation. Its `--help` lists the rest: a quiet
 CI mode, a dump of every annotated symbol, the checker's own selftest
@@ -457,10 +456,10 @@ The script depends on the `libclang` Python wheel, which ships its own
 `libclang.{so,dylib}` so no system-wide LLVM install is required:
 
 ```sh
-just setup_python
+python3 scripts/dev/setup_python.sh
 ```
 
-That recipe creates the repository `.venv` and installs the project-pinned
+That script creates the repository `.venv` and installs the project-pinned
 Python tools without modifying the operating system interpreter.
 
 ### Mode

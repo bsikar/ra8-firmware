@@ -35,7 +35,7 @@ just tests::build               # host unit tests
 `just` is the grouped target reference. It is derived from the justfiles,
 so unlike a list written out here it cannot drift. On a fresh clone, install
 the repository-local Python environment, hooks, exact Ansible collections, and
-pinned CI image with `just setup`; it requires only Git, a standard-library
+pinned CI image with `scripts/dev/setup_python.sh`; it requires only Git, a standard-library
 Python in the range declared by `pyproject.toml`, `just`, trusted CA certificates, and a
 working Podman, Docker, or nerdctl runtime. Run `just dev_shell` afterward for
 a writable shell containing the pinned ARM compiler, host compilers, CMake,
@@ -80,9 +80,9 @@ confirm the probe reaches it without changing the target.
 
 ## CI
 
-Every gate body lives once, in `scripts/ci.sh`, and each workflow step is a thin
-`just quality::local::gate <name>` driver, so local and CI cannot run different
-checks. `just ci` runs them all in the pinned devcontainer; `just quality::native` is
+The gate bodies live once, in the ra8ci repo's gate registry, so local and CI
+cannot run different
+checks. The gate suite runs in the pinned devcontainer; the native gate list is
 the same set without a container runtime, which is the supported path on Linux.
 
 ## Docs

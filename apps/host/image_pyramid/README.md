@@ -47,7 +47,7 @@ levels are encoded as quality-25 JPEGs, so compression damage also compounds.
 Run the Zig test gate after changing the implementation or the tracked result:
 
 ```sh
-just quality::devcontainer::test-zig
+ra8ci devcontainer gate: test-zig
 ```
 
 This is an intentional degradation demonstration, not a production-quality

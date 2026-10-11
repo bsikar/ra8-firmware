@@ -330,8 +330,8 @@ max-complexity = 15
 #             that LIBRARY code is printing where it should return or log:
 #             every first-party .py that contains a top-level `print(` is
 #             either an executable script or carries a `__main__` guard, and
-#             the three genuinely importable modules (hil_secrets.py,
-#             openbao_client.py, gray4_kernel.py) contain no print at all.
+#             the one genuinely importable module (gray4_kernel.py) contains
+#             no print at all.
 #             There is no library-printing defect here to catch, so the
 #             remedy would be 87 per-file-ignores describing the tree as it
 #             already is. Printing IS the output mechanism of a CLI tool.
@@ -364,8 +364,8 @@ max-complexity = 15
 #             with `__main__` guards and no shebang (rot_keystore.py, which
 #             rot_provision.sh documents as a direct command line, and
 #             rot_patch_pubkey.py); both now have one and the executable bit
-#             that EXE001 requires. The remaining three are genuine importable
-#             library modules (hil_secrets, openbao_client, gray4_kernel), and
+#             that EXE001 requires. The remaining one is a genuine importable
+#             library module (gray4_kernel), and
 #             for those the only remedy is __init__.py, converting a flat CLI
 #             tree into a package. That is a structural change this repo does
 #             not want.

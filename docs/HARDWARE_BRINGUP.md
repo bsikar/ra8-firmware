@@ -8,8 +8,8 @@ tallies that produced them live in git history and are not repeated
 here.
 
 **This document is not a status board.** The authoritative statement of
-what runs on silicon is the HIL suite -- `scripts/hil/all.sh`, contract
-in [`HIL_SUITE.md`](HIL_SUITE.md) -- which verifies every app under
+what runs on silicon is the HIL suite (now in the ra8ci repo, contract in
+its docs/HIL_SUITE.md) -- which verifies every app under
 `examples/ek_ra8d2/hw_validated/hil/` against its own `hil.conf`
 manifest. Hand-flashing apps and eyeballing the halted PC does not
 scale, and it produced at least one false bug report (see "What a

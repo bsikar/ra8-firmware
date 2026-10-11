@@ -9,12 +9,12 @@ just apps::host::build firmware_pipeline
 # Run either staged executable from the host-app build directory:
 # firmware_pipeline_rust_main path/to/firmware.bin
 # firmware_pipeline_zig_main path/to/firmware.bin
-just quality::devcontainer::lint-c
-just quality::devcontainer::lint-rust
-just quality::devcontainer::lint-zig
-just quality::devcontainer::test-c
-just quality::devcontainer::test-rust
-just quality::devcontainer::test-zig
+ra8ci devcontainer gate: lint-c
+ra8ci devcontainer gate: lint-rust
+ra8ci devcontainer gate: lint-zig
+ra8ci devcontainer gate: test-c
+ra8ci devcontainer gate: test-rust
+ra8ci devcontainer gate: test-zig
 ```
 
 The public `inc/firmware_pipeline.h` membrane is caller-to-Zig. The private `inc/firmware_pipeline_rust.h` membrane is Zig-to-Rust. Both are hand-authored C23 contracts with fixed layout assertions, unchanged-output rules, exact export inventories, and no generated or native-language ABI leakage. Command tests require byte-identical output and diagnostics from the Rust-main and Zig-main executables.

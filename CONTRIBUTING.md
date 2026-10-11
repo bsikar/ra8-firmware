@@ -49,24 +49,24 @@ setup is documented in [`docs/IDE.md`](docs/IDE.md).
 ```bash
 git clone https://github.com/<your-fork>/ra8-firmware.git
 cd ra8-firmware
-just setup
+python3 scripts/dev/setup_python.sh
 ```
 
 The only bootstrap prerequisites are Git, `just`, a stdlib Python 3.11 through
 3.14, trusted CA certificates/network access for the first fetch, and a
 working container runtime (`podman`, `docker`, or `nerdctl`; macOS Docker uses
-Colima). `just setup` creates the ignored repository-local `.venv`, installs
+Colima). It creates the ignored repository-local `.venv`, installs
 the exact Python lock and Galaxy collections, configures the tracked hooks,
 and refreshes the pinned `ra8-ci` image. It never installs into the system
-Python. Re-run `just setup_python` when only Python or hooks need refreshing.
+Python. Re-run it when only Python or hooks need refreshing.
 Windows development uses WSL2. See `docs/PYTHON_ENVIRONMENTS.md` for lock
 maintenance and managed environment ownership.
 
 You need two toolchains:
 
 * **Host clang/gcc** for the unit-test build. The supported macOS path is the
-  project's Linux dev container, invoked through `just ci` or the focused
-  `just quality::devcontainer::*` recipes. On macOS you need Colima, Docker
+  project's Linux dev container
+  the devcontainer gate steps in the ra8ci repo. On macOS you need Colima, Docker
   Desktop, or another compatible container runtime running because the host
   test fake uses `mmap(MAP_FIXED, ...)`
   at MCU peripheral addresses, which macOS arm64 refuses below 4 GiB.
@@ -77,18 +77,18 @@ You need two toolchains:
 
 CMake, the C/C++ compilers, the Arm cross-compiler, and non-Python analysis
 tools are provided by the dev container. Run
-`just quality::devcontainer` to see the focused commands.
+the ra8ci repo's gate docs to see the focused commands.
 
 ## 4. Daily workflow
 
 ```text
-edit -> just quality::devcontainer::format -> just checks::devcontainer -> git commit
+edit -> format in the devcontainer -> checks -> git commit
 ```
 
-* `just quality::devcontainer::format` applies the pinned formatter to every
+* The devcontainer format step applies the pinned formatter to every
   first-party C/H file. The `format` CI gate rejects formatting drift.
 * `just checks::devcontainer` runs the focused format, tidy, and unit-test
-  checks inside the pinned image. Before pushing, run the full `just ci` suite.
+  checks inside the pinned image.
 * Never hand-edit a generated ratchet baseline under `.github/`. Move or
   rename a file and you regenerate the baseline with the tool's `--update`,
   never `sed` the paths in place: an in-place rewrite keeps the rows at their
@@ -98,9 +98,9 @@ edit -> just quality::devcontainer::format -> just checks::devcontainer -> git c
   file afterwards. Every one of these tools now has an `--attest` mode that
   re-derives the canonical text and fails on anything else; the gates run it.
 * `git commit` runs no gate of its own: there is no pre-commit hook. The
-  same audits (formatting, ASCII check, citation check, ...) run in `just ci`
-  and in CI,
-  so run `just ci` before you push rather than after a red pipeline.
+  same audits (formatting, ASCII check, citation check, ...) run in the gate
+  suite and in CI,
+  so run the checks before you push rather than after a red pipeline.
 
 For cross-compiled firmware iteration:
 
@@ -156,14 +156,14 @@ The short version:
   ```
 
 * See [`docs/MCDC.md`](docs/MCDC.md) for the coverage measurement workflow
-  (`just quality::local::mcdc`) and the running gap list at
+  (the MC/DC check) and the running gap list at
   [`docs/MCDC_GAPS.md`](docs/MCDC_GAPS.md).
 * Do not introduce dynamic allocation in test scaffolding -- the same
   NASA Power-of-10 Rule 3 budget applies.
 
 ## 7. What the commit gate suite checks
 
-The registered CI gates are the authority -- `just ci` names each gate as it
+The registered CI gates are the authority -- the gate suite names each gate as it
 runs it. They fall into a few families, and each family has a policy
 document; click through before disagreeing with a finding.
 
@@ -204,7 +204,7 @@ document; click through before disagreeing with a finding.
 * **One logical change per commit.** Fuzz harnesses, documentation
   updates, and HAL refactors should land as separate commits even when
   authored in the same session.
-* **Run the full gate suite locally** (`just ci`) before opening a PR. CI uses
+* **Run the full gate suite locally** before opening a PR. CI uses
   the same gate registry and pinned environment.
 * **No backward-compatibility shims.** Update every call site in the
   same commit; do not leave deprecated aliases or wrappers.
@@ -244,7 +244,7 @@ how it was done.
   example many RMAC statistics counters are clear-on-read, so a
   baseline read followed by a post-event read yields the exact
   delta). Paste both reads.
-* **Bench scripts.** The exact `scripts/hil/*.sh` invocations used.
+* **Bench scripts.** The exact HIL script invocations used.
 
 ### Rule out environment error first (required)
 
@@ -253,8 +253,8 @@ build, and -- for a hardware bug -- the bench are themselves sound.
 Otherwise the "bug" may be your setup. **Before filing, run the full
 verification baseline and paste its results into the issue:**
 
-* **Local unit-test suite** -- `just quality::local::test`. Expect `100% tests passed`.
-* **CI gate suite** -- `just ci`, the same complete gate registry that the
+* **Local unit-test suite**. Expect `100% tests passed`.
+* **CI gate suite** -- the same complete gate registry that the
   workflows invoke. Do not reproduce the registry with a hand-written list.
 * **HIL suite** (hardware bugs) -- `just hil::run`, which builds locally,
   stages the artifacts, and verifies every app under
