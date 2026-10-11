@@ -7,6 +7,7 @@
 const std = @import("std");
 pub const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Scaling policy for an image placed in a destination rectangle.
 pub const Scale = enum { fit, fill };
@@ -86,6 +87,30 @@ pub fn render(
         crop_y = (image.height - crop_h) / 2;
     }
 
+    ops.pushClip(backend, rect);
+    defer ops.popClip(backend);
+    const crop: Crop = .{ .x = crop_x, .y = crop_y, .w = crop_w, .h = crop_h };
+    if (unscaled(target, crop)) {
+        const first = image.pixels[@as(usize, crop_y) * image.width + crop_x ..];
+        if (ops.blit(backend, target, first.ptr, @intCast(image.width), .gray8)) return;
+    }
+    drawRuns(fill_rect, backend.user, image, target, crop);
+}
+
+/// The source window a render reads.
+const Crop = struct { x: u32, y: u32, w: u32, h: u32 };
+
+fn unscaled(target: types.Rect, crop: Crop) bool {
+    return target.w == crop.w and target.h == crop.h and crop.w <= std.math.maxInt(i32);
+}
+
+/// Nearest-neighbour scale `crop` into `target` as horizontal fill_rect runs,
+/// coalescing equal adjacent output pixels.
+fn drawRuns(fill_rect: anytype, user: ?*anyopaque, image: Bitmap, target: types.Rect, crop: Crop) void {
+    const crop_x = crop.x;
+    const crop_y = crop.y;
+    const crop_w = crop.w;
+    const crop_h = crop.h;
     var dy: i32 = 0;
     while (dy < target.h) : (dy += 1) {
         const sy = crop_y + @as(u32, @intCast(@as(u64, @intCast(dy)) * crop_h / @as(u64, @intCast(target.h))));
@@ -98,7 +123,7 @@ pub fn render(
                 const next_x = crop_x + @as(u32, @intCast(@as(u64, @intCast(end)) * crop_w / @as(u64, @intCast(target.w))));
                 if (gray(image.pixels[@as(usize, sy) * image.width + next_x]) != color) break;
             }
-            fill_rect(backend.user, target.x + dx, target.y + dy, end - dx, 1, color);
+            fill_rect(user, target.x + dx, target.y + dy, end - dx, 1, color);
             dx = end;
         }
     }

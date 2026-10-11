@@ -304,6 +304,17 @@ pub fn build(b: *std.Build) void {
     });
     image_test_module.addImport("image", image_module);
     const image_tests = b.addTest(.{ .root_module = image_test_module });
+    const paint_ops_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/paint_ops_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    paint_ops_test_module.addImport("ops", b.createModule(.{
+        .root_source_file = b.path("src/paint_ops.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    const paint_ops_tests = b.addTest(.{ .root_module = paint_ops_test_module });
 
     const image_widget_module = b.createModule(.{
         .root_source_file = b.path("src/widget_image_abi.zig"),
@@ -377,6 +388,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_reflow_view_tests.step);
     test_step.dependOn(&run_book_tests.step);
     test_step.dependOn(&run_image_tests.step);
+    test_step.dependOn(&b.addRunArtifact(paint_ops_tests).step);
     test_step.dependOn(&run_list_tests.step);
     test_step.dependOn(&run_core_tests.step);
     test_step.dependOn(&run_pager_tests.step);

@@ -615,6 +615,14 @@ typedef enum : uint8_t {
   k_ra8_widget_text_size_ui_30 = 10U, /**< Interface text, 30 px. */
 } ra8_widget_text_size_t;
 
+/** Pixel layout handed to ra8_widget_paint_t::blit; the value is bytes per pixel. */
+typedef enum : uint8_t {
+  k_ra8_widget_pixel_format_gray8    = 1U, /**< 8-bit grey.            */
+  k_ra8_widget_pixel_format_rgb565   = 2U, /**< 16-bit RGB565.         */
+  k_ra8_widget_pixel_format_rgb888   = 3U, /**< 24-bit RGB.            */
+  k_ra8_widget_pixel_format_argb8888 = 4U, /**< 32-bit ARGB.           */
+} ra8_widget_pixel_format_t;
+
 /**
  * @struct ra8_widget_paint_t
  * @brief Drawing backend the concrete leaf widgets paint through (a DI seam).
@@ -692,6 +700,23 @@ typedef struct ra8_widget_paint {
                           ra8_widget_text_size_t   size,
                           int32_t*                 out_w,
                           int32_t*                 out_h);
+  /** @brief Optional line from (x0, y0) to (x1, y1); NULL falls back to fill_rect. */
+  void (*draw_line)(void* user, int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color);
+  /** @brief Optional unscaled copy of @p w x @p h pixels, @p stride bytes per row. */
+  void (*blit)(void*                     user,
+               int32_t                   x,
+               int32_t                   y,
+               int32_t                   w,
+               int32_t                   h,
+               const uint8_t*            pixels,
+               int32_t                   stride,
+               ra8_widget_pixel_format_t format);
+  /** @brief Optional clip stack: later draws stay inside the pushed rectangle. */
+  void (*push_clip)(void* user, int32_t x, int32_t y, int32_t w, int32_t h);
+  /** @brief Restore the clip that was current before the matching push_clip. */
+  void (*pop_clip)(void* user);
+  /** @brief Optional blended fill; NULL paints @p color solid when @p alpha > 0. */
+  void (*fill_rect_alpha)(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, uint8_t alpha);
 } ra8_widget_paint_t;
 
 /**
