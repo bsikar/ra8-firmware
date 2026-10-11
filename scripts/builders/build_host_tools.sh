@@ -41,9 +41,6 @@ build_one() {
   if ! "$SCRIPT_DIR/host_cmake.sh" "${mode[@]}" "$dir" "$dir/build"; then
     echo "tools/$name failed to build." >&2
     echo "Run 'just setup' and enter 'just dev_shell' for the pinned compiler/toolchain." >&2
-    if [ "$name" = ra8_emulator ]; then
-      echo "For a native macOS emulator build, also run 'just apps::emulator::setup'." >&2
-    fi
     return 1
   fi
 }

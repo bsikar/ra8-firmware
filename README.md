@@ -51,16 +51,14 @@ It boots the unmodified cross-compiled `.elf` -- the same image that flashes
 to a board -- on an
 emulated Cortex-M over a modelled RA8D2 peripheral space, and shows the GLCDC
 framebuffer beside the board LEDs and live USB / UART / IRQ / touch state. The
-live window is macOS-only (Cocoa, provisioned by `just apps::emulator::setup`); booting,
-MMIO reporting, console capture and frame dumps run headless everywhere.
+`ra8_gui` debugger opens the same image in a window (SDL3, fetched by the build
+under `-Dgui`); booting, MMIO reporting, console capture and frame dumps run
+headless everywhere.
 
 Because it runs the real binary through the real bring-up code, it reproduces
 firmware bugs a short bench run never reaches. It models hardware *handshakes*
 rather than silicon timing, and some peripherals are modelled further than
-others, so it complements the bench instead of replacing it. CI leans on it:
-`just apps::emulator::eil` boots every HIL app headless and asserts its expectation, and
-`just apps::emulator::matrix` sweeps every example.
-
+others, so it complements the bench instead of replacing it. 
 ## Hardware
 
 The bench board is an **EK-RA8D2**: Cortex-M85 at 1 GHz plus Cortex-M33 at

@@ -22,7 +22,7 @@ default:
     @echo "  just apps::host              Standalone desktop applications"
     @echo "  just apps::board             On-target standalone board applications"
     @echo "  just apps::test              Host application unit & integration tests"
-    @echo "  just apps::emulator          macOS CPU simulation and profiling"
+    @echo "  just apps::emulator          run apps on the ra8-emulator"
     @echo "  just apps::hardware          Local bench hardware flash and debug"
     @echo "  just apps::filter            Pre-configured firmware application queues"
     @echo "  just apps::example           Firmware examples and reference code"
