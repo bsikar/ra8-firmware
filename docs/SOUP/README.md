@@ -122,7 +122,7 @@ an application/content vertical continues to consume that app-owned vendor.
 
 The SBOM is generated and validated by
 [`../../scripts/gen/gen_sbom.py`](../../scripts/gen/gen_sbom.py)
-(`just quality::local::sbom` / `just quality::local::sbom_check`). The license
+(gen_sbom.py and its --check mode). The license
 inventory is hand-maintained and cross-checked against the same registry by
 [`../../scripts/checks/check_soup_inventory.py`](../../scripts/checks/check_soup_inventory.py),
 which the same gate runs. The component registry the generator renders lives in
@@ -131,7 +131,7 @@ the sibling module
 and is the single
 source of truth for the version / license / purl / provenance fields. When
 you bump or re-vendor a component here, update that registry and run
-`just quality::local::sbom` so the SBOM and inventory do not drift (enforced in CI and the
+gen_sbom.py --check so the SBOM and inventory do not drift (enforced in CI and the
 pre-commit hook).
 
 Commit-pinned components are additionally scanned for published CVEs every

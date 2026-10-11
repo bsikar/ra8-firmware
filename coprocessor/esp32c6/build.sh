@@ -122,7 +122,7 @@ if [[ "$-" == *p* ]]; then
     echo "       idf.py reports: ${idf_version:-unknown}" >&2
     echo "       Fix: check out ${ESP_IDF_VERSION} in \${IDF_PATH}, re-run its install.sh," >&2
     echo "       then re-export (get_idf, or . \"\${IDF_PATH}/export.sh\")." >&2
-    echo "       Provisioning is declared in infra/ansible/roles/c6_toolchain/." >&2
+    echo "       Provisioning is declared in the ra8ci repo (infra/ansible/roles/c6_toolchain/)." >&2
     echo "       NOTE: v5.4.1 does NOT build esp-hosted-mcu -- the component-manager" >&2
     echo "       pull of tf-psa-crypto fails to compile p256-m under that release." >&2
     exit 1

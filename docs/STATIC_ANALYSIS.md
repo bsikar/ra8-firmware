@@ -19,10 +19,10 @@ scope floor makes a collapsed discovery walk fail.
 
 ```sh
 # Local: full analyzer pass + summary
-just quality::local::scan_build
+# the scan-build gate body moved to the ra8ci repo
 
 # Exactly what CI runs: the wrapper's own --selftest, then --strict.
-just quality::gate::run scan-build
+# scan-build gate lives in the ra8ci suite
 
 # Just the wrapper's both-directions selftest (seconds, no analyzer needed):
 bash scripts/checks/scan_build.sh --selftest
@@ -201,10 +201,10 @@ suppressed by this filter, which is exactly why it stays.
 The per-commit hook does **not** invoke scan-build (a full analyzed rebuild
 takes minutes -- too expensive to gate every commit). Instead:
 
-* Developers run `just quality::local::scan_build` locally before opening a PR.
+* Developers run `# the scan-build gate body moved to the ra8ci repo` locally before opening a PR.
 * CI runs the **`scan-build` gate** on every push and same-repo PR: the
   `scan-build` job in `.github/workflows/firmware.yml`, which is a thin
-  `just quality::local::gate scan-build` driver over
+  the scan-build gate driver over
   `scripts/checks/scan_build.sh --strict`. It is a required job like every
   other gate; there is no warn-only mode.
 

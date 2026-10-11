@@ -173,8 +173,8 @@ means nothing to doxygen is not an improvement on a missing tag.
 ## Comment formatting
 
 Spacing inside single-line block comments is enforced by
-`scripts/checks/check_comment_format.py`, which runs as part of `just quality::local::format`
-(applies) and `just quality::local::check` (verifies), and so gates pre-commit and CI through
+`scripts/checks/check_comment_format.py`, which the format check runs
+(verify mode) and so gates pre-commit and CI through
 `scripts/checks/format_code.sh`. The rules:
 
 - **One space after the opener.** `/*text` -> `/* text`; the Doxygen member
@@ -219,7 +219,7 @@ block + one space) and never touches the comment interior
 (`ReflowComments: false`); **the pass owns the interior + the `*/` column**.
 Because the two never overlap, they reach a stable result together (a comment
 the pass tightens can free column budget that lets clang-format re-align the
-start, so `just quality::local::format` repeats both to a fixed point).
+start, so the format check repeats both to a fixed point).
 
 Left untouched: multi-line `/** ... */` blocks, `//` line comments, decorative
 banners (`/**** ... ****/`), and inline mid-code comments (`f(/*tag=*/x)`) --

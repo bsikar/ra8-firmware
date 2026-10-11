@@ -4,7 +4,7 @@ This project ships [libFuzzer](https://llvm.org/docs/LibFuzzer.html)
 (coverage-guided in-process fuzzer; FOSS, ships with `clang`) harnesses
 for the parsers most exposed to untrusted input. The harnesses live in
 `tests/fuzz/` and are opt-in via the CMake option `RA8_FUZZ=ON`. The
-default host test build (and the `just quality::local::test` / `ctest` CI gate) is not
+default host test build (and the `ctest` gate) is not
 affected.
 
 ## Targets
@@ -23,13 +23,12 @@ existing files and listing it in `tests/fuzz/CMakeLists.txt`
 (`RA8_FUZZ_TARGETS`). That registry is the single source of truth:
 `scripts/checks/run_fuzz.sh --list` parses it, cross-checks it against
 the `tests/fuzz/src/fuzz_ra8_*.c` sources (drift in either direction is a
-hard error), and both `just quality::local::fuzz` and the nightly CI sweep consume it
+hard error), and both the local smoke run and the nightly CI sweep consume it
 through that script -- there is no second list to update.
 
 ## Running
 
-`just quality::local::fuzz` is the smoke run. It delegates to
-`scripts/checks/run_fuzz.sh`, which configures and builds
+The local smoke run is `scripts/checks/run_fuzz.sh`, which configures and builds
 `tests/build-fuzz/` and then gives every harness a short budget; the
 build is skipped when no source changed, so a re-run only re-fuzzes.
 The same script takes a single target name and a longer budget for a
@@ -43,7 +42,7 @@ then exits non-zero listing every harness that failed. Crash inputs
 land in `tests/build-fuzz/crashes/<target>/`.
 
 `.github/workflows/fuzz-nightly.yml` is a thin driver for the
-`fuzz-sweep` gate (`just quality::gate::run fuzz-sweep`), which runs
+`fuzz-sweep` gate (in the ra8ci suite), which runs
 that same sweep nightly at a far larger per-target budget. The job
 fails on any crash and uploads the crash directory and the full sweep
 log as artifacts.
@@ -65,7 +64,7 @@ the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
 including these fuzz harnesses -- run inside the project's Linux
 devcontainer. Use `just tests::devcontainer all` for host tests and
-`just quality::devcontainer::fuzz` for the fuzz smoke run. The fuzz CMake file drops
+the devcontainer fuzz gate for the smoke run. The fuzz CMake file drops
 AddressSanitizer when configured on macOS so the build still succeeds
 for development, but a real fuzz session belongs in the container.
 
@@ -98,8 +97,8 @@ seconds rather than minutes, which is the difference between the
 smoke run finding a regression and missing it.
 
 The seeds are (re-)materialised by `scripts/builders/init_fuzz_corpora.sh`,
-which is invoked automatically by `just quality::local::fuzz` and by
-`scripts/checks/run_fuzz.sh` before each session. The script is
+which is invoked automatically by `scripts/checks/run_fuzz.sh` before each
+session. The script is
 idempotent: it overwrites the seed files in place but does not touch
 crash reproducers added by the fuzzer or by hand.
 

@@ -4,7 +4,7 @@
  *
  * @details
  * Closes the acceptance for the import-time pagination cache:
- * "corpus fixtures run via `just quality::local::test`; cache produces identical pages to
+ * "corpus fixtures run via the host test suite; cache produces identical pages to
  * live layout; config change invalidates correctly."
  *
  * Unlike `apps/shared_libs/reflow/tests/src/test_reflow_cache.c` (which round-trips a *synthetic*

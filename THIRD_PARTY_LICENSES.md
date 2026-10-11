@@ -17,7 +17,7 @@ hand-maintained against that same registry rather than generated from it, and
 [`scripts/checks/check_soup_inventory.py`](scripts/checks/check_soup_inventory.py)
 cross-checks the two so the registry and this inventory cannot drift apart
 unnoticed. When you re-vendor a component, update the registry, update the
-section below, and run `just quality::local::sbom`, which runs the generator
+section below, and run the SBOM generator (gen_sbom.py)
 and that cross-check.
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
@@ -341,11 +341,11 @@ The SBOM and the registry that backs this inventory are kept in sync by one
 generator:
 
 ```sh
-just quality::local::sbom        # regenerate docs/sbom/ra8-firmware.cdx.json
-just quality::local::sbom_check  # fail if the committed SBOM is stale or drifted
+python3 scripts/builders/gen_sbom.py            # regenerate docs/sbom/ra8-firmware.cdx.json
+python3 scripts/builders/gen_sbom.py --check    # fail if the committed SBOM is stale or drifted
 ```
 
-`gen_sbom.py --check` (invoked by `just quality::local::sbom_check`, the pre-commit hook, and
+`gen_sbom.py --check` (invoked by the pre-commit hook and
 the CI pre-commit gate suite) cross-checks the registry against the vendored
 tree: it fails on an uncatalogued directory under either canonical third-party
 root, or a version macro that disagrees with the recorded version, so a newly

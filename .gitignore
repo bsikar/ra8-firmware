@@ -152,7 +152,6 @@ ra8_cfg.txt
 # Python / tooling
 __pycache__/
 /.tools/
-/.ansible/
 *.pyc
 *.pyo
 .venv/
@@ -179,7 +178,7 @@ apps/shared_libs/book/inc/book_library.h
 # committed @generated fixture, like the epub/rabook parity fixtures): its
 # cover-thumbnail bytes are architecture-dependent to regenerate (libjpeg
 # SIMD decode rounding differs x86 vs arm64), so the EIL fb-hash golden pins
-# the committed bytes. Regenerate only deliberately (scripts/builders/books.sh)
+# the committed bytes. Regenerate only deliberately (books.sh now lives in the ra8ci repo)
 # and re-pin the golden in the same change.
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img
@@ -208,10 +207,10 @@ tools/cache_bench/*.dSYM/
 /coprocessor/esp32c6/esp-hosted-mcu/
 # Bench Wi-Fi credentials the c6_wifi_join firmware compiles in at build time
 # (SSID + WPA passphrase). The .example template is committed; the real values
-# are a secret (the PSK lives in OpenBao) and must never be committed.
+# are a secret and must never be committed (bench provisioning is in the ra8ci repo).
 /coprocessor/esp32c6/wifi.env
 # libFuzzer seed corpus: regenerated deterministically by
-# scripts/builders/init_fuzz_corpora.sh (invoked from `just quality::local::fuzz`), so the seeds
+# init_fuzz_corpora.sh (now in the ra8ci repo), so the seeds
 # are a build product, not source. Committing them only lets them drift from
 # the generator. Crash reproducers the fuzzer discovers are NOT regenerable,
 # so those are carved back in below and must be committed by hand.

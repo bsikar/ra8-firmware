@@ -111,7 +111,7 @@ function(ra8_ns_rot_header_object _out)
   endif()
   if(NOT RA8_ZIG_EXECUTABLE)
     message(FATAL_ERROR "ra8: the NS RoT header is a Zig object but no zig binary was found on PATH. "
-                        "Install the pinned toolchain (just setup) before configuring an NS image."
+                        "Install the pinned toolchain (scripts/dev/setup_python.sh) before configuring an NS image."
     )
   endif()
   _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)

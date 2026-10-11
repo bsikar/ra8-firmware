@@ -74,14 +74,11 @@ These are **reference-only** -- do not copy code from them into this repo withou
 - **Enter the pinned development toolchain**: `just dev_shell`
 - **Build specific app**: `just apps::build <app>` (e.g., `just apps::build blink_hal`)
 - **List discovered firmware examples**: `just apps::example::list`
-- **Run host unit tests**: `just quality::gate::run unit-tests` (portable);
-  `just quality::local::test` only when the native host is CI-compatible
-- **Code formatter**: `just quality::local::format` (apply) or `just quality::local::check` (dry run)
-- **Run linter (clang-tidy)**: `just quality::local::tidy`
+- **Run host unit tests**: `zig build test` (host tests; the ARM link is `zig build arm`)
 - **Inventory lint/policy suppressions**: `just checks::suppressions markdown`
 - **Generate Doxygen docs**: `just docs::build`
-- **Pre-commit validation**: `just quality::local::ascii` (encoding check), `just quality::local::version` (check @since tags)
-- **Reproduce CI before a push**: `just ci` (see below) -- NOT before commits
+- **CI gates before a push**: gone from this repo; the gate suite lives in the
+  private `ra8ci` repo (see "CI and the Gates" below)
 
 ---
 
@@ -113,227 +110,19 @@ runtime log message: 30 error strings were collapsed that way, several distinct
 failure sites ending up sharing one generic string, so a field log could no
 longer say which call failed.
 
-## Run the CI Gates Before Every `git push`
+## CI and the Gates
 
-**Run the gates before every `git push`. Not before commits -- before pushes.**
-
-### There is exactly ONE definition of a gate
-
-`scripts/ci.sh` holds the body of every CI check as a shell function, listed in
-its `RA8_GATE_REGISTRY`. Every workflow step is a thin Just driver:
-
-```yaml
-- run: just quality::local::gate <name>
-```
-
-So the workflows decide only *scheduling* -- which gates run in which job, on
-which runner, in parallel with what -- and never what a gate *does*. Running
-the gates locally therefore executes the identical functions the runner
-executes. "Local green, CI red" from a missing check is structurally
-impossible.
-
-**Never hand-copy a gate body anywhere.** A `/tmp/verify_gates.sh` that pastes
-commands out of `ci.sh` is a copy of a copy: it stopped mirroring CI the moment
-a gate was added, and it has already cost real work. Use `--gate` / `--native`.
-
-| Command | What it does |
-|---|---|
-| `just ci` | every gate, in the Ubuntu devcontainer (the macOS path) |
-| `just quality::fast` | the same, minus the `slow` speed class |
-| `just quality::native` | every gate natively, no container runtime needed |
-| `just quality::native_fast` | native, minus the `slow` gates |
-| `just quality::gate::list` | print the registry: name, speed class, description |
-| `just quality::gate::run <name>` | run one gate against the working tree in the supported host environment |
-| `just quality::local::gate <name>` | run exactly one gate (what CI invokes) |
-
-On **Linux** the native path *is* the CI environment, so `just quality::native` is
-the supported run and needs no docker/podman -- with no runtime installed,
-`just ci` falls back to it automatically. On **macOS** it does not: the format
-gate pins `clang-format-22` (Homebrew ships a different major) and the host
-tests `mmap` peripheral RAM with `MAP_FIXED` below 4 GiB, which macOS arm64
-refuses, so every test SIGKILLs before `main()`. The container exists to give
-the Mac an Ubuntu userland; a macOS-native "pass" would be a lie, so it refuses
-rather than reporting one.
-
-Both suite modes run against a clean snapshot of committed `HEAD` in a
-throwaway directory -- exactly what CI checks out. That is why a stale `.gcda`
-from another branch or in-source CMake junk cannot skew a gate here.
-
-**A gate reads the tree it is standing in.** The suite `cd`s into that
-snapshot, so a gate body uses `$PWD` and never `$REPO_ROOT`, which is the HOST
-checkout. `tools-build` reached for `$REPO_ROOT` and so never gated `HEAD` at
-all -- it built the working tree and left its output there -- and could not run
-on the containerised path, where the host repo is mounted read-only at
-`/workspace`. `check_gate_bodies.py` now rejects `$REPO_ROOT` anywhere
-in `scripts/ci/gates/`. A gate needing the host repository's *history* calls
-`ci_history_repo`; there is no other legitimate use.
-
-### A killed run is UNKNOWN, not FAIL
-
-`just ci` uses the same three-value contract as `just quality::local::gate ci-status-contract`: `0` PASS,
-`1` FAIL, **`3` UNKNOWN**. Exit 3 means the run stopped being a measurement --
-it was signalled (a detached `nohup just quality::native &` is reaped by
-systemd-logind when the last ssh session for that user closes), or the snapshot
-it was gating vanished under it. It prints `RESULT: ABORTED` and no per-gate
-`FAIL` row, because a killed run has no verdict.
-
-That distinction is not cosmetic. The suite used to delete its own snapshot on
-SIGTERM and **keep running**, so every remaining gate "failed" on missing files
-and the run printed a FAIL table describing nothing about the tree under test.
-**Never read an UNKNOWN as either a pass or a failure** -- re-run it.
-
-### Adding a gate
-
-1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh` -- still the only
-   list of what gates exist.
-2. Write the matching `gate_<name>` function (dashes become underscores) in the
-   themed fragment under `scripts/ci/gates/` that fits it. Those files are
-   SOURCED by `ci.sh`, never executed, and hold bodies only: a second registry
-   in one of them would recreate exactly the drift this design prevents.
-
-A registry row with no function behind it fails `scripts/ci.sh --list-gates`.
-There are no GitHub Actions workflows any more; CI moves to `tools/ra8ci`,
-which reads the same registry, so a gate is scheduled by being registered.
-
-### Gates fail loudly on a missing tool -- they never skip
-
-A gate whose dependency is absent must FAIL, not pass. `check_annotations.py`
-exits 0 when libclang is missing, so a strict gate silently reported nothing
-for months. Use `require_cmd` / `require_python_mod` in every gate body, and
-never let a gate degrade to a no-op.
-
-### Every detector carries a `--selftest`, and the gate runs it -- ENFORCED
-
-Two rules, both checked by `scripts/ci/check_selftest_coverage.py` in the
-`ci-parity` gate. This used to be a convention that nothing verified, so 28
-gate-wired detectors had no selftest at all and one had a selftest no gate ever
-ran.
-
-1. **Any** script a gate body invokes that *has* a selftest must have it RUN by
-   that gate, before the scan. A selftest nobody executes is documentation.
-2. Every script under `scripts/checks/` (and every `scripts/ci/check_*.py`)
-   that a gate body invokes must ACCEPT a selftest. Those are the detectors --
-   the things that can stop detecting. `builders/`, `report/` and `hil/` are
-   out of scope by the `scripts/` taxonomy below, not by an allowlist.
-
-A selftest must assert **both directions**: at least one must-fire case and one
-must-stay-quiet case, driving the same entry point CI drives. One direction
-proves nothing -- a checker whose scope collapsed to zero files is also
-perfectly quiet, and `check_ci_parity.py`'s selftest once exercised only a
-helper and never `check_workflows()`, the mode CI actually runs. Pair it with a
-**non-vacuity floor** (see `check_asm.py`) so a collapsed scan fails instead of
-reporting clean.
-
-The pre-existing backlog is fully retired: `.github/selftest-baseline.txt` must
-remain absent. A new gate-wired detector with no selftest fails
-immediately, and the coverage checker also rejects recreating an empty
-retirement baseline. Do not add a waiver or baseline row; add the genuine
-both-direction selftest and invoke it from the registered gate.
-
-There is **no pre-commit or pre-push hook**: nothing runs the suite for you and
-nothing blocks a commit or a push. Run `just ci` yourself before pushing, and
-treat the GitHub workflows as the gate of record.
-
----
+The CI and its gate registry moved to the private `ra8ci` repo. Nothing here
+runs them any more; the runner helpers are gone from this repository. Build-integrated checks
+(`scripts/checks/*` used by the build itself) still live here.
 
 ## Working on the shared verification box
 
-Several agents share one Linux box. Two rules keep them from destroying each
-other's work; both are `just` targets, so neither depends on anyone
-remembering a convention.
-
-### Get your own checkout: `just workspace::new`
-
-**Never work directly in `~/ra8-firmware`, and never improvise your own
-checkout.** Improvised trees (`~/ra8-296`, `~/ra8-base`, `~/wt-land296`) are
-exactly how two agents had their working directories clobbered mid-run,
-corrupting a baseline measurement and an EIL run.
-
-```sh
-just workspace::new my-task            # isolated worktree at ~/ra8-ws/my-task
-just workspace::new my-task origin/main   # ...off a different ref
-cd ~/ra8-ws/my-task && just ci      # gates run here, unmodified
-just workspace::free my-task           # give it back when done
-```
-
-`just workspace::list` shows what exists, `just workspace::doctor` checks the environment
-(container runtime, ccache, disk). Workspaces are linked git worktrees, so they
-cost a checkout rather than a clone and share the object store -- a branch
-committed in one is immediately visible in all of them.
-
-You do not have to clean up: `scripts/dev/agent_workspace.sh reap` runs from a
-systemd timer and again on every `ws-new`, and it refuses to delete a tree that
-is in use, dirty, or holding commits that are not on any remote branch. Build
-output never lands in the workspace at all (the containerised suite builds
-inside a `--rm` container), so there is nothing to `rm -rf` before a coverage
-run.
-
-`just ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
-bind-mounts the main repo's git directory alongside it, so the in-container
-read of `HEAD` resolves.
-
-### Do not poll GitHub: `just quality::local::gate ci-status-contract`
-
-**Do not run `gh run watch`.** The REST quota is 5000/hour and it is *shared* by
-every agent on the box; ~18 concurrent watchers exhausted it twice in one day,
-after which no agent could tell "still running" from "broken".
-
-One shared daemon (`scripts/ci/monitor.sh daemon`, installed via
-`install-service`) polls once per interval for all workflows and writes a local
-status file. Read it instead -- any number of agents can, at zero quota cost:
-
-```sh
-just workspace::status              # newest sha on dev
-just workspace::status <sha>    # a specific commit
-just workspace::quota               # how much budget is left
-```
-
-Exit codes are `0` PASS, `1` FAIL, `3` **UNKNOWN**. UNKNOWN is a real answer and
-means "no verdict could be established" -- quota exhausted, daemon down, status
-file stale, sha not seen yet. **Never report UNKNOWN as either a pass or a
-failure.** When the quota is gone,
-`/bin/bash -p scripts/ci/monitor.sh runner-status --sha <sha>` reads outcomes off the
-runner box over ssh and costs nothing.
-
-HIL and monitor shell entrypoints are security-pinned to `/bin/bash -p` rather
-than the ordinary portable `#!/usr/bin/env bash` form. These scripts cross the
-hardware, SSH, generated-service, or runner boundary; privileged Bash mode
-blocks caller-controlled `BASH_ENV` and exported-function startup injection.
-Nested HIL shell calls must preserve the same absolute `-p` boundary.
-
----
-
-## The CI fleet is DECLARED, not hand-built
-
-Every machine the CI and HIL tooling touches lives in one file,
-**`infra/fleet.yml`**: how to reach it, what kind of host it is, and which
-plays it runs. The inventory, the playbook selection, the transport and every
-role variable are derived from it. **Adding a machine is adding a block.**
-Never hand-edit a role, a `host_vars` file or an inventory to change what the
-declaration owns -- `scripts/checks/check_fleet_declaration.py`
-fails a `host_vars` file that re-declares anything the declaration owns.
-
-```sh
-just infra::ssh_config              turn THIS machine into a control node
-just infra::list                    what is declared, and what each host runs
-just infra::status                  what every host is running, right now
-just infra::check k3s-pve      DRY RUN -- report, change nothing
-just infra::apply k3s-pve      converge that machine to the declaration
-```
-
-**Reachability is declared too, and never assumed.** Each host carries a real
-`connect.address` (an IP or a resolvable name) plus an optional `jump:` naming
-another fleet host, and every ssh and Ansible invocation is built from those --
-so any machine with ansible and an accepted key can drive the fleet. Addressing
-a host by an `~/.ssh/config` alias is a gate failure: those existed on one
-laptop, which had no ansible, so nothing was a working control node. `just infra::ssh_config` GENERATES
-the friendly aliases from the declaration; never hand-write them.
-
-**Read `docs/CI_FLEET.md` before touching any of it.** There is no runner
-pool: the fleet is the k3s vault node, the dev box with its HIL listener, and
-the bench Pi.
-
----
+The shared-box workspace and gate tooling (`just workspace::*`,
+`scripts/dev/agent_workspace.sh`, `scripts/ci/monitor.sh`) moved to the
+`ra8ci` repo with the rest of the CI. Per-checkout worktrees and the
+GitHub-polling rules live there now; on this box, work in your own checkout
+and do not poll GitHub with `gh run watch` (the REST quota is shared).
 
 ## Subagents & Swarms
 
@@ -346,7 +135,7 @@ This repository utilizes specialized custom project subagents under `.claude/age
 - **Safety & MC/DC Compliance (`@safety-reviewer`)**:
   - **Purpose**: Audits safety compliance (DO-178C Level B), compound boolean decision MC/DC test vector coverage, SOLID design principles, and NASA Power of 10 rules.
   - **When to Trigger**: On any modification to core logic, state machines, control flow, or host unit tests under `tests/`.
-  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `just quality::local::test`.
+  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Runs tests and coverage checks with the Bash tool.
 
 ### Agent Collaboration Protocol
 
@@ -424,9 +213,7 @@ plainly exists.
 
 ### Enforcement
 
-`scripts/checks/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
-(so it is covered by `just ci` / `just quality::native` and the matching workflow job)
-and in the `pre-commit-checks` CI gate. It fails on two narrowly-calibrated
+`scripts/checks/check_no_silent_stubs.py` runs in the pre-commit checks. It fails on two narrowly-calibrated
 patterns:
 
 - **SHADOW** -- a do-nothing second definition of a symbol that is really
@@ -1216,13 +1003,6 @@ ra8-firmware/
   tests/                       Host-side unit tests; each unit uses src/ and inc/
   scripts/                     Organised by the QUESTION a script answers, not by
                                subsystem, so each file has one plausible home.
-    ci.sh                      The ONE gate registry and implementation entry
-                               point. Workflows reach it through
-                               `just quality::local::gate <name>`.
-    ci/                        CI runner helpers + check_ci_parity.py
-      gates/*.sh               Gate BODIES, sourced by ci.sh. Split by theme so
-                               no file carries 1100 lines; still exactly one
-                               registry and one body per gate.
     checks/                    "Is the tree OK?" -- read-only, exits non-zero
                                when it is not. Every check_*.py, plus the
                                third-party analyser drivers (clang-tidy,
@@ -1231,24 +1011,20 @@ ra8-firmware/
                                Kept out of checks/ so that stays read-only.
     gen/                       Produce a committed artifact from a source of
                                truth (fonts, fixtures, SBOM, nav trees)
-    builders/                  Produce a build output (apps, docs, books).
+    builders/                  Produce a build output (apps, docs).
                                NOT named build/: .gitignore's `build/` pattern
                                matches any directory of that name at any depth,
                                so a new file there would be silently untracked,
                                and 13 checkers exclude the `/build/` fragment.
     report/                    Tell me about the tree; never fails on content
-    hil/                       Hardware-in-the-loop bench
-      lib/                     Shared rig shell libraries
-      usb/                     USB bench harnesses (need a board attached)
     emu/                       ra8_emulator smoke/matrix + the EIL suite
     dev/                       Inner loop on a developer's desk: flash, debug,
                                ozone, openocd, agent workspaces
-    secrets/                   Key material and credential handling (RoT, OpenBao)
+    secrets/                   Key material and credential handling (RoT)
     git/
       pre-commit               Exact-index snapshot transport for Just hook policy
   docs/
     reference/                 Committed datasheets and manuals (PDFs)
-  .github/workflows/           CI
   .clang-format                Formatter config (copied verbatim from STAR rx72n)
   .clangd                      Editor integration (strips ARM flags clangd can't parse)
   .gitignore

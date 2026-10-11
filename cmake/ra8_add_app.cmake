@@ -513,7 +513,7 @@ endmacro()
 # Generalises the copy-pasted second-executable + objcopy recipe so any app opts
 # in an M33 image with one call. Cross-build only: on the host
 # (RA8_OFF_TARGET / __APPLE__) there is no arm-none-eabi toolchain, so this is
-# a no-op and `just quality::local::test` keeps building the M85 side alone.
+# a no-op and the host test suite keeps building the M85 side alone.
 #
 # Usage:
 #   ra8_add_cpu1_image(

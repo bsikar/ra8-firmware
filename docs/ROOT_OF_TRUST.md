@@ -19,7 +19,7 @@ key. It picks a backend automatically (override with `--backend`):
 
 | Backend | What it is | For whom |
 |---------|-----------|----------|
-| `openbao` | An operator-supplied OpenBao endpoint at `BAO_ADDR`, using KV v2 native versioning. Reached by `scripts/secrets/openbao_client.py`; nothing is spun up locally. | Maintainers with vault access. |
+| `openbao` | An operator-supplied OpenBao endpoint at `BAO_ADDR`, using KV v2 native versioning. Reached by the OpenBao client (now in the ra8ci repo); nothing is spun up locally. | Maintainers with vault access. |
 | `local` | A 0700 directory (`RA8_ROT_STORE_DIR`, default `~/.config/ra8/rot`) holding one PEM per version plus `history.json`. | Anyone who clones the repo -- **no OpenBao needed**, same spirit as the `.env` fallback. |
 
 `auto` uses OpenBao when it is configured **and** reachable, else falls back to
@@ -32,7 +32,7 @@ free-text note.
 The vault address + AppRole identity come from the same 0600 creds file the HIL
 tooling uses -- `~/.config/hil/openbao.env` (override with `HIL_OPENBAO_ENV`);
 it holds how to reach the vault, never the secrets themselves. See
-`scripts/secrets/openbao_client.py` for the full key list. The RoT-specific path is
+the ra8ci repo's OpenBao client for the full key list. The RoT-specific path is
 `BAO_ROT_SECRET_PATH` (default `ra8d2/rot-signing-key`) under `BAO_KV_MOUNT`.
 
 The AppRole policy must allow `create`/`update`/`read` on the configured data

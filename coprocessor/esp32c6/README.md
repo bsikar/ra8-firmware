@@ -94,8 +94,8 @@ measurement is when it hangs off a wrong premise. Check the switches
 ## Building
 
 The build needs esp-idf, and **the dev box does not have it** -- the Pi bench
-host is the build machine. Its provisioning is declared, not hand-built, in
-[`../../infra/ansible/roles/c6_toolchain/`](../../infra/ansible/roles/c6_toolchain/):
+host is the build machine. Its provisioning is declared, not hand-built, in the ra8ci repo
+(`infra/ansible/roles/c6_toolchain/`):
 the IDF checkout, its pinned release, the apt prerequisites (`python3-venv` is
 the one whose absence hard-fails IDF's installer) and a per-minor-version venv
 marker that keeps a re-run from re-downloading gigabytes of toolchain. The role
@@ -144,13 +144,13 @@ Flash over the **CH343 USB-UART bridge**. Do **not** write the image through the
 C6 native USB-JTAG interface: it fails with `EPIPE` partway through the flash
 write. Both interfaces enumerate as `/dev/ttyACM<n>` and the numbering changes
 on a power cycle, so `flash.sh` resolves the bridge by device identity (see
-`scripts/hil/lib/tty_resolve.sh`) and fails loudly if it cannot, rather than
+`scripts/dev/tty_resolve.sh`) and fails loudly if it cannot, rather than
 writing to whatever holds a number. The flash size, mode and frequency come from
 `pins.env` as well; a wrong flash size is the other common bring-up failure.
 
 The root `just apps::build` recipe validates and loads the gitignored
-`wifi.env` beside its template before CMake. The real passphrase lives in
-OpenBao under the bench-network secret, never in this repository.
+`wifi.env` beside its template before CMake. The real passphrase lives in the bench secret store (OpenBao; the
+client lives in the ra8ci repo), never in this repository.
 
 ## Flashing is not evidence
 

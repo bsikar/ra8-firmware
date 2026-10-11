@@ -10,7 +10,7 @@
 #
 
 # Reproducibility posture (recon T5-02): the base image is pinned by its
-# immutable index digest so `just ci` starts from a byte-identical root
+# immutable index digest so the gate suite starts from a byte-identical root
 # filesystem on every host. The toolchain packages the audit calls out --
 # the ARM cross-compiler (whose version-specific miniz miscompile means
 # codegen depends on the build host) and its matching newlib -- are pinned to
@@ -36,7 +36,7 @@
 #
 # Cross-compiler: this image fetches Arm GNU Toolchain 13.3.rel1 to
 # /opt/arm-gnu-toolchain-13.3 by URL + sha256 (below) -- the SAME release + path
-# the self-hosted runner's `build-cross` job uses, so `just ci` and CI build
+# the self-hosted runner's `build-cross` job uses, so the gate suite and CI build
 # byte-reproducible codegen and cmake/toolchain-ra8d2.cmake's HINTS find it. It
 # bundles libstdc++ (the apt gcc-arm-none-eabi did not, so the C++ apps could not
 # build here) and its own newlib, so neither apt package is installed anymore.
@@ -52,7 +52,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # download failed and the tarball was empty, silently producing an image whose
 # pinned tool is simply absent. That is the same failure this tree already
 # gates against in shell (scripts/checks/check_errexit_masking.py) and the same
-# reason `just ci` must fail rather than skip on a missing tool.
+# reason the gate suite must fail rather than skip on a missing tool.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Arm GNU Toolchain 13.3.rel1 -- pinned by URL + sha256 so the devcontainer's
@@ -68,12 +68,12 @@ ARG ARM_GCC_SHA256_DARWIN_ARM64=fb6921db95d345dc7e5e487dd43b745e3a5b4d5c0c7ca4f7
 # Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
 # ra8_emulator decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
 # runner. An unpinned Unicorn is exactly the skew (runner 2.1.4 vs an old
-# 2.0.1). Keep these two in step with RA8_UNICORN_* in scripts/ci/unicorn_pin.sh.
+# 2.0.1). Keep these two in step with RA8_UNICORN_* in the ra8ci unicorn pin.
 ARG UNICORN_VERSION=2.1.4
 ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4
 
 # libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
-# disassembly only -- NOT the decode variable). `just ci` lints
+# disassembly only -- NOT the decode variable). the gate suite lints
 # tools/, so the tidy gate needs that header present inside the
 # container even though the tidy pass builds neither tool. A missing header does
 # not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
@@ -142,7 +142,7 @@ ENV LANG=en_US.UTF-8 \
 
 # Arm GNU Toolchain 13.3.rel1 -> /opt/arm-gnu-toolchain-13.3 (the runner's path,
 # found by cmake/toolchain-ra8d2.cmake's HINTS). Multi-arch: this image is built
-# amd64 (x86 runner / `just ci`) or arm64 (Apple-Silicon `just ci`); pick + verify
+# amd64 (x86 runner / the gate suite) or arm64 (Apple-Silicon the gate suite); pick + verify
 # the matching tarball by sha256 so a corrupted or swapped download fails loudly.
 RUN set -eux; \
     case "$(uname -m)" in \
@@ -162,7 +162,7 @@ RUN set -eux; \
 ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
 
 # Unicorn ${UNICORN_VERSION} from source -> /usr/local (the runner's layout), so
-# `just ci`'s ra8_emulator gates decode Armv8.1-M byte-identically to CI. Pinned by
+# the gate suite's ra8_emulator gates decode Armv8.1-M byte-identically to CI. Pinned by
 # URL + sha256 so a corrupted/swapped/regenerated download fails loudly. Only
 # the arm target is built (ra8_emulator emulates the Cortex-M core), which keeps
 # the build small without changing the arm decode. Verified by re-reading the
@@ -188,7 +188,7 @@ RUN set -eux; \
 # Sanity-check that the clang-18 profile runtime is present. MC/DC
 # instrumented binaries link against libclang_rt.profile-<arch>.a; if
 # the package layout changes upstream we want the image build to fail
-# loudly rather than during `just quality::local::mcdc` on a contributor's machine.
+# loudly rather than during the MC/DC check on a contributor's machine.
 # The arch suffix is aarch64 on Apple Silicon hosts and x86_64 on
 # Intel hosts -- accept either.
 RUN set -eux; \
@@ -198,7 +198,7 @@ RUN set -eux; \
       || (echo "missing libclang_rt.profile-${arch}.a in ${rt_dir}" >&2; \
           ls "${rt_dir}" >&2; exit 1)
 
-# git-lfs -- the repo LFS-tracks apps/board/stand_alone/ereader/content/library/*.epub. `just ci` snapshots the
+# git-lfs -- the repo LFS-tracks apps/board/stand_alone/ereader/content/library/*.epub. the gate suite snapshots the
 # tree with `git archive HEAD`, which spawns the git-lfs filter for those
 # pointers; without the binary present, archive aborts mid-stream. No gate reads
 # the epubs, so ci.sh runs archive under GIT_LFS_SKIP_SMUDGE=1 to emit the
@@ -211,9 +211,9 @@ RUN apt-get update \
 # clang-format-22 -- the exact binary the CI format gate pins
 # (CLANG_FORMAT=clang-format-22 in .github/workflows/firmware.yml, and the tree
 # is formatted to it). Ubuntu 24.04 only ships clang-format-18, which disagrees
-# with v22 on edge cases, so `just ci`'s format gate would be unfaithful without
+# with v22 on edge cases, so the gate suite's format gate would be unfaithful without
 # it. Pulled from the official LLVM apt repository for noble. If LLVM 22 ever
-# disappears from the snapshot mirror, scripts/ci.sh falls back to the highest
+# disappears from the snapshot mirror, the ra8ci runner falls back to the highest
 # clang-format-NN present and prints a clear warning rather than skipping.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gnupg \
@@ -273,10 +273,10 @@ ENV PYTHONDONTWRITEBYTECODE="1" \
 # ccache -- the compiler cache cmake/ccache.cmake wires in as
 # CMAKE_<LANG>_COMPILER_LAUNCHER. It must exist INSIDE the image because every
 # gate build runs in this container against a throwaway snapshot tree; without
-# it each `just ci` recompiles the whole tree from scratch, which on the shared
+# it each the gate suite recompiles the whole tree from scratch, which on the shared
 # verification box means several agents doing that simultaneously on 12 cores.
 #
-# The cache itself is a bind-mounted host directory (scripts/ci.sh mounts it at
+# The cache itself is a bind-mounted host directory (the ra8ci runner mounts it at
 # /ccache and sets CCACHE_DIR), so hits survive the container being --rm'd and
 # are shared across agents. CCACHE_BASEDIR + CCACHE_NOHASHDIR, also set by
 # ci.sh, are what let a snapshot at a fresh mktemp path still hit entries
@@ -293,7 +293,7 @@ RUN apt-get update \
 #
 # Without them that gate could never pass in this container. It does not skip
 # (check_ruff.py / check_shell.py are invoked with --require, and a gate whose
-# dependency is absent must FAIL) -- so the containerised `just ci`, which is
+# dependency is absent must FAIL) -- so the containerised the gate suite, which is
 # the documented macOS path, reported FAIL on every run no matter what the tree
 # contained. CI itself was green because the self-hosted Linux runners have
 # these installed natively, which is exactly the local-green/CI-red divergence
@@ -330,7 +330,7 @@ RUN set -eux; \
 
 # cmake-format / cmake-lint / yamllint -- the tools the lint-cmake and lint-yaml
 # gates need. Both gates call require_cmd and FAIL rather than skip, so without
-# these the containerised `just ci` could never pass.
+# these the containerised the gate suite could never pass.
 RUN set -eux; \
     cmake-format --version; cmake-lint --version; yamllint --version
 
@@ -339,7 +339,7 @@ RUN set -eux; \
 # tools-build generic-project arm that builds and ctests the package all fail
 # loudly without it. Pinned by version and per-architecture sha256 from the
 # official release archives, on both Linux arches this image builds for
-# (amd64 runners, arm64 Apple-Silicon `just ci`). Keep in step with
+# (amd64 runners, arm64 Apple-Silicon the gate suite). Keep in step with
 # docs/TOOLCHAIN.md and apps/host/cbz2jof/go.mod.
 ARG GO_VERSION=1.27.1
 ARG GO_SHA256_AMD64=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
@@ -427,7 +427,7 @@ RUN set -eux; \
 # hadolint -- the tool the `lint-devcontainer` gate needs to lint THIS file.
 #
 # Same reasoning as the two blocks above: the gate calls require_cmd and FAILS
-# rather than skipping, so without this the containerised `just ci` could never
+# rather than skipping, so without this the containerised the gate suite could never
 # pass. Pinned to what the runner installs (see the "Install hadolint" step in
 # .github/workflows/firmware.yml); keep the two in step. Rule configuration
 # lives in .hadolint.yaml at the repo root.

@@ -18,12 +18,12 @@ versa) -- the cause is almost always a version skew documented below.
 
 | Environment | Role | Can do | Cannot do |
 |-------------|------|--------|-----------|
-| **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + full CI through the devcontainer | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git, and `just ci` | Run the low-address host unit tests / coverage natively (macOS arm64 rejects the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); use `just ci` for their Linux execution |
-| **Linux verification host** (x86-64 Debian 12) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 under `/opt`) | Everything host-side + cross-build -- `just quality::native` runs every gate with no container | no Docker required (`just ci` falls back to native on Linux) |
+| **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + full CI through the devcontainer | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git, and the gate suite (ra8ci) | Run the low-address host unit tests / coverage natively (macOS arm64 rejects the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); use the devcontainer for their Linux execution |
+| **Linux verification host** (x86-64 Debian 12) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 under `/opt`) | Everything host-side + cross-build -- the native gate list runs every gate with no container | no Docker required on Linux |
 | **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer image the runners boot, cross toolchain included | -- |
 | **HIL rig** (Linux controller + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
-**Golden rule:** use `just ci` on the **Mac**, `just quality::native` on the
+**Golden rule:** use the devcontainer gates on the **Mac**, the native gate list on the
 **dev box**, silicon validation on the **HIL rig**, and treat **CI as the
 arbiter**.
 
@@ -32,10 +32,10 @@ This is an intentional security exception to portable env shebangs: the HIL
 call graph crosses SSH, generated services, and physical-hardware boundaries,
 so it must ignore `BASH_ENV` and exported shell functions from its caller.
 
-Every gate body lives in `scripts/ci.sh` (registry: `RA8_GATE_REGISTRY`) and each
-CI step is a thin `just quality::local::gate <name>` driver, so a local run and
-the runner execute the *same functions*. `just quality::native` runs them natively --
-the supported path on Linux, no container required. `just ci` wraps the same
+Every gate body lives in the ra8ci repo's gate registry and each
+CI step is a thin driver over the same body, so a local run and
+the runner execute the *same functions*. The native gate list runs them natively --
+the supported path on Linux, no container required. The container gate wraps the same
 suite in the Ubuntu 24.04 devcontainer (`.devcontainer/Dockerfile`, image
 `ra8-ci`), which is what macOS needs and what the Mac cannot do without. See
 section 4 for the fast pre-push recipe.
@@ -44,7 +44,7 @@ section 4 for the fast pre-push recipe.
 
 ## 1.1 Repository bootstrap
 
-`just setup` is the supported bootstrap on macOS, Linux, and WSL2. The only
+`scripts/dev/setup_python.sh` is the supported bootstrap on macOS, Linux, and WSL2. The only
 tools it expects in advance are Git, `just`, a stdlib Python 3.11 through
 3.14, trusted CA certificates/network access for the first fetch, and one
 usable container runtime (`podman`, `docker`, or `nerdctl`; Docker on macOS
@@ -60,10 +60,10 @@ bootstrap prerequisites. It:
    from the tightly allowlisted locked root context.
 
 `just dev_shell` enters that image with the checkout mounted read-write, so
-the compiler and analyzer installation created by `just setup` is immediately
+the compiler and analyzer installation created by the bootstrap is immediately
 usable for ordinary development commands without modifying host packages.
 
-No step writes into the host's system Python. Use `just setup_python` for the
+No step writes into the host's system Python. Use `scripts/dev/setup_python.sh` for the
 lighter Python-and-hooks refresh when the container image is already current.
 Linux fleet machines remain provisioned through the declared Ansible roles;
 macOS emulator-only native dependencies remain owned by
@@ -92,7 +92,7 @@ target; the "status" column flags the known skews.
 | `shfmt` | **3.13.1** | 3.13.1 | 3.13.1 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `shellcheck` | **0.11.0** | 0.11.0 | 0.11.0 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `go` (host CLI toolchain) | **1.27.1** (`GO_VERSION`, devcontainer `/usr/local/go`) | 1.27.0 (Homebrew) | 1.27.1 (`/usr/local/go`, provisioned) | Mac patch drift is not gated; CI and the dev box resolve the exact pin -- see 3.4 |
-| `rustc` / Cargo (host tests and ABI fixtures) | **1.89.0** (`RUST_VERSION`, official distribution in the devcontainer) | use `just ci` until locally installed | **1.89.0** (Ansible provisioner reads the same archive pins) | CONVERGED; `test-rust` asserts the exact compiler and Cargo pin before executing native tests |
+| `rustc` / Cargo (host tests and ABI fixtures) | **1.89.0** (`RUST_VERSION`, official distribution in the devcontainer) | use the devcontainer until locally installed | **1.89.0** (the ra8ci provisioner reads the same archive pins) | CONVERGED; `test-rust` asserts the exact compiler and Cargo pin before executing native tests |
 | `cppcheck` | **2.13** (Ubuntu 24.04) | 2.21 (Homebrew) | 2.13 (built from source, `/usr/local/bin`) | Mac 2.21 emits VERSION-SPECIFIC FALSE POSITIVES -- do NOT use the Mac's; see 3.3 |
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `pyproject.toml` / `uv.lock`) | 0.6.13 (`.venv`) | 0.6.13 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
@@ -179,8 +179,8 @@ code -- run cppcheck 2.13 (dev box, built from source) first.**
 CI pins ruff==**0.15.19**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The dev box
 ships ruff from `/opt/ra8-python-tools` and the native shell tools from
 `/usr/local/bin`, all at the Dockerfile versions, so
-`just quality::local::gate lint-py-shell` on dev is CI-faithful. Local
-`just setup_python` installs the ruff pin in `.venv`; `just setup` also ensures
+the lint-py-shell gate on dev is CI-faithful. Local
+`scripts/dev/setup_python.sh` installs the ruff pin in `.venv`; it also ensures
 the devcontainer containing the two native shell tools.
 
 Native release binaries are pinned by version **and** a per-architecture
@@ -199,13 +199,13 @@ changes which `clang-tidy` and `gcovr` you get. Always use
 
 The `lint-cmake` and `lint-yaml` gates pin `cmakelang`==**0.6.13**
 (which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.37.1**
-and `actionlint` **v1.7.7**. `just setup_python` installs the Python tools in
+and `actionlint` **v1.7.7**. `scripts/dev/setup_python.sh` installs the Python tools in
 the repository-local `.venv`; the devcontainer, runner, and provisioned dev box
 install their Python tools in `/opt/ra8-python-tools`. `actionlint` is installed
 as a pinned native binary in those managed environments. The non-Python
 Dockerfile ARGs are the single pin authority: local setup, workflows, and
 fleet provisioning
-derive their versions instead of duplicating them. Run `just setup` on a fresh
+derive their versions instead of duplicating them. Run the bootstrap on a fresh
 clone to prepare both the local Python environment and the complete pinned
 devcontainer toolchain.
 
@@ -232,8 +232,8 @@ alike, and the dev box points every one of them at one shared cache
 for the cross build and the host test build alike.
 
 Hits survive across build directories only because the cache sets `base_dir = /`
-and `hash_dir = false` (and `scripts/ci.sh` exports the `CCACHE_BASEDIR` /
-`CCACHE_NOHASHDIR` equivalents into the container). Every `just ci` builds in a
+and `hash_dir = false` (and the runner exports the `CCACHE_BASEDIR` /
+`CCACHE_NOHASHDIR` equivalents into the container). Every container gate run builds in a
 fresh `mktemp` snapshot, so without that normalisation the hit rate is flat
 zero rather than merely lower.
 
@@ -255,7 +255,7 @@ structural, which is exactly what the devcontainer fault was: the self-hosted ru
 source-built **2.1.4** in `/usr/local`, while the dev box and the devcontainer
 linked Debian/Ubuntu apt **2.0.1** -- and 2.0.1 raises a spurious `EXCP_NOCP` on
 the MVE stores that 2.1.4 (and real M85 silicon) executes. That made ~6 EPUB /
-comic / crypto smoke apps and a wider EIL set fault under `just ci` on dev's own
+comic / crypto smoke apps and a wider EIL set fault under the container gate on dev's own
 HEAD while CI stayed green.
 
 **The pin is 2.1.4** -- the version CI (the authority) already links and the one
@@ -278,11 +278,11 @@ How it is enforced (three parts, no assumptions):
   `~/.local/ra8-firmware/unicorn` on macOS (`RA8_UNICORN_PREFIX` overrides
   either). It is idempotent -- already-pinned is a no-op. The devcontainer runs
   the same source build in its `Dockerfile`. It is provisioning, **not** a gate,
-  and is deliberately never invoked from a workflow step (the `ci-parity` gate
+  and is deliberately never invoked from a workflow step (the CI parity gate
   forbids an "infra" step from calling anything under `scripts/`).
 - **Fail-loud check.** Every emulator gate (`emulator-smoke`,
   `emulator-matrix`, `emulator-io-fabric`, `eil-integration`) calls
-  `require_pinned_unicorn` in `scripts/ci.sh`, which runs
+  `require_pinned_unicorn` in the ra8ci runner, which runs
   `scripts/checks/check_unicorn_version.sh`. That check compiles a probe against
   the ACTUAL `libunicorn` ra8_emulator will link, reads `uc_version()` + the header
   `UC_VERSION_*` macros + `pkg-config`, and **exits non-zero with remediation**
@@ -380,8 +380,8 @@ ssh <verification-host> '/bin/bash -p -lc "cd <repo> && just workspace::new my-t
 # 1. put your commit in it -- push a branch and check it out there; do NOT rsync
 #    into the shared tree.
 # 2. gates -- the SAME functions the runner executes
-ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && just ci"'
-ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && just quality::native"'
+ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && zig build test"'   # host tests
+ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && zig build arm"'    # ARM link
 # 3. push (the pre-push hook runs the suite, which the Mac cannot; dev validated it)
 SKIP_CI_PUSH=1 git push origin dev
 ```

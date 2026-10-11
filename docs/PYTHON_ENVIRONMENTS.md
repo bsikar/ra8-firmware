@@ -1,11 +1,8 @@
 # Python Environments and Lock Maintenance
 
-Just is the public interface for Python setup. Run `just setup` on a new
-checkout to create the locked project environment, install the git hooks and
-exact Ansible Galaxy collections, and prepare the pinned compiler image. Run
-`just setup_python` when only `.venv` and the hooks need refreshing, or
-`just setup_ansible` when the Python environment and Galaxy collections are
-needed without building the compiler image.
+`scripts/dev/setup_python.sh` is the entry point for the locked project
+environment and the git hooks. The Ansible, k3s, and compiler-image setup
+paths live in the ra8ci repo now; this page covers the local `.venv` flow.
 
 No setup path writes to the system Python. Do not use system `pip`, override
 the PEP 668 system-package boundary, run an unpinned `uvx`, or pipe a download
@@ -20,7 +17,7 @@ bootstrap, and the native prerequisites documented in `TOOLCHAIN.md`.
 
 The uv bootstrap also recognizes native Windows x86_64 and aarch64 so its
 platform and checksum policy can be tested there. Native Windows is not a full
-firmware build environment: use WSL2 for `just setup`, compilation, and CI
+firmware build environment: use WSL2 for setup, compilation, and CI
 parity. The POSIX setup scripts and embedded toolchains deliberately do not
 claim native Windows support.
 
@@ -34,15 +31,13 @@ once; dependency groups include one another instead of repeating pins:
 - `runtime`: shared script imports, including the HIL closure.
 - `dev`: local and static-analysis tools, including the runtime closure.
 - `ci`: the complete Python closure used by CI gates.
-- `infra`: Ansible and control-node Vault support.
-- `k3s`: the Kubernetes client used on managed k3s targets.
+- `infra` and `k3s`: still declared, but their consumers (Ansible, the k3s
+  node tooling) moved to the ra8ci repo; they stay until that rewire lands.
 - `vela`: the offline Ethos-U model compiler.
 
 The normal local environment is `.venv`. The authenticated uv archive and
 binary are retained under the ignored `.tools/uv` cache so every reuse can be
-reverified. Exact Galaxy collections live under ignored
-`.ansible/collections`; `infra/ansible/requirements.yml` is their separate
-version authority because Galaxy collections are not Python packages.
+reverified.
 
 Authenticated execution has an OS-specific boundary. Linux executes uv from a
 sealed anonymous memory descriptor, which also resists a same-UID process that
@@ -62,10 +57,6 @@ Managed environments have narrower ownership:
 - `/opt/ra8-python-tools` contains the exact CI group on dev boxes and runner
   images. `RA8_TOOL_VENV` selects it and prevents a mounted checkout `.venv`
   from changing managed behavior.
-- `/opt/ra8-k8s-client` is rebuilt from the generated, hash-locked `k3s`
-  export when its lock digest or installed set differs.
-- `/opt/ra8-hil-python` is the bench-side HIL environment, rebuilt from the
-  generated `hil` export with the same exact-set policy.
 - ESP-IDF owns its own upstream environment through the pinned C6 installer.
   That vendor environment is not part of this project lock and must not be
   converted to, or silently mixed with, a repository uv environment.
@@ -90,22 +81,9 @@ maintainers changing dependency metadata:
      --ensure-and-run --no-config lock
    ```
 
-3. If `hil` or `k3s` changed, regenerate its managed-target export with the
-   exact policy command (replace `GROUP` and `OUTPUT`):
-
-   ```sh
-   UV_PYTHON_DOWNLOADS=never python3 scripts/dev/bootstrap_uv.py \
-     --run --no-config export --offline --locked --only-group GROUP --no-emit-project \
-     --format requirements-txt --output-file OUTPUT
-   ```
-
-   The committed outputs are
-   `infra/ansible/roles/hil_bench/files/requirements.lock` and
-   `infra/ansible/roles/k3s_node/files/requirements.lock`.
-
-4. Run `just setup`, then the relevant checks. The Python lock policy
-   regenerates both exports offline and compares their exact bytes, checks lock
-   freshness, and proves every direct dependency has a real consumer.
+3. Run `scripts/dev/setup_python.sh` to rebuild `.venv`, then the relevant
+   checks. (The managed k3s/HIL exports moved to the ra8ci repo with their
+   roles; regenerate them there.)
 
 Do not hand-edit `uv.lock` or either generated export. A changed lock and an
 unchanged export is a policy failure, not an acceptable partial update.
@@ -126,9 +104,8 @@ To update uv:
    do not execute an asset to discover whether it is trustworthy.
 3. Keep asset names exact for their OS, architecture, and Linux libc mapping.
    Do not add a floating `latest` URL or a second version constant.
-4. Run `python3 scripts/dev/bootstrap_uv.py --selftest`, then
-   `just quality::local::gate pre-commit-checks` and
-   `just quality::local::gate toolchain-parity`.
+4. Run `python3 scripts/dev/bootstrap_uv.py --selftest`, then the pre-commit
+   hooks.
 5. Review the bootstrap and checksum manifest together. uv is host tooling and
    is recorded in `THIRD_PARTY_LICENSES.md`; it is not linked into firmware and
    does not belong in the firmware SBOM.

@@ -32,7 +32,7 @@
 # that belong with the cache rather than here (see the box's ccache.conf):
 #   base_dir = /      -- rewrite absolute paths in the command line to relative
 #   hash_dir = false  -- do not hash the working directory into the result
-# Without them, every ephemeral snapshot directory (a fresh mktemp per `just ci`
+# Without them, every ephemeral snapshot directory (a fresh mktemp per gate run
 # run) would look like a different compilation and never hit.
 #
 #

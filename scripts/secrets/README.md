@@ -3,9 +3,8 @@
 Everything here touches key material. The dividing line that governs the whole
 directory:
 
-> **`infra/` deploys the vault. `scripts/secrets/` operates it.**
-> A playbook that handles a root token can log a root token, so no playbook
-> holds one. These scripts run in the operator's hands, on the node, and read
+> The vault deployment and its playbooks live in the ra8ci repo now; the
+> scripts here that remain run in the operator's hands, on the node, and read
 > their credentials from files the operator owns outside any checkout.
 
 Nothing in this directory contains a secret, and nothing in it may. Values
@@ -14,8 +13,8 @@ arrive from stdin, from an operator-owned file, or from OpenBao itself.
 ## OpenBao
 
 The vault every other part of the rig reads its credentials from at run time.
-`infra/ansible/roles/openbao` deploys it and stops; the three steps below
-produce or handle secrets and are therefore manual, in this order.
+The `openbao` role that deploys it, the unseal helper, and `openbao_client.py`
+moved to the ra8ci repo; the operator steps below stay manual, in this order.
 
 ### 1. Initialise (once, ever)
 
@@ -35,10 +34,6 @@ not the control; the operator-owned storage and backup policy are the control.
 
 ### 2. Unseal (after every restart)
 
-```sh
-/bin/bash -p scripts/secrets/openbao_unseal.sh
-```
-
 A Shamir-sealed OpenBao comes up **sealed** after every pod or node restart, by
 design. The `openbao` role reports the seal state rather than treating it as a
 failure, and this is the routine follow-up.
@@ -49,7 +44,7 @@ The retired local setup helper has no automated replacement. An OpenBao
 administrator must provision the KV v2 path, read-only policy, and AppRole
 before the rig uses those credentials.
 
-The consumer then reads them through `openbao_client.py` with a
+The consumer reads them through the ra8ci repo's OpenBao client with a
 `~/.config/hil/openbao.env` (mode 0600) naming `BAO_ADDR`, `BAO_KV_MOUNT`,
 `BAO_SECRET_PATH`, `ROLE_ID` and `SECRET_ID`.
 
