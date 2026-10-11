@@ -5,7 +5,7 @@
 //! per pixel; PPM output expands each grey sample to RGB for broad viewer support.
 
 const std = @import("std");
-const text = @import("text");
+const text = @import("ra8_gfx").text;
 
 pub const Canvas = struct {
     width: usize,

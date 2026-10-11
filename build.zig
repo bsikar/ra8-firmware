@@ -172,9 +172,10 @@ pub const c_flags = host_flags.c_flags;
 const build_graph_test_source = "tests/zig_build_graph/build_graph_test.zig";
 
 pub fn build(b: *std.Build) void {
-    // The one module this package exports. A consumer in another repository
-    // pins a tarball of this one and calls `dependency.module("ra8_rpc")`.
-    // No target and no optimize mode: it takes both from whatever imports it.
+    // The modules this package exports (ra8_rpc here, the widget and ra8_gfx
+    // ones in addWidgetModules). A consumer in another repository pins a
+    // tarball of this one and calls `dependency.module("ra8_rpc")`. No target
+    // and no optimize mode: each takes both from whatever imports it.
     _ = b.addModule("ra8_rpc", .{
         .root_source_file = b.path("libs/ra8_rpc/src/ra8_rpc.zig"),
     });
@@ -766,10 +767,16 @@ fn addWidgetModules(b: *std.Build) void {
         .root_source_file = b.path("libs/ra8_widget/src/ra8_widget_abi.zig"),
         .imports = &.{.{ .name = "debug", .module = debug }},
     });
+    // ra8_gfx's fonts and text layout (RA8FW-949). The widget host painter
+    // takes this same module, so a consumer importing both never compiles
+    // text.zig into two modules.
+    const gfx = b.addModule("ra8_gfx", .{
+        .root_source_file = b.path("libs/ra8_gfx/src/ra8_gfx.zig"),
+    });
     _ = b.addModule("ra8_widget_host", .{
         .root_source_file = b.path("libs/ra8_widget/src/host_package.zig"),
         .imports = &.{
-            .{ .name = "text", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_gfx/src/internal/text.zig") }) },
+            .{ .name = "ra8_gfx", .module = gfx },
             .{ .name = "box", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_box/src/ra8_box_abi.zig") }) },
             .{ .name = "ui", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_ui/src/ra8_ui_abi.zig") }) },
             .{ .name = "ra8_widget", .module = widget },

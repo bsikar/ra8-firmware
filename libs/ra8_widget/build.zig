@@ -106,7 +106,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const host_font_module = b.createModule(.{
-        .root_source_file = b.path("../ra8_gfx/src/internal/text.zig"),
+        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -115,7 +115,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    host_paint_module.addImport("text", host_font_module);
+    host_paint_module.addImport("ra8_gfx", host_font_module);
     host_render_test_module.addImport("host", host_paint_module);
     const host_render_abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_widget_abi.zig"),
@@ -126,6 +126,13 @@ pub fn build(b: *std.Build) void {
     host_render_test_module.addImport("abi", host_render_abi_module);
     host_render_test_module.addImport("debug", debug_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
+    const gfx_module_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/gfx_module_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    gfx_module_test_module.addImport("ra8_gfx", host_font_module);
+    const gfx_module_tests = b.addTest(.{ .root_module = gfx_module_test_module });
     const toggle_module = b.createModule(.{
         .root_source_file = b.path("src/widget_toggle_abi.zig"),
         .target = target,
@@ -352,6 +359,7 @@ pub fn build(b: *std.Build) void {
     const run_pager_tests = b.addRunArtifact(pager_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_host_render_tests.step);
+    test_step.dependOn(&b.addRunArtifact(gfx_module_tests).step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_image_widget_tests.step);
     test_step.dependOn(&run_abi_tests.step);
