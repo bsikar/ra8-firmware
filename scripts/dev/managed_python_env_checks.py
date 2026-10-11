@@ -67,30 +67,6 @@ def _contracts() -> tuple[tuple[str, str], ...]:
             '/usr/bin/python3 -I "$MANAGED_ENV_AUTHORITY" verify --env "$selected_venv" '
             '--pyproject "$PYPROJECT" --lock "$LOCKFILE" --group ci --print-bin',
         ),
-        (
-            "tool_env.sh",
-            '/usr/bin/python3 -I "${repo_root}/scripts/dev/managed_python_env.py" cache-key '
-            '--env "${selected}" --pyproject "${repo_root}/pyproject.toml" '
-            '--lock "${repo_root}/uv.lock" --group ci',
-        ),
-        (
-            "tool_env.sh",
-            '/usr/bin/python3 -I "${repo_root}/scripts/dev/managed_python_env.py" verify '
-            '--env "${selected}" --pyproject "${repo_root}/pyproject.toml" '
-            '--lock "${repo_root}/uv.lock" --group ci --print-bin',
-        ),
-        (
-            "provision_dev_box_toolchain.sh",
-            'as_root /usr/bin/python3 -I "${ROOT}/scripts/dev/managed_python_env.py" write '
-            '--env "${venv}" --pyproject "${ROOT}/pyproject.toml" '
-            '--lock "${ROOT}/uv.lock" --group ci',
-        ),
-        (
-            "provision_dev_box_toolchain.sh",
-            '/usr/bin/python3 -I "${ROOT}/scripts/dev/managed_python_env.py" verify '
-            '--env "${python_venv}" --pyproject "${ROOT}/pyproject.toml" '
-            '--lock "${ROOT}/uv.lock" --group ci',
-        ),
     )
 
 
@@ -192,9 +168,7 @@ def consumer_findings(root: Path) -> list[str]:
     """Return source-contract drift between all managed-environment consumers."""
     paths = {
         "setup_python.sh": root / "scripts/dev/setup_python.sh",
-        "tool_env.sh": root / "scripts/ci/lib/tool_env.sh",
         "Dockerfile": root / ".devcontainer/Dockerfile",
-        "provision_dev_box_toolchain.sh": root / "scripts/dev/provision_dev_box_toolchain.sh",
     }
     sources = {label: path.read_text(encoding="ascii") for label, path in paths.items()}
     flattened = {
@@ -210,7 +184,7 @@ def consumer_findings(root: Path) -> list[str]:
         r"RA8_TOOL_VENV[^\n]{0,160}bin/python3[^\n]{0,40}-x",
         r"\[\[?\s+-x\s+[^\n]*RA8_TOOL_VENV",
     )
-    for label in ("setup_python.sh", "tool_env.sh"):
+    for label in ("setup_python.sh",):
         findings.extend(
             f"{label} still accepts an executable-only managed environment"
             for pattern in weak_patterns
@@ -316,9 +290,7 @@ def consumer_contract_selftest() -> list[str]:
         root = Path(tmp)
         paths = {
             "setup_python.sh": "scripts/dev/setup_python.sh",
-            "tool_env.sh": "scripts/ci/lib/tool_env.sh",
             "Dockerfile": ".devcontainer/Dockerfile",
-            "provision_dev_box_toolchain.sh": "scripts/dev/provision_dev_box_toolchain.sh",
         }
         grouped = {label: [] for label in paths}
         for label, invocation in _contracts():

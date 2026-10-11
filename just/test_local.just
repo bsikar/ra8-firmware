@@ -48,10 +48,6 @@ run name="":
         echo "==> Delegating to apps::test::run all"
         "{{ just_executable() }}" apps::test::run all
         exit $?
-    elif [ "${REGEX}" = "board" ]; then
-        echo "==> Board apps are tested via the HIL suite."
-        "{{ just_executable() }}" hil::run
-        exit $?
     fi
 
     bash tests/run_tests.sh -R "$REGEX"

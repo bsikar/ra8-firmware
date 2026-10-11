@@ -70,8 +70,8 @@ if [[ "$-" == *p* ]]; then
   NC='\033[0m'
 
   # Source stable TTY resolver
-  # shellcheck source=scripts/hil/lib/tty_resolve.sh
-  source "$SCRIPT_DIR/../hil/lib/tty_resolve.sh"
+  # shellcheck source=scripts/dev/tty_resolve.sh
+  source "$SCRIPT_DIR/tty_resolve.sh"
 
   echo -e "${CYAN}=== Resolving EK-RA8D2 board console TTY ===${NC}"
   TTY_DEV="$(ra8_tty_resolve console)" || exit $?

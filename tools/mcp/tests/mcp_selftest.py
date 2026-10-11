@@ -100,14 +100,6 @@ _CASES: tuple[tuple[str, dict[str, Any], Callable[[dict[str, Any]], bool]], ...]
         ),
     ),
     (
-        "hil flash preview uses the Just recipe and positional app",
-        _call("hil", action="flash", app="blink"),
-        lambda r: (
-            "[dry run]" in _text(r)
-            and "just hil::flash ek_ra8d2::hw_validated::hil::blink" in _text(r)
-        ),
-    ),
-    (
         "hum_citation emits a HUM skeleton",
         _call("hum_citation", chapter="38.2.3"),
         lambda r: "HUM Ch 38.2.3" in _text(r),

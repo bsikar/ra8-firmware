@@ -19,7 +19,6 @@ from ra8_apps import _parse_desc, app_id, get_apps
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 MIN_ARGUMENTS = 2
-GATE_RECORD_FIELD_COUNT = 3
 TEST_SUFFIXES = ("c", "cpp", "rs", "zig")
 
 
@@ -61,12 +60,6 @@ class TestRecord(TypedDict):
     desc: str
 
 
-class GateRecord(TypedDict):
-    """Metadata for one discovered CI quality gate."""
-
-    name: str
-    speed: str
-    desc: str
 
 
 class ToolRecord(TypedDict):
@@ -85,7 +78,6 @@ class SearchResults(TypedDict):
     examples: list[AppInfo]
     libraries: list[LibraryRecord]
     tests: list[TestRecord]
-    gates: list[GateRecord]
     tools: list[ToolRecord]
 
 
@@ -255,29 +247,6 @@ def get_tests() -> list[TestRecord]:
     return tests
 
 
-def get_ci_gates() -> list[GateRecord]:
-    """Parse registered CI quality gates from scripts/ci.sh."""
-    gates: list[GateRecord] = []
-    ci_sh = REPO_ROOT / "scripts" / "ci.sh"
-    if not ci_sh.is_file():
-        return gates
-    content = ci_sh.read_text(encoding="utf-8", errors="ignore")
-    match = re.search(r"RA8_GATE_REGISTRY=\s*\(\n(.*?)\n\s*\)", content, re.DOTALL)
-    if match:
-        for line in match.group(1).splitlines():
-            cleaned = line.strip().strip('"').strip("'")
-            if not cleaned or cleaned.startswith("#"):
-                continue
-            parts = cleaned.split("|")
-            if len(parts) >= GATE_RECORD_FIELD_COUNT:
-                gates.append(
-                    GateRecord(
-                        name=parts[0].strip(),
-                        speed=parts[1].strip(),
-                        desc=parts[2].strip(),
-                    )
-                )
-    return gates
 
 
 def get_tools() -> list[ToolRecord]:
@@ -391,16 +360,6 @@ def _print_tests(tests: list[TestRecord]) -> None:
     print()
 
 
-def _print_gates(gates: list[GateRecord]) -> None:
-    """Render matched CI quality gates."""
-    if not gates:
-        return
-    print(f"CI GATES ({len(gates)}):")
-    for g in gates:
-        print(f"  {g['name']} ({g['speed']}) - {g['desc']}")
-        print(f"    just quality::gate::run {g['name']}")
-        print(f"    just quality::local::gate {g['name']}")
-    print()
 
 
 def _print_tools(tools: list[ToolRecord]) -> None:
@@ -452,7 +411,6 @@ def search_all(query: str) -> SearchResults:
     matched_tests = [
         t for t in get_tests() if _matches(query, t["name"], t["path"], t["category"], t["desc"])
     ]
-    matched_gates = [g for g in get_ci_gates() if _matches(query, g["name"], g["speed"], g["desc"])]
     matched_tools = [
         tool for tool in get_tools() if _matches(query, tool["name"], tool["path"], tool["desc"])
     ]
@@ -463,7 +421,6 @@ def search_all(query: str) -> SearchResults:
         "examples": matched_examples,
         "libraries": matched_libs,
         "tests": matched_tests,
-        "gates": matched_gates,
         "tools": matched_tools,
     }
 
@@ -492,7 +449,6 @@ def print_search_results(query: str, results: SearchResults) -> None:
     _print_examples(results["examples"])
     _print_libraries(results["libraries"])
     _print_tests(results["tests"])
-    _print_gates(results["gates"])
     _print_tools(results["tools"])
 
 
@@ -500,26 +456,13 @@ def selftest() -> int:
     """Verify that unified search discovers known targets in both directions."""
     failures: list[str] = []
 
-    ssh_results = search_all("ssh_config_preview")
-    found_ssh = any(
-        isinstance(r, dict) and r.get("namepath") == "infra::ssh_config_preview"
-        for r in ssh_results["commands"]
+    flash_results = search_all("hardware::flash")
+    found_flash = any(
+        isinstance(r, dict) and "apps::hardware::flash" in str(r.get("namepath"))
+        for r in flash_results["commands"]
     )
-    if not found_ssh:
-        failures.append(
-            "query 'ssh_config_preview' did not find recipe 'infra::ssh_config_preview'"
-        )
-
-    zig_results = search_all("lint-zig")
-    found_zig_cmd = any(
-        isinstance(r, dict) and "lint-zig" in str(r.get("namepath"))
-        for r in zig_results["commands"]
-    )
-    found_zig_gate = any(
-        isinstance(g, dict) and str(g.get("name")) == "lint-zig" for g in zig_results["gates"]
-    )
-    if not found_zig_cmd or not found_zig_gate:
-        failures.append("query 'lint-zig' did not find the lint-zig recipe or gate")
+    if not found_flash:
+        failures.append("query 'hardware::flash' did not find the apps::hardware::flash recipe")
 
     empty_results = search_all("nonexistent_unique_token_xyz_9999")
     total_empty = sum(len(items) for items in empty_results.values())
@@ -530,7 +473,7 @@ def selftest() -> int:
         for f in failures:
             print(f"  [FAIL] {f}", file=sys.stderr)
         return 1
-    print("search.py --selftest: PASS (commands, gates, deduplication, fail-closed non-matches)")
+    print("search.py --selftest: PASS (commands, deduplication, fail-closed non-matches)")
     return 0
 
 
