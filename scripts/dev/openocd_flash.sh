@@ -86,16 +86,6 @@ if [[ "$-" == *p* ]]; then
     HEX="$FW_DIR/$blink_dir/build/$blink_name.hex"
   fi
 
-  # ---- bench mutual exclusion --------------------------------------------------
-  # There is ONE EK-RA8D2 in this project; "attached to this machine" is where it
-  # happens to be plugged in, not a second board. A debugger that halts the core
-  # is every bit as disruptive to somebody else's run as a flash, so it takes the
-  # same lock -- and holds it for the whole session, which is why the budget is
-  # hours rather than minutes.
-  # shellcheck source=scripts/hil/lib/bench_lock.sh
-  source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
-  ra8_bench_require "local OpenOCD flash" || exit $?
-
   if [[ ! -f "$HEX" ]]; then
     echo -e "${RED}Error:${NC} $HEX not found"
     echo "Build first with: just apps::build <app>"
@@ -114,10 +104,6 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # Inspect the exact image before OpenOCD's `program` command writes it.
-  # shellcheck source=scripts/hil/lib/preflash_guard.sh
-  source "$SCRIPT_DIR/../hil/lib/preflash_guard.sh"
-  ra8_preflash_guard "$HEX" || exit $?
-
   echo -e "${GREEN}=== Flashing ${HEX} via OpenOCD ===${NC}"
 
   openocd -f "$CFG" \

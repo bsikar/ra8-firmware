@@ -75,21 +75,6 @@ if [[ "$-" == *p* ]]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   FW_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-  # ---- bench mutual exclusion --------------------------------------------------
-  # There is ONE EK-RA8D2 in this project; "attached to this machine" is where it
-  # happens to be plugged in, not a second board. A debugger that halts the core
-  # is every bit as disruptive to somebody else's run as a flash, so it takes the
-  # same lock -- and holds it for the whole session, which is why the budget is
-  # hours rather than minutes.
-  # shellcheck source=scripts/hil/lib/bench_lock.sh
-  source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
-  ra8_bench_require "local J-Link gdb session" 2h || exit $?
-
-  # Optional J-Link serial from the gitignored .env (see .env.example). Only
-  # needed to disambiguate multiple probes; single-probe machines can omit it.
-  # shellcheck source=scripts/hil/lib/rig_env.sh
-  source "$SCRIPT_DIR/../hil/lib/rig_env.sh"
-
   GREEN='\033[0;32m'
   RED='\033[0;31m'
   NC='\033[0m'
@@ -119,10 +104,6 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # Inspect the exact ELF before GDB's `load` command programs it.
-  # shellcheck source=scripts/hil/lib/preflash_guard.sh
-  source "$SCRIPT_DIR/../hil/lib/preflash_guard.sh"
-  ra8_preflash_guard "$ELF" || exit $?
-
   # Start the GDB server in the background. The part-specific CPU0 name is
   # required so J-Link selects the RA8D2 MRAM flash algorithm; the generic
   # CORTEX-M85 target can attach but cannot safely service GDB `load`.

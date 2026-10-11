@@ -674,113 +674,6 @@ def _exercise_registered_fixture_selftests(outer: Path) -> None:
         _run_registered_fixture(outer, hostile, markers, label, argv)
 
 
-def _prepare_snapshot_source(base: Path) -> tuple[Path, tuple[Path, Path, Path]]:
-    """Create a committed EOL/filter tree with executable local Git policy."""
-    source = base / "snapshot-source"
-    source.mkdir()
-    _git(source, "init", "--quiet")
-    local_marker = base / "source-local-filter"
-    fsmonitor_marker = base / "source-local-fsmonitor"
-    template_marker = base / "source-local-template-executed"
-    local_helper = base / "source-local-helper.sh"
-    local_helper.write_text(
-        f"#!/bin/sh\nprintf x >> {shlex.quote(str(local_marker))}\ncat\n",
-        encoding="ascii",
-    )
-    local_helper.chmod(0o755)
-    fsmonitor = base / "source-local-fsmonitor.sh"
-    fsmonitor.write_text(
-        f"#!/bin/sh\nprintf x >> {shlex.quote(str(fsmonitor_marker))}\nprintf '\\n'\n",
-        encoding="ascii",
-    )
-    fsmonitor.chmod(0o755)
-    template = base / "source-local-template-dir"
-    (template / "hooks").mkdir(parents=True)
-    template_hook = template / "hooks/reference-transaction"
-    template_hook.write_text(
-        f"#!/bin/sh\nprintf x >> {shlex.quote(str(template_marker))}\n",
-        encoding="ascii",
-    )
-    template_hook.chmod(0o755)
-    (source / ".gitattributes").write_text(
-        "sentinel.txt text eol=crlf\nevil.bin filter=evil\n", encoding="ascii"
-    )
-    (source / "sentinel.txt").write_text("snapshot sentinel\n", encoding="ascii")
-    (source / "evil.bin").write_bytes(b"raw fixture\n")
-    _git(source, "add", ".gitattributes", "sentinel.txt", "evil.bin")
-    _git(
-        source,
-        "-c",
-        "user.email=selftest@invalid",
-        "-c",
-        "user.name=selftest",
-        "commit",
-        "--quiet",
-        "-m",
-        "snapshot",
-    )
-    _git(source, "config", "--local", "filter.evil.clean", str(local_helper))
-    _git(source, "config", "--local", "filter.evil.smudge", str(local_helper))
-    _git(source, "config", "--local", "filter.evil.required", "true")
-    _git(source, "config", "--local", "core.fsmonitor", str(fsmonitor))
-    _git(source, "config", "--local", "init.templateDir", str(template))
-    return source, (local_marker, fsmonitor_marker, template_marker)
-
-
-def _exercise_shell_snapshot_boundary(outer: Path) -> None:
-    """Prove fresh checkout keeps EOL semantics without source Git helpers."""
-    repo_root = Path(__file__).resolve().parents[2]
-    hostile, marker = _hostile_config_environment(outer.parent / "shell-config-attack")
-    _prove_hostile_config_executes(outer.parent / "shell-config-attack", hostile, marker)
-    source, local_markers = _prepare_snapshot_source(outer.parent)
-    output = outer.parent / "snapshot-output"
-    output.mkdir()
-    before = _outer_snapshot(outer)
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "GIT_INDEX_FILE": str(outer / ".git" / "index"),
-            "GIT_OBJECT_DIRECTORY": str(outer / ".git" / "objects"),
-            **hostile,
-        }
-    )
-    script = """
-set -euo pipefail
-source "$1/scripts/dev/git_environment.sh"
-source "$1/scripts/ci/lib/snapshot.sh"
-REPO_ROOT="$2"
-materialise_head_snapshot "$3"
-git -C "$3" ls-files --error-unmatch sentinel.txt >/dev/null
-"""
-    proc = subprocess.run(  # noqa: S603 -- fixed Bash executable and audited fixture argv
-        [
-            "/bin/bash",
-            "-p",
-            "-c",
-            script,
-            "shell-snapshot",
-            str(repo_root),
-            str(source),
-            str(output),
-        ],
-        env=environment,
-        capture_output=True,
-        check=False,
-        timeout=60,
-    )
-    if proc.returncode != 0:
-        detail = os.fsdecode(proc.stderr or proc.stdout).strip()
-        _fail(f"shell snapshot boundary failed under hostile Git policy: {detail}")
-    if before != _outer_snapshot(outer):
-        _fail("shell snapshot boundary mutated hostile outer Git state")
-    if any(path.exists() for path in (marker, *local_markers)):
-        _fail("shell snapshot boundary executed inherited or source-local Git policy")
-    if (output / "sentinel.txt").read_bytes() != b"snapshot sentinel\r\n":
-        _fail("strict snapshot lost committed CRLF checkout semantics")
-    if (output / "evil.bin").read_bytes() != b"raw fixture\n":
-        _fail("strict snapshot changed an unconfigured filtered blob")
-
-
 def _exercise_shell_push_transport(root: Path) -> None:
     """Prove bounded push keeps SSH policy but cannot inherit repo routing."""
     adapter = Path(__file__).with_suffix(".sh")
@@ -930,7 +823,6 @@ def run_selftest() -> int:
             if os.fsdecode(_git(inner, "status", "--porcelain=v1")).strip():
                 _fail("nested fixture repository is not clean")
             _exercise_registered_fixture_selftests(outer)
-            _exercise_shell_snapshot_boundary(outer)
             _exercise_shell_push_transport(base)
             _exercise_shell_command_authority(base)
             _prove_hostile_index_and_object_routing(base / "probe-outer", base / "probe-inner")

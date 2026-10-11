@@ -220,7 +220,6 @@ ignore = [
 # than as 15 inline noqa lines so the coupling reads as one documented fact
 # about the driver, and so the rule keeps firing everywhere else in the tree.
 # If python-kasa ever grows a public seam for this, delete the line.
-"scripts/hil/tapo_control.py" = ["SLF001"] # python-kasa exposes no public transport seam
 # These are intentionally stdlib unittest suites because the gate is runnable
 # without pytest. PT009 asks for bare asserts and PT027 asks for pytest.raises;
 # both would make the syntax disagree with the portable stdlib runner. Normal

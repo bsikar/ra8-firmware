@@ -6,7 +6,7 @@
 The packet is consumed by the bench-only firmware provisioner after flashing;
 credentials never enter CMake, compiler arguments, build metadata, or firmware
 artifacts. Values come from explicitly exported variables, the gitignored
-0600 ``coprocessor/esp32c6/wifi.env`` file, or the existing OpenBao service.
+0600 ``coprocessor/esp32c6/wifi.env`` file.
 """
 
 from __future__ import annotations
@@ -42,13 +42,6 @@ DEFAULT_EMIT_TIMEOUT_S = 30
 MAX_EMIT_TIMEOUT_S = 600
 
 sys.path.insert(0, str(SCRIPT_DIR))
-
-from openbao_client import (  # noqa: E402 -- sibling path added above
-    OpenBaoClient,
-    OpenBaoError,
-    creds_path,
-)
-
 
 class ProvisionError(ValueError):
     """A credential source or effective runtime value is invalid."""
@@ -136,18 +129,6 @@ def _read_private_file(path: Path) -> str:
             os.close(descriptor)
 
 
-def _openbao_config(path: Path) -> dict[str, str]:
-    """Read the operator's OpenBao configuration through the private-file gate."""
-    config: dict[str, str] = {}
-    for raw_line in _read_private_file(path).splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        config[key.strip()] = value.strip()
-    return config
-
-
 def _literal_value(raw: str, path: Path, line_no: int) -> str:
     """Parse one dotenv value as data without evaluating shell syntax."""
     value = raw.strip()
@@ -217,7 +198,7 @@ def resolve_values(
     environment: dict[str, str] | None = None,
     vault_data: dict[str, str] | None = None,
 ) -> tuple[str, str, str]:
-    """Resolve explicit/file values first, then the bench network in OpenBao."""
+    """Resolve explicit, file, or caller-supplied vault values."""
     effective_env = os.environ if environment is None else environment
     local = parse_env_file(env_path)
     ssid = effective_env.get("RA8_C6_WIFI_SSID", local.get("RA8_C6_WIFI_SSID", ""))
@@ -225,19 +206,8 @@ def resolve_values(
     url = effective_env.get(URL_KEY, "")
     if not psk:
         if vault_data is None:
-            openbao_env = creds_path()
-            try:
-                client = OpenBaoClient(_openbao_config(openbao_env))
-            except FileNotFoundError:
-                client = OpenBaoClient()
-            if not client.configured:
-                message = "Wi-Fi credentials are absent and OpenBao is not configured"
-                raise ProvisionError(message)
-            try:
-                vault_data = client.kv_get("ra8d2/bench-network")
-            except OpenBaoError as exc:
-                message = "could not fetch the bench network from OpenBao"
-                raise ProvisionError(message) from exc
+            message = "Wi-Fi credentials are absent and no vault values were supplied"
+            raise ProvisionError(message)
         psk = vault_data.get("bench_psk", "")
         ssid = ssid or vault_data.get("bench_ssid", "") or "ra8-bench"
     validate_values(ssid, psk, url)
@@ -358,7 +328,7 @@ def _selftest_vault_fallback(state: _SelftestState, missing: Path) -> None:
     fallback = resolve_values(missing, {}, {"bench_psk": "vault-password"})
     state.expect(
         fallback == ("ra8-bench", "vault-password", ""),
-        "OpenBao fallback did not supply the default SSID",
+        "vault-value fallback did not supply the default SSID",
     )
     preserved_ssid = resolve_values(
         missing,
@@ -367,7 +337,7 @@ def _selftest_vault_fallback(state: _SelftestState, missing: Path) -> None:
     )
     state.expect(
         preserved_ssid == ("operator-network", "vault-password", ""),
-        "OpenBao fallback replaced an explicit SSID",
+        "vault-value fallback replaced an explicit SSID",
     )
 
 
@@ -429,21 +399,6 @@ def _selftest_values(state: _SelftestState) -> bytes:
     return packet
 
 
-def _selftest_openbao_errors(state: _SelftestState, missing: Path) -> None:
-    """Exercise unavailable and failing OpenBao clients."""
-    unconfigured = mock.Mock(configured=False)
-    failing = mock.Mock(configured=True)
-    failing.kv_get.side_effect = OpenBaoError("selftest transport failure")
-    with mock.patch.object(sys.modules[__name__], "creds_path", return_value=missing):
-        with mock.patch.object(sys.modules[__name__], "OpenBaoClient", return_value=unconfigured):
-            state.expect_rejected(
-                lambda: resolve_values(missing, {}, None), "unconfigured OpenBao was accepted"
-            )
-        with mock.patch.object(sys.modules[__name__], "OpenBaoClient", return_value=failing):
-            state.expect_rejected(
-                lambda: resolve_values(missing, {}, None),
-                "OpenBao transport failure was accepted",
-            )
 
 
 def _selftest_emission(state: _SelftestState, packet: bytes) -> None:
@@ -525,7 +480,6 @@ def run_selftest() -> int:
         _selftest_vault_fallback(state, missing)
         _selftest_private_files(state, root, valid)
         packet = _selftest_values(state)
-        _selftest_openbao_errors(state, missing)
         _selftest_emission(state, packet)
         _selftest_timeout(state)
     if state.failures:

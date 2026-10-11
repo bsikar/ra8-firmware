@@ -171,9 +171,7 @@ def tool_repo_overview(_args: dict[str, Any]) -> str:
         "  just apps::build <app>              cross-compile one app\n"
         "  just apps::hardware::flash <app>    build + flash via local J-Link\n"
         "  just apps::emulator::run <app>      run the real .elf on ra8_emulator\n"
-        "  just quality::gate::run unit-tests host unit tests (portable)\n"
-        "  just quality::gate::run <name>      run one registered quality gate (portable)\n"
-        "  just hil::flash <app>               flash the Pi-attached HIL board\n\n"
+
         "AUTHORITATIVE DOCS are exposed as MCP resources (CLAUDE.md, STYLE_GUIDE, "
         "RING_AND_WORLD, CONTRIBUTING, the HUM chapter map, the app catalogue)."
     )
@@ -338,42 +336,6 @@ def tool_flash_app(args: dict[str, Any]) -> str:
     return run_command(argv, timeout=300)
 
 
-_HIL_ACTIONS: dict[str, str] = {
-    "flash": "hil::flash",
-    "recover": "hil::recover",
-    "flash-retry": "hil::flash_retry",
-    "reflash": "hil::reflash",
-    "erase": "hil::erase",
-    "probe": "hil::probe",
-    "dlm-reset": "hil::dlm_reset",
-}
-
-
-def tool_hil(args: dict[str, Any]) -> str:
-    """Drive the Pi-attached hardware-in-the-loop rig (hardware action).
-
-    Gated like flash_app: previews unless ``confirm`` is true. ``flash`` /
-    ``recover`` / ``flash-retry`` / ``reflash`` require an ``app``; ``probe`` /
-    ``erase`` / ``dlm-reset`` do not.
-    """
-    action = str(args.get("action", "")).strip()
-    recipe = _HIL_ACTIONS.get(action)
-    if recipe is None:
-        msg = f"unknown action '{action}'. Choose: {', '.join(sorted(_HIL_ACTIONS))}"
-        raise ValueError(msg)
-    recipe_args = [recipe]
-    if action in ("flash", "recover", "flash-retry", "reflash"):
-        app = require_app(str(args.get("app", "")).strip())
-        recipe_args.append(app["id"])
-    if not bool(args.get("confirm", False)):
-        return (
-            "[dry run] HIL hardware action withheld.\n"
-            f"Command: just {' '.join(recipe_args)}\n"
-            "Re-call hil with confirm=true to execute."
-        )
-    return run_command(_just_argv(*recipe_args), timeout=600)
-
-
 # ---------------------------------------------------------------------------
 # Tool registry -- name, JSON-Schema input, handler. Descriptions are what the
 # assistant reads to decide when to call each tool, so they carry real intent.
@@ -464,21 +426,6 @@ TOOLS: list[dict[str, Any]] = [
             ["app"],
         ),
         "handler": tool_flash_app,
-    },
-    {
-        "name": "hil",
-        "description": "Drive the Pi-attached HIL rig: action in flash, recover, "
-        "flash-retry, reflash, erase, probe, dlm-reset. HARDWARE -- previews "
-        "unless confirm=true. flash/recover/flash-retry/reflash need an app.",
-        "inputSchema": _schema(
-            {
-                "action": {"type": "string", "description": "HIL action"},
-                "app": {"type": "string", "description": "app name (for flash actions)"},
-                "confirm": {"type": "boolean", "description": "true to actually run"},
-            },
-            ["action"],
-        ),
-        "handler": tool_hil,
     },
     {
         "name": "emu_app",

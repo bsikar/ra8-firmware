@@ -9,7 +9,7 @@
 # native USB-JTAG interface for writing: it fails with EPIPE partway through
 # write_flash. The two are easy to confuse -- both enumerate as /dev/ttyACM<n>
 # and the numbering changes on a power cycle -- so the bridge is resolved by
-# device identity through scripts/hil/lib/tty_resolve.sh rather than named by
+# device identity through scripts/dev/tty_resolve.sh rather than named by
 # number.
 #
 # Usage:
@@ -76,8 +76,8 @@ if [[ "$-" == *p* ]]; then
 
   # shellcheck source=coprocessor/esp32c6/pins.env
   source "${SCRIPT_DIR}/pins.env"
-  # shellcheck source=scripts/hil/lib/tty_resolve.sh
-  source "${REPO_ROOT}/scripts/hil/lib/tty_resolve.sh"
+  # shellcheck source=scripts/dev/tty_resolve.sh
+  source "${REPO_ROOT}/scripts/dev/tty_resolve.sh"
 
   PORT="${1:-${C6_FLASH_PORT}}"
   if [[ -z "${PORT}" ]]; then
@@ -94,16 +94,6 @@ if [[ "$-" == *p* ]]; then
     echo "ERROR: ${BUILD_DIR} not found. Run /bin/bash -p coprocessor/esp32c6/build.sh first." >&2
     exit 1
   fi
-
-  # ---- bench mutual exclusion --------------------------------------------------
-  # The C6 is not a separate resource. It is soldered to Pmod1 (J26): powered by
-  # the board, reset by power-cycling it, and sharing the SCI2 Simple-SPI bus and
-  # the SW4-3 mux. Flashing it while somebody flashes the RA8 collides on the same
-  # assembly, and esptool's `--after hard_reset` toggles lines the RA8 side is
-  # reading. So it takes the same lock.
-  # shellcheck source=scripts/hil/lib/bench_lock.sh
-  source "${REPO_ROOT}/scripts/hil/lib/bench_lock.sh"
-  ra8_bench_require "flash the ESP32-C6 co-processor on ${PORT}" || exit $?
 
   echo "==> flashing ESP32-C6 on ${PORT} (${C6_FLASH_SIZE}, ${C6_FLASH_MODE} @ ${C6_FLASH_FREQ})"
   python -m esptool \

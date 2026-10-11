@@ -4,21 +4,10 @@
 """Versioned, tagged store for root-of-trust signing keys.
 
 Keeps a HISTORY of every RoT signing key so you can create new credentials
-whenever you want and still recover any prior key -- with or without the team
-OpenBao vault. Two backends, auto-selected (override with --backend):
-
-  openbao  KV v2 at BAO_KV_MOUNT / BAO_ROT_SECRET_PATH (default
-           secret / ra8d2/rot-signing-key). Native versioning = the history.
-           Reachability + identity come from openbao_client.py.
-  local    a 0700 directory (RA8_ROT_STORE_DIR, default ~/.config/ra8/rot)
-           holding one PEM per version plus history.json. This is the
-           "no vault" path: cloning the repo and doing RoT work needs nothing
-           but this script and openssl.
-
-The two backend classes are interchangeable by construction -- same ``store``
-/ ``get`` / ``history`` / ``name`` surface -- so every command below works
-identically whichever one ``select_backend`` returns, and losing vault access
-degrades the tool rather than breaking it.
+whenever you want and still recover any prior key. The store is a 0700
+directory (RA8_ROT_STORE_DIR, default ~/.config/ra8/rot) holding one PEM per
+version plus history.json: cloning the repo and doing RoT work needs nothing
+but this script and openssl.
 
 Every stored version is tagged with: fingerprint (SHA-256 of the public SPKI,
 matching rot_provision.sh), algorithm, created_at (UTC), git_commit, note.
@@ -44,8 +33,6 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from openbao_client import OpenBaoClient, OpenBaoError
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ROT_C = _REPO_ROOT / "libs" / "ra8_dfu" / "src" / "ra8_rot.c"
@@ -53,6 +40,10 @@ _ROT_SIGN = _REPO_ROOT / "tools" / "rot" / "src" / "rot_sign.py"
 _ROT_PATCH = _REPO_ROOT / "tools" / "rot" / "src" / "rot_patch_pubkey.py"
 _WORKING_KEY = Path.home() / "ra8d2-rot-signing-key.pem"
 _ALGORITHM = "ecdsa-p256"
+
+
+class KeyStoreError(Exception):
+    """A key-store operation failed (empty store, unknown version, bad request)."""
 
 
 def _now_iso() -> str:
@@ -99,7 +90,7 @@ def _tags(pem_path: Path, note: str) -> dict[str, str]:
 
 
 class LocalBackend:
-    """File-backed versioned store for operators without the OpenBao vault."""
+    """File-backed versioned store: one 0700 directory with one PEM per version."""
 
     def __init__(self) -> None:
         """Resolve the store directory and create it 0700 if it does not exist.
@@ -163,14 +154,12 @@ class LocalBackend:
     def get(self, version: int | None) -> str:
         """Return the private-key PEM for ``version``, or the newest when None.
 
-        Raises OpenBaoError -- not a local-specific exception -- for both an
-        empty store and an unknown version, so callers can handle failures from
-        either backend with one except clause.
+        Raises KeyStoreError for both an empty store and an unknown version.
         """
         entries = self._load()
         if not entries:
             msg = "local store is empty"
-            raise OpenBaoError(msg)
+            raise KeyStoreError(msg)
         entry = (
             entries[-1]
             if version is None
@@ -178,7 +167,7 @@ class LocalBackend:
         )
         if entry is None:
             msg = f"version {version} not in local store"
-            raise OpenBaoError(msg)
+            raise KeyStoreError(msg)
         return (self.dir / entry["file"]).read_text(encoding="ascii")
 
     def history(self) -> list[dict]:
@@ -190,111 +179,8 @@ class LocalBackend:
         return self._load()
 
 
-class OpenBaoBackend:
-    """KV v2-backed versioned store; the vault's own versioning is the history."""
-
-    def __init__(self, client: OpenBaoClient) -> None:
-        """Bind this backend to an already-constructed, configured vault client.
-
-        The client is injected rather than built here so ``select_backend`` can
-        test reachability (and fall back to local) before committing to the
-        vault path -- this constructor performs no I/O and cannot fail.
-        """
-        self.client = client
-        self.path = os.environ.get("BAO_ROT_SECRET_PATH", "ra8d2/rot-signing-key")
-
-    @property
-    def name(self) -> str:
-        """Human-readable backend identity: vault address, mount and secret path.
-
-        Includes the address so an operator can see which vault was written
-        when several environments are configured.
-        """
-        return f"openbao ({self.client.addr}, {self.client.mount}/{self.path})"
-
-    def store(self, pem: str, tags: dict[str, str]) -> int:
-        """Write ``pem`` as a new KV v2 version and return that version number.
-
-        Fingerprint-idempotent against the newest version, exactly as the local
-        backend is, so ``rekey`` does not accumulate duplicate versions of the
-        same key whichever store is active.
-
-        Metadata is rewritten on every store. That is deliberate: it costs one
-        request and keeps the purpose/algorithm annotation correct even if the
-        secret was first created by hand or by an older version of this tool.
-        """
-        latest = self.history()
-        if latest and latest[-1]["fingerprint"] == tags["fingerprint"]:
-            return int(latest[-1]["version"])
-        version = self.client.kv_put(self.path, {"pem": pem, **tags})
-        self.client.kv_put_metadata(
-            self.path,
-            {"purpose": "RA8 root-of-trust signing key", "algorithm": _ALGORITHM},
-        )
-        return version
-
-    def get(self, version: int | None) -> str:
-        """Return the private-key PEM for ``version``, or the newest when None.
-
-        A version that exists but carries no ``pem`` field raises rather than
-        returning empty: that shape means the secret was written by something
-        other than this tool, and handing back "" would look like a key.
-        """
-        data = self.client.kv_get(self.path, version=version)
-        if "pem" not in data:
-            msg = f"no RoT key at version {version or 'latest'}"
-            raise OpenBaoError(msg)
-        return data["pem"]
-
-    def history(self) -> list[dict]:
-        """Every live vault version, oldest first, flattened to local-backend shape.
-
-        Deleted and destroyed versions are dropped, so the list holds only
-        versions whose PEM can still be recovered -- ``[-1]`` therefore means
-        "current key" for both backends, and ``status`` needs no special case.
-
-        Costs one request per surviving version, because KV v2 metadata carries
-        no user fields; the tag values live in each version's data. Missing tags
-        degrade to "?" rather than raising, so a hand-written secret still
-        lists.
-        """
-        meta = self.client.kv_metadata(self.path)
-        versions = meta.get("versions", {})
-        out: list[dict] = []
-        for vnum in sorted(versions, key=int):
-            if versions[vnum].get("destroyed") or versions[vnum].get("deletion_time"):
-                continue
-            data = self.client.kv_get(self.path, version=int(vnum))
-            out.append(
-                {
-                    "version": int(vnum),
-                    "fingerprint": data.get("fingerprint", "?"),
-                    "algorithm": data.get("algorithm", "?"),
-                    "created_at": data.get("created_at", versions[vnum].get("created_time", "?")),
-                    "git_commit": data.get("git_commit", "?"),
-                    "note": data.get("note", ""),
-                }
-            )
-        return out
-
-
-def select_backend(prefer: str) -> LocalBackend | OpenBaoBackend:
-    """Pick a backend: 'local', 'openbao', or 'auto' (vault if reachable)."""
-    if prefer == "local":
-        return LocalBackend()
-    client = OpenBaoClient()
-    if prefer == "openbao":
-        if not client.configured:
-            sys.exit("openbao backend requested but no BAO_ADDR / AppRole creds found")
-        return OpenBaoBackend(client)
-    # auto: prefer the vault when it is configured AND reachable, else local.
-    if client.configured:
-        try:
-            client.login()
-        except OpenBaoError as exc:
-            sys.stderr.write(f"rot_keystore: OpenBao unavailable ({exc}); using local store\n")
-        else:
-            return OpenBaoBackend(client)
+def select_backend() -> LocalBackend:
+    """Return the one key-store backend (the local versioned directory)."""
     return LocalBackend()
 
 
@@ -335,7 +221,7 @@ def cmd_store(args: argparse.Namespace) -> int:
     Exits (rather than returning non-zero) when the key file is absent: there
     is nothing partial to report.
     """
-    backend = select_backend(args.backend)
+    backend = select_backend()
     key = Path(args.key)
     if not key.exists():
         sys.exit(f"key not found: {key}")
@@ -352,7 +238,7 @@ def cmd_get(args: argparse.Namespace) -> int:
     caller (redirecting it into a world-readable file is the caller's choice
     to make, not something this can detect).
     """
-    backend = select_backend(args.backend)
+    backend = select_backend()
     pem = backend.get(args.version)
     if args.out:
         out = Path(args.out)
@@ -371,7 +257,7 @@ def cmd_history(args: argparse.Namespace) -> int:
     and vault histories, which are independent stores whose version numbers
     are not comparable. Pass ``--backend`` twice over to see both.
     """
-    backend = select_backend(args.backend)
+    backend = select_backend()
     _print_history(backend.history())
     return 0
 
@@ -384,7 +270,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     on live vault reachability and so can differ between two runs on one
     machine.
     """
-    backend = select_backend(args.backend)
+    backend = select_backend()
     rows = backend.history()
     print(f"backend: {backend.name}")
     if rows:
@@ -414,7 +300,7 @@ def cmd_rekey(args: argparse.Namespace) -> int:
     public key is then the only one it will trust, so a device left on the old
     image will reject everything signed with the new key.
     """
-    backend = select_backend(args.backend)
+    backend = select_backend()
     working = Path(args.out)
     # 1. Preserve the outgoing working key first, so no key is ever lost.
     if working.exists():
@@ -444,12 +330,6 @@ def cmd_rekey(args: argparse.Namespace) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Versioned, tagged root-of-trust key store.")
-    p.add_argument(
-        "--backend",
-        choices=("auto", "openbao", "local"),
-        default="auto",
-        help="key store backend (default: auto -- vault if reachable, else local)",
-    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("store", help="store a key file as a new version")
@@ -481,7 +361,7 @@ def main(argv: list[str]) -> int:
     args = _build_parser().parse_args(argv)
     try:
         return int(args.func(args))
-    except (OpenBaoError, subprocess.CalledProcessError) as exc:
+    except (KeyStoreError, subprocess.CalledProcessError) as exc:
         sys.stderr.write(f"rot_keystore: {exc}\n")
         return 1
 

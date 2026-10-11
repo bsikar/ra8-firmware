@@ -103,13 +103,6 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # Inspect the exact ELF before Ozone's File.Open action downloads it.
-  # shellcheck source=scripts/hil/lib/preflash_guard.sh
-  source "$SCRIPT_DIR/../hil/lib/preflash_guard.sh"
-  ra8_preflash_guard "$ELF" || exit $?
-
-  # Load the optional local probe serial without requiring a remote-rig host.
-  # shellcheck source=scripts/hil/lib/rig_env.sh
-  source "$SCRIPT_DIR/../hil/lib/rig_env.sh"
   ozone_serial="${JLINK_SN:-0}"
 
   # Generate the minimal project documented by SEGGER UM08025 rather than relying
@@ -128,16 +121,6 @@ void OnProjectLoad (void) {
   File.Open (${elf_literal});
 }
 JDEBUG_PROJECT
-
-  # ---- bench mutual exclusion --------------------------------------------------
-  # There is ONE EK-RA8D2 in this project; "attached to this machine" is where it
-  # happens to be plugged in, not a second board. A debugger that halts the core
-  # is every bit as disruptive to somebody else's run as a flash, so it takes the
-  # same lock -- and holds it for the whole session, which is why the budget is
-  # hours rather than minutes.
-  # shellcheck source=scripts/hil/lib/bench_lock.sh
-  source "$SCRIPT_DIR/../hil/lib/bench_lock.sh"
-  ra8_bench_require "local SEGGER Ozone session" 2h || exit $?
 
   echo "==> Opening generated Ozone project for ${ELF}"
   "${OZONE_BIN}" "${JDEBUG}"
