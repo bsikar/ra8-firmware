@@ -80,7 +80,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width.
-# shellcheck source=scripts/ci/lib/parallelism.sh
+# shellcheck source=scripts/lib/parallelism.sh
 . "${SCRIPT_DIR}/../ci/lib/parallelism.sh"
 
 build_dir="${ROOT}/tests/build-fuzz"

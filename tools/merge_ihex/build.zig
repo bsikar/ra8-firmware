@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the `merge_ihex` host tool (RA8FW-335). One executable, plus the
-//! test step `scripts/checks/check_zig.py --test` runs: the record algebra and
+//! test step `check_zig.py --test` (bsikar/ra8ci) runs: the record algebra and
 //! the exit-status contract the firmware builds depend on.
 
 const std = @import("std");

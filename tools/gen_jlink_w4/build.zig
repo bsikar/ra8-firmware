@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the `gen_jlink_w4` host tool (RA8FW-335). One executable, plus
-//! the test step `scripts/checks/check_zig.py --test` runs: CPython's
+//! the test step `check_zig.py --test` (bsikar/ra8ci) runs: CPython's
 //! `int(text, 16)` semantics, the unbounded address arithmetic and the script
 //! renderers in the internal module, and the argv membrane and the exit
 //! status `scripts/builders/gen_jlink_w4.sh` passes through in the CLI

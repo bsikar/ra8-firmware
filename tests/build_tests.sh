@@ -35,8 +35,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width. The host
 # suite links 500+ test executables; capping the build here is what keeps this
 # gate from spawning `ld` per core when it shares the box with other jobs.
-# shellcheck source=scripts/ci/lib/parallelism.sh
-. "$SCRIPT_DIR/../scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/lib/parallelism.sh
+. "$SCRIPT_DIR/../scripts/lib/parallelism.sh"
 
 CMAKE="${CMAKE:-cmake}"
 

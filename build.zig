@@ -168,7 +168,7 @@ const support_c_sources = [_][]const u8{};
 pub const c_flags = host_flags.c_flags;
 
 /// The root graph's own Zig test root, declared in .zig-test-contract.json
-/// so `scripts/checks/check_zig.py --test` covers this build root too.
+/// so `check_zig.py --test` (bsikar/ra8ci) covers this build root too.
 const build_graph_test_source = "tests/zig_build_graph/build_graph_test.zig";
 
 pub fn build(b: *std.Build) void {
@@ -549,7 +549,7 @@ const findArmTools = cross_build.findTools;
 //                                          first-party firmware TU has no
 //                                          command -- the check that stops the
 //                                          firmware pass silently shrinking
-//   scripts/checks/check_unused_includes.py loads compile_commands.json from the
+//   check_unused_includes.py (bsikar/ra8ci) loads compile_commands.json from the
 //                                          repo root, build/tidy/ or build/
 //
 // So retiring CMake without this slice would take clang-tidy, the unused-include

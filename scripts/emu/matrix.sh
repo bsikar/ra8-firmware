@@ -90,8 +90,8 @@ cd "$ROOT" || exit 1
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width; the sweep
 # worker pool and the emulator build derive from it so ~200 images do not
 # saturate a shared box.
-# shellcheck source=scripts/ci/lib/parallelism.sh
-. "$ROOT/scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/lib/parallelism.sh
+. "$ROOT/scripts/lib/parallelism.sh"
 # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
 # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
 # gcc 12 and rejects the syntax outright. Reuse the ONE shared selector

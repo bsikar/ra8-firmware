@@ -27,7 +27,7 @@ const compile_db = @import("compile_db.zig");
 
 /// The install directory and file name of the database, named here because
 /// they are a CONTRACT with a consumer outside this build graph:
-/// scripts/checks/check_unused_includes.py probes `install_path` for its
+/// check_unused_includes.py (bsikar/ra8ci) probes `install_path` for its
 /// compile commands, and its selftest asserts these two strings still say
 /// what it probes for. Moving either one without moving that probe empties
 /// the lint gate instead of failing it.
