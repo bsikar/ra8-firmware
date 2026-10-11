@@ -53,3 +53,47 @@ test "an absent image paints the framed placeholder" {
     try std.testing.expectEqual(Fill{ .x = 10, .y = 20, .w = 4, .h = 4, .color = 0 }, fills.items[0]);
     try std.testing.expectEqual(Fill{ .x = 11, .y = 21, .w = 2, .h = 2, .color = 0xffffff }, fills.items[1]);
 }
+
+const Blit = struct { x: i32, y: i32, w: i32, h: i32, first: u8, stride: i32, format: u8 };
+var blits_buffer: [4]Blit = undefined;
+var blits: std.ArrayList(Blit) = .initBuffer(&blits_buffer);
+var clips: i32 = 0;
+
+fn blitImage(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, pixels: [*]const u8, stride: i32, format: u8) callconv(.c) void {
+    blits.appendBounded(.{ .x = x, .y = y, .w = w, .h = h, .first = pixels[0], .stride = stride, .format = format }) catch unreachable;
+}
+fn pushClip(_: ?*anyopaque, _: i32, _: i32, _: i32, _: i32) callconv(.c) void {
+    clips += 1;
+}
+fn popClip(_: ?*anyopaque) callconv(.c) void {
+    clips -= 1;
+}
+
+const blitter: types.Paint = .{
+    .user = null,
+    .fill_rect = fillRect,
+    .draw_text = null,
+    .text_size = null,
+    .blit = blitImage,
+    .push_clip = pushClip,
+    .pop_clip = popClip,
+};
+
+test "an unscaled bitmap goes to a bound blit as grey rows, inside a balanced clip" {
+    reset();
+    blits.clearRetainingCapacity();
+    const pixels = [_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+    image.render(&blitter, rect, .{ .pixels = &pixels, .width = 4, .height = 4 }, .fill, .{});
+    try std.testing.expectEqual(@as(usize, 0), fills.items.len);
+    try std.testing.expectEqualSlices(Blit, &.{.{ .x = 10, .y = 20, .w = 4, .h = 4, .first = 1, .stride = 4, .format = 1 }}, blits.items);
+    try std.testing.expectEqual(@as(i32, 0), clips);
+}
+
+test "a scaled bitmap keeps the fill_rect runs even when blit is bound" {
+    reset();
+    blits.clearRetainingCapacity();
+    const pixels = [_]u8{ 20, 40 };
+    image.render(&blitter, rect, .{ .pixels = &pixels, .width = 2, .height = 1 }, .fit, .{});
+    try std.testing.expectEqual(@as(usize, 5), fills.items.len);
+    try std.testing.expectEqual(@as(usize, 0), blits.items.len);
+}

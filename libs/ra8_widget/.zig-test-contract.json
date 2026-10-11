@@ -17,7 +17,8 @@
     "tests/toggle_test.zig",
     "tests/segmented_test.zig",
     "tests/image_test.zig",
-    "tests/list_test.zig"
+    "tests/list_test.zig",
+    "tests/paint_ops_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -56,7 +57,9 @@
     "src/widget_image.zig",
     "tests/image_test.zig",
     "src/widget_list_abi.zig",
-    "tests/list_test.zig"
+    "tests/list_test.zig",
+    "src/paint_ops.zig",
+    "tests/paint_ops_test.zig"
   ],
   "minimum_tests": 190
 }
