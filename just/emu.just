@@ -1,27 +1,42 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
+# The emulator is bsikar/ra8-emulator, pinned at tools/ra8_emulator. It builds
+# with Zig (`zig build`) and never links SDL; the windowed debugger is the
+# separate `ra8_gui` binary, built by the same tree with -Dgui.
 
 set working-directory := ".."
 
 # Show emulator help menu
 default:
-    @echo "EMULATOR - macOS Unicorn CPU Simulation & Profiling"
+    @echo "EMULATOR - ra8-emulator (tools/ra8_emulator submodule)"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::emulator::run <app>         Run app in emulator with live window view"
-    @echo "  just apps::emulator::gui               Launch interactive E-Reader desktop GUI"
-    @echo "  just apps::emulator::setup             Install macOS host dependencies"
-    @echo "  just apps::emulator::matrix            Run headless emulator matrix test suite"
-    @echo "  just apps::emulator::matrix_triage     Triage failures from last matrix run"
-    @echo "  just apps::emulator::matrix_baseline   Update matrix ratchet baseline"
-    @echo "  just apps::emulator::eil [app] [jobs]  Run Emulated Hardware-In-The-Loop tests"
-    @echo "  just apps::emulator::golden            Check e-reader chrome golden images"
-    @echo "  just apps::emulator::golden_update     Update e-reader chrome golden images"
-    @echo "  just apps::emulator::profile <app>     Generate flamechart execution profile"
+    @echo "  just apps::emulator::run <app>         Build an app and run it on the emulator (headless)"
+    @echo "  just apps::emulator::gui [app]         Open the ra8_gui windowed debugger on a built app"
+    @echo "  just apps::emulator::profile <app>     Profile an app and write folded stacks"
     @echo "  just apps::emulator::list              List all apps capable of being emulated"
     @echo "  just apps::emulator::search <keyword>  Search emulatable apps by keyword"
     @echo ""
+    @echo "Every other ra8_emulator flag (SD cards, frame dumps, tracing, consoles,"
+    @echo "instruction budgets) is available directly:"
+    @echo "  tools/ra8_emulator/zig-out/bin/ra8_emulator --help"
+    @echo ""
+
+# Build the ra8-emulator binaries; kind="gui" also builds ra8_gui (-Dgui)
+build_emu kind="run":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f tools/ra8_emulator/build.zig ]; then
+        echo "tools/ra8_emulator is a submodule (bsikar/ra8-emulator) and is not checked out." >&2
+        echo "Run 'git submodule update --init tools/ra8_emulator' and retry." >&2
+        exit 1
+    fi
+    flags=(-Doptimize=ReleaseFast)
+    if [ "{{ kind }}" = "gui" ]; then
+        flags+=(-Dgui)
+    fi
+    (cd tools/ra8_emulator && zig build "${flags[@]}")
 
 # List all emulatable apps
 list:
@@ -31,16 +46,11 @@ list:
 search keyword="":
     "{{ just_executable() }}" apps::example::search "{{ keyword }}"
 
-# Install macOS emulator dependencies (Homebrew packages, Python dependencies)
-setup:
-    /bin/bash -p scripts/emu/setup_macos.sh
-
-# Run an app in local macOS Unicorn CPU emulator
-run app="ereader_ui" panel="ek_ra8d2":
+# Build an app and run it on the emulator (headless; a window is apps::emulator::gui)
+run app="ereader_ui":
     #!/usr/bin/env bash
     set -euo pipefail
-    # Ensure emulator is built
-    "{{ just_executable() }}" tools::build_one ra8_emulator
+    "{{ just_executable() }}" apps::emulator::build_emu
     app_name="$(python3 scripts/dev/ra8_apps.py name "{{ app }}")"
 
     if [ "$app_name" = "ra8d2-ereader" ]; then
@@ -48,116 +58,43 @@ run app="ereader_ui" panel="ek_ra8d2":
         build_dir="$dir/build-emu"
         cmake -S "$dir" -B "$build_dir" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         cmake --build "$build_dir" -j
-        tools/ra8_emulator/build/ra8_emulator "$build_dir/ra8d2-ereader.elf" --ns "$build_dir/ra8d2-ereader_ns.elf" --panel "tools/ra8_emulator/panels/{{ panel }}.toml" --view
+        tools/ra8_emulator/zig-out/bin/ra8_emulator "$build_dir/ra8d2-ereader.elf" --ns "$build_dir/ra8d2-ereader_ns.elf"
     elif [ "$app_name" = "dualcore_mailbox" ]; then
         dir="$(python3 scripts/dev/ra8_apps.py dir dualcore_mailbox)"
         build_dir="$dir/build-emu"
         cmake -S "$dir" -B "$build_dir" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         cmake --build "$build_dir" -j
-        tools/ra8_emulator/build/ra8_emulator "$build_dir/dualcore_mailbox.elf" --panel "tools/ra8_emulator/panels/{{ panel }}.toml" --view
+        tools/ra8_emulator/zig-out/bin/ra8_emulator "$build_dir/dualcore_mailbox.elf"
     elif [ "$app_name" = "tz_threadx_demo" ]; then
         dir="$(python3 scripts/dev/ra8_apps.py dir tz_threadx_demo)"
         build_dir="$dir/build-emu"
         cmake -S "$dir" -B "$build_dir" -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         cmake --build "$build_dir" -j
-        tools/ra8_emulator/build/ra8_emulator "$build_dir/tz_threadx_demo.elf" --ns "$build_dir/tz_threadx_demo_ns.elf" --panel "tools/ra8_emulator/panels/{{ panel }}.toml" --view
+        tools/ra8_emulator/zig-out/bin/ra8_emulator "$build_dir/tz_threadx_demo.elf" --ns "$build_dir/tz_threadx_demo_ns.elf"
     else
         dir="$(python3 scripts/dev/ra8_apps.py dir "{{ app }}")"
         "{{ just_executable() }}" apps::build "{{ app }}"
-        tools/ra8_emulator/build/ra8_emulator "$dir/build/$app_name.elf" --panel "tools/ra8_emulator/panels/{{ panel }}.toml" --view
+        tools/ra8_emulator/zig-out/bin/ra8_emulator "$dir/build/$app_name.elf"
     fi
 
-# Launch full hybrid e-reader GUI with virtual SD card
-gui panel="ek_ra8d2" count="5" fast_sd="1":
+# Open the windowed debugger (ra8_gui) on a built app
+gui app="ereader_shelf":
     #!/usr/bin/env bash
     set -euo pipefail
-    "{{ just_executable() }}" apps::build ereader_shelf
-    "{{ just_executable() }}" tools::build_one ra8_emulator
-    "{{ just_executable() }}" tools::build_one mkbookimg
-    mkdir -p build
-    sd_dir="apps/board/stand_alone/ereader/content/compiled"
-    shopt -s nullglob
-    all=("$sd_dir"/*.rabook)
-    books=("${all[@]:0:{{ count }}}")
-    if [ ${#books[@]} -eq 0 ]; then
-        echo "no *.rabook in $sd_dir; generating stub book..."
-        # run books generator if available
-    fi
-    tools/mkbookimg/build/mkbookimg build/ereader_sd.img "${books[@]}"
-    fast_flag=""
-    [ "{{ fast_sd }}" = "1" ] && fast_flag="--fast-sd"
-    app_dir="$(python3 scripts/dev/ra8_apps.py dir ereader_shelf)"
-    tools/ra8_emulator/build/ra8_emulator "$app_dir/build/ereader_shelf.elf" --sd build/ereader_sd.img $fast_flag --panel "tools/ra8_emulator/panels/{{ panel }}.toml" --view
-
-# Run full headless emulator test matrix
-matrix:
-    bash scripts/emu/matrix.sh
-
-# Group the last matrix sweep's failures by cause
-matrix_triage:
-    bash scripts/emu/matrix_triage.sh
-
-# Update the emulator matrix ratchet baseline
-matrix_baseline:
-    bash scripts/emu/matrix.sh --baseline
-
-# Run EIL (Emulated Hardware-In-The-Loop), optionally for one app / worker count
-eil app="" jobs="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    args=()
-    if [ -n "{{ jobs }}" ]; then
-        args+=(-j "{{ jobs }}")
-    fi
-    if [ -n "{{ app }}" ]; then
-        args+=(--only "{{ app }}")
-    fi
-    /bin/bash -p scripts/emu/eil_all.sh "${args[@]}"
-
-# Check e-reader chrome against the committed emulator framebuffer goldens
-golden:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    "{{ just_executable() }}" apps::build ereader_ui
-    "{{ just_executable() }}" tools::build_one ra8_emulator
-    python3 scripts/gen/ereader_golden.py check \
-        --elf "$(python3 scripts/dev/ra8_apps.py dir ereader_ui)/build/ereader_ui.elf" \
-        --emulator tools/ra8_emulator/build/ra8_emulator \
-        --golden-dir tests/golden/ereader_chrome \
-        --out-dir /tmp/ereader_golden_out
-
-# Regenerate the committed e-reader chrome emulator framebuffer goldens
-golden_update:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    "{{ just_executable() }}" apps::build ereader_ui
-    "{{ just_executable() }}" tools::build_one ra8_emulator
-    python3 scripts/gen/ereader_golden.py update \
-        --elf "$(python3 scripts/dev/ra8_apps.py dir ereader_ui)/build/ereader_ui.elf" \
-        --emulator tools/ra8_emulator/build/ra8_emulator \
-        --golden-dir tests/golden/ereader_chrome
-
-# Profile an app with interactive flamechart GUI
-profile app mode="full" stop_pc="" profile_args="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    "{{ just_executable() }}" apps::build "{{ app }}"
-    "{{ just_executable() }}" tools::build_one ra8_emulator
+    "{{ just_executable() }}" apps::emulator::build_emu gui
     app_dir="$(python3 scripts/dev/ra8_apps.py dir "{{ app }}")"
     app_name="$(python3 scripts/dev/ra8_apps.py name "{{ app }}")"
-    RA8_EMU_PROFILE={{ mode }} RA8_EMU_STOP_PC={{ stop_pc }} RA8_EMU_MAX_CHUNKS=8000000 \
-        tools/ra8_emulator/build/ra8_emulator "$app_dir/build/$app_name.elf" {{ profile_args }}
-    if [ -f ra8_emulator_profile.html ]; then
-        echo "Opening flamechart GUI: ra8_emulator_profile.html"
-        if command -v open >/dev/null 2>&1; then
-            if ! open ra8_emulator_profile.html; then
-                echo "Could not open the flamechart; open ra8_emulator_profile.html manually" >&2
-            fi
-        elif command -v xdg-open >/dev/null 2>&1; then
-            if ! xdg-open ra8_emulator_profile.html; then
-                echo "Could not open the flamechart; open ra8_emulator_profile.html manually" >&2
-            fi
-        else
-            echo "No supported browser opener found; open ra8_emulator_profile.html manually" >&2
-        fi
-    fi
+    "{{ just_executable() }}" apps::build "{{ app }}"
+    tools/ra8_emulator/zig-out/bin/ra8_gui "$app_dir/build/$app_name.elf"
+
+# Profile an app and write folded stacks (pipe build/<app>.folded into flamegraph.pl)
+profile app="ereader_ui":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{ just_executable() }}" apps::emulator::build_emu
+    "{{ just_executable() }}" apps::build "{{ app }}"
+    app_dir="$(python3 scripts/dev/ra8_apps.py dir "{{ app }}")"
+    app_name="$(python3 scripts/dev/ra8_apps.py name "{{ app }}")"
+    mkdir -p build
+    tools/ra8_emulator/zig-out/bin/ra8_emulator "$app_dir/build/$app_name.elf" --profile --profile-folded "build/$app_name.folded"
+    echo "folded profile: build/$app_name.folded"

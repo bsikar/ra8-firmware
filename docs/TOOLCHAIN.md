@@ -98,7 +98,6 @@ target; the "status" column flags the known skews.
 | `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | 1.7.7 (devcontainer) | 1.7.7 (`/usr/local/bin`) | CONVERGED -- see 3.5 |
 | `gcovr` | **7.0** (`pyproject.toml` / `uv.lock`) | 7.0 (`.venv`) | 7.0 (`/opt/ra8-python-tools`, uv-synchronized) | Exact pin, deliberately; 8.0 and 8.4 both break the coverage data model -- see 3.7 |
-| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (source build) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 |
 
 ---
 
@@ -244,79 +243,16 @@ directory makes gcovr resolve nothing and report `no_working_dir_found` -- a
 failure indistinguishable from a real coverage regression. Do not "fix" that
 opt-out.
 
-### 3.6 libunicorn (ra8_emulator CPU emulator): pinned 2.1.4, source-built, fail-loud
+### 3.6 libunicorn (ra8_emulator): removed
 
-`tools/ra8_emulator` boots the real cross-compiled firmware `.elf` on Unicorn
-(QEMU's core as a library). **Different Unicorn versions decode Armv8.1-M
-differently** -- notably the Cortex-M85's Helium/MVE store family -- so the
-emulator's verdict for a byte-identical `.elf` depends on which Unicorn is
-installed. Left unpinned, "same commit, green here, faulting there" is
-structural, which is exactly what the devcontainer fault was: the self-hosted runner linked a
-source-built **2.1.4** in `/usr/local`, while the dev box and the devcontainer
-linked Debian/Ubuntu apt **2.0.1** -- and 2.0.1 raises a spurious `EXCP_NOCP` on
-the MVE stores that 2.1.4 (and real M85 silicon) executes. That made ~6 EPUB /
-comic / crypto smoke apps and a wider EIL set fault under the container gate on dev's own
-HEAD while CI stayed green.
-
-**The pin is 2.1.4** -- the version CI (the authority) already links and the one
-where the ra8_emulator smoke / matrix / EIL suite is green. It is the same choice
-as the arm-gcc pin: one exact upstream release, **built from source**, verified
-by sha256, so the library is byte-reproducible on every box rather than
-"whatever apt offered the day the runner was provisioned".
-
-How it is enforced (three parts, no assumptions):
-
-- **One source of truth.** `scripts/ci/unicorn_pin.sh` holds the version
-  (`RA8_UNICORN_VERSION=2.1.4`), the release-tarball URL, and its sha256. The
-  devcontainer duplicates the version + sha256 as `UNICORN_VERSION` /
-  `UNICORN_SHA256` build args (`.devcontainer/Dockerfile`); keep the two in step
-  when moving the pin, exactly as the arm-gcc pin is duplicated into
-  `cmake/toolchain-ra8d2.cmake`.
-- **Reproducible install.** `scripts/ci/install_unicorn.sh` downloads the pinned
-  tarball, checks the sha256, builds the `arm` target (`-DUNICORN_ARCH=arm`,
-  Release, shared), and installs to `/usr/local` on Linux or
-  `~/.local/ra8-firmware/unicorn` on macOS (`RA8_UNICORN_PREFIX` overrides
-  either). It is idempotent -- already-pinned is a no-op. The devcontainer runs
-  the same source build in its `Dockerfile`. It is provisioning, **not** a gate,
-  and is deliberately never invoked from a workflow step (the CI parity gate
-  forbids an "infra" step from calling anything under `scripts/`).
-- **Fail-loud check.** Every emulator gate (`emulator-smoke`,
-  `emulator-matrix`, `emulator-io-fabric`, `eil-integration`) calls
-  `require_pinned_unicorn` in the ra8ci runner, which runs
-  `scripts/checks/check_unicorn_version.sh`. That check compiles a probe against
-  the ACTUAL `libunicorn` ra8_emulator will link, reads `uc_version()` + the header
-  `UC_VERSION_*` macros + `pkg-config`, and **exits non-zero with remediation**
-  when any disagrees with the pin. Run its `--selftest` to see it reject a 2.0.1
-  skew and accept a 2.1.4 match. This is the honesty half: the removed guard
-  (`if ! ldconfig | grep libunicorn; then apt-get install ...`) checked only that
-  *something named libunicorn existed*, never which version -- so a fossil
-  install produced green ra8_emulator runs nobody could reproduce. A skewed or
-  absent Unicorn now fails the gate instead of quietly passing.
-
-**Provision a Linux box** (dev box, or a fresh runner):
-
-```sh
-/bin/bash -p scripts/ci/install_unicorn.sh     # -> /usr/local (needs sudo for a system prefix)
-RA8_UNICORN_PREFIX=$HOME/opt/unicorn /bin/bash -p scripts/ci/install_unicorn.sh  # per-user
-```
-
-On macOS, run `just apps::emulator::setup` from a clone for the one-command setup. It
-requires only Apple's Command Line Tools (not the full Xcode app), uses the
-user-writable default prefix, and configures the emulator to find it without
-environment variables. The installer applies a narrow Unicorn 2.1.4
-compatibility change that skips an AArch64 `CTR_EL0` cache-register probe on
-Darwin; macOS can deny the preceding sysctl query, and that privileged probe
-otherwise terminates the emulator with `SIGILL`. The generic fallback cache
-line size is safe for Unicorn's JIT.
-
-**No longer an out-of-repo residual.** This used to be a manual step on the
-bare-metal `k3s-runner-*` services on `k3s-pve`, whose `/usr/local` Unicorn was
-hand-provisioned and would have needed re-running by hand after any re-image.
-That pool and its ARC successor are both retired. `.devcontainer/Dockerfile`
-builds Unicorn **2.1.4** from source by URL + sha256, so the pin is provisioned
-by the same file that declares it. The fail-loud check above is unchanged and
-is still what guarantees a skew cannot pass silently; `install_unicorn.sh`
-remains the recipe for a bare box (a dev box, or a new runner shape).
+ra8-emulator no longer uses Unicorn. It is a standalone Zig project, pinned at
+`tools/ra8_emulator`, and builds with `zig build`: no CMake, no libunicorn, no
+RA8_UNICORN_PREFIX, and nothing to pin. The only native dependency is SDL3 for
+the windowed debugger (`zig build -Dgui` produces `ra8_gui`), and the build
+fetches SDL3 itself. The old Unicorn pin, installer, and fail-loud version
+check (`scripts/ci/unicorn_pin.sh`, `scripts/ci/install_unicorn.sh`,
+`scripts/checks/check_unicorn_version.sh`) were retired with the CI move to
+bsikar/ra8ci and are no longer called from this repository.
 
 ### 3.7 gcovr: exact-pinned 7.0 on purpose, and what moving off it costs
 
