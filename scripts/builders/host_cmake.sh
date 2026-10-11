@@ -11,8 +11,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # shellcheck source=scripts/builders/select_host_compiler.sh
 . "$SCRIPT_DIR/select_host_compiler.sh"
-# shellcheck source=scripts/ci/lib/parallelism.sh
-. "$REPO_ROOT/scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/lib/parallelism.sh
+. "$REPO_ROOT/scripts/lib/parallelism.sh"
 
 usage() {
   echo "Usage: scripts/builders/host_cmake.sh [--emulator] [--target NAME] SOURCE BUILD [CMAKE_ARG ...]" >&2

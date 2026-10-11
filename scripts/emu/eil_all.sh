@@ -163,8 +163,8 @@ if [[ "$-" == *p* ]]; then
   # ra8_emulator worker pool and the emulator build below derive from it so this
   # sweep does not saturate a shared box (the contention that timed out a
   # emulator gate and read as a regression).
-  # shellcheck source=scripts/ci/lib/parallelism.sh
-  source "${REPO_ROOT}/scripts/ci/lib/parallelism.sh"
+  # shellcheck source=scripts/lib/parallelism.sh
+  source "${REPO_ROOT}/scripts/lib/parallelism.sh"
 
   # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
   # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is

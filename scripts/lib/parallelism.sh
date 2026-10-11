@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
 #
-# scripts/ci/lib/parallelism.sh -- the ONE canonical bounded-parallelism source.
+# scripts/lib/parallelism.sh -- the ONE canonical bounded-parallelism source.
 #
 # SOURCED, NEVER EXECUTED. Every parallel invocation in a CI gate body, a
 # builder, a check or an emulator driver (make -j, cmake --build -j, ctest -j,

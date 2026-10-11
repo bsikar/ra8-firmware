@@ -23,8 +23,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width. The
 # across-app worker pool below defaults to it so this canonical cross-build
 # does not grab every core when it shares the box with other gate jobs.
-# shellcheck source=scripts/ci/lib/parallelism.sh
-. "$REPO_ROOT/scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/lib/parallelism.sh
+. "$REPO_ROOT/scripts/lib/parallelism.sh"
 # shellcheck source=scripts/builders/lib/app_batch.sh
 . "$REPO_ROOT/scripts/builders/lib/app_batch.sh"
 

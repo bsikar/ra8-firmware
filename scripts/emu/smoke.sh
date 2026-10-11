@@ -33,8 +33,8 @@ emu_dir="$ROOT/tools/ra8_emulator"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width; the
 # emulator build below derives from it instead of an unbounded -j.
-# shellcheck source=scripts/ci/lib/parallelism.sh
-. "$ROOT/scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/lib/parallelism.sh
+. "$ROOT/scripts/lib/parallelism.sh"
 
 # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
 # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is

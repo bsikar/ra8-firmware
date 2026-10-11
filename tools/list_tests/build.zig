@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the `list_tests` host tool (RA8FW-335). One executable, plus the
-//! test step `scripts/checks/check_zig.py --test` runs: the listing
+//! test step `check_zig.py --test` (bsikar/ra8ci) runs: the listing
 //! `just/tests.just` shows and the exit-status contract
 //! `scripts/builders/list_tests.sh` passes through.
 

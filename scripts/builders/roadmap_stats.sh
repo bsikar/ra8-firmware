@@ -16,7 +16,7 @@
 #     bash scripts/builders/roadmap_stats.sh --check
 #     bash scripts/builders/roadmap_stats.sh
 #
-# Invoked by gate_roadmap_stats in scripts/ci/gates/build.sh and by the
+# Invoked by the ra8ci roadmap gate (bsikar/ra8ci) and by the
 # `record_stats` recipe in just/docs.just.
 
 set -euo pipefail

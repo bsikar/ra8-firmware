@@ -8,7 +8,7 @@
 //! was spliced into the compile step, the link step, both second images and
 //! every compile-database row, and nothing could ask for anything else. Debug
 //! is also the configuration almost nothing in the repo asks for. CI's own
-//! gate (scripts/ci/gates/build.sh), scripts/builders/all_examples.sh,
+//! gate (bsikar/ra8ci, scripts/ci/gates/build.sh), scripts/builders/all_examples.sh,
 //! scripts/builders/build_cross_compile_db.py and the `ra8d2-release` preset
 //! all configure RelWithDebInfo.
 //!
