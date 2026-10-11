@@ -126,6 +126,21 @@ pub fn build(b: *std.Build) void {
     host_render_test_module.addImport("abi", host_render_abi_module);
     host_render_test_module.addImport("debug", debug_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
+    const surface_paint_module = b.createModule(.{
+        .root_source_file = b.path("src/host_surface_paint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    surface_paint_module.addImport("ra8_gfx", host_font_module);
+    const surface_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/surface_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    surface_render_test_module.addImport("surface_paint", surface_paint_module);
+    surface_render_test_module.addImport("ra8_gfx", host_font_module);
+    surface_render_test_module.addImport("abi", host_render_abi_module);
+    const surface_render_tests = b.addTest(.{ .root_module = surface_render_test_module });
     const gfx_module_test_module = b.createModule(.{
         .root_source_file = b.path("tests/gfx_module_test.zig"),
         .target = target,
@@ -371,6 +386,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_host_render_tests.step);
     test_step.dependOn(&b.addRunArtifact(gfx_module_tests).step);
+    test_step.dependOn(&b.addRunArtifact(surface_render_tests).step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_image_widget_tests.step);
     test_step.dependOn(&run_abi_tests.step);

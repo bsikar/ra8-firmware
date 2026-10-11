@@ -18,7 +18,8 @@
     "tests/segmented_test.zig",
     "tests/image_test.zig",
     "tests/list_test.zig",
-    "tests/paint_ops_test.zig"
+    "tests/paint_ops_test.zig",
+    "tests/surface_render_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
