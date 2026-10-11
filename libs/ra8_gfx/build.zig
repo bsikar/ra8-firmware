@@ -133,6 +133,19 @@ pub fn build(b: *std.Build) void {
     bind_test_module.addImport("bind", bind_module);
     const bind_tests = b.addTest(.{ .root_module = bind_test_module });
 
+    const surface_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_gfx.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const surface_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/surface_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    surface_test_module.addImport("ra8_gfx", surface_module);
+    const surface_tests = b.addTest(.{ .root_module = surface_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_tone_tests = b.addRunArtifact(tone_tests);
     const run_dither_tests = b.addRunArtifact(dither_tests);
@@ -148,4 +161,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_text_tests.step);
     test_step.dependOn(&run_font_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&b.addRunArtifact(surface_tests).step);
 }

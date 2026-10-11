@@ -8,6 +8,7 @@
 //! build.zig as `dependency.module("ra8_gfx")`, so desktop text uses the
 //! same glyphs as the panel. Plain Zig with no chip code: pixels go out
 //! through the caller's `PixelFn`, so any framebuffer can take them.
+//! `Surface` is the host RGBA backend (RA8FW-950) desktop apps draw into.
 
 /// Text layout, measurement and rasterisation over the bundled fonts.
 pub const text = @import("internal/text.zig");
@@ -16,3 +17,10 @@ pub const Face = text.Face;
 pub const Weight = text.Weight;
 pub const Extent = text.Extent;
 pub const PixelFn = text.PixelFn;
+
+/// The host argb8888 surface: fills, blended fills, lines, glyph coverage,
+/// blits and a clip stack (RA8FW-950).
+pub const surface = @import("internal/surface.zig");
+pub const Surface = surface.Surface;
+pub const Rect = surface.Rect;
+pub const Format = surface.Format;

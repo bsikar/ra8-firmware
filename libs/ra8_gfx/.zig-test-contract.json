@@ -6,7 +6,8 @@
     "tests/bind_test.zig",
     "tests/font_test.zig",
     "tests/abi_test.zig",
-    "tests/text_test.zig"
+    "tests/text_test.zig",
+    "tests/surface_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -24,7 +25,11 @@
     "tests/font_test.zig",
     "tests/abi_test.zig",
     "tests/text_test.zig",
-    "src/internal/font_literata.zig"
+    "src/internal/font_literata.zig",
+    "src/internal/surface.zig",
+    "src/internal/surface_blit.zig",
+    "src/ra8_gfx.zig",
+    "tests/surface_test.zig"
   ],
   "minimum_tests": 154
 }\n
