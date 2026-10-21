@@ -19,7 +19,13 @@ RA8FW-290). CPU0:
 5. memory-loads the fault module with a memory-fault callback registered.
    Its start thread stores outside its MPU regions, the port's MemManage
    handler kills it and calls the callback, and the manager ticks ten more
-   times (RA8FW-837).
+   times (RA8FW-837);
+6. reports the kill from the fault info the port saved (the address the
+   module stored to, its PC, CFSR), stops and unloads the killed module with
+   the pool coming back whole, and loads and runs the hello module once more:
+   the firmware goes on to the next app (RA8FW-1024). This is the isolation
+   demo: the fault module's store goes to 0x2210_0040, resident-image SRAM it
+   was never given.
 
 The app sets `txm_manager` in the build table: it links
 `threadx_m85_modules` but packs no module, so the only copy that can run is
@@ -36,6 +42,8 @@ txm_sd_hello_m85: run 1 exited, unload returned N bytes, module pool F of F free
 txm_sd_hello_m85: run 2 exited, unload returned N bytes, module pool F of F free
 txm_sd_hello_m85: unloaded and reloaded the same image PASS
 txm_sd_hello_m85: signed module loaded, ran, exited PASS
+txm_sd_hello_m85: fault module stored to 0x22100040 from pc 0x........, MPU killed it (CFSR 0x00000082)
+txm_sd_hello_m85: next app loaded and ran after the kill PASS
 txm_sd_hello_m85: faulting module killed, firmware ran on PASS
 ```
 
