@@ -12,7 +12,10 @@ RA8FW-290). CPU0:
 3. reads and admits `txm_fault_m33.ra8app` from the same card the same way;
 4. memory-loads the hello module through the ThreadX Module Manager, starts
    it unprivileged, waits for its start thread to run ten times, then stops
-   and unloads it (`src/module.zig`);
+   and unloads it (`src/module.zig`), and does all of that a second time from
+   the same image (RA8FW-1022). After each unload the manager's module-memory
+   byte pool must be back to the free bytes it had before the load, or the run
+   fails `leak`;
 5. memory-loads the fault module with a memory-fault callback registered.
    Its start thread stores outside its MPU regions, the port's MemManage
    handler kills it and calls the callback, and the manager ticks ten more
@@ -25,13 +28,22 @@ the one read off the card.
 The card needs `txm_hello_m33.ra8app` and `txm_fault_m33.ra8app` in its
 root. `zig build txm-hello-m33` installs both under `zig-out/arm/`.
 
-Console, on a pass, three lines:
-`txm_sd_hello_m85: tampered image refused PASS`,
-`txm_sd_hello_m85: signed module loaded, ran, exited PASS`, then
-`txm_sd_hello_m85: faulting module killed, firmware ran on PASS`. Otherwise
-`txm_sd_hello_m85: FAIL <step>` naming pins, card, mount, open, size, read,
-header, signature, tamper, fault_signature, manager, notify, load, start,
-run, stop, unload or fault.
+Console, on a pass:
+
+```
+txm_sd_hello_m85: tampered image refused PASS
+txm_sd_hello_m85: run 1 exited, unload returned N bytes, module pool F of F free
+txm_sd_hello_m85: run 2 exited, unload returned N bytes, module pool F of F free
+txm_sd_hello_m85: unloaded and reloaded the same image PASS
+txm_sd_hello_m85: signed module loaded, ran, exited PASS
+txm_sd_hello_m85: faulting module killed, firmware ran on PASS
+```
+
+N is what the loaded module held in the pool and F the pool's free bytes;
+each unload must return all of N. Otherwise `txm_sd_hello_m85: FAIL <step>`
+naming pins, card, mount, open, size, read, header, signature, tamper,
+fault_signature, manager, notify, pool, load, start, run, stop, unload, leak
+or fault.
 
 In the emulator: `--sd-dir DIR` with both files in DIR. An empty DIR prints
 `FAIL open`.
