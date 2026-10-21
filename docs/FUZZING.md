@@ -146,7 +146,11 @@ targets per CPU-second of fuzzing. `fuzz_ra8_stb_image`, `fuzz_ra8_stbtt`,
 and `fuzz_reflow_xml` reach the stb or XML parser directly on every
 input, whereas `fuzz_epub` reaches the XML layer only after miniz has
 inflated a well-formed ZIP -- so the three focused harnesses give the
-parsers far more coverage per second. Smaller parsers (e.g. UART command
+parsers far more coverage per second. `fuzz_ra8_c6link_rpc` covers the
+other remote input: every control-plane frame the ESP32-C6 sends goes through
+`priv_c6link_rpc_consume`, the TLV envelope and then the vendored protobuf-c
+decode of the generated esp-hosted codec, which the harness compiles in so
+coverage reaches the decoder (RA8FW-285). Smaller parsers (e.g. UART command
 shells, internal config blobs) are not yet wrapped because the input is
 either trusted or the grammar is small enough that exhaustive
 hand-written tests already cover it.

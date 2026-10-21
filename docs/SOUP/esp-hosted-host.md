@@ -293,14 +293,29 @@ DO-178C Section 12.1.4 (previously developed software):
   this SOUP is first-party code under test.
 - **No safety claim.** The link carries connectivity, not any integrity
   signal; a fault is contained to the connectivity path.
-- **Untrusted input is remote, and this surface is NOT yet fuzzed.** The
-  driver parses frames produced by the C6. The RPC codec path (protobuf-c plus
-  the generated `esp_hosted_rpc.pb-c.c`) is the parsing surface that most
-  warrants a fuzz harness, and every precondition for one is now met: the code
-  is buildable, host-tested (`tests/cmake/tests_c6link.cmake` compiles the
-  codec) and parsing remote frames on silicon. No harness covers it -- an open
-  gap tracked by RA8FW-285, which is the one part of this component's audit that
-  is not a documentation fix.
+- **Untrusted input is remote, and the decode path is fuzzed.** The driver
+  parses frames produced by the C6. The RPC codec path (protobuf-c plus the
+  generated `esp_hosted_rpc.pb-c.c`) is the parsing surface that most warrants
+  fuzzing. `tests/fuzz/src/fuzz_ra8_c6link_rpc.c` (RA8FW-285) drives
+  `priv_c6link_rpc_consume` -- the TLV envelope, then `rpc__unpack` into the
+  link's fixed decode arena, then routing to the outstanding wait or the event
+  path -- with the codec compiled into the harness so coverage reaches it. It
+  is registered in `tests/fuzz/CMakeLists.txt` with `-fsanitize=function` off
+  for that target only (protobuf-c calls the generated initialisers through a
+  generic pointer by design).
+
+  First run (2026-10-20, clang 19, ASan + UBSan, 300 s): 40.1 M inputs, 1138
+  edges, 1858 corpus entries, no AddressSanitizer report. UBSan found four
+  undefined-behaviour sites, all in the vendored protobuf-c and all still
+  present upstream: `parse_tag_and_wiretype` shifts a byte promoted to `int` by
+  up to 25 places (lines 2096 and 2099), and two null-plus-zero pointer
+  offsets (`desc->fields + 0` for a message with no fields, line 3046, and an
+  empty repeated array's base plus `siz * 0`, line 2762). None corrupts memory
+  on the targets here, but each is undefined in C on a remote-input path.
+  Whether to carry fixes in the `bsikar/protobuf-c` fork or report them
+  upstream is RA8FW-1032. That run used a by-hand build of the harness,
+  because the CMake host and fuzz build does not link on `dev` today
+  (RA8FW-1031).
 - **Fully pinned and reproducible.** A commit pin plus a per-file upstream
   manifest for both the esp-hosted tree and the nested protobuf-c tree -- see
   "Integrity" above, which is also why no aggregate hash is transcribed into
