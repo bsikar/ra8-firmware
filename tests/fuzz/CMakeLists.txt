@@ -100,6 +100,7 @@ set(RA8_FUZZ_TARGETS
     fuzz_unarch_tar
     fuzz_unarch_gzip
     fuzz_ra8_decomp_limits
+    fuzz_ra8_c6link_rpc
 )
 
 # Harnesses that dereference real peripheral registers and therefore need
@@ -174,6 +175,24 @@ foreach(_t ${RA8_FUZZ_TARGETS})
 endforeach()
 
 # Convenience aggregate target: `cmake --build . --target ra8_fuzz_all`.
+# fuzz_ra8_c6link_rpc (RA8FW-285) drives the ESP32-C6 control-plane decode.
+# The vendored esp-hosted codec -- protobuf-c and the generated
+# esp_hosted_rpc.pb-c.c, the same RA8_C6LINK_SOUP tests_c6link.cmake compiles
+# -- is built into the target with its sanitizer flags, so libFuzzer's
+# coverage reaches the decoder. The ra8_c6link Zig archive it calls arrives
+# through tests/cmake/zig_link_order.cmake's link_libraries.
+#
+# One UBSan check is off for this target only: -fsanitize=function. protobuf-c
+# calls every generated `*__init` through a `void (*)(ProtobufCMessage *)`
+# pointer (protobuf_c_message_init), which that check reports on the first
+# message that decodes. It is upstream's design and ABI-identical on every
+# target here; leaving the check on would stop each run at the first valid
+# frame and hide everything behind it. ASan and the rest of UBSan stay on.
+target_sources(fuzz_ra8_c6link_rpc PRIVATE ${RA8_C6LINK_SOUP})
+target_include_directories(fuzz_ra8_c6link_rpc PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+target_compile_options(fuzz_ra8_c6link_rpc PRIVATE -fno-sanitize=function)
+target_link_options(fuzz_ra8_c6link_rpc PRIVATE -fno-sanitize=function)
+
 add_custom_target(
   ra8_fuzz_all
   DEPENDS ${RA8_FUZZ_TARGETS}
