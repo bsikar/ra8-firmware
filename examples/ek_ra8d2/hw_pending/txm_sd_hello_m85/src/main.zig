@@ -26,6 +26,7 @@ pub const pass_line = "txm_sd_hello_m85: signed module loaded, ran, exited PASS\
 pub const tamper_line = "txm_sd_hello_m85: tampered image refused PASS\r\n";
 pub const fault_line = "txm_sd_hello_m85: faulting module killed, firmware ran on PASS\r\n";
 pub const reload_line = "txm_sd_hello_m85: unloaded and reloaded the same image PASS\r\n";
+pub const next_line = "txm_sd_hello_m85: next app loaded and ran after the kill PASS\r\n";
 /// Load-run-unload cycles of the hello module from one image (RA8FW-1022).
 pub const hello_cycles = 2;
 pub const stack_bytes = 4096;
@@ -95,6 +96,14 @@ fn sayCycle(round: u32, cycle: module.Cycle) void {
     say(text);
 }
 
+/// The isolation demo's evidence (RA8FW-1024): where the module stored, the
+/// fault that stopped it, and where in the module the store was.
+fn sayKill(kill: module.Kill) void {
+    var line: [128]u8 = undefined;
+    const text = std.fmt.bufPrint(&line, "txm_sd_hello_m85: fault module stored to 0x{X:0>8} from pc 0x{X:0>8}, MPU killed it (CFSR 0x{X:0>8})\r\n", .{ kill.address, kill.pc, kill.status }) catch return;
+    say(text);
+}
+
 fn runModules(lens: Lengths) anyerror!void {
     try module.init();
     var round: u32 = 1;
@@ -103,7 +112,9 @@ fn runModules(lens: Lengths) anyerror!void {
     }
     say(reload_line);
     say(pass_line);
-    try module.fault(fault_image[verify.header_bytes..lens.fault]);
+    sayKill(try module.fault(fault_image[verify.header_bytes..lens.fault]));
+    _ = try module.hello(image[verify.header_bytes..lens.hello]);
+    say(next_line);
     say(fault_line);
 }
 

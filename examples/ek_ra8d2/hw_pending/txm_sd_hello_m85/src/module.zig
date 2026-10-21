@@ -36,6 +36,31 @@ var module_ram: [module_ram_bytes]u8 align(32) = undefined;
 var object_pool: [object_pool_bytes]u8 align(8) = undefined;
 var faults: u32 = 0;
 var own_module: bool = false;
+/// What the port's MemManage handler saved about the kill (RA8FW-1024).
+var seen: Kill = .{};
+
+/// The head of upstream's TXM_MODULE_MANAGER_MEMORY_FAULT_INFO, at the
+/// offsets the port's MemManage handler stores to (txm_fault_cpu1 reads the
+/// same words on CPU1).
+const FaultInfo = extern struct {
+    thread: u32,
+    code_location: u32,
+    shcsr: u32,
+    cfsr: u32,
+    mmfar: u32,
+    bfar: u32,
+    control: u32,
+};
+
+/// The kill as the host reports it.
+pub const Kill = struct {
+    /// The data address the store went to (MMFAR).
+    address: u32 = 0,
+    /// The fault status that killed it (CFSR).
+    status: u32 = 0,
+    /// Where in the module the store was.
+    pc: u32 = 0,
+};
 
 const Notify = *const fn (?*anyopaque, ?*anyopaque) callconv(.c) void;
 
@@ -47,6 +72,7 @@ extern fn _txm_module_manager_memory_load(module: *anyopaque, name: [*:0]const u
 extern fn _txm_module_manager_start(module: *anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_stop(module: *anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_unload(module: *anyopaque) callconv(.c) u32;
+extern const _txm_module_manager_memory_fault_info: FaultInfo;
 /// The manager's module-memory pool, created by `_txm_module_manager_initialize`.
 extern var _txm_module_manager_byte_pool: u8;
 extern fn _tx_byte_pool_info_get(
@@ -76,6 +102,8 @@ fn waitRuns() bool {
 /// Called from the MemManage handler after the faulting thread is terminated.
 fn faulted(thread_ptr: ?*anyopaque, module: ?*anyopaque) callconv(.c) void {
     _ = thread_ptr;
+    const info: *const volatile FaultInfo = &_txm_module_manager_memory_fault_info;
+    seen = .{ .address = info.mmfar, .status = info.cfsr, .pc = info.code_location };
     @atomicStore(bool, &own_module, module == @as(?*anyopaque, &instance), .seq_cst);
     _ = @atomicRmw(u32, &faults, .Add, 1, .seq_cst);
 }
@@ -139,10 +167,17 @@ pub fn hello(payload: []const u8) Fail!Cycle {
 
 /// Loads and starts the faulting module at `payload`, then waits for the MPU
 /// to kill it and for `pass_ticks` more manager ticks. No faults may land
-/// before it starts: the hello module has to come and go cleanly.
-pub fn fault(payload: []const u8) Fail!void {
+/// before it starts: the hello module has to come and go cleanly. The killed
+/// module is then stopped and unloaded like any other, and the pool must come
+/// back whole, so the next app has its memory (RA8FW-1024).
+pub fn fault(payload: []const u8) Fail!Kill {
     if (@atomicLoad(u32, &faults, .seq_cst) != 0) return error.fault;
+    const before = try poolFree();
     if (_txm_module_manager_memory_load(&instance, "txm_fault_m33", payload.ptr) != tx_success) return error.load;
     if (_txm_module_manager_start(&instance) != tx_success) return error.start;
     if (!outlivedFault()) return error.fault;
+    if (_txm_module_manager_stop(&instance) != tx_success) return error.stop;
+    if (_txm_module_manager_unload(&instance) != tx_success) return error.unload;
+    if (try poolFree() != before) return error.leak;
+    return seen;
 }
