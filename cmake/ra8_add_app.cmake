@@ -474,6 +474,23 @@ macro(ra8_add_app)
     -L${CMAKE_CURRENT_BINARY_DIR}
     -Wl,--Map=${_RA8_APP_NAME}.map
   )
+
+  # The board camera adapter reaches ra8_io's I2C facade through WEAK
+  # references (libs/ra8_board_ek_ra8d2/src/internal/hal.zig), so an app
+  # without ra8_io still links. A weak undefined reference does not pull an
+  # archive member, though, so an app that asks for the camera and makes no
+  # strong call into ra8_io of its own (camera_capture) linked both as NULL:
+  # ra8_board_camera_i2c_ops answered not_supported and the sensor was never
+  # probed (RA8FW-1025). Force them in for every ra8_camera app, the same way
+  # cmake/threadx.cmake forces _tx_timer_interrupt.
+  if("ra8_camera" IN_LIST _RA8_APP_LIBS)
+    target_link_options(
+      ${_ra8_elf}
+      PRIVATE
+      -Wl,--undefined=ra8_io_i2c_bus_bind_riic
+      -Wl,--undefined=ra8_io_i2c_bus_as_ops
+    )
+  endif()
   if(_ra8_ld_base)
     set_target_properties(
       ${_ra8_elf}
