@@ -134,6 +134,24 @@ pub fn build(b: *std.Build) void {
         module_pack_tests[index] = b.addTest(.{ .root_module = test_module });
     }
 
+    // `ra8_app_api_t`, the calls a module makes into the resident image
+    // (RA8FW-294): the module's shims and the kernel's checked dispatch.
+    const app_api_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/app_api.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    var app_api_tests: [2]*std.Build.Step.Compile = undefined;
+    inline for (.{ "tests/app_api_test.zig", "tests/app_api_refusal_test.zig" }, 0..) |path, index| {
+        const test_module = b.createModule(.{
+            .root_source_file = b.path(path),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_module.addImport("app_api", app_api_module);
+        app_api_tests[index] = b.addTest(.{ .root_module = test_module });
+    }
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_appimg_tests = b.addRunArtifact(appimg_tests);
@@ -146,6 +164,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_appimg_verify_tests.step);
     test_step.dependOn(&run_appimg_pack_tests.step);
     for (module_pack_tests) |compile| test_step.dependOn(&b.addRunArtifact(compile).step);
+    for (app_api_tests) |compile| test_step.dependOn(&b.addRunArtifact(compile).step);
     // The tool must at least build on every test run.
     test_step.dependOn(&pack_tool.step);
 }
