@@ -5,6 +5,7 @@
 //! the per-port slots shared with etha_stats_abi/etha_irq_abi and the bench
 //! diag array; the register sequences are in internal/etha_life.zig.
 
+const std = @import("std");
 const builtin = @import("builtin");
 const common = @import("abi_common.zig");
 const life = @import("internal/etha_life.zig");
@@ -37,7 +38,10 @@ const seam = struct {
 
 comptime {
     if (@sizeOf(life.Config) != 16) @compileError("ra8_etha_config_t is 16 bytes");
-    if (@sizeOf(Slot) != 2 * @sizeOf(usize) + 28) @compileError("ra8_etha_slot_t layout");
+    // Two pointers then the 28-byte counters, padded to pointer alignment:
+    // 36 bytes on the M85, 48 on a 64-bit host (RA8FW-1030).
+    if (@sizeOf(Slot) != std.mem.alignForward(usize, 2 * @sizeOf(usize) + 28, @alignOf(usize))) @compileError("ra8_etha_slot_t layout");
+    if (@offsetOf(Slot, "stats") != 2 * @sizeOf(usize)) @compileError("ra8_etha_slot_t layout");
 }
 
 const Mmio = struct {
