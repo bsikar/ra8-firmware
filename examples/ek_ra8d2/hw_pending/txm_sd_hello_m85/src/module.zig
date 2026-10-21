@@ -3,7 +3,9 @@
 //!
 //! The Module Manager half of txm_sd_hello_m85. hello (RA8FW-830) copies a
 //! verified module out of RAM into module memory, starts it unprivileged,
-//! watches its start thread run, then stops and unloads it. fault
+//! watches its start thread run, then stops and unloads it, and reports what
+//! the unload gave back to the manager's byte pool so the host can run it
+//! again from the same image (RA8FW-1022). fault
 //! (RA8FW-837) loads the faulting module the same way and checks the MPU
 //! kills it while the manager ticks on. Offsets as txm_manager_m85 reads them
 //! off a run (RA8FW-825).
@@ -27,7 +29,7 @@ pub const object_pool_bytes = 4 * 1024;
 
 const tx_success: u32 = 0;
 
-pub const Fail = error{ manager, load, start, run, stop, unload, notify, fault };
+pub const Fail = error{ manager, load, start, run, stop, unload, notify, fault, pool, leak };
 
 var instance: [instance_bytes]u8 align(8) = undefined;
 var module_ram: [module_ram_bytes]u8 align(32) = undefined;
@@ -45,6 +47,17 @@ extern fn _txm_module_manager_memory_load(module: *anyopaque, name: [*:0]const u
 extern fn _txm_module_manager_start(module: *anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_stop(module: *anyopaque) callconv(.c) u32;
 extern fn _txm_module_manager_unload(module: *anyopaque) callconv(.c) u32;
+/// The manager's module-memory pool, created by `_txm_module_manager_initialize`.
+extern var _txm_module_manager_byte_pool: u8;
+extern fn _tx_byte_pool_info_get(
+    pool: *anyopaque,
+    name: ?*?[*:0]u8,
+    available: ?*u32,
+    fragments: ?*u32,
+    first_suspended: ?*?*anyopaque,
+    suspended_count: ?*u32,
+    next_pool: ?*?*anyopaque,
+) callconv(.c) u32;
 
 fn word(offset: usize) u32 {
     const w: *align(1) volatile u32 = @ptrCast(&instance[offset]);
@@ -86,14 +99,42 @@ pub fn init() Fail!void {
     if (_txm_module_manager_memory_fault_notify(&faulted) != tx_success) return error.notify;
 }
 
+/// Bytes free in the manager's module-memory pool.
+pub fn poolFree() Fail!u32 {
+    var available: u32 = 0;
+    if (_tx_byte_pool_info_get(&_txm_module_manager_byte_pool, null, &available, null, null, null, null) != tx_success) return error.pool;
+    return available;
+}
+
+/// What one load-run-unload cycle took from the pool and gave back.
+pub const Cycle = struct {
+    /// Free bytes before the load.
+    before: u32,
+    /// Free bytes while the module was loaded.
+    loaded: u32,
+    /// Free bytes after the unload.
+    after: u32,
+
+    /// Bytes the module held, all of which the unload returned.
+    pub fn held(self: Cycle) u32 {
+        return self.before - self.loaded;
+    }
+};
+
 /// Loads the module image at `payload` (its preamble first), runs it until
 /// its start thread has run `pass_runs` times, then stops and unloads it.
-pub fn hello(payload: []const u8) Fail!void {
+/// The pool must be back where it started, or the unload leaked.
+pub fn hello(payload: []const u8) Fail!Cycle {
+    const before = try poolFree();
     if (_txm_module_manager_memory_load(&instance, "txm_hello_m33", payload.ptr) != tx_success) return error.load;
+    const loaded = try poolFree();
     if (_txm_module_manager_start(&instance) != tx_success) return error.start;
     if (word(start_thread_offset) != tx_thread_id or !waitRuns()) return error.run;
     if (_txm_module_manager_stop(&instance) != tx_success) return error.stop;
     if (_txm_module_manager_unload(&instance) != tx_success) return error.unload;
+    const after = try poolFree();
+    if (loaded >= before or after != before) return error.leak;
+    return .{ .before = before, .loaded = loaded, .after = after };
 }
 
 /// Loads and starts the faulting module at `payload`, then waits for the MPU

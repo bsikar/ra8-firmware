@@ -6,7 +6,9 @@
 //! (card.zig), admits it against the pinned key and checks a tampered copy
 //! is refused (verify.zig, RA8FW-831), and runs it
 //! unprivileged through the ThreadX Module Manager (module.zig): memory load,
-//! start, ten runs of its start thread, stop, unload. Then the negative
+//! start, ten runs of its start thread, stop, unload, and the same again from
+//! the same image, with the module pool back to its size after each unload
+//! (RA8FW-1022). Then the negative
 //! (RA8FW-837): the signed `txm_fault_m33.ra8app` off the same card stores
 //! outside its MPU regions, the manager's fault callback sees it killed, and
 //! the manager ticks on. The verdicts go to the SCI8 VCOM console. Zig
@@ -23,6 +25,9 @@ pub const baud: u32 = 115_200;
 pub const pass_line = "txm_sd_hello_m85: signed module loaded, ran, exited PASS\r\n";
 pub const tamper_line = "txm_sd_hello_m85: tampered image refused PASS\r\n";
 pub const fault_line = "txm_sd_hello_m85: faulting module killed, firmware ran on PASS\r\n";
+pub const reload_line = "txm_sd_hello_m85: unloaded and reloaded the same image PASS\r\n";
+/// Load-run-unload cycles of the hello module from one image (RA8FW-1022).
+pub const hello_cycles = 2;
 pub const stack_bytes = 4096;
 pub const priority: u32 = 1;
 
@@ -83,9 +88,20 @@ fn admit() anyerror!Lengths {
     return .{ .hello = len, .fault = fault_len };
 }
 
+/// One line per hello cycle: the run, and what its unload gave back.
+fn sayCycle(round: u32, cycle: module.Cycle) void {
+    var line: [128]u8 = undefined;
+    const text = std.fmt.bufPrint(&line, "txm_sd_hello_m85: run {d} exited, unload returned {d} bytes, module pool {d} of {d} free\r\n", .{ round, cycle.held(), cycle.after, cycle.before }) catch return;
+    say(text);
+}
+
 fn runModules(lens: Lengths) anyerror!void {
     try module.init();
-    try module.hello(image[verify.header_bytes..lens.hello]);
+    var round: u32 = 1;
+    while (round <= hello_cycles) : (round += 1) {
+        sayCycle(round, try module.hello(image[verify.header_bytes..lens.hello]));
+    }
+    say(reload_line);
     say(pass_line);
     try module.fault(fault_image[verify.header_bytes..lens.fault]);
     say(fault_line);
