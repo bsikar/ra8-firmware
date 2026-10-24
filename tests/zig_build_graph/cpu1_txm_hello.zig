@@ -45,6 +45,11 @@ pub const Module = struct {
     /// (libs/ra8_app/src/internal/api/module.zig) and drives the call
     /// table (RA8FW-1023).
     api: bool = false,
+    /// The start-thread stack size the module's preamble declares, in
+    /// bytes. The package's example preamble carries 1024; a module built
+    /// through C runs gcc frames and the resident image's handlers on that
+    /// thread, so it declares what it needs (RA8FW-1023).
+    stack_size: ?u32 = null,
 };
 
 /// The hello-world module, and the one the `txm-hello-m33` step installs.
@@ -112,6 +117,7 @@ pub const dual_client = Module{
 pub const tour = Module{
     .name = "txm_tour_m33",
     .entry_source = "examples/ek_ra8d2/hw_pending/txm_tour_m33/module_start.zig",
+    .stack_size = 4096,
     .through_c = true,
     .api = true,
 };
@@ -233,7 +239,7 @@ fn imageThroughC(
     const root = module_object.rootModule(b, ctx.core, module.entry_source);
     if (module.api) root.addImport("ra8_app_api", appApiModuleCore(b, ctx.core));
     const entry = module_object.object(b, ctx, module.name, root);
-    const elf = module_object.link(b, ctx, module.name, entry, null);
+    const elf = module_object.link(b, ctx, module.name, entry, null, module.stack_size);
     const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
     to_bin.addFileArg(elf);
     const bin = to_bin.addOutputFileArg(b.fmt("{s}.bin", .{module.name}));

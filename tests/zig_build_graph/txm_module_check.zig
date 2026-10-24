@@ -109,7 +109,7 @@ pub fn add(
             const name = b.fmt("txm_probe_{s}_{s}", .{ probe.name, core.suffix() });
             const root = module_object.rootModule(b, core, probe.source);
             const entry = module_object.object(b, ctx, name, root);
-            const elf = module_object.link(b, ctx, name, entry, probe.leave_out);
+            const elf = module_object.link(b, ctx, name, entry, probe.leave_out, null);
             const install = b.addInstallFileWithDir(
                 elf,
                 .{ .custom = "arm" },
