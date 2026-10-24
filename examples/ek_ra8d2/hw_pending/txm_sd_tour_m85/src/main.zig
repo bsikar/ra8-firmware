@@ -97,7 +97,7 @@ fn run() anyerror!void {
 
 fn manager(input: u32) callconv(.c) void {
     _ = input;
-    if (loaded) |app| {
+    if (loaded) |_| {
         run() catch |err| fail(err);
     } else |err| fail(err);
     while (true) _ = _tx_thread_sleep(module.tick_limit);
