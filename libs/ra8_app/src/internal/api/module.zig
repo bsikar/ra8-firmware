@@ -10,7 +10,9 @@
 //! `_txm_module_application_request` (see `target`) and the host tests bind a
 //! fake that calls `kernel.dispatch` directly.
 
-const abi = @import("abi.zig");
+/// The ABI both sides agree on, exported for the modules that bind the
+/// shims: the request numbers, the structs, the status codes (RA8FW-1023).
+pub const abi = @import("abi.zig");
 
 const Status = abi.Status;
 const Word = abi.Word;
