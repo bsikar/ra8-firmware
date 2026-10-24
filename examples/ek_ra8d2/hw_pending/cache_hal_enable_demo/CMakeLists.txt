@@ -44,7 +44,7 @@ ra8_add_app(
 
 # Turn on the shared boot's cache + MPU bring-up for THIS app only, and select
 # the HAL cache-enable route. The shared boot
-# (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled into each app's own
+# (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) is compiled into each app's own
 # executable, so these PRIVATE defines reach that translation unit here and
 # nowhere else: SystemInit() programmes the 5-region MPU and then enables the
 # I-cache / D-cache through ra8_cache_icache_enable() / ra8_cache_dcache_enable()

@@ -34,7 +34,7 @@
  * The sources are ``linker_script.ld`` (SRAM at 0x22000000, 1024 KiB, so CPU0
  * ends at 0x22100000), ``linker_script_cpu1.ld`` (SRAM_CPU1 at 0x22190000,
  * 64 KiB; MRAM_CPU1 at 0x020C0000, 256 KiB), and MPU region 4 in the board's
- * ``boot/system_init.c``.
+ * ``boot/system_init.zig``.
  */
 typedef enum : uint32_t {
   k_bd_shared_base = 0x22100000UL, /**< SRAM2: where CPU0's allocation ends.  */

@@ -7,7 +7,7 @@
  * MPU memory-attribute map through the `ra8_mpu` HAL
  * (`ra8_mpu_apply_boot_map()`) instead of hand-rolling the MAIR / RBAR / RLAR /
  * CTRL register pokes. It is kept ALONGSIDE the raw-poke reference
- * (`libs/ra8_board_ek_ra8d2/src/boot/system_init.c`, used by e.g.
+ * (`libs/ra8_board_ek_ra8d2/src/boot/system_init.zig`, used by e.g.
  * `cache_mpu_hil`):
  * every other bring-up step here is byte-identical, so a `diff` of the two
  * files shows exactly the raw-pokes-vs-HAL boot difference, and the two apps

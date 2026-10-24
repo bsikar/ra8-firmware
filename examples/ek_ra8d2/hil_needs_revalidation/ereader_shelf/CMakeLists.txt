@@ -88,7 +88,7 @@ ra8_add_app(
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
 
 # Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The
-# shared SystemInit (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled into
+# shared SystemInit (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) is compiled into
 # each app's own executable, so this PRIVATE define reaches that TU here and
 # nowhere else: it programmes the 5-region MPU and enables the I-cache, D-cache,
 # and branch predictor before main() runs (substrate silicon-validated by
