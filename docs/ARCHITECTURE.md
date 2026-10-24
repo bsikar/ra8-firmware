@@ -88,7 +88,7 @@ Adding an app is dropping the directory in; the next `just build_all` finds it.
 ```mermaid
 graph TD
     RST["Reset_Handler<br/>libs/ra8_board_ek_ra8d2/src/boot/vector_table.c"]
-    SI["SystemInit -- libs/ra8_board_ek_ra8d2/src/boot/system_init.c<br/>disable IRQ, VTOR to g_ra8_vector_table_start,<br/>CPACR CP10/CP11 (FPU), FPCCR LSPEN + ASPEN,<br/>ICIALLU + CCR.IC, CCR.DC, CCR.BP,<br/>NVIC priority grouping = 4 preempt bits"]
+    SI["SystemInit -- libs/ra8_board_ek_ra8d2/src/boot/system_init.zig<br/>disable IRQ, VTOR to g_ra8_vector_table_start,<br/>CPACR CP10/CP11 (FPU), FPCCR LSPEN + ASPEN,<br/>ICIALLU + CCR.IC, CCR.DC, CCR.BP,<br/>NVIC priority grouping = 4 preempt bits"]
     CPY["copy .data from its MRAM load address to SRAM, zero .bss"]
     MAIN["main()<br/>ra8_infrastructure_init -- log backend, pin validator<br/>ra8_cgc_init -- PLL to CPUCLK0 at ~1 GHz<br/>ra8_time_init -- SysTick at 1 kHz<br/>application loop"]
 

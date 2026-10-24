@@ -46,7 +46,7 @@ ra8_add_app(
 )
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
-# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled
+# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) is compiled
 # per-app, so this define reaches only cache_coherency_hil.elf. With the D-cache
 # enabled, the M85<->M33 hand-off through SRAM is coherent ONLY because the boot
 # maps the shared bank (0x22100000) as a non-cacheable MPU region -- which is the
