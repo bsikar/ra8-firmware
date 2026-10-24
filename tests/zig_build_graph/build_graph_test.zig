@@ -990,8 +990,27 @@ test {
     _ = @import("zig_main_test.zig");
 }
 
-test "a Zig boot unit learns TrustZone from its app and nothing else" {
+test "a Zig boot unit learns TrustZone and the cache/MPU gates from its app" {
     try std.testing.expect(sources.bootOptions(trust_zone_app).trust_zone);
     try std.testing.expect(!sources.bootOptions(bare_app).trust_zone);
-    try std.testing.expectEqual(1, @typeInfo(sources.BootOptions).@"struct".field_names.len);
+
+    // The three per-app cache/MPU gates default off, matching the C tree's
+    // default: no RA8_BOOT_ENABLE_CACHE_MPU define, no boot map, no caches.
+    const off = sources.bootOptions(bare_app);
+    try std.testing.expect(!off.cache_mpu);
+    try std.testing.expect(!off.mpu_via_hal);
+    try std.testing.expect(!off.cache_via_hal);
+
+    // An app that names the gates gets exactly the gates it names, so
+    // cache_hal_enable_demo's spelling (enable + HAL cache) is a distinct
+    // boot object from mpu_boot_map_hal's (enable + raw pokes).
+    var gated = bare_app;
+    gated.cache_mpu = true;
+    gated.cache_via_hal = true;
+    const on = sources.bootOptions(gated);
+    try std.testing.expect(on.cache_mpu);
+    try std.testing.expect(on.cache_via_hal);
+    try std.testing.expect(!on.mpu_via_hal);
+
+    try std.testing.expectEqual(4, @typeInfo(sources.BootOptions).@"struct".field_names.len);
 }

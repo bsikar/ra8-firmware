@@ -173,6 +173,14 @@ pub const CrossApp = struct {
     /// one of the app's translation units and to its link; see
     /// arm_flags.trust_zone for what each of those actually buys.
     trust_zone: bool = false,
+    /// The app's spellings of the three per-app boot gates, which its own
+    /// CMakeLists carry as target_compile_definitions today:
+    /// RA8_BOOT_ENABLE_CACHE_MPU, RA8_BOOT_MPU_VIA_HAL and
+    /// RA8_BOOT_CACHE_VIA_HAL. They reach the Zig boot units the same way
+    /// trust_zone does, as boot_options fields (RA8FW-365).
+    cache_mpu: bool = false,
+    mpu_via_hal: bool = false,
+    cache_via_hal: bool = false,
     /// The CMSE import library the app's own CMakeLists asks the link to
     /// emit, named as the file name CMake gives it. Null for every app that
     /// is not the secure half of a two-project TrustZone build.
@@ -469,9 +477,10 @@ pub const cross_apps = [_]CrossApp{
         .nsc_srcs = &.{"ra8_nsc_cgc.c"},
         .trust_zone = true,
         .cmse_implib = "tz_nsc_cgc_usb_cmse_import.o",
-        // BOOT_PROFILE ns_usb_handoff: system_init.c and trustzone_init.c come
-        // from the board's src/boot/ns_usb_handoff/, which programmes the SAU
-        // and BLXNS-es into the Non-Secure image (RA8FW-626).
+        // BOOT_PROFILE ns_usb_handoff: system_init.c and trustzone_init.zig
+        // come from the board's src/boot/ns_usb_handoff/, which programmes the
+        // SAU and BLXNS-es into the Non-Secure image (RA8FW-626; the
+        // TrustZone unit ported to Zig under RA8FW-365).
         .boot_profile = "ns_usb_handoff",
         // ra8_ns_memory_map_defines(tz_nsc_cgc_usb.elf) in its CMakeLists:
         // the handoff boot unit reads RA8_NS_MRAM_BASE and RA8_NS_SRAM_BASE.

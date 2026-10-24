@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * The shared boot (`libs/ra8_board_ek_ra8d2/src/boot/system_init.c`) sets
+ * The shared boot (`libs/ra8_board_ek_ra8d2/src/boot/system_init.zig`) sets
  * `SHCSR.USGFAULTENA` and `CCR.DIV_0_TRP`, so an integer SDIV/UDIV by
  * zero must no longer silently return 0 -- it must raise a UsageFault
  * that the per-app vector table's trampoline forwards into

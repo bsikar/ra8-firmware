@@ -13,7 +13,7 @@
  *
  * This app is the first in the tree to build with
  * ``RA8_BOOT_ENABLE_CACHE_MPU`` (set in its CMakeLists.txt). With that
- * flag the shared boot (``libs/ra8_board_ek_ra8d2/src/boot/system_init.c``)
+ * flag the shared boot (``libs/ra8_board_ek_ra8d2/src/boot/system_init.zig``)
  * brings up the MPU (5 regions) + I-cache + D-cache + branch predictor.
  * Both buffers live in MPU **region 1** (0x22000000, M85-private
  * **cacheable** SRAM), so the cache hazard is real on silicon.

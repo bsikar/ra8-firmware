@@ -32,6 +32,10 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
 # for the full-page comic reader (sh_comic.c); it reuses epub's
 # miniz-with-ZIP + static pool, already a dep here.
+# The Zig spelling of the shared boot unit reads these gates as boot_options
+# (RA8FW-365); the target_compile_definitions below stay for the C readers
+# (main.c). Set before ra8_add_app() so the boot-object build sees them.
+set(RA8_APP_BOOT_CACHE_MPU ON)
 ra8_add_app(
   NAME ereader_shelf
   STACK_BYTES 16384
@@ -84,7 +88,7 @@ ra8_add_app(
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
 
 # Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The
-# shared SystemInit (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled into
+# shared SystemInit (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) is compiled into
 # each app's own executable, so this PRIVATE define reaches that TU here and
 # nowhere else: it programmes the 5-region MPU and enables the I-cache, D-cache,
 # and branch predictor before main() runs (substrate silicon-validated by

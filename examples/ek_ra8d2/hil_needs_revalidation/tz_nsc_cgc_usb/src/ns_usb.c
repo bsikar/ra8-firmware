@@ -8,7 +8,7 @@
  * @details
  * This is the literal title of the Phase C issue -- "ThreadX + USBX inside the NS
  * image" -- realised on the RAM-resident two-project NS build, taken all the way
- * to a self-validating loop. The Secure side (``trustzone_init.c``), before
+ * to a self-validating loop. The Secure side (``trustzone_init``), before
  * BLXNS, routes both ports' pins, enables the USBHS PLL, sets the U15 expander to
  * host mode, and marks USBFS + USBHS Non-secure (PSARB bits 11 + 12). From
  * genuine Non-secure state this file runs TWO time-sliced ThreadX workers:

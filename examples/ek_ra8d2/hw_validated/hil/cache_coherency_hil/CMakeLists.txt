@@ -33,6 +33,10 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
+# The Zig spelling of the shared boot unit reads these gates as boot_options
+# (RA8FW-365); the target_compile_definitions below stay for the C readers
+# (main.c). Set before ra8_add_app() so the boot-object build sees them.
+set(RA8_APP_BOOT_CACHE_MPU ON)
 ra8_add_app(
   NAME cache_coherency_hil
   CPU1_IMAGE
@@ -42,7 +46,7 @@ ra8_add_app(
 )
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
-# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled
+# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) is compiled
 # per-app, so this define reaches only cache_coherency_hil.elf. With the D-cache
 # enabled, the M85<->M33 hand-off through SRAM is coherent ONLY because the boot
 # maps the shared bank (0x22100000) as a non-cacheable MPU region -- which is the

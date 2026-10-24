@@ -11,7 +11,7 @@
  * ENABLED**, by routing every cross-core hand-off through the
  * non-cacheable MPU region (region 4) that the shared boot maps over
  * ``0x22100000..0x2219FFFF`` when ``RA8_BOOT_ENABLE_CACHE_MPU`` is set
- * (see ``libs/ra8_board_ek_ra8d2/src/boot/system_init.c``).
+ * (see ``libs/ra8_board_ek_ra8d2/src/boot/system_init.zig``).
  *
  * Like ``cpu1_pingpong``, the cross-core channel is a small message
  * struct pinned at the start of the upper on-chip SRAM region
