@@ -240,8 +240,10 @@ pub fn link(
     name: []const u8,
     entry: std.Build.LazyPath,
     leave_out: ?usize,
+    stack_size: ?u32,
 ) std.Build.LazyPath {
-    const preamble = pkg_path.lazy(b, cpu1_txm_hello.preamble);
+    const pkg_preamble = pkg_path.lazy(b, cpu1_txm_hello.preamble);
+    const preamble = if (stack_size) |stack| sizedPreamble(b, pkg_preamble, stack) else pkg_preamble;
     const parts: Parts = .{
         .preamble = assemble(b, ctx, preamble, "txm_module_preamble.o"),
         .setup = assemble(b, ctx, gccSetup(b), "gcc_setup.o"),
@@ -251,4 +253,17 @@ pub fn link(
     };
     const first = linkOnce(b, ctx, b.fmt("{s}_first", .{name}), parts, emptyTable(b));
     return linkOnce(b, ctx, name, parts, tableFor(b, first, leave_out));
+}
+
+/// The package's example preamble hardcodes a start-thread stack size of
+/// 1024 and offers no define to override it. A module that needs a
+/// different one gets the preamble with that word rewritten before it is
+/// assembled.
+fn sizedPreamble(b: *std.Build, source: std.Build.LazyPath, stack_size: u32) std.Build.LazyPath {
+    const run = b.addSystemCommand(&.{ "sh", "-c", b.fmt(
+        "sed -e \"\\%Module Start/Stop Thread Stack Size%s/1024/{d}/\" \"$0\" > \"$1\"",
+        .{stack_size},
+    ) });
+    run.addFileArg(source);
+    return run.addOutputFileArg("txm_module_preamble.S");
 }

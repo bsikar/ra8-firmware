@@ -11,10 +11,12 @@
 //! what the resident image should serve stops the tour with that step's
 //! number as the exit code, so the host names the failure.
 //!
-//! The module keeps no address in its data and never touches a kernel
-//! pointer: every call is a ThreadX application request through the shims.
-//! The manifest identity (app id, capabilities) lives in the `.ra8app` the
-//! build packs; the resident image admits it before the tour starts.
+//! The module never touches a kernel pointer: every call is a ThreadX
+//! application request through the shims. Addresses it hands the resident
+//! image all come from its data region, so the strings the storage steps
+//! pass live in data statics, not the read-only code image. The manifest
+//! identity (app id, capabilities) lives in the `.ra8app` the build packs;
+//! the resident image admits it before the tour starts.
 
 const std = @import("std");
 const api = @import("ra8_app_api");
@@ -42,6 +44,13 @@ const Step = enum(u32) {
 };
 
 var pixels: [8 * 8 * 4]u8 = undefined;
+
+/// The resident image reads pointer arguments only from the module's data
+/// region, and a string literal compiles into the read-only code image, so
+/// the storage steps' strings live here. Initialized statics land in
+/// `.data`, which the manager loads into the region it checks against.
+var tour_path: ["tour.txt".len]u8 = "tour.txt".*;
+var tour_text: ["hello from txm_tour_m33".len]u8 = "hello from txm_tour_m33".*;
 
 fn run() u32 {
     // The generation the resident image serves.
@@ -75,15 +84,15 @@ fn run() u32 {
 
     // Storage: write a file under the module's own directory, close it,
     // open it again, read the bytes back.
-    const text = "hello from txm_tour_m33";
-    const written = calls.fileOpen("tour.txt", abi.OpenFlag.read | abi.OpenFlag.write | abi.OpenFlag.create) catch {
+    const text: []const u8 = &tour_text;
+    const written = calls.fileOpen(&tour_path, abi.OpenFlag.read | abi.OpenFlag.write | abi.OpenFlag.create) catch {
         return @backingInt(Step.file_write);
     };
     const put = calls.fileWrite(written, text) catch return @backingInt(Step.file_write);
     if (put != text.len) return @backingInt(Step.file_write);
     calls.fileClose(written) catch return @backingInt(Step.file_write);
 
-    const opened = calls.fileOpen("tour.txt", abi.OpenFlag.read) catch {
+    const opened = calls.fileOpen(&tour_path, abi.OpenFlag.read) catch {
         return @backingInt(Step.file_read);
     };
     var buffer: [text.len]u8 = undefined;
