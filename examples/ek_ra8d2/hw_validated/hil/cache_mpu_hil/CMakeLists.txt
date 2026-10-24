@@ -30,6 +30,10 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
+# The Zig spelling of the shared boot unit reads these gates as boot_options
+# (RA8FW-365); the target_compile_definitions below stay for the C readers
+# (main.c). Set before ra8_add_app() so the boot-object build sees them.
+set(RA8_APP_BOOT_CACHE_MPU ON)
 ra8_add_app(
   NAME cache_mpu_hil
   STACK_BYTES 2200

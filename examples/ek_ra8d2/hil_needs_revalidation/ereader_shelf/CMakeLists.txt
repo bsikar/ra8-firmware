@@ -32,6 +32,10 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
 # for the full-page comic reader (sh_comic.c); it reuses epub's
 # miniz-with-ZIP + static pool, already a dep here.
+# The Zig spelling of the shared boot unit reads these gates as boot_options
+# (RA8FW-365); the target_compile_definitions below stay for the C readers
+# (main.c). Set before ra8_add_app() so the boot-object build sees them.
+set(RA8_APP_BOOT_CACHE_MPU ON)
 ra8_add_app(
   NAME ereader_shelf
   STACK_BYTES 16384
