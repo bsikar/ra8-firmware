@@ -477,9 +477,10 @@ pub const cross_apps = [_]CrossApp{
         .nsc_srcs = &.{"ra8_nsc_cgc.c"},
         .trust_zone = true,
         .cmse_implib = "tz_nsc_cgc_usb_cmse_import.o",
-        // BOOT_PROFILE ns_usb_handoff: system_init.c and trustzone_init.c come
-        // from the board's src/boot/ns_usb_handoff/, which programmes the SAU
-        // and BLXNS-es into the Non-Secure image (RA8FW-626).
+        // BOOT_PROFILE ns_usb_handoff: system_init.c and trustzone_init.zig
+        // come from the board's src/boot/ns_usb_handoff/, which programmes the
+        // SAU and BLXNS-es into the Non-Secure image (RA8FW-626; the
+        // TrustZone unit ported to Zig under RA8FW-365).
         .boot_profile = "ns_usb_handoff",
         // ra8_ns_memory_map_defines(tz_nsc_cgc_usb.elf) in its CMakeLists:
         // the handoff boot unit reads RA8_NS_MRAM_BASE and RA8_NS_SRAM_BASE.
