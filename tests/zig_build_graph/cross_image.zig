@@ -164,9 +164,23 @@ pub fn addTxmHelloM33(b: *std.Build, step: *std.Build.Step, test_step: *std.Buil
     };
     const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.hello_world);
-    txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, cpu1_txm_hello.hello_world.name, built.bin));
+    txm_ra8app.addCheck(b, test_step, txm_ra8app.add(b, step, cpu1_txm_hello.hello_world.name, built.bin, txm_ra8app.hello));
     const fault = cpu1_txm_hello.image(b, module_tc, tools.objcopy, cpu1_txm_hello.fault);
-    _ = txm_ra8app.add(b, step, cpu1_txm_hello.fault.name, fault.bin);
+    _ = txm_ra8app.add(b, step, cpu1_txm_hello.fault.name, fault.bin, txm_ra8app.hello);
+}
+
+/// The `txm-tour-m33` step: the syscall-tour module, built natively and
+/// packed as a `.ra8app` with the display and storage capabilities the
+/// tour exercises (RA8FW-1023).
+pub fn addTxmTourM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "txm-tour-m33: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.tour);
+    _ = txm_ra8app.add(b, step, cpu1_txm_hello.tour.name, built.bin, txm_ra8app.tour);
 }
 
 /// The `txm-module-check` step: Zig built as module objects through the C

@@ -79,6 +79,24 @@ pub const apps = [_]CrossApp{
         .stack_bytes = 8192,
     },
     .{
+        .name = "txm_sd_tour_m85",
+        .dir = "examples/ek_ra8d2/hw_pending/txm_sd_tour_m85",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_fs"},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            // Both the gate and the API: one root, so appimg.zig stays in
+            // a single module graph.
+            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+        },
+        .txm_manager = true,
+        .stack_bytes = 8192,
+    },
+    .{
         // A ThreadX module on each core of one image (RA8FW-843, under
         // RA8EMU-159): the M85's Module Manager runs txm_dual_client_m33 from
         // its own `.txm_module`, CPU1's runs txm_dual_server_m33 from
