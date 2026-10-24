@@ -33,8 +33,10 @@ pub const Module = struct {
     entry_source: []const u8,
     /// Build the start thread through Zig's C backend and gcc with the
     /// module flags, and link the rebase pass and table (RA8FW-539). A
-    /// module that keeps any address in its data needs this; one that keeps
-    /// none, like the two below, is built natively as before.
+    /// module that keeps any address in its data, or whose code addresses
+    /// its own data, needs this: the native recipe gives a data reference
+    /// nothing to rebase (RA8FW-1023). One that keeps no data at all, like
+    /// the two below, is built natively as before.
     through_c: bool = false,
     /// The core the module runs on. Only a module built through C can be
     /// for the M85 (RA8FW-820); the native recipe is M33 only.
@@ -104,11 +106,13 @@ pub const dual_client = Module{
 };
 
 /// The tour of `ra8_app_api_t`: a module that binds the typed shims and
-/// drives every request the table defines, then exits (RA8FW-1023). It
-/// keeps no address in its data, so it is built natively.
+/// drives every request the table defines, then exits (RA8FW-1023). Its
+/// pixels buffer lives in the module's data and its code addresses it
+/// directly, so it goes through C for the rebase pass.
 pub const tour = Module{
     .name = "txm_tour_m33",
     .entry_source = "examples/ek_ra8d2/hw_pending/txm_tour_m33/module_start.zig",
+    .through_c = true,
     .api = true,
 };
 
@@ -227,6 +231,7 @@ fn imageThroughC(
         .base = base,
     };
     const root = module_object.rootModule(b, ctx.core, module.entry_source);
+    if (module.api) root.addImport("ra8_app_api", appApiModuleCore(b, ctx.core));
     const entry = module_object.object(b, ctx, module.name, root);
     const elf = module_object.link(b, ctx, module.name, entry, null);
     const to_bin = b.addSystemCommand(&.{ objcopy, "-O", "binary" });
@@ -272,9 +277,15 @@ fn zigEntry(b: *std.Build, objcopy: []const u8, module: Module) std.Build.LazyPa
 /// The module's side of `ra8_app_api_t`: the typed shims a module binds,
 /// built for the M33 like the module itself (RA8FW-1023).
 fn appApiModule(b: *std.Build) *std.Build.Module {
+    return appApiModuleCore(b, .cortex_m33);
+}
+
+/// The same shims built for `core`, the way a module built through C is
+/// (RA8FW-1023).
+fn appApiModuleCore(b: *std.Build, core: module_object.Core) *std.Build.Module {
     return b.createModule(.{
         .root_source_file = b.path("libs/ra8_app/src/internal/api/module.zig"),
-        .target = b.resolveTargetQuery(cpu1_image.zig_target_query),
+        .target = b.resolveTargetQuery(core.zigQuery()),
         .optimize = .ReleaseSmall,
         .unwind_tables = .none,
     });
