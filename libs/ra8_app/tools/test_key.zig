@@ -14,3 +14,9 @@ pub const app_id = "com.ra8.txm_hello_m33";
 pub const display_name = "Hello M33";
 /// No capabilities: the hello-world module only prints.
 pub const capabilities = "0";
+
+/// The manifest identity of the syscall-tour module (RA8FW-1023): display
+/// and storage, the capabilities the tour exercises.
+pub const tour_app_id = "com.ra8.txm_tour_m33";
+pub const tour_display_name = "Tour M33";
+pub const tour_capabilities = "3";

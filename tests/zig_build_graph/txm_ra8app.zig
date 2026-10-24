@@ -12,13 +12,36 @@ const test_key = @import("../../libs/ra8_app/tools/test_key.zig");
 
 const app_root = "libs/ra8_app/";
 const module_pack_root = app_root ++ "src/internal/module_pack.zig";
+/// One module's manifest identity: what `ra8app_pack` writes into the
+/// `.ra8app`.
+pub const Identity = struct {
+    app_id: []const u8,
+    display_name: []const u8,
+    capabilities: []const u8,
+};
+
+/// The hello-world identity, the test key's own.
+pub const hello = Identity{
+    .app_id = test_key.app_id,
+    .display_name = test_key.display_name,
+    .capabilities = test_key.capabilities,
+};
+
+/// The syscall-tour module's identity (RA8FW-1023): display and storage,
+/// the capabilities the tour exercises.
+pub const tour = Identity{
+    .app_id = test_key.tour_app_id,
+    .display_name = test_key.tour_display_name,
+    .capabilities = test_key.tour_capabilities,
+};
+
 /// Packs `bin`, the binary of module `name`, into a signed `<name>.ra8app`
-/// and installs it under `arm/`.
-pub fn add(b: *std.Build, step: *std.Build.Step, name: []const u8, bin: std.Build.LazyPath) std.Build.LazyPath {
+/// with `identity`'s manifest and installs it under `arm/`.
+pub fn add(b: *std.Build, step: *std.Build.Step, name: []const u8, bin: std.Build.LazyPath, identity: Identity) std.Build.LazyPath {
     const file_name = b.fmt("{s}.ra8app", .{name});
     const run = b.addRunArtifact(packTool(b));
     run.addFileArg(b.addWriteFiles().add("test_seed.bin", &test_key.seed));
-    run.addArgs(&.{ test_key.app_id, test_key.display_name, test_key.capabilities });
+    run.addArgs(&.{ identity.app_id, identity.display_name, identity.capabilities });
     run.addFileArg(bin);
     const ra8app = run.addOutputFileArg(file_name);
     step.dependOn(&b.addInstallFileWithDir(ra8app, .{ .custom = "arm" }, file_name).step);
