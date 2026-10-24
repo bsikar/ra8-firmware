@@ -173,6 +173,14 @@ pub const CrossApp = struct {
     /// one of the app's translation units and to its link; see
     /// arm_flags.trust_zone for what each of those actually buys.
     trust_zone: bool = false,
+    /// The app's spellings of the three per-app boot gates, which its own
+    /// CMakeLists carry as target_compile_definitions today:
+    /// RA8_BOOT_ENABLE_CACHE_MPU, RA8_BOOT_MPU_VIA_HAL and
+    /// RA8_BOOT_CACHE_VIA_HAL. They reach the Zig boot units the same way
+    /// trust_zone does, as boot_options fields (RA8FW-365).
+    cache_mpu: bool = false,
+    mpu_via_hal: bool = false,
+    cache_via_hal: bool = false,
     /// The CMSE import library the app's own CMakeLists asks the link to
     /// emit, named as the file name CMake gives it. Null for every app that
     /// is not the secure half of a two-project TrustZone build.
