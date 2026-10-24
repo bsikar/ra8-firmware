@@ -353,6 +353,8 @@ pub fn build(b: *std.Build) void {
 
     const txm_hello_m33_step = b.step("txm-hello-m33", cpu1_txm_hello.step_description);
     cross_image.addTxmHelloM33(b, txm_hello_m33_step, test_step, arm);
+    const txm_tour_m33_step = b.step("txm-tour-m33", "Build the syscall-tour module for CPU1 (Cortex-M33) as arm/txm_tour_m33.elf");
+    cross_image.addTxmTourM33(b, txm_tour_m33_step, arm);
 
     const threadx_m85_modules_step = b.step("threadx-m85-modules", m85_threadx_modules.step_description);
     cross_image.addThreadxM85Modules(b, threadx_m85_modules_step, arm);
