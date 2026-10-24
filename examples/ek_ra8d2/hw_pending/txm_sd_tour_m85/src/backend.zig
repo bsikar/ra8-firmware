@@ -195,8 +195,10 @@ fn ensureDirs(app_id: []const u8) void {
     if (mount == null) return;
     _ = ra8_fs_mkdir(mount, "/apps");
     var dir: [48]u8 = undefined;
-    const path = std.fmt.bufPrintZ(&dir, "/apps/{s}", .{app_id}) catch return;
-    _ = ra8_fs_mkdir(mount, path);
+    const path = std.fmt.bufPrint(&dir, "/apps/{s}", .{app_id}) catch return;
+    if (path.len >= dir.len) return;
+    dir[path.len] = 0;
+    _ = ra8_fs_mkdir(mount, dir[0..path.len :0].ptr);
 }
 
 fn backendOpen(ctx: *anyopaque, caller: *const kernel.Caller, path: []const u8, flags: u32, out: *u32) Status {
