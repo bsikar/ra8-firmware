@@ -245,6 +245,26 @@ function(
   endif()
   set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_variant}" "${_archive}")
 
+  # RA8FW-845: with the flip on, the words live in ra8_hal_ofs_words.o
+  # inside the archive, but no code references those symbols, so the
+  # member is never extracted at link time and the board linker script's
+  # KEEP rules never see the sections (the C path never had this problem:
+  # ra8_ofs.c is a direct app source). Extract the words object at build
+  # time and hand it to the app as a direct link input below.
+  if(RA8_HAL_OFS_FROM_ZIG AND _lib STREQUAL "ra8_hal")
+    set(_ra8_ofs_words_obj "${_prefix}/ra8_hal_ofs_words.o")
+    set(_ra8_ofs_extract_script "m=\$(${RA8_ZIG_EXECUTABLE} ar t ${_archive} | grep -F ra8_hal_ofs_words.o) && exec ${RA8_ZIG_EXECUTABLE} ar p ${_archive} \$m > ${_ra8_ofs_words_obj}")
+    add_custom_command(
+      OUTPUT "${_ra8_ofs_words_obj}"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${_prefix}"
+      COMMAND /bin/bash -c "${_ra8_ofs_extract_script}"
+      DEPENDS "${_archive}"
+      COMMENT "Extracting ra8_hal's option-setting words object (RA8FW-845)"
+      VERBATIM
+    )
+    set_property(GLOBAL PROPERTY "ra8_zig_words_obj_${_archive}" "${_ra8_ofs_words_obj}")
+  endif()
+
   file(
     GLOB_RECURSE
     _zig_srcs
@@ -632,4 +652,13 @@ function(_ra8_app_zig_hal_link_one _target _lib_path)
   add_custom_target(${_target}_zig_ra8_hal DEPENDS ${_stamp})
   add_dependencies(${_target} ${_target}_zig_ra8_hal)
   target_link_libraries(${_target} PRIVATE ${_archive})
+  # RA8FW-845: the words object has no referenced symbols, so it must reach
+  # the link as a direct input, not as an archive member the resolver would
+  # never pull in. The board linker script's KEEP rules then retain the
+  # .option_setting_* sections exactly as they retain the C unit's.
+  get_property(_ra8_ofs_words_obj GLOBAL PROPERTY "ra8_zig_words_obj_${_archive}")
+  if(_ra8_ofs_words_obj)
+    set_source_files_properties("${_ra8_ofs_words_obj}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+    target_sources(${_target} PRIVATE "${_ra8_ofs_words_obj}")
+  endif()
 endfunction()
