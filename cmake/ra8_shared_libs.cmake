@@ -45,11 +45,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/ra8_production_build.cmake)
 function(ra8_shared_lib_sources out_var repo_root board_dir)
   file(GLOB_RECURSE _core CONFIGURE_DEPENDS ${repo_root}/libs/ra8_core/src/*.c)
   file(GLOB_RECURSE _hal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
-  if(RA8_HAL_OFS_FROM_ZIG)
-    # RA8FW-845 flip: the Zig unit owns the .option_setting_* placement, so
-    # the shared archive must not carry ra8_ofs.o beside it.
-    list(FILTER _hal EXCLUDE REGEX "/ra8_ofs\\.c$")
-  endif()
   # No ra8_usb_pal glob: that library is fully Zig (RA8FW-317) and its objects come
   # from the Zig static archive, linked separately, as ra8_net_pal's do.
   # Boot composition sources live in src/boot and are selected per image by

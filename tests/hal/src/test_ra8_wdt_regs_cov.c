@@ -17,7 +17,8 @@
  * on the host.
  *
  * The option-setting addresses these instances latch from are asserted
- * against their HUM literals in test_ra8_ofs.c, not here: they are no longer
+ * against their HUM literals in the ofs_words Zig unit tests
+ * (libs/ra8_hal/tests/ofs_words_test.zig), not here: they are no longer
  * reachable through a WDT-header accessor.
  *
  * @par MC/DC:

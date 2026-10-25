@@ -3,17 +3,14 @@
 //!
 //! Option-setting words for the RA8 boot ROM (RA8FW-845): the 32-bit
 //! constants the boot ROM reads directly out of MRAM before the Cortex-M85
-//! reset vector runs. This is the Zig half of what `ra8_ofs.c` does; while
-//! that C file still exists it owns the placement, so this unit emits
-//! nothing by default. A build that sets `-Dofs_from_zig=true` hands the
-//! `.option_setting_*` placement here (and must drop `ra8_ofs.c` from the C
-//! set in the same build, or both objects would append to the same pinned
-//! MRAM output sections). The byte-for-byte section proof against the C
-//! emitter is RA8FW-845 step 3 and gates the final flip.
+//! reset vector runs. This unit owns the `.option_setting_*` placement; the
+//! former C emitter `ra8_ofs.c` is deleted, so there is exactly one owner.
+//! The byte-for-byte section proof against the C emitter (RA8FW-845 step 3)
+//! fixed the values before the C path was removed.
 //!
-//! Placement follows `ra8_ofs.c`'s `RA8_SECTION` exactly: on host builds
-//! (UNIT_TEST / RA8_OFF_TARGET / __APPLE__ in the C) the section attribute
-//! is dropped, and the same is true here -- a word only carries its
+//! Placement follows the former C emitter's `RA8_SECTION` exactly: on host
+//! builds (UNIT_TEST / RA8_OFF_TARGET / __APPLE__ there) the section
+//! attribute is dropped, and the same is true here -- a word only carries its
 //! `linksection` on an Arm freestanding image.
 //!
 //! Every word defaults to `0xFFFFFFFF`, the erased-MRAM / permissive value
@@ -37,10 +34,6 @@ const options = @import("ra8_hal_options");
 /// Arm freestanding image. Host builds keep the values testable but place
 /// nothing, matching the C's UNIT_TEST / RA8_OFF_TARGET / __APPLE__ gate.
 const on_silicon = builtin.cpu.arch.isArm() and builtin.os.tag == .freestanding;
-/// While `ra8_ofs.c` exists it owns the placement. Flipping this build
-/// option hands the placement to this file for the byte-for-byte proof.
-const zig_owns = options.ofs_from_zig;
-
 /// The OFS word inventory from `ra8_ofs.h`: both supported parts carry the
 /// identical OFS0 / OFS1 / OFS2 / OFS3 quartet (RA8D2 HUM R01UH1065EJ0130
 /// Ch 7.2.1 p 280 / Ch 7.2.6 p 287; RA8P1 HUM R01UH1064EJ0130 Ch 7.2.6
@@ -49,7 +42,7 @@ const zig_owns = options.ofs_from_zig;
 /// quartet and are not counted.
 pub const ofs_word_count = 4;
 
-pub const Words = if (zig_owns and on_silicon) struct {
+pub const Words = if (on_silicon) struct {
     export const ofs0: u32 linksection(".option_setting_ofs0") = 0xFFFFFFFF;
     export const ofs1: u32 linksection(".option_setting_ofs1") = options.ofs1;
     export const ofs2: u32 linksection(".option_setting_ofs2") = 0xFFFFFFFF;

@@ -157,18 +157,9 @@ endfunction()
 # shares one ra8_hal archive with an app at the default; two apps overriding
 # to the SAME value still share one archive, which is correct because the
 # words are identical.
-# RA8FW-845 flip: when RA8_HAL_OFS_FROM_ZIG is on, ra8_hal's Zig unit owns the
-# .option_setting_* placement (-Dofs_from_zig=true) and ra8_ofs.c must be out
-# of the C set in the same configure: cmake/ra8_app/sources.cmake filters it
-# from the per-app hal glob, cmake/ra8_shared_libs.cmake from the shared
-# archive, and _ra8_app_zig_hal_link_one() below refuses any target that
-# still compiles it. Off (default), ra8_ofs.c owns the placement and the Zig
-# unit emits nothing, so the archive variant here stays un-keyed on ownership.
-option(
-  RA8_HAL_OFS_FROM_ZIG
-  "RA8FW-845: the ra8_hal Zig unit owns the option-setting words, not ra8_ofs.c"
-  OFF
-)
+# RA8FW-845: ra8_hal's Zig unit owns the .option_setting_* placement; the
+# former C emitter ra8_ofs.c is deleted, so there is exactly one owner and
+# no flip option.
 
 function(
   _ra8_zig_build_archive
@@ -221,12 +212,10 @@ function(
     endif()
   endforeach()
 
-  # The ownership flip is part of the archive's identity: a build with the
-  # Zig unit owning the words is a different archive from one where the C
-  # unit does, even at the same OFS values, so the variant name widens.
-  if(RA8_HAL_OFS_FROM_ZIG AND _lib STREQUAL "ra8_hal")
+  # The words unit is part of the archive's identity: the ra8_hal archive
+  # carries the .option_setting_* words object, so its variant name widens.
+  if(_lib STREQUAL "ra8_hal")
     string(APPEND _variant "_ofsz")
-    list(APPEND _variant_args "-Dofs_from_zig=true")
   endif()
 
   set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_variant}")
@@ -245,13 +234,12 @@ function(
   endif()
   set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_variant}" "${_archive}")
 
-  # RA8FW-845: with the flip on, the words live in ra8_hal_ofs_words.o
-  # inside the archive, but no code references those symbols, so the
-  # member is never extracted at link time and the board linker script's
-  # KEEP rules never see the sections (the C path never had this problem:
-  # ra8_ofs.c is a direct app source). Extract the words object at build
-  # time and hand it to the app as a direct link input below.
-  if(RA8_HAL_OFS_FROM_ZIG AND _lib STREQUAL "ra8_hal")
+  # RA8FW-845: the words live in ra8_hal_ofs_words.o inside the archive,
+  # but no code references those symbols, so the member is never extracted
+  # at link time and the board linker script's KEEP rules never see the
+  # sections. Extract the words object at build time and hand it to the app
+  # as a direct link input below.
+  if(_lib STREQUAL "ra8_hal")
     set(_ra8_ofs_words_obj "${_prefix}/ra8_hal_ofs_words.o")
     set(_ra8_ofs_extract_script "m=\$(${RA8_ZIG_EXECUTABLE} ar t ${_archive} | grep -F ra8_hal_ofs_words.o) && exec ${RA8_ZIG_EXECUTABLE} ar p ${_archive} \$m > ${_ra8_ofs_words_obj}")
     add_custom_command(
@@ -626,28 +614,6 @@ function(_ra8_app_zig_hal_link_one _target _lib_path)
       )
     endif()
   endforeach()
-  if(RA8_HAL_OFS_FROM_ZIG)
-    # Double-ownership gate (RA8FW-845): with the Zig unit owning the
-    # .option_setting_* placement, a target that still compiles ra8_ofs.c
-    # would put both objects on the same pinned MRAM output sections. The
-    # normal hal glob is already filtered; this catches any other path that
-    # reintroduces the TU into this target.
-    get_target_property(_ra8_hal_srcs ${_target} SOURCES)
-    if(NOT _ra8_hal_srcs)
-      set(_ra8_hal_srcs "")
-    endif()
-    list(FILTER _ra8_hal_srcs INCLUDE REGEX "/ra8_ofs\\.c$")
-    if(_ra8_hal_srcs)
-      message(
-        FATAL_ERROR
-          "ra8: RA8_HAL_OFS_FROM_ZIG is on but ${_target} still compiles "
-          "libs/ra8_hal/src/ra8_ofs.c; both units would own the "
-          ".option_setting_* placement (RA8FW-845). The per-app hal glob is "
-          "supposed to drop it (cmake/ra8_app/sources.cmake)."
-      )
-    endif()
-  endif()
-
   _ra8_app_zig_library(ra8_hal "${_lib_path}" _archive _stamp ${_tokens})
   add_custom_target(${_target}_zig_ra8_hal DEPENDS ${_stamp})
   add_dependencies(${_target} ${_target}_zig_ra8_hal)

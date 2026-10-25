@@ -22,13 +22,10 @@ pub fn build(b: *std.Build) void {
     // as `@import("ra8_hal_options").periph_ns_alias` at comptime, so the
     // default archive is unchanged.
     const ns_alias = b.option(bool, "periph_ns_alias", "Reach peripherals through the IDAU bit[28]=1 Non-secure alias") orelse false;
-    // RA8FW-845: when true, the .option_setting_* words come from the
-    // ofs_words unit below instead of ra8_ofs.c. ra8_ofs.c must leave the C
-    // set in the same build; the byte-for-byte section proof gates the flip.
-    const ofs_from_zig = b.option(bool, "ofs_from_zig", "Emit the boot-ROM option-setting words from the ofs_words Zig unit") orelse false;
+    // RA8FW-845: the ofs_words unit owns the .option_setting_* placement;
+    // the former C emitter ra8_ofs.c is deleted, so there is no flip option.
     const options = b.addOptions();
     options.addOption(bool, "periph_ns_alias", ns_alias);
-    options.addOption(bool, "ofs_from_zig", ofs_from_zig);
     // RA8FW-845 step 2: per-app OFS1 overrides. An app that used to pass
     // BSP_CFG_OPTION_SETTING_OFS1(_SEC) through target_compile_definitions
     // (bkup_survival_demo: 0xFFFFFFF0 so LVD0 reset enables VBATT backup)
@@ -286,7 +283,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        // Units read comptime options (periph_ns_alias, ofs_from_zig) through
+        // Units read comptime options (periph_ns_alias, ofs1, ofs1_sec) through
         // this module; giving every test module and unit the same import keeps
         // the loop shape-agnostic.
         unit_module.addImport("ra8_hal_options", options_module);

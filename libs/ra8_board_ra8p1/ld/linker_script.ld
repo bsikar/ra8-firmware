@@ -238,11 +238,12 @@ SECTIONS
 
     /* ---- Option setting regions (fixed flash addresses) ----
      *
-     * Every one of these lands at a fixed MRAM address. Values are
-     * provided by libs/ra8_hal/src/ra8_ofs.c via BSP_PLACE_IN_SECTION
-     * (which expands to __attribute__((section(".option_setting_*")))).
-     * A project that wants to change any of them just overrides the
-     * matching `BSP_CFG_OPTION_SETTING_*` macro and rebuilds.
+     * Every one of these lands at a fixed MRAM address. Values come from
+     * the ra8_hal Zig words unit (libs/ra8_hal/src/ofs_words_abi.zig),
+     * linked into every app as the extracted ra8_hal_ofs_words.o
+     * (RA8FW-845). A per-app OFS1/OFS1_SEC override rides that app's
+     * ra8_hal build options (-Dofs1= / -Dofs1_sec=); this script carries
+     * no values.
      */
     .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
     .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > OFS_CFG

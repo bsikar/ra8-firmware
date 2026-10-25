@@ -20,8 +20,8 @@
  *
  * The IWDT period itself is configured by the OFS0 option-setting
  * register at flash-write time (the chip cannot be reconfigured at
- * runtime). The OFS0 word is ``BSP_CFG_OPTION_SETTING_OFS0`` in
- * ``libs/ra8_hal/src/ra8_ofs.c``, section-placed at ``OFS0_ADDR``; this
+ * runtime). The OFS0 word comes from the ra8_hal Zig words unit
+ * (``libs/ra8_hal/src/ofs_words_abi.zig``), section-placed at ``OFS0_ADDR``; this
  * app carries no local map, so that placement comes from the board's
  * canonical ``libs/ra8_board_ek_ra8d2/ld/linker_script.ld``. The demo
  * assumes a multi-second window there, so the "stop refreshing" stage
