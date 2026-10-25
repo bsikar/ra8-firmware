@@ -523,8 +523,12 @@ pub const cross_apps = [_]CrossApp{
                 "-DRA8_USB_POLLED_ONLY",
             },
             // ns_usb.c calls ra8_usb_device_compose, Zig in ra8_usb_pal's
-            // archive since 3c676497; the app links it for cortex_m85.
+            // archive since 3c676497; the app links it for cortex_m85. ra8_hal
+            // is the periph_ns_alias variant (RA8FW-832): the NS image's
+            // C carries RA8_PERIPH_NS_ALIAS, so its HAL view must sit at the
+            // IDAU bit[28]=1 alias, and usb_pal stays the default archive.
             .zig_libraries = &.{ "ra8_usb_pal", "ra8_hal" },
+            .zig_libraries_ns_alias = &.{ false, true },
             .app_include_dirs = &.{ "inc", "src" },
             .include_dirs = &.{
                 "libs/ra8_core/inc",

@@ -122,8 +122,12 @@ endfunction()
 #
 # An optional trailing OFF_TARGET builds the library with -Doff-target=true:
 # the Zig spelling of the RA8_OFF_TARGET define that OFF_TARGET_LIBS gives a C
-# library. That variant is a different archive, so it gets its own prefix and
-# its own rule, and an app naming the library in LIBS still gets the real one.
+# library. An optional trailing NS_ALIAS builds it with -Dperiph_ns_alias=true
+# instead (RA8FW-832): the RA8_PERIPH_NS_ALIAS spelling, so a TrustZone NS
+# image's ra8_hal reaches peripherals through the IDAU bit[28]=1 alias. Each
+# variant is a different archive, so it gets its own prefix and its own rule,
+# and an app naming the library in LIBS still gets the real one. The two are
+# exclusive: no consumer needs a library both off-target and NS-aliased.
 function(
   _ra8_zig_build_archive
   _lib
@@ -148,6 +152,13 @@ function(
   if("OFF_TARGET" IN_LIST ARGN)
     set(_variant "${_zig_cpu}_off_target")
     set(_variant_args "-Doff-target=true")
+  endif()
+  if("NS_ALIAS" IN_LIST ARGN)
+    if(NOT _variant_args STREQUAL "")
+      message(FATAL_ERROR "ra8: '${_lib}' was asked for as both an OFF_TARGET and an NS_ALIAS variant; the two are exclusive.")
+    endif()
+    set(_variant "${_zig_cpu}_ns_alias")
+    set(_variant_args "-Dperiph_ns_alias=true")
   endif()
 
   set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_variant}")
@@ -317,10 +328,12 @@ endfunction()
 # that defines them. Only the caller knows the order it needs, so this hands
 # back the path for it to position (e.g. in an image's LINK_LIBS ahead of
 # threadx_ns) instead of choosing a position on its behalf.
+# A trailing NS_ALIAS asks for the periph_ns_alias archive variant (RA8FW-832)
+# and rides through to _ra8_zig_build_archive() like an OFF_TARGET would.
 function(ra8_zig_archive_for_cpu _out_archive)
   cmake_parse_arguments(
     ZA
-    ""
+    "NS_ALIAS"
     "LIB;CPU;FLOAT"
     ""
     ${ARGN}
@@ -348,12 +361,17 @@ function(ra8_zig_archive_for_cpu _out_archive)
     )
   endif()
 
+  set(_za_flags)
+  if(ZA_NS_ALIAS)
+    list(APPEND _za_flags NS_ALIAS)
+  endif()
   _ra8_zig_build_archive(
     ${ZA_LIB}
     ${_lib_path}
     ${_zig_target}
     ${ZA_CPU}
     _archive
+    ${_za_flags}
   )
   set(${_out_archive}
       "${_archive}"
@@ -361,16 +379,23 @@ function(ra8_zig_archive_for_cpu _out_archive)
   )
 endfunction()
 
+# A trailing NS_ALIAS links the periph_ns_alias archive variant (RA8FW-832).
+# The custom target's name carries the variant suffix, so an image that links
+# the same library on the same CPU both ways cannot collide on one target.
 function(ra8_link_zig_library_for_cpu)
   cmake_parse_arguments(
     ZL
-    ""
+    "NS_ALIAS"
     "TARGET;LIB;CPU;FLOAT"
     ""
     ${ARGN}
   )
   if(NOT ZL_TARGET)
     message(FATAL_ERROR "ra8_link_zig_library_for_cpu(): TARGET is required")
+  endif()
+  set(_zl_flags)
+  if(ZL_NS_ALIAS)
+    list(APPEND _zl_flags NS_ALIAS)
   endif()
   ra8_zig_archive_for_cpu(
     _archive
@@ -380,9 +405,14 @@ function(ra8_link_zig_library_for_cpu)
     ${ZL_CPU}
     FLOAT
     ${ZL_FLOAT}
+    ${_zl_flags}
   )
-  add_custom_target(${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU} DEPENDS ${_archive})
-  add_dependencies(${ZL_TARGET} ${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU})
+  set(_variant_suffix "")
+  if(ZL_NS_ALIAS)
+    set(_variant_suffix "_ns_alias")
+  endif()
+  add_custom_target(${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU}${_variant_suffix} DEPENDS ${_archive})
+  add_dependencies(${ZL_TARGET} ${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU}${_variant_suffix})
   target_link_libraries(${ZL_TARGET} PRIVATE ${_archive})
 endfunction()
 
