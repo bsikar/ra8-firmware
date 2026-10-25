@@ -192,6 +192,20 @@ ra8_link_zig_library_for_cpu(
   CPU cortex_m85
   FLOAT hard
 )
+# The NS image reaches its peripherals through the IDAU bit[28]=1 alias
+# (RA8_PERIPH_NS_ALIAS on the C side), so its ra8_hal archive is the
+# NS_ALIAS variant, built with -Dperiph_ns_alias=true (RA8FW-832). It sits
+# here, after ra8_usb_pal and before ra8_core: the USB PAL calls into the
+# HAL and the HAL calls into ra8_core (logger, mem* shims), and ld reads
+# each archive once, so this call order is the one the archive chain
+# resolves in. The Secure image above keeps the default archive untouched.
+ra8_link_zig_library_for_cpu(
+  TARGET tz_nsc_cgc_usb_ns.elf
+  LIB ra8_hal
+  CPU cortex_m85
+  FLOAT hard
+  NS_ALIAS
+)
 # ra8_log is Zig now and ra8_scb followed with the fault block,
 # so the NS image takes both from ra8_core's archive instead of
 # compiling libs/ra8_core/src/*.c by path. The NS world runs

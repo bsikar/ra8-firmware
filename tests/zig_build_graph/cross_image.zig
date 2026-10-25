@@ -679,12 +679,25 @@ fn addCrossApp(
     if (app.ns) |image| {
         var ctx = cross_build.nsContext(b, tools, app, image, globals, &arm_global_defines);
         ctx.core_archive = core_archive.forTarget(b, arm_target, globals.configuration.zig_optimize);
+        // One archive per entry, in the app's call order. An entry marked in
+        // `zig_libraries_ns_alias` builds with -Dperiph_ns_alias=true
+        // (RA8FW-832), the NS image's HAL view at the IDAU alias; the option
+        // is only passed to libraries that declare it, which today is ra8_hal
+        // alone, so the other dependencies keep their default archives.
         const ns_archives = b.allocator.alloc(std.Build.LazyPath, image.zig_libraries.len) catch @panic("OOM");
         for (image.zig_libraries, 0..) |library, index| {
-            const dependency = b.dependency(library, .{
-                .target = arm_target,
-                .optimize = globals.configuration.zig_optimize,
-            });
+            const ns_alias = index < image.zig_libraries_ns_alias.len and image.zig_libraries_ns_alias[index];
+            const dependency = if (ns_alias)
+                b.dependency(library, .{
+                    .target = arm_target,
+                    .optimize = globals.configuration.zig_optimize,
+                    .periph_ns_alias = true,
+                })
+            else
+                b.dependency(library, .{
+                    .target = arm_target,
+                    .optimize = globals.configuration.zig_optimize,
+                });
             ns_archives[index] = dependency.artifact(library).getEmittedBin();
         }
         ctx.library_archives = ns_archives;

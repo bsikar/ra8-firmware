@@ -123,6 +123,11 @@ pub const NsImage = struct {
     /// app names it here. `ra8_usb_device_compose` went that way when
     /// 3c676497 deleted `ra8_usb_compose.c` from this app's source list.
     zig_libraries: []const []const u8 = &.{},
+    /// Parallel to `zig_libraries`: true where that entry links the
+    /// NS-alias variant of its archive, built with -Dperiph_ns_alias=true
+    /// (RA8FW-832). Optional, so the rows that name no variant stay
+    /// untouched; when set, one flag per entry, in the same order.
+    zig_libraries_ns_alias: []const bool = &.{},
     /// Link options the target adds ahead of the script. `-nostartfiles`
     /// because the Secure boot copies `.data` and `ns_reset_handler` zeroes
     /// `.bss`, so there is no C runtime startup to link.
@@ -469,6 +474,9 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     link.addFileArg(ctx.middleware_archive orelse @panic("ra8: the NS link needs the threadx_ns archive"));
     if (ctx.library_archives.len != image.zig_libraries.len) {
         @panic("ra8: the NS link needs one archive per zig_libraries entry");
+    }
+    if (image.zig_libraries_ns_alias.len > 0 and image.zig_libraries_ns_alias.len != image.zig_libraries.len) {
+        @panic("ra8: the ns-alias marker needs one flag per zig_libraries entry");
     }
     for (ctx.library_archives) |archive| link.addFileArg(archive);
     link.addFileArg(ctx.core_archive orelse @panic("ra8: the NS link needs ra8_core's archive"));
