@@ -109,6 +109,27 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
   )
 endfunction()
 
+# An option-setting value arrives as the app's C define right-hand side,
+# typically "0xFFFFFFF0U". The Zig unit's parser takes "0xFFFFFFF0" but not
+# the C integer suffix, so strip the suffix and hand back both the parseable
+# value and a path-safe archive-variant tag. Refuse anything else rather than
+# let two different values collapse onto one variant name.
+function(_ra8_zig_ofs_value _raw _out_value _out_tag)
+  set(_v "${_raw}")
+  string(REGEX REPLACE "[uUlL]+$" "" _v "${_v}")
+  if(NOT _v MATCHES "^0[xX][0-9a-fA-F]+$" AND NOT _v MATCHES "^[0-9]+$")
+    message(
+      FATAL_ERROR
+        "ra8: option-setting override value '${_raw}' is not a hex or decimal "
+        "integer literal the Zig option-setting unit can take."
+    )
+  endif()
+  string(TOLOWER "${_v}" _tag)
+  string(REPLACE "0x" "x" _tag "${_tag}")
+  set(${_out_value} "${_v}" PARENT_SCOPE)
+  set(${_out_tag} "${_tag}" PARENT_SCOPE)
+endfunction()
+
 # Build one migrated library for an EXPLICITLY named zig target and cpu, and
 # return the archive path.
 #
@@ -128,6 +149,14 @@ endfunction()
 # variant is a different archive, so it gets its own prefix and its own rule,
 # and an app naming the library in LIBS still gets the real one. The two are
 # exclusive: no consumer needs a library both off-target and NS-aliased.
+#
+# OFS1=<val> and OFS1_SEC=<val> tokens carry a per-app option-setting override
+# (RA8FW-845): the app's BSP_CFG_OPTION_SETTING_OFS1(_SEC) compile definition,
+# handed over so the Zig unit reads the same value the C side would. Each
+# distinct value widens the variant name, so an app that overrides never
+# shares one ra8_hal archive with an app at the default; two apps overriding
+# to the SAME value still share one archive, which is correct because the
+# words are identical.
 function(
   _ra8_zig_build_archive
   _lib
@@ -160,6 +189,24 @@ function(
     set(_variant "${_zig_cpu}_ns_alias")
     set(_variant_args "-Dperiph_ns_alias=true")
   endif()
+
+  foreach(_ofs_tok ${ARGN})
+    if(_ofs_tok MATCHES "^OFS1=(.+)$")
+      _ra8_zig_ofs_value("${CMAKE_MATCH_1}" _ofs_val _ofs_tag)
+      string(APPEND _variant "_ofs1_${_ofs_tag}")
+      list(APPEND _variant_args "-Dofs1=${_ofs_val}")
+    elseif(_ofs_tok MATCHES "^OFS1_SEC=(.+)$")
+      _ra8_zig_ofs_value("${CMAKE_MATCH_1}" _ofs_val _ofs_tag)
+      string(APPEND _variant "_ofs1_sec_${_ofs_tag}")
+      list(APPEND _variant_args "-Dofs1_sec=${_ofs_val}")
+    elseif(_ofs_tok MATCHES "^OFS")
+      message(
+        FATAL_ERROR
+          "ra8: '${_lib}' was asked for option-setting token '${_ofs_tok}'; "
+          "the Zig option-setting unit carries only OFS1= and OFS1_SEC=."
+      )
+    endif()
+  endforeach()
 
   set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_variant}")
   set(_archive "${_prefix}/lib/lib${_lib}.a")
@@ -476,18 +523,70 @@ function(_ra8_app_link_zig_libraries _target)
       _stamp
       ${_variant}
     )
+    if(_lib STREQUAL "ra8_hal")
+      # RA8FW-845: the option-setting words' archive variant is keyed on the
+      # app's own BSP_CFG_OPTION_SETTING_OFS1(_SEC) compile definitions, and
+      # those may be set only AFTER ra8_add_app() returns -- this function
+      # runs inside it. So the HAL link is deferred to the end of the app's
+      # directory, where the definitions are final. The deferred link still
+      # lands after app-selected Zig libraries, which preserves the ordering
+      # the old end-of-list HAL link guaranteed: the HAL archive provides
+      # cache maintenance used by the display PAL, so GNU ld must see the
+      # other libraries' undefined references before scanning libra8_hal.a.
+      # The deferred call's arguments are re-expanded at execution time, in
+      # a scope where this function's locals are gone, so the values ride in
+      # a DIRECTORY property instead of DEFER arguments.
+      set_property(
+        DIRECTORY APPEND PROPERTY "ra8_hal_defer_links" "${_target}|${_lib_path}"
+      )
+      cmake_language(DEFER DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} CALL _ra8_app_zig_hal_link)
+      continue()
+    endif()
     add_custom_target(${_target}_zig_${_lib}${_suffix} DEPENDS ${_stamp})
     add_dependencies(${_target} ${_target}_zig_${_lib}${_suffix})
-    if(_lib STREQUAL "ra8_hal")
-      # The universal HAL archive provides cache maintenance used by the
-      # display PAL. Keep it after app-selected Zig libraries so GNU ld sees
-      # those undefined references before scanning libra8_hal.a.
-      set(_ra8_hal_archive "${_archive}")
-    else()
-      target_link_libraries(${_target} PRIVATE ${_archive})
+    target_link_libraries(${_target} PRIVATE ${_archive})
+  endforeach()
+endfunction()
+
+# The deferred half of the ra8_hal link (RA8FW-845). Runs at the end of the
+# app's directory, after the app had its last word on
+# target_compile_definitions. Reads BSP_CFG_OPTION_SETTING_OFS1(_SEC) off the
+# image and keys the option-setting archive variant on them, so an app that
+# overrides never shares the default archive. Any other
+# BSP_CFG_OPTION_SETTING_* define is refused: the Zig unit does not take it
+# yet, and linking the default archive would silently drop the override.
+function(_ra8_app_zig_hal_link)
+  get_property(_hal_links DIRECTORY PROPERTY "ra8_hal_defer_links")
+  foreach(_link ${_hal_links})
+    string(REPLACE "|" ";" _hal_pair "${_link}")
+    list(GET _hal_pair 0 _target)
+    list(GET _hal_pair 1 _lib_path)
+    _ra8_app_zig_hal_link_one(${_target} "${_lib_path}")
+  endforeach()
+endfunction()
+
+function(_ra8_app_zig_hal_link_one _target _lib_path)
+  set(_tokens)
+  get_target_property(_defs ${_target} COMPILE_DEFINITIONS)
+  if(NOT _defs)
+    set(_defs "")
+  endif()
+  foreach(_def ${_defs})
+    if(_def MATCHES "^-?D?BSP_CFG_OPTION_SETTING_OFS1_SEC=(.+)$")
+      list(APPEND _tokens "OFS1_SEC=${CMAKE_MATCH_1}")
+    elseif(_def MATCHES "^-?D?BSP_CFG_OPTION_SETTING_OFS1=(.+)$")
+      list(APPEND _tokens "OFS1=${CMAKE_MATCH_1}")
+    elseif(_def MATCHES "^-?D?BSP_CFG_OPTION_SETTING_")
+      message(
+        FATAL_ERROR
+          "ra8: ${_target} defines '${_def}' but the Zig option-setting unit "
+          "carries only OFS1/OFS1_SEC overrides (RA8FW-845); linking it onto "
+          "the default archive would silently drop the override."
+      )
     endif()
   endforeach()
-  if(_ra8_hal_archive)
-    target_link_libraries(${_target} PRIVATE ${_ra8_hal_archive})
-  endif()
+  _ra8_app_zig_library(ra8_hal "${_lib_path}" _archive _stamp ${_tokens})
+  add_custom_target(${_target}_zig_ra8_hal DEPENDS ${_stamp})
+  add_dependencies(${_target} ${_target}_zig_ra8_hal)
+  target_link_libraries(${_target} PRIVATE ${_archive})
 endfunction()
