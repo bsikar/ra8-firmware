@@ -22,8 +22,13 @@ pub fn build(b: *std.Build) void {
     // as `@import("ra8_hal_options").periph_ns_alias` at comptime, so the
     // default archive is unchanged.
     const ns_alias = b.option(bool, "periph_ns_alias", "Reach peripherals through the IDAU bit[28]=1 Non-secure alias") orelse false;
+    // RA8FW-845: when true, the .option_setting_* words come from the
+    // ofs_words unit below instead of ra8_ofs.c. ra8_ofs.c must leave the C
+    // set in the same build; the byte-for-byte section proof gates the flip.
+    const ofs_from_zig = b.option(bool, "ofs_from_zig", "Emit the boot-ROM option-setting words from the ofs_words Zig unit") orelse false;
     const options = b.addOptions();
     options.addOption(bool, "periph_ns_alias", ns_alias);
+    options.addOption(bool, "ofs_from_zig", ofs_from_zig);
     const options_module = options.createModule();
     // No unwind tables in a freestanding archive, as in ra8_core's: an
     // .ARM.exidx entry names __aeabi_unwind_cpp_pr0, which a -nostdlib CPU1
@@ -47,7 +52,7 @@ pub fn build(b: *std.Build) void {
     // the members an image references. Zig merges an object's string
     // literals into one .rodata.str1.1 that --gc-sections cannot split, so a
     // single shared object would carry every unit's log strings.
-    const abi_units = [_][]const u8{ "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd", "mipi_csi_status", "mipi_csi_config", "mipi_csi_info", "mipi_csi_lifecycle", "mipi_dsi_lanes", "mipi_dsi_lifecycle", "mipi_dsi_status", "mipi_dsi_video", "mipi_dsi_dispatch", "fpu_probe", "mipi_dsi_command", "i3c_i2c_control", "i2c_status", "i2c_clock", "mstp_ids", "isr_globals", "i2c_config", "exit_stop", "forwarders", "dma", "usb_phid", "lvd_runtime", "rmac_phy", "rmac_mgmt", "dmac", "eth_gwca_queue", "reset", "sci_lin", "usb_host_bulk", "flash_irq", "usb_pmsc", "ble", "gpio_pins", "isr", "rmac_phy_drv", "gpio", "dual_core", "i2c_target", "usb_hhub", "usb_composite", "vreg", "rsip_protected", "touch", "sdcard", "lpm", "cnecc", "lvd", "sram", "pdg", "agt", "gpt", "flash_arc", "flash_ctl", "flash_cfgset", "etha_cfg", "etha_irq", "etha_cbs", "etha_life", "i3c_ctl", "i3c_life", "i3c_ccc", "i3c_xfer", "i3c_compat", "i3c_ibi", "dotf_status", "dotf_handler", "dotf_state", "dotf_life", "dotf_region", "dotf_ctrl", "dotf_key", "eth_gwca_events", "eth_gwca_mode", "eth_gwca_bringup", "eth_gwca_life", "rtc_events", "rtc_stop", "rtc_calendar", "rtc_init", "eth_gwca_rx", "eth_gwca_recv", "eth_gwca_send", "eth_gwca_open", "canfd_events", "canfd_ctrl", "canfd_filter", "canfd_mode", "canfd_init", "xspi_events", "xspi_xip", "xspi_reset", "xspi_init", "xspi_cmd", "xspi_read", "xspi_program", "i2c_xfer", "wdt_ofs", "wdt_timing", "wdt_subs", "wdt_ctrl", "spi_b_clock", "spi_b_events", "spi_b_setup", "spi_b_xfer", "sci_cfg", "sci_ctl" };
+    const abi_units = [_][]const u8{ "ofs_words", "eth", "canfd", "layer3_switch", "icu", "iwdt", "npu_quant", "glcdc_gamma", "elc", "epaper_devinfo", "eth_coma", "bscan", "eth_mfwd", "fuelgauge", "sram_security", "bkup_security", "lpm_graphics", "i3c_i2c_peripheral", "ether_phy", "mpc", "doc", "cac", "epaper_geom", "pwr", "sau", "ethosu_shim", "crc", "mipi_phy_ops", "spi_b_dma", "tsn", "acmphs", "sci_spi", "canfd_timing", "dotf_power", "usb_pvnd", "canfd_afl", "cgc_eswclk", "dac_b", "usb_pprn", "canfd_frame", "dtc", "eth_gptp", "etha_tas", "etha_stats", "sci_dma_isr", "ceu_init_regs", "usb_pmsc_scsi", "pdm", "spi_b_target", "ulpt", "poeg", "bkup_tamper", "bkup", "glcdc_layer", "ssie_stream", "ipc_sem_ring", "sdramc", "adc_selfdiag", "cache", "usb_paud", "eth_link", "smbus", "usb_cdc", "lvd_events", "mipi_csi_irq", "mipi_dsi_cmd", "mipi_csi_status", "mipi_csi_config", "mipi_csi_info", "mipi_csi_lifecycle", "mipi_dsi_lanes", "mipi_dsi_lifecycle", "mipi_dsi_status", "mipi_dsi_video", "mipi_dsi_dispatch", "fpu_probe", "mipi_dsi_command", "i3c_i2c_control", "i2c_status", "i2c_clock", "mstp_ids", "isr_globals", "i2c_config", "exit_stop", "forwarders", "dma", "usb_phid", "lvd_runtime", "rmac_phy", "rmac_mgmt", "dmac", "eth_gwca_queue", "reset", "sci_lin", "usb_host_bulk", "flash_irq", "usb_pmsc", "ble", "gpio_pins", "isr", "rmac_phy_drv", "gpio", "dual_core", "i2c_target", "usb_hhub", "usb_composite", "vreg", "rsip_protected", "touch", "sdcard", "lpm", "cnecc", "lvd", "sram", "pdg", "agt", "gpt", "flash_arc", "flash_ctl", "flash_cfgset", "etha_cfg", "etha_irq", "etha_cbs", "etha_life", "i3c_ctl", "i3c_life", "i3c_ccc", "i3c_xfer", "i3c_compat", "i3c_ibi", "dotf_status", "dotf_handler", "dotf_state", "dotf_life", "dotf_region", "dotf_ctrl", "dotf_key", "eth_gwca_events", "eth_gwca_mode", "eth_gwca_bringup", "eth_gwca_life", "rtc_events", "rtc_stop", "rtc_calendar", "rtc_init", "eth_gwca_rx", "eth_gwca_recv", "eth_gwca_send", "eth_gwca_open", "canfd_events", "canfd_ctrl", "canfd_filter", "canfd_mode", "canfd_init", "xspi_events", "xspi_xip", "xspi_reset", "xspi_init", "xspi_cmd", "xspi_read", "xspi_program", "i2c_xfer", "wdt_ofs", "wdt_timing", "wdt_subs", "wdt_ctrl", "spi_b_clock", "spi_b_events", "spi_b_setup", "spi_b_xfer", "sci_cfg", "sci_ctl" };
     for (abi_units) |unit| {
         const object = b.addObject(.{
             .name = b.fmt("ra8_hal_{s}", .{unit}),
@@ -71,6 +76,7 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run Zig ra8_hal tests");
     const units = [_]struct { name: []const u8, source: []const u8, root: []const u8 }{
+        .{ .name = "ofs_words", .source = "src/ofs_words_abi.zig", .root = "tests/ofs_words_test.zig" },
         .{ .name = "eth_media", .source = "src/internal/eth_media.zig", .root = "tests/eth_media_test.zig" },
         .{ .name = "canfd_tdc", .source = "src/internal/canfd_tdc.zig", .root = "tests/canfd_tdc_test.zig" },
         .{ .name = "layer3_switch", .source = "src/internal/layer3_switch.zig", .root = "tests/layer3_switch_test.zig" },
@@ -252,11 +258,17 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        test_module.addImport(unit.name, b.createModule(.{
+        const unit_module = b.createModule(.{
             .root_source_file = b.path(unit.source),
             .target = target,
             .optimize = optimize,
-        }));
+        });
+        // Units read comptime options (periph_ns_alias, ofs_from_zig) through
+        // this module; giving every test module and unit the same import keeps
+        // the loop shape-agnostic.
+        unit_module.addImport("ra8_hal_options", options_module);
+        test_module.addImport(unit.name, unit_module);
+        test_module.addImport("ra8_hal_options", options_module);
         const tests = b.addTest(.{ .root_module = test_module });
         test_step.dependOn(&b.addRunArtifact(tests).step);
     }
