@@ -137,7 +137,10 @@ pub fn find(wanted: []const u8) ?Module {
 }
 pub const preamble = "pkg:threadx/ports_module/cortex_m33/gnu/example_build/txm_module_preamble.S";
 pub const gcc_setup = "pkg:threadx/ports_module/cortex_m33/gnu/example_build/gcc_setup.s";
-pub const linker_script = "pkg:threadx/ports_module/cortex_m3/gnu/example_build/sample_threadx_module.ld";
+// The M33 module link script is the repo's own copy of ThreadX's sample
+// module script: the module's data region must carry the manager's per-thread
+// kernel stacks (RA8FW-1023), which the upstream sample does not size for.
+pub const linker_script = "port/threadx/ld/sample_threadx_module.ld";
 
 /// The module's entry: the shell that sets up the GOT, then runs the start
 /// thread the preamble names.

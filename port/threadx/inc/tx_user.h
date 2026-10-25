@@ -75,3 +75,11 @@
 /** @brief TX SINGLE MODE SECURE. */
 #define TX_SINGLE_MODE_SECURE
 #endif
+
+/* RA8FW-1023: the module manager allocates each module thread's kernel stack
+   from TXM_MODULE_KERNEL_STACK_SIZE (cortex_m33 port default 768 bytes). The
+   tour module's file_open kernel-side path overflows it with STKOF, and the
+   fault was size-independent of the module's start stack. Measured: 768
+   faults, 4096 runs the full module tour green, so 4096 is the serving value
+   (the port's module link script then sizes the data region to carry it). */
+#define TXM_MODULE_KERNEL_STACK_SIZE (4096)

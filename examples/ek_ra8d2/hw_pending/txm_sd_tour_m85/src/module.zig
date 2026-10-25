@@ -21,8 +21,8 @@ pub const start_thread_offset = 0xC0;
 pub const tx_thread_id: u32 = 0x5448_5244;
 /// offsetof(TX_THREAD, tx_thread_run_count), from the start-stop thread.
 pub const start_run_count_offset = start_thread_offset + 4;
-pub const module_ram_bytes = 16 * 1024;
-pub const object_pool_bytes = 4 * 1024;
+pub const module_ram_bytes = 32 * 1024;
+pub const object_pool_bytes = 16 * 1024;
 
 const tx_success: u32 = 0;
 pub const Fail = error{ manager, load, start, run, stop, unload, pool, leak, exit };
