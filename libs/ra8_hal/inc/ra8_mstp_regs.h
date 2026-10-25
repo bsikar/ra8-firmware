@@ -20,7 +20,8 @@
  * pages 443..450 (Rev. 1.30) and cited inline.
  *
  * Drivers must NOT write these registers directly. The
- * substrate file ``libs/ra8_hal/src/ra8_mstp.c`` exposes a
+ * substrate gate ``libs/ra8_hal/src/internal/mstp.zig`` (ABI in
+ * ``mstp_abi.zig``) exposes a
  * ref-counted ``ra8_mstp_enable(id) / ra8_mstp_disable(id)`` pair that
  * tracks shared modules (DMAC + DTC, RSIP + TRNG, etc.) so two
  * unrelated drivers can both request the same MSTP bit without
@@ -40,7 +41,8 @@
  * - **Read-back required**: HUM 11.2.6 Note 2 says "When changing the
  * value of this bit, only execute subsequent instructions after
  * reading this bit to check that the value was updated." The
- * ref-counted helper in ``ra8_mstp.c`` performs the read-back; the
+ * ref-counted helper in ``libs/ra8_hal/src/internal/mstp.zig`` performs
+ * the read-back; the
  * register layout itself is just a memory-mapped ``r_mstp_regs_t``.
  * - **DMAC / DTC ordering**: HUM 11.2.6 Note 1 says "When rewriting
  * the MSTPAi bit from 0 to 1, disable the DMAC and DTC before
@@ -250,7 +252,7 @@ ra8_mstp_reg_t ra8_mstp_id_reg(ra8_mstp_t id);
  * @return Bit position 0..31.
  *
  * @details
- * Defined in ``libs/ra8_hal/src/ra8_mstp.c``.
+ * Defined in ``libs/ra8_hal/src/mstp_ids_abi.zig``.
  *
  * @since 0.1.0
  *

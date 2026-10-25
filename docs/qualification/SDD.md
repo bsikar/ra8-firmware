@@ -123,8 +123,9 @@ Cross-cutting design points:
   the matching `ra8_<name>_regs.h` header (no magic numbers).
 - IRQ-bearing drivers register their handlers through `isr_abi.zig`, not
   by direct vector-table writes.
-- All `MSTPCRx` clear/set operations route through `ra8_mstp.c` so that
-  the bit-position is declared once.
+- All `MSTPCRx` clear/set operations route through the MSTP gate
+  (`libs/ra8_hal/src/internal/mstp.zig`) so that the bit-position is
+  declared once.
 - Protected-write windows (PRCR/PWPR) are entered through
   `libs/ra8_hal/inc/ra8_register_protection.h`; nested critical sections use
   the core `ra8_register_guard.h` helper.

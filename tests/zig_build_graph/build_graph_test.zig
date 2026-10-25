@@ -804,7 +804,7 @@ test "the NS image's own sources are exactly the AUX_SRCS the secure image exclu
     // @RA8_NS_*@ placeholder.
     try std.testing.expect(ns_image_of.linker_script == null);
     // The compose facade is Zig, so the NS image must name its archive; and
-    // ra8_mstp.c calls the Zig id decoders, so it names ra8_hal's too.
+    // the MSTP gate is Zig in ra8_hal's archive, so it names ra8_hal's too.
     try std.testing.expectEqual(@as(usize, 2), ns_image_of.zig_libraries.len);
     try std.testing.expectEqualStrings("ra8_usb_pal", ns_image_of.zig_libraries[0]);
     try std.testing.expectEqualStrings("ra8_hal", ns_image_of.zig_libraries[1]);

@@ -82,7 +82,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | CAC             | `0x40202400`  | Clock Frequency Accuracy Measurement Circuit         | `cac.zig`                                 |
 | WDT0            | `0x40202600`  | Watchdog (M85 side)                                  | `wdt_ctrl_abi.zig`                        |
 | WDT1            | `0x40202700`  | Watchdog (M33 side)                                  | `wdt_ctrl_abi.zig`                        |
-| MSTP            | `0x40203000`  | Module-stop (clock-gate) registers                   | `ra8_mstp.c`                              |
+| MSTP            | `0x40203000`  | Module-stop (clock-gate) registers                   | `libs/ra8_hal/src/mstp_abi.zig`           |
 | ELC             | `0x40201000`  | Event Link Controller                                | `elc_abi.zig`                             |
 | MRMS / MRAM     | `0x4013C000`  | MRAM control / R_MRMS                                | `ra8_flash.c`                             |
 | RESET (SYSC)    | `0x4001E000`  | Reset control via SYSC                               | `reset_abi.zig`                           |

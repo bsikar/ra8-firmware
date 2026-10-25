@@ -265,7 +265,8 @@ RA8_INTERNAL static void internal_test_eswclk_init_programs_clock_registers(void
  *
  * @details
  * The ethphyclk MSTP refcount (s_refcount[k_ra8_mstp_reg_c][28] in
- * ra8_mstp.c) is saturated to UINT8_MAX by calling ra8_mstp_enable
+ * ra8_hal's Zig mstp gate) is saturated to UINT8_MAX by calling
+ * ra8_mstp_enable
  * 255 times. When ra8_cgc_eswclk_init then calls ra8_mstp_enable
  * internally, ra8_mstp_enable returns k_ra8_err_invalid_state because
  * the refcount would overflow. This causes ra8_cgc_eswclk_init to log
