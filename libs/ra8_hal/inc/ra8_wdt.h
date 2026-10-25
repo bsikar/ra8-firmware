@@ -30,8 +30,8 @@
  * to arm the down-counter. This is the mode ``ra8_wdt_init``
  * expects.
  *
- * The driver does not (and cannot) flip OFS0 itself -- ``ra8_ofs.c``
- * owns the writable side. ``ra8_wdt_ofs_get`` exposes the read-only
+ * The driver does not (and cannot) flip OFS0 itself -- the ra8_hal
+ * ``ofs_words`` unit owns the writable side (RA8FW-845). ``ra8_wdt_ofs_get`` exposes the read-only
  * view so the application can decode whichever mode the boot ROM
  * latched.
  *
@@ -953,8 +953,8 @@ typedef ra8_err_t (*ra8_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_w
  *   the two copies. Reading either copy alone reports a configuration the
  *   hardware may not be using.
  *
- * The WDT driver is *read-only* with respect to OFSm; only ``ra8_ofs.c``
- * may write the option-setting sections. Every fetch goes through the
+ * The WDT driver is *read-only* with respect to OFSm; only the ra8_hal
+ * ``ofs_words`` unit may place the option-setting sections (RA8FW-845). Every fetch goes through the
  * ``ra8_wdt_ofs_reader_set`` hook so unit tests / bring-up code
  * can supply canned words without touching MRAM.
  *

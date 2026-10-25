@@ -9,7 +9,8 @@
  * @details
  * The RA8 boot ROM latches a fixed set of "option-setting" words out of a
  * dedicated config-flash region before the Cortex-M85 reset vector runs. The
- * writable side of those words is emitted by `ra8_ofs.c` into the
+ * writable side of those words is emitted by the Zig `ofs_words` unit
+ * (`libs/ra8_hal/src/ofs_words_abi.zig`, RA8FW-845) into the
  * `.option_setting_*` linker sections; `ra8_ofs_addr_t` below names the same
  * cells for the read-back direction, so this header is the single C-side home
  * for both.
@@ -41,7 +42,7 @@
  *       builds unchanged under `RA8_OFF_TARGET` and in the host unit tests.
  *
  * @see ra8_device.h  RA8D2/RA8P1 compile-time device switch.
- * @see ra8_ofs.c     Emits the writable option-setting words into flash.
+ * @see ofs_words_abi.zig Emits the writable option-setting words into flash.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -73,7 +74,6 @@ extern "C" {
  * @invariant `k_ra8_ofs_word_count` equals the number of OFS words the device
  *            has -- 4 on both RA8D2 and RA8P1.
  *
- * @see ra8_ofs_word_count()
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -143,32 +143,6 @@ typedef enum : uintptr_t {
   /* HUM Ch 7.2.7 "OFS3_SEL : Option Function Select Register 3 for Security" p 289 */
   k_ra8_ofs3_sel_addr = 0x02C9F124UL, /**< OFS3_SEL -- per-field S/NS selector. */
 } ra8_ofs_addr_t;
-
-/**
- * @brief Return the number of option-setting words present on the device.
- *
- * @details
- * Yields `k_ra8_ofs_word_count` -- 4 (OFS0..OFS3) on both RA8D2 and RA8P1. Lets
- * device-agnostic tooling size an OFS iteration without a magic literal.
- *
- * There is deliberately no companion `ra8_ofs_has_ofs3()`: both supported parts
- * carry OFS3 (see the file header for the per-part HUM citations), so such a
- * predicate could only ever return true and would assert nothing.
- *
- * @return The OFS word count for the build target.
- * @retval 4 OFS0, OFS1, OFS2, OFS3 -- the quartet both parts implement.
- *
- * @pre The device selection in `ra8_device.h` resolved to exactly one part.
- * @pre `k_ra8_ofs_word_count` is defined by `ra8_ofs_word_t`.
- * @post No hardware or global state is modified.
- * @post Return value is 4 -- never zero.
- *
- * @note Thread-safe: pure function of a compile-time constant, no shared state.
- *
- * @see ra8_ofs_word_t
- * @since 0.1.0
- */
-uint8_t ra8_ofs_word_count(void);
 
 #ifdef __cplusplus
 }

@@ -256,12 +256,6 @@ macro(_ra8_app_collect_sources)
     "${_ra8_core_zig}"
   )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
-  if(RA8_HAL_OFS_FROM_ZIG)
-    # RA8FW-845 flip: the Zig unit owns the .option_setting_* placement, so
-    # ra8_ofs.c leaves the C set in the same configure. The host tests keep
-    # compiling it (their sentinel test asserts the C emitter still builds).
-    list(FILTER _ra8_lib_hal EXCLUDE REGEX "/ra8_ofs\\.c$")
-  endif()
   set(_ra8_hal_zig "")
   if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_hal/build.zig")
     set(_ra8_hal_zig "ra8_hal|${RA8_REPO_ROOT}/libs/ra8_hal")

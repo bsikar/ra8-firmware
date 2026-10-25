@@ -19,7 +19,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | LPM   | Low Power Mode controller                               | `lpm_abi.zig` |
 | LVD   | Low-Voltage Detection                                   | `internal/lvd.zig` |
 | MSTP  | Module-Stop control (clock-gating)                      | `ra8_mstp.c` |
-| OFS   | Option-Function Select (boot configuration words)       | `ra8_ofs.c` |
+| OFS   | Option-Function Select (boot configuration words)       | `ofs_words_abi.zig` |
 | PWR   | Power-management glue                                   | `pwr.zig`   |
 | RESET | Reset controller (RSTSR1/2 + cold/warm flags)           | `reset_abi.zig` |
 | SYSC  | SYSTEM Controller (R_SYSTEM register block)             | (used by `pwr.zig`, `reset_abi.zig`, `vreg_abi.zig`, `lpm_abi.zig`) |
