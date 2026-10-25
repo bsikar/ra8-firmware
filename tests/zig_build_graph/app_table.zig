@@ -521,11 +521,12 @@ pub const cross_apps = [_]CrossApp{
                 "libs/ra8_hal/src/ra8_usb_xfer.c",
                 "libs/ra8_hal/src/ra8_usb_irq.c",
                 "libs/ra8_hal/src/ra8_usb_host_ctrl.c",
-                "libs/ra8_hal/src/ra8_mstp.c",
             },
-            // RA8_PERIPH_NS_ALIAS routes ra8_usb/ra8_mstp at the IDAU
-            // bit[28]=1 Non-secure alias; RA8_USB_POLLED_ONLY keeps the DCD
-            // off the Secure-attributed USB NVIC line.
+            // RA8_PERIPH_NS_ALIAS routes ra8_usb at the IDAU bit[28]=1
+            // Non-secure alias; the MSTP gate is Zig in ra8_hal's
+            // periph_ns_alias archive variant, which picks the same alias
+            // base at comptime. RA8_USB_POLLED_ONLY keeps the DCD off the
+            // Secure-attributed USB NVIC line.
             .defines = &.{
                 "-DRA8_TRUSTZONE_ENABLE",
                 "-DRA8_PERIPH_NS_ALIAS",
