@@ -25,7 +25,19 @@ pub const Region = enum(u8) {
     sram_nsc = 2,
     /// Non-Secure upper SRAM, the NS image's data.
     ns_sram = 3,
-    /// Non-Secure peripheral window.
+    /// Non-Secure peripheral window: the bit-28 NS alias
+    /// 0x50000000..0x5FFFFFFF, and only that.
+    ///
+    /// It does not reach down into 0x40000000..0x4FFFFFFF. The IDAU keeps
+    /// every bit-28-clear address Secure on the SECEXT core (RA8FW-510), so
+    /// the canonical partition cannot mark IPC's secure base 0x40020000 as
+    /// NS, and the Secure side reaches IPC there directly. An NS-only core
+    /// (CPU1) talks to IPC through its own SAU init instead: the
+    /// cpu1_pingpong_ipc example's cpu1_main.c programmes 0x40000000 size
+    /// 0x10000000 as NS on CPU1's own SAU (bench evidence 2026-05-27: with a
+    /// 0x5xxxxxxx-only CPU1 view, CPU1 SecureFaults on IPC receive even with
+    /// IPCSAR=0x50000; extending CPU1's own region down to 0x40000000
+    /// unblocks the round-trip). RA8FW-357.
     ns_periph = 4,
 
     /// Windows the reset path programs.
@@ -133,4 +145,17 @@ test "the NS windows sit at the bit-28 Non-secure aliases" {
     try std.testing.expect(window(.ns_mram).base & alias_bit != 0);
     try std.testing.expect(window(.ns_sram).base & alias_bit != 0);
     try std.testing.expect(window(.ns_periph).base & alias_bit != 0);
+}
+
+test "the NS peripheral window covers IPC's NS alias, not its secure base" {
+    // IPC lives at 0x40020000 (secure) with its bit-28 NS alias at
+    // 0x50020000. The canonical partition reaches IPC only through the
+    // alias; the secure base stays IDAU-secure for the SECEXT core, and the
+    // NS-only core's coverage is its own SAU init (cpu1_pingpong_ipc's
+    // cpu1_main.c, region 1). RA8FW-357.
+    const periph = window(.ns_periph);
+    const in_window = 0x5002_0000 >= periph.base and 0x5002_0000 < periph.base + periph.size;
+    const secure_base_in_window = 0x4002_0000 >= periph.base and 0x4002_0000 < periph.base + periph.size;
+    try std.testing.expect(in_window);
+    try std.testing.expect(!secure_base_in_window);
 }
