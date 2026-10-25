@@ -18,8 +18,11 @@
 //!
 //! Every word defaults to `0xFFFFFFFF`, the erased-MRAM / permissive value
 //! (IWDT and LVD0 disabled, full flash and TrustZone access, no OTP
-//! anti-rollback). Safe for bring-up, not for production; per-app overrides
-//! arrive with the app_table wiring (RA8FW-845 step 2).
+//! anti-rollback). Safe for bring-up, not for production; per-app override (RA8FW-845
+//! step 2) is live: the app's CMake passes `-Dofs1=` / `-Dofs1_sec=` on the
+//! ra8_hal build, mirroring the BSP_CFG_OPTION_SETTING_OFS1(_SEC) define its
+//! C build used, and the two words take that value. The override must ride
+//! the per-app variant key so two apps never share one archive.
 //!
 //! Section layout is fixed by `libs/ra8_board_ek_ra8d2/ld/linker_script.ld`
 //! (`OFS_CFG` / `OFS_OTP` regions) and pinned at the HUM addresses recorded
@@ -48,11 +51,11 @@ pub const ofs_word_count = 4;
 
 pub const Words = if (zig_owns and on_silicon) struct {
     export const ofs0: u32 linksection(".option_setting_ofs0") = 0xFFFFFFFF;
-    export const ofs1: u32 linksection(".option_setting_ofs1") = 0xFFFFFFFF;
+    export const ofs1: u32 linksection(".option_setting_ofs1") = options.ofs1;
     export const ofs2: u32 linksection(".option_setting_ofs2") = 0xFFFFFFFF;
     export const ofs3: u32 linksection(".option_setting_ofs3") = 0xFFFFFFFF;
     export const sas: u32 linksection(".option_setting_sas") = 0xFFFFFFFF;
-    export const ofs1_sec: u32 linksection(".option_setting_ofs1_sec") = 0xFFFFFFFF;
+    export const ofs1_sec: u32 linksection(".option_setting_ofs1_sec") = options.ofs1_sec;
     export const ofs1_sel: u32 linksection(".option_setting_ofs1_sel") = 0xFFFFFFFF;
     export const ofs3_sec: u32 linksection(".option_setting_ofs3_sec") = 0xFFFFFFFF;
     export const ofs3_sel: u32 linksection(".option_setting_ofs3_sel") = 0xFFFFFFFF;
@@ -67,11 +70,11 @@ pub const Words = if (zig_owns and on_silicon) struct {
     export const otp_zhuk: u32 linksection(".option_setting_otp_zhuk") = 0xFFFFFFFF;
 } else struct {
     pub const ofs0: u32 = 0xFFFFFFFF;
-    pub const ofs1: u32 = 0xFFFFFFFF;
+    pub const ofs1: u32 = options.ofs1;
     pub const ofs2: u32 = 0xFFFFFFFF;
     pub const ofs3: u32 = 0xFFFFFFFF;
     pub const sas: u32 = 0xFFFFFFFF;
-    pub const ofs1_sec: u32 = 0xFFFFFFFF;
+    pub const ofs1_sec: u32 = options.ofs1_sec;
     pub const ofs1_sel: u32 = 0xFFFFFFFF;
     pub const ofs3_sec: u32 = 0xFFFFFFFF;
     pub const ofs3_sel: u32 = 0xFFFFFFFF;

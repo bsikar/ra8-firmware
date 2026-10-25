@@ -29,6 +29,29 @@ pub fn build(b: *std.Build) void {
     const options = b.addOptions();
     options.addOption(bool, "periph_ns_alias", ns_alias);
     options.addOption(bool, "ofs_from_zig", ofs_from_zig);
+    // RA8FW-845 step 2: per-app OFS1 overrides. An app that used to pass
+    // BSP_CFG_OPTION_SETTING_OFS1(_SEC) through target_compile_definitions
+    // (bkup_survival_demo: 0xFFFFFFF0 so LVD0 reset enables VBATT backup)
+    // passes the same value here instead. Empty string keeps the default
+    // 0xFFFFFFFF; hex with a 0x prefix or decimal are accepted.
+    const ofs1_raw = b.option([]const u8, "ofs1", "OFS1 value for this app's ra8_hal build (hex or decimal)") orelse "";
+    const ofs1_sec_raw = b.option([]const u8, "ofs1_sec", "OFS1_SEC value for this app's ra8_hal build (hex or decimal)") orelse "";
+    const ofs1_val = if (ofs1_raw.len == 0)
+        0xFFFFFFFF
+    else
+        std.fmt.parseInt(u32, ofs1_raw, 0) catch {
+            std.log.err("ra8_hal: -Dofs1={s} is not a 32-bit hex or decimal value", .{ofs1_raw});
+            @panic("ra8_hal: invalid -Dofs1");
+        };
+    const ofs1_sec_val = if (ofs1_sec_raw.len == 0)
+        0xFFFFFFFF
+    else
+        std.fmt.parseInt(u32, ofs1_sec_raw, 0) catch {
+            std.log.err("ra8_hal: -Dofs1_sec={s} is not a 32-bit hex or decimal value", .{ofs1_sec_raw});
+            @panic("ra8_hal: invalid -Dofs1_sec");
+        };
+    options.addOption(u32, "ofs1", ofs1_val);
+    options.addOption(u32, "ofs1_sec", ofs1_sec_val);
     const options_module = options.createModule();
     // No unwind tables in a freestanding archive, as in ra8_core's: an
     // .ARM.exidx entry names __aeabi_unwind_cpp_pr0, which a -nostdlib CPU1
