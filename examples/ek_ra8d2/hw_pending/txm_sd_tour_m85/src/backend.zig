@@ -205,16 +205,21 @@ fn backendOpen(ctx: *anyopaque, caller: *const kernel.Caller, path: []const u8, 
     _ = ctx;
     for (files, 0..) |file, slot| {
         if (file != null) continue;
+        // The kernel sandbox-joins the module's relative path before it reaches
+        // the backend (sandbox.zig: the backend only ever sees the joined
+        // path), so this is a straight copy out to the NUL the filesystem
+        // needs. Joining again here would feed "/apps/<id>/..." back through
+        // the relative-path check and reject every file_open.
         var joined: [sandbox.joined_max]u8 = undefined;
-        const joined_path = sandbox.join(&joined, caller.app_id, path) catch return .bad_argument;
-        if (joined_path.len >= joined.len) return .bad_argument;
-        joined[joined_path.len] = 0;
+        if (path.len >= joined.len) return .bad_argument;
+        @memcpy(joined[0..path.len], path);
+        joined[path.len] = 0;
+        const pathz: [*:0]const u8 = @ptrCast(&joined);
         if (flags & abi.OpenFlag.create != 0) ensureDirs(caller.app_id);
         const mount = card.volume() catch return .io_error;
         if (mount == null) return .io_error;
         const mode: c_uint = if (flags & abi.OpenFlag.write != 0) mode_write else mode_read;
         var opened: ?*anyopaque = null;
-        const pathz: [*:0]const u8 = @ptrCast(joined_path.ptr);
         if (ra8_fs_open(mount, pathz, mode, &opened) != ok) return .io_error;
         files[slot] = opened;
         out.* = @intCast(slot + 1);
