@@ -40,7 +40,7 @@ pub fn insetPen(rect: Rect, pad: i16) Pen {
 
 /// Pen x that centres a `text_w`-wide string horizontally in `rect`.
 pub fn centeredX(rect: Rect, text_w: i32) i32 {
-    return rect.x + @divTrunc(rect.w - text_w, 2);
+    return rect.x + @divFloor(rect.w - text_w, 2);
 }
 
 /// Pen x that hugs the rect's right inner inset.
@@ -50,7 +50,7 @@ pub fn rightX(rect: Rect, pad: i16, text_w: i32) i32 {
 
 /// Pen y that centres a `text_h`-tall glyph cell vertically in `rect`.
 pub fn centeredY(rect: Rect, text_h: i32) i32 {
-    return rect.y + @divTrunc(rect.h - text_h, 2);
+    return rect.y + @divFloor(rect.h - text_h, 2);
 }
 
 /// Pen for a measured string: vertically centred, horizontally per `alignment`.

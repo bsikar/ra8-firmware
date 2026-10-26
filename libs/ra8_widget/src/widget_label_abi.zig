@@ -135,7 +135,7 @@ fn renderWrapped(backend: *const Paint, rect: *const Rect, text: [*:0]const u8, 
     const line_count = countLines(bytes, max_width, label.wrap, context);
     const visible = @min(max_lines, line_count);
     const block_height: i32 = @intCast(visible * line_height);
-    var y = rect.y + label.pad + @divTrunc(inner_height - block_height, 2);
+    var y = rect.y + label.pad + @divFloor(inner_height - block_height, 2);
     var line_buffer: [4097]u8 = undefined;
     var offset: usize = 0;
     var index: usize = 0;
@@ -148,7 +148,7 @@ fn renderWrapped(backend: *const Paint, rect: *const Rect, text: [*:0]const u8, 
         const draw_width = width +| @as(u32, if (add_vertical_ellipsis) ellipsis_width else 0);
         const x = switch (label.alignment) {
             .left => rect.x + label.pad,
-            .center => rect.x + @divTrunc(rect.w - @as(i32, @intCast(draw_width)), 2),
+            .center => rect.x + @divFloor(rect.w - @as(i32, @intCast(draw_width)), 2),
             .right => rect.x + rect.w - label.pad - @as(i32, @intCast(draw_width)),
         };
         drawLine(context, bytes, line, x, y, &line_buffer);

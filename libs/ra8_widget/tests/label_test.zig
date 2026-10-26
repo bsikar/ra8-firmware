@@ -257,6 +257,24 @@ test "a centred label is placed by the backend's measurement" {
     try std.testing.expectEqual(@as(i32, 35), draw.y);
 }
 
+test "a centred label wider than its box floors the pen toward negative infinity" {
+    // RA8FW-966, mirroring RA8EMU-1168: a draw wider than the box makes the
+    // centring division negative, and trunc would sit the text one pixel
+    // right of where floor puts it.
+    Recorder.reset();
+    Recorder.measured_w = 105;
+    Recorder.measured_h = 10;
+    var w = emptyWidget();
+    var label = labelOn(&full_backend, "hi");
+    label.alignment = .center;
+    try renderBound(&w, &label);
+
+    const draw = Recorder.draws.items[0];
+    // rect.w - draw_width = 100 - 105 = -5: floor(-5/2) is -3, trunc said -2.
+    try std.testing.expectEqual(@as(i32, 7), draw.x);
+    try std.testing.expectEqual(@as(i32, 35), draw.y);
+}
+
 test "a label with no text fills the background and draws nothing" {
     Recorder.reset();
     var w = emptyWidget();

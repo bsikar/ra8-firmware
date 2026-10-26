@@ -55,8 +55,8 @@ pub fn draw(backend: *const types.Paint, icon: Icon, rect: types.Rect, fg: u32, 
     const side = @min(width, @as(usize, @intCast(@min(rect.w, rect.h))));
     if (side == 0) return;
     const out_side: i32 = @intCast(side);
-    const left = rect.x + @divTrunc(rect.w - out_side, 2);
-    const top = rect.y + @divTrunc(rect.h - out_side, 2);
+    const left = rect.x + @divFloor(rect.w - out_side, 2);
+    const top = rect.y + @divFloor(rect.h - out_side, 2);
 
     var y: usize = 0;
     while (y < side) : (y += 1) {
