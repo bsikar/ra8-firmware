@@ -289,15 +289,6 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_
 # ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_cache_store_demo.c)
 
-# test_ra8_rsip_devsec_failclosed.c must compile ra8_rsip_devsec.c
-# with the stub-crypto guard flags UNDEFINED so the production fail-closed #else
-# is the body under test. The rest of the host build force-defines
-# RA8_OFF_TARGET, so it is registered by hand below rather than through the
-# ra8_add_test() auto-glob (which would splice in the RA8_OFF_TARGET build).
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_ra8_rsip_devsec_failclosed.c
-)
-
 # test_mbedtls_psa_rng.c compiles the HTTPS example's production RNG adapter
 # with RA8_OFF_TARGET undefined and a test-scoped PSA ABI header. Register it by
 # hand in tests_crypto.cmake so the shared off-target object library cannot hide
@@ -311,7 +302,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_
 # (which makes ra8_device.h define RA8_HAS_NPU) so a live ra8_npu.c is compiled and
 # linked; the auto-glob would build it for the RA8D2 and fail to resolve the NPU
 # API. This is the same "compile one TU under a different device profile" pattern
-# as test_ra8_rsip_devsec_failclosed above.
+# as the old test_ra8_rsip_devsec_failclosed target (removed with RA8FW-1064).
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_npu.c)
 
 # test_ra8_npu_loader.c drives the .npub Vela-blob loader
