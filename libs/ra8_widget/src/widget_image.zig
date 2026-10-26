@@ -74,10 +74,10 @@ pub fn render(
         fill_rect(backend.user, rect.x, rect.y, rect.w, rect.h, gray(placeholder.fill));
         if (@as(i64, rect.w) * image.height > @as(i64, rect.h) * image.width) {
             target.w = @intCast(@max(1, @divTrunc(@as(i64, image.width) * rect.h, image.height)));
-            target.x += @divTrunc(rect.w - target.w, 2);
+            target.x += @divFloor(rect.w - target.w, 2);
         } else {
             target.h = @intCast(@max(1, @divTrunc(@as(i64, image.height) * rect.w, image.width)));
-            target.y += @divTrunc(rect.h - target.h, 2);
+            target.y += @divFloor(rect.h - target.h, 2);
         }
     } else if (@as(i64, image.width) * rect.h > @as(i64, image.height) * rect.w) {
         crop_w = @intCast(@max(1, @divTrunc(@as(i64, image.height) * rect.w, rect.h)));
