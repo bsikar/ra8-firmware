@@ -40,6 +40,8 @@ pub const gpio_facade = @import("fw_if_gpio_abi.zig");
 
 pub const uart_facade = @import("fw_if_uart_abi.zig");
 
+pub const spi_facade = @import("fw_if_spi_abi.zig");
+
 comptime {
     // The declaration above is not enough on its own. Zig analyses lazily, and
     // nothing references `path_policy` by name, so the file was never analysed
