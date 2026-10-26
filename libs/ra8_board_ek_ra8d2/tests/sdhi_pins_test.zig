@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The SDHI0 bus routing.
+//! The SDHI1_B bus routing.
 
 const std = @import("std");
 const sdhi_pins = @import("sdhi_pins");
@@ -27,18 +27,18 @@ fn reset() void {
     fail_at = 0xFF;
 }
 
-test "eight pins, P400 through P407 in bus order" {
-    try std.testing.expectEqual(@as(usize, 8), sdhi_pins.bus.len);
+test "six peripheral pins, P400 through P405 in bus order" {
+    try std.testing.expectEqual(@as(usize, 6), sdhi_pins.bus.len);
     for (sdhi_pins.bus, 0..) |pin, i| {
         try std.testing.expectEqual(@as(u16, @intCast(0x0400 + i)), pin);
     }
 }
 
-test "init routes all eight to the SDHI function" {
+test "init routes all six to the SDHI function" {
     reset();
     try std.testing.expectEqual(@as(u32, 0), sdhi_pins.init());
-    try std.testing.expectEqual(@as(usize, 8), routed_count);
-    for (0..8) |i| {
+    try std.testing.expectEqual(@as(usize, 6), routed_count);
+    for (0..6) |i| {
         try std.testing.expectEqual(sdhi_pins.bus[i], routed[i]);
         try std.testing.expectEqual(@as(u32, 0x15), routed_psel[i]);
     }

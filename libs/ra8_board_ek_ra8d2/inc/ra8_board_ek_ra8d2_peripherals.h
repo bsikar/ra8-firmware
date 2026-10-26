@@ -198,7 +198,7 @@ typedef struct {
  * @details
  * The I3C ch0 I2C-compatibility bus is routed to P400 (SCL0) and P401 (SDA0)
  * when SW4-5 selects I3C mode (UM Table 20 p 28 + Section 5.5.3 p 32). These
- * two pads double as SDHI0 CMD/CLK under the default I2C-mode routing, so use
+ * two pads double as the SDHI1_B CLK/CMD pads under the default I2C-mode routing, so use
  * these names only when the board is jumpered for the I3C bus.
  */
 typedef enum : uint16_t {

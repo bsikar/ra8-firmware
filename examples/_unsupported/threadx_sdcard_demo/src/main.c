@@ -13,7 +13,8 @@
  *   2. Bring the J-Link OB VCOM console up at 115200 8N1 via
  *      ``ra8_board_uart_console_init``.
  *   3. ``ra8_sdcard_init`` runs the standard SD Physical Layer
- *      initialization sequence (CMD0 -> CMD7) on SDHI instance 0.
+ *      initialization sequence (CMD0 -> CMD7) on SDHI instance 1 (the
+ *      port-4 SDHI1_B bus).
  *   4. ``ra8_sdcard_read_blocks(0, ...)`` reads sector 0 (the MBR / boot
  *      sector) into a 512-byte SRAM buffer.
  *   5. The first 16 bytes are formatted as ASCII hex
@@ -21,7 +22,7 @@
  *      once per pass to make the activity visible.
  *
  * SDHI pin map is owned by the BSP (``ra8_board_sdhi_pins_init``): port 4,
- * pins 0..7 routed to the on-chip SDHI block.
+ * pins 0..5 routed to the on-chip SDHI1_B block.
  *
  * @par Threads
  *

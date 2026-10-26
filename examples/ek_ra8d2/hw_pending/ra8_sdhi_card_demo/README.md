@@ -7,7 +7,7 @@ block-device vtable, no mount, no FAT parsing -- targeting the `ra8_sdcard` /
 distinct regression value is why it exists alongside `ra8_io_sdhi_demo`, which
 layers the full VFS stack on the same controller.
 
-It routes the eight SDHI bus pins, runs the full SD Physical Layer identification
+It routes the six SDHI1_B bus pins, runs the full SD Physical Layer identification
 (CMD0 -> CMD8 -> ACMD41 -> CMD2 -> CMD3 -> CMD9 -> CMD7), negotiates the 4-bit
 data bus with CMD55 + ACMD6, and steps the clock from the 400 kHz identification
 rate to the default transfer rate. The 4-bit negotiation is **best-effort**: a
@@ -31,5 +31,5 @@ A bench run with a real microSD in the on-board slot.
 
 SD command sequencing and block I/O live in `ra8_sdcard` / `ra8_sdhi`, which
 carry the register-level citations for HUM R01UH1065EJ0130 Ch 47 "SDHI". Pin map:
-port 4, pins 0..7 to `PSEL = k_ra8_psel_sdhi` (RA8D2 datasheet R01DS0493EJ, "Pin
+port 4, pins 0..5 (the SDHI1_B group) to `PSEL = k_ra8_psel_sdhi` (RA8D2 datasheet R01DS0493EJ, "Pin
 Functions", "SDHI").

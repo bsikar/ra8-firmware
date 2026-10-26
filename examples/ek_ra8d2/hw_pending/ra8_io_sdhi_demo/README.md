@@ -19,7 +19,7 @@ step parks the CPU.
 
 ## Hardware
 
-The eight SDHI bus pins are on port 4, pins 0..7, all routed to
+The six SDHI1_B bus pins are on port 4, pins 0..5, all routed to
 `PSEL = k_ra8_psel_sdhi`:
 
 | Port-4 pin | SDHI signal |

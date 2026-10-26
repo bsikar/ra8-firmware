@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The card half of txm_sd_tour_m85 (RA8FW-1023): bring up the micro-SD card
-//! on SDHI0, mount its FAT volume through ra8_fs over a Zig block backend,
+//! on SDHI1, mount its FAT volume through ra8_fs over a Zig block backend,
 //! and read the signed `.ra8app` (`txm_tour_m33.ra8app`) into RAM with its
 //! header checked. The same volume backs the module's own file calls
 //! (backend.zig), which reuses the mount here.
@@ -21,7 +21,7 @@ pub const appimg_magic: u32 = 0x5241_3841;
 const code_size_offset = 12;
 const data_size_offset = 16;
 
-const sdhi_instance: u8 = 0;
+const sdhi_instance: u8 = 1;
 const bus_width_4bit: u8 = 4;
 const block_bytes: u32 = 512;
 const mode_read: c_uint = 0;
