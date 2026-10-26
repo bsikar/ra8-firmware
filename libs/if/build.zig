@@ -4,7 +4,8 @@
 //! Build graph for the Zig implementation of the portable interfaces in
 //! `libs/if`: the filesystem facade (`fw_if_fs`), the untrusted-name policy
 //! (`ra8_path`) and the clock-intent facade (`fw_clock`) and the random-bytes facade (`fw_rng`), the GPIO facade (`fw_gpio`), the UART facade
-//! (`fw_uart`) and the SPI facade (`fw_spi`). CMake consumes the installed static library
+//! (`fw_uart`), the SPI facade (`fw_spi`) and the I2C facade
+//! (`fw_i2c`). CMake consumes the installed static library
 //! through the unchanged `inc/fw_if_fs.h`, `inc/fw_if_fs_types.h` and
 //! `inc/fw_if_fs_backend.h` C ABI; the `test` step covers the pure guard,
 //! path and coherence core plus the ABI membrane over fake backends, and
@@ -188,6 +189,19 @@ pub fn build(b: *std.Build) void {
     spi_test_module.addImport("abi", spi_abi_module);
     const spi_tests = b.addTest(.{ .root_module = spi_test_module });
 
+    const i2c_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/fw_if_i2c_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const i2c_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/i2c_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    i2c_test_module.addImport("abi", i2c_abi_module);
+    const i2c_tests = b.addTest(.{ .root_module = i2c_test_module });
+
     const pwm_abi_module = b.createModule(.{
         .root_source_file = b.path("src/fw_if_pwm_abi.zig"),
         .target = target,
@@ -221,6 +235,7 @@ pub fn build(b: *std.Build) void {
     const run_gpio_tests = b.addRunArtifact(gpio_tests);
     const run_uart_tests = b.addRunArtifact(uart_tests);
     const run_spi_tests = b.addRunArtifact(spi_tests);
+    const run_i2c_tests = b.addRunArtifact(i2c_tests);
     const run_rng_tests = b.addRunArtifact(rng_tests);
     const run_os_contract_tests = b.addRunArtifact(os_contract_tests);
     const test_step = b.step("test", "Run Zig fw_if_fs tests");
@@ -233,6 +248,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_gpio_tests.step);
     test_step.dependOn(&run_uart_tests.step);
     test_step.dependOn(&run_spi_tests.step);
+    test_step.dependOn(&run_i2c_tests.step);
     test_step.dependOn(&run_rng_tests.step);
     test_step.dependOn(&run_os_contract_tests.step);
 }
