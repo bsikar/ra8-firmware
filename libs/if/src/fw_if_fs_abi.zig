@@ -34,6 +34,8 @@ pub const timer_facade = @import("fw_if_timer_abi.zig");
 /// replace `src/fw_if_pwm.c` in this archive.
 pub const pwm_facade = @import("fw_if_pwm_abi.zig");
 
+pub const rng_facade = @import("fw_if_rng_abi.zig");
+
 comptime {
     // The declaration above is not enough on its own. Zig analyses lazily, and
     // nothing references `path_policy` by name, so the file was never analysed
