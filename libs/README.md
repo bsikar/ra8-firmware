@@ -88,8 +88,17 @@ libraries. `port-through-interface` touches hardware only through an interface
 that lives in a non-portable home today, so it is one seam move from portable.
 `RA8-only` carries a direct HAL, NSC, board, MPU, TrustZone or cache
 dependency, or is itself a per-chip implementation of an `if_` interface. The
-last column names the edge that sets the class. Audited at dev 6445af918; the
-slice 2 build gate will enforce the `portable` rows against drift.
+last column names the edge that sets the class. Audited at dev 6445af918; the slice 2 build gate (RA8FW-618) enforces the
+`portable` rows against drift. Run it with `just checks::portability` (or
+`python3 tools/check_portability.py`, `RA8_ZIG` picks the toolchain): it
+re-reads this table as the source of truth, rejects any portable row whose
+include or import names a non-portable library or a vendor SDK header (FSP,
+BSP, CMSIS), ast-checks every Zig source under the portable rows, and compiles
+the portable C rows for the host, riscv32 (ESP32-C) and thumbv7em
+(TI / Cortex-M4). Freestanding targets compile against a minimal libc-header
+shim in tools/portability_gate_libc; a real port supplies its own libc, so the
+gate checks ISA/semantics portability, not libc availability. Semantic Zig
+cross-target builds arrive with slice 5 (RA8FW-976, the proof port).
 
 | Library | Class | Decided by |
 |---|---|---|
