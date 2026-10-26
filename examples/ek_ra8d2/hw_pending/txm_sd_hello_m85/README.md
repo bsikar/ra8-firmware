@@ -3,7 +3,7 @@
 The SD hello-world module proof of concept (RA8FW-829 and RA8FW-830, under
 RA8FW-290). CPU0:
 
-1. brings up the micro-SD card on SDHI0, mounts its FAT volume with ra8_fs
+1. brings up the micro-SD card on SDHI1, mounts its FAT volume with ra8_fs
    and reads `txm_hello_m33.ra8app` (`src/card.zig`);
 2. admits it through `ra8_appimg_verify` with a software Ed25519 backend and
    the pinned test public key from `libs/ra8_app/tools/test_key.zig`'s seed

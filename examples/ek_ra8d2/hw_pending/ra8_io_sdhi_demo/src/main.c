@@ -14,8 +14,8 @@
  * (`ra8_io_blockdev_sdhi_init`) on top of the `ra8_sdcard` + `ra8_sdhi` HAL drivers.
  * The data path above the block device is pure `ra8_io`:
  *
- *   1. Route the eight SDHI pins (port 4, pins 0..7) via `ra8_board_sdhi_pins_init`.
- *   2. `ra8_sdcard_init({.instance = 0})` -- full SD identification + clock step-up.
+ *   1. Route the six SDHI1_B pins (port 4, pins 0..5) via `ra8_board_sdhi_pins_init`.
+ *   2. `ra8_sdcard_init({.instance = 1})` -- full SD identification + clock step-up.
  *   3. `ra8_io_blockdev_sdhi_init` -- native-SDHI block-device vtable over the card.
  *   4. `ra8_io_blockdev_as_fs_backend` -- bridge the block device to `ra8_fs`.
  *   5. `ra8_fs_format` (FAT16) + `ra8_fs_mount`, then `ra8_io_vfs_mount("sd", ...)`.
@@ -67,7 +67,7 @@
  */
 typedef enum : uint32_t {
   k_sdhi_demo_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.            */
-  k_sdhi_demo_instance        = 0U,           /**< SDHI0 drives the micro-SD bus.         */
+  k_sdhi_demo_instance        = 1U,           /**< SDHI1_B drives the micro-SD bus.       */
   k_sdhi_demo_payload_bytes   = 512U,         /**< One-sector deterministic test payload. */
   k_sdhi_demo_prng_seed       = 0xA5F00DadUL, /**< Deterministic payload seed.            */
   k_sdhi_demo_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier.      */
@@ -162,7 +162,7 @@ static void sdhi_demo_panic_halt(void)
  *
  * @details Initialises the clock generator, caches CPUCLK0, starts the SysTick
  *          time base, brings the J-Link OB VCOM console up at 115200 8N1 via the
- *          BSP, then routes the eight SDHI0 bus pins via
+ *          BSP, then routes the six SDHI1_B bus pins via
  *          ``ra8_board_sdhi_pins_init``. Any failing step panic-halts so a
  *          misconfigured bus never reaches the SD bring-up.
  *
@@ -201,12 +201,12 @@ static void sdhi_demo_setup_or_halt(void)
  * @brief Init the SD card over native SDHI, panic-halt on failure.
  *
  * @details Runs the full SD Physical Layer identification through `ra8_sdcard_init`
- *          on SDHI0 (which itself brings up the SDHI block), printing `card ready`
+ *          on SDHI1 (which itself brings up the SDHI block), printing `card ready`
  *          on success or a `FAIL init` diagnostic before parking on failure.
  *
  * @return Nothing (panic-halts on failure).
  *
- * @pre The eight SDHI bus pins are routed.
+ * @pre The six SDHI1_B bus pins are routed.
  * @pre A card is present in the SDHI slot.
  * @post On success the card is in TRAN state at default speed.
  * @post On failure a diagnostic is printed and the CPU is parked.

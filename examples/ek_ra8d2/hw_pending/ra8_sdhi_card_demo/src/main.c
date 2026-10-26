@@ -60,7 +60,7 @@
  */
 typedef enum : uint32_t {
   k_sdhi_card_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.             */
-  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the micro-SD bus.          */
+  k_sdhi_card_instance        = 1U,           /**< SDHI1_B drives the micro-SD bus.        */
   k_sdhi_card_block_bytes     = 512U,         /**< One SD block.                           */
   k_sdhi_card_test_lba        = 64U,          /**< Block to round-trip (clear of the BPB). */
   k_sdhi_card_block_count     = 1U,           /**< Round-trip one block.                   */
@@ -156,7 +156,7 @@ static void sdhi_card_panic_halt(void)
  *
  * @details Initialises the clock generator, caches CPUCLK0, starts the SysTick
  *          time base, brings the J-Link OB VCOM console up at 115200 8N1 via the
- *          BSP, then routes the eight SDHI0 bus pins via
+ *          BSP, then routes the six SDHI1_B bus pins via
  *          ``ra8_board_sdhi_pins_init``. Any failing step panic-halts.
  *
  * @return Nothing (panic-halts on failure).
@@ -194,12 +194,12 @@ static void sdhi_card_setup_or_halt(void)
  * @brief Init the SD card over native SDHI, panic-halt on failure.
  *
  * @details Runs the full SD Physical Layer identification through `ra8_sdcard_init`
- *          on SDHI0 (which itself brings up the SDHI block), printing `card ready`
+ *          on SDHI1 (which itself brings up the SDHI block), printing `card ready`
  *          on success or a `FAIL init` diagnostic before parking on failure.
  *
  * @return Nothing (panic-halts on failure).
  *
- * @pre The eight SDHI bus pins are routed.
+ * @pre The six SDHI1_B bus pins are routed.
  * @pre A card is present in the SDHI slot.
  * @post On success the card is in TRAN state at default speed.
  * @post On failure a diagnostic is printed and the CPU is parked.

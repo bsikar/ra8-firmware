@@ -373,7 +373,7 @@ static void test_xspi_pins_init_pfs_conflict(void)
  */
 
 /**
- * @brief Verify that ra8_board_sdhi_pins_init routes all eight SDHI bus pins.
+ * @brief Verify that ra8_board_sdhi_pins_init routes all six SDHI1_B bus pins.
  *
  * @details
  * No existing test calls ra8_board_sdhi_pins_init, leaving the entire
@@ -388,7 +388,7 @@ static void test_xspi_pins_init_pfs_conflict(void)
  * Vectors A+B prove the single condition independently affects outcome.
  *
  * @pre Clean pin-validator state.
- * @post All eight SDHI bus pins remain claimed after the second call
+ * @post All six SDHI1_B bus pins remain claimed after the second call
  *       fails on the first pin.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -398,7 +398,7 @@ static void test_sdhi_pins_init(void)
 {
   TEST_BEGIN("sdhi_pins_init happy path then conflict (lines 773-787)");
   reset_state();
-  /* First call: all eight SDHI0 bus pins routed. */
+  /* First call: all six SDHI1_B bus pins routed. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_sdhi_pins_init());
   /* Second call: first bus pin already owned -> conflict (line 783). */
   const ra8_err_t err = ra8_board_sdhi_pins_init();
