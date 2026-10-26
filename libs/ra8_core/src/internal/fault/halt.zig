@@ -22,7 +22,11 @@ pub const on_target = builtin.target.os.tag == .freestanding;
 /// being folded into the reporter.
 pub noinline fn spin() noreturn {
     if (comptime !on_target) unreachable;
-    asm volatile ("cpsid i" ::: .{ .memory = true });
+    switch (builtin.cpu.arch) {
+        .thumb => asm volatile ("cpsid i" ::: .{ .memory = true }),
+        .riscv32, .riscv64 => asm volatile ("csrci mstatus, 8" ::: .{ .memory = true }),
+        else => @compileError("fault halt spin: no implementation for this architecture"),
+    }
     while (true) {
         asm volatile ("wfi");
     }

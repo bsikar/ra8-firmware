@@ -22,16 +22,28 @@ const builtin = @import("builtin");
 /// Whether this build is an image rather than a host test binary.
 pub const on_target = builtin.target.os.tag == .freestanding;
 
-/// Mask every maskable interrupt: PRIMASK.PM = 1.
+/// Mask every maskable interrupt: PRIMASK.PM = 1 on Arm,
+/// mstatus.MIE = 0 on RISC-V. ra8_core must build for both, so the
+/// primitive dispatches at comptime on the target architecture and
+/// refuses to compile for anything it has no implementation for.
 pub fn maskInterrupts() void {
     if (comptime !on_target) return;
-    asm volatile ("cpsid i" ::: .{ .memory = true });
+    switch (builtin.cpu.arch) {
+        .thumb => asm volatile ("cpsid i" ::: .{ .memory = true }),
+        .riscv32, .riscv64 => asm volatile ("csrci mstatus, 8" ::: .{ .memory = true }),
+        else => @compileError("maskInterrupts: no implementation for this architecture"),
+    }
 }
 
 /// Halt under an attached debugger; faults to HardFault without one.
+/// RISC-V has no `bkpt`; `ebreak` is its debugger-trap equivalent.
 pub fn breakpoint() void {
     if (comptime !on_target) return;
-    asm volatile ("bkpt #0");
+    switch (builtin.cpu.arch) {
+        .thumb => asm volatile ("bkpt #0"),
+        .riscv32, .riscv64 => asm volatile ("ebreak"),
+        else => @compileError("breakpoint: no implementation for this architecture"),
+    }
 }
 
 /// Park forever. On the host there is nothing to park, so trap instead and

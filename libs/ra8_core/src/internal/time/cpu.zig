@@ -17,10 +17,22 @@ pub const on_target = builtin.target.os.tag == .freestanding;
 /// set the SysTick IRQ cannot dispatch, so nothing advances the tick counter.
 pub fn interruptsMasked() bool {
     if (!on_target) return false;
-    const primask = asm volatile ("mrs %[out], primask"
-        : [out] "=r" (-> u32),
-    );
-    return (primask & 1) != 0;
+    switch (builtin.cpu.arch) {
+        .thumb => {
+            const primask = asm volatile ("mrs %[out], primask"
+                : [out] "=r" (-> u32),
+            );
+            return (primask & 1) != 0;
+        },
+        .riscv32, .riscv64 => {
+            const mstatus = asm volatile ("csrr %[out], mstatus"
+                : [out] "=r" (-> u32),
+            );
+            // mstatus.MIE is bit 3 on both RV32 and RV64.
+            return (mstatus & 8) != 0;
+        },
+        else => @compileError("interruptsMasked: no implementation for this architecture"),
+    }
 }
 
 /// Idle until the next interrupt arrives.

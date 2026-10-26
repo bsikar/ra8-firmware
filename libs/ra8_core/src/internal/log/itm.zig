@@ -56,12 +56,31 @@ pub fn ready() bool {
     return reg(window.stim0).* != 0;
 }
 
-/// IPSR is non-zero inside any exception handler.
+/// Inside any exception handler: IPSR is non-zero on Arm, mcause has
+/// its interrupt bit set on RISC-V. ra8_core builds for both, so the
+/// question dispatches at comptime on the target architecture.
 fn inException() bool {
-    const ipsr = asm volatile ("mrs %[out], ipsr"
-        : [out] "=r" (-> u32),
-    );
-    return ipsr != 0;
+    switch (builtin.cpu.arch) {
+        .thumb => {
+            const ipsr = asm volatile ("mrs %[out], ipsr"
+                : [out] "=r" (-> u32),
+            );
+            return ipsr != 0;
+        },
+        .riscv32 => {
+            const mcause = asm volatile ("csrr %[out], mcause"
+                : [out] "=r" (-> u32),
+            );
+            return (mcause >> 31) == 1;
+        },
+        .riscv64 => {
+            const mcause = asm volatile ("csrr %[out], mcause"
+                : [out] "=r" (-> u64),
+            );
+            return (mcause >> 63) == 1;
+        },
+        else => @compileError("inException: no implementation for this architecture"),
+    }
 }
 
 /// Write one byte to stimulus port 0, dropping it if the port stays full.
