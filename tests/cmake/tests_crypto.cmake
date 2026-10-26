@@ -27,36 +27,10 @@ if(TARGET test_stub_crypto_gate)
 endif()
 
 # ---------------------------------------------------------------------------
-# test_ra8_rsip_devsec_failclosed: production fail-closed reachability
-# for the RSIP device-security path (lifecycle / debug / tamper / DPA arm). The
-# rest of the host build compiles ra8_rsip_devsec.c under RA8_OFF_TARGET (the
-# guarded #if branch, exercised by test_life / test_debug_level / test_tamper in
-# test_ra8_rsip_devsec.c). This self-contained target (no ra8_core_hal, no fake) rebuilds
-# JUST that TU with the two guard flags UNDEFINED so the production #else is the
-# compiled body, and asserts every entry point returns k_ra8_err_not_supported and
-# writes no fabricated state. -U wins over the directory-level -D because CMake
-# emits DEFINES before FLAGS on the compile line. -DRA8_LOG_LEVEL=0 makes the
-# RA8_CHECK_NULL_PTR log a no-op so the TU needs no ra8_log backend to link.
-# ---------------------------------------------------------------------------
-add_executable(
-  test_ra8_rsip_devsec_failclosed
-  ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_ra8_rsip_devsec_failclosed.c
-  ${FW_ROOT}/libs/ra8_hal/src/ra8_rsip_devsec.c
-)
-target_include_directories(
-  test_ra8_rsip_devsec_failclosed PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
-                                          ${FW_ROOT}/libs/ra8_core/inc ${FW_ROOT}/libs/ra8_hal/inc
-)
-target_compile_options(
-  test_ra8_rsip_devsec_failclosed
-  PRIVATE -Wall
-          -Wextra
-          -Werror
-          -URA8_OFF_TARGET
-          -URA8_INSECURE_STUB_CRYPTO
-          -DRA8_LOG_LEVEL=0
-)
-add_test(NAME test_ra8_rsip_devsec_failclosed COMMAND test_ra8_rsip_devsec_failclosed)
+# The RSIP device-security fail-closed contract moved to the Zig unit with
+# RA8FW-1064: internal/rsip_devsec.zig's guarded=false path is covered by
+# libs/ra8_hal/tests/rsip_devsec_test.zig in the test-zig run, so the
+# hand-built test_ra8_rsip_devsec_failclosed target is gone.
 
 # ---------------------------------------------------------------------------
 # The HTTPS example's PSA external-RNG adapter is normally firmware-only. Build
