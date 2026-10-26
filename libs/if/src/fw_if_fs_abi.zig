@@ -44,6 +44,8 @@ pub const spi_facade = @import("fw_if_spi_abi.zig");
 
 pub const i2c_facade = @import("fw_if_i2c_abi.zig");
 
+pub const dma_facade = @import("fw_if_dma_abi.zig");
+
 comptime {
     // The declaration above is not enough on its own. Zig analyses lazily, and
     // nothing references `path_policy` by name, so the file was never analysed
