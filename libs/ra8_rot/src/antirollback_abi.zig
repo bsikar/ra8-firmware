@@ -47,9 +47,16 @@ extern fn ra8_flash_extra_mram_write(mram_addr: u32, src: [*]const u8, len: u32)
 
 /// Order the probe's accesses against the flag writes around them. The
 /// instructions only exist on the target, and the host build of this archive
-/// links the C suite, so the barrier compiles away there.
+/// links the C suite, so the barrier compiles away there. Each freestanding
+/// arch gets its own full barrier: `dsb`/`isb` on Arm, `fence iorw, iorw` on
+/// RV32.
 fn barrier() void {
-    if (comptime !off_target) asm volatile ("dsb 0xF\n isb 0xF\n" ::: .{ .memory = true });
+    if (comptime !off_target) {
+        switch (builtin.cpu.arch) {
+            .riscv32 => asm volatile ("fence iorw, iorw" ::: .{ .memory = true }),
+            else => asm volatile ("dsb 0xF\n isb 0xF\n" ::: .{ .memory = true }),
+        }
+    }
 }
 
 /// Mirrors `ra8_rot_antirollback_store_t`: two function pointers, either of
