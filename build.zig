@@ -69,6 +69,7 @@ pub const zig_archive = @import("tests/zig_build_graph/zig_archive.zig");
 pub const app_shapes = @import("tests/zig_build_graph/app_shapes.zig");
 pub const host_flags = @import("tests/zig_build_graph/host_flags.zig");
 pub const vendored_soup = @import("tests/zig_build_graph/vendored_soup.zig");
+pub const netxduo_host = @import("tests/zig_build_graph/netxduo_host.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -335,6 +336,13 @@ pub fn build(b: *std.Build) void {
     );
     vendored_soup.addSuite(b, soup_step, target, optimize);
     test_step.dependOn(soup_step);
+
+    const netxduo_host_step = b.step(
+        "netxduo-host",
+        "Compile the vendored ThreadX Linux port and NetX Duo and run the ra8_ipif host harness",
+    );
+    netxduo_host.add(b, netxduo_host_step, target, optimize);
+    test_step.dependOn(netxduo_host_step);
 
     const arm_step = b.step("arm", b.fmt(
         "Cross-build {d} example apps for the RA8D2 (Cortex-M85)",
