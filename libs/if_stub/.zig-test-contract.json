@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "tests/clock_stub_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/clock_stub.zig",
+    "tests/clock_stub_test.zig"
+  ],
+  "minimum_tests": 16
+}
