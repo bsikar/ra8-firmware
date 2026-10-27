@@ -17,17 +17,17 @@ const stub = @import("rng_stub");
 
 /// `ra8_err.h` codes these ops can return.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
+    pub const ok: u16 = 0;
+    pub const invalid_arg: u16 = 0x103;
 };
 
-extern fn fw_rng_bind(rng: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u32;
+extern fn fw_rng_bind(rng: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u16;
 
 /// `fw_rng_iface_t`. Both ops are required by the facade's bind, so neither
 /// pointer is optional here.
 pub const Iface = extern struct {
-    fill: *const fn (ctx: ?*anyopaque, out: ?[*]u8, len: usize) callconv(.c) u32,
-    ready: *const fn (ctx: ?*anyopaque, out_ready: ?*bool) callconv(.c) u32,
+    fill: *const fn (ctx: ?*anyopaque, out: ?[*]u8, len: usize) callconv(.c) u16,
+    ready: *const fn (ctx: ?*anyopaque, out_ready: ?*bool) callconv(.c) u16,
 };
 
 /// `fw_rng_t`, caller-owned and opaque once `fw_rng_bind` has filled it.
@@ -39,7 +39,7 @@ pub const Handle = extern struct {
 
 /// Fill a buffer with the stub pattern. A zero-length request is satisfied
 /// without waking the source, matching the facade's own contract.
-pub export fn fw_rng_stub_fill(ctx: ?*anyopaque, out: ?[*]u8, len: usize) callconv(.c) u32 {
+pub export fn fw_rng_stub_fill(ctx: ?*anyopaque, out: ?[*]u8, len: usize) callconv(.c) u16 {
     _ = ctx;
 
     if (len == 0) return Err.ok;
@@ -50,7 +50,7 @@ pub export fn fw_rng_stub_fill(ctx: ?*anyopaque, out: ?[*]u8, len: usize) callco
 }
 
 /// Report whether the source can serve right now. The stub always can.
-pub export fn fw_rng_stub_ready(ctx: ?*anyopaque, out_ready: ?*bool) callconv(.c) u32 {
+pub export fn fw_rng_stub_ready(ctx: ?*anyopaque, out_ready: ?*bool) callconv(.c) u16 {
     _ = ctx;
 
     const out = out_ready orelse return Err.invalid_arg;
@@ -69,6 +69,6 @@ pub export fn fw_rng_stub_iface() callconv(.c) *const Iface {
     return &iface;
 }
 
-pub export fn fw_rng_stub_bind(rng: ?*Handle) callconv(.c) u32 {
+pub export fn fw_rng_stub_bind(rng: ?*Handle) callconv(.c) u16 {
     return fw_rng_bind(rng, &iface, null);
 }

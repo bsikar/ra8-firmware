@@ -16,7 +16,7 @@ const Err = abi.Err;
 var bind_calls: usize = 0;
 var last_iface: ?*const abi.Iface = null;
 
-pub export fn fw_uart_bind(uart: ?*abi.Handle, iface: ?*const abi.Iface, ctx: ?*anyopaque) callconv(.c) u32 {
+pub export fn fw_uart_bind(uart: ?*abi.Handle, iface: ?*const abi.Iface, ctx: ?*anyopaque) callconv(.c) u16 {
     bind_calls += 1;
     last_iface = iface;
 

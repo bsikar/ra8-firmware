@@ -88,6 +88,42 @@ pub fn build(b: *std.Build) void {
     root_module.addImport("gpio_stub_abi", gpio_abi);
     root_module.addImport("uart_stub_abi", uart_abi);
 
+    // Slice-5 proof image (RA8FW-976): the complete set bound through the
+    // real `libs/if` facade in one freestanding image. It builds only for
+    // freestanding targets, where the portability gate's --image-builds
+    // phase picks it up on the default step; the host build is unchanged.
+    // The image carries its own compiler_rt: it is a zig-native image, not
+    // a CMake-linked firmware link.
+    if (target.result.os.tag == .freestanding) {
+        const proof_module = b.createModule(.{
+            .root_source_file = b.path("src/proof_image.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        proof_module.addImport("clock_stub_abi", stub_abi);
+        proof_module.addImport("clock_stub_ops_abi", ops_abi);
+        proof_module.addImport("rng_stub_abi", rng_abi);
+        proof_module.addImport("gpio_stub_abi", gpio_abi);
+        proof_module.addImport("uart_stub_abi", uart_abi);
+
+        // The facade as one module: libs/if/src/facade.zig composes the four
+        // peripheral facades, so the image carries one copy of the shared
+        // core and every facade export the stub externs resolve against.
+        const fw_if = b.createModule(.{
+            .root_source_file = b.path("../if/src/facade.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        proof_module.addImport("fw_if", fw_if);
+
+        const proof = b.addExecutable(.{
+            .name = "if_stub_proof",
+            .root_module = proof_module,
+        });
+        const install_proof = b.addInstallArtifact(proof, .{});
+        b.default_step.dependOn(&install_proof.step);
+    }
+
     const test_step = b.step("test", "Run Zig if_stub tests");
 
     const unit = b.createModule(.{
