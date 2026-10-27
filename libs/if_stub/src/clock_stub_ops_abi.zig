@@ -21,15 +21,15 @@ const Err = abi.Err;
 const Module = abi.Module;
 const Row = abi.Row;
 
-extern fn fw_clock_bind(clk: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u32;
+extern fn fw_clock_bind(clk: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u16;
 
 /// `fw_clock_iface_t`. A binding that cannot gate a module returns
 /// not-supported from `set_gate` rather than leaving the pointer null: a null
 /// op is a malformed binding, not a declined capability.
 pub const Iface = extern struct {
-    rate_for: *const fn (ctx: ?*anyopaque, module: Module, out_hz: ?*u32) callconv(.c) u32,
-    set_gate: *const fn (ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32,
-    has_module: *const fn (ctx: ?*anyopaque, module: Module, out_present: ?*bool) callconv(.c) u32,
+    rate_for: *const fn (ctx: ?*anyopaque, module: Module, out_hz: ?*u32) callconv(.c) u16,
+    set_gate: *const fn (ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u16,
+    has_module: *const fn (ctx: ?*anyopaque, module: Module, out_present: ?*bool) callconv(.c) u16,
 };
 
 /// `fw_clock_t`, caller-owned and opaque once `fw_clock_bind` has filled it.
@@ -41,7 +41,7 @@ pub const Handle = extern struct {
 
 /// Read the rate of the clock feeding one module. The stub profile is a
 /// compile-time constant, so the context is unused.
-fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: ?*u32) callconv(.c) u32 {
+fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: ?*u32) callconv(.c) u16 {
     _ = ctx;
 
     const out = out_hz orelse return Err.invalid_arg;
@@ -56,7 +56,7 @@ fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: ?*u32) callconv(.c) u32 {
 
 /// Ungate or gate one module's clock. Succeeds without side effect for a
 /// carried module.
-fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
+fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u16 {
     _ = ctx;
     _ = on;
 
@@ -70,7 +70,7 @@ fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
 /// Whether this binding can resolve a module instance. Reports
 /// resolvability, not silicon: a `false` says this binding carries no row,
 /// never that a real chip would lack the block.
-fn hasModule(ctx: ?*anyopaque, module: Module, out_present: ?*bool) callconv(.c) u32 {
+fn hasModule(ctx: ?*anyopaque, module: Module, out_present: ?*bool) callconv(.c) u16 {
     _ = ctx;
 
     const present = out_present orelse return Err.invalid_arg;
@@ -98,6 +98,6 @@ pub export fn fw_clock_stub_iface() callconv(.c) *const Iface {
     return &iface;
 }
 
-pub export fn fw_clock_stub_bind(clk: ?*Handle) callconv(.c) u32 {
+pub export fn fw_clock_stub_bind(clk: ?*Handle) callconv(.c) u16 {
     return fw_clock_bind(clk, &iface, null);
 }
