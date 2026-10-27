@@ -9,4 +9,5 @@ comptime {
     _ = @import("clock_stub_abi");
     _ = @import("clock_stub_ops_abi");
     _ = @import("rng_stub_abi");
+    _ = @import("gpio_stub_abi");
 }

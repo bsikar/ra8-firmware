@@ -9,6 +9,7 @@ binding in the shape its RA8 counterpart set:
 |---|---|---|
 | `clock` | `fw_if_clock` | `if_ra8_cgc` |
 | `rng` | `fw_if_rng` | the RA8 TRNG driver's port face |
+| `gpio` | `fw_if_gpio` | the RA8 GPIO adapter's port face |
 
 `clock` carries a deliberately tiny, deliberately arbitrary profile (the core,
 UART 0 and SPI 0 at fixed rates) so the port's rate, floor and gating intents
@@ -20,6 +21,11 @@ member, and nothing above `libs/if` changes.
 as (i + N) mod 256, so consecutive fills differ and the port's fill and ready
 intents run end to end. The header names this in its own docs: the bytes are
 never key material, and a real chip port replaces the member.
+
+`gpio` carries a four-pin board in dense numbering: an output pin's level is
+what a write left there, an input pin samples the board's tied level (low on
+every stub pin), a write to an input is refused as the port's own contract
+says, and every pin past index 3 answers not_found.
 
 This is not a port of any chip. It is named `if_stub`, not after a target, so
 nobody mistakes it for the start of an `if_esp32c6` or `if_ti` set; the first

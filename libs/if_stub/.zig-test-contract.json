@@ -1,13 +1,16 @@
 {
   "test_roots": [
     "tests/clock_stub_test.zig",
-    "tests/rng_stub_test.zig"
+    "tests/rng_stub_test.zig",
+    "tests/gpio_stub_test.zig"
   ],
   "covered_sources": [
     "src/internal/clock_stub.zig",
     "src/internal/rng_stub.zig",
+    "src/internal/gpio_stub.zig",
     "tests/clock_stub_test.zig",
-    "tests/rng_stub_test.zig"
+    "tests/rng_stub_test.zig",
+    "tests/gpio_stub_test.zig"
   ],
-  "minimum_tests": 28
+  "minimum_tests": 44
 }
