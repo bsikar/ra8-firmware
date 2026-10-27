@@ -16,12 +16,15 @@ Enforces the classification table published in libs/README.md (slice 1):
      compiled to throwaway objects for the host, riscv32 (ESP32-C) and
      thumbv7em (TI / Cortex-M4).
 
-Semantic Zig cross-builds are slice 5 (RA8FW-976, the proof port); this gate
-reports which portable libraries carry a build.zig so that slice can pick up
-the wiring.
+The fast gate compiles throwaway objects, so it can only catch what a
+compile sees: ARM-only asm that fails a real freestanding image build passes
+it silently (ra8_core's riscv32 image, RA8FW-1068). The companion
+`--image-builds` phase runs each portable library's real cross builds.
 
 Usage:
   python3 tools/check_portability.py            # gate; exit 0 clean, 1 findings
+  python3 tools/check_portability.py --image-builds          # + real builds
+  python3 tools/check_portability.py --image-builds ra8_core # subset
   python3 tools/check_portability.py --self-test
 """
 
@@ -151,17 +154,63 @@ def collect_inc_dirs(portable_names):
     return incs
 
 
-def run(cmd):
+def run(cmd, cwd=None, timeout=120, env=None):
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        proc = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=timeout, cwd=cwd, env=env)
         return proc.returncode, proc.stdout + proc.stderr
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 2, str(exc)
 
 
+# RA8FW-1068 companion phase: real freestanding image builds. A portable
+# library's build.zig cross-compiles its whole tree for the target, so
+# arch-specific asm fails at the actual instruction here, where the
+# throwaway-object gate above cannot see it. Targets mirror the proof-port
+# recipe verified 2026-10-26: ra8_core and ra8_xml both build clean
+# ReleaseSmall archives for riscv32-freestanding-none and
+# thumb-freestanding-eabi -Dcpu=cortex_m4.
+IMAGE_TARGETS = (
+    ("riscv32", ("-Dtarget=riscv32-freestanding-none",)),
+    ("thumbv7em", ("-Dtarget=thumb-freestanding-eabi", "-Dcpu=cortex_m4")),
+)
+
+
+def image_build_phase(libs, build_zig_libs):
+    """Build the named portable libraries' real freestanding images."""
+    unknown = [lib for lib in libs if lib not in build_zig_libs]
+    if unknown:
+        return ["gate: --image-builds names portable libraries without a "
+                f"build.zig: {', '.join(unknown)}"]
+    lcache = Path("/tmp") / "ra8-gate-cache"
+    gcache = Path("/tmp") / "ra8-gate-global-cache"
+    env = dict(os.environ)
+    env["ZIG_GLOBAL_CACHE_DIR"] = str(gcache)
+    findings = []
+    for lib in libs:
+        d = REPO / "libs" / lib
+        for tname, extra in IMAGE_TARGETS:
+            cmd = [ZIG, "build", "-Doptimize=ReleaseSmall", *extra,
+                   "--cache-dir", str(lcache)]
+            code, out = run(cmd, cwd=d, env=env, timeout=600)
+            if code == 0:
+                print(f"gate: image build {lib} {tname}: clean")
+            else:
+                print(f"gate: image build {lib} {tname}: FAILED (exit {code})")
+                findings.append(f"libs/{lib}: {tname} freestanding image build "
+                                f"failed (exit {code})")
+                for line in out.strip().splitlines()[-12:]:
+                    findings.append(f"    {line}")
+    return findings
+
+
 def main():
     ap = argparse.ArgumentParser(description="RA8FW-618 slice 2 portability gate")
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--image-builds", nargs="*", metavar="LIB", default=None,
+                    help="also build the named portable libraries' real "
+                         "freestanding images (default: every portable "
+                         "library with a build.zig); slow")
     args = ap.parse_args()
     if args.self_test:
         return self_test()
@@ -230,8 +279,11 @@ def main():
                     bad += 1
             print(f"gate: c compile {name}: {len(c_files) - bad}/{len(c_files)} clean")
 
-    print(f"gate: {len(build_zig_libs)} portable libs carry a build.zig; "
-          f"semantic Zig cross-target builds are RA8FW-618 slice 5 (RA8FW-976)")
+    print(f"gate: {len(build_zig_libs)} portable libs carry a build.zig")
+    if args.image_builds is not None:
+        findings.extend(
+            image_build_phase(args.image_builds or build_zig_libs,
+                              build_zig_libs))
 
     if findings:
         print(f"gate: FAIL, {len(findings)} finding(s):")
