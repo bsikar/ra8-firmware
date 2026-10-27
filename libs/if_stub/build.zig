@@ -1,0 +1,98 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! Build graph for `if_stub`, the proof binding behind the neutral `fw_if_*`
+//! ports (epic RA8FW-618 slice 5).
+//!
+//! Two membranes over one pure profile, in the shape `if_ra8_cgc` set for a
+//! chip adapter: `clock_stub_abi` is the profile's own export, and
+//! `clock_stub_ops_abi` is the three ops, which reach `fw_clock_bind` as an
+//! extern resolved at the final link. The whole profile runs on the host
+//! without a peripheral block, so both layers have Zig tests here; a C suite
+//! over the facade comes with the first C consumer of the set.
+//!
+//! The smoke translation unit is also part of the default step, so a cross
+//! compile proves the header itself the way ra8_fmt's does.
+
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const clock_stub = b.createModule(.{
+        .root_source_file = b.path("src/internal/clock_stub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const stub_abi = b.createModule(.{
+        .root_source_file = b.path("src/clock_stub_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    stub_abi.addImport("clock_stub", clock_stub);
+
+    const ops_abi = b.createModule(.{
+        .root_source_file = b.path("src/clock_stub_ops_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ops_abi.addImport("clock_stub_abi", stub_abi);
+
+    const root_module = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    root_module.addImport("clock_stub_abi", stub_abi);
+    root_module.addImport("clock_stub_ops_abi", ops_abi);
+
+    const test_step = b.step("test", "Run Zig if_stub tests");
+
+    const unit = b.createModule(.{
+        .root_source_file = b.path("src/internal/clock_stub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = unit })).step);
+
+    const ops_test = b.createModule(.{
+        .root_source_file = b.path("tests/clock_stub_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ops_test.addImport("clock_stub", clock_stub);
+    ops_test.addImport("clock_stub_abi", stub_abi);
+    ops_test.addImport("clock_stub_ops_abi", ops_abi);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ops_test })).step);
+
+    const smoke = b.addObject(.{
+        .name = "if_stub_clock_smoke",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    smoke.root_module.addCSourceFile(.{
+        .file = b.path("tests/clock_stub_smoke.c"),
+        .flags = &.{"-std=c11"},
+    });
+    smoke.root_module.addIncludePath(b.path("inc"));
+    smoke.root_module.addIncludePath(b.path("../if/inc"));
+    smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
+    b.default_step.dependOn(&smoke.step);
+
+    const library = b.addLibrary(.{
+        .name = "if_stub",
+        .linkage = .static,
+        .root_module = root_module,
+    });
+    // The host C test executables are linked by the system toolchain rather
+    // than by `zig cc`, so nothing else on that link line provides Zig's
+    // runtime helpers.
+    // A cortex-m image links with -lgcc -lm; compiler_rt's libm there is
+    // soft-float and would shadow newlib's hard-float one (RA8FW-943).
+    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    b.installArtifact(library);
+}

@@ -148,6 +148,7 @@ gate checks ISA/semantics portability, not libc availability. Semantic Zig cross
 | `ra8_ov5640` | port-through-interface | only the house ra8_i2c_bus_ops_t seam, whose header lives in ra8_hal today |
 | `if_ra8_cgc` | RA8-only | the per-chip clock interface implementation; imports ra8_hal |
 | `if_ra8_gpt` | RA8-only | the per-chip timer/pwm implementation; programs GPT registers directly, no HAL dep |
+| `if_stub` | portable | the slice-5 proof binding: stub `fw_if_*` implementations for the proof target; imports `if` only |
 | `ra8_board_ek_ra8d2` | RA8-only | board pinout over ra8_hal drivers |
 | `ra8_board_ra8p1` | RA8-only | board pinout over ra8_hal, ra8_mpu, the cache controller |
 | `ra8_dfu` | RA8-only | ra8_usb device driver from ra8_hal |
