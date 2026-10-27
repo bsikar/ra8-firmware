@@ -33,6 +33,19 @@ pub fn build(b: *std.Build) void {
     });
     stub_abi.addImport("clock_stub", clock_stub);
 
+    const rng_stub = b.createModule(.{
+        .root_source_file = b.path("src/internal/rng_stub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const rng_abi = b.createModule(.{
+        .root_source_file = b.path("src/rng_stub_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    rng_abi.addImport("rng_stub", rng_stub);
+
     const ops_abi = b.createModule(.{
         .root_source_file = b.path("src/clock_stub_ops_abi.zig"),
         .target = target,
@@ -47,6 +60,7 @@ pub fn build(b: *std.Build) void {
     });
     root_module.addImport("clock_stub_abi", stub_abi);
     root_module.addImport("clock_stub_ops_abi", ops_abi);
+    root_module.addImport("rng_stub_abi", rng_abi);
 
     const test_step = b.step("test", "Run Zig if_stub tests");
 
@@ -57,6 +71,13 @@ pub fn build(b: *std.Build) void {
     });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = unit })).step);
 
+    const rng_unit = b.createModule(.{
+        .root_source_file = b.path("src/internal/rng_stub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = rng_unit })).step);
+
     const ops_test = b.createModule(.{
         .root_source_file = b.path("tests/clock_stub_test.zig"),
         .target = target,
@@ -66,6 +87,15 @@ pub fn build(b: *std.Build) void {
     ops_test.addImport("clock_stub_abi", stub_abi);
     ops_test.addImport("clock_stub_ops_abi", ops_abi);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ops_test })).step);
+
+    const rng_test = b.createModule(.{
+        .root_source_file = b.path("tests/rng_stub_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    rng_test.addImport("rng_stub", rng_stub);
+    rng_test.addImport("rng_stub_abi", rng_abi);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = rng_test })).step);
 
     const smoke = b.addObject(.{
         .name = "if_stub_clock_smoke",
@@ -81,6 +111,22 @@ pub fn build(b: *std.Build) void {
     smoke.root_module.addIncludePath(b.path("inc"));
     smoke.root_module.addIncludePath(b.path("../if/inc"));
     smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
+    const rng_smoke = b.addObject(.{
+        .name = "if_stub_rng_smoke",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    rng_smoke.root_module.addCSourceFile(.{
+        .file = b.path("tests/rng_stub_smoke.c"),
+        .flags = &.{"-std=c11"},
+    });
+    rng_smoke.root_module.addIncludePath(b.path("inc"));
+    rng_smoke.root_module.addIncludePath(b.path("../if/inc"));
+    rng_smoke.root_module.addIncludePath(b.path("../ra8_core/inc"));
+    b.default_step.dependOn(&rng_smoke.step);
+
     b.default_step.dependOn(&smoke.step);
 
     const library = b.addLibrary(.{
