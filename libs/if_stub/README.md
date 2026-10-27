@@ -10,6 +10,7 @@ binding in the shape its RA8 counterpart set:
 | `clock` | `fw_if_clock` | `if_ra8_cgc` |
 | `rng` | `fw_if_rng` | the RA8 TRNG driver's port face |
 | `gpio` | `fw_if_gpio` | the RA8 GPIO adapter's port face |
+| `uart` | `fw_if_uart` | the RA8 SCI adapter's port face |
 
 `clock` carries a deliberately tiny, deliberately arbitrary profile (the core,
 UART 0 and SPI 0 at fixed rates) so the port's rate, floor and gating intents
@@ -30,3 +31,11 @@ says, and every pin past index 3 answers not_found.
 This is not a port of any chip. It is named `if_stub`, not after a target, so
 nobody mistakes it for the start of an `if_esp32c6` or `if_ti` set; the first
 real chip port retires it.
+
+`uart` carries two lines in dense board numbering, a console and a modem, each
+coming up at the stub board's firmware default of 115200 8N1. A write is
+captured into a per-line ring in order, a read drains a per-line receive queue
+a test primes (a quiet line reads zero, not an error), a zero baud or an
+out-of-range field is refused, and every line past index 1 answers not_found.
+The receive side is a test seam, not product surface: a real chip port
+replaces the member, and nothing above `libs/if` changes.
