@@ -42,6 +42,7 @@ default:
     @echo "  just zig::txm-hello-m33        Build the hello-world ThreadX module for CPU1"
     @echo "  just zig::txm-tour-m33         Build the syscall-tour ThreadX module for CPU1"
     @echo "  just zig::threadx-m85-modules  Build the ThreadX Module Manager for the M85"
+    @echo "  just zig::netxduo-host        Compile the ThreadX Linux port and NetX, run the ra8_ipif harness"
     @echo "  just zig::txm-module-check     Build Zig module probes via C, check relocations"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
@@ -128,6 +129,11 @@ txm-tour-m33: _zig
 # The ThreadX Module Manager for the M85 (RA8FW-426).
 threadx-m85-modules: _zig
     "${RA8_ZIG}" build threadx-m85-modules
+
+# The ra8_ipif host harness over the vendored ThreadX Linux port and NetX Duo
+# (RA8FW-1065).
+netxduo-host: _zig
+    "${RA8_ZIG}" build netxduo-host
 
 # Zig as ThreadX module objects through the C backend and gcc, with the
 # data-relocation check on the linked probes (RA8FW-540).
