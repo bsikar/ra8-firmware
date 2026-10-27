@@ -97,8 +97,7 @@ BSP, CMSIS), ast-checks every Zig source under the portable rows, and compiles
 the portable C rows for the host, riscv32 (ESP32-C) and thumbv7em
 (TI / Cortex-M4). Freestanding targets compile against a minimal libc-header
 shim in tools/portability_gate_libc; a real port supplies its own libc, so the
-gate checks ISA/semantics portability, not libc availability. Semantic Zig
-cross-target builds arrive with slice 5 (RA8FW-976, the proof port).
+gate checks ISA/semantics portability, not libc availability. Semantic Zig cross-target builds run behind `--image-builds` (RA8FW-1068): the real freestanding image build for each portable library with a build.zig, riscv32-freestanding-none and thumb-freestanding-eabi cortex_m4, ReleaseSmall, via `just checks::portability-image-builds`.
 
 | Library | Class | Decided by |
 |---|---|---|

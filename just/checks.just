@@ -19,3 +19,9 @@ local:
 portability:
     python3 tools/check_portability.py --self-test
     python3 tools/check_portability.py
+
+# RA8FW-1068: the throwaway-object gate cannot see what only a real image
+# build catches (ARM-only asm). Slow; run it when the portable rows change.
+[private]
+portability-image-builds:
+    python3 tools/check_portability.py --image-builds
