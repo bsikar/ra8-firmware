@@ -15,12 +15,12 @@ const stub = @import("uart_stub");
 
 /// `ra8_err.h` codes these ops can return.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const not_found: u32 = 0x106;
+    pub const ok: u16 = 0;
+    pub const invalid_arg: u16 = 0x103;
+    pub const not_found: u16 = 0x106;
 };
 
-extern fn fw_uart_bind(uart: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u32;
+extern fn fw_uart_bind(uart: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u16;
 
 /// `fw_uart_config_t`, as the C header lays it out (u32 then three u8s).
 pub const Config = extern struct {
@@ -33,9 +33,9 @@ pub const Config = extern struct {
 /// `fw_uart_iface_t`. All three ops are required by the facade's bind, so no
 /// pointer is optional here.
 pub const Iface = extern struct {
-    configure: *const fn (ctx: ?*anyopaque, uart: u8, cfg: Config) callconv(.c) u32,
-    write: *const fn (ctx: ?*anyopaque, uart: u8, bytes: ?[*]const u8, len: usize) callconv(.c) u32,
-    read: *const fn (ctx: ?*anyopaque, uart: u8, out: ?[*]u8, len: usize, out_count: ?*usize) callconv(.c) u32,
+    configure: *const fn (ctx: ?*anyopaque, uart: u8, cfg: Config) callconv(.c) u16,
+    write: *const fn (ctx: ?*anyopaque, uart: u8, bytes: ?[*]const u8, len: usize) callconv(.c) u16,
+    read: *const fn (ctx: ?*anyopaque, uart: u8, out: ?[*]u8, len: usize, out_count: ?*usize) callconv(.c) u16,
 };
 
 /// `fw_uart_t`, caller-owned and opaque once `fw_uart_bind` has filled it.
@@ -47,7 +47,7 @@ pub const Handle = extern struct {
 
 /// Put one line on a line description. A line the board does not carry is
 /// `not_found`, the same answer the port facade gives.
-pub export fn fw_uart_stub_configure(ctx: ?*anyopaque, uart: u8, cfg: Config) callconv(.c) u32 {
+pub export fn fw_uart_stub_configure(ctx: ?*anyopaque, uart: u8, cfg: Config) callconv(.c) u16 {
     _ = ctx;
 
     stub.configure(uart, .{
@@ -69,7 +69,7 @@ pub export fn fw_uart_stub_configure(ctx: ?*anyopaque, uart: u8, cfg: Config) ca
 /// nonzero length is `invalid_arg`, matching the facade's own guard; a
 /// zero-length write is satisfied without waking the peripheral, so a null
 /// buffer with a zero length reaches neither the profile nor an error.
-pub export fn fw_uart_stub_write(ctx: ?*anyopaque, uart: u8, bytes: ?[*]const u8, len: usize) callconv(.c) u32 {
+pub export fn fw_uart_stub_write(ctx: ?*anyopaque, uart: u8, bytes: ?[*]const u8, len: usize) callconv(.c) u16 {
     _ = ctx;
 
     if (bytes == null and len > 0) return Err.invalid_arg;
@@ -86,7 +86,7 @@ pub export fn fw_uart_stub_write(ctx: ?*anyopaque, uart: u8, bytes: ?[*]const u8
 /// Poll one line for received bytes. A null output count or a null buffer
 /// with a nonzero length is `invalid_arg`, matching the facade's own guards;
 /// a quiet line reads zero, not an error.
-pub export fn fw_uart_stub_read(ctx: ?*anyopaque, uart: u8, out: ?[*]u8, len: usize, out_count: ?*usize) callconv(.c) u32 {
+pub export fn fw_uart_stub_read(ctx: ?*anyopaque, uart: u8, out: ?[*]u8, len: usize, out_count: ?*usize) callconv(.c) u16 {
     _ = ctx;
 
     const count_ptr = out_count orelse return Err.invalid_arg;
@@ -115,6 +115,6 @@ pub export fn fw_uart_stub_iface() callconv(.c) *const Iface {
     return &iface;
 }
 
-pub export fn fw_uart_stub_bind(uart: ?*Handle) callconv(.c) u32 {
+pub export fn fw_uart_stub_bind(uart: ?*Handle) callconv(.c) u16 {
     return fw_uart_bind(uart, &iface, null);
 }

@@ -18,7 +18,7 @@ const Module = abi.Module;
 var bind_calls: usize = 0;
 var last_iface: ?*const ops.Iface = null;
 
-pub export fn fw_clock_bind(clk: ?*ops.Handle, iface: ?*const ops.Iface, ctx: ?*anyopaque) callconv(.c) u32 {
+pub export fn fw_clock_bind(clk: ?*ops.Handle, iface: ?*const ops.Iface, ctx: ?*anyopaque) callconv(.c) u16 {
     bind_calls += 1;
     last_iface = iface;
 

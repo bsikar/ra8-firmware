@@ -11,9 +11,9 @@ const stub = @import("clock_stub");
 
 /// `ra8_err.h` codes this membrane can return.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const not_found: u32 = 0x106;
+    pub const ok: u16 = 0;
+    pub const invalid_arg: u16 = 0x103;
+    pub const not_found: u16 = 0x106;
 };
 
 /// `fw_clock_module_t`.
@@ -30,7 +30,7 @@ pub const Row = extern struct {
 
 /// Fill the row for one neutral module. An absent module zeroes the row and
 /// returns `not_found`, exactly as the C header documents.
-pub fn fill(module: Module, out: ?*Row) u32 {
+pub fn fill(module: Module, out: ?*Row) u16 {
     const row = out orelse return Err.invalid_arg;
 
     const rate = stub.resolve(module.kind, module.index) orelse {

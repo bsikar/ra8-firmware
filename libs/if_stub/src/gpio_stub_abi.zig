@@ -15,13 +15,13 @@ const stub = @import("gpio_stub");
 
 /// `ra8_err.h` codes these ops can return.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const invalid_state: u32 = 0x104;
-    pub const not_found: u32 = 0x106;
+    pub const ok: u16 = 0;
+    pub const invalid_arg: u16 = 0x103;
+    pub const invalid_state: u16 = 0x104;
+    pub const not_found: u16 = 0x106;
 };
 
-extern fn fw_gpio_bind(gpio: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u32;
+extern fn fw_gpio_bind(gpio: ?*Handle, iface: ?*const Iface, ctx: ?*anyopaque) callconv(.c) u16;
 
 /// `fw_gpio_pin_cfg_t`: direction and pull for one pin, as the C header
 /// lays them out (two bytes, uint8_t each).
@@ -33,9 +33,9 @@ pub const PinCfg = extern struct {
 /// `fw_gpio_iface_t`. All three ops are required by the facade's bind, so no
 /// pointer is optional here.
 pub const Iface = extern struct {
-    configure: *const fn (ctx: ?*anyopaque, pin: u16, cfg: PinCfg) callconv(.c) u32,
-    write: *const fn (ctx: ?*anyopaque, pin: u16, value: bool) callconv(.c) u32,
-    read: *const fn (ctx: ?*anyopaque, pin: u16, out_value: ?*bool) callconv(.c) u32,
+    configure: *const fn (ctx: ?*anyopaque, pin: u16, cfg: PinCfg) callconv(.c) u16,
+    write: *const fn (ctx: ?*anyopaque, pin: u16, value: bool) callconv(.c) u16,
+    read: *const fn (ctx: ?*anyopaque, pin: u16, out_value: ?*bool) callconv(.c) u16,
 };
 
 /// `fw_gpio_t`, caller-owned and opaque once `fw_gpio_bind` has filled it.
@@ -47,7 +47,7 @@ pub const Handle = extern struct {
 
 /// Put one pin into a direction and pull. A pin the board does not carry is
 /// `not_found`, the same answer the port facade gives.
-pub export fn fw_gpio_stub_configure(ctx: ?*anyopaque, pin: u16, cfg: PinCfg) callconv(.c) u32 {
+pub export fn fw_gpio_stub_configure(ctx: ?*anyopaque, pin: u16, cfg: PinCfg) callconv(.c) u16 {
     _ = ctx;
 
     stub.configure(pin, .{ .direction = cfg.direction, .pull = cfg.pull }) catch |err| {
@@ -62,7 +62,7 @@ pub export fn fw_gpio_stub_configure(ctx: ?*anyopaque, pin: u16, cfg: PinCfg) ca
 
 /// Drive one output pin. An input pin answers `invalid_state`, per the
 /// port's contract that a write to an input is refused.
-pub export fn fw_gpio_stub_write(ctx: ?*anyopaque, pin: u16, value: bool) callconv(.c) u32 {
+pub export fn fw_gpio_stub_write(ctx: ?*anyopaque, pin: u16, value: bool) callconv(.c) u16 {
     _ = ctx;
 
     stub.write(pin, value) catch |err| {
@@ -77,7 +77,7 @@ pub export fn fw_gpio_stub_write(ctx: ?*anyopaque, pin: u16, value: bool) callco
 
 /// Sample one pin's level: what an output drives, or the board's tied level
 /// (low) for an input.
-pub export fn fw_gpio_stub_read(ctx: ?*anyopaque, pin: u16, out_value: ?*bool) callconv(.c) u32 {
+pub export fn fw_gpio_stub_read(ctx: ?*anyopaque, pin: u16, out_value: ?*bool) callconv(.c) u16 {
     _ = ctx;
 
     const out = out_value orelse return Err.invalid_arg;
@@ -102,6 +102,6 @@ pub export fn fw_gpio_stub_iface() callconv(.c) *const Iface {
     return &iface;
 }
 
-pub export fn fw_gpio_stub_bind(gpio: ?*Handle) callconv(.c) u32 {
+pub export fn fw_gpio_stub_bind(gpio: ?*Handle) callconv(.c) u16 {
     return fw_gpio_bind(gpio, &iface, null);
 }
