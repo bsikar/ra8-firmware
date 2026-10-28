@@ -13,7 +13,7 @@ CMake test target, or a selftest wired into a gate suite.
 
 | Unit | Consumer | Gate | Decision |
 | --- | --- | --- | --- |
-| `tools/cache_bench` | `just/tools.just`, `scripts/builders/build_host_tools.sh`, `tests/cmake/zig_libraries.cmake`, referenced from `docs/SOUP/miniz.md` and the qualification docs | CMake unit test (`tests/src/test_cache_bench.c`) | keep |
+| `tools/cache_bench` | `just/tools.just` (`tools::build_cache_bench`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`, referenced from `docs/SOUP/miniz.md` and the qualification docs; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (contract tests, `tests/src/test_cache_bench.c`) | keep |
 | `tools/check_portability.py` | `just/checks.just` (`checks::portability`, `checks::portability-image-builds`); consumes `tools/portability_gate_libc/` | self-test inside the recipe | keep-and-gate |
 | `tools/check_txm_module_relocs` | `build.zig.zon` dependency; `tests/zig_build_graph/txm_module_*` | `.zig-test-contract.json` suite | keep |
 | `tools/epub_compile` | `scripts/builders/books.sh`; consumed by `apps/shared_libs/book`, `apps/shared_libs/rabook_compile`, format docs | `tests/epub_selftest.py` | keep |
