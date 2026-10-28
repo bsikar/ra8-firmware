@@ -1,0 +1,19 @@
+.{
+    .name = .rabook_imagepack,
+    .version = "0.1.0",
+    .fingerprint = 0xef2bb2f04b84c02,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_imgdec = .{ .path = "../../libs/ra8_imgdec" },
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+        .ra8_jpeg = .{ .path = "../../libs/ra8_jpeg" },
+        .ra8_core = .{ .path = "../../libs/ra8_core" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}
