@@ -1,0 +1,20 @@
+.{
+    .name = .rabook_viewer,
+    .version = "0.1.0",
+    .fingerprint = 0x2727b91e4bbefd88,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_imgdec = .{ .path = "../../libs/ra8_imgdec" },
+        .ra8_gfx = .{ .path = "../../libs/ra8_gfx" },
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+        .ra8_core = .{ .path = "../../libs/ra8_core" },
+        .ra8_io = .{ .path = "../../libs/ra8_io" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}
