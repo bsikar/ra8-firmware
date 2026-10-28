@@ -4,13 +4,13 @@
 
 set -euo pipefail
 
-if (($# != 2)); then
-  echo "usage: integration.sh MKFONTIMG CMAKE" >&2
+if (($# != 1)); then
+  echo "usage: integration.sh MKFONTIMG" >&2
   exit 2
 fi
 
 tool=$1
-cmake_cmd=$2
+
 work=$(mktemp -d "${TMPDIR:-/tmp}/mkfontimg-test.XXXXXX")
 
 cleanup() {
@@ -37,14 +37,14 @@ dd if=/dev/zero bs=1 count=9000 2>/dev/null | tr '\000' 'F' >"$work/input/font.b
 
 font_image="$work/font.img"
 "$tool" "$work/input/font.bin" "$font_image" FONT.OTF >/dev/null 2>&1
-read -r font_hash _ < <("$cmake_cmd" -E sha256sum "$font_image")
+read -r font_hash _ < <(sha256sum "$font_image")
 expected_font_hash=c293f3bff8508dcc81d74e1d6b427f372d89baac9fc4ea4aac8af75a2b876567
 [[ $font_hash == "$expected_font_hash" ]] || fail "font image differs from legacy golden"
 [[ $(wc -c <"$font_image") -eq 4194304 ]] || fail "font image is not exactly 4 MiB"
 
 blank_image="$work/blank.img"
 "$tool" --blank "$blank_image" >/dev/null 2>&1
-read -r blank_hash _ < <("$cmake_cmd" -E sha256sum "$blank_image")
+read -r blank_hash _ < <(sha256sum "$blank_image")
 expected_blank_hash=1f5720358302c8a9d329b85f698fa1e86aae6d29042e294f48ebfd5b253107c1
 [[ $blank_hash == "$expected_blank_hash" ]] || fail "blank image differs from legacy golden"
 

@@ -36,8 +36,7 @@ emu_build_import_reader_card() { # <output.img> -> 0 on success
   local epub
 
   [ -d "$fixture" ] || return 1
-  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 1
-  cmake --build "$mk/build" >/dev/null 2>&1 || return 1
+  (cd "$mk" && zig build --prefix build) >/dev/null 2>&1 || return 1
   epub="$(mktemp -t ra8_emulator_book.XXXXXX.epub)"
   if ! python3 - "$fixture" "$epub" <<'PY'; then
 import sys, zipfile
@@ -57,7 +56,7 @@ PY
     rm -f "$epub"
     return 1
   fi
-  if ! "$mk/build/mkfontimg" "$epub" "$output" BOOK.EPB >/dev/null 2>&1; then
+  if ! "$mk/build/bin/mkfontimg" "$epub" "$output" BOOK.EPB >/dev/null 2>&1; then
     rm -f "$epub"
     return 1
   fi
