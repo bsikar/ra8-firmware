@@ -10,9 +10,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 tool_dirs() {
-  find "$REPO_ROOT/tools" -mindepth 2 -maxdepth 2 -name CMakeLists.txt -type f -print0 |
+  # RA8FW-999: a tool is discovered through its build graph. Migrated tools
+  # carry build.zig; not-yet-migrated ones still carry CMakeLists.txt until
+  # their turn in the migration.
+  find "$REPO_ROOT/tools" -mindepth 2 -maxdepth 2 \( -name build.zig -o -name CMakeLists.txt \) -type f -print0 |
     sort -z |
-    while IFS= read -r -d '' cmake_file; do dirname "$cmake_file"; done
+    while IFS= read -r -d '' build_file; do dirname "$build_file"; done | sort -u
 }
 
 resolve_tools() {
@@ -38,6 +41,16 @@ build_one() {
     return 1
   fi
   echo "==> Building tools/$name"
+  if [ -f "$dir/build.zig" ]; then
+    # Built through the Zig graph (RA8FW-999). The tool installs its binary
+    # under build/bin/ beside the CMake-era build/ layout it replaced.
+    if ! (cd "$dir" && zig build --prefix build); then
+      echo "tools/$name failed to build." >&2
+      echo "Run 'just setup' and enter 'just dev_shell' for the pinned Zig toolchain." >&2
+      return 1
+    fi
+    return 0
+  fi
   if ! "$SCRIPT_DIR/host_cmake.sh" "${mode[@]}" "$dir" "$dir/build"; then
     echo "tools/$name failed to build." >&2
     echo "Run 'just setup' and enter 'just dev_shell' for the pinned compiler/toolchain." >&2

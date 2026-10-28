@@ -87,17 +87,16 @@ TOOL_DIR="${REPO_ROOT}/tools/exfat_mkimage"
 BUILD_DIR="${IMAGE_DIR}/build"
 mkdir -p "$IMAGE_DIR"
 
-echo "== building exfat_mkimage from ${TOOL_DIR} =="
-if ! cmake -S "$TOOL_DIR" -B "$BUILD_DIR" >/dev/null 2>&1 ||
-  ! cmake --build "$BUILD_DIR" >/dev/null 2>&1; then
-  echo "FATAL: could not build exfat_mkimage -- rerun the two cmake commands by hand:" >&2
-  echo "  cmake -S ${TOOL_DIR} -B ${BUILD_DIR} && cmake --build ${BUILD_DIR}" >&2
+echo "== building exfat_mkimage from ${TOOL_DIR} through the Zig graph =="
+if ! (cd "$TOOL_DIR" && zig build --prefix build) >/dev/null 2>&1; then
+  echo "FATAL: could not build exfat_mkimage -- rerun by hand:" >&2
+  echo "  (cd ${TOOL_DIR} && zig build --prefix build)" >&2
   exit 1
 fi
 
 GENERATED="${IMAGE_DIR}/ra8_showcase.img"
 echo "== creating the volume with ra8_fs =="
-"${BUILD_DIR}/exfat_mkimage" "$GENERATED" || {
+"${TOOL_DIR}/build/bin/exfat_mkimage" "$GENERATED" || {
   echo "FATAL: exfat_mkimage could not build the volume" >&2
   exit 1
 }
