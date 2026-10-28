@@ -78,7 +78,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `bootstrap_uv_exec.py` | `scripts/dev/bootstrap_uv.py` | keep |
 | `bootstrap_uv_mode_selftest.py` | `scripts/dev/bootstrap_uv.py` | keep |
 | `debug.sh` | `just/hw.just`, `docs/DEBUG.md` | keep |
-| `exfat_macos_interop.sh` | `tools/exfat_mkimage/CMakeLists.txt` | keep |
+| `exfat_macos_interop.sh` | `tools/exfat_mkimage/build.zig` | keep |
 | `flash.sh` | `just/hw.just` context; `docs/DEBUG.md`, the coprocessor flow | keep |
 | `git_environment.py` | `scripts/dev/git_environment.sh` | keep |
 | `git_environment.sh` | `scripts/gen/gen_sbom.py`, `scripts/gen/sbom_selftest.py`, `scripts/builders/build_cross_compile_db.py`, `scripts/dev/assemble_candidate.py` | keep |
