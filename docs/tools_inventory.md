@@ -24,7 +24,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/list_tests` | `just/tests.just` via `scripts/builders/list_tests.sh`; `libs/ra8_widget/build.zig` | `.zig-test-contract.json` suite | keep |
 | `tools/mcp` | `.mcp.json` (agent MCP server); `scripts/dev/run_just.sh`; `tools/mcp/README.md` | `tests/mcp_selftest.py` | keep |
 | `tools/merge_ihex` | `build.zig.zon`, `cmake/ra8_add_ns_image.cmake`, `cmake/ra8_zig_tool.cmake`, secure-boot NS example | `.zig-test-contract.json` suite | keep |
-| `tools/mkbookimg` | root `CMakeLists.txt`; `scripts/emu/smoke_apps.sh`, `scripts/emu/smoke_run.sh`; `tests/cmake/unit_tests.cmake` | CMake build + `tests/integration.sh` | keep |
+| `tools/mkbookimg` | `tools/mkbookimg/build.zig` (`zig build` integration; `tests/cmake_sha256sum.sh` maps the suite's one `cmake -E sha256sum` call onto coreutils), `scripts/emu/smoke_apps.sh`, `scripts/emu/smoke_run.sh` | integration suite (`zig build integration`) | keep |
 | `tools/mkfontimg` | `scripts/emu/eil_all.sh`, `emu_fixtures.sh`, `smoke_apps.sh` build it through the Zig graph; `import_reader` and `sd_font_render` examples | `zig build test` (integration suite) | keep |
 | `tools/portability_gate_libc` | `tools/check_portability.py` (the gate's scan input) | covered by the portability gate | keep |
 | `tools/ra8_emulator` | git submodule (root `.gitmodules`); `README.md`, devcontainer, VS Code configs | upstream repo's own gates | keep |

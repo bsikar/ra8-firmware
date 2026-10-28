@@ -1,0 +1,18 @@
+.{
+    .name = .mkbookimg,
+    .version = "0.1.0",
+    .fingerprint = 0x90e9afd3b10c2bfd,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_imgdec = .{ .path = "../../libs/ra8_imgdec" },
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+        .ra8_fs = .{ .path = "../../libs/ra8_fs" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}
