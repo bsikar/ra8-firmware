@@ -25,3 +25,9 @@ portability:
 [private]
 portability-image-builds:
     python3 tools/check_portability.py --image-builds
+
+# RA8FW-998: the committed font atlases decode byte-for-byte to the v1
+# quantized coverage (v2 saves 29.4% over v1). Runs the atlas verifier so the
+# format has a standing consumer instead of a one-shot check.
+atlas-parity:
+    python3 scripts/gen/test_atlas_v2.py
