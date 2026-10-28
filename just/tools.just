@@ -170,4 +170,4 @@ bench_cache: build_cache_bench build_reader_vmem build_glyph_bench
     echo "==== cache_bench: block/frame-size sweep ===="
     tools/cache_bench/build/bin/cache_bench --sweep-block
     echo "==== glyph_bench: glyph-cache budget sweep ===="
-    tools/glyph_bench/build/glyph_bench
+    tools/glyph_bench/build/bin/glyph_bench

@@ -20,7 +20,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/exfat_mkimage` | `scripts/dev/exfat_macos_interop.sh`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (integration suite) | keep |
 | `tools/font_to_c` | five example CMakeLists (`pagecache`, `ereader_ui`, `reflow_tofu_demo`, `reflow_webp_demo`, `sd_font_render`); `libs/ra8_fonts/literata_latin1.h` is its output | `.zig-test-contract.json` suite | keep |
 | `tools/gen_jlink_w4` | `just/tools.just` via `scripts/builders/gen_jlink_w4.sh` | `.zig-test-contract.json` suite | keep |
-| `tools/glyph_bench` | `just/tools.just`, `scripts/builders/build_host_tools.sh`, `tests/cmake/zig_libraries.cmake` | CMake build | keep |
+| `tools/glyph_bench` | `just/tools.just` (`tools::build_glyph_bench`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; built through the Zig graph (`build.zig`, RA8FW-999) | smoke run (`just tools::bench_cache`) | keep |
 | `tools/list_tests` | `just/tests.just` via `scripts/builders/list_tests.sh`; `libs/ra8_widget/build.zig` | `.zig-test-contract.json` suite | keep |
 | `tools/mcp` | `.mcp.json` (agent MCP server); `scripts/dev/run_just.sh`; `tools/mcp/README.md` | `tests/mcp_selftest.py` | keep |
 | `tools/merge_ihex` | `build.zig.zon`, `cmake/ra8_add_ns_image.cmake`, `cmake/ra8_zig_tool.cmake`, secure-boot NS example | `.zig-test-contract.json` suite | keep |
