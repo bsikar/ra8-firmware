@@ -164,7 +164,7 @@ bench_cache: build_cache_bench build_reader_vmem build_glyph_bench
     #!/usr/bin/env bash
     set -euo pipefail
     echo "==== reader_vmem: drive real ra8_vmem, emit trace ===="
-    tools/reader_vmem/build/reader_vmem tools/reader_vmem/build/reader_vmem.trace
+    tools/reader_vmem/build/bin/reader_vmem tools/reader_vmem/build/reader_vmem.trace
     echo "==== cache_bench: replay reader trace (SLRU) ===="
     tools/cache_bench/build/bin/cache_bench reader=tools/reader_vmem/build/reader_vmem.trace
     echo "==== cache_bench: block/frame-size sweep ===="

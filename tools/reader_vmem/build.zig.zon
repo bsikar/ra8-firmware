@@ -1,0 +1,16 @@
+.{
+    .name = .reader_vmem,
+    .version = "0.1.0",
+    .fingerprint = 0xe54b1cea356fca1a,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}
