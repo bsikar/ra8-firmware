@@ -45,7 +45,7 @@ build_one tool:
 
 # Build the native macOS/POSIX document viewer
 viewer:
-    bash scripts/builders/host_cmake.sh tools/rabook_viewer tools/rabook_viewer/build -DCMAKE_BUILD_TYPE=Release
+    bash scripts/builders/build_host_tools.sh build rabook_viewer
 
 # Build and open a .rabook document in the viewer (use arrows to turn pages)
 view file headless="0": viewer
@@ -53,7 +53,7 @@ view file headless="0": viewer
     set -euo pipefail
     extra=()
     [ "{{ headless }}" = "1" ] && extra=(--headless --dump-ppm /tmp/ra8_view.ppm)
-    tools/rabook_viewer/build/rabook_viewer "{{ file }}" "${extra[@]}"
+    tools/rabook_viewer/build/bin/rabook_viewer "{{ file }}" "${extra[@]}"
 
 # Self-test the Model Context Protocol dev server (tools/mcp)
 mcp:
