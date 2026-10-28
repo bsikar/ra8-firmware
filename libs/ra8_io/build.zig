@@ -20,8 +20,19 @@ pub fn build(b: *std.Build) void {
     // No unwind tables in a freestanding archive, as in ra8_hal's (RA8FW-571).
     const unwind: ?std.lang.UnwindTables = if (target.result.os.tag == .freestanding) .none else null;
 
+    // C tools that reach only one ra8_io unit link a narrow archive instead of
+    // the full one: root.zig's comptime block keeps the whole ABI surface (and
+    // every unit's extern driver deps) in the archive, where --gc-sections
+    // cannot drop the unreachable facades (found on RA8FW-999's glyph_bench
+    // slice). A narrow root emits only the units the tool names.
+    const units = b.option([]const u8, "units", "ra8_io unit subset for C consumers: \"stream\" (default \"all\")") orelse "all";
+    const root_source_file: std.Build.LazyPath = if (std.mem.eql(u8, units, "stream"))
+        b.path("src/root_stream.zig")
+    else
+        b.path("src/root.zig");
+
     const root = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
+        .root_source_file = root_source_file,
         .target = target,
         .optimize = optimize,
         .pic = true,
