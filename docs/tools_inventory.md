@@ -28,7 +28,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/mkfontimg` | `scripts/emu/eil_all.sh`, `emu_fixtures.sh`, `smoke_apps.sh` build it through the Zig graph; `import_reader` and `sd_font_render` examples | `zig build test` (integration suite) | keep |
 | `tools/portability_gate_libc` | `tools/check_portability.py` (the gate's scan input) | covered by the portability gate | keep |
 | `tools/ra8_emulator` | git submodule (root `.gitmodules`); `README.md`, devcontainer, VS Code configs | upstream repo's own gates | keep |
-| `tools/rabook_imagepack` | root `CMakeLists.txt`; `cmake/ra8_app/sources.cmake`, `cmake/ra8_webp_vendor.cmake`; format docs | CMake build + five integration/unit suites | keep |
+| `tools/rabook_imagepack` | `tools/rabook_imagepack/build.zig` (`zig build` test/integration), `cmake/ra8_webp_vendor.cmake` (still shared by the app + host-test recipes); format docs | six unit targets + four integration scripts (`zig build test`, `zig build integration`) | keep |
 | `tools/rabook_viewer` | root `CMakeLists.txt`; `just/tools.just`; `tests/cmake/zig_libraries.cmake`; format docs | CMake build + corpus/workspace suites | keep |
 | `tools/reader_vmem` | `just/tools.just` (`tools::build_reader_vmem`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; consumed by `tools/cache_bench` `sweep_block`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (workspace tests, `tests/src/reader_vmem_workspace_test.c`) | keep |
 | `tools/roadmap_stats` | `just/docs.just`; regenerates `docs/ROADMAP.md` and the qualification docs | `.zig-test-contract.json` suite | keep |
