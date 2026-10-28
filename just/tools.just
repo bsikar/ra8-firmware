@@ -166,8 +166,8 @@ bench_cache: build_cache_bench build_reader_vmem build_glyph_bench
     echo "==== reader_vmem: drive real ra8_vmem, emit trace ===="
     tools/reader_vmem/build/reader_vmem tools/reader_vmem/build/reader_vmem.trace
     echo "==== cache_bench: replay reader trace (SLRU) ===="
-    tools/cache_bench/build/cache_bench reader=tools/reader_vmem/build/reader_vmem.trace
+    tools/cache_bench/build/bin/cache_bench reader=tools/reader_vmem/build/reader_vmem.trace
     echo "==== cache_bench: block/frame-size sweep ===="
-    tools/cache_bench/build/cache_bench --sweep-block
+    tools/cache_bench/build/bin/cache_bench --sweep-block
     echo "==== glyph_bench: glyph-cache budget sweep ===="
     tools/glyph_bench/build/glyph_bench

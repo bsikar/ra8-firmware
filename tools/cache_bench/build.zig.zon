@@ -1,0 +1,16 @@
+.{
+    .name = .cache_bench,
+    .version = "0.1.0",
+    .fingerprint = 0x7ed8e5ac640ef27e,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "inc",
+        "tests",
+    },
+}
