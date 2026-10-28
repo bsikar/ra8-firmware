@@ -1,0 +1,16 @@
+.{
+    .name = .glyph_bench,
+    .version = "0.1.0",
+    .fingerprint = 0xcc989e2fd3e8f5da,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_io = .{ .path = "../../libs/ra8_io" },
+        .ra8_mem = .{ .path = "../../libs/ra8_mem" },
+        .ra8_core = .{ .path = "../../libs/ra8_core" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
