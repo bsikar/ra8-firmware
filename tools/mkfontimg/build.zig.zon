@@ -1,0 +1,16 @@
+.{
+    .name = .mkfontimg,
+    .version = "0.1.0",
+    .fingerprint = 0x51bce5b96f951464,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_fs = .{ .path = "../../libs/ra8_fs" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "inc",
+        "tests",
+    },
+}
