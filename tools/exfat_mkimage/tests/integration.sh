@@ -4,13 +4,12 @@
 
 set -euo pipefail
 
-if (($# != 2)); then
-  echo "usage: integration.sh EXFAT_MKIMAGE CMAKE" >&2
+if (($# != 1)); then
+  echo "usage: integration.sh EXFAT_MKIMAGE" >&2
   exit 2
 fi
 
 tool=$1
-cmake_cmd=$2
 work=$(mktemp -d "${TMPDIR:-/tmp}/exfat-mkimage-test.XXXXXX")
 
 cleanup() {
@@ -31,7 +30,7 @@ assert_no_temp() {
 
 image="$work/showcase.img"
 "$tool" "$image" >/dev/null 2>&1
-read -r actual_hash _ < <("$cmake_cmd" -E sha256sum "$image")
+read -r actual_hash _ < <(sha256sum "$image")
 expected_hash=d3068af77071871baeaf77748519aaba2d12cdd236b9cd32fd22338aa477c771
 [[ $actual_hash == "$expected_hash" ]] || fail "image differs from legacy golden"
 [[ $(wc -c <"$image") -eq 67108864 ]] || fail "image is not exactly 64 MiB"
@@ -64,7 +63,7 @@ ln -s symlink-target "$work/final-link.img"
 [[ -f $work/final-link.img && ! -L $work/final-link.img ]] || fail "final symlink was followed"
 printf 'symlink-target-must-not-change\n' | cmp -- "$work/symlink-target" - ||
   fail "final symlink target was modified"
-read -r link_hash _ < <("$cmake_cmd" -E sha256sum "$work/final-link.img")
+read -r link_hash _ < <(sha256sum "$work/final-link.img")
 [[ $link_hash == "$expected_hash" ]] || fail "replacement image differs from golden"
 assert_no_temp
 

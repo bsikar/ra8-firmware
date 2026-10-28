@@ -17,7 +17,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/check_portability.py` | `just/checks.just` (`checks::portability`, `checks::portability-image-builds`); consumes `tools/portability_gate_libc/` | self-test inside the recipe | keep-and-gate |
 | `tools/check_txm_module_relocs` | `build.zig.zon` dependency; `tests/zig_build_graph/txm_module_*` | `.zig-test-contract.json` suite | keep |
 | `tools/epub_compile` | `scripts/builders/books.sh`; consumed by `apps/shared_libs/book`, `apps/shared_libs/rabook_compile`, format docs | `tests/epub_selftest.py` | keep |
-| `tools/exfat_mkimage` | root `CMakeLists.txt`; `scripts/dev/exfat_macos_interop.sh` | CMake build + `tests/integration.sh` | keep |
+| `tools/exfat_mkimage` | `scripts/dev/exfat_macos_interop.sh`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (integration suite) | keep |
 | `tools/font_to_c` | five example CMakeLists (`pagecache`, `ereader_ui`, `reflow_tofu_demo`, `reflow_webp_demo`, `sd_font_render`); `libs/ra8_fonts/literata_latin1.h` is its output | `.zig-test-contract.json` suite | keep |
 | `tools/gen_jlink_w4` | `just/tools.just` via `scripts/builders/gen_jlink_w4.sh` | `.zig-test-contract.json` suite | keep |
 | `tools/glyph_bench` | `just/tools.just`, `scripts/builders/build_host_tools.sh`, `tests/cmake/zig_libraries.cmake` | CMake build | keep |

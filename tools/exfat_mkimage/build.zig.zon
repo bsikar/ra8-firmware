@@ -1,0 +1,15 @@
+.{
+    .name = .exfat_mkimage,
+    .version = "0.1.0",
+    .fingerprint = 0x12aeb9bded416a9d,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_fs = .{ .path = "../../libs/ra8_fs" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}
