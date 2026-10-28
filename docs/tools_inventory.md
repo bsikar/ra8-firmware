@@ -30,7 +30,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/ra8_emulator` | git submodule (root `.gitmodules`); `README.md`, devcontainer, VS Code configs | upstream repo's own gates | keep |
 | `tools/rabook_imagepack` | root `CMakeLists.txt`; `cmake/ra8_app/sources.cmake`, `cmake/ra8_webp_vendor.cmake`; format docs | CMake build + five integration/unit suites | keep |
 | `tools/rabook_viewer` | root `CMakeLists.txt`; `just/tools.just`; `tests/cmake/zig_libraries.cmake`; format docs | CMake build + corpus/workspace suites | keep |
-| `tools/reader_vmem` | `just/tools.just`, `scripts/builders/build_host_tools.sh`, `tests/cmake/zig_libraries.cmake`; consumed by `tools/cache_bench` `sweep_block` | CMake unit test | keep |
+| `tools/reader_vmem` | `just/tools.just` (`tools::build_reader_vmem`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; consumed by `tools/cache_bench` `sweep_block`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (workspace tests, `tests/src/reader_vmem_workspace_test.c`) | keep |
 | `tools/roadmap_stats` | `just/docs.just`; regenerates `docs/ROADMAP.md` and the qualification docs | `.zig-test-contract.json` suite | keep |
 | `tools/vela` | NPU model compiler, pinned in `build.zig.zon`; serves the `npu_vela` example; SOUP record `docs/SOUP/vela.md` | `tools/vela/tests/test_vela_gen.py` | keep |
 | `tools/zig_build` | root `build.zig` and every host Zig build (`apps/host/firmware_pipeline`, `image_pyramid`, `reg_gen`); `cmake/ra8_add_ns_image.cmake` | `.zig-test-contract.json` suite | keep |
