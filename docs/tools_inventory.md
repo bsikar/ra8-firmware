@@ -25,7 +25,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/mcp` | `.mcp.json` (agent MCP server); `scripts/dev/run_just.sh`; `tools/mcp/README.md` | `tests/mcp_selftest.py` | keep |
 | `tools/merge_ihex` | `build.zig.zon`, `cmake/ra8_add_ns_image.cmake`, `cmake/ra8_zig_tool.cmake`, secure-boot NS example | `.zig-test-contract.json` suite | keep |
 | `tools/mkbookimg` | root `CMakeLists.txt`; `scripts/emu/smoke_apps.sh`, `scripts/emu/smoke_run.sh`; `tests/cmake/unit_tests.cmake` | CMake build + `tests/integration.sh` | keep |
-| `tools/mkfontimg` | root `CMakeLists.txt`; `scripts/emu/eil_all.sh`, `emu_fixtures.sh`, `smoke_*`; `import_reader` and `sd_font_render` examples | CMake build + `tests/integration.sh` | keep |
+| `tools/mkfontimg` | `scripts/emu/eil_all.sh`, `emu_fixtures.sh`, `smoke_apps.sh` build it through the Zig graph; `import_reader` and `sd_font_render` examples | `zig build test` (integration suite) | keep |
 | `tools/portability_gate_libc` | `tools/check_portability.py` (the gate's scan input) | covered by the portability gate | keep |
 | `tools/ra8_emulator` | git submodule (root `.gitmodules`); `README.md`, devcontainer, VS Code configs | upstream repo's own gates | keep |
 | `tools/rabook_imagepack` | root `CMakeLists.txt`; `cmake/ra8_app/sources.cmake`, `cmake/ra8_webp_vendor.cmake`; format docs | CMake build + five integration/unit suites | keep |

@@ -246,10 +246,9 @@ if [[ "$-" == *p* ]]; then
     local font="${REPO_ROOT}/apps/shared_libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
     local mk="${REPO_ROOT}/tools/mkfontimg"
     [ -f "$font" ] || return 0
-    cmake -B "${mk}/build" -S "$mk" >/dev/null 2>&1 || return 0
-    cmake --build "${mk}/build" >/dev/null 2>&1 || return 0
+    (cd "${mk}" && zig build --prefix build) >/dev/null 2>&1 || return 0
     EIL_FONT_IMG="${EIL_RUN_DIR}/font.img"
-    "${mk}/build/mkfontimg" "$font" "$EIL_FONT_IMG" FONT.OTF >/dev/null 2>&1 || EIL_FONT_IMG=""
+    "${mk}/build/bin/mkfontimg" "$font" "$EIL_FONT_IMG" FONT.OTF >/dev/null 2>&1 || EIL_FONT_IMG=""
   }
 
   # Ensure ereader_shelf's baked MRAM library header (library.h) exists before the
