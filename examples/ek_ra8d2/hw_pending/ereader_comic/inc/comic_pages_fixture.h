@@ -132,12 +132,7 @@ static const uint8_t k_comic_cbz[] = {
 };
 
 /** @brief Length of ::k_comic_cbz in bytes. */
-static const uint32_t k_comic_cbz_len = (uint32_t)sizeof(k_comic_cbz);
+static const uint32_t k_comic_cbz_len = 1765U;
 
-/**
- * @brief Page count baked into ::k_comic_cbz.
- * @details A property of the archive above, not a tunable.
- */
-typedef enum : uint32_t {
-  k_comic_page_count = 5U, /**< Entries the baked CBZ contains. */
-} comic_pages_count_t;
+/** @brief Page count baked into ::k_comic_cbz. */
+static const uint32_t k_comic_page_count = 5U;

@@ -40,7 +40,7 @@ Where each column comes from:
 A driver with no sources is a contract declared but not implemented here. One
 with no tests and no apps is exactly the gap this page exists to make visible.
 
-79 drivers: 71 named by a host test, 58 named by an app, 7 by neither, 59 declared but not implemented here.
+79 drivers: 71 named by a host test, 58 named by an app, 7 by neither, 60 declared but not implemented here.
 
 | Driver | Src | Hdr | API | Tests | Apps |
 |---|---:|---:|---:|---:|---:|
@@ -92,7 +92,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_mipi_dsi` | 0 | 3 | 40 | 5 | 0 |
 | `ra8_mipi_phy` | 2 | 4 | 40 | 4 | 0 |
 | `ra8_mpc` | 0 | 1 | 7 | 1 | 2 |
-| `ra8_mstp` | 1 | 1 | 5 | 154 | 95 |
+| `ra8_mstp` | 0 | 1 | 5 | 154 | 95 |
 | `ra8_npu` | 2 | 5 | 20 | 3 | 3 |
 | `ra8_ofs` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_pcntr` | 0 | 1 | 2 | 1 | 1 |
@@ -104,7 +104,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_register_protection` | 0 | 1 | 0 | 0 | 0 |
 | `ra8_reset` | 0 | 1 | 9 | 3 | 3 |
 | `ra8_rmac` | 1 | 2 | 36 | 9 | 0 |
-| `ra8_rsip` | 7 | 8 | 69 | 13 | 4 |
+| `ra8_rsip` | 6 | 8 | 69 | 12 | 4 |
 | `ra8_rtc` | 0 | 1 | 13 | 2 | 6 |
 | `ra8_sau` | 0 | 1 | 8 | 3 | 1 |
 | `ra8_sci` | 1 | 3 | 42 | 15 | 28 |
