@@ -135,6 +135,43 @@ target_include_directories(
 add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 
 # ---------------------------------------------------------------------------
+# test_lx_fs_vfs_e2e: the full on-device storage path in one binary -- RAM NOR
+# fake -> vendored LevelX (LX_STANDALONE_ENABLE) -> port/levelx lx_fs_backend
+# -> first-party ra8_fs FAT12 -> ra8_io_vfs named mount -> the fw_if_fs_ra8_vfs
+# adapter -> the portable fw_if_fs_* reader surface (mkdir, create, byte-exact
+# read-back, stat, listdir, directory cursor, space, staged transaction publish
+# and abort, unlink/rmdir, clean unmount). The middle layers have their own
+# focused tests; this one connects the far ends, the composition root the
+# reader binds. LevelX and the fake driver put it outside the ra8_add_test()
+# auto-glob.
+# ---------------------------------------------------------------------------
+add_executable(
+  test_lx_fs_vfs_e2e
+  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_lx_fs_vfs_e2e.c
+  ${FW_ROOT}/port/levelx/src/lx_fs_backend.c
+  ${RA8_LEVELX_NOR_STANDALONE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/lx_nor_fake_ram.c
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_lx_fs_vfs_e2e PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_definitions(test_lx_fs_vfs_e2e PRIVATE LX_STANDALONE_ENABLE)
+target_compile_options(test_lx_fs_vfs_e2e PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_lx_fs_vfs_e2e
+  PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+          ${FW_ROOT}/port/levelx/inc
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/if/inc
+          ${FW_ROOT}/libs/if_ra8_vfs/inc
+          ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${_ra8_levelx_dir}/common/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
+)
+add_test(NAME test_lx_fs_vfs_e2e COMMAND test_lx_fs_vfs_e2e)
+
+# ---------------------------------------------------------------------------
 # test_cache_store_demo: the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
 # (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate
