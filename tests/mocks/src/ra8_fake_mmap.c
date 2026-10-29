@@ -266,12 +266,16 @@ enum : uintptr_t {
  * choices (see above), so these are the pins that keep a choice honest. */
 static_assert(k_ra8_fake_sram_size >= (size_t)k_ra8_board_sram_size + (size_t)k_ra8_board_noinit_size,
               "SRAM window must cover the board SRAM region and its NOINIT tail");
-static_assert((uintptr_t)k_ra8_board_ns_sram_base + (uintptr_t)k_ra8_board_ns_sram_size <=
+/* RA8FW-513 runs the Non-Secure placeholders at their bit-28 aliases, so the
+ * pins below de-alias them back to the secure addresses the host backing
+ * windows sit at before comparing. */
+#define RA8_NS_DEALIAS(address) ((uintptr_t)(address) & ~((uintptr_t)1 << 28))
+static_assert(RA8_NS_DEALIAS(k_ra8_board_ns_sram_base) + (uintptr_t)k_ra8_board_ns_sram_size <=
                 (uintptr_t)k_ra8_fake_sram_base + (uintptr_t)k_ra8_fake_sram_size,
               "SRAM window must cover the Non-Secure SRAM placeholder");
 static_assert(k_ra8_fake_code_mram_size >= (size_t)k_ra8_board_mram_size,
               "Code-MRAM window must cover the board MRAM region");
-static_assert((uintptr_t)k_ra8_board_ns_mram_base + (uintptr_t)k_ra8_board_ns_mram_size <=
+static_assert(RA8_NS_DEALIAS(k_ra8_board_ns_mram_base) + (uintptr_t)k_ra8_board_ns_mram_size <=
                 (uintptr_t)k_ra8_fake_code_mram_base + (uintptr_t)k_ra8_fake_code_mram_size,
               "Code-MRAM window must cover the Non-Secure MRAM placeholder");
 static_assert(k_ra8_fake_extra_mram_size >= (size_t)k_ra8_board_ofs_otp_size,
