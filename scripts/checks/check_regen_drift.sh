@@ -23,15 +23,11 @@
 #     bash scripts/checks/check_regen_drift.sh
 #     bash scripts/checks/check_regen_drift.sh --only pinouts widget_icons
 #
-# Not registered here, with reasons (they are kept generators but cannot
+# Not registered here, with reasons (it is a kept generator but cannot
 # regenerate on a bare checkout):
 #   scripts/gen/ereader_golden.py -- needs a cross-built ereader_ui.elf and
 #     the ra8_emulator binary; its byte-identity gate is the golden check in
 #     scripts/emu/smoke_run.sh, which runs it against the built pair.
-#   scripts/gen/gen_sbom.py -- drives explicit mode arguments documented in
-#     its argparse; registering its modes is a follow-up slice.
-#   scripts/gen/rabook_parity_gen.py -- multi-mode driver wired through
-#     just/tools.just; registering its modes is a follow-up slice.
 
 set -euo pipefail
 
@@ -73,6 +69,8 @@ declare -a GEN_NAMES=(
   rabook_gray8_fixture
   driver_status
   roadmap_stats
+  sbom_check
+  rabook_parity
   display_atlases
 )
 case "${1:-}" in
@@ -97,6 +95,40 @@ gen_cmd() {
     # Its own --check mode is the byte-identity check (RA8FW-335): refuse a
     # stale summary block in docs/ROADMAP.md.
     roadmap_stats)       bash scripts/builders/roadmap_stats.sh --check ;;
+    # Same pattern (RA8FW-340): the SBOM's --check mode fails when the
+    # committed SBOM is stale or the tree drifted.
+    sbom_check)          "$python_bin" scripts/gen/gen_sbom.py --check ;;
+    # The four just/tools.just rabook_parity modes, generator then
+    # clang-format, exactly as the rabook_golden recipe runs them. The
+    # formatter is load-bearing for byte-identity (it re-wraps the hex
+    # tables); no formatter is a FAIL, not a skip.
+    rabook_parity)
+      formatter=""
+      if command -v clang-format-22 >/dev/null 2>&1; then
+        formatter="$(command -v clang-format-22)"
+      elif command -v clang-format >/dev/null 2>&1; then
+        formatter="$(command -v clang-format)"
+      else
+        die "rabook_parity needs clang-format-22 or clang-format for byte-identity (the just recipe formats every generated fixture)"
+      fi
+      fixture_dir="apps/shared_libs/rabook_compile/tests/inc"
+      "$python_bin" scripts/gen/rabook_parity_gen.py \
+        tests/fixtures/rabook_parity \
+        "$fixture_dir/rabook_parity_fixture.h" \
+        examples/ek_ra8d2/hw_pending/compile_on_m33/inc/parity_fixture.h
+      "$python_bin" scripts/gen/rabook_parity_gen.py --realbook \
+        tests/fixtures/rabook_realbook \
+        "$fixture_dir/rabook_realbook_fixture.h"
+      "$python_bin" scripts/gen/rabook_parity_gen.py --downscale \
+        "$fixture_dir/rabook_downscale_parity_fixture.h"
+      "$python_bin" scripts/gen/rabook_parity_gen.py --color \
+        "$fixture_dir/rabook_color_parity_fixture.h"
+      "$formatter" -i \
+        "$fixture_dir/rabook_parity_fixture.h" \
+        examples/ek_ra8d2/hw_pending/compile_on_m33/inc/parity_fixture.h \
+        "$fixture_dir/rabook_realbook_fixture.h" \
+        "$fixture_dir/rabook_downscale_parity_fixture.h" \
+        "$fixture_dir/rabook_color_parity_fixture.h" ;;
     # Registered last and expected to be named in the findings: its
     # rasterization is host-dependent (FreeType inside the Pillow wheel), so
     # a byte-identity failure here is a finding for the rasterizer decision,
