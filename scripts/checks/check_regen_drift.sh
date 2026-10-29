@@ -150,7 +150,8 @@ for name in "${GEN_NAMES[@]}"; do
   git -C "$work/wt" reset -q --hard HEAD
   git -C "$work/wt" clean -qfd
   if ! (cd "$work/wt" && gen_cmd "$name") >"$work/$name.log" 2>&1; then
-    echo "FAIL   $name (generator exited nonzero; log at $work/$name.log)"
+    echo "FAIL   $name (generator exited nonzero):"
+    tail -n 6 "$work/$name.log" | sed 's/^/         /'
     fail_total=$((fail_total + 1))
     continue
   fi
