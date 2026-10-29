@@ -59,6 +59,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `check_comment_format.py` | `.clang-format`, `docs/STYLE_GUIDE.md`, `just/tools.just` | keep |
 | `check_file_size.py` | cited by the files it caps; `tests/zig_build_graph`; `scripts/checks/lint_targets.py` | keep |
 | `check_freestanding_runtime.py` | `just/apps.just`; `docs/ARCHITECTURE.md` | keep |
+| `check_regen_drift.sh` | `just/checks.just` (`checks::regen-drift`); RA8FW-1001's byte-identical regeneration gate for the kept generators | keep |
 | `check_rtos_symbol_isolation.py` | the lab automation's gate suite, which runs this checkout's copy; carries the RA8FW-363 Zig-sources sweep (`.zig` suffixes, `@extern` string handling) | keep |
 | `check_sg_offsets.py` | `cmake/toolchain-ra8d2.cmake` and the SG-using example CMakeLists | keep |
 | `check_tool_versions.py` | `.devcontainer/Dockerfile`, `cmake/ra8_app/zig_libs.cmake`, `docs/TOOLCHAIN.md` | keep |

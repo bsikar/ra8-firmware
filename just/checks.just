@@ -31,3 +31,13 @@ portability-image-builds:
 # format has a standing consumer instead of a one-shot check.
 atlas-parity:
     python3 scripts/gen/test_atlas_v2.py
+
+# RA8FW-1001: every kept generator must regenerate its committed output
+# byte-identically. The gate re-runs each registered generator in a
+# throwaway worktree under the locked Python environment (RA8_TOOL_VENV or
+# .venv; it refuses a bare interpreter, whose Pillow bundles a different
+# FreeType build) and fails on any tracked-path drift. Currently reporting:
+# the 2026-10-28 first run found 8 drifting generators; the findings are
+# queued as follow-up slices.
+regen-drift:
+    bash scripts/checks/check_regen_drift.sh
