@@ -12,8 +12,6 @@ const tag = "ETHGWC";
 /// `k_ra8_gwca0_base_addr` (ra8_ether_regs.h).
 const gwca0_base: usize = 0x403CE000;
 
-extern fn ra8_log_error(tag: [*:0]const u8, msg: [*:0]const u8) void;
-
 /// Active event callback; null means none.
 export var s_gwca_fn: ?ev.EventFn = null;
 /// Context handed to s_gwca_fn.
@@ -25,7 +23,7 @@ fn regs() *volatile ev.Regs {
 
 export fn ra8_eth_gwca_get_status(out_mask: ?*u32) u16 {
     const out = out_mask orelse {
-        ra8_log_error(tag, "out_mask must not be nullptr");
+        common.ra8_log_emit_error(tag, "out_mask must not be nullptr");
         return common.k_ra8_err_null_ptr;
     };
     out.* = regs().sts;
