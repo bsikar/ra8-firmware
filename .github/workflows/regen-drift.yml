@@ -1,0 +1,43 @@
+name: regen-drift gate
+
+# Dispatch-only for now, deliberately. The gate is byte-identity: it fails on
+# any host whose toolchain differs from the one that produced the committed
+# outputs. Four entries are still environment-dependent in exactly that way
+# (display_atlases, literata_atlas, rabook_gray8_fixture, unarch_xz_fixture;
+# probe matrix on RA8FW-1001), so a push or PR trigger would be permanently
+# red until that set is dispositioned. Flip the trigger to push/PR on dev in
+# the same change that dispositions them.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regen-drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zig 0.17.0
+        run: |
+          curl -fsSL -o /tmp/zig.tar.xz \
+            https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz
+          mkdir -p "$HOME/.local/zig"
+          tar -xJf /tmp/zig.tar.xz -C "$HOME/.local/zig" --strip-components=1
+          echo "$HOME/.local/zig" >> "$GITHUB_PATH"
+
+      - name: Locked Python environment
+        run: bash scripts/dev/setup_python.sh
+
+      - name: Install clang-format 22 (parity byte-identity)
+        run: |
+          wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x /tmp/llvm.sh
+          sudo /tmp/llvm.sh 22
+          sudo apt-get install -y clang-format-22
+
+      - name: Drift gate
+        run: bash scripts/checks/check_regen_drift.sh
