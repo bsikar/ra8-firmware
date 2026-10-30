@@ -57,25 +57,25 @@ const Path = [*:0]const u8;
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 extern fn ra8_log_emit_error_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
-extern fn ra8_fs_probe(backend: *const anyopaque, out_type: *c_int) c_int;
-extern fn ra8_fs_mount(backend: *const anyopaque, out: *H) c_int;
-extern fn ra8_fs_unmount(mount: H) c_int;
-extern fn ra8_fs_open(mount: H, path: Path, mode: c_int, out: *H) c_int;
-extern fn ra8_fs_close(file: H) c_int;
-extern fn ra8_fs_read(file: H, buf: *anyopaque, bytes: u32, out_read: *u32) c_int;
-extern fn ra8_fs_write(file: H, buf: *const anyopaque, bytes: u32) c_int;
-extern fn ra8_fs_seek(file: H, offset: u64) c_int;
-extern fn ra8_fs_tell(file: ?*const anyopaque, out: *u64) c_int;
-extern fn ra8_fs_size(file: ?*const anyopaque, out: *u64) c_int;
-extern fn ra8_fs_stat(mount: H, path: Path, out: *ns.FsStat) c_int;
-extern fn ra8_fs_dir_open(mount: H, path: Path, dir: *FsDir) c_int;
-extern fn ra8_fs_dir_next(dir: *FsDir, out: *FsDirent, out_entry: *bool) c_int;
-extern fn ra8_fs_dir_close(dir: *FsDir) c_int;
-extern fn ra8_fs_unlink(mount: H, path: Path) c_int;
-extern fn ra8_fs_rename(mount: H, old_path: Path, new_path: Path) c_int;
-extern fn ra8_fs_mkdir(mount: H, path: Path) c_int;
-extern fn ra8_fs_rmdir(mount: H, path: Path) c_int;
-extern fn ra8_fs_free_space(mount: H, out: *anyopaque) c_int;
+extern fn ra8_fs_probe(backend: *const anyopaque, out_type: *c_int) u16;
+extern fn ra8_fs_mount(backend: *const anyopaque, out: *H) u16;
+extern fn ra8_fs_unmount(mount: H) u16;
+extern fn ra8_fs_open(mount: H, path: Path, mode: c_int, out: *H) u16;
+extern fn ra8_fs_close(file: H) u16;
+extern fn ra8_fs_read(file: H, buf: *anyopaque, bytes: u32, out_read: *u32) u16;
+extern fn ra8_fs_write(file: H, buf: *const anyopaque, bytes: u32) u16;
+extern fn ra8_fs_seek(file: H, offset: u64) u16;
+extern fn ra8_fs_tell(file: ?*const anyopaque, out: *u64) u16;
+extern fn ra8_fs_size(file: ?*const anyopaque, out: *u64) u16;
+extern fn ra8_fs_stat(mount: H, path: Path, out: *ns.FsStat) u16;
+extern fn ra8_fs_dir_open(mount: H, path: Path, dir: *FsDir) u16;
+extern fn ra8_fs_dir_next(dir: *FsDir, out: *FsDirent, out_entry: *bool) u16;
+extern fn ra8_fs_dir_close(dir: *FsDir) u16;
+extern fn ra8_fs_unlink(mount: H, path: Path) u16;
+extern fn ra8_fs_rename(mount: H, old_path: Path, new_path: Path) u16;
+extern fn ra8_fs_mkdir(mount: H, path: Path) u16;
+extern fn ra8_fs_rmdir(mount: H, path: Path) u16;
+extern fn ra8_fs_free_space(mount: H, out: *anyopaque) u16;
 
 fn nullPtr(message: [*:0]const u8) c_int {
     ra8_log_emit_error(tag, message);
@@ -126,7 +126,8 @@ fn nativeSize(file: ?*const anyopaque, out: *u64) callconv(.c) c_int {
     return ra8_fs_size(file, out);
 }
 fn nativeStat(mount: H, path: Path, out: *ns.FsStat) callconv(.c) c_int {
-    return ra8_fs_stat(mount, path, out);
+    const e = ra8_fs_stat(mount, path, out);
+    return e;
 }
 
 /// Walk one directory with a stack cursor, closing it whatever happened.
