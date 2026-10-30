@@ -422,8 +422,9 @@ pub fn mountName(out: *[io_vfs_name_max]u8, name: [*]const u8) Err {
 
 /// Map a portable open mode to the native VFS mode set.
 ///
-/// Only read, write-truncate and append have a faithful native equivalent, so
-/// create-new is refused rather than silently downgraded.
+/// Only read, write-truncate and append have a native equivalent. The stream
+/// open path implements create-new itself (leaf-existence probe, then the
+/// truncate mode), so a create-new request never reaches this mapper.
 pub fn modeNative(mode: u8, out: *u8) Err {
     if (mode == open_read) {
         out.* = fs_mode_read;
@@ -469,7 +470,7 @@ pub fn capabilities(
 ) Caps {
     var caps: Caps = .{
         .max_file_bytes = if (exfat) std.math.maxInt(u64) else fs_fat_max_file_bytes,
-        .flags = cap_namespace | cap_stream | cap_space_query | cap_same_volume_rename |
+        .flags = cap_namespace | cap_stream | cap_create_exclusive | cap_space_query | cap_same_volume_rename |
             cap_atomic_noreplace | cap_transactions | cap_rejects_symlink_walk,
         .file_workspace_bytes = @sizeOf(FileState),
         .directory_workspace_bytes = directory_bytes,

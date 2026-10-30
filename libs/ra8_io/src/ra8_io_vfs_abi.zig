@@ -34,7 +34,9 @@ pub const max_files: usize = 4;
 pub const name_max: usize = ns.name_max;
 
 /// ra8_fs_type_t values the native check asks the format registry for.
+pub const fs_type_fat12: u8 = 12;
 pub const fs_type_fat16: u8 = 16;
+pub const fs_type_fat32: u8 = 32;
 pub const fs_type_exfat: u8 = 64;
 
 /// ra8_fs_mode_t (ra8_fs_types.h).
@@ -174,7 +176,11 @@ export fn priv_ra8_io_vfs_resolve(path: [*:0]const u8, out_slot: *?*Slot, out_in
 /// Native means the slot's format is the built-in FAT or exFAT descriptor.
 fn isNative(format: *const Format) bool {
     var native: ?*const Format = null;
+    _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_fat12, &native);
+    if (native == format) return true;
     _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_fat16, &native);
+    if (native == format) return true;
+    _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_fat32, &native);
     if (native == format) return true;
     _ = fsfmt.ra8_io_fsfmt_get_builtin(fs_type_exfat, &native);
     return native == format;

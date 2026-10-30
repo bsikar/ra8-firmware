@@ -385,12 +385,23 @@ fn internalOpen(
     state_bytes: u32,
 ) callconv(.c) u16 {
     if (state_bytes < @sizeOf(core.FileState)) return core.err_no_mem;
-    var native_mode: u8 = core.fs_mode_read;
-    const mode_err = core.modeNative(mode, &native_mode);
-    if (mode_err != core.ok) return mode_err;
     const state = adapter(ctx);
     const built = core.fullPath(&state.mount_name, path, &state.path_a);
     if (built != core.ok) return built;
+    var native_mode: u8 = core.fs_mode_read;
+    if (mode == core.open_create_new) {
+        // create-new has no native mode: probe the leaf and refuse when it
+        // already exists, else create through the truncate mode. Mirrors the
+        // transaction commit's destination check.
+        var leaf: core.NativeStat = .{};
+        const probed = ra8_io_vfs_stat(pathA(state), &leaf);
+        if (probed != core.ok) return probed;
+        if (leaf.exists) return core.err_exists;
+        native_mode = core.fs_mode_write;
+    } else {
+        const mode_err = core.modeNative(mode, &native_mode);
+        if (mode_err != core.ok) return mode_err;
+    }
     const file: *core.FileState = @ptrCast(@alignCast(file_state.?));
     file.native = null;
     return ra8_io_vfs_open(pathA(state), native_mode, &file.native);
