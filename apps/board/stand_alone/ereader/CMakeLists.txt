@@ -35,7 +35,7 @@ ra8_add_app(
   NAME ra8d2-ereader
   STACK_BYTES 2200 MRAM_LENGTH 512K
   DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
-  LIBS ra8_tz_secure_boot AUX_SRCS src/ns_main.c
+  LIBS ra8_mpu ra8_tz_secure_boot AUX_SRCS src/ns_main.c
 )
 
 # ---- OSPI XIP (execute-in-place) variant ----------------------------------
