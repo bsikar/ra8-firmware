@@ -40,13 +40,15 @@ endif()
 # ra8_tz_secure_boot (LIBS, globbed in so RA8_ENABLE_ROOT_OF_TRUST reaches the
 # BLXNS gate internal_ns_verify_or_deny). ra8_rot + ra8_psa_crypto + the
 # fail-closed RNG shim from this app's src/ directory; ra8_rsip (software SHA)
-# auto-globbed.
+# auto-globbed. ra8_mpu supplies ra8_mpu_apply_boot_map(): the boot attribute
+# map in system_init.c routes through the HAL instead of hand-rolled
+# MAIR/RBAR/RLAR/CTRL pokes (RA8FW-1074).
 ra8_add_app(
   NAME secure_boot_ns_hil
   STACK_BYTES 32768
   DESCRIPTION "TrustZone BLXNS root-of-trust proof (Secure verify + NS liveness)" AUX_SRCS
                                                                                   src/ns_main.c
-  LIBS ra8_tz_secure_boot ra8_psa_crypto ra8_rot
+  LIBS ra8_mpu ra8_tz_secure_boot ra8_psa_crypto ra8_rot
              MRAM_LENGTH 512K
 )
 
