@@ -12,9 +12,9 @@
  *   1. Fills a 1 KB source buffer with a deterministic pattern
  *      (``i ^ (i >> 8)``) and zeroes the destination buffer.
  *   2. Programmes DMAC0 channel 0 for a 32-bit-wide, increment-both,
- *      single-block transfer of 256 words via ``ra8_dmac_start``.
- *   3. Triggers the channel by software (``DMREQ`` set) and waits for
- *      the in-flight count (``DMCRA``) to drain to zero.
+ *      single-block transfer of 256 words via ``ra8_dmac_start_block``.
+ *   3. Fires the channel with ``ra8_dmac_software_trigger`` and waits
+ *      for completion with ``ra8_dmac_wait_idle``.
  *   4. Walks both buffers and reports ``"dma: copied 1024B match=Y\r\n"``
  *      on the J-Link OB CDC channel.
  *
@@ -35,7 +35,6 @@
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_dmac.h"
-#include "ra8_dmac_regs.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
@@ -191,9 +190,10 @@ RA8_INTERNAL static uint8_t internal_verify(void)
  * block size and DMCRBL counts the number of blocks: one block of
  * ``k_dma_demo_buf_words`` words covers the entire buffer.
  *
- * The poll loop watches DMSTS.ACT (HUM Ch 17.2.16 p 745) -- it
- * de-asserts when the controller finishes the request, which is the
- * correct completion gate for block mode.
+ * Completion is observed with ``ra8_dmac_wait_idle``, which polls
+ * ``DMSTS.ACT`` (HUM Ch 17.2.16 p 745) under the HAL: it de-asserts
+ * when the controller finishes the request, the correct completion
+ * gate for block mode.
  *
  * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_timeout`` if the
  *         channel never drained, or the start error code.
@@ -217,31 +217,23 @@ RA8_INTERNAL static uint8_t internal_verify(void)
     .src_inc     = true,
     .dst_inc     = true,
   };
-  const ra8_err_t err = ra8_dmac_start_block((uint8_t)k_dma_demo_channel, &cfg);
+  ra8_err_t err = ra8_dmac_start_block((uint8_t)k_dma_demo_channel, &cfg);
   if (err != k_ra8_ok) {
     return err;
   }
 
-  /* Software trigger: assert DMREQ.SWREQ on the channel.
-   * HUM Ch 17.2.15 p 744: write SWREQ=1 to request one block-mode
-   * transfer. SWREQ auto-clears when the controller accepts the
-   * request (CLRS=0 is the reset default). */
-  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_dma_demo_channel);
-  if (reg == nullptr) {
-    return k_ra8_err_hw_error;
+  err = ra8_dmac_software_trigger((uint8_t)k_dma_demo_channel);
+  if (err != k_ra8_ok) {
+    (void)ra8_dmac_stop((uint8_t)k_dma_demo_channel);
+    return err;
   }
-  reg->DMREQ = (uint8_t)k_ra8_dmreq_swreq_mask;
 
-  /* Poll DMSTS.ACT until the controller goes idle.
-   * HUM Ch 17.2.16 p 745: "When data transfer in response to one
-   * transfer request is completed" the ACT flag clears. */
-  for (uint32_t i = 0U; i < (uint32_t)k_dma_demo_poll_limit; ++i) {
-    if ((reg->DMSTS & (uint8_t)k_ra8_dmsts_act_mask) == 0U) {
-      return ra8_dmac_stop((uint8_t)k_dma_demo_channel);
-    }
+  err = ra8_dmac_wait_idle((uint8_t)k_dma_demo_channel, (uint32_t)k_dma_demo_poll_limit);
+  const ra8_err_t stop_err = ra8_dmac_stop((uint8_t)k_dma_demo_channel);
+  if (err != k_ra8_ok) {
+    return err;
   }
-  (void)ra8_dmac_stop((uint8_t)k_dma_demo_channel);
-  return k_ra8_err_hw_timeout;
+  return stop_err;
 }
 
 void main(void)
