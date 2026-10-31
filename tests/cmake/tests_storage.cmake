@@ -172,6 +172,36 @@ target_include_directories(
 add_test(NAME test_lx_fs_vfs_e2e COMMAND test_lx_fs_vfs_e2e)
 
 # ---------------------------------------------------------------------------
+# test_vfs_port_demo_consumer: the vfs_port_demo example's binding legs on the
+# host, RA8FW-1009's consumer leg. The board app stands up a RAM block device,
+# formats it FAT12, mounts it as the ra8_io_vfs name `ram` and binds it into
+# the fw_if_fs_ra8_vfs adapter; this test walks the same seven legs (caps
+# honesty, round trip, directory cursor, staged create_new publish + refusal,
+# traversal guard, clean unwind) byte for byte, so every binding path the app
+# runs is asserted where CI can see it. The demo's constants are mirrored on
+# purpose: it is the binding recipe. Registered by hand like the e2e above so
+# it can carry the ra8_core_hal objects the Zig-backed chain resolves through.
+# ---------------------------------------------------------------------------
+add_executable(
+  test_vfs_port_demo_consumer
+  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_vfs_port_demo_consumer.c
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_vfs_port_demo_consumer PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_vfs_port_demo_consumer PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_vfs_port_demo_consumer
+  PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/if/inc
+          ${FW_ROOT}/libs/if_ra8_vfs/inc
+          ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+)
+add_test(NAME test_vfs_port_demo_consumer COMMAND test_vfs_port_demo_consumer)
+
+# ---------------------------------------------------------------------------
 # test_cache_store_demo: the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
 # (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate
