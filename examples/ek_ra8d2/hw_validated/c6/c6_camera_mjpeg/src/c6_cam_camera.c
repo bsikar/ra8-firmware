@@ -19,6 +19,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_camera.h"
 #include "ra8_camera_codec_passthrough.h"
+#include "ra8_camera_ov5640.h"
 #include "ra8_camera_source_ceu.h"
 #include "ra8_ceu.h"
 #include "ra8_i2c_bus_ops.h"
@@ -285,16 +286,18 @@ RA8_INTERNAL static void internal_reset_camera_diagnostics(void)
 }
 
 /**
- * @brief Bring the OV5640 sensor up to streaming hardware-JPEG mode.
- * @details Sequences clock start, board reset, SCCB bind, chip-id probe, and
- *          VGA-JPEG mode configuration, stopping at the first failure.
+ * @brief Bring the OV5640 sensor up and bind its CEU capture source.
+ * @details Sequences clock start, board reset, and SCCB bind, then hands the
+ *          sensor to ra8_camera_ov5640_open, which probes, programs VGA-JPEG
+ *          mode, and binds the CEU source in one ordered call.
  * @return Repository error code from the first failed step, or success.
- * @retval k_ra8_ok The sensor is bound, probed, and streaming VGA JPEG.
- * @retval k_ra8_err_hw_init_failed The probed chip id did not match OV5640.
- * @retval other The board or sensor step that failed reported this code.
+ * @retval k_ra8_ok The sensor is bound, probed, streaming VGA JPEG, and its
+ *         CEU capture source is bound.
+ * @retval other The board, sensor, or CEU step that failed reported this code.
  * @pre The board camera pins and clock are not already owned by another user.
  * @pre `s_sensor` is not concurrently accessed by another init or capture.
- * @post On success `s_sensor_bound` and `s_sensor_streaming` are both true.
+ * @post On success `s_sensor_bound` and `s_sensor_streaming` are both true and
+ *       the CEU source is bound but idle until the first capture.
  * @post On any failure the function returns before later steps run.
  * @note Not thread-safe with concurrent sensor access.
  * @since 0.1.0
@@ -315,31 +318,27 @@ RA8_INTERNAL static ra8_err_t internal_bring_up_sensor(void)
       s_sensor_bound = true;
     }
   }
-  uint16_t chip_id = 0U;
   if (err == k_ra8_ok) {
-    err = ra8_ov5640_probe(&s_sensor, &chip_id);
-  }
-  if ((err == k_ra8_ok) && (chip_id != (uint16_t)k_ra8_ov5640_chip_id)) {
-    err = k_ra8_err_hw_init_failed;
-  }
-  if (err == k_ra8_ok) {
-    err                = ra8_ov5640_configure(&s_sensor, k_ra8_ov5640_mode_vga_jpeg);
+    const ra8_camera_source_ceu_cfg_t cfg = sensor_ceu_config();
+    err                = ra8_camera_ov5640_open(&s_source, &s_source_state, &s_sensor,
+                                                k_ra8_ov5640_mode_vga_jpeg, &cfg);
     s_sensor_streaming = (err == k_ra8_ok);
   }
   return err;
 }
 
 /**
- * @brief Route the parallel capture pins and bind the CEU source and codec.
- * @details Runs after the sensor is streaming: routes the DVP pins away from
- *          their bring-up owner, then binds the CEU capture source and the
- *          passthrough JPEG codec.
+ * @brief Route the parallel capture pins and bind the passthrough JPEG codec.
+ * @details Runs after the sensor phase bound the CEU source: routes the DVP
+ *          pins away from their bring-up owner, then binds the passthrough
+ *          JPEG codec.
  * @return Repository error code from the first failed step, or success.
- * @retval k_ra8_ok The capture pipeline is bound and ready to capture.
- * @retval other The pin-routing, CEU, or codec step that failed reported this.
+ * @retval k_ra8_ok The capture pipeline is routed and ready to capture.
+ * @retval other The pin-routing or codec step that failed reported this.
  * @pre `internal_bring_up_sensor` has already completed successfully.
  * @pre `s_source`, `s_source_state`, and `s_codec` are not concurrently used.
- * @post On success `s_source` and `s_codec` are initialized for capture.
+ * @post On success the DVP pins are routed and `s_codec` is initialized; the
+ *       bound CEU stays idle until the first capture.
  * @post On any failure the function returns before later steps run.
  * @note Not thread-safe with concurrent capture or re-initialization.
  * @since 0.1.0
@@ -347,10 +346,6 @@ RA8_INTERNAL static ra8_err_t internal_bring_up_sensor(void)
 RA8_INTERNAL static ra8_err_t internal_bring_up_capture_pipeline(void)
 {
   ra8_err_t err = ra8_board_camera_route_parallel_pins();
-  if (err == k_ra8_ok) {
-    const ra8_camera_source_ceu_cfg_t cfg = sensor_ceu_config();
-    err = ra8_camera_source_ceu_init(&s_source, &s_source_state, &cfg);
-  }
   if (err == k_ra8_ok) {
     err = ra8_camera_codec_passthrough_init(&s_codec);
   }
