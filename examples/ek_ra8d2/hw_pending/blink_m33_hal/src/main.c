@@ -13,7 +13,8 @@
  * the work. Here that work is blinking LED1 through the CPU1-safe HAL primitive
  * `ra8_pcntr_set_output()` rather than a raw PCNTR poke.
  *
- * This is `hw_pending`: the raw `blink_m33` is the HIL-validated reference; this
+ * This is `hw_pending`: `blink_m33` is the HIL-validated reference (its CPU1
+ * image now drives the pin through the same primitive, RA8FW-1078); this
  * HAL variant is behaviourally identical (same LED1 blink, same PCNTR1 effect)
  * but this exact ELF has not had its own bench run, so it is not promoted.
  *

@@ -6,12 +6,12 @@
 # The Cortex-M85 (CPU0) launcher image is built by the shared
 # cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1) blink image is built +
 # embedded by ra8_add_cpu1_image(), so one SWD flash drops both cores' images.
-# The only difference from `blink_m33` is that the CPU1 image drives LED1 through
-# the header-only HAL primitive ra8_pcntr_set_output() (ra8_pcntr.h) instead of a
-# raw PCNTR poke; ra8_add_cpu1_image() puts libs/ra8_hal/inc on the M33 include
-# path so that freestanding-clean header resolves without linking any ra8_hal
-# object. Kept ALONGSIDE the raw `blink_m33`, which stays the
-# deliberate raw-MMIO reference.
+# The CPU1 image drives LED1 through the header-only HAL primitive
+# ra8_pcntr_set_output() (ra8_pcntr.h); ra8_add_cpu1_image() puts
+# libs/ra8_hal/inc on the M33 include path so that freestanding-clean header
+# resolves without linking any ra8_hal object. Since RA8FW-1078 collapsed
+# `blink_m33`'s hand-rolled PCNTR store onto the same primitive, this app's
+# remaining shape is the blink step factored into a header for the host test.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
