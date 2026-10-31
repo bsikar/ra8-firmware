@@ -44,6 +44,7 @@ pub fn build(b: *std.Build) void {
         "src/ra8_camera_abi.zig",
         "src/source_memory.zig",
         "src/source_ceu.zig",
+        "src/ov5640_open.zig",
         "src/codec_passthrough.zig",
         "src/codec_jpeg_sw.zig",
     };
@@ -96,6 +97,19 @@ pub fn build(b: *std.Build) void {
     source_ceu_test_module.addImport("source_ceu", source_ceu_module);
     const source_ceu_tests = b.addTest(.{ .root_module = source_ceu_test_module });
 
+    const ov5640_open_module = b.createModule(.{
+        .root_source_file = b.path("src/ov5640_open.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const ov5640_open_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/ov5640_open_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ov5640_open_test_module.addImport("ov5640_open", ov5640_open_module);
+    const ov5640_open_tests = b.addTest(.{ .root_module = ov5640_open_test_module });
+
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
         .target = target,
@@ -121,6 +135,7 @@ pub fn build(b: *std.Build) void {
     const backends_tests = b.addTest(.{ .root_module = backends_test_module });
 
     const run_source_ceu_tests = b.addRunArtifact(source_ceu_tests);
+    const run_ov5640_open_tests = b.addRunArtifact(ov5640_open_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_backends_tests = b.addRunArtifact(backends_tests);
@@ -129,4 +144,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_backends_tests.step);
     test_step.dependOn(&run_source_ceu_tests.step);
+    test_step.dependOn(&run_ov5640_open_tests.step);
 }

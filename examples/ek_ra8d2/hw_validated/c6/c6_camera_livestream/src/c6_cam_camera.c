@@ -23,6 +23,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_camera.h"
 #include "ra8_camera_codec_jpeg_sw.h"
+#include "ra8_camera_ov5640.h"
 #include "ra8_camera_source_ceu.h"
 #include "ra8_ceu.h"
 #include "ra8_i2c_bus_ops.h"
@@ -170,21 +171,13 @@ ra8_err_t c6_cam_camera_init(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  uint16_t chip_id = 0U;
-  if ((ra8_ov5640_probe(&s_camera_sensor, &chip_id) != k_ra8_ok) ||
-      (chip_id != (uint16_t)k_ra8_ov5640_chip_id)) {
-    return k_ra8_err_hw_init_failed;
-  }
-  err = ra8_ov5640_configure(&s_camera_sensor, k_ra8_ov5640_mode_vga_uyvy);
+  const ra8_camera_source_ceu_cfg_t source_cfg = internal_c6_cam_source_config();
+  err = ra8_camera_ov5640_open(&s_source, &s_source_state, &s_camera_sensor,
+                               k_ra8_ov5640_mode_vga_uyvy, &source_cfg);
   if (err != k_ra8_ok) {
     return err;
   }
   err = ra8_board_camera_route_parallel_pins();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const ra8_camera_source_ceu_cfg_t source_cfg = internal_c6_cam_source_config();
-  err = ra8_camera_source_ceu_init(&s_source, &s_source_state, &source_cfg);
   if (err != k_ra8_ok) {
     return err;
   }
