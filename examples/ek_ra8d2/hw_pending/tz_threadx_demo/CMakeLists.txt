@@ -30,7 +30,7 @@ ra8_add_app(
   NAME tz_threadx_demo BOOT_PROFILE ns_usb_handoff
   STACK_BYTES 2200
   DESCRIPTION "TrustZone ThreadX Demo (Secure side)" AUX_SRCS src/ns_main.c
-  LIBS ra8_tz_secure_boot MRAM_LENGTH 512K
+  LIBS ra8_mpu ra8_tz_secure_boot MRAM_LENGTH 512K
 )
 
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)

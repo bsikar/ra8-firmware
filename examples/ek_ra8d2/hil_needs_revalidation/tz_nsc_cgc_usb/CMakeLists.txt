@@ -44,7 +44,7 @@ ra8_add_app(
   STACK_BYTES 2200
   DESCRIPTION "TrustZone two-project: Secure side (CGC veneers + NS boot)"
               AUX_SRCS src/ns_main.c src/ns_usb.c src/ns_usb_host.c
-  LIBS ra8_tz_secure_boot
+  LIBS ra8_mpu ra8_tz_secure_boot
   NSC_SRCS ra8_nsc_cgc.c MRAM_LENGTH 512K
 )
 
