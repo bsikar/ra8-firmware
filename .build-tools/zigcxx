@@ -1,0 +1,13 @@
+#!/bin/bash
+# Workspace shim: zig's lld does not support GNU ld's -Ttext-segment (GNU-only
+# image-layout control). Map it to lld's --image-base, which keeps the whole
+# image above the host-test peripheral windows the same way (checked: the
+# mock's highest window is SDRAM 0x68000000 < 0x70000000).
+args=()
+for a in "$@"; do
+  case "$a" in
+    -Wl,-Ttext-segment=*) args+=("-Wl,--image-base=${a#-Wl,-Ttext-segment=}") ;;
+    *) args+=("$a") ;;
+  esac
+done
+exec /workspace/zig/zig-x86_64-linux-0.17.0/zig c++ "${args[@]}"
