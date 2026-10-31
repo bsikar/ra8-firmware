@@ -54,6 +54,7 @@
 #include <stdint.h>
 
 #include "ra8_boot_entry.h"
+#include "ra8_cache.h"
 #include "ra8_cgc.h"
 #include "trustzone_init.h"
 
@@ -70,11 +71,6 @@ typedef enum : uintptr_t {
   k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
   k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
   k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
-  k_ra8_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache.             */
-  k_ra8_scb_dciallu    = 0xE000EF58UL, /**< DCIALLU -- invalidate D-cache (sets only). */
-  k_ra8_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register.             */
-  k_ra8_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register.                    */
-  k_ra8_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.             */
   k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
   k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
   k_ra8_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                         */
@@ -167,44 +163,6 @@ static void internal_enable_fpu_lazy_stack(void)
   uint32_t fpccr = internal_read32(k_ra8_fpu_fpccr_addr);
   fpccr |= k_ra8_fpccr_lspen | k_ra8_fpccr_aspen;
   internal_write32(k_ra8_fpu_fpccr_addr, fpccr);
-}
-
-/**
- * @brief Invalidate and enable the Cortex-M85 I-cache.
- */
-static void internal_enable_icache(void)
-{
-  /* Invalidate, then set CCR.IC. */
-  internal_dsb();
-  internal_write32(k_ra8_scb_iciallu, 0U);
-  internal_dsb();
-  internal_isb();
-
-  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 /**< RA8 ccr ic. */ };
-  uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
-  ccr |= k_ra8_ccr_ic;
-  internal_write32(k_ra8_scb_ccr_addr, ccr);
-  internal_dsb();
-  internal_isb();
-}
-
-/**
- * @brief Invalidate and enable the Cortex-M85 D-cache.
- *
- * @details
- * The invalidate-by-set/way loop is omitted here for brevity -- on
- * the RA8D2 the boot ROM leaves the D-cache with all lines marked
- * invalid, so a bulk CCR.DC = 1 write is safe. A production build
- * should add a real CCSIDR-driven loop.
- */
-static void internal_enable_dcache(void)
-{
-  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 /**< RA8 ccr dc. */ };
-  uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
-  ccr |= k_ra8_ccr_dc;
-  internal_write32(k_ra8_scb_ccr_addr, ccr);
-  internal_dsb();
-  internal_isb();
 }
 
 /**
@@ -368,12 +326,13 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
-  /* Cache enable, MPU init, and TrustZone bring-up are temporarily
-   * disabled -- they HardFault on first reset because the CCSIDR-driven
-   * invalidate-by-set/way loop is not yet implemented and the MPU
-   * regions are unconfigured. Re-enable once those code paths land. */
-  (void)internal_enable_icache;
-  (void)internal_enable_dcache;
+  /* Cache enable and MPU init stay unsequenced here -- they HardFault on
+   * first reset while the MPU regions are unconfigured; the cache half of
+   * that warning is gone now that the enable runs through ra8_cache_enable,
+   * whose D-cache enable carries the full CCSIDR-driven invalidate-by-set/way
+   * loop the inline version only sketched. Re-enable once the boot image
+   * validates on the HIL rig. */
+  (void)ra8_cache_enable;
   (void)internal_enable_branch_predictor;
   (void)internal_mpu_init;
   internal_set_priority_grouping();
