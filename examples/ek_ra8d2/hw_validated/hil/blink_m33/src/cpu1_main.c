@@ -17,12 +17,18 @@
  * is honest proof the M33 came out of reset and is executing its own code -- on
  * silicon and in the ra8_emulator GPIO/LED view alike.
  *
+ * The pin access goes through the CPU1-safe, header-only HAL primitive
+ * `ra8_pcntr_set_output()` (`ra8_pcntr.h`); no raw PCNTR1 store is hand-rolled
+ * here (RA8FW-1078). The M33 image links no `ra8_hal` object --
+ * `ra8_add_cpu1_image()` only puts `libs/ra8_hal/inc` on the include path --
+ * so the image stays exactly as freestanding as before.
+ *
  * @note The M33 deliberately does NOT call `ra8_log`. On hardware each core has
  *       its own CoreSight ITM and the ra8_emulator echoes only the primary
  *       core's ITM, so an M33 `ra8_log` line would be invisible in the fake.
  *       The proof-of-life is the LED transition the M85 never drives.
- * @note Only PCNTR1 is touched (direction + output level); the LED pins power up
- *       routed to PORT, so no PmnPFS / PWPR pin-function setup is needed here.
+ * @note LED1 powers up routed to PORT, so no PmnPFS / PWPR pin-function setup
+ *       is needed; the primitive touches only PCNTR1 (direction + level).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -30,6 +36,9 @@
  */
 
 #include <stdint.h>
+
+#include "ra8_pcntr.h"
+#include "ra8_port_constants.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
 extern uint32_t g_ra8_ls_cpu1_stack_top;
@@ -47,44 +56,31 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
 [[noreturn]] void cpu1_reset_handler(void);
 
 /**
- * @enum m33_port_addr_t
- * @brief MMIO address of the PORT6 control register driving LED1.
- * @details The EK-RA8D2 LED1 (BLUE) is P600 = PORT6 pin 0. The PORT block base
- *          is 0x40400000 with a 0x20 per-port stride, so PORT6 PCNTR1 lives at
- *          0x40400000 + 6 * 0x20 = 0x404000C0 (HUM Ch 20 "I/O Ports").
- * @since 0.1.0
- */
-typedef enum : uintptr_t {
-  k_port6_pcntr1_addr = 0x404000C0U, /**< PORT6 PCNTR1: {PODR[31:16], PDR[15:0]}. */
-} m33_port_addr_t;
-
-/**
  * @enum m33_blink_const_t
- * @brief PCNTR1 bit fields for LED1 and the blink-loop delay bound.
- * @details PCNTR1 packs the direction latch PDR in its low half and the output
- *          latch PODR in its high half, so pin 0 is held an output (PDR bit 0)
- *          while its level is set by PODR bit 0 (bit 16 of the word).
+ * @brief Blink-loop delay bound.
+ * @details The PCNTR1 field layout and the pin masks now live inside
+ *          `ra8_pcntr_set_output()`; the CPU1 image only owns the visible
+ *          cadence.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_led1_pdr_out = 0x00000001U, /**< PCNTR1 PDR pin 0 = output direction.         */
-  k_led1_podr_on = 0x00010000U, /**< PCNTR1 PODR pin 0 = drive high (bit 16).     */
-  k_blink_spins  = 3000000U,    /**< Bounded busy-delay spins per LED half-cycle. */
+  k_blink_spins = 3000000U, /**< Bounded busy-delay spins per LED half-cycle. */
 } m33_blink_const_t;
 
 /**
  * @brief CPU1 application loop: blink LED1 (BLUE, P600) forever.
  *
- * @details Holds PORT6 pin 0 an output via PCNTR1.PDR and toggles its PODR level
- * on each pass, with a bounded busy-delay between toggles so the blink is
- * visible. The M85 never writes this pin, so the transitions prove the M33 is
- * running. See the file header.
+ * @details Each pass toggles the level and drives PORT6 pin 0 to it through
+ * `ra8_pcntr_set_output()`, the combined direction+level primitive (the
+ * register access and its HUM citation live in the primitive), with a bounded
+ * busy-delay between toggles so the blink is visible. The M85 never writes
+ * this pin, so the transitions prove the M33 is running. See the file header.
  *
  * @return This function never returns.
  * @note Control never leaves the blink loop.
  *
  * @pre `cpu1_reset_handler` has initialised `.data`/`.bss`.
- * @pre The PORT6 block is reachable at ::k_port6_pcntr1_addr.
+ * @pre The IOPORT module clock is on (always-on after reset on the RA8D2).
  * @post PORT6 pin 0 is configured as an output.
  * @post The LED1 level alternates on the configured cadence forever.
  *
@@ -93,21 +89,17 @@ typedef enum : uint32_t {
  */
 [[noreturn]] static void cpu1_main(void)
 {
-  volatile uint32_t* pcntr1 = (volatile uint32_t*)k_port6_pcntr1_addr;
-  uint32_t           level  = 0U;
+  ra8_level_t level = k_ra8_level_low;
 
   while (1) {
     for (volatile uint32_t d = 0U; d < (uint32_t)k_blink_spins; d++) {
       __asm volatile("nop");
     }
-    level ^= 1U;
-    uint32_t value = (uint32_t)k_led1_pdr_out;
-    if (level != 0U) {
-      value |= (uint32_t)k_led1_podr_on;
-    }
-    /* HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 840 -- write {PODR, PDR}:
-     * hold PORT6 pin 0 an output and drive LED1 (BLUE, P600) to the new level. */
-    *pcntr1 = value;
+    level = (level == k_ra8_level_low) ? k_ra8_level_high : k_ra8_level_low;
+    /* Hold PORT6 pin 0 an output and drive LED1 (BLUE, P600) to the new level
+     * (HUM Ch 20.2 "PCNTR1 : Port Control Register 1" p 840 -- the RMW that
+     * commits it lives inside the primitive). */
+    (void)ra8_pcntr_set_output(k_ra8_port_6, k_ra8_pin_0, level);
   }
 }
 

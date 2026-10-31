@@ -11,15 +11,13 @@
  * `-ffreestanding` ELF and embedded into the M85 ELF as a `.cpu1_image` blob, and
  * the M85 releases it via `ra8_cpu1_release` (HUM Ch 2.9.1) before sleeping.
  *
- * The ONE difference from the raw twin is the register access: instead of casting
- * `0x404000C0` to a `volatile uint32_t*` and hand-rolling the combined `{PODR,PDR}`
- * PCNTR1 store, it drives board LED1 (BLUE, P600 = PORT6 pin 0) through
+ * The register access: it drives board LED1 (BLUE, P600 = PORT6 pin 0) through
  * `ra8_pcntr_set_output()` -- the CPU1-safe, header-only HAL primitive.
  * No `ra8_hal` object is linked; only the freestanding-clean inline
  * accessor is included, so the image stays exactly as freestanding as before.
- * This app exists ALONGSIDE the raw `blink_m33` (which is kept as the deliberate
- * raw-MMIO reference), demonstrating that the primitive substitutes at the M33
- * call site.
+ * The raw `blink_m33` twin was collapsed onto the same primitive (RA8FW-1078),
+ * so both M33 blink images now reach the pin through the HAL; this app remains
+ * the template with the blink step factored out for the host app-level test.
  *
  * @note The M33 deliberately does NOT call `ra8_log`: the ra8_emulator echoes only
  *       the primary core's ITM, so an M33 log line would be invisible. The
