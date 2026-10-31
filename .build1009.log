@@ -1,0 +1,308 @@
+ninja: Entering directory `build-host-tests'
+[0/2] Re-checking globbed directories...
+[1/303] Building migrated Zig library ra8_box
+[2/303] Building migrated Zig library ra8_epd_cal
+[3/303] Building migrated Zig library ra8_touch_cal
+[4/303] Building migrated Zig library ra8_power_profile
+[5/303] Building migrated Zig library ra8_devcfg
+[6/303] Building migrated Zig library ra8_batt
+[7/303] Building migrated Zig library ra8_app
+[8/303] Building migrated Zig library ra8_wdt_supervisor
+[9/303] Building migrated Zig library ra8_mpu
+[10/303] Building migrated Zig library ra8_net_pal
+[11/303] Building migrated Zig library ra8_lsm6dso
+[12/303] Building migrated Zig library ra8_board_ek_ra8d2
+[13/303] Building migrated Zig library ra8_usb_pal
+[14/303] Building migrated Zig library ra8_keyboard
+[15/303] Building migrated Zig library ra8_audio
+[16/303] Building test-only ra8_modem_at helper archive
+[17/303] Building migrated Zig library ra8_ov5640
+[18/303] Building migrated Zig library ra8_wifi
+[19/303] Building migrated Zig library if_ra8_vfs
+[20/303] Building migrated Zig library fw_if_fs
+[21/303] Building migrated Zig library ra8_camera
+[22/303] Building migrated Zig library if_ra8_cgc
+[23/303] Building migrated Zig library ra8_ftl
+[24/303] Building migrated Zig library if_ra8_gpt
+[25/303] Building migrated Zig library ra8_gfx
+[26/303] Building migrated Zig library ra8_sdmmc_spi
+[27/303] Building migrated Zig library ra8_display_pal
+[28/303] Building migrated Zig library ra8_ota
+[29/303] Building migrated Zig library ra8_camera_io
+[30/303] Building migrated Zig library ra8_dfu_boot
+[31/303] Building migrated Zig library ra8_tz_secure_boot
+[32/303] Building migrated Zig library ra8_rot
+[33/303] Building migrated Zig library ra8_xml
+[34/303] Building migrated Zig library ra8_psa_crypto
+[35/303] Building migrated Zig library ra8_net_policy
+[36/303] Building migrated Zig library ra8_tls
+[37/303] Building migrated Zig library ra8_ui
+[38/303] Building migrated Zig library ra8_secure_app
+[39/303] Building migrated Zig library ra8_imgdec
+[40/303] Building migrated Zig library ra8_mem
+[41/303] Building migrated Zig library ra8_widget
+[42/303] Building migrated Zig library ra8_io
+[43/303] Building migrated Zig library ra8_c6link
+[44/303] Building migrated Zig library ra8_jpeg
+[45/303] Building migrated Zig library ra8_fs
+[46/303] Building migrated Zig library ra8_core
+[47/303] Building migrated Zig library ra8_hal
+[48/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/xml/src/xml_doctype.c.o
+[49/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/xml/src/xml_decode.c.o
+[50/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/xml/src/xml.c.o
+[51/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/adc.c.o
+[52/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_ceu.c.o
+[53/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_cgc.c.o
+[54/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_cgc_usb.c.o
+[55/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_drw_draw.c.o
+[56/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_drw.c.o
+[57/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_epaper.c.o
+[58/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_flash.c.o
+[59/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_eth.c.o
+[60/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_i3c_i2c.c.o
+[61/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_glcdc.c.o
+[62/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_ipc.c.o
+[63/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_npu.c.o
+[64/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_mipi_phy_timing.c.o
+[65/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_npu_loader.c.o
+[66/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_mipi_phy.c.o
+[67/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip_asym.c.o
+[68/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rmac.c.o
+[69/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip.c.o
+[70/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip_ecc.c.o
+[71/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip_cipher.c.o
+[72/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip_key_injection.c.o
+[73/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_rsip_rsa.c.o
+[74/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_sci.c.o
+[75/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_sdhi.c.o
+[76/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_ssie.c.o
+[77/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb.c.o
+[78/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_device.c.o
+[79/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_hcdc.c.o
+[80/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_haud.c.o
+[81/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_hcdc_ecm.c.o
+[82/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_hhid.c.o
+[83/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_hmsc.c.o
+[84/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_hmsc_enum.c.o
+[85/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_irq.c.o
+[86/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_host_ctrl.c.o
+[87/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_phy.c.o
+[88/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_usb_xfer.c.o
+[89/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_hal/src/ra8_vin.c.o
+[90/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat.c.o
+[91/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_alloc.c.o
+[92/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_dir.c.o
+[93/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_check.c.o
+[94/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_dirmk.c.o
+[95/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c.o
+[96/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_check.c.o
+[97/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c.o
+[98/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c.o
+[99/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_read.c.o
+[100/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c.o
+[101/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_file.c.o
+[102/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_exfat_write.c.o
+[103/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_fileio.c.o
+[104/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_lfn.c.o
+[105/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_label.c.o
+[106/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_fmt.c.o
+[107/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_name.c.o
+[108/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_mount.c.o
+[109/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_lfn_write.c.o
+[110/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_stat.c.o
+[111/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_truncate.c.o
+[112/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_fs/src/ra8_fs_fat_time.c.o
+[113/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_io/src/ra8_io_blockdev_vsource.c.o
+[114/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_io/src/ra8_io_blockdev_xspi.c.o
+[115/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/compress/src/ra8_compress.c.o
+[116/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/compress/src/ra8_vfs_compress.c.o
+[117/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book.c.o
+[118/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_chunked.c.o
+[119/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_chunked_validate.c.o
+[120/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_paged.c.o
+[121/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_stream.c.o
+[122/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_stream_wire.c.o
+[123/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/book/src/book_xhtml.c.o
+[124/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_comic.c.o
+[125/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_container.c.o
+[126/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c.o
+[127/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c.o
+[128/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline_fs.c.o
+[129/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c.o
+[130/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_raster.c.o
+[131/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c.o
+[132/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_compile/src/rabook_compile.c.o
+[133/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_import/src/rabook_import.c.o
+[134/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/rabook_import/src/rabook_import_compiler.c.o
+[135/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_cgc.c.o
+[136/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_eth.c.o
+[137/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_comms.c.o
+[138/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_io.c.o
+[139/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_key_vault.c.o
+[140/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_log.c.o
+[141/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_ota.c.o
+[142/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_wdt.c.o
+[143/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_periph_init.c.o
+[144/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/libs/ra8_nsc/src/ra8_nsc_xspi.c.o
+[145/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_fs.c.o
+[146/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_entry.c.o
+[147/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_chapter.c.o
+[148/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_img_import.c.o
+[149/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_img_tiles.c.o
+[150/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_miniz_alloc.c.o
+[151/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_open.c.o
+[152/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_xml_shim.c.o
+[153/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_xml_toc.c.o
+[154/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/epub/src/epub_zip_guard.c.o
+[155/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic_cbr.c.o
+[156/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic.c.o
+[157/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic_cbt.c.o
+[158/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic_cbz.c.o
+[159/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic_tiles.c.o
+[160/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/comic_wrapped.c.o
+[161/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/ra8_rar.c.o
+[162/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/ra8_rar5.c.o
+[163/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/comic/src/ra8_rar5_tables.c.o
+[164/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_io.c.o
+[165/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_tar.c.o
+[166/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_gzip.c.o
+[167/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_tar_fields.c.o
+[168/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_xz.c.o
+[169/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/unarch/src/unarch_xz_pool.c.o
+[170/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof_audit.c.o
+[171/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof.c.o
+[172/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof_png.c.o
+[173/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof_png_chunk.c.o
+[174/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof_produce_webp.c.o
+[175/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/jof/src/jof_produce.c.o
+[176/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/longstrip/src/longstrip.c.o
+[177/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/zoom/src/zoom.c.o
+[178/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/zoom/src/zoom_book.c.o
+[179/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/zoom/src/zoom_render.c.o
+[180/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/ra8_img_arena.c.o
+[181/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/zoom/src/zoom_tiles.c.o
+[182/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/ra8_stbtt_guard.c.o
+[183/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c.o
+[184/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/ra8_img_imgdec.c.o
+[185/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_css.c.o
+[186/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_cache.c.o
+[187/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_css_cascade.c.o
+[188/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_image.c.o
+[189/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_css_rules.c.o
+[190/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_layout.c.o
+[191/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_layout_image.c.o
+[192/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_layout_driver.c.o
+[193/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_layout_table.c.o
+[194/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_link.c.o
+[195/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_parse.c.o
+[196/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_render.c.o
+[197/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_render_face.c.o
+[198/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_svg.c.o
+[199/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_svg_doc.c.o
+[200/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_svg_path.c.o
+[201/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_svg_xform.c.o
+[202/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_svg_shape.c.o
+[203/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_tokenize.c.o
+[204/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_tokenize_entities.c.o
+[205/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_tokenize_attr.c.o
+[206/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/reflow/src/reflow_tokenize_lex.c.o
+[207/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/stb/stb_truetype_impl.c.o
+[208/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/xz_embedded/xz_crc32.c.o
+[209/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/xz_embedded/xz_crc64.c.o
+[210/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/stb/stb_image_impl.c.o
+[211/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c.o
+[212/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/xz_embedded/xz_dec_stream.c.o
+[213/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/miniz/miniz.c.o
+/workspace/fw-1008/apps/shared_libs/third_party/miniz/miniz.c:3185:9: warning: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files. [-W#pragma-messages]
+ 3185 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+      |         ^
+1 warning generated.
+[214/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/alpha_dec.c.o
+[215/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/buffer_dec.c.o
+[216/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/frame_dec.c.o
+[217/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/idec_dec.c.o
+[218/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/io_dec.c.o
+[219/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/quant_dec.c.o
+[220/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/tree_dec.c.o
+[221/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/vp8_dec.c.o
+[222/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/webp_dec.c.o
+[223/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dec/vp8l_dec.c.o
+[224/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing.c.o
+[225/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_mips_dsp_r2.c.o
+[226/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_neon.c.o
+[227/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/cpu.c.o
+[228/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse41.c.o
+[229/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/alpha_processing_sse2.c.o
+[230/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_clip_tables.c.o
+[231/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_mips32.c.o
+[232/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_mips_dsp_r2.c.o
+[233/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_msa.c.o
+[234/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec.c.o
+[235/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_neon.c.o
+[236/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_sse41.c.o
+[237/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/filters.c.o
+[238/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/filters_mips_dsp_r2.c.o
+[239/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/filters_msa.c.o
+[240/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/filters_neon.c.o
+[241/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/dec_sse2.c.o
+[242/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless_mips_dsp_r2.c.o
+[243/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/filters_sse2.c.o
+[244/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless_msa.c.o
+[245/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless_neon.c.o
+[246/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless.c.o
+[247/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler.c.o
+[248/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse41.c.o
+[249/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips32.c.o
+[250/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler_mips_dsp_r2.c.o
+[251/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/lossless_sse2.c.o
+[252/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler_msa.c.o
+[253/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler_neon.c.o
+[254/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling_mips_dsp_r2.c.o
+[255/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/rescaler_sse2.c.o
+[256/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling.c.o
+[257/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling_msa.c.o
+[258/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling_neon.c.o
+[259/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv.c.o
+[260/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse41.c.o
+[261/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips32.c.o
+[262/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv_mips_dsp_r2.c.o
+[263/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/upsampling_sse2.c.o
+[264/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv_neon.c.o
+[265/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/bit_reader_utils.c.o
+[266/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse2.c.o
+[267/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/color_cache_utils.c.o
+[268/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/dsp/yuv_sse41.c.o
+[269/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/filters_utils.c.o
+[270/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/huffman_utils.c.o
+[271/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/palette.c.o
+[272/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/random_utils.c.o
+[273/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/quant_levels_dec_utils.c.o
+[274/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/rescaler_utils.c.o
+[275/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/thread_utils.c.o
+[276/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/third_party/libwebp/src/utils/utils.c.o
+[277/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/webp/src/ra8_webp.c.o
+[278/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/webp/src/ra8_webp_arena.c.o
+[279/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/apps/shared_libs/webp/src/ra8_webp_imgdec.c.o
+[280/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/threadx/src/cortex_m85/tx_systick_retune.c.o
+[281/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_fmt.c.o
+[282/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c.o
+[283/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_gpio.c.o
+[284/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_log.c.o
+[285/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_osi_absent.c.o
+[286/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_pins.c.o
+[287/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_osi.c.o
+[288/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_port.c.o
+[289/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_rtos.c.o
+[290/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c.o
+[291/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c.o
+[292/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_irq.c.o
+[293/303] Building C object CMakeFiles/ra8_core_hal.dir/workspace/fw-1008/port/esp-hosted/src/ra8_esp_hosted_spi.c.o
+[294/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_mmap.c.o
+[295/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_time.c.o
+[296/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_dma.c.o
+[297/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_world.c.o
+[298/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_host_asm_stub.c.o
+[299/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_xspi_flash.c.o
+[300/303] Building C object CMakeFiles/ra8_core_hal.dir/mocks/src/ra8_fake_mmio.c.o
+[301/303] Building C object CMakeFiles/test_vfs_port_demo_consumer.dir/misc/src/test_vfs_port_demo_consumer.c.o
+[302/303] Linking CXX executable test_vfs_port_demo_consumer

@@ -1,0 +1,73 @@
+ninja: Entering directory `build-host-tests'
+[0/2] Re-checking globbed directories...
+[1/72] Building migrated Zig library ra8_power_profile
+[2/72] Building migrated Zig library ra8_box
+[3/72] Building migrated Zig library ra8_epd_cal
+[4/72] Building migrated Zig library ra8_touch_cal
+[5/72] Building migrated Zig library ra8_devcfg
+[6/72] Building migrated Zig library ra8_batt
+[7/72] Building migrated Zig library ra8_ui
+[8/72] Building migrated Zig library ra8_app
+[9/72] Building migrated Zig library ra8_wdt_supervisor
+[10/72] Building migrated Zig library ra8_mpu
+[11/72] Building migrated Zig library ra8_net_pal
+[12/72] Building migrated Zig library ra8_lsm6dso
+[13/72] Building migrated Zig library ra8_board_ek_ra8d2
+[14/72] Building migrated Zig library ra8_usb_pal
+[15/72] Building migrated Zig library ra8_keyboard
+[16/72] Building migrated Zig library ra8_audio
+[17/72] Building test-only ra8_modem_at helper archive
+[18/72] Building migrated Zig library ra8_ov5640
+[19/72] Building migrated Zig library ra8_wifi
+[20/72] Building migrated Zig library if_ra8_vfs
+[21/72] Building migrated Zig library fw_if_fs
+[22/72] Building migrated Zig library ra8_camera
+[23/72] Building migrated Zig library if_ra8_cgc
+[24/72] Building migrated Zig library ra8_ftl
+[25/72] Building migrated Zig library if_ra8_gpt
+[26/72] Building migrated Zig library ra8_gfx
+[27/72] Building migrated Zig library ra8_sdmmc_spi
+[28/72] Building migrated Zig library ra8_display_pal
+[29/72] Building migrated Zig library ra8_ota
+[30/72] Building migrated Zig library ra8_camera_io
+[31/72] Building migrated Zig library ra8_dfu_boot
+[32/72] Building migrated Zig library ra8_tz_secure_boot
+[33/72] Building migrated Zig library ra8_rot
+[34/72] Building migrated Zig library ra8_xml
+[35/72] Building migrated Zig library ra8_psa_crypto
+[36/72] Building migrated Zig library ra8_tls
+[37/72] Building migrated Zig library ra8_net_policy
+[38/72] Building migrated Zig library ra8_secure_app
+[39/72] Building migrated Zig library ra8_imgdec
+[40/72] Building migrated Zig library ra8_mem
+[41/72] Building migrated Zig library ra8_widget
+[42/72] Building migrated Zig library ra8_c6link
+[43/72] Building migrated Zig library ra8_io
+[44/72] Building migrated Zig library ra8_fs
+[45/72] Building migrated Zig library ra8_jpeg
+[46/72] Building migrated Zig library ra8_core
+[47/72] Building migrated Zig library ra8_hal
+[48/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/port/levelx/src/lx_fs_backend.c.o
+[49/72] Building C object CMakeFiles/test_lx_fs_backend.dir/misc/src/test_lx_fs_backend.c.o
+[50/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_block_reclaim.c.o
+[51/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_close.c.o
+[52/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_defragment.c.o
+[53/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_driver_block_erase.c.o
+[54/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_driver_read.c.o
+[55/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_driver_write.c.o
+[56/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_extended_cache_enable.c.o
+[57/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_format.c.o
+[58/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_initialize.c.o
+[59/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_logical_sector_find.c.o
+[60/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_next_block_to_erase_find.c.o
+[61/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_open.c.o
+[62/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_partial_defragment.c.o
+[63/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_open_extended.c.o
+[64/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_physical_sector_allocate.c.o
+[65/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_sector_mapping_cache_invalidate.c.o
+[66/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_sector_read.c.o
+[67/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_sector_release.c.o
+[68/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_sector_write.c.o
+[69/72] Building C object CMakeFiles/test_lx_fs_backend.dir/workspace/fw-1008/zig-pkg/N-V-__8AAGSoDQDB0db5wTeihbe1fdhAZxfHTxNomUA-QNfC/common/src/lx_nor_flash_system_error.c.o
+[70/72] Building C object CMakeFiles/test_lx_fs_backend.dir/mocks/src/lx_nor_fake_ram.c.o
+[71/72] Linking CXX executable test_lx_fs_backend
