@@ -23,7 +23,7 @@
  *      block-mode, 32-bit-wide, increment-both copy of one 256-word
  *      block (HUM Figure 18.4 p 799), and points the slot's DTC
  *      vector-table entry at it.
- *   3. Re-arms ICU.IELSRn.DTCE on the slot, then fires ELC software
+ *   3. Re-binds the transfer (TI + DTCE arm) on the slot, then fires ELC software
  *      event 0 (HUM Ch 19.2.2 p 819: "A software event can trigger a
  *      linked DTC event"), which activates the DTC.
  *   4. Waits (bounded) for the block to land, walks both buffers, and
@@ -58,10 +58,8 @@
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_dtc.h"
-#include "ra8_dtc_regs.h"
 #include "ra8_elc.h"
 #include "ra8_err.h"
-#include "ra8_icu_regs.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_time.h"
@@ -111,40 +109,10 @@ typedef enum : uint8_t {
  * 32-bit-word, increment-both copy. ``2`` selects "increment" for
  * SM/DM, "32-bit word" for SZ, and "block transfer" for MD.
  */
-typedef enum : uint8_t {
-  k_dtc_md_block = 0x2U, /**< MRA.MD[7:6] = 10b: block transfer mode. */
-  k_dtc_sz_word  = 0x2U, /**< MRA.SZ[5:4] = 10b: 32-bit word units.   */
-  k_dtc_sm_inc   = 0x2U, /**< MRA.SM[3:2] = 10b: increment SAR.       */
-  k_dtc_dm_inc   = 0x2U, /**< MRB.DM[3:2] = 10b: increment DAR.       */
 } dtc_mr_field_t;
 
-/**
- * @brief Bit positions inside the DTC TI ``MR`` word.
- *
- * @details
- * HUM Figure 18.4 (p 799) lays the first TI long-word out as
- * MR[31:24] = MRA, MR[23:16] = MRB, MR[15:8] = MRC, MR[7:0] = reserved.
- */
-typedef enum : uint8_t {
-  k_dtc_mra_md_pos   = 6U,  /**< MRA.MD field position.     */
-  k_dtc_mra_sz_pos   = 4U,  /**< MRA.SZ field position.     */
-  k_dtc_mra_sm_pos   = 2U,  /**< MRA.SM field position.     */
-  k_dtc_mrb_dm_pos   = 2U,  /**< MRB.DM field position.     */
-  k_dtc_mra_byte_pos = 24U, /**< MRA byte offset within MR. */
-  k_dtc_mrb_byte_pos = 16U, /**< MRB byte offset within MR. */
 } dtc_mr_pos_t;
 
-/**
- * @brief DTC count-register values for one 256-word block.
- *
- * @details
- * HUM Ch 18.2.7 "CRA" (p 790): in block mode CRAH/CRAL hold the block
- * size and "the transfer count is ... 256 when the set value is 0x00".
- * HUM Ch 18.2.8 "CRB" (p 791): CRB is the block count.
- */
-typedef enum : uint16_t {
-  k_dtc_cra_block_256 = 0x0000U, /**< CRAH = CRAL = 0 => 256-unit block. */
-  k_dtc_crb_one_block = 0x0001U, /**< CRB = 1 => one block per pass.     */
 } dtc_count_t;
 
 /**
@@ -178,6 +146,25 @@ static const uint8_t k_dtc_demo_bad_msg[] = "dtc: copied 1024B match=N\r\n";
 /** @brief Source / destination buffers (32-bit aligned by element type). */
 static uint32_t s_src[k_dtc_demo_buf_words];
 static uint32_t s_dst[k_dtc_demo_buf_words];
+
+/**
+ * @var k_dtc_demo_xfer
+ * @brief The copy this demo wants, in transfer terms rather than MRA bits.
+ *
+ * @details
+ * 256 32-bit words, one block, incrementing both addresses --
+ * ::ra8_dtc_describe turns this into the MRA/MRB/CRA/CRB the TI carries.
+ */
+static const ra8_dtc_xfer_cfg_t k_dtc_demo_xfer = {
+  .src         = s_src,
+  .dst         = s_dst,
+  .src_mode    = k_ra8_dtc_addr_inc,
+  .dst_mode    = k_ra8_dtc_addr_inc,
+  .unit        = k_ra8_dtc_unit_word,
+  .mode        = k_ra8_dtc_mode_block,
+  .unit_count  = (uint16_t)k_dtc_demo_buf_words,
+  .block_count = 1U,
+};
 
 /**
  * @var s_dtc_vt
@@ -336,62 +323,30 @@ static void dtc_demo_fill_buffers(void)
 }
 
 /**
- * @brief Write the 16-byte TI block describing the block copy.
+ * @brief Describe and bind the block copy onto the activation slot.
  *
  * @details
- * Rebuilt every pass because the DTC writes the post-transfer TI back to
- * SRAM (MRA.WBDIS = 0, HUM Ch 18.2.2 p 786), consuming SAR/DAR/CRA/CRB.
- * Field encoding per HUM Figure 18.4 (p 799): MR holds MRA/MRB/MRC, then
- * SAR, DAR, CRB, CRA.
+ * One call does what the hand-rolled TI rebuild plus the IELSR
+ * read-modify-write used to do: ::ra8_dtc_describe rewrites the 16-byte
+ * TI from ``k_dtc_demo_xfer`` each pass (the DTC consumes
+ * SAR/DAR/CRA/CRB on every transfer, HUM Ch 18.2.2 p 786), then
+ * ::ra8_dtc_bind_activation publishes the TI address in the vector
+ * table, cache-cleans the TI and table, and performs the same
+ * IELSRn DTCE arm with the latched IR write-1-cleared (HUM Figure 18.5
+ * p 801) through the ISR facade.
  *
  * @par MC/DC:
- * Straight-line assignment -- no decision points.
+ * Single call with no compound decision. No N+1 vectors required.
  *
- * @pre ``s_src`` / ``s_dst`` are populated.
- * @post ``s_dtc_ti`` describes a 256-word, 32-bit, increment-both copy.
+ * @return ``k_ra8_ok`` on success, or the error from the bind.
+ * @pre ``s_dtc_slot`` was assigned by ::ra8_isr_register and
+ *      ``ra8_dtc_init`` has installed the vector table.
+ * @post ``s_dtc_ti`` describes the copy and the slot is armed.
  * @since 0.1.0
  */
-static void dtc_demo_program_ti(void)
+[[nodiscard]] static ra8_err_t dtc_demo_bind_transfer(void)
 {
-  const uint8_t mra = (uint8_t)(((uint8_t)k_dtc_md_block << k_dtc_mra_md_pos) |
-                                ((uint8_t)k_dtc_sz_word << k_dtc_mra_sz_pos) |
-                                ((uint8_t)k_dtc_sm_inc << k_dtc_mra_sm_pos));
-  const uint8_t mrb = (uint8_t)((uint8_t)k_dtc_dm_inc << k_dtc_mrb_dm_pos);
-  /* MR[31:24]=MRA, MR[23:16]=MRB, MR[15:8]=MRC(0); HUM Ch 18.2.2 p 786 /
-   * 18.2.3 p 787 / 18.2.4 p 789, Figure 18.4 p 799. SRAM (not MMIO). */
-  s_dtc_ti.MR  = ((uint32_t)mra << k_dtc_mra_byte_pos) | ((uint32_t)mrb << k_dtc_mrb_byte_pos);
-  s_dtc_ti.SAR = (uint32_t)(uintptr_t)s_src;
-  s_dtc_ti.DAR = (uint32_t)(uintptr_t)s_dst;
-  s_dtc_ti.CRB = (uint16_t)k_dtc_crb_one_block;
-  s_dtc_ti.CRA = (uint16_t)k_dtc_cra_block_256;
-}
-
-/**
- * @brief Re-arm DTC activation on the slot and clear any latched IR.
- *
- * @details
- * The DTC clears ICU.IELSRn.DTCE to 0 and sets the RW1C IR flag when the
- * block completes (HUM Figure 18.5 p 801), so both are refreshed before
- * each activation. The read-modify-write preserves the IELS field and
- * write-1-clears a pending IR.
- *
- * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_error`` if the slot index
- *         is out of range.
- * @pre ``s_dtc_slot`` was assigned by ::ra8_isr_register.
- * @post IELSRn.DTCE for the slot reads 1; any pending IR is cleared.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t dtc_demo_arm_slot(void)
-{
-  volatile uint32_t* slot_reg = ra8_icu_ielsr(s_dtc_slot);
-  if (slot_reg == nullptr) {
-    return k_ra8_err_hw_error;
-  }
-  /* HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n" p 547:
-   * DTCE[24] enables DTC activation; IR[16] is the RW1C status flag. */
-  const uint32_t cur = *slot_reg;
-  *slot_reg          = cur | (uint32_t)k_ra8_ielsr_dtce_mask;
-  return k_ra8_ok;
+  return ra8_dtc_bind_activation(s_dtc_slot, &k_dtc_demo_xfer, &s_dtc_ti);
 }
 
 /**
@@ -461,7 +416,7 @@ static uint8_t dtc_demo_verify(void)
  * @brief Program + activate one DTC block copy and wait for completion.
  *
  * @details
- * Rebuilds the TI, re-arms the slot, fires ELC software event 0, then
+ * Re-binds the transfer (fresh TI plus DTCE arm), fires ELC software event 0, then
  * polls the last destination word until it lands (bounded). The DTC
  * writes ``s_dst`` in ascending order, so the final word settling is the
  * completion gate. If the engine never runs (e.g. the headless emulator
@@ -481,8 +436,7 @@ static uint8_t dtc_demo_verify(void)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
-  dtc_demo_program_ti();
-  const ra8_err_t arm = dtc_demo_arm_slot();
+  const ra8_err_t arm = dtc_demo_bind_transfer();
   if (arm != k_ra8_ok) {
     return arm;
   }
