@@ -32,9 +32,9 @@ commit and release-specific retained log remain pending evidence-pack inputs.
 | Real HIL execution                           | **Pending**          | run `hil-all` on the current candidate             |
 | Remote GDB lifecycle                         | **Historical pass**  | restamp attach/continue/detach/stop for release    |
 
-Coverage, documentation, and MISRA measurements remain governed by their live
-artifacts and must be restamped with the release evidence pack; historical
-values below are retained only for trend context.
+Coverage, documentation, and MISRA measurements were removed from dev
+and must be re-established and restamped with the release evidence
+pack; historical values below are retained only for trend context.
 
 ## 2. Per-test-suite results (host unit / integration tests)
 
@@ -53,7 +53,7 @@ small `examples/**/tests/` population. Categories follow the SVCP catalogue:
   so the MC/DC report covers every file even if no per-module test
   exercises it yet).
 
-`just quality::local::test` is the authoritative native entry point; a focused
+`tests/build_tests.sh` + `tests/run_tests.sh` are the authoritative native entry points (the `quality::` wrappers were removed); a focused
 or isolated run uses `just tests::local <selector>` or
 `just tests::devcontainer <selector>`. Clean standalone macOS and Linux
 configurations both register 689 CTest cases. The authoritative
@@ -78,7 +78,7 @@ them:
 | Real target HIL execution | Pending current `hil-all` run |
 | Remote GDB lifecycle | Historical pass; current-candidate restamp pending |
 
-The HIL entry point is `just hil::run`; remote IDE validation uses
+HIL runs as a direct bench run (the `hil::run` recipe was removed from dev); remote IDE validation uses
 `just hil::remote_gdb`. Neither the historical selected-app result nor the
 remote-GDB pass is current-candidate evidence until those hardware operations
 are rerun and their logs retained.
@@ -120,8 +120,8 @@ archived table.
 
 Phase 1 of `docs/QUALIFICATION_ROADMAP.md` requires 100% reachable
 MC/DC on `ra8_isr`, `ra8_mpu`, `ra8_xspi`, `ra8_usb`, `ra8_sci`,
-`ra8_psa_crypto`. Per `docs/MCDC_GAPS.md` and the closure
-recorded in `docs/MCDC.md`: **all six modules were recorded as satisfying the
+`ra8_psa_crypto`. Per the archived 2026-05 MC/DC closure (the MC/DC docs were removed
+from dev): **all six modules were recorded as satisfying the
 reachable-MC/DC = 100 % gate in that snapshot**. Residual absolute-MC/DC gaps were catalogued as
 deactivated under DO-178C 6.4.4.3 in `docs/MCDC_DEACTIVATIONS.md`.
 
@@ -208,7 +208,7 @@ recorded as deferred work for the SAS to roll up.
 - The archived snapshot recorded first-party reachable MC/DC = 100.00%.
   Its decision-complete rate was 92.29% when the 58 decision regions
   catalogued as deactivated under DO-178C 6.4.4.3 in
-  `docs/MCDC_DEACTIVATIONS.md` remained in the denominator.
+  the archived deactivation register remained in the denominator (that file was removed from dev).
 - **Disposition**: recorded closed against the then-current reachable-MC/DC gate. Absolute
   condition-level MC/DC continues to be tracked informationally as additional waves
   surface new decisions.
@@ -221,7 +221,7 @@ recorded as deferred work for the SAS to roll up.
   executed manually via the same per-app procedure the script
   uses.
 - **Disposition**: bench-environment issue, not a firmware defect.
-  The guarded replacement is `just hil::run`; HIL-relevant pushes and trusted
+  The replacement is a direct bench run (the `hil::run` recipe and its workflow were removed from dev);
   same-repository PRs schedule the managed dev-box listener automatically,
   while manual dispatch remains available.
 
@@ -275,7 +275,7 @@ evidence must be regenerated before Phase 3 can be claimed closed for release.
 | OP-005 | Critical | RSIP-E BIST              | Open / blocked (not vendored; public FSP, BSD-3-Clause) |
 | OP-006 | Minor  | Doxygen completeness       | CLOSED (0 gaps, 2747 audited)            |
 | OP-007 | Major  | MC/DC under threshold      | CLOSED reachable (100.00%); absolute 92.29% tracked informationally |
-| OP-008 | Minor  | Legacy smoke harness hang | Superseded by guarded `just hil::run` (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
+| OP-008 | Minor  | Legacy smoke harness hang | Superseded by direct bench runs (the `hil::run` recipe was removed from dev) |
 
 This table is retained as history and is not the anomaly status for the current
 release evidence pack. SAS Section 5 separates the archived bench sweep from

@@ -32,11 +32,8 @@ The authoritative coding standard is the combination of:
   doxygen-coverage policy).
 - [`../STYLE_GUIDE.md`](../STYLE_GUIDE.md) -- human-facing style guide
   (formatting, file headers, naming, `#pragma once`).
-- [`../MISRA.md`](../MISRA.md) -- MISRA-C 2012 audit baseline,
-  cppcheck-MISRA limitations, and the deviation workflow per
-  MISRA-C:2012 Section 5.2.
-- [`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md) -- the live deviation
-  register (D-001 .. D-005 today).
+- the SRS requirement rows -- where MISRA deviations are recorded now
+  (`docs/MISRA.md` and the deviation register were removed from dev).
 
 The C language baseline is **C23** with the GCC/Clang dialect required
 by `arm-none-eabi-gcc`. The standard headers (`<stdbool.h>`,
@@ -49,9 +46,9 @@ Architecture is governed by [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md)
 (ring 0..6 layering, TrustZone S/NS/NSC world tagging) and by the
 memory layout in [`../MEMORY_MAP.md`](../MEMORY_MAP.md). Per-feature
 design intent is captured in the corresponding `docs/<feature>.md`
-files (e.g. [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md),
-[`../MCDC.md`](../MCDC.md)) and in the per-module `@brief`/`@details`
-doxygen corpus.
+files (e.g. [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md))
+and in the per-module `@brief`/`@details` doxygen corpus
+(`docs/MCDC.md` was removed from dev).
 
 ### 1.3 Requirements standards
 
@@ -61,7 +58,8 @@ system. Requirements are captured in two places:
 - Per-feature design notes under `docs/` (e.g.
   [`../ARCHITECTURE.md`](../ARCHITECTURE.md)).
 - Function-level `@brief` / `@param` / `@retval` / `@pre` / `@post`
-  blocks, audited by `scripts/checks/doxy_audit.py`.
+  blocks, audited by review (`scripts/checks/doxy_audit.py` was
+  removed from dev).
 
 This is consistent with DO-178C Section 11.9 (software requirements
 data) being an aggregate of design notes plus the source-of-truth
@@ -79,8 +77,9 @@ release evidence pack.
 
 Every register-level write must cite the Renesas Hardware User's
 Manual R01UH1065EJ section that authorises the bit pattern. Citations
-use the `@cite` doxygen tag and are audited in strict mode by
-`scripts/checks/cite_check.py`.
+use the `@cite` doxygen tag; the automated strict audit
+(`scripts/checks/cite_check.py`) was removed from dev, so citations are
+reviewed by hand on each PR.
 
 ---
 
@@ -121,14 +120,12 @@ the pinned environment when host tool versions differ.
 ### 2.3 Continuous integration
 
 CI runs in GitHub Actions via
-[`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml).
-The pre-commit hook ([`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh))
-enforces the same gates locally. Hardware-in-the-loop uses the dedicated native
-listener on the dev box to build, then drives the guarded Raspberry Pi 5
-instrument host documented in
-[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md). HIL-relevant
-pushes and trusted same-repository pull requests schedule `.github/workflows/hil.yml`
-automatically; manual dispatch and selected local-app runs remain available.
+[`../../.github/workflows/regen-drift.yml`](../../.github/workflows/regen-drift.yml),
+the only workflow on dev (the former `firmware.yml` suite and the
+pre-commit hook are removed; per-commit enforcement is local). HIL uses
+the dedicated native listener on the dev box to build, then drives the
+Raspberry Pi 5 instrument host as a direct bench run (the guarded
+workflow and its document were removed from dev).
 
 ### 2.4 Probe and target
 
@@ -151,7 +148,8 @@ source file in `libs/` is hand-written against the Renesas
 Hardware User's Manual R01UH1065EJ. Renesas FSP source is reference-
 only and is **not** copied into this tree. The cite-check script
 (`scripts/checks/cite_check.py`) verifies that register-level
-translation units carry HUM citations.
+translation units carry HUM citations (the automated checker was
+removed from dev; review-only today).
 
 ### 3.2 Vendor SOUP behind PAL layers
 
@@ -161,17 +159,17 @@ first-party platform abstraction layer (`libs/ra8_*_pal/`,
 `libs/ra8_tls/`, `libs/ra8_ota/`, `port/netxduo/`, `port/usbx/`,
 `port/levelx/`, `port/nimble/`) so that:
 
-- The first-party code remains the **only** code in scope for MC/DC
-  instrumentation (see [`../MCDC.md`](../MCDC.md) "Currently exempted
-  code (SOUP)").
+- The first-party code remains the only code in scope for MC/DC
+  instrumentation (the MC/DC measurement was removed from dev).
 - Vendor APIs can be replaced or upgraded without touching call sites
   outside the PAL.
 
 ### 3.3 No dynamic allocation in firmware
 
 NASA Power-of-10 Rule 3 is enforced by
-[`../../scripts/checks/check_no_dynamic_alloc.py`](../../scripts/checks/check_no_dynamic_alloc.py)
-in the pre-commit hook. The xorshift32 `rand()` override added in
+[`../../scripts/checks/check_freestanding_runtime.py`](../../scripts/checks/check_freestanding_runtime.py)
+(the allocator-symbol gate; the former dedicated script and pre-commit
+hook are removed from dev). The xorshift32 `rand()` override added in
 commit `6d2ebbfac` is the canonical example of how third-party calls
 into newlib heap functions are intercepted (see
 [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) "ra8_rand_stub
@@ -222,24 +220,15 @@ must pass:
 - ASCII-only character encoding (pre-commit hook).
 - Defensive macro paren check (pre-commit hook).
 - `clang-format --check` (pre-commit hook).
-- `clang-tidy --check` (pre-commit hook).
-- `cppcheck` general checks (pre-commit hook; MISRA addon is `just quality::local::misra`
-  only -- see Section 6).
-- `ra8ci since` (every public symbol carries a `@since`
-  tag; pre-commit hook).
-- `check-copyright.py` (every source file carries the project header;
-  pre-commit hook).
-- `cite_check.py --strict` (HUM citations on register code; fail-closed
-  pre-commit policy).
-- `check_world_tags.py --strict` (ring/world tag discipline; fail-closed
-  pre-commit policy).
-- `check_obsolete_standards.py` (rejects references to superseded
-  safety standards; pre-commit hook).
-- `check_mcdc_block.py` (MC/DC-blocking patterns; pre-commit hook).
-
-The pre-commit hook is at
-[`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh) and is
-the source of truth for the gate set.
+The automated gates below were all part of the pre-commit hook and CI
+suite that was removed from dev; they currently have no tool on dev and
+are re-establishment items: `clang-tidy`, `cppcheck` (with the MISRA
+addon), `ra8ci since`, `check-copyright.py`, `cite_check.py --strict`,
+`check_world_tags.py --strict`, `check_obsolete_standards.py`, and
+`check_mcdc_block.py`. Per-commit enforcement today is `clang-format`
+plus the `scripts/checks/` suite (file size, comment format,
+freestanding runtime, RTOS symbol isolation, SG offsets, tool versions,
+lint targets, stack usage, init-order audit).
 
 ### 4.4 Test
 
@@ -252,8 +241,9 @@ evidence rather than a current-tree census. macOS execution was not claimed:
 the low-address
 peripheral-mock tests require Linux/container execution, as documented in
 [`../TOOLCHAIN.md`](../TOOLCHAIN.md).
-`just quality::local::test` runs the native suite, and
-`just quality::local::mcdc` re-runs it under clang's MC/DC instrumentation.
+`tests/build_tests.sh` + `tests/run_tests.sh` run the native suite
+(the `quality::` just wrappers were removed; MC/DC measurement is not
+available on dev).
 
 ### 4.5 Integration
 
@@ -305,11 +295,9 @@ permitted.
 
 ### 5.4 Branch protection
 
-`main` is protected by the CI gate set
-([`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml))
-and by the local pre-commit hook. The hook is committed under
-[`../../scripts/git/`](../../scripts/git/) and must be installed by
-each contributor with `just hooks`.
+`main` is protected by the `regen-drift` workflow (the only CI on
+dev) and by rebase-merge policy. The pre-commit hook was removed from
+dev; re-establishing the fuller gate set is a qualification gap.
 
 ---
 
@@ -317,9 +305,9 @@ each contributor with `just hooks`.
 
 ### 6.1 Unit tests
 
-`just quality::local::test` runs the host-side suite. Coverage targets are tracked in
-[`../MCDC.md`](../MCDC.md) (MC/DC) and the broader gap list is in
-[`../MCDC_GAPS.md`](../MCDC_GAPS.md). Test files follow `test_*.c` or
+`tests/build_tests.sh` + `tests/run_tests.sh` run the host-side suite.
+Coverage targets are not measured on dev (the MC/DC infrastructure was
+removed). Test files follow `test_*.c` or
 `test_*.cpp` naming and are discovered across the root test categories and
 module-local test directories by [`../../tests/CMakeLists.txt`](../../tests/CMakeLists.txt).
 The retained 2026-08-22 Linux/devcontainer unit-gate result passed all 689
@@ -337,49 +325,28 @@ pending.
 
 ### 6.3 MC/DC measurement
 
-`just quality::local::mcdc` invokes
-[`../../scripts/report/mcdc_report.sh`](../../scripts/report/mcdc_report.sh)
-which builds tests with `clang -fcoverage-mcdc`, runs each test
-binary with `LLVM_PROFILE_FILE` set, merges via `llvm-profdata
-merge -sparse`, and renders the report under `build/mcdc-report/`.
-Default threshold is 100 % (per DO-178C Section 6.4.4.2 for Level B);
-the threshold is overridable via `RA8_MCDC_THRESHOLD=NN` for
-intermediate phase gates. The **100.00 % reachable / 92.29 % absolute**
-measurement from 2026-05 is historical; use the current gate output for the
-candidate under review (see [`../MCDC.md`](../MCDC.md) measurement history).
-The archived 2026-05 result classified 58 conditions as deactivated under
-DO-178C 6.4.4.3. The current decision set is derived in
-[`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
+No MC/DC measurement is available on dev: the driver, its baseline and
+its CI job were removed. The **100.00 % reachable / 92.29 % absolute**
+measurement from 2026-05 is historical and does not restamp structural
+coverage for the migrated tree. When measurement is re-established, the
+release evidence pack must provide a current reachable decision-complete
+result.
 
 ### 6.4 Hardware smoke
 
-`just hil::run` invokes
-[`../../scripts/hil/all.sh`](../../scripts/hil/all.sh)
-which auto-discovers every app under
-`examples/ek_ra8d2/hw_validated/hil/` carrying a `hil.conf`, flashes
-each to the bench board, and verifies it by the mode that `hil.conf`
-declares (`uart_scrape`, `jlink_memprobe`, `usb_cdc`, `usb_hid`,
-`usb_msc`, ...). An app under `hil/` with no `hil.conf` fails the run
-rather than being skipped.
-Hardware-in-the-loop is guarded by the shared bench lock. HIL-relevant pushes
-and trusted same-repository pull requests schedule the managed dev-box listener
-automatically; a developer checkout and manual workflow dispatch remain
-available for targeted operation. GitHub Actions retains the current run logs
-and results as the execution evidence; this plan does not freeze a historical
-pass count.
+HIL runs as a direct bench run on the dev-box listener and the
+Raspberry Pi 5 instrument host (the `hil::run` recipe, its driver
+script and the guarded workflow were removed from dev).
 
 ### 6.5 MISRA-C 2012
 
-`just quality::local::misra` invokes
-[`../../scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh)
-which runs cppcheck with the MISRA addon and writes
-`build/misra/results.txt`. The current result and ratchet are produced by the
-gate and must not be copied from the archived 2026-05 audit. The deviation register at
-[`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md) tracks the formal
-disposition (D-001 .. D-005 today). The project's permanent MISRA
-posture is **cppcheck-only** (no commercial checker -- LDRA / Helix
-QAC / Polyspace are out of scope under the MIT-licensed personal-
-project policy in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)).
+The MISRA audit is suspended on dev: the `misra_check_inner.sh` driver,
+the cppcheck-MISRA invocation and the deviation register were removed.
+The project's permanent MISRA posture is **cppcheck-only** (no
+commercial checker -- LDRA / Helix QAC / Polyspace are out of scope
+under the MIT-licensed personal-project policy in
+[`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)); deviations
+are recorded in the SRS requirement rows today.
 
 ### 6.6 Stack-usage analysis
 
@@ -391,16 +358,15 @@ overflow).
 
 ### 6.7 Doxygen audit
 
-`scripts/checks/doxy_audit.py` walks `libs/`, `port/`, `tools/`, `apps/` (third
-party excluded) and writes per-function missing-tag counts under
-`build/reports/doxygen/`. The release evidence pack must retain the regenerated
-result.
+The Doxygen completeness audit is suspended on dev (`doxy_audit.py` and
+the Doxygen gate were removed). When re-established, the release
+evidence pack must retain the regenerated result.
 
 ### 6.8 Coverage caveats
 
 cppcheck-MISRA implements roughly two thirds of the mandatory +
-required rules ([`../MISRA.md`](../MISRA.md) "The cppcheck-MISRA
-limitation"). The project's permanent policy is **cppcheck-only**;
+required rules (the cppcheck-MISRA limitation; `docs/MISRA.md` was
+removed from dev). The project's permanent policy is **cppcheck-only**;
 commercial checker procurement is **out of scope** per
 [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md). Downstream
 adopters who need full mandatory + required coverage must engage their
@@ -412,23 +378,23 @@ own qualified checker.
 
 ### 7.1 Pre-commit gates (local, mandatory)
 
-Source: [`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh).
+Source: the pre-commit hook (removed from dev; the table records what it enforced).
 
 | Gate                                             | Tool / script                                              |
 |--------------------------------------------------|------------------------------------------------------------|
-| ASCII-only encoding                              | inline check in pre-commit hook                            |
-| C23 typed-enum + zero-init pattern               | inline check in pre-commit hook                            |
-| Defensive macro paren                            | inline check in pre-commit hook                            |
-| clang-format                                     | `scripts/checks/format_code.sh --check`                           |
-| clang-tidy                                       | `scripts/checks/clang_tidy.sh --check`                            |
-| `@since` tag presence                            | `ra8ci since`                     |
-| Copyright header presence                        | `scripts/checks/check-copyright.py`                         |
-| cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
-| HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |
-| Ring/world tags                                  | `scripts/checks/check_world_tags.py --strict`               |
+| ASCII-only encoding                              | none on dev (the pre-commit hook was removed)              |
+| C23 typed-enum + zero-init pattern               | none on dev (the pre-commit hook was removed)              |
+| Defensive macro paren                            | none on dev (the pre-commit hook was removed)              |
+| clang-format                                     | `clang-format --check` (the wrapper script was removed)    |
+| clang-tidy                                       | none on dev (removed)                                      |
+| `@since` tag presence                            | none on dev (`ra8ci` was removed) |
+| Copyright header presence                        | none on dev (removed) |
+| cppcheck (general)                               | none on dev (removed) |
+| HUM citations                                    | none on dev (removed); review-only |
+| Ring/world tags                                  | none on dev (removed); review-only |
 | Roadmap stats freshness                          | `tools/roadmap_stats --check`                               |
-| Obsolete-standard references                     | `scripts/checks/check_obsolete_standards.py`                |
-| MC/DC-blocking pattern check                     | `scripts/checks/check_mcdc_block.py`                        |
+| Obsolete-standard references                     | none on dev (removed) |
+| MC/DC-blocking pattern check                     | none on dev (removed) |
 
 ### 7.2 CI gates (GitHub Actions, mandatory)
 

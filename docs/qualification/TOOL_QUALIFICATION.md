@@ -56,7 +56,8 @@ hand-traced decisions, and so on.
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3 ("output is verified by other means").                 |
 | Qualification basis             | Every RA8D2 physical application is cross-built; selected binaries |
-|                                 | are tested via `just hil::run` against the EK-RA8D2 v1. The compiler is |
+|                                 | are tested as direct bench runs against the EK-RA8D2 v1 (the        |
+|                                 | `hil::run` recipe was removed from dev). The compiler is             |
 |                                 | required to be warning-clean at `-Wall -Wextra -Werror` so any     |
 |                                 | code-generation surprise that the compiler itself diagnoses is     |
 |                                 | a build-stopping event.                                            |
@@ -85,14 +86,14 @@ hand-traced decisions, and so on.
 | DO-330 Criterion                | Criterion 3.                                                       |
 | Qualification basis             | The clang output is **test-only** -- no production code path uses  |
 |                                 | clang artefacts. The MC/DC report is reviewed by hand against      |
-|                                 | known decisions in `libs/ra8_core/src/ra8_log.c` (worked example     |
-|                                 | in `docs/MCDC.md` "Adding MC/DC test vectors") so any silent       |
+|                                 | known decisions in `libs/ra8_core/src/ra8_log.c` (the MC/DC         |
+|                                 | worked-example document was removed from dev) so any silent       |
 |                                 | MC/DC accounting error is detectable.                              |
 | Compensating verification       | Manual spot-check against hand-traced truth tables at Phase 1 /    |
 |                                 | Phase 2 boundaries.                                                 |
 | Re-qualification trigger        | Major-version bump or any change to LLVM's MC/DC accounting        |
 |                                 | (release-note review).                                             |
-| Limitation noted                | Per `docs/MCDC.md`, gcc-14 `-fcondition-coverage` is **not** a     |
+| Limitation noted                | Per the archived MC/DC policy, gcc-14 `-fcondition-coverage` is **not** a |
 |                                 | DO-178C-compliant MC/DC implementation. The gate fails closed when  |
 |                                 | clang-18 or matching LLVM profile tools are unavailable.            |
 
@@ -103,14 +104,14 @@ hand-traced decisions, and so on.
 | Vendor                          | Cppcheck team (open source) + MISRA-C 2012 addon                   |
 | Tool version pinned             | cppcheck 2.13.0 in the devcontainer; addon location is resolved    |
 |                                 | from the installed package at run time.                            |
-| Intended use                    | Advisory MISRA-C 2012 audit invoked via `just quality::local::misra`. |
+| Intended use                    | Advisory MISRA-C 2012 audit (the invocation recipe was removed from dev). |
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3 (advisory; not the authoritative coding-standard       |
 |                                 | gate).                                                             |
 | Qualification basis             | (a) cppcheck implements roughly two thirds of the mandatory +      |
-|                                 | required MISRA-C 2012 rules per `docs/MISRA.md` -- partial         |
+|                                 | required MISRA-C 2012 rules (the MISRA policy doc was removed from dev) -- partial         |
 |                                 | coverage is acknowledged. (b) Formal deviations and tooling gaps   |
-|                                 | are recorded in `docs/qualification/MISRA_DEVIATIONS.md`           |
+|                                 | are recorded in the SRS requirement rows (the deviation register was removed from dev)           |
 |                                 | (D-001..D-012); out-of-scope findings remain ratchet-held debt.     |
 |                                 | (c) The arm-none-eabi-gcc cross build with `-std=gnu23             |
 |                                 | -Wimplicit-function-declaration -Werror -Wmissing-prototypes`      |
@@ -118,16 +119,16 @@ hand-traced decisions, and so on.
 |                                 | (e.g. 17.3, 8.4) -- cppcheck is supplementary.                     |
 | Compensating verification       | (a) Cross-compiler `-Werror` gate. (b) Twelve active, scoped MISRA  |
 |                                 | deviation/tooling-gap records plus ratchet-held code-change debt.   |
-|                                 | (c) Quarterly re-audit cadence per `docs/MISRA.md`.                |
+|                                 | (c) The quarterly re-audit cadence is suspended on dev.                |
 | Re-qualification trigger        | cppcheck major-version bump, especially the release that adds     |
 |                                 | `--std=c23` (D-002, D-003, D-005 and D-007 retire as soon as the  |
 |                                 | parser accepts C23; D-009 retires when the MISRA addon resolves   |
 |                                 | enum-named array extents). Tracked at MAR 2026-11-02 in            |
-|                                 | MISRA_DEVIATIONS.md.                                               |
+|                                 | the SRS requirement rows.                                               |
 | Upgrade path                    | None. Commercial MISRA checkers (LDRA / Helix QAC / Polyspace /   |
 |                                 | PVS-Studio) are explicitly out of scope for this MIT-licensed,    |
 |                                 | non-certifying project. See                                        |
-|                                 | `docs/qualification/MISRA_DEVIATIONS.md` "Tooling policy" and     |
+|                                 | the deviation register "Tooling policy" (removed from dev) and     |
 |                                 | `docs/CERTIFICATION_SCOPE.md`.                                    |
 
 ## 4. JLinkExe (SEGGER J-Link OB)
@@ -155,24 +156,23 @@ hand-traced decisions, and so on.
 |                                 | table when classification is ambiguous.                           |
 | Re-qualification trigger        | Major-version bump of JLinkExe or any change to the host          |
 |                                 | classification rubric.                                            |
-| Known issue                     | OP-008 records a hang in the retired smoke harness. The guarded   |
-|                                 | replacement is `just hil::run`; HIL-relevant pushes and trusted  |
-|                                 | same-repository PRs schedule the managed dev-box listener, while |
-|                                 | fork PRs are excluded. Manual dispatch remains available.        |
+| Known issue                     | OP-008 records a hang in the retired smoke harness. The replacement |
+|                                 | is a direct bench run on the managed dev-box listener (the         |
+|                                 | `hil::run` recipe and its workflow were removed from dev).         |
 
 ## 5. scripts/ci/gates/checks.sh (qualified internal tool)
 
 | Attribute                       | Value                                                              |
 |---------------------------------|--------------------------------------------------------------------|
 | Vendor                          | In-house (Brighton Sikarskie / project author)                     |
-| Tool version pinned             | Git-managed; the current tree ships the pre-commit gate as         |
-|                                 | the `pre-commit-checks` CI gate plus per-check helpers under              |
-|                                 | `scripts/checks/`.                                                 |
-| Intended use                    | Block any commit that violates ASCII-only, clang-format,           |
-|                                 | clang-tidy, cppcheck (without MISRA addon), no-dynamic-allocation, |
-|                                 | world-tag balance, since-version stamping, or obsolete-standards   |
-|                                 | references (e.g. obsolete-standard names are forbidden -- only     |
-|                                 | the current revisions are used).                                   |
+| Tool version pinned             | Git-managed; the gate suite was removed from dev; only the         |
+|                                 | `scripts/checks/` helpers remain.                                  |
+| Intended use                    | Block commits that violate ASCII-only, clang-format,
+                                 | clang-tidy, cppcheck (without MISRA addon), no-dynamic-allocation,
+                                 | world-tag balance, since-version stamping, or obsolete-standards
+                                 | references. The gate suite was removed from dev; only
+                                 | `clang-format` and the surviving `scripts/checks/` helpers are
+                                 | enforced today. Historically it blocked the current revisions are used).                                   |
 | TQL classification              | **TQL-5**                                                          |
 | DO-330 Criterion                | Criterion 3.                                                       |
 | Qualification basis             | Every check inside the hook is independently re-runnable from     |
@@ -183,7 +183,7 @@ hand-traced decisions, and so on.
 |                                 | configuration-managed via git.                                     |
 | Compensating verification       | (a) Server-side CI re-runs every gate. (b) Each helper script     |
 |                                 | carries its own host test under `scripts/checks/` where             |
-|                                 | applicable. (c) The `check_obsolete_standards.py` script is the   |
+|                                 | applicable. (c) The `check_obsolete_standards.py` script was removed from dev; the rule currently has no   |
 |                                 | sole gatekeeper for the "no obsolete-standard names" rule and is  |
 |                                 | exercised by every commit that touches `docs/`.                    |
 | Re-qualification trigger        | Any change to a helper script or to the hook orchestrator.        |
@@ -213,7 +213,7 @@ hand-traced decisions, and so on.
 | Compensating verification       | (a) Local pre-commit hook reproduces the same gates. (b) HW       |
 |                                 | smoke builds on the isolated dev-box listener and drives the      |
 |                                 | guarded Raspberry Pi 5 instrument host                            |
-|                                 | (`docs/HIL_DEVELOPER_WORKFLOW.md`).                                |
+|                                 | (the guarded-workflow document was removed from dev).                                |
 |                                 | (c) Artifact retention preserves the build log for post-mortem.   |
 | Re-qualification trigger        | Major OS-image or actions/runner bump; native toolchain pin or    |
 |                                 | HIL workflow/Ansible runner change.                               |
@@ -229,7 +229,7 @@ output is downstream-verified.
 
 | Tool                          | Use                                  | Compensating verification                         |
 |-------------------------------|--------------------------------------|---------------------------------------------------|
-| `clang-tidy`                  | Naming + complexity gate             | Advisory only; no autofix in CI; LineThreshold    |
+| `clang-tidy`                  | Naming + complexity gate (removed from dev) | Advisory only; no autofix; LineThreshold    |
 |                               |                                      | cross-checked against NASA P10 Rule 4.            |
 | `clang-format`                | Style enforcement                    | Idempotent; reviewed by humans on every PR.       |
 | `llvm-profdata`               | Merge MC/DC raw profiles             | Output consumed only by `llvm-cov`; spot-checked. |
@@ -254,11 +254,11 @@ and the other pending evidence.
 |----------------------------|-------------------------------------------------------------------|
 | arm-none-eabi-gcc          | Major-version bump.                                               |
 | clang-18 / llvm-cov        | Major-version bump or LLVM MC/DC accounting change.               |
-| cppcheck + misra addon     | Cppcheck major-version bump (esp. C23 support); MAR 2026-11-02.   |
+| cppcheck + misra addon     | Removed from dev (no current consumer).                           |
 | JLinkExe                   | Major-version bump or rubric change.                              |
-| scripts/ci/gates/checks.sh     | Per-PR; reviewed alongside the change.                            |
+| scripts/ci/gates/checks.sh     | Removed from dev (the gate suite is gone).                        |
 | GitHub Actions runners     | Self-hosted image/Ansible change, hosted fork-image bump, or workflow change. |
-| clang-tidy / clang-format  | Major-version bump.                                               |
+| clang-format               | Major-version bump (clang-tidy was removed from dev).             |
 | llvm-profdata              | Bundled with clang version pin.                                   |
 | Just / CMake / Ninja       | Major-version bump.                                               |
 | arm-none-eabi-addr2line    | Bundled with arm-none-eabi-gcc version pin.                       |
