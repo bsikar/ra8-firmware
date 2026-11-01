@@ -65,6 +65,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_io_netif.h"
 #include "ra8_nsc_veneer.h"
 
 /* =============================================================================
@@ -197,6 +198,28 @@ extern "C" {
  * @since 0.1.0
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len);
+
+/**
+ * @brief Secure-side wiring: point the ethernet veneers at the
+ *   ``ra8_io_netif`` seam.
+ *
+ * @details Caller owns the handle: bind a backend into it first (see
+ *   ``ra8_io_netif_net_pal.h`` / ``ra8_io_netif_c6link.h``), then hand it
+ *   here. Passing NULL unbinds and restores the ``ra8_net_pal`` singleton
+ *   fallback. This is NOT an NS-callable veneer: only secure-world init
+ *   may rewire it, so it carries no ``RA8_NSC_VENEER``.
+ *
+ * @param[in] netif The bound seam handle, or NULL to unbind.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                  Handle stored (or unbound).
+ * @retval k_ra8_err_not_initialized The ``ra8_io`` archive is absent from
+ *   this image's link, so the handle could never be dispatched through
+ *   (only reachable when binding non-NULL; unbinding always succeeds).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_nsc_eth_bind(const ra8_io_netif_t* netif);
 
 /* =============================================================================
  * Logging veneer
