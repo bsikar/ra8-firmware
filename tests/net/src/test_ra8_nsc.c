@@ -17,6 +17,8 @@
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
 #include "ra8_fake_xspi_flash.h"
+#include "ra8_io_netif.h"
+#include "ra8_io_netif_net_pal.h"
 #include "ra8_mstp.h"
 #include "ra8_net_pal.h"
 #include "ra8_nsc.h"
@@ -226,6 +228,45 @@ static void internal_test_eth_recv_validates_args(void)
   TEST_END("ra8_nsc_eth_recv: arg validation");
 }
 
+/**
+ * @brief Verify the bound seam path: the veneers dispatch through the
+ *        ``ra8_io_netif`` seam.
+ *
+ * @details Binds the ``ra8_net_pal`` backend of the ``ra8_io_netif`` seam,
+ *          points the ethernet veneers at it with ``ra8_nsc_eth_bind``, sends
+ *          a frame and polls an empty ring through the seam, then unbinds and
+ *          verifies the direct-PAL fallback still queues a frame. The net_pal
+ *          backend trampolines to the same PAL singleton, so both paths must
+ *          behave identically.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the bind/unbind contract
+ * and the dispatch handoff; no `&&` or `||` in the code under test that this
+ * case touches)
+ */
+static void internal_test_eth_bound_seam(void)
+{
+  TEST_BEGIN("ra8_nsc_eth: bound seam forwards through ra8_io_netif");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_test_mac));
+
+  ra8_io_netif_t netif = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_netif_bind_net_pal(&netif));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_bind(&netif));
+
+  uint8_t frame[k_t_buf_cap] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
+
+  uint8_t  buf[k_ra8_nsc_eth_frame_max] = {};
+  uint16_t len                          = (uint16_t)k_ra8_nsc_eth_frame_max;
+  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_nsc_eth_recv(buf, &len));
+
+  /* Unbind restores the direct-PAL fallback; same observable behavior. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_bind(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
+  TEST_END("ra8_nsc_eth: bound seam forwards through ra8_io_netif");
+}
+
 /* =============================================================================
  * ra8_nsc_log_emit
  * =============================================================================
@@ -336,6 +377,7 @@ int main(void)
   internal_test_xspi_status_forwards_to_driver();
   internal_test_eth_send_validates_args();
   internal_test_eth_recv_validates_args();
+  internal_test_eth_bound_seam();
   internal_test_log_emit_happy();
   internal_test_log_emit_null();
   internal_test_periph_init_idempotent();
