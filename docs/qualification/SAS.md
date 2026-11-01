@@ -81,7 +81,7 @@ Certification).
 | Verification specification   | SVCP                               | Working draft                           |
 | Verification results         | SVR                                | Working draft                           |
 | Tool qualification           | TOOL_QUALIFICATION                 | Working draft                           |
-| MISRA-C 2012 deviations      | MISRA_DEVIATIONS                   | Active (D-001 through D-012)            |
+| MISRA-C 2012 deviations      | SRS requirement rows               | Register removed from dev               |
 
 The SAS will be re-issued at the close of Phase 7 once every plan
 has its first complete revision.
@@ -120,10 +120,9 @@ IEC 61508-3 Annex A.4 (Highly Recommended at SIL 3) and DO-178C
 section 11.8 (mandatory coding standard). The archived 2026-05-02 audit
 reported 1271 findings. That number is historical and is neither the current
 population nor a claim that every finding was accepted. The current audit is
-pinned to cppcheck 2.13.0, and
-`docs/qualification/MISRA_DEVIATIONS.md` records D-001 through D-012;
-its machine-checked index and `.github/misra-baseline.txt` are the current
-population authorities. D-001 through D-005 date from the archived audit;
+pinned to cppcheck 2.13.0. The deviation register and the misra
+baseline were removed from dev; D-001 through D-012 are recorded in the
+SRS requirement rows. D-001 through D-005 date from the archived audit;
 D-006 through D-012 were registered afterwards as scope and reviewed
 interfaces expanded. The dispositions are:
 
@@ -183,8 +182,8 @@ TinyXML-2. Re-review cadence is at most 12 months from each doc's
 "Last review" stamp. The behavioural-boundary verification basis
 for each SOUP is the distributed integration-test corpus under `tests/`,
 `apps/**/tests/`, and `examples/**/tests/` -- the SOUP itself is treated as black-box and
-is excluded from MC/DC instrumentation per `docs/MCDC.md` Section
-"Currently exempted code (SOUP)".
+is excluded from MC/DC instrumentation (the MC/DC measurement and its
+documentation were removed from dev).
 
 ## 5. Open problem reports and deferred work
 
@@ -200,7 +199,7 @@ full anomaly log. Summary of items deferred from v1 release:
 | OP-005 | Critical | RSIP-E BIST blocked on AMC blob                  | Blocked (not vendored; public FSP, BSD-3-Clause) |
 | OP-006 | Minor    | Doxygen tag completeness                         | Recorded closed in the archived snapshot; current audit pending |
 | OP-007 | Major    | MC/DC reachable target                           | Recorded closed in the archived snapshot; current audit pending |
-| OP-008 | Minor    | Legacy smoke harness hung in the 2026-05 bench environment | Superseded by guarded `just hil::run`; manual HIL workflow remains available |
+| OP-008 | Minor    | Legacy smoke harness hung in the 2026-05 bench environment | Superseded by direct bench runs (the `hil::run` recipe was removed from dev) |
 
 OP-001 through OP-003 describe the archived 2026-05 bench sweep and are not
 current full-fleet qualification results. Retained evidence is narrower: the
@@ -223,12 +222,12 @@ pack. The full pack consists of the artifacts below.
 | Software Verification Cases & Procs.  | `docs/qualification/SVCP.md`                  |
 | Software Verification Results         | `docs/qualification/SVR.md`                   |
 | Software Accomplishment Summary       | `docs/qualification/SAS.md` (this document)   |
-| MISRA-C 2012 deviation register       | `docs/qualification/MISRA_DEVIATIONS.md`      |
+| MISRA-C 2012 deviation register       | removed from dev; deviations recorded in the SRS rows |
 | Tool qualification dossier            | `docs/qualification/TOOL_QUALIFICATION.md`    |
 | Architectural baseline                | `docs/RING_AND_WORLD.md`                      |
 | Memory map                            | `docs/MEMORY_MAP.md`                          |
-| MC/DC infrastructure / status         | `docs/MCDC.md`, `docs/MCDC_GAPS.md`           |
-| MISRA infrastructure / status         | `docs/MISRA.md`, `.github/misra-baseline.txt` |
+| MC/DC infrastructure / status         | none on dev (measurement removed); archived 2026-05 evidence only |
+| MISRA infrastructure / status         | none on dev (MISRA gate removed); deviations in the SRS rows |
 | Doxygen audit                         | `build/reports/doxygen/` (regenerated; release-pack artifact) |
 | Hardware bring-up record              | `docs/HARDWARE_BRINGUP.md`                    |
 | SOUP register                         | `docs/SOUP/`                                  |
@@ -266,11 +265,11 @@ closure schedule.
    out of scope.
 3. Independent-assessor engagement is **out of scope, permanently**,
    per `docs/CERTIFICATION_SCOPE.md`.
-4. Hardware-in-the-loop uses the managed dev-box listener and guarded
-   Raspberry Pi 5 instrument host in `docs/HIL_DEVELOPER_WORKFLOW.md`.
-   HIL-relevant pushes and trusted same-repository PRs schedule `hil.yml`
-   automatically. The selected 2/2 result is historical; current-candidate
-   full-fleet HIL evidence remains pending.
+4. Hardware-in-the-loop uses the managed dev-box listener and Raspberry
+   Pi 5 instrument host as direct bench runs (the `hil.yml` workflow and
+   its document were removed from dev). The selected 2/2 result is
+   historical; current-candidate full-fleet HIL evidence remains
+   pending.
 5. No vendor binary blob is shipped in this tree. Hardware-backed RSIP
    key wrap would need the RSIP-E AMC firmware, obtainable from public
    FSP under BSD-3-Clause but deliberately not vendored (see
