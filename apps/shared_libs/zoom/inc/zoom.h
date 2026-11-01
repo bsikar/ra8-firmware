@@ -86,6 +86,7 @@
 
 #include "ra8_err.h"
 #include "ra8_ui.h"
+#include "ra8_gfx_tone.h"
 
 /**
  * @enum zoom_limits_t
@@ -411,6 +412,9 @@ typedef struct {
   uint16_t       settle_ms; /**< Settle window (0 => the module default).  */
   int32_t        focus_x;   /**< Opening centre, source pixels (x).        */
   int32_t        focus_y;   /**< Opening centre, source pixels (y).        */
+
+  /** Prepared panel tone curve the loupe's re-dither routes through (NULL = flat). */
+  const ra8_gfx_tone_map_t* tone;
 } zoom_view_cfg_t;
 
 /**
@@ -485,6 +489,9 @@ typedef struct {
   bool           pending;       /**< A flush is owed.                               */
   bool           settle_armed;  /**< A quality repaint is still due after settling. */
   bool           active;        /**< The view is open.                              */
+
+  /** Tone curve adopted from the config (NULL = flat even palette). */
+  const ra8_gfx_tone_map_t* tone;
 } zoom_view_t;
 
 /**
@@ -541,6 +548,7 @@ zoom_source_init(zoom_source_t* out, zoom_read_fn read, void* ctx, uint32_t widt
  * @pre  Every scratch buffer in @p cfg outlives the view.
  * @post On k_ra8_ok `v->active` is true, `v->pending` is true and
  *       `v->pending_kind == k_zoom_refresh_quality`.
+ * @post On k_ra8_ok `v->tone` is the curve @p cfg carried (NULL = flat).
  * @post On any error @p v is not left half-open: `v->active` is false.
  *
  * @note Not thread-safe. Does not touch the framebuffer -- call

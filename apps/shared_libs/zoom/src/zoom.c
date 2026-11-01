@@ -466,6 +466,7 @@ static void internal_view_adopt(zoom_view_t*           v,
   v->dst           = cfg->dst;
   v->scale         = opening;
   v->scale_max     = ceiling;
+  v->tone          = cfg->tone;
   v->policy        = cfg->policy;
   v->settle_ms     = (cfg->settle_ms == 0U) ? (uint16_t)k_zoom_settle_ms_default : cfg->settle_ms;
   v->strip_rows    = strip_rows;

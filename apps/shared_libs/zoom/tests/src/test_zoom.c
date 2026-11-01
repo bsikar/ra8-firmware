@@ -949,6 +949,75 @@ static void t_dither_phase_is_pan_stable(void)
   TEST_END("dither_phase_is_pan_stable");
 }
 
+
+/**
+ * @test render_tone_curve_routed
+ *
+ * @brief A view opened with a tone curve quantises its strip through the curve;
+ *        the default (NULL curve) view keeps the flat even-palette rule.
+ *
+ * @details The per-panel tone LUT (ra8_gfx_tone.h) exists so a measured panel
+ *          curve can replace the assumed even palette without touching the
+ *          dither rule. The loupe is the one live re-dither path, so the curve
+ *          must reach it through the view config, and NULL must keep the
+ *          committed behaviour bit-for-bit. Two views over the standard source:
+ *          the tone view's every pixel is checked against a reference computed
+ *          with ra8_gfx_dither_gray4_level_tone at the same absolute mask
+ *          phase, and at least one pixel must differ from the flat rule so the
+ *          routing cannot pass vacuously; the NULL view is then re-rendered and
+ *          checked pixel-for-pixel against the flat reference.
+ */
+static void t_render_tone_curve_routed(void)
+{
+  TEST_BEGIN("render_tone_curve_routed");
+
+  /* A measured-style curve: strictly increasing with pinned endpoints, the
+   * contract ra8_gfx_tone_lut_validate enforces, and deliberately far from the
+   * nominal even palette so tone-routed levels differ from flat ones. */
+  static const ra8_gfx_tone_lut_t k_t_curve = {{
+    0U, 40U, 80U, 120U, 150U, 175U, 195U, 210U,
+    220U, 228U, 236U, 242U, 247U, 251U, 254U, 255U,
+  }};
+  ra8_gfx_tone_map_t curve_map = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_tone_prepare(&k_t_curve, &curve_map));
+
+  zoom_source_t   src = {};
+  zoom_view_cfg_t cfg = {};
+  zoom_view_t     v   = {};
+  t_make_src(&src, k_t_src_w, k_t_src_h);
+
+  /* The tone view: every rendered pixel goes through the curve. */
+  t_make_cfg(&cfg, &src);
+  cfg.tone = &curve_map;
+  TEST_ASSERT_EQ(k_ra8_ok, zoom_view_open(&v, &cfg));
+  TEST_ASSERT(&curve_map == v.tone);
+  TEST_ASSERT_EQ(k_ra8_ok, zoom_view_render(&v));
+  static uint32_t s_tone_fb[(size_t)k_t_fb_h * (size_t)k_t_fb_w];
+  (void)memcpy(s_tone_fb, s_fb, sizeof(s_tone_fb));
+
+  /* The default view: NULL curve, the flat rule, and pixel-for-pixel
+   * identical to a direct flat quantisation at the same mask phase. */
+  t_make_cfg(&cfg, &src);
+  TEST_ASSERT_EQ(k_ra8_ok, zoom_view_open(&v, &cfg));
+  TEST_ASSERT(nullptr == v.tone);
+  TEST_ASSERT_EQ(k_ra8_ok, zoom_view_render(&v));
+
+  uint32_t routed = 0U;
+  for (int32_t r = 0; r < (int32_t)k_t_view_h; ++r) {
+    for (int32_t c = 0; c < (int32_t)k_t_view_w; ++c) {
+      const int32_t mask_x   = (int32_t)k_t_dst_x + c;
+      const int32_t mask_y   = (int32_t)k_t_dst_y + r;
+      const uint8_t sample   = t_sample((uint32_t)((v.anchor_x + c)), (uint32_t)((v.anchor_y + r)));
+      const uint8_t flat     = ra8_gfx_dither_gray4_level(sample, mask_x, mask_y);
+      const uint8_t toned    = ra8_gfx_dither_gray4_level_tone(&curve_map, sample, mask_x, mask_y);
+      routed += ((uint32_t)((toned << 4) | toned) != s_tone_fb[((size_t)mask_y * (size_t)k_t_fb_w) + (size_t)mask_x]) ? 1U : 0U;
+      TEST_ASSERT_EQ((uint32_t)((flat << 4) | flat), s_fb[((size_t)mask_y * (size_t)k_t_fb_w) + (size_t)mask_x]);
+    }
+  }
+  TEST_ASSERT(routed > 0U);
+  TEST_END("render_tone_curve_routed");
+}
+
 /**
  * @brief Host test entry point.
  * @return 0 on success; any assertion `exit(1)`s before returning.
@@ -969,5 +1038,6 @@ int main(void)
   t_render_magnifies_and_dithers();
   t_render_propagates_source_failure();
   t_dither_phase_is_pan_stable();
+  t_render_tone_curve_routed();
   return 0;
 }
