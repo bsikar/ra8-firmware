@@ -234,6 +234,13 @@ static void internal_set_priority_grouping(void)
  * the Secure clock bring-up and the TrustZone hand-off below rely on.
  */
 
+[[noreturn, gnu::noinline]] static void internal_halt_secure_clock_fault(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
 void SystemInit(void)
 {
   /* Mask global IRQs so the application gets a deterministic init
