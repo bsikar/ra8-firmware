@@ -73,8 +73,9 @@ CRITICAL_MODULES = (
 # appeared enforced.
 #
 # The floor makes a degraded enumeration read as FAILURE, never as an
-# improvement -- the same shape as check_lint_coverage.py's FILE_FLOOR and
-# check_annotations.py's MIN_CALL_RESOLUTION. Below it the gate exits non-zero
+# improvement -- the same shape as the FILE_FLOOR floor in the retired
+# lint-coverage gate and the MIN_CALL_RESOLUTION floor in the retired
+# annotation gate. Below it the gate exits non-zero
 # and says the sweep collapsed.
 #
 # Calibrated against a full cross-build: the `build-cross` gate runs

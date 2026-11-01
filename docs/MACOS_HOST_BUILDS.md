@@ -5,6 +5,13 @@ arm64 Mac. This page records why a plain `zig build` used to fail there, what
 the build graph does about it now, and how to reproduce and check the result on
 a real machine. Issue RA8FW-330 tracks the work.
 
+**Status on dev, 2026-11-01:** the CI-era gate plumbing this page describes
+(`scripts/ci/lib/macos_sdk.sh`, `scripts/ci/lib/native_host_gates.sh`,
+`scripts/ci/lib/host_arch.sh`, `scripts/ci/lib/macos_host_roots.sh`) was
+retired with the CI move to bsikar/ra8ci. The native-build facts and
+reproduction steps below still hold; the gate-routing sections describe how
+it ran while the gates were live.
+
 ## Why the native link used to fail
 
 Zig links Mach-O binaries against a text-based stub library rather than a real
