@@ -38,8 +38,8 @@ into a verification-activity register.
 | 2     | High-level requirements are accurate, consistent | `docs/STYLE_GUIDE.md` review checklist, PR review history                                         | Independence not yet established (Section 3).                    |
 | 3     | HLR compatible with target computer              | `docs/MEMORY_MAP.md`, `cmake/toolchain-ra8d2.cmake`, guarded HIL workflow                          | Guarded automatic HIL scheduling is enabled; release-specific rig evidence remains pending. |
 | 4     | HLR verifiable                                   | Doxygen tag audit per `CLAUDE.md` rules                                                    | Archived 2026-05 result is not restamped; current release audit pending. |
-| 5     | HLR conform to standards                         | `docs/STYLE_GUIDE.md`, `docs/MISRA.md`, pre-commit hook                                           | MISRA backlog tracked in `docs/qualification/MISRA_DEVIATIONS.md`.|
-| 6     | HLR traceable to system reqs                     | `scripts/checks/cite_check.py` (HUM citation validator)                                            | Bidirectional trace matrix not yet generated.                    |
+| 5     | HLR conform to standards                         | `docs/STYLE_GUIDE.md` (`docs/MISRA.md` and the pre-commit hook were removed from dev)                                           | MISRA deviations are recorded in the SRS rows; the register was removed from dev.|
+| 6     | HLR traceable to system reqs                     | review only (`cite_check.py` was removed from dev)                                            | Bidirectional trace matrix not yet generated.                    |
 | 7     | Algorithms are accurate                          | Distributed test corpus under `tests/`, `apps/**/tests/`, and `examples/**/tests/`                   | Coverage of algorithm corner cases tracked via MC/DC gap list.   |
 
 ### 1.2 Table A-4 -- Verification of outputs of software design process
@@ -47,15 +47,15 @@ into a verification-activity register.
 | Obj # | Subject                                | Evidence                                                                | Gap                                                              |
 |------:|----------------------------------------|-------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1     | LLR comply with HLR                    | Per-module headers under `libs/*/inc/` cross-reference `docs/`          | Trace matrix pending.                                            |
-| 2     | LLR are accurate, consistent           | `clang-tidy` naming + complexity gates                                  | Threshold tuning ongoing.                                        |
-| 3     | LLR compatible with target computer    | `docs/STACK_USAGE.md`, `-Wstack-usage` gate, `.su` aggregator           | Heap proof: `scripts/checks/check_no_dynamic_alloc.py` already gates. |
+| 2     | LLR are accurate, consistent           | review only (the clang-tidy gate was removed from dev)                                  | Threshold tuning ongoing.                                        |
+| 3     | LLR compatible with target computer    | `docs/STACK_USAGE.md`, `-Wstack-usage` gate, `.su` aggregator           | Heap proof: `scripts/checks/check_freestanding_runtime.py` is the live allocator gate. |
 | 4     | LLR verifiable                         | Category- and module-local `test_*.{c,cpp}` sources                     | Bidirectional app/test trace remains pending.                    |
-| 5     | LLR conform to standards               | `.clang-format`, `.clang-tidy`, `docs/STYLE_GUIDE.md`                   | Pre-commit enforces; CI mirrors.                                 |
-| 6     | LLR traceable to HLR                   | `scripts/checks/cite_check.py` HUM page-citation tags                    | Bidirectional trace matrix pending.                              |
+| 5     | LLR conform to standards               | `.clang-format`, `docs/STYLE_GUIDE.md` (clang-tidy is not on dev)                   | Locally enforced; the pre-commit hook was removed from dev.                                 |
+| 6     | LLR traceable to HLR                   | review only (`cite_check.py` was removed from dev)                    | Bidirectional trace matrix pending.                              |
 | 7     | Algorithms are accurate                | Targeted category- and module-local `test_*_mcdc.c` sources             | Current MC/DC evidence must be restamped for release.            |
 | 8     | Software architecture compat with HLR  | `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`                          | Section 8 (Partitioning) below.                                  |
-| 9     | Software architecture consistent       | `scripts/checks/check_world_tags.py --strict`                            | Strict mode is gate-enforced.                                    |
-| 10    | Software architecture compat with target| Cross-build matrix in `.github/workflows/firmware.yml::build-cross`     | HW-in-the-loop pending.                                          |
+| 9     | Software architecture consistent       | review only (`check_world_tags.py` was removed from dev)                            | The gate was removed; review-only today.                                    |
+| 10    | Software architecture compat with target| Local arm-none-eabi-gcc cross-build of each example app (the firmware.yml matrix was removed)     | HW-in-the-loop pending.                                          |
 | 11    | Software architecture verifiable       | Module-level integration tests under `tests/`                           | See Phase 5.                                                     |
 | 12    | Software architecture conforms to std  | NASA P10 + SOLID-for-C policy in `CLAUDE.md`                            | Manual review only; no automated structural check yet.           |
 | 13    | Software partitioning integrity        | TrustZone S/NS split via SAU (`examples/**/src/trustzone_init.c`)       | See Section 8.                                                   |
@@ -65,11 +65,11 @@ into a verification-activity register.
 | Obj # | Subject                                  | Evidence                                                                                  | Gap                                                              |
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1     | Source code complies with LLR            | Source under `libs/`, `examples/`, `apps/`                                                | Trace matrix pending.                                            |
-| 2     | Source code complies with architecture   | `scripts/checks/check_world_tags.py --strict`, `docs/RING_AND_WORLD.md`                    | Strict mode is gate-enforced.                                    |
+| 2     | Source code complies with architecture   | review only (`check_world_tags.py` was removed from dev), `docs/RING_AND_WORLD.md`                    | The gate was removed; review-only today.                                    |
 | 3     | Source code is verifiable                | Dated 2026-08-22 snapshot: 693 test sources, 689 registrations on clean macOS/Linux, and Linux/devcontainer 689/689 in 8.66 s | Historical evidence only; release-specific execution log retention pending and macOS execution not claimed. |
-| 4     | Source code conforms to standards        | clang-format, clang-tidy, cppcheck (MISRA via `just quality::local::misra`)               | MISRA backlog under deviation register.                          |
+| 4     | Source code conforms to standards        | clang-format (clang-tidy, cppcheck and the MISRA recipe are not on dev)                   | Deviations recorded in the SRS rows; the register was removed.   |
 | 5     | Source code is traceable to LLR          | Doxygen `@see` cross-references                                                           | Audit script not yet automated.                                  |
-| 6     | Source code is accurate and consistent   | `-Wall -Wextra -Werror`, `-Wstack-usage`, `clang-tidy`                                    | Zero-warning build enforced by CI.                               |
+| 6     | Source code is accurate and consistent   | `-Wall -Wextra -Werror`, `-Wstack-usage` (clang-tidy is not on dev)                       | Zero-warning build enforced locally; the CI mirror was removed.  |
 | 7     | Output of integration is complete        | `just apps::example::build all`; matrix derived by `scripts/dev/ra8_apps.py`                | Retained 118/118 historical build; current matrix and full-fleet HIL execution pending. |
 | 8     | Parameter Data Items are correct         | No PDI subsystem in scope today.                                                          | Re-evaluate if a parameter file format is added later.           |
 | 9     | Parameter Data Items have file structure | Same as above.                                                                            | Same as above.                                                   |
@@ -78,11 +78,11 @@ into a verification-activity register.
 
 | Obj # | Subject                                  | Evidence                                                                                  | Gap                                                              |
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| 1     | Executable Object Code complies with HLR | `just hil::run` and the mode contracts in `docs/HIL_SUITE.md`                             | Path-filtered trusted changes schedule HIL automatically; release-specific results remain pending. |
+| 1     | Executable Object Code complies with HLR | direct bench run (the HIL suite document was removed from dev)                            | Release-specific HIL results remain pending.                     |
 | 2     | EOC robust with HLR                      | Negative-path tests in the distributed test inventory                                      | Coverage tracked per-module in MC/DC report.                     |
 | 3     | EOC complies with LLR                    | Application-shape tests under `tests/mocks/` and app-local `tests/`                        | Bidirectional app/test trace remains pending.                    |
 | 4     | EOC robust with LLR                      | Same as 2.                                                                                | Same as 2.                                                       |
-| 5     | EOC compatible with target               | Retained historical 118/118 RA8D2 build + guarded `just hil::run`                         | Current-matrix build and real-HIL execution are pending.         |
+| 5     | EOC compatible with target               | Retained historical 118/118 RA8D2 build; direct bench runs today                          | Current-matrix build and real-HIL execution are pending.         |
 
 ### 1.5 Table A-7 -- Verification of verification process results
 
@@ -92,8 +92,8 @@ into a verification-activity register.
 | 2     | Test results are correct, discrepancies  | CI logs (GitHub Actions, retained per workflow retention policy)                          | SVR (Verification Results) document populated in roadmap Phase 7.|
 | 3     | Test coverage of HLR achieved            | Linux/devcontainer `unit-tests` gate passed 689/689 in 8.66 s on 2026-08-22              | Bidirectional requirements trace remains pending.                |
 | 4     | Test coverage of LLR achieved            | Same as 3 plus per-module decision tests                                                  | Same as 3.                                                       |
-| 5     | Test coverage of structure achieved -- MC/DC | `just quality::local::mcdc` (clang-18 `-fcoverage-mcdc`), `docs/MCDC.md`, baseline at `.github/mcdc-baseline.txt` | Release measurement must be restamped. |
-| 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated per file by `just quality::gate::run coverage-tree`                    | Release gate result pending.                                    |
+| 5     | Test coverage of structure achieved -- MC/DC | none on dev (the `-fcoverage-mcdc` gate was removed) | Release measurement must be restamped after re-establishment. |
+| 6     | Test coverage of structure achieved -- branch | none on dev (the coverage-tree gate was removed) | Release gate result pending. |
 | 7     | Test coverage of structure achieved -- statement | Same as 6.                                                                         | Release gate result pending.                                    |
 | 8     | Test coverage of structure -- data coupling and control coupling | Manual review during PR; no tool automation yet               | Documented as residual risk.                                     |
 | 9     | Verification of additional code          | 20 SOUP component qualification pages under `docs/SOUP/` (excluding README)               | Per-component re-review cadence enforced (12 months).            |
@@ -122,23 +122,23 @@ repository is:
 |-----------------------|---------------------------------------------------------|--------------------|
 | Code review           | GitHub PR review on changes targeting `dev`; reviewed release promotion from `dev` to `main` | Per PR |
 | Document review       | Diff review on `docs/**/*.md`                           | Per PR             |
-| Coding-standard check | `clang-format`, `clang-tidy`, `cppcheck` (pre-commit + CI) | Per commit + per PR |
-| Naming + complexity   | `.clang-tidy` LineThreshold = 60 (NASA P10 Rule 4)      | Per commit         |
-| Header hygiene        | `ra8ci since`, `scripts/checks/check-copyright.py` | Per commit |
-| World-tag review      | `scripts/checks/check_world_tags.py --strict` (fail closed) | Per commit       |
-| HUM citation review   | `scripts/checks/cite_check.py --strict` (fail closed)    | Per commit         |
+| Coding-standard check | `clang-format` (clang-tidy and cppcheck are not on dev; the hook and CI mirror were removed) | Per commit (local) |
+| Naming + complexity   | suspended: `.clang-tidy` was removed from dev            | — |
+| Header hygiene        | suspended: `ra8ci since` and `check-copyright.py` were removed from dev                   | — |
+| World-tag review      | review only (`check_world_tags.py` was removed from dev) (fail closed) | Per commit       |
+| HUM citation review   | suspended: `cite_check.py` was removed from dev           | — |
 
 ### 2.2 Analyses
 
 | Activity                          | Tool / artifact                                                                | Cadence            |
 |-----------------------------------|--------------------------------------------------------------------------------|--------------------|
-| MISRA-C 2012 conformance          | cppcheck-misra via `just quality::local::misra`                                    | Quarterly + on PR  |
-| Static analysis                   | `cppcheck --enable=warning,style,performance,portability` (CI + pre-commit)    | Per commit + per PR |
+| MISRA-C 2012 conformance          | suspended: the MISRA recipe was removed from dev                                          | — |
+| Static analysis                   | suspended: cppcheck is not on dev (the CI and pre-commit runs were removed)    | — |
 | Stack-usage bound                 | `-Wstack-usage`, `-fstack-usage`, `scripts/checks/stack_usage_check.py`         | Per build          |
-| No dynamic allocation (NASA P10 #3) | `scripts/checks/check_no_dynamic_alloc.py`                                    | Per commit         |
-| Obsolete-standard reference scan  | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) | Per commit |
-| Doxygen completeness audit        | `scripts/checks/doxy_audit.py` -> `build/reports/doxygen/`                        | On demand          |
-| MC/DC vector pattern declaration  | `scripts/checks/check_mcdc_block.py`                                            | Per commit         |
+| No dynamic allocation (NASA P10 #3) | `scripts/checks/check_freestanding_runtime.py` (the live allocator gate)      | Per commit         |
+| Obsolete-standard reference scan  | suspended: `check_obsolete_standards.py` was removed from dev                 | — |
+| Doxygen completeness audit        | suspended: `doxy_audit.py` was removed from dev                                           | — |
+| MC/DC vector pattern declaration  | suspended: `check_mcdc_block.py` was removed from dev                         | — |
 | SOUP qualification basis review   | One Markdown file per component under `docs/SOUP/`                             | Annual per file    |
 
 ### 2.3 Tests
@@ -146,10 +146,10 @@ repository is:
 | Activity                          | Tool / artifact                                                                | Cadence            |
 |-----------------------------------|--------------------------------------------------------------------------------|--------------------|
 | Host unit tests                   | `tests/build_tests.sh`, `tests/run_tests.sh`, ctest                            | Per commit + per PR |
-| Cross-compile sanity              | `firmware.yml::build-cross` matrix over every example app                      | Per PR             |
-| MC/DC measurement                 | `scripts/report/mcdc_report.sh` (`just quality::local::mcdc`); clang-18 `-fcoverage-mcdc`       | Per PR             |
-| Branch / statement coverage       | `just quality::gate::run coverage-tree` (gcovr, per file)                             | Per PR             |
-| HW-in-the-loop smoke              | `just hil::run` (`docs/HIL_SUITE.md`)                                           | Pre-push or manual workflow dispatch |
+| Cross-compile sanity              | local arm-none-eabi-gcc cross-build of every example app (the firmware.yml matrix was removed) | Per PR             |
+| MC/DC measurement                 | none on dev (the MC/DC gate was removed)                                     | — |
+| Branch / statement coverage       | none on dev (the coverage-tree gate was removed)                             | — |
+| HW-in-the-loop smoke              | direct bench run (the HIL suite document was removed from dev)               | Pre-push or manual |
 
 ### 2.4 Simulation
 
@@ -243,7 +243,7 @@ as possible.
 | MCU                   | Renesas R7KA8D2KFLCAC, Cortex-M85 + Cortex-M33                         |
 | Debug probe           | On-board SEGGER J-Link OB (serial in .env JLINK_SN)                    |
 | Flash tool            | `JLinkExe` invoked via `scripts/hil/flash.sh`                            |
-| Smoke harness         | `just hil::run`; CI/terminal log plus `/tmp/hil_all_*` diagnostics      |
+| Smoke harness         | direct bench run; terminal log plus board diagnostics (no `hil::run` recipe on dev) |
 | PC resolution         | `arm-none-eabi-addr2line` against the per-app ELF                      |
 
 QEMU is not used (see Section 2.4). HIL is available as a guarded developer
@@ -258,32 +258,20 @@ current candidate's real-HIL result is pending until that hardware gate runs.
 
 ### 5.1 Statement and branch coverage
 
-- Tool: `gcovr` driven by `scripts/report/tree_coverage.sh`.
-- Gate: `scripts/checks/check_tree_coverage.py` -- one per-file row for every
-  first-party unit; frozen debt may not grow, a new unit enters at 90/80.
-- CI job: `coverage.yml::coverage-tree`.
-- Artifact: `build/coverage/coverage/` HTML report uploaded per CI run
-  with 14-day retention.
+Dev today measures no statement or branch coverage: the gcovr
+tree-coverage gate, its driver script and its CI job were removed from
+dev. Re-establishing measurement is an open qualification gap; absence
+of a gate is a declared absence, never a pass.
 
 ### 5.2 MC/DC coverage
 
-- Tool: clang-18 `-fcoverage-mcdc` (per `docs/MCDC.md`); the gate fails closed
-  when clang or matching LLVM profile tools are missing. A separately invoked
-  gcc-14 condition-coverage experiment is **not** DO-178C-compliant.
-- Driver: `scripts/report/mcdc_report.sh` (`just quality::local::mcdc`).
-- CI job: `firmware.yml::mcdc`.
-- Gate: cannot regress below baseline at `.github/mcdc-baseline.txt`.
-- Per-PR feedback: `firmware.yml::coverage-comment` posts a
-  per-file MC/DC delta on every pull request.
-- The archived 2026-05 measurement is retained in `docs/MCDC.md`; the
-  Linux/devcontainer unit gate's 689/689 pass does not restamp structural
-  coverage for the migrated tree.
-- Gate: the release evidence pack must provide the current reachable
-  decision-complete result and llvm-cov's absolute condition-level MC/DC
-  result.
-- Deactivated-decision register: the generated
-  `docs/MCDC_DEACTIVATIONS.md` inventory, per DO-178C 6.4.4.3. Its entry count
-  is derived from the current source rather than copied into this plan.
+Dev today measures no MC/DC coverage: the clang-18 `-fcoverage-mcdc`
+gate, its driver, its baseline and its CI jobs were removed from dev.
+The archived 2026-05 measurement is historical only and does not
+restamp structural coverage for the migrated tree. When measurement is
+re-established, the release evidence pack must provide the current
+reachable decision-complete result and llvm-cov's absolute
+condition-level MC/DC result.
 
 ### 5.3 Data coupling and control coupling (DO-178C 6.4.4.2.c)
 
@@ -298,8 +286,8 @@ the integration boundary is via:
 
 - Host unit tests of the wrapper layer (`libs/ra8_*_pal/`,
   `libs/ra8_tls/`, `libs/ra8_psa_crypto/` in-tree shims).
-- Hardware-in-the-loop smoke via the guarded Raspberry Pi 5 rig and its manual
-  workflow (`docs/HIL_DEVELOPER_WORKFLOW.md`).
+- Hardware-in-the-loop smoke via the Raspberry Pi 5 rig as a direct bench
+  run (the guarded-workflow document was removed from dev).
 
 ---
 
@@ -370,7 +358,7 @@ unless an app overrides it (for example,
 
 | Property to verify                                      | Evidence                                                              |
 |---------------------------------------------------------|------------------------------------------------------------------------|
-| Each function carries a world tag (S, NS, or NSC)       | `scripts/checks/check_world_tags.py --strict` (fail closed)             |
+| Each function carries a world tag (S, NS, or NSC)       | review only (`check_world_tags.py` was removed from dev) (fail closed)             |
 | Secure-side state is unreachable from NS without veneer | `libs/ra8_nsc/` veneers + SAU config review                            |
 | Veneer set is closed (no unintentional NSC exposure)    | Linker-script review; `arm-none-eabi-nm` of the secure ELF             |
 | Secure faults trap to the secure exception handler      | Board defaults under `libs/ra8_board_*/src/boot/secure_exception.c`, ereader override, and smoke fault-injection |

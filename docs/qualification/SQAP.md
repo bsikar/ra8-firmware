@@ -33,11 +33,13 @@ independence is **out of scope, permanently**, per
 third-party assessor engagement is not pursued). The mitigation,
 recorded throughout the planning document family, is:
 
-1. **Automated gates as the primary SQA control.** The pre-commit
-   hook (the `pre-commit-checks` CI gate) and CI workflow
-   (`.github/workflows/firmware.yml`) execute identical checks on
-   every change irrespective of authorship. Automation is the
-   independent reviewer in lieu of a separate person.
+1. **Automated gates as the primary SQA control.** The gates that
+   survive on dev (`clang-format`, `tools/roadmap_stats --check`, the
+   `scripts/checks/` suite, and the `regen-drift` CI workflow) execute
+   on every change irrespective of authorship. Automation is the
+   independent reviewer in lieu of a separate person; the pre-commit
+   hook suite and the former `firmware.yml` jobs are removed and are
+   re-establishment items.
 2. **Manual review as the secondary control.** Where a check cannot
    be automated (architectural review, deviation acceptance, SOUP
    re-review), the reviewer-equals-author posture is recorded as a
@@ -57,8 +59,9 @@ The single developer holds:
   `docs/STYLE_GUIDE.md`).
 - Acceptance authority over individual PRs.
 - Stop-work authority (refusing to land a PR with red gates).
-- Deviation-acceptance authority (recorded inline in
-  `docs/qualification/MISRA_DEVIATIONS.md` and similar registers).
+- Deviation-acceptance authority (recorded inline in the SRS
+  requirement rows; the `MISRA_DEVIATIONS.md` register was removed
+  from dev).
 
 When the assessor role is filled the authority for deviation
 acceptance and final acceptance transitions to the assessor;
@@ -78,15 +81,15 @@ tools, all of which run on every commit and every PR:
 | Audit                                | Tool / artifact                                                                  |
 |--------------------------------------|----------------------------------------------------------------------------------|
 | Roadmap progress audit               | `tools/roadmap_stats --check` (refuses stale ROADMAP summaries)                   |
-| Pre-commit gate audit                | the `pre-commit-checks` CI gate exit status; CI mirror in `pre-commit-checks` job       |
-| Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
-| MISRA-C 2012 process audit           | `just quality::local::misra` quarterly + `docs/MISRA.md` baseline table          |
-| World-tag (architecture) audit       | `scripts/checks/check_world_tags.py`                                              |
-| Obsolete-standards audit             | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) |
-| MC/DC vector pattern audit on tests  | `scripts/checks/check_mcdc_block.py`                                              |
-| HUM citation audit                   | `scripts/checks/cite_check.py`                                                    |
-| Doxygen `@since` audit               | `ra8ci since`                                           |
-| Copyright header audit               | `scripts/checks/check-copyright.py`                                               |
+| Pre-commit gate audit                | suspended: the hook suite was removed from dev; per-commit audits are local (`scripts/checks/`) |
+| Coding-standard audit                | `clang-format` (`.clang-format`); clang-tidy and cppcheck are not on dev         |
+| MISRA-C 2012 process audit           | suspended: `docs/MISRA.md` and the MISRA gate were removed from dev              |
+| World-tag (architecture) audit       | suspended: `check_world_tags.py` was removed from dev                             |
+| Obsolete-standards audit             | suspended: `check_obsolete_standards.py` was removed from dev                     |
+| MC/DC vector pattern audit on tests  | suspended: `check_mcdc_block.py` was removed from dev                             |
+| HUM citation audit                   | suspended: `cite_check.py` was removed from dev                                   |
+| Doxygen `@since` audit               | suspended: no tool on dev since the ra8ci gate was removed                        |
+| Copyright header audit               | suspended: `check-copyright.py` was removed from dev                              |
 
 A failed gate is the audit finding. The CI log is the audit record;
 the corrective-action loop is the developer's response on the same
@@ -99,12 +102,12 @@ Product audits are the periodic refresh of the gap registers:
 
 | Audit                  | Refresh tool / artifact                                                  | Cadence              |
 |------------------------|--------------------------------------------------------------------------|----------------------|
-| Doxygen completeness   | `scripts/checks/doxy_audit.py` -> `build/reports/doxygen/` | Per release    |
-| MC/DC coverage         | `just quality::local::mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
-| MISRA conformance      | `just quality::local::gate misra` -> `build/misra/results.txt` + `.github/misra-baseline.txt` ratchet | Quarterly |
-| Stack usage            | `just quality::local::stack_usage` -> `build/stack_usage.csv`                     | Per release          |
+| Doxygen completeness   | suspended: `doxy_audit.py` and the Doxygen gate were removed from dev | — |
+| MC/DC coverage         | suspended: the `-fcoverage-mcdc` gate and its gap register were removed from dev | — |
+| MISRA conformance      | suspended: the MISRA gate, its baseline and `docs/MISRA.md` were removed from dev | — |
+| Stack usage            | `scripts/checks/stack_usage_check.py` -> `docs/STACK_USAGE.md` (the `quality::` just wrappers were removed) | Per release |
 | SOUP register          | Per-component review under `docs/SOUP/<name>.md`                         | At most 12 months per file |
-| Hardware-smoke results | `just hil::run` console/CI log + `/tmp/hil_all_*` diagnostics             | Pre-push or manual HIL workflow (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
+| Hardware-smoke results | direct bench run (the guarded-workflow document was removed from dev)     | Pre-push or manual |
 
 The refresh cadence is the project's product-audit cadence. A stale
 gap register is itself a finding.
@@ -115,14 +118,13 @@ Per DO-178C 8.2 the SQA function performs a conformance review
 before each baseline release. The review confirms:
 
 - The CI on the release commit was green end-to-end.
-- The MC/DC baseline at `.github/mcdc-baseline.txt` was respected.
-- The MISRA deviation register
-  (`docs/qualification/MISRA_DEVIATIONS.md`) covers every
-  outstanding finding.
+- MC/DC is currently unmeasured on dev (the gate and its baseline were removed).
+- The MISRA deviation register was removed from dev; deviations are
+  recorded in the SRS requirement rows.
 - The SOUP register entries are within the 12-month re-review
   window.
-- The Doxygen, MC/DC, MISRA, and stack-usage evidence is refreshed for the
-  release candidate and retained in the release evidence pack.
+- Stack-usage evidence is refreshed for the release candidate; Doxygen,
+  MC/DC and MISRA evidence is currently unmeasured on dev.
 
 The conformance-review checklist will be added under
 `docs/qualification/release/<tag>/conformance.md` at the time of
@@ -163,49 +165,30 @@ a phase complete.
 The audits below run automatically on every commit and every PR,
 producing an audit trail without manual SQA intervention.
 
-### 3.1 Per-commit audits (pre-commit hook)
+### 3.1 Per-commit audits
 
-The hook at the `pre-commit-checks` CI gate runs the following audits in
-sequence and refuses the commit on any failure:
-
-1. ASCII-only source-file check.
-2. C23 pattern enforcement (no `_Static_assert`, no `= {0}`, no
-   `<stdbool.h>`).
-3. Defensive-paren on numeric `#define` values.
-4. `clang-format` (no diff).
-5. `clang-tidy` (no warnings, NASA P10 Rule 4 LineThreshold = 60).
-6. `cppcheck` warning/style/performance/portability.
-7. `@since` Doxygen tag enforcement on public headers.
-8. Copyright + SPDX header enforcement.
-9. HUM citation validator (`cite_check.py --strict`).
-10. World-tag validator (`check_world_tags.py --strict`).
-11. ROADMAP summary freshness (`roadmap_stats --check`, strict).
-12. Obsolete-standards reference scan (rejects superseded
-    safety-standard references, strict).
-13. `@par MC/DC:` block on staged tests
-    (`check_mcdc_block.py`).
+The pre-commit hook suite (`.pre-commit-config.yaml` and the
+`pre-commit-checks` CI gate) was removed from dev. The per-commit
+enforcement that survives is local and partial: `clang-format`
+(`.clang-format`), ROADMAP summary freshness (`tools/roadmap_stats
+--check`), and the `scripts/checks/` suite (file size, comment format,
+freestanding runtime and allocator isolation, RTOS symbol isolation, SG
+offsets, tool versions, lint targets, stack usage, init-order audit).
+The removed audits (ASCII scan, C23 and defensive-paren patterns,
+clang-tidy, cppcheck, `@since`, copyright/SPDX, HUM citations, world
+tags, obsolete standards, MC/DC blocks) currently have no tool on dev;
+re-establishing them is a qualification gap, not a silently-passed
+check.
 
 ### 3.2 Per-PR audits (CI workflow)
 
-`.github/workflows/firmware.yml` runs the following jobs and blocks
-merge on any failure:
-
-| Job                  | Purpose                                                                         |
-|----------------------|----------------------------------------------------------------------------------|
-| `ascii`              | Repository-wide ASCII scan.                                                     |
-| `copyright`          | Repository-wide copyright header scan.                                          |
-| `since`              | `@since` tag enforcement on every public header.                                |
-| `format`             | `clang-format --check`.                                                         |
-| `tidy`               | `clang-tidy --check`.                                                           |
-| `unit-tests`         | Host unit tests via ctest.                                                      |
-| `coverage`           | Whole-tree gcovr gate (`just quality::gate::run coverage-tree`).                |
-| `mcdc`               | clang-18 `-fcoverage-mcdc` gate against `.github/mcdc-baseline.txt`.            |
-| `pre-commit-checks`  | Repository-wide mirror of the per-commit hook.                                  |
-| `build-discover`     | Enumerates example apps for matrix build.                                       |
-| `build-cross`        | Cross-build every example with arm-none-eabi-gcc.                               |
-| `docs`               | Doxygen warning gate.                                                           |
-| `cppcheck`           | Repository-wide cppcheck.                                                       |
-| `coverage-comment`   | PR-only per-file MC/DC delta comment.                                           |
+`.github/workflows/regen-drift.yml` is the only workflow on dev: it
+re-runs the regenerators and fails on drift. The former `firmware.yml`
+job suite (ascii, coverage, mcdc, docs/doxygen, cppcheck, build-cross,
+unit-tests, pre-commit-checks, coverage-comment) was removed from dev.
+Per-PR verification is currently local: `tests/build_tests.sh` +
+`tests/run_tests.sh` and the `scripts/checks/` suite. The job table
+below is therefore retired with the workflow.
 
 ### 3.3 Audit-finding handling
 
@@ -246,13 +229,7 @@ before the SAS is signed. For this project:
 | Audit trail of all changes      | `git log` on the GitHub remote                                      | Indefinite                           |
 | Per-PR review history           | GitHub PR conversation                                              | Indefinite (GitHub default)          |
 | CI run logs                     | GitHub Actions run history                                          | 90 days (GitHub default)             |
-| Coverage HTML report            | Uploaded by `coverage` job                                          | 14 days (configured retention)       |
-| MC/DC report                    | Uploaded by `mcdc` job                                              | 14 days (configured retention)       |
-| MISRA audit baseline            | `.github/misra-baseline.txt` + `docs/MISRA.md`                      | Versioned in git, indefinite         |
-| MC/DC measurement history       | `docs/MCDC.md` measurement-history table                            | Versioned in git, indefinite         |
-| Doxygen completeness gap list   | `build/reports/doxygen/` during a run; copied into the release evidence pack | Per-run artifact; release pack indefinite |
 | Stack-usage report              | `build/stack_usage.csv` (regenerated) + `docs/STACK_USAGE.md` table | Tables versioned, raw rebuilt        |
-| MISRA deviation register        | `docs/qualification/MISRA_DEVIATIONS.md`                            | Versioned in git, indefinite         |
 | SOUP qualification basis        | `docs/SOUP/<name>.md` per component                                 | Versioned in git, indefinite         |
 | Per-release audit pack          | `docs/qualification/release/<tag>/` (planned)                       | Versioned in git, indefinite         |
 
@@ -289,12 +266,13 @@ must outlive the CI window.
 - `docs/QUALIFICATION_ROADMAP.md` -- phase plan and gap analysis.
 - `docs/qualification/SVP.md` -- verification objectives.
 - `docs/qualification/SCMP.md` -- configuration management.
-- `docs/qualification/MISRA_DEVIATIONS.md` -- MISRA deviation
-  register.
+- the SRS requirement rows -- where MISRA deviations are recorded now
+  (the `MISRA_DEVIATIONS.md` register was removed from dev).
 - `docs/qualification/TOOL_QUALIFICATION.md` -- tool TQL dossier.
 - `docs/SOUP/` -- pre-existing software register.
-- the `pre-commit-checks` CI gate -- authoritative pre-commit gate suite.
-- `.github/workflows/firmware.yml` -- authoritative CI gate suite.
+- `.github/workflows/regen-drift.yml` -- the only CI workflow on dev
+  (the pre-commit hook suite and the former `firmware.yml` were removed
+  from dev; re-establishing them is a qualification gap).
 - IEC 61508-3:2010 Clause 6.2.5 and IEC 61508-1:2010 Clause 8.2.
 - RTCA DO-178C:2011 Sections 8 and 11.5.
 - ISO 26262-2:2018 Clause 5 and ISO 26262-8:2018 Clause 5.

@@ -91,7 +91,7 @@ The canonical EK-RA8D2 defaults are under
 
 | Path                              | Description                                                  |
 |-----------------------------------|--------------------------------------------------------------|
-| `tests/CMakeLists.txt`            | Host test build configuration; gates MC/DC instrumentation.  |
+| `tests/CMakeLists.txt`            | Host test build configuration.  |
 | `tests/build_tests.sh`            | Host-test build entry point.                                 |
 | `tests/run_tests.sh`              | Host-test execution entry point (ctest).                     |
 | Distributed test sources         | Dated 2026-08-22 snapshot: 693 files (689 C, 4 C++), 689 registrations on clean standalone macOS and Linux, and 689/689 passing in the Linux/devcontainer gate in 8.66 s. This is retained historical evidence, not the current-tree census; macOS execution was not claimed. |
@@ -100,22 +100,17 @@ The canonical EK-RA8D2 defaults are under
 
 | Path                                       | Description                                          |
 |--------------------------------------------|------------------------------------------------------|
-| `scripts/report/mcdc_report.sh`             | MC/DC measurement and gate.                          |
-| `scripts/checks/misra_check_inner.sh`             | MISRA-C 2012 advisory audit.                         |
 | `scripts/checks/stack_usage_check.py`       | Stack-bound aggregator.                              |
-| `scripts/checks/cite_check.py`              | HUM citation validator.                              |
-| `scripts/checks/check_world_tags.py`        | TrustZone world-tag enforcement.                     |
-| `scripts/checks/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
-| `scripts/checks/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
-| `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
-| `ra8ci since`     | Doxygen `@since` enforcement.                        |
-| `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
 | `tools/roadmap_stats`                       | `../ROADMAP.md` summary block freshness gate.        |
-| `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |
-| `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
-| `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
+
+The removed rows of this table named tooling that is not on dev
+(MC/DC and tree-coverage measurement, the MISRA audit, the citation,
+world-tag, obsolete-standards, dynamic-alloc and MC/DC-block validators,
+the `@since` and copyright scanners, the clang-tidy wrapper, and the
+pre-commit gate suite): those audits currently have no tool on dev and
+are re-establishment items.
+
 | `scripts/dev/flash.sh`                         | J-Link flash wrapper (HW operations).                |
-| the `pre-commit-checks` CI gate                   | Pre-commit hook (the authoritative gate suite).      |
 
 ### 1.6 Documentation
 
@@ -125,8 +120,6 @@ The canonical EK-RA8D2 defaults are under
 | `docs/STYLE_GUIDE.md`             | Authoritative human-facing style guide.                      |
 | `docs/RING_AND_WORLD.md`          | Architectural-ring and TrustZone-world tagging system.       |
 | `docs/MEMORY_MAP.md`              | Linker memory map.                                           |
-| `docs/MCDC.md`, `docs/MCDC_GAPS.md` | MC/DC infrastructure and gap list.                         |
-| `docs/MISRA.md`, `.github/misra-baseline.txt` | MISRA-C 2012 audit policy and baseline.              |
 | `docs/STACK_USAGE.md`             | Stack-bound analysis.                                        |
 | `docs/HARDWARE_BRINGUP.md`        | EVM bring-up + smoke procedure.                              |
 | `docs/QUALIFICATION_ROADMAP.md`   | Phase plan to SIL 3 / DAL B.                                 |
@@ -153,13 +146,14 @@ component is vendored at the exact version recorded in its
 
 | Path                              | Description                                                  |
 |-----------------------------------|--------------------------------------------------------------|
-| `.github/workflows/firmware.yml`  | Primary CI workflow (build, test, MC/DC, coverage, lint).    |
-| `.github/mcdc-baseline.txt`       | Pinned MC/DC baseline (regression gate).                     |
+| `.github/workflows/regen-drift.yml` | The only CI workflow on dev (regen-drift gate).             |
 | `.clang-format`                   | Formatter configuration.                                     |
-| `.clang-tidy`                     | Linter configuration (NASA P10 Rule 4 thresholds).           |
 | `.clangd`                         | Editor integration; strips ARM-only flags.                   |
-| `.cppcheck-suppressions`          | MISRA deviation justifications inline.                       |
 | `.editorconfig`, `.gitattributes`, `.gitignore` | Repository hygiene.                            |
+
+The removed CI configuration (`.github/workflows/firmware.yml`,
+`.github/mcdc-baseline.txt`, `.clang-tidy`, `.cppcheck-suppressions`)
+is not on dev; its gates are re-establishment items.
 
 ---
 
@@ -198,53 +192,38 @@ component is vendored at the exact version recorded in its
 - Force-push to `dev` or `main` is **forbidden**.
 - Force-push to topic branches before merge is permitted.
 
-### 2.4 Pre-commit gate (authoritative configuration of "what cannot land")
+### 2.4 Per-commit gates (current configuration of "what cannot land")
 
-The hook at the `pre-commit-checks` CI gate enforces the following gates on
-every commit. Failure of any gate refuses the commit:
+The pre-commit hook suite (`.pre-commit-config.yaml` and the
+`pre-commit-checks` CI gate) was removed from dev. The per-commit
+enforcement that survives is local and partial:
 
-1. ASCII-only source files (`ra8ci ascii`).
-2. C23 patterns: no `_Static_assert`, no `= {0}`, no `#include
-   <stdbool.h>`.
-3. Defensive-paren on numeric `#define` values.
-4. `clang-format` (no diff).
-5. `clang-tidy` (no warnings).
-6. `cppcheck` warning/style/performance/portability (production
-   files only).
-7. Doxygen `@since` tag enforcement on public headers.
-8. Copyright + SPDX header enforcement.
-9. HUM citation validator (`cite_check.py --strict`).
-10. World-tag validator (`check_world_tags.py --strict`).
-11. ROADMAP summary freshness (`roadmap_stats --check`, strict).
-12. Obsolete-standards reference scan (rejects superseded
-    safety-standard references, strict).
-13. `@par MC/DC:` block on staged tests
-    (`check_mcdc_block.py`).
+1. `clang-format` (`.clang-format`, no diff).
+2. ROADMAP summary freshness (`tools/roadmap_stats --check`).
+3. The `scripts/checks/` suite (file size, comment format, freestanding
+   runtime and allocator isolation, RTOS symbol isolation, SG offsets,
+   tool versions, lint targets, stack usage, init-order audit).
 
-The hook is mirrored by CI; it is the developer's responsibility not to
-bypass the local installation.
+The removed gates (ASCII scan, C23 and defensive-paren patterns,
+clang-tidy, cppcheck, `@since`, copyright/SPDX, HUM citations, world
+tags, obsolete standards, MC/DC blocks) currently have no tool on dev;
+re-enforcing them is a re-establishment item, not a silently-passed
+check.
 
-### 2.5 CI gate (authoritative configuration of "what cannot merge")
+### 2.5 CI gate (current configuration of "what cannot merge")
 
-`.github/workflows/firmware.yml` mirrors the pre-commit suite and
-adds the heavier gates that are too slow for per-commit:
+`.github/workflows/regen-drift.yml` is the only workflow on dev: it
+re-runs the regenerators and fails on drift. The former `firmware.yml`
+gate suite (ASCII/copyright/`@since` scanners, clang-format/clang-tidy,
+host unit tests, the tree-coverage and MC/DC gates, the pre-commit
+mirror, the cross-build matrix, the Doxygen and cppcheck gates, the
+MC/DC delta comment) was removed from dev.
 
-1. ASCII, copyright, `@since` tag scanners (mirrors of pre-commit).
-2. clang-format, clang-tidy.
-3. Host unit tests (`unit-tests` job).
-4. Coverage gate (`just quality::gate::run coverage-tree`).
-5. MC/DC coverage gate against `.github/mcdc-baseline.txt`
-   (`mcdc` job).
-6. `pre-commit-checks` job (full mirror of the pre-commit hook).
-7. Cross-build matrix over every example app (`build-cross` job).
-8. Doxygen warning gate (`docs` job).
-9. cppcheck full-tree run (`cppcheck` job).
-10. PR-only MC/DC delta comment (`coverage-comment` job).
-
-A PR cannot be merged with any CI gate red. This is the binding
-configuration-control point.
-
----
+Today a PR cannot be merged with regen-drift red; the heavier gates are
+re-establishment items. Per-PR verification is currently local:
+`tests/build_tests.sh` + `tests/run_tests.sh` and the `scripts/checks/`
+suite. This section is the configuration-control point for what is
+actually enforced.
 
 ## 3. Problem reporting
 
@@ -345,9 +324,10 @@ Any update to a vendored library under `libs/third_party/` or
 When a release is cut, the procedure is:
 
 1. Update `CHANGELOG.md` with the release scope.
-2. Run `just quality::local::mcdc`, `just quality::local::misra`, `just quality::local::stack_usage`,
-   `just quality::local::test`, `just hil::run` and archive the reports under
-   `docs/qualification/release/<tag>/`.
+2. Run `scripts/checks/stack_usage_check.py` and `tests/build_tests.sh`
+   + `tests/run_tests.sh`, and archive the reports under
+   `docs/qualification/release/<tag>/` (the MC/DC, MISRA and HIL
+   reports have no tool on dev; re-establish them or record the gap).
 3. Tag the release: `git tag -s vX.Y.Z -m "Release X.Y.Z"`.
 4. Push the tag: `git push origin vX.Y.Z`.
 5. Update `docs/qualification/SAS.md` to cite the new tag.
@@ -358,10 +338,9 @@ documented at the time of the first signed release.
 ### 5.3 Reporting cadence
 
 - Per-PR: CI logs (automatic, persisted by GitHub).
-- Per quarter: re-run `just quality::local::gate misra`, review the ratcheted
-  `.github/misra-baseline.txt`, and re-stamp `docs/MISRA.md` audit table.
-- Per quarter: re-run `just quality::local::mcdc`, refresh `docs/MCDC_GAPS.md`,
-  re-stamp `docs/MCDC.md` measurement-history table.
+- Per quarter: the MISRA and MC/DC re-audits are suspended on dev (the
+  gates, baselines and registers were removed); re-establish them or
+  record the gap.
 - Per release: full audit-pack regeneration (Section 5.2).
 
 ---
@@ -376,9 +355,9 @@ documented at the time of the first signed release.
   `apps/shared_libs/third_party/` are checked into the same repository so that
   a single `git clone` retrieves the full build configuration. There is no
   external dependency fetch at build time.
-- CI artifacts: `coverage-html` and `mcdc-report` archives uploaded
-  per CI run with **14-day retention** (per `.github/workflows/firmware.yml`). For
-  qualification claims, CI artifacts will be re-archived under
+- CI artifacts: the `coverage-html` and `mcdc-report` archives belonged
+  to the removed `firmware.yml` suite and are not produced today. For
+  qualification claims, artifacts will be re-archived under
   `docs/qualification/release/<tag>/` at release time.
 - Reference manuals: Renesas datasheets and HUM committed under
   `docs/reference/` so they are always retrievable from the same
@@ -393,7 +372,8 @@ A bit-exact rebuild of any historical state is achieved by:
 3. Reproduce the CI environment through the Ansible-provisioned runner or the
    digest-pinned `.devcontainer/Dockerfile`; Python dependencies resolve from
    `pyproject.toml` and `uv.lock`.
-4. `just apps::build <app>` to cross-build, or `just quality::local::test` to host-test.
+4. `just apps::build <app>` to cross-build, or `tests/build_tests.sh` +
+   `tests/run_tests.sh` to host-test.
 
 ### 6.3 Retention
 
@@ -445,9 +425,9 @@ foundation).
 
 ### 8.1 Toolchain pinning
 
-The CI workflow `.github/workflows/firmware.yml`, the checked-in
-`.devcontainer/Dockerfile`, and the canonical helpers under `scripts/ci/`
-control the toolchain. The managed set includes:
+The checked-in `.devcontainer/Dockerfile` controls the toolchain (the
+removed `firmware.yml` and the absent `scripts/ci/` helpers are not on
+dev). The managed set the container ships includes:
 
 - `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi` (cross compiler).
 - `clang-18`, `llvm-18`, `libclang-rt-18-dev` (host MC/DC chain).
@@ -456,6 +436,10 @@ control the toolchain. The managed set includes:
 - `cmake`, `ninja-build`, `gcc` (build orchestration).
 - `doxygen`, `graphviz` (docs gate).
 - `gcovr` (coverage gate, synchronized from `pyproject.toml` and `uv.lock`).
+
+The MC/DC chain, clang-tidy, cppcheck, gcovr and Doxygen ship in the
+container, but no dev gate consumes them today; those gates are
+re-establishment items.
 
 Any toolchain bump updates its authoritative pin and follows the same PR + CI
 gating as a code change.
@@ -475,10 +459,9 @@ by the Just devcontainer recipes.
   changes are reviewed through the workflow schedules, Ansible roles, and the
   runner-image dependency gate.
 - HW-in-the-loop runner: dedicated native dev-box listener with an isolated
-  SSH identity to the Raspberry Pi 5 rig. HIL-relevant pushes and trusted
-  same-repository PRs schedule through `.github/workflows/hil.yml`; fork PRs are excluded and
-  local selected-app runs remain available to HIL-equipped developers
-  (`docs/HIL_DEVELOPER_WORKFLOW.md`).
+  SSH identity to the Raspberry Pi 5 rig. The `hil.yml` workflow and the
+  guarded-workflow document were removed from dev; HIL runs are direct
+  bench runs on HIL-equipped machines today.
 
 ---
 
@@ -488,8 +471,9 @@ by the Just devcontainer recipes.
   no-AI-attribution policy, zero-backward-compatibility policy.
 - `docs/QUALIFICATION_ROADMAP.md` -- phase plan and gap analysis.
 - `docs/SOUP/` -- pre-existing software register.
-- the `pre-commit-checks` CI gate -- authoritative pre-commit gate suite.
-- `.github/workflows/firmware.yml` -- authoritative CI gate suite.
+- `.github/workflows/regen-drift.yml` -- the only CI workflow on dev
+  (the pre-commit hook suite and the former `firmware.yml` were removed
+  from dev; re-establishing them is a qualification gap).
 - IEC 61508-3:2010 Clause 6.2.3.
 - RTCA DO-178C:2011 Sections 7 and 11.4.
 - ISO 26262-8:2018 Clause 7.
