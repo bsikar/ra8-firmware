@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `battery_monitor_demo`. All build logic lives in the shared
-# cmake/ra8_add_app.cmake recipe; this file only names the app. The SMBus
-# protocol layer (ra8_smbus) and its IIC_B transport (ra8_i3c) live in ra8_hal,
+# cmake/ra8_add_app.cmake recipe; this file only names the app. The fuel-gauge
+# device layer (ra8_fuelgauge) and its IIC_B transport (ra8_i3c) live in ra8_hal,
 # which the recipe links into every app; the low-battery nag policy is the
 # first-party ra8_batt library, pulled in via LIBS.
 #

@@ -27,7 +27,9 @@ and the read is best-effort, so a board with no card simply falls back. The
 whole pipeline is heap-free -- a glyph arena plus a no-heap tokenizer.
 
 The chrome also reads a MAX17048-class fuel gauge (7-bit address `0x36`) over
-the same I2C bus the touch controller uses, folds the state of charge into the
+the same I2C bus the touch controller uses -- through the shared
+`ra8_fuelgauge` device layer rather than raw `ra8_i3c` register reads, so no
+app code encodes the part's register map -- folds the state of charge into the
 `ra8_batt` nag policy, and draws a persistent low-battery banner over whichever
 screen is active, clearing once the battery recovers or is charging. A stock EVM
 with no gauge fitted shows no banner.

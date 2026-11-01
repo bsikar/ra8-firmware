@@ -7,14 +7,13 @@
  *
  * @details
  * Reads battery **state-of-charge** + **charge direction** from a MAX17048-class
- * I2C fuel gauge (7-bit address 0x36) on the MikroBUS / Pmod1 IIC_B bus and
- * reports them on the SCI8 console once a second:
- *
- *   - **SOC** (register 0x04): the high byte is the integer percent, so a single
- *     SMBus Read-Byte-Data of 0x04 yields the battery % directly.
- *   - **CRATE** (register 0x16): a signed charge rate. Its high byte's sign bit
- *     is 0 while charging (positive rate) and 1 while discharging (negative), so
- *     reading the high byte tells the charge direction.
+ * fuel gauge (7-bit address 0x36) on the MikroBUS / Pmod1 IIC_B bus and reports
+ * them on the SCI8 console once a second. The MAX17048 register map lives in the
+ * shared ra8_fuelgauge device layer (libs/ra8_hal, RA8FW-311): the app opens one
+ * gauge handle over the injected Ring-3 I2C seam and takes one
+ * ::ra8_fuelgauge_read sample per poll (VCELL, SOC and CRATE decoded), so no
+ * app code encodes the part's registers (the old SMBus Read-Byte-Data of 0x04
+ * and the hand-written CRATE sign decode are gone with it).
  *
  * Each second: ``battery: soc=NN% chg=Y/N PASS``. Each reading is also folded
  * into the ``ra8_batt`` nag policy, which prints a one-shot ``battery: NAG LOW``
@@ -45,6 +44,7 @@
 #include "ra8_cgc.h"
 #include "fw_if_clock.h"
 #include "ra8_err.h"
+#include "ra8_fuelgauge.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
 #include "ra8_io_i2c_bus.h"
@@ -53,7 +53,6 @@
 #include "ra8_mstp.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
-#include "ra8_smbus.h"
 #include "ra8_time.h"
 
 /** @enum bm_consts_t @brief Console / bus / fuel-gauge knobs (no magic numbers). */
@@ -66,10 +65,6 @@ typedef enum : uint32_t {
   k_bm_iic_chan = k_ra8_board_mikrobus_iic_b_channel,
   /** Poll period. */
   k_bm_period_ms  = 1000U,
-  k_bm_fg_addr    = 0x36U, /**< MAX17048 7-bit I2C address.                 */
-  k_bm_reg_soc    = 0x04U, /**< SOC register (high byte = integer percent). */
-  k_bm_reg_crate  = 0x16U, /**< CRATE register (signed charge rate).        */
-  k_bm_sign_mask  = 0x80U, /**< High-byte sign bit (1 = negative).          */
   k_bm_soc_max    = 100U,  /**< SOC clamp for display.                      */
   k_bm_dec_ten    = 10U,   /**< Decimal base.                               */
   k_bm_dec_digits = 3U,    /**< Max decimal digits for a 0..100 value.      */
@@ -92,6 +87,18 @@ static const ra8_port_pin_t k_bm_pin_sda = (ra8_port_pin_t)k_ra8_board_mikrobus_
  * @since 0.1.0
  */
 static ra8_io_i2c_bus_t s_bm_bus;
+
+/**
+ * @var s_bm_fg
+ * @brief Open fuel-gauge handle (::ra8_fuelgauge_t) over the bound bus.
+ *
+ * @details
+ * File-scope because the handle latches the seam for the whole run.
+ *
+ * @note Written once by ::ra8_fuelgauge_open at bring-up, then read-only.
+ * @since 0.1.0
+ */
+static ra8_fuelgauge_t s_bm_fg;
 
 static const uint8_t k_msg_boot[]     = "battery-monitor: boot\r\n";
 static const uint8_t k_msg_fail[]     = "battery-monitor: FAIL init\r\n";
@@ -222,32 +229,28 @@ static void bm_setup_or_halt(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Read SOC + the CRATE-sign from the fuel gauge; halt on a bus NAK.
+ * @brief Take one sample from the fuel gauge; halt on a bus NAK.
  *
- * @param[out] out_soc 1-byte SOC high byte = integer percent (clamped to 100).
- * @param[out] out_chg 1 when the CRATE high byte's sign bit is clear (charging).
+ * @param[out] out_soc Integer SOC percent, clamped to ::k_bm_soc_max.
+ * @param[out] out_chg 1 when the gauge reports a non-negative (charging) rate.
  *
- * @note Charge decode is a single condition: CRATE high-byte bit 7 clear means a
- * positive (charging) rate. Not a compound boolean decision, so no MC/DC vector
- * set applies; the path is exercised by the ra8_emulator gate, not a host test.
+ * @note Charge direction is decoded by the ra8_fuelgauge driver from the signed
+ * CRATE register -- bit-for-bit the high-byte sign-bit test the app used to
+ * write by hand (see ra8_fuelgauge.h). Not a compound boolean decision here, so
+ * no MC/DC vector set applies; the path is exercised by the ra8_emulator gate.
  *
- * @pre ::ra8_smbus_init succeeded.
+ * @pre ::ra8_fuelgauge_open succeeded.
  * @post ``*out_soc`` / ``*out_chg`` reflect the fuel gauge; halts on NAK.
  * @since 0.1.0
  */
 static void bm_read_or_halt(uint8_t* out_soc, uint8_t* out_chg)
 {
-  uint8_t soc = 0U;
-  if (ra8_smbus_read_byte_data((uint8_t)k_bm_fg_addr, (uint8_t)k_bm_reg_soc, &soc) != k_ra8_ok) {
+  ra8_fuelgauge_state_t st = {};
+  if (ra8_fuelgauge_read(&s_bm_fg, &st) != k_ra8_ok) {
     bm_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }
-  uint8_t crate_hi = 0U;
-  if (ra8_smbus_read_byte_data((uint8_t)k_bm_fg_addr, (uint8_t)k_bm_reg_crate, &crate_hi) !=
-      k_ra8_ok) {
-    bm_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
-  }
-  *out_soc = (soc > (uint8_t)k_bm_soc_max) ? (uint8_t)k_bm_soc_max : soc;
-  *out_chg = ((crate_hi & (uint8_t)k_bm_sign_mask) == 0U) ? 1U : 0U;
+  *out_soc = (st.soc_pct > (uint8_t)k_bm_soc_max) ? (uint8_t)k_bm_soc_max : st.soc_pct;
+  *out_chg = st.charging ? 1U : 0U;
 }
 
 void main(void)
@@ -258,7 +261,7 @@ void main(void)
   bm_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
-   * ra8_io facade into the SMBus layer's injected seam. A future board
+   * ra8_io facade into the fuel gauge's injected seam. A future board
    * revision that moves the bus onto a RIIC channel only swaps the bind. */
   const ra8_i3c_cfg_t iic_cfg = {.mode     = k_ra8_i3c_mode_i2c,
                                  .bus_hz   = (uint32_t)k_bm_bus_hz,
@@ -274,9 +277,10 @@ void main(void)
     bm_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 
-  const ra8_smbus_cfg_t cfg = {.bus = bus_ops, .pec_enabled = false};
-  if (ra8_smbus_init(&cfg) != k_ra8_ok) {
-    bm_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  const ra8_fuelgauge_cfg_t fg_cfg = {.bus       = bus_ops,
+                                      .target_7b = k_ra8_fuelgauge_default_addr_7b};
+  if (ra8_fuelgauge_open(&s_bm_fg, &fg_cfg) != k_ra8_ok) {
+    bm_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }
 
   ra8_batt_monitor_t nag_mon;
