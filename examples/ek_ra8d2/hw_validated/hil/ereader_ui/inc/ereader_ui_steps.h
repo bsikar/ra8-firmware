@@ -177,22 +177,6 @@ typedef enum : uint8_t {
 } er_touch_cfg_t;
 
 /**
- * @enum er_fg_cfg_t
- * @brief MAX17048-class fuel gauge wiring (shares the touch IIC_B bus).
- *
- * @details The fuel gauge sits at 7-bit 0x36 on the same IIC_B channel 0 the
- * GT911 touch already brought up, so the battery is read with raw ra8_i3c
- * register reads (no second bus init). ra8_emulator models this gauge and drives
- * its SOC / CRATE from the on-screen battery slider.
- */
-typedef enum : uint8_t {
-  k_er_fg_addr      = 0x36U, /**< Fuel gauge 7-bit I2C address.         */
-  k_er_fg_reg_soc   = 0x04U, /**< SOC register (high byte = percent).   */
-  k_er_fg_reg_crate = 0x16U, /**< CRATE register (sign = charge dir).   */
-  k_er_fg_sign      = 0x80U, /**< CRATE high-byte sign bit (discharge). */
-} er_fg_cfg_t;
-
-/**
  * @enum er_nag_cfg_t
  * @brief Low-battery nag-banner geometry.
  */

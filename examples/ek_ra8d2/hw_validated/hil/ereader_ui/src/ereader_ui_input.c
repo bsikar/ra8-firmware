@@ -30,7 +30,10 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_i3c.h"
+#include "ra8_fuelgauge.h"
+#include "ra8_i2c_bus_ops.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_keyboard.h"
 #include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
@@ -294,19 +297,23 @@ static const char k_er_nag_crit_msg[] = "Battery critical ";
 /** @brief Trailing hint so the banner says how to close itself. */
 static const char k_er_nag_hint[] = "  (tap to dismiss)";
 
-/** @brief Best-effort read of one fuel-gauge register on the touch IIC_B bus. */
-static bool er_fg_read(uint8_t reg, uint8_t* out)
-{
-  if (out == nullptr) {
-    return false;
-  }
-  if (ra8_i3c_write((uint8_t)k_er_touch_channel, (uint8_t)k_er_fg_addr, &reg, 1U, true) !=
-      k_ra8_ok) {
-    return false;
-  }
-  return (ra8_i3c_read((uint8_t)k_er_touch_channel, (uint8_t)k_er_fg_addr, out, 1U, false) ==
-          k_ra8_ok);
-}
+/**
+ * @var s_fg
+ * @brief Open fuel-gauge handle over the touch IIC_B bus (GT911's channel).
+ *
+ * @details
+ * The gauge sits at 7-bit 0x36 on the same IIC_B channel 0 the GT911 touch
+ * already brought up, so the battery is read through the shared ra8_fuelgauge
+ * driver (libs/ra8_hal, RA8FW-311) over the Ring-3 I2C seam bound to that
+ * channel -- no second bus init, and no app code encodes the MAX17048 register
+ * map. ra8_emulator models this gauge and drives its SOC / CRATE from the
+ * on-screen battery slider. File-scope because the handle latches the seam for
+ * the whole run.
+ */
+static ra8_fuelgauge_t s_fg = {};
+
+/** @brief True once the gauge answered its VERSION probe; false = absent. */
+static bool s_fg_ready = false;
 
 /** @brief Read SOC + charge direction from the fuel gauge; false if absent (NAK). */
 static bool er_read_battery(uint8_t* soc, bool* charging)
@@ -314,16 +321,29 @@ static bool er_read_battery(uint8_t* soc, bool* charging)
   if ((soc == nullptr) || (charging == nullptr)) {
     return false;
   }
-  uint8_t pct      = 0U;
-  uint8_t crate_hi = 0U;
-  if (!er_fg_read((uint8_t)k_er_fg_reg_soc, &pct)) {
-    return false;
+  if (!s_fg_ready) {
+    /* Open lazily on the first poll: the touch bring-up owns the bus init, so
+     * the gauge just binds the same channel. A failed open means no gauge is
+     * fitted (or the bus is dead); stay best-effort, no banner. */
+    ra8_io_i2c_bus_t bus = {};
+    ra8_i2c_bus_ops_t ops = {};
+    if ((ra8_io_i2c_bus_bind_i3c_compat(&bus, (uint8_t)k_er_touch_channel) != k_ra8_ok) ||
+        (ra8_io_i2c_bus_as_ops(&bus, &ops) != k_ra8_ok)) {
+      return false;
+    }
+    const ra8_fuelgauge_cfg_t cfg = {.bus       = ops,
+                                     .target_7b = k_ra8_fuelgauge_default_addr_7b};
+    if (ra8_fuelgauge_open(&s_fg, &cfg) != k_ra8_ok) {
+      return false;
+    }
+    s_fg_ready = true;
   }
-  if (!er_fg_read((uint8_t)k_er_fg_reg_crate, &crate_hi)) {
-    return false;
+  ra8_fuelgauge_state_t st = {};
+  if (ra8_fuelgauge_read(&s_fg, &st) != k_ra8_ok) {
+    return false; /* transient bus error -> skip this poll, keep the old banner */
   }
-  *soc      = pct;
-  *charging = ((crate_hi & (uint8_t)k_er_fg_sign) == 0U);
+  *soc      = st.soc_pct;
+  *charging = st.charging;
   return true;
 }
 
@@ -627,7 +647,7 @@ void er_poll_buttons(void)
  */
 void er_poll_battery(void)
 {
-  /* Throttle: the gauge moves slowly and each read is two I2C transactions, so
+  /* Throttle: the gauge moves slowly and each sample is three register reads, so
    * polling it every frame dominated the loop (the GT911 touch read is the only
    * other per-frame I2C). Poll ~once a second so touch stays responsive. */
   static uint32_t s_skip = 0U;
