@@ -274,7 +274,7 @@ static ra8_err_t internal_emit_strip(zoom_view_t*       v,
 {
   RA8_RETURN_ON_ERROR(internal_fill_strip(v, ax, top, rows, cached_sy), s_tag, "strip fill");
   uint32_t packed_len = 0U;
-  RA8_RETURN_ON_ERROR(ra8_gfx_dither_gray8_to_gray4(v->scratch.strip,
+  RA8_RETURN_ON_ERROR(ra8_gfx_dither_gray8_to_gray4_tone(v->tone, v->scratch.strip,
                                                     v->dst.w,
                                                     rows,
                                                     v->anchor_x,
