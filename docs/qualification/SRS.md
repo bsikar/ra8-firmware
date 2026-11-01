@@ -112,8 +112,8 @@ objective map in the roadmap.
 The authoritative chip-level reference is the Renesas Hardware User's
 Manual (HUM) **R01UH1065EJ**, committed under
 [`../reference/`](../reference/). Every register-level requirement in
-Section 4 cites a HUM chapter via the source file's `@cite` doxygen
-tags, audited by `scripts/checks/cite_check.py`.
+Section 4 is grounded in the HUM chapters, with the manual committed
+under [`../reference/`](../reference/).
 
 ### 2.2 Memory map summary
 
@@ -223,7 +223,7 @@ target and on the host test runner.
 | REQ-CORE-009     | A central exception entry point SHALL exist for HardFault / BusFault / UsageFault / MemManage / SecureFault.                           | `libs/ra8_core/inc/ra8_exception.h`, `libs/ra8_core/src/ra8_exception.c` | `tests/misc/src/test_ra8_exception.c`      |
 | REQ-CORE-010     | A central error handler SHALL provide a single bottleneck (`ra8_error_handler`) that logs context and halts in a controlled way.        | `libs/ra8_core/inc/ra8_error_handler.h`, `libs/ra8_core/src/ra8_error_handler.c` | `tests/misc/src/test_ra8_error_handler.c` |
 | REQ-CORE-011     | An infrastructure init function SHALL bring up logging, time, pin validator, and register-protection before any HAL driver runs.        | `libs/ra8_core/inc/ra8_infrastructure.h`, `libs/ra8_core/src/ra8_infrastructure.c` | `tests/core/src/test_ra8_infrastructure.c` |
-| REQ-CORE-012     | A `sbrk` trap SHALL refuse all heap allocation requests at link time (NASA P10 Rule 3).                                                | `libs/ra8_core/src/ra8_sbrk_trap.c`                               | (compile-time) `scripts/checks/check_no_dynamic_alloc.py` |
+| REQ-CORE-012     | A `sbrk` trap SHALL refuse all heap allocation requests at link time (NASA P10 Rule 3).                                                | `libs/ra8_core/src/ra8_sbrk_trap.c`                               | (link-time via the trap) `scripts/checks/check_freestanding_runtime.py` (forbids `malloc`/`calloc`/`realloc` runtime symbols and checks the sbrk trap against the libnosys bump allocator) |
 | REQ-CORE-013     | A static stack-budget header SHALL declare per-task stack sizes in one place.                                                          | `libs/ra8_core/inc/ra8_stack_budget.h`                            | TBD (manual review against `docs/STACK_USAGE.md`) |
 | REQ-CORE-014     | All bit-shift / mask / GPIO constants used by Ring-2/3 code SHALL be declared as typed enums in a single core header per concern.       | `libs/ra8_core/inc/ra8_bit_constants.h`, `ra8_gpio_constants.h`, `ra8_port_constants.h`, `ra8_time_constants.h` | `tests/misc/src/test_ra8_bit_constants.c`, `tests/misc/src/test_ra8_port_constants.c` |
 
@@ -405,7 +405,7 @@ recorded.
 |------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
 | REQ-SAFE-001     | P10 Rule 1 -- no `goto`, `setjmp`/`longjmp`, recursion.                                              | clang-tidy + manual review (`CLAUDE.md` "NASA Power of 10")                                                    | TBD (lint-only)                                               |
 | REQ-SAFE-002     | P10 Rule 2 -- all loops carry a statically provable upper bound.                                     | clang-tidy LineThreshold = 60; manual review                                                                    | TBD                                                           |
-| REQ-SAFE-003     | P10 Rule 3 -- zero dynamic allocation after init.                                                    | `libs/ra8_core/src/ra8_sbrk_trap.c` + `scripts/checks/check_no_dynamic_alloc.py`                                  | (compile-time gate)                                           |
+| REQ-SAFE-003     | P10 Rule 3 -- zero dynamic allocation after init.                                                    | `libs/ra8_core/src/ra8_sbrk_trap.c` + `scripts/checks/check_freestanding_runtime.py`                                  | (compile-time gate)                                           |
 | REQ-SAFE-004     | P10 Rule 4 -- functions <= ~60 source lines.                                                         | `.clang-tidy` LineThreshold = 60                                                                               | (lint gate)                                                   |
 | REQ-SAFE-005     | P10 Rule 5 -- minimum 2 validation checks per function.                                                | `RA8_CHECK_*` macros in `libs/ra8_core/inc/ra8_check.h`                                                            | per-driver test files exercise the precondition path           |
 | REQ-SAFE-006     | P10 Rule 6 -- variables declared at the smallest possible scope.                                       | clang-tidy + manual review                                                                                       | TBD                                                           |
@@ -443,8 +443,8 @@ deviation mirrors continue at REQ-SAFE-021.
 
 | ID               | Requirement                                                                                          | Source                                                                                                          | Test / artefact                                       |
 |------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|
-| REQ-SAFE-016 | Every reachable first-party decision region SHALL have complete MC/DC per IEC 61508-3 Annex C / DO-178C 6.4.4.2; deactivated decision regions per DO-178C 6.4.4.3 are exempted. The candidate verdict and decision census are derived at gate time, never copied into this requirement. | `just quality::local::mcdc` driver `scripts/report/mcdc_report.sh`; deactivations in `docs/MCDC_DEACTIVATIONS.md` | Generated `docs/MCDC_GAPS.md` and build summary; gate at `.github/mcdc-baseline.txt` |
-| REQ-SAFE-017     | First-party coverage SHALL be judged one translation unit at a time against `.github/tree-coverage-baseline.txt`: a unit with no row SHALL enter at >= 90% line / 80% branch; a unit carrying a frozen row is shrink-only, so its uncovered line and branch debt SHALL NOT grow and its ratio SHALL NOT fall, and it burns down toward that entry floor; a unit no host build executes SHALL carry an explicit `UNMEASURED` row naming the reason class re-derived from the tree, which is a declared absence of measurement and never a pass. The IEC 61508 Annex C 90% statement and 90% branch target is the destination this ratchet walks toward, not a met claim: the open residue is every `UNMEASURED` row plus the compiled-but-unexecuted units. | `scripts/checks/check_tree_coverage.py` (the executable form of this row: it re-reads these floors and fails when they and its own differ, in either direction), `.github/tree-coverage-baseline.txt` (one row per unit), `just quality::gate::run coverage-tree` | CI job `coverage.yml::coverage-tree`; the gate selftest ties this row to the enforced floors on every run |
+| REQ-SAFE-016 | Every reachable first-party decision region SHALL have complete MC/DC per IEC 61508-3 Annex C / DO-178C 6.4.4.2; deactivated decision regions per DO-178C 6.4.4.3 are exempted. | None on dev: the `-fcoverage-mcdc` gate, its report script, its baseline and its deactivation registry were removed from dev, so no MC/DC measurement exists today. | UNVERIFIED — the IEC 61508-3 Annex C MC/DC target is a destination, not a met claim; no row may cite a gate that is not on dev. |
+| REQ-SAFE-017     | First-party statement and branch coverage SHALL be judged one translation unit at a time: a unit SHALL enter at >= 90% line / 80% branch and a frozen unit is shrink-only, burning down toward the IEC 61508 Annex C 90% statement / 90% branch destination. Dev today measures no first-party coverage: the ratcheted tree-coverage gate, its script and its per-unit baseline were removed from dev, so no unit may be treated as measured, and a declared absence of measurement is never a pass. | None on dev. | UNVERIFIED — no coverage measurement exists on dev; re-establishing the gate is an open qualification gap. |
 | REQ-SAFE-018     | The architecture SHALL provide ECC-protected SRAM (IEC 61508-2 hardware integrity contribution).      | `libs/ra8_hal/src/internal/sram.zig` (ECC enable)                                                                         | `tests/storage/src/test_ra8_sram.c`                                |
 | REQ-SAFE-019     | An IWDT SHALL be enabled in production builds and refreshed by `ra8_wdt_supervisor`.                   | `libs/ra8_hal/src/ra8_iwdt.c`, `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`                                   | `tests/hal/src/test_ra8_iwdt.c`, `tests/hal/src/test_ra8_wdt_supervisor.c` |
 | REQ-SAFE-020     | A documented SOUP register SHALL list every third-party component with re-review cadence <= 12 months. | `docs/SOUP/`                                                                                                     | `docs/SOUP/README.md` index                            |
@@ -455,8 +455,8 @@ deviation mirrors continue at REQ-SAFE-021.
 
 These are the headline performance budgets that downstream
 verification must measure. Numbers without measurements today are
-flagged `TBD-MEASURE`. The closure path is the guarded HIL workflow in
-`docs/HIL_DEVELOPER_WORKFLOW.md`.
+flagged `TBD-MEASURE`. The guarded HIL workflow document was removed
+from dev; the closure path is direct bench/HIL measurement.
 
 | ID               | Requirement                                                                                          | Source                                                                                                          | Test / artefact                                       |
 |------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|
@@ -498,8 +498,9 @@ User's Manual (R20UT5523EG0101) committed under
 
 The full forward-trace from REQ-XXX to source + test is the per-row
 "Source" + "Test" columns in Section 4 through Section 7. The
-backward-trace (file -> requirements) is generated on demand by
-`scripts/checks/cite_check.py` walking the `@cite` doxygen tags. Both
+backward-trace (file -> requirements) is currently maintained by
+review; the on-demand citation-audit generator was removed from dev.
+Both
 directions are required by IEC 61508-3 Clause 7.4.4.6 and DO-178C
 Section 6.5 (Traceability Data).
 
@@ -528,8 +529,8 @@ pending and must be generated rather than transcribed into this document.
 - **REQ-SAFE-001/002/004/006/008** -- enforced by lint, not by host
   test.
 - **REQ-PERF-001/002/004/005** -- require HW-in-the-loop measurement;
-  closure path is the guarded Raspberry Pi 5 rig workflow in
-  `docs/HIL_DEVELOPER_WORKFLOW.md`.
+  the closure path is direct bench measurement on the Raspberry Pi 5
+  rig (the guarded-workflow document was removed from dev).
 - **REQ-EXT-007** (Arduino header) -- no targeted test today.
 - **REQ-DRV-061/062** (RSIP key injection / protected on real
   hardware) -- `BLOCKED-VENDOR`. Tracked in
@@ -552,7 +553,6 @@ current-candidate hardware execution is pending.
 - [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md) -- architectural-ring + TrustZone-world tagging.
 - [`../MEMORY_MAP.md`](../MEMORY_MAP.md) -- memory map and partition assignments.
 - [`../STACK_USAGE.md`](../STACK_USAGE.md) -- per-task stack budgets.
-- [`../MCDC.md`](../MCDC.md), [`../MCDC_GAPS.md`](../MCDC_GAPS.md) -- structural-coverage program.
 - [`../MISRA.md`](../MISRA.md), [`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md) -- language-subset conformance.
 - [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) -- hardware-in-the-loop sweep.
 - [`../SOUP/`](../SOUP/) -- pre-existing software register.
