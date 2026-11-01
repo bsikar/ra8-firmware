@@ -101,6 +101,16 @@ RA8_INTERNAL static UCHAR s_link_up;
 RA8_INTERNAL static uint8_t s_local_mac[k_nx_netif_mac_len];
 
 /**
+ * @var s_local_mac_user_set
+ * @brief Latched flag: has ``nx_ether_driver_netif_set_mac()`` run?
+ *
+ * @details The ``NX_LINK_INITIALIZE`` handler prefers ``s_local_mac`` over
+ *          the (typically still empty) interface struct when this flag is
+ *          set, mirroring ``nx_ether_driver_ra8_eth``.
+ */
+RA8_INTERNAL static uint8_t s_local_mac_user_set;
+
+/**
  * @var s_netif_ip / s_netif_iface / worker state
  * @brief RX worker state (see below).
  */
@@ -338,6 +348,18 @@ RA8_INTERNAL static void internal_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface
   }
 }
 
+/* nx_ether_driver_netif_set_mac -- see header for full description. */
+void nx_ether_driver_netif_set_mac(const uint8_t mac[k_nx_netif_mac_len])
+{
+  if (mac == NULL) {
+    return;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_nx_netif_mac_len; ++i) {
+    s_local_mac[i] = mac[i];
+  }
+  s_local_mac_user_set = 1U;
+}
+
 /**
  * @brief Handle ``NX_LINK_INITIALIZE``: resolve the MAC, open the backend.
  */
@@ -348,7 +370,13 @@ RA8_INTERNAL static void internal_handle_init(NX_IP_DRIVER* req)
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;
     return;
   }
-  internal_unpack_mac(iface, s_local_mac);
+  /* Prefer the app-supplied MAC from nx_ether_driver_netif_set_mac,
+   * mirroring nx_ether_driver_ra8_eth: nx_ip_create fires INITIALIZE
+   * BEFORE the app can call nx_ip_interface_physical_address_set, so
+   * the interface struct is typically still zero here. */
+  if (s_local_mac_user_set == 0U) {
+    internal_unpack_mac(iface, s_local_mac);
+  }
   internal_stamp_mac(iface, s_local_mac);
   if (s_ops->open(s_local_mac) != k_ra8_ok) {
     req->nx_ip_driver_status = NX_NOT_SUCCESSFUL;

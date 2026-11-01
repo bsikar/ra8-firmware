@@ -15,7 +15,7 @@
  *     -Iport/netxduo/tests/host/stubs -Iport/netxduo/inc \
  *     -Ilibs/ra8_core/inc -Ilibs/ra8_io/inc -Ilibs/ra8_io/src \
  *     port/netxduo/tests/host/test_nx_ether_driver_netif.c \
- *     libs/ra8_io/src/ra8_io_netif.c -o /tmp/netif_test && /tmp/netif_test
+ *     port/netxduo/src/nx_ether_driver_netif.c -o /tmp/netif_test && /tmp/netif_test
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -306,6 +306,48 @@ static void test_no_ops_commands(void)
   printf("no-op commands + unknown default ok\n");
 }
 
+static void test_set_mac_parity(void)
+{
+  reset_all();
+  set_iface_mac();
+  /* NULL is ignored: no latch, the iface MAC stays the fallback. */
+  nx_ether_driver_netif_set_mac(NULL);
+  s_req.nx_ip_driver_command = NX_LINK_INITIALIZE;
+  s_req.nx_ip_driver_interface = &s_iface;
+  s_req.nx_ip_driver_ptr = &s_ip;
+  nx_ether_driver_netif(&s_req);
+  assert(s_req.nx_ip_driver_status == NX_SUCCESS);
+  assert(s_open_calls == 1);
+  assert(s_open_mac[0] == 0x00 && s_open_mac[5] == 0x55);
+  s_req.nx_ip_driver_command = NX_LINK_UNINITIALIZE;
+  nx_ether_driver_netif(&s_req);
+  assert(s_req.nx_ip_driver_status == NX_SUCCESS);
+  /* Rebind the close-bearing shape, then an app-supplied MAC:
+   * INITIALIZE programmes the stored MAC instead of the iface value,
+   * stamps it back, and hands it to open (the
+   * nx_ether_driver_ra8_eth_set_mac parity shape). */
+  assert(nx_ether_driver_netif_bind(&s_mock_netif, &s_ops_a) == k_ra8_ok);
+  {
+    const uint8_t app_mac[6] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    nx_ether_driver_netif_set_mac(app_mac);
+  }
+  s_req.nx_ip_driver_command = NX_LINK_INITIALIZE;
+  nx_ether_driver_netif(&s_req);
+  assert(s_req.nx_ip_driver_status == NX_SUCCESS);
+  assert(s_open_calls == 2);
+  assert(s_open_mac[0] == 0xAA && s_open_mac[1] == 0xBB &&
+         s_open_mac[2] == 0xCC && s_open_mac[3] == 0xDD &&
+         s_open_mac[4] == 0xEE && s_open_mac[5] == 0xFF);
+  const ULONG msw = s_iface.nx_interface_physical_address_msw;
+  const ULONG lsw = s_iface.nx_interface_physical_address_lsw;
+  assert(msw == ((0xAAUL << 8) | 0xBBUL));
+  assert(lsw == ((0xCCUL << 24) | (0xDDUL << 16) | (0xEEUL << 8) | 0xFFUL));
+  s_req.nx_ip_driver_command = NX_LINK_UNINITIALIZE;
+  nx_ether_driver_netif(&s_req);
+  assert(s_close_calls == 1);
+  printf("set_mac parity ok\n");
+}
+
 int main(void)
 {
   test_bind_guards();
@@ -315,6 +357,7 @@ int main(void)
   test_get_status_mirror_shape();
   test_deferred_rx_dispatch();
   test_no_ops_commands();
+  test_set_mac_parity();
   printf("ALL PASS\n");
   return 0;
 }

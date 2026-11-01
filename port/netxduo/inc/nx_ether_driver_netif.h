@@ -91,6 +91,20 @@ typedef struct nx_netif_backend_ops_t {
                                                    const nx_netif_backend_ops_t* ops);
 
 /**
+ * @brief Give the driver an app-supplied local MAC before ``nx_ip_create()``.
+ *
+ * @details Parity with ``nx_ether_driver_ra8_eth_set_mac()``: when this has
+ *          run, ``NX_LINK_INITIALIZE`` programmes the stored MAC instead of
+ *          unpacking the interface struct, stamps it back into the
+ *          interface, and hands it to ``ops->open``. A ``NULL`` pointer is
+ *          ignored. Call it before ``nx_ip_create()`` fires
+ *          ``NX_LINK_INITIALIZE``.
+ *
+ * @param[in] mac The 6-byte local MAC; ``NULL`` is silently ignored.
+ */
+void nx_ether_driver_netif_set_mac(const uint8_t mac[6]);
+
+/**
  * @brief The single entry point passed to ``nx_ip_create()``.
  *
  * @details Dispatches on ``driver_req->nx_ip_driver_command`` exactly as the
