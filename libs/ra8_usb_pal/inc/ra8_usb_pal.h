@@ -8,8 +8,9 @@
  *
  * @details
  * scaffold for the USB PAL. Sits between the Ring-3
- * ``ra8_usb`` driver and any higher-level USB stack (CherryUSB
- * today, possibly TinyUSB or a custom stack later).
+ * ``ra8_usb`` driver and any higher-level USB stack (none is
+ * integrated today; TinyUSB, CherryUSB, or a custom stack are possible
+ * later).
  *
  * Responsibilities:
  *

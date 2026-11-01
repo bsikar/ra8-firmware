@@ -149,7 +149,7 @@ list(
   _ns_usbx_core
   EXCLUDE
   REGEX
-  ".*/ux_(dcd_sim_slave|hcd_sim_host)_.*\\.c$"
+  ".*/ux_(dcd_sim_slave|hcd_sim_host|host_stack|host_class)_.*\\.c$"
 )
 file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
      "${_ra8_usbx_root}/common/usbx_device_classes/src/ux_device_class_cdc_acm_*.c"
