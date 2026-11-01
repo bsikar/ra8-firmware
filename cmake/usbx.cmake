@@ -199,7 +199,9 @@ set(RA8_USBX_MAX_PERIPHERAL_LUN
     CACHE STRING "USBX device Mass-Storage class: max logical units per device"
 )
 target_compile_definitions(usbx_objs PUBLIC UX_MAX_SLAVE_LUN=${RA8_USBX_MAX_PERIPHERAL_LUN})
+target_compile_definitions(usbx_objs PUBLIC UX_DEVICE_SIDE_ONLY)
 target_compile_definitions(usbx INTERFACE UX_MAX_SLAVE_LUN=${RA8_USBX_MAX_PERIPHERAL_LUN})
+target_compile_definitions(usbx INTERFACE UX_DEVICE_SIDE_ONLY)
 
 # Device transfer-request buffer / MSC bulk chunk size. The cortex_m33
 # port defaults this to 2048; the storage class reads each SCSI WRITE in

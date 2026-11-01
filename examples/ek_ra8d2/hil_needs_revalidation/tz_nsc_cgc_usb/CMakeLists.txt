@@ -180,6 +180,12 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_ctrl.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
+# Device-only USBX (RA8FW-287): the NS image compiles the vendor core itself,
+# so it must say so. Post-removal there is no host stack to satisfy
+# _ux_system_host, and ux_system.h / ux_system_initialize.c /
+# ux_system_tasks_run.c all key the host side off UX_DEVICE_SIDE_ONLY.
+# usbx.cmake sets the same define on the usbx interface for regular apps.
+target_compile_definitions(tz_nsc_cgc_usb_ns.elf PRIVATE UX_DEVICE_SIDE_ONLY)
 # ra8_usb_device_compose (ns_usb.c) is Zig in ra8_usb_pal's archive since the
 # compose facade port retired ra8_usb_compose.c from the list above. A raw
 # target gets no LIBS sweep, so it is linked here by hand, BEFORE ra8_core:
