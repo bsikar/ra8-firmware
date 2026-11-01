@@ -6,7 +6,7 @@
 # scripts/lib/parallelism.sh -- the ONE canonical bounded-parallelism source.
 #
 # SOURCED, NEVER EXECUTED. Every parallel invocation in a CI gate body, a
-# builder, a check or an emulator driver (make -j, cmake --build -j, ctest -j,
+# builder, a check or an emulator driver (cmake --build -j, ninja -j, ctest -j,
 # xargs -P, cppcheck -j, clang-tidy fan-out) MUST take its width from
 # ra8_max_jobs -- never from a raw `nproc` / `sysctl -n hw.ncpu`.
 #

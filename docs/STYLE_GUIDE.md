@@ -252,8 +252,9 @@ one `libs/<module>` or `tools/<tool>` is non-`static`, uses `RA8_PRIV` and the
 prefix is data-only: it is never a function name and never names automatic or
 externally-linked data. Public functions use their published API name and no
 private linkage annotation; `RA8_TEST_HELPER` is the explicit test-only
-external-linkage exception. `scripts/checks/check_annotations.py` enforces
-these pairings against the AST rather than inferring linkage from spelling.
+external-linkage exception. the retired `check_annotations.py` gate enforced
+these pairings against the AST rather than inferring linkage from spelling;
+keep the pairings -- the rule stands even though the gate is gone.
 
 ## Types and constants (C23)
 

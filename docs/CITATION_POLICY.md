@@ -17,10 +17,11 @@ Use the function or symbol name instead:
 - `ra8_dmac::priv_ra8_dmac_internal_mode_disables_dts`
 - `see priv_ra8_dmac_internal_mode_disables_dts in libs/ra8_hal/src/internal/dmac.zig`
 
-The pre-commit gate `scripts/checks/check_line_citations.py` enforces
-this rule strictly: any new in-tree `<file>:<line>` reference inside
-a C/C++ comment, Markdown doc, or plain-text doc is rejected at commit
-time. The `// CITES-OK: <reason>` per-line marker is the only opt-out.
+The `check_line_citations.py` gate that enforced this rule strictly at
+commit time was retired with the CI-era gates. The rule itself stands as
+policy: a new in-tree `<file>:<line>` reference inside a C/C++ comment,
+Markdown doc, or plain-text doc is a violation. The `// CITES-OK: <reason>`
+per-line marker is the only opt-out.
 
 ## Rule 2: external / vendor citations are MANDATORY
 
@@ -55,4 +56,5 @@ exempt automatically.
 ## Tooling
 
 - Gate: `scripts/checks/check_line_citations.py` -- pre-commit
-  enforcement, and a whole-tree scan on demand.
+  enforcement and a whole-tree scan on demand; retired with the CI-era
+  gates, kept here as the rule the policy names.

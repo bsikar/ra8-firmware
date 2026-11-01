@@ -6,8 +6,9 @@ metadata-only: they expand to `[[clang::annotate("...")]]` under clang
 and to a comment-only no-op under other toolchains. They produce
 no codegen and have zero runtime cost.
 
-The libclang-based enforcement script consumes these annotations in CI and
-cross-checks their storage, naming, declaration, and call-graph contracts.
+The libclang-based enforcement script that applied these contracts in CI was
+removed from dev with the CI-era gates. The contracts themselves are the
+rules documented below and remain what the code is written against.
 
 ## Citation policy
 
@@ -15,8 +16,9 @@ Every example in this document references targets by **function name**
 or **symbol name** -- never by line number -- per
 [`docs/CITATION_POLICY.md`](CITATION_POLICY.md). The
 `RA8_MCDC_DEACTIVATED(reason)` macro additionally enforces this rule
-mechanically: the citation gate (`scripts/checks/check_line_citations.py`)
-rejects any reason text containing a `<file>.<ext>:<line>` token.
+mechanically: reason text containing a `<file>.<ext>:<line>` token is a
+citation-policy violation (the `check_line_citations.py` gate that rejected
+it was retired with the CI-era gates).
 
 ## Reference
 
@@ -124,7 +126,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Purpose:** mark a decision as MC/DC-deactivated, replacing the
   legacy `// mcdc-deactivated:` line comment.
 - **Enforcement:**
-  - `scripts/checks/check_line_citations.py` rejects any reason text
+  - the citation policy rejects any reason text
     containing a `<file>.<ext>:<line>` token.
   - `scripts/fix/regen_mcdc_gaps.py` tallies `RA8_MCDC_DEACTIVATED`
     annotations into `docs/MCDC_DEACTIVATIONS.md`.
@@ -246,9 +248,10 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
   comment no-op. If `ceiling` is not a positive compile-time constant
   the build fails under both arm-none-eabi-gcc and clang.
 - **Enforcement:** two ways at once. (1) The `static_assert` fails the
-  compile on a non-constant ceiling. (2) `check_annotations.py`
-  (loop-bound scan, `annot_loopbound`) fails the gate if the marker is
-  not immediately followed by a `for` / `while` / `do` loop.
+  compile on a non-constant ceiling. (2) the loop-bound scan
+  (`annot_loopbound`; its gate script `check_annotations.py` was retired with
+  the CI-era gates) required the marker to be immediately followed by a
+  `for` / `while` / `do` loop; keep that shape.
 - **Example:**
 
   ```c
@@ -268,8 +271,9 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
   `.data` is copied) yet still requires `ceiling_ref` to be a declared,
   addressable object, so a typo fails to compile.
 - **Enforcement:** the symbol reference fails the compile on an
-  undeclared ceiling; `check_annotations.py` (loop-bound scan) fails the
-  gate if the marker is not immediately followed by a loop.
+  undeclared ceiling; the loop-bound scan (its gate script
+  `check_annotations.py` was retired with the CI-era gates) required the
+  marker to be immediately followed by a loop; keep that shape.
 - **Example:**
 
   ```c
@@ -358,10 +362,10 @@ cleanly.
 
 ## Enforcement script
 
-The static enforcement framework lives at
-[`scripts/checks/check_annotations.py`](../scripts/checks/check_annotations.py).
-It walks the AST of every C/C++ TU under `libs/`, `examples/`,
-`tests/`, `port/`, `tools/` and `apps/` via the Python `libclang` bindings and applies
+The static enforcement framework was
+`scripts/checks/check_annotations.py`, removed from dev with the CI-era
+gates. It walked the AST of every C/C++ TU under `libs/`, `examples/`,
+`tests/`, `port/`, `tools/` and `apps/` via the Python `libclang` bindings and applied
 the rules documented above, plus the linkage rule below. Excluded
 subtrees: `build/`, `_deps/`, `third_party/`, and the various `build-*/`
 host-test directories.
@@ -443,12 +447,10 @@ test fails on exactly that mutation.
 
 ### Running it
 
-`python3 scripts/checks/check_annotations.py` runs the same rules and
-exits non-zero on any violation. Its `--help` lists the rest: a quiet
-CI mode, a dump of every annotated symbol, the checker's own selftest
-against synthetic TUs, and a full prefix/storage audit that can be
-emitted as JSON for tooling. None of the audit modes is a suppressing
-baseline -- every finding stays visible and fatal.
+The checker script was removed from dev with the CI-era gates, so nothing
+on dev re-runs these rules mechanically today. The rules above stay the
+documented contracts; none of them ever had a suppressing baseline -- every
+finding was visible and fatal.
 
 ### Dependency
 
@@ -472,8 +474,9 @@ failing is a gate that hides the gap.
 
 ### Pre-commit wiring
 
-The hook at [`scripts/ci/gates/checks.sh`](../scripts/ci/gates/checks.sh)
-invokes the script after the existing static gates (`cite_check`, etc.) and before the stack-usage aggregator.
+The pre-commit wiring (the `scripts/ci/gates/checks.sh` hook that ran this
+checker between the static gates and the stack-usage aggregator) was retired
+with the CI-era gates. The contracts stay the documented policy.
 
 ### Rule-by-rule notes
 

@@ -46,22 +46,21 @@ section 4 for the fast pre-push recipe.
 
 `scripts/dev/setup_python.sh` is the supported bootstrap on macOS, Linux, and WSL2. The only
 tools it expects in advance are Git, `just`, a stdlib Python 3.11 through
-3.14, trusted CA certificates/network access for the first fetch, and one
-usable container runtime (`podman`, `docker`, or `nerdctl`; Docker on macOS
-uses Colima). uv creates the environment; host `venv` and `pip` are not
-bootstrap prerequisites. It:
+3.14, and trusted CA certificates/network access for the first fetch. uv
+creates the environment; host `venv` and `pip` are not bootstrap
+prerequisites. It:
 
 1. creates or updates the ignored `.venv` from exact runtime pins in
    `pyproject.toml` and the complete transitive set in `uv.lock`;
-2. installs immutable-HEAD Git hook launchers under the shared Git common
-   directory (the explicit `just hooks` step; CMake never mutates Git config);
-3. converges exact repository-local Ansible Galaxy collections; and
-4. asks `scripts/ci/devcontainer_image.sh` to build or refresh `ra8-ci:latest`
-   from the tightly allowlisted locked root context.
+2. installs only the pinned Python tools it names (`ruff`, `cmake-format`,
+   `cmake-lint`, `yamllint`, `gcovr`); it never invokes system pip.
 
-`just dev_shell` enters that image with the checkout mounted read-write, so
-the compiler and analyzer installation created by the bootstrap is immediately
-usable for ordinary development commands without modifying host packages.
+The immutable-HEAD Git hook launchers are the separate `just hooks` step. The
+container image is built straight from `.devcontainer/Dockerfile` (the CI-era
+`scripts/ci/devcontainer_image.sh` wrapper and the `just dev_shell` wrapper
+were retired with the CI move). Inside that image the compiler and analyzer
+installation created by the bootstrap is immediately usable for ordinary
+development commands without modifying host packages.
 
 No step writes into the host's system Python. Use `scripts/dev/setup_python.sh` for the
 lighter Python-and-hooks refresh when the container image is already current.
@@ -259,10 +258,10 @@ bsikar/ra8ci and are no longer called from this repository.
 `pyproject.toml` pins `gcovr==7.0` (January 2024). Upstream is **8.6**
 (2026-01-13). Unlike the other stale pins in this tree, this one is a decision
 rather than an oversight: `check_tool_versions.py` classifies gcovr as `exact`,
-`scripts/report/tree_coverage.sh` and the `coverage-tree` gate both call
-`require_tool_versions gcovr`, and `use_pinned_tool_path` exists partly because
-a user-installed gcovr 8.6 once won the PATH race against the repository pin
-during a coverage run.
+The CI-era callers (`scripts/report/tree_coverage.sh`, the `coverage-tree`
+gate, and their `require_tool_versions gcovr` calls) were retired with the CI
+move; `use_pinned_tool_path` exists partly because a user-installed gcovr 8.6
+once won the PATH race against the repository pin during a coverage run.
 
 **The barrier is two editions, not one.** Every gcovr rationale in this tree
 names 8.4. That is correct but incomplete; the 7.0 -> 8.6 path crosses two
@@ -274,11 +273,11 @@ breaking data-model changes, both from upstream's own changelog:
 | **8.4** | 2025-09-27 | "Improve data model to have several coverage information per line" -- a JSON report may now carry several entries per line even with the legacy text parser, and `function_name` is always set |
 
 8.4 also removed `--merge-mode-conditions`. That option appears nowhere in this
-tree, so it costs nothing here; `--merge-mode-functions`, which
-`tree_coverage.sh` does depend on, survives. 8.3 and 8.6 drop old Pythons (3.8,
-3.9), which `requires-python = ">=3.11"` already clears. So the migration cost
-is a re-baseline of `.github/tree-coverage-baseline.txt` and
-`.github/mcdc-baseline.txt` under the new counts, not a rewrite of the gates.
+tree, so it costs nothing here; `--merge-mode-functions`, which the retired
+`tree_coverage.sh` depended on, survives. 8.3 and 8.6 drop old Pythons (3.8,
+3.9), which `requires-python = ">=3.11"` already clears. The re-baseline cost
+named below applied to the CI-era coverage gates, which were retired with the
+CI move; nothing on dev consumes those baselines today.
 
 **The argument on the other side** is the gcc coupling, and it is stronger than
 "the pin is old". gcov moves with the GCC pins, and 7.0 predates gcc-14

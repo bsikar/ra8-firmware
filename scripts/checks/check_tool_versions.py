@@ -12,8 +12,8 @@ binaries: shellcheck 0.9.0 vs 0.11.0, shfmt 3.6.0 vs 3.13.1, ruff absent vs
 0.15.19. A gate run through the wrong PATH produces findings CI never
 reproduces, or -- worse -- misses findings CI has. ``use_pinned_tool_path`` in
 the ra8ci gate (bsikar/ra8ci, scripts/ci.sh) makes the resolution deterministic; this check makes the WRONG
-version FAIL LOUD rather than pass quietly, the same class of hole as
-check_annotations.py exiting 0 without libclang.
+version FAIL LOUD rather than pass quietly, the same class of hole as a
+gate exiting 0 while the tool its enforcement needs is missing.
 
 Single source of truth
 -----------------------
