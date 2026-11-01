@@ -22,8 +22,10 @@
 #   - Compiles every C source under
 #     common/core/src/*.c in the usbx package except for the
 #     simulator DCD / HCD (ux_dcd_sim_slave_*.c and
-#     ux_hcd_sim_host_*.c) -- our own DCD / HCD bridges live in
-#     port/usbx/ and replace those.
+#     ux_hcd_sim_host_*.c) -- our own DCD bridge lives in
+#     port/usbx/ and replaces the simulator one. The USBX host stack
+#     (ux_host_stack_*.c) and host classes (ux_host_class_*.c) are also
+#     dropped: nothing in this tree consumes them (RA8FW-287).
 #   - Compiles the CDC-ACM, HID, MSC (storage) and DFU DEVICE classes
 #     under usbx_device_classes/src/. Nothing is compiled out of
 #     common/usbx_host_classes/; USBX host classes are not built.
@@ -96,6 +98,13 @@ list(
   EXCLUDE
   REGEX
   ".*/ux_hcd_sim_host_.*\\.c$"
+)
+list(
+  FILTER
+  _RA8_USBX_CORE_SOURCES
+  EXCLUDE
+  REGEX
+  ".*/ux_host_(stack|class)_.*\\.c$"
 )
 
 # CDC-ACM device class (used by threadx_usbx_cdc_demo).

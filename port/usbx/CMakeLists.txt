@@ -10,7 +10,9 @@
 # Two source files implement the bridge:
 #
 #   - ux_dcd_ra8_usb.c   USBX device-controller-driver -> ra8_usb.
-#   - ux_hcd_ra8_usb.c   USBX host-controller-driver   -> ra8_usb.
+#
+#   (The USBX host-controller-driver bridge was removed in RA8FW-287:
+#    the USBX host stack is not built and nothing consumed it.)
 #
 # Pulled in by `cmake/usbx.cmake` when `RA8_USE_USBX=ON`. Apps that
 # enable USBX link against `usbx_port_ra8_usb`; that target propagates
@@ -41,6 +43,5 @@ set_property(
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst_default.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_irq.c
-           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_hcd_ra8_usb.c
            ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_device_class_storage_inquiry.c
 )
