@@ -28,6 +28,8 @@ test "argument checks: null handle, null out, unmounted" {
 
 test "FAT scans every data cluster, fills the totals and caches the count" {
     fake.reset(fat16);
+    const al = fs.alloc;
+    al.priv_alloc_state_bind(fake.mount());
     fake.mount_store.count_of_clusters = 10;
     for (2..12) |k| fake.fat[k] = 0xFFFF;
     fake.fat[4] = 0;
@@ -44,27 +46,34 @@ test "FAT scans every data cluster, fills the totals and caches the count" {
     try std.testing.expectEqual(@as(u64, 5120), s.total_bytes);
     try std.testing.expectEqual(@as(u64, 1536), s.free_bytes);
     try std.testing.expectEqual(@as(u64, 3584), s.used_bytes);
-    try std.testing.expectEqual(@as(u32, 3), fake.free_cached);
+    try std.testing.expectEqual(@as(u32, 3), al.priv_free_count_peek(fake.mount()));
+    al.priv_alloc_state_release(fake.mount());
 }
 
 test "FAT uses the cached count without scanning" {
     fake.reset(fat16);
     fake.mount_store.count_of_clusters = 10;
-    fake.free_cached = 6;
+    const al = fs.alloc;
+    al.priv_alloc_state_bind(fake.mount());
+    al.priv_free_count_cache(fake.mount(), 6);
     var s: sp.Space = undefined;
     try std.testing.expectEqual(sp.ok, query(&s));
     try std.testing.expectEqual(@as(u32, 0), fake.fat_reads);
     try std.testing.expectEqual(@as(u32, 6), s.free_clusters);
     try std.testing.expectEqual(@as(u32, 4), s.used_clusters);
+    al.priv_alloc_state_release(fake.mount());
 }
 
 test "FAT read failure propagates and leaves the cache unknown" {
     fake.reset(fat16);
+    const al = fs.alloc;
+    al.priv_alloc_state_bind(fake.mount());
     fake.mount_store.count_of_clusters = 10;
     fake.fat_err = 0x204;
     var s: sp.Space = undefined;
     try std.testing.expectEqual(@as(u16, 0x204), query(&s));
-    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), fake.free_cached);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), al.priv_free_count_peek(fake.mount()));
+    al.priv_alloc_state_release(fake.mount());
 }
 
 test "exFAT popcounts the bitmap across sectors and masks the tail byte" {

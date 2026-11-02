@@ -321,16 +321,6 @@ export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) c
     return 0;
 }
 
-export fn priv_free_count_peek(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    _ = m;
-    return free_cached;
-}
-
-export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
-    _ = m;
-    free_cached = n;
-}
-
 /// The exFAT rotate-add checksum (spec sec 6.3.3), standing in for the C one.
 export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
     var sum = cs;
@@ -384,16 +374,6 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
     fat_sets += 1;
     fat[clus] = value;
     return 0;
-}
-
-export fn priv_free_count_gave(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
-    _ = m;
-    gave += n;
-}
-
-export fn priv_alloc_hint_lower(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) void {
-    _ = m;
-    if (clus < hint_low) hint_low = clus;
 }
 
 export fn priv_rd16(p: [*c]const u8) callconv(.c) u16 {

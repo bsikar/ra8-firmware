@@ -515,11 +515,6 @@ test "the shared string helpers survived the port" {
 // here): the shared root pulls every abi module into every test root.
 var walk_sector: [512]u8 = @splat(0);
 
-export fn priv_alloc_hint_lower(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) void {
-    _ = m;
-    _ = clus;
-}
-
 export fn priv_dir_eps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
     _ = m;
     return 16;
@@ -601,21 +596,6 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
     _ = clus;
     _ = value;
     return 0;
-}
-
-export fn priv_free_count_cache(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
-    _ = m;
-    _ = n;
-}
-
-export fn priv_free_count_gave(m: [*c]const c.ra8_fs_mount_t, n: u32) callconv(.c) void {
-    _ = m;
-    _ = n;
-}
-
-export fn priv_free_count_peek(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    _ = m;
-    return 0xFFFF_FFFF;
 }
 
 export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
