@@ -16,7 +16,8 @@
     "tests/stat_abi_test.zig",
     "tests/file_abi_test.zig",
     "tests/resolve_abi_test.zig",
-    "tests/label_abi_test.zig"
+    "tests/label_abi_test.zig",
+    "tests/fat_core_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
@@ -51,7 +52,9 @@
     "src/ra8_fs_file_abi.zig",
     "ra8_fs_resolve_abi.zig",
     "src/ra8_fs_label_abi.zig",
-    "tests/label_abi_test.zig"
+    "tests/label_abi_test.zig",
+    "src/ra8_fs_fat_core_abi.zig",
+    "tests/fat_core_abi_test.zig"
   ],
-  "minimum_tests": 80
+  "minimum_tests": 90
 }

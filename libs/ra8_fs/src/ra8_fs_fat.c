@@ -64,22 +64,6 @@ void priv_wr16(uint8_t* p, uint16_t v)
   p[1] = (uint8_t)((v >> k_shift_byte) & k_byte_mask);
 }
 
-/* `priv_wr32()`: see header for the documented contract. */
-void priv_wr32(uint8_t* p, uint32_t v)
-{
-  p[0] = (uint8_t)(v & k_byte_mask);
-  p[1] = (uint8_t)((v >> k_shift_byte) & k_byte_mask);
-  p[2] = (uint8_t)((v >> k_shift_two_bytes) & k_byte_mask);
-  p[3] = (uint8_t)((v >> k_shift_three_bytes) & k_byte_mask);
-}
-
-/* `priv_wr64()`: see header for the documented contract. */
-void priv_wr64(uint8_t* p, uint64_t v)
-{
-  priv_wr32(p, (uint32_t)v);
-  priv_wr32(&p[sizeof(uint32_t)], (uint32_t)(v >> k_shift_word32));
-}
-
 /* `priv_bps()`: see header for the documented contract. */
 uint32_t priv_bps(const ra8_fs_mount_t* m)
 {
@@ -112,17 +96,6 @@ void priv_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t n)
   for (uint32_t i = 0U; i < n; i++) {
     dst[i] = src[i];
   }
-}
-
-/* `priv_byte_equal()`: see header for the documented contract. */
-uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n)
-{
-  for (uint32_t i = 0U; i < n; i++) {
-    if (a[i] != b[i]) {
-      return 0U;
-    }
-  }
-  return 1U;
 }
 
 /* =============================================================================
@@ -522,21 +495,6 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value)
   return (uint8_t)((value >= k_cluster_eoc_min_fat32) ? 1U : 0U);
 }
 
-/* `priv_eoc_write()`: see header for the documented contract. */
-uint32_t priv_eoc_write(const ra8_fs_mount_t* m)
-{
-  if (m->type == k_ra8_fs_type_fat12) {
-    return k_cluster_eoc_write_fat12;
-  }
-  if (m->type == k_ra8_fs_type_fat16) {
-    return k_cluster_eoc_write_fat16;
-  }
-  if (m->type == k_ra8_fs_type_exfat) {
-    return k_cluster_eoc_write_exfat;
-  }
-  return k_cluster_eoc_write_fat32;
-}
-
 /* `priv_cluster_to_lba()`: see header for the documented contract. */
 uint64_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster)
 {
@@ -544,75 +502,3 @@ uint64_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster)
          (((uint64_t)cluster - (uint64_t)k_cluster_first_data) * m->sectors_per_cluster);
 }
 
-/**
- * @brief Normalise a next-free hint into a real cluster number.
- *
- * @details A hint is an optimisation, not a promise: it can sit one past the
- *          last cluster after the previous allocation took the final one, and
- *          on a FAT32 volume it can arrive from an `FSI_Nxt_Free` some other
- *          implementation wrote. Anything outside `[2, 2 + count)` restarts
- *          the scan at the first data cluster.
- *
- * @param[in] m    Mount providing the cluster count.
- * @param[in] hint Raw hint from ::priv_alloc_hint_get.
- *
- * @return A cluster number the scan may start at.
- * @retval 2..(2 + count_of_clusters - 1) The clamped start cluster.
- *
- * @pre `m` is non-NULL with `count_of_clusters >= 1`.
- * @pre `hint` came from the allocator state, not from a directory entry.
- * @post No state modified.
- * @post The result addresses a cluster this volume has.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @par MC/DC:
- * Decision: `(hint - k_cluster_first_data) >= count_of_clusters` (1 condition).
- * - hint past the last cluster -> true  -> restart at cluster 2.
- * - an ordinary in-range hint  -> false -> start there.
- * A hint BELOW cluster 2 needs no second condition: the subtraction is
- * unsigned, so it wraps to a value far above any cluster count and the same
- * test catches it. Spelling that out as a second range term would add a
- * condition nothing in the tree can make true -- no caller can produce a hint
- * below 2 -- and an untestable condition is a permanent MC/DC hole.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint32_t internal_alloc_start(const ra8_fs_mount_t* m, uint32_t hint)
-{
-  if ((hint - (uint32_t)k_cluster_first_data) >= m->count_of_clusters) {
-    return (uint32_t)k_cluster_first_data;
-  }
-  return hint;
-}
-
-/* `priv_alloc_cluster()`: see header for the documented contract. */
-ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster)
-{
-  /* Start where the last allocation stopped and wrap exactly once, instead of
-   * restarting at cluster 2 every time. Combined with the FAT sector
-   * cache behind priv_fat_get(), appending to a file costs a bounded number of
-   * block reads per cluster rather than one read per cluster EXAMINED -- which
-   * is what made writing a K-cluster file O(K * N) real device round trips. */
-  const uint32_t past_end = (uint32_t)k_cluster_first_data + m->count_of_clusters;
-  uint32_t       c        = internal_alloc_start(m, priv_alloc_hint_get(m));
-  for (uint32_t seen = 0U; seen < m->count_of_clusters; seen++) {
-    uint32_t  v   = 0;
-    ra8_err_t err = priv_fat_get(m, c, &v);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (v == k_cluster_free) {
-      *out_cluster = c;
-      priv_alloc_hint_set(m, c + 1U);
-      priv_free_count_took(m, 1U);
-      return k_ra8_ok;
-    }
-    c++;
-    if (c >= past_end) {
-      c = (uint32_t)k_cluster_first_data;
-    }
-  }
-  return k_ra8_err_no_mem;
-}
