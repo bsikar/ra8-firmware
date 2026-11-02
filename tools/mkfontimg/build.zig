@@ -29,7 +29,6 @@ const fat_tus = [_][]const u8{
     "ra8_fs_fat_exfat_dir.c",
     "ra8_fs_fat_exfat_fmt.c",
     "ra8_fs_fat_exfat_mutate.c",
-    "ra8_fs_fat_exfat_read.c",
     "ra8_fs_fat_exfat_stream.c",
     "ra8_fs_fat_exfat_write.c",
     "ra8_fs_fat_file.c",

@@ -66,7 +66,7 @@ test "null label writes an empty in-use entry" {
 
 test "read errors propagate and nothing is written" {
     reset();
-    fake.read_error = 0x200;
+    fake.sector_read_err = 0x200;
     var buf: [8]u8 = undefined;
     try std.testing.expectEqual(@as(u16, 0x200), lbl.priv_exfat_get_label(mount(), &buf, buf.len));
     try std.testing.expectEqual(@as(u16, 0x200), lbl.priv_exfat_set_label(mount(), "X"));
