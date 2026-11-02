@@ -128,6 +128,17 @@ pub fn reset(fs_type: u8) void {
     fat_sets = 0;
     gave = 0;
     hint_low = 0xFFFF_FFFF;
+    lookup_any_rc = 0;
+    lookup_any_lba = 0;
+    lookup_any_off = 0;
+    lookup_any_entry = @splat(0);
+    reserve_rc = 0;
+    commit_rc = 0;
+    commit_lba = 0;
+    commit_off = 0;
+    commit_entry = @splat(0);
+    stamp_w_calls = 0;
+    stamp_c_calls = 0;
     walk_lba = 10;
     walk_fixed = 1;
     eps = 16;
@@ -274,10 +285,6 @@ export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]co
     return 0;
 }
 
-export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.c) void {
-    entry[11] = (entry[11] & ~clear_mask) | set_mask;
-}
-
 fn stamp(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) void {
     stamped = .{ create, modify, access };
     stamp_calls += 1;
@@ -333,6 +340,60 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     return sum;
 }
 
+
+// --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
+
+pub var lookup_any_rc: u16 = 0;
+pub var lookup_any_lba: u64 = 0;
+pub var lookup_any_off: u32 = 0;
+pub var lookup_any_entry: [entry_bytes]u8 = @splat(0);
+pub var reserve_rc: u16 = 0;
+pub var commit_rc: u16 = 0;
+pub var commit_lba: u64 = 0;
+pub var commit_off: u32 = 0;
+pub var commit_entry: [entry_bytes]u8 = @splat(0);
+pub var stamp_w_calls: u32 = 0;
+pub var stamp_c_calls: u32 = 0;
+
+export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    if (lookup_any_rc != 0) return lookup_any_rc;
+    out_lba.* = lookup_any_lba;
+    out_off.* = lookup_any_off;
+    @memcpy(out_entry[0..entry_bytes], &lookup_any_entry);
+    return 0;
+}
+
+export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    _ = plan;
+    return reserve_rc;
+}
+
+export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    _ = plan;
+    if (commit_rc != 0) return commit_rc;
+    out_lba.* = commit_lba;
+    out_off.* = commit_off;
+    @memcpy(commit_entry[0..entry_bytes], tmpl[0..entry_bytes]);
+    return 0;
+}
+
+export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
+    stamp_w_calls += 1;
+}
+
+export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
+    stamp_c_calls += 1;
+}
+
 export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
     if (slots_left == 0) return null;
     slots_left -= 1;
@@ -382,12 +443,6 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
 }
 
 /// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
-export fn priv_entry_first_cluster(entry: [*c]const u8) callconv(.c) u32 {
-    const hi: u32 = priv_rd16(entry + @as(usize, @intCast(c.k_dir_off_fst_clus_hi)));
-    const lo: u32 = priv_rd16(entry + @as(usize, @intCast(c.k_dir_off_fst_clus_lo)));
-    return (hi << 16) | lo;
-}
-
 export fn priv_rd16(p: [*c]const u8) callconv(.c) u16 {
     return @as(u16, p[0]) | (@as(u16, p[1]) << 8);
 }

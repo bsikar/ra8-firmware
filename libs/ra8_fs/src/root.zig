@@ -22,6 +22,7 @@ pub const exfat_write = @import("ra8_fs_exfat_write_abi.zig");
 pub const lfn_find = @import("ra8_fs_lfn_find_abi.zig");
 pub const exfat_read = @import("ra8_fs_exfat_read_abi.zig");
 pub const alloc = @import("ra8_fs_alloc_abi.zig");
+pub const file = @import("ra8_fs_file_abi.zig");
 
 comptime {
     _ = lock;
@@ -38,4 +39,5 @@ comptime {
     _ = lfn_find;
     _ = exfat_read;
     _ = alloc;
+    _ = file;
 }

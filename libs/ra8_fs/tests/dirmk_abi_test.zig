@@ -7,6 +7,23 @@
 
 const std = @import("std");
 const fs = @import("ra8_fs");
+
+var lookup_any_rc: u16 = 0;
+var lookup_lba: u64 = 0;
+var lookup_off: u32 = 0;
+var lookup_entry: [32]u8 = @splat(0);
+var reserve_rc: u16 = 0;
+var commit_rc: u16 = 0;
+var commit_lba: u64 = 0;
+var commit_off: u32 = 0;
+var commit_entry: [32]u8 = @splat(0);
+var stamp_calls: usize = 0;
+
+// stand-in for the one helper the open/close port added (RA8FW-1092); the
+// dirmk path never closes a file handle, so it only needs to exist
+export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
+}
 const ex = fs.exfat_read;
 const upcase = fs.upcase;
 const c = fs.c;
@@ -288,10 +305,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
     return 0;
 }
 
-export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.c) void {
-    entry[11] = (entry[11] & ~clear_mask) | set_mask;
-}
-
 export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     _ = .{ entry, create, modify, access };
 }
@@ -340,22 +353,12 @@ var err_io_val: u16 = 0;
 
 const err_io: u16 = c.k_ra8_err_access_denied;
 
-var lookup_any_rc: u16 = 0;
-var lookup_lba: u64 = 0;
-var lookup_off: u32 = 0;
-var lookup_entry: [32]u8 = @splat(0);
-var reserve_rc: u16 = 0;
-var commit_rc: u16 = 0;
-var commit_lba: u64 = 0;
-var commit_off: u32 = 0;
-var commit_entry: [32]u8 = @splat(0);
 var erase_calls: usize = 0;
 var erase_rc: u16 = 0;
 var erase_name0: u8 = 0;
 var alloc_rc: u16 = 0;
 var alloc_calls: usize = 0;
 var next_cluster: u32 = 0;
-var stamp_calls: usize = 0;
 var fat_set_calls: usize = 0;
 var last_fat_clus: u32 = 0;
 var last_fat_val: u32 = 0;
@@ -391,37 +394,6 @@ fn resetDirmk() void {
     read_err = 0;
 }
 
-export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    if (lookup_any_rc == ok) {
-        out_lba.* = lookup_lba;
-        out_off.* = lookup_off;
-        @memcpy(out_entry[0..32], &lookup_entry);
-    }
-    return lookup_any_rc;
-}
-
-export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    _ = plan;
-    return reserve_rc;
-}
-
-export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = plan;
-    if (commit_rc == ok) {
-        out_lba.* = commit_lba;
-        out_off.* = commit_off;
-        @memcpy(commit_entry[0..32], tmpl[0..32]);
-    }
-    return commit_rc;
-}
-
 export fn priv_dir_erase_chain(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, lba: u64, off: u32, name: [*c]const u8) callconv(.c) u16 {
     _ = m;
     _ = loc;
@@ -439,26 +411,6 @@ export fn priv_alloc_eoc_cluster(m: [*c]const c.ra8_fs_mount_t, out_c: [*c]u32) 
     out_c.* = next_cluster;
     next_cluster += 1;
     return ok;
-}
-
-export fn priv_entry_first_cluster(entry: [*c]const u8) callconv(.c) u32 {
-    const lo: u32 = @as(u32, entry[26]) | (@as(u32, entry[27]) << 8);
-    const hi: u32 = @as(u32, entry[20]) | (@as(u32, entry[21]) << 8);
-    return (hi << 16) | lo;
-}
-
-export fn priv_entry_set_cluster_size(entry: [*c]u8, cluster: u32, size: u32) callconv(.c) void {
-    entry[26] = @truncate(cluster);
-    entry[27] = @truncate(cluster >> 8);
-    entry[28] = @truncate(size);
-    entry[29] = @truncate(size >> 8);
-    entry[30] = @truncate(size >> 16);
-    entry[31] = @truncate(size >> 24);
-}
-
-export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-    stamp_calls += 1;
 }
 
 export fn priv_byte_fill(dst: [*c]u8, val: u8, n: u32) callconv(.c) void {
@@ -538,7 +490,7 @@ test "mkdir lays the dot entries and links the parent entry" {
     try std.testing.expectEqual(@as(usize, 0), fat_set_calls);
     try std.testing.expectEqual(attr_dir, commit_entry[11]);
     try std.testing.expectEqual(@as(u8, 5), commit_entry[26]);
-    try std.testing.expectEqual(@as(u32, 5), priv_entry_first_cluster(&commit_entry));
+    try std.testing.expectEqual(@as(u32, 5), c.priv_entry_first_cluster(&commit_entry));
 }
 
 test "mkdir refuses an existing name before touching anything" {
@@ -744,4 +696,40 @@ test "rmdir dispatch: idle mount and exFAT routing" {
     try std.testing.expectEqual(err_not_found, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     try std.testing.expectEqual(@as(usize, 1), exfat_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_set_calls);
+}
+
+export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    if (lookup_any_rc == ok) {
+        out_lba.* = lookup_lba;
+        out_off.* = lookup_off;
+        @memcpy(out_entry[0..32], &lookup_entry);
+    }
+    return lookup_any_rc;
+}
+
+export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    _ = plan;
+    return reserve_rc;
+}
+
+export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    _ = plan;
+    if (commit_rc == ok) {
+        out_lba.* = commit_lba;
+        out_off.* = commit_off;
+        @memcpy(commit_entry[0..32], tmpl[0..32]);
+    }
+    return commit_rc;
+}
+
+export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
+    stamp_calls += 1;
 }
