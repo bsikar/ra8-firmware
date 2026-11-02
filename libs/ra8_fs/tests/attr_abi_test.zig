@@ -42,13 +42,15 @@ test "FAT patches DIR_Attr of the 8.3 entry and writes its sector" {
 test "FAT falls back to the long name when the 8.3 lookup misses" {
     fake.reset(fat16);
     fake.find83_err = attr.err_not_found;
+    fake.layLongName("long name.txt", "LONGNA~1TXT", 0);
     try std.testing.expectEqual(attr.ok, setAttr("/long name.txt", hidden, 0));
-    try std.testing.expectEqual(hidden, fake.sector[96 + 11]);
-    try std.testing.expectEqual(@as(?u64, 9), fake.sector_written);
+    try std.testing.expectEqual(archive | hidden, fake.sector[32 + 11]);
+    try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
     fake.reset(fat16);
     fake.have83 = 0;
+    fake.layLongName("long name.txt", "LONGNA~1TXT", 0);
     try std.testing.expectEqual(attr.ok, setAttr("/long name.txt", hidden, 0));
-    try std.testing.expectEqual(@as(?u64, 9), fake.sector_written);
+    try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
 }
 
 test "FAT errors propagate without a write" {
@@ -57,7 +59,6 @@ test "FAT errors propagate without a write" {
     try std.testing.expectEqual(@as(u16, 0x201), setAttr("/A.TXT", hidden, 0));
     fake.reset(fat16);
     fake.find83_err = attr.err_not_found;
-    fake.find_long_err = attr.err_not_found;
     try std.testing.expectEqual(attr.err_not_found, setAttr("/A.TXT", hidden, 0));
     fake.reset(fat16);
     fake.sector_read_err = 0x202;

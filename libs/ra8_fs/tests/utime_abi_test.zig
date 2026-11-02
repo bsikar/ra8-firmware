@@ -49,16 +49,16 @@ test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
 test "FAT falls back to the long name" {
     fake.reset(fat32);
     fake.find83_err = ut.err_not_found;
+    fake.layLongName("a long name.txt", "ALONGN~1TXT", 0);
     const md = when(9);
     try std.testing.expectEqual(ut.ok, utime("/a long name.txt", null, &md));
-    try std.testing.expectEqual(@as(u8, 9), fake.sector[96 + 22]);
-    try std.testing.expectEqual(@as(?u64, 9), fake.sector_written);
+    try std.testing.expectEqual(@as(u8, 9), fake.sector[64 + 22]);
+    try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
 }
 
 test "FAT errors propagate without a write" {
     fake.reset(fat32);
     fake.find83_err = ut.err_not_found;
-    fake.find_long_err = ut.err_not_found;
     try std.testing.expectEqual(ut.err_not_found, utime("/A.TXT", null, null));
     fake.reset(fat32);
     fake.sector_read_err = 0x204;

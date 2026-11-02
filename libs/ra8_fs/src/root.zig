@@ -16,6 +16,7 @@ pub const utf = @import("ra8_fs_utf_abi.zig");
 pub const upcase = @import("ra8_fs_upcase_abi.zig");
 pub const exfat_openw = @import("ra8_fs_exfat_openw_abi.zig");
 pub const free_chain = @import("ra8_fs_free_chain_abi.zig");
+pub const lfn_find = @import("ra8_fs_lfn_find_abi.zig");
 
 comptime {
     _ = lock;
@@ -29,4 +30,5 @@ comptime {
     _ = upcase;
     _ = exfat_openw;
     _ = free_chain;
+    _ = lfn_find;
 }

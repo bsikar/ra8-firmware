@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_fat_lfn_mcdc.c
- * @brief MC/DC vectors for the compound decisions in ra8_fs_fat_lfn.c.
+ * @brief MC/DC vectors for the compound decisions in ra8_fs_lfn_find_abi.zig.
  *
  * @details
  * Dedicated N+1 independent-influence vector sets for the
@@ -236,7 +236,7 @@ internal_plant_lfn_entry(uint8_t* ent, uint8_t order, uint8_t csum, const char* 
  * @test test_mcdc_lfn_name_for_guard
  * @par MC/DC:
  * Decision: `if ((s->have == 0U) || (s->units[0] == 0U))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_units_for` (2 conditions). Driven
+ * `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@priv_lfn_units_for` (2 conditions). Driven
  * directly against a crafted reassembly state.
  * - V1: have=1, units[0]='A' -> C1=F, C2=F -> dec F (returns the units).
  * - V2: have=0               -> C1=T short -> dec T -> nullptr.
@@ -322,7 +322,7 @@ RA8_INTERNAL static void internal_test_mcdc_dir_find_free_marker(void)
  * @test test_mcdc_dir_find_long_sector_match
  * @par MC/DC:
  * Decision: `if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@internal_dir_find_long_sector` (2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@scanSector` (2 conditions),
  * reached through `ra8_fs_open`'s non-8.3 long-name fallback. The planted root
  * holds one LFN chain for "AB.EPUB", its 8.3 entry, and one unrelated plain 8.3
  * entry ("CD" with no LFN chain).
@@ -367,7 +367,7 @@ RA8_INTERNAL static void internal_test_mcdc_dir_find_long_sector_match(void)
  * @par MC/DC:
  * Decision: `while (cur >= k_cluster_first_data && (cur - k_cluster_first_data)
  * < m->count_of_clusters)` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_free_chain` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@priv_free_chain` (2 conditions).
  *
  * This is a defensive bound: on any chain reachable through the allocator every
  * cluster satisfies both conditions, so the loop normally exits through the

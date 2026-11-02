@@ -43,7 +43,6 @@ const fs_sources = [_][]const u8{
     fs_dir ++ "ra8_fs_fat_fileio.c",
     fs_dir ++ "ra8_fs_fat_fmt.c",
     fs_dir ++ "ra8_fs_fat_label.c",
-    fs_dir ++ "ra8_fs_fat_lfn.c",
     fs_dir ++ "ra8_fs_fat_lfn_write.c",
     fs_dir ++ "ra8_fs_fat_mount.c",
     fs_dir ++ "ra8_fs_fat_name.c",

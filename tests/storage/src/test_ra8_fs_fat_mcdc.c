@@ -328,7 +328,7 @@ RA8_INTERNAL static void internal_plant_lfn_entry(uint8_t*    ent,
 /**
  * @test test_mcdc_lfn_name_compare_lengths
  * @par MC/DC:
- * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_lfn.c@internal_dir_find_long_sector`,
+ * Two decisions in `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@scanSector`,
  * reached when `ra8_fs_open` falls back to the long-name lookup
  * (`priv_dir_find_long`) for a non-8.3 name.
  *
@@ -382,7 +382,7 @@ RA8_INTERNAL static void internal_test_mcdc_lfn_name_compare_lengths(void)
  * @test test_mcdc_lfn_terminator_vs_pad
  * @par MC/DC:
  * Decision: `if ((val == 0U) || (val == k_lfn_unicode_pad))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_add` (2 conditions), reached while
+ * `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@priv_lfn_add` (2 conditions), reached while
  * reassembling a planted LFN chain through the `ra8_fs_open` long-name fallback.
  * - control: a long-name char slot ("AB.EPUB" chars) -> both F (char kept).
  * - C1=T: the UTF-16 NUL terminator (0x0000) follows the 7-char name -> ends
@@ -431,7 +431,7 @@ RA8_INTERNAL static void internal_test_mcdc_lfn_terminator_vs_pad(void)
  * @test test_mcdc_lfn_order_range_guard
  * @par MC/DC:
  * Decision: `if ((order < 1U) || (order > k_lfn_max_entries))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_add` (2 conditions).
+ * `libs/ra8_fs/src/ra8_fs_lfn_find_abi.zig@priv_lfn_add` (2 conditions).
  * `k_lfn_max_entries` is
  * 19. Reached by planting an LFN sub-entry with an out-of-range order byte and
  * resolving the directory through the `ra8_fs_open` long-name fallback.
