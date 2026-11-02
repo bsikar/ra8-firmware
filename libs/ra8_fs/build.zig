@@ -72,6 +72,7 @@ pub fn build(b: *std.Build) void {
         "tests/space_abi_test.zig",
         "tests/gpt_abi_test.zig",
         "tests/lfn_abi_test.zig",
+        "tests/lfn_find_abi_test.zig",
         "tests/utf_abi_test.zig",
         "tests/upcase_abi_test.zig",
         "tests/exfat_openw_abi_test.zig",

@@ -38,7 +38,6 @@ const fat_tus = [_][]const u8{
     "ra8_fs_fat_fileio.c",
     "ra8_fs_fat_fmt.c",
     "ra8_fs_fat_label.c",
-    "ra8_fs_fat_lfn.c",
     "ra8_fs_fat_lfn_write.c",
     "ra8_fs_fat_mount.c",
     "ra8_fs_fat_name.c",

@@ -18,9 +18,11 @@ pub var written_cluster: u32 = 0;
 pub var mount_store: c.ra8_fs_mount_t = std.mem.zeroes(c.ra8_fs_mount_t);
 
 pub var sector: [512]u8 = undefined;
+pub var walk_lba: u64 = 10;
+pub var walk_fixed: u32 = 1;
+pub var eps: u32 = 16;
 pub var have83: u8 = 1;
 pub var find83_err: u16 = 0;
-pub var find_long_err: u16 = 0;
 pub var resolve_err: u16 = 0;
 pub var sector_read_err: u16 = 0;
 pub var sector_written: ?u64 = null;
@@ -81,7 +83,6 @@ pub fn reset(fs_type: u8) void {
     written_index = null;
     have83 = 1;
     find83_err = 0;
-    find_long_err = 0;
     resolve_err = 0;
     sector_read_err = 0;
     sector_written = null;
@@ -114,6 +115,9 @@ pub fn reset(fs_type: u8) void {
     fat_sets = 0;
     gave = 0;
     hint_low = 0xFFFF_FFFF;
+    walk_lba = 10;
+    walk_fixed = 1;
+    eps = 16;
     flush_calls = 0;
     flush_err = 0;
 }
@@ -192,12 +196,56 @@ export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_
     return 0;
 }
 
-export fn priv_dir_find_long(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, want: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = .{ m, loc, want, out_entry };
-    if (find_long_err != 0) return find_long_err;
-    out_lba.* = 9;
-    out_off.* = 96;
+export fn priv_dir_eps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
+    _ = m;
+    return eps;
+}
+
+export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
+    _ = .{ m, loc };
+    w.*.is_root_fixed = 1;
+    w.*.fixed_remaining = walk_fixed;
+    w.*.cluster = 0;
+    w.*.sector_in_cluster = 0;
+    w.*.cur_lba = walk_lba;
+    w.*.entry_idx = 0;
+    w.*.cluster_hops = 0;
+}
+
+export fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_walk_t, out_eod: [*c]u8) callconv(.c) u16 {
+    _ = m;
+    if (w.*.fixed_remaining == 0) {
+        out_eod.* = 1;
+        return 0;
+    }
+    w.*.fixed_remaining -= 1;
+    w.*.cur_lba += 1;
+    out_eod.* = 0;
     return 0;
+}
+
+export fn priv_byte_copy(dst: [*c]u8, src: [*c]const u8, n: u32) callconv(.c) void {
+    @memcpy(dst[0..n], src[0..n]);
+}
+
+/// Lay a real long-name directory image into the sector buffer at byte `at`:
+/// one LFN sub-entry per 13 UTF-16 units of `name` (highest group first,
+/// 0x40 flag on the physically first), then the 8.3 entry `sfn11` with the
+/// archive attribute. What a mounted FAT directory actually looks like.
+pub fn layLongName(name: []const u8, comptime sfn11: *const [11]u8, at: usize) void {
+    const lf = @import("ra8_fs").lfn;
+    const csum = lf.priv_sfn_checksum(sfn11);
+    const groups: u32 = @intCast((name.len + 12) / 13);
+    var units: [247]u16 = @splat(0);
+    for (name, 0..) |ch, i| units[i] = ch;
+    var g: u32 = 0;
+    while (g < groups) : (g += 1) {
+        var ent: [32]u8 = @splat(0);
+        lf.priv_lfn_fill_slot(&ent, &units, @intCast(name.len), groups - g, @intFromBool(g == 0), csum);
+        @memcpy(sector[at + g * 32 ..][0..32], &ent);
+    }
+    @memcpy(sector[at + groups * 32 ..][0..11], sfn11);
+    sector[at + groups * 32 + 11] = 0x20;
 }
 
 export fn priv_sec_walk() callconv(.c) [*c]u8 {
