@@ -24,6 +24,7 @@ pub const exfat_read = @import("ra8_fs_exfat_read_abi.zig");
 pub const alloc = @import("ra8_fs_alloc_abi.zig");
 pub const file = @import("ra8_fs_file_abi.zig");
 pub const resolve = @import("ra8_fs_resolve_abi.zig");
+pub const label = @import("ra8_fs_label_abi.zig");
 
 comptime {
     _ = lock;
@@ -42,4 +43,5 @@ comptime {
     _ = alloc;
     _ = file;
     _ = resolve;
+    _ = label;
 }
