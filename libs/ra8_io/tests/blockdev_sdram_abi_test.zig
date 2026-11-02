@@ -200,6 +200,7 @@ export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
 comptime {
     _ = @import("fs_stubs.zig");
     _ = @import("netif_stubs.zig");
+    _ = @import("xspi_stubs.zig");
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).

@@ -293,6 +293,10 @@ extern fn ra8_io_netif_poll(netif: ?*const Bus, out_buf: ?[*]u8, inout_len: ?*u1
 
 const frame = [_]u8{ 0x01, 0x02, 0x03, 0x04 };
 
+comptime {
+    _ = @import("xspi_stubs.zig");
+}
+
 test "bind: NULL handle is refused once" {
     errors_logged = 0;
     try std.testing.expectEqual(@as(c_int, 0x504), ra8_io_netif_bind_net_pal(null));

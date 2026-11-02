@@ -257,6 +257,7 @@ test "caps pass a capacity failure through and reject a null out" {
 comptime {
     _ = @import("fs_stubs.zig");
     _ = @import("netif_stubs.zig");
+    _ = @import("xspi_stubs.zig");
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).

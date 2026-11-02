@@ -307,6 +307,10 @@ extern fn ra8_io_netif_poll(netif: ?*const Bus, out_buf: ?[*]u8, inout_len: ?*u1
 
 const frame = [_]u8{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x11 };
 
+comptime {
+    _ = @import("xspi_stubs.zig");
+}
+
 test "send: NULL handle is refused" {
     errors_logged = 0;
     try std.testing.expectEqual(front.err_null_ptr, ra8_io_netif_send(null, &frame, frame.len));
