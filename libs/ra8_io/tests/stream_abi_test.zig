@@ -291,6 +291,7 @@ export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
 // The format registry forwards to ra8_fs; these stubs stand in for it.
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).

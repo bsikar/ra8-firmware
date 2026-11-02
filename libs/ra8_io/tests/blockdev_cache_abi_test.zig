@@ -280,6 +280,7 @@ export fn ra8_usb_hmsc_read_capacity(_: u8, _: *u32, _: *u32) c_int {
 // The format registry forwards to ra8_fs; these stubs stand in for it.
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }
 
 // The blockdev_mram unit in the same archive needs these to link; unused here.

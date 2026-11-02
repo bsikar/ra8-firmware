@@ -19,6 +19,12 @@ export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
 }
 export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, _: u32) void {}
 
+comptime {
+    _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
+    _ = @import("driver_stubs.zig");
+}
+
 extern fn ra8_io_blockdev_ram_init(
     bd: ?*ram.Device,
     state: ?*ram.State,

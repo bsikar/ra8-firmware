@@ -10,6 +10,9 @@ const io = @import("ra8_io");
 const fsfmt = io.fsfmt;
 const ns = io.vfs_namespace;
 const fs = @import("fs_stubs.zig");
+comptime {
+    _ = @import("netif_stubs.zig");
+}
 
 var errors_logged: u32 = 0;
 var backend: [5]usize = @splat(0);
