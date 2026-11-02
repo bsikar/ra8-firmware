@@ -18,7 +18,8 @@
     "tests/blockdev_ram_abi_test.zig",
     "tests/blockdev_abi_test.zig",
     "tests/blockdev_mram_abi_test.zig",
-    "tests/blockdev_cache_abi_test.zig"
+    "tests/blockdev_cache_abi_test.zig",
+    "tests/blockdev_vsource_abi_test.zig"
   ],
   "covered_sources": [
     "src/blockdev_sdram_abi.zig",
@@ -58,7 +59,8 @@
     "tests/stream_blockdev_abi_test.zig",
     "tests/stream_ram_abi_test.zig",
     "tests/stream_uart_abi_test.zig",
-    "tests/stream_usbcdc_abi_test.zig"
+    "tests/stream_usbcdc_abi_test.zig",
+    "src/ra8_io_blockdev_vsource_abi.zig"
   ],
   "minimum_tests": 150
 }
