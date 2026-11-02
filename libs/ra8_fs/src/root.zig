@@ -25,6 +25,7 @@ pub const alloc = @import("ra8_fs_alloc_abi.zig");
 pub const file = @import("ra8_fs_file_abi.zig");
 pub const resolve = @import("ra8_fs_resolve_abi.zig");
 pub const label = @import("ra8_fs_label_abi.zig");
+pub const fat_core = @import("ra8_fs_fat_core_abi.zig");
 
 comptime {
     _ = lock;
@@ -44,4 +45,5 @@ comptime {
     _ = file;
     _ = resolve;
     _ = label;
+    _ = fat_core;
 }

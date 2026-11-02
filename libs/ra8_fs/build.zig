@@ -85,6 +85,7 @@ pub fn build(b: *std.Build) void {
         "tests/file_abi_test.zig",
         "tests/resolve_abi_test.zig",
         "tests/label_abi_test.zig",
+        "tests/fat_core_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
