@@ -55,8 +55,8 @@ test "FAT falls back to the long name when the 8.3 lookup misses" {
 
 test "FAT errors propagate without a write" {
     fake.reset(fat16);
-    fake.resolve_err = 0x201;
-    try std.testing.expectEqual(@as(u16, 0x201), setAttr("/A.TXT", hidden, 0));
+    fake.lookup_any_rc = 0x201;
+    try std.testing.expectEqual(@as(u16, 0x201), setAttr("/d/A.TXT", hidden, 0));
     fake.reset(fat16);
     fake.find83_err = attr.err_not_found;
     try std.testing.expectEqual(attr.err_not_found, setAttr("/A.TXT", hidden, 0));

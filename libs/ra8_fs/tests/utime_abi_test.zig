@@ -37,6 +37,12 @@ test "argument checks: null, unmounted, volume root" {
 
 test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
     fake.reset(fat32);
+    // the real resolver now walks "/DIR": the component lookup must return a
+    // directory entry with a data cluster
+    var d: [32]u8 = @splat(0);
+    d[@intCast(fs.c.k_dir_off_attr)] = @intCast(fs.c.k_ra8_fs_attr_directory);
+    d[@intCast(fs.c.k_dir_off_fst_clus_lo)] = @intCast(fs.c.k_cluster_first_data & 0xFF);
+    fake.lookup_any_entry = d;
     const cr = when(3);
     const md = when(42);
     try std.testing.expectEqual(ut.ok, utime("/DIR/A.TXT", &cr, &md));

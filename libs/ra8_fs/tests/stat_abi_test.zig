@@ -174,9 +174,9 @@ test "stat resolves a leaf through the 8.3 find" {
     try std.testing.expectEqual(@as(u64, 0x4242), st.size_bytes);
     try std.testing.expect(st.modified.valid);
     try std.testing.expectEqual(@as(u16, 2026), st.modified.value.year);
-    // the faked resolver errors surface through
-    fake.resolve_err = c.k_ra8_err_invalid_arg;
-    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), stat.ra8_fs_stat(&fake.mount_store, "x", &st));
+    // a failing parent lookup surfaces through the resolver
+    fake.lookup_any_rc = c.k_ra8_err_invalid_arg;
+    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), stat.ra8_fs_stat(&fake.mount_store, "/x/y", &st));
 }
 
 test "stat falls back to the long-name scan when the 8.3 find misses" {
