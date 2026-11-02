@@ -583,10 +583,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
     return 0;
 }
 
-export fn priv_fat_entry_apply_attr(entry: [*c]u8, set_mask: u8, clear_mask: u8) callconv(.c) void {
-    entry[11] = (entry[11] & ~clear_mask) | set_mask;
-}
-
 export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     _ = .{ entry, create, modify, access };
 }
@@ -624,4 +620,31 @@ export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]co
     _ = lba;
     _ = buf;
     return 0;
+}
+
+// ---- stand-ins for the five C helpers the open/close port (RA8FW-1092) added;
+// the open/create path is not exercised here, so they only satisfy the linker
+export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
+    _ = m; _ = loc; _ = leaf;
+    out_lba.* = 0; out_off.* = 0; out_entry[0..32].* = @splat(0);
+    return 0;
+}
+
+export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
+    _ = m; _ = loc; _ = leaf; _ = plan;
+    return 0;
+}
+
+export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
+    _ = m; _ = plan; _ = tmpl;
+    out_lba.* = 0; out_off.* = 0;
+    return 0;
+}
+
+export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
+}
+
+export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
+    _ = entry;
 }
