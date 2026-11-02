@@ -26,7 +26,6 @@ const fat_tus = [_][]const u8{
     "ra8_fs_fat_alloc.c",
     "ra8_fs_fat_check.c",
     "ra8_fs_fat_dir.c",
-    "ra8_fs_fat_dirmk.c",
     "ra8_fs_fat_exfat_check.c",
     "ra8_fs_fat_exfat_dir.c",
     "ra8_fs_fat_exfat_fmt.c",

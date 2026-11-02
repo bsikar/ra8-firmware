@@ -381,7 +381,7 @@ RA8_INTERNAL static void internal_test_mkdir_not_mounted(void)
  *
  * @par MC/DC:
  * Decision: `if (handle->type == k_ra8_fs_type_exfat)`
- * (libs/ra8_fs/src/ra8_fs_fat_dirmk.c@internal_mkdir_locked, 1 condition).
+ * (libs/libs/ra8_fs/src/ra8_fs_dirmk_abi.zig@mkdir_locked, 1 condition).
  * V1: type != exfat -> false -> priv_fat_mkdir (the sibling tests here).
  * V2: type == exfat -> true  -> priv_exfat_mkdir (this test).
  *

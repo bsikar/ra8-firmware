@@ -193,7 +193,7 @@ internal_expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uint8_
  * @par MC/DC:
  * No compound decision lies on this path; every one is single-condition. The
  * vectors it contributes: `handle->type == k_ra8_fs_type_exfat`
- * (libs/ra8_fs/src/ra8_fs_fat_dirmk.c@internal_mkdir_locked) -> true, and
+ * (libs/libs/ra8_fs/src/ra8_fs_dirmk_abi.zig@mkdir_locked) -> true, and
  * `(attr & k_exfat_attr_directory) != 0`
  * (libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c@priv_exfat_listdir) -> true, the
  * arm that reports a directory's size as 0 rather than as its allocation.

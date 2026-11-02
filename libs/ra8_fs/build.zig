@@ -79,6 +79,7 @@ pub fn build(b: *std.Build) void {
         "tests/free_chain_abi_test.zig",
         "tests/exfat_read_abi_test.zig",
         "tests/alloc_abi_test.zig",
+        "tests/dirmk_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
