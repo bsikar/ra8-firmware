@@ -29,6 +29,10 @@ fn open(mode: c.ra8_fs_mode_t, out: *?*ow.File) u16 {
     return ow.priv_exfat_open_write(&fake.mount_store, "/dir/f.bin", mode, out);
 }
 
+fn openAt(path: [*:0]const u8, mode: c.ra8_fs_mode_t, out: *?*ow.File) u16 {
+    return ow.priv_exfat_open_write(&fake.mount_store, path, mode, out);
+}
+
 test "write mode frees the clusters and truncates" {
     existing(0, 10, 8192, 8192, 0);
     var f: ?*ow.File = null;
@@ -48,8 +52,8 @@ test "append on a contiguous file sizes the run and clamps valid length" {
     var f: ?*ow.File = null;
     try std.testing.expectEqual(ow.ok, open(append_mode, &f));
     const h = f.?;
-    try std.testing.expectEqual(@as(u32, 3), h.alloc_clusters);
-    try std.testing.expectEqual(@as(u32, 12), h.tail_cluster);
+    try std.testing.expectEqual(@as(u32, 18), h.alloc_clusters); // ceil(9000 / 512)
+    try std.testing.expectEqual(@as(u32, 27), h.tail_cluster);
     try std.testing.expectEqual(@as(u64, 9000), @as(u64, h.valid_bytes));
     try std.testing.expectEqual(@as(u64, 9000), @as(u64, h.offset));
     try std.testing.expectEqual(@as(u32, 10), h.cur_cluster);
@@ -118,11 +122,11 @@ test "path, name and lookup errors pass through" {
     fake.parent_err = c.k_ra8_err_not_found;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_not_found), open(write_mode, &f));
     fake.reset(c.k_ra8_fs_type_exfat);
-    fake.name_err = c.k_ra8_err_no_mem;
-    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), open(write_mode, &f));
+    var long_name: [67]u8 = @splat('a');
+    long_name[66] = 0;
+    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), openAt(long_name[0..66 :0], write_mode, &f));
     fake.reset(c.k_ra8_fs_type_exfat);
-    fake.name_units = 0;
-    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), open(write_mode, &f));
+    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), openAt("", write_mode, &f));
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.find_set_err = c.k_ra8_err_hw_error;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_hw_error), open(write_mode, &f));

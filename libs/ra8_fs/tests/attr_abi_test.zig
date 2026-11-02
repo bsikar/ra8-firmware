@@ -86,7 +86,7 @@ test "exFAT errors propagate without a write" {
     fake.find_set_err = attr.err_not_found;
     try std.testing.expectEqual(attr.err_not_found, setAttr("/nope", hidden, 0));
     fake.reset(exfat);
-    fake.read_error = 0x203;
+    fake.sector_read_err = 0x203;
     try std.testing.expectEqual(@as(u16, 0x203), setAttr("/book.epub", hidden, 0));
     try std.testing.expectEqual(@as(?u32, null), fake.written_index);
 }

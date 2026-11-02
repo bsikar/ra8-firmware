@@ -40,10 +40,10 @@ test "FAT scans every data cluster, fills the totals and caches the count" {
     try std.testing.expectEqual(@as(u32, 3), s.free_clusters);
     try std.testing.expectEqual(@as(u32, 7), s.used_clusters);
     try std.testing.expectEqual(@as(u32, 10), s.total_clusters);
-    try std.testing.expectEqual(@as(u32, 4096), s.bytes_per_cluster);
-    try std.testing.expectEqual(@as(u64, 40960), s.total_bytes);
-    try std.testing.expectEqual(@as(u64, 12288), s.free_bytes);
-    try std.testing.expectEqual(@as(u64, 28672), s.used_bytes);
+    try std.testing.expectEqual(@as(u32, 512), s.bytes_per_cluster);
+    try std.testing.expectEqual(@as(u64, 5120), s.total_bytes);
+    try std.testing.expectEqual(@as(u64, 1536), s.free_bytes);
+    try std.testing.expectEqual(@as(u64, 3584), s.used_bytes);
     try std.testing.expectEqual(@as(u32, 3), fake.free_cached);
 }
 
