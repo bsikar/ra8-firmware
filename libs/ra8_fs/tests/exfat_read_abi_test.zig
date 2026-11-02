@@ -39,7 +39,6 @@ var pool_used: usize = 0;
 var lookup_err: u16 = 0;
 var lookup_strm: [32]u8 = @splat(0);
 var lookup_attr: u8 = 0;
-var resolve_err: u16 = 0;
 
 fn reset() void {
     for (&disk) |*s| s.* = @splat(0);
@@ -51,7 +50,6 @@ fn reset() void {
     lookup_err = 0;
     lookup_strm = @splat(0);
     lookup_attr = 0;
-    resolve_err = 0;
     @memset(&g_fs_scratch, 0);
 }
 
@@ -600,12 +598,6 @@ export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     return 0;
 }
 
-export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    out_parent.* = std.mem.zeroes(c.dir_loc_t);
-    out_leaf.* = path;
-    return 0;
-}
 
 export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &walk_sector;
@@ -624,6 +616,7 @@ export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]co
 
 // ---- stand-ins for the five C helpers the open/close port (RA8FW-1092) added;
 // the open/create path is not exercised here, so they only satisfy the linker
+var resolve_err: u16 = 0;
 export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
     _ = m; _ = loc; _ = leaf;
     out_lba.* = 0; out_off.* = 0; out_entry[0..32].* = @splat(0);

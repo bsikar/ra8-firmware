@@ -40,7 +40,6 @@ var pool_used: usize = 0;
 var lookup_err: u16 = 0;
 var lookup_strm: [32]u8 = @splat(0);
 var lookup_attr: u8 = 0;
-var resolve_err: u16 = 0;
 
 fn reset() void {
     for (&disk) |*s| s.* = @splat(0);
@@ -53,7 +52,6 @@ fn reset() void {
     lookup_err = 0;
     lookup_strm = @splat(0);
     lookup_attr = 0;
-    resolve_err = 0;
     grow_calls = 0;
     @memset(&g_fs_scratch, 0);
 }
@@ -145,6 +143,8 @@ export fn priv_exfat_flush_set(f: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
     _ = f;
     return ok;
 }
+
+var resolve_err: u16 = 0;
 
 export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]c.exfat_dir_t, leaf: [*c][*c]const u8) callconv(.c) u16 {
     _ = m;
@@ -278,12 +278,6 @@ export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     return 0;
 }
 
-export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    out_parent.* = std.mem.zeroes(c.dir_loc_t);
-    out_leaf.* = path;
-    return 0;
-}
 
 export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &walk_sector;

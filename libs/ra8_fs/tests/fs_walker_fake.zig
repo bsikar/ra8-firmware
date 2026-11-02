@@ -25,7 +25,6 @@ pub var have83: u8 = 1;
 pub var find83_err: u16 = 0;
 pub var find83_fill: bool = false;
 pub var find83_entry: [entry_bytes]u8 = @splat(0);
-pub var resolve_err: u16 = 0;
 pub var sector_read_err: u16 = 0;
 pub var sector_written: ?u64 = null;
 pub var find_set_err: u16 = 0;
@@ -96,7 +95,6 @@ pub fn reset(fs_type: u8) void {
     find83_err = 0;
     find83_fill = false;
     find83_entry = @splat(0);
-    resolve_err = 0;
     sector_read_err = 0;
     sector_written = null;
     find_set_err = 0;
@@ -176,14 +174,6 @@ export fn priv_wr16(p: [*c]u8, v: u16) callconv(.c) void {
     std.mem.writeInt(u16, p[0..2], v, .little);
 }
 
-export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    if (resolve_err != 0) return resolve_err;
-    out_parent.* = std.mem.zeroes(c.dir_loc_t);
-    out_parent.*.is_root = 1;
-    out_leaf.* = path;
-    return 0;
-}
 
 export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = .{ path, out11 };

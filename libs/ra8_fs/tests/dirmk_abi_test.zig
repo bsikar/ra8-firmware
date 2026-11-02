@@ -323,12 +323,6 @@ export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     return 0;
 }
 
-export fn priv_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.dir_loc_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    out_parent.* = std.mem.zeroes(c.dir_loc_t);
-    out_leaf.* = path;
-    return 0;
-}
 
 export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &walk_sector;
