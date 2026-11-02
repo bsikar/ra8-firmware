@@ -23,6 +23,8 @@ pub var walk_fixed: u32 = 1;
 pub var eps: u32 = 16;
 pub var have83: u8 = 1;
 pub var find83_err: u16 = 0;
+pub var find83_fill: bool = false;
+pub var find83_entry: [entry_bytes]u8 = @splat(0);
 pub var resolve_err: u16 = 0;
 pub var sector_read_err: u16 = 0;
 pub var sector_written: ?u64 = null;
@@ -92,6 +94,8 @@ pub fn reset(fs_type: u8) void {
     written_index = null;
     have83 = 1;
     find83_err = 0;
+    find83_fill = false;
+    find83_entry = @splat(0);
     resolve_err = 0;
     sector_read_err = 0;
     sector_written = null;
@@ -176,8 +180,9 @@ export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
 }
 
 export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = .{ m, loc, name83, out_entry };
+    _ = .{ m, loc, name83 };
     if (find83_err != 0) return find83_err;
+    if (find83_fill) @memcpy(out_entry[0..entry_bytes], &find83_entry);
     out_lba.* = 7;
     out_off.* = 64;
     return 0;
@@ -374,6 +379,13 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
     fat_sets += 1;
     fat[clus] = value;
     return 0;
+}
+
+/// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
+export fn priv_entry_first_cluster(entry: [*c]const u8) callconv(.c) u32 {
+    const hi: u32 = priv_rd16(entry + @as(usize, @intCast(c.k_dir_off_fst_clus_hi)));
+    const lo: u32 = priv_rd16(entry + @as(usize, @intCast(c.k_dir_off_fst_clus_lo)));
+    return (hi << 16) | lo;
 }
 
 export fn priv_rd16(p: [*c]const u8) callconv(.c) u16 {
