@@ -7,7 +7,7 @@
  * listing it, deleting a file from it, and renaming one in place, dispatched
  * across FAT and exFAT volumes. `unlink` refuses a directory -- freeing the
  * cluster chain behind one orphans every file inside it; removing a
- * directory is `rmdir`'s job, in `ra8_fs_fat_dirmk.c`.
+ * directory is `rmdir`'s job, in `ra8_fs_dirmk_abi.zig`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -599,7 +599,7 @@ RA8_INTERNAL static void internal_test_exfat_write_file_over_directory_refused(v
  *
  * @par MC/DC:
  * Decision: `if (handle->type == k_ra8_fs_type_exfat)`
- * (libs/ra8_fs/src/ra8_fs_fat_dirmk.c@internal_rmdir_locked, 1 condition).
+ * (libs/libs/ra8_fs/src/ra8_fs_dirmk_abi.zig@rmdir_locked, 1 condition).
  * - V1: type = exFAT -> T -> priv_exfat_rmdir (THIS test).
  * - V2: type = FAT16 -> F -> priv_fat_rmdir (test_ra8_fs_rmdir.c).
  *
