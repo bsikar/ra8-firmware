@@ -81,6 +81,7 @@ pub fn build(b: *std.Build) void {
         "tests/alloc_abi_test.zig",
         "tests/dirmk_abi_test.zig",
         "tests/exfat_write_abi_test.zig",
+        "tests/stat_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
