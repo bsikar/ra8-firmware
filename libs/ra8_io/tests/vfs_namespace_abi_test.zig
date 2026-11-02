@@ -116,6 +116,7 @@ fn noop_op() callconv(.c) c_int {
 }
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }
 var backend: [5]usize = @splat(0);
 

@@ -79,6 +79,7 @@ var backend: [5]usize = @splat(0);
 
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
