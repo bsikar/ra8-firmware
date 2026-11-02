@@ -668,7 +668,7 @@ RA8_INTERNAL static void internal_test_same_name_in_two_directories(void)
  * @par MC/DC:
  * No compound decision lies on this path. The vector it contributes is
  * `pos < nlen`
- * (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_build_set) taken both
+ * (libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@buildSet) taken both
  * ways in the same call: true for the 40 stored characters and false for the
  * 5 padding slots of the third Name entry.
  *

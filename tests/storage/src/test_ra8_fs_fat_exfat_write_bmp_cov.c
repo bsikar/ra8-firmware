@@ -4,7 +4,7 @@
  *
  * @details
  * Split sibling of test_ra8_fs_fat_exfat_write_dir_cov.c targeting the
- * bitmap half of `ra8_fs_fat_exfat_write.c`: the priv_exfat_find_bitmap EoD
+ * bitmap half of `ra8_fs_exfat_write_abi.zig`: the priv_exfat_find_bitmap EoD
  * and read-failure arms, the priv_exfat_bitmap_scan read-failure and
  * full-volume arms, and the priv_exfat_bmp_switch write-failure,
  * sector-change, and read-failure arms. Fault positions are injected with
@@ -336,7 +336,7 @@ RA8_INTERNAL static void internal_test_bmp_switch_read_fail(void)
  * @return 0 on success (all tests passed).
  *
  * @pre Host environment provides malloc/free and stderr.
- * @post The targeted bitmap branches in ra8_fs_fat_exfat_write.c are
+ * @post The targeted bitmap branches in ra8_fs_exfat_write_abi.zig are
  *       exercised.
  *
  * @note Not thread-safe (single-threaded test runner).
