@@ -12,6 +12,7 @@ const ns = io.vfs_namespace;
 const fs = @import("fs_stubs.zig");
 comptime {
     _ = @import("netif_stubs.zig");
+    _ = @import("xspi_stubs.zig");
 }
 
 var errors_logged: u32 = 0;

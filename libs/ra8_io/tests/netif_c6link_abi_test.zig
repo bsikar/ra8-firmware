@@ -320,6 +320,10 @@ fn bind() void {
     _ = ra8_io_netif_bind_c6link(&netif, &ctx, @ptrCast(&fake_link), &ring, ring.len);
 }
 
+comptime {
+    _ = @import("xspi_stubs.zig");
+}
+
 test "bind refuses NULLs and an undersized ring" {
     var n: Bus = .{ .iface = null, .ctx = null };
     var c: Ctx = undefined;
@@ -406,7 +410,7 @@ test "a full ring counts drops and never blocks the pump" {
 
 test "the sink refuses malformed frames" {
     bind();
-    const f = [_]u8{ 0x44 };
+    const f = [_]u8{0x44};
     backend.ra8_io_netif_c6link_rx_sink(&ctx, null, 4);
     backend.ra8_io_netif_c6link_rx_sink(&ctx, &f, 0);
     backend.ra8_io_netif_c6link_rx_sink(&ctx, &f, 1600);
