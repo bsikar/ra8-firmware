@@ -71,6 +71,7 @@ pub fn build(b: *std.Build) void {
         "tests/blockdev_abi_test.zig",
         "tests/blockdev_mram_abi_test.zig",
         "tests/blockdev_cache_abi_test.zig",
+        "tests/blockdev_vsource_abi_test.zig",
         "tests/vfs_namespace_abi_test.zig",
         "tests/vfs_abi_test.zig",
         "tests/fsfmt_abi_test.zig",
