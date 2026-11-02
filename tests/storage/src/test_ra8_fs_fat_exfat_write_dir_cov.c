@@ -4,7 +4,7 @@
  *
  * @details
  * Split sibling of test_ra8_fs_fat_exfat_write_bmp_cov.c targeting the
- * create / directory half of `ra8_fs_fat_exfat_write.c`: the
+ * create / directory half of `ra8_fs_exfat_write_abi.zig`: the
  * priv_exfat_create argument guards (empty path, over-long name, zero
  * length), the priv_exfat_write_data and read-entry failure arms, the
  * priv_exfat_find_dir_space full-root / FAT-walk / chained-cluster arms, and
@@ -475,7 +475,7 @@ RA8_INTERNAL static void internal_test_write_dir_set_write_fail(void)
  * @return 0 on success (all tests passed).
  *
  * @pre Host environment provides malloc/free and stderr.
- * @post The targeted create/dir branches in ra8_fs_fat_exfat_write.c are
+ * @post The targeted create/dir branches in ra8_fs_exfat_write_abi.zig are
  *       exercised.
  *
  * @note Not thread-safe (single-threaded test runner).

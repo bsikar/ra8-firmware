@@ -416,7 +416,7 @@ RA8_INTERNAL static void internal_test_fill_past_one_cluster(void)
  * @par MC/DC:
  * No compound decision is introduced here. The growth exercises the bitmap
  * read-modify-write across a sector edge in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_bitmap_mark` and the
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@priv_exfat_bitmap_mark` and the
  * clear across it in `priv_exfat_bitmap_clear`; both are single-condition
  * sector-switch guards driven here for the first time at a non-zero sector.
  *
@@ -641,7 +641,7 @@ RA8_INTERNAL static void internal_test_rmdir_multicluster_frees_all(void)
  * `e != k_ra8_ok` after ::priv_exfat_link
  * (libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@internal_exfat_open_created), the
  * volume-full return of
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_find_dir_space`, and the
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@priv_exfat_find_dir_space`, and the
  * failed cluster pick inside
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_grow_dir`.
  *

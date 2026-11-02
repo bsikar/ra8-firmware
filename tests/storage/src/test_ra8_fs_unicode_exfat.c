@@ -380,7 +380,7 @@ RA8_INTERNAL static void internal_test_exfat_non_ascii_round_trip(void)
  *
  * @par MC/DC:
  * Decision: `if (pos < nlen)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_build_set` (1 cond).
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@buildSet` (1 cond).
  * - V1: inside the name -> false arm -> a unit is written (asserted here).
  * - V2: past it         -> true arm  -> the slot stays zero (asserted here).
  *
@@ -432,7 +432,7 @@ RA8_INTERNAL static void internal_test_exfat_name_entries_hold_real_units(void)
  *
  * @par MC/DC:
  * Decision: the `priv_exfat_csum_add` fold in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_name_hash`, driven
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@priv_exfat_name_hash`, driven
  * through its wrap condition `((cs & 1U) != 0U)` (1 condition). Three names of
  * different lengths and contents drive both arms many times over; the assertion
  * is exact equality with an independently computed value, which is a stronger

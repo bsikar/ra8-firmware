@@ -531,7 +531,7 @@ RA8_INTERNAL static void internal_test_stream_chained_backward_seek(void)
  *
  * @par MC/DC:
  * Decision: `lba != loaded` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_bitmap_window`
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@bitmapWindow`
  * (1 condition). Every smaller case supplies the FALSE vector, where the whole
  * scan is served from one loaded sector; this one supplies the TRUE vector by
  * walking the window past the sector edge.
@@ -603,7 +603,7 @@ RA8_INTERNAL static void internal_test_stream_crosses_bitmap_sector(void)
  *
  * @par MC/DC:
  * Decision: `run >= need` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_bitmap_window`
+ * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@bitmapWindow`
  * (1 condition). Every successful growth supplies the TRUE vector; this case
  * supplies the FALSE one for the whole window, twice -- the hinted pass and
  * the full rescan behind it -- which is what turns into `k_ra8_err_no_mem`.

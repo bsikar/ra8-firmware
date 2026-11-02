@@ -479,9 +479,9 @@ RA8_INTERNAL static void internal_test_mkdir_read_failure_propagates(void)
  *
  * @par MC/DC:
  * No compound decision lies on this path. The vectors it contributes are
- * `run >= need` (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_space_in_cluster)
+ * `run >= need` (libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@spaceInCluster)
  * -> false for every slot of a full cluster, and `fe == k_ra8_err_not_found`
- * (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@internal_exfat_scan_dir_space) -> true,
+ * (libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@scanDirSpace) -> true,
  * the end of a contiguous run that now drives a grow-and-retry rather than a
  * refusal.
  *
