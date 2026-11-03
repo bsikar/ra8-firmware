@@ -106,31 +106,7 @@ extern uint8_t internal_pack_base(const char** path_io, uint8_t* out11);
 RA8_INTERNAL
 extern uint8_t internal_pack_ext(const char* path, uint8_t* out11);
 
-/* `priv_path_to_83()`: see header for the documented contract. */
-uint8_t priv_path_to_83(const char* path, uint8_t* out11)
-{
-  if (path == nullptr || out11 == nullptr) {
-    return 0U;
-  }
-  while (*path == '/') {
-    path++;
-  }
-  for (uint32_t i = 0; i < (uint32_t)k_max_8_3_name; i++) {
-    out11[i] = ' ';
-  }
-  if (internal_pack_base(&path, out11) == 0U) {
-    return 0U;
-  }
-  if (internal_pack_ext(path, out11) == 0U) {
-    return 0U;
-  }
-  /* No kanji escape on the way IN. It used to sit here, mapping a packed 0xE5
-   * first byte to 0x05 -- but both packers now refuse every byte above DEL, so
-   * no input can produce one, and a branch nothing reaches is not a safety net.
-   * The escape still matters on the way OUT, where ::priv_83_to_str() restores
-   * it for a volume some Shift-JIS system wrote. */
-  return 1U;
-}
+
 
 /**
  * @brief Lower-case one ASCII character when a `DIR_NTRes` flag asks for it.

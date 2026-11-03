@@ -254,7 +254,7 @@ export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfa
 export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     _ = .{ entry, create, modify, access };
 }
-export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
+fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
     return 0;

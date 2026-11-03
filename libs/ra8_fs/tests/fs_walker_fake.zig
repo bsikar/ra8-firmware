@@ -188,7 +188,7 @@ export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u1
     return 0xA000 | @as(u16, set[4]);
 }
 
-export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
+fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = .{ path, out11 };
     return have83;
 }

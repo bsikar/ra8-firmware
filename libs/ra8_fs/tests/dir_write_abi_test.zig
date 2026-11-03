@@ -265,3 +265,49 @@ test "pack_ext refuses an extension over three characters" {
     @memset(&buf, ' ');
     try std.testing.expectEqual(@as(u8, 0), fs.lfn.internal_pack_ext(".abcd", &buf));
 }
+
+test "path_to_83 packs, upper-cases, and space-pads" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, 0);
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.priv_path_to_83("file.txt", &buf));
+    try std.testing.expectEqual(@as(u8, 'F'), buf[0]);
+    try std.testing.expectEqual(@as(u8, 'I'), buf[1]);
+    try std.testing.expectEqual(@as(u8, 'L'), buf[2]);
+    try std.testing.expectEqual(@as(u8, 'E'), buf[3]);
+    try std.testing.expectEqual(@as(u8, ' '), buf[4]);
+    try std.testing.expectEqual(@as(u8, 'T'), buf[8]);
+    try std.testing.expectEqual(@as(u8, 'X'), buf[9]);
+    try std.testing.expectEqual(@as(u8, 'T'), buf[10]);
+}
+
+test "path_to_83 skips leading slashes and handles no extension" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, 0);
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.priv_path_to_83("//a.b", &buf));
+    try std.testing.expectEqual(@as(u8, 'A'), buf[0]);
+    try std.testing.expectEqual(@as(u8, 'B'), buf[8]);
+    var buf2: [11]u8 = undefined;
+    @memset(&buf2, 0);
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.priv_path_to_83("abc", &buf2));
+    try std.testing.expectEqual(@as(u8, ' '), buf2[8]);
+}
+
+test "path_to_83 refuses bad bases" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83("ABCDEFGHI.TXT", &buf));
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83(".txt", &buf));
+}
+
+test "path_to_83 refuses an over-long extension" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83("ab.abcd", &buf));
+}
+
+test "path_to_83 refuses null arguments" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83(null, &buf));
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83("a.b", null));
+}

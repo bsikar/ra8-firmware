@@ -242,3 +242,21 @@ pub export fn internal_pack_ext(path: [*c]const u8, out11: [*c]u8) callconv(.c) 
     }
     return 1;
 }
+
+/// Convert "FILE.TXT" (a caller-supplied path) to the packed 11-byte 8.3
+/// form, space-padded as on disk. Lower-case input is upper-cased. Returns 0
+/// on a bad name (base over 8, extension over 3, missing characters), 1 on
+/// success. No kanji escape on the way in: both packers refuse every byte
+/// above DEL, so no input can produce a packed 0xE5 first byte. The escape
+/// still matters on the way out, where priv_83_to_str restores it for a
+/// volume some Shift-JIS system wrote.
+pub export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
+    if (path == null or out11 == null) return 0;
+    var p = path;
+    while (p[0] == '/') p += 1;
+    var i: u32 = 0;
+    while (i < c.k_max_8_3_name) : (i += 1) out11[i] = ' ';
+    if (internal_pack_base(&p, out11) == 0) return 0;
+    if (internal_pack_ext(p, out11) == 0) return 0;
+    return 1;
+}
