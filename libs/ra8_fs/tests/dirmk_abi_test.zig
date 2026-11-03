@@ -378,7 +378,7 @@ export fn priv_dir_erase_chain(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.d
     return erase_rc;
 }
 
-export fn priv_alloc_eoc_cluster(m: [*c]const c.ra8_fs_mount_t, out_c: [*c]u32) callconv(.c) u16 {
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
     _ = m;
     alloc_calls += 1;
     if (alloc_rc != ok) return alloc_rc;

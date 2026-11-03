@@ -661,3 +661,9 @@ export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*
     out11[9] = 'T';
     out11[10] = '0';
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

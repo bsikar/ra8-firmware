@@ -88,3 +88,9 @@ test "entry count is clamped to the scan bound, and read errors propagate" {
     try std.testing.expectEqual(@as(u16, 0x204), volume()[0]);
     try std.testing.expectEqual(@as(u16, 0x204), partition(0)[0]);
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}
