@@ -5,10 +5,9 @@
 //! field writers, the byte-compare, the end-of-chain write selector, and the
 //! free-cluster scan behind `priv_alloc_cluster()`.
 //!
-//! The 16-bit writer, the readers, the byte fill/copy, the sector backends,
-//! and the FAT entry get/set stay in the C library for now: the test fakes
-//! override them as exported stubs, so porting them first moves the fakes onto
-//! a fake block backend instead of stubbing the primitives.
+//! The FAT entry get/set layer and its FAT12 straddle helpers stay in C until
+//! the next slice; the readers, the 16-bit writer, the byte fill/copy, and the
+//! sector backends now live in the primitive module (RA8FW-1097).
 //!
 //! The allocator scans at most `count_of_clusters` entries starting from the
 //! allocation hint, wrapping once, and takes the first free entry. No

@@ -86,6 +86,9 @@ pub fn reset(fs_type: u8) void {
     mount_store.in_use = 1;
     mount_store.type = fs_type;
     mount_store.bytes_per_sector = 512;
+    mount_store.backend.read_block = read_block_backend;
+    mount_store.backend.write_block = write_block_backend;
+    mount_store.bytes_per_sector = 512;
     mount_store.sectors_per_cluster = 1;
     mount_store.root_cluster = 5;
     sector = @splat(0);
@@ -170,11 +173,6 @@ export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u1
     return 0xA000 | @as(u16, set[4]);
 }
 
-export fn priv_wr16(p: [*c]u8, v: u16) callconv(.c) void {
-    std.mem.writeInt(u16, p[0..2], v, .little);
-}
-
-
 export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = .{ path, out11 };
     return have83;
@@ -187,11 +185,6 @@ export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_
     out_lba.* = 7;
     out_off.* = 64;
     return 0;
-}
-
-export fn priv_dir_eps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    _ = m;
-    return eps;
 }
 
 export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
@@ -215,10 +208,6 @@ export fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_
     w.*.cur_lba += 1;
     out_eod.* = 0;
     return 0;
-}
-
-export fn priv_byte_copy(dst: [*c]u8, src: [*c]const u8, n: u32) callconv(.c) void {
-    @memcpy(dst[0..n], src[0..n]);
 }
 
 /// Lay a real long-name directory image into the sector buffer at byte `at`:
@@ -245,8 +234,8 @@ export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &sector;
 }
 
-export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.c) u16 {
-    _ = m;
+fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callconv(.c) u16 {
+    _ = .{ ctx, count };
     if (sector_read_err != 0) return sector_read_err;
     if (lba == dir_lba) {
         for (0..slots) |i| {
@@ -269,8 +258,8 @@ export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8)
     return 0;
 }
 
-export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]const u8) callconv(.c) u16 {
-    _ = .{ m, buf };
+fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
+    _ = .{ ctx, count, buf };
     sector_written = lba;
     return 0;
 }
@@ -291,15 +280,6 @@ export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_da
 
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &io_sector;
-}
-
-export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    _ = m;
-    return 512;
-}
-
-export fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    return @as(u32, m.*.bytes_per_sector) * @as(u32, m.*.sectors_per_cluster);
 }
 
 export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u64 {
@@ -329,7 +309,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
     return sum;
 }
-
 
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
 
@@ -390,11 +369,6 @@ export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
     return &file_pool[slots_left];
 }
 
-export fn priv_is_eoc(m: [*c]const c.ra8_fs_mount_t, value: u32) callconv(.c) u8 {
-    _ = m;
-    return if (value >= 0x0FFF_FFF8) 1 else 0;
-}
-
 export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
     _ = m;
     if (parent_err != 0) return parent_err;
@@ -433,18 +407,6 @@ export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) cal
 }
 
 /// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
-export fn priv_rd16(p: [*c]const u8) callconv(.c) u16 {
-    return @as(u16, p[0]) | (@as(u16, p[1]) << 8);
-}
-
-export fn priv_rd32(p: [*c]const u8) callconv(.c) u32 {
-    return @as(u32, priv_rd16(p)) | (@as(u32, priv_rd16(p + 2)) << 16);
-}
-
-export fn priv_rd64(p: [*c]const u8) callconv(.c) u64 {
-    return @as(u64, priv_rd32(p)) | (@as(u64, priv_rd32(p + 4)) << 32);
-}
-
 export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
     _ = m;
     return bpb_err;
