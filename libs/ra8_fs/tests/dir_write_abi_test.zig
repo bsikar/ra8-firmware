@@ -154,3 +154,62 @@ test "83 legality allows ordinary name characters and pins the DEL fall-through"
     // the port preserves the C fall-through so the two never disagree.
     try std.testing.expectEqual(@as(u8, 1), legal(0x7F));
 }
+
+test "priv_to_upper folds lower-case ASCII and leaves the rest" {
+    const up = fs.lfn.priv_to_upper;
+    try std.testing.expectEqual(@as(u8, 'A'), up('a'));
+    try std.testing.expectEqual(@as(u8, 'Z'), up('z'));
+    try std.testing.expectEqual(@as(u8, 'A'), up('A'));
+    try std.testing.expectEqual(@as(u8, '0'), up('0'));
+    try std.testing.expectEqual(@as(u8, 0xE9), up(0xE9));
+}
+
+test "name_is_83 refuses bad base and extension lengths" {
+    const is83 = fs.lfn.internal_name_is_83;
+    const dot_txt = [_]u16{ '.', 't', 'x', 't' };
+    try std.testing.expectEqual(@as(u8, 0), is83(&dot_txt, 4)); // empty base
+    const long_base = [_]u16{ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', '.', 'T', 'X', 'T' };
+    try std.testing.expectEqual(@as(u8, 0), is83(&long_base, 13)); // base 9
+    const no_ext = [_]u16{ 'A', 'B', 'C', '.' };
+    try std.testing.expectEqual(@as(u8, 0), is83(&no_ext, 4)); // trailing dot
+    const long_ext = [_]u16{ 'A', 'B', 'C', '.', 'A', 'B', 'C', 'D' };
+    try std.testing.expectEqual(@as(u8, 0), is83(&long_ext, 8)); // ext 4
+}
+
+test "name_is_83 accepts well-formed names and refuses illegal units" {
+    const is83 = fs.lfn.internal_name_is_83;
+    const abc = [_]u16{ 'A', 'B', 'C', '.', 'T', 'X', 'T' };
+    try std.testing.expectEqual(@as(u8, 1), is83(&abc, 7));
+    const img = [_]u16{ 'I', 'M', 'G', '_', '0', '1' };
+    try std.testing.expectEqual(@as(u8, 1), is83(&img, 6)); // no dot
+    const plus = [_]u16{ 'A', 'B', '+', 'C', '.', 'T', 'X', 'T' };
+    try std.testing.expectEqual(@as(u8, 0), is83(&plus, 8)); // '+' needs a long name
+}
+
+test "case_kind maps all-lower and all-upper halves to NTRes flags" {
+    const kind = fs.lfn.internal_name_case_kind;
+    var ntres: u8 = 0xFF;
+    const upper = [_]u16{ 'A', 'B', 'C', '.', 'T', 'X', 'T' };
+    try std.testing.expectEqual(c.k_name_kind_short, kind(&upper, 7, &ntres));
+    try std.testing.expectEqual(@as(u8, 0), ntres);
+    var ntres2: u8 = 0xFF;
+    const lower = [_]u16{ 'a', 'b', 'c', '.', 't', 'x', 't' };
+    try std.testing.expectEqual(c.k_name_kind_short, kind(&lower, 7, &ntres2));
+    try std.testing.expectEqual(@as(u8, @intCast(c.k_ntres_base_lower | c.k_ntres_ext_lower)), ntres2);
+}
+
+test "case_kind refuses a mixed-case half" {
+    const kind = fs.lfn.internal_name_case_kind;
+    var ntres: u8 = 0xFF;
+    const mixed = [_]u16{ 'A', 'b', 'C', '.', 'T', 'X', 'T' };
+    try std.testing.expectEqual(c.k_name_kind_long, kind(&mixed, 7, &ntres));
+    try std.testing.expectEqual(@as(u8, 0), ntres);
+}
+
+test "case_kind treats digits and punctuation as caseless" {
+    const kind = fs.lfn.internal_name_case_kind;
+    var ntres: u8 = 0xFF;
+    const img = [_]u16{ 'I', 'M', 'G', '_', '0', '1' };
+    try std.testing.expectEqual(c.k_name_kind_short, kind(&img, 6, &ntres));
+    try std.testing.expectEqual(@as(u8, 0), ntres);
+}

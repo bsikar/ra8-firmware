@@ -133,3 +133,75 @@ pub export fn internal_unit_is_83_legal(u: u16) callconv(.c) u8 {
     if (unit_in_set(u, "+,;=[] ") != 0) return 0;
     return 1;
 }
+
+fn name_dot_index(leaf: [*c]const u16, n: u32) u32 {
+    var dot: u32 = n;
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (leaf[i] == '.') dot = i;
+    }
+    return dot;
+}
+
+fn case_observe(leaf: [*c]const u16, from: u32, to: u32, seen: *u8) void {
+    var i: u32 = from;
+    while (i < to) : (i += 1) {
+        const ch: u32 = leaf[i];
+        if (ch >= 'A' and ch <= 'Z') {
+            seen.* |= 0x01; // k_case_seen_upper (ra8_fs_name_local_t, fat_name.c-local)
+        } else if (ch >= 'a' and ch <= 'z') {
+            seen.* |= 0x02; // k_case_seen_lower
+        }
+        // Digits and punctuation carry no case; they constrain nothing.
+    }
+}
+
+/// Upper-case one ASCII character. Characters outside 'a'..'z' return
+/// unchanged; the caller's cast decides how bytes above DEL got here.
+pub export fn priv_to_upper(ch: u8) callconv(.c) u8 {
+    if (ch >= 'a' and ch <= 'z') {
+        return ch - 'a' + 'A';
+    }
+    return ch;
+}
+
+/// Can `leaf` be stored as a packed 8.3 name without losing anything? Requires
+/// a 1..8 character base, a 0 or 1..3 character extension, and every character
+/// legal in a short name. A second dot is caught by that last rule rather than
+/// by a count of its own: everything before the LAST dot is the base, so an
+/// earlier one is simply a character the base may not hold. A trailing dot
+/// fails the extension test and is therefore stored as a long name.
+pub export fn internal_name_is_83(leaf: [*c]const u16, n: u32) callconv(.c) u8 {
+    const dot = name_dot_index(leaf, n);
+    const base_len = dot;
+    if (base_len == 0 or base_len > c.k_filename_base_len) return 0;
+    if (dot < n) {
+        const ext_len = (n - dot) - 1;
+        if (ext_len == 0 or ext_len > c.k_filename_ext_len) return 0;
+    }
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (i == dot) continue;
+        if (internal_unit_is_83_legal(leaf[i]) == 0) return 0;
+    }
+    return 1;
+}
+
+/// Decide the case shape of an 8.3-representable leaf. A half of the name that
+/// is all one case round-trips through a `DIR_NTRes` bit; a half that mixes
+/// cases does not, and the whole name then needs a long-name chain. The two
+/// halves are judged independently, exactly as the two flag bits are.
+/// Preconditions: `leaf` packs to 8.3 (internal_name_is_83 returned 1).
+pub export fn internal_name_case_kind(leaf: [*c]const u16, n: u32, out_ntres: [*c]u8) callconv(.c) c.ra8_fs_name_kind_t {
+    const dot = name_dot_index(leaf, n);
+    var base_seen: u8 = 0;
+    var ext_seen: u8 = 0;
+    case_observe(leaf, 0, dot, &base_seen);
+    if (dot < n) case_observe(leaf, dot + 1, n, &ext_seen);
+    out_ntres.* = 0;
+    if (base_seen == 0x03) return c.k_name_kind_long; // k_case_seen_mixed
+    if (ext_seen == 0x03) return c.k_name_kind_long;
+    if (base_seen == 0x02) out_ntres.* |= @as(u8, c.k_ntres_base_lower); // k_case_seen_lower
+    if (ext_seen == 0x02) out_ntres.* |= @as(u8, c.k_ntres_ext_lower);
+    return c.k_name_kind_short;
+}
