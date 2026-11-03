@@ -5,9 +5,9 @@
 //! field writers, the byte-compare, the end-of-chain write selector, and the
 //! free-cluster scan behind `priv_alloc_cluster()`.
 //!
-//! The FAT entry get/set layer and its FAT12 straddle helpers stay in C until
-//! the next slice; the readers, the 16-bit writer, the byte fill/copy, and the
-//! sector backends now live in the primitive module (RA8FW-1097).
+//! The FAT entry get/set layer and its FAT12 straddle helpers moved to the
+//! entry module (RA8FW-1098), and the readers, the 16-bit writer, the byte
+//! fill/copy, and the sector backends live in the primitive module (RA8FW-1097).
 //!
 //! The allocator scans at most `count_of_clusters` entries starting from the
 //! allocation hint, wrapping once, and takes the first free entry. No

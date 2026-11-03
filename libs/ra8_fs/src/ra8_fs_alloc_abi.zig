@@ -153,6 +153,14 @@ pub export fn priv_fat_sector_wrote(m: ?*const Mount, buf: [*]const u8, lba: u64
     s_fat_cache_owner = m;
 }
 
+/// Drop the shared FAT sector cache. Test support and mount teardown: the
+/// cache is keyed by mount pointer, so a recycled mount address must not
+/// inherit the previous owner's sectors.
+pub export fn priv_fat_cache_reset() callconv(.c) void {
+    s_fat_cache_lba = cache_empty;
+    s_fat_cache_owner = null;
+}
+
 pub export fn priv_alloc_hint_get(m: ?*const Mount) callconv(.c) u32 {
     const st = stateFor(m);
     if (st == null) {

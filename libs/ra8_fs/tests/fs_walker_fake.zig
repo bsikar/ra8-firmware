@@ -7,6 +7,7 @@
 //! entries; the FAT side is one 512-byte sector.
 
 const std = @import("std");
+const al = @import("ra8_fs").alloc;
 const c = @import("ra8_fs").c;
 const entry_bytes = 32;
 
@@ -35,6 +36,9 @@ pub var stamp_calls: u32 = 0;
 
 // Free-space side: a 32-entry FAT, a two-sector exFAT bitmap at LBA 100.
 pub const bitmap_lba: u64 = 100;
+/// The FAT lives at its own fixed LBA so no other fake range collides with it.
+pub const fat_lba: u64 = 900;
+pub const fat_secs: u64 = 2;
 pub var fat: [32]u32 = undefined;
 pub var fat_err: u16 = 0;
 pub var fat_reads: u32 = 0;
@@ -90,6 +94,13 @@ pub fn reset(fs_type: u8) void {
     mount_store.backend.write_block = write_block_backend;
     mount_store.bytes_per_sector = 512;
     mount_store.sectors_per_cluster = 1;
+    // The real entry layer maps cluster -> LBA: cluster 5 (root) must
+    // land on dir_lba, so the cluster heap starts one LBA before it.
+    mount_store.first_data_lba = 1;
+    mount_store.first_fat_lba = fat_lba;
+    mount_store.fat_size_sectors = fat_secs;
+    mount_store.num_fats = 1;
+    al.priv_fat_cache_reset();
     mount_store.root_cluster = 5;
     sector = @splat(0);
     read_error = 0;
@@ -107,6 +118,7 @@ pub fn reset(fs_type: u8) void {
     stamp_calls = 0;
     fat = @splat(0);
     fat_err = 0;
+    fat_set_err = 0;
     fat_reads = 0;
     free_cached = 0xFFFF_FFFF;
     bitmap = @splat(0);
@@ -143,6 +155,7 @@ pub fn reset(fs_type: u8) void {
     walk_lba = 10;
     walk_fixed = 1;
     eps = 16;
+    dir_lba = 4;
     flush_calls = 0;
     flush_err = 0;
 }
@@ -234,9 +247,65 @@ export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &sector;
 }
 
+/// Serve the FAT array as raw sectors. The array is indexed by cluster
+/// directly (`fat[cluster]`), so entry `i` lands at byte `i * entry_size`.
+fn fatToSector(buf: [*c]u8) void {
+    const t = mount_store.type;
+    if (t == c.k_ra8_fs_type_fat12) {
+        for (fat, 0..) |v, i| {
+            const off = i + i / 2;
+            if (i % 2 == 0) {
+                buf[off] = @truncate(v);
+                buf[off + 1] = (buf[off + 1] & 0x0F) | @as(u8, @truncate(v >> 8)) << 4;
+            } else {
+                buf[off] = (buf[off] & 0x0F) | @as(u8, @truncate(v)) << 4;
+                buf[off + 1] = @truncate(v >> 4);
+            }
+        }
+        return;
+    }
+    const esz: usize = if (t == c.k_ra8_fs_type_fat16) 2 else 4;
+    for (fat, 0..) |v, i| {
+        const at = i * esz;
+        buf[at] = @truncate(v);
+        buf[at + 1] = @truncate(v >> 8);
+        if (esz == 4) {
+            buf[at + 2] = @truncate(v >> 16);
+            buf[at + 3] = @truncate(v >> 24);
+        }
+    }
+}
+
+/// The write side of the same mapping: parse a FAT sector back into the array.
+fn fatFromSector(buf: [*c]u8) void {
+    const t = mount_store.type;
+    if (t == c.k_ra8_fs_type_fat12) {
+        for (0..fat.len) |i| {
+            const off = i + i / 2;
+            const raw: u16 = @as(u16, buf[off]) | (@as(u16, buf[off + 1]) << 8);
+            fat[i] = if (i % 2 == 0) raw & 0x0FFF else raw >> 4;
+        }
+        return;
+    }
+    const esz: usize = if (t == c.k_ra8_fs_type_fat16) 2 else 4;
+    for (0..fat.len) |i| {
+        const at = i * esz;
+        var v: u32 = @as(u32, buf[at]) | (@as(u32, buf[at + 1]) << 8);
+        if (esz == 4) v |= (@as(u32, buf[at + 2]) << 16) | (@as(u32, buf[at + 3]) << 24);
+        fat[i] = v;
+    }
+}
+
 fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callconv(.c) u16 {
     _ = .{ ctx, count };
     if (sector_read_err != 0) return sector_read_err;
+    const fat_window = fat_lba + fat_secs * @max(mount_store.num_fats, 1);
+    if (lba >= fat_lba and lba < fat_window) {
+        fat_reads += 1;
+        if (fat_err != 0) return fat_err;
+        fatToSector(buf);
+        return 0;
+    }
     if (lba == dir_lba) {
         for (0..slots) |i| {
             @memcpy(buf[i * entry_bytes ..][0..entry_bytes], &dir[i]);
@@ -259,7 +328,15 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
 }
 
 fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
-    _ = .{ ctx, count, buf };
+    _ = .{ ctx, count };
+    if (lba >= fat_lba and lba < fat_lba + fat_secs * @max(mount_store.num_fats, 1)) {
+        if (fat_set_err != 0) return fat_set_err;
+        // Every FAT copy maps onto the same array: copies must be identical.
+        fatFromSector(@constCast(buf));
+        fat_sets += 1;
+        sector_written = lba;
+        return 0;
+    }
     sector_written = lba;
     return 0;
 }
@@ -281,28 +358,12 @@ export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_da
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &io_sector;
 }
-
-export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u64 {
-    _ = m;
-    if (clus == dir_cluster) return dir_lba;
-    return if (clus == 3) bitmap_lba else @as(u64, clus) * 8;
-}
-
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
-    out_clus.* = 3;
+    out_clus.* = bitmap_lba - 1 + 2;
     out_len.* = 1024;
     return bitmap_err;
 }
-
-export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, clus: u32, out: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    fat_reads += 1;
-    if (fat_err != 0) return fat_err;
-    out.* = fat[clus];
-    return 0;
-}
-
 /// The exFAT rotate-add checksum (spec sec 6.3.3), standing in for the C one.
 export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
     var sum = cs;
@@ -397,15 +458,6 @@ export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
     flush_calls += 1;
     return flush_err;
 }
-
-export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.c) u16 {
-    _ = m;
-    if (fat_set_err != 0) return fat_set_err;
-    fat_sets += 1;
-    fat[clus] = value;
-    return 0;
-}
-
 /// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
 export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
     _ = m;
