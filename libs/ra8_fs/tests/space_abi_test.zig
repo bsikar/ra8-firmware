@@ -38,7 +38,9 @@ test "FAT scans every data cluster, fills the totals and caches the count" {
     fake.fat[12] = 0; // past the last cluster: never read
     var s: sp.Space = undefined;
     try std.testing.expectEqual(sp.ok, query(&s));
-    try std.testing.expectEqual(@as(u32, 10), fake.fat_reads);
+    // The real entry layer reads the FAT through the sector cache: all ten
+    // entries live in one FAT sector, so the backend sees one read.
+    try std.testing.expectEqual(@as(u32, 1), fake.fat_reads);
     try std.testing.expectEqual(@as(u32, 3), s.free_clusters);
     try std.testing.expectEqual(@as(u32, 7), s.used_clusters);
     try std.testing.expectEqual(@as(u32, 10), s.total_clusters);

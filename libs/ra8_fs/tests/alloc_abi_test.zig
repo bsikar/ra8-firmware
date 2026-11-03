@@ -39,6 +39,7 @@ var lookup_strm: [32]u8 = @splat(0);
 var lookup_attr: u8 = 0;
 
 fn reset() void {
+    al.priv_fat_cache_reset();
     for (&disk) |*s| s.* = @splat(0);
     for (&fat) |*f| f.* = 0;
     read_err = 0;
@@ -54,18 +55,6 @@ fn reset() void {
     find_bitmap_calls = 0;
     @memset(&g_fs_scratch, 0);
 }
-
-export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64 {
-    return m.*.first_data_lba + (cluster - 2) * m.*.sectors_per_cluster;
-}
-
-export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, cluster: u32, out: *u32) callconv(.c) u16 {
-    _ = m;
-    if (fat_read_err != 0) return fat_read_err;
-    out.* = fat[cluster - 2];
-    return ok;
-}
-
 var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 export fn priv_sec_io() callconv(.c) [*c]u8 {
@@ -254,14 +243,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
 export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     _ = .{ entry, create, modify, access };
 }
-
-export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.c) u16 {
-    _ = m;
-    _ = clus;
-    _ = value;
-    return 0;
-}
-
 export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -294,6 +275,7 @@ fn mkFat32() c.ra8_fs_mount_t {
     m.sectors_per_cluster = spc;
     m.first_fat_lba = 100;
     m.fat_size_sectors = 10;
+    m.num_fats = 1;
     m.reserved_sectors = 4;
     m.count_of_clusters = 100;
     m.first_data_lba = 20;

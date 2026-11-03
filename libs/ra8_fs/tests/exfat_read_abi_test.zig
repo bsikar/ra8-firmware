@@ -6,6 +6,7 @@
 //! against this file's own fakes.
 
 const std = @import("std");
+const al = @import("ra8_fs").alloc;
 const fs = @import("ra8_fs");
 const ex = fs.exfat_read;
 const upcase = fs.upcase;
@@ -52,27 +53,44 @@ fn reset() void {
     lookup_attr = 0;
     @memset(&g_fs_scratch, 0);
 }
-
-export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64 {
-    return m.*.first_data_lba + (cluster - 2) * m.*.sectors_per_cluster;
-}
-
-export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, cluster: u32, out: *u32) callconv(.c) u16 {
-    _ = m;
-    if (fat_read_err != 0) return fat_read_err;
-    out.* = fat[cluster - 2];
-    return ok;
-}
-
 var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &sec_buf;
 }
 
+/// The fake FAT: a small array served as raw 4-byte-entry sectors, indexed
+/// `fat[cluster - 2]` so entry 0 is the first data cluster, matching how the
+/// tests seed chains. The two reserved leading entries pad to zero.
+pub const fat_lba: u64 = 900;
+pub const fat_secs: u64 = 2;
+
+fn fatToSector(buf: [*c]u8) void {
+    for (fat, 0..) |v, i| {
+        const at = (i + 2) * 4;
+        buf[at] = @truncate(v);
+        buf[at + 1] = @truncate(v >> 8);
+        buf[at + 2] = @truncate(v >> 16);
+        buf[at + 3] = @truncate(v >> 24);
+    }
+}
+
+fn fatFromSector(buf: [*c]u8) void {
+    for (0..fat.len) |i| {
+        const at = (i + 2) * 4;
+        fat[i] = @as(u32, buf[at]) | (@as(u32, buf[at + 1]) << 8) |
+            (@as(u32, buf[at + 2]) << 16) | (@as(u32, buf[at + 3]) << 24);
+    }
+}
+
 fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callconv(.c) u16 {
     _ = .{ ctx, count };
     if (read_err != 0) return read_err;
+    if (lba >= fat_lba and lba < fat_lba + fat_secs) {
+        if (fat_read_err != 0) return fat_read_err;
+        fatToSector(buf);
+        return ok;
+    }
     const i: usize = @intCast(lba - data_lba);
     @memcpy(buf[0..bps], &disk[i]);
     return ok;
@@ -139,6 +157,10 @@ fn mount() c.ra8_fs_mount_t {
     m.backend.write_block = write_block_backend;
     m.sectors_per_cluster = spc;
     m.first_data_lba = data_lba;
+    m.first_fat_lba = fat_lba;
+    m.fat_size_sectors = fat_secs;
+    m.num_fats = 1;
+    al.priv_fat_cache_reset();
     m.root_cluster = 2;
     return m;
 }
@@ -297,8 +319,10 @@ test "step_cluster walks a contiguous run and stops at its end" {
     try std.testing.expectEqual(ok, ex.priv_exfat_step_cluster(&m, 2, 0, &next));
     try std.testing.expectEqual(@as(u32, 3), next);
     fat[0] = eoc;
+    al.priv_fat_cache_reset(); // the real entry layer caches the FAT sector
     try std.testing.expectEqual(err_not_found, ex.priv_exfat_step_cluster(&m, 2, 0, &next));
     fat_read_err = 0x303;
+    al.priv_fat_cache_reset();
     try std.testing.expectEqual(@as(u16, 0x303), ex.priv_exfat_step_cluster(&m, 2, 0, &next));
 }
 
@@ -552,14 +576,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
 export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
     _ = .{ entry, create, modify, access };
 }
-
-export fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, clus: u32, value: u32) callconv(.c) u16 {
-    _ = m;
-    _ = clus;
-    _ = value;
-    return 0;
-}
-
 export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -572,8 +588,10 @@ export fn priv_sec_walk() callconv(.c) [*c]u8 {
 
 fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
     _ = .{ ctx, count };
-    _ = lba;
-    _ = buf;
+    if (lba >= fat_lba and lba < fat_lba + fat_secs) {
+        fatFromSector(@constCast(buf));
+        return ok;
+    }
     return 0;
 }
 
