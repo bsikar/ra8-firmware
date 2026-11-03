@@ -68,3 +68,54 @@ pub export fn internal_slot_advance(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.di
     lba_io.* = cur.*.w.cur_lba;
     return priv_read_sector(m, lba_io.*, buf);
 }
+
+extern fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void;
+extern fn priv_alloc_eoc_cluster(m: [*c]const c.ra8_fs_mount_t, out_c: [*c]u32) callconv(.c) u16;
+extern fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64;
+extern fn priv_free_chain(m: [*c]const c.ra8_fs_mount_t, start: u32) callconv(.c) u16;
+extern fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, value: u32) callconv(.c) u16;
+
+var zero_sector: [512]u8 = @splat(0);
+
+/// Append one zeroed cluster to a directory's chain: walk to the chain's
+/// last cluster with the shared directory iterator (its cycle guard comes
+/// along), allocate a fresh cluster, zero every sector of it so it reads as
+/// end-of-directory, and only then link it in. A FAT12/16 volume root has no
+/// chain to extend and is refused. On failure the fresh cluster is freed,
+/// so nothing is left allocated but unreferenced.
+pub export fn internal_dir_grow(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t) callconv(.c) u16 {
+    if (loc.*.is_root != 0 and m.*.type != c.k_ra8_fs_type_fat32) {
+        return err_no_mem;
+    }
+    var w: c.dir_walk_t = std.mem.zeroes(c.dir_walk_t);
+    priv_dir_walk_init_loc(m, loc, &w);
+    var last: u32 = w.cluster;
+    var eod: u8 = 0;
+    while (eod == 0) {
+        last = w.cluster;
+        const werr = priv_dir_walk_next_sector(m, &w, &eod);
+        if (werr != ok) {
+            return werr;
+        }
+    }
+    var fresh: u32 = 0;
+    var err = priv_alloc_eoc_cluster(m, &fresh);
+    if (err != ok) {
+        return err;
+    }
+    const base = priv_cluster_to_lba(m, fresh);
+    var s: u32 = 0;
+    while (s < m.*.sectors_per_cluster) : (s += 1) {
+        err = priv_write_sector(m, base + s, &zero_sector);
+        if (err != ok) {
+            _ = priv_free_chain(m, fresh);
+            return err;
+        }
+    }
+    err = priv_fat_set(m, last, fresh);
+    if (err != ok) {
+        _ = priv_free_chain(m, fresh);
+        return err;
+    }
+    return ok;
+}

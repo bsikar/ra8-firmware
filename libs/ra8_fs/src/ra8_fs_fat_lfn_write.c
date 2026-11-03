@@ -139,44 +139,7 @@ extern ra8_err_t internal_alias_unique(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_dir_grow(const ra8_fs_mount_t* m, const dir_loc_t* loc)
-{
-  if ((loc->is_root != 0U) && (m->type != k_ra8_fs_type_fat32)) {
-    return k_ra8_err_no_mem; /* the FAT12/16 root is a fixed sector region */
-  }
-  /* Walk to the chain's last cluster with the shared directory iterator rather
-   * than a second FAT walk of this file's own: the iterator already carries
-   * the cycle guard, and two walks that could disagree about where a directory
-   * ends is exactly the kind of duplication that goes wrong quietly. */
-  dir_walk_t w = {};
-  priv_dir_walk_init_loc(m, loc, &w);
-  uint32_t last = w.cluster;
-  uint8_t  eod  = 0U;
-  while (eod == 0U) {
-    last                 = w.cluster;
-    const ra8_err_t werr = priv_dir_walk_next_sector(m, &w, &eod);
-    if (werr != k_ra8_ok) {
-      return werr;
-    }
-  }
-  uint32_t  fresh = 0U;
-  ra8_err_t err   = priv_alloc_eoc_cluster(m, &fresh);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint64_t base = priv_cluster_to_lba(m, fresh);
-  for (uint32_t s = 0U; s < m->sectors_per_cluster; s++) {
-    err = priv_write_sector(m, base + s, k_zero_sector);
-    if (err != k_ra8_ok) {
-      (void)priv_free_chain(m, fresh);
-      return err;
-    }
-  }
-  err = priv_fat_set(m, last, fresh);
-  if (err != k_ra8_ok) {
-    (void)priv_free_chain(m, fresh);
-    return err;
-  }
+extern ra8_err_t internal_dir_grow(const ra8_fs_mount_t* m, const dir_loc_t* loc);
   return k_ra8_ok;
 }
 

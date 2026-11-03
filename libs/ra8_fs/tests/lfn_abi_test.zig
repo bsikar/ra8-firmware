@@ -96,3 +96,9 @@ test "reset clears units, checksum and have" {
     try std.testing.expectEqual(@as(u8, 0), s.checksum);
     for (s.units) |u| try std.testing.expectEqual(@as(u16, 0), u);
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

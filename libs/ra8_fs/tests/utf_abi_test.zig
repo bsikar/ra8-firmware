@@ -85,3 +85,9 @@ test "case-folded compare and the ASCII predicate" {
     const e = [_]u16{ 'a', 0x80 };
     try std.testing.expectEqual(@as(u8, 0), utf.priv_utf16_all_ascii(&e, 2));
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

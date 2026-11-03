@@ -261,3 +261,9 @@ test "ra8_fs_open and ra8_fs_close run the lock brackets end to end" {
     try std.testing.expectEqual(ok, cerr);
     try std.testing.expectEqual(@as(u32, 0), f.?.in_use);
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

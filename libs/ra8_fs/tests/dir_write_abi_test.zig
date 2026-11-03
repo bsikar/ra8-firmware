@@ -79,3 +79,36 @@ test "a rollover off the directory's end answers no_mem" {
     cur.w.cur_lba = fake.dir_lba;
     try std.testing.expectEqual(err_no_mem, write.internal_slot_advance(m, &cur, &buf, &lba));
 }
+
+test "a FAT12/16 fixed root refuses to grow" {
+    const m = setup();
+    var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
+    try std.testing.expectEqual(err_no_mem, write.internal_dir_grow(m, &loc));
+}
+
+test "grow appends one zeroed cluster at the chain's end" {
+    const m = setup();
+    var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    try std.testing.expectEqual(ok, write.internal_dir_grow(m, &loc));
+    // The zero write and the FAT link write both ran; sector_written holds the last one (the FAT write).
+    try std.testing.expect(fake.sector_written != null);
+    var linked = false;
+    for (fake.fat) |v| {
+        if (v == 6) linked = true;
+    }
+    try std.testing.expect(linked);
+}
+
+test "a failed FAT link leaves the returned error intact" {
+    const m = setup();
+    var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    fake.fat_set_err = err_no_mem;
+    try std.testing.expectEqual(err_no_mem, write.internal_dir_grow(m, &loc));
+}
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

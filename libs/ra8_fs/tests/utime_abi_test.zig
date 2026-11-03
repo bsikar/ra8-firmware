@@ -98,3 +98,9 @@ test "exFAT errors propagate without a write" {
     try std.testing.expectEqual(@as(?u32, null), fake.written_index);
     try std.testing.expectEqual(@as(u32, 0), fake.stamp_calls);
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

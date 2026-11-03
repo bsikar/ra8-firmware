@@ -162,3 +162,9 @@ test "a failed leaf lookup surfaces through resolve_dir" {
     fake.lookup_any_entry[off_attr] = attr_archive; // leaf resolves to a file
     try std.testing.expectEqual(err_invalid_arg, resolve.priv_resolve_dir(m, "/d", &out));
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

@@ -79,3 +79,9 @@ test "a directory with no label and no end marker hits the scan limit" {
     var buf: [8]u8 = undefined;
     try std.testing.expectEqual(lbl.err_not_found, lbl.priv_exfat_get_label(mount(), &buf, buf.len));
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}

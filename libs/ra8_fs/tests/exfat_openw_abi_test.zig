@@ -132,3 +132,9 @@ test "path, name and lookup errors pass through" {
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_hw_error), open(write_mode, &f));
     try std.testing.expect(f == null);
 }
+
+export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    out_c.* = 6;
+    return 0;
+}
