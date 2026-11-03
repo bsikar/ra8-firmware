@@ -112,3 +112,45 @@ export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u
     out_c.* = 6;
     return 0;
 }
+
+test "LFN legality refuses the control range, DEL, and the FAT illegal set" {
+    const legal = fs.lfn.internal_unit_is_lfn_legal;
+    try std.testing.expectEqual(@as(u8, 0), legal(0x00));
+    try std.testing.expectEqual(@as(u8, 0), legal(0x1F));
+    try std.testing.expectEqual(@as(u8, 0), legal(0x7F));
+    for ([_]u16{ '"', '*', '/', ':', '<', '>', '?', '\\', '|' }) |ch| {
+        try std.testing.expectEqual(@as(u8, 0), legal(ch));
+    }
+}
+
+test "LFN legality allows the characters VFAT deliberately allows" {
+    const legal = fs.lfn.internal_unit_is_lfn_legal;
+    for ([_]u16{ ' ', '+', ',', ';', '=', '[', ']' }) |ch| {
+        try std.testing.expectEqual(@as(u8, 1), legal(ch));
+    }
+}
+
+test "LFN legality allows ordinary and non-ASCII units" {
+    const legal = fs.lfn.internal_unit_is_lfn_legal;
+    try std.testing.expectEqual(@as(u8, 1), legal('a'));
+    try std.testing.expectEqual(@as(u8, 1), legal('A'));
+    try std.testing.expectEqual(@as(u8, 1), legal('0'));
+    try std.testing.expectEqual(@as(u8, 1), legal(0xE9));
+}
+
+test "83 legality refuses the short-name exclusions and the ASCII cut" {
+    const legal = fs.lfn.internal_unit_is_83_legal;
+    for ([_]u16{ '.', '+', ',', ';', '=', '[', ']', ' ', 0xE9 }) |ch| {
+        try std.testing.expectEqual(@as(u8, 0), legal(ch));
+    }
+}
+
+test "83 legality allows ordinary name characters and pins the DEL fall-through" {
+    const legal = fs.lfn.internal_unit_is_83_legal;
+    for ([_]u16{ 'a', 'A', '0', '9', '_', '-' }) |ch| {
+        try std.testing.expectEqual(@as(u8, 1), legal(ch));
+    }
+    // DEL is excluded upstream by the LFN check (the documented precondition);
+    // the port preserves the C fall-through so the two never disagree.
+    try std.testing.expectEqual(@as(u8, 1), legal(0x7F));
+}
