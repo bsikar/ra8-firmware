@@ -205,3 +205,40 @@ pub export fn internal_name_case_kind(leaf: [*c]const u16, n: u32, out_ntres: [*
     if (ext_seen == 0x02) out_ntres.* |= @as(u8, c.k_ntres_ext_lower);
     return c.k_name_kind_short;
 }
+
+/// Pack the base portion of a path into out11[0..7]. Reads characters from the
+/// cursor at `path_io` up to a `.` or NUL, upper-cases them, and writes them
+/// into out11[0..7], advancing the cursor to the `.` or terminator on success.
+/// Returns 0 on overflow or an empty base. The caller pre-pads out11 with
+/// spaces.
+pub export fn internal_pack_base(path_io: [*c][*c]const u8, out11: [*c]u8) callconv(.c) u8 {
+    var path = path_io.*;
+    var base_len: u8 = 0;
+    while (path[0] != 0 and path[0] != '.') {
+        if (base_len >= c.k_filename_base_len) return 0;
+        if (path[0] > 0x7F) return 0; // k_lfn_del: a packed 8.3 name here is ASCII; a UTF-8 byte is not one
+        out11[base_len] = priv_to_upper(path[0]);
+        base_len += 1;
+        path += 1;
+    }
+    if (base_len == 0) return 0;
+    path_io.* = path;
+    return 1;
+}
+
+/// Pack the extension portion of a path into out11[8..10]. If the cursor is
+/// not at a `.`, returns success with no writes. Returns 0 on overflow or a
+/// byte above the ASCII cut. The caller pre-pads out11 with spaces.
+pub export fn internal_pack_ext(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
+    if (path[0] != '.') return 1;
+    var p = path + 1;
+    var ext_len: u32 = 0;
+    while (p[0] != 0) {
+        if (ext_len >= c.k_filename_ext_len) return 0;
+        if (p[0] > 0x7F) return 0; // as in the base: an 8.3 field never holds a UTF-8 byte
+        out11[@as(u32, c.k_filename_base_len) + ext_len] = priv_to_upper(p[0]);
+        ext_len += 1;
+        p += 1;
+    }
+    return 1;
+}

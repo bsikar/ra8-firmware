@@ -76,26 +76,7 @@ typedef enum : uint16_t {
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_pack_base(const char** path_io, uint8_t* out11)
-{
-  const char* path     = *path_io;
-  uint8_t     base_len = 0;
-  while (*path != '\0' && *path != '.') {
-    if (base_len >= k_filename_base_len) {
-      return 0U;
-    }
-    if ((uint32_t)(unsigned char)*path > (uint32_t)k_lfn_del) {
-      return 0U; /* a packed 8.3 name here is ASCII; a UTF-8 byte is not one */
-    }
-    out11[base_len++] = (uint8_t)priv_to_upper(*path++);
-  }
-  if (base_len == 0U) {
-    return 0U;
-  }
-  *path_io = path;
-  return 1U;
-}
+
 
 /**
  * @brief Pack the extension portion of a path into out11[8..10]. Returns 0 on error.
@@ -118,26 +99,12 @@ static uint8_t internal_pack_base(const char** path_io, uint8_t* out11)
  *
  * @since 0.1.0
  */
+
+
 RA8_INTERNAL
-static uint8_t internal_pack_ext(const char* path, uint8_t* out11)
-{
-  if (*path != '.') {
-    return 1U;
-  }
-  path++;
-  uint32_t ext_len = 0U;
-  while (*path != '\0') {
-    if (ext_len >= (uint32_t)k_filename_ext_len) {
-      return 0U;
-    }
-    if ((uint32_t)(unsigned char)*path > (uint32_t)k_lfn_del) {
-      return 0U; /* as in the base: an 8.3 field never holds a UTF-8 byte */
-    }
-    out11[k_filename_base_len + ext_len] = (uint8_t)priv_to_upper(*path++);
-    ext_len++;
-  }
-  return 1U;
-}
+extern uint8_t internal_pack_base(const char** path_io, uint8_t* out11);
+RA8_INTERNAL
+extern uint8_t internal_pack_ext(const char* path, uint8_t* out11);
 
 /* `priv_path_to_83()`: see header for the documented contract. */
 uint8_t priv_path_to_83(const char* path, uint8_t* out11)
