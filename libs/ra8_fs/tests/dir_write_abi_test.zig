@@ -31,7 +31,8 @@ test "alias probing stops at the first basis with no entry" {
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
     var out11: [entry_bytes]u8 = @splat(0);
     fake.find83_not_found = true;
-    try std.testing.expectEqual(ok, write.internal_alias_unique(m, &loc, null, 4, &out11));
+    const leaf = [_]u16{ 'a', 'l', 'i', 'a', 's', '.', 't', 'x', 't' };
+    try std.testing.expectEqual(ok, write.internal_alias_unique(m, &loc, &leaf, leaf.len, &out11));
 }
 
 test "alias probing propagates a backend error" {
@@ -39,7 +40,8 @@ test "alias probing propagates a backend error" {
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
     var out11: [entry_bytes]u8 = @splat(0);
     fake.find83_err = err_protocol;
-    try std.testing.expectEqual(err_protocol, write.internal_alias_unique(m, &loc, null, 4, &out11));
+    const leaf = [_]u16{ 'a', 'l', 'i', 'a', 's', '.', 't', 'x', 't' };
+    try std.testing.expectEqual(err_protocol, write.internal_alias_unique(m, &loc, &leaf, leaf.len, &out11));
 }
 
 test "the slot cursor advances inside the sector without touching the disk" {
@@ -359,4 +361,63 @@ test "classify: null arguments are invalid" {
     var ntres: u8 = 0xFF;
     var nunits: u32 = 0;
     try std.testing.expectEqual(c.k_name_kind_invalid, fs.lfn.priv_name_classify(null, &units, &nunits, &n83, &ntres));
+}
+
+test "alias basis: DESIGN~1.TXT from a spaced name with an illegal char" {
+    const leaf = [_]u16{ 'D', 'e', 's', 'i', 'g', 'n', ' ', '(', 'f', 'i', 'n', 'a', 'l', ')', '.', 't', 'x', 't' };
+    var out: [11]u8 = undefined;
+    @memset(&out, 0);
+    fs.lfn.priv_lfn_alias_basis(&leaf, leaf.len, 1, &out);
+    try std.testing.expectEqual(@as(u8, 'D'), out[0]);
+    try std.testing.expectEqual(@as(u8, '~'), out[6]);
+    try std.testing.expectEqual(@as(u8, '1'), out[7]);
+    try std.testing.expectEqual(@as(u8, 'T'), out[8]);
+    try std.testing.expectEqual(@as(u8, 'X'), out[9]);
+    try std.testing.expectEqual(@as(u8, 'T'), out[10]);
+}
+
+test "alias basis: a base of nothing but dots and spaces becomes _~1" {
+    const leaf = [_]u16{ ' ', '.', ' ', '.', 't', 'x', 't' };
+    var out: [11]u8 = undefined;
+    @memset(&out, 0);
+    fs.lfn.priv_lfn_alias_basis(&leaf, leaf.len, 1, &out);
+    try std.testing.expectEqual(@as(u8, '_'), out[0]);
+    try std.testing.expectEqual(@as(u8, '~'), out[1]);
+    try std.testing.expectEqual(@as(u8, '1'), out[2]);
+    try std.testing.expectEqual(@as(u8, 'T'), out[8]);
+}
+
+test "alias basis: a six-digit tail leaves one base character" {
+    const leaf = [_]u16{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', '.', 't', 'x', 't' };
+    var out: [11]u8 = undefined;
+    @memset(&out, 0);
+    fs.lfn.priv_lfn_alias_basis(&leaf, leaf.len, 999999, &out);
+    try std.testing.expectEqual(@as(u8, 'A'), out[0]);
+    try std.testing.expectEqual(@as(u8, '~'), out[1]);
+    try std.testing.expectEqual(@as(u8, '9'), out[2]);
+    try std.testing.expectEqual(@as(u8, '9'), out[7]);
+    try std.testing.expectEqual(@as(u8, 'T'), out[8]);
+}
+
+test "alias basis: a two-digit tail with a short base" {
+    const leaf = [_]u16{ 'n', 'a', 'm', 'e', '.', 't', 'x', 't' };
+    var out: [11]u8 = undefined;
+    @memset(&out, 0);
+    fs.lfn.priv_lfn_alias_basis(&leaf, leaf.len, 10, &out);
+    try std.testing.expectEqual(@as(u8, 'N'), out[0]);
+    try std.testing.expectEqual(@as(u8, '~'), out[4]);
+    try std.testing.expectEqual(@as(u8, '1'), out[5]);
+    try std.testing.expectEqual(@as(u8, '0'), out[6]);
+    try std.testing.expectEqual(@as(u8, 'T'), out[8]);
+}
+
+test "alias basis: no extension leaves the ext field spaced" {
+    const leaf = [_]u16{ 'n', 'a', 'm', 'e' };
+    var out: [11]u8 = undefined;
+    @memset(&out, 0);
+    fs.lfn.priv_lfn_alias_basis(&leaf, leaf.len, 3, &out);
+    try std.testing.expectEqual(@as(u8, 'N'), out[0]);
+    try std.testing.expectEqual(@as(u8, '~'), out[4]);
+    try std.testing.expectEqual(@as(u8, '3'), out[5]);
+    try std.testing.expectEqual(@as(u8, ' '), out[8]);
 }

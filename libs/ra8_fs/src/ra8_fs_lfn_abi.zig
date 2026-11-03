@@ -288,3 +288,89 @@ pub export fn priv_name_classify(leaf: [*c]const u8, out_units: [*c]u16, out_nun
     if (priv_path_to_83(leaf, out83) == 0) return c.k_name_kind_long;
     return internal_name_case_kind(out_units, n, out_ntres);
 }
+
+/// Map one long-name character into the short-name character set: upper-case
+/// it, then substitute '_' for anything an 8.3 name cannot hold, which now
+/// includes every unit above DEL, exactly as VFAT does for a character its
+/// OEM code page cannot represent. The caller has already dropped spaces
+/// and dots.
+fn internal_alias_map_unit(u: u16) u8 {
+    if (u > 0x7F) return '_'; // k_lfn_del, fat_name.c-local, hardcoded
+    const up = priv_to_upper(@intCast(u));
+    if (internal_unit_is_83_legal(up) == 0) return '_';
+    return up;
+}
+
+/// Collect up to cap alias characters from [from, to). Spaces and dots are
+/// dropped rather than mapped, as the FAT specification removes them before
+/// translating, so "My Report.v2" contributes MYREPORT and not MY_REPORT.
+fn internal_alias_collect(leaf: [*c]const u16, from: u32, to: u32, cap: u32, out: [*c]u8) u32 {
+    var got: u32 = 0;
+    var i = from;
+    while (i < to and got < cap) : (i += 1) {
+        const u = leaf[i];
+        if (u == ' ' or u == '.') continue;
+        out[got] = internal_alias_map_unit(u);
+        got += 1;
+    }
+    return got;
+}
+
+/// Index of the last dot with at least one character on each side, else n:
+/// a leading dot (.profile) names no extension, a trailing one (notes.)
+/// supplies no characters for it.
+fn internal_alias_ext_dot(leaf: [*c]const u16, n: u32) u32 {
+    var dot = n;
+    var i: u32 = 1;
+    while (i + 1 < n) : (i += 1) {
+        if (leaf[i] == '.') dot = i;
+    }
+    return dot;
+}
+
+/// Decimal digit count of tail, 1..6: the numeric tail and its '~' must fit
+/// inside the eight-character base field, so ~1 leaves six characters and
+/// ~999999 leaves one.
+fn internal_alias_digits(tail: u32) u32 {
+    var digits: u32 = 1;
+    var scale: u32 = 10; // k_alias_radix, fat_name.c-local, hardcoded
+    while (digits < 6 and tail >= scale) : (digits += 1) { // k_alias_digits_max = 6
+        scale *= 10;
+    }
+    return digits;
+}
+
+/// Derive the "LONGNA~1.TXT" basis name a long name is filed under: mapped
+/// base up to the keep window, a '~', the decimal tail, and the extension
+/// mapped into the 3-byte field, space-padded as on disk.
+pub export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
+    var i: u32 = 0;
+    while (i < c.k_max_8_3_name) : (i += 1) out11[i] = ' ';
+    const dot = internal_alias_ext_dot(leaf, n);
+    var base: [c.k_filename_base_len]u8 = undefined;
+    @memset(&base, 0);
+    var base_len = internal_alias_collect(leaf, 0, dot, c.k_filename_base_len, &base);
+    if (base_len == 0) { // a name of nothing but dots and spaces
+        base[0] = '_';
+        base_len = 1;
+    }
+    if (dot < n) {
+        _ = internal_alias_collect(leaf, dot + 1, n, c.k_filename_ext_len, out11 + c.k_filename_base_len);
+    }
+    const digits = internal_alias_digits(tail);
+    var keep = c.k_filename_base_len - digits - 1;
+    if (base_len < keep) keep = base_len;
+    i = 0;
+    while (i < keep) : (i += 1) out11[i] = base[i];
+    out11[keep] = '~';
+    var rest = tail;
+    var d: u32 = 0;
+    while (d < digits) : (d += 1) {
+        const digit = rest % 10;
+        out11[(keep + digits) - d] = '0' + @as(u8, @intCast(digit));
+        rest /= 10;
+    }
+    // No kanji escape is needed here: every byte written above is an
+    // upper-case ASCII letter, a digit, '_', '~' or a space, and none of
+    // those is 0xE5.
+}
