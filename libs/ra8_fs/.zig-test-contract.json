@@ -20,7 +20,8 @@
     "tests/fat_core_abi_test.zig",
     "tests/dir_run_abi_test.zig",
     "tests/prim_abi_test.zig",
-    "tests/fat_entry_abi_test.zig"
+    "tests/fat_entry_abi_test.zig",
+    "tests/dir_erase_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
@@ -60,7 +61,8 @@
     "tests/fat_core_abi_test.zig",
     "src/ra8_fs_dir_run_abi.zig",
     "src/ra8_fs_fat_prim_abi.zig",
-    "src/ra8_fs_fat_entry_abi.zig"
+    "src/ra8_fs_fat_entry_abi.zig",
+    "src/ra8_fs_dir_erase_abi.zig"
   ],
-  "minimum_tests": 108
+  "minimum_tests": 114
 }
