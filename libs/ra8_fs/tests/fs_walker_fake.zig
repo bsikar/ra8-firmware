@@ -25,6 +25,7 @@ pub var eps: u32 = 16;
 pub var have83: u8 = 1;
 pub var find83_err: u16 = 0;
 pub var find83_fill: bool = false;
+pub var find83_not_found: bool = false;
 pub var find83_entry: [entry_bytes]u8 = @splat(0);
 pub var sector_read_err: u16 = 0;
 pub var sector_written: ?u64 = null;
@@ -108,6 +109,7 @@ pub fn reset(fs_type: u8) void {
     have83 = 1;
     find83_err = 0;
     find83_fill = false;
+    find83_not_found = false;
     find83_entry = @splat(0);
     sector_read_err = 0;
     sector_written = null;
@@ -195,6 +197,7 @@ export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_
     _ = .{ m, loc, name83 };
     if (find83_err != 0) return find83_err;
     if (find83_fill) @memcpy(out_entry[0..entry_bytes], &find83_entry);
+    if (find83_not_found) return c.k_ra8_err_not_found;
     out_lba.* = 7;
     out_off.* = 64;
     return 0;
@@ -339,6 +342,23 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
     }
     sector_written = lba;
     return 0;
+}
+
+export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
+    _ = .{ leaf, n };
+    out11[0] = 'A';
+    out11[1] = 'L';
+    out11[2] = 'R';
+    var v = tail;
+    var i: usize = 3;
+    while (i < 7) : (i += 1) {
+        out11[i] = '0' + @as(u8, @intCast(v % 10));
+        v /= 10;
+    }
+    out11[7] = '~';
+    out11[8] = 'X';
+    out11[9] = 'T';
+    out11[10] = '0';
 }
 
 fn stamp(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) void {
