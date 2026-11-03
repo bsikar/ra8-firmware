@@ -213,3 +213,55 @@ test "case_kind treats digits and punctuation as caseless" {
     try std.testing.expectEqual(c.k_name_kind_short, kind(&img, 6, &ntres));
     try std.testing.expectEqual(@as(u8, 0), ntres);
 }
+
+test "pack_base upper-cases the base and advances the cursor" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    var p: [*c]const u8 = "abc.def";
+    const pp: [*c][*c]const u8 = &p;
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.internal_pack_base(pp, &buf));
+    p = pp.*;
+    try std.testing.expectEqual(@as(u8, 'A'), buf[0]);
+    try std.testing.expectEqual(@as(u8, 'B'), buf[1]);
+    try std.testing.expectEqual(@as(u8, 'C'), buf[2]);
+    try std.testing.expectEqual(@as(u8, '.'), p[0]);
+}
+
+test "pack_base refuses overflow and an empty base" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    const long_name: [*c]const u8 = "ABCDEFGHIJ.TXT";
+    const long_pp: [*c][*c]const u8 = @constCast(&long_name);
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.internal_pack_base(long_pp, &buf));
+    const empty: [*c]const u8 = ".txt";
+    const empty_pp: [*c][*c]const u8 = @constCast(&empty);
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.internal_pack_base(empty_pp, &buf));
+}
+
+test "pack_base refuses a byte above the ASCII cut" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    const utf8: [*c]const u8 = "ab\xC3\xA9.txt";
+    const pp: [*c][*c]const u8 = @constCast(&utf8);
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.internal_pack_base(pp, &buf));
+    try std.testing.expectEqual(@as(u8, 'A'), buf[0]);
+    try std.testing.expectEqual(@as(u8, 'B'), buf[1]);
+}
+
+test "pack_ext packs the extension and succeeds with no dot" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    const base_only: [*c]const u8 = "\x00";
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.internal_pack_ext(base_only, &buf));
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.internal_pack_ext("txT", &buf)); // not at a dot
+    try std.testing.expectEqual(@as(u8, 1), fs.lfn.internal_pack_ext(".txT", &buf));
+    try std.testing.expectEqual(@as(u8, 'T'), buf[8]);
+    try std.testing.expectEqual(@as(u8, 'X'), buf[9]);
+    try std.testing.expectEqual(@as(u8, 'T'), buf[10]);
+}
+
+test "pack_ext refuses an extension over three characters" {
+    var buf: [11]u8 = undefined;
+    @memset(&buf, ' ');
+    try std.testing.expectEqual(@as(u8, 0), fs.lfn.internal_pack_ext(".abcd", &buf));
+}
