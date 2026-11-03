@@ -718,7 +718,7 @@ export fn priv_fmt_label_field(dst: [*c]u8, lbl: [*c]const u8) callconv(.c) void
     while (i < 11) : (i += 1) dst[i] = ' ';
 }
 
-export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
+fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
     _ = .{ leaf, n };
     out11[0] = 'A';
     out11[1] = 'L';

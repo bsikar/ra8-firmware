@@ -344,7 +344,7 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
     return 0;
 }
 
-export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
+fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
     _ = .{ leaf, n };
     out11[0] = 'A';
     out11[1] = 'L';
