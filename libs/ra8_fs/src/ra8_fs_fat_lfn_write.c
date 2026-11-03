@@ -100,30 +100,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_alias_unique(const ra8_fs_mount_t* m,
+extern ra8_err_t internal_alias_unique(const ra8_fs_mount_t* m,
                                        const dir_loc_t*      loc,
                                        const uint16_t*       leaf,
                                        uint32_t              n,
-                                       uint8_t*              out11)
-{
-  uint64_t lba                             = 0U;
-  uint32_t off                             = 0U;
-  uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
-  for (uint32_t tail = 1U; tail <= (uint32_t)k_lfn_alias_tail_max; tail++) {
-    priv_lfn_alias_basis(leaf, n, tail, out11);
-    const ra8_err_t err = priv_dir_find(m, loc, out11, &lba, &off, entry);
-    if (err == k_ra8_err_not_found) {
-      return k_ra8_ok;
-    }
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  /* Unreachable in practice: exhausting this needs 999999 entries sharing one
-   * basis name, and the largest directory this driver can mount holds far
-   * fewer. It is the Rule 2 bound's honest failure answer, not dead code. */
-  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- million-alias exhaustion, bounded-loop fallback */
-}
+                                       uint8_t*              out11);
 
 /* =============================================================================
  * Free-slot runs and directory growth
@@ -272,29 +253,8 @@ priv_dir_reserve(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint64_t* lba_io)
-{
-  cur->ent++;
-  if (cur->ent < priv_dir_eps(m)) {
-    return k_ra8_ok;
-  }
-  ra8_err_t err = priv_write_sector(m, *lba_io, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  uint8_t eod = 0U;
-  err         = priv_dir_walk_next_sector(m, &cur->w, &eod);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (eod != 0U) {
-    return k_ra8_err_no_mem; /* the reserved run ran off the directory's end */
-  }
-  cur->ent = 0U;
-  *lba_io  = cur->w.cur_lba;
-  return priv_read_sector(m, *lba_io, buf);
-}
+extern ra8_err_t
+internal_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint64_t* lba_io);
 
 /* `priv_dir_commit()`: see header for the documented contract. */
 ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
