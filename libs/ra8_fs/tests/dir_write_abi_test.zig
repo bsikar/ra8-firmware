@@ -421,3 +421,66 @@ test "alias basis: no extension leaves the ext field spaced" {
     try std.testing.expectEqual(@as(u8, '3'), out[5]);
     try std.testing.expectEqual(@as(u8, ' '), out[8]);
 }
+
+test "83_to_str renders base and ext with lower-case bits" {
+    var in11: [11]u8 = undefined;
+    @memset(&in11, ' ');
+    @memcpy(in11[0..3], "ABC");
+    @memcpy(in11[8..11], "TXT");
+    var out13: [13]u8 = undefined;
+    @memset(&out13, 0);
+    fs.lfn.priv_83_to_str(&in11, c.k_ntres_base_lower | c.k_ntres_ext_lower, &out13);
+    try std.testing.expectEqual(@as(u8, 'a'), out13[0]);
+    try std.testing.expectEqual(@as(u8, 'c'), out13[2]);
+    try std.testing.expectEqual(@as(u8, '.'), out13[3]);
+    try std.testing.expectEqual(@as(u8, 't'), out13[4]);
+    try std.testing.expectEqual(@as(u8, 't'), out13[6]);
+    try std.testing.expectEqual(@as(u8, 0), out13[7]);
+}
+
+test "83_to_str keeps upper-case when NTRes is zero" {
+    var in11: [11]u8 = undefined;
+    @memset(&in11, ' ');
+    @memcpy(in11[0..3], "ABC");
+    var out13: [13]u8 = undefined;
+    @memset(&out13, 0);
+    fs.lfn.priv_83_to_str(&in11, 0, &out13);
+    try std.testing.expectEqual(@as(u8, 'A'), out13[0]);
+    try std.testing.expectEqual(@as(u8, 0), out13[3]);
+}
+
+test "83_to_str no extension when the ext field is all spaces" {
+    var in11: [11]u8 = undefined;
+    @memset(&in11, ' ');
+    @memcpy(in11[0..3], "ABC");
+    var out13: [13]u8 = undefined;
+    @memset(&out13, 0);
+    fs.lfn.priv_83_to_str(&in11, 0, &out13);
+    try std.testing.expectEqual(@as(u8, 0), out13[3]);
+}
+
+test "83_to_str only base or only ext half lower-cases" {
+    var in11: [11]u8 = undefined;
+    @memset(&in11, ' ');
+    @memcpy(in11[0..3], "ABC");
+    @memcpy(in11[8..11], "TXT");
+    var out13: [13]u8 = undefined;
+    @memset(&out13, 0);
+    fs.lfn.priv_83_to_str(&in11, c.k_ntres_base_lower, &out13);
+    try std.testing.expectEqual(@as(u8, 'a'), out13[0]);
+    try std.testing.expectEqual(@as(u8, '.'), out13[3]);
+    try std.testing.expectEqual(@as(u8, 'T'), out13[4]);
+}
+
+test "83_to_str restores the kanji escape on byte zero" {
+    var in11: [11]u8 = undefined;
+    @memset(&in11, ' ');
+    in11[0] = c.k_dir_marker_kanji_e5;
+    in11[1] = 'A';
+    in11[8] = 'T';
+    var out13: [13]u8 = undefined;
+    @memset(&out13, 0);
+    fs.lfn.priv_83_to_str(&in11, 0, &out13);
+    try std.testing.expectEqual(@as(u8, c.k_dir_marker_free_used), out13[0]);
+    try std.testing.expectEqual(@as(u8, 'A'), out13[1]);
+}
