@@ -100,3 +100,36 @@ pub export fn priv_lfn_units_for(s: *const LfnState, name83: [*]const u8, out_un
     out_units.* = @intCast(std.mem.indexOfScalar(u16, &s.units, 0) orelse s.units.len);
     return &s.units;
 }
+
+fn unit_in_set(u: u16, set: []const u8) u8 {
+    for (set) |ch| {
+        if (u == ch) return 1;
+    }
+    return 0;
+}
+
+/// Is `u` legal in a VFAT long name? The long name inherits the short name's
+/// illegal set minus the characters VFAT deliberately allows (`+ , ; = [ ]`
+/// and space); control characters and DEL are refused, and everything above
+/// ASCII is allowed: the slots store UTF-16 and the reader reads them back
+/// as such, so there is no code-page cut here.
+pub export fn internal_unit_is_lfn_legal(u: u16) callconv(.c) u8 {
+    const v: u32 = u;
+    if (v < 0x20) return 0; // k_lfn_space: control characters, including the NUL that ends the name
+    if (v == 0x7F) return 0; // k_lfn_del: DEL is a control code wherever it appears
+    if (unit_in_set(u, "\"*/:<>?\\|") != 0) return 0;
+    return 1;
+}
+
+/// Is `u` usable verbatim inside a packed 8.3 short name? Stricter than the
+/// long-name rule by the extra short-name exclusions `+ , ; = [ ]` and space,
+/// by the dot -- which in an 8.3 name is a field separator rather than a
+/// character -- and by the ASCII cut, which belongs here rather than there:
+/// a packed 8.3 field is an OEM code page byte and this adapter only writes
+/// ASCII into one.
+pub export fn internal_unit_is_83_legal(u: u16) callconv(.c) u8 {
+    if (u > 0x7F) return 0; // k_lfn_del: a unit above the ASCII cut needs a long-name chain
+    if (u == '.') return 0;
+    if (unit_in_set(u, "+,;=[] ") != 0) return 0;
+    return 1;
+}

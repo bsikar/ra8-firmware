@@ -253,45 +253,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
  * =============================================================================
  */
 
-/**
- * @brief Does @p u appear in the NUL-terminated ASCII set @p set?
- *
- * @details Linear scan, bounded by ::k_lfn_write_max so the loop has a static
- *          upper limit even though both call sites pass a string literal
- *          (NASA Power of 10 Rule 2). Every set here is ASCII, so a unit above
- *          that range simply never matches -- no widening is needed.
- *
- * @param[in] u   Code unit to look for.
- * @param[in] set NUL-terminated set of characters.
- *
- * @return Membership flag.
- * @retval 1U @p u is in @p set.
- * @retval 0U @p u is not in @p set.
- *
- * @pre @p set is non-NULL and NUL-terminated.
- * @pre @p set is shorter than ::k_lfn_write_max characters.
- * @post Neither @p u nor @p set is modified.
- * @post The scan visits at most ::k_lfn_write_max characters.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint8_t internal_unit_in_set(uint16_t u, const char* set)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_lfn_write_max; i++) {
-    if (set[i] == '\0') {
-      return 0U;
-    }
-    if ((uint32_t)(unsigned char)set[i] == (uint32_t)u) {
-      return 1U;
-    }
-  }
-  /* Unreachable: both sets are single-digit literals, so the NUL above always
-   * ends the scan first. This is the Rule 2 bound's exit, not a second answer. */
-  return 0U; /* GCOVR_EXCL_LINE -- arith/string invariants make fallback unreachable */
-}
+
 
 /**
  * @brief Is @p u a code unit a VFAT long name is allowed to hold?
@@ -318,28 +280,7 @@ static uint8_t internal_unit_in_set(uint16_t u, const char* set)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_unit_is_lfn_legal(uint16_t u)
-{
-  /* Microsoft FAT specification section 7 ("Long File Name Implementation"):
-   * the long name inherits the short name's illegal set minus the characters
-   * VFAT deliberately allows (`+ , ; = [ ]` and space). Control characters are
-   * excluded by range below, not by this table. Block scope because exactly
-   * one function reads it (MISRA 8.9). */
-  static const char lfn_illegal[] = "\"*/:<>?\\|";
 
-  const uint32_t v = (uint32_t)u;
-  if (v < (uint32_t)k_lfn_space) {
-    return 0U; /* control characters, including the NUL that ends the name */
-  }
-  if (v == (uint32_t)k_lfn_del) {
-    return 0U; /* DEL is a control code wherever it appears */
-  }
-  if (internal_unit_in_set(u, lfn_illegal) != 0U) {
-    return 0U;
-  }
-  return 1U;
-}
 
 /**
  * @brief Is @p c usable verbatim inside a packed 8.3 short name?
@@ -366,26 +307,7 @@ static uint8_t internal_unit_is_lfn_legal(uint16_t u)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_unit_is_83_legal(uint16_t u)
-{
-  /* Microsoft FAT specification section 6.1 ("Name Limitations"). A leaf
-   * containing any of these is representable only as a long name, however
-   * short it is -- `my file.txt` is eight characters of base and still cannot
-   * be an 8.3 name, because of the space. Block scope: one reader (MISRA 8.9). */
-  static const char sfn_extra_illegal[] = "+,;=[] ";
 
-  if ((uint32_t)u > (uint32_t)k_lfn_del) {
-    return 0U;
-  }
-  if (u == (uint16_t)(unsigned char)'.') {
-    return 0U;
-  }
-  if (internal_unit_in_set(u, sfn_extra_illegal) != 0U) {
-    return 0U;
-  }
-  return 1U;
-}
 
 /**
  * @brief Index of the field-separating dot, or @p n when there is none.
@@ -412,7 +334,12 @@ static uint8_t internal_unit_is_83_legal(uint16_t u)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t internal_name_dot_index(const uint16_t* leaf, uint32_t n)
+static uint32_t RA8_INTERNAL
+extern uint8_t internal_unit_is_lfn_legal(uint16_t u);
+RA8_INTERNAL
+extern uint8_t internal_unit_is_83_legal(uint16_t u);
+
+internal_name_dot_index(const uint16_t* leaf, uint32_t n)
 {
   uint32_t dot = n;
   for (uint32_t i = 0U; i < n; i++) {
