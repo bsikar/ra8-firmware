@@ -132,57 +132,7 @@ extern uint8_t internal_pack_ext(const char* path, uint8_t* out11);
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static char internal_case_apply(char c, uint8_t lower)
-{
-  if (lower == 0U) {
-    return c;
-  }
-  if ((c >= 'A') && (c <= 'Z')) {
-    /* Arithmetic in an unsigned type, not on the chars themselves (MISRA 10.2
-     * forbids + / - on essentially-character operands), and the cast lands on
-     * a plain object rather than on the composite expression (MISRA 10.8). */
-    const uint32_t lowered = (uint32_t)c + ((uint32_t)'a' - (uint32_t)'A');
-    return (char)lowered;
-  }
-  return c;
-}
 
-/* `priv_83_to_str()`: see header for the documented contract. */
-void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
-{
-  const uint8_t base_lower = (uint8_t)(ntres & (uint8_t)k_ntres_base_lower);
-  const uint8_t ext_lower  = (uint8_t)(ntres & (uint8_t)k_ntres_ext_lower);
-  uint32_t      i          = 0;
-  uint32_t      j          = 0;
-  for (i = 0; i < (uint32_t)k_filename_base_len; i++) {
-    if (in11[i] == ' ') {
-      break;
-    }
-    out13[j++] = internal_case_apply((char)in11[i], base_lower);
-  }
-  /* Restore kanji escape. */
-  if (in11[0] == (uint8_t)k_dir_marker_kanji_e5) {
-    out13[0] = (char)k_dir_marker_free_used;
-  }
-  uint8_t has_ext = 0;
-  for (i = 0; i < k_filename_ext_len; i++) {
-    if (in11[k_filename_base_len + i] != ' ') {
-      has_ext = 1;
-      break;
-    }
-  }
-  if (has_ext != 0U) {
-    out13[j++] = '.';
-    for (i = 0; i < k_filename_ext_len; i++) {
-      if (in11[k_filename_base_len + i] == ' ') {
-        break;
-      }
-      out13[j++] = internal_case_apply((char)in11[k_filename_base_len + i], ext_lower);
-    }
-  }
-  out13[j] = '\0';
-}
 
 /* =============================================================================
  * Long-name classification -- which on-disk shape a leaf component needs

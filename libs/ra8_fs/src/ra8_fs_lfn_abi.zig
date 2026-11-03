@@ -374,3 +374,52 @@ pub export fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11
     // upper-case ASCII letter, a digit, '_', '~' or a space, and none of
     // those is 0xE5.
 }
+
+/// Apply one half's NTRes case bit to a packed 8.3 byte: 'A'..'Z' lower-cases
+/// when the bit is set, everything else passes through unchanged. The
+/// arithmetic runs on a plain byte, exactly as the C does.
+fn internal_case_apply(ch: u8, lower: u8) u8 {
+    if (lower == 0) return ch;
+    if (ch >= 'A' and ch <= 'Z') return ch + ('a' - 'A');
+    return ch;
+}
+
+/// Render a packed 8.3 name plus its NTRes byte into a NUL-terminated
+/// string: base bytes to the first space, a kanji-escape restore on byte 0
+/// (0x05 back to the raw 0xE5 a Shift-JIS system wrote), then a dot and the
+/// extension bytes when any extension byte is non-space, each half
+/// lower-cased by its own NTRes bit.
+pub export fn priv_83_to_str(in11: [*c]const u8, ntres: u8, out13: [*c]u8) callconv(.c) void {
+    const base_lower = ntres & c.k_ntres_base_lower;
+    const ext_lower = ntres & c.k_ntres_ext_lower;
+    var j: u32 = 0;
+    var i: u32 = 0;
+    while (i < c.k_filename_base_len) : (i += 1) {
+        if (in11[i] == ' ') break;
+        out13[j] = internal_case_apply(in11[i], base_lower);
+        j += 1;
+    }
+    // Restore kanji escape.
+    if (in11[0] == c.k_dir_marker_kanji_e5) {
+        out13[0] = c.k_dir_marker_free_used;
+    }
+    var has_ext = false;
+    i = 0;
+    while (i < c.k_filename_ext_len) : (i += 1) {
+        if (in11[c.k_filename_base_len + i] != ' ') {
+            has_ext = true;
+            break;
+        }
+    }
+    if (has_ext) {
+        out13[j] = '.';
+        j += 1;
+        i = 0;
+        while (i < c.k_filename_ext_len) : (i += 1) {
+            if (in11[c.k_filename_base_len + i] == ' ') break;
+            out13[j] = internal_case_apply(in11[c.k_filename_base_len + i], ext_lower);
+            j += 1;
+        }
+    }
+    out13[j] = 0;
+}
