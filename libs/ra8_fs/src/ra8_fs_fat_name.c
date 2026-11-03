@@ -357,54 +357,7 @@ extern uint8_t internal_unit_is_lfn_legal(uint16_t u);
  */
 
 
-RA8_INTERNAL
-extern uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n);
-RA8_INTERNAL
-extern ra8_fs_name_kind_t internal_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres);
 
-/* `priv_name_classify()`: see header for the documented contract. */
-ra8_fs_name_kind_t priv_name_classify(const char* leaf,
-                                      uint16_t*   out_units,
-                                      uint32_t*   out_nunits,
-                                      uint8_t*    out83,
-                                      uint8_t*    out_ntres)
-{
-  if ((leaf == nullptr) || (out_units == nullptr) || (out_nunits == nullptr)) {
-    return k_name_kind_invalid;
-  }
-  if ((out83 == nullptr) || (out_ntres == nullptr)) {
-    return k_name_kind_invalid;
-  }
-  *out_ntres = 0U;
-  /* The decode is where a malformed name dies -- an over-long sequence, a raw
-   * surrogate, a truncated one -- and the unit count it produces is the length
-   * every on-disk structure below counts in. A byte count is neither. */
-  uint32_t n = 0U;
-  if (priv_utf8_to_utf16(leaf, out_units, (uint32_t)k_lfn_write_max, &n) != k_ra8_ok) {
-    *out_nunits = 0U;
-    return k_name_kind_invalid;
-  }
-  *out_nunits = n;
-  if (n == 0U) {
-    return k_name_kind_invalid;
-  }
-  for (uint32_t i = 0U; i < n; i++) {
-    if (internal_unit_is_lfn_legal(out_units[i]) == 0U) {
-      return k_name_kind_invalid;
-    }
-  }
-  if (internal_name_is_83(out_units, n) == 0U) {
-    return k_name_kind_long;
-  }
-  if (priv_path_to_83(leaf, out83) == 0U) {
-    /* Unreachable: priv_name_is_83() already proved the base and extension
-     * lengths priv_path_to_83() checks. Kept because the two functions are
-     * separately maintained and a silent disagreement would create an
-     * unpacked name. */
-    return k_name_kind_long; /* GCOVR_EXCL_LINE -- string invariants make fallback unreachable */
-  }
-  return internal_name_case_kind(out_units, n, out_ntres);
-}
 
 /* =============================================================================
  * Basis-name generation -- the `LONGNA~1.TXT` alias a long name is filed under

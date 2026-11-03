@@ -260,3 +260,31 @@ pub export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8
     if (internal_pack_ext(p, out11) == 0) return 0;
     return 1;
 }
+
+const utf_abi = @import("ra8_fs_utf_abi.zig");
+
+/// Decide what a leaf name needs on disk. Decodes the UTF-8 leaf to UTF-16
+/// (a malformed sequence is where the name dies), refuses an empty or
+/// over-long name and one holding an LFN-illegal unit, then reports a long
+/// name when the units do not pack to 8.3, and otherwise the case shape of
+/// the two halves through the NTRes byte. out_nunits is the unit count every
+/// on-disk structure counts in, never a byte count.
+pub export fn priv_name_classify(leaf: [*c]const u8, out_units: [*c]u16, out_nunits: [*c]u32, out83: [*c]u8, out_ntres: [*c]u8) callconv(.c) c.ra8_fs_name_kind_t {
+    if (leaf == null or out_units == null or out_nunits == null) return c.k_name_kind_invalid;
+    if (out83 == null or out_ntres == null) return c.k_name_kind_invalid;
+    out_ntres.* = 0;
+    var n: u32 = 0;
+    if (utf_abi.priv_utf8_to_utf16(leaf, out_units, c.k_lfn_write_max, &n) != c.k_ra8_ok) {
+        out_nunits.* = 0;
+        return c.k_name_kind_invalid;
+    }
+    out_nunits.* = n;
+    if (n == 0) return c.k_name_kind_invalid;
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (internal_unit_is_lfn_legal(out_units[i]) == 0) return c.k_name_kind_invalid;
+    }
+    if (internal_name_is_83(out_units, n) == 0) return c.k_name_kind_long;
+    if (priv_path_to_83(leaf, out83) == 0) return c.k_name_kind_long;
+    return internal_name_case_kind(out_units, n, out_ntres);
+}

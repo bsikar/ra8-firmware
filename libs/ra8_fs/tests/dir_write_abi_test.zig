@@ -311,3 +311,52 @@ test "path_to_83 refuses null arguments" {
     try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83(null, &buf));
     try std.testing.expectEqual(@as(u8, 0), fs.lfn.priv_path_to_83("a.b", null));
 }
+
+test "classify: short name gets lower-case NTRes bits" {
+    var units: [c.k_lfn_write_max]u16 = undefined;
+    var n83: [11]u8 = undefined;
+    var ntres: u8 = 0xFF;
+    var nunits: u32 = 0;
+    try std.testing.expectEqual(c.k_name_kind_short, fs.lfn.priv_name_classify("abc.txt", &units, &nunits, &n83, &ntres));
+    try std.testing.expectEqual(@as(u32, 7), nunits);
+    try std.testing.expectEqual(@as(u8, ' '), n83[3]);
+    try std.testing.expectEqual(@as(u8, 'A'), n83[0]);
+    try std.testing.expectEqual(@as(u8, 'T'), n83[8]);
+    try std.testing.expectEqual(c.k_ntres_base_lower | c.k_ntres_ext_lower, ntres);
+}
+
+test "classify: all-upper name keeps NTRes at zero" {
+    var units: [c.k_lfn_write_max]u16 = undefined;
+    var n83: [11]u8 = undefined;
+    var ntres: u8 = 0xFF;
+    var nunits: u32 = 0;
+    try std.testing.expectEqual(c.k_name_kind_short, fs.lfn.priv_name_classify("ABC.TXT", &units, &nunits, &n83, &ntres));
+    try std.testing.expectEqual(@as(u32, 7), nunits);
+    try std.testing.expectEqual(@as(u8, 0), ntres);
+}
+
+test "classify: mixed-case name needs a long chain" {
+    var units: [c.k_lfn_write_max]u16 = undefined;
+    var n83: [11]u8 = undefined;
+    var ntres: u8 = 0xFF;
+    var nunits: u32 = 0;
+    try std.testing.expectEqual(c.k_name_kind_long, fs.lfn.priv_name_classify("MiXeD.txt", &units, &nunits, &n83, &ntres));
+    try std.testing.expectEqual(@as(u8, 0), ntres);
+}
+
+test "classify: an LFN-illegal unit kills the name" {
+    var units: [c.k_lfn_write_max]u16 = undefined;
+    var n83: [11]u8 = undefined;
+    var ntres: u8 = 0xFF;
+    var nunits: u32 = 0;
+    try std.testing.expectEqual(c.k_name_kind_invalid, fs.lfn.priv_name_classify("a\x01b", &units, &nunits, &n83, &ntres));
+    try std.testing.expectEqual(@as(u32, 3), nunits);
+}
+
+test "classify: null arguments are invalid" {
+    var units: [c.k_lfn_write_max]u16 = undefined;
+    var n83: [11]u8 = undefined;
+    var ntres: u8 = 0xFF;
+    var nunits: u32 = 0;
+    try std.testing.expectEqual(c.k_name_kind_invalid, fs.lfn.priv_name_classify(null, &units, &nunits, &n83, &ntres));
+}
