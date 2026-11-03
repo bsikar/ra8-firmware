@@ -52,14 +52,7 @@ typedef enum : uint16_t {
  * Result is space-padded as on-disk. Lower-case input is upper-cased.
  * Returns 0 on bad name (>8 base, >3 ext, missing chars), 1 on success.
  */
-/* `priv_to_upper()`: see header for the documented contract. */
-char priv_to_upper(char c)
-{
-  if (c >= 'a' && c <= 'z') {
-    return (char)(c - 'a' + 'A');
-  }
-  return c;
-}
+
 
 /**
  * @brief Pack the base portion of a path into out11[0..7]. Returns 0 on error.
@@ -336,19 +329,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
 RA8_INTERNAL
 static uint32_t RA8_INTERNAL
 extern uint8_t internal_unit_is_lfn_legal(uint16_t u);
-RA8_INTERNAL
-extern uint8_t internal_unit_is_83_legal(uint16_t u);
 
-internal_name_dot_index(const uint16_t* leaf, uint32_t n)
-{
-  uint32_t dot = n;
-  for (uint32_t i = 0U; i < n; i++) {
-    if (leaf[i] == (uint16_t)(unsigned char)'.') {
-      dot = i;
-    }
-  }
-  return dot;
-}
 
 /**
  * @brief Can @p leaf be stored as a packed 8.3 name without losing anything?
@@ -377,30 +358,7 @@ internal_name_dot_index(const uint16_t* leaf, uint32_t n)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n)
-{
-  const uint32_t dot      = internal_name_dot_index(leaf, n);
-  const uint32_t base_len = dot;
-  if ((base_len == 0U) || (base_len > (uint32_t)k_filename_base_len)) {
-    return 0U;
-  }
-  if (dot < n) {
-    const uint32_t ext_len = (n - dot) - 1U;
-    if ((ext_len == 0U) || (ext_len > (uint32_t)k_filename_ext_len)) {
-      return 0U;
-    }
-  }
-  for (uint32_t i = 0U; i < n; i++) {
-    if (i == dot) {
-      continue;
-    }
-    if (internal_unit_is_83_legal(leaf[i]) == 0U) {
-      return 0U;
-    }
-  }
-  return 1U;
-}
+
 
 /**
  * @brief Fold one half of a name into "has upper" / "has lower" observations.
@@ -427,20 +385,7 @@ static uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_case_observe(const uint16_t* leaf, uint32_t from, uint32_t to, uint8_t* seen)
-{
-  for (uint32_t i = from; i < to; i++) {
-    const uint32_t c = (uint32_t)leaf[i];
-    if ((c >= (uint32_t)'A') && (c <= (uint32_t)'Z')) {
-      *seen |= (uint8_t)k_case_seen_upper;
-    } else if ((c >= (uint32_t)'a') && (c <= (uint32_t)'z')) {
-      *seen |= (uint8_t)k_case_seen_lower;
-    } else {
-      /* Digits and punctuation carry no case; they constrain nothing. */
-    }
-  }
-}
+
 
 /**
  * @brief Decide the case shape of an 8.3-representable leaf.
@@ -467,32 +412,12 @@ static void internal_case_observe(const uint16_t* leaf, uint32_t from, uint32_t 
  *
  * @since 0.1.0
  */
+
+
 RA8_INTERNAL
-static ra8_fs_name_kind_t
-internal_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres)
-{
-  const uint32_t dot       = internal_name_dot_index(leaf, n);
-  uint8_t        base_seen = 0U;
-  uint8_t        ext_seen  = 0U;
-  internal_case_observe(leaf, 0U, dot, &base_seen);
-  if (dot < n) {
-    internal_case_observe(leaf, dot + 1U, n, &ext_seen);
-  }
-  *out_ntres = 0U;
-  if (base_seen == (uint8_t)k_case_seen_mixed) {
-    return k_name_kind_long;
-  }
-  if (ext_seen == (uint8_t)k_case_seen_mixed) {
-    return k_name_kind_long;
-  }
-  if (base_seen == (uint8_t)k_case_seen_lower) {
-    *out_ntres |= (uint8_t)k_ntres_base_lower;
-  }
-  if (ext_seen == (uint8_t)k_case_seen_lower) {
-    *out_ntres |= (uint8_t)k_ntres_ext_lower;
-  }
-  return k_name_kind_short;
-}
+extern uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n);
+RA8_INTERNAL
+extern ra8_fs_name_kind_t internal_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres);
 
 /* `priv_name_classify()`: see header for the documented contract. */
 ra8_fs_name_kind_t priv_name_classify(const char* leaf,
