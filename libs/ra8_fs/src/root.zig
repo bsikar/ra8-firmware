@@ -27,6 +27,7 @@ pub const resolve = @import("ra8_fs_resolve_abi.zig");
 pub const label = @import("ra8_fs_label_abi.zig");
 pub const fat_core = @import("ra8_fs_fat_core_abi.zig");
 pub const dir_run = @import("ra8_fs_dir_run_abi.zig");
+pub const prim = @import("ra8_fs_fat_prim_abi.zig");
 
 comptime {
     _ = lock;
@@ -48,4 +49,5 @@ comptime {
     _ = label;
     _ = fat_core;
     _ = dir_run;
+    _ = prim;
 }

@@ -55,30 +55,6 @@ fn reset() void {
     @memset(&g_fs_scratch, 0);
 }
 
-export fn priv_rd16(p: [*]const u8) callconv(.c) u16 {
-    return @as(u16, p[0]) | (@as(u16, p[1]) << 8);
-}
-
-export fn priv_rd32(p: [*]const u8) callconv(.c) u32 {
-    return @as(u32, priv_rd16(p)) | (@as(u32, priv_rd16(p + 2)) << 16);
-}
-
-export fn priv_rd64(p: [*]const u8) callconv(.c) u64 {
-    return @as(u64, priv_rd32(p)) | (@as(u64, priv_rd32(p + 4)) << 32);
-}
-
-export fn priv_byte_copy(dst: [*]u8, src: [*]const u8, n: u32) callconv(.c) void {
-    @memcpy(dst[0..n], src[0..n]);
-}
-
-export fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    return m.*.sectors_per_cluster * m.*.bytes_per_sector;
-}
-
-export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    return m.*.bytes_per_sector;
-}
-
 export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64 {
     return m.*.first_data_lba + (cluster - 2) * m.*.sectors_per_cluster;
 }
@@ -90,19 +66,14 @@ export fn priv_fat_get(m: [*c]const c.ra8_fs_mount_t, cluster: u32, out: *u32) c
     return ok;
 }
 
-export fn priv_is_eoc(m: [*c]const c.ra8_fs_mount_t, value: u32) callconv(.c) u8 {
-    _ = m;
-    return if (value >= eoc) 1 else 0;
-}
-
 var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &sec_buf;
 }
 
-export fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.c) u16 {
-    _ = m;
+fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callconv(.c) u16 {
+    _ = .{ ctx, count };
     if (read_err != 0) return read_err;
     read_calls += 1;
     const i: usize = @intCast(lba - data_lba);
@@ -169,6 +140,8 @@ fn mount() c.ra8_fs_mount_t {
     var m = std.mem.zeroes(c.ra8_fs_mount_t);
     m.type = c.k_ra8_fs_type_exfat;
     m.bytes_per_sector = bps;
+    m.backend.read_block = read_block_backend;
+    m.backend.write_block = write_block_backend;
     m.sectors_per_cluster = spc;
     m.first_data_lba = data_lba;
     m.root_cluster = 2;
@@ -213,11 +186,6 @@ fn needleFor(comptime name: []const u8) [c.k_exfat_name_cap]u16 {
 // Link stubs for the other root units this binary analyzes (never exercised
 // here): the shared root pulls every abi module into every test root.
 var walk_sector: [512]u8 = @splat(0);
-
-export fn priv_dir_eps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
-    _ = m;
-    return 16;
-}
 
 export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
     _ = m;
@@ -300,17 +268,12 @@ export fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     return 0;
 }
 
-
 export fn priv_sec_walk() callconv(.c) [*c]u8 {
     return &walk_sector;
 }
 
-export fn priv_wr16(p: [*c]u8, v: u16) callconv(.c) void {
-    std.mem.writeInt(u16, p[0..2], v, .little);
-}
-
-export fn priv_write_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]const u8) callconv(.c) u16 {
-    _ = m;
+fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
+    _ = .{ ctx, count };
     if (write_err != 0) return write_err;
     const i: usize = @intCast(lba - data_lba);
     @memcpy(disk[i][0..bps], buf[0..bps]);
@@ -326,6 +289,8 @@ fn mkFat32() c.ra8_fs_mount_t {
     var m = std.mem.zeroes(c.ra8_fs_mount_t);
     m.type = c.k_ra8_fs_type_fat32;
     m.bytes_per_sector = bps;
+    m.backend.read_block = read_block_backend;
+    m.backend.write_block = write_block_backend;
     m.sectors_per_cluster = spc;
     m.first_fat_lba = 100;
     m.fat_size_sectors = 10;
@@ -593,19 +558,29 @@ test "flush writes the counts back and clears the dirty flag" {
 // ---- stand-ins for the five C helpers the open/close port (RA8FW-1092) added;
 // the open/create path is not exercised here, so they only satisfy the linker
 export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m; _ = loc; _ = leaf;
-    out_lba.* = 0; out_off.* = 0; out_entry[0..32].* = @splat(0);
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    out_lba.* = 0;
+    out_off.* = 0;
+    out_entry[0..32].* = @splat(0);
     return 0;
 }
 
 export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
-    _ = m; _ = loc; _ = leaf; _ = plan;
+    _ = m;
+    _ = loc;
+    _ = leaf;
+    _ = plan;
     return 0;
 }
 
 export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
-    _ = m; _ = plan; _ = tmpl;
-    out_lba.* = 0; out_off.* = 0;
+    _ = m;
+    _ = plan;
+    _ = tmpl;
+    out_lba.* = 0;
+    out_off.* = 0;
     return 0;
 }
 

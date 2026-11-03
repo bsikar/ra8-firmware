@@ -63,7 +63,7 @@ test "append on a contiguous file sizes the run and clamps valid length" {
 test "append on a FAT-chained file walks the chain; a bad link is refused" {
     existing(0, 10, 5000, 5000, 0);
     fake.fat[10] = 11;
-    fake.fat[11] = 0x0FFF_FFFF;
+    fake.fat[11] = 0xFFFF_FFFF;
     var f: ?*ow.File = null;
     try std.testing.expectEqual(ow.ok, open(append_mode, &f));
     try std.testing.expectEqual(@as(u32, 2), f.?.alloc_clusters);

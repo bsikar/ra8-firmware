@@ -32,88 +32,17 @@
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
-
-/* =============================================================================
- * Little-endian helpers
- * =============================================================================
- */
-
-/* `priv_rd16()`: see header for the documented contract. */
-uint16_t priv_rd16(const uint8_t* p)
-{
-  return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << k_shift_byte));
-}
-
-/* `priv_rd32()`: see header for the documented contract. */
-uint32_t priv_rd32(const uint8_t* p)
-{
-  return (uint32_t)p[0] | ((uint32_t)p[1] << k_shift_byte) | ((uint32_t)p[2] << k_shift_two_bytes) |
-         ((uint32_t)p[3] << k_shift_three_bytes);
-}
-
-/* `priv_rd64()`: see header for the documented contract. */
-uint64_t priv_rd64(const uint8_t* p)
-{
-  return (uint64_t)priv_rd32(p) | ((uint64_t)priv_rd32(&p[sizeof(uint32_t)]) << k_shift_word32);
-}
-
-/* `priv_wr16()`: see header for the documented contract. */
-void priv_wr16(uint8_t* p, uint16_t v)
-{
-  p[0] = (uint8_t)(v & k_byte_mask);
-  p[1] = (uint8_t)((v >> k_shift_byte) & k_byte_mask);
-}
-
-/* `priv_bps()`: see header for the documented contract. */
-uint32_t priv_bps(const ra8_fs_mount_t* m)
-{
-  return m->bytes_per_sector;
-}
-
-/* `priv_cluster_bytes()`: see header for the documented contract. */
-uint32_t priv_cluster_bytes(const ra8_fs_mount_t* m)
-{
-  return m->sectors_per_cluster * m->bytes_per_sector;
-}
-
-/* `priv_dir_eps()`: see header for the documented contract. */
-uint32_t priv_dir_eps(const ra8_fs_mount_t* m)
-{
-  return m->bytes_per_sector / (uint32_t)k_ra8_fs_dir_entry_bytes;
-}
-
-/* `priv_byte_fill()`: see header for the documented contract. */
-void priv_byte_fill(uint8_t* dst, uint8_t value, uint32_t n)
-{
-  for (uint32_t i = 0U; i < n; i++) {
-    dst[i] = value;
-  }
-}
-
-/* `priv_byte_copy()`: see header for the documented contract. */
-void priv_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t n)
-{
-  for (uint32_t i = 0U; i < n; i++) {
-    dst[i] = src[i];
-  }
-}
-
-/* =============================================================================
- * Backend wrappers
- * =============================================================================
- */
-
-/* `priv_read_sector()`: see header for the documented contract. */
-ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf)
-{
-  return m->backend.read_block(m->backend.ctx, lba + m->partition_base_lba, 1, buf);
-}
-
-/* `priv_write_sector()`: see header for the documented contract. */
-ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint64_t lba, const uint8_t* buf)
-{
-  return m->backend.write_block(m->backend.ctx, lba + m->partition_base_lba, 1, buf);
-}
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
+@@DEL@@
 
 /* =============================================================================
  * FAT entry get/set -- dispatches across FAT12/16/32 layouts
@@ -479,21 +408,7 @@ ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value
   }
   return k_ra8_ok;
 }
-
-/* `priv_is_eoc()`: see header for the documented contract. */
-uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value)
-{
-  if (m->type == k_ra8_fs_type_fat12) {
-    return (uint8_t)((value >= k_cluster_eoc_min_fat12) ? 1U : 0U);
-  }
-  if (m->type == k_ra8_fs_type_fat16) {
-    return (uint8_t)((value >= k_cluster_eoc_min_fat16) ? 1U : 0U);
-  }
-  if (m->type == k_ra8_fs_type_exfat) {
-    return (uint8_t)((value >= k_cluster_eoc_min_exfat) ? 1U : 0U);
-  }
-  return (uint8_t)((value >= k_cluster_eoc_min_fat32) ? 1U : 0U);
-}
+@@DEL@@
 
 /* `priv_cluster_to_lba()`: see header for the documented contract. */
 uint64_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster)
