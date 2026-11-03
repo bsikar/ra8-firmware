@@ -196,8 +196,9 @@ test "stat falls back to the long-name scan when the 8.3 find misses" {
     try std.testing.expectEqual(@as(u8, 0x20), st.attr);
     // a name that exists as neither 8.3 nor a laid chain is not found
     fake.reset(fat16);
-    fake.have83 = 0;
-    try std.testing.expectEqual(stat.err_not_found, stat.ra8_fs_stat(&fake.mount_store, "missing.txt", &st));
+    // a base over 8 never packs to 8.3, so stat goes to the long-name scan;
+    // the name exists as neither 8.3 nor a laid chain, so it is not found
+    try std.testing.expectEqual(stat.err_not_found, stat.ra8_fs_stat(&fake.mount_store, "toolongname.txt", &st));
 }
 
 test "stat on exFAT reads the File and Stream entries" {

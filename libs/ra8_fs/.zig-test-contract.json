@@ -64,5 +64,5 @@
     "src/ra8_fs_fat_entry_abi.zig",
     "src/ra8_fs_dir_erase_abi.zig"
   ],
-  "minimum_tests": 138
+  "minimum_tests": 143
 }
