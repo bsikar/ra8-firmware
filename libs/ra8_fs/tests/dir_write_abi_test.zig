@@ -29,6 +29,7 @@ fn setup() *const c.ra8_fs_mount_t {
 test "alias probing stops at the first basis with no entry" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var out11: [entry_bytes]u8 = @splat(0);
     // the alias probe runs the real find over the served sector, which
     // holds no "ALIAS   TXT" entry, so the first basis answers unique
@@ -39,6 +40,7 @@ test "alias probing stops at the first basis with no entry" {
 test "alias probing propagates a backend error" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var out11: [entry_bytes]u8 = @splat(0);
     fake.sector_read_err = err_protocol; // the alias probe's read fails
     const leaf = [_]u16{ 'a', 'l', 'i', 'a', 's', '.', 't', 'x', 't' };
@@ -64,6 +66,7 @@ test "the slot cursor rolls over with one write, one walk step, one read" {
     var lba: u64 = fake.dir_lba;
     fake.sector_written = null;
     cur.ent = 15;
+    cur.w.is_root_fixed = 1;
     cur.w.fixed_remaining = 2;
     cur.w.cur_lba = fake.dir_lba;
     try std.testing.expectEqual(ok, write.internal_slot_advance(m, &cur, &buf, &lba));
@@ -78,6 +81,7 @@ test "a rollover off the directory's end answers no_mem" {
     var buf: [512]u8 = @splat(0);
     var lba: u64 = fake.dir_lba;
     cur.ent = 15;
+    cur.w.is_root_fixed = 1;
     cur.w.fixed_remaining = 0;
     cur.w.cur_lba = fake.dir_lba;
     try std.testing.expectEqual(err_no_mem, write.internal_slot_advance(m, &cur, &buf, &lba));
@@ -93,6 +97,8 @@ test "a FAT12/16 fixed root refuses to grow" {
 test "grow appends one zeroed cluster at the chain's end" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.cluster = 11; // first_data_lba 1: cluster 11 -> lba 10 = walk_lba
+    fake.fat[11] = 0xFFFF_FFF8; // the subdir chain (cluster 11) ends here (the fake FAT indexes by cluster)
     try std.testing.expectEqual(ok, write.internal_dir_grow(m, &loc));
     // The zero write and the FAT link write both ran; sector_written holds the last one (the FAT write).
     try std.testing.expect(fake.sector_written != null);
@@ -106,6 +112,8 @@ test "grow appends one zeroed cluster at the chain's end" {
 test "a failed FAT link leaves the returned error intact" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.cluster = 11;
+    fake.fat[11] = 0xFFFF_FFF8; // the subdir chain (cluster 11) ends here (the fake FAT indexes by cluster)
     fake.fat_set_err = err_no_mem;
     try std.testing.expectEqual(err_no_mem, write.internal_dir_grow(m, &loc));
 }

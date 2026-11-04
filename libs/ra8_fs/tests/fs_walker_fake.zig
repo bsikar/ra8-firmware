@@ -1,10 +1,11 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! In-memory stand-ins for the C directory walkers the Zig units call. Every
-//! test root that imports `ra8_fs` references this file so the test binary
-//! links without the C library. The exFAT root is one cluster (5) of `slots`
-//! entries; the FAT side is one 512-byte sector.
+//! In-memory stand-ins for the C units the Zig units still call, plus the
+//! fake block backend and directory fixtures the Zig roots test against.
+//! Every test root that imports `ra8_fs` references this file so the test
+//! binary links without the C library. The exFAT root is one cluster (5) of
+//! `slots` entries; the FAT side is one 512-byte sector.
 
 const std = @import("std");
 const al = @import("ra8_fs").alloc;
@@ -94,6 +95,10 @@ pub fn reset(fs_type: u8) void {
     // The real entry layer maps cluster -> LBA: cluster 5 (root) must
     // land on dir_lba, so the cluster heap starts one LBA before it.
     mount_store.first_data_lba = 1;
+    // FAT32 directories root on the cluster chain (root_cluster 5), so the
+    // heap start moves so cluster 5's LBA is walk_lba, where the dir buffer
+    // is served. exFAT fixtures keep first_data_lba 1.
+    if (fs_type == c.k_ra8_fs_type_fat32) mount_store.first_data_lba = walk_lba - 3;
     mount_store.first_fat_lba = fat_lba;
     mount_store.fat_size_sectors = fat_secs;
     mount_store.num_fats = 1;
@@ -111,6 +116,9 @@ pub fn reset(fs_type: u8) void {
     stamped = .{ null, null, null };
     stamp_calls = 0;
     fat = @splat(0);
+    if (fs_type == c.k_ra8_fs_type_fat32) {
+        fat[5] = 0xFFFF_FFF8; // the FAT32 root chain ends after its first cluster
+    }
     fat_err = 0;
     fat_set_err = 0;
     fat_reads = 0;
@@ -140,6 +148,10 @@ pub fn reset(fs_type: u8) void {
     walk_lba = 10;
     walk_fixed = 1;
     eps = 16;
+    // The walkers are Zig now: the fixed-root region starts at walk_lba and
+    // spans walk_fixed sectors (16 entries per 512-byte sector).
+    mount_store.first_root_lba = walk_lba;
+    mount_store.root_entries = walk_fixed * 16;
     dir_lba = 4;
     flush_calls = 0;
     flush_err = 0;
@@ -169,29 +181,6 @@ export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfa
 export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
     checksum_bytes = bytes;
     return 0xA000 | @as(u16, set[4]);
-}
-
-export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
-    _ = .{ m, loc };
-    w.*.is_root_fixed = 1;
-    w.*.fixed_remaining = walk_fixed;
-    w.*.cluster = 0;
-    w.*.sector_in_cluster = 0;
-    w.*.cur_lba = walk_lba;
-    w.*.entry_idx = 0;
-    w.*.cluster_hops = 0;
-}
-
-export fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_walk_t, out_eod: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    if (w.*.fixed_remaining == 0) {
-        out_eod.* = 1;
-        return 0;
-    }
-    w.*.fixed_remaining -= 1;
-    w.*.cur_lba += 1;
-    out_eod.* = 0;
-    return 0;
 }
 
 /// Lay a plain 8.3 directory entry into the sector buffer at slot `at`: the

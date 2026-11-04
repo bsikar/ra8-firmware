@@ -44,6 +44,7 @@ fn targetOff(i: usize) u32 {
 test "collect keeps the checksum-matching chain ahead of the target" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var run: [cap + 1]c.dir_pos_t = undefined;
     var len: u32 = 0;
     setLfn(2, chain_csum);
@@ -56,6 +57,7 @@ test "collect keeps the checksum-matching chain ahead of the target" {
 test "a stale chain with a different checksum resets the run" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var run: [cap + 1]c.dir_pos_t = undefined;
     var len: u32 = 0;
     setLfn(1, chain_csum +% 1);
@@ -68,6 +70,7 @@ test "a stale chain with a different checksum resets the run" {
 test "a live entry between slots resets the run" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var run: [cap + 1]c.dir_pos_t = undefined;
     var len: u32 = 0;
     setLfn(2, chain_csum);
@@ -103,6 +106,7 @@ test "erase_positions marks the run and writes back once" {
 test "a walk past the directory answers not_found" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var run: [cap + 1]c.dir_pos_t = undefined;
     var len: u32 = 0;
     setLfn(2, chain_csum);
