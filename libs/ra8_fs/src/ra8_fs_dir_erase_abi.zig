@@ -97,3 +97,18 @@ pub export fn internal_dir_erase_positions(m: [*c]const c.ra8_fs_mount_t, pos: [
     }
     return priv_write_sector(m, cur, buf);
 }
+
+/// Erase one 8.3 directory entry plus the long-name chain filed ahead of it:
+/// collect the chain whose slots carry this entry's name checksum, append
+/// the entry's own slot, and mark every position deleted. Freeing the
+/// entry's cluster chain stays the caller's job.
+pub export fn priv_dir_erase_chain(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, lba: u64, off: u32, name83: [*c]const u8) callconv(.c) u16 {
+    const lfn = @import("ra8_fs_lfn_abi.zig");
+    var all: [erase_max + 1]c.dir_pos_t = std.mem.zeroes([erase_max + 1]c.dir_pos_t);
+    var len: u32 = 0;
+    const cerr = internal_dir_collect_chain(m, loc, lba, off, lfn.priv_sfn_checksum(name83), &all, &len);
+    if (cerr != c.k_ra8_ok) return cerr;
+    all[len].lba = lba;
+    all[len].off = off;
+    return internal_dir_erase_positions(m, &all, len + 1);
+}
