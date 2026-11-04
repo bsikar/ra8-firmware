@@ -79,10 +79,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint64_t internal_trunc_clusters(uint64_t bytes, uint32_t cbytes)
-{
-  return (bytes + cbytes - 1U) / cbytes;
-}
+extern uint64_t internal_trunc_clusters(uint64_t bytes, uint32_t cbytes);
 
 /**
  * @brief Walk @p idx clusters forward along a chain from @p start.
@@ -112,24 +109,8 @@ static uint64_t internal_trunc_clusters(uint64_t bytes, uint32_t cbytes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out)
-{
-  uint32_t cur = start;
-  for (uint32_t i = 0U; i < idx; i++) {
-    uint32_t        next = 0U;
-    const ra8_err_t e    = priv_fat_get(m, cur, &next);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    if (priv_is_eoc(m, next) != 0U) {
-      return k_ra8_err_protocol_error;
-    }
-    cur = next;
-  }
-  *out = cur;
-  return k_ra8_ok;
-}
+extern ra8_err_t
+internal_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out);
 
 /**
  * @brief Write real zeros over the byte range `[lo, hi)` inside one cluster.
@@ -162,38 +143,8 @@ internal_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo, uint32_t hi)
-{
-  if (lo >= hi) {
-    return k_ra8_ok;
-  }
-  const uint64_t base_lba = priv_cluster_to_lba(m, cluster);
-  uint32_t       off      = lo;
-  while (off < hi) {
-    const uint32_t sec_idx   = off / priv_bps(m);
-    const uint32_t sec_start = sec_idx * priv_bps(m);
-    const uint32_t in_sector = off - sec_start;
-    uint32_t       n         = priv_bps(m) - in_sector;
-    if (n > (hi - off)) {
-      n = hi - off;
-    }
-    uint8_t* const  sec = priv_sec_io();
-    const ra8_err_t re  = priv_read_sector(m, base_lba + sec_idx, sec);
-    if (re != k_ra8_ok) {
-      return re;
-    }
-    for (uint32_t i = 0U; i < n; i++) {
-      sec[in_sector + i] = 0U;
-    }
-    const ra8_err_t we = priv_write_sector(m, base_lba + sec_idx, sec);
-    if (we != k_ra8_ok) {
-      return we;
-    }
-    off += n;
-  }
-  return k_ra8_ok;
-}
+extern ra8_err_t
+internal_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo, uint32_t hi);
 
 /* =============================================================================
  * FAT12/16/32 truncate

@@ -19,6 +19,7 @@ pub const free_chain = @import("ra8_fs_free_chain_abi.zig");
 pub const dirmk = @import("ra8_fs_dirmk_abi.zig");
 pub const stat = @import("ra8_fs_stat_abi.zig");
 pub const exfat_write = @import("ra8_fs_exfat_write_abi.zig");
+pub const trunc = @import("ra8_fs_trunc_abi.zig");
 pub const lfn_find = @import("ra8_fs_lfn_find_abi.zig");
 pub const exfat_read = @import("ra8_fs_exfat_read_abi.zig");
 pub const alloc = @import("ra8_fs_alloc_abi.zig");
