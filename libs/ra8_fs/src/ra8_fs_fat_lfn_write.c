@@ -44,25 +44,6 @@
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 
-/**
- * @enum ra8_fs_lfnw_local_t
- * @brief Bounds used only by this translation unit's directory manipulation.
- *
- * @details `k_lfnw_grow_max` is the loop bound that keeps the "no run this
- *          long -- grow and look again" retry finite (NASA Power of 10 Rule 2).
- *          Two grows always suffice: the longest run this code ever asks for
- *          is `k_lfn_erase_max + 1` = 21 slots, and the smallest cluster this
- *          driver mounts is one 512-byte sector = 16 slots, so a run can need
- *          at most one fresh cluster beyond a completely full one. The third
- *          attempt is slack, not a requirement.
- *
- * @invariant `k_lfnw_grow_max` is at least 2.
- * @see priv_dir_reserve()
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_lfnw_grow_max = 3U, /**< Cluster-growth retries before reporting no_mem. */
-} ra8_fs_lfnw_local_t;
 
 /* =============================================================================
  * Alias generation
@@ -138,130 +119,8 @@ extern ra8_err_t internal_alias_unique(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-extern ra8_err_t internal_dir_grow(const ra8_fs_mount_t* m, const dir_loc_t* loc);
   return k_ra8_ok;
 }
-
-/* =============================================================================
- * Reserve / commit
- * =============================================================================
- */
-
-/* `priv_dir_reserve()`: see header for the documented contract. */
-ra8_err_t
-priv_dir_reserve(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf, dir_insert_t* out)
-{
-  out->lfn_entries = 0U;
-  out->nunits      = 0U;
-  const ra8_fs_name_kind_t kind =
-    priv_name_classify(leaf, out->units, &out->nunits, out->name83, &out->ntres);
-  if (kind == k_name_kind_invalid) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t need = 1U;
-  if (kind == k_name_kind_long) {
-    const ra8_err_t aerr = internal_alias_unique(m, loc, out->units, out->nunits, out->name83);
-    if (aerr != k_ra8_ok) {
-      return aerr;
-    }
-    out->ntres = 0U; /* the chain carries the case; the alias is upper-case */
-    /* Groups of THIRTEEN CODE UNITS -- the slot's capacity. Deriving this from
-     * a byte count put a 2-byte character's worth of slots on a 1-unit
-     * character, and the chain then disagreed with its own contents. */
-    out->lfn_entries = (uint8_t)(((out->nunits + (uint32_t)k_lfn_chars_per_ent) - 1U) /
-                                 (uint32_t)k_lfn_chars_per_ent);
-    need             = (uint32_t)out->lfn_entries + 1U;
-  }
-  for (uint32_t attempt = 0U; attempt <= (uint32_t)k_lfnw_grow_max; attempt++) {
-    const ra8_err_t ferr = priv_dir_find_free_run(m, loc, need, &out->start);
-    if (ferr != k_ra8_err_no_mem) {
-      return ferr;
-    }
-    if (attempt == (uint32_t)k_lfnw_grow_max) {
-      break; /* growing again would only link a cluster nothing then uses */
-    }
-    const ra8_err_t gerr = internal_dir_grow(m, loc);
-    if (gerr != k_ra8_ok) {
-      return gerr;
-    }
-  }
-  return k_ra8_err_no_mem;
-}
-
-/**
- * @brief Step a slot cursor forward one entry, flushing across sector edges.
- *
- * @details The write buffer holds one sector; crossing into the next one means
- *          committing what is in it first, because the run being written may
- *          already have modified this sector's earlier slots.
- *
- * @param[in]     m       Mounted FAT12/16/32 volume.
- * @param[in,out] cur     Cursor to advance.
- * @param[in,out] buf     Sector buffer; written out and reloaded on a crossing.
- * @param[in,out] lba_io  Holds the buffer's LBA; updated on a crossing.
- *
- * @return Error code.
- * @retval k_ra8_ok         The cursor addresses the next slot.
- * @retval k_ra8_err_no_mem The directory ended mid-run (corrupt reservation).
- * @retval k_ra8_err_*      Backend read/write error.
- *
- * @pre All pointers are non-NULL; @p buf holds the sector at `*lba_io`.
- * @pre @p cur is positioned inside the reserved run.
- * @post On success @p buf holds the sector `cur` now points into.
- * @post On failure the run is left partially written.
- *
- * @note Not thread-safe; callers serialise directory access.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-extern ra8_err_t
-internal_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint64_t* lba_io);
-
-/* `priv_dir_commit()`: see header for the documented contract. */
-ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
-                          const dir_insert_t*   plan,
-                          const uint8_t*        tmpl,
-                          uint64_t*             out_lba,
-                          uint32_t*             out_off)
-{
-  const uint32_t nlen  = (plan->lfn_entries != 0U) ? plan->nunits : 0U;
-  const uint8_t  csum  = priv_sfn_checksum(plan->name83);
-  const uint32_t total = (uint32_t)plan->lfn_entries + 1U;
-  dir_slot_t     cur   = plan->start;
-  uint64_t       lba   = cur.w.cur_lba;
-  uint8_t* const buf   = priv_sec_walk();
-  ra8_err_t      err   = priv_read_sector(m, lba, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  for (uint32_t i = 0U; i < total; i++) {
-    uint8_t* slot = &buf[(size_t)cur.ent * (size_t)k_ra8_fs_dir_entry_bytes];
-    if (i < (uint32_t)plan->lfn_entries) {
-      priv_lfn_fill_slot(slot,
-                         plan->units,
-                         nlen,
-                         (uint32_t)plan->lfn_entries - i,
-                         (uint8_t)((i == 0U) ? 1U : 0U),
-                         csum);
-    } else {
-      priv_byte_copy(slot, tmpl, (uint32_t)k_ra8_fs_dir_entry_bytes);
-      priv_byte_copy(&slot[k_dir_off_name], plan->name83, (uint32_t)k_dir_name_field_len);
-      slot[k_dir_off_ntres] = plan->ntres;
-      *out_lba              = lba;
-      *out_off              = cur.ent * (uint32_t)k_ra8_fs_dir_entry_bytes;
-    }
-    if ((i + 1U) < total) {
-      err = internal_slot_advance(m, &cur, buf, &lba);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-    }
-  }
-  return priv_write_sector(m, lba, buf);
-}
-
 
 /* `priv_dir_lookup_any()`: see header for the documented contract. */
 ra8_err_t priv_dir_lookup_any(const ra8_fs_mount_t* m,
