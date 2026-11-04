@@ -81,3 +81,121 @@ pub export fn internal_trunc_zero_span(m: [*c]const c.ra8_fs_mount_t, cluster: u
     }
     return ok;
 }
+
+extern fn priv_alloc_eoc_cluster(m: [*c]const c.ra8_fs_mount_t, out_c: [*c]u32) callconv(.c) u16;
+extern fn priv_fat_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, value: u32) callconv(.c) u16;
+extern fn priv_eoc_write(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32;
+extern fn priv_free_chain(m: [*c]const c.ra8_fs_mount_t, start: u32) callconv(.c) u16;
+
+/// Free the cluster tail past `new_size` on a FAT file: below the new
+/// cluster count the chain is left alone; at and above it the survivor's
+/// tail is re-capped with an end-of-chain marker and the rest is freed.
+/// Shrinking to zero drops the whole chain and clears the first cluster.
+pub export fn internal_fat_trunc_shrink(file: [*c]c.ra8_fs_file_t, new_size: u32, cbytes: u32) callconv(.c) u16 {
+    const m: [*c]const c.ra8_fs_mount_t = file[0].mount;
+    const new_nclus: u32 = @intCast(internal_trunc_clusters(new_size, cbytes));
+    if (new_nclus == 0) {
+        if (file[0].first_cluster >= c.k_cluster_first_data) {
+            const e = priv_free_chain(m, file[0].first_cluster);
+            if (e != ok) {
+                return e;
+            }
+        }
+        file[0].first_cluster = 0;
+        file[0].size_bytes = new_size;
+        return ok;
+    }
+    var new_tail: u32 = 0;
+    const we = internal_trunc_walk(m, file[0].first_cluster, new_nclus - 1, &new_tail);
+    if (we != ok) {
+        return we;
+    }
+    var succ: u32 = 0;
+    const ge = priv_fat_get(m, new_tail, &succ);
+    if (ge != ok) {
+        return ge;
+    }
+    if (priv_is_eoc(m, succ) == 0) {
+        var e = priv_fat_set(m, new_tail, priv_eoc_write(m));
+        if (e != ok) {
+            return e;
+        }
+        e = priv_free_chain(m, succ);
+        if (e != ok) {
+            return e;
+        }
+    }
+    file[0].size_bytes = new_size;
+    return ok;
+}
+
+/// Append zeroed clusters to a FAT file until it owns `new_nclus`:
+/// allocates the first cluster when the file has none, then links a fresh
+/// end-of-chain cluster on at a time, zeroing each as it is created. One
+/// forward pass, linear in the clusters added.
+pub export fn internal_fat_trunc_extend(file: [*c]c.ra8_fs_file_t, tail: u32, have: u32, new_nclus: u32, cbytes: u32) callconv(.c) u16 {
+    const m: [*c]const c.ra8_fs_mount_t = file[0].mount;
+    var cur = tail;
+    var owned = have;
+    if (owned == 0) {
+        var e = priv_alloc_eoc_cluster(m, &cur);
+        if (e != ok) {
+            return e;
+        }
+        file[0].first_cluster = cur;
+        e = internal_trunc_zero_span(m, cur, 0, cbytes);
+        if (e != ok) {
+            return e;
+        }
+        owned = 1;
+    }
+    while (owned < new_nclus) {
+        var cl: u32 = 0;
+        var e = priv_alloc_eoc_cluster(m, &cl);
+        if (e != ok) {
+            return e;
+        }
+        e = priv_fat_set(m, cur, cl);
+        if (e != ok) {
+            return e;
+        }
+        e = internal_trunc_zero_span(m, cl, 0, cbytes);
+        if (e != ok) {
+            return e;
+        }
+        cur = cl;
+        owned += 1;
+    }
+    return ok;
+}
+
+/// Grow a FAT file to `new_size`, zero-filling `[old_size, new_size)`:
+/// the slack of the last old cluster is cleared first (keeping the real
+/// data below it), then the chain is extended from that same cluster so it
+/// is walked only once.
+pub export fn internal_fat_trunc_grow(file: [*c]c.ra8_fs_file_t, new_size: u32, cbytes: u32) callconv(.c) u16 {
+    const m: [*c]const c.ra8_fs_mount_t = file[0].mount;
+    const old_size: u32 = @intCast(file[0].size_bytes);
+    const old_nclus: u32 = @intCast(internal_trunc_clusters(old_size, cbytes));
+    const new_nclus: u32 = @intCast(internal_trunc_clusters(new_size, cbytes));
+    var tail: u32 = 0;
+    if (old_nclus > 0) {
+        const we = internal_trunc_walk(m, file[0].first_cluster, old_nclus - 1, &tail);
+        if (we != ok) {
+            return we;
+        }
+        const base = (old_nclus - 1) * cbytes;
+        const cap = old_nclus * cbytes;
+        const span_hi = if (new_size < cap) new_size else cap;
+        const ze = internal_trunc_zero_span(m, tail, old_size - base, span_hi - base);
+        if (ze != ok) {
+            return ze;
+        }
+    }
+    const ee = internal_fat_trunc_extend(file, tail, old_nclus, new_nclus, cbytes);
+    if (ee != ok) {
+        return ee;
+    }
+    file[0].size_bytes = new_size;
+    return ok;
+}
