@@ -262,38 +262,6 @@ ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
   return priv_write_sector(m, lba, buf);
 }
 
-/* =============================================================================
- * Deletion -- the 8.3 entry AND the chain in front of it
- * =============================================================================
- */
-
-/* Ported to Zig (ra8_fs_dir_erase_abi.zig); the wrapper below links them. */
-extern void internal_run_push(dir_pos_t* run, uint32_t* len_io, uint64_t lba,
-                              uint32_t off);
-extern ra8_err_t internal_dir_collect_chain(const ra8_fs_mount_t* m, const dir_loc_t* loc,
-                                            uint64_t tlba, uint32_t toff, uint8_t csum,
-                                            dir_pos_t* run, uint32_t* out_len);
-extern ra8_err_t internal_dir_erase_positions(const ra8_fs_mount_t* m,
-                                              const dir_pos_t* pos, uint32_t count);
-
-/* `priv_dir_erase_chain()`: see header for the documented contract. */
-ra8_err_t priv_dir_erase_chain(const ra8_fs_mount_t* m,
-                               const dir_loc_t*      loc,
-                               uint64_t              lba,
-                               uint32_t              off,
-                               const uint8_t*        name83)
-{
-  dir_pos_t       all[(uint32_t)k_lfn_erase_max + 1U] = {};
-  uint32_t        len                                 = 0U;
-  const ra8_err_t cerr =
-    internal_dir_collect_chain(m, loc, lba, off, priv_sfn_checksum(name83), all, &len);
-  if (cerr != k_ra8_ok) {
-    return cerr;
-  }
-  all[len].lba = lba;
-  all[len].off = off;
-  return internal_dir_erase_positions(m, all, len + 1U);
-}
 
 /* `priv_dir_lookup_any()`: see header for the documented contract. */
 ra8_err_t priv_dir_lookup_any(const ra8_fs_mount_t* m,
