@@ -39,7 +39,9 @@ test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
     fake.reset(fat32);
     // the resolver walks "/DIR": the walk fake serves one buffer for every
     // component, so both the "DIR" parent and the "A.TXT" leaf live in it
-    fake.lay83(0, "DIR\x20\x20\x20\x20\x20\x20\x20\x20", @intCast(fs.c.k_ra8_fs_attr_directory), @intCast(fs.c.k_cluster_first_data));
+    // DIR re-points at the root cluster so both component reads land on
+    // the one served buffer (walk_lba), as the comment below documents.
+    fake.lay83(0, "DIR\x20\x20\x20\x20\x20\x20\x20\x20", @intCast(fs.c.k_ra8_fs_attr_directory), fake.mount_store.root_cluster);
     fake.lay83(1, "A\x20\x20\x20\x20\x20\x20\x20TXT", 0, 0);
     const cr = when(3);
     const md = when(42);

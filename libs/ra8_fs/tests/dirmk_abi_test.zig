@@ -53,6 +53,7 @@ var resolve_err: u16 = 0;
 fn reset() void {
     for (&disk) |*s| s.* = @splat(0);
     for (&fat) |*f| f.* = 0;
+    fat[0] = 0xFFFF_FFF8; // the root chain (cluster 2) ends after its first cluster
     read_err = 0;
     fat_read_err = 0;
     pool_used = 0;
@@ -240,28 +241,6 @@ fn laySt(at: usize, sfn11: *const [11]u8, attr: u8, first_cluster: u32) void {
     disk[0][base + 27] = @truncate(first_cluster >> 8);
 }
 
-export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
-    w.* = std.mem.zeroes(c.dir_walk_t);
-    _ = m;
-    if (loc.*.is_root != 0) {
-        // the fixture's root is one sector at lba 0
-        w.*.is_root_fixed = 1;
-        w.*.fixed_remaining = 1;
-        w.*.cur_lba = 0;
-    } else {
-        // first_data_lba 0 and one sector per cluster: cluster c -> lba c-2
-        w.*.cluster = loc.*.cluster;
-        w.*.cur_lba = loc.*.cluster - 2;
-    }
-}
-
-export fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_walk_t, out_eod: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    out_eod.* = 1;
-    _ = w;
-    return 0;
-}
-
 export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
     var sum = cs;
     for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
@@ -406,6 +385,9 @@ fn fatmount() c.ra8_fs_mount_t {
     m.sectors_per_cluster = spc;
     m.first_data_lba = data_lba;
     m.count_of_clusters = 64;
+    // The real walker roots a FAT32 directory at root_cluster: cluster 2 is
+    // the first data cluster, which this fixture puts at lba 0.
+    m.root_cluster = 2;
     // The real FAT entry layer reads through the mount geometry; the stubs
     // it replaces never needed these fields.
     m.first_fat_lba = fat_lba;

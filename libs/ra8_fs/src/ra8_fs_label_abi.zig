@@ -95,7 +95,8 @@ fn labelFromRaw(raw11: *const [label_len]u8, out: [*]u8, out_len: usize) void {
 /// Walks the root (a FAT12/16 fixed region or a FAT32 root cluster chain)
 /// until end-of-directory. Reads only.
 fn findVolId(m: *const Mount, out_lba: *u64, out_off: *u32, out_entry: *[entry_bytes]u8) u16 {
-    const loc = std.mem.zeroes(c.dir_loc_t);
+    var loc = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1; // the volume label lives in the root directory
     var w: c.dir_walk_t = undefined;
     priv_dir_walk_init_loc(m, &loc, &w);
     var eod: u8 = 0;
@@ -128,7 +129,8 @@ fn findVolId(m: *const Mount, out_lba: *u64, out_off: *u32, out_entry: *[entry_b
 /// Find the first free slot in the root directory: a never-used (0x00) or
 /// deleted (0xE5) entry, where a fresh volume-label entry can be written.
 fn findFreeRoot(m: *const Mount, out_lba: *u64, out_off: *u32) u16 {
-    const loc = std.mem.zeroes(c.dir_loc_t);
+    var loc = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1; // the volume label lives in the root directory
     var w: c.dir_walk_t = undefined;
     priv_dir_walk_init_loc(m, &loc, &w);
     var eod: u8 = 0;

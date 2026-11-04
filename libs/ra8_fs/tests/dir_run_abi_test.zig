@@ -44,6 +44,7 @@ test "finds a run of deleted slots at exact length" {
     setDeleted(3);
     setLive(4);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(ok, run.priv_dir_find_free_run(m, &loc, 2, &slot));
     try std.testing.expectEqual(@as(u32, 2), slot.ent);
@@ -57,6 +58,7 @@ test "need 1 answers the first fit" {
     setDeleted(2);
     setDeleted(3);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(ok, run.priv_dir_find_free_run(m, &loc, 1, &slot));
     try std.testing.expectEqual(@as(u32, 2), slot.ent);
@@ -69,6 +71,7 @@ test "restarts the run after a live entry, 0x00 counts as free" {
     setEod(2);
     setDeleted(3);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(ok, run.priv_dir_find_free_run(m, &loc, 2, &slot));
     try std.testing.expectEqual(@as(u32, 2), slot.ent);
@@ -82,6 +85,7 @@ test "short run followed by a longer one answers the longer start" {
     setDeleted(3);
     setDeleted(4);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(ok, run.priv_dir_find_free_run(m, &loc, 2, &slot));
     try std.testing.expectEqual(@as(u32, 3), slot.ent);
@@ -94,6 +98,7 @@ test "run that meets the wall of live slots is too short" {
     setDeleted(6);
     setDeleted(7);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(ok, run.priv_dir_find_free_run(m, &loc, 2, &slot));
     try std.testing.expectEqual(@as(u32, 6), slot.ent);
@@ -105,6 +110,7 @@ test "full directory answers no_mem" {
     var i: usize = 0;
     while (i < fake.slots) : (i += 1) setLive(i);
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(err_no_mem, run.priv_dir_find_free_run(m, &loc, 1, &slot));
 }
@@ -113,6 +119,7 @@ test "backend read error propagates" {
     const m = setup(c.k_ra8_fs_type_fat16);
     fake.sector_read_err = c.k_ra8_err_invalid_state;
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
+    loc.is_root = 1;
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_state), run.priv_dir_find_free_run(m, &loc, 1, &slot));
 }
