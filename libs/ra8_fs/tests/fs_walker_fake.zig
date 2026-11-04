@@ -22,11 +22,8 @@ pub var sector: [512]u8 = undefined;
 pub var walk_lba: u64 = 10;
 pub var walk_fixed: u32 = 1;
 pub var eps: u32 = 16;
-pub var find83_err: u16 = 0;
-pub var find83_fill: bool = false;
-pub var find83_not_found: bool = false;
-pub var find83_entry: [entry_bytes]u8 = @splat(0);
 pub var sector_read_err: u16 = 0;
+pub var sector_write_err: u16 = 0;
 pub var sector_written: ?u64 = null;
 pub var find_set_err: u16 = 0;
 pub var set_count: u32 = 2;
@@ -105,11 +102,8 @@ pub fn reset(fs_type: u8) void {
     sector = @splat(0);
     read_error = 0;
     written_index = null;
-    find83_err = 0;
-    find83_fill = false;
-    find83_not_found = false;
-    find83_entry = @splat(0);
     sector_read_err = 0;
+    sector_write_err = 0;
     sector_written = null;
     find_set_err = 0;
     set_count = 2;
@@ -177,16 +171,6 @@ export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u1
     return 0xA000 | @as(u16, set[4]);
 }
 
-export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = .{ m, loc, name83 };
-    if (find83_err != 0) return find83_err;
-    if (find83_fill) @memcpy(out_entry[0..entry_bytes], &find83_entry);
-    if (find83_not_found) return c.k_ra8_err_not_found;
-    out_lba.* = 7;
-    out_off.* = 64;
-    return 0;
-}
-
 export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
     _ = .{ m, loc };
     w.*.is_root_fixed = 1;
@@ -208,6 +192,17 @@ export fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_
     w.*.cur_lba += 1;
     out_eod.* = 0;
     return 0;
+}
+
+/// Lay a plain 8.3 directory entry into the sector buffer at slot `at`: the
+/// 11-byte name field `sfn11`, attribute, and first cluster. What the 8.3
+/// find matches against on a live directory image.
+pub fn lay83(at: usize, sfn11: *const [11]u8, attr: u8, first_cluster: u32) void {
+    sector[at * entry_bytes ..][0..entry_bytes].* = @splat(0);
+    @memcpy(sector[at * entry_bytes ..][0..11], sfn11);
+    sector[at * entry_bytes + 11] = attr;
+    sector[at * entry_bytes + 26] = @truncate(first_cluster);
+    sector[at * entry_bytes + 27] = @truncate(first_cluster >> 8);
 }
 
 /// Lay a real long-name directory image into the sector buffer at byte `at`:
@@ -324,6 +319,7 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
         sector_written = lba;
         return 0;
     }
+    if (sector_write_err != 0) return sector_write_err;
     sector_written = lba;
     return 0;
 }

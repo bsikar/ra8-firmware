@@ -37,25 +37,22 @@ test "argument checks: null, unmounted, volume root" {
 
 test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
     fake.reset(fat32);
-    // the real resolver now walks "/DIR": the component lookup must return a
-    // directory entry with a data cluster
-    var d: [32]u8 = @splat(0);
-    d[@intCast(fs.c.k_dir_off_attr)] = @intCast(fs.c.k_ra8_fs_attr_directory);
-    d[@intCast(fs.c.k_dir_off_fst_clus_lo)] = @intCast(fs.c.k_cluster_first_data & 0xFF);
-    fake.find83_fill = true;
-    fake.find83_entry = d;
+    // the resolver walks "/DIR": the walk fake serves one buffer for every
+    // component, so both the "DIR" parent and the "A.TXT" leaf live in it
+    fake.lay83(0, "DIR\x20\x20\x20\x20\x20\x20\x20\x20", @intCast(fs.c.k_ra8_fs_attr_directory), @intCast(fs.c.k_cluster_first_data));
+    fake.lay83(1, "A\x20\x20\x20\x20\x20\x20\x20TXT", 0, 0);
     const cr = when(3);
     const md = when(42);
     try std.testing.expectEqual(ut.ok, utime("/DIR/A.TXT", &cr, &md));
-    try std.testing.expectEqual(@as(u8, 42), fake.sector[64 + 22]);
-    try std.testing.expectEqual(@as(?u64, 7), fake.sector_written);
+    try std.testing.expectEqual(@as(u8, 42), fake.sector[32 + 22]);
+    try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
     try std.testing.expectEqual(@as(?*const fs.c.ra8_fs_datetime_t, &cr), fake.stamped[0]);
     try std.testing.expectEqual(@as(?*const fs.c.ra8_fs_datetime_t, null), fake.stamped[2]);
 }
 
 test "FAT falls back to the long name" {
     fake.reset(fat32);
-    fake.find83_err = ut.err_not_found;
+    // "a long name" never packs to 8.3, so utime goes straight to the VFAT chain
     fake.layLongName("a long name.txt", "ALONGN~1TXT", 0);
     const md = when(9);
     try std.testing.expectEqual(ut.ok, utime("/a long name.txt", null, &md));
@@ -65,7 +62,6 @@ test "FAT falls back to the long name" {
 
 test "FAT errors propagate without a write" {
     fake.reset(fat32);
-    fake.find83_err = ut.err_not_found;
     try std.testing.expectEqual(ut.err_not_found, utime("/A.TXT", null, null));
     fake.reset(fat32);
     fake.sector_read_err = 0x204;

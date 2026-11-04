@@ -33,15 +33,18 @@ test "argument checks: null, unmounted, bad masks, volume root" {
 
 test "FAT patches DIR_Attr of the 8.3 entry and writes its sector" {
     fake.reset(fat16);
-    fake.sector[64 + 11] = archive;
+    // the real 8.3 find stops at the first 0x00 slot, so "a.txt" must be the
+    // first live entry of the walk buffer
+    fake.lay83(0, "A\x20\x20\x20\x20\x20\x20\x20TXT", 0, 0);
+    fake.sector[11] = archive;
     try std.testing.expectEqual(attr.ok, setAttr("/A.TXT", read_only | hidden, archive));
-    try std.testing.expectEqual(read_only | hidden, fake.sector[64 + 11]);
-    try std.testing.expectEqual(@as(?u64, 7), fake.sector_written);
+    try std.testing.expectEqual(read_only | hidden, fake.sector[11]);
+    try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
 }
 
 test "FAT falls back to the long name when the 8.3 lookup misses" {
     fake.reset(fat16);
-    fake.find83_err = attr.err_not_found;
+    // "long name" never packs to 8.3, so the lookup goes straight to the chain
     fake.layLongName("long name.txt", "LONGNA~1TXT", 0);
     try std.testing.expectEqual(attr.ok, setAttr("/long name.txt", hidden, 0));
     try std.testing.expectEqual(archive | hidden, fake.sector[32 + 11]);
@@ -54,10 +57,9 @@ test "FAT falls back to the long name when the 8.3 lookup misses" {
 
 test "FAT errors propagate without a write" {
     fake.reset(fat16);
-    fake.find83_err = 0x201;
+    fake.sector_read_err = 0x201; // the "d" component lookup's read fails
     try std.testing.expectEqual(@as(u16, 0x201), setAttr("/d/A.TXT", hidden, 0));
     fake.reset(fat16);
-    fake.find83_err = attr.err_not_found;
     try std.testing.expectEqual(attr.err_not_found, setAttr("/A.TXT", hidden, 0));
     fake.reset(fat16);
     fake.sector_read_err = 0x202;

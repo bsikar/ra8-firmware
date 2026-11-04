@@ -510,16 +510,6 @@ test "the shared string helpers survived the port" {
 // here): the shared root pulls every abi module into every test root.
 var walk_sector: [512]u8 = @splat(0);
 
-export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = name83;
-    _ = out_lba;
-    _ = out_off;
-    _ = out_entry;
-    return err_not_found;
-}
-
 export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
     w.* = std.mem.zeroes(c.dir_walk_t);
     _ = m;
