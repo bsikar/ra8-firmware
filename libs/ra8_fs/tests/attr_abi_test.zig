@@ -47,7 +47,6 @@ test "FAT falls back to the long name when the 8.3 lookup misses" {
     try std.testing.expectEqual(archive | hidden, fake.sector[32 + 11]);
     try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
     fake.reset(fat16);
-    fake.have83 = 0;
     fake.layLongName("long name.txt", "LONGNA~1TXT", 0);
     try std.testing.expectEqual(attr.ok, setAttr("/long name.txt", hidden, 0));
     try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
@@ -55,7 +54,7 @@ test "FAT falls back to the long name when the 8.3 lookup misses" {
 
 test "FAT errors propagate without a write" {
     fake.reset(fat16);
-    fake.lookup_any_rc = 0x201;
+    fake.find83_err = 0x201;
     try std.testing.expectEqual(@as(u16, 0x201), setAttr("/d/A.TXT", hidden, 0));
     fake.reset(fat16);
     fake.find83_err = attr.err_not_found;

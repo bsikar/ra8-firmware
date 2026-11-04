@@ -598,15 +598,6 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
 // ---- stand-ins for the five C helpers the open/close port (RA8FW-1092) added;
 // the open/create path is not exercised here, so they only satisfy the linker
 var resolve_err: u16 = 0;
-export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    out_lba.* = 0;
-    out_off.* = 0;
-    out_entry[0..32].* = @splat(0);
-    return 0;
-}
 
 fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
     _ = m;
