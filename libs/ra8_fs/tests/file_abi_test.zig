@@ -33,10 +33,9 @@ const err_access_denied: u16 = c.k_ra8_err_access_denied;
 
 // ---- helpers ----
 
-/// Lay a FAT dir entry with the given attribute, first cluster and size.
-fn layEntry(out: *[entry_bytes]u8, attr: u8, cluster: u32, size: u32) void {
+/// Lay an entry image into a plain buffer (no name needed: decode tests).
+fn layBuf(out: *[entry_bytes]u8, attr: u8, cluster: u32, size: u32) void {
     out.* = @splat(0);
-    out[0] = 'R';
     out[off_attr] = attr;
     out[off_fst_clus_hi] = @intCast((cluster >> 16) & 0xFF);
     out[off_fst_clus_hi + 1] = @intCast((cluster >> 24) & 0xFF);
@@ -45,24 +44,37 @@ fn layEntry(out: *[entry_bytes]u8, attr: u8, cluster: u32, size: u32) void {
     std.mem.writeInt(u32, out[off_file_size..][0..4], size, .little);
 }
 
+/// The 11-byte name field the 8.3 find matches for "a.txt".
+const a_txt = "A\x20\x20\x20\x20\x20\x20\x20TXT".*;
+/// The 11-byte name field for "notes" (a directory component).
+const notes = "NOTES\x20\x20\x20\x20\x20\x20".*;
+
+/// Lay a FAT dir entry with the given attribute, first cluster and size into
+/// the walk buffer at slot `at`, so the real 8.3 find matches it by name.
+fn layEntry(at: usize, sfn11: *const [11]u8, attr: u8, cluster: u32, size: u32) void {
+    fake.lay83(at, sfn11, attr, cluster);
+    fake.sector[at * entry_bytes + off_fst_clus_hi] = @intCast((cluster >> 16) & 0xFF);
+    fake.sector[at * entry_bytes + off_fst_clus_hi + 1] = @intCast((cluster >> 24) & 0xFF);
+    std.mem.writeInt(u32, fake.sector[at * entry_bytes + off_file_size ..][0..4], size, .little);
+}
+
 fn setupFat() void {
     fake.reset(0); // FAT volume
-    fake.find83_fill = true; // the found lookups answer through the find fake
     fake.stamp_w_calls = 0;
     fake.stamp_c_calls = 0;
 }
 
 test "entry_first_cluster decodes the hi:lo halves" {
     var e: [entry_bytes]u8 = @splat(0);
-    layEntry(&e, attr_archive, 0x00012345, 0);
+    layBuf(&e, attr_archive, 0x00012345, 0);
     try std.testing.expectEqual(@as(u32, 0x00012345), ra8_fs.file.priv_entry_first_cluster(&e));
-    layEntry(&e, attr_archive, 0x00001234, 0);
+    layBuf(&e, attr_archive, 0x00001234, 0);
     try std.testing.expectEqual(@as(u32, 0x00001234), ra8_fs.file.priv_entry_first_cluster(&e));
 }
 
 test "entry_set_cluster_size writes cluster and size in one call" {
     var e: [entry_bytes]u8 = @splat(0);
-    layEntry(&e, attr_archive, 0x21, 0x999);
+    layBuf(&e, attr_archive, 0x21, 0x999);
     ra8_fs.file.priv_entry_set_cluster_size(&e, 0x000ABCDE, 0x7777);
     const hi = std.mem.readInt(u16, e[off_fst_clus_hi..][0..2], .little);
     const lo = std.mem.readInt(u16, e[off_fst_clus_lo..][0..2], .little);
@@ -81,7 +93,10 @@ test "apply_attr sets and clears independent bits" {
 
 test "open existing refuses a directory entry before consuming a slot" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_directory, 0x21, 0);
+    // the walk fake serves one buffer for every component, so both the
+    // "notes" parent and the "a.txt" leaf live in it
+    layEntry(0, &notes, attr_directory, 0x21, 0);
+    layEntry(1, &a_txt, attr_directory, 0x21, 0);
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "notes/a.txt", mode_read, &f);
     try std.testing.expectEqual(err_invalid_arg, err);
@@ -91,7 +106,7 @@ test "open existing refuses a directory entry before consuming a slot" {
 
 test "open existing refuses a write mode on a read-only file" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_read_only | attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_read_only | attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_write, &f);
     try std.testing.expectEqual(err_access_denied, err);
@@ -104,7 +119,7 @@ test "open existing refuses a write mode on a read-only file" {
 
 test "open existing populates the handle from the entry" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(ok, err);
@@ -113,14 +128,14 @@ test "open existing populates the handle from the entry" {
     try std.testing.expectEqual(@as(u32, 0x21), h.first_cluster);
     try std.testing.expectEqual(@as(u32, 0x1234), h.size_bytes);
     try std.testing.expectEqual(@as(u64, 0), h.offset);
-    try std.testing.expectEqual(@as(u64, 7), h.dir_entry_lba);
-    try std.testing.expectEqual(@as(u32, 64), h.dir_entry_idx);
+    try std.testing.expectEqual(fake.walk_lba, h.dir_entry_lba);
+    try std.testing.expectEqual(@as(u32, 0), h.dir_entry_idx);
     try std.testing.expectEqual(@as(u32, 1), h.in_use);
 }
 
 test "append mode starts the offset at the file size" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_append, &f);
     try std.testing.expectEqual(ok, err);
@@ -129,7 +144,7 @@ test "append mode starts the offset at the file size" {
 
 test "write mode truncates the entry, stamps it, and sets archive" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_write, &f);
     try std.testing.expectEqual(ok, err);
@@ -137,17 +152,17 @@ test "write mode truncates the entry, stamps it, and sets archive" {
     try std.testing.expectEqual(@as(u32, 0), f.?.size_bytes);
     try std.testing.expectEqual(@as(u64, 0), f.?.offset);
     // the on-disk entry was rewritten: zero cluster+size, archive set, mtime stamp
-    // the find fake answers at slot 2 (off 64): the truncate rewrote THAT entry
-    try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.sector[64 + off_file_size ..][0..4], .little));
+    // the real find answers at slot 0: the truncate rewrote THAT entry
+    try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.sector[off_file_size..][0..4], .little));
     try std.testing.expectEqual(@as(u32, 1), fake.stamp_w_calls);
-    try std.testing.expectEqual(attr_archive, fake.sector[64 + off_attr] & (attr_archive | attr_directory));
-    try std.testing.expectEqual(@as(?u64, 7), fake.sector_written);
+    try std.testing.expectEqual(attr_archive, fake.sector[off_attr] & (attr_archive | attr_directory));
+    try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
 }
 
 test "truncate failure frees the slot and reports the error" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
-    fake.sector_read_err = 0x21;
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
+    fake.sector_write_err = 0x21;
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_write, &f);
     try std.testing.expectEqual(@as(u16, 0x21), err);
@@ -159,7 +174,6 @@ test "truncate failure frees the slot and reports the error" {
 
 test "create_new carves an empty archive entry and stamps its creation" {
     setupFat();
-    fake.find83_not_found = true;
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "new.bin", mode_write, &f);
     try std.testing.expectEqual(ok, err);
@@ -176,9 +190,8 @@ test "create_new carves an empty archive entry and stamps its creation" {
     try std.testing.expectEqual(@as(u32, 1), fake.stamp_c_calls);
 }
 
-test "reserve failure leaves the pool untouched" {
+test "a read failure leaves the pool untouched" {
     setupFat();
-    fake.find83_not_found = true;
     fake.sector_read_err = err_access_denied;
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "new.bin", mode_write, &f);
@@ -188,7 +201,6 @@ test "reserve failure leaves the pool untouched" {
 
 test "not-found in read mode is not_found, not a create" {
     setupFat();
-    fake.find83_not_found = true;
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(err_not_found, err);
@@ -206,28 +218,28 @@ test "open_locked guards: null handle and unmounted volume" {
 test "pool exhaustion is no_mem" {
     setupFat();
     fake.slots_left = 0;
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     try std.testing.expectEqual(err_no_mem, ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f));
 }
 
 test "close stamps a dirty handle" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     _ = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     f.?.dirty = 1;
     const err = ra8_fs.file.priv_close_locked(f);
     try std.testing.expectEqual(ok, err);
     try std.testing.expectEqual(@as(u32, 1), fake.stamp_w_calls);
-    try std.testing.expectEqual(@as(?u64, 7), fake.sector_written);
+    try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
     try std.testing.expectEqual(@as(u32, 0), f.?.in_use);
     try std.testing.expect(f.?.mount == null);
 }
 
 test "close on a clean handle writes nothing" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     _ = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     const err = ra8_fs.file.priv_close_locked(f);
@@ -245,7 +257,7 @@ test "close_locked guards: null and already-closed" {
 
 test "ra8_fs_open and ra8_fs_close run the lock brackets end to end" {
     setupFat();
-    layEntry(&fake.find83_entry, attr_archive, 0x21, 0x1234);
+    layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     const oerr = ra8_fs.file.ra8_fs_open(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(ok, oerr);

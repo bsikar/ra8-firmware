@@ -18,9 +18,9 @@
 //! comparing against a name the reader had already mangled, so a file whose
 //! name held an accent could not be opened by its real name.
 //!
-//! The directory walkers (init_loc / next_sector) and the sector reads stay
-//! in the C library; this unit reaches them, and every C type it touches,
-//! through `fs_c.zig`.
+//! The directory walkers (init_loc / next_sector) stay in the C library;
+//! this unit reaches them, and every C type it touches, through `fs_c.zig`.
+//! The sector read itself is already Zig (`ra8_fs_fat_prim_abi.zig`).
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
@@ -178,4 +178,49 @@ pub export fn priv_dir_lookup_any(
         err = priv_dir_find_long(m, loc, leaf, out_lba, out_entry_off, out_entry);
     }
     return err;
+}
+
+// ------------------------------------------------------- the 8.3 find
+
+extern fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void;
+extern fn priv_dir_walk_next_sector(m: [*c]const c.ra8_fs_mount_t, w: [*c]c.dir_walk_t, out_eod: [*c]u8) callconv(.c) u16;
+extern fn priv_read_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, buf: [*c]u8) callconv(.c) u16;
+extern fn priv_dir_eps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32;
+extern fn priv_sec_walk() callconv(.c) [*c]u8;
+extern fn priv_byte_equal(a: [*c]const u8, b: [*c]const u8, n: u32) callconv(.c) u8;
+extern fn priv_byte_copy(dst: [*c]u8, src: [*c]const u8, n: u32) callconv(.c) void;
+
+const ebytes: u32 = @intCast(dirent_len);
+const name_len: u32 = @intCast(c.k_dir_name_field_len);
+
+/// The port of `priv_dir_find`: scan the directory `loc` names for the first
+/// live 8.3 entry whose name field equals `name83` byte for byte, reporting
+/// its sector, byte offset and full 32-byte image. Deleted (0xE5) and LFN
+/// (attr 0x0F) slots are skipped, the end-of-directory marker (0x00) stops
+/// the scan early, and the walk running off the directory answers not_found.
+pub export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_entry_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
+    var w: c.dir_walk_t = std.mem.zeroes(c.dir_walk_t);
+    priv_dir_walk_init_loc(m, loc, &w);
+    var eod: u8 = 0;
+    const buf = priv_sec_walk();
+    while (eod == 0) {
+        var err = priv_read_sector(m, w.cur_lba, buf);
+        if (err != ok) return err;
+        var e: u32 = 0;
+        while (e < priv_dir_eps(m)) : (e += 1) {
+            const ent = buf + e * ebytes;
+            if (ent[name_off] == marker_eod) return err_not_found;
+            if (ent[name_off] == marker_deleted) continue;
+            if (ent[attr_off] == attr_lfn) continue;
+            if (priv_byte_equal(ent, name83, name_len) != 0) {
+                out_lba.* = w.cur_lba;
+                out_entry_off.* = e * ebytes;
+                priv_byte_copy(out_entry, ent, ebytes);
+                return ok;
+            }
+        }
+        err = priv_dir_walk_next_sector(m, &w, &eod);
+        if (err != ok) return err;
+    }
+    return err_not_found;
 }

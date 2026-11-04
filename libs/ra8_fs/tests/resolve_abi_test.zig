@@ -24,20 +24,13 @@ const off_lo: usize = @intCast(c.k_dir_off_fst_clus_lo);
 const attr_directory: u8 = @intCast(c.k_ra8_fs_attr_directory);
 const attr_archive: u8 = @intCast(c.k_ra8_fs_attr_archive);
 
-fn layDir(entry: *[entry_bytes]u8, cluster: u32) void {
-    entry.* = @splat(0);
-    entry[0] = 'D';
-    entry[off_attr] = attr_directory;
-    entry[off_hi] = @intCast((cluster >> 16) & 0xFF);
-    entry[off_hi + 1] = @intCast((cluster >> 24) & 0xFF);
-    entry[off_lo] = @intCast(cluster & 0xFF);
-    entry[off_lo + 1] = @intCast((cluster >> 8) & 0xFF);
-}
+/// The 11-byte name field the 8.3 find matches for the "d" component.
+const d11 = "D\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20".*;
 
 fn setup() void {
     fake.reset(0);
-    fake.find83_fill = true; // component lookups answer through the find fake
-    layDir(&fake.find83_entry, 0x21);
+    // component lookups run the real 8.3 find over the walk buffer
+    fake.lay83(0, &d11, attr_directory, 0x21);
 }
 
 test "a single component resolves to the root with the full leaf" {
@@ -73,7 +66,7 @@ test "a nested path descends through the directory lookup" {
 
 test "a non-directory component is refused" {
     setup();
-    fake.find83_entry[off_attr] = attr_archive;
+    fake.lay83(0, &d11, attr_archive, 0x21);
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -82,7 +75,7 @@ test "a non-directory component is refused" {
 
 test "a directory entry without a data cluster is refused" {
     setup();
-    layDir(&fake.find83_entry, 0);
+    fake.lay83(0, &d11, attr_directory, 0);
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -91,7 +84,7 @@ test "a directory entry without a data cluster is refused" {
 
 test "a failing component lookup propagates" {
     setup();
-    fake.find83_not_found = true;
+    fake.sector = @splat(0); // no entry for "d": the lookup misses
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -100,6 +93,9 @@ test "a failing component lookup propagates" {
 
 test "a path deeper than the component cap is refused" {
     setup();
+    // every "a" component must resolve, or the descent stops early: lay the
+    // 8.3 name the find matches for "a"
+    fake.lay83(0, "A\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20", attr_directory, 0x21);
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -157,7 +153,7 @@ test "a failed leaf lookup surfaces through resolve_dir" {
     setup();
     const m = fake.mount();
     var out: c.dir_loc_t = undefined;
-    fake.find83_entry[off_attr] = attr_archive; // leaf resolves to a file
+    fake.lay83(0, &d11, attr_archive, 0x21); // leaf resolves to a file
     try std.testing.expectEqual(err_invalid_arg, resolve.priv_resolve_dir(m, "/d", &out));
 }
 

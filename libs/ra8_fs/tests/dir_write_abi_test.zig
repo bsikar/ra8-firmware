@@ -30,7 +30,8 @@ test "alias probing stops at the first basis with no entry" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
     var out11: [entry_bytes]u8 = @splat(0);
-    fake.find83_not_found = true;
+    // the alias probe runs the real find over the served sector, which
+    // holds no "ALIAS   TXT" entry, so the first basis answers unique
     const leaf = [_]u16{ 'a', 'l', 'i', 'a', 's', '.', 't', 'x', 't' };
     try std.testing.expectEqual(ok, write.internal_alias_unique(m, &loc, &leaf, leaf.len, &out11));
 }
@@ -39,7 +40,7 @@ test "alias probing propagates a backend error" {
     const m = setup();
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
     var out11: [entry_bytes]u8 = @splat(0);
-    fake.find83_err = err_protocol;
+    fake.sector_read_err = err_protocol; // the alias probe's read fails
     const leaf = [_]u16{ 'a', 'l', 'i', 'a', 's', '.', 't', 'x', 't' };
     try std.testing.expectEqual(err_protocol, write.internal_alias_unique(m, &loc, &leaf, leaf.len, &out11));
 }

@@ -165,8 +165,11 @@ test "stat rejects null pointers and an unmounted handle" {
 
 test "stat resolves a leaf through the 8.3 find" {
     fake.reset(fat16);
-    layFatEntry(&fake.find83_entry, 0x20, 0x77, 0x4242);
-    fake.find83_fill = true;
+    // the real 8.3 find matches "report.txt" as its 11-byte name field
+    var e: [32]u8 = @splat(0);
+    layFatEntry(&e, 0x20, 0x77, 0x4242);
+    @memcpy(e[0..11], "REPORT\x20\x20TXT");
+    @memcpy(fake.sector[0..32], &e);
     var st: stat.Stat = undefined;
     try std.testing.expectEqual(stat.ok, stat.ra8_fs_stat(&fake.mount_store, "report.txt", &st));
     try std.testing.expectEqual(@as(u8, 0x20), st.attr);
@@ -175,7 +178,7 @@ test "stat resolves a leaf through the 8.3 find" {
     try std.testing.expect(st.modified.valid);
     try std.testing.expectEqual(@as(u16, 2026), st.modified.value.year);
     // a failing parent lookup surfaces through the resolver
-    fake.find83_err = c.k_ra8_err_invalid_arg;
+    fake.sector_read_err = c.k_ra8_err_invalid_arg;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), stat.ra8_fs_stat(&fake.mount_store, "/x/y", &st));
 }
 
@@ -187,7 +190,7 @@ test "stat falls back to the long-name scan when the 8.3 find misses" {
     std.mem.writeInt(u32, fake.sector[at + 28 ..][0..4], 0xABCD, .little);
     std.mem.writeInt(u16, fake.sector[at + 24 ..][0..2], test_date, .little);
     std.mem.writeInt(u16, fake.sector[at + 22 ..][0..2], test_time, .little);
-    fake.find83_err = c.k_ra8_err_not_found; // 8.3 find misses -> VFAT chain
+    // the 8.3 probe misses the ~1 alias, so stat falls to the VFAT chain
     var st: stat.Stat = undefined;
     try std.testing.expectEqual(stat.ok, stat.ra8_fs_stat(&fake.mount_store, "alpha.txt", &st));
     try std.testing.expectEqual(@as(u64, 0xABCD), st.size_bytes);
