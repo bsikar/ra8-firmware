@@ -147,11 +147,6 @@ pub fn reset(fs_type: u8) void {
     lookup_any_lba = 0;
     lookup_any_off = 0;
     lookup_any_entry = @splat(0);
-    reserve_rc = 0;
-    commit_rc = 0;
-    commit_lba = 0;
-    commit_off = 0;
-    commit_entry = @splat(0);
     stamp_w_calls = 0;
     stamp_c_calls = 0;
     walk_lba = 10;
@@ -397,11 +392,6 @@ pub var lookup_any_rc: u16 = 0;
 pub var lookup_any_lba: u64 = 0;
 pub var lookup_any_off: u32 = 0;
 pub var lookup_any_entry: [entry_bytes]u8 = @splat(0);
-pub var reserve_rc: u16 = 0;
-pub var commit_rc: u16 = 0;
-pub var commit_lba: u64 = 0;
-pub var commit_off: u32 = 0;
-pub var commit_entry: [entry_bytes]u8 = @splat(0);
 pub var stamp_w_calls: u32 = 0;
 pub var stamp_c_calls: u32 = 0;
 
@@ -413,24 +403,6 @@ export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.di
     out_lba.* = lookup_any_lba;
     out_off.* = lookup_any_off;
     @memcpy(out_entry[0..entry_bytes], &lookup_any_entry);
-    return 0;
-}
-
-export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    _ = plan;
-    return reserve_rc;
-}
-
-export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = plan;
-    if (commit_rc != 0) return commit_rc;
-    out_lba.* = commit_lba;
-    out_off.* = commit_off;
-    @memcpy(commit_entry[0..entry_bytes], tmpl[0..entry_bytes]);
     return 0;
 }
 

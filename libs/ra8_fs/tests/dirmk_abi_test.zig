@@ -13,11 +13,6 @@ var lookup_any_rc: u16 = 0;
 var lookup_lba: u64 = 0;
 var lookup_off: u32 = 0;
 var lookup_entry: [32]u8 = @splat(0);
-var reserve_rc: u16 = 0;
-var commit_rc: u16 = 0;
-var commit_lba: u64 = 0;
-var commit_off: u32 = 0;
-var commit_entry: [32]u8 = @splat(0);
 var stamp_calls: usize = 0;
 
 // stand-in for the one helper the open/close port added (RA8FW-1092); the
@@ -345,11 +340,6 @@ fn resetDirmk() void {
     lookup_lba = 0;
     lookup_off = 0;
     lookup_entry = @splat(0);
-    reserve_rc = 0;
-    commit_rc = 0;
-    commit_lba = 0;
-    commit_off = 0;
-    commit_entry = @splat(0);
     alloc_rc = 0;
     alloc_calls = 0;
     next_cluster = 0;
@@ -429,8 +419,6 @@ test "mkdir lays the dot entries and links the parent entry" {
     var m = fatmount();
     lookup_any_rc = err_not_found;
     next_cluster = 5;
-    commit_lba = 900;
-    commit_off = 64;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     // cluster 5 -> lba 3 with first_data_lba 0 and one sector per cluster
     try std.testing.expectEqual(@as(u8, '.'), disk[3][0]);
@@ -447,12 +435,12 @@ test "mkdir lays the dot entries and links the parent entry" {
     try std.testing.expectEqual(@as(u8, 0), disk[3][59]);
     for (64..512) |i| try std.testing.expectEqual(@as(u8, 0), disk[3][i]);
     try std.testing.expectEqual(@as(usize, 3), stamp_calls);
-    try std.testing.expectEqual(@as(usize, 1), write_calls);
+    try std.testing.expectEqual(@as(usize, 2), write_calls);
     try std.testing.expectEqual(@as(usize, 1), alloc_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
-    try std.testing.expectEqual(attr_dir, commit_entry[11]);
-    try std.testing.expectEqual(@as(u8, 5), commit_entry[26]);
-    try std.testing.expectEqual(@as(u32, 5), c.priv_entry_first_cluster(&commit_entry));
+    try std.testing.expectEqual(attr_dir, disk[0][11]);
+    try std.testing.expectEqual(@as(u8, 5), disk[0][26]);
+    try std.testing.expectEqual(@as(u32, 5), c.priv_entry_first_cluster(&disk[0]));
 }
 
 test "mkdir refuses an existing name before touching anything" {
@@ -471,7 +459,8 @@ test "mkdir propagates a full directory and allocates nothing" {
     resetDirmk();
     var m = fatmount();
     lookup_any_rc = err_not_found;
-    reserve_rc = err_no_mem;
+    m.type = c.k_ra8_fs_type_fat16;
+    for (0..16) |i| disk[0][i * 32] = 'A';
     try std.testing.expectEqual(err_no_mem, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(usize, 0), alloc_calls);
 }
@@ -507,7 +496,7 @@ test "a commit failure frees the new cluster" {
     lookup_any_rc = err_not_found;
     next_cluster = 5;
     fat[3] = eoc;
-    commit_rc = err_io;
+    write_fail_lba = 0;
     try std.testing.expectEqual(err_io, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(u32, 0), fat[3]); // cluster 5 freed
 }
@@ -663,25 +652,6 @@ export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.di
         @memcpy(out_entry[0..32], &lookup_entry);
     }
     return lookup_any_rc;
-}
-
-export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, plan: [*c]c.dir_insert_t) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    _ = plan;
-    return reserve_rc;
-}
-
-export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = plan;
-    if (commit_rc == ok) {
-        out_lba.* = commit_lba;
-        out_off.* = commit_off;
-        @memcpy(commit_entry[0..32], tmpl[0..32]);
-    }
-    return commit_rc;
 }
 
 export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {

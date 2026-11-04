@@ -48,14 +48,9 @@ fn layEntry(out: *[entry_bytes]u8, attr: u8, cluster: u32, size: u32) void {
 fn setupFat() void {
     fake.reset(0); // FAT volume
     fake.lookup_any_lba = 4;
-    fake.commit_lba = 4;
-    fake.commit_off = 64;
     fake.lookup_any_rc = 0;
     fake.lookup_any_lba = 4;
     fake.lookup_any_off = 0;
-    fake.reserve_rc = 0;
-    fake.commit_rc = 0;
-    fake.commit_entry = @splat(0);
     fake.stamp_w_calls = 0;
     fake.stamp_c_calls = 0;
 }
@@ -174,22 +169,22 @@ test "create_new carves an empty archive entry and stamps its creation" {
     try std.testing.expectEqual(@as(u32, 0), h.first_cluster);
     try std.testing.expectEqual(@as(u32, 0), h.size_bytes);
     try std.testing.expectEqual(@as(u64, 0), h.offset);
-    try std.testing.expectEqual(fake.commit_lba, h.dir_entry_lba);
-    try std.testing.expectEqual(fake.commit_off, h.dir_entry_idx);
+    try std.testing.expectEqual(fake.walk_lba, h.dir_entry_lba);
+    try std.testing.expectEqual(@as(u32, 0), h.dir_entry_idx);
     try std.testing.expectEqual(@as(u32, 1), h.in_use);
     // the committed template: archive attribute, empty, creation-stamped
-    try std.testing.expectEqual(attr_archive, fake.commit_entry[off_attr]);
-    try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.commit_entry[off_file_size..][0..4], .little));
+    try std.testing.expectEqual(attr_archive, fake.sector[off_attr]);
+    try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.sector[off_file_size..][0..4], .little));
     try std.testing.expectEqual(@as(u32, 1), fake.stamp_c_calls);
 }
 
 test "reserve failure leaves the pool untouched" {
     setupFat();
     fake.lookup_any_rc = err_not_found;
-    fake.reserve_rc = 0x33;
+    fake.sector_read_err = err_access_denied;
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "new.bin", mode_write, &f);
-    try std.testing.expectEqual(@as(u16, 0x33), err);
+    try std.testing.expectEqual(err_access_denied, err);
     try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
 }
 

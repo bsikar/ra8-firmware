@@ -119,3 +119,82 @@ pub export fn internal_dir_grow(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.
     }
     return ok;
 }
+
+// ---------------------------------------------------------------------------
+// Reserve / commit: planning and writing a new entry's run of slots.
+// ---------------------------------------------------------------------------
+
+const err_invalid_arg: u16 = c.k_ra8_err_invalid_arg;
+const chars_per_ent: u32 = @intCast(c.k_lfn_chars_per_ent);
+/// Growth-retry cap: the longest run this code asks for is 21 slots, the
+/// smallest cluster mounted is 16 slots, so two grows always suffice and the
+/// third attempt is slack (ported with the reserve that uses it; the C enum
+/// was local to ra8_fs_fat_lfn_write.c).
+const grow_max: u32 = 3;
+
+const lfn = @import("ra8_fs_lfn_abi.zig");
+
+extern fn priv_dir_find_free_run(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, need: u32, out: [*c]c.dir_slot_t) callconv(.c) u16;
+extern fn priv_byte_copy(dst: [*c]u8, src: [*c]const u8, n: u32) callconv(.c) void;
+extern fn priv_sec_walk() callconv(.c) [*c]u8;
+
+/// Decide where a new entry's run goes: classify the leaf name (an 8.3 name
+/// packs directly, a long name gets a unique generated alias and a chain of
+/// LFN slots), then find a free run, growing the directory and retrying up
+/// to the growth cap before reporting the directory full.
+pub export fn priv_dir_reserve(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out: [*c]c.dir_insert_t) callconv(.c) u16 {
+    out.*.lfn_entries = 0;
+    out.*.nunits = 0;
+    const kind = lfn.priv_name_classify(leaf, &out.*.units, &out.*.nunits, &out.*.name83, &out.*.ntres);
+    if (kind == c.k_name_kind_invalid) return err_invalid_arg;
+    var need: u32 = 1;
+    if (kind == c.k_name_kind_long) {
+        const aerr = internal_alias_unique(m, loc, &out.*.units, out.*.nunits, &out.*.name83);
+        if (aerr != ok) return aerr;
+        out.*.ntres = 0; // the chain carries the case; the alias is upper-case
+        // Groups of THIRTEEN CODE UNITS: the slot's capacity.
+        out.*.lfn_entries = @intCast((out.*.nunits + chars_per_ent - 1) / chars_per_ent);
+        need = @as(u32, out.*.lfn_entries) + 1;
+    }
+    var attempt: u32 = 0;
+    while (attempt <= grow_max) : (attempt += 1) {
+        const ferr = priv_dir_find_free_run(m, loc, need, &out.*.start);
+        if (ferr != err_no_mem) return ferr;
+        if (attempt == grow_max) break; // growing again would only link a cluster nothing then uses
+        const gerr = internal_dir_grow(m, loc);
+        if (gerr != ok) return gerr;
+    }
+    return err_no_mem;
+}
+
+/// Write the reserved run: each LFN slot filled from the name's code units,
+/// then the 8.3 entry from the caller's template with the packed name and
+/// NTRes overlaid, reporting where the 8.3 entry landed.
+pub export fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t, tmpl: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32) callconv(.c) u16 {
+    const nlen: u32 = if (plan.*.lfn_entries != 0) plan.*.nunits else 0;
+    const csum = lfn.priv_sfn_checksum(&plan.*.name83);
+    const total: u32 = @as(u32, plan.*.lfn_entries) + 1;
+    var cur: c.dir_slot_t = plan.*.start;
+    var lba: u64 = cur.w.cur_lba;
+    const buf: [*c]u8 = priv_sec_walk();
+    var err = priv_read_sector(m, lba, buf);
+    if (err != ok) return err;
+    var i: u32 = 0;
+    while (i < total) : (i += 1) {
+        const slot: [*c]u8 = buf + @as(usize, cur.ent) * @as(usize, entry_bytes);
+        if (i < plan.*.lfn_entries) {
+            lfn.priv_lfn_fill_slot(slot, &plan.*.units, nlen, @as(u32, plan.*.lfn_entries) - i, if (i == 0) @as(u8, 1) else @as(u8, 0), csum);
+        } else {
+            priv_byte_copy(slot, tmpl, entry_bytes);
+            priv_byte_copy(slot + @as(u32, @intCast(c.k_dir_off_name)), &plan.*.name83, @intCast(c.k_dir_name_field_len));
+            slot[@intCast(c.k_dir_off_ntres)] = plan.*.ntres;
+            out_lba.* = lba;
+            out_off.* = cur.ent * entry_bytes;
+        }
+        if (i + 1 < total) {
+            err = internal_slot_advance(m, &cur, buf, &lba);
+            if (err != ok) return err;
+        }
+    }
+    return priv_write_sector(m, lba, buf);
+}
