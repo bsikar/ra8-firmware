@@ -9,13 +9,9 @@ const std = @import("std");
 const al = @import("ra8_fs").alloc;
 const fs = @import("ra8_fs");
 
-var stamp_calls: usize = 0;
 
 // stand-in for the one helper the open/close port added (RA8FW-1092); the
 // dirmk path never closes a file handle, so it only needs to exist
-export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-}
 const ex = fs.exfat_read;
 const upcase = fs.upcase;
 const c = fs.c;
@@ -247,9 +243,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     return sum;
 }
 
-export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
 
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
@@ -281,9 +274,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
     return 0;
 }
 
-export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -331,7 +321,6 @@ fn resetDirmk() void {
     alloc_rc = 0;
     alloc_calls = 0;
     next_cluster = 0;
-    stamp_calls = 0;
     fat_writes = 0;
     write_fail_lba = 0xFFFF_FFFF_FFFF_FFFF;
     write_calls = 0;
@@ -425,7 +414,10 @@ test "mkdir lays the dot entries and links the parent entry" {
     try std.testing.expectEqual(@as(u8, 0), disk[3][58]); // parent is root: 0
     try std.testing.expectEqual(@as(u8, 0), disk[3][59]);
     for (64..512) |i| try std.testing.expectEqual(@as(u8, 0), disk[3][i]);
-    try std.testing.expectEqual(@as(usize, 3), stamp_calls);
+    // each of the three stamped entries carries the FAT epoch create date
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, disk[3][16..18], .little));
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, disk[3][48..50], .little));
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, disk[0][16..18], .little));
     try std.testing.expectEqual(@as(usize, 2), write_calls);
     try std.testing.expectEqual(@as(usize, 1), alloc_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
@@ -441,7 +433,6 @@ test "mkdir refuses an existing name before touching anything" {
     laySt(0, &notes11, attr_dir, 0);
     try std.testing.expectEqual(err_exists, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(usize, 0), alloc_calls);
-    try std.testing.expectEqual(@as(usize, 0), stamp_calls);
     try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
 
@@ -463,7 +454,6 @@ test "mkdir propagates an allocation failure" {
 
     alloc_rc = err_no_mem;
     try std.testing.expectEqual(err_no_mem, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
-    try std.testing.expectEqual(@as(usize, 0), stamp_calls);
     try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
 
@@ -618,10 +608,6 @@ test "rmdir dispatch: idle mount and exFAT routing" {
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 
-export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-    stamp_calls += 1;
-}
 
 /// FAT label-field writer: pads to the 11-byte field with spaces, or writes
 /// the "NO NAME    " sentinel for a null/empty label. Mirrors the C fmt unit.

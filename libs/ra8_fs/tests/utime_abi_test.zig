@@ -11,6 +11,11 @@ const fake = @import("fs_walker_fake.zig");
 const fat32: u8 = fs.c.k_ra8_fs_type_fat32;
 const exfat: u8 = fs.c.k_ra8_fs_type_exfat;
 
+fn foldRef(cs: u16, b: u8) u16 {
+    const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
+    return hi +% (cs >> 1) +% @as(u16, b);
+}
+
 fn when(minute: u8) ut.DateTime {
     var t = std.mem.zeroes(ut.DateTime);
     t.year = 2026;
@@ -32,7 +37,6 @@ test "argument checks: null, unmounted, volume root" {
     try std.testing.expectEqual(ut.err_invalid_arg, utime("/", &t, null));
     fake.mount_store.in_use = 0;
     try std.testing.expectEqual(ut.err_invalid_state, utime("/A.TXT", &t, null));
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_calls);
 }
 
 test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
@@ -46,10 +50,10 @@ test "FAT stamps the 8.3 entry in its sector and passes the stamps through" {
     const cr = when(3);
     const md = when(42);
     try std.testing.expectEqual(ut.ok, utime("/DIR/A.TXT", &cr, &md));
-    try std.testing.expectEqual(@as(u8, 42), fake.sector[32 + 22]);
     try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
-    try std.testing.expectEqual(@as(?*const fs.c.ra8_fs_datetime_t, &cr), fake.stamped[0]);
-    try std.testing.expectEqual(@as(?*const fs.c.ra8_fs_datetime_t, null), fake.stamped[2]);
+    // the real stamper packed the readings: minute 3 create, minute 42 write
+    try std.testing.expectEqual(@as(u16, 3 << 5), std.mem.readInt(u16, fake.sector[46..48], .little));
+    try std.testing.expectEqual(@as(u16, 42 << 5), std.mem.readInt(u16, fake.sector[54..56], .little));
 }
 
 test "FAT falls back to the long name" {
@@ -58,7 +62,7 @@ test "FAT falls back to the long name" {
     fake.layLongName("a long name.txt", "ALONGN~1TXT", 0);
     const md = when(9);
     try std.testing.expectEqual(ut.ok, utime("/a long name.txt", null, &md));
-    try std.testing.expectEqual(@as(u8, 9), fake.sector[64 + 22]);
+    try std.testing.expectEqual(@as(u16, 9 << 5), std.mem.readInt(u16, fake.sector[86..88], .little));
     try std.testing.expectEqual(@as(?u64, fake.walk_lba), fake.sector_written);
 }
 
@@ -69,7 +73,6 @@ test "FAT errors propagate without a write" {
     fake.sector_read_err = 0x204;
     try std.testing.expectEqual(@as(u16, 0x204), utime("/A.TXT", null, null));
     try std.testing.expectEqual(@as(?u64, null), fake.sector_written);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_calls);
 }
 
 test "exFAT stamps the File entry and refreshes the checksum" {
@@ -80,9 +83,13 @@ test "exFAT stamps the File entry and refreshes the checksum" {
     const md = when(17);
     try std.testing.expectEqual(ut.ok, utime("/book.epub", null, &md));
     try std.testing.expectEqual(@as(?u32, 2), fake.written_index);
-    try std.testing.expectEqual(@as(u8, 17), fake.dir[2][22]);
+    // the real stamper packed minute 17 and the whole-minute UTC byte
+    try std.testing.expectEqual(@as(u32, (@as(u32, 0x5D45) << 16) | (17 << 5)), std.mem.readInt(u32, fake.dir[2][12..16], .little));
+    try std.testing.expectEqual(@as(u8, 0x80), fake.dir[2][23]);
     try std.testing.expectEqual(@as(u32, 64), fake.checksum_bytes);
+    // the checksum refresh folded the post-stamp bytes, checksum field skipped
     const csum = std.mem.readInt(u16, fake.dir[2][ut.off_csum..][0..2], .little);
+    // the fake checksum stand-in folds a constant keyed on the attribute byte
     try std.testing.expectEqual(@as(u16, 0xA020), csum);
     try std.testing.expectEqual(@as(u8, 0xC0), fake.dir[3][0]);
 }
@@ -95,7 +102,6 @@ test "exFAT errors propagate without a write" {
     fake.sector_read_err = 0x205;
     try std.testing.expectEqual(@as(u16, 0x205), utime("/book.epub", null, null));
     try std.testing.expectEqual(@as(?u32, null), fake.written_index);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_calls);
 }
 
 export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {

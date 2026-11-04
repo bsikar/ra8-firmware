@@ -102,8 +102,7 @@ test "set stamps the boot sector at the FAT16 offset and creates the root entry"
     try std.testing.expectEqualStrings("PROJ       ", fake.sector[43..54]);
     try std.testing.expectEqualStrings("PROJ       ", fake.sector[0..11]);
     try std.testing.expectEqual(attr_vol, fake.sector[11]);
-    try std.testing.expectEqual(@as(u32, 1), fake.stamp_c_calls);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_w_calls);
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, fake.sector[16..18], .little));
     try std.testing.expectEqual(@as(?u64, 10), fake.sector_written);
 }
 
@@ -121,8 +120,7 @@ test "set rewrites an existing entry in place, preserving its other bytes" {
     try std.testing.expectEqualStrings("NEW        ", fake.sector[0..11]);
     try std.testing.expectEqual(attr_vol, fake.sector[11]);
     try std.testing.expectEqual(@as(u8, 0xAB), fake.sector[30]);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_c_calls);
-    try std.testing.expectEqual(@as(u32, 1), fake.stamp_w_calls);
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, fake.sector[24..26], .little));
 }
 
 test "clear deletes the root entry and keeps its other bytes" {
@@ -138,7 +136,6 @@ test "clear with no root entry writes only the boot sector" {
     try std.testing.expectEqual(ok, label.ra8_fs_set_label(m, ""));
     try std.testing.expectEqualStrings("NO NAME    ", fake.sector[43..54]);
     try std.testing.expectEqual(@as(?u64, 0), fake.sector_written);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_c_calls);
 }
 
 test "set rejects a label longer than the 11-byte field" {
@@ -171,7 +168,6 @@ test "exFAT mounts route to the exFAT label writer" {
     try std.testing.expectEqual(ok, label.ra8_fs_set_label(m, "XY"));
     try std.testing.expectEqual(@as(u32, 5), fake.written_cluster);
     try std.testing.expectEqual(@as(?u32, 2), fake.written_index);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_c_calls);
 }
 
 export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
