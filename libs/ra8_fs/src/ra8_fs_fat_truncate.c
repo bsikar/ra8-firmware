@@ -332,15 +332,7 @@ extern ra8_err_t internal_fat_trunc(ra8_fs_file_t* file, uint32_t new_size);
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes, uint8_t nofat)
-{
-  uint8_t strm[k_exfat_entry_bytes] = {};
-  priv_wr32(&strm[k_exfat_strm_off_clus], first);
-  priv_wr64(&strm[k_exfat_strm_off_dlen], nbytes);
-  strm[k_exfat_strm_off_flags] =
-    (nofat != 0U) ? (uint8_t)k_exfat_secflag_alloc : (uint8_t)k_exfat_secflag_poss;
-  return priv_exfat_free_clusters(m, strm);
-}
+RA8_INTERNAL extern ra8_err_t internal_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes, uint8_t nofat);
 
 /**
  * @brief Trim a FAT-chained exFAT file to @p new_nclus clusters.
@@ -371,30 +363,7 @@ internal_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t cbytes)
-{
-  const ra8_fs_mount_t* m        = file->mount;
-  uint32_t              new_tail = 0U;
-  const ra8_err_t       we = internal_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
-  if (we != k_ra8_ok) {
-    return we;
-  }
-  uint32_t        succ = 0U;
-  const ra8_err_t ge   = priv_fat_get(m, new_tail, &succ);
-  if (ge != k_ra8_ok) {
-    return ge;
-  }
-  ra8_err_t e = priv_fat_set(m, new_tail, priv_eoc_write(m));
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  e = internal_exfat_free_run(m, succ, cbytes, 0U);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  file->tail_cluster = new_tail;
-  return k_ra8_ok;
-}
+RA8_INTERNAL extern ra8_err_t internal_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t cbytes);
 
 /**
  * @brief Free an exFAT file's cluster tail past @p new_size.
@@ -424,45 +393,7 @@ internal_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size, uint32_t cbytes)
-{
-  const ra8_fs_mount_t* m         = file->mount;
-  const uint32_t        new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
-  if (new_nclus < file->alloc_clusters) {
-    if (new_nclus == 0U) {
-      const ra8_err_t e =
-        internal_exfat_free_run(m, file->first_cluster, file->size_bytes, file->no_fat_chain);
-      if (e != k_ra8_ok) {
-        return e;
-      }
-      file->first_cluster = 0U;
-      file->no_fat_chain  = 1U;
-      file->tail_cluster  = 0U;
-    } else if (file->no_fat_chain != 0U) {
-      const uint32_t  first = file->first_cluster + new_nclus;
-      const ra8_err_t e =
-        internal_exfat_free_run(m,
-                                first,
-                                (uint64_t)(file->alloc_clusters - new_nclus) * cbytes,
-                                1U);
-      if (e != k_ra8_ok) {
-        return e;
-      }
-      file->tail_cluster = file->first_cluster + new_nclus - 1U;
-    } else {
-      const ra8_err_t e = internal_exfat_shrink_chain_tail(file, new_nclus, cbytes);
-      if (e != k_ra8_ok) {
-        return e;
-      }
-    }
-    file->alloc_clusters = new_nclus;
-  }
-  file->size_bytes = new_size;
-  if (file->valid_bytes > new_size) {
-    file->valid_bytes = new_size;
-  }
-  return k_ra8_ok;
-}
+RA8_INTERNAL extern ra8_err_t internal_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size, uint32_t cbytes);
 
 /**
  * @brief Truncate an exFAT file to @p new_size and flush its entry set.

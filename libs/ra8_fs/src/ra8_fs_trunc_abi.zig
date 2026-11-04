@@ -246,3 +246,88 @@ pub export fn internal_fat_trunc(file: [*c]c.ra8_fs_file_t, new_size: u32) callc
     file[0].walk_cache_cluster = file[0].first_cluster;
     return internal_fat_trunc_commit(file);
 }
+
+extern fn priv_wr32(p: [*c]u8, v: u32) callconv(.c) void;
+extern fn priv_wr64(p: [*c]u8, v: u64) callconv(.c) void;
+extern fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16;
+
+/// Release a cluster run by describing it as a Stream-extension entry:
+/// `priv_exfat_free_clusters` reads first cluster, byte length and the
+/// NoFatChain flag out of a 32-byte argument that never exists on disk.
+pub export fn internal_exfat_free_run(m: [*c]const c.ra8_fs_mount_t, first: u32, nbytes: u64, nofat: u8) callconv(.c) u16 {
+    var strm: [c.k_exfat_entry_bytes]u8 = undefined;
+    @memset(&strm, 0);
+    priv_wr32(&strm[@as(usize, @intCast(c.k_exfat_strm_off_clus))], first);
+    priv_wr64(&strm[@as(usize, @intCast(c.k_exfat_strm_off_dlen))], nbytes);
+    strm[@as(usize, @intCast(c.k_exfat_strm_off_flags))] =
+        if (nofat != 0) @as(u8, @intCast(c.k_exfat_secflag_alloc)) else @as(u8, @intCast(c.k_exfat_secflag_poss));
+    return priv_exfat_free_clusters(m, &strm);
+}
+
+/// Trim a FAT-chained exFAT file to `new_nclus` clusters: walk to the
+/// survivor's new tail, cap it with an end-of-chain marker, and free the
+/// remainder off the allocation bitmap from the tail's old successor. The
+/// freed clusters keep their stale FAT links; the bitmap is exFAT's
+/// authority and nothing follows a free cluster's chain.
+pub export fn internal_exfat_shrink_chain_tail(file: [*c]c.ra8_fs_file_t, new_nclus: u32, cbytes: u32) callconv(.c) u16 {
+    const m = file[0].mount;
+    var new_tail: u32 = 0;
+    const we = internal_trunc_walk(m, file[0].first_cluster, new_nclus - 1, &new_tail);
+    if (we != ok) {
+        return we;
+    }
+    var succ: u32 = 0;
+    const ge = priv_fat_get(m, new_tail, &succ);
+    if (ge != ok) {
+        return ge;
+    }
+    var e = priv_fat_set(m, new_tail, priv_eoc_write(m));
+    if (e != ok) {
+        return e;
+    }
+    e = internal_exfat_free_run(m, succ, cbytes, 0);
+    if (e != ok) {
+        return e;
+    }
+    file[0].tail_cluster = new_tail;
+    return ok;
+}
+
+/// Free an exFAT file's cluster tail past `new_size`: a contiguous run
+/// keeps `[first, first + new_nclus)` and frees the rest by count; a
+/// FAT-chained run re-terminates the survivor via the chained arm; zero
+/// drops the whole allocation and returns the handle to the empty shape a
+/// fresh open produces.
+pub export fn internal_exfat_trunc_shrink(file: [*c]c.ra8_fs_file_t, new_size: u64, cbytes: u32) callconv(.c) u16 {
+    const m = file[0].mount;
+    const new_nclus: u32 = @intCast(internal_trunc_clusters(new_size, cbytes));
+    if (new_nclus < file[0].alloc_clusters) {
+        if (new_nclus == 0) {
+            const e0 = internal_exfat_free_run(m, file[0].first_cluster, file[0].size_bytes, file[0].no_fat_chain);
+            if (e0 != ok) {
+                return e0;
+            }
+            file[0].first_cluster = 0;
+            file[0].no_fat_chain = 1;
+            file[0].tail_cluster = 0;
+        } else if (file[0].no_fat_chain != 0) {
+            const first = file[0].first_cluster + new_nclus;
+            const e1 = internal_exfat_free_run(m, first, @as(u64, file[0].alloc_clusters - new_nclus) * cbytes, 1);
+            if (e1 != ok) {
+                return e1;
+            }
+            file[0].tail_cluster = file[0].first_cluster + new_nclus - 1;
+        } else {
+            const e2 = internal_exfat_shrink_chain_tail(file, new_nclus, cbytes);
+            if (e2 != ok) {
+                return e2;
+            }
+        }
+        file[0].alloc_clusters = new_nclus;
+    }
+    file[0].size_bytes = new_size;
+    if (file[0].valid_bytes > new_size) {
+        file[0].valid_bytes = new_size;
+    }
+    return ok;
+}
