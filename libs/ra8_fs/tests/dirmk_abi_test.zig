@@ -328,9 +328,6 @@ var err_io_val: u16 = 0;
 
 const err_io: u16 = c.k_ra8_err_access_denied;
 
-var erase_calls: usize = 0;
-var erase_rc: u16 = 0;
-var erase_name0: u8 = 0;
 var alloc_rc: u16 = 0;
 var alloc_calls: usize = 0;
 var next_cluster: u32 = 0;
@@ -353,9 +350,6 @@ fn resetDirmk() void {
     commit_lba = 0;
     commit_off = 0;
     commit_entry = @splat(0);
-    erase_calls = 0;
-    erase_rc = 0;
-    erase_name0 = 0;
     alloc_rc = 0;
     alloc_calls = 0;
     next_cluster = 0;
@@ -366,16 +360,6 @@ fn resetDirmk() void {
     exfat_calls = 0;
     exfat_rc = 0;
     read_err = 0;
-}
-
-export fn priv_dir_erase_chain(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, lba: u64, off: u32, name: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = lba;
-    _ = off;
-    erase_calls += 1;
-    erase_name0 = name[0];
-    return erase_rc;
 }
 
 export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
@@ -556,8 +540,7 @@ test "rmdir removes an empty directory: chain freed, entry erased" {
     disk[0][64] = 0x00; // end-of-directory marker in slot 2
     fat[1] = eoc; // cluster 3 is a one-cluster chain
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 1), erase_calls);
-    try std.testing.expectEqual(@as(u8, 'D'), erase_name0);
+    try std.testing.expectEqual(@as(u8, 0xE5), disk[0][0]);
     try std.testing.expectEqual(@as(u32, 0), fat[1]); // cluster 3 freed
 }
 
@@ -566,7 +549,7 @@ test "rmdir refuses the root itself" {
     resetDirmk();
     var m = fatmount();
     try std.testing.expectEqual(err_invalid_arg, fs.dirmk.ra8_fs_rmdir(&m, ""));
-    try std.testing.expectEqual(@as(usize, 0), erase_calls);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
 
 test "rmdir refuses a file" {
@@ -577,7 +560,7 @@ test "rmdir refuses a file" {
     lookup_entry[0] = 'F';
     lookup_entry[11] = 0x20; // archive: a file, not a directory
     try std.testing.expectEqual(err_invalid_arg, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 0), erase_calls);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 
@@ -589,7 +572,7 @@ test "rmdir refuses a directory with no data cluster" {
     lookup_entry[11] = attr_dir;
     lookup_entry[26] = 0;
     try std.testing.expectEqual(err_protocol, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 0), erase_calls);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
 
 test "rmdir refuses a non-empty directory: LFN remnants and deleted slots do not count" {
@@ -607,7 +590,7 @@ test "rmdir refuses a non-empty directory: LFN remnants and deleted slots do not
     disk[0][128] = 'A'; // a real entry: the directory is not empty
     disk[0][128 + 11] = 0x20;
     try std.testing.expectEqual(err_not_empty, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 0), erase_calls);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 
@@ -626,7 +609,7 @@ test "rmdir tolerates LFN remnants and deleted slots" {
     disk[0][128] = 0x00;
     fat[1] = eoc;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 1), erase_calls);
+    try std.testing.expectEqual(@as(u8, 0xE5), disk[0][0]);
     try std.testing.expectEqual(@as(u32, 0), fat[1]); // cluster 3 freed
 }
 
@@ -640,7 +623,7 @@ test "rmdir: a chain exhausted with no marker still reads as empty" {
     @memset(&disk[0], 0xE5); // a full sector of deleted slots, no 0x00 marker
     fat[1] = eoc;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 1), erase_calls);
+    try std.testing.expectEqual(@as(u8, 0xE5), disk[0][0]);
 }
 
 test "rmdir propagates a backend read failure while proving emptiness" {
@@ -652,7 +635,7 @@ test "rmdir propagates a backend read failure while proving emptiness" {
     lookup_entry[26] = 3;
     read_err = err_io;
     try std.testing.expectEqual(err_io, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 0), erase_calls);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 
