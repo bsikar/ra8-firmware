@@ -178,44 +178,7 @@ internal_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
-{
-  const ra8_fs_mount_t* m         = file->mount;
-  const uint32_t        new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
-  if (new_nclus == 0U) {
-    if (file->first_cluster >= (uint32_t)k_cluster_first_data) {
-      const ra8_err_t e = priv_free_chain(m, file->first_cluster);
-      if (e != k_ra8_ok) {
-        return e;
-      }
-    }
-    file->first_cluster = 0U;
-    file->size_bytes    = new_size;
-    return k_ra8_ok;
-  }
-  uint32_t        new_tail = 0U;
-  const ra8_err_t we       = internal_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
-  if (we != k_ra8_ok) {
-    return we;
-  }
-  uint32_t        succ = 0U;
-  const ra8_err_t ge   = priv_fat_get(m, new_tail, &succ);
-  if (ge != k_ra8_ok) {
-    return ge;
-  }
-  if (priv_is_eoc(m, succ) == 0U) {
-    ra8_err_t e = priv_fat_set(m, new_tail, priv_eoc_write(m));
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    e = priv_free_chain(m, succ);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-  }
-  file->size_bytes = new_size;
-  return k_ra8_ok;
-}
+extern ra8_err_t internal_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes);
 
 /**
  * @brief Append zeroed clusters to a FAT file until it owns @p new_nclus.
@@ -246,45 +209,11 @@ static ra8_err_t internal_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_siz
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_trunc_extend(ra8_fs_file_t* file,
+extern ra8_err_t internal_fat_trunc_extend(ra8_fs_file_t* file,
                                            uint32_t       tail,
                                            uint32_t       have,
                                            uint32_t       new_nclus,
-                                           uint32_t       cbytes)
-{
-  const ra8_fs_mount_t* m   = file->mount;
-  uint32_t              cur = tail;
-  if (have == 0U) {
-    ra8_err_t e = priv_alloc_eoc_cluster(m, &cur);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    file->first_cluster = cur;
-    e                   = internal_trunc_zero_span(m, cur, 0U, cbytes);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    have = 1U;
-  }
-  while (have < new_nclus) {
-    uint32_t  c = 0U;
-    ra8_err_t e = priv_alloc_eoc_cluster(m, &c);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    e = priv_fat_set(m, cur, c);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    e = internal_trunc_zero_span(m, c, 0U, cbytes);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    cur = c;
-    have++;
-  }
-  return k_ra8_ok;
-}
+                                           uint32_t       cbytes);
 
 /**
  * @brief Grow a FAT file to @p new_size, zero-filling `[old_size, new_size)`.
@@ -314,33 +243,7 @@ static ra8_err_t internal_fat_trunc_extend(ra8_fs_file_t* file,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
-{
-  const ra8_fs_mount_t* m         = file->mount;
-  const uint32_t        old_size  = (uint32_t)file->size_bytes;
-  const uint32_t        old_nclus = (uint32_t)internal_trunc_clusters(old_size, cbytes);
-  const uint32_t        new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
-  uint32_t              tail      = 0U;
-  if (old_nclus > 0U) {
-    const ra8_err_t we = internal_trunc_walk(m, file->first_cluster, old_nclus - 1U, &tail);
-    if (we != k_ra8_ok) {
-      return we;
-    }
-    const uint32_t  base    = (old_nclus - 1U) * cbytes;
-    const uint32_t  cap     = old_nclus * cbytes;
-    const uint32_t  span_hi = (new_size < cap) ? new_size : cap;
-    const ra8_err_t ze      = internal_trunc_zero_span(m, tail, old_size - base, span_hi - base);
-    if (ze != k_ra8_ok) {
-      return ze;
-    }
-  }
-  const ra8_err_t ee = internal_fat_trunc_extend(file, tail, old_nclus, new_nclus, cbytes);
-  if (ee != k_ra8_ok) {
-    return ee;
-  }
-  file->size_bytes = new_size;
-  return k_ra8_ok;
-}
+extern ra8_err_t internal_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes);
 
 /**
  * @brief Rewrite a FAT file's directory entry after its length changed.
