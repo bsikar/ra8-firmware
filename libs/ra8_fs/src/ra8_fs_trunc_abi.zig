@@ -331,3 +331,88 @@ pub export fn internal_exfat_trunc_shrink(file: [*c]c.ra8_fs_file_t, new_size: u
     }
     return ok;
 }
+
+extern fn priv_exfat_ensure_clusters(file: [*c]c.ra8_fs_file_t, need: u32) callconv(.c) u16;
+extern fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16;
+extern fn priv_lock_acquire() callconv(.c) void;
+extern fn priv_lock_release() callconv(.c) void;
+
+const err_no_mem: u16 = c.k_ra8_err_no_mem;
+const err_null_ptr: u16 = c.k_ra8_err_null_ptr;
+const err_invalid_state: u16 = c.k_ra8_err_invalid_state;
+const err_invalid_size: u16 = c.k_ra8_err_invalid_size;
+
+/// Truncate an exFAT file to `new_size` and flush its entry set: shrink
+/// frees the tail; grow takes clusters from the allocation bitmap and
+/// raises DataLength alone, so ValidDataLength stays at the written
+/// prefix and the read path serves the grown gap as zero without a byte
+/// being written for it (exFAT spec sec 7.4.5). Either way the entry set
+/// is rewritten so a later mount sees the new length.
+pub export fn internal_exfat_trunc(file: [*c]c.ra8_fs_file_t, new_size: u64) callconv(.c) u16 {
+    const cbytes = priv_cluster_bytes(file[0].mount);
+    if (new_size < file[0].size_bytes) {
+        const e = internal_exfat_trunc_shrink(file, new_size, cbytes);
+        if (e != ok) {
+            return e;
+        }
+    } else if (new_size > file[0].size_bytes) {
+        // Sized before a single cluster moves: a grow past the volume's
+        // whole cluster count can never succeed, and discovering that
+        // AFTER the bitmap ran dry would leave the volume full for no gain.
+        const want = internal_trunc_clusters(new_size, cbytes);
+        if (want > @as(u64, file[0].mount[0].count_of_clusters)) {
+            return err_no_mem;
+        }
+        const e = priv_exfat_ensure_clusters(file, @intCast(want));
+        if (e != ok) {
+            return e;
+        }
+        file[0].size_bytes = new_size;
+    } else {
+        return ok;
+    }
+    return priv_exfat_flush_set(file);
+}
+
+/// Truncate the file behind `file` -- the guarded body of `ra8_fs_truncate`:
+/// validates the handle, dispatches on the mount's filesystem, and pulls the
+/// offset down if a shrink left it past the new end (the offset is otherwise
+/// left where the caller had it, as `ftruncate()` promises). The mode/handle
+/// guard is one compound decision of two conditions -- a closed handle, or a
+/// handle opened read-only -- and its vectors live with the test that drives
+/// it, cited as `libs/ra8_fs/src/ra8_fs_trunc_abi.zig@internal_truncate_locked`.
+pub export fn internal_truncate_locked(file: [*c]c.ra8_fs_file_t, new_size: u64) callconv(.c) u16 {
+    if (file == null) {
+        return err_null_ptr;
+    }
+    if (file[0].in_use == 0 or file[0].mode == c.k_ra8_fs_mode_read) {
+        return err_invalid_state;
+    }
+    var e: u16 = ok;
+    if (file[0].mount[0].type == c.k_ra8_fs_type_exfat) {
+        e = internal_exfat_trunc(file, new_size);
+    } else if (new_size > @as(u64, @intCast(c.k_ra8_fs_fat_max_file_bytes))) {
+        // The FAT boundary of the 4 GiB cap: `DIR_FileSize` cannot record
+        // 4 GiB or more, so the request is refused rather than wrapped.
+        e = err_invalid_size;
+    } else {
+        e = internal_fat_trunc(file, @intCast(new_size));
+    }
+    if (e != ok) {
+        return e;
+    }
+    if (file[0].offset > file[0].size_bytes) {
+        file[0].offset = file[0].size_bytes;
+    }
+    return ok;
+}
+
+/// Public truncate entry: takes the library lock, runs the guarded body,
+/// releases it. Lock contract (RA8_OWNS_RESOURCE in the C original): this
+/// function owns `ra8_fs_lock` for the duration of the call.
+pub export fn ra8_fs_truncate(file: [*c]c.ra8_fs_file_t, new_size: u64) callconv(.c) u16 {
+    priv_lock_acquire();
+    const err = internal_truncate_locked(file, new_size);
+    priv_lock_release();
+    return err;
+}
