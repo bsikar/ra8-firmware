@@ -36,10 +36,8 @@ fn layDir(entry: *[entry_bytes]u8, cluster: u32) void {
 
 fn setup() void {
     fake.reset(0);
-    fake.lookup_any_rc = 0;
-    fake.lookup_any_lba = 8;
-    fake.lookup_any_off = 32;
-    layDir(&fake.lookup_any_entry, 0x21);
+    fake.find83_fill = true; // component lookups answer through the find fake
+    layDir(&fake.find83_entry, 0x21);
 }
 
 test "a single component resolves to the root with the full leaf" {
@@ -75,7 +73,7 @@ test "a nested path descends through the directory lookup" {
 
 test "a non-directory component is refused" {
     setup();
-    fake.lookup_any_entry[off_attr] = attr_archive;
+    fake.find83_entry[off_attr] = attr_archive;
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -84,7 +82,7 @@ test "a non-directory component is refused" {
 
 test "a directory entry without a data cluster is refused" {
     setup();
-    layDir(&fake.lookup_any_entry, 0);
+    layDir(&fake.find83_entry, 0);
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -93,7 +91,7 @@ test "a directory entry without a data cluster is refused" {
 
 test "a failing component lookup propagates" {
     setup();
-    fake.lookup_any_rc = err_not_found;
+    fake.find83_not_found = true;
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;
@@ -159,7 +157,7 @@ test "a failed leaf lookup surfaces through resolve_dir" {
     setup();
     const m = fake.mount();
     var out: c.dir_loc_t = undefined;
-    fake.lookup_any_entry[off_attr] = attr_archive; // leaf resolves to a file
+    fake.find83_entry[off_attr] = attr_archive; // leaf resolves to a file
     try std.testing.expectEqual(err_invalid_arg, resolve.priv_resolve_dir(m, "/d", &out));
 }
 

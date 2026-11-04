@@ -9,10 +9,6 @@ const std = @import("std");
 const al = @import("ra8_fs").alloc;
 const fs = @import("ra8_fs");
 
-var lookup_any_rc: u16 = 0;
-var lookup_lba: u64 = 0;
-var lookup_off: u32 = 0;
-var lookup_entry: [32]u8 = @splat(0);
 var stamp_calls: usize = 0;
 
 // stand-in for the one helper the open/close port added (RA8FW-1092); the
@@ -224,17 +220,24 @@ test "the shared string helpers survived the port" {
 }
 
 // Link stubs for the other root units this binary analyzes (never exercised
-// here): the shared root pulls every abi module into every test root.
+// here): the shared root pulls every abi module into every test root. The
+// find stub carries knobs because the real lookup runs in this root now: the
+// 8.3 half of priv_dir_lookup_any answers here, so "the name exists" tests
+// drive it instead of a lookup fake.
 var walk_sector: [512]u8 = @splat(0);
+var find83_rc: u16 = err_not_found;
+var find83_lba: u64 = 0;
+var find83_off: u32 = 0;
+var find83_entry: [32]u8 = @splat(0);
 
 export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = name83;
-    _ = out_lba;
-    _ = out_off;
-    _ = out_entry;
-    return err_not_found;
+    _ = .{ m, loc, name83 };
+    if (find83_rc == ok) {
+        out_lba.* = find83_lba;
+        out_off.* = find83_off;
+        @memcpy(out_entry[0..32], &find83_entry);
+    }
+    return find83_rc;
 }
 
 export fn priv_dir_walk_init_loc(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, w: [*c]c.dir_walk_t) callconv(.c) void {
@@ -336,10 +339,11 @@ var exfat_calls: usize = 0;
 var exfat_rc: u16 = 0;
 
 fn resetDirmk() void {
-    lookup_any_rc = 0;
-    lookup_lba = 0;
-    lookup_off = 0;
-    lookup_entry = @splat(0);
+    walk_sector = @splat(0);
+    find83_rc = err_not_found;
+    find83_lba = 0;
+    find83_off = 0;
+    find83_entry = @splat(0);
     alloc_rc = 0;
     alloc_calls = 0;
     next_cluster = 0;
@@ -417,7 +421,7 @@ test "mkdir lays the dot entries and links the parent entry" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = err_not_found;
+
     next_cluster = 5;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     // cluster 5 -> lba 3 with first_data_lba 0 and one sector per cluster
@@ -447,7 +451,7 @@ test "mkdir refuses an existing name before touching anything" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
+    find83_rc = ok;
     try std.testing.expectEqual(err_exists, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(usize, 0), alloc_calls);
     try std.testing.expectEqual(@as(usize, 0), stamp_calls);
@@ -458,7 +462,7 @@ test "mkdir propagates a full directory and allocates nothing" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = err_not_found;
+
     m.type = c.k_ra8_fs_type_fat16;
     for (0..16) |i| disk[0][i * 32] = 'A';
     try std.testing.expectEqual(err_no_mem, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
@@ -469,7 +473,7 @@ test "mkdir propagates an allocation failure" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = err_not_found;
+
     alloc_rc = err_no_mem;
     try std.testing.expectEqual(err_no_mem, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(usize, 0), stamp_calls);
@@ -480,7 +484,7 @@ test "a cluster-init write failure frees the new cluster" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = err_not_found;
+
     next_cluster = 5;
     fat[3] = eoc; // real free_chain: cluster 5 ends an EOC chain
     write_fail_lba = 3;
@@ -493,7 +497,7 @@ test "a commit failure frees the new cluster" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = err_not_found;
+
     next_cluster = 5;
     fat[3] = eoc;
     write_fail_lba = 0;
@@ -520,10 +524,10 @@ test "rmdir removes an empty directory: chain freed, entry erased" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[0] = 'D';
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 3; // first cluster 3
+    find83_rc = ok;
+    find83_entry[0] = 'D';
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 3; // first cluster 3
     dotAt(&disk[0], 0, 1);
     dotAt(&disk[0], 32, 2);
     disk[0][64] = 0x00; // end-of-directory marker in slot 2
@@ -545,9 +549,9 @@ test "rmdir refuses a file" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[0] = 'F';
-    lookup_entry[11] = 0x20; // archive: a file, not a directory
+    find83_rc = ok;
+    find83_entry[0] = 'F';
+    find83_entry[11] = 0x20; // archive: a file, not a directory
     try std.testing.expectEqual(err_invalid_arg, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     try std.testing.expectEqual(@as(usize, 0), write_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
@@ -557,9 +561,9 @@ test "rmdir refuses a directory with no data cluster" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 0;
+    find83_rc = ok;
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 0;
     try std.testing.expectEqual(err_protocol, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
@@ -568,9 +572,9 @@ test "rmdir refuses a non-empty directory: LFN remnants and deleted slots do not
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 3;
+    find83_rc = ok;
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 3;
     dotAt(&disk[0], 0, 1);
     dotAt(&disk[0], 32, 2);
     disk[0][64] = 0xE5; // deleted slot: skipped
@@ -587,9 +591,9 @@ test "rmdir tolerates LFN remnants and deleted slots" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 3;
+    find83_rc = ok;
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 3;
     dotAt(&disk[0], 0, 1);
     dotAt(&disk[0], 32, 2);
     disk[0][64] = 0xE5;
@@ -606,9 +610,9 @@ test "rmdir: a chain exhausted with no marker still reads as empty" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 3;
+    find83_rc = ok;
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 3;
     @memset(&disk[0], 0xE5); // a full sector of deleted slots, no 0x00 marker
     fat[1] = eoc;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
@@ -619,9 +623,9 @@ test "rmdir propagates a backend read failure while proving emptiness" {
     reset();
     resetDirmk();
     var m = fatmount();
-    lookup_any_rc = ok;
-    lookup_entry[11] = attr_dir;
-    lookup_entry[26] = 3;
+    find83_rc = ok;
+    find83_entry[11] = attr_dir;
+    find83_entry[26] = 3;
     read_err = err_io;
     try std.testing.expectEqual(err_io, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     try std.testing.expectEqual(@as(usize, 0), write_calls);
@@ -640,18 +644,6 @@ test "rmdir dispatch: idle mount and exFAT routing" {
     try std.testing.expectEqual(err_not_found, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     try std.testing.expectEqual(@as(usize, 1), exfat_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
-}
-
-export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    if (lookup_any_rc == ok) {
-        out_lba.* = lookup_lba;
-        out_off.* = lookup_off;
-        @memcpy(out_entry[0..32], &lookup_entry);
-    }
-    return lookup_any_rc;
 }
 
 export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {

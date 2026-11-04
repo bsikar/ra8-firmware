@@ -22,7 +22,6 @@ pub var sector: [512]u8 = undefined;
 pub var walk_lba: u64 = 10;
 pub var walk_fixed: u32 = 1;
 pub var eps: u32 = 16;
-pub var have83: u8 = 1;
 pub var find83_err: u16 = 0;
 pub var find83_fill: bool = false;
 pub var find83_not_found: bool = false;
@@ -106,7 +105,6 @@ pub fn reset(fs_type: u8) void {
     sector = @splat(0);
     read_error = 0;
     written_index = null;
-    have83 = 1;
     find83_err = 0;
     find83_fill = false;
     find83_not_found = false;
@@ -143,10 +141,6 @@ pub fn reset(fs_type: u8) void {
     fat_sets = 0;
     gave = 0;
     hint_low = 0xFFFF_FFFF;
-    lookup_any_rc = 0;
-    lookup_any_lba = 0;
-    lookup_any_off = 0;
-    lookup_any_entry = @splat(0);
     stamp_w_calls = 0;
     stamp_c_calls = 0;
     walk_lba = 10;
@@ -181,11 +175,6 @@ export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfa
 export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
     checksum_bytes = bytes;
     return 0xA000 | @as(u16, set[4]);
-}
-
-fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
-    _ = .{ path, out11 };
-    return have83;
 }
 
 export fn priv_dir_find(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, name83: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
@@ -388,23 +377,8 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
 
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
 
-pub var lookup_any_rc: u16 = 0;
-pub var lookup_any_lba: u64 = 0;
-pub var lookup_any_off: u32 = 0;
-pub var lookup_any_entry: [entry_bytes]u8 = @splat(0);
 pub var stamp_w_calls: u32 = 0;
 pub var stamp_c_calls: u32 = 0;
-
-export fn priv_dir_lookup_any(m: [*c]const c.ra8_fs_mount_t, loc: [*c]const c.dir_loc_t, leaf: [*c]const u8, out_lba: [*c]u64, out_off: [*c]u32, out_entry: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = loc;
-    _ = leaf;
-    if (lookup_any_rc != 0) return lookup_any_rc;
-    out_lba.* = lookup_any_lba;
-    out_off.* = lookup_any_off;
-    @memcpy(out_entry[0..entry_bytes], &lookup_any_entry);
-    return 0;
-}
 
 export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
     _ = entry;

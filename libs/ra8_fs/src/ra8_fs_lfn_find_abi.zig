@@ -11,7 +11,7 @@
 //! 14/16/18/20/22/24, 28/30) and a checksum of the 8.3 name (offset 13) that
 //! ties the chain to its entry. The layout table and the chain helpers live
 //! in `ra8_fs_lfn_abi.zig`; the verbs that decide WHEN to write a chain live
-//! in `ra8_fs_fat_lfn_write.c`.
+//! in `ra8_fs_dir_write_abi.zig`.
 //!
 //! Names are compared as UTF-16, which is the domain they are stored in and
 //! the domain the up-case table folds. Comparing reassembled text meant
@@ -148,4 +148,34 @@ pub export fn priv_dir_find_long(
         }
     }
     return err_not_found;
+}
+
+/// Look up a directory entry by either of its two on-disk names: the caller
+/// writes one leaf, and this finds the entry whether it is filed 8.3 under
+/// its own short name or as a `~N` alias whose long-name chain spells the
+/// leaf. 8.3-representable names try the cheap direct scan first; anything
+/// else (or a miss, which also catches a file filed under a generated alias)
+/// reassembles long names and compares those, so `Long Name.txt` opens by
+/// the name the caller wrote even when its disk entry says `LONGNA~1.TXT`.
+/// Not thread-safe; the caller serialises directory access.
+pub export fn priv_dir_lookup_any(
+    m: [*c]const Mount,
+    loc: [*c]const c.dir_loc_t,
+    leaf: [*c]const u8,
+    out_lba: [*c]u64,
+    out_entry_off: [*c]u32,
+    out_entry: [*c]u8,
+) callconv(.c) u16 {
+    var name83: [c.k_max_8_3_name]u8 = @splat(' ');
+    var err: u16 = err_not_found;
+    if (lf.priv_path_to_83(leaf, &name83) != 0) {
+        err = c.priv_dir_find(m, loc, &name83, out_lba, out_entry_off, out_entry);
+    }
+    if (err == err_not_found) {
+        // A name that is not 8.3-representable, or one whose 8.3 lookup
+        // missed because the file is filed under a generated `~N` alias,
+        // can still match the reassembled long name.
+        err = priv_dir_find_long(m, loc, leaf, out_lba, out_entry_off, out_entry);
+    }
+    return err;
 }
