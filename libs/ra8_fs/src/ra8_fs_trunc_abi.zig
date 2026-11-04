@@ -199,3 +199,50 @@ pub export fn internal_fat_trunc_grow(file: [*c]c.ra8_fs_file_t, new_size: u32, 
     file[0].size_bytes = new_size;
     return ok;
 }
+
+extern fn priv_sec_walk() callconv(.c) [*c]u8;
+extern fn priv_entry_set_cluster_size(entry: [*c]u8, cluster: u32, size: u32) callconv(.c) void;
+extern fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void;
+extern fn priv_cluster_bytes(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32;
+
+/// Rewrite a FAT file's directory entry after its length changed: patches
+/// the entry's first cluster and size, stamps the write time (a truncate is
+/// a content change even when no byte is written), and marks the handle
+/// dirty so close flushes FSInfo.
+pub export fn internal_fat_trunc_commit(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
+    const m: [*c]const c.ra8_fs_mount_t = file[0].mount;
+    const sec = priv_sec_walk();
+    const re = priv_read_sector(m, file[0].dir_entry_lba, sec);
+    if (re != ok) {
+        return re;
+    }
+    priv_entry_set_cluster_size(&sec[file[0].dir_entry_idx], file[0].first_cluster, @intCast(file[0].size_bytes));
+    priv_fat_entry_stamp_write(&sec[file[0].dir_entry_idx]);
+    const we = priv_write_sector(m, file[0].dir_entry_lba, sec);
+    if (we != ok) {
+        return we;
+    }
+    file[0].dirty = 1;
+    return ok;
+}
+
+/// Truncate a FAT file to `new_size` and commit its directory entry:
+/// dispatches to the shrink or grow branch, resets the read accelerator
+/// (a shrink can free the cluster it cached, a grow moves the tail), and
+/// rewrites the directory entry once.
+pub export fn internal_fat_trunc(file: [*c]c.ra8_fs_file_t, new_size: u32) callconv(.c) u16 {
+    const cbytes = priv_cluster_bytes(file[0].mount);
+    var e: u16 = ok;
+    if (new_size < file[0].size_bytes) {
+        e = internal_fat_trunc_shrink(file, new_size, cbytes);
+    } else if (new_size > file[0].size_bytes) {
+        e = internal_fat_trunc_grow(file, new_size, cbytes);
+    }
+    if (e != ok) {
+        return e;
+    }
+    file[0].cur_cluster = file[0].first_cluster;
+    file[0].walk_cache_idx = 0;
+    file[0].walk_cache_cluster = file[0].first_cluster;
+    return internal_fat_trunc_commit(file);
+}

@@ -269,25 +269,7 @@ extern ra8_err_t internal_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_trunc_commit(ra8_fs_file_t* file)
-{
-  const ra8_fs_mount_t* m   = file->mount;
-  uint8_t* const        sec = priv_sec_walk();
-  const ra8_err_t       re  = priv_read_sector(m, file->dir_entry_lba, sec);
-  if (re != k_ra8_ok) {
-    return re;
-  }
-  priv_entry_set_cluster_size(&sec[file->dir_entry_idx],
-                              file->first_cluster,
-                              (uint32_t)file->size_bytes);
-  priv_fat_entry_stamp_write(&sec[file->dir_entry_idx]);
-  const ra8_err_t we = priv_write_sector(m, file->dir_entry_lba, sec);
-  if (we != k_ra8_ok) {
-    return we;
-  }
-  file->dirty = 1U;
-  return k_ra8_ok;
-}
+extern ra8_err_t internal_fat_trunc_commit(ra8_fs_file_t* file);
 
 /**
  * @brief Truncate a FAT file to @p new_size and commit its directory entry.
@@ -313,23 +295,7 @@ static ra8_err_t internal_fat_trunc_commit(ra8_fs_file_t* file)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_trunc(ra8_fs_file_t* file, uint32_t new_size)
-{
-  const uint32_t cbytes = priv_cluster_bytes(file->mount);
-  ra8_err_t      e      = k_ra8_ok;
-  if (new_size < file->size_bytes) {
-    e = internal_fat_trunc_shrink(file, new_size, cbytes);
-  } else if (new_size > file->size_bytes) {
-    e = internal_fat_trunc_grow(file, new_size, cbytes);
-  }
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  file->cur_cluster        = file->first_cluster;
-  file->walk_cache_idx     = 0U;
-  file->walk_cache_cluster = file->first_cluster;
-  return internal_fat_trunc_commit(file);
-}
+extern ra8_err_t internal_fat_trunc(ra8_fs_file_t* file, uint32_t new_size);
 
 /* =============================================================================
  * exFAT truncate
