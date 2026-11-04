@@ -212,10 +212,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     return sum;
 }
 
-export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
-
 export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
     _ = m;
     _ = d;
@@ -228,9 +224,6 @@ export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfa
     return err_not_found;
 }
 
-export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -261,10 +254,6 @@ export fn priv_exfat_grow_dir(m: [*c]const c.ra8_fs_mount_t, dir: [*c]c.exfat_di
     grow_calls += 1;
     dir.*.contig_end = dir.*.cluster + 2;
     return ok;
-}
-
-export fn priv_exfat_file_stamp_create(entry: [*c]u8) callconv(.c) void {
-    entry[7] = 0x42;
 }
 
 fn foldRef(cs: u16, b: u8) u16 {
@@ -460,7 +449,8 @@ test "link builds the set and writes it into directory space" {
     try std.testing.expectEqual(@as(u8, 0x85), disk[0][32]);
     try std.testing.expectEqual(@as(u8, 2), disk[0][33]);
     try std.testing.expectEqual(@as(u8, 0x20), disk[0][36]);
-    try std.testing.expectEqual(@as(u8, 0x42), disk[0][39]);
+    // the create stamper wrote the FAT epoch at the File entry's ctime field
+    try std.testing.expectEqual(@as(u32, @as(u32, 0x21) << 16), std.mem.readInt(u32, disk[0][40..44], .little));
     try std.testing.expectEqual(@as(u8, 0xC0), disk[0][64]);
     try std.testing.expectEqual(@as(u8, 0x01), disk[0][65]);
     try std.testing.expectEqual(@as(u8, 6), disk[0][67]);
@@ -552,14 +542,6 @@ fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t
     out_lba.* = 0;
     out_off.* = 0;
     return 0;
-}
-
-export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-}
-
-export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
 }
 
 /// FAT label-field writer: pads to the 11-byte field with spaces, or writes

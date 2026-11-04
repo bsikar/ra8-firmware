@@ -29,8 +29,6 @@ pub var sector_written: ?u64 = null;
 pub var find_set_err: u16 = 0;
 pub var set_count: u32 = 2;
 pub var checksum_bytes: u32 = 0;
-pub var stamped: [3]?*const c.ra8_fs_datetime_t = .{ null, null, null };
-pub var stamp_calls: u32 = 0;
 
 // Free-space side: a 32-entry FAT, a two-sector exFAT bitmap at LBA 100.
 pub const bitmap_lba: u64 = 100;
@@ -113,8 +111,6 @@ pub fn reset(fs_type: u8) void {
     find_set_err = 0;
     set_count = 2;
     checksum_bytes = 0;
-    stamped = .{ null, null, null };
-    stamp_calls = 0;
     fat = @splat(0);
     if (fs_type == c.k_ra8_fs_type_fat32) {
         fat[5] = 0xFFFF_FFF8; // the FAT32 root chain ends after its first cluster
@@ -143,8 +139,6 @@ pub fn reset(fs_type: u8) void {
     fat_sets = 0;
     gave = 0;
     hint_low = 0xFFFF_FFFF;
-    stamp_w_calls = 0;
-    stamp_c_calls = 0;
     walk_lba = 10;
     walk_fixed = 1;
     eps = 16;
@@ -330,19 +324,7 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[10] = '0';
 }
 
-fn stamp(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) void {
-    stamped = .{ create, modify, access };
-    stamp_calls += 1;
-    if (modify) |mt| entry[22] = mt.*.minute; // marker byte the tests read back
-}
 
-export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    stamp(entry, create, modify, access);
-}
-
-export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    stamp(entry, create, modify, access);
-}
 
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &io_sector;
@@ -362,18 +344,8 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
 
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
 
-pub var stamp_w_calls: u32 = 0;
-pub var stamp_c_calls: u32 = 0;
 
-export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-    stamp_w_calls += 1;
-}
 
-export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-    stamp_c_calls += 1;
-}
 
 export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
     if (slots_left == 0) return null;

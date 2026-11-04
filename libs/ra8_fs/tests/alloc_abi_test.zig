@@ -182,9 +182,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     return sum;
 }
 
-export fn priv_exfat_file_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
 
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
@@ -217,9 +214,6 @@ export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, 
     return 0;
 }
 
-export fn priv_fat_entry_set_times(entry: [*c]u8, create: [*c]const c.ra8_fs_datetime_t, modify: [*c]const c.ra8_fs_datetime_t, access: [*c]const c.ra8_fs_datetime_t) callconv(.c) void {
-    _ = .{ entry, create, modify, access };
-}
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -534,13 +528,7 @@ fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t
     return 0;
 }
 
-export fn priv_fat_entry_stamp_write(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-}
 
-export fn priv_fat_entry_stamp_create(entry: [*c]u8) callconv(.c) void {
-    _ = entry;
-}
 
 /// FAT label-field writer: pads to the 11-byte field with spaces, or writes
 /// the "NO NAME    " sentinel for a null/empty label. Mirrors the C fmt unit.

@@ -60,8 +60,6 @@ fn layEntry(at: usize, sfn11: *const [11]u8, attr: u8, cluster: u32, size: u32) 
 
 fn setupFat() void {
     fake.reset(0); // FAT volume
-    fake.stamp_w_calls = 0;
-    fake.stamp_c_calls = 0;
 }
 
 test "entry_first_cluster decodes the hi:lo halves" {
@@ -154,7 +152,7 @@ test "write mode truncates the entry, stamps it, and sets archive" {
     // the on-disk entry was rewritten: zero cluster+size, archive set, mtime stamp
     // the real find answers at slot 0: the truncate rewrote THAT entry
     try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.sector[off_file_size..][0..4], .little));
-    try std.testing.expectEqual(@as(u32, 1), fake.stamp_w_calls);
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, fake.sector[24..26], .little));
     try std.testing.expectEqual(attr_archive, fake.sector[off_attr] & (attr_archive | attr_directory));
     try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
 }
@@ -187,7 +185,7 @@ test "create_new carves an empty archive entry and stamps its creation" {
     // the committed template: archive attribute, empty, creation-stamped
     try std.testing.expectEqual(attr_archive, fake.sector[off_attr]);
     try std.testing.expectEqual(@as(u32, 0), std.mem.readInt(u32, fake.sector[off_file_size..][0..4], .little));
-    try std.testing.expectEqual(@as(u32, 1), fake.stamp_c_calls);
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, fake.sector[16..18], .little));
 }
 
 test "a read failure leaves the pool untouched" {
@@ -231,7 +229,7 @@ test "close stamps a dirty handle" {
     f.?.dirty = 1;
     const err = ra8_fs.file.priv_close_locked(f);
     try std.testing.expectEqual(ok, err);
-    try std.testing.expectEqual(@as(u32, 1), fake.stamp_w_calls);
+    try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, fake.sector[24..26], .little));
     try std.testing.expectEqual(fake.walk_lba, fake.sector_written.?);
     try std.testing.expectEqual(@as(u32, 0), f.?.in_use);
     try std.testing.expect(f.?.mount == null);
@@ -244,7 +242,6 @@ test "close on a clean handle writes nothing" {
     _ = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     const err = ra8_fs.file.priv_close_locked(f);
     try std.testing.expectEqual(ok, err);
-    try std.testing.expectEqual(@as(u32, 0), fake.stamp_w_calls);
     try std.testing.expectEqual(@as(?u64, null), fake.sector_written);
 }
 
