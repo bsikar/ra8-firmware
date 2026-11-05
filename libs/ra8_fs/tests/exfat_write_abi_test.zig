@@ -544,7 +544,6 @@ fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t
     return 0;
 }
 
-
 fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
     _ = .{ leaf, n };
     out11[0] = 'A';

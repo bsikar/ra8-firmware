@@ -516,7 +516,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     return sum;
 }
 
-
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
     out_clus.* = 3;
@@ -586,9 +585,6 @@ fn priv_dir_commit(m: [*c]const c.ra8_fs_mount_t, plan: [*c]const c.dir_insert_t
     out_off.* = 0;
     return 0;
 }
-
-
-
 
 fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
     _ = .{ leaf, n };

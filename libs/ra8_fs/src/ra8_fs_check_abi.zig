@@ -319,3 +319,81 @@ pub export fn internal_fat_tree(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 
     }
     return @intCast(c.k_ra8_ok);
 }
+
+// ---------------------------------------------------------------------------
+// Pass 3 and the FAT orchestrator (RA8FW-1113)
+// ---------------------------------------------------------------------------
+
+const lost_cluster: u8 = @intCast(c.k_ra8_fs_check_fault_lost_cluster);
+const free_count_bad: u8 = @intCast(c.k_ra8_fs_check_fault_free_count_bad);
+const fsi_off_lead: usize = @intCast(c.k_fmt_fsi_off_lead);
+const fsi_off_struct: usize = @intCast(c.k_fmt_fsi_off_struct);
+const fsi_off_trail: usize = @intCast(c.k_fmt_fsi_off_trail);
+const fsi_off_free: usize = @intCast(c.k_fmt_fsi_off_free);
+const fsi_lead_sig: u32 = @intCast(c.k_fmt_fsi_lead_sig);
+const fsi_struct_sig: u32 = @intCast(c.k_fmt_fsi_struct_sig);
+const fsi_trail_sig: u32 = @intCast(c.k_fmt_fsi_trail_sig);
+const off_f32_fsinfo: usize = @intCast(c.k_fmt_off_f32_fsinfo);
+
+extern fn priv_rd16(p: [*c]const u8) u16;
+extern fn priv_rd32(p: [*c]const u8) u32;
+
+/// Pass 3: flag allocated clusters no directory chain reached, in one pass
+/// over the FAT after the tree walk has run.
+pub export fn internal_fat_diff(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    const marker = internal_fat_bad_marker(ctx[0].m);
+    const last = @as(u32, @intCast(c.k_cluster_first_data)) + ctx[0].rep[0].clusters_total;
+    var clus: u32 = @intCast(c.k_cluster_first_data);
+    while (clus < last) : (clus += 1) {
+        var v: u32 = 0;
+        const err: u16 = @intCast(c.priv_fat_get(ctx[0].m, clus, &v));
+        if (err != c.k_ra8_ok) return err;
+        if (v == c.k_cluster_free or v == marker) continue;
+        const idx = clus - first_data;
+        const mask = @as(u8, 1) << @intCast(idx & bit_mask);
+        if (ctx[0].bitmap[idx >> byte_shift] & mask == 0) {
+            ctx[0].rep[0].clusters_lost += 1;
+            priv_check_fault(ctx, lost_cluster, clus, 0, 0);
+        }
+    }
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Compare a FAT32 volume's FSInfo free count against the classify pass. A
+/// volume with no or an untrusted FSInfo sector is not a fault: there is
+/// simply nothing to compare.
+pub export fn internal_fat_fsinfo(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    if (ctx[0].m[0].type != c.k_ra8_fs_type_fat32) return @intCast(c.k_ra8_ok);
+    const boot = c.priv_sec_walk();
+    const be: u16 = @intCast(c.priv_read_sector(ctx[0].m, 0, boot));
+    if (be != c.k_ra8_ok) return be;
+    const lba: u32 = priv_rd16(boot + off_f32_fsinfo);
+    if (lba == 0 or lba >= ctx[0].m[0].reserved_sectors) return @intCast(c.k_ra8_ok);
+    const sec = c.priv_sec_walk();
+    const se: u16 = @intCast(c.priv_read_sector(ctx[0].m, lba, sec));
+    if (se != c.k_ra8_ok) return se;
+    if (priv_rd32(sec + fsi_off_lead) != fsi_lead_sig) return @intCast(c.k_ra8_ok);
+    if (priv_rd32(sec + fsi_off_struct) != fsi_struct_sig) return @intCast(c.k_ra8_ok);
+    if (priv_rd32(sec + fsi_off_trail) != fsi_trail_sig) return @intCast(c.k_ra8_ok);
+    const stored = priv_rd32(sec + fsi_off_free);
+    if (stored != c.k_fs_free_unknown and stored != ctx[0].rep[0].clusters_free) {
+        priv_check_fault(ctx, free_count_bad, 0, lba, 0);
+    }
+    return @intCast(c.k_ra8_ok);
+}
+
+/// The FAT half of the read-only consistency check: classify the FAT, then
+/// with a bitmap walk the tree, diff for lost clusters, and compare the
+/// FSInfo free count.
+pub export fn priv_check_fat(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    var err: u16 = @intCast(internal_fat_classify(ctx));
+    if (err != c.k_ra8_ok) return err;
+    if (ctx[0].bitmap != null) {
+        priv_check_zero_bitmap(ctx);
+        err = internal_fat_tree(ctx);
+        if (err != c.k_ra8_ok) return err;
+        err = internal_fat_diff(ctx);
+        if (err != c.k_ra8_ok) return err;
+    }
+    return internal_fat_fsinfo(ctx);
+}

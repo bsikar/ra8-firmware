@@ -156,122 +156,18 @@ ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32
  * =============================================================================
  */
 
-/**
- * @brief Pass 3: flag allocated clusters no directory chain reached.
- *
- * @details A single pass over the FAT flagging allocated clusters that no chain reached.
- *
- * @param[in,out] ctx The scan context.
- * @return Error code.
- * @retval k_ra8_ok    The diff completed.
- * @retval k_ra8_err_* Backend read failure.
- * @pre @p ctx and its bitmap are non-NULL; the tree walk has run.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post `clusters_lost` counts allocated-but-unvisited clusters.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): `clusters_total` iterations.
- * @since 0.1.0
+/* internal_fat_diff (the lost-cluster pass) is ported to Zig as
+ * src/ra8_fs_check_abi.zig; the prototype in
+ * ra8_fs_fat_check_internal.h links to it.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_diff(ra8_fs_check_ctx_t* ctx)
-{
-  const uint32_t marker = internal_fat_bad_marker(ctx->m);
-  const uint32_t last   = (uint32_t)k_cluster_first_data + ctx->rep->clusters_total;
-  for (uint32_t c = (uint32_t)k_cluster_first_data; c < last; c++) {
-    uint32_t        v   = 0U;
-    const ra8_err_t err = priv_fat_get(ctx->m, c, &v);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if ((v == (uint32_t)k_cluster_free) || (v == marker)) {
-      continue;
-    }
-    const uint32_t idx  = c - (uint32_t)k_cluster_first_data;
-    const uint8_t  mask = (uint8_t)(1U << (idx & (uint32_t)k_check_bit_mask));
-    if ((ctx->bitmap[idx >> (uint32_t)k_check_byte_shift] & mask) == 0U) {
-      ctx->rep->clusters_lost++;
-      priv_check_fault(ctx, k_ra8_fs_check_fault_lost_cluster, c, 0U, 0U);
-    }
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Compare a FAT32 volume's FSInfo free count against the classify pass.
- *
- * @details Reads `BPB_FSInfo` from the boot sector, validates the three FSInfo
- *          signatures (MS FAT spec sec 5), and only then compares the stored free
- *          count to `clusters_free`. A volume with no or an untrusted FSInfo
- *          sector is not a fault -- there is simply nothing to compare.
- *
- * @param[in,out] ctx The scan context.
- * @return Error code.
- * @retval k_ra8_ok    Compared, or nothing to compare.
- * @retval k_ra8_err_* Backend read failure.
- * @pre @p ctx is non-NULL; the classify pass has run.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post A trustworthy FSInfo count that disagrees raises a fault.
- * @post No volume state is modified.
- * @note Two sector reads; no loop.
- * @since 0.1.0
+/* internal_fat_fsinfo (the FSInfo free-count compare) is ported to
+ * Zig as src/ra8_fs_check_abi.zig; the prototype in
+ * ra8_fs_fat_check_internal.h links to it.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
-{
-  if (ctx->m->type != k_ra8_fs_type_fat32) {
-    return k_ra8_ok;
-  }
-  uint8_t* const  boot = priv_sec_walk();
-  const ra8_err_t be   = priv_read_sector(ctx->m, 0U, boot);
-  if (be != k_ra8_ok) {
-    return be;
-  }
-  const uint32_t lba = (uint32_t)priv_rd16(&boot[k_fmt_off_f32_fsinfo]);
-  if ((lba == 0U) || (lba >= ctx->m->reserved_sectors)) {
-    return k_ra8_ok;
-  }
-  uint8_t* const  sec = priv_sec_walk();
-  const ra8_err_t se  = priv_read_sector(ctx->m, lba, sec);
-  if (se != k_ra8_ok) {
-    return se;
-  }
-  if (priv_rd32(&sec[k_fmt_fsi_off_lead]) != (uint32_t)k_fmt_fsi_lead_sig) {
-    return k_ra8_ok;
-  }
-  if (priv_rd32(&sec[k_fmt_fsi_off_struct]) != (uint32_t)k_fmt_fsi_struct_sig) {
-    return k_ra8_ok;
-  }
-  if (priv_rd32(&sec[k_fmt_fsi_off_trail]) != (uint32_t)k_fmt_fsi_trail_sig) {
-    return k_ra8_ok;
-  }
-  const uint32_t stored = priv_rd32(&sec[k_fmt_fsi_off_free]);
-  if ((stored != (uint32_t)k_fs_free_unknown) && (stored != ctx->rep->clusters_free)) {
-    priv_check_fault(ctx, k_ra8_fs_check_fault_free_count_bad, 0U, lba, 0U);
-  }
-  return k_ra8_ok;
-}
-
-/* `priv_check_fat()`: see header for the documented contract. */
-ra8_err_t priv_check_fat(ra8_fs_check_ctx_t* ctx)
-{
-  ra8_err_t err = internal_fat_classify(ctx);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (ctx->bitmap != nullptr) {
-    priv_check_zero_bitmap(ctx);
-    err = internal_fat_tree(ctx);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    err = internal_fat_diff(ctx);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return internal_fat_fsinfo(ctx);
-}
-
+/* priv_check_fat (the FAT orchestrator) is ported to Zig as
+ * src/ra8_fs_check_abi.zig; the prototype in
+ * ra8_fs_fat_check_internal.h links to it.
+ */
 /* =============================================================================
  * Public entry point -- the lock bracket
  * =============================================================================
