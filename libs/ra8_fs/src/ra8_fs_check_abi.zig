@@ -80,3 +80,56 @@ pub export fn priv_check_zero_bitmap(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c)
         ctx[0].bitmap[i] = 0;
     }
 }
+
+// ---------------------------------------------------------------------------
+// Pass 1: classify every FAT entry (RA8FW-1109)
+// ---------------------------------------------------------------------------
+
+/// The FAT defective-cluster marker for the mounted variant (MS FAT spec
+/// sec 4): one below the end-of-chain threshold.
+const bad_fat12: u32 = 0x0FF7;
+const bad_fat16: u32 = 0xFFF7;
+const bad_fat32: u32 = 0x0FFF_FFF7;
+
+const cluster_free: u32 = @intCast(c.k_cluster_free);
+
+/// The defective-cluster marker for the mounted FAT variant.
+pub export fn internal_fat_bad_marker(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
+    if (m[0].type == c.k_ra8_fs_type_fat12) return bad_fat12;
+    if (m[0].type == c.k_ra8_fs_type_fat16) return bad_fat16;
+    return bad_fat32;
+}
+
+/// Classify one FAT entry value into the report's cluster tallies. Free,
+/// defective and end-of-chain are their own tallies; a value inside the data
+/// range counts used; the reserved 1 or a pointer past the last cluster
+/// counts used and raises a bad-FAT-value fault.
+pub export fn internal_fat_classify_one(ctx: [*c]c.ra8_fs_check_ctx_t, cluster: u32, value: u32) callconv(.c) void {
+    if (value == cluster_free) {
+        ctx[0].rep[0].clusters_free += 1;
+        return;
+    }
+    if (value == internal_fat_bad_marker(ctx[0].m)) {
+        ctx[0].rep[0].clusters_bad += 1;
+        return;
+    }
+    ctx[0].rep[0].clusters_used += 1;
+    if (c.priv_is_eoc(ctx[0].m, value) != 0) return;
+    if (priv_check_in_range(ctx, value) == 0) {
+        priv_check_fault(ctx, bad_fat_value, cluster, 0, 0);
+    }
+}
+
+/// Pass 1: read and classify every data cluster's FAT entry, one bounded
+/// sweep over the whole FAT.
+pub export fn internal_fat_classify(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    const last = first_data + ctx[0].rep[0].clusters_total;
+    var clus: u32 = first_data;
+    while (clus < last) : (clus += 1) {
+        var v: u32 = 0;
+        const err: u16 = @intCast(c.priv_fat_get(ctx[0].m, clus, &v));
+        if (err != c.k_ra8_ok) return err;
+        internal_fat_classify_one(ctx, clus, v);
+    }
+    return @intCast(c.k_ra8_ok);
+}
