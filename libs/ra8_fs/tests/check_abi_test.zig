@@ -729,3 +729,236 @@ test "verify set clamps nlen to the name cap" {
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
     _ = h;
 }
+
+fn stageExfatStream(set: *[7 * 32]u8, first: u32, dlen: u64, no_fat: bool) void {
+    const so_flags: usize = @intCast(c.k_exfat_strm_off_flags);
+    const so_clus: usize = @intCast(c.k_exfat_strm_off_clus);
+    const so_dlen: usize = @intCast(c.k_exfat_strm_off_dlen);
+    if (no_fat) set[32 + so_flags] |= @as(u8, @intCast(c.k_exfat_secflag_no_fat));
+    var v: u32 = first;
+    for (0..4) |i| {
+        set[32 + so_clus + i] = @truncate(v);
+        v >>= 8;
+    }
+    var d: u64 = dlen;
+    for (0..8) |i| {
+        set[32 + so_dlen + i] = @truncate(d);
+        d >>= 8;
+    }
+}
+
+test "the exFAT push queues directories and caps the stack once" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 4, 0);
+    var items: [4]c.exfat_dir_t = undefined;
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    st.items = &items;
+    var d = std.mem.zeroes(c.exfat_dir_t);
+    d.cluster = 9;
+    check.internal_exchk_push(&t.ctx, &st, &d);
+    d.cluster = 10;
+    check.internal_exchk_push(&t.ctx, &st, &d);
+    try std.testing.expectEqual(@as(u32, 2), st.top);
+    try std.testing.expectEqual(@as(u32, 9), st.items[0].cluster);
+    try std.testing.expectEqual(@as(u32, 10), st.items[1].cluster);
+    st.top = @intCast(c.k_ra8_fs_check_max_dirs);
+    d.cluster = 11;
+    check.internal_exchk_push(&t.ctx, &st, &d);
+    try std.testing.expectEqual(@as(u8, 1), st.truncated);
+    try std.testing.expectEqual(scan_truncated, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 11), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    d.cluster = 12;
+    check.internal_exchk_push(&t.ctx, &st, &d);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+}
+
+test "the exFAT set walk counts an empty file and marks nothing" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "EMPTY");
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_set_clusters(&t.ctx, &set, &set, &st, 9, 7);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0), t.bmp[0]);
+}
+
+test "the exFAT set walk faults an out-of-range first cluster" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "FAR");
+    stageExfatStream(&set, 55, 512, false);
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_set_clusters(&t.ctx, &set, &set, &st, 9, 7);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(bad_dir_entry, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 55), t.rep.first_fault.cluster);
+}
+
+test "the exFAT set walk queues a subdirectory on the worklist" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "SUBDIR");
+    set[4] |= @as(u8, @intCast(c.k_ra8_fs_attr_directory));
+    stageExfatStream(&set, 5, 0, false);
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_set_clusters(&t.ctx, &set, &set, &st, 9, 7);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), st.top);
+    try std.testing.expectEqual(@as(u32, 5), st.items[0].cluster);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+}
+
+test "the exFAT set walk marks a contiguous file run" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "CONTIG");
+    stageExfatStream(&set, 5, 512, true);
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_set_clusters(&t.ctx, &set, &set, &st, 9, 7);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0x08), t.bmp[0]);
+}
+
+test "the exFAT set walk follows the FAT to a chained file's clusters" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    fake.fat[5] = 0xFFFF_FFFF;
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "CHAIN");
+    stageExfatStream(&set, 5, 512, false);
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_set_clusters(&t.ctx, &set, &set, &st, 9, 7);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0x08), t.bmp[0]);
+}
+
+test "the exFAT scan stops on the end-of-directory marker" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = fake.dir_lba;
+    for (&fake.dir) |*row| @memset(row, 0);
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_scan_dir(&t.ctx, &dir, &st);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the exFAT scan dispatches a system entry and keeps walking" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = fake.dir_lba;
+    for (&fake.dir) |*row| @memset(row, 0);
+    fake.dir[0][0] = @intCast(c.k_exfat_entry_upcase);
+    fake.dir[0][1] = @intCast(c.k_exfat_secflag_no_fat);
+    var v: u32 = 5;
+    for (0..4) |i| {
+        fake.dir[0][20 + i] = @truncate(v);
+        v >>= 8;
+    }
+    var d: u64 = 512;
+    for (0..8) |i| {
+        fake.dir[0][24 + i] = @truncate(d);
+        d >>= 8;
+    }
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    var st = std.mem.zeroes(c.exfat_dir_stack_t);
+    var items: [4]c.exfat_dir_t = undefined;
+    st.items = &items;
+    const r = check.internal_exchk_scan_dir(&t.ctx, &dir, &st);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u8, 0x08), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the exFAT terminal probe accepts an end marker past the ceiling" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = fake.dir_lba;
+    for (&fake.dir) |*row| @memset(row, 0);
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    var cur = std.mem.zeroes(c.exfat_cursor_t);
+    cur.cluster = 2;
+    cur.scanned = @intCast(c.k_exfat_scan_limit);
+    const r = check.internal_exchk_scan_dir_terminal(&t.ctx, &cur, &dir);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the exFAT terminal probe faults a live entry past the ceiling" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = fake.dir_lba;
+    for (&fake.dir) |*row| @memset(row, 0);
+    fake.dir[0][0] = 0x83; // a live volume-label entry past the bound
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    var cur = std.mem.zeroes(c.exfat_cursor_t);
+    cur.cluster = 2;
+    cur.scanned = @intCast(c.k_exfat_scan_limit);
+    const r = check.internal_exchk_scan_dir_terminal(&t.ctx, &cur, &dir);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(scan_truncated, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 2), t.rep.first_fault.cluster);
+}
+
+test "the exFAT tree walks the root and marks a file's run" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = fake.dir_lba;
+    mp.root_cluster = 2;
+    fake.fat[2] = 0xFFFF_FFFF;
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "REPORT");
+    set[0] = @intCast(c.k_exfat_entry_file); // the File entry type byte the scan dispatches on
+    set[1] = 6;
+    stageExfatStream(&set, 5, 512, true);
+    for (&fake.dir) |*row| @memset(row, 0);
+    for (0..7) |i| fake.dir[i] = set[i * 32 ..][0..32].*;
+    const r = check.internal_exchk_tree(&t.ctx);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0x09), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
