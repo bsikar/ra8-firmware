@@ -11,6 +11,19 @@ const c = fs.c;
 comptime {
     _ = @import("fs_walker_fake.zig");
 }
+const fake = @import("fs_walker_fake.zig");
+
+const fat32_bad: u32 = 0x0FFF_FFF7;
+const fe_ok: u16 = c.k_ra8_ok;
+
+fn mkMount(comptime t: u32) *c.ra8_fs_mount_t {
+    fake.reset(@intCast(t));
+    const mp = @constCast(fake.mount());
+    mp.first_fat_lba = fake.fat_lba;
+    mp.fat_size_sectors = fake.fat_secs;
+    mp.num_fats = 1;
+    return mp;
+}
 
 export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
     _ = m;
@@ -103,4 +116,46 @@ test "zero bitmap clears exactly the valid range's bytes" {
     try std.testing.expectEqual(@as(u8, 0), t.bmp[3]);
     try std.testing.expectEqual(@as(u8, 0), t.bmp[4]);
     try std.testing.expectEqual(@as(u8, 0xAA), t.bmp[5]);
+}
+
+test "the defective-cluster marker follows the mounted FAT type" {
+    try std.testing.expectEqual(@as(u32, 0x0FF7), check.internal_fat_bad_marker(mkMount(c.k_ra8_fs_type_fat12)));
+    try std.testing.expectEqual(@as(u32, 0xFFF7), check.internal_fat_bad_marker(mkMount(c.k_ra8_fs_type_fat16)));
+    try std.testing.expectEqual(fat32_bad, check.internal_fat_bad_marker(mkMount(c.k_ra8_fs_type_fat32)));
+}
+
+test "classify tallies free, bad and used, and faults the reserved 1" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 6, 0);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    check.internal_fat_classify_one(&t.ctx, 2, 0);
+    check.internal_fat_classify_one(&t.ctx, 3, fat32_bad);
+    check.internal_fat_classify_one(&t.ctx, 4, 0x0FFF_FFFF);
+    check.internal_fat_classify_one(&t.ctx, 5, 7);
+    check.internal_fat_classify_one(&t.ctx, 6, 1);
+    check.internal_fat_classify_one(&t.ctx, 7, 9);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_free);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_bad);
+    try std.testing.expectEqual(@as(u32, 4), t.rep.clusters_used);
+    try std.testing.expectEqual(@as(u32, 2), t.rep.faults_total);
+    try std.testing.expectEqual(bad_fat_value, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 6), t.rep.first_fault.cluster);
+}
+
+test "the classify pass sweeps every data cluster through the real getter" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 6, 0);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 0;
+    fake.fat[3] = fat32_bad;
+    fake.fat[4] = 0x0FFF_FFFF;
+    fake.fat[5] = 6;
+    fake.fat[6] = 0x0FFF_FFFF;
+    fake.fat[7] = 1;
+    try std.testing.expectEqual(@as(u16, fe_ok), check.internal_fat_classify(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_free);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_bad);
+    try std.testing.expectEqual(@as(u32, 4), t.rep.clusters_used);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u32, 7), t.rep.first_fault.cluster);
 }

@@ -218,6 +218,12 @@ bool priv_check_visit(ra8_fs_check_ctx_t*       ctx,
 RA8_PRIV
 void priv_check_zero_bitmap(ra8_fs_check_ctx_t* ctx);
 
+uint32_t internal_fat_bad_marker(const ra8_fs_mount_t* m);
+
+void internal_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uint32_t value);
+
+ra8_err_t internal_fat_classify(ra8_fs_check_ctx_t* ctx);
+
 /**
  * @brief Run the FAT12/16/32 consistency check into the context's report.
  *

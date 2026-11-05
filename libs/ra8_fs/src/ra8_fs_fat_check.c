@@ -112,115 +112,11 @@ typedef struct {
  * the exFAT half call it through them.
  */
 
-/* =============================================================================
- * Pass 1: classify every FAT entry
- * =============================================================================
+/* Pass 1 (the FAT defective-cluster marker and the classify pass over every
+ * FAT entry) is ported to Zig as src/ra8_fs_check_abi.zig; the prototypes in
+ * ra8_fs_fat_check_internal.h link to it, and the fsinfo pass and priv_check_fat
+ * below call it through them.
  */
-
-/**
- * @brief The FAT defective-cluster marker for the mounted variant.
- *
- * @details One below the end-of-chain threshold for the mounted FAT variant (MS FAT spec sec 4).
- *
- * @param[in] m Mounted FAT volume.
- * @return The marker value for `m->type`.
- * @retval k_check_bad_fat12 FAT12.
- * @retval k_check_bad_fat16 FAT16.
- * @retval k_check_bad_fat32 FAT32.
- * @pre @p m is non-NULL and `m->type` is a FAT variant.
- * @pre The mount's geometry is populated.
- * @post No state modified.
- * @post Result depends only on `m->type`.
- * @note Pure; trivially thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint32_t internal_fat_bad_marker(const ra8_fs_mount_t* m)
-{
-  if (m->type == k_ra8_fs_type_fat12) {
-    return (uint32_t)k_check_bad_fat12;
-  }
-  if (m->type == k_ra8_fs_type_fat16) {
-    return (uint32_t)k_check_bad_fat16;
-  }
-  return (uint32_t)k_check_bad_fat32;
-}
-
-/**
- * @brief Classify one FAT entry value into the report's cluster tallies.
- *
- * @details Free, defective and end-of-chain are each their own tally; a value in
- *          `[2, 2 + clusters_total)` is a valid next-cluster pointer and counts
- *          used; anything else -- the reserved 1, or a pointer past the last
- *          cluster -- is a bad FAT value, still counted used but recorded as a
- *          fault.
- *
- * @param[in,out] ctx     The scan context.
- * @param[in]     cluster The cluster whose entry @p value belongs to.
- * @param[in]     value   The FAT entry value read for @p cluster.
- *
- * @return Nothing.
- *
- * @pre @p ctx is non-NULL; the report's `clusters_total` is populated.
- * @pre @p value came from ::priv_fat_get for @p cluster.
- * @post Exactly one tally (`clusters_free` / `clusters_bad` / `clusters_used`) is
- *       incremented.
- * @post A reserved / out-of-range pointer raises a bad-FAT-value fault.
- *
- * @note Not thread-safe; the check holds the library lock.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uint32_t value)
-{
-  if (value == (uint32_t)k_cluster_free) {
-    ctx->rep->clusters_free++;
-    return;
-  }
-  if (value == internal_fat_bad_marker(ctx->m)) {
-    ctx->rep->clusters_bad++;
-    return;
-  }
-  ctx->rep->clusters_used++;
-  if (priv_is_eoc(ctx->m, value) != 0U) {
-    return;
-  }
-  if (!priv_check_in_range(ctx, value)) {
-    priv_check_fault(ctx, k_ra8_fs_check_fault_bad_fat_value, cluster, 0U, 0U);
-  }
-}
-
-/**
- * @brief Pass 1: read and classify every data cluster's FAT entry.
- *
- * @details A single pass over the FAT, tallying free, used and defective clusters.
- *
- * @param[in,out] ctx The scan context.
- * @return Error code.
- * @retval k_ra8_ok    Every entry classified.
- * @retval k_ra8_err_* Backend read failure.
- * @pre @p ctx is non-NULL; `ctx->m->type` is a FAT variant.
- * @pre The report's `clusters_total` is populated.
- * @post The free / used / bad tallies describe the whole FAT.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): `clusters_total` iterations.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_fat_classify(ra8_fs_check_ctx_t* ctx)
-{
-  const uint32_t last = (uint32_t)k_cluster_first_data + ctx->rep->clusters_total;
-  for (uint32_t c = (uint32_t)k_cluster_first_data; c < last; c++) {
-    uint32_t        v   = 0U;
-    const ra8_err_t err = priv_fat_get(ctx->m, c, &v);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    internal_fat_classify_one(ctx, c, v);
-  }
-  return k_ra8_ok;
-}
 
 /* =============================================================================
  * Pass 2: walk the directory tree, marking referenced clusters
