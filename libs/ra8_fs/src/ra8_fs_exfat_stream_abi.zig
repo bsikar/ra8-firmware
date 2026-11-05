@@ -5,7 +5,10 @@
 //! pick the next cluster, turn a contiguous run into a real FAT chain, link
 //! a freshly allocated cluster onto a file's or directory's allocation, grow
 //! one cluster at a time, and rewrite a grown directory's own Stream entry.
-//! Ported from `ra8_fs_fat_exfat_stream.c`; the stream-write half stays in C.
+//! RA8FW-1120 adds the stream-write half: resolve a byte offset to a
+//! sector, zero-fill an unwritten prefix, write the payload, and flush a
+//! file's entry set back to the volume. Ported from
+//! `ra8_fs_fat_exfat_stream.c`, now an include stub.
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
@@ -313,4 +316,222 @@ pub export fn priv_exfat_grow_dir(m: [*c]const c.ra8_fs_mount_t, dir: [*c]c.exfa
     }
     dir[0].contig_end = if (nofat != 0) dir[0].cluster + new_alloc else 0;
     return ok;
+}
+
+// ============================================================
+// Stream write (RA8FW-1120)
+// ============================================================
+
+extern fn priv_write_into_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, off_in_sector: u32, src: [*c]const u8, put: u32) callconv(.c) u16;
+extern fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32;
+extern fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64;
+extern fn priv_exfat_file_stamp_write(file_entry: [*c]u8) callconv(.c) void;
+extern fn priv_wr32(p: [*c]u8, v: u32) callconv(.c) void;
+
+const strm_off_clus: u32 = @intCast(c.k_exfat_strm_off_clus);
+const off_file_attr: u32 = @intCast(c.k_exfat_off_file_attr);
+const attr_archive: u8 = @intCast(c.k_exfat_attr_archive);
+
+/// Sector of zeros the gap-filling loop writes from; the Zig side keeps its
+/// own read-only copy rather than reaching across to the C one.
+const zero_sector: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+
+/// Resolve the cluster at chain index `idx` of an already-grown file. A
+/// contiguous file is arithmetic; a chained one walks the FAT from the
+/// forward waypoint the read path maintains, so a sequential write costs one
+/// FAT lookup per cluster rather than one per cluster from the head.
+pub export fn internal_exfat_cluster_at(file: [*c]c.ra8_fs_file_t, idx: u32, out: [*c]u32) callconv(.c) u16 {
+    if (file[0].no_fat_chain != 0) {
+        out[0] = file[0].first_cluster + idx;
+        return ok;
+    }
+    // Nested rather than joined, because only the inner guard has both
+    // answers available: by the time a chained file is walked its waypoint
+    // is always a real cluster, so a joined condition would carry a branch
+    // no input can make false.
+    var from = file[0].first_cluster;
+    var hops = idx;
+    if (file[0].walk_cache_cluster >= first_data) {
+        if (idx >= file[0].walk_cache_idx) {
+            from = file[0].walk_cache_cluster;
+            hops = idx - file[0].walk_cache_idx;
+        }
+    }
+    var cur = from;
+    var i: u32 = 0;
+    while (i < hops) : (i += 1) {
+        var next: u32 = 0;
+        const e = priv_fat_get(file[0].mount, cur, &next);
+        if (e != ok) {
+            return e;
+        }
+        if (priv_is_eoc(file[0].mount, next) != 0) {
+            return c.k_ra8_err_invalid_state;
+        }
+        cur = next;
+    }
+    file[0].walk_cache_idx = idx;
+    file[0].walk_cache_cluster = cur;
+    out[0] = cur;
+    return ok;
+}
+
+/// Locate byte position `pos` on the volume, allocating to reach it: the one
+/// place both the data loop and the gap-filling loop turn a file offset into
+/// a sector plus an offset inside it.
+pub export fn internal_exfat_slice_at(file: [*c]c.ra8_fs_file_t, pos: u64, out_lba: [*c]u64, out_off: [*c]u32, out_room: [*c]u32) callconv(.c) u16 {
+    const m = file[0].mount;
+    const cbytes = priv_cluster_bytes(m);
+    const idx: u32 = @intCast(pos / cbytes);
+    var e = priv_exfat_ensure_clusters(file, idx + 1);
+    if (e != ok) {
+        return e;
+    }
+    var cur: u32 = 0;
+    e = internal_exfat_cluster_at(file, idx, &cur);
+    if (e != ok) {
+        return e;
+    }
+    file[0].cur_cluster = cur;
+    const in_cluster: u32 = @intCast(pos % cbytes);
+    const sector = priv_bps(m);
+    out_lba[0] = priv_cluster_to_lba(m, cur) + in_cluster / sector;
+    out_off[0] = in_cluster % sector;
+    out_room[0] = sector - out_off[0];
+    return ok;
+}
+
+/// Fill `[valid_bytes, offset)` with real zeros: ValidDataLength is a PREFIX
+/// length, so once bytes land beyond it the gap cannot be recorded as
+/// unwritten -- the only honest answer is to write the zeros a reader is
+/// entitled to see. Each iteration advances `valid_bytes` by at least one
+/// byte, so the loop is bounded by the gap it was given.
+pub export fn internal_exfat_close_gap(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
+    while (file[0].valid_bytes < file[0].offset) {
+        var lba: u64 = 0;
+        var off: u32 = 0;
+        var room: u32 = 0;
+        var e = internal_exfat_slice_at(file, file[0].valid_bytes, &lba, &off, &room);
+        if (e != ok) {
+            return e;
+        }
+        const gap = file[0].offset - file[0].valid_bytes;
+        var n = room;
+        if (gap < room) {
+            n = @intCast(gap);
+        }
+        e = priv_write_into_sector(file[0].mount, lba, off, &zero_sector, n);
+        if (e != ok) {
+            return e;
+        }
+        file[0].valid_bytes += n;
+    }
+    return ok;
+}
+
+/// Write `len` bytes at the handle's offset: fill the unwritten prefix first,
+/// then stream the payload sector by sector, extending the allocation and
+/// both lengths as it goes.
+pub export fn priv_exfat_write_stream(file: [*c]c.ra8_fs_file_t, buf: [*c]const u8, len: u32) callconv(.c) u16 {
+    var e = internal_exfat_close_gap(file);
+    if (e != ok) {
+        return e;
+    }
+    var consumed: u32 = 0;
+    while (consumed < len) {
+        var lba: u64 = 0;
+        var off: u32 = 0;
+        var room: u32 = 0;
+        e = internal_exfat_slice_at(file, file[0].offset, &lba, &off, &room);
+        if (e != ok) {
+            return e;
+        }
+        var put = len - consumed;
+        if (put > room) {
+            put = room;
+        }
+        e = priv_write_into_sector(file[0].mount, lba, off, buf + consumed, put);
+        if (e != ok) {
+            return e;
+        }
+        consumed += put;
+        file[0].offset += put;
+        if (file[0].offset > file[0].valid_bytes) {
+            file[0].valid_bytes = file[0].offset;
+        }
+        if (file[0].offset > file[0].size_bytes) {
+            file[0].size_bytes = file[0].offset;
+        }
+    }
+    return ok;
+}
+
+/// Patch a Stream-extension entry to describe the handle's current state:
+/// the four fields a stream changes, as the full 64-bit lengths the format
+/// defines. NoFatChain is asserted only for a file that actually owns
+/// clusters; a contiguous run of nothing is a claim fsck checks.
+pub export fn internal_exfat_patch_stream(file: [*c]const c.ra8_fs_file_t, strm: [*c]u8) callconv(.c) void {
+    var flags: u8 = secflag_poss;
+    var first: u32 = 0;
+    if (file[0].alloc_clusters > 0) {
+        first = file[0].first_cluster;
+        if (file[0].no_fat_chain != 0) {
+            flags = secflag_alloc;
+        }
+    }
+    strm[strm_off_flags] = flags;
+    priv_wr32(strm + strm_off_clus, first);
+    priv_wr64(strm + off_strm_valid, file[0].valid_bytes);
+    priv_wr64(strm + strm_off_dlen, file[0].size_bytes);
+}
+
+/// Read a file's entry set back into `set`, recording where it lives: the
+/// ordinary directory cursor gathers it, so a set that straddles a cluster
+/// boundary is read correctly rather than by flat arithmetic that would run
+/// off the end of the first cluster.
+pub export fn internal_exfat_gather_set(file: [*c]const c.ra8_fs_file_t, set: [*c]u8, at_file: [*c]c.exfat_setpos_t, at_stream: [*c]c.exfat_setpos_t) callconv(.c) u16 {
+    var cur = c.exfat_cursor_t{ .cluster = file[0].entry_set_cluster, .entry_in_cluster = file[0].entry_set_index, .scanned = 0, .contig_end = 0 };
+    var k: u32 = 0;
+    while (k < file[0].entry_set_count) : (k += 1) {
+        const here = c.exfat_setpos_t{ .cluster = cur.cluster, .index = cur.entry_in_cluster };
+        const e = priv_exfat_next_entry(file[0].mount, &cur, set + (k * entry_bytes));
+        if (e != ok) {
+            return e;
+        }
+        if (k == 0) {
+            at_file[0] = here;
+        }
+        if (k == 1) {
+            at_stream[0] = here;
+        }
+    }
+    return ok;
+}
+
+/// Flush a file's entry set: stamp, patch the Stream entry, recompute the
+/// set checksum, and write the File and Stream entries back at the
+/// coordinates the gather recorded. Stamp and patch happen BEFORE the
+/// checksum: it covers every byte both touch, so the other order writes a
+/// set a host fsck rejects.
+pub export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
+    const m = file[0].mount;
+    var set: [max_set_bytes]u8 = @splat(0);
+    var at_file = c.exfat_setpos_t{ .cluster = 0, .index = 0 };
+    var at_stream = c.exfat_setpos_t{ .cluster = 0, .index = 0 };
+    var e = internal_exfat_gather_set(file, &set, &at_file, &at_stream);
+    if (e != ok) {
+        return e;
+    }
+    priv_exfat_file_stamp_write(&set);
+    // A write also sets the archive attribute: the convention a backup tool
+    // clears and the OS re-sets on modification. The low byte of the 16-bit
+    // FileAttributes field carries it; the other bits are preserved.
+    set[off_file_attr] |= attr_archive;
+    internal_exfat_patch_stream(file, &set[entry_bytes]);
+    priv_wr16(&set[off_file_csum], priv_exfat_set_checksum(&set, file[0].entry_set_count * entry_bytes));
+    e = priv_exfat_write_dir_set(m, at_file.cluster, at_file.index, &set, entry_bytes);
+    if (e != ok) {
+        return e;
+    }
+    return priv_exfat_write_dir_set(m, at_stream.cluster, at_stream.index, &set[entry_bytes], entry_bytes);
 }
