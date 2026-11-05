@@ -533,3 +533,110 @@ test "priv_check_fat runs classify, tree, diff and fsinfo in order" {
     try std.testing.expectEqual(lost_cluster, @as(u8, @intCast(t.rep.first_fault.kind)));
     try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
 }
+
+// ---------------------------------------------------------------------------
+// exFAT marking primitives (RA8FW-1114)
+// ---------------------------------------------------------------------------
+
+test "mark run stamps a contiguous run and reports its cross-link" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 64);
+    check.internal_exchk_mark_run(&t.ctx, 2, 3);
+    try std.testing.expectEqual(@as(u8, 0b0000_0111), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    check.internal_exchk_mark_run(&t.ctx, 3, 1);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.chains_crosslinked);
+    try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
+}
+
+test "mark run faults an out-of-range first cluster" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 64);
+    check.internal_exchk_mark_run(&t.ctx, 1, 5);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u8, 0), t.bmp[0]);
+}
+
+test "mark run clamps a run longer than the in-volume suffix" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 64);
+    // clusters 2..9; a run starting at 6 has only 4 in-volume clusters left
+    check.internal_exchk_mark_run(&t.ctx, 6, 100);
+    try std.testing.expectEqual(@as(u8, 0b1111_0000), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(bad_dir_entry, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 10), t.rep.first_fault.cluster);
+}
+
+test "mark fatchain follows the real FAT to its end of chain" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(fe_ok, check.internal_exchk_mark_fatchain(&t.ctx, 2));
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "mark fatchain faults a bad chain instead of walking it" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 3, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 4;
+    fake.fat[4] = 5;
+    try std.testing.expectEqual(fe_ok, check.internal_exchk_mark_fatchain(&t.ctx, 2));
+    try std.testing.expectEqual(bad_chain, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 4), t.rep.first_fault.cluster);
+}
+
+test "mark dir alloc walks the contiguous run to its end" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_exfat);
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    dir.contig_end = 4;
+    try std.testing.expectEqual(fe_ok, check.internal_exchk_mark_dir_alloc(&t.ctx, &dir));
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "mark dir alloc follows the FAT chain and stops at end of chain" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_exfat);
+    fake.fat[2] = 3;
+    fake.fat[3] = 0xFFFF_FFFF;
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 2;
+    try std.testing.expectEqual(fe_ok, check.internal_exchk_mark_dir_alloc(&t.ctx, &dir));
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the system run marks ceil(DataLength / cluster) clusters" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_exfat);
+    var e = std.mem.zeroes([32]u8);
+    e[0x14] = 2; // FirstCluster = 2
+    e[0x19] = 4; // DataLength = 0x0400 = 1024 bytes = 2 clusters
+    check.internal_exchk_system_run(&t.ctx, &e);
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "a system entry with no first cluster is a no-op" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_exfat);
+    var e = std.mem.zeroes([32]u8);
+    e[0x19] = 4;
+    check.internal_exchk_system_run(&t.ctx, &e);
+    try std.testing.expectEqual(@as(u8, 0), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
