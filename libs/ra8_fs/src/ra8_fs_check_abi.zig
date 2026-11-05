@@ -9,6 +9,7 @@
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
+const exfat_hash = @import("ra8_fs_exfat_hash_abi.zig");
 
 const first_data: u32 = @intCast(c.k_cluster_first_data);
 const bit_mask: u32 = 7;
@@ -487,4 +488,51 @@ pub export fn internal_exchk_system_run(ctx: [*c]c.ra8_fs_check_ctx_t, e: [*c]co
     const nclus: u64 = (bytes / cbytes) + @intFromBool(bytes % cbytes != 0);
     if (first == 0) return;
     internal_exchk_mark_run(ctx, first, nclus);
+}
+
+const off_file_csum: usize = @intCast(c.k_exfat_off_file_csum);
+const off_strm_hash: usize = @intCast(c.k_exfat_off_strm_hash);
+const strm_off_nlen: usize = @intCast(c.k_exfat_strm_off_nlen);
+const name_off: usize = @intCast(c.k_exfat_name_off);
+
+extern fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) u16;
+
+/// Pull the Name entries' UTF-16 units out of a file entry set: unit `i`
+/// lives in name entry `2 + i / name_per_entry`, at column `i %
+/// name_per_entry`, two bytes per unit from the entry's name offset.
+pub export fn internal_exchk_extract_name(set: [*c]const u8, nlen: u32, units: [*c]u16) callconv(.c) void {
+    var i: u32 = 0;
+    while (i < nlen) : (i += 1) {
+        const ent = 2 + i / name_per_entry;
+        const col = i % name_per_entry;
+        const off: usize = ent * entry_bytes + name_off + col * 2;
+        units[i] = priv_rd16(set + off);
+    }
+}
+
+/// Verify one file entry set: the SetChecksum over the whole set and the
+/// stream entry's NameHash over the extracted name. `nlen` is clamped to the
+/// name cap first, so a corrupt length can never read past the set's name
+/// entries. Each mismatch is its own finding, both stamped at the set's
+/// directory offset.
+pub export fn internal_exchk_verify_set(ctx: [*c]c.ra8_fs_check_ctx_t, set: [*c]const u8, count: u32, lba: u64, off: u32) callconv(.c) void {
+    const stored_cs: u16 = priv_rd16(set + off_file_csum);
+    const calc_cs: u16 = priv_exfat_set_checksum(set, count * entry_bytes);
+    if (stored_cs != calc_cs) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_set_checksum, 0, lba, off);
+    }
+    const strm: [*c]const u8 = set + @as(usize, entry_bytes);
+    var nlen: u32 = strm[strm_off_nlen];
+    if (nlen > name_cap) {
+        nlen = name_cap;
+    }
+    var units: [name_cap]u16 = @splat(0);
+    internal_exchk_extract_name(set, nlen, &units);
+    const stored_hash: u16 = priv_rd16(strm + off_strm_hash);
+    const calc_hash: u16 = exfat_hash.priv_exfat_name_hash(&units, nlen);
+    if (stored_hash != calc_hash) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_name_hash, 0, lba, off);
+    }
 }

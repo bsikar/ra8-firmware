@@ -36,6 +36,8 @@ const crosslink: u8 = @intCast(c.k_ra8_fs_check_fault_crosslink);
 const bad_dir_entry: u8 = @intCast(c.k_ra8_fs_check_fault_bad_dir_entry);
 const lost_cluster: u8 = @intCast(c.k_ra8_fs_check_fault_lost_cluster);
 const free_count_bad: u8 = @intCast(c.k_ra8_fs_check_fault_free_count_bad);
+const bad_set_checksum: u8 = @intCast(c.k_ra8_fs_check_fault_bad_set_checksum);
+const bad_name_hash: u8 = @intCast(c.k_ra8_fs_check_fault_bad_name_hash);
 
 const Ctx = struct {
     rep: c.ra8_fs_check_report_t,
@@ -639,4 +641,91 @@ test "a system entry with no first cluster is a no-op" {
     check.internal_exchk_system_run(&t.ctx, &e);
     try std.testing.expectEqual(@as(u8, 0), t.bmp[0]);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+// --- exFAT entry-set verification (RA8FW-1115) ---
+
+test "extract name pulls units across the name entries" {
+    var set = std.mem.zeroes([4 * 32]u8);
+    const name = "ABCDEFGHIJKLMNOPQRST";
+    for (name, 0..) |ch, i| {
+        const ent = 2 + i / 15;
+        const col = i % 15;
+        set[ent * 32 + 2 + col * 2] = ch;
+    }
+    var units: [64]u16 = @splat(0);
+    check.internal_exchk_extract_name(&set, 20, &units);
+    try std.testing.expectEqual(@as(u16, 'A'), units[0]);
+    try std.testing.expectEqual(@as(u16, 'O'), units[14]);
+    try std.testing.expectEqual(@as(u16, 'P'), units[15]);
+    try std.testing.expectEqual(@as(u16, 'T'), units[19]);
+}
+
+fn stageSetName(set: *[7 * 32]u8, name: []const u8) u16 {
+    set[4] = 0x20; // File attributes
+    for (name, 0..) |ch, i| {
+        const ent = 2 + i / 15;
+        const col = i % 15;
+        set[ent * 32 + 2 + col * 2] = ch;
+    }
+    set[32 + 3] = @intCast(name.len);
+    var units: [64]u16 = @splat(0);
+    for (name, 0..) |ch, i| units[i] = ch;
+    const h = fs.exfat_hash.priv_exfat_name_hash(&units, @intCast(name.len));
+    set[32 + 4] = @truncate(h);
+    set[32 + 5] = @truncate(h >> 8);
+    set[2] = 0x20; // the fake harness's checksum: 0xA000 | set[4]
+    set[3] = 0xA0;
+    return h;
+}
+
+test "verify set accepts a clean entry set" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "HELLO");
+    check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.entries_bad);
+}
+
+test "verify set faults a bad set checksum at the set's offset" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "HELLO");
+    set[2] = 0x21;
+    check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(bad_set_checksum, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u64, 9), t.rep.first_fault.lba);
+    try std.testing.expectEqual(@as(u32, 7), t.rep.first_fault.entry_off);
+}
+
+test "verify set faults a bad name hash" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    var set = std.mem.zeroes([7 * 32]u8);
+    const h = stageSetName(&set, "HELLO");
+    set[32 + 4] = @truncate(h +% 1);
+    check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(bad_name_hash, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u64, 9), t.rep.first_fault.lba);
+    try std.testing.expectEqual(@as(u32, 7), t.rep.first_fault.entry_off);
+}
+
+test "verify set clamps nlen to the name cap" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    var set = std.mem.zeroes([7 * 32]u8);
+    const name64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-";
+    const h = stageSetName(&set, name64);
+    set[32 + 3] = 0xFF; // a corrupt length: the clamp bounds the read at 64
+    try std.testing.expectEqual(@as(u32, 64), name64.len);
+    check.internal_exchk_verify_set(&t.ctx, &set, 7, 0, 0);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    _ = h;
 }
