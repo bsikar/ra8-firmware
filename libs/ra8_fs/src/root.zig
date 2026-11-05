@@ -32,6 +32,7 @@ pub const dir_run = @import("ra8_fs_dir_run_abi.zig");
 pub const dir_erase = @import("ra8_fs_dir_erase_abi.zig");
 pub const dir_write = @import("ra8_fs_dir_write_abi.zig");
 pub const dir_walk = @import("ra8_fs_dir_walk_abi.zig");
+pub const fmt = @import("ra8_fs_fmt_abi.zig");
 pub const prim = @import("ra8_fs_fat_prim_abi.zig");
 pub const fat_entry = @import("ra8_fs_fat_entry_abi.zig");
 
@@ -59,6 +60,7 @@ comptime {
     _ = dir_write;
     _ = dir_walk;
     _ = prim;
+    _ = fmt;
     _ = fat_entry;
     _ = time;
 }

@@ -92,6 +92,7 @@ pub fn build(b: *std.Build) void {
         "tests/dir_write_abi_test.zig",
         "tests/prim_abi_test.zig",
         "tests/time_abi_test.zig",
+        "tests/fmt_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
