@@ -1,9 +1,11 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! exFAT cluster growth (RA8FW-1118): cluster pick, run materialization,
-//! NoFatChain linking, one-cluster growth, and the ensure loop, against a
-//! small disk-backed backend with a real FAT and bitmap window.
+//! exFAT growth (RA8FW-1118 cluster growth, RA8FW-1119 directory growth):
+//! cluster pick, run materialization, NoFatChain linking, one-cluster
+//! growth, the ensure loop, and the directory side of the same machinery --
+//! survey, link, entry-set rewrite, append and grow-dir -- against a small
+//! disk-backed backend with a real FAT and bitmap window.
 
 const std = @import("std");
 const fs = @import("ra8_fs");
@@ -130,6 +132,96 @@ export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u
     return 0;
 }
 
+// --- directory-growth fakes (RA8FW-1119): zero, seal, the entry cursor, ---
+// --- the set checksum and the set write-back, each mirroring the real ----
+// --- behavior against the fake disk --------------------------------------
+
+const err_not_found: u16 = @intCast(c.k_ra8_err_not_found);
+const entry_eod: u8 = 0x00;
+const entry_file: u8 = 0x85;
+const inuse_bit: u8 = 0x80;
+
+var written: [224]u8 = @splat(0);
+var written_bytes: u32 = 0;
+var written_cluster: u32 = 0;
+var written_idx: u32 = 0;
+
+export fn priv_exfat_zero_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u16 {
+    _ = m;
+    disk[clus - first_data] = @splat(@splat(0));
+    return ok;
+}
+
+export fn priv_exfat_seal_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u16 {
+    _ = m;
+    const retired: u8 = entry_file & ~inuse_bit;
+    for (0..spc) |sec| {
+        for (0..bps / 32) |slot| {
+            if (disk[clus - first_data][sec][slot * 32] == entry_eod) {
+                disk[clus - first_data][sec][slot * 32] = retired;
+            }
+        }
+    }
+    return ok;
+}
+
+export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, out: [*c]u8) callconv(.c) u16 {
+    const per_cluster: u32 = bps / 32;
+    if (cur[0].entry_in_cluster >= per_cluster) {
+        if (cur[0].contig_end != 0) {
+            if (cur[0].cluster + 1 >= cur[0].contig_end) return err_not_found;
+            cur[0].cluster += 1;
+        } else {
+            const next = fat[cur[0].cluster - first_data];
+            if (next == eoc) return err_not_found;
+            cur[0].cluster = next;
+        }
+        cur[0].entry_in_cluster = 0;
+    }
+    const ci: usize = @intCast(cur[0].cluster - first_data);
+    const off: usize = cur[0].entry_in_cluster * 32;
+    @memcpy(out[0..32], disk[ci][off..][0..32]);
+    cur[0].entry_in_cluster += 1;
+    cur[0].scanned += 1;
+    return ok;
+}
+
+export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
+    var cs: u16 = 0;
+    var i: u32 = 0;
+    while (i < bytes) : (i += 1) {
+        if (i == 2 or i == 3) continue;
+        const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
+        cs = hi +% (cs >> 1) +% @as(u16, set[i]);
+    }
+    return cs;
+}
+
+export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
+    _ = m;
+    const ci: usize = @intCast(cluster - first_data);
+    @memcpy(disk[ci][idx * 32 ..][0..bytes], set[0..bytes]);
+    written = @splat(0);
+    @memcpy(written[0..bytes], set[0..bytes]);
+    written_bytes = bytes;
+    written_cluster = cluster;
+    written_idx = idx;
+    return ok;
+}
+
+/// Stage a minimal File + Stream entry set at `cluster`/`idx` on the fake
+/// disk, with an intentionally stale set checksum.
+fn stageSet(cluster: u32, idx: u32, secnt: u8) void {
+    const ci: usize = @intCast(cluster - first_data);
+    disk[ci][idx * 32] = entry_file;
+    disk[ci][idx * 32 + 1] = secnt;
+    disk[ci][idx * 32 + 2] = 0x12;
+    disk[ci][idx * 32 + 3] = 0x34;
+    const so: usize = (idx + 1) * 32;
+    disk[ci][so] = 0xC0;
+    disk[ci][so + 1] = 0x01; // AllocationPossible, NoFatChain clear
+}
+
 // --------------------------------------------------------------- helpers
 
 fn mount() c.ra8_fs_mount_t {
@@ -158,6 +250,16 @@ fn bindAndLba(m: *c.ra8_fs_mount_t) u64 {
 
 fn fatAt(cluster: u32) u32 {
     return fat[cluster - 2];
+}
+
+fn setChecksum(set: []const u8) u16 {
+    var cs: u16 = 0;
+    for (set, 0..) |b, i| {
+        if (i == 2 or i == 3) continue;
+        const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
+        cs = hi +% (cs >> 1) +% @as(u16, b);
+    }
+    return cs;
 }
 
 // ---------------------------------------------------------------- tests
@@ -309,4 +411,186 @@ test "a backend write failure surfaces from grow_one before anything links" {
     const e = st.priv_exfat_ensure_clusters(&f, 1);
     try std.testing.expect(e != ok);
     try std.testing.expectEqual(@as(u32, 0), f.alloc_clusters);
+}
+
+// ------------------------------------------------------- directory growth
+
+test "dir_survey reads a contiguous run arithmetically" {
+    reset();
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    dir.contig_end = 8;
+    var alloc: u32 = 0;
+    var tail: u32 = 0;
+    var nofat: u8 = 0;
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_survey(null, &dir, &alloc, &tail, &nofat));
+    try std.testing.expectEqual(@as(u32, 3), alloc);
+    try std.testing.expectEqual(@as(u32, 7), tail);
+    try std.testing.expectEqual(@as(u8, 1), nofat);
+}
+
+test "dir_survey walks a FAT chain to its tail" {
+    reset();
+    var m = mount();
+    fat[3] = 6;
+    fat[4] = 7;
+    fat[5] = eoc;
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    var alloc: u32 = 0;
+    var tail: u32 = 0;
+    var nofat: u8 = 0xFF;
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_survey(&m, &dir, &alloc, &tail, &nofat));
+    try std.testing.expectEqual(@as(u32, 3), alloc);
+    try std.testing.expectEqual(@as(u32, 7), tail);
+    try std.testing.expectEqual(@as(u8, 0), nofat);
+}
+
+test "dir_survey faults when a chained run points below the heap" {
+    reset();
+    var m = mount();
+    fat[3] = 0; // free entry: invalid successor inside a chain
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    var alloc: u32 = 0;
+    var tail: u32 = 0;
+    var nofat: u8 = 0;
+    const e = st.internal_exfat_dir_survey(&m, &dir, &alloc, &tail, &nofat);
+    try std.testing.expect(e != ok);
+}
+
+test "dir_link keeps a contiguous run contiguous without FAT writes" {
+    reset();
+    var nofat: u8 = 1;
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(null, 5, 3, 7, &nofat, 8));
+    try std.testing.expectEqual(@as(u8, 1), nofat);
+    for (fat) |v| try std.testing.expectEqual(@as(u32, 0), v);
+}
+
+test "dir_link converts a broken contiguous run into a real chain" {
+    reset();
+    var nofat: u8 = 1;
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(null, 5, 3, 7, &nofat, 9));
+    try std.testing.expectEqual(@as(u8, 0), nofat);
+    try std.testing.expectEqual(@as(u32, 6), fatAt(5));
+    try std.testing.expectEqual(@as(u32, 7), fatAt(6));
+    try std.testing.expectEqual(@as(u32, 9), fatAt(7));
+    try std.testing.expectEqual(eoc, fatAt(9));
+}
+
+test "dir_link links a chained run's tail" {
+    reset();
+    var nofat: u8 = 0;
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(null, 5, 3, 7, &nofat, 9));
+    try std.testing.expectEqual(@as(u8, 0), nofat);
+    try std.testing.expectEqual(@as(u32, 9), fatAt(7));
+    try std.testing.expectEqual(eoc, fatAt(9));
+}
+
+test "dir_relen patches the stream entry and rewrites the set" {
+    reset();
+    var m = mount();
+    stageSet(7, 0, 1); // File + Stream at cluster 7, entry 0
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    dir.contig_end = 6;
+    dir.self_cluster = 7;
+    dir.self_index = 0;
+
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_relen(&m, &dir, 1024, 1));
+    try std.testing.expectEqual(@as(u32, 7), written_cluster);
+    try std.testing.expectEqual(@as(u32, 0), written_idx);
+    try std.testing.expectEqual(@as(u32, 64), written_bytes);
+    try std.testing.expectEqual(@as(u8, 0x03), written[33]); // alloc | nofat
+    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, written[40..48], .little));
+    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, written[56..64], .little));
+    try std.testing.expectEqual(setChecksum(written[0..64]), std.mem.readInt(u16, written[2..4], .little));
+}
+
+test "dir_relen refuses a set beyond the writable cap" {
+    reset();
+    var m = mount();
+    stageSet(7, 0, 7); // 1 + 7 = 8 entries, one past the writable cap
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.self_cluster = 7;
+    dir.self_index = 0;
+    const e = st.internal_exfat_dir_relen(&m, &dir, 1024, 1);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_err_not_supported)), e);
+}
+
+test "dir_append zeroes the new cluster before linking and seals the old tail" {
+    reset();
+    var m = mount();
+    _ = bindAndLba(&m);
+    disk[2][0] = 0x08; // cluster 5 used, 6.. free
+    disk[6][10] = 0xAB; // garbage in the cluster about to be picked
+    disk[5][0] = 0x00; // trailing EOD marker in the old tail
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    var nofat: u8 = 1;
+
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_append(&m, &dir, 3, 7, &nofat));
+    try std.testing.expectEqual(@as(u8, 0), disk[6][10]); // zeroed before linking
+    try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]); // 5 and 8 marked used
+    try std.testing.expectEqual(@as(u32, 9), al.priv_alloc_hint_get(&m));
+    for (fat) |v| try std.testing.expectEqual(@as(u32, 0), v); // stayed contiguous
+    try std.testing.expectEqual(@as(u8, 0x05), disk[5][0]); // EOD retired
+}
+
+test "grow_dir grows a subdirectory and rewrites its own entry set" {
+    reset();
+    var m = mount();
+    _ = bindAndLba(&m);
+    disk[2][0] = 0x08; // cluster 5 used, 6.. free
+    disk[4][3] = 0xAB; // garbage in the cluster about to be picked
+    stageSet(7, 0, 1); // the subdirectory's own set, in its parent
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    dir.contig_end = 6;
+    dir.self_cluster = 7;
+    dir.self_index = 0;
+
+    try std.testing.expectEqual(ok, st.priv_exfat_grow_dir(&m, &dir));
+    try std.testing.expectEqual(@as(u8, 0), disk[4][3]); // new cluster zeroed
+    try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]); // 5 and 6 marked used
+    try std.testing.expectEqual(@as(u8, 0x05), disk[3][0]); // old tail sealed
+    try std.testing.expectEqual(@as(u32, 64), written_bytes); // set rewritten
+    try std.testing.expectEqual(@as(u8, 0x03), disk[5][33]); // NoFatChain flag back on
+    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, disk[5][40..48], .little));
+    try std.testing.expectEqual(@as(u32, 7), dir.contig_end);
+}
+
+test "grow_dir leaves the root's entry set alone" {
+    reset();
+    var m = mount();
+    _ = bindAndLba(&m);
+    disk[2][0] = 0x08; // cluster 5 used, 6.. free
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    dir.contig_end = 6; // the root carries no self_cluster
+
+    try std.testing.expectEqual(ok, st.priv_exfat_grow_dir(&m, &dir));
+    try std.testing.expectEqual(@as(u32, 0), written_bytes); // nothing rewritten
+    try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]);
+    try std.testing.expectEqual(@as(u32, 7), dir.contig_end);
+}
+
+test "grow_dir extends a chained directory over the FAT" {
+    reset();
+    var m = mount();
+    _ = bindAndLba(&m);
+    disk[2][0] = 0x08; // cluster 5 used, 6.. free
+    fat[3] = eoc; // a chained one-cluster directory
+    stageSet(7, 0, 1);
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = 5;
+    dir.self_cluster = 7;
+    dir.self_index = 0;
+
+    try std.testing.expectEqual(ok, st.priv_exfat_grow_dir(&m, &dir));
+    try std.testing.expectEqual(@as(u32, 6), fatAt(5)); // tail linked
+    try std.testing.expectEqual(eoc, fatAt(6)); // new tail capped
+    try std.testing.expectEqual(@as(u8, 0x01), disk[5][33]); // NoFatChain stays clear
+    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, disk[5][40..48], .little));
+    try std.testing.expectEqual(@as(u32, 0), dir.contig_end);
 }
