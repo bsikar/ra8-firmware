@@ -131,111 +131,15 @@ void ra8_fs_check_test_fat_push_overflow(ra8_fs_check_ctx_t* ctx,
  * call them through those.
  */
 
-/**
- * @brief Walk the FAT12/16 fixed root directory region.
- *
- * @details Reads the FAT12/16 fixed root-directory region sector by sector.
- *
- * @param[in,out] ctx   The scan context.
- * @param[in,out] stack The directory worklist.
- * @return Error code.
- * @retval k_ra8_ok    The fixed root was walked.
- * @retval k_ra8_err_* Backend read failure.
- * @pre @p ctx and @p stack are non-NULL; the mount is FAT12/16.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post Every visible root entry was processed.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): the fixed root's sector span.
- * @since 0.1.0
+/* internal_fat_scan_fixed_root (the FAT12/16 fixed-root walk) is
+ * ported to Zig as src/ra8_fs_check_abi.zig; the prototype in
+ * ra8_fs_fat_check_internal.h links to it.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack)
-{
-  const uint32_t secs = (ctx->m->root_entries + (priv_dir_eps(ctx->m) - 1U)) / priv_dir_eps(ctx->m);
-  for (uint32_t s = 0U; s < secs; s++) {
-    const uint64_t lba = ctx->m->first_root_lba + s;
-    uint8_t* const buf = priv_sec_walk();
-    ra8_err_t      err = priv_read_sector(ctx->m, lba, buf);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    uint8_t eod = 0U;
-    err         = internal_fat_visit_sector(ctx, stack, buf, lba, &eod);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (eod != 0U) {
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_ok;
-}
 
-/**
- * @brief Walk a cluster-chained directory (a FAT32 root or any subdirectory).
- *
- * @details Follows the directory's own cluster chain, marking each cluster (a
- *          revisit is a cross-link), and processes every sector of each cluster.
- *          The end-of-directory marker or a terminal FAT entry ends the walk.
- *          Reaching the hop bound validates the pending successor once more so a
- *          full-volume cycle or off-volume tail is reported, never accepted.
- *
- * @param[in,out] ctx   The scan context.
- * @param[in,out] stack The directory worklist.
- * @param[in]     first The directory's first cluster.
- *
- * @return Error code.
- * @retval k_ra8_ok    The directory was walked.
- * @retval k_ra8_err_* Backend read failure.
- *
- * @pre @p ctx and @p stack are non-NULL; @p first is a directory's first cluster.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post Every reachable directory cluster is marked visited.
- * @post No volume state is modified.
- *
- * @note Bounded loop (NASA Rule 2): `clusters_total` hops, bitmap-terminated.
- *
- * @since 0.1.0
+/* internal_fat_scan_cluster_dir (the cluster-chained directory walk)
+ * is ported to Zig as src/ra8_fs_check_abi.zig; the test helper below
+ * calls it through the prototype.
  */
-RA8_INTERNAL
-static ra8_err_t
-internal_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t first)
-{
-  uint32_t c = first;
-  for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
-    if (priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry)) {
-      return k_ra8_ok;
-    }
-    const uint64_t base = priv_cluster_to_lba(ctx->m, c);
-    for (uint32_t s = 0U; s < ctx->m->sectors_per_cluster; s++) {
-      uint8_t* const buf = priv_sec_walk();
-      ra8_err_t      err = priv_read_sector(ctx->m, base + s, buf);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      uint8_t eod = 0U;
-      err         = internal_fat_visit_sector(ctx, stack, buf, base + s, &eod);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      if (eod != 0U) {
-        return k_ra8_ok;
-      }
-    }
-    uint32_t        v   = 0U;
-    const ra8_err_t err = priv_fat_get(ctx->m, c, &v);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (priv_is_eoc(ctx->m, v) != 0U) {
-      return k_ra8_ok;
-    }
-    c = v;
-  }
-  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry);
-  return k_ra8_ok;
-}
-
 RA8_TEST_HELPER
 ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32_t first)
 {
@@ -243,48 +147,10 @@ ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32
   return internal_fat_scan_cluster_dir(ctx, &stack, first);
 }
 
-/**
- * @brief Walk the whole directory tree from the root with an explicit worklist.
- *
- * @details Pops directories off the worklist and walks each, the volume root first.
- *
- * @param[in,out] ctx The scan context.
- * @return Error code.
- * @retval k_ra8_ok    The tree was walked (faults may have been recorded).
- * @retval k_ra8_err_* Backend read failure.
- * @pre @p ctx and its bitmap are non-NULL; `ctx->m->type` is a FAT variant.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post Every reachable file and directory cluster is marked.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): at most ::k_ra8_fs_check_max_dirs pops.
- * @since 0.1.0
+/* internal_fat_tree (the worklist driver) is ported to Zig as
+ * src/ra8_fs_check_abi.zig; the prototype in
+ * ra8_fs_fat_check_internal.h links to it.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_tree(ra8_fs_check_ctx_t* ctx)
-{
-  fat_dir_stack_t stack  = {};
-  stack.items[0].is_root = 1U;
-  stack.items[0].cluster = 0U;
-  stack.top              = 1U;
-  const bool fat32       = (ctx->m->type == k_ra8_fs_type_fat32);
-  while (stack.top > 0U) {
-    stack.top--;
-    const dir_loc_t loc = stack.items[stack.top];
-    ctx->rep->dirs_visited++;
-    ra8_err_t err = k_ra8_ok;
-    if ((loc.is_root != 0U) && !fat32) {
-      err = internal_fat_scan_fixed_root(ctx, &stack);
-    } else {
-      const uint32_t first = (loc.is_root != 0U) ? ctx->m->root_cluster : loc.cluster;
-      err                  = internal_fat_scan_cluster_dir(ctx, &stack, first);
-    }
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_ok;
-}
-
 /* =============================================================================
  * Pass 3: diff for lost clusters, and the FAT32 FSInfo free count
  * =============================================================================

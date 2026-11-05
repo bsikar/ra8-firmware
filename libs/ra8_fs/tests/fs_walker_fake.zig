@@ -324,8 +324,6 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[10] = '0';
 }
 
-
-
 export fn priv_sec_io() callconv(.c) [*c]u8 {
     return &io_sector;
 }
@@ -343,9 +341,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
 }
 
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
-
-
-
 
 export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
     if (slots_left == 0) return null;
@@ -395,4 +390,3 @@ export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, o
     out_attr.* = lookup_attr;
     return 0;
 }
-

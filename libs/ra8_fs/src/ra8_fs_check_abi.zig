@@ -7,6 +7,7 @@
 //! halves share (RA8FW-1108); the C file keeps the FAT passes and the public
 //! entry point.
 
+const std = @import("std");
 const c = @import("fs_c.zig").c;
 
 const first_data: u32 = @intCast(c.k_cluster_first_data);
@@ -240,5 +241,81 @@ pub export fn internal_fat_visit_sector(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*
         }
     }
     out_eod.* = 0;
+    return @intCast(c.k_ra8_ok);
+}
+
+// ---------------------------------------------------------------------------
+// Pass 2: the tree scan (RA8FW-1112)
+// ---------------------------------------------------------------------------
+
+/// Walk the FAT12/16 fixed root-directory region, sector by sector, until the
+/// end-of-directory marker or the region's last sector.
+pub export fn internal_fat_scan_fixed_root(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_dir_stack_t) callconv(.c) u16 {
+    const eps = c.priv_dir_eps(ctx[0].m);
+    const secs = (ctx[0].m[0].root_entries + eps - 1) / eps;
+    var s: u32 = 0;
+    while (s < secs) : (s += 1) {
+        const lba: u64 = @intCast(ctx[0].m[0].first_root_lba + @as(u64, s));
+        const buf = c.priv_sec_walk();
+        const err: u16 = @intCast(c.priv_read_sector(ctx[0].m, lba, buf));
+        if (err != c.k_ra8_ok) return err;
+        var eod: u8 = 0;
+        const verr: u16 = @intCast(internal_fat_visit_sector(ctx, stack, buf, lba, &eod));
+        if (verr != c.k_ra8_ok) return verr;
+        if (eod != 0) return @intCast(c.k_ra8_ok);
+    }
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Walk a cluster-chained directory (a FAT32 root or any subdirectory): mark
+/// each directory cluster, process every sector's entries, and follow the
+/// chain to the end-of-directory marker, a terminal FAT entry, or the hop
+/// bound with the pending successor visited once more.
+pub export fn internal_fat_scan_cluster_dir(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_dir_stack_t, first: u32) callconv(.c) u16 {
+    var clus = first;
+    var hop: u32 = 0;
+    while (hop < ctx[0].rep[0].clusters_total) : (hop += 1) {
+        if (priv_check_visit(ctx, clus, bad_dir_entry) != 0) return @intCast(c.k_ra8_ok);
+        const base = c.priv_cluster_to_lba(ctx[0].m, clus);
+        var s: u32 = 0;
+        while (s < ctx[0].m[0].sectors_per_cluster) : (s += 1) {
+            const buf = c.priv_sec_walk();
+            const err: u16 = @intCast(c.priv_read_sector(ctx[0].m, base + @as(u64, s), buf));
+            if (err != c.k_ra8_ok) return err;
+            var eod: u8 = 0;
+            const verr: u16 = @intCast(internal_fat_visit_sector(ctx, stack, buf, base + @as(u64, s), &eod));
+            if (verr != c.k_ra8_ok) return verr;
+            if (eod != 0) return @intCast(c.k_ra8_ok);
+        }
+        var v: u32 = 0;
+        const ferr: u16 = @intCast(c.priv_fat_get(ctx[0].m, clus, &v));
+        if (ferr != c.k_ra8_ok) return ferr;
+        if (c.priv_is_eoc(ctx[0].m, v) != 0) return @intCast(c.k_ra8_ok);
+        clus = v;
+    }
+    _ = priv_check_visit(ctx, clus, bad_dir_entry);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Pass 2's driver: walk the whole directory tree from the root with the
+/// explicit worklist, popping queued directories until it empties.
+pub export fn internal_fat_tree(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    stack.items[0].is_root = 1;
+    stack.top = 1;
+    const fat32 = ctx[0].m[0].type == c.k_ra8_fs_type_fat32;
+    while (stack.top > 0) {
+        stack.top -= 1;
+        const loc = stack.items[stack.top];
+        ctx[0].rep[0].dirs_visited += 1;
+        var err: u16 = @intCast(c.k_ra8_ok);
+        if (loc.is_root != 0 and !fat32) {
+            err = internal_fat_scan_fixed_root(ctx, &stack);
+        } else {
+            const first: u32 = if (loc.is_root != 0) ctx[0].m[0].root_cluster else loc.cluster;
+            err = internal_fat_scan_cluster_dir(ctx, &stack, first);
+        }
+        if (err != c.k_ra8_ok) return err;
+    }
     return @intCast(c.k_ra8_ok);
 }
