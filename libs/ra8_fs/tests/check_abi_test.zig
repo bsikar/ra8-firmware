@@ -399,3 +399,66 @@ test "a full sector without an end marker walks every entry" {
     try std.testing.expectEqual(@as(u8, 0xFF), t.bmp[0]);
     try std.testing.expectEqual(@as(u8, 0xFF), t.bmp[1]);
 }
+
+test "the fixed-root walk serves the root region and marks one file" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat16);
+    fake.sector[0..512].* = @splat(0);
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 2, 1);
+    @memcpy(fake.sector[0..32], &ent);
+    fake.fat[2] = 0x0000_FFF8;
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_scan_fixed_root(&t.ctx, &stack));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0b0000_0001), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the tree walks the FAT32 root and marks the file chain" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.sector[0..512].* = @splat(0);
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 2, 1);
+    @memcpy(fake.sector[0..32], &ent);
+    fake.fat[2] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_tree(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0b0000_1001), t.bmp[0]);
+}
+
+test "a directory that points at itself faults on the revisit" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.sector[0..512].* = @splat(0);
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'D', @intCast(c.k_ra8_fs_attr_directory), 6, 0);
+    @memcpy(fake.sector[0..32], &ent);
+    fake.fat[6] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_tree(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 6), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u8, 0b0001_1000), t.bmp[0]);
+}
+
+test "a mutual cross-link between directory chains stops the walk" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 32, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.sector[0..512].* = @splat(0xE5);
+    fake.fat[5] = 6;
+    fake.fat[6] = 5;
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_scan_cluster_dir(&t.ctx, &stack, 5));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 5), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u8, 0b0001_1000), t.bmp[0]);
+}
