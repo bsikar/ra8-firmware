@@ -105,71 +105,12 @@ typedef struct {
  * =============================================================================
  */
 
-/* `priv_check_fault()`: see header for the documented contract. */
-void priv_check_fault(ra8_fs_check_ctx_t*       ctx,
-                      ra8_fs_check_fault_kind_t kind,
-                      uint32_t                  cluster,
-                      uint64_t                  lba,
-                      uint32_t                  entry_off)
-{
-  if (ctx->rep->faults_total == 0U) {
-    ctx->rep->first_fault.kind      = kind;
-    ctx->rep->first_fault.cluster   = cluster;
-    ctx->rep->first_fault.lba       = lba;
-    ctx->rep->first_fault.entry_off = entry_off;
-  }
-  ctx->rep->faults_total++;
-}
-
-/* `priv_check_in_range()`: see header for the documented contract. */
-bool priv_check_in_range(const ra8_fs_check_ctx_t* ctx, uint32_t cluster)
-{
-  if (cluster < (uint32_t)k_cluster_first_data) {
-    return false;
-  }
-  return (cluster - (uint32_t)k_cluster_first_data) < ctx->rep->clusters_total;
-}
-
-/* `priv_check_mark()`: see header for the documented contract. */
-bool priv_check_mark(ra8_fs_check_ctx_t* ctx, uint32_t cluster)
-{
-  const uint32_t idx  = cluster - (uint32_t)k_cluster_first_data;
-  const uint32_t byte = idx >> (uint32_t)k_check_byte_shift;
-  const uint8_t  mask = (uint8_t)(1U << (idx & (uint32_t)k_check_bit_mask));
-  if ((ctx->bitmap[byte] & mask) != 0U) {
-    return true;
-  }
-  ctx->bitmap[byte] = (uint8_t)(ctx->bitmap[byte] | mask);
-  return false;
-}
-
-/* `priv_check_visit()`: see header for the documented contract. */
-bool priv_check_visit(ra8_fs_check_ctx_t* ctx, uint32_t cluster, ra8_fs_check_fault_kind_t oor_kind)
-{
-  if (!priv_check_in_range(ctx, cluster)) {
-    if (oor_kind == k_ra8_fs_check_fault_bad_dir_entry) {
-      ctx->rep->entries_bad++;
-    }
-    priv_check_fault(ctx, oor_kind, cluster, 0U, 0U);
-    return true;
-  }
-  if (priv_check_mark(ctx, cluster)) {
-    ctx->rep->chains_crosslinked++;
-    priv_check_fault(ctx, k_ra8_fs_check_fault_crosslink, cluster, 0U, 0U);
-    return true;
-  }
-  return false;
-}
-
-/* `priv_check_zero_bitmap()`: see header for the documented contract. */
-void priv_check_zero_bitmap(ra8_fs_check_ctx_t* ctx)
-{
-  const uint32_t nbytes =
-    (ctx->bitmap_bits + (uint32_t)k_check_bit_mask) >> (uint32_t)k_check_byte_shift;
-  for (uint32_t i = 0U; i < nbytes; i++) {
-    ctx->bitmap[i] = 0U;
-  }
-}
+/* The shared scaffolding -- priv_check_fault(), priv_check_in_range(),
+ * priv_check_mark(), priv_check_visit() and priv_check_zero_bitmap() -- is
+ * ported to Zig as src/ra8_fs_check_abi.zig; the declarations in
+ * ra8_fs_fat_check_internal.h link to it, and both the FAT passes below and
+ * the exFAT half call it through them.
+ */
 
 /* =============================================================================
  * Pass 1: classify every FAT entry

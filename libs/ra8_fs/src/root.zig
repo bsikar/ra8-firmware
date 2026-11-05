@@ -35,6 +35,7 @@ pub const dir_walk = @import("ra8_fs_dir_walk_abi.zig");
 pub const fmt = @import("ra8_fs_fmt_abi.zig");
 pub const prim = @import("ra8_fs_fat_prim_abi.zig");
 pub const fat_entry = @import("ra8_fs_fat_entry_abi.zig");
+pub const check = @import("ra8_fs_check_abi.zig");
 
 comptime {
     _ = lock;
@@ -62,5 +63,6 @@ comptime {
     _ = prim;
     _ = fmt;
     _ = fat_entry;
+    _ = check;
     _ = time;
 }
