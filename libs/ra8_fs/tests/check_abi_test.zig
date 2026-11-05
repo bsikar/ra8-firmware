@@ -962,3 +962,83 @@ test "the exFAT tree walks the root and marks a file's run" {
     try std.testing.expectEqual(@as(u8, 0x09), t.bmp[0]);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
 }
+
+test "the exFAT bitmap pass counts used and free clusters" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    t.ctx.bitmap = null;
+    @memset(&fake.bitmap, 0);
+    fake.bitmap[0] = 0x09;
+    fake.bitmap[1] = 0x80;
+    fake.bitmap[2] = 0xF0;
+    const r = check.internal_exchk_bitmap_pass(&t.ctx, fake.bitmap_lba);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 3), t.rep.clusters_used);
+    try std.testing.expectEqual(@as(u32, 17), t.rep.clusters_free);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the exFAT bitmap diff flags lost clusters and unset references" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    t.bmp[0] = 0x09;
+    @memset(&fake.bitmap, 0);
+    fake.bitmap[0] = 0x03;
+    const r = check.internal_exchk_bitmap_pass(&t.ctx, fake.bitmap_lba);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_lost);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.bitmap_mismatches);
+    try std.testing.expectEqual(@as(u32, 2), t.rep.faults_total);
+    try std.testing.expectEqual(lost_cluster, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(bitmap_ref_unset, @as(u8, @intCast(t.rep.faults[1].kind)));
+    try std.testing.expectEqual(@as(u32, 5), t.rep.faults[1].cluster);
+}
+
+test "the exFAT check reports a missing allocation bitmap entry set" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    fake.bitmap_err = @intCast(c.k_ra8_err_not_found);
+    defer fake.bitmap_err = 0;
+    const r = check.priv_check_exfat(&t.ctx);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(bad_dir_entry, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 0), t.rep.dirs_visited);
+}
+
+test "the exFAT check walks the tree and diffs a consistent bitmap" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    const mp = mkMount(c.k_ra8_fs_type_exfat);
+    t.ctx.m = mp;
+    mp.first_data_lba = 1;
+    mp.root_cluster = 2;
+    fake.fat[2] = 0xFFFF_FFFF;
+    var set = std.mem.zeroes([7 * 32]u8);
+    _ = stageSetName(&set, "REPORT");
+    set[0] = @intCast(c.k_exfat_entry_file);
+    set[1] = 6;
+    stageExfatStream(&set, 5, 512, true);
+    for (&fake.dir) |*row| @memset(row, 0);
+    for (0..7) |i| fake.dir[i] = set[i * 32 ..][0..32].*;
+    for (&fake.disk[0]) |*b| b.* = 0x85;
+    for (0..7) |i| @memcpy(fake.disk[0][i * 32 ..][0..32], &set[i * 32]);
+    @memset(fake.disk[0][7 * 32 ..][0..32], 0);
+    @memset(&fake.bitmap, 0);
+    fake.bitmap[0] = 0x09;
+    const r = check.priv_check_exfat(&t.ctx);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 2), t.rep.clusters_used);
+    try std.testing.expectEqual(@as(u32, 18), t.rep.clusters_free);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
