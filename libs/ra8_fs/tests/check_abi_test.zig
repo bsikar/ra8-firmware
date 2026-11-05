@@ -243,3 +243,159 @@ test "push queues directories and caps the stack once" {
     check.internal_fat_push(&t.ctx, &st, 12);
     try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
 }
+
+fn mkEntry(ent: *[32]u8, name0: u8, attr: u8, first: u32, size: u32) void {
+    ent[0] = name0;
+    ent[11] = attr;
+    c.priv_entry_set_cluster_size(ent, first, size);
+}
+
+test "the entry processor stops on the end-of-directory marker" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var ent = std.mem.zeroes([32]u8);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &ent, 100, 32, &eod));
+    try std.testing.expectEqual(@as(u8, 1), eod);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+}
+
+test "a deleted slot and an LFN entry pass through untouched" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var deleted = std.mem.zeroes([32]u8);
+    deleted[0] = 0xE5;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &deleted, 100, 0, &eod));
+    var lfn = std.mem.zeroes([32]u8);
+    lfn[0] = 0x41;
+    lfn[11] = @intCast(c.k_ra8_fs_attr_lfn);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &lfn, 100, 32, &eod));
+    try std.testing.expectEqual(@as(u8, 0), eod);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 0), stack.top);
+}
+
+test "a dot entry and a volume label own no chain" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var dot = std.mem.zeroes([32]u8);
+    dot[0] = '.';
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &dot, 100, 0, &eod));
+    var label = std.mem.zeroes([32]u8);
+    label[0] = 'V';
+    label[11] = @intCast(c.k_ra8_fs_attr_volume_id);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &label, 100, 32, &eod));
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 0), stack.top);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "a file entry whose first cluster is out of range faults" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 11, 10);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &ent, 100, 64, &eod));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
+    try std.testing.expectEqual(bad_dir_entry, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 11), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u64, 100), t.rep.first_fault.lba);
+    try std.testing.expectEqual(@as(u32, 64), t.rep.first_fault.entry_off);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+}
+
+test "a file entry marks its chain and counts the visit" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 0x0FFF_FFFF;
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 2, 10);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &ent, 100, 0, &eod));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "a directory entry is queued on the worklist" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'D', @intCast(c.k_ra8_fs_attr_directory), 5, 0);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &ent, 100, 0, &eod));
+    try std.testing.expectEqual(@as(u32, 1), stack.top);
+    try std.testing.expectEqual(@as(u32, 5), stack.items[0].cluster);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.files_visited);
+}
+
+test "a zero-cluster file counts a visit with nothing to mark" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    var eod: u8 = 0;
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 0, 0);
+    try std.testing.expectEqual(fe_ok, check.internal_fat_entry(&t.ctx, &stack, &ent, 100, 0, &eod));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u8, 0), t.bmp[0]);
+}
+
+test "the sector walk stops at the first end-of-directory marker" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 0x0FFF_FFFF;
+    var buf = std.mem.zeroes([512]u8);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    mkEntry(buf[0..32], 'F', 0x20, 2, 1);
+    buf[32] = 0xE5;
+    buf[64] = 0xE5;
+    var eod: u8 = 0;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_visit_sector(&t.ctx, &stack, &buf, 300, &eod));
+    try std.testing.expectEqual(@as(u8, 1), eod);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u8, 0b0000_0001), t.bmp[0]);
+}
+
+test "a full sector without an end marker walks every entry" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 32, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    var i: u32 = 0;
+    while (i < 16) : (i += 1) {
+        fake.fat[2 + i] = 0x0FFF_FFFF;
+    }
+    var buf = std.mem.zeroes([512]u8);
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    i = 0;
+    while (i < 16) : (i += 1) {
+        mkEntry(buf[@as(usize, i) * 32 ..][0..32], 'F', 0x20, 2 + i, 1);
+    }
+    var eod: u8 = 9;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_visit_sector(&t.ctx, &stack, &buf, 300, &eod));
+    try std.testing.expectEqual(@as(u8, 0), eod);
+    try std.testing.expectEqual(@as(u32, 16), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+    try std.testing.expectEqual(@as(u8, 0xFF), t.bmp[0]);
+    try std.testing.expectEqual(@as(u8, 0xFF), t.bmp[1]);
+}

@@ -177,3 +177,68 @@ pub export fn internal_fat_push(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_
     stack[0].items[stack[0].top].cluster = clus;
     stack[0].top += 1;
 }
+
+// ---------------------------------------------------------------------------
+// Pass 2: the directory-entry processor and the per-sector walk (RA8FW-1111)
+// ---------------------------------------------------------------------------
+
+const dir_off_name: u32 = @intCast(c.k_dir_off_name);
+const dir_off_attr: u32 = @intCast(c.k_dir_off_attr);
+const dir_entry_bytes: u32 = @intCast(c.k_ra8_fs_dir_entry_bytes);
+
+const marker_free_perm: u8 = @intCast(c.k_dir_marker_free_perm);
+const marker_free_used: u8 = @intCast(c.k_dir_marker_free_used);
+const marker_dot: u8 = @intCast(c.k_dir_marker_dot);
+const attr_lfn: u8 = @intCast(c.k_ra8_fs_attr_lfn);
+const attr_directory: u8 = @intCast(c.k_ra8_fs_attr_directory);
+const attr_volume_id: u8 = @intCast(c.k_ra8_fs_attr_volume_id);
+
+/// Process one 32-byte FAT directory entry: skip end-of-directory, deleted,
+/// long-name, dot and volume-label entries, then validate a real file's or
+/// directory's first cluster. A file's chain is marked at once; a directory
+/// is queued for the worklist walk.
+pub export fn internal_fat_entry(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_dir_stack_t, ent: [*c]const u8, lba: u64, entry_off: u32, out_eod: [*c]u8) callconv(.c) u16 {
+    out_eod.* = 0;
+    const name0 = ent[dir_off_name];
+    const attr = ent[dir_off_attr];
+    if (name0 == marker_free_perm) {
+        out_eod.* = 1;
+        return @intCast(c.k_ra8_ok);
+    }
+    if (name0 == marker_free_used) return @intCast(c.k_ra8_ok);
+    if (attr == attr_lfn) return @intCast(c.k_ra8_ok);
+    if (name0 == marker_dot) return @intCast(c.k_ra8_ok);
+    const is_dir: u8 = @intFromBool((attr & attr_directory) != 0);
+    if (is_dir == 0 and (attr & attr_volume_id) != 0) return @intCast(c.k_ra8_ok);
+    const first: u32 = @intCast(c.priv_entry_first_cluster(ent));
+    if (first != 0 and priv_check_in_range(ctx, first) == 0) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_dir_entry, first, lba, entry_off);
+        return @intCast(c.k_ra8_ok);
+    }
+    if (is_dir != 0) {
+        if (first != 0) internal_fat_push(ctx, stack, first);
+        return @intCast(c.k_ra8_ok);
+    }
+    ctx[0].rep[0].files_visited += 1;
+    if (first != 0) return internal_fat_mark_chain(ctx, first);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Process the directory entries packed into one sector: walk the entries and
+/// stop at the first end-of-directory marker.
+pub export fn internal_fat_visit_sector(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_dir_stack_t, buf: [*c]const u8, lba: u64, out_eod: [*c]u8) callconv(.c) u16 {
+    var e: u32 = 0;
+    while (e < c.priv_dir_eps(ctx[0].m)) : (e += 1) {
+        const off = e * dir_entry_bytes;
+        var eod: u8 = 0;
+        const err: u16 = @intCast(internal_fat_entry(ctx, stack, buf + off, lba, off, &eod));
+        if (err != c.k_ra8_ok) return err;
+        if (eod != 0) {
+            out_eod.* = 1;
+            return @intCast(c.k_ra8_ok);
+        }
+    }
+    out_eod.* = 0;
+    return @intCast(c.k_ra8_ok);
+}

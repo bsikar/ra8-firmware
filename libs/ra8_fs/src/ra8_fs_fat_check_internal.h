@@ -248,6 +248,10 @@ ra8_err_t internal_fat_classify(ra8_fs_check_ctx_t* ctx);
 ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first);
 
 void internal_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus);
+ra8_err_t internal_fat_entry(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, const uint8_t* ent,
+                            uint64_t lba, uint32_t entry_off, uint8_t* out_eod);
+ra8_err_t internal_fat_visit_sector(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, const uint8_t* buf,
+                                    uint64_t lba, uint8_t* out_eod);
 
 /**
  * @brief Run the FAT12/16/32 consistency check into the context's report.
