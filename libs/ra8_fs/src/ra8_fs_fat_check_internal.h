@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_fs_fat_types_internal.h"
 #include "ra8_fs.h"
 #include "ra8_fs_check.h"
 
@@ -51,6 +52,26 @@
 typedef enum : uint16_t {
   k_ra8_fs_check_max_dirs = 128U, /**< Directory worklist depth cap. */
 } ra8_fs_check_bound_t;
+
+/**
+ * @struct fat_dir_stack_t
+ * @brief Bounded worklist of directories still to walk (NASA P10 Rule 1).
+ *
+ * @details A stack of directory locations rather than recursion. Pushing past
+ *          ::k_ra8_fs_check_max_dirs sets @p truncated -- recorded once as
+ *          ::k_ra8_fs_check_fault_scan_truncated -- and drops the entry, so a
+ *          pathologically deep or wide tree bounds the scan instead of
+ *          overflowing the C stack.
+ *
+ * @invariant `top <= k_ra8_fs_check_max_dirs`.
+ * @since 0.1.0
+ */
+typedef struct {
+  dir_loc_t items[k_ra8_fs_check_max_dirs]; /**< The pending directory locations. */
+  uint32_t  top;                            /**< Count of pending entries.        */
+  uint8_t   truncated;                      /**< 1 once an overflow was dropped.  */
+} fat_dir_stack_t;
+
 
 /**
  * @struct ra8_fs_check_ctx_t
@@ -223,6 +244,10 @@ uint32_t internal_fat_bad_marker(const ra8_fs_mount_t* m);
 void internal_fat_classify_one(ra8_fs_check_ctx_t* ctx, uint32_t cluster, uint32_t value);
 
 ra8_err_t internal_fat_classify(ra8_fs_check_ctx_t* ctx);
+
+ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first);
+
+void internal_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus);
 
 /**
  * @brief Run the FAT12/16/32 consistency check into the context's report.
