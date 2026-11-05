@@ -744,3 +744,95 @@ pub export fn internal_exchk_tree(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u1
     }
     return @intCast(c.k_ra8_ok);
 }
+
+// =============================================================================
+// Allocation-bitmap population count, diff and the exFAT entry point
+// =============================================================================
+
+const bitmap_ref_unset: u8 = @intCast(c.k_ra8_fs_check_fault_bitmap_ref_unset);
+
+/// Diff one allocation-bitmap byte against the visited bitmap: an allocated
+/// but unvisited cluster is a lost cluster, and a visited but unallocated one
+/// is a bitmap mismatch. Reference mode only; the caller counts the bits.
+pub export fn internal_exchk_diff_byte(ctx: [*c]c.ra8_fs_check_ctx_t, b: u8, base: u32) callconv(.c) void {
+    var j: u32 = 0;
+    while (j < 8) : (j += 1) {
+        const idx = base + j;
+        if (idx >= ctx[0].rep[0].clusters_total) {
+            return;
+        }
+        const alloc: u8 = (b >> @as(u3, @truncate(j))) & 1;
+        const refd: u8 = (ctx[0].bitmap[idx >> byte_shift] >> @as(u3, @truncate(idx & bit_mask))) & 1;
+        if (alloc != 0 and refd == 0) {
+            ctx[0].rep[0].clusters_lost += 1;
+            priv_check_fault(ctx, lost_cluster, idx + first_data, 0, 0);
+        }
+        if (alloc == 0 and refd != 0) {
+            ctx[0].rep[0].bitmap_mismatches += 1;
+            priv_check_fault(ctx, bitmap_ref_unset, idx + first_data, 0, 0);
+        }
+    }
+}
+
+/// Read the allocation bitmap sector by sector: mask the tail byte to the last
+/// cluster, sum the set bits into the used count and, when a visited bitmap is
+/// present, diff every byte against it.
+pub export fn internal_exchk_bitmap_pass(ctx: [*c]c.ra8_fs_check_ctx_t, bmp_lba: u64) callconv(.c) u16 {
+    const total = ctx[0].rep[0].clusters_total;
+    const full_bytes: u32 = total >> byte_shift;
+    const rem_bits: u32 = total & bit_mask;
+    const nbytes: u32 = full_bytes + @intFromBool(rem_bits != 0);
+    var used: u32 = 0;
+    var loaded: u64 = std.math.maxInt(u64);
+    const sec: [*c]u8 = c.priv_sec_io();
+    var bi: u32 = 0;
+    while (bi < nbytes) : (bi += 1) {
+        const lba = bmp_lba + bi / @as(u32, @intCast(c.priv_bps(ctx[0].m)));
+        if (lba != loaded) {
+            const err: u16 = @intCast(c.priv_read_sector(ctx[0].m, lba, sec));
+            if (err != @as(u16, @intCast(c.k_ra8_ok))) {
+                return err;
+            }
+            loaded = lba;
+        }
+        var b: u8 = sec[bi % @as(u32, @intCast(c.priv_bps(ctx[0].m)))];
+        if (bi == full_bytes and rem_bits != 0) {
+            b &= @truncate((@as(u32, 1) << @as(u5, @intCast(rem_bits))) - 1);
+        }
+        used += @popCount(b);
+        if (ctx[0].bitmap != null) {
+            internal_exchk_diff_byte(ctx, b, bi << byte_shift);
+        }
+    }
+    ctx[0].rep[0].clusters_used = used;
+    ctx[0].rep[0].clusters_free = total - used;
+    return @intCast(c.k_ra8_ok);
+}
+
+/// The exFAT entry point: locate the allocation bitmap, then in reference mode
+/// walk the directory tree marking every cluster it reaches, and finally
+/// population-count and diff the allocation bitmap. A volume whose root has no
+/// allocation-bitmap entry set is a malformed volume: one bad-entry fault and
+/// the scan still returns success, matching the FAT side's soft handling.
+pub export fn priv_check_exfat(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    var bclus: u32 = 0;
+    var blen: u32 = 0;
+    const fe: u16 = @intCast(c.priv_exfat_find_bitmap(ctx[0].m, &bclus, &blen));
+    if (fe == @as(u16, @intCast(c.k_ra8_err_not_found))) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_dir_entry, 0, 0, 0);
+        return @intCast(c.k_ra8_ok);
+    }
+    if (fe != @as(u16, @intCast(c.k_ra8_ok))) {
+        return fe;
+    }
+    const bmp_lba: u64 = c.priv_cluster_to_lba(ctx[0].m, bclus);
+    if (ctx[0].bitmap != null) {
+        priv_check_zero_bitmap(ctx);
+        const te: u16 = internal_exchk_tree(ctx);
+        if (te != @as(u16, @intCast(c.k_ra8_ok))) {
+            return te;
+        }
+    }
+    return internal_exchk_bitmap_pass(ctx, bmp_lba);
+}
