@@ -396,14 +396,3 @@ export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, o
     return 0;
 }
 
-/// FAT label-field writer: pads to the 11-byte field with spaces, or writes
-/// the "NO NAME    " sentinel for a null/empty label. Mirrors the C fmt unit.
-export fn priv_fmt_label_field(dst: [*c]u8, lbl: [*c]const u8) callconv(.c) void {
-    if (lbl == null or lbl[0] == 0) {
-        @memcpy(dst[0..11], "NO NAME    ");
-        return;
-    }
-    var i: usize = 0;
-    while (i < 11 and lbl[i] != 0) : (i += 1) dst[i] = lbl[i];
-    while (i < 11) : (i += 1) dst[i] = ' ';
-}
