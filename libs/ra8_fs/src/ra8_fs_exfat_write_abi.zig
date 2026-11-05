@@ -64,18 +64,9 @@ fn csumAdd(cs: u16, b: u8) u16 {
     return hi +% (cs >> 1) +% @as(u16, b);
 }
 
-/// Fold the UP-CASED name, little-endian, one byte at a time: the spec's
-/// definition exactly.
-pub export fn priv_exfat_name_hash(name: [*c]const u16, nlen: u32) callconv(.c) u16 {
-    var h: u16 = 0;
-    var i: u32 = 0;
-    while (i < nlen) : (i += 1) {
-        const u: u16 = upcase.priv_exfat_upcase_unit(name[i]);
-        h = csumAdd(h, @truncate(u & utf_byte_mask));
-        h = csumAdd(h, @truncate(u >> utf_byte_shift));
-    }
-    return h;
-}
+/// The name hash lives in its own unit now (RA8FW-1115); aliased back so
+/// the write side keeps its API.
+pub const priv_exfat_name_hash = @import("ra8_fs_exfat_hash_abi.zig").priv_exfat_name_hash;
 
 /// SetChecksum over `bytes` of an entry set, skipping the two checksum bytes
 /// themselves.
