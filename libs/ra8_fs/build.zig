@@ -18,6 +18,8 @@ const fs_header =
     \\#include <stdbool.h>
     \\#include "ra8_fs_fat_internal.h"
     \\#include "ra8_fs_meta.h"
+    \\#include "ra8_fs_check.h"
+    \\#include "ra8_fs_fat_check_internal.h"
     \\
 ;
 
@@ -93,6 +95,7 @@ pub fn build(b: *std.Build) void {
         "tests/prim_abi_test.zig",
         "tests/time_abi_test.zig",
         "tests/fmt_abi_test.zig",
+        "tests/check_abi_test.zig",
     };
     for (roots) |path| {
         const test_module = b.createModule(.{
