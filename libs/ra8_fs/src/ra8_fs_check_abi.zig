@@ -133,3 +133,47 @@ pub export fn internal_fat_classify(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) 
     }
     return @intCast(c.k_ra8_ok);
 }
+
+// ---------------------------------------------------------------------------
+// Pass 2: chain marking and the directory worklist (RA8FW-1110)
+// ---------------------------------------------------------------------------
+
+const bad_chain: u8 = @intCast(c.k_ra8_fs_check_fault_bad_chain);
+const scan_truncated: u8 = @intCast(c.k_ra8_fs_check_fault_scan_truncated);
+
+/// Mark one file's whole cluster chain: visit each cluster, follow the FAT
+/// toward the end of chain, and stop on a cross-link, a broken next-pointer,
+/// or the `clusters_total` hop bound.
+pub export fn internal_fat_mark_chain(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32) callconv(.c) u16 {
+    var clus = first;
+    var hop: u32 = 0;
+    while (hop < ctx[0].rep[0].clusters_total) : (hop += 1) {
+        if (priv_check_visit(ctx, clus, bad_chain) != 0) return @intCast(c.k_ra8_ok);
+        var v: u32 = 0;
+        const err: u16 = @intCast(c.priv_fat_get(ctx[0].m, clus, &v));
+        if (err != c.k_ra8_ok) return err;
+        if (c.priv_is_eoc(ctx[0].m, v) != 0) return @intCast(c.k_ra8_ok);
+        if (priv_check_in_range(ctx, v) == 0) {
+            priv_check_fault(ctx, bad_chain, clus, 0, 0);
+            return @intCast(c.k_ra8_ok);
+        }
+        clus = v;
+    }
+    _ = priv_check_visit(ctx, clus, bad_chain);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Push a subdirectory onto the walk stack, capping the depth: the first
+/// overflow drops the entry and records the truncation fault exactly once.
+pub export fn internal_fat_push(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.fat_dir_stack_t, clus: u32) callconv(.c) void {
+    if (stack[0].top >= @as(u32, @intCast(c.k_ra8_fs_check_max_dirs))) {
+        if (stack[0].truncated == 0) {
+            stack[0].truncated = 1;
+            priv_check_fault(ctx, scan_truncated, clus, 0, 0);
+        }
+        return;
+    }
+    stack[0].items[stack[0].top].is_root = 0;
+    stack[0].items[stack[0].top].cluster = clus;
+    stack[0].top += 1;
+}

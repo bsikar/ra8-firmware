@@ -159,3 +159,87 @@ test "the classify pass sweeps every data cluster through the real getter" {
     try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
     try std.testing.expectEqual(@as(u32, 7), t.rep.first_fault.cluster);
 }
+
+const bad_chain: u8 = @intCast(c.k_ra8_fs_check_fault_bad_chain);
+const scan_truncated: u8 = @intCast(c.k_ra8_fs_check_fault_scan_truncated);
+
+test "mark chain walks a clean chain to its end of chain" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 4;
+    fake.fat[4] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_mark_chain(&t.ctx, 2));
+    try std.testing.expectEqual(@as(u8, 0b0000_0111), t.bmp[0]);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "mark chain reports a cross-link and stops the walk" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 2;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_mark_chain(&t.ctx, 2));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.chains_crosslinked);
+    try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 2), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+}
+
+test "mark chain faults a broken next-pointer" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 0;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_mark_chain(&t.ctx, 2));
+    try std.testing.expectEqual(bad_chain, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u8, 0b0000_0011), t.bmp[0]);
+}
+
+test "an out-of-range successor faults in the walk itself" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 3, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 4;
+    fake.fat[4] = 5;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_mark_chain(&t.ctx, 2));
+    try std.testing.expectEqual(bad_chain, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 4), t.rep.first_fault.cluster);
+}
+
+test "a cycle that survives the hop bound is caught by the final visit" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 3, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat[2] = 3;
+    fake.fat[3] = 4;
+    fake.fat[4] = 2;
+    try std.testing.expectEqual(fe_ok, check.internal_fat_mark_chain(&t.ctx, 2));
+    try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 2), t.rep.first_fault.cluster);
+}
+
+test "push queues directories and caps the stack once" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 4, 0);
+    var st = std.mem.zeroes(c.fat_dir_stack_t);
+    check.internal_fat_push(&t.ctx, &st, 9);
+    check.internal_fat_push(&t.ctx, &st, 10);
+    try std.testing.expectEqual(@as(u32, 2), st.top);
+    try std.testing.expectEqual(@as(u8, 0), st.items[0].is_root);
+    try std.testing.expectEqual(@as(u32, 9), st.items[0].cluster);
+    try std.testing.expectEqual(@as(u32, 10), st.items[1].cluster);
+    st.top = @intCast(c.k_ra8_fs_check_max_dirs);
+    check.internal_fat_push(&t.ctx, &st, 11);
+    try std.testing.expectEqual(@as(u8, 1), st.truncated);
+    try std.testing.expectEqual(scan_truncated, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 11), t.rep.first_fault.cluster);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    check.internal_fat_push(&t.ctx, &st, 12);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+}

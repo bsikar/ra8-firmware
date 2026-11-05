@@ -81,25 +81,6 @@ typedef enum : uint32_t {
   k_check_byte_shift = 3U, /**< log2(8): cluster index -> bitmap byte. */
 } ra8_fs_check_bit_t;
 
-/**
- * @struct fat_dir_stack_t
- * @brief Bounded worklist of directories still to walk (NASA P10 Rule 1).
- *
- * @details A stack of directory locations rather than recursion. Pushing past
- *          ::k_ra8_fs_check_max_dirs sets @p truncated -- recorded once as
- *          ::k_ra8_fs_check_fault_scan_truncated -- and drops the entry, so a
- *          pathologically deep or wide tree bounds the scan instead of
- *          overflowing the C stack.
- *
- * @invariant `top <= k_ra8_fs_check_max_dirs`.
- * @since 0.1.0
- */
-typedef struct {
-  dir_loc_t items[k_ra8_fs_check_max_dirs]; /**< The pending directory locations. */
-  uint32_t  top;                            /**< Count of pending entries.        */
-  uint8_t   truncated;                      /**< 1 once an overflow was dropped.  */
-} fat_dir_stack_t;
-
 /* =============================================================================
  * Shared scaffolding (used by the exFAT half too)
  * =============================================================================
@@ -123,94 +104,12 @@ typedef struct {
  * =============================================================================
  */
 
-/**
- * @brief Mark a file's whole cluster chain, detecting cross-links and breaks.
- *
- * @details Follows the FAT from @p first, marking each cluster. A cluster already
- *          marked is a cross-link (or a loop) and stops the walk; a next-cluster
- *          that is free or out of range is a broken chain and stops it too. The
- *          hop count is bounded by `clusters_total`. After the last permitted
- *          hop, a non-terminal successor is checked once more without reading
- *          another FAT entry: it must revisit one of the volume's clusters or
- *          name a cluster outside the volume, so the bound cannot look clean.
- *
- * @param[in,out] ctx   The scan context.
- * @param[in]     first The file's first cluster (>= 2).
- *
- * @return Error code.
- * @retval k_ra8_ok    The chain was walked (a fault may have been recorded).
- * @retval k_ra8_err_* Backend read failure.
- *
- * @pre @p ctx and its bitmap are non-NULL; @p first is in range.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post Every cluster of the chain up to the first fault reads as visited.
- * @post No volume state is modified.
- *
- * @note Bounded loop (NASA Rule 2): `clusters_total` hops, bitmap-terminated.
- *
- * @since 0.1.0
+/* Pass 2's chain marker (internal_fat_mark_chain) and the directory
+ * worklist push (internal_fat_push) are ported to Zig as
+ * src/ra8_fs_check_abi.zig; the prototypes in
+ * ra8_fs_fat_check_internal.h link to them, and the entry processor and
+ * tree scan below call them through those.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first)
-{
-  uint32_t c = first;
-  for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
-    if (priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_chain)) {
-      return k_ra8_ok;
-    }
-    uint32_t        v   = 0U;
-    const ra8_err_t err = priv_fat_get(ctx->m, c, &v);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (priv_is_eoc(ctx->m, v) != 0U) {
-      return k_ra8_ok;
-    }
-    if (!priv_check_in_range(ctx, v)) {
-      priv_check_fault(ctx, k_ra8_fs_check_fault_bad_chain, c, 0U, 0U);
-      return k_ra8_ok;
-    }
-    c = v;
-  }
-  (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_chain);
-  return k_ra8_ok;
-}
-
-/**
- * @brief Push a subdirectory onto the walk stack, capping the depth.
- *
- * @details Records ::k_ra8_fs_check_fault_scan_truncated the first time the stack
- *          is full and drops the entry, so the tree walk stays bounded.
- *
- * @param[in,out] ctx   The scan context (for the truncation fault).
- * @param[in,out] stack The directory worklist.
- * @param[in]     clus  The subdirectory's first cluster.
- *
- * @return Nothing.
- *
- * @pre @p ctx and @p stack are non-NULL; @p clus is in range.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post The subdirectory is queued, or the stack was full and it was dropped.
- * @post On the first overflow a truncation fault is recorded.
- *
- * @note Not thread-safe; the check holds the library lock.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus)
-{
-  if (stack->top >= (uint32_t)k_ra8_fs_check_max_dirs) {
-    if (stack->truncated == 0U) {
-      stack->truncated = 1U;
-      priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, clus, 0U, 0U);
-    }
-    return;
-  }
-  stack->items[stack->top].is_root = 0U;
-  stack->items[stack->top].cluster = clus;
-  stack->top++;
-}
 
 /* ra8_fs_check_test_fat_push_overflow(): see header for the test-only contract. */
 RA8_TEST_HELPER
