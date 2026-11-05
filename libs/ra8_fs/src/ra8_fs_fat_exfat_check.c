@@ -67,27 +67,6 @@ typedef enum : uint32_t {
 } ra8_fs_exfat_check_const_t;
 
 /**
- * @struct exfat_dir_stack_t
- * @brief Bounded worklist of exFAT directories still to walk (NASA P10 Rule 1).
- *
- * @details Metadata for a caller-owned array of ::exfat_dir_t rather than
- *          recursion. Pushing past ::k_ra8_fs_check_max_dirs sets @p truncated
- *          -- recorded once as ::k_ra8_fs_check_fault_scan_truncated -- and
- *          drops the entry without accessing @p items.
- *
- * @invariant `top <= k_ra8_fs_check_max_dirs`.
- * @invariant `items` addresses `k_ra8_fs_check_max_dirs` entries whenever
- *            `top < k_ra8_fs_check_max_dirs`; a full overflow-only sentinel
- *            may leave it null because a push cannot access the array.
- * @since 0.1.0
- */
-typedef struct {
-  exfat_dir_t* items;     /**< Caller-owned pending-directory array. */
-  uint32_t     top;       /**< Count of pending entries.             */
-  uint8_t      truncated; /**< 1 once an overflow was dropped.       */
-} exfat_dir_stack_t;
-
-/**
  * @brief Count the set bits in one byte (portable, no compiler builtin).
  *
  * @details A bounded eight-iteration bit count, so the result is identical on the host and on the target.
@@ -179,21 +158,6 @@ internal_exchk_push(ra8_fs_check_ctx_t* ctx, exfat_dir_stack_t* stack, const exf
   }
   stack->items[stack->top] = *dir;
   stack->top++;
-}
-
-/* ra8_fs_check_test_exfat_push_overflow(): see header for the test-only contract. */
-RA8_TEST_HELPER
-void ra8_fs_check_test_exfat_push_overflow(ra8_fs_check_ctx_t* ctx,
-                                           uint32_t            cluster,
-                                           bool                already_truncated)
-{
-  exfat_dir_stack_t stack = {
-    .items     = nullptr,
-    .top       = (uint32_t)k_ra8_fs_check_max_dirs,
-    .truncated = already_truncated ? 1U : 0U,
-  };
-  const exfat_dir_t dir = {.cluster = cluster};
-  internal_exchk_push(ctx, &stack, &dir);
 }
 
 /**

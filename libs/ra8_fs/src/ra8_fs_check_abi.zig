@@ -536,3 +536,211 @@ pub export fn internal_exchk_verify_set(ctx: [*c]c.ra8_fs_check_ctx_t, set: [*c]
         priv_check_fault(ctx, bad_name_hash, 0, lba, off);
     }
 }
+
+// =============================================================================
+// Directory-tree walk
+// =============================================================================
+
+const off_file_secnt: usize = @intCast(c.k_exfat_off_file_secnt);
+const off_file_attr: usize = @intCast(c.k_exfat_off_file_attr);
+const strm_off_flags: usize = @intCast(c.k_exfat_strm_off_flags);
+const strm_off_clus: usize = @intCast(c.k_exfat_strm_off_clus);
+const strm_off_dlen: usize = @intCast(c.k_exfat_strm_off_dlen);
+const secflag_no_fat: u8 = @intCast(c.k_exfat_secflag_no_fat);
+const set_max_entries: u32 = @intCast(c.k_exfat_set_max_entries);
+const scan_limit: u32 = @intCast(c.k_exfat_scan_limit);
+const entry_eod: u8 = @intCast(c.k_exfat_entry_eod);
+const entry_bitmap: u8 = @intCast(c.k_exfat_entry_bitmap);
+const entry_upcase: u8 = @intCast(c.k_exfat_entry_upcase);
+const entry_file: u8 = @intCast(c.k_exfat_entry_file);
+const inuse_bit: u8 = @intCast(c.k_exfat_inuse_bit);
+const max_dirs: u32 = @intCast(c.k_ra8_fs_check_max_dirs);
+
+/// Queue an exFAT subdirectory onto the walk worklist, capping the depth:
+/// one push past the ceiling records a single scan-truncation fault and the
+/// entry is dropped.
+pub export fn internal_exchk_push(ctx: [*c]c.ra8_fs_check_ctx_t, stack: [*c]c.exfat_dir_stack_t, dir: [*c]const c.exfat_dir_t) callconv(.c) void {
+    if (stack[0].top >= max_dirs) {
+        if (stack[0].truncated == 0) {
+            stack[0].truncated = 1;
+            priv_check_fault(ctx, scan_truncated, dir[0].cluster, 0, 0);
+        }
+        return;
+    }
+    stack[0].items[stack[0].top] = dir[0];
+    stack[0].top += 1;
+}
+
+/// The cluster half of the entry-set walk: read the Stream entry, validate the
+/// first cluster, then count an empty file, fault an out-of-range entry, queue
+/// a subdirectory, or mark a file's run (contiguous or FAT-chained).
+pub export fn internal_exchk_set_clusters(ctx: [*c]c.ra8_fs_check_ctx_t, set: [*c]const u8, file: [*c]const u8, stack: [*c]c.exfat_dir_stack_t, lba: u64, off: u32) callconv(.c) u16 {
+    const strm: [*c]const u8 = set + @as(usize, entry_bytes);
+    const first: u32 = priv_rd32(strm + strm_off_clus);
+    const dlen: u64 = c.priv_rd64(strm + strm_off_dlen);
+    const is_dir: u8 = if ((file[off_file_attr] & attr_directory) != 0) 1 else 0;
+    if (first == 0) {
+        if (is_dir == 0) {
+            ctx[0].rep[0].files_visited += 1;
+        }
+        return @intCast(c.k_ra8_ok);
+    }
+    if (priv_check_in_range(ctx, first) == 0) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_dir_entry, first, lba, off);
+        return @intCast(c.k_ra8_ok);
+    }
+    if (is_dir != 0) {
+        var sub: c.exfat_dir_t = undefined;
+        c.priv_exfat_dir_from_set(ctx[0].m, strm, &sub);
+        internal_exchk_push(ctx, stack, &sub);
+        return @intCast(c.k_ra8_ok);
+    }
+    ctx[0].rep[0].files_visited += 1;
+    const cbytes: u32 = @intCast(c.priv_cluster_bytes(ctx[0].m));
+    const nclus: u64 = if (dlen == 0) 1 else (dlen / @as(u64, cbytes)) + @intFromBool(dlen % @as(u64, cbytes) != 0);
+    if ((strm[strm_off_flags] & secflag_no_fat) != 0) {
+        internal_exchk_mark_run(ctx, first, nclus);
+        return @intCast(c.k_ra8_ok);
+    }
+    return internal_exchk_mark_fatchain(ctx, first);
+}
+
+/// Gather and process one File entry set: assemble it from the cursor,
+/// verify it, then mark or queue it. A SecondaryCount outside the writable
+/// range is a malformed set: faulted and skipped, and the leftover secondary
+/// entries the outer walk then sees are ignored as non-File types.
+pub export fn internal_exchk_set(ctx: [*c]c.ra8_fs_check_ctx_t, cur: [*c]c.exfat_cursor_t, file: [*c]const u8, stack: [*c]c.exfat_dir_stack_t) callconv(.c) u16 {
+    const count: u32 = 1 + @as(u32, file[off_file_secnt]);
+    const bic: u32 = (cur[0].entry_in_cluster - 1) * entry_bytes;
+    const lba: u64 = @as(u64, @intCast(c.priv_cluster_to_lba(ctx[0].m, cur[0].cluster))) + @as(u64, bic / @as(u32, @intCast(c.priv_bps(ctx[0].m))));
+    const off: u32 = bic % @as(u32, @intCast(c.priv_bps(ctx[0].m)));
+    if (count < 2 or count > set_max_entries) {
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_dir_entry, 0, lba, off);
+        return @intCast(c.k_ra8_ok);
+    }
+    var set: [set_max_entries * entry_bytes]u8 = @splat(0);
+    c.priv_byte_copy(&set, file, entry_bytes);
+    var k: u32 = 1;
+    while (k < count) : (k += 1) {
+        const e: u16 = @intCast(c.priv_exfat_next_entry(ctx[0].m, cur, &set[@as(usize, k) * entry_bytes]));
+        if (e == @as(u16, @intCast(c.k_ra8_err_not_found))) {
+            ctx[0].rep[0].entries_bad += 1;
+            priv_check_fault(ctx, bad_dir_entry, 0, lba, off);
+            return @intCast(c.k_ra8_ok);
+        }
+        if (e != @as(u16, @intCast(c.k_ra8_ok))) {
+            return e;
+        }
+    }
+    internal_exchk_verify_set(ctx, &set, count, lba, off);
+    return internal_exchk_set_clusters(ctx, &set, file, stack, lba, off);
+}
+
+/// Dispatch one live File entry: a set whose secondary entries would run past
+/// the scan ceiling is a walk truncation, reported and stopped here rather
+/// than inside set assembly. `out_stop` carries whether the caller's scan
+/// loop must return immediately with the returned status.
+pub export fn internal_exchk_scan_dir_file_entry(ctx: [*c]c.ra8_fs_check_ctx_t, cur: [*c]c.exfat_cursor_t, e: [*c]const u8, stack: [*c]c.exfat_dir_stack_t, dir_cluster: u32, out_stop: [*c]u8) callconv(.c) u16 {
+    const count: u32 = 1 + @as(u32, e[off_file_secnt]);
+    const remaining: u32 = scan_limit - cur[0].scanned;
+    if (count <= set_max_entries) {
+        if (count > 1) {
+            if ((count - 1) > remaining) {
+                priv_check_fault(ctx, scan_truncated, dir_cluster, 0, 0);
+                out_stop[0] = 1;
+                return @intCast(c.k_ra8_ok);
+            }
+        }
+    }
+    const se: u16 = internal_exchk_set(ctx, cur, e, stack);
+    out_stop[0] = if (se != @as(u16, @intCast(c.k_ra8_ok))) 1 else 0;
+    return se;
+}
+
+/// Probe exactly one entry past the scan ceiling to classify the walk: an
+/// exhausted allocation or an immediate end-of-directory marker proves the
+/// directory ended exactly on the scan bound; any other live or deleted entry
+/// proves the walk was truncated.
+pub export fn internal_exchk_scan_dir_terminal(ctx: [*c]c.ra8_fs_check_ctx_t, cur: [*c]c.exfat_cursor_t, dir: [*c]const c.exfat_dir_t) callconv(.c) u16 {
+    var terminal: [entry_bytes]u8 = @splat(0);
+    const probe: u16 = @intCast(c.priv_exfat_next_entry(ctx[0].m, cur, &terminal));
+    if (probe == @as(u16, @intCast(c.k_ra8_err_not_found))) {
+        return @intCast(c.k_ra8_ok);
+    }
+    if (probe != @as(u16, @intCast(c.k_ra8_ok))) {
+        return probe;
+    }
+    if (terminal[0] == entry_eod) {
+        return @intCast(c.k_ra8_ok);
+    }
+    priv_check_fault(ctx, scan_truncated, dir[0].cluster, 0, 0);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Walk one exFAT directory, verifying and marking every live entry: system,
+/// file and directory sets dispatch; at the entry ceiling one terminal probe
+/// separates an exact-bound directory from a truncated walk.
+pub export fn internal_exchk_scan_dir(ctx: [*c]c.ra8_fs_check_ctx_t, dir: [*c]const c.exfat_dir_t, stack: [*c]c.exfat_dir_stack_t) callconv(.c) u16 {
+    var cur: c.exfat_cursor_t = std.mem.zeroes(c.exfat_cursor_t);
+    c.priv_exfat_cursor_init(dir, &cur);
+    while (cur.scanned < scan_limit) {
+        var e: [entry_bytes]u8 = @splat(0);
+        const r: u16 = @intCast(c.priv_exfat_next_entry(ctx[0].m, &cur, &e));
+        if (r == @as(u16, @intCast(c.k_ra8_err_not_found))) {
+            return @intCast(c.k_ra8_ok); // run ended without an end-of-directory marker
+        }
+        if (r != @as(u16, @intCast(c.k_ra8_ok))) {
+            return r;
+        }
+        if (e[0] == entry_eod) {
+            return @intCast(c.k_ra8_ok);
+        }
+        if ((e[0] & inuse_bit) == 0) {
+            continue; // a deleted remnant
+        }
+        if (e[0] == entry_bitmap or e[0] == entry_upcase) {
+            internal_exchk_system_run(ctx, &e);
+            continue;
+        }
+        if (e[0] == entry_file) {
+            var stop: u8 = 0;
+            const fe: u16 = internal_exchk_scan_dir_file_entry(ctx, &cur, &e, stack, dir[0].cluster, &stop);
+            if (stop != 0) {
+                return fe;
+            }
+        }
+    }
+    return internal_exchk_scan_dir_terminal(ctx, &cur, dir);
+}
+
+/// The explicit DFS array (~2 KiB) stays in module-static storage so the
+/// frame stays within budget; the walk is iterative and single-threaded
+/// under the fs lock.
+var s_exchk_work_items: [max_dirs]c.exfat_dir_t = undefined;
+
+/// Walk the whole exFAT directory tree from the root with a worklist: pop
+/// directories, mark each one's own run, then scan its entries.
+pub export fn internal_exchk_tree(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
+    var worklist: c.exfat_dir_stack_t = undefined;
+    worklist.items = &s_exchk_work_items;
+    worklist.top = 0;
+    worklist.truncated = 0;
+    c.priv_exfat_dir_root(ctx[0].m, &worklist.items[0]);
+    worklist.top = 1;
+    while (worklist.top > 0) {
+        worklist.top -= 1;
+        const dir: c.exfat_dir_t = worklist.items[worklist.top];
+        ctx[0].rep[0].dirs_visited += 1;
+        var err: u16 = internal_exchk_mark_dir_alloc(ctx, &dir);
+        if (err != @as(u16, @intCast(c.k_ra8_ok))) {
+            return err;
+        }
+        err = internal_exchk_scan_dir(ctx, &dir, &worklist);
+        if (err != @as(u16, @intCast(c.k_ra8_ok))) {
+            return err;
+        }
+    }
+    return @intCast(c.k_ra8_ok);
+}
