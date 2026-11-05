@@ -124,123 +124,12 @@ void ra8_fs_check_test_fat_push_overflow(ra8_fs_check_ctx_t* ctx,
   internal_fat_push(ctx, &stack, cluster);
 }
 
-/**
- * @brief Process one 32-byte FAT directory entry.
- *
- * @details Skips the entries that name nothing walkable -- end-of-directory,
- *          deleted, long-name, "." / "..", and the volume-label -- then validates
- *          the first cluster of a real file or directory. A file's chain is marked
- *          now; a directory is pushed to be walked (and marked) when it is popped.
- *
- * @param[in,out] ctx       The scan context.
- * @param[in,out] stack     The directory worklist.
- * @param[in]     ent       The 32-byte directory entry.
- * @param[in]     lba       Volume-relative sector the entry was read from.
- * @param[in]     entry_off Byte offset of the entry in that sector.
- * @param[out]    out_eod   Set to 1 when @p ent is the end-of-directory marker.
- *
- * @return Error code.
- * @retval k_ra8_ok    The entry was processed (a fault may have been recorded).
- * @retval k_ra8_err_* Backend read failure while marking a file chain.
- *
- * @pre Every pointer is non-NULL; @p ent points at 32 valid bytes.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post On a valid file entry its chain is marked; on a directory it is queued.
- * @post No volume state is modified.
- *
- * @note Not thread-safe; the check holds the library lock.
- *
- * @since 0.1.0
+/* internal_fat_entry (the 32-byte directory-entry processor) and
+ * internal_fat_visit_sector (the per-sector walk) are ported to Zig as
+ * src/ra8_fs_check_abi.zig; the prototypes in
+ * ra8_fs_fat_check_internal.h link to them, and the scan passes below
+ * call them through those.
  */
-RA8_INTERNAL
-static ra8_err_t internal_fat_entry(ra8_fs_check_ctx_t* ctx,
-                                    fat_dir_stack_t*    stack,
-                                    const uint8_t*      ent,
-                                    uint64_t            lba,
-                                    uint32_t            entry_off,
-                                    uint8_t*            out_eod)
-{
-  *out_eod            = 0U;
-  const uint8_t name0 = ent[k_dir_off_name];
-  const uint8_t attr  = ent[k_dir_off_attr];
-  if (name0 == (uint8_t)k_dir_marker_free_perm) {
-    *out_eod = 1U;
-    return k_ra8_ok;
-  }
-  if (name0 == (uint8_t)k_dir_marker_free_used) {
-    return k_ra8_ok;
-  }
-  if (attr == (uint8_t)k_ra8_fs_attr_lfn) {
-    return k_ra8_ok;
-  }
-  if (name0 == (uint8_t)k_dir_marker_dot) {
-    return k_ra8_ok;
-  }
-  const uint8_t is_dir = ((attr & (uint8_t)k_ra8_fs_attr_directory) != 0U) ? 1U : 0U;
-  if ((is_dir == 0U) && ((attr & (uint8_t)k_ra8_fs_attr_volume_id) != 0U)) {
-    return k_ra8_ok; /* a volume-label entry owns no chain */
-  }
-  const uint32_t first = priv_entry_first_cluster(ent);
-  if ((first != 0U) && !priv_check_in_range(ctx, first)) {
-    ctx->rep->entries_bad++;
-    priv_check_fault(ctx, k_ra8_fs_check_fault_bad_dir_entry, first, lba, entry_off);
-    return k_ra8_ok;
-  }
-  if (is_dir != 0U) {
-    if (first != 0U) {
-      internal_fat_push(ctx, stack, first);
-    }
-    return k_ra8_ok;
-  }
-  ctx->rep->files_visited++;
-  if (first != 0U) {
-    return internal_fat_mark_chain(ctx, first);
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Process the 16 directory entries of one loaded sector.
- *
- * @details Processes the sixteen directory entries packed into one 512-byte sector.
- *
- * @param[in,out] ctx     The scan context.
- * @param[in,out] stack   The directory worklist.
- * @param[in]     buf     The 512-byte directory sector.
- * @param[in]     lba     Volume-relative sector number of @p buf.
- * @param[out]    out_eod Set to 1 when the end-of-directory marker was hit.
- * @return Error code.
- * @retval k_ra8_ok    The sector was processed.
- * @retval k_ra8_err_* Backend read failure while marking a chain.
- * @pre Every pointer is non-NULL; @p buf holds a directory sector.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post `*out_eod` is 1 iff the walk should stop.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): one sector's worth of entries.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
-                                           fat_dir_stack_t*    stack,
-                                           const uint8_t*      buf,
-                                           uint64_t            lba,
-                                           uint8_t*            out_eod)
-{
-  for (uint32_t e = 0U; e < priv_dir_eps(ctx->m); e++) {
-    const uint32_t  off = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
-    uint8_t         eod = 0U;
-    const ra8_err_t err = internal_fat_entry(ctx, stack, &buf[off], lba, off, &eod);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (eod != 0U) {
-      *out_eod = 1U;
-      return k_ra8_ok;
-    }
-  }
-  *out_eod = 0U;
-  return k_ra8_ok;
-}
 
 /**
  * @brief Walk the FAT12/16 fixed root directory region.
