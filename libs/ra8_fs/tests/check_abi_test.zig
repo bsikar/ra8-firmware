@@ -34,6 +34,8 @@ export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u
 const bad_fat_value: u8 = @intCast(c.k_ra8_fs_check_fault_bad_fat_value);
 const crosslink: u8 = @intCast(c.k_ra8_fs_check_fault_crosslink);
 const bad_dir_entry: u8 = @intCast(c.k_ra8_fs_check_fault_bad_dir_entry);
+const lost_cluster: u8 = @intCast(c.k_ra8_fs_check_fault_lost_cluster);
+const free_count_bad: u8 = @intCast(c.k_ra8_fs_check_fault_free_count_bad);
 
 const Ctx = struct {
     rep: c.ra8_fs_check_report_t,
@@ -461,4 +463,73 @@ test "a mutual cross-link between directory chains stops the walk" {
     try std.testing.expectEqual(crosslink, @as(u8, @intCast(t.rep.first_fault.kind)));
     try std.testing.expectEqual(@as(u32, 5), t.rep.first_fault.cluster);
     try std.testing.expectEqual(@as(u8, 0b0001_1000), t.bmp[0]);
+}
+
+test "the diff pass flags allocated clusters no chain reached" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.fat = @splat(0);
+    t.bmp[0] = 0b0000_0001; // cluster 2 was visited by the tree walk
+    fake.fat[3] = 0x0FFF_FFFF; // allocated, unvisited: lost
+    fake.fat[4] = 0; // free, skipped
+    fake.fat[6] = 0x0FFF_FFF7; // defective marker, skipped
+    try std.testing.expectEqual(fe_ok, check.internal_fat_diff(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_lost);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(lost_cluster, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
+}
+
+test "the FSInfo compare flags a mismatched free count" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    t.ctx.m[0].reserved_sectors = 8;
+    t.rep.clusters_free = 0x1235;
+    fake.sector[0..512].* = @splat(0);
+    fake.sector[@as(usize, @intCast(c.k_fmt_off_f32_fsinfo))] = 3;
+    const lead: usize = @intCast(c.k_fmt_fsi_off_lead);
+    const strt: usize = @intCast(c.k_fmt_fsi_off_struct);
+    const free: usize = @intCast(c.k_fmt_fsi_off_free);
+    const tail: usize = @intCast(c.k_fmt_fsi_off_trail);
+    fake.disk[2][lead..][0..4].* = .{ 0x52, 0x52, 0x61, 0x41 }; // 0x41615252
+    fake.disk[2][strt..][0..4].* = .{ 0x72, 0x72, 0x41, 0x61 }; // 0x61417272
+    fake.disk[2][free..][0..4].* = .{ 0x34, 0x12, 0x00, 0x00 }; // 0x1234
+    fake.disk[2][tail..][0..4].* = .{ 0x00, 0x00, 0x55, 0xAA }; // 0xAA550000
+    try std.testing.expectEqual(fe_ok, check.internal_fat_fsinfo(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(free_count_bad, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.lba);
+}
+
+test "an untrusted FSInfo sector is not a fault" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    t.ctx.m[0].reserved_sectors = 8;
+    t.rep.clusters_free = 0x1234;
+    fake.sector[0..512].* = @splat(0);
+    fake.sector[@as(usize, @intCast(c.k_fmt_off_f32_fsinfo))] = 3;
+    fake.disk[2][488..][0..4].* = .{ 0x99, 0x99, 0x00, 0x00 }; // disagrees
+    // no signatures: nothing to compare, no fault
+    try std.testing.expectEqual(fe_ok, check.internal_fat_fsinfo(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "priv_check_fat runs classify, tree, diff and fsinfo in order" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    t.ctx.m = mkMount(c.k_ra8_fs_type_fat32);
+    fake.sector[0..512].* = @splat(0); // boot sector: no FSInfo pointer, skipped
+    fake.fat = @splat(0);
+    fake.fat[2] = 0; // free
+    fake.fat[3] = 0x0FFF_FFFF; // allocated, never reached: lost
+    fake.fat[5] = 0x0FFF_FFFF; // the FAT32 root chain ends after its first cluster
+    try std.testing.expectEqual(fe_ok, check.priv_check_fat(&t.ctx));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.clusters_lost);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(lost_cluster, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
 }

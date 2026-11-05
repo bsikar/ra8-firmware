@@ -9,7 +9,6 @@ const std = @import("std");
 const al = @import("ra8_fs").alloc;
 const fs = @import("ra8_fs");
 
-
 // stand-in for the one helper the open/close port added (RA8FW-1092); the
 // dirmk path never closes a file handle, so it only needs to exist
 const ex = fs.exfat_read;
@@ -242,7 +241,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
     for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
     return sum;
 }
-
 
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
@@ -607,8 +605,6 @@ test "rmdir dispatch: idle mount and exFAT routing" {
     try std.testing.expectEqual(@as(usize, 1), exfat_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
-
-
 
 fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) callconv(.c) void {
     _ = .{ leaf, n };
