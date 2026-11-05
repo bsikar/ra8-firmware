@@ -397,3 +397,94 @@ pub export fn priv_check_fat(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
     }
     return internal_fat_fsinfo(ctx);
 }
+
+// ---------------------------------------------------------------------------
+// exFAT check: marking referenced clusters and entry-set verification
+// (RA8FW-1114)
+// ---------------------------------------------------------------------------
+
+const bad_set_checksum: u8 = @intCast(c.k_ra8_fs_check_fault_bad_set_checksum);
+const bad_name_hash: u8 = @intCast(c.k_ra8_fs_check_fault_bad_name_hash);
+
+const name_cap: u32 = @intCast(c.k_exfat_name_cap);
+const name_per_entry: u32 = @intCast(c.k_exfat_name_per_entry);
+const entry_bytes: u32 = @intCast(c.k_exfat_entry_bytes);
+
+/// Mark a contiguous cluster run visited (a NoFatChain file's run or a
+/// bitmap / up-case system run), detecting cross-links. A cluster out of
+/// range is a bad entry. A run longer than the in-volume suffix starting at
+/// `first` is faulted before the bounded in-range prefix is marked, so
+/// clamping a corrupt DataLength can never turn it into a clean run.
+pub export fn internal_exchk_mark_run(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32, nclus: u64) callconv(.c) void {
+    if (priv_check_in_range(ctx, first) == 0) {
+        _ = priv_check_visit(ctx, first, bad_dir_entry);
+        return;
+    }
+    var n: u32 = @truncate(nclus);
+    const available: u32 = ctx[0].rep[0].clusters_total - (first - first_data);
+    if (nclus > @as(u64, available)) {
+        n = available;
+        ctx[0].rep[0].entries_bad += 1;
+        priv_check_fault(ctx, bad_dir_entry, first + n, 0, 0);
+    }
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (priv_check_visit(ctx, first + i, bad_dir_entry) != 0) return;
+    }
+}
+
+/// Follow a fragmented file's FAT chain, marking each cluster and flagging a
+/// revisit (cross-link) or a next-cluster out of range (bad chain). A
+/// non-terminal successor after exactly `clusters_total` visits is checked
+/// once more, which necessarily exposes a revisit or bad tail.
+pub export fn internal_exchk_mark_fatchain(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32) callconv(.c) u16 {
+    var clus = first;
+    var hop: u32 = 0;
+    while (hop < ctx[0].rep[0].clusters_total) : (hop += 1) {
+        if (priv_check_visit(ctx, clus, bad_chain) != 0) return @intCast(c.k_ra8_ok);
+        var v: u32 = 0;
+        const err: u16 = @intCast(c.priv_fat_get(ctx[0].m, clus, &v));
+        if (err != c.k_ra8_ok) return err;
+        if (c.priv_is_eoc(ctx[0].m, v) != 0) return @intCast(c.k_ra8_ok);
+        if (priv_check_in_range(ctx, v) == 0) {
+            priv_check_fault(ctx, bad_chain, clus, 0, 0);
+            return @intCast(c.k_ra8_ok);
+        }
+        clus = v;
+    }
+    _ = priv_check_visit(ctx, clus, bad_chain);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Walk a directory's own run (contiguous or FAT-chained, decided by
+/// `contig_end`) with the real step helper, marking each cluster, so a
+/// directory whose contents stop at an early end-of-directory marker still
+/// counts its trailing allocated clusters as referenced. A successor
+/// remaining after the last permitted hop is validated as a cross-link or
+/// bad entry.
+pub export fn internal_exchk_mark_dir_alloc(ctx: [*c]c.ra8_fs_check_ctx_t, dir: [*c]const c.exfat_dir_t) callconv(.c) u16 {
+    var clus = dir[0].cluster;
+    var hop: u32 = 0;
+    while (hop < ctx[0].rep[0].clusters_total) : (hop += 1) {
+        if (priv_check_visit(ctx, clus, bad_dir_entry) != 0) return @intCast(c.k_ra8_ok);
+        var next: u32 = 0;
+        const e: u16 = @intCast(c.priv_exfat_step_cluster(ctx[0].m, clus, dir[0].contig_end, &next));
+        if (e == @as(u16, @intCast(c.k_ra8_err_not_found))) return @intCast(c.k_ra8_ok);
+        if (e != c.k_ra8_ok) return e;
+        clus = next;
+    }
+    _ = priv_check_visit(ctx, clus, bad_dir_entry);
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Mark the clusters a bitmap (0x81) or up-case (0x82) system entry owns:
+/// ceil(DataLength / cluster bytes) clusters from FirstCluster, both read
+/// from the same fields a Stream entry uses.
+pub export fn internal_exchk_system_run(ctx: [*c]c.ra8_fs_check_ctx_t, e: [*c]const u8) callconv(.c) void {
+    const first: u32 = @intCast(c.priv_rd32(e + @as(usize, @intCast(c.k_exfat_strm_off_clus))));
+    const bytes: u64 = @intCast(c.priv_rd64(e + @as(usize, @intCast(c.k_exfat_strm_off_dlen))));
+    const cbytes: u32 = @intCast(c.priv_cluster_bytes(ctx[0].m));
+    const nclus: u64 = (bytes / cbytes) + @intFromBool(bytes % cbytes != 0);
+    if (first == 0) return;
+    internal_exchk_mark_run(ctx, first, nclus);
+}
