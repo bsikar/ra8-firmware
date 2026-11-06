@@ -7,6 +7,7 @@ const std = @import("std");
 const fs = @import("ra8_fs");
 const c = fs.c;
 const fake = @import("fs_walker_fake.zig");
+const st = fs.fat_state;
 const ow = fs.exfat_openw;
 
 const write_mode: c.ra8_fs_mode_t = c.k_ra8_fs_mode_write;
@@ -74,7 +75,7 @@ test "append on a FAT-chained file walks the chain; a bad link is refused" {
     f = null;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_protocol_error), open(append_mode, &f));
     try std.testing.expect(f == null);
-    try std.testing.expectEqual(@as(u32, 0), @as(u32, fake.file_pool[1].in_use));
+    try std.testing.expectEqual(@as(u32, 0), @as(u32, st.s_files[1].in_use));
 }
 
 test "directories, read-only files and unwritable sets are refused" {
@@ -90,7 +91,7 @@ test "directories, read-only files and unwritable sets are refused" {
     fake.set_count = 2;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_protocol_error), open(write_mode, &f));
     try std.testing.expect(f == null);
-    try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
 }
 
 test "a missing leaf is created as an empty set" {
@@ -108,11 +109,11 @@ test "a missing leaf is created as an empty set" {
     fake.link_err = c.k_ra8_err_hw_error;
     f = null;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_hw_error), open(write_mode, &f));
-    try std.testing.expectEqual(@as(u32, 0), @as(u32, fake.file_pool[1].in_use));
+    try std.testing.expectEqual(@as(u32, 0), @as(u32, st.s_files[1].in_use));
 
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.find_set_err = c.k_ra8_err_not_found;
-    fake.slots_left = 0;
+    st.filesFill();
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_no_mem), open(write_mode, &f));
 }
 

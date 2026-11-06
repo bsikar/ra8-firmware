@@ -6,6 +6,7 @@
 
 const std = @import("std");
 const c = @import("ra8_fs").c;
+const st = @import("ra8_fs").fat_state;
 const fake = @import("fs_walker_fake.zig");
 const ra8_fs = @import("ra8_fs");
 
@@ -98,7 +99,7 @@ test "open existing refuses a directory entry before consuming a slot" {
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "notes/a.txt", mode_read, &f);
     try std.testing.expectEqual(err_invalid_arg, err);
-    try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
     try std.testing.expect(f == null);
 }
 
@@ -108,7 +109,7 @@ test "open existing refuses a write mode on a read-only file" {
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_write, &f);
     try std.testing.expectEqual(err_access_denied, err);
-    try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
     // a read open is untouched by the bit
     const err2 = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(ok, err2);
@@ -121,7 +122,7 @@ test "open existing populates the handle from the entry" {
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(ok, err);
-    try std.testing.expectEqual(@as(u32, 1), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 1), fake.usedFiles());
     const h = f.?;
     try std.testing.expectEqual(@as(u32, 0x21), h.first_cluster);
     try std.testing.expectEqual(@as(u32, 0x1234), h.size_bytes);
@@ -166,8 +167,8 @@ test "truncate failure frees the slot and reports the error" {
     try std.testing.expectEqual(@as(u16, 0x21), err);
     try std.testing.expect(f == null);
     // the slot the open took was released
-    try std.testing.expectEqual(@as(u32, 0), fake.file_pool[1].in_use);
-    try std.testing.expectEqual(@as(u32, 1), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), st.s_files[1].in_use);
+    try std.testing.expectEqual(@as(u32, 1), fake.usedFiles());
 }
 
 test "create_new carves an empty archive entry and stamps its creation" {
@@ -194,7 +195,7 @@ test "a read failure leaves the pool untouched" {
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "new.bin", mode_write, &f);
     try std.testing.expectEqual(err_access_denied, err);
-    try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
 }
 
 test "not-found in read mode is not_found, not a create" {
@@ -202,7 +203,7 @@ test "not-found in read mode is not_found, not a create" {
     var f: ?*c.ra8_fs_file_t = null;
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f);
     try std.testing.expectEqual(err_not_found, err);
-    try std.testing.expectEqual(@as(u32, 2), fake.slots_left);
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
 }
 
 test "open_locked guards: null handle and unmounted volume" {
@@ -215,7 +216,7 @@ test "open_locked guards: null handle and unmounted volume" {
 
 test "pool exhaustion is no_mem" {
     setupFat();
-    fake.slots_left = 0;
+    st.filesFill();
     layEntry(0, &a_txt, attr_archive, 0x21, 0x1234);
     var f: ?*c.ra8_fs_file_t = null;
     try std.testing.expectEqual(err_no_mem, ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_read, &f));

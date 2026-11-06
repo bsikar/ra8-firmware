@@ -20,16 +20,16 @@
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 
+/* The shared module state and both slot allocators now live in Zig
+ * (RA8FW-1143); the mount allocator is declared here for the mount and
+ * unmount paths. `g_fs_scratch` and `k_zero_sector` come in through
+ * `ra8_fs_fat_internal.h` and `ra8_fs_fat_bytes_internal.h` as before. */
+extern ra8_fs_mount_t* internal_alloc_mount_slot(void);
+
 /* =============================================================================
  * Module state
  * =============================================================================
  */
-
-/** @brief Mount table -- max `k_ra8_fs_max_mounts` simultaneous volumes. */
-static ra8_fs_mount_t s_mounts[k_ra8_fs_max_mounts] = {};
-
-/** @brief File handle table -- max `k_ra8_fs_max_files` open at once. */
-static ra8_fs_file_t s_files[k_ra8_fs_max_files] = {};
 
 /**
  * @brief Single max-sector scratch buffer reused across all I/O.
@@ -37,8 +37,6 @@ static ra8_fs_file_t s_files[k_ra8_fs_max_files] = {};
  *          `ra8_fs_fat_internal.h` and defined here exactly once. Sized to
  *          ::k_ra8_fs_sector_max so a 4Kn medium fits without allocation.
  */
-RA8_PRIV uint8_t g_fs_scratch[k_ra8_fs_sector_max] = {};
-
 /**
  * @var s_sec_arena
  * @brief The four fixed-role sector bounce buffers.
@@ -52,9 +50,6 @@ RA8_PRIV uint8_t g_fs_scratch[k_ra8_fs_sector_max] = {};
  * @since 0.1.0
  */
 static uint8_t s_sec_arena[k_fs_sec_roles][k_ra8_fs_sector_max] = {};
-
-/** @brief Implementation of `k_zero_sector` -- see the header contract. */
-const uint8_t k_zero_sector[k_ra8_fs_sector_max] = {};
 
 /* `priv_sec_walk()`: see header for the documented contract. */
 uint8_t* priv_sec_walk(void)
@@ -78,51 +73,6 @@ uint8_t* priv_sec_fat2(void)
 uint8_t* priv_sec_io(void)
 {
   return s_sec_arena[k_fs_sec_role_io];
-}
-
-/* =============================================================================
- * Slot allocation
- * =============================================================================
- */
-
-/**
- * @brief Allocate a free entry from the mount table; returns NULL if full.
- *
- * @details Linear scan of `s_mounts` for an entry with `in_use == 0`.
- *
- * @return Pointer to a free mount slot, or NULL if all are busy.
- * @retval non-NULL Pointer to a `ra8_fs_mount_t` with `in_use == 0`.
- * @retval NULL     Mount table is full.
- *
- * @pre Module is initialized.
- * @pre Caller serialises mount/unmount operations.
- * @post No state modified.
- * @post Returned pointer remains valid for the program lifetime.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_fs_mount_t* internal_alloc_mount_slot(void)
-{
-  for (uint32_t i = 0; i < k_ra8_fs_max_mounts; i++) {
-    if (s_mounts[i].in_use == 0U) {
-      return &s_mounts[i];
-    }
-  }
-  return nullptr;
-}
-
-/* `priv_alloc_file_slot()`: see header for the documented contract. */
-ra8_fs_file_t* priv_alloc_file_slot(void)
-{
-  for (uint32_t i = 0; i < k_ra8_fs_max_files; i++) {
-    if (s_files[i].in_use == 0U) {
-      return &s_files[i];
-    }
-  }
-  return nullptr;
 }
 
 /* =============================================================================

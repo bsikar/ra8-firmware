@@ -39,6 +39,7 @@ fn reset() void {
     for (&fat) |*f| f.* = 0;
     read_err = 0;
     write_err = 0;
+    st.filesFill(); // the real table stands in: no slot is free here
 }
 
 /// The fake FAT: `fat[cluster - 2]`, entry 0 is the first data cluster.
@@ -95,10 +96,6 @@ export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u3
     out_clus.* = 4; // cluster_to_lba(4) = 1000 + 2 = the bitmap window
     out_len.* = 1024;
     return ok;
-}
-
-export fn priv_alloc_file_slot() callconv(.c) ?*c.ra8_fs_file_t {
-    return null;
 }
 
 export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
