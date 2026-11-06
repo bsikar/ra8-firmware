@@ -22,7 +22,6 @@ var disk: [256][512]u8 = @splat(@splat(0));
 var disk2: [8192][512]u8 = @splat(@splat(0));
 
 // The sector scratch pad the fmt ABI writes through (the C side's global).
-export var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 fn fakeWrite(ctx: @TypeOf(@as(c.ra8_fs_backend_t, undefined).ctx), lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
     _ = ctx;
@@ -134,7 +133,7 @@ test "build vbr writes the spec fields" {
 
 test "write boot lays the region and its backup" {
     disk = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     var g = geom4m();
     try std.testing.expectEqual(ok, f.internal_exfat_geometry(8192, &g));
     const be = backend();
@@ -166,7 +165,7 @@ test "write boot lays the region and its backup" {
 
 test "write fat seeds media, EOC and the pre-allocated chains" {
     disk = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     var g = geom4m();
     try std.testing.expectEqual(ok, f.internal_exfat_geometry(8192, &g));
     const be = backend();
@@ -187,7 +186,7 @@ test "write fat seeds media, EOC and the pre-allocated chains" {
 
 test "write bitmap marks the pre-allocated clusters" {
     disk = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     var g = geom4m();
     try std.testing.expectEqual(ok, f.internal_exfat_geometry(8192, &g));
     const be = backend();
@@ -214,7 +213,7 @@ test "label utf16 packs ASCII and clamps at eleven" {
 
 test "write root lays the three system entries and clears the cluster" {
     disk = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     var g = geom4m();
     try std.testing.expectEqual(ok, f.internal_exfat_geometry(8192, &g));
     const be = backend();
@@ -260,7 +259,7 @@ test "lba to chs packs the conventional geometry" {
 
 test "write mbr stamps the signature and one exFAT entry" {
     disk = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     const be = backend();
     try std.testing.expectEqual(ok, f.internal_exfat_write_mbr(&be, bps, 2048, 65536));
     const m = &disk[0];
@@ -285,7 +284,7 @@ test "fmt place sizes the partition and refuses the edges" {
 
 test "priv exfat format lays the whole volume end to end" {
     disk2 = @splat(@splat(0));
-    g_fs_scratch = @splat(0);
+    st.g_fs_scratch = @splat(0);
     const be = backend2();
     try std.testing.expectEqual(ok, f.priv_exfat_format(&be, 67584, bps, "RA8VOL"));
     // MBR at LBA 0 with the exFAT entry.

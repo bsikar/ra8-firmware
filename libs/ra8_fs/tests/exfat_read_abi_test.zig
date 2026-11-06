@@ -35,8 +35,6 @@ var read_err: u16 = 0;
 var fat: [8]u32 = @splat(0);
 var fat_read_err: u16 = 0;
 var bpb_result: u16 = 0xAAAA;
-var pool: [2]c.ra8_fs_file_t = undefined;
-var pool_used: usize = 0;
 var lookup_err: u16 = 0;
 var lookup_strm: [32]u8 = @splat(0);
 var lookup_attr: u8 = 0;
@@ -46,7 +44,7 @@ fn reset() void {
     for (&fat) |*f| f.* = 0;
     read_err = 0;
     fat_read_err = 0;
-    pool_used = 0;
+    st.filesReset();
     bpb_result = 0xAAAA;
     lookup_err = 0;
     lookup_strm = @splat(0);
@@ -94,14 +92,6 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
     const i: usize = @intCast(lba - data_lba);
     @memcpy(buf[0..bps], &disk[i]);
     return ok;
-}
-
-export fn priv_alloc_file_slot() callconv(.c) ?*ex.File {
-    if (pool_used >= pool.len) return null;
-    const f = &pool[pool_used];
-    pool_used += 1;
-    f.* = std.mem.zeroes(c.ra8_fs_file_t);
-    return f;
 }
 
 export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
@@ -477,7 +467,7 @@ test "the read open seeds the handle from the stream entry" {
     try std.testing.expectEqual(@as(u64, 0), f.offset);
     try std.testing.expectEqual(c.k_ra8_fs_mode_read, f.mode);
 
-    pool_used = pool.len; // no slot free
+    st.filesFill(); // no slot free
     var out2: ?*ex.File = null;
     try std.testing.expectEqual(err_no_mem, ex.priv_exfat_open(&m, "/notes.txt", c.k_ra8_fs_mode_read, &out2));
 }

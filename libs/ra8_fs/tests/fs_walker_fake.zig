@@ -10,6 +10,7 @@
 const std = @import("std");
 const al = @import("ra8_fs").alloc;
 const c = @import("ra8_fs").c;
+const st = @import("ra8_fs").fat_state;
 const entry_bytes = 32;
 
 pub const slots = 8;
@@ -47,9 +48,6 @@ pub var io_reads: u32 = 0;
 // GPT side: LBAs 1..4 (header, then three entry sectors) and the scratch buffer.
 pub var disk: [4][512]u8 = undefined;
 
-// Open-for-write side: a two-handle slot pool and the stream walkers' knobs.
-pub var file_pool: [2]c.ra8_fs_file_t = undefined;
-pub var slots_left: u32 = 2;
 pub var set_copies: bool = false;
 pub var set_file: [entry_bytes]u8 = undefined;
 pub var set_strm: [entry_bytes]u8 = undefined;
@@ -72,10 +70,16 @@ pub var fat_set_err: u16 = 0;
 pub var fat_sets: u32 = 0;
 pub var gave: u32 = 0;
 pub var hint_low: u32 = 0xFFFF_FFFF;
-export var g_fs_scratch: [4096]u8 = undefined;
 
 pub fn mount() *const c.ra8_fs_mount_t {
     return &mount_store;
+}
+
+/// File slots currently marked in_use in the shared table.
+pub fn usedFiles() u32 {
+    var n: u32 = 0;
+    for (st.s_files) |f| n += f.in_use;
+    return n;
 }
 
 pub fn reset(fs_type: u8) void {
@@ -123,8 +127,7 @@ pub fn reset(fs_type: u8) void {
     bitmap_err = 0;
     io_reads = 0;
     for (&disk) |*d| d.* = @splat(0);
-    for (&file_pool) |*f| f.* = std.mem.zeroes(c.ra8_fs_file_t);
-    slots_left = 2;
+    st.filesReset();
     set_copies = false;
     set_file = @splat(0);
     set_strm = @splat(0);
@@ -341,12 +344,6 @@ export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u
 }
 
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
-
-export fn priv_alloc_file_slot() callconv(.c) [*c]c.ra8_fs_file_t {
-    if (slots_left == 0) return null;
-    slots_left -= 1;
-    return &file_pool[slots_left];
-}
 
 export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
     _ = m;

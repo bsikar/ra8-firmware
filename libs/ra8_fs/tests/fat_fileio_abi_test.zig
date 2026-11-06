@@ -15,6 +15,7 @@ const std = @import("std");
 const fs = @import("ra8_fs");
 const c = fs.c;
 const fake = @import("fs_walker_fake.zig");
+const st = fs.fat_state;
 const fio = fs.fat_fileio;
 
 const fat32: u8 = c.k_ra8_fs_type_fat32;
@@ -32,7 +33,7 @@ const bps: u32 = 512;
 /// A file handle with the common fields set: open for writing, mounted,
 /// offset and size at zero, read waypoint cleared.
 fn file() *c.ra8_fs_file_t {
-    const f = &fake.file_pool[0];
+    const f = &st.s_files[0];
     f.* = std.mem.zeroes(c.ra8_fs_file_t);
     f.in_use = 1;
     f.mode = c.k_ra8_fs_mode_write;
