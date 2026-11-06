@@ -68,11 +68,6 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
     return ok;
 }
 
-export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
-    _ = m;
-    return bpb_result;
-}
-
 export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
     _ = m;
     _ = path;
