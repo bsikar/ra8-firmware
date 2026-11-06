@@ -73,6 +73,11 @@ RA8_PRIV
 ra8_err_t
 priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint8_t* out_free);
 
+/* The rename half (still C) rewrites entries through this one. */
+ra8_err_t internal_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where,
+                                   const uint8_t* entry);
+
+
 /**
  * @brief Find a contiguous free run, starting from the mount's next-free hint.
  *
