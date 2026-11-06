@@ -116,3 +116,108 @@ export fn internal_locate_indexed(m: [*c]const c.ra8_fs_mount_t, index: u8, out_
     }
     return internal_mbr_select_entry(st.g_fs_scratch[0..], index, out_base);
 }
+
+/// Read the volume's boot sector into the module scratch, resolving the
+/// partition base first when `index` selects a partition explicitly.
+///
+/// The auto path (`k_ra8_fs_partition_auto`) tries a superfloppy parse at
+/// LBA 0; when that fails it falls back to partition 0's start LBA from the
+/// MBR, re-locating through the GPT when the disk is GPT-partitioned, and
+/// re-reads the boot sector from the resolved base. The indexed path
+/// resolves the requested partition up front. Both paths end in a BPB
+/// parse of the sector now in scratch.
+export fn internal_read_boot_sector(m: [*c]c.ra8_fs_mount_t, index: u8) callconv(.c) c.ra8_err_t {
+    const st = @import("ra8_fs_fat_state_abi.zig");
+    var err = c.priv_read_sector(m, 0, &st.g_fs_scratch);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    var base: u64 = 0;
+    if (index != c.k_ra8_fs_partition_auto) {
+        const lerr = internal_locate_indexed(m, index, &base);
+        if (lerr != c.k_ra8_ok) {
+            return lerr;
+        }
+    } else {
+        err = c.priv_parse_volume(m);
+        if (err == c.k_ra8_ok) {
+            return c.k_ra8_ok;
+        }
+        base = internal_mbr_part0_lba(&st.g_fs_scratch);
+        if (base == 0) {
+            return err;
+        }
+        if (st.g_fs_scratch[c.k_mbr_off_part0_type] == c.k_gpt_part_type_protective) {
+            const gpt_err = c.priv_gpt_locate_volume(m, &base);
+            if (gpt_err != c.k_ra8_ok) {
+                return gpt_err;
+            }
+        }
+    }
+    m.*.partition_base_lba = base;
+    err = c.priv_read_sector(m, 0, &st.g_fs_scratch);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    return c.priv_parse_volume(m);
+}
+
+/// Probe the backend's block size into a claimed mount slot.
+///
+/// The sector size is the DEVICE's block size, probed before the
+/// boot-sector parse so the parse can hold the volume to it. The capacity
+/// callback must answer, and the block size it reports must pass
+/// `internal_bps_valid`; anything else is refused before a buffer is
+/// sized from it.
+export fn internal_mount_probe_bps(backend: [*c]const c.ra8_fs_backend_t, m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    var dev_blocks: u64 = 0;
+    var dev_bps: u32 = 0;
+    const cerr = backend.*.get_capacity.?(backend.*.ctx, &dev_blocks, &dev_bps);
+    if (cerr != c.k_ra8_ok) {
+        return cerr;
+    }
+    if (internal_bps_valid(dev_bps) == 0) {
+        return c.k_ra8_err_invalid_arg;
+    }
+    m.*.bytes_per_sector = dev_bps;
+    return c.k_ra8_ok;
+}
+
+/// Parse a backend into temporary state and return only its format type.
+///
+/// Runs the full mount path against a throwaway mount: probe the device
+/// block size, read and parse the boot sector (auto partition), and derive
+/// the geometry for FAT volumes. No mount slot is claimed and the medium
+/// is never written; the caller holds the library lock.
+export fn internal_probe_locked(backend: [*c]const c.ra8_fs_backend_t, out_type: [*c]c.ra8_fs_type_t) callconv(.c) c.ra8_err_t {
+    if (backend == null) {
+        return c.k_ra8_err_null_ptr;
+    }
+    if (out_type == null) {
+        return c.k_ra8_err_null_ptr;
+    }
+    if (backend.*.read_block == null) {
+        return c.k_ra8_err_invalid_arg;
+    }
+    if (backend.*.get_capacity == null) {
+        return c.k_ra8_err_invalid_arg;
+    }
+    var probe: c.ra8_fs_mount_t = std.mem.zeroes(c.ra8_fs_mount_t);
+    probe.backend = backend.*;
+    var err = internal_mount_probe_bps(backend, &probe);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    err = internal_read_boot_sector(&probe, c.k_ra8_fs_partition_auto);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    if (probe.type != c.k_ra8_fs_type_exfat) {
+        err = internal_compute_geometry(&probe);
+        if (err != c.k_ra8_ok) {
+            return err;
+        }
+    }
+    out_type.* = probe.type;
+    return c.k_ra8_ok;
+}
