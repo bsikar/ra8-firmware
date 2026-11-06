@@ -1,12 +1,14 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! exFAT format (mkfs), geometry and boot half: the running boot checksum,
-//! the cluster-size tier lookup, the volume geometry resolver, the Main Boot
-//! Sector builder, and the writer that lands boot sectors 0-11 and their
-//! backups. Ported from `ra8_fs_fat_exfat_fmt.c`, which keeps the write-FAT,
-//! bitmap, root, and MBR half until RA8FW slices it too.
+//! exFAT format (mkfs), complete: the running boot checksum, the
+//! cluster-size tier lookup, the volume geometry resolver, the Main Boot
+//! Sector builder, the writer that lands boot sectors 0-11 and their backups,
+//! and the FAT/bitmap/root/MBR half with the `priv_exfat_format`
+//! orchestrator. Ported from `ra8_fs_fat_exfat_fmt.c` across two slices
+//! (RA8FW-1121 boot half, RA8FW-1122 the rest); the C file is a stub.
 
+const std = @import("std");
 const c = @import("fs_c.zig").c;
 
 const ok: u16 = c.k_ra8_ok;
@@ -238,4 +240,246 @@ pub export fn internal_exfat_write_boot(backend: [*c]const c.ra8_fs_backend_t, g
         return err;
     }
     return internal_exfat_write_boot_tail(backend, g, cs);
+}
+
+// ---- FAT, bitmap, root and MBR half (RA8FW-1122) ----
+
+const fmt_fat_media: u32 = @intCast(c.k_exfat_fmt_fat_media);
+const fmt_fat_eoc: u32 = @intCast(c.k_exfat_fmt_fat_eoc);
+const fmt_byte_full: u8 = @intCast(c.k_exfat_fmt_byte_full);
+const fmt_label_max: u32 = @intCast(c.k_exfat_fmt_label_max);
+const fmt_part_align: u32 = @intCast(c.k_exfat_fmt_part_align);
+const fmt_min_sectors: u32 = @intCast(c.k_exfat_fmt_min_sectors);
+const entry_bitmap: u8 = @intCast(c.k_exfat_entry_bitmap);
+const entry_upcase: u8 = @intCast(c.k_exfat_entry_upcase);
+const entry_label: u8 = @intCast(c.k_exfat_entry_label);
+const de_second: u32 = @intCast(c.k_exfat_de_second);
+const de_third: u32 = @intCast(c.k_exfat_de_third);
+const de_first_clus: u32 = @intCast(c.k_exfat_de_first_clus);
+const de_data_len: u32 = @intCast(c.k_exfat_de_data_len);
+const de_upc_csum: u32 = @intCast(c.k_exfat_de_upc_csum);
+const de_lbl_cnt: u32 = @intCast(c.k_exfat_de_lbl_cnt);
+const de_lbl_name: u32 = @intCast(c.k_exfat_de_lbl_name);
+const boot_sig_off: u32 = @intCast(c.k_exfat_foff_boot_sig);
+const mbr_disk_sig_off: u32 = @intCast(c.k_mbr_fmt_disk_sig_off);
+const mbr_disk_sig_base: u32 = @intCast(c.k_mbr_fmt_disk_sig_base);
+const mbr_part0_off: u32 = @intCast(c.k_mbr_fmt_part0_off);
+const mbr_pe_boot: u32 = @intCast(c.k_mbr_fmt_pe_boot);
+const mbr_pe_chs_start: u32 = @intCast(c.k_mbr_fmt_pe_chs_start);
+const mbr_pe_type: u32 = @intCast(c.k_mbr_fmt_pe_type);
+const mbr_pe_chs_end: u32 = @intCast(c.k_mbr_fmt_pe_chs_end);
+const mbr_pe_lba: u32 = @intCast(c.k_mbr_fmt_pe_lba);
+const mbr_pe_nsect: u32 = @intCast(c.k_mbr_fmt_pe_nsect);
+const mbr_boot_none: u8 = @intCast(c.k_mbr_fmt_boot_none);
+const mbr_type_exfat: u8 = @intCast(c.k_mbr_fmt_type_exfat);
+const mbr_chs_heads: u32 = @intCast(c.k_mbr_fmt_chs_heads);
+const mbr_chs_spt: u32 = @intCast(c.k_mbr_fmt_chs_spt);
+const mbr_chs_max: u32 = @intCast(c.k_mbr_fmt_chs_max);
+const mbr_chs_ovf_h: u8 = @intCast(c.k_mbr_fmt_chs_ovf_h);
+const mbr_chs_ovf_m: u8 = @intCast(c.k_mbr_fmt_chs_ovf_m);
+const mbr_chs_ovf_l: u8 = @intCast(c.k_mbr_fmt_chs_ovf_l);
+const mbr_chs_sec_mask: u32 = @intCast(c.k_mbr_fmt_chs_sec_mask);
+const mbr_chs_cyl_hi_mask: u32 = @intCast(c.k_mbr_fmt_chs_cyl_hi_mask);
+const mbr_chs_cyl_hi_shift: u32 = @intCast(c.k_mbr_fmt_chs_cyl_hi_shift);
+const byte_mask: u32 = @intCast(c.k_byte_mask);
+const not_supported: u16 = @intCast(c.k_ra8_err_not_supported);
+
+extern fn priv_fmt_clear_region(backend: [*c]const c.ra8_fs_backend_t, lba: u64, count: u64, bps: u32) callconv(.c) u16;
+extern fn priv_exfat_write_upcase(backend: *const c.ra8_fs_backend_t, abs_lba: u64, bps: u32, out_csum: *u32) callconv(.c) u16;
+
+/// Zero the exFAT FAT region, then seed FAT sector 0: FAT[0] media, FAT[1]
+/// EOC, the bitmap and up-case chains as linked runs terminating in EOC, and
+/// the root cluster as a single EOC entry. The orchestrator's root-cluster
+/// guard keeps every word inside sector 0.
+pub fn internal_exfat_write_fat(backend: [*c]const c.ra8_fs_backend_t, g: *const Geom) u16 {
+    const err = priv_fmt_clear_region(backend, g.part_lba +% g.fat_offset, g.fat_length, g.bps);
+    if (err != ok) {
+        return err;
+    }
+    @memset(g_fs_scratch[0..g.bps], 0);
+    internal_exfat_put32(&g_fs_scratch, 0, fmt_fat_media);
+    internal_exfat_put32(&g_fs_scratch, 1, fmt_fat_eoc);
+    const bmp_last = fmt_first_clus + g.bitmap_clusters - 1;
+    var clus = fmt_first_clus;
+    while (clus <= bmp_last) : (clus += 1) {
+        internal_exfat_put32(&g_fs_scratch, clus, if (clus < bmp_last) clus + 1 else fmt_fat_eoc);
+    }
+    const upc_last = g.upcase_cluster + g.upcase_clusters - 1;
+    clus = g.upcase_cluster;
+    while (clus <= upc_last) : (clus += 1) {
+        internal_exfat_put32(&g_fs_scratch, clus, if (clus < upc_last) clus + 1 else fmt_fat_eoc);
+    }
+    internal_exfat_put32(&g_fs_scratch, g.root_cluster, fmt_fat_eoc);
+    return backend[0].write_block.?(backend[0].ctx, g.part_lba +% g.fat_offset, 1, &g_fs_scratch);
+}
+
+/// Zero the allocation-bitmap region, then mark the pre-allocated clusters
+/// in its first sector: full bytes 0xFF, a trailing partial byte gets a mask
+/// of the remaining bits.
+pub fn internal_exfat_write_bitmap(backend: [*c]const c.ra8_fs_backend_t, g: *const Geom) u16 {
+    const bmp_lba = g.part_lba +% g.heap_offset;
+    const bmp_sectors = g.bitmap_clusters * g.spc;
+    const err = priv_fmt_clear_region(backend, bmp_lba, bmp_sectors, g.bps);
+    if (err != ok) {
+        return err;
+    }
+    @memset(g_fs_scratch[0..g.bps], 0);
+    // A valid geometry keeps the pre-allocated marks inside the first
+    // bitmap sector; the bound keeps a broken one from walking past it.
+    const full = @min(g.used_clusters / fmt_byte_bits, g.bps);
+    var i: u32 = 0;
+    while (i < full) : (i += 1) {
+        g_fs_scratch[i] = fmt_byte_full;
+    }
+    const rem = g.used_clusters % fmt_byte_bits;
+    if (rem != 0 and full < g.bps) {
+        g_fs_scratch[full] = @intCast((@as(u32, 1) << @intCast(rem)) - 1);
+    }
+    return backend[0].write_block.?(backend[0].ctx, bmp_lba, 1, &g_fs_scratch);
+}
+
+/// Pack an ASCII volume label into UTF-16LE for the Volume Label entry:
+/// zero-extend each byte, stop at NUL or the 11-unit cap; a null label
+/// writes nothing and returns 0.
+pub fn internal_exfat_label_utf16(dst: [*c]u8, label: [*c]const u8) u32 {
+    var n: u32 = 0;
+    if (label != null) {
+        while (n < fmt_label_max and label[n] != 0) : (n += 1) {
+            dst[n * 2] = label[n];
+            dst[n * 2 + 1] = 0;
+        }
+    }
+    return n;
+}
+
+/// Write the root directory sector: an Allocation Bitmap entry, an Up-case
+/// Table entry, and a Volume Label entry. The whole root cluster is zeroed
+/// first, not just this sector, so anything scanning past the three entries
+/// reads end-of-directory rather than pre-format device data.
+pub fn internal_exfat_write_root(backend: [*c]const c.ra8_fs_backend_t, g: *const Geom, upcase_csum: u32, label: [*c]const u8) u16 {
+    const lba = @as(u64, g.heap_offset) + @as(u64, g.root_cluster - fmt_first_clus) * g.spc;
+    const ze = priv_fmt_clear_region(backend, g.part_lba +% lba, g.spc, g.bps);
+    if (ze != ok) {
+        return ze;
+    }
+    @memset(g_fs_scratch[0..g.bps], 0);
+    g_fs_scratch[0] = entry_bitmap;
+    priv_wr32(&g_fs_scratch[de_first_clus], fmt_first_clus);
+    priv_wr32(&g_fs_scratch[de_data_len], g.bitmap_bytes);
+    g_fs_scratch[de_second] = entry_upcase;
+    priv_wr32(&g_fs_scratch[de_second + de_upc_csum], upcase_csum);
+    priv_wr32(&g_fs_scratch[de_second + de_first_clus], g.upcase_cluster);
+    priv_wr32(&g_fs_scratch[de_second + de_data_len], fmt_upc_std_bytes);
+    g_fs_scratch[de_third] = entry_label;
+    const n = internal_exfat_label_utf16(&g_fs_scratch[de_third + de_lbl_name], label);
+    g_fs_scratch[de_third + de_lbl_cnt] = @intCast(n);
+    return backend[0].write_block.?(backend[0].ctx, g.part_lba +% lba, 1, &g_fs_scratch);
+}
+
+/// Encode an LBA as the three-byte CHS field an MBR partition entry carries,
+/// using the 255-head / 63-sector geometry; past the 1024-cylinder CHS space
+/// the universal 0xFE/0xFF/0xFF "beyond CHS, use LBA" sentinel goes in.
+pub fn internal_exfat_lba_to_chs(lba: u32, out3: *[3]u8) void {
+    if (lba >= mbr_chs_max) {
+        out3[0] = mbr_chs_ovf_h;
+        out3[1] = mbr_chs_ovf_m;
+        out3[2] = mbr_chs_ovf_l;
+        return;
+    }
+    const cyl = lba / (mbr_chs_heads * mbr_chs_spt);
+    const head = (lba / mbr_chs_spt) % mbr_chs_heads;
+    const sec = (lba % mbr_chs_spt) + 1;
+    out3[0] = @intCast(head);
+    out3[1] = @intCast((sec & mbr_chs_sec_mask) | ((cyl & mbr_chs_cyl_hi_mask) >> mbr_chs_cyl_hi_shift));
+    out3[2] = @intCast(cyl & byte_mask);
+}
+
+/// Write the MBR at LBA 0: a disk signature, one non-bootable type-0x07
+/// partition entry describing the exFAT partition, and the 0x55AA signature.
+pub fn internal_exfat_write_mbr(backend: [*c]const c.ra8_fs_backend_t, bps: u32, part_lba: u32, part_sectors: u32) u16 {
+    @memset(g_fs_scratch[0..bps], 0);
+    priv_wr32(&g_fs_scratch[mbr_disk_sig_off], mbr_disk_sig_base ^ part_sectors);
+    g_fs_scratch[mbr_part0_off + mbr_pe_boot] = mbr_boot_none;
+    internal_exfat_lba_to_chs(part_lba, g_fs_scratch[mbr_part0_off + mbr_pe_chs_start ..][0..3]);
+    g_fs_scratch[mbr_part0_off + mbr_pe_type] = mbr_type_exfat;
+    internal_exfat_lba_to_chs(part_lba +% part_sectors -% 1, g_fs_scratch[mbr_part0_off + mbr_pe_chs_end ..][0..3]);
+    priv_wr32(&g_fs_scratch[mbr_part0_off + mbr_pe_lba], part_lba);
+    priv_wr32(&g_fs_scratch[mbr_part0_off + mbr_pe_nsect], part_sectors);
+    priv_wr16(&g_fs_scratch[boot_sig_off], @intCast(c.k_exfat_fmt_boot_sig));
+    return backend[0].write_block.?(backend[0].ctx, 0, 1, &g_fs_scratch);
+}
+
+/// What the placement step resolves for a device: log2 of the sector size,
+/// the partition's first LBA, and its sector count.
+pub const Placement = struct {
+    bps_shift: u8,
+    part_lba: u32,
+    part_sectors: u32,
+};
+
+/// Size and place the exFAT partition on the device, or refuse: the
+/// partition aligns at 1 MiB, a device too small for the minimum volume
+/// plus the alignment gap is refused, and so is one whose partition would
+/// not fit the MBR's 32-bit fields (past-2-TiB media arrive GPT-mounted).
+pub fn internal_exfat_fmt_place(total_sectors: u64, bps: u32) ?Placement {
+    var bps_shift: u8 = 0;
+    var w = bps;
+    while (w > 1) : (w >>= 1) {
+        bps_shift += 1;
+    }
+    const part_lba = fmt_part_align / bps;
+    const min_total = @as(u64, part_lba) + (@as(u64, fmt_min_sectors) * sector_min) / bps;
+    if (total_sectors < min_total) {
+        return null;
+    }
+    if (total_sectors - part_lba > 0xFFFFFFFF) {
+        return null;
+    }
+    return .{
+        .bps_shift = bps_shift,
+        .part_lba = part_lba,
+        .part_sectors = @intCast(total_sectors - part_lba),
+    };
+}
+
+/// Format a fresh exFAT volume: place the partition, resolve the geometry,
+/// write the MBR, the boot region and its backup, seed the FAT, clear and
+/// mark the bitmap, write the up-case table, then lay the root directory.
+pub export fn priv_exfat_format(backend: [*c]const c.ra8_fs_backend_t, total_sectors: u64, bps: u32, label: [*c]const u8) callconv(.c) u16 {
+    const place = internal_exfat_fmt_place(total_sectors, bps) orelse return not_supported;
+    var g = std.mem.zeroes(Geom);
+    g.bps = bps;
+    g.bps_shift = place.bps_shift;
+    var err = internal_exfat_geometry(place.part_sectors, &g);
+    if (err != ok) {
+        return err;
+    }
+    g.part_lba = place.part_lba;
+    // The bitmap/up-case/root chains are seeded in FAT sector 0 only.
+    if (@as(u64, g.root_cluster) * 4 >= bps) {
+        return not_supported;
+    }
+    err = internal_exfat_write_mbr(backend, bps, place.part_lba, place.part_sectors);
+    if (err != ok) {
+        return err;
+    }
+    err = internal_exfat_write_boot(backend, &g);
+    if (err != ok) {
+        return err;
+    }
+    err = internal_exfat_write_fat(backend, &g);
+    if (err != ok) {
+        return err;
+    }
+    err = internal_exfat_write_bitmap(backend, &g);
+    if (err != ok) {
+        return err;
+    }
+    const upcase_lba = g.part_lba +% g.heap_offset +% @as(u64, g.upcase_cluster - fmt_first_clus) * g.spc;
+    var upcase_csum: u32 = 0;
+    err = priv_exfat_write_upcase(&backend[0], upcase_lba, bps, &upcase_csum);
+    if (err != ok) {
+        return err;
+    }
+    return internal_exfat_write_root(backend, &g, upcase_csum, label);
 }
