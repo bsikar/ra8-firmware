@@ -19,6 +19,13 @@
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
+/* Ported to Zig (RA8FW-1130): the geometry and partition-selection layer. */
+extern uint8_t internal_bps_valid(uint32_t bs);
+extern ra8_err_t internal_compute_geometry(ra8_fs_mount_t* m);
+extern uint32_t internal_mbr_part0_lba(const uint8_t* buf);
+extern ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64_t* out_base);
+extern ra8_err_t internal_locate_indexed(const ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base);
+
 
 /* The shared module state and both slot allocators now live in Zig
  * (RA8FW-1143); the mount allocator is declared here for the mount and
@@ -80,43 +87,6 @@ uint8_t* priv_sec_io(void)
  * =============================================================================
  */
 
-/**
- * @brief Test whether a backend block size is one this adapter supports.
- *
- * @details The supported sizes are the powers of two from
- *          ::k_ra8_fs_sector_min to ::k_ra8_fs_sector_max (512, 1024, 2048,
- *          4096) -- exactly the values the FAT specification allows for
- *          `BPB_BytsPerSec` and exFAT allows for `BytesPerSectorShift`.
- *
- * @param[in] bs Backend-reported block size in bytes.
- *
- * @return 1 when @p bs is supported, else 0.
- * @retval 1 @p bs is a power of two in 512..4096.
- * @retval 0 Anything else.
- *
- * @pre None (total function).
- * @pre @p bs came from a backend `get_capacity` callback.
- * @post No state modified.
- * @post Result depends only on @p bs.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @note The range test is one compound decision of three conditions; its
- *       vectors live with the tests that drive it, cited as
- *       `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_bps_valid`.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint8_t internal_bps_valid(uint32_t bs)
-{
-  if ((bs < (uint32_t)k_ra8_fs_sector_min) || (bs > (uint32_t)k_ra8_fs_sector_max) ||
-      ((bs & (bs - 1U)) != 0U)) {
-    return 0U;
-  }
-  return 1U;
-}
-
 /* `priv_parse_bpb_into_mount()`: see header for the documented contract. */
 ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
 {
@@ -152,172 +122,6 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
   m->total_sectors       = tot_sec;
   m->root_cluster        = priv_rd32(&g_fs_scratch[k_bpb_off_root_clus]);
   return k_ra8_ok;
-}
-
-/**
- * @brief Compute first_fat_lba, first_root_lba, first_data_lba, count_of_clusters.
- *
- * @details Derives region LBAs from the BPB and chooses FAT type using
- *          the cluster-count thresholds in MS FAT spec sec 3.5.
- *
- * @param[in,out] m Mount with BPB fields already populated.
- *
- * @return Error code.
- * @retval k_ra8_ok                     Geometry computed.
- * @retval k_ra8_err_validation_failed  Total sectors smaller than data start.
- *
- * @pre `m` is non-NULL.
- * @pre `priv_parse_bpb_into_mount` has populated the BPB-derived fields.
- * @post On success, geometry fields and `m->type` are valid.
- * @post On failure, `m` is left in an inconsistent state.
- *
- * @note Pure computation; thread-safe vs other readers.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_compute_geometry(ra8_fs_mount_t* m)
-{
-  m->first_fat_lba = m->reserved_sectors;
-  const uint32_t root_dir_sectors =
-    ((m->root_entries * k_ra8_fs_dir_entry_bytes) + (priv_bps(m) - 1U)) / priv_bps(m);
-  m->first_root_lba = m->first_fat_lba + ((uint64_t)m->num_fats * m->fat_size_sectors);
-  m->first_data_lba = m->first_root_lba + root_dir_sectors;
-  if (m->total_sectors < m->first_data_lba) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint64_t data_sectors = m->total_sectors - m->first_data_lba;
-  m->count_of_clusters        = (uint32_t)(data_sectors / m->sectors_per_cluster);
-  if (m->count_of_clusters < k_cluster_count_fat12_max) {
-    m->type = k_ra8_fs_type_fat12;
-  } else if (m->count_of_clusters < k_cluster_count_fat16_max) {
-    m->type = k_ra8_fs_type_fat16;
-  } else {
-    m->type = k_ra8_fs_type_fat32;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Return partition 0's first LBA from an MBR in @p buf, or 0.
- *
- * @details Used only after the LBA-0 BPB parse fails: a standard SD card is
- * MBR-partitioned, so the FAT boot sector lives at partition 0's start LBA,
- * not at LBA 0. Returns 0 when @p buf is not a usable MBR (no 0x55AA, or an
- * unused partition 0), which leaves the caller's original error in force.
- *
- * @param[in] buf Sector-0 contents (>= 512 bytes).
- * @return Partition 0 first LBA, or 0 if not an MBR with a live partition 0.
- * @retval 0 ``buf`` is not a usable MBR (no 0x55AA or an unused partition 0).
- * @retval non-zero Partition 0's first LBA.
- * @pre @p buf is non-NULL and holds at least one sector.
- * @pre @p buf is the contents of LBA 0.
- * @post No state modified.
- * @post @p buf is unmodified.
- * @note Not thread-safe (reads caller-owned memory only).
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint32_t internal_mbr_part0_lba(const uint8_t* buf)
-{
-  if (buf[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
-    return 0U;
-  }
-  if (buf[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
-    return 0U;
-  }
-  if (buf[k_mbr_off_part0_type] == 0U) {
-    return 0U;
-  }
-  return priv_rd32(&buf[k_mbr_off_part0_lba]);
-}
-
-/**
- * @brief Return the first LBA of MBR primary entry @p index.
- *
- * @details Enumerates the four 16-byte primary entries. The type byte and
- * first-LBA of entry @p index are read at ::k_mbr_off_part0_type and
- * ::k_mbr_off_part0_lba plus @p index times ::k_mbr_part_entry_stride. Unlike
- * the auto path (::priv_mbr_part0_lba), an out-of-range index, an empty slot,
- * or a zero first-LBA are reported distinctly rather than folded to 0.
- *
- * @param[in]  buf      Sector-0 (MBR) contents (>= 512 bytes).
- * @param[in]  index    Zero-based primary-entry index.
- * @param[out] out_base Receives the entry's first LBA on success.
- * @return Error code.
- * @retval k_ra8_ok                    @p out_base holds the entry's first LBA.
- * @retval k_ra8_err_out_of_range      @p index is 4 or greater.
- * @retval k_ra8_err_not_found         The selected entry is unused (type 0).
- * @retval k_ra8_err_validation_failed Allocated entry with a zero first LBA.
- * @pre @p buf is non-NULL and holds at least one sector.
- * @pre @p out_base is non-NULL.
- * @post No state modified.
- * @post @p buf is unmodified.
- * @note Pure function.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, uint64_t* out_base)
-{
-  if ((uint32_t)index >= (uint32_t)k_mbr_part_entry_count) {
-    return k_ra8_err_out_of_range;
-  }
-  const uint32_t slot     = (uint32_t)index * (uint32_t)k_mbr_part_entry_stride;
-  const uint32_t type_off = (uint32_t)k_mbr_off_part0_type + slot;
-  const uint32_t lba_off  = (uint32_t)k_mbr_off_part0_lba + slot;
-  if (buf[type_off] == 0U) {
-    return k_ra8_err_not_found;
-  }
-  const uint32_t base = priv_rd32(&buf[lba_off]);
-  if (base == 0U) {
-    return k_ra8_err_validation_failed;
-  }
-  *out_base = base;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Resolve an explicit partition index to its first LBA.
- *
- * @details Dispatches on the sector-0 partition-table type: a GPT disk
- * (protective MBR type ::k_gpt_part_type_protective) selects GPT entry
- * @p index, any other 0xAA55 MBR selects primary entry @p index. A sector 0
- * that carries no boot signature is not a partition table at all, so an
- * explicit index has nothing to select and the caller's superfloppy request is
- * refused. The signature bytes are tested separately (not as one compound
- * decision) to mirror ::priv_mbr_part0_lba.
- *
- * @param[in]     m        Mount with sector 0 already in ::g_fs_scratch.
- * @param[in]     index    Zero-based partition index.
- * @param[out]    out_base Receives the selected partition's first LBA.
- * @return Error code.
- * @retval k_ra8_ok                    @p out_base holds the volume base.
- * @retval k_ra8_err_not_found         No partition table, or an empty entry.
- * @retval k_ra8_err_out_of_range      @p index is past the table.
- * @retval k_ra8_err_not_supported     Unaddressable GPT geometry.
- * @retval k_ra8_err_validation_failed Malformed entry or GPT header.
- * @retval k_ra8_err_*                 Backend read failure.
- * @pre ::g_fs_scratch holds the contents of LBA 0.
- * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
- * @pre @p out_base is non-NULL.
- * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::g_fs_scratch may be overwritten (GPT path re-reads the entry array).
- * @note Not thread-safe -- uses module-level scratch.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_locate_indexed(const ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
-{
-  if (g_fs_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
-    return k_ra8_err_not_found;
-  }
-  if (g_fs_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
-    return k_ra8_err_not_found;
-  }
-  if (g_fs_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
-    return priv_gpt_locate_partition(m, index, out_base);
-  }
-  return internal_mbr_select_entry(g_fs_scratch, index, out_base);
 }
 
 /**

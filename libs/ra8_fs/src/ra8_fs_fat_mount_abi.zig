@@ -1,0 +1,118 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! FAT volume geometry and partition selection: BPB sector-size validation,
+//! mount geometry derivation, and MBR/GPT partition lookup. Ported out of
+//! `ra8_fs_fat_mount.c` (RA8FW-1130); the C half consumes these through the
+//! extern declarations at the top of that file. The remaining mount path
+//! (BPB parse, boot-sector read, probe, format, mount/unmount) and the
+//! sector arena follow before the C file itself is retired.
+
+const std = @import("std");
+const c = @import("fs_c.zig").c;
+
+/// True when `bs` is a power of two inside the supported sector range.
+///
+/// Every BPB `bytes_per_sector` and every format option passes through here
+/// before it is allowed to size a buffer, so the guard is the single place
+/// the 512..4096 power-of-two rule lives.
+export fn internal_bps_valid(bs: u32) callconv(.c) u8 {
+    const valid = bs >= c.k_ra8_fs_sector_min and bs <= c.k_ra8_fs_sector_max and
+        (bs & (bs - 1)) == 0;
+    return @intFromBool(valid);
+}
+
+/// Derive region LBAs and the FAT type from an already-parsed BPB.
+///
+/// Walks the mount's BPB fields forward: the FAT region starts at the
+/// reserved sectors, the root directory follows both FAT copies, and the
+/// data region follows the fixed root (FAT12/16) or none (FAT32/exFAT).
+/// The cluster count then selects the FAT type with the thresholds from
+/// MS FAT spec sec 3.5. Returns `k_ra8_err_validation_failed` when the
+/// medium ends before the data region begins.
+export fn internal_compute_geometry(m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    const bps: u32 = m.*.bytes_per_sector;
+    m.*.first_fat_lba = m.*.reserved_sectors;
+    const root_dir_sectors: u32 =
+        (m.*.root_entries * c.k_ra8_fs_dir_entry_bytes + bps - 1) / bps;
+    m.*.first_root_lba = @as(u64, m.*.first_fat_lba) +
+        @as(u64, m.*.num_fats) * m.*.fat_size_sectors;
+    m.*.first_data_lba = m.*.first_root_lba + root_dir_sectors;
+    if (m.*.total_sectors < m.*.first_data_lba) {
+        return c.k_ra8_err_validation_failed;
+    }
+    const data_sectors: u64 = m.*.total_sectors - m.*.first_data_lba;
+    m.*.count_of_clusters = @intCast(data_sectors / m.*.sectors_per_cluster);
+    if (m.*.count_of_clusters < c.k_cluster_count_fat12_max) {
+        m.*.type = c.k_ra8_fs_type_fat12;
+    } else if (m.*.count_of_clusters < c.k_cluster_count_fat16_max) {
+        m.*.type = c.k_ra8_fs_type_fat16;
+    } else {
+        m.*.type = c.k_ra8_fs_type_fat32;
+    }
+    return c.k_ra8_ok;
+}
+
+/// Return partition 0's first LBA from an MBR in `buf`, or 0.
+///
+/// Used only after the LBA-0 BPB parse fails: a standard SD card is
+/// MBR-partitioned, so the FAT boot sector lives at partition 0's start
+/// LBA, not at LBA 0. Returns 0 when the buffer is not a usable MBR (no
+/// 0x55AA signature, or an unused partition 0), which leaves the caller's
+/// original error in force.
+export fn internal_mbr_part0_lba(buf: [*c]const u8) callconv(.c) u32 {
+    if (buf[c.k_bpb_off_signature_lo] != c.k_bpb_sig_lo) {
+        return 0;
+    }
+    if (buf[c.k_bpb_off_signature_hi] != c.k_bpb_sig_hi) {
+        return 0;
+    }
+    if (buf[c.k_mbr_off_part0_type] == 0) {
+        return 0;
+    }
+    return std.mem.readInt(u32, buf[c.k_mbr_off_part0_lba..][0..4], .little);
+}
+
+/// Return the first LBA of MBR primary entry `index`.
+///
+/// Walks the four 16-byte primary entries, reading the type byte and the
+/// first LBA of entry `index` at their base offsets plus `index` times the
+/// entry stride. Unlike the auto path, an out-of-range index, an empty
+/// slot, and a zero first LBA are reported distinctly.
+export fn internal_mbr_select_entry(buf: [*c]const u8, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
+    if (index >= c.k_mbr_part_entry_count) {
+        return c.k_ra8_err_out_of_range;
+    }
+    const slot: u32 = @as(u32, index) * c.k_mbr_part_entry_stride;
+    if (buf[c.k_mbr_off_part0_type + slot] == 0) {
+        return c.k_ra8_err_not_found;
+    }
+    const base = std.mem.readInt(u32, buf[c.k_mbr_off_part0_lba + slot ..][0..4], .little);
+    if (base == 0) {
+        return c.k_ra8_err_validation_failed;
+    }
+    out_base.* = base;
+    return c.k_ra8_ok;
+}
+
+/// Resolve an explicit partition index to its first LBA.
+///
+/// Dispatches on the sector-0 partition table held in the module scratch:
+/// a GPT disk (protective MBR type 0xEE) selects GPT entry `index`, any
+/// other 0xAA55 MBR selects primary entry `index`. A sector 0 with no boot
+/// signature is not a partition table at all, so an explicit index has
+/// nothing to select and the superfloppy request is refused. The signature
+/// bytes are tested separately, mirroring `internal_mbr_part0_lba`.
+export fn internal_locate_indexed(m: [*c]const c.ra8_fs_mount_t, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
+    const st = @import("ra8_fs_fat_state_abi.zig");
+    if (st.g_fs_scratch[c.k_bpb_off_signature_lo] != c.k_bpb_sig_lo) {
+        return c.k_ra8_err_not_found;
+    }
+    if (st.g_fs_scratch[c.k_bpb_off_signature_hi] != c.k_bpb_sig_hi) {
+        return c.k_ra8_err_not_found;
+    }
+    if (st.g_fs_scratch[c.k_mbr_off_part0_type] == c.k_gpt_part_type_protective) {
+        return c.priv_gpt_locate_partition(m, index, out_base);
+    }
+    return internal_mbr_select_entry(st.g_fs_scratch[0..], index, out_base);
+}
