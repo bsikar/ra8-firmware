@@ -12,11 +12,11 @@
  * Splitting them out also keeps the two halves inside the 1000-line
  * source cap, which they were already close to.
  *
- * The seam spans four translation units, so the declarations cannot live in any
- * one of them:
+ * The seam spans four homes, so the declarations cannot live in any one of
+ * them:
  *
  * - `ra8_fs_fat_exfat_read.c`   -- the directory location + cursor primitives
- * - `ra8_fs_fat_exfat_dir.c`    -- resolution, `mkdir`, `rmdir`
+ * - `ra8_fs_exfat_dir_abi.zig`  -- resolution, `mkdir`, `rmdir`
  * - `ra8_fs_fat_exfat_write.c`  -- the free-slot scan a set is linked into
  * - `ra8_fs_exfat_mutate_abi.zig` -- entry-set retirement and bitmap release
  *

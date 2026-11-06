@@ -86,6 +86,7 @@ pub fn build(b: *std.Build) void {
         "tests/exfat_stream_abi_test.zig",
         "tests/exfat_fmt_abi_test.zig",
         "tests/exfat_mutate_abi_test.zig",
+        "tests/exfat_dir_abi_test.zig",
         "tests/stat_abi_test.zig",
         "tests/file_abi_test.zig",
         "tests/resolve_abi_test.zig",
