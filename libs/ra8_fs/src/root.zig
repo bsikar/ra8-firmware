@@ -44,6 +44,7 @@ pub const check = @import("ra8_fs_check_abi.zig");
 pub const fat_dir = @import("ra8_fs_fat_dir_abi.zig");
 pub const fat_fileio = @import("ra8_fs_fat_fileio_abi.zig");
 pub const fat_state = @import("ra8_fs_fat_state_abi.zig");
+pub const fat_mount_abi = @import("ra8_fs_fat_mount_abi.zig");
 
 comptime {
     _ = lock;
@@ -75,5 +76,6 @@ comptime {
     _ = fat_dir;
     _ = fat_fileio;
     _ = fat_state;
+    _ = fat_mount_abi;
     _ = time;
 }
