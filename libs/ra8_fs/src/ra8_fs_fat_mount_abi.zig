@@ -221,3 +221,47 @@ export fn internal_probe_locked(backend: [*c]const c.ra8_fs_backend_t, out_type:
     out_type.* = probe.type;
     return c.k_ra8_ok;
 }
+
+/// Parse the boot sector in the module scratch into a mount.
+///
+/// Runs the mount-side validation first: the 0x55/0xAA boot signature, then
+/// the BPB-vs-device agreement -- `m.bytes_per_sector` was seeded from the
+/// backend's reported block size before this parse ran, and a volume
+/// formatted for a different sector size than the medium presents (a 512e
+/// image on a 4Kn device, or vice versa) is unmountable, not
+/// reinterpretable. Every supported size passes `internal_bps_valid` at
+/// mount, so the comparison also enforces 512..4096. Zero sectors-per-
+/// cluster or zero FAT count refuse the volume before any derived field is
+/// written.
+///
+/// Field order follows the MS FAT spec BPB layout; FAT size and total
+/// sectors pick the 16-bit field when non-zero, else the 32-bit one, chosen
+/// in 32 bits first so the composite pick is never narrowed then widened.
+export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    const st = @import("ra8_fs_fat_state_abi.zig");
+    if (st.g_fs_scratch[c.k_bpb_off_signature_lo] != c.k_bpb_sig_lo or
+        st.g_fs_scratch[c.k_bpb_off_signature_hi] != c.k_bpb_sig_hi)
+    {
+        return c.k_ra8_err_validation_failed;
+    }
+    const bpb_bps: u32 = c.priv_rd16(&st.g_fs_scratch[c.k_bpb_off_bytes_per_sec]);
+    m.*.sectors_per_cluster = st.g_fs_scratch[c.k_bpb_off_sec_per_clus];
+    m.*.reserved_sectors = c.priv_rd16(&st.g_fs_scratch[c.k_bpb_off_rsvd_sec_cnt]);
+    m.*.num_fats = st.g_fs_scratch[c.k_bpb_off_num_fats];
+    m.*.root_entries = c.priv_rd16(&st.g_fs_scratch[c.k_bpb_off_root_ent_cnt]);
+    if (bpb_bps != m.*.bytes_per_sector or
+        m.*.sectors_per_cluster == 0 or
+        m.*.num_fats == 0)
+    {
+        return c.k_ra8_err_validation_failed;
+    }
+    const fat_sz_16: u32 = c.priv_rd16(&st.g_fs_scratch[c.k_bpb_off_fat_sz_16]);
+    const fat_sz_32: u32 = c.priv_rd32(&st.g_fs_scratch[c.k_bpb_off_fat_sz_32]);
+    const tot_sec_16: u32 = c.priv_rd16(&st.g_fs_scratch[c.k_bpb_off_tot_sec_16]);
+    const tot_sec_32: u32 = c.priv_rd32(&st.g_fs_scratch[c.k_bpb_off_tot_sec_32]);
+    m.*.fat_size_sectors = if (fat_sz_16 != 0) fat_sz_16 else fat_sz_32;
+    const tot_sec: u32 = if (tot_sec_16 != 0) tot_sec_16 else tot_sec_32;
+    m.*.total_sectors = tot_sec;
+    m.*.root_cluster = c.priv_rd32(&st.g_fs_scratch[c.k_bpb_off_root_clus]);
+    return c.k_ra8_ok;
+}
