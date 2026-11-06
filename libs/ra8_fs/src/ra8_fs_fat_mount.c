@@ -31,7 +31,10 @@ extern ra8_err_t internal_locate_indexed(const ra8_fs_mount_t* m, uint8_t index,
  * (RA8FW-1143); the mount allocator is declared here for the mount and
  * unmount paths. `g_fs_scratch` and `k_zero_sector` come in through
  * `ra8_fs_fat_internal.h` and `ra8_fs_fat_bytes_internal.h` as before. */
-extern ra8_fs_mount_t* internal_alloc_mount_slot(void);
+extern ra8_fs_mount_t* internal_alloc_mount_slot(void);extern ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index);
+extern ra8_err_t internal_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mount_t* m);
+extern ra8_err_t internal_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type);
+
 
 /* =============================================================================
  * Module state
@@ -193,156 +196,6 @@ static ra8_err_t internal_format_locked(const ra8_fs_backend_t*     backend,
     return err;
   }
   return priv_fmt_emit_volume(backend, &geom, opts->label);
-}
-
-/**
- * @brief Read + parse the boot sector, transparently following MBR or GPT.
- *
- * @details When @p index is ::k_ra8_fs_partition_auto this tries the BPB/VBR at
- * the current base (LBA 0 for a superfloppy); if that parse fails and sector 0
- * is an MBR it retargets to partition 0's start LBA, or -- for a protective MBR
- * (type 0xEE) -- to the GPT partition the entry array selects (Basic Data
- * preferred), then re-parses, leaving the original error in force when sector 0
- * is neither a volume, an MBR, nor a usable GPT. For any other @p index the
- * superfloppy attempt is skipped and the chosen primary/GPT entry supplies the
- * base directly (::priv_locate_indexed); an unaddressable or empty entry fails
- * cleanly.
- *
- * @param[in,out] m     Mount with backend bound and ``partition_base_lba == 0``.
- * @param[in]     index Partition selector, or ::k_ra8_fs_partition_auto.
- * @return Error code from the (re-)parse.
- * @retval k_ra8_ok ``m`` holds the volume's BPB fields and base LBA.
- * @retval k_ra8_err_* The backend read failed or no volume was found.
- * @pre ``m->partition_base_lba`` is 0 on entry.
- * @pre ``m->backend`` is bound with a valid ``read_block``.
- * @post On success ``m`` holds the volume's BPB fields and base LBA.
- * @post On failure ``m`` is left unmounted.
- * @note Not thread-safe; serialize mount operations.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
-{
-  ra8_err_t err = priv_read_sector(m, 0, g_fs_scratch);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  uint64_t base = 0U;
-  if (index != (uint8_t)k_ra8_fs_partition_auto) {
-    const ra8_err_t lerr = internal_locate_indexed(m, index, &base);
-    if (lerr != k_ra8_ok) {
-      return lerr;
-    }
-  } else {
-    err = priv_parse_volume(m);
-    if (err == k_ra8_ok) {
-      return k_ra8_ok;
-    }
-    base = internal_mbr_part0_lba(g_fs_scratch);
-    if (base == 0U) {
-      return err;
-    }
-    if (g_fs_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
-      const ra8_err_t gpt_err = priv_gpt_locate_volume(m, &base);
-      if (gpt_err != k_ra8_ok) {
-        return gpt_err;
-      }
-    }
-  }
-  m->partition_base_lba = base;
-  err                   = priv_read_sector(m, 0, g_fs_scratch);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return priv_parse_volume(m);
-}
-
-/**
- * @brief Probe the backend's block size into a claimed mount slot.
- *
- * @details The sector size is the DEVICE's block size, probed before the
- *          boot-sector parse so the parse can hold the volume to it. A
- *          backend reporting a size outside 512..4096, or one that is not a
- *          power of two, is not mountable. Split out of ::priv_mount_locked
- *          so that function stays inside the function-size gate.
- *
- * @param[in]     backend Block-device backend being mounted.
- * @param[in,out] m       Claimed mount slot; `bytes_per_sector` is written.
- *
- * @return Error code.
- * @retval k_ra8_ok              `m->bytes_per_sector` holds the device size.
- * @retval k_ra8_err_invalid_arg The reported block size is unsupported.
- * @retval k_ra8_err_*           The `get_capacity` callback failed.
- *
- * @pre @p backend and @p m are non-NULL; `get_capacity` is non-NULL.
- * @pre @p m was zeroed by the claim.
- * @post On success `m->bytes_per_sector` is a power of two in 512..4096.
- * @post On failure @p m is left for the caller to abandon.
- *
- * @note Not thread-safe; callers serialise mount operations.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t internal_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mount_t* m)
-{
-  uint64_t        dev_blocks = 0U;
-  uint32_t        dev_bps    = 0U;
-  const ra8_err_t cerr       = backend->get_capacity(backend->ctx, &dev_blocks, &dev_bps);
-  if (cerr != k_ra8_ok) {
-    return cerr;
-  }
-  if (internal_bps_valid(dev_bps) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  m->bytes_per_sector = dev_bps;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Parse a backend into temporary state and return only its format type.
- *
- * @param[in]  backend  Readable backend to probe.
- * @param[out] out_type Detected filesystem type.
- * @return Error code from argument, capacity, partition, or volume validation.
- * @pre The library lock is held (or none is installed).
- * @post No mount/allocator slot is claimed and the medium is not written.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
-{
-  if (backend == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (out_type == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (backend->read_block == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (backend->get_capacity == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  ra8_fs_mount_t probe = {};
-  probe.backend        = *backend;
-  ra8_err_t err        = internal_mount_probe_bps(backend, &probe);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = internal_read_boot_sector(&probe, (uint8_t)k_ra8_fs_partition_auto);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (probe.type != k_ra8_fs_type_exfat) {
-    err = internal_compute_geometry(&probe);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  *out_type = probe.type;
-  return k_ra8_ok;
 }
 
 /**
