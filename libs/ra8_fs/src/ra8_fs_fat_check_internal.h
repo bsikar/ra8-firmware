@@ -8,7 +8,7 @@
  * 1000-line source cap, along the same FAT / exFAT seam the rest of the adapter
  * uses:
  *
- * - `ra8_fs_fat_check.c`       -- the shared scan context, the finding recorder,
+ * - `ra8_fs_check_abi.zig`     -- the shared scan context, the finding recorder,
  *                                 the visited-bitmap primitives, the FAT12/16/32
  *                                 check, and the public ::ra8_fs_check entry.
  * - `ra8_fs_fat_exfat_check.c` -- the exFAT check (entry-set checksums, name
@@ -262,7 +262,7 @@ ra8_err_t internal_fat_tree(ra8_fs_check_ctx_t* ctx);
  * @details The FAT-side dispatch of ::ra8_fs_check: classifies the FAT, walks the
  *          directory tree marking referenced clusters, diffs for lost clusters,
  *          and compares the FAT32 FSInfo free count. Defined in
- *          `ra8_fs_fat_check.c`.
+ *          `ra8_fs_check_abi.zig`.
  *
  * @param[in,out] ctx The scan context (`ctx->m->type` is a FAT variant).
  *
