@@ -18,7 +18,7 @@
  * - `ra8_fs_fat_exfat_read.c`   -- the directory location + cursor primitives
  * - `ra8_fs_fat_exfat_dir.c`    -- resolution, `mkdir`, `rmdir`
  * - `ra8_fs_fat_exfat_write.c`  -- the free-slot scan a set is linked into
- * - `ra8_fs_fat_exfat_mutate.c` -- entry-set retirement and bitmap release
+ * - `ra8_fs_exfat_mutate_abi.zig` -- entry-set retirement and bitmap release
  *
  * Aggregated by the `ra8_fs_fat_internal.h` umbrella, like the other themed
  * sub-headers.

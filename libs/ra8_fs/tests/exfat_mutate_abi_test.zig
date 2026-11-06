@@ -543,3 +543,467 @@ test "unlink refuses an empty leaf and unlinks a file by path" {
 }
 
 var m0: c.ra8_fs_mount_t = std.mem.zeroes(c.ra8_fs_mount_t);
+
+// ------------------------------------------------- rename / listdir state
+
+const exists: u16 = c.k_ra8_err_exists;
+const not_supported: u16 = c.k_ra8_err_not_supported;
+const invalid_size: u16 = c.k_ra8_err_invalid_size;
+
+const entry_file_b: u8 = @intCast(c.k_exfat_entry_file);
+const entry_stream_b: u8 = @intCast(c.k_exfat_entry_stream);
+const entry_name_b: u8 = @intCast(c.k_exfat_entry_name);
+const entry_eod_b: u8 = @intCast(c.k_exfat_entry_eod);
+const inuse: u8 = @intCast(c.k_exfat_inuse_bit);
+const name_u8_cap: usize = @intCast(c.k_exfat_name_u8_cap);
+const scan_limit: u32 = @intCast(c.k_exfat_scan_limit);
+const off_file_attr_i: usize = @intCast(c.k_exfat_off_file_attr);
+const strm_nlen_i: usize = @intCast(c.k_exfat_strm_off_nlen);
+const strm_dlen_i: usize = @intCast(c.k_exfat_strm_off_dlen);
+const name_off_i: usize = @intCast(c.k_exfat_name_off);
+const file_csum_i: usize = @intCast(c.k_exfat_off_file_csum);
+const strm_hash_i: usize = @intCast(c.k_exfat_off_strm_hash);
+
+var find_err: u16 = not_found;
+var space_err: u16 = 0;
+var space_clus: u32 = 0;
+var space_idx: u32 = 0;
+var hash_calls: u32 = 0;
+var stamp_calls: u32 = 0;
+var csum_calls: u32 = 0;
+var utf_err: u16 = 0;
+var cb_n: usize = 0;
+var cb_names: [8][32]u8 = undefined;
+
+fn rd16v(p: []const u8, at: usize) u16 {
+    return @as(u16, p[at]) | (@as(u16, p[at + 1]) << 8);
+}
+
+fn mkGarbage(t: u8) [entry_bytes]u8 {
+    var e: [entry_bytes]u8 = @splat(@splat(0));
+    e[0] = t;
+    return e;
+}
+
+fn mkUnits19(name: []const u8) [19]u16 {
+    var u: [19]u16 = @splat(0);
+    for (name, 0..) |ch, i| u[i] = ch;
+    return u;
+}
+
+fn freshCursor(at: u32) c.exfat_cursor_t {
+    return .{ .cluster = dir_cluster, .entry_in_cluster = at, .scanned = 0, .contig_end = 0 };
+}
+
+export fn priv_exfat_find(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
+    _ = m;
+    _ = dir;
+    _ = path;
+    _ = out_strm;
+    _ = out_attr;
+    return find_err;
+}
+
+export fn priv_exfat_find_dir_space(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, need: u32, out_clus: [*c]u32, out_idx: [*c]u32) callconv(.c) u16 {
+    _ = m;
+    _ = dir;
+    _ = need;
+    if (space_err != 0) return space_err;
+    out_clus[0] = space_clus;
+    out_idx[0] = space_idx;
+    return ok;
+}
+
+export fn priv_exfat_name_hash(name: [*c]const u16, nlen: u32) callconv(.c) u16 {
+    _ = name;
+    hash_calls += 1;
+    return @truncate(nlen *% 7 +% 1);
+}
+
+export fn priv_exfat_file_stamp_access(file_entry: [*c]u8) callconv(.c) void {
+    _ = file_entry;
+    stamp_calls += 1;
+}
+
+export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
+    _ = set;
+    _ = bytes;
+    csum_calls += 1;
+    return 0xBEEF;
+}
+
+export fn priv_wr16(p: [*c]u8, v: u16) callconv(.c) void {
+    p[0] = @truncate(v);
+    p[1] = @truncate(v >> 8);
+}
+
+export fn priv_utf16_to_utf8(in: [*c]const u16, units: u32, out: [*c]u8, cap: u32) callconv(.c) u16 {
+    _ = cap;
+    if (utf_err != 0) return utf_err;
+    var n: u32 = 0;
+    var i: u32 = 0;
+    while (i < units) : (i += 1) {
+        if (in[i] >= 0x80) return invalid_arg;
+        out[n] = @truncate(in[i]);
+        n += 1;
+    }
+    out[n] = 0;
+    return ok;
+}
+
+fn listCb(name: [*c]const u8, attr: u8, size: u64, ctx: ?*anyopaque) callconv(.c) void {
+    _ = attr;
+    _ = size;
+    _ = ctx;
+    var i: usize = 0;
+    while (name[i] != 0) : (i += 1) {}
+    @memcpy(&cb_names[cb_n][0..i], name[0..i]);
+    cb_n += 1;
+}
+
+// ------------------------------------------------------------ rename tests
+
+test "build rename set keeps every non-name field and pads to entry boundaries" {
+    reset();
+    var file_e = mkFile(2, 0x20);
+    file_e[12] = 0xAB; // create-stamp bytes ride across untouched
+    file_e[16] = 0xCD; // modify-stamp bytes ride across untouched
+    var strm_e = mkStream(2, 11, 512, false);
+    strm_e[2] = 7; // stale SecondaryCount is overwritten
+    const units = mkUnits("XY");
+    var set: [c.k_exfat_max_set_bytes]u8 = @splat(@splat(0));
+    const n = mu.internal_exfat_build_rename_set(&set, &file_e, &strm_e, &units, 2);
+    try std.testing.expectEqual(@as(u32, 96), n);
+    try std.testing.expectEqual(@as(u8, 2), set[1]); // File type byte untouched
+    try std.testing.expectEqual(@as(u8, 2), set[2]); // SecondaryCount = 1 + 1
+    try std.testing.expectEqual(file_e[12], set[12]);
+    try std.testing.expectEqual(file_e[16], set[16]);
+    try std.testing.expectEqual(@as(u8, 2), set[entry_bytes + strm_nlen_i]);
+    try std.testing.expectEqual(@as(u16, 15), rd16v(&set, entry_bytes + strm_hash_i)); // 2*7+1
+    try std.testing.expectEqual(entry_name_b, set[2 * entry_bytes]);
+    try std.testing.expectEqual(@as(u8, 'X'), set[2 * entry_bytes + name_off_i]);
+    try std.testing.expectEqual(@as(u8, 0), set[2 * entry_bytes + name_off_i + 1]);
+    try std.testing.expectEqual(@as(u8, 'Y'), set[2 * entry_bytes + name_off_i + 2]);
+    try std.testing.expectEqual(@as(u8, 0), set[2 * entry_bytes + name_off_i + 4]);
+    try std.testing.expectEqual(@as(u32, 1), stamp_calls);
+    try std.testing.expectEqual(@as(u32, 1), csum_calls);
+    try std.testing.expectEqual(@as(u8, 0xEF), set[file_csum_i]);
+    try std.testing.expectEqual(@as(u8, 0xBE), set[file_csum_i + 1]);
+}
+
+test "build rename set grows a second name entry with zero padding" {
+    reset();
+    var file_e = mkFile(2, 0x20);
+    var strm_e = mkStream(2, 11, 512, false);
+    const units = mkUnits19("ABCDEFGHIJKLMNOPQRS"); // 19 units
+    var set: [c.k_exfat_max_set_bytes]u8 = @splat(@splat(0));
+    const n = mu.internal_exfat_build_rename_set(&set, &file_e, &strm_e, &units, 19);
+    try std.testing.expectEqual(@as(u32, 128), n);
+    try std.testing.expectEqual(@as(u8, 3), set[2]); // SecondaryCount = 1 + 2
+    try std.testing.expectEqual(@as(u8, 19), set[entry_bytes + strm_nlen_i]);
+    try std.testing.expectEqual(@as(u8, 'A'), set[2 * entry_bytes + name_off_i]);
+    try std.testing.expectEqual(@as(u8, 'O'), set[2 * entry_bytes + name_off_i + 14 * 2]);
+    try std.testing.expectEqual(entry_name_b, set[3 * entry_bytes]);
+    try std.testing.expectEqual(@as(u8, 'P'), set[3 * entry_bytes + name_off_i]);
+    try std.testing.expectEqual(@as(u8, 'S'), set[3 * entry_bytes + name_off_i + 3 * 2]);
+    try std.testing.expectEqual(@as(u8, 0), set[3 * entry_bytes + name_off_i + 4 * 2]);
+}
+
+test "rename prepare resolves a shared parent and both leaves" {
+    reset();
+    var parent: c.exfat_dir_t = std.mem.zeroes(c.exfat_dir_t);
+    var ol: [*c]const u8 = null;
+    var nl: [*c]const u8 = null;
+    const e = mu.internal_exfat_rename_prepare(&m0, "/d/AB", "/d/XY", &parent, &ol, &nl);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqualStrings("AB", std.mem.sliceTo(ol, 0));
+    try std.testing.expectEqualStrings("XY", std.mem.sliceTo(nl, 0));
+}
+
+test "rename prepare refuses different parents and empty leaves" {
+    reset();
+    var parent: c.exfat_dir_t = std.mem.zeroes(c.exfat_dir_t);
+    var ol: [*c]const u8 = null;
+    var nl: [*c]const u8 = null;
+    const e = mu.internal_exfat_rename_prepare(&m0, "/d/AB", "#/XY", &parent, &ol, &nl);
+    try std.testing.expectEqual(not_supported, e);
+
+    const e2 = mu.internal_exfat_rename_prepare(&m0, "/d/AB", "/d/", &parent, &ol, &nl);
+    try std.testing.expectEqual(invalid_arg, e2);
+}
+
+test "place rename rewrites every slot when the entry count is unchanged" {
+    reset();
+    var pos: [3]c.exfat_setpos_t = undefined;
+    pos[0] = .{ .cluster = 1, .index = 0 };
+    pos[1] = .{ .cluster = 1, .index = 1 };
+    pos[2] = .{ .cluster = 1, .index = 2 };
+    var set: [96]u8 = @splat(@splat(0));
+    set[0] = entry_file_b;
+    set[32] = entry_stream_b;
+    set[64] = entry_name_b;
+    const dir = dirDummy();
+    const e = mu.internal_exfat_place_rename(&m0, &dir, &pos, 3, &set, 96);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(usize, 3), wdir_count);
+    var k: usize = 0;
+    while (k < 3) : (k += 1) {
+        try std.testing.expectEqual(@as(u32, 1), wdir_cluster[k]);
+        try std.testing.expectEqual(@as(u32, @intCast(k)), wdir_index[k]);
+    }
+    try std.testing.expectEqual(entry_file_b, wdir_entry0[0]);
+    try std.testing.expectEqual(entry_stream_b, wdir_entry0[1]);
+    try std.testing.expectEqual(entry_name_b, wdir_entry0[2]);
+}
+
+test "place rename relocates a longer set, then retires the old one" {
+    reset();
+    space_clus = 5;
+    space_idx = 3;
+    const units = mkUnits("AB");
+    script[0] = mkFile(2, 0x20);
+    script[1] = mkStream(2, 5, 1024, true);
+    script[2] = mkName(units[0..2]);
+    script_len = 3;
+    var pos: [3]c.exfat_setpos_t = undefined;
+    pos[0] = .{ .cluster = 1, .index = 0 };
+    pos[1] = .{ .cluster = 1, .index = 1 };
+    pos[2] = .{ .cluster = 1, .index = 2 };
+    var set: [128]u8 = @splat(@splat(0));
+    set[0] = 0x99;
+    const dir = dirDummy();
+    const e = mu.internal_exfat_place_rename(&m0, &dir, &pos, 3, &set, 128);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(usize, 4), wdir_count);
+    try std.testing.expectEqual(@as(u32, 5), wdir_cluster[0]); // the new home
+    try std.testing.expectEqual(@as(u32, 3), wdir_index[0]);
+    try std.testing.expectEqual(@as(u8, 0x99), wdir_entry0[0]);
+    const dropped: [3]u8 = .{ entry_file_b, entry_stream_b, entry_name_b };
+    k = 0;
+    while (k < 3) : (k += 1) {
+        try std.testing.expectEqual(dropped[k] & ~inuse, wdir_entry0[k + 1]);
+    }
+}
+
+test "place rename propagates the free-slot failure" {
+    reset();
+    space_err = c.k_ra8_err_io;
+    var pos: [3]c.exfat_setpos_t = undefined;
+    pos[0] = .{ .cluster = 1, .index = 0 };
+    pos[1] = .{ .cluster = 1, .index = 1 };
+    pos[2] = .{ .cluster = 1, .index = 2 };
+    var set: [128]u8 = @splat(@splat(0));
+    const dir = dirDummy();
+    const e = mu.internal_exfat_place_rename(&m0, &dir, &pos, 3, &set, 128);
+    try std.testing.expectEqual(c.k_ra8_err_io, e);
+    try std.testing.expectEqual(@as(usize, 0), wdir_count);
+}
+
+test "rename refuses an existing new name before anything is written" {
+    reset();
+    find_err = ok; // the new name already exists
+    const e = mu.priv_exfat_rename(&m0, "/d/AB", "/d/XY");
+    try std.testing.expectEqual(exists, e);
+    try std.testing.expectEqual(@as(usize, 0), wdir_count);
+}
+
+test "rename refuses different parents" {
+    reset();
+    const e = mu.priv_exfat_rename(&m0, "/d/AB", "#/XY");
+    try std.testing.expectEqual(not_supported, e);
+    try std.testing.expectEqual(@as(usize, 0), wdir_count);
+}
+
+test "rename honors the read-only attribute" {
+    reset();
+    const units = mkUnits("AB");
+    script[0] = mkFile(2, @intCast(c.k_exfat_attr_read_only));
+    script[1] = mkStream(2, 5, 1024, false);
+    script[2] = mkName(units[0..2]);
+    script_len = 3;
+    const e = mu.priv_exfat_rename(&m0, "/d/AB", "/d/XY");
+    try std.testing.expectEqual(access_denied, e);
+    try std.testing.expectEqual(@as(usize, 0), wdir_count);
+}
+
+test "rename rebuilds the set and places it when the count is unchanged" {
+    reset();
+    const units = mkUnits("AB");
+    script[0] = mkFile(2, 0x20);
+    script[1] = mkStream(2, 5, 1024, false);
+    script[2] = mkName(units[0..2]);
+    script_len = 3;
+    const e = mu.priv_exfat_rename(&m0, "/d/AB", "/d/XY");
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(usize, 3), wdir_count);
+    try std.testing.expectEqual(@as(u32, 1), hash_calls);
+    try std.testing.expectEqual(@as(u32, 1), stamp_calls);
+    try std.testing.expectEqual(@as(u32, 1), csum_calls);
+    try std.testing.expectEqual(entry_file_b, wdir_entry0[0]);
+    try std.testing.expectEqual(entry_stream_b, wdir_entry0[1]);
+    try std.testing.expectEqual(entry_name_b, wdir_entry0[2]);
+}
+
+// --------------------------------------------------------- listdir tests
+
+test "gather name consumes secondaries and converts the units once" {
+    reset();
+    const units = mkUnits("AB");
+    script[0] = mkName(units[0..2]);
+    script[1] = mkGarbage(0x99); // a non-Name secondary is skipped
+    script_len = 2;
+    var cur = freshCursor(2);
+    var name: [name_u8_cap]u8 = @splat(@splat(0));
+    const e = mu.internal_exfat_gather_name(&m0, &cur, 3, 2, &name, @intCast(name_u8_cap));
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(u8, 'A'), name[0]);
+    try std.testing.expectEqual(@as(u8, 'B'), name[1]);
+    try std.testing.expectEqual(@as(u8, 0), name[2]);
+    try std.testing.expectEqual(@as(u32, 2), cur.scanned); // both secondaries consumed
+}
+
+test "gather name yields nothing for units no UTF-8 string encodes" {
+    reset();
+    var ne = mkName(mkUnits("X")[0..1]);
+    wr16(&ne, name_off_i, 0x00E9); // a lone accented unit: the fake refuses it
+    script[0] = ne;
+    script_len = 1;
+    var cur = freshCursor(0);
+    var name: [name_u8_cap]u8 = @splat(@splat(0));
+    const e = mu.internal_exfat_gather_name(&m0, &cur, 2, 1, &name, @intCast(name_u8_cap));
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(u8, 0), name[0]);
+}
+
+test "gather name propagates a backend failure mid-set" {
+    reset();
+    script_err = c.k_ra8_err_io;
+    var cur = freshCursor(0);
+    var name: [name_u8_cap]u8 = @splat(@splat(0));
+    const e = mu.internal_exfat_gather_name(&m0, &cur, 3, 2, &name, @intCast(name_u8_cap));
+    try std.testing.expectEqual(c.k_ra8_err_io, e);
+}
+
+test "list emit reports a directory with zero size and a file with its bytes" {
+    reset();
+    const units = mkUnits("HI");
+    var file_e = mkFile(2, @intCast(c.k_exfat_attr_directory));
+    script[0] = mkStream(2, 5, 4096, true); // a directory's allocation, not a size
+    script[1] = mkName(units[0..2]);
+    script_len = 2;
+    var cur = freshCursor(0);
+    var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present = false;
+    const e = mu.internal_exfat_list_emit(&m0, &cur, &file_e, &out, &present);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expect(present);
+    try std.testing.expectEqual(@as(u64, 0), out.size_bytes);
+    try std.testing.expectEqual(@as(u8, @intCast(c.k_exfat_attr_directory)), out.attr);
+    try std.testing.expectEqualStrings("HI", std.mem.sliceTo(&out.name, 0));
+
+    reset();
+    file_e = mkFile(2, 0x20);
+    script[0] = mkStream(2, 5, 1234, true);
+    script[1] = mkName(units[0..2]);
+    script_len = 2;
+    cur = freshCursor(0);
+    out = std.mem.zeroes(c.ra8_fs_dirent_t);
+    present = false;
+    const e2 = mu.internal_exfat_list_emit(&m0, &cur, &file_e, &out, &present);
+    try std.testing.expectEqual(ok, e2);
+    try std.testing.expect(present);
+    try std.testing.expectEqual(@as(u64, 1234), out.size_bytes);
+}
+
+test "list emit skips a non-stream secondary and an unconvertible name" {
+    reset();
+    var file_e = mkFile(2, 2); // SecondaryCount says one more entry follows
+    script[0] = mkGarbage(0x55); // not a Stream entry
+    script_len = 1;
+    var cur = freshCursor(0);
+    var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present = false;
+    const e = mu.internal_exfat_list_emit(&m0, &cur, &file_e, &out, &present);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expect(!present);
+
+    reset();
+    var ne = mkName(mkUnits("X")[0..1]);
+    wr16(&ne, name_off_i, 0x4F60);
+    script[0] = mkStream(2, 5, 100, false);
+    script[1] = ne;
+    script_len = 2;
+    file_e = mkFile(2, 0x20);
+    cur = freshCursor(0);
+    out = std.mem.zeroes(c.ra8_fs_dirent_t);
+    present = false;
+    const e2 = mu.internal_exfat_list_emit(&m0, &cur, &file_e, &out, &present);
+    try std.testing.expectEqual(ok, e2);
+    try std.testing.expect(!present);
+}
+
+test "dir next skips junk, emits a set and ends at EOD" {
+    reset();
+    const units = mkUnits("AB");
+    script[0] = mkGarbage(0x55);
+    script[1] = mkFile(2, 0x20);
+    script[2] = mkStream(2, 5, 1234, true);
+    script[3] = mkName(units[0..2]);
+    script[4] = mkGarbage(entry_eod_b);
+    script_len = 5;
+    var cur = freshCursor(0);
+    var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present = false;
+    const e = mu.priv_exfat_dir_next(&m0, &cur, &out, &present);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expect(present);
+    try std.testing.expectEqualStrings("AB", std.mem.sliceTo(&out.name, 0));
+    try std.testing.expectEqual(@as(u64, 1234), out.size_bytes);
+
+    var out2: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present2 = false;
+    const e2 = mu.priv_exfat_dir_next(&m0, &cur, &out2, &present2);
+    try std.testing.expectEqual(ok, e2);
+    try std.testing.expect(!present2);
+}
+
+test "dir next reports a clean end when the backend runs dry" {
+    reset();
+    var cur = freshCursor(0);
+    var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present = true;
+    const e = mu.priv_exfat_dir_next(&m0, &cur, &out, &present);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expect(!present);
+}
+
+test "dir next reports invalid size past the scan limit" {
+    reset();
+    var cur = freshCursor(0);
+    cur.scanned = scan_limit;
+    var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
+    var present = false;
+    const e = mu.priv_exfat_dir_next(&m0, &cur, &out, &present);
+    try std.testing.expectEqual(invalid_size, e);
+}
+
+test "listdir walks a whole directory through the callback" {
+    reset();
+    const units_ab = mkUnits("AB");
+    const units_cd = mkUnits("CD");
+    script[0] = mkFile(2, 0x20);
+    script[1] = mkStream(2, 5, 100, false);
+    script[2] = mkName(units_ab[0..2]);
+    script[3] = mkFile(2, @intCast(c.k_exfat_attr_directory));
+    script[4] = mkStream(2, 6, 4096, true);
+    script[5] = mkName(units_cd[0..2]);
+    script[6] = mkGarbage(entry_eod_b);
+    script_len = 7;
+    cb_n = 0;
+    const dir = dirDummy();
+    const e = mu.priv_exfat_listdir(&m0, &dir, listCb, null);
+    try std.testing.expectEqual(ok, e);
+    try std.testing.expectEqual(@as(usize, 2), cb_n);
+    try std.testing.expectEqualStrings("AB", std.mem.sliceTo(&cb_names[0], 0));
+    try std.testing.expectEqualStrings("CD", std.mem.sliceTo(&cb_names[1], 0));
+}
