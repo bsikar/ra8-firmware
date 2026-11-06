@@ -1042,3 +1042,64 @@ test "the exFAT check walks the tree and diffs a consistent bitmap" {
     try std.testing.expectEqual(@as(u32, 18), t.rep.clusters_free);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
 }
+
+test "the bitmap gate requires one bit per data cluster" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    try std.testing.expectEqual(false, check.internal_check_bitmap_ok(20, null, 8));
+    try std.testing.expectEqual(false, check.internal_check_bitmap_ok(20, &t.bmp, 2));
+    try std.testing.expectEqual(true, check.internal_check_bitmap_ok(20, &t.bmp, 3));
+    try std.testing.expectEqual(true, check.internal_check_bitmap_ok(20, &t.bmp, 8));
+}
+
+test "the locked body rejects null arguments and an unmounted handle" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 20, 64);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_err_null_ptr)), check.internal_check_locked(null, &t.bmp, 8, &t.rep));
+    const mp = mkMount(c.k_ra8_fs_type_fat32);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_err_invalid_state)), check.internal_check_locked(mp, &t.bmp, 8, &t.rep));
+}
+
+test "the entry point seeds the report and dispatches to the FAT scan" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    const mp = mkMount(c.k_ra8_fs_type_fat32);
+    mp.in_use = 1;
+    mp.count_of_clusters = 8;
+    fake.sector[0..512].* = @splat(0);
+    var ent = std.mem.zeroes([32]u8);
+    mkEntry(&ent, 'F', 0x20, 2, 1);
+    @memcpy(fake.sector[0..32], &ent);
+    fake.fat[2] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(@as(u16, fe_ok), check.ra8_fs_check(mp, &t.bmp, 8, &t.rep));
+    try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
+    try std.testing.expectEqual(@as(u32, 8), t.rep.clusters_total);
+    try std.testing.expectEqual(true, t.rep.referenced_scan);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.clusters_lost);
+    try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
+}
+
+test "the entry point without a bitmap reports unknown lost clusters" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 8, 8);
+    const mp = mkMount(c.k_ra8_fs_type_fat32);
+    mp.in_use = 1;
+    mp.count_of_clusters = 8;
+    fake.sector[0..512].* = @splat(0);
+    fake.fat[2] = 0x0FFF_FFFF;
+    try std.testing.expectEqual(@as(u16, fe_ok), check.ra8_fs_check(mp, null, 0, &t.rep));
+    try std.testing.expectEqual(false, t.rep.referenced_scan);
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), t.rep.clusters_lost);
+}
+
+test "the push-overflow seam caps once and honors the pre-truncated flag" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 4, 0);
+    check.ra8_fs_check_test_fat_push_overflow(&t.ctx, 9, false);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(scan_truncated, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 9), t.rep.first_fault.cluster);
+    check.ra8_fs_check_test_fat_push_overflow(&t.ctx, 10, true);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+}

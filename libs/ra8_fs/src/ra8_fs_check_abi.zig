@@ -3,9 +3,10 @@
 //!
 //! Shared scaffolding for the read-only consistency check (fsck): the finding
 //! recorder, the visited-cluster bitmap primitives, and the walk-stop helper.
-//! Ported from the slice of `ra8_fs_fat_check.c` that both the FAT and exFAT
-//! halves share (RA8FW-1108); the C file keeps the FAT passes and the public
-//! entry point.
+//! Shared scaffolding, the FAT and exFAT passes, and the public entry point
+//! of the read-only consistency check (fsck). Ported from
+//! `ra8_fs_fat_check.c` / `ra8_fs_fat_exfat_check.c` (RA8FW-1108 through
+//! RA8FW-1123); no C check code remains.
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
@@ -835,4 +836,71 @@ pub export fn priv_check_exfat(ctx: [*c]c.ra8_fs_check_ctx_t) callconv(.c) u16 {
         }
     }
     return internal_exchk_bitmap_pass(ctx, bmp_lba);
+}
+
+// ---------------------------------------------------------------------------
+// The public entry point, the lock bracket, and the test seams (RA8FW-1123)
+// ---------------------------------------------------------------------------
+
+extern fn priv_lock_acquire() void;
+extern fn priv_lock_release() void;
+
+/// Test-only seam: exercise the worklist overflow guard without building a
+/// 128-deep tree. Builds an already-full worklist (pre-marked truncated when
+/// asked) and attempts one push.
+pub export fn ra8_fs_check_test_fat_push_overflow(ctx: [*c]c.ra8_fs_check_ctx_t, cluster: u32, already_truncated: bool) callconv(.c) void {
+    var stack = c.fat_dir_stack_t{
+        .top = @intCast(c.k_ra8_fs_check_max_dirs),
+        .truncated = @intFromBool(already_truncated),
+    };
+    internal_fat_push(ctx, &stack, cluster);
+}
+
+/// Test-only seam: walk the synthetic FAT directory chain beginning at
+/// `first` with an empty worklist, so the exact `clusters_total` boundary can
+/// be tested without the mounted volume's real root consuming every cluster.
+pub export fn ra8_fs_check_test_fat_scan_cluster_dir(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32) callconv(.c) u16 {
+    var stack = std.mem.zeroes(c.fat_dir_stack_t);
+    return internal_fat_scan_cluster_dir(ctx, &stack, first);
+}
+
+/// True when the caller's bitmap holds one bit per data cluster. A missing or
+/// short bitmap leaves the classification pass to run alone, with
+/// `clusters_lost` reported as unknown.
+pub fn internal_check_bitmap_ok(total: u32, bitmap: ?[*]const u8, bitmap_bytes: u32) bool {
+    if (bitmap == null) return false;
+    return bitmap_bytes >= (total + bit_mask) >> byte_shift;
+}
+
+/// The guarded body of `ra8_fs_check`: validates the arguments, seeds the
+/// report, decides whether the caller's bitmap enables the reference passes,
+/// and dispatches on the volume type into a local candidate report. The
+/// candidate is published only after the entire scan succeeds, so backend
+/// failures cannot expose a plausible-looking partial result.
+pub export fn internal_check_locked(handle: [*c]c.ra8_fs_mount_t, bitmap: [*c]u8, bitmap_bytes: u32, report: [*c]c.ra8_fs_check_report_t) callconv(.c) u16 {
+    if ((handle == null) or (report == null)) return @intCast(c.k_ra8_err_null_ptr);
+    if (handle[0].in_use == 0) return @intCast(c.k_ra8_err_invalid_state);
+    var candidate = std.mem.zeroes(c.ra8_fs_check_report_t);
+    candidate.type = handle[0].type;
+    candidate.clusters_total = handle[0].count_of_clusters;
+    const have_bitmap = internal_check_bitmap_ok(handle[0].count_of_clusters, bitmap, bitmap_bytes);
+    candidate.referenced_scan = have_bitmap;
+    candidate.clusters_lost = if (have_bitmap) 0 else @intCast(c.k_ra8_fs_check_unknown);
+    var ctx = std.mem.zeroes(c.ra8_fs_check_ctx_t);
+    ctx.m = handle;
+    ctx.rep = &candidate;
+    ctx.bitmap = if (have_bitmap) bitmap else null;
+    ctx.bitmap_bits = handle[0].count_of_clusters;
+    const err: u16 = if (handle[0].type == c.k_ra8_fs_type_exfat) priv_check_exfat(&ctx) else priv_check_fat(&ctx);
+    if (err != @as(u16, @intCast(c.k_ra8_ok))) return err;
+    report[0] = candidate;
+    return @intCast(c.k_ra8_ok);
+}
+
+/// Public entry point: the consistency check with the library-lock brackets.
+pub export fn ra8_fs_check(handle: [*c]c.ra8_fs_mount_t, bitmap: [*c]u8, bitmap_bytes: u32, report: [*c]c.ra8_fs_check_report_t) callconv(.c) u16 {
+    priv_lock_acquire();
+    const err = internal_check_locked(handle, bitmap, bitmap_bytes, report);
+    priv_lock_release();
+    return err;
 }
