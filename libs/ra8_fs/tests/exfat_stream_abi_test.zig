@@ -98,11 +98,6 @@ export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u3
     return ok;
 }
 
-export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
-    _ = m;
-    return 0;
-}
-
 export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
     _ = .{ m, path, out_strm, out_attr };
     return ok;

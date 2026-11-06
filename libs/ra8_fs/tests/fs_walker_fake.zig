@@ -374,11 +374,6 @@ export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
     return flush_err;
 }
 /// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
-export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) u16 {
-    _ = m;
-    return bpb_err;
-}
-
 export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
     _ = m;
     _ = path;
