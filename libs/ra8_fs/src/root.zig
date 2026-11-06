@@ -41,6 +41,7 @@ pub const fmt = @import("ra8_fs_fmt_abi.zig");
 pub const prim = @import("ra8_fs_fat_prim_abi.zig");
 pub const fat_entry = @import("ra8_fs_fat_entry_abi.zig");
 pub const check = @import("ra8_fs_check_abi.zig");
+pub const fat_dir = @import("ra8_fs_fat_dir_abi.zig");
 
 comptime {
     _ = lock;
@@ -69,5 +70,6 @@ comptime {
     _ = fmt;
     _ = fat_entry;
     _ = check;
+    _ = fat_dir;
     _ = time;
 }
