@@ -33,7 +33,10 @@ extern ra8_err_t internal_locate_indexed(const ra8_fs_mount_t* m, uint8_t index,
  * `ra8_fs_fat_internal.h` and `ra8_fs_fat_bytes_internal.h` as before. */
 extern ra8_fs_mount_t* internal_alloc_mount_slot(void);extern ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index);
 extern ra8_err_t internal_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mount_t* m);
-extern ra8_err_t internal_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type);
+extern ra8_err_t internal_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type);extern ra8_err_t internal_mount_locked(const ra8_fs_backend_t* backend, uint8_t index,
+                                        ra8_fs_mount_t** out_handle);
+extern ra8_err_t internal_unmount_locked(ra8_fs_mount_t* handle);
+
 
 
 /* =============================================================================
@@ -116,150 +119,6 @@ static ra8_err_t internal_format_locked(const ra8_fs_backend_t*     backend,
     return err;
   }
   return priv_fmt_emit_volume(backend, &geom, opts->label);
-}
-
-/**
- * @brief Mount a volume -- the guarded body of ::ra8_fs_mount() and
- *        ::ra8_fs_mount_partition().
- *
- * @details Allocates a mount slot, reads the boot sector for the requested
- *          @p index (::k_ra8_fs_partition_auto for first-partition auto-select),
- *          parses the BPB, and computes the geometry.
- *
- * @param[in]  backend    Block-device backend to drive.
- * @param[in]  index      Partition selector, or ::k_ra8_fs_partition_auto.
- * @param[out] out_handle On success, opaque mount handle.
- *
- * @return Error code.
- * @retval k_ra8_ok                     Volume mounted.
- * @retval k_ra8_err_null_ptr           NULL `backend` or `out_handle`.
- * @retval k_ra8_err_invalid_arg        Backend missing required callbacks.
- * @retval k_ra8_err_no_mem             Mount table is full.
- * @retval k_ra8_err_out_of_range       `index` is past the partition table.
- * @retval k_ra8_err_not_found          Selected entry empty, or no table.
- * @retval k_ra8_err_validation_failed  Not a recognisable FAT volume.
- * @retval k_ra8_err_*                  Backend read failure.
- *
- * @pre The library lock is held (or none is installed).
- * @pre `backend` and `out_handle` are non-NULL.
- * @pre Backend's read/write/get_capacity callbacks are non-NULL.
- * @post On success, `*out_handle` is a valid mount.
- * @post On failure, no mount slot is marked in-use.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t
-internal_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
-{
-  if (backend == nullptr || out_handle == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (backend->read_block == nullptr || backend->write_block == nullptr ||
-      backend->get_capacity == nullptr) {
-    return k_ra8_err_invalid_arg;
-  }
-  ra8_fs_mount_t* m = internal_alloc_mount_slot();
-  if (m == nullptr) {
-    return k_ra8_err_no_mem;
-  }
-  /* Zero the whole slot on claim. The mount table is a fixed array, so
-   * this ra8_fs_mount_t address has very likely served another volume already,
-   * and the FAT and exFAT parse paths each populate a DIFFERENT subset of the
-   * struct. Clearing every field here makes "repopulate everything" a structural
-   * invariant instead of something each future field author must remember: no
-   * value can survive a card-type change into a field the new parse never
-   * touches. `in_use` is set last, on success. */
-  *m                    = (ra8_fs_mount_t){};
-  m->backend            = *backend;
-  m->partition_base_lba = 0U;
-  const ra8_err_t cerr  = internal_mount_probe_bps(backend, m);
-  if (cerr != k_ra8_ok) {
-    return cerr;
-  }
-  /* The mount table is a fixed array, so this is very likely the slot some
-   * earlier volume used. Both fields below are reset for the same reason the
-   * allocator's own state is (see ra8_fs_fat_alloc_internal.h): a slot handed
-   * out again carrying the last volume's answers hands them to this one.
-   * `exfat_upcase_ok` says "this build's up-case table is the one this VOLUME
-   * carries", and a fresh mount vouches for nothing until it has looked. */
-  m->exfat_upcase_ok = 0U;
-  ra8_err_t err      = internal_read_boot_sector(m, index);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* exFAT geometry is parsed directly in priv_exfat_parse; the FAT-BPB
-   * geometry computation applies only to FAT12/16/32. */
-  if (m->type != k_ra8_fs_type_exfat) {
-    err = internal_compute_geometry(m);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  /* Claim a fresh allocator slot BEFORE seeding it: the mount table is a fixed
-   * array, so this ra8_fs_mount_t address has very likely served another volume
-   * already, and its cached FAT sector and next-free hint describe that disk. */
-  priv_alloc_state_bind(m);
-  err = priv_fsinfo_seed(m);
-  if (err != k_ra8_ok) {
-    priv_alloc_state_release(m);
-    return err;
-  }
-  m->in_use   = 1;
-  *out_handle = m;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Release a mount slot -- the guarded body of ::ra8_fs_unmount().
- *
- * @details Writes the FAT32 FSInfo free count back if anything was allocated
- *          or freed, drops the allocator state, and marks the mount slot free.
- *          File data is not buffered, so there is nothing else to flush --
- *          callers must still close all files first.
- *
- * @param[in] handle Mount handle from `ra8_fs_mount()`.
- *
- * @return Error code.
- * @retval k_ra8_ok                Volume unmounted.
- * @retval k_ra8_err_null_ptr      `handle` was NULL.
- * @retval k_ra8_err_invalid_state `handle` is not currently mounted.
- * @retval k_ra8_err_*             The FSInfo writeback failed; the volume is
- *                                 still unmounted.
- *
- * @pre The library lock is held (or none is installed).
- * @pre `handle` is non-NULL and currently in use.
- * @pre All files opened on this mount have been closed.
- * @post Mount slot is free for reuse, whatever the FSInfo writeback did.
- * @post `handle->type` is reset to `k_ra8_fs_type_unknown`.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_unmount_locked(ra8_fs_mount_t* handle)
-{
-  if (handle == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (handle->in_use == 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  /* Last chance to make the on-disk free count true. Reported, not
-   * swallowed: a card whose FSInfo could not be updated is a card a desktop
-   * will report the wrong free space for, and the caller is the only one who
-   * can decide whether that matters. The slot is released either way, so a
-   * failed flush cannot strand the mount. */
-  const ra8_err_t ferr = priv_fsinfo_flush(handle);
-  priv_alloc_state_release(handle);
-  handle->in_use = 0;
-  handle->type   = k_ra8_fs_type_unknown;
-  return ferr;
 }
 
 /* =============================================================================

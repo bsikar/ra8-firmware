@@ -265,3 +265,82 @@ export fn priv_parse_bpb_into_mount(m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_
     m.*.root_cluster = c.priv_rd32(&st.g_fs_scratch[c.k_bpb_off_root_clus]);
     return c.k_ra8_ok;
 }
+
+/// Mount a volume: the guarded body of `ra8_fs_mount` / `ra8_fs_mount_partition`.
+///
+/// Allocates a mount slot and zeroes the WHOLE slot on claim: the mount
+/// table is a fixed array, so the slot has very likely served another
+/// volume already, and the FAT and exFAT parse paths each populate a
+/// different subset of the struct. Clearing every field makes
+/// "repopulate everything" a structural invariant instead of something
+/// each future field author must remember. Same reasoning resets
+/// `exfat_upcase_ok`: a fresh mount vouches for nothing until it has
+/// looked. The allocator slot is claimed and seeded AFTER the volume
+/// parses, so a failed parse leaves no allocator state behind. `in_use`
+/// is set last, on success.
+export fn internal_mount_locked(backend: [*c]const c.ra8_fs_backend_t, index: u8, out_handle: [*c][*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    const st = @import("ra8_fs_fat_state_abi.zig");
+    if (backend == null or out_handle == null) {
+        return c.k_ra8_err_null_ptr;
+    }
+    if (backend.*.read_block == null or
+        backend.*.write_block == null or
+        backend.*.get_capacity == null)
+    {
+        return c.k_ra8_err_invalid_arg;
+    }
+    const m = st.internal_alloc_mount_slot();
+    if (m == null) {
+        return c.k_ra8_err_no_mem;
+    }
+    m.* = std.mem.zeroes(c.ra8_fs_mount_t);
+    m.*.backend = backend.*;
+    m.*.partition_base_lba = 0;
+    const cerr = internal_mount_probe_bps(backend, m);
+    if (cerr != c.k_ra8_ok) {
+        return cerr;
+    }
+    m.*.exfat_upcase_ok = 0;
+    var err = internal_read_boot_sector(m, index);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    // exFAT geometry is parsed directly in priv_exfat_parse; the FAT-BPB
+    // geometry computation applies only to FAT12/16/32.
+    if (m.*.type != c.k_ra8_fs_type_exfat) {
+        err = internal_compute_geometry(m);
+        if (err != c.k_ra8_ok) {
+            return err;
+        }
+    }
+    c.priv_alloc_state_bind(m);
+    err = c.priv_fsinfo_seed(m);
+    if (err != c.k_ra8_ok) {
+        c.priv_alloc_state_release(m);
+        return err;
+    }
+    m.*.in_use = 1;
+    out_handle.* = m;
+    return c.k_ra8_ok;
+}
+
+/// Release a mount slot: the guarded body of `ra8_fs_unmount`.
+///
+/// Last chance to make the on-disk free count true. The FSInfo flush is
+/// reported, not swallowed: a card whose FSInfo could not be updated is a
+/// card a desktop will report the wrong free space for, and the caller is
+/// the only one who can decide whether that matters. The slot is released
+/// either way, so a failed flush cannot strand the mount.
+export fn internal_unmount_locked(handle: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    if (handle == null) {
+        return c.k_ra8_err_null_ptr;
+    }
+    if (handle.*.in_use == 0) {
+        return c.k_ra8_err_invalid_state;
+    }
+    const ferr = c.priv_fsinfo_flush(handle);
+    c.priv_alloc_state_release(handle);
+    handle.*.in_use = 0;
+    handle.*.type = c.k_ra8_fs_type_unknown;
+    return ferr;
+}
