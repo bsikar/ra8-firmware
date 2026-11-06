@@ -344,3 +344,59 @@ export fn internal_unmount_locked(handle: [*c]c.ra8_fs_mount_t) callconv(.c) c.r
     handle.*.type = c.k_ra8_fs_type_unknown;
     return ferr;
 }
+
+/// Lay down a fresh volume: the guarded body of `ra8_fs_format`.
+///
+/// Validates the request (type supported, sectors-per-cluster legal,
+/// backend writable and readable for capacity), reads the device's block
+/// count and size, and dispatches: exFAT goes to its own formatter, FAT
+/// 12/16/32 go through the shared geometry builder -- root entries come
+/// from the FAT12/16 constant (zero for FAT32, whose root lives in a
+/// cluster chain), and the root-directory sector count is the entry table
+/// rounded up to whole sectors. The final geometry choice and the volume
+/// write stay with the fmt helpers.
+export fn internal_format_locked(backend: [*c]const c.ra8_fs_backend_t, opts: [*c]const c.ra8_fs_format_opts_t) callconv(.c) c.ra8_err_t {
+    if (backend == null or opts == null) {
+        return c.k_ra8_err_null_ptr;
+    }
+    if (backend.*.write_block == null or
+        backend.*.get_capacity == null)
+    {
+        return c.k_ra8_err_invalid_arg;
+    }
+    if (opts.*.type != c.k_ra8_fs_type_fat12 and
+        opts.*.type != c.k_ra8_fs_type_fat16 and
+        opts.*.type != c.k_ra8_fs_type_fat32 and
+        opts.*.type != c.k_ra8_fs_type_exfat)
+    {
+        return c.k_ra8_err_not_supported;
+    }
+    if (!c.priv_fmt_spc_valid(opts.*.sectors_per_cluster)) {
+        return c.k_ra8_err_invalid_arg;
+    }
+    var block_count: u64 = 0;
+    var block_size: u32 = 0;
+    var err = backend.*.get_capacity.?(backend.*.ctx, &block_count, &block_size);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    if (internal_bps_valid(block_size) == 0 or block_count == 0) {
+        return c.k_ra8_err_invalid_arg;
+    }
+    if (opts.*.type == c.k_ra8_fs_type_exfat) {
+        return c.priv_exfat_format(backend, block_count, block_size, opts.*.label);
+    }
+    var geom: c.ra8_fs_fmt_geom_t = std.mem.zeroes(c.ra8_fs_fmt_geom_t);
+    geom.type = opts.*.type;
+    geom.total_sectors = block_count;
+    geom.bytes_per_sector = block_size;
+    geom.reserved_sectors = c.priv_fmt_reserved_for(opts.*.type);
+    geom.root_entries = if (opts.*.type == c.k_ra8_fs_type_fat32) 0 else @as(u32, c.k_fmt_root_ents_f16);
+    geom.root_sectors =
+        ((geom.root_entries * @as(u32, c.k_ra8_fs_dir_entry_bytes)) + (block_size - 1)) / block_size;
+    err = c.priv_fmt_choose_geometry(&geom, opts.*.sectors_per_cluster);
+    if (err != c.k_ra8_ok) {
+        return err;
+    }
+    return c.priv_fmt_emit_volume(backend, &geom, opts.*.label);
+}
