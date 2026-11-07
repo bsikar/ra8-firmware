@@ -13,9 +13,15 @@
 #   src/jof_audit.c        coverage/geometry audit over injected reads
 #   src/jof_produce.c      sniff/dispatch, band accumulator, tile encode
 #   src/jof_png.c          streaming PNG pixel layer (tinfl inflate,
-#                              unfilter, translate)
+#                              unfilter, translate) -- ported to Zig
+#                              (jof_abi.zig, RA8FW-1143); C TU retired
+#                              unfilter, translate) -- ported to Zig
+#                              (jof_abi.zig, RA8FW-1143); C TU retired
 #   src/jof_png_chunk.c    streaming PNG chunk layer (prologue,
-#                              PLTE/tRNS, ancillary walk)
+#                              PLTE/tRNS, ancillary walk) -- ported to Zig
+#                              (jof_abi.zig, RA8FW-1142); C TU retired
+#                              PLTE/tRNS, ancillary walk) -- ported to Zig
+#                              (jof_abi.zig, RA8FW-1142); C TU retired
 #   src/jof_png_internal.h shared PNG decode state + prototypes
 #   src/jof_internal.h     producer-private seams (bump arena, hooks)
 #
