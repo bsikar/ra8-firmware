@@ -14,6 +14,7 @@ const Translator = @import("translate_c").Translator;
 /// their exact layouts. The build writes the include list, so no C is added.
 const jof_header =
     \\#include "jof_internal.h"
+    \\#include "jof_png_internal.h"
     \\#include "ra8_webp.h"
     \\
 ;
@@ -32,7 +33,26 @@ fn translateHeaders(
     });
     translator.defineCMacro("static_assert", "_Static_assert");
     translator.defineCMacro("alignas", "_Alignas");
+    // miniz.h pulls <time.h>, which the translate-c resource dir lacks; the
+    // macro makes miniz substitute its own dummy time type and skips the
+    // include. Layout-neutral: tinfl types are untouched.
+    // Mirror the C build's miniz carve-down set (tools/rabook_imagepack
+    // miniz_flags) so the seam sees the same miniz.h branches as the C
+    // TUs. MINIZ_NO_TIME also skips <time.h>, which aro lacks.
+    translator.defineCMacro("MINIZ_NO_ARCHIVE_APIS", "1");
+    translator.defineCMacro("MINIZ_NO_MALLOC", "1");
+    translator.defineCMacro("MINIZ_NO_STDIO", "1");
+    translator.defineCMacro("MINIZ_NO_TIME", "1");
+    // aro drops every declaration that follows a mid-file #pragma once,
+    // and miniz.h (a concatenation of miniz's sources) carries five, so
+    // the seam shim replaces it with the type surface the seam needs:
+    // exact-size mz_* typedefs and an opaque tinfl_decompressor, which
+    // jof_png_internal.h holds by pointer only. The shim also supplies
+    // the libc headers aro ships none of (assert/stdlib/string/stdio).
+    // The C builds never see this path.
+    translator.addIncludePath(b.path("seam_shim"));
     translator.addIncludePath(b.path("src"));
+    translator.addIncludePath(b.path("../third_party/miniz"));
     translator.addIncludePath(b.path("inc"));
     translator.addIncludePath(b.path("../webp/inc"));
     translator.addIncludePath(b.path("../../../libs/ra8_core/inc"));
