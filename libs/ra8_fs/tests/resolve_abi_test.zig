@@ -84,7 +84,7 @@ test "a directory entry without a data cluster is refused" {
 
 test "a failing component lookup propagates" {
     setup();
-    fake.sector = @splat(0); // no entry for "d": the lookup misses
+    @memset(fake.sector, 0); // no entry for "d": the lookup misses
     const m = fake.mount();
     var parent: c.dir_loc_t = undefined;
     var leaf: [*:0]const u8 = undefined;

@@ -85,11 +85,7 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
     return ok;
 }
 
-var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
-
-export fn priv_sec_io() callconv(.c) [*c]u8 {
-    return &sec_buf;
-}
+var sec_buf: *[c.k_ra8_fs_sector_max]u8 = fs.fat_bytes.io_sector;
 
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;

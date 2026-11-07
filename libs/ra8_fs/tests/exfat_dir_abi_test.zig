@@ -56,7 +56,6 @@ const data_start_lba: u64 = 64;
 // ---------------------------------------------------------------------------
 
 var disk: [128][sector_max]u8 = undefined;
-var scratch: [sector_max]u8 = undefined;
 var m0: c.ra8_fs_mount_t = undefined;
 
 const Slot = struct {
@@ -179,11 +178,6 @@ export fn priv_strlen(s: [*c]const u8) callconv(.c) u32 {
 export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {
     _ = m;
     return bps;
-}
-
-export fn priv_sec_io() callconv(.c) [*c]u8 {
-    @memset(&scratch, 0);
-    return &scratch;
 }
 
 export fn priv_cluster_to_lba(m: [*c]const c.ra8_fs_mount_t, cluster: u32) callconv(.c) u64 {

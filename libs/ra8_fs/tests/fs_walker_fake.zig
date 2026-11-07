@@ -10,6 +10,7 @@
 const std = @import("std");
 const al = @import("ra8_fs").alloc;
 const c = @import("ra8_fs").c;
+const fs = @import("ra8_fs");
 const st = @import("ra8_fs").fat_state;
 const entry_bytes = 32;
 
@@ -20,7 +21,7 @@ pub var written_index: ?u32 = null;
 pub var written_cluster: u32 = 0;
 pub var mount_store: c.ra8_fs_mount_t = std.mem.zeroes(c.ra8_fs_mount_t);
 
-pub var sector: [512]u8 = undefined;
+pub var sector: *[512]u8 = fs.fat_bytes.walk_sector[0..512];
 pub var walk_lba: u64 = 10;
 pub var walk_fixed: u32 = 1;
 pub var eps: u32 = 16;
@@ -42,7 +43,7 @@ pub var fat_reads: u32 = 0;
 pub var free_cached: u32 = 0xFFFF_FFFF;
 pub var bitmap: [1024]u8 = undefined;
 pub var bitmap_err: u16 = 0;
-pub var io_sector: [512]u8 = undefined;
+pub var io_sector: *[512]u8 = fs.fat_bytes.io_sector[0..512];
 pub var io_reads: u32 = 0;
 
 // GPT side: LBAs 1..4 (header, then three entry sectors) and the scratch buffer.
@@ -106,7 +107,7 @@ pub fn reset(fs_type: u8) void {
     mount_store.num_fats = 1;
     al.priv_fat_cache_reset();
     mount_store.root_cluster = 5;
-    sector = @splat(0);
+    @memset(sector, 0);
     read_error = 0;
     written_index = null;
     sector_read_err = 0;
@@ -209,10 +210,6 @@ pub fn layLongName(name: []const u8, comptime sfn11: *const [11]u8, at: usize) v
     }
     @memcpy(sector[at + groups * 32 ..][0..11], sfn11);
     sector[at + groups * 32 + 11] = 0x20;
-}
-
-export fn priv_sec_walk() callconv(.c) [*c]u8 {
-    return &sector;
 }
 
 /// Serve the FAT array as raw sectors. The array is indexed by cluster
@@ -327,9 +324,6 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[10] = '0';
 }
 
-export fn priv_sec_io() callconv(.c) [*c]u8 {
-    return &io_sector;
-}
 export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
     _ = m;
     out_clus.* = bitmap_lba - 1 + 2;
