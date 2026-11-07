@@ -30,11 +30,11 @@ const first_party_flags = [_][]const u8{
 // miniz type-puns through byte buffers; disable strict aliasing to prevent
 // the corresponding miscompile without demoting unrelated diagnostics.
 const miniz_flags = [_][]const u8{
-    "-std=gnu23",              "-Wall",
-    "-Wextra",                 "-Werror",
-    "-fno-strict-aliasing",    "-DRA8_OFF_TARGET",
-    "-D_GNU_SOURCE",           "-DMINIZ_NO_ARCHIVE_APIS",
-    "-DMINIZ_NO_MALLOC",       "-DMINIZ_NO_STDIO",
+    "-std=gnu23",           "-Wall",
+    "-Wextra",              "-Werror",
+    "-fno-strict-aliasing", "-DRA8_OFF_TARGET",
+    "-D_GNU_SOURCE",        "-DMINIZ_NO_ARCHIVE_APIS",
+    "-DMINIZ_NO_MALLOC",    "-DMINIZ_NO_STDIO",
     "-DMINIZ_NO_TIME",
 };
 
@@ -199,6 +199,7 @@ pub fn build(b: *std.Build) void {
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
     const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
     const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig");
+    const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
 
     const tool_sources = [_][]const u8{
         "src/main.c",
@@ -221,6 +222,7 @@ pub fn build(b: *std.Build) void {
     mod.linkLibrary(mem_lib);
     mod.linkLibrary(jpeg_lib);
     mod.linkLibrary(core_lib);
+    mod.linkLibrary(jof_lib);
     addToolIncludes(b, mod);
     addWebpIncludes(b, mod);
     addC(b, mod, ".", &tool_sources, &first_party_flags);
@@ -308,6 +310,7 @@ pub fn build(b: *std.Build) void {
         tmod.linkLibrary(mem_lib);
         tmod.linkLibrary(jpeg_lib);
         tmod.linkLibrary(core_lib);
+        tmod.linkLibrary(jof_lib);
         for (unit.includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
         // The C-era test targets carried extra definitions per target
         // (RA8_FMT_TEST_PNG's golden fixture path); those ride on the unit's

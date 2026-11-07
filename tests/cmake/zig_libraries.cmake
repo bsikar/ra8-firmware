@@ -944,3 +944,11 @@ set_target_properties(
              INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_board_ra8p1/inc"
 )
 add_dependencies(ra8_zig::ra8_board_ra8p1_prefixed ra8_board_ra8p1_prefixed_zig_library)
+ra8_add_zig_library(
+  NAME
+  jof
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/jof
+  LIBRARY_NAME
+  jof
+)
