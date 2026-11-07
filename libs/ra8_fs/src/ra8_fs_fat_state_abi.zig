@@ -3,13 +3,10 @@
 //!
 //! Shared FAT/exFAT module state: the one scratch buffer, the read-only
 //! zero sector, and the mount/file tables with their slot allocators.
-//! Ported out of `ra8_fs_fat_mount.c` (RA8FW-1143). The C half still
-//! consumes `g_fs_scratch` and `k_zero_sector` through the existing extern
-//! declarations, and the allocators through the prototypes header. The
-//! four-role sector arena and its `priv_sec_*` accessors stay in the C
-//! file until the file itself is ported (slice 1144): the test fakes serve
-//! their own role buffers, and moving the arena now would strand every
-//! test assertion that reads `fake.sector` directly.
+//! Ported out of `ra8_fs_fat_mount.c` (RA8FW-1143); nothing consumes
+//! these from C any more. The four-role sector arena and its `priv_sec_*`
+//! accessors moved to `ra8_fs_fat_bytes_abi.zig` (RA8FW-1137), and the
+//! test suites bind their role buffers onto its rows.
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;

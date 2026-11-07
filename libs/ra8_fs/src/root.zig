@@ -44,6 +44,7 @@ pub const check = @import("ra8_fs_check_abi.zig");
 pub const fat_dir = @import("ra8_fs_fat_dir_abi.zig");
 pub const fat_fileio = @import("ra8_fs_fat_fileio_abi.zig");
 pub const fat_state = @import("ra8_fs_fat_state_abi.zig");
+pub const fat_bytes = @import("ra8_fs_fat_bytes_abi.zig");
 pub const fat_mount_abi = @import("ra8_fs_fat_mount_abi.zig");
 
 comptime {

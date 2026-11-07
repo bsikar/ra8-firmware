@@ -54,11 +54,7 @@ fn reset() void {
     grow_calls = 0;
     @memset(&g_fs_scratch, 0);
 }
-var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
-
-export fn priv_sec_io() callconv(.c) [*c]u8 {
-    return &sec_buf;
-}
+var sec_buf: *[c.k_ra8_fs_sector_max]u8 = fs.fat_bytes.io_sector;
 
 /// The fake FAT: a small array served as raw 4-byte-entry sectors, indexed
 /// `fat[cluster - 2]` so entry 0 is the first data cluster, matching how the
@@ -189,7 +185,7 @@ test "the shared string helpers survived the port" {
 
 // Link stubs for the other root units this binary analyzes (never exercised
 // here): the shared root pulls every abi module into every test root.
-var walk_sector: [512]u8 = @splat(0);
+var walk_sector: *[512]u8 = fs.fat_bytes.walk_sector[0..512];
 
 export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
     var sum = cs;
@@ -213,10 +209,6 @@ fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
     return 0;
-}
-
-export fn priv_sec_walk() callconv(.c) [*c]u8 {
-    return &walk_sector;
 }
 
 var write_err: u16 = 0;
@@ -312,12 +304,12 @@ test "bmp switch keeps one sector resident and writes the old one back" {
     m.count_of_clusters = 64;
     var loaded: u64 = std.math.maxInt(u64);
     disk[3][5] = 0x33;
-    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 3, &loaded, &sec_buf));
+    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 3, &loaded, sec_buf));
     try std.testing.expectEqual(data_lba + 3, loaded);
     try std.testing.expectEqual(@as(u8, 0x33), sec_buf[5]);
-    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 3, &loaded, &sec_buf));
+    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 3, &loaded, sec_buf));
     sec_buf[5] = 0x44;
-    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 4, &loaded, &sec_buf));
+    try std.testing.expectEqual(ok, exw.priv_exfat_bmp_switch(&m, data_lba + 4, &loaded, sec_buf));
     try std.testing.expectEqual(@as(u8, 0x44), disk[3][5]);
     try std.testing.expectEqual(disk[4][5], sec_buf[5]);
 }

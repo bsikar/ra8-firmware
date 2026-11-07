@@ -28,7 +28,7 @@ const eoc_test: u32 = 0xFFFF_FFFF;
 
 // ---------------------------------------------------------------- fakes
 
-var sec_buf: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+var sec_buf: *[c.k_ra8_fs_sector_max]u8 = fs.fat_bytes.io_sector;
 var bmp_store: [4][bps]u8 = @splat(@splat(0));
 var bmp_err: u16 = 0;
 var bmp_calls: u32 = 0;
@@ -52,7 +52,7 @@ var wdir_entry0: [8]u8 = @splat(0);
 var wdir_count: usize = 0;
 
 fn reset() void {
-    for (&sec_buf) |*b| b.* = 0;
+    @memset(sec_buf, 0);
     for (&bmp_store) |*s| s.* = @splat(@splat(0));
     bmp_err = 0;
     bmp_calls = 0;
@@ -129,10 +129,6 @@ fn mkUnits(name: []const u8) [16]u16 {
     var u: [16]u16 = @splat(0);
     for (name, 0..) |ch, i| u[i] = ch;
     return u;
-}
-
-export fn priv_sec_io() callconv(.c) [*c]u8 {
-    return &sec_buf;
 }
 
 export fn priv_bps(m: [*c]const c.ra8_fs_mount_t) callconv(.c) u32 {

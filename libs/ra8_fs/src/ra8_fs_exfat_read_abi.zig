@@ -27,8 +27,8 @@ const name_cap: u32 = c.k_exfat_name_cap;
 const name_per_entry: u32 = c.k_exfat_name_per_entry;
 const scan_limit: u32 = c.k_exfat_scan_limit;
 
-/// C-side helpers the read path leans on, still living in ra8_fs_fat.c,
-/// ra8_fs_fat_mount.c, and ra8_fs_fat_exfat_dir.c.
+/// Byte-order readers the read path leans on; defined once in
+/// ra8_fs_fat_prim_abi.zig.
 extern fn priv_rd16(p: [*]const u8) u16;
 extern fn priv_rd32(p: [*]const u8) u32;
 extern fn priv_rd64(p: [*]const u8) u64;

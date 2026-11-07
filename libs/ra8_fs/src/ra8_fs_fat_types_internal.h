@@ -850,7 +850,7 @@ typedef enum : uint8_t {
  * @details One module-wide bounce buffer for every BPB, FAT, directory, and
  *          data-sector access. Sized to ::k_ra8_fs_sector_max so a 4Kn medium
  *          fits; a 512-byte mount simply uses the first quarter. Defined once
- *          in `ra8_fs_fat_mount.c`.
+ *          in `ra8_fs_fat_state_abi.zig`.
  * @note Not reentrant; the adapter is single-threaded by contract.
  * @warning Do not access concurrently; callers serialise all FS operations.
  * @since 0.1.0
