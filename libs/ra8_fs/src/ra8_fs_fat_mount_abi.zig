@@ -4,9 +4,10 @@
 //! FAT volume geometry and partition selection: BPB sector-size validation,
 //! mount geometry derivation, and MBR/GPT partition lookup. Ported out of
 //! `ra8_fs_fat_mount.c` (RA8FW-1130); the C half consumes these through the
-//! extern declarations at the top of that file. The remaining mount path
-//! (BPB parse, boot-sector read, probe, format, mount/unmount) and the
-//! sector arena follow before the C file itself is retired.
+//! extern declarations at the top of that file. The whole mount path is Zig
+//! now: BPB parse, boot-sector read, probe, format, mount/unmount, and the
+//! five public lock-bracket entry points. `ra8_fs_fat_mount.c` is retired
+//! with RA8FW-1136.
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
@@ -399,4 +400,60 @@ export fn internal_format_locked(backend: [*c]const c.ra8_fs_backend_t, opts: [*
         return err;
     }
     return c.priv_fmt_emit_volume(backend, &geom, opts.*.label);
+}
+
+// The five public entry points. Each takes the library lock, delegates to the
+// ported internal body, and releases the lock on every return path: `defer`
+// carries the guarantee the C side spelled with `RA8_OWNS_RESOURCE`.
+
+/// Format a volume: partition, geometry, and FAT/exFAT structures, per `opts`.
+export fn ra8_fs_format(
+    backend: [*c]const c.ra8_fs_backend_t,
+    opts: [*c]const c.ra8_fs_format_opts_t,
+) callconv(.c) c.ra8_err_t {
+    c.priv_lock_acquire();
+    defer c.priv_lock_release();
+    return internal_format_locked(backend, opts);
+}
+
+/// Detect the volume type on `backend` without mounting it.
+export fn ra8_fs_probe(
+    backend: [*c]const c.ra8_fs_backend_t,
+    out_type: [*c]c.ra8_fs_type_t,
+) callconv(.c) c.ra8_err_t {
+    c.priv_lock_acquire();
+    defer c.priv_lock_release();
+    return internal_probe_locked(backend, out_type);
+}
+
+/// Mount the auto-selected partition of `backend`'s medium.
+export fn ra8_fs_mount(
+    backend: [*c]const c.ra8_fs_backend_t,
+    out_handle: [*c][*c]c.ra8_fs_mount_t,
+) callconv(.c) c.ra8_err_t {
+    c.priv_lock_acquire();
+    defer c.priv_lock_release();
+    return internal_mount_locked(
+        backend,
+        @as(u8, @intCast(c.k_ra8_fs_partition_auto)),
+        out_handle,
+    );
+}
+
+/// Mount partition `index` (zero-based) of `backend`'s medium.
+export fn ra8_fs_mount_partition(
+    backend: [*c]const c.ra8_fs_backend_t,
+    index: u8,
+    out_handle: [*c][*c]c.ra8_fs_mount_t,
+) callconv(.c) c.ra8_err_t {
+    c.priv_lock_acquire();
+    defer c.priv_lock_release();
+    return internal_mount_locked(backend, index, out_handle);
+}
+
+/// Unmount the volume `handle` refers to and release its mount slot.
+export fn ra8_fs_unmount(handle: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+    c.priv_lock_acquire();
+    defer c.priv_lock_release();
+    return internal_unmount_locked(handle);
 }
