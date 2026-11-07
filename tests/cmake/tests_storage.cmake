@@ -3,7 +3,7 @@
 #
 # Storage tests that link a standalone subset rather than ra8_core_hal.
 #
-# exFAT links ONLY ra8_fs_fat.c (no ra8_core_hal means no ra8_time weak-extern,
+# exFAT links the Zig ra8_fs archive (no ra8_core_hal means no ra8_time weak-extern,
 # so it builds on macOS and Linux alike); the cache-store pair builds its own
 # sources plus the vendored LevelX NOR driver. Each also owns a fixture or a
 # custom command, which is why none of them can come from the auto-glob.
@@ -38,9 +38,8 @@ add_custom_target(
 # only the FAT driver -- no ra8_core_hal -> no ra8_time weak-extern).
 #
 # The UTF codec is Zig now (RA8FW-747) and comes from the ra8_fs archive.
-file(GLOB RA8_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_fat*.c)
 add_executable(
-  test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/src/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
+  test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/src/exfat_fs_test.c
 )
 add_dependencies(test_ra8_fs_exfat ra8_exfat_fixture)
 # The library lock left ra8_fs_fat_lock.c for the ra8_fs archive (RA8FW-724).

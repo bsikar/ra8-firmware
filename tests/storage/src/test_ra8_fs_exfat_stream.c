@@ -84,7 +84,7 @@ typedef enum : uint32_t {
  *
  * @par MC/DC:
  * Decision: `(no_fat_chain != 0) && (next == tail_cluster + 1)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_link_cluster`
  * (2 conditions). This case supplies the TRUE vector: a fresh volume hands out
  * successive clusters, so every growth after the first keeps the run
  * contiguous and writes not one FAT entry. The two false vectors live in
@@ -311,7 +311,7 @@ RA8_INTERNAL static void internal_expect_patched(ra8_fs_mount_t* h, uint32_t at,
  *
  * @par MC/DC:
  * Decision: `file->offset > file->size_bytes` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_write_stream`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@priv_exfat_write_stream`
  * (1 condition). The overwrite supplies the FALSE vector -- bytes land below
  * the recorded length and it must stay put -- while every appending case above
  * supplies the TRUE one.
@@ -446,7 +446,7 @@ RA8_INTERNAL static void internal_test_stream_interleaved_handles(void)
  *
  * @par MC/DC:
  * Decision: `(alloc_clusters > 0) && (no_fat_chain != 0)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_patch_stream`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_patch_stream`
  * (2 conditions). This case supplies the vector that varies the FIRST
  * condition -- no clusters at all, so flags 0x01 and `FirstCluster` 0 -- while
  * `test_stream_create_multi_cluster()` supplies the true vector and

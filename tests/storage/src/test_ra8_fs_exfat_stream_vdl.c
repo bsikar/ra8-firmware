@@ -306,7 +306,7 @@ RA8_INTERNAL static void internal_expect_three_regions(ra8_fs_mount_t* h, uint32
  *
  * @par MC/DC:
  * Decision: `file->valid_bytes < file->offset` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_close_gap`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_close_gap`
  * (1 condition).
  * - append onto a partly-valid file -> true  -> the gap is zero-filled
  * - every ordinary sequential write -> false -> the loop does nothing at all

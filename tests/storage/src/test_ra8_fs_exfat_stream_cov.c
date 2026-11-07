@@ -203,7 +203,7 @@ RA8_INTERNAL static uint32_t internal_make_adjacent_pair(ra8_fs_mount_t* h)
  *
  * @par MC/DC:
  * Decision: `if (e != k_ra8_ok)` after ::priv_exfat_bitmap_lba in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_grow_one`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_grow_one`
  * (1 condition). This case is the TRUE vector; every successful write is the
  * FALSE one.
  *
@@ -240,7 +240,7 @@ RA8_INTERNAL static void internal_test_grow_bitmap_lookup_read_fails(void)
  *
  * @par MC/DC:
  * Decision: `if (pe != k_ra8_ok)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_pick_cluster`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_pick_cluster`
  * (1 condition). TRUE here; FALSE on every growth that reads its bit.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -278,7 +278,7 @@ RA8_INTERNAL static void internal_test_grow_bitmap_probe_read_fails(void)
  *
  * @par MC/DC:
  * Decision: `if (e != k_ra8_ok)` after ::priv_exfat_bitmap_mark in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_grow_one`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_grow_one`
  * (1 condition). TRUE here; FALSE on every successful growth.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -317,7 +317,7 @@ RA8_INTERNAL static void internal_test_grow_bitmap_mark_write_fails(void)
  *
  * @par MC/DC:
  * Decision: `if (e != k_ra8_ok)` after ::priv_exfat_materialize_chain in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_link_cluster`
  * (1 condition). TRUE here; FALSE in the fragmentation case that succeeds.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -402,7 +402,7 @@ RA8_INTERNAL static void internal_test_data_sector_io_fails(void)
  * @par MC/DC:
  * Decisions: `if (e != k_ra8_ok)` after ::priv_exfat_gather_set and after the
  * File-entry write in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_flush_set`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@priv_exfat_flush_set`
  * (1 condition each). Both TRUE vectors here; the FALSE ones come from every
  * successful write.
  *
@@ -804,7 +804,7 @@ RA8_INTERNAL static void internal_test_survey_length_without_cluster(void)
  *
  * @par MC/DC:
  * Two single-condition decisions in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_cluster_at`:
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_cluster_at`:
  * `if (e != k_ra8_ok)` after the FAT read, and `if (priv_is_eoc(m, next) != 0)`.
  * Both TRUE here; both FALSE on every walk that reaches its index.
  *

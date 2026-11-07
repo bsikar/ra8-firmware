@@ -344,7 +344,7 @@ RA8_INTERNAL static uint32_t internal_first_dir_datalen(const ra8_fs_mount_t* h)
  * No compound decision is introduced here. The first growth drives the
  * stay-contiguous arm of the transition decision, whose vectors are recorded on
  * test_convert_forces_fat_chain: the (nofat=T, adjacent=T) control vector for
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_dir_link`, since the
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_dir_link`, since the
  * cluster after the directory's tail is free and the run stays NoFatChain.
  *
  * @pre A freshly formatted 64 MiB exFAT volume.
@@ -488,7 +488,7 @@ RA8_INTERNAL static void internal_test_growth_across_bitmap_sector_boundary(void
  *
  * @par MC/DC:
  * Decision: `(*nofat != 0) && (next == tail + 1)`
- * (libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_dir_link, 2 conditions).
+ * (libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_dir_link, 2 conditions).
  * - Vector 1: nofat=1, next=tail+1 -> true (stay contiguous). Driven by the
  *   first growth in test_fill_past_one_cluster, where the adjacent cluster is
  *   free. [control]
@@ -643,7 +643,7 @@ RA8_INTERNAL static void internal_test_rmdir_multicluster_frees_all(void)
  * volume-full return of
  * `libs/ra8_fs/src/ra8_fs_exfat_write_abi.zig@priv_exfat_find_dir_space`, and the
  * failed cluster pick inside
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_grow_dir`.
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@priv_exfat_grow_dir`.
  *
  * @pre A freshly formatted 64 MiB exFAT volume.
  * @post Both the file create and the mkdir report ::k_ra8_err_no_mem.

@@ -24,7 +24,6 @@ add_library(
   ra8_core_hal OBJECT
   ${XML_SOURCES}
   ${RA8_HAL_SOURCES}
-  ${RA8_FS_SOURCES}
   ${RA8_IO_SOURCES}
   ${COMPRESS_SOURCES}
   ${RA8_MEM_SOURCES}
