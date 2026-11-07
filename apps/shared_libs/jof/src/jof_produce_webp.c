@@ -51,22 +51,6 @@ typedef enum : uint32_t {
   k_jof_webp_scratch_slack = 1U * 1024U * 1024U, /**< Fixed scratch slack (bytes).   */
 } jof_webp_const_t;
 
-uint32_t jof_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes)
-{
-  if ((max_width == 0U) || ((uint32_t)max_width > (uint32_t)k_ra8_webp_max_dim) ||
-      (max_height == 0U) || ((uint32_t)max_height > (uint32_t)k_ra8_webp_max_dim) ||
-      (max_src_bytes == 0U)) {
-    return 0U;
-  }
-  const uint64_t frame = (uint64_t)max_width * (uint64_t)max_height * (uint64_t)k_jof_webp_bpp;
-  const uint64_t scratch =
-    ((uint64_t)k_jof_webp_scratch_mult * frame) + (uint64_t)k_jof_webp_scratch_slack;
-  const uint64_t total = (uint64_t)max_src_bytes + frame + scratch + (uint64_t)k_jof_carve_slack;
-  if (total > (uint64_t)UINT32_MAX) {
-    return 0U;
-  }
-  return (uint32_t)total;
-}
 
 /**
  * @brief Pull the whole compressed WebP source into the `webp_work` arena.
