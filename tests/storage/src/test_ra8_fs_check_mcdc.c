@@ -4,7 +4,7 @@
  *
  * @details
  * One `test_mcdc_*` per enclosing function that carries a compound boolean
- * decision in `ra8_fs_fat_check.c` / `ra8_fs_fat_exfat_check.c`. Each drives the
+ * decision in `ra8_fs_check_abi.zig`. Each drives the
  * N+1 independent-influence vectors for its decision(s) and cites the decision by
  * `path@function` in its `@par MC/DC:` block, so `check_new_compound_has_mcdc.py`
  * matches every new decision to a test. The detection behaviour these vectors
@@ -223,7 +223,7 @@ static void internal_test_mcdc_check_locked(void)
  * @test test_mcdc_exchk_set
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_set` --
+ * `libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_set` --
  * decision `(count < 2) || (count > k_exfat_set_max_entries)` (a malformed set).
  * - SecondaryCount 0   -> C1 true              (count 1 < 2).
  * - SecondaryCount 200 -> C1 false, C2 true    (count 201 over the maximum).
@@ -261,7 +261,7 @@ RA8_INTERNAL static void internal_test_mcdc_exchk_set(void)
  * @test internal_test_mcdc_exchk_scan_dir
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_scan_dir` --
+ * `libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_scan_dir` --
  * decision `(e[0] == bitmap) || (e[0] == upcase)` (a system run entry).
  * A clean exFAT root carries all three arms: the allocation-bitmap entry (0x81)
  * -> C1 true, the up-case entry (0x82) -> C1 false C2 true, and File entries
@@ -286,7 +286,7 @@ static void internal_test_mcdc_exchk_scan_dir(void)
  * @test test_mcdc_exchk_diff_byte
  *
  * @par MC/DC:
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_diff_byte` -- two decisions.
+ * `libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_diff_byte` -- two decisions.
  * Decision A: `(alloc != 0) && (refd == 0)` (a lost cluster).
  * - spare bit set     -> C1 true,  C2 true       (allocated, unreferenced).
  * - live cluster      -> C1 true,  C2 false       (allocated and referenced).

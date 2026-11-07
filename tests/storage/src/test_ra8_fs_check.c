@@ -818,7 +818,7 @@ RA8_INTERNAL static void internal_test_check_exfat_no_bitmap(void)
  *
  * @par MC/DC:
  * Decision: `if (first == 0U)` in
- * libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_system_run
+ * libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_system_run
  * (1 condition).
  * - V1: a formatted volume's up-case and bitmap entries name real clusters ->
  *   the decision is false and the run is marked (control; every other exFAT
@@ -880,7 +880,7 @@ RA8_INTERNAL static void internal_test_check_exfat_system_entry_zero_cluster(voi
  *
  * @par MC/DC:
  * Decision: `if (nlen > (uint32_t)k_exfat_name_cap)` in
- * libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_verify_set
+ * libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_verify_set
  * (1 condition).
  * - V1: a driver-written set, NameLength = 5 for "T.BIN" -> the decision is
  *   false and the stored length is used (control; the clean check below and

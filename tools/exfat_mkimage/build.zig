@@ -19,34 +19,15 @@ const std = @import("std");
 
 // The whole FAT/exFAT driver -- and ONLY the driver (no ra8_core_hal, so no
 // MMIO and no ra8_time weak-extern), which is what lets this build and RUN on
-// macOS where the unit-test harness cannot. Mirrors the same glob in
-// tests/cmake/tests_storage.cmake (test_ra8_fs_exfat).
-const fat_tus = [_][]const u8{
-    "ra8_fs_fat.c",
-    "ra8_fs_fat_alloc.c",
-    "ra8_fs_fat_check.c",
-    "ra8_fs_fat_dir.c",
-    "ra8_fs_fat_exfat_check.c",
-    "ra8_fs_fat_exfat_dir.c",
-    "ra8_fs_fat_exfat_fmt.c",
-    "ra8_fs_fat_exfat_mutate.c",
-    "ra8_fs_fat_exfat_stream.c",
-    "ra8_fs_fat_fileio.c",
-    "ra8_fs_fat_fmt.c",
-    "ra8_fs_fat_lfn_write.c",
-    "ra8_fs_fat_mount.c",
-    "ra8_fs_fat_name.c",
-    "ra8_fs_stat_abi.zig",
-    "ra8_fs_fat_time.c",
-    "ra8_fs_fat_truncate.c",
-};
+// macOS where the unit-test harness cannot. The exFAT host test in tests/cmake/tests_storage.cmake links the same archive.
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     // The UTF codec and the library lock are Zig now (RA8FW-747, RA8FW-724);
-    // they come from the ra8_fs archive beside the driver TUs below.
+    // they come from the ra8_fs archive, which is all the tool links now that every
+    // driver TU is Zig (RA8FW-1138).
     const fs_dep = b.dependency("ra8_fs", .{ .target = target, .optimize = optimize });
     const fs_lib = fs_dep.artifact("ra8_fs");
 
@@ -58,11 +39,6 @@ pub fn build(b: *std.Build) void {
     mod.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{"exfat_mkimage.c"},
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror" },
-    });
-    mod.addCSourceFiles(.{
-        .root = b.path("../../libs/ra8_fs/src"),
-        .files = &fat_tus,
         .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror" },
     });
     const exe = b.addExecutable(.{ .name = "exfat_mkimage", .root_module = mod });

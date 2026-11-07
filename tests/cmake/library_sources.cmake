@@ -52,7 +52,10 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # see tests/cmake/zig_libraries.cmake. There is no RA8_USB_PAL_SOURCES glob
 # left. src/ra8_usb_pal_internal.h stays: the MC/DC suites include it to reach
 # the promoted priv_usb_pal_* predicates.
-file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
+# ra8_fs is fully migrated to Zig: every FAT/exFAT TU lives in libs/ra8_fs/src/*.zig,
+# built by libs/ra8_fs/build.zig behind the unchanged inc/ra8_fs.h; see
+# tests/cmake/zig_libraries.cmake. The last first-party C (the three exFAT husks)
+# retired with RA8FW-1138. There is no RA8_FS_SOURCES glob left.
 # libs/if is fully migrated to Zig: the portable filesystem interface, the
 # untrusted-name containment policy and the clock-intent facade (RA8FW-362)
 # all live in libs/if/src/*.zig,

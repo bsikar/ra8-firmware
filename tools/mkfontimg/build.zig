@@ -19,25 +19,6 @@ const std = @import("std");
 // and no ra8_time weak-extern), which is what lets this build and RUN on
 // macOS where the unit-test harness cannot. Mirrors the same glob in
 // tests/cmake/tests_storage.cmake (test_ra8_fs_exfat).
-const fat_tus = [_][]const u8{
-    "ra8_fs_fat.c",
-    "ra8_fs_fat_alloc.c",
-    "ra8_fs_fat_check.c",
-    "ra8_fs_fat_dir.c",
-    "ra8_fs_fat_exfat_check.c",
-    "ra8_fs_fat_exfat_dir.c",
-    "ra8_fs_fat_exfat_fmt.c",
-    "ra8_fs_fat_exfat_mutate.c",
-    "ra8_fs_fat_exfat_stream.c",
-    "ra8_fs_fat_fileio.c",
-    "ra8_fs_fat_fmt.c",
-    "ra8_fs_fat_lfn_write.c",
-    "ra8_fs_fat_mount.c",
-    "ra8_fs_fat_name.c",
-    "ra8_fs_stat_abi.zig",
-    "ra8_fs_fat_time.c",
-    "ra8_fs_fat_truncate.c",
-};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -57,11 +38,6 @@ pub fn build(b: *std.Build) void {
     mod.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{ "mkfontimg.c", "mkfontimg_host.c" },
-        .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror" },
-    });
-    mod.addCSourceFiles(.{
-        .root = b.path("../../libs/ra8_fs/src"),
-        .files = &fat_tus,
         .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror" },
     });
     const exe = b.addExecutable(.{ .name = "mkfontimg", .root_module = mod });

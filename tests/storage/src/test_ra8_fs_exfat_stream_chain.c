@@ -217,7 +217,7 @@ internal_expect_chain_over(const ra8_fs_mount_t* h, uint32_t first, uint32_t tot
  *
  * @par MC/DC:
  * Decision: `(no_fat_chain != 0) && (next == tail_cluster + 1)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_link_cluster`
  * (2 conditions). This case supplies BOTH false vectors:
  * - the append's first growth has `no_fat_chain = 1` and a non-successor
  *   cluster, varying the SECOND condition -> the transition;
@@ -365,7 +365,7 @@ RA8_INTERNAL static void internal_test_stream_chained_file_reads_and_frees(void)
  *
  * @par MC/DC:
  * Decision: `(i + 1) < file->alloc_clusters` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_materialize_run`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_materialize_run`
  * (1 condition). This case supplies the TRUE vector -- the loop body runs --
  * while the single-cluster transition supplies the FALSE one.
  *
@@ -466,7 +466,7 @@ RA8_INTERNAL static void internal_expect_patched_head(ra8_fs_mount_t* h, uint32_
  *
  * @par MC/DC:
  * Decision: `idx >= file->walk_cache_idx` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_cluster_at`
+ * `libs/ra8_fs/src/ra8_fs_exfat_stream_abi.zig@internal_exfat_cluster_at`
  * (1 condition). This case supplies the FALSE vector; every sequential write
  * supplies the TRUE one.
  *

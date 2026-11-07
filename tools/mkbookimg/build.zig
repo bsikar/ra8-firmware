@@ -23,28 +23,8 @@ const fs_dir = "../../libs/ra8_fs/src/";
 
 // The tool is split across two TUs (file-size gate): the host container plus
 // entry point, and the population pass that streams and verifies each book.
-// The ra8_fs fat TUs are globbed in the C-era recipe so the tool keeps
-// linking as the library gains or renames TUs; they are named out statically
-// here because the workspace Zig build needs no filesystem walk.
-const fs_sources = [_][]const u8{
-    fs_dir ++ "ra8_fs_fat.c",
-    fs_dir ++ "ra8_fs_fat_alloc.c",
-    fs_dir ++ "ra8_fs_fat_check.c",
-    fs_dir ++ "ra8_fs_fat_dir.c",
-    fs_dir ++ "ra8_fs_fat_exfat_check.c",
-    fs_dir ++ "ra8_fs_fat_exfat_dir.c",
-    fs_dir ++ "ra8_fs_fat_exfat_fmt.c",
-    fs_dir ++ "ra8_fs_fat_exfat_mutate.c",
-    fs_dir ++ "ra8_fs_fat_exfat_stream.c",
-    fs_dir ++ "ra8_fs_fat_fileio.c",
-    fs_dir ++ "ra8_fs_fat_fmt.c",
-    fs_dir ++ "ra8_fs_fat_lfn_write.c",
-    fs_dir ++ "ra8_fs_fat_mount.c",
-    fs_dir ++ "ra8_fs_fat_name.c",
-    fs_dir ++ "ra8_fs_stat_abi.zig",
-    fs_dir ++ "ra8_fs_fat_time.c",
-    fs_dir ++ "ra8_fs_fat_truncate.c",
-};
+// Every ra8_fs TU is Zig (RA8FW-1138); the tool links the ra8_fs archive
+// and nothing else.
 
 const tool_sources = [_][]const u8{
     "src/mkbookimg.c",
@@ -80,7 +60,6 @@ pub fn build(b: *std.Build) void {
     mod.addIncludePath(b.path("../../libs/ra8_imgdec/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
     addC(b, mod, ".", &tool_sources, &first_party_flags);
-    addC(b, mod, ".", &fs_sources, &first_party_flags);
     const exe = b.addExecutable(.{ .name = "mkbookimg", .root_module = mod });
     b.installArtifact(exe);
 

@@ -635,7 +635,7 @@ static void internal_test_check_fat32_fsinfo_sector_read_fault(void)
  *
  * @par MC/DC:
  * Decision: `if (r == k_ra8_err_not_found)` in
- * libs/ra8_fs/src/ra8_fs_fat_exfat_check.c@internal_exchk_scan_dir
+ * libs/ra8_fs/src/ra8_fs_check_abi.zig@internal_exchk_scan_dir
  * (1 condition).
  * - V1: the cursor still has entries -> the decision is false and the scan
  *   continues (control; every other exFAT directory in the suite, including

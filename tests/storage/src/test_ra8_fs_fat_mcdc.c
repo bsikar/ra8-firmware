@@ -719,7 +719,7 @@ typedef enum : uint32_t {
  * @test test_mcdc_exfat_label_pack_terminator_and_cap
  * @par MC/DC:
  * Decision: `for (; (n < k_exfat_fmt_label_max) && (label[n] != '\0'); n++)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c@internal_exfat_label_utf16` (2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_exfat_fmt_abi.zig@internal_exfat_label_utf16` (2 conditions),
  * reached when `ra8_fs_format` lays the exFAT root volume-label entry.
  * - short label "RAEXFAT" (7 chars): the loop runs while `n < 11` (C1=T) and
  *   stops when `label[n] == '\0'` (C2=F) -- the terminator arm. C1 stays TRUE
