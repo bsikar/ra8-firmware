@@ -952,3 +952,4 @@ ra8_add_zig_library(
   LIBRARY_NAME
   jof
 )
+link_libraries(ra8_zig::jof)

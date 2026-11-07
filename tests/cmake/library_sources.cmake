@@ -192,7 +192,6 @@ set(RA8_XZ_THIRD_PARTY
     ${FW_ROOT}/apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c
     ${FW_ROOT}/apps/shared_libs/third_party/xz_embedded/xz_dec_stream.c
 )
-file(GLOB_RECURSE JOF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/jof/src/*.c)
 file(GLOB_RECURSE LONGSTRIP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/longstrip/src/*.c)
 file(GLOB_RECURSE ZOOM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/zoom/src/*.c)
 # reflow has two implementations: v1 (hand-rolled, default) and v2
