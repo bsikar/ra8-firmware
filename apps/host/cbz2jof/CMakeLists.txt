@@ -46,6 +46,18 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
+# apps/shared_libs/jof/src/jof_produce_webp.c is Zig now (priv_jof_webp_transcode),
+# so jof-worker links the archive instead of the deleted TU.
+if(NOT TARGET ra8_zig::jof)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME jof
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof
+    LIBRARY_NAME jof
+  )
+endif()
+link_libraries(ra8_zig::jof)
+
 if(NOT TARGET ra8_zig::ra8_jpeg)
   include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -80,7 +92,6 @@ find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce.c
-    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce_webp.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c

@@ -51,7 +51,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .pic = true,
     });
-    library_module.addImport("jof_h", translateHeaders(b, target, optimize));
+    const jof_h_mod = translateHeaders(b, target, optimize);
+    library_module.addImport("jof_h", jof_h_mod);
     const library = b.addLibrary(.{
         .name = "jof",
         .linkage = .static,
@@ -62,6 +63,25 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig jof tests");
-    const webp_test = b.addTest(.{ .root_module = library_module });
+    // The streaming trio calls sibling C symbols whose real definitions live
+    // in the consumers' C TUs; the standalone test link stubs them
+    // (tests/abi_stubs.zig). The stubs ride a dedicated test module so they
+    // never enter libjof.a or any consumer link.
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("src/jof_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    test_module.addImport("jof_h", jof_h_mod);
+    const stub_mod = b.createModule(.{
+        .root_source_file = b.path("tests/abi_stubs.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    stub_mod.addImport("jof_h", jof_h_mod);
+    const stubs = b.addObject(.{ .name = "abi_stubs", .root_module = stub_mod });
+    test_module.addObject(stubs);
+    const webp_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(webp_test).step);
 }
