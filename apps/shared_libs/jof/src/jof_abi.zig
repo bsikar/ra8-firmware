@@ -422,3 +422,398 @@ pub export fn priv_jof_png_finish(st: *jof_h.ra8_png_state_t) callconv(.c) jof_h
     }
     return jof_h.k_ra8_err_protocol_error;
 }
+
+// ---------------------------------------------------------------------------
+// PNG pixel layer. Ports jof_png.c whole (RA8FW-1143): the streaming PNG
+// scanline decoder (tinfl inflate, unfilter, translate) moves to Zig and the
+// TU is retired. tinfl_decompress is an extern against the vendored miniz the
+// consumers already link; the seam shim carries the real tinfl type surface
+// (struct layout, statuses, flags) so the carve and the call are exact.
+
+/// The ra8_log_error macro's backend entry (ra8_log.h): tag + free-form
+/// message. Declared here because the seam's include closure does not reach
+/// ra8_log.h's macro surface.
+extern fn ra8_log_emit_error(tag: [*c]const u8, message: [*c]const u8) callconv(.c) void;
+
+/// Paeth predictor (PNG sec 9.4 "Filter type 4: Paeth"). Ports
+/// internal_png_paeth verbatim.
+fn internal_png_paeth(a: u8, b: u8, c: u8) u8 {
+    const p: i32 = @as(i32, a) + @as(i32, b) - @as(i32, c);
+    const pa: i32 = if (p > @as(i32, a)) p - @as(i32, a) else @as(i32, a) - p;
+    const pb: i32 = if (p > @as(i32, b)) p - @as(i32, b) else @as(i32, b) - p;
+    const pc: i32 = if (p > @as(i32, c)) p - @as(i32, c) else @as(i32, c) - p;
+    if ((pa <= pb) and (pa <= pc)) {
+        return a;
+    }
+    if (pb <= pc) {
+        return b;
+    }
+    return c;
+}
+
+/// Reconstruct one filtered scanline in place (PNG sec 9 filters). Ports
+/// internal_png_unfilter verbatim; filter arithmetic is modulo-256.
+fn internal_png_unfilter(filter: u8, row: [*]u8, prev: [*]const u8, nbytes: u32, bpp_in: u8) jof_h.ra8_err_t {
+    const b: u32 = @as(u32, bpp_in);
+    switch (filter) {
+        @intCast(jof_h.k_ra8_png_filter_none) => return jof_h.k_ra8_ok,
+        @intCast(jof_h.k_ra8_png_filter_sub) => {
+            var i: u32 = b;
+            while (i < nbytes) : (i += 1) {
+                row[i] = row[i] +% row[i - b];
+            }
+            return jof_h.k_ra8_ok;
+        },
+        @intCast(jof_h.k_ra8_png_filter_up) => {
+            var i: u32 = 0;
+            while (i < nbytes) : (i += 1) {
+                row[i] = row[i] +% prev[i];
+            }
+            return jof_h.k_ra8_ok;
+        },
+        @intCast(jof_h.k_ra8_png_filter_avg) => {
+            var i: u32 = 0;
+            while (i < nbytes) : (i += 1) {
+                const left: u32 = if (i >= b) @as(u32, row[i - b]) else 0;
+                row[i] = row[i] +% @as(u8, @intCast((left + @as(u32, prev[i])) / 2));
+            }
+            return jof_h.k_ra8_ok;
+        },
+        @intCast(jof_h.k_ra8_png_filter_paeth) => {
+            var i: u32 = 0;
+            while (i < nbytes) : (i += 1) {
+                const a: u8 = if (i >= b) row[i - b] else 0;
+                const c: u8 = if (i >= b) prev[i - b] else 0;
+                row[i] = row[i] +% internal_png_paeth(a, prev[i], c);
+            }
+            return jof_h.k_ra8_ok;
+        },
+        else => return jof_h.k_ra8_err_validation_failed,
+    }
+}
+
+/// Translate one reconstructed source row into the output layout. Ports
+/// internal_png_translate verbatim: gray->gray8, RGB/RGBA copied, gray+alpha
+/// -> RGBA, palette -> RGB/RGBA via PLTE (+ tRNS) with bounds-checked
+/// indices.
+fn internal_png_translate(st: *jof_h.ra8_png_state_t, row: [*]const u8) jof_h.ra8_err_t {
+    const w: u32 = @as(u32, st.*.w);
+    if (st.*.color_type == @as(u8, @intCast(jof_h.k_ra8_png_color_pal))) {
+        var x: u32 = 0;
+        while (x < w) : (x += 1) {
+            const idx: u8 = row[x];
+            if (@as(u16, idx) >= st.*.plte_count) {
+                return jof_h.k_ra8_err_validation_failed;
+            }
+            const src: u32 = @as(u32, idx) * @as(u32, @intCast(jof_h.k_ra8_png_ch_3));
+            const dst: u32 = x * @as(u32, st.*.dst_ch);
+            st.*.xlat[dst] = st.*.palette[src];
+            st.*.xlat[dst + 1] = st.*.palette[src + 1];
+            st.*.xlat[dst + 2] = st.*.palette[src + 2];
+            if (st.*.dst_ch == @as(u8, @intCast(jof_h.k_ra8_png_ch_4))) {
+                st.*.xlat[dst + 3] = if (@as(u16, idx) < st.*.trns_count) st.*.trns[idx] else @as(u8, @intCast(jof_h.k_ra8_png_opaque));
+            }
+        }
+        return jof_h.k_ra8_ok;
+    }
+    if (st.*.color_type == @as(u8, @intCast(jof_h.k_ra8_png_color_ga))) {
+        var x: u32 = 0;
+        while (x < w) : (x += 1) {
+            const g: u8 = row[x * @as(u32, @intCast(jof_h.k_ra8_png_ch_2))];
+            const a: u8 = row[(x * @as(u32, @intCast(jof_h.k_ra8_png_ch_2))) + 1];
+            const dst: u32 = x * @as(u32, @intCast(jof_h.k_ra8_png_ch_4));
+            st.*.xlat[dst] = g;
+            st.*.xlat[dst + 1] = g;
+            st.*.xlat[dst + 2] = g;
+            st.*.xlat[dst + 3] = a;
+        }
+        return jof_h.k_ra8_ok;
+    }
+    // gray, RGB, RGBA: source layout == output layout.
+    const n: usize = @as(usize, w) * @as(usize, st.*.dst_ch);
+    @memcpy(st.*.xlat[0..n], row[0..n]);
+    return jof_h.k_ra8_ok;
+}
+
+/// Assemble, reconstruct and emit rows from freshly inflated bytes. Ports
+/// internal_png_consume_rows verbatim; more scanlines than IHDR declared is a
+/// hostile-stream error.
+fn internal_png_consume_rows(st: *jof_h.ra8_png_state_t, src: [*]const u8, avail: u32) jof_h.ra8_err_t {
+    var pos: u32 = 0;
+    while (pos < avail) {
+        const need: u32 = st.*.rowlen - st.*.rowfill;
+        const left: u32 = avail - pos;
+        const take: u32 = if (left < need) left else need;
+        @memcpy(st.*.rowbuf[st.*.rowfill..][0..take], src[pos..][0..take]);
+        st.*.rowfill += take;
+        pos += take;
+        if (st.*.rowfill < st.*.rowlen) {
+            break; // partial scanline; wait for more inflate output
+        }
+        if (st.*.rows_done >= st.*.h) {
+            return jof_h.k_ra8_err_validation_failed; // more scanlines than IHDR said
+        }
+        const nbytes: u32 = st.*.rowlen - 1;
+        var err = internal_png_unfilter(st.*.rowbuf[0], st.*.rowbuf + 1, st.*.prevrow, nbytes, st.*.src_ch);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        @memcpy(st.*.prevrow[0..nbytes], (st.*.rowbuf + 1)[0..nbytes]);
+        err = internal_png_translate(st, (st.*.rowbuf + 1)[0..]);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        err = st.*.on_rows.?(st.*.cb_ctx, st.*.xlat, st.*.w, st.*.rows_done, 1, st.*.dst_ch);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        st.*.rows_done += 1;
+        st.*.rowfill = 0;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Fire the geometry hook and carve the pixel-path buffers. Runs once, at the
+/// first IDAT. Ports internal_png_bind_geometry verbatim.
+fn internal_png_bind_geometry(st: *jof_h.ra8_png_state_t, bump: [*c]jof_h.jof_bump_t) jof_h.ra8_err_t {
+    if (st.*.color_type == @as(u8, @intCast(jof_h.k_ra8_png_color_pal))) {
+        if (st.*.has_plte == 0) {
+            return jof_h.k_ra8_err_validation_failed;
+        }
+        st.*.dst_ch = if (st.*.has_trns != 0) @as(u8, @intCast(jof_h.k_ra8_png_ch_4)) else @as(u8, @intCast(jof_h.k_ra8_png_ch_3));
+    } else if (st.*.color_type == @as(u8, @intCast(jof_h.k_ra8_png_color_gray))) {
+        st.*.dst_ch = @intCast(jof_h.k_ra8_png_ch_1);
+    } else if (st.*.color_type == @as(u8, @intCast(jof_h.k_ra8_png_color_ga))) {
+        st.*.dst_ch = @intCast(jof_h.k_ra8_png_ch_4);
+    } else {
+        st.*.dst_ch = st.*.src_ch; // RGB -> 3, RGBA -> 4
+    }
+    const err = st.*.on_geom.?(st.*.cb_ctx, st.*.w, st.*.h, st.*.dst_ch);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    st.*.rowlen = 1 + (@as(u32, st.*.w) * @as(u32, st.*.src_ch));
+    // The bump allocator returns 8-byte-aligned carves, which satisfies the
+    // inflate context's alignment.
+    st.*.inflator = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @sizeOf(jof_h.struct_tinfl_decompressor_tag))));
+    st.*.ring = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @as(usize, @intCast(jof_h.k_ra8_png_ring_bytes)))));
+    st.*.inbuf = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @as(usize, @intCast(jof_h.k_ra8_png_inbuf_bytes)))));
+    st.*.rowbuf = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @as(usize, st.*.rowlen))));
+    st.*.prevrow = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @as(usize, st.*.rowlen - 1))));
+    st.*.xlat = @ptrCast(@alignCast(jof_h.priv_jof_bump_take(bump, @as(usize, @as(usize, st.*.w) * @as(usize, st.*.dst_ch)))));
+    if ((st.*.inflator == null) or (st.*.ring == null) or (st.*.inbuf == null) or
+        (st.*.rowbuf == null) or (st.*.prevrow == null) or (st.*.xlat == null))
+    {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    @memset(st.*.prevrow[0..@as(usize, st.*.rowlen - 1)], 0); // PNG sec 9: prior row = zeroes
+    st.*.inflator.*.m_state = 0; // tinfl_init
+    return jof_h.k_ra8_ok;
+}
+
+/// Refill the compressed-input buffer from the IDAT chunk stream, crossing
+/// consecutive IDATs transparently; a non-IDAT chunk ends the compressed
+/// stream and parks as the pending chunk. Ports internal_png_refill_input
+/// verbatim.
+fn internal_png_refill_input(st: *jof_h.ra8_png_state_t, out_avail: *u32) jof_h.ra8_err_t {
+    out_avail.* = 0;
+    var guard: u32 = 0;
+    while (guard < @as(u32, @intCast(jof_h.k_ra8_png_max_chunks))) : (guard += 1) {
+        if (st.*.idat_rem > 0) {
+            const take: u32 = if (st.*.idat_rem < @as(u32, @intCast(jof_h.k_ra8_png_inbuf_bytes))) st.*.idat_rem else @as(u32, @intCast(jof_h.k_ra8_png_inbuf_bytes));
+            const err = priv_jof_png_pull_exact(st, st.*.inbuf, take);
+            if (err != jof_h.k_ra8_ok) {
+                return err;
+            }
+            st.*.idat_rem -= take;
+            out_avail.* = take;
+            return jof_h.k_ra8_ok;
+        }
+        // Current IDAT exhausted: skip its CRC, look at the next chunk.
+        var err = priv_jof_png_skip(st, @intCast(jof_h.k_ra8_png_crc_bytes));
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        var len: c_uint = 0;
+        var typ: c_uint = 0;
+        err = priv_jof_png_chunk_hdr(st, &len, &typ);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        if (typ == @as(c_uint, @intCast(jof_h.k_ra8_png_type_idat))) {
+            st.*.idat_rem = len;
+            continue;
+        }
+        st.*.pending_len = len;
+        st.*.pending_type = typ;
+        st.*.pending_valid = 1;
+        st.*.source_done = 1;
+        return jof_h.k_ra8_ok; // clean end of the compressed stream
+    }
+    return jof_h.k_ra8_err_protocol_error; // chunk budget exhausted (hostile)
+}
+
+/// Inflate-loop cursor: compressed-input window + progress guard.
+/// Ports ra8_png_iter_t verbatim (invariant: in_pos <= in_avail).
+const ra8_png_iter_t = struct {
+    in_avail: u32 = 0, // valid compressed bytes in inbuf
+    in_pos: u32 = 0, // consumed compressed bytes
+    stalls: u8 = 0, // consecutive zero-progress iterations
+    done: u8 = 0, // 1 once tinfl reported stream end
+};
+
+/// One inflate iteration: refill, tinfl, progress guard, drain rows. The ring
+/// is tinfl's LZ dictionary; each call produces into the contiguous run
+/// [ring_wr, ring_end) which drains into the scanline assembler before the
+/// write offset wraps. Ports internal_png_inflate_step verbatim, stall guard
+/// included.
+fn internal_png_inflate_step(st: *jof_h.ra8_png_state_t, it: *ra8_png_iter_t) jof_h.ra8_err_t {
+    if ((it.*.in_pos == it.*.in_avail) and (st.*.source_done == 0)) {
+        const err = internal_png_refill_input(st, &it.*.in_avail);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        it.*.in_pos = 0;
+    }
+    var in_sz: usize = @as(usize, it.*.in_avail - it.*.in_pos);
+    var out_sz: usize = @as(usize, @as(u32, @intCast(jof_h.k_ra8_png_ring_bytes)) - st.*.ring_wr);
+    const flags: u32 = @as(u32, @intCast(jof_h.TINFL_FLAG_PARSE_ZLIB_HEADER)) |
+        (if (st.*.source_done == 0) @as(u32, @intCast(jof_h.TINFL_FLAG_HAS_MORE_INPUT)) else 0);
+    const status: i32 = jof_h.tinfl_decompress(
+        st.*.inflator,
+        st.*.inbuf + it.*.in_pos,
+        &in_sz,
+        st.*.ring,
+        st.*.ring + st.*.ring_wr,
+        &out_sz,
+        flags,
+    );
+    if (status < jof_h.TINFL_STATUS_DONE) {
+        return jof_h.k_ra8_err_protocol_error; // corrupt deflate / bad zlib header
+    }
+    // Zero-progress stall guard, defense-in-depth against a decompressor that
+    // spins without failing (mcdc-deactivated in the C, same rationale here).
+    if ((in_sz == 0) and (out_sz == 0)) {
+        it.*.stalls += 1;
+        if ((it.*.stalls > 1) or (st.*.source_done != 0)) {
+            return jof_h.k_ra8_err_protocol_error; // truncated stream / no progress
+        }
+    } else {
+        it.*.stalls = 0;
+    }
+    if (out_sz > 0) {
+        const err = internal_png_consume_rows(st, (st.*.ring + st.*.ring_wr)[0..], @intCast(out_sz));
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        st.*.ring_wr = (st.*.ring_wr + @as(u32, @intCast(out_sz))) & (@as(u32, @intCast(jof_h.k_ra8_png_ring_bytes)) - 1);
+    }
+    it.*.in_pos += @intCast(in_sz);
+    it.*.done = if (status == jof_h.TINFL_STATUS_DONE) 1 else 0;
+    return jof_h.k_ra8_ok;
+}
+
+/// Inflate the whole IDAT stream, emitting every scanline, then apply the
+/// strict termination checks: every declared row arrived, no partial
+/// scanline remains, and no compressed bytes trail the stream. Ports
+/// internal_png_inflate_idat verbatim.
+fn internal_png_inflate_idat(st: *jof_h.ra8_png_state_t, first_len: u32) jof_h.ra8_err_t {
+    st.*.idat_rem = first_len;
+    var it: ra8_png_iter_t = .{};
+    while (it.done == 0) {
+        const err = internal_png_inflate_step(st, &it);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+    }
+    // Strict termination: every declared row arrived, nothing extra.
+    if ((st.*.rows_done != st.*.h) or (st.*.rowfill != 0)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if ((it.in_pos != it.in_avail) or (st.*.idat_rem != 0)) {
+        return jof_h.k_ra8_err_validation_failed; // trailing garbage inside IDAT
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// The IDAT arm: bind geometry, inflate the stream, finish the walk. Runs
+/// once, at the first IDAT chunk. Ports internal_png_run_idat verbatim.
+fn internal_png_run_idat(st: *jof_h.ra8_png_state_t, bump: [*c]jof_h.jof_bump_t, len: u32) jof_h.ra8_err_t {
+    var err = internal_png_bind_geometry(st, bump);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    err = internal_png_inflate_idat(st, len);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    return priv_jof_png_finish(st);
+}
+
+/// Walk the chunk stream: pre-IDAT chunks, then the IDAT arm; bounded by the
+/// shared chunk budget. Ports internal_png_walk_chunks verbatim.
+fn internal_png_walk_chunks(st: *jof_h.ra8_png_state_t, bump: [*c]jof_h.jof_bump_t, max_w: u16, max_h: u16) jof_h.ra8_err_t {
+    var err = priv_jof_png_prologue(st, max_w, max_h);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var guard: u32 = 0;
+    while (guard < @as(u32, @intCast(jof_h.k_ra8_png_max_chunks))) : (guard += 1) {
+        var len: c_uint = 0;
+        var typ: c_uint = 0;
+        err = priv_jof_png_chunk_hdr(st, &len, &typ);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        if (typ == @as(c_uint, @intCast(jof_h.k_ra8_png_type_idat))) {
+            return internal_png_run_idat(st, bump, len);
+        }
+        err = priv_jof_png_pre_idat(st, len, typ);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+    }
+    return jof_h.k_ra8_err_protocol_error; // chunk budget exhausted (hostile)
+}
+
+/// The streaming PNG scanline decoder entry point: bounded-RAM, pull-based,
+/// resident cost the inflate ring plus three rows, independent of height.
+/// Ports priv_jof_png_rows verbatim, RA8_CHECK_NULL_PTR gates included.
+var s_png: jof_h.ra8_png_state_t = undefined;
+
+pub export fn priv_jof_png_rows(
+    pull: jof_h.jof_pull_fn,
+    pull_ctx: ?*anyopaque,
+    bump: [*c]jof_h.jof_bump_t,
+    max_w: u16,
+    max_h: u16,
+    on_geom: jof_h.jof_geom_fn,
+    on_rows: jof_h.jof_rows_fn,
+    cb_ctx: ?*anyopaque,
+) callconv(.c) jof_h.ra8_err_t {
+    const s_tag: [*c]const u8 = "jof_png";
+    if (pull == null) {
+        ra8_log_emit_error(s_tag, "pull must not be nullptr");
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (bump == null) {
+        ra8_log_emit_error(s_tag, "bump must not be nullptr");
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (on_geom == null) {
+        ra8_log_emit_error(s_tag, "on_geom must not be nullptr");
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (on_rows == null) {
+        ra8_log_emit_error(s_tag, "on_rows must not be nullptr");
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    const st: *jof_h.ra8_png_state_t = &s_png;
+    st.* = std.mem.zeroes(jof_h.ra8_png_state_t);
+    st.*.pull = pull;
+    st.*.pull_ctx = pull_ctx;
+    st.*.on_geom = on_geom;
+    st.*.on_rows = on_rows;
+    st.*.cb_ctx = cb_ctx;
+    return internal_png_walk_chunks(st, bump, max_w, max_h);
+}

@@ -62,7 +62,6 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 const jof_closure = [_][]const u8{
     jof_dir ++ "jof.c",
     jof_dir ++ "jof_produce.c",
-    jof_dir ++ "jof_png.c",
     compress_dir ++ "ra8_compress.c",
 };
 
