@@ -29,7 +29,7 @@ const err_no_mem: u16 = c.k_ra8_err_no_mem;
 
 // ---------------------------------------------------------------- fakes
 
-var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+extern var g_fs_scratch: [c.k_ra8_fs_sector_max]u8;
 
 var disk: [disk_sectors][bps]u8 = @splat(@splat(0));
 var read_err: u16 = 0;
@@ -86,6 +86,10 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
         fatToSector(buf);
         return ok;
     }
+    if (lba < data_lba) {
+        @memset(buf[0..bps], 0);
+        return ok;
+    }
     const i: usize = @intCast(lba - data_lba);
     @memcpy(buf[0..bps], &disk[i]);
     return ok;
@@ -137,6 +141,20 @@ fn nameEntry(sector: *[bps]u8, idx: usize, name: []const u8) void {
     for (name, 0..) |ch, i| sector[base + 2 + i * 2] = ch;
 }
 
+/// One real set (File + Stream + one Name) with the File's attribute and
+/// the Stream's fields, checksummed; strEntry hardcodes NameLength 9, so
+/// patch it to the real name length.
+fn stageSet(sector: *[bps]u8, idx: usize, name: []const u8, attr: u8, first: u32, dlen: u64, valid: u64, flags: u8) void {
+    strEntry(sector, idx + 1, first, flags, dlen, valid);
+    nameEntry(sector, idx + 2, name);
+    const base = idx * 32;
+    sector[base] = 0x85;
+    sector[base + 1] = 2;
+    sector[base + 3 + 32] = @intCast(name.len);
+    sector[base + 4] = attr;
+    _ = c.priv_exfat_set_checksum(@ptrCast(&sector[base]), 96);
+}
+
 fn needleFor(comptime name: []const u8) [c.k_exfat_name_cap]u16 {
     var units: [c.k_exfat_name_cap]u16 = @splat(0);
     for (name, 0..) |ch, i| units[i] = ch;
@@ -175,8 +193,23 @@ test "parse_volume reads the exFAT VBR into the mount" {
 
 test "parse_volume falls back to the BPB when the signature is not exFAT" {
     reset();
+    g_fs_scratch[0] = 0xEB;
+    g_fs_scratch[1] = 0x3C;
+    g_fs_scratch[2] = 0x90;
+    @memcpy(g_fs_scratch[3..11], "MSDOS5.0");
+    g_fs_scratch[0x0B] = 0x00; // 512-byte sectors
+    g_fs_scratch[0x0C] = 0x02;
+    g_fs_scratch[0x0D] = 1; // one sector per cluster
+    g_fs_scratch[0x10] = 2; // two FATs
+    g_fs_scratch[0x13] = 0x00; // 4096 total sectors
+    g_fs_scratch[0x14] = 0x10;
+    g_fs_scratch[0x15] = 0xF8; // media descriptor
+    g_fs_scratch[0x16] = 8; // sectors per FAT
+    @memcpy(g_fs_scratch[0x36..0x3E], "FAT16   ");
+    g_fs_scratch[510] = 0x55;
+    g_fs_scratch[511] = 0xAA;
     var m = mount();
-    try std.testing.expectEqual(@as(u16, 0xAAAA), ex.priv_parse_volume(&m));
+    try std.testing.expectEqual(ok, ex.priv_parse_volume(&m));
 }
 
 test "the shift guard rejects a volume sized for another medium" {
@@ -395,7 +428,7 @@ test "name_chunk_eq agrees with units past the needle end" {
 test "the read open rejects a directory" {
     reset();
     var m = mount();
-    lookup_attr = 0x10;
+    stageSet(&disk[0], 0, "d", @intCast(c.k_exfat_attr_directory), 3, 512, 512, 0x02);
     var out: ?*ex.File = null;
     try std.testing.expectEqual(err_invalid_arg, ex.priv_exfat_open(&m, "/d", c.k_ra8_fs_mode_read, &out));
 }
@@ -403,11 +436,7 @@ test "the read open rejects a directory" {
 test "the read open seeds the handle from the stream entry" {
     reset();
     var m = mount();
-    lookup_attr = 0x20;
-    lookup_strm[1] = 0x02;
-    wr32(&lookup_strm, 0x14, 5);
-    wr64(&lookup_strm, 0x18, 777);
-    wr64(&lookup_strm, 8, 700);
+    stageSet(&disk[0], 0, "notes.txt", 0x20, 5, 777, 700, 0x02);
     var out: ?*ex.File = null;
     try std.testing.expectEqual(ok, ex.priv_exfat_open(&m, "/notes.txt", c.k_ra8_fs_mode_read, &out));
     const f = out.?;
@@ -437,9 +466,18 @@ test "the read open propagates lookup failures" {
 test "open routes writing modes to the openw path" {
     reset();
     var m = mount();
-    resolve_err = 0x4242;
+    // Real root layout: the system entries lead, the file set follows, and
+    // the cluster count covers the run the truncate frees.
+    disk[0][0] = 0x81;
+    disk[0][32] = 0x82;
+    wr32(&disk[0], 32 + 4, upcase.priv_exfat_upcase_checksum());
+    stageSet(&disk[0], 1, "notes.txt", 0x20, 5, 777, 777, 0x02);
+    m.count_of_clusters = 16;
     var out: ?*ex.File = null;
-    try std.testing.expectEqual(@as(u16, 0x4242), ex.priv_exfat_open(&m, "/w", c.k_ra8_fs_mode_write, &out));
+    try std.testing.expectEqual(ok, ex.priv_exfat_open(&m, "/notes.txt", c.k_ra8_fs_mode_write, &out));
+    try std.testing.expectEqual(@as(u32, 0), out.?.first_cluster);
+    try std.testing.expectEqual(@as(u64, 0), @as(u64, out.?.size_bytes));
+    try std.testing.expectEqual(c.k_ra8_fs_mode_write, out.?.mode);
 }
 
 test "the shared string helpers survived the port" {
