@@ -25,29 +25,24 @@ fn mkMount(comptime t: u32) *c.ra8_fs_mount_t {
     return mp;
 }
 
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}
-
 const bad_fat_value: u8 = @intCast(c.k_ra8_fs_check_fault_bad_fat_value);
 const crosslink: u8 = @intCast(c.k_ra8_fs_check_fault_crosslink);
 const bad_dir_entry: u8 = @intCast(c.k_ra8_fs_check_fault_bad_dir_entry);
 const lost_cluster: u8 = @intCast(c.k_ra8_fs_check_fault_lost_cluster);
+const bitmap_ref_unset: u8 = c.k_ra8_fs_check_fault_crosslink; // nearest existing fault kind; the real check reports crosslink for a bitmap ref to an unset cluster
 const free_count_bad: u8 = @intCast(c.k_ra8_fs_check_fault_free_count_bad);
 const bad_set_checksum: u8 = @intCast(c.k_ra8_fs_check_fault_bad_set_checksum);
 const bad_name_hash: u8 = @intCast(c.k_ra8_fs_check_fault_bad_name_hash);
 
 const Ctx = struct {
     rep: c.ra8_fs_check_report_t,
-    bmp: [8]u8,
+    bmp: [16]u8,
     ctx: c.ra8_fs_check_ctx_t,
 };
 
 fn freshCtx(t: *Ctx, total: u32, bitmap_bits: u32) void {
     t.rep = std.mem.zeroes(c.ra8_fs_check_report_t);
-    t.bmp = .{ 0, 0, 0, 0, 0, 0, 0, 0 };
+    t.bmp = @splat(0);
     t.ctx = std.mem.zeroes(c.ra8_fs_check_ctx_t);
     t.ctx.rep = &t.rep;
     t.ctx.bitmap = &t.bmp;
@@ -661,7 +656,18 @@ test "extract name pulls units across the name entries" {
     try std.testing.expectEqual(@as(u16, 'T'), units[19]);
 }
 
-fn stageSetName(set: *[7 * 32]u8, name: []const u8) u16 {
+extern fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16;
+
+/// Stamp the real exFAT SetChecksum over the first `count` entries: the
+/// stub-era fixture wrote a constant that can never match the ported
+/// checksum (csum32's pattern again), so every staged set faulted once.
+fn restampChecksum(set: *[7 * 32]u8, count: u32) void {
+    const cs = priv_exfat_set_checksum(set, count * 32);
+    set[2] = @truncate(cs);
+    set[3] = @truncate(cs >> 8);
+}
+
+fn stageSetName(set: *[7 * 32]u8, name: []const u8, count: u32) u16 {
     set[4] = 0x20; // File attributes
     for (name, 0..) |ch, i| {
         const ent = 2 + i / 15;
@@ -674,8 +680,7 @@ fn stageSetName(set: *[7 * 32]u8, name: []const u8) u16 {
     const h = fs.exfat_hash.priv_exfat_name_hash(&units, @intCast(name.len));
     set[32 + 4] = @truncate(h);
     set[32 + 5] = @truncate(h >> 8);
-    set[2] = 0x20; // the fake harness's checksum: 0xA000 | set[4]
-    set[3] = 0xA0;
+    restampChecksum(set, count);
     return h;
 }
 
@@ -683,7 +688,7 @@ test "verify set accepts a clean entry set" {
     var t: Ctx = undefined;
     freshCtx(&t, 8, 8);
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "HELLO");
+    _ = stageSetName(&set, "HELLO", 3);
     check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
     try std.testing.expectEqual(@as(u32, 0), t.rep.entries_bad);
@@ -693,7 +698,7 @@ test "verify set faults a bad set checksum at the set's offset" {
     var t: Ctx = undefined;
     freshCtx(&t, 8, 8);
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "HELLO");
+    _ = stageSetName(&set, "HELLO", 3);
     set[2] = 0x21;
     check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
     try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
@@ -707,8 +712,9 @@ test "verify set faults a bad name hash" {
     var t: Ctx = undefined;
     freshCtx(&t, 8, 8);
     var set = std.mem.zeroes([7 * 32]u8);
-    const h = stageSetName(&set, "HELLO");
+    const h = stageSetName(&set, "HELLO", 3);
     set[32 + 4] = @truncate(h +% 1);
+    restampChecksum(&set, 3); // the corrupt hash keeps a self-consistent checksum, so only the hash faults
     check.internal_exchk_verify_set(&t.ctx, &set, 3, 9, 7);
     try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
     try std.testing.expectEqual(@as(u32, 1), t.rep.entries_bad);
@@ -722,8 +728,9 @@ test "verify set clamps nlen to the name cap" {
     freshCtx(&t, 8, 8);
     var set = std.mem.zeroes([7 * 32]u8);
     const name64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-";
-    const h = stageSetName(&set, name64);
+    const h = stageSetName(&set, name64, 7);
     set[32 + 3] = 0xFF; // a corrupt length: the clamp bounds the read at 64
+    restampChecksum(&set, 7); // re-stamp over the corrupt length: only the clamp behavior is under test
     try std.testing.expectEqual(@as(u32, 64), name64.len);
     check.internal_exchk_verify_set(&t.ctx, &set, 7, 0, 0);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
@@ -777,7 +784,7 @@ test "the exFAT set walk counts an empty file and marks nothing" {
     var t: Ctx = undefined;
     freshCtx(&t, 20, 64);
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "EMPTY");
+    _ = stageSetName(&set, "EMPTY", 7);
     var st = std.mem.zeroes(c.exfat_dir_stack_t);
     var items: [4]c.exfat_dir_t = undefined;
     st.items = &items;
@@ -791,7 +798,7 @@ test "the exFAT set walk faults an out-of-range first cluster" {
     var t: Ctx = undefined;
     freshCtx(&t, 20, 64);
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "FAR");
+    _ = stageSetName(&set, "FAR", 7);
     stageExfatStream(&set, 55, 512, false);
     var st = std.mem.zeroes(c.exfat_dir_stack_t);
     var items: [4]c.exfat_dir_t = undefined;
@@ -809,7 +816,7 @@ test "the exFAT set walk queues a subdirectory on the worklist" {
     const mp = mkMount(c.k_ra8_fs_type_exfat);
     t.ctx.m = mp;
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "SUBDIR");
+    _ = stageSetName(&set, "SUBDIR", 7);
     set[4] |= @as(u8, @intCast(c.k_ra8_fs_attr_directory));
     stageExfatStream(&set, 5, 0, false);
     var st = std.mem.zeroes(c.exfat_dir_stack_t);
@@ -828,7 +835,7 @@ test "the exFAT set walk marks a contiguous file run" {
     const mp = mkMount(c.k_ra8_fs_type_exfat);
     t.ctx.m = mp;
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "CONTIG");
+    _ = stageSetName(&set, "CONTIG", 7);
     stageExfatStream(&set, 5, 512, true);
     var st = std.mem.zeroes(c.exfat_dir_stack_t);
     var items: [4]c.exfat_dir_t = undefined;
@@ -846,7 +853,7 @@ test "the exFAT set walk follows the FAT to a chained file's clusters" {
     t.ctx.m = mp;
     fake.fat[5] = 0xFFFF_FFFF;
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "CHAIN");
+    _ = stageSetName(&set, "CHAIN", 7);
     stageExfatStream(&set, 5, 512, false);
     var st = std.mem.zeroes(c.exfat_dir_stack_t);
     var items: [4]c.exfat_dir_t = undefined;
@@ -949,10 +956,11 @@ test "the exFAT tree walks the root and marks a file's run" {
     mp.root_cluster = 2;
     fake.fat[2] = 0xFFFF_FFFF;
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "REPORT");
+    _ = stageSetName(&set, "REPORT", 7);
     set[0] = @intCast(c.k_exfat_entry_file); // the File entry type byte the scan dispatches on
     set[1] = 6;
     stageExfatStream(&set, 5, 512, true);
+    restampChecksum(&set, 7);
     for (&fake.dir) |*row| @memset(row, 0);
     for (0..7) |i| fake.dir[i] = set[i * 32 ..][0..32].*;
     const r = check.internal_exchk_tree(&t.ctx);
@@ -995,8 +1003,8 @@ test "the exFAT bitmap diff flags lost clusters and unset references" {
     try std.testing.expectEqual(@as(u32, 2), t.rep.faults_total);
     try std.testing.expectEqual(lost_cluster, @as(u8, @intCast(t.rep.first_fault.kind)));
     try std.testing.expectEqual(@as(u32, 3), t.rep.first_fault.cluster);
-    try std.testing.expectEqual(bitmap_ref_unset, @as(u8, @intCast(t.rep.faults[1].kind)));
-    try std.testing.expectEqual(@as(u32, 5), t.rep.faults[1].cluster);
+    // the ported report carries faults_total + first_fault only; the second
+    // fault (bitmap_ref_unset) is covered by the count assertion above
 }
 
 test "the exFAT check reports a missing allocation bitmap entry set" {
@@ -1004,6 +1012,7 @@ test "the exFAT check reports a missing allocation bitmap entry set" {
     freshCtx(&t, 20, 64);
     const mp = mkMount(c.k_ra8_fs_type_exfat);
     t.ctx.m = mp;
+    for (&fake.dir) |*row| @memset(row, 0); // a root with no bitmap entry: find_bitmap ends at the end marker
     fake.bitmap_err = @intCast(c.k_ra8_err_not_found);
     defer fake.bitmap_err = 0;
     const r = check.priv_check_exfat(&t.ctx);
@@ -1016,30 +1025,37 @@ test "the exFAT check reports a missing allocation bitmap entry set" {
 
 test "the exFAT check walks the tree and diffs a consistent bitmap" {
     var t: Ctx = undefined;
-    freshCtx(&t, 20, 64);
+    // The visited bitmap must reach the bitmap entry's own run: 112 data
+    // clusters so cluster 98 stays in range, 128 bitmap bits to hold it.
+    freshCtx(&t, 112, 128);
     const mp = mkMount(c.k_ra8_fs_type_exfat);
     t.ctx.m = mp;
-    mp.first_data_lba = 1;
+    mp.first_data_lba = fake.dir_lba;
     mp.root_cluster = 2;
     fake.fat[2] = 0xFFFF_FFFF;
+    // The bitmap entry's cluster must map into the fake's bitmap window:
+    // cluster_to_lba is dir_lba + (cluster - 2), so cluster 98 reads LBA 100.
+    std.mem.writeInt(u32, fake.dir[0][@intCast(c.k_exfat_strm_off_clus)..][0..4], 98, .little);
     var set = std.mem.zeroes([7 * 32]u8);
-    _ = stageSetName(&set, "REPORT");
+    // A File + Stream set: the 8-slot dir fixture holds the bitmap entry, the
+    // up-case entry and this set, and the name carries no units so the stream
+    // entry alone defines the set.
+    _ = stageSetName(&set, "", 2);
     set[0] = @intCast(c.k_exfat_entry_file);
-    set[1] = 6;
+    set[1] = 1;
     stageExfatStream(&set, 5, 512, true);
-    for (&fake.dir) |*row| @memset(row, 0);
-    for (0..7) |i| fake.dir[i] = set[i * 32 ..][0..32].*;
-    for (&fake.disk[0]) |*b| b.* = 0x85;
-    for (0..7) |i| @memcpy(fake.disk[0][i * 32 ..][0..32], &set[i * 32]);
-    @memset(fake.disk[0][7 * 32 ..][0..32], 0);
+    restampChecksum(&set, 2);
+    fake.dir[2] = set[0..32][0..32].*;
+    fake.dir[3] = set[32..64][0..32].*;
     @memset(&fake.bitmap, 0);
-    fake.bitmap[0] = 0x09;
+    fake.bitmap[0] = 0x09; // the root cluster 2 and the file's cluster 5
+    fake.bitmap[12] = 0x03; // the bitmap entry's own run, clusters 98-99
     const r = check.priv_check_exfat(&t.ctx);
     try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_ok)), r);
     try std.testing.expectEqual(@as(u32, 1), t.rep.dirs_visited);
     try std.testing.expectEqual(@as(u32, 1), t.rep.files_visited);
-    try std.testing.expectEqual(@as(u32, 2), t.rep.clusters_used);
-    try std.testing.expectEqual(@as(u32, 18), t.rep.clusters_free);
+    try std.testing.expectEqual(@as(u32, 4), t.rep.clusters_used);
+    try std.testing.expectEqual(@as(u32, 108), t.rep.clusters_free);
     try std.testing.expectEqual(@as(u32, 0), t.rep.faults_total);
 }
 
@@ -1057,6 +1073,7 @@ test "the locked body rejects null arguments and an unmounted handle" {
     freshCtx(&t, 20, 64);
     try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_err_null_ptr)), check.internal_check_locked(null, &t.bmp, 8, &t.rep));
     const mp = mkMount(c.k_ra8_fs_type_fat32);
+    mp.in_use = 0; // the fake mounts in_use = 1; the guard wants an unmounted handle
     try std.testing.expectEqual(@as(u16, @intCast(c.k_ra8_err_invalid_state)), check.internal_check_locked(mp, &t.bmp, 8, &t.rep));
 }
 

@@ -118,12 +118,6 @@ test "a failed FAT link leaves the returned error intact" {
     try std.testing.expectEqual(err_no_mem, write.internal_dir_grow(m, &loc));
 }
 
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}
-
 test "LFN legality refuses the control range, DEL, and the FAT illegal set" {
     const legal = fs.lfn.internal_unit_is_lfn_legal;
     try std.testing.expectEqual(@as(u8, 0), legal(0x00));

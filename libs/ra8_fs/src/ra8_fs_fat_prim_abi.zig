@@ -71,12 +71,16 @@ pub export fn priv_byte_copy(dst: [*c]u8, src: [*c]const u8, n: u32) callconv(.c
 /// Read one sector through the mount's block backend, adding the partition
 /// base LBA so callers work in volume-relative sector numbers.
 pub export fn priv_read_sector(m: [*c]const Mount, lba: u64, buf: [*c]u8) callconv(.c) u16 {
+    // fail closed: a mount without a block backend is a configuration
+    // error, not a crash; callers get not_supported and can report it.
+    if (m[0].backend.read_block == null) return c.k_ra8_err_not_supported;
     return m[0].backend.read_block.?(m[0].backend.ctx, lba + m[0].partition_base_lba, 1, buf);
 }
 
 /// Write one sector through the mount's block backend, adding the partition
 /// base LBA so callers work in volume-relative sector numbers.
 pub export fn priv_write_sector(m: [*c]const Mount, lba: u64, buf: [*c]const u8) callconv(.c) u16 {
+    if (m[0].backend.write_block == null) return c.k_ra8_err_not_supported;
     return m[0].backend.write_block.?(m[0].backend.ctx, lba + m[0].partition_base_lba, 1, buf);
 }
 

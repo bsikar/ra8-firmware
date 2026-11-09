@@ -8,6 +8,7 @@ const std = @import("std");
 const fs = @import("ra8_fs");
 const c = fs.c;
 const f = fs.exfat_fmt;
+const st = fs.fat_state;
 
 const ok: u16 = c.k_ra8_ok;
 const invalid_size: u16 = c.k_ra8_err_invalid_size;
@@ -25,12 +26,17 @@ var disk2: [8192][512]u8 = @splat(@splat(0));
 
 fn fakeWrite(ctx: @TypeOf(@as(c.ra8_fs_backend_t, undefined).ctx), lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
     _ = ctx;
-    if (lba >= disk.len or count != 1) {
+    // The formatter's zero run streams multi-sector chunks (the C original
+    // did the same), so accept any count and lay each sector in turn.
+    if (count == 0 or lba + count > disk.len) {
         return 1;
     }
-    var i: u32 = 0;
-    while (i < bps) : (i += 1) {
-        disk[lba][i] = buf[i];
+    var i: u64 = 0;
+    while (i < count) : (i += 1) {
+        var j: u32 = 0;
+        while (j < bps) : (j += 1) {
+            disk[lba + i][j] = buf[i * bps + j];
+        }
     }
     return ok;
 }
@@ -43,12 +49,15 @@ fn backend() c.ra8_fs_backend_t {
 
 fn fakeWrite2(ctx: @TypeOf(@as(c.ra8_fs_backend_t, undefined).ctx), lba: u64, count: u32, buf: [*c]const u8) callconv(.c) u16 {
     _ = ctx;
-    if (lba >= disk2.len or count != 1) {
+    if (count == 0 or lba + count > disk2.len) {
         return 1;
     }
-    var i: u32 = 0;
-    while (i < bps) : (i += 1) {
-        disk2[lba][i] = buf[i];
+    var i: u64 = 0;
+    while (i < count) : (i += 1) {
+        var j: u32 = 0;
+        while (j < bps) : (j += 1) {
+            disk2[lba + i][j] = buf[i * bps + j];
+        }
     }
     return ok;
 }
@@ -72,12 +81,16 @@ fn rd32(buf: []const u8, off: usize) u32 {
 }
 
 test "csum32 folds the exFAT checksum" {
+    // The deleted C folded conditionally: the wrap bit lands in the high
+    // position only when the accumulator's low bit was set, so a zero seed
+    // folds to the plain byte sum.
     const hibit: u32 = @intCast(c.k_exfat_fmt_csum_hibit);
     var one = [_]u8{0xFF};
-    try std.testing.expectEqual(hibit +% 0xFF, f.priv_exfat_csum32(0, &one, 1));
+    try std.testing.expectEqual(@as(u32, 0xFF), f.priv_exfat_csum32(0, &one, 1));
     var two = [_]u8{ 0xFF, 0x55 };
-    const step1 = hibit +% 0xFF;
-    try std.testing.expectEqual(((hibit +% (step1 >> 1)) +% 0x55), f.priv_exfat_csum32(0, &two, 2));
+    try std.testing.expectEqual(hibit +% (@as(u32, 0xFF) >> 1) +% 0x55, f.priv_exfat_csum32(0, &two, 2));
+    // A seed with the low bit set exercises the wrap bit.
+    try std.testing.expectEqual(hibit +% 0xFF, f.priv_exfat_csum32(1, &one, 1));
     try std.testing.expectEqual(@as(u32, 0), f.priv_exfat_csum32(0, &one, 0));
 }
 
@@ -121,14 +134,14 @@ test "build vbr writes the spec fields" {
     var sec: [512]u8 = @splat(0xFF);
     f.internal_exfat_build_vbr(&sec, &g);
     try std.testing.expectEqualStrings("EXFAT   ", sec[@intCast(c.k_exfat_off_fsname)..][0..8]);
-    try std.testing.expectEqual(@as(u8, @intCast(c.k_exfat_fmt_jump0)), sec[@intCast(c.k_exfat_foff_jump)]);
-    try std.testing.expectEqual(@as(u16, @intCast(c.k_exfat_fmt_fs_rev)), @as(u16, sec[@intCast(c.k_exfat_foff_fs_rev)]) | (@as(u16, sec[@intCast(c.k_exfat_foff_fs_rev) + 1]) << 8));
+    try std.testing.expectEqual(@as(u8, @intCast(c.k_exfat_fmt_jump0)), sec[@as(usize, @intCast(c.k_exfat_foff_jump))]);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_exfat_fmt_fs_rev)), @as(u16, sec[@as(usize, @intCast(c.k_exfat_foff_fs_rev))]) | (@as(u16, sec[@as(usize, @intCast(c.k_exfat_foff_fs_rev)) + 1]) << 8));
     try std.testing.expectEqual(@as(u32, @intCast(c.k_exfat_fmt_serial)) ^ @as(u32, 8192), rd32(&sec, @intCast(c.k_exfat_foff_serial)));
     try std.testing.expectEqual(@as(u32, 24), rd32(&sec, @intCast(c.k_exfat_off_fat_lba)));
     try std.testing.expectEqual(@as(u32, 5), rd32(&sec, @intCast(c.k_exfat_off_root_clus)));
-    try std.testing.expectEqual(g.bps_shift, sec[@intCast(c.k_exfat_off_bps_shift)]);
-    try std.testing.expectEqual(g.spc_shift, sec[@intCast(c.k_exfat_off_spc_shift)]);
-    try std.testing.expectEqual(@as(u16, @intCast(c.k_exfat_fmt_boot_sig)), @as(u16, sec[@intCast(c.k_exfat_foff_boot_sig)]) | (@as(u16, sec[@intCast(c.k_exfat_foff_boot_sig) + 1]) << 8));
+    try std.testing.expectEqual(g.bps_shift, sec[@as(usize, @intCast(c.k_exfat_off_bps_shift))]);
+    try std.testing.expectEqual(g.spc_shift, sec[@as(usize, @intCast(c.k_exfat_off_spc_shift))]);
+    try std.testing.expectEqual(@as(u16, @intCast(c.k_exfat_fmt_boot_sig)), @as(u16, sec[@as(usize, @intCast(c.k_exfat_foff_boot_sig))]) | (@as(u16, sec[@as(usize, @intCast(c.k_exfat_foff_boot_sig)) + 1]) << 8));
 }
 
 test "write boot lays the region and its backup" {
@@ -141,8 +154,8 @@ test "write boot lays the region and its backup" {
     // VBR at the partition base and its backup 12 sectors later.
     try std.testing.expectEqualSlices(u8, &disk[100], &disk[112]);
     try std.testing.expectEqualStrings("EXFAT   ", disk[100][@intCast(c.k_exfat_off_fsname)..][0..8]);
-    try std.testing.expectEqual(@as(u8, 0x55), disk[100][@intCast(c.k_exfat_foff_boot_sig)]);
-    try std.testing.expectEqual(@as(u8, 0xAA), disk[100][@intCast(c.k_exfat_foff_boot_sig) + 1]);
+    try std.testing.expectEqual(@as(u8, 0x55), disk[100][@as(usize, @intCast(c.k_exfat_foff_boot_sig))]);
+    try std.testing.expectEqual(@as(u8, 0xAA), disk[100][@as(usize, @intCast(c.k_exfat_foff_boot_sig)) + 1]);
     // Ext-boot sectors 1-8 carry the ext signature in the last four bytes.
     var s: u32 = @intCast(c.k_exfat_fmt_ext_first);
     while (s < @as(u32, @intCast(c.k_exfat_fmt_ext_first)) + @as(u32, @intCast(c.k_exfat_fmt_ext_count))) : (s += 1) {
@@ -208,7 +221,7 @@ test "label utf16 packs ASCII and clamps at eleven" {
     try std.testing.expectEqual(@as(u8, 0xAA), buf[10]); // untouched past the label
     try std.testing.expectEqual(@as(u32, 0), f.internal_exfat_label_utf16(&buf, null));
     try std.testing.expectEqual(@as(u32, 11), f.internal_exfat_label_utf16(&buf, "TWELVE CHARACTER"));
-    try std.testing.expectEqual(@as(u8, 'E'), buf[20]); // the 11th unit's low byte
+    try std.testing.expectEqual(@as(u8, 'R'), buf[20]); // the 11th unit's low byte
 }
 
 test "write root lays the three system entries and clears the cluster" {
@@ -242,9 +255,9 @@ test "write root lays the three system entries and clears the cluster" {
 test "lba to chs packs the conventional geometry" {
     var chs: [3]u8 = @splat(0);
     f.internal_exfat_lba_to_chs(2048, &chs);
-    // LBA 2048: cylinder 0, head 32, sector 31.
+    // LBA 2048: cylinder 0, head 32, sector 33.
     try std.testing.expectEqual(@as(u8, 32), chs[0]);
-    try std.testing.expectEqual(@as(u8, 31), chs[1]);
+    try std.testing.expectEqual(@as(u8, 33), chs[1]);
     try std.testing.expectEqual(@as(u8, 0), chs[2]);
     f.internal_exfat_lba_to_chs(63, &chs);
     // LBA 63: head 1, sector 1, cylinder 0.
@@ -269,8 +282,8 @@ test "write mbr stamps the signature and one exFAT entry" {
     try std.testing.expectEqual(@as(u8, @intCast(c.k_mbr_fmt_type_exfat)), m[pe + 4]);
     try std.testing.expectEqual(@as(u32, 2048), rd32(m, pe + 8));
     try std.testing.expectEqual(@as(u32, 65536), rd32(m, pe + 12));
-    try std.testing.expectEqual(@as(u8, 0x55), m[@intCast(c.k_exfat_foff_boot_sig)]);
-    try std.testing.expectEqual(@as(u8, 0xAA), m[@intCast(c.k_exfat_foff_boot_sig) + 1]);
+    try std.testing.expectEqual(@as(u8, 0x55), m[@as(usize, @intCast(c.k_exfat_foff_boot_sig))]);
+    try std.testing.expectEqual(@as(u8, 0xAA), m[@as(usize, @intCast(c.k_exfat_foff_boot_sig)) + 1]);
 }
 
 test "fmt place sizes the partition and refuses the edges" {

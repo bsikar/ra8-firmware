@@ -32,6 +32,7 @@
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
+const exfat_write = @import("ra8_fs_exfat_write_abi.zig");
 
 pub const Mount = c.ra8_fs_mount_t;
 
@@ -99,12 +100,12 @@ fn enter(m: *const Mount, cur: *const c.exfat_dir_t, comp: []const u8, out: *c.e
     if (comp.len >= name_u8_cap) {
         return err_invalid_arg;
     }
-    var namebuf: [name_u8_cap]u8 = @splat(@splat(0));
+    var namebuf: [name_u8_cap]u8 = @splat(0);
     @memcpy(namebuf[0..comp.len], comp);
     // Validate the component converts within the exFAT unit cap and is
     // well-formed UTF-8 before searching -- the byte bound above cannot see a
     // name short in bytes yet over the 64-UNIT cap.
-    var units: [name_cap]u16 = @splat(@splat(0));
+    var units: [name_cap]u16 = @splat(0);
     var nunits: u32 = 0;
     const ce = c.priv_exfat_name_to_units(m, &namebuf, &units, &nunits);
     if (ce == err_no_mem) {
@@ -120,8 +121,8 @@ fn enter(m: *const Mount, cur: *const c.exfat_dir_t, comp: []const u8, out: *c.e
     // right metadata without a second walk of the parent.
     var pos: [set_max]c.exfat_setpos_t = @splat(std.mem.zeroes(c.exfat_setpos_t));
     var count: u32 = 0;
-    var file_e: [entry_bytes]u8 = @splat(@splat(0));
-    var strm: [entry_bytes]u8 = @splat(@splat(0));
+    var file_e: [entry_bytes]u8 = @splat(0);
+    var strm: [entry_bytes]u8 = @splat(0);
     const e = c.priv_exfat_find_set(m, cur, &namebuf, &pos, set_max, &count, &file_e, &strm);
     if (e != ok) {
         return e;
@@ -265,7 +266,7 @@ pub export fn priv_exfat_seal_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) 
 fn buildDirSet(m: *const Mount, set: []u8, name: []const u16, nlen: u32, first: u32) u32 {
     const name_entries = (nlen + name_per_entry - 1) / name_per_entry;
     const sec_count = 1 + name_entries;
-    const total = (1 + sec_count) * entry_bytes;
+    const total: u32 = @intCast((1 + sec_count) * entry_bytes);
     @memset(set[0..total], 0);
     set[0] = entry_file;
     set[off_file_secnt] = @intCast(sec_count);
@@ -295,7 +296,7 @@ fn buildDirSet(m: *const Mount, set: []u8, name: []const u16, nlen: u32, first: 
             }
         }
     }
-    wr16(set, off_file_csum, c.priv_exfat_set_checksum(set.ptr, total));
+    wr16(set, off_file_csum, exfat_write.priv_exfat_set_checksum(set.ptr, total));
     return total;
 }
 
@@ -341,7 +342,7 @@ fn mkdirCheck(m: *const Mount, parent: *const c.exfat_dir_t, leaf: [*c]const u8,
     if (nlen > name_cap) {
         return err_invalid_arg;
     }
-    var strm: [entry_bytes]u8 = @splat(@splat(0));
+    var strm: [entry_bytes]u8 = @splat(0);
     var attr: u8 = 0;
     // mkdir REFUSES an existing name rather than replacing it, unlike
     // ra8_fs_write_file(), which is a create-or-replace verb. A directory and
@@ -376,7 +377,7 @@ pub export fn priv_exfat_mkdir(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8
     // counts those: the slot run, `NameLength`, and the name hash. Counting
     // the caller's BYTES instead is what made a directory whose name held one
     // multi-byte character unopenable by that name.
-    var units: [name_cap]u16 = @splat(@splat(0));
+    var units: [name_cap]u16 = @splat(0);
     var nlen: u32 = 0;
     const ne = c.priv_exfat_name_to_units(m, leaf, &units, &nlen);
     if (ne == err_no_mem) {
@@ -404,7 +405,7 @@ pub export fn priv_exfat_mkdir(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8
     if (e != ok) {
         return e;
     }
-    var set: [max_set_bytes]u8 = @splat(@splat(0));
+    var set: [max_set_bytes]u8 = @splat(0);
     const bytes = buildDirSet(m, &set, units[0..nlen], nlen, newclus);
     e = c.priv_exfat_write_dir_set(m, dclus, didx, &set, bytes);
     if (e != ok) {
@@ -431,7 +432,7 @@ fn dirIsEmpty(m: *const Mount, dir: *const c.exfat_dir_t, out_empty: *u8) u16 {
     var cur: c.exfat_cursor_t = std.mem.zeroes(c.exfat_cursor_t);
     c.priv_exfat_cursor_init(dir, &cur);
     while (cur.scanned < scan_limit) {
-        var e: [entry_bytes]u8 = @splat(@splat(0));
+        var e: [entry_bytes]u8 = @splat(0);
         const r = c.priv_exfat_next_entry(m, &cur, &e);
         if (r == err_not_found) {
             out_empty.* = 1; // the run ended without an occupant and without a 0x00
@@ -445,7 +446,30 @@ fn dirIsEmpty(m: *const Mount, dir: *const c.exfat_dir_t, out_empty: *u8) u16 {
             return ok;
         }
         if (e[0] & inuse_bit == 0) {
-            continue; // a deleted remnant is not an occupant
+            // A deleted set's remnant is not an occupant, and neither are
+            // its secondaries: the walk consumes the set whole (the same
+            // SecondaryCount parse the name lookup does), or it would count
+            // the Stream and Name slots of every deleted file as occupants
+            // and refuse rmdir on directories that only hold dead files.
+            if ((e[0] & ~inuse_bit) != (entry_file & ~inuse_bit)) {
+                continue;
+            }
+            var skip: u32 = e[1];
+            while (skip > 0) : (skip -= 1) {
+                const s = c.priv_exfat_next_entry(m, &cur, &e);
+                if (s == err_not_found) {
+                    out_empty.* = 1;
+                    return ok;
+                }
+                if (s != ok) {
+                    return s;
+                }
+                if (e[0] == entry_eod) {
+                    out_empty.* = 1;
+                    return ok;
+                }
+            }
+            continue;
         }
         out_empty.* = 0;
         return ok;
@@ -469,7 +493,7 @@ fn rmdirLocate(m: *const Mount, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, o
     if (c.priv_strlen(leaf) == 0) {
         return err_invalid_arg; // "/" or a trailing slash: the root itself
     }
-    var file_e: [entry_bytes]u8 = @splat(@splat(0));
+    var file_e: [entry_bytes]u8 = @splat(0);
     e = c.priv_exfat_find_set(m, &parent, leaf, pos, set_max, out_count, &file_e, strm);
     if (e != ok) {
         return e;
@@ -493,7 +517,7 @@ fn rmdirLocate(m: *const Mount, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, o
 pub export fn priv_exfat_rmdir(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8) callconv(.c) u16 {
     var pos: [set_max]c.exfat_setpos_t = @splat(std.mem.zeroes(c.exfat_setpos_t));
     var count: u32 = 0;
-    var strm: [entry_bytes]u8 = @splat(@splat(0));
+    var strm: [entry_bytes]u8 = @splat(0);
     var victim: c.exfat_dir_t = std.mem.zeroes(c.exfat_dir_t);
     var e = rmdirLocate(m, path, &pos, &count, &strm, &victim);
     if (e != ok) {

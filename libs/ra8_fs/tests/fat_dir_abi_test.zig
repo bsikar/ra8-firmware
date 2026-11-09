@@ -70,6 +70,7 @@ fn layRoot() void {
 
 test "listdir reports each visible entry once, long name first" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     layRoot();
     var col: Collector = .{};
@@ -85,11 +86,13 @@ test "listdir reports each visible entry once, long name first" {
 
 test "listdir skips the dot entries inside a subdirectory" {
     fake.reset(fat16);
-    fake.lay83(0, "A        ", attr_directory, 4);
+    fake.lay83(0, "A          ", attr_directory, 4);
     fake.dir_lba = 1 + (4 - 2); // cluster 4 lands here under the fake's mapping
+    // The subdir lives in the dir[] slots this serving model serves.
     fake.dir[0][0] = '.';
     fake.dir[1][0] = '.';
-    fake.lay83(2, "B        ", attr_archive, 0);
+    fake.dir[2][0] = 'B'; // 8.3 padded name, the rest zeroed by reset
+    fake.dir[2][11] = attr_archive;
     var col: Collector = .{};
     const err = dir_ops.ra8_fs_listdir(fake.mount(), "/a", collect_cb, &col);
     try std.testing.expectEqual(ok, err);
@@ -99,6 +102,7 @@ test "listdir skips the dot entries inside a subdirectory" {
 
 test "listdir propagates a read error" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.sector_read_err = 0x202;
     var col: Collector = .{};
@@ -108,6 +112,7 @@ test "listdir propagates a read error" {
 
 test "listdir refuses an unmounted handle" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.mount_store.in_use = 0;
     var col: Collector = .{};
     const err = dir_ops.ra8_fs_listdir(fake.mount(), "/", collect_cb, &col);
@@ -123,10 +128,11 @@ test "listdir on exFAT dispatches to the exFAT resolver" {
 
 test "the dir cursor walks the same sequence and closes" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     layRoot();
     var directory: c.ra8_fs_dir_t = std.mem.zeroes(c.ra8_fs_dir_t);
-    try std.testing.expectEqual(ok, dir_ops.ra8_fs_dir_open(fake.mount(), "/", &directory));
+    try std.testing.expectEqual(ok, dir_ops.ra8_fs_dir_open(@constCast(fake.mount()), "/", &directory));
     var out: c.ra8_fs_dirent_t = std.mem.zeroes(c.ra8_fs_dirent_t);
     var got: bool = false;
     try std.testing.expectEqual(ok, dir_ops.ra8_fs_dir_next(&directory, &out, &got));
@@ -146,13 +152,14 @@ test "the dir cursor walks the same sequence and closes" {
 
 test "dir_open refuses a handle that is already open and clears state on failure" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     var directory: c.ra8_fs_dir_t = std.mem.zeroes(c.ra8_fs_dir_t);
-    try std.testing.expectEqual(ok, dir_ops.ra8_fs_dir_open(fake.mount(), "/", &directory));
-    try std.testing.expectEqual(err_busy, dir_ops.ra8_fs_dir_open(fake.mount(), "/", &directory));
+    try std.testing.expectEqual(ok, dir_ops.ra8_fs_dir_open(@constCast(fake.mount()), "/", &directory));
+    try std.testing.expectEqual(err_busy, dir_ops.ra8_fs_dir_open(@constCast(fake.mount()), "/", &directory));
     fake.mount_store.in_use = 0;
     var other: c.ra8_fs_dir_t = std.mem.zeroes(c.ra8_fs_dir_t);
-    try std.testing.expectEqual(err_invalid_state, dir_ops.ra8_fs_dir_open(fake.mount(), "/", &other));
+    try std.testing.expectEqual(err_invalid_state, dir_ops.ra8_fs_dir_open(@constCast(fake.mount()), "/", &other));
     var bytes: [c.k_ra8_fs_dir_state_bytes]u8 = @splat(0);
     @memcpy(&bytes, other.state[0..]);
     for (bytes) |b| try std.testing.expectEqual(@as(u8, 0), b);
@@ -160,6 +167,7 @@ test "dir_open refuses a handle that is already open and clears state on failure
 
 test "unlink frees the chain and erases the whole entry" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.lay83(0, "ONE     TXT", attr_archive, 7);
     fake.fat[7] = 0xFFFF; // FAT16 end-of-chain
@@ -172,8 +180,9 @@ test "unlink frees the chain and erases the whole entry" {
 
 test "unlink refuses a directory before touching anything" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
-    fake.lay83(0, "SUBDIR   ", attr_directory, 7);
+    fake.lay83(0, "SUBDIR     ", attr_directory, 7);
     const err = dir_ops.ra8_fs_unlink(fake.mount(), "/SUBDIR");
     try std.testing.expectEqual(err_invalid_arg, err);
     try std.testing.expect(fake.sector_written == null);
@@ -181,6 +190,7 @@ test "unlink refuses a directory before touching anything" {
 
 test "unlink refuses a read-only file before touching anything" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.lay83(0, "ONE     TXT", attr_read_only | attr_archive, 7);
     const err = dir_ops.ra8_fs_unlink(fake.mount(), "/ONE.TXT");
@@ -191,6 +201,7 @@ test "unlink refuses a read-only file before touching anything" {
 
 test "unlink reports a missing file" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     const err = dir_ops.ra8_fs_unlink(fake.mount(), "/GONE.TXT");
     try std.testing.expectEqual(err_not_found, err);
@@ -204,6 +215,7 @@ test "unlink on exFAT dispatches to the exFAT resolver" {
 
 test "rename re-files the entry under the new name, then erases the old" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.sector[0] = 0xE5; // slot 0 deleted: room for the new entry
     fake.lay83(1, "ONE     TXT", attr_archive, 7);
@@ -220,6 +232,7 @@ test "rename re-files the entry under the new name, then erases the old" {
 
 test "rename refuses a target that already exists" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.lay83(0, "ONE     TXT", attr_archive, 7);
     fake.lay83(1, "TWO     TXT", attr_archive, 8);
@@ -230,8 +243,9 @@ test "rename refuses a target that already exists" {
 
 test "rename refuses a move across directories" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
-    fake.lay83(0, "A        ", attr_directory, 4);
+    fake.lay83(0, "A          ", attr_directory, 4);
     fake.lay83(1, "ONE     TXT", attr_archive, 7);
     const err = dir_ops.ra8_fs_rename(fake.mount(), "/ONE.TXT", "/A/TWO.TXT");
     try std.testing.expectEqual(err_not_supported, err);
@@ -240,6 +254,7 @@ test "rename refuses a move across directories" {
 
 test "rename refuses a read-only file before filing anything" {
     fake.reset(fat16);
+    fake.dir_lba_serves_sector = true;
     fake.dir_lba = fake.walk_lba;
     fake.lay83(0, "ONE     TXT", attr_read_only | attr_archive, 7);
     const err = dir_ops.ra8_fs_rename(fake.mount(), "/ONE.TXT", "/TWO.TXT");

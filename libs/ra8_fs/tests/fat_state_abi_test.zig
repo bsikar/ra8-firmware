@@ -30,7 +30,7 @@ test "file allocator hands out distinct slots, then exhausts" {
         const idx = (@intFromPtr(f.?) - @intFromPtr(&st.s_files)) / @sizeOf(c.ra8_fs_file_t);
         if (taken == 0) first = idx;
         try std.testing.expectEqual(first + taken, idx);
-        f.?.in_use = 1;
+        f.*.in_use = 1;
     }
     try std.testing.expect(st.priv_alloc_file_slot() == null);
     st.filesReset();
@@ -48,7 +48,7 @@ test "mount allocator mirrors the file allocator" {
     while (i < c.k_ra8_fs_max_mounts) : (i += 1) {
         const m = st.internal_alloc_mount_slot();
         try std.testing.expect(m != null);
-        m.?.in_use = 1;
+        m.*.in_use = 1;
     }
     try std.testing.expect(st.internal_alloc_mount_slot() == null);
 }

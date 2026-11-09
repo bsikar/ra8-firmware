@@ -402,7 +402,7 @@ pub export fn internal_write_file_locked(handle: ?*Mount, path: ?[*:0]const u8, 
     if (handle == null or path == null or data == null) {
         return err_null_ptr;
     }
-    if (handle[0].in_use == 0) {
+    if (handle.?.in_use == 0) {
         return err_invalid_state;
     }
     var f: ?*File = null;

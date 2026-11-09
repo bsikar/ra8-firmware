@@ -285,7 +285,7 @@ const byte_mask: u32 = @intCast(c.k_byte_mask);
 const not_supported: u16 = @intCast(c.k_ra8_err_not_supported);
 
 extern fn priv_fmt_clear_region(backend: [*c]const c.ra8_fs_backend_t, lba: u64, count: u64, bps: u32) callconv(.c) u16;
-extern fn priv_exfat_write_upcase(backend: *const c.ra8_fs_backend_t, abs_lba: u64, bps: u32, out_csum: *u32) callconv(.c) u16;
+extern fn priv_exfat_write_upcase(backend: [*c]const c.ra8_fs_backend_t, abs_lba: u64, bps: u32, out_csum: *u32) callconv(.c) u16;
 
 /// Zero the exFAT FAT region, then seed FAT sector 0: FAT[0] media, FAT[1]
 /// EOC, the bitmap and up-case chains as linked runs terminating in EOC, and

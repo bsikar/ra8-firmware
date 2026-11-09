@@ -17,7 +17,7 @@ const c = @import("fs_c.zig").c;
 /// Every BPB `bytes_per_sector` and every format option passes through here
 /// before it is allowed to size a buffer, so the guard is the single place
 /// the 512..4096 power-of-two rule lives.
-export fn internal_bps_valid(bs: u32) callconv(.c) u8 {
+pub export fn internal_bps_valid(bs: u32) callconv(.c) u8 {
     const valid = bs >= c.k_ra8_fs_sector_min and bs <= c.k_ra8_fs_sector_max and
         (bs & (bs - 1)) == 0;
     return @intFromBool(valid);
@@ -31,7 +31,7 @@ export fn internal_bps_valid(bs: u32) callconv(.c) u8 {
 /// The cluster count then selects the FAT type with the thresholds from
 /// MS FAT spec sec 3.5. Returns `k_ra8_err_validation_failed` when the
 /// medium ends before the data region begins.
-export fn internal_compute_geometry(m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
+pub export fn internal_compute_geometry(m: [*c]c.ra8_fs_mount_t) callconv(.c) c.ra8_err_t {
     const bps: u32 = m.*.bytes_per_sector;
     m.*.first_fat_lba = m.*.reserved_sectors;
     const root_dir_sectors: u32 =
@@ -80,7 +80,7 @@ export fn internal_mbr_part0_lba(buf: [*c]const u8) callconv(.c) u32 {
 /// first LBA of entry `index` at their base offsets plus `index` times the
 /// entry stride. Unlike the auto path, an out-of-range index, an empty
 /// slot, and a zero first LBA are reported distinctly.
-export fn internal_mbr_select_entry(buf: [*c]const u8, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
+pub export fn internal_mbr_select_entry(buf: [*c]const u8, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
     if (index >= c.k_mbr_part_entry_count) {
         return c.k_ra8_err_out_of_range;
     }
@@ -104,7 +104,7 @@ export fn internal_mbr_select_entry(buf: [*c]const u8, index: u8, out_base: [*c]
 /// signature is not a partition table at all, so an explicit index has
 /// nothing to select and the superfloppy request is refused. The signature
 /// bytes are tested separately, mirroring `internal_mbr_part0_lba`.
-export fn internal_locate_indexed(m: [*c]const c.ra8_fs_mount_t, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
+pub export fn internal_locate_indexed(m: [*c]const c.ra8_fs_mount_t, index: u8, out_base: [*c]u64) callconv(.c) c.ra8_err_t {
     const st = @import("ra8_fs_fat_state_abi.zig");
     if (st.g_fs_scratch[c.k_bpb_off_signature_lo] != c.k_bpb_sig_lo) {
         return c.k_ra8_err_not_found;

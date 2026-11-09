@@ -119,9 +119,3 @@ test "byte_equal compares n bytes and treats an empty range as equal" {
     try std.testing.expectEqual(@as(u8, 0), fs.fat_core.priv_byte_equal("abc", "abd", 3));
     try std.testing.expectEqual(@as(u8, 1), fs.fat_core.priv_byte_equal("abc", "xyz", 0));
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

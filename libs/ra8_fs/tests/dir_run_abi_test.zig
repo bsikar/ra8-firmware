@@ -123,9 +123,3 @@ test "backend read error propagates" {
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_state), run.priv_dir_find_free_run(m, &loc, 1, &slot));
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

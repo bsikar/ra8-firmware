@@ -11,6 +11,7 @@ const fs = @import("ra8_fs");
 const ex = fs.exfat_read;
 const upcase = fs.upcase;
 const c = fs.c;
+const st = fs.fat_state;
 
 const bps: u32 = 512;
 const spc: u32 = 1;
@@ -28,7 +29,7 @@ const err_no_mem: u16 = c.k_ra8_err_no_mem;
 
 // ---------------------------------------------------------------- fakes
 
-export var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 var disk: [disk_sectors][bps]u8 = @splat(@splat(0));
 var read_err: u16 = 0;
@@ -88,44 +89,6 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
     const i: usize = @intCast(lba - data_lba);
     @memcpy(buf[0..bps], &disk[i]);
     return ok;
-}
-
-export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    @memcpy(out_strm[0..32], &lookup_strm);
-    out_attr.* = lookup_attr;
-    return lookup_err;
-}
-
-// Openw's callees, analyzed when priv_exfat_open's routing branch compiles;
-// none of them runs on the read path under test.
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = strm;
-    return ok;
-}
-
-export fn priv_exfat_flush_set(f: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
-    _ = f;
-    return ok;
-}
-
-export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, head: [*c]c.exfat_setpos_t, count: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = dir;
-    _ = name;
-    _ = nlen;
-    _ = head;
-    _ = count;
-    return ok;
-}
-
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]c.exfat_dir_t, leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = out;
-    leaf.* = path;
-    return resolve_err;
 }
 
 // --------------------------------------------------------------- helpers
@@ -491,42 +454,6 @@ test "the shared string helpers survived the port" {
 // here): the shared root pulls every abi module into every test root.
 var walk_sector: *[512]u8 = fs.fat_bytes.walk_sector[0..512];
 
-export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
-    var sum = cs;
-    for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
-    return sum;
-}
-
-export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_clus.* = 3;
-    out_len.* = 1024;
-    return 0;
-}
-
-export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = d;
-    _ = path;
-    _ = pos;
-    _ = max_pos;
-    _ = out_count;
-    _ = file_copy;
-    _ = strm_copy;
-    return err_not_found;
-}
-
-export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = set;
-    _ = bytes;
-    return 0;
-}
-
-export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = .{ m, cluster, idx, set, bytes };
-    return 0;
-}
-
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -578,10 +505,4 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[8] = 'X';
     out11[9] = 'T';
     out11[10] = '0';
-}
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
 }

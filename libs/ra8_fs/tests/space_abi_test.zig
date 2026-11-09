@@ -104,9 +104,3 @@ test "exFAT errors propagate" {
     fake.sector_read_err = 0x205;
     try std.testing.expectEqual(@as(u16, 0x205), query(&s));
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

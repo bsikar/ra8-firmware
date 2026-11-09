@@ -95,7 +95,7 @@ comptime {
 
 /// Recover the private cursor state from one public directory handle.
 fn state_of(directory: [*c]c.ra8_fs_dir_t) *DirPrivate {
-    const bytes: [*]u8 = &directory.*.state[0];
+    const bytes: [*]u8 = directory.*.state[0..].ptr;
     return @ptrCast(@alignCast(bytes));
 }
 
@@ -140,7 +140,7 @@ fn visit_sector(m: [*c]const Mount, buf: [*c]u8, lfn: *c.lfn_state_t, cb: c.ra8_
         var lname: [lfn_utf8_cap]u8 = @splat(0);
         var lnunits: u32 = 0;
         var have_long = false;
-        const lunits = priv_lfn_units_for(lfn, &ent[off_name], &lnunits);
+        const lunits = priv_lfn_units_for(lfn, ent[off_name..], &lnunits);
         if (lunits != null) {
             have_long = priv_utf16_to_utf8(lunits, lnunits, &lname, @intCast(lfn_utf8_cap)) == ok;
         }
@@ -246,7 +246,7 @@ fn internal_fat_dir_scan_sector(state: *DirPrivate, sector: [*]const u8, out: [*
         var long_name: [lfn_utf8_cap]u8 = @splat(0);
         priv_83_to_str(&entry[off_name], entry[off_ntres], &short_name);
         var units: u32 = 0;
-        const name_units = priv_lfn_units_for(&state.fat_lfn, &entry[off_name], &units);
+        const name_units = priv_lfn_units_for(&state.fat_lfn, entry[off_name..], &units);
         const short_ptr: [*c]const u8 = &short_name;
         const long_ptr: [*c]const u8 = &long_name;
         var name: [*c]const u8 = short_ptr;
@@ -354,7 +354,7 @@ fn internal_unlink_locate(handle: [*c]const Mount, path: [*c]const u8, out: *c.d
     if ((out.entry[off_attr] & attr_read_only) != 0) {
         return err_access_denied;
     }
-    out_cluster.* = priv_entry_first_cluster(&out.entry[0]);
+    out_cluster.* = priv_entry_first_cluster(out.entry[0..]);
     return ok;
 }
 

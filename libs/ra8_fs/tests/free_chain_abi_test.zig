@@ -102,9 +102,3 @@ test "write error is returned and the cluster is not credited" {
     try std.testing.expectEqual(@as(u32, 100), al.priv_alloc_hint_get(fake.mount()));
     al.priv_alloc_state_release(fake.mount());
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

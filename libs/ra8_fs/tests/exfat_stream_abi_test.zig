@@ -35,11 +35,17 @@ var read_err: u16 = 0;
 var write_err: u16 = 0;
 
 fn reset() void {
-    for (&disk) |*s| s.* = @splat(@splat(0));
+    for (&disk) |*s| s.* = @splat(0);
     for (&fat) |*f| f.* = 0;
     read_err = 0;
     write_err = 0;
-    st.filesFill(); // the real table stands in: no slot is free here
+    al.priv_alloc_state_reset();
+    // the real table stands in: fill every file slot, none stays free
+    while (true) {
+        const f = fs.fat_state.priv_alloc_file_slot();
+        if (f == null) break;
+        f.*.in_use = 1;
+    }
 }
 
 /// The fake FAT: `fat[cluster - 2]`, entry 0 is the first data cluster.
@@ -87,36 +93,6 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
 
 var sec_buf: *[c.k_ra8_fs_sector_max]u8 = fs.fat_bytes.io_sector;
 
-export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_clus.* = 4; // cluster_to_lba(4) = 1000 + 2 = the bitmap window
-    out_len.* = 1024;
-    return ok;
-}
-
-export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
-    _ = .{ m, path, out_strm, out_attr };
-    return ok;
-}
-
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
-    _ = .{ m, strm };
-    return ok;
-}
-
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]c.exfat_dir_t, leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = out;
-    leaf.* = path;
-    return ok;
-}
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}
-
 // --- directory-growth fakes (RA8FW-1119): zero, seal, the entry cursor, ---
 // --- the set checksum and the set write-back, each mirroring the real ----
 // --- behavior against the fake disk --------------------------------------
@@ -125,84 +101,6 @@ const err_not_found: u16 = @intCast(c.k_ra8_err_not_found);
 const entry_eod: u8 = 0x00;
 const entry_file: u8 = 0x85;
 const inuse_bit: u8 = 0x80;
-
-var written: [224]u8 = @splat(0);
-var written_bytes: u32 = 0;
-var written_cluster: u32 = 0;
-var written_idx: u32 = 0;
-
-export fn priv_exfat_zero_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u16 {
-    _ = m;
-    disk[clus - first_data] = @splat(@splat(0));
-    return ok;
-}
-
-export fn priv_exfat_seal_cluster(m: [*c]const c.ra8_fs_mount_t, clus: u32) callconv(.c) u16 {
-    _ = m;
-    const retired: u8 = entry_file & ~inuse_bit;
-    for (0..spc) |sec| {
-        for (0..bps / 32) |slot| {
-            if (disk[clus - first_data][sec][slot * 32] == entry_eod) {
-                disk[clus - first_data][sec][slot * 32] = retired;
-            }
-        }
-    }
-    return ok;
-}
-
-export fn priv_exfat_next_entry(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, out: [*c]u8) callconv(.c) u16 {
-    const per_cluster: u32 = bps / 32;
-    if (cur[0].entry_in_cluster >= per_cluster) {
-        if (cur[0].contig_end != 0) {
-            if (cur[0].cluster + 1 >= cur[0].contig_end) return err_not_found;
-            cur[0].cluster += 1;
-        } else {
-            const next = fat[cur[0].cluster - first_data];
-            if (next == eoc) return err_not_found;
-            cur[0].cluster = next;
-        }
-        cur[0].entry_in_cluster = 0;
-    }
-    const ci: usize = @intCast(cur[0].cluster - first_data);
-    const off: usize = cur[0].entry_in_cluster * 32;
-    @memcpy(out[0..32], disk[ci][off..][0..32]);
-    cur[0].entry_in_cluster += 1;
-    cur[0].scanned += 1;
-    return ok;
-}
-
-/// The real one is a read-merge-write in C; the fake writes straight into
-/// the disk window, which already holds the sector's current content.
-export fn priv_write_into_sector(m: [*c]const c.ra8_fs_mount_t, lba: u64, off: u32, src: [*c]const u8, put: u32) callconv(.c) u16 {
-    _ = m;
-    if (write_err != 0) return write_err;
-    const i: usize = @intCast(lba - data_lba);
-    @memcpy(disk[i][off..][0..put], src[0..put]);
-    return ok;
-}
-
-export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    var cs: u16 = 0;
-    var i: u32 = 0;
-    while (i < bytes) : (i += 1) {
-        if (i == 2 or i == 3) continue;
-        const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
-        cs = hi +% (cs >> 1) +% @as(u16, set[i]);
-    }
-    return cs;
-}
-
-export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = m;
-    const ci: usize = @intCast(cluster - first_data);
-    @memcpy(disk[ci][idx * 32 ..][0..bytes], set[0..bytes]);
-    written = @splat(0);
-    @memcpy(written[0..bytes], set[0..bytes]);
-    written_bytes = bytes;
-    written_cluster = cluster;
-    written_idx = idx;
-    return ok;
-}
 
 /// Stage a minimal File + Stream entry set at `cluster`/`idx` on the fake
 /// disk, with an intentionally stale set checksum.
@@ -236,7 +134,17 @@ fn mount() c.ra8_fs_mount_t {
     return m;
 }
 
+/// The stub-era find_bitmap answered with a canned cluster; the real one
+/// walks the root dir for the $Bitmap primary entry. Lay it: first cluster 4
+/// (lba 1002, the bitmap window), 8 bytes for the 64-cluster volume.
+fn layBitmap() void {
+    disk[0][0] = @intCast(c.k_exfat_entry_bitmap);
+    std.mem.writeInt(u32, disk[0][@intCast(c.k_exfat_strm_off_clus)..][0..4], 4, .little);
+    std.mem.writeInt(u32, disk[0][@intCast(c.k_exfat_strm_off_dlen)..][0..4], 8, .little);
+}
+
 fn bindAndLba(m: *c.ra8_fs_mount_t) u64 {
+    layBitmap();
     al.priv_alloc_state_bind(m);
     var lba: u64 = 0;
     std.debug.assert(al.priv_exfat_bitmap_lba(m, &lba) == ok);
@@ -347,7 +255,7 @@ test "link_cluster converts a broken NoFatChain run into a real chain" {
     f.alloc_clusters = 3;
     f.tail_cluster = 7;
     disk[2][0] = 0b01111000; // clusters 5..8 busy, 9 free
-    al.priv_alloc_state_bind(&m);
+    _ = bindAndLba(&m);
     al.priv_alloc_hint_set(&m, 9);
 
     try std.testing.expectEqual(ok, st.internal_exfat_grow_one(&f));
@@ -370,7 +278,7 @@ test "grow_one extends a chained allocation from the tail" {
     f.alloc_clusters = 1;
     f.tail_cluster = 2;
     disk[2][0] = 0b1; // cluster 2 busy
-    al.priv_alloc_state_bind(&m);
+    _ = bindAndLba(&m);
     al.priv_alloc_hint_set(&m, 3);
 
     try std.testing.expectEqual(ok, st.internal_exfat_grow_one(&f));
@@ -385,7 +293,7 @@ test "ensure_clusters tops the allocation up to the ask" {
     var m = mount();
     var f = std.mem.zeroes(c.ra8_fs_file_t);
     f.mount = &m;
-    al.priv_alloc_state_bind(&m);
+    _ = bindAndLba(&m);
 
     try std.testing.expectEqual(ok, st.priv_exfat_ensure_clusters(&f, 3));
     try std.testing.expectEqual(@as(u32, 3), f.alloc_clusters);
@@ -464,8 +372,9 @@ test "dir_link keeps a contiguous run contiguous without FAT writes" {
 
 test "dir_link converts a broken contiguous run into a real chain" {
     reset();
+    var m = mount();
     var nofat: u8 = 1;
-    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(null, 5, 3, 7, &nofat, 9));
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(&m, 5, 3, 7, &nofat, 9));
     try std.testing.expectEqual(@as(u8, 0), nofat);
     try std.testing.expectEqual(@as(u32, 6), fatAt(5));
     try std.testing.expectEqual(@as(u32, 7), fatAt(6));
@@ -475,8 +384,9 @@ test "dir_link converts a broken contiguous run into a real chain" {
 
 test "dir_link links a chained run's tail" {
     reset();
+    var m = mount();
     var nofat: u8 = 0;
-    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(null, 5, 3, 7, &nofat, 9));
+    try std.testing.expectEqual(ok, st.internal_exfat_dir_link(&m, 5, 3, 7, &nofat, 9));
     try std.testing.expectEqual(@as(u8, 0), nofat);
     try std.testing.expectEqual(@as(u32, 9), fatAt(7));
     try std.testing.expectEqual(eoc, fatAt(9));
@@ -493,13 +403,11 @@ test "dir_relen patches the stream entry and rewrites the set" {
     dir.self_index = 0;
 
     try std.testing.expectEqual(ok, st.internal_exfat_dir_relen(&m, &dir, 1024, 1));
-    try std.testing.expectEqual(@as(u32, 7), written_cluster);
-    try std.testing.expectEqual(@as(u32, 0), written_idx);
-    try std.testing.expectEqual(@as(u32, 64), written_bytes);
-    try std.testing.expectEqual(@as(u8, 0x03), written[33]); // alloc | nofat
-    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, written[40..48], .little));
-    try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, written[56..64], .little));
-    try std.testing.expectEqual(setChecksum(written[0..64]), std.mem.readInt(u16, written[2..4], .little));
+    // the real set write-back lands on the volume: cluster 7's sector
+    try std.testing.expectEqual(@as(u8, 0x03), disk[5][32 + @as(usize, @intCast(c.k_exfat_strm_off_flags))]); // alloc | nofat
+    try std.testing.expectEqual(@as(u64, 1024), rd64(disk[5][32..], @intCast(c.k_exfat_strm_off_dlen)));
+    try std.testing.expectEqual(@as(u64, 1024), rd64(disk[5][32..], @intCast(c.k_exfat_off_strm_valid)));
+    try std.testing.expectEqual(setChecksum(disk[5][0..64]), rd16(disk[5][0..], @intCast(c.k_exfat_off_file_csum)));
 }
 
 test "dir_relen refuses a set beyond the writable cap" {
@@ -526,7 +434,7 @@ test "dir_append zeroes the new cluster before linking and seals the old tail" {
 
     try std.testing.expectEqual(ok, st.internal_exfat_dir_append(&m, &dir, 3, 7, &nofat));
     try std.testing.expectEqual(@as(u8, 0), disk[6][10]); // zeroed before linking
-    try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]); // 5 and 8 marked used
+    try std.testing.expectEqual(@as(u8, 0x48), disk[2][0]); // 5 and 8 marked used
     try std.testing.expectEqual(@as(u32, 9), al.priv_alloc_hint_get(&m));
     for (fat) |v| try std.testing.expectEqual(@as(u32, 0), v); // stayed contiguous
     try std.testing.expectEqual(@as(u8, 0x05), disk[5][0]); // EOD retired
@@ -549,7 +457,7 @@ test "grow_dir grows a subdirectory and rewrites its own entry set" {
     try std.testing.expectEqual(@as(u8, 0), disk[4][3]); // new cluster zeroed
     try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]); // 5 and 6 marked used
     try std.testing.expectEqual(@as(u8, 0x05), disk[3][0]); // old tail sealed
-    try std.testing.expectEqual(@as(u32, 64), written_bytes); // set rewritten
+    try std.testing.expectEqual(setChecksum(disk[5][0..64]), rd16(disk[5][0..], @intCast(c.k_exfat_off_file_csum))); // set rewritten
     try std.testing.expectEqual(@as(u8, 0x03), disk[5][33]); // NoFatChain flag back on
     try std.testing.expectEqual(@as(u64, 1024), std.mem.readInt(u64, disk[5][40..48], .little));
     try std.testing.expectEqual(@as(u32, 7), dir.contig_end);
@@ -560,12 +468,14 @@ test "grow_dir leaves the root's entry set alone" {
     var m = mount();
     _ = bindAndLba(&m);
     disk[2][0] = 0x08; // cluster 5 used, 6.. free
+    stageSet(7, 0, 1); // a subdirectory's set sits elsewhere on the volume
     var dir = std.mem.zeroes(c.exfat_dir_t);
     dir.cluster = 5;
     dir.contig_end = 6; // the root carries no self_cluster
 
     try std.testing.expectEqual(ok, st.priv_exfat_grow_dir(&m, &dir));
-    try std.testing.expectEqual(@as(u32, 0), written_bytes); // nothing rewritten
+    try std.testing.expectEqual(@as(u16, 0x3412), rd16(disk[5][0..], 2)); // that set untouched
+    try std.testing.expectEqual(@as(u8, 0x01), disk[5][33]);
     try std.testing.expectEqual(@as(u8, 0x18), disk[2][0]);
     try std.testing.expectEqual(@as(u32, 7), dir.contig_end);
 }
@@ -677,14 +587,15 @@ test "write_stream fills the gap then appends across a cluster boundary" {
     var f = std.mem.zeroes(c.ra8_fs_file_t);
     f.mount = &m;
     _ = bindAndLba(&m);
+    disk[2][0] = 0x01; // the root's own cluster is taken: the file lands off it
     f.valid_bytes = 0;
     f.offset = 3; // positioned past the prefix: a hole to fill first
     f.size_bytes = 3;
     var buf = "hello".*;
     try std.testing.expectEqual(ok, st.priv_exfat_write_stream(&f, &buf, 5));
-    try std.testing.expectEqual(@as(u8, 0), disk[0][0]);
-    try std.testing.expectEqual(@as(u8, 0), disk[0][2]);
-    try std.testing.expectEqual(@as(u8, 'h'), disk[0][3]);
+    try std.testing.expectEqual(@as(u8, 0), disk[1][0]);
+    try std.testing.expectEqual(@as(u8, 0), disk[1][2]);
+    try std.testing.expectEqual(@as(u8, 'h'), disk[1][3]);
     try std.testing.expectEqual(@as(u64, 8), f.valid_bytes);
     try std.testing.expectEqual(@as(u64, 8), f.offset);
     try std.testing.expectEqual(@as(u64, 8), f.size_bytes);
@@ -692,9 +603,6 @@ test "write_stream fills the gap then appends across a cluster boundary" {
     var big: [600]u8 = @splat(0xB7);
     try std.testing.expectEqual(ok, st.priv_exfat_write_stream(&f, &big, 600));
     try std.testing.expectEqual(@as(u32, 2), f.alloc_clusters);
-    var big: [600]u8 = @splat(0xB7);
-    var big: [600]u8 = @splat(0xB7);
-    var big: [600]u8 = @splat(0xB7);
     try std.testing.expectEqual(@as(u64, 608), f.size_bytes);
 }
 
@@ -713,9 +621,6 @@ test "flush_set stamps, patches, archives and re-checksums the set" {
     f.valid_bytes = 5;
     f.size_bytes = 5;
     try std.testing.expectEqual(ok, st.priv_exfat_flush_set(&f));
-    try std.testing.expectEqual(@as(u32, 2), written_cluster);
-    try std.testing.expectEqual(@as(u32, 1), written_idx);
-    try std.testing.expectEqual(@as(u32, 32), written_bytes);
     // File entry: the archive bit is set and the checksum covers every byte
     // but its own two.
     try std.testing.expectEqual(@as(u8, 0x20), disk[0][@intCast(c.k_exfat_off_file_attr)] & 0x20);
