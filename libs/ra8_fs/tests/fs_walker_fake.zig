@@ -99,6 +99,10 @@ pub fn reset(fs_type: u8) void {
     std.mem.writeInt(u32, dir[0][@intCast(c.k_exfat_strm_off_clus)..][0..4], @intCast(bitmap_lba + 1), .little);
     std.mem.writeInt(u32, dir[0][@intCast(c.k_exfat_strm_off_dlen)..][0..4], 1024, .little);
     dir[1][0] = 0x82; // up-case table
+    // Everything past the two system entries is end-of-directory: dir[] is a
+    // mutable global, and undefined garbage read as directory entries sends a
+    // real entry scan into a protocol error.
+    for (dir[2..]) |*e| e.* = @splat(0);
     mount_store = std.mem.zeroes(c.ra8_fs_mount_t);
     mount_store.in_use = 1;
     mount_store.type = fs_type;
@@ -142,6 +146,13 @@ pub fn reset(fs_type: u8) void {
     fat = @splat(0);
     if (fs_type == c.k_ra8_fs_type_fat32) {
         fat[5] = 0xFFFF_FFF8; // the FAT32 root chain ends after its first cluster
+    }
+    if (fs_type == c.k_ra8_fs_type_exfat) {
+        // The exFAT root chain ends after its first cluster too: the real set
+        // lookup walks the root's cluster chain through the FAT, and an
+        // all-zero FAT never reports end-of-chain, so the walk exhausts its
+        // bound and reports a protocol error.
+        fat[5] = 0xFFFF_FFFF;
     }
     fat_err = 0;
     fat_set_err = 0;
@@ -275,8 +286,9 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
             for (0..slots) |i| {
                 @memcpy(buf[i * entry_bytes ..][0..entry_bytes], &dir[i]);
             }
+            const filler: u8 = if (mount_store.type == c.k_ra8_fs_type_exfat) 0x00 else 0x85;
             for (slots..eps) |i| {
-                buf[i * entry_bytes ..][0..entry_bytes].* = @splat(0x85);
+                buf[i * entry_bytes ..][0..entry_bytes].* = @splat(filler);
             }
         }
         return 0;
