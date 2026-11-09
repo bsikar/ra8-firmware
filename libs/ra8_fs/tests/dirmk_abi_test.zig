@@ -14,6 +14,7 @@ const fs = @import("ra8_fs");
 const ex = fs.exfat_read;
 const upcase = fs.upcase;
 const c = fs.c;
+const st = fs.fat_state;
 
 const bps: u32 = 512;
 const spc: u32 = 1;
@@ -31,7 +32,7 @@ const err_no_mem: u16 = c.k_ra8_err_no_mem;
 
 // ---------------------------------------------------------------- fakes
 
-export var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 var disk: [disk_sectors][bps]u8 = @splat(@splat(0));
 var read_err: u16 = 0;
@@ -94,44 +95,6 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
     const i: usize = @intCast(lba - data_lba);
     @memcpy(buf[0..bps], &disk[i]);
     return ok;
-}
-
-export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    @memcpy(out_strm[0..32], &lookup_strm);
-    out_attr.* = lookup_attr;
-    return lookup_err;
-}
-
-// Openw's callees, analyzed when priv_exfat_open's routing branch compiles;
-// none of them runs on the read path under test.
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = strm;
-    return ok;
-}
-
-export fn priv_exfat_flush_set(f: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
-    _ = f;
-    return ok;
-}
-
-export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, head: [*c]c.exfat_setpos_t, count: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = dir;
-    _ = name;
-    _ = nlen;
-    _ = head;
-    _ = count;
-    return ok;
-}
-
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]c.exfat_dir_t, leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = out;
-    leaf.* = path;
-    return resolve_err;
 }
 
 // --------------------------------------------------------------- helpers
@@ -217,42 +180,6 @@ fn laySt(at: usize, sfn11: *const [11]u8, attr: u8, first_cluster: u32) void {
     disk[0][base + 27] = @truncate(first_cluster >> 8);
 }
 
-export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
-    var sum = cs;
-    for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
-    return sum;
-}
-
-export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_clus.* = 3;
-    out_len.* = 1024;
-    return 0;
-}
-
-export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = d;
-    _ = path;
-    _ = pos;
-    _ = max_pos;
-    _ = out_count;
-    _ = file_copy;
-    _ = strm_copy;
-    return err_not_found;
-}
-
-export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = set;
-    _ = bytes;
-    return 0;
-}
-
-export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = .{ m, cluster, idx, set, bytes };
-    return 0;
-}
-
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -288,8 +215,6 @@ var last_fat_val: u32 = 0;
 var fat_writes: usize = 0;
 var write_fail_lba: u64 = 0xFFFF_FFFF_FFFF_FFFF;
 var write_calls: usize = 0;
-var exfat_calls: usize = 0;
-var exfat_rc: u16 = 0;
 
 fn resetDirmk() void {
     @memset(walk_sector, 0);
@@ -299,32 +224,7 @@ fn resetDirmk() void {
     fat_writes = 0;
     write_fail_lba = 0xFFFF_FFFF_FFFF_FFFF;
     write_calls = 0;
-    exfat_calls = 0;
-    exfat_rc = 0;
     read_err = 0;
-}
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    alloc_calls += 1;
-    if (alloc_rc != ok) return alloc_rc;
-    out_c.* = next_cluster;
-    next_cluster += 1;
-    return ok;
-}
-
-export fn priv_exfat_mkdir(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    exfat_calls += 1;
-    return exfat_rc;
-}
-
-export fn priv_exfat_rmdir(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    exfat_calls += 1;
-    return exfat_rc;
 }
 
 // --------------------------------------------------------------- tests
@@ -373,7 +273,11 @@ test "mkdir lays the dot entries and links the parent entry" {
     resetDirmk();
     var m = fatmount();
 
-    next_cluster = 5;
+    // stub-era fixture: the real allocator scans the FAT through the mount
+    // geometry, so lay clusters 2..4 as taken and the scan yields cluster 5
+    fat[0] = eoc;
+    fat[1] = eoc;
+    fat[2] = eoc;
     try std.testing.expectEqual(ok, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     // cluster 5 -> lba 3 with first_data_lba 0 and one sector per cluster
     try std.testing.expectEqual(@as(u8, '.'), disk[3][0]);
@@ -394,8 +298,6 @@ test "mkdir lays the dot entries and links the parent entry" {
     try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, disk[3][48..50], .little));
     try std.testing.expectEqual(@as(u16, 0x21), std.mem.readInt(u16, disk[0][16..18], .little));
     try std.testing.expectEqual(@as(usize, 2), write_calls);
-    try std.testing.expectEqual(@as(usize, 1), alloc_calls);
-    try std.testing.expectEqual(@as(usize, 0), fat_writes);
     try std.testing.expectEqual(attr_dir, disk[0][11]);
     try std.testing.expectEqual(@as(u8, 5), disk[0][26]);
     try std.testing.expectEqual(@as(u32, 5), c.priv_entry_first_cluster(&disk[0]));
@@ -427,7 +329,10 @@ test "mkdir propagates an allocation failure" {
     resetDirmk();
     var m = fatmount();
 
-    alloc_rc = err_no_mem;
+    // the real allocator scans the FAT: the fake's fat array holds 8 entries,
+    // so bound count_of_clusters to them and fill every one; the scan finds nothing
+    m.count_of_clusters = 8;
+    for (0..fat.len) |i| fat[i] = eoc;
     try std.testing.expectEqual(err_no_mem, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(usize, 0), write_calls);
 }
@@ -437,8 +342,9 @@ test "a cluster-init write failure frees the new cluster" {
     resetDirmk();
     var m = fatmount();
 
-    next_cluster = 5;
-    fat[3] = eoc; // real free_chain: cluster 5 ends an EOC chain
+    fat[0] = eoc;
+    fat[1] = eoc;
+    fat[2] = eoc; // the real allocator's scan yields cluster 5
     write_fail_lba = 3;
     const rc = fs.dirmk.ra8_fs_mkdir(&m, "NOTES");
     try std.testing.expect(err_io == rc);
@@ -450,8 +356,9 @@ test "a commit failure frees the new cluster" {
     resetDirmk();
     var m = fatmount();
 
-    next_cluster = 5;
-    fat[3] = eoc;
+    fat[0] = eoc;
+    fat[1] = eoc;
+    fat[2] = eoc; // the real allocator's scan yields cluster 5
     write_fail_lba = 0;
     try std.testing.expectEqual(err_io, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     try std.testing.expectEqual(@as(u32, 0), fat[3]); // cluster 5 freed
@@ -467,9 +374,14 @@ test "mkdir dispatch: null args, idle mount, exFAT routing" {
     try std.testing.expectEqual(err_invalid_state, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
     m.in_use = 1;
     m.type = type_exfat;
-    exfat_rc = err_not_supported;
-    try std.testing.expectEqual(err_not_supported, fs.dirmk.ra8_fs_mkdir(&m, "NOTES"));
-    try std.testing.expectEqual(@as(usize, 1), exfat_calls);
+    // the route reaches the real exFAT layer (ra8_fs_fat_exfat_dir.c through
+    // fs_c.zig): the fake's exfat_rc/exfat_calls knobs lost their consumers when
+    // the root started linking the real units, so assert the divergence instead.
+    // The FAT route on this fixture would allocate a cluster and write; the
+    // exFAT route fails on its geometry before any write.
+    try std.testing.expect(fs.dirmk.ra8_fs_mkdir(&m, "NOTES") != ok);
+    try std.testing.expectEqual(@as(usize, 0), write_calls);
+    try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 
 test "rmdir removes an empty directory: chain freed, entry erased" {
@@ -577,9 +489,9 @@ test "rmdir dispatch: idle mount and exFAT routing" {
     try std.testing.expectEqual(err_invalid_state, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
     m.in_use = 1;
     m.type = type_exfat;
-    exfat_rc = err_not_found;
+    // the route reaches the real exFAT layer; its lookup fails on this
+    // FAT-geometry fixture and nothing is written
     try std.testing.expectEqual(err_not_found, fs.dirmk.ra8_fs_rmdir(&m, "STUFF"));
-    try std.testing.expectEqual(@as(usize, 1), exfat_calls);
     try std.testing.expectEqual(@as(usize, 0), fat_writes);
 }
 

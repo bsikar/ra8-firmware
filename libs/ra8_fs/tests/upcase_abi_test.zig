@@ -76,9 +76,3 @@ test "formatter stops at the first failed sector write" {
     try std.testing.expectEqual(@as(u32, 3), d.writes);
     try std.testing.expectEqual(@as(u32, 0x1234), cs);
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

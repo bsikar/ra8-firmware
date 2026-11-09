@@ -9,6 +9,8 @@
 
 const std = @import("std");
 const c = @import("fs_c.zig").c;
+const fat_prim = @import("ra8_fs_fat_prim_abi.zig");
+const exfat_write = @import("ra8_fs_exfat_write_abi.zig");
 
 const ok: u16 = c.k_ra8_ok;
 const not_found: u16 = c.k_ra8_err_not_found;
@@ -16,6 +18,10 @@ const no_mem: u16 = c.k_ra8_err_no_mem;
 const invalid_arg: u16 = c.k_ra8_err_invalid_arg;
 const access_denied: u16 = c.k_ra8_err_access_denied;
 const protocol_error: u16 = c.k_ra8_err_protocol_error;
+const not_supported: u16 = @intCast(c.k_ra8_err_not_supported);
+const invalid_size: u16 = c.k_ra8_err_invalid_size;
+const exists: u16 = c.k_ra8_err_exists;
+const hash_off: u32 = @intCast(c.k_exfat_off_strm_hash);
 
 const first_data: u32 = @intCast(c.k_cluster_first_data);
 const entry_bytes: u32 = @intCast(c.k_exfat_entry_bytes);
@@ -41,6 +47,10 @@ const strm_off_clus: u32 = @intCast(c.k_exfat_strm_off_clus);
 const strm_off_dlen: u32 = @intCast(c.k_exfat_strm_off_dlen);
 const off_file_secnt: u32 = @intCast(c.k_exfat_off_file_secnt);
 const off_file_attr: u32 = @intCast(c.k_exfat_off_file_attr);
+const off_file_csum: u32 = @intCast(c.k_exfat_off_file_csum);
+const name_off: u32 = @intCast(c.k_exfat_name_off);
+const name_u8_cap: u32 = @intCast(c.k_exfat_name_u8_cap);
+const max_set_bytes: u32 = @intCast(c.k_exfat_max_set_bytes);
 
 // C helpers that stay C for now (the bytes, alloc and dir halves).
 extern fn priv_sec_io() callconv(.c) [*c]u8;
@@ -59,6 +69,11 @@ extern fn priv_exfat_cursor_init(dir: [*c]const c.exfat_dir_t, out: [*c]c.exfat_
 extern fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16;
 extern fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.c) u16;
 extern fn priv_strlen(s: [*c]const u8) callconv(.c) u32;
+extern fn priv_utf16_to_utf8(in: ?[*]const u16, units: u32, out: ?[*]u8, cap: u32) callconv(.c) u16;
+extern fn priv_exfat_name_hash(name: [*c]const u16, nlen: u32) callconv(.c) u16;
+extern fn priv_exfat_file_stamp_access(file_entry: [*c]u8) callconv(.c) void;
+extern fn priv_exfat_find(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16;
+extern fn priv_exfat_find_dir_space(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, need: u32, out_clus: [*c]u32, out_idx: [*c]u32) callconv(.c) u16;
 
 inline fn rd32(p: [*c]const u8, at: u32) u32 {
     return @as(u32, p[at]) | (@as(u32, p[at + 1]) << 8) |
@@ -105,7 +120,7 @@ pub fn internal_exfat_take_set(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_c
     var matched: u8 = 1;
     var k: u32 = 0;
     while (k < sc) : (k += 1) {
-        var se: [entry_bytes]u8 = @splat(@splat(0));
+        var se: [entry_bytes]u8 = @splat(0);
         const r = priv_exfat_next_entry(m, cur, &se);
         if (r != ok) {
             return r;
@@ -176,7 +191,7 @@ pub export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const 
     while (p[0] == '/') {
         p += 1;
     }
-    var need: [name_cap]u16 = @splat(@splat(0));
+    var need: [name_cap]u16 = @splat(0);
     var nlen: u32 = 0;
     const ne = priv_exfat_needle_units(m, p, &need, &nlen, not_found);
     if (ne != ok) {
@@ -185,7 +200,7 @@ pub export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const 
     var cur: c.exfat_cursor_t = std.mem.zeroes(c.exfat_cursor_t);
     priv_exfat_cursor_init(dir, &cur);
     while (cur.scanned < scan_limit) {
-        var e: [entry_bytes]u8 = @splat(@splat(0));
+        var e: [entry_bytes]u8 = @splat(0);
         var r = priv_exfat_next_entry(m, &cur, &e);
         if (r != ok) {
             return r;
@@ -273,7 +288,7 @@ pub export fn priv_exfat_drop_set(m: [*c]const c.ra8_fs_mount_t, pos: [*c]const 
             .scanned = 0,
             .contig_end = 0,
         };
-        var entry: [entry_bytes]u8 = @splat(@splat(0));
+        var entry: [entry_bytes]u8 = @splat(0);
         const e = priv_exfat_next_entry(m, &one, &entry);
         if (e != ok) {
             return e;
@@ -295,8 +310,8 @@ pub export fn priv_exfat_drop_set(m: [*c]const c.ra8_fs_mount_t, pos: [*c]const 
 pub export fn priv_exfat_unlink_at(m: [*c]const c.ra8_fs_mount_t, dir: [*c]const c.exfat_dir_t, name: [*c]const u8) callconv(.c) u16 {
     var pos: [set_max_entries]c.exfat_setpos_t = std.mem.zeroes([set_max_entries]c.exfat_setpos_t);
     var count: u32 = 0;
-    var file_e: [entry_bytes]u8 = @splat(@splat(0));
-    var strm_e: [entry_bytes]u8 = @splat(@splat(0));
+    var file_e: [entry_bytes]u8 = @splat(0);
+    var strm_e: [entry_bytes]u8 = @splat(0);
     const e = priv_exfat_find_set(m, dir, name, &pos, set_max_entries, &count, &file_e, &strm_e);
     if (e != ok) {
         return e;
@@ -357,7 +372,7 @@ pub fn internal_exfat_build_rename_set(set: [*c]u8, file_e: [*c]const u8, strm_e
     set[off_file_secnt] = @truncate(sec_count);
     const strm = set[entry_bytes .. entry_bytes * 2];
     strm[strm_off_nlen] = @truncate(new_len);
-    priv_wr16(&strm[hash_off], priv_exfat_name_hash(new_name, new_len));
+    fat_prim.priv_wr16(&strm[hash_off], priv_exfat_name_hash(new_name, new_len));
     var n: u32 = 0;
     while (n < name_entries) : (n += 1) {
         const ne = set[(2 + n) * entry_bytes .. (3 + n) * entry_bytes];
@@ -366,7 +381,7 @@ pub fn internal_exfat_build_rename_set(set: [*c]u8, file_e: [*c]const u8, strm_e
         while (ch < name_per_entry) : (ch += 1) {
             const p: u32 = (n * name_per_entry) + ch;
             if (p < new_len) {
-                priv_wr16(&ne[name_off + (ch * 2)], new_name[p]);
+                fat_prim.priv_wr16(&ne[name_off + (ch * 2)], new_name[p]);
             }
         }
     }
@@ -375,7 +390,7 @@ pub fn internal_exfat_build_rename_set(set: [*c]u8, file_e: [*c]const u8, strm_e
     // LastModified must not move or every backup tool concludes the file
     // changed.
     priv_exfat_file_stamp_access(set);
-    priv_wr16(&set[csum_off], priv_exfat_set_checksum(set, total));
+    fat_prim.priv_wr16(&set[off_file_csum], exfat_write.priv_exfat_set_checksum(set, total));
     return total;
 }
 
@@ -470,15 +485,15 @@ pub export fn priv_exfat_rename(m: [*c]const c.ra8_fs_mount_t, old_path: [*c]con
     if (nue != ok) {
         return nue;
     }
-    var e_strm: [entry_bytes]u8 = @splat(@splat(0));
+    var e_strm: [entry_bytes]u8 = @splat(0);
     var e_attr: u8 = 0;
     if (priv_exfat_find(m, &parent, new_name, &e_strm, &e_attr) == ok) {
         return exists;
     }
     var pos: [set_max_entries]c.exfat_setpos_t = std.mem.zeroes([set_max_entries]c.exfat_setpos_t);
     var count: u32 = 0;
-    var file_e: [entry_bytes]u8 = @splat(@splat(0));
-    var strm_e: [entry_bytes]u8 = @splat(@splat(0));
+    var file_e: [entry_bytes]u8 = @splat(0);
+    var strm_e: [entry_bytes]u8 = @splat(0);
     const fe = priv_exfat_find_set(m, &parent, old_name, &pos, set_max_entries, &count, &file_e, &strm_e);
     if (fe != ok) {
         return fe;
@@ -490,7 +505,7 @@ pub export fn priv_exfat_rename(m: [*c]const c.ra8_fs_mount_t, old_path: [*c]con
     if ((file_e[off_file_attr] & attr_read_only) != 0) {
         return access_denied;
     }
-    var set: [max_set_bytes]u8 = @splat(@splat(0));
+    var set: [max_set_bytes]u8 = @splat(0);
     const bytes = internal_exfat_build_rename_set(&set, &file_e, &strm_e, &new_units, new_len);
     return internal_exfat_place_rename(m, &parent, &pos, count, &set, bytes);
 }
@@ -512,7 +527,7 @@ pub fn internal_exfat_gather_name(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfa
     name[0] = 0;
     var k: u32 = 1;
     while (k < sc) : (k += 1) {
-        var ne: [entry_bytes]u8 = @splat(@splat(0));
+        var ne: [entry_bytes]u8 = @splat(0);
         const r = priv_exfat_next_entry(m, cur, &ne);
         if (r != ok) {
             return r;
@@ -546,7 +561,7 @@ pub fn internal_exfat_gather_name(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfa
 pub fn internal_exfat_list_emit(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, e: [*c]const u8, out: [*c]c.ra8_fs_dirent_t, out_entry: [*c]bool) u16 {
     const sc: u32 = e[off_file_secnt];
     const attr: u8 = e[off_file_attr];
-    var strm: [entry_bytes]u8 = @splat(@splat(0));
+    var strm: [entry_bytes]u8 = @splat(0);
     const r = priv_exfat_next_entry(m, cur, &strm);
     if (r != ok) {
         return r;
@@ -563,7 +578,7 @@ pub fn internal_exfat_list_emit(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_
         size = 0;
     }
     const nlen: u32 = strm[strm_off_nlen];
-    var name: [name_u8_cap]u8 = @splat(@splat(0));
+    var name: [name_u8_cap]u8 = @splat(0);
     const r2 = internal_exfat_gather_name(m, cur, sc, nlen, &name, name_u8_cap);
     if (r2 != ok) {
         return r2;
@@ -589,7 +604,7 @@ pub fn internal_exfat_list_emit(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_
 pub export fn priv_exfat_dir_next(m: [*c]const c.ra8_fs_mount_t, cur: [*c]c.exfat_cursor_t, out: [*c]c.ra8_fs_dirent_t, out_entry: [*c]bool) callconv(.c) u16 {
     out_entry[0] = false;
     while (cur[0].scanned < scan_limit) {
-        var entry: [entry_bytes]u8 = @splat(@splat(0));
+        var entry: [entry_bytes]u8 = @splat(0);
         const err = priv_exfat_next_entry(m, cur, &entry);
         if (err == not_found) {
             return ok;

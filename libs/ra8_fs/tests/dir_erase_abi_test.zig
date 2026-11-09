@@ -112,9 +112,3 @@ test "a walk past the directory answers not_found" {
     setLfn(2, chain_csum);
     try std.testing.expectEqual(err_not_found, erase.internal_dir_collect_chain(m, &loc, fake.dir_lba + 2, 0, chain_csum, &run, &len));
 }
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
-}

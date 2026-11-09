@@ -59,8 +59,17 @@ comptime {
     _ = upcase;
     _ = exfat_openw;
     _ = free_chain;
+    _ = dirmk;
+    _ = stat;
+    _ = exfat_write;
+    _ = trunc;
     _ = lfn_find;
     _ = exfat_read;
+    _ = exfat_hash;
+    _ = exfat_stream;
+    _ = exfat_fmt;
+    _ = exfat_mutate;
+    _ = exfat_dir;
     _ = alloc;
     _ = file;
     _ = resolve;
@@ -77,6 +86,7 @@ comptime {
     _ = fat_dir;
     _ = fat_fileio;
     _ = fat_state;
+    _ = fat_bytes;
     _ = fat_mount_abi;
     _ = time;
 }

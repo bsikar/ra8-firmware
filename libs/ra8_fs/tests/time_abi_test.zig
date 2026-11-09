@@ -13,11 +13,6 @@ const fake = @import("fs_walker_fake.zig");
 
 const expect = std.testing.expect;
 
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = out_c;
-    return c.k_ra8_err_not_found;
-}
 const expectEqual = std.testing.expectEqual;
 
 // A civil reading in ra8_fs_datetime_t shape.

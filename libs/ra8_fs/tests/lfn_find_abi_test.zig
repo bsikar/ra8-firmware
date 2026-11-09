@@ -111,7 +111,7 @@ test "scan: a deleted slot resets the chain" {
     var s: find.LfnState = std.mem.zeroes(find.LfnState);
     const n = needleFor("long name.txt");
     // Without the reset the surviving chain would match the entry at 64.
-    try std.testing.expectEqual(find.Scan.eod, scan(&fake.sector, 77, &s, &n.units, n.n));
+    try std.testing.expectEqual(find.Scan.eod, scan(fake.sector, 77, &s, &n.units, n.n));
 }
 
 test "scan: a matching chain reports the entry" {
@@ -122,7 +122,7 @@ test "scan: a matching chain reports the entry" {
     var lba: u64 = 0;
     var off: u32 = 0;
     var entry: [32]u8 = @splat(0);
-    const got = find.scanSector(&fake.mount_store, &n.units, n.n, &fake.sector, 77, &s, &lba, &off, &entry);
+    const got = find.scanSector(&fake.mount_store, &n.units, n.n, fake.sector, 77, &s, &lba, &off, &entry);
     try std.testing.expectEqual(find.Scan.found, got);
     try std.testing.expectEqual(@as(u64, 77), lba);
     try std.testing.expectEqual(@as(u32, 32), off);
@@ -134,7 +134,7 @@ test "scan: a different chain never matches the checksum of another entry" {
     fake.layLongName("other name.txt", "OTHERN~1TXT", 0);
     var s: find.LfnState = std.mem.zeroes(find.LfnState);
     const n = needleFor("long name.txt");
-    try std.testing.expectEqual(find.Scan.eod, scan(&fake.sector, 77, &s, &n.units, n.n));
+    try std.testing.expectEqual(find.Scan.eod, scan(fake.sector, 77, &s, &n.units, n.n));
 }
 
 test "scan: the laid name matches itself" {
@@ -145,7 +145,7 @@ test "scan: the laid name matches itself" {
     var lba: u64 = 0;
     var off: u32 = 0;
     var entry: [32]u8 = @splat(0);
-    const got = find.scanSector(&fake.mount_store, &n.units, n.n, &fake.sector, 77, &s, &lba, &off, &entry);
+    const got = find.scanSector(&fake.mount_store, &n.units, n.n, fake.sector, 77, &s, &lba, &off, &entry);
     try std.testing.expectEqual(find.Scan.found, got);
     // "other name.txt" is 14 units, two LFN sub-entries before the 8.3 entry.
     try std.testing.expectEqual(@as(u32, 64), off);
@@ -153,10 +153,4 @@ test "scan: the laid name matches itself" {
 
 comptime {
     _ = utf;
-}
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
 }

@@ -850,6 +850,7 @@ extern fn priv_lock_release() void;
 /// asked) and attempts one push.
 pub export fn ra8_fs_check_test_fat_push_overflow(ctx: [*c]c.ra8_fs_check_ctx_t, cluster: u32, already_truncated: bool) callconv(.c) void {
     var stack = c.fat_dir_stack_t{
+        .items = undefined,
         .top = @intCast(c.k_ra8_fs_check_max_dirs),
         .truncated = @intFromBool(already_truncated),
     };

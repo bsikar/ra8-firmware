@@ -12,6 +12,7 @@ const ex = fs.exfat_read;
 const exw = fs.exfat_write;
 const upcase = fs.upcase;
 const c = fs.c;
+const st = fs.fat_state;
 
 const bps: u32 = 512;
 const spc: u32 = 1;
@@ -29,7 +30,7 @@ const err_no_mem: u16 = c.k_ra8_err_no_mem;
 
 // ---------------------------------------------------------------- fakes
 
-export var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
+var g_fs_scratch: [c.k_ra8_fs_sector_max]u8 = @splat(0);
 
 var disk: [disk_sectors][bps]u8 = @splat(@splat(0));
 var read_err: u16 = 0;
@@ -93,35 +94,7 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
     return ok;
 }
 
-export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    @memcpy(out_strm[0..32], &lookup_strm);
-    out_attr.* = lookup_attr;
-    return lookup_err;
-}
-
-// Openw's callees, analyzed when priv_exfat_open's routing branch compiles;
-// none of them runs on the read path under test.
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = strm;
-    return ok;
-}
-
-export fn priv_exfat_flush_set(f: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
-    _ = f;
-    return ok;
-}
-
 var resolve_err: u16 = 0;
-
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out: [*c]c.exfat_dir_t, leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    _ = out;
-    leaf.* = path;
-    return resolve_err;
-}
 
 // --------------------------------------------------------------- helpers
 
@@ -187,24 +160,6 @@ test "the shared string helpers survived the port" {
 // here): the shared root pulls every abi module into every test root.
 var walk_sector: *[512]u8 = fs.fat_bytes.walk_sector[0..512];
 
-export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
-    var sum = cs;
-    for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
-    return sum;
-}
-
-export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = d;
-    _ = path;
-    _ = pos;
-    _ = max_pos;
-    _ = out_count;
-    _ = file_copy;
-    _ = strm_copy;
-    return err_not_found;
-}
-
 fn priv_path_to_83(path: [*c]const u8, out11: [*c]u8) callconv(.c) u8 {
     _ = path;
     _ = out11;
@@ -225,13 +180,6 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
     return ok;
 }
 var grow_calls: u32 = 0;
-
-export fn priv_exfat_grow_dir(m: [*c]const c.ra8_fs_mount_t, dir: [*c]c.exfat_dir_t) callconv(.c) u16 {
-    _ = m;
-    grow_calls += 1;
-    dir.*.contig_end = dir.*.cluster + 2;
-    return ok;
-}
 
 fn foldRef(cs: u16, b: u8) u16 {
     const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
@@ -373,20 +321,32 @@ test "find_dir_space finds a run inside the current cluster" {
     try std.testing.expectEqual(@as(u32, 3), idx);
 }
 
+/// The real grow path reads the allocation bitmap: lay its primary entry
+/// (type 0x81, first cluster 4 -> lba 1002, 8 bytes for 64 clusters) in the
+/// root run and mark the dir's own clusters used, so the append picks a free
+/// one instead of find_bitmap's walk stepping into a zeroed FAT chain.
+fn layBitmapEntry(used_bytes: u8) void {
+    disk[0][15 * 32] = @intCast(c.k_exfat_entry_bitmap);
+    std.mem.writeInt(u32, disk[0][15 * 32 + @as(usize, @intCast(c.k_exfat_strm_off_clus)) ..][0..4], 4, .little);
+    std.mem.writeInt(u32, disk[0][15 * 32 + @as(usize, @intCast(c.k_exfat_strm_off_dlen)) ..][0..4], 8, .little);
+    for (0..8) |i| disk[2][i] = used_bytes;
+}
+
 test "find_dir_space grows the directory when the current run is full" {
     reset();
     var m = mount();
     m.count_of_clusters = 64;
     for (0..16) |i| disk[0][i * 32] = 0x85;
+    layBitmapEntry(0x01); // cluster 2 in use; the append picks 3
     var dir = std.mem.zeroes(c.exfat_dir_t);
     dir.cluster = 2;
-    dir.contig_end = 2;
+    dir.contig_end = 3; // exclusive: the dir owns clusters 2..2
     var clus: u32 = 0;
     var idx: u32 = 0;
     try std.testing.expectEqual(ok, exw.priv_exfat_find_dir_space(&m, &dir, 3, &clus, &idx));
     try std.testing.expectEqual(@as(u32, 3), clus);
     try std.testing.expectEqual(@as(u32, 0), idx);
-    try std.testing.expectEqual(@as(u32, 1), grow_calls);
+    // the real grow_dir runs now, so the knob-injection grow counter is dead
 }
 
 test "find_dir_space stops after its one-grow budget" {
@@ -397,13 +357,14 @@ test "find_dir_space stops after its one-grow budget" {
         disk[0][i * 32] = 0x85;
         disk[1][i * 32] = 0x85;
     }
+    layBitmapEntry(0xFF); // every cluster used: the volume, not the dir, is out
     var dir = std.mem.zeroes(c.exfat_dir_t);
     dir.cluster = 2;
     dir.contig_end = 4;
     var clus: u32 = 0;
     var idx: u32 = 0;
     try std.testing.expectEqual(err_no_mem, exw.priv_exfat_find_dir_space(&m, &dir, 3, &clus, &idx));
-    try std.testing.expectEqual(@as(u32, 2), grow_calls);
+    // the real grow_dir runs now, so the knob-injection grow counter is dead
 }
 
 test "link builds the set and writes it into directory space" {
@@ -483,9 +444,10 @@ test "link grows the directory when its run is full" {
     var m = mount();
     m.count_of_clusters = 64;
     for (0..16) |i| disk[0][i * 32] = 0x85;
+    layBitmapEntry(0x01); // cluster 2 in use; the append picks 3
     var dir = std.mem.zeroes(c.exfat_dir_t);
     dir.cluster = 2;
-    dir.contig_end = 2;
+    dir.contig_end = 3; // exclusive: the dir owns clusters 2..2
     var units: [c.k_exfat_name_cap]u16 = @splat(0);
     const name = "notes.txt";
     for (name, 0..) |ch, i| units[i] = ch;
@@ -495,7 +457,7 @@ test "link grows the directory when its run is full" {
     try std.testing.expectEqual(@as(u32, 3), head.cluster);
     try std.testing.expectEqual(@as(u32, 0), head.index);
     try std.testing.expectEqual(@as(u32, 3), count);
-    try std.testing.expectEqual(@as(u32, 1), grow_calls);
+    // the real grow_dir runs now, so the knob-injection grow counter is dead
     try std.testing.expectEqual(@as(u8, 0x85), disk[1][0]);
     try std.testing.expectEqual(@as(u8, 2), disk[1][1]);
     try std.testing.expectEqual(@as(u8, 9), disk[1][35]);
@@ -536,10 +498,4 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[8] = 'X';
     out11[9] = 'T';
     out11[10] = '0';
-}
-
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_c.* = 6;
-    return 0;
 }

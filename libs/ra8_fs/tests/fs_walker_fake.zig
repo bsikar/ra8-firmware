@@ -57,6 +57,10 @@ pub var name_err: u16 = 0;
 pub var bpb_err: u16 = 0;
 pub var dir_cluster: u32 = 5;
 pub var dir_lba: u64 = 4;
+
+/// Per-test choice of what the dir_lba read serves: the laid sector buffer
+/// (FAT fixtures live there) or the dir[] slots (the exFAT fixture model).
+pub var dir_lba_serves_sector: bool = false;
 pub var lookup_err: u16 = 0;
 pub var lookup_strm: [entry_bytes]u8 = @splat(0);
 pub var lookup_attr: u8 = 0;
@@ -84,8 +88,16 @@ pub fn usedFiles() u32 {
 }
 
 pub fn reset(fs_type: u8) void {
+    dir_lba_serves_sector = false;
     for (&dir) |*e| e.* = @splat(0);
     dir[0][0] = 0x81; // allocation bitmap
+    // The entry carries its own stream fields: first cluster maps to
+    // bitmap_lba (cluster_to_lba is first_data + (cluster - 2) * spc, and
+    // first_data is 1 here, so cluster = bitmap_lba + 1), plus the bitmap
+    // byte length. Without them find_bitmap reads cluster 0 and
+    // cluster_to_lba wraps to u64 max, overflowing the lba add.
+    std.mem.writeInt(u32, dir[0][@intCast(c.k_exfat_strm_off_clus)..][0..4], @intCast(bitmap_lba + 1), .little);
+    std.mem.writeInt(u32, dir[0][@intCast(c.k_exfat_strm_off_dlen)..][0..4], 1024, .little);
     dir[1][0] = 0x82; // up-case table
     mount_store = std.mem.zeroes(c.ra8_fs_mount_t);
     mount_store.in_use = 1;
@@ -105,8 +117,19 @@ pub fn reset(fs_type: u8) void {
     mount_store.first_fat_lba = fat_lba;
     mount_store.fat_size_sectors = fat_secs;
     mount_store.num_fats = 1;
+    // A real volume size: priv_free_chain refuses to walk when the mount
+    // reports zero clusters, which silently skipped chain frees in tests
+    // that never set this field.
+    mount_store.count_of_clusters = 4096;
     al.priv_fat_cache_reset();
     mount_store.root_cluster = 5;
+    // FAT12/16 root lives in the fixed region: point it at the laid sector
+    // and size it to the 16 entries that sector holds. Without these the
+    // walker reads LBA 0 for zero sectors and every root lookup misses.
+    if (fs_type == c.k_ra8_fs_type_fat16 or fs_type == c.k_ra8_fs_type_fat12) {
+        mount_store.first_root_lba = walk_lba;
+        mount_store.root_entries = eps;
+    }
     @memset(sector, 0);
     read_error = 0;
     written_index = null;
@@ -153,32 +176,6 @@ pub fn reset(fs_type: u8) void {
     dir_lba = 4;
     flush_calls = 0;
     flush_err = 0;
-}
-
-export fn priv_exfat_write_dir_set(m: [*c]const c.ra8_fs_mount_t, cluster: u32, idx: u32, set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    _ = m;
-    written_cluster = cluster;
-    written_index = idx;
-    @memcpy(dir[idx][0..bytes], set[0..bytes]);
-    return 0;
-}
-
-export fn priv_exfat_find_set(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, path: [*c]const u8, pos: [*c]c.exfat_setpos_t, max_pos: u32, out_count: [*c]u32, file_copy: [*c]u8, strm_copy: [*c]u8) callconv(.c) u16 {
-    _ = .{ m, path };
-    if (find_set_err != 0) return find_set_err;
-    if (set_copies) {
-        @memcpy(file_copy[0..entry_bytes], &set_file);
-        @memcpy(strm_copy[0..entry_bytes], &set_strm);
-    }
-    const n = @min(set_count, max_pos);
-    for (0..n) |k| pos[k] = .{ .cluster = d.*.cluster, .index = @intCast(2 + k) };
-    out_count.* = n;
-    return 0;
-}
-
-export fn priv_exfat_set_checksum(set: [*c]const u8, bytes: u32) callconv(.c) u16 {
-    checksum_bytes = bytes;
-    return 0xA000 | @as(u16, set[4]);
 }
 
 /// Lay a plain 8.3 directory entry into the sector buffer at slot `at`: the
@@ -272,11 +269,15 @@ fn read_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]u8) callc
         return 0;
     }
     if (lba == dir_lba) {
-        for (0..slots) |i| {
-            @memcpy(buf[i * entry_bytes ..][0..entry_bytes], &dir[i]);
-        }
-        for (slots..eps) |i| {
-            buf[i * entry_bytes ..][0..entry_bytes].* = @splat(0x85);
+        if (dir_lba_serves_sector and mount_store.type != c.k_ra8_fs_type_exfat) {
+            std.mem.copyForwards(u8, buf[0..512], @as([*]const u8, sector)[0..512]);
+        } else {
+            for (0..slots) |i| {
+                @memcpy(buf[i * entry_bytes ..][0..entry_bytes], &dir[i]);
+            }
+            for (slots..eps) |i| {
+                buf[i * entry_bytes ..][0..entry_bytes].* = @splat(0x85);
+            }
         }
         return 0;
     }
@@ -303,6 +304,11 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
         return 0;
     }
     if (sector_write_err != 0) return sector_write_err;
+    // Round-trip dir-sector writes into the laid sector so erase and
+    // rollback asserts observe real state.
+    if (lba == dir_lba and dir_lba_serves_sector and mount_store.type != c.k_ra8_fs_type_exfat) {
+        std.mem.copyForwards(u8, sector[0..512], @as([*]const u8, buf)[0..512]);
+    }
     sector_written = lba;
     return 0;
 }
@@ -324,55 +330,4 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[10] = '0';
 }
 
-export fn priv_exfat_find_bitmap(m: [*c]const c.ra8_fs_mount_t, out_clus: [*c]u32, out_len: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    out_clus.* = bitmap_lba - 1 + 2;
-    out_len.* = 1024;
-    return bitmap_err;
-}
-/// The exFAT rotate-add checksum (spec sec 6.3.3), standing in for the C one.
-export fn priv_exfat_csum32(cs: u32, buf: [*c]const u8, len: u32) callconv(.c) u32 {
-    var sum = cs;
-    for (buf[0..len]) |b| sum = std.math.rotr(u32, sum, 1) +% b;
-    return sum;
-}
-
 // --- dir lookup/insert fakes for the FAT open path (RA8FW-1092) ---
-
-export fn priv_exfat_resolve_parent(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_parent: [*c]c.exfat_dir_t, out_leaf: [*c][*c]const u8) callconv(.c) u16 {
-    _ = m;
-    if (parent_err != 0) return parent_err;
-    out_parent.* = std.mem.zeroes(c.exfat_dir_t);
-    out_parent.*.cluster = 5;
-    out_leaf.* = path;
-    return 0;
-}
-
-export fn priv_exfat_link(m: [*c]const c.ra8_fs_mount_t, d: [*c]const c.exfat_dir_t, name: [*c]const u16, nlen: u32, out_head: [*c]c.exfat_setpos_t, out_count: [*c]u32) callconv(.c) u16 {
-    _ = .{ m, name, nlen };
-    if (link_err != 0) return link_err;
-    out_head.* = .{ .cluster = d.*.cluster, .index = 6 };
-    out_count.* = link_count;
-    return 0;
-}
-
-export fn priv_exfat_free_clusters(m: [*c]const c.ra8_fs_mount_t, strm: [*c]const u8) callconv(.c) u16 {
-    _ = .{ m, strm };
-    free_calls += 1;
-    return free_err;
-}
-
-export fn priv_exfat_flush_set(file: [*c]c.ra8_fs_file_t) callconv(.c) u16 {
-    _ = file;
-    flush_calls += 1;
-    return flush_err;
-}
-/// FAT first-cluster decode, standing in for the C one in ra8_fs_fat_file.c.
-export fn priv_exfat_lookup(m: [*c]const c.ra8_fs_mount_t, path: [*c]const u8, out_strm: [*c]u8, out_attr: [*c]u8) callconv(.c) u16 {
-    _ = m;
-    _ = path;
-    if (lookup_err != 0) return lookup_err;
-    @memcpy(out_strm[0..entry_bytes], &lookup_strm);
-    out_attr.* = lookup_attr;
-    return 0;
-}

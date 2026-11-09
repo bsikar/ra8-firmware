@@ -84,6 +84,17 @@ pub export fn priv_alloc_state_bind(m: ?*const Mount) callconv(.c) void {
     };
 }
 
+/// Test support and mount teardown: return every slot to unowned, so a
+/// fresh bind never inherits a previous owner's hint, free count or bitmap
+/// cache. Mirrors `priv_fat_cache_reset`, for the same reason: the state is
+/// keyed by mount pointer, and a recycled mount address must not read the
+/// previous owner's answer.
+pub export fn priv_alloc_state_reset() callconv(.c) void {
+    for (&s_alloc) |*st| {
+        st.* = .{};
+    }
+}
+
 pub export fn priv_exfat_bitmap_lba(m: ?*const Mount, out_lba: *u64) callconv(.c) u16 {
     // Nested rather than joined, as in the C: a mount with no bound slot is
     // not a mount with a cold cache, and no input can produce the first.

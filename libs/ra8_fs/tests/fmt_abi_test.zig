@@ -192,11 +192,3 @@ test "emit_volume stops at the first failed write" {
     try std.testing.expect(rc != fmt.ok);
     try std.testing.expectEqual(@as(u32, 2), d.writes);
 }
-
-// The allocator path references the e-reader heap hook the fake does not
-// model; tests here never reach a real allocation.
-export fn priv_alloc_eoc_cluster(m: [*c]const u8, out_c: [*c]u32) callconv(.c) u16 {
-    _ = m;
-    _ = out_c;
-    return c.k_ra8_err_not_found;
-}
