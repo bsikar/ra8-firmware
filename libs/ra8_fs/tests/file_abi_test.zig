@@ -166,9 +166,10 @@ test "truncate failure frees the slot and reports the error" {
     const err = ra8_fs.file.priv_open_locked(@constCast(fake.mount()), "a.txt", mode_write, &f);
     try std.testing.expectEqual(@as(u16, 0x21), err);
     try std.testing.expect(f == null);
-    // the slot the open took was released
+    // every slot the open took was released
+    try std.testing.expectEqual(@as(u32, 0), st.s_files[0].in_use);
     try std.testing.expectEqual(@as(u32, 0), st.s_files[1].in_use);
-    try std.testing.expectEqual(@as(u32, 1), fake.usedFiles());
+    try std.testing.expectEqual(@as(u32, 0), fake.usedFiles());
 }
 
 test "create_new carves an empty archive entry and stamps its creation" {

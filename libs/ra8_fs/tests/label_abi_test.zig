@@ -166,6 +166,8 @@ test "exFAT mounts route to the exFAT label writer" {
     fake.reset(c.k_ra8_fs_type_exfat); // default exFAT root: bitmap + up-case entries
     const m = fake.mount();
     try std.testing.expectEqual(ok, label.ra8_fs_set_label(m, "XY"));
-    try std.testing.expectEqual(@as(u32, 5), fake.written_cluster);
-    try std.testing.expectEqual(@as(?u32, 2), fake.written_index);
+    // the exFAT route wrote the label entry at the root's end-of-directory slot
+    try std.testing.expectEqual(@as(u8, 0x83), fake.dir[2][0]);
+    try std.testing.expectEqual(@as(u8, 'X'), fake.dir[2][2]);
+    try std.testing.expectEqual(@as(u8, 'Y'), fake.dir[2][4]);
 }

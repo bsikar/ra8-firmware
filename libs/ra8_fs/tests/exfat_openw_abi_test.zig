@@ -87,6 +87,7 @@ fn existing(attr: u8, clus: u32, len: u64, valid: u64, flags: u8) void {
 }
 
 fn existingCount(attr: u8, clus: u32, len: u64, valid: u64, flags: u8, secnt: u8) void {
+    _ = clus;
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.mount_store.count_of_clusters = 30;
     // Root: reset stages the two system entries; "dir" follows at slot 2.
