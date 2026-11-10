@@ -320,6 +320,12 @@ fn write_block_backend(ctx: ?*anyopaque, lba: u64, count: u32, buf: [*c]const u8
     // rollback asserts observe real state.
     if (lba == dir_lba and dir_lba_serves_sector and mount_store.type != c.k_ra8_fs_type_exfat) {
         std.mem.copyForwards(u8, sector[0..512], @as([*]const u8, buf)[0..512]);
+    } else if (lba == dir_lba) {
+        // Dir writes round-trip into the served slots: the read path serves
+        // dir[] here, so asserts observe real state.
+        for (0..slots) |i| {
+            @memcpy(&dir[i], buf[i * entry_bytes ..][0..entry_bytes]);
+        }
     }
     sector_written = lba;
     return 0;
