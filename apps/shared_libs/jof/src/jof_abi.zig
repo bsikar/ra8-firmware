@@ -9,7 +9,9 @@
 //! beside them (the ra8_fs pattern). The pure-math work sizer landed first
 //! (RA8FW-1140); the streaming trio is the whole of jof_produce_webp.c
 //! (RA8FW-1141), and the PNG chunk layer is the whole of jof_png_chunk.c
-//! (RA8FW-1142). Both TUs are retired.
+//! (RA8FW-1142). Both TUs are retired. The memstore sink/pread pair and the
+//! tile-access helpers (tile dims, stored bound) are ported from jof.c
+//! (RA8FW-1147); jof.c keeps parse/validate and the bounded per-tile decode.
 
 const jof_h = @import("jof_h");
 
@@ -1197,6 +1199,135 @@ pub export fn jof_audit(
         return jof_h.k_ra8_err_validation_failed;
     }
     return jof_h.k_ra8_ok;
+}
+
+// ---------------------------------------------------------------------------
+// jof.c retirement: memstore backing + tile-access helpers (RA8FW-1147).
+// ---------------------------------------------------------------------------
+
+/// Worst-case stored-stream expansion bound: raw + raw/8 + 256. The bound
+/// terms live only in jof.c's jof_bound_t enum, so they are restated here.
+/// Ports jof_stored_bound.
+pub export fn jof_stored_bound(raw_bytes: u32) callconv(.c) u32 {
+    const k_jof_bound_div: u32 = 8;
+    const k_jof_bound_add: u32 = 256;
+    return raw_bytes + raw_bytes / k_jof_bound_div + k_jof_bound_add;
+}
+
+/// Pixel rect of tile (tile_x, tile_y), clamped at the atlas edges. The last
+/// column/row is the short one when the atlas is not a multiple of the tile
+/// grid. Ports jof_tile_dims.
+pub export fn jof_tile_dims(
+    info: [*c]const jof_h.jof_info_t,
+    tile_x: u16,
+    tile_y: u16,
+    out_w: [*c]u16,
+    out_h: [*c]u16,
+) callconv(.c) jof_h.ra8_err_t {
+    if (info == null or out_w == null or out_h == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    const inf = info.*;
+    if (tile_x >= inf.tile_cols) {
+        return jof_h.k_ra8_err_out_of_range;
+    }
+    if (tile_y >= inf.tile_rows) {
+        return jof_h.k_ra8_err_out_of_range;
+    }
+    const px: u32 = @as(u32, tile_x) * @as(u32, inf.tile_w);
+    const py: u32 = @as(u32, tile_y) * @as(u32, inf.tile_h);
+    const rest_w: u32 = @as(u32, inf.width) - px;
+    const rest_h: u32 = @as(u32, inf.height) - py;
+    out_w.* = @intCast(@min(rest_w, @as(u32, inf.tile_w)));
+    out_h.* = @intCast(@min(rest_h, @as(u32, inf.tile_h)));
+    return jof_h.k_ra8_ok;
+}
+
+/// Append bytes to a jof_memstore_t (producer sink). Fails closed at the
+/// store's capacity so a hostile source can never write past cap.
+/// Ports jof_memstore_sink.
+pub export fn jof_memstore_sink(ctx: ?*anyopaque, buf: [*c]const u8, len: usize) callconv(.c) jof_h.ra8_err_t {
+    if (ctx == null or buf == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    const store: *jof_h.jof_memstore_t = @ptrCast(@alignCast(ctx.?));
+    if (store.buf == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (len > store.cap - store.len) {
+        return jof_h.k_ra8_err_no_mem;
+    }
+    @memcpy(store.buf[store.len..][0..len], buf[0..len]);
+    store.len += len;
+    return jof_h.k_ra8_ok;
+}
+
+/// Positioned read from a jof_memstore_t (reader seam). Reads clamp at the
+/// stored length; a read at/after the end reports got == 0 without error.
+/// Ports jof_memstore_pread.
+pub export fn jof_memstore_pread(ctx: ?*anyopaque, offset: u64, buf: [*c]u8, len: usize, got: [*c]usize) callconv(.c) jof_h.ra8_err_t {
+    if (ctx == null or buf == null or got == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    got.* = 0;
+    const store: *jof_h.jof_memstore_t = @ptrCast(@alignCast(ctx.?));
+    if (store.buf == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (offset >= store.len) {
+        return jof_h.k_ra8_ok;
+    }
+    const avail: usize = store.len - @as(usize, @intCast(offset));
+    const take: usize = @min(len, avail);
+    @memcpy(buf[0..take], store.buf[@as(usize, @intCast(offset))..][0..take]);
+    got.* = take;
+    return jof_h.k_ra8_ok;
+}
+
+test "jof_stored_bound matches the C arithmetic" {
+    try std.testing.expectEqual(@as(u32, 256), jof_stored_bound(0));
+    try std.testing.expectEqual(@as(u32, 8 + 1 + 256), jof_stored_bound(8));
+    try std.testing.expectEqual(@as(u32, 16 + 2 + 256), jof_stored_bound(16));
+    try std.testing.expectEqual(@as(u32, 1024 + 128 + 256), jof_stored_bound(1024));
+}
+
+test "jof_tile_dims clamps the edge tiles and rejects the out-of-range axes" {
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    info.width = 100;
+    info.height = 70;
+    info.tile_w = 64;
+    info.tile_h = 64;
+    info.tile_cols = 2;
+    info.tile_rows = 2;
+    var w: u16 = 0;
+    var h: u16 = 0;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_tile_dims(&info, 0, 0, &w, &h));
+    try std.testing.expectEqual(@as(u16, 64), w);
+    try std.testing.expectEqual(@as(u16, 64), h);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_tile_dims(&info, 1, 1, &w, &h));
+    try std.testing.expectEqual(@as(u16, 36), w);
+    try std.testing.expectEqual(@as(u16, 6), h);
+    try std.testing.expectEqual(jof_h.k_ra8_err_out_of_range, jof_tile_dims(&info, 2, 0, &w, &h));
+    try std.testing.expectEqual(jof_h.k_ra8_err_out_of_range, jof_tile_dims(&info, 0, 2, &w, &h));
+    try std.testing.expectEqual(jof_h.k_ra8_err_null_ptr, jof_tile_dims(null, 0, 0, &w, &h));
+}
+
+test "jof_memstore round-trips through the sink and clamps pread at the end" {
+    var backing: [64]u8 = undefined;
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = 0 };
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_memstore_sink(&store, &[_]u8{ 1, 2, 3 }, 3));
+    try std.testing.expectEqual(@as(usize, 3), store.len);
+    try std.testing.expectEqual(jof_h.k_ra8_err_no_mem, jof_memstore_sink(&store, &backing, 65));
+    var got: usize = 99;
+    var out: [3]u8 = undefined;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_memstore_pread(&store, 1, &out, 3, &got));
+    try std.testing.expectEqual(@as(usize, 2), got);
+    try std.testing.expectEqual(@as(u8, 2), out[0]);
+    try std.testing.expectEqual(@as(u8, 3), out[1]);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_memstore_pread(&store, 3, &out, 1, &got));
+    try std.testing.expectEqual(@as(usize, 0), got);
+    try std.testing.expectEqual(jof_h.k_ra8_err_null_ptr, jof_memstore_sink(null, &backing, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_err_null_ptr, jof_memstore_pread(null, 0, &out, 1, &got));
 }
 
 test "audit rd_u32 and FNV-1a match the C arithmetic" {
