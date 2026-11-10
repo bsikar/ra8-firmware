@@ -1,8 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! exFAT volume-label get/set (RA8FW-729). The C directory walkers are faked
-//! over an in-memory root directory of one cluster.
+//! exFAT volume-label get/set (RA8FW-729). Runs against the real directory
+//! walk and write paths over the shared in-memory fixture.
 
 const std = @import("std");
 const fs = @import("ra8_fs");
@@ -30,21 +30,26 @@ test "unlabelled volume reads as empty" {
 test "set then get round-trips and writes at the end-of-directory slot" {
     reset();
     try std.testing.expectEqual(lbl.ok, lbl.priv_exfat_set_label(mount(), "RA8BOOK"));
-    try std.testing.expectEqual(@as(?u32, 2), fake.written_index);
-    try std.testing.expectEqual(@as(u32, 5), fake.written_cluster);
+    try std.testing.expectEqual(lbl.entry_label, dir[2][0]);
+    try std.testing.expectEqual(@as(u8, 'R'), dir[2][lbl.lbl_name]);
     var buf: [16]u8 = undefined;
     try std.testing.expectEqualStrings("RA8BOOK", try getLabel(&buf));
 }
 
 test "set rewrites an existing entry in place, cleared entries read empty" {
     reset();
-    dir[3][0] = 0x03; // cleared label after a file entry
-    dir[2][0] = 0x85;
+    dir[2][0] = lbl.entry_label; // present label "OLD"
+    dir[2][lbl.lbl_cnt] = 3;
+    dir[2][lbl.lbl_name] = 'O';
+    dir[2][lbl.lbl_name + 2] = 'L';
+    dir[2][lbl.lbl_name + 4] = 'D';
     var buf: [16]u8 = undefined;
-    try std.testing.expectEqualStrings("", try getLabel(&buf));
+    try std.testing.expectEqualStrings("OLD", try getLabel(&buf));
     try std.testing.expectEqual(lbl.ok, lbl.priv_exfat_set_label(mount(), "NEW"));
-    try std.testing.expectEqual(@as(?u32, 3), fake.written_index);
+    try std.testing.expectEqual(lbl.entry_label, dir[2][0]); // rewritten in place
     try std.testing.expectEqualStrings("NEW", try getLabel(&buf));
+    dir[2][0] = lbl.entry_label & ~lbl.inuse_bit; // cleared entry reads empty
+    try std.testing.expectEqualStrings("", try getLabel(&buf));
 }
 
 test "label is capped at 11 characters and by the output buffer" {
