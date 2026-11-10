@@ -1507,6 +1507,115 @@ fn makeMinimalAtlas(backing: []u8) void {
     @memcpy(backing[60..64], "JOFE");
 }
 
+// ---- producer scaffolding: arena carve + work sizing (ported from jof_produce.c, RA8FW-1150) ----
+
+/// Carve `len` 8-byte-aligned bytes from the bump arena; exhaustion is the
+/// producer's fail-closed "source too large for the budget" signal.
+/// Ports priv_jof_bump_take.
+pub export fn priv_jof_bump_take(bump: [*c]jof_h.jof_bump_t, len: usize) callconv(.c) ?*anyopaque {
+    if (bump == null or len == 0) {
+        return null;
+    }
+    const mask: usize = @as(usize, jof_h.k_jof_bump_align) - 1;
+    const aligned: usize = (bump.*.off +% mask) & ~mask;
+    if ((aligned > bump.*.cap) or (len > (bump.*.cap - aligned))) {
+        return null;
+    }
+    bump.*.off = aligned + len;
+    return @ptrCast(bump.*.base + aligned);
+}
+
+/// Sizes pinned from the vendored miniz the C TUs compile. jof_produce.c
+/// carries static asserts on both, so a miniz bump fails the C build until
+/// this port's constants move with it.
+const k_jof_tinfl_size: u64 = 8376;
+const k_jof_tdefl_size: u64 = 319352;
+/// libs/ra8_jpeg/inc/ra8_jpeg_sw.h stream constants.
+const k_jof_jpeg_stream_min_window: u64 = 131072;
+const k_jof_jpeg_stream_mcu_rows_max: u64 = 16;
+/// jof_produce.c producer carves (k_jof_png_ring / k_jof_png_inbuf).
+const k_jof_png_ring: u64 = 65536;
+const k_jof_png_inbuf: u64 = 4096;
+
+/// Working-arena size for the streaming producer, exact to the carve set the
+/// producer makes. Ports jof_work_bytes.
+pub export fn jof_work_bytes(max_width: u16, max_height: u16, tile_w: u16, tile_h: u16) callconv(.c) u32 {
+    if ((max_width == 0) or (@as(u32, max_width) > jof_h.k_jof_max_dim) or
+        (max_height == 0) or (@as(u32, max_height) > jof_h.k_jof_max_dim))
+    {
+        return 0;
+    }
+    if ((tile_w == 0) or (tile_h == 0)) {
+        return 0;
+    }
+    const cols: u64 = (@as(u64, max_width) + @as(u64, tile_w) - 1) / @as(u64, tile_w);
+    const rows: u64 = (@as(u64, max_height) + @as(u64, tile_h) - 1) / @as(u64, tile_h);
+    if (cols * rows > jof_h.k_jof_max_tiles) {
+        return 0;
+    }
+    const prod_bpp: u64 = jof_h.k_jof_bpp_max;
+    const jpeg_set: u64 = k_jof_jpeg_stream_min_window + (@as(u64, max_width) * k_jof_jpeg_stream_mcu_rows_max * 3);
+    const png_set: u64 = k_jof_tinfl_size + k_jof_png_ring + k_jof_png_inbuf +
+        (3 * (@as(u64, max_width) * prod_bpp)) + 2;
+    const dec_set: u64 = if (jpeg_set > png_set) jpeg_set else png_set;
+    const band: u64 = @as(u64, max_width) * @as(u64, tile_h) * prod_bpp;
+    const tw_eff: u64 = if (@as(u64, tile_w) < @as(u64, max_width)) @as(u64, tile_w) else @as(u64, max_width);
+    const th_eff: u64 = if (@as(u64, tile_h) < @as(u64, max_height)) @as(u64, tile_h) else @as(u64, max_height);
+    const stage: u64 = tw_eff * th_eff * prod_bpp;
+    // The C helper truncates stage to uint32 before the stored bound; at the
+    // exact 2^32 stage the bound wraps to zero, and the total check below
+    // refuses the call anyway. Keep the truncation verbatim.
+    const cmp: u64 = jof_stored_bound(@truncate(stage));
+    const index_bytes: u64 = cols * rows * @as(u64, jof_h.k_jof_index_entry);
+    const total: u64 = dec_set + band + stage + cmp + index_bytes + k_jof_tdefl_size + jof_h.k_jof_carve_slack;
+    if ((stage > std.math.maxInt(u32)) or (total > std.math.maxInt(u32))) {
+        return 0;
+    }
+    return @intCast(total);
+}
+
+test "priv_jof_bump_take carves aligned, advances, and fail-closes" {
+    var arena: [64]u8 = undefined;
+    var bump = jof_h.jof_bump_t{ .base = &arena, .cap = arena.len, .off = 0 };
+    try std.testing.expect(priv_jof_bump_take(null, 1) == null);
+    try std.testing.expect(priv_jof_bump_take(&bump, 0) == null);
+    const a = priv_jof_bump_take(&bump, 1).?;
+    try std.testing.expectEqual(@as(usize, 0), @intFromPtr(a) - @intFromPtr(&arena));
+    try std.testing.expectEqual(@as(usize, 1), bump.off);
+    const b = priv_jof_bump_take(&bump, 9).?;
+    try std.testing.expectEqual(@intFromPtr(&arena) + 8, @intFromPtr(b));
+    try std.testing.expectEqual(@as(usize, 17), bump.off);
+    const c = priv_jof_bump_take(&bump, 1).?;
+    try std.testing.expectEqual(@intFromPtr(&arena) + 24, @intFromPtr(c));
+    try std.testing.expectEqual(@as(usize, 25), bump.off);
+    // 40 more bytes would need bytes 32..72 of a 64-byte arena: refused, and
+    // the arena state is unchanged on refusal.
+    try std.testing.expect(priv_jof_bump_take(&bump, 40) == null);
+    try std.testing.expectEqual(@as(usize, 25), bump.off);
+}
+
+test "jof_work_bytes refuses out-of-range geometry" {
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(0, 1024, 128, 128));
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(40000, 1024, 128, 128));
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(1024, 0, 128, 128));
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(1024, 40000, 128, 128));
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(1024, 1024, 0, 128));
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(1024, 1024, 128, 0));
+    // 1x1 tiles over a full-canvas atlas blow the 65536-tile grid cap.
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(32768, 32768, 1, 1));
+    // A max-canvas tile pushes stage (and the total) past the u32 format cap.
+    try std.testing.expectEqual(@as(u32, 0), jof_work_bytes(32768, 32768, 32768, 32768));
+}
+
+test "jof_work_bytes matches the C working-set composition" {
+    // w = h = tile_w = tile_h = 64: jpeg_set = 131072 + 64*16*3 = 134144;
+    // png_set = 8376 + 65536 + 4096 + 3*64*4 + 2 = 78778, so dec_set = 134144;
+    // band = stage = 64*64*4 = 16384; cmp = 16384 + 2048 + 256 = 18688;
+    // index = 1*1*8 = 8; dfl = 319352; slack = 128 -> 505088.
+    try std.testing.expectEqual(@as(u32, 505088), jof_work_bytes(64, 64, 64, 64));
+    try std.testing.expect(jof_work_bytes(1024, 1024, 128, 128) > 0);
+}
+
 // ---- jof_read_tile: bounded per-tile decode (ported from jof.c, RA8FW-1149) ----
 
 /// Deflate seam from ra8_compress (the C TU consumers compile beside the archive).
