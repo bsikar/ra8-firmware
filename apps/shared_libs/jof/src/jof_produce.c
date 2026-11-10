@@ -45,13 +45,12 @@ _Static_assert(sizeof(tinfl_decompressor) == 8376U, "tinfl size pinned for the Z
 _Static_assert(sizeof(tdefl_compressor) == 319352U, "tdefl size pinned for the Zig jof_work_bytes port");
 
 /** @brief Module log tag. */
-/* Ported to Zig (jof_abi.zig, RA8FW-1151); the remaining producer body
+/* Ported to Zig (jof_abi.zig, RA8FW-1151/1152); the remaining producer body
  * reaches these through the archive link. */
 extern void      internal_wr_u16(uint8_t* buf, uint16_t v);
 extern void      internal_wr_u32(uint8_t* buf, uint32_t v);
 extern ra8_err_t internal_sink(jof_prod_state_t* st, const uint8_t* buf, size_t len);
-extern ra8_err_t internal_emit_header(jof_prod_state_t* st);
-extern ra8_err_t internal_carve_pixel_path(jof_prod_state_t* st);
+extern ra8_err_t internal_flush_band(jof_prod_state_t* st, uint32_t th);
 
 static const char* const s_tag = "jof_prod";
 
@@ -123,132 +122,6 @@ RA8_INTERNAL static ra8_imgdec_format_t internal_sniffed(const uint8_t* data, si
  * Geometry + band accumulation + tile flush.
  * ---------------------------------------------------------------------------
  */
-
-/**
- * @brief Encode one packed tile payload and append it to the atlas.
- * @details Raw codec sinks the payload verbatim; the deflate codec runs it
- *          through the zero-heap `ra8_compress()` into the bounded
- *          compressed-tile buffer. The tile's index entry (absolute offset
- *          plus stored length) is recorded before the bytes are sunk.
- * @param[in,out] st      Producer state.
- * @param[in]     payload Packed tile byte count (`tw * th * bpp`).
- * @return Result code.
- * @retval k_ra8_ok                    Tile encoded, recorded and sunk.
- * @retval k_ra8_err_validation_failed The compressor overran its bound
- *                                     (cannot happen for real inputs).
- * @retval other                       Propagated from the sink.
- * @pre `st->stage` holds @p payload packed bytes.
- * @pre `st->tiles_done < st->tile_count`.
- * @post On success `tiles_done` advanced and the index entry is recorded.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_encode_tile(jof_prod_state_t* st, uint32_t payload)
-{
-  const uint8_t* out_bytes = st->stage;
-  uint32_t       out_len   = payload;
-  if (st->cfg->codec == (uint8_t)k_jof_codec_deflate) {
-    uint32_t clen = 0U;
-    if (ra8_compress(st->stage, payload, st->cmp, st->cmp_cap, st->dfl, st->dfl_len, &clen) !=
-        k_ra8_ok) {
-      return k_ra8_err_validation_failed;
-    }
-    out_bytes = st->cmp;
-    out_len   = clen;
-  }
-  uint8_t* entry = &st->idx[(size_t)st->tiles_done * (size_t)k_jof_index_entry];
-  internal_wr_u32(&entry[k_jof_idx_ofs_offset], st->written);
-  internal_wr_u32(&entry[k_jof_idx_ofs_length], out_len);
-  const ra8_err_t err = internal_sink(st, out_bytes, (size_t)out_len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  st->tiles_done++;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Cut the accumulated band into tiles and append each to the atlas.
- * @details Iterates the tile columns left to right (row-major tile order),
- *          packing each tile's rows tightly into the stage buffer before
- *          encoding. Edge columns carry their clamped width.
- * @param[in,out] st Producer state (band consumed; tiles emitted).
- * @param[in]     th Rows in this band (tile_h, or less for the last band).
- * @return Result code.
- * @retval k_ra8_ok Every tile of the band was encoded and sunk.
- * @retval other    Propagated from the encode/sink stage.
- * @pre `st->band` holds `th` complete rows.
- * @pre `th >= 1`.
- * @post On success `tiles_done` advanced by `tile_cols`.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_flush_band(jof_prod_state_t* st, uint32_t th)
-{
-  const uint32_t stride = (uint32_t)st->w * (uint32_t)st->bpp;
-  for (uint32_t tx = 0U; tx < (uint32_t)st->tile_cols; tx++) {
-    const uint32_t x0        = tx * (uint32_t)st->cfg->tile_w;
-    const uint32_t tw        = (((uint32_t)st->w - x0) < (uint32_t)st->cfg->tile_w)
-                                 ? ((uint32_t)st->w - x0)
-                                 : (uint32_t)st->cfg->tile_w;
-    const uint32_t row_bytes = tw * (uint32_t)st->bpp;
-    for (uint32_t r = 0U; r < th; r++) {
-      (void)memcpy(&st->stage[(size_t)r * (size_t)row_bytes],
-                   &st->band[((size_t)r * (size_t)stride) + ((size_t)x0 * (size_t)st->bpp)],
-                   (size_t)row_bytes);
-    }
-    const ra8_err_t err = internal_encode_tile(st, row_bytes * th);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_ok;
-}
-
-RA8_PRIV ra8_err_t priv_jof_on_rows(void*          ctx,
-                                    const uint8_t* px,
-                                    uint16_t       width,
-                                    uint16_t       y0,
-                                    uint16_t       nrows,
-                                    uint8_t        channels)
-{
-  jof_prod_state_t* st = (jof_prod_state_t*)ctx;
-  RA8_CHECK_NULL_PTR(px, s_tag, "px must not be nullptr");
-  if ((st->geom_done == 0U) || (width != st->w) || (channels != st->bpp)) {
-    return k_ra8_err_validation_failed;
-  }
-  // mcdc-deactivated: row-ordering contract guard; the PNG scanline assembler emits exactly one row per call at y0 == rows_done and the JPEG stripe walker emits edge-clamped nrows >= 1 at strictly increasing MCU-row origins, so zero/duplicated/overshooting deliveries are not constructible from a public-API source.
-  if ((nrows == 0U) || ((uint32_t)y0 != st->rows_seen) ||
-      (((uint32_t)y0 + (uint32_t)nrows) > (uint32_t)st->h)) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint32_t stride = (uint32_t)st->w * (uint32_t)st->bpp;
-  const uint8_t* src    = px;
-  uint32_t       left   = nrows;
-  while (left > 0U) {
-    const uint32_t room = (uint32_t)st->cfg->tile_h - st->band_fill;
-    const uint32_t take = (left < room) ? left : room;
-    (void)memcpy(&st->band[(size_t)st->band_fill * (size_t)stride],
-                 src,
-                 (size_t)take * (size_t)stride);
-    st->band_fill += take;
-    st->rows_seen += take;
-    src = &src[(size_t)take * (size_t)stride];
-    left -= take;
-    if (st->band_fill == (uint32_t)st->cfg->tile_h) {
-      const ra8_err_t err = internal_flush_band(st, st->band_fill);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      st->band_fill = 0U;
-    }
-  }
-  return k_ra8_ok;
-}
 
 /**
  * @brief JPEG geometry adapter: bind geometry, then carve the MCU stripe.
