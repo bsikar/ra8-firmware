@@ -99,14 +99,17 @@ test "grow appends one zeroed cluster at the chain's end" {
     var loc: c.dir_loc_t = std.mem.zeroes(c.dir_loc_t);
     loc.cluster = 11; // first_data_lba 1: cluster 11 -> lba 10 = walk_lba
     fake.fat[11] = 0xFFFF_FFF8; // the subdir chain (cluster 11) ends here (the fake FAT indexes by cluster)
+    // Bind the mount so the next-free hint is the mount's own first data
+    // cluster: the fresh cluster is whatever the alloc scan finds, and the
+    // test asserts the link against that, not a constant some earlier
+    // test's leaked hint used to hand over.
+    defer _ = fs.alloc.priv_alloc_state_release(m);
+    fs.alloc.priv_alloc_state_bind(m);
     try std.testing.expectEqual(ok, write.internal_dir_grow(m, &loc));
     // The zero write and the FAT link write both ran; sector_written holds the last one (the FAT write).
     try std.testing.expect(fake.sector_written != null);
-    var linked = false;
-    for (fake.fat) |v| {
-        if (v == 6) linked = true;
-    }
-    try std.testing.expect(linked);
+    try std.testing.expectEqual(@as(u32, 2), fake.fat[11]); // the chain's end now points at the fresh cluster
+    try std.testing.expect(fake.fat[2] >= 0xFFF8); // the fresh cluster ends the chain (FAT16 end-of-chain)
 }
 
 test "a failed FAT link leaves the returned error intact" {
