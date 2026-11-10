@@ -3,12 +3,12 @@
  * @brief JOF atlas reader: parse/validate + bounded per-tile decode.
  *
  * @details
- * Implements the fail-closed structural validation (`jof_parse`)
- * and the bounded decode-one-tile primitive (`jof_read_tile`)
+ * Implements the bounded decode-one-tile primitive (`jof_read_tile`)
  * documented in `jof.h`. Deflate tiles inflate through the
  * zero-heap `ra8_decompress()`; raw tiles are a single positioned read.
- * The memstore helpers live in `jof_abi.zig` (RA8FW-1147); this TU keeps
- * parse/validate and the bounded per-tile decode.
+ * The memstore helpers (RA8FW-1147) and the structural validation
+ * (`jof_parse`, RA8FW-1148) live in `jof_abi.zig`; this TU keeps the
+ * bounded per-tile decode.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,7 +21,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_check.h"
@@ -45,40 +44,12 @@ typedef enum : uint8_t {
   k_jof_le_sh24 = 24U, /**< 24-bit shift.        */
 } jof_le_t;
 
-/**
- * @enum jof_bound_t
- * @brief Worst-case stored-stream expansion terms (see the header contract).
- */
-typedef enum : uint16_t {
-  k_jof_bound_div = 8U,   /**< Expansion denominator (raw / 8). */
-  k_jof_bound_add = 256U, /**< Fixed expansion margin, bytes.   */
-} jof_bound_t;
 
 /* ---------------------------------------------------------------------------
  * Small pure helpers.
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @brief Read a little-endian uint16 from @p buf at @p off.
- * @details Assembles the two little-endian bytes at @p off.
- * @param[in] buf Source bytes.
- * @param[in] off Field offset.
- * @return The assembled 16-bit value.
- * @retval 0-65535 Little-endian uint16 from the two bytes at @p off.
- * @pre @p buf holds at least `off + 2` readable bytes.
- * @pre @p off is a header/footer field offset.
- * @post No state mutated.
- * @post Return depends solely on the two bytes read.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static uint16_t internal_rd_u16(const uint8_t* buf, uint8_t off)
-{
-  return (uint16_t)((uint16_t)buf[off + k_jof_le_b0] |
-                    (uint16_t)((uint16_t)buf[off + k_jof_le_b1] << k_jof_le_sh8));
-}
 
 /**
  * @brief Read a little-endian uint32 from @p buf at @p off.
@@ -102,25 +73,6 @@ RA8_INTERNAL static uint32_t internal_rd_u32(const uint8_t* buf, uint8_t off)
          ((uint32_t)buf[off + k_jof_le_b3] << k_jof_le_sh24);
 }
 
-/**
- * @brief Ceil-divide @p n by @p d (d > 0).
- * @details Integer ceiling division for tile-grid geometry.
- * @param[in] n Numerator.
- * @param[in] d Denominator (> 0).
- * @return `ceil(n / d)`.
- * @retval 0-UINT32_MAX The ceiling of the division.
- * @pre @p d is non-zero.
- * @pre `n + d - 1` does not overflow uint32_t (true for pixel dims).
- * @post No state mutated.
- * @post Return times @p d is >= @p n.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static uint32_t internal_ceil_div(uint32_t n, uint32_t d)
-{
-  return (n + d - 1U) / d;
-}
 
 /**
  * @brief Exact positioned read: EOF or a short read is a validation failure.
@@ -161,144 +113,8 @@ internal_pread_exact(jof_pread_fn pread, void* pread_ctx, uint64_t off, uint8_t*
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @brief Validate the header geometry fields into @p info (fail-closed).
- * @details Single-condition guards so each rejection is independently
- *          testable; the compound cross-checks live in the caller.
- * @param[in]     hdr  The 32 header bytes.
- * @param[in,out] info Geometry output (fields filled before checks).
- * @return Result code.
- * @retval k_ra8_ok                    Geometry fields legal.
- * @retval k_ra8_err_validation_failed A field is zero, over-cap, or illegal.
- * @pre @p hdr holds ::k_jof_hdr_bytes bytes.
- * @pre @p info is writable.
- * @post On success width/height/tile geometry + bpp/codec are populated.
- * @post On failure @p info is partially written and must not be used.
- * @note Thread-safe (pure over its inputs).
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_parse_hdr_fields(const uint8_t* hdr, jof_info_t* info)
-{
-  info->width  = internal_rd_u16(hdr, (uint8_t)k_jof_ofs_width);
-  info->height = internal_rd_u16(hdr, (uint8_t)k_jof_ofs_height);
-  info->tile_w = internal_rd_u16(hdr, (uint8_t)k_jof_ofs_tile_w);
-  info->tile_h = internal_rd_u16(hdr, (uint8_t)k_jof_ofs_tile_h);
-  info->bpp    = hdr[k_jof_ofs_bpp];
-  info->codec  = hdr[k_jof_ofs_codec];
-  if (info->width == 0U) {
-    return k_ra8_err_validation_failed;
-  }
-  if ((uint32_t)info->width > (uint32_t)k_jof_max_dim) {
-    return k_ra8_err_validation_failed;
-  }
-  if (info->height == 0U) {
-    return k_ra8_err_validation_failed;
-  }
-  if ((uint32_t)info->height > (uint32_t)k_jof_max_dim) {
-    return k_ra8_err_validation_failed;
-  }
-  if (info->tile_w == 0U) {
-    return k_ra8_err_validation_failed;
-  }
-  if (info->tile_h == 0U) {
-    return k_ra8_err_validation_failed;
-  }
-  /* bpp 1 (gray8), 3 (RGB888) or 4 (RGBA8888); 2 is not a defined layout. */
-  if ((info->bpp == 0U) || (info->bpp == 2U) || ((uint32_t)info->bpp > (uint32_t)k_jof_bpp_max)) {
-    return k_ra8_err_validation_failed;
-  }
-  if (info->codec > (uint8_t)k_jof_codec_deflate) {
-    return k_ra8_err_validation_failed;
-  }
-  return k_ra8_ok;
-}
 
-/**
- * @brief Reject any non-zero reserved header byte (strict, fail-closed).
- * @details Walks both reserved header runs; any non-zero byte rejects the atlas.
- * @param[in] hdr The 32 header bytes.
- * @return Result code.
- * @retval k_ra8_ok                    All reserved bytes are zero.
- * @retval k_ra8_err_validation_failed A reserved byte is non-zero.
- * @pre @p hdr holds ::k_jof_hdr_bytes bytes.
- * @pre The fixed-field region has already been parsed.
- * @post No state mutated.
- * @post Return depends solely on the reserved bytes.
- * @note Thread-safe (pure).
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_check_reserved(const uint8_t* hdr)
-{
-  for (uint8_t i = (uint8_t)k_jof_ofs_reserved; i < (uint8_t)k_jof_ofs_tile_count; ++i) {
-    if (hdr[i] != 0U) {
-      return k_ra8_err_validation_failed;
-    }
-  }
-  for (uint8_t i = (uint8_t)k_jof_ofs_reserved2; i < (uint8_t)k_jof_hdr_bytes; ++i) {
-    if (hdr[i] != 0U) {
-      return k_ra8_err_validation_failed;
-    }
-  }
-  return k_ra8_ok;
-}
 
-/**
- * @brief Cross-check grid, tile-count, footer and index-window invariants.
- * @details The compound decisions here carry MC/DC vectors in
- *          `test_jof.c` (hostile-atlas suite).
- * @param[in,out] info       Geometry (grid fields written here).
- * @param[in]     hdr_count  Header tile-count field.
- * @param[in]     ftr        The 16 footer bytes.
- * @param[in]     total_size Caller-supplied backing size.
- * @return Result code.
- * @retval k_ra8_ok                    All invariants hold; info completed.
- * @retval k_ra8_err_validation_failed A cross-check failed.
- * @pre @p info holds validated header geometry fields.
- * @pre @p ftr holds ::k_jof_footer_bytes bytes.
- * @post On success grid/tile_count/index_off/total_size are populated.
- * @post On failure @p info must not be used.
- * @note Thread-safe (pure over its inputs).
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t
-internal_check_cross(jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, uint64_t total_size)
-{
-  const uint32_t cols = internal_ceil_div(info->width, info->tile_w);
-  const uint32_t rows = internal_ceil_div(info->height, info->tile_h);
-  const uint32_t want = cols * rows;
-  if (want > (uint32_t)k_jof_max_tiles) {
-    return k_ra8_err_validation_failed;
-  }
-  if (hdr_count != want) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint32_t ftr_count = internal_rd_u32(ftr, (uint8_t)k_jof_ftr_tile_count);
-  const uint32_t ftr_total = internal_rd_u32(ftr, (uint8_t)k_jof_ftr_total_size);
-  const uint32_t index_off = internal_rd_u32(ftr, (uint8_t)k_jof_ftr_index_off);
-  if (ftr_count != want) {
-    return k_ra8_err_validation_failed;
-  }
-  if ((uint64_t)ftr_total != total_size) {
-    return k_ra8_err_validation_failed;
-  }
-  if (index_off < (uint32_t)k_jof_hdr_bytes) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint64_t index_end = (uint64_t)index_off + ((uint64_t)want * (uint64_t)k_jof_index_entry) +
-                             (uint64_t)k_jof_footer_bytes;
-  if (index_end != total_size) {
-    return k_ra8_err_validation_failed;
-  }
-  info->tile_cols  = (uint16_t)cols;
-  info->tile_rows  = (uint16_t)rows;
-  info->tile_count = want;
-  info->index_off  = index_off;
-  info->total_size = ftr_total;
-  return k_ra8_ok;
-}
 
 /**
  * @brief Fetch + window-validate the index entry for tile @p n.

@@ -11,7 +11,8 @@
 //! (RA8FW-1141), and the PNG chunk layer is the whole of jof_png_chunk.c
 //! (RA8FW-1142). Both TUs are retired. The memstore sink/pread pair and the
 //! tile-access helpers (tile dims, stored bound) are ported from jof.c
-//! (RA8FW-1147); jof.c keeps parse/validate and the bounded per-tile decode.
+//! (RA8FW-1147); jof_parse and its validation helpers are ported from jof.c
+//! (RA8FW-1148); jof.c keeps the bounded per-tile decode.
 
 const jof_h = @import("jof_h");
 
@@ -1211,7 +1212,10 @@ pub export fn jof_audit(
 pub export fn jof_stored_bound(raw_bytes: u32) callconv(.c) u32 {
     const k_jof_bound_div: u32 = 8;
     const k_jof_bound_add: u32 = 256;
-    return raw_bytes + raw_bytes / k_jof_bound_div + k_jof_bound_add;
+    // The C helper relies on the uint32 wrap: at the exact 2^32 product the
+    // stored bound wraps to zero, which callers must refuse. Keep that
+    // semantics here with wrapping adds.
+    return raw_bytes +% raw_bytes / k_jof_bound_div +% k_jof_bound_add;
 }
 
 /// Pixel rect of tile (tile_x, tile_y), clamped at the atlas edges. The last
@@ -1284,6 +1288,230 @@ pub export fn jof_memstore_pread(ctx: ?*anyopaque, offset: u64, buf: [*c]u8, len
     return jof_h.k_ra8_ok;
 }
 
+// =====================================================================
+// Parse TU section (jof_parse), ported verbatim (RA8FW-1148). The 1147
+// slice over-deleted: jof_parse and internal_parse_header_region left
+// jof.c with the memstore removal, so the jof_parse symbol has been
+// absent from dev since 65a1a63e3 and only the test stub kept consumer
+// links resolving. internal_parse_header_region,
+// internal_parse_hdr_fields, internal_check_reserved,
+// internal_check_cross, internal_rd_u16, internal_rd_u32,
+// internal_ceil_div, internal_pread_exact, jof_parse. Sibling C
+// (jof_read_tile) reached through the translated seam.
+// =====================================================================
+
+/// Read a little-endian uint16 from buf at off. Ports internal_rd_u16.
+fn parseRdU16(buf: []const u8, off: u8) u16 {
+    return @as(u16, buf[off]) | (@as(u16, buf[off + 1]) << 8);
+}
+
+/// Read a little-endian uint32 from buf at off. Ports internal_rd_u32.
+fn parseRdU32(buf: []const u8, off: u8) u32 {
+    return @as(u32, buf[off]) | (@as(u32, buf[off + 1]) << 8) |
+        (@as(u32, buf[off + 2]) << 16) | (@as(u32, buf[off + 3]) << 24);
+}
+
+/// Ceiling division for tile-grid geometry. Ports internal_ceil_div.
+fn parseCeilDiv(n: u32, d: u32) u32 {
+    return (n + d - 1) / d;
+}
+
+/// Exact positioned read: EOF or a short read is a validation failure.
+/// Ports internal_pread_exact.
+fn parsePreadExact(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    off: u64,
+    buf: []u8,
+) jof_h.ra8_err_t {
+    var got: usize = 0;
+    const err = pread.?(pread_ctx, off, buf.ptr, buf.len, &got);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    if (got != buf.len) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Validate the header geometry fields into info (fail-closed).
+/// Ports internal_parse_hdr_fields.
+fn parseHdrFields(hdr: []const u8, info: *jof_h.jof_info_t) jof_h.ra8_err_t {
+    info.width = parseRdU16(hdr, jof_h.k_jof_ofs_width);
+    info.height = parseRdU16(hdr, jof_h.k_jof_ofs_height);
+    info.tile_w = parseRdU16(hdr, jof_h.k_jof_ofs_tile_w);
+    info.tile_h = parseRdU16(hdr, jof_h.k_jof_ofs_tile_h);
+    info.bpp = hdr[jof_h.k_jof_ofs_bpp];
+    info.codec = hdr[jof_h.k_jof_ofs_codec];
+    if (info.width == 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (@as(u32, info.width) > @as(u32, jof_h.k_jof_max_dim)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (info.height == 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (@as(u32, info.height) > @as(u32, jof_h.k_jof_max_dim)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (info.tile_w == 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (info.tile_h == 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    // bpp 1 (gray8), 3 (RGB888) or 4 (RGBA8888); 2 is not a defined layout.
+    if ((info.bpp == 0) or (info.bpp == 2) or (@as(u32, info.bpp) > @as(u32, jof_h.k_jof_bpp_max))) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (info.codec > jof_h.k_jof_codec_deflate) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Reject any non-zero reserved header byte (strict, fail-closed).
+/// Ports internal_check_reserved.
+fn parseCheckReserved(hdr: []const u8) jof_h.ra8_err_t {
+    var i: u8 = jof_h.k_jof_ofs_reserved;
+    while (i < jof_h.k_jof_ofs_tile_count) : (i += 1) {
+        if (hdr[i] != 0) {
+            return jof_h.k_ra8_err_validation_failed;
+        }
+    }
+    i = jof_h.k_jof_ofs_reserved2;
+    while (i < jof_h.k_jof_hdr_bytes) : (i += 1) {
+        if (hdr[i] != 0) {
+            return jof_h.k_ra8_err_validation_failed;
+        }
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Cross-check grid, tile-count, footer and index-window invariants.
+/// Ports internal_check_cross.
+fn parseCheckCross(
+    info: *jof_h.jof_info_t,
+    hdr_count: u32,
+    ftr: []const u8,
+    total_size: u64,
+) jof_h.ra8_err_t {
+    const cols: u32 = parseCeilDiv(info.width, info.tile_w);
+    const rows: u32 = parseCeilDiv(info.height, info.tile_h);
+    const want: u32 = cols * rows;
+    if (want > @as(u32, jof_h.k_jof_max_tiles)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (hdr_count != want) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    const ftr_count: u32 = parseRdU32(ftr, jof_h.k_jof_ftr_tile_count);
+    const ftr_total: u32 = parseRdU32(ftr, jof_h.k_jof_ftr_total_size);
+    const index_off: u32 = parseRdU32(ftr, jof_h.k_jof_ftr_index_off);
+    if (ftr_count != want) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (@as(u64, ftr_total) != total_size) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (index_off < @as(u32, jof_h.k_jof_hdr_bytes)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    const index_end: u64 = @as(u64, index_off) + (@as(u64, want) * @as(u64, jof_h.k_jof_index_entry)) +
+        @as(u64, jof_h.k_jof_footer_bytes);
+    if (index_end != total_size) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    info.tile_cols = @intCast(cols);
+    info.tile_rows = @intCast(rows);
+    info.tile_count = want;
+    info.index_off = index_off;
+    info.total_size = ftr_total;
+    return jof_h.k_ra8_ok;
+}
+
+/// Read + validate the 32-byte header region into out_info.
+/// Ports internal_parse_header_region.
+fn parseHeaderRegion(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    hdr: []u8,
+    out_info: *jof_h.jof_info_t,
+) jof_h.ra8_err_t {
+    const s_magic_hdr = [jof_h.k_jof_magic_len]u8{ 'J', 'O', 'F', '1' };
+    var err = parsePreadExact(pread, pread_ctx, 0, hdr);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    if (!std.mem.eql(u8, hdr[jof_h.k_jof_ofs_magic..][0..jof_h.k_jof_magic_len], &s_magic_hdr)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    err = parseHdrFields(hdr, out_info);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    return parseCheckReserved(hdr);
+}
+
+/// Parse + validate a JOF atlas (fail-closed structural validation).
+/// Ports jof_parse.
+pub export fn jof_parse(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    total_size: u64,
+    out_info: [*c]jof_h.jof_info_t,
+) callconv(.c) jof_h.ra8_err_t {
+    const s_magic_ftr = [jof_h.k_jof_magic_len]u8{ 'J', 'O', 'F', 'E' };
+    if (pread == null or out_info == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    const min_size: u64 = @as(u64, jof_h.k_jof_hdr_bytes) + @as(u64, jof_h.k_jof_footer_bytes);
+    if ((total_size < min_size) or (total_size > std.math.maxInt(u32))) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    var hdr: [jof_h.k_jof_hdr_bytes]u8 = std.mem.zeroes([jof_h.k_jof_hdr_bytes]u8);
+    var err = parseHeaderRegion(pread, pread_ctx, &hdr, out_info);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var ftr: [jof_h.k_jof_footer_bytes]u8 = std.mem.zeroes([jof_h.k_jof_footer_bytes]u8);
+    err = parsePreadExact(pread, pread_ctx, total_size - @as(u64, jof_h.k_jof_footer_bytes), &ftr);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    if (!std.mem.eql(u8, ftr[jof_h.k_jof_ftr_magic..][0..jof_h.k_jof_magic_len], &s_magic_ftr)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    const hdr_count: u32 = parseRdU32(&hdr, jof_h.k_jof_ofs_tile_count);
+    return parseCheckCross(out_info, hdr_count, &ftr, total_size);
+}
+
+/// A minimal valid 64-byte raw atlas: 1x1 pixels, one 1x1 gray8 tile.
+fn makeMinimalAtlas(backing: []u8) void {
+    @memcpy(backing[0..4], "JOF1");
+    backing[4] = 1; // width lsb
+    backing[6] = 1; // height lsb
+    backing[8] = 1; // tile_w lsb
+    backing[10] = 1; // tile_h lsb
+    backing[12] = 1; // bpp (gray8)
+    backing[13] = jof_h.k_jof_codec_raw;
+    backing[16] = 1; // tile count lsb
+    backing[32] = 0xAB; // one raw pixel
+    backing[40] = 32; // index entry: tile offset lsb
+    backing[44] = 1; // index entry: tile length lsb
+    backing[48] = 40; // footer: index offset lsb
+    backing[52] = 1; // footer: tile count lsb
+    backing[56] = 64; // footer: total size lsb
+    @memcpy(backing[60..64], "JOFE");
+}
+
+test "jof_stored_bound wraps at the exact 2^32 product like the C" {
+    try std.testing.expectEqual(@as(u32, 0), jof_stored_bound(3817748480));
+    try std.testing.expectEqual(@as(u32, 1), jof_stored_bound(3817748481));
+}
+
 test "jof_stored_bound matches the C arithmetic" {
     try std.testing.expectEqual(@as(u32, 256), jof_stored_bound(0));
     try std.testing.expectEqual(@as(u32, 8 + 1 + 256), jof_stored_bound(8));
@@ -1354,5 +1582,54 @@ test "audit entry points reject nulls before any parse" {
     try std.testing.expectEqual(
         jof_h.k_ra8_err_null_ptr,
         jof_audit(null, null, 0, null, null),
+    );
+}
+
+test "jof_parse rejects nulls and out-of-window sizes" {
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    try std.testing.expectEqual(jof_h.k_ra8_err_null_ptr, jof_parse(null, null, 0, null));
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_invalid_size,
+        jof_parse(jof_memstore_pread, null, 4, &info),
+    );
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_invalid_size,
+        jof_parse(jof_memstore_pread, null, @as(u64, std.math.maxInt(u32)) + 64, &info),
+    );
+}
+
+test "jof_parse validates a minimal raw atlas through the memstore seam" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    makeMinimalAtlas(&backing);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = backing.len };
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    try std.testing.expectEqual(
+        jof_h.k_ra8_ok,
+        jof_parse(jof_memstore_pread, &store, backing.len, &info),
+    );
+    try std.testing.expectEqual(@as(u16, 1), info.width);
+    try std.testing.expectEqual(@as(u16, 1), info.height);
+    try std.testing.expectEqual(@as(u8, 1), info.bpp);
+    try std.testing.expectEqual(@as(u8, jof_h.k_jof_codec_raw), info.codec);
+    try std.testing.expectEqual(@as(u32, 1), info.tile_count);
+    try std.testing.expectEqual(@as(u32, 40), info.index_off);
+    try std.testing.expectEqual(@as(u32, 64), info.total_size);
+}
+
+test "jof_parse rejects a bad magic and a footer count that lies" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    makeMinimalAtlas(&backing);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = backing.len };
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    backing[0] = 'X';
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_validation_failed,
+        jof_parse(jof_memstore_pread, &store, backing.len, &info),
+    );
+    makeMinimalAtlas(&backing);
+    backing[52] = 2; // footer tile count no longer matches the grid
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_validation_failed,
+        jof_parse(jof_memstore_pread, &store, backing.len, &info),
     );
 }
