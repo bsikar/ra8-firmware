@@ -38,6 +38,12 @@
 #include "ra8_log.h"
 #include "ra8_webp.h"
 
+/* jof_work_bytes and the bump carve are Zig now (RA8FW-1150, jof_abi.zig).
+   The Zig port pins these two miniz sizes as constants, so these asserts fail
+   the C build until the Zig constants move with a miniz bump. */
+_Static_assert(sizeof(tinfl_decompressor) == 8376U, "tinfl size pinned for the Zig jof_work_bytes port");
+_Static_assert(sizeof(tdefl_compressor) == 319352U, "tdefl size pinned for the Zig jof_work_bytes port");
+
 /** @brief Module log tag. */
 static const char* const s_tag = "jof_prod";
 
@@ -94,20 +100,6 @@ RA8_INTERNAL static ra8_imgdec_format_t internal_sniffed(const uint8_t* data, si
   return fmt;
 }
 
-/** @brief Implementation of `priv_jof_bump_take()` -- aligned linear carve. */
-RA8_PRIV void* priv_jof_bump_take(jof_bump_t* bump, size_t len)
-{
-  if ((bump == nullptr) || (len == 0U)) {
-    return nullptr;
-  }
-  const size_t mask    = (size_t)k_jof_bump_align - 1U;
-  const size_t aligned = (bump->off + mask) & ~mask;
-  if ((aligned > bump->cap) || (len > (bump->cap - aligned))) {
-    return nullptr;
-  }
-  bump->off = aligned + len;
-  return &bump->base[aligned];
-}
 
 /* ---------------------------------------------------------------------------
  * Little-endian field writers + sink accounting.
@@ -596,43 +588,6 @@ RA8_INTERNAL static ra8_err_t internal_check_cfg(const jof_produce_cfg_t* cfg)
   return k_ra8_ok;
 }
 
-uint32_t jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h)
-{
-  if ((max_width == 0U) || ((uint32_t)max_width > (uint32_t)k_jof_max_dim) || (max_height == 0U) ||
-      ((uint32_t)max_height > (uint32_t)k_jof_max_dim)) {
-    return 0U;
-  }
-  if ((tile_w == 0U) || (tile_h == 0U)) {
-    return 0U;
-  }
-  const uint64_t cols = ((uint64_t)max_width + tile_w - 1U) / tile_w;
-  const uint64_t rows = ((uint64_t)max_height + tile_h - 1U) / tile_h;
-  if ((cols * rows) > (uint64_t)k_jof_max_tiles) {
-    return 0U;
-  }
-  const uint64_t bpp = (uint64_t)k_jof_bpp_max;
-  const uint64_t jpeg_set =
-    (uint64_t)k_ra8_jpeg_sw_stream_min_window +
-    ((uint64_t)max_width * (uint64_t)k_ra8_jpeg_sw_stream_mcu_rows_max * 3U);
-  const uint64_t png_set = (uint64_t)sizeof(tinfl_decompressor) + (uint64_t)k_jof_png_ring +
-                           (uint64_t)k_jof_png_inbuf + (3U * ((uint64_t)max_width * bpp)) + 2U;
-  const uint64_t dec_set = (jpeg_set > png_set) ? jpeg_set : png_set;
-  const uint64_t band    = (uint64_t)max_width * (uint64_t)tile_h * bpp;
-  const uint64_t tw_eff =
-    ((uint64_t)tile_w < (uint64_t)max_width) ? (uint64_t)tile_w : (uint64_t)max_width;
-  const uint64_t th_eff =
-    ((uint64_t)tile_h < (uint64_t)max_height) ? (uint64_t)tile_h : (uint64_t)max_height;
-  const uint64_t stage       = tw_eff * th_eff * bpp;
-  const uint64_t cmp         = (uint64_t)jof_stored_bound((uint32_t)stage);
-  const uint64_t index_bytes = cols * rows * (uint64_t)k_jof_index_entry;
-  const uint64_t dfl         = (uint64_t)k_ra8_compress_scratch_bytes;
-  const uint64_t total =
-    dec_set + band + stage + cmp + index_bytes + dfl + (uint64_t)k_jof_carve_slack;
-  if ((stage > (uint64_t)UINT32_MAX) || (total > (uint64_t)UINT32_MAX)) {
-    return 0U;
-  }
-  return (uint32_t)total;
-}
 
 /**
  * @brief Reset the transcode state and carve the deflate scratch.
