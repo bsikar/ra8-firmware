@@ -47,3 +47,64 @@ pub export fn ra8_compress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap
     out_len.* = n;
     return jof_h.k_ra8_ok;
 }
+
+/// Fake streaming JPEG decoder for the standalone test link: the real
+/// ra8_jpeg_sw_decode_stripes lives in the JPEG C library, which the jof
+/// test build does not link. The fake binds the geometry hook, hands back a
+/// stripe and streams the configured pixels through the row hook, so the
+/// producer state machine runs end to end. Config comes from the exported
+/// jpeg_stub_* variables below.
+const JpegGeomFn = ?*const fn (ctx: ?*anyopaque, width: u16, height: u16, channels: u8, stripe_rows: u16, out_stripe: [*c][*c]u8, out_stripe_cap: [*c]u32) callconv(.c) jof_h.ra8_err_t;
+const JpegRowsFn = ?*const fn (ctx: ?*anyopaque, px: [*c]const u8, width: u16, y0: u16, nrows: u16, channels: u8) callconv(.c) jof_h.ra8_err_t;
+
+export var jpeg_stub_w: u16 = 0;
+export var jpeg_stub_h: u16 = 0;
+export var jpeg_stub_channels: u8 = 0;
+export var jpeg_stub_rows_per_call: u16 = 0;
+export var jpeg_stub_px: [4096]u8 = undefined;
+
+pub export fn ra8_jpeg_sw_decode_stripes(pull: ?*const fn (ctx: ?*anyopaque, buf: [*c]u8, cap: usize, got: [*c]usize) callconv(.c) jof_h.ra8_err_t, pull_ctx: ?*anyopaque, window: [*c]u8, window_cap: u32, on_geom: JpegGeomFn, on_rows: JpegRowsFn, cb_ctx: ?*anyopaque) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ pull, pull_ctx, window, window_cap };
+    var stripe: [*c]u8 = null;
+    var cap: u32 = 0;
+    const gerr = on_geom.?(cb_ctx, jpeg_stub_w, jpeg_stub_h, jpeg_stub_channels, 8, &stripe, &cap);
+    if (gerr != jof_h.k_ra8_ok) {
+        return gerr;
+    }
+    // The fake decoder paints the stripe from the configured pixels, exactly
+    // as the real decoder would fill it before each on_rows stripe sink.
+    const rowbytes: usize = @as(usize, jpeg_stub_w) * jpeg_stub_channels;
+    const total: usize = rowbytes * jpeg_stub_h;
+    @memcpy(stripe[0..total], jpeg_stub_px[0..total]);
+    var y: u16 = 0;
+    while (y < jpeg_stub_h) : (y += jpeg_stub_rows_per_call) {
+        const nrows: u16 = @min(jpeg_stub_rows_per_call, jpeg_stub_h - y);
+        const off: usize = @as(usize, y) * rowbytes;
+        const rerr = on_rows.?(cb_ctx, @ptrCast(&stripe[off]), jpeg_stub_w, y, nrows, jpeg_stub_channels);
+        if (rerr != jof_h.k_ra8_ok) {
+            return rerr;
+        }
+    }
+    return jof_h.k_ra8_ok;
+}
+
+pub export fn ra8_jpeg_sw_get_dimensions(jpeg_buf: [*c]const u8, jpeg_len: u32, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ jpeg_buf, jpeg_len };
+    out_w.* = jpeg_stub_w;
+    out_h.* = jpeg_stub_h;
+    return jof_h.k_ra8_ok;
+}
+
+/// Shared container sniff/dims: the real ones live in the image-decoder C
+/// library. The stub reports format_none (the JPEG SOI arm never reaches
+/// them), so dispatch and probe exercise the not-supported arm.
+pub export fn ra8_imgdec_sniff(bytes: [*c]const u8, byte_count: u32, out: [*c]c_int) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ bytes, byte_count };
+    out.* = 0;
+    return jof_h.k_ra8_ok;
+}
+
+pub export fn ra8_imgdec_dims(bytes: [*c]const u8, byte_count: u32, out: *anyopaque) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ bytes, byte_count, out };
+    return jof_h.k_ra8_err_not_supported;
+}
