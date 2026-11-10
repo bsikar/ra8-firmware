@@ -60,7 +60,6 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 // layers out of a host tool. The JPEG codec is Zig: RA8_FMT_JPEG_SRC is
 // empty in the C-era recipe and stays empty here.
 const jof_closure = [_][]const u8{
-    jof_dir ++ "jof.c",
     jof_dir ++ "jof_produce.c",
     compress_dir ++ "ra8_compress.c",
 };

@@ -9,7 +9,6 @@
 #   inc/jof.h          format spec (authoritative), reader, memstore
 #   inc/jof_audit.h    no-heap backing-agnostic structural audit
 #   inc/jof_produce.h  transcode producer (JPEG/PNG -> atlas)
-#   src/jof.c              parse/validate + bounded per-tile decode
 #   src/jof_audit.c        coverage/geometry audit over injected reads --
 #                              ported to Zig (jof_abi.zig, RA8FW-1146); C TU
 #                              retired

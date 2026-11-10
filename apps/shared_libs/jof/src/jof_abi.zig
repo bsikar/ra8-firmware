@@ -827,7 +827,7 @@ pub export fn priv_jof_png_rows(
 // internal_any_workspace_overlap, internal_check_workspace_spans,
 // internal_check_workspace, internal_duplicate_count, internal_audit_context_t,
 // internal_audit_tile, jof_audit_requirements, jof_audit. Sibling C
-// (jof_parse, jof_read_tile, jof_tile_dims, jof_stored_bound) reached through
+// (jof_tile_dims, jof_stored_bound) reached through; jof_parse and jof_read_tile
 // the translated seam.
 // =====================================================================
 
@@ -1505,6 +1505,194 @@ fn makeMinimalAtlas(backing: []u8) void {
     backing[52] = 1; // footer: tile count lsb
     backing[56] = 64; // footer: total size lsb
     @memcpy(backing[60..64], "JOFE");
+}
+
+// ---- jof_read_tile: bounded per-tile decode (ported from jof.c, RA8FW-1149) ----
+
+/// Deflate seam from ra8_compress (the C TU consumers compile beside the archive).
+extern fn ra8_decompress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap: u32, out_len: [*c]u32) callconv(.c) jof_h.ra8_err_t;
+
+/// Fetch + window-validate the index entry for tile `n` (ports internal_index_entry).
+fn readTileIndexEntry(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    info: [*c]const jof_h.jof_info_t,
+    n: u32,
+    out_off: *u32,
+    out_len: *u32,
+) jof_h.ra8_err_t {
+    var entry: [jof_h.k_jof_index_entry]u8 = std.mem.zeroes([jof_h.k_jof_index_entry]u8);
+    const eoff: u64 = @as(u64, info.*.index_off) + @as(u64, n) * @as(u64, jof_h.k_jof_index_entry);
+    const err = parsePreadExact(pread, pread_ctx, eoff, &entry);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    const toff = parseRdU32(&entry, jof_h.k_jof_idx_ofs_offset);
+    const tlen = parseRdU32(&entry, jof_h.k_jof_idx_ofs_length);
+    const tend: u64 = @as(u64, toff) + @as(u64, tlen);
+    if ((toff < jof_h.k_jof_hdr_bytes) or (tend > @as(u64, info.*.index_off))) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    out_off.* = toff;
+    out_len.* = tlen;
+    return jof_h.k_ra8_ok;
+}
+
+/// Decode a validated tile stream into `out_px` (ports internal_decode_stream).
+fn readTileDecodeStream(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    info: [*c]const jof_h.jof_info_t,
+    toff: u32,
+    tlen: u32,
+    payload: u32,
+    scratch: [*c]u8,
+    scratch_cap: u32,
+    out_px: [*c]u8,
+) jof_h.ra8_err_t {
+    if (info.*.codec == jof_h.k_jof_codec_raw) {
+        if (tlen != payload) {
+            return jof_h.k_ra8_err_validation_failed;
+        }
+        return parsePreadExact(pread, pread_ctx, toff, out_px[0..payload]);
+    }
+    if (scratch == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (tlen > scratch_cap) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const err = parsePreadExact(pread, pread_ctx, toff, scratch[0..tlen]);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var got: u32 = 0;
+    if (ra8_decompress(scratch, tlen, out_px, payload, &got) != jof_h.k_ra8_ok) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (got != payload) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Fetch tile `n`'s index entry, then read + decode its stream (ports internal_fetch_decode).
+fn readTileFetchDecode(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    info: [*c]const jof_h.jof_info_t,
+    n: u32,
+    payload: u32,
+    scratch: [*c]u8,
+    scratch_cap: u32,
+    out_px: [*c]u8,
+) jof_h.ra8_err_t {
+    var toff: u32 = 0;
+    var tlen: u32 = 0;
+    const err = readTileIndexEntry(pread, pread_ctx, info, n, &toff, &tlen);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    return readTileDecodeStream(pread, pread_ctx, info, toff, tlen, payload, scratch, scratch_cap, out_px);
+}
+
+/// Read + decode one tile of a parsed atlas (fail-closed, bounded RAM).
+/// Ports jof_read_tile.
+pub export fn jof_read_tile(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    info: [*c]const jof_h.jof_info_t,
+    tile_x: u16,
+    tile_y: u16,
+    scratch: [*c]u8,
+    scratch_cap: u32,
+    out_px: [*c]u8,
+    out_cap: u32,
+    out_w: [*c]u16,
+    out_h: [*c]u16,
+) callconv(.c) jof_h.ra8_err_t {
+    if (pread == null or info == null or out_px == null or out_w == null or out_h == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    var tw: u16 = 0;
+    var th: u16 = 0;
+    var err = jof_tile_dims(info, tile_x, tile_y, &tw, &th);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    const payload: u32 = @as(u32, tw) *% @as(u32, th) *% @as(u32, info.*.bpp);
+    if (payload > out_cap) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const n: u32 = @as(u32, tile_y) *% @as(u32, info.*.tile_cols) +% @as(u32, tile_x);
+    err = readTileFetchDecode(pread, pread_ctx, info, n, payload, scratch, scratch_cap, out_px);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    out_w.* = tw;
+    out_h.* = th;
+    return jof_h.k_ra8_ok;
+}
+
+test "jof_read_tile reads the minimal atlas tile through the memstore seam" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    makeMinimalAtlas(&backing);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = backing.len };
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_parse(jof_memstore_pread, &store, backing.len, &info));
+    var px: [4]u8 = std.mem.zeroes([4]u8);
+    var w: u16 = 0;
+    var h: u16 = 0;
+    try std.testing.expectEqual(
+        jof_h.k_ra8_ok,
+        jof_read_tile(jof_memstore_pread, &store, &info, 0, 0, null, 0, &px, px.len, &w, &h),
+    );
+    try std.testing.expectEqual(@as(u8, 0xAB), px[0]);
+    try std.testing.expectEqual(@as(u16, 1), w);
+    try std.testing.expectEqual(@as(u16, 1), h);
+    // Tile 1 sits outside the 1x1 grid, so tile_dims rejects it.
+    try std.testing.expect(
+        jof_read_tile(jof_memstore_pread, &store, &info, 1, 0, null, 0, &px, px.len, &w, &h) != jof_h.k_ra8_ok,
+    );
+}
+
+test "jof_read_tile rejects null args and a too-small destination" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    makeMinimalAtlas(&backing);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = backing.len };
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_parse(jof_memstore_pread, &store, backing.len, &info));
+    var px: [4]u8 = std.mem.zeroes([4]u8);
+    var w: u16 = 0;
+    var h: u16 = 0;
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_null_ptr,
+        jof_read_tile(null, &store, &info, 0, 0, null, 0, &px, px.len, &w, &h),
+    );
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_null_ptr,
+        jof_read_tile(jof_memstore_pread, &store, null, 0, 0, null, 0, &px, px.len, &w, &h),
+    );
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_invalid_size,
+        jof_read_tile(jof_memstore_pread, &store, &info, 0, 0, null, 0, &px, 0, &w, &h),
+    );
+}
+
+test "jof_read_tile requires scratch for a deflate atlas" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    makeMinimalAtlas(&backing);
+    backing[13] = jof_h.k_jof_codec_deflate;
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = backing.len };
+    var info = std.mem.zeroes(jof_h.jof_info_t);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, jof_parse(jof_memstore_pread, &store, backing.len, &info));
+    var px: [4]u8 = std.mem.zeroes([4]u8);
+    var w: u16 = 0;
+    var h: u16 = 0;
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_null_ptr,
+        jof_read_tile(jof_memstore_pread, &store, &info, 0, 0, null, 0, &px, px.len, &w, &h),
+    );
 }
 
 test "jof_stored_bound wraps at the exact 2^32 product like the C" {
