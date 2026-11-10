@@ -87,11 +87,11 @@ fn existing(attr: u8, clus: u32, len: u64, valid: u64, flags: u8) void {
 }
 
 fn existingCount(attr: u8, clus: u32, len: u64, valid: u64, flags: u8, secnt: u8) void {
-    _ = clus;
+    _ = valid;
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.mount_store.count_of_clusters = 30;
     // Root: reset stages the two system entries; "dir" follows at slot 2.
-    laySet(&fake.dir[2][0..], 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
+    laySet(std.mem.sliceAsBytes(fake.dir[2..5]), 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
     // The dir cluster: two name entries the scan skips, then f.bin's set.
     const d: []u8 = &fake.disk[1];
     d[0] = entry_name;
@@ -166,7 +166,7 @@ test "directories, read-only files and unwritable sets are refused" {
 test "a missing leaf is created as an empty set" {
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.mount_store.count_of_clusters = 30;
-    laySet(&fake.dir[2][0..], 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
+    laySet(std.mem.sliceAsBytes(fake.dir[2..5]), 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
     var f: ?*ow.File = null;
     try std.testing.expectEqual(ow.ok, open(write_mode, &f));
     try std.testing.expectEqual(@as(u32, 3), @as(u32, f.?.entry_set_count));
@@ -174,7 +174,7 @@ test "a missing leaf is created as an empty set" {
 
     fake.reset(c.k_ra8_fs_type_exfat);
     fake.mount_store.count_of_clusters = 30;
-    laySet(&fake.dir[2][0..], 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
+    laySet(std.mem.sliceAsBytes(fake.dir[2..5]), 0, "dir", @intCast(c.k_exfat_attr_directory), dir_clus, 512, no_fat, 2);
     st.filesFill();
     f = null;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_no_mem), open(write_mode, &f));

@@ -97,5 +97,6 @@ test "exFAT errors propagate" {
     fake.reset(exfat);
     fake.mount_store.count_of_clusters = 16;
     fake.sector_read_err = 0x205;
+    var s = std.mem.zeroes(sp.Space);
     try std.testing.expectEqual(@as(u16, 0x205), query(&s));
 }

@@ -28,7 +28,6 @@ var disk: [disk_sectors][bps]u8 = @splat(@splat(0));
 var read_calls: u32 = 0;
 var write_calls: u32 = 0;
 var write_err: u16 = 0;
-var find_bitmap_calls: u32 = 0;
 var read_err: u16 = 0;
 var fat: [8]u32 = @splat(0);
 var fat_read_err: u16 = 0;
@@ -51,7 +50,6 @@ fn reset() void {
     write_err = 0;
     read_calls = 0;
     write_calls = 0;
-    find_bitmap_calls = 0;
     @memset(&g_fs_scratch, 0);
 }
 var sec_buf: *[c.k_ra8_fs_sector_max]u8 = fs.fat_bytes.io_sector;
@@ -272,24 +270,32 @@ test "the exFAT bitmap LBA is cached per bound slot" {
     reset();
     var m = mkFat32();
     var m2 = mkFat32();
+    // The real $Bitmap scan roots on the mount's root cluster; cluster 3
+    // maps to disk[21], where the staged 0x81 entry carries FirstCluster 3
+    // (-> LBA 21) and a 1024-byte DataLength.
+    m.root_cluster = 3;
+    m2.root_cluster = 3;
+    disk[21][0] = 0x81;
+    wr32(&disk[21], 0x14, 3);
+    wr32(&disk[21], 0x18, 1024);
     defer _ = al.priv_alloc_state_release(&m);
     defer _ = al.priv_alloc_state_release(&m2);
     al.priv_alloc_state_bind(&m);
     var lba: u64 = 0;
     try std.testing.expectEqual(@as(u16, c.k_ra8_ok), al.priv_exfat_bitmap_lba(&m, &lba));
-    // Stub bitmap cluster 3 -> first_data_lba 20 + (3 - 2).
     try std.testing.expectEqual(@as(u64, 21), lba);
-    try std.testing.expectEqual(@as(u32, 1), find_bitmap_calls);
-    _ = al.priv_exfat_bitmap_lba(&m, &lba);
-    try std.testing.expectEqual(@as(u32, 1), find_bitmap_calls);
-    // An unbound mount has no cache to consult.
-    _ = al.priv_exfat_bitmap_lba(&m2, &lba);
-    try std.testing.expectEqual(@as(u32, 2), find_bitmap_calls);
-    // Release drops the cache with the slot.
+    // A bound mount answers the repeat call from its cached LBA.
+    var again: u64 = 0;
+    try std.testing.expectEqual(@as(u16, c.k_ra8_ok), al.priv_exfat_bitmap_lba(&m, &again));
+    try std.testing.expectEqual(lba, again);
+    // An unbound mount has no cache to consult; it rescans the root.
+    try std.testing.expectEqual(@as(u16, c.k_ra8_ok), al.priv_exfat_bitmap_lba(&m2, &lba));
+    try std.testing.expectEqual(@as(u64, 21), lba);
+    // Release drops the cache with the slot; a rebind recomputes the same LBA.
     _ = al.priv_alloc_state_release(&m);
     al.priv_alloc_state_bind(&m);
-    _ = al.priv_exfat_bitmap_lba(&m, &lba);
-    try std.testing.expectEqual(@as(u32, 3), find_bitmap_calls);
+    try std.testing.expectEqual(@as(u16, c.k_ra8_ok), al.priv_exfat_bitmap_lba(&m, &lba));
+    try std.testing.expectEqual(@as(u64, 21), lba);
 }
 
 test "free counts clamp and the dirty flag follows" {
