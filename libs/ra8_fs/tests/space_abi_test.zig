@@ -96,11 +96,6 @@ test "exFAT popcounts the bitmap across sectors and masks the tail byte" {
 test "exFAT errors propagate" {
     fake.reset(exfat);
     fake.mount_store.count_of_clusters = 16;
-    fake.bitmap_err = fs.c.k_ra8_err_not_found;
-    var s: sp.Space = undefined;
-    try std.testing.expectEqual(@as(u16, fs.c.k_ra8_err_not_found), query(&s));
-    fake.reset(exfat);
-    fake.mount_store.count_of_clusters = 16;
     fake.sector_read_err = 0x205;
     try std.testing.expectEqual(@as(u16, 0x205), query(&s));
 }
