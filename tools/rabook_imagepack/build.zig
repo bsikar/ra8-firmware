@@ -210,7 +210,6 @@ pub fn build(b: *std.Build) void {
         "src/ra8_fmt_portable_convert.c",
         "src/ra8_fmt_portable_verify.c",
         "src/ra8_fmt_portable_main.c",
-        jof_dir ++ "jof_audit.c",
     };
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
@@ -240,24 +239,20 @@ pub fn build(b: *std.Build) void {
             .name = "test_jof_audit_portable",
             .files = &.{
                 "../../apps/shared_libs/jof/tests/src/test_jof_audit.c",
-                jof_dir ++ "jof_audit.c",
-                jof_dir ++ "jof.c",
-                compress_dir ++ "ra8_compress.c",
             },
-            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
-            .webp = false,
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
         },
         .{
             .name = "test_ra8_fmt_stream_inspect",
             .files = &.{
                 "tests/src/test_ra8_fmt_stream_inspect.c",
                 "src/ra8_fmt_stream_inspect.c",
-                jof_dir ++ "jof_audit.c",
-                jof_dir ++ "jof.c",
-                compress_dir ++ "ra8_compress.c",
             },
-            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
-            .webp = false,
+            .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
         },
         .{
             .name = "test_ra8_fmt_host_fd",
