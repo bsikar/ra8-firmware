@@ -92,7 +92,7 @@ find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
-    ${CBZ2JOF_REPO_ROOT}/    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
+    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
 )
 # The JPEG codec is Zig now (encoder, decoder and stripe driver),

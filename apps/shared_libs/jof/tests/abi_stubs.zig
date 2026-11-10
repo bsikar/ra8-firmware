@@ -43,10 +43,6 @@ pub export fn ra8_log_emit_error(tag: [*c]const u8, message: [*c]const u8) callc
     _ = .{ tag, message };
 }
 
-pub export fn priv_jof_bump_take(bump: [*c]jof_h.jof_bump_t, len: usize) callconv(.c) ?*anyopaque {
-    _ = .{ bump, len };
-    return null;
-}
 pub export fn ra8_decompress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap: u32, out_len: [*c]u32) callconv(.c) jof_h.ra8_err_t {
     _ = .{ src, src_len, out, out_cap, out_len };
     return jof_h.k_ra8_err_invalid_size;
