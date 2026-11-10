@@ -38,6 +38,18 @@ const miniz_flags = [_][]const u8{
     "-DMINIZ_NO_TIME",
 };
 
+// The C-era jof unit tests drive miniz's own mz_compress() to build their
+// fixtures. MINIZ_NO_MALLOC leaves mz_compress() no allocator, so it exits
+// with MZ_MEM_ERROR (-4) before any test runs; these units get the same
+// flags minus the no-malloc define.
+const miniz_flags_malloc = [_][]const u8{
+    "-std=gnu23",           "-Wall",
+    "-Wextra",              "-Werror",
+    "-fno-strict-aliasing", "-DRA8_OFF_TARGET",
+    "-D_GNU_SOURCE",        "-DMINIZ_NO_ARCHIVE_APIS",
+    "-DMINIZ_NO_STDIO",     "-DMINIZ_NO_TIME",
+};
+
 // Part 3 + 4 of the webp recipe (cmake/ra8_webp_vendor.cmake): the arena
 // define is load-bearing for the zero-heap property, and the 60+ TU codec is
 // compiled quietly with strict aliasing off.
@@ -230,7 +242,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     // ---- unit targets (the C-era add_test set) ----
-    const Unit = struct { name: []const u8, files: []const []const u8, includes: []const []const u8, webp: bool, jofc: bool = false, bookc: bool = false, extra_defs: []const []const u8 = &.{} };
+    const Unit = struct { name: []const u8, files: []const []const u8, includes: []const []const u8, webp: bool, jofc: bool = false, bookc: bool = false, extra_defs: []const []const u8 = &.{}, no_malloc_miniz: bool = false, quiet_files: []const []const u8 = &.{} };
 
     const support_inc = "../../tests/support/inc";
     const miniz_inc = "../../apps/shared_libs/third_party/miniz";
@@ -243,6 +255,88 @@ pub fn build(b: *std.Build) void {
             .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
             .webp = true,
             .jofc = true,
+        },
+        .{
+            .name = "test_jof_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_edges_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_edges.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_png_hostile_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_png_hostile.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc, "../../apps/shared_libs/jof/tests/inc" },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_probe_dims_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_probe_dims.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_produce_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_produce.c",
+                "../../apps/shared_libs/reflow/src/ra8_img_arena.c",
+            },
+            .quiet_files = &.{"../../apps/shared_libs/third_party/stb/stb_image_impl.c"},
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/reflow/inc", "../../apps/shared_libs/third_party/stb", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_produce_guards_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_produce_guards.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_produce_reject_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_produce_reject.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
+        },
+        .{
+            .name = "test_jof_produce_webp_portable",
+            .files = &.{
+                "../../apps/shared_libs/jof/tests/src/test_jof_produce_webp.c",
+            },
+            .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
+            .webp = true,
+            .jofc = true,
+            .no_malloc_miniz = true,
         },
         .{
             .name = "test_ra8_fmt_stream_inspect",
@@ -315,9 +409,11 @@ pub fn build(b: *std.Build) void {
         } else {
             addC(b, tmod, ".", unit.files, &first_party_flags);
         }
+        if (unit.quiet_files.len > 0) addC(b, tmod, ".", unit.quiet_files, &.{"-w"});
         if (unit.jofc) addC(b, tmod, ".", &jof_closure, &first_party_flags);
         if (unit.bookc) addC(b, tmod, ".", &book_closure, &first_party_flags);
-        tmod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &miniz_flags });
+        const mz_flags: []const []const u8 = if (unit.no_malloc_miniz) &miniz_flags_malloc else &miniz_flags;
+        tmod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = mz_flags });
         if (unit.webp) {
             addWebpIncludes(b, tmod);
             addWebp(b, tmod);
