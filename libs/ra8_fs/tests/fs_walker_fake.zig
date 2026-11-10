@@ -126,6 +126,11 @@ pub fn reset(fs_type: u8) void {
     // that never set this field.
     mount_store.count_of_clusters = 4096;
     al.priv_fat_cache_reset();
+    // The alloc slots are keyed by mount address too, and the fake's
+    // mount is one shared address: a slot a previous test left bound
+    // would hand its next-free hint to this test's first allocation.
+    // Reset them alongside the FAT cache, for the same reason.
+    al.priv_alloc_state_reset();
     mount_store.root_cluster = 5;
     // FAT12/16 root lives in the fixed region: point it at the laid sector
     // and size it to the 16 entries that sector holds. Without these the
