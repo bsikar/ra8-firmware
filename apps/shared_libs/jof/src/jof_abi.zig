@@ -1930,3 +1930,311 @@ test "jof_parse rejects a bad magic and a footer count that lies" {
         jof_parse(jof_memstore_pread, &store, backing.len, &info),
     );
 }
+
+// ---------------------------------------------------------------------------
+// Producer body slice 1 (RA8FW-1151): sink accounting, the prefix-replay
+// pull, header emission, the pixel-path carve and the geometry bind.
+// ---------------------------------------------------------------------------
+
+/// Store a uint16 little-endian at buf. Ports internal_wr_u16 (the C
+/// mask/shift come from k_jof_byte_mask and k_jof_le_sh8, TU-private there).
+pub export fn internal_wr_u16(buf: [*c]u8, v: u16) callconv(.c) void {
+    buf[0] = @truncate(v & 0xFF);
+    buf[1] = @truncate(@as(u32, v) >> 8);
+}
+
+/// Store a uint32 little-endian at buf. Ports internal_wr_u32.
+pub export fn internal_wr_u32(buf: [*c]u8, v: u32) callconv(.c) void {
+    buf[0] = @truncate(v & 0xFF);
+    buf[1] = @truncate((v >> 8) & 0xFF);
+    buf[2] = @truncate((v >> 16) & 0xFF);
+    buf[3] = @truncate((v >> 24) & 0xFF);
+}
+
+/// Append bytes to the caller sink, tracking the atlas offset. Guards the
+/// u32 atlas size cap before delegating to the caller sink. Ports
+/// internal_sink.
+pub export fn internal_sink(
+    st: *jof_h.jof_prod_state_t,
+    buf: [*c]const u8,
+    len: usize,
+) callconv(.c) jof_h.ra8_err_t {
+    if (@as(u64, len) > @as(u64, std.math.maxInt(u32)) - @as(u64, st.*.written)) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const err = (st.*.cfg.*.sink.?)(st.*.cfg.*.sink_ctx, buf, len);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    st.*.written += @intCast(len);
+    return jof_h.k_ra8_ok;
+}
+
+/// Pull adapter: replay the sniffed head, then delegate to the source.
+/// Ports priv_jof_prefix_pull.
+pub export fn priv_jof_prefix_pull(
+    ctx: ?*anyopaque,
+    buf: [*c]u8,
+    cap: usize,
+    got: [*c]usize,
+) callconv(.c) jof_h.ra8_err_t {
+    const pfx: *jof_h.jof_prefix_pull_t = @ptrCast(@alignCast(ctx.?));
+    if (pfx.*.pos < pfx.*.head_len) {
+        const left = pfx.*.head_len - pfx.*.pos;
+        const take = if (cap < left) cap else left;
+        @memcpy(buf[0..take], (pfx.*.head + pfx.*.pos)[0..take]);
+        pfx.*.pos += take;
+        got.* = take;
+        return jof_h.k_ra8_ok;
+    }
+    return (pfx.*.inner.?)(pfx.*.inner_ctx, buf, cap, got);
+}
+
+/// Serialize + sink the 32-byte JOF header from the bound geometry. Ports
+/// internal_emit_header.
+pub export fn internal_emit_header(st: *jof_h.jof_prod_state_t) callconv(.c) jof_h.ra8_err_t {
+    var hdr: [jof_h.k_jof_hdr_bytes]u8 = undefined;
+    @memset(&hdr, 0);
+    hdr[0] = 'J';
+    hdr[1] = 'O';
+    hdr[2] = 'F';
+    hdr[3] = '1';
+    internal_wr_u16(&hdr[jof_h.k_jof_ofs_width], st.*.w);
+    internal_wr_u16(&hdr[jof_h.k_jof_ofs_height], st.*.h);
+    internal_wr_u16(&hdr[jof_h.k_jof_ofs_tile_w], st.*.cfg.*.tile_w);
+    internal_wr_u16(&hdr[jof_h.k_jof_ofs_tile_h], st.*.cfg.*.tile_h);
+    hdr[jof_h.k_jof_ofs_bpp] = st.*.bpp;
+    hdr[jof_h.k_jof_ofs_codec] = st.*.cfg.*.codec;
+    internal_wr_u32(&hdr[jof_h.k_jof_ofs_tile_count], st.*.tile_count);
+    return internal_sink(st, &hdr, hdr.len);
+}
+
+/// Carve the band, stage, index and compressed-tile buffers. Sizes are
+/// computed in 64-bit and checked against the u32 format cap before any
+/// carve; arena exhaustion fails closed. Ports internal_carve_pixel_path.
+pub export fn internal_carve_pixel_path(st: *jof_h.jof_prod_state_t) callconv(.c) jof_h.ra8_err_t {
+    const tw: u16 = st.*.cfg.*.tile_w;
+    const th: u16 = st.*.cfg.*.tile_h;
+    const band_bytes: u64 = @as(u64, st.*.w) * @as(u64, th) * @as(u64, st.*.bpp);
+    const tw_eff: u32 = if (tw < st.*.w) tw else st.*.w;
+    const th_eff: u32 = if (th < st.*.h) th else st.*.h;
+    const stage_bytes: u64 = @as(u64, tw_eff) * @as(u64, th_eff) * @as(u64, st.*.bpp);
+    // mcdc-deactivated: stage_bytes = tw_eff*th_eff*bpp with tw_eff <= w and
+    // th_eff <= tile_h, so stage_bytes <= w*tile_h*bpp = band_bytes always;
+    // the stage-overflow arm cannot flip independently of the band arm
+    // (which the guards test drives true via a 32768-wide RGBA source and a
+    // 65535-tall tile).
+    if ((band_bytes > std.math.maxInt(u32)) or (stage_bytes > std.math.maxInt(u32))) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    st.*.band = @ptrCast(priv_jof_bump_take(st.*.bump, @intCast(band_bytes)));
+    st.*.stage = @ptrCast(priv_jof_bump_take(st.*.bump, @intCast(stage_bytes)));
+    st.*.idx = @ptrCast(priv_jof_bump_take(
+        st.*.bump,
+        @as(usize, st.*.tile_count) * @as(usize, jof_h.k_jof_index_entry),
+    ));
+    if ((st.*.band == null) or (st.*.stage == null) or (st.*.idx == null)) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    if (st.*.cfg.*.codec == jof_h.k_jof_codec_deflate) {
+        st.*.cmp_cap = jof_stored_bound(@intCast(stage_bytes));
+        st.*.cmp = @ptrCast(priv_jof_bump_take(st.*.bump, @as(usize, st.*.cmp_cap)));
+        if (st.*.cmp == null) {
+            return jof_h.k_ra8_err_invalid_size;
+        }
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Bind the source geometry: validate caps, carve buffers, emit the header.
+/// Fires once per transcode (from either decoder). Rejects, fail closed:
+/// dimensions above the caps, a tile grid above the format cap, and any
+/// carve the arena cannot fit. On success the 32-byte JOF header has been
+/// sunk. Ports priv_jof_on_geom.
+pub export fn priv_jof_on_geom(
+    ctx: ?*anyopaque,
+    width: u16,
+    height: u16,
+    channels: u8,
+) callconv(.c) jof_h.ra8_err_t {
+    const st: *jof_h.jof_prod_state_t = @ptrCast(@alignCast(ctx.?));
+    if (st.*.geom_done != 0) {
+        return jof_h.k_ra8_err_invalid_state;
+    }
+    if ((width == 0) or (width > st.*.cap_w) or (height == 0) or (height > st.*.cap_h)) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const cols: u32 = (@as(u32, width) +% @as(u32, st.*.cfg.*.tile_w) -% 1) /
+        @as(u32, st.*.cfg.*.tile_w);
+    const rows: u32 = (@as(u32, height) +% @as(u32, st.*.cfg.*.tile_h) -% 1) /
+        @as(u32, st.*.cfg.*.tile_h);
+    if ((cols *% rows) > @as(u32, @intCast(jof_h.k_jof_max_tiles))) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    st.*.w = width;
+    st.*.h = height;
+    st.*.bpp = channels;
+    st.*.tile_cols = @truncate(cols);
+    st.*.tile_rows = @truncate(rows);
+    st.*.tile_count = cols *% rows;
+    var err = internal_carve_pixel_path(st);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    err = internal_emit_header(st);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    st.*.geom_done = 1;
+    return jof_h.k_ra8_ok;
+}
+
+// RA8FW-1151 tests ------------------------------------------------------------
+
+var s_prefix_inner_calls: usize = 0;
+
+fn prefixInnerPull(ctx: ?*anyopaque, buf: [*c]u8, cap: usize, got: [*c]usize) callconv(.c) jof_h.ra8_err_t {
+    _ = ctx;
+    s_prefix_inner_calls += 1;
+    if (cap == 0) {
+        got.* = 0;
+        return jof_h.k_ra8_ok;
+    }
+    buf[0] = 'Z';
+    got.* = 1;
+    return jof_h.k_ra8_ok;
+}
+
+fn prefixInnerFail(ctx: ?*anyopaque, buf: [*c]u8, cap: usize, got: [*c]usize) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ ctx, buf, cap, got };
+    return jof_h.k_ra8_err_invalid_size;
+}
+
+test "priv_jof_on_geom binds the grid, carves and sinks the header" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = 0 };
+    var arena: [256]u8 align(8) = undefined;
+    var bump = jof_h.jof_bump_t{ .base = &arena, .cap = arena.len, .off = 0 };
+    var cfg = std.mem.zeroes(jof_h.jof_produce_cfg_t);
+    cfg.tile_w = 2;
+    cfg.tile_h = 2;
+    cfg.codec = jof_h.k_jof_codec_raw;
+    cfg.sink = jof_memstore_sink;
+    cfg.sink_ctx = &store;
+    var st = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st.cfg = &cfg;
+    st.bump = &bump;
+    st.cap_w = 32768;
+    st.cap_h = 32768;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_geom(&st, 3, 2, 1));
+    // The grid: 3x2 pixels in 2x2 tiles -> 2 columns x 1 row.
+    try std.testing.expectEqual(@as(u16, 2), st.tile_cols);
+    try std.testing.expectEqual(@as(u16, 1), st.tile_rows);
+    try std.testing.expectEqual(@as(u32, 2), st.tile_count);
+    try std.testing.expect(st.band != null and st.stage != null and st.idx != null);
+    try std.testing.expectEqual(@as(u8, 1), st.geom_done);
+    try std.testing.expectEqual(@as(u32, jof_h.k_jof_hdr_bytes), st.written);
+    try std.testing.expectEqual(@as(usize, 32), store.len);
+    // Header bytes: magic, geometry, bpp, codec, tile count, zero fill.
+    try std.testing.expectEqual(@as(u8, 'J'), backing[0]);
+    try std.testing.expectEqual(@as(u8, 'O'), backing[1]);
+    try std.testing.expectEqual(@as(u8, 'F'), backing[2]);
+    try std.testing.expectEqual(@as(u8, '1'), backing[3]);
+    try std.testing.expectEqual(@as(u16, 3), std.mem.readInt(u16, backing[4..6], .little));
+    try std.testing.expectEqual(@as(u16, 2), std.mem.readInt(u16, backing[6..8], .little));
+    try std.testing.expectEqual(@as(u16, 2), std.mem.readInt(u16, backing[8..10], .little));
+    try std.testing.expectEqual(@as(u16, 2), std.mem.readInt(u16, backing[10..12], .little));
+    try std.testing.expectEqual(@as(u8, 1), backing[jof_h.k_jof_ofs_bpp]);
+    try std.testing.expectEqual(@as(u8, 0), backing[jof_h.k_jof_ofs_codec]);
+    try std.testing.expectEqual(@as(u32, 2), std.mem.readInt(u32, backing[16..20], .little));
+    for (backing[20..32]) |b| {
+        try std.testing.expectEqual(@as(u8, 0), b);
+    }
+}
+
+test "priv_jof_on_geom refuses a refire, over-cap dims, an over-cap grid and a starved arena" {
+    var backing: [64]u8 = std.mem.zeroes([64]u8);
+    var store = jof_h.jof_memstore_t{ .buf = &backing, .cap = backing.len, .len = 0 };
+    var arena: [256]u8 align(8) = undefined;
+    var bump = jof_h.jof_bump_t{ .base = &arena, .cap = arena.len, .off = 0 };
+    var cfg = std.mem.zeroes(jof_h.jof_produce_cfg_t);
+    cfg.tile_w = 2;
+    cfg.tile_h = 2;
+    cfg.codec = jof_h.k_jof_codec_raw;
+    cfg.sink = jof_memstore_sink;
+    cfg.sink_ctx = &store;
+    var st = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st.cfg = &cfg;
+    st.bump = &bump;
+    st.cap_w = 8;
+    st.cap_h = 8;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_geom(&st, 4, 4, 1));
+    // The geometry hook fires once per transcode.
+    try std.testing.expectEqual(jof_h.k_ra8_err_invalid_state, priv_jof_on_geom(&st, 4, 4, 1));
+    // Over the caller's width cap.
+    var st2 = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st2.cfg = &cfg;
+    st2.bump = &bump;
+    st2.cap_w = 8;
+    st2.cap_h = 8;
+    try std.testing.expectEqual(jof_h.k_ra8_err_invalid_size, priv_jof_on_geom(&st2, 9, 1, 1));
+    // Over the 65536-tile grid cap: 32768x32768 in 1x1 tiles.
+    var st3 = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st3.cfg = &cfg;
+    st3.bump = &bump;
+    st3.cap_w = 32768;
+    st3.cap_h = 32768;
+    cfg.tile_w = 1;
+    cfg.tile_h = 1;
+    try std.testing.expectEqual(jof_h.k_ra8_err_invalid_size, priv_jof_on_geom(&st3, 32768, 32768, 1));
+    cfg.tile_w = 2;
+    cfg.tile_h = 2;
+    // An arena the carve cannot fit: band_bytes = 64*64*1 out of 256.
+    var st4 = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st4.cfg = &cfg;
+    st4.bump = &bump;
+    st4.cap_w = 32768;
+    st4.cap_h = 32768;
+    try std.testing.expectEqual(jof_h.k_ra8_err_invalid_size, priv_jof_on_geom(&st4, 64, 64, 1));
+}
+
+test "priv_jof_prefix_pull replays the head, then delegates" {
+    var head = [_]u8{ 'A', 'B' };
+    var pfx = jof_h.jof_prefix_pull_t{
+        .head = &head,
+        .head_len = 2,
+        .pos = 0,
+        .inner = prefixInnerPull,
+        .inner_ctx = null,
+    };
+    var out: [4]u8 = undefined;
+    var got: usize = 0;
+    // A one-byte pull serves the first head byte only.
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_prefix_pull(@ptrCast(&pfx), &out, 1, &got));
+    try std.testing.expectEqual(@as(usize, 1), got);
+    try std.testing.expectEqual(@as(u8, 'A'), out[0]);
+    try std.testing.expectEqual(@as(usize, 1), pfx.pos);
+    // A wider pull serves the rest of the head, never past it.
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_prefix_pull(@ptrCast(&pfx), &out, 4, &got));
+    try std.testing.expectEqual(@as(usize, 1), got);
+    try std.testing.expectEqual(@as(u8, 'B'), out[0]);
+    try std.testing.expectEqual(@as(usize, 2), pfx.pos);
+    // Head exhausted: the inner source answers.
+    s_prefix_inner_calls = 0;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_prefix_pull(@ptrCast(&pfx), &out, 4, &got));
+    try std.testing.expectEqual(@as(usize, 1), got);
+    try std.testing.expectEqual(@as(u8, 'Z'), out[0]);
+    try std.testing.expectEqual(@as(usize, 1), s_prefix_inner_calls);
+    // A headless adapter delegates straight through, errors included.
+    var bare = jof_h.jof_prefix_pull_t{
+        .head = &head,
+        .head_len = 0,
+        .pos = 0,
+        .inner = prefixInnerFail,
+        .inner_ctx = null,
+    };
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_invalid_size,
+        priv_jof_prefix_pull(@ptrCast(&bare), &out, 4, &got),
+    );
+}

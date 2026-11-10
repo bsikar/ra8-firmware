@@ -45,6 +45,14 @@ _Static_assert(sizeof(tinfl_decompressor) == 8376U, "tinfl size pinned for the Z
 _Static_assert(sizeof(tdefl_compressor) == 319352U, "tdefl size pinned for the Zig jof_work_bytes port");
 
 /** @brief Module log tag. */
+/* Ported to Zig (jof_abi.zig, RA8FW-1151); the remaining producer body
+ * reaches these through the archive link. */
+extern void      internal_wr_u16(uint8_t* buf, uint16_t v);
+extern void      internal_wr_u32(uint8_t* buf, uint32_t v);
+extern ra8_err_t internal_sink(jof_prod_state_t* st, const uint8_t* buf, size_t len);
+extern ra8_err_t internal_emit_header(jof_prod_state_t* st);
+extern ra8_err_t internal_carve_pixel_path(jof_prod_state_t* st);
+
 static const char* const s_tag = "jof_prod";
 
 /**
@@ -106,230 +114,15 @@ RA8_INTERNAL static ra8_imgdec_format_t internal_sniffed(const uint8_t* data, si
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @brief Store a uint16 little-endian at @p buf.
- * @details Serializes @p v as two little-endian bytes.
- * @param[out] buf Destination (2 writable bytes).
- * @param[in]  v   Value to store.
- * @pre @p buf holds 2 writable bytes.
- * @pre None (total over uint16_t).
- * @post @p buf[0..1] holds @p v little-endian.
- * @post No other state mutated.
- * @note Pure over its output; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static void internal_wr_u16(uint8_t* buf, uint16_t v)
-{
-  buf[0] = (uint8_t)(v & (uint16_t)k_jof_byte_mask);
-  buf[1] = (uint8_t)((uint32_t)v >> k_jof_le_sh8);
-}
-
-/**
- * @brief Store a uint32 little-endian at @p buf.
- * @details Serializes @p v as four little-endian bytes.
- * @param[out] buf Destination (4 writable bytes).
- * @param[in]  v   Value to store.
- * @pre @p buf holds 4 writable bytes.
- * @pre None (total over uint32_t).
- * @post @p buf[0..3] holds @p v little-endian.
- * @post No other state mutated.
- * @note Pure over its output; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static void internal_wr_u32(uint8_t* buf, uint32_t v)
-{
-  buf[0] = (uint8_t)(v & (uint32_t)k_jof_byte_mask);
-  buf[1] = (uint8_t)((v >> k_jof_le_sh8) & (uint32_t)k_jof_byte_mask);
-  buf[2] = (uint8_t)((v >> k_jof_le_sh16) & (uint32_t)k_jof_byte_mask);
-  buf[3] = (uint8_t)((v >> k_jof_le_sh24) & (uint32_t)k_jof_byte_mask);
-}
-
-/**
- * @brief Append bytes to the caller sink, tracking the atlas offset.
- * @details Guards the u32 atlas size cap before delegating to the caller sink.
- * @param[in,out] st  Producer state (`written` advances).
- * @param[in]     buf Bytes to append.
- * @param[in]     len Byte count.
- * @return Result code.
- * @retval k_ra8_ok               Bytes sunk and accounted.
- * @retval k_ra8_err_invalid_size The atlas would exceed the u32 format cap.
- * @retval other                  Propagated from the caller sink.
- * @pre @p buf holds @p len readable bytes.
- * @pre `st->cfg->sink` is bound.
- * @post On success `st->written` grew by @p len.
- * @post On error the transcode aborts (partial atlas discarded).
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_sink(jof_prod_state_t* st, const uint8_t* buf, size_t len)
-{
-  if ((uint64_t)len > ((uint64_t)UINT32_MAX - (uint64_t)st->written)) {
-    return k_ra8_err_invalid_size;
-  }
-  const ra8_err_t err = st->cfg->sink(st->cfg->sink_ctx, buf, len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  st->written += (uint32_t)len;
-  return k_ra8_ok;
-}
-
 /* ---------------------------------------------------------------------------
  * Prefix-replay pull adapter.
  * ---------------------------------------------------------------------------
  */
 
-RA8_PRIV ra8_err_t priv_jof_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
-{
-  jof_prefix_pull_t* pfx = (jof_prefix_pull_t*)ctx;
-  if (pfx->pos < pfx->head_len) {
-    const size_t left = pfx->head_len - pfx->pos;
-    const size_t take = (cap < left) ? cap : left;
-    (void)memcpy(buf, &pfx->head[pfx->pos], take);
-    pfx->pos += take;
-    *got = take;
-    return k_ra8_ok;
-  }
-  return pfx->inner(pfx->inner_ctx, buf, cap, got);
-}
-
 /* ---------------------------------------------------------------------------
  * Geometry + band accumulation + tile flush.
  * ---------------------------------------------------------------------------
  */
-
-/**
- * @brief Serialize + sink the 32-byte JOF header from the bound geometry.
- * @details Serializes every geometry field per the JOF layout table in jof.h.
- * @param[in,out] st Producer state (`written` advances via the sink).
- * @return Result code.
- * @retval k_ra8_ok The header is the first 32 atlas bytes.
- * @retval other    Propagated from the sink.
- * @pre The geometry fields of @p st are bound and validated.
- * @pre No atlas byte has been sunk yet (`written == 0`).
- * @post On success the sink holds exactly the header.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_emit_header(jof_prod_state_t* st)
-{
-  uint8_t hdr[k_jof_hdr_bytes] = {};
-  hdr[0]                       = 'J';
-  hdr[1]                       = 'O';
-  hdr[2]                       = 'F';
-  hdr[3]                       = '1';
-  internal_wr_u16(&hdr[k_jof_ofs_width], st->w);
-  internal_wr_u16(&hdr[k_jof_ofs_height], st->h);
-  internal_wr_u16(&hdr[k_jof_ofs_tile_w], st->cfg->tile_w);
-  internal_wr_u16(&hdr[k_jof_ofs_tile_h], st->cfg->tile_h);
-  hdr[k_jof_ofs_bpp]   = st->bpp;
-  hdr[k_jof_ofs_codec] = st->cfg->codec;
-  internal_wr_u32(&hdr[k_jof_ofs_tile_count], st->tile_count);
-  return internal_sink(st, hdr, sizeof(hdr));
-}
-
-/**
- * @brief Carve the band, stage, index and compressed-tile buffers.
- * @details Sizes are computed in 64-bit and checked against the u32 format
- *          cap before any carve; arena exhaustion fails closed.
- * @param[in,out] st Producer state (geometry fields already bound).
- * @return Result code.
- * @retval k_ra8_ok               Every pixel-path buffer is carved.
- * @retval k_ra8_err_invalid_size Overflow or arena exhaustion.
- * @pre `st->w`/`st->h`/`st->bpp` and the grid fields are bound.
- * @pre `st->bump` has the geometry carve set available.
- * @post On success `band`/`stage`/`idx` (and `cmp` for deflate) are bound.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_carve_pixel_path(jof_prod_state_t* st)
-{
-  const uint16_t tw          = st->cfg->tile_w;
-  const uint16_t th          = st->cfg->tile_h;
-  const uint64_t band_bytes  = (uint64_t)st->w * (uint64_t)th * (uint64_t)st->bpp;
-  const uint32_t tw_eff      = (tw < st->w) ? tw : st->w;
-  const uint32_t th_eff      = (th < st->h) ? th : st->h;
-  const uint64_t stage_bytes = (uint64_t)tw_eff * (uint64_t)th_eff * (uint64_t)st->bpp;
-  // mcdc-deactivated: stage_bytes = tw_eff*th_eff*bpp with tw_eff <= w and th_eff <= tile_h, so stage_bytes <= w*tile_h*bpp = band_bytes always; the stage-overflow arm cannot flip independently of the band arm (which apps/shared_libs/jof/tests/src/test_jof_produce_guards.c drives true via a 32768-wide RGBA source and a 65535-tall tile).
-  if ((band_bytes > (uint64_t)UINT32_MAX) || (stage_bytes > (uint64_t)UINT32_MAX)) {
-    return k_ra8_err_invalid_size;
-  }
-  st->band  = priv_jof_bump_take(st->bump, (size_t)band_bytes);
-  st->stage = priv_jof_bump_take(st->bump, (size_t)stage_bytes);
-  st->idx   = priv_jof_bump_take(st->bump, (size_t)st->tile_count * (size_t)k_jof_index_entry);
-  if ((st->band == nullptr) || (st->stage == nullptr) || (st->idx == nullptr)) {
-    return k_ra8_err_invalid_size;
-  }
-  if (st->cfg->codec == (uint8_t)k_jof_codec_deflate) {
-    st->cmp_cap = jof_stored_bound((uint32_t)stage_bytes);
-    st->cmp     = priv_jof_bump_take(st->bump, (size_t)st->cmp_cap);
-    if (st->cmp == nullptr) {
-      return k_ra8_err_invalid_size;
-    }
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Bind the source geometry: validate caps, carve buffers, emit header.
- * @details Fires once per transcode (from either decoder). Rejects, fail
- *          closed: dimensions above the caps, a tile grid above the format
- *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          JOF header has been sunk.
- * @param[in] ctx      The producer state.
- * @param[in] width    Source width, pixels.
- * @param[in] height   Source height, pixels.
- * @param[in] channels Output bytes per pixel (1, 3 or 4).
- * @return Result code.
- * @retval k_ra8_ok               Geometry bound; header written.
- * @retval k_ra8_err_invalid_size Over the caps / grid cap / arena exhausted.
- * @retval k_ra8_err_invalid_state The geometry hook fired twice.
- * @retval other                  Propagated from the sink.
- * @pre The decoder validated @p width/@p height non-zero.
- * @pre `st->cfg` and `st->bump` are bound.
- * @post On success `band`/`stage`/`cmp`/`idx` are carved and header sunk.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_PRIV ra8_err_t priv_jof_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
-{
-  jof_prod_state_t* st = (jof_prod_state_t*)ctx;
-  if (st->geom_done != 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  if ((width == 0U) || (width > st->cap_w) || (height == 0U) || (height > st->cap_h)) {
-    return k_ra8_err_invalid_size;
-  }
-  const uint32_t cols = ((uint32_t)width + st->cfg->tile_w - 1U) / st->cfg->tile_w;
-  const uint32_t rows = ((uint32_t)height + st->cfg->tile_h - 1U) / st->cfg->tile_h;
-  if ((cols * rows) > (uint32_t)k_jof_max_tiles) {
-    return k_ra8_err_invalid_size;
-  }
-  st->w          = width;
-  st->h          = height;
-  st->bpp        = channels;
-  st->tile_cols  = (uint16_t)cols;
-  st->tile_rows  = (uint16_t)rows;
-  st->tile_count = cols * rows;
-  ra8_err_t err  = internal_carve_pixel_path(st);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = internal_emit_header(st);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  st->geom_done = 1U;
-  return k_ra8_ok;
-}
 
 /**
  * @brief Encode one packed tile payload and append it to the atlas.
