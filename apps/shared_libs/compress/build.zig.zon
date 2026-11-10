@@ -1,0 +1,13 @@
+.{
+    .name = .compress,
+    .version = "0.1.0",
+    .fingerprint = 0x4934d319f6e83156,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

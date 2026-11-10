@@ -9,6 +9,7 @@
         .ra8_mem = .{ .path = "../../libs/ra8_mem" },
         .ra8_core = .{ .path = "../../libs/ra8_core" },
         .ra8_io = .{ .path = "../../libs/ra8_io" },
+        .compress = .{ .path = "../../apps/shared_libs/compress" },
     },
     .paths = .{
         "build.zig",

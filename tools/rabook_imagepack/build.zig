@@ -71,11 +71,8 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 // sit on. Naming members rather than globbing keeps the HAL and peripheral
 // layers out of a host tool. The JPEG codec is Zig: RA8_FMT_JPEG_SRC is
 // empty in the C-era recipe and stays empty here.
-// The whole jof producer and reader are Zig (libjof.a); the closure here is
-// only the compression seam the C-era recipe carried.
-const jof_closure = [_][]const u8{
-    compress_dir ++ "ra8_compress.c",
-};
+// The whole jof producer and reader are Zig (libjof.a), and the compression
+// seam is Zig too (libcompress.a, RA8FW-1155): no first-party C TU remains.
 
 const book_closure = [_][]const u8{
     book_dir ++ "book.c",
@@ -209,6 +206,7 @@ pub fn build(b: *std.Build) void {
     const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
     const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig");
     const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
+    const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
 
     const tool_sources = [_][]const u8{
         "src/main.c",
@@ -231,10 +229,10 @@ pub fn build(b: *std.Build) void {
     mod.linkLibrary(jpeg_lib);
     mod.linkLibrary(core_lib);
     mod.linkLibrary(jof_lib);
+    mod.linkLibrary(compress_lib);
     addToolIncludes(b, mod);
     addWebpIncludes(b, mod);
     addC(b, mod, ".", &tool_sources, &first_party_flags);
-    addC(b, mod, ".", &jof_closure, &first_party_flags);
     addC(b, mod, ".", &book_closure, &first_party_flags);
     mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &miniz_flags });
     addWebp(b, mod);
@@ -379,7 +377,6 @@ pub fn build(b: *std.Build) void {
                 rabook_compile_dir ++ "rabook_compile.c",
                 rabook_compile_dir ++ "ra8_rabook_finalize.c",
                 rabook_compile_dir ++ "ra8_rabook_container.c",
-                compress_dir ++ "ra8_compress.c",
             },
             .includes = &.{ support_inc, "../../apps/shared_libs/rabook_compile/tests/inc", "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/book/inc", "../../apps/shared_libs/book/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_mem/inc", "../../apps/shared_libs/rabook_compile/inc", miniz_inc },
             .webp = false,
@@ -397,6 +394,8 @@ pub fn build(b: *std.Build) void {
         tmod.linkLibrary(jpeg_lib);
         tmod.linkLibrary(core_lib);
         tmod.linkLibrary(jof_lib);
+        tmod.linkLibrary(compress_lib);
+        mod.linkLibrary(compress_lib);
         for (unit.includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
         // The C-era test targets carried extra definitions per target
         // (RA8_FMT_TEST_PNG's golden fixture path); those ride on the unit's
@@ -410,7 +409,6 @@ pub fn build(b: *std.Build) void {
             addC(b, tmod, ".", unit.files, &first_party_flags);
         }
         if (unit.quiet_files.len > 0) addC(b, tmod, ".", unit.quiet_files, &.{"-w"});
-        if (unit.jofc) addC(b, tmod, ".", &jof_closure, &first_party_flags);
         if (unit.bookc) addC(b, tmod, ".", &book_closure, &first_party_flags);
         const mz_flags: []const []const u8 = if (unit.no_malloc_miniz) &miniz_flags_malloc else &miniz_flags;
         tmod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = mz_flags });

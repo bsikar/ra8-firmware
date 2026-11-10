@@ -58,6 +58,18 @@ if(NOT TARGET ra8_zig::jof)
 endif()
 link_libraries(ra8_zig::jof)
 
+# ra8_compress.c is Zig now (ra8_compress_abi.zig, RA8FW-1155), so the
+# compression facade links the archive instead of the deleted TU.
+if(NOT TARGET ra8_zig::compress)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME compress
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress
+    LIBRARY_NAME compress
+  )
+endif()
+link_libraries(ra8_zig::compress)
+
 if(NOT TARGET ra8_zig::ra8_jpeg)
   include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -83,16 +95,14 @@ link_libraries(ra8_zig::ra8_core)
 find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 
 # ---------------------------------------------------------------------------
-# jof-worker: the per-page C transcode.
+# jof-worker: the per-page transcode.
 #
-# The exact firmware members it calls: the JOF producer (with its JPEG / PNG
-# / WebP front ends) plus the compression seam they sit on. Naming members
-# rather than globbing keeps the HAL and peripheral layers out of a host tool.
+# The firmware members it calls (the JOF producer with its JPEG / PNG / WebP
+# front ends, and the compression seam they sit on) are all Zig archives
+# (ra8_zig::jof, ra8_zig::ra8_jpeg, ra8_zig::compress), linked above. Only
+# ra8_error_handler.c still compiles from the firmware tree.
 # ---------------------------------------------------------------------------
 set(CBZ2JOF_FW_SRC
-    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce.c
-    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
-    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
 )
 # The JPEG codec is Zig now (encoder, decoder and stripe driver),
