@@ -47,7 +47,7 @@ pub export fn priv_jof_bump_take(bump: [*c]jof_h.jof_bump_t, len: usize) callcon
     _ = .{ bump, len };
     return null;
 }
-pub export fn jof_read_tile(pread: jof_h.jof_pread_fn, pread_ctx: ?*anyopaque, info: [*c]const jof_h.jof_info_t, tile_x: u16, tile_y: u16, scratch: [*c]u8, scratch_cap: u32, out_px: [*c]u8, out_cap: u32, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t {
-    _ = .{ pread, pread_ctx, info, tile_x, tile_y, scratch, scratch_cap, out_px, out_cap, out_w, out_h };
+pub export fn ra8_decompress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap: u32, out_len: [*c]u32) callconv(.c) jof_h.ra8_err_t {
+    _ = .{ src, src_len, out, out_cap, out_len };
     return jof_h.k_ra8_err_invalid_size;
 }

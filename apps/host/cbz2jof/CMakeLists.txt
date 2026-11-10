@@ -90,7 +90,6 @@ find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 # rather than globbing keeps the HAL and peripheral layers out of a host tool.
 # ---------------------------------------------------------------------------
 set(CBZ2JOF_FW_SRC
-    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${CBZ2JOF_REPO_ROOT}/    ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
