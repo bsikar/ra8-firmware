@@ -30,6 +30,11 @@
 #include "ra8_fs.h"
 #include "ra8_io_vfs.h"
 
+/* The Zig ra8_compress_abi.zig pins the scratch constant at 319,352; keep the
+ * C side honest against a miniz bump. */
+_Static_assert(k_ra8_compress_scratch_bytes == 319352U,
+               "miniz tdefl_compressor size changed; update ra8_compress_abi.zig");
+
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_vfs_compress";
 

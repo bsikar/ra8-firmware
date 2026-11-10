@@ -953,3 +953,12 @@ ra8_add_zig_library(
   jof
 )
 link_libraries(ra8_zig::jof)
+ra8_add_zig_library(
+  NAME
+  compress
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/compress
+  LIBRARY_NAME
+  compress
+)
+link_libraries(ra8_zig::compress)

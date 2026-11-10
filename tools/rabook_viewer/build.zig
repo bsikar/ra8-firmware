@@ -24,10 +24,10 @@ const std = @import("std");
 // archive's definitions are PUBLIC in the C-era target (MINIZ carve-downs and
 // RA8_OFF_TARGET), so consumers inherit them; they ride the flag list here.
 const first_party_flags = [_][]const u8{
-    "-std=gnu23",         "-Wall",
-    "-Wextra",            "-Werror",
-    "-DRA8_OFF_TARGET",   "-DMINIZ_NO_MALLOC",
-    "-DMINIZ_NO_STDIO",   "-DMINIZ_NO_TIME",
+    "-std=gnu23",       "-Wall",
+    "-Wextra",          "-Werror",
+    "-DRA8_OFF_TARGET", "-DMINIZ_NO_MALLOC",
+    "-DMINIZ_NO_STDIO", "-DMINIZ_NO_TIME",
 };
 
 // miniz and the stb image residue type-pun through byte buffers; the C-era
@@ -88,7 +88,6 @@ const reflow_closure = [_][]const u8{
     reflow_dir ++ "reflow_svg_xform.c",
 };
 const jof_closure = [_][]const u8{jof_dir ++ "jof.c"};
-const compress_closure = [_][]const u8{compress_dir ++ "ra8_compress.c"};
 const unarch_closure = [_][]const u8{
     "../../apps/shared_libs/unarch/src/unarch_io.c",
     "../../apps/shared_libs/unarch/src/unarch_tar.c",
@@ -223,6 +222,7 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     // stream ABI, and the one KEEP/DROP member that wanted more (epub_fs.c) is
     // DROP. The narrow root is the same units=stream archive glyph_bench uses.
     const io_lib = b.dependency("ra8_io", .{ .target = target, .optimize = optimize, .units = "stream" }).artifact("ra8_io");
+    const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(gfx_lib);
     mod.linkLibrary(mem_lib);
@@ -246,7 +246,7 @@ pub fn build(b: *std.Build) void {
     addC(b, reader_mod, ".", &epub_closure, &first_party_flags);
     addC(b, reader_mod, ".", &reflow_closure, &first_party_flags);
     addC(b, reader_mod, ".", &jof_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &compress_closure, &first_party_flags);
+    reader_mod.linkLibrary(compress_lib);
     addC(b, reader_mod, ".", &unarch_closure, &first_party_flags);
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_sources, .flags = &third_party_flags });

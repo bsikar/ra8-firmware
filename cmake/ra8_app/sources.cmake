@@ -614,9 +614,7 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/compress/inc
          ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
     )
-    if(NOT "compress" IN_LIST _RA8_APP_LIBS)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c)
-    endif()
+
     if((NOT "epub" IN_LIST _RA8_APP_LIBS) AND (NOT "miniz" IN_LIST _RA8_APP_LIBS))
       set(_ra8_rabook_vendor ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c)
       list(APPEND _ra8_lib_extra ${_ra8_rabook_vendor})
@@ -656,9 +654,7 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc
       ${RA8_REPO_ROOT}/libs/ra8_io/inc
     )
-    if(NOT "compress" IN_LIST _RA8_APP_LIBS)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c)
-    endif()
+
     # Normalize-on-import: the producer normalises WebP manifest images
     # to JOF too, so it calls the ra8_webp facade (the WebP arm lives in
     # jof_produce_webp.c: jof_priv_webp_transcode). Compile the
