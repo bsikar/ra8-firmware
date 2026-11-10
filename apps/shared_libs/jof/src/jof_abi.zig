@@ -1620,6 +1620,7 @@ test "jof_work_bytes matches the C working-set composition" {
 
 /// Deflate seam from ra8_compress (the C TU consumers compile beside the archive).
 extern fn ra8_decompress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap: u32, out_len: [*c]u32) callconv(.c) jof_h.ra8_err_t;
+extern fn ra8_compress(src: [*c]const u8, src_len: u32, out: [*c]u8, out_cap: u32, scratch: ?*anyopaque, scratch_len: u32, out_len: [*c]u32) callconv(.c) jof_h.ra8_err_t;
 
 /// Fetch + window-validate the index entry for tile `n` (ports internal_index_entry).
 fn readTileIndexEntry(
@@ -2237,4 +2238,243 @@ test "priv_jof_prefix_pull replays the head, then delegates" {
         jof_h.k_ra8_err_invalid_size,
         priv_jof_prefix_pull(@ptrCast(&bare), &out, 4, &got),
     );
+}
+
+// ---------------------------------------------------------------------------
+// Producer body slice 2 (RA8FW-1152): tile encode, band flush and the
+// row-accumulate streaming entry.
+// ---------------------------------------------------------------------------
+
+/// Encode one packed tile payload and append it to the atlas. Raw codec
+/// sinks the payload verbatim; the deflate codec runs it through the
+/// zero-heap ra8_compress() into the bounded compressed-tile buffer. The
+/// tile's index entry (absolute offset plus stored length) is recorded
+/// before the bytes are sunk. Ports internal_encode_tile.
+pub export fn internal_encode_tile(st: *jof_h.jof_prod_state_t, payload: u32) callconv(.c) jof_h.ra8_err_t {
+    var out_bytes: [*c]const u8 = st.*.stage;
+    var out_len: u32 = payload;
+    if (st.*.cfg.*.codec == jof_h.k_jof_codec_deflate) {
+        var clen: u32 = 0;
+        if (ra8_compress(st.*.stage, payload, st.*.cmp, st.*.cmp_cap, @ptrCast(st.*.dfl), st.*.dfl_len, &clen) != jof_h.k_ra8_ok) {
+            return jof_h.k_ra8_err_validation_failed;
+        }
+        out_bytes = st.*.cmp;
+        out_len = clen;
+    }
+    const entry: [*c]u8 = st.*.idx + @as(usize, st.*.tiles_done) * @as(usize, jof_h.k_jof_index_entry);
+    internal_wr_u32(&entry[jof_h.k_jof_idx_ofs_offset], st.*.written);
+    internal_wr_u32(&entry[jof_h.k_jof_idx_ofs_length], out_len);
+    const err = internal_sink(st, out_bytes, @as(usize, out_len));
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    st.*.tiles_done += 1;
+    return jof_h.k_ra8_ok;
+}
+
+/// Cut the accumulated band into tiles and append each to the atlas.
+/// Iterates the tile columns left to right (row-major tile order), packing
+/// each tile's rows tightly into the stage buffer before encoding. Edge
+/// columns carry their clamped width. Ports internal_flush_band.
+pub export fn internal_flush_band(st: *jof_h.jof_prod_state_t, th: u32) callconv(.c) jof_h.ra8_err_t {
+    const stride: u32 = @as(u32, st.*.w) * @as(u32, st.*.bpp);
+    var tx: u32 = 0;
+    while (tx < @as(u32, st.*.tile_cols)) : (tx += 1) {
+        const x0: u32 = tx * @as(u32, st.*.cfg.*.tile_w);
+        const tw: u32 = if ((@as(u32, st.*.w) -% x0) < @as(u32, st.*.cfg.*.tile_w))
+            (@as(u32, st.*.w) -% x0)
+        else
+            @as(u32, st.*.cfg.*.tile_w);
+        const row_bytes: u32 = tw * @as(u32, st.*.bpp);
+        var r: u32 = 0;
+        while (r < th) : (r += 1) {
+            @memcpy(
+                st.*.stage[@as(usize, r) * @as(usize, row_bytes) ..][0..row_bytes],
+                (st.*.band + @as(usize, r) * @as(usize, stride) + @as(usize, x0) * @as(usize, st.*.bpp))[0..row_bytes],
+            );
+        }
+        const err = internal_encode_tile(st, row_bytes *% th);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Streaming row entry: accumulate rows into the band buffer, flushing
+/// full bands into tiles as they fill. Ports priv_jof_on_rows.
+pub export fn priv_jof_on_rows(
+    ctx: ?*anyopaque,
+    px: [*c]const u8,
+    width: u16,
+    y0: u16,
+    nrows: u16,
+    channels: u8,
+) callconv(.c) jof_h.ra8_err_t {
+    const st: *jof_h.jof_prod_state_t = @ptrCast(@alignCast(ctx.?));
+    if (px == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if ((st.*.geom_done == 0) or (width != st.*.w) or (channels != st.*.bpp)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    // mcdc-deactivated: row-ordering contract guard; the PNG scanline assembler emits exactly one row per call at y0 == rows_done and the JPEG stripe walker emits edge-clamped nrows >= 1 at strictly increasing MCU-row origins, so zero/duplicated/overshooting deliveries are not constructible from a public-API source.
+    if ((nrows == 0) or (@as(u32, y0) != st.*.rows_seen) or
+        ((@as(u32, y0) + @as(u32, nrows)) > @as(u32, st.*.h)))
+    {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    const stride: u32 = @as(u32, st.*.w) * @as(u32, st.*.bpp);
+    var src: [*c]const u8 = px;
+    var left: u32 = nrows;
+    while (left > 0) {
+        const room: u32 = @as(u32, st.*.cfg.*.tile_h) - st.*.band_fill;
+        const take: u32 = if (left < room) left else room;
+        @memcpy(
+            (st.*.band + @as(usize, st.*.band_fill) * @as(usize, stride))[0 .. @as(usize, take) * @as(usize, stride)],
+            src[0 .. @as(usize, take) * @as(usize, stride)],
+        );
+        st.*.band_fill += take;
+        st.*.rows_seen += take;
+        src += @as(usize, take) * @as(usize, stride);
+        left -= take;
+        if (st.*.band_fill == @as(u32, st.*.cfg.*.tile_h)) {
+            const err = internal_flush_band(st, st.*.band_fill);
+            if (err != jof_h.k_ra8_ok) {
+                return err;
+            }
+            st.*.band_fill = 0;
+        }
+    }
+    return jof_h.k_ra8_ok;
+}
+
+// RA8FW-1152 tests ------------------------------------------------------------
+
+/// Shared producer fixture: raw codec, 2x2 tiles, memstore sink, a 256-byte
+/// arena, 32768-dim caps, geometry bound at width x height x bpp.
+const ProdFixture = struct {
+    backing: [256]u8 = std.mem.zeroes([256]u8),
+    store: jof_h.jof_memstore_t = undefined,
+    arena: [256]u8 align(8) = undefined,
+    bump: jof_h.jof_bump_t = undefined,
+    cfg: jof_h.jof_produce_cfg_t = undefined,
+    st: jof_h.jof_prod_state_t = undefined,
+
+    fn init(self: *ProdFixture, width: u16, height: u16, bits_pp: u8, codec: u8) jof_h.ra8_err_t {
+        self.* = .{};
+        self.store = .{ .buf = &self.backing, .cap = self.backing.len, .len = 0 };
+        self.bump = .{ .base = &self.arena, .cap = self.arena.len, .off = 0 };
+        self.cfg = std.mem.zeroes(jof_h.jof_produce_cfg_t);
+        self.cfg.tile_w = 2;
+        self.cfg.tile_h = 2;
+        self.cfg.codec = codec;
+        self.cfg.sink = jof_memstore_sink;
+        self.cfg.sink_ctx = &self.store;
+        self.st = std.mem.zeroes(jof_h.jof_prod_state_t);
+        self.st.cfg = &self.cfg;
+        self.st.bump = &self.bump;
+        self.st.cap_w = 32768;
+        self.st.cap_h = 32768;
+        const err = priv_jof_on_geom(&self.st, width, height, bits_pp);
+        return err;
+    }
+};
+
+test "priv_jof_on_rows streams a 3x2 atlas through the band flush into the memstore" {
+    var fx = ProdFixture{};
+    try std.testing.expectEqual(jof_h.k_ra8_ok, fx.init(3, 2, 1, jof_h.k_jof_codec_raw));
+    // Row-major source: row 0 = a b c, row 1 = d e f.
+    const rows = [_]u8{ 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &rows, 3, 0, 2, 1));
+    // The band filled to tile_h: two tiles flushed, row-major tile order.
+    try std.testing.expectEqual(@as(u32, 2), fx.st.tiles_done);
+    try std.testing.expectEqual(@as(u32, 2), fx.st.rows_seen);
+    try std.testing.expectEqual(@as(u32, 0), fx.st.band_fill);
+    // Header + tile 0 (a b d e) + tile 1 (c f).
+    try std.testing.expectEqual(@as(usize, 38), fx.store.len);
+    try std.testing.expectEqual(@as(u8, 0xA), fx.backing[32]);
+    try std.testing.expectEqual(@as(u8, 0xB), fx.backing[33]);
+    try std.testing.expectEqual(@as(u8, 0xD), fx.backing[34]);
+    try std.testing.expectEqual(@as(u8, 0xE), fx.backing[35]);
+    try std.testing.expectEqual(@as(u8, 0xC), fx.backing[36]);
+    try std.testing.expectEqual(@as(u8, 0xF), fx.backing[37]);
+    // Index entries: absolute offsets and stored lengths.
+    const idx: [*c]const u8 = fx.st.idx;
+    try std.testing.expectEqual(@as(u32, 32), std.mem.readInt(u32, idx[0..4], .little));
+    try std.testing.expectEqual(@as(u32, 4), std.mem.readInt(u32, idx[4..8], .little));
+    try std.testing.expectEqual(@as(u32, 36), std.mem.readInt(u32, idx[8..12], .little));
+    try std.testing.expectEqual(@as(u32, 2), std.mem.readInt(u32, idx[12..16], .little));
+}
+
+test "priv_jof_on_rows refuses null pixels and every contract violation" {
+    var fx = ProdFixture{};
+    try std.testing.expectEqual(jof_h.k_ra8_ok, fx.init(3, 2, 1, jof_h.k_jof_codec_raw));
+    const rows = [_]u8{ 0xA, 0xB, 0xC };
+    try std.testing.expectEqual(jof_h.k_ra8_err_null_ptr, priv_jof_on_rows(&fx.st, null, 3, 0, 1, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx.st, &rows, 3, 0, 0, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx.st, &rows, 2, 0, 1, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx.st, &rows, 3, 0, 1, 3));
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx.st, &rows, 3, 1, 1, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx.st, &rows, 3, 0, 3, 1));
+    // Before the geometry hook fires nothing streams.
+    var fx2 = ProdFixture{};
+    fx2.store = .{ .buf = &fx2.backing, .cap = fx2.backing.len, .len = 0 };
+    fx2.cfg = std.mem.zeroes(jof_h.jof_produce_cfg_t);
+    fx2.cfg.sink = jof_memstore_sink;
+    fx2.cfg.sink_ctx = &fx2.store;
+    fx2.st = std.mem.zeroes(jof_h.jof_prod_state_t);
+    fx2.st.cfg = &fx2.cfg;
+    try std.testing.expectEqual(jof_h.k_ra8_err_validation_failed, priv_jof_on_rows(&fx2.st, &rows, 3, 0, 1, 1));
+}
+
+test "priv_jof_on_rows spans calls and holds a partial band" {
+    var fx = ProdFixture{};
+    try std.testing.expectEqual(jof_h.k_ra8_ok, fx.init(4, 4, 1, jof_h.k_jof_codec_raw));
+    const row = [_]u8{ 1, 2, 3, 4 };
+    // One row at a time: the first two rows fill the band and flush it.
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &row, 4, 0, 1, 1));
+    try std.testing.expectEqual(@as(u32, 0), fx.st.tiles_done);
+    try std.testing.expectEqual(@as(u32, 1), fx.st.band_fill);
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &row, 4, 1, 1, 1));
+    try std.testing.expectEqual(@as(u32, 2), fx.st.tiles_done);
+    try std.testing.expectEqual(@as(u32, 0), fx.st.band_fill);
+    // The last band stays unflushed until the epilogue.
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &row, 4, 2, 1, 1));
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &row, 4, 3, 1, 1));
+    try std.testing.expectEqual(@as(u32, 4), fx.st.tiles_done);
+    try std.testing.expectEqual(@as(u32, 0), fx.st.band_fill);
+    try std.testing.expectEqual(@as(u32, 4), fx.st.rows_seen);
+}
+
+test "priv_jof_on_rows encodes a deflate atlas through the bounded tile buffer" {
+    // The deflate carve needs the full 319352-byte compressor scratch, so
+    // this test carries its own arena instead of ProdFixture's 256 bytes.
+    var fx: ProdFixture = undefined;
+    fx = .{};
+    var dfl_arena: [340000]u8 align(8) = undefined;
+    fx.store = .{ .buf = &fx.backing, .cap = fx.backing.len, .len = 0 };
+    fx.bump = .{ .base = &dfl_arena, .cap = dfl_arena.len, .off = 0 };
+    fx.cfg = std.mem.zeroes(jof_h.jof_produce_cfg_t);
+    fx.cfg.tile_w = 2;
+    fx.cfg.tile_h = 2;
+    fx.cfg.codec = jof_h.k_jof_codec_deflate;
+    fx.cfg.sink = jof_memstore_sink;
+    fx.cfg.sink_ctx = &fx.store;
+    fx.st = std.mem.zeroes(jof_h.jof_prod_state_t);
+    fx.st.cfg = &fx.cfg;
+    fx.st.bump = &fx.bump;
+    fx.st.cap_w = 32768;
+    fx.st.cap_h = 32768;
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_geom(&fx.st, 2, 2, 1));
+    const rows = [_]u8{ 7, 8, 9, 10 };
+    try std.testing.expectEqual(jof_h.k_ra8_ok, priv_jof_on_rows(&fx.st, &rows, 2, 0, 2, 1));
+    // One tile; the copy-compressor passes the payload through unchanged.
+    try std.testing.expectEqual(@as(u32, 1), fx.st.tiles_done);
+    try std.testing.expectEqual(@as(usize, 36), fx.store.len);
+    try std.testing.expectEqual(@as(u8, 7), fx.backing[32]);
+    try std.testing.expectEqual(@as(u8, 10), fx.backing[35]);
+    const idx: [*c]const u8 = fx.st.idx;
+    try std.testing.expectEqual(@as(u32, 32), std.mem.readInt(u32, idx[0..4], .little));
+    try std.testing.expectEqual(@as(u32, 4), std.mem.readInt(u32, idx[4..8], .little));
 }
