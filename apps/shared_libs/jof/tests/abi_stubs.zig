@@ -57,13 +57,3 @@ pub export fn jof_read_tile(pread: jof_h.jof_pread_fn, pread_ctx: ?*anyopaque, i
     _ = .{ pread, pread_ctx, info, tile_x, tile_y, scratch, scratch_cap, out_px, out_cap, out_w, out_h };
     return jof_h.k_ra8_err_invalid_size;
 }
-
-pub export fn jof_tile_dims(info: [*c]const jof_h.jof_info_t, tile_x: u16, tile_y: u16, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t {
-    _ = .{ info, tile_x, tile_y, out_w, out_h };
-    return jof_h.k_ra8_err_invalid_size;
-}
-
-pub export fn jof_stored_bound(raw_bytes: u32) callconv(.c) u32 {
-    _ = raw_bytes;
-    return 0;
-}
