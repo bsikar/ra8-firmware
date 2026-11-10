@@ -7,7 +7,8 @@
  * and the bounded decode-one-tile primitive (`jof_read_tile`)
  * documented in `jof.h`. Deflate tiles inflate through the
  * zero-heap `ra8_decompress()`; raw tiles are a single positioned read.
- * The memstore helpers give tests and apps a RAM-backed sink/pread pair.
+ * The memstore helpers live in `jof_abi.zig` (RA8FW-1147); this TU keeps
+ * parse/validate and the bounded per-tile decode.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -156,43 +157,6 @@ internal_pread_exact(jof_pread_fn pread, void* pread_ctx, uint64_t off, uint8_t*
 }
 
 /* ---------------------------------------------------------------------------
- * Memstore sink / pread.
- * ---------------------------------------------------------------------------
- */
-
-ra8_err_t jof_memstore_sink(void* ctx, const uint8_t* buf, size_t len)
-{
-  RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  jof_memstore_t* store = (jof_memstore_t*)ctx;
-  RA8_CHECK_NULL_PTR(store->buf, s_tag, "store->buf must not be nullptr");
-  if (len > (store->cap - store->len)) {
-    return k_ra8_err_no_mem;
-  }
-  (void)memcpy(&store->buf[store->len], buf, len);
-  store->len += len;
-  return k_ra8_ok;
-}
-
-ra8_err_t jof_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
-{
-  RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
-  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  RA8_CHECK_NULL_PTR(got, s_tag, "got must not be nullptr");
-  *got                  = 0U;
-  jof_memstore_t* store = (jof_memstore_t*)ctx;
-  RA8_CHECK_NULL_PTR(store->buf, s_tag, "store->buf must not be nullptr");
-  if (offset >= (uint64_t)store->len) {
-    return k_ra8_ok; /* at/after end: 0-byte read, mirrors entry pread */
-  }
-  const size_t avail = store->len - (size_t)offset;
-  const size_t take  = (len < avail) ? len : avail;
-  (void)memcpy(buf, &store->buf[(size_t)offset], take);
-  *got = take;
-  return k_ra8_ok;
-}
-
-/* ---------------------------------------------------------------------------
  * Parse + validate.
  * ---------------------------------------------------------------------------
  */
@@ -334,111 +298,6 @@ internal_check_cross(jof_info_t* info, uint32_t hdr_count, const uint8_t* ftr, u
   info->index_off  = index_off;
   info->total_size = ftr_total;
   return k_ra8_ok;
-}
-
-/**
- * @brief Read + validate the 32-byte header region into @p out_info.
- * @details Magic, geometry fields and reserved runs; grid cross-checks stay
- *          with the footer phase.
- * @param[in]  pread     Backing read seam.
- * @param[in]  pread_ctx Context for @p pread.
- * @param[out] hdr       Receives the raw header bytes (for the count field).
- * @param[out] out_info  Geometry fields filled on success.
- * @return Result code.
- * @retval k_ra8_ok                    Header structurally valid.
- * @retval k_ra8_err_validation_failed Magic / geometry / reserved rejection.
- * @retval other                       Propagated from @p pread.
- * @pre @p hdr covers ::k_jof_hdr_bytes bytes.
- * @pre The backing size was validated by the caller.
- * @post On success the header geometry fields are populated.
- * @post On failure @p out_info must not be used.
- * @note Thread-safe for distinct outputs.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_parse_header_region(jof_pread_fn pread,
-                                                           void*        pread_ctx,
-                                                           uint8_t*     hdr,
-                                                           jof_info_t*  out_info)
-{
-  static const uint8_t s_magic_hdr[k_jof_magic_len] = {'J', 'O', 'F', '1'};
-  ra8_err_t err = internal_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_jof_hdr_bytes);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (memcmp(&hdr[k_jof_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
-    return k_ra8_err_validation_failed;
-  }
-  err = internal_parse_hdr_fields(hdr, out_info);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return internal_check_reserved(hdr);
-}
-
-ra8_err_t jof_parse(jof_pread_fn pread, void* pread_ctx, uint64_t total_size, jof_info_t* out_info)
-{
-  static const uint8_t s_magic_ftr[k_jof_magic_len] = {'J', 'O', 'F', 'E'};
-  RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
-  const uint64_t min_size = (uint64_t)k_jof_hdr_bytes + (uint64_t)k_jof_footer_bytes;
-  if ((total_size < min_size) || (total_size > (uint64_t)UINT32_MAX)) {
-    return k_ra8_err_invalid_size;
-  }
-  uint8_t   hdr[k_jof_hdr_bytes] = {};
-  ra8_err_t err                  = internal_parse_header_region(pread, pread_ctx, hdr, out_info);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  uint8_t ftr[k_jof_footer_bytes] = {};
-  err                             = internal_pread_exact(pread,
-                                                         pread_ctx,
-                                                         total_size - (uint64_t)k_jof_footer_bytes,
-                                                         ftr,
-                                                         sizeof(ftr));
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (memcmp(&ftr[k_jof_ftr_magic], s_magic_ftr, sizeof(s_magic_ftr)) != 0) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint32_t hdr_count = internal_rd_u32(hdr, (uint8_t)k_jof_ofs_tile_count);
-  return internal_check_cross(out_info, hdr_count, ftr, total_size);
-}
-
-/* ---------------------------------------------------------------------------
- * Tile access.
- * ---------------------------------------------------------------------------
- */
-
-ra8_err_t jof_tile_dims(const jof_info_t* info,
-                        uint16_t          tile_x,
-                        uint16_t          tile_y,
-                        uint16_t*         out_w,
-                        uint16_t*         out_h)
-{
-  RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
-  if (tile_x >= info->tile_cols) {
-    return k_ra8_err_out_of_range;
-  }
-  if (tile_y >= info->tile_rows) {
-    return k_ra8_err_out_of_range;
-  }
-  const uint32_t px     = (uint32_t)tile_x * (uint32_t)info->tile_w;
-  const uint32_t py     = (uint32_t)tile_y * (uint32_t)info->tile_h;
-  const uint32_t rest_w = (uint32_t)info->width - px;
-  const uint32_t rest_h = (uint32_t)info->height - py;
-  *out_w = (uint16_t)((rest_w < (uint32_t)info->tile_w) ? rest_w : (uint32_t)info->tile_w);
-  *out_h = (uint16_t)((rest_h < (uint32_t)info->tile_h) ? rest_h : (uint32_t)info->tile_h);
-  return k_ra8_ok;
-}
-
-/** @brief Implementation of `jof_stored_bound()` -- raw + raw/8 + 256. */
-uint32_t jof_stored_bound(uint32_t raw_bytes)
-{
-  return raw_bytes + (raw_bytes / (uint32_t)k_jof_bound_div) + (uint32_t)k_jof_bound_add;
 }
 
 /**
