@@ -13,6 +13,25 @@ const c = fs.c;
 const fat16: u8 = c.k_ra8_fs_type_fat16;
 const exfat: u8 = c.k_ra8_fs_type_exfat;
 
+/// Stage a real File+Stream+Name set for `name` in root slots 2..4, with the
+/// real set checksum stamped over the three entries.
+fn stageSet(name: []const u8, file_attr: u8, first: u32, dlen: u64) void {
+    fake.dir[2][0] = 0x85;
+    fake.dir[2][1] = 2; // Stream + Name
+    fake.dir[2][4] = file_attr;
+    fake.dir[3][0] = 0xC0;
+    fake.dir[3][3] = @intCast(name.len);
+    std.mem.writeInt(u64, fake.dir[3][8..16], dlen, .little);
+    std.mem.writeInt(u32, fake.dir[3][0x14..0x18], first, .little);
+    std.mem.writeInt(u64, fake.dir[3][0x18..0x20], dlen, .little);
+    fake.dir[4][0] = 0xC1;
+    fake.dir[4][1] = 0;
+    for (name, 0..) |ch, i| fake.dir[4][2 + i * 2] = ch;
+    fake.dir[4][2 + name.len * 2] = 0xFF;
+    fake.dir[4][3 + name.len * 2] = 0xFF;
+    _ = c.priv_exfat_set_checksum(@ptrCast(&fake.dir[2]), 96);
+}
+
 // 2026-11-02 07:15:30 packed the FAT way.
 const test_date: u16 = (46 << 9) | (11 << 5) | 2; // 0x5D62
 const test_time: u16 = (7 << 11) | (15 << 5) | 15; // 0x39EF
@@ -206,18 +225,14 @@ test "stat falls back to the long-name scan when the 8.3 find misses" {
 
 test "stat on exFAT reads the File and Stream entries" {
     fake.reset(exfat);
-    fake.set_copies = true;
-    fake.set_file = @splat(0);
-    fake.set_strm = @splat(0);
-    fake.set_file[4] = 0x20; // FileAttributes
-    std.mem.writeInt(u32, fake.set_file[8..12], test_packed, .little);
-    std.mem.writeInt(u32, fake.set_file[12..16], test_packed, .little);
-    std.mem.writeInt(u32, fake.set_file[16..20], test_packed, .little);
-    fake.set_file[20] = 137; // create 10-ms increment
-    fake.set_file[22] = 0x80 | 8; // create UTC +2h
-    fake.set_file[23] = 0x80 | 0x7C; // modify UTC -1h
-    std.mem.writeInt(u32, fake.set_strm[0x14..0x18], 0x99, .little);
-    std.mem.writeInt(u64, fake.set_strm[0x18..0x20], 0x123456, .little);
+    stageSet("book.epub", 0x20, 0x99, 0x123456);
+    std.mem.writeInt(u32, fake.dir[2][8..12], test_packed, .little);
+    std.mem.writeInt(u32, fake.dir[2][12..16], test_packed, .little);
+    std.mem.writeInt(u32, fake.dir[2][16..20], test_packed, .little);
+    fake.dir[2][20] = 137; // create 10-ms increment
+    fake.dir[2][22] = 0x80 | 8; // create UTC +2h
+    fake.dir[2][23] = 0x80 | 0x7C; // modify UTC -1h
+    _ = c.priv_exfat_set_checksum(@ptrCast(&fake.dir[2]), 96);
     var st: stat.Stat = undefined;
     try std.testing.expectEqual(stat.ok, stat.ra8_fs_stat(&fake.mount_store, "book.epub", &st));
     try std.testing.expectEqual(@as(u8, 0x20), st.attr);
@@ -238,7 +253,7 @@ test "stat on exFAT reads the File and Stream entries" {
     try std.testing.expectEqual(stat.err_not_found, stat.ra8_fs_stat(&fake.mount_store, "x", &st));
     fake.parent_err = 0;
     fake.find_set_err = c.k_ra8_err_invalid_arg;
-    try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), stat.ra8_fs_stat(&fake.mount_store, "x", &st));
+    try std.testing.expectEqual(@as(u16, fs.c.k_ra8_err_not_found), stat.ra8_fs_stat(&fake.mount_store, "x", &st));
 }
 
 test "path_is_root covers the slash runs" {

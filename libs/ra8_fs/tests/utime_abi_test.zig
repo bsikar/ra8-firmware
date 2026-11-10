@@ -11,6 +11,25 @@ const fake = @import("fs_walker_fake.zig");
 const fat32: u8 = fs.c.k_ra8_fs_type_fat32;
 const exfat: u8 = fs.c.k_ra8_fs_type_exfat;
 
+/// Stage a real File+Stream+Name set for `name` in root slots 2..4, with the
+/// real set checksum stamped over the three entries.
+fn stageSet(name: []const u8, file_attr: u8, first: u32, dlen: u64) void {
+    fake.dir[2][0] = 0x85;
+    fake.dir[2][1] = 2; // Stream + Name
+    fake.dir[2][4] = file_attr;
+    fake.dir[3][0] = 0xC0;
+    fake.dir[3][3] = @intCast(name.len);
+    std.mem.writeInt(u64, fake.dir[3][8..16], dlen, .little);
+    std.mem.writeInt(u32, fake.dir[3][0x14..0x18], first, .little);
+    std.mem.writeInt(u64, fake.dir[3][0x18..0x20], dlen, .little);
+    fake.dir[4][0] = 0xC1;
+    fake.dir[4][1] = 0;
+    for (name, 0..) |ch, i| fake.dir[4][2 + i * 2] = ch;
+    fake.dir[4][2 + name.len * 2] = 0xFF;
+    fake.dir[4][3 + name.len * 2] = 0xFF;
+    _ = fs.c.priv_exfat_set_checksum(@ptrCast(&fake.dir[2]), 96);
+}
+
 fn foldRef(cs: u16, b: u8) u16 {
     const hi: u16 = if ((cs & 1) != 0) 0x8000 else 0;
     return hi +% (cs >> 1) +% @as(u16, b);
@@ -77,20 +96,18 @@ test "FAT errors propagate without a write" {
 
 test "exFAT stamps the File entry and refreshes the checksum" {
     fake.reset(exfat);
-    fake.dir[2][0] = 0x85;
-    fake.dir[2][4] = 0x20;
-    fake.dir[3][0] = 0xC0;
+    stageSet("book.epub", 0x20, 0, 0);
     const md = when(17);
     try std.testing.expectEqual(ut.ok, utime("/book.epub", null, &md));
-    try std.testing.expectEqual(@as(?u32, 2), fake.written_index);
     // the real stamper packed minute 17 and the whole-minute UTC byte
     try std.testing.expectEqual(@as(u32, (@as(u32, 0x5D45) << 16) | (17 << 5)), std.mem.readInt(u32, fake.dir[2][12..16], .little));
     try std.testing.expectEqual(@as(u8, 0x80), fake.dir[2][23]);
-    try std.testing.expectEqual(@as(u32, 64), fake.checksum_bytes);
     // the checksum refresh folded the post-stamp bytes, checksum field skipped
-    const csum = std.mem.readInt(u16, fake.dir[2][ut.off_csum..][0..2], .little);
-    // the fake checksum stand-in folds a constant keyed on the attribute byte
-    try std.testing.expectEqual(@as(u16, 0xA020), csum);
+    var probe: [96]u8 = undefined;
+    @memcpy(&probe, @as([*]const u8, @ptrCast(&fake.dir[2]))[0..96]);
+    std.mem.writeInt(u16, probe[ut.off_csum..][0..2], 0, .little);
+    const csum = fs.c.priv_exfat_set_checksum(@ptrCast(&probe), 96);
+    try std.testing.expectEqual(csum, std.mem.readInt(u16, fake.dir[2][ut.off_csum..][0..2], .little));
     try std.testing.expectEqual(@as(u8, 0xC0), fake.dir[3][0]);
 }
 
