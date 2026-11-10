@@ -817,3 +817,411 @@ pub export fn priv_jof_png_rows(
     st.*.cb_ctx = cb_ctx;
     return internal_png_walk_chunks(st, bump, max_w, max_h);
 }
+
+// =====================================================================
+// Audit TU (jof_audit.c), ported verbatim (RA8FW-1146). internal_read_exact,
+// internal_rd_u32, internal_hash, internal_make_span, internal_spans_overlap,
+// internal_any_workspace_overlap, internal_check_workspace_spans,
+// internal_check_workspace, internal_duplicate_count, internal_audit_context_t,
+// internal_audit_tile, jof_audit_requirements, jof_audit. Sibling C
+// (jof_parse, jof_read_tile, jof_tile_dims, jof_stored_bound) reached through
+// the translated seam.
+// =====================================================================
+
+const k_audit_fnv_basis: u32 = 2166136261;
+const k_audit_fnv_prime: u32 = 16777619;
+const k_audit_u32_b3_shift: u5 = 24;
+
+/// Half-open address span used for caller-buffer separation checks.
+const AuditSpan = struct {
+    begin: usize = 0,
+    end: usize = 0,
+};
+
+/// Read exactly one bounded window from the injected backing; a short
+/// successful callback read is a validation error. Ports internal_read_exact.
+fn auditReadExact(
+    pread: jof_h.jof_pread_fn,
+    ctx: ?*anyopaque,
+    offset: u64,
+    buf: [*c]u8,
+    len: usize,
+) callconv(.c) jof_h.ra8_err_t {
+    var got: usize = 0;
+    const rc = pread.?(ctx, offset, buf, len, &got);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    return if (got == len) jof_h.k_ra8_ok else jof_h.k_ra8_err_validation_failed;
+}
+
+/// Decode a little-endian u32 from four bytes, host endianness irrelevant.
+/// Ports internal_rd_u32.
+fn auditRdU32(p: *const [4]u8) u32 {
+    return @as(u32, p[0]) | (@as(u32, p[1]) << 8) |
+        (@as(u32, p[2]) << 16) | (@as(u32, p[3]) << k_audit_u32_b3_shift);
+}
+
+/// Hash decoded bytes with FNV-1a and report whether all bytes are equal.
+/// Bounded diagnostic evidence, not an identity proof. Ports internal_hash.
+fn auditHash(bytes: []const u8, out_uniform: *bool) u32 {
+    var h: u32 = k_audit_fnv_basis;
+    var uniform: bool = true;
+    for (bytes, 0..) |b, i| {
+        if (i != 0 and b != bytes[0]) {
+            uniform = false;
+        }
+        h ^= @as(u32, b);
+        h *%= k_audit_fnv_prime;
+    }
+    out_uniform.* = uniform;
+    return h;
+}
+
+/// Convert one caller region into an overflow-checked address span; empty
+/// spans carry zero endpoints and never overlap. Ports internal_make_span.
+fn auditMakeSpan(ptr: ?*const anyopaque, len: usize, out: *AuditSpan) callconv(.c) jof_h.ra8_err_t {
+    if (len == 0) {
+        out.* = .{};
+        return jof_h.k_ra8_ok;
+    }
+    if (ptr == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    const begin: usize = @intFromPtr(ptr.?);
+    if (len > std.math.maxInt(usize) - begin) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    out.* = .{ .begin = begin, .end = begin + len };
+    return jof_h.k_ra8_ok;
+}
+
+/// True only when two half-open spans share at least one byte; adjacent and
+/// empty spans are disjoint. Ports internal_spans_overlap.
+fn auditSpansOverlap(left: *const AuditSpan, right: *const AuditSpan) bool {
+    if (left.begin >= right.end) {
+        return false;
+    }
+    return right.begin < left.end;
+}
+
+/// Check every unique pair of writable audit spans for overlap, stopping at
+/// the first shared byte. Ports internal_any_workspace_overlap.
+fn auditAnyWorkspaceOverlap(
+    workspace: *const AuditSpan,
+    records: *const AuditSpan,
+    tile: *const AuditSpan,
+    scratch: *const AuditSpan,
+    result: *const AuditSpan,
+) bool {
+    if (auditSpansOverlap(workspace, records)) return true;
+    if (auditSpansOverlap(workspace, tile)) return true;
+    if (auditSpansOverlap(workspace, scratch)) return true;
+    if (auditSpansOverlap(workspace, result)) return true;
+    if (auditSpansOverlap(records, tile)) return true;
+    if (auditSpansOverlap(records, scratch)) return true;
+    if (auditSpansOverlap(records, result)) return true;
+    if (auditSpansOverlap(tile, scratch)) return true;
+    if (auditSpansOverlap(tile, result)) return true;
+    return auditSpansOverlap(scratch, result);
+}
+
+/// Parse an atlas and report exact caller-storage requirements.
+/// Ports jof_audit_requirements.
+pub export fn jof_audit_requirements(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    total_size: u64,
+    out: [*c]jof_h.jof_audit_requirements_t,
+) callconv(.c) jof_h.ra8_err_t {
+    if (pread == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (out == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    var info: jof_h.jof_info_t = std.mem.zeroes(jof_h.jof_info_t);
+    const rc = jof_h.jof_parse(pread, pread_ctx, total_size, &info);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    const tile64: u64 = @as(u64, info.tile_w) * @as(u64, info.tile_h) * @as(u64, info.bpp);
+    if (tile64 > std.math.maxInt(u32)) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const tile: u32 = @intCast(tile64);
+    const candidate: jof_h.jof_audit_requirements_t = .{
+        .record_count = info.tile_count,
+        .tile_bytes = tile,
+        .scratch_bytes = if (info.codec == jof_h.k_jof_codec_deflate) jof_h.jof_stored_bound(tile) else 0,
+    };
+    if (candidate.tile_bytes == 0) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    if (info.codec == jof_h.k_jof_codec_deflate) {
+        if (candidate.scratch_bytes == 0) {
+            return jof_h.k_ra8_err_invalid_size;
+        }
+    }
+    out.* = candidate;
+    return jof_h.k_ra8_ok;
+}
+
+/// Validate the writable audit span layout: every caller-owned destination
+/// representable and pairwise disjoint. Ports internal_check_workspace_spans.
+fn auditCheckWorkspaceSpans(
+    ws: *const jof_h.jof_audit_workspace_t,
+    need: *const jof_h.jof_audit_requirements_t,
+    out: *const jof_h.jof_audit_result_t,
+    record_bytes: usize,
+) callconv(.c) jof_h.ra8_err_t {
+    var workspace_span: AuditSpan = .{};
+    var record_span: AuditSpan = .{};
+    var tile_span: AuditSpan = .{};
+    var scratch_span: AuditSpan = .{};
+    var result_span: AuditSpan = .{};
+    var rc = auditMakeSpan(ws, @sizeOf(jof_h.jof_audit_workspace_t), &workspace_span);
+    if (rc == jof_h.k_ra8_ok) {
+        rc = auditMakeSpan(@ptrCast(ws.records), record_bytes, &record_span);
+    }
+    if (rc == jof_h.k_ra8_ok) {
+        rc = auditMakeSpan(@ptrCast(ws.tile), need.tile_bytes, &tile_span);
+    }
+    if (rc == jof_h.k_ra8_ok) {
+        rc = auditMakeSpan(@ptrCast(ws.scratch), need.scratch_bytes, &scratch_span);
+    }
+    if (rc == jof_h.k_ra8_ok) {
+        rc = auditMakeSpan(out, @sizeOf(jof_h.jof_audit_result_t), &result_span);
+    }
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    if (auditAnyWorkspaceOverlap(&workspace_span, &record_span, &tile_span, &scratch_span, &result_span)) {
+        return jof_h.k_ra8_err_invalid_arg;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Validate caller workspace against parsed requirements: every mandatory
+/// pointer present, every capacity exact-or-larger. Ports internal_check_workspace.
+fn auditCheckWorkspace(
+    ws: [*c]jof_h.jof_audit_workspace_t,
+    need: *const jof_h.jof_audit_requirements_t,
+    out: [*c]jof_h.jof_audit_result_t,
+) callconv(.c) jof_h.ra8_err_t {
+    if (ws == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (ws.*.records == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (ws.*.tile == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (need.*.scratch_bytes != 0) {
+        if (ws.*.scratch == null) {
+            return jof_h.k_ra8_err_null_ptr;
+        }
+    }
+    if (ws.*.record_cap < need.*.record_count) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    if (ws.*.tile_cap < need.*.tile_bytes) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    if (ws.*.scratch_cap < need.*.scratch_bytes) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    const record_bytes: usize = @as(usize, need.*.record_count) * @sizeOf(jof_h.jof_audit_record_t);
+    if (need.*.record_count != 0) {
+        if ((record_bytes / @sizeOf(jof_h.jof_audit_record_t)) != @as(usize, need.*.record_count)) {
+            return jof_h.k_ra8_err_invalid_size;
+        }
+    }
+    return auditCheckWorkspaceSpans(ws, need, out, record_bytes);
+}
+
+/// Count earlier records matching one non-uniform tile fingerprint. Uniform
+/// tiles are excluded so common blank regions do not inflate duplicate
+/// diagnostics; matching hashes are evidence only. Ports internal_duplicate_count.
+fn auditDuplicateCount(
+    records: [*c]const jof_h.jof_audit_record_t,
+    count: u32,
+    item: *const jof_h.jof_audit_record_t,
+) u32 {
+    if (item.uniform) {
+        return 0;
+    }
+    var matches: u32 = 0;
+    var i: u32 = 0;
+    while (i < count) : (i += 1) {
+        if (records[i].uniform) {
+            continue;
+        }
+        if (records[i].payload != item.payload) {
+            continue;
+        }
+        if (records[i].content_hash != item.content_hash) {
+            continue;
+        }
+        matches += 1;
+    }
+    return matches;
+}
+
+/// Mutable state shared by the bounded per-tile audit operation.
+const AuditContext = struct {
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    workspace: *jof_h.jof_audit_workspace_t,
+    candidate: *jof_h.jof_audit_result_t,
+    expected_offset: u32,
+};
+
+/// Audit one index entry and its decoded tile evidence: reads the canonical
+/// record, checks stored coverage, decodes through caller scratch, validates
+/// edge geometry, accumulates diagnostic evidence. Ports internal_audit_tile.
+fn auditTile(context: *AuditContext, index_number: u32) callconv(.c) jof_h.ra8_err_t {
+    var index: [jof_h.k_jof_index_entry]u8 = std.mem.zeroes([jof_h.k_jof_index_entry]u8);
+    const index_at: u64 = @as(u64, context.candidate.*.info.index_off) +
+        (@as(u64, index_number) * @as(u64, jof_h.k_jof_index_entry));
+    var rc = auditReadExact(context.pread, context.pread_ctx, index_at, &index, index.len);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    const record: *jof_h.jof_audit_record_t = @ptrCast(&context.workspace.*.records[index_number]);
+    record.* = std.mem.zeroes(jof_h.jof_audit_record_t);
+    record.*.offset = auditRdU32(index[0..4]);
+    record.*.length = auditRdU32(index[4..8]);
+    if (record.*.offset != context.expected_offset) {
+        context.candidate.*.coverage_errors += 1;
+    }
+    const next: u64 = @as(u64, record.*.offset) + @as(u64, record.*.length);
+    if (next > std.math.maxInt(u32)) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    context.expected_offset = @intCast(next);
+
+    const tx: u16 = @intCast(index_number % @as(u32, context.candidate.*.info.tile_cols));
+    const ty: u16 = @intCast(index_number / @as(u32, context.candidate.*.info.tile_cols));
+    rc = jof_h.jof_read_tile(
+        context.pread,
+        context.pread_ctx,
+        &context.candidate.*.info,
+        tx,
+        ty,
+        context.workspace.*.scratch,
+        context.workspace.*.scratch_cap,
+        context.workspace.*.tile,
+        context.workspace.*.tile_cap,
+        &record.*.width,
+        &record.*.height,
+    );
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    record.*.payload = @as(u32, record.*.width) *% @as(u32, record.*.height) *%
+        @as(u32, context.candidate.*.info.bpp);
+    var want_w: u16 = 0;
+    var want_h: u16 = 0;
+    rc = jof_h.jof_tile_dims(&context.candidate.*.info, tx, ty, &want_w, &want_h);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    var geometry_error: bool = record.*.width != want_w;
+    if (record.*.height != want_h) {
+        geometry_error = true;
+    }
+    if (geometry_error) {
+        context.candidate.*.geometry_errors += 1;
+    }
+    record.*.content_hash = auditHash(context.workspace.*.tile[0..record.*.payload], &record.*.uniform);
+    context.candidate.*.duplicate_candidates +=
+        auditDuplicateCount(context.workspace.*.records, index_number, record);
+    context.candidate.*.decoded_tiles += 1;
+    return jof_h.k_ra8_ok;
+}
+
+/// Audit coverage, geometry and duplicate-content evidence in bounded RAM.
+/// Ports jof_audit.
+pub export fn jof_audit(
+    pread: jof_h.jof_pread_fn,
+    pread_ctx: ?*anyopaque,
+    total_size: u64,
+    workspace: [*c]jof_h.jof_audit_workspace_t,
+    out: [*c]jof_h.jof_audit_result_t,
+) callconv(.c) jof_h.ra8_err_t {
+    if (pread == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (out == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    var need: jof_h.jof_audit_requirements_t = std.mem.zeroes(jof_h.jof_audit_requirements_t);
+    var rc = jof_audit_requirements(pread, pread_ctx, total_size, &need);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    rc = auditCheckWorkspace(workspace, &need, out);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+    var candidate: jof_h.jof_audit_result_t = std.mem.zeroes(jof_h.jof_audit_result_t);
+    rc = jof_h.jof_parse(pread, pread_ctx, total_size, &candidate.info);
+    if (rc != jof_h.k_ra8_ok) {
+        return rc;
+    }
+
+    var context: AuditContext = .{
+        .pread = pread,
+        .pread_ctx = pread_ctx,
+        .workspace = workspace.?,
+        .candidate = &candidate,
+        .expected_offset = @as(u32, jof_h.k_jof_hdr_bytes),
+    };
+    var i: u32 = 0;
+    while (i < candidate.info.tile_count) : (i += 1) {
+        rc = auditTile(&context, i);
+        if (rc != jof_h.k_ra8_ok) {
+            return rc;
+        }
+    }
+    if (context.expected_offset != candidate.info.index_off) {
+        candidate.coverage_errors += 1;
+    }
+    out.* = candidate;
+    if (candidate.coverage_errors != 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    if (candidate.geometry_errors != 0) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+test "audit rd_u32 and FNV-1a match the C arithmetic" {
+    const bytes = [_]u8{ 0x12, 0x34, 0x56, 0x78 };
+    try std.testing.expectEqual(@as(u32, 0x78563412), auditRdU32(&bytes));
+    var uniform: bool = false;
+    try std.testing.expectEqual(@as(u32, 2166136261), auditHash(&[_]u8{}, &uniform));
+    try std.testing.expect(uniform);
+    const h1 = auditHash(&[_]u8{0xAB}, &uniform);
+    try std.testing.expect(uniform);
+    const h2 = auditHash(&[_]u8{ 0xAB, 0xAB }, &uniform);
+    try std.testing.expect(uniform);
+    try std.testing.expect(h1 != h2);
+    var nonuniform: bool = true;
+    _ = auditHash(&[_]u8{ 0xAB, 0xCD }, &nonuniform);
+    try std.testing.expect(!nonuniform);
+}
+
+test "audit entry points reject nulls before any parse" {
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_null_ptr,
+        jof_audit_requirements(null, null, 0, null),
+    );
+    try std.testing.expectEqual(
+        jof_h.k_ra8_err_null_ptr,
+        jof_audit(null, null, 0, null, null),
+    );
+}

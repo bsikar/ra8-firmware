@@ -15,6 +15,7 @@ const Translator = @import("translate_c").Translator;
 const jof_header =
     \\#include "jof_internal.h"
     \\#include "jof_png_internal.h"
+    \\#include "jof_audit.h"
     \\#include "ra8_webp.h"
     \\
 ;
