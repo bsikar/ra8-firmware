@@ -10,9 +10,9 @@
 //! the declared-sizes check before each entry inflates. The miniz and policy
 //! symbols stay extern -- miniz is SOUP and stays C, and the policy is
 //! ra8_core's Zig module reached through its own C ABI -- so this TU adds no
-//! policy of its own. The epub core (epub_open.c, epub_entry.c,
-//! epub_chapter.c) stays C and reaches these exports through the archive
-//! link, so the C callers and the C++ tests stay untouched.
+//! policy of its own. The epub core (epub_open_abi.zig, epub_chapter_abi.zig
+//! and epub_entry_abi.zig) is Zig and reaches these exports through the
+//! archive link, so the C callers and the C++ tests stay untouched.
 
 const std = @import("std");
 

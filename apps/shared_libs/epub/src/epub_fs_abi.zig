@@ -11,7 +11,7 @@
 //! that property at archive granularity -- nothing references the bridge's
 //! three exports unless it opens a streamed book off ra8_fs, so the linker
 //! never pulls this archive (or its ra8_fs externs) for a core-only consumer.
-//! The epub core (epub_open.c, epub_entry.c, epub_chapter.c) stays C and is
+//! The epub core (epub_open_abi.zig and epub_chapter_abi.zig) is Zig and is
 //! entered through epub_open_streamed()/epub_close(); ra8_fs_* resolves to
 //! whatever library the image links (the Zig ra8_fs archive or its C build).
 //! The test step links teststub/fs_bridge_test_stubs.c, stand-ins for the
