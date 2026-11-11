@@ -634,6 +634,21 @@ ra8_add_zig_library(
   ra8_xml_reader
 )
 
+
+# The epub decompression guard (RA8FW-1160) is Zig: the central-directory
+# entry cap and the declared-sizes check behind the unchanged C headers, so
+# apps/shared_libs/epub/src has no epub_zip_guard.c left. The epub core
+# (epub_open.c, epub_entry.c, epub_chapter.c) is still C and links these
+# exports through the archive.
+ra8_add_zig_library(
+  NAME
+  ra8_epub
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/epub
+  LIBRARY_NAME
+  ra8_epub
+)
+
 # Fully migrated: the URL and peer-address safety policy behind
 # inc/ra8_net_urlguard.h is Zig, so libs/ra8_net_policy/src has no .c left.
 # Like ra8_xml this library sat in BOTH wiring worlds: RA8_NET_POLICY_SOURCES
