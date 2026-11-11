@@ -236,3 +236,6 @@ tests/fuzz/corpus/**
 
 # Generated ra8_widget icon atlas is checked in as source data.
 !libs/ra8_widget/src/icons_atlas.bin
+
+# build logs (never commit)
+.build*.log
