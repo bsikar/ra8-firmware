@@ -620,6 +620,20 @@ ra8_add_zig_library(
   ra8_xml
 )
 
+# The bounded XML reader's decode half (canonical UTF-8, entity decoding,
+# span decode/compare) is Zig (RA8FW-1157); the markup-scanning half
+# (xml.c, xml_doctype.c) is still C and links these exports through the
+# archive. The ra8_xml name is taken by the XML WRITER archive above, so
+# this one is ra8_xml_reader.
+ra8_add_zig_library(
+  NAME
+  ra8_xml_reader
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/xml
+  LIBRARY_NAME
+  ra8_xml_reader
+)
+
 # Fully migrated: the URL and peer-address safety policy behind
 # inc/ra8_net_urlguard.h is Zig, so libs/ra8_net_policy/src has no .c left.
 # Like ra8_xml this library sat in BOTH wiring worlds: RA8_NET_POLICY_SOURCES

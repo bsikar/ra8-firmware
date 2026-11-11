@@ -1,0 +1,12 @@
+.{
+    .name = .xml_reader,
+    .version = "0.1.0",
+    .fingerprint = 0x841ccfdc7cd6fb59,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+    },
+}
