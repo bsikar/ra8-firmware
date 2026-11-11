@@ -127,6 +127,9 @@ if(TARGET compile_on_m33_cpu1.elf)
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
+    # The epub zip guard is Zig too (RA8FW-1160): the glob below drops
+    # epub_zip_guard.c on its own, and the guards come from
+    # ra8_zig::ra8_epub, which this image links like the xml reader.
     # xml_decode.c (RA8FW-1157) and xml.c (RA8FW-1158) are retired to Zig:
     # both halves live in ra8_zig::ra8_xml_reader, which this hw-pending M33
     # image must link when hardware enablement resumes. The doctype TU stays
