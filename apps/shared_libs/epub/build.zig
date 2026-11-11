@@ -159,8 +159,8 @@ pub fn build(b: *std.Build) void {
     // The strict container/OPF XML consumers ship as their own archive
     // (RA8FW-1164) for the same pull granularity: a consumer that never
     // parses container or OPF XML never pulls the shim. Its externs are the
-    // ra8_xml reader and decoder, which the epub XML shim and the remaining
-    // C consumer epub_xml_toc.c both reach through the archive link.
+    // ra8_xml reader and decoder, which the epub XML shim and the TOC
+    // TU both reach through the archive link.
     const xml_shim_module = b.createModule(.{
         .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
         .target = target,
@@ -259,4 +259,32 @@ pub fn build(b: *std.Build) void {
     toc_test_module.linkLibrary(toc_xml_library);
     const toc_test = b.addTest(.{ .root_module = toc_test_module });
     test_step.dependOn(&b.addRunArtifact(toc_test).step);
+
+    // The miniz arena allocator (RA8FW-1167) ships as its own archive for the
+    // same pull granularity: its exports only load when a consumer wires the
+    // miniz callbacks through the arena descriptor.
+    const miniz_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_miniz_alloc_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const miniz_library = b.addLibrary(.{
+        .name = "ra8_epub_miniz",
+        .linkage = .static,
+        .root_module = miniz_module,
+    });
+    miniz_library.bundle_compiler_rt = miniz_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    miniz_library.root_module.pic = true;
+    b.installArtifact(miniz_library);
+
+    // The allocator test needs no stand-ins: the TU has no externs, so the
+    // tests drive a real workspace end to end.
+    const miniz_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_miniz_alloc_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const miniz_test = b.addTest(.{ .root_module = miniz_test_module });
+    test_step.dependOn(&b.addRunArtifact(miniz_test).step);
 }

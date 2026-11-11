@@ -641,9 +641,9 @@ ra8_add_zig_library(
 # triple and the miniz plumbing behind the unchanged C headers. The chapter,
 # metadata, cover, manifest and glyph accessors (RA8FW-1163) are Zig as
 # well: apps/shared_libs/epub/src has no epub_zip_guard.c, epub_fs.c,
-# epub_open.c, epub_chapter.c, epub_entry.c or epub_xml_toc.c left. Only the
-# miniz arena shim (epub_miniz_alloc.c) and the image consumers stay C and
-# link these exports through the archives.
+# epub_open.c, epub_chapter.c, epub_entry.c, epub_xml_toc.c or
+# epub_miniz_alloc.c left. Only the image consumers stay C and link these
+# exports through the archives.
 ra8_add_zig_library(
   NAME
   ra8_epub
@@ -715,6 +715,17 @@ ra8_add_zig_library(
   ${FW_ROOT}/apps/shared_libs/epub
   LIBRARY_NAME
   ra8_epub_toc
+)
+# The miniz arena allocator (RA8FW-1167) ships as its own archive for the same
+# pull granularity: its exports (the arena lifecycle and the three miniz
+# callbacks) only load when a consumer wires them through m_pAlloc_opaque.
+ra8_add_zig_library(
+  NAME
+  ra8_epub_miniz
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/epub
+  LIBRARY_NAME
+  ra8_epub_miniz
 )
 
 # The bounded ZIP-entry reader (RA8FW-1165) ships as its own archive for
