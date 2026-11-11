@@ -2,8 +2,10 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig implementation of the epub library:
-//! src/epub_abi.zig (the decompression guard, RA8FW-1160) and
-//! src/epub_fs_abi.zig (the ra8_fs bridge, RA8FW-1161), both behind the
+//! src/epub_abi.zig (the decompression guard, RA8FW-1160),
+//! src/epub_fs_abi.zig (the ra8_fs bridge, RA8FW-1161),
+//! src/epub_open_abi.zig (the open/close core, RA8FW-1162) and
+//! src/epub_chapter_abi.zig (the chapter/glyph accessors, RA8FW-1163), all behind the
 //! unchanged C headers in inc/. CMake consumes the installed static
 //! libraries through those headers. Template: apps/shared_libs/xml/build.zig
 //! (plain static libraries + host test step). The epub core stays C and
@@ -97,4 +99,32 @@ pub fn build(b: *std.Build) void {
     open_test_module.addCSourceFile(.{ .file = b.path("teststub/open_test_stubs.c"), .flags = &.{"-std=c23"} });
     const open_test = b.addTest(.{ .root_module = open_test_module });
     test_step.dependOn(&b.addRunArtifact(open_test).step);
+
+    // The chapter/glyph accessors ship as their own archive (RA8FW-1163) for
+    // the same pull granularity: a consumer that never reads chapter/glyph
+    // data never pulls the miniz or stbtt externs. The test step links
+    // stub-driven miniz / zip-guard / stbtt / sfnt-guard stand-ins.
+    const chapter_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_chapter_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const chapter_library = b.addLibrary(.{
+        .name = "ra8_epub_chapter",
+        .linkage = .static,
+        .root_module = chapter_module,
+    });
+    chapter_library.bundle_compiler_rt = chapter_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    chapter_library.root_module.pic = true;
+    b.installArtifact(chapter_library);
+
+    const chapter_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_chapter_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    chapter_test_module.addCSourceFile(.{ .file = b.path("teststub/chapter_test_stubs.c"), .flags = &.{"-std=c23"} });
+    const chapter_test = b.addTest(.{ .root_module = chapter_test_module });
+    test_step.dependOn(&b.addRunArtifact(chapter_test).step);
 }
