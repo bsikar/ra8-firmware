@@ -23,4 +23,7 @@
 #
 #
 
-# Intentionally empty -- consumers reach into inc/ + src/ directly.
+# Fully migrated to Zig (RA8FW-1156): src/ holds the Zig implementation and
+# build.zig installs liblongstrip.a behind the unchanged inc/longstrip.h; the
+# host-test build links it through tests/cmake/zig_libraries.cmake. This file
+# stays intentionally empty -- consumers reach into inc/ and the archive.

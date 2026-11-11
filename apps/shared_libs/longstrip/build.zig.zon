@@ -1,0 +1,22 @@
+.{
+    .name = .longstrip,
+    .version = "0.1.0",
+    .fingerprint = 0x728d6c6b6c0a7e99,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+        // Turns the longstrip C header set into the `longstrip_h` module
+        // longstrip_abi.zig re-exports.
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
+            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

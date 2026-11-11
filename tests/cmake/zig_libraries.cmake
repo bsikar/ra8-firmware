@@ -953,6 +953,22 @@ ra8_add_zig_library(
   jof
 )
 link_libraries(ra8_zig::jof)
+
+# Fully migrated: the scroll engine (geometry, scroll/fling state machine,
+# directional prefetch, band composite) is Zig now, so
+# apps/shared_libs/longstrip/src has no .c left and the LONGSTRIP_SOURCES glob
+# is gone from library_sources.cmake and core_hal.cmake. Its JOF reads and
+# tile-cache calls run through the C ABI, so the ra8_zig::jof and ra8_mem
+# objects it was linked beside supply them exactly as before.
+ra8_add_zig_library(
+  NAME
+  longstrip
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/longstrip
+  LIBRARY_NAME
+  longstrip
+)
+link_libraries(ra8_zig::longstrip)
 ra8_add_zig_library(
   NAME
   compress
