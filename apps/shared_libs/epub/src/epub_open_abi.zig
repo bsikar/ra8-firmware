@@ -140,6 +140,11 @@ const mz_zip_archive = extern struct {
     m_pState: ?*anyopaque,
 };
 
+// Full C layout (probed against the vendored miniz in the RA8FW-1165 slice):
+// 1112 bytes with the 512-byte filename, the 512-byte comment and the
+// trailing time slot. The earlier partial mirror undersized the struct while
+// a production link reaches the real mz_zip_reader_file_stat, which writes
+// the whole thing.
 const mz_zip_archive_file_stat = extern struct {
     m_file_index: c_uint,
     m_central_dir_ofs: u64,
@@ -150,6 +155,16 @@ const mz_zip_archive_file_stat = extern struct {
     m_crc32: c_uint,
     m_comp_size: u64,
     m_uncomp_size: u64,
+    m_internal_attr: c_ushort,
+    m_external_attr: c_uint,
+    m_local_header_ofs: u64,
+    m_comment_size: c_uint,
+    m_is_directory: c_int,
+    m_is_encrypted: c_int,
+    m_is_supported: c_int,
+    m_filename: [512]u8,
+    m_comment: [512]u8,
+    m_time: c_long, // MZ_TIME_T slot: m_time, or m_padding under MINIZ_NO_TIME.
 };
 
 comptime {

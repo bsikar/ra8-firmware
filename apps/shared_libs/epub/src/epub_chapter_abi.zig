@@ -13,7 +13,7 @@
 //! (ra8_epub_chapter) so a consumer that never reads chapter/glyph data
 //! never pulls the miniz or stbtt externs. The priv_* helpers this TU
 //! exports (join_path, book_not_ready, glyph_dim_invalid) are consumed by
-//! the still-C epub_entry.c and by the open/close archive, so this archive
+//! the entry archive (epub_entry_abi.zig) and by the open/close archive, so this archive
 //! sits after ra8_epub_open in the link order.
 
 const std = @import("std");
@@ -119,6 +119,11 @@ const mz_zip_archive = extern struct {
     m_pState: ?*anyopaque,
 };
 
+// Full C layout (probed against the vendored miniz in the RA8FW-1165 slice):
+// 1112 bytes with the 512-byte filename, the 512-byte comment and the
+// trailing time slot. The earlier partial mirror undersized the struct while
+// a production link reaches the real mz_zip_reader_file_stat, which writes
+// the whole thing.
 const mz_zip_archive_file_stat = extern struct {
     m_file_index: c_uint,
     m_central_dir_ofs: u64,
@@ -129,6 +134,16 @@ const mz_zip_archive_file_stat = extern struct {
     m_crc32: c_uint,
     m_comp_size: u64,
     m_uncomp_size: u64,
+    m_internal_attr: c_ushort,
+    m_external_attr: c_uint,
+    m_local_header_ofs: u64,
+    m_comment_size: c_uint,
+    m_is_directory: c_int,
+    m_is_encrypted: c_int,
+    m_is_supported: c_int,
+    m_filename: [512]u8,
+    m_comment: [512]u8,
+    m_time: c_long, // MZ_TIME_T slot: m_time, or m_padding under MINIZ_NO_TIME.
 };
 
 // ---- stb_truetype (SOUP, stays C) -------------------------------------------
@@ -187,7 +202,7 @@ fn c_strlen(p: [*]const u8) usize {
     return n;
 }
 
-// ---- priv_* helpers (exported; consumed by epub_entry.c and the open TU) ----
+// ---- priv_* helpers (exported; consumed by the entry archive and the open TU) ----
 export fn priv_epub_glyph_dim_invalid(w: c_int, h: c_int) callconv(.c) c_int {
     return @intFromBool((w < 0) or (h < 0));
 }

@@ -8,7 +8,7 @@
 //! src/epub_chapter_abi.zig (the chapter/glyph accessors, RA8FW-1163), all behind the
 //! unchanged C headers in inc/. CMake consumes the installed static
 //! libraries through those headers. Template: apps/shared_libs/xml/build.zig
-//! (plain static libraries + host test step). The epub core stays C and
+//! (plain static libraries + host test step). The epub core is Zig and
 //! enters through the archive link; the test step links the teststub C
 //! stand-ins for miniz, the decompression policy, the ra8_fs seam and the
 //! epub core entry points.
@@ -127,6 +127,34 @@ pub fn build(b: *std.Build) void {
     chapter_test_module.addCSourceFile(.{ .file = b.path("teststub/chapter_test_stubs.c"), .flags = &.{"-std=c23"} });
     const chapter_test = b.addTest(.{ .root_module = chapter_test_module });
     test_step.dependOn(&b.addRunArtifact(chapter_test).step);
+
+    // The bounded-RAM entry accessors ship as their own archive (RA8FW-1165)
+    // for the same pull granularity: a consumer that never streams or windows
+    // an entry never pulls the miniz iterator externs. The test step links
+    // stub-driven miniz locate/stat/iterator and sibling priv_* stand-ins.
+    const entry_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_entry_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const entry_library = b.addLibrary(.{
+        .name = "ra8_epub_entry",
+        .linkage = .static,
+        .root_module = entry_module,
+    });
+    entry_library.bundle_compiler_rt = entry_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    entry_library.root_module.pic = true;
+    b.installArtifact(entry_library);
+
+    const entry_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_entry_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    entry_test_module.addCSourceFile(.{ .file = b.path("teststub/entry_test_stubs.c"), .flags = &.{"-std=c23"} });
+    const entry_test = b.addTest(.{ .root_module = entry_test_module });
+    test_step.dependOn(&b.addRunArtifact(entry_test).step);
 
     // The strict container/OPF XML consumers ship as their own archive
     // (RA8FW-1164) for the same pull granularity: a consumer that never
