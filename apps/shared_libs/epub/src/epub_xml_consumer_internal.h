@@ -4,9 +4,8 @@
  * @details Declares the helpers every consumer unit shares and their
  * caller-owned workspace rules; definitions defer here so generated
  * documentation has one authoritative block. Each unit's own file-local
- * helpers are declared beside it, in `epub_xml_opf_internal.h` and
- * `epub_xml_toc_internal.h`, so neither unit sees a `static` prototype
- * it does not define.
+ * helpers are declared beside it, in `epub_xml_opf_internal.h`, so no unit
+ * sees a `static` prototype it does not define.
  * [Ring 4 / EPUB] {World: NS}
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
