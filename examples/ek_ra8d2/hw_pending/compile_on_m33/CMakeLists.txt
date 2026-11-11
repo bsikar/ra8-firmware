@@ -127,11 +127,11 @@ if(TARGET compile_on_m33_cpu1.elf)
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
-    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
-    # xml_decode.c retired to Zig (RA8FW-1157): the decode exports live in
-    # ra8_zig::ra8_xml_reader, which this hw-pending M33 image must link when
-    # hardware enablement resumes (xml.c calls xml_decoded_size; the doctype
-    # TU calls priv_xml_raw/priv_xml_span_valid/priv_xml_bytes_equal).
+    # xml_decode.c (RA8FW-1157) and xml.c (RA8FW-1158) are retired to Zig:
+    # both halves live in ra8_zig::ra8_xml_reader, which this hw-pending M33
+    # image must link when hardware enablement resumes. The doctype TU stays
+    # C and calls priv_xml_raw/priv_xml_span_valid/priv_xml_bytes_equal/
+    # priv_xml_qname from the archive.
     ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
     ${_c1_epub_c}
   )
