@@ -11,7 +11,7 @@
 #   inc/epub.h                public API
 #   src/epub_open_abi.zig     open / close + miniz plumbing (Zig, RA8FW-1162)
 #   src/epub_chapter_abi.zig  chapter, metadata, cover, glyph (Zig, RA8FW-1163)
-#   src/epub_xml_shim.c       strict streamed XML consumers
+#   src/epub_xml_shim_abi.zig strict streamed XML consumers (Zig, RA8FW-1164)
 #   src/epub_xml_toc.c        NCX and nav table-of-contents consumers
 #
 # Vendored dependencies (already at apps/shared_libs/third_party/):

@@ -694,6 +694,18 @@ ra8_add_zig_library(
   ra8_epub_chapter
 )
 
+# The strict bounded container/OPF XML consumers (RA8FW-1164) ship as their
+# own archive for the same pull granularity: their externs (the XML reader
+# family) only load when a consumer parses EPUB container/OPF XML.
+ra8_add_zig_library(
+  NAME
+  ra8_epub_xml
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/epub
+  LIBRARY_NAME
+  ra8_epub_xml
+)
+
 # Fully migrated: the URL and peer-address safety policy behind
 # inc/ra8_net_urlguard.h is Zig, so libs/ra8_net_policy/src has no .c left.
 # Like ra8_xml this library sat in BOTH wiring worlds: RA8_NET_POLICY_SOURCES

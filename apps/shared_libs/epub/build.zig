@@ -127,4 +127,52 @@ pub fn build(b: *std.Build) void {
     chapter_test_module.addCSourceFile(.{ .file = b.path("teststub/chapter_test_stubs.c"), .flags = &.{"-std=c23"} });
     const chapter_test = b.addTest(.{ .root_module = chapter_test_module });
     test_step.dependOn(&b.addRunArtifact(chapter_test).step);
+
+    // The strict container/OPF XML consumers ship as their own archive
+    // (RA8FW-1164) for the same pull granularity: a consumer that never
+    // parses container or OPF XML never pulls the shim. Its externs are the
+    // ra8_xml reader and decoder, which the epub XML shim and the remaining
+    // C consumer epub_xml_toc.c both reach through the archive link.
+    const xml_shim_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const xml_shim_library = b.addLibrary(.{
+        .name = "ra8_epub_xml",
+        .linkage = .static,
+        .root_module = xml_shim_module,
+    });
+    xml_shim_library.bundle_compiler_rt = xml_shim_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    xml_shim_library.root_module.pic = true;
+    b.installArtifact(xml_shim_library);
+
+    // The shim test links the real ra8_xml reader and decoder, so the tests
+    // replay true XML documents end to end rather than standing in for the
+    // parser.
+    const xml_shim_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const xml_module = b.createModule(.{
+        .root_source_file = b.path("../xml/src/xml_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const xml_library = b.addLibrary(.{
+        .name = "ra8_xml_shim_test",
+        .linkage = .static,
+        .root_module = xml_module,
+    });
+    xml_module.addCSourceFile(.{ .file = b.path("../xml/src/xml_doctype.c"), .flags = &.{"-std=c23"} });
+    xml_module.addIncludePath(b.path("../xml/inc"));
+    xml_module.addIncludePath(b.path("../xml/src"));
+    xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    xml_shim_test_module.link_libc = true;
+    const xml_shim_test = b.addTest(.{ .root_module = xml_shim_test_module });
+    xml_shim_test_module.linkLibrary(xml_library);
+    test_step.dependOn(&b.addRunArtifact(xml_shim_test).step);
 }
