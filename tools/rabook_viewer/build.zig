@@ -52,19 +52,18 @@ const webp_vendor_flags = [_][]const u8{
 };
 
 const comic_dir = "../../apps/shared_libs/comic/src/";
-const longstrip_dir = "../../apps/shared_libs/longstrip/src/";
 const epub_dir = "../../apps/shared_libs/epub/src/";
 const reflow_dir = "../../apps/shared_libs/reflow/src/";
-const jof_dir = "../../apps/shared_libs/jof/src/";
 const compress_dir = "../../apps/shared_libs/compress/src/";
 
 // The read-path members, derived the way the C-era recipe derived them.
-// Whole-read-path libraries are their full src/ glob (comic, longstrip);
-// partial libraries name exactly the KEEP members the C-era
-// ra8_viewer_read_path() partition proved (jof, epub, reflow, unarch,
-// compress). libs/ra8_io/src holds no .c left (both block-device members
-// were the last, and they are DROP), so its read path comes out of the
-// ra8_io archive like the C-era link already did.
+// Whole-read-path libraries are their full src/ glob (comic); partial
+// libraries name exactly the KEEP members the C-era ra8_viewer_read_path()
+// partition proved (epub, reflow, unarch, compress). longstrip (RA8FW-1156)
+// and jof (RA8FW-1140..1154) are fully Zig now, so their read paths come out
+// of the ra8_zig archives instead of compiled C. libs/ra8_io/src holds no .c
+// left (both block-device members were the last, and they are DROP), so its
+// read path comes out of the ra8_io archive like the C-era link already did.
 const comic_closure = [_][]const u8{
     comic_dir ++ "comic.c",
     comic_dir ++ "comic_cbr.c",
@@ -76,7 +75,6 @@ const comic_closure = [_][]const u8{
     comic_dir ++ "ra8_rar5.c",
     comic_dir ++ "ra8_rar5_tables.c",
 };
-const longstrip_closure = [_][]const u8{longstrip_dir ++ "longstrip.c"};
 const epub_closure = [_][]const u8{epub_dir ++ "epub_miniz_alloc.c"};
 const reflow_closure = [_][]const u8{
     reflow_dir ++ "ra8_img_arena.c",
@@ -87,7 +85,6 @@ const reflow_closure = [_][]const u8{
     reflow_dir ++ "reflow_svg_shape.c",
     reflow_dir ++ "reflow_svg_xform.c",
 };
-const jof_closure = [_][]const u8{jof_dir ++ "jof.c"};
 const unarch_closure = [_][]const u8{
     "../../apps/shared_libs/unarch/src/unarch_io.c",
     "../../apps/shared_libs/unarch/src/unarch_tar.c",
@@ -223,11 +220,21 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     // DROP. The narrow root is the same units=stream archive glyph_bench uses.
     const io_lib = b.dependency("ra8_io", .{ .target = target, .optimize = optimize, .units = "stream" }).artifact("ra8_io");
     const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
+    const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
+    // jof's decode path runs the JPEG backend through the C ABI, so the
+    // ra8_jpeg archive rides the link beside imgdec exactly as the C-era
+    // imgdec target carried it.
+    const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
+    const longstrip_lib = b.dependency("longstrip", .{ .target = target, .optimize = optimize }).artifact("longstrip");
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(gfx_lib);
     mod.linkLibrary(mem_lib);
     mod.linkLibrary(core_lib);
     mod.linkLibrary(io_lib);
+    mod.linkLibrary(compress_lib);
+    mod.linkLibrary(jof_lib);
+    mod.linkLibrary(longstrip_lib);
+    mod.linkLibrary(jpeg_lib);
 }
 
 pub fn build(b: *std.Build) void {
@@ -242,11 +249,8 @@ pub fn build(b: *std.Build) void {
     linkZigLibs(b, reader_mod, target, optimize);
     addReaderIncludes(b, reader_mod);
     addC(b, reader_mod, ".", &comic_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &longstrip_closure, &first_party_flags);
     addC(b, reader_mod, ".", &epub_closure, &first_party_flags);
     addC(b, reader_mod, ".", &reflow_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &jof_closure, &first_party_flags);
-    reader_mod.linkLibrary(compress_lib);
     addC(b, reader_mod, ".", &unarch_closure, &first_party_flags);
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_sources, .flags = &third_party_flags });
