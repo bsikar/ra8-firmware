@@ -637,7 +637,7 @@ ra8_add_zig_library(
 
 # The epub decompression guard (RA8FW-1160) is Zig: the central-directory
 # entry cap and the declared-sizes check behind the unchanged C headers, so
-# apps/shared_libs/epub/src has no epub_zip_guard.c left. The epub core
+# apps/shared_libs/epub/src has no epub_zip_guard.c or epub_fs.c left. The epub core
 # (epub_open.c, epub_entry.c, epub_chapter.c) is still C and links these
 # exports through the archive.
 ra8_add_zig_library(
@@ -647,6 +647,21 @@ ra8_add_zig_library(
   ${FW_ROOT}/apps/shared_libs/epub
   LIBRARY_NAME
   ra8_epub
+)
+
+# The ra8_fs -> epub streamed-open bridge (RA8FW-1161) is Zig in its own
+# archive so a core-only epub consumer never pulls the bridge's ra8_fs
+# externs: members are pulled only when something calls the streamed-fs
+# open, which is the __has_include("ra8_fs.h") gate the C TU expressed.
+# apps/shared_libs/epub/src has no epub_fs.c left.
+
+ra8_add_zig_library(
+  NAME
+  ra8_epub_fs
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/epub
+  LIBRARY_NAME
+  ra8_epub_fs
 )
 
 # Fully migrated: the URL and peer-address safety policy behind

@@ -1,13 +1,15 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the Zig implementation of the epub decompression guard:
-//! src/epub_zip_guard.c (RA8FW-1160) behind the unchanged C headers in inc/.
-//! CMake consumes the installed static library through those headers.
-//! Template: apps/shared_libs/xml/build.zig (plain static library + host
-//! test step). The epub core stays C and calls the two guard exports through
-//! the archive link; the test step links the teststub C stand-ins for miniz
-//! and the decompression policy.
+//! Build graph for the Zig implementation of the epub library:
+//! src/epub_abi.zig (the decompression guard, RA8FW-1160) and
+//! src/epub_fs_abi.zig (the ra8_fs bridge, RA8FW-1161), both behind the
+//! unchanged C headers in inc/. CMake consumes the installed static
+//! libraries through those headers. Template: apps/shared_libs/xml/build.zig
+//! (plain static libraries + host test step). The epub core stays C and
+//! enters through the archive link; the test step links the teststub C
+//! stand-ins for miniz, the decompression policy, the ra8_fs seam and the
+//! epub core entry points.
 
 const std = @import("std");
 
@@ -30,7 +32,27 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
-    const test_step = b.step("test", "Run Zig epub guard tests");
+    // The ra8_fs bridge ships as its own archive so a core-only consumer
+    // (no ra8_fs linked) never pulls the bridge's ra8_fs externs: archive
+    // members are pulled only when something references the bridge's three
+    // exports, which is exactly the __has_include("ra8_fs.h") gate the C TU
+    // expressed.
+    const fs_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_fs_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const fs_library = b.addLibrary(.{
+        .name = "ra8_epub_fs",
+        .linkage = .static,
+        .root_module = fs_module,
+    });
+    fs_library.bundle_compiler_rt = fs_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    fs_library.root_module.pic = true;
+    b.installArtifact(fs_library);
+
+    const test_step = b.step("test", "Run Zig epub guard and fs-bridge tests");
     const test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_abi.zig"),
         .target = target,
@@ -39,4 +61,13 @@ pub fn build(b: *std.Build) void {
     test_module.addCSourceFile(.{ .file = b.path("teststub/zip_guard_test_stubs.c"), .flags = &.{"-std=c23"} });
     const epub_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(epub_test).step);
+
+    const fs_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_fs_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    fs_test_module.addCSourceFile(.{ .file = b.path("teststub/fs_bridge_test_stubs.c"), .flags = &.{"-std=c23"} });
+    const fs_test = b.addTest(.{ .root_module = fs_test_module });
+    test_step.dependOn(&b.addRunArtifact(fs_test).step);
 }
