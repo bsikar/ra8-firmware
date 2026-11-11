@@ -47,6 +47,7 @@ target_link_libraries(
   ra8_zig::ra8_epub
   ra8_zig::ra8_epub_fs
   ra8_zig::ra8_epub_open
+  ra8_zig::ra8_epub_chapter
          ra8_zig::ra8_net_policy
          ra8_zig::ra8_imgdec
          ra8_zig::ra8_psa_crypto
