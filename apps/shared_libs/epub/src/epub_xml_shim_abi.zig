@@ -10,7 +10,7 @@
 //! shape, and fixed-capacity preflight succeeds. The xml pull reader and
 //! decoder (the ra8_xml archive) stay extern through the archive link, so
 //! this TU adds no parser of its own. The remaining C consumer
-//! epub_xml_toc.c reaches the shared helpers and the two parse entry points
+//! epub_xml_toc_abi.zig reaches the shared helpers and the two parse entry points
 //! through the archive link, so the C callers and the C++ tests stay
 //! untouched. Ships as its own archive (ra8_epub_xml) so a consumer that
 //! never parses container/OPF XML never pulls it; the archive sits after

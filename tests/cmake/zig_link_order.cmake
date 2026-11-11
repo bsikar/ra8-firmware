@@ -49,6 +49,7 @@ target_link_libraries(
   ra8_zig::ra8_epub_open
   ra8_zig::ra8_epub_chapter
   ra8_zig::ra8_epub_xml
+  ra8_zig::ra8_epub_toc
   ra8_zig::ra8_epub_entry
          ra8_zig::ra8_net_policy
          ra8_zig::ra8_imgdec

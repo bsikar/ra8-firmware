@@ -203,4 +203,60 @@ pub fn build(b: *std.Build) void {
     const xml_shim_test = b.addTest(.{ .root_module = xml_shim_test_module });
     xml_shim_test_module.linkLibrary(xml_library);
     test_step.dependOn(&b.addRunArtifact(xml_shim_test).step);
+
+    // The NCX and nav TOC consumers (RA8FW-1166) ship as their own archive
+    // for the same pull granularity: a consumer that never parses a
+    // navigation document never pulls the TOC TU.
+    const toc_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_xml_toc_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const toc_library = b.addLibrary(.{
+        .name = "ra8_epub_toc",
+        .linkage = .static,
+        .root_module = toc_module,
+    });
+    toc_library.bundle_compiler_rt = toc_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    toc_library.root_module.pic = true;
+    b.installArtifact(toc_library);
+
+    // The TOC test links the real ra8_xml reader and the real shim helpers,
+    // so the tests replay true NCX and nav documents end to end.
+    const toc_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_xml_toc_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const toc_xml_module = b.createModule(.{
+        .root_source_file = b.path("../xml/src/xml_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const toc_xml_library = b.addLibrary(.{
+        .name = "ra8_xml_toc_test",
+        .linkage = .static,
+        .root_module = toc_xml_module,
+    });
+    toc_xml_module.addCSourceFile(.{ .file = b.path("../xml/src/xml_doctype.c"), .flags = &.{"-std=c23"} });
+    toc_xml_module.addIncludePath(b.path("../xml/inc"));
+    toc_xml_module.addIncludePath(b.path("../xml/src"));
+    toc_xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    const toc_shim_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const toc_shim_library = b.addLibrary(.{
+        .name = "ra8_epub_xml_toc_test",
+        .linkage = .static,
+        .root_module = toc_shim_module,
+    });
+    toc_test_module.link_libc = true;
+    toc_test_module.linkLibrary(toc_shim_library);
+    toc_test_module.linkLibrary(toc_xml_library);
+    const toc_test = b.addTest(.{ .root_module = toc_test_module });
+    test_step.dependOn(&b.addRunArtifact(toc_test).step);
 }
