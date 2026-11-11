@@ -52,7 +52,26 @@ pub fn build(b: *std.Build) void {
     fs_library.root_module.pic = true;
     b.installArtifact(fs_library);
 
-    const test_step = b.step("test", "Run Zig epub guard and fs-bridge tests");
+    // The epub open/close core ships as its own archive for the same pull
+    // granularity as the fs bridge: its externs (miniz, the miniz arena, the
+    // XML shim, the policy preflight and the guard exports) only load when a
+    // consumer references the open/close entry points.
+    const open_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_open_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const open_library = b.addLibrary(.{
+        .name = "ra8_epub_open",
+        .linkage = .static,
+        .root_module = open_module,
+    });
+    open_library.bundle_compiler_rt = open_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    open_library.root_module.pic = true;
+    b.installArtifact(open_library);
+
+    const test_step = b.step("test", "Run Zig epub guard, fs-bridge and open tests");
     const test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_abi.zig"),
         .target = target,
@@ -70,4 +89,12 @@ pub fn build(b: *std.Build) void {
     fs_test_module.addCSourceFile(.{ .file = b.path("teststub/fs_bridge_test_stubs.c"), .flags = &.{"-std=c23"} });
     const fs_test = b.addTest(.{ .root_module = fs_test_module });
     test_step.dependOn(&b.addRunArtifact(fs_test).step);
+    const open_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_open_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    open_test_module.addCSourceFile(.{ .file = b.path("teststub/open_test_stubs.c"), .flags = &.{"-std=c23"} });
+    const open_test = b.addTest(.{ .root_module = open_test_module });
+    test_step.dependOn(&b.addRunArtifact(open_test).step);
 }
