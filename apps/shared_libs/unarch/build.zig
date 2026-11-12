@@ -118,8 +118,63 @@ pub fn build(b: *std.Build) void {
 
     const run_gzip_test = b.addRunArtifact(gzip_test);
 
+    // The xz container decoder over that seam, behind the unchanged
+    // unarch_xz.h ABI. Still links the production budget seam from
+    // ra8_core at the app level; the package test links
+    // src/unarch_xz_teststub.zig for that seam and builds the real
+    // vendored xz-embedded (decode-only) plus the real pool.
+    const xz_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_xz_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const xz = b.addLibrary(.{
+        .name = "unarch_xz",
+        .linkage = .static,
+        .root_module = xz_module,
+    });
+    xz.bundle_compiler_rt = xz.root_module.resolved_target.?.result.os.tag != .freestanding;
+    xz.root_module.pic = true;
+    b.installArtifact(xz);
+
+    const xz_test_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_xz_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const xz_test = b.addTest(.{ .root_module = xz_test_module });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_crc32.c") });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_crc64.c") });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_dec_stream.c") });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_dec_lzma2.c") });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("src/unarch_xz_pool.c"), .flags = &.{"-std=c23"} });
+    xz_test.root_module.addCSourceFile(.{ .file = b.path("src/unarch_xz_fixture_stub.c"), .flags = &.{"-std=c23"} });
+    xz_test.root_module.addIncludePath(b.path("inc"));
+    xz_test.root_module.addIncludePath(b.path("../third_party/xz_embedded"));
+    xz_test.root_module.addIncludePath(b.path("tests/inc"));
+    xz_test.root_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    xz_test.root_module.addIncludePath(b.path("../../../libs/ra8_imgdec/inc"));
+    xz_test.root_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
+    xz_test.root_module.link_libc = true;
+
+    const xz_stub_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_xz_teststub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const xz_stub = b.addLibrary(.{
+        .name = "unarch_xz_teststub",
+        .linkage = .static,
+        .root_module = xz_stub_module,
+    });
+    xz_test.root_module.linkLibrary(xz_stub);
+
+    const run_xz_test = b.addRunArtifact(xz_test);
+
     const unarch_test_step = b.step("test", "Run package tests");
     unarch_test_step.dependOn(&run_io_test.step);
     unarch_test_step.dependOn(&run_tar_test.step);
     unarch_test_step.dependOn(&run_gzip_test.step);
+    unarch_test_step.dependOn(&run_xz_test.step);
 }
