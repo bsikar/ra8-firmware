@@ -152,6 +152,21 @@ pub fn build(b: *std.Build) void {
         app_api_tests[index] = b.addTest(.{ .root_module = test_module });
     }
 
+    // The production Ed25519 verify backend (RA8FW-291), tested through the
+    // packer: signed in, admitted; tampered, unsigned and wrong-key refused.
+    const ed25519_backend_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/ed25519_backend_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ed25519_backend_test_module.addImport("appimg_pack", appimg_pack_module);
+    ed25519_backend_test_module.addImport("ed25519_backend", b.createModule(.{
+        .root_source_file = b.path("src/internal/ed25519_backend.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    const ed25519_backend_tests = b.addTest(.{ .root_module = ed25519_backend_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_appimg_tests = b.addRunArtifact(appimg_tests);
@@ -163,6 +178,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_appimg_tests.step);
     test_step.dependOn(&run_appimg_verify_tests.step);
     test_step.dependOn(&run_appimg_pack_tests.step);
+    test_step.dependOn(&b.addRunArtifact(ed25519_backend_tests).step);
     for (module_pack_tests) |compile| test_step.dependOn(&b.addRunArtifact(compile).step);
     for (app_api_tests) |compile| test_step.dependOn(&b.addRunArtifact(compile).step);
     // The tool must at least build on every test run.
