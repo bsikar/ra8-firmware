@@ -74,6 +74,10 @@ pub const apps = [_]CrossApp{
         .zig_main = "src/main.zig",
         .zig_main_imports = &.{
             .{ .name = "appimg_verify", .path = "libs/ra8_app/src/internal/appimg_verify.zig" },
+            // The production Ed25519 backend (RA8FW-291): admission runs the
+            // same export silicon will, so the example carries no crypto of
+            // its own.
+            .{ .name = "ed25519_backend", .path = "libs/ra8_app/src/internal/ed25519_backend.zig" },
         },
         .txm_manager = true,
         .stack_bytes = 8192,

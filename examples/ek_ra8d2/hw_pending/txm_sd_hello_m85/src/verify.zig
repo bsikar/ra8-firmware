@@ -3,14 +3,14 @@
 //!
 //! The signature half of txm_sd_hello_m85 (RA8FW-830): admit an .ra8app
 //! through ra8_app's admission gate (appimg_verify.verify: container, grant,
-//! then signature) with a software Ed25519 backend and the pinned test public
-//! key. The key is the one libs/ra8_app/tools/test_key.zig's seed derives, so
-//! only images `zig build txm-hello-m33` signs pass.
+//! then signature) with the production Ed25519 backend (RA8FW-291): the same
+//! `ra8_appimg_ed25519_verify` export silicon will run, built into this
+//! example instead of an inline copy of the crypto. The pinned key is the one
+//! libs/ra8_app/tools/test_key.zig's seed derives, so only images
+//! `zig build txm-hello-m33` signs pass.
 
-const std = @import("std");
 const appimg_verify = @import("appimg_verify");
-
-const Ed25519 = std.crypto.sign.Ed25519;
+const production = @import("ed25519_backend");
 
 /// Ed25519 public key of test_key.zig's seed (0x24 repeated 32 times).
 pub const public_key = [appimg_verify.pubkey_bytes]u8{
@@ -24,20 +24,28 @@ pub const granted: u32 = 0;
 /// sizeof(appimg.Header): the module payload starts here.
 pub const header_bytes = 160;
 
+/// Admission runs the production backend: the WireMsg mirror of
+/// ra8_appimg_msg_t carries the signed run to `ra8_appimg_ed25519_verify`,
+/// and only its `ok` admits. `not_supported` passes through as the one
+/// refusal the gate reports verbatim; every other code is a failed verify.
 fn ed25519(
     ctx: ?*anyopaque,
     msg: appimg_verify.Message,
-    signature: *const [Ed25519.Signature.encoded_length]u8,
+    signature: *const [64]u8, // Ed25519 raw R||S, appimg.Width.signature
     key: *const [appimg_verify.pubkey_bytes]u8,
 ) appimg_verify.Verdict {
     _ = ctx;
-    const sig = Ed25519.Signature.fromBytes(signature.*);
-    const pk = Ed25519.PublicKey.fromBytes(key.*) catch return .bad;
-    var v = sig.verifier(pk) catch return .bad;
-    v.update(msg.head);
-    v.update(msg.tail);
-    v.verify() catch return .bad;
-    return .good;
+    const wire = production.WireMsg{
+        .head = msg.head.ptr,
+        .tail = msg.tail.ptr,
+        .head_len = @intCast(msg.head.len),
+        .tail_len = @intCast(msg.tail.len),
+    };
+    return switch (production.ra8_appimg_ed25519_verify(null, &wire, signature, key)) {
+        @backingInt(production.Code.ok) => .good,
+        @backingInt(production.Code.not_supported) => .unsupported,
+        else => .bad,
+    };
 }
 
 const backend = appimg_verify.Backend{ .verify = &ed25519, .public_key = &public_key, .granted = granted };
