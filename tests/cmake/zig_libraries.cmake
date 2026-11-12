@@ -642,8 +642,8 @@ ra8_add_zig_library(
 # metadata, cover, manifest and glyph accessors (RA8FW-1163) are Zig as
 # well: apps/shared_libs/epub/src has no epub_zip_guard.c, epub_fs.c,
 # epub_open.c, epub_chapter.c, epub_entry.c, epub_xml_toc.c or
-# epub_miniz_alloc.c left. Only the tile-cache binder TU (epub_img_tiles.c)
-# stays C and links these exports through the archives.
+# epub_miniz_alloc.c or epub_img_tiles.c left: the whole epub library is
+# Zig behind the unchanged headers.
 ra8_add_zig_library(
   NAME
   ra8_epub
@@ -741,6 +741,21 @@ ra8_add_zig_library(
   ${FW_ROOT}/apps/shared_libs/epub
   LIBRARY_NAME
   ra8_epub_img_import
+)
+
+# The tile binder + reflow <img> loader (RA8FW-1194) ships as its own archive
+# for the same pull granularity: its externs (the entry trio,
+# epub_get_resource, the jof pair and the tile-cache quartet) only load when
+# a consumer calls the binder or the loader. The C TU's __has_include
+# emptiness contract is preserved at the link rather than re-expressed: an
+# epub-only app that never links jof never pulls this member.
+ra8_add_zig_library(
+  NAME
+  ra8_epub_img_tiles
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/epub
+  LIBRARY_NAME
+  ra8_epub_img_tiles
 )
 
 # The bounded ZIP-entry reader (RA8FW-1165) ships as its own archive for
