@@ -10,9 +10,10 @@
 //! never pulls the miniz iterator externs. miniz stays extern (SOUP C); the
 //! zip guard export comes from the ra8_epub archive and the priv_* helpers
 //! (join_path, book_not_ready) from the chapter archive, so this archive
-//! sits after ra8_epub_chapter in the link order. The remaining C
-//! consumers, epub_img_import.c and epub_img_tiles.c, reach the public
-//! surface through the unchanged epub_entry.h.
+//! sits after ra8_epub_chapter in the link order. The remaining consumers,
+//! epub_img_import_abi.zig (RA8FW-1193) and epub_img_tiles_abi.zig
+//! (RA8FW-1194), reach the public surface through the unchanged
+//! epub_entry.h.
 //!
 //! The mz_zip_archive_file_stat mirror here is the FULL C layout: 1112 bytes
 //! with the 512-byte filename, the 512-byte comment and the trailing time
