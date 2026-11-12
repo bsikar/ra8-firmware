@@ -13,6 +13,7 @@
 #   src/epub_chapter_abi.zig  chapter, metadata, cover, glyph (Zig, RA8FW-1163)
 #   src/epub_xml_shim_abi.zig strict streamed XML consumers (Zig, RA8FW-1164)
 #   src/epub_xml_toc_abi.zig  NCX and nav table-of-contents consumers
+#   src/epub_img_import_abi.zig  import-time transcode wiring (RA8FW-1193)
 #
 # Vendored dependencies (already at apps/shared_libs/third_party/):
 #   stb_truetype.h, stb_image.h  -- glyph rasteriser + image decoder

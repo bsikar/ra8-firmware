@@ -9,7 +9,7 @@
  * bytes in a caller-owned bounded scratch). Atlas sources are either stored
  * archive entries (windowed with `epub_entry_pread`) or external pread
  * seams (SDRAM/SD stores filled by the import path in
- * `epub_img_import.c`). Tile decode itself is `jof_read_tile()`
+ * `epub_img_import_abi.zig`). Tile decode itself is `jof_read_tile()`
  * -- one bounded read plus one bounded inflate per miss.
  *
  * Guarded on `__has_include`: the pure `epub` core (and epub-only apps
