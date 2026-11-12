@@ -18,8 +18,8 @@ const Limits = extern struct {
 
 const k_ra8_ok: c_int = 0;
 const k_ra8_err_invalid_arg: c_int = 0x103;
-const k_ra8_err_decomp_output: c_int = 0x201;
-const k_ra8_err_decomp_iter: c_int = 0x202;
+const k_ra8_err_decomp_output_cap: c_int = 0x505;
+const k_ra8_err_decomp_iterations: c_int = 0x509;
 
 const Defaults = Limits{
     .max_output_bytes = 1 << 30,
@@ -53,7 +53,7 @@ export fn ra8_decomp_budget_charge_iter(b: ?*anyopaque) callconv(.c) c_int {
     }
     s_budget_iters += 1;
     if (s_budget_iters > s_budget_limits.max_iterations) {
-        return k_ra8_err_decomp_iter;
+        return k_ra8_err_decomp_iterations;
     }
     return k_ra8_ok;
 }
@@ -65,7 +65,7 @@ export fn ra8_decomp_budget_charge_output(b: ?*anyopaque, in_pos: u64, out_bytes
     _ = in_pos;
     s_budget_out += out_bytes;
     if (s_budget_out > s_budget_limits.max_output_bytes) {
-        return k_ra8_err_decomp_output;
+        return k_ra8_err_decomp_output_cap;
     }
     return k_ra8_ok;
 }
