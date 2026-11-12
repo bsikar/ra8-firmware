@@ -5,7 +5,8 @@
 //! src/epub_abi.zig (the decompression guard, RA8FW-1160),
 //! src/epub_fs_abi.zig (the ra8_fs bridge, RA8FW-1161),
 //! src/epub_open_abi.zig (the open/close core, RA8FW-1162) and
-//! src/epub_chapter_abi.zig (the chapter/glyph accessors, RA8FW-1163), all behind the
+//! src/epub_chapter_abi.zig (the chapter/glyph accessors, RA8FW-1163) and
+//! src/epub_img_import_abi.zig (the import-time transcode wiring, RA8FW-1193), all behind the
 //! unchanged C headers in inc/. CMake consumes the installed static
 //! libraries through those headers. Template: apps/shared_libs/xml/build.zig
 //! (plain static libraries + host test step). The epub core is Zig and
@@ -287,4 +288,34 @@ pub fn build(b: *std.Build) void {
     });
     const miniz_test = b.addTest(.{ .root_module = miniz_test_module });
     test_step.dependOn(&b.addRunArtifact(miniz_test).step);
+
+    // The import-time transcode wiring ships as its own archive (RA8FW-1193)
+    // for the same pull granularity: its externs (the entry cursor quartet,
+    // the binder registration pair and jof_produce) only load when a consumer
+    // calls epub_tile_binder_import. This is the C TU's __has_include gate,
+    // moved to the build: an epub-only app that never links jof keeps the
+    // same link surface the empty C translation unit gave it.
+    const img_import_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_img_import_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const img_import_library = b.addLibrary(.{
+        .name = "ra8_epub_img_import",
+        .linkage = .static,
+        .root_module = img_import_module,
+    });
+    img_import_library.bundle_compiler_rt = img_import_library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    img_import_library.root_module.pic = true;
+    b.installArtifact(img_import_library);
+
+    const img_import_test_module = b.createModule(.{
+        .root_source_file = b.path("src/epub_img_import_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    img_import_test_module.addCSourceFile(.{ .file = b.path("teststub/img_import_test_stubs.c"), .flags = &.{"-std=c23"} });
+    const img_import_test = b.addTest(.{ .root_module = img_import_test_module });
+    test_step.dependOn(&b.addRunArtifact(img_import_test).step);
 }

@@ -86,16 +86,16 @@ fn internal_payload(block: *const priv_blk_t) usize {
 
 /// Header for an allocation payload address.
 fn internal_header(arena: *const epub_miniz_arena_t, address: *anyopaque) *priv_blk_t {
+    _ = arena;
     const payload = @intFromPtr(address);
-    const base = @intFromPtr(arena.base.?);
-    return @ptrFromInt((payload - base) - k_priv_hdr_bytes);
+    return @ptrFromInt(payload - k_priv_hdr_bytes);
 }
 
 /// Block immediately following the given block.
 fn internal_next(arena: *const epub_miniz_arena_t, block: *const priv_blk_t) *priv_blk_t {
+    _ = arena;
     const end = internal_payload(block) + block.size;
-    const base = @intFromPtr(arena.base.?);
-    return @ptrFromInt(end - base);
+    return @ptrFromInt(end);
 }
 
 /// Whether an address lies in the payload-bearing arena range. Rejects
@@ -129,11 +129,11 @@ fn internal_request_bytes(items: usize, size: usize, out_bytes: *usize) bool {
 /// Split a block when its remainder can hold another allocation; unusably
 /// small tails stay inside the live block.
 fn internal_split(arena: *const epub_miniz_arena_t, block: *priv_blk_t, need: usize) void {
+    _ = arena;
     const remainder_min = k_priv_hdr_bytes + k_priv_align;
     if ((block.size - need) < remainder_min) return;
     const rem_addr = internal_payload(block) + need;
-    const base = @intFromPtr(arena.base.?);
-    const remainder: *priv_blk_t = @ptrFromInt(rem_addr - base);
+    const remainder: *priv_blk_t = @ptrFromInt(rem_addr);
     remainder.size = block.size - need - k_priv_hdr_bytes;
     remainder.is_free = k_priv_blk_free;
     block.size = need;
@@ -252,7 +252,7 @@ pub export fn epub_miniz_realloc(opaque_: ?*anyopaque, address: ?*anyopaque, ite
 var t_workspace: [k_epub_miniz_pool_bytes]u8 align(16) = undefined;
 var t_arena: epub_miniz_arena_t = undefined;
 
-fn t_init() void {
+fn t_init() !void {
     const err = epub_miniz_arena_init(&t_arena, &t_workspace, t_workspace.len);
     try std.testing.expectEqual(k_ra8_ok, err);
 }
@@ -278,7 +278,7 @@ test "init rejects null, short, and misaligned workspaces without touching them"
     try std.testing.expectEqual(k_ra8_err_null_ptr, epub_miniz_arena_init(null, &t_workspace, t_workspace.len));
     try std.testing.expectEqual(k_ra8_err_null_ptr, epub_miniz_arena_init(&arena, null, t_workspace.len));
     try std.testing.expectEqual(k_ra8_err_invalid_size, epub_miniz_arena_init(&arena, &t_workspace, t_workspace.len - 1));
-    const mis: *[k_epub_miniz_pool_bytes]u8 = @ptrFromInt((@intFromPtr(&t_workspace)) + k_priv_align);
+    const mis: *[k_epub_miniz_pool_bytes]u8 = @ptrFromInt((@intFromPtr(&t_workspace)) + 1);
     try std.testing.expectEqual(k_ra8_err_invalid_arg, epub_miniz_arena_init(&arena, mis, mis.len));
 }
 
@@ -306,7 +306,7 @@ test "first-fit splits and coalesces adjacent free blocks" {
     defer epub_miniz_arena_deinit(&t_arena);
     const a = epub_miniz_alloc(&t_arena, 64, 1).?;
     const b = epub_miniz_alloc(&t_arena, 64, 1).?;
-    _ = epub_miniz_alloc(&t_arena, 64, 1).?;
+    const c = epub_miniz_alloc(&t_arena, 64, 1).?;
     const ha = internal_header(&t_arena, a);
     try std.testing.expectEqual(@as(usize, 64), ha.size);
     epub_miniz_free(&t_arena, a);
@@ -316,6 +316,7 @@ test "first-fit splits and coalesces adjacent free blocks" {
     try std.testing.expectEqual(@intFromPtr(a), @intFromPtr(again));
     // free everything; coalescing must rebuild one whole-pool block.
     epub_miniz_free(&t_arena, b);
+    epub_miniz_free(&t_arena, c);
     epub_miniz_free(&t_arena, again);
     const head = internal_cell_at(&t_arena, 0);
     try std.testing.expectEqual(k_epub_miniz_pool_bytes - k_priv_hdr_bytes, head.size);
@@ -346,7 +347,7 @@ test "realloc shrinks in place and treats a zero-byte request as free" {
     const head = internal_cell_at(&t_arena, 0);
     try std.testing.expectEqual(k_priv_blk_free, head.is_free);
     // NULL address: realloc allocates.
-    const q = epub_miniz_realloc(&t_arena, null, 16, 1).?;
+    const q = epub_miniz_realloc(&t_arena, null, 16, 1);
     try std.testing.expect(q != null);
     epub_miniz_free(&t_arena, q);
 }
@@ -374,13 +375,20 @@ test "bad requests are rejected and foreign pointers are ignored" {
 test "exhaustion then full recovery" {
     try t_init();
     defer epub_miniz_arena_deinit(&t_arena);
-    var blocks: [64]?*anyopaque = @splat(null);
+    var blocks: [256]?*anyopaque = @splat(null);
     var count: usize = 0;
     while (count < blocks.len) : (count += 1) {
         const p = epub_miniz_alloc(&t_arena, 4096, 1) orelse break;
         blocks[count] = p;
     }
     try std.testing.expect(count > 0);
+    // The pool is not an exact multiple of the 4096-byte stride, so the fill
+    // loop leaves a live tail block: drain it before true exhaustion.
+    while (count < blocks.len) {
+        const p = epub_miniz_alloc(&t_arena, 1, 1) orelse break;
+        blocks[count] = p;
+        count += 1;
+    }
     try std.testing.expect(epub_miniz_alloc(&t_arena, 1, 1) == null);
     for (blocks[0..count]) |p| epub_miniz_free(&t_arena, p);
     // One whole-pool block survives the coalesce after the drain.
