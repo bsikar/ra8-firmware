@@ -46,6 +46,26 @@ pub fn build(b: *std.Build) void {
     tar.root_module.pic = true;
     b.installArtifact(tar);
 
+    // The gzip member decoder over that seam, behind the unchanged
+    // unarch_gzip.h ABI. Still links the production budget seam from
+    // ra8_core at the app level; the package test links
+    // src/unarch_gzip_teststub.zig for that seam and the real vendored
+    // miniz for the tinfl one.
+    const gzip_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_gzip_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .pic = true,
+    });
+    const gzip = b.addLibrary(.{
+        .name = "unarch_gzip",
+        .linkage = .static,
+        .root_module = gzip_module,
+    });
+    gzip.bundle_compiler_rt = gzip.root_module.resolved_target.?.result.os.tag != .freestanding;
+    gzip.root_module.pic = true;
+    b.installArtifact(gzip);
+
     const io_test_module = b.createModule(.{
         .root_source_file = b.path("src/unarch_io_abi.zig"),
         .target = target,
@@ -74,7 +94,32 @@ pub fn build(b: *std.Build) void {
     tar_test.root_module.linkLibrary(tar_stub);
 
     const run_tar_test = b.addRunArtifact(tar_test);
+    const gzip_test_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_gzip_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const gzip_test = b.addTest(.{ .root_module = gzip_test_module });
+    gzip_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/miniz/miniz.c") });
+    gzip_test.root_module.addIncludePath(b.path("../third_party/miniz"));
+    gzip_test.root_module.link_libc = true;
+
+    const gzip_stub_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_gzip_teststub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const gzip_stub = b.addLibrary(.{
+        .name = "unarch_gzip_teststub",
+        .linkage = .static,
+        .root_module = gzip_stub_module,
+    });
+    gzip_test.root_module.linkLibrary(gzip_stub);
+
+    const run_gzip_test = b.addRunArtifact(gzip_test);
+
     const unarch_test_step = b.step("test", "Run package tests");
     unarch_test_step.dependOn(&run_io_test.step);
     unarch_test_step.dependOn(&run_tar_test.step);
+    unarch_test_step.dependOn(&run_gzip_test.step);
 }
