@@ -39,7 +39,7 @@ comptime {
 /// admission; the gate maps every other code to a refusal and keeps only
 /// `not_supported` distinct, and a backend with a working primitive never
 /// has that one.
-const Code = enum(u16) {
+pub const Code = enum(u16) {
     ok = 0,
     invalid_arg = 0x103,
     not_supported = 0x107,
