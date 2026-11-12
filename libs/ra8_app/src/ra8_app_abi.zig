@@ -493,6 +493,16 @@ comptime {
     std.debug.assert(@offsetOf(AppImgVerifier, "granted") == 3 * word);
 }
 
+/// The production Ed25519 verify backend (`ra8_appimg_ed25519_verify`), the
+/// platform's supply of the verify seam `ra8_appimg_verify` consumes
+/// (RA8FW-291). Re-exported so the C links it out of this archive.
+pub const ed25519_backend = @import("internal/ed25519_backend.zig");
+
+comptime {
+    // Pull the backend into the archive C links (its `export` symbols).
+    _ = ed25519_backend;
+}
+
 /// Map a format refusal onto the `ra8_err_t` the C returned for it.
 fn imageCode(err: appimg.Error) u16 {
     return code(switch (err) {
