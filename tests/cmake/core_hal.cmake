@@ -254,8 +254,9 @@ set_source_files_properties(${EPUB_THIRD_PARTY} PROPERTIES COMPILE_OPTIONS "${_r
 # Vendored xz-embedded decoder (SOUP): silence its warnings and disable strict
 # aliasing like the other vendored decoders. Its allocator and mode selection
 # come from the first-party porting header apps/shared_libs/unarch/inc/xz_config.h
-# (zero-heap pool, XZ_PREALLOC only); the first-party unarch wrapper
-# sources are held to the full project warning bar and are NOT listed here.
+# (zero-heap pool, XZ_PREALLOC only); the first-party unarch sources (the
+# test-fixture accessor stub is the only C left, RA8FW-1205) are held to the
+# full project warning bar and are NOT listed here.
 # Measured one flag at a time on all four xz TUs under gcc 14.2.0 and clang 18 at
 # -O0: only -Wconversion fires (xz_config.h size_t -> uint32_t in the first-party
 # porting header the decoder includes). -Wno-error masked nothing at all,
