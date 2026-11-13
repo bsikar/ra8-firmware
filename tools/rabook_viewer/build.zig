@@ -9,7 +9,7 @@
 //! RA8FW-999: built through the Zig graph like every other host tool; the
 //! C-era build linked the firmware's reader libraries as one ra8_reader
 //! archive (comic, longstrip, the JOF read path, the SVG reflow read path,
-//! unarch's tar members, epub's miniz allocator, the compression seam) and
+//! epub's miniz allocator, the compression seam) and
 //! took ra8_imgdec, ra8_gfx, ra8_mem, ra8_core and ra8_io as Zig archives.
 //! The WebP decode stack rides the shared recipe cmake/ra8_webp_vendor.cmake
 //! carries; the reader's image path calls it from reflow_image.c.
@@ -52,7 +52,6 @@ const webp_vendor_flags = [_][]const u8{
 };
 
 const comic_dir = "../../apps/shared_libs/comic/src/";
-const epub_dir = "../../apps/shared_libs/epub/src/";
 const reflow_dir = "../../apps/shared_libs/reflow/src/";
 const compress_dir = "../../apps/shared_libs/compress/src/";
 
@@ -75,7 +74,6 @@ const comic_closure = [_][]const u8{
     comic_dir ++ "ra8_rar5.c",
     comic_dir ++ "ra8_rar5_tables.c",
 };
-const epub_closure = [_][]const u8{epub_dir ++ "epub_miniz_alloc.c"};
 const reflow_closure = [_][]const u8{
     reflow_dir ++ "ra8_img_arena.c",
     reflow_dir ++ "reflow_image.c",
@@ -84,11 +82,6 @@ const reflow_closure = [_][]const u8{
     reflow_dir ++ "reflow_svg_path.c",
     reflow_dir ++ "reflow_svg_shape.c",
     reflow_dir ++ "reflow_svg_xform.c",
-};
-const unarch_closure = [_][]const u8{
-    "../../apps/shared_libs/unarch/src/unarch_io.c",
-    "../../apps/shared_libs/unarch/src/unarch_tar.c",
-    "../../apps/shared_libs/unarch/src/unarch_tar_fields.c",
 };
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
@@ -226,6 +219,14 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     // imgdec target carried it.
     const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
     const longstrip_lib = b.dependency("longstrip", .{ .target = target, .optimize = optimize }).artifact("longstrip");
+    // unarch's tar members are the Zig archives now (RA8FW-1204): the
+    // .cbt / .tar.gz walker and its io seam, no compiled C.
+    // RA8FW-1167 moved epub's miniz arena allocator into the ra8_epub_miniz
+    // archive, so the allocator stops being a compiled C TU here and rides the
+    // archive beside the miniz DEFLATE core the epub block still compiles.
+    const epub_miniz_lib = b.dependency("epub", .{ .target = target, .optimize = optimize }).artifact("ra8_epub_miniz");
+    const unarch_io_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_io");
+    const unarch_tar_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_tar");
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(gfx_lib);
     mod.linkLibrary(mem_lib);
@@ -235,6 +236,9 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     mod.linkLibrary(jof_lib);
     mod.linkLibrary(longstrip_lib);
     mod.linkLibrary(jpeg_lib);
+    mod.linkLibrary(epub_miniz_lib);
+    mod.linkLibrary(unarch_io_lib);
+    mod.linkLibrary(unarch_tar_lib);
 }
 
 pub fn build(b: *std.Build) void {
@@ -249,9 +253,7 @@ pub fn build(b: *std.Build) void {
     linkZigLibs(b, reader_mod, target, optimize);
     addReaderIncludes(b, reader_mod);
     addC(b, reader_mod, ".", &comic_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &epub_closure, &first_party_flags);
     addC(b, reader_mod, ".", &reflow_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &unarch_closure, &first_party_flags);
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_sources, .flags = &third_party_flags });
     addWebp(b, reader_mod);

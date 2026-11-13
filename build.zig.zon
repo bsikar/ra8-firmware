@@ -10,6 +10,7 @@
         .ra8_power_profile = .{ .path = "libs/ra8_power_profile" },
         .ra8_epd_cal = .{ .path = "libs/ra8_epd_cal" },
         .ra8_imgdec = .{ .path = "libs/ra8_imgdec" },
+        .unarch = .{ .path = "apps/shared_libs/unarch" },
         .ra8_core = .{ .path = "libs/ra8_core" },
         .ra8_board_ek_ra8d2 = .{ .path = "libs/ra8_board_ek_ra8d2" },
         .ra8_board_ra8p1 = .{ .path = "libs/ra8_board_ra8p1" },
