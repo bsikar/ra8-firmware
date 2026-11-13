@@ -64,6 +64,7 @@ target_link_libraries(
          ra8_zig::ra8_gfx
          ra8_zig::unarch_tar
          ra8_zig::unarch_gzip
+         ra8_zig::unarch_xz
          ra8_zig::unarch_xz_pool
 )
 
@@ -120,5 +121,6 @@ link_libraries(
   ra8_zig::ra8_gfx
   ra8_zig::unarch_tar
   ra8_zig::unarch_gzip
+  ra8_zig::unarch_xz
   ra8_zig::unarch_xz_pool
 )
