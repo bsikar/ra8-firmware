@@ -148,7 +148,22 @@ pub fn build(b: *std.Build) void {
     xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_crc64.c") });
     xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_dec_stream.c") });
     xz_test.root_module.addCSourceFile(.{ .file = b.path("../third_party/xz_embedded/xz_dec_lzma2.c") });
-    xz_test.root_module.addCSourceFile(.{ .file = b.path("src/unarch_xz_pool.c"), .flags = &.{"-std=c23"} });
+    // The zero-heap XZ allocation pool, ported to Zig behind the
+    // unchanged unarch_xz_pool.h ABI (RA8FW-1202); the package test links
+    // it the same way the app build does.
+    const pool_module = b.createModule(.{
+        .root_source_file = b.path("src/unarch_xz_pool_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const pool = b.addLibrary(.{
+        .name = "unarch_xz_pool",
+        .linkage = .static,
+        .root_module = pool_module,
+    });
+    pool.bundle_compiler_rt = pool.root_module.resolved_target.?.result.os.tag != .freestanding;
+    b.installArtifact(pool);
+    xz_test.root_module.linkLibrary(pool);
     xz_test.root_module.addCSourceFile(.{ .file = b.path("src/unarch_xz_fixture_stub.c"), .flags = &.{"-std=c23"} });
     xz_test.root_module.addIncludePath(b.path("inc"));
     xz_test.root_module.addIncludePath(b.path("../third_party/xz_embedded"));

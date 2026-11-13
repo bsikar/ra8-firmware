@@ -95,7 +95,7 @@ extern fn xz_dec_init(mode: XzMode, dict_max: u32) callconv(.c) ?*anyopaque;
 extern fn xz_dec_run(s: ?*anyopaque, b: *XzBuf) callconv(.c) XzRet;
 extern fn xz_dec_end(s: ?*anyopaque) callconv(.c) void;
 
-// ---- The zero-heap allocation pool (src/unarch_xz_pool.c, stays C) --------
+// ---- The zero-heap allocation pool (src/unarch_xz_pool_abi.zig) -----------
 
 extern fn unarch_xz_pool_install(base: ?*anyopaque, len: usize) callconv(.c) u16;
 extern fn unarch_xz_pool_reset() callconv(.c) void;
