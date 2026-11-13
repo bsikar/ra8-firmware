@@ -7,8 +7,8 @@
 //! the five predefined entities plus decimal and hex character references,
 //! bounded span decoding into caller-owned storage, and the decoded
 //! comparisons. No reader state is touched here; the markup-scanning half
-//! (xml.c, xml_doctype.c) is still C and reaches these exports through the
-//! archive, so the C callers and the C tests stay untouched.
+//! (RA8FW-1158) and the DOCTYPE validator (RA8FW-1206) share this file, so
+//! the whole `xml` reader library is Zig.
 
 const std = @import("std");
 
@@ -564,9 +564,7 @@ export fn priv_xml_raw(source: [*c]const u8, start: usize, end: usize) callconv(
 // ---------------------------------------------------------------------------
 // Markup-scanning half (RA8FW-1158): the C-era src/xml.c ported verbatim.
 // QName scanning, attribute parsing and duplicate rejection, start/end/text/
-// CDATA/comment/PI/declaration events, and the pull-reader driver. The
-// DOCTYPE validator stays in C (xml_doctype.c, slice 3) and is reached
-// through the archive link.
+// CDATA/comment/PI/declaration events, and the pull-reader driver.
 // ---------------------------------------------------------------------------
 
 // ---- xml.h reader types (extern layout matches the C header) ---------------
@@ -604,9 +602,126 @@ const xml_reader_t = extern struct {
     finished: u8,
 };
 
-/// The DOCTYPE validator stays in C (xml_doctype.c, slice 3): the markup
-/// scanner reaches it through the archive link, the same seam in reverse.
-extern fn priv_xml_doctype(reader: [*c]xml_reader_t) callconv(.c) ra8_err_t;
+// ---------------------------------------------------------------------------
+// DOCTYPE validator (RA8FW-1206): the C-era src/xml_doctype.c ported
+// verbatim. Accepts and ignores lexically valid bare, SYSTEM, and PUBLIC
+// declarations before the root without resolving external resources;
+// internal subsets and unsupported declaration forms fail closed.
+// ---------------------------------------------------------------------------
+
+/// Skip XML spacing and report whether at least one byte was consumed;
+/// advances only inside the supplied half-open byte range.
+fn internal_skip_space(source: [*c]const u8, end: usize, position: *usize) bool {
+    const initial = position.*;
+    while ((position.* < end) and internal_space(source[position.*])) {
+        position.* += 1;
+    }
+    return position.* != initial;
+}
+
+/// The XML PubidChar subset accepted in public identifiers: XML spacing,
+/// alphanumerics, and XML punctuation.
+fn internal_pubid_byte(byte: u8) bool {
+    const punctuation = "-'()+,./:=?;!*#@$_%";
+    return (byte == ' ') or (byte == '\r') or (byte == '\n') or
+        ((byte >= 'A') and (byte <= 'Z')) or
+        ((byte >= 'a') and (byte <= 'z')) or
+        ((byte >= '0') and (byte <= '9')) or
+        ((byte != 0) and (std.mem.indexOfScalar(u8, punctuation, byte) != null));
+}
+
+/// Parse one quoted system or public identifier literal: respects either
+/// quote and validates optional PubidChar bytes; no resource is fetched.
+fn internal_literal(source: [*c]const u8, end: usize, position: *usize, public_id: bool) ra8_err_t {
+    if ((position.* >= end) or
+        ((source[position.*] != '\'') and (source[position.*] != '"')))
+    {
+        return k_ra8_err_validation_failed;
+    }
+    const quote = source[position.*];
+    position.* += 1;
+    const start = position.*;
+    while ((position.* < end) and (source[position.*] != quote)) {
+        if (public_id and !internal_pubid_byte(source[position.*])) {
+            return k_ra8_err_validation_failed;
+        }
+        position.* += 1;
+    }
+    if (position.* >= end) {
+        return k_ra8_err_validation_failed;
+    }
+    const err: ra8_err_t = if (public_id) k_ra8_ok else priv_xml_raw(source, start, position.*);
+    position.* += 1;
+    return err;
+}
+
+/// Consume an exact ASCII keyword followed by required spacing; matching is
+/// intentionally case-sensitive.
+fn internal_keyword(source: [*c]const u8, end: usize, position: *usize, keyword: []const u8) ra8_err_t {
+    if ((position.* + keyword.len > end) or
+        !priv_xml_bytes_equal(source, position.*, keyword.ptr, keyword.len))
+    {
+        return k_ra8_err_validation_failed;
+    }
+    position.* += keyword.len;
+    return if (internal_skip_space(source, end, position)) k_ra8_ok else k_ra8_err_validation_failed;
+}
+
+/// Parse a SYSTEM or PUBLIC external identifier; external identifiers are
+/// checked but never resolved.
+fn internal_external_id(source: [*c]const u8, end: usize, position: *usize) ra8_err_t {
+    if (((position.* + 6) <= end) and priv_xml_bytes_equal(source, position.*, "SYSTEM".ptr, "SYSTEM".len)) {
+        const err = internal_keyword(source, end, position, "SYSTEM");
+        return if (err == k_ra8_ok) internal_literal(source, end, position, false) else err;
+    }
+    if (((position.* + 6) <= end) and priv_xml_bytes_equal(source, position.*, "PUBLIC".ptr, "PUBLIC".len)) {
+        var err = internal_keyword(source, end, position, "PUBLIC");
+        if (err == k_ra8_ok) {
+            err = internal_literal(source, end, position, true);
+        }
+        if ((err == k_ra8_ok) and !internal_skip_space(source, end, position)) {
+            err = k_ra8_err_validation_failed;
+        }
+        return if (err == k_ra8_ok) internal_literal(source, end, position, false) else err;
+    }
+    return k_ra8_err_validation_failed;
+}
+
+/// Bounded external-only DOCTYPE validator: the markup scanner reaches it at
+/// the same seam the C-era TU used, and the export keeps the symbol stable
+/// for the C callers that still link the reader archive.
+export fn priv_xml_doctype(reader: [*c]xml_reader_t) callconv(.c) ra8_err_t {
+    const end = reader.*.source_len;
+    var position = reader.*.position;
+    if ((reader.*.root_count != 0) or (reader.*.doctype_seen != 0) or
+        ((position + k_priv_xml_doctype_open_bytes) > end) or
+        !internal_matches(reader.*.source, position, "<!DOCTYPE"))
+    {
+        return k_ra8_err_validation_failed;
+    }
+    position += k_priv_xml_doctype_open_bytes;
+    if (!internal_skip_space(reader.*.source, end, &position)) {
+        return k_ra8_err_validation_failed;
+    }
+    var name_end: usize = 0;
+    if (priv_xml_qname(reader.*.source, end, position, &name_end) != k_ra8_ok) {
+        return k_ra8_err_validation_failed;
+    }
+    position = name_end;
+    const separated = internal_skip_space(reader.*.source, end, &position);
+    if ((position < end) and (reader.*.source[position] != '>')) {
+        if (!separated or (internal_external_id(reader.*.source, end, &position) != k_ra8_ok)) {
+            return k_ra8_err_validation_failed;
+        }
+        _ = internal_skip_space(reader.*.source, end, &position);
+    }
+    if ((position >= end) or (reader.*.source[position] != '>')) {
+        return k_ra8_err_validation_failed;
+    }
+    reader.*.doctype_seen = 1;
+    reader.*.position = position + 1;
+    return k_ra8_ok;
+}
 
 fn empty_attribute() xml_attribute_t {
     return .{ .name = .{ .offset = 0, .length = 0 }, .value = .{ .offset = 0, .length = 0 } };

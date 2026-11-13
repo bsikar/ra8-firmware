@@ -620,10 +620,10 @@ ra8_add_zig_library(
   ra8_xml
 )
 
-# The bounded XML reader's decode half (canonical UTF-8, entity decoding,
-# span decode/compare) is Zig (RA8FW-1157); the markup-scanning half
-# (xml.c, xml_doctype.c) is still C and links these exports through the
-# archive. The ra8_xml name is taken by the XML WRITER archive above, so
+# The bounded XML reader is fully Zig: the decode half (RA8FW-1157), the
+# markup-scanning half (RA8FW-1158) and the DOCTYPE validator (RA8FW-1206)
+# all live behind inc/ra8_xml.h with no C source left in the tree.
+# The ra8_xml name is taken by the XML WRITER archive above, so
 # this one is ra8_xml_reader.
 ra8_add_zig_library(
   NAME

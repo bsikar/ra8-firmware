@@ -197,7 +197,6 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = xml_module,
     });
-    xml_module.addCSourceFile(.{ .file = b.path("../xml/src/xml_doctype.c"), .flags = &.{"-std=c23"} });
     xml_module.addIncludePath(b.path("../xml/inc"));
     xml_module.addIncludePath(b.path("../xml/src"));
     xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
@@ -242,7 +241,6 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = toc_xml_module,
     });
-    toc_xml_module.addCSourceFile(.{ .file = b.path("../xml/src/xml_doctype.c"), .flags = &.{"-std=c23"} });
     toc_xml_module.addIncludePath(b.path("../xml/inc"));
     toc_xml_module.addIncludePath(b.path("../xml/src"));
     toc_xml_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
