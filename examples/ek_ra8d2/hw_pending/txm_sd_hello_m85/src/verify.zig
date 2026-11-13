@@ -6,19 +6,20 @@
 //! then signature) with the production Ed25519 backend (RA8FW-291): the same
 //! `ra8_appimg_ed25519_verify` export silicon will run, built into this
 //! example instead of an inline copy of the crypto. The pinned key is the one
-//! libs/ra8_app/tools/test_key.zig's seed derives, so only images
+//! the `.ra8_nsc_appimg_pubkey` Secure-flash section carries
+//! (ra8_nsc_appimg_pubkey, RA8FW-291), whose shipped default derives from
+//! libs/ra8_app/tools/test_key.zig's seed, so only images
 //! `zig build txm-hello-m33` signs pass.
 
 const appimg_verify = @import("appimg_verify");
 const production = @import("ed25519_backend");
 
-/// Ed25519 public key of test_key.zig's seed (0x24 repeated 32 times).
-pub const public_key = [appimg_verify.pubkey_bytes]u8{
-    0x58, 0x93, 0x66, 0x04, 0xab, 0xda, 0x11, 0x2b,
-    0xc9, 0x49, 0x33, 0x56, 0x9c, 0x82, 0xf8, 0xd0,
-    0xcc, 0x0d, 0xdf, 0x92, 0xa3, 0xf8, 0x32, 0x9f,
-    0x2f, 0x44, 0x8f, 0x7f, 0x48, 0x4a, 0x59, 0x4c,
-};
+const pinned_pubkey = @import("ra8_nsc_appimg_pubkey");
+
+/// The pinned Ed25519 public key: the `.ra8_nsc_appimg_pubkey` Secure-flash
+/// section, read secure-side (RA8FW-291). Provisioning replaces the key by
+/// rewriting that section.
+pub const public_key = pinned_pubkey.pinned();
 /// Capability bits this host grants: none; txm_hello_m33 asks for none.
 pub const granted: u32 = 0;
 /// sizeof(appimg.Header): the module payload starts here.
@@ -48,7 +49,7 @@ fn ed25519(
     };
 }
 
-const backend = appimg_verify.Backend{ .verify = &ed25519, .public_key = &public_key, .granted = granted };
+const backend = appimg_verify.Backend{ .verify = &ed25519, .public_key = public_key, .granted = granted };
 
 /// True when `bytes` is an .ra8app signed by the pinned key whose
 /// capabilities fit `granted`.

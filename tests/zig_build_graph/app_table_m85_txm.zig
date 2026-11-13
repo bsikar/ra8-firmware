@@ -78,6 +78,9 @@ pub const apps = [_]CrossApp{
             // same export silicon will, so the example carries no crypto of
             // its own.
             .{ .name = "ed25519_backend", .path = "libs/ra8_app/src/internal/ed25519_backend.zig" },
+            // The pinned key lives in its own Secure-flash section
+            // (RA8FW-291): admission reads it secure-side.
+            .{ .name = "ra8_nsc_appimg_pubkey", .path = "libs/ra8_nsc/src/ra8_nsc_appimg_pubkey.zig" },
         },
         .txm_manager = true,
         .stack_bytes = 8192,
