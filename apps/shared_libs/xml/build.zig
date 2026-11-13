@@ -5,9 +5,8 @@
 //! half (RA8FW-1157) and the markup scanner (RA8FW-1158) behind the
 //! unchanged C headers in inc/. CMake consumes the installed static library
 //! through those headers. Template: apps/shared_libs/compress/build.zig
-//! (plain static library + host test step). The DOCTYPE validator is still
-//! C (xml_doctype.c, slice 3): the scanner calls it through the archive
-//! link, so the host test links that TU directly.
+//! (plain static library + host test step). The whole reader library,
+//! DOCTYPE validator included (RA8FW-1206), is Zig: no C source remains.
 
 const std = @import("std");
 
@@ -36,7 +35,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    test_module.addCSourceFile(.{ .file = b.path("src/xml_doctype.c"), .flags = &.{"-std=c23"} });
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("src"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
