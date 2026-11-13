@@ -130,12 +130,10 @@ if(TARGET compile_on_m33_cpu1.elf)
     # The epub zip guard is Zig too (RA8FW-1160): the glob below drops
     # epub_zip_guard.c on its own, and the guards come from
     # ra8_zig::ra8_epub, which this image links like the xml reader.
-    # xml_decode.c (RA8FW-1157) and xml.c (RA8FW-1158) are retired to Zig:
-    # both halves live in ra8_zig::ra8_xml_reader, which this hw-pending M33
-    # image must link when hardware enablement resumes. The doctype TU stays
-    # C and calls priv_xml_raw/priv_xml_span_valid/priv_xml_bytes_equal/
-    # priv_xml_qname from the archive.
-    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
+    # xml_decode.c (RA8FW-1157), xml.c (RA8FW-1158) and xml_doctype.c
+    # (RA8FW-1206) are all retired to Zig: the whole reader lives in
+    # ra8_zig::ra8_xml_reader, which this hw-pending M33 image must link
+    # when hardware enablement resumes.
     ${_c1_epub_c}
   )
   # Still plain target_sources(): vendored miniz.c only (SOUP, deliberately
