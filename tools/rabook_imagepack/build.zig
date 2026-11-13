@@ -84,15 +84,10 @@ const book_closure = [_][]const u8{
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
 
-// The facade is not self-contained: ra8_webp_imgdec.c calls ra8_imgdec_dims()
-// and ra8_imgdec_pixel_bytes(), and those call ra8_imgdec_sniff(). All three
-// live in the ra8_imgdec archive, so the archive completes the closure the
-// way the C-era link did.
-const webp_facade_sources = [_][]const u8{
-    "../../apps/shared_libs/webp/src/ra8_webp.c",
-    "../../apps/shared_libs/webp/src/ra8_webp_arena.c",
-    "../../apps/shared_libs/webp/src/ra8_webp_imgdec.c",
-};
+// The facade is the Zig webp archive now (RA8FW-1209): it is linked, not
+// compiled here. The ra8_imgdec archive still completes the closure the
+// way the C-era link did, and the vendored decoder TUs below still compile
+// with the arena define that keeps them heap-free.
 
 fn addC(b: *std.Build, mod: *std.Build.Module, root: []const u8, files: []const []const u8, flags: []const []const u8) void {
     mod.addCSourceFiles(.{ .root = b.path(root), .files = files, .flags = flags });
@@ -168,14 +163,12 @@ const webp_vendor_sources = [_][]const u8{
 };
 
 fn addWebp(b: *std.Build, mod: *std.Build.Module) void {
-    addC(b, mod, ".", &webp_facade_sources, &first_party_flags);
     mod.addCSourceFiles(.{ .root = b.path("."), .files = &webp_vendor_sources, .flags = &webp_vendor_flags });
 }
 
 fn addWebpIncludes(b: *std.Build, mod: *std.Build.Module) void {
     mod.addIncludePath(b.path("../../apps/shared_libs/third_party/libwebp"));
     mod.addIncludePath(b.path("../../apps/shared_libs/webp/inc"));
-    mod.addIncludePath(b.path("../../apps/shared_libs/webp/src"));
 }
 
 fn addToolIncludes(b: *std.Build, mod: *std.Build.Module) void {
@@ -200,7 +193,10 @@ pub fn build(b: *std.Build) void {
     // like the C-era tool build did; an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    // The libraries the C-era recipe linked as Zig archives.
+    // The libraries the C-era recipe linked as Zig archives. The webp
+    // archive comes before the archives it calls into (imgdec, mem): the
+    // single-pass link resolves the facade's calls against them.
+    const webp_lib = b.dependency("webp", .{ .target = target, .optimize = optimize }).artifact("webp");
     const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
     const jpeg_lib = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize }).artifact("ra8_jpeg");
@@ -224,6 +220,7 @@ pub fn build(b: *std.Build) void {
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
     mod.link_libc = true;
+    mod.linkLibrary(webp_lib);
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(mem_lib);
     mod.linkLibrary(jpeg_lib);
@@ -389,6 +386,7 @@ pub fn build(b: *std.Build) void {
     for (units, 0..) |unit, i| {
         const tmod = b.createModule(.{ .target = target, .optimize = optimize });
         tmod.link_libc = true;
+        tmod.linkLibrary(webp_lib);
         tmod.linkLibrary(imgdec_lib);
         tmod.linkLibrary(mem_lib);
         tmod.linkLibrary(jpeg_lib);

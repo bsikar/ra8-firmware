@@ -43,7 +43,6 @@ add_library(
   ${EPUB_THIRD_PARTY}
   ${RA8_XZ_THIRD_PARTY}
   ${RA8_WEBP_THIRD_PARTY}
-  ${RA8_WEBP_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_DFU_SOURCES}
   # ThreadX SysTick retune. Lives under port/threadx (not
@@ -164,7 +163,6 @@ target_include_directories(
          # libwebp is included as "src/webp/...", so its ROOT is the include dir.
          ${FW_ROOT}/apps/shared_libs/third_party/libwebp
          ${FW_ROOT}/apps/shared_libs/webp/inc
-         ${FW_ROOT}/apps/shared_libs/webp/src
          ${FW_ROOT}/libs/ra8_secure_app/inc
          # Per-module src/ directories exposed for MC/DC test access to
          # internal helpers (see CLAUDE.md "Test access to internal symbols").
