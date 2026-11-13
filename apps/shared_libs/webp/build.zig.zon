@@ -1,0 +1,17 @@
+.{
+    .name = .webp,
+    .version = "0.1.0",
+    .fingerprint = 0x9e7e36ebf017aed5,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_imgdec = .{ .path = "../../../libs/ra8_imgdec" },
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
+        .ra8_mem = .{ .path = "../../../libs/ra8_mem" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+    },
+}
