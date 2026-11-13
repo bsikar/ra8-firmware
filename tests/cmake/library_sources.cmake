@@ -277,17 +277,19 @@ set(EPUB_THIRD_PARTY
     ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_truetype_impl.c
     ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
-# libwebp decode-only SOUP + the first-party ra8_webp facade/arena that
-# fronts it. Only the decoder subset is vendored under
+# libwebp decode-only SOUP + the first-party facade that fronts it. Only
+# the decoder subset is vendored under
 # apps/shared_libs/third_party/libwebp,
 # so a recursive *.c glob is exactly that subset. NOT yet wired into the
 # reflow/ra8_img raster dispatch (that is the vertical-scroll work) -- compiled into ra8_core_hal
 # so the standalone WebP decode host test (test_ra8_webp.c) and the fuzz harness
 # (fuzz_ra8_webp) link against it. utils.c routes its allocator through the
-# ra8_webp bump arena via -DRA8_WEBP_USE_ARENA (set below).
+# ra8_webp bump arena via -DRA8_WEBP_USE_ARENA (set below). The facade
+# itself is the Zig webp archive now (RA8FW-1209): it compiles no C, and it
+# is registered in tests/cmake/zig_libraries.cmake and linked in
+# tests/cmake/zig_link_order.cmake instead of being globbed here.
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
-ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # ra8_secure_app has no C sources left: the key vault, the entropy read, the
 # OTA bank commit, the AES-CMAC and the sealed-key import are Zig
 # now, linked via tests/cmake/zig_libraries.cmake. inc/ and the three

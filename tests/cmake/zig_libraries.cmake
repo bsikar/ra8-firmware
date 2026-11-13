@@ -987,6 +987,18 @@ ra8_add_zig_library(
   ra8_fs
 )
 
+# The zero-heap WebP decode facade (RA8FW-1209): the facade impl is Zig
+# (src/ra8_webp_abi.zig + the imgdec adapter) behind the unchanged
+# inc/ra8_webp.h ABI; the vendored libwebp TUs it drives still compile on
+# the C side, inside ra8_core_hal.
+ra8_add_zig_library(
+  NAME
+  webp
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/webp
+  LIBRARY_NAME
+  webp
+)
 include(${CMAKE_CURRENT_LIST_DIR}/zig_link_order.cmake)
 
 # Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved
