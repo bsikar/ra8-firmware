@@ -181,9 +181,10 @@ file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/
 file(GLOB_RECURSE EPUB_C_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/epub/src/*.c)
 set(EPUB_CPP_SOURCES "")
 file(GLOB_RECURSE COMIC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/comic/src/*.c)
-# unarch is the Zig archives now (RA8FW-1204): tar / gzip / io / xz_pool C is
-# gone and the app path links libunarch_*.a. The glob below finds only the xz
-# wrapper, which stays C under the first-party bar until its own flip ticket.
+# unarch is the Zig archives now (RA8FW-1204/1205): tar / gzip / io / xz_pool
+# C is gone and the app path links libunarch_*.a. RA8FW-1205 deleted the xz
+# wrapper too; the glob below finds only the test-fixture accessor stub, which
+# nothing outside the unarch package test calls.
 file(GLOB_RECURSE UNARCH_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/unarch/src/*.c)
 # xz-embedded decode-only SOUP: exactly the TUs the XZ wrapper drives. They
 # include the first-party porting header apps/shared_libs/unarch/inc/xz_config.h

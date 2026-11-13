@@ -56,19 +56,16 @@ pub const c_sources = [_][]const u8{
     "apps/shared_libs/third_party/xz_embedded/xz_dec_stream.c",
 };
 
-/// The first-party sources that drive the SOUP: the bounded XZ wrapper, its
-/// zero-heap pool arena, and the flat-memory read seam the wrapper decodes
-/// through. These are NOT vendored, so they take the full warning bar below.
-pub const first_party_sources = [_][]const u8{
-    "apps/shared_libs/unarch/src/unarch_xz.c",
-    // The pool stopped being its own bump arena in RA8FW-308: it draws blocks from
-    // the shared decoder scratch now, so the arena under it belongs to this
-    // slice rather than to something CMake links from elsewhere. The scratch,
-    // the arena, and since RA8FW-1204 the pool and the read seam themselves
-    // (unarch_xz_pool.c / unarch_io.c are deleted; the port lives in
-    // unarch_xz_pool_abi.zig / unarch_io_abi.zig) are all Zig, so they arrive
-    // as archives below rather than as TUs here.
-};
+/// The first-party sources that drive the SOUP: the zero-heap pool arena and
+/// the flat-memory read seam the wrapper decodes through. These are NOT
+/// vendored, so they take the full warning bar below. There are no C TUs left
+/// here: the pool and the read seam stopped being their own TUs in
+/// RA8FW-308/1204 (the ports live in unarch_xz_pool_abi.zig /
+/// unarch_io_abi.zig and arrive as archives below), and since RA8FW-1205 the
+/// bounded XZ wrapper itself is gone too -- unarch_xz.c is deleted and the
+/// suite drives it through the unarch_xz archive (unarch_xz_abi.zig), linked
+/// in addSuite below.
+pub const first_party_sources = [_][]const u8{};
 
 /// Include path for the slice. `apps/shared_libs/unarch/inc` has to be on it
 /// for the VENDORED TUs too: xz_private.h includes "xz_config.h", and that
@@ -136,9 +133,15 @@ pub fn addSuite(
         .name = "c_suite_unarch_xz",
         .root_module = module,
     });
-    // unarch_xz.c calls unarch_xz_pool_install/reset (RA8FW-1204: the pool is
-    // the Zig archive now) and drives the vendored decoder through the
-    // ra8_imgdec scratch, which is Zig too.
+    // The bounded XZ wrapper itself is the unarch_xz archive now (RA8FW-1205:
+    // unarch_xz.c is deleted and the wrapper port lives in unarch_xz_abi.zig).
+    // It calls unarch_xz_pool_install/reset (RA8FW-1204: the pool is the Zig
+    // archive) and drives the vendored decoder through the ra8_imgdec scratch,
+    // which is Zig too, so it goes before both.
+    suite.root_module.linkLibrary(b.dependency("unarch", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("unarch_xz"));
     suite.root_module.linkLibrary(b.dependency("unarch", .{
         .target = target,
         .optimize = optimize,
