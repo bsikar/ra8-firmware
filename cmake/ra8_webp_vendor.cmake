@@ -34,8 +34,9 @@
 #
 # API:
 #   ra8_webp_vendor_sources(<out> <repo_root>)   vendored libwebp decoder TUs
-#   ra8_webp_facade_sources(<out> <repo_root>)   first-party ra8_webp facade
-#   ra8_webp_link_deps(<target> <repo_root>)     the Zig ra8_mem archive it calls
+#   ra8_webp_link_deps(<target> <repo_root>)     the Zig webp facade archive
+#                                                plus the ra8_mem / ra8_imgdec
+#                                                archives its closure needs
 #   ra8_webp_includes(<out> <repo_root>)         include roots for both of the above
 #   ra8_webp_apply_soup_flags(<sources>...)      per-source SOUP flags for part 3 + 4
 #   ra8_webp_attach(<target> <repo_root>)        all of the above, applied to a target
@@ -62,48 +63,23 @@ function(ra8_webp_vendor_sources out_var repo_root)
   )
 endfunction()
 
-# The first-party facade (ra8_webp.c), its bump arena (ra8_webp_arena.c), its
-# imgdec backend (ra8_webp_imgdec.c), and the libs/ TUs those three call into.
-# Held to the full project warning bar -- these never take the SOUP flags.
-#
-# The facade is not self-contained, so this list is its link closure, not just
-# its directory. ra8_webp_imgdec.c calls ra8_imgdec_dims() (:115) and
-# ra8_imgdec_pixel_bytes() (:277); the shared decoder scratch this already
-# carried (RA8FW-308) calls ra8_arena_carve(); ra8_imgdec_dims.c and ra8_imgdec.c in
-# turn call ra8_imgdec_sniff(). Handing a consumer the facade without those
-# definitions hands it a link error rather than a decoder, which is what
-# apps/host/cbz2jof and tools/rabook_imagepack both hit: both linked WebP in,
-# both failed on ra8_imgdec_dims/ra8_imgdec_pixel_bytes.
-#
-# Every entry is an absolute ${repo_root} path, which is what makes this safe
-# for a consumer that already lists one of them (tools/rabook_viewer lists
-# ra8_imgdec_dims.c, the host test build globs both directories): CMake dedupes
-# identical absolute source paths within a target. That is the same property
-# the scratch entry has relied on since RA8FW-308.
-#
-# The arena the scratch carves from left this list: it is Zig now, so
-# the closure is completed by a LINK rather than by a source, through
-# ra8_webp_link_deps() below. Linking the same imported target twice is
-# harmless in a way that compiling the same .c twice is not, so the dedupe
-# property the source list needed is simply not a question for it.
-function(ra8_webp_facade_sources out_var repo_root)
-  set(_root "${repo_root}/apps/shared_libs/webp")
-  if(NOT EXISTS "${_root}")
-    message(FATAL_ERROR "ra8_webp_facade_sources(): ra8_webp facade missing at ${_root}")
-  endif()
-  file(GLOB_RECURSE _srcs CONFIGURE_DEPENDS ${_root}/src/*.c)
-  if(NOT _srcs)
-    message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
-  endif()
-  set(${out_var}
-      ${_srcs}
-      PARENT_SCOPE
-  )
-endfunction()
+# The first-party facade (ra8_webp.c, ra8_webp_arena.c and ra8_webp_imgdec.c
+# in the C era) is the Zig webp archive now (RA8FW-1209): its build.zig
+# compiles src/ra8_webp_abi.zig and the imgdec adapter behind the unchanged
+# inc/ra8_webp.h ABI, and consumers LINK the archive instead of compiling
+# its sources. There is no first-party .c left under apps/shared_libs/webp/src
+# to glob. The archive's link closure (ra8_imgdec for the adapter, ra8_mem
+# for the scratch arena) travels with it through ra8_webp_link_deps() below,
+# which is what apps/host/cbz2jof and tools/rabook_imagepack relied on when
+# the closure was a source list.
 
-# The non-source half of the facade's link closure: the Zig ra8_mem archive,
-# which defines the ra8_arena_* the shared decoder scratch calls (RA8FW-308).
-# Defined on demand so a standalone host tool needs no other include.
+# The non-source half of the facade's link closure (RA8FW-1209): the Zig webp
+# archive itself, the Zig ra8_imgdec archive its adapter calls, and the Zig
+# ra8_mem archive the shared decoder scratch's arena hooks live in
+# (RA8FW-308). Defined on demand so a standalone host tool needs no other
+# include. Link order matters for a single-pass static link, so the webp
+# archive is named before the archives it calls into: ra8_webp_* first, then
+# ra8_imgdec_* and ra8_arena_*.
 function(ra8_webp_link_deps target repo_root)
   if(NOT TARGET ra8_zig::ra8_mem)
     include(${repo_root}/tests/cmake/zig_library.cmake)
@@ -113,7 +89,23 @@ function(ra8_webp_link_deps target repo_root)
       LIBRARY_NAME ra8_mem
     )
   endif()
-  target_link_libraries(${target} PRIVATE ra8_zig::ra8_mem)
+  if(NOT TARGET ra8_zig::webp)
+    include(${repo_root}/tests/cmake/zig_library.cmake)
+    ra8_add_zig_library(
+      NAME webp
+      ZIG_ROOT ${repo_root}/apps/shared_libs/webp
+      LIBRARY_NAME webp
+    )
+  endif()
+  if(NOT TARGET ra8_zig::ra8_imgdec)
+    include(${repo_root}/tests/cmake/zig_library.cmake)
+    ra8_add_zig_library(
+      NAME ra8_imgdec
+      ZIG_ROOT ${repo_root}/libs/ra8_imgdec
+      LIBRARY_NAME ra8_imgdec
+    )
+  endif()
+  target_link_libraries(${target} PRIVATE ra8_zig::webp ra8_zig::ra8_mem ra8_zig::ra8_imgdec)
 endfunction()
 
 # Include roots. libwebp's ROOT (not its src/) is the include dir: the codec
@@ -126,7 +118,6 @@ function(ra8_webp_includes out_var repo_root)
   set(${out_var}
       ${repo_root}/apps/shared_libs/third_party/libwebp
       ${repo_root}/apps/shared_libs/webp/inc
-      ${repo_root}/apps/shared_libs/webp/src
       ${repo_root}/libs/ra8_imgdec/inc
       ${repo_root}/libs/ra8_mem/inc
       PARENT_SCOPE
@@ -184,8 +175,8 @@ function(ra8_webp_apply_soup_flags)
 endfunction()
 
 # One-call path for a standalone consumer (host tools): add the vendored decoder
-# and the first-party facade to <target>, wire the include roots, and apply the
-# SOUP flags to exactly the vendored TUs.
+# to <target>, link the Zig webp facade archive and its closure, wire the
+# include roots, and apply the SOUP flags to exactly the vendored TUs.
 #
 # Callers that also compile the jof producer get its WebP arm
 # (jof_produce_webp.c) satisfied by this facade -- that arm is the
@@ -196,9 +187,8 @@ function(ra8_webp_attach target repo_root)
     message(FATAL_ERROR "ra8_webp_attach(): '${target}' is not a target")
   endif()
   ra8_webp_vendor_sources(_vendor ${repo_root})
-  ra8_webp_facade_sources(_facade ${repo_root})
   ra8_webp_includes(_incs ${repo_root})
-  target_sources(${target} PRIVATE ${_vendor} ${_facade})
+  target_sources(${target} PRIVATE ${_vendor})
   target_include_directories(${target} PRIVATE ${_incs})
   ra8_webp_link_deps(${target} ${repo_root})
   ra8_webp_apply_soup_flags(${_vendor})

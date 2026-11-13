@@ -667,67 +667,30 @@ macro(_ra8_app_collect_sources)
 
     # Normalize-on-import: the producer normalises WebP manifest images
     # to JOF too, so it calls the ra8_webp facade (the WebP arm lives in
-    # jof_produce_webp.c: jof_priv_webp_transcode). Compile the
-    # facade sources here when the app did
-    # not already list webp explicitly (the LIBS loop globs them then).
-    # The vendored libwebp decoder itself is wired by the shared block below.
+    # jof_produce_webp.c: jof_priv_webp_transcode). The facade is the
+    # Zig webp archive (RA8FW-1209): register it for the link step; the
+    # link helper dedupes against the LIBS loop's own entry. The vendored
+    # libwebp decoder itself is wired by the shared block below.
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
-    if(NOT "webp" IN_LIST _RA8_APP_LIBS)
-      file(GLOB_RECURSE _jof_webp_facade CONFIGURE_DEPENDS
-           ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
-      )
-      _ra8_app_require_compilable_lib(
-        webp
-        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
-        "pulls in the webp facade for LIBS jof"
-        "${_jof_webp_facade}"
-        ""
-      )
-      list(APPEND _ra8_lib_extra ${_jof_webp_facade})
-    endif()
+    list(APPEND _ra8_lib_zig "webp|${RA8_REPO_ROOT}/apps/shared_libs/webp")
   endif()
 
   if("rabook_compile" IN_LIST _RA8_APP_LIBS)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
-    if((NOT "webp" IN_LIST _RA8_APP_LIBS) AND (NOT "jof" IN_LIST _RA8_APP_LIBS))
-      file(GLOB_RECURSE _ra8_rabook_webp_facade CONFIGURE_DEPENDS
-           ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
-      )
-      _ra8_app_require_compilable_lib(
-        webp
-        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
-        "pulls in the webp facade for LIBS rabook_compile"
-        "${_ra8_rabook_webp_facade}"
-        ""
-      )
-      list(APPEND _ra8_lib_extra ${_ra8_rabook_webp_facade})
-    endif()
+    # The facade is the Zig webp archive (RA8FW-1209); registration is
+    # deduped against the LIBS loop and the jof block's entry above.
+    list(APPEND _ra8_lib_zig "webp|${RA8_REPO_ROOT}/apps/shared_libs/webp")
   endif()
 
   # Inline small-image WebP: reflow's ra8_img_decode_blit / ra8_img_probe_size
   # dispatch a RIFF/WEBP buffer to the ra8_webp facade, because stb_image has no
   # WebP decoder and an inline EPUB illustration would otherwise render as
-  # nothing. So reflow now pulls the facade the same way jof and rabook_compile
-  # do -- and only when no earlier block already added it, so the sources are
-  # never double-added.
+  # nothing. So reflow pulls the facade the same way jof and rabook_compile
+  # do -- registration is deduped at consumption, so the archive is never
+  # double-added.
   if("reflow" IN_LIST _RA8_APP_LIBS)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
-    if((NOT "webp" IN_LIST _RA8_APP_LIBS)
-       AND (NOT "jof" IN_LIST _RA8_APP_LIBS)
-       AND (NOT "rabook_compile" IN_LIST _RA8_APP_LIBS)
-    )
-      file(GLOB_RECURSE _ra8_reflow_webp_facade CONFIGURE_DEPENDS
-           ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
-      )
-      _ra8_app_require_compilable_lib(
-        webp
-        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
-        "pulls in the webp facade for LIBS reflow"
-        "${_ra8_reflow_webp_facade}"
-        ""
-      )
-      list(APPEND _ra8_lib_extra ${_ra8_reflow_webp_facade})
-    endif()
+    list(APPEND _ra8_lib_zig "webp|${RA8_REPO_ROOT}/apps/shared_libs/webp")
   endif()
 
   # The webp app library decodes WebP (VP8 / VP8L) through the vendored decoder
@@ -754,12 +717,12 @@ macro(_ra8_app_collect_sources)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
     list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/libwebp)
-    # ra8_webp_imgdec.c binds the facade as an imgdec backend (RA8FW-308) and reads
-    # the container's declared geometry through the shared probe, which sniffs
-    # first, so those two TUs and the header travel with this block. The reflow
-    # / rabook_compile / comic blocks may already have added the same TUs, so
-    # each is appended only when absent -- a duplicate source is an error under
-    # some generators and a duplicate symbol under all of them.
+    # The facade is the Zig webp archive (RA8FW-1209); its imgdec adapter
+    # binds the facade as an imgdec backend (RA8FW-308) and reads the
+    # container's declared geometry through the shared probe, which sniffs
+    # first. Register the archive for the link step here too, so an app
+    # that matches none of the transitive blocks still links it; the link
+    # helper dedupes the entry.
     # One archive, and _ra8_lib_zig is de-duplicated where it is consumed
     # (_ra8_app_link_zig_libraries), so the blocks above may already have
     # named it.

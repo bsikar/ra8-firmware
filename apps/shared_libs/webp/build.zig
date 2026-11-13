@@ -88,7 +88,7 @@ pub fn build(b: *std.Build) void {
         .pic = true,
     });
     const library = b.addLibrary(.{
-        .name = "webp_facade",
+        .name = "webp",
         .linkage = .static,
         .root_module = library_module,
     });
