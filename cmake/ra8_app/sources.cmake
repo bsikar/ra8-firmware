@@ -403,8 +403,16 @@ macro(_ra8_app_collect_sources)
         # remaining C calls into Zig even while src/<lib>.c survives:
         # ra8_c6link kept that file while its priv_c6link_* helpers and handle
         # lifecycle moved to Zig, and every app naming it lost them at link.
-        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
-        set(_ra8_lib_has_archive ON)
+        # unarch is the one lib whose build installs five ABI-split archives,
+        # none named libunarch.a, and whose src/ has no app-facing C left
+        # (RA8FW-1204): the unarch block below registers the five real
+        # entries for the direct and transitive cases alike, so this loop
+        # contributes neither a bogus libunarch.a input nor a duplicate of
+        # the xz-embedded-driven wrapper as C.
+        if(NOT _ra8_lib STREQUAL "unarch")
+          list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+          set(_ra8_lib_has_archive ON)
+        endif()
       endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         # Board boot sources are image-composition fallbacks selected above.
@@ -425,7 +433,9 @@ macro(_ra8_app_collect_sources)
         "${_ra8_lib_one}"
         "${_ra8_lib_has_archive}"
       )
-      list(APPEND _ra8_lib_extra ${_ra8_lib_one})
+      if(NOT _ra8_lib STREQUAL "unarch")
+        list(APPEND _ra8_lib_extra ${_ra8_lib_one})
+      endif()
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
   endforeach()
@@ -799,19 +809,23 @@ macro(_ra8_app_collect_sources)
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
     endif()
-    if(NOT "unarch" IN_LIST _RA8_APP_LIBS)
-      file(GLOB_RECURSE _unarch_srcs CONFIGURE_DEPENDS
-           ${RA8_REPO_ROOT}/apps/shared_libs/unarch/src/*.c
-      )
-      _ra8_app_require_compilable_lib(
-        unarch
-        "${RA8_REPO_ROOT}/apps/shared_libs/unarch"
-        "pulls in unarch transitively"
-        "${_unarch_srcs}"
-        ""
-      )
-      list(APPEND _ra8_lib_extra ${_unarch_srcs})
-    endif()
+    # The implementation is the five ABI-split Zig archives unarch_io /
+    # unarch_tar / unarch_gzip / unarch_xz / unarch_xz_pool (RA8FW-1196 /
+    # 1197 / 1199 / 1202), flipped into the app path by RA8FW-1204: an app
+    # build links the archives instead of compiling the C. Registering each
+    # archive by its own name matters -- the build installs no libunarch.a,
+    # so the loop entry the LIBS loop makes for a lib with a build.zig
+    # ("unarch|<path>") would point a linker input at a file that never
+    # exists. The xz-embedded TUs above stay C for the xz leg to drive, and
+    # the gzip archive resolves tinfl_decompress / mz_crc32 against the
+    # miniz TU the epub block above or the bare-miniz block below supplies.
+    list(APPEND _ra8_lib_zig
+      "unarch_io|${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+      "unarch_tar|${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+      "unarch_gzip|${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+      "unarch_xz|${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+      "unarch_xz_pool|${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+    )
   endif()
 
   # A bare "miniz" in LIBS pulls in just the vendored DEFLATE core, for apps

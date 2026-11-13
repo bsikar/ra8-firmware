@@ -1128,3 +1128,36 @@ ra8_add_zig_library(
   compress
 )
 link_libraries(ra8_zig::compress)
+
+# unarch's implementation is the five ABI-split Zig archives (io, tar, gzip,
+# xz, xz_pool; RA8FW-1196/1197/1199/1202). RA8FW-1204 flipped the CMake app
+# path onto them and deleted the tar / gzip C. The xz wrapper unarch_xz.c
+# stays C here (the first-party bar holds until its own flip ticket), so the
+# host suite needs the pool archive its install/reset calls resolve against,
+# and the fuzz harnesses need the tar and gzip archives their entry points
+# moved into. Each registration rebuilds the same build.zig under its own
+# prefix, matching how the app path registers them.
+ra8_add_zig_library(
+  NAME
+  unarch_tar
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/unarch
+  LIBRARY_NAME
+  unarch_tar
+)
+ra8_add_zig_library(
+  NAME
+  unarch_gzip
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/unarch
+  LIBRARY_NAME
+  unarch_gzip
+)
+ra8_add_zig_library(
+  NAME
+  unarch_xz_pool
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/unarch
+  LIBRARY_NAME
+  unarch_xz_pool
+)

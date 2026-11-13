@@ -13,6 +13,8 @@
         .jof = .{ .path = "../../apps/shared_libs/jof" },
         .ra8_jpeg = .{ .path = "../../libs/ra8_jpeg" },
         .longstrip = .{ .path = "../../apps/shared_libs/longstrip" },
+        .unarch = .{ .path = "../../apps/shared_libs/unarch" },
+        .epub = .{ .path = "../../apps/shared_libs/epub" },
     },
     .paths = .{
         "build.zig",
