@@ -11,6 +11,7 @@
 const std = @import("std");
 const arena = @import("ra8_webp_arena_abi.zig");
 const fixture = @import("webp_fixture.zig");
+const imgdec = @import("ra8_webp_imgdec_abi.zig");
 
 const ok: u16 = 0;
 const err_invalid_arg: u16 = 0x103;
@@ -305,4 +306,13 @@ fn oversizedHeader(w: u32, h: u32) [25]u8 {
     out[20] = 0x2F;
     std.mem.writeInt(u32, out[21..25], dims, .little);
     return out;
+}
+
+comptime {
+    // Pull the imgdec adapter's exports into the library archive.
+    _ = imgdec.ra8_webp_imgdec_bind;
+}
+
+test {
+    _ = @import("ra8_webp_imgdec_abi.zig");
 }
