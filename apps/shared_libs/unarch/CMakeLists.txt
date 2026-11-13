@@ -30,8 +30,10 @@
 # cmake/ra8_app/sources.cmake whenever an app pulls in unarch (directly or
 # transitively through comic).
 #
-# Like the other domain libs in this tree, consumers reach into inc/ + src/
-# directly; app builds glob apps/shared_libs/unarch/src/*.c via ra8_add_app(LIBS ...).
+# Like the other domain libs in this tree, consumers reach into inc/ directly.
+# RA8FW-1204 flipped the app path onto the Zig archives: cmake/ra8_app/sources.cmake
+# links libunarch_io/tar/gzip/xz/xz_pool.a instead of globbing src/*.c, and src/
+# holds only the xz wrapper (first-party bar, until its own flip ticket).
 #
 #
 

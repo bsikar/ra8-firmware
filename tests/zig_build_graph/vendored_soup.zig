@@ -61,13 +61,13 @@ pub const c_sources = [_][]const u8{
 /// through. These are NOT vendored, so they take the full warning bar below.
 pub const first_party_sources = [_][]const u8{
     "apps/shared_libs/unarch/src/unarch_xz.c",
-    "apps/shared_libs/unarch/src/unarch_xz_pool.c",
-    "apps/shared_libs/unarch/src/unarch_io.c",
     // The pool stopped being its own bump arena in RA8FW-308: it draws blocks from
     // the shared decoder scratch now, so the arena under it belongs to this
-    // slice rather than to something CMake links from elsewhere. Both the
-    // scratch and the arena are Zig now, so they arrive as archives below
-    // rather than as TUs here.
+    // slice rather than to something CMake links from elsewhere. The scratch,
+    // the arena, and since RA8FW-1204 the pool and the read seam themselves
+    // (unarch_xz_pool.c / unarch_io.c are deleted; the port lives in
+    // unarch_xz_pool_abi.zig / unarch_io_abi.zig) are all Zig, so they arrive
+    // as archives below rather than as TUs here.
 };
 
 /// Include path for the slice. `apps/shared_libs/unarch/inc` has to be on it
@@ -136,7 +136,19 @@ pub fn addSuite(
         .name = "c_suite_unarch_xz",
         .root_module = module,
     });
-    // unarch_xz_pool.c calls ra8_imgdec_scratch_*, which is Zig now.
+    // unarch_xz.c calls unarch_xz_pool_install/reset (RA8FW-1204: the pool is
+    // the Zig archive now) and drives the vendored decoder through the
+    // ra8_imgdec scratch, which is Zig too.
+    suite.root_module.linkLibrary(b.dependency("unarch", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("unarch_xz_pool"));
+    // unarch_io is the read seam archive (unarch_io_abi.zig): the suite's
+    // mem-edge probes call unarch_mem_read/write through it.
+    suite.root_module.linkLibrary(b.dependency("unarch", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("unarch_io"));
     suite.root_module.linkLibrary(b.dependency("ra8_imgdec", .{
         .target = target,
         .optimize = optimize,
