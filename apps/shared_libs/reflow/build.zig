@@ -38,11 +38,12 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     // The real walk (RA8FW-1213) calls the lexical + attribute C helpers and
-    // the CSS library; link them into the test build.
+    // the CSS sheet (rules + cascade stay C since RA8FW-1217); link them into
+    // the test build. reflow_css.zig provides the priv_reflow_css_* symbols
+    // they reference.
     test_module.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
-            "reflow_css.c",
             "reflow_css_rules.c",
             "reflow_css_cascade.c",
         },

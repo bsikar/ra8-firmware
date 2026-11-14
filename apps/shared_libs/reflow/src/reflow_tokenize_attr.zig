@@ -14,8 +14,9 @@
 //! scanning: no recursion and bounded loops.
 //!
 //! The functions keep C linkage (`export fn`) so the entities translation
-//! unit and the C test suites keep linking against them. The CSS library
-//! stays C: inline parsing and face matching are extern C calls.
+//! unit and the C test suites keep linking against them. The CSS sheet side
+//! (rules + cascade) stays C: face matching is an extern C call; inline
+//! style parsing is Zig since RA8FW-1217.
 //!
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
@@ -24,6 +25,7 @@
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 const lex = @import("reflow_tokenize_lex.zig");
+const css = @import("reflow_css.zig");
 
 const ReflowEngine = abi.ReflowEngine;
 const CssElement = abi.CssElement;
@@ -40,8 +42,7 @@ const k_reflow_style_bold: u8 = 1;
 const k_reflow_style_italic: u8 = 2;
 const k_ra8_css_set_family: u8 = 1 << 7;
 
-// The CSS library stays C: inline-style parsing and face matching.
-extern fn ra8_css_parse_inline(decls: [*]const u8, len: u32, out: *CssStyle) c_int;
+// The CSS library's sheet side (rules + cascade) stays C: face matching.
 extern fn ra8_css_match_face(sheet: *const CssSheet, family: [*]const u8, family_len: u16, want_bold: bool, want_italic: bool) i16;
 
 // ---- Quoted-attribute scanning + value capture ----
@@ -169,7 +170,7 @@ pub fn priv_reflow_tok_css_inline(tag: [*]const u8, span: usize) callconv(.c) Cs
     var off: usize = 0;
     var len: usize = 0;
     if (priv_reflow_tok_find_attr(tag, span, "style", 5, &off, &len)) {
-        _ = ra8_css_parse_inline(tag + off, @intCast(len), &inl);
+        _ = css.ra8_css_parse_inline(tag + off, @intCast(len), &inl);
     }
     return inl;
 }
