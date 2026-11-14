@@ -500,6 +500,9 @@ macro(_ra8_app_collect_sources)
     # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
     # one library rather than two TUs compiled by path.
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
+    # RA8FW-1212: the reflow parse entry point is a Zig archive too, so
+    # apps link it instead of compiling the former C TU by path.
+    list(APPEND _ra8_lib_zig "ra8_reflow_parse|${RA8_REPO_ROOT}/apps/shared_libs/reflow")
     list(
       APPEND
       _ra8_lib_inc
