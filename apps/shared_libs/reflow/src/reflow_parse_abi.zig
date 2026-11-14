@@ -140,7 +140,7 @@ pub const CssStyle = extern struct {
     family_len: u16,
 };
 
-const CssRule = extern struct {
+pub const CssRule = extern struct {
     sel_tag: u8,
     anc_count: u8,
     class_off: u16,
@@ -152,7 +152,7 @@ const CssRule = extern struct {
     decl: CssStyle,
 };
 
-const CssFontFace = extern struct {
+pub const CssFontFace = extern struct {
     family_off: u16,
     family_len: u16,
     src_off: u16,
@@ -254,4 +254,7 @@ test "mirror layout sanity" {
 
 comptime {
     _ = k_ra8_ok;
+    // RA8FW-1218: pull the rules TU into the archive so the C cascade
+    // links against priv_reflow_css_parse_one_block.
+    _ = @import("reflow_css_rules.zig");
 }
