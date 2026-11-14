@@ -42,8 +42,7 @@ pub fn build(b: *std.Build) void {
     test_module.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
-            "reflow_tokenize_lex.c",
-            "reflow_tokenize_attr.c",
+                        "reflow_tokenize_attr.c",
             "reflow_tokenize_entities.c",
             "reflow_css.c",
             "reflow_css_rules.c",
