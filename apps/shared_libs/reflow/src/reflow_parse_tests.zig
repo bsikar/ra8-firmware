@@ -72,3 +72,8 @@ test "unbalanced element fails validation" {
 
     try std.testing.expectEqual(k_ra8_err_validation_failed, abi.reflow_parse_xhtml(engine, "<p>hi", 5));
 }
+
+comptime {
+    // Test-only link seam: real image/table siblings are C, the probe stub is here.
+    _ = @import("reflow_layout_test_seam.zig");
+}
