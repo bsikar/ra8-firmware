@@ -98,8 +98,8 @@ const k_reflow_tag_td: u8 = 22;
 const k_reflow_tag_th: u8 = 23;
 const k_reflow_tag_link: u8 = 24;
 
-// priv_reflow_tok_lookup_entity stays C (reflow_tokenize_entities.c).
-extern fn priv_reflow_tok_lookup_entity(name: [*]const u8, len: usize, out_cp: *u32) bool;
+// priv_reflow_tok_lookup_entity lives in reflow_tokenize_entities.zig (RA8FW-1216).
+const ent = @import("reflow_tokenize_entities.zig");
 
 pub fn priv_reflow_tok_is_xml_whitespace(c: u8) callconv(.c) bool {
     return (c == ' ') or (c == '\t') or (c == '\n') or (c == '\r') or
@@ -334,7 +334,7 @@ pub fn priv_reflow_tok_decode_entity(src: [*]const u8, avail: usize, out_cp: *u3
         return false; // no terminator inside the scan window
     }
     const nlen = end - 1;
-    if (!priv_reflow_tok_lookup_entity(src + 1, nlen, out_cp)) {
+    if (!ent.priv_reflow_tok_lookup_entity(src + 1, nlen, out_cp)) {
         return false;
     }
     out_used.* = nlen + 2;
