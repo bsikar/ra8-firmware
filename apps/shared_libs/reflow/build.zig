@@ -5,8 +5,8 @@
 //! RA8FW-1213): src/reflow_parse_abi.zig is the public parse entry point
 //! `reflow_parse_xhtml` and src/reflow_tokenize.zig is the markup walk
 //! `priv_reflow_xml_walk`, both behind the unchanged C headers in inc/.
-//! The lexical + attribute primitives and the CSS library stay C and are
-//! linked in for the host test step; CMake consumes the installed static
+//! The entities unit and the CSS library stay C and are linked in for the
+//! host test step (the lexical + attribute primitives are Zig since RA8FW-1214/1215); CMake consumes the installed static
 //! library through inc/reflow_api.h.
 
 const std = @import("std");
@@ -42,7 +42,6 @@ pub fn build(b: *std.Build) void {
     test_module.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{
-                        "reflow_tokenize_attr.c",
             "reflow_tokenize_entities.c",
             "reflow_css.c",
             "reflow_css_rules.c",
