@@ -848,6 +848,21 @@ ra8_add_zig_library(
   ra8_imgdec
 )
 
+# RA8FW-1212: the reflow parse entry point (src/reflow_parse.c) is Zig now.
+# src/reflow_parse_abi.zig owns the public reflow_parse_xhtml behind the
+# unchanged headers in inc/; the tokenizer it dispatches into stays C
+# (reflow_tokenize.c) and provides the extern priv_reflow_xml_walk.
+# tests/reflow/src/test_reflow_parse.c keeps testing the archive from the
+# outside through inc/reflow_api.h.
+ra8_add_zig_library(
+  NAME
+  ra8_reflow_parse
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/reflow
+  LIBRARY_NAME
+  ra8_reflow_parse
+)
+
 # Fully migrated: the key vault behind inc/key_vault.h,
 # the entropy read behind src/secure_trng_internal.h, the OTA bank commit
 # behind inc/ota_commit.h, the AES-CMAC behind src/sec_cmac_internal.h and the

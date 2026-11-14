@@ -10,7 +10,9 @@
 #
 # Layout:
 #   inc/reflow.h                public API
-#   src/reflow_parse.c          parser entry point (resets pools, dispatches)
+#   src/reflow_parse_abi.zig    parser entry point (resets pools, dispatches);
+#                               built as the ra8_reflow_parse Zig archive
+#                               (RA8FW-1212), the C TU is gone
 #   src/reflow_tokenize.c       no-heap streaming HTML-subset tokenizer
 #   src/reflow_layout.c         line-break + page-break engine
 #   src/reflow_render.c         glyph rasterise via stb_truetype
