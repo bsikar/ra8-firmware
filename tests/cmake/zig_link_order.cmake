@@ -56,6 +56,7 @@ target_link_libraries(
          ra8_zig::ra8_net_policy
          ra8_zig::webp
          ra8_zig::ra8_imgdec
+  ra8_zig::ra8_reflow_parse
          ra8_zig::ra8_psa_crypto
          ra8_zig::ra8_tls
          ra8_zig::ra8_secure_app
@@ -114,6 +115,7 @@ link_libraries(
   ra8_zig::ra8_net_policy
   ra8_zig::webp
   ra8_zig::ra8_imgdec
+  ra8_zig::ra8_reflow_parse
   ra8_zig::ra8_psa_crypto
   ra8_zig::ra8_tls
   ra8_zig::ra8_secure_app
