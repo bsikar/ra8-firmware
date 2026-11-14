@@ -38,9 +38,21 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     // The real walk (RA8FW-1213) runs all-Zig since the CSS library port
-    // (RA8FW-1217/1218/1219): no C translation units remain on the test
-    // module, so the walk's priv_reflow_css_* + ra8_css_* symbols come from
-    // the reflow_css*.zig units themselves.
+    // (RA8FW-1217/1218/1219). RA8FW-1220: the layout core is Zig too, and
+    // its extern seam (the four stbtt_* entry points plus the image/table
+    // layout siblings, still C this slice) is linked into the host test so
+    // the exported layout symbols resolve.
+    test_module.addIncludePath(b.path("inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_imgdec/inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_gfx/inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_log/inc"));
+    test_module.addIncludePath(b.path("../../../libs/ra8_webp/inc"));
+    test_module.addIncludePath(b.path("../third_party/stb"));
+    test_module.addCSourceFile(.{ .file = b.path("../third_party/stb/stb_truetype_impl.c"), .flags = &.{"-std=gnu2x"} });
+    test_module.addCSourceFile(.{ .file = b.path("src/reflow_layout_image.c"), .flags = &.{"-std=gnu2x"} });
+    test_module.addCSourceFile(.{ .file = b.path("src/reflow_layout_table.c"), .flags = &.{"-std=gnu2x"} });
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
 }
