@@ -37,21 +37,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    // The real walk (RA8FW-1213) calls the lexical + attribute C helpers and
-    // the CSS cascade (rules went Zig with RA8FW-1218; cascade stays C); link them into
-    // the test build. reflow_css.zig and reflow_css_rules.zig provide the priv_reflow_css_*
-    // symbols they reference.
-    test_module.addCSourceFiles(.{
-        .root = b.path("src"),
-        .files = &.{
-            "reflow_css_cascade.c",
-        },
-        .flags = &.{ "-std=c2x", "-Wall", "-Wextra", "-O2" },
-    });
-    test_module.addIncludePath(b.path("inc"));
-    test_module.addIncludePath(.{ .cwd_relative = "/workspace/ra8-firmware/libs/ra8_mem/inc" });
-    test_module.addIncludePath(.{ .cwd_relative = "/workspace/ra8-firmware/libs/ra8_imgdec/inc" });
-    test_module.addIncludePath(.{ .cwd_relative = "/workspace/ra8-firmware/libs/ra8_core/inc" });
+    // The real walk (RA8FW-1213) runs all-Zig since the CSS library port
+    // (RA8FW-1217/1218/1219): no C translation units remain on the test
+    // module, so the walk's priv_reflow_css_* + ra8_css_* symbols come from
+    // the reflow_css*.zig units themselves.
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
 }

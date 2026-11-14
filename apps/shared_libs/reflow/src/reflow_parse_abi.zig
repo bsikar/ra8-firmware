@@ -254,7 +254,8 @@ test "mirror layout sanity" {
 
 comptime {
     _ = k_ra8_ok;
-    // RA8FW-1218: pull the rules TU into the archive so the C cascade
-    // links against priv_reflow_css_parse_one_block.
+    // RA8FW-1218/1219: the whole CSS library (rules + cascade) is Zig;
+    // pull both TUs into the archive for the C layout / render callers.
     _ = @import("reflow_css_rules.zig");
+    _ = @import("reflow_css_cascade.zig");
 }
