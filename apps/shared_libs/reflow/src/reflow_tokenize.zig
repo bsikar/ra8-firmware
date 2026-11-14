@@ -59,17 +59,20 @@ const k_ra8_err_null_ptr: c_int = 0x504;
 
 const k_priv_max_depth: u32 = 64;
 
-// ---- C lexical/attribute/CSS helpers that stay C this slice ----
-extern fn priv_reflow_tok_is_xml_whitespace(c: u8) bool;
-extern fn priv_reflow_tok_classify(name: [*]const u8, len: usize) u8;
-extern fn priv_reflow_tok_is_block(tag: u8) bool;
-extern fn priv_reflow_tok_style_for(tag: u8) u8;
-extern fn priv_reflow_tok_emit(engine: *ReflowEngine, kind: u8, tag: u8, style: u8, off: u32, len: u32) bool;
-extern fn priv_reflow_tok_feed(engine: *ReflowEngine, ch: u8, last_ws: *bool) bool;
-extern fn priv_reflow_tok_stash_run(engine: *ReflowEngine, buf: [*]const u8, start: usize, end: usize, out_off: *u32, out_len: *u32) bool;
-extern fn priv_reflow_tok_starts_with(buf: [*]const u8, i: usize, len: usize, lit: [*:0]const u8) bool;
-extern fn priv_reflow_tok_skip_past(buf: [*]const u8, i: usize, len: usize, lit: [*:0]const u8) usize;
-extern fn priv_reflow_tok_find_lit(buf: [*]const u8, i: usize, len: usize, lit: [*:0]const u8) usize;
+// ---- Lexical primitives, now Zig (RA8FW-1214) ----
+const lex = @import("reflow_tokenize_lex.zig");
+const priv_reflow_tok_is_xml_whitespace = lex.priv_reflow_tok_is_xml_whitespace;
+const priv_reflow_tok_classify = lex.priv_reflow_tok_classify;
+const priv_reflow_tok_is_block = lex.priv_reflow_tok_is_block;
+const priv_reflow_tok_style_for = lex.priv_reflow_tok_style_for;
+const priv_reflow_tok_emit = lex.priv_reflow_tok_emit;
+const priv_reflow_tok_feed = lex.priv_reflow_tok_feed;
+const priv_reflow_tok_stash_run = lex.priv_reflow_tok_stash_run;
+const priv_reflow_tok_starts_with = lex.priv_reflow_tok_starts_with;
+const priv_reflow_tok_skip_past = lex.priv_reflow_tok_skip_past;
+const priv_reflow_tok_find_lit = lex.priv_reflow_tok_find_lit;
+
+// ---- C attribute/CSS helpers that stay C this slice ----
 extern fn priv_reflow_tok_find_attr(tag: [*]const u8, tag_len: usize, name: [*]const u8, name_len: usize, out_voff: *usize, out_vlen: *usize) bool;
 extern fn priv_reflow_tok_capture_attr(engine: *ReflowEngine, tag: [*]const u8, tag_len: usize, name: [*]const u8, name_len: usize, out_off: *u32, out_len: *u32) void;
 extern fn priv_reflow_tok_css_element(kind: u8, tag: [*]const u8, span: usize) CssElement;
