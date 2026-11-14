@@ -1,8 +1,8 @@
 //! Content-CSS selector + `@font-face` rule parsing for the reflow engine.
 //!
 //! Zig port of reflow_css_rules.c (RA8FW-1218). Companion unit to
-//! reflow_css.zig: the stylesheet scanner (reflow_css_cascade.c, still C)
-//! splits the CSS text into `selector { ... }` blocks and hands each one
+//! reflow_css.zig: the stylesheet scanner (reflow_css_cascade.zig since
+//! RA8FW-1219) splits the CSS text into `selector { ... }` blocks and hands each one
 //! here, where the selector grammar (type / class / id / descendant
 //! compounds), the `@font-face` descriptor parser, and the top-level block
 //! dispatcher `priv_reflow_css_parse_one_block` intern selectors and faces
