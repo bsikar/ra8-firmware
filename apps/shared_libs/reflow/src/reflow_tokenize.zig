@@ -4,7 +4,8 @@
 //! Zig port of apps/shared_libs/reflow/src/reflow_tokenize.c (RA8FW-1213):
 //! the markup walk `priv_reflow_xml_walk` behind the unchanged C headers.
 //! The lexical + attribute primitives (whitespace classify, entity decode,
-//! attribute scan) stay C in reflow_tokenize_lex.c / reflow_tokenize_attr.c /
+//! attribute scan) were ported to Zig in reflow_tokenize_lex.zig (RA8FW-1214)
+//! and reflow_tokenize_attr.zig (RA8FW-1215); the entities unit and CSS lib
 //! reflow_tokenize_entities.c and are reached through the extern declarations
 //! below; stylesheet resolution goes through the ra8_css library.
 
@@ -61,6 +62,7 @@ const k_priv_max_depth: u32 = 64;
 
 // ---- Lexical primitives, now Zig (RA8FW-1214) ----
 const lex = @import("reflow_tokenize_lex.zig");
+const attr = @import("reflow_tokenize_attr.zig");
 const priv_reflow_tok_is_xml_whitespace = lex.priv_reflow_tok_is_xml_whitespace;
 const priv_reflow_tok_classify = lex.priv_reflow_tok_classify;
 const priv_reflow_tok_is_block = lex.priv_reflow_tok_is_block;
@@ -73,13 +75,6 @@ const priv_reflow_tok_skip_past = lex.priv_reflow_tok_skip_past;
 const priv_reflow_tok_find_lit = lex.priv_reflow_tok_find_lit;
 
 // ---- C attribute/CSS helpers that stay C this slice ----
-extern fn priv_reflow_tok_find_attr(tag: [*]const u8, tag_len: usize, name: [*]const u8, name_len: usize, out_voff: *usize, out_vlen: *usize) bool;
-extern fn priv_reflow_tok_capture_attr(engine: *ReflowEngine, tag: [*]const u8, tag_len: usize, name: [*]const u8, name_len: usize, out_off: *u32, out_len: *u32) void;
-extern fn priv_reflow_tok_css_element(kind: u8, tag: [*]const u8, span: usize) CssElement;
-extern fn priv_reflow_tok_css_inline(tag: [*]const u8, span: usize) CssStyle;
-extern fn priv_reflow_tok_intern_link(engine: *ReflowEngine, href_off: u32, href_len: u32) u8;
-extern fn priv_reflow_tok_rel_is_stylesheet(rel: [*]const u8, len: usize) bool;
-extern fn priv_reflow_tok_resolve_face_slot(engine: *const ReflowEngine, comp: *const CssStyle) u8;
 extern fn ra8_css_sheet_reset(sheet: *CssSheet) c_int;
 extern fn ra8_css_parse(sheet: *CssSheet, css: [*]const u8, len: u32) c_int;
 extern fn ra8_css_cascade_ctx(sheet: *const CssSheet, el: *const CssElement, inherited: CssStyle, inline_decl: CssStyle, ancestors: [*]const CssElement, n_anc: u8) CssStyle;
@@ -216,7 +211,7 @@ fn internal_open_attrs(ctx: *TokCtx, tag: [*]const u8, span: usize, kind: u8, bl
     if (block) {
         var id_off: u32 = 0;
         var id_len: u32 = 0;
-        priv_reflow_tok_capture_attr(ctx.engine, tag, span, "id", 2, &id_off, &id_len);
+        attr.priv_reflow_tok_capture_attr(ctx.engine, tag, span, "id", 2, &id_off, &id_len);
         if (!priv_reflow_tok_emit(ctx.engine, k_reflow_tok_block_start, kind, ctx.style, id_off, id_len)) {
             return k_ra8_err_no_mem;
         }
@@ -235,8 +230,8 @@ fn internal_open_attrs(ctx: *TokCtx, tag: [*]const u8, span: usize, kind: u8, bl
     if (kind == k_reflow_tag_a) {
         var href_off: u32 = 0;
         var href_len: u32 = 0;
-        priv_reflow_tok_capture_attr(ctx.engine, tag, span, "href", 4, &href_off, &href_len);
-        ctx.active_link = priv_reflow_tok_intern_link(ctx.engine, href_off, href_len);
+        attr.priv_reflow_tok_capture_attr(ctx.engine, tag, span, "href", 4, &href_off, &href_len);
+        ctx.active_link = attr.priv_reflow_tok_intern_link(ctx.engine, href_off, href_len);
     }
     return k_ra8_ok;
 }
@@ -251,9 +246,9 @@ fn internal_handle_link(ctx: *TokCtx, buf: [*]const u8, tag_lt: usize, end: usiz
     var rel_len: usize = 0;
     var href_off: usize = 0;
     var href_len: usize = 0;
-    if (!priv_reflow_tok_find_attr(tagbuf, span, "rel", 3, &rel_off, &rel_len) or
-        !priv_reflow_tok_find_attr(tagbuf, span, "href", 4, &href_off, &href_len) or
-        !priv_reflow_tok_rel_is_stylesheet(tagbuf + rel_off, rel_len))
+    if (!attr.priv_reflow_tok_find_attr(tagbuf, span, "rel", 3, &rel_off, &rel_len) or
+        !attr.priv_reflow_tok_find_attr(tagbuf, span, "href", 4, &href_off, &href_len) or
+        !attr.priv_reflow_tok_rel_is_stylesheet(tagbuf + rel_off, rel_len))
     {
         return;
     }
@@ -300,7 +295,7 @@ fn internal_handle_void(ctx: *TokCtx, buf: [*]const u8, tag_lt: usize, end: usiz
         var src_off: u32 = 0;
         var src_len: u32 = 0;
         const span: usize = if (end > tag_lt) end - tag_lt else 0;
-        priv_reflow_tok_capture_attr(ctx.engine, buf + tag_lt, span, "src", 3, &src_off, &src_len);
+        attr.priv_reflow_tok_capture_attr(ctx.engine, buf + tag_lt, span, "src", 3, &src_off, &src_len);
         out_err.* = if (priv_reflow_tok_emit(ctx.engine, k_reflow_tok_image, tag, ctx.style, src_off, src_len))
             k_ra8_ok
         else
@@ -345,7 +340,7 @@ fn internal_open_styled(ctx: *TokCtx, tagbuf: [*]const u8, span: usize, tag: u8,
         inh.family_off = ctx.family_off;
         inh.family_len = ctx.family_len;
     }
-    const inl = priv_reflow_tok_css_inline(tagbuf, span);
+    const inl = attr.priv_reflow_tok_css_inline(tagbuf, span);
     // Ancestors = the open-element stack below this one (stack_el[0 .. sp-2]).
     const n_anc: u8 = @intCast(ctx.sp - 1);
     const comp = ra8_css_cascade_ctx(&ctx.engine.css, &el, inh, inl, &ctx.stack_el, n_anc);
@@ -371,7 +366,7 @@ fn internal_open_styled(ctx: *TokCtx, tagbuf: [*]const u8, span: usize, tag: u8,
         ctx.family_off = comp.family_off;
         ctx.family_len = comp.family_len;
     }
-    ctx.face_slot = priv_reflow_tok_resolve_face_slot(ctx.engine, &comp);
+    ctx.face_slot = attr.priv_reflow_tok_resolve_face_slot(ctx.engine, &comp);
     return k_ra8_ok;
 }
 
@@ -406,7 +401,7 @@ fn internal_handle_start(ctx: *TokCtx, buf: [*]const u8, pi: *usize, len: usize)
     // Record the element's full identity (tag + id + class, aliasing the
     // chapter buffer) so the cascade reads it back and descendant selectors
     // can match it as an ancestor of a later element.
-    ctx.stack_el[ctx.sp] = priv_reflow_tok_css_element(tag, buf + tag_lt, span);
+    ctx.stack_el[ctx.sp] = attr.priv_reflow_tok_css_element(tag, buf + tag_lt, span);
     ctx.stack_style[ctx.sp] = ctx.style;
     ctx.stack_link[ctx.sp] = ctx.active_link;
     ctx.stack_color[ctx.sp] = ctx.color;
