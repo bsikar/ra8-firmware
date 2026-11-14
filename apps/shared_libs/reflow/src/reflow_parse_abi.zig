@@ -5,8 +5,7 @@
 //! the public parse entry point `reflow_parse_xhtml` behind the unchanged
 //! C headers in inc/. The C TU validated its arguments, reset the token
 //! and text pools plus the link-target table, and forwarded to the
-//! cross-TU tokenizer entry `priv_reflow_xml_walk`, which stays C
-//! (src/reflow_tokenize.c) and is declared extern here.
+//! markup walk, now ported to Zig in src/reflow_tokenize.zig (RA8FW-1213).
 //!
 //! The `ReflowEngine` mirror below is a comptime-faithful extern-struct
 //! copy of `reflow_t` (inc/reflow_types.h) with its nested pool, face,
@@ -40,7 +39,7 @@ const k_ra8_err_invalid_size: c_int = 0x105;
 const k_ra8_err_not_initialized: c_int = 0x10F;
 const k_ra8_err_null_ptr: c_int = 0x504;
 
-const ReflowToken = extern struct {
+pub const ReflowToken = extern struct {
     kind: u8,
     tag: u8,
     style: u8,
@@ -106,7 +105,20 @@ const ReflowFace = extern struct {
     pad8: [k_reflow_face_pad8]u8,
 };
 
-const CssAnc = extern struct {
+/// Mirror of `ra8_css_element_t` (inc/reflow_css.h): the identity of one
+/// element, with the id / class slices pointing at caller-owned bytes.
+pub const CssElement = extern struct {
+    tag: u8,
+    pad0: [7]u8,
+    id: ?[*]const u8,
+    id_len: u16,
+    pad1: [6]u8,
+    class_str: ?[*]const u8,
+    class_len: u16,
+    pad2: [6]u8,
+};
+
+pub const CssAnc = extern struct {
     tag: u8,
     pad8: u8,
     class_off: u16,
@@ -115,7 +127,7 @@ const CssAnc = extern struct {
     id_len: u16,
 };
 
-const CssStyle = extern struct {
+pub const CssStyle = extern struct {
     set: u8,
     style: u8,
     @"align": u8,
@@ -150,7 +162,7 @@ const CssFontFace = extern struct {
     pad: u16,
 };
 
-const CssSheet = extern struct {
+pub const CssSheet = extern struct {
     rules: [k_ra8_css_max_rules]CssRule,
     faces: [k_ra8_css_max_faces]CssFontFace,
     rule_count: u16,
@@ -206,9 +218,8 @@ pub const ReflowEngine = extern struct {
 /// The image / stylesheet loader hooks (inc/reflow_types.h typedefs).
 pub const ReflowLoaderFn = *const fn (?*anyopaque, [*]const u8, c_uint, ?*[*]const u8, ?*usize) callconv(.c) c_int;
 
-/// The cross-TU tokenizer entry, defined in src/reflow_tokenize.c (which
-/// stays C) and declared in src/reflow_tokenize_internal.h.
-extern fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml_len: usize) c_int;
+/// The markup walk, ported to Zig in src/reflow_tokenize.zig (RA8FW-1213).
+const walk = @import("reflow_tokenize.zig");
 
 /// Validate the arguments, reset the token and text pools plus the
 /// link-target table, and hand the buffer to the tokenizer. The layout
@@ -229,7 +240,7 @@ pub export fn reflow_parse_xhtml(engine: ?*ReflowEngine, xhtml_buf: ?[*]const u8
     engine.?.text_pool_used = 0;
     engine.?.link_target_count = 0;
 
-    return priv_reflow_xml_walk(engine.?, xhtml_buf.?, xhtml_len);
+    return walk.priv_reflow_xml_walk(engine.?, xhtml_buf.?, xhtml_len);
 }
 
 test "mirror layout sanity" {
