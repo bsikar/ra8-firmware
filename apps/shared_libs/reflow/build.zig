@@ -51,6 +51,9 @@ pub fn build(b: *std.Build) void {
     test_module.addIncludePath(b.path("../../../libs/ra8_webp/inc"));
     test_module.addIncludePath(b.path("../third_party/stb"));
     test_module.addCSourceFile(.{ .file = b.path("../third_party/stb/stb_truetype_impl.c"), .flags = &.{"-std=gnu2x"} });
+    // RA8FW-1227: the driver port validates font blobs through the guard
+    // (ra8_stbtt_sfnt_dir_in_bounds), so the guard TU joins the host test.
+    test_module.addCSourceFile(.{ .file = b.path("src/ra8_stbtt_guard.c"), .flags = &.{"-std=gnu2x"} });
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
 }
