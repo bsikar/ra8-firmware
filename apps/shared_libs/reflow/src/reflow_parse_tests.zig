@@ -103,3 +103,7 @@ test "svg scan suite" {
 test "svg xform suite" {
     _ = @import("reflow_svg_xform.zig");
 }
+
+test "svg shape suite" {
+    _ = @import("reflow_svg_shape.zig");
+}
