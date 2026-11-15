@@ -275,7 +275,7 @@ else()
   # registered in zig_libraries.cmake and linked by zig_link_order.cmake),
   # so its former TU stays out of the v1 source set. Later reflow ports
   # (RA8FW-1213..1218: tokenizer + CSS) keep the same rule.
-  list(FILTER REFLOW_C_SOURCES EXCLUDE REGEX "reflow_(parse|tokenize|css|layout|layout_table|layout_image|layout_driver|render_face|link|svg|svg_shape|svg_xform)\\.c$")
+  list(FILTER REFLOW_C_SOURCES EXCLUDE REGEX "reflow_(parse|tokenize|css|layout|layout_table|layout_image|layout_driver|render_face|link|svg|svg_shape|svg_xform|svg_path)\\.c$")
   file(GLOB_RECURSE REFLOW_CPP_SOURCES CONFIGURE_DEPENDS
        ${FW_ROOT}/apps/shared_libs/reflow/src/*.cpp
   )
