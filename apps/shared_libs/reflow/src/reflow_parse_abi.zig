@@ -289,6 +289,9 @@ comptime {
     // into the archive for the still-C SVG sibling TUs (shape, path, doc),
     // which call these helpers through reflow_svg_internal.h.
     _ = @import("reflow_svg_xform.zig");
+    // RA8FW-1235: the shape rasterisers join the Zig library module so the
+    // static-lib build carries their C-linkage exports (the C TU is gone).
+    _ = @import("reflow_svg_shape.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
