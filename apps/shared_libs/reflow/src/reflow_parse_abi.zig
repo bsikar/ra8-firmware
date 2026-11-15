@@ -77,12 +77,12 @@ pub const ReflowImageBox = extern struct {
     reserved: u32,
 };
 
-const ReflowLinkTarget = extern struct {
+pub const ReflowLinkTarget = extern struct {
     href_off: u32,
     href_len: u32,
 };
 
-const ReflowLinkRect = extern struct {
+pub const ReflowLinkRect = extern struct {
     x: i32,
     y: i32,
     w: i32,
@@ -91,7 +91,7 @@ const ReflowLinkRect = extern struct {
     page_index: u32,
 };
 
-const ReflowAnchor = extern struct {
+pub const ReflowAnchor = extern struct {
     id_off: u32,
     id_len: u32,
     page_index: u32,
@@ -268,6 +268,7 @@ comptime {
     // its exports (reflow_init / reflow_run_layout / ...) replace
     // reflow_layout_driver.c in the archive.
     _ = @import("reflow_layout_driver.zig");
+    _ = @import("reflow_link.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
