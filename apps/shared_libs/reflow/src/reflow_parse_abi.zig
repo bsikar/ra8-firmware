@@ -281,6 +281,10 @@ comptime {
     // Zig; its export (ra8_img_imgdec_bind) replaces the C TU in the
     // archive.
     _ = @import("ra8_img_imgdec.zig");
+    // RA8FW-1233: the SVG scan / attribute / colour core is Zig; pull it
+    // into the archive for the still-C SVG sibling TUs (xform, shape,
+    // path, doc), which call these helpers through reflow_svg_internal.h.
+    _ = @import("reflow_svg.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");

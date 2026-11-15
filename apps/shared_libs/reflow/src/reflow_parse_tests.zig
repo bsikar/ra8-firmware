@@ -95,3 +95,7 @@ test "render-face picker suite" {
 test "render suite" {
     _ = @import("reflow_render.zig");
 }
+
+test "svg scan suite" {
+    _ = @import("reflow_svg.zig");
+}
