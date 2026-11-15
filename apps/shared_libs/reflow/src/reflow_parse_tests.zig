@@ -74,13 +74,17 @@ test "unbalanced element fails validation" {
 }
 
 comptime {
-    // Test-only link seam: real image/table siblings are C, the probe stub is here.
-    _ = @import("reflow_layout_test_seam.zig");
-    // Test-only link seams (RA8FW-1222): the layout harness answers
-    // ra8_img_probe_size, and the render harness answers reflow_render.zig's
-    // cross-library seams (glyph atlas, gfx pixel, SVG, imgdec) with their
-    // documented not-supported statuses -- the real surfaces live in
-    // libs/ra8_mem, libs/ra8_gfx and the SVG/imgdec TUs, CMake-suite territory.
+    // Test-only link seam (RA8FW-1231): the raster surface itself is Zig
+    // (reflow_image.zig), so its exports link here and the image seam answers
+    // the decode stack they reach (stb_image, ra8_webp, ra8_imgdec, the
+    // ra8_img_arena, ra8_svg_size, ra8_log) with the documented not-supported
+    // / empty results -- the real stack lives in third_party/stb, webp,
+    // libs/ra8_imgdec and the SVG TUs, CMake-suite territory.
+    _ = @import("reflow_image_test_seam.zig");
+    // Test-only link seams (RA8FW-1222): the render harness answers
+    // reflow_render.zig's cross-library seams (glyph atlas, gfx pixel, SVG)
+    // with their documented not-supported statuses -- the real surfaces live
+    // in libs/ra8_mem, libs/ra8_gfx and the SVG TUs, CMake-suite territory.
     _ = @import("reflow_render_test_seam.zig");
 }
 

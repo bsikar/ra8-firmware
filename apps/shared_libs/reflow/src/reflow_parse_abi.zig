@@ -273,6 +273,10 @@ comptime {
     // its exports (reflow_cache_size / serialize / load) replace
     // reflow_cache.c in the archive.
     _ = @import("reflow_cache.zig");
+    // RA8FW-1231: the raster image decode / probe / blit surface is Zig;
+    // its exports (ra8_img_probe_size / ra8_img_decode_blit) replace
+    // reflow_image.c in the archive.
+    _ = @import("reflow_image.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
