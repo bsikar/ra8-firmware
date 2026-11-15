@@ -184,7 +184,7 @@ pub fn build(b: *std.Build) void {
     // As a dependency, those modules are all this package offers: stop before any lazy dependency.
     if (b.pkg_hash.len != 0) return;
 
-    const target = b.standardTargetOptions(.{});
+    const target = thumb_freestanding_target(b, b.standardTargetOptions(.{}));
     const optimize = b.standardOptimizeOption(.{});
 
     // CMAKE_BUILD_TYPE, by its CMake name. Debug by default so every existing
@@ -262,10 +262,12 @@ pub fn build(b: *std.Build) void {
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
 
+    const core_artifact_name: []const u8 =
+        if (target.result.os.tag == .freestanding) "ra8_core" else "ra8_core_zig";
     const core_archive = b.dependency("ra8_core", .{
         .target = target,
         .optimize = optimize,
-    }).artifact("ra8_core_zig");
+    }).artifact(core_artifact_name);
 
     for (slice) |member| {
         const dependency = b.dependency(member.dependency_name, .{
@@ -593,6 +595,30 @@ const host_c_driver = "clang";
 /// records are told apart, and how the set is rendered and installed -- live in
 /// tests/zig_build_graph/compile_db.zig; what stays here is the part that
 /// cannot move, which translation units this graph compiles and at which bars.
+fn thumb_freestanding_target(
+    b: *std.Build,
+    requested: std.Build.ResolvedTarget,
+) std.Build.ResolvedTarget {
+    // thumb-freestanding is the Cortex-M image target in this tree: the
+    // triple's baseline CPU has no M-profile features, and the firmware
+    // graph assumes them (ra8_dfu's PRIMASK boot asm is the first thing
+    // that fails to assemble). An unspecified CPU therefore promotes to
+    // the board's Cortex-M85; an explicit -Dcpu still wins.
+    const unspecified = switch (requested.query.cpu_model) {
+        .baseline, .determined_by_arch_os => true,
+        else => false,
+    };
+    if (requested.result.cpu.arch != .thumb or
+        requested.result.os.tag != .freestanding or
+        !unspecified)
+    {
+        return requested;
+    }
+    var promoted = requested.query;
+    promoted.cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 };
+    return b.resolveTargetQuery(promoted);
+}
+
 fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     var candidates: std.ArrayList(compile_db.Entry) = .empty;
 

@@ -158,10 +158,12 @@ pub fn addSuite(
     }).artifact("ra8_imgdec"));
     // The suite's bound checks (ra8_decomp_*) and the log backend under them
     // are both Zig now, so they arrive as this archive.
+    const core_artifact_name: []const u8 =
+        if (target.result.os.tag == .freestanding) "ra8_core" else "ra8_core_zig";
     suite.root_module.linkLibrary(b.dependency("ra8_core", .{
         .target = target,
         .optimize = optimize,
-    }).artifact("ra8_core_zig"));
+    }).artifact(core_artifact_name));
     // And the bump arena the pool carves from: ra8_mem's last C went
     // (ra8_arena.c), so the seven ra8_arena_* entry points this suite resolves
     // are ra8_mem_abi.zig's exports now.
