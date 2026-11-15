@@ -51,7 +51,7 @@ pub const ReflowToken = extern struct {
     reserved16: u16,
 };
 
-const ReflowGlyph = extern struct {
+pub const ReflowGlyph = extern struct {
     x: i32,
     y: i32,
     cp: i32,
@@ -61,12 +61,12 @@ const ReflowGlyph = extern struct {
     reserved: u8,
 };
 
-const ReflowPage = extern struct {
+pub const ReflowPage = extern struct {
     glyph_first: u32,
     glyph_count: u32,
 };
 
-const ReflowImageBox = extern struct {
+pub const ReflowImageBox = extern struct {
     x: i32,
     y: i32,
     w: i32,
@@ -98,7 +98,7 @@ const ReflowAnchor = extern struct {
     y: i32,
 };
 
-const ReflowFace = extern struct {
+pub const ReflowFace = extern struct {
     blob: ?[*]const u8,
     len: usize,
     css_face_idx: u8,
@@ -264,4 +264,7 @@ comptime {
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
+    // RA8FW-1222: the render pass is Zig; its public ABI (reflow_render_page,
+    // reflow_render_page_at, reflow_set_glyph_atlas) replaces reflow_render.c.
+    _ = @import("reflow_render.zig");
 }

@@ -17,7 +17,7 @@ extern fn priv_reflow_render_is_blank_cp(cp: c_int) bool;
 extern fn stbtt_FindGlyphIndex(info: *const anyopaque, unicode_codepoint: c_int) c_int;
 
 /// Mirror of the vendored stbtt__buf (stb_truetype.h).
-const StbttBuf = extern struct {
+pub const StbttBuf = extern struct {
     data: ?[*]const u8,
     cursor: c_int,
     size: c_int,
@@ -27,7 +27,7 @@ const StbttBuf = extern struct {
 /// tree: the data_size bounds-check field sits between fontstart and
 /// numGlyphs). Only the struct size participates in pointer arithmetic
 /// here; no field is ever read from Zig.
-const StbttFontinfo = extern struct {
+pub const StbttFontinfo = extern struct {
     userdata: ?*anyopaque,
     data: ?[*]const u8,
     fontstart: c_int,
