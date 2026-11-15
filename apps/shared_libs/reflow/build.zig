@@ -39,9 +39,9 @@ pub fn build(b: *std.Build) void {
     });
     // The real walk (RA8FW-1213) runs all-Zig since the CSS library port
     // (RA8FW-1217/1218/1219). RA8FW-1220: the layout core is Zig too, and
-    // its extern seam (the four stbtt_* entry points plus the image
-    // layout sibling, still C this slice) is linked into the host test so
-    // the exported layout symbols resolve.
+    // its extern seam (the four stbtt_* entry points) is linked into the
+    // host test so the exported layout symbols resolve. RA8FW-1226: the
+    // image layout TU is Zig as well.
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));
@@ -51,7 +51,6 @@ pub fn build(b: *std.Build) void {
     test_module.addIncludePath(b.path("../../../libs/ra8_webp/inc"));
     test_module.addIncludePath(b.path("../third_party/stb"));
     test_module.addCSourceFile(.{ .file = b.path("../third_party/stb/stb_truetype_impl.c"), .flags = &.{"-std=gnu2x"} });
-    test_module.addCSourceFile(.{ .file = b.path("src/reflow_layout_image.c"), .flags = &.{"-std=gnu2x"} });
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
 }
