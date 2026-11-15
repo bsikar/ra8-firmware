@@ -10,7 +10,7 @@
 //! and (for headings) bump the active font size. No heap, no recursion.
 //!
 //! The cross-TU entry points keep C linkage (@export callconv(.c)) so the
-//! remaining C layout siblings (driver, image, table) and render TUs link
+//! remaining C layout siblings (driver, image) and render TUs link
 //! against them exactly as before. The four `stbtt_*` calls stay extern:
 //! the vendored stb_truetype implementation TU remains C and is linked by
 //! CMake.
@@ -80,7 +80,7 @@ const k_ra8_err_validation_failed: c_int = 0x501;
 /// Opaque stand-in for `stbtt_fontinfo`: the layout pass only ever passes
 /// the handle through to the four `stbtt_*` entry points, so no field of
 /// the vendored struct is touched from Zig.
-const StbttFontinfo = opaque {};
+pub const StbttFontinfo = opaque {};
 
 extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) c_int;
 extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) c_int;
@@ -91,7 +91,6 @@ extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_in
 /// reflow_layout.c itself; the driver / image / table TUs map to later
 /// slices and keep their symbols here).
 extern fn priv_reflow_layout_apply_image(engine: *ReflowEngine, cur: *PrivCursor, tok: *const ReflowToken) callconv(.c) bool;
-extern fn priv_reflow_layout_table(engine: *ReflowEngine, cur: *PrivCursor, font: *const StbttFontinfo, start: u32, out_next: *u32) callconv(.c) c_int;
 
 /// Mirror of `priv_cursor_t` (src/reflow_layout_internal.h): the mutable
 /// state carried through the layout loop. The C siblings allocate it by

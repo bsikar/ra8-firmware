@@ -261,6 +261,9 @@ comptime {
     // RA8FW-1220: the layout core is Zig too; pull it into the archive for
     // the C layout driver / image / table + render callers.
     _ = @import("reflow_layout.zig");
+    // RA8FW-1223: the table grid is Zig; pull it into the archive for the
+    // C layout driver.
+    _ = @import("reflow_layout_table.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
