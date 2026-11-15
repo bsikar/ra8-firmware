@@ -264,6 +264,10 @@ comptime {
     // RA8FW-1223: the table grid is Zig; pull it into the archive for the
     // C layout driver.
     _ = @import("reflow_layout_table.zig");
+    // RA8FW-1227: the token-dispatch driver + public lifecycle API is Zig;
+    // its exports (reflow_init / reflow_run_layout / ...) replace
+    // reflow_layout_driver.c in the archive.
+    _ = @import("reflow_layout_driver.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
