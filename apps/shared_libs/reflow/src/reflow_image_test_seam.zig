@@ -14,6 +14,8 @@
 //! keeps no stub.
 const k_ra8_err_not_supported: c_int = 0x107;
 
+const imgdec = @import("ra8_img_imgdec.zig");
+
 // stb_image: reject every header / decode; the reason string stays unset.
 export fn stbi_info_from_memory(buffer: [*]const u8, len: c_int, x: *c_int, y: *c_int, comp: *c_int) callconv(.c) c_int {
     _ = buffer;
@@ -97,4 +99,21 @@ export fn ra8_svg_size(svg: [*]const u8, len: usize, out_w: *i32, out_h: *i32) c
 export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void {
     _ = tag;
     _ = message;
+}
+
+// ra8_imgdec fabric: the container and pixel-layout readers are out of
+// scope for this unit harness. The backend adapter reaches them only on
+// the probe / decode paths, which the stubbed stb_image above refuses
+// before either is consulted, so these exist only so the export
+// (ra8_img_imgdec_bind) links here.
+export fn ra8_imgdec_dims(bytes: [*]const u8, byte_count: u32, out: *imgdec.Ra8ImgdecGeom) callconv(.c) c_int {
+    _ = bytes;
+    _ = byte_count;
+    _ = out;
+    return k_ra8_err_not_supported;
+}
+
+export fn ra8_imgdec_pixel_bytes(pixel: u32) callconv(.c) u32 {
+    _ = pixel;
+    return 0;
 }
