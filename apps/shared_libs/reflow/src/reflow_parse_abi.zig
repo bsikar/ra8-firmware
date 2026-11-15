@@ -269,6 +269,10 @@ comptime {
     // reflow_layout_driver.c in the archive.
     _ = @import("reflow_layout_driver.zig");
     _ = @import("reflow_link.zig");
+    // RA8FW-1230: the import-time pagination cache serialiser/loader is Zig;
+    // its exports (reflow_cache_size / serialize / load) replace
+    // reflow_cache.c in the archive.
+    _ = @import("reflow_cache.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
