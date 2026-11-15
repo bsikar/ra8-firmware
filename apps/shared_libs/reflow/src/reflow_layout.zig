@@ -87,10 +87,9 @@ extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_i
 extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) f32;
 extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) void;
 
-/// Layout siblings that stay C this slice (RA8FW-1220 scopes the port to
-/// reflow_layout.c itself; the driver / image / table TUs map to later
-/// slices and keep their symbols here).
-extern fn priv_reflow_layout_apply_image(engine: *ReflowEngine, cur: *PrivCursor, tok: *const ReflowToken) callconv(.c) bool;
+/// The image-layout sibling TU, Zig since RA8FW-1226 (its entry point
+/// keeps C linkage for any remaining C sibling).
+const img = @import("reflow_layout_image.zig");
 
 /// Mirror of `priv_cursor_t` (src/reflow_layout_internal.h): the mutable
 /// state carried through the layout loop. The C siblings allocate it by
@@ -540,7 +539,7 @@ pub export fn priv_reflow_layout_apply_token(engine: *ReflowEngine, cur: *PrivCu
         k_reflow_tok_text => return layout_text(engine, cur, font, tok),
         k_reflow_tok_break => return if (priv_reflow_layout_newline(engine, cur, false)) k_ra8_ok else k_ra8_err_no_mem,
         k_reflow_tok_rule => return if (apply_rule(engine, cur)) k_ra8_ok else k_ra8_err_no_mem,
-        k_reflow_tok_image => return if (priv_reflow_layout_apply_image(engine, cur, tok)) k_ra8_ok else k_ra8_err_no_mem,
+        k_reflow_tok_image => return if (img.priv_reflow_layout_apply_image(engine, cur, tok)) k_ra8_ok else k_ra8_err_no_mem,
         else => return k_ra8_ok,
     }
 }
