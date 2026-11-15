@@ -16,7 +16,7 @@
 #   src/reflow_tokenize.zig     no-heap streaming HTML-subset tokenizer
 #                               (RA8FW-1213 port; the C TU is gone)
 #   src/reflow_layout.c         line-break + page-break engine
-#   src/reflow_render.c         glyph rasterise via stb_truetype
+#   src/reflow_render.zig       glyph rasterise via stb_truetype (RA8FW-1222)
 #
 # Vendored dependencies (already at apps/shared_libs/third_party/):
 #   stb_truetype.h     -- glyph rasteriser
