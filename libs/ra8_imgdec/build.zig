@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "dims", .source = "src/internal/dims.zig", .root = "tests/dims_test.zig" },
         .{ .name = "name", .source = "src/internal/name.zig", .root = "tests/name_test.zig" },
         .{ .name = "scratch", .source = "src/internal/scratch.zig", .root = "tests/scratch_test.zig" },
+        // RA8FW-1238: the stb allocator hooks, exported from the archive root.
+        .{ .name = "hooks", .source = "src/ra8_img_arena.zig", .root = "tests/arena_test.zig" },
         .{ .name = "fabric", .source = "src/internal/fabric.zig", .root = "tests/fabric_test.zig" },
         .{ .name = "mux", .source = "src/internal/mux.zig", .root = "tests/mux_test.zig" },
         .{ .name = "vocab", .source = "src/internal/abi.zig", .root = "tests/abi_test.zig" },

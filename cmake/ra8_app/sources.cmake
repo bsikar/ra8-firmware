@@ -489,13 +489,14 @@ macro(_ra8_app_collect_sources)
   if("reflow" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_truetype_impl.c)
     # reflow also decodes raster <img> / cover art through the vendored
-    # stb_image, whose allocator is redirected to the heap-free bump arena in
-    # ra8_img_arena.c. That single-TU build (stb_image_impl.c) is self-contained
-    # (the STBI_* macros are defined inside it), so it needs no -include here.
+    # stb_image, whose STBI_MALLOC / STBI_FREE / STBI_REALLOC_SIZED hooks are
+    # the Zig arena in libs/ra8_imgdec/src/ra8_img_arena.zig (RA8FW-1238). That
+    # single-TU build (stb_image_impl.c) is self-contained (the STBI_* macros
+    # are defined inside it), so it needs no -include here.
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
-    # The arena hooks forward to the shared decoder scratch, and reflow_image.c
-    # routes WebP through the shared container sniff (RA8FW-308), so both of those
-    # TUs travel with the reflow sources wherever they go.
+    # reflow_image.c routes WebP through the shared container sniff (RA8FW-308);
+    # the arena hooks live in the ra8_imgdec archive beside the scratch they
+    # forward to (RA8FW-1238), so stb_image_impl.c needs no extra TU below.
     list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
     # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
     # one library rather than two TUs compiled by path.
@@ -515,9 +516,7 @@ macro(_ra8_app_collect_sources)
     # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
     # container sniff (RA8FW-308), the same way reflow_image.c does above, so the
     # sniff TU travels with the rabook_compile sources wherever they go.
-    list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
-         ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
-    )
+    list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl})
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(
       APPEND
