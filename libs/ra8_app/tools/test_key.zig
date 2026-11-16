@@ -20,3 +20,10 @@ pub const capabilities = "0";
 pub const tour_app_id = "com.ra8.txm_tour_m33";
 pub const tour_display_name = "Tour M33";
 pub const tour_capabilities = "3";
+
+/// The manifest identity of the translation module's shell (RA8FW-680):
+/// display and storage, and no network, because translation is offline by
+/// design.
+pub const translate_app_id = "com.ra8.txm_translate_m33";
+pub const translate_display_name = "Translate M33";
+pub const translate_capabilities = "3";

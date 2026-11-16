@@ -35,6 +35,14 @@ pub const tour = Identity{
     .capabilities = test_key.tour_capabilities,
 };
 
+/// The translation module's shell identity (RA8FW-680): display and storage,
+/// and no network, because translation is offline by design.
+pub const translate = Identity{
+    .app_id = test_key.translate_app_id,
+    .display_name = test_key.translate_display_name,
+    .capabilities = test_key.translate_capabilities,
+};
+
 /// Packs `bin`, the binary of module `name`, into a signed `<name>.ra8app`
 /// with `identity`'s manifest and installs it under `arm/`.
 pub fn add(b: *std.Build, step: *std.Build.Step, name: []const u8, bin: std.Build.LazyPath, identity: Identity) std.Build.LazyPath {
