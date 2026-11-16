@@ -44,6 +44,10 @@ pub fn build(b: *std.Build) void {
         .{ .name = "hooks", .source = "src/ra8_img_arena.zig", .root = "tests/arena_test.zig" },
         // RA8FW-1239: the stb_truetype allocator hooks, exported from the archive root.
         .{ .name = "stbtt_alloc", .source = "src/ra8_stbtt_alloc.zig", .root = "tests/stbtt_alloc_test.zig" },
+        // RA8FW-1240: the sfnt table-directory guard, exported from the
+        // archive root so the reflow driver, epub and the fuzz harness
+        // resolve it from this archive.
+        .{ .name = "stbtt_guard", .source = "src/ra8_stbtt_guard.zig", .root = "tests/stbtt_guard_test.zig" },
         .{ .name = "fabric", .source = "src/internal/fabric.zig", .root = "tests/fabric_test.zig" },
         .{ .name = "mux", .source = "src/internal/mux.zig", .root = "tests/mux_test.zig" },
         .{ .name = "vocab", .source = "src/internal/abi.zig", .root = "tests/abi_test.zig" },

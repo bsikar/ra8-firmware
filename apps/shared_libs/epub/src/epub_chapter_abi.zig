@@ -7,7 +7,8 @@
 //! epub_book_t: the spine, TOC, metadata and manifest accessors, the
 //! miniz-backed chapter/cover/resource/font extractors, the TTF attach
 //! path, and the stb_truetype glyph rasteriser. miniz (SOUP), stb_truetype
-//! (SOUP), the sfnt guard (ra8_stbtt_guard.h, stays C in reflow) and the
+//! (SOUP), the sfnt guard (ra8_stbtt_guard.h; its implementation moved to the
+//! Zig ra8_stbtt_guard.zig archive member, RA8FW-1240) and the
 //! zip guard exports (the ra8_epub archive) all stay extern, so this TU
 //! adds no policy of its own. The TU ships as its own archive
 //! (ra8_epub_chapter) so a consumer that never reads chapter/glyph data

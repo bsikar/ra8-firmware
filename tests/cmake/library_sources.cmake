@@ -204,21 +204,19 @@ if(REFLOW_USE_LITEHTML)
   # The static stb_truetype arena allocator (ra8_stbtt_malloc/free) is shared:
   # both v1 and the litehtml v2 engine rasterise glyphs through stb_truetype,
   # so this one file stays in even when the v1 reflow engine is excluded.
-  # ra8_stbtt_guard.c (the sfnt table-directory bounds check) is likewise
-  # shared: epub's priv_font_init calls it before stbtt_InitFont, so its
-  # symbol must resolve even under the v2 engine.
-  # ra8_img_arena and ra8_stbtt_alloc are Zig archive members now (RA8FW-1238,
-  # RA8FW-1239): the stb_image and stb_truetype allocator hooks live in
-  # libs/ra8_imgdec/src/ra8_img_arena.zig and ra8_stbtt_alloc.zig and arrive
-  # with the ra8_imgdec archive the build already links, so no C TU is listed
-  # here for them.
+  # ra8_img_arena, ra8_stbtt_alloc and ra8_stbtt_guard are Zig archive
+  # members now (RA8FW-1238, RA8FW-1239, RA8FW-1240): the stb_image and
+  # stb_truetype allocator hooks and the sfnt table-directory guard live in
+  # libs/ra8_imgdec/src/ra8_img_arena.zig, ra8_stbtt_alloc.zig and
+  # ra8_stbtt_guard.zig and arrive with the ra8_imgdec archive the build
+  # already links, so no C TU is listed here for them (epub's priv_font_init
+  # resolves the guard symbol from that archive in the v2 engine too).
   # reflow_link.c is pure query logic over engine fields (no layout/stbtt),
   # so the link/anchor API is available under v2 as well. The v1 engine
   # resolves this API from Zig now (RA8FW-1228, reflow_link.zig in the
   # ra8_reflow_parse archive), so this TU is kept only for the litehtml
   # v2 build, which does not link the Zig archive.
   set(REFLOW_C_SOURCES
-      ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
       ${FW_ROOT}/apps/shared_libs/reflow/src/reflow_link.c
   )
   set(REFLOW_CPP_SOURCES ${FW_ROOT}/apps/shared_libs/reflow/v2/src/reflow_v2.cpp)
