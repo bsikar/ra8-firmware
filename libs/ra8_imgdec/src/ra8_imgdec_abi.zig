@@ -52,6 +52,23 @@ fn arenaCarve(arena_ptr: ?*anyopaque, bytes: u32, alignment: u32, out: *?*anyopa
 
 const ops = arena.Ops{ .remaining = arenaRemaining, .carve = arenaCarve };
 
+// Force the hook exports into the archive: a plain `const x = @import(...)`
+// is lazily dropped when nothing in this root references the module, which
+// silently emptied the archive's ra8_img_arena_* / ra8_stbtt_* surface
+// (test_jof_produce_portable failed to link against dev tip with five
+// undefined arena hooks). Taking the address of each export pins them.
+comptime {
+    _ = &arena_hooks.ra8_img_arena_bind;
+    _ = &arena_hooks.ra8_img_arena_unbind;
+    _ = &arena_hooks.ra8_img_arena_malloc;
+    _ = &arena_hooks.ra8_img_arena_free;
+    _ = &arena_hooks.ra8_img_arena_realloc_sized;
+    _ = &stbtt_alloc.ra8_stbtt_malloc;
+    _ = &stbtt_alloc.ra8_stbtt_free;
+    _ = &stbtt_alloc.ra8_stbtt_alloc_high_water;
+    _ = &stbtt_guard.ra8_stbtt_sfnt_dir_in_bounds;
+}
+
 // =============================================================================
 // Vocabulary and the pure header readers
 // =============================================================================
