@@ -87,13 +87,6 @@ export fn ra8_img_arena_malloc(n: usize) callconv(.c) ?*anyopaque {
 
 // SVG document surface: size nothing (is_svg itself stays in the render
 // seam, which answers it false for every buffer).
-export fn ra8_svg_size(svg: [*]const u8, len: usize, out_w: *i32, out_h: *i32) callconv(.c) c_int {
-    _ = svg;
-    _ = len;
-    _ = out_w;
-    _ = out_h;
-    return k_ra8_err_not_supported;
-}
 
 // ra8_log backend entry: sink every line.
 export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void {

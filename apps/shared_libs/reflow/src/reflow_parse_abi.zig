@@ -293,6 +293,10 @@ comptime {
     // static-lib build carries their C-linkage exports (the C TU is gone).
     _ = @import("reflow_svg_shape.zig");
     _ = @import("reflow_svg_path.zig");
+    // RA8FW-1237: the SVG document driver (viewBox read, group walk, gradient
+    // scan, public ra8_svg_* API) is Zig; its exports replace reflow_svg_doc.c
+    // in the archive.
+    _ = @import("reflow_svg_doc.zig");
     // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
     // for the C render caller.
     _ = @import("reflow_render_face.zig");
