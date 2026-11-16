@@ -366,6 +366,9 @@ pub fn build(b: *std.Build) void {
     const txm_tour_m33_step = b.step("txm-tour-m33", "Build the syscall-tour module for CPU1 (Cortex-M33) as arm/txm_tour_m33.elf");
     cross_image.addTxmTourM33(b, txm_tour_m33_step, arm);
 
+    const txm_translate_m33_step = b.step("txm-translate-m33", "Build the translation module's shell for CPU1 (Cortex-M33) as arm/txm_translate_m33.elf");
+    cross_image.addTxmTranslateM33(b, txm_translate_m33_step, arm);
+
     const threadx_m85_modules_step = b.step("threadx-m85-modules", m85_threadx_modules.step_description);
     cross_image.addThreadxM85Modules(b, threadx_m85_modules_step, arm);
 

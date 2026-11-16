@@ -41,6 +41,7 @@ default:
     @echo "  just zig::txm-m33              Build the ThreadX module library for CPU1 modules"
     @echo "  just zig::txm-hello-m33        Build the hello-world ThreadX module for CPU1"
     @echo "  just zig::txm-tour-m33         Build the syscall-tour ThreadX module for CPU1"
+    @echo "  just zig::txm-translate-m33    Build the translation module's shell for CPU1"
     @echo "  just zig::threadx-m85-modules  Build the ThreadX Module Manager for the M85"
     @echo "  just zig::netxduo-host        Compile the ThreadX Linux port and NetX, run the ra8_ipif harness"
     @echo "  just zig::txm-module-check     Build Zig module probes via C, check relocations"
@@ -125,6 +126,10 @@ txm-hello-m33: _zig
 # The syscall-tour module for CPU1 (RA8FW-1023).
 txm-tour-m33: _zig
     "${RA8_ZIG}" build txm-tour-m33
+
+# The translation module's shell for CPU1 (RA8FW-680).
+txm-translate-m33: _zig
+    "${RA8_ZIG}" build txm-translate-m33
 
 # The ThreadX Module Manager for the M85 (RA8FW-426).
 threadx-m85-modules: _zig

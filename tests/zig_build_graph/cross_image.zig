@@ -183,6 +183,20 @@ pub fn addTxmTourM33(b: *std.Build, step: *std.Build.Step, globals: build_type.G
     _ = txm_ra8app.add(b, step, cpu1_txm_hello.tour.name, built.bin, txm_ra8app.tour);
 }
 
+/// The `txm-translate-m33` step: the translation module's shell, built
+/// through C and packed as a `.ra8app` with its permission set, display and
+/// storage, and no network (RA8FW-680).
+pub fn addTxmTranslateM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "txm-translate-m33: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.translate);
+    _ = txm_ra8app.add(b, step, cpu1_txm_hello.translate.name, built.bin, txm_ra8app.translate);
+}
+
 /// The `txm-module-check` step: Zig built as module objects through the C
 /// backend and gcc, and each linked probe held to the relocation check
 /// (RA8FW-540). The toolchain is the one in `dir`, never PATH's; without it

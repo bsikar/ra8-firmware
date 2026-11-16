@@ -122,8 +122,20 @@ pub const tour = Module{
     .api = true,
 };
 
+/// The translation module's shell (RA8FW-680): the module app the
+/// translation job runs under, packaged with display and storage and no
+/// network. Its shell keeps data statics and drives the typed shims, so it
+/// builds through C like the tour.
+pub const translate = Module{
+    .name = "txm_translate_m33",
+    .entry_source = "examples/ek_ra8d2/hw_pending/txm_translate_m33/module_start.zig",
+    .stack_size = 4096,
+    .through_c = true,
+    .api = true,
+};
+
 /// Every module an image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server, dual_client, tour };
+pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server, dual_client, tour, translate };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
