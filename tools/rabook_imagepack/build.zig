@@ -79,7 +79,6 @@ const book_closure = [_][]const u8{
     book_dir ++ "book_chunked.c",
     book_dir ++ "book_chunked_validate.c",
     book_dir ++ "book_stream.c",
-    book_dir ++ "book_stream_wire.c",
 };
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
@@ -204,6 +203,17 @@ pub fn build(b: *std.Build) void {
     const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
     const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
 
+    // The book wire TU is Zig (RA8FW-1242): the five priv_book_stream_* seams
+    // live in the ra8_book archive now, so the remaining book C closure calls
+    // them out of the archive instead of a compiled TU.
+    const book_wire_mod = b.createModule(.{
+        .root_source_file = b.path("../../apps/shared_libs/book/src/book_stream_wire.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const book_wire_lib = b.addLibrary(.{ .name = "ra8_book", .linkage = .static, .root_module = book_wire_mod });
+    book_wire_lib.bundle_compiler_rt = true;
+
     const tool_sources = [_][]const u8{
         "src/main.c",
         "src/ra8_fmt_stream_convert.c",
@@ -227,6 +237,7 @@ pub fn build(b: *std.Build) void {
     mod.linkLibrary(core_lib);
     mod.linkLibrary(jof_lib);
     mod.linkLibrary(compress_lib);
+    mod.linkLibrary(book_wire_lib);
     addToolIncludes(b, mod);
     addWebpIncludes(b, mod);
     addC(b, mod, ".", &tool_sources, &first_party_flags);
@@ -392,6 +403,7 @@ pub fn build(b: *std.Build) void {
         tmod.linkLibrary(core_lib);
         tmod.linkLibrary(jof_lib);
         tmod.linkLibrary(compress_lib);
+        tmod.linkLibrary(book_wire_lib);
         mod.linkLibrary(compress_lib);
         for (unit.includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
         // The C-era test targets carried extra definitions per target

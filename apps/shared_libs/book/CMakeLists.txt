@@ -23,7 +23,8 @@
 #   inc/book.h   format structs + header-only XIP accessors
 #   src/book.c               resident blob integrity/bounds validation
 #   src/book_stream.c        streamed semantic and integrity passes
-#   src/book_stream_wire.c   streamed wire decoding and layout validation
+#   src/book_stream_wire.zig streamed wire decoding and layout validation
+#                            (RA8FW-1242: Zig archive ra8_book; the C TU is deleted)
 #
 # Depends only on ra8_core (ra8_err, ra8_check, ra8_attributes). Consumers reach
 # into inc/ + src/ directly: firmware apps list `book` in
