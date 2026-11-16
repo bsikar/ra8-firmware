@@ -19,28 +19,32 @@ needs to.
   and the rules are restated in `CLAUDE.md`. They are read in the source, not
   in a browser.
 - **Markdown under `docs/`**: the architecture and reference pages, the SOUP
-  records under `docs/SOUP/`, the dated decisions under `docs/adr/`, and the
-  qualification material under `docs/qualification/`.
+  records under `docs/SOUP/`, and the dated decisions under `docs/adr/` (see
+  [`docs/README.md`](README.md)). Qualification planning, verification, and
+  accomplishment documents live in the `RA8FW` YouTrack knowledge base under
+  `RA8FW-A-2`, and CI gate manuals live under `docs/` in `bsikar/ra8ci`.
 - **Per-app `README.md`** beside each example and product.
 
 ## What enforces it
 
-Three gates, all runnable locally, none of which needs a doxygen binary:
+Three documentation gates live in `bsikar/ra8ci`, all runnable locally without a
+doxygen binary:
 
-| Gate | What it asks |
+| Gate (in `bsikar/ra8ci`) | What it asks |
 |---|---|
 | `scripts/checks/doxy_audit.py` | Every function carries the required tag set; every enum value, struct member and macro carries a doc comment; the file-header block and `@param` direction brackets follow the style guide |
 | `scripts/checks/check_doc_attachment.py` | A block actually describes the symbol it is attached to, which the tag audit cannot see |
 | `scripts/checks/check_markdown_references.py` | Every link, anchor and repository path named in first-party Markdown resolves |
 
-The first runs in the `pre-commit-checks` gate in `scripts/ci/gates/checks.sh`,
-the second in the `doc-attachment` gate in
-`scripts/ci/gates/checks_standalone.sh`, and the third in
-`scripts/ci/gates/hygiene.sh`.
-Each takes `--selftest`, which proves the detector fires and stays quiet in
-both directions before any tree scan is trusted.
+Those Markdown and Doxygen gate scripts (`doxy_audit.py`,
+`check_doc_attachment.py`, `check_markdown_references.py`) moved to
+`bsikar/ra8ci` alongside `scripts/ci/gates/checks.sh`,
+`scripts/ci/gates/checks_standalone.sh`, and `scripts/ci/gates/hygiene.sh`. Each
+takes `--selftest`, which proves the detector fires and stays quiet in both
+directions before any scan is trusted:
 
 ```sh
+# In bsikar/ra8ci:
 python3 scripts/checks/doxy_audit.py --check
 python3 scripts/checks/doxy_audit.py --members --check
 python3 scripts/checks/doxy_audit.py --style
@@ -48,12 +52,13 @@ python3 scripts/checks/check_doc_attachment.py --check
 python3 scripts/checks/check_markdown_references.py
 ```
 
-Run with no arguments, `doxy_audit.py` writes a tag-coverage report to
-`build/reports/doxygen/` instead of gating.
+Run with no arguments in `bsikar/ra8ci`, `doxy_audit.py` writes a tag-coverage
+report to `build/reports/doxygen/` instead of gating.
 
 ## The `just docs` recipes
 
-`just/docs.just` no longer builds anything. What it carries now is reporting:
+`just/docs.just` in `ra8-firmware` no longer builds anything. What it carries
+now is reporting:
 
 ```sh
 just docs::clean          # remove build/docs
@@ -62,8 +67,8 @@ just docs::sizes          # summarise app .text/.data/.bss footprints
 just docs::audit_init     # audit peripheral init order across apps
 ```
 
-Those run `scripts/report/roadmap_stats.py`, `scripts/report/app_sizes.py` and
-`scripts/checks/audit_init_order.py` respectively.
+Those run `scripts/builders/roadmap_stats.sh`, `scripts/report/app_sizes.py`,
+and `scripts/checks/audit_init_order.py` respectively.
 
 ## Workflow when you add a symbol
 

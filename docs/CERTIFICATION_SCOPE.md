@@ -15,12 +15,12 @@ substantive software-engineering requirements of:
 - ISO 26262-6:2018 ASIL C / ASIL D (automotive)
 
 This means MC/DC structural coverage, MISRA-C 2012 conformance (with
-the residual-risk envelope recorded in
-`docs/qualification/MISRA_DEVIATIONS.md`), the planning + verification
-+ accomplishment document family under `docs/qualification/`, the
-SOUP register under `docs/SOUP/`, the architectural ring + TrustZone
-world tagging in `docs/RING_AND_WORLD.md`, and the configuration-
-management / quality-assurance discipline enforced by the CI gates.
+the residual-risk envelope documented in the qualification records),
+the planning + verification + accomplishment document family in the
+`RA8FW` YouTrack knowledge base (`RA8FW-A-2`), the SOUP register under
+`docs/SOUP/`, the architectural ring + TrustZone world tagging in
+`docs/RING_AND_WORLD.md`, and the configuration-management /
+quality-assurance discipline enforced by the CI gates in `bsikar/ra8ci`.
 
 The project will **NOT** pursue, fund, or schedule:
 
@@ -58,34 +58,35 @@ product is welcome to do so under the MIT licence. They are
   Reviewer for their target standard.
 - Procuring their own commercial MISRA checker (LDRA, Helix QAC,
   Polyspace, PVS-Studio) per their assessor's tooling-qualification
-  requirements -- see `docs/qualification/MISRA_DEVIATIONS.md`
-  Section "Tooling policy".
+  requirements -- see the MISRA policy in `RA8FW-A-4` (PSAC) and
+  `RA8FW-A-14` (TOOL_QUALIFICATION) in the `RA8FW` YouTrack KB.
 - Choosing their **MISRA edition**. The verification evidence here
   is against MISRA C:2012 (Third Edition, March 2013); the current
   edition is MISRA C:2025 (March 2025), with MISRA C:2023 between
   them. The open-source cppcheck add-on implements MISRA C:2012
-  only, so no checker version bump changes this -- see `docs/MISRA.md`
-  section "Which edition, and why it is not the current one".
+  only, so no checker version bump changes this -- see `RA8FW-A-14`
+  (TOOL_QUALIFICATION) in the `RA8FW` YouTrack KB.
 - Re-running the verification evidence under their own
   configuration-management baseline.
 - Providing their own warranty, indemnity, and field-issue support.
 
-The artefacts in `docs/qualification/` (PSAC, SDP, SVP, SCMP, SQAP,
-SVCP, SVR, SAS) are intended to make this re-use as low-friction as
-possible: a downstream assessor can read the existing planning and
-verification record and decide which parts to accept as-is and which
-to re-derive under their own oversight.
+The qualification artefacts in the `RA8FW` YouTrack knowledge base under
+`RA8FW-A-2` (`RA8FW-A-4` PSAC, `RA8FW-A-5` SDP, `RA8FW-A-6` SVP, `RA8FW-A-7`
+SCMP, `RA8FW-A-8` SQAP, `RA8FW-A-11` SVCP, `RA8FW-A-12` SVR, `RA8FW-A-13` SAS)
+are intended to make this re-use as low-friction as possible: a downstream
+assessor can read the existing planning and verification record and decide
+which parts to accept as-is and which to re-derive under their own oversight.
 
 ## Cross-references
 
-- `docs/qualification/PSAC.md` Section "Certification scope" -- the
-  short-form restatement of this decision inside the PSAC.
-- `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling policy"
-  -- the consistent "no commercial MISRA tool, ever" decision.
-- `docs/HIL_DEVELOPER_WORKFLOW.md` -- the managed dev-box HIL listener
+- `RA8FW-A-4` (PSAC) Section "Certification scope" in the `RA8FW` YouTrack
+  KB -- the short-form restatement of this decision inside the PSAC.
+- `RA8FW-A-14` (TOOL_QUALIFICATION) in the `RA8FW` YouTrack KB -- the
+  consistent "no commercial MISRA tool, ever" decision.
+- `bsikar/ra8ci` HIL workflow docs -- the managed dev-box HIL listener
   and remote Pi 5 instrument host that close the CI-hardware question.
 - `docs/VENDOR_BLOBS.md` -- the consistent "obtain Renesas blobs from
   public FSP as SOUP, never NDA" decision.
-- `docs/QUALIFICATION_ROADMAP.md` Section 6 -- the open-questions
-  register, where this decision is recorded as closed.
+- `RA8FW-A-3` (QUALIFICATION_ROADMAP) Section 6 in the `RA8FW` YouTrack KB --
+  the open-questions register, where this decision is recorded as closed.
 - `LICENSE.txt` -- MIT licence text.
