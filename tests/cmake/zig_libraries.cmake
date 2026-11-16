@@ -864,8 +864,9 @@ ra8_add_zig_library(
 )
 
 # RA8FW-1242: the streamed wire decoding + canonical layout validation for a
-# .rabook (book_stream_wire.c) is Zig now (src/book_stream_wire.zig, archive
-# ra8_book) behind the unchanged priv_book_stream_* declarations in
+# .rabook (book_stream_wire.c, book_chunked.c) is Zig now
+# (src/book_stream_wire.zig, src/book_chunked.zig, archive ra8_book) behind
+# the unchanged priv_book_stream_* declarations in
 # src/book_stream_internal.h. book.c and book_stream.c stay C and call the
 # archive, and the strict book-stream suites keep testing it from outside.
 ra8_add_zig_library(

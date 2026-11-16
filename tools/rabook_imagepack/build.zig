@@ -76,7 +76,6 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 
 const book_closure = [_][]const u8{
     book_dir ++ "book.c",
-    book_dir ++ "book_chunked.c",
     book_dir ++ "book_chunked_validate.c",
     book_dir ++ "book_stream.c",
 };
@@ -207,7 +206,7 @@ pub fn build(b: *std.Build) void {
     // live in the ra8_book archive now, so the remaining book C closure calls
     // them out of the archive instead of a compiled TU.
     const book_wire_mod = b.createModule(.{
-        .root_source_file = b.path("../../apps/shared_libs/book/src/book_stream_wire.zig"),
+        .root_source_file = b.path("../../apps/shared_libs/book/src/book_root.zig"),
         .target = target,
         .optimize = optimize,
     });

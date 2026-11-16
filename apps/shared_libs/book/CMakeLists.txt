@@ -25,6 +25,8 @@
 #   src/book_stream.c        streamed semantic and integrity passes
 #   src/book_stream_wire.zig streamed wire decoding and layout validation
 #                            (RA8FW-1242: Zig archive ra8_book; the C TU is deleted)
+#   src/book_chunked.zig     demand-paged RBKC chunk reader
+#                            (RA8FW-1244: same Zig archive; the C TU is deleted)
 #
 # Depends only on ra8_core (ra8_err, ra8_check, ra8_attributes). Consumers reach
 # into inc/ + src/ directly: firmware apps list `book` in
