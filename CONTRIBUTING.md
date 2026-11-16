@@ -25,9 +25,8 @@ setup is documented in [`docs/IDE.md`](docs/IDE.md).
   hand-written under this project's style
   rules.
 * Every new feature ships with host-side unit tests and (for any
-  compound boolean decision) MC/DC vectors. See
-  [`docs/MCDC.md`](docs/MCDC.md) and the running gap report
-  [`docs/MCDC_GAPS.md`](docs/MCDC_GAPS.md).
+  compound boolean decision) MC/DC vectors. See the MC/DC coverage workflow and
+  running gap reporting policy.
 * Long-term the firmware tree should be qualifiable end-to-end, even
   though there are no plans to ship it into a regulated product.
 
@@ -155,9 +154,8 @@ The short version:
    */
   ```
 
-* See [`docs/MCDC.md`](docs/MCDC.md) for the coverage measurement workflow
-  (the MC/DC check) and the running gap list at
-  [`docs/MCDC_GAPS.md`](docs/MCDC_GAPS.md).
+* Document compound boolean decision coverage using the `@par MC/DC:` block
+  and track open coverage gaps per the repository MC/DC policy.
 * Do not introduce dynamic allocation in test scaffolding -- the same
   NASA Power-of-10 Rule 3 budget applies.
 
@@ -169,8 +167,7 @@ document; click through before disagreeing with a finding.
 
 * **Shape** -- clang-format, and clang-tidy for NASA Power-of-10 Rule 4
   (function length), naming, the magic-number ban and the C23
-  typed-enum requirement. See
-  [`docs/STATIC_ANALYSIS.md`](docs/STATIC_ANALYSIS.md).
+  typed-enum requirement. See `docs/STATIC_ANALYSIS.md` in `ra8ci`.
 * **Encoding** -- non-ASCII bytes in source files are rejected outright.
 * **Documentation** -- every function in `libs/` and `port/` must carry
   the full Doxygen tag set documented in `CLAUDE.md`, on a block that
@@ -181,10 +178,9 @@ document; click through before disagreeing with a finding.
 * **Architecture tags** -- every public header declares its
   architectural ring and TrustZone world. See
   [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md).
-* **Safety** -- a new compound boolean decision needs its MC/DC block
-  ([`docs/MCDC.md`](docs/MCDC.md)), and stack frames are bounded
-  ([`docs/STACK_USAGE.md`](docs/STACK_USAGE.md); soft findings in
-  third-party SOUP are reported, not fatal).
+* **Safety** -- a new compound boolean decision needs its MC/DC block, and
+  stack frames are bounded ([`docs/STACK_USAGE.md`](docs/STACK_USAGE.md);
+  soft findings in third-party SOUP are reported, not fatal).
 * **Provenance** -- the AI-attribution ban, re-run independently in CI.
   See [`docs/AI_ATTRIBUTION_POLICY.md`](docs/AI_ATTRIBUTION_POLICY.md).
 
@@ -303,6 +299,6 @@ This is a personal project, not an open community, but issues and
 discussions on the GitHub repository are welcome. For deeper context
 on the architectural ring + TrustZone world tagging system see
 [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md); for the qualification
-roadmap see [`docs/QUALIFICATION_ROADMAP.md`](docs/QUALIFICATION_ROADMAP.md);
+roadmap see `RA8FW-A-3` in the `RA8FW` YouTrack knowledge base;
 for the vendored third-party components and their qualification
 justifications see [`docs/SOUP/`](docs/SOUP/).

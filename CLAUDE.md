@@ -438,7 +438,9 @@ a ten-minute stall.
 
 Use YouTrack tickets for TODO lists, roadmaps, status boards, and follow-up work.
 Do NOT create markdown files in `docs/` for transient state.
-`docs/` is for architecture, policy, reference, and certification artifacts only.
+`docs/` is for architecture, policy, and firmware reference only (CI gate
+manuals live in `bsikar/ra8ci`, and qualification documents live in the
+`RA8FW` YouTrack knowledge base under `RA8FW-A-2`).
 Anything that would otherwise be a `docs/SOMETHING_TODO.md` or
 `docs/SOMETHING_ROADMAP.md` or `docs/SOMETHING_TICKET.md` must be a
 YouTrack ticket instead.
@@ -1024,6 +1026,7 @@ ra8-firmware/
     git/
       pre-commit               Exact-index snapshot transport for Just hook policy
   docs/
+    README.md                  In-tree docs index; links to ra8ci and YouTrack KB
     reference/                 Committed datasheets and manuals (PDFs)
   .clang-format                Formatter config (copied verbatim from STAR rx72n)
   .clangd                      Editor integration (strips ARM flags clangd can't parse)

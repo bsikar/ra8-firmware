@@ -13,7 +13,7 @@ CMake test target, or a selftest wired into a gate suite.
 
 | Unit | Consumer | Gate | Decision |
 | --- | --- | --- | --- |
-| `tools/cache_bench` | `just/tools.just` (`tools::build_cache_bench`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`, referenced from `docs/SOUP/miniz.md` and the qualification docs; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (contract tests, `tests/src/test_cache_bench.c`) | keep |
+| `tools/cache_bench` | `just/tools.just` (`tools::build_cache_bench`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`, referenced from `docs/SOUP/miniz.md` and the qualification KB articles; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (contract tests, `tests/src/test_cache_bench.c`) | keep |
 | `tools/check_portability.py` | `just/checks.just` (`checks::portability`, `checks::portability-image-builds`); consumes `tools/portability_gate_libc/` | self-test inside the recipe | keep-and-gate |
 | `tools/check_txm_module_relocs` | `build.zig.zon` dependency; `tests/zig_build_graph/txm_module_*` | `.zig-test-contract.json` suite | keep |
 | `tools/epub_compile` | `scripts/builders/books.sh`; consumed by `apps/shared_libs/book`, `apps/shared_libs/rabook_compile`, format docs | `tests/epub_selftest.py` | keep |
@@ -31,7 +31,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `tools/rabook_imagepack` | `tools/rabook_imagepack/build.zig` (`zig build` test/integration), `cmake/ra8_webp_vendor.cmake` (still shared by the app + host-test recipes); format docs | six unit targets + four integration scripts (`zig build test`, `zig build integration`) | keep |
 | `tools/rabook_viewer` | `tools/rabook_viewer/build.zig` (`zig build` test/integration), `just/tools.just` (`tools::viewer`, `tools::view` via `build_host_tools.sh`), `cmake/ra8_webp_vendor.cmake` (still shared by the app + host-test recipes); format docs | three C-era unit targets + workspace/corpus integration suites (`zig build test`, `zig build integration`) | keep |
 | `tools/reader_vmem` | `just/tools.just` (`tools::build_reader_vmem`, `tools::bench_cache`), `scripts/builders/build_host_tools.sh`; consumed by `tools/cache_bench` `sweep_block`; built through the Zig graph (`build.zig`, RA8FW-999) | `zig build test` (workspace tests, `tests/src/reader_vmem_workspace_test.c`) | keep |
-| `tools/roadmap_stats` | `just/docs.just`; regenerates `docs/ROADMAP.md` and the qualification docs | `.zig-test-contract.json` suite | keep |
+| `tools/roadmap_stats` | `just/docs.just`; regenerates `docs/ROADMAP.md` | `.zig-test-contract.json` suite | keep |
 | `tools/vela` | NPU model compiler, pinned in `build.zig.zon`; serves the `npu_vela` example; SOUP record `docs/SOUP/vela.md` | `tools/vela/tests/test_vela_gen.py` | keep |
 | `tools/zig_build` | root `build.zig` and every host Zig build (`apps/host/firmware_pipeline`, `image_pyramid`, `reg_gen`); `cmake/ra8_add_ns_image.cmake` | `.zig-test-contract.json` suite | keep |
 

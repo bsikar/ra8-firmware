@@ -4,10 +4,11 @@ Bare-metal firmware for the Renesas RA8 family (RA8D2 / RA8P1): a
 hand-written HAL, RTOS / USB / networking ports, and a host emulator that
 boots the real firmware ELFs.
 
-This site is the hub. It holds the prose: architecture, decision records,
-toolchain and CI manuals, qualification evidence, and the third-party
-inventory. The API references are generated from the source by the tool that
-can actually read each language, and are mounted beside it.
+This directory holds the in-tree firmware reference: architecture, decision
+records, toolchain manuals, and the third-party inventory. CI gate manuals
+live in `bsikar/ra8ci`, and the qualification document family lives in the
+`RA8FW` YouTrack knowledge base under `RA8FW-A-2`. The API references are
+generated from the source by the tool that can actually read each language.
 
 ## API references
 
@@ -38,27 +39,17 @@ the reasoning rather than as a description of the tree.
   [Modules](MODULES.md) and [Rings and worlds](RING_AND_WORLD.md).
 - Setting up a machine: [Toolchain](TOOLCHAIN.md),
   [Python environments](PYTHON_ENVIRONMENTS.md), [IDE setup](IDE.md).
-- Touching a board: [Hardware bring-up](HARDWARE_BRINGUP.md) and the
-  [HIL developer workflow](HIL_DEVELOPER_WORKFLOW.md).
+- Touching a board: [Hardware bring-up](HARDWARE_BRINGUP.md) and
+  [Debugging](DEBUG.md).
 - Changing anything that ships: [Style guide](STYLE_GUIDE.md),
-  [MISRA](MISRA.md), [MC/DC](MCDC.md), [Coverage](COVERAGE.md).
+  [Stack usage](STACK_USAGE.md), and [Zig ABI](ZIG_ABI.md).
 - Why something is the way it is: the [decision records](adr/README.md).
+- Qualification planning, verification, and accomplishment documents: `RA8FW-A-2`
+  in the `RA8FW` YouTrack knowledge base.
+- CI and host-build gate manuals: `docs/` in `bsikar/ra8ci`.
 
-## Building this site
+## Documentation checks and recipes
 
-```sh
-just docs::hub          # build the hub into build/docs/hub/
-just docs::hub_serve    # build and serve it locally with live reload
-just docs::hub_check    # nav coverage gate, no generator required
-just docs::build        # the C ABI reference (Doxygen)
-```
-
-Generated HTML is never committed. Everything lands under `build/`, which is
-git-ignored, and the published site is rebuilt from source on every push to
-`main`.
-
-The hub runs `mkdocs build --strict`, so a link to a page that moved is a
-build failure rather than a 404 a reader finds later. `just docs::hub_check`
-is the cheaper half of the same promise: it fails when a Markdown file under
-`docs/` is neither in the nav nor explicitly excluded, so a new manual cannot
-land invisible.
+There is no generated HTML site. See [`DOCS.md`](DOCS.md) and `just/docs.just`
+for the live documentation layout, the `just docs::*` reporting recipes, and
+the documentation gates maintained in `bsikar/ra8ci`.
