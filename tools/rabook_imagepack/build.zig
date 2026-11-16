@@ -295,7 +295,6 @@ pub fn build(b: *std.Build) void {
             .name = "test_jof_produce_portable",
             .files = &.{
                 "../../apps/shared_libs/jof/tests/src/test_jof_produce.c",
-                "../../apps/shared_libs/reflow/src/ra8_img_arena.c",
             },
             .quiet_files = &.{"../../apps/shared_libs/third_party/stb/stb_image_impl.c"},
             .includes = &.{ support_inc, "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../apps/shared_libs/jof/src", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/reflow/inc", "../../apps/shared_libs/third_party/stb", "../../apps/shared_libs/compress/inc", miniz_inc },

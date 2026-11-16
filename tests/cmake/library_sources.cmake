@@ -207,8 +207,9 @@ if(REFLOW_USE_LITEHTML)
   # ra8_stbtt_guard.c (the sfnt table-directory bounds check) is likewise
   # shared: epub's priv_font_init calls it before stbtt_InitFont, so its
   # symbol must resolve even under the v2 engine.
-  # ra8_img_arena.c (the stb_image bump arena) is likewise shared: the always-on
-  # stb_image_impl.c TU in EPUB_THIRD_PARTY references its symbols.
+  # ra8_img_arena is a Zig archive member now (RA8FW-1238): the stb allocator
+  # hooks live in libs/ra8_imgdec/src/ra8_img_arena.zig and arrive with the
+  # ra8_imgdec archive the build already links, so no C TU is listed here.
   # reflow_link.c is pure query logic over engine fields (no layout/stbtt),
   # so the link/anchor API is available under v2 as well. The v1 engine
   # resolves this API from Zig now (RA8FW-1228, reflow_link.zig in the
@@ -217,7 +218,6 @@ if(REFLOW_USE_LITEHTML)
   set(REFLOW_C_SOURCES
       ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
       ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
-      ${FW_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
       ${FW_ROOT}/apps/shared_libs/reflow/src/reflow_link.c
   )
   set(REFLOW_CPP_SOURCES ${FW_ROOT}/apps/shared_libs/reflow/v2/src/reflow_v2.cpp)

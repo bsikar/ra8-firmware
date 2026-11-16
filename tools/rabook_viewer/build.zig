@@ -75,7 +75,6 @@ const comic_closure = [_][]const u8{
     comic_dir ++ "ra8_rar5_tables.c",
 };
 const reflow_closure = [_][]const u8{
-    reflow_dir ++ "ra8_img_arena.c",
     reflow_dir ++ "reflow_image.c",
     reflow_dir ++ "reflow_svg.c",
     reflow_dir ++ "reflow_svg_doc.c",
