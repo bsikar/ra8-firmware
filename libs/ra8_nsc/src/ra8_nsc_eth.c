@@ -45,12 +45,19 @@ static const ra8_io_netif_t* s_netif = nullptr;
  * ``ra8_io_netif_bind_net_pal``/``ra8_io_netif_bind_c6link``, both in the
  * same archive that defines these two functions.
  */
+/* ra8_io_netif.h (line 25) already declares both functions; these externs
+ * restate them with __attribute__((weak)) so unbound veneers resolve to NULL
+ * at link time. The redeclaration is deliberate, so the redundant-decls
+ * warning is suppressed for exactly these two declarations. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
 extern ra8_err_t ra8_io_netif_send(const ra8_io_netif_t* netif,
                                    const uint8_t* frame,
                                    uint16_t len) __attribute__((weak));
 extern ra8_err_t ra8_io_netif_poll(const ra8_io_netif_t* netif,
                                    uint8_t* out_buf,
                                    uint16_t* inout_len) __attribute__((weak));
+#pragma GCC diagnostic pop
 
 /**
  * @brief Secure-side wiring: point the ethernet veneers at the
