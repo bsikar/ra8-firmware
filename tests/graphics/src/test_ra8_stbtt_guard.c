@@ -3,16 +3,14 @@
  * @brief Host unit tests for the sfnt table-directory bounds guard.
  *
  * @details
- * `ra8_stbtt_sfnt_dir_in_bounds()` (apps/shared_libs/reflow/src/ra8_stbtt_guard.c) is the
+ * `ra8_stbtt_sfnt_dir_in_bounds()` (libs/ra8_imgdec/src/ra8_stbtt_guard.zig) is the
  * validator run before `stbtt_InitFont()` so that a crafted @font-face font
  * cannot drive the out-of-bounds read in stb_truetype's `stbtt__find_table()`.
  * This file exercises it two ways:
  *
- *  1. Direct calls with crafted malformed fonts (truncated directory, an
- *     out-of-range table record, a header shorter than the offset table, and
- *     a null buffer) assert the validator REJECTS them cleanly -- returning
- *     `false`, never reading past the buffer -- and accepts well-formed input
- *     (the bundled Ahem face and a zero-table header).
+ *  1. Direct calls with crafted malformed fonts now live in the Zig unit
+ *     libs/ra8_imgdec/tests/stbtt_guard_test.zig (RA8FW-1240: the guard is a
+ *     Zig archive member of ra8_imgdec, its C TU deleted).
  *
  *  2. End-to-end through the three attacker-reachable call sites that feed
  *     stb_truetype untrusted bytes -- `reflow_bind_font()`,
@@ -109,65 +107,6 @@ static const uint8_t s_bad_dir_record[28] = {
 };
 
 /**
- * @brief A crafted font whose cmap record fits but whose in-table encoding
- *        count overruns the buffer (the fuzz-found out-of-bounds read).
- * @details The top-level directory is well-formed: one record tagged "cmap" at
- *          offset 28, declared length 4 (28 + 4 == 32 == buffer len), so checks
- *          (1)-(3) pass. The cmap table's internal numTables field is 0xFFFF, so
- *          `stbtt_InitFont` would stride `cmap + 4 + 8 * 0xFFFF` (~512 KiB) past
- *          the buffer. Check (4) reads that count and rejects it.
- */
-static const uint8_t s_bad_cmap_subdir[32] = {
-  0x00U, 0x01U, 0x00U, 0x00U,               /* sfnt version 1.0              */
-  0x00U, 0x01U,                             /* numTables = 1                 */
-  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, /* search hints (ignored)        */
-  0x63U, 0x6DU, 0x61U, 0x70U,               /* record 0: tag "cmap"          */
-  0x00U, 0x00U, 0x00U, 0x00U,               /* record 0: checksum            */
-  0x00U, 0x00U, 0x00U, 0x1CU,               /* record 0: offset 28           */
-  0x00U, 0x00U, 0x00U, 0x04U,               /* record 0: length 4 (fits)     */
-  0x00U, 0x00U,                             /* cmap version 0                */
-  0xFFU, 0xFFU,                             /* cmap numTables = 65535 (huge) */
-};
-
-/**
- * @brief A 10-byte buffer: shorter than the 12-byte sfnt offset table.
- * @details The header-fits check rejects it before numTables is ever read.
- */
-static const uint8_t s_hdr_too_small[10] = {
-  0x00U,
-  0x01U,
-  0x00U,
-  0x00U, /* sfnt version 1.0 */
-  0x00U,
-  0x05U, /* numTables field, never reached */
-  0x00U,
-  0x00U,
-  0x00U,
-  0x00U,
-};
-
-/**
- * @brief A minimal, in-bounds 12-byte offset table declaring zero tables.
- * @details Memory-safe (nothing to walk), so the guard accepts it even though
- *          `stbtt_InitFont` would later reject it for lacking real tables --
- *          the guard is a memory-safety gate, not a semantic validator.
- */
-static const uint8_t s_zero_tables[12] = {
-  0x00U,
-  0x01U,
-  0x00U,
-  0x00U, /* sfnt version 1.0 */
-  0x00U,
-  0x00U, /* numTables = 0 */
-  0x00U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x00U,
-};
-
-/**
  * @brief Initialise a reflow engine bound to the valid Ahem face.
  *
  * @param[out] engine Engine to initialise; set up with the Ahem default face.
@@ -192,131 +131,12 @@ static void priv_init_ahem_engine(reflow_t* engine)
 }
 
 /**
- * @test test_guard_rejects_null_data
- *
- * @par MC/DC:
- * Decision: `if (data == nullptr)`
- * (1 condition, apps/shared_libs/reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds)
- * - Vector T (this test): data = nullptr -> true  -> return false.
- * - Vector F (test_guard_accepts_valid_font): data != nullptr -> false ->
- *   continue past the guard. The T/F pair gives complete MC/DC for the
- *   1-condition null decision.
- */
-static void test_guard_rejects_null_data(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: null data rejected");
-  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(nullptr, (size_t)k_fixture_ahem_len, 0U));
-  TEST_END("ra8_stbtt guard: null data rejected");
-}
-
-/**
- * @test test_guard_rejects_short_header
- *
- * @par MC/DC:
- * Decision: `if ((start + 12) > buf_len)`  (the offset-table-fits check;
- * 1 condition, apps/shared_libs/reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds)
- * - Vector T (this test): a 10-byte buffer, 0 + 12 > 10 -> true -> reject
- *   before numTables is read.
- * - Vector F (test_guard_accepts_valid_font): a >= 12-byte buffer -> false ->
- *   proceed to read numTables. Complete MC/DC for the 1-condition check.
- */
-static void test_guard_rejects_short_header(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: header shorter than offset table rejected");
-  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(s_hdr_too_small, sizeof s_hdr_too_small, 0U));
-  TEST_END("ra8_stbtt guard: header shorter than offset table rejected");
-}
-
-/**
- * @test test_guard_rejects_truncated_directory
- *
- * @par MC/DC:
- * Decision: `if (dir_end > buf_len)`  (the directory-fits check; 1 condition,
- * apps/shared_libs/reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds)
- * - Vector T (this test): numTables = 20 in a 16-byte buffer, dir_end 332 >
- *   16 -> true -> reject before any record is read.
- * - Vector F (test_guard_accepts_valid_font): Ahem's directory fits -> false.
- *   Complete MC/DC for the 1-condition check.
- */
-static void test_guard_rejects_truncated_directory(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: truncated directory rejected");
-  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(s_bad_dir_truncated, sizeof s_bad_dir_truncated, 0U));
-  TEST_END("ra8_stbtt guard: truncated directory rejected");
-}
-
-/**
- * @test test_guard_rejects_out_of_range_record
- *
- * @par MC/DC:
- * Decision: `if ((t_off + t_len) > buf_len)`  (the per-record extent check;
- * 1 condition, apps/shared_libs/reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds)
- * - Vector T (this test): record 0 declares offset 0x10000000 + length 0x100,
- *   far past the 28-byte buffer -> true -> reject.
- * - Vector F (test_guard_accepts_valid_font): every Ahem record fits -> false
- *   for all iterations. Complete MC/DC for the 1-condition record check.
- */
-static void test_guard_rejects_out_of_range_record(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: out-of-range table record rejected");
-  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(s_bad_dir_record, sizeof s_bad_dir_record, 0U));
-  TEST_END("ra8_stbtt guard: out-of-range table record rejected");
-}
-
-/**
- * @test test_guard_rejects_bad_cmap_subdir
- *
- * @par MC/DC:
- * Decision: `if (sub_end > buf_len)` inside the cmap arm of
- * priv_table_internal_in_bounds
- * (apps/shared_libs/reflow/src/ra8_stbtt_guard.c@internal_table_internal_in_bounds), plus
- * the `tag == k_sfnt_tag_cmap` branch selection.
- * - Vector T (this test): a well-formed directory whose cmap record fits but
- *   whose in-table numTables is 0xFFFF -> `cmap + 4 + 8 * 0xFFFF` >> 32-byte
- *   buffer -> true -> reject before `stbtt_InitFont` strides the sub-directory.
- * - Vector F (test_guard_accepts_valid_font): the Ahem face has a cmap whose
- *   sub-directory fits -> false, so the tag-cmap branch is taken with the
- *   bound satisfied. The T/F pair completes MC/DC for the cmap internal check.
- */
-static void test_guard_rejects_bad_cmap_subdir(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: cmap in-table subdir overrun rejected");
-  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(s_bad_cmap_subdir, sizeof s_bad_cmap_subdir, 0U));
-  TEST_END("ra8_stbtt guard: cmap in-table subdir overrun rejected");
-}
-
-/**
- * @test test_guard_accepts_valid_font
- *
- * @par MC/DC:
- * Provides the all-false control (accept) vector for every 1-condition
- * decision in ra8_stbtt_sfnt_dir_in_bounds and its helper
- * (apps/shared_libs/reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds):
- * - The bundled Ahem face: data != nullptr, header fits, directory fits, every
- *   record's extent fits, and every cmap / head / maxp internal read fits ->
- *   all checks false -> return true. This supplies the F vector paired with the
- *   T vectors in the reject tests above (including the cmap-subdir check),
- *   completing MC/DC for each, and exercises the record loop's in-bounds arm
- *   across many records with the cmap / head / maxp tag branches taken.
- * - A 12-byte zero-table header: header + directory fit and the record loop
- *   is skipped (numTables == 0) -> return true, covering the loop-not-taken
- *   edge.
- */
-static void test_guard_accepts_valid_font(void)
-{
-  TEST_BEGIN("ra8_stbtt guard: valid fonts accepted");
-  TEST_ASSERT(ra8_stbtt_sfnt_dir_in_bounds(k_fixture_ahem, (size_t)k_fixture_ahem_len, 0U));
-  TEST_ASSERT(ra8_stbtt_sfnt_dir_in_bounds(s_zero_tables, sizeof s_zero_tables, 0U));
-  TEST_END("ra8_stbtt guard: valid fonts accepted");
-}
-
-/**
  * @test test_bind_font_rejects_bad_directory
  *
  * @par MC/DC:
  * Decision: `if (!ra8_stbtt_sfnt_dir_in_bounds(font_data, font_len, offset))`
  * (1 condition, guarded by `if (offset >= 0)`;
- * apps/shared_libs/reflow/src/reflow_layout_driver.c@reflow_bind_font)
+ * apps/shared_libs/reflow/src/reflow_layout_driver.zig@reflow_bind_font)
  * - Vector T (this test): a valid-tag / bad-directory blob -> offset >= 0 and
  *   guard returns false -> `!false` true -> k_ra8_err_not_supported, prior face
  *   preserved.
@@ -345,7 +165,7 @@ static void test_bind_font_rejects_bad_directory(void)
  * @par MC/DC:
  * Decision: `if (!ra8_stbtt_sfnt_dir_in_bounds(blob, len, offset))`
  * (1 condition, guarded by `if (offset >= 0)`;
- * apps/shared_libs/reflow/src/reflow_layout_driver.c@reflow_register_face)
+ * apps/shared_libs/reflow/src/reflow_layout_driver.zig@reflow_register_face)
  * - Vector T (this test): a valid-tag / bad-directory blob -> offset >= 0 and
  *   guard returns false -> `!false` true -> k_ra8_err_not_supported, face_count
  *   unchanged.
@@ -496,12 +316,6 @@ static void test_epub_render_glyph_oob_loca_safe(void)
 
 int main(void)
 {
-  test_guard_rejects_null_data();
-  test_guard_rejects_short_header();
-  test_guard_rejects_truncated_directory();
-  test_guard_rejects_out_of_range_record();
-  test_guard_rejects_bad_cmap_subdir();
-  test_guard_accepts_valid_font();
   test_bind_font_rejects_bad_directory();
   test_register_face_rejects_bad_directory();
   test_epub_render_glyph_rejects_bad_directory();

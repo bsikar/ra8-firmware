@@ -52,8 +52,16 @@ pub fn build(b: *std.Build) void {
     test_module.addIncludePath(b.path("../third_party/stb"));
     test_module.addCSourceFile(.{ .file = b.path("../third_party/stb/stb_truetype_impl.c"), .flags = &.{"-std=gnu2x"} });
     // RA8FW-1227: the driver port validates font blobs through the guard
-    // (ra8_stbtt_sfnt_dir_in_bounds), so the guard TU joins the host test.
-    test_module.addCSourceFile(.{ .file = b.path("src/ra8_stbtt_guard.c"), .flags = &.{"-std=gnu2x"} });
+    // (ra8_stbtt_sfnt_dir_in_bounds). RA8FW-1240: the guard is a Zig archive
+    // member of ra8_imgdec now (libs/ra8_imgdec/src/ra8_stbtt_guard.zig), so
+    // it compiles into this test directly and the driver's extern seam
+    // resolves against it.
+    const stbtt_guard_unit = b.createModule(.{
+        .root_source_file = b.path("../../../libs/ra8_imgdec/src/ra8_stbtt_guard.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_module.addImport("ra8_stbtt_guard", stbtt_guard_unit);
     const reflow_parse_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(reflow_parse_test).step);
 }

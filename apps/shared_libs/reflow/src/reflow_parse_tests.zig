@@ -9,6 +9,13 @@
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 
+// RA8FW-1240: the sfnt guard is Zig (libs/ra8_imgdec/src/ra8_stbtt_guard.zig);
+// touching its export keeps the symbol in this test object for the driver's
+// extern seam.
+comptime {
+    _ = &@import("ra8_stbtt_guard").ra8_stbtt_sfnt_dir_in_bounds;
+}
+
 const ReflowEngine = abi.ReflowEngine;
 
 const k_ra8_tok_block_start: u8 = 0;
