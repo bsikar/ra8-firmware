@@ -863,6 +863,21 @@ ra8_add_zig_library(
   ra8_reflow_parse
 )
 
+# RA8FW-1242: the streamed wire decoding + canonical layout validation for a
+# .rabook (book_stream_wire.c) is Zig now (src/book_stream_wire.zig, archive
+# ra8_book) behind the unchanged priv_book_stream_* declarations in
+# src/book_stream_internal.h. book.c and book_stream.c stay C and call the
+# archive, and the strict book-stream suites keep testing it from outside.
+ra8_add_zig_library(
+  NAME
+  ra8_book
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/book
+  LIBRARY_NAME
+  ra8_book
+)
+link_libraries(ra8_zig::ra8_book)
+
 # Fully migrated: the key vault behind inc/key_vault.h,
 # the entropy read behind src/secure_trng_internal.h, the OTA bank commit
 # behind inc/ota_commit.h, the AES-CMAC behind src/sec_cmac_internal.h and the
