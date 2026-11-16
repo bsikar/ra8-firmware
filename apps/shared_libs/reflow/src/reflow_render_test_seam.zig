@@ -2,7 +2,7 @@
 //!
 //! The render module's rasteriser reaches three Layer-3 surfaces behind the
 //! ported reflow_render.zig: the ra8_glyph_atlas glyph cache (libs/ra8_mem),
-//! the ra8_gfx pixel hook, and the SVG document surface behind reflow_svg.c.
+//! and the ra8_gfx pixel hook. (The SVG document surface behind reflow_svg.c\n//! joined the real Zig library in RA8FW-1237, so the harness no longer stubs it.)
 //! Those surfaces are out of scope for this unit harness (the CMake suite
 //! exercises them end to end), so the harness answers each surface with its
 //! documented "not supported" status, which the render path handles by
@@ -36,30 +36,6 @@ export fn ra8_glyph_atlas_get(atlas: *anyopaque, key: *const anyopaque, out_glyp
 export fn ra8_glyph_atlas_put(atlas: *anyopaque, bitmap: [*]const u8) callconv(.c) c_int {
     _ = atlas;
     _ = bitmap;
-    return k_ra8_ok;
-}
-
-export fn ra8_svg_is_svg(bytes: [*]const u8, len: usize) callconv(.c) bool {
-    _ = bytes;
-    _ = len;
-    return false;
-}
-
-export fn ra8_svg_image_href(svg: [*]const u8, len: usize, out_off: *usize, out_len: *usize) callconv(.c) c_int {
-    _ = svg;
-    _ = len;
-    _ = out_off;
-    _ = out_len;
-    return k_ra8_err_not_supported;
-}
-
-export fn ra8_svg_render(svg: [*]const u8, len: usize, x: c_int, y: c_int, w: c_int, h: c_int) callconv(.c) c_int {
-    _ = svg;
-    _ = len;
-    _ = x;
-    _ = y;
-    _ = w;
-    _ = h;
     return k_ra8_ok;
 }
 
