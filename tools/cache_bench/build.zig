@@ -36,7 +36,6 @@ const bench_sources = [_][]const u8{
 
 const book_tus = [_][]const u8{
     "book.c",
-    "book_chunked.c",
 };
 
 // The contract test drives the replay engine through inc/cache_bench.h:
@@ -66,6 +65,9 @@ fn addSharedSources(b: *std.Build, mod: *std.Build.Module, files: []const []cons
         .files = &book_tus,
         .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-DMINIZ_NO_MALLOC", "-DMINIZ_NO_STDIO" },
     });
+    // book_chunked.c is Zig now (RA8FW-1244): the demand-paged chunk reader
+    // lives in the ra8_book archive behind the unchanged book_chunked_* C ABI;
+    // build() links that archive next to ra8_mem.
     // miniz is SOUP and type-puns through byte buffers; keep the optimizer
     // contract that prevents strict-aliasing miscompilation.
     mod.addCSourceFiles(.{
@@ -97,9 +99,21 @@ pub fn build(b: *std.Build) void {
     const mem_dep = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize });
     const mem_lib = mem_dep.artifact("ra8_mem");
 
+    // The book chunk reader (RA8FW-1244) is Zig now: the ra8_book archive
+    // provides book_chunked_open/book_chunked_read for the bench's sweep
+    // backends; book.c, still C here, supplies the shared header parser.
+    const book_wire_mod = b.createModule(.{
+        .root_source_file = b.path("../../apps/shared_libs/book/src/book_root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const book_wire_lib = b.addLibrary(.{ .name = "ra8_book", .linkage = .static, .root_module = book_wire_mod });
+    book_wire_lib.bundle_compiler_rt = true;
+
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
     mod.link_libc = true;
     mod.linkLibrary(mem_lib);
+    mod.linkLibrary(book_wire_lib);
     addSharedIncludes(b, mod);
     addSharedSources(b, mod, &bench_sources);
     const exe = b.addExecutable(.{ .name = "cache_bench", .root_module = mod });
@@ -109,6 +123,7 @@ pub fn build(b: *std.Build) void {
     const tmod = b.createModule(.{ .target = target, .optimize = optimize });
     tmod.link_libc = true;
     tmod.linkLibrary(mem_lib);
+    tmod.linkLibrary(book_wire_lib);
     addSharedIncludes(b, tmod);
     addSharedSources(b, tmod, &test_sources);
     tmod.addCSourceFiles(.{
