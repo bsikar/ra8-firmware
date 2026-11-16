@@ -144,7 +144,7 @@ parser:
   bounds checks fire on a crafted OTF.
 - **`stbtt__rasterize_sorted_edges()`**: null-checks the per-scanline
   `STBTT_malloc`. `STBTT_malloc` is wired to the fixed bump arena
-  `ra8_stbtt_malloc` (`apps/shared_libs/reflow/src/ra8_stbtt_alloc.c`), which returns
+  `ra8_stbtt_malloc` (`libs/ra8_imgdec/src/ra8_stbtt_alloc.zig`, RA8FW-1239), which returns
   NULL on exhaustion by design (NASA P10 Rule 3, zero dynamic allocation after
   init). Upstream stb never checks this allocation, so a crafted glyph that is
   wide (`result->w > 64`, taking the heap scanline rather than the 129-float

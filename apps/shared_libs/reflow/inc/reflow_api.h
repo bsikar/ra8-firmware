@@ -453,7 +453,7 @@ reflow_find_anchor(const reflow_t* engine, const char* id, uint32_t id_len, uint
  * rasterises each code point through the two-step
  * `stbtt_GetCodepointBitmapBox()` + `stbtt_MakeCodepointBitmap()` path
  * (glyph bitmap into a fixed buffer; stb scratch via the no-heap arena in
- * `ra8_stbtt_alloc.c`), and blits the alpha-8 mask into the framebuffer
+ * `ra8_stbtt_alloc.zig`), and blits the alpha-8 mask into the framebuffer
  * with `ra8_gfx_pixel()`.
  *
  * The framebuffer must already be bound by `ra8_gfx_init()`. The

@@ -278,7 +278,7 @@ set_source_files_properties(
 ra8_webp_apply_soup_flags(${RA8_WEBP_THIRD_PARTY})
 
 # Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
-# lists) through the no-heap arena in apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
+# lists) through the no-heap arena in libs/ra8_imgdec/src/ra8_stbtt_alloc.zig (RA8FW-1239, a member of the ra8_imgdec archive)
 # instead of libc malloc, so the host test build exercises the exact
 # heap-free path the firmware uses. The -include makes the allocator
 # declarations visible inside the vendored single-TU implementation

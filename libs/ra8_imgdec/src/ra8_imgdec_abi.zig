@@ -11,6 +11,7 @@
 const abi = @import("internal/abi.zig");
 const arena = @import("internal/arena.zig");
 const arena_hooks = @import("ra8_img_arena.zig");
+const stbtt_alloc = @import("ra8_stbtt_alloc.zig");
 const dims_mod = @import("internal/dims.zig");
 const fabric = @import("internal/fabric.zig");
 const mux_mod = @import("internal/mux.zig");

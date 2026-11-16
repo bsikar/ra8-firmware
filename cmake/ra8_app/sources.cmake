@@ -482,7 +482,8 @@ macro(_ra8_app_collect_sources)
   # reflow rasterises glyphs through the vendored stb_truetype. Its
   # implementation TU lives under third_party (not apps/shared_libs/reflow/src), and
   # STBTT_malloc/free must be redirected to the no-heap bump arena in
-  # ra8_stbtt_alloc.c. Wire that automatically when an app pulls in reflow,
+  # libs/ra8_imgdec/src/ra8_stbtt_alloc.zig (RA8FW-1239, a member of the
+  # ra8_imgdec archive the app already links, so no extra TU is needed). Wire that automatically when an app pulls in reflow,
   # mirroring tests/CMakeLists.txt so app + host-test builds stay in step.
   set(_ra8_stb_impl "")
   set(_ra8_stb_img_impl "")
