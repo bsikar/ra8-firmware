@@ -46,4 +46,13 @@ pub fn build(b: *std.Build) void {
     });
     const book_chunked_test = b.addTest(.{ .root_module = chunked_test_module });
     test_step.dependOn(&b.addRunArtifact(book_chunked_test).step);
+
+    const validate_test_module = b.createModule(.{
+        .root_source_file = b.path("src/book_chunked_validate_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const book_validate_test = b.addTest(.{ .root_module = validate_test_module });
+    test_step.dependOn(&b.addRunArtifact(book_validate_test).step);
 }

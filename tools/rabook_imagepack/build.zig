@@ -76,7 +76,6 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 
 const book_closure = [_][]const u8{
     book_dir ++ "book.c",
-    book_dir ++ "book_chunked_validate.c",
     book_dir ++ "book_stream.c",
 };
 
