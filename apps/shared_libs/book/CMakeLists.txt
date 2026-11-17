@@ -30,6 +30,8 @@
 #                            (RA8FW-1244: same Zig archive; the C TU is deleted)
 #   src/book_chunked_validate.zig strict streaming-validation adapter
 #                            (RA8FW-1247: same Zig archive; the C TU is deleted)
+#   src/book_paged.zig       paged book-source layer over ra8_vmem
+#                            (RA8FW-1249: same Zig archive; the C TU is deleted)
 #
 # Depends only on ra8_core (ra8_err, ra8_check, ra8_attributes). Consumers reach
 # into inc/ + src/ directly: firmware apps list `book` in
