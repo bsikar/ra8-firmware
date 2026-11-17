@@ -8,6 +8,7 @@
 
 const wire = @import("book_stream_wire.zig");
 const chunked = @import("book_chunked.zig");
+const chunked_validate = @import("book_chunked_validate.zig");
 
 comptime {
     _ = &wire.priv_book_stream_read;
@@ -17,4 +18,5 @@ comptime {
     _ = &wire.priv_book_stream_validate_string_envelope;
     _ = &chunked.book_chunked_open;
     _ = &chunked.book_chunked_read;
+    _ = &chunked_validate.book_chunked_validate_strict;
 }
