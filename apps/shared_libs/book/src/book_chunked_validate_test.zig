@@ -32,25 +32,25 @@ var stub_probe_offset: ?u64 = null;
 var stub_calls: u32 = 0;
 
 export fn book_validate_stream_strict(
-    read: *const fn (?*anyopaque, u64, [*]u8, u32) callconv(.c) u16,
+    read: ?*const fn (?*anyopaque, u64, [*]u8, u32) callconv(.c) u16,
     read_ctx: ?*anyopaque,
     source_size: u64,
-    scratch: [*]u8,
+    scratch: ?[*]u8,
     scratch_cap: u32,
-    out_header: *BookHeader,
+    out_header: ?*BookHeader,
 ) callconv(.c) u16 {
     _ = scratch_cap;
     stub_calls += 1;
     if (stub_probe_offset) |off| {
-        return read(read_ctx, off, scratch, 4);
+        return read.?(read_ctx, off, scratch.?, 4);
     }
-    const err = read(read_ctx, 0, scratch, @intCast(source_size));
+    const err = read.?(read_ctx, 0, scratch.?, @intCast(source_size));
     if (err != k_ra8_ok) {
         return err;
     }
     // Marker: stamp the total_size field (byte offset 12) so the caller can
     // prove the validated header came back out.
-    std.mem.writeInt(u32, std.mem.asBytes(out_header)[12..16], 1234, .little);
+    std.mem.writeInt(u32, std.mem.asBytes(out_header.?)[12..16], 1234, .little);
     return k_ra8_ok;
 }
 

@@ -76,7 +76,6 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 
 const book_closure = [_][]const u8{
     book_dir ++ "book.c",
-    book_dir ++ "book_stream.c",
 };
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
@@ -201,7 +200,8 @@ pub fn build(b: *std.Build) void {
     const jof_lib = b.dependency("jof", .{ .target = target, .optimize = optimize }).artifact("jof");
     const compress_lib = b.dependency("compress", .{ .target = target, .optimize = optimize }).artifact("compress");
 
-    // The book wire TU is Zig (RA8FW-1242): the five priv_book_stream_* seams
+    // The book stream TU is Zig (RA8FW-1248): the validator and its seams
+    // come from libra8_book.a. The wire TU is Zig (RA8FW-1242): the five priv_book_stream_* seams
     // live in the ra8_book archive now, so the remaining book C closure calls
     // them out of the archive instead of a compiled TU.
     const book_wire_mod = b.createModule(.{
