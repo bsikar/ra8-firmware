@@ -39,14 +39,17 @@ const k_ra8_err_null_ptr: ra8_err_t = 0x504;
 /// read seam book_validate_stream_strict streams through.
 const FlatReadFn = *const fn (?*anyopaque, u64, [*]u8, u32) callconv(.c) ra8_err_t;
 
-/// The strict RABOOK1 validator over a flat blob (book_stream.c, stays C).
+/// The strict RABOOK1 validator over a flat blob (book_stream.zig,
+/// RA8FW-1248; this extern resolves against the archive now that the C TU
+/// is deleted -- the adapter's test module keeps stubbing the seam, so a
+/// direct import would collide with that stub).
 extern fn book_validate_stream_strict(
-    read: FlatReadFn,
+    read: ?FlatReadFn,
     read_ctx: ?*anyopaque,
     source_size: u64,
-    scratch: [*]u8,
+    scratch: ?[*]u8,
     scratch_cap: u32,
-    out_header: *BookHeader,
+    out_header: ?*BookHeader,
 ) ra8_err_t;
 
 /// Fixed span count used by strict alias validation: reader, chunk, scratch,

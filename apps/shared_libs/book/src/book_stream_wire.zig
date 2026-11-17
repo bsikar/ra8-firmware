@@ -10,7 +10,8 @@
 //! image and integrity validators.
 //!
 //! The five `priv_book_stream_*` C ABI symbols are kept for the callers that
-//! remain C (book_stream.c and the book_stream test suite); the archive
+//! remain C (the C book-stream test suite; book_stream.c is Zig since
+//! RA8FW-1248); the archive
 //! (libra8_book.a) provides them wherever the C TU used to.
 
 const std = @import("std");
