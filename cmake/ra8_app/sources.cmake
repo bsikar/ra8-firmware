@@ -548,7 +548,7 @@ macro(_ra8_app_collect_sources)
 
   # reflow's glyph rasteriser (reflow_render.zig, RA8FW-1222) caches glyph bitmaps
   # through the Layer-3 ra8_glyph_atlas, and book's paged accessor
-  # (book_paged.c / book_xhtml.c) reads books through the ra8_vmem
+  # (book_paged.zig / book_xhtml.zig) reads books through the ra8_vmem
   # page cache -- both in libs/ra8_mem. ra8_mem depends only on ra8_core, so wire
   # it in automatically for reflow / book consumers (mirroring the stb
   # special-case above), unless the app already lists ra8_mem in LIBS -- in which

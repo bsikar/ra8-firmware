@@ -113,8 +113,8 @@ pub const BookSrc = extern struct {
     }
 };
 
-// The shared leaf seams and the resident fast path live in book_xhtml.c /
-// book.c, which stay C; the port externs them until those TUs port.
+// The shared leaf seams and the resident fast path live in book_xhtml.zig
+// (RA8FW-1250); the port externs them through the unchanged C ABI.
 extern fn priv_book_is_block(name: [*:0]const u8) callconv(.c) bool;
 extern fn priv_book_emit_text(out: [*]u8, cap: usize, pos: *usize, str: [*:0]const u8, at_break: *bool) callconv(.c) bool;
 extern fn priv_book_emit_break(out: [*]u8, cap: usize, pos: *usize, at_break: *bool) callconv(.c) bool;

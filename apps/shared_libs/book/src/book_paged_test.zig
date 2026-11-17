@@ -22,9 +22,10 @@ const k_ra8_err_null_ptr: u16 = 0x504;
 
 const k_book_nil: u32 = 0xFFFFFFFF;
 
-// ---- Shared leaf seams (book_xhtml.c / book.c, still C) --------------------
+// ---- Shared leaf seams (book_xhtml.zig since RA8FW-1250) -------------------
 // Faithful mirrors so the walk output matches the resident behaviour the C
-// tests pin; the test module links no C archive.
+// tests pin; this test module links no archive and imports no other book
+// TU, so it carries its own copies.
 
 fn internalEmit(out: [*]u8, cap: usize, pos: *usize, bytes: []const u8) bool {
     if (pos.* + bytes.len > cap) return false;
