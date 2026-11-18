@@ -82,3 +82,23 @@ test "a binary that is not a module is never packed" {
         module_pack.packModule(std.testing.allocator, &bin, identity, try keyPair()),
     );
 }
+
+test "a packed module is refused at admission when its grant withholds storage" {
+    const key_pair = try keyPair();
+    const bin = module();
+    var with_storage = identity;
+    with_storage.capabilities = appimg.Capability.display | appimg.Capability.storage;
+    const image = try module_pack.packModule(std.testing.allocator, &bin, with_storage, key_pair);
+    defer std.testing.allocator.free(image);
+
+    const public_key = key_pair.public_key.toBytes();
+    const withheld = appimg.Capability.known & ~appimg.Capability.storage;
+    try std.testing.expectError(
+        gate.Error.AccessDenied,
+        gate.verify(pack.hostBackend(&public_key, withheld), image),
+    );
+
+    // The full grant admits the same image unchanged.
+    const head = try admit(image, key_pair);
+    try std.testing.expectEqual(@as(u32, 0x228), head.entry_offset);
+}
