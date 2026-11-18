@@ -21,7 +21,6 @@
 #
 # Layout:
 #   inc/book.h   format structs + header-only XIP accessors
-#   src/book.c               resident blob integrity/bounds validation
 #   src/book_stream.zig      streamed semantic and integrity passes
 #                            (RA8FW-1248: same Zig archive; the C TU is deleted)
 #   src/book_stream_wire.zig streamed wire decoding and layout validation

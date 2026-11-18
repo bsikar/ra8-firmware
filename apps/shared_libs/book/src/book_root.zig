@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Aggregator root for the Zig book archive (RA8FW-1242, RA8FW-1244,
-//! RA8FW-1247, RA8FW-1248, RA8FW-1249, RA8FW-1250): pulls in every ported book TU so its C ABI
+//! RA8FW-1247, RA8FW-1248, RA8FW-1249, RA8FW-1250, RA8FW-1251): pulls in every ported book TU so its C ABI
 //! exports land in libra8_book.a. Each
 //! export is referenced by address, so none can be lazily dropped the way
 //! the ra8_imgdec archive dropped its hook exports (Bug RA8FW-1243).
@@ -13,6 +13,7 @@ const chunked_validate = @import("book_chunked_validate.zig");
 const stream = @import("book_stream.zig");
 const paged = @import("book_paged.zig");
 const xhtml = @import("book_xhtml.zig");
+const book = @import("book.zig");
 
 comptime {
     _ = &wire.priv_book_stream_read;
@@ -40,4 +41,9 @@ comptime {
     _ = &xhtml.priv_book_is_block;
     _ = &xhtml.priv_book_emit_text;
     _ = &xhtml.priv_book_emit_break;
+    _ = &book.book_validate;
+    _ = &book.book_open;
+    _ = &book.priv_book_crc32_extend;
+    _ = &book.priv_book_container_header_fields;
+    _ = &book.priv_book_container_table_entry;
 }
