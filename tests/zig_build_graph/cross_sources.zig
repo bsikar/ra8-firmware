@@ -380,6 +380,17 @@ pub const cross_include_dirs = [_][]const u8{
     "libs/ra8_hal/inc",
     "libs/ra8_net_pal/inc",
     "libs/ra8_usb_pal/inc",
+    // RA8FW-318: ra8_nsc.h includes ra8_io_netif.h, and the NSC sources
+    // compile into every app that does not name NO_NSC. The seam rides the
+    // universal include set (its archive stays out: the veneers reference it
+    // weakly), so the directory goes on the path ahead of ra8_nsc.
+    "libs/ra8_io/inc",
+    // ra8_mpu/inc is NOT on this list: no universal source spells ra8_mpu.h.
+    // cmake/ra8_add_app.cmake reaches it only through a LIBS row (the LIBS
+    // loop appends libs/<name>/inc to _ra8_lib_inc), so the Zig graph does
+    // the same via .libraries. tz_nsc_cgc_usb is the only app in the table
+    // whose boot unit spells the header; the RA8P1 board's boot unit opens
+    // its own only under RA8_BOOT_MPU_VIA_HAL, which no app defines.
     "libs/ra8_nsc/inc",
     "libs/ra8_secure_app/inc",
     // The neutral fw_if_* port contracts. The board umbrella publishes the
@@ -394,6 +405,118 @@ pub const cross_include_dirs = [_][]const u8{
     // cross_source_dirs. It is LAST of the universal set and ahead of every
     // library directory, so a board header shadows a library's same-named one.
 };
+
+/// The include directories the Zig universal list carries without a CMake
+/// counterpart. Each one is a named seam, not an accident: `libs/ra8_io/inc`
+/// exists because ra8_nsc.h includes ra8_io_netif.h and the NSC sources
+/// compile into every app that does not name NO_NSC, while CMake reaches the
+/// same header through ra8_shared_lib_includes() on the NSC units' compile
+/// surface (RA8FW-318). A new seam joins this list only with its own comment.
+pub const universal_include_exceptions = [_][]const u8{"libs/ra8_io/inc"};
+
+/// The one mismatch includeParityDrift() can find. `dropped`: a directory
+/// cmake/ra8_add_app.cmake's universal block spells that the Zig list lost,
+/// or no longer spells at the position CMake's order implies. `smuggled`: a
+/// `libs/` directory only the Zig list carries, exception list
+/// notwithstanding.
+pub const IncludeParityDrift = struct {
+    dropped: ?[]const u8 = null,
+    smuggled: ?[]const u8 = null,
+};
+
+/// The literal `libs/<name>/inc` entries inside ra8_add_app()'s universal
+/// target_include_directories block, in the order the block spells them.
+/// The app-owned directories, the board directory and the two variables
+/// (`${_ra8_lib_inc}`, `${_ra8_extra_inc}`) are not literal and so do not
+/// appear; the Zig graph mirrors those with its own mechanisms.
+pub fn cmakeUniversalIncludeEntries(source: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}![]const []const u8 {
+    const block_start = std.mem.indexOf(u8, source, "target_include_directories(\n    ${_ra8_elf}") orelse
+        @panic("ra8: ra8_add_app() lost its universal target_include_directories block (RA8FW-1255)");
+    const block_end = std.mem.indexOfPos(u8, source, block_start, "\n  )") orelse
+        @panic("ra8: ra8_add_app()'s universal target_include_directories block never closes (RA8FW-1255)");
+    const block = source[block_start..block_end];
+
+    var entries: std.ArrayList([]const u8) = .empty;
+    const marker = "${RA8_REPO_ROOT}/libs/";
+    var rest = block;
+    while (std.mem.indexOf(u8, rest, marker)) |at| {
+        rest = rest[at + marker.len ..];
+        const slash = std.mem.indexOfScalar(u8, rest, '/') orelse break;
+        const name = rest[0..slash];
+        if (!std.mem.startsWith(u8, rest[slash..], "/inc")) continue;
+        const entry = std.fmt.allocPrint(allocator, "libs/{s}/inc", .{name}) catch return error.OutOfMemory;
+        var duplicate = false;
+        for (entries.items) |previous| {
+            if (std.mem.eql(u8, previous, entry)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) entries.append(allocator, entry) catch return error.OutOfMemory;
+    }
+    return entries.items;
+}
+
+/// Whether the Zig universal include list and CMake's still agree: every
+/// CMake-spelled directory must appear on the Zig path in CMake's order, and
+/// every `libs/` entry on the Zig path must be CMake's or a named exception.
+pub fn includeParityDrift(cm_entries: []const []const u8) ?IncludeParityDrift {
+    var cursor: usize = 0;
+    for (cm_entries) |entry| {
+        var found = false;
+        var i = cursor;
+        while (i < cross_include_dirs.len) : (i += 1) {
+            if (std.mem.eql(u8, cross_include_dirs[i], entry)) {
+                found = true;
+                cursor = i + 1;
+                break;
+            }
+        }
+        if (!found) return .{ .dropped = entry };
+    }
+
+    for (cross_include_dirs) |entry| {
+        if (!std.mem.startsWith(u8, entry, "libs/")) continue;
+        for (universal_include_exceptions) |exception| {
+            if (std.mem.eql(u8, entry, exception)) break;
+        } else {
+            var in_cmake = false;
+            for (cm_entries) |cm_entry| {
+                if (std.mem.eql(u8, cm_entry, entry)) {
+                    in_cmake = true;
+                    break;
+                }
+            }
+            if (!in_cmake) return .{ .smuggled = entry };
+        }
+    }
+    return null;
+}
+
+var universal_include_parity_ran = false;
+
+/// One configure-time check that the Zig universal include list and
+/// cmake/ra8_add_app.cmake's still agree (RA8FW-1255). Wired into
+/// crossIncludeDirs() so every consumer of the list reads a path this check
+/// has run for; the flag makes the per-app calls free, and the read is
+/// dependency-tracked, so editing the CMake block re-runs it.
+pub fn assertUniversalIncludeParity(b: *std.Build) void {
+    if (universal_include_parity_ran) return;
+    universal_include_parity_ran = true;
+    const source = src_tree.readFile(b, "cmake/ra8_add_app.cmake", 256 * 1024) catch
+        @panic("ra8: cannot read cmake/ra8_add_app.cmake to check include-path parity (RA8FW-1255)");
+    const entries = cmakeUniversalIncludeEntries(source, b.allocator) catch @panic("OOM");
+    if (includeParityDrift(entries)) |drift| {
+        if (drift.dropped) |dir| std.debug.panic(
+            "ra8: cmake/ra8_add_app.cmake's universal include path spells {s}, which the Zig cross_include_dirs list does not spell in CMake's order anymore (RA8FW-1255)",
+            .{dir},
+        );
+        if (drift.smuggled) |dir| std.debug.panic(
+            "ra8: the Zig cross_include_dirs list spells {s}, which cmake/ra8_add_app.cmake's universal block does not and universal_include_exceptions does not cover (RA8FW-1255)",
+            .{dir},
+        );
+    }
+}
 
 /// The chip adapter include directories every board app gets, in the order
 /// cmake/ra8_app/board_adapters.cmake appends them: the board's clock profile
@@ -543,6 +666,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 /// directories, the universal first-party set, then one directory per named
 /// library that has headers.
 pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
+    assertUniversalIncludeParity(b);
     var dirs: std.ArrayList([]const u8) = .empty;
     // CMake adds `<app>/inc` UNCONDITIONALLY, and it is FIRST, ahead of the
     // app's own src/ and every library: an app-local header shadows a

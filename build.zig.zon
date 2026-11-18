@@ -22,6 +22,7 @@
         .ra8_psa_crypto = .{ .path = "libs/ra8_psa_crypto" },
         .ra8_sdmmc_spi = .{ .path = "libs/ra8_sdmmc_spi" },
         .ra8_tz_secure_boot = .{ .path = "libs/ra8_tz_secure_boot" },
+        .ra8_mpu = .{ .path = "libs/ra8_mpu" },
         .ra8_usb_pal = .{ .path = "libs/ra8_usb_pal" },
         .ra8_hal = .{ .path = "libs/ra8_hal" },
         .ra8_io = .{ .path = "libs/ra8_io" },

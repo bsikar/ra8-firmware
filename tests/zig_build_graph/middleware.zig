@@ -305,7 +305,6 @@ pub const usbx = Middleware{
         "port/usbx/src/ux_dcd_ra8_usb_dvst.c",
         "port/usbx/src/ux_dcd_ra8_usb_dvst_default.c",
         "port/usbx/src/ux_dcd_ra8_usb_irq.c",
-        "port/usbx/src/ux_hcd_ra8_usb.c",
         "port/usbx/src/ux_device_class_storage_inquiry.c",
     },
     .app_include_dirs = &.{"port/usbx/inc"},
