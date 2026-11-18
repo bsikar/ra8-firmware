@@ -34,9 +34,9 @@ const bench_sources = [_][]const u8{
     "trace.c",
 };
 
-const book_tus = [_][]const u8{
-    "book.c",
-};
+// book.c is gone (RA8FW-1251): the whole book package is Zig now, and the
+// ra8_book archive carries every book symbol, so no book C TU remains here.
+const book_tus = [_][]const u8{};
 
 // The contract test drives the replay engine through inc/cache_bench.h:
 // same first-party set as the tool minus the command-line front end

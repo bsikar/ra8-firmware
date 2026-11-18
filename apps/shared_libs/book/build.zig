@@ -83,4 +83,13 @@ pub fn build(b: *std.Build) void {
     });
     const book_xhtml_test = b.addTest(.{ .root_module = xhtml_test_module });
     test_step.dependOn(&b.addRunArtifact(book_xhtml_test).step);
+
+    const book_test_module = b.createModule(.{
+        .root_source_file = b.path("src/book_test.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const book_test = b.addTest(.{ .root_module = book_test_module });
+    test_step.dependOn(&b.addRunArtifact(book_test).step);
 }

@@ -74,9 +74,10 @@ const rabook_compile_dir = "../../apps/shared_libs/rabook_compile/src/";
 // The whole jof producer and reader are Zig (libjof.a), and the compression
 // seam is Zig too (libcompress.a, RA8FW-1155): no first-party C TU remains.
 
-const book_closure = [_][]const u8{
-    book_dir ++ "book.c",
-};
+// book.c is gone (RA8FW-1251): the whole book package is Zig now, and the
+// ra8_book archive (book_wire_lib) carries every book symbol, so no book C
+// closure remains in the imagepack build.
+const book_closure = [_][]const u8{};
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
 
@@ -239,7 +240,6 @@ pub fn build(b: *std.Build) void {
     addToolIncludes(b, mod);
     addWebpIncludes(b, mod);
     addC(b, mod, ".", &tool_sources, &first_party_flags);
-    addC(b, mod, ".", &book_closure, &first_party_flags);
     mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &miniz_flags });
     addWebp(b, mod);
     const exe = b.addExecutable(.{ .name = "rabook_imagepack", .root_module = mod });
@@ -416,7 +416,6 @@ pub fn build(b: *std.Build) void {
             addC(b, tmod, ".", unit.files, &first_party_flags);
         }
         if (unit.quiet_files.len > 0) addC(b, tmod, ".", unit.quiet_files, &.{"-w"});
-        if (unit.bookc) addC(b, tmod, ".", &book_closure, &first_party_flags);
         const mz_flags: []const []const u8 = if (unit.no_malloc_miniz) &miniz_flags_malloc else &miniz_flags;
         tmod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = mz_flags });
         if (unit.webp) {
