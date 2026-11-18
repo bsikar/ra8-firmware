@@ -132,4 +132,29 @@ pub const apps = [_]CrossApp{
             .rpc = true,
         },
     },
+    .{
+        // The Module Manager on the RA8P1 (RA8FW-680, under RA8FW-1186):
+        // the M85 carries the translation module's signed `.ra8app` in its
+        // own `.txm_module` in MRAM (CrossApp.ra8app_module), admits it,
+        // memory-loads it and serves the shell's calls, so the emulator can
+        // run the load with no card. Zig throughout, so no CMakeLists.
+        // Appended last so the positional picks stay put.
+        .name = "txm_manager_ra8p1",
+        .dir = "examples/ra8p1_foundation/txm_manager_ra8p1",
+        .board = "libs/ra8_board_ra8p1",
+        .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            // Both the gate and the API: one root, so appimg.zig stays in
+            // a single module graph.
+            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+        },
+        .ra8app_module = "txm_translate_m33",
+        .stack_bytes = 8192,
+    },
+
 };

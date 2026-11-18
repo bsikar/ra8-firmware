@@ -518,7 +518,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void MemManage_Handler(void)
+[[gnu::weak, gnu::naked, noreturn]] void MemManage_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -540,7 +540,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void BusFault_Handler(void)
+[[gnu::weak, gnu::naked, noreturn]] void BusFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"

@@ -150,6 +150,29 @@ fn txmModuleObjects(b: *std.Build, named: ?[]const u8, tools: cross_build.Tools,
     return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, built.bin)}) catch @panic("OOM");
 }
 
+/// The signed `.ra8app` of a module an image carries to admit and load
+/// itself (CrossApp.ra8app_module, RA8FW-680): the module is built, packed
+/// into a `.ra8app` (txm_ra8app.add, the same packer the `txm-translate-m33`
+/// step installs to arm/), and objcopied into a `.txm_module` object the
+/// same way a raw module joins an image's link (pack), so the image and its
+/// blob come from one build.
+fn ra8appModuleObjects(b: *std.Build, step: *std.Build.Step, named: ?[]const u8, tools: cross_build.Tools, globals: build_type.Globals) []const std.Build.LazyPath {
+    const wanted = named orelse return &.{};
+    const module = cpu1_txm_hello.find(wanted) orelse @panic("an image names a ThreadX module with no entry in cpu1_txm_hello.modules");
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
+    const identity: txm_ra8app.Identity = if (std.mem.eql(u8, wanted, "txm_translate_m33"))
+        txm_ra8app.translate
+    else if (std.mem.eql(u8, wanted, "txm_hello_m33"))
+        txm_ra8app.hello
+    else if (std.mem.eql(u8, wanted, "txm_tour_m33"))
+        txm_ra8app.tour
+    else
+        @panic("an image names a module txm_ra8app has no Identity for");
+    const ra8app = txm_ra8app.add(b, step, module.name, built.bin, identity);
+    return b.allocator.dupe(std.Build.LazyPath, &.{cpu1_txm_hello.pack(b, tools.objcopy, module, ra8app)}) catch @panic("OOM");
+}
+
 /// The `txm-hello-m33` step: the hello-world CPU1 module image (RA8FW-430).
 /// Also signs it into arm/txm_hello_m33.ra8app and checks that file in
 /// `test_step` (RA8FW-479), and signs the faulting module into
@@ -469,7 +492,7 @@ fn addCrossApp(
     const middlewares = m85_txm_manager.kernelFor(
         b.allocator,
         middleware.resolve(b.allocator, app.uses),
-        app.txm_module != null or app.txm_manager,
+        app.txm_module != null or app.txm_manager or app.ra8app_module != null,
     );
     // Most hand the app an archive. USBX hands it its objects, every one of
     // which joins the link (middleware.Middleware.link_objects).
@@ -648,6 +671,9 @@ fn addCrossApp(
     // The M85 manager's own module blob, pinned by the app script's
     // `.txm_module` section the way the CPU1 image pins its own.
     for (txmModuleObjects(b, app.txm_module, tools, globals)) |blob| link.addFileArg(blob);
+    // An image carrying a signed `.ra8app` (RA8FW-680) links it the same
+    // way: objcopied into `.txm_module`, the image verifies and loads it.
+    for (ra8appModuleObjects(b, arm_step, app.ra8app_module, tools, globals)) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
     for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
