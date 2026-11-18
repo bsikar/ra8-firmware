@@ -476,7 +476,10 @@ pub const cross_apps = [_]CrossApp{
         // image's load home carved out of the rest.
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .mram_length = "512K",
-        .libraries = &.{"ra8_tz_secure_boot"},
+        // The CMakeLists spells LIBS ra8_mpu ra8_tz_secure_boot: the
+        // ns_usb_handoff boot unit includes ra8_mpu.h, so the board rides
+        // the same LIBS row here instead of a universal include directory.
+        .libraries = &.{ "ra8_mpu", "ra8_tz_secure_boot" },
         .zig_libraries = &.{},
         .aux_srcs = &.{ "src/ns_main.c", "src/ns_usb.c", "src/ns_usb_host.c" },
         .nsc_srcs = &.{"ra8_nsc_cgc.c"},

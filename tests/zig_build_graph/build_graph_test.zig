@@ -1015,3 +1015,62 @@ test "a Zig boot unit learns TrustZone and the cache/MPU gates from its app" {
 
     try std.testing.expectEqual(4, @typeInfo(sources.BootOptions).@"struct".field_names.len);
 }
+
+// RA8FW-1255: the Zig universal include list is a hand copy of
+// cmake/ra8_add_app.cmake's universal target_include_directories block, and
+// the hand copy already drifted once (ra8_mpu/inc rode it with no CMake
+// counterpart). These tests pin the copy to the CMake block through the same
+// parser the configure-time check runs.
+test "the universal include list keeps CMake parity (RA8FW-1255)" {
+    // The parser allocates each entry it reads off the block; an arena lets
+    // the test observe the parse without bookkeeping every slice.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const fixture =
+        "  target_include_directories(\n" ++
+        "    ${_ra8_elf}\n" ++
+        "    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_core/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_hal/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_net_pal/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc\n" ++
+        "            # a comment between entries\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_nsc/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_secure_app/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/if/inc\n" ++
+        "            ${_ra8_board_dir}/inc\n" ++
+        "            ${_ra8_lib_inc}\n" ++
+        "            ${_ra8_extra_inc}\n" ++
+        "  )\n";
+
+    const entries = try sources.cmakeUniversalIncludeEntries(fixture, alloc);
+    try std.testing.expectEqual(@as(usize, 7), entries.len);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", entries[0]);
+    try std.testing.expectEqualStrings("libs/if/inc", entries[6]);
+
+    // The Zig list agrees with the CMake block, with ra8_io/inc riding the
+    // documented RA8FW-318 seam exception.
+    try std.testing.expect(sources.includeParityDrift(entries) == null);
+
+    // A CMake directory the Zig list spells out of CMake's order is a drift
+    // the check names: with the order broken, the CMake entry that can no
+    // longer be read off the Zig path in sequence is the report. The fixture
+    // below swaps the first two entries, so the report is ra8_core.
+    const reordered_fixture =
+        "  target_include_directories(\n" ++
+        "    ${_ra8_elf}\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_hal/inc\n" ++
+        "            ${RA8_REPO_ROOT}/libs/ra8_core/inc\n" ++
+        "  )\n";
+    const reordered = try sources.cmakeUniversalIncludeEntries(reordered_fixture, alloc);
+    try std.testing.expectEqual(@as(usize, 2), reordered.len);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", sources.includeParityDrift(reordered).?.dropped.?);
+
+    // And the reverse: an empty CMake block makes the Zig list's first entry
+    // the smuggled one, exception list notwithstanding.
+    try std.testing.expectEqualStrings(
+        "libs/ra8_core/inc",
+        sources.includeParityDrift(&.{}).?.smuggled.?,
+    );
+}
