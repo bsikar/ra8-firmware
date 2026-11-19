@@ -327,6 +327,7 @@ pub const Err = enum(u32) {
     invalid_arg = 0x103,
     null_ptr = 0x504,
     invalid_state = 0x104,
+    out_of_range = 0x208,
 };
 
 /// Diagnostic log seam standing in for ra8_log_error. The C module logs one
@@ -662,4 +663,149 @@ test "viewRebind guards state and re-clamps to the new source" {
     try std.testing.expectEqual(Err.invalid_state, viewRebind(&closed, &src2, 10));
     try std.testing.expectEqual(Err.invalid_state, viewInvalidate(&closed, 10));
     try std.testing.expectEqual(Err.ok, viewInvalidate(&v, 900));
+}
+
+/// Pan direction (zoom_pan_t); none is the zero value and names no movement.
+pub const Pan = enum(u8) { none = 0, left = 1, right = 2, up = 3, down = 4 };
+
+/// (zoom_scale_cycle): zero-valued min lifts to the engine floor.
+pub fn scaleCycle(scale: u8, min: u8, max: u8) u8 {
+    const ladder_min: u8 = @intCast(scale_min);
+    const floor_v: u8 = if (min == 0) ladder_min else min;
+    const ceiling_v: u8 = if (max < floor_v) floor_v else max;
+    if (scale >= ceiling_v) {
+        return floor_v;
+    }
+    const doubled: u16 = @as(u16, scale) * @as(u16, 2);
+    if (doubled >= ceiling_v) {
+        return ceiling_v;
+    }
+    if (doubled < floor_v) {
+        return floor_v;
+    }
+    return @intCast(doubled);
+}
+
+/// Change the magnification keeping the plane point under the focus fixed
+/// (zoom_view_set_scale): the anchor moves by the rescale, then re-clamps.
+pub fn viewSetScale(v: ?*View, scale: u8, focus_x: i32, focus_y: i32, now_ms: u32) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("set_scale on a closed view");
+        return .invalid_state;
+    }
+    if (scale < @as(u8, @intCast(scale_min)) or scale > v.?.scale_max) {
+        logErr("requested scale is off the ladder");
+        return .out_of_range;
+    }
+    if (scale == v.?.scale) {
+        return .ok;
+    }
+    const off_x: i32 = focus_x - v.?.dst.x;
+    const off_y: i32 = focus_y - v.?.dst.y;
+    const old: i64 = v.?.scale;
+    const plane_x: i64 = @as(i64, v.?.anchor_x + off_x) * @as(i64, scale);
+    const plane_y: i64 = @as(i64, v.?.anchor_y + off_y) * @as(i64, scale);
+    const scaled_x: i64 = @divTrunc(plane_x, old);
+    const scaled_y: i64 = @divTrunc(plane_y, old);
+    v.?.anchor_x = @intCast(scaled_x - off_x);
+    v.?.anchor_y = @intCast(scaled_y - off_y);
+    v.?.scale = scale;
+    reclamp(v.?);
+    touch(v.?, now_ms);
+    return .ok;
+}
+
+/// Move the viewport by a caller delta (zoom_view_pan): a pan that clamps to
+/// no movement owes the panel nothing.
+pub fn viewPan(v: ?*View, dx: i32, dy: i32, now_ms: u32) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("pan on a closed view");
+        return .invalid_state;
+    }
+    const was_x: i32 = v.?.anchor_x;
+    const was_y: i32 = v.?.anchor_y;
+    v.?.anchor_x = satAdd(v.?.anchor_x, dx);
+    v.?.anchor_y = satAdd(v.?.anchor_y, dy);
+    reclamp(v.?);
+    if ((v.?.anchor_x != was_x) or (v.?.anchor_y != was_y)) {
+        touch(v.?, now_ms);
+    }
+    return .ok;
+}
+
+/// Pan one viewport step toward a direction (zoom_view_pan_dir): each step
+/// advances by the fraction of the viewport that is NOT retained as overlap.
+pub fn viewPanDir(v: ?*View, dir: Pan, now_ms: u32) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("pan_dir on a closed view");
+        return .invalid_state;
+    }
+    const step_x: i32 = v.?.dst.w - @divTrunc(v.?.dst.w, overlap_div);
+    const step_y: i32 = v.?.dst.h - @divTrunc(v.?.dst.h, overlap_div);
+    var dx: i32 = 0;
+    var dy: i32 = 0;
+    switch (dir) {
+        .left => dx = -step_x,
+        .right => dx = step_x,
+        .up => dy = -step_y,
+        .down => dy = step_y,
+        .none => {},
+    }
+    return viewPan(v, dx, dy, now_ms);
+}
+
+test "scaleCycle doubles and wraps" {
+    try std.testing.expectEqual(@as(u8, 2), scaleCycle(1, 1, 8));
+    try std.testing.expectEqual(@as(u8, 8), scaleCycle(4, 1, 8));
+    try std.testing.expectEqual(@as(u8, 1), scaleCycle(8, 1, 8));
+    try std.testing.expectEqual(@as(u8, 4), scaleCycle(2, 2, 4));
+    try std.testing.expectEqual(@as(u8, 8), scaleCycle(5, 1, 8));
+    try std.testing.expectEqual(@as(u8, 3), scaleCycle(1, 3, 8));
+}
+
+test "viewSetScale keeps the focus plane point fixed" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 24 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    try std.testing.expectEqual(Err.ok, viewSetScale(&v, 4, 16, 12, 100));
+    try std.testing.expectEqual(@as(u8, 4), v.scale);
+    try std.testing.expectEqual(@as(i32, 24), v.anchor_x);
+    try std.testing.expectEqual(@as(i32, 20), v.anchor_y);
+    try std.testing.expectEqual(Err.ok, viewSetScale(&v, 4, 16, 12, 200));
+    try std.testing.expectEqual(Err.out_of_range, viewSetScale(&v, 5, 0, 0, 300));
+    var closed = View{};
+    try std.testing.expectEqual(Err.invalid_state, viewSetScale(&closed, 2, 0, 0, 0));
+}
+
+test "viewPan touches only when it moves" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    try std.testing.expectEqual(Err.ok, viewPan(&v, 4, 0, 100));
+    try std.testing.expectEqual(@as(i32, 4), v.anchor_x);
+    try std.testing.expect(v.pending);
+    v.pending = false;
+    try std.testing.expectEqual(Err.ok, viewPan(&v, 0, 0, 200));
+    try std.testing.expect(!v.pending);
+    try std.testing.expectEqual(Err.ok, viewPanDir(&v, .right, 300));
+    try std.testing.expectEqual(@as(i32, 32), v.anchor_x);
+    var closed = View{};
+    try std.testing.expectEqual(Err.invalid_state, viewPan(&closed, 1, 0, 0));
+    try std.testing.expectEqual(Err.invalid_state, viewPanDir(&closed, .up, 0));
 }
