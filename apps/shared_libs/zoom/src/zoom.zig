@@ -343,15 +343,41 @@ pub const Err = enum(u32) {
     out_of_range = 0x208,
 };
 
-/// Diagnostic log seam standing in for ra8_log_error. The C module logs one
-/// line per rejected configuration; the Zig port keeps the same messages but
-/// routes them through a caller-installed hook, default null (silent). The
-/// ABI slice wires this to the real log sink.
+/// The ra8_log_error macro's backend entry (ra8_log.h): tag + free-form
+/// message. Declared here because the port's include closure does not reach
+/// ra8_log.h's macro surface; the real build links the C core's definition.
+extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.C) void;
+
+/// Component tag for the module's log lines (zoom.c s_tag).
+const s_tag: [*:0]const u8 = "zoom";
+
+/// Caller-installed log override, null by default. Installed, the hook
+/// receives every diagnostic line instead of the C core's sink; the
+/// standalone test build installs nothing and the extern stays silent.
 pub const LogFn = *const fn (msg: []const u8) void;
 pub var log_hook: ?LogFn = null;
 
-fn logErr(comptime msg: []const u8) void {
-    if (log_hook) |f| f(msg);
+/// One log line per rejected configuration, the same messages the C module
+/// emits (zoom.c RA8_CHECK_* calls), routed through the C core's
+/// ra8_log_emit_error under the module's tag unless a hook overrides.
+fn logErr(comptime msg: [:0]const u8) void {
+    if (log_hook) |f| {
+        f(msg);
+    } else {
+        ra8_log_emit_error(s_tag, msg.ptr);
+    }
+}
+
+// Standalone test builds link without ra8_core, so the test build defines a
+// silent sink for the extern; the firmware build links the C core's own.
+comptime {
+    if (@import("builtin").is_test) {
+        @export(testSilentLogSink, .{ .name = "ra8_log_emit_error" });
+    }
+}
+fn testSilentLogSink(tag: [*:0]const u8, message: [*:0]const u8) callconv(.C) void {
+    _ = tag;
+    _ = message;
 }
 
 /// The view's required pointers must all be live (internal_cfg_ptrs_ok).
