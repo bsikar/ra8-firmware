@@ -168,10 +168,9 @@ pub const Rect = struct {
     h: i32 = 0,
 };
 
-/// The gray8 sub-rectangle reader behind a bound source (zoom_read_fn).
-/// The typed error seam lands with the view ABI slice; the raw pointer
-/// keeps the struct layout honest in the meantime.
-pub const ReadFn = ?*const anyopaque;
+/// The gray8 sub-rectangle reader behind a bound source (zoom_read_fn):
+/// the typed error seam, carrying the exact C signature.
+pub const ReadFn = ?*const fn (?*anyopaque, u32, u32, u32, u32, [*]u8, u32) callconv(.C) Err;
 
 /// A magnifiable full-resolution image behind the gray8 sub-rect seam
 /// (zoom_source_t): the reader function, its context, and the extent.
@@ -442,19 +441,19 @@ pub fn sourceInit(out: ?*Source, read: ReadFn, ctx: ?*anyopaque, width: u32, hei
 
 test "cfgPtrsOk rejects each missing pointer" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = &buf, .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     try std.testing.expectEqual(Err.ok, cfgPtrsOk(&cfg));
     cfg.src.read = null;
     try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
-    cfg.src.read = &buf;
+    cfg.src.read = testRead;
     cfg.scratch.row = null;
     try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
 }
 
 test "cfgExtentOk checks viewport and source extents" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     try std.testing.expectEqual(Err.ok, cfgExtentOk(&cfg));
     cfg.dst.w = 0;
@@ -466,7 +465,7 @@ test "cfgExtentOk checks viewport and source extents" {
 
 test "cfgScratchOk derives strip rows and caps the packed need" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 2 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 2 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 64, .packed_cap = 33 };
     var rows: u16 = 0;
     try std.testing.expectEqual(Err.ok, cfgScratchOk(&cfg, &rows));
@@ -505,14 +504,13 @@ test "cfgLadderOk lifts zero defaults and bounds the ladder" {
 }
 
 test "sourceInit binds reader, context and extent" {
-    var buf: [8]u8 = undefined;
     var src = Source{};
-    try std.testing.expectEqual(Err.ok, sourceInit(&src, buf[0..].ptr, null, 800, 600));
+    try std.testing.expectEqual(Err.ok, sourceInit(&src, testRead, null, 800, 600));
     try std.testing.expectEqual(@as(u32, 800), src.width);
     try std.testing.expectEqual(@as(u32, 600), src.height);
-    try std.testing.expectEqual(Err.null_ptr, sourceInit(null, buf[0..].ptr, null, 8, 8));
+    try std.testing.expectEqual(Err.null_ptr, sourceInit(null, testRead, null, 8, 8));
     try std.testing.expectEqual(Err.null_ptr, sourceInit(&src, null, null, 8, 8));
-    try std.testing.expectEqual(Err.invalid_arg, sourceInit(&src, buf[0..].ptr, null, 0, 8));
+    try std.testing.expectEqual(Err.invalid_arg, sourceInit(&src, testRead, null, 0, 8));
 }
 
 test "log hook receives rejected-config messages" {
@@ -633,7 +631,7 @@ pub fn viewInvalidate(v: ?*View, now_ms: u32) Err {
 
 test "viewOpen adopts a valid config" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 24 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
@@ -652,11 +650,11 @@ test "viewOpen adopts a valid config" {
 
 test "viewRebind guards state and re-clamps to the new source" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
-    var src2 = Source{ .read = buf[0..].ptr, .width = 100, .height = 100 };
+    var src2 = Source{ .read = testRead, .width = 100, .height = 100 };
     try std.testing.expectEqual(Err.ok, viewRebind(&v, &src2, 500));
     try std.testing.expectEqual(@as(u32, 100), v.src.width);
     var closed = View{};
@@ -766,6 +764,17 @@ pub fn viewPanDir(v: ?*View, dir: Pan, now_ms: u32) Err {
     return viewPan(v, dx, dy, now_ms);
 }
 
+fn testRead(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: [*]u8, out_stride: u32) callconv(.C) Err {
+    _ = ctx;
+    _ = x;
+    _ = y;
+    _ = w;
+    _ = h;
+    _ = out;
+    _ = out_stride;
+    return .ok;
+}
+
 test "scaleCycle doubles and wraps" {
     try std.testing.expectEqual(@as(u8, 2), scaleCycle(1, 1, 8));
     try std.testing.expectEqual(@as(u8, 8), scaleCycle(4, 1, 8));
@@ -777,7 +786,7 @@ test "scaleCycle doubles and wraps" {
 
 test "viewSetScale keeps the focus plane point fixed" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 24 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
@@ -793,7 +802,7 @@ test "viewSetScale keeps the focus plane point fixed" {
 
 test "viewPan touches only when it moves" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
@@ -883,7 +892,7 @@ pub fn viewPresent(v: ?*View, out: ?*Present) Err {
 
 test "viewWindow names the clipped source span" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
@@ -900,7 +909,7 @@ test "viewWindow names the clipped source span" {
 
 test "viewTick promotes to quality after the settle window" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
@@ -916,7 +925,7 @@ test "viewTick promotes to quality after the settle window" {
 
 test "viewPresent clears the pending flag" {
     var buf: [64]u8 = undefined;
-    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    var cfg = View{ .src = .{ .read = testRead, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
     cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     var v = View{};
     try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
