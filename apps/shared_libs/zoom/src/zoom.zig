@@ -809,3 +809,126 @@ test "viewPan touches only when it moves" {
     try std.testing.expectEqual(Err.invalid_state, viewPan(&closed, 1, 0, 0));
     try std.testing.expectEqual(Err.invalid_state, viewPanDir(&closed, .up, 0));
 }
+
+/// The refresh decision a panel consumes (zoom_present_t).
+pub const Present = struct {
+    rect: Rect = .{},
+    refresh: Refresh = .fast,
+    present: bool = false,
+};
+
+/// Source-space window the viewport samples (zoom_view_window).
+pub fn viewWindow(v: ?*const View, out: ?*Rect) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (out == null) {
+        logErr("out rect must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("window query on a closed view");
+        return .invalid_state;
+    }
+    const ax = axis(v.?.anchor_x, v.?.dst.w, @intCast(v.?.scale), @intCast(v.?.src.width));
+    const ay = axis(v.?.anchor_y, v.?.dst.h, @intCast(v.?.scale), @intCast(v.?.src.height));
+    out.?.x = @intCast(ax.s0);
+    out.?.w = @intCast(ax.count);
+    out.?.y = @intCast(ay.s0);
+    out.?.h = @intCast(ay.count);
+    return .ok;
+}
+
+/// Settle tick (zoom_view_tick): only an open view with an armed settle
+/// promotes to quality; the millisecond difference is unsigned, so a
+/// wrapping counter settles early rather than late.
+pub fn viewTick(v: ?*View, now_ms: u32) bool {
+    if (v == null) {
+        return false;
+    }
+    if (!v.?.active or !v.?.settle_armed) {
+        return false;
+    }
+    if (now_ms -% v.?.last_input_ms < v.?.settle_ms) {
+        return false;
+    }
+    v.?.settle_armed = false;
+    v.?.pending = true;
+    v.?.pending_kind = .quality;
+    return true;
+}
+
+/// Hand the refresh decision to the panel and clear the pending flag
+/// (zoom_view_present).
+pub fn viewPresent(v: ?*View, out: ?*Present) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (out == null) {
+        logErr("present out must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("present on a closed view");
+        return .invalid_state;
+    }
+    out.?.rect = v.?.dst;
+    out.?.refresh = v.?.pending_kind;
+    out.?.present = v.?.pending;
+    v.?.pending = false;
+    return .ok;
+}
+
+test "viewWindow names the clipped source span" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    var win = Rect{};
+    try std.testing.expectEqual(Err.ok, viewWindow(&v, &win));
+    try std.testing.expectEqual(@as(i32, 0), win.x);
+    try std.testing.expectEqual(@as(i32, 0), win.y);
+    try std.testing.expect(win.w > 0 and win.w <= 640);
+    try std.testing.expect(win.h > 0 and win.h <= 480);
+    var closed = View{};
+    try std.testing.expectEqual(Err.invalid_state, viewWindow(&closed, &win));
+    try std.testing.expectEqual(Err.null_ptr, viewWindow(&v, null));
+}
+
+test "viewTick promotes to quality after the settle window" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    try std.testing.expectEqual(Err.ok, viewPan(&v, 4, 0, 100));
+    try std.testing.expect(!viewTick(&v, 100));
+    try std.testing.expect(!viewTick(&v, 449));
+    try std.testing.expect(viewTick(&v, 450));
+    try std.testing.expect(!v.settle_armed);
+    try std.testing.expect(v.pending);
+    try std.testing.expectEqual(Refresh.quality, v.pending_kind);
+    try std.testing.expect(!viewTick(&v, 500));
+}
+
+test "viewPresent clears the pending flag" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    try std.testing.expectEqual(Err.ok, viewPan(&v, 4, 0, 100));
+    var pres = Present{};
+    try std.testing.expectEqual(Err.ok, viewPresent(&v, &pres));
+    try std.testing.expect(pres.present);
+    try std.testing.expectEqual(Refresh.fast, pres.refresh);
+    try std.testing.expectEqual(@as(i32, 32), pres.rect.w);
+    try std.testing.expect(!v.pending);
+    try std.testing.expectEqual(Err.ok, viewPresent(&v, &pres));
+    try std.testing.expect(!pres.present);
+    var closed = View{};
+    try std.testing.expectEqual(Err.invalid_state, viewPresent(&closed, &pres));
+}
