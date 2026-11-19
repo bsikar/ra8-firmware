@@ -219,6 +219,8 @@ pub const View = struct {
     src: Source = .{},
     scratch: Scratch = .{},
     dst: Rect = .{},
+    focus_x: i32 = 0,
+    focus_y: i32 = 0,
     anchor_x: i32 = 0,
     anchor_y: i32 = 0,
     last_input_ms: u32 = 0,
@@ -324,6 +326,7 @@ pub const Err = enum(u32) {
     no_mem = 0x102,
     invalid_arg = 0x103,
     null_ptr = 0x504,
+    invalid_state = 0x104,
 };
 
 /// Diagnostic log seam standing in for ra8_log_error. The C module logs one
@@ -525,4 +528,138 @@ test "log hook receives rejected-config messages" {
     cfg.scratch = .{ .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
     try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
     try std.testing.expectEqual(@as(usize, 1), Hook.hits_g);
+}
+
+/// Default input-silence settle window (k_zoom_settle_ms_default).
+pub const settle_ms_default: u16 = 350;
+
+/// The full open gate: pointers, extents, scratch capacity, ladder
+/// (internal_cfg_ok), in the C module's order.
+fn cfgOk(cfg: *const View, out_strip_rows: *u16, out_scale: *u8, out_ceiling: *u8) Err {
+    const e1 = cfgPtrsOk(cfg);
+    if (e1 != .ok) return e1;
+    const e2 = cfgExtentOk(cfg);
+    if (e2 != .ok) return e2;
+    const e3 = cfgScratchOk(cfg, out_strip_rows);
+    if (e3 != .ok) return e3;
+    return cfgLadderOk(cfg, out_scale, out_ceiling);
+}
+
+/// Copy a validated config into a live view and arm its first flush
+/// (internal_view_adopt): anchors open centred on the focus point.
+fn viewAdopt(v: *View, cfg: *const View, opening: u8, ceiling: u8, strip_rows: u16) void {
+    v.src = cfg.src;
+    v.scratch = cfg.scratch;
+    v.dst = cfg.dst;
+    v.scale = opening;
+    v.scale_max = ceiling;
+    v.tone = cfg.tone;
+    v.policy = cfg.policy;
+    v.settle_ms = if (cfg.settle_ms == 0) settle_ms_default else cfg.settle_ms;
+    v.strip_rows = strip_rows;
+    v.anchor_x = cfg.focus_x * @as(i32, opening) - @divTrunc(cfg.dst.w, 2);
+    v.anchor_y = cfg.focus_y * @as(i32, opening) - @divTrunc(cfg.dst.h, 2);
+    v.last_input_ms = 0;
+    v.settle_armed = false;
+    v.pending = true;
+    v.pending_kind = .quality;
+    v.active = true;
+    reclamp(v);
+}
+
+/// Open a view from a validated config (zoom_view_open).
+pub fn viewOpen(v: ?*View, cfg: ?*const View) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (cfg == null) {
+        logErr("cfg must not be nullptr");
+        return .null_ptr;
+    }
+    v.?.active = false;
+    var strip_rows: u16 = 0;
+    var opening: u8 = 0;
+    var ceiling: u8 = 0;
+    const e = cfgOk(cfg.?, &strip_rows, &opening, &ceiling);
+    if (e != .ok) return e;
+    viewAdopt(v.?, cfg.?, opening, ceiling, strip_rows);
+    return .ok;
+}
+
+/// Swap the bound source under a live view (zoom_view_rebind): the geometry
+/// re-clamps to the new extent and the input timer restarts.
+pub fn viewRebind(v: ?*View, src: ?*const Source, now_ms: u32) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (src == null) {
+        logErr("src must not be nullptr");
+        return .null_ptr;
+    }
+    if (src.?.read == null) {
+        logErr("source read seam must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("rebind on a closed view");
+        return .invalid_state;
+    }
+    if (!dimOk(src.?.width) or !dimOk(src.?.height)) {
+        logErr("source extent is zero or exceeds k_zoom_dim_max");
+        return .invalid_arg;
+    }
+    v.?.src = src.?.*;
+    reclamp(v.?);
+    touch(v.?, now_ms);
+    return .ok;
+}
+
+/// Mark the view owed a fresh flush (zoom_view_invalidate).
+pub fn viewInvalidate(v: ?*View, now_ms: u32) Err {
+    if (v == null) {
+        logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    if (!v.?.active) {
+        logErr("invalidate on a closed view");
+        return .invalid_state;
+    }
+    touch(v.?, now_ms);
+    return .ok;
+}
+
+test "viewOpen adopts a valid config" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 }, .focus_x = 10, .focus_y = 8, .scale = 2, .scale_max = 4 };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 24 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    try std.testing.expect(v.active);
+    try std.testing.expectEqual(@as(u8, 2), v.scale);
+    try std.testing.expectEqual(@as(u8, 4), v.scale_max);
+    try std.testing.expectEqual(@as(u16, 350), v.settle_ms);
+    try std.testing.expect(v.pending);
+    try std.testing.expectEqual(@as(i32, 4), v.anchor_x);
+    try std.testing.expectEqual(@as(i32, 4), v.anchor_y);
+    var closed = View{};
+    cfg.dst.w = 0;
+    try std.testing.expectEqual(Err.invalid_arg, viewOpen(&closed, &cfg));
+    try std.testing.expect(!closed.active);
+}
+
+test "viewRebind guards state and re-clamps to the new source" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    var v = View{};
+    try std.testing.expectEqual(Err.ok, viewOpen(&v, &cfg));
+    var src2 = Source{ .read = buf[0..].ptr, .width = 100, .height = 100 };
+    try std.testing.expectEqual(Err.ok, viewRebind(&v, &src2, 500));
+    try std.testing.expectEqual(@as(u32, 100), v.src.width);
+    var closed = View{};
+    try std.testing.expectEqual(Err.invalid_state, viewRebind(&closed, &src2, 10));
+    try std.testing.expectEqual(Err.invalid_state, viewInvalidate(&closed, 10));
+    try std.testing.expectEqual(Err.ok, viewInvalidate(&v, 900));
 }
