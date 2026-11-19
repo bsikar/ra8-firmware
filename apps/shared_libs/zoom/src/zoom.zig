@@ -157,3 +157,161 @@ test "clampAnchor centres a small image and bounds a big one" {
     try std.testing.expectEqual(@as(i32, 32), clampAnchor(99, 64, 32));
     try std.testing.expectEqual(@as(i32, 10), clampAnchor(10, 64, 32));
 }
+
+/// One axis-aligned rectangle in framebuffer pixel coordinates
+/// (ra8_ui_rect_t): inclusive on the top-left corner, exclusive on the
+/// bottom-right, so w = h = 0 contains no points.
+pub const Rect = struct {
+    x: i32 = 0,
+    y: i32 = 0,
+    w: i32 = 0,
+    h: i32 = 0,
+};
+
+/// The gray8 sub-rectangle reader behind a bound source (zoom_read_fn).
+/// The typed error seam lands with the view ABI slice; the raw pointer
+/// keeps the struct layout honest in the meantime.
+pub const ReadFn = ?*const anyopaque;
+
+/// A magnifiable full-resolution image behind the gray8 sub-rect seam
+/// (zoom_source_t): the reader function, its context, and the extent.
+pub const Source = struct {
+    read: ReadFn = null,
+    ctx: ?*anyopaque = null,
+    width: u32 = 0,
+    height: u32 = 0,
+};
+
+/// Caller-owned composite buffers, the module's entire memory footprint
+/// (zoom_scratch_t): one source row, one destination strip in gray8, and
+/// the same strip packed to 4 bpp.
+pub const Scratch = struct {
+    row: ?[*]u8 = null,
+    row_cap: u32 = 0,
+    strip: ?[*]u8 = null,
+    strip_cap: u32 = 0,
+    packed_buf: ?[*]u8 = null,
+    packed_cap: u32 = 0,
+};
+
+/// The waveform a owed flush should use (zoom_refresh_t).
+pub const Refresh = enum(u8) {
+    /// Interactive burst: panel A2 (bi-level, fast).
+    fast = 0,
+    /// Settled: panel GC16 (all 16 levels, slow).
+    quality = 1,
+};
+
+/// The waveform scheduling policy (zoom_policy_t).
+pub const Policy = enum(u8) {
+    /// Fast during a burst, quality once settled.
+    responsive = 0,
+    /// Always quality; no bi-level frame is shown.
+    quality = 1,
+};
+
+/// Live viewport: where it is looking, how magnified, and what it owes the
+/// panel (zoom_view_t). Opaque by convention: read it through the accessor
+/// functions, never write the fields directly. The two anchor fields are in
+/// magnified-plane coordinates, so anchor_x + c is the plane column shown
+/// at destination column c and (anchor_x + c) / scale is the source column.
+pub const View = struct {
+    src: Source = .{},
+    scratch: Scratch = .{},
+    dst: Rect = .{},
+    anchor_x: i32 = 0,
+    anchor_y: i32 = 0,
+    last_input_ms: u32 = 0,
+    settle_ms: u16 = 0,
+    strip_rows: u16 = 0,
+    scale: u8 = 0,
+    scale_max: u8 = 0,
+    policy: Policy = .responsive,
+    pending_kind: Refresh = .fast,
+    pending: bool = false,
+    settle_armed: bool = false,
+    active: bool = false,
+    /// Tone curve adopted from the config (null = flat even palette); the
+    /// typed ra8_gfx_tone_map_t seam lands with the view ABI slice.
+    tone: ?*const anyopaque = null,
+};
+
+/// Re-establish the clamp invariant on an open view (internal_reclamp). The
+/// one place every mutation site re-clamps through: an open, a scale
+/// change, a pan, a rebind onto a differently-sized page. `v.scale` is
+/// already the scale the anchors should be clamped for.
+pub fn reclamp(v: *View) void {
+    const scale: i32 = v.scale;
+    v.anchor_x = clampAnchor(v.anchor_x, @as(i32, @intCast(v.src.width)) * scale, v.dst.w);
+    v.anchor_y = clampAnchor(v.anchor_y, @as(i32, @intCast(v.src.height)) * scale, v.dst.h);
+}
+
+/// Record an interactive viewport change and schedule the flush it owes
+/// (internal_touch). The one place the dirty flag and the waveform class
+/// are set: under the responsive policy an interactive change owes a fast
+/// (bi-level) flush and arms the settle timer; under the quality policy it
+/// owes a full 16-level flush and arms nothing.
+pub fn touch(v: *View, now_ms: u32) void {
+    const responsive = v.policy == .responsive;
+    v.last_input_ms = now_ms;
+    v.pending = true;
+    v.pending_kind = if (responsive) .fast else .quality;
+    v.settle_armed = responsive;
+}
+
+/// Close a view and drop everything it owes (zoom_view_close). A closed
+/// view keeps its geometry so the caller can still read where it was.
+pub fn close(v: *View) void {
+    v.active = false;
+    v.pending = false;
+    v.settle_armed = false;
+}
+
+/// Whether the view is open (zoom_view_active).
+pub fn isActive(v: *const View) bool {
+    return v.active;
+}
+
+test "reclamp bounds a big image and centres a small one" {
+    // 4x of a 16 px source is a 64 px plane against a 32 px viewport:
+    // anchors are held inside [0, 64 - 32].
+    var v = View{ .src = .{ .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 32 }, .scale = 4 };
+    v.anchor_x = 99;
+    v.anchor_y = -9;
+    reclamp(&v);
+    try std.testing.expectEqual(@as(i32, 32), v.anchor_x);
+    try std.testing.expectEqual(@as(i32, 0), v.anchor_y);
+    // Smaller than the viewport: centred, anchors negative (letterbox).
+    var s = View{ .src = .{ .width = 8, .height = 8 }, .dst = .{ .w = 32, .h = 32 }, .scale = 2 };
+    s.anchor_x = 5;
+    s.anchor_y = 5;
+    reclamp(&s);
+    try std.testing.expectEqual(@as(i32, -8), s.anchor_x);
+    try std.testing.expectEqual(@as(i32, -8), s.anchor_y);
+}
+
+test "touch under responsive arms settle and owes fast" {
+    var v = View{ .policy = .responsive };
+    touch(&v, 1000);
+    try std.testing.expectEqual(@as(u32, 1000), v.last_input_ms);
+    try std.testing.expect(v.pending);
+    try std.testing.expectEqual(Refresh.fast, v.pending_kind);
+    try std.testing.expect(v.settle_armed);
+}
+
+test "touch under quality owes a full flush and arms nothing" {
+    var v = View{ .policy = .quality };
+    touch(&v, 1000);
+    try std.testing.expect(v.pending);
+    try std.testing.expectEqual(Refresh.quality, v.pending_kind);
+    try std.testing.expect(!v.settle_armed);
+}
+
+test "close drops everything the view owes" {
+    var v = View{ .active = true, .pending = true, .settle_armed = true };
+    try std.testing.expect(isActive(&v));
+    close(&v);
+    try std.testing.expect(!isActive(&v));
+    try std.testing.expect(!v.pending);
+    try std.testing.expect(!v.settle_armed);
+}
