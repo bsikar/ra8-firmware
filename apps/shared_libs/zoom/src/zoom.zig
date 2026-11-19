@@ -315,3 +315,214 @@ test "close drops everything the view owes" {
     try std.testing.expect(!v.pending);
     try std.testing.expect(!v.settle_armed);
 }
+
+/// C ABI parity error codes (ra8_err_t): the fixture pins ok==0,
+/// invalid_arg==0x103, no_mem==0x102, null_ptr==0x504. The invalid_state
+/// code arrives with the open/rebind/invalidate slice.
+pub const Err = enum(u32) {
+    ok = 0x000,
+    no_mem = 0x102,
+    invalid_arg = 0x103,
+    null_ptr = 0x504,
+};
+
+/// Diagnostic log seam standing in for ra8_log_error. The C module logs one
+/// line per rejected configuration; the Zig port keeps the same messages but
+/// routes them through a caller-installed hook, default null (silent). The
+/// ABI slice wires this to the real log sink.
+pub const LogFn = *const fn (msg: []const u8) void;
+pub var log_hook: ?LogFn = null;
+
+fn logErr(comptime msg: []const u8) void {
+    if (log_hook) |f| f(msg);
+}
+
+/// The view's required pointers must all be live (internal_cfg_ptrs_ok).
+fn cfgPtrsOk(cfg: *const View) Err {
+    if (cfg.src.read == null) {
+        logErr("source read seam must not be nullptr");
+        return .null_ptr;
+    }
+    if (cfg.scratch.row == null) {
+        logErr("scratch.row must not be nullptr");
+        return .null_ptr;
+    }
+    if (cfg.scratch.strip == null) {
+        logErr("scratch.strip must not be nullptr");
+        return .null_ptr;
+    }
+    if (cfg.scratch.packed_buf == null) {
+        logErr("scratch.packed must not be nullptr");
+        return .null_ptr;
+    }
+    return .ok;
+}
+
+/// Viewport and source extents must be usable (internal_cfg_extent_ok).
+fn cfgExtentOk(cfg: *const View) Err {
+    if (cfg.dst.w <= 0 or cfg.dst.h <= 0) {
+        logErr("viewport must have positive width and height");
+        return .invalid_arg;
+    }
+    if (!dimOk(cfg.src.width) or !dimOk(cfg.src.height)) {
+        logErr("source extent is zero or exceeds k_zoom_dim_max");
+        return .invalid_arg;
+    }
+    return .ok;
+}
+
+/// Scratch buffers must hold one composited strip at the viewport width
+/// (internal_cfg_scratch_ok); writes back the strip row count.
+fn cfgScratchOk(cfg: *const View, out_strip_rows: *u16) Err {
+    const width: u32 = @intCast(cfg.dst.w);
+    if (cfg.scratch.row_cap < width or cfg.scratch.strip_cap < width) {
+        logErr("scratch row/strip buffer is narrower than the viewport");
+        return .no_mem;
+    }
+    var rows: u32 = cfg.scratch.strip_cap / width;
+    if (rows > strip_rows_max) {
+        rows = strip_rows_max;
+    }
+    if (rows > @as(u32, @intCast(cfg.dst.h))) {
+        rows = @intCast(cfg.dst.h);
+    }
+    if (cfg.scratch.packed_cap < (width * rows + 1) / 2) {
+        logErr("scratch packed buffer cannot hold one dithered strip");
+        return .no_mem;
+    }
+    out_strip_rows.* = @intCast(rows);
+    return .ok;
+}
+
+/// The scale ladder: zero-valued config entries lift to the defaults, then
+/// the pair must sit inside the engine ladder (internal_cfg_ladder_ok).
+fn cfgLadderOk(cfg: *const View, out_scale: *u8, out_ceiling: *u8) Err {
+    const ladder_max: u8 = @intCast(scale_max);
+    const ladder_min: u8 = @intCast(scale_min);
+    const ceiling: u8 = if (cfg.scale_max == 0) ladder_max else cfg.scale_max;
+    const opening: u8 = if (cfg.scale == 0) ladder_min else cfg.scale;
+    if (ceiling > ladder_max) {
+        logErr("scale_max is outside the engine ladder");
+        return .invalid_arg;
+    }
+    if (opening > ceiling) {
+        logErr("opening scale is outside the configured ladder");
+        return .invalid_arg;
+    }
+    out_scale.* = opening;
+    out_ceiling.* = ceiling;
+    return .ok;
+}
+
+/// Bind a full-resolution source descriptor (zoom_source_init): the reader
+/// seam, its context, and an extent inside the engine cap.
+pub fn sourceInit(out: ?*Source, read: ReadFn, ctx: ?*anyopaque, width: u32, height: u32) Err {
+    if (out == null) {
+        logErr("source out must not be nullptr");
+        return .null_ptr;
+    }
+    if (read == null) {
+        logErr("source read seam must not be nullptr");
+        return .null_ptr;
+    }
+    if (!dimOk(width) or !dimOk(height)) {
+        logErr("source extent is zero or exceeds k_zoom_dim_max");
+        return .invalid_arg;
+    }
+    out.?.read = read;
+    out.?.ctx = ctx;
+    out.?.width = width;
+    out.?.height = height;
+    return .ok;
+}
+
+test "cfgPtrsOk rejects each missing pointer" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = &buf, .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    try std.testing.expectEqual(Err.ok, cfgPtrsOk(&cfg));
+    cfg.src.read = null;
+    try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
+    cfg.src.read = &buf;
+    cfg.scratch.row = null;
+    try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
+}
+
+test "cfgExtentOk checks viewport and source extents" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    try std.testing.expectEqual(Err.ok, cfgExtentOk(&cfg));
+    cfg.dst.w = 0;
+    try std.testing.expectEqual(Err.invalid_arg, cfgExtentOk(&cfg));
+    cfg.dst.w = 32;
+    cfg.src.width = dim_max + 1;
+    try std.testing.expectEqual(Err.invalid_arg, cfgExtentOk(&cfg));
+}
+
+test "cfgScratchOk derives strip rows and caps the packed need" {
+    var buf: [64]u8 = undefined;
+    var cfg = View{ .src = .{ .read = buf[0..].ptr, .width = 640, .height = 480 }, .dst = .{ .w = 32, .h = 2 } };
+    cfg.scratch = .{ .row = buf[0..].ptr, .strip = buf[0..].ptr, .packed_buf = buf[0..].ptr, .row_cap = 32, .strip_cap = 64, .packed_cap = 33 };
+    var rows: u16 = 0;
+    try std.testing.expectEqual(Err.ok, cfgScratchOk(&cfg, &rows));
+    try std.testing.expectEqual(@as(u16, 2), rows);
+    cfg.dst.h = 40;
+    cfg.scratch.strip_cap = 32 * 40;
+    cfg.scratch.packed_cap = 512;
+    try std.testing.expectEqual(Err.ok, cfgScratchOk(&cfg, &rows));
+    try std.testing.expectEqual(@as(u16, 32), rows);
+    cfg.scratch.row_cap = 31;
+    try std.testing.expectEqual(Err.no_mem, cfgScratchOk(&cfg, &rows));
+    cfg.scratch.row_cap = 32;
+    cfg.scratch.packed_cap = 511;
+    try std.testing.expectEqual(Err.no_mem, cfgScratchOk(&cfg, &rows));
+}
+
+test "cfgLadderOk lifts zero defaults and bounds the ladder" {
+    var cfg = View{ .src = .{ .read = undefined, .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 24 } };
+    var opening: u8 = 0;
+    var ceiling: u8 = 0;
+    cfg.scale = 0;
+    cfg.scale_max = 0;
+    try std.testing.expectEqual(Err.ok, cfgLadderOk(&cfg, &opening, &ceiling));
+    try std.testing.expectEqual(@as(u8, 1), opening);
+    try std.testing.expectEqual(@as(u8, 8), ceiling);
+    cfg.scale = 3;
+    cfg.scale_max = 4;
+    try std.testing.expectEqual(Err.ok, cfgLadderOk(&cfg, &opening, &ceiling));
+    try std.testing.expectEqual(@as(u8, 3), opening);
+    try std.testing.expectEqual(@as(u8, 4), ceiling);
+    cfg.scale_max = 9;
+    try std.testing.expectEqual(Err.invalid_arg, cfgLadderOk(&cfg, &opening, &ceiling));
+    cfg.scale_max = 4;
+    cfg.scale = 5;
+    try std.testing.expectEqual(Err.invalid_arg, cfgLadderOk(&cfg, &opening, &ceiling));
+}
+
+test "sourceInit binds reader, context and extent" {
+    var buf: [8]u8 = undefined;
+    var src = Source{};
+    try std.testing.expectEqual(Err.ok, sourceInit(&src, buf[0..].ptr, null, 800, 600));
+    try std.testing.expectEqual(@as(u32, 800), src.width);
+    try std.testing.expectEqual(@as(u32, 600), src.height);
+    try std.testing.expectEqual(Err.null_ptr, sourceInit(null, buf[0..].ptr, null, 8, 8));
+    try std.testing.expectEqual(Err.null_ptr, sourceInit(&src, null, null, 8, 8));
+    try std.testing.expectEqual(Err.invalid_arg, sourceInit(&src, buf[0..].ptr, null, 0, 8));
+}
+
+test "log hook receives rejected-config messages" {
+    const Hook = struct {
+        var hits_g: usize = 0;
+        fn f(_: []const u8) void {
+            hits_g += 1;
+        }
+    };
+    Hook.hits_g = 0;
+    log_hook = Hook.f;
+    defer log_hook = null;
+    var cfg = View{ .src = .{ .width = 16, .height = 16 }, .dst = .{ .w = 32, .h = 24 } };
+    cfg.scratch = .{ .row_cap = 32, .strip_cap = 32, .packed_cap = 16 };
+    try std.testing.expectEqual(Err.null_ptr, cfgPtrsOk(&cfg));
+    try std.testing.expectEqual(@as(usize, 1), Hook.hits_g);
+}
