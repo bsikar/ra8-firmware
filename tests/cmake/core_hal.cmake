@@ -20,6 +20,30 @@ include(${FW_ROOT}/cmake/zig_package.cmake)
 ra8_zig_package_dir(esp_hosted RA8_ESP_HOSTED_HOST_DIR)
 ra8_zig_package_dir(protobuf_c RA8_PROTOBUF_C_DIR)
 
+# The ra8_c6link Zig archive calls the vendored protobuf soup through its ABI
+# layer: the generated Rpc codec (esp_hosted_rpc.pb-c.c) and the protobuf-c
+# runtime. The c6link test executables compile that soup explicitly
+# (tests_c6link.cmake), but host test apps that pull ra8_c6link into their
+# link get nothing to resolve rpc__init and the message __init symbols
+# against. Target builds receive the soup from cmake/esp_hosted.cmake's
+# esp_hosted_objs, so this object library exists only in this tree and is
+# spliced into an app's sources conditionally (cmake/ra8_app/sources.cmake).
+add_library(
+  ra8_c6link_app_soup OBJECT
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/proto/esp_hosted_rpc.pb-c.c
+  ${RA8_PROTOBUF_C_DIR}/protobuf-c/protobuf-c.c
+)
+target_include_directories(
+  ra8_c6link_app_soup PRIVATE
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/proto
+  ${RA8_ESP_HOSTED_HOST_DIR}/common
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/transport
+  ${RA8_PROTOBUF_C_DIR}
+)
+# Same warning bar the c6link test executables give the soup (tests_c6link.cmake):
+# -Wall -Wextra without -Werror, vendored generated code compiled as-is.
+target_compile_options(ra8_c6link_app_soup PRIVATE -Wall -Wextra)
+
 add_library(
   ra8_core_hal OBJECT
   ${XML_SOURCES}

@@ -186,6 +186,12 @@ file(GLOB_RECURSE COMIC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/co
 # wrapper too; the glob below finds only the test-fixture accessor stub, which
 # nothing outside the unarch package test calls.
 file(GLOB_RECURSE UNARCH_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/unarch/src/*.c)
+# unarch_xz_fixture_stub.c is test-only: the zig package test compiles it
+# (apps/shared_libs/unarch/build.zig) and the C builds never consume it, but
+# the glob above swept it into UNARCH_SOURCES and ra8_core_hal tried to
+# compile it without the fixture header's include path. Keep it out of the
+# C source list.
+list(FILTER UNARCH_SOURCES EXCLUDE REGEX "unarch_xz_fixture_stub\\.c$")
 # xz-embedded decode-only SOUP: exactly the TUs the XZ wrapper drives. They
 # include the first-party porting header apps/shared_libs/unarch/inc/xz_config.h
 # (allocator seam + mode selection), so that include dir must stay on the
