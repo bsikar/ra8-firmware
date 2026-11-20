@@ -1,0 +1,164 @@
+//! C ABI surface of the zoom facade (`apps/shared_libs/zoom`).
+//!
+//! `inc/zoom.h` and `src/zoom_internal.h` are unchanged: this file exports
+//! the same public `zoom_view_*` / `zoom_scale_cycle` symbols and the module
+//! private `priv_zoom_axis` that `zoom.c` did, with the same guard order, the
+//! same codes and the same log lines. Every decision lives in `zoom.zig`;
+//! what stays here is pointer nullability and the writes into caller-owned
+//! storage. The layout fixture in zoom.zig pins the struct parity.
+//!
+//! External symbols: `ra8_log_emit_error` (ra8_log.h's backend entry), which
+//! ra8_core_hal's own objects supply at the final link.
+
+const std = @import("std");
+pub const zoom = @import("zoom.zig");
+
+const Err = zoom.Err;
+const View = zoom.View;
+const Source = zoom.Source;
+const Cfg = zoom.Cfg;
+const Rect = zoom.Rect;
+const Present = zoom.Present;
+const Axis = zoom.Axis;
+
+extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void;
+
+
+// ---------------------------------------------------------------------------
+// The public zoom.h surface.
+// ---------------------------------------------------------------------------
+
+export fn zoom_view_open(v: ?*View, cfg: ?*const Cfg) callconv(.c) Err {
+    return zoom.viewOpen(v, cfg);
+}
+
+export fn zoom_view_rebind(v: ?*View, src: ?*const Source, now_ms: u32) callconv(.c) Err {
+    return zoom.viewRebind(v, src, now_ms);
+}
+
+export fn zoom_view_invalidate(v: ?*View, now_ms: u32) callconv(.c) Err {
+    return zoom.viewInvalidate(v, now_ms);
+}
+
+export fn zoom_view_close(v: ?*View) callconv(.c) Err {
+    if (v == null) {
+        zoom.logErr("view must not be nullptr");
+        return .null_ptr;
+    }
+    zoom.close(v.?);
+    return .ok;
+}
+
+export fn zoom_view_active(v: ?*const View) callconv(.c) bool {
+    return (v != null) and v.?.active;
+}
+
+export fn zoom_scale_cycle(scale: u8, min: u8, max: u8) callconv(.c) u8 {
+    return zoom.scaleCycle(scale, min, max);
+}
+
+export fn zoom_view_set_scale(v: ?*View, scale: u8, focus_x: i32, focus_y: i32, now_ms: u32) callconv(.c) Err {
+    return zoom.viewSetScale(v, scale, focus_x, focus_y, now_ms);
+}
+
+export fn zoom_view_pan(v: ?*View, dx: i32, dy: i32, now_ms: u32) callconv(.c) Err {
+    return zoom.viewPan(v, dx, dy, now_ms);
+}
+
+export fn zoom_view_pan_dir(v: ?*View, dir: zoom.Pan, now_ms: u32) callconv(.c) Err {
+    return zoom.viewPanDir(v, dir, now_ms);
+}
+
+export fn zoom_view_window(v: ?*const View, out: ?*Rect) callconv(.c) Err {
+    return zoom.viewWindow(v, out);
+}
+
+export fn zoom_view_tick(v: ?*View, now_ms: u32) callconv(.c) bool {
+    return zoom.viewTick(v, now_ms);
+}
+
+export fn zoom_view_present(v: ?*View, out: ?*Present) callconv(.c) Err {
+    return zoom.viewPresent(v, out);
+}
+
+// ---------------------------------------------------------------------------
+// The module-private geometry helper zoom_render.c and the host zoom suite
+// call (zoom_internal.h). zoom.zig's axis() is the single definition; the
+// export just carries the C-side zoom_axis_t write.
+// ---------------------------------------------------------------------------
+
+export fn priv_zoom_axis(anchor: i32, extent: i32, scale: i32, src_dim: i32, out: ?*Axis) callconv(.c) void {
+    out.?.* = zoom.axis(anchor, extent, scale, src_dim);
+}
+
+// ---------------------------------------------------------------------------
+// The source binder zoom_tiles.c and zoom_book.c call (zoom.h's
+// zoom_source_init). zoom.zig's sourceInit owns the guards, the dimension cap
+// and the writes into caller storage; the export only carries the C ABI,
+// zoom_read_fn optionality included.
+// ---------------------------------------------------------------------------
+
+export fn zoom_source_init(
+    out: ?*Source,
+    read: zoom.ReadFn,
+    ctx: ?*anyopaque,
+    width: u32,
+    height: u32,
+) callconv(.c) Err {
+    return zoom.sourceInit(out, read, ctx, width, height);
+}
+
+// ---------------------------------------------------------------------------
+// The ABI membrane's own probe suite: every export driven over the C-shaped
+// structs, including the null guards zoom.c had and the log path.
+// ---------------------------------------------------------------------------
+
+fn nullRead(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: [*]u8, out_stride: u32) callconv(.c) Err {
+    _ = ctx;
+    _ = x;
+    _ = y;
+    _ = w;
+    _ = h;
+    _ = out;
+    _ = out_stride;
+    return .ok;
+}
+
+test "abi exports carry the C guards" {
+    var v = View{};
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_open(null, null));
+    var cfg = Cfg{ .src = .{ .read = nullRead, .width = 16, .height = 16 }, .dst = .{ .w = 8, .h = 8 } };
+    var scratch: [16]u8 = undefined;
+    cfg.scratch = .{ .row = scratch[0..].ptr, .strip = scratch[0..].ptr, .packed_buf = scratch[0..].ptr, .row_cap = 8, .strip_cap = 8, .packed_cap = 4 };
+    try std.testing.expectEqual(Err.ok, zoom_view_open(&v, &cfg));
+    try std.testing.expect(zoom_view_active(&v));
+    try std.testing.expectEqual(Err.ok, zoom_view_close(&v));
+    try std.testing.expect(!zoom_view_active(&v));
+    // A null view is a null_ptr rejection on every fallible entry point.
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_rebind(null, null, 0));
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_invalidate(null, 0));
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_set_scale(null, 1, 0, 0, 0));
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_pan(null, 0, 0, 0));
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_pan_dir(null, .none, 0));
+    var win = Rect{};
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_window(null, &win));
+    try std.testing.expect(!zoom_view_tick(null, 0));
+    var pres = Present{};
+    try std.testing.expectEqual(Err.null_ptr, zoom_view_present(null, &pres));
+}
+
+test "priv_zoom_axis resolves one axis like the C did" {
+    var ax = Axis{};
+    // x4 magnification of a 16px source, 32px of viewport: the destination
+    // window is the full viewport and the source span is (31/4 - 0/4) + 1.
+    priv_zoom_axis(0, 32, 4, 16, &ax);
+    try std.testing.expectEqual(@as(i32, 0), ax.d0);
+    try std.testing.expectEqual(@as(i32, 32), ax.d1);
+    try std.testing.expectEqual(@as(u32, 0), ax.s0);
+    try std.testing.expectEqual(@as(u32, 8), ax.count);
+    // An anchor past the magnified plane: the window collapses, count is 0.
+    priv_zoom_axis(100, 32, 2, 8, &ax);
+    try std.testing.expectEqual(@as(i32, 0), ax.d0);
+    try std.testing.expectEqual(@as(i32, 0), ax.d1);
+    try std.testing.expectEqual(@as(u32, 0), ax.count);
+}

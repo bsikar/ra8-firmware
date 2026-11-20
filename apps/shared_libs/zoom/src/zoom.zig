@@ -31,7 +31,7 @@ pub const settle_ms: u32 = 350;
 
 /// One axis of the magnified plane: the destination window (d0..d1) in
 /// magnified-plane pixels and the source span (s0, count) it samples.
-pub const Axis = struct {
+pub const Axis = extern struct {
     d0: i32 = 0,
     d1: i32 = 0,
     s0: u32 = 0,
@@ -170,7 +170,7 @@ pub const Rect = extern struct {
 
 /// The gray8 sub-rectangle reader behind a bound source (zoom_read_fn):
 /// the typed error seam, carrying the exact C signature.
-pub const ReadFn = ?*const fn (?*anyopaque, u32, u32, u32, u32, [*]u8, u32) callconv(.C) Err;
+pub const ReadFn = ?*const fn (?*anyopaque, u32, u32, u32, u32, [*]u8, u32) callconv(.c) Err;
 
 /// A magnifiable full-resolution image behind the gray8 sub-rect seam
 /// (zoom_source_t): the reader function, its context, and the extent.
@@ -346,7 +346,7 @@ pub const Err = enum(u32) {
 /// The ra8_log_error macro's backend entry (ra8_log.h): tag + free-form
 /// message. Declared here because the port's include closure does not reach
 /// ra8_log.h's macro surface; the real build links the C core's definition.
-extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.C) void;
+extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void;
 
 /// Component tag for the module's log lines (zoom.c s_tag).
 const s_tag: [*:0]const u8 = "zoom";
@@ -360,7 +360,7 @@ pub var log_hook: ?LogFn = null;
 /// One log line per rejected configuration, the same messages the C module
 /// emits (zoom.c RA8_CHECK_* calls), routed through the C core's
 /// ra8_log_emit_error under the module's tag unless a hook overrides.
-fn logErr(comptime msg: [:0]const u8) void {
+pub fn logErr(comptime msg: [:0]const u8) void {
     if (log_hook) |f| {
         f(msg);
     } else {
@@ -372,10 +372,10 @@ fn logErr(comptime msg: [:0]const u8) void {
 // silent sink for the extern; the firmware build links the C core's own.
 comptime {
     if (@import("builtin").is_test) {
-        @export(testSilentLogSink, .{ .name = "ra8_log_emit_error" });
+        @export(&testSilentLogSink, .{ .name = "ra8_log_emit_error" });
     }
 }
-fn testSilentLogSink(tag: [*:0]const u8, message: [*:0]const u8) callconv(.C) void {
+fn testSilentLogSink(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void {
     _ = tag;
     _ = message;
 }
@@ -804,7 +804,7 @@ pub fn viewPanDir(v: ?*View, dir: Pan, now_ms: u32) Err {
     return viewPan(v, dx, dy, now_ms);
 }
 
-fn testRead(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: [*]u8, out_stride: u32) callconv(.C) Err {
+fn testRead(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: [*]u8, out_stride: u32) callconv(.c) Err {
     _ = ctx;
     _ = x;
     _ = y;
