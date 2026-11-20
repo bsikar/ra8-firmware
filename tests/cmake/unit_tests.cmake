@@ -608,6 +608,17 @@ endforeach()
 # ra8_mem already come from the ra8_core_hal object library the auto-glob linked.
 # ---------------------------------------------------------------------------
 if(TARGET test_app_ereader_zoom)
+  if(TARGET ra8_c6link_app_soup)
+    # The twin links the c6link archive (directory scope below), whose ABI
+    # objects call the vendored protobuf soup. The c6link test executables
+    # compile that soup explicitly (tests_c6link.cmake); the twin carries no
+    # copy of its own, so it gets the shared object library here. Target
+    # builds take the soup from cmake/esp_hosted.cmake's esp_hosted_objs.
+    target_sources(
+      test_app_ereader_zoom
+      PRIVATE $<TARGET_OBJECTS:ra8_c6link_app_soup>
+    )
+  endif()
   target_sources(
     test_app_ereader_zoom
     PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c

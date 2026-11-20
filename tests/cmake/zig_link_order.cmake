@@ -64,6 +64,7 @@ target_link_libraries(
          ra8_zig::ra8_widget
          ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
+         ra8_zig::unarch_io
          ra8_zig::unarch_tar
          ra8_zig::unarch_gzip
          ra8_zig::unarch_xz
@@ -93,6 +94,20 @@ link_libraries(
   ra8_zig::ra8_hal
   ra8_zig::ra8_io
   ra8_zig::ra8_fs
+  # The epub library is all Zig behind the unchanged C headers (RA8FW-1160
+  # through RA8FW-1164). rabook_compile in the hal soup calls its ABI, so the
+  # archives ride the directory scope beside the other hal-facing archives:
+  # callers first, callees after (ra8_fs before its epub_fs bridge, open and
+  # chapter before the miniz plumbing and XML shim they reach).
+  ra8_zig::ra8_epub
+  ra8_zig::ra8_epub_fs
+  ra8_zig::ra8_epub_open
+  ra8_zig::ra8_epub_chapter
+  ra8_zig::ra8_epub_toc
+  ra8_zig::ra8_epub_entry
+  ra8_zig::ra8_epub_xml
+  ra8_zig::ra8_epub_miniz
+  ra8_zig::ra8_epub_img_import
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio
@@ -123,6 +138,7 @@ link_libraries(
   ra8_zig::ra8_widget
   ra8_zig::ra8_box
   ra8_zig::ra8_gfx
+  ra8_zig::unarch_io
   ra8_zig::unarch_tar
   ra8_zig::unarch_gzip
   ra8_zig::unarch_xz

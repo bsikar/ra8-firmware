@@ -631,8 +631,11 @@ ra8_add_zig_library(
   ZIG_ROOT
   ${FW_ROOT}/apps/shared_libs/xml
   LIBRARY_NAME
-  ra8_xml_reader
+  xml_reader
 )
+
+# Host tests tree links the strict XML reader archive like the other migrated libraries.
+link_libraries(ra8_zig::ra8_xml_reader)
 
 
 # The epub decompression guard (RA8FW-1160) is Zig: the central-directory
@@ -694,6 +697,11 @@ ra8_add_zig_library(
   ra8_epub_chapter
 )
 
+# The host tests tree links the chapter/metadata accessor archive like the
+# other migrated libraries: C consumers of the epub facade (rabook_compile,
+# reflow) reference the epub_* accessors through ra8_core_hal.
+link_libraries(ra8_zig::ra8_epub_chapter)
+
 # The strict bounded container/OPF XML consumers (RA8FW-1164) ship as their
 # own archive for the same pull granularity: their externs (the XML reader
 # family) only load when a consumer parses EPUB container/OPF XML.
@@ -727,6 +735,9 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_epub_miniz
 )
+
+# Host tests tree links the epub miniz-arena archive: its arena externs back the epub accessors.
+link_libraries(ra8_zig::ra8_epub_miniz)
 
 # The import-time transcode wiring (RA8FW-1193) ships as its own archive for
 # the same pull granularity: its externs (the entry cursor quartet, the binder
@@ -1182,6 +1193,14 @@ link_libraries(ra8_zig::compress)
 # registers them.
 ra8_add_zig_library(
   NAME
+  unarch_io
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/unarch
+  LIBRARY_NAME
+  unarch_io
+)
+ra8_add_zig_library(
+  NAME
   unarch_tar
   ZIG_ROOT
   ${FW_ROOT}/apps/shared_libs/unarch
@@ -1212,3 +1231,4 @@ ra8_add_zig_library(
   LIBRARY_NAME
   unarch_xz_pool
 )
+

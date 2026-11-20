@@ -199,11 +199,13 @@ endif()
 # directory. See cmake/ccache.cmake for the full rationale.
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ccache.cmake")
 
-# GNU ld's `-Ttext-segment` is an ELF/Linux image-layout control. Darwin's
-# linker does not implement it, and macOS does not map the Linux peripheral
-# windows that require the host-test image pin in the first place.
+# The host-test image pin places the test image at 0x70000000, above the
+# Linux peripheral windows the tests map. Darwin's linker never sees this:
+# macOS does not map those peripheral windows in the first place. zig cc's
+# lld rejects GNU ld's `-Ttext-segment`, so pin `--image-base`, which lands
+# the first PT_LOAD segment at the same address.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,-Ttext-segment=0x70000000)
+  set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,--image-base=0x70000000)
 endif()
 
 # RA8_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
