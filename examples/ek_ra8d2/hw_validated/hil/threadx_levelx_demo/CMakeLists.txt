@@ -35,4 +35,5 @@ ra8_add_app(
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + LevelX OSPI wear-levelling demo for RA8D2"
   USES threadx levelx
+  NO_NSC
 )

@@ -321,6 +321,7 @@ macro(_ra8_app_collect_sources)
   # Left unglobbed and deliberately outside the guard, for the same
   # reason as ra8_net_pal above.
   set(_ra8_secure_app "")
+  set(_ra8_nsc_zig "")
   if(_RA8_APP_NO_NSC)
     set(_ra8_lib_nsc "")
   elseif(_RA8_APP_NSC_SRCS)
@@ -334,13 +335,26 @@ macro(_ra8_app_collect_sources)
     endforeach()
   else()
     file(GLOB_RECURSE _ra8_lib_nsc CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_nsc/src/*.c)
-    _ra8_app_require_compilable_lib(
-      ra8_nsc
-      "${RA8_REPO_ROOT}/libs/ra8_nsc"
-      "links the ra8_nsc veneers"
-      "${_ra8_lib_nsc}"
-      ""
-    )
+    if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_nsc/build.zig" AND NOT
+       EXISTS "${RA8_REPO_ROOT}/libs/ra8_nsc/src/ra8_nsc.c")
+      # ra8_nsc is mid-port: the appimg veneers live in its Zig static
+      # archive, while ten support C files still compile from src/. Its
+      # build.zig installs the real artifacts (libra8_nsc_appimg.a,
+      # libra8_nsc_appimg_pubkey.a), none named libra8_nsc.a, so the
+      # universal-archive block below registers those real entries the way
+      # the unarch block does; registering under the package name would
+      # demand a libra8_nsc.a that never exists. The check itself is
+      # satisfied by that registration, so it is skipped here (issue #908).
+      set(_ra8_nsc_zig ON)
+    else()
+      _ra8_app_require_compilable_lib(
+        ra8_nsc
+        "${RA8_REPO_ROOT}/libs/ra8_nsc"
+        "links the ra8_nsc veneers"
+        "${_ra8_lib_nsc}"
+        ""
+      )
+    endif()
   endif()
 
   # Extra first-party libraries (plain + off-target).
@@ -381,6 +395,15 @@ macro(_ra8_app_collect_sources)
   set(_ra8_secure_app_path "${RA8_REPO_ROOT}/libs/ra8_secure_app")
   if(EXISTS "${_ra8_secure_app_path}/build.zig")
     list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
+  endif()
+  # ra8_nsc's flip was detected in the NSC block above (before _ra8_lib_zig
+  # began its life), so it registers here, beside the other universal
+  # archives, under its real artifact names.
+  if(_ra8_nsc_zig)
+    list(APPEND _ra8_lib_zig
+      "ra8_nsc_appimg|${RA8_REPO_ROOT}/libs/ra8_nsc"
+      "ra8_nsc_appimg_pubkey|${RA8_REPO_ROOT}/libs/ra8_nsc"
+    )
   endif()
   list(APPEND _ra8_lib_zig ${_ra8_hal_zig})
   set(_ra8_lib_inc "")
