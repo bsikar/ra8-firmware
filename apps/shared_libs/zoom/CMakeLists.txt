@@ -16,7 +16,7 @@
 #                         pan / zoom-at-point, dirty rect + waveform plan
 #   inc/zoom_book.h   adapter: a `.rabook` image-pool figure as a source
 #   inc/zoom_tiles.h  adapter: a tiled atlas paged by an ra8_tile_cache
-#   src/zoom.c        viewport state machine (pure integer, no MMIO)
+#   (src/zoom.c is gone: the viewport state machine is Zig, RA8FW-1256)
 #   src/zoom_render.c strip composite: magnify -> re-dither -> blit
 #   src/zoom_internal.h  the shared axis geometry both of the above use
 #   src/zoom_book.c   thin wrapper over book_src_image_rect
