@@ -341,6 +341,7 @@ pub const Err = enum(u32) {
     null_ptr = 0x504,
     invalid_state = 0x104,
     out_of_range = 0x208,
+    not_supported = 0x107, // k_ra8_err_not_supported: adapters surface it (zoom_book SVG reject).
 };
 
 /// The ra8_log_error macro's backend entry (ra8_log.h): tag + free-form

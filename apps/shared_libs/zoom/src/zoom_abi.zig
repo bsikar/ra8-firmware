@@ -12,6 +12,7 @@
 
 const std = @import("std");
 pub const zoom = @import("zoom.zig");
+pub const book = @import("zoom_book.zig");
 
 const Err = zoom.Err;
 const View = zoom.View;
@@ -22,7 +23,6 @@ const Present = zoom.Present;
 const Axis = zoom.Axis;
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void;
-
 
 // ---------------------------------------------------------------------------
 // The public zoom.h surface.
