@@ -629,6 +629,22 @@ if(TARGET test_app_ereader_zoom)
 endif()
 
 # ---------------------------------------------------------------------------
+# test_zoom: the zoom suite links the c6link archive the same way the twin
+# does (directory scope below), so its ABI objects call the vendored protobuf
+# soup and need the shared object library for rpc__init and the message
+# __init symbols, exactly as the twin above gets them. Target builds take
+# the soup from cmake/esp_hosted.cmake's esp_hosted_objs.
+# ---------------------------------------------------------------------------
+if(TARGET test_zoom)
+  if(TARGET ra8_c6link_app_soup)
+    target_sources(
+      test_zoom
+      PRIVATE $<TARGET_OBJECTS:ra8_c6link_app_soup>
+    )
+  endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # test_app_blink_m33_hal: the blink_m33_hal host twin drives the example's own
 # blink_m33_hal.h step (the exact function the CPU1 firmware loop calls), so the
 # LED1 PCNTR1 effect it asserts comes out of the PRODUCTION step rather than a

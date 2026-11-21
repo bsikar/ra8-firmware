@@ -17,7 +17,8 @@
 #   inc/zoom_book.h   adapter: a `.rabook` image-pool figure as a source
 #   inc/zoom_tiles.h  adapter: a tiled atlas paged by an ra8_tile_cache
 #   (src/zoom.c is gone: the viewport state machine is Zig, RA8FW-1256)
-#   src/zoom_render.c strip composite: magnify -> re-dither -> blit
+#   (src/zoom_render.c is gone: the strip composite is Zig, RA8FW-1260;
+#   src/zoom_render.zig holds magnify -> re-dither -> blit)
 #   src/zoom_internal.h  the shared axis geometry both of the above use
 #   (src/zoom_book.c is gone: the .rabook source adapter is Zig, RA8FW-1259)
 #   src/zoom_tiles.c  pixel rect -> tiles -> acquire / copy / release

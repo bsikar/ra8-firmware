@@ -1005,13 +1005,28 @@ static void t_render_tone_curve_routed(void)
   uint32_t routed = 0U;
   for (int32_t r = 0; r < (int32_t)k_t_view_h; ++r) {
     for (int32_t c = 0; c < (int32_t)k_t_view_w; ++c) {
-      const int32_t mask_x   = (int32_t)k_t_dst_x + c;
-      const int32_t mask_y   = (int32_t)k_t_dst_y + r;
-      const uint8_t sample   = t_sample((uint32_t)((v.anchor_x + c)), (uint32_t)((v.anchor_y + r)));
-      const uint8_t flat     = ra8_gfx_dither_gray4_level(sample, mask_x, mask_y);
-      const uint8_t toned    = ra8_gfx_dither_gray4_level_tone(&curve_map, sample, mask_x, mask_y);
-      routed += ((uint32_t)((toned << 4) | toned) != s_tone_fb[((size_t)mask_y * (size_t)k_t_fb_w) + (size_t)mask_x]) ? 1U : 0U;
-      TEST_ASSERT_EQ((uint32_t)((flat << 4) | flat), s_fb[((size_t)mask_y * (size_t)k_t_fb_w) + (size_t)mask_x]);
+      const int32_t fb_x = (int32_t)k_t_dst_x + c;
+      const int32_t fb_y = (int32_t)k_t_dst_y + r;
+      /* The renderer phases the dither mask on the plane coordinate (the
+       * view anchor plus the viewport offset), not on the framebuffer
+       * address, so the reference phases there too. */
+      const uint8_t sample = t_sample((uint32_t)(v.anchor_x + c), (uint32_t)(v.anchor_y + r));
+      const uint8_t flat   = ra8_gfx_dither_gray4_level(sample, v.anchor_x + c, v.anchor_y + r);
+      const uint8_t toned  = ra8_gfx_dither_gray4_level_tone(&curve_map, sample, v.anchor_x + c, v.anchor_y + r);
+      const uint32_t flat_g8  = (uint32_t)((flat << 4) | flat);
+      const uint32_t toned_g8 = (uint32_t)((toned << 4) | toned);
+      /* The blit expands each packed gray4 byte to a 0x00RRGGBB gray colour
+       * (R == G == B) before the plot, and the argb8888 framebuffer stores
+       * that full word, so the reference is the broadcast byte, not the raw
+       * packed byte. */
+      /* The curve must actually change levels somewhere: the tone reference
+       * differing from the flat reference at least once proves the routing
+       * is not vacuous. */
+      routed += (toned_g8 != flat_g8) ? 1U : 0U;
+      TEST_ASSERT_EQ((toned_g8 << 16) | (toned_g8 << 8) | toned_g8,
+                     s_tone_fb[((size_t)fb_y * (size_t)k_t_fb_w) + (size_t)fb_x]);
+      TEST_ASSERT_EQ((flat_g8 << 16) | (flat_g8 << 8) | flat_g8,
+                     s_fb[((size_t)fb_y * (size_t)k_t_fb_w) + (size_t)fb_x]);
     }
   }
   TEST_ASSERT(routed > 0U);
