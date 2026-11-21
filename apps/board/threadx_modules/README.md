@@ -42,5 +42,6 @@ Manager and loader apps:
 - `txm_sd_tour_m85/`: SD load and run of `txm_tour_m33`, admitted through
   ra8_app's gate (RA8FW-965, under RA8FW-290).
 
-Setup examples for the `.ra8app` build and load path land here too as
-they move over from `examples/`.
+Setup examples for the `.ra8app` build and load path land here too:
+`ra8app_setup_hello/` walks the pack, sign, verify and gate path on one
+file (RA8FW-1224).
