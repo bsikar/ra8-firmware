@@ -21,10 +21,12 @@
 #   src/zoom_render.zig holds magnify -> re-dither -> blit)
 #   src/zoom_internal.h  the shared axis geometry both of the above use
 #   (src/zoom_book.c is gone: the .rabook source adapter is Zig, RA8FW-1259)
-#   src/zoom_tiles.c  pixel rect -> tiles -> acquire / copy / release
+#   (src/zoom_tiles.c is gone: the tiled-atlas adapter is Zig, RA8FW-1261;
+#   src/zoom_tiles.zig holds rect -> tiles -> acquire / copy / release)
 #
-# Dependencies: ra8_core (err/check/log), ra8_ui (the rect type), and ra8_gfx
-# for the render TU -- the blue-noise dither IS the feature here, so
+# Dependencies: ra8_core (err/check/log), ra8_ui (the rect type), ra8_mem
+# for the tiles TU, and ra8_gfx for the render TU -- the blue-noise dither
+# IS the feature here, so
 # unlike longstrip this library does not push the blit behind a seam. The
 # two adapter TUs are each guarded on `__has_include` of their backend header
 # and compile to nothing otherwise, so an app that magnifies only `.rabook`

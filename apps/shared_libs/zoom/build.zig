@@ -6,7 +6,8 @@
 //! through the unchanged `inc/zoom.h` / `src/zoom_internal.h` C ABI; the
 //! `test` step covers the viewport state machine (`src/zoom.zig`), the strip
 //! composite (`src/zoom_render.zig`), the `.rabook` adapter
-//! (`src/zoom_book.zig`) and the ABI membrane (`src/zoom_abi.zig`) driven
+//! (`src/zoom_book.zig`), the tiled-atlas adapter (`src/zoom_tiles.zig`) and
+//! the ABI membrane (`src/zoom_abi.zig`) driven
 //! over the C-shaped structs.
 //!
 //! Template: libs/ra8_ftl/build.zig (module + static library + host test
@@ -78,6 +79,14 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const tiles_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/zoom_tiles.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
     const run_implementation_tests = b.addRunArtifact(implementation_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig zoom tests");
@@ -85,4 +94,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&b.addRunArtifact(book_tests).step);
     test_step.dependOn(&b.addRunArtifact(render_tests).step);
+    test_step.dependOn(&b.addRunArtifact(tiles_tests).step);
 }
