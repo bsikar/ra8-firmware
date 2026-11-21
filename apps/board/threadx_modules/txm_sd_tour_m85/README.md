@@ -19,7 +19,7 @@ manager's module instance, and serves each request through
 - the tick clock (1 ms per tick) and a sleep,
 - an empty touch queue.
 
-The module (examples/ek_ra8d2/hw_pending/txm_tour_m33/module_start.zig)
+The module (apps/board/threadx_modules/txm_tour_m33/module_start.zig)
 binds the typed shims (`libs/ra8_app/src/internal/api/module.zig`) and walks
 the table: api_version, ticks, sleep, screen_info, draw_rect, draw_image, a
 file write/read round trip under its own directory, the empty touch_event,

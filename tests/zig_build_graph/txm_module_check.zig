@@ -37,7 +37,7 @@ pub const Probe = struct {
 const probe_dir = "tests/zig_build_graph/txm_module_probes/";
 /// txm_rpc_cpu1's module (RA8FW-544): an ra8_rpc client over ThreadX queues,
 /// whose vtables are words of data holding addresses.
-const rpc_source = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1/src/module_start.zig";
+const rpc_source = "apps/board/threadx_modules/txm_rpc_cpu1/src/module_start.zig";
 
 pub const probes = [_]Probe{
     .{

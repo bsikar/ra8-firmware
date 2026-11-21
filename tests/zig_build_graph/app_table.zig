@@ -870,7 +870,7 @@ pub const cross_apps = [_]CrossApp{
         // Zig throughout, so no CMakeLists. Appended last so the graph tests'
         // positional picks stay put.
         .name = "txm_manager_cpu1",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_manager_cpu1",
+        .dir = "apps/board/threadx_modules/txm_manager_cpu1",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -891,7 +891,7 @@ pub const cross_apps = [_]CrossApp{
         // stores outside its MPU regions and must survive it (RA8FW-459).
         // Appended after txm_manager_cpu1 for the same reason.
         .name = "txm_fault_cpu1",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_fault_cpu1",
+        .dir = "apps/board/threadx_modules/txm_fault_cpu1",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -912,7 +912,7 @@ pub const cross_apps = [_]CrossApp{
         // rebased at start-up, and checked by the values it reports
         // (RA8FW-539). Appended after txm_fault_cpu1 for the same reason.
         .name = "txm_table_cpu1",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_table_cpu1",
+        .dir = "apps/board/threadx_modules/txm_table_cpu1",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -953,7 +953,7 @@ pub const cross_apps = [_]CrossApp{
         // ThreadX queues, the resident side serving it (RA8FW-544). Appended
         // last so the positional picks stay put.
         .name = "txm_rpc_cpu1",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1",
+        .dir = "apps/board/threadx_modules/txm_rpc_cpu1",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -992,7 +992,7 @@ pub const cross_apps = [_]CrossApp{
         // throughout, so no CMakeLists. Appended last so the positional
         // picks stay put.
         .name = "txm_reload_cpu1",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_reload_cpu1",
+        .dir = "apps/board/threadx_modules/txm_reload_cpu1",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",

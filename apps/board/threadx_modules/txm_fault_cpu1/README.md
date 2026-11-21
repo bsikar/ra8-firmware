@@ -23,7 +23,7 @@ Everything is Zig:
   CFSR, MMFAR and the ticks since the fault.
 - `linker_script_cpu1.ld`: the board's M33 map plus `.txm_module`.
 
-The module is `examples/ek_ra8d2/hw_pending/txm_fault_m33/module_start.zig`. Its
+The module is `apps/board/threadx_modules/txm_fault_m33/module_start.zig`. Its
 store goes to 0x2210_0040, past the shared block, so a store an absent MPU lets
 through cannot fake the verdict: the module just keeps sleeping and the M85
 times out on FAIL.

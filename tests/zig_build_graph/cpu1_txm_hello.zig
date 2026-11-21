@@ -55,14 +55,14 @@ pub const Module = struct {
 /// The hello-world module, and the one the `txm-hello-m33` step installs.
 pub const hello_world = Module{
     .name = "txm_hello_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_hello_m33/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_hello_m33/module_start.zig",
 };
 
 /// The negative case: a module whose start thread stores outside its MPU
 /// regions, for txm_fault_cpu1 (RA8FW-459).
 pub const fault = Module{
     .name = "txm_fault_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_fault_m33/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_fault_m33/module_start.zig",
 };
 
 /// The module that keeps a table of function pointers in its data and
@@ -78,7 +78,7 @@ pub const table = Module{
 /// reach their queues through vtables in its data, so it goes through C.
 pub const rpc = Module{
     .name = "txm_rpc_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_rpc_cpu1/src/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_rpc_cpu1/src/module_start.zig",
     .through_c = true,
 };
 
@@ -86,7 +86,7 @@ pub const rpc = Module{
 /// preemption, for txm_helium_m85 (RA8FW-820, under RA8FW-428).
 pub const helium = Module{
     .name = "txm_helium_m85",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_helium_m85/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_helium_m85/module_start.zig",
     .through_c = true,
     .core = .cortex_m85,
 };
@@ -96,7 +96,7 @@ pub const helium = Module{
 /// queues through vtables in its data, so it goes through C.
 pub const dual_server = Module{
     .name = "txm_dual_server_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox/src/server_module.zig",
+    .entry_source = "apps/board/threadx_modules/txm_dual_mailbox/src/server_module.zig",
     .through_c = true,
 };
 
@@ -106,7 +106,7 @@ pub const dual_server = Module{
 /// txm_rpc_m33.
 pub const dual_client = Module{
     .name = "txm_dual_client_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox/src/client_module.zig",
+    .entry_source = "apps/board/threadx_modules/txm_dual_mailbox/src/client_module.zig",
     .through_c = true,
 };
 
@@ -116,7 +116,7 @@ pub const dual_client = Module{
 /// directly, so it goes through C for the rebase pass.
 pub const tour = Module{
     .name = "txm_tour_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_tour_m33/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_tour_m33/module_start.zig",
     .stack_size = 4096,
     .through_c = true,
     .api = true,
