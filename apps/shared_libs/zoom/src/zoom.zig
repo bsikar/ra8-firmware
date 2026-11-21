@@ -341,6 +341,7 @@ pub const Err = enum(u32) {
     null_ptr = 0x504,
     invalid_state = 0x104,
     out_of_range = 0x208,
+    invalid_size = 0x105, // k_ra8_err_invalid_size: the tiles adapter surfaces it (tile geometry mismatch).
     not_supported = 0x107, // k_ra8_err_not_supported: adapters surface it (zoom_book SVG reject).
     hw_error = 0x204, // k_ra8_err_hw_error: the render pipeline surfaces it (gfx blit/dither).
 };

@@ -14,6 +14,7 @@ const std = @import("std");
 pub const zoom = @import("zoom.zig");
 pub const book = @import("zoom_book.zig");
 pub const render = @import("zoom_render.zig");
+pub const tiles = @import("zoom_tiles.zig");
 
 const Err = zoom.Err;
 const View = zoom.View;
@@ -114,6 +115,34 @@ export fn zoom_source_init(
     height: u32,
 ) callconv(.c) Err {
     return zoom.sourceInit(out, read, ctx, width, height);
+}
+
+// ---------------------------------------------------------------------------
+// The tiled-atlas adapter (zoom_tiles.c's four functions, RA8FW-1261). The
+// membrane owns pointer nullability (the C module's RA8_CHECK_NULL_PTR on
+// the read destination), the writes into caller-owned storage, and the
+// zoom_pan_t -> ra8_tile_pan_dir_t forwarding whose value agreement
+// zoom_tiles.zig pins at compile time.
+// ---------------------------------------------------------------------------
+
+export fn zoom_tile_src_init(ts: ?*tiles.TileSrc, cache: ?*tiles.TileCache, image_id: u32, width: u32, height: u32, tile_w: u16, tile_h: u16) callconv(.c) Err {
+    return tiles.tileSrcInit(ts, cache, image_id, width, height, tile_w, tile_h);
+}
+
+export fn zoom_tile_src_bind(ts: ?*tiles.TileSrc, out: ?*Source) callconv(.c) Err {
+    return tiles.tileSrcBind(ts, out);
+}
+
+export fn zoom_tile_read(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: ?[*]u8, out_stride: u32) callconv(.c) Err {
+    if (out == null) {
+        zoom.logErr("read destination must not be nullptr");
+        return .null_ptr;
+    }
+    return tiles.tileRead(ctx, x, y, w, h, out.?, out_stride);
+}
+
+export fn zoom_tiles_prefetch(ts: ?*tiles.TileSrc, v: ?*const View, dir: zoom.Pan, max_tiles: u16, out_warmed: ?*u16) callconv(.c) Err {
+    return tiles.tilesPrefetch(ts, v, dir, max_tiles, out_warmed);
 }
 
 // ---------------------------------------------------------------------------
