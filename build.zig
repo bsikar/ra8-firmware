@@ -262,6 +262,25 @@ pub fn build(b: *std.Build) void {
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
 
+    // The ra8app setup example (apps/board/threadx_modules/ra8app_setup_hello),
+    // so the pack, sign, verify and gate walkthrough runs under `zig build
+    // test` against the same module_pack and test key the build graph packs
+    // with.
+    const ra8app_setup_module = b.createModule(.{
+        .root_source_file = b.path("apps/board/threadx_modules/ra8app_setup_hello/setup_example.zig"),
+        .target = b.graph.host,
+    });
+    ra8app_setup_module.addImport("module_pack", b.createModule(.{
+        .root_source_file = b.path("libs/ra8_app/src/internal/module_pack.zig"),
+        .target = b.graph.host,
+    }));
+    ra8app_setup_module.addImport("test_key", b.createModule(.{
+        .root_source_file = b.path("libs/ra8_app/tools/test_key.zig"),
+        .target = b.graph.host,
+    }));
+    const ra8app_setup_tests = b.addTest(.{ .root_module = ra8app_setup_module });
+    zig_test_step.dependOn(&b.addRunArtifact(ra8app_setup_tests).step);
+
     const core_artifact_name: []const u8 =
         if (target.result.os.tag == .freestanding) "ra8_core" else "ra8_core_zig";
     const core_archive = b.dependency("ra8_core", .{
