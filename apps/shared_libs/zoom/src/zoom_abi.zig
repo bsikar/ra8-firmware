@@ -13,6 +13,7 @@
 const std = @import("std");
 pub const zoom = @import("zoom.zig");
 pub const book = @import("zoom_book.zig");
+pub const render = @import("zoom_render.zig");
 
 const Err = zoom.Err;
 const View = zoom.View;
@@ -81,8 +82,15 @@ export fn zoom_view_present(v: ?*View, out: ?*Present) callconv(.c) Err {
     return zoom.viewPresent(v, out);
 }
 
+// The strip composite (zoom_render.c's zoom_view_render): the render half of
+// the facade. zoom_render.zig owns every decision; the export only carries
+// the C ABI.
+export fn zoom_view_render(v: ?*View) callconv(.c) Err {
+    return render.viewRender(v);
+}
+
 // ---------------------------------------------------------------------------
-// The module-private geometry helper zoom_render.c and the host zoom suite
+// The module-private geometry helper zoom_render.zig (RA8FW-1260) and the host zoom suite
 // call (zoom_internal.h). zoom.zig's axis() is the single definition; the
 // export just carries the C-side zoom_axis_t write.
 // ---------------------------------------------------------------------------

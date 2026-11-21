@@ -741,7 +741,7 @@ link_libraries(ra8_zig::ra8_epub_miniz)
 
 # The zoom facade's viewport state machine is Zig behind the unchanged
 # C ABI (RA8FW-1256): apps/shared_libs/zoom/src has no zoom.c left, and the
-# remaining C members (zoom_book, zoom_render, zoom_tiles) keep globbing into
+# remaining C member (zoom_tiles) keeps globbing into
 # RA8_ZOOM_SOURCES. The archive supplies zoom_view_* and priv_zoom_axis, so
 # the ereader zoom test links the production viewport instead of a stub.
 ra8_add_zig_library(

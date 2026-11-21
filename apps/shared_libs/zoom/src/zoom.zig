@@ -4,8 +4,8 @@
 //! the dimension bound, the saturating anchor add and the anchor clamp. Pure
 //! integer arithmetic with no MMIO and no allocation, so it behaves identically
 //! on the unit-test host, in ra8_emulator and on silicon. The strip composite
-//! stays in zoom_render.c (C this slice) and the zoom_view_* C ABI seams land
-//! with the view state machine in the next slice.
+//! stays in zoom_render.zig (RA8FW-1260) and the zoom_view_* C ABI seams live
+//! in zoom_abi.zig.
 //!
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
@@ -342,6 +342,7 @@ pub const Err = enum(u32) {
     invalid_state = 0x104,
     out_of_range = 0x208,
     not_supported = 0x107, // k_ra8_err_not_supported: adapters surface it (zoom_book SVG reject).
+    hw_error = 0x204, // k_ra8_err_hw_error: the render pipeline surfaces it (gfx blit/dither).
 };
 
 /// The ra8_log_error macro's backend entry (ra8_log.h): tag + free-form
