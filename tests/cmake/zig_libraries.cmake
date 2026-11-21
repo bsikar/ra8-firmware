@@ -739,11 +739,11 @@ ra8_add_zig_library(
 # Host tests tree links the epub miniz-arena archive: its arena externs back the epub accessors.
 link_libraries(ra8_zig::ra8_epub_miniz)
 
-# The zoom facade's viewport state machine is Zig behind the unchanged
-# C ABI (RA8FW-1256): apps/shared_libs/zoom/src has no zoom.c left, and the
-# remaining C member (zoom_tiles) keeps globbing into
-# RA8_ZOOM_SOURCES. The archive supplies zoom_view_* and priv_zoom_axis, so
-# the ereader zoom test links the production viewport instead of a stub.
+# The zoom facade is fully Zig behind the unchanged C ABI (RA8FW-1256,
+# 1259, 1260, 1261): apps/shared_libs/zoom/src has no first-party C left,
+# so nothing of it globs into RA8_ZOOM_SOURCES anymore. The archive
+# supplies zoom_view_* and priv_zoom_axis, so the ereader zoom test links
+# the production viewport instead of a stub.
 ra8_add_zig_library(
   NAME
   zoom
