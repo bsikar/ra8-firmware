@@ -128,7 +128,7 @@ pub const tour = Module{
 /// builds through C like the tour.
 pub const translate = Module{
     .name = "txm_translate_m33",
-    .entry_source = "examples/ek_ra8d2/hw_pending/txm_translate_m33/module_start.zig",
+    .entry_source = "apps/board/threadx_modules/txm_translate_m33/module_start.zig",
     .stack_size = 4096,
     .through_c = true,
     .api = true,

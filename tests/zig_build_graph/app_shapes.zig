@@ -697,7 +697,12 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "threadx_fs_demo",
         .shape = .{ .uses = &.{ "levelx", "threadx" }, .threadx_heap = true },
-        .note = "3 declarations: LevelX over ThreadX, the flash-translation stack",
+        .note = "2 declarations: LevelX over ThreadX, the flash-translation stack",
+    },
+    .{
+        .representative = "threadx_levelx_demo",
+        .shape = .{ .uses = &.{ "levelx", "threadx" }, .no_nsc = true, .threadx_heap = true },
+        .note = "1 declaration: the LevelX demo, split from the LevelX-over-ThreadX kind when it took NO_NSC, because the NSC branch keeps its support C and registers the real archives beside the universal ones",
     },
     .{
         .representative = "threadx_https_client",
