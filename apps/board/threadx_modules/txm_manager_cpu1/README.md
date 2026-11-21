@@ -22,7 +22,7 @@ Everything is Zig (RA8FW-431):
 - `linker_script_cpu1.ld`: the board's M33 map plus `.txm_module`, where the
   packed module sits (`Cpu1Image.txm_module`).
 
-The module is `examples/ek_ra8d2/hw_pending/txm_hello_m33/module_start.zig`,
+The module is `apps/board/threadx_modules/txm_hello_m33/module_start.zig`,
 built as `txm_hello_m33` and packed into `.txm_module` by the build graph.
 
 There is no CMakeLists.txt: `ra8_add_app()` cannot declare a Zig main, so this

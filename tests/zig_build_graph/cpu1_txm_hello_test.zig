@@ -19,7 +19,7 @@ test "the preamble and gcc_setup come from the cortex_m33 module port" {
 
 test "the module's own code is Zig" {
     try std.testing.expect(std.mem.endsWith(u8, hello.entry_source, ".zig"));
-    try std.testing.expect(std.mem.startsWith(u8, hello.entry_source, "examples/"));
+    try std.testing.expect(std.mem.startsWith(u8, hello.entry_source, "apps/board/threadx_modules/"));
 }
 
 test "the preamble and gcc_setup are assembled position independent for the M33" {

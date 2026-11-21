@@ -16,7 +16,7 @@ pub const apps = [_]CrossApp{
         // throughout, so no CMakeLists. Appended last so the positional
         // picks stay put.
         .name = "txm_manager_m85",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_manager_m85",
+        .dir = "apps/board/threadx_modules/txm_manager_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
@@ -31,7 +31,7 @@ pub const apps = [_]CrossApp{
         // txm_fault_m33, whose store outside its MPU regions must kill only
         // the module (RA8FW-805).
         .name = "txm_fault_m85",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_fault_m85",
+        .dir = "apps/board/threadx_modules/txm_fault_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
@@ -47,7 +47,7 @@ pub const apps = [_]CrossApp{
         // while txm_helium_m85, built for the M85 with MVE, spins checking
         // its own.
         .name = "txm_helium_m85",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_helium_m85",
+        .dir = "apps/board/threadx_modules/txm_helium_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
@@ -64,7 +64,7 @@ pub const apps = [_]CrossApp{
         // ra8_fs, verifies their signatures and memory-loads them through
         // the Module Manager, so no module is packed in.
         .name = "txm_sd_hello_m85",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_sd_hello_m85",
+        .dir = "apps/board/threadx_modules/txm_sd_hello_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{"ra8_fs"},
@@ -87,7 +87,7 @@ pub const apps = [_]CrossApp{
     },
     .{
         .name = "txm_sd_tour_m85",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_sd_tour_m85",
+        .dir = "apps/board/threadx_modules/txm_sd_tour_m85",
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{"ra8_fs"},
@@ -112,7 +112,7 @@ pub const apps = [_]CrossApp{
         // RA8FW-849). Once the CPU1 module faults, CPU1's resident refuses
         // calls itself through ra8_rpc (RA8FW-842).
         .name = "txm_dual_mailbox",
-        .dir = "examples/ek_ra8d2/hw_pending/txm_dual_mailbox",
+        .dir = "apps/board/threadx_modules/txm_dual_mailbox",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -156,5 +156,4 @@ pub const apps = [_]CrossApp{
         .ra8app_module = "txm_translate_m33",
         .stack_bytes = 8192,
     },
-
 };
