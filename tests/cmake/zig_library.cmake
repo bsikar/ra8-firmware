@@ -18,7 +18,8 @@ include(CMakeParseArguments)
 # target named ra8_zig::<NAME>.
 function(ra8_add_zig_library)
   set(_ra8_one_value_args NAME ZIG_ROOT LIBRARY_NAME)
-  cmake_parse_arguments(RA8_ZIG "" "${_ra8_one_value_args}" "" ${ARGN})
+  set(_ra8_multi_value_args SOUP_SOURCES SOUP_INCLUDE_DIRS)
+  cmake_parse_arguments(RA8_ZIG "" "${_ra8_one_value_args}" "${_ra8_multi_value_args}" ${ARGN})
 
   foreach(_ra8_required IN LISTS _ra8_one_value_args)
     if(NOT RA8_ZIG_${_ra8_required})
@@ -84,6 +85,25 @@ function(ra8_add_zig_library)
                                         INTERFACE_INCLUDE_DIRECTORIES "${RA8_ZIG_ZIG_ROOT}/inc"
   )
   add_dependencies(ra8_zig::${RA8_ZIG_NAME} ${RA8_ZIG_NAME}_zig_library)
+
+  # A vendored vendor soup the migrated library still calls (for example
+  # ra8_c6link's esp-hosted protobuf codec + the protobuf-c runtime): compile
+  # it once as a static archive and hand it to every consumer of the imported
+  # target, so the callers never re-declare it. The archive sits after the
+  # migrated library on the link line (interface libraries follow their
+  # carrier), which is the right order: the ported code calls the soup, never
+  # the reverse.
+  if(RA8_ZIG_SOUP_SOURCES)
+    # An OBJECT library: the soup rides every consumer directly and the build
+    # never needs an archiver for it.
+    add_library(${RA8_ZIG_NAME}_soup OBJECT ${RA8_ZIG_SOUP_SOURCES})
+    target_include_directories(${RA8_ZIG_NAME}_soup PUBLIC ${RA8_ZIG_SOUP_INCLUDE_DIRS})
+    set_target_properties(
+      ra8_zig::${RA8_ZIG_NAME}
+      PROPERTIES INTERFACE_LINK_LIBRARIES "$<TARGET_OBJECTS:${RA8_ZIG_NAME}_soup>"
+    )
+    add_dependencies(ra8_zig::${RA8_ZIG_NAME} ${RA8_ZIG_NAME}_soup)
+  endif()
 
   # The Zig test step is the library's own unit suite; the C suite that links
   # this archive stays the behavioural contract.

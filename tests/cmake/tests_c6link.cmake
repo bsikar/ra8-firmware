@@ -21,11 +21,11 @@
 # core_hal.cmake.
 set(RA8_C6LINK_VENDOR_DIR ${RA8_ESP_HOSTED_HOST_DIR})
 
-# The vendored subset ra8_c6link reaches: the generated codec and the runtime
-# that walks its descriptors. Nothing else from the vendor tree is linked.
-set(RA8_C6LINK_SOUP ${RA8_C6LINK_VENDOR_DIR}/common/proto/esp_hosted_rpc.pb-c.c
-                    ${RA8_PROTOBUF_C_DIR}/protobuf-c/protobuf-c.c
-)
+# The vendored subset ra8_c6link reaches, the generated codec and the runtime
+# that walks its descriptors, is no longer compiled per target: the zig
+# library machinery attaches it as an object soup beside ra8_zig::ra8_c6link
+# (RA8FW-1268), so every consumer gets it and none of these suites compiles a
+# second copy.
 
 set(RA8_C6LINK_INCLUDE_DIRS
     ${FW_ROOT}/libs/ra8_c6link/inc
@@ -56,7 +56,7 @@ set(RA8_C6LINK_TEST_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/ra8_c6_model.c)
 # which layer broke. No model, no transport.
 add_executable(
   test_ra8_c6link_wire ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_wire.c
-                       ${RA8_C6LINK_SOURCES} ${RA8_C6LINK_SOUP} $<TARGET_OBJECTS:ra8_core_hal>
+                       ${RA8_C6LINK_SOURCES} $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link_wire PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_ra8_c6link_wire PRIVATE -Wall -Wextra)
@@ -74,7 +74,6 @@ add_executable(
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
-  ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link PROPERTIES LINKER_LANGUAGE CXX)
