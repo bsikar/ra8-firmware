@@ -1120,3 +1120,14 @@ test "the push-overflow seam caps once and honors the pre-truncated flag" {
     check.ra8_fs_check_test_fat_push_overflow(&t.ctx, 10, true);
     try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
 }
+
+test "the exFAT push-overflow seam caps once and honors the pre-truncated flag" {
+    var t: Ctx = undefined;
+    freshCtx(&t, 4, 0);
+    check.ra8_fs_check_test_exfat_push_overflow(&t.ctx, 9, false);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+    try std.testing.expectEqual(scan_truncated, @as(u8, @intCast(t.rep.first_fault.kind)));
+    try std.testing.expectEqual(@as(u32, 9), t.rep.first_fault.cluster);
+    check.ra8_fs_check_test_exfat_push_overflow(&t.ctx, 10, true);
+    try std.testing.expectEqual(@as(u32, 1), t.rep.faults_total);
+}

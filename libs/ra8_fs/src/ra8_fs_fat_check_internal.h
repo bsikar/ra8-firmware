@@ -342,6 +342,35 @@ void ra8_fs_check_test_fat_push_overflow(ra8_fs_check_ctx_t* ctx,
                                          bool                already_truncated);
 
 /**
+ * @brief Exercise the exFAT directory-worklist overflow guard from a host test.
+ *
+ * @details Builds an already-full private exFAT worklist and attempts one push
+ *          of a directory rooted at @p cluster. This drives the bounded-stack
+ *          guard without constructing 129 simultaneous directories in a RAM
+ *          volume. Production code must call ::ra8_fs_check(), never this test
+ *          seam.
+ *
+ * @param[in,out] ctx               Synthetic context whose report receives a fault.
+ * @param[in]     cluster           Cluster recorded for the dropped directory.
+ * @param[in]     already_truncated Whether a prior overflow was already recorded.
+ *
+ * @return Nothing.
+ *
+ * @pre @p ctx is non-NULL.
+ * @pre @p ctx owns a non-NULL, writable report.
+ * @post A first overflow records one scan-truncated fault.
+ * @post A repeated overflow records no additional fault.
+ *
+ * @note Test-only and not thread-safe; no filesystem lock is acquired.
+ *
+ * @since 0.1.0
+ */
+RA8_TEST_HELPER
+void ra8_fs_check_test_exfat_push_overflow(ra8_fs_check_ctx_t* ctx,
+                                           uint32_t            cluster,
+                                           bool                already_truncated);
+
+/**
  * @brief Exercise the exFAT contiguous-run marker from a host unit test.
  *
  * @details
