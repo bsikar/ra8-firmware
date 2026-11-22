@@ -45,17 +45,38 @@ function(ra8_add_zig_library)
   )
   set(_ra8_library "${_ra8_output_dir}/lib/${_ra8_library_file}")
 
-  add_custom_target(
-    ${RA8_ZIG_NAME}_zig_library ALL
+  # The library's own sources are the command's inputs, so the edge settles
+  # once built. A custom target with only BYPRODUCTS has no outputs, and
+  # ninja re-runs it on every invocation, re-grinding every built library
+  # each chunk. CONFIGURE_DEPENDS re-globs at build time, so a new file
+  # counts too.
+  file(
+    GLOB_RECURSE
+    _ra8_zig_sources
+    CONFIGURE_DEPENDS
+    "${RA8_ZIG_ZIG_ROOT}/src/*.zig"
+    "${RA8_ZIG_ZIG_ROOT}/build.zig"
+    "${RA8_ZIG_ZIG_ROOT}/build.zig.zon"
+  )
+
+  # One global cache for every migrated library in the tree: zig's global
+  # cache is content-addressed, so sharing it de-duplicates compiler_rt and
+  # std across ~60 libraries instead of burning a private copy per library.
+  set(_ra8_global_cache "${CMAKE_CURRENT_BINARY_DIR}/zig-global-cache")
+
+  add_custom_command(
+    OUTPUT "${_ra8_library}"
     COMMAND
-      "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_output_dir}/global-cache"
+      "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
       "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
       "${_ra8_output_dir}/cache"
+    DEPENDS ${_ra8_zig_sources}
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
-    BYPRODUCTS "${_ra8_library}"
     COMMENT "Building migrated Zig library ${RA8_ZIG_NAME}"
     VERBATIM
   )
+
+  add_custom_target(${RA8_ZIG_NAME}_zig_library ALL DEPENDS "${_ra8_library}")
 
   add_library(ra8_zig::${RA8_ZIG_NAME} STATIC IMPORTED GLOBAL)
   set_target_properties(
@@ -68,7 +89,7 @@ function(ra8_add_zig_library)
   # this archive stays the behavioural contract.
   add_test(
     NAME ${RA8_ZIG_NAME}_zig_tests
-    COMMAND "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_output_dir}/global-cache"
+    COMMAND "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
             "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_output_dir}/cache"
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
   )
