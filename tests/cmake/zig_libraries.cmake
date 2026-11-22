@@ -1021,6 +1021,19 @@ ra8_add_zig_library(
   ${FW_ROOT}/libs/ra8_c6link
   LIBRARY_NAME
   ra8_c6link
+  # The ported facade encodes/decodes the vendored esp-hosted Rpc protobuf
+  # message, so every consumer of the archive also needs the generated codec
+  # and the protobuf-c runtime (RA8FW-1268: previously only the hand-registered
+  # c6link/wifi suites compiled them, and the other ~1,400 consumers failed to
+  # link).
+  SOUP_SOURCES
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/proto/esp_hosted_rpc.pb-c.c
+  ${RA8_PROTOBUF_C_DIR}/protobuf-c/protobuf-c.c
+  SOUP_INCLUDE_DIRS
+  ${RA8_ESP_HOSTED_HOST_DIR}/common
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/transport
+  ${RA8_ESP_HOSTED_HOST_DIR}/common/proto
+  ${RA8_PROTOBUF_C_DIR}
 )
 
 # Partly migrated (RA8FW-497): ported ra8_hal units, beside its remaining C.

@@ -21,7 +21,7 @@
 # backend through is still C and still listed here.
 #
 # Included from tests/CMakeLists.txt. Depends on variables defined in
-# tests_c6link.cmake (RA8_C6LINK_SOUP / RA8_C6LINK_SOURCES / include dirs), so it
+# tests_c6link.cmake (RA8_C6LINK_SOURCES / include dirs), so it
 # is included after it in the driver.
 
 set(RA8_WIFI_INCLUDE_DIRS ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_wifi/inc
@@ -38,7 +38,6 @@ add_executable(
   ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_wifi_c6link.c
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
-  ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_wifi_c6link PROPERTIES LINKER_LANGUAGE CXX)
