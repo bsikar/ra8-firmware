@@ -857,6 +857,43 @@ pub export fn ra8_fs_check_test_fat_push_overflow(ctx: [*c]c.ra8_fs_check_ctx_t,
     internal_fat_push(ctx, &stack, cluster);
 }
 
+/// Test-only seam: exercise the exFAT walk worklist overflow guard without
+/// building a 128-deep tree. Builds an already-full worklist (pre-marked
+/// truncated when asked) and attempts one push of a directory rooted at
+/// `cluster`.
+pub export fn ra8_fs_check_test_exfat_push_overflow(ctx: [*c]c.ra8_fs_check_ctx_t, cluster: u32, already_truncated: bool) callconv(.c) void {
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = cluster;
+    var stack = c.exfat_dir_stack_t{
+        .items = &s_exchk_work_items,
+        .top = @intCast(c.k_ra8_fs_check_max_dirs),
+        .truncated = @intFromBool(already_truncated),
+    };
+    internal_exchk_push(ctx, &stack, &dir);
+}
+
+/// Test-only seam: mark a synthetic contiguous run of `nclus` clusters from
+/// `first` through the reference pass, without scanning directory entries.
+pub export fn ra8_fs_check_test_exfat_mark_run(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32, nclus: u64) callconv(.c) void {
+    internal_exchk_mark_run(ctx, first, nclus);
+}
+
+/// Test-only seam: walk a synthetic fragmented FAT chain from `first` through
+/// the marker, so the exact hop ceiling can be tested against a crafted FAT.
+pub export fn ra8_fs_check_test_exfat_mark_fatchain(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32) callconv(.c) u16 {
+    return internal_exchk_mark_fatchain(ctx, first);
+}
+
+/// Test-only seam: build a synthetic FAT-chained directory descriptor rooted
+/// at `first` (contig_end 0) and mark its allocation without scanning
+/// directory entries.
+pub export fn ra8_fs_check_test_exfat_mark_dir_alloc(ctx: [*c]c.ra8_fs_check_ctx_t, first: u32) callconv(.c) u16 {
+    var dir = std.mem.zeroes(c.exfat_dir_t);
+    dir.cluster = first;
+    dir.contig_end = 0;
+    return internal_exchk_mark_dir_alloc(ctx, &dir);
+}
+
 /// Test-only seam: walk the synthetic FAT directory chain beginning at
 /// `first` with an empty worklist, so the exact `clusters_total` boundary can
 /// be tested without the mounted volume's real root consuming every cluster.
