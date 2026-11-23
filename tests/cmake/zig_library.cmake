@@ -18,7 +18,7 @@ include(CMakeParseArguments)
 # target named ra8_zig::<NAME>.
 function(ra8_add_zig_library)
   set(_ra8_one_value_args NAME ZIG_ROOT LIBRARY_NAME)
-  set(_ra8_multi_value_args SOUP_SOURCES SOUP_INCLUDE_DIRS)
+  set(_ra8_multi_value_args SOUP_SOURCES SOUP_INCLUDE_DIRS ZIG_OPTIONS)
   cmake_parse_arguments(RA8_ZIG "" "${_ra8_one_value_args}" "${_ra8_multi_value_args}" ${ARGN})
 
   foreach(_ra8_required IN LISTS _ra8_one_value_args)
@@ -69,7 +69,7 @@ function(ra8_add_zig_library)
     OUTPUT "${_ra8_library}"
     COMMAND
       "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
-      "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseSafe --prefix "${_ra8_output_dir}" --cache-dir
+      "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseSafe ${RA8_ZIG_ZIG_OPTIONS} --prefix "${_ra8_output_dir}" --cache-dir
       "${_ra8_output_dir}/cache"
     DEPENDS ${_ra8_zig_sources}
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"

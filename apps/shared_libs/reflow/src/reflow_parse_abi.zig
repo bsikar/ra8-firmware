@@ -225,7 +225,7 @@ const walk = @import("reflow_tokenize.zig");
 /// link-target table, and hand the buffer to the tokenizer. The layout
 /// pools (glyphs/pages/images/link-rects/anchors) are cleared separately
 /// by reflow_run_layout().
-pub export fn reflow_parse_xhtml(engine: ?*ReflowEngine, xhtml_buf: ?[*]const u8, xhtml_len: usize) callconv(.c) c_int {
+pub fn reflow_parse_xhtml(engine: ?*ReflowEngine, xhtml_buf: ?[*]const u8, xhtml_len: usize) callconv(.c) c_int {
     if (engine == null or xhtml_buf == null) {
         return k_ra8_err_null_ptr;
     }
@@ -303,4 +303,16 @@ comptime {
     // RA8FW-1222: the render pass is Zig; its public ABI (reflow_render_page,
     // reflow_render_page_at, reflow_set_glyph_atlas) replaces reflow_render.c.
     _ = @import("reflow_render.zig");
+}
+
+// RA8FW-1263: when the LiteHTML v2 engine is linked it owns the core reflow
+// ABI (REFLOW_USE_LITEHTML=ON); the archive then keeps only the auxiliary
+// seams and suppresses this core entry point so the final link has one
+// definition of it. The default (v1) build keeps every export.
+const build_options = @import("reflow_build_options");
+
+comptime {
+    if (!build_options.reflow_v2_engine) {
+        @export(&reflow_parse_xhtml, .{ .name = "reflow_parse_xhtml" });
+    }
 }

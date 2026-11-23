@@ -121,7 +121,7 @@ fn internal_layout_tokens(engine: *ReflowEngine, font: *const StbttFontinfo) c_i
 // Public API (declared in inc/reflow.h) -- C linkage preserved.
 // ---------------------------------------------------------------------------
 
-pub export fn reflow_run_layout(engine: ?*ReflowEngine) callconv(.c) c_int {
+pub fn reflow_run_layout(engine: ?*ReflowEngine) callconv(.c) c_int {
     if (engine == null) {
         return k_ra8_err_null_ptr;
     }
@@ -159,7 +159,7 @@ pub export fn reflow_run_layout(engine: ?*ReflowEngine) callconv(.c) c_int {
     return k_ra8_ok;
 }
 
-pub export fn reflow_init(viewport_w: u16,
+pub fn reflow_init(viewport_w: u16,
     viewport_h: u16,
     font_data: ?[*]const u8,
     font_len: usize,
@@ -194,7 +194,7 @@ pub export fn reflow_init(viewport_w: u16,
     return k_ra8_ok;
 }
 
-pub export fn reflow_close(engine: ?*ReflowEngine) callconv(.c) c_int {
+pub fn reflow_close(engine: ?*ReflowEngine) callconv(.c) c_int {
     if (engine == null) {
         return k_ra8_err_null_ptr;
     }
@@ -241,7 +241,7 @@ pub export fn reflow_set_css_loader(engine: ?*ReflowEngine, loader: ?ReflowLoade
     return k_ra8_ok;
 }
 
-pub export fn reflow_layout_chapter(engine: ?*ReflowEngine,
+pub fn reflow_layout_chapter(engine: ?*ReflowEngine,
     xhtml_buf: ?[*]const u8,
     xhtml_len: usize,
     out_total_pages: ?*u32,
@@ -275,7 +275,7 @@ pub export fn reflow_layout_chapter(engine: ?*ReflowEngine,
     return k_ra8_ok;
 }
 
-pub export fn reflow_get_page_count(engine: ?*const ReflowEngine, out_count: ?*u32) callconv(.c) c_int {
+pub fn reflow_get_page_count(engine: ?*const ReflowEngine, out_count: ?*u32) callconv(.c) c_int {
     if ((engine == null) or (out_count == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -286,7 +286,7 @@ pub export fn reflow_get_page_count(engine: ?*const ReflowEngine, out_count: ?*u
     return k_ra8_ok;
 }
 
-pub export fn reflow_set_font_size(engine: ?*ReflowEngine, new_font_px: u16) callconv(.c) c_int {
+pub fn reflow_set_font_size(engine: ?*ReflowEngine, new_font_px: u16) callconv(.c) c_int {
     if (engine == null) {
         return k_ra8_err_null_ptr;
     }
@@ -390,4 +390,22 @@ pub export fn reflow_register_face(engine: ?*ReflowEngine,
     face.css_face_idx = css_face_idx;
     engine.?.face_count += 1;
     return k_ra8_ok;
+}
+
+// RA8FW-1263: the core lifecycle + layout ABI belongs to the LiteHTML v2
+// engine when it is linked (REFLOW_USE_LITEHTML=ON); the archive then keeps
+// the loader/font-binding seams and the link/anchor queries only, so the
+// final link has one definition of each core symbol. The default (v1) build
+// keeps every export.
+const build_options = @import("reflow_build_options");
+
+comptime {
+    if (!build_options.reflow_v2_engine) {
+        @export(&reflow_run_layout, .{ .name = "reflow_run_layout" });
+        @export(&reflow_init, .{ .name = "reflow_init" });
+        @export(&reflow_close, .{ .name = "reflow_close" });
+        @export(&reflow_layout_chapter, .{ .name = "reflow_layout_chapter" });
+        @export(&reflow_get_page_count, .{ .name = "reflow_get_page_count" });
+        @export(&reflow_set_font_size, .{ .name = "reflow_set_font_size" });
+    }
 }

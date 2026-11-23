@@ -536,7 +536,7 @@ fn renderPage(engine: *const ReflowEngine, page_idx: u32, ox: i32, oy: i32) c_in
 // Public ABI -- render (unchanged C shape).
 // ---------------------------------------------------------------------------
 
-export fn reflow_render_page(engine: ?*ReflowEngine, page_idx: c_uint, framebuffer: ?*anyopaque) c_int {
+pub fn reflow_render_page(engine: ?*ReflowEngine, page_idx: c_uint, framebuffer: ?*anyopaque) c_int {
     _ = framebuffer; // Reserved hook -- ra8_gfx is bound externally.
     const e = engine orelse return k_ra8_err_null_ptr;
     return renderPage(e, page_idx, 0, 0);
@@ -677,4 +677,16 @@ test "ABI mirrors match the C layout" {
     try std.testing.expectEqual(@as(usize, 48), @offsetOf(AtlasStorage, "bucket_count"));
     // priv_reflow_tofu_rect_t: 4 x i32.
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(TofuRect));
+}
+
+// RA8FW-1263: reflow_render_page belongs to the LiteHTML v2 engine when it
+// is linked (REFLOW_USE_LITEHTML=ON); the archive then suppresses this
+// export so the final link has one definition of it. The default (v1)
+// build keeps it exported.
+const build_options = @import("reflow_build_options");
+
+comptime {
+    if (!build_options.reflow_v2_engine) {
+        @export(&reflow_render_page, .{ .name = "reflow_render_page" });
+    }
 }
