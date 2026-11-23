@@ -217,14 +217,12 @@ if(REFLOW_USE_LITEHTML)
   # ra8_stbtt_guard.zig and arrive with the ra8_imgdec archive the build
   # already links, so no C TU is listed here for them (epub's priv_font_init
   # resolves the guard symbol from that archive in the v2 engine too).
-  # reflow_link.c is pure query logic over engine fields (no layout/stbtt),
-  # so the link/anchor API is available under v2 as well. The v1 engine
-  # resolves this API from Zig now (RA8FW-1228, reflow_link.zig in the
-  # ra8_reflow_parse archive), so this TU is kept only for the litehtml
-  # v2 build, which does not link the Zig archive.
-  set(REFLOW_C_SOURCES
-      ${FW_ROOT}/apps/shared_libs/reflow/src/reflow_link.c
-  )
+  # reflow_link.c is deleted (RA8FW-1270): the link/anchor API is pure query
+  # logic over engine fields (no layout/stbtt) and lives in Zig on both
+  # branches now (RA8FW-1228, reflow_link.zig in the ra8_reflow_parse
+  # archive). The v2 branch links that archive with ra8_core_hal (see
+  # core_hal.cmake), so no first-party reflow C TU is compiled here.
+  set(REFLOW_C_SOURCES "")
   set(REFLOW_CPP_SOURCES ${FW_ROOT}/apps/shared_libs/reflow/v2/src/reflow_v2.cpp)
   enable_language(CXX)
   set(_RA8_SAVED_C_FLAGS "${CMAKE_C_FLAGS}")
