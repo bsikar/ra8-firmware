@@ -21,6 +21,20 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .pic = true,
     });
+
+    // RA8FW-1263: when the LiteHTML v2 engine is linked (CMake passes
+    // -Dreflow-v2-engine=true under REFLOW_USE_LITEHTML), it owns the core
+    // reflow ABI and the archive keeps only the auxiliary seams (loader /
+    // font binding, link + anchor queries). The default (v1) build keeps
+    // every export.
+    const reflow_v2_engine = b.option(
+        bool,
+        "reflow-v2-engine",
+        "The LiteHTML v2 engine owns the core reflow ABI",
+    ) orelse false;
+    const build_options = b.addOptions();
+    build_options.addOption(bool, "reflow_v2_engine", reflow_v2_engine);
+    library_module.addOptions("reflow_build_options", build_options);
     const library = b.addLibrary(.{
         .name = "ra8_reflow_parse",
         .linkage = .static,
@@ -42,6 +56,7 @@ pub fn build(b: *std.Build) void {
     // its extern seam (the four stbtt_* entry points) is linked into the
     // host test so the exported layout symbols resolve. RA8FW-1226: the
     // image layout TU is Zig as well.
+    test_module.addOptions("reflow_build_options", build_options);
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));

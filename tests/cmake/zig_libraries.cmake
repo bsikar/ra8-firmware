@@ -890,6 +890,13 @@ ra8_add_zig_library(
 # (reflow_tokenize.c) and provides the extern priv_reflow_xml_walk.
 # tests/reflow/src/test_reflow_parse.c keeps testing the archive from the
 # outside through inc/reflow_api.h.
+# RA8FW-1263: when the LiteHTML v2 engine is linked it owns the core reflow
+# ABI, so the archive is built with -Dreflow-v2-engine=true and keeps only
+# the auxiliary seams; the default (v1) build keeps every export.
+set(_ra8_reflow_zig_opts "")
+if(REFLOW_USE_LITEHTML)
+  list(APPEND _ra8_reflow_zig_opts "-Dreflow-v2-engine=true")
+endif()
 ra8_add_zig_library(
   NAME
   ra8_reflow_parse
@@ -897,6 +904,8 @@ ra8_add_zig_library(
   ${FW_ROOT}/apps/shared_libs/reflow
   LIBRARY_NAME
   ra8_reflow_parse
+  ZIG_OPTIONS
+  ${_ra8_reflow_zig_opts}
 )
 
 # RA8FW-1242: the streamed wire decoding + canonical layout validation for a
