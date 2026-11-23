@@ -48,7 +48,7 @@ function(ra8_add_zig_c_abi_contract)
     ${RA8_ABI_NAME}_zig_library ALL
     COMMAND
       "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_output_dir}/global-cache"
-      "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
+      "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseSafe --prefix "${_ra8_output_dir}" --cache-dir
       "${_ra8_output_dir}/cache"
     WORKING_DIRECTORY "${RA8_ABI_ZIG_ROOT}"
     BYPRODUCTS "${_ra8_library}"

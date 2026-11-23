@@ -69,7 +69,7 @@ function(ra8_add_zig_library)
     OUTPUT "${_ra8_library}"
     COMMAND
       "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
-      "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
+      "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseSafe --prefix "${_ra8_output_dir}" --cache-dir
       "${_ra8_output_dir}/cache"
     DEPENDS ${_ra8_zig_sources}
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
