@@ -42,6 +42,7 @@ ra8_add_app(
        ra8_box
        ra8_display_pal
        reflow
+       zoom
        ra8_sdfont
        ra8_sdmmc_spi
        ra8_fs

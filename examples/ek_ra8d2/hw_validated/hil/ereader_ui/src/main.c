@@ -153,9 +153,10 @@ static const char k_er_chapter_xhtml[] =
   "before the Traveller's account begins. <a href=\"ch2.xhtml\">Continue to "
   "Chapter II</a>.</p></body></html>";
 
-/** @brief Reading-view chapter two (cross-chapter `<a href>` link target). */
+/** @brief Reading-view chapter two (cross-chapter `<a href>` link target + figure). */
 static const char k_er_chapter2_xhtml[] =
   "<html><body><h1>Chapter II</h1>"
+  "<img src=\"figure.png\"/>"
   "<p>The Machine, said the Time Traveller, holding the lamp aloft, is the thing "
   "I have been at work upon these many years; and now at last it is built.</p>"
   "<p>He took one of the small octahedral things from the table and handed it to "
@@ -590,12 +591,16 @@ static void er_apps_init(void)
 
 void er_render_current(void)
 {
-  uint16_t top = (uint16_t)k_er_screen_library;
-  (void)ra8_ui_nav_top(&s_nav, &top);
-  /* The nav top is the active screen-app's id: focus it (idempotent if already
-   * focused, so no flicker) and render its widget tree. */
-  (void)ra8_app_launch(&s_app_reg, top);
-  (void)ra8_app_render(&s_app_reg);
+  if (er_figure_zoom_active()) {
+    er_figure_zoom_render();
+  } else {
+    uint16_t top = (uint16_t)k_er_screen_library;
+    (void)ra8_ui_nav_top(&s_nav, &top);
+    /* The nav top is the active screen-app's id: focus it (idempotent if already
+     * focused, so no flicker) and render its widget tree. */
+    (void)ra8_app_launch(&s_app_reg, top);
+    (void)ra8_app_render(&s_app_reg);
+  }
   /* Low-battery nag: an app-framework-level overlay widget drawn
    * over whichever screen-app is active. A no-op at a healthy SOC, so the chrome
    * golden (rendered at the default battery) stays byte-identical. */
@@ -615,15 +620,39 @@ void er_render_nag_region(void)
     er_render_current(); /* clip unavailable -> safe full repaint. */
     return;
   }
-  uint16_t top = (uint16_t)k_er_screen_library;
-  (void)ra8_ui_nav_top(&s_nav, &top);
-  (void)ra8_app_launch(&s_app_reg, top);
-  (void)ra8_app_render(&s_app_reg);
+  if (er_figure_zoom_active()) {
+    er_figure_zoom_render();
+  } else {
+    uint16_t top = (uint16_t)k_er_screen_library;
+    (void)ra8_ui_nav_top(&s_nav, &top);
+    (void)ra8_app_launch(&s_app_reg, top);
+    (void)ra8_app_render(&s_app_reg);
+  }
   if (s_batt_nag != k_ra8_batt_nag_none) {
     ra8_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
     (void)ra8_widget_render_dirty(&nag, 1U);
   }
   (void)ra8_gfx_reset_clip();
+}
+
+void er_flush_rect(int32_t x, int32_t y, int32_t w, int32_t h, display_refresh_hint_t hint)
+{
+  const int32_t cx = (x < 0) ? 0 : x;
+  const int32_t cy = (y < 0) ? 0 : y;
+  if ((w <= 0) || (h <= 0) || (cx >= (int32_t)s_fb.width_px) || (cy >= (int32_t)s_fb.height_px)) {
+    return;
+  }
+  const int32_t        max_w = (int32_t)s_fb.width_px - cx;
+  const int32_t        max_h = (int32_t)s_fb.height_px - cy;
+  const display_rect_t rect  = {
+    .x = (uint16_t)cx,
+    .y = (uint16_t)cy,
+    .w = (uint16_t)((w > max_w) ? max_w : w),
+    .h = (uint16_t)((h > max_h) ? max_h : h),
+  };
+  (void)display_flush(s_display, rect, hint);
+  g_er_last_hint = (uint32_t)hint;
+  g_er_cur_page  = s_reading_page;
 }
 
 void er_flush_event(display_turn_event_t event)
@@ -662,9 +691,10 @@ void main(void)
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 
   while (1) {
-    er_poll_touch();   /* fast cadence so taps feel responsive   */
-    er_poll_buttons(); /* page-turn switches                     */
-    er_poll_battery(); /* self-throttled (~1 Hz) low-battery nag */
+    er_poll_touch();       /* fast cadence so taps feel responsive   */
+    er_poll_buttons();     /* page-turn switches                     */
+    er_figure_zoom_tick(); /* settle promotion for zoomed figures    */
+    er_poll_battery();     /* self-throttled (~1 Hz) low-battery nag */
     /* Heartbeat LED toggles on a slow sub-cadence so it blinks (~1 Hz) instead
      * of strobing at the input-poll rate. */
     if ((g_er_loop_ticks % (uint32_t)k_er_led_every) == 0U) {
