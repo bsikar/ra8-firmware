@@ -127,7 +127,7 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  *
  * @details Parks the core; only a debugger or external reset wakes it.
  *          Under ra8_emulator a WFI with no pending work triggers
- *          RA8_EMU_IDLE_STOP, terminating the run cleanly.
+ *          WFI idle-skip, advancing to budget cleanly.
  *
  * @pre Called only after a fatal error in boot or after the one-shot test.
  * @pre IRQs are in whatever state the caller left them.

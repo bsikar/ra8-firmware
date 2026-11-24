@@ -38,7 +38,7 @@
  * J-Link OB VCOM console (SCI8, PD02/PD03 @ 115200 8N1) and mirrors the verdict
  * over ``ra8_log`` (the emulator echoes it as an ``[itm]`` line). On any mismatch
  * it emits a distinct ``... FAIL`` line (never containing "PASS") and parks. The
- * core ends every path in WFI so ``ra8_emulator``'s ``RA8_EMU_IDLE_STOP``
+ * core ends every path in WFI so ``ra8_emulator``'s WFI idle-skip runs
  * terminates the run after the one-shot banner is scraped.
  *
  * @note ``ra8_emulator`` models memory byte-exact and does not model the L1 D-cache,

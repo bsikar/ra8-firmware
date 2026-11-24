@@ -33,14 +33,14 @@
  *     peripheral (IOPORT) write. The cross-core hand-off itself is pure
  *     SRAM, which ra8_emulator's MMIO-keyed idle detector cannot see; the
  *     LED heartbeat keeps it awake so the success banner surfaces even
- *     under ``RA8_EMU_IDLE_STOP=1``. On the bench the LED visibly
+ *     under ``ra8_emulator --ms 5000``. On the bench the LED visibly
  *     blinks while the test runs.
  *   - Steady phase (rounds N..): keep round-tripping forever with no
  *     heartbeat so the J-Link memprobe HIL gate sees
  *     ::g_cache_coherency_match advance across its sample window (a
  *     one-shot counter frozen in a terminal WFI would read unchanged at
  *     both probe halts and fail the delta check). In ra8_emulator this
- *     steady phase is pure SRAM, so ``RA8_EMU_IDLE_STOP`` terminates
+ *     steady phase is pure SRAM, so WFI idle-skip advances clean to budget
  *     the run cleanly right after the banner -- the same clean stop a
  *     terminal WFI would give, without breaking the memprobe gate.
  *
@@ -335,7 +335,7 @@ void main(void)
   while (1) {
     /* Self-test heartbeat: one IOPORT write per round keeps ra8_emulator's
      * MMIO-keyed idle detector awake through the pure-SRAM hand-off so the
-     * banner surfaces under RA8_EMU_IDLE_STOP=1 (and the LED visibly
+     * banner surfaces under ra8_emulator (and the LED visibly
      * blinks on the bench). Dropped once the self-test has passed, so the
      * steady phase below is pure SRAM and IDLE_STOP can stop the fake. */
     if (led_up && (round < (uint32_t)k_cache_coherency_rounds)) {
