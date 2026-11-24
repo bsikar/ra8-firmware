@@ -7,6 +7,7 @@
 const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Published widget geometry, paint, instance, and event types.
 pub const Rect = types.Rect;
@@ -72,16 +73,18 @@ fn segmentRect(w: *const Widget, control: *const Segmented, index: u8) Rect {
 fn renderSegmented(w: *Widget) callconv(.c) void {
     const control: *const Segmented = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = control.paint orelse return;
-    const fill_rect = backend.fill_rect orelse return;
+    if (backend.fill_rect == null) return;
     const labels = control.labels orelse return;
     if (control.count == 0 or control.selected >= control.count) return;
 
+    const pad: i16 = @intCast(@min(control.pad, @as(u16, 32767)));
     for (0..control.count) |i| {
         const index: u8 = @intCast(i);
         const rect = segmentRect(w, control, index);
         const selected = index == control.selected;
         const bg = if (selected) control.selected_bg else control.bg;
-        fill_rect(backend.user, rect.x, rect.y, rect.w, rect.h, control.border);
+        const fg = if (selected) control.selected_fg else control.fg;
+        ops.fillRect(backend, rect, control.border);
         const content: Rect = .{
             .x = rect.x + 1,
             .y = rect.y + 1,
@@ -89,16 +92,8 @@ fn renderSegmented(w: *Widget) callconv(.c) void {
             .h = @max(rect.h - 2, 0),
         };
         if (content.w > 0 and content.h > 0) {
-            fill_rect(backend.user, content.x, content.y, content.w, content.h, bg);
-            const styled = backend.draw_text_style;
-            if (styled != null or backend.draw_text != null) {
-                var pen_x: i32 = 0;
-                var pen_y: i32 = 0;
-                const pad: i16 = @intCast(@min(control.pad, @as(u16, 32767)));
-                const size: paint_abi.TextSize = if (control.text_size == .default) .size_3 else control.text_size;
-                paint_abi.priv_widget_text_pos(backend, &content, labels[index], pad, .center, control.text_face, control.text_weight, size, styled != null, &pen_x, &pen_y);
-                if (styled) |draw| draw(backend.user, pen_x, pen_y, labels[index], @backingInt(control.text_face), @backingInt(control.text_weight), @backingInt(size), if (selected) control.selected_fg else control.fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, labels[index], if (selected) control.selected_fg else control.fg, bg);
-            }
+            ops.fillRect(backend, content, bg);
+            ops.drawTextInRect(backend, content, labels[index], pad, .center, control.text_face, control.text_weight, control.text_size, fg, bg);
         }
     }
 }

@@ -9,6 +9,7 @@
 const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 pub const Rect = types.Rect;
 pub const Paint = types.Paint;
@@ -79,13 +80,7 @@ pub fn clampPage(page: u16, pages: u16) u16 {
 }
 
 fn drawText(backend: *const Paint, rect: Rect, text: [*:0]const u8, fg: u32, bg: u32, face: paint_abi.Face, weight: paint_abi.Weight, size: paint_abi.TextSize) void {
-    const styled = backend.draw_text_style;
-    if (styled == null and backend.draw_text == null) return;
-    const selected_size = if (size == .default) paint_abi.TextSize.size_3 else size;
-    var x: i32 = 0;
-    var y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &rect, text, geometry.no_inset, .center, face, weight, selected_size, styled != null, &x, &y);
-    if (styled) |draw| draw(backend.user, x, y, text, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg) else backend.draw_text.?(backend.user, x, y, text, fg, bg);
+    ops.drawTextInRect(backend, rect, text, geometry.no_inset, .center, face, weight, size, fg, bg);
 }
 
 /// Format into stack storage so rendering never allocates.
@@ -107,8 +102,8 @@ fn rangeLabel(buffer: []u8, pager: *const Pager, page: u16, pages: u16) ![:0]u8 
 fn render(w: *Widget) callconv(.c) void {
     const pager: *const Pager = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = pager.paint orelse return;
-    paint_abi.priv_widget_fill_box(backend, &w.rect, pager.bg, pager.bg, geometry.no_inset);
-    if (backend.draw_text == null and backend.draw_text_style == null) return;
+    ops.fillBox(backend, w.rect, pager.bg, pager.bg, geometry.no_inset);
+    if (!ops.hasText(backend)) return;
 
     const left_edge = @divTrunc(w.rect.w, geometry.divisions);
     const right_edge = @divTrunc(w.rect.w * 2, geometry.divisions);

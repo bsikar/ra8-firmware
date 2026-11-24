@@ -12,6 +12,7 @@
 const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 const text_layout = @import("internal/text_layout.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
@@ -78,41 +79,17 @@ fn renderLabel(w: *Widget) callconv(.c) void {
     const label: *const Label = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = label.paint orelse return;
 
-    paint_abi.priv_widget_fill_box(backend, &w.rect, label.bg, label.bg, geometry.no_border);
+    ops.fillBox(backend, w.rect, label.bg, label.bg, geometry.no_border);
 
     const text = label.text orelse return;
-    const weight_draw = backend.draw_text_style;
-    const styled_draw = backend.draw_text_face;
-    const legacy_draw = backend.draw_text;
-    if (weight_draw == null and styled_draw == null and legacy_draw == null) return;
+    if (!ops.hasText(backend)) return;
 
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    const size = normalizedSize(label.size);
+    const size = ops.normalizeTextSize(label.size);
     if (label.wrap != .none) {
         renderWrapped(backend, &w.rect, text, label, size);
         return;
     }
-    paint_abi.priv_widget_text_pos(
-        backend,
-        &w.rect,
-        text,
-        label.pad,
-        label.alignment,
-        label.face,
-        label.weight,
-        size,
-        weight_draw != null or styled_draw != null,
-        &pen_x,
-        &pen_y,
-    );
-    if (weight_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(size), label.fg, label.bg);
-    } else if (styled_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, @backingInt(label.face), label.fg, label.bg);
-    } else if (legacy_draw) |draw| {
-        draw(backend.user, pen_x, pen_y, text, label.fg, label.bg);
-    }
+    ops.drawTextInRect(backend, w.rect, text, label.pad, label.alignment, label.face, label.weight, size, label.fg, label.bg);
 }
 
 const MeasureContext = struct {
@@ -182,21 +159,13 @@ fn measureBytes(context: MeasureContext, bytes: []const u8) Extent {
     @memcpy(terminated[0..bytes.len], bytes);
     terminated[bytes.len] = 0;
     const text: [*:0]const u8 = @ptrCast(&terminated);
-    var width: i32 = 0;
-    var height: i32 = 0;
     const backend = context.backend;
     const label = context.label;
-    if (backend.text_size_style) |measure| {
-        measure(backend.user, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(context.size), &width, &height);
-    } else if (backend.text_size_face) |measure| {
-        measure(backend.user, text, @backingInt(label.face), &width, &height);
-    } else if (backend.text_size) |measure| {
-        measure(backend.user, text, &width, &height);
-    } else {
-        width = @intCast(bytes.len * 8);
-        height = 16;
+    if (ops.hasMeasure(backend)) {
+        const ext = ops.measureTextStyle(backend, text, label.face, label.weight, context.size);
+        return .{ .width = @intCast(@max(ext.w, 0)), .height = @intCast(@max(ext.h, 0)) };
     }
-    return .{ .width = @intCast(@max(width, 0)), .height = @intCast(@max(height, 0)) };
+    return .{ .width = @intCast(bytes.len * 8), .height = 16 };
 }
 
 fn drawLine(context: MeasureContext, bytes: []const u8, line: text_layout.Line, x: i32, y: i32, storage: *[4097]u8) void {
@@ -211,13 +180,7 @@ fn drawLine(context: MeasureContext, bytes: []const u8, line: text_layout.Line, 
 }
 
 fn drawRun(backend: *const Paint, label: *const Label, size: paint_abi.TextSize, x: i32, y: i32, text: [*:0]const u8) void {
-    if (backend.draw_text_style) |draw| {
-        draw(backend.user, x, y, text, @backingInt(label.face), @backingInt(label.weight), @backingInt(size), label.fg, label.bg);
-    } else if (backend.draw_text_face) |draw| {
-        draw(backend.user, x, y, text, @backingInt(label.face), label.fg, label.bg);
-    } else if (backend.draw_text) |draw| {
-        draw(backend.user, x, y, text, label.fg, label.bg);
-    }
+    ops.drawTextStyle(backend, x, y, text, label.face, label.weight, size, label.fg, label.bg);
 }
 
 fn drawScalar(backend: *const Paint, label: *const Label, size: paint_abi.TextSize, x: i32, y: i32, bytes: []const u8) void {
@@ -225,23 +188,6 @@ fn drawScalar(backend: *const Paint, label: *const Label, size: paint_abi.TextSi
     @memcpy(terminated[0..bytes.len], bytes);
     terminated[bytes.len] = 0;
     drawRun(backend, label, size, x, y, @ptrCast(&terminated));
-}
-
-fn normalizedSize(size: paint_abi.TextSize) paint_abi.TextSize {
-    return switch (@backingInt(size)) {
-        0 => .size_3,
-        1 => .size_1,
-        2 => .size_2,
-        3 => .size_3,
-        4 => .size_4,
-        5 => .size_5,
-        6 => .body_38,
-        7 => .title_68,
-        8 => .clock_120,
-        9 => .ui_26,
-        10 => .ui_30,
-        else => .size_3,
-    };
 }
 
 /// The single immutable vtable shared by every text label: display only, so

@@ -13,11 +13,39 @@ const paint_abi = @import("widget_paint_abi.zig");
 
 pub const Paint = paint_abi.Paint;
 pub const Rect = paint_abi.Rect;
+pub const Alignment = paint_abi.Alignment;
 pub const PixelFormat = paint_abi.PixelFormat;
 pub const CanvasCaps = paint_abi.CanvasCaps;
 pub const Face = paint_abi.Face;
 pub const Weight = paint_abi.Weight;
 pub const TextSize = paint_abi.TextSize;
+
+/// Normalize `.default` (0) and any unknown raw ABI byte to `.size_3`.
+pub fn normalizeTextSize(size: TextSize) TextSize {
+    return switch (@backingInt(size)) {
+        1 => .size_1,
+        2 => .size_2,
+        3 => .size_3,
+        4 => .size_4,
+        5 => .size_5,
+        6 => .body_38,
+        7 => .title_68,
+        8 => .clock_120,
+        9 => .ui_26,
+        10 => .ui_30,
+        else => .size_3,
+    };
+}
+
+/// Report whether `backend` binds at least one text drawing callback.
+pub fn hasText(backend: *const Paint) bool {
+    return backend.draw_text_style != null or backend.draw_text_face != null or backend.draw_text != null;
+}
+
+/// Report whether `backend` binds at least one text measurement callback.
+pub fn hasMeasure(backend: *const Paint) bool {
+    return backend.text_size_style != null or backend.text_size_face != null or backend.text_size != null;
+}
 
 /// Query native capabilities advertised by `backend`, falling back to
 /// conservative feature detection when `backend.caps` is left null.
@@ -39,6 +67,49 @@ pub fn capabilities(backend: *const Paint) CanvasCaps {
 pub fn fillRect(backend: *const Paint, rect: Rect, color: u32) void {
     const fill = backend.fill_rect orelse return;
     fill(backend.user, rect.x, rect.y, rect.w, rect.h, color);
+}
+
+/// Fill `rect` with `fill` and an optional `border` frame of width `border_w`.
+pub fn fillBox(backend: *const Paint, rect: Rect, fill: u32, border: u32, border_w: i16) void {
+    paint_abi.priv_widget_fill_box(backend, &rect, fill, border, border_w);
+}
+
+/// Resolve aligned pen coordinates inside `rect` for `str`.
+pub fn textPen(
+    backend: *const Paint,
+    rect: Rect,
+    str: [*:0]const u8,
+    pad: i16,
+    alignment: Alignment,
+    family: Face,
+    stroke: Weight,
+    size: TextSize,
+) struct { x: i32, y: i32 } {
+    const selected_size = normalizeTextSize(size);
+    const styled = backend.draw_text_style != null or backend.draw_text_face != null;
+    var pen_x: i32 = 0;
+    var pen_y: i32 = 0;
+    paint_abi.priv_widget_text_pos(backend, &rect, str, pad, alignment, family, stroke, selected_size, styled, &pen_x, &pen_y);
+    return .{ .x = pen_x, .y = pen_y };
+}
+
+/// Align and draw `str` inside `rect` using the highest-fidelity bound text callback.
+pub fn drawTextInRect(
+    backend: *const Paint,
+    rect: Rect,
+    str: [*:0]const u8,
+    pad: i16,
+    alignment: Alignment,
+    family: Face,
+    stroke: Weight,
+    size: TextSize,
+    fg: u32,
+    bg: u32,
+) void {
+    if (!hasText(backend)) return;
+    const selected_size = normalizeTextSize(size);
+    const pen = textPen(backend, rect, str, pad, alignment, family, stroke, selected_size);
+    drawTextStyle(backend, pen.x, pen.y, str, family, stroke, selected_size, fg, bg);
 }
 
 /// Draw a NUL-terminated string in the default UI style.

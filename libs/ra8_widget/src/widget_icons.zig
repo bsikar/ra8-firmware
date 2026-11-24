@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const types = @import("widget_abi_types.zig");
+const ops = @import("paint_ops.zig");
 
 /// Icons available to nav cells; `.none` leaves the cell text-only.
 pub const Icon = enum(u8) {
@@ -50,7 +51,8 @@ fn blend(fg: u32, bg: u32, coverage: u2) u32 {
 
 /// Paint an icon centered and nearest-neighbor scaled into .
 pub fn draw(backend: *const types.Paint, icon: Icon, rect: types.Rect, fg: u32, bg: u32) void {
-    const fill = backend.fill_rect orelse return;
+    const caps = ops.capabilities(backend);
+    if (backend.fill_rect == null and caps.alpha == 0) return;
     if (icon == .none or rect.w <= 0 or rect.h <= 0) return;
     const side = @min(width, @as(usize, @intCast(@min(rect.w, rect.h))));
     if (side == 0) return;
@@ -69,10 +71,19 @@ pub fn draw(backend: *const types.Paint, icon: Icon, rect: types.Rect, fg: u32, 
                 x += 1;
                 continue;
             }
-            const color = blend(fg, bg, coverage);
             var end = x + 1;
             while (end < side and sample(icon, end * width / side, source_y) == coverage) : (end += 1) {}
-            fill(backend.user, left + @as(i32, @intCast(x)), top + @as(i32, @intCast(y)), @intCast(end - x), 1, color);
+            const run_rect: types.Rect = .{
+                .x = left + @as(i32, @intCast(x)),
+                .y = top + @as(i32, @intCast(y)),
+                .w = @intCast(end - x),
+                .h = 1,
+            };
+            if (caps.alpha != 0) {
+                ops.fillAlpha(backend, run_rect, fg, @as(u8, coverage) * 85);
+            } else {
+                ops.fillRect(backend, run_rect, blend(fg, bg, coverage));
+            }
             x = end;
         }
     }

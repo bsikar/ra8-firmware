@@ -11,6 +11,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -63,14 +64,14 @@ comptime {
 fn renderProgressBar(w: *Widget) callconv(.c) void {
     const bar: *const ProgressBar = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = bar.paint orelse return;
-    const fill_rect = backend.fill_rect orelse return;
+    if (backend.fill_rect == null) return;
 
-    const rect = &w.rect;
-    fill_rect(backend.user, rect.x, rect.y, rect.w, rect.h, bar.track);
+    const rect = w.rect;
+    ops.fillRect(backend, rect, bar.track);
 
     const filled = paint_abi.priv_widget_fill_frac(bar.value, bar.total, rect.w);
     if (filled > geometry.empty) {
-        fill_rect(backend.user, rect.x, rect.y, filled, rect.h, bar.fill);
+        ops.fillRect(backend, .{ .x = rect.x, .y = rect.y, .w = filled, .h = rect.h }, bar.fill);
     }
 }
 

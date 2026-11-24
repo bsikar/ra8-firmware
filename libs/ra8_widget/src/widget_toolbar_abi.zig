@@ -14,7 +14,7 @@
 //! byte.
 
 const types = @import("widget_abi_types.zig");
-const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -106,7 +106,7 @@ pub fn fieldRect(bar: *const Toolbar, band: *const Rect) Rect {
 /// no-op, so the hint and the chip share one path.
 fn drawAligned(
     backend: *const Paint,
-    rect: *const Rect,
+    rect: Rect,
     text: ?[*:0]const u8,
     pad: i16,
     alignment: Alignment,
@@ -114,12 +114,7 @@ fn drawAligned(
     bg: u32,
 ) void {
     const string = text orelse return;
-    const draw_text = backend.draw_text orelse return;
-
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, rect, string, pad, alignment, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-    draw_text(backend.user, pen_x, pen_y, string, fg, bg);
+    ops.drawTextInRect(backend, rect, string, pad, alignment, .sans, .regular, .size_3, fg, bg);
 }
 
 /// Vtable `render`: band fill, bordered search field, hint, then count chip.
@@ -130,13 +125,13 @@ fn renderToolbar(w: *Widget) callconv(.c) void {
     const bar: *const Toolbar = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = bar.paint orelse return;
 
-    const band = &w.rect;
-    const field = fieldRect(bar, band);
-    paint_abi.priv_widget_fill_box(backend, band, bar.bg, bar.bg, geometry.no_border);
-    paint_abi.priv_widget_fill_box(backend, &field, bar.field, bar.border, bar.border_w);
+    const band = w.rect;
+    const field = fieldRect(bar, &band);
+    ops.fillBox(backend, band, bar.bg, bar.bg, geometry.no_border);
+    ops.fillBox(backend, field, bar.field, bar.border, bar.border_w);
 
-    if (backend.draw_text == null) return;
-    drawAligned(backend, &field, bar.hint, bar.pad, .left, bar.hint_fg, bar.field);
+    if (!ops.hasText(backend)) return;
+    drawAligned(backend, field, bar.hint, bar.pad, .left, bar.hint_fg, bar.field);
     drawAligned(backend, band, bar.count, bar.pad, .right, bar.count_fg, bar.bg);
 }
 

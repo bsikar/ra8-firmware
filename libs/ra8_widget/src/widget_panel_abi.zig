@@ -16,6 +16,7 @@
 //! raw pointer. That is the shape every container in this library uses.
 
 const types = @import("widget_abi_types.zig");
+const ops = @import("paint_ops.zig");
 const builtin = @import("builtin");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
@@ -101,8 +102,7 @@ pub extern fn ra8_widget_render_dirty(widgets: [*]Widget, count: u16) callconv(.
 /// Paint the panel face through its optional caller-owned backend.
 fn fillBackground(rect: Rect, panel: *const Panel) void {
     const backend = panel.paint orelse return;
-    const fill = backend.fill_rect orelse return;
-    fill(backend.user, rect.x, rect.y, rect.w, rect.h, panel.bg);
+    ops.fillRect(backend, rect, panel.bg);
 }
 
 /// True when a compose will redraw every visible child.
