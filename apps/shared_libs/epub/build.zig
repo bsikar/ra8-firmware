@@ -32,9 +32,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = library_module,
     });
-    library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    library.root_module.pic = true;
-    b.installArtifact(library);
+    installStaticLib(b, library);
 
     // The ra8_fs bridge ships as its own archive so a core-only consumer
     // (no ra8_fs linked) never pulls the bridge's ra8_fs externs: archive
@@ -52,9 +50,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = fs_module,
     });
-    fs_library.bundle_compiler_rt = fs_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    fs_library.root_module.pic = true;
-    b.installArtifact(fs_library);
+    installStaticLib(b, fs_library);
 
     // The epub open/close core ships as its own archive for the same pull
     // granularity as the fs bridge: its externs (miniz, the miniz arena, the
@@ -71,9 +67,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = open_module,
     });
-    open_library.bundle_compiler_rt = open_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    open_library.root_module.pic = true;
-    b.installArtifact(open_library);
+    installStaticLib(b, open_library);
 
     const test_step = b.step("test", "Run Zig epub guard, fs-bridge and open tests");
     const test_module = b.createModule(.{
@@ -117,9 +111,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = chapter_module,
     });
-    chapter_library.bundle_compiler_rt = chapter_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    chapter_library.root_module.pic = true;
-    b.installArtifact(chapter_library);
+    installStaticLib(b, chapter_library);
 
     const chapter_test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_chapter_abi.zig"),
@@ -145,9 +137,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = entry_module,
     });
-    entry_library.bundle_compiler_rt = entry_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    entry_library.root_module.pic = true;
-    b.installArtifact(entry_library);
+    installStaticLib(b, entry_library);
 
     const entry_test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_entry_abi.zig"),
@@ -174,9 +164,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = xml_shim_module,
     });
-    xml_shim_library.bundle_compiler_rt = xml_shim_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    xml_shim_library.root_module.pic = true;
-    b.installArtifact(xml_shim_library);
+    installStaticLib(b, xml_shim_library);
 
     // The shim test links the real ra8_xml reader and decoder, so the tests
     // replay true XML documents end to end rather than standing in for the
@@ -219,9 +207,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = toc_module,
     });
-    toc_library.bundle_compiler_rt = toc_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    toc_library.root_module.pic = true;
-    b.installArtifact(toc_library);
+    installStaticLib(b, toc_library);
 
     // The TOC test links the real ra8_xml reader and the real shim helpers,
     // so the tests replay true NCX and nav documents end to end.
@@ -274,9 +260,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = miniz_module,
     });
-    miniz_library.bundle_compiler_rt = miniz_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    miniz_library.root_module.pic = true;
-    b.installArtifact(miniz_library);
+    installStaticLib(b, miniz_library);
 
     // The allocator test needs no stand-ins: the TU has no externs, so the
     // tests drive a real workspace end to end.
@@ -305,9 +289,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = img_import_module,
     });
-    img_import_library.bundle_compiler_rt = img_import_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    img_import_library.root_module.pic = true;
-    b.installArtifact(img_import_library);
+    installStaticLib(b, img_import_library);
 
     const img_import_test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_img_import_abi.zig"),
@@ -336,9 +318,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = img_tiles_module,
     });
-    img_tiles_library.bundle_compiler_rt = img_tiles_library.root_module.resolved_target.?.result.os.tag != .freestanding;
-    img_tiles_library.root_module.pic = true;
-    b.installArtifact(img_tiles_library);
+    installStaticLib(b, img_tiles_library);
 
     const img_tiles_test_module = b.createModule(.{
         .root_source_file = b.path("src/epub_img_tiles_abi.zig"),
@@ -348,4 +328,13 @@ pub fn build(b: *std.Build) void {
     img_tiles_test_module.addCSourceFile(.{ .file = b.path("teststub/tiles_test_stubs.c"), .flags = &.{"-std=c23"} });
     const img_tiles_test = b.addTest(.{ .root_module = img_tiles_test_module });
     test_step.dependOn(&b.addRunArtifact(img_tiles_test).step);
+}
+
+fn installStaticLib(b: *std.Build, lib: *std.Build.Step.Compile) void {
+    lib.bundle_compiler_rt = lib.root_module.resolved_target.?.result.os.tag != .freestanding;
+    // Split functions and data so --gc-sections discards unused EPUB entry points on ARM.
+    lib.link_function_sections = true;
+    lib.link_data_sections = true;
+    lib.root_module.pic = true;
+    b.installArtifact(lib);
 }
