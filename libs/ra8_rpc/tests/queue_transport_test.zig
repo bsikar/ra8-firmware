@@ -14,6 +14,7 @@ comptime {
     _ = @import("mock_queue.zig");
     _ = @import("mock_signal.zig");
     _ = @import("service.zig");
+    _ = @import("fuzz_corpus.zig");
 }
 
 /// Six-byte messages: a two-byte length and room for four.

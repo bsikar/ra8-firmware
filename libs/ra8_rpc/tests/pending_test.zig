@@ -13,6 +13,7 @@ comptime {
     _ = @import("mock_queue.zig");
     _ = @import("mock_signal.zig");
     _ = @import("service.zig");
+    _ = @import("fuzz_corpus.zig");
 }
 
 test "each call gets its own id and gets its waiter back" {
