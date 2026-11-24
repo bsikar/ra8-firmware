@@ -289,6 +289,8 @@ typedef enum : uint32_t {
 static volatile uint32_t s_dbg_action = k_blc_dbg_unset;
 /** @brief Slot the DFU path targets (::ra8_dfu_slot_t), J-Link-readable. */
 static volatile uint32_t s_dbg_target = k_blc_dbg_unset;
+/** @brief Active DFU target slot cached for post-commit trial state init. */
+static ra8_dfu_slot_t s_dfu_target = k_ra8_dfu_slot_a;
 /** @brief Device worker progress: 4 = DFU class attached. */
 static volatile uint32_t s_dbg_dev_step;
 /** @brief Device bring-up error (0 = none). */
@@ -409,32 +411,37 @@ static uint32_t blc_str_len(const char* text)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Read the trigger + both slots and resolve the reset-time action.
+ * @brief Read the trigger, both slots, and trial boot-state to resolve the reset plan.
  *
  * @details Reads and clears the one-shot ::g_dfu_trigger, validates both slots
- * (CRC over the body) and their sequence numbers, then folds them through the
- * pure ::ra8_dfu_boot_decide policy. The DFU target (the slot to program) is the
- * INACTIVE slot, or Slot A when neither slot is valid.
+ * (CRC over the body) and their sequence numbers, reads the torn-write-safe
+ * ::ra8_dfu_boot_state_t if present, then folds them through the pure
+ * ::ra8_dfu_boot_decide_trial policy. When launching an unconfirmed trial slot,
+ * also returns that slot's header sequence in @p out_boot_seq so `main` can persist
+ * the decremented `tries_left` before handing off control.
  *
- * @param[out] out_target Slot the DFU path should program. Non-NULL.
+ * @param[out] out_plan     Resolved trial-aware boot plan (non-NULL).
+ * @param[out] out_boot_seq Sequence number of the chosen boot slot (0 on DFU).
  *
- * @return The resolved ::ra8_dfu_action_t.
- * @retval k_ra8_dfu_action_jump_a Boot Slot A.
- * @retval k_ra8_dfu_action_jump_b Boot Slot B.
- * @retval k_ra8_dfu_action_dfu    Stay in the DFU device.
- *
- * @pre @p out_target is non-NULL.
+ * @pre @p out_plan and @p out_boot_seq are non-NULL.
  * @pre Both slots are readable code-MRAM (always true post-reset).
  * @post ::g_dfu_trigger has been cleared to 0.
- * @post `*out_target` holds the inactive slot (or Slot A).
  *
  * @note Pure reads only -- no ra8_flash_open, no programming.
  * @since 0.1.0
  */
-static ra8_dfu_action_t blc_decide(ra8_dfu_slot_t* out_target)
+static void blc_decide(ra8_dfu_boot_plan_t* out_plan, uint32_t* out_boot_seq)
 {
-  if (out_target == nullptr) {
-    return k_ra8_dfu_action_dfu; /* safe fallback: never jump on a bad caller */
+  if (out_plan == nullptr || out_boot_seq == nullptr) {
+    if (out_plan != nullptr) {
+      *out_plan = (ra8_dfu_boot_plan_t){
+        .action     = k_ra8_dfu_action_dfu,
+        .is_trial   = false,
+        .next_tries = 0U,
+        .dfu_target = k_ra8_dfu_slot_a,
+      };
+    }
+    return;
   }
   const bool trig = (g_dfu_trigger == (uint32_t)k_ra8_dfu_trigger_magic);
   g_dfu_trigger   = 0U; /* one-shot: consume the request */
@@ -448,10 +455,29 @@ static ra8_dfu_action_t blc_decide(ra8_dfu_slot_t* out_target)
   (void)ra8_dfu_slot_seq(k_ra8_dfu_slot_a, &a_seq);
   (void)ra8_dfu_slot_seq(k_ra8_dfu_slot_b, &b_seq);
 
-  const ra8_dfu_slot_t active = ra8_dfu_select_slot(a_valid, a_seq, b_valid, b_seq);
-  *out_target = (active == k_ra8_dfu_slot_none) ? k_ra8_dfu_slot_a : ra8_dfu_other_slot(active);
+  ra8_dfu_boot_state_t        boot_state     = {};
+  const bool                  has_boot_state = (ra8_dfu_boot_state_read(&boot_state) == k_ra8_ok);
+  const ra8_dfu_boot_state_t* st_ptr         = has_boot_state ? &boot_state : nullptr;
 
-  return ra8_dfu_boot_decide(trig, a_valid, a_seq, b_valid, b_seq);
+  if (ra8_dfu_boot_decide_trial(trig, a_valid, a_seq, b_valid, b_seq, st_ptr, out_plan) !=
+      k_ra8_ok) {
+    *out_plan = (ra8_dfu_boot_plan_t){
+      .action     = k_ra8_dfu_action_dfu,
+      .is_trial   = false,
+      .next_tries = 0U,
+      .dfu_target = k_ra8_dfu_slot_a,
+    };
+    *out_boot_seq = 0U;
+    return;
+  }
+
+  if (out_plan->action == k_ra8_dfu_action_jump_a) {
+    *out_boot_seq = a_seq;
+  } else if (out_plan->action == k_ra8_dfu_action_jump_b) {
+    *out_boot_seq = b_seq;
+  } else {
+    *out_boot_seq = 0U;
+  }
 }
 
 /**
@@ -613,6 +639,15 @@ static VOID blc_device_worker(ULONG arg)
       (void)blc_print("\r\n");
     }
     if (ra8_dfu_device_committed() && (ra8_dfu_device_last_error() == k_ra8_ok)) {
+      uint32_t new_seq = 0U;
+      (void)ra8_dfu_slot_seq(s_dfu_target, &new_seq);
+      const ra8_err_t st_err = ra8_dfu_boot_state_write(s_dfu_target,
+                                                        (uint8_t)k_ra8_dfu_boot_state_default_tries,
+                                                        false,
+                                                        new_seq);
+      if (st_err != k_ra8_ok) {
+        (void)blc_print("dfu-bootloader: WARN trial state write failed\r\n");
+      }
       (void)blc_print("dfu-bootloader: image committed -- resetting into new slot\r\n");
       blc_system_reset();
     }
@@ -725,12 +760,12 @@ static uint8_t s_blc_psa_heap[k_blc_psa_heap_bytes];
  */
 static void blc_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
+  uint32_t                pclka_hz    = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   /* PCLKA here feeds SCI8, the J-Link OB console, i.e. the console UART slot. */
-  const fw_clock_module_t console_uart_module = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_console};
+  const fw_clock_module_t console_uart_module = {.kind  = k_fw_clock_module_uart,
+                                                 .index = (uint8_t)k_ra8_board_clock_uart_console};
   if (ra8_cgc_init() != k_ra8_ok) {
     blc_panic_halt();
   }
@@ -794,29 +829,38 @@ void main(void)
 
   (void)blc_print("\r\nra8d2 dfu-bootloader (immutable, 128K @ 0x02000000)\r\n");
 
-  ra8_dfu_slot_t         target = k_ra8_dfu_slot_a;
-  const ra8_dfu_action_t action = blc_decide(&target);
-  s_dbg_action                  = (uint32_t)action;
-  s_dbg_target                  = (uint32_t)target;
+  ra8_dfu_boot_plan_t plan     = {};
+  uint32_t            boot_seq = 0U;
+  blc_decide(&plan, &boot_seq);
+  s_dbg_action = (uint32_t)plan.action;
+  s_dbg_target = (uint32_t)plan.dfu_target;
+  s_dfu_target = plan.dfu_target;
 
-  if (action == k_ra8_dfu_action_jump_a) {
-    (void)blc_print("dfu-bootloader: Slot A -> copy-to-run @0x");
-    (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
-    (void)blc_print("\r\n");
-    blc_boot_slot(k_ra8_dfu_slot_a); /* returns only if the run target is invalid */
-  }
-  if (action == k_ra8_dfu_action_jump_b) {
-    (void)blc_print("dfu-bootloader: Slot B -> copy-to-run @0x");
-    (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
-    (void)blc_print("\r\n");
-    blc_boot_slot(k_ra8_dfu_slot_b); /* returns only if the run target is invalid */
+  if ((plan.action == k_ra8_dfu_action_jump_a) || (plan.action == k_ra8_dfu_action_jump_b)) {
+    const ra8_dfu_slot_t boot_slot =
+      (plan.action == k_ra8_dfu_action_jump_a) ? k_ra8_dfu_slot_a : k_ra8_dfu_slot_b;
+    bool may_launch = true;
+    if (plan.is_trial) {
+      if (ra8_dfu_boot_state_write(boot_slot, plan.next_tries, false, boot_seq) != k_ra8_ok) {
+        (void)blc_print("dfu-bootloader: trial state write failed -- entering DFU\r\n");
+        may_launch = false;
+      }
+    }
+    if (may_launch) {
+      (void)blc_print((boot_slot == k_ra8_dfu_slot_a) ? "dfu-bootloader: Slot A"
+                                                      : "dfu-bootloader: Slot B");
+      (void)blc_print(plan.is_trial ? " (trial) -> copy-to-run @0x" : " -> copy-to-run @0x");
+      (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
+      (void)blc_print("\r\n");
+      blc_boot_slot(boot_slot); /* returns only if run target / RoT verify fails */
+    }
   }
 
   /* k_ra8_dfu_action_dfu (or a slot whose run target failed validation): no
    * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */
   (void)blc_print("dfu-bootloader: no bootable slot -- entering DFU\r\n");
 #ifndef RA8_OFF_TARGET
-  ra8_dfu_device_set_target(target);
+  ra8_dfu_device_set_target(plan.dfu_target);
   tx_kernel_enter();
 #endif
 
