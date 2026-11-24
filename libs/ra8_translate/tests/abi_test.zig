@@ -140,3 +140,26 @@ test "C ABI flat-table write and read exports round-trip cleanly" {
     try std.testing.expectEqual(@as(u16, 2), out_cnt);
     try std.testing.expectEqualSlices(u16, &breaks, out_breaks[0..out_cnt]);
 }
+
+test "C ABI language hint parsing and script selection validate arguments" {
+    var parsed: u8 = 0xAA;
+    try std.testing.expectEqual(err_mod.k_ra8_err_null_ptr, abi.ra8_translate_lang_from_hint(null, 2, &parsed));
+    try std.testing.expectEqual(@as(u8, 0xAA), parsed);
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_lang_from_hint("ja-JP", 5, &parsed));
+    try std.testing.expectEqual(@as(u8, 2), parsed);
+
+    var sel: abi.LangSelection = .{ .language = 99 };
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_invalid_arg,
+        abi.ra8_translate_lang_select(9, null, 0, &sel),
+    );
+    try std.testing.expectEqual(@as(u8, 99), sel.language);
+
+    const kanji = "\xe6\xbc\xa2\xe5\xad\x97";
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_lang_select(3, kanji.ptr, kanji.len, &sel),
+    );
+    try std.testing.expectEqual(@as(u8, 3), sel.language);
+    try std.testing.expectEqual(@as(u32, 2), sel.counts.han_count);
+}

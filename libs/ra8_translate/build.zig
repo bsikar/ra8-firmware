@@ -33,6 +33,14 @@ pub fn build(b: *std.Build) void {
     sidecar_mod.addImport("crc32", crc32_mod);
     sidecar_mod.addImport("err", err_mod);
 
+    const lang_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/lang.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    lang_mod.addImport("err", err_mod);
+    lang_mod.addImport("sidecar", sidecar_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -41,6 +49,7 @@ pub fn build(b: *std.Build) void {
     });
     abi_mod.addImport("err", err_mod);
     abi_mod.addImport("sidecar", sidecar_mod);
+    abi_mod.addImport("lang", lang_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -111,4 +120,16 @@ pub fn build(b: *std.Build) void {
     const run_abi = b.addRunArtifact(abi_tests);
     ra8_build.configureHostTestRun(b, test_step, abi_tests, run_abi);
     test_step.dependOn(&run_abi.step);
+
+    const lang_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/lang_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    lang_tmod.addImport("lang", lang_mod);
+    lang_tmod.addImport("sidecar", sidecar_mod);
+    const lang_tests = b.addTest(.{ .root_module = lang_tmod });
+    const run_lang = b.addRunArtifact(lang_tests);
+    ra8_build.configureHostTestRun(b, test_step, lang_tests, run_lang);
+    test_step.dependOn(&run_lang.step);
 }

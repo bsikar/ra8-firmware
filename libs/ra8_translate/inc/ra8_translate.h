@@ -412,6 +412,112 @@ ra8_err_t ra8_translate_sidecar_write(const ra8_translate_sidecar_key_t*    key,
                                       size_t                                out_cap,
                                       size_t*                               out_written);
 
+/** @brief Decision reason emitted by ::ra8_translate_lang_select. */
+typedef enum : uint8_t {
+  k_ra8_translate_lang_reason_unknown          = 0U, /**< No distinguishing script and no hint. */
+  k_ra8_translate_lang_reason_script_confirmed = 1U, /**< Script matches per-title hint.        */
+  k_ra8_translate_lang_reason_deferred_to_hint = 2U, /**< Kanji-only / neutral text used hint.  */
+  k_ra8_translate_lang_reason_script_override  = 3U, /**< Script overrode empty/other hint.     */
+} ra8_translate_lang_reason_t;
+
+/** @brief OCR recognizer profile bound to a resolved source language. */
+typedef enum : uint8_t {
+  k_ra8_translate_ocr_none     = 0U, /**< No recognizer resolved yet. */
+  k_ra8_translate_ocr_korean   = 1U, /**< Korean OCR recognizer.      */
+  k_ra8_translate_ocr_japanese = 2U, /**< Japanese OCR recognizer.    */
+  k_ra8_translate_ocr_chinese  = 3U, /**< Chinese OCR recognizer.     */
+} ra8_translate_ocr_model_t;
+
+/** @brief NMT translator profile bound to a resolved source language. */
+typedef enum : uint8_t {
+  k_ra8_translate_nmt_none  = 0U, /**< No NMT model resolved yet. */
+  k_ra8_translate_nmt_ko_en = 1U, /**< Korean-to-English NMT.     */
+  k_ra8_translate_nmt_ja_en = 2U, /**< Japanese-to-English NMT.   */
+  k_ra8_translate_nmt_zh_en = 3U, /**< Chinese-to-English NMT.    */
+} ra8_translate_nmt_model_t;
+
+static_assert(sizeof(ra8_translate_lang_reason_t) == 1U, "ra8_translate_lang_reason_t width");
+static_assert(sizeof(ra8_translate_ocr_model_t) == 1U, "ra8_translate_ocr_model_t width");
+static_assert(sizeof(ra8_translate_nmt_model_t) == 1U, "ra8_translate_nmt_model_t width");
+
+/**
+ * @brief Codepoint counts across Unicode CJK script buckets for one OCR sample.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t hangul_count; /**< Hangul syllables and Jamo codepoints.        */
+  uint32_t kana_count;   /**< Hiragana, Katakana, and halfwidth Kana runs. */
+  uint32_t han_count;    /**< Shared CJK Kanji / Hanzi / Hanja ideographs. */
+  uint32_t other_count;  /**< Punctuation, digits, Latin, and symbols.     */
+} ra8_translate_script_counts_t;
+
+static_assert(sizeof(ra8_translate_script_counts_t) == 16U, "ra8_translate_script_counts_t size");
+static_assert(alignof(ra8_translate_script_counts_t) == 4U, "ra8_translate_script_counts_t align");
+static_assert(offsetof(ra8_translate_script_counts_t, hangul_count) == 0U,
+              "counts hangul_count off");
+static_assert(offsetof(ra8_translate_script_counts_t, kana_count) == 4U, "counts kana_count off");
+static_assert(offsetof(ra8_translate_script_counts_t, han_count) == 8U, "counts han_count off");
+static_assert(offsetof(ra8_translate_script_counts_t, other_count) == 12U,
+              "counts other_count off");
+
+/**
+ * @brief Resolved translation language, reason, pipeline profile, and script counts.
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_translate_lang_t          language;    /**< Selected chapter source language. */
+  ra8_translate_lang_reason_t   reason;      /**< Selection decision rationale.     */
+  ra8_translate_ocr_model_t     ocr_model;   /**< Recognizer profile for title.     */
+  ra8_translate_nmt_model_t     nmt_model;   /**< Translator profile for title.     */
+  uint8_t                       reserved[4]; /**< Zero padding.                     */
+  ra8_translate_script_counts_t counts;      /**< Per-script sample counts.         */
+} ra8_translate_lang_selection_t;
+
+static_assert(sizeof(ra8_translate_lang_selection_t) == 24U, "ra8_translate_lang_selection_t size");
+static_assert(alignof(ra8_translate_lang_selection_t) == 4U,
+              "ra8_translate_lang_selection_t align");
+static_assert(offsetof(ra8_translate_lang_selection_t, language) == 0U, "sel language off");
+static_assert(offsetof(ra8_translate_lang_selection_t, reason) == 1U, "sel reason off");
+static_assert(offsetof(ra8_translate_lang_selection_t, ocr_model) == 2U, "sel ocr_model off");
+static_assert(offsetof(ra8_translate_lang_selection_t, nmt_model) == 3U, "sel nmt_model off");
+static_assert(offsetof(ra8_translate_lang_selection_t, reserved) == 4U, "sel reserved off");
+static_assert(offsetof(ra8_translate_lang_selection_t, counts) == 8U, "sel counts off");
+
+/**
+ * @brief Parse a per-title MDL/BCP-47 language metadata string into ::ra8_translate_lang_t.
+ *
+ * @details Calling context: `task-safe-reentrant`. Borrows @p hint for the
+ * duration of the call and writes @p out_lang only on success.
+ *
+ * @param[in] hint Metadata language tag bytes (NULL allowed only if @p hint_len == 0).
+ * @param[in] hint_len Byte length of @p hint.
+ * @param[out] out_lang Non-null storage receiving parsed language enum.
+ * @return ::k_ra8_ok on success, `k_ra8_err_null_ptr` on null pointer contract violation.
+ * @since 0.1.0
+ */
+ra8_err_t
+ra8_translate_lang_from_hint(const uint8_t* hint, size_t hint_len, ra8_translate_lang_t* out_lang);
+
+/**
+ * @brief Select source language and OCR/NMT profiles from hint plus OCR UTF-8 script ranges.
+ *
+ * @details Calling context: `task-safe-reentrant`. Validates @p hint enum,
+ * UTF-8 well-formedness of @p sample_utf8, and output pointer before writing
+ * @p out_selection. Kanji-only or script-neutral text defers to @p hint.
+ *
+ * @param[in] hint Per-title hint from MDL metadata.
+ * @param[in] sample_utf8 UTF-8 sample OCR text (NULL allowed only if @p sample_len == 0).
+ * @param[in] sample_len Byte length of @p sample_utf8.
+ * @param[out] out_selection Non-null caller storage receiving language and model profile.
+ * @return ::k_ra8_ok on success, `k_ra8_err_null_ptr`, or `k_ra8_err_invalid_arg` on invalid UTF-8
+ *         or invalid @p hint discriminant.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_lang_select(ra8_translate_lang_t            hint,
+                                    const uint8_t*                  sample_utf8,
+                                    size_t                          sample_len,
+                                    ra8_translate_lang_selection_t* out_selection);
+
 #ifdef __cplusplus
 }
 #endif

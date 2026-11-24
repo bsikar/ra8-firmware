@@ -8,11 +8,14 @@
 const std = @import("std");
 const err_mod = @import("err");
 const sidecar = @import("sidecar");
+const lang = @import("lang");
 
 pub const SidecarKey = sidecar.SidecarKey;
 pub const SidecarHeader = sidecar.SidecarHeader;
 pub const PageEntry = sidecar.PageEntry;
 pub const BubbleRecord = sidecar.BubbleRecord;
+pub const ScriptCounts = lang.ScriptCounts;
+pub const LangSelection = lang.Selection;
 
 comptime {
     const assert = std.debug.assert;
@@ -82,6 +85,40 @@ comptime {
     assert(@offsetOf(BubbleRecord, "english_text_len") == 36);
     assert(@offsetOf(BubbleRecord, "bubble_flags") == 40);
     assert(@offsetOf(BubbleRecord, "reserved") == 41);
+
+    assert(@sizeOf(lang.SelectionReason) == 1);
+    assert(@backingInt(lang.SelectionReason.unknown) == 0);
+    assert(@backingInt(lang.SelectionReason.script_confirmed) == 1);
+    assert(@backingInt(lang.SelectionReason.deferred_to_hint) == 2);
+    assert(@backingInt(lang.SelectionReason.script_override) == 3);
+
+    assert(@sizeOf(lang.OcrModel) == 1);
+    assert(@backingInt(lang.OcrModel.none) == 0);
+    assert(@backingInt(lang.OcrModel.korean) == 1);
+    assert(@backingInt(lang.OcrModel.japanese) == 2);
+    assert(@backingInt(lang.OcrModel.chinese) == 3);
+
+    assert(@sizeOf(lang.NmtModel) == 1);
+    assert(@backingInt(lang.NmtModel.none) == 0);
+    assert(@backingInt(lang.NmtModel.ko_en) == 1);
+    assert(@backingInt(lang.NmtModel.ja_en) == 2);
+    assert(@backingInt(lang.NmtModel.zh_en) == 3);
+
+    assert(@sizeOf(ScriptCounts) == 16);
+    assert(@alignOf(ScriptCounts) == 4);
+    assert(@offsetOf(ScriptCounts, "hangul_count") == 0);
+    assert(@offsetOf(ScriptCounts, "kana_count") == 4);
+    assert(@offsetOf(ScriptCounts, "han_count") == 8);
+    assert(@offsetOf(ScriptCounts, "other_count") == 12);
+
+    assert(@sizeOf(LangSelection) == 24);
+    assert(@alignOf(LangSelection) == 4);
+    assert(@offsetOf(LangSelection, "language") == 0);
+    assert(@offsetOf(LangSelection, "reason") == 1);
+    assert(@offsetOf(LangSelection, "ocr_model") == 2);
+    assert(@offsetOf(LangSelection, "nmt_model") == 3);
+    assert(@offsetOf(LangSelection, "reserved") == 4);
+    assert(@offsetOf(LangSelection, "counts") == 8);
 }
 
 fn inputSlice(comptime T: type, ptr_opt: ?[*]const T, count: usize) ?[]const T {
@@ -258,5 +295,32 @@ pub export fn ra8_translate_sidecar_write(
         out_buf[0..out_cap],
     ) catch |e| return err_mod.toRa8Err(e);
     out_written.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_lang_from_hint()`.
+pub export fn ra8_translate_lang_from_hint(
+    hint_opt: ?[*]const u8,
+    hint_len: usize,
+    out_lang_opt: ?*u8,
+) callconv(.c) u16 {
+    const out_lang = out_lang_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const hint = inputSlice(u8, hint_opt, hint_len) orelse return err_mod.k_ra8_err_null_ptr;
+    out_lang.* = @backingInt(lang.parseLanguageHint(hint));
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_lang_select()`.
+pub export fn ra8_translate_lang_select(
+    hint_raw: u8,
+    sample_utf8_opt: ?[*]const u8,
+    sample_len: usize,
+    out_selection_opt: ?*LangSelection,
+) callconv(.c) u16 {
+    const out_selection = out_selection_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const sample = inputSlice(u8, sample_utf8_opt, sample_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const hint = sidecar.Language.fromRaw(hint_raw) orelse return err_mod.k_ra8_err_invalid_arg;
+    const result = lang.selectLanguage(hint, sample) catch |e| return err_mod.toRa8Err(e);
+    out_selection.* = result;
     return err_mod.k_ra8_ok;
 }
