@@ -69,11 +69,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_eth_gptp.h"
 #include "ra8_etha.h"
@@ -101,9 +101,9 @@ typedef enum : uint8_t {
 
 /** @brief Hex serialiser constants for the ``err=0x`` failure field. */
 typedef enum : uint8_t {
-  k_tsn_hex_u32_digits  = 8U,   /**< Hex digits in a uint32_t.  */
-  k_tsn_hex_nibble_bits = 4U,   /**< Bits per hex digit.        */
-  k_tsn_hex_nibble_mask = 0x0FU /**< Low-nibble mask.           */
+  k_tsn_hex_u32_digits  = 8U,   /**< Hex digits in a uint32_t. */
+  k_tsn_hex_nibble_bits = 4U,   /**< Bits per hex digit.       */
+  k_tsn_hex_nibble_mask = 0x0FU /**< Low-nibble mask.          */
 } tsn_hex_t;
 
 /** @brief gPTP time-base check parameters. */

@@ -125,17 +125,25 @@ typedef enum : uint8_t {
 
 /** @brief First MAC programmed at init (locally administered, unicast). */
 static const ra8_net_pal_mac_t k_npf_mac_a = {
-  .bytes = {k_npf_mac_oui_0, k_npf_mac_oui_1, k_npf_mac_oui_2, k_npf_mac_a_nic_0,
-            k_npf_mac_a_nic_1, k_npf_mac_a_nic_2},
+  .bytes = {k_npf_mac_oui_0,
+            k_npf_mac_oui_1,
+            k_npf_mac_oui_2,
+            k_npf_mac_a_nic_0,
+            k_npf_mac_a_nic_1,
+            k_npf_mac_a_nic_2},
 };
 
 /** @brief Replacement MAC used by the `mac` leg. */
 static const ra8_net_pal_mac_t k_npf_mac_b = {
-  .bytes = {k_npf_mac_oui_0, k_npf_mac_oui_1, k_npf_mac_oui_2, k_npf_mac_b_nic_0,
-            k_npf_mac_b_nic_1, k_npf_mac_b_nic_2},
+  .bytes = {k_npf_mac_oui_0,
+            k_npf_mac_oui_1,
+            k_npf_mac_oui_2,
+            k_npf_mac_b_nic_0,
+            k_npf_mac_b_nic_1,
+            k_npf_mac_b_nic_2},
 };
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /** @brief Transmit scratch, sized to the PAL frame ceiling. */
 static uint8_t s_tx[(uint16_t)k_ra8_net_pal_frame_max];
@@ -438,7 +446,7 @@ static ra8_err_t internal_check_backpressure(void)
   }
   len = (uint16_t)k_ra8_net_pal_frame_max;
   return (ra8_net_pal_recv_frame(s_rx, &len) == k_ra8_err_no_data) ? k_ra8_ok
-                                                                  : k_ra8_err_invalid_arg;
+                                                                   : k_ra8_err_invalid_arg;
 }
 
 /**
@@ -494,7 +502,7 @@ static ra8_err_t internal_check_guards(void)
    * asserted in prose. */
   len = (uint16_t)k_ra8_net_pal_frame_max;
   return (ra8_net_pal_recv_frame(s_rx, &len) == k_ra8_err_no_data) ? k_ra8_ok
-                                                                  : k_ra8_err_invalid_arg;
+                                                                   : k_ra8_err_invalid_arg;
 }
 
 /**
@@ -551,8 +559,8 @@ static ra8_err_t internal_check_events(void)
     return detach_err;
   }
 
-  const uint32_t before = s_event_count;
-  uint16_t       len    = (uint16_t)k_ra8_net_pal_frame_max;
+  const uint32_t  before = s_event_count;
+  uint16_t        len    = (uint16_t)k_ra8_net_pal_frame_max;
   const ra8_err_t rx_err = ra8_net_pal_recv_frame(s_rx, &len);
   if (rx_err != k_ra8_ok) {
     return rx_err;

@@ -185,8 +185,8 @@ static void c6_wifi_setup_or_halt(void)
 {
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   /* PCLKA here feeds the ESP32-C6 Simple-SPI on SCI2, i.e. the Pmod1 slot. */
-  const fw_clock_module_t spi_module  = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_pmod1};
+  const fw_clock_module_t spi_module = {.kind  = k_fw_clock_module_uart,
+                                        .index = (uint8_t)k_ra8_board_clock_uart_pmod1};
   if (ra8_cgc_init() != k_ra8_ok) {
     c6_wifi_panic_halt();
   }

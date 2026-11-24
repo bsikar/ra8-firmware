@@ -141,12 +141,12 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  */
 RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
+  uint32_t                pclka_hz    = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   /* PCLKA here feeds the SCI8 J-Link OB console, i.e. the console UART slot. */
-  const fw_clock_module_t uart_module = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_console};
+  const fw_clock_module_t uart_module = {.kind  = k_fw_clock_module_uart,
+                                         .index = (uint8_t)k_ra8_board_clock_uart_console};
   if ((ra8_cgc_init() != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), uart_module, &pclka_hz) != k_ra8_ok) ||

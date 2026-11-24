@@ -39,8 +39,8 @@
 #include <stdint.h>
 
 #include "ra8_boot_entry.h"
-#include "trustzone_init.h"
 #include "ra8_mpu.h"
+#include "trustzone_init.h"
 
 extern const uint32_t g_ra8_vector_table_start[];
 

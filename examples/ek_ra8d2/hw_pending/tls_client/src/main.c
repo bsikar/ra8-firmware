@@ -50,11 +50,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_rsip.h"
@@ -436,10 +436,7 @@ static void demo_free(void* p)
  *
  * @since 0.2.0
  */
-static ra8_err_t tls_transport_send(void*          ctx,
-                                    const uint8_t* buf,
-                                    size_t         len,
-                                    size_t*        out_sent)
+static ra8_err_t tls_transport_send(void* ctx, const uint8_t* buf, size_t len, size_t* out_sent)
 {
   (void)ctx;
   *out_sent = 0U;

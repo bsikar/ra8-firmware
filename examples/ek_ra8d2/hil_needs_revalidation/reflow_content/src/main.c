@@ -66,8 +66,7 @@ typedef enum : uint32_t {
  *          here: internal_rc_render_all() calls ra8_gfx_clear() before every
  *          page, so no byte is read before it is written.
  */
-[[gnu::section(".dtcm_bss")]] static uint16_t
-    s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
+[[gnu::section(".dtcm_bss")]] static uint16_t s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
 static reflow_t s_engine;
@@ -289,7 +288,7 @@ RA8_INTERNAL static uint32_t internal_rc_render_all(uint32_t* out_hash)
  */
 RA8_INTERNAL static void internal_rc_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     internal_rc_panic_halt(s_msg_fail, (uint32_t)sizeof(s_msg_fail) - 1U);

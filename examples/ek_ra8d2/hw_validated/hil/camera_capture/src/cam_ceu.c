@@ -106,8 +106,8 @@ static const cam_ceu_pin_t s_ceu_pins[] = {
  */
 static void cam_release_probe_pins(uint32_t count)
 {
-  const uint32_t pin_count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
-  const uint32_t bounded   = (count < pin_count) ? count : pin_count;
+  const uint32_t pin_count              = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
+  const uint32_t bounded                = (count < pin_count) ? count : pin_count;
   const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint32_t i = 0U; i < bounded; i += 1U) {
     (void)pins->release(pins->ctx, RA8_PIN(s_ceu_pins[i].port, s_ceu_pins[i].pin));
@@ -129,8 +129,8 @@ static void cam_release_probe_pins(uint32_t count)
  */
 static ra8_err_t cam_claim_probe_pins(void)
 {
-  const uint32_t pin_count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
-  uint32_t       claimed   = 0U;
+  const uint32_t pin_count              = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
+  uint32_t       claimed                = 0U;
   const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (; claimed < pin_count; claimed += 1U) {
     const ra8_port_pin_t pin = RA8_PIN(s_ceu_pins[claimed].port, s_ceu_pins[claimed].pin);

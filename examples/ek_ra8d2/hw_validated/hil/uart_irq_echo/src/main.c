@@ -253,8 +253,8 @@ static void uart_irq_setup_or_halt(void)
   if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  const fw_clock_module_t clk_sci = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_console};
+  const fw_clock_module_t clk_sci = {.kind  = k_fw_clock_module_uart,
+                                     .index = (uint8_t)k_ra8_board_clock_uart_console};
   if (fw_clock_rate_for(ra8_board_clock(), clk_sci, &pclka_hz) != k_ra8_ok) {
     uart_irq_panic_halt();
   }

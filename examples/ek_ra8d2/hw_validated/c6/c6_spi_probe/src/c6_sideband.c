@@ -357,8 +357,10 @@ void c6_probe_resolve_map(const c6_probe_stats_t* st, uint8_t* hs_idx, uint8_t* 
  * @note Not thread-safe; boot-time diagnostic only.
  * @since 0.1.0
  */
-static ra8_err_t internal_kick_net(const ra8_pin_interface_t* pins, ra8_port_pin_t pin,
-                                   ra8_level_t level, uint8_t* out_level)
+static ra8_err_t internal_kick_net(const ra8_pin_interface_t* pins,
+                                   ra8_port_pin_t             pin,
+                                   ra8_level_t                level,
+                                   uint8_t*                   out_level)
 {
   if (out_level == nullptr) {
     return k_ra8_err_null_ptr;

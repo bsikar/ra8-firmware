@@ -186,7 +186,7 @@ static uint32_t crc_demo_sw_crc32(const uint8_t* data, uint32_t len)
 /** @brief Bring CGC + SysTick + SCI8 + LEDs + CRC unit up. */
 static void crc_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
 
   if (ra8_cgc_init() != k_ra8_ok) {

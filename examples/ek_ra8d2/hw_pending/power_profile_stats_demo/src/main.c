@@ -58,16 +58,16 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_pp_uart_chan     = 8U,      /**< SCI8 J-Link OB console.               */
-  k_pp_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
-  k_pp_t0_us         = 1000U,   /**< Synthetic clock start, microseconds.  */
-  k_pp_active_a_us   = 250U,    /**< First active stay.                    */
+  k_pp_uart_chan     = 8U,      /**< SCI8 J-Link OB console.                */
+  k_pp_console_baud  = 115200U, /**< J-Link OB VCOM line rate.              */
+  k_pp_t0_us         = 1000U,   /**< Synthetic clock start, microseconds.   */
+  k_pp_active_a_us   = 250U,    /**< First active stay.                     */
   k_pp_gap_us        = 40U,     /**< Idle gap between the two active stays. */
-  k_pp_active_b_us   = 150U,    /**< Second active stay.                   */
-  k_pp_sleep_us      = 900U,    /**< Closed sleep stay.                    */
-  k_pp_standby_us    = 500U,    /**< Time spent inside the OPEN standby.   */
-  k_pp_post_reset_us = 75U,     /**< Closed stay taken after the reset.    */
-  k_pp_edges_closed  = 2U,      /**< Edge-hook calls per closed region.    */
+  k_pp_active_b_us   = 150U,    /**< Second active stay.                    */
+  k_pp_sleep_us      = 900U,    /**< Closed sleep stay.                     */
+  k_pp_standby_us    = 500U,    /**< Time spent inside the OPEN standby.    */
+  k_pp_post_reset_us = 75U,     /**< Closed stay taken after the reset.     */
+  k_pp_edges_closed  = 2U,      /**< Edge-hook calls per closed region.     */
 } pp_const_t;
 
 /**
@@ -77,14 +77,14 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t now_us;      /**< Current synthetic time, microseconds.         */
-  uint32_t enter_edges; /**< Edge-hook calls that claimed to be entering.  */
-  uint32_t exit_edges;  /**< Edge-hook calls that claimed to be leaving.   */
+  uint64_t now_us;      /**< Current synthetic time, microseconds.        */
+  uint32_t enter_edges; /**< Edge-hook calls that claimed to be entering. */
+  uint32_t exit_edges;  /**< Edge-hook calls that claimed to be leaving.  */
 } pp_probe_t;
 
-static pp_probe_t s_probe = {.now_us = k_pp_t0_us}; /**< The fake clock.   */
+static pp_probe_t s_probe = {.now_us = k_pp_t0_us}; /**< The fake clock. */
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -189,10 +189,10 @@ static ra8_err_t internal_closed_stay(ra8_power_profile_region_id_t region, uint
 static ra8_err_t internal_walk_timeline(void)
 {
   const ra8_power_profile_config_t cfg = {
-      .pulse         = internal_pulse,
-      .now_us        = internal_now_us,
-      .user_ctx_gpio = &s_probe,
-      .user_ctx_time = &s_probe,
+    .pulse         = internal_pulse,
+    .now_us        = internal_now_us,
+    .user_ctx_gpio = &s_probe,
+    .user_ctx_time = &s_probe,
   };
 
   ra8_err_t err = ra8_power_profile_init(&cfg);
@@ -244,24 +244,23 @@ static ra8_err_t internal_check_stats(void)
     return err;
   }
 
-  const ra8_power_profile_region_stats_t* active
-      = &stats.regions[k_ra8_power_profile_region_active];
-  const ra8_power_profile_region_stats_t* sleep
-      = &stats.regions[k_ra8_power_profile_region_sleep];
-  const ra8_power_profile_region_stats_t* standby
-      = &stats.regions[k_ra8_power_profile_region_software_standby];
+  const ra8_power_profile_region_stats_t* active =
+    &stats.regions[k_ra8_power_profile_region_active];
+  const ra8_power_profile_region_stats_t* sleep = &stats.regions[k_ra8_power_profile_region_sleep];
+  const ra8_power_profile_region_stats_t* standby =
+    &stats.regions[k_ra8_power_profile_region_software_standby];
 
   const uint64_t want_active = (uint64_t)k_pp_active_a_us + (uint64_t)k_pp_active_b_us;
-  const uint64_t want_open_at
-      = (uint64_t)k_pp_t0_us + want_active + (uint64_t)k_pp_gap_us + (uint64_t)k_pp_sleep_us;
+  const uint64_t want_open_at =
+    (uint64_t)k_pp_t0_us + want_active + (uint64_t)k_pp_gap_us + (uint64_t)k_pp_sleep_us;
 
-  const bool active_ok = (active->entries == 2U) && (active->exits == 2U)
-                         && (active->total_time_us == want_active) && !active->is_open;
-  const bool sleep_ok = (sleep->entries == 1U) && (sleep->exits == 1U)
-                        && (sleep->total_time_us == (uint64_t)k_pp_sleep_us) && !sleep->is_open;
-  const bool standby_ok = (standby->entries == 1U) && (standby->exits == 0U)
-                          && (standby->total_time_us == 0U) && standby->is_open
-                          && (standby->last_enter_us == want_open_at);
+  const bool active_ok  = (active->entries == 2U) && (active->exits == 2U) &&
+                          (active->total_time_us == want_active) && !active->is_open;
+  const bool sleep_ok   = (sleep->entries == 1U) && (sleep->exits == 1U) &&
+                          (sleep->total_time_us == (uint64_t)k_pp_sleep_us) && !sleep->is_open;
+  const bool standby_ok = (standby->entries == 1U) && (standby->exits == 0U) &&
+                          (standby->total_time_us == 0U) && standby->is_open &&
+                          (standby->last_enter_us == want_open_at);
 
   return (active_ok && sleep_ok && standby_ok) ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -280,10 +279,9 @@ static ra8_err_t internal_check_edges(void)
   const uint32_t want_exits     = closed_regions;
   const uint32_t want_enters    = closed_regions + 1U; /* the open standby. */
 
-  const bool counted = (s_probe.enter_edges == want_enters)
-                       && (s_probe.exit_edges == want_exits)
-                       && ((want_enters + want_exits)
-                           == ((closed_regions * (uint32_t)k_pp_edges_closed) + 1U));
+  const bool counted =
+    (s_probe.enter_edges == want_enters) && (s_probe.exit_edges == want_exits) &&
+    ((want_enters + want_exits) == ((closed_regions * (uint32_t)k_pp_edges_closed) + 1U));
 
   return counted ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -309,8 +307,8 @@ static ra8_err_t internal_check_reset(void)
     return err;
   }
 
-  const ra8_power_profile_region_stats_t* was_active
-      = &cleared.regions[k_ra8_power_profile_region_active];
+  const ra8_power_profile_region_stats_t* was_active =
+    &cleared.regions[k_ra8_power_profile_region_active];
   if ((was_active->entries != 0U) || (was_active->total_time_us != 0U)) {
     return k_ra8_err_invalid_arg;
   }
@@ -326,10 +324,9 @@ static ra8_err_t internal_check_reset(void)
     return err;
   }
 
-  const ra8_power_profile_region_stats_t* fresh
-      = &again.regions[k_ra8_power_profile_region_active];
-  const bool clean = (fresh->entries == 1U) && (fresh->exits == 1U)
-                     && (fresh->total_time_us == (uint64_t)k_pp_post_reset_us);
+  const ra8_power_profile_region_stats_t* fresh = &again.regions[k_ra8_power_profile_region_active];
+  const bool clean = (fresh->entries == 1U) && (fresh->exits == 1U) &&
+                     (fresh->total_time_us == (uint64_t)k_pp_post_reset_us);
 
   return clean ? k_ra8_ok : k_ra8_err_invalid_arg;
 }

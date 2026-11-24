@@ -150,17 +150,17 @@ static const uint8_t k_kat_mac_key[k_ra8_key_vault_mac_key_bytes] = {
 
 /* Console line fragments (kept short so each write is one shift-register
  * fill; the periodic verdict is the only repeated output path). */
-static const uint8_t k_kat_step_prefix[]   = "kat: step=";
-static const uint8_t k_kat_rc_sep[]        = " rc=";
-static const uint8_t k_kat_pass_sfx[]      = " PASS\r\n";
-static const uint8_t k_kat_fail_sfx[]      = " FAIL\r\n";
+static const uint8_t k_kat_step_prefix[] = "kat: step=";
+static const uint8_t k_kat_rc_sep[]      = " rc=";
+static const uint8_t k_kat_pass_sfx[]    = " PASS\r\n";
+static const uint8_t k_kat_fail_sfx[]    = " FAIL\r\n";
 #if defined(RA8_INSECURE_STUB_CRYPTO)
-static const uint8_t k_kat_mode[]          = "kat: mode=dev-eval (stub crypto on)\r\n";
+static const uint8_t k_kat_mode[] = "kat: mode=dev-eval (stub crypto on)\r\n";
 #else
-static const uint8_t k_kat_mode[]          = "kat: mode=production (fail-closed)\r\n";
+static const uint8_t k_kat_mode[] = "kat: mode=production (fail-closed)\r\n";
 #endif
-static const uint8_t k_kat_verdict_pass[]  = "kat: secure_app PASS\r\n";
-static const uint8_t k_kat_verdict_fail[]  = "kat: secure_app FAIL\r\n";
+static const uint8_t k_kat_verdict_pass[] = "kat: secure_app PASS\r\n";
+static const uint8_t k_kat_verdict_fail[] = "kat: secure_app FAIL\r\n";
 
 /*
  * Expected returns for the key-vault group. The placeholder vault body in
@@ -358,64 +358,66 @@ static void kat_write_u32(uint32_t val)
 
   ok = kat_step(1U, KAT_VAULT_OK, ra8_key_vault_init()) && ok;
   ok = kat_step(2U, KAT_VAULT_OK, ra8_key_vault_store(0U, k_kat_key)) && ok;
-  ok = kat_step(3U, KAT_VAULT_BAD_SLOT,
-                ra8_key_vault_store((uint16_t)k_kat_bad_slot, k_kat_key))
-       && ok;
+  ok = kat_step(3U, KAT_VAULT_BAD_SLOT, ra8_key_vault_store((uint16_t)k_kat_bad_slot, k_kat_key)) &&
+       ok;
   ok = kat_step(4U, k_ra8_err_null_ptr, ra8_key_vault_store(0U, NULL)) && ok;
 
   uint8_t digest[k_ra8_key_vault_digest_bytes] = {};
-  ok = kat_step(5U, KAT_VAULT_OK,
-                ra8_key_vault_sha256_xor_challenge(0U, k_kat_challenge, digest))
-       && ok;
+  ok =
+    kat_step(5U, KAT_VAULT_OK, ra8_key_vault_sha256_xor_challenge(0U, k_kat_challenge, digest)) &&
+    ok;
 #if defined(RA8_INSECURE_STUB_CRYPTO)
   /* The vault answered, so the digest must be the FIPS 180-4 vector. */
   ok = kat_step_bool(
          6U,
-         kat_bytes_equal(digest, k_kat_expect_digest, (uint32_t)k_ra8_key_vault_digest_bytes))
-       && ok;
+         kat_bytes_equal(digest, k_kat_expect_digest, (uint32_t)k_ra8_key_vault_digest_bytes)) &&
+       ok;
 #else
   /* The vault refused, so it must not have written the caller's buffer. */
   const uint8_t zeroes[k_ra8_key_vault_digest_bytes] = {};
-  ok = kat_step_bool(
-         6U, kat_bytes_equal(digest, zeroes, (uint32_t)k_ra8_key_vault_digest_bytes))
-       && ok;
+  ok = kat_step_bool(6U, kat_bytes_equal(digest, zeroes, (uint32_t)k_ra8_key_vault_digest_bytes)) &&
+       ok;
 #endif
-  ok = kat_step(7U, k_ra8_err_null_ptr,
-                ra8_key_vault_sha256_xor_challenge(0U, NULL, digest))
-       && ok;
-  ok = kat_step(8U, k_ra8_err_null_ptr,
-                ra8_key_vault_sha256_xor_challenge(0U, k_kat_challenge, NULL))
-       && ok;
-  ok = kat_step(9U, KAT_VAULT_BAD_SLOT,
-                ra8_key_vault_sha256_xor_challenge((uint16_t)k_kat_bad_slot, k_kat_challenge,
-                                                   digest))
-       && ok;
+  ok = kat_step(7U, k_ra8_err_null_ptr, ra8_key_vault_sha256_xor_challenge(0U, NULL, digest)) && ok;
+  ok = kat_step(8U,
+                k_ra8_err_null_ptr,
+                ra8_key_vault_sha256_xor_challenge(0U, k_kat_challenge, NULL)) &&
+       ok;
+  ok = kat_step(
+         9U,
+         KAT_VAULT_BAD_SLOT,
+         ra8_key_vault_sha256_xor_challenge((uint16_t)k_kat_bad_slot, k_kat_challenge, digest)) &&
+       ok;
 
   uint8_t  mac_read[k_ra8_key_vault_mac_key_bytes] = {};
   uint16_t mac_len                                 = 0U;
-  ok = kat_step(10U, KAT_VAULT_UNSET_MAC,
-                ra8_key_vault_load_mac_key(mac_read, (uint16_t)sizeof(mac_read), &mac_len))
-       && ok;
+  ok = kat_step(10U,
+                KAT_VAULT_UNSET_MAC,
+                ra8_key_vault_load_mac_key(mac_read, (uint16_t)sizeof(mac_read), &mac_len)) &&
+       ok;
   ok = kat_step(11U, k_ra8_err_null_ptr, ra8_key_vault_set_mac_key(NULL, 0U)) && ok;
-  ok = kat_step(12U, KAT_VAULT_BAD_MAC_LEN,
-                ra8_key_vault_set_mac_key(k_kat_mac_key, (uint16_t)k_kat_bad_mac_len))
-       && ok;
-  ok = kat_step(13U, KAT_VAULT_OK,
-                ra8_key_vault_set_mac_key(k_kat_mac_key,
-                                          (uint16_t)k_ra8_key_vault_mac_key_bytes))
-       && ok;
-  ok = kat_step(14U, KAT_VAULT_SHORT_CAP,
-                ra8_key_vault_load_mac_key(mac_read, (uint16_t)k_kat_short_mac_cap, &mac_len))
-       && ok;
+  ok = kat_step(12U,
+                KAT_VAULT_BAD_MAC_LEN,
+                ra8_key_vault_set_mac_key(k_kat_mac_key, (uint16_t)k_kat_bad_mac_len)) &&
+       ok;
+  ok =
+    kat_step(13U,
+             KAT_VAULT_OK,
+             ra8_key_vault_set_mac_key(k_kat_mac_key, (uint16_t)k_ra8_key_vault_mac_key_bytes)) &&
+    ok;
+  ok = kat_step(14U,
+                KAT_VAULT_SHORT_CAP,
+                ra8_key_vault_load_mac_key(mac_read, (uint16_t)k_kat_short_mac_cap, &mac_len)) &&
+       ok;
   const ra8_err_t load_err =
     ra8_key_vault_load_mac_key(mac_read, (uint16_t)sizeof(mac_read), &mac_len);
   ok = kat_step(15U, KAT_VAULT_OK, load_err) && ok;
 #if defined(RA8_INSECURE_STUB_CRYPTO)
-  ok = kat_step_bool(16U,
-                     (mac_len == (uint16_t)k_ra8_key_vault_mac_key_bytes)
-                       && kat_bytes_equal(mac_read, k_kat_mac_key,
-                                          (uint32_t)k_ra8_key_vault_mac_key_bytes))
-       && ok;
+  ok = kat_step_bool(
+         16U,
+         (mac_len == (uint16_t)k_ra8_key_vault_mac_key_bytes) &&
+           kat_bytes_equal(mac_read, k_kat_mac_key, (uint32_t)k_ra8_key_vault_mac_key_bytes)) &&
+       ok;
 #else
   ok = kat_step_bool(16U, mac_len == 0U) && ok;
 #endif
@@ -447,21 +449,22 @@ static void kat_write_u32(uint32_t val)
   ok = kat_step(17U, k_ra8_ok, ra8_ota_commit_reset()) && ok;
 
   ra8_ota_bank_t pending = k_ra8_ota_bank_a;
-  ok = kat_step(18U, k_ra8_err_no_data, ra8_ota_commit_pending(&pending)) && ok;
-  ok = kat_step(19U, k_ra8_err_null_ptr, ra8_ota_commit_pending(NULL)) && ok;
-  ok = kat_step(20U, k_ra8_err_invalid_arg,
-                ra8_ota_commit_swap_bank((ra8_ota_bank_t)k_kat_bad_bank))
-       && ok;
+  ok                     = kat_step(18U, k_ra8_err_no_data, ra8_ota_commit_pending(&pending)) && ok;
+  ok                     = kat_step(19U, k_ra8_err_null_ptr, ra8_ota_commit_pending(NULL)) && ok;
+  ok                     = kat_step(20U,
+                                    k_ra8_err_invalid_arg,
+                                    ra8_ota_commit_swap_bank((ra8_ota_bank_t)k_kat_bad_bank)) &&
+                           ok;
   /* Bench-gated option-byte write: fail-closed on silicon, never a fake OK. */
   ok = kat_step(21U, k_ra8_err_not_supported, ra8_ota_commit_swap_bank(k_ra8_ota_bank_b)) && ok;
   ok = kat_step(22U, k_ra8_err_no_data, ra8_ota_commit_pending(&pending)) && ok;
 
   uint32_t bank_cfg = 0U;
-  ok = kat_step(23U, k_ra8_ok, ra8_ota_commit_get_bank_config(&bank_cfg)) && ok;
-  ok = kat_step_bool(24U, bank_cfg == 0U) && ok;
+  ok                = kat_step(23U, k_ra8_ok, ra8_ota_commit_get_bank_config(&bank_cfg)) && ok;
+  ok                = kat_step_bool(24U, bank_cfg == 0U) && ok;
   ok = kat_step(25U, k_ra8_err_not_supported, ra8_ota_commit_set_bank_config(UINT32_MAX)) && ok;
   const ra8_err_t cfg_err = ra8_ota_commit_get_bank_config(&bank_cfg);
-  ok = kat_step_bool(26U, (cfg_err == k_ra8_ok) && (bank_cfg == 0U)) && ok;
+  ok                      = kat_step_bool(26U, (cfg_err == k_ra8_ok) && (bank_cfg == 0U)) && ok;
   ok = kat_step(27U, k_ra8_err_null_ptr, ra8_ota_commit_get_bank_config(NULL)) && ok;
 
   return ok;

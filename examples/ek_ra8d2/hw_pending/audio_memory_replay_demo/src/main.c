@@ -74,7 +74,7 @@
  */
 typedef enum : uint32_t {
   k_amr_uart_chan     = 8U,      /**< SCI8 J-Link OB console.               */
-  k_amr_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
+  k_amr_console_baud  = 115200U, /**< J-Link OB VCOM line rate.             */
   k_amr_channels      = 2U,      /**< Interleaved stereo.                   */
   k_amr_samples       = 32U,     /**< Sample frames per channel.            */
   k_amr_container     = 2U,      /**< s16le container width in bytes.       */
@@ -84,13 +84,13 @@ typedef enum : uint32_t {
   k_amr_fixture_bytes = 128U,    /**< samples * channels * container.       */
   k_amr_short_bytes   = 64U,     /**< Deliberately too small for one frame. */
   k_amr_ramp_step     = 257,     /**< Per-sample ramp step (spans both      */
-                                 /**< bytes of the container).              */
+                                 /**< bytes of the container). */
 } amr_const_t;
 
 static int16_t s_fixture[k_amr_samples * k_amr_channels]; /**< App-owned PCM.  */
 static uint8_t s_capture[k_amr_fixture_bytes];            /**< Capture target. */
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -135,10 +135,9 @@ static void internal_fill_fixture(void)
 static ra8_audio_frame_t internal_fixture_frame(void)
 {
   return (ra8_audio_frame_t){
-    .data           = s_fixture,
-    .bytes          = (uint32_t)k_amr_samples * (uint32_t)k_amr_channels *
-                      (uint32_t)k_amr_container,
-    .sample_count   = (uint32_t)k_amr_samples,
+    .data         = s_fixture,
+    .bytes        = (uint32_t)k_amr_samples * (uint32_t)k_amr_channels * (uint32_t)k_amr_container,
+    .sample_count = (uint32_t)k_amr_samples,
     .sample_rate_hz = (uint32_t)k_amr_rate_hz,
     .timestamp_ms   = (uint32_t)k_amr_timestamp_ms,
     .channels       = (uint8_t)k_amr_channels,
@@ -193,7 +192,7 @@ static ra8_err_t internal_check_validate(void)
   }
 
   ra8_audio_frame_t no_data = good;
-  no_data.data             = nullptr;
+  no_data.data              = nullptr;
   if (ra8_audio_frame_validate(&no_data) != k_ra8_err_null_ptr) {
     return k_ra8_err_invalid_state;
   }
@@ -269,8 +268,7 @@ static ra8_err_t internal_replay_round_trip(void)
   }
 
   /* Leg 4: a buffer the contract says is too small is refused, not overrun. */
-  const ra8_audio_buffer_t short_buf = {.data     = s_capture,
-                                        .capacity = (uint32_t)k_amr_short_bytes};
+  const ra8_audio_buffer_t short_buf = {.data = s_capture, .capacity = (uint32_t)k_amr_short_bytes};
   ra8_audio_frame_t        out       = {};
   if (ra8_audio_source_capture(&source, &short_buf, &out) != k_ra8_err_invalid_size) {
     return k_ra8_err_invalid_state;

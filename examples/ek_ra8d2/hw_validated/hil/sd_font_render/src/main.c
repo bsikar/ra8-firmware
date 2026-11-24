@@ -215,8 +215,8 @@ static void sfr_bringup_clocks(void)
   if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }
-  const fw_clock_module_t clk_spi = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
+  const fw_clock_module_t clk_spi = {.kind  = k_fw_clock_module_uart,
+                                     .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
   if (fw_clock_rate_for(ra8_board_clock(), clk_spi, &s_pclka_hz) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }

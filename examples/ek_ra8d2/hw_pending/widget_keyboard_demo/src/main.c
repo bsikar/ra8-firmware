@@ -118,9 +118,9 @@ static const display_fb_cfg_t k_wkd_fb_cfg = {
   .pixfmt    = k_display_pixfmt_rgb565,
 };
 
-static display_handle_t*          s_display = nullptr;
-static display_fb_t               s_fb;
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static display_handle_t* s_display = nullptr;
+static display_fb_t      s_fb;
+static ra8_io_stream_t   s_uart; /**< Console stream. */
 
 static ra8_kbd_layout_t s_kb;   /**< Real key grid (the engine's state). */
 static ra8_kbd_text_t   s_text; /**< Real typed-query buffer.            */

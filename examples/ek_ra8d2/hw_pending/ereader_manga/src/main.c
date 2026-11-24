@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fw_if_clock.h"
 #include "jof.h"
 #include "jof_produce.h"
 #include "mg_page_fixture.h"
@@ -49,7 +50,6 @@
 #include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
@@ -90,11 +90,11 @@ typedef enum : uint32_t {
    * viewport frame can straddle: ceil(extent / tile) tiles, plus one for the
    * viewport not being tile-aligned. The content area is the panel minus the
    * status bar (the render clips there). See the derivation note below. */
-  k_mg_view_cols = (((uint32_t)k_panel_width_px + k_mg_tile_edge - 1U) / k_mg_tile_edge) +
-    1U, /**< 1:1 cols. */
+  k_mg_view_cols =
+    (((uint32_t)k_panel_width_px + k_mg_tile_edge - 1U) / k_mg_tile_edge) + 1U, /**< 1:1 cols. */
   k_mg_view_rows =
-      ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
-       k_mg_tile_edge) +
+    ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
+     k_mg_tile_edge) +
     1U,                                                         /**< 1:1 content rows.            */
   k_mg_cells   = (k_mg_view_cols + 1U) * (k_mg_view_rows + 1U), /**< Frame + 1-tile pan margin.   */
   k_mg_buckets = 64U,                                           /**< Hash buckets (>= cells).     */

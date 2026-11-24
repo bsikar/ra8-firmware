@@ -64,13 +64,13 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_vfs_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                  */
-  k_vfs_console_baud = 115200U, /**< J-Link OB VCOM line rate. */
+  k_vfs_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                   */
+  k_vfs_console_baud = 115200U, /**< J-Link OB VCOM line rate.                 */
   k_vfs_disk_blocks  = 512U,    /**< RAM-disk sectors; FAT12 fits comfortably. */
-  k_vfs_file_work    = 64U,     /**< Backend file-handle workspace bytes.     */
-  k_vfs_txn_work     = 2048U,   /**< Backend transaction workspace bytes.     */
-  k_vfs_dir_work     = 1024U,   /**< Backend directory-cursor workspace.      */
-  k_vfs_list_cap     = 8U,      /**< Bounded directory-walk entry ceiling.    */
+  k_vfs_file_work    = 64U,     /**< Backend file-handle workspace bytes.      */
+  k_vfs_txn_work     = 2048U,   /**< Backend transaction workspace bytes.      */
+  k_vfs_dir_work     = 1024U,   /**< Backend directory-cursor workspace.       */
+  k_vfs_list_cap     = 8U,      /**< Bounded directory-walk entry ceiling.     */
 } vfs_const_t;
 
 /*
@@ -137,7 +137,7 @@ static ra8_fs_mount_t*             s_mount;
 static fw_fs_t               s_fs;
 static fw_fs_ra8_vfs_state_t s_adapter;
 
-static ra8_io_stream_t            s_uart;
+static ra8_io_stream_t s_uart;
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -164,11 +164,8 @@ static void internal_print(const char* text)
  */
 static ra8_err_t internal_bind_volume(void)
 {
-  ra8_err_t err = ra8_io_blockdev_ram_init(&s_blockdev,
-                                           &s_ram_state,
-                                           s_disk,
-                                           (uint32_t)k_vfs_disk_blocks,
-                                           false);
+  ra8_err_t err =
+    ra8_io_blockdev_ram_init(&s_blockdev, &s_ram_state, s_disk, (uint32_t)k_vfs_disk_blocks, false);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -178,8 +175,9 @@ static ra8_err_t internal_bind_volume(void)
     return err;
   }
 
-  const ra8_fs_format_opts_t format
-      = {.type = k_ra8_fs_type_fat12, .label = "PORT", .sectors_per_cluster = 0U};
+  const ra8_fs_format_opts_t format = {.type                = k_ra8_fs_type_fat12,
+                                       .label               = "PORT",
+                                       .sectors_per_cluster = 0U};
 
   err = ra8_fs_format(&s_backend, &format);
   if (err != k_ra8_ok) {
@@ -201,8 +199,9 @@ static ra8_err_t internal_bind_volume(void)
     return err;
   }
 
-  const fw_fs_ra8_vfs_cfg_t cfg
-      = {.mount_name = k_vfs_mount_name, .mount = s_mount, .removable_media = false};
+  const fw_fs_ra8_vfs_cfg_t cfg = {.mount_name      = k_vfs_mount_name,
+                                   .mount           = s_mount,
+                                   .removable_media = false};
 
   return fw_fs_ra8_vfs_init(&s_fs, &s_adapter, &cfg);
 }
@@ -242,17 +241,16 @@ static ra8_err_t internal_check_caps(void)
     return err;
   }
 
-  const uint32_t required = (uint32_t)k_fw_fs_cap_namespace | (uint32_t)k_fw_fs_cap_stream
-                            | (uint32_t)k_fw_fs_cap_transactions;
-  const uint32_t refused = (uint32_t)k_fw_fs_cap_durable_file_sync
-                           | (uint32_t)k_fw_fs_cap_durable_directory_sync
-                           | (uint32_t)k_fw_fs_cap_atomic_replace
-                           | (uint32_t)k_fw_fs_cap_symlinks;
+  const uint32_t required = (uint32_t)k_fw_fs_cap_namespace | (uint32_t)k_fw_fs_cap_stream |
+                            (uint32_t)k_fw_fs_cap_transactions;
+  const uint32_t refused  = (uint32_t)k_fw_fs_cap_durable_file_sync |
+                            (uint32_t)k_fw_fs_cap_durable_directory_sync |
+                            (uint32_t)k_fw_fs_cap_atomic_replace | (uint32_t)k_fw_fs_cap_symlinks;
 
-  const bool honest = ((caps.flags & required) == required) && ((caps.flags & refused) == 0U);
-  const bool fits   = (caps.file_workspace_bytes <= (uint32_t)k_vfs_file_work)
-                    && (caps.transaction_workspace_bytes <= (uint32_t)k_vfs_txn_work)
-                    && (caps.directory_workspace_bytes <= (uint32_t)k_vfs_dir_work);
+  const bool honest  = ((caps.flags & required) == required) && ((caps.flags & refused) == 0U);
+  const bool fits    = (caps.file_workspace_bytes <= (uint32_t)k_vfs_file_work) &&
+                       (caps.transaction_workspace_bytes <= (uint32_t)k_vfs_txn_work) &&
+                       (caps.directory_workspace_bytes <= (uint32_t)k_vfs_dir_work);
   const bool aligned = internal_aligned(s_file_work, caps.file_workspace_align) &&
                        internal_aligned(s_txn_work, caps.transaction_workspace_align) &&
                        internal_aligned(s_dir_work, caps.directory_workspace_align);
@@ -324,8 +322,8 @@ static ra8_err_t internal_round_trip(void)
     return reclosed;
   }
 
-  if ((got != (uint32_t)sizeof(k_vfs_payload))
-      || (memcmp(actual, k_vfs_payload, sizeof(k_vfs_payload)) != 0)) {
+  if ((got != (uint32_t)sizeof(k_vfs_payload)) ||
+      (memcmp(actual, k_vfs_payload, sizeof(k_vfs_payload)) != 0)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -335,8 +333,8 @@ static ra8_err_t internal_round_trip(void)
     return err;
   }
 
-  const bool sized = stat.exists && (stat.type == k_fw_fs_node_file)
-                     && (stat.size_bytes == (uint64_t)sizeof(k_vfs_payload));
+  const bool sized = stat.exists && (stat.type == k_fw_fs_node_file) &&
+                     (stat.size_bytes == (uint64_t)sizeof(k_vfs_payload));
 
   return sized ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -356,8 +354,8 @@ static ra8_err_t internal_walk_dir(void)
 
   (void)memset(work, 0, sizeof(s_dir_work));
 
-  ra8_err_t err
-      = fw_fs_dir_open(&s_fs.names, k_vfs_dir, &cursor, work, (uint32_t)sizeof(s_dir_work));
+  ra8_err_t err =
+    fw_fs_dir_open(&s_fs.names, k_vfs_dir, &cursor, work, (uint32_t)sizeof(s_dir_work));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -412,8 +410,8 @@ static ra8_err_t internal_validate_stage(void* ctx, fw_fs_file_t* staged)
     return err;
   }
 
-  const bool exact = (got == (uint32_t)sizeof(k_vfs_staged))
-                     && (memcmp(actual, k_vfs_staged, sizeof(k_vfs_staged)) == 0);
+  const bool exact = (got == (uint32_t)sizeof(k_vfs_staged)) &&
+                     (memcmp(actual, k_vfs_staged, sizeof(k_vfs_staged)) == 0);
 
   return exact ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -467,14 +465,13 @@ static ra8_err_t internal_publish_staged(void)
   }
 
   /* create_new must refuse a destination that now exists. */
-  fw_fs_transaction_t again = {0};
-  const ra8_err_t     denied
-      = fw_fs_transaction_begin(&s_fs.transactions,
-                                k_vfs_published,
-                                k_fw_fs_txn_create_new,
-                                &again,
-                                work,
-                                (uint32_t)sizeof(s_txn_work));
+  fw_fs_transaction_t again  = {0};
+  const ra8_err_t     denied = fw_fs_transaction_begin(&s_fs.transactions,
+                                                       k_vfs_published,
+                                                       k_fw_fs_txn_create_new,
+                                                       &again,
+                                                       work,
+                                                       (uint32_t)sizeof(s_txn_work));
   if (denied == k_ra8_ok) {
     (void)fw_fs_transaction_abort(&again);
     return k_ra8_err_invalid_arg;

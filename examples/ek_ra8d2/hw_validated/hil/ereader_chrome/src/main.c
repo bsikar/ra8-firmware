@@ -266,7 +266,7 @@ static uint32_t ch_framebuffer_hash(void)
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void ch_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     ch_panic_halt();

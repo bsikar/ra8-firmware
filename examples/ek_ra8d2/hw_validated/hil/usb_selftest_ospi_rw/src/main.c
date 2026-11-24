@@ -838,7 +838,7 @@ static void ospirw_route_usb_or_halt(void)
  */
 static void ospirw_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if (ra8_cgc_init() != k_ra8_ok) {
     ospirw_panic_halt();

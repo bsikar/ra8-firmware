@@ -38,8 +38,8 @@ static_assert((uint32_t)k_ra8_c6link_mac_bytes == (uint32_t)k_ra8_wifi_mac_bytes
 alignas(4) static uint8_t s_pool_mem[k_c6_cam_net_pool_bytes];
 alignas(8) static uint8_t s_ip_stack[k_c6_cam_net_ip_stack];
 alignas(4) static uint8_t s_arp_cache[k_c6_cam_net_arp_bytes];
-static NX_TCP_SOCKET     s_http_socket;
-static CHAR              s_socket_name[] = "c6_cam_http";
+static NX_TCP_SOCKET s_http_socket;
+static CHAR          s_socket_name[] = "c6_cam_http";
 
 static ra8_ipif_t      s_ipif;
 static ra8_ipif_wifi_t s_bind;
