@@ -132,6 +132,7 @@ test "each dented row is named" {
     try std.testing.expectEqual(core.Row.service, core.missingRow(.{ .service = false }).?);
     try std.testing.expectEqual(core.Row.get_mac, core.missingRow(.{ .get_mac = false }).?);
     try std.testing.expectEqual(core.Row.get_ap, core.missingRow(.{ .get_ap = false }).?);
+    try std.testing.expectEqual(core.Row.scan, core.missingRow(.{ .scan = false }).?);
     try std.testing.expectEqual(core.Row.idle, core.missingRow(.{ .idle = false }).?);
 }
 
@@ -147,6 +148,7 @@ test "validation stops at the first gap in lifecycle, session, query order" {
         .service = false,
         .get_mac = false,
         .get_ap = false,
+        .scan = false,
         .idle = false,
     };
     try std.testing.expectEqual(core.Row.open, core.missingRow(all_gone).?);
@@ -175,11 +177,13 @@ test "row messages are the C's check strings" {
     try std.testing.expectEqualStrings("backend.service", std.mem.span(core.Row.service.message()));
     try std.testing.expectEqualStrings("backend.get_mac", std.mem.span(core.Row.get_mac.message()));
     try std.testing.expectEqualStrings("backend.get_ap", std.mem.span(core.Row.get_ap.message()));
+    try std.testing.expectEqualStrings("backend.scan", std.mem.span(core.Row.scan.message()));
     try std.testing.expectEqualStrings("backend.idle", std.mem.span(core.Row.idle.message()));
 }
 
 test "error values are the ra8_err_t codes the facade returns" {
     try std.testing.expectEqual(@as(u16, 0x0000), core.err_ok);
+    try std.testing.expectEqual(@as(u16, 0x0103), core.err_invalid_arg);
     try std.testing.expectEqual(@as(u16, 0x0104), core.err_invalid_state);
     try std.testing.expectEqual(@as(u16, 0x0108), core.err_timeout);
     try std.testing.expectEqual(@as(u16, 0x010F), core.err_not_initialized);

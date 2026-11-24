@@ -1646,9 +1646,9 @@
       "adapter": "libs/ra8_wifi/src/ra8_wifi_abi.zig",
       "library_name": "ra8_wifi",
       "symbol_prefix": "ra8_wifi_",
-      "compatibility_sha256": "ba037183509ac7bbb687c4dae57053d2b007052d6d8752290375111c4341afd8",
+      "compatibility_sha256": "297d6657d1bf4c8b328742b9ace51ed8dff67655b5cf1ae3af7517cecbc4af39",
       "layout_assertions": [
-        "@sizeOf(Backend) == ptr * 10",
+        "@sizeOf(Backend) == ptr * 11",
         "@sizeOf(Config) == ptr * 4",
         "@offsetOf(Wifi, \"ip_bind\") == ptr * 2",
         "@offsetOf(Wifi, \"lease\") == ptr * 4 + 8",
@@ -1735,6 +1735,11 @@
           "name": "ra8_wifi_get_ap",
           "calling_context": "task-only-non-reentrant",
           "ownership": "copies current access-point data into caller-owned output storage"
+        },
+        {
+          "name": "ra8_wifi_scan",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes up to max decoded scan records and count into caller-owned output storage"
         },
         {
           "name": "ra8_wifi_c6link_setup",

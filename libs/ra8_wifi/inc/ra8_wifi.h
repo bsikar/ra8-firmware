@@ -811,6 +811,59 @@ typedef struct ra8_wifi {
  */
 [[nodiscard]] ra8_err_t ra8_wifi_get_ap(ra8_wifi_t* wifi, ra8_wifi_ap_t* out);
 
+/**
+ * @brief Scan for nearby 2.4 GHz access points into a caller-supplied array.
+ *
+ * @details
+ * Starts the radio if it is not already running, clears @p out and @p count,
+ * and asks the backend to scan for nearby access points, decoding up to
+ * @p max records into @p out and storing the written record count in @p count.
+ * A radio hearing more access points than @p max fills @p max entries without
+ * failing or overflowing caller storage.
+ *
+ * @param[in,out] wifi Open handle; must be non-null.
+ * @param[out] out Caller-owned array of at least @p max records; must be
+ *                 non-null.
+ * @param[in] max Capacity of @p out in records; must be non-zero.
+ * @param[out] count Written record count (at most @p max); must be non-null.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok @p count holds the written record count and @p out holds
+ *         that many decoded access-point records.
+ * @retval k_ra8_err_null_ptr @p wifi, @p out, or @p count was null.
+ * @retval k_ra8_err_invalid_arg @p max was zero; @p count is zeroed.
+ * @retval k_ra8_err_not_initialized @p wifi is not open; @p count is zeroed.
+ * @retval k_ra8_err_timeout The backend's scan completion window elapsed.
+ * @retval k_ra8_err_hw_timeout The radio never armed its bus handshake.
+ * @retval k_ra8_err_protocol_error The backend refused a scan step or decoded
+ *         a malformed reply.
+ * @retval k_ra8_err_spi_error The backend's transport refused a transfer.
+ *
+ * @pre @p wifi has been initialised.
+ * @pre @p out has capacity for at least @p max ::ra8_wifi_ap_t entries.
+ * @post On success `*count <= max` and entries `0 .. *count - 1` hold valid
+ *       records; trailing entries up to @p max are zeroed.
+ * @post On failure `@p count` (when non-null) is zero and @p out (when @p wifi
+ *       is open and @p max > 0) is cleared rather than left half-written.
+ *
+ * @note Not thread-safe; blocks for the duration of the backend scan.
+ *
+ * @par Example:
+ * @code
+ * ra8_wifi_ap_t aps[8] = {};
+ * uint16_t found = 0U;
+ * (void)ra8_wifi_scan(&wifi, aps, 8U, &found);
+ * @endcode
+ *
+ * @see ra8_wifi_ap_t
+ * @since 0.2.0
+ *
+ * @par NASA Power of 10 Compliance:
+ * - Rule 5: four preconditions and two postconditions are checked.
+ */
+[[nodiscard]] ra8_err_t
+ra8_wifi_scan(ra8_wifi_t* wifi, ra8_wifi_ap_t* out, uint16_t max, uint16_t* count);
+
 #ifdef __cplusplus
 }
 #endif

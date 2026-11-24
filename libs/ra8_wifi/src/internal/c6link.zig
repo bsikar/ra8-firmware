@@ -172,7 +172,12 @@ comptime {
     std.debug.assert(@offsetOf(StaCfg, "bssid") == 98);
     std.debug.assert(@offsetOf(StaCfg, "bssid_set") == 107);
     std.debug.assert(@sizeOf(ApInfo) == @sizeOf(core.Ap));
+    std.debug.assert(@alignOf(ApInfo) == @alignOf(core.Ap));
+    std.debug.assert(@offsetOf(ApInfo, "bssid") == @offsetOf(core.Ap, "bssid"));
     std.debug.assert(@offsetOf(ApInfo, "ssid") == @offsetOf(core.Ap, "ssid"));
+    std.debug.assert(@offsetOf(ApInfo, "ssid_len") == @offsetOf(core.Ap, "ssid_len"));
+    std.debug.assert(@offsetOf(ApInfo, "channel") == @offsetOf(core.Ap, "channel"));
+    std.debug.assert(@offsetOf(ApInfo, "rssi") == @offsetOf(core.Ap, "rssi"));
     std.debug.assert(@offsetOf(ApInfo, "authmode") == @offsetOf(core.Ap, "authmode"));
     std.debug.assert(@sizeOf(Stats) == 22);
     std.debug.assert(@sizeOf(FwVersion) == 36);
@@ -245,4 +250,15 @@ pub fn copyAp(out: *core.Ap, info: *const ApInfo) void {
     out.channel = info.channel;
     out.rssi = info.rssi;
     out.authmode = info.authmode;
+}
+
+/// Normalize `n` scanned `ApInfo` records into facade `Ap` storage.
+/// Reading each source element by value before writing `dst[i]` makes
+/// same-address conversion well-defined when a caller's buffer backs both.
+pub fn normalizeScanRecords(dst: [*]core.Ap, src: [*]const ApInfo, n: u16) void {
+    var i: u16 = 0;
+    while (i < n) : (i += 1) {
+        const snapshot = src[i];
+        copyAp(&dst[i], &snapshot);
+    }
 }

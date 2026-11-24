@@ -194,9 +194,11 @@ static void test_backend_direct_guards(void)
   const ra8_wifi_backend_t* b = &k_ra8_wifi_backend_c6link;
 
   /* Null context is rejected by every row. */
-  ra8_wifi_mac_t  mac  = {};
-  ra8_wifi_ap_t   ap   = {};
-  ra8_wifi_link_t link = k_ra8_wifi_link_down;
+  ra8_wifi_mac_t  mac    = {};
+  ra8_wifi_ap_t   ap     = {};
+  ra8_wifi_ap_t   aps[4] = {};
+  uint16_t        found  = 0U;
+  ra8_wifi_link_t link   = k_ra8_wifi_link_down;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->open(nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->close(nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->radio_up(nullptr));
@@ -206,6 +208,7 @@ static void test_backend_direct_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->service(nullptr, &link));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->get_mac(nullptr, &mac));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->get_ap(nullptr, &ap));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->scan(nullptr, aps, 4U, &found));
 
   /* A context with no link is rejected by the rows that dereference it. */
   ra8_wifi_c6link_t no_link = {};
@@ -214,6 +217,7 @@ static void test_backend_direct_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->radio_up(&no_link));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->radio_down(&no_link));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->leave(&no_link));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->scan(&no_link, aps, 4U, &found));
 
   /* A valid context but null out-parameters, each rejected before any wire. */
   TEST_ASSERT_EQ(k_ra8_ok, t_up());
@@ -221,6 +225,8 @@ static void test_backend_direct_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->service(&s_c6, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->get_mac(&s_c6, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->get_ap(&s_c6, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->scan(&s_c6, nullptr, 4U, &found));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, b->scan(&s_c6, aps, 4U, nullptr));
 
   /* Opening an already-open link is refused by ra8_c6link, surfaced by open. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, b->open(&s_c6));
@@ -464,6 +470,76 @@ static void test_operation_failures(void)
   TEST_END("wifi-c6 operation failures");
 }
 
+/* --- scan through the real C6 backend ------------------------------------ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_scan(void)
+{
+  TEST_BEGIN("wifi-c6 scan");
+  ra8_wifi_ap_t aps[4] = {};
+  uint16_t      found  = 99U;
+
+  /* Full scan brings the radio up automatically once and decodes both APs. */
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  (void)memset(aps, 0xA5, sizeof aps);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&s_wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ((uint16_t)k_c6m_scan_count, found);
+  TEST_ASSERT_EQ(0, strcmp(aps[0].ssid, "benc"));
+  TEST_ASSERT_EQ(k_c6m_channel, aps[0].channel);
+  TEST_ASSERT_EQ(-(int32_t)k_c6m_rssi_mag, aps[0].rssi);
+  TEST_ASSERT_EQ(0, strcmp(aps[1].ssid, "ra8b"));
+  TEST_ASSERT_EQ(k_c6m_scan_alt_ch, aps[1].channel);
+  TEST_ASSERT_EQ(-(int32_t)k_c6m_scan_alt_rssi, aps[1].rssi);
+  TEST_ASSERT_EQ('\0', aps[2].ssid[0]);
+  TEST_ASSERT_EQ('\0', aps[3].ssid[0]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+
+  /* Oversized AP list relative to caller buffer truncates cleanly. */
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  (void)memset(aps, 0x5A, sizeof aps);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&s_wifi, aps, 1U, &found));
+  TEST_ASSERT_EQ(1U, found);
+  TEST_ASSERT_EQ(0, strcmp(aps[0].ssid, "benc"));
+  TEST_ASSERT_EQ(0x5A, (uint8_t)aps[1].ssid[0]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+
+  /* Empty scan zeroes the output buffer and reports count = 0. */
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  ra8_c6_model()->scan_empty = true;
+  (void)memset(aps, 0x3C, sizeof aps);
+  found = 7U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&s_wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ('\0', aps[0].ssid[0]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+
+  /* Failure paths zero both count and output array cleanly. */
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  ra8_c6_model()->fail_req = (uint32_t)RPC_ID__Req_WifiScanGetApRecords;
+  (void)memset(aps, 0x7E, sizeof aps);
+  found = 11U;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_wifi_scan(&s_wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ('\0', aps[0].ssid[0]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+
+  TEST_ASSERT_EQ(k_ra8_ok, t_up());
+  ra8_c6_model()->silent_scan = true;
+  (void)memset(aps, 0x7E, sizeof aps);
+  found = 11U;
+  TEST_ASSERT_EQ(k_ra8_err_timeout, ra8_wifi_scan(&s_wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ('\0', aps[0].ssid[0]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&s_wifi));
+
+  TEST_END("wifi-c6 scan");
+}
+
 /**
  * @brief Run every ESP32-C6 backend test; return non-zero on first failure.
  * @return 0 when all tests pass.
@@ -478,5 +554,6 @@ int main(void)
   test_service_transitions();
   test_journey_to_ip();
   test_operation_failures();
+  test_scan();
   return 0;
 }

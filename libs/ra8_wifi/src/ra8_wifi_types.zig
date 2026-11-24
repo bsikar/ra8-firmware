@@ -36,6 +36,12 @@ pub const Backend = extern struct {
     service: ?*const fn (ctx: ?*anyopaque, out_link: ?*u8) callconv(.c) u16 = null,
     get_mac: ?*const fn (ctx: ?*anyopaque, out: ?*Mac) callconv(.c) u16 = null,
     get_ap: ?*const fn (ctx: ?*anyopaque, out: ?*Ap) callconv(.c) u16 = null,
+    scan: ?*const fn (
+        ctx: ?*anyopaque,
+        out: ?[*]Ap,
+        max: u16,
+        count: ?*u16,
+    ) callconv(.c) u16 = null,
     idle: ?*const fn (ctx: ?*anyopaque, ms: u16) callconv(.c) void = null,
 };
 

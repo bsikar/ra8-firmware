@@ -145,6 +145,23 @@ struct ra8_wifi_backend {
   ra8_err_t (*get_ap)(void* ctx, ra8_wifi_ap_t* out);
 
   /**
+   * @brief Scan for nearby access points and store up to @p max records.
+   *
+   * @details
+   * Executes a scan using an already-started radio and copies up to @p max
+   * access-point records into caller-owned @p out, storing the written record
+   * count in @p count.
+   *
+   * @param[in,out] ctx Backend context.
+   * @param[out] out Array of at least @p max ::ra8_wifi_ap_t entries.
+   * @param[in] max Capacity of @p out in records.
+   * @param[out] count Written record count (at most @p max).
+   *
+   * @return ra8_err_t Error code.
+   */
+  ra8_err_t (*scan)(void* ctx, ra8_wifi_ap_t* out, uint16_t max, uint16_t* count);
+
+  /**
    * @brief Idle for @p ms milliseconds, pacing a bounded wait.
    * @details The facade counts poll attempts, not milliseconds, so without this
    *          row its association wait would run as fast as the backend could

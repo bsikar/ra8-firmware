@@ -36,6 +36,7 @@ pub const Link = enum(u8) {
 
 /// Subset of `ra8_err_t` the facade produces itself; backend codes pass through.
 pub const err_ok: u16 = 0x0000;
+pub const err_invalid_arg: u16 = 0x0103;
 pub const err_invalid_state: u16 = 0x0104;
 pub const err_timeout: u16 = 0x0108;
 pub const err_not_initialized: u16 = 0x010F;
@@ -151,6 +152,7 @@ pub const Row = enum {
     service,
     get_mac,
     get_ap,
+    scan,
     idle,
 
     /// The message `RA8_CHECK_NULL_PTR` logged for this row.
@@ -165,6 +167,7 @@ pub const Row = enum {
             .service => "backend.service",
             .get_mac => "backend.get_mac",
             .get_ap => "backend.get_ap",
+            .scan => "backend.scan",
             .idle => "backend.idle",
         };
     }
@@ -181,6 +184,7 @@ pub const RowPresence = struct {
     service: bool = true,
     get_mac: bool = true,
     get_ap: bool = true,
+    scan: bool = true,
     idle: bool = true,
 };
 
@@ -197,6 +201,7 @@ pub fn missingRow(present: RowPresence) ?Row {
     if (!present.service) return .service;
     if (!present.get_mac) return .get_mac;
     if (!present.get_ap) return .get_ap;
+    if (!present.scan) return .scan;
     if (!present.idle) return .idle;
     return null;
 }

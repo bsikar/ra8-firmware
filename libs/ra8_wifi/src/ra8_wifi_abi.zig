@@ -74,7 +74,7 @@ pub const Wifi = extern struct {
 
 comptime {
     const ptr = @sizeOf(usize);
-    std.debug.assert(@sizeOf(Backend) == ptr * 10);
+    std.debug.assert(@sizeOf(Backend) == ptr * 11);
     std.debug.assert(@sizeOf(Config) == ptr * 4);
     std.debug.assert(@offsetOf(Config, "ip_bind") == ptr * 2);
 
@@ -103,6 +103,7 @@ fn presenceOf(b: *const Backend) implementation.RowPresence {
         .service = b.service != null,
         .get_mac = b.get_mac != null,
         .get_ap = b.get_ap != null,
+        .scan = b.scan != null,
         .idle = b.idle != null,
     };
 }
@@ -313,5 +314,33 @@ pub export fn ra8_wifi_get_ap(wifi: ?*Wifi, out: ?*Ap) callconv(.c) u16 {
         return got;
     }
     handle.rssi = sink.rssi;
+    return implementation.err_ok;
+}
+
+pub export fn ra8_wifi_scan(wifi: ?*Wifi, out: ?[*]Ap, max: u16, count: ?*u16) callconv(.c) u16 {
+    const handle = wifi orelse return nullPtr("wifi");
+    const records = out orelse return nullPtr("out");
+    const found = count orelse return nullPtr("count");
+    found.* = 0;
+    if (max == 0) return implementation.err_invalid_arg;
+    if (!handle.open) return implementation.err_not_initialized;
+
+    const dst = records[0..max];
+    @memset(dst, Ap.empty);
+    const powered = ensureRadioUp(handle);
+    if (powered != implementation.err_ok) return powered;
+
+    var reported: u16 = 0;
+    const scanned = handle.backend.?.scan.?(handle.backend_ctx, records, max, &reported);
+    if (scanned != implementation.err_ok) {
+        @memset(dst, Ap.empty);
+        found.* = 0;
+        return scanned;
+    }
+    const kept: u16 = @min(reported, max);
+    if (kept < max) {
+        @memset(dst[kept..max], Ap.empty);
+    }
+    found.* = kept;
     return implementation.err_ok;
 }
