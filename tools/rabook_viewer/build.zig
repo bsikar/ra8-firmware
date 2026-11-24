@@ -52,17 +52,17 @@ const webp_vendor_flags = [_][]const u8{
 };
 
 const comic_dir = "../../apps/shared_libs/comic/src/";
-const reflow_dir = "../../apps/shared_libs/reflow/src/";
 const compress_dir = "../../apps/shared_libs/compress/src/";
 
 // The read-path members, derived the way the C-era recipe derived them.
 // Whole-read-path libraries are their full src/ glob (comic); partial
 // libraries name exactly the KEEP members the C-era ra8_viewer_read_path()
-// partition proved (epub, reflow, unarch, compress). longstrip (RA8FW-1156)
-// and jof (RA8FW-1140..1154) are fully Zig now, so their read paths come out
-// of the ra8_zig archives instead of compiled C. libs/ra8_io/src holds no .c
-// left (both block-device members were the last, and they are DROP), so its
-// read path comes out of the ra8_io archive like the C-era link already did.
+// partition proved (epub, reflow, unarch, compress). longstrip (RA8FW-1156),
+// jof (RA8FW-1140..1154), and reflow's image/SVG path (ra8_reflow_parse) are
+// Zig archives now, so their read paths come out of the linked archives instead
+// of compiled C. libs/ra8_io/src holds no .c left (both block-device members
+// were the last, and they are DROP), so its read path comes out of the ra8_io
+// archive like the C-era link already did.
 const comic_closure = [_][]const u8{
     comic_dir ++ "comic.c",
     comic_dir ++ "comic_cbr.c",
@@ -74,17 +74,12 @@ const comic_closure = [_][]const u8{
     comic_dir ++ "ra8_rar5.c",
     comic_dir ++ "ra8_rar5_tables.c",
 };
-const reflow_closure = [_][]const u8{
-    reflow_dir ++ "reflow_image.c",
-    reflow_dir ++ "reflow_svg.c",
-    reflow_dir ++ "reflow_svg_doc.c",
-    reflow_dir ++ "reflow_svg_path.c",
-    reflow_dir ++ "reflow_svg_shape.c",
-    reflow_dir ++ "reflow_svg_xform.c",
-};
 
 const miniz_sources = [_][]const u8{"../../apps/shared_libs/third_party/miniz/miniz.c"};
-const stb_sources = [_][]const u8{"../../apps/shared_libs/third_party/stb/stb_image_impl.c"};
+const stb_sources = [_][]const u8{
+    "../../apps/shared_libs/third_party/stb/stb_image_impl.c",
+    "../../apps/shared_libs/third_party/stb/stb_truetype_impl.c",
+};
 
 // The facade is the Zig webp archive now (RA8FW-1209): it is linked, not
 // compiled here. The ra8_imgdec archive still completes the closure the
@@ -196,8 +191,10 @@ fn addReaderIncludes(b: *std.Build, mod: *std.Build.Module) void {
 // The Zig archives the C-era recipe linked instead of compiling those
 // libraries by path.
 fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
-    // The webp archive comes before the archives it calls into (imgdec,
-    // mem): the single-pass link resolves the facade's calls against them.
+    // reflow's image/SVG path (ra8_reflow_parse) and the webp archive come
+    // before the archives they call into (imgdec, gfx, mem, webp): the
+    // single-pass link resolves their calls against them.
+    const reflow_lib = b.dependency("reflow", .{ .target = target, .optimize = optimize }).artifact("ra8_reflow_parse");
     const webp_lib = b.dependency("webp", .{ .target = target, .optimize = optimize }).artifact("webp");
     const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
     const gfx_lib = b.dependency("ra8_gfx", .{ .target = target, .optimize = optimize }).artifact("ra8_gfx");
@@ -222,6 +219,7 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     const epub_miniz_lib = b.dependency("epub", .{ .target = target, .optimize = optimize }).artifact("ra8_epub_miniz");
     const unarch_io_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_io");
     const unarch_tar_lib = b.dependency("unarch", .{ .target = target, .optimize = optimize }).artifact("unarch_tar");
+    mod.linkLibrary(reflow_lib);
     mod.linkLibrary(webp_lib);
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(gfx_lib);
@@ -249,7 +247,6 @@ pub fn build(b: *std.Build) void {
     linkZigLibs(b, reader_mod, target, optimize);
     addReaderIncludes(b, reader_mod);
     addC(b, reader_mod, ".", &comic_closure, &first_party_flags);
-    addC(b, reader_mod, ".", &reflow_closure, &first_party_flags);
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &miniz_sources, .flags = &third_party_flags });
     reader_mod.addCSourceFiles(.{ .root = b.path("."), .files = &stb_sources, .flags = &third_party_flags });
     addWebp(b, reader_mod);
