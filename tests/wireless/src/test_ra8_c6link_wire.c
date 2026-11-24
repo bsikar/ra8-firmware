@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "esp_hosted_rpc.pb-c.h"
+#include "protobuf-c/protobuf-c.h"
 #include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
@@ -611,6 +613,111 @@ RA8_INTERNAL static void internal_test_mcdc_caps_guard(void)
   TEST_END("c6link caps guard vectors");
 }
 
+/**
+ * @brief Wrap @p body into an `RPCEvt` TLV envelope and drive ::priv_c6link_rpc_consume.
+ * @param[in] body Raw protobuf payload bytes.
+ * @param[in] body_len Length of @p body in bytes.
+ * @return Return value of ::priv_c6link_rpc_consume.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre @p body is non-NULL and @p body_len fits inside one transaction frame.
+ * @post Fixture decode arena is reset (`arena_used == 0`).
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_t_consume_wrapped_proto(const uint8_t* body, uint16_t body_len)
+{
+  internal_t_open();
+  uint8_t  env[(size_t)k_ra8_c6link_max_payload] = {};
+  uint16_t body_at                               = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_c6link_tlv_open(env, (uint16_t)sizeof env, body_len, &body_at));
+  for (uint16_t i = 0U; i < (uint16_t)k_t_ep_len; i++) {
+    env[(uint16_t)k_ra8_c6link_tlv_value + i] = (uint8_t)"RPCEvt"[i];
+  }
+  (void)memcpy(&env[body_at], body, (size_t)body_len);
+  const uint16_t full     = (uint16_t)(body_at + body_len);
+  const bool     consumed = priv_c6link_rpc_consume(&s_link, env, full);
+  TEST_ASSERT_EQ(0U, s_link.arena_used);
+  return consumed;
+}
+
+/**
+ * @brief Deterministic regression vectors for the four protobuf-c UB sites.
+ * @details Exercises both direct `protobuf-c` unpacking and the wrapped
+ * ::priv_c6link_rpc_consume remote-input path under UBSan for:
+ *  1. 5-byte tag varint continuation (`shift == 25`, MSB set) in `parse_tag_and_wiretype`.
+ *  2. 5-byte tag varint final byte (`shift == 25`, bit 6 set) in `parse_tag_and_wiretype`.
+ *  3. Empty packed repeated array (`*(char **) member == NULL`, zero count) in
+ *     `parse_packed_repeated_member` via `RpcEventStaItwtSuspend`.
+ *  4. Zero-field descriptor (`desc->fields == NULL`) in `protobuf_c_message_unpack`
+ *     via `RpcReqGetMode`, plus the zero-header TLV fuzz reproducer body `{ 0x00, 0x00 }`.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @post Every case completes cleanly with zero UB and an empty decode arena.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_protobuf_c_ub_regression(void)
+{
+  TEST_BEGIN("c6link protobuf-c UB regression vectors");
+
+  /* Case 1: 5-byte tag varint whose 5th byte has both MSB and bit 6 set. */
+  static const uint8_t k_tag5_cont[] = {0x88U, 0x80U, 0x80U, 0x80U, 0xC0U};
+  TEST_ASSERT_EQ(
+    0U,
+    (uint32_t)internal_t_consume_wrapped_proto(k_tag5_cont, (uint16_t)sizeof k_tag5_cont));
+  TEST_ASSERT_NULL(rpc__unpack(nullptr, sizeof k_tag5_cont, k_tag5_cont));
+
+  /* Case 2: 5-byte valid tag varint whose final byte sets bit 6 (0x40 << 25). */
+  static const uint8_t k_tag5_fin[] = {0x88U, 0x80U, 0x80U, 0x80U, 0x40U, 0x00U};
+  (void)internal_t_consume_wrapped_proto(k_tag5_fin, (uint16_t)sizeof k_tag5_fin);
+  Rpc* const big_tag_rpc = rpc__unpack(nullptr, sizeof k_tag5_fin, k_tag5_fin);
+  TEST_ASSERT_NOT_NULL(big_tag_rpc);
+  rpc__free_unpacked(big_tag_rpc, nullptr);
+
+  /* Case 3: packed repeated field (tag 4, wiretype 2) with length 0 -> NULL base. */
+  static const uint8_t k_rpc_empty_packed[] = {
+    0x08U,
+    0x03U,
+    0x10U,
+    0x01U,
+    0xE2U,
+    0x30U,
+    0x02U,
+    0x22U,
+    0x00U,
+  };
+  static const uint8_t k_packed_zero[] = {0x22U, 0x00U};
+  (void)internal_t_consume_wrapped_proto(k_rpc_empty_packed, (uint16_t)sizeof k_rpc_empty_packed);
+  RpcEventStaItwtSuspend* const ev =
+    rpc__event__sta_itwt_suspend__unpack(nullptr, sizeof k_packed_zero, k_packed_zero);
+  TEST_ASSERT_NOT_NULL(ev);
+  TEST_ASSERT_EQ(0U, ev->n_actual_suspend_time_ms);
+  TEST_ASSERT_NULL(ev->actual_suspend_time_ms);
+  rpc__event__sta_itwt_suspend__free_unpacked(ev, nullptr);
+
+  /* Case 4: zero-field submessage (desc->fields == NULL, req_get_wifi_mode tag 259). */
+  static const uint8_t k_rpc_empty_submsg[] = {
+    0x08U,
+    0x01U,
+    0x10U,
+    0x01U,
+    0x9AU,
+    0x10U,
+    0x00U,
+  };
+  (void)internal_t_consume_wrapped_proto(k_rpc_empty_submsg, (uint16_t)sizeof k_rpc_empty_submsg);
+  RpcReqGetMode* const mode_req = rpc__req__get_mode__unpack(nullptr, 0U, k_packed_zero);
+  TEST_ASSERT_NOT_NULL(mode_req);
+  rpc__req__get_mode__free_unpacked(mode_req, nullptr);
+
+  /* Wrapped fuzz crash reproducer QQB7CgAAAF0AAAA= body { 0x00, 0x00 }. */
+  static const uint8_t k_fuzz_zero_hdr[] = {0x00U, 0x00U};
+  TEST_ASSERT_EQ(
+    0U,
+    (uint32_t)internal_t_consume_wrapped_proto(k_fuzz_zero_hdr, (uint16_t)sizeof k_fuzz_zero_hdr));
+
+  TEST_END("c6link protobuf-c UB regression vectors");
+}
+
 int main(void)
 {
   internal_test_arena_guards();
@@ -624,5 +731,6 @@ int main(void)
   internal_test_copy_helpers();
   internal_test_mcdc_wire_guards();
   internal_test_mcdc_caps_guard();
+  internal_test_protobuf_c_ub_regression();
   return 0;
 }

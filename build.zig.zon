@@ -62,10 +62,10 @@
             .lazy = true,
         },
         // bsikar fork of protobuf-c at upstream abc67a11 plus the RA8
-        // assertion/allocator patch (branch ra8-abc67a11).
+        // assertion/allocator patch and decode-path UB fixes (branch ra8-abc67a11).
         .protobuf_c = .{
-            .url = "https://github.com/bsikar/protobuf-c/archive/c61bb2e30f50a984f9c76f600b34150bc76f9553.tar.gz",
-            .hash = "N-V-__8AAMeECgBRiKccCTAGJTRwB5LP6QVHDxHj_SQxBofe",
+            .url = "https://github.com/bsikar/protobuf-c/archive/838ea1bda90098366e3dc413af000930936822d3.tar.gz",
+            .hash = "N-V-__8AAD2FCgB9sNw2LD-T5l6Byr2jcJgH_fWbbT0DBR0C",
             .lazy = true,
         },
         .nimble = .{
