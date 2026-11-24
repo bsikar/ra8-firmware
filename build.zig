@@ -3,11 +3,11 @@
 //!
 //! Root Zig build graph for ra8-firmware (RA8FW-339, the parity step RA8FW-332 depends
 //! on). CMake is still authoritative for the whole repository; this graph owns
-//! one bounded slice of it and proves the slice can be built and verified with
-//! no CMake in the loop at all.
+//! the migrated-library, host, ThreadX/TXM, and ARM cross-build slices and proves
+//! each can be built and verified with no CMake in the loop at all.
 //!
-//! The slice is the set of first-party libraries whose implementation has
-//! already moved to Zig, plus the unmodified C unit suites that are their
+//! The migrated-library slice pairs first-party libraries whose implementation
+//! has already moved to Zig with the unmodified C unit suites that are their
 //! behavioural contract:
 //!
 //!   ra8_box            tests/misc/src/test_ra8_box.c
@@ -17,32 +17,39 @@
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_launch.c
 //!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
 //!
-//! Under CMake the same three archives are produced by
-//! tests/cmake/zig_library.cmake shelling out to `zig build`, then linked into
-//! ra8_core_hal so the C suites reach them. Here the archives are ordinary
-//! build-graph dependencies and each C suite is its own executable, so the
-//! intended inputs match while the orchestration does not.
+//! Under CMake the same archives are produced by tests/cmake/zig_library.cmake
+//! shelling out to `zig build`, then linked into ra8_core_hal so the C suites
+//! reach them. Here the archives are ordinary build-graph dependencies and each
+//! C suite is its own executable, so the intended inputs match while the
+//! orchestration does not.
 //!
-//! Steps:
-//!   zig build            build the three archives
-//!   zig build test       the Zig suites plus the C suites, all of them
-//!   zig build test-c     only the unmodified C suites
-//!   zig build test-zig   only the Zig-native suites
-//!   zig build parity     print the slice manifest the parity check reads
-//!   zig build arm        cross-build one example app for the RA8D2 target
-//!   zig build test-soup  compile the vendored xz-embedded decoder and run its
-//!                        unmodified first-party C suite against it
-//!   zig build compile-db emit compile_commands.json for every TU this graph
-//!                        compiles, the input the analysis gates parse against
-//!   zig build analysis   prove every distinct command in that database still
-//!                        compiles a translation unit it names
-//!   zig build abi        the Zig-to-C ABI contract, negative controls included
-//!   zig build shapes     hold the committed app-shape ledger to the tree's own
-//!                        ra8_add_app() declarations
+//! Steps (matching `zig build --help`):
+//!   install (default)     Copy the slice archives to the prefix path
+//!   uninstall             Remove build artifacts from the prefix path
+//!   test                  Build and run the whole migrated-library slice
+//!   test-c                Run the unmodified C suites against the Zig archives
+//!   test-zig              Run the Zig-native suites of the migrated libraries
+//!   test-soup             Compile vendored third-party C (xz-embedded) and run its C suite
+//!   netxduo-host          Compile vendored ThreadX Linux port and NetX Duo and run ra8_ipif
+//!   arm                   Cross-build every app in tests/zig_build_graph/app_table.zig
+//!   threadx-m33           Build the ThreadX kernel for CPU1 (Cortex-M33) as libthreadx_m33.a
+//!   threadx-m33-modules   Build the ThreadX Module Manager for CPU1 as libthreadx_m33_modules.a
+//!   txm-m33               Build the ThreadX module library for CPU1 as libtxm_m33.a
+//!   txm-hello-m33         Build the hello-world ThreadX module for CPU1 as arm/txm_hello_m33.elf
+//!   txm-tour-m33          Build the syscall-tour module for CPU1 as arm/txm_tour_m33.elf
+//!   txm-translate-m33     Build the translation module shell for CPU1 as arm/txm_translate_m33.elf
+//!   threadx-m85-modules   Build the ThreadX Module Manager for the M85 as libthreadx_m85_modules.a
+//!   txm-module-check      Build the Zig-to-C module probes for both cores and check relocations
+//!   compile-db            Emit compile_commands.json covering the TUs this graph compiles
+//!   analysis              Prove every distinct command in the analysis database compiles a TU
+//!   shapes                Hold the committed app-shape ledger to ra8_add_app() declarations
+//!   parity                Print the slice manifest the CMake parity check reads
+//!   abi                   Prove the Zig-to-C ABI contract, negative controls included
 //!
-//! The `arm` step is the cross-build slice: it is the first target
-//! artifact this graph produces, and it is deliberately one app rather than
-//! the app tree, so the diff stays reviewable.
+//! The `arm` step cross-builds every app in tests/zig_build_graph/app_table.zig
+//! (plus app_table_tail.zig and app_table_m85_txm.zig): RA8D2 and RA8P1
+//! Cortex-M85 images, dual-core CPU1 Cortex-M33 images, TrustZone Secure and
+//! Non-Secure image pairs, and vendored middleware stacks.
 
 const std = @import("std");
 pub const analysis = @import("tests/zig_build_graph/analysis.zig");
@@ -366,7 +373,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(netxduo_host_step);
 
     const arm_step = b.step("arm", b.fmt(
-        "Cross-build {d} example apps for the RA8D2 (Cortex-M85)",
+        "Cross-build {d} example apps for RA8D2 and RA8P1 (Cortex-M85)",
         .{cross_apps.len},
     ));
     cross_image.addCrossBuild(b, arm_step, arm);
@@ -509,23 +516,18 @@ pub fn build(b: *std.Build) void {
 // ===========================================================================
 // ARM cross-build slice
 // ===========================================================================
-// One example app, cross-built for the RA8D2 (Cortex-M85) with no CMake in the
-// loop. blink_hal is a hardware-validated app whose whole source set is one
-// main.c plus the universal first-party set every app compiles, so the ELF this
-// step produces is the smallest artifact that still proves the real thing: the
-// same 200 translation units, the same flags, the same board linker script and
-// the same .elf / .hex / .bin that `ra8_add_app(NAME blink_hal STACK_BYTES
-// 2200)` produces under cmake/toolchain-ra8d2.cmake in a Debug configuration.
+// Example apps cross-built for RA8D2 and RA8P1 (Cortex-M85, plus dual-core
+// CPU1 Cortex-M33 and TrustZone NS images) with no CMake in the loop. Each row
+// in `cross_apps` produces the .elf / .hex / .bin artifacts matching its CMake
+// `ra8_add_app()` rule using the board linker scripts and selected build type.
 //
-// An app that also links a MIGRATED Zig library on ARM was the first choice
-// (power_profiler, which names ra8_power_profile in LIBS) and it does not link
-// under either build system today: the archive references
-// __aeabi_unwind_cpp_pr0/pr1, which pulls libgcc's unwind-arm.o into a
-// -nostdlib image, and that object then wants __exidx_start / __exidx_end /
-// abort, none of which the board linker script defines (it names its own
-// g_ra8_ls_exidx_start / _end). Filed with the evidence; the
-// `zig_libraries` hook here is the seam that slice will use, wired and
-// exercised with an empty list rather than left to be invented later.
+// An app that also links a MIGRATED Zig library on ARM (such as power_profiler,
+// which names ra8_power_profile in LIBS) hits the AEABI unwind edge case:
+// linking those archives can reference __aeabi_unwind_cpp_pr0/pr1, pulling
+// libgcc's unwind-arm.o into a -nostdlib image against __exidx_start /
+// __exidx_end / abort instead of g_ra8_ls_exidx_start / _end. The
+// `zig_libraries` hook on CrossApp wires migrated Zig archives into the apps
+// that request them.
 //
 // Nothing in CMake is changed or deleted; CMake stays authoritative.
 
