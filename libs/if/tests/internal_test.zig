@@ -4,6 +4,10 @@
 const std = @import("std");
 const core = @import("implementation");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 fn baseCaps() core.Caps {
     return .{
         .max_file_bytes = 1 << 30,

@@ -5,7 +5,11 @@
 const std = @import("std");
 const abi = @import("abi");
 const core = abi.core;
-const fake = @import("abi_fake.zig");
+const fake = @import("abi_fake.zig").For(abi);
+
+comptime {
+    _ = @import("abi_fake.zig");
+}
 
 // ---------------------------------------------------------------------------
 // Transactions.

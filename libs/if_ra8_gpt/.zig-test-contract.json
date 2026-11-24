@@ -1,0 +1,92 @@
+{
+  "test_roots": [
+    "tests/claim_test.zig"
+  ],
+  "covered_sources": [
+    "src/err.zig",
+    "src/gpt_hal.zig",
+    "src/internal/claim.zig",
+    "src/timer_capture.zig",
+    "src/timer_ra8_abi.zig",
+    "src/pwm_ra8_abi.zig",
+    "src/root.zig",
+    "tests/claim_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/claim.zig": [
+      "--dep",
+      "err",
+      "-Mroot=src/internal/claim.zig",
+      "-Merr=src/err.zig"
+    ],
+    "src/timer_capture.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "claim",
+      "--dep",
+      "gpt_hal",
+      "-Mroot=src/timer_capture.zig",
+      "-Merr=src/err.zig",
+      "--dep",
+      "err",
+      "-Mclaim=src/internal/claim.zig",
+      "-Mgpt_hal=src/gpt_hal.zig"
+    ],
+    "src/timer_ra8_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "claim",
+      "--dep",
+      "gpt_hal",
+      "-Mroot=src/timer_ra8_abi.zig",
+      "-Merr=src/err.zig",
+      "--dep",
+      "err",
+      "-Mclaim=src/internal/claim.zig",
+      "-Mgpt_hal=src/gpt_hal.zig"
+    ],
+    "src/pwm_ra8_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "claim",
+      "--dep",
+      "gpt_hal",
+      "-Mroot=src/pwm_ra8_abi.zig",
+      "-Merr=src/err.zig",
+      "--dep",
+      "err",
+      "-Mclaim=src/internal/claim.zig",
+      "-Mgpt_hal=src/gpt_hal.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "timer_ra8_abi",
+      "--dep",
+      "pwm_ra8_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "claim",
+      "--dep",
+      "gpt_hal",
+      "-Mtimer_ra8_abi=src/timer_ra8_abi.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "claim",
+      "--dep",
+      "gpt_hal",
+      "-Mpwm_ra8_abi=src/pwm_ra8_abi.zig",
+      "-Merr=src/err.zig",
+      "--dep",
+      "err",
+      "-Mclaim=src/internal/claim.zig",
+      "-Mgpt_hal=src/gpt_hal.zig"
+    ]
+  },
+  "minimum_tests": 4
+}

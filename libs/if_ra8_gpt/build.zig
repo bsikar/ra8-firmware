@@ -11,9 +11,12 @@
 //! the untouched C suites `test_fw_if_timer_ra8` and `test_fw_if_pwm_ra8`.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const err = b.createModule(.{ .root_source_file = b.path("src/err.zig"), .target = target, .optimize = optimize });

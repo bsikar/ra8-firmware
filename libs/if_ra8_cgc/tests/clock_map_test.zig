@@ -97,3 +97,8 @@ test "the camera row is the only PCLKD row" {
     try std.testing.expectEqual(map.Domain.pclkd, camera.domain.?);
     try std.testing.expectEqual(Mstp.ceu, camera.gate.?);
 }
+
+test "the table length is the port's kind count" {
+    try std.testing.expectEqual(map.kind_count, map.kinds.len);
+    try std.testing.expectEqual(map.kind_count, @backingInt(Kind.memory) + 1);
+}

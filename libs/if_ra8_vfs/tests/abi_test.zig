@@ -10,6 +10,10 @@ const abi = @import("abi");
 const core = abi.core;
 const fake = @import("vfs_fake.zig");
 
+comptime {
+    _ = @import("vfs_fake.zig");
+}
+
 const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 

@@ -10,6 +10,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 const Spi = abi.Spi;
 const Iface = abi.Iface;
 const Config = abi.Config;

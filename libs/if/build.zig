@@ -15,6 +15,7 @@
 //! vtable, so nothing here is configured at compile time.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// `fw_os.h` as a Zig module, with `queue` deciding FW_OS_HAS_QUEUE. The
@@ -42,7 +43,9 @@ fn translateOs(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -97,6 +100,22 @@ pub fn build(b: *std.Build) void {
     });
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
+
+    const abi_txn_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/abi_txn_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    abi_txn_test_module.addImport("abi", abi_module);
+    const abi_txn_tests = b.addTest(.{ .root_module = abi_txn_test_module });
+
+    const path_abi_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/path_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    path_abi_test_module.addImport("abi", abi_module);
+    const path_abi_tests = b.addTest(.{ .root_module = path_abi_test_module });
 
     const policy_module = b.createModule(.{
         .root_source_file = b.path("src/internal/path.zig"),
@@ -240,8 +259,10 @@ pub fn build(b: *std.Build) void {
     const os_contract_tests = b.addTest(.{ .root_module = os_contract_test_module });
 
     const run_path_tests = b.addRunArtifact(path_tests);
+    const run_path_abi_tests = b.addRunArtifact(path_abi_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_abi_txn_tests = b.addRunArtifact(abi_txn_tests);
     const run_clock_tests = b.addRunArtifact(clock_tests);
     const run_timer_tests = b.addRunArtifact(timer_tests);
     const run_pwm_tests = b.addRunArtifact(pwm_tests);
@@ -255,7 +276,9 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig fw_if_fs tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_path_tests.step);
+    test_step.dependOn(&run_path_abi_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_abi_txn_tests.step);
     test_step.dependOn(&run_clock_tests.step);
     test_step.dependOn(&run_timer_tests.step);
     test_step.dependOn(&run_pwm_tests.step);

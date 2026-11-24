@@ -1,13 +1,16 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/stream_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
     "src/fw_if_fs_ra8_vfs_abi.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/stream_test.zig",
+    "tests/vfs_fake.zig"
   ],
   "minimum_tests": 10
 }

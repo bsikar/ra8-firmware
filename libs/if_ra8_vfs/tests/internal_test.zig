@@ -1,7 +1,11 @@
 //! Zig-native tests for the pure adapter core: no VFS, no filesystem, no facade.
 
 const std = @import("std");
-const core = @import("implementation");
+const core = @import("abi").core;
+
+comptime {
+    _ = @import("vfs_fake.zig");
+}
 
 const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
@@ -335,10 +339,10 @@ test "capabilities: exFAT lifts the file size and tightens the name" {
 
 test "capabilities: the advertised flags match the services actually bound" {
     const caps = core.capabilities(false, false, 0, 1, 1);
-    const expected = core.cap_namespace | core.cap_stream | core.cap_space_query |
-        core.cap_same_volume_rename | core.cap_atomic_noreplace | core.cap_transactions |
-        core.cap_rejects_symlink_walk | core.cap_created_time | core.cap_modified_time |
-        core.cap_accessed_time;
+    const expected = core.cap_namespace | core.cap_stream | core.cap_create_exclusive |
+        core.cap_space_query | core.cap_same_volume_rename | core.cap_atomic_noreplace |
+        core.cap_transactions | core.cap_rejects_symlink_walk | core.cap_created_time |
+        core.cap_modified_time | core.cap_accessed_time;
     try expectEqual(expected, caps.flags);
     try expectEqual(@as(u32, 0), caps.flags & core.cap_atomic_replace);
     try expectEqual(@as(u32, 0), caps.flags & core.cap_file_sync);
