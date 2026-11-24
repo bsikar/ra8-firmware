@@ -1,15 +1,55 @@
 {
   "test_roots": [
-    "tests/pipeline_test.zig"
+    "tests/pipeline_test.zig",
+    "tests/bundle_test.zig"
   ],
   "covered_sources": [
+    "src/bundle_abi.zig",
+    "src/internal/bundle.zig",
     "src/internal/err.zig",
     "src/internal/pipeline.zig",
     "src/root.zig",
     "src/update_abi.zig",
+    "tests/bundle_test.zig",
     "tests/pipeline_test.zig"
   ],
   "standalone_source_args": {
+    "src/bundle_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "--dep",
+      "bundle",
+      "--dep",
+      "update_abi",
+      "-Mroot=src/bundle_abi.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mupdate_abi=src/update_abi.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mbundle=src/internal/bundle.zig",
+      "--dep",
+      "err",
+      "-Mpipeline=src/internal/pipeline.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "src/internal/bundle.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mroot=src/internal/bundle.zig",
+      "--dep",
+      "err",
+      "-Mpipeline=src/internal/pipeline.zig",
+      "-Merr=src/internal/err.zig"
+    ],
     "src/internal/pipeline.zig": [
       "--dep",
       "err",
@@ -19,12 +59,30 @@
     "src/root.zig": [
       "--dep",
       "update_abi",
+      "--dep",
+      "bundle_abi",
       "-Mroot=src/root.zig",
       "--dep",
       "err",
       "--dep",
       "pipeline",
+      "--dep",
+      "bundle",
+      "--dep",
+      "update_abi",
+      "-Mbundle_abi=src/bundle_abi.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
       "-Mupdate_abi=src/update_abi.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mbundle=src/internal/bundle.zig",
+      "--dep",
+      "err",
       "-Mpipeline=src/internal/pipeline.zig",
       "-Merr=src/internal/err.zig"
     ],
@@ -38,5 +96,5 @@
       "-Merr=src/internal/err.zig"
     ]
   },
-  "minimum_tests": 5
+  "minimum_tests": 10
 }

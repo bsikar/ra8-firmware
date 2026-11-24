@@ -133,7 +133,7 @@ fn validateCfg(cfg: *const Cfg) u16 {
     return Err.ok.raw();
 }
 
-fn transitionRollback(session: *Session, reason: u16) u16 {
+pub fn transitionRollback(session: *Session, reason: u16) u16 {
     if (session.cfg.commit.rollback) |rb| {
         _ = rb(session.cfg.commit.ctx, reason);
     }
@@ -143,23 +143,40 @@ fn transitionRollback(session: *Session, reason: u16) u16 {
     return reason;
 }
 
-fn rehashStaged(session: *const Session, scratch: []u8, out_digest: *[pl.sha256_bytes]u8) u16 {
+/// Read back `[start_offset .. start_offset + span_bytes)` via `storage.readback`
+/// in bounded chunks and compute its SHA-256 digest.
+pub fn rehashSpan(
+    session: *const Session,
+    start_offset: u32,
+    span_bytes: u32,
+    scratch: []u8,
+    out_digest: *[pl.sha256_bytes]u8,
+) u16 {
     var code = session.cfg.crypto.sha256_init.?(session.cfg.crypto.ctx);
     if (code != Err.ok.raw()) return code;
 
-    const max_chunks: u32 = (session.expected_bytes / @as(u32, @intCast(scratch.len))) + 2;
-    var offset: u32 = 0;
+    const max_chunks: u32 = (span_bytes / @as(u32, @intCast(scratch.len))) + 2;
+    var done: u32 = 0;
     var iter: u32 = 0;
-    while (iter < max_chunks and offset < session.expected_bytes) : (iter += 1) {
-        const want: u32 = @min(session.expected_bytes - offset, @as(u32, @intCast(scratch.len)));
-        code = session.cfg.storage.readback.?(session.cfg.storage.ctx, offset, scratch.ptr, want);
+    while (iter < max_chunks and done < span_bytes) : (iter += 1) {
+        const want: u32 = @min(span_bytes - done, @as(u32, @intCast(scratch.len)));
+        code = session.cfg.storage.readback.?(
+            session.cfg.storage.ctx,
+            start_offset + done,
+            scratch.ptr,
+            want,
+        );
         if (code != Err.ok.raw()) return code;
         code = session.cfg.crypto.sha256_update.?(session.cfg.crypto.ctx, scratch.ptr, want);
         if (code != Err.ok.raw()) return code;
-        offset += want;
+        done += want;
     }
-    if (offset != session.expected_bytes) return Err.fail.raw();
+    if (done != span_bytes) return Err.fail.raw();
     return session.cfg.crypto.sha256_final.?(session.cfg.crypto.ctx, out_digest);
+}
+
+fn rehashStaged(session: *const Session, scratch: []u8, out_digest: *[pl.sha256_bytes]u8) u16 {
+    return rehashSpan(session, 0, session.expected_bytes, scratch, out_digest);
 }
 
 fn verifySignature(

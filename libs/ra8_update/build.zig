@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for `ra8_update`: the shared stage/verify/commit/rollback
-//! pipeline seam backing both OTA and DFU transports.
+//! pipeline seam and signed N-image bundle (`"RA8U"`) container core.
 
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
@@ -26,6 +26,14 @@ pub fn build(b: *std.Build) void {
     });
     pipeline_mod.addImport("err", err_mod);
 
+    const bundle_mod = b.addModule("bundle", .{
+        .root_source_file = b.path("src/internal/bundle.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    bundle_mod.addImport("err", err_mod);
+    bundle_mod.addImport("pipeline", pipeline_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/update_abi.zig"),
         .target = target,
@@ -34,12 +42,23 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("err", err_mod);
     abi_mod.addImport("pipeline", pipeline_mod);
 
+    const bundle_abi_mod = b.createModule(.{
+        .root_source_file = b.path("src/bundle_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    bundle_abi_mod.addImport("err", err_mod);
+    bundle_abi_mod.addImport("pipeline", pipeline_mod);
+    bundle_abi_mod.addImport("bundle", bundle_mod);
+    bundle_abi_mod.addImport("update_abi", abi_mod);
+
     const root_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
     root_mod.addImport("update_abi", abi_mod);
+    root_mod.addImport("bundle_abi", bundle_abi_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_update",
@@ -59,8 +78,19 @@ pub fn build(b: *std.Build) void {
     pipeline_test_mod.addImport("pipeline", pipeline_mod);
     const pipeline_tests = b.addTest(.{ .root_module = pipeline_test_mod });
 
+    const bundle_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/bundle_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    bundle_test_mod.addImport("err", err_mod);
+    bundle_test_mod.addImport("pipeline", pipeline_mod);
+    bundle_test_mod.addImport("bundle", bundle_mod);
+    const bundle_tests = b.addTest(.{ .root_module = bundle_test_mod });
+
     const test_step = b.step("test", "Run Zig and C ra8_update tests");
     test_step.dependOn(&b.addRunArtifact(pipeline_tests).step);
+    test_step.dependOn(&b.addRunArtifact(bundle_tests).step);
 
     if (target.result.os.tag != .freestanding) {
         const c_mod = b.createModule(.{
