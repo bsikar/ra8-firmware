@@ -17,6 +17,9 @@
         .unarch = .{ .path = "../../apps/shared_libs/unarch" },
         .epub = .{ .path = "../../apps/shared_libs/epub" },
         .reflow = .{ .path = "../../apps/shared_libs/reflow" },
+        .book = .{ .path = "../../apps/shared_libs/book" },
+        .xml = .{ .path = "../../apps/shared_libs/xml" },
+        .font_to_c = .{ .path = "../../tools/font_to_c" },
     },
     .paths = .{
         "build.zig",

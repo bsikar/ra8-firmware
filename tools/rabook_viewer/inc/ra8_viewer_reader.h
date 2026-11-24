@@ -39,8 +39,9 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
 
 /** @brief Reader engine selected by the requirements query. */
 typedef enum : uint32_t {
-  k_ra8_viewer_engine_jof   = 1U, /**< Streamed JOF long-strip engine. */
-  k_ra8_viewer_engine_comic = 2U, /**< Bare CBZ/CBR/CBT comic engine.  */
+  k_ra8_viewer_engine_jof    = 1U, /**< Streamed JOF long-strip engine. */
+  k_ra8_viewer_engine_comic  = 2U, /**< Bare CBZ/CBR/CBT comic engine.  */
+  k_ra8_viewer_engine_reflow = 3U, /**< EPUB/RABOOK reflow engine.      */
 } ra8_viewer_reader_engine_t;
 
 /**
@@ -50,19 +51,25 @@ typedef enum : uint32_t {
  * object unchanged to ::ra8_viewer_reader_bind.
  */
 typedef struct {
-  size_t   required_bytes;     /**< Complete workspace extent.                */
-  size_t   required_alignment; /**< Required base-address alignment.          */
-  size_t   framebuffer_bytes;  /**< Resident fixed RGB565 framebuffer.        */
-  size_t   dimensions_bytes;   /**< Two resident per-tile dimension arrays.   */
-  size_t   cell_bytes;         /**< One resident decoded JOF band.            */
-  size_t   scratch_bytes;      /**< One bounded compressed-band staging area. */
-  size_t   comic_pages_bytes;  /**< Comic page-index storage, or zero.        */
-  size_t   comic_names_bytes;  /**< Comic member-name arena, or zero.         */
-  size_t   comic_page_bytes;   /**< Resident encoded-page storage, or zero.   */
-  size_t   comic_arena_bytes;  /**< stb decode arena storage, or zero.        */
-  uint32_t tile_count;         /**< Number of viewport tiles in the strip.    */
-  uint32_t engine;             /**< ::ra8_viewer_reader_engine_t selection.   */
-  uint32_t layout_version;     /**< ABI guard consumed by bind.               */
+  size_t   required_bytes;      /**< Complete workspace extent.                */
+  size_t   required_alignment;  /**< Required base-address alignment.          */
+  size_t   framebuffer_bytes;   /**< Resident fixed RGB565 framebuffer.        */
+  size_t   dimensions_bytes;    /**< Two resident per-tile dimension arrays.   */
+  size_t   cell_bytes;          /**< One resident decoded JOF band.            */
+  size_t   scratch_bytes;       /**< One bounded compressed-band staging area. */
+  size_t   comic_pages_bytes;   /**< Comic page-index storage, or zero.        */
+  size_t   comic_names_bytes;   /**< Comic member-name arena, or zero.         */
+  size_t   comic_page_bytes;    /**< Resident encoded-page storage, or zero.   */
+  size_t   comic_arena_bytes;   /**< stb decode arena storage, or zero.        */
+  size_t   reflow_epub_bytes;   /**< EPUB archive reader storage, or zero.     */
+  size_t   reflow_engine_bytes; /**< Reflow pagination engine state, or zero.  */
+  size_t   reflow_pages_bytes;  /**< Book-to-chapter page map storage, or 0.   */
+  size_t   reflow_xhtml_bytes;  /**< Per-chapter XHTML staging, or zero.       */
+  size_t   reflow_file_bytes;   /**< Raw .rabook container buffer, or zero.    */
+  size_t   reflow_book_bytes;   /**< Inflated .rabook blob buffer, or zero.    */
+  uint32_t tile_count;          /**< Number of viewport tiles in the strip.    */
+  uint32_t engine;              /**< ::ra8_viewer_reader_engine_t selection.   */
+  uint32_t layout_version;      /**< ABI guard consumed by bind.               */
 } ra8_viewer_reader_requirements_t;
 
 /** @brief Required-versus-supplied evidence from a bind attempt. */
@@ -80,7 +87,7 @@ typedef struct {
  * @retval k_ra8_ok Requirements are complete.
  * @retval k_ra8_err_null_ptr A required pointer was NULL.
  * @retval k_ra8_err_not_found The input is absent, empty, or not regular.
- * @retval k_ra8_err_not_supported The format is wrapped, reflow, or unknown.
+ * @retval k_ra8_err_not_supported The format is wrapped or unknown.
  * @post On failure @p out is zeroed.
  * @note The sizing descriptor opened internally is closed before return.
  */
