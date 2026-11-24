@@ -63,26 +63,26 @@
  * @since 0.1.0
  */
 typedef enum : int32_t {
-  k_tc_uart_chan     = 8,       /**< SCI8 J-Link OB console.                  */
-  k_tc_console_baud  = 115200U, /**< J-Link OB VCOM line rate. */
-  k_tc_screen_w      = 800,     /**< Fake panel width, pixels.                */
-  k_tc_screen_h      = 480,     /**< Fake panel height, pixels.               */
-  k_tc_inset_px      = 40,      /**< Corner-target inset from the edge.       */
-  k_tc_raw_gain      = 5,       /**< Controller counts per pixel.             */
-  k_tc_raw_off_x     = 20,      /**< Controller X origin offset, pixels.      */
-  k_tc_raw_off_y     = 16,      /**< Controller Y origin offset, pixels.      */
-  k_tc_targets       = 5,       /**< Cross-hairs ra8_touch_cal_run paints.     */
-  k_tc_probe_raw_x   = 2100,    /**< Fresh raw sample for the apply leg.      */
-  k_tc_probe_raw_y   = 1216,    /**< Fresh raw sample for the apply leg.      */
-  k_tc_probe_pixel_x = 400,     /**< 2100 / 5 - 20, by hand.                  */
-  k_tc_probe_pixel_y = 227,     /**< 1216 / 5 - 16, truncated by hand.        */
-  k_tc_probe_tol_px  = 2,       /**< Slack on the mapped pixel.               */
+  k_tc_uart_chan     = 8,       /**< SCI8 J-Link OB console.               */
+  k_tc_console_baud  = 115200U, /**< J-Link OB VCOM line rate.             */
+  k_tc_screen_w      = 800,     /**< Fake panel width, pixels.             */
+  k_tc_screen_h      = 480,     /**< Fake panel height, pixels.            */
+  k_tc_inset_px      = 40,      /**< Corner-target inset from the edge.    */
+  k_tc_raw_gain      = 5,       /**< Controller counts per pixel.          */
+  k_tc_raw_off_x     = 20,      /**< Controller X origin offset, pixels.   */
+  k_tc_raw_off_y     = 16,      /**< Controller Y origin offset, pixels.   */
+  k_tc_targets       = 5,       /**< Cross-hairs ra8_touch_cal_run paints. */
+  k_tc_probe_raw_x   = 2100,    /**< Fresh raw sample for the apply leg.   */
+  k_tc_probe_raw_y   = 1216,    /**< Fresh raw sample for the apply leg.   */
+  k_tc_probe_pixel_x = 400,     /**< 2100 / 5 - 20, by hand.               */
+  k_tc_probe_pixel_y = 227,     /**< 1216 / 5 - 16, truncated by hand.     */
+  k_tc_probe_tol_px  = 2,       /**< Slack on the mapped pixel.            */
 } tc_const_t;
 
-static const float k_tc_true_gain   = 0.2F;   /**< 1 / k_tc_raw_gain.      */
-static const float k_tc_true_skew   = 0.0F;   /**< Axes are independent.   */
-static const float k_tc_true_bias_x = -20.0F; /**< -k_tc_raw_off_x.        */
-static const float k_tc_true_bias_y = -16.0F; /**< -k_tc_raw_off_y.        */
+static const float k_tc_true_gain   = 0.2F;    /**< 1 / k_tc_raw_gain.     */
+static const float k_tc_true_skew   = 0.0F;    /**< Axes are independent.  */
+static const float k_tc_true_bias_x = -20.0F;  /**< -k_tc_raw_off_x.       */
+static const float k_tc_true_bias_y = -16.0F;  /**< -k_tc_raw_off_y.       */
 static const float k_tc_coeff_tol   = 1.0E-3F; /**< Slack per coefficient. */
 
 /**
@@ -103,9 +103,9 @@ typedef struct {
   bool                  ordered;     /**< Every read followed a fresh draw. */
 } tc_panel_t;
 
-static tc_panel_t s_panel = {.ordered = true}; /**< The fake panel.        */
+static tc_panel_t s_panel = {.ordered = true}; /**< The fake panel. */
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -218,13 +218,13 @@ static ra8_err_t internal_run_and_solve(ra8_touch_cal_matrix_t* out_mtx)
   }
 
   const ra8_touch_cal_run_cfg_t cfg = {
-      .screen_width  = (uint16_t)k_tc_screen_w,
-      .screen_height = (uint16_t)k_tc_screen_h,
-      .inset_px      = (uint16_t)k_tc_inset_px,
-      .draw_target   = internal_draw_target,
-      .draw_ctx      = &s_panel,
-      .read_raw      = internal_read_raw,
-      .read_ctx      = &s_panel,
+    .screen_width  = (uint16_t)k_tc_screen_w,
+    .screen_height = (uint16_t)k_tc_screen_h,
+    .inset_px      = (uint16_t)k_tc_inset_px,
+    .draw_target   = internal_draw_target,
+    .draw_ctx      = &s_panel,
+    .read_raw      = internal_read_raw,
+    .read_ctx      = &s_panel,
   };
 
   const ra8_err_t err = ra8_touch_cal_run(&cfg, out_mtx);
@@ -232,14 +232,12 @@ static ra8_err_t internal_run_and_solve(ra8_touch_cal_matrix_t* out_mtx)
     return err;
   }
 
-  const bool swept = (s_panel.draws == k_tc_targets) && (s_panel.reads == k_tc_targets)
-                     && s_panel.ordered;
-  const bool fitted = internal_near(out_mtx->a, k_tc_true_gain)
-                      && internal_near(out_mtx->b, k_tc_true_skew)
-                      && internal_near(out_mtx->c, k_tc_true_bias_x)
-                      && internal_near(out_mtx->d, k_tc_true_skew)
-                      && internal_near(out_mtx->e, k_tc_true_gain)
-                      && internal_near(out_mtx->f, k_tc_true_bias_y);
+  const bool swept =
+    (s_panel.draws == k_tc_targets) && (s_panel.reads == k_tc_targets) && s_panel.ordered;
+  const bool fitted =
+    internal_near(out_mtx->a, k_tc_true_gain) && internal_near(out_mtx->b, k_tc_true_skew) &&
+    internal_near(out_mtx->c, k_tc_true_bias_x) && internal_near(out_mtx->d, k_tc_true_skew) &&
+    internal_near(out_mtx->e, k_tc_true_gain) && internal_near(out_mtx->f, k_tc_true_bias_y);
 
   return (swept && fitted) ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -260,14 +258,11 @@ static ra8_err_t internal_apply_probe(const ra8_touch_cal_matrix_t* mtx)
     return k_ra8_err_null_ptr;
   }
 
-  const ra8_touch_cal_point_t raw = {.x = k_tc_probe_raw_x, .y = k_tc_probe_raw_y};
+  const ra8_touch_cal_point_t raw   = {.x = k_tc_probe_raw_x, .y = k_tc_probe_raw_y};
   ra8_touch_cal_point_t       pixel = {.x = 0, .y = 0};
 
-  const ra8_err_t err = ra8_touch_cal_apply(raw,
-                                            mtx,
-                                            (uint16_t)k_tc_screen_w,
-                                            (uint16_t)k_tc_screen_h,
-                                            &pixel);
+  const ra8_err_t err =
+    ra8_touch_cal_apply(raw, mtx, (uint16_t)k_tc_screen_w, (uint16_t)k_tc_screen_h, &pixel);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -299,20 +294,17 @@ static ra8_err_t internal_blob_round_trip(const ra8_touch_cal_matrix_t* mtx)
   }
 
   uint8_t   blob[k_ra8_touch_cal_blob_size] = {0};
-  ra8_err_t err = ra8_touch_cal_save(mtx, blob, sizeof(blob));
+  ra8_err_t err                             = ra8_touch_cal_save(mtx, blob, sizeof(blob));
   if (err != k_ra8_ok) {
     return err;
   }
 
-  const bool header_ok = (blob[k_ra8_touch_cal_off_magic] == (uint8_t)k_ra8_touch_cal_magic_b0)
-                         && (blob[k_ra8_touch_cal_off_magic + 1U]
-                             == (uint8_t)k_ra8_touch_cal_magic_b1)
-                         && (blob[k_ra8_touch_cal_off_magic + 2U]
-                             == (uint8_t)k_ra8_touch_cal_magic_b2)
-                         && (blob[k_ra8_touch_cal_off_magic + 3U]
-                             == (uint8_t)k_ra8_touch_cal_magic_b3)
-                         && (blob[k_ra8_touch_cal_off_version]
-                             == (uint8_t)k_ra8_touch_cal_storage_version);
+  const bool header_ok =
+    (blob[k_ra8_touch_cal_off_magic] == (uint8_t)k_ra8_touch_cal_magic_b0) &&
+    (blob[k_ra8_touch_cal_off_magic + 1U] == (uint8_t)k_ra8_touch_cal_magic_b1) &&
+    (blob[k_ra8_touch_cal_off_magic + 2U] == (uint8_t)k_ra8_touch_cal_magic_b2) &&
+    (blob[k_ra8_touch_cal_off_magic + 3U] == (uint8_t)k_ra8_touch_cal_magic_b3) &&
+    (blob[k_ra8_touch_cal_off_version] == (uint8_t)k_ra8_touch_cal_storage_version);
   if (!header_ok) {
     return k_ra8_err_invalid_arg;
   }
@@ -323,9 +315,9 @@ static ra8_err_t internal_blob_round_trip(const ra8_touch_cal_matrix_t* mtx)
     return err;
   }
 
-  const bool same = internal_near(back.a, mtx->a) && internal_near(back.b, mtx->b)
-                    && internal_near(back.c, mtx->c) && internal_near(back.d, mtx->d)
-                    && internal_near(back.e, mtx->e) && internal_near(back.f, mtx->f);
+  const bool same = internal_near(back.a, mtx->a) && internal_near(back.b, mtx->b) &&
+                    internal_near(back.c, mtx->c) && internal_near(back.d, mtx->d) &&
+                    internal_near(back.e, mtx->e) && internal_near(back.f, mtx->f);
 
   return same ? k_ra8_ok : k_ra8_err_invalid_arg;
 }

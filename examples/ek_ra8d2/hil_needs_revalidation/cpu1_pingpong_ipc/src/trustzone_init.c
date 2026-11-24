@@ -36,15 +36,15 @@
 
 #include "trustzone_init.h"
 
-#include <stdint.h>  // ra8-keep-include: `uint32_t` used directly
+#include <stdint.h> // ra8-keep-include: `uint32_t` used directly
 
-#include "ra8_attributes.h"      // ra8-keep-include: `RA8_INTERNAL` used directly
-#include "ra8_dual_core.h"       // ra8-keep-include: `ra8_cpu1_release` used directly
-#include "ra8_err.h"             // ra8-keep-include: `ra8_err_t` used directly
-#include "ra8_log.h"             // ra8-keep-include: `ra8_log_error_val` used directly
+#include "ra8_attributes.h"          // ra8-keep-include: `RA8_INTERNAL` used directly
+#include "ra8_dual_core.h"           // ra8-keep-include: `ra8_cpu1_release` used directly
+#include "ra8_err.h"                 // ra8-keep-include: `ra8_err_t` used directly
+#include "ra8_log.h"                 // ra8-keep-include: `ra8_log_error_val` used directly
 #include "ra8_register_protection.h" // ra8-keep-include: `RA8_PROTECTED_WRITE` used directly
-#include "ra8_tz_ipc_attr.h"     // ra8-keep-include: `ra8_tz_ipc_attribution_t` used
-#include "ra8_tz_secure_boot.h"  // ra8-keep-include: `ra8_tz_secure_boot_jump_ns` used
+#include "ra8_tz_ipc_attr.h"         // ra8-keep-include: `ra8_tz_ipc_attribution_t` used
+#include "ra8_tz_secure_boot.h"      // ra8-keep-include: `ra8_tz_secure_boot_jump_ns` used
 
 extern uint32_t g_ra8_ls_cpu1_mram_start;
 extern uint32_t g_ra8_ls_cpu1_stack_top;

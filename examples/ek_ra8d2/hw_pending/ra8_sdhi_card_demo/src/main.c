@@ -36,11 +36,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"

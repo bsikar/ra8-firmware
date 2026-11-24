@@ -28,9 +28,9 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_display_pal.h"
 #include "ra8_err.h"
+#include "ra8_fuelgauge.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_fuelgauge.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_io_i2c_bus.h"
 #include "ra8_io_i2c_bus_i3c_compat.h"
@@ -325,14 +325,13 @@ static bool er_read_battery(uint8_t* soc, bool* charging)
     /* Open lazily on the first poll: the touch bring-up owns the bus init, so
      * the gauge just binds the same channel. A failed open means no gauge is
      * fitted (or the bus is dead); stay best-effort, no banner. */
-    ra8_io_i2c_bus_t bus = {};
+    ra8_io_i2c_bus_t  bus = {};
     ra8_i2c_bus_ops_t ops = {};
     if ((ra8_io_i2c_bus_bind_i3c_compat(&bus, (uint8_t)k_er_touch_channel) != k_ra8_ok) ||
         (ra8_io_i2c_bus_as_ops(&bus, &ops) != k_ra8_ok)) {
       return false;
     }
-    const ra8_fuelgauge_cfg_t cfg = {.bus       = ops,
-                                     .target_7b = k_ra8_fuelgauge_default_addr_7b};
+    const ra8_fuelgauge_cfg_t cfg = {.bus = ops, .target_7b = k_ra8_fuelgauge_default_addr_7b};
     if (ra8_fuelgauge_open(&s_fg, &cfg) != k_ra8_ok) {
       return false;
     }

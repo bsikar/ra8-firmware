@@ -172,8 +172,11 @@ ra8_err_t c6_cam_camera_init(void)
     return err;
   }
   const ra8_camera_source_ceu_cfg_t source_cfg = internal_c6_cam_source_config();
-  err = ra8_camera_ov5640_open(&s_source, &s_source_state, &s_camera_sensor,
-                               k_ra8_ov5640_mode_vga_uyvy, &source_cfg);
+  err                                          = ra8_camera_ov5640_open(&s_source,
+                                                                        &s_source_state,
+                                                                        &s_camera_sensor,
+                                                                        k_ra8_ov5640_mode_vga_uyvy,
+                                                                        &source_cfg);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -71,7 +71,7 @@
  */
 typedef enum : uint32_t {
   k_sav_uart_chan    = 8U,          /**< SCI8 J-Link OB console.              */
-  k_sav_console_baud = 115200U,     /**< J-Link OB VCOM line rate. */
+  k_sav_console_baud = 115200U,     /**< J-Link OB VCOM line rate.            */
   k_sav_slot_a       = 0U,          /**< First slot exercised.                */
   k_sav_slot_b       = 1U,          /**< Second slot, different key material. */
   k_sav_slot_bad     = 64U,         /**< Well past k_ra8_key_vault_slots.     */
@@ -82,11 +82,11 @@ typedef enum : uint32_t {
   k_sav_fill_a       = 0xA5U,       /**< Slot A key fill byte.                */
   k_sav_fill_b       = 0x5AU,       /**< Slot B key fill byte.                */
   k_sav_fill_chal    = 0x11U,       /**< Challenge fill byte.                 */
-  k_sav_fill_kak     = 0x77U,       /**< First (16-byte) KAK fill byte.      */
-  k_sav_fill_kak2    = 0x8EU,       /**< Second (32-byte) KAK fill byte.     */
+  k_sav_fill_kak     = 0x77U,       /**< First (16-byte) KAK fill byte.       */
+  k_sav_fill_kak2    = 0x8EU,       /**< Second (32-byte) KAK fill byte.      */
 } sav_const_t;
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -145,12 +145,12 @@ static bool internal_vault_enabled(void)
  */
 static ra8_err_t internal_check_vault(void)
 {
-  uint8_t key_a[k_ra8_key_vault_key_bytes]        = {0};
-  uint8_t key_b[k_ra8_key_vault_key_bytes]        = {0};
-  uint8_t challenge[k_ra8_key_vault_chal_bytes]   = {0};
-  uint8_t first[k_ra8_key_vault_digest_bytes]     = {0};
-  uint8_t repeat[k_ra8_key_vault_digest_bytes]    = {0};
-  uint8_t other[k_ra8_key_vault_digest_bytes]     = {0};
+  uint8_t key_a[k_ra8_key_vault_key_bytes]      = {0};
+  uint8_t key_b[k_ra8_key_vault_key_bytes]      = {0};
+  uint8_t challenge[k_ra8_key_vault_chal_bytes] = {0};
+  uint8_t first[k_ra8_key_vault_digest_bytes]   = {0};
+  uint8_t repeat[k_ra8_key_vault_digest_bytes]  = {0};
+  uint8_t other[k_ra8_key_vault_digest_bytes]   = {0};
 
   internal_fill(key_a, (uint16_t)sizeof(key_a), (uint8_t)k_sav_fill_a);
   internal_fill(key_b, (uint16_t)sizeof(key_b), (uint8_t)k_sav_fill_b);
@@ -210,7 +210,7 @@ static ra8_err_t internal_check_vault(void)
  */
 static ra8_err_t internal_check_guards(void)
 {
-  uint8_t key[k_ra8_key_vault_key_bytes]      = {0};
+  uint8_t key[k_ra8_key_vault_key_bytes]        = {0};
   uint8_t challenge[k_ra8_key_vault_chal_bytes] = {0};
   uint8_t digest[k_ra8_key_vault_digest_bytes]  = {0};
 
@@ -279,8 +279,8 @@ static ra8_err_t internal_check_kak(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((out_len != (uint16_t)k_sav_kak_short)
-      || (memcmp(out, kak_short, (size_t)k_sav_kak_short) != 0)) {
+  if ((out_len != (uint16_t)k_sav_kak_short) ||
+      (memcmp(out, kak_short, (size_t)k_sav_kak_short) != 0)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -293,19 +293,17 @@ static ra8_err_t internal_check_kak(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((out_len != (uint16_t)k_sav_kak_long)
-      || (memcmp(out, kak_long, (size_t)k_sav_kak_long) != 0)) {
+  if ((out_len != (uint16_t)k_sav_kak_long) ||
+      (memcmp(out, kak_long, (size_t)k_sav_kak_long) != 0)) {
     return k_ra8_err_invalid_arg;
   }
 
-  const bool refused
-      = (ra8_key_vault_set_mac_key(kak_long, (uint16_t)k_sav_kak_bad_len)
-         == k_ra8_err_invalid_arg)
-        && (ra8_key_vault_set_mac_key(nullptr, (uint16_t)k_sav_kak_long) == k_ra8_err_null_ptr)
-        && (ra8_key_vault_load_mac_key(out, (uint16_t)k_sav_kak_short, &out_len)
-            == k_ra8_err_invalid_size)
-        && (ra8_key_vault_load_mac_key(nullptr, (uint16_t)sizeof(out), &out_len)
-            == k_ra8_err_null_ptr);
+  const bool refused =
+    (ra8_key_vault_set_mac_key(kak_long, (uint16_t)k_sav_kak_bad_len) == k_ra8_err_invalid_arg) &&
+    (ra8_key_vault_set_mac_key(nullptr, (uint16_t)k_sav_kak_long) == k_ra8_err_null_ptr) &&
+    (ra8_key_vault_load_mac_key(out, (uint16_t)k_sav_kak_short, &out_len) ==
+     k_ra8_err_invalid_size) &&
+    (ra8_key_vault_load_mac_key(nullptr, (uint16_t)sizeof(out), &out_len) == k_ra8_err_null_ptr);
 
   return refused ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
@@ -374,8 +372,7 @@ static ra8_err_t internal_check_ota(void)
     return err;
   }
 
-  return (ra8_ota_commit_pending(&target) == k_ra8_err_no_data) ? k_ra8_ok
-                                                                : k_ra8_err_invalid_arg;
+  return (ra8_ota_commit_pending(&target) == k_ra8_err_no_data) ? k_ra8_ok : k_ra8_err_invalid_arg;
 }
 
 /**

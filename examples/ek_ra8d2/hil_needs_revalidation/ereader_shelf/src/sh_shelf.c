@@ -73,8 +73,8 @@ void sh_shelf_build_thumbs(void)
     }
     const size_t want = (size_t)e->thumb_w * (size_t)e->thumb_h;
     size_t       got  = 0U;
-    if (sh_inflate(e->thumb, (size_t)e->thumb_len, g_sh.thumb[i], sizeof g_sh.thumb[i], &got)
-        != k_ra8_ok) {
+    if (sh_inflate(e->thumb, (size_t)e->thumb_len, g_sh.thumb[i], sizeof g_sh.thumb[i], &got) !=
+        k_ra8_ok) {
       continue; /* leave thumb_w 0 so the card draws its placeholder */
     }
     if (got != want) {

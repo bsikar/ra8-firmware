@@ -55,8 +55,8 @@
 
 #include "ra8_boot_entry.h"
 #include "ra8_cache.h"
-#include "ra8_mpu.h"
 #include "ra8_cgc.h"
+#include "ra8_mpu.h"
 #include "trustzone_init.h"
 
 extern const uint32_t g_ra8_vector_table_start[];
@@ -67,13 +67,13 @@ extern const uint32_t g_ra8_vector_table_start[];
  */
 
 typedef enum : uintptr_t {
-  k_ra8_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.              */
-  k_ra8_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.        */
-  k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
-  k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
-  k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
-  k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
-  k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
+  k_ra8_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.         */
+  k_ra8_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.   */
+  k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.     */
+  k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.           */
+  k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.            */
+  k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.         */
+  k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl. */
 } ra8_core_addr_t;
 
 extern uint32_t g_ra8_ls_stack_top; /* from vector_table.c / linker. */

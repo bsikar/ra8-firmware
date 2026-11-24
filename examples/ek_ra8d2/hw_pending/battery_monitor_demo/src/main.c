@@ -37,12 +37,12 @@
 
 #include <stdint.h>
 
+#include "fw_if_clock.h"
 #include "ra8_batt.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_fuelgauge.h"
 #include "ra8_i2c_bus_ops.h"
@@ -65,9 +65,9 @@ typedef enum : uint32_t {
   k_bm_iic_chan = k_ra8_board_mikrobus_iic_b_channel,
   /** Poll period. */
   k_bm_period_ms  = 1000U,
-  k_bm_soc_max    = 100U,  /**< SOC clamp for display.                      */
-  k_bm_dec_ten    = 10U,   /**< Decimal base.                               */
-  k_bm_dec_digits = 3U,    /**< Max decimal digits for a 0..100 value.      */
+  k_bm_soc_max    = 100U, /**< SOC clamp for display.                 */
+  k_bm_dec_ten    = 10U,  /**< Decimal base.                          */
+  k_bm_dec_digits = 3U,   /**< Max decimal digits for a 0..100 value. */
 } bm_consts_t;
 
 /** @brief MikroBUS SCL routed through the Pmod1 I2C side (SCL1). */
@@ -277,8 +277,7 @@ void main(void)
     bm_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 
-  const ra8_fuelgauge_cfg_t fg_cfg = {.bus       = bus_ops,
-                                      .target_7b = k_ra8_fuelgauge_default_addr_7b};
+  const ra8_fuelgauge_cfg_t fg_cfg = {.bus = bus_ops, .target_7b = k_ra8_fuelgauge_default_addr_7b};
   if (ra8_fuelgauge_open(&s_bm_fg, &fg_cfg) != k_ra8_ok) {
     bm_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }

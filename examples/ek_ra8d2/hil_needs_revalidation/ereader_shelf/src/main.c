@@ -508,7 +508,7 @@ static void sh_present_loupe(void)
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void sh_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     sh_panic_halt();

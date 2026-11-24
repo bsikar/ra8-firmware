@@ -132,13 +132,11 @@ static void demo_print(const char* msg)
  */
 static void demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core,
-                                         .index = 0U};
-  const fw_clock_module_t console_module = {
-    .kind  = k_fw_clock_module_uart,
-    .index = (uint8_t)k_ra8_board_clock_uart_console};
+  uint32_t                cpuclk0_hz     = 0U;
+  uint32_t                pclka_hz       = 0U;
+  const fw_clock_module_t core_module    = {.kind = k_fw_clock_module_core, .index = 0U};
+  const fw_clock_module_t console_module = {.kind  = k_fw_clock_module_uart,
+                                            .index = (uint8_t)k_ra8_board_clock_uart_console};
   if ((ra8_cgc_init() != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), console_module, &pclka_hz) != k_ra8_ok) ||

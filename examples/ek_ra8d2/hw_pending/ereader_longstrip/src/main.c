@@ -45,6 +45,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fw_if_clock.h"
 #include "jof.h"
 #include "longstrip.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -52,7 +53,6 @@
 #include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_check.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_gfx.h"
@@ -109,12 +109,12 @@ typedef enum : uint32_t {
   k_ls_canvas_h = (uint32_t)k_ls_bands * (uint32_t)k_ls_band_h, /**< 4480 px.             */
   k_ls_bpp      = 3U,                                           /**< RGB888 strip pixels. */
   /** One band payload, bytes. */
-  k_ls_band_bytes  = (uint32_t)k_panel_width_px * (uint32_t)k_ls_band_h * 3U,
-  k_ls_cells       = 6U,  /**< Tile-cache cells (< 16 bands -> LRU eviction). */
-  k_ls_buckets     = 16U, /**< Tile-cache hash buckets.                       */
-  k_ls_image_id    = 1U,  /**< Tile-cache key namespace for this strip.       */
-  k_ls_scroll_page = ((uint32_t)k_panel_height_px * 9U) /
-    10U, /**< Page-scroll step (~90% of a viewport), pixels. */
+  k_ls_band_bytes = (uint32_t)k_panel_width_px * (uint32_t)k_ls_band_h * 3U,
+  k_ls_cells      = 6U,  /**< Tile-cache cells (< 16 bands -> LRU eviction). */
+  k_ls_buckets    = 16U, /**< Tile-cache hash buckets.                       */
+  k_ls_image_id   = 1U,  /**< Tile-cache key namespace for this strip.       */
+  k_ls_scroll_page =
+    ((uint32_t)k_panel_height_px * 9U) / 10U, /**< Page-scroll step (~90% of a viewport), pixels. */
 } ls_size_t;
 
 /**
@@ -134,11 +134,11 @@ typedef enum : uint32_t {
   k_ls_idx_entry     = 8U,  /**< Index-entry length (offset + len). */
   k_ls_ftr_magic_off = 12U, /**< Footer "JOFE" magic offset.        */
   k_ls_atlas_total   = (uint32_t)k_ls_hdr_bytes + ((uint32_t)k_ls_bands * 8U) +
-    (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
-  k_ls_byte_mask = 0xFFU,     /**< Low-byte mask.         */
-  k_ls_shift_8   = 8U,        /**< One-byte shift.        */
-  k_ls_shift_16  = 16U,       /**< Two-byte shift.        */
-  k_ls_shift_24  = 24U,       /**< Three-byte shift.      */
+                       (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
+  k_ls_byte_mask     = 0xFFU,                    /**< Low-byte mask.         */
+  k_ls_shift_8       = 8U,                       /**< One-byte shift.        */
+  k_ls_shift_16      = 16U,                      /**< Two-byte shift.        */
+  k_ls_shift_24      = 24U,                      /**< Three-byte shift.      */
 } ls_atlas_t;
 
 /**

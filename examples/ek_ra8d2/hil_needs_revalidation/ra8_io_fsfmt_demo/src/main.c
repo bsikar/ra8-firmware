@@ -32,8 +32,8 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
-#include "ra8_boot_entry.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
+#include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -505,13 +505,11 @@ static const ra8_io_fsfmt_t s_demo_stub = {
  */
 RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core,
-                                         .index = 0U};
-  const fw_clock_module_t console_module = {
-    .kind  = k_fw_clock_module_uart,
-    .index = (uint8_t)k_ra8_board_clock_uart_console};
+  uint32_t                cpuclk0_hz     = 0U;
+  uint32_t                pclka_hz       = 0U;
+  const fw_clock_module_t core_module    = {.kind = k_fw_clock_module_core, .index = 0U};
+  const fw_clock_module_t console_module = {.kind  = k_fw_clock_module_uart,
+                                            .index = (uint8_t)k_ra8_board_clock_uart_console};
   if ((ra8_cgc_init() != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), console_module, &pclka_hz) != k_ra8_ok) ||

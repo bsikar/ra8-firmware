@@ -235,17 +235,16 @@ void tx_application_define(void* first_unused_memory)
   const ra8_err_t bind_err = ra8_threadx_clock_bind(ra8_board_clock());
 
   /* Reprogram SysTick.LOAD from the live CPUCLK0. */
-  const ra8_err_t retune_err =
-    (bind_err == k_ra8_ok) ? ra8_threadx_systick_retune() : bind_err;
+  const ra8_err_t retune_err = (bind_err == k_ra8_ok) ? ra8_threadx_systick_retune() : bind_err;
 
   /* Independently recompute the expected reload from the live clock and
    * compare against what retune actually left in SYST_RVR. Any deviation
    * means the kernel tick would drift, so flag it for the probe. */
-  uint32_t        cpuclk_hz = 0U;
-  uint32_t        expected  = 0U;
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  const ra8_err_t clk_err = fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk_hz);
-  const ra8_err_t rel_err =
+  uint32_t                cpuclk_hz = 0U;
+  uint32_t                expected  = 0U;
+  const fw_clock_module_t clk_core  = {.kind = k_fw_clock_module_core, .index = 0U};
+  const ra8_err_t         clk_err   = fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk_hz);
+  const ra8_err_t         rel_err =
     ra8_threadx_systick_reload_for(cpuclk_hz, (uint32_t)k_ra8_threadx_tick_hz, &expected);
   const uint32_t live_rvr = internal_retune_read_syst_rvr();
 

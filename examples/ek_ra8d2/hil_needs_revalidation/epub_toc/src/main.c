@@ -223,12 +223,12 @@ static ra8_err_t etoc_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32
 /** @brief Bring up CGC + SysTick + console SCI + SPI + CS GPIO; halt on fail. */
 static void etoc_setup_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
+  uint32_t                pclka_hz    = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   /* PCLKA here feeds the microSD Simple-SPI on SCI0, i.e. the Pmod2 UART slot. */
-  const fw_clock_module_t spi_module  = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
+  const fw_clock_module_t spi_module = {.kind  = k_fw_clock_module_uart,
+                                        .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
   if ((ra8_cgc_init() != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), spi_module, &pclka_hz) != k_ra8_ok) ||

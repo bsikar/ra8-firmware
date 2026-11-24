@@ -93,7 +93,7 @@ bool sh_sd_mount(void)
 {
   /* The divisor wants the rate feeding this SCI block, which the board answers
    * for its own uart index rather than by naming a chip clock domain. */
-  const fw_clock_module_t spi_block = {.kind = k_fw_clock_module_uart,
+  const fw_clock_module_t spi_block = {.kind  = k_fw_clock_module_uart,
                                        .index = (uint8_t)k_sd_spi_module_index};
   if (fw_clock_rate_for(ra8_board_clock(), spi_block, &s_pclka_hz) != k_ra8_ok) {
     return false;

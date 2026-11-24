@@ -291,8 +291,8 @@ static void fs_fmt_setup_or_halt(uint32_t* out_pclka_hz)
   if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  const fw_clock_module_t clk_spi = {
-      .kind = k_fw_clock_module_uart, .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
+  const fw_clock_module_t clk_spi = {.kind  = k_fw_clock_module_uart,
+                                     .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
   if (fw_clock_rate_for(ra8_board_clock(), clk_spi, &pclka_hz) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }

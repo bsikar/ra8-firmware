@@ -342,8 +342,7 @@ ra8_err_t c6_probe_spi_pins_init(void)
     return err;
   }
   const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
-  return pins->output_init(pins->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cs,
-                           k_ra8_level_high);
+  return pins->output_init(pins->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cs, k_ra8_level_high);
 }
 
 bool c6_probe_sweep_mode(ra8_spi_mode_t    mode,

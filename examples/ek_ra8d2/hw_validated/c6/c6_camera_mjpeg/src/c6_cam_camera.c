@@ -320,9 +320,12 @@ RA8_INTERNAL static ra8_err_t internal_bring_up_sensor(void)
   }
   if (err == k_ra8_ok) {
     const ra8_camera_source_ceu_cfg_t cfg = sensor_ceu_config();
-    err                = ra8_camera_ov5640_open(&s_source, &s_source_state, &s_sensor,
-                                                k_ra8_ov5640_mode_vga_jpeg, &cfg);
-    s_sensor_streaming = (err == k_ra8_ok);
+    err                                   = ra8_camera_ov5640_open(&s_source,
+                                                                   &s_source_state,
+                                                                   &s_sensor,
+                                                                   k_ra8_ov5640_mode_vga_jpeg,
+                                                                   &cfg);
+    s_sensor_streaming                    = (err == k_ra8_ok);
   }
   return err;
 }

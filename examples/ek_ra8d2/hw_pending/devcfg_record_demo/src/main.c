@@ -60,22 +60,22 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_dc_uart_chan    = 8U,          /**< SCI8 J-Link OB console.               */
-  k_dc_console_baud = 115200U,     /**< J-Link OB VCOM line rate. */
-  k_dc_medium_bytes = 448U,        /**< copy1 offset + one slot pitch.        */
-  k_dc_blank_byte   = 0xFFU,       /**< Never-programmed backing byte value.  */
-  k_dc_vcom_mv      = 2300U,       /**< Demo VCOM magnitude (-2.30 V).        */
-  k_dc_hw_rev       = 2U,          /**< Demo board revision.                  */
-  k_dc_fixture_id   = 7U,          /**< Demo provisioning fixture id.         */
-  k_dc_mfg_date     = 20260916U,   /**< Demo packed YYYYMMDD.                 */
-  k_dc_key_id       = 0x5A5A0001U, /**< Demo key identifier, never key data.  */
-  k_dc_cal_seed     = 0x11U,       /**< First byte of the demo touch blob.    */
-  k_dc_cal_step     = 3U,          /**< Demo touch-blob byte step.            */
+  k_dc_uart_chan    = 8U,          /**< SCI8 J-Link OB console.              */
+  k_dc_console_baud = 115200U,     /**< J-Link OB VCOM line rate.            */
+  k_dc_medium_bytes = 448U,        /**< copy1 offset + one slot pitch.       */
+  k_dc_blank_byte   = 0xFFU,       /**< Never-programmed backing byte value. */
+  k_dc_vcom_mv      = 2300U,       /**< Demo VCOM magnitude (-2.30 V).       */
+  k_dc_hw_rev       = 2U,          /**< Demo board revision.                 */
+  k_dc_fixture_id   = 7U,          /**< Demo provisioning fixture id.        */
+  k_dc_mfg_date     = 20260916U,   /**< Demo packed YYYYMMDD.                */
+  k_dc_key_id       = 0x5A5A0001U, /**< Demo key identifier, never key data. */
+  k_dc_cal_seed     = 0x11U,       /**< First byte of the demo touch blob.   */
+  k_dc_cal_step     = 3U,          /**< Demo touch-blob byte step.           */
 } dc_const_t;
 
 static uint8_t s_medium[k_dc_medium_bytes]; /**< App-owned RAM backing store. */
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 /**
  * @brief Write a NUL-terminated string to the console stream.
@@ -110,8 +110,7 @@ static ra8_err_t internal_medium_read(uint32_t offset, uint8_t* dst, uint32_t le
   if (dst == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((offset > (uint32_t)k_dc_medium_bytes) ||
-      (len > ((uint32_t)k_dc_medium_bytes - offset))) {
+  if ((offset > (uint32_t)k_dc_medium_bytes) || (len > ((uint32_t)k_dc_medium_bytes - offset))) {
     return k_ra8_err_invalid_size;
   }
   (void)memcpy(dst, &s_medium[offset], (size_t)len);
@@ -136,8 +135,7 @@ static ra8_err_t internal_medium_write(uint32_t offset, const uint8_t* src, uint
   if (src == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  if ((offset > (uint32_t)k_dc_medium_bytes) ||
-      (len > ((uint32_t)k_dc_medium_bytes - offset))) {
+  if ((offset > (uint32_t)k_dc_medium_bytes) || (len > ((uint32_t)k_dc_medium_bytes - offset))) {
     return k_ra8_err_invalid_size;
   }
   (void)memcpy(&s_medium[offset], src, (size_t)len);
@@ -162,17 +160,15 @@ static void internal_make_record(ra8_devcfg_record_t* out_rec)
   (void)strncpy(out_rec->body.panel_serial, "PANEL-0001", sizeof out_rec->body.panel_serial - 1U);
   (void)strncpy(out_rec->body.panel_lut_id, "M641", sizeof out_rec->body.panel_lut_id - 1U);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_devcfg_touch_cal_len; i++) {
-    out_rec->body.touch_cal[i] =
-      (uint8_t)((uint32_t)k_dc_cal_seed + (i * (uint32_t)k_dc_cal_step));
+    out_rec->body.touch_cal[i] = (uint8_t)((uint32_t)k_dc_cal_seed + (i * (uint32_t)k_dc_cal_step));
   }
   out_rec->body.mfg_date      = (uint32_t)k_dc_mfg_date;
   out_rec->body.device_key_id = (uint32_t)k_dc_key_id;
   out_rec->body.hw_rev        = (uint16_t)k_dc_hw_rev;
   out_rec->body.fixture_id    = (uint16_t)k_dc_fixture_id;
   out_rec->body.panel_vcom_mv = (uint16_t)k_dc_vcom_mv;
-  out_rec->flags              = (uint32_t)k_ra8_devcfg_flag_provisioned |
-                   (uint32_t)k_ra8_devcfg_flag_vcom_valid |
-                   (uint32_t)k_ra8_devcfg_flag_touch_valid;
+  out_rec->flags = (uint32_t)k_ra8_devcfg_flag_provisioned |
+                   (uint32_t)k_ra8_devcfg_flag_vcom_valid | (uint32_t)k_ra8_devcfg_flag_touch_valid;
   out_rec->schema_version = (uint16_t)k_ra8_devcfg_schema_ver;
 }
 

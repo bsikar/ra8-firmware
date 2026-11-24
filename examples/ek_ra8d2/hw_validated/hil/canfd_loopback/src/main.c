@@ -180,7 +180,7 @@ internal_canfd_demo_enable_internal_loopback(uint8_t channel)
  */
 RA8_INTERNAL static void internal_canfd_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_canfd_demo_panic_halt();

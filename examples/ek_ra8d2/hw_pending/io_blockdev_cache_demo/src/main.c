@@ -67,7 +67,7 @@
 
 /** @enum demo_const_t @brief Console, medium, and cache geometry (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_baud    = 115200U, /**< Console baud.                              */
+  k_demo_uart_baud    = 115200U, /**< Console baud.                               */
   k_demo_disk_blocks  = 64U,     /**< 32 KiB RAM disk (the "slow" medium).        */
   k_demo_cache_slots  = 4U,      /**< Cached sectors; small enough to evict.      */
   k_demo_span_blocks  = 3U,      /**< Blocks in the multi-block request leg.      */
@@ -82,16 +82,16 @@ typedef enum : uint32_t {
 
 /** @enum demo_lba_t @brief Fixed logical block addresses, one group per leg. */
 typedef enum : uint32_t {
-  k_demo_lba_probe  = 0U,  /**< Cold-read / re-read leg.                    */
-  k_demo_lba_write  = 5U,  /**< Write-through leg.                          */
-  k_demo_lba_lru_a  = 10U, /**< LRU leg: touched again, must survive.       */
-  k_demo_lba_lru_b  = 11U, /**< LRU leg: least recently used, must go.      */
-  k_demo_lba_lru_c  = 12U, /**< LRU leg: must survive.                      */
-  k_demo_lba_lru_d  = 13U, /**< LRU leg: must survive.                      */
-  k_demo_lba_lru_e  = 14U, /**< LRU leg: the read that forces an eviction.  */
-  k_demo_lba_erase  = 20U, /**< Erase leg: first block of the erased range. */
-  k_demo_lba_keep   = 22U, /**< Erase leg: cached neighbour outside range.  */
-  k_demo_lba_span   = 30U, /**< Multi-block leg: first block of the span.   */
+  k_demo_lba_probe = 0U,  /**< Cold-read / re-read leg.                    */
+  k_demo_lba_write = 5U,  /**< Write-through leg.                          */
+  k_demo_lba_lru_a = 10U, /**< LRU leg: touched again, must survive.       */
+  k_demo_lba_lru_b = 11U, /**< LRU leg: least recently used, must go.      */
+  k_demo_lba_lru_c = 12U, /**< LRU leg: must survive.                      */
+  k_demo_lba_lru_d = 13U, /**< LRU leg: must survive.                      */
+  k_demo_lba_lru_e = 14U, /**< LRU leg: the read that forces an eviction.  */
+  k_demo_lba_erase = 20U, /**< Erase leg: first block of the erased range. */
+  k_demo_lba_keep  = 22U, /**< Erase leg: cached neighbour outside range.  */
+  k_demo_lba_span  = 30U, /**< Multi-block leg: first block of the span.   */
 } demo_lba_t;
 
 /** @brief RAM-disk backing store for the wrapped backend (in SRAM .bss). */
@@ -434,10 +434,10 @@ RA8_INTERNAL static ra8_err_t internal_demo_leg_writethrough(void)
  */
 RA8_INTERNAL static ra8_err_t internal_demo_leg_lru(void)
 {
-  static const uint32_t k_fill[] = {(uint32_t)k_demo_lba_lru_a,
-                                    (uint32_t)k_demo_lba_lru_b,
-                                    (uint32_t)k_demo_lba_lru_c,
-                                    (uint32_t)k_demo_lba_lru_d};
+  static const uint32_t k_fill[]  = {(uint32_t)k_demo_lba_lru_a,
+                                     (uint32_t)k_demo_lba_lru_b,
+                                     (uint32_t)k_demo_lba_lru_c,
+                                     (uint32_t)k_demo_lba_lru_d};
   static const uint32_t k_after[] = {(uint32_t)k_demo_lba_lru_a,
                                      (uint32_t)k_demo_lba_lru_e,
                                      (uint32_t)k_demo_lba_lru_c,
@@ -503,10 +503,9 @@ RA8_INTERNAL static ra8_err_t internal_demo_leg_erase(void)
   RA8_RETURN_ON_ERROR(internal_demo_expect_stats(1U, 3U), s_tag, "neighbour counters");
 
   for (uint32_t i = 0U; i < erase_count; ++i) {
-    RA8_RETURN_ON_ERROR(
-      ra8_io_blockdev_read(&s_cached, (uint32_t)k_demo_lba_erase + i, 1U, s_blk),
-      s_tag,
-      "erased read");
+    RA8_RETURN_ON_ERROR(ra8_io_blockdev_read(&s_cached, (uint32_t)k_demo_lba_erase + i, 1U, s_blk),
+                        s_tag,
+                        "erased read");
     for (uint32_t off = 0U; off < (uint32_t)k_ra8_io_block_size_bytes; ++off) {
       if (s_blk[off] != (uint8_t)k_ra8_io_erase_value_zero) {
         return k_ra8_err_checksum_mismatch;
@@ -633,13 +632,10 @@ RA8_INTERNAL static ra8_err_t internal_demo_run(uint32_t* out_hits, uint32_t* ou
   RA8_CHECK_NULL_PTR(out_misses, s_tag, "out_misses must not be nullptr");
 
   internal_demo_seed_disk();
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_ram_init(&s_under,
-                                               &s_ustate,
-                                               s_disk,
-                                               (uint32_t)k_demo_disk_blocks,
-                                               false),
-                      s_tag,
-                      "backend init");
+  RA8_RETURN_ON_ERROR(
+    ra8_io_blockdev_ram_init(&s_under, &s_ustate, s_disk, (uint32_t)k_demo_disk_blocks, false),
+    s_tag,
+    "backend init");
 
   RA8_RETURN_ON_ERROR(internal_demo_leg_bind(), s_tag, "leg bind");
   RA8_RETURN_ON_ERROR(internal_demo_leg_hitmiss(), s_tag, "leg hitmiss");

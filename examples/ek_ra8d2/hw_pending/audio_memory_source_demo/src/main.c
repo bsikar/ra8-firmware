@@ -66,7 +66,7 @@
  */
 typedef enum : uint32_t {
   k_am_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                  */
-  k_am_console_baud = 115200U, /**< J-Link OB VCOM line rate. */
+  k_am_console_baud = 115200U, /**< J-Link OB VCOM line rate.                */
   k_am_samples      = 64U,     /**< Sample frames per channel in the source. */
   k_am_channels     = 2U,      /**< Interleaved channel count.               */
   k_am_container    = 2U,      /**< Container bytes for s16le.               */
@@ -76,16 +76,16 @@ typedef enum : uint32_t {
   k_am_frame_bytes  = 256U,    /**< 64 samples * 2 channels * 2 bytes.       */
   k_am_pcm_words    = 128U,    /**< 64 samples * 2 interleaved channels.     */
   k_am_ramp_step    = 37U,     /**< Deterministic sample-ramp step.          */
-  k_am_ramp_mask    = 0x7FFFU, /**< Keeps the ramp inside int16 positives.  */
+  k_am_ramp_mask    = 0x7FFFU, /**< Keeps the ramp inside int16 positives.   */
   k_am_wipe_byte    = 0xA5U,   /**< Sentinel the capture must overwrite.     */
   k_am_bad_bits     = 24U,     /**< Wider than the s16le container allows.   */
   k_am_short_by     = 1U,      /**< Bytes withheld for the refusal leg.      */
 } am_const_t;
 
-static int16_t s_source_pcm[k_am_pcm_words];      /**< Source PCM, app-owned.  */
-static uint8_t s_capture[k_am_frame_bytes];       /**< Capture sink, app-owned.*/
+static int16_t s_source_pcm[k_am_pcm_words]; /**< Source PCM, app-owned.   */
+static uint8_t s_capture[k_am_frame_bytes];  /**< Capture sink, app-owned. */
 
-static ra8_io_stream_t            s_uart;       /**< Console stream.       */
+static ra8_io_stream_t s_uart; /**< Console stream. */
 
 static bool s_callback_fired = false; /**< Set only if streaming delivered. */
 
@@ -240,8 +240,8 @@ static ra8_err_t internal_leg_bind(ra8_audio_source_t*              source,
   if ((out_info->frame_bytes != frame->bytes) ||
       (out_info->samples_per_frame != frame->sample_count) ||
       (out_info->sample_rate_hz != frame->sample_rate_hz) ||
-      (out_info->channels != frame->channels) ||
-      (out_info->valid_bits != frame->valid_bits) || (out_info->format != frame->format)) {
+      (out_info->channels != frame->channels) || (out_info->valid_bits != frame->valid_bits) ||
+      (out_info->format != frame->format)) {
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;

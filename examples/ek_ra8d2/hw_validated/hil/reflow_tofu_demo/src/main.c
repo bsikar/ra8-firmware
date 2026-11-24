@@ -30,12 +30,12 @@
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
-#include "ra8_panel_timing.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel.h"
+#include "ra8_panel_timing.h"
 #include "ra8_sdramc.h"
 #include "ra8_time.h"
 #include "reflow.h"
@@ -49,8 +49,8 @@ typedef enum : uint32_t {
   k_tofu_fb_h       = 600U,
   k_tofu_font_px    = 22U,
   k_tofu_paper_argb = 0xFFFDFBF7U, /* Warm paper background */
-  k_tofu_ink_argb   = 0xFF18181CU, /* Dark charcoal ink */
-  k_tofu_link_argb  = 0xFF1C3A5EU, /* Slate blue link */
+  k_tofu_ink_argb   = 0xFF18181CU, /* Dark charcoal ink     */
+  k_tofu_link_argb  = 0xFF1C3A5EU, /* Slate blue link       */
   k_tofu_settle_ms  = 20U,
   k_tofu_frame_ms   = 50U,
 } tofu_demo_consts_t;
@@ -74,14 +74,13 @@ static display_fb_t      s_fb;
 static reflow_t          s_engine;
 
 /** @brief Demonstration chapter text containing both supported Latin-1 and unmapped characters. */
-static const char k_demo_xhtml[] =
-  "<html><body>"
-  "<h1>Tofu Box Fallback</h1>"
-  "<p>Latin-1: Cafe</p>"
-  "<p>Missing Kanji: [&#x6F22;&#x5B57;]</p>"
-  "<p>Missing Greek: [&Omega; &alpha;]</p>"
-  "<p>Missing Math: [&sum; &int;]</p>"
-  "</body></html>";
+static const char k_demo_xhtml[] = "<html><body>"
+                                   "<h1>Tofu Box Fallback</h1>"
+                                   "<p>Latin-1: Cafe</p>"
+                                   "<p>Missing Kanji: [&#x6F22;&#x5B57;]</p>"
+                                   "<p>Missing Greek: [&Omega; &alpha;]</p>"
+                                   "<p>Missing Math: [&sum; &int;]</p>"
+                                   "</body></html>";
 
 /* ===========================================================================
  * Hardware initialization

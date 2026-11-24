@@ -47,9 +47,9 @@ typedef enum : uint32_t {
   k_tone_fb_w       = 1024U,
   k_tone_fb_h       = 600U,
   k_tone_paper_argb = 0xFFFDFBF7U, /* Warm paper background */
-  k_tone_ink_argb   = 0xFF18181CU, /* Dark charcoal ink */
-  k_tone_sub_argb   = 0xFF485868U, /* Subtitle muted gray */
-  k_tone_edge_argb  = 0xFF888899U, /* Frame outline gray */
+  k_tone_ink_argb   = 0xFF18181CU, /* Dark charcoal ink     */
+  k_tone_sub_argb   = 0xFF485868U, /* Subtitle muted gray   */
+  k_tone_edge_argb  = 0xFF888899U, /* Frame outline gray    */
   k_tone_ramp_w     = 768U,
   k_tone_ramp_h     = 56U,
   k_tone_settle_ms  = 20U,
@@ -60,8 +60,8 @@ typedef enum : uint32_t {
 RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /** @brief Continuous horizontal grayscale gradient buffer (768 x 56 pixels, ~42 KiB). */
-[[gnu::section(".sdram_data"), gnu::aligned(16)]] static uint8_t
-  s_gradient_ramp[k_tone_ramp_w * k_tone_ramp_h];
+[[gnu::section(".sdram_data"),
+  gnu::aligned(16)]] static uint8_t s_gradient_ramp[k_tone_ramp_w * k_tone_ramp_h];
 
 /** @brief Display configuration using the EK-RA8D2 panel timing and GLCDC backend. */
 static const display_cfg_t k_display_cfg = {
@@ -82,7 +82,8 @@ static display_fb_t      s_fb;
  * @details Models glass response with shadow/highlight contrast expansion.
  */
 static const ra8_gfx_tone_lut_t k_calibrated_s_curve = {
-  .level_gray8 = {0U, 8U, 18U, 32U, 50U, 72U, 98U, 128U, 158U, 184U, 206U, 224U, 238U, 248U, 252U, 255U},
+  .level_gray8 =
+    {0U, 8U, 18U, 32U, 50U, 72U, 98U, 128U, 158U, 184U, 206U, 224U, 238U, 248U, 252U, 255U},
 };
 
 static ra8_gfx_tone_map_t s_map_nominal;
@@ -135,30 +136,66 @@ static void internal_render_tone_demo(void)
   (void)ra8_gfx_tone_prepare(&k_calibrated_s_curve, &s_map_calibrated);
 
   /* Title and header */
-  (void)ra8_gfx_text_out(40, 22, "Panel Gray-Level Tone LUT Calibration", &ra8_gfx_font_8x16,
-                         k_tone_ink_argb, k_tone_paper_argb);
-  (void)ra8_gfx_text_out(40, 44, "Per-panel glass response calibration with blue-noise dither quantisation",
-                         &ra8_gfx_font_8x16, k_tone_sub_argb, k_tone_paper_argb);
+  (void)ra8_gfx_text_out(40,
+                         22,
+                         "Panel Gray-Level Tone LUT Calibration",
+                         &ra8_gfx_font_8x16,
+                         k_tone_ink_argb,
+                         k_tone_paper_argb);
+  (void)ra8_gfx_text_out(40,
+                         44,
+                         "Per-panel glass response calibration with blue-noise dither quantisation",
+                         &ra8_gfx_font_8x16,
+                         k_tone_sub_argb,
+                         k_tone_paper_argb);
 
   /* Section 1: Nominal linear even palette */
-  (void)ra8_gfx_text_out(40, 80, "[1] Nominal Even Palette (Linear: level n * 17)", &ra8_gfx_font_8x16,
-                         k_tone_ink_argb, k_tone_paper_argb);
-  (void)ra8_gfx_blit_gray8_dither_tone(&s_map_nominal, s_gradient_ramp,
-                                       (int32_t)k_tone_ramp_w, (int32_t)k_tone_ramp_h, 40, 102);
-  (void)ra8_gfx_rect(39, 101, (int32_t)k_tone_ramp_w + 2, (int32_t)k_tone_ramp_h + 2,
-                     k_tone_edge_argb, false);
+  (void)ra8_gfx_text_out(40,
+                         80,
+                         "[1] Nominal Even Palette (Linear: level n * 17)",
+                         &ra8_gfx_font_8x16,
+                         k_tone_ink_argb,
+                         k_tone_paper_argb);
+  (void)ra8_gfx_blit_gray8_dither_tone(&s_map_nominal,
+                                       s_gradient_ramp,
+                                       (int32_t)k_tone_ramp_w,
+                                       (int32_t)k_tone_ramp_h,
+                                       40,
+                                       102);
+  (void)ra8_gfx_rect(39,
+                     101,
+                     (int32_t)k_tone_ramp_w + 2,
+                     (int32_t)k_tone_ramp_h + 2,
+                     k_tone_edge_argb,
+                     false);
 
   /* Section 2: Calibrated non-linear S-curve tone LUT */
-  (void)ra8_gfx_text_out(40, 178, "[2] Calibrated Glass S-Curve LUT (Per-Panel Tone Mapping)", &ra8_gfx_font_8x16,
-                         k_tone_ink_argb, k_tone_paper_argb);
-  (void)ra8_gfx_blit_gray8_dither_tone(&s_map_calibrated, s_gradient_ramp,
-                                       (int32_t)k_tone_ramp_w, (int32_t)k_tone_ramp_h, 40, 200);
-  (void)ra8_gfx_rect(39, 199, (int32_t)k_tone_ramp_w + 2, (int32_t)k_tone_ramp_h + 2,
-                     k_tone_edge_argb, false);
+  (void)ra8_gfx_text_out(40,
+                         178,
+                         "[2] Calibrated Glass S-Curve LUT (Per-Panel Tone Mapping)",
+                         &ra8_gfx_font_8x16,
+                         k_tone_ink_argb,
+                         k_tone_paper_argb);
+  (void)ra8_gfx_blit_gray8_dither_tone(&s_map_calibrated,
+                                       s_gradient_ramp,
+                                       (int32_t)k_tone_ramp_w,
+                                       (int32_t)k_tone_ramp_h,
+                                       40,
+                                       200);
+  (void)ra8_gfx_rect(39,
+                     199,
+                     (int32_t)k_tone_ramp_w + 2,
+                     (int32_t)k_tone_ramp_h + 2,
+                     k_tone_edge_argb,
+                     false);
 
   /* Section 3: 16 discrete panel gray steps comparison */
-  (void)ra8_gfx_text_out(40, 276, "[3] 16 Discrete Panel Steps: Nominal (Top) vs Calibrated (Bottom)", &ra8_gfx_font_8x16,
-                         k_tone_ink_argb, k_tone_paper_argb);
+  (void)ra8_gfx_text_out(40,
+                         276,
+                         "[3] 16 Discrete Panel Steps: Nominal (Top) vs Calibrated (Bottom)",
+                         &ra8_gfx_font_8x16,
+                         k_tone_ink_argb,
+                         k_tone_paper_argb);
 
   const int32_t patch_w = 48;
   for (uint32_t i = 0U; i < 16U; ++i) {
@@ -180,8 +217,13 @@ static void internal_render_tone_demo(void)
   /* Section 4: Validation status banner */
   (void)ra8_gfx_rect(40, 375, (int32_t)k_tone_ramp_w, 42, 0xFFEBF5EEU, true);
   (void)ra8_gfx_rect(40, 375, (int32_t)k_tone_ramp_w, 42, 0xFF2E7D32U, false);
-  (void)ra8_gfx_text_out(56, 388, "PASS: 16-knot LUT strictly monotonic & unbiased blue-noise dither verified",
-                         &ra8_gfx_font_8x16, 0xFF1B5E20U, 0xFFEBF5EEU);
+  (void)ra8_gfx_text_out(
+    56,
+    388,
+    "PASS: 16-knot LUT strictly monotonic & unbiased blue-noise dither verified",
+    &ra8_gfx_font_8x16,
+    0xFF1B5E20U,
+    0xFFEBF5EEU);
 
   (void)ra8_board_led_on(k_ra8_board_led_blue);
   const uint8_t msg[] = "gfx-tone-lut-demo: lut=strictly_monotonic PASS\r\n";

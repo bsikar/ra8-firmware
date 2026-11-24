@@ -109,11 +109,12 @@ typedef enum : uint8_t {
  * 32-bit-word, increment-both copy. ``2`` selects "increment" for
  * SM/DM, "32-bit word" for SZ, and "block transfer" for MD.
  */
-} dtc_mr_field_t;
-
-} dtc_mr_pos_t;
-
-} dtc_count_t;
+}
+dtc_mr_field_t;
+}
+dtc_mr_pos_t;
+}
+dtc_count_t;
 
 /**
  * @brief DTC vector-table geometry.
@@ -271,7 +272,7 @@ static void dtc_demo_swevt_isr(void* ctx)
 /** @brief Bring CGC + SysTick + ISR + ELC + SCI8 + LEDs + MSTP up. */
 static void dtc_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
 
   if (ra8_cgc_init() != k_ra8_ok) {

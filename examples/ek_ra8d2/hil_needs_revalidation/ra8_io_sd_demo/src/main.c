@@ -212,15 +212,13 @@ RA8_INTERNAL static void internal_sd_demo_panic_halt(void)
  */
 RA8_INTERNAL static void internal_sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core,
-                                         .index = 0U};
+  uint32_t                cpuclk0_hz  = 0U;
+  uint32_t                pclka_hz    = 0U;
+  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   /* The card is on Pmod2's SCI0 in Simple-SPI mode, not on SDHI, so the
    * module that clocks it is that UART instance and not sdhost 0. */
-  const fw_clock_module_t sd_spi_module = {
-    .kind  = k_fw_clock_module_uart,
-    .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
+  const fw_clock_module_t sd_spi_module = {.kind  = k_fw_clock_module_uart,
+                                           .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_sd_demo_panic_halt();
   }

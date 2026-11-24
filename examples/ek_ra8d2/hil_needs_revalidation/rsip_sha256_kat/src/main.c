@@ -121,7 +121,7 @@ RA8_INTERNAL static void internal_kat_panic_halt(void)
  */
 RA8_INTERNAL static void internal_kat_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
+  uint32_t                cpuclk0_hz  = 0U;
   const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   if (ra8_cgc_init() != k_ra8_ok) {
     internal_kat_panic_halt();

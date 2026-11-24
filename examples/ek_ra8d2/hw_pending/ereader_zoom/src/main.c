@@ -41,12 +41,12 @@
 #include <stdint.h>
 
 #include "ez_scene.h"
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
