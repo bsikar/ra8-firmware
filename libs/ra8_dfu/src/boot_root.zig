@@ -14,4 +14,5 @@ comptime {
     _ = @import("dfu_boot_abi");
     _ = @import("launch_abi");
     _ = @import("program_abi");
+    _ = @import("boot_state_abi");
 }

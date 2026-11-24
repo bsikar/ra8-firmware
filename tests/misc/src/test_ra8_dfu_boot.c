@@ -20,6 +20,9 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+extern ra8_err_t priv_dfu_boot_state_corrupt_copy(uint8_t copy_idx, const uint8_t* raw32);
+extern void      priv_dfu_boot_state_reset_store(void);
+
 /** @brief Published CRC32 (IEEE) check values used as oracles. */
 typedef enum : uint32_t {
   k_test_crc_empty     = 0x00000000U, /**< crc32("").            */
@@ -279,6 +282,201 @@ static void test_boot_decide_mcdc(void)
   TEST_END("ra8_dfu: boot_decide trigger + mapping (MC/DC)");
 }
 
+/**
+ * @brief Validate ::ra8_dfu_boot_state_valid checks (null, magic, seq, range, CRC).
+ *
+ * @par MC/DC:
+ * Checks each guard condition independently: NULL pointer, bad magic, zero
+ * `write_seq`, out-of-range `trial_slot`, out-of-range `confirmed`, and bit-flipped
+ * payload causing CRC32 mismatch against an otherwise valid baseline record.
+ *
+ * @pre None.
+ * @post No persistent side effects.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_boot_state_valid_mcdc(void)
+{
+  TEST_BEGIN("ra8_dfu: boot_state_valid invariants + CRC (MC/DC)");
+
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(nullptr));
+
+  ra8_dfu_boot_state_t good = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_b,
+                                            (uint8_t)k_ra8_dfu_boot_state_default_tries,
+                                            false,
+                                            7U,
+                                            1U,
+                                            &good));
+  TEST_ASSERT(ra8_dfu_boot_state_valid(&good));
+
+  ra8_dfu_boot_state_t bad_magic = good;
+  bad_magic.magic ^= 1U;
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(&bad_magic));
+
+  ra8_dfu_boot_state_t bad_seq = good;
+  bad_seq.write_seq            = 0U;
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(&bad_seq));
+
+  /* Re-CRC with corrupted enum/bool bytes to prove range guards run too. */
+  ra8_dfu_boot_state_t bad_slot = good;
+  bad_slot.trial_slot           = (uint8_t)k_ra8_dfu_slot_none + 1U;
+  bad_slot.crc32 =
+    ra8_dfu_crc32((const uint8_t*)&bad_slot, (uint32_t)k_ra8_dfu_boot_state_crc_span);
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(&bad_slot));
+
+  ra8_dfu_boot_state_t bad_conf = good;
+  bad_conf.confirmed            = 2U;
+  bad_conf.crc32 =
+    ra8_dfu_crc32((const uint8_t*)&bad_conf, (uint32_t)k_ra8_dfu_boot_state_crc_span);
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(&bad_conf));
+
+  ra8_dfu_boot_state_t bad_crc = good;
+  bad_crc.tries_left ^= 1U;
+  TEST_ASSERT(!ra8_dfu_boot_state_valid(&bad_crc));
+
+  TEST_END("ra8_dfu: boot_state_valid invariants + CRC (MC/DC)");
+}
+
+/**
+ * @brief Arbitrate ping-pong copies cleanly across torn and corrupt records.
+ *
+ * @par MC/DC:
+ * Drives all outcomes of `!v0 && !v1` and `v0 && (!v1 || s0 >= s1)` (none valid,
+ * copy 0 only, copy 1 only, copy 1 newer, copy 0 newer, tie -> copy 0) plus null
+ * guards.
+ *
+ * @pre None.
+ * @post `*out_state` unchanged when `k_ra8_err_not_found` is returned.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_boot_state_pick_mcdc(void)
+{
+  TEST_BEGIN("ra8_dfu: boot_state_pick arbitration + torn copies (MC/DC)");
+
+  ra8_dfu_boot_state_t erased = {};
+  (void)memset(&erased, 0xFF, sizeof(erased));
+  ra8_dfu_boot_state_t r1 = {};
+  ra8_dfu_boot_state_t r2 = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_a, 3U, false, 4U, 1U, &r1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_b, 2U, false, 5U, 2U, &r2));
+
+  ra8_dfu_boot_state_t out = {};
+  uint8_t              idx = 99U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_dfu_boot_state_pick(nullptr, &r1, &out, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_dfu_boot_state_pick(&r1, nullptr, &out, &idx));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_dfu_boot_state_pick(&r1, &r2, nullptr, &idx));
+
+  /* Neither valid -> not found, output preserved. */
+  out = r1;
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_dfu_boot_state_pick(&erased, &erased, &out, &idx));
+  TEST_ASSERT_EQ(1U, out.write_seq);
+
+  /* Only copy 0 valid (e.g. copy 1 torn mid-write). */
+  ra8_dfu_boot_state_t torn = r2;
+  torn.crc32 ^= 0xA5U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_pick(&r1, &torn, &out, &idx));
+  TEST_ASSERT_EQ(0U, idx);
+  TEST_ASSERT_EQ(1U, out.write_seq);
+
+  /* Only copy 1 valid -> copy 1 wins. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_pick(&erased, &r2, &out, nullptr));
+  TEST_ASSERT_EQ(2U, out.write_seq);
+
+  /* Both valid -> higher write_seq wins regardless of slot position; tie -> 0. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_pick(&r1, &r2, &out, &idx));
+  TEST_ASSERT_EQ(1U, idx);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_pick(&r2, &r1, &out, &idx));
+  TEST_ASSERT_EQ(0U, idx);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_pick(&r2, &r2, &out, &idx));
+  TEST_ASSERT_EQ(0U, idx);
+
+  TEST_END("ra8_dfu: boot_state_pick arbitration + torn copies (MC/DC)");
+}
+
+/**
+ * @brief Round-trip store read/write, torn-write recovery, and corrupt-record rejection.
+ *
+ * @par MC/DC: not applicable -- sequential store fault-injection checks.
+ * @pre Host off-target store shadow available.
+ * @post Host shadow left erased.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_boot_state_store_torn_and_corrupt(void)
+{
+  TEST_BEGIN("ra8_dfu: boot_state store read/write + torn/corrupt");
+
+  priv_dfu_boot_state_reset_store();
+
+  ra8_dfu_boot_state_t out = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_dfu_boot_state_read(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_a, 1U, false, 1U, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dfu_boot_state_prepare((ra8_dfu_slot_t)((uint8_t)k_ra8_dfu_slot_none + 1U),
+                                            1U,
+                                            false,
+                                            1U,
+                                            1U,
+                                            &out));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_a, 1U, false, 1U, 0U, &out));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_dfu_boot_state_write((ra8_dfu_slot_t)((uint8_t)k_ra8_dfu_slot_none + 1U), 1U, false, 1U));
+
+  /* Write generation 1 -> lands on copy 0; generation 2 -> lands on copy 1. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 3U, false, 10U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(1U, out.write_seq);
+  TEST_ASSERT_EQ((uint8_t)k_ra8_dfu_slot_b, out.trial_slot);
+  TEST_ASSERT_EQ(3U, out.tries_left);
+  TEST_ASSERT_EQ(0U, out.confirmed);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 2U, false, 10U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(2U, out.write_seq);
+  TEST_ASSERT_EQ(2U, out.tries_left);
+
+  /* Torn write on copy 1 (erased mid-write) recovers generation 1 from copy 0. */
+  uint8_t erased[sizeof(ra8_dfu_boot_state_t)] = {};
+  (void)memset(erased, 0xFF, sizeof(erased));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_dfu_boot_state_corrupt_copy(1U, erased));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(1U, out.write_seq);
+  TEST_ASSERT_EQ(3U, out.tries_left);
+
+  /* Write confirmed record (seq 2 -> copy 1), then confirm gen 3 -> copy 0,
+   * then corrupt copy 0 -> falls back to intact gen 2 in copy 1. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 2U, false, 10U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 2U, true, 10U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(3U, out.write_seq);
+  TEST_ASSERT_EQ(1U, out.confirmed);
+
+  uint8_t bad_bytes[sizeof(ra8_dfu_boot_state_t)] = {};
+  (void)memcpy(bad_bytes, &out, sizeof(bad_bytes));
+  bad_bytes[0] ^= 0x55U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_dfu_boot_state_corrupt_copy(0U, bad_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(2U, out.write_seq);
+  TEST_ASSERT_EQ(0U, out.confirmed);
+
+  /* Corrupting both copies yields k_ra8_err_not_found cleanly. */
+  TEST_ASSERT_EQ(k_ra8_ok, priv_dfu_boot_state_corrupt_copy(1U, bad_bytes));
+  out.write_seq = 0xCAFEBABEU;
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_dfu_boot_state_read(&out));
+  TEST_ASSERT_EQ(0xCAFEBABEU, out.write_seq);
+
+  /* Erase wipes both copies. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_a, 1U, true, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_erase_all());
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_dfu_boot_state_read(&out));
+
+  TEST_END("ra8_dfu: boot_state store read/write + torn/corrupt");
+}
+
 int main(void)
 {
   test_crc32_known_vectors();
@@ -286,5 +484,8 @@ int main(void)
   test_run_target_valid_mcdc();
   test_select_slot_mcdc();
   test_boot_decide_mcdc();
+  test_boot_state_valid_mcdc();
+  test_boot_state_pick_mcdc();
+  test_boot_state_store_torn_and_corrupt();
   return 0;
 }

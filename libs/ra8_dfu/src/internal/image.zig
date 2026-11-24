@@ -12,8 +12,8 @@ const std = @import("std");
 pub const layout = struct {
     /// MRAM program page (32 bytes); also the header size.
     pub const page_size: u32 = 0x0000_0020;
-    /// Largest image body a slot holds (slot size less the header page).
-    pub const img_max: u32 = 0x0006_FFE0;
+    /// Largest image body a slot holds (444 KiB slot less the 32B header page).
+    pub const img_max: u32 = 0x0006_EFE0;
     /// Valid-image header magic, "RA8D".
     pub const hdr_magic: u32 = 0x5241_3844;
     /// The fixed SRAM copy-to-run base every payload is linked at.

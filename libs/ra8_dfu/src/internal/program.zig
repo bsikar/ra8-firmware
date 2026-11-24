@@ -18,11 +18,11 @@ pub const slots = struct {
     /// Slot A base; the application vector table sits here.
     pub const a_base: u32 = 0x0202_0000;
     /// Slot B base.
-    pub const b_base: u32 = 0x0209_0000;
-    /// Bytes per slot (448 KiB), body plus the trailing header page.
-    pub const size: u32 = 0x0007_0000;
+    pub const b_base: u32 = 0x0208_F000;
+    /// Bytes per slot (444 KiB), body plus the trailing header page.
+    pub const size: u32 = 0x0006_F000;
     /// Header offset inside a slot: its last program page.
-    pub const hdr_offset: u32 = 0x0006_FFE0;
+    pub const hdr_offset: u32 = 0x0006_EFE0;
 };
 
 /// The byte every MRAM page holds once erased.

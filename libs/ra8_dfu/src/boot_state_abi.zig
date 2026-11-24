@@ -1,0 +1,163 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! C ABI membrane for `ra8_dfu_boot_state_*`: torn-write-safe dual-copy
+//! persistence of the trial boot-state record in dedicated code-MRAM pages
+//! (`0x020FE000`, `0x020FE020`) on target and an equivalent RAM shadow off target.
+
+const builtin = @import("builtin");
+const std = @import("std");
+const boot_state = @import("boot_state");
+const err = @import("err");
+const mram = @import("mram_port");
+const slot = @import("slot");
+
+const off_target = builtin.target.os.tag != .freestanding;
+
+/// Host RAM shadow backing the two 32-byte ping-pong pages.
+var shadow_copies: [boot_state.layout.copy_count][@sizeOf(boot_state.Record)]u8 align(@alignOf(boot_state.Record)) =
+    @splat(@splat(boot_state.layout.erased_byte));
+
+const ShadowFlash = struct {
+    pub fn programPage(_: ShadowFlash, addr: u32, erased: []const u8, body: []const u8) error{Flash}!void {
+        const idx: usize = switch (addr) {
+            boot_state.layout.copy0_addr => 0,
+            boot_state.layout.copy1_addr => 1,
+            else => return error.Flash,
+        };
+        @memcpy(&shadow_copies[idx], erased);
+        @memcpy(&shadow_copies[idx], body);
+    }
+};
+
+fn readCopies() struct { copy0: boot_state.Record, copy1: boot_state.Record } {
+    if (off_target) {
+        const c0: *const boot_state.Record = @ptrCast(&shadow_copies[0]);
+        const c1: *const boot_state.Record = @ptrCast(&shadow_copies[1]);
+        return .{ .copy0 = c0.*, .copy1 = c1.* };
+    }
+    const c0: *const volatile boot_state.Record = @ptrFromInt(boot_state.layout.copy0_addr);
+    const c1: *const volatile boot_state.Record = @ptrFromInt(boot_state.layout.copy1_addr);
+    return .{ .copy0 = c0.*, .copy1 = c1.* };
+}
+
+fn parseSlot(raw: u8) ?slot.Slot {
+    if (raw > @backingInt(slot.Slot.none)) return null;
+    return @fromBackingInt(@intCast(raw));
+}
+
+fn commitTargetMram(addr: u32, rec_bytes: []const u8) linksection(mram.sram_text) u16 {
+    const prep_err = mram.prepareWindow(boot_state.layout.base, boot_state.layout.window_end);
+    if (prep_err != err.Err.ok.raw()) return prep_err;
+    return mram.writePages(addr, rec_bytes);
+}
+
+fn eraseTargetMram() linksection(mram.sram_text) u16 {
+    const prep_err = mram.prepareWindow(boot_state.layout.base, boot_state.layout.window_end);
+    if (prep_err != err.Err.ok.raw()) return prep_err;
+    boot_state.eraseAll(mram.Mram{}) catch return mram.lastErr();
+    return err.Err.ok.raw();
+}
+
+export fn ra8_dfu_boot_state_valid(state_ptr: ?*const boot_state.Record) bool {
+    const state = state_ptr orelse return false;
+    return boot_state.isValid(state);
+}
+
+export fn ra8_dfu_boot_state_prepare(
+    trial_slot: u8,
+    tries_left: u8,
+    confirmed: bool,
+    slot_seq: u32,
+    write_seq: u32,
+    out_ptr: ?*boot_state.Record,
+) u16 {
+    const out = out_ptr orelse return err.Err.null_ptr.raw();
+    const s = parseSlot(trial_slot) orelse return err.Err.invalid_arg.raw();
+    const rec = boot_state.build(s, tries_left, confirmed, slot_seq, write_seq) catch {
+        return err.Err.invalid_arg.raw();
+    };
+    out.* = rec;
+    return err.Err.ok.raw();
+}
+
+export fn ra8_dfu_boot_state_pick(
+    copy0_ptr: ?*const boot_state.Record,
+    copy1_ptr: ?*const boot_state.Record,
+    out_ptr: ?*boot_state.Record,
+    out_copy_idx: ?*u8,
+) u16 {
+    const copy0 = copy0_ptr orelse return err.Err.null_ptr.raw();
+    const copy1 = copy1_ptr orelse return err.Err.null_ptr.raw();
+    const out = out_ptr orelse return err.Err.null_ptr.raw();
+
+    const picked = boot_state.pick(copy0, copy1) orelse return err.Err.not_found.raw();
+    out.* = picked.record;
+    if (out_copy_idx) |idx| {
+        idx.* = picked.copy_index;
+    }
+    return err.Err.ok.raw();
+}
+
+export fn ra8_dfu_boot_state_read(out_ptr: ?*boot_state.Record) u16 {
+    const out = out_ptr orelse return err.Err.null_ptr.raw();
+    const copies = readCopies();
+    const picked = boot_state.pick(&copies.copy0, &copies.copy1) orelse return err.Err.not_found.raw();
+    out.* = picked.record;
+    return err.Err.ok.raw();
+}
+
+export fn ra8_dfu_boot_state_write(
+    trial_slot: u8,
+    tries_left: u8,
+    confirmed: bool,
+    slot_seq: u32,
+) u16 {
+    const s = parseSlot(trial_slot) orelse return err.Err.invalid_arg.raw();
+    const copies = readCopies();
+    if (off_target) {
+        _ = boot_state.writeRecord(
+            ShadowFlash{},
+            &copies.copy0,
+            &copies.copy1,
+            s,
+            tries_left,
+            confirmed,
+            slot_seq,
+        ) catch return err.Err.hw_error.raw();
+        return err.Err.ok.raw();
+    }
+    const plan = boot_state.planWrite(&copies.copy0, &copies.copy1);
+    const rec = boot_state.build(s, tries_left, confirmed, slot_seq, plan.write_seq) catch {
+        return err.Err.invalid_arg.raw();
+    };
+    const addr = boot_state.copyAddr(plan.copy_index) catch return err.Err.invalid_arg.raw();
+    return commitTargetMram(addr, std.mem.asBytes(&rec));
+}
+
+export fn ra8_dfu_boot_state_erase_all() u16 {
+    if (off_target) {
+        boot_state.eraseAll(ShadowFlash{}) catch return err.Err.hw_error.raw();
+        return err.Err.ok.raw();
+    }
+    return eraseTargetMram();
+}
+
+comptime {
+    if (off_target) {
+        @export(&testCorruptCopy, .{ .name = "priv_dfu_boot_state_corrupt_copy" });
+        @export(&testResetStore, .{ .name = "priv_dfu_boot_state_reset_store" });
+    }
+}
+
+fn testCorruptCopy(copy_idx: u8, raw32: ?*const [@sizeOf(boot_state.Record)]u8) callconv(.c) u16 {
+    if (copy_idx >= boot_state.layout.copy_count) return err.Err.invalid_arg.raw();
+    const bytes = raw32 orelse return err.Err.null_ptr.raw();
+    @memcpy(&shadow_copies[copy_idx], bytes);
+    return err.Err.ok.raw();
+}
+
+fn testResetStore() callconv(.c) void {
+    @memset(&shadow_copies[0], boot_state.layout.erased_byte);
+    @memset(&shadow_copies[1], boot_state.layout.erased_byte);
+}

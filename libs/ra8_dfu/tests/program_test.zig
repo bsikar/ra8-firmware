@@ -47,7 +47,7 @@ fn recorder(writes: *std.ArrayList(Recorder.Write), seen: *usize, fail_on: ?usiz
 
 test "slot bases are the documented MRAM addresses" {
     try std.testing.expectEqual(@as(u32, 0x0202_0000), program.base(.a));
-    try std.testing.expectEqual(@as(u32, 0x0209_0000), program.base(.b));
+    try std.testing.expectEqual(@as(u32, 0x0208_F000), program.base(.b));
     try std.testing.expectEqual(@as(u32, 0), program.base(.none));
 }
 
