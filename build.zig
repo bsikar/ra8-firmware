@@ -16,6 +16,7 @@
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_launch.c
 //!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
+//!   ra8_update         libs/ra8_update/tests/src/test_update_abi.c
 //!
 //! Under CMake the same archives are produced by tests/cmake/zig_library.cmake
 //! shelling out to `zig build`, then linked into ra8_core_hal so the C suites
@@ -143,6 +144,12 @@ const slice = [_]SliceMember{
         // archive. That library picks its software stand-ins for a
         // host target on its own, so the suite links it unconditionally.
         .extra_dependency_names = &.{"ra8_psa_crypto"},
+    },
+    .{
+        .dependency_name = "ra8_update",
+        .artifact_name = "ra8_update",
+        .include_path = "libs/ra8_update/inc",
+        .c_suite_path = "libs/ra8_update/tests/src/test_update_abi.c",
     },
 };
 
