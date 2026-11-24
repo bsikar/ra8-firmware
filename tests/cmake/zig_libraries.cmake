@@ -332,6 +332,12 @@ set_target_properties(
              INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_modem_at/inc;${FW_ROOT}/libs/ra8_modem_at/src"
 )
 add_dependencies(ra8_zig::ra8_modem_at_test_helpers ra8_modem_at_test_helpers_zig_library)
+# GNU ld scans static archives once left-to-right; wrap the entire migrated Zig
+# archive set in one rescan group so cyclic cross-archive edges (e.g.
+# ra8_io <-> ra8_hal/ra8_c6link and jof -> ra8_jpeg) resolve cleanly.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_libraries("-Wl,--start-group")
+endif()
 link_libraries(ra8_zig::ra8_modem_at_test_helpers)
 
 ra8_add_zig_library(
@@ -1299,4 +1305,7 @@ ra8_add_zig_library(
   LIBRARY_NAME
   unarch_xz_pool
 )
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_libraries("-Wl,--end-group")
+endif()
 
