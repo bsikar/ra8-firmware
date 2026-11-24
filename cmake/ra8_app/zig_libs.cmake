@@ -312,6 +312,7 @@ function(
   _cache_mpu
   _mpu_via_hal
   _cache_via_hal
+  _cgc_before_tz
   _out_object
 )
   if(NOT RA8_ZIG_EXECUTABLE)
@@ -330,10 +331,10 @@ function(
   string(REPLACE "/" "_" _stem "${_stem}")
   # The unit reads `@import("boot_options")`, so the object is also keyed on
   # what that module says: one build per TrustZone setting (RA8FW-622) and per
-  # cache/MPU gate spelling (RA8FW-365). The Zig graph writes the same fields
-  # from cross_sources.BootOptions. The gates arrive as the RA8_APP_BOOT_*
-  # directory variables the app's CMakeLists set before ra8_add_app().
-  if(RA8_TRUSTZONE_ENABLE)
+  # cache/MPU/CGC-TZ gate spelling (RA8FW-365, RA8FW-309). The Zig graph
+  # writes the same fields from cross_sources.BootOptions. The gates arrive as
+  # the RA8_APP_BOOT_* directory variables set before ra8_add_app().
+  if(RA8_TRUSTZONE_ENABLE OR RA8_APP_BOOT_TRUST_ZONE)
     set(_tz tz)
     set(_tz_zig true)
   else()
@@ -357,16 +358,22 @@ function(
   else()
     set(_ch false)
   endif()
+  if(_cgc_before_tz)
+    set(_cbtz true)
+  else()
+    set(_cbtz false)
+  endif()
   set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/boot/${_board}/${_zig_cpu}/${_tz}")
   set(_object "${_dir}/${_stem}.o")
   set(_options "${_dir}/boot_options.zig")
-  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}")
+  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}_cbtz${_cbtz}")
   if(NOT _declared)
-    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}" ON)
+    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}_cbtz${_cbtz}" ON)
     file(WRITE "${_options}" "pub const trust_zone: bool = ${_tz_zig};\n"
     "pub const cache_mpu: bool = ${_cm};\n"
     "pub const mpu_via_hal: bool = ${_mh};\n"
-    "pub const cache_via_hal: bool = ${_ch};\n")
+    "pub const cache_via_hal: bool = ${_ch};\n"
+    "pub const cgc_before_tz: bool = ${_cbtz};\n")
     set(_source "${_board_dir}/src/boot/${_unit}")
     set(_module_flags -target ${_zig_target} -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE}
                       -fno-unwind-tables

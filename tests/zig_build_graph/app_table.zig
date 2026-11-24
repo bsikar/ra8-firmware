@@ -178,14 +178,16 @@ pub const CrossApp = struct {
     /// one of the app's translation units and to its link; see
     /// arm_flags.trust_zone for what each of those actually buys.
     trust_zone: bool = false,
-    /// The app's spellings of the three per-app boot gates, which its own
-    /// CMakeLists carry as target_compile_definitions today:
-    /// RA8_BOOT_ENABLE_CACHE_MPU, RA8_BOOT_MPU_VIA_HAL and
-    /// RA8_BOOT_CACHE_VIA_HAL. They reach the Zig boot units the same way
-    /// trust_zone does, as boot_options fields (RA8FW-365).
+    /// The app's spellings of the four per-app boot gates, which its own
+    /// CMakeLists carry as target_compile_definitions / RA8_APP_BOOT_* today:
+    /// RA8_BOOT_ENABLE_CACHE_MPU, RA8_BOOT_MPU_VIA_HAL,
+    /// RA8_BOOT_CACHE_VIA_HAL, and RA8_APP_BOOT_CGC_BEFORE_TZ. They reach the
+    /// Zig boot units the same way trust_zone does, as boot_options fields
+    /// (RA8FW-365, RA8FW-309).
     cache_mpu: bool = false,
     mpu_via_hal: bool = false,
     cache_via_hal: bool = false,
+    cgc_before_tz: bool = false,
     /// The CMSE import library the app's own CMakeLists asks the link to
     /// emit, named as the file name CMake gives it. Null for every app that
     /// is not the secure half of a two-project TrustZone build.
@@ -647,9 +649,9 @@ pub const cross_apps = [_]CrossApp{
         // one is the app-local glob rule taking an arm nothing else in
         // the table takes -- the app keeps a THIRD unit under its own src/
         // and names only src/cpu1_main.c in AUX_SRCS, so ns_main.c belongs to
-        // the M85 image even though its name says otherwise. src/system_init.c
-        // and src/trustzone_init.c override two board boot units, the same
-        // pair tz_nsc_cgc_usb overrides.
+        // ns_main.c belongs to the M85 image even though its name says otherwise.
+        // Only src/trustzone_init.c overrides the board (dual-core IPCSAR +
+        // CPU1 release); SystemInit comes from libs/ra8_board_ek_ra8d2/src/boot/.
         //
         // It links no migrated Zig archive, so the unwind-table link failure
         // does not block it.

@@ -20,7 +20,7 @@
  * separate 64 KiB block -- so the bytes at 0x22100000 are backed by the same
  * physical SRAM on both sides with no overlap.
  *
- * Coherency: this app's `system_init.c` leaves the M85 data cache OFF, so a
+ * Coherency: default board boot leaves the M85 data cache OFF, so a
  * store from one core is visible to the other once a `dsb` has drained the
  * write buffer; no cache clean / invalidate dance is needed. The fields are
  * `volatile` so the compiler emits a real load/store on every access.

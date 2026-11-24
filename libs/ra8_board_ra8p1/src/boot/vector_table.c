@@ -5,12 +5,12 @@
  * @par Tag
  * [Ring 1 / Boot] {World: S}
  *
- * @note RA8P1 board layer (issue RA8FW-260): this chip-boot TU is byte-identical to
- *       the EK-RA8D2 copy. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 Cortex-M85
- *       vector layout and IRQ event numbering (see libs/ra8_core/inc/ra8_device.h),
- *       so the vector table is common. The RA8P1 foundation apps
- *       (examples/ra8p1_foundation) currently override this with an app-local
- *       vector_table.c; this canonical copy serves future RA8P1 apps that do not.
+ * @note RA8P1 board layer (issue RA8FW-260): shares the EK-RA8D2 Cortex-M85 vector
+ *       layout and IRQ event numbering (see libs/ra8_core/inc/ra8_device.h).
+ *       Updated in RA8FW-309 so peripheral IRQ trampolines forward through
+ *       `ra8_isr_dispatch()` just like EK-RA8D2, allowing RA8P1 applications
+ *       such as `npu_infer` to register IRQs without carrying an app-local
+ *       `vector_table.c` override.
  *
  * @details
  * Emits the interrupt vector table that the Cortex-M85 reads at reset
@@ -19,9 +19,12 @@
  * the standard ARM core exceptions. Slots 16+ are peripheral IRQs
  * routed through the ICU's IELSR table.
  *
- * Every handler is declared weak and aliased to `Default_Handler`, so
- * application code can override any of them by declaring a non-weak
- * function with the same name.
+ * Core exceptions (other than the decoded fault handlers) are declared weak and
+ * aliased to `Default_Handler`, while every peripheral IRQ trampoline forwards
+ * to the `ra8_isr` substrate dispatcher (`ra8_isr_dispatch`) so a driver that
+ * armed a line through `ra8_isr_register` runs its `(handler, ctx)` pair in
+ * NVIC handler-mode. Any single handler can still be overridden by declaring
+ * a non-weak function with the same name.
  *
  * ## Linker-provided symbols
  *
@@ -38,6 +41,7 @@
 
 #include "ra8_boot_entry.h"
 #include "ra8_exception.h"
+#include "ra8_isr.h"
 #include "ra8_lpm_safe_boot.h"
 
 /* =============================================================================
@@ -68,18 +72,21 @@ typedef void (*exc_handler_t)(void);
 
 void Reset_Handler(void);
 
-void HardFault_Handler(void);
+[[gnu::weak]] void HardFault_Handler(void);
 
-void MemManage_Handler(void);
+[[gnu::weak]] void MemManage_Handler(void);
 
-void BusFault_Handler(void);
+[[gnu::weak]] void BusFault_Handler(void);
 
-void UsageFault_Handler(void);
+[[gnu::weak]] void UsageFault_Handler(void);
 
 /* Core exceptions (Cortex-M85). HardFault / MemManage / BusFault /
  * UsageFault each get a dedicated naked trampoline below which
- * forwards to ra8_exception_report(). The rest are weak-aliased to
- * Default_Handler and may be overridden by application code.
+ * forwards to ra8_exception_report(). Those four are weak, not
+ * weak-aliased: an app that needs to resolve a fault rather than
+ * report it supplies its own strong definition and the trampoline
+ * drops out. The rest are weak-aliased to Default_Handler and may be
+ * overridden the same way.
  *
  * Mach-O (macOS host) does not support `__attribute__((alias(...)))`.
  * On the host syntax-check / unit-test build we drop the alias and
@@ -120,23 +127,39 @@ extern void SysTick_Handler(void);
  * =============================================================================
  *
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
- * to the NVIC (per HUM table 13.x). We declare them all weak-aliased
- * to Default_Handler so a driver can override any single one.
+ * to the NVIC (per HUM table 13.x).
+ *
+ * Each peripheral IRQ vector forwards to ra8_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra8_isr_register)
+ * runs in NVIC handler-mode. Slots that were never registered land in
+ * the dispatcher's bounds-checked no-op path. The trampolines are
+ * weak so a driver can still install a fully-custom IRQ handler by
+ * defining a non-weak ``IRQ<n>_Handler``. HUM Ch 13 NVIC + Ch 14 ICU
+ * IELSR.
  */
 
 enum : uint16_t {
   k_ra8_irq_count = 112U, /**< RA8 IRQ count. */
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+/* On Apple host syntax-check we drop ra8_isr_dispatch (the host build
+ * never branches through these vectors) and keep only a weak empty
+ * body so the `&IRQn_Handler` references in the table are well-formed. */
 #ifndef __APPLE__
 /** @brief RA8 IRQ STUB. */
-#define RA8_IRQ_STUB(n) [[gnu::weak, gnu::alias("Default_Handler")]] void IRQ##n##_Handler(void)
+#define RA8_IRQ_STUB(n)                                                                            \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
+  {                                                                                                \
+    ra8_isr_dispatch((uint16_t)(n));                                                               \
+  }                                                                                                \
+  static_assert(1, "ra8_irq_stub_" #n)
 #else
 /** @brief RA8 IRQ STUB. */
-#define RA8_IRQ_STUB(n) [[gnu::weak]] void IRQ##n##_Handler(void)
+#define RA8_IRQ_STUB(n)                                                                            \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
+  static_assert(1, "ra8_irq_stub_" #n)
 #endif
 
 RA8_IRQ_STUB(0);
@@ -501,7 +524,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void HardFault_Handler(void)
+[[gnu::weak, gnu::naked, noreturn]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -567,7 +590,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void UsageFault_Handler(void)
+[[gnu::weak, gnu::naked, noreturn]] void UsageFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
