@@ -166,7 +166,7 @@ test "24 MHz off 240 MHz PCLKD programs a 10-count period at half duty" {
     try std.testing.expectEqual(true, seen_output_enable);
 
     try std.testing.expectEqual(0x0501, seen_route_pin);
-    try std.testing.expectEqual(0x02, seen_psel);
+    try std.testing.expectEqual(0x03, seen_psel);
     try std.testing.expectEqualStrings("board.camera.xclk", std.mem.span(seen_owner));
 
     try std.testing.expectEqual(0x0501, seen_drive_pin);
@@ -206,4 +206,12 @@ test "the drive-strength result is the call's result" {
     drive_err = Err.not_found;
     try std.testing.expectEqual(Err.not_found, camera_xclk.start(24_000_000));
     try std.testing.expectEqual(5, steps);
+}
+
+test "XCLK routes P501 to GTIOC timer I/O (PSEL 0x03, not trigger 0x02)" {
+    reset();
+    try std.testing.expectEqual(Err.ok, camera_xclk.start(12_000_000));
+    try std.testing.expectEqual(@as(u16, 0x0501), seen_route_pin);
+    try std.testing.expectEqual(@as(u32, 0x03), seen_psel);
+    try std.testing.expect(seen_psel != 0x02);
 }
