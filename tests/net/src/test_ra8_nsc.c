@@ -234,8 +234,9 @@ static void internal_test_eth_recv_validates_args(void)
  *
  * @details Binds the ``ra8_net_pal`` backend of the ``ra8_io_netif`` seam,
  *          points the ethernet veneers at it with ``ra8_nsc_eth_bind``, sends
- *          a frame and polls an empty ring through the seam, then unbinds and
- *          verifies the direct-PAL fallback still queues a frame. The net_pal
+ *          a frame and drains the queued loopback frame plus an empty-ring
+ *          poll through the seam, then unbinds and verifies the direct-PAL
+ *          fallback routes send and receive over the same ring. The net_pal
  *          backend trampolines to the same PAL singleton, so both paths must
  *          behave identically.
  *
@@ -255,15 +256,28 @@ static void internal_test_eth_bound_seam(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_bind(&netif));
 
   uint8_t frame[k_t_buf_cap] = {};
+  frame[0]                   = 0x5AU;
+  frame[k_t_buf_cap - 1U]    = 0xA5U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
 
   uint8_t  buf[k_ra8_nsc_eth_frame_max] = {};
   uint16_t len                          = (uint16_t)k_ra8_nsc_eth_frame_max;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_recv(buf, &len));
+  TEST_ASSERT_EQ((uint16_t)sizeof(frame), len);
+  TEST_ASSERT_EQ((uint8_t)0x5AU, buf[0]);
+  TEST_ASSERT_EQ((uint8_t)0xA5U, buf[k_t_buf_cap - 1U]);
+
+  len = (uint16_t)k_ra8_nsc_eth_frame_max;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_nsc_eth_recv(buf, &len));
 
   /* Unbind restores the direct-PAL fallback; same observable behavior. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_bind(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
+  len = (uint16_t)k_ra8_nsc_eth_frame_max;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_eth_recv(buf, &len));
+  TEST_ASSERT_EQ((uint16_t)sizeof(frame), len);
+  len = (uint16_t)k_ra8_nsc_eth_frame_max;
+  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_nsc_eth_recv(buf, &len));
   TEST_END("ra8_nsc_eth: bound seam forwards through ra8_io_netif");
 }
 
