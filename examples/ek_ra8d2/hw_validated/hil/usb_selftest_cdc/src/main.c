@@ -72,6 +72,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
@@ -466,68 +467,47 @@ static VOID cdc_deactivate(VOID* cdc_instance)
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT cdc_usbx_stack_up(void)
+static ra8_err_t cdc_usb_open(void)
 {
   if (cdc_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+    return k_ra8_err_invalid_arg;
   }
-  if (_ux_system_initialize(s_usbx_pool, k_cdc_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     (UCHAR*)s_device_framework_fs,
-                                     (ULONG)s_device_framework_len,
-                                     (UCHAR*)s_string_framework,
-                                     (ULONG)s_string_framework_len,
-                                     (UCHAR*)s_language_id_framework,
-                                     (ULONG)s_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
- * @brief Register the CDC-ACM class against configuration 1, interface 0.
- *
- * @details Binds ::cdc_activate / ::cdc_deactivate so the worker learns
- * when the host has configured the device. The comm + data interfaces are
- * described by the device framework (IAD composite).
- *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ::cdc_usbx_stack_up has succeeded.
- * @pre ::cdc_activate / ::cdc_deactivate are defined.
- * @post The CDC-ACM class is bound; the activate callback will fire on
- *       SET_CONFIGURATION.
- * @post No other class is registered.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT cdc_class_register(void)
-{
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
-  static UCHAR s_class_name[] = "ux_slave_class_cdc_acm";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_cdc_acm_entry,
-                                         1,
-                                         0,
-                                         &cdc_params);
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_cdc_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_cdc_acm(),
+    .class_param   = &cdc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
  * @brief One device echo iteration: read a bulk-OUT chunk, write it back.
  *
  * @details Pins CONFIGURED (DVSQ-poll race guard), then
- * `_ux_device_class_cdc_acm_read` (blocks for the host's bulk-OUT, returns
- * on the short packet) -> `_ux_device_class_cdc_acm_write` (stages the same
- * bytes on bulk-IN). This rides the normal device bulk-OUT receive path the
- * WRITE(10) driver fix repaired, NOT the DCD ISR auto-echo.
+ * `ux_device_port_cdc_read` -> `ux_device_port_cdc_write`.
  *
  * @param[in,out] buf Scratch buffer for one chunk.
  * @param[in]     cap Capacity of @p buf in bytes.
@@ -546,19 +526,19 @@ static void cdc_echo_iter(UCHAR* buf, ULONG cap)
     _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
-  ULONG n = 0UL;
-  if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n) != UX_SUCCESS) {
+  uint32_t n = 0U;
+  if (ux_device_port_cdc_read(s_cdc_acm, buf, (uint32_t)cap, &n) != k_ra8_ok) {
     tx_thread_sleep(1U);
     return;
   }
-  if (n == 0UL) {
+  if (n == 0U) {
     return;
   }
-  if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+  if (ux_device_port_cdc_write(s_cdc_acm, buf, n, &n) != k_ra8_ok) {
     return;
   }
   s_dbg_dev_echo_calls++;
-  s_dbg_dev_last_len = (uint32_t)n;
+  s_dbg_dev_last_len = n;
   (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
@@ -583,19 +563,13 @@ static VOID cdc_device_worker(ULONG arg)
 {
   (void)arg;
 
-  UINT ux = cdc_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_cdc_dev_step_stack;
-  ux             = cdc_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
+  ra8_err_t e = cdc_usb_open();
+  if (e != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_cdc_dev_step_class;
-  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  e              = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
   if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;

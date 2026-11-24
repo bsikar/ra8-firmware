@@ -1335,6 +1335,11 @@
           "name": "ra8_usb_device_compose",
           "calling_context": "task-safe-reentrant",
           "ownership": "Dispatches one class entry to its descriptor builder and encodes the string and LANGID frameworks beside it; retains no pointer, and the caller owns the three buffers and the strings the device names."
+        },
+        {
+          "name": "ra8_usb_device_open",
+          "calling_context": "boot-only",
+          "ownership": "Validates caller-owned open configuration, composes frameworks into caller buffers when device_cfg is set, and dispatches caller-owned stack ops without retaining pointers."
         }
       ],
       "public_headers": [
@@ -1353,14 +1358,19 @@
         },
         {
           "path": "libs/ra8_usb_pal/inc/ra8_usb_compose.h",
-          "compatibility_sha256": "5b6648105f08b839bedffaf0aa8af4b20283413c091cf49f8b8cf4464787162e",
+          "compatibility_sha256": "50df6f9e15c49e736e367657b644dff69c56461effd4fed81e6bc31face09b73",
           "layout_assertions": [
             "@offsetOf(CClass, \"body\") == 2",
             "@sizeOf(CClass) == 14",
             "@sizeOf(CClassBody) == 12",
             "@offsetOf(CConfig, \"class_count\") == 2 * pointer_bytes",
             "@offsetOf(CFrameworks, \"device_cap\") == pointer_bytes",
-            "compose.Limits.classes_max == 1"
+            "compose.Limits.classes_max == 1",
+            "@sizeOf(CClassDriver) == 2 * pointer_bytes",
+            "@sizeOf(CStackOps) == 5 * pointer_bytes",
+            "@offsetOf(COpenConfig, \"pool\") == 8",
+            "@offsetOf(COpenConfig, \"error_cb\") == 8 + 7 * pointer_bytes",
+            "@offsetOf(COpenConfig, \"hs_device_framework_len\") == 8 + 8 * pointer_bytes"
           ],
           "symbol_prefix": "ra8_usb_device_"
         }
@@ -1374,6 +1384,12 @@
         },
         {
           "path": "libs/ra8_usb_pal/src/ra8_usb_compose_abi.zig",
+          "symbol_prefixes": [
+            "ra8_usb_device_"
+          ]
+        },
+        {
+          "path": "libs/ra8_usb_pal/src/ra8_usb_device_open_abi.zig",
           "symbol_prefixes": [
             "ra8_usb_device_"
           ]

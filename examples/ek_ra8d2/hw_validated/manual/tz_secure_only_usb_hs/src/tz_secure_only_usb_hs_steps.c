@@ -33,6 +33,7 @@
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
 #include "ra8_usb_regs.h"
 
 /** @brief USBHS security/privilege attribution register addresses. */
@@ -53,6 +54,7 @@ typedef enum : uint32_t {
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
@@ -372,81 +374,61 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Bring up USBX system + device stack with HS+FS frameworks.
+ * @brief Bring up USBX system + device stack with HS+FS frameworks and register CDC-ACM.
  *
  * @details
- * Synthesises the frameworks, initializes the USBX memory pool, then
- * registers both HS and FS device frameworks. With the PHY CLKSEL=24 fix landed (see
- * ra8_usb.c::internal_usbhs_phy_bringup), the HS chirp completes correctly
- * and the host expects HS-conformant descriptors with 512-byte bulk MPS.
+ * Synthesises both frameworks, then opens the HS device stack and registers
+ * CDC-ACM against configuration 1, interface 0 via ``ra8_usb_device_open``.
  * USBX picks the framework matching the negotiated bus speed
  * (RHST=011 -> HS framework, RHST=010 -> FS framework).
  *
  * @return true on success, false on any USBX failure.
- * @retval true Both system and device stacks initialized.
- * @retval false A framework encode, ``_ux_system_initialize`` or
- *               ``_ux_device_stack_initialize`` failed.
+ * @retval true Stack initialised and CDC-ACM registered.
+ * @retval false Framework encode or ``ra8_usb_device_open`` failed.
  *
  * @pre USBX pool storage exists and is sized k_demo_usbx_pool_bytes.
- * @post On success, the USBX stack is ready for class registration.
+ * @post On success, the device stack is ready for ``ux_dcd_ra8_usb_initialize``.
  *
  * @note Not thread-safe; called only from ``demo_worker``.
  * @since 0.1.0
  */
-static bool demo_worker_usbx_init(void)
+static bool demo_worker_usb_open(void)
 {
   if (tz_secure_only_usb_hs_build_frameworks() != k_ra8_ok) {
     return false;
   }
-  s_boot_probe = (uint32_t)k_boot_probe_pre_sys_init;
-  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return false;
-  }
-  s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
-  return _ux_device_stack_initialize(s_tz_secure_only_usb_hs_device_framework_hs,
-                                     (ULONG)s_tz_secure_only_usb_hs_device_framework_hs_len,
-                                     s_tz_secure_only_usb_hs_device_framework_fs,
-                                     (ULONG)s_tz_secure_only_usb_hs_device_framework_fs_len,
-                                     s_tz_secure_only_usb_hs_string_framework,
-                                     (ULONG)s_tz_secure_only_usb_hs_string_framework_len,
-                                     s_tz_secure_only_usb_hs_language_id_framework,
-                                     (ULONG)s_tz_secure_only_usb_hs_language_id_framework_len,
-                                     UX_NULL) == UX_SUCCESS;
-}
-
-/**
- * @brief Register the CDC-ACM class against configuration 1, interface 0.
- *
- * @details
- * Wires the activate/deactivate callbacks so ``s_cdc_acm`` tracks the
- * live class instance. Must be called after the device stack has been
- * initialized and before ``ux_dcd_ra8_usb_initialize``.
- *
- * @return true on success, false on USBX failure.
- * @retval true CDC-ACM class registered.
- * @retval false ``_ux_device_stack_class_register`` failed.
- *
- * @pre ``demo_worker_usbx_init`` returned true.
- * @post CDC-ACM class is bound to configuration 1, interface 0.
- *
- * @note Not thread-safe; called only from ``demo_worker``.
- * @since 0.1.0
- */
-static bool demo_worker_register_cdc(void)
-{
-  static UCHAR s_class_name[] = "ux_slave_class_cdc_acm";
-
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_tz_secure_only_usb_hs_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
+    .device_len  = s_tz_secure_only_usb_hs_device_framework_fs_len,
+    .strings     = s_tz_secure_only_usb_hs_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_tz_secure_only_usb_hs_string_framework),
+    .strings_len = s_tz_secure_only_usb_hs_string_framework_len,
+    .langid      = s_tz_secure_only_usb_hs_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_language_id_framework),
+    .langid_len  = s_tz_secure_only_usb_hs_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port                    = k_ra8_usb_device_port_hs,
+    .configuration           = 1U,
+    .interface               = 0U,
+    .pool_bytes              = (uint32_t)k_demo_usbx_pool_bytes,
+    .pool                    = s_usbx_pool,
+    .device_cfg              = nullptr,
+    .frameworks              = &fw,
+    .hs_device_framework     = s_tz_secure_only_usb_hs_device_framework_hs,
+    .hs_device_framework_len = s_tz_secure_only_usb_hs_device_framework_hs_len,
+    .ops                     = ux_device_port_stack_ops(),
+    .class_driver            = ux_device_port_class_cdc_acm(),
+    .class_param             = &cdc_params,
+  };
   s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_cdc_acm_entry,
-                                         1, /* configuration # */
-                                         0, /* interface #     */
-                                         &cdc_params) == UX_SUCCESS;
+  return ra8_usb_device_open(&cfg) == k_ra8_ok;
 }
 
 /**
@@ -575,7 +557,6 @@ static void demo_worker_capture_echo_probes(void)
 static void demo_worker_echo_loop(void)
 {
   UCHAR buf[k_demo_echo_buf_bytes];
-  ULONG n = 0UL;
   while (1) {
     s_demo_diag.loop_iter++;
     UX_SLAVE_CLASS_CDC_ACM* cdc_snap = (UX_SLAVE_CLASS_CDC_ACM*)s_cdc_acm;
@@ -596,23 +577,25 @@ static void demo_worker_echo_loop(void)
         (unsigned long)UX_DEVICE_CONFIGURED;
     }
     s_demo_diag.loop_pre_read++;
-    UINT read_status = _ux_device_class_cdc_acm_read(cdc_snap, buf, sizeof(buf), &n);
+    uint32_t  n           = 0U;
+    ra8_err_t read_status = ux_device_port_cdc_read(cdc_snap, buf, (uint32_t)sizeof(buf), &n);
     s_demo_diag.loop_post_read++;
-    if (read_status != UX_SUCCESS) {
+    if (read_status != k_ra8_ok) {
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
     }
     s_demo_diag.loop_read_ok++;
-    if (n == 0UL) {
+    if (n == 0U) {
       s_demo_diag.loop_read_zero++;
       continue;
     }
     s_demo_diag.loop_pre_write++;
-    if (_ux_device_class_cdc_acm_write(cdc_snap, buf, n, &n) != UX_SUCCESS) {
+    uint32_t written = 0U;
+    if (ux_device_port_cdc_write(cdc_snap, buf, n, &written) != k_ra8_ok) {
       continue;
     }
     s_demo_diag.loop_post_write++;
-    for (ULONG i = 0UL; i < n; i++) {
+    for (uint32_t i = 0U; i < written; i++) {
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
   }
@@ -634,10 +617,7 @@ static VOID demo_worker(ULONG arg)
   (void)arg;
 
   s_boot_probe = (uint32_t)k_boot_probe_thread_entry;
-  if (!demo_worker_usbx_init()) {
-    return;
-  }
-  if (!demo_worker_register_cdc()) {
+  if (!demo_worker_usb_open()) {
     return;
   }
   if (!demo_worker_start_dcd()) {

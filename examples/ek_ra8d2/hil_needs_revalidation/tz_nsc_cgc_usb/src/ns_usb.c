@@ -51,6 +51,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
@@ -444,60 +445,50 @@ static VOID ns_cdc_deactivate(VOID* cdc_instance)
  */
 
 /**
- * @brief Synthesise the frameworks, then bring the USBX system + device stack up.
- * @return UINT ``UX_SUCCESS`` on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Stack initialised; class registrations accepted.
+ * @brief Synthesise frameworks, bring USBX stack up, and register CDC-ACM.
+ * @return ra8_err_t ``k_ra8_ok`` on success, propagated error otherwise.
+ * @retval k_ra8_ok Stack initialised and CDC-ACM registered on config 1, iface 0.
  * @pre The USBX pool ::s_ns_usbx_pool is zeroed NS RAM.
  * @pre Called from the worker thread (USBX needs ThreadX services).
- * @post On success the device stack accepts class registration.
- * @post On failure USBX state is undefined; caller bails.
+ * @post On success the CDC-ACM class is bound; activate posts ::g_tz_usb_configured.
+ * @post On failure caller bails.
  * @note Single call; not idempotent.
  * @since 0.1.0
  */
-static UINT ns_usbx_stack_up(void)
+static ra8_err_t ns_usb_open(void)
 {
   if (ns_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+    return k_ra8_err_invalid_arg;
   }
-  if (_ux_system_initialize(s_ns_usbx_pool, (ULONG)k_ns_usb_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     s_ns_device_framework_fs,
-                                     (ULONG)s_ns_device_framework_fs_len,
-                                     s_ns_string_framework,
-                                     (ULONG)s_ns_string_framework_len,
-                                     s_ns_language_id_framework,
-                                     (ULONG)s_ns_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
- * @brief Register the CDC-ACM class against the device-stack configuration.
- * @return UINT ``UX_SUCCESS`` on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered against configuration 1, interface 0.
- * @pre ::ns_usbx_stack_up has succeeded.
- * @pre ::ns_cdc_activate / ::ns_cdc_deactivate are defined.
- * @post The CDC-ACM class is bound; activate posts ::g_tz_usb_configured.
- * @post Read/write endpoints become available after activation.
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT ns_cdc_class_register(void)
-{
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_ns_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_ns_device_framework_fs),
+    .device_len  = s_ns_device_framework_fs_len,
+    .strings     = s_ns_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_ns_string_framework),
+    .strings_len = s_ns_string_framework_len,
+    .langid      = s_ns_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_ns_language_id_framework),
+    .langid_len  = s_ns_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = ns_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = ns_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
-  /* (UCHAR*)(uintptr_t): USBX takes a non-const class name; the uintptr_t hop
-   * launders the string-literal const without tripping -Wcast-qual. */
-  return _ux_device_stack_class_register((UCHAR*)(uintptr_t)"ux_slave_class_cdc_acm",
-                                         _ux_device_class_cdc_acm_entry,
-                                         1,
-                                         0,
-                                         &cdc_params);
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_ns_usb_pool_bytes,
+    .pool          = s_ns_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_cdc_acm(),
+    .class_param   = &cdc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /* =============================================================================
@@ -522,12 +513,7 @@ static VOID ns_usb_worker(ULONG arg)
 {
   (void)arg;
 
-  if (ns_usbx_stack_up() != UX_SUCCESS) {
-    return;
-  }
-  g_tz_usb_state = (uint32_t)k_tz_usb_state_stack_up;
-
-  if (ns_cdc_class_register() != UX_SUCCESS) {
+  if (ns_usb_open() != k_ra8_ok) {
     return;
   }
   g_tz_usb_state = (uint32_t)k_tz_usb_state_cdc_ready;

@@ -68,6 +68,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
@@ -183,10 +184,9 @@ static UCHAR s_usbx_pool[k_wlun_usbx_pool_bytes];
 static UCHAR s_msc_vendor_id[]   = "RA8D2   ";
 static UCHAR s_msc_product_id[]  = "WRITABLE-RAM RW ";
 static UCHAR s_msc_product_rev[] = "0001";
-/** @brief Persistent mutable names retained by USBX and ThreadX. */
-static UCHAR s_msc_class_name[]     = "ux_slave_class_storage";
-static CHAR  s_device_thread_name[] = "wlun_device";
-static CHAR  s_host_thread_name[]   = "wlun_host";
+/** @brief Persistent mutable names retained by ThreadX. */
+static CHAR s_device_thread_name[] = "wlun_device";
+static CHAR s_host_thread_name[]   = "wlun_host";
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes */
@@ -537,41 +537,6 @@ static UINT wlun_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Bring USBX system + device stack up with the MSC framework.
- *
- * @details One-shot USBX pool + device-stack init (FS-only framework).
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
- *
- * @pre File-scope pool reserved.
- * @pre Thread context.
- * @post Device stack accepts class registrations.
- * @post On failure USBX state is undefined.
- *
- * @note Single-call; not idempotent.
- * @since 0.1.0
- */
-static UINT wlun_usbx_stack_up(void)
-{
-  if (_ux_system_initialize(s_usbx_pool, k_wlun_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  if (demo_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     (UCHAR*)s_device_framework_fs,
-                                     (ULONG)s_device_framework_len,
-                                     (UCHAR*)s_string_framework,
-                                     (ULONG)s_string_framework_len,
-                                     (UCHAR*)s_language_id_framework,
-                                     (ULONG)s_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
  * @brief Populate the writable LUN parameter slot with geometry + callbacks.
  *
  * @details The LUN is a writable FAT-disk-typed,
@@ -586,7 +551,7 @@ static UINT wlun_usbx_stack_up(void)
  * @post Slot @p idx carries the geometry + media callbacks.
  * @post No other slot is touched.
  *
- * @note Helper to keep the register function within the size cap.
+ * @note Helper to keep the open function within the size cap.
  * @since 0.1.0
  */
 static void wlun_fill_lun(UX_SLAVE_CLASS_STORAGE_PARAMETER* p, uint32_t idx)
@@ -608,25 +573,31 @@ static void wlun_fill_lun(UX_SLAVE_CLASS_STORAGE_PARAMETER* p, uint32_t idx)
 }
 
 /**
- * @brief Register the Mass-Storage class with one writable LUN.
+ * @brief Builds USB frameworks, opens the FS USBX stack, and binds MSC.
  *
- * @details Sets ``number_lun`` = 1 and fills the LUN slot via
- * ::wlun_fill_lun, so the host's GET_MAX_LUN returns 0. One is the
- * single writable unit this self-loop exercises.
+ * @details Uses ::ra8_usb_device_open with ::ux_device_port_stack_ops to run
+ * pool init, FS stack setup, and single-LUN writable MSC class registration
+ * (``number_lun`` = 1, so GET_MAX_LUN reports 0).
  *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Class registered.
+ * @return ``k_ra8_ok`` on success, negative error code otherwise.
+ * @retval k_ra8_ok Stack initialized and writable MSC class registered.
  *
- * @pre ::wlun_usbx_stack_up has succeeded.
+ * @pre File-scope pool reserved.
  * @pre Media callbacks are defined.
  * @post MSC class bound to configuration 1, interface 0, with 1 LUN.
  * @post GET_MAX_LUN will report 0.
+ * @post On failure USBX state is undefined.
  *
- * @note Not re-entrant.
+ * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT wlun_class_register(void)
+static ra8_err_t wlun_usb_open(void)
 {
+  const ra8_err_t built = demo_usb_build_frameworks();
+  if (built != k_ra8_ok) {
+    return built;
+  }
+
   UX_SLAVE_CLASS_STORAGE_PARAMETER msc_params;
   (void)memset(&msc_params, 0, sizeof(msc_params));
   msc_params.ux_slave_class_storage_parameter_number_lun  = (ULONG)k_wlun_count;
@@ -636,11 +607,31 @@ static UINT wlun_class_register(void)
   for (uint32_t idx = 0U; idx < (uint32_t)k_wlun_count; idx++) {
     wlun_fill_lun(&msc_params, idx);
   }
-  return _ux_device_stack_class_register(s_msc_class_name,
-                                         _ux_device_class_storage_entry,
-                                         1,
-                                         0,
-                                         &msc_params);
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_wlun_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_msc(),
+    .class_param   = &msc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -664,19 +655,13 @@ static VOID wlun_device_worker(ULONG arg)
 {
   (void)arg;
 
-  UINT ux = wlun_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_wlun_dev_step_stack;
-  ux             = wlun_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
+  ra8_err_t e = wlun_usb_open();
+  if (e != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_wlun_dev_step_class;
-  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  e              = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
   if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;

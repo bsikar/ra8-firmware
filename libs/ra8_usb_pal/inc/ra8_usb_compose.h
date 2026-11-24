@@ -168,6 +168,145 @@ typedef struct {
 [[nodiscard]] ra8_err_t ra8_usb_device_compose(const ra8_usb_device_cfg_t*  cfg,
                                                ra8_usb_device_frameworks_t* fw);
 
+/**
+ * @enum ra8_usb_device_port_t
+ * @brief USB device controller port selection passed to ::ra8_usb_device_open.
+ *
+ * @details Binary-compatible with ``ra8_board_usb_port_t`` (0=FS, 1=HS) without
+ * binding this PAL header to a board-support package header.
+ */
+typedef enum : uint8_t {
+  k_ra8_usb_device_port_fs = 0U, /**< Full-speed USBFS controller. */
+  k_ra8_usb_device_port_hs = 1U, /**< High-speed USBHS controller. */
+} ra8_usb_device_port_t;
+
+/**
+ * @typedef ra8_usb_device_error_cb_t
+ * @brief Stack error notification callback passed through ::ra8_usb_device_open.
+ *
+ * @param[in] system_level   Stack subsystem severity level.
+ * @param[in] system_context Stack error origin context.
+ * @param[in] error_code     Underlying stack error code.
+ */
+typedef void (*ra8_usb_device_error_cb_t)(uint32_t system_level,
+                                          uint32_t system_context,
+                                          uint32_t error_code);
+
+/**
+ * @typedef ra8_usb_device_class_entry_fn_t
+ * @brief Opaque stack class entry callback signature.
+ *
+ * @param[in,out] command Class command block passed by the device stack.
+ * @return uint32_t Zero on success, non-zero stack status on failure.
+ */
+typedef uint32_t (*ra8_usb_device_class_entry_fn_t)(void* command);
+
+/**
+ * @struct ra8_usb_device_class_driver_t
+ * @brief Bound device class name and entry point supplied by a stack port.
+ */
+typedef struct {
+  const char*                     name;  /**< NUL-terminated class name for registration. */
+  ra8_usb_device_class_entry_fn_t entry; /**< Class stack entry function.                 */
+} ra8_usb_device_class_driver_t;
+
+/**
+ * @struct ra8_usb_stack_ops_t
+ * @brief Stack-agnostic seam ops implemented by the active USB device port.
+ *
+ * @details
+ * Keeps ``libs/ra8_usb_pal`` free of middleware symbols while letting
+ * ::ra8_usb_device_open own configuration checks, descriptor composition,
+ * and strict bring-up ordering: system pool init -> optional error callback ->
+ * device stack init -> class registration -> optional DCD controller open.
+ *
+ * @invariant @c system_init, @c device_stack_init, and @c class_register are non-NULL.
+ * @invariant Each callback returns ::k_ra8_ok on success or a non-zero ::ra8_err_t.
+ */
+typedef struct {
+  ra8_err_t (*system_init)(void* pool, uint32_t pool_bytes);
+  ra8_err_t (*error_cb_register)(ra8_usb_device_error_cb_t error_cb);
+  ra8_err_t (*device_stack_init)(uint8_t* hs_device_fw,
+                                 uint32_t hs_device_fw_len,
+                                 uint8_t* fs_device_fw,
+                                 uint32_t fs_device_fw_len,
+                                 uint8_t* strings_fw,
+                                 uint32_t strings_fw_len,
+                                 uint8_t* langid_fw,
+                                 uint32_t langid_fw_len);
+  ra8_err_t (*class_register)(const char*                     class_name,
+                              ra8_usb_device_class_entry_fn_t class_entry,
+                              uint8_t                         configuration,
+                              uint8_t                         interface,
+                              void*                           class_param);
+  ra8_err_t (*dcd_open)(ra8_usb_device_port_t port);
+} ra8_usb_stack_ops_t;
+
+/**
+ * @struct ra8_usb_device_open_cfg_t
+ * @brief Everything ::ra8_usb_device_open needs to compose descriptors (when
+ *        @c device_cfg is set), initialise the USB device stack through @c ops,
+ *        and register one device class.
+ *
+ * @details
+ * Field order keeps 4-byte fields before pointer pairs and puts the optional
+ * HS length trailing so field offsets follow ``8 + N * sizeof(void*)`` across
+ * both 32-bit targets and 64-bit hosts.
+ *
+ * @invariant @c pool, @c frameworks, @c ops, @c class_driver, and @c class_param
+ *            are non-NULL.
+ * @invariant When @c device_cfg is non-NULL, @c frameworks holds caller-sized
+ *            output buffers and ::ra8_usb_device_open runs
+ *            ::ra8_usb_device_compose before bringing up the stack. When
+ *            @c device_cfg is NULL, @c frameworks already carries valid non-zero
+ *            lengths.
+ * @invariant `configuration >= 1`, `pool_bytes > 0`, and `port <= 1`.
+ */
+typedef struct {
+  ra8_usb_device_port_t                port;                    /**< USB controller port.      */
+  uint8_t                              configuration;           /**< USB configuration (>= 1). */
+  uint8_t                              interface;               /**< USB interface index.      */
+  uint32_t                             pool_bytes;              /**< Stack pool size in bytes. */
+  void*                                pool;                    /**< Stack memory pool buffer. */
+  const ra8_usb_device_cfg_t*          device_cfg;              /**< Optional compose input.   */
+  ra8_usb_device_frameworks_t*         frameworks;              /**< FS/string/langid buffers. */
+  uint8_t*                             hs_device_framework;     /**< Optional HS framework.    */
+  const ra8_usb_stack_ops_t*           ops;                     /**< Stack port callbacks.     */
+  const ra8_usb_device_class_driver_t* class_driver;            /**< Class driver descriptor.  */
+  void*                                class_param;             /**< Class parameter block.    */
+  ra8_usb_device_error_cb_t            error_cb;                /**< Optional error callback.  */
+  uint32_t                             hs_device_framework_len; /**< HS framework bytes (0).   */
+} ra8_usb_device_open_cfg_t;
+
+/**
+ * @brief Validate configuration, optionally compose frameworks, initialise the
+ *        USB device stack through @p cfg->ops, and register its class driver.
+ *
+ * @details
+ * When @c cfg->device_cfg is non-NULL, calls ::ra8_usb_device_compose into
+ * @c cfg->frameworks first. Then dispatches through @c cfg->ops in strict order:
+ * @c system_init -> optional @c error_cb_register -> @c device_stack_init ->
+ * @c class_register -> optional @c dcd_open.
+ *
+ * @param[in] cfg Stack pool, port, framework buffers, ops seam, and class.
+ *
+ * @return ra8_err_t Result of validation, compose, and stack initialisation.
+ * @retval k_ra8_ok                Stack and class registered.
+ * @retval k_ra8_err_invalid_arg   Missing pointer, invalid port, zero pool
+ *                                 or framework length, or FS port with HS FW.
+ * @retval k_ra8_err_invalid_size  An undersized buffer refused by compose.
+ * @retval k_ra8_err_not_supported Composite @c device_cfg refused by compose.
+ * @retval k_ra8_err_invalid_state Any @c cfg->ops callback returned failure.
+ *
+ * @pre Caller owns @c cfg->pool backing storage for the life of the stack.
+ * @post On success the stack has registered the class (and opened DCD if
+ *       @c ops->dcd_open was supplied).
+ *
+ * @note Single-threaded startup; not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_usb_device_open(const ra8_usb_device_open_cfg_t* cfg);
+
 #ifdef __cplusplus
 }
 #endif

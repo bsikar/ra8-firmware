@@ -114,6 +114,32 @@ pub fn build(b: *std.Build) void {
     compose_abi_test_module.addImport("compose_abi", compose_abi_module);
     const compose_abi_tests = b.addTest(.{ .root_module = compose_abi_test_module });
 
+    const device_open_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/device_open.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const device_open_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/device_open_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    device_open_test_module.addImport("device_open", device_open_module);
+    const device_open_tests = b.addTest(.{ .root_module = device_open_test_module });
+
+    const open_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_usb_device_open_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const device_open_abi_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/device_open_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    device_open_abi_test_module.addImport("open_abi", open_abi_module);
+    const device_open_abi_tests = b.addTest(.{ .root_module = device_open_abi_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_usb_pal tests");
@@ -123,4 +149,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(desc_abi_tests).step);
     test_step.dependOn(&b.addRunArtifact(compose_tests).step);
     test_step.dependOn(&b.addRunArtifact(compose_abi_tests).step);
+    test_step.dependOn(&b.addRunArtifact(device_open_tests).step);
+    test_step.dependOn(&b.addRunArtifact(device_open_abi_tests).step);
 }

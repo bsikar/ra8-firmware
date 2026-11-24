@@ -64,6 +64,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_dfu.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
@@ -444,55 +445,34 @@ static ra8_err_t dfu_usb_build_frameworks(void)
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT dfu_usbx_stack_up(void)
-{
-  if (dfu_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
-  }
-
-  if (_ux_system_initialize(s_usbx_pool, k_dfu_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     s_device_framework,
-                                     s_device_framework_len,
-                                     s_string_framework,
-                                     s_string_framework_len,
-                                     s_language_id_framework,
-                                     s_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
- * @typedef dfu_write_cb_t
- * @brief Signature of the USBX DFU download-write callback field.
- * @details
- * Mirrors ::UX_SLAVE_CLASS_DFU_PARAMETER::ux_slave_class_dfu_parameter_write,
- * whose vendored prototype takes a non-const ``UCHAR*`` payload. Our
- * ::dfu_write keeps the payload ``const`` (it never mutates the block), so the
- * assignment is funnelled through this typedef with a single explicit cast that
- * narrows only the const qualifier of the data pointer -- a layout-identical
- * function-pointer conversion.
- * @note Used solely at the ::dfu_class_register assignment site.
- * @since 0.1.0
- */
 typedef UINT (
   *dfu_write_cb_t)(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status);
 
 /**
- * @brief Register the DFU class against configuration 1, interface 0.
- * @return UINT ``UX_SUCCESS`` on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- * @pre ::dfu_usbx_stack_up has succeeded.
- * @pre The DFU callbacks are defined.
- * @post The DFU class is bound; activate fires on SET_CONFIGURATION.
- * @post No other class is registered.
- * @note Not re-entrant.
+ * @brief Bring USBX system + device stack up and register the DFU class.
+ * @return ra8_err_t ``k_ra8_ok`` on success, propagated error otherwise.
+ * @retval k_ra8_ok Stack ready and DFU bound to configuration 1, interface 0.
+ * @pre File-scope pool reserved; DFU callbacks are defined.
+ * @post Device stack accepts DCD initialisation and attach.
+ * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT dfu_class_register(void)
+static ra8_err_t dfu_usb_open(void)
 {
+  if (dfu_usb_build_frameworks() != k_ra8_ok) {
+    return k_ra8_err_invalid_arg;
+  }
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework,
+    .device_cap  = (uint32_t)sizeof(s_device_framework),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_DFU_PARAMETER dfu_params = {
     .ux_slave_class_dfu_parameter_will_detach = 0UL,
     .ux_slave_class_dfu_parameter_capabilities =
@@ -507,13 +487,19 @@ static UINT dfu_class_register(void)
     .ux_slave_class_dfu_parameter_framework           = s_device_framework,
     .ux_slave_class_dfu_parameter_framework_length    = s_device_framework_len,
   };
-  static UCHAR s_class_name[] = "ux_slave_class_dfu";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_dfu_entry,
-                                         1,
-                                         0,
-                                         &dfu_params);
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_dfu_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_dfu(),
+    .class_param   = &dfu_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -531,19 +517,13 @@ static VOID dfu_device_worker(ULONG arg)
 {
   (void)arg;
 
-  UINT ux = dfu_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_host_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = 1U;
-  ux             = dfu_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_host_err = (uint32_t)ux;
+  ra8_err_t e = dfu_usb_open();
+  if (e != k_ra8_ok) {
+    s_dbg_host_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = 2U;
-  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  e              = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
   if (e != k_ra8_ok) {
     s_dbg_host_err = (uint32_t)e;
     return;

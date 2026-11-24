@@ -16,6 +16,7 @@ const core = @import("internal/root.zig");
 comptime {
     _ = @import("ra8_usb_desc_abi.zig");
     _ = @import("ra8_usb_compose_abi.zig");
+    _ = @import("ra8_usb_device_open_abi.zig");
 }
 
 const tag: [*:0]const u8 = "USBPAL";
