@@ -11,9 +11,12 @@
 //! the library for cortex_m85 so a 32-bit C-layout break fails it too.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
     const debug_record_cap = b.option(usize, "widget-debug-record-cap", "Maximum number of widget-tree records published in a debug build") orelse 256;
     if (debug_record_cap == 0 or debug_record_cap > 256) {
@@ -126,6 +129,31 @@ pub fn build(b: *std.Build) void {
     host_render_test_module.addImport("abi", host_render_abi_module);
     host_render_test_module.addImport("debug", debug_module);
     const host_render_tests = b.addTest(.{ .root_module = host_render_test_module });
+    const icon_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/icon_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    icon_render_test_module.addImport("host", host_paint_module);
+    icon_render_test_module.addImport("abi", host_render_abi_module);
+    icon_render_test_module.addImport("debug", debug_module);
+    const icon_render_tests = b.addTest(.{ .root_module = icon_render_test_module });
+    const label_ui_size_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/label_ui_size_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    label_ui_size_render_test_module.addImport("host", host_paint_module);
+    label_ui_size_render_test_module.addImport("abi", host_render_abi_module);
+    const label_ui_size_render_tests = b.addTest(.{ .root_module = label_ui_size_render_test_module });
+    const text_field_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/text_field_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    text_field_render_test_module.addImport("host", host_paint_module);
+    text_field_render_test_module.addImport("abi", host_render_abi_module);
+    const text_field_render_tests = b.addTest(.{ .root_module = text_field_render_test_module });
     const surface_paint_module = b.createModule(.{
         .root_source_file = b.path("src/host_surface_paint.zig"),
         .target = target,
@@ -385,6 +413,9 @@ pub fn build(b: *std.Build) void {
     const run_pager_tests = b.addRunArtifact(pager_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_host_render_tests.step);
+    test_step.dependOn(&b.addRunArtifact(icon_render_tests).step);
+    test_step.dependOn(&b.addRunArtifact(label_ui_size_render_tests).step);
+    test_step.dependOn(&b.addRunArtifact(text_field_render_tests).step);
     test_step.dependOn(&b.addRunArtifact(gfx_module_tests).step);
     test_step.dependOn(&b.addRunArtifact(surface_render_tests).step);
     test_step.dependOn(&run_internal_tests.step);

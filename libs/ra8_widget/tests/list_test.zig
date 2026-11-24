@@ -1,5 +1,14 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! Host ABI tests for the list widget.
+
 const std = @import("std");
 const abi = @import("abi");
+
+comptime {
+    _ = @import("host_box_shims.zig");
+}
 
 var invalidations: u32 = 0;
 var last_refresh: u8 = 0;

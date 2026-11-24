@@ -2,11 +2,15 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Host golden check for the text field: empty, mid-entry and full buffers.
-//! Reached from host_render_test.zig so it shares that module's imports.
 
 const std = @import("std");
 const abi = @import("abi");
 const host = @import("host");
+
+comptime {
+    _ = @import("host_box_shims.zig");
+    _ = @import("host_box_shims.zig").Shims(abi);
+}
 
 const field_empty_expected = @embedFile("golden/text_field_empty.ppm");
 const field_mid_expected = @embedFile("golden/text_field_mid.ppm");

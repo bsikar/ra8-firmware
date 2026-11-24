@@ -5,6 +5,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 var invalidations: u32 = 0;
 var damaged: abi.Rect = .{ .x = 0, .y = 0, .w = 0, .h = 0 };
 var fills: [8]u32 = .{ 0, 0, 0, 0, 0, 0, 0, 0 };

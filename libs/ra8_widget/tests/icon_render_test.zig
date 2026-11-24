@@ -2,13 +2,17 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Host golden checks for the image widget in a composed panel and for nav
-//! bar icons. Reached from host_render_test.zig so it shares that module's
-//! imports.
+//! bar icons.
 
 const std = @import("std");
 const abi = @import("abi");
 const host = @import("host");
 const debug = @import("debug");
+
+comptime {
+    _ = @import("host_box_shims.zig");
+    _ = @import("host_box_shims.zig").Shims(abi);
+}
 
 fn widget(rect: abi.label.Rect) abi.label.Widget {
     return .{ .vt = null, .ctx = null, .rect = rect, .fixed = 0, .flex = 0, .action_id = 0, .refresh = 0, .visible = false, .dirty = false };

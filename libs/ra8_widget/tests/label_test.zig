@@ -9,6 +9,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 /// Link-time substitute for the C logger the library leaves undefined; it
 /// records the last guard message so each refusal can be told apart.
 var last_message: ?[*:0]const u8 = null;

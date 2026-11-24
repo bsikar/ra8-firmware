@@ -7,6 +7,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 const Recorder = struct {
     var fills: [4]Fill = undefined;
     var fill_count: usize = 0;

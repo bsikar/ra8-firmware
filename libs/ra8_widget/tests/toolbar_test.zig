@@ -9,6 +9,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 /// Link-time substitutes for the three C symbols the library leaves
 /// undefined: the logger, `ra8_widget_invalidate` from the still-C
 /// `ra8_widget.c`, and `ra8_ui_rect_contains` from `libs/ra8_ui`.

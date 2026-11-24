@@ -8,6 +8,10 @@
 const std = @import("std");
 const gfx = @import("ra8_gfx");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 const width = 64;
 const height = 16;
 
