@@ -164,9 +164,18 @@ static void test_pwm_pin_held_elsewhere(void)
   TEST_END("a D6 held by another driver fails the open and leaves GPT1 free");
 }
 
+static void test_bind_rejects_null_handles(void)
+{
+  TEST_BEGIN("profile bind entry points reject null handles with invalid_arg");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_timer_profile_bind(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_pwm_profile_bind(nullptr));
+  TEST_END("profile bind entry points reject null handles with invalid_arg");
+}
+
 /** @brief Cases in run order; main walks this so it never grows. */
 static void (*const s_test_roster[])(void) = {
   test_lookups,
+  test_bind_rejects_null_handles,
   test_sets_are_disjoint,
   test_caps_carry_board_counts,
   test_timer_lands_on_its_channel,

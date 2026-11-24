@@ -288,8 +288,21 @@ static void test_eth_etha_init_and_mode_failures(void)
  * @note Not thread-safe; single-threaded test runner.
  * @since 0.1.0
  */
+/**
+ * @test test_eth_eswm_null_out
+ * @brief ESWM bring-up rejects a null frequency out-pointer before touching HW.
+ */
+static void test_eth_eswm_null_out(void)
+{
+  TEST_BEGIN("ethernet ESWM bring-up rejects null out_eswclk_hz");
+  reset_state();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_board_eth_eswm_bring_up(nullptr));
+  TEST_END("ethernet ESWM bring-up rejects null out_eswclk_hz");
+}
+
 int main(void)
 {
+  test_eth_eswm_null_out();
   test_eth_phy_hw_reset_gpio_conflict();
   test_eth_route_alt_pins_pfs_conflict();
   test_eth_eswm_mstp_failures();
