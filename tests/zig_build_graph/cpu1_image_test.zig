@@ -226,6 +226,7 @@ test "a Zig CPU1 entry is built for the M33 with the hard float ABI" {
     try std.testing.expectEqual(std.Target.Cpu.Arch.thumb, q.cpu_arch.?);
     try std.testing.expectEqual(std.Target.Abi.eabihf, q.abi.?);
     try std.testing.expectEqualStrings("cortex_m33", q.cpu_model.explicit.name);
+    try std.testing.expect(q.cpu_features_add.isEnabled(@backingInt(std.Target.arm.Feature.fp_armv8d16sp)));
 }
 
 test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Zig CPU1 entries" {

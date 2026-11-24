@@ -645,6 +645,9 @@ fn thumb_freestanding_target(
     }
     var promoted = requested.query;
     promoted.cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 };
+    if (requested.result.abi == .eabihf and promoted.cpu_features_add.isEmpty()) {
+        promoted.cpu_features_add = std.Target.arm.featureSet(&.{.fp_armv8d16sp});
+    }
     return b.resolveTargetQuery(promoted);
 }
 

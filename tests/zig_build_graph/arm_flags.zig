@@ -22,6 +22,25 @@ const CrossApp = @import("cross_sources.zig").CrossApp;
 /// this set has to be named separately rather than folded into the app bar.
 pub const global_flags = cpu_flags ++ debug_flags ++ [_][]const u8{"-std=gnu2x"};
 
+/// Single-precision VFPv5-SP-D16 query for thumb-freestanding-eabihf. In Zig
+/// 0.17.0 neither `cortex_m85` nor `cortex_m33` enables `fp_armv8d16sp` by
+/// default, so `.eabihf` without it emits GPR `f32` calling convention while
+/// tagging `Tag_ABI_VFP_args=VFP`, mismatching GCC `-mfloat-abi=hard
+/// -mfpu=fpv5-sp-d16`.
+pub fn hardFloatQuery(
+    cpu_model: *const std.Target.Cpu.Model,
+    ofmt: ?std.Target.ObjectFormat,
+) std.Target.Query {
+    return .{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabihf,
+        .cpu_model = .{ .explicit = cpu_model },
+        .cpu_features_add = std.Target.arm.featureSet(&.{.fp_armv8d16sp}),
+        .ofmt = ofmt,
+    };
+}
+
 /// CPU flags from cmake/toolchain-ra8d2.cmake. The RA8D2 primary M85 is
 /// single-precision, hence fpv5-sp-d16 with a hard float ABI; -mthumb because
 /// the M-profile cores are Thumb-only. These go on compile AND link: the link

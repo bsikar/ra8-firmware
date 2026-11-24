@@ -53,8 +53,34 @@ set_property(
            "ReleaseFast"
 )
 
+# Append Zig's FPU feature suffix matching the active GCC -mfpu flag so
+# cortex_m85 and cortex_m33 eabihf objects use hardware VFP s*/d* ABI rather
+# than passing f32/f64 in GPRs while emitting Tag_ABI_VFP_args=VFP.
+function(_ra8_zig_cpu_with_fpu _cpu_raw _c_flags _out_cpu)
+  string(REPLACE "-" "_" _zig_cpu "${_cpu_raw}")
+  set(_last_fpu "")
+  string(REGEX MATCHALL "-mfpu=([a-z0-9-]+)" _fpu_matches "${_c_flags}")
+  foreach(_m IN LISTS _fpu_matches)
+    string(REGEX REPLACE "^-mfpu=" "" _last_fpu "${_m}")
+  endforeach()
+  if(NOT _zig_cpu MATCHES "\\+")
+    if(_last_fpu STREQUAL "fpv5-d16" AND _zig_cpu STREQUAL "cortex_m85")
+      string(APPEND _zig_cpu "+fp_armv8d16")
+    elseif(_last_fpu STREQUAL "fpv5-sp-d16" AND (_zig_cpu STREQUAL "cortex_m85"
+                                                 OR _zig_cpu STREQUAL "cortex_m33"
+                                                )
+    )
+      string(APPEND _zig_cpu "+fp_armv8d16sp")
+    endif()
+  endif()
+  set(${_out_cpu}
+      "${_zig_cpu}"
+      PARENT_SCOPE
+  )
+endfunction()
+
 # Translate the toolchain's -mcpu into the name zig's -Dcpu expects
-# (cortex-m85 -> cortex_m85). Float ABI picks the eabi/eabihf suffix.
+# (cortex-m85 -> cortex_m85+fp_armv8d16sp). Float ABI picks eabi/eabihf.
 function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
   set(_cpu "")
   set(_hard_float OFF)
@@ -83,15 +109,7 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
   if("$ENV{RA8_ZIG_EIL_M33}" STREQUAL "1" AND _cpu STREQUAL "cortex-m85")
     set(_cpu "cortex-m33")
   endif()
-  string(REPLACE "-" "_" _zig_cpu "${_cpu}")
-  # RA8P1_DP_FPU=ON appends -mfpu=fpv5-d16 to the C flags. Zig's cortex_m85
-  # model is single-precision (f64 lowers to __aeabi_d* calls), so without the
-  # double-precision feature every Zig object in a DP image would stay
-  # soft-float for double while the C beside it runs .f64 opcodes. The pattern
-  # does not match the default fpv5-sp-d16.
-  if(CMAKE_C_FLAGS MATCHES "-mfpu=fpv5-d16" AND _cpu STREQUAL "cortex-m85")
-    string(APPEND _zig_cpu "+fp_armv8d16")
-  endif()
+  _ra8_zig_cpu_with_fpu("${_cpu}" "${CMAKE_C_FLAGS}" _zig_cpu)
   if(_hard_float)
     set(${_out_target}
         "thumb-freestanding-eabihf"
@@ -449,8 +467,15 @@ function(ra8_zig_archive_for_cpu _out_archive)
   endif()
   if(ZA_FLOAT STREQUAL "hard")
     set(_zig_target "thumb-freestanding-eabihf")
+    if(ZA_CPU STREQUAL "cortex_m85" AND CMAKE_C_FLAGS MATCHES "-mfpu=")
+      set(_za_fpu_flags "${CMAKE_C_FLAGS}")
+    else()
+      set(_za_fpu_flags "-mfpu=fpv5-sp-d16")
+    endif()
+    _ra8_zig_cpu_with_fpu("${ZA_CPU}" "${_za_fpu_flags}" _zig_cpu)
   elseif(ZA_FLOAT STREQUAL "soft")
     set(_zig_target "thumb-freestanding-eabi")
+    string(REPLACE "-" "_" _zig_cpu "${ZA_CPU}")
   else()
     message(FATAL_ERROR "ra8_zig_archive_for_cpu(): FLOAT must be hard or soft, got '${ZA_FLOAT}'")
   endif()
@@ -470,7 +495,7 @@ function(ra8_zig_archive_for_cpu _out_archive)
     ${ZA_LIB}
     ${_lib_path}
     ${_zig_target}
-    ${ZA_CPU}
+    ${_zig_cpu}
     _archive
     ${_za_flags}
   )
