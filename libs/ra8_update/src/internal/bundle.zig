@@ -7,6 +7,7 @@
 const std = @import("std");
 const Err = @import("err").Err;
 const pl = @import("pipeline");
+const sess = @import("session");
 
 pub const magic: u32 = 0x5241_3855; // "RA8U"
 pub const format_version: u16 = 1;
@@ -223,4 +224,134 @@ pub fn mapParseErr(e: error{ InvalidArg, InvalidSize }) u16 {
         error.InvalidArg => Err.invalid_arg.raw(),
         error.InvalidSize => Err.invalid_size.raw(),
     };
+}
+
+/// Verify `SHA-256(header[0..32] || descs[0..N*64])` against `sig[0..sig_len]`.
+pub fn verifyBundleSignature(
+    crypto: *const sess.CryptoIface,
+    pubkey_handle: u32,
+    hdr_and_descs: []const u8,
+    sig: []const u8,
+) u16 {
+    const init_fn = crypto.sha256_init orelse return Err.null_ptr.raw();
+    const upd_fn = crypto.sha256_update orelse return Err.null_ptr.raw();
+    const fin_fn = crypto.sha256_final orelse return Err.null_ptr.raw();
+    const ver_fn = crypto.ecdsa_verify orelse return Err.null_ptr.raw();
+
+    var code = init_fn(crypto.ctx);
+    if (code != Err.ok.raw()) return code;
+    code = upd_fn(crypto.ctx, hdr_and_descs.ptr, @intCast(hdr_and_descs.len));
+    if (code != Err.ok.raw()) return code;
+    var digest: [pl.sha256_bytes]u8 = @splat(0);
+    code = fin_fn(crypto.ctx, &digest);
+    if (code != Err.ok.raw()) return code;
+
+    const ver_err = ver_fn(crypto.ctx, pubkey_handle, &digest, sig.ptr, @intCast(sig.len));
+    return if (ver_err == Err.ok.raw()) Err.ok.raw() else Err.validation_failed.raw();
+}
+
+/// Verify a staged `"RA8U"` bundle via `session.cfg.storage.readback` and
+/// `session.cfg.crypto`, enforcing signature, rollback floor, proto compat,
+/// and every descriptor's SHA-256 payload digest.
+pub fn verifyBundleSession(
+    session: *sess.Session,
+    req_compat_proto: u32,
+    scratch: []u8,
+    out_hdr: *Header,
+    out_descs: []ImageDesc,
+) u16 {
+    if (out_descs.len == 0 or scratch.len == 0) return Err.invalid_size.raw();
+    if (session.stage != @backingInt(pl.Stage.staged)) return Err.invalid_state.raw();
+
+    session.stage = @backingInt(pl.Stage.verifying);
+    var hdr_buf: [header_bytes]u8 = undefined;
+    const rd_hdr = session.cfg.storage.readback.?(
+        session.cfg.storage.ctx,
+        0,
+        &hdr_buf,
+        header_bytes,
+    );
+    if (rd_hdr != Err.ok.raw()) return sess.transitionRollback(session, rd_hdr);
+
+    const hdr = parseHeader(&hdr_buf, session.cfg.max_bytes) catch |e| {
+        return sess.transitionRollback(session, mapParseErr(e));
+    };
+    if (hdr.total_bytes != session.expected_bytes) {
+        return sess.transitionRollback(session, Err.invalid_size.raw());
+    }
+    if (@as(usize, hdr.image_count) > out_descs.len) {
+        return sess.transitionRollback(session, Err.invalid_size.raw());
+    }
+
+    const meta_span: usize = @intCast(expectedPayloadsOffset(hdr.image_count));
+    var meta_buf: [header_bytes + max_images * desc_bytes + sig_slot_bytes]u8 = undefined;
+    const rd_meta = session.cfg.storage.readback.?(
+        session.cfg.storage.ctx,
+        0,
+        &meta_buf,
+        @intCast(meta_span),
+    );
+    if (rd_meta != Err.ok.raw()) return sess.transitionRollback(session, rd_meta);
+
+    var local_descs: [max_images]ImageDesc = undefined;
+    const sig_off: usize = @intCast(sigOffset(&hdr));
+    parseAndValidateDescs(&hdr, meta_buf[header_bytes..sig_off], &local_descs) catch |e| {
+        return sess.transitionRollback(session, mapParseErr(e));
+    };
+
+    if (session.cfg.decl.enforce_rot) {
+        const sig_err = verifyBundleSignature(
+            &session.cfg.crypto,
+            session.cfg.pubkey_handle,
+            meta_buf[0..sig_off],
+            meta_buf[sig_off .. sig_off + hdr.sig_len],
+        );
+        if (sig_err != Err.ok.raw()) return sess.transitionRollback(session, sig_err);
+    }
+
+    if (session.cfg.decl.enforce_rollback) {
+        var floor: u32 = 0;
+        const read_err = session.cfg.rollback.read_floor.?(session.cfg.rollback.ctx, &floor);
+        if (read_err != Err.ok.raw()) return sess.transitionRollback(session, read_err);
+        if (hdr.bundle_version < floor) {
+            return sess.transitionRollback(session, Err.validation_failed.raw());
+        }
+    }
+
+    for (0..@as(usize, hdr.image_count)) |i| {
+        if (!compatProtoAllowed(&local_descs[i], req_compat_proto)) {
+            return sess.transitionRollback(session, Err.validation_failed.raw());
+        }
+        var digest: [pl.sha256_bytes]u8 = @splat(0);
+        const h_err = sess.rehashSpan(
+            session,
+            local_descs[i].offset,
+            local_descs[i].size,
+            scratch,
+            &digest,
+        );
+        if (h_err != Err.ok.raw()) return sess.transitionRollback(session, h_err);
+        if (!pl.equalConstantTime(&digest, &local_descs[i].sha256)) {
+            return sess.transitionRollback(session, Err.crc_mismatch.raw());
+        }
+    }
+
+    var root_digest: [pl.sha256_bytes]u8 = @splat(0);
+    const meta_hash_err = session.cfg.crypto.sha256_init.?(session.cfg.crypto.ctx);
+    if (meta_hash_err != Err.ok.raw()) return sess.transitionRollback(session, meta_hash_err);
+    const meta_upd_err = session.cfg.crypto.sha256_update.?(session.cfg.crypto.ctx, &meta_buf, @intCast(sig_off));
+    if (meta_upd_err != Err.ok.raw()) return sess.transitionRollback(session, meta_upd_err);
+    const meta_fin_err = session.cfg.crypto.sha256_final.?(session.cfg.crypto.ctx, &root_digest);
+    if (meta_fin_err != Err.ok.raw()) return sess.transitionRollback(session, meta_fin_err);
+
+    session.staged_digest = root_digest;
+    session.verified_version = hdr.bundle_version;
+    session.verified = 1;
+    session.stage = @backingInt(pl.Stage.verified);
+
+    out_hdr.* = hdr;
+    for (0..@as(usize, hdr.image_count)) |i| {
+        out_descs[i] = local_descs[i];
+    }
+    return Err.ok.raw();
 }

@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
-    const err_mod = b.createModule(.{
+    const err_mod = b.addModule("err", .{
         .root_source_file = b.path("src/internal/err.zig"),
         .target = target,
         .optimize = optimize,
@@ -26,6 +26,14 @@ pub fn build(b: *std.Build) void {
     });
     pipeline_mod.addImport("err", err_mod);
 
+    const session_mod = b.addModule("session", .{
+        .root_source_file = b.path("src/internal/session.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    session_mod.addImport("err", err_mod);
+    session_mod.addImport("pipeline", pipeline_mod);
+
     const bundle_mod = b.addModule("bundle", .{
         .root_source_file = b.path("src/internal/bundle.zig"),
         .target = target,
@@ -33,6 +41,7 @@ pub fn build(b: *std.Build) void {
     });
     bundle_mod.addImport("err", err_mod);
     bundle_mod.addImport("pipeline", pipeline_mod);
+    bundle_mod.addImport("session", session_mod);
 
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/update_abi.zig"),
@@ -41,6 +50,7 @@ pub fn build(b: *std.Build) void {
     });
     abi_mod.addImport("err", err_mod);
     abi_mod.addImport("pipeline", pipeline_mod);
+    abi_mod.addImport("session", session_mod);
 
     const bundle_abi_mod = b.createModule(.{
         .root_source_file = b.path("src/bundle_abi.zig"),
@@ -49,6 +59,7 @@ pub fn build(b: *std.Build) void {
     });
     bundle_abi_mod.addImport("err", err_mod);
     bundle_abi_mod.addImport("pipeline", pipeline_mod);
+    bundle_abi_mod.addImport("session", session_mod);
     bundle_abi_mod.addImport("bundle", bundle_mod);
     bundle_abi_mod.addImport("update_abi", abi_mod);
 

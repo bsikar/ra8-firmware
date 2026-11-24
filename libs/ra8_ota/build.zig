@@ -17,13 +17,28 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
-    // The orchestration membrane imports the parsing one, so this single
-    // root pulls every exported symbol of the library into one archive.
+    const update_dep = b.dependency("ra8_update", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const update_err = update_dep.module("err");
+    const update_pipeline = update_dep.module("pipeline");
+    const update_session = update_dep.module("session");
+    const update_bundle = update_dep.module("bundle");
+
+    // The orchestration membrane imports the parsing one and the shared
+    // pipeline adapter (`ota_pipeline.zig` via relative import), so this single
+    // root pulls every exported symbol of the library into one archive without
+    // duplicate ra8_update_* exports.
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_ota_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    library_module.addImport("err", update_err);
+    library_module.addImport("pipeline", update_pipeline);
+    library_module.addImport("session", update_session);
+    library_module.addImport("bundle", update_bundle);
 
     const library = b.addLibrary(.{
         .name = "ra8_ota",
@@ -54,6 +69,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
     const abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_ota_parse_abi.zig"),
         .target = target,
@@ -64,6 +80,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    orchestration_module.addImport("err", update_err);
+    orchestration_module.addImport("pipeline", update_pipeline);
+    orchestration_module.addImport("session", update_session);
+    orchestration_module.addImport("bundle", update_bundle);
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -87,6 +107,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     orchestration_test_module.addImport("abi", orchestration_module);
+    orchestration_test_module.addImport("pipeline", update_pipeline);
+    orchestration_test_module.addImport("bundle", update_bundle);
     const orchestration_tests = b.addTest(.{ .root_module = orchestration_test_module });
 
     const run_internal_tests = b.addRunArtifact(internal_tests);
@@ -96,4 +118,27 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_orchestration_tests.step);
+
+    if (target.result.os.tag != .freestanding) {
+        const c_mod = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        c_mod.addIncludePath(b.path("inc"));
+        c_mod.addIncludePath(b.path("../ra8_core/inc"));
+        c_mod.addIncludePath(b.path("../ra8_update/inc"));
+        c_mod.addCSourceFile(.{
+            .file = b.path("tests/src/test_ota_bundle_abi.c"),
+            .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },
+        });
+        const c_exe = b.addExecutable(.{
+            .name = "test_ra8_ota_bundle_abi",
+            .root_module = c_mod,
+        });
+        c_exe.root_module.linkLibrary(library);
+        const run_c = b.addRunArtifact(c_exe);
+        run_c.expectExitCode(0);
+        test_step.dependOn(&run_c.step);
+    }
 }

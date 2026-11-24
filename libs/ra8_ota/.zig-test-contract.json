@@ -6,6 +6,7 @@
   ],
   "covered_sources": [
     "src/internal/root.zig",
+    "src/ota_pipeline.zig",
     "src/ra8_ota_parse_abi.zig",
     "src/ra8_ota_abi.zig",
     "src/reset_hook.zig",
