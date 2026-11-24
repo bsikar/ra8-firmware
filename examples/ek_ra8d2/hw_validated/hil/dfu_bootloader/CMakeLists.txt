@@ -63,6 +63,8 @@ file(
   CONFIGURE_DEPENDS
   ${_TF}/core/*.c
   ${_TF}/drivers/builtin/src/*.c
+  ${_TF}/drivers/p256-m/*.c
+  ${_TF}/drivers/p256-m/p256-m/*.c
   ${_TF}/platform/*.c
   ${_TF}/utilities/*.c
   ${_TF}/extras/*.c
@@ -73,6 +75,8 @@ target_include_directories(
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
          ${_TF}/include
          ${_TF}/drivers/builtin/include
+         ${_TF}/drivers/p256-m
+         ${_TF}/drivers/p256-m/p256-m
          ${_TF}/core
          ${_TF}/dispatch
          ${_TF}/drivers/builtin/src
