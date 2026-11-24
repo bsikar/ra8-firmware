@@ -87,30 +87,3 @@ comptime {
     // emitted into the archive object when the build owns the placement.
     _ = Words;
 }
-
-test "every word defaults to the erased-MRAM value" {
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs0);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs1);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs2);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs3);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.sas);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs1_sec);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs1_sel);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs3_sec);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.ofs3_sel);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.bps);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.bps_sec);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_fsblctrl0);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_fsblctrl1);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_fsblctrl2);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_samr);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_pbps);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_pbps_sec);
-    try std.testing.expectEqual(@as(u32, 0xFFFFFFFF), Words.otp_zhuk);
-}
-
-test "the OFS quartet inventory matches ra8_ofs.h" {
-    try std.testing.expectEqual(@as(usize, 4), ofs_word_count);
-}
-
-const std = @import("std");

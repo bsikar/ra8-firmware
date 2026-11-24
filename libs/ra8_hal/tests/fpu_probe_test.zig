@@ -3,7 +3,7 @@
 //!
 //! Value tests for ra8_fpu_dp_madd, ported from the unwired C test
 //! tests/misc/src/test_ra8_fpu_probe.c. The ARM lowering is checked
-//! separately by tests/fpu_lowering_check.zig.
+//! separately by tools/fpu_lowering_check.zig.
 
 const std = @import("std");
 const probe = @import("fpu_probe");

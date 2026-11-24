@@ -318,7 +318,7 @@ fn addFpuLoweringCheck(b: *std.Build, test_step: *std.Build.Step) void {
     const checker = b.addExecutable(.{
         .name = "fpu_lowering_check",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/fpu_lowering_check.zig"),
+            .root_source_file = b.path("tools/fpu_lowering_check.zig"),
             .target = b.graph.host,
         }),
     });
