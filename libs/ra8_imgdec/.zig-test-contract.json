@@ -1,0 +1,40 @@
+{
+  "test_roots": [
+    "tests/abi_test.zig",
+    "tests/arena_test.zig",
+    "tests/dims_test.zig",
+    "tests/fabric_test.zig",
+    "tests/mux_test.zig",
+    "tests/name_test.zig",
+    "tests/scratch_test.zig",
+    "tests/sniff_test.zig",
+    "tests/stbtt_alloc_test.zig",
+    "tests/stbtt_guard_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/abi.zig",
+    "src/internal/arena.zig",
+    "src/internal/dims.zig",
+    "src/internal/fabric.zig",
+    "src/internal/mux.zig",
+    "src/internal/name.zig",
+    "src/internal/scratch.zig",
+    "src/internal/sniff.zig",
+    "src/internal/vocab.zig",
+    "src/ra8_img_arena.zig",
+    "src/ra8_imgdec_abi.zig",
+    "src/ra8_stbtt_alloc.zig",
+    "src/ra8_stbtt_guard.zig",
+    "tests/abi_test.zig",
+    "tests/arena_test.zig",
+    "tests/dims_test.zig",
+    "tests/fabric_test.zig",
+    "tests/mux_test.zig",
+    "tests/name_test.zig",
+    "tests/scratch_test.zig",
+    "tests/sniff_test.zig",
+    "tests/stbtt_alloc_test.zig",
+    "tests/stbtt_guard_test.zig"
+  ],
+  "minimum_tests": 144
+}

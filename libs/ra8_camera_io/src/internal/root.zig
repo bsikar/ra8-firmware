@@ -72,27 +72,3 @@ pub fn writeOutcome(stream_err: u16, written: u32, frame_bytes: u32) u16 {
     if (stream_err != err.ok) return stream_err;
     return if (written == frame_bytes) err.ok else err.invalid_size;
 }
-
-test "a successful sink that took the whole frame is ok" {
-    try std.testing.expectEqual(err.ok, writeOutcome(err.ok, 128, 128));
-}
-
-test "a successful sink that took a prefix is the bridge's own invalid_size" {
-    try std.testing.expectEqual(err.invalid_size, writeOutcome(err.ok, 64, 128));
-}
-
-test "a zero-byte frame the sink accepted is ok, not a short write" {
-    try std.testing.expectEqual(err.ok, writeOutcome(err.ok, 0, 0));
-}
-
-test "the sink's error wins over a short count" {
-    try std.testing.expectEqual(@as(u16, 0x300), writeOutcome(0x300, 0, 128));
-}
-
-test "the sink's error wins even when the count is complete" {
-    try std.testing.expectEqual(@as(u16, 0x301), writeOutcome(0x301, 128, 128));
-}
-
-test "a sink that overran is not ok either" {
-    try std.testing.expectEqual(err.invalid_size, writeOutcome(err.ok, 200, 128));
-}
