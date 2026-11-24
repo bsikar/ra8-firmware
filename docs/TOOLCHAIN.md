@@ -64,9 +64,9 @@ development commands without modifying host packages.
 
 No step writes into the host's system Python. Use `scripts/dev/setup_python.sh` for the
 lighter Python-and-hooks refresh when the container image is already current.
-Linux fleet machines remain provisioned through the declared Ansible roles;
-macOS emulator-only native dependencies remain owned by
-`just apps::emulator::setup`. Neither installer is duplicated by bootstrap.
+Linux fleet machines remain provisioned through the declared Ansible roles.
+`tools/ra8_emulator` builds directly with the pinned Zig toolchain (`just apps::emulator::build_emu`)
+and requires no separate emulator dependency installer.
 Native Windows is limited to the tested uv bootstrap mapping; use WSL2 for the
 full repository. See
 [Python Environments and Lock Maintenance](PYTHON_ENVIRONMENTS.md) for group,
@@ -130,9 +130,7 @@ Toolchain release: **13.3.rel1** (gcc `13.3.1`).
   `ARM_GCC_SHA256_X86_64` / `_AARCH64` archive and installs it to
   `/opt/arm-gnu-toolchain-13.3` -- byte-identical to the runner, bundling
   libstdc++ (the old apt `gcc-arm-none-eabi` did not, so C++ apps could not build
-  in the devcontainer) and its own newlib. `scripts/emu/setup_macos.sh` derives
-  the release and Darwin hash from those same ARGs and selects Arm's
-  `darwin-arm64` or `darwin-x86_64` archive. Linux and Darwin archives are
+  in the devcontainer) and its own newlib. Linux and Darwin archives are
   platform-specific and therefore intentionally have different hashes. The
   base image is digest-pinned.
 

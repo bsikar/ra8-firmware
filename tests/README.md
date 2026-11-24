@@ -42,7 +42,7 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `core/` | Core library unit tests: `ra8_core`, memory arenas, ring buffers, math, timestamping, error reporting, and task scheduler tests. |
 | `fixtures/` | Committed input data, grouped by kind: `webp/` decode bitstreams (also the fuzz seed corpus), `epub/` a real-EPUB probe harness, `ra8_fs/` a gzipped exFAT image, and the unzipped EPUB source trees the rabook parity tests read. |
 | `fuzz/` | libFuzzer harnesses under `src/`, one `fuzz_ra8_*.c` per target (contract in `fuzz/inc/fuzz_entry.h`). Built only under `RA8_FUZZ`; the registry is `RA8_FUZZ_TARGETS`, and `scripts/checks/run_fuzz.sh` drives a run. |
-| `golden/` | Pinned reference renders. Currently gzipped PPM framebuffers of the `ereader_ui` example, produced deterministically by `tools/ra8_emulator` and compared by `just apps::emulator::golden`. |
+| `golden/` | Pinned reference renders. Currently gzipped PPM framebuffers of the `ereader_ui` example, produced deterministically by `tools/ra8_emulator` and compared by `scripts/gen/ereader_golden.py` (invoked via `scripts/emu/smoke.sh ereader_ui`). |
 | `graphics/` | Graphics subsystem and display pipeline unit tests: GLCDC display controller, DRW2D vector accelerator, E-Ink refresh, and pixel format transforms. |
 | `if/` | Host vectors for the `fw_if` intent ports (clock, PWM, timer): each port is tested through a fake binding for its facade behaviour, and against its RA8 adapter in a separate `*_ra8.c` file. |
 | `hal/` | Hardware Abstraction Layer peripheral tests: GPIO, Timer, RTC, WDT, SPI, I2C, SCI, DMAC, DTC, CAC, and POEG. |

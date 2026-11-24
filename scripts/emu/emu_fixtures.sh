@@ -18,11 +18,11 @@
 # manufactures a defect out of its own missing setup is worse than one that
 # skips the app, because the number looks like evidence.
 #
-# Most apps only need a blank card: ra8_emulator's --sd-new builds one in-process
-# (no external image), which is all the ra8_io / TrustZone / format / EPUB apps
-# require -- they format or self-provision their own files. An app that must
-# READ a pre-populated card gets an image baked once by the caller and passed
-# in via the environment (EIL_FONT_IMG or RA8_EMU_IMPORT_READER_IMG).
+# Most apps only need a blank card: ra8_emulator's --sd-size N --sd-new FS builds
+# one in-process (no external image), which is all the ra8_io / TrustZone / format
+# / EPUB apps require -- they format or self-provision their own files. An app
+# that must READ a pre-populated card gets an image baked once by the caller and
+# passed in via the environment (EIL_FONT_IMG or EMU_IMPORT_READER_IMG).
 
 # Build a microSD image carrying import_reader's deterministic EPUB fixture.
 # The caller owns @p output and chooses its lifetime. The helper is shared by
@@ -72,20 +72,20 @@ PY
 emu_extra_args() { # <app> -> extra ra8_emulator args on stdout (may be empty)
   case "$1" in
     ra8_io_sd_demo | ra8_io_sdhi_demo | ra8_sdhi_card_demo | tz_secure_only_sd)
-      # Format + round-trip a file on a blank FAT16 card.
-      printf -- '--sd-new 64:fat16'
+      # Format + round-trip a file on a blank 64 MiB FAT16 card.
+      printf -- '--sd-size 64 --sd-new fat16'
       ;;
     fs_format_mount | epub_open | epub_toc | pagecache)
       # These self-provision (books) or reformat (FAT12/16/32/exFAT) a blank
-      # card themselves; a 64 MiB FAT32 --sd-new card is all ra8_emulator must
-      # attach, per each app's own ra8_emulator recipe.
-      printf -- '--sd-new 64:fat32'
+      # card themselves; a 64 MiB FAT32 --sd-size/--sd-new card is all
+      # ra8_emulator must attach, per each app's own ra8_emulator recipe.
+      printf -- '--sd-size 64 --sd-new fat32'
       ;;
     usb_selftest_microsd)
       # USB self-loop that exposes the Pmod2 microSD as a read-only USB drive:
       # on real hardware a FAT card is inserted; in EIL ra8_emulator provisions a
       # blank FAT32 card so the host reads a valid MBR (0x55AA) + filesystem.
-      printf -- '--sd-new 64:fat32'
+      printf -- '--sd-size 64 --sd-new fat32'
       ;;
     import_reader)
       # Imports BOOK.EPB from a pre-populated card. A blank card reaches mount
@@ -100,14 +100,18 @@ emu_extra_args() { # <app> -> extra ra8_emulator args on stdout (may be empty)
       # attaching a blank card changed what it reported and failed the EIL gate.
       # Adding a device an app does not ask for is the same class of harness
       # error as withholding one it needs.
-      [ -n "${RA8_EMU_IMPORT_READER_IMG:-}" ] &&
-        printf -- '--sd %s' "$RA8_EMU_IMPORT_READER_IMG"
+      [ -n "${EMU_IMPORT_READER_IMG:-}" ] &&
+        printf -- '--sd %s' "$EMU_IMPORT_READER_IMG"
       ;;
     sd_font_render)
       # Reads FONT.OTF off the card (does not provision one), so it needs a
       # pre-populated image -- baked once by the parent into EIL_FONT_IMG. Empty
       # if the bake was skipped/failed; the app then fails with a clear reason.
       [ -n "${EIL_FONT_IMG:-}" ] && printf -- '--sd %s' "$EIL_FONT_IMG"
+      ;;
+    battery_monitor_demo | imu_lsm6dso_demo)
+      # Fits the Click module: LSM6DSO IMU (0x6B) and MAX17048 fuel gauge (0x36).
+      printf -- '--click'
       ;;
     *) : ;;
   esac

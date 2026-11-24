@@ -5,11 +5,11 @@
 # scripts/emu/matrix_triage.sh -- group the ra8_emulator matrix failures by CAUSE.
 #
 # scripts/emu/matrix.sh answers "how many examples do not run in the
-# emulator". That number alone is not a plan: 46 faults with no attribution
-# tells you the size of the debt and nothing about how to burn it down, and a
-# ratchet on an unattributed total invites the cheapest possible fix rather
-# than the right one. This groups the same sweep's failures by their emulator
-# signature, so each tranche can become an issue with a scope.
+# emulator". That number alone is not a plan: unattributed faults only show the
+# size of the debt and nothing about how to burn it down, and a ratchet on an
+# unattributed total invites the cheapest possible fix rather than the right one.
+# This groups the same sweep's failures by their emulator signature, so each
+# tranche can become an issue with a scope.
 #
 # It reads the per-app output matrix.sh keeps for every non-clean verdict
 # (build/ra8_emulator_matrix/<app>.out) plus the verdict report itself, so it
@@ -42,28 +42,18 @@ report="$ROOT/build/ra8_emulator_matrix.txt"
 # printed loudly: an unattributed fault is exactly what this tool exists to
 # eliminate, so it must never be silently absorbed into a neighbouring bucket.
 #
-# EVERY pattern below is matched against REAL captured ra8_emulator output, and
-# two things about that are load-bearing:
-#
-#   * ra8_emulator prints the MVE store family BYTE-WISE and little-endian --
-#     `INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F` -- whereas the board_sim
-#     MVE bug report names the
-#     same instruction halfword-wise as `ED80 7F31`. A rule written from the
-#     issue text matches nothing at all.
-#   * "MVE" and "Helium" on their own are NOT fault signatures. ra8_emulator
-#     prints `MVE (Helium) : N instruction(s) emulated` as ordinary telemetry
-#     on any app that uses a vector op, so a rule keyed on those words matches
-#     every failing app and attributes none of them. The first version of this
-#     table did exactly that -- it put all 43 failures in one bucket and looked
-#     like it had worked, which is why the selftest below now asserts against
-#     real output shapes rather than strings invented to match the rules.
+# EVERY pattern below is matched against REAL captured Zig-core ra8_emulator
+# output lines (never generic telemetry lines like "bus faults: 0 raised").
 triage_rules() {
   cat <<'EOF'
-MVE/Helium store	INVALID INSN.*bytes 80 ED 31 7F
-ThreadX scheduler entry	Unhandled CPU exception \(UC_ERR_EXCEPTION\)
-other invalid instruction	INVALID INSN
-unmapped access	UNMAPPED|mmio_map failed
-BKPT / assert give-up	executed a BKPT
+unknown instruction	zig core: unknown encoding at
+EPSR.T / thumb state	zig core: EPSR\.T clear at
+bus fault	zig core: bus fault at
+invalid exception return	zig core: invalid exception return at
+unaligned access	zig core: unaligned MemA access at
+stack limit overrun	zig core: stack limit overrun at
+BKPT / assert give-up	zig core: BKPT halted at
+missing vector table	zig core: no vector table at
 build failure	BUILD FAIL|NO ELF
 EOF
 }
@@ -75,9 +65,7 @@ classify_cause() { # app [verdict] -> label on stdout
   # TRUNCATED is a verdict, not a signature. The run is killed by the outer
   # `timeout`, so ra8_emulator never gets to print a distinguishing line and the
   # captured output looks like a healthy run that simply stops. Reading the
-  # verdict is the only honest way to attribute it -- on the first CI run both
-  # truncations landed in "unclassified" for exactly this reason, which is the
-  # bucket meaning "nobody knows", not "no verdict was reached".
+  # verdict is the only honest way to attribute it.
   if [ "$verdict" = "TRUNCATED" ]; then
     printf 'wall-clock truncation -- NO verdict reached\n'
     return 0
@@ -94,33 +82,33 @@ classify_cause() { # app [verdict] -> label on stdout
 }
 
 # --selftest: prove the classifier attributes a known signature and, just as
-# importantly, REFUSES to attribute an unknown one. A triage tool that quietly
-# labelled everything "unclassified" would look like it ran; one that matched
-# everything to the first bucket would be worse. Both directions are asserted.
+# importantly, REFUSES to attribute an unknown one. Both directions are asserted.
 if [ "${1:-}" = "--selftest" ]; then
   sel_fail=0
   probe_dir="$(mktemp -d)"
   real_run_dir="$run_dir"
   run_dir="$probe_dir"
-  # VERBATIM ra8_emulator output, copied from a real sweep -- not strings written
-  # to satisfy the table. The distinction is the whole point: the first version
-  # of these rules passed a selftest built from invented text while matching
-  # every real failure into one bucket.
-  cat >"$probe_dir/mve_app.out" <<'REAL'
-  INVALID INSN @ 0x02007D72: bytes 80 ED 31 7F
-ra8_emulator: stopped -- Invalid instruction (UC_ERR_INSN_INVALID)
-  MVE (Helium)  : 1240 instruction(s) emulated (M85 vector ops the M33 core lacks)
+  # Captured Zig-core ra8_emulator output shapes (every fixture carries shared
+  # healthy report lines like "bus faults: 0 raised" to verify rules do not
+  # greedily collapse onto non-fault telemetry).
+  cat >"$probe_dir/unk_app.out" <<'REAL'
+loaded 12345 bytes, vectors at 0x02000000, sp 0x220FFF00, pc 0x02000100
+zig core: unknown encoding at 0x02007D72 after 1240 instructions
+bus faults: 0 raised, 0 escalated to HardFault
 REAL
-  cat >"$probe_dir/threadx_app.out" <<'REAL'
-ra8_emulator: stopped -- Unhandled CPU exception (UC_ERR_EXCEPTION)
-  final PC      : 0x02000226
-  MVE (Helium)  : 88 instruction(s) emulated (M85 vector ops the M33 core lacks)
+  cat >"$probe_dir/bus_app.out" <<'REAL'
+loaded 12345 bytes, vectors at 0x02000000, sp 0x220FFF00, pc 0x02000100
+zig core: bus fault at 0x020204AC after 42100 instructions
+bus faults: 1 raised, 0 escalated to HardFault
 REAL
-  cat >"$probe_dir/unmapped_app.out" <<'REAL'
-ra8_emulator: UNMAPPED read @ 0x40000000
+  cat >"$probe_dir/bkpt_app.out" <<'REAL'
+loaded 12345 bytes, vectors at 0x02000000, sp 0x220FFF00, pc 0x02000100
+zig core: BKPT halted at 0x02000226 after 88 instructions
+bus faults: 0 raised, 0 escalated to HardFault
 REAL
   cat >"$probe_dir/weird_app.out" <<'REAL'
 ra8_emulator: something nobody has seen before
+bus faults: 0 raised, 0 escalated to HardFault
 REAL
   while IFS=$'\t' read -r app vd want; do
     got="$(classify_cause "$app" "$vd")"
@@ -129,30 +117,17 @@ REAL
       sel_fail=1
     fi
   done <<EOF
-mve_app	FAULT	MVE/Helium store
-threadx_app	FAULT	ThreadX scheduler entry
-unmapped_app	FAULT	unmapped access
+unk_app	FAULT	unknown instruction
+bus_app	FAULT	bus fault
+bkpt_app	FAULT	BKPT / assert give-up
 weird_app	FAULT	unclassified
-mve_app	TRUNCATED	wall-clock truncation -- NO verdict reached
+unk_app	TRUNCATED	wall-clock truncation -- NO verdict reached
 weird_app	TRUNCATED	wall-clock truncation -- NO verdict reached
 EOF
-  # The two TRUNCATED rows above are the load-bearing ones. A truncated run is
-  # killed by the outer timeout, so its captured output looks like a healthy
-  # run and carries no distinguishing marker -- the first fixture even carries
-  # a real MVE fault signature. The verdict must still win, or a run that
-  # reached no verdict gets attributed to whatever its partial output happened
-  # to contain, which is worse than saying "unclassified".
-  # The greedy-rule regression, asserted directly: both fixtures above carry an
-  # ordinary "MVE (Helium) ... emulated" telemetry line, and they must still
-  # land in DIFFERENT buckets. If a future rule keys on that line, every app
-  # collapses into one cause and this fires.
-  if [ "$(classify_cause mve_app)" = "$(classify_cause threadx_app)" ]; then
+  if [ "$(classify_cause unk_app)" = "$(classify_cause bus_app)" ]; then
     echo "  FAIL two distinct causes collapsed into one bucket (a rule is too greedy)"
     sel_fail=1
   fi
-  # Must-fire direction: an unknown signature must NOT be absorbed into a real
-  # bucket. If this ever starts matching, the rules have grown too greedy and
-  # the triage stops being evidence.
   if [ "$(classify_cause weird_app)" != "unclassified" ]; then
     echo "  FAIL an unknown signature was absorbed into a named bucket"
     sel_fail=1
@@ -190,9 +165,7 @@ echo "ra8_emulator matrix -- $n_fail failing example(s) grouped by cause:"
 echo ""
 # Order the CAUSES by size, biggest tranche first, then print each with its own
 # app list. Sorting the whole rendered block would reorder the indented app
-# lines too and detach them from their heading -- which is what the first
-# version did, producing a plausible-looking report whose app lists belonged to
-# no cause in particular.
+# lines too and detach them from their heading.
 while IFS=$'\t' read -r n cause; do
   [ -z "$cause" ] && continue
   printf '%4d  %s\n' "$n" "$cause"

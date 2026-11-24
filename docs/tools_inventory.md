@@ -112,7 +112,6 @@ CMake test target, or a selftest wired into a gate suite.
 | `emu_fixtures.sh` | `scripts/emu/eil_all.sh`, `matrix.sh`, `smoke.sh` | keep |
 | `matrix.sh` | `scripts/emu/README.md`, `eil_all.sh`, `matrix_triage.sh` | keep |
 | `matrix_triage.sh` | `scripts/emu/matrix.sh` | keep |
-| `setup_macos.sh` | `docs/TOOLCHAIN.md` | keep |
 | `smoke.sh` | the example HIL docs and configs; drives the other smoke scripts | keep |
 | `smoke_apps.sh` | `scripts/emu/smoke.sh`, `docs/adr/0016` | keep |
 | `smoke_assert.sh` | `scripts/emu/smoke.sh` | keep |
@@ -164,6 +163,9 @@ CMake test target, or a selftest wired into a gate suite.
   migration checkpoint.
 - `scripts/dev/ssh_loopback_proxy.py`: the lab automation carries and runs its own,
   newer revision of this helper; nothing in either tree references this copy.
+- `setup_macos.sh`: retired after the move to the Zig-based `tools/ra8_emulator`
+  (`just apps::emulator::build_emu`), which has no Unicorn dependency to
+  install.
 
 ## Kept and newly gated
 
