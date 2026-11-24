@@ -116,7 +116,7 @@ build_msc_sd_image() {
   local mk="$ROOT/tools/mkbookimg"
   (cd "$mk" && zig build --prefix build) >/dev/null 2>&1 || return 0
   msc_sd_image="$(mktemp -t ra8_emulator_msc_sd.XXXXXX.img)"
-  "$mk/build/mkbookimg" "$msc_sd_image" "$ROOT/LICENSE.txt" >/dev/null 2>&1 || msc_sd_image=""
+  "$mk/build/bin/mkbookimg" "$msc_sd_image" "$ROOT/LICENSE.txt" >/dev/null 2>&1 || msc_sd_image=""
 }
 
 # I2C/I3C target-mode apps.
