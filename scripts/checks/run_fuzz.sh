@@ -81,7 +81,7 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width.
 # shellcheck source=scripts/lib/parallelism.sh
-. "${SCRIPT_DIR}/../ci/lib/parallelism.sh"
+. "${SCRIPT_DIR}/../lib/parallelism.sh"
 
 build_dir="${ROOT}/tests/build-fuzz"
 registry="${ROOT}/tests/fuzz/CMakeLists.txt"
@@ -370,7 +370,7 @@ build_fuzz_target() {
     echo "Configuring fuzz build (${build_dir})..."
     mkdir -p "${build_dir}"
     cmake -S "${ROOT}/tests" -B "${build_dir}" \
-      -DRA8_FUZZ=ON -DRA8_COVERAGE=OFF \
+      -DRA8_FUZZ=ON \
       -DCMAKE_C_COMPILER="${CC}" \
       -DCMAKE_CXX_COMPILER="${CXX}" \
       -DCMAKE_BUILD_TYPE=Debug \
@@ -378,6 +378,17 @@ build_fuzz_target() {
   fi
   echo "Building ${cmake_target} (jobs: ${jobs})..."
   cmake --build "${build_dir}" --target "${cmake_target}" --parallel "${jobs}"
+}
+
+# Seed corpus directories when the optional ra8ci generator is present locally;
+# otherwise rely on existing/empty directories under tests/fuzz/corpus/.
+seed_fuzz_corpora() {
+  local seed_script="${ROOT}/scripts/builders/init_fuzz_corpora.sh"
+  if [[ -f "${seed_script}" ]]; then
+    bash "${seed_script}" >/dev/null
+  else
+    echo "NOTE: ${seed_script} not present (moved to ra8ci); using tests/fuzz/corpus/."
+  fi
 }
 
 # Run one built harness for $2 seconds, then rule on whether it actually got
@@ -393,7 +404,7 @@ run_one() {
   local extra_args=()
   local t0 t1 elapsed reported verdict status=0 rc=0
 
-  mkdir -p "${crash_dir}" "${log_dir}"
+  mkdir -p "${crash_dir}" "${log_dir}" "${corpus_dir}"
   if [[ ! -x "${bin}" ]]; then
     echo "ERROR: ${bin} did not build." >&2
     return 1
@@ -499,10 +510,7 @@ if [[ "$1" == "--all" ]]; then
   targets="$(list_targets)"
   select_fuzz_compiler
   build_fuzz_target ra8_fuzz_all
-  # Seed the corpus directories -- the init script is idempotent and only
-  # refreshes the known-good seeds, so any crash reproducers added later
-  # are left in place.
-  bash "${ROOT}/scripts/builders/init_fuzz_corpora.sh" >/dev/null
+  seed_fuzz_corpora
   failed=""
   while IFS= read -r target; do
     echo ""
@@ -538,5 +546,5 @@ fi
 
 select_fuzz_compiler
 build_fuzz_target "${target}"
-bash "${ROOT}/scripts/builders/init_fuzz_corpora.sh" >/dev/null
+seed_fuzz_corpora
 run_one "${target}" "${seconds}"

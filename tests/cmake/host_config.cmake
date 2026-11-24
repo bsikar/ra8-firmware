@@ -168,11 +168,21 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ccache.cmake")
 
 # The host-test image pin places the test image at 0x70000000, above the
 # Linux peripheral windows the tests map. Darwin's linker never sees this:
-# macOS does not map those peripheral windows in the first place. zig cc's
-# lld rejects GNU ld's `-Ttext-segment`, so pin `--image-base`, which lands
-# the first PT_LOAD segment at the same address.
+# macOS does not map those peripheral windows in the first place. Probe the
+# active linker: lld (used by zig cc) accepts `--image-base` and rejects
+# `-Ttext-segment`, whereas GNU ld accepts `-Ttext-segment` and rejects
+# `--image-base`.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,--image-base=0x70000000)
+  include(CheckLinkerFlag)
+  check_linker_flag(C "-no-pie;-Wl,--image-base=0x70000000" RA8_LINKER_HAS_IMAGE_BASE)
+  if(RA8_LINKER_HAS_IMAGE_BASE)
+    set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,--image-base=0x70000000)
+  else()
+    check_linker_flag(C "-no-pie;-Wl,-Ttext-segment=0x70000000" RA8_LINKER_HAS_TEXT_SEGMENT)
+    if(RA8_LINKER_HAS_TEXT_SEGMENT)
+      set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,-Ttext-segment=0x70000000)
+    endif()
+  endif()
 endif()
 
 # RA8_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
