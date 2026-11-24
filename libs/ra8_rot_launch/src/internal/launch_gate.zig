@@ -16,3 +16,15 @@ pub const ok: u16 = 0;
 pub fn passed(verdict: u16) bool {
     return verdict == ok;
 }
+
+/// How the launch gate applies the anti-rollback floor during launch.
+pub const FloorPolicy = enum {
+    verify_and_commit,
+    verify_no_commit,
+};
+
+/// Trial launches verify the existing anti-rollback floor without advancing
+/// it, preserving revertability until the trial image confirms.
+pub fn floorPolicyForLaunch(is_trial: bool) FloorPolicy {
+    return if (is_trial) .verify_no_commit else .verify_and_commit;
+}

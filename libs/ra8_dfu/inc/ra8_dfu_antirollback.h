@@ -218,6 +218,36 @@ typedef struct {
                                                     uint32_t image_version);
 
 /**
+ * @brief Read the stored minimum and apply the downgrade policy without committing.
+ *
+ * @details
+ * Trial-boot companion to ::ra8_rot_antirollback_verify. Reads the stored
+ * minimum version through ``store->read`` and enforces
+ * ::ra8_rot_antirollback_check, but never invokes ``store->commit``. Used when
+ * launching an unconfirmed trial slot so a failed trial can still fall back to
+ * the previously confirmed version; once confirmed, ::ra8_rot_antirollback_verify
+ * advances the monotonic floor. Enforces DEFAULT-DENY on NULL ``store``, NULL
+ * ``store->read``, read failure, or a downgrade.
+ *
+ * @param[in] store         Storage DI vtable; non-NULL with non-NULL ``read``.
+ * @param[in] image_version Version from the authenticated image trailer.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                    ``image_version >= stored_min``; counter left unchanged.
+ * @retval k_ra8_err_null_ptr          ``store`` or ``store->read`` is NULL.
+ * @retval k_ra8_err_validation_failed The image is a downgrade.
+ * @retval other                       Store read reported a fault.
+ *
+ * @pre ``image_version`` belongs to an image that already passed ::ra8_rot_verify_image.
+ * @post Durable counter is NOT modified.
+ * @see ra8_rot_antirollback_verify
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_rot_antirollback_verify_no_commit(const ra8_rot_antirollback_store_t* store,
+                                      uint32_t                            image_version);
+
+/**
  * @brief Return the non-faking default store (reports "not provisioned").
  *
  * @details

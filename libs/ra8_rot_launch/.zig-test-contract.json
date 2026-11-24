@@ -25,5 +25,5 @@
       "-Mlaunch_gate=src/internal/launch_gate.zig"
     ]
   },
-  "minimum_tests": 3
+  "minimum_tests": 4
 }

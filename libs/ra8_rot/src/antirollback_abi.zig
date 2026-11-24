@@ -159,7 +159,7 @@ export fn ra8_rot_antirollback_check(image_version: u32, stored_min_version: u32
     return Err.ok;
 }
 
-export fn ra8_rot_antirollback_verify(store: ?*const Store, image_version: u32) u16 {
+fn verifyWithPolicy(store: ?*const Store, image_version: u32, commit_floor: bool) u16 {
     const s = store orelse {
         ra8_log_emit_error(tag, "anti-rollback: store is NULL");
         return Err.null_ptr;
@@ -168,10 +168,13 @@ export fn ra8_rot_antirollback_verify(store: ?*const Store, image_version: u32) 
         ra8_log_emit_error(tag, "anti-rollback: store->read is NULL");
         return Err.null_ptr;
     };
-    const commit = s.commit orelse {
-        ra8_log_emit_error(tag, "anti-rollback: store->commit is NULL");
-        return Err.null_ptr;
-    };
+    const commit: *const fn (new_version: u32) callconv(.c) u16 = if (commit_floor)
+        s.commit orelse {
+            ra8_log_emit_error(tag, "anti-rollback: store->commit is NULL");
+            return Err.null_ptr;
+        }
+    else
+        undefined;
 
     // A read fault is default-deny: without a floor there is nothing to
     // enforce the policy against.
@@ -188,14 +191,24 @@ export fn ra8_rot_antirollback_verify(store: ?*const Store, image_version: u32) 
         return policy_err;
     }
 
-    // Accepted: advance the durable counter. A commit fault is default-deny
-    // too, so a floor that could not be written never launches.
+    if (!commit_floor) return Err.ok;
+
+    // Confirmed launch accepted: advance the durable counter. A commit fault is
+    // default-deny too, so a floor that could not be written never launches.
     const commit_err = commit(image_version);
     if (commit_err != Err.ok) {
         ra8_log_emit_error(tag, "anti-rollback: counter commit failed");
         return commit_err;
     }
     return Err.ok;
+}
+
+export fn ra8_rot_antirollback_verify(store: ?*const Store, image_version: u32) u16 {
+    return verifyWithPolicy(store, image_version, true);
+}
+
+export fn ra8_rot_antirollback_verify_no_commit(store: ?*const Store, image_version: u32) u16 {
+    return verifyWithPolicy(store, image_version, false);
 }
 
 export fn ra8_rot_antirollback_default_store() *const Store {
