@@ -42,6 +42,17 @@
  *    production build swaps in a tf-psa-crypto / ra8_tls backend. See the
  *    ``TODO`` markers at ::app_ecdsa_verify and ::s_net_source.
  *
+ * @par Unified pipeline mapping (see docs/design/unified_update_pipeline.md):
+ * - Pipeline declaration: ``transport=OTA``, ``payload=manifest_raw``, ``apply_mode=ab_banks``,
+ *   ``trial_budget=0``.
+ * - ``STAGE``  (``ra8_ota_download_to_inactive_bank``): 32-byte-aligned MRAM writes.
+ * - ``VERIFY`` (``ra8_ota_verify_signature``): SHA-256 re-hash + bound signature;
+ *   failures transition cleanly to ``ROLLBACK`` (leave active Bank A untouched).
+ * - ``COMMIT`` (``ra8_ota_commit_and_reboot``): latches inactive bank via
+ *   ``app_write_bootsel`` (standing in for ``ra8_nsc_ota_commit`` across NSC).
+ * - Divergence from DFU flow: verify precedes commit and runs in-app without
+ *   copy-to-run A/B slot headers or multi-boot WDT0 trial state.
+ *
  * A successful run prints, once per report cycle, on the J-Link OB VCOM console:
  * ``ota_ab: stage=ok commit=Y rollback=Y ok=Y``.
  *

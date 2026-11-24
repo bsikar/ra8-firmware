@@ -58,9 +58,24 @@ Boot decision and state arbitration live in `libs/ra8_dfu` (`ra8_dfu_boot_decide
    and falls back to the alternate valid slot (non-trial, WDT0 disarmed), or
    enters DFU mode if no valid fallback exists.
 
-Note on anti-rollback: keep compatible monotonic `img_version` across
-unconfirmed A/B trials if fallback is required; `dfu_bootloader` relies on slot
-header sequence numbers (`seq`) to prefer the newer staged slot.
+Note on anti-rollback: unconfirmed trial launches route through
+`ra8_dfu_launch_trial()`, which verifies `img_version >= stored_min` without
+advancing Extra-MRAM (`0x02E07600`) prior to confirmation; only confirmed boots
+(`ra8_dfu_launch()`) advance the monotonic floor.
+
+## Unified pipeline contract alignment
+
+Annotated against `docs/design/unified_update_pipeline.md`
+(`transport = dfu`, `apply_mode = ab_slots`, `trial_budget = 3`,
+`defer_floor_bump = true`):
+
+- **Agrees:** Writes 32-byte pages into the inactive slot, verifies SHA-256 +
+  ECDSA-P256 (`ra8_rot_verify_image`) + anti-rollback before branching to SRAM
+  run base, and isolates unverified payloads away from the active image.
+- **Diverges:** Uses USB-FS DFU push ingestion + header-last (`"RA8D"`) slot
+  commit followed by reset-time `ROT1` verification and WDT0 trial/revert in
+  `{World: S}`, rather than in-app pull verification over an `"RA8U"` N-image
+  bundle with `{World: NSC}` bank-swap veneers (`ra8_ota`).
 
 Because the 128 KiB bootloader itself is never modified by DFU, an SWD re-flash
 always recovers the device regardless of slot or metadata contents.

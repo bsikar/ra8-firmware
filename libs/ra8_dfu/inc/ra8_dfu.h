@@ -82,6 +82,14 @@
  *     to the alternate valid confirmed slot (or enters DFU mode if none exists)
  *     with WDT0 disarmed.
  *
+ * ## Unified update-pipeline alignment
+ *
+ * Against `docs/design/unified_update_pipeline.md`: DFU executes in `{World: S}`
+ * (`transport = dfu`, `apply_mode = ab_slots`, `trial_budget = 3`):
+ * `ra8_dfu_program_*` (`STAGE` + header-last `COMMIT`), `ra8_dfu_launch_trial()` /
+ * `ra8_dfu_launch()` (`VERIFY` `ROT1` + anti-rollback before copy-to-run), and
+ * `ra8_dfu_boot_decide_trial()` + `ra8_dfu_confirm()` (`CONFIRM` / WDT0 `ROLLBACK`).
+ *
  * ## Payload liveness contract
  *
  * To survive a trial boot and stay live across subsequent resets, a payload

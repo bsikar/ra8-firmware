@@ -645,6 +645,11 @@ static ra8_err_t blc_usb_build_frameworks(void)
  * @post The FS device is attached in DFU mode; commits trigger a system reset.
  * @post On any bring-up failure the thread parks (::s_dbg_dev_err set).
  * @note The DFU class runs its own thread; this worker only services it.
+ * @par Unified pipeline mapping (see docs/design/unified_update_pipeline.md):
+ * ``STAGE`` + header-last ``COMMIT`` for ``transport=dfu, apply_mode=ab_slots``
+ * (``ra8_dfu_program_image`` + ``ra8_dfu_program_commit`` + unconfirmed
+ * ``boot_state``), leaving reset-time ``VERIFY`` / trial ``ROLLBACK`` to
+ * ``blc_decide`` and ``blc_boot_slot``.
  * @since 0.1.0
  */
 static VOID blc_device_worker(ULONG arg)
