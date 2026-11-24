@@ -695,6 +695,38 @@ typedef enum : uint8_t {
 } ra8_drw_subpixel_t;
 
 /**
+ * @enum ra8_drw_texmask_field_t
+ * @brief TEXMASK register bit positions and field limits.
+ *
+ * @details
+ * Verified against HUM Ch 62.2.16 "TEXMASK: Texture Size or Texture Address
+ * Mask Register" p 3700:
+ * - ``TEXUMASK[10:0]`` = texture_width - 1 (max width 2048 -> 2047).
+ * - ``TEXVMASK[31:11]`` = TEXPITCH * (texture_height - 1) (21-bit field).
+ */
+typedef enum : uint32_t {
+  k_ra8_drw_texmask_umask_pos  = 0U,          /**< TEXUMASK bit offset.     */
+  k_ra8_drw_texmask_umask_mask = 0x000007FFU, /**< TEXUMASK[10:0] 11b mask. */
+  k_ra8_drw_texmask_umask_max  = 2047U,       /**< Max width - 1 (2048-1).  */
+  k_ra8_drw_texmask_vmask_pos  = 11U,         /**< TEXVMASK bit offset.     */
+  k_ra8_drw_texmask_vmask_mask = 0x001FFFFFU, /**< TEXVMASK[31:11] 21b.     */
+  k_ra8_drw_texmask_vmask_max  = 0x001FFFFFU, /**< Max encoded V mask.      */
+} ra8_drw_texmask_field_t;
+
+/**
+ * @enum ra8_drw_colorize_copy_t
+ * @brief COLOR1/COLOR2 identity constants for un-tinted texture Copy mode.
+ *
+ * @details
+ * Verified against HUM Ch 62.6.4 Table 62.8 "Colorization operations" p 3732:
+ * Copy sets ``A (COLOR1) = 0`` and ``B (COLOR2) = 0xFF`` per ARGB channel.
+ */
+typedef enum : uint32_t {
+  k_ra8_drw_colorize_copy_color1 = 0x00000000UL, /**< A = 0 per ARGB channel. */
+  k_ra8_drw_colorize_copy_color2 = 0xFFFFFFFFUL, /**< B = 0xFF per channel.   */
+} ra8_drw_colorize_copy_t;
+
+/**
  * @brief Pointer to a 32-bit register inside the DRW block.
  *
  * @param[in] off One of the ``k_ra8_drw_off_*`` values (low 12 bits

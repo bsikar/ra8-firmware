@@ -24,7 +24,7 @@
  * exercising the real streaming path: bands page through a deliberately small
  * `ra8_tile_cache` (fewer cells than bands, so the LRU must evict -- the memory-hierarchy
  * bounded-memory property) and `longstrip_render` composites the visible
- * range into the panel FB through `ra8_gfx_blit`.
+ * range into the panel FB through `longstrip_target_blit` (DRW + Helium MVE).
  *
  * Navigation is discrete-tap only (the ra8_emulator GT911 model has no swipe/drag
  * gesture, so this app needs zero ra8_emulator change): a tap in the BOTTOM third
@@ -48,6 +48,7 @@
 #include "fw_if_clock.h"
 #include "jof.h"
 #include "longstrip.h"
+#include "ls_drw_target.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_board_ek_ra8d2_touch.h"
@@ -260,6 +261,10 @@ static const uint32_t k_ls_palette[k_ls_palette_size] = {
 /** @brief Tile-cache cell storage in SDRAM (one decoded band per cell). */
 [[gnu::section(
   ".sdram_data")]] static uint8_t s_cells[(size_t)k_ls_cells * (size_t)k_ls_band_bytes];
+
+/** @brief 32-byte aligned SDRAM RGB565 texture staging buffer for Helium MVE -> DRW. */
+[[gnu::aligned(32), gnu::section(".sdram_data")]]
+static uint16_t s_drw_stage_565[(size_t)k_ls_view_w * (size_t)k_ls_band_h];
 
 /** @brief Metadata-only JOF atlas backing (header + index + footer). */
 static uint8_t s_atlas[k_ls_atlas_total];
@@ -646,6 +651,13 @@ static ra8_err_t ls_blit(void*          ctx,
 /** @brief Wire the memstore/painter/cache and open the strip; halt on failure. */
 static void ls_open_strip(uint32_t total)
 {
+  if (ls_drw_target_init(s_framebuffer,
+                         (uint16_t)k_ls_view_w,
+                         (uint16_t)k_ls_view_h,
+                         s_drw_stage_565,
+                         (uint32_t)k_ls_view_w * (uint32_t)k_ls_band_h) != k_ra8_ok) {
+    app_panic_halt();
+  }
   s_store = (jof_memstore_t){.buf = s_atlas, .cap = (size_t)k_ls_atlas_total, .len = total};
   s_paint = (ls_paint_ctx_t){.width    = (uint32_t)k_ls_canvas_w,
                              .canvas_h = (uint32_t)k_ls_canvas_h,
@@ -700,9 +712,8 @@ static ra8_err_t ls_blit(void*          ctx,
                          int32_t        dst_y)
 {
   (void)ctx;
-  (void)bpp; /* strip is RGB888 by construction */
   RA8_CHECK_NULL_PTR(pixels, s_tag, "blit pixels must not be nullptr");
-  return ra8_gfx_blit(pixels, src_w, src_h, k_ra8_gfx_format_rgb888, dst_x, dst_y);
+  return longstrip_target_blit(ls_drw_target(), pixels, src_w, src_h, bpp, dst_x, dst_y);
 }
 
 /** @brief Draw a text run in the bundled font; return the next x column. */
@@ -720,12 +731,12 @@ static int32_t ls_text(int32_t x, int32_t y, const char* str, uint32_t color)
 /** @brief Draw the status bar overlay: wordmark + band + scroll-position text. */
 static void ls_draw_status(void)
 {
-  (void)ra8_gfx_rect(0,
-                     0,
-                     (int32_t)k_ls_view_w,
-                     (int32_t)k_ls_status_h,
-                     (uint32_t)k_ls_col_status_bg,
-                     true);
+  (void)longstrip_target_fill(ls_drw_target(),
+                              0,
+                              0,
+                              (uint16_t)k_ls_view_w,
+                              (uint16_t)k_ls_status_h,
+                              (uint32_t)k_ls_col_status_bg);
   const int32_t  y = (int32_t)((k_ls_status_h - k_ls_glyph_h) / 2U);
   const uint32_t band =
     (s_strip.band_h > 0U) ? ((uint32_t)s_strip.scroll_y / (uint32_t)s_strip.band_h) + 1U : 1U;
@@ -750,12 +761,12 @@ static void ls_draw_status(void)
 static void ls_draw_rail(void)
 {
   const int32_t rx = (int32_t)k_ls_view_w - (int32_t)k_ls_rail_w;
-  (void)ra8_gfx_rect(rx,
-                     0,
-                     (int32_t)k_ls_rail_w,
-                     (int32_t)k_ls_view_h,
-                     (uint32_t)k_ls_col_rail_bg,
-                     true);
+  (void)longstrip_target_fill(ls_drw_target(),
+                              rx,
+                              0,
+                              (uint16_t)k_ls_rail_w,
+                              (uint16_t)k_ls_view_h,
+                              (uint32_t)k_ls_col_rail_bg);
   int32_t th = (int32_t)(((uint32_t)k_ls_view_h * (uint32_t)k_ls_view_h) / (uint32_t)k_ls_canvas_h);
   if (th < (int32_t)k_ls_rail_min_thumb) {
     th = (int32_t)k_ls_rail_min_thumb;
@@ -765,14 +776,24 @@ static void ls_draw_rail(void)
   if ((s_strip.max_scroll > 0) && (range > 0)) {
     ty = (int32_t)(((uint32_t)s_strip.scroll_y * (uint32_t)range) / (uint32_t)s_strip.max_scroll);
   }
-  (void)ra8_gfx_rect(rx, ty, (int32_t)k_ls_rail_w, th, (uint32_t)k_ls_col_rail_thumb, true);
+  (void)longstrip_target_fill(ls_drw_target(),
+                              rx,
+                              ty,
+                              (uint16_t)k_ls_rail_w,
+                              (uint16_t)th,
+                              (uint32_t)k_ls_col_rail_thumb);
 }
 
 /** @brief Repaint the whole panel: strip bands, then the chrome overlays. */
 static void ls_redraw(void)
 {
   (void)ra8_gfx_reset_clip();
-  (void)ra8_gfx_clear((uint32_t)k_ls_col_bg);
+  (void)longstrip_target_fill(ls_drw_target(),
+                              0,
+                              0,
+                              (uint16_t)k_ls_view_w,
+                              (uint16_t)k_ls_view_h,
+                              (uint32_t)k_ls_col_bg);
   longstrip_render_stats_t st = {};
   (void)longstrip_render(&s_strip, &st);
   s_last_skipped = st.skipped;

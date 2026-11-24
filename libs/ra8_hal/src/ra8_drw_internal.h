@@ -167,6 +167,13 @@ RA8_PRIV void priv_program_rect_bbox(const ra8_drw_rect_t* rect);
 RA8_PRIV uint32_t priv_ra8_drw_internal_rect_origin(const ra8_drw_rect_t* rect);
 
 /**
+ * @brief Read the cached TEXPITCH value programmed by ``ra8_drw_set_texture()``.
+ * @return Cached texture pitch in texels, or 0 if no texture is active.
+ * @note Cross-TU private helper for ``ra8_drw_draw.c``.
+ */
+RA8_PRIV uint32_t priv_ra8_drw_internal_texpitch_px(void);
+
+/**
  * @brief Reject a rectangle that would rasterize outside the framebuffer.
  *
  * @details
