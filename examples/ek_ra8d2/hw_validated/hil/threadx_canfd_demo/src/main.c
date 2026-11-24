@@ -295,18 +295,11 @@ void main(void)
    * the tick rate would be 1/119 the expected, making
    * tx_thread_sleep(...) ~119x slower than the ms value declared in
    * source. */
-  if (ra8_cgc_init() != k_ra8_ok) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
-  }
-
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
-  }
-  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led2,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

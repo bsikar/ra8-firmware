@@ -420,24 +420,12 @@ static bool gptp_run_cycle(void)
  */
 static void gptp_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    gptp_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    gptp_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    gptp_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gptp_panic_halt();
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_gptp_baud) != k_ra8_ok) {
-    gptp_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_gptp_baud,
+    .leds_mask    = (uint32_t)k_ra8_board_bringup_led1,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     gptp_panic_halt();
   }
   if (ra8_cgc_eswclk_init() != k_ra8_ok) {

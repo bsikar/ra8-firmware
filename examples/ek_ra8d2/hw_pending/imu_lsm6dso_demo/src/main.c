@@ -207,26 +207,12 @@ static ra8_lsm6dso_i2c_ctx_t s_imu_ctx;
  */
 static void imu_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if ((out_pclka_hz == nullptr) || (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok)) {
     imu_demo_panic_halt();
   }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    imu_demo_panic_halt();
-  }
-  /* Direct driver read on purpose (issue RA8FW-299): k_imu_demo_iic_channel is the
-   * mikrobus IIC_B channel 0, while the board clock profile's i2c slot is
-   * RIIC1 (J35 SCCB), so routing it would name the wrong peripheral. */
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
-    imu_demo_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    imu_demo_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    imu_demo_panic_halt();
-  }
+  *out_pclka_hz = bringup_out.pclka_hz;
 }
 
 /**

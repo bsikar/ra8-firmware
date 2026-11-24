@@ -162,19 +162,12 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  */
 RA8_INTERNAL static void internal_setup_or_halt(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
-    internal_park();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    internal_park();
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_dma_coh_baud) != k_ra8_ok) {
-    internal_park();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    internal_park();
-  }
-  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_dma_coh_baud,
+    .leds_mask    = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led2,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     internal_park();
   }
 }

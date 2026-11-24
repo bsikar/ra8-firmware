@@ -513,25 +513,11 @@ static void cam_park(void)
  */
 static ra8_err_t cam_bringup(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-  ra8_err_t               err         = ra8_cgc_init();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_mstp_init();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_time_init(cpuclk0_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_board_uart_console_init((uint32_t)k_cam_baud);
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_cam_baud,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  ra8_err_t               err         = ra8_board_bringup(&bringup_cfg, &bringup_out);
   if (err != k_ra8_ok) {
     return err;
   }

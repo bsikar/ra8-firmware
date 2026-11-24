@@ -48,9 +48,9 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_i2c_demo_baud        = 115200U, /**< I2C demo baud.                                         */
-  k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms.                                    */
-  k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.                                       */
+  k_i2c_demo_baud        = 115200U, /**< I2C demo baud.                                */
+  k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms.                           */
+  k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.                              */
   k_i2c_demo_iic_channel = 1U,      /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 here. */
 } i2c_demo_const_t;
 
@@ -107,18 +107,9 @@ RA8_INTERNAL static void internal_panic_halt(void)
  */
 RA8_INTERNAL static void internal_clocks_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     internal_panic_halt();
   }
 }

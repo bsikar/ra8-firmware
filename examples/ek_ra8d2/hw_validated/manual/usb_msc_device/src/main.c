@@ -670,28 +670,14 @@ static void demo_panic_halt(void)
  */
 void main(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     demo_panic_halt();
   }
-  /* Bring up PLL2 -> USBCKCR / USBCKDIVCR so USBFS sees a spec-compliant
-   * 48 MHz reference (PLL2P 240 MHz / 5). Must run BEFORE any caller
-   * releases MSTPB11 (USBFS) -- the SREQ -> SRDY handshake silently
-   * hangs otherwise (HUM Ch 9 "Clock selection switching procedure"
-   * step 1). Without this the SIE never sees a 48 MHz clock and the
-   * host never enumerates the device. */
   if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
   if (demo_pins_init() != k_ra8_ok) {

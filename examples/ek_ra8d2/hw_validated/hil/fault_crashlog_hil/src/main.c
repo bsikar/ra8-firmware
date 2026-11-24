@@ -218,13 +218,11 @@ static void fc_log_sink(void* ctx, uint8_t byte)
  */
 static void fc_setup_or_halt(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
-    fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_fc_uart_baud) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_fc_uart_baud,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }

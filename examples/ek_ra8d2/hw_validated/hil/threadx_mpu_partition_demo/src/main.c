@@ -256,7 +256,9 @@ void main(void)
    * then sleep for ~2 minutes and the HIL counter window would see
    * zero advance. Bring up the PLL before tx_kernel_enter so the
    * scheduler tick rate matches what tx_user.h declared. */
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

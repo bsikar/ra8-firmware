@@ -50,6 +50,7 @@
 #include <string.h>
 
 #include "fw_if_clock.h"
+#include "ra8_board_ek_ra8d2_bringup.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
@@ -235,15 +236,13 @@ static void demo_report_mount(ra8_ftl_mount_state_t state)
  */
 static void demo_setup_or_halt(void)
 {
-  uint32_t                cpuclk0_hz = 0U;
-  uint32_t                pclka_hz   = 0U;
-  const fw_clock_module_t clk_core   = {.kind = k_fw_clock_module_core, .index = 0U};
-  const fw_clock_module_t clk_sci    = {.kind  = k_fw_clock_module_uart,
-                                        .index = (uint8_t)k_ra8_board_clock_uart_console};
-  if ((ra8_cgc_init() != k_ra8_ok) ||
-      (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) ||
+  uint32_t                      pclka_hz    = 0U;
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const fw_clock_module_t       clk_sci     = {.kind  = k_fw_clock_module_uart,
+                                               .index = (uint8_t)k_ra8_board_clock_uart_console};
+  if ((ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), clk_sci, &pclka_hz) != k_ra8_ok) ||
-      (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(k_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(k_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {

@@ -132,24 +132,9 @@ static void c6_probe_panic_halt(void)
  */
 static void c6_probe_clocks_or_halt(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-  /* PCLKA here feeds the ESP32-C6 Simple-SPI on SCI2, i.e. the Pmod1 slot. */
-  const fw_clock_module_t spi_module = {.kind  = k_fw_clock_module_uart,
-                                        .index = (uint8_t)k_ra8_board_clock_uart_pmod1};
-  if (ra8_cgc_init() != k_ra8_ok) {
-    c6_probe_panic_halt();
-  }
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    c6_probe_panic_halt();
-  }
-  if (fw_clock_rate_for(ra8_board_clock(), spi_module, &s_c6_pclka_hz) != k_ra8_ok) {
-    c6_probe_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    c6_probe_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     c6_probe_panic_halt();
   }
 }
