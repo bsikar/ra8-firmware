@@ -26,6 +26,9 @@ pub fn build(b: *std.Build) void {
         .root_module = library_module,
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
+    // Split functions and data so --gc-sections discards unused book_paged externs on ARM.
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     library.root_module.pic = true;
     b.installArtifact(library);
 
