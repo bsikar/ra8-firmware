@@ -17,6 +17,7 @@
 //! `cmake/mbedtls.cmake` already gives the C compiler.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// The headers mbedtls_c.zig exposes; the build writes them, so no C is added.
@@ -63,7 +64,9 @@ fn addMbedtlsHeaders(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const off_target = b.option(

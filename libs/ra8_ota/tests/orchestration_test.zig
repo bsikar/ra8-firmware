@@ -17,34 +17,21 @@ const impl = abi.internal;
 const ok = impl.err.ok;
 
 // =============================================================================
-// Log sink
+// Log sink (shared with abi_test.zig)
 // =============================================================================
 
-var log_calls: usize = 0;
-var last_message: [96]u8 = undefined;
-var last_message_len: usize = 0;
-var last_tag: [64]u8 = undefined;
-var last_tag_len: usize = 0;
+const log_stub = @import("abi_log_stub.zig");
 
-fn capture(destination: []u8, length: *usize, text: [*:0]const u8) void {
-    const slice = std.mem.span(text);
-    const take = @min(slice.len, destination.len);
-    @memcpy(destination[0..take], slice[0..take]);
-    length.* = take;
-}
-
-export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void {
-    log_calls += 1;
-    capture(&last_tag, &last_tag_len, tag);
-    capture(&last_message, &last_message_len, message);
+comptime {
+    _ = @import("abi_log_stub.zig");
 }
 
 fn loggedMessage() []const u8 {
-    return last_message[0..last_message_len];
+    return log_stub.message();
 }
 
 fn loggedTag() []const u8 {
-    return last_tag[0..last_tag_len];
+    return log_stub.tag();
 }
 
 /// `ra8_ct_equal` from ra8_core: the real archive supplies it on target, so the
@@ -256,9 +243,7 @@ fn reset() void {
     _ = abi.ra8_ota_deinit();
     model = .{};
     reset_hook_calls = 0;
-    log_calls = 0;
-    last_message_len = 0;
-    last_tag_len = 0;
+    log_stub.reset();
 }
 
 fn initModule() !void {
@@ -332,14 +317,14 @@ test "every entry point answers not_initialized before init, with no log line" {
     try std.testing.expectEqual(impl.err.not_initialized, abi.ra8_ota_commit_and_reboot());
     try std.testing.expectEqual(impl.err.not_initialized, abi.ra8_ota_run_step());
     try std.testing.expectEqual(impl.err.not_initialized, abi.ra8_ota_run_full_update());
-    try std.testing.expectEqual(@as(usize, 0), log_calls);
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
 }
 
 test "the init flag is judged before the NULL guard on check and download" {
     reset();
     // Pre-init NULL answers not_initialized, not null_ptr, and logs nothing.
     try std.testing.expectEqual(impl.err.not_initialized, abi.ra8_ota_check_for_update(null));
-    try std.testing.expectEqual(@as(usize, 0), log_calls);
+    try std.testing.expectEqual(@as(usize, 0), log_stub.calls());
     try initModule();
     try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_ota_check_for_update(null));
     try std.testing.expectEqualStrings("out_manifest", loggedMessage());
