@@ -16,16 +16,21 @@
  * none of which this image can reach. `ra8_hal` was never a factor:
  * `--gc-sections` already discards 295016 B of it and keeps only 26002 B.
  *
- * Trimming to the reachable set takes the shipping (MinSizeRel) image from
- * 116528 B to 61828 B, 88.90% of the bank down to 47.17%. That is both
- * headroom and attack surface: a Root-of-Trust bootloader has no business
- * carrying an RSA implementation it never calls. See issue RA8FW-353, which also
- * tracks the separate fact that a Debug build of this app does not fit the
- * bank at all.
+ * Removing unused mechanisms (`f43a741ae`), followed by replacing the multi-curve
+ * built-in `ecp`/`ecdsa`/`bignum` stack with `p256-m` and omitting the
+ * unused AES-GCM, `MBEDTLS_PK_*`, `MBEDTLS_ASN1_*`, and `MBEDTLS_MD_C` modules
+ * (`RA8FW-353`), eliminates unused code and attack surface so even a Debug
+ * (`-O0 -g3`) build fits well inside the 128 KB bootloader bank.
  *
  * The launch gate (`ra8_dfu_launch`) verifies exactly one thing: an
- * ECDSA-P256 signature over a SHA-256 digest, plus AES-GCM for the sealed
- * anti-rollback record. So this configuration enables that and nothing else.
+ * ECDSA-P256 signature over a SHA-256 digest via `ra8_rot_verify_image`,
+ * backed by the compact PSA `p256-m` driver (`MBEDTLS_PSA_P256M_DRIVER_ENABLED`).
+ * AES-GCM, `MBEDTLS_PK_*`, `MBEDTLS_ASN1_*`, and `MBEDTLS_MD_C` are omitted:
+ * the bootloader calls only `psa_crypto_init`, `psa_import_key`,
+ * `psa_verify_hash`, and `psa_destroy_key` with a raw SEC1 P-256 point and
+ * raw r||s signature, and the anti-rollback counter is an extra-MRAM u32 word.
+ * Without PK/ASN.1/GCM/bignum/ecp, even a Debug (`-O0 -g3`) image fits inside
+ * the 128 KB bootloader bank (`RA8FW-353`).
  *
  * Why this is app-local and not a trim of `port/mbedtls/inc`: that
  * configuration is shared by every mbedtls consumer in the tree
@@ -51,31 +56,22 @@
 #define TF_PSA_CRYPTO_CONFIG_VERSION (0x01000000)
 
 /* ---- Mechanisms the DFU launch gate actually verifies with ---------------
- * ECDSA-P256 over SHA-256 for the slot signature, AES-GCM for the sealed
- * anti-rollback record. Everything else the shared configuration enables is
- * omitted on purpose; see the file comment. */
+ * ECDSA-P256 over SHA-256 for the slot signature. Everything else the shared
+ * configuration enables is omitted on purpose; see the file comment. */
 #define PSA_WANT_ALG_SHA_256 (1)
 #define PSA_WANT_ALG_ECDSA (1)
 #define PSA_WANT_ECC_SECP_R1_256 (1)
 #define PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY (1)
-#define PSA_WANT_ALG_GCM (1)
-#define PSA_WANT_KEY_TYPE_AES (1)
 
 /* ---- PSA core and platform options -------------------------------------
- * Taken from the shared header, minus the parts a bootloader that verifies a
- * raw ECDSA signature over a digest cannot reach: PEM and base64 decoding,
- * PK parse/write (the slot key arrives as a raw public point, not DER or PEM),
- * PKCS#5, LMS, NIST key wrap, and both DRBGs (this image draws randomness
- * through MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG, see src/psa_verify_rng.c).
- * Deterministic ECDSA is omitted with them: the bootloader only ever
- * verifies, never signs, so it needs no per-signature nonce derivation. */
-#define MBEDTLS_MD_C
-#define MBEDTLS_PK_C
-#define MBEDTLS_PK_PARSE_C
-#define MBEDTLS_ASN1_PARSE_C
-#define MBEDTLS_ASN1_WRITE_C
+ * Minimal PSA verify surface: p256-m handles SECP256R1 ECDSA verify via the
+ * PSA driver interface without pulling the multi-curve builtin ecp/bignum,
+ * PK, ASN.1, or cipher stacks, and MBEDTLS_SHA256_SMALLER trims the software
+ * SHA-256 footprint alongside external RNG (src/psa_verify_rng.c). */
 #define MBEDTLS_PSA_CRYPTO_C
 #define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
+#define MBEDTLS_PSA_P256M_DRIVER_ENABLED
+#define MBEDTLS_SHA256_SMALLER
 
 #include "tf_psa_crypto_config_drivers.h"
 #include "tf_psa_crypto_config_platform.h"
