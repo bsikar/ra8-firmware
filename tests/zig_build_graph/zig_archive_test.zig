@@ -126,15 +126,21 @@ test "an app in the table actually names a migrated library" {
         if (app.zig_libraries.len == 0) continue;
         apps_with_archives += 1;
         for (app.zig_libraries) |lib_name| {
-            // A migrated library named in `zig_libraries` has to be named in
-            // `libraries` too: zig_libs.cmake only ever sees the LIBS list.
-            var in_libs = false;
+            // A migrated library named in `zig_libraries` is either declared in
+            // `libraries` (LIBS -> zig_libs.cmake) or linked explicitly via
+            // ra8_link_zig_library_for_cpu() with its inc/ dir on local.include_dirs.
+            var declared = false;
             for (app.libraries) |library| {
-                if (std.mem.eql(u8, library, lib_name)) in_libs = true;
+                if (std.mem.eql(u8, library, lib_name)) declared = true;
             }
-            if (!in_libs) {
+            const expected_inc = std.fmt.allocPrint(std.testing.allocator, "libs/{s}/inc", .{lib_name}) catch @panic("OOM");
+            defer std.testing.allocator.free(expected_inc);
+            for (app.local.include_dirs) |dir| {
+                if (std.mem.eql(u8, dir, expected_inc)) declared = true;
+            }
+            if (!declared) {
                 std.debug.print(
-                    "{s} cross-builds the {s} archive but does not name it in LIBS\n",
+                    "{s} cross-builds the {s} archive but does not name it in LIBS or local.include_dirs\n",
                     .{ app.name, lib_name },
                 );
                 return error.ArchiveNotInLibs;
