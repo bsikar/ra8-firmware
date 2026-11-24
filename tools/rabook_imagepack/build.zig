@@ -14,6 +14,7 @@
 //! six unit targets plus the four integration scripts through CTest.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 // First-party sources carry the project warning bar (NASA Power of 10 Rule
 // 10) exactly as they do in the ARM and host-test builds; only vendored SOUP
@@ -185,14 +186,15 @@ fn addToolIncludes(b: *std.Build, mod: *std.Build.Module) void {
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     // The converter transcodes real images, so the default build optimizes
     // like the C-era tool build did; an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    // The libraries the C-era recipe linked as Zig archives. The webp
-    // archive comes before the archives it calls into (imgdec, mem): the
-    // single-pass link resolves the facade's calls against them.
+    // The libraries linked as Zig static archives. Linking `fmt_lib` before
+    // `jof_lib` / `book_wire_lib` / `webp_lib` / `imgdec_lib` resolves all
+    // cross-archive engine symbols in a single pass.
+    const fmt_lib = b.dependency("ra8_fmt", .{ .target = target, .optimize = optimize }).artifact("ra8_fmt");
     const webp_lib = b.dependency("webp", .{ .target = target, .optimize = optimize }).artifact("webp");
     const imgdec_lib = b.dependency("ra8_imgdec", .{ .target = target, .optimize = optimize }).artifact("ra8_imgdec");
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
@@ -215,11 +217,6 @@ pub fn build(b: *std.Build) void {
 
     const tool_sources = [_][]const u8{
         "src/main.c",
-        "src/ra8_fmt_stream_convert.c",
-        "src/ra8_fmt_stream_inspect.c",
-        "src/ra8_fmt_stream_rabook.c",
-        "src/ra8_fmt_stream_verify.c",
-        "src/ra8_fmt_stream_verify_plan.c",
         "src/ra8_fmt_host_fd.c",
         "src/ra8_fmt_host_spool.c",
         "src/ra8_fmt_portable_convert.c",
@@ -227,8 +224,17 @@ pub fn build(b: *std.Build) void {
         "src/ra8_fmt_portable_main.c",
     };
 
-    const mod = b.createModule(.{ .target = target, .optimize = optimize });
+    // Production CLI binary enforces zero allocator/mmap symbols via
+    // check_production_surface.sh, so disable C-UBSan on `mod` alone (avoiding
+    // libubsan_rt's malloc/free/munmap in debug builds) while test_exes keep
+    // default C sanitization.
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .sanitize_c = .off,
+    });
     mod.link_libc = true;
+    mod.linkLibrary(fmt_lib);
     mod.linkLibrary(webp_lib);
     mod.linkLibrary(imgdec_lib);
     mod.linkLibrary(mem_lib);
@@ -345,7 +351,6 @@ pub fn build(b: *std.Build) void {
             .name = "test_ra8_fmt_stream_inspect",
             .files = &.{
                 "tests/src/test_ra8_fmt_stream_inspect.c",
-                "src/ra8_fmt_stream_inspect.c",
             },
             .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", miniz_inc },
             .webp = true,
@@ -359,7 +364,7 @@ pub fn build(b: *std.Build) void {
         },
         .{
             .name = "test_ra8_fmt_stream_convert",
-            .files = &.{ "tests/src/test_ra8_fmt_stream_convert.c", "src/ra8_fmt_stream_convert.c", "src/ra8_fmt_host_fd.c" },
+            .files = &.{ "tests/src/test_ra8_fmt_stream_convert.c", "src/ra8_fmt_host_fd.c" },
             .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../apps/shared_libs/jof/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", miniz_inc },
             .webp = true,
             .jofc = true,
@@ -367,7 +372,7 @@ pub fn build(b: *std.Build) void {
         },
         .{
             .name = "test_ra8_fmt_stream_verify",
-            .files = &.{ "tests/src/test_ra8_fmt_stream_verify.c", "src/ra8_fmt_stream_verify.c", "src/ra8_fmt_stream_verify_plan.c", "src/ra8_fmt_stream_convert.c" },
+            .files = &.{"tests/src/test_ra8_fmt_stream_verify.c"},
             .includes = &.{ "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_jpeg/inc", "../../libs/ra8_jpeg/src", "../../apps/shared_libs/jof/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", miniz_inc },
             .webp = true,
             .jofc = true,
@@ -377,23 +382,36 @@ pub fn build(b: *std.Build) void {
             .name = "test_ra8_fmt_stream_rabook",
             .files = &.{
                 "tests/src/test_ra8_fmt_stream_rabook.c",
-                "src/ra8_fmt_stream_rabook.c",
                 "../../apps/shared_libs/rabook_compile/tests/src/rabook_compile_test_fixture.c",
                 rabook_compile_dir ++ "rabook_compile.c",
                 rabook_compile_dir ++ "ra8_rabook_finalize.c",
                 rabook_compile_dir ++ "ra8_rabook_container.c",
             },
-            .includes = &.{ support_inc, "../../apps/shared_libs/rabook_compile/tests/inc", "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/book/inc", "../../apps/shared_libs/book/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_mem/inc", "../../apps/shared_libs/rabook_compile/inc", miniz_inc },
-            .webp = false,
+            .includes = &.{ support_inc, "../../apps/shared_libs/rabook_compile/tests/inc", "inc", "../../libs/ra8_core/inc", "../../libs/ra8_fmt/inc", "../../apps/shared_libs/book/inc", "../../apps/shared_libs/book/src", "../../libs/ra8_io/inc", "../../apps/shared_libs/compress/inc", "../../apps/shared_libs/jof/inc", "../../libs/ra8_imgdec/inc", "../../libs/ra8_mem/inc", "../../apps/shared_libs/rabook_compile/inc", miniz_inc },
+            .webp = true,
             .bookc = true,
         },
     };
 
     const test_step = b.step("test", "Run the rabook_imagepack unit tests");
-    var test_exes: [units.len]*std.Build.Step.Compile = undefined;
-    for (units, 0..) |unit, i| {
+    {
+        const zig_test_mod = b.createModule(.{
+            .root_source_file = b.path("tests/rabook_imagepack_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        const zig_tests = b.addTest(.{ .root_module = zig_test_mod });
+        const run_zig_tests = b.addRunArtifact(zig_tests);
+        run_zig_tests.setCwd(b.path("."));
+        ra8_build.configureHostTestRun(b, test_step, zig_tests, run_zig_tests);
+        test_step.dependOn(&run_zig_tests.step);
+    }
+
+    var rabook_fixture_exe: ?*std.Build.Step.Compile = null;
+    for (units) |unit| {
         const tmod = b.createModule(.{ .target = target, .optimize = optimize });
         tmod.link_libc = true;
+        tmod.linkLibrary(fmt_lib);
         tmod.linkLibrary(webp_lib);
         tmod.linkLibrary(imgdec_lib);
         tmod.linkLibrary(mem_lib);
@@ -402,7 +420,6 @@ pub fn build(b: *std.Build) void {
         tmod.linkLibrary(jof_lib);
         tmod.linkLibrary(compress_lib);
         tmod.linkLibrary(book_wire_lib);
-        mod.linkLibrary(compress_lib);
         for (unit.includes) |inc_path| tmod.addIncludePath(b.path(inc_path));
         // The C-era test targets carried extra definitions per target
         // (RA8_FMT_TEST_PNG's golden fixture path); those ride on the unit's
@@ -423,34 +440,39 @@ pub fn build(b: *std.Build) void {
             addWebp(b, tmod);
         }
         const test_exe = b.addExecutable(.{ .name = unit.name, .root_module = tmod });
-        test_exes[i] = test_exe;
+        if (std.mem.eql(u8, unit.name, "test_ra8_fmt_stream_rabook")) {
+            rabook_fixture_exe = test_exe;
+        }
         b.installArtifact(test_exe);
         test_step.dependOn(&b.addRunArtifact(test_exe).step);
     }
-    _ = &test_exes;
 
     // ---- the four C-era integration scripts, driven against the built exes ----
     const integration_step = b.step("integration", "Run the rabook_imagepack integration suites");
     {
         const cmd = b.addSystemCommand(&.{ "sh", "tests/rabook_inspect_integration.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArtifactArg(exe);
-        cmd.addArtifactArg(test_exes[5]);
+        cmd.addArtifactArg(rabook_fixture_exe.?);
         integration_step.dependOn(&cmd.step);
     }
     {
         const cmd = b.addSystemCommand(&.{ "sh", "tests/convert_integration.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArtifactArg(exe);
         cmd.addArg("../..");
         integration_step.dependOn(&cmd.step);
     }
     {
         const cmd = b.addSystemCommand(&.{ "sh", "tests/verify_integration.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArtifactArg(exe);
         cmd.addArg("../..");
         integration_step.dependOn(&cmd.step);
     }
     {
         const cmd = b.addSystemCommand(&.{ "sh", "tests/check_production_surface.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArg(".");
         cmd.addArtifactArg(exe);
         integration_step.dependOn(&cmd.step);

@@ -1,6 +1,6 @@
 /**
  * @file ra8_fmt_stream.h
- * @brief Caller-workspace I/O contracts for portable format-tool engines.
+ * @brief Caller-workspace I/O contracts for portable format engines.
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -12,11 +12,9 @@
  * descriptors, firmware VFS streams, and in-memory tests bind the same
  * contracts.
  *
- * Those four contracts are format-neutral, so they now live in
- * `libs/ra8_fmt/inc/ra8_fmt_io.h`, where a product can bind them without
- * linking anything under `tools/` (RA8FW-315). What remains here is the part that
- * is genuinely JOF- and RABOOK-specific: the requirements/workspace protocol
- * and the engine entry points.
+ * The transport-neutral stream interfaces live in `ra8_fmt_io.h`; this header
+ * provides the JOF and RABOOK requirements, workspace records, and streaming
+ * engine entry points.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,6 +23,11 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -111,6 +114,8 @@ typedef struct {
 
 /**
  * @brief Inspect one JOF source through callbacks and caller storage.
+ * @details Task-safe reentrant when callers pass independent sources,
+ * workspaces, and report sinks; retains no caller pointers or state.
  * @param[in]     source    Immutable JOF input.
  * @param[in]     verbose   Emit header/footer hex and the full tile table.
  * @param[in,out] workspace Exact-or-larger audit buffers.
@@ -126,6 +131,8 @@ typedef struct {
 
 /**
  * @brief Strictly inspect one streamed RBKC container and its RABOOK1 payload.
+ * @details Task-safe reentrant when callers pass independent sources,
+ * workspaces, and report sinks; retains no caller pointers or state.
  * @param[in] source Immutable positioned container source.
  * @param[in] verbose Emit the bounded chunk inventory.
  * @param[in,out] workspace Exact-or-larger table and validator buffers.
@@ -143,6 +150,8 @@ typedef struct {
 
 /**
  * @brief Derive source geometry and exact JOF conversion workspace needs.
+ * @details Task-safe reentrant when source contexts do not alias across threads;
+ * parses headers via positioned reads without global state.
  * @param[in]  source Immutable JPEG, PNG, or WebP input.
  * @param[out] out    Receives exact arena requirements and chosen band
  * geometry.
@@ -164,6 +173,8 @@ typedef struct {
 
 /**
  * @brief Stream one encoded image into a durably published JOF artifact.
+ * @details Task-only non-reentrant because the underlying JOF and WebP
+ * decoders use module-static state on freestanding targets.
  * @param[in]     source      Immutable JPEG, PNG, or WebP input.
  * @param[in]     requirements Exact requirements derived for @p source.
  * @param[in,out] workspace   Caller-owned exact-or-larger producer arenas.
@@ -194,6 +205,8 @@ ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   source,
 /**
  * @brief Derive exact producer and comparison storage for bounded JOF
  * verification.
+ * @details Task-safe reentrant for independent source contexts and writable
+ * output pointers.
  * @param[in] source Stable JPEG, PNG, or WebP source.
  * @param[out] out Receives exact phase requirements.
  * @return Probe or sizing status.
@@ -208,10 +221,12 @@ ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   source,
 /**
  * @brief Verify banded JOF pixels against an independently decoded row
  * reference.
- * @details Encodes two independent source contexts into sealed scratch atlases:
- * one-row reference tiles remove inter-row band accumulation, while 256-row
- * subject tiles exercise the production band path. Tiles are decoded and
- * compared one row at a time; an optional PPM is transactionally published.
+ * @details Task-only non-reentrant because the JOF producer and decoder use
+ * module-static scratch on target builds. Encodes two independent source
+ * contexts into sealed scratch atlases: one-row reference tiles remove
+ * inter-row band accumulation, while 256-row subject tiles exercise the
+ * production band path. Tiles are decoded and compared one row at a time; an
+ * optional PPM is transactionally published.
  * @param[in] reference_source First immutable encoded-source context.
  * @param[in] banded_source Independent context for the same encoded object.
  * @param[in] requirements Exact requirements derived for the source.
@@ -247,3 +262,7 @@ ra8_fmt_jof_verify_stream(const ra8_fmt_source_t*                  reference_sou
                           ra8_fmt_transaction_t*                   dump,
                           const char*                              dump_name,
                           const ra8_fmt_sink_t*                    report);
+
+#ifdef __cplusplus
+}
+#endif
