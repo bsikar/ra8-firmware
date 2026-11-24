@@ -107,7 +107,7 @@ fn entryExists(dir: std.Io.Dir, io: std.Io, name: []const u8) !bool {
 }
 
 fn publishWithoutReplace(dir: std.Io.Dir, io: std.Io, temp: []const u8, final: []const u8) !void {
-    try dir.hardLink(temp, dir, final, io, .{});
+    try dir.renamePreserve(temp, dir, final, io);
 }
 
 pub fn execute(
@@ -242,14 +242,11 @@ pub fn execute(
             try stderr.print("error: write-output: {s}\n", .{@errorName(err)});
             return 1;
         };
+        // renamePreserve moves temp to final atomically without replacing any existing file.
+        temp_created = false;
         @memcpy(published_names[published_count][0..names.final.len], names.final);
         published_lengths[published_count] = names.final.len;
         published_count += 1;
-        output_dir.deleteFile(io, names.temp) catch |err| {
-            try stderr.print("error: write-output: {s}\n", .{@errorName(err)});
-            return 1;
-        };
-        temp_created = false;
         const path = try std.fs.path.join(allocator, &.{ options.output_dir, names.final });
         defer allocator.free(path);
         try stdout.print("level={d:0>2} width={d} height={d} path={s}\n", .{ level, dims.width, dims.height, path });
