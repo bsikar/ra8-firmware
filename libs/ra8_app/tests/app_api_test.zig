@@ -43,7 +43,7 @@ test "the API generation is the one the .ra8app header admits against" {
 
 test "request numbers are append-only from one and never zero" {
     try std.testing.expectEqual(@as(u32, 1), @backingInt(abi.Request.api_version));
-    try std.testing.expectEqual(@as(u32, 12), @backingInt(abi.Request.last));
+    try std.testing.expectEqual(@as(u32, 13), @backingInt(abi.Request.last));
     try std.testing.expect(!kernel.known(0));
     try std.testing.expect(kernel.known(@backingInt(abi.Request.last)));
 }
@@ -93,9 +93,24 @@ test "a module's files live under its own directory and round-trip" {
 test "a module without the capability gets Denied from the shim" {
     reset(Capability.display);
     try std.testing.expectError(api.module.Error.Denied, App.fileOpen("a", abi.OpenFlag.read));
+    try std.testing.expectError(api.module.Error.Denied, App.ledSet(0, true));
     reset(Capability.storage);
     try std.testing.expectError(api.module.Error.Denied, App.screenInfo());
     try std.testing.expectError(api.module.Error.Denied, App.touchEvent());
+    try std.testing.expectError(api.module.Error.Denied, App.ledSet(0, true));
+}
+
+test "a module with the led capability drives an LED" {
+    reset(Capability.led);
+    try App.ledSet(0, true);
+    try std.testing.expectEqual(@as(?u32, 0), live_backend.led_index);
+    try std.testing.expect(live_backend.led_on);
+
+    try App.ledSet(0, false);
+    try std.testing.expectEqual(@as(?u32, 0), live_backend.led_index);
+    try std.testing.expect(!live_backend.led_on);
+
+    try std.testing.expectError(api.module.Error.BadArgument, App.ledSet(3, true));
 }
 
 test "touch events come one at a time and an empty queue is not an error" {

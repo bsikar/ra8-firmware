@@ -80,8 +80,8 @@ no padding, so the first 160 bytes of the file *are* the parsed header
 | `0x0C` | 4 | `code_size` | `1 ..= 0x100000` |
 | `0x10` | 4 | `data_size` | `0 ..= 0x100000` |
 | `0x14` | 4 | `stack_size` | `0x400 ..= 0x100000` |
-| `0x18` | 4 | `min_api_version` | `<=` the firmware's `api_version_current` (1) |
-| `0x1C` | 4 | `capabilities` | only bits in `0x7` |
+| `0x18` | 4 | `min_api_version` | `<=` the firmware's `api_version_current` (2) |
+| `0x1C` | 4 | `capabilities` | only bits in `0xF` |
 | `0x20` | 32 | `app_id` | NUL-terminated inside the field, not empty, zero padded |
 | `0x40` | 32 | `display_name` | NUL-terminated inside the field, zero padded |
 | `0x60` | 64 | `signature` | Ed25519 `R || S`, not all zero |
@@ -95,6 +95,7 @@ Capability bits:
 | `0x1` | `display` | drawing in its screen region, and its input |
 | `0x2` | `storage` | files under `/apps/<app_id>/` |
 | `0x4` | `network` | network connections (no call uses it yet) |
+| `0x8` | `led` | driving board status LEDs |
 
 The signed message is `file[0x00 .. 0x60] || file[0xA0 .. 0xA0 + code_size + data_size]`.
 Bytes past the declared payload are not signed and not loaded.

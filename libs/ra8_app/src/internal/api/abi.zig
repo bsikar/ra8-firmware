@@ -23,7 +23,7 @@ const std = @import("std");
 
 /// API generation this firmware serves. Equal to the `.ra8app` format's
 /// `api_version_current`; a test holds the two together.
-pub const version: u32 = 1;
+pub const version: u32 = 2;
 
 /// One argument word: `ALIGN_TYPE`, 32 bits on the Cortex-M, the pointer
 /// width on the host the tests run on.
@@ -61,10 +61,13 @@ pub const Request = enum(u32) {
     /// `(*TouchEvent out)`. The next touch or button event, if any.
     /// Needs `display`: input belongs to the screen region it lands on.
     touch_event = 12,
+    /// `(index, on)`. Drives a board status LED on (`1`) or off (`0`).
+    /// Needs `led`.
+    led_set = 13,
     _,
 
     /// The last request this generation defines.
-    pub const last: Request = .touch_event;
+    pub const last: Request = .led_set;
 };
 
 /// What a call answers in its status word. `ok` is zero, so a module can test

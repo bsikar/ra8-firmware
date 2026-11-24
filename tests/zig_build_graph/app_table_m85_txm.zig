@@ -156,4 +156,23 @@ pub const apps = [_]CrossApp{
         .ra8app_module = "txm_translate_m33",
         .stack_bytes = 8192,
     },
+    .{
+        // Legible touch-to-LED demo (RA8FW-1262): carries the signed
+        // `txm_touch_led_m33.ra8app` in `.txm_module` MRAM, admits it under
+        // display|led, reads GT911 touch via `ra8_io_bus`, and drives LED1.
+        .name = "txm_touch_led_m85",
+        .dir = "apps/board/threadx_modules/txm_touch_led_m85",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_io_bus" },
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+        .threadx_heap = "SDRAM",
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            .{ .name = "app_resident", .path = "libs/ra8_app/src/internal/app_resident.zig" },
+        },
+        .ra8app_module = "txm_touch_led_m33",
+        .stack_bytes = 8192,
+    },
 };

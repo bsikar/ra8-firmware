@@ -27,3 +27,9 @@ pub const tour_capabilities = "3";
 pub const translate_app_id = "com.ra8.txm_translate_m33";
 pub const translate_display_name = "Translate M33";
 pub const translate_capabilities = "3";
+
+/// The manifest identity of the touch-to-LED demo module (RA8FW-1262):
+/// display (screen region + touch input, 0x1) and led (0x8).
+pub const touch_led_app_id = "com.ra8.txm_touch_led_m33";
+pub const touch_led_display_name = "Touch LED M33";
+pub const touch_led_capabilities = "9";

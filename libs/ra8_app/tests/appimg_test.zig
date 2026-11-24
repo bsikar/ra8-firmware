@@ -74,7 +74,7 @@ test "a format revision this build does not read is a validation refusal" {
 
 test "an undefined capability bit is refused rather than ignored" {
     var h = goodHeader();
-    h.capabilities = appimg.Capability.known | 0x8;
+    h.capabilities = appimg.Capability.known | 0x10;
     const image = try imageOf(std.testing.allocator, h);
     defer std.testing.allocator.free(image);
     try std.testing.expectError(appimg.Error.Validation, appimg.parse(image));

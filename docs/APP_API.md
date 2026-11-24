@@ -58,9 +58,10 @@ reused or renumbered, and zero is never a request.
 | 10 | `file_write` | `*FileIo` | | | storage | writes `done` back |
 | 11 | `file_close` | handle | | | storage | |
 | 12 | `touch_event` | `*TouchEvent` out | | | display | `no_event` when the queue is empty |
+| 13 | `led_set` | led index | on (0 or 1) | | led | drives a board status LED |
 
 Input needs `display`: a touch belongs to the screen region it lands on, and a
-module without one has no input.
+module without one has no input. `led_set` needs `led` (`0x8`).
 
 ### Argument structs
 
@@ -99,7 +100,7 @@ refused. `TouchEvent.kind`: `press 1`, `move 2`, `release 3`, `button_down 4`,
 `dispatch` refuses in this order and stops at the first refusal. A refusal
 never reaches the backend.
 
-1. **Unknown request.** Anything outside `1 ..= 12`.
+1. **Unknown request.** Anything outside `1 ..= 13`.
 2. **Capability.** The request's capability must be in the caller's admitted
    manifest. This is checked before any pointer is read.
 3. **Pointers.** Every pointer, and every buffer an argument block names, must

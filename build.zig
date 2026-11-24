@@ -38,6 +38,7 @@
 //!   txm-hello-m33         Build the hello-world ThreadX module for CPU1 as arm/txm_hello_m33.elf
 //!   txm-tour-m33          Build the syscall-tour module for CPU1 as arm/txm_tour_m33.elf
 //!   txm-translate-m33     Build the translation module shell for CPU1 as arm/txm_translate_m33.elf
+//!   txm-touch-led-m33     Build the touch-to-LED demo module for CPU1 as arm/txm_touch_led_m33.elf
 //!   threadx-m85-modules   Build the ThreadX Module Manager for the M85 as libthreadx_m85_modules.a
 //!   txm-module-check      Build the Zig-to-C module probes for both cores and check relocations
 //!   compile-db            Emit compile_commands.json covering the TUs this graph compiles
@@ -395,6 +396,9 @@ pub fn build(b: *std.Build) void {
 
     const txm_translate_m33_step = b.step("txm-translate-m33", "Build the translation module's shell for CPU1 (Cortex-M33) as arm/txm_translate_m33.elf");
     cross_image.addTxmTranslateM33(b, txm_translate_m33_step, arm);
+
+    const txm_touch_led_m33_step = b.step("txm-touch-led-m33", "Build the touch-to-LED demo module for CPU1 (Cortex-M33) as arm/txm_touch_led_m33.elf");
+    cross_image.addTxmTouchLedM33(b, txm_touch_led_m33_step, arm);
 
     const threadx_m85_modules_step = b.step("threadx-m85-modules", m85_threadx_modules.step_description);
     cross_image.addThreadxM85Modules(b, threadx_m85_modules_step, arm);

@@ -265,6 +265,15 @@ fn backendTouch(ctx: *anyopaque, caller: *const kernel.Caller, event: *abi.Touch
     return .no_event;
 }
 
+/// No LEDs are wired in this example: every index fails safely.
+fn backendLed(ctx: *anyopaque, caller: *const kernel.Caller, index: u32, on: bool) Status {
+    _ = ctx;
+    _ = caller;
+    _ = index;
+    _ = on;
+    return .not_found;
+}
+
 const backend_impl = kernel.Backend{
     .ctx = &ctx_token,
     .exit = &backendExit,
@@ -278,6 +287,7 @@ const backend_impl = kernel.Backend{
     .write = &backendWrite,
     .close = &backendClose,
     .touch = &backendTouch,
+    .led = &backendLed,
 };
 
 /// The module's data range, straight off the manager's module instance:
