@@ -38,3 +38,27 @@ test "only a successful sink can produce the bridge's own invalid_size" {
     try std.testing.expectEqual(core.err.invalid_size, core.writeOutcome(core.err.ok, 1, 2));
     try std.testing.expectEqual(@as(u16, 0x404), core.writeOutcome(0x404, 1, 2));
 }
+
+test "a successful sink that took the whole frame is ok" {
+    try std.testing.expectEqual(core.err.ok, core.writeOutcome(core.err.ok, 128, 128));
+}
+
+test "a successful sink that took a prefix is the bridge's own invalid_size" {
+    try std.testing.expectEqual(core.err.invalid_size, core.writeOutcome(core.err.ok, 64, 128));
+}
+
+test "a zero-byte frame the sink accepted is ok, not a short write" {
+    try std.testing.expectEqual(core.err.ok, core.writeOutcome(core.err.ok, 0, 0));
+}
+
+test "the sink's error wins over a short count" {
+    try std.testing.expectEqual(@as(u16, 0x300), core.writeOutcome(0x300, 0, 128));
+}
+
+test "the sink's error wins even when the count is complete" {
+    try std.testing.expectEqual(@as(u16, 0x301), core.writeOutcome(0x301, 128, 128));
+}
+
+test "a sink that overran is not ok either" {
+    try std.testing.expectEqual(core.err.invalid_size, core.writeOutcome(core.err.ok, 200, 128));
+}

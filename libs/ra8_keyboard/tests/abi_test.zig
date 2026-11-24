@@ -9,7 +9,11 @@
 const std = @import("std");
 const abi = @import("abi");
 
-const fixture = @import("abi_fixture.zig");
+const fixture = @import("abi_fixture.zig").For(abi);
+comptime {
+    _ = @import("abi_fixture.zig");
+    _ = fixture.Exports;
+}
 
 const ok: u16 = 0;
 const invalid_arg: u16 = 0x103;

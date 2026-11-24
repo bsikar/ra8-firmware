@@ -7,6 +7,9 @@
 
 const std = @import("std");
 const core = @import("implementation");
+comptime {
+    _ = @import("abi_fixture.zig");
+}
 
 fn containsPure(r: ?*const core.Rect, px: i32, py: i32) callconv(.c) bool {
     const rect = r orelse return false;

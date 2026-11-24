@@ -13,6 +13,7 @@
 //! archive and the tests and no file belongs to two modules.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 /// The encoder's decision units, each with the units it depends on. Declared
 /// bottom-up so a dependency is always already built when it is wired.
@@ -41,7 +42,9 @@ const internal_modules = [_]struct { name: []const u8, deps: []const []const u8 
 };
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     var built = std.StringHashMap(*std.Build.Module).init(b.allocator);
