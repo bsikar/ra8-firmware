@@ -64,5 +64,10 @@ pub fn build(b: *std.Build) void {
     const tests = b.addTest(.{ .root_module = test_module });
 
     const test_step = b.step("test", "Run image pyramid tests");
-    _ = ra8_build.addHostTestRun(b, test_step, tests);
+    const run_tests = b.addRunArtifact(tests);
+    // Integration fixtures use package-relative paths, so keep cwd on the
+    // package root even when invoked via --build-file from repo root.
+    run_tests.setCwd(b.path("."));
+    ra8_build.configureHostTestRun(b, test_step, tests, run_tests);
+    test_step.dependOn(&run_tests.step);
 }
