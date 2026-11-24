@@ -98,15 +98,16 @@ pub fn priv_reflow_css_lower(c: u8) callconv(.c) u8 {
 ///
 /// `lit` must not be shorter than `len`; a `lit` that ends before `len`
 /// bytes are compared makes the comparison fail, matching the C contract.
-pub fn priv_reflow_css_ci_eq(s: ?[*]const u8, len: usize, lit: [*:0]const u8) callconv(.c) bool {
+pub fn priv_reflow_css_ci_eq(s: ?[*]const u8, len: usize, lit: ?[*:0]const u8) callconv(.c) bool {
     const sp = s orelse return false;
+    const lp = lit orelse return false;
     var k: usize = 0;
-    while (k < len and lit[k] != 0) : (k += 1) {
-        if (priv_reflow_css_lower(sp[k]) != priv_reflow_css_lower(lit[k])) {
+    while (k < len and lp[k] != 0) : (k += 1) {
+        if (priv_reflow_css_lower(sp[k]) != priv_reflow_css_lower(lp[k])) {
             return false;
         }
     }
-    return k == len and lit[k] == 0;
+    return k == len and lp[k] == 0;
 }
 
 /// Trim CSS whitespace off both ends of `s[0..len.*)`, updating `len` and

@@ -58,6 +58,10 @@ test "argument gates" {
     try std.testing.expectEqual(k_ra8_err_not_initialized, abi.reflow_parse_xhtml(engine, "x", 1));
     engine.in_use = 1;
     try std.testing.expectEqual(k_ra8_err_invalid_size, abi.reflow_parse_xhtml(engine, "x", 0));
+
+    try std.testing.expectEqual(k_ra8_err_null_ptr, abi.tokenize.priv_reflow_xml_walk(null, "x", 1));
+    try std.testing.expectEqual(k_ra8_err_null_ptr, abi.tokenize.priv_reflow_xml_walk(engine, null, 1));
+    try std.testing.expectEqual(k_ra8_err_invalid_size, abi.tokenize.priv_reflow_xml_walk(engine, "x", 0));
 }
 
 test "pool reset then real walk" {
@@ -87,6 +91,7 @@ test "text outside any element is dropped" {
     engine.in_use = 1;
 
     try std.testing.expectEqual(k_ra8_err_validation_failed, abi.reflow_parse_xhtml(engine, "just text", 9));
+    try std.testing.expectEqual(k_ra8_err_validation_failed, abi.reflow_parse_xhtml(engine, "<![CDATA[orphan]]>", 18));
     try std.testing.expectEqual(@as(u32, 0), engine.token_count);
     try std.testing.expectEqual(@as(u32, 0), engine.text_pool_used);
 }

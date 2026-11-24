@@ -122,7 +122,6 @@ fn internal_tag_is(buf: [*]const u8, i: usize, len: usize, name: [*:0]const u8) 
 }
 
 fn internal_handle_cdata(ctx: *TokCtx, buf: [*]const u8, pi: *usize, len: usize) c_int {
-    ctx.saw_element = true;
     const inner = pi.* + 9; // strlen("<![CDATA[")
     var close = inner;
     while ((close + 3) <= len and
@@ -498,16 +497,8 @@ fn internal_emit_text_run(ctx: *TokCtx, buf: [*]const u8, run: usize, end: usize
     return true;
 }
 
-/// The walk: fresh CSS rules per chapter, reset scratch state, scan.
-pub fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml_len: usize) c_int {
-    _ = ra8_css_sheet_reset(&engine.css); // fresh CSS rules per chapter
-
-    // The tokenizer scratch (per-open-element cascade stacks) is ~2 kB, which
-    // would push the frame past the project stack-usage budget. Hold it in
-    // module-static storage instead of on the stack and reset it on entry.
-    // Safe: a single, non-recursive, single-threaded caller.
-    var tok: TokCtx = undefined;
-    const ctx = &tok;
+/// Initialize per-walk tokenizer scratch context to clean defaults.
+fn internal_init_tok_ctx(ctx: *TokCtx, engine: *ReflowEngine) void {
     ctx.engine = engine;
     ctx.style = 0; // k_reflow_style_normal
     ctx.active_link = 0;
@@ -529,19 +520,42 @@ pub fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml
     @memset(&ctx.stack_fam_len, 0);
     @memset(&ctx.stack_face, 0);
     @memset(&ctx.stack_dir, 0);
+}
+
+/// The walk: fresh CSS rules per chapter, reset scratch state, scan.
+pub fn priv_reflow_xml_walk(
+    engine: ?*ReflowEngine,
+    xhtml_buf: ?[*]const u8,
+    xhtml_len: usize,
+) callconv(.c) c_int {
+    const eng = engine orelse return k_ra8_err_null_ptr;
+    const buf = xhtml_buf orelse return k_ra8_err_null_ptr;
+    if (xhtml_len == 0) {
+        return k_ra8_err_invalid_size;
+    }
+
+    _ = ra8_css_sheet_reset(&eng.css); // fresh CSS rules per chapter
+
+    // The tokenizer scratch (per-open-element cascade stacks) is ~2 kB, which
+    // would push the frame past the project stack-usage budget. Hold it in
+    // module-static storage instead of on the stack and reset it on entry.
+    // Safe: a single, non-recursive, single-threaded caller.
+    var tok: TokCtx = undefined;
+    const ctx = &tok;
+    internal_init_tok_ctx(ctx, eng);
 
     var i: usize = 0;
     while (i < xhtml_len) {
-        if (xhtml_buf[i] == '<') {
-            const err = internal_handle_lt(ctx, xhtml_buf, &i, xhtml_len);
+        if (buf[i] == '<') {
+            const err = internal_handle_lt(ctx, buf, &i, xhtml_len);
             if (err != k_ra8_ok) {
                 return err;
             }
             continue;
         }
         const run = i;
-        while (i < xhtml_len and xhtml_buf[i] != '<') : (i += 1) {}
-        if (!internal_emit_text_run(ctx, xhtml_buf, run, i)) {
+        while (i < xhtml_len and buf[i] != '<') : (i += 1) {}
+        if (!internal_emit_text_run(ctx, buf, run, i)) {
             return k_ra8_err_no_mem;
         }
     }
@@ -558,4 +572,5 @@ pub fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml
 comptime {
     _ = ReflowToken;
     _ = CssSheet;
+    @export(&priv_reflow_xml_walk, .{ .name = "priv_reflow_xml_walk" });
 }
