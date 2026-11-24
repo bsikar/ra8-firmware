@@ -7,15 +7,17 @@ a micro-SD card reached through the dedicated SDHI host controller, by swapping
 only the block-device backend.
 
 Everything above the block device is the identical fabric -- bridge to `ra8_fs`,
-format and mount FAT16, register in the VFS, mkdir, then a write / read /
-byte-compare round-trip through the streaming file API. `ra8_io_sd_demo` binds
-the SD-over-SPI block device; this app binds `ra8_io_blockdev_sdhi_init` on top of
-the `ra8_sdcard` + `ra8_sdhi` HAL drivers, and the SD bring-up runs the full SD
-Physical Layer identification. Every return value is checked; the first failing
-step parks the CPU.
+mount the volume (formatting FAT16 only when blank), register in the VFS under
+`"sd"`, list root entries on `sd:/`, ensure `sd:/LOGS`, then run a write /
+read / byte-compare round-trip through the streaming file API. `ra8_io_sd_demo`
+binds the SD-over-SPI block device; this app binds `ra8_io_blockdev_sdhi_init`
+on top of the `ra8_sdcard` + `ra8_sdhi` HAL drivers, and the SD bring-up runs
+the full SD Physical Layer identification. Every return value is checked; the
+first failing step parks the CPU.
 
-> **Warning:** this app **erases the card** -- it reformats FAT16. Insert a
-> disposable microSD before booting.
+> **Note:** on a pre-formatted FAT card this app preserves existing files and
+> only writes/updates `sd:/LOGS/A.TXT`; blank/unformatted cards are formatted
+> FAT16 (`RAIOSD`).
 
 ## Hardware
 
