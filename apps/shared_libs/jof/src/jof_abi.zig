@@ -1939,3 +1939,321 @@ pub export fn priv_jof_on_rows(
     }
     return jof_h.k_ra8_ok;
 }
+
+// ---------------------------------------------------------------------------
+// Producer body slice 3 (RA8FW-1153): sniff, dispatch, finish/epilogue and
+// the public entries. This retires jof_produce.c entirely.
+// ---------------------------------------------------------------------------
+
+/// Container formats ra8_imgdec_sniff can report (ra8_imgdec.h). Translated
+/// as a plain C int so the extern ABI matches the C enum exactly.
+const ra8_imgdec_format_t = c_int;
+const k_ra8_imgdec_format_none: ra8_imgdec_format_t = 0;
+const k_ra8_imgdec_format_png: ra8_imgdec_format_t = 2;
+const k_ra8_imgdec_format_webp: ra8_imgdec_format_t = 4;
+
+/// The geometry a container declares about itself, before any decode
+/// (ra8_imgdec.h).
+const ra8_imgdec_geom_t = extern struct {
+    format: ra8_imgdec_format_t,
+    width_px: u32,
+    height_px: u32,
+};
+
+/// JPEG geometry callback type (ra8_jpeg_sw.h): fires once after SOF0, the
+/// consumer hands back the stripe buffer the decoder will fill.
+const ra8_jpeg_sw_geom_fn = ?*const fn (ctx: ?*anyopaque, width: u16, height: u16, channels: u8, stripe_rows: u16, out_stripe: [*c][*c]u8, out_stripe_cap: [*c]u32) callconv(.c) jof_h.ra8_err_t;
+
+/// JPEG stripe sink type (ra8_jpeg_sw.h): same shape as the PNG row hook.
+const ra8_jpeg_sw_rows_fn = ?*const fn (ctx: ?*anyopaque, px: [*c]const u8, width: u16, y0: u16, nrows: u16, channels: u8) callconv(.c) jof_h.ra8_err_t;
+
+/// sizeof(tdefl_compressor), the zero-heap ra8_compress scratch (pinned by
+/// the static asserts jof_produce.c carried).
+const k_ra8_compress_scratch_bytes: u32 = 319352;
+
+/// JPEG SOI marker bytes, file-local consts in the retired jof_produce.c.
+const k_jof_sniff_bytes: usize = 12; // jof_produce.c file-local: magic bytes pulled up front (WebP needs 12).
+const k_jof_jpeg_soi_first: u8 = 0xFF;
+const k_jof_jpeg_soi_second: u8 = 0xD8;
+
+/// Minimum sliding window the streaming JPEG decoder accepts
+/// (ra8_jpeg_sw.h).
+const k_ra8_jpeg_sw_stream_min_window: u32 = 131072;
+
+extern fn ra8_imgdec_sniff(bytes: [*c]const u8, byte_count: u32, out: [*c]ra8_imgdec_format_t) callconv(.c) jof_h.ra8_err_t;
+extern fn ra8_imgdec_dims(bytes: [*c]const u8, byte_count: u32, out: [*c]ra8_imgdec_geom_t) callconv(.c) jof_h.ra8_err_t;
+extern fn ra8_jpeg_sw_decode_stripes(pull: jof_h.jof_pull_fn, pull_ctx: ?*anyopaque, window: [*c]u8, window_cap: u32, on_geom: ra8_jpeg_sw_geom_fn, on_rows: ra8_jpeg_sw_rows_fn, cb_ctx: ?*anyopaque) callconv(.c) jof_h.ra8_err_t;
+extern fn ra8_jpeg_sw_get_dimensions(jpeg_buf: [*c]const u8, jpeg_len: u32, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t;
+
+/// Container sniff behind the dispatch decision: the shared
+/// ra8_imgdec_sniff over the pulled head, collapsed to format_none on any
+/// error. Ports internal_sniffed.
+fn internal_sniffed(data: [*c]const u8, len: usize) callconv(.c) ra8_imgdec_format_t {
+    var fmt: ra8_imgdec_format_t = k_ra8_imgdec_format_none;
+    const n: u32 = if (len > @as(usize, 4294967295)) 4294967295 else @intCast(len);
+    const rc = ra8_imgdec_sniff(data, n, &fmt);
+    if (rc != jof_h.k_ra8_ok) {
+        return k_ra8_imgdec_format_none;
+    }
+    return fmt;
+}
+
+/// JPEG geometry adapter: bind geometry, then carve the MCU stripe buffer
+/// sized width * stripe_rows * channels. Ports internal_jpeg_geom.
+fn internal_jpeg_geom(ctx: ?*anyopaque, width: u16, height: u16, channels: u8, stripe_rows: u16, out_stripe: [*c][*c]u8, out_stripe_cap: [*c]u32) callconv(.c) jof_h.ra8_err_t {
+    const st: *jof_h.jof_prod_state_t = @ptrCast(@alignCast(ctx.?));
+    const err = priv_jof_on_geom(st, width, height, channels);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    const cap: u32 = @as(u32, width) * @as(u32, stripe_rows) * @as(u32, channels);
+    const buf = priv_jof_bump_take(st.*.bump, cap);
+    if (buf == null) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    out_stripe.* = @ptrCast(buf.?);
+    out_stripe_cap.* = cap;
+    return jof_h.k_ra8_ok;
+}
+
+/// Emit the tile index and footer, then fill the caller's info. Ports
+/// internal_finish.
+pub fn internal_finish(st: *jof_h.jof_prod_state_t, out_info: *jof_h.jof_info_t) callconv(.c) jof_h.ra8_err_t {
+    if (st.*.tiles_done != st.*.tile_count) {
+        return jof_h.k_ra8_err_validation_failed;
+    }
+    const index_off: u32 = st.*.written;
+    var err = internal_sink(st, st.*.idx, @as(usize, st.*.tile_count) * @as(usize, jof_h.k_jof_index_entry));
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var ftr: [jof_h.k_jof_footer_bytes]u8 = std.mem.zeroes([jof_h.k_jof_footer_bytes]u8);
+    internal_wr_u32(&ftr[jof_h.k_jof_ftr_index_off], index_off);
+    internal_wr_u32(&ftr[jof_h.k_jof_ftr_tile_count], st.*.tile_count);
+    internal_wr_u32(&ftr[jof_h.k_jof_ftr_total_size], st.*.written +% @as(u32, jof_h.k_jof_footer_bytes));
+    ftr[jof_h.k_jof_ftr_magic] = 'J';
+    ftr[jof_h.k_jof_ftr_magic + 1] = 'O';
+    ftr[jof_h.k_jof_ftr_magic + 2] = 'F';
+    ftr[jof_h.k_jof_ftr_magic + 3] = 'E';
+    err = internal_sink(st, &ftr, ftr.len);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    out_info.*.width = st.*.w;
+    out_info.*.height = st.*.h;
+    out_info.*.tile_w = st.*.cfg.*.tile_w;
+    out_info.*.tile_h = st.*.cfg.*.tile_h;
+    out_info.*.tile_cols = st.*.tile_cols;
+    out_info.*.tile_rows = st.*.tile_rows;
+    out_info.*.bpp = st.*.bpp;
+    out_info.*.codec = st.*.cfg.*.codec;
+    out_info.*.tile_count = st.*.tile_count;
+    out_info.*.index_off = index_off;
+    out_info.*.total_size = st.*.written;
+    return jof_h.k_ra8_ok;
+}
+
+/// Validate the caller configuration's non-pointer invariants: non-zero tile
+/// geometry and a known codec. Ports internal_check_cfg.
+fn internal_check_cfg(cfg: [*c]const jof_h.jof_produce_cfg_t) callconv(.c) jof_h.ra8_err_t {
+    if ((cfg.*.tile_w == 0) or (cfg.*.tile_h == 0)) {
+        return jof_h.k_ra8_err_invalid_arg;
+    }
+    if (cfg.*.codec > @as(u8, @intCast(jof_h.k_jof_codec_deflate))) {
+        return jof_h.k_ra8_err_invalid_arg;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Reset the transcode state and carve the deflate scratch. Ports
+/// internal_init_state.
+fn internal_init_state(st: *jof_h.jof_prod_state_t, cfg: [*c]const jof_h.jof_produce_cfg_t) callconv(.c) jof_h.ra8_err_t {
+    st.* = std.mem.zeroes(jof_h.jof_prod_state_t);
+    st.*.cfg = cfg;
+    st.*.bump_store = .{ .base = cfg.*.work, .cap = cfg.*.work_cap, .off = 0 };
+    st.*.bump = &st.*.bump_store;
+    st.*.cap_w = if ((cfg.*.max_width != 0) and (@as(u32, cfg.*.max_width) < @as(u32, jof_h.k_jof_max_dim)))
+        cfg.*.max_width
+    else
+        @intCast(jof_h.k_jof_max_dim);
+    st.*.cap_h = if ((cfg.*.max_height != 0) and (@as(u32, cfg.*.max_height) < @as(u32, jof_h.k_jof_max_dim)))
+        cfg.*.max_height
+    else
+        @intCast(jof_h.k_jof_max_dim);
+    if (cfg.*.codec == jof_h.k_jof_codec_deflate) {
+        st.*.dfl_len = k_ra8_compress_scratch_bytes;
+        const dfl = priv_jof_bump_take(st.*.bump, st.*.dfl_len);
+        if (dfl == null) {
+            return jof_h.k_ra8_err_invalid_size;
+        }
+        st.*.dfl = @ptrCast(dfl.?);
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Pull the sniff head (both formats need at least these bytes): loops the
+/// pull seam until the fixed sniff length arrives. Ports internal_sniff_head.
+fn internal_sniff_head(cfg: [*c]const jof_h.jof_produce_cfg_t, head: *[k_jof_sniff_bytes]u8) callconv(.c) jof_h.ra8_err_t {
+    var head_len: usize = 0;
+    while (head_len < @as(usize, k_jof_sniff_bytes)) {
+        var got: usize = 0;
+        const err = cfg.*.pull.?(cfg.*.pull_ctx, @ptrCast(&head[head_len]), @as(usize, k_jof_sniff_bytes) - head_len, &got);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        if (got == 0) {
+            return jof_h.k_ra8_err_protocol_error; // too short to be a JPEG/PNG
+        }
+        head_len += got;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// Dispatch the sniffed source to the matching decoder. Ports
+/// internal_dispatch.
+fn internal_dispatch(st: *jof_h.jof_prod_state_t, head: [*c]const u8, pfx: *jof_h.jof_prefix_pull_t) callconv(.c) jof_h.ra8_err_t {
+    if ((head[0] == k_jof_jpeg_soi_first) and (head[1] == k_jof_jpeg_soi_second)) {
+        const window = priv_jof_bump_take(st.*.bump, k_ra8_jpeg_sw_stream_min_window);
+        if (window == null) {
+            return jof_h.k_ra8_err_invalid_size;
+        }
+        return ra8_jpeg_sw_decode_stripes(priv_jof_prefix_pull, pfx, @ptrCast(window.?), k_ra8_jpeg_sw_stream_min_window, internal_jpeg_geom, priv_jof_on_rows, st);
+    }
+    const sniffed = internal_sniffed(head, @as(usize, k_jof_sniff_bytes));
+    if (sniffed == k_ra8_imgdec_format_png) {
+        return priv_jof_png_rows(priv_jof_prefix_pull, pfx, st.*.bump, st.*.cap_w, st.*.cap_h, priv_jof_on_geom, priv_jof_on_rows, st);
+    }
+    if (sniffed == k_ra8_imgdec_format_webp) {
+        return priv_jof_webp_transcode(st, pfx);
+    }
+    return jof_h.k_ra8_err_not_supported; // not a JPEG/PNG/WebP source
+}
+
+/// Sniff the container, read its declared geometry and range-check it. Ports
+/// internal_probe_sniff.
+fn internal_probe_sniff(data: [*c]const u8, len: usize, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t {
+    if (len < @as(usize, k_jof_sniff_bytes)) {
+        return jof_h.k_ra8_err_not_supported; // too short to carry any accepted magic
+    }
+    var w: u32 = 0;
+    var h: u32 = 0;
+    if ((data[0] == k_jof_jpeg_soi_first) and (data[1] == k_jof_jpeg_soi_second)) {
+        return ra8_jpeg_sw_get_dimensions(data, @intCast(len), out_w, out_h);
+    }
+    const sniffed = internal_sniffed(data, len);
+    if (sniffed == k_ra8_imgdec_format_png) {
+        var geom: ra8_imgdec_geom_t = std.mem.zeroes(ra8_imgdec_geom_t);
+        const n: u32 = if (len > @as(usize, 4294967295)) 4294967295 else @intCast(len);
+        const rc = ra8_imgdec_dims(data, n, &geom);
+        if (rc != jof_h.k_ra8_ok) {
+            return rc;
+        }
+        w = geom.width_px;
+        h = geom.height_px;
+    } else if (sniffed == k_ra8_imgdec_format_webp) {
+        const rc = jof_h.ra8_webp_get_info(data, len, &w, &h);
+        if (rc != jof_h.k_ra8_ok) {
+            return rc;
+        }
+    } else {
+        return jof_h.k_ra8_err_not_supported; // not a JPEG/PNG/WebP source
+    }
+    if ((w == 0) or (h == 0) or (w > @as(u32, jof_h.k_jof_max_dim)) or (h > @as(u32, jof_h.k_jof_max_dim))) {
+        return jof_h.k_ra8_err_invalid_size;
+    }
+    out_w.* = @intCast(w);
+    out_h.* = @intCast(h);
+    return jof_h.k_ra8_ok;
+}
+
+/// Probe entry: the public null-pointer contract over internal_probe_sniff.
+/// Ports jof_probe_dims.
+pub export fn jof_probe_dims(data: [*c]const u8, len: usize, out_w: [*c]u16, out_h: [*c]u16) callconv(.c) jof_h.ra8_err_t {
+    if (data == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (out_w == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (out_h == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    return internal_probe_sniff(data, len, out_w, out_h);
+}
+
+/// Post-decode checks, final band flush and trailer emission. Ports
+/// internal_epilogue.
+fn internal_epilogue(st: *jof_h.jof_prod_state_t, out_info: *jof_h.jof_info_t) callconv(.c) jof_h.ra8_err_t {
+    // mcdc-deactivated: post-decode contract guard; both in-tree decoders return success only after the geometry hook fired and every declared row was delivered (short/hostile streams abort inside the decoder), so neither condition can be flipped through the public producer entry.
+    if ((st.*.geom_done == 0) or (st.*.rows_seen != @as(u32, st.*.h))) {
+        return jof_h.k_ra8_err_validation_failed; // decoder under-delivered
+    }
+    if (st.*.band_fill > 0) {
+        const err = internal_flush_band(st, st.*.band_fill);
+        if (err != jof_h.k_ra8_ok) {
+            return err;
+        }
+        st.*.band_fill = 0;
+    }
+    return internal_finish(st, out_info);
+}
+
+/// Reject any NULL jof_produce argument or seam. Ports
+/// internal_produce_args_ok.
+fn internal_produce_args_ok(cfg: [*c]const jof_h.jof_produce_cfg_t, out_info: [*c]const jof_h.jof_info_t) callconv(.c) jof_h.ra8_err_t {
+    if (cfg == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (out_info == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (cfg.*.pull == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (cfg.*.sink == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    if (cfg.*.work == null) {
+        return jof_h.k_ra8_err_null_ptr;
+    }
+    return jof_h.k_ra8_ok;
+}
+
+/// The producer's single-instance static state (jof_produce.c carried it as
+/// a function-local static; the transcode is not thread-safe or re-entrant).
+var s_prod: jof_h.jof_prod_state_t = undefined;
+
+/// Public transcode entry: validate, init, sniff, dispatch, epilogue. Ports
+/// jof_produce.
+pub export fn jof_produce(cfg: [*c]const jof_h.jof_produce_cfg_t, out_info: [*c]jof_h.jof_info_t) callconv(.c) jof_h.ra8_err_t {
+    var err = internal_produce_args_ok(cfg, out_info);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    err = internal_check_cfg(cfg);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    const st: *jof_h.jof_prod_state_t = &s_prod;
+    err = internal_init_state(st, cfg);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var head: [k_jof_sniff_bytes]u8 = std.mem.zeroes([k_jof_sniff_bytes]u8);
+    err = internal_sniff_head(cfg, &head);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    var pfx: jof_h.jof_prefix_pull_t = .{
+        .head = &head,
+        .head_len = @sizeOf(@TypeOf(head)),
+        .pos = 0,
+        .inner = cfg.*.pull,
+        .inner_ctx = cfg.*.pull_ctx,
+    };
+    err = internal_dispatch(st, &head, &pfx);
+    if (err != jof_h.k_ra8_ok) {
+        return err;
+    }
+    return internal_epilogue(st, out_info.?);
+}
