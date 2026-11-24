@@ -27,22 +27,23 @@ const sci_hal = @import("internal/sci_hal.zig");
 const vocab = @import("internal/vocab.zig");
 
 const Err = vocab.Err;
+const ErrCode = vocab.ErrCode;
 const Level = vocab.Level;
 const Pull = vocab.Pull;
 
-extern fn ra8_gpio_output_init(pin: u16, level: u8) u32;
-extern fn ra8_gpio_input_init(pin: u16, pull: u8) u32;
-extern fn ra8_gpio_write(pin: u16, level: u8) u32;
-extern fn ra8_gpio_read(pin: u16, out_level: *u8) u32;
-extern fn ra8_gpio_toggle(pin: u16) u32;
-extern fn ra8_icu_configure_irq_pin(irq_num: u8, cfg: *const IcuIrqCfg) u32;
+extern fn ra8_gpio_output_init(pin: u16, level: u8) callconv(.c) ErrCode;
+extern fn ra8_gpio_input_init(pin: u16, pull: u8) callconv(.c) ErrCode;
+extern fn ra8_gpio_write(pin: u16, level: u8) callconv(.c) ErrCode;
+extern fn ra8_gpio_read(pin: u16, out_level: *u8) callconv(.c) ErrCode;
+extern fn ra8_gpio_toggle(pin: u16) callconv(.c) ErrCode;
+extern fn ra8_icu_configure_irq_pin(irq_num: u8, cfg: *const IcuIrqCfg) callconv(.c) ErrCode;
 extern fn ra8_isr_register(
     event: u16,
     handler: ?*const fn (?*anyopaque) callconv(.c) void,
     ctx: ?*anyopaque,
     priority: u8,
     out_slot: ?*u16,
-) u32;
+) callconv(.c) ErrCode;
 
 /// `ra8_icu_irq_cfg_t` (libs/ra8_hal/inc/ra8_icu.h).
 const IcuIrqCfg = extern struct {
@@ -100,7 +101,7 @@ comptime {
     }
 }
 
-fn getInfo(out: ?*BoardInfo) callconv(.c) u32 {
+fn getInfo(out: ?*BoardInfo) callconv(.c) ErrCode {
     const info = out orelse return Err.invalid_arg;
     info.* = .{
         .name = board_name,
@@ -110,44 +111,44 @@ fn getInfo(out: ?*BoardInfo) callconv(.c) u32 {
     return Err.ok;
 }
 
-fn ledPin(led: u8, out_pin: ?*u16) callconv(.c) u32 {
+fn ledPin(led: u8, out_pin: ?*u16) callconv(.c) ErrCode {
     const slot = out_pin orelse return Err.invalid_arg;
     slot.* = pins.ledPin(led) orelse return Err.invalid_arg;
     return Err.ok;
 }
 
-fn ledInit(led: u8) callconv(.c) u32 {
+fn ledInit(led: u8) callconv(.c) ErrCode {
     const pin = pins.ledPin(led) orelse return Err.invalid_arg;
     return ra8_gpio_output_init(pin, Level.low);
 }
 
-fn ledOn(led: u8) callconv(.c) u32 {
+fn ledOn(led: u8) callconv(.c) ErrCode {
     const pin = pins.ledPin(led) orelse return Err.invalid_arg;
     return ra8_gpio_write(pin, Level.high);
 }
 
-fn ledOff(led: u8) callconv(.c) u32 {
+fn ledOff(led: u8) callconv(.c) ErrCode {
     const pin = pins.ledPin(led) orelse return Err.invalid_arg;
     return ra8_gpio_write(pin, Level.low);
 }
 
-fn ledToggle(led: u8) callconv(.c) u32 {
+fn ledToggle(led: u8) callconv(.c) ErrCode {
     const pin = pins.ledPin(led) orelse return Err.invalid_arg;
     return ra8_gpio_toggle(pin);
 }
 
-fn swPin(sw: u8, out_pin: ?*u16) callconv(.c) u32 {
+fn swPin(sw: u8, out_pin: ?*u16) callconv(.c) ErrCode {
     const slot = out_pin orelse return Err.invalid_arg;
     slot.* = pins.swPin(sw) orelse return Err.invalid_arg;
     return Err.ok;
 }
 
-fn swInit(sw: u8) callconv(.c) u32 {
+fn swInit(sw: u8) callconv(.c) ErrCode {
     const pin = pins.swPin(sw) orelse return Err.invalid_arg;
     return ra8_gpio_input_init(pin, Pull.up);
 }
 
-fn swRead(sw: u8, out_pressed: ?*u8) callconv(.c) u32 {
+fn swRead(sw: u8, out_pressed: ?*u8) callconv(.c) ErrCode {
     const slot = out_pressed orelse return Err.invalid_arg;
     const pin = pins.swPin(sw) orelse return Err.invalid_arg;
 
@@ -164,7 +165,7 @@ fn swAttachIrq(
     sw: u8,
     cb: ?*const fn (?*anyopaque) callconv(.c) void,
     ctx: ?*anyopaque,
-) callconv(.c) u32 {
+) callconv(.c) ErrCode {
     const handler = cb orelse return Err.invalid_arg;
     const irq_num = pins.swIrqNum(sw) orelse return Err.invalid_arg;
 
@@ -188,18 +189,18 @@ fn swAttachIrq(
 
 var console: console_mod.Console(sci_hal) = .{};
 
-fn consoleInit(baud: u32) callconv(.c) u32 {
+fn consoleInit(baud: u32) callconv(.c) ErrCode {
     return console.init(baud);
 }
 
-fn consoleWrite(data: ?[*]const u8, len: usize) callconv(.c) u32 {
+fn consoleWrite(data: ?[*]const u8, len: usize) callconv(.c) ErrCode {
     return console.write(data, len);
 }
 
-fn consoleRead(out: ?[*]u8, cap: usize, out_len: ?*usize) callconv(.c) u32 {
+fn consoleRead(out: ?[*]u8, cap: usize, out_len: ?*usize) callconv(.c) ErrCode {
     return console.read(out, cap, out_len);
 }
 
-fn consoleFlush() callconv(.c) u32 {
+fn consoleFlush() callconv(.c) ErrCode {
     return console.flush();
 }

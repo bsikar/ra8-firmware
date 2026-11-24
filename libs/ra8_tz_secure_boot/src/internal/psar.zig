@@ -12,7 +12,7 @@ const regs = @import("regs.zig");
 /// What a caller's request amounts to.
 pub const Plan = union(enum) {
     /// The address is not a register; refuse before touching the gate.
-    reject: u32,
+    reject: regs.ErrCode,
     /// An empty mask asks for nothing: report success and the current value
     /// without ever opening the gate.
     observe,

@@ -51,7 +51,7 @@ pub fn Console(comptime Sci: type) type {
         /// Bring the console up: read PCLKA, refuse a pre-PLL clock, route the
         /// pins, then configure the channel. The gate only opens once the
         /// channel is configured.
-        pub fn init(self: *Self, baud: u32) u32 {
+        pub fn init(self: *Self, baud: u32) vocab.ErrCode {
             if (baud == 0) return Err.invalid_arg;
 
             // Read PCLKA at runtime so the BRR tracks whatever CGC tree the
@@ -76,7 +76,7 @@ pub fn Console(comptime Sci: type) type {
 
         /// Blocking write. An empty write is a no-op, checked before the buffer
         /// so a null/zero pair is accepted the way the C entry point was.
-        pub fn write(self: *const Self, data: ?[*]const u8, len: usize) u32 {
+        pub fn write(self: *const Self, data: ?[*]const u8, len: usize) vocab.ErrCode {
             if (len == 0) return Err.ok;
             const bytes = data orelse return Err.invalid_arg;
             if (!self.initialized) return Err.not_initialized;
@@ -85,7 +85,7 @@ pub fn Console(comptime Sci: type) type {
 
         /// Non-blocking drain: pull bytes while the channel has them, stop the
         /// moment it reports none. `cap` bounds the loop (NASA Rule 2).
-        pub fn read(self: *const Self, out: ?[*]u8, cap: usize, out_len: ?*usize) u32 {
+        pub fn read(self: *const Self, out: ?[*]u8, cap: usize, out_len: ?*usize) vocab.ErrCode {
             const written = out_len orelse return Err.invalid_arg;
             written.* = 0;
             if (cap == 0) return Err.ok;
@@ -103,7 +103,7 @@ pub fn Console(comptime Sci: type) type {
 
         /// Spin until the channel has drained, so a panic handler can get its
         /// failure log out before WFI gates the SCI clock.
-        pub fn flush(self: *const Self) u32 {
+        pub fn flush(self: *const Self) vocab.ErrCode {
             if (!self.initialized) return Err.not_initialized;
             return Sci.flush(Wiring.sci_channel);
         }

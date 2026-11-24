@@ -32,9 +32,9 @@ pub const Fake = struct {
     /// What `regionCount()` reports.
     implemented: u8 = 8,
     /// What `configure()` returns.
-    configure_result: u32 = regs.Err.ok,
+    configure_result: regs.ErrCode = regs.Err.ok,
     /// What `setBoundary()` returns.
-    boundary_result: u32 = regs.Err.ok,
+    boundary_result: regs.ErrCode = regs.Err.ok,
 
     configure_count: u8 = 0,
     boundary_count: u8 = 0,
@@ -53,7 +53,7 @@ pub fn reset() void {
 }
 
 /// Program the SAU from a descriptor.
-pub fn configure(cfg: *const SauCfg) u32 {
+pub fn configure(cfg: *const SauCfg) regs.ErrCode {
     if (comptime mmio.live_registers) return ra8_sau_configure(cfg);
     fake.configure_count +%= 1;
     fake.last_region_count = cfg.region_count;
@@ -68,7 +68,7 @@ pub fn regionCount() u8 {
 }
 
 /// Move one SRAM bank's security boundary.
-pub fn setBoundary(bank: u8, offset: u32) u32 {
+pub fn setBoundary(bank: u8, offset: u32) regs.ErrCode {
     if (comptime mmio.live_registers) return ra8_sram_set_boundary(bank, offset);
     fake.boundary_count +%= 1;
     fake.last_bank = bank;

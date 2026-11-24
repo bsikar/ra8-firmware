@@ -62,7 +62,7 @@ export fn ra8_board_bringup(cfg: ?*const bringup.Cfg, out: ?*bringup.Rates) u32 
 export fn ra8_board_clock_profile_to_chip(
     module: clock_types.Module,
     out_chip: ?*clock_types.Module,
-) u32 {
+) clock_types.ErrCode {
     return clock_profile.toChip(module, out_chip);
 }
 
@@ -70,7 +70,7 @@ export fn ra8_board_clock_profile_count(kind: u8) u8 {
     return clock_profile.count(kind);
 }
 
-export fn ra8_board_clock_profile_bind(clk: ?*clock_types.FwClock) u32 {
+export fn ra8_board_clock_profile_bind(clk: ?*clock_types.FwClock) clock_types.ErrCode {
     return clock_profile.bind(clk);
 }
 
@@ -167,8 +167,8 @@ export fn ra8_board_io_expander_set_usbhs_device_mode() u32 {
     return io_expander.setUsbhsDeviceMode();
 }
 
-export fn ra8_board_io_expander_set_usbhs_host_mode() u32 {
-    return io_expander.setUsbhsHostMode();
+export fn ra8_board_io_expander_set_usbhs_host_mode() clock_types.ErrCode {
+    return @intCast(io_expander.setUsbhsHostMode());
 }
 
 export fn ra8_board_io_expander_apply_project_sw4_defaults() u32 {

@@ -47,15 +47,18 @@ pub const Psar = struct {
     pub const readback_spins: u32 = 1000;
 };
 
+/// `ra8_err_t` is `enum : uint16_t`.
+pub const ErrCode = u16;
+
 /// Error codes shared with `ra8_err.h`, as the C ABI spells them.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const invalid_size: u32 = 0x105;
-    pub const not_supported: u32 = 0x107;
-    pub const timeout: u32 = 0x108;
-    pub const validation_failed: u32 = 0x501;
-    pub const null_ptr: u32 = 0x504;
+    pub const ok: ErrCode = 0;
+    pub const invalid_arg: ErrCode = 0x103;
+    pub const invalid_size: ErrCode = 0x105;
+    pub const not_supported: ErrCode = 0x107;
+    pub const timeout: ErrCode = 0x108;
+    pub const validation_failed: ErrCode = 0x501;
+    pub const null_ptr: ErrCode = 0x504;
 };
 
 test "PRCR open carries the key and PRC4, close carries the key alone" {
