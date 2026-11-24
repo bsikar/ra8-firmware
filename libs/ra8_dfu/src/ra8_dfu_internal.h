@@ -75,6 +75,37 @@ extern "C" {
  */
 RA8_PRIV ra8_err_t priv_dfu_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len);
 
+#ifdef RA8_OFF_TARGET
+/**
+ * @brief Host-test seam: overwrite raw bytes of ping-pong copy @p copy_idx.
+ *
+ * @details Simulates a torn erase (`0xFF` bytes), torn page write, or bit-rot
+ * directly inside the off-target dual-copy RAM shadow without weakening the
+ * production public API.
+ *
+ * @param[in] copy_idx Ping-pong copy slot index (`0` or `1`).
+ * @param[in] raw32    Non-NULL 32-byte replacement image for that copy.
+ * @return ``ra8_err_t`` outcome.
+ * @retval k_ra8_ok              Copy overwritten.
+ * @retval k_ra8_err_invalid_arg @p copy_idx >= 2.
+ * @retval k_ra8_err_null_ptr    @p raw32 is NULL.
+ *
+ * @pre Off-target host test build only (`RA8_OFF_TARGET`).
+ * @post Ping-pong shadow @p copy_idx holds @p raw32.
+ * @note Test-access only. @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_dfu_boot_state_corrupt_copy(uint8_t copy_idx, const uint8_t* raw32);
+
+/**
+ * @brief Host-test seam: reset both off-target ping-pong copies to erased `0xFF`.
+ *
+ * @pre Off-target host test build only (`RA8_OFF_TARGET`).
+ * @post Both off-target boot-state copies read all `0xFF`.
+ * @note Test-access only. @since 0.1.0
+ */
+RA8_PRIV void priv_dfu_boot_state_reset_store(void);
+#endif /* RA8_OFF_TARGET */
+
 #ifdef __cplusplus
 }
 #endif

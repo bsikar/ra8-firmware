@@ -41,9 +41,9 @@ import zlib
 from pathlib import Path
 
 # Bank map -- keep in lock-step with libs/ra8_dfu/inc/ra8_dfu.h.
-SLOT_BASE = {"a": 0x02020000, "b": 0x02090000}
-SLOT_SIZE = 0x00070000
-HDR_OFFSET = 0x0006FFE0
+SLOT_BASE = {"a": 0x02020000, "b": 0x0208F000}
+SLOT_SIZE = 0x0006F000
+HDR_OFFSET = 0x0006EFE0
 HDR_MAGIC = 0x52413844
 RUN_BASE = 0x22020000  # k_ra8_dfu_run_base: SRAM copy-to-run / payload link base
 PAGE = 0x20

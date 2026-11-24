@@ -11,8 +11,11 @@ pub const Err = enum(u16) {
     invalid_arg = 0x103,
     invalid_state = 0x104,
     invalid_size = 0x105,
+    not_found = 0x106,
     hw_timeout = 0x203,
     hw_error = 0x204,
+    out_of_range = 0x208,
+    crc_mismatch = 0x405,
     null_ptr = 0x504,
     /// `ra8_err.h` and the HAL publish codes outside the subset above. Keeping
     /// `Err` non-exhaustive lets unknown codes pass through untouched without

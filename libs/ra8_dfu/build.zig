@@ -33,6 +33,7 @@ const units = [_]struct { name: []const u8, imports: []const []const u8 }{
     .{ .name = "launch", .imports = &.{"image"} },
     .{ .name = "slot", .imports = &.{} },
     .{ .name = "program", .imports = &.{ "image", "slot" } },
+    .{ .name = "boot_state", .imports = &.{ "crc32", "image", "slot" } },
     .{ .name = "proto", .imports = &.{} },
     .{ .name = "tune", .imports = &.{} },
     .{ .name = "hal", .imports = &.{"err"} },
@@ -89,14 +90,34 @@ pub fn build(b: *std.Build) void {
         launch_abi_module.addImport(name, modules.get(name).?);
     }
 
+    const mram_port_module = b.createModule(.{
+        .root_source_file = b.path("src/mram_port.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "err", "program" }) |name| {
+        mram_port_module.addImport(name, modules.get(name).?);
+    }
+
     const program_abi_module = b.createModule(.{
         .root_source_file = b.path("src/program_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
-    inline for (.{ "image", "program", "slot" }) |name| {
+    inline for (.{ "err", "image", "program", "slot" }) |name| {
         program_abi_module.addImport(name, modules.get(name).?);
     }
+    program_abi_module.addImport("mram_port", mram_port_module);
+
+    const boot_state_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/boot_state_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "boot_state", "err", "slot" }) |name| {
+        boot_state_abi_module.addImport(name, modules.get(name).?);
+    }
+    boot_state_abi_module.addImport("mram_port", mram_port_module);
 
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
@@ -107,6 +128,7 @@ pub fn build(b: *std.Build) void {
     root_module.addImport("dfu_boot_abi", boot_abi_module);
     root_module.addImport("launch_abi", launch_abi_module);
     root_module.addImport("program_abi", program_abi_module);
+    root_module.addImport("boot_state_abi", boot_state_abi_module);
 
     const library = b.addLibrary(.{
         .name = "ra8_dfu",
@@ -131,6 +153,7 @@ pub fn build(b: *std.Build) void {
     boot_root_module.addImport("dfu_boot_abi", boot_abi_module);
     boot_root_module.addImport("launch_abi", launch_abi_module);
     boot_root_module.addImport("program_abi", program_abi_module);
+    boot_root_module.addImport("boot_state_abi", boot_state_abi_module);
     const boot_library = b.addLibrary(.{
         .name = "ra8_dfu_boot",
         .linkage = .static,
@@ -175,6 +198,15 @@ pub fn build(b: *std.Build) void {
         program_test_module.addImport(name, modules.get(name).?);
     }
 
+    const boot_state_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/boot_state_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "boot_state", "image", "slot" }) |name| {
+        boot_state_test_module.addImport(name, modules.get(name).?);
+    }
+
     const test_step = b.step("test", "Run Zig ra8_dfu tests");
     const tests = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(tests).step);
@@ -184,6 +216,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(launch_tests).step);
     const program_tests = b.addTest(.{ .root_module = program_test_module });
     test_step.dependOn(&b.addRunArtifact(program_tests).step);
+    const boot_state_tests = b.addTest(.{ .root_module = boot_state_test_module });
+    test_step.dependOn(&b.addRunArtifact(boot_state_tests).step);
 
     // Host C ABI acceptance suite for ra8_dfu_host_run / ra8_dfu_host_program.
     // Built only for hosted targets where libc and test mocks exist.

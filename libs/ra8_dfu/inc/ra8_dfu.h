@@ -27,8 +27,9 @@
  *
  * ```
  * 0x02000000  bootloader  128 KiB  (immutable; never erased by DFU)
- * 0x02020000  Slot A      448 KiB  [app image | 32B header (last page)]
- * 0x02090000  Slot B      448 KiB  [app image | 32B header (last page)]
+ * 0x02020000  Slot A      444 KiB  [app image | 32B header (last page)]
+ * 0x0208F000  Slot B      444 KiB  [app image | 32B header (last page)]
+ * 0x020FE000  boot_state    8 KiB  [ping-pong copy 0 | copy 1 (rewritable)]
  * 0x02100000  (end)
  * ```
  *
@@ -81,14 +82,17 @@ extern "C" {
  * @brief Fixed MRAM bank-layout addresses and image-header constants.
  *
  * @details
- * The 1 MiB code-MRAM window splits into a 64 KiB immutable bootloader
- * plus two equal 480 KiB application slots. Every numeric address /
- * size / magic the core needs is named here (CLAUDE.md "C23 typed
- * enums"; NASA Rule 8). HUM Ch 59 "Code-MRAM" p 3541 sites the window.
+ * The 1 MiB code-MRAM window splits into a 128 KiB immutable bootloader,
+ * two equal 444 KiB application slots, and an 8 KiB rewritable boot-state
+ * metadata region at the top of code-MRAM. Every numeric address / size /
+ * magic the core needs is named here (CLAUDE.md "C23 typed enums"; NASA Rule 8).
+ * HUM Ch 59 "Code-MRAM" p 3541 sites the window.
  *
  * @invariant `k_ra8_dfu_slot_a_base + k_ra8_dfu_slot_size ==
  *            k_ra8_dfu_slot_b_base`.
  * @invariant `k_ra8_dfu_slot_b_base + k_ra8_dfu_slot_size ==
+ *            k_ra8_dfu_boot_state_base`.
+ * @invariant `k_ra8_dfu_boot_state_base + k_ra8_dfu_boot_state_size ==
  *            k_ra8_dfu_mram_base + k_ra8_dfu_mram_size`.
  */
 typedef enum : uint32_t {
@@ -96,12 +100,12 @@ typedef enum : uint32_t {
   k_ra8_dfu_mram_size     = 0x00100000U, /**< Code-MRAM window size (1 MiB).     */
   k_ra8_dfu_bl_size       = 0x00020000U, /**< Immutable bootloader size (128K).  */
   k_ra8_dfu_slot_a_base   = 0x02020000U, /**< Slot A base (app vectors here).    */
-  k_ra8_dfu_slot_b_base   = 0x02090000U, /**< Slot B base (app vectors here).    */
-  k_ra8_dfu_slot_size     = 0x00070000U, /**< Per-slot size (448 KiB).           */
+  k_ra8_dfu_slot_b_base   = 0x0208F000U, /**< Slot B base (app vectors here).    */
+  k_ra8_dfu_slot_size     = 0x0006F000U, /**< Per-slot size (444 KiB).           */
   k_ra8_dfu_page_size     = 0x00000020U, /**< MRAM program page (32 bytes).      */
   k_ra8_dfu_hdr_size      = 0x00000020U, /**< Image header size (32 bytes).      */
-  k_ra8_dfu_img_max       = 0x0006FFE0U, /**< Max image bytes (slot - header).   */
-  k_ra8_dfu_hdr_offset    = 0x0006FFE0U, /**< Header offset (slot's last page).  */
+  k_ra8_dfu_img_max       = 0x0006EFE0U, /**< Max image bytes (slot - header).   */
+  k_ra8_dfu_hdr_offset    = 0x0006EFE0U, /**< Header offset (slot's last page).  */
   k_ra8_dfu_hdr_magic     = 0x52413844U, /**< Valid-image header magic ("RA8D"). */
   k_ra8_dfu_trigger_magic = 0xDF00B007U, /**< No-init SRAM DFU-request magic.    */
 } ra8_dfu_layout_t;
@@ -132,9 +136,58 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_ra8_dfu_slot_a    = 0U, /**< Slot A (0x02020000).   */
-  k_ra8_dfu_slot_b    = 1U, /**< Slot B (0x02090000).   */
+  k_ra8_dfu_slot_b    = 1U, /**< Slot B (0x0208F000).   */
   k_ra8_dfu_slot_none = 2U, /**< No valid slot present. */
 } ra8_dfu_slot_t;
+
+/**
+ * @enum ra8_dfu_boot_state_const_t
+ * @brief Addresses, magic, and bounds for the torn-write-safe trial boot-state record.
+ *
+ * @details
+ * Stored outside the immutable bootloader and outside both slot bodies/headers in a
+ * dedicated 8 KiB rewritable code-MRAM window (`0x020FE000..0x02100000`). Two
+ * 32-byte ping-pong pages (`copy0`, `copy1`) alternate on every update: each write
+ * erases and programs ONLY the inactive copy, leaving the previously committed copy
+ * untouched if power is lost mid-write.
+ */
+typedef enum : uint32_t {
+  k_ra8_dfu_boot_state_base          = 0x020FE000U, /**< Boot-state MRAM window base.           */
+  k_ra8_dfu_boot_state_size          = 0x00002000U, /**< Boot-state MRAM reservation (8 KiB).   */
+  k_ra8_dfu_boot_state_copy0_addr    = 0x020FE000U, /**< Ping-pong copy 0 (32-byte MRAM page).  */
+  k_ra8_dfu_boot_state_copy1_addr    = 0x020FE020U, /**< Ping-pong copy 1 (32-byte MRAM page).  */
+  k_ra8_dfu_boot_state_window_end    = 0x020FE040U, /**< Exclusive end of active copy pair.     */
+  k_ra8_dfu_boot_state_magic         = 0x52413842U, /**< Valid boot-state magic ("RA8B").       */
+  k_ra8_dfu_boot_state_crc_span      = 28U,         /**< Bytes covered by trailing `crc32`.     */
+  k_ra8_dfu_boot_state_default_tries = 3U,          /**< Default trial attempts per new update. */
+} ra8_dfu_boot_state_const_t;
+
+/**
+ * @struct ra8_dfu_boot_state_t
+ * @brief 32-byte torn-write-safe trial boot-state record.
+ *
+ * @details
+ * Tracks trial state separately from the immutable 32-byte ::ra8_dfu_img_hdr_t so
+ * slot headers never need in-place rewriting. Validated by magic, non-zero
+ * `write_seq`, valid `trial_slot` / `confirmed` fields, and IEEE CRC32 over
+ * bytes `0..27`.
+ */
+typedef struct {
+  uint32_t magic;      /**< Must equal ::k_ra8_dfu_boot_state_magic.            */
+  uint32_t write_seq;  /**< Monotonic generation (>= 1) for A/B arbitration.    */
+  uint8_t  trial_slot; /**< ::ra8_dfu_slot_t tracked by this record.            */
+  uint8_t  tries_left; /**< Remaining unconfirmed boot tries (0 = exhausted).   */
+  uint8_t  confirmed;  /**< 1 if confirmed, 0 if unconfirmed / exhausted.       */
+  uint8_t  reserved0;  /**< Reserved; set to 0.                                 */
+  uint32_t slot_seq;   /**< Slot header sequence tracked by this record.        */
+  uint32_t reserved1;  /**< Reserved; set to 0.                                 */
+  uint32_t reserved2;  /**< Reserved; set to 0.                                 */
+  uint32_t reserved3;  /**< Reserved; set to 0.                                 */
+  uint32_t crc32;      /**< IEEE CRC32 over bytes 0..27 (`magic`..`reserved3`). */
+} ra8_dfu_boot_state_t;
+
+static_assert(sizeof(ra8_dfu_boot_state_t) == (uint32_t)k_ra8_dfu_page_size,
+              "boot-state record must be exactly one 32-byte MRAM page");
 
 /**
  * @enum ra8_dfu_action_t
@@ -630,6 +683,141 @@ ra8_dfu_program_commit(ra8_dfu_slot_t inactive, uint32_t img_len, uint32_t seq);
  * @note Independent of ::ra8_dfu_program_commit's in-flight CRC. @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_dfu_program_verify(ra8_dfu_slot_t slot);
+
+/* =============================================================================
+ * Trial boot-state record (boot_state_abi.zig)
+ * =============================================================================
+ */
+
+/**
+ * @brief Validate one candidate ::ra8_dfu_boot_state_t record.
+ *
+ * @details Pure check: verifies non-NULL pointer, magic, non-zero `write_seq`,
+ * defined `trial_slot` (`<= k_ra8_dfu_slot_none`), boolean-range `confirmed`
+ * (`<= 1`), and IEEE CRC32 over the preceding 28 bytes.
+ *
+ * @param[in] state Candidate boot-state record (may be NULL -> false).
+ * @return `true` iff the record is well-formed and passes CRC32.
+ * @retval true  All invariants and CRC32 pass.
+ * @retval false `state` is NULL, erased, torn, or corrupt.
+ *
+ * @pre None (`state` may be NULL or uninitialized bytes).
+ * @post No state or MRAM mutated.
+ * @note Thread-safe (pure). Compound decision with MC/DC vectors in tests.
+ * @since 0.1.0
+ */
+bool ra8_dfu_boot_state_valid(const ra8_dfu_boot_state_t* state);
+
+/**
+ * @brief Populate and CRC-seal a ::ra8_dfu_boot_state_t structure.
+ *
+ * @param[in]  trial_slot Slot tracked by this record (`A`, `B`, or `none`).
+ * @param[in]  tries_left Remaining unconfirmed boot tries.
+ * @param[in]  confirmed  `true` if confirmed, `false` otherwise.
+ * @param[in]  slot_seq   Image header sequence of the tracked slot.
+ * @param[in]  write_seq  Monotonic record generation (>= 1).
+ * @param[out] out_state  Destination record (non-NULL).
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok              `*out_state` populated and passes ::ra8_dfu_boot_state_valid.
+ * @retval k_ra8_err_null_ptr    `out_state` is NULL.
+ * @retval k_ra8_err_invalid_arg `trial_slot` out of range or `write_seq == 0`.
+ *
+ * @pre `out_state` non-NULL, `trial_slot <= k_ra8_dfu_slot_none`, `write_seq >= 1`.
+ * @post On `k_ra8_ok`, ::ra8_dfu_boot_state_valid(`out_state`) is true.
+ * @note Thread-safe (pure). @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_state_prepare(ra8_dfu_slot_t        trial_slot,
+                                                   uint8_t               tries_left,
+                                                   bool                  confirmed,
+                                                   uint32_t              slot_seq,
+                                                   uint32_t              write_seq,
+                                                   ra8_dfu_boot_state_t* out_state);
+
+/**
+ * @brief Arbitrate between ping-pong copies and select the newer valid record.
+ *
+ * @details Pure helper used both by ::ra8_dfu_boot_state_read and host torn-write
+ * unit tests. Returns the valid copy with the higher `write_seq` (Copy 0 on a
+ * tie), or `k_ra8_err_not_found` if neither copy passes ::ra8_dfu_boot_state_valid.
+ *
+ * @param[in]  copy0        Ping-pong copy 0 candidate (non-NULL).
+ * @param[in]  copy1        Ping-pong copy 1 candidate (non-NULL).
+ * @param[out] out_state    Winning valid record (non-NULL).
+ * @param[out] out_copy_idx Optional winning copy index (`0` or `1`; may be NULL).
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok            Winning valid record written to `*out_state`.
+ * @retval k_ra8_err_null_ptr  `copy0`, `copy1`, or `out_state` is NULL.
+ * @retval k_ra8_err_not_found Neither copy is valid; `*out_state` left untouched.
+ *
+ * @pre `copy0`, `copy1`, and `out_state` are non-NULL.
+ * @post On `k_ra8_err_not_found`, `*out_state` is untouched.
+ * @note Thread-safe (pure). Compound decision with MC/DC vectors in tests.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_state_pick(const ra8_dfu_boot_state_t* copy0,
+                                                const ra8_dfu_boot_state_t* copy1,
+                                                ra8_dfu_boot_state_t*       out_state,
+                                                uint8_t*                    out_copy_idx);
+
+/**
+ * @brief Read the active boot-state record from the dual-copy MRAM store.
+ *
+ * @details Reads both ping-pong pages (`copy0`, `copy1`) and returns the newer
+ * valid record via ::ra8_dfu_boot_state_pick. On host (`RA8_OFF_TARGET`), reads
+ * the equivalent dual-copy RAM shadow.
+ *
+ * @param[out] out_state Destination record (non-NULL).
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok            Valid boot-state record copied into `*out_state`.
+ * @retval k_ra8_err_null_ptr  `out_state` is NULL.
+ * @retval k_ra8_err_not_found Neither copy holds a valid record (virgin or corrupt).
+ *
+ * @pre `out_state` non-NULL.
+ * @post No MRAM mutated; on error `*out_state` is untouched.
+ * @note Read-only. @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_state_read(ra8_dfu_boot_state_t* out_state);
+
+/**
+ * @brief Persist a new boot-state record using torn-write-safe A/B ping-pong writes.
+ *
+ * @details Determines the inactive copy page (if Copy 0 holds the active valid record,
+ * targets Copy 1 and vice versa; defaults to Copy 0 when neither is valid), increments
+ * `write_seq`, erases the inactive page to all `0xFF` first, and programs the new
+ * CRC-protected 32-byte record. Interrupts are masked and MRAM programming runs
+ * from `.sram_text` on target.
+ *
+ * @param[in] trial_slot Slot tracked (`A`, `B`, or `none`).
+ * @param[in] tries_left Remaining unconfirmed trial attempts.
+ * @param[in] confirmed  Confirmation flag.
+ * @param[in] slot_seq   Slot header sequence associated with this state.
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok              New state committed to the alternate ping-pong copy.
+ * @retval k_ra8_err_invalid_arg `trial_slot` out of range.
+ * @retval k_ra8_err_hw_error    Flash/MRAM controller reported an error.
+ *
+ * @pre Caller executes from SRAM on target (or calls on firmware where `.sram_text`
+ *      was copied by startup); MRAM write window may be updated to the boot-state span.
+ * @post Previously valid copy remains untouched if power is lost during programming.
+ * @note Not thread-safe; single writer. @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_state_write(ra8_dfu_slot_t trial_slot,
+                                                 uint8_t        tries_left,
+                                                 bool           confirmed,
+                                                 uint32_t       slot_seq);
+
+/**
+ * @brief Erase both ping-pong boot-state pages to all `0xFF`.
+ *
+ * @return `ra8_err_t` outcome (`k_ra8_ok` or propagated flash error).
+ * @retval k_ra8_ok           Both pages erased; ::ra8_dfu_boot_state_read returns not found.
+ * @retval k_ra8_err_hw_error Flash controller reported an error.
+ *
+ * @pre Same MRAM programming preconditions as ::ra8_dfu_boot_state_write.
+ * @post Both boot-state copies read `0xFF`.
+ * @note Primarily used when resetting provisioning/test state. @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_state_erase_all(void);
 
 #ifdef __cplusplus
 }
