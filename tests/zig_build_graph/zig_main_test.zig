@@ -29,7 +29,7 @@ test "the apps in the table with a Zig main are these eighteen, in this order" {
         "txm_manager_m85",     "txm_fault_m85",     "txm_helium_m85",
         "txm_sd_hello_m85",    "txm_sd_tour_m85",   "txm_dual_mailbox",
         "txm_manager_ra8p1",   "txm_touch_led_m85", "cpu1_routed_irq",
-        "threadx_fpu_context",
+        "threadx_fpu_context", "rpc_ring_dualcore",
     };
     var zig_mains: usize = 0;
     for (sources.cross_apps) |app| {

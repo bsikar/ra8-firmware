@@ -87,10 +87,17 @@ pub const Cpu1Image = struct {
     /// Whether the Zig entry imports `ra8_rpc` and `ra8_rpc_tx`, for an
     /// image that serves calls from its module (RA8FW-544).
     rpc: bool = false,
+    /// Named Zig modules imported directly by a freestanding `.zig` CPU1 entry.
+    zig_imports: []const ZigImport = &.{},
     /// Migrated Zig libraries this image links, by name, each built for the
     /// M33 (RA8FW-572). Mirrors the image's ra8_link_zig_library_for_cpu()
     /// lines in CMake beyond ra8_core, which every CPU1 image gets anyway.
     zig_libraries: []const []const u8 = &.{},
+};
+
+pub const ZigImport = struct {
+    name: []const u8,
+    path: []const u8,
 };
 
 pub const EntryLanguage = enum { c, zig };
@@ -374,6 +381,9 @@ fn zigEntry(b: *std.Build, options: Options, name: []const u8) std.Build.LazyPat
         rpc_tx.addImport("ra8_rpc", rpc);
         root.addImport("ra8_rpc", rpc);
         root.addImport("ra8_rpc_tx", rpc_tx);
+    }
+    for (options.image.zig_imports) |import| {
+        root.addImport(import.name, zigModule(b, options, import.path));
     }
     // The RPC stack's message copies lower to `__aeabi_memcpy` and
     // `__aeabi_memclr`. ra8_core's archive, which this link always carries,

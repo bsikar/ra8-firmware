@@ -98,4 +98,30 @@ pub const apps = [_]CrossApp{
             },
         },
     },
+    .{
+        // Bidirectional M85 <-> M33 ra8_rpc calls, events, and coordinated reset
+        // over the shared-SRAM ring transport and IPC FIFO doorbells with
+        // active MPU/D-cache mapping shared SRAM Normal Non-cacheable.
+        .name = "rpc_ring_dualcore",
+        .dir = "examples/ek_ra8d2/hw_pending/rpc_ring_dualcore",
+        .cpu1_image = true,
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_hal"},
+        .zig_libraries = &.{"ra8_hal"},
+        .cache_mpu = true,
+        .zig_main = "src/main.zig",
+        .zig_main_imports = &.{
+            .{ .name = "ra8_rpc", .path = "libs/ra8_rpc/src/ra8_rpc.zig" },
+        },
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.zig",
+            .shared_sources = &.{},
+            .linker_script = "linker_script_cpu1.ld",
+            .entry_language = .zig,
+            .zig_imports = &.{
+                .{ .name = "ra8_rpc", .path = "libs/ra8_rpc/src/ra8_rpc.zig" },
+            },
+        },
+    },
 };

@@ -14,6 +14,8 @@
     "tests/ring_transport_test.zig",
     "tests/ring_session_test.zig",
     "tests/ring_fuzz_test.zig",
+    "tests/ipc_signal_test.zig",
+    "tests/ipc_mailbox_test.zig",
     "tests/fuzz_test.zig"
   ],
   "covered_sources": [
@@ -21,6 +23,7 @@
     "src/codec.zig",
     "src/envelope.zig",
     "src/frame.zig",
+    "src/ipc.zig",
     "src/link.zig",
     "src/loopback.zig",
     "src/pending.zig",
@@ -37,6 +40,8 @@
     "tests/frame_test.zig",
     "tests/fuzz_test.zig",
     "tests/golden_test.zig",
+    "tests/ipc_mailbox_test.zig",
+    "tests/ipc_signal_test.zig",
     "tests/link_test.zig",
     "tests/loopback_test.zig",
     "tests/messages.zig",
@@ -52,5 +57,5 @@
     "tests/service.zig",
     "tests/session_test.zig"
   ],
-  "minimum_tests": 121
+  "minimum_tests": 129
 }
