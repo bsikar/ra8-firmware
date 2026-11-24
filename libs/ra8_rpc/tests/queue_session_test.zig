@@ -19,6 +19,7 @@ comptime {
     _ = @import("mock_queue.zig");
     _ = @import("mock_signal.zig");
     _ = @import("service.zig");
+    _ = @import("fuzz_corpus.zig");
 }
 
 const header = rpc.frame.Header.bytes;
