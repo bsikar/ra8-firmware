@@ -10,21 +10,19 @@
  * @since 0.1.0
  */
 
-#include <signal.h>
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_host.h"
 #include "ra8_imgdec_name.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_posix.h"
 #include "ra8_log.h"
 #include "ra8_viewer_output_internal.h"
 #include "ra8_viewer_reader.h"
@@ -343,45 +341,22 @@ RA8_INTERNAL static void internal_log_sink(void* context, uint8_t byte)
 }
 
 /**
- * @brief Bind standard error through the raw POSIX stream adapter.
- * @details Ignores SIGPIPE so a closed diagnostic consumer becomes EPIPE and
- * can be mapped to a normal stream error rather than terminating the viewer.
- * @param[out] output Stream handle to bind.
- * @param[out] state Caller-owned POSIX adapter state.
- * @return Canonical binding or signal-configuration status.
- * @retval k_ra8_ok Standard error is bound and ready.
- * @retval k_ra8_err_comm_error SIGPIPE disposition setup failed.
- * @pre @p output and @p state are writable.
- * @pre Standard error remains process-owned for the binding lifetime.
- * @post Success leaves SIGPIPE ignored for the process lifetime.
- * @post Failure leaves @p output unbound.
- * @note This process-wide policy belongs at the composition boundary.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_bind_diagnostic(ra8_io_stream_t*             output,
-                                                       ra8_io_stream_posix_state_t* state)
-{
-  struct sigaction action = {.sa_handler = SIG_IGN};
-  if ((sigemptyset(&action.sa_mask) != 0) || (sigaction(SIGPIPE, &action, nullptr) != 0)) {
-    return k_ra8_err_comm_error;
-  }
-  return ra8_io_stream_posix_init(output, state, STDERR_FILENO);
-}
-
-/**
  * @brief Execute the selected viewer mode over the composition remainder.
- * @details Carves the composition into the reader's bound span and the scratch
- * tail through the platform arena, then dispatches to tile, fixed-page, or
- * interactive-window rendering without acquiring storage.
+ * @details Carves the bound host arena into the reader's span and the scratch
+ * tail, then dispatches to tile, fixed-page, or interactive-window rendering
+ * without acquiring storage.
  * @param[in,out] reader Open reader bound in composition storage.
  * @param[in] requirements Exact reader workspace requirements.
  * @param[in] options Parsed viewer options.
  * @param[in] page Bounded page index.
+ * @param[in,out] composition Bound host arena covering ::s_viewer_composition.
  * @param[in,out] diagnostic Bound diagnostic stream.
  * @return Process-style command status.
  * @retval 0 The selected mode completed successfully.
  * @retval 1 The composition carve or the selected mode failed.
  * @pre @p reader is open and @p requirements describes its binding.
+ * @pre @p composition is initialized by ::ra8_host_open over
+ *      ::s_viewer_composition with no bytes carved yet.
  * @pre @p options and @p diagnostic remain valid throughout the call.
  * @post The reader remains open and caller-owned.
  * @post Composition bytes outside the selected scratch slice remain unchanged.
@@ -392,21 +367,16 @@ RA8_INTERNAL static int internal_execute(ra8_viewer_reader_t*                   
                                          const ra8_viewer_reader_requirements_t* requirements,
                                          const viewer_options_t*                 options,
                                          uint32_t                                page,
+                                         ra8_arena_t*                            composition,
                                          ra8_io_stream_t*                        diagnostic)
 {
   if (requirements->required_bytes > sizeof(s_viewer_composition)) {
     return 1;
   }
-  ra8_arena_t composition = {};
-  void*       reader_span = nullptr;
-  void*       scratch     = nullptr;
-  uint32_t    scratch_bytes = 0U;
-  if (ra8_arena_init(&composition,
-                     s_viewer_composition,
-                     (uint32_t)sizeof(s_viewer_composition)) != k_ra8_ok) {
-    return 1;
-  }
-  if (ra8_arena_carve(&composition,
+  void*    reader_span   = nullptr;
+  void*    scratch       = nullptr;
+  uint32_t scratch_bytes = 0U;
+  if (ra8_arena_carve(composition,
                       (uint32_t)requirements->required_bytes,
                       (uint32_t)alignof(max_align_t),
                       &reader_span) != k_ra8_ok) {
@@ -415,7 +385,7 @@ RA8_INTERNAL static int internal_execute(ra8_viewer_reader_t*                   
   if (reader_span != (void*)s_viewer_composition) {
     return 1;
   }
-  if (ra8_arena_carve_remaining(&composition,
+  if (ra8_arena_carve_remaining(composition,
                                 (uint32_t)alignof(max_align_t),
                                 &scratch,
                                 &scratch_bytes) != k_ra8_ok) {
@@ -438,24 +408,33 @@ RA8_INTERNAL static int internal_execute(ra8_viewer_reader_t*                   
   return internal_run_window(reader, scratch, scratch_bytes, diagnostic);
 }
 
-/** @brief Program entry point. */
-int main(int argc, char** argv)
+/**
+ * @brief Parse arguments, open the document, and execute the viewer flow.
+ * @details Drives argument validation, workspace binding, document loading, and
+ * rendering against an already-open ::ra8_host_t composition.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ * @param[in,out] host Bound host composition providing diagnostic stream and arena.
+ * @return Process-style exit code.
+ * @retval 0 Viewer invocation succeeded.
+ * @retval 1 Input, workspace, or render failure.
+ * @retval 2 Invalid command-line arguments.
+ * @pre @p host was opened with bound streams and ::s_viewer_composition arena.
+ * @post Any opened reader is closed before returning.
+ * @note Single-threaded command dispatcher.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_run_viewer(int argc, char** argv, ra8_host_t* host)
 {
-  ra8_io_stream_t             diagnostic       = {};
-  ra8_io_stream_posix_state_t diagnostic_state = {};
-  if (internal_bind_diagnostic(&diagnostic, &diagnostic_state) != k_ra8_ok) {
-    return 1;
-  }
-  ra8_log_set_byte_sink(internal_log_sink, &diagnostic);
   viewer_options_t options = {};
   if (!internal_parse_arguments(argc, argv, &options)) {
-    internal_usage(&diagnostic, argv[0]);
+    internal_usage(host->diagnostic, argv[0]);
     return 2;
   }
   ra8_viewer_reader_requirements_t requirements = {};
   ra8_err_t error = ra8_viewer_reader_requirements(options.path, &requirements);
   if (error != k_ra8_ok) {
-    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
+    (void)priv_viewer_output_open_error(host->diagnostic, options.path, error);
     return 1;
   }
   ra8_viewer_reader_t*          reader = nullptr;
@@ -466,19 +445,38 @@ int main(int argc, char** argv)
                                                                 &requirements,
                                                                 &report);
   if (error != k_ra8_ok) {
-    internal_report_capacity(&diagnostic, "reader", &report);
-    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
+    internal_report_capacity(host->diagnostic, "reader", &report);
+    (void)priv_viewer_output_open_error(host->diagnostic, options.path, error);
     return 1;
   }
   error = ra8_viewer_open(reader, options.path);
   if (error != k_ra8_ok) {
-    (void)priv_viewer_output_open_error(&diagnostic, options.path, error);
+    (void)priv_viewer_output_open_error(host->diagnostic, options.path, error);
     return 1;
   }
   const uint32_t count = ra8_viewer_page_count(reader);
   const uint32_t page  = internal_clamp_page(options.page, count);
-  (void)priv_viewer_output_opened(&diagnostic, options.path, count);
-  const int status = internal_execute(reader, &requirements, &options, page, &diagnostic);
+  (void)priv_viewer_output_opened(host->diagnostic, options.path, count);
+  const int status =
+    internal_execute(reader, &requirements, &options, page, &host->arena, host->diagnostic);
   ra8_viewer_close(reader);
+  return status;
+}
+
+/** @brief Program entry point. */
+int main(int argc, char** argv)
+{
+  ra8_host_t           host     = {};
+  const ra8_host_cfg_t host_cfg = {
+    .arena_base   = s_viewer_composition,
+    .arena_bytes  = (uint32_t)sizeof(s_viewer_composition),
+    .bind_streams = true,
+  };
+  if (ra8_host_open(&host, &host_cfg) != k_ra8_ok) {
+    return 1;
+  }
+  ra8_log_set_byte_sink(internal_log_sink, host.diagnostic);
+  const int status = internal_run_viewer(argc, argv, &host);
+  (void)ra8_host_close(&host);
   return status;
 }

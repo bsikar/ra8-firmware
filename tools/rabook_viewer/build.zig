@@ -178,6 +178,7 @@ fn addReaderIncludes(b: *std.Build, mod: *std.Build.Module) void {
     mod.addIncludePath(b.path("../../libs/ra8_gfx/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/longstrip/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/jof/inc"));
+    mod.addIncludePath(b.path("../../libs/if/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_io/inc"));
     mod.addIncludePath(b.path("../../apps/shared_libs/compress/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
@@ -212,6 +213,7 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     const gfx_lib = b.dependency("ra8_gfx", .{ .target = target, .optimize = optimize }).artifact("ra8_gfx");
     const mem_lib = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize }).artifact("ra8_mem");
     const core_lib = b.dependency("ra8_core", .{ .target = target, .optimize = optimize }).artifact("ra8_core_zig");
+    const if_lib = b.dependency("ra8_if", .{ .target = target, .optimize = optimize }).artifact("if");
     // The viewer needs only the stream units: its read path drives the ra8_io
     // stream ABI, and the one KEEP/DROP member that wanted more (epub_fs.c) is
     // DROP. The narrow root is the same units=stream archive glyph_bench uses.
@@ -243,6 +245,7 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
     mod.linkLibrary(gfx_lib);
     mod.linkLibrary(mem_lib);
     mod.linkLibrary(core_lib);
+    mod.linkLibrary(if_lib);
     mod.linkLibrary(io_lib);
     mod.linkLibrary(compress_lib);
     mod.linkLibrary(jof_lib);
@@ -292,6 +295,11 @@ pub fn build(b: *std.Build) void {
         "src/ra8_viewer_jof.c",
         "src/ra8_viewer_reflow.c",
         "src/ra8_viewer_ppm.c",
+        "../../port/posix/src/fw_if_fs_posix.c",
+        "../../port/posix/src/fw_if_fs_posix_bind.c",
+        "../../port/posix/src/fw_if_fs_posix_common.c",
+        "../../port/posix/src/fw_if_fs_posix_stream.c",
+        "../../port/posix/src/ra8_host.c",
         "../../port/posix/src/ra8_io_stream_posix.c",
         "src/ra8_viewer_view_stub.c",
     };
@@ -300,6 +308,7 @@ pub fn build(b: *std.Build) void {
     linkZigLibs(b, exe_mod, target, optimize);
     exe_mod.addIncludePath(b.path("inc"));
     exe_mod.addIncludePath(b.path("../../port/posix/inc"));
+    exe_mod.addIncludePath(b.path("../../port/posix/src"));
     addReaderIncludes(b, exe_mod);
     addC(b, exe_mod, ".", &exe_sources, &first_party_flags);
     exe_mod.linkLibrary(reader);

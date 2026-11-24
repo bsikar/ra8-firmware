@@ -11,13 +11,12 @@
  */
 
 #include <stdint.h>
-#include <unistd.h>
 
 #include "alphabet_soup.h"
 #include "alphabet_soup_cli_internal.h"
 #include "ra8_err.h"
+#include "ra8_host.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_posix.h"
 
 /** @brief Process exit codes. */
 typedef enum : int {
@@ -44,16 +43,18 @@ typedef struct {
  */
 int main(int argc, char** argv)
 {
-  static soup_app_storage_t   s_app_storage;
-  ra8_io_stream_t             out_stream   = {};
-  ra8_io_stream_posix_state_t stream_state = {};
-  if (ra8_io_stream_posix_init(&out_stream, &stream_state, STDOUT_FILENO) != k_ra8_ok) {
+  static soup_app_storage_t s_app_storage;
+  ra8_host_t                host     = {};
+  const ra8_host_cfg_t      host_cfg = {.bind_streams = true};
+  if (ra8_host_open(&host, &host_cfg) != k_ra8_ok) {
     return k_exit_code_error;
   }
+  file_print_exit_code_t exit_code = k_exit_code_error;
   if (argc < 2) {
-    (void)ra8_io_stream_puts(&out_stream, "Usage: alphabet_soup <file>\n");
-    (void)ra8_io_stream_flush(&out_stream);
-    return k_exit_code_error;
+    (void)ra8_io_stream_puts(host.output, "Usage: alphabet_soup <file>\n");
+    (void)ra8_io_stream_flush(host.output);
+    (void)ra8_host_close(&host);
+    return exit_code;
   }
   uint32_t  file_size = 0U;
   ra8_err_t err =
@@ -62,19 +63,23 @@ int main(int argc, char** argv)
                                           (uint32_t)(sizeof(s_app_storage.file_buffer) - 1U),
                                           &file_size);
   if (err != k_ra8_ok) {
-    (void)ra8_io_stream_puts(&out_stream, "Error: Could not open or read file\n");
-    (void)ra8_io_stream_flush(&out_stream);
-    return k_exit_code_error;
+    (void)ra8_io_stream_puts(host.output, "Error: Could not open or read file\n");
+    (void)ra8_io_stream_flush(host.output);
+    (void)ra8_host_close(&host);
+    return exit_code;
   }
   s_app_storage.file_buffer[file_size] = '\0';
   err                                  = soup_solve(&s_app_storage.solver_ctx,
                                                     (const char*)s_app_storage.file_buffer,
                                                     file_size,
-                                                    &out_stream);
+                                                    host.output);
   if (err != k_ra8_ok) {
-    (void)ra8_io_stream_puts(&out_stream, "Error: Failed solving puzzle\n");
-    (void)ra8_io_stream_flush(&out_stream);
-    return k_exit_code_error;
+    (void)ra8_io_stream_puts(host.output, "Error: Failed solving puzzle\n");
+    (void)ra8_io_stream_flush(host.output);
+    (void)ra8_host_close(&host);
+    return exit_code;
   }
-  return k_exit_code_success;
+  exit_code = k_exit_code_success;
+  (void)ra8_host_close(&host);
+  return exit_code;
 }

@@ -9,6 +9,7 @@
         .ra8_gfx = .{ .path = "../../libs/ra8_gfx" },
         .ra8_mem = .{ .path = "../../libs/ra8_mem" },
         .ra8_core = .{ .path = "../../libs/ra8_core" },
+        .ra8_if = .{ .path = "../../libs/if" },
         .ra8_io = .{ .path = "../../libs/ra8_io" },
         .compress = .{ .path = "../../apps/shared_libs/compress" },
         .jof = .{ .path = "../../apps/shared_libs/jof" },

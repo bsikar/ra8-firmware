@@ -28,17 +28,15 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
-#include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_glyph_atlas.h"
+#include "ra8_host.h"
 #include "ra8_io_stream.h"
-#include "ra8_io_stream_posix.h"
 #include "ra8_keycache.h"
 #include "ra8_log.h"
 
@@ -112,12 +110,8 @@ typedef struct {
 
 /** @brief Process-lifetime semantic backing for one measured atlas. */
 static gb_workspace_t s_gb_workspace;
-/** @brief Borrowed stdout/stderr portable stream handles. */
-static ra8_io_stream_t s_gb_output;
-static ra8_io_stream_t s_gb_diagnostic;
-/** @brief Raw-descriptor adapter states for the borrowed process streams. */
-static ra8_io_stream_posix_state_t s_gb_output_posix;
-static ra8_io_stream_posix_state_t s_gb_diagnostic_posix;
+/** @brief Host composition binding stdout, stderr, and SIGPIPE policy. */
+static ra8_host_t s_gb_host;
 
 /**
  * @brief Write a fixed sequence of NUL-terminated fragments exactly.
@@ -169,32 +163,24 @@ RA8_INTERNAL static void internal_log_byte(void* context, uint8_t byte)
 
 /**
  * @brief Bind process output descriptors and make broken pipes observable.
- * @details Installs non-owning raw-descriptor adapters for the process streams,
- * then binds the logger only after both adapters are valid.
- * @return Canonical stream-composition status.
+ * @details Opens the host stream composition (ignoring `SIGPIPE` and binding
+ * stdout and stderr), then routes the logger into the diagnostic stream.
+ * @return Canonical composition status.
  * @retval k_ra8_ok Both borrowed descriptors are bound.
- * @retval k_ra8_err_comm_error SIGPIPE disposition setup failed.
- * @retval other A raw-descriptor binding failed.
+ * @retval other Composition or raw-descriptor setup failed.
  * @pre No output has been attempted.
  * @pre Standard output and standard error remain process-owned.
- * @post Success binds both streams for the process lifetime.
- * @post SIGPIPE is ignored so the backend reports EPIPE.
+ * @post Success binds both streams and leaves `SIGPIPE` ignored.
  * @note Host composition only; descriptor ownership is not transferred.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_output_init(void)
 {
-  struct sigaction action = {.sa_handler = SIG_IGN};
-  if ((sigemptyset(&action.sa_mask) != 0) || (sigaction(SIGPIPE, &action, nullptr) != 0)) {
-    return k_ra8_err_comm_error;
-  }
-  ra8_err_t error = ra8_io_stream_posix_init(&s_gb_output, &s_gb_output_posix, STDOUT_FILENO);
-  if (error == k_ra8_ok) {
-    error = ra8_io_stream_posix_init(&s_gb_diagnostic, &s_gb_diagnostic_posix, STDERR_FILENO);
-  }
+  const ra8_host_cfg_t cfg   = {.bind_streams = true};
+  const ra8_err_t      error = ra8_host_open(&s_gb_host, &cfg);
   if (error == k_ra8_ok) {
     ra8_log_init();
-    ra8_log_set_byte_sink(internal_log_byte, &s_gb_diagnostic);
+    ra8_log_set_byte_sink(internal_log_byte, s_gb_host.diagnostic);
   }
   return error;
 }
@@ -565,51 +551,51 @@ internal_put_padded_u64(ra8_io_stream_t* stream, uint64_t value, uint32_t width)
  * @pre The workload constants retain their documented values.
  * @post Success writes the exact legacy preamble.
  * @post Failure stops before attempting later fields.
- * @note Not thread-safe with concurrent writes to ::s_gb_output.
+ * @note Not thread-safe with concurrent writes to the bound host output stream.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_report_header(void)
 {
   const char* const prefix[] = {"# Glyph-cache budget sweep\n\nWorkload: "};
-  ra8_err_t         error    = internal_write_parts(&s_gb_output, prefix, 1U);
+  ra8_err_t         error    = internal_write_parts(s_gb_host.output, prefix, 1U);
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_pages);
+    error = ra8_io_stream_put_u32(s_gb_host.output, (uint32_t)k_gb_pages);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " pages x ");
+    error = ra8_io_stream_puts(s_gb_host.output, " pages x ");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_reread_pages);
+    error = ra8_io_stream_put_u32(s_gb_host.output, (uint32_t)k_gb_reread_pages);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " re-renders x ");
+    error = ra8_io_stream_puts(s_gb_host.output, " re-renders x ");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_page_glyphs);
+    error = ra8_io_stream_put_u32(s_gb_host.output, (uint32_t)k_gb_page_glyphs);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " glyphs = ");
+    error = ra8_io_stream_puts(s_gb_host.output, " glyphs = ");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u64(&s_gb_output, s_gb_access_total);
+    error = ra8_io_stream_put_u64(s_gb_host.output, s_gb_access_total);
   }
   if (error == k_ra8_ok) {
     error =
-      ra8_io_stream_puts(&s_gb_output,
+      ra8_io_stream_puts(s_gb_host.output,
                          " glyph gets\n(English letter frequencies + caps/punct/digits; body ");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_body_px);
+    error = ra8_io_stream_put_u32(s_gb_host.output, (uint32_t)k_gb_body_px);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, "px, heading ");
+    error = ra8_io_stream_puts(s_gb_host.output, "px, heading ");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, (uint32_t)k_gb_heading_px);
+    error = ra8_io_stream_put_u32(s_gb_host.output, (uint32_t)k_gb_heading_px);
   }
   if (error == k_ra8_ok) {
     error = ra8_io_stream_puts(
-      &s_gb_output,
+      s_gb_host.output,
       "px)\n\n| cells | RAM @36KiB/cell | hit rate % | rasterisations |\n|------:|----------------:|-----------:|---------------:|\n");
   }
   return error;
@@ -629,7 +615,7 @@ RA8_INTERNAL static ra8_err_t internal_report_header(void)
  * @pre ::s_gb_access_total is non-zero.
  * @post Success writes one newline-terminated legacy-compatible row.
  * @post Percentage rounding is integer, locale-independent, and two-decimal.
- * @note Not thread-safe with concurrent writes to ::s_gb_output.
+ * @note Not thread-safe with concurrent writes to the bound host output stream.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_report_row(uint32_t budget, uint32_t hits, uint32_t rasters)
@@ -640,41 +626,41 @@ RA8_INTERNAL static ra8_err_t internal_report_row(uint32_t budget, uint32_t hits
     s_gb_access_total;
   const uint64_t whole    = scaled / (uint64_t)k_gb_decimal_scale;
   const uint32_t fraction = (uint32_t)(scaled % (uint64_t)k_gb_decimal_scale);
-  ra8_err_t      error    = ra8_io_stream_puts(&s_gb_output, "| ");
+  ra8_err_t      error    = ra8_io_stream_puts(s_gb_host.output, "| ");
   if (error == k_ra8_ok) {
-    error = internal_put_padded_u64(&s_gb_output, budget, (uint32_t)k_gb_budget_width);
+    error = internal_put_padded_u64(s_gb_host.output, budget, (uint32_t)k_gb_budget_width);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " | ");
+    error = ra8_io_stream_puts(s_gb_host.output, " | ");
   }
   if (error == k_ra8_ok) {
-    error = internal_put_padded_u64(&s_gb_output,
+    error = internal_put_padded_u64(s_gb_host.output,
                                     (uint64_t)budget * (uint64_t)k_gb_prod_cell_kib,
                                     (uint32_t)k_gb_ram_width);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " KiB | ");
+    error = ra8_io_stream_puts(s_gb_host.output, " KiB | ");
   }
   if (error == k_ra8_ok) {
-    error = internal_put_padded_u64(&s_gb_output, whole, (uint32_t)k_gb_hit_width);
+    error = internal_put_padded_u64(s_gb_host.output, whole, (uint32_t)k_gb_hit_width);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_putc(&s_gb_output, '.');
+    error = ra8_io_stream_putc(s_gb_host.output, '.');
   }
   if ((error == k_ra8_ok) && (fraction < (uint32_t)k_gb_dec_radix)) {
-    error = ra8_io_stream_putc(&s_gb_output, '0');
+    error = ra8_io_stream_putc(s_gb_host.output, '0');
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u32(&s_gb_output, fraction);
+    error = ra8_io_stream_put_u32(s_gb_host.output, fraction);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " | ");
+    error = ra8_io_stream_puts(s_gb_host.output, " | ");
   }
   if (error == k_ra8_ok) {
-    error = internal_put_padded_u64(&s_gb_output, rasters, (uint32_t)k_gb_raster_width);
+    error = internal_put_padded_u64(s_gb_host.output, rasters, (uint32_t)k_gb_raster_width);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, " |\n");
+    error = ra8_io_stream_puts(s_gb_host.output, " |\n");
   }
   return error;
 }
@@ -706,14 +692,14 @@ RA8_INTERNAL static ra8_err_t internal_run_report(void)
     }
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output,
+    error = ra8_io_stream_puts(s_gb_host.output,
                                "\nWithout a cache the renderer rasterises once per glyph get (");
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_put_u64(&s_gb_output, s_gb_access_total);
+    error = ra8_io_stream_put_u64(s_gb_host.output, s_gb_access_total);
   }
   if (error == k_ra8_ok) {
-    error = ra8_io_stream_puts(&s_gb_output, ").\n");
+    error = ra8_io_stream_puts(s_gb_host.output, ").\n");
   }
   return error;
 }
@@ -723,11 +709,13 @@ int main(void)
   if (internal_output_init() != k_ra8_ok) {
     return 1;
   }
-  const ra8_err_t error = internal_run_report();
+  const ra8_err_t error       = internal_run_report();
+  int             exit_status = 0;
   if (error != k_ra8_ok) {
     const char* const parts[] = {"glyph_bench: workload or output failed\n"};
-    (void)internal_write_parts(&s_gb_diagnostic, parts, 1U);
-    return 1;
+    (void)internal_write_parts(s_gb_host.diagnostic, parts, 1U);
+    exit_status = 1;
   }
-  return 0;
+  (void)ra8_host_close(&s_gb_host);
+  return exit_status;
 }
