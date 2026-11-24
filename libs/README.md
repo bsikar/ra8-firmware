@@ -110,7 +110,7 @@ gate checks ISA/semantics portability, not libc availability. Semantic Zig cross
 | `ra8_core` | portable | no library imports |
 | `ra8_devcfg` | portable | ra8_core only |
 | `ra8_epd_cal` | portable | ra8_core only |
-| `ra8_fmt` | portable | ra8_core only |
+| `ra8_fmt` | portable | ra8_core, ra8_imgdec; decoder backends supplied via C ABI seams |
 | `ra8_fonts` | portable | no library imports; font blob plus a generated header |
 | `ra8_fs` | portable | ra8_core only |
 | `ra8_gfx` | portable | ra8_core only |

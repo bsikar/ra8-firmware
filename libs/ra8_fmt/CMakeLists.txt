@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# libs/ra8_fmt/CMakeLists.txt
 #
-# Intentionally a no-op, like ra8_c6link / ra8_io, and with no src/
-# yet: this library is currently the header-only home of the format-neutral
-# byte-stream contract (ra8_fmt_io.h), so a consumer only ever needs
-# libs/ra8_fmt/inc on its include path.
+# libs/ra8_fmt -- Portable streaming format engines (JOF + RABOOK).
 #
-# It is the landing site for RA8FW-315. The ra8_fmt engines still live under
-# tools/rabook_imagepack/src and are not consumable from a product yet; as they
-# are promoted they gain a src/ here and this file grows the add_library()
-# target the issue asks for. The host-edge adapters (ra8_fmt_host_fd.c,
-# ra8_fmt_host_spool.c) stay in tools/ by design: they are the POSIX binding.
+# Provides:
+#   inc/ra8_fmt_io.h      format-neutral stream/sink/spool/transaction contract
+#   inc/ra8_fmt_stream.h  JOF/RABOOK requirements, workspaces, and engine APIs
+#   src/*.zig             Zig static archive (`libra8_fmt.a` via build.zig)
+#
+# Consumed by firmware apps listing `ra8_fmt` in `ra8_add_app(LIBS ...)` via
+# `cmake/ra8_app/sources.cmake` and by host tools through the Zig build graph.
+# Host POSIX fd/spool adapters stay under `tools/rabook_imagepack/`.
+
+# Intentionally empty -- static archive is produced by Zig (`build.zig`).

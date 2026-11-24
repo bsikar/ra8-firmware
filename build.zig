@@ -16,6 +16,7 @@
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_launch.c
 //!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
+//!   ra8_fmt            tests/support/c/test_ra8_fmt.c
 //!   ra8_update         libs/ra8_update/tests/src/test_update_abi.c
 //!
 //! Under CMake the same archives are produced by tests/cmake/zig_library.cmake
@@ -98,6 +99,7 @@ const SliceMember = struct {
     /// the archive externs but the suite never calls. Each must answer every
     /// call with an error, so a suite that does reach one fails.
     host_seam_roots: []const []const u8 = &.{},
+    extra_include_paths: []const []const u8 = &.{},
 };
 
 const slice = [_]SliceMember{
@@ -150,6 +152,14 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_update",
         .include_path = "libs/ra8_update/inc",
         .c_suite_path = "libs/ra8_update/tests/src/test_update_abi.c",
+    },
+    .{
+        .dependency_name = "ra8_fmt",
+        .artifact_name = "ra8_fmt",
+        .include_path = "libs/ra8_fmt/inc",
+        .c_suite_path = "tests/support/c/test_ra8_fmt.c",
+        .host_seam_roots = &.{"tests/support/zig/ra8_fmt_seam.zig"},
+        .extra_include_paths = &.{"apps/shared_libs/jof/inc"},
     },
 };
 
@@ -323,6 +333,9 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         });
         suite_module.addIncludePath(b.path(member.include_path));
+        for (member.extra_include_paths) |include_path| {
+            suite_module.addIncludePath(b.path(include_path));
+        }
         for (shared_include_paths) |include_path| {
             suite_module.addIncludePath(b.path(include_path));
         }
@@ -665,6 +678,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     for (slice) |member| {
         var include_dirs: std.ArrayList([]const u8) = .empty;
         include_dirs.append(b.allocator, member.include_path) catch @panic("OOM");
+        include_dirs.appendSlice(b.allocator, member.extra_include_paths) catch @panic("OOM");
         include_dirs.appendSlice(b.allocator, &shared_include_paths) catch @panic("OOM");
 
         candidates.append(b.allocator, .{
