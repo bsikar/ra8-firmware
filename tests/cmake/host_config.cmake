@@ -2,12 +2,12 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # Host build configuration: language standards, warning profile, and the
-# three mutually-exclusive instrumentation modes (coverage, MC/DC, sanitizer).
+# two mutually-exclusive instrumentation modes (MC/DC, sanitizer).
 #
-# Kept together because they interact: RA8_MCDC overrides RA8_COVERAGE, ccache
-# opts out when either is on, and the sanitizer picks the image pin that keeps
-# .bss clear of the MAP_FIXED peripheral windows. Splitting them further would
-# separate a constraint from the thing it constrains.
+# Kept together because they interact: ccache opts out when MC/DC is on, and
+# the sanitizer picks the image pin that keeps .bss clear of the MAP_FIXED
+# peripheral windows. Splitting them further would separate a constraint from
+# the thing it constrains.
 #
 # Included from tests/CMakeLists.txt. CMake include() is textual within the
 # same directory scope, so every variable and target defined here is visible
@@ -37,14 +37,9 @@ add_compile_definitions(RA8_OFF_TARGET UNIT_TEST)
 # -Wstack-usage=2200 here because the host compiler ABI pushes wider
 # arguments than Cortex-M85.
 
-# Coverage instrumentation -- gcovr / lcov friendly.
-option(RA8_COVERAGE "Emit gcov/lcov coverage data" ON)
+# MC/DC source-based coverage instrumentation (clang >= 18).
 option(RA8_MCDC "Emit clang source-based coverage with MC/DC (DO-178C Level B)" OFF)
 
-# RA8_MCDC takes precedence over RA8_COVERAGE: the two instrumentation
-# schemes are mutually exclusive (clang's source-based coverage and
-# gcov-style arc/line counters use different runtime libraries).
-#
 # DO-178C Level B requires Modified Condition/Decision Coverage. The
 # only open-source path is clang >= 18 with -fcoverage-mcdc paired
 # with -fcoverage-mapping + -fprofile-instr-generate, then reported
@@ -57,11 +52,6 @@ option(RA8_MCDC "Emit clang source-based coverage with MC/DC (DO-178C Level B)" 
 # `-fcondition-coverage` (decision/condition coverage, NOT MC/DC) and
 # print a loud warning so callers know they are NOT measuring MC/DC.
 if(RA8_MCDC)
-  set(RA8_COVERAGE
-      OFF
-      CACHE BOOL "Disabled because RA8_MCDC=ON" FORCE
-  )
-
   # Probe: does the active C compiler accept the MC/DC flag trio?
   #
   # Drop any cached answer first. check_c_compiler_flag stores its
@@ -168,35 +158,12 @@ if(RA8_MCDC)
   # ra8_core_hal OBJECT library. Per-source opt-out for third_party
   # is performed below, after the source lists are populated.
   add_compile_options(${RA8_MCDC_C_FLAGS})
-elseif(RA8_COVERAGE)
-  # A target may opt out of gcov instrumentation by setting the custom property
-  # RA8_SKIP_COVERAGE_INSTRUMENTATION. Exactly one does: test_ra8_unity_output
-  # forges source names with #line directives so it can pin Unity's rendered
-  # "[FAIL] <file>:<line> <msg>" diagnostic byte for byte. gcov records those
-  # synthetic names in its notes; gcovr then cannot resolve `unity_output_fixture.c`
-  # from ANY directory, walks up to `/`, and aborts the whole report with
-  # `no_working_dir_found` (exit 64) -- no XML, so the gate fails having measured
-  # nothing.
-  #
-  # This has to be a generator expression on the DIRECTORY options, which is
-  # where the coverage flags live. Appending `-fno-profile-arcs
-  # -fno-test-coverage` to the target instead does NOT work: measured with
-  # gcc-14, `--coverage -fno-profile-arcs -fno-test-coverage` still emits the
-  # .gcno and still leaves __gcov0.* counters in the object, because the driver
-  # expands --coverage independently of the later negation. It is also a hard
-  # error under clang (`argument unused during compilation` with -Werror), which
-  # is what broke the scan-build gate.
-  set(_ra8_cov_skip "$<TARGET_PROPERTY:RA8_SKIP_COVERAGE_INSTRUMENTATION>")
-  add_compile_options(
-    -O0 -g "$<$<NOT:$<BOOL:${_ra8_cov_skip}>>:--coverage;-fprofile-arcs;-ftest-coverage>"
-  )
-  add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
 
-# Compiler cache. Included AFTER the coverage / MC-DC options are resolved
-# above, because it opts out when either is on -- gcov and clang profile data
-# embed absolute paths that a cached object would carry into the wrong build
-# directory. See cmake/ccache.cmake for the full rationale.
+# Compiler cache. Included AFTER RA8_MCDC is resolved above, because it opts
+# out when MC/DC is on -- clang profile data embeds absolute paths that a
+# cached object would carry into the wrong build directory. See
+# cmake/ccache.cmake for the full rationale.
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ccache.cmake")
 
 # The host-test image pin places the test image at 0x70000000, above the

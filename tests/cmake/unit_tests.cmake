@@ -445,19 +445,6 @@ if(NOT TARGET test_alphabet_soup)
   add_subdirectory(${FW_ROOT}/apps/host/alphabet_soup ${CMAKE_BINARY_DIR}/_alphabet_soup)
 endif()
 
-# This test deliberately forges logical source names with #line directives to
-# pin Unity's exact diagnostics. Keep executing it in coverage builds, but do
-# not ask gcov to resolve those synthetic names as repository source paths --
-# gcovr cannot, and aborts the entire report rather than skipping the file.
-#
-# The opt-out is a property the coverage flags in host_config.cmake honour, not
-# a per-target `-fno-profile-arcs -fno-test-coverage`: that pair does not undo
-# `--coverage` under gcc and is a -Werror unused-argument error under clang.
-# See the RA8_SKIP_COVERAGE_INSTRUMENTATION block in host_config.cmake.
-if(TARGET test_ra8_unity_output)
-  set_target_properties(test_ra8_unity_output PROPERTIES RA8_SKIP_COVERAGE_INSTRUMENTATION ON)
-endif()
-
 # The strict book-stream MC/DC vectors call documented private validator seams
 # whose types and declarations remain outside the public library ABI. The
 # strict-reader suites and the per-operand MC/DC suites are two translation
