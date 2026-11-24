@@ -34,5 +34,6 @@ ra8_add_app(
   NAME ota_ab_orchestration
   STACK_BYTES 3072
   LIBS ra8_board_ek_ra8d2 ra8_ota
+  SRAM_TEXT ra8_flash.c
   DESCRIPTION "A/B OTA orchestration (stage/verify/commit/rollback) firmware for RA8D2"
 )
