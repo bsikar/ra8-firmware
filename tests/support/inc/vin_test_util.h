@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_board_memmap.h"
 #include "ra8_vin.h"
 
 /**
@@ -30,17 +31,18 @@
  * across multiple cases so a single edit moves them all.
  */
 typedef enum : uint32_t {
-  k_ra8_vin_test_fb1     = 0x68000000UL, /**< First MB1 (SDRAM head).         */
-  k_ra8_vin_test_fb2     = 0x68040000UL, /**< MB2 for continuous mode.        */
-  k_ra8_vin_test_fb3     = 0x68080000UL, /**< MB3 for continuous mode.        */
-  k_ra8_vin_test_fb_alt  = 0x680C0000UL, /**< Alternate MB1 base.             */
-  k_ra8_vin_test_uv_off  = 0x68100000UL, /**< UV plane offset (aligned).      */
-  k_ra8_vin_test_uv_bad  = 0x68100001UL, /**< UV plane offset (mis-aligned).  */
-  k_ra8_vin_test_stride  = 1280U,        /**< Pixels per scanline.            */
-  k_ra8_vin_test_ie_mask = 0x00000022UL, /**< IE: enable EFE + FME.           */
-  k_ra8_vin_test_ctx     = 0x12345678UL, /**< Sentinel ctx for callback test. */
-  k_ra8_vin_test_status  = 0x00000080UL, /**< Arbitrary non-W1C INTS bit.     */
-  k_ra8_vin_test_si_val  = 600U,         /**< Scanline compare line.          */
+  k_ra8_vin_test_fb1    = k_ra8_board_sdram_base,                /**< First MB1 (SDRAM head).    */
+  k_ra8_vin_test_fb2    = (k_ra8_board_sdram_base + 0x040000UL), /**< MB2 for continuous mode.   */
+  k_ra8_vin_test_fb3    = (k_ra8_board_sdram_base + 0x080000UL), /**< MB3 for continuous mode.   */
+  k_ra8_vin_test_fb_alt = (k_ra8_board_sdram_base + 0x0C0000UL), /**< Alternate MB1 base.        */
+  k_ra8_vin_test_uv_off = (k_ra8_board_sdram_base + 0x100000UL), /**< UV plane offset (aligned). */
+  k_ra8_vin_test_uv_bad =
+    (k_ra8_board_sdram_base + 0x100001UL), /**< UV plane offset (mis-aligned).  */
+  k_ra8_vin_test_stride  = 1280U,          /**< Pixels per scanline.            */
+  k_ra8_vin_test_ie_mask = 0x00000022UL,   /**< IE: enable EFE + FME.           */
+  k_ra8_vin_test_ctx     = 0x12345678UL,   /**< Sentinel ctx for callback test. */
+  k_ra8_vin_test_status  = 0x00000080UL,   /**< Arbitrary non-W1C INTS bit.     */
+  k_ra8_vin_test_si_val  = 600U,           /**< Scanline compare line.          */
 } ra8_vin_test_const_t;
 
 /**

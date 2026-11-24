@@ -26,6 +26,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_board_memmap.h"
 #include "ra8_cnecc.h"
 #include "ra8_cnecc_regs.h"
 #include "ra8_elc_regs.h"
@@ -59,13 +60,13 @@ typedef enum : uint16_t {
  * lossless on the 64-bit test host.
  */
 typedef enum : uint32_t {
-  k_ra8_cnecc_cov_ram_base = 0x22000000UL, /**< Fake SRAM window base.      */
-  k_ra8_cnecc_cov_ram_len  = 16U,          /**< Bytes hashed by compute.    */
-  k_ra8_cnecc_cov_word0    = 0xDEADBEEFUL, /**< Seed word 0 of the source.  */
-  k_ra8_cnecc_cov_word1    = 0xCAFEBABEUL, /**< Seed word 1 of the source.  */
-  k_ra8_cnecc_cov_word2    = 0x12345678UL, /**< Seed word 2 of the source.  */
-  k_ra8_cnecc_cov_word3    = 0x9ABCDEF0UL, /**< Seed word 3 of the source.  */
-  k_ra8_cnecc_cov_ecc_flip = 0x000000FFUL, /**< XOR delta to break a match. */
+  k_ra8_cnecc_cov_ram_base = k_ra8_board_sram_base, /**< Fake SRAM window base.      */
+  k_ra8_cnecc_cov_ram_len  = 16U,                   /**< Bytes hashed by compute.    */
+  k_ra8_cnecc_cov_word0    = 0xDEADBEEFUL,          /**< Seed word 0 of the source.  */
+  k_ra8_cnecc_cov_word1    = 0xCAFEBABEUL,          /**< Seed word 1 of the source.  */
+  k_ra8_cnecc_cov_word2    = 0x12345678UL,          /**< Seed word 2 of the source.  */
+  k_ra8_cnecc_cov_word3    = 0x9ABCDEF0UL,          /**< Seed word 3 of the source.  */
+  k_ra8_cnecc_cov_ecc_flip = 0x000000FFUL,          /**< XOR delta to break a match. */
 } ra8_cnecc_cov_ram_t;
 
 static void prep(void)

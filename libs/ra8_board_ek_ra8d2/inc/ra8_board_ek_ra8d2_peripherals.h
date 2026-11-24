@@ -44,6 +44,7 @@
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_board_ek_ra8d2_usb.h"
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_port_constants.h"
@@ -418,14 +419,11 @@ void ra8_board_camera_delay_ms(void* ctx, uint32_t milliseconds);
  */
 typedef enum : uintptr_t {
   k_ra8_board_xspi_flash_base = 0x80000000UL, /**< 64 MB IS25LX512M (chip HUM memory map). */
-  k_ra8_board_sdram_base =
-    0x68000000UL, /**< 64 MB IS42S32160F (per linker scripts + ra8_sdramc.c). */
 } ra8_board_extmem_base_t;
 
 /** @brief Sizes of the off-chip memories, in bytes. */
 typedef enum : uint32_t {
   k_ra8_board_xspi_flash_size = 0x04000000UL, /**< 64 MiB. UM Section 6.3 p 35. */
-  k_ra8_board_sdram_size      = 0x04000000UL, /**< 64 MiB. UM Section 6.4 p 36. */
 } ra8_board_extmem_size_t;
 
 /**

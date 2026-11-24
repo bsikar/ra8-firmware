@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_drw.h"
 #include "ra8_drw_mve.h"
 #include "ra8_drw_regs.h"
@@ -29,16 +30,16 @@
 
 /** @brief Test constants matching fake-MMIO SDRAM aperture and panel geometry. */
 typedef enum : uint32_t {
-  k_t_fb_addr     = 0x68000000UL, /**< Framebuffer SDRAM test address. */
-  k_t_tex_addr    = 0x68100000UL, /**< Texture SDRAM test address.     */
-  k_t_view_w      = 1024U,        /**< Longstrip panel width.          */
-  k_t_view_h      = 600U,         /**< Longstrip panel height.         */
-  k_t_band_h      = 280U,         /**< Longstrip band height.          */
-  k_t_small_w     = 32U,          /**< Small test strip width.         */
-  k_t_small_h     = 24U,          /**< Small test strip height.        */
-  k_t_fill_col    = 0xFF112233UL, /**< Non-zero fill color to clobber. */
-  k_t_budget      = 64U,          /**< Host wait_idle poll budget.     */
-  k_t_max_test_px = 80U,          /**< Max 1D conversion test buffer.  */
+  k_t_fb_addr     = k_ra8_board_sdram_base,                /**< Framebuffer SDRAM test address. */
+  k_t_tex_addr    = (k_ra8_board_sdram_base + 0x100000UL), /**< Texture SDRAM test address.     */
+  k_t_view_w      = 1024U,                                 /**< Longstrip panel width.          */
+  k_t_view_h      = 600U,                                  /**< Longstrip panel height.         */
+  k_t_band_h      = 280U,                                  /**< Longstrip band height.          */
+  k_t_small_w     = 32U,                                   /**< Small test strip width.         */
+  k_t_small_h     = 24U,                                   /**< Small test strip height.        */
+  k_t_fill_col    = 0xFF112233UL,                          /**< Non-zero fill color to clobber. */
+  k_t_budget      = 64U,                                   /**< Host wait_idle poll budget.     */
+  k_t_max_test_px = 80U,                                   /**< Max 1D conversion test buffer.  */
 } drw_mve_test_const_t;
 
 /** @brief Reset fake MMIO registers and MSTP state for one test case. */

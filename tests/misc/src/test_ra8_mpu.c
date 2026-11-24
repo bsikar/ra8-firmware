@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
@@ -671,15 +672,17 @@ RA8_INTERNAL static void internal_test_validate_cfg_mcdc_region_count_and_region
  *          XN(1); RLAR = (limit & ~0x1F) | AttrIdx(1<<1) | EN.
  */
 typedef enum : uint32_t {
-  k_test_boot_region_count = 5U,          /**< Regions in the boot map.                */
-  k_test_boot_mair0        = 0x000444FFU, /**< MAIR0: WB/WA | non-cacheable | Device.  */
-  k_test_boot_mram_base    = 0x02000000U, /**< Region 0 base (MRAM code).              */
-  k_test_boot_mram_size    = 0x00100000U, /**< Region 0 size (1 MiB).                  */
-  k_test_boot_shram_base   = 0x22100000U, /**< Region 4 base (shared SRAM).            */
-  k_test_boot_shram_size   = 0x000A0000U, /**< Region 4 size (640 KiB, not pow2).      */
-  k_test_boot_shram_rbar   = 0x22100003U, /**< Region 4 RBAR: base | RW | XN.          */
-  k_test_boot_shram_rlar   = 0x2219FFE3U, /**< Region 4 RLAR: limit | AttrIdx1 | EN.   */
-  k_test_boot_dregion_few  = 4U,          /**< DREGION region count below the map's 5. */
+  k_test_boot_region_count = 5U,                    /**< Regions in the boot map.               */
+  k_test_boot_mair0        = 0x000444FFU,           /**< MAIR0: WB/WA | non-cacheable | Device. */
+  k_test_boot_mram_base    = k_ra8_board_mram_base, /**< Region 0 base (MRAM code).             */
+  k_test_boot_mram_size    = k_ra8_board_mram_size, /**< Region 0 size (1 MiB).                 */
+  k_test_boot_shram_base =
+    (k_ra8_board_noinit_base +
+     k_ra8_board_noinit_size),                       /**< Region 4 base (shared SRAM).            */
+  k_test_boot_shram_size = k_ra8_board_ns_sram_size, /**< Region 4 size (640 KiB, not pow2).      */
+  k_test_boot_shram_rbar = 0x22100003U,              /**< Region 4 RBAR: base | RW | XN.          */
+  k_test_boot_shram_rlar = 0x2219FFE3U,              /**< Region 4 RLAR: limit | AttrIdx1 | EN.   */
+  k_test_boot_dregion_few = 4U,                      /**< DREGION region count below the map's 5. */
 } test_boot_map_t;
 
 /* see header for full description.

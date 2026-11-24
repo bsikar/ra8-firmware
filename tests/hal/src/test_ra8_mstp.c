@@ -17,6 +17,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_internal.h"
 #include "ra8_mstp_regs.h"
+#include "ra8_target_model.h"
 #include "unity_minimal.h"
 
 /**
@@ -413,7 +414,7 @@ RA8_INTERNAL static void internal_test_init_readback_timeout(void)
  * @brief PSAR addresses + the USB Non-secure attribution mask for the tests.
  */
 typedef enum : uintptr_t {
-  k_t_psarb_addr = 0x40204004U, /**< PSARB (MSTPCRB attribution). */
+  k_t_psarb_addr = k_ra8_pscu_psarb_addr, /**< PSARB (MSTPCRB attribution). */
 } mstp_psar_test_t;
 
 typedef enum : uint32_t {

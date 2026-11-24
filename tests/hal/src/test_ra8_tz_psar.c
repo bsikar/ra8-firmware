@@ -14,6 +14,7 @@
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_system_regs.h"
+#include "ra8_target_model.h"
 #include "ra8_tz_psar.h"
 #include "unity_minimal.h"
 
@@ -22,7 +23,7 @@
  * @brief PSAR addresses the suite writes through the fake MMIO backing.
  */
 typedef enum : uintptr_t {
-  k_t_psarb_addr = 0x40204004U, /**< PSARB (MSTPCRB attribution). */
+  k_t_psarb_addr = k_ra8_pscu_psarb_addr, /**< PSARB (MSTPCRB attribution). */
 } psar_test_addr_t;
 
 /**
@@ -30,9 +31,9 @@ typedef enum : uintptr_t {
  * @brief Attribution masks used by the suite.
  */
 typedef enum : uint32_t {
-  k_t_usbfs_ns = 0x00000800U, /**< PSARB11: USBFS0 Non-secure. */
-  k_t_usbhs_ns = 0x00001000U, /**< PSARB12: USBHS Non-secure.  */
-  k_t_usb_ns   = 0x00001800U, /**< Both USB controllers.       */
+  k_t_usbfs_ns = 0x00000800U, /**< PSARB11: USBFS0 Non-secure.  */
+  k_t_usbhs_ns = 0x00001000U, /**< PSARB12: USBHS Non-secure.   */
+  k_t_usb_ns   = 0x00001800U, /**< Both USB controllers.        */
   k_t_other_ns = 0x00000010U, /**< An unrelated peripheral bit. */
 } psar_test_mask_t;
 
@@ -72,16 +73,14 @@ RA8_INTERNAL static void internal_test_psar_mask_is_additive(void)
   *(volatile uint32_t*)k_t_psarb_addr = (uint32_t)k_t_other_ns;
 
   uint32_t seen = 0U;
-  TEST_ASSERT_EQ(
-      (int)k_ra8_ok,
-      (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbfs_ns, &seen));
+  TEST_ASSERT_EQ((int)k_ra8_ok,
+                 (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbfs_ns, &seen));
 
   TEST_ASSERT_EQ((uint32_t)(k_t_other_ns | k_t_usbfs_ns), seen);
 
   /* A second caller adds its own bit without clearing either earlier one. */
-  TEST_ASSERT_EQ(
-      (int)k_ra8_ok,
-      (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbhs_ns, &seen));
+  TEST_ASSERT_EQ((int)k_ra8_ok,
+                 (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbhs_ns, &seen));
   TEST_ASSERT_EQ((uint32_t)(k_t_other_ns | k_t_usb_ns), seen);
 
   TEST_END("ra8_tz_psar_set_ns: mask is additive, never clears other bits");
@@ -154,9 +153,8 @@ RA8_INTERNAL static void internal_test_psar_tolerates_null_out(void)
   ra8_fake_mmap_reset();
   *ra8_sys_prcr() = 0U;
 
-  TEST_ASSERT_EQ(
-      (int)k_ra8_ok,
-      (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbfs_ns, NULL));
+  TEST_ASSERT_EQ((int)k_ra8_ok,
+                 (int)ra8_tz_psar_set_ns((uintptr_t)k_t_psarb_addr, (uint32_t)k_t_usbfs_ns, NULL));
   TEST_ASSERT_EQ((uint32_t)k_t_usbfs_ns, *(volatile uint32_t*)k_t_psarb_addr);
 
   TEST_END("ra8_tz_psar_set_ns: accepts a NULL out_seen");

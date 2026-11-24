@@ -24,25 +24,28 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
 #include "ra8_mpu_regs.h"
 #include "ra8_pin_validator.h"
+#include "ra8_target_model.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums -- mirror the demo's static MPU table. */
 typedef enum : uintptr_t {
-  k_test_mpu_mram_base = 0x02000000UL, /**< Test MPU MRAM base. */
-  k_test_mpu_sram_base = 0x22000000UL, /**< Test MPU SRAM base. */
-  k_test_mpu_peri_base = 0x40000000UL, /**< Test MPU peri base. */
+  k_test_mpu_mram_base = k_ra8_board_mram_base,      /**< Test MPU MRAM base. */
+  k_test_mpu_sram_base = k_ra8_board_sram_base,      /**< Test MPU SRAM base. */
+  k_test_mpu_peri_base = k_ra8_periph_bus_base_addr, /**< Test MPU peri base. */
 } test_mpu_base_t;
 
 typedef enum : uint32_t {
-  k_test_mpu_mram_size = 0x00100000UL, /**< 1 MiB.                 */
-  k_test_mpu_sram_size = 0x00100000UL, /**< 1 MiB.                 */
-  k_test_mpu_peri_size = 0x10000000UL, /**< 256 MiB.               */
-  k_test_mpu_dregion16 = 0x00001000UL, /**< MPU_TYPE.DREGION = 16. */
+  k_test_mpu_mram_size = k_ra8_board_mram_size, /**< 1 MiB. */
+  k_test_mpu_sram_size =
+    (k_ra8_board_sram_size + k_ra8_board_noinit_size), /**< 1 MiB.                 */
+  k_test_mpu_peri_size = 0x10000000UL,                 /**< 256 MiB.               */
+  k_test_mpu_dregion16 = 0x00001000UL,                 /**< MPU_TYPE.DREGION = 16. */
 } test_mpu_size_t;
 
 typedef enum : uint8_t {
