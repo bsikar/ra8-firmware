@@ -154,12 +154,26 @@ pub fn build(b: *std.Build) void {
     text_field_render_test_module.addImport("host", host_paint_module);
     text_field_render_test_module.addImport("abi", host_render_abi_module);
     const text_field_render_tests = b.addTest(.{ .root_module = text_field_render_test_module });
+    const panel_paint_module = b.createModule(.{
+        .root_source_file = b.path("src/panel_paint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    panel_paint_module.addImport("ra8_gfx", host_font_module);
     const surface_paint_module = b.createModule(.{
         .root_source_file = b.path("src/host_surface_paint.zig"),
         .target = target,
         .optimize = optimize,
     });
     surface_paint_module.addImport("ra8_gfx", host_font_module);
+    surface_paint_module.addImport("panel_paint", panel_paint_module);
+    const eink_paint_module = b.createModule(.{
+        .root_source_file = b.path("src/eink_panel_paint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    eink_paint_module.addImport("ra8_gfx", host_font_module);
+    eink_paint_module.addImport("panel_paint", panel_paint_module);
     const surface_render_test_module = b.createModule(.{
         .root_source_file = b.path("tests/surface_render_test.zig"),
         .target = target,
@@ -169,6 +183,16 @@ pub fn build(b: *std.Build) void {
     surface_render_test_module.addImport("ra8_gfx", host_font_module);
     surface_render_test_module.addImport("abi", host_render_abi_module);
     const surface_render_tests = b.addTest(.{ .root_module = surface_render_test_module });
+    const eink_render_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/eink_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    eink_render_test_module.addImport("eink_paint", eink_paint_module);
+    eink_render_test_module.addImport("surface_paint", surface_paint_module);
+    eink_render_test_module.addImport("ra8_gfx", host_font_module);
+    eink_render_test_module.addImport("abi", host_render_abi_module);
+    const eink_render_tests = b.addTest(.{ .root_module = eink_render_test_module });
     const gfx_module_test_module = b.createModule(.{
         .root_source_file = b.path("tests/gfx_module_test.zig"),
         .target = target,
@@ -418,6 +442,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(text_field_render_tests).step);
     test_step.dependOn(&b.addRunArtifact(gfx_module_tests).step);
     test_step.dependOn(&b.addRunArtifact(surface_render_tests).step);
+    test_step.dependOn(&b.addRunArtifact(eink_render_tests).step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_image_widget_tests.step);
     test_step.dependOn(&run_abi_tests.step);
@@ -463,4 +488,28 @@ fn addArmLayoutCheck(b: *std.Build, test_step: *std.Build.Step) void {
         }),
     });
     test_step.dependOn(&arm_library.step);
+
+    const arm_gfx_mod = b.createModule(.{
+        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
+        .target = arm,
+        .optimize = .small,
+    });
+    const arm_panel_paint_mod = b.createModule(.{
+        .root_source_file = b.path("src/panel_paint.zig"),
+        .target = arm,
+        .optimize = .small,
+    });
+    arm_panel_paint_mod.addImport("ra8_gfx", arm_gfx_mod);
+    const arm_eink_mod = b.createModule(.{
+        .root_source_file = b.path("src/eink_panel_paint.zig"),
+        .target = arm,
+        .optimize = .small,
+    });
+    arm_eink_mod.addImport("ra8_gfx", arm_gfx_mod);
+    arm_eink_mod.addImport("panel_paint", arm_panel_paint_mod);
+    const arm_eink_obj = b.addObject(.{
+        .name = "ra8_widget_eink_arm",
+        .root_module = arm_eink_mod,
+    });
+    test_step.dependOn(&arm_eink_obj.step);
 }

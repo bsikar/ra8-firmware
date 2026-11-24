@@ -149,6 +149,14 @@ pub fn build(b: *std.Build) void {
     surface_test_module.addImport("ra8_gfx", surface_module);
     const surface_tests = b.addTest(.{ .root_module = surface_test_module });
 
+    const eink_surface_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/eink_surface_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    eink_surface_test_module.addImport("ra8_gfx", surface_module);
+    const eink_surface_tests = b.addTest(.{ .root_module = eink_surface_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_tone_tests = b.addRunArtifact(tone_tests);
     const run_dither_tests = b.addRunArtifact(dither_tests);
@@ -165,4 +173,24 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_font_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&b.addRunArtifact(surface_tests).step);
+    test_step.dependOn(&b.addRunArtifact(eink_surface_tests).step);
+    addArmEinkCheck(b, test_step);
+}
+
+fn addArmEinkCheck(b: *std.Build, test_step: *std.Build.Step) void {
+    const arm = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb,
+        .os_tag = .freestanding,
+        .abi = .eabihf,
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
+    });
+    const arm_obj = b.addObject(.{
+        .name = "ra8_gfx_eink_arm",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/internal/eink_surface.zig"),
+            .target = arm,
+            .optimize = .small,
+        }),
+    });
+    test_step.dependOn(&arm_obj.step);
 }

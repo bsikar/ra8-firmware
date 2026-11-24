@@ -84,15 +84,74 @@ pub const clip_depth = 16;
 
 const opaque_alpha: u32 = 0xFF00_0000;
 
+/// Bounded clip-rect stack shared by host RGBA and panel gray4 surfaces.
+pub const ClipStack = struct {
+    clips: [clip_depth]Rect = undefined,
+    depth: u8 = 0,
+    overflow: u32 = 0,
+
+    pub fn current(self: *const ClipStack, surface_bounds: Rect) Rect {
+        return if (self.depth == 0) surface_bounds else self.clips[self.depth - 1];
+    }
+
+    pub fn push(self: *ClipStack, surface_bounds: Rect, rect: Rect) void {
+        const next = self.current(surface_bounds).intersect(rect);
+        if (self.depth == clip_depth) {
+            self.overflow += 1;
+            self.clips[clip_depth - 1] = next;
+            return;
+        }
+        self.clips[self.depth] = next;
+        self.depth += 1;
+    }
+
+    pub fn pop(self: *ClipStack) void {
+        if (self.overflow > 0) {
+            self.overflow -= 1;
+            return;
+        }
+        if (self.depth > 0) self.depth -= 1;
+    }
+};
+
+/// Bresenham integer line walker calling `plotFn(ctx, x, y, color)` on each pixel.
+pub fn walkLine(
+    ctx: anytype,
+    comptime plotFn: fn (@TypeOf(ctx), i32, i32, u32) void,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    color: u32,
+) void {
+    const dx: i64 = @intCast(@abs(@as(i64, x1) - x0));
+    const dy: i64 = -@as(i64, @intCast(@abs(@as(i64, y1) - y0)));
+    const sx: i32 = if (x0 < x1) 1 else -1;
+    const sy: i32 = if (y0 < y1) 1 else -1;
+    var err = dx + dy;
+    var x = x0;
+    var y = y0;
+    while (true) {
+        plotFn(ctx, x, y, color);
+        if (x == x1 and y == y1) return;
+        const twice = 2 * err;
+        if (twice >= dy) {
+            err += dy;
+            x += sx;
+        }
+        if (twice <= dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+}
+
 pub const Surface = struct {
     width: u32,
     height: u32,
     /// Row-major argb8888, `width * height` long.
     pixels: []u32,
-    clips: [clip_depth]Rect = undefined,
-    depth: u8 = 0,
-    /// Pushes past clip_depth, so the matching pops stay balanced.
-    overflow: u32 = 0,
+    clip_stack: ClipStack = .{},
 
     pub fn init(allocator: std.mem.Allocator, width: u32, height: u32, background: u32) !Surface {
         if (width == 0 or height == 0) return error.InvalidDimensions;
@@ -113,29 +172,18 @@ pub const Surface = struct {
 
     /// Where draws land now: the innermost clip, inside the surface.
     pub fn clip(self: *const Surface) Rect {
-        return if (self.depth == 0) self.bounds() else self.clips[self.depth - 1];
+        return self.clip_stack.current(self.bounds());
     }
 
     /// Clip later draws to `rect` inside the current clip.
     pub fn pushClip(self: *Surface, rect: Rect) void {
-        const next = self.clip().intersect(rect);
-        if (self.depth == clip_depth) {
-            self.overflow += 1;
-            self.clips[clip_depth - 1] = next;
-            return;
-        }
-        self.clips[self.depth] = next;
-        self.depth += 1;
+        self.clip_stack.push(self.bounds(), rect);
     }
 
     /// Restore the clip from before the matching pushClip. An overflowed
     /// push leaves the narrowed top in place.
     pub fn popClip(self: *Surface) void {
-        if (self.overflow > 0) {
-            self.overflow -= 1;
-            return;
-        }
-        if (self.depth > 0) self.depth -= 1;
+        self.clip_stack.pop();
     }
 
     /// The pixel at (`x`, `y`) as argb8888.
@@ -247,26 +295,7 @@ pub const Surface = struct {
 
     /// A one-pixel line from (`x0`, `y0`) to (`x1`, `y1`), both ends drawn.
     pub fn line(self: *Surface, x0: i32, y0: i32, x1: i32, y1: i32, color: u32) void {
-        const dx: i64 = @intCast(@abs(@as(i64, x1) - x0));
-        const dy: i64 = -@as(i64, @intCast(@abs(@as(i64, y1) - y0)));
-        const sx: i32 = if (x0 < x1) 1 else -1;
-        const sy: i32 = if (y0 < y1) 1 else -1;
-        var err = dx + dy;
-        var x = x0;
-        var y = y0;
-        while (true) {
-            self.plot(x, y, color);
-            if (x == x1 and y == y1) return;
-            const twice = 2 * err;
-            if (twice >= dy) {
-                err += dy;
-                x += sx;
-            }
-            if (twice <= dx) {
-                err += dx;
-                y += sy;
-            }
-        }
+        walkLine(self, Surface.plot, x0, y0, x1, y1, color);
     }
 
     /// Copy `rect`'s worth of `format` pixels, rows `stride` bytes apart,
