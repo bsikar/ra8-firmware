@@ -6,9 +6,12 @@
 
 const std = @import("std");
 const console_mod = @import("console");
-const fake = @import("sci_fake.zig");
-
 const vocab = console_mod.vocab;
+const fake = @import("sci_fake.zig").For(vocab);
+
+comptime {
+    _ = @import("sci_fake.zig");
+}
 
 const Err = vocab.Err;
 const Wiring = console_mod.Wiring;

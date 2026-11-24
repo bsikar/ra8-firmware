@@ -64,13 +64,16 @@
 //! firmware links compiler_rt from the other Zig archives.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 /// Units under `src/internal/freestanding/`. Each is its own module so the
 /// tests can import the same module objects the archive does.
 const freestanding_units = [_][]const u8{ "mem", "str", "math", "rand" };
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
     const abi_prefix = b.option(
         []const u8,

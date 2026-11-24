@@ -7,6 +7,10 @@ const std = @import("std");
 
 const Board = @import("identity").Board;
 
+comptime {
+    _ = @import("sci_fake.zig");
+}
+
 test "identity names the RA8P1 foundation board and its chip HUM" {
     try std.testing.expectEqualStrings("RA8P1 foundation board", Board.name);
     try std.testing.expectEqualStrings("R01UH1064EJ (chip HUM)", Board.doc_rev);

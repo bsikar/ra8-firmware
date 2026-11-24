@@ -1,0 +1,22 @@
+{
+  "test_roots": [
+    "tests/appimg_verify_test.zig",
+    "tests/appimg_pubkey_test.zig"
+  ],
+  "covered_sources": [
+    "src/ra8_nsc_appimg_pubkey.zig",
+    "src/ra8_nsc_appimg_verify.zig",
+    "src/ra8_nsc_appimg_verify_veneer.zig",
+    "tests/appimg_pubkey_test.zig",
+    "tests/appimg_verify_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/ra8_nsc_appimg_verify_veneer.zig": [
+      "-fno-emit-bin",
+      "-target",
+      "thumb-freestanding-eabihf",
+      "-mcpu=cortex_m85"
+    ]
+  },
+  "minimum_tests": 6
+}
