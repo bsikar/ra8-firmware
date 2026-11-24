@@ -163,3 +163,51 @@ test "C ABI language hint parsing and script selection validate arguments" {
     try std.testing.expectEqual(@as(u8, 3), sel.language);
     try std.testing.expectEqual(@as(u32, 2), sel.counts.han_count);
 }
+
+test "C ABI glossary init, upsert, lookup, mask, and restore preserve error invariants" {
+    var tgl_a: [256]u8 = undefined;
+    var len_a: usize = 0;
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_glossary_init(2, 1, &tgl_a, tgl_a.len, &len_a));
+
+    const tanaka = "\xe3\x82\xbf\xe3\x83\x8a\xe3\x82\xab";
+    var tgl_b: [256]u8 = undefined;
+    var len_b: usize = 0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_glossary_upsert(&tgl_a, len_a, tanaka.ptr, tanaka.len, "Tanaka", 6, &tgl_b, tgl_b.len, &len_b),
+    );
+
+    var eng_ptr: ?[*]const u8 = null;
+    var eng_len: usize = 0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_not_found,
+        abi.ra8_translate_glossary_lookup(&tgl_b, len_b, "none", 4, &eng_ptr, &eng_len),
+    );
+    try std.testing.expect(eng_ptr == null);
+
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_glossary_lookup(&tgl_b, len_b, tanaka.ptr, tanaka.len, &eng_ptr, &eng_len),
+    );
+    try std.testing.expectEqualStrings("Tanaka", eng_ptr.?[0..eng_len]);
+
+    const bub = "\xe3\x82\xbf\xe3\x83\x8a\xe3\x82\xab\xe3\x81\x95\xe3\x82\x93";
+    var masked: [64]u8 = undefined;
+    var masked_len: usize = 0;
+    var plan: [32]u8 = undefined;
+    var plan_len: usize = 0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_glossary_mask(&tgl_b, len_b, bub.ptr, bub.len, &masked, masked.len, &masked_len, &plan, plan.len, &plan_len),
+    );
+    try std.testing.expectEqualStrings("__G00__", masked[0..masked_len]);
+
+    var restored: [64]u8 = undefined;
+    var restored_len: usize = 0;
+    const model_out = "Hey __G00__!";
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_glossary_restore(&tgl_b, len_b, &plan, plan_len, model_out.ptr, model_out.len, &restored, restored.len, &restored_len),
+    );
+    try std.testing.expectEqualStrings("Hey Tanaka-san!", restored[0..restored_len]);
+}

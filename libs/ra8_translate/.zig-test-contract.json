@@ -3,16 +3,19 @@
     "tests/crc32_test.zig",
     "tests/sidecar_test.zig",
     "tests/lang_test.zig",
+    "tests/glossary_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/crc32.zig",
     "src/internal/err.zig",
+    "src/internal/glossary.zig",
     "src/internal/lang.zig",
     "src/internal/sidecar.zig",
     "src/ra8_translate_abi.zig",
     "tests/abi_test.zig",
     "tests/crc32_test.zig",
+    "tests/glossary_test.zig",
     "tests/lang_test.zig",
     "tests/sidecar_test.zig"
   ],
@@ -40,6 +43,29 @@
       "-Msidecar=src/internal/sidecar.zig",
       "-Mcrc32=src/internal/crc32.zig"
     ],
+    "src/internal/glossary.zig": [
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "lang",
+      "-Mroot=src/internal/glossary.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mlang=src/internal/lang.zig"
+    ],
     "src/ra8_translate_abi.zig": [
       "--dep",
       "err",
@@ -47,6 +73,8 @@
       "sidecar",
       "--dep",
       "lang",
+      "--dep",
+      "glossary",
       "-Mroot=src/ra8_translate_abi.zig",
       "-Merr=src/internal/err.zig",
       "--dep",
@@ -59,7 +87,16 @@
       "err",
       "--dep",
       "sidecar",
-      "-Mlang=src/internal/lang.zig"
+      "-Mlang=src/internal/lang.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "lang",
+      "-Mglossary=src/internal/glossary.zig"
     ],
     "tests/crc32_test.zig": [
       "--dep",
@@ -98,6 +135,32 @@
       "-Mcrc32=src/internal/crc32.zig",
       "-Merr=src/internal/err.zig"
     ],
+    "tests/glossary_test.zig": [
+      "--dep",
+      "glossary",
+      "-Mroot=tests/glossary_test.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "lang",
+      "-Mglossary=src/internal/glossary.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mlang=src/internal/lang.zig"
+    ],
     "tests/abi_test.zig": [
       "--dep",
       "err",
@@ -111,6 +174,8 @@
       "sidecar",
       "--dep",
       "lang",
+      "--dep",
+      "glossary",
       "-Mra8_translate_abi=src/ra8_translate_abi.zig",
       "--dep",
       "crc32",
@@ -122,8 +187,17 @@
       "err",
       "--dep",
       "sidecar",
-      "-Mlang=src/internal/lang.zig"
+      "-Mlang=src/internal/lang.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "lang",
+      "-Mglossary=src/internal/glossary.zig"
     ]
   },
-  "minimum_tests": 15
+  "minimum_tests": 20
 }
