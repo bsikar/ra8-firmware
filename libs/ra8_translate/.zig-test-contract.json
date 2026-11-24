@@ -2,15 +2,18 @@
   "test_roots": [
     "tests/crc32_test.zig",
     "tests/sidecar_test.zig",
+    "tests/lang_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/crc32.zig",
     "src/internal/err.zig",
+    "src/internal/lang.zig",
     "src/internal/sidecar.zig",
     "src/ra8_translate_abi.zig",
     "tests/abi_test.zig",
     "tests/crc32_test.zig",
+    "tests/lang_test.zig",
     "tests/sidecar_test.zig"
   ],
   "standalone_source_args": {
@@ -23,12 +26,12 @@
       "-Mcrc32=src/internal/crc32.zig",
       "-Merr=src/internal/err.zig"
     ],
-    "src/ra8_translate_abi.zig": [
+    "src/internal/lang.zig": [
       "--dep",
       "err",
       "--dep",
       "sidecar",
-      "-Mroot=src/ra8_translate_abi.zig",
+      "-Mroot=src/internal/lang.zig",
       "-Merr=src/internal/err.zig",
       "--dep",
       "crc32",
@@ -36,6 +39,27 @@
       "err",
       "-Msidecar=src/internal/sidecar.zig",
       "-Mcrc32=src/internal/crc32.zig"
+    ],
+    "src/ra8_translate_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "--dep",
+      "lang",
+      "-Mroot=src/ra8_translate_abi.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mlang=src/internal/lang.zig"
     ],
     "tests/crc32_test.zig": [
       "--dep",
@@ -55,6 +79,25 @@
       "-Mcrc32=src/internal/crc32.zig",
       "-Merr=src/internal/err.zig"
     ],
+    "tests/lang_test.zig": [
+      "--dep",
+      "lang",
+      "--dep",
+      "sidecar",
+      "-Mroot=tests/lang_test.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mlang=src/internal/lang.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Merr=src/internal/err.zig"
+    ],
     "tests/abi_test.zig": [
       "--dep",
       "err",
@@ -66,14 +109,21 @@
       "err",
       "--dep",
       "sidecar",
+      "--dep",
+      "lang",
       "-Mra8_translate_abi=src/ra8_translate_abi.zig",
       "--dep",
       "crc32",
       "--dep",
       "err",
       "-Msidecar=src/internal/sidecar.zig",
-      "-Mcrc32=src/internal/crc32.zig"
+      "-Mcrc32=src/internal/crc32.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mlang=src/internal/lang.zig"
     ]
   },
-  "minimum_tests": 10
+  "minimum_tests": 15
 }

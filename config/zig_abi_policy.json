@@ -329,7 +329,9 @@
         "ra8_translate_sidecar_english_text",
         "ra8_translate_sidecar_line_breaks",
         "ra8_translate_sidecar_required_bytes",
-        "ra8_translate_sidecar_write"
+        "ra8_translate_sidecar_write",
+        "ra8_translate_lang_from_hint",
+        "ra8_translate_lang_select"
       ]
     },
     {
@@ -3641,7 +3643,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "325410ad803256d65035357d5d0e609811eb2d9d22969ae4db89ae673c2f2e84",
+      "compatibility_sha256": "13cf23cff248c32729b08edf697434c1648cf8c7d4b4a5bdbb0ae4a1894bc685",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3650,11 +3652,16 @@
         "@sizeOf(PageEntry) == 12",
         "@alignOf(PageEntry) == 4",
         "@sizeOf(BubbleRecord) == 44",
-        "@alignOf(BubbleRecord) == 4"
+        "@alignOf(BubbleRecord) == 4",
+        "@sizeOf(ScriptCounts) == 16",
+        "@alignOf(ScriptCounts) == 4",
+        "@sizeOf(LangSelection) == 24",
+        "@alignOf(LangSelection) == 4"
       ],
       "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
       "layout_sources": [
-        "libs/ra8_translate/src/internal/sidecar.zig"
+        "libs/ra8_translate/src/internal/sidecar.zig",
+        "libs/ra8_translate/src/internal/lang.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3731,6 +3738,16 @@
           "name": "ra8_translate_sidecar_write",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows flat key/page/bubble/break/text inputs and serializes CRC-stamped bytes into caller buffer"
+        },
+        {
+          "name": "ra8_translate_lang_from_hint",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows metadata hint bytes for parsing and writes resolved language enum to caller storage"
+        },
+        {
+          "name": "ra8_translate_lang_select",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows UTF-8 OCR text sample and writes selection, model profile, and counts to caller storage"
         }
       ],
       "data_exports": [],

@@ -177,6 +177,45 @@ static void test_round_trip_and_invalidation(void)
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_translate_sidecar_open(buf, written, &hdr));
 }
 
+static void test_language_selection(void)
+{
+  ra8_translate_lang_t hint = k_ra8_translate_lang_unknown;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_lang_from_hint((const uint8_t*)"ko-KR", 5U, &hint));
+  TEST_ASSERT_EQ(k_ra8_translate_lang_korean, hint);
+
+  ra8_translate_lang_selection_t sel       = {};
+  const uint8_t                  ko_text[] = "\xec\x95\x88\xeb\x85\x95";
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_lang_select(k_ra8_translate_lang_unknown, ko_text, sizeof(ko_text) - 1U, &sel));
+  TEST_ASSERT_EQ(k_ra8_translate_lang_korean, sel.language);
+  TEST_ASSERT_EQ(k_ra8_translate_ocr_korean, sel.ocr_model);
+  TEST_ASSERT_EQ(k_ra8_translate_nmt_ko_en, sel.nmt_model);
+
+  const uint8_t ja_text[] = "\xe3\x81\x93\xe3\x82\x93";
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_lang_select(k_ra8_translate_lang_japanese, ja_text, sizeof(ja_text) - 1U, &sel));
+  TEST_ASSERT_EQ(k_ra8_translate_lang_japanese, sel.language);
+  TEST_ASSERT_EQ(k_ra8_translate_ocr_japanese, sel.ocr_model);
+  TEST_ASSERT_EQ(k_ra8_translate_nmt_ja_en, sel.nmt_model);
+
+  const uint8_t kanji[] = "\xe6\xbc\xa2\xe5\xad\x97";
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_lang_select(k_ra8_translate_lang_chinese, kanji, sizeof(kanji) - 1U, &sel));
+  TEST_ASSERT_EQ(k_ra8_translate_lang_chinese, sel.language);
+  TEST_ASSERT_EQ(k_ra8_translate_lang_reason_deferred_to_hint, sel.reason);
+  TEST_ASSERT_EQ(k_ra8_translate_ocr_chinese, sel.ocr_model);
+  TEST_ASSERT_EQ(k_ra8_translate_nmt_zh_en, sel.nmt_model);
+
+  const uint8_t bad_utf8[] = {0xFFU, 0xFEU};
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_translate_lang_select(k_ra8_translate_lang_chinese, bad_utf8, sizeof(bad_utf8), &sel));
+  TEST_ASSERT_EQ(k_ra8_translate_lang_chinese, sel.language);
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -186,5 +225,9 @@ int main(void)
   TEST_BEGIN("test_round_trip_and_invalidation");
   test_round_trip_and_invalidation();
   TEST_END("test_round_trip_and_invalidation");
+
+  TEST_BEGIN("test_language_selection");
+  test_language_selection();
+  TEST_END("test_language_selection");
   return 0;
 }
