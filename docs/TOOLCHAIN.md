@@ -117,7 +117,13 @@ Toolchain release: **13.3.rel1** (gcc `13.3.1`).
   `~/opt/arm-gnu-toolchain-13.3`. `cmake/toolchain-ra8d2.cmake`
   `find_program`s the cross tools with `HINTS` on those paths (searched before
   `PATH`), so the pinned 13.3 wins regardless of what stray arm-gcc sits on `PATH`
-  (e.g. a Homebrew 14.x). Override with `-DRA8_ARM_TOOLCHAIN_BIN=<dir>`.
+  (e.g. a Homebrew 14.x). Override with `-DRA8_ARM_TOOLCHAIN_BIN=<dir>`. The `scripts/emu` gates
+  (smoke.sh, eil_all.sh, matrix.sh) additionally locate the toolchain at run
+  time -- `RA8_ARM_TOOLCHAIN_BIN`, then PATH, then `/opt` and `~/opt`
+  `arm-gnu-toolchain-*` layouts -- export it into PATH for the bare
+  `arm-none-eabi-*` calls, and hand the same dir to the configure, so a local
+  run needs no PATH surgery (see `scripts/builders/find_tools.sh`, which
+  discovers `zig` the same way via `RA8_ZIG`).
 - **Version assertion.** The toolchain file runs `-dumpfullversion` and requires
   major.minor `13.3` (patch-tolerant; rejects 13.2 and 14.x). A mismatch is a
   **FATAL error by default** (`RA8_STRICT_TOOLCHAIN` defaults ON) -- a build that
