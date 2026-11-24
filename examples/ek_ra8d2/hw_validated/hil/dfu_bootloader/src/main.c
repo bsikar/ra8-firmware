@@ -600,9 +600,18 @@ static VOID blc_device_worker(ULONG arg)
 
   /* NASA Rule 2 exemption: deliberate RTOS service loop. It exits only via
    * blc_system_reset() once an image commits (that call does not return). */
+  bool reported_manifest = false;
   while (1) {
     (void)ra8_dfu_device_worker_step();
     g_blc_dfu_tick += 1U; /* HIL liveness: proves the DFU service loop iterates */
+    if (!reported_manifest && ra8_dfu_device_manifested()) {
+      reported_manifest = true;
+      (void)blc_print("dfu-bootloader: manifest received, blocks=0x");
+      (void)blc_print_hex(ra8_dfu_device_block_writes());
+      (void)blc_print(" len=0x");
+      (void)blc_print_hex(ra8_dfu_device_image_len());
+      (void)blc_print("\r\n");
+    }
     if (ra8_dfu_device_committed() && (ra8_dfu_device_last_error() == k_ra8_ok)) {
       (void)blc_print("dfu-bootloader: image committed -- resetting into new slot\r\n");
       blc_system_reset();
