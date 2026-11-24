@@ -174,3 +174,27 @@ pub fn eraseAll(flash: anytype) !void {
     try flash.programPage(layout.copy0_addr, &erased, &erased);
     try flash.programPage(layout.copy1_addr, &erased, &erased);
 }
+
+/// Action required by `ra8_dfu_confirm` for the active boot-state pair.
+pub const ConfirmOutcome = enum {
+    already_confirmed,
+    write_required,
+};
+
+/// Result of checking whether a trial record can be confirmed.
+pub const ConfirmPlan = struct {
+    outcome: ConfirmOutcome,
+    record: Record,
+};
+
+/// Inspect `(copy0, copy1)` and decide how `ra8_dfu_confirm` should proceed.
+/// Accepts `tries_left == 0` because the payload executes its last try while
+/// `tries_left` already reads zero in MRAM.
+pub fn planConfirm(copy0: *const Record, copy1: *const Record) error{ NotFound, InvalidState }!ConfirmPlan {
+    const active = pick(copy0, copy1) orelse return error.NotFound;
+    if (active.record.trial_slot > @backingInt(slot.Slot.b)) return error.InvalidState;
+    if (active.record.confirmed != 0) {
+        return .{ .outcome = .already_confirmed, .record = active.record };
+    }
+    return .{ .outcome = .write_required, .record = active.record };
+}

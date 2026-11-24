@@ -229,3 +229,22 @@ test "decideWithState runs unconfirmed trial until tries run out then reverts" {
     try std.testing.expectEqual(slot.Action.jump_b, conf.action);
     try std.testing.expect(!conf.is_trial);
 }
+
+test "planConfirm marks unconfirmed slots and stays idempotent once confirmed" {
+    const erased_bytes: [32]u8 = @splat(0xFF);
+    const erased: Record = std.mem.bytesToValue(Record, &erased_bytes);
+    try std.testing.expectError(error.NotFound, boot_state.planConfirm(&erased, &erased));
+
+    const none_slot = try boot_state.build(.none, 1, false, 0, 1);
+    try std.testing.expectError(error.InvalidState, boot_state.planConfirm(&none_slot, &erased));
+
+    // Even with tries_left == 0 on the final attempt, confirmation succeeds.
+    const last_try = try boot_state.build(.a, 0, false, 4, 2);
+    const p1 = try boot_state.planConfirm(&erased, &last_try);
+    try std.testing.expectEqual(boot_state.ConfirmOutcome.write_required, p1.outcome);
+    try std.testing.expectEqual(@backingInt(slot.Slot.a), p1.record.trial_slot);
+
+    const confirmed = try boot_state.build(.a, 0, true, 4, 3);
+    const p2 = try boot_state.planConfirm(&confirmed, &last_try);
+    try std.testing.expectEqual(boot_state.ConfirmOutcome.already_confirmed, p2.outcome);
+}
