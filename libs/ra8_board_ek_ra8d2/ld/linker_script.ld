@@ -118,14 +118,6 @@ PROVIDE(OTP_FSBLCTRL0_ADDR = 0x02E07600);
 PROVIDE(OTP_FSBLCTRL1_ADDR = 0x02E07604);
 PROVIDE(OTP_FSBLCTRL2_ADDR = 0x02E07608);
 PROVIDE(OTP_SAMR_ADDR = 0x02E07614);
-PROVIDE(OTP_SACC00_ADDR = 0x02E07620);
-PROVIDE(OTP_SACC10_ADDR = 0x02E07630);
-PROVIDE(OTP_SACC01_ADDR = 0x02E07640);
-PROVIDE(OTP_SACC11_ADDR = 0x02E07650);
-PROVIDE(OTP_SACC02_ADDR = 0x02E07660);
-PROVIDE(OTP_SACC12_ADDR = 0x02E07670);
-PROVIDE(OTP_SACC03_ADDR = 0x02E07680);
-PROVIDE(OTP_SACC13_ADDR = 0x02E07690);
 PROVIDE(OTP_PBPS_ADDR = 0x02E17780);
 PROVIDE(OTP_PBPS_SEC_ADDR = 0x02E17700);
 PROVIDE(OTP_ZHUK_ADDR = 0x02E17920);
@@ -276,14 +268,6 @@ SECTIONS
     .option_setting_otp_fsblctrl1 OTP_FSBLCTRL1_ADDR : { KEEP(*(.option_setting_otp_fsblctrl1)) } > OFS_OTP
     .option_setting_otp_fsblctrl2 OTP_FSBLCTRL2_ADDR : { KEEP(*(.option_setting_otp_fsblctrl2)) } > OFS_OTP
     .option_setting_otp_samr OTP_SAMR_ADDR : { KEEP(*(.option_setting_otp_samr)) } > OFS_OTP
-    .option_setting_otp_sacc00 OTP_SACC00_ADDR : { KEEP(*(.option_setting_otp_sacc00)) } > OFS_OTP
-    .option_setting_otp_sacc10 OTP_SACC10_ADDR : { KEEP(*(.option_setting_otp_sacc10)) } > OFS_OTP
-    .option_setting_otp_sacc01 OTP_SACC01_ADDR : { KEEP(*(.option_setting_otp_sacc01)) } > OFS_OTP
-    .option_setting_otp_sacc11 OTP_SACC11_ADDR : { KEEP(*(.option_setting_otp_sacc11)) } > OFS_OTP
-    .option_setting_otp_sacc02 OTP_SACC02_ADDR : { KEEP(*(.option_setting_otp_sacc02)) } > OFS_OTP
-    .option_setting_otp_sacc12 OTP_SACC12_ADDR : { KEEP(*(.option_setting_otp_sacc12)) } > OFS_OTP
-    .option_setting_otp_sacc03 OTP_SACC03_ADDR : { KEEP(*(.option_setting_otp_sacc03)) } > OFS_OTP
-    .option_setting_otp_sacc13 OTP_SACC13_ADDR : { KEEP(*(.option_setting_otp_sacc13)) } > OFS_OTP
     .option_setting_otp_pbps OTP_PBPS_ADDR : { KEEP(*(.option_setting_otp_pbps)) } > OFS_OTP
     .option_setting_otp_pbps_sec OTP_PBPS_SEC_ADDR : { KEEP(*(.option_setting_otp_pbps_sec)) } > OFS_OTP
     .option_setting_otp_zhuk OTP_ZHUK_ADDR : { KEEP(*(.option_setting_otp_zhuk)) } > OFS_OTP
