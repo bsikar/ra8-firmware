@@ -426,14 +426,17 @@ macro(_ra8_app_collect_sources)
         # remaining C calls into Zig even while src/<lib>.c survives:
         # ra8_c6link kept that file while its priv_c6link_* helpers and handle
         # lifecycle moved to Zig, and every app naming it lost them at link.
-        # unarch is the one lib whose build installs five ABI-split archives,
-        # none named libunarch.a, and whose src/ has no app-facing C left
-        # (RA8FW-1204): the unarch block below registers the five real
-        # entries for the direct and transitive cases alike, so this loop
-        # contributes neither a bogus libunarch.a input nor a duplicate of
-        # the xz-embedded-driven wrapper as C.
-        if(NOT _ra8_lib STREQUAL "unarch")
+        # unarch emits five ABI-split archives and no libunarch.a, with no
+        # app-facing C left (RA8FW-1204): the unarch block below registers the
+        # five real entries, so this loop skips both a bogus libunarch.a input
+        # and the wrapper C sources. reflow similarly emits libra8_reflow_parse.a
+        # (registered in the reflow block below, RA8FW-1212) rather than
+        # libreflow.a, while still keeping its remaining non-migrated C sources
+        # in _ra8_lib_extra below (RA8FW-1369).
+        if(NOT _ra8_lib STREQUAL "unarch" AND NOT _ra8_lib STREQUAL "reflow")
           list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+          set(_ra8_lib_has_archive ON)
+        elseif(_ra8_lib STREQUAL "reflow")
           set(_ra8_lib_has_archive ON)
         endif()
       endif()
