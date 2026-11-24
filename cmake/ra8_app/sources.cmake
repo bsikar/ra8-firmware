@@ -442,11 +442,22 @@ macro(_ra8_app_collect_sources)
         # and the wrapper C sources. reflow similarly emits libra8_reflow_parse.a
         # (registered in the reflow block below, RA8FW-1212) rather than
         # libreflow.a, while still keeping its remaining non-migrated C sources
-        # in _ra8_lib_extra below (RA8FW-1369).
-        if(NOT _ra8_lib STREQUAL "unarch" AND NOT _ra8_lib STREQUAL "reflow")
-          list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+        # in _ra8_lib_extra below (RA8FW-1369). epub emits ten split ra8_epub*
+        # archives (registered in the epub block below) and no libepub.a, book
+        # installs libra8_book.a rather than libbook.a, and xml installs
+        # libxml_reader.a rather than libxml.a (RA8FW-1389).
+        if(_ra8_lib STREQUAL "unarch" OR _ra8_lib STREQUAL "reflow" OR _ra8_lib STREQUAL "epub")
+          if(_ra8_lib STREQUAL "reflow" OR _ra8_lib STREQUAL "epub")
+            set(_ra8_lib_has_archive ON)
+          endif()
+        elseif(_ra8_lib STREQUAL "book")
+          list(APPEND _ra8_lib_zig "ra8_book|${_ra8_lib_path}")
           set(_ra8_lib_has_archive ON)
-        elseif(_ra8_lib STREQUAL "reflow")
+        elseif(_ra8_lib STREQUAL "xml")
+          list(APPEND _ra8_lib_zig "xml_reader|${_ra8_lib_path}")
+          set(_ra8_lib_has_archive ON)
+        else()
+          list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
           set(_ra8_lib_has_archive ON)
         endif()
       endif()
@@ -491,7 +502,13 @@ macro(_ra8_app_collect_sources)
         # RA8_OFF_TARGET define the C sources below receive. Registering the
         # plain archive linked ra8_psa_crypto's on-target TF-PSA-Crypto
         # backend into apps that link no TF-PSA-Crypto.
-        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}|off_target")
+        if(_ra8_lib STREQUAL "book")
+          list(APPEND _ra8_lib_zig "ra8_book|${_ra8_lib_path}|off_target")
+        elseif(_ra8_lib STREQUAL "xml")
+          list(APPEND _ra8_lib_zig "xml_reader|${_ra8_lib_path}|off_target")
+        else()
+          list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}|off_target")
+        endif()
         set(_ra8_lib_has_archive ON)
       endif()
       if(_ra8_lib MATCHES "^ra8_board_")
@@ -639,16 +656,38 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
          ${RA8_REPO_ROOT}/apps/shared_libs/epub/src
     )
+    # Callers before callees (matches zig_link_order.cmake topological DAG).
+    list(
+      APPEND
+      _ra8_lib_zig
+      "ra8_epub_fs|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_open|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_img_import|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_img_tiles|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_entry|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_chapter|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_toc|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_xml|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub_miniz|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+      "ra8_epub|${RA8_REPO_ROOT}/apps/shared_libs/epub"
+    )
   endif()
 
   if(("epub" IN_LIST _RA8_APP_LIBS) OR ("rabook_compile" IN_LIST _RA8_APP_LIBS))
     file(GLOB_RECURSE _xml CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/*.c)
+    set(_xml_zig "")
+    if(EXISTS "${RA8_REPO_ROOT}/apps/shared_libs/xml/build.zig")
+      # xml's Zig build installs libxml_reader.a (xml_reader) rather than
+      # libxml.a (RA8FW-1389).
+      set(_xml_zig "xml_reader|${RA8_REPO_ROOT}/apps/shared_libs/xml")
+      list(APPEND _ra8_lib_zig "${_xml_zig}")
+    endif()
     _ra8_app_require_compilable_lib(
       xml
       "${RA8_REPO_ROOT}/apps/shared_libs/xml"
       "pulls in xml for LIBS epub/rabook_compile"
       "${_xml}"
-      ""
+      "${_xml_zig}"
     )
     list(APPEND _ra8_lib_extra ${_xml})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/xml/inc)
