@@ -18,9 +18,11 @@ pub const Weight = text.Weight;
 pub const Extent = text.Extent;
 pub const PixelFn = text.PixelFn;
 
-/// The host argb8888 surface: fills, blended fills, lines, glyph coverage,
-/// blits and a clip stack (RA8FW-950).
+/// The host argb8888 surface: fills, blended fills, lines, text, blits,
+/// capabilities and a clip stack (RA8FW-950, RA8FW-1015).
 pub const surface = @import("internal/surface.zig");
 pub const Surface = surface.Surface;
 pub const Rect = surface.Rect;
 pub const Format = surface.Format;
+pub const PixelFormat = surface.PixelFormat;
+pub const Capabilities = surface.Capabilities;

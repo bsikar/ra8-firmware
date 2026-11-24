@@ -125,3 +125,69 @@ test "the PPM is a P6 header and RGB triples" {
     defer std.testing.allocator.free(out);
     try std.testing.expectEqualSlices(u8, "P6\n2 1\n255\n\xff\xff\xff\x10\x20\x30", out);
 }
+
+test "surface capabilities advertise argb8888 colour and alpha distinct from eink gray4" {
+    var s = try surface(4, 4);
+    defer s.deinit(std.testing.allocator);
+
+    const desktop = s.capabilities();
+    try std.testing.expectEqual(gfx.PixelFormat.argb8888, s.pixelFormat());
+    try std.testing.expectEqual(gfx.PixelFormat.argb8888, desktop.pixel_format);
+    try std.testing.expect(desktop.color);
+    try std.testing.expect(desktop.alpha);
+    try std.testing.expect(!desktop.gray4);
+    try std.testing.expect(!desktop.dither);
+    try std.testing.expect(desktop.line and desktop.blit and desktop.clip);
+
+    const eink = gfx.Capabilities.eink_gray4;
+    try std.testing.expectEqual(gfx.PixelFormat.gray4, eink.pixel_format);
+    try std.testing.expect(!eink.color);
+    try std.testing.expect(!eink.alpha);
+    try std.testing.expect(eink.gray4);
+    try std.testing.expect(eink.dither);
+    try std.testing.expect(eink.line and eink.blit and eink.clip);
+}
+
+test "surface text ops measure and clip drawText calls cleanly" {
+    var s = try surface(40, 24);
+    defer s.deinit(std.testing.allocator);
+
+    const sans_ext = Surface.measureText("RA", .sans);
+    try std.testing.expectEqual(@as(u32, 16), sans_ext.width);
+    try std.testing.expectEqual(@as(u32, 16), sans_ext.height);
+    const bold_ext = Surface.measureTextWeight("RA", .sans, .bold);
+    try std.testing.expectEqual(@as(u32, 17), bold_ext.width);
+    const styled_ext = Surface.measureTextStyle("RA", .sans, .regular, 9);
+    try std.testing.expect(styled_ext.width > 0 and styled_ext.height > 0);
+
+    s.pushClip(.{ .x = 0, .y = 0, .w = 8, .h = 16 });
+    s.drawText("RA", 0, 0, 0x112233, 0x445566);
+    s.popClip();
+
+    // First glyph ('R') sits in columns 0..7 and was painted; second ('A') in 8..15 stayed white.
+    var left_painted: usize = 0;
+    var y: u32 = 0;
+    while (y < 16) : (y += 1) {
+        var x: u32 = 0;
+        while (x < 8) : (x += 1) {
+            if (s.at(x, y) != 0xFFFF_FFFF) left_painted += 1;
+        }
+        x = 8;
+        while (x < 16) : (x += 1) {
+            try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), s.at(x, y));
+        }
+    }
+    try std.testing.expect(left_painted > 0);
+
+    s.drawTextFace("B", 16, 0, .serif, 0x000000, white);
+    s.drawTextStyle("C", 28, 0, .sans, .bold, 9, 0x000000, white);
+    var right_ink: usize = 0;
+    y = 0;
+    while (y < 24) : (y += 1) {
+        var x: u32 = 16;
+        while (x < 40) : (x += 1) {
+            if (s.at(x, y) != 0xFFFF_FFFF) right_ink += 1;
+        }
+    }
+    try std.testing.expect(right_ink > 0);
+}

@@ -15,6 +15,10 @@ const paint_abi = @import("widget_paint_abi.zig");
 pub const Rect = paint_abi.Rect;
 /// Alignment selector of the published ABI (`ra8_widget_align_t`).
 pub const Alignment = paint_abi.Alignment;
+/// Pixel format selector of the published ABI (`ra8_widget_pixel_format_t`).
+pub const PixelFormat = paint_abi.PixelFormat;
+/// Per-canvas capability descriptor of the published ABI (`ra8_widget_canvas_caps_t`).
+pub const CanvasCaps = paint_abi.CanvasCaps;
 /// Draw backend of the published ABI (`ra8_widget_paint_t`).
 pub const Paint = paint_abi.Paint;
 

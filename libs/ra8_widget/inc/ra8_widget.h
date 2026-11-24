@@ -615,13 +615,26 @@ typedef enum : uint8_t {
   k_ra8_widget_text_size_ui_30 = 10U, /**< Interface text, 30 px. */
 } ra8_widget_text_size_t;
 
-/** Pixel layout handed to ra8_widget_paint_t::blit; the value is bytes per pixel. */
+/** Pixel layout handed to ra8_widget_paint_t::blit; values 1..4 are bytes per pixel, 0 is packed gray4. */
 typedef enum : uint8_t {
+  k_ra8_widget_pixel_format_gray4    = 0U, /**< 4-bit packed grey (e-ink). */
   k_ra8_widget_pixel_format_gray8    = 1U, /**< 8-bit grey.            */
   k_ra8_widget_pixel_format_rgb565   = 2U, /**< 16-bit RGB565.         */
   k_ra8_widget_pixel_format_rgb888   = 3U, /**< 24-bit RGB.            */
   k_ra8_widget_pixel_format_argb8888 = 4U, /**< 32-bit ARGB.           */
 } ra8_widget_pixel_format_t;
+
+/** @brief Per-canvas capability flags describing what a Paint backend natively supports. */
+typedef struct ra8_widget_canvas_caps {
+  ra8_widget_pixel_format_t pixel_format; /**< Destination pixel format.                  */
+  uint8_t                   color;        /**< Non-zero if colour channels are preserved. */
+  uint8_t                   alpha;        /**< Non-zero if source-over alpha blends.      */
+  uint8_t                   gray4;        /**< Non-zero if backed by 4-bit greyscale.     */
+  uint8_t                   dither;       /**< Non-zero if ordered dithering is enabled.  */
+  uint8_t                   line;         /**< Non-zero if native line drawing is bound.  */
+  uint8_t                   blit;         /**< Non-zero if native pixel blit is bound.    */
+  uint8_t                   clip;         /**< Non-zero if native clip stack is bound.    */
+} ra8_widget_canvas_caps_t;
 
 /**
  * @struct ra8_widget_paint_t
@@ -717,6 +730,8 @@ typedef struct ra8_widget_paint {
   void (*pop_clip)(void* user);
   /** @brief Optional blended fill; NULL paints @p color solid when @p alpha > 0. */
   void (*fill_rect_alpha)(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, uint8_t alpha);
+  /** @brief Optional per-canvas capabilities descriptor; NULL infers conservative defaults. */
+  const ra8_widget_canvas_caps_t* caps;
 } ra8_widget_paint_t;
 
 /**
