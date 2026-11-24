@@ -103,6 +103,16 @@ ra8_zig_archive_for_cpu(
   hard
 )
 
+ra8_zig_archive_for_cpu(
+  _ra8_ns_display_pal
+  LIB
+  ra8_display_pal
+  CPU
+  cortex_m85
+  FLOAT
+  hard
+)
+
 ra8_add_ns_image(
   SECURE_TARGET
   ra8d2-ereader.elf
@@ -129,8 +139,11 @@ ra8_add_ns_image(
   ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
   ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
   ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
+  ${RA8_REPO_ROOT}/libs/ra8_display_pal/inc
+  ${RA8_REPO_ROOT}/libs/if/inc
   LINK_LIBS
   ${_ra8_ns_wdt_sup}
+  ${_ra8_ns_display_pal}
   threadx_ns
 )
 
@@ -138,4 +151,7 @@ ra8_add_ns_image(
 # the link line, so ninja already orders the two. State the edge anyway: the
 # image is also reachable as a bare `ninja ra8d2-ereader_ns.elf`.
 add_custom_target(ra8d2-ereader_ns_zig_wdt_supervisor DEPENDS ${_ra8_ns_wdt_sup})
-add_dependencies(ra8d2-ereader_ns.elf ra8d2-ereader_ns_zig_wdt_supervisor)
+add_custom_target(ra8d2-ereader_ns_zig_display_pal DEPENDS ${_ra8_ns_display_pal})
+add_dependencies(
+  ra8d2-ereader_ns.elf ra8d2-ereader_ns_zig_wdt_supervisor ra8d2-ereader_ns_zig_display_pal
+)

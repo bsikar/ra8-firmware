@@ -388,6 +388,59 @@ typedef enum : uint16_t {
  */
 [[nodiscard]] ra8_err_t ra8_board_backlight_set(bool on);
 
+/**
+ * @struct ra8_board_backlight_caps_t
+ * @brief Hardware capabilities of the onboard J1 panel backlight control.
+ */
+typedef struct ra8_board_backlight_caps_s {
+  uint8_t min_pct;      /**< Minimum valid brightness percent (0 = off). */
+  uint8_t max_pct;      /**< Maximum valid brightness percent (100 = full). */
+  bool    supports_pwm; /**< False on EK-RA8D2: P514 BLEN has no GPT route. */
+} ra8_board_backlight_caps_t;
+
+/**
+ * @brief Initialise the J1 panel BLEN (P514) GPIO output without pulsing RESET_L.
+ *
+ * @param[in] initial_on True to assert BLEN high immediately, false for dark start.
+ *
+ * @retval k_ra8_ok                BLEN configured as GPIO output at requested level.
+ * @retval k_ra8_err_gpio_conflict P514 already claimed.
+ *
+ * @note Not thread-safe; single-threaded init or Secure substrate caller.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_backlight_init(bool initial_on);
+
+/**
+ * @brief Query the onboard panel backlight capabilities.
+ *
+ * @param[out] out_caps Filled with min/max percent and PWM support flag.
+ *
+ * @retval k_ra8_ok           Capabilities written.
+ * @retval k_ra8_err_null_ptr @p out_caps is nullptr.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_backlight_caps(ra8_board_backlight_caps_t* out_caps);
+
+/**
+ * @brief Set the onboard panel backlight brightness percent (0 or 100 on EK-RA8D2).
+ *
+ * @details
+ * EK-RA8D2 routes J1 pin 37 BLEN to P514, which has no GPT PWM output function.
+ * 0 turns BLEN off and 100 turns BLEN full on; intermediate percentages (1..99)
+ * fail closed with ::k_ra8_err_not_supported rather than silently clamping.
+ * Continuous PWM dimming requires an external GPT pin (`ra8_board_pwm()`) with
+ * `display_backlight_init`.
+ *
+ * @param[in] percent Requested brightness percent (0..100).
+ *
+ * @retval k_ra8_ok                BLEN updated (percent 0 or 100).
+ * @retval k_ra8_err_not_supported Intermediate percent (1..99) on GPIO-only BLEN.
+ * @retval k_ra8_err_invalid_arg   @p percent > 100.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_backlight_set_brightness(uint8_t percent);
+
 /* =============================================================================
  * 4. Audio CODEC (DA7212 U14, SSIE + I2C)
  *    (UM Section 6.6, Table 32, page 38)

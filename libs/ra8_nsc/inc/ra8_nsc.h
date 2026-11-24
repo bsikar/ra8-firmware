@@ -457,6 +457,91 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_flash_bank_config(uint32_t raw_value);
 
+/**
+ * @struct ra8_nsc_backlight_caps_t
+ * @brief Non-Secure view of onboard panel backlight capabilities.
+ */
+typedef struct ra8_nsc_backlight_caps_s {
+  uint8_t min_pct;      /**< Minimum valid brightness percent (0 = off). */
+  uint8_t max_pct;      /**< Maximum valid brightness percent (100 = full). */
+  bool    supports_pwm; /**< True when hardware supports continuous PWM dimming. */
+} ra8_nsc_backlight_caps_t;
+
+/**
+ * @brief NSC veneer: configure panel backlight enable pin without pulsing RESET_L.
+ *
+ * @param[in] initial_on True to assert BLEN high immediately, false for dark start.
+ *
+ * @retval k_ra8_ok                Backlight GPIO initialized.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel BLEN.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_backlight_init(bool initial_on);
+
+/**
+ * @brief NSC veneer: drive the panel backlight ON or OFF.
+ *
+ * @param[in] on True for full backlight ON, false for blank OFF.
+ *
+ * @retval k_ra8_ok                Backlight output updated.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel BLEN.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_backlight_set(bool on);
+
+/**
+ * @brief NSC veneer: set onboard panel backlight brightness percent.
+ *
+ * @param[in] percent Brightness percentage (0..100). On EK-RA8D2 GPIO-only BLEN,
+ *                    0 and 100 succeed while 1..99 return ``k_ra8_err_not_supported``.
+ *
+ * @retval k_ra8_ok                Backlight updated.
+ * @retval k_ra8_err_not_supported Intermediate dimming not supported on GPIO BLEN.
+ * @retval k_ra8_err_invalid_arg   @p percent > 100.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_backlight_set_brightness(uint8_t percent);
+
+/**
+ * @brief NSC veneer: query onboard panel backlight capabilities into NS memory.
+ *
+ * @param[out] out_caps Destination structure in NS data region.
+ *
+ * @retval k_ra8_ok                Capabilities populated.
+ * @retval k_ra8_err_null_ptr      @p out_caps is nullptr.
+ * @retval k_ra8_err_invalid_arg   @p out_caps is outside NS memory.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 panel BLEN.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t
+ra8_nsc_backlight_get_caps(ra8_nsc_backlight_caps_t* out_caps);
+
+/**
+ * @brief NSC veneer: configure an onboard user push-button (0 = SW1, 1 = SW2) as input.
+ *
+ * @param[in] sw_id Zero-based switch index (0 = SW1, 1 = SW2).
+ *
+ * @retval k_ra8_ok                Switch configured.
+ * @retval k_ra8_err_invalid_arg   @p sw_id >= 2.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 switches.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_sw_init(uint8_t sw_id);
+
+/**
+ * @brief NSC veneer: sample an onboard user push-button (0 = SW1, 1 = SW2) into NS memory.
+ *
+ * @param[in]  sw_id       Zero-based switch index (0 = SW1, 1 = SW2).
+ * @param[out] out_pressed True when pressed, false when released; stored in NS memory.
+ *
+ * @retval k_ra8_ok                State written.
+ * @retval k_ra8_err_null_ptr      @p out_pressed is nullptr.
+ * @retval k_ra8_err_invalid_arg   @p sw_id >= 2 or @p out_pressed outside NS memory.
+ * @retval k_ra8_err_not_supported Target board lacks onboard EK-RA8D2 switches.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_sw_read(uint8_t sw_id, bool* out_pressed);
+
 #ifdef __cplusplus
 }
 #endif

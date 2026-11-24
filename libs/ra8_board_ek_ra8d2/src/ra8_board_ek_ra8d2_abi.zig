@@ -299,6 +299,18 @@ export fn ra8_board_backlight_set(on: bool) u32 {
     return panel.backlight(on);
 }
 
+export fn ra8_board_backlight_init(initial_on: bool) u16 {
+    return panel.backlightInit(initial_on);
+}
+
+export fn ra8_board_backlight_caps(out_caps: ?*panel.BacklightCaps) u16 {
+    return panel.backlightCaps(out_caps);
+}
+
+export fn ra8_board_backlight_set_brightness(percent: u8) u16 {
+    return panel.backlightBrightness(percent);
+}
+
 export fn ra8_board_xspi_pins_init() u32 {
     return xspi_pins.init();
 }

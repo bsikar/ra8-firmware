@@ -99,3 +99,50 @@ test "backlight drives BLEN high and low without re-initialising it" {
     try std.testing.expectEqual(@as(u32, 0), steps[0].level);
     try std.testing.expectEqual(kind_write, steps[0].kind);
 }
+
+test "backlightInit configures BLEN as output without touching RESET_L delays" {
+    reset();
+    try std.testing.expectEqual(@as(u16, 0), panel.backlightInit(true));
+    try std.testing.expectEqual(@as(usize, 1), count);
+    try std.testing.expectEqual(@as(usize, 0), delay_count);
+    try std.testing.expectEqual(@as(u16, 0x050E), steps[0].pin);
+    try std.testing.expect(steps[0].kind != kind_write);
+    try std.testing.expectEqual(@as(u32, 1), steps[0].level);
+
+    reset();
+    try std.testing.expectEqual(@as(u16, 0), panel.backlightInit(false));
+    try std.testing.expectEqual(@as(usize, 1), count);
+    try std.testing.expectEqual(@as(u32, 0), steps[0].level);
+}
+
+test "backlightCaps validates null and reports binary EK-RA8D2 hardware" {
+    try std.testing.expectEqual(@as(u16, 0x504), panel.backlightCaps(null));
+    var caps: panel.BacklightCaps = undefined;
+    try std.testing.expectEqual(@as(u16, 0), panel.backlightCaps(&caps));
+    try std.testing.expectEqual(@as(u8, 0), caps.min_pct);
+    try std.testing.expectEqual(@as(u8, 100), caps.max_pct);
+    try std.testing.expectEqual(false, caps.supports_pwm);
+}
+
+test "backlightBrightness maps 0/100 to BLEN and fails closed on 1..99 and >100" {
+    reset();
+    try std.testing.expectEqual(@as(u16, 0), panel.backlightBrightness(100));
+    try std.testing.expectEqual(@as(usize, 1), count);
+    try std.testing.expectEqual(kind_write, steps[0].kind);
+    try std.testing.expectEqual(@as(u32, 1), steps[0].level);
+
+    reset();
+    try std.testing.expectEqual(@as(u16, 0), panel.backlightBrightness(0));
+    try std.testing.expectEqual(@as(usize, 1), count);
+    try std.testing.expectEqual(@as(u32, 0), steps[0].level);
+
+    reset();
+    try std.testing.expectEqual(@as(u16, 0x107), panel.backlightBrightness(1));
+    try std.testing.expectEqual(@as(u16, 0x107), panel.backlightBrightness(50));
+    try std.testing.expectEqual(@as(u16, 0x107), panel.backlightBrightness(99));
+    try std.testing.expectEqual(@as(usize, 0), count);
+
+    try std.testing.expectEqual(@as(u16, 0x103), panel.backlightBrightness(101));
+    try std.testing.expectEqual(@as(u16, 0x103), panel.backlightBrightness(255));
+    try std.testing.expectEqual(@as(usize, 0), count);
+}

@@ -590,6 +590,50 @@ static void test_pdm_mic_get_config(void)
 }
 
 /* -------------------------------------------------------------------------
+ * 13. Backlight caps, standalone init, and fail-closed brightness API
+ * -------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify backlight caps, standalone BLEN init, and binary brightness gating.
+ *
+ * @details
+ * Calls ``ra8_board_backlight_caps``, ``ra8_board_backlight_init``, and
+ * ``ra8_board_backlight_set_brightness`` across null pointer, 0/100 endpoints,
+ * unsupported intermediate dimming (1..99), and >100 range errors.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- each guard checks one condition)
+ *
+ * @pre Clean pin-validator and mock GPIO state.
+ * @post BLEN P514 is left output low and caps match EK-RA8D2 hardware.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+static void test_backlight_caps_and_brightness(void)
+{
+  TEST_BEGIN("backlight caps, standalone init, and brightness bounds");
+  reset_state();
+
+  ra8_board_backlight_caps_t caps = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_board_backlight_caps(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_backlight_caps(&caps));
+  TEST_ASSERT_EQ(0U, caps.min_pct);
+  TEST_ASSERT_EQ(100U, caps.max_pct);
+  TEST_ASSERT(!caps.supports_pwm);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_backlight_init(false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_backlight_set_brightness(100U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_board_backlight_set_brightness(1U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_board_backlight_set_brightness(50U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_board_backlight_set_brightness(99U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_backlight_set_brightness(101U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_backlight_set_brightness(0U));
+  TEST_END("backlight caps, standalone init, and brightness bounds");
+}
+
+/* -------------------------------------------------------------------------
  * Entry point
  * -------------------------------------------------------------------------
  */
@@ -624,5 +668,6 @@ int main(void)
   test_arduino_pin_init_valid_modes();
   test_pdm_mic_route();
   test_pdm_mic_get_config();
+  test_backlight_caps_and_brightness();
   return 0;
 }
