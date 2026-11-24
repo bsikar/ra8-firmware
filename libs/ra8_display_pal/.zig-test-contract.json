@@ -9,6 +9,7 @@
     "src/internal/root.zig",
     "src/internal/lcd.zig",
     "src/internal/eink.zig",
+    "src/internal/standalone_build_config.zig",
     "src/ra8_display_pal_abi.zig",
     "src/ra8_display_pal_lcd_abi.zig",
     "src/ra8_display_pal_eink_abi.zig",
@@ -17,5 +18,13 @@
     "tests/eink_test.zig",
     "tests/abi_test.zig"
   ],
+  "standalone_source_args": {
+    "src/ra8_display_pal_lcd_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_display_pal_lcd_abi.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ]
+  },
   "minimum_tests": 65
 }

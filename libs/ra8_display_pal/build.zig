@@ -16,9 +16,12 @@
 //! needs before the GLCDC scans it.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const off_target = b.option(

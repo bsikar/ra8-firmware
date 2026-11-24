@@ -9,6 +9,10 @@ const std = @import("std");
 const gate = @import("appimg_verify");
 const appimg = gate.image;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const header_bytes = @sizeOf(appimg.Header);
 const key: [gate.pubkey_bytes]u8 = @splat(0x11);
 

@@ -8,6 +8,10 @@ const std = @import("std");
 const module_pack = @import("module_pack");
 const preamble = module_pack.preamble;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const image_len: usize = 0x2D4;
 
 /// A module image with the preamble words txm_hello_m33 carries.

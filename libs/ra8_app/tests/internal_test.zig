@@ -7,6 +7,10 @@
 const std = @import("std");
 const implementation = @import("implementation");
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const Slot = struct { id: u16 };
 const Table = implementation.Table(Slot);
 

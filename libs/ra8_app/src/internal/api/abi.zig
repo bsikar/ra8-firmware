@@ -155,6 +155,18 @@ pub const TouchEvent = extern struct {
 /// Longest path, relative to the module's directory, `file_open` takes.
 pub const path_max: u32 = 96;
 
+/// What a module declares it needs, one bit per host resource. Shared with
+/// `appimg.zig` so admission and dispatch read one definition.
+pub const Capability = struct {
+    pub const none: u32 = 0x00000000;
+    pub const display: u32 = 0x00000001;
+    pub const storage: u32 = 0x00000002;
+    pub const network: u32 = 0x00000004;
+    pub const led: u32 = 0x00000008;
+    /// Mask of every bit the container format revision defines.
+    pub const known: u32 = 0x0000000F;
+};
+
 comptime {
     std.debug.assert(@sizeOf(Rect) == 8);
     std.debug.assert(@sizeOf(ScreenInfo) == 8);

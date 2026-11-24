@@ -10,6 +10,10 @@ const pack = @import("appimg_pack");
 const gate = pack.gate;
 const appimg = gate.image;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const Ed25519 = std.crypto.sign.Ed25519;
 const header_bytes = @sizeOf(appimg.Header);
 

@@ -11,6 +11,10 @@ const gate = pack.gate;
 const appimg = gate.image;
 const preamble = module_pack.preamble;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const Ed25519 = std.crypto.sign.Ed25519;
 const image_len: usize = 0x2D4;
 const header_bytes = @sizeOf(appimg.Header);

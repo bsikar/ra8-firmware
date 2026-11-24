@@ -11,6 +11,10 @@ const abi = api.abi;
 const kernel = api.kernel;
 const Capability = api.appimg.Capability;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 fn req(r: abi.Request) u32 {
     return @backingInt(r);
 }

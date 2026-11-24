@@ -11,6 +11,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 var log_calls: u32 = 0;
 var last_message: [*:0]const u8 = "";
 

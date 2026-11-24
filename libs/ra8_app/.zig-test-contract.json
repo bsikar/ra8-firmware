@@ -1,13 +1,53 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/appimg_test.zig",
+    "tests/appimg_verify_test.zig",
+    "tests/appimg_pack_test.zig",
+    "tests/txm_preamble_test.zig",
+    "tests/module_pack_test.zig",
+    "tests/app_api_test.zig",
+    "tests/app_api_refusal_test.zig",
+    "tests/ed25519_backend_test.zig"
   ],
   "covered_sources": [
+    "src/internal/api/abi.zig",
+    "src/internal/api/kernel.zig",
+    "src/internal/api/memory.zig",
+    "src/internal/api/module.zig",
+    "src/internal/api/sandbox.zig",
+    "src/internal/app_api.zig",
+    "src/internal/app_resident.zig",
+    "src/internal/appimg.zig",
+    "src/internal/appimg_pack.zig",
+    "src/internal/appimg_verify.zig",
+    "src/internal/ed25519_backend.zig",
+    "src/internal/module_pack.zig",
     "src/internal/root.zig",
+    "src/internal/txm_preamble.zig",
     "src/ra8_app_abi.zig",
+    "tools/ra8app_pack.zig",
+    "tools/test_key.zig",
+    "tests/abi_test.zig",
+    "tests/app_api_fake.zig",
+    "tests/app_api_refusal_test.zig",
+    "tests/app_api_test.zig",
+    "tests/appimg_pack_test.zig",
+    "tests/appimg_test.zig",
+    "tests/appimg_verify_test.zig",
+    "tests/ed25519_backend_test.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/module_pack_test.zig",
+    "tests/txm_preamble_test.zig"
   ],
-  "minimum_tests": 10
+  "standalone_source_args": {
+    "tools/ra8app_pack.zig": [
+      "--dep",
+      "module_pack",
+      "-Mroot=tools/ra8app_pack.zig",
+      "-Mmodule_pack=src/internal/module_pack.zig"
+    ]
+  },
+  "minimum_tests": 140
 }

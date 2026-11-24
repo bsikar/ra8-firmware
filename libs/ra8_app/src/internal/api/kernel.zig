@@ -16,7 +16,7 @@ const std = @import("std");
 const abi = @import("abi.zig");
 const memory = @import("memory.zig");
 const sandbox = @import("sandbox.zig");
-const Capability = @import("../appimg.zig").Capability;
+const Capability = abi.Capability;
 
 const Status = abi.Status;
 const Word = abi.Word;
