@@ -15,6 +15,7 @@
 //! parameter rather than reaching for a build-wide value, so what a middleware
 //! TU is given at RelWithDebInfo is an ordinary argument and an ordinary test.
 
+const builtin = @import("builtin");
 const std = @import("std");
 
 const app_local = @import("app_local.zig");
@@ -37,11 +38,154 @@ pub const Tools = struct {
 };
 
 pub fn findTools(b: *std.Build) ?Tools {
-    const gcc = b.findProgram(.{ .names = &.{"arm-none-eabi-gcc"} }) orelse return null;
-    const objcopy = b.findProgram(.{ .names = &.{"arm-none-eabi-objcopy"} }) orelse return null;
-    const size = b.findProgram(.{ .names = &.{"arm-none-eabi-size"} }) orelse return null;
-    const ar = b.findProgram(.{ .names = &.{"arm-none-eabi-ar"} }) orelse return null;
+    const gcc = findProgram(b, "arm-none-eabi-gcc") orelse return null;
+    const objcopy = findProgram(b, "arm-none-eabi-objcopy") orelse return null;
+    const size = findProgram(b, "arm-none-eabi-size") orelse return null;
+    const ar = findProgram(b, "arm-none-eabi-ar") orelse return null;
     return .{ .gcc = gcc, .objcopy = objcopy, .size = size, .ar = ar };
+}
+
+fn findProgram(b: *std.Build, name: []const u8) ?[]const u8 {
+    if (builtin.os.tag != .windows) {
+        return b.findProgram(.{ .names = &.{name} });
+    }
+    return findProgramWindows(b, name);
+}
+
+/// Validate and unquote one Windows `PATH` directory entry before passing it
+/// to `std.Io.Dir`. Zig 0.17's `std.Build.findProgram` joins raw `PATH`
+/// segments and calls `Io.Dir.cwd().access`, whose Windows implementation
+/// panics on `0xc0000033 (OBJECT_NAME_INVALID)` when `PATH` contains
+/// malformed entries such as concatenated paths with multiple drive colons or
+/// quoted segments.
+pub fn sanitizeWindowsPathEntry(raw: []const u8) ?[]const u8 {
+    const unquoted = if (raw.len >= 2 and raw[0] == '"' and raw[raw.len - 1] == '"')
+        raw[1 .. raw.len - 1]
+    else
+        raw;
+    if (unquoted.len == 0 or unquoted.len >= 32767) return null;
+
+    for (unquoted, 0..) |c, i| {
+        if (c < 0x20) return null;
+        switch (c) {
+            '"', '<', '>', '|', '*' => return null,
+            '?' => {
+                // Allow `?` only at index 2 of a `\\?\` or `//?/` Win32 prefix.
+                if (i != 2 or unquoted.len < 4 or
+                    !isSlash(unquoted[0]) or !isSlash(unquoted[1]) or !isSlash(unquoted[3]))
+                {
+                    return null;
+                }
+            },
+            else => {},
+        }
+    }
+
+    // Reject bare `\\`, `\\?`, and `\\.` prefixes that have no path body.
+    if (unquoted.len == 2 and isSlash(unquoted[0]) and isSlash(unquoted[1])) return null;
+    if (unquoted.len == 3 and isSlash(unquoted[0]) and isSlash(unquoted[1]) and
+        (unquoted[2] == '?' or unquoted[2] == '.'))
+    {
+        return null;
+    }
+
+    const prefix_len: usize = if (unquoted.len >= 4 and isSlash(unquoted[0]) and isSlash(unquoted[1]) and
+        (unquoted[2] == '?' or unquoted[2] == '.') and isSlash(unquoted[3]))
+        4
+    else
+        0;
+    const rest = unquoted[prefix_len..];
+
+    // Colons are valid only immediately after a single leading drive letter.
+    const drive_end: usize = if (prefix_len == 4 and rest.len >= 4 and
+        std.ascii.eqlIgnoreCase(rest[0..3], "UNC") and isSlash(rest[3]))
+        0
+    else if (rest.len >= 2 and std.ascii.isAlphabetic(rest[0]) and rest[1] == ':')
+        2
+    else
+        0;
+    if (std.mem.indexOfScalar(u8, rest[drive_end..], ':') != null) return null;
+
+    return unquoted;
+}
+
+fn isSlash(c: u8) bool {
+    return c == '/' or c == '\\';
+}
+
+fn isSupportedWindowsExt(ext: []const u8) bool {
+    inline for (@typeInfo(std.process.WindowsExtension).@"enum".field_names) |field_name| {
+        if (std.ascii.eqlIgnoreCase(ext, "." ++ field_name)) return true;
+    }
+    return false;
+}
+
+/// Probe one directory for `name` or `name` plus a supported Windows extension.
+pub fn findExecutableInDir(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    dir_path: []const u8,
+    name: []const u8,
+    pathext: ?[]const u8,
+) ?[]const u8 {
+    var dir = std.Io.Dir.cwd().openDir(io, dir_path, .{}) catch return null;
+    defer dir.close(io);
+
+    if (dir.statFile(io, name, .{})) |stat| {
+        if (stat.kind != .directory) {
+            return std.fs.path.join(allocator, &.{ dir_path, name }) catch @panic("OOM");
+        }
+    } else |_| {}
+
+    const raw_pathext = pathext orelse ".COM;.EXE;.BAT;.CMD";
+    var ext_it = std.mem.tokenizeScalar(u8, raw_pathext, ';');
+    var buf: [std.fs.max_name_bytes]u8 = undefined;
+    while (ext_it.next()) |ext| {
+        if (!isSupportedWindowsExt(ext)) continue;
+        const extended = std.fmt.bufPrint(&buf, "{s}{s}", .{ name, ext }) catch continue;
+        if (dir.statFile(io, extended, .{})) |stat| {
+            if (stat.kind != .directory) {
+                return std.fs.path.join(allocator, &.{ dir_path, extended }) catch @panic("OOM");
+            }
+        } else |_| {}
+    }
+    return null;
+}
+
+/// Search `path_env` entries separated by `delimiter`, skipping malformed entries.
+pub fn findExecutableInPath(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    path_env: []const u8,
+    delimiter: u8,
+    name: []const u8,
+    pathext: ?[]const u8,
+) ?[]const u8 {
+    var it = std.mem.tokenizeScalar(u8, path_env, delimiter);
+    while (it.next()) |raw_dir| {
+        const clean_dir = sanitizeWindowsPathEntry(raw_dir) orelse continue;
+        if (findExecutableInDir(allocator, io, clean_dir, name, pathext)) |found| return found;
+    }
+    return null;
+}
+
+fn findProgramWindows(b: *std.Build, name: []const u8) ?[]const u8 {
+    b.graph.poisonCache();
+    const io = b.graph.io;
+    const pathext = b.graph.environ_map.get("PATHEXT");
+
+    for (b.graph.search_prefixes.items) |search_prefix| {
+        const bin_dir = b.pathJoin(&.{ search_prefix, "bin" });
+        if (sanitizeWindowsPathEntry(bin_dir)) |clean_dir| {
+            if (findExecutableInDir(b.allocator, io, clean_dir, name, pathext)) |found| return found;
+        }
+    }
+
+    if (b.graph.environ_map.get("PATH")) |path_env| {
+        return findExecutableInPath(b.allocator, io, path_env, ';', name, pathext);
+    }
+
+    return null;
 }
 
 /// The two global flag sets a middleware archive is built with, and the tools
