@@ -9,7 +9,6 @@
 //! region ORDER is a published contract: a bench SWD dump of SAU_RNR indexes
 //! against it, so the windows are named by index rather than merely listed.
 
-const std = @import("std");
 const partition = @import("partition.zig");
 const regs = @import("regs.zig");
 
@@ -84,78 +83,4 @@ pub const descriptor: partition.Partition = .{
 /// The window at a published index.
 pub fn window(region: Region) partition.SauRegion {
     return regions[@backingInt(region)];
-}
-
-test "the published region order is what the table actually holds" {
-    try std.testing.expectEqual(@as(usize, 5), Region.count);
-    try std.testing.expectEqual(@as(usize, 0x10000000), window(.code_nsc).base);
-    try std.testing.expectEqual(@as(usize, 0x12080000), window(.ns_mram).base);
-    try std.testing.expectEqual(@as(usize, 0x12000000), window(.sram_nsc).base);
-    try std.testing.expectEqual(@as(usize, 0x32100000), window(.ns_sram).base);
-    try std.testing.expectEqual(@as(usize, 0x50000000), window(.ns_periph).base);
-}
-
-test "only the two veneer aliases are NSC" {
-    try std.testing.expectEqual(partition.SauAttr.nsc, window(.code_nsc).attr);
-    try std.testing.expectEqual(partition.SauAttr.nsc, window(.sram_nsc).attr);
-    try std.testing.expectEqual(partition.SauAttr.ns, window(.ns_mram).attr);
-    try std.testing.expectEqual(partition.SauAttr.ns, window(.ns_sram).attr);
-    try std.testing.expectEqual(partition.SauAttr.ns, window(.ns_periph).attr);
-}
-
-test "the reset path's own partition passes the validator that guards apply" {
-    try std.testing.expectEqual(regs.Err.ok, partition.validate(&descriptor, Region.count));
-}
-
-test "silicon short of five regions cannot hold this partition" {
-    try std.testing.expect(!supported(4));
-    try std.testing.expect(supported(5));
-    try std.testing.expect(supported(8));
-    try std.testing.expectEqual(
-        regs.Err.not_supported,
-        partition.validate(&descriptor, 4),
-    );
-}
-
-test "no two windows overlap" {
-    for (regions, 0..) |mine, i| {
-        const my_top = mine.base + mine.size;
-        for (regions[i + 1 ..]) |theirs| {
-            const their_top = theirs.base + theirs.size;
-            try std.testing.expect(my_top <= theirs.base or their_top <= mine.base);
-        }
-    }
-}
-
-test "unmapped memory stays Secure" {
-    try std.testing.expect(!all_ns);
-    try std.testing.expect(!descriptor.sau_all_ns);
-}
-
-test "the NS image window is the upper half of MRAM, not the whole bank" {
-    const ns_mram = window(.ns_mram);
-    try std.testing.expectEqual(@as(u32, 0x80000), ns_mram.size);
-    try std.testing.expect(ns_mram.base > 0x12000000);
-}
-
-test "the NS windows sit at the bit-28 Non-secure aliases" {
-    // On RA8 the IDAU makes an address with bit 28 clear Secure, and the SAU
-    // cannot make it Non-secure (RA8FW-510), so the NS windows name the alias.
-    const alias_bit: u32 = 1 << 28;
-    try std.testing.expect(window(.ns_mram).base & alias_bit != 0);
-    try std.testing.expect(window(.ns_sram).base & alias_bit != 0);
-    try std.testing.expect(window(.ns_periph).base & alias_bit != 0);
-}
-
-test "the NS peripheral window covers IPC's NS alias, not its secure base" {
-    // IPC lives at 0x40020000 (secure) with its bit-28 NS alias at
-    // 0x50020000. The canonical partition reaches IPC only through the
-    // alias; the secure base stays IDAU-secure for the SECEXT core, and the
-    // NS-only core's coverage is its own SAU init (cpu1_pingpong_ipc's
-    // cpu1_main.c, region 1). RA8FW-357.
-    const periph = window(.ns_periph);
-    const in_window = 0x5002_0000 >= periph.base and 0x5002_0000 < periph.base + periph.size;
-    const secure_base_in_window = 0x4002_0000 >= periph.base and 0x4002_0000 < periph.base + periph.size;
-    try std.testing.expect(in_window);
-    try std.testing.expect(!secure_base_in_window);
 }

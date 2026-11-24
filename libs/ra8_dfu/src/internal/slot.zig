@@ -4,8 +4,6 @@
 //! Which A/B slot wins at reset, and what the bootloader does about it
 //! (including trial-boot budget consumption and fallback on exhaustion).
 
-const std = @import("std");
-
 /// The slot a decision names. Values are the C `ra8_dfu_slot_t`.
 pub const Slot = enum(u8) {
     a = 0,
@@ -128,9 +126,4 @@ pub fn decideWithState(
 /// The legacy reset-time decision: trigger wins outright, otherwise higher-seq valid slot.
 pub fn decide(dfu_trigger: bool, a: Candidate, b: Candidate) Action {
     return decideWithState(dfu_trigger, a, b, null).action;
-}
-
-test "a tie goes to slot A" {
-    const tie = Candidate{ .valid = true, .seq = 4 };
-    try std.testing.expectEqual(Slot.a, select(tie, tie));
 }

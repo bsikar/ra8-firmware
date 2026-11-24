@@ -23,6 +23,7 @@
 //! `dfu_host_abi` binds the real one.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 /// Every unit under `src/internal/`, in dependency order, with the units it
 /// imports. Adding a unit means adding one row here.
@@ -46,7 +47,9 @@ const units = [_]struct { name: []const u8, imports: []const []const u8 }{
 };
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     var modules = std.StringHashMap(*std.Build.Module).init(b.allocator);

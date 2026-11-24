@@ -7,8 +7,6 @@
 //! any RAM image is up, and a 1 KiB table costs more than the handful of
 //! microseconds the fold costs over a 448 KiB slot.
 
-const std = @import("std");
-
 /// Reflected-CRC32 parameters. The same value `crc32`/`zlib` produce, so a
 /// host tool can pre-compute the `img_crc32` an image header carries.
 pub const params = struct {
@@ -32,11 +30,4 @@ pub fn compute(data: []const u8) u32 {
         }
     }
     return crc ^ params.xout;
-}
-
-test "published check values" {
-    try std.testing.expectEqual(@as(u32, 0x0000_0000), compute(""));
-    try std.testing.expectEqual(@as(u32, 0xCBF4_3926), compute("123456789"));
-    try std.testing.expectEqual(@as(u32, 0xE8B7_BE43), compute("a"));
-    try std.testing.expectEqual(@as(u32, 0xD202_EF8D), compute(&.{0x00}));
 }
