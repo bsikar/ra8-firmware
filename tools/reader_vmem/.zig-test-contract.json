@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/reader_vmem_test.zig"
+  ],
+  "covered_sources": [
+    "tests/reader_vmem_test.zig"
+  ],
+  "minimum_tests": 6
+}

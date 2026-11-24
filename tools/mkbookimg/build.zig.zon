@@ -7,6 +7,7 @@
         .ra8_imgdec = .{ .path = "../../libs/ra8_imgdec" },
         .ra8_mem = .{ .path = "../../libs/ra8_mem" },
         .ra8_fs = .{ .path = "../../libs/ra8_fs" },
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
     },
     .paths = .{
         "build.zig",

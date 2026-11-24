@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/mkfontimg_test.zig"
+  ],
+  "covered_sources": [
+    "tests/mkfontimg_test.zig"
+  ],
+  "minimum_tests": 6
+}

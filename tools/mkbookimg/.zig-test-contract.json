@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/mkbookimg_test.zig"
+  ],
+  "covered_sources": [
+    "tests/mkbookimg_test.zig"
+  ],
+  "minimum_tests": 6
+}

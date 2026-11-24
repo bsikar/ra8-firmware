@@ -13,6 +13,7 @@
 //! ra8_vsource.c by path.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 // Every first-party .c in src/ is part of the one reader_vmem binary;
 // reader_vmem.c defines main. The workspace test drives the planning layer
@@ -43,7 +44,7 @@ fn addSharedIncludes(b: *std.Build, mod: *std.Build.Module) void {
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     // The reader drives a real read, so the default build optimizes like the
     // C-era tool build did (-O2); an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
@@ -79,4 +80,17 @@ pub fn build(b: *std.Build) void {
     const run_test = b.addRunArtifact(test_exe);
     const test_step = b.step("test", "Run the reader_vmem workspace tests");
     test_step.dependOn(&run_test.step);
+
+    const test_options = b.addOptions();
+    test_options.addOptionPath("tool_exe", exe.getEmittedBin());
+    const ztest_mod = b.createModule(.{
+        .root_source_file = b.path("tests/reader_vmem_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ztest_mod.addOptions("tool_options", test_options);
+    const ztest = b.addTest(.{ .root_module = ztest_mod });
+    const run_ztest = b.addRunArtifact(ztest);
+    ra8_build.configureHostTestRun(b, test_step, ztest, run_ztest);
+    test_step.dependOn(&run_ztest.step);
 }

@@ -14,6 +14,7 @@
 //! implementation stays C).
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 // First-party sources carry the project warning bar (NASA Power of 10 Rule
 // 10) exactly as they do in the ARM and host-test builds.
@@ -36,7 +37,7 @@ fn addC(b: *std.Build, mod: *std.Build.Module, root: []const u8, files: []const 
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     // The tool writes 64 MiB images, so the default build optimizes like the
     // C-era tool build did; an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
@@ -69,7 +70,22 @@ pub fn build(b: *std.Build) void {
     // which is the only thing the script used cmake for.
     const integration_step = b.step("integration", "Run the mkbookimg integration suite");
     const cmd = b.addSystemCommand(&.{ "bash", "tests/integration.sh" });
+    cmd.setCwd(b.path("."));
     cmd.addArtifactArg(exe);
     cmd.addArg("tests/cmake_sha256sum.sh");
     integration_step.dependOn(&cmd.step);
+
+    const test_step = b.step("test", "Run the mkbookimg contract tests");
+    const test_options = b.addOptions();
+    test_options.addOptionPath("tool_exe", exe.getEmittedBin());
+    const ztest_mod = b.createModule(.{
+        .root_source_file = b.path("tests/mkbookimg_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ztest_mod.addOptions("tool_options", test_options);
+    const ztest = b.addTest(.{ .root_module = ztest_mod });
+    const run_ztest = b.addRunArtifact(ztest);
+    ra8_build.configureHostTestRun(b, test_step, ztest, run_ztest);
+    test_step.dependOn(&run_ztest.step);
 }
