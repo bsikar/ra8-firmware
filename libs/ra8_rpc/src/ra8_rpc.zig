@@ -29,6 +29,7 @@ pub const ring = @import("ring.zig");
 pub const Ring = ring.Ring;
 pub const Signal = @import("signal.zig").Signal;
 pub const RingTransport = @import("ring_transport.zig").RingTransport;
+pub const ipc = @import("ipc.zig");
 pub const Pending = @import("pending.zig").Pending;
 pub const Client = @import("client.zig").Client;
 pub const Server = @import("server.zig").Server;

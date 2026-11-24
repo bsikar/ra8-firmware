@@ -40,6 +40,8 @@ pub fn build(b: *std.Build) void {
         "tests/ring_transport_test.zig",
         "tests/ring_session_test.zig",
         "tests/ring_fuzz_test.zig",
+        "tests/ipc_signal_test.zig",
+        "tests/ipc_mailbox_test.zig",
         "tests/fuzz_test.zig",
     };
     for (roots) |root| {

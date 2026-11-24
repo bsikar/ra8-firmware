@@ -240,6 +240,7 @@ test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Z
         .{ .app = "txm_reload_cpu1", .kernel = "threadx_m33_modules" },
         .{ .app = "txm_dual_mailbox", .kernel = "threadx_m33_modules" },
         .{ .app = "cpu1_routed_irq", .kernel = null },
+        .{ .app = "rpc_ring_dualcore", .kernel = null },
     };
     var zig_entries: usize = 0;
     for (graph.cross_apps) |app| {
@@ -319,6 +320,22 @@ test "only cpu1_pingpong_ipc's M33 image links a Zig library beyond ra8_core (RA
         found = true;
         try std.testing.expectEqual(@as(usize, 1), image.zig_libraries.len);
         try std.testing.expectEqualStrings("ra8_hal", image.zig_libraries[0]);
+    }
+    try std.testing.expect(found);
+}
+
+test "pure-Zig dual-core CPU1 image imports ra8_rpc without TXM C-ABI flags" {
+    var found = false;
+    for (graph.cross_apps) |app| {
+        if (!std.mem.eql(u8, app.name, "rpc_ring_dualcore")) continue;
+        found = true;
+        const image = app.cpu1 orelse return error.NoCpu1Image;
+        try std.testing.expect(app.cpu1_image);
+        try std.testing.expectEqual(.zig, image.entry_language);
+        try std.testing.expect(!image.rpc);
+        try std.testing.expectEqual(@as(usize, 1), image.zig_imports.len);
+        try std.testing.expectEqualStrings("ra8_rpc", image.zig_imports[0].name);
+        try std.testing.expectEqualStrings("libs/ra8_rpc/src/ra8_rpc.zig", image.zig_imports[0].path);
     }
     try std.testing.expect(found);
 }
