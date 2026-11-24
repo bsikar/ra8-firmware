@@ -1,0 +1,29 @@
+{
+  "test_roots": [
+    "tests/zoom_test.zig",
+    "tests/zoom_abi_test.zig",
+    "tests/zoom_book_test.zig",
+    "tests/zoom_render_test.zig",
+    "tests/zoom_tiles_test.zig",
+    "tests/zoom_mem_test.zig",
+    "tests/zoom_popup_test.zig"
+  ],
+  "covered_sources": [
+    "src/zoom.zig",
+    "src/zoom_abi.zig",
+    "src/zoom_book.zig",
+    "src/zoom_mem.zig",
+    "src/zoom_popup.zig",
+    "src/zoom_render.zig",
+    "src/zoom_tiles.zig",
+    "tests/zoom_abi_test.zig",
+    "tests/zoom_book_test.zig",
+    "tests/zoom_mem_test.zig",
+    "tests/zoom_popup_test.zig",
+    "tests/zoom_render_test.zig",
+    "tests/zoom_stubs.zig",
+    "tests/zoom_test.zig",
+    "tests/zoom_tiles_test.zig"
+  ],
+  "minimum_tests": 62
+}

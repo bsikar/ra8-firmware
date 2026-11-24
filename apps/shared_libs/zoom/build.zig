@@ -45,63 +45,94 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
-    // The implementation suite is zoom.zig's own test block (the viewport
-    // state machine, the layout fixture); the membrane suite is
-    // zoom_abi.zig's, driven over the C-shaped structs and the null guards.
-    const implementation_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    // Standalone host suites mirror the production sources under tests/ so
+    // each test binary pulls only the mocks its adapter expects.
+    const zoom_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-    const abi_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_abi.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const book_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom_book.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-
-    const book_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_book.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const render_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom_render.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-
-    const render_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_render.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const tiles_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom_tiles.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-
-    const tiles_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_tiles.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const mem_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom_mem.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const popup_mod = b.createModule(.{
+        .root_source_file = b.path("src/zoom_popup.zig"),
+        .target = target,
+        .optimize = optimize,
     });
 
-    const mem_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_mem.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const zoom_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_test.zig"),
+        .target = target,
+        .optimize = optimize,
     });
+    zoom_test_mod.addImport("zoom", zoom_mod);
+    const implementation_tests = b.addTest(.{ .root_module = zoom_test_mod });
 
-    const popup_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zoom_popup.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const abi_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
     });
+    abi_test_mod.addImport("abi", library_module);
+    const abi_tests = b.addTest(.{ .root_module = abi_test_mod });
+
+    const book_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_book_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    book_test_mod.addImport("book", book_mod);
+    const book_tests = b.addTest(.{ .root_module = book_test_mod });
+
+    const render_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_render_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    render_test_mod.addImport("render", render_mod);
+    const render_tests = b.addTest(.{ .root_module = render_test_mod });
+
+    const tiles_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_tiles_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tiles_test_mod.addImport("tiles", tiles_mod);
+    const tiles_tests = b.addTest(.{ .root_module = tiles_test_mod });
+
+    const mem_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_mem_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mem_test_mod.addImport("mem", mem_mod);
+    const mem_tests = b.addTest(.{ .root_module = mem_test_mod });
+
+    const popup_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/zoom_popup_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    popup_test_mod.addImport("popup", popup_mod);
+    const popup_tests = b.addTest(.{ .root_module = popup_test_mod });
 
     const run_implementation_tests = b.addRunArtifact(implementation_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
