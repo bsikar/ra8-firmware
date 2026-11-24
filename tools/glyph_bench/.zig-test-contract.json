@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/glyph_bench_test.zig"
+  ],
+  "covered_sources": [
+    "tests/glyph_bench_test.zig"
+  ],
+  "minimum_tests": 6
+}

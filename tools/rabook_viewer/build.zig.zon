@@ -21,6 +21,7 @@
         .book = .{ .path = "../../apps/shared_libs/book" },
         .xml = .{ .path = "../../apps/shared_libs/xml" },
         .font_to_c = .{ .path = "../../tools/font_to_c" },
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
     },
     .paths = .{
         "build.zig",

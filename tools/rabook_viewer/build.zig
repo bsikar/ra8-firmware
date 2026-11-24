@@ -18,6 +18,7 @@
 //! headless stub (src/ra8_viewer_view_stub.c), exactly the C-era split.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 // First-party firmware sources carry the project warning bar (NASA Power of
 // 10 Rule 10) exactly as they do in the ARM and host-test builds. The reader
@@ -257,7 +258,7 @@ fn linkZigLibs(b: *std.Build, mod: *std.Build.Module, target: std.Build.Resolved
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     // The viewer rasterises real pages, so the default build optimizes like
     // the C-era tool build did; an explicit -Doptimize still wins.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
@@ -387,19 +388,36 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(test_exes[2]).step);
     test_step.dependOn(&b.addRunArtifact(test_exes[3]).step);
     const comic_test_run = b.addRunArtifact(test_exes[1]);
+    comic_test_run.setCwd(b.path("."));
     comic_test_run.addArg("fixtures/sample.cbz");
     test_step.dependOn(&comic_test_run.step);
+
+    const test_options = b.addOptions();
+    test_options.addOptionPath("tool_exe", exe.getEmittedBin());
+    test_options.addOptionPath("sample_cbz", b.path("fixtures/sample.cbz"));
+    const ztest_mod = b.createModule(.{
+        .root_source_file = b.path("tests/rabook_viewer_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ztest_mod.addOptions("tool_options", test_options);
+    const ztest = b.addTest(.{ .root_module = ztest_mod });
+    const run_ztest = b.addRunArtifact(ztest);
+    ra8_build.configureHostTestRun(b, test_step, ztest, run_ztest);
+    test_step.dependOn(&run_ztest.step);
 
     // ---- the C-era integration scripts, driven against the built exes ----
     const integration_step = b.step("integration", "Run the rabook_viewer integration suites");
     {
         const cmd = b.addSystemCommand(&.{ "bash", "tests/run_workspace_test.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArtifactArg(test_exes[0]);
         cmd.addArg("workspace_test");
         integration_step.dependOn(&cmd.step);
     }
     {
         const cmd = b.addSystemCommand(&.{ "bash", "tests/run_corpus.sh" });
+        cmd.setCwd(b.path("."));
         cmd.addArtifactArg(exe);
         integration_step.dependOn(&cmd.step);
     }
