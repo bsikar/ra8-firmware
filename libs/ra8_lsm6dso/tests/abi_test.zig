@@ -23,6 +23,10 @@ const err_null_ptr: u16 = 0x504;
 
 const log_fixture = @import("abi_fixture.zig");
 
+comptime {
+    _ = @import("abi_fixture.zig");
+}
+
 fn lastLogIs(expected: []const u8) !void {
     try testing.expectEqualStrings(expected, std.mem.span(log_fixture.last()));
 }

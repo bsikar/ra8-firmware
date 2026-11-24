@@ -3,9 +3,9 @@
 //!
 //! Zig-native tests for the house-I2C binder: the staged frame and its cap,
 //! the argument guards in their original order, and the two trampolines
-//! observed through a fake seam that records every transaction. This file
-//! exports its own `ra8_log_emit_error` sink, the link-time substitute for the
-//! real `ra8_core` log the membrane calls on a refusal.
+//! observed through a fake seam that records every transaction. It shares
+//! `abi_fixture.zig` as the link-time substitute for the real `ra8_core` log
+//! sink that the membrane calls on a refusal.
 
 const std = @import("std");
 const testing = std.testing;
@@ -20,11 +20,8 @@ const null_ptr: u16 = 0x504;
 const nack: u16 = 0x407;
 const sa0_high: u8 = 0x6B;
 
-var log_count: u32 = 0;
-
-/// Link-time substitute for the real `ra8_core` log sink.
-export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) callconv(.c) void {
-    log_count += 1;
+comptime {
+    _ = @import("abi_fixture.zig");
 }
 
 /// A fake house seam that records what the binder handed it.

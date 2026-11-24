@@ -7,6 +7,8 @@
   "covered_sources": [
     "src/internal/root.zig",
     "src/internal/i2c_bind.zig",
+    "src/bind.zig",
+    "src/root.zig",
     "src/ra8_ov5640_abi.zig",
     "src/ra8_ov5640_bind_abi.zig",
     "tests/internal_test.zig",
