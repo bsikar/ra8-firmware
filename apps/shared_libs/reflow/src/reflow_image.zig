@@ -42,8 +42,15 @@ const k_ra8_err_null_ptr: c_int = 0x504;
 
 /// Desired channel count requested from stb_image.
 const k_ra8_img_req_rgb: c_int = 3;
+/// Single-channel gray8 output requested from stb_image.
+const k_ra8_img_req_gray: c_int = 1;
 /// Channel count libwebp decodes into (RGBA8888).
 const k_ra8_img_req_rgba: i32 = 4;
+/// BT.601 integer luma weights (matches stbi__compute_y: (77*R + 150*G + 29*B) >> 8).
+const k_ra8_luma_r: u32 = 77;
+const k_ra8_luma_g: u32 = 150;
+const k_ra8_luma_b: u32 = 29;
+const k_ra8_luma_shift: u5 = 8;
 /// Red byte offset within an RGB triple (same offsets in RGBA).
 const k_ra8_img_ch_r: usize = 0;
 /// Green byte offset within an RGB triple.
@@ -247,34 +254,69 @@ fn arenaRelease(arena: *Ra8ImgArena) void {
     arena.live = 0;
 }
 
-/// Decode a WebP through the ra8_webp facade and blit it scaled to fit.
+/// Convert `px_count` tightly packed RGBA8888 pixels to 8-bit grayscale.
 ///
-/// The WebP arm of ra8_img_decode_blit(). Reads the canvas size from the
-/// container, then splits the caller's single arena in two: the decoded
-/// RGBA8888 canvas is bump-allocated from it through ra8_img_arena_malloc(),
-/// and whatever capacity is left above that allocation backs a sibling
-/// ra8_webp_arena_t for libwebp's own transient scratch. Two arenas are
-/// needed because the facade and stb_image have separate allocator hooks;
-/// one backing store still serves both, so a caller sizes exactly one
-/// buffer. libwebp decodes straight into the canvas, the canvas is
-/// nearest-neighbour blitted at k_ra8_img_req_rgba, and the arena is
-/// released on every path.
-fn webpDecodeBlit(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) c_int {
+/// Uses the exact BT.601 integer coefficients used by stb_image (`(77*R +
+/// 150*G + 29*B) >> 8`), discarding the alpha channel so PNG and WebP gray8
+/// decodes agree byte-for-byte.
+fn rgbaToGray8(rgba: [*]const u8, px_count: usize, dst: [*]u8) void {
+    var i: usize = 0;
+    while (i < px_count) : (i += 1) {
+        const base = i * @as(usize, @intCast(k_ra8_img_req_rgba));
+        const r: u32 = rgba[base + k_ra8_img_ch_r];
+        const g: u32 = rgba[base + k_ra8_img_ch_g];
+        const b: u32 = rgba[base + k_ra8_img_ch_b];
+        dst[i] = @intCast((r * k_ra8_luma_r + g * k_ra8_luma_g + b * k_ra8_luma_b) >> k_ra8_luma_shift);
+    }
+}
+
+/// Decode a WebP container into an arena-backed RGBA8888 canvas.
+///
+/// Shared backend for both `webpDecodeBlit` and `webpDecodeGray8`. When
+/// `dst_px_cap` is provided, verifies the caller's pixel capacity before
+/// binding `arena`. On `k_ra8_ok`, `arena` remains bound until the caller
+/// invokes `arenaRelease(arena)`; on any error, `arena` is already released.
+fn webpDecodeRgba(
+    arena: *Ra8ImgArena,
+    bytes: [*]const u8,
+    len: usize,
+    dst_px_cap: ?usize,
+    out_w: *u32,
+    out_h: *u32,
+    out_rgba: *[*]u8,
+) c_int {
     var src_w: u32 = 0;
     var src_h: u32 = 0;
     const info = ra8_webp_get_info(bytes, len, &src_w, &src_h);
     if (info != k_ra8_ok) {
-        logErr("blit: webp header rejected");
+        logErr("img: webp header rejected");
         return webpClassify(info);
     }
-
-    const stride: usize = @as(usize, src_w) * @as(usize, k_ra8_img_req_rgba);
-    const canvas: usize = @as(usize, src_h) * stride;
+    if (src_w == 0 or src_h == 0) {
+        logErr("img: webp empty dimensions");
+        return k_ra8_err_not_supported;
+    }
+    const px_count = std.math.mul(usize, src_w, src_h) catch {
+        logErr("img: webp pixel count overflow");
+        return k_ra8_err_no_mem;
+    };
+    if (dst_px_cap) |cap| {
+        if (cap < px_count) {
+            logErr("img: webp dst capacity too small");
+            return k_ra8_err_no_mem;
+        }
+    }
+    const stride = std.math.mul(usize, src_w, @as(usize, @intCast(k_ra8_img_req_rgba))) catch {
+        return k_ra8_err_no_mem;
+    };
+    const canvas = std.math.mul(usize, src_h, stride) catch {
+        return k_ra8_err_no_mem;
+    };
 
     ra8_img_arena_bind(arena); // resets the arena to empty
     const rgba_block = ra8_img_arena_malloc(canvas) orelse {
         arenaRelease(arena);
-        logErr("blit: webp canvas does not fit the arena");
+        logErr("img: webp canvas does not fit the arena");
         return k_ra8_err_no_mem;
     };
     const rgba: [*]u8 = @ptrCast(@alignCast(rgba_block));
@@ -290,8 +332,24 @@ fn webpDecodeBlit(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst_x: i3
     const dec = ra8_webp_decode_rgba(bytes, len, &scratch, rgba, stride, canvas, null, null);
     if (dec != k_ra8_ok) {
         arenaRelease(arena);
-        logErr("blit: webp decode failed");
+        logErr("img: webp decode failed");
         return webpClassify(dec);
+    }
+
+    out_w.* = src_w;
+    out_h.* = src_h;
+    out_rgba.* = rgba;
+    return k_ra8_ok;
+}
+
+/// Decode a WebP through the ra8_webp facade and blit it scaled to fit.
+fn webpDecodeBlit(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) c_int {
+    var src_w: u32 = 0;
+    var src_h: u32 = 0;
+    var rgba: [*]u8 = undefined;
+    const status = webpDecodeRgba(arena, bytes, len, null, &src_w, &src_h, &rgba);
+    if (status != k_ra8_ok) {
+        return status;
     }
 
     var fit_w: i32 = 0;
@@ -306,6 +364,59 @@ fn webpDecodeBlit(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst_x: i3
     if (out_h) |p| {
         p.* = fit_h;
     }
+    return k_ra8_ok;
+}
+
+/// Decode a WebP container into a tightly packed gray8 buffer via `arena`.
+fn webpDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]u8, dst_cap: usize, out_w: *u32, out_h: *u32) c_int {
+    var src_w: u32 = 0;
+    var src_h: u32 = 0;
+    var rgba: [*]u8 = undefined;
+    const status = webpDecodeRgba(arena, bytes, len, dst_cap, &src_w, &src_h, &rgba);
+    if (status != k_ra8_ok) {
+        return status;
+    }
+
+    const px_count: usize = @as(usize, src_w) * @as(usize, src_h);
+    rgbaToGray8(rgba, px_count, dst);
+    arenaRelease(arena);
+    out_w.* = src_w;
+    out_h.* = src_h;
+    return k_ra8_ok;
+}
+
+/// Decode an stb_image raster directly to 1-channel gray8 via `arena`.
+fn stbiDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]u8, dst_cap: usize, out_w: *u32, out_h: *u32) c_int {
+    ra8_img_arena_bind(arena); // resets the arena to empty
+    var sx: c_int = 0;
+    var sy: c_int = 0;
+    var comp: c_int = 0;
+    const pixels = stbi_load_from_memory(bytes, @intCast(len), &sx, &sy, &comp, k_ra8_img_req_gray);
+    if ((pixels == null) or (sx <= 0) or (sy <= 0)) {
+        const err = decodeFail();
+        arenaRelease(arena);
+        logErr("gray8: decode failed");
+        return err;
+    }
+
+    const w: u32 = @intCast(sx);
+    const h: u32 = @intCast(sy);
+    const px_count = std.math.mul(usize, w, h) catch {
+        stbi_image_free(@ptrCast(pixels.?));
+        arenaRelease(arena);
+        return k_ra8_err_no_mem;
+    };
+    if (dst_cap < px_count) {
+        stbi_image_free(@ptrCast(pixels.?));
+        arenaRelease(arena);
+        logErr("gray8: dst buffer too small");
+        return k_ra8_err_no_mem;
+    }
+    @memcpy(dst[0..px_count], pixels.?[0..px_count]);
+    stbi_image_free(@ptrCast(pixels.?));
+    arenaRelease(arena);
+    out_w.* = w;
+    out_h.* = h;
     return k_ra8_ok;
 }
 
@@ -419,6 +530,37 @@ export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len: us
         p.* = fit_h;
     }
     return k_ra8_ok;
+}
+
+/// Decode raster `bytes` to tightly packed gray8 using caller-owned storage.
+export fn ra8_img_decode_gray8(
+    arena: ?*Ra8ImgArena,
+    bytes: ?[*]const u8,
+    len: usize,
+    dst: ?[*]u8,
+    dst_cap: usize,
+    out_w: ?*u32,
+    out_h: ?*u32,
+) callconv(.c) c_int {
+    if (arena == null or bytes == null or dst == null or out_w == null or out_h == null) {
+        logErr("gray8: null argument");
+        return k_ra8_err_null_ptr;
+    }
+    if (len == 0 or dst_cap == 0 or len > @as(usize, std.math.maxInt(c_int))) {
+        logErr("gray8: empty or oversized input");
+        return k_ra8_err_invalid_arg;
+    }
+    const a = arena.?;
+    const b = bytes.?;
+    const d = dst.?;
+    if (ra8_svg_is_svg(b, len)) {
+        logErr("gray8: svg is not raster");
+        return k_ra8_err_not_supported;
+    }
+    if (isWebp(b, len)) {
+        return webpDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
+    }
+    return stbiDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
 }
 
 // ---- Unit tests (pure logic; the decode stack is answered by the
@@ -581,4 +723,48 @@ test "probe rejects null arguments" {
     try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size(null, 1, &w, &h));
     try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size("x", 1, null, &h));
     try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size("x", 1, &w, null));
+}
+
+test "rgbaToGray8 matches BT.601 integer luma and ignores alpha" {
+    const rgba = [_]u8{
+        255, 0, 0, 0x11, // red
+        0, 255, 0, 0x22, // green
+        0, 0, 255, 0x33, // blue
+        255, 255, 255, 0x00, // white, alpha=0
+    };
+    var gray: [4]u8 = undefined;
+    rgbaToGray8(&rgba, 4, &gray);
+    try testing.expectEqual([4]u8{ 76, 149, 28, 255 }, gray);
+}
+
+test "decode gray8 rejects null arguments and invalid sizes" {
+    var scratch = Ra8ImgArena{ .base = null, .cap = 16, .offset = 0, .live = 0, .high_water = 0 };
+    var dst: [4]u8 = undefined;
+    var w: u32 = 0;
+    var h: u32 = 0;
+    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(null, "x", 1, &dst, dst.len, &w, &h));
+    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, null, 1, &dst, dst.len, &w, &h));
+    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, null, dst.len, &w, &h));
+    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, null, &h));
+    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, &w, null));
+    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_gray8(&scratch, "x", 0, &dst, dst.len, &w, &h));
+    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_gray8(&scratch, "x", 1, &dst, 0, &w, &h));
+}
+
+test "decode gray8 drains the arena on the decode-failure path" {
+    var backing: [64]u8 = undefined;
+    var scratch = Ra8ImgArena{
+        .base = &backing,
+        .cap = backing.len,
+        .offset = 16,
+        .live = 2,
+        .high_water = 16,
+    };
+    var dst: [4]u8 = undefined;
+    var w: u32 = 0;
+    var h: u32 = 0;
+    try testing.expectEqual(k_ra8_err_not_supported, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, &w, &h));
+    try testing.expectEqual(@as(usize, 0), scratch.offset);
+    try testing.expectEqual(@as(usize, 0), scratch.live);
+    try testing.expectEqual(@as(usize, 16), scratch.high_water);
 }

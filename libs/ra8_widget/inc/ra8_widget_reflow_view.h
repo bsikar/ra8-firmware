@@ -49,8 +49,10 @@ extern "C" {
  * `ra8_widget` free of any `ra8_reflow` / `ra8_gfx` dependency: the widget calls
  * these callbacks, the app binds them to the real engine. `render_page` paints
  * the given page inside the body rectangle; `follow_link` hit-tests a tap for a
- * link and, if one is followed, reports the destination page. Either callback may
- * be NULL (a view with no engine renders nothing / follows no links).
+ * link and, if one is followed, reports the destination page; `open_figure`
+ * hit-tests a tap for an inline figure and, if handled (for example, opening a
+ * tap-to-zoom popup), inhibits the page turn. Any callback may be NULL (a view
+ * with no engine renders nothing / follows no links / opens no figures).
  *
  * @invariant `follow_link`, when it returns true, writes `*out_page`.
  *
@@ -67,6 +69,11 @@ typedef struct ra8_widget_reflow_ops {
    * @return true and set `*out_page` if a link was followed, else false.
    */
   bool (*follow_link)(void* user, uint16_t page, int32_t x, int32_t y, uint16_t* out_page);
+  /**
+   * @brief Hit-test a tap for an inline figure on @p page; open popup if hit.
+   * @return true if a figure handled the tap (page turn skipped), else false.
+   */
+  bool (*open_figure)(void* user, uint16_t page, int32_t x, int32_t y);
 } ra8_widget_reflow_ops_t;
 
 /**
@@ -79,9 +86,10 @@ typedef struct ra8_widget_reflow_ops {
  * the injected ::ra8_widget_paint_t) and asks the seam to paint `page` inside the
  * body rect (the widget rect inset by `margin_x` / `margin_y`). `on_input` routes
  * a touch: it offers the tap to `follow_link` first (a link jump adopts the
- * returned page); otherwise it turns the page -- a tap on the left half steps
- * back, the right half steps forward, clamped at page 0 and the last page. A body
- * tap is always consumed.
+ * returned page), then to `open_figure` (a hit opens the figure without turning
+ * the page); otherwise it turns the page -- a tap on the left half steps back,
+ * the right half steps forward, clamped at page 0 and the last page. A body tap
+ * is always consumed.
  *
  * @invariant `page < page_count` (clamped on every mutation).
  * @invariant `page_count >= 1` for a non-empty book.

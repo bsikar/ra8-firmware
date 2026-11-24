@@ -706,6 +706,132 @@ RA8_INTERNAL static void internal_test_webp_canvas_no_mem(void)
 }
 
 /**
+ * @test internal_test_decode_gray8_png_and_webp
+ * @brief Decode PNG and WebP figures to packed gray8 via caller-owned storage.
+ * @details Exercises both the stb_image single-channel path (s_png_2x2) and
+ *          the ra8_webp RGBA-to-gray8 BT.601 conversion (s_webp_lossless_8x8),
+ *          asserting dimensions, luma values, and drained arena invariants.
+ * @pre PNG and WebP fixtures are valid.
+ * @pre Caller scratch and destination buffers fit the decoded rasters.
+ * @post Arena offset/live return to zero and gray8 pixels match BT.601 luma.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_decode_gray8_png_and_webp(void)
+{
+  TEST_BEGIN("ra8_img_decode_gray8: PNG + WebP gray8 output & drained arena");
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  static uint8_t  s_gray[k_t_webp_dim * k_t_webp_dim];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch};
+  uint32_t        ow    = 0U;
+  uint32_t        oh    = 0U;
+
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, s_gray, sizeof s_gray, &ow, &oh));
+  TEST_ASSERT_EQ(2U, ow);
+  TEST_ASSERT_EQ(2U, oh);
+  TEST_ASSERT_EQ(0U, arena.offset);
+  TEST_ASSERT_EQ(0U, arena.live);
+  /* BT.601 integer luma: R->76, G->149, B->28, White->255. */
+  TEST_ASSERT_EQ(76U, s_gray[0]);
+  TEST_ASSERT_EQ(149U, s_gray[1]);
+  TEST_ASSERT_EQ(28U, s_gray[2]);
+  TEST_ASSERT_EQ(255U, s_gray[3]);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_img_decode_gray8(&arena,
+                                      s_webp_lossless_8x8,
+                                      sizeof s_webp_lossless_8x8,
+                                      s_gray,
+                                      sizeof s_gray,
+                                      &ow,
+                                      &oh));
+  TEST_ASSERT_EQ(k_t_webp_dim, ow);
+  TEST_ASSERT_EQ(k_t_webp_dim, oh);
+  TEST_ASSERT_EQ(0U, arena.offset);
+  TEST_ASSERT_EQ(0U, arena.live);
+  for (uint32_t y = 0U; y < k_t_webp_dim; ++y) {
+    for (uint32_t x = 0U; x < k_t_webp_dim; ++x) {
+      const uint32_t er   = (x * k_t_webp_r_step) & k_t_webp_byte_max;
+      const uint32_t eg   = (y * k_t_webp_g_step) & k_t_webp_byte_max;
+      const uint32_t eb   = ((x + y) * k_t_webp_b_step) & k_t_webp_byte_max;
+      const uint8_t  want = (uint8_t)(((er * 77U) + (eg * 150U) + (eb * 29U)) >> 8U);
+      TEST_ASSERT_EQ(want, s_gray[(y * k_t_webp_dim) + x]);
+    }
+  }
+  TEST_END("ra8_img_decode_gray8: PNG + WebP gray8 output & drained arena");
+}
+
+/**
+ * @test internal_test_decode_gray8_guards
+ * @brief Null pointers, bad inputs, SVG reject, and dst/arena capacity limits.
+ * @pre Scratch arena and tiny destination storage are available.
+ * @post Error statuses match the API contract and arena stays drained.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_decode_gray8_guards(void)
+{
+  TEST_BEGIN("ra8_img_decode_gray8: guards, SVG reject, dst/arena no_mem");
+  static uint8_t    s_scratch[k_t_scratch_kib * k_t_kib];
+  static uint8_t    s_tiny_arena[k_t_tiny_dst_cap];
+  static uint8_t    s_gray[k_t_webp_dim * k_t_webp_dim];
+  static const char k_svg[] = "<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'/>";
+  ra8_img_arena_t   arena   = {.base = s_scratch, .cap = sizeof s_scratch};
+  uint32_t          ow      = 0U;
+  uint32_t          oh      = 0U;
+
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_img_decode_gray8(NULL, s_png_2x2, sizeof s_png_2x2, s_gray, sizeof s_gray, &ow, &oh));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_img_decode_gray8(&arena, NULL, 1U, s_gray, sizeof s_gray, &ow, &oh));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, NULL, sizeof s_gray, &ow, &oh));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, s_gray, sizeof s_gray, NULL, &oh));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, s_gray, sizeof s_gray, &ow, NULL));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_img_decode_gray8(&arena, s_png_2x2, 0U, s_gray, sizeof s_gray, &ow, &oh));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, s_gray, 0U, &ow, &oh));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_img_decode_gray8(&arena,
+                                      (const uint8_t*)k_svg,
+                                      sizeof k_svg - 1U,
+                                      s_gray,
+                                      sizeof s_gray,
+                                      &ow,
+                                      &oh));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_gray8(&arena, s_png_2x2, sizeof s_png_2x2, s_gray, 3U, &ow, &oh));
+  TEST_ASSERT_EQ(0U, arena.offset);
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_gray8(&arena,
+                                      s_webp_lossless_8x8,
+                                      sizeof s_webp_lossless_8x8,
+                                      s_gray,
+                                      63U,
+                                      &ow,
+                                      &oh));
+  ra8_img_arena_t small_arena = {.base = s_tiny_arena, .cap = sizeof s_tiny_arena};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_gray8(&small_arena,
+                                      s_webp_lossless_8x8,
+                                      sizeof s_webp_lossless_8x8,
+                                      s_gray,
+                                      sizeof s_gray,
+                                      &ow,
+                                      &oh));
+  TEST_ASSERT_EQ(0U, small_arena.offset);
+  TEST_ASSERT_EQ(0U, small_arena.live);
+  TEST_END("ra8_img_decode_gray8: guards, SVG reject, dst/arena no_mem");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -722,5 +848,7 @@ int main(void)
   internal_test_decode_blit_webp_pixels();
   internal_test_webp_signature_falls_through();
   internal_test_webp_canvas_no_mem();
+  internal_test_decode_gray8_png_and_webp();
+  internal_test_decode_gray8_guards();
   return 0;
 }

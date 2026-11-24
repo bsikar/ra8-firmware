@@ -117,3 +117,46 @@ typedef ra8_imgdec_scratch_t ra8_img_arena_t;
  */
 [[nodiscard]] ra8_err_t
 ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, int32_t* out_h);
+
+/**
+ * @brief Decode raster image bytes to tightly packed 8-bit grayscale.
+ *
+ * @details
+ * Supports the same raster formats as ::ra8_img_decode_blit (PNG/JPEG/BMP/GIF
+ * through stb_image, and WebP through ra8_webp). SVG payloads are rejected with
+ * @c k_ra8_err_not_supported because SVG is vector geometry rather than a
+ * raster figure bitmap. Transient decode scratch is drawn exclusively from
+ * @p arena and drained cleanly on every return path (zero heap allocation).
+ * Output pixels use BT.601 integer luma (`(77*R + 150*G + 29*B) >> 8`),
+ * stored row-major with row stride equal to `*out_w`.
+ *
+ * @param[in,out] arena   Caller-owned bump arena for decode scratch.
+ * @param[in]     bytes   Encoded raster image buffer.
+ * @param[in]     len     Length of @p bytes in bytes (> 0).
+ * @param[out]    dst     Caller-owned destination gray8 pixel buffer.
+ * @param[in]     dst_cap Capacity of @p dst in bytes (`>= width * height`).
+ * @param[out]    out_w   Receives decoded image width in pixels.
+ * @param[out]    out_h   Receives decoded image height in pixels.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                `*out_w * *out_h` gray8 bytes written to @p dst.
+ * @retval k_ra8_err_null_ptr      Any pointer parameter is NULL.
+ * @retval k_ra8_err_invalid_arg   @p len == 0, @p dst_cap == 0, or length overflow.
+ * @retval k_ra8_err_no_mem        @p dst_cap or @p arena is too small for the image.
+ * @retval k_ra8_err_not_supported Unsupported format (including SVG) or corrupt stream.
+ *
+ * @pre  All pointer parameters are non-NULL and `arena->base` covers `arena->cap` bytes.
+ * @post `arena->offset == 0` and `arena->live == 0` on every return.
+ * @post On k_ra8_ok, `*out_w > 0`, `*out_h > 0`, and `(*out_w) * (*out_h) <= dst_cap`.
+ *
+ * @note Not thread-safe; binds @p arena across stb_image / ra8_webp decode.
+ * @see ra8_img_decode_blit
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_img_decode_gray8(ra8_img_arena_t* arena,
+                                             const uint8_t*   bytes,
+                                             size_t           len,
+                                             uint8_t*         dst,
+                                             size_t           dst_cap,
+                                             uint32_t*        out_w,
+                                             uint32_t*        out_h);

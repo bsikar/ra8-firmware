@@ -41,6 +41,12 @@ var last_link_y: i32 = 0;
 var link_answer: bool = false;
 var link_dest: u16 = 0;
 
+var figure_calls: u32 = 0;
+var last_figure_page: u16 = 0xFFFF;
+var last_figure_x: i32 = 0;
+var last_figure_y: i32 = 0;
+var figure_answer: bool = false;
+
 fn reset() void {
     last_message = null;
     invalidations = 0;
@@ -55,6 +61,11 @@ fn reset() void {
     last_link_y = 0;
     link_answer = false;
     link_dest = 0;
+    figure_calls = 0;
+    last_figure_page = 0xFFFF;
+    last_figure_x = 0;
+    last_figure_y = 0;
+    figure_answer = false;
 }
 
 fn fillRect(user: ?*anyopaque, x: i32, y: i32, wid: i32, hei: i32, color: u32) callconv(.c) void {
@@ -89,10 +100,20 @@ fn followLink(user: ?*anyopaque, page: u16, x: i32, y: i32, out_page: *u16) call
     return true;
 }
 
+fn openFigure(user: ?*anyopaque, page: u16, x: i32, y: i32) callconv(.c) bool {
+    _ = user;
+    figure_calls += 1;
+    last_figure_page = page;
+    last_figure_x = x;
+    last_figure_y = y;
+    return figure_answer;
+}
+
 var full_ops: abi.Ops = .{
     .user = null,
     .render_page = paintPage,
     .follow_link = followLink,
+    .open_figure = openFigure,
 };
 
 fn viewWith(ops: ?*const abi.Ops, page: u16, count: u16) abi.ReflowView {
@@ -132,6 +153,7 @@ test "the descriptors mirror ra8_widget_reflow_view_t and its ops seam" {
     try std.testing.expectEqual(0, @offsetOf(abi.Ops, "user"));
     try std.testing.expectEqual(ptr, @offsetOf(abi.Ops, "render_page"));
     try std.testing.expectEqual(2 * ptr, @offsetOf(abi.Ops, "follow_link"));
+    try std.testing.expectEqual(3 * ptr, @offsetOf(abi.Ops, "open_figure"));
 
     try std.testing.expectEqual(0, @offsetOf(abi.ReflowView, "paint"));
     try std.testing.expectEqual(ptr, @offsetOf(abi.ReflowView, "ops"));
@@ -443,4 +465,62 @@ test "the page the seam paints follows the page the taps left behind" {
     _ = w.vt.?.on_input.?(&w, &touchAt(400));
     w.vt.?.render.?(&w);
     try std.testing.expectEqual(2, last_paint_page);
+}
+
+test "a figure tap opens the figure popup without turning the page" {
+    reset();
+    link_answer = false;
+    figure_answer = true;
+    var view = viewWith(&full_ops, 4, 12);
+    var w = widgetAt(band);
+    _ = abi.ra8_widget_reflow_view_init(&w, &view);
+
+    const tap = touchAt(400);
+    try std.testing.expect(w.vt.?.on_input.?(&w, &tap));
+    try std.testing.expectEqual(1, link_calls);
+    try std.testing.expectEqual(1, figure_calls);
+    try std.testing.expectEqual(4, last_figure_page);
+    try std.testing.expectEqual(400, last_figure_x);
+    try std.testing.expectEqual(400, last_figure_y);
+    try std.testing.expectEqual(4, view.page);
+    try std.testing.expect(w.dirty);
+    try std.testing.expectEqual(1, invalidations);
+    try std.testing.expectEqual(@backingInt(abi.Refresh.quality), last_refresh);
+}
+
+test "a followed link wins before open_figure is queried" {
+    reset();
+    link_answer = true;
+    link_dest = 7;
+    figure_answer = true;
+    var view = viewWith(&full_ops, 4, 12);
+    var w = widgetAt(band);
+    _ = abi.ra8_widget_reflow_view_init(&w, &view);
+
+    const tap = touchAt(400);
+    try std.testing.expect(w.vt.?.on_input.?(&w, &tap));
+    try std.testing.expectEqual(1, link_calls);
+    try std.testing.expectEqual(0, figure_calls);
+    try std.testing.expectEqual(7, view.page);
+}
+
+test "a declined or absent figure handler falls through to the page turn" {
+    reset();
+    link_answer = false;
+    figure_answer = false;
+    var view = viewWith(&full_ops, 4, 12);
+    var w = widgetAt(band);
+    _ = abi.ra8_widget_reflow_view_init(&w, &view);
+
+    try std.testing.expect(w.vt.?.on_input.?(&w, &touchAt(400)));
+    try std.testing.expectEqual(1, figure_calls);
+    try std.testing.expectEqual(5, view.page);
+
+    var no_fig: abi.Ops = .{ .user = null, .render_page = paintPage, .follow_link = followLink, .open_figure = null };
+    var view2 = viewWith(&no_fig, 4, 12);
+    var w2 = widgetAt(band);
+    _ = abi.ra8_widget_reflow_view_init(&w2, &view2);
+    try std.testing.expect(w2.vt.?.on_input.?(&w2, &touchAt(100)));
+    try std.testing.expectEqual(1, figure_calls);
+    try std.testing.expectEqual(3, view2.page);
 }

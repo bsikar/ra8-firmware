@@ -48,7 +48,8 @@ const tag: [*:0]const u8 = "ra8_widget_reflow_view";
 /// Injected reflow-engine seam (`ra8_widget_reflow_ops_t`).
 ///
 /// `follow_link` reports whether it followed a link and, when it did, writes
-/// the destination page through `out_page`.
+/// the destination page through `out_page`. `open_figure` reports whether an
+/// inline figure handled the tap (for tap-to-zoom), inhibiting the page turn.
 pub const Ops = extern struct {
     user: ?*anyopaque,
     render_page: ?*const fn (user: ?*anyopaque, page: u16, body: *const Rect) callconv(.c) void,
@@ -59,6 +60,12 @@ pub const Ops = extern struct {
         y: i32,
         out_page: *u16,
     ) callconv(.c) bool,
+    open_figure: ?*const fn (
+        user: ?*anyopaque,
+        page: u16,
+        x: i32,
+        y: i32,
+    ) callconv(.c) bool = null,
 };
 
 /// Caller-owned reflow-view descriptor (`ra8_widget_reflow_view_t`).
@@ -121,6 +128,18 @@ fn followLink(w: *Widget, view: *ReflowView, event: *const Event) bool {
     return true;
 }
 
+/// Offer the tap to the figure seam. Returns whether an inline figure handled
+/// the tap (e.g. opening a zoom popup), in which case the view is invalidated.
+fn openFigure(w: *Widget, view: *const ReflowView, event: *const Event) bool {
+    const ops = view.ops orelse return false;
+    const open_fig = ops.open_figure orelse return false;
+
+    if (!open_fig(ops.user, view.page, event.x, event.y)) return false;
+
+    _ = types.ra8_widget_invalidate(w, .quality);
+    return true;
+}
+
 /// Clear the widget rect, then ask the seam to paint the current page inside
 /// the body rect.
 fn render(w: *Widget) callconv(.c) void {
@@ -136,13 +155,14 @@ fn render(w: *Widget) callconv(.c) void {
     paint_page(ops.user, view.page, &body);
 }
 
-/// Follow a link if the tap is on one, otherwise turn the page. Every body
-/// touch is consumed, including a tap at a boundary that changes nothing.
+/// Follow a link or open a figure if the tap lands on one, otherwise turn the
+/// page. Every body touch is consumed, including a boundary tap that changes nothing.
 fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {
     const view: *ReflowView = @ptrCast(@alignCast(w.ctx orelse return false));
     if (event.kind != .touch) return false;
 
     if (followLink(w, view, event)) return true;
+    if (openFigure(w, view, event)) return true;
 
     if (turnPage(view, event.x, tapMidpoint(w.rect))) {
         _ = types.ra8_widget_invalidate(w, .quality);
@@ -178,7 +198,8 @@ comptime {
     if (@offsetOf(Ops, "user") != 0) @compileError("ra8_widget_reflow_ops_t user offset");
     if (@offsetOf(Ops, "render_page") != ptr) @compileError("ra8_widget_reflow_ops_t render_page offset");
     if (@offsetOf(Ops, "follow_link") != 2 * ptr) @compileError("ra8_widget_reflow_ops_t follow_link offset");
-    if (@sizeOf(Ops) != 3 * ptr) @compileError("ra8_widget_reflow_ops_t size");
+    if (@offsetOf(Ops, "open_figure") != 3 * ptr) @compileError("ra8_widget_reflow_ops_t open_figure offset");
+    if (@sizeOf(Ops) != 4 * ptr) @compileError("ra8_widget_reflow_ops_t size");
 
     if (@offsetOf(ReflowView, "paint") != 0) @compileError("ra8_widget_reflow_view_t paint offset");
     if (@offsetOf(ReflowView, "ops") != ptr) @compileError("ra8_widget_reflow_view_t ops offset");
