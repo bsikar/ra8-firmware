@@ -14,26 +14,20 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "ra8_bundle.h"
 #include "ra8_err.h"
 #include "ra8_ota.h"
 
+static uint32_t s_fail;
+
 #define EXPECT_EQ(expected, actual)                                                                \
   do {                                                                                             \
     uint32_t _exp = (uint32_t)(expected);                                                          \
     uint32_t _act = (uint32_t)(actual);                                                            \
     if (_exp != _act) {                                                                            \
-      (void)fprintf(stderr,                                                                        \
-                    "FAIL %s:%d: expected 0x%X, got 0x%X\n",                                       \
-                    __FILE__,                                                                      \
-                    __LINE__,                                                                      \
-                    (unsigned)_exp,                                                                \
-                    (unsigned)_act);                                                               \
-      abort();                                                                                     \
+      ++s_fail;                                                                                    \
     }                                                                                              \
   } while (0)
 
@@ -318,5 +312,5 @@ static void test_c_single_image_bundle_end_to_end(void)
 int main(void)
 {
   test_c_single_image_bundle_end_to_end();
-  return 0;
+  return (s_fail == 0U) ? 0 : 1;
 }

@@ -122,7 +122,7 @@ gate checks ISA/semantics portability, not libc availability. Semantic Zig cross
 | `ra8_net_pal` | portable | ra8_core only; the vendored NetX stack above it is itself portable |
 | `ra8_net_policy` | portable | ra8_core only |
 | `ra8_num` | portable | no library imports |
-| `ra8_ota` | portable | ra8_core only |
+| `ra8_ota` | portable | ra8_core, ra8_update |
 | `ra8_power_profile` | portable | ra8_core only |
 | `ra8_psa_crypto` | portable | ra8_core only |
 | `ra8_rot` | portable | no import edges; boot glue arrives as linked symbols |
@@ -135,6 +135,7 @@ gate checks ISA/semantics portability, not libc availability. Semantic Zig cross
 | `ra8_tls` | portable | ra8_core only |
 | `ra8_touch_cal` | portable | ra8_core only |
 | `ra8_ui` | portable | ra8_core only |
+| `ra8_update` | portable | ra8_core only |
 | `ra8_wdt_supervisor` | portable | ra8_core only |
 | `ra8_widget` | portable | ra8_core, ra8_ui, ra8_box |
 | `ra8_wifi` | portable | ra8_core, ra8_c6link |
