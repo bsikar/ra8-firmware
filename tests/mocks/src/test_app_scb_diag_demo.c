@@ -19,9 +19,11 @@
 
 #include <stdint.h>
 
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_scb.h"
+#include "ra8_target_model.h"
 #include "unity_minimal.h"
 
 /**
@@ -29,15 +31,15 @@
  * @brief SCB addresses the test plants values at (the demo's read targets).
  */
 typedef enum : uintptr_t {
-  k_app_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register. */
-  k_app_scb_cfsr_addr  = 0xE000ED28UL, /**< Configurable Fault Status.    */
-  k_app_scb_hfsr_addr  = 0xE000ED2CUL, /**< HardFault Status.             */
-  k_app_scb_dfsr_addr  = 0xE000ED30UL, /**< Debug Fault Status.           */
-  k_app_scb_mmfar_addr = 0xE000ED34UL, /**< MemManage Fault Address.      */
-  k_app_scb_bfar_addr  = 0xE000ED38UL, /**< BusFault Address.             */
-  k_app_scb_afsr_addr  = 0xE000ED3CUL, /**< Auxiliary Fault Status.       */
-  k_app_scb_sfsr_addr  = 0xE000EDE4UL, /**< SecureFault Status.           */
-  k_app_scb_sfar_addr  = 0xE000EDE8UL, /**< SecureFault Address.          */
+  k_app_scb_vtor_addr  = (k_ra8_core_scb_base_addr + 0x08UL), /**< Vector Table Offset Register. */
+  k_app_scb_cfsr_addr  = (k_ra8_core_scb_base_addr + 0x28UL), /**< Configurable Fault Status.    */
+  k_app_scb_hfsr_addr  = (k_ra8_core_scb_base_addr + 0x2CUL), /**< HardFault Status.             */
+  k_app_scb_dfsr_addr  = (k_ra8_core_scb_base_addr + 0x30UL), /**< Debug Fault Status.           */
+  k_app_scb_mmfar_addr = (k_ra8_core_scb_base_addr + 0x34UL), /**< MemManage Fault Address.      */
+  k_app_scb_bfar_addr  = (k_ra8_core_scb_base_addr + 0x38UL), /**< BusFault Address.             */
+  k_app_scb_afsr_addr  = (k_ra8_core_scb_base_addr + 0x3CUL), /**< Auxiliary Fault Status.       */
+  k_app_scb_sfsr_addr  = (k_ra8_core_scb_base_addr + 0xE4UL), /**< SecureFault Status.           */
+  k_app_scb_sfar_addr  = (k_ra8_core_scb_base_addr + 0xE8UL), /**< SecureFault Address.          */
 } app_scb_reg_addr_t;
 
 /**
@@ -45,16 +47,16 @@ typedef enum : uintptr_t {
  * @brief Distinct values planted per register (a 0xDEB00000 ramp).
  */
 typedef enum : uint32_t {
-  k_app_plant_vtor  = 0x02000000UL, /**< Planted VTOR base.                  */
-  k_app_plant_cfsr  = 0xDEB00000UL, /**< Planted in CFSR.                    */
-  k_app_plant_hfsr  = 0xDEB00004UL, /**< Planted in HFSR.                    */
-  k_app_plant_dfsr  = 0xDEB00008UL, /**< Planted in DFSR.                    */
-  k_app_plant_mmfar = 0xDEB0000CUL, /**< Planted in MMFAR.                   */
-  k_app_plant_bfar  = 0xDEB00010UL, /**< Planted in BFAR.                    */
-  k_app_plant_afsr  = 0xDEB00014UL, /**< Planted in AFSR.                    */
-  k_app_plant_sfsr  = 0xDEB00018UL, /**< Planted in SFSR.                    */
-  k_app_plant_sfar  = 0xDEB0001CUL, /**< Planted in SFAR.                    */
-  k_app_fault_bit   = 0x00000082UL, /**< A latched fault: nonzero CFSR/HFSR. */
+  k_app_plant_vtor  = k_ra8_board_mram_base, /**< Planted VTOR base.                  */
+  k_app_plant_cfsr  = 0xDEB00000UL,          /**< Planted in CFSR.                    */
+  k_app_plant_hfsr  = 0xDEB00004UL,          /**< Planted in HFSR.                    */
+  k_app_plant_dfsr  = 0xDEB00008UL,          /**< Planted in DFSR.                    */
+  k_app_plant_mmfar = 0xDEB0000CUL,          /**< Planted in MMFAR.                   */
+  k_app_plant_bfar  = 0xDEB00010UL,          /**< Planted in BFAR.                    */
+  k_app_plant_afsr  = 0xDEB00014UL,          /**< Planted in AFSR.                    */
+  k_app_plant_sfsr  = 0xDEB00018UL,          /**< Planted in SFSR.                    */
+  k_app_plant_sfar  = 0xDEB0001CUL,          /**< Planted in SFAR.                    */
+  k_app_fault_bit   = 0x00000082UL,          /**< A latched fault: nonzero CFSR/HFSR. */
 } app_scb_planted_t;
 
 /**

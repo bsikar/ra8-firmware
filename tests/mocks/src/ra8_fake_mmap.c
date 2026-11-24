@@ -46,6 +46,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_memmap.h"
+#include "ra8_target_model.h"
 #include "ra8_test_output.h"
 
 /** @brief Address-rendering dimensions for fake-MMIO diagnostics. */
@@ -205,8 +206,8 @@ typedef enum : uint8_t {
  * @brief Backing memory region descriptor.
  */
 typedef struct {
-  uintptr_t base;            /**< Virtual base address to map.                    */
-  size_t    size;            /**< Bytes to map.                                   */
+  uintptr_t base;            /**< Virtual base address to map.             */
+  size_t    size;            /**< Bytes to map.                            */
   bool      asan_shadow_gap; /**< True if base lands in ASan's shadow gap. */
 } ra8_fake_region_t;
 
@@ -249,22 +250,23 @@ enum : size_t {
  * dereferences a TCM address.
  */
 enum : uintptr_t {
-  k_ra8_fake_peri_base       = 0x40000000UL,           /**< RA8 fake peri base.      */
-  k_ra8_fake_core_base       = 0xE0000000UL,           /**< RA8 fake core base.      */
-  k_ra8_fake_mram_base       = 0x02C00000UL,           /**< MRAM calibration window. */
-  k_ra8_fake_sram_base       = k_ra8_board_sram_base,  /**< Board on-chip SRAM.      */
-  k_ra8_fake_sdram_base      = k_ra8_board_sdram_base, /**< Board external SDRAM.    */
-  k_ra8_fake_code_mram_base  = k_ra8_board_mram_base,  /**< Board code MRAM.         */
-  k_ra8_fake_extra_mram_base = k_ra8_board_ofs_otp_base, /**< Board OTP / anti-rollback
+  k_ra8_fake_peri_base       = k_ra8_periph_bus_base_addr,    /**< RA8 fake peri base.      */
+  k_ra8_fake_core_base       = k_ra8_core_ppb_base_addr,      /**< RA8 fake core base.      */
+  k_ra8_fake_mram_base       = 0x02C00000UL,                  /**< MRAM calibration window. */
+  k_ra8_fake_sram_base       = k_ra8_board_sram_base,         /**< Board on-chip SRAM.      */
+  k_ra8_fake_sdram_base      = k_ra8_board_sdram_base,        /**< Board external SDRAM.    */
+  k_ra8_fake_code_mram_base  = k_ra8_board_mram_base,         /**< Board code MRAM.         */
+  k_ra8_fake_extra_mram_base = k_ra8_board_ofs_otp_base,      /**< Board OTP / anti-rollback
                      * window, whose head covers k_ra8_flash_extra_start
                      * 0x02E07600 (HUM Ch 59.7.4.5 Table 59.15 p 3592). */
-  k_ra8_fake_peri_ns_base    = 0x50000000UL, /**< Non-Secure alias of peri bus. */
+  k_ra8_fake_peri_ns_base    = k_ra8_periph_bus_ns_base_addr, /**< Non-Secure alias of peri bus. */
 };
 
 /* Every backing window has to contain the board region it stands in for, and
  * the Non-Secure placeholders that alias into it. Sizes are host-backing
  * choices (see above), so these are the pins that keep a choice honest. */
-static_assert(k_ra8_fake_sram_size >= (size_t)k_ra8_board_sram_size + (size_t)k_ra8_board_noinit_size,
+static_assert(k_ra8_fake_sram_size >=
+                (size_t)k_ra8_board_sram_size + (size_t)k_ra8_board_noinit_size,
               "SRAM window must cover the board SRAM region and its NOINIT tail");
 /* RA8FW-513 runs the Non-Secure placeholders at their bit-28 aliases, so the
  * pins below de-alias them back to the secure addresses the host backing

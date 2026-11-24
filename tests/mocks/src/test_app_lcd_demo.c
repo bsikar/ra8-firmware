@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_memmap.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -44,9 +45,9 @@ typedef enum : uint8_t {
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_lcd_fb_l1_addr = 0x68000000UL, /**< Sprite framebuffer base. */
-  k_test_lcd_fb_l2_addr = 0x68040000UL, /**< Background fb base.      */
-  k_test_lcd_redraw_n   = 4U,           /**< Frames to simulate.      */
+  k_test_lcd_fb_l1_addr = k_ra8_board_sdram_base,            /**< Sprite framebuffer base. */
+  k_test_lcd_fb_l2_addr = k_ra8_board_sdram_base + 0x40000U, /**< Background fb base.      */
+  k_test_lcd_redraw_n   = 4U,                                /**< Frames to simulate.      */
 } test_lcd_addr_t;
 
 typedef enum : uint16_t {

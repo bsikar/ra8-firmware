@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_sau.h"
@@ -26,13 +27,14 @@
  * @brief Addresses and sizes the suite drives the mock partition with.
  */
 typedef enum : uint32_t {
-  k_test_tz_ns_base    = 0x22100000UL, /**< 32-byte-aligned NS window base. */
-  k_test_tz_ns_size    = 0x00001000UL, /**< 4 KiB NS window.                */
-  k_test_tz_ns_limit   = 0x22100FE0UL, /**< base + size - 32.               */
-  k_test_tz_nsc_base   = 0x10000000UL, /**< NSC veneer alias base.          */
-  k_test_tz_nsc_size   = 0x00000040UL, /**< Two granules.                   */
-  k_test_tz_sram_split = 0x00040000UL, /**< 4 KB-aligned Secure length.     */
-  k_test_tz_bad_split  = 0x00040001UL, /**< Not 4 KB aligned.               */
+  k_test_tz_ns_base =
+    (k_ra8_board_noinit_base + k_ra8_board_noinit_size), /**< 32-byte-aligned NS window base. */
+  k_test_tz_ns_size    = 0x00001000UL,                   /**< 4 KiB NS window.                */
+  k_test_tz_ns_limit   = 0x22100FE0UL,                   /**< base + size - 32.               */
+  k_test_tz_nsc_base   = 0x10000000UL,                   /**< NSC veneer alias base.          */
+  k_test_tz_nsc_size   = 0x00000040UL,                   /**< Two granules.                   */
+  k_test_tz_sram_split = 0x00040000UL,                   /**< 4 KB-aligned Secure length.     */
+  k_test_tz_bad_split  = 0x00040001UL,                   /**< Not 4 KB aligned.               */
 } test_tz_partition_layout_t;
 
 /**
@@ -70,9 +72,9 @@ RA8_INTERNAL static void internal_setup(void)
 RA8_INTERNAL static ra8_sau_region_t internal_ns_region(void)
 {
   return (ra8_sau_region_t){
-      .base = (uintptr_t)k_test_tz_ns_base,
-      .size = (uint32_t)k_test_tz_ns_size,
-      .attr = k_ra8_sau_attr_ns,
+    .base = (uintptr_t)k_test_tz_ns_base,
+    .size = (uint32_t)k_test_tz_ns_size,
+    .attr = k_ra8_sau_attr_ns,
   };
 }
 
@@ -88,10 +90,10 @@ RA8_INTERNAL static void internal_test_rejects_null(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tz_partition_apply(NULL));
 
   const ra8_tz_partition_t headless = {
-      .sau_regions      = NULL,
-      .sram_boundary    = NULL,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = NULL,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tz_partition_validate(&headless));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tz_partition_apply(&headless));
@@ -107,12 +109,12 @@ RA8_INTERNAL static void internal_test_rejects_oversized_table(void)
   internal_setup();
   internal_set_sregion(2U);
 
-  const ra8_sau_region_t  regions[1] = {internal_ns_region()};
-  const ra8_tz_partition_t partition = {
-      .sau_regions      = regions,
-      .sram_boundary    = NULL,
-      .sau_region_count = 3U,
-      .sau_all_ns       = false,
+  const ra8_sau_region_t   regions[1] = {internal_ns_region()};
+  const ra8_tz_partition_t partition  = {
+    .sau_regions      = regions,
+    .sram_boundary    = NULL,
+    .sau_region_count = 3U,
+    .sau_all_ns       = false,
   };
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_tz_partition_validate(&partition));
   TEST_END("a region count above SAU_TYPE.SREGION is not supported");
@@ -126,13 +128,13 @@ RA8_INTERNAL static void internal_test_rejects_bad_geometry(void)
   TEST_BEGIN("misaligned, empty and wrapping windows are invalid");
   internal_setup();
 
-  ra8_sau_region_t region = internal_ns_region();
-  region.base             = (uintptr_t)k_test_tz_ns_base + 1U;
+  ra8_sau_region_t region      = internal_ns_region();
+  region.base                  = (uintptr_t)k_test_tz_ns_base + 1U;
   ra8_tz_partition_t partition = {
-      .sau_regions      = &region,
-      .sram_boundary    = NULL,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = &region,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tz_partition_validate(&partition));
 
@@ -159,13 +161,13 @@ RA8_INTERNAL static void internal_test_apply_is_atomic_on_refusal(void)
   TEST_BEGIN("a refused descriptor leaves the SAU untouched");
   internal_setup();
 
-  ra8_sau_region_t region = internal_ns_region();
-  region.size             = (uint32_t)k_test_tz_ns_size + 1U;
+  ra8_sau_region_t region            = internal_ns_region();
+  region.size                        = (uint32_t)k_test_tz_ns_size + 1U;
   const ra8_tz_partition_t partition = {
-      .sau_regions      = &region,
-      .sram_boundary    = NULL,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = &region,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tz_partition_apply(&partition));
@@ -185,10 +187,10 @@ RA8_INTERNAL static void internal_test_apply_programs_sau(void)
 
   const ra8_sau_region_t   regions[1] = {internal_ns_region()};
   const ra8_tz_partition_t partition  = {
-       .sau_regions      = regions,
-       .sram_boundary    = NULL,
-       .sau_region_count = 1U,
-       .sau_all_ns       = false,
+    .sau_regions      = regions,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_apply(&partition));
@@ -205,15 +207,15 @@ RA8_INTERNAL static void internal_test_attr_domain(void)
   internal_setup();
 
   ra8_sau_region_t region = {
-      .base = (uintptr_t)k_test_tz_nsc_base,
-      .size = (uint32_t)k_test_tz_nsc_size,
-      .attr = k_ra8_sau_attr_nsc,
+    .base = (uintptr_t)k_test_tz_nsc_base,
+    .size = (uint32_t)k_test_tz_nsc_size,
+    .attr = k_ra8_sau_attr_nsc,
   };
   const ra8_tz_partition_t partition = {
-      .sau_regions      = &region,
-      .sram_boundary    = NULL,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = &region,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_validate(&partition));
 
@@ -230,18 +232,18 @@ RA8_INTERNAL static void internal_test_rejects_unaligned_sram_boundary(void)
   TEST_BEGIN("a misaligned SRAM boundary is refused before any write");
   internal_setup();
 
-  const ra8_sau_region_t regions[1] = {internal_ns_region()};
+  const ra8_sau_region_t regions[1]                = {internal_ns_region()};
   const uint32_t         bad[k_test_tz_sram_banks] = {
-      (uint32_t)k_test_tz_sram_split,
-      (uint32_t)k_test_tz_bad_split,
-      0U,
-      0U,
+    (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_bad_split,
+    0U,
+    0U,
   };
   const ra8_tz_partition_t partition = {
-      .sau_regions      = regions,
-      .sram_boundary    = bad,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = regions,
+    .sram_boundary    = bad,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tz_partition_apply(&partition));
@@ -257,18 +259,18 @@ RA8_INTERNAL static void internal_test_writes_sram_boundaries(void)
   TEST_BEGIN("a boundary array reaches all four SRAMSABARn registers");
   internal_setup();
 
-  const ra8_sau_region_t regions[1] = {internal_ns_region()};
+  const ra8_sau_region_t regions[1]                  = {internal_ns_region()};
   const uint32_t         split[k_test_tz_sram_banks] = {
-      (uint32_t)k_test_tz_sram_split,
-      (uint32_t)k_test_tz_sram_split,
-      0U,
-      (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_sram_split,
+    0U,
+    (uint32_t)k_test_tz_sram_split,
   };
   const ra8_tz_partition_t partition = {
-      .sau_regions      = regions,
-      .sram_boundary    = split,
-      .sau_region_count = 1U,
-      .sau_all_ns       = false,
+    .sau_regions      = regions,
+    .sram_boundary    = split,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
   };
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_apply(&partition));
@@ -298,8 +300,8 @@ RA8_INTERNAL static void internal_test_board_map(void)
   /* Lower MRAM and lower SRAM are absent on purpose: that absence is what
    * keeps the secure image and the key vault Secure. */
   for (uint8_t i = 0U; i < map->sau_region_count; i++) {
-    TEST_ASSERT(map->sau_regions[i].base != 0x02000000UL);
-    TEST_ASSERT(map->sau_regions[i].base != 0x22000000UL);
+    TEST_ASSERT(map->sau_regions[i].base != k_ra8_board_mram_base);
+    TEST_ASSERT(map->sau_regions[i].base != k_ra8_board_sram_base);
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_apply(map));

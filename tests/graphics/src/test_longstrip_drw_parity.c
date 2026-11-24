@@ -13,6 +13,7 @@
 #include "jof.h"
 #include "longstrip.h"
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_drw.h"
 #include "ra8_drw_mve.h"
 #include "ra8_drw_regs.h"
@@ -24,22 +25,22 @@
 
 /** @brief Test constants for synthetic JOF1 strip and DRW target. */
 typedef enum : uint32_t {
-  k_p_fb_addr  = 0x68000000UL, /**< SDRAM FB base for fake MMIO.      */
-  k_p_tex_addr = 0x68100000UL, /**< SDRAM stage texture base.         */
-  k_p_width    = 32U,          /**< Strip width in pixels.            */
-  k_p_height   = 96U,          /**< Strip height in pixels (3 bands). */
-  k_p_band_h   = 32U,          /**< Rows per band.                    */
-  k_p_bands    = 3U,           /**< Total bands.                      */
-  k_p_view_w   = 32U,          /**< Viewport width.                   */
-  k_p_view_h   = 48U,          /**< Viewport height.                  */
-  k_p_bpp      = 3U,           /**< RGB888 strip source.              */
-  k_p_hdr_size = 32U,          /**< JOF1 header size.                 */
-  k_p_ftr_size = 16U,          /**< JOF1 footer size.                 */
-  k_p_idx_size = 8U,           /**< JOF1 index entry size.            */
-  k_p_atlas    = 32768U,       /**< Static atlas buffer size.         */
-  k_p_cells    = 2U,           /**< Small LRU cache (< 3 bands).      */
-  k_p_buckets  = 4U,           /**< Hash buckets.                     */
-  k_p_budget   = 64U,          /**< DRW poll budget on host.          */
+  k_p_fb_addr  = k_ra8_board_sdram_base,                /**< SDRAM FB base for fake MMIO.      */
+  k_p_tex_addr = (k_ra8_board_sdram_base + 0x100000UL), /**< SDRAM stage texture base.         */
+  k_p_width    = 32U,                                   /**< Strip width in pixels.            */
+  k_p_height   = 96U,                                   /**< Strip height in pixels (3 bands). */
+  k_p_band_h   = 32U,                                   /**< Rows per band.                    */
+  k_p_bands    = 3U,                                    /**< Total bands.                      */
+  k_p_view_w   = 32U,                                   /**< Viewport width.                   */
+  k_p_view_h   = 48U,                                   /**< Viewport height.                  */
+  k_p_bpp      = 3U,                                    /**< RGB888 strip source.              */
+  k_p_hdr_size = 32U,                                   /**< JOF1 header size.                 */
+  k_p_ftr_size = 16U,                                   /**< JOF1 footer size.                 */
+  k_p_idx_size = 8U,                                    /**< JOF1 index entry size.            */
+  k_p_atlas    = 32768U,                                /**< Static atlas buffer size.         */
+  k_p_cells    = 2U,                                    /**< Small LRU cache (< 3 bands).      */
+  k_p_buckets  = 4U,                                    /**< Hash buckets.                     */
+  k_p_budget   = 64U,                                   /**< DRW poll budget on host.          */
 } longstrip_parity_const_t;
 
 /** @brief Shared DRW hardware-adapter context for recording & verifying blits. */

@@ -62,12 +62,14 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_boot_entry.h"
 #include "ra8_boot_intrinsics.h"
 #include "ra8_cache.h"
 #ifdef RA8_BOOT_MPU_VIA_HAL
 #include "ra8_mpu.h"
 #endif
+#include "ra8_target_model.h"
 #include "trustzone_init.h"
 
 extern const uint32_t g_ra8_vector_table_start[];
@@ -423,7 +425,6 @@ enum : uint32_t {
  * AttrIndx 0 = MAIR0[0] = Normal cacheable -- so peripheral MMIO was mapped
  * cacheable. The type must be selected here instead. */
 enum : uint32_t {
-  k_ra8_mpu_rlar_attridx_shift   = 1U, /**< RA8 MPU rlar attridx shift.              */
   k_ra8_mpu_attridx_normal_wbwa  = 0U, /**< MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
   k_ra8_mpu_attridx_noncacheable = 1U, /**< MAIR0[1] 0x44: Normal non-cacheable.     */
   k_ra8_mpu_attridx_device       = 2U, /**< MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
@@ -432,16 +433,24 @@ enum : uint32_t {
 /* Region base and limit addresses. RLAR limits are <region-end> minus
  * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
 enum : uint32_t {
-  k_ra8_mpu_mram_base   = 0x02000000UL, /**< 1 MiB MRAM code region.                    */
-  k_ra8_mpu_mram_limit  = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.                        */
-  k_ra8_mpu_sram_base   = 0x22000000UL, /**< M85 private SRAM0+1, 1 MiB, cacheable.     */
-  k_ra8_mpu_sram_limit  = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                        */
-  k_ra8_mpu_shram_base  = 0x22100000UL, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM.    */
-  k_ra8_mpu_shram_limit = 0x2219FFE0UL, /**< Non-cacheable -> M85<->M33 stays coherent. */
-  k_ra8_mpu_sdram_base  = 0x68000000UL, /**< 64 MiB external SDRAM.                     */
-  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL, /**< RA8 MPU SDRAM limit.                       */
-  k_ra8_mpu_peri_base   = 0x40000000UL, /**< Peripheral bus window base.                */
-  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL, /**< RA8 MPU peri limit.                        */
+  k_ra8_mpu_mram_base = (uint32_t)k_ra8_board_mram_base, /**< 1 MiB MRAM code region. */
+  k_ra8_mpu_mram_limit =
+    (uint32_t)(k_ra8_board_mram_base + k_ra8_board_mram_size - 0x20U), /**< RA8 MPU MRAM limit. */
+  k_ra8_mpu_sram_base =
+    (uint32_t)k_ra8_board_sram_base, /**< M85 private SRAM0+1, 1 MiB, cacheable. */
+  k_ra8_mpu_sram_limit = (uint32_t)(k_ra8_board_noinit_base + k_ra8_board_noinit_size -
+                                    0x20U), /**< RA8 MPU SRAM limit. */
+  k_ra8_mpu_shram_base =
+    (uint32_t)(k_ra8_board_noinit_base +
+               k_ra8_board_noinit_size), /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM. */
+  k_ra8_mpu_shram_limit =
+    (uint32_t)(k_ra8_board_noinit_base + k_ra8_board_noinit_size + k_ra8_board_ns_sram_size -
+               0x20U), /**< Non-cacheable -> M85<->M33 stays coherent. */
+  k_ra8_mpu_sdram_base  = (uint32_t)k_ra8_board_sdram_base, /**< 64 MiB external SDRAM. */
+  k_ra8_mpu_sdram_limit = (uint32_t)(k_ra8_board_sdram_base + k_ra8_board_sdram_size -
+                                     0x20U),                    /**< RA8 MPU SDRAM limit.        */
+  k_ra8_mpu_peri_base   = (uint32_t)k_ra8_periph_bus_base_addr, /**< Peripheral bus window base. */
+  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL,                         /**< RA8 MPU peri limit.         */
 };
 
 /**
@@ -485,9 +494,7 @@ static void internal_mpu_set_region(uint32_t region,
 static void internal_mpu_init(void)
 {
   enum : uint32_t {
-    k_ra8_mpu_ctrl_enable     = 1UL << 0,     /**< RA8 MPU control enable.     */
-    k_ra8_mpu_ctrl_privdefena = 1UL << 2,     /**< RA8 MPU control privdefena. */
-    k_ra8_mair0_default       = 0x000444FFUL, /**< RA8 mair0 default.          */
+    k_ra8_mair0_default = 0x000444FFUL, /**< RA8 mair0 default. */
   };
 
   /* MAIR0: idx0 = Normal WB/WA, idx1 = Normal non-cacheable, idx2 = Device-nGnRE. */

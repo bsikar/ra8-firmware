@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -33,8 +34,8 @@ typedef enum : uint32_t {
 } glcdc_probe_t;
 
 typedef enum : uint32_t {
-  k_test_glcdc_fb_addr  = 0x68000000UL, /**< Framebuffer at SDRAM base. */
-  k_test_glcdc_fb2_addr = 0x68800000UL, /**< Layer-2 framebuffer base.  */
+  k_test_glcdc_fb_addr  = k_ra8_board_sdram_base,                /**< Framebuffer at SDRAM base. */
+  k_test_glcdc_fb2_addr = (k_ra8_board_sdram_base + 0x800000UL), /**< Layer-2 framebuffer base.  */
 } test_glcdc_fb_t;
 
 typedef enum : uint16_t {

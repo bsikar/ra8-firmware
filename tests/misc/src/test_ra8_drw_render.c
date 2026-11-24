@@ -14,6 +14,7 @@
  */
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_drw.h"
 #include "ra8_drw_dlist.h"
 #include "ra8_drw_internal.h"
@@ -42,9 +43,12 @@ typedef enum : uint32_t {
  * @brief Test-side bound constants used by the cases below.
  */
 typedef enum : uint32_t {
-  k_ra8_drw_test_fb_addr_lo   = 0x68000000UL, /**< SDRAM head, mmap-backed.   */
-  k_ra8_drw_test_tex_addr     = 0x68100000UL, /**< Texture base.              */
-  k_ra8_drw_test_dlist_addr   = 0x68200000UL, /**< Display list base.         */
+  /** SDRAM mmap-backed framebuffer base. */
+  k_ra8_drw_test_fb_addr_lo = k_ra8_board_sdram_base,
+  /** SDRAM texture base. */
+  k_ra8_drw_test_tex_addr = (k_ra8_board_sdram_base + 0x100000UL),
+  /** SDRAM display-list base. */
+  k_ra8_drw_test_dlist_addr   = (k_ra8_board_sdram_base + 0x200000UL),
   k_ra8_drw_test_pitch_px     = 1024U,        /**< 1024-px wide framebuffer.  */
   k_ra8_drw_test_rect_w       = 16U,          /**< 16-pixel-wide test rect.   */
   k_ra8_drw_test_rect_h       = 8U,           /**< 8-pixel-tall test rect.    */

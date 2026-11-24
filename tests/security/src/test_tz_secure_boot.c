@@ -25,10 +25,12 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_sau.h"
 #include "ra8_sau_regs.h"
+#include "ra8_target_model.h"
 #include "ra8_tz_secure_boot.h"
 #include "unity_minimal.h"
 
@@ -48,18 +50,19 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint32_t {
-  k_test_tz_code_nsc_base   = 0x10000000U, /**< Test TrustZone code NSC base.   */
-  k_test_tz_code_nsc_limit  = 0x100FFFE0U, /**< Test TrustZone code NSC limit.  */
-  k_test_tz_ns_mram_base    = 0x02080000U, /**< Test TrustZone ns MRAM base.    */
-  k_test_tz_ns_mram_limit   = 0x020FFFE0U, /**< Test TrustZone ns MRAM limit.   */
-  k_test_tz_sram_nsc_base   = 0x12000000U, /**< Test TrustZone SRAM NSC base.   */
-  k_test_tz_sram_nsc_limit  = 0x1200FFE0U, /**< Test TrustZone SRAM NSC limit.  */
-  k_test_tz_ns_sram_base    = 0x22100000U, /**< Test TrustZone ns SRAM base.    */
-  k_test_tz_ns_sram_limit   = 0x221FFFE0U, /**< Test TrustZone ns SRAM limit.   */
-  k_test_tz_ns_per_base     = 0x50000000U, /**< Test TrustZone ns per base.     */
-  k_test_tz_ns_per_limit    = 0x5FFFFFE0U, /**< Test TrustZone ns per limit.    */
-  k_test_tz_ipcsar_expected = 0x00050000U, /**< Test TrustZone ipcsar expected. */
-  k_test_tz_ipcpar_expected = 0x00000000U, /**< Test TrustZone ipcpar expected. */
+  k_test_tz_code_nsc_base  = 0x10000000U, /**< Test TrustZone code NSC base.  */
+  k_test_tz_code_nsc_limit = 0x100FFFE0U, /**< Test TrustZone code NSC limit. */
+  k_test_tz_ns_mram_base   = 0x02080000U, /**< Test TrustZone ns MRAM base.   */
+  k_test_tz_ns_mram_limit  = 0x020FFFE0U, /**< Test TrustZone ns MRAM limit.  */
+  k_test_tz_sram_nsc_base  = 0x12000000U, /**< Test TrustZone SRAM NSC base.  */
+  k_test_tz_sram_nsc_limit = 0x1200FFE0U, /**< Test TrustZone SRAM NSC limit. */
+  k_test_tz_ns_sram_base =
+    (k_ra8_board_noinit_base + k_ra8_board_noinit_size),     /**< Test TrustZone ns SRAM base.    */
+  k_test_tz_ns_sram_limit   = 0x221FFFE0U,                   /**< Test TrustZone ns SRAM limit.   */
+  k_test_tz_ns_per_base     = k_ra8_periph_bus_ns_base_addr, /**< Test TrustZone ns per base.     */
+  k_test_tz_ns_per_limit    = 0x5FFFFFE0U,                   /**< Test TrustZone ns per limit.    */
+  k_test_tz_ipcsar_expected = 0x00050000U,                   /**< Test TrustZone ipcsar expected. */
+  k_test_tz_ipcpar_expected = 0x00000000U,                   /**< Test TrustZone ipcpar expected. */
 } test_tz_const_t;
 
 /**
@@ -110,7 +113,7 @@ static void test_tz_sau_layout_sanity(void)
   TEST_BEGIN("tz_secure_boot: SAU layout sanity (no overlap, NSC outside MRAM)");
 
   /* lower MRAM holds Secure code; both NSC aliases must be outside it. */
-  const uint32_t mram_secure_start = 0x02000000U;
+  const uint32_t mram_secure_start = k_ra8_board_mram_base;
   const uint32_t mram_secure_end   = 0x0207FFFFU;
   TEST_ASSERT(k_test_tz_code_nsc_base > mram_secure_end);
   TEST_ASSERT(k_test_tz_sram_nsc_base > mram_secure_end);
