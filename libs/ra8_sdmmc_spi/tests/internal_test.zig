@@ -7,8 +7,12 @@
 //! classification and the transport gate.
 
 const std = @import("std");
-const core = @import("implementation");
+const core = @import("abi").core;
 const testing = std.testing;
+
+comptime {
+    _ = @import("sd_fake.zig");
+}
 
 test "crc7 of a null pointer is zero, as in the C" {
     try testing.expectEqual(@as(u8, 0), core.crc7(null, 5));

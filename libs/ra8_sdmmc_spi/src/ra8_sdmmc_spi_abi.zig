@@ -13,7 +13,7 @@
 //! between calls sees the swap immediately, exactly as under the C.
 
 const std = @import("std");
-const core = @import("internal/root.zig");
+pub const core = @import("internal/root.zig");
 
 pub const Transport = core.Transport;
 pub const State = core.State;

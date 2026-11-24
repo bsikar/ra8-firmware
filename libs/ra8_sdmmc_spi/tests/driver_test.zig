@@ -11,6 +11,10 @@ const abi = @import("abi");
 const testing = std.testing;
 const fake = @import("sd_fake.zig");
 
+comptime {
+    _ = @import("sd_fake.zig");
+}
+
 const Card = fake.Card;
 const bind = fake.bind;
 const idle = fake.idle;

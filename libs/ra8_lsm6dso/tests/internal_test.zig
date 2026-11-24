@@ -9,6 +9,10 @@ const std = @import("std");
 const testing = std.testing;
 const implementation = @import("implementation");
 
+comptime {
+    _ = @import("abi_fixture.zig");
+}
+
 test "gyro FS: 125 dps takes the FS_125 bit and no FS_G field" {
     try testing.expectEqual(@as(u8, 0x02), implementation.gyroFsBits(0x00));
 }
