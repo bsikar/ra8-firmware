@@ -1,66 +1,110 @@
 # dfu_bootloader
 
 The immutable first 128 KiB of code-MRAM. It never erases itself. At every reset
-it either boots a valid application slot -- software A/B select plus copy-to-run
--- or, when no slot is bootable or an application asked for it, brings up a
-USB-DFU device and programs the inactive slot. Built on the controller-agnostic
-`libs/ra8_dfu` core that the `dfu_selftest_*` HIL twins validate on both USB
-controllers.
+it validates both application slots and the persistent `boot_state` metadata,
+boots the active or trial slot via copy-to-run, or enters a USB-FS DFU device
+to program the inactive slot. Built on the controller-agnostic `libs/ra8_dfu`
+core shared with `dfu_selftest_*` and `ra8_rot`.
 
 ## Bank layout (1 MiB MRAM)
 
 ```
 0x02000000  bootloader  128 KiB  (never erased by DFU)
-0x02020000  Slot A      448 KiB  [image body | 32-byte header in the last page]
-0x02090000  Slot B      448 KiB  [image body | 32-byte header in the last page]
+0x02020000  Slot A      444 KiB  [image body | 32-byte header in the last page]
+0x0208F000  Slot B      444 KiB  [image body | 32-byte header in the last page]
+0x020FE000  boot_state    8 KiB  [32B copy0 @0x020FE000 | 32B copy1 @0x020FE020]
 0x02100000  (end)
 ```
 
-The header is the slot's **last** 32-byte page, so the body starts at
-`slot_base`, and it is programmed **last**. That ordering is the entire
-brick-safety argument: a torn download leaves a slot whose CRC does not match,
-never a half-valid one that boots. (With copy-to-run the body is relocated
-before it executes, so header-last buys atomicity only -- not vector-table
-alignment.)
+Each slot's 32-byte header (`ra8_dfu_hdr_t`, magic `"RA8D"`) lives at the
+**last** 32-byte page of its slot (`slot_base + 0x0006EFE0`, max payload body
+`0x0006EFE0` = 454,624 bytes) and is programmed **last** so a torn download
+never leaves a half-valid image.
 
-## Boot decision
+The top 8 KiB (`0x020FE000..0x02100000`) holds two alternating 32-byte
+`ra8_dfu_boot_state_t` ping-pong pages (`copy0` at `0x020FE000`, `copy1` at
+`0x020FE020`), each protected by an IEEE CRC32 over bytes `[0..28)`. Every update
+erases and programs only the inactive copy page and increments `write_seq`, so
+losing power mid-update leaves the previously valid copy intact.
 
-Pure, and MC/DC-tested in `tests/misc/src/test_ra8_dfu_boot.c`. Read and clear the
-one-shot no-init SRAM trigger word; validate each slot (magic ok, length in
-range, and a software CRC32 over the body equal to the stored CRC); then stay in
-DFU if the trigger was set or neither slot is valid, otherwise copy-to-run the
-valid slot with the higher sequence number, Slot A on a tie.
+## Boot decision, trial boot, and revert
 
-A freshly written bad slot fails its CRC, so the older valid slot still boots.
-The bootloader region is never written by DFU, so an SWD re-flash always
-recovers the board: there is no state a download can leave the device in that a
-cable cannot undo.
+Boot decision and state arbitration live in `libs/ra8_dfu` (`ra8_dfu_boot_decide_trial`,
+`ra8_dfu_boot_state_pick`) with MC/DC unit tests in
+`tests/misc/src/test_ra8_dfu_boot.c` and `libs/ra8_dfu/tests/`.
 
-On the DFU path the device comes up on USB-FS (J11), targets the inactive slot,
-programs each download block straight into MRAM through the secure gate with an
-SRAM-resident program loop, writes the header on end-of-download, and
-soft-resets so the next boot decision picks the freshly written slot. The host
-sends the body only; the bootloader writes the header.
+1. **DFU trigger / no valid slot:** Reads and clears the one-shot no-init SRAM
+   trigger (`0xDF00B007`), then validates both slots (header magic, length,
+   CRC32, and entry check). If the trigger was set or neither slot is valid,
+   enters USB-FS DFU targeting the inactive slot (or Slot A).
+2. **Confirmed or untracked boot:** Picks the valid slot with the higher
+   sequence number (Slot A on tie). If `boot_state` already marks that slot
+   confirmed (`confirmed == 1`) or no trial state tracks it, launches it directly
+   with WDT0 disarmed.
+3. **Trial boot:** After a USB-DFU commit, `blc_device_worker` writes
+   `boot_state` for the newly programmed slot with `confirmed = 0` and
+   `tries_left = k_ra8_dfu_boot_state_default_tries` (`3`) before resetting.
+   While `preferred` remains unconfirmed and `tries_left > 0`:
+   - `dfu_bootloader` persists `tries_left - 1` into the alternate ping-pong page
+     **before** launching so even an instant fault consumes a try.
+   - `dfu_bootloader` arms WDT0 (`blc_arm_trial_watchdog_or_halt()`) in
+     reset-on-expiry mode (`k_ra8_wdt_timeout_1024`, `k_ra8_wdt_clkdiv_4`,
+     ~25.6 s timeout, `RSTIRQS = 1`, `SLCSTP = 0` so WFI still counts down).
+   - It then verifies the image trailer (`ra8_rot_verify_image`) and launches at
+     `k_ra8_dfu_run_base`.
+4. **Revert on exhausted tries:** If a trial image hangs, faults, or reboots
+   without calling `ra8_dfu_confirm()`, WDT0 resets the MCU (`RSTSR1.WDTRF`).
+   Once `tries_left == 0` with `confirmed == 0`, the next reset skips `preferred`
+   and falls back to the alternate valid slot (non-trial, WDT0 disarmed), or
+   enters DFU mode if no valid fallback exists.
+
+Note on anti-rollback: keep compatible monotonic `img_version` across
+unconfirmed A/B trials if fallback is required; `dfu_bootloader` relies on slot
+header sequence numbers (`seq`) to prefer the newer staged slot.
+
+Because the 128 KiB bootloader itself is never modified by DFU, an SWD re-flash
+always recovers the device regardless of slot or metadata contents.
+
+## What a payload must do to stay live
+
+To run across both confirmed and trial boots without reverting:
+
+1. **Link at `k_ra8_dfu_run_base` (`0x22020000`):** Every slot is copied to SRAM
+   before execution (see "One image, either slot" below). Any MRAM-writing code
+   (including `ra8_dfu_confirm()`) must execute from SRAM. See
+   `payload/confirm_payload.c`, `payload/confirm_payload.ld`, and
+   `scripts/build_confirm_payload.sh` for a freestanding minimal reference image
+   that links `libra8_dfu_boot.a`, `libra8_hal.a`, `libra8_core.a`, and
+   `ra8_flash.c`.
+2. **Initialize or preserve flash/MRAM access and run self-test:** Call
+   `ra8_flash_init()` and run post-boot health checks (clock, comms, peripheral
+   sanity) before confirming.
+3. **Feed or reset past the ~25.6 s trial watchdog:** On a trial boot, WDT0 is
+   latched until reset (HUM Ch 27 write-once `WDTCR`/`WDTRCR`). If startup plus
+   self-test takes close to ~25.6 s, call `ra8_wdt_refresh()` /
+   `ra8_wdt_refresh_for(k_ra8_wdt0)`. Once confirmed, either continue periodic
+   WDT0 refreshes for the remainder of that boot or trigger a clean software
+   reset so the next boot starts in confirmed mode with WDT0 disarmed.
+4. **Call `ra8_dfu_confirm()`:** Marks `confirmed = 1` in the ping-pong MRAM
+   record (`k_ra8_ok`). `ra8_dfu_confirm()` is idempotent and accepts
+   `tries_left == 0` if called during the final trial attempt before reset.
 
 ## One image, either slot (copy-to-run)
 
-A slot is staging only. On a valid-slot boot the bootloader copies the body to a
-single fixed SRAM run base and launches it there via the shared
-`ra8_dfu_launch`, so a payload is **linked once** and the identical binary boots
-from Slot A or Slot B -- no per-slot build, and no "which slot am I building
-for?" footgun.
+A slot is staging only. On boot the bootloader copies `img_len` body bytes to
+`k_ra8_dfu_run_base` (`0x22020000`) and branches there via `ra8_dfu_launch`, so
+one payload binary runs identically from Slot A or Slot B without position-
+independent relocation (`ROPI`/`RWPI` breaks `.rodata` interface vtables). The
+header records `entry`, but the bootloader copies only to `k_ra8_dfu_run_base`
+and drops to DFU if `ra8_dfu_run_target_valid` rejects the header.
 
-The obvious alternative, true position-independent code (ROPI/RWPI), does not
-work here: this codebase's interface structs store absolute function pointers in
-`.rodata`, and those cannot be relocated at load time.
+## Staging and emulator test scripts
 
-The header records the run base as its entry, but the bootloader copies to the
-**trusted constant**, not to the header field. A corrupted entry therefore only
-fails the `ra8_dfu_run_target_valid` cross-check and drops the boot to DFU; it
-can never redirect the copy.
-
-`examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/scripts/stage_slot_image.py`
-builds a flashable slot image -- body plus header at the right offset -- from a
-payload binary, for staging over J-Link with no USB host
-involved. `dfu_copy_to_run` is the unattended proof that the copy-to-run
-hand-off actually executes on silicon.
+- `scripts/stage_slot_image.py` stages a plain or `rot_sign.py`-signed binary
+  into a slot Intel HEX file at Slot A (`0x02020000`) or Slot B (`0x0208F000`).
+- `scripts/build_confirm_payload.sh` compiles the reference self-testing and
+  confirming payload (`payload/confirm_payload.c`).
+- `scripts/trial_boot_emu_test.py` stages Slot A (`seq=1`) + an unconfirmed
+  hanging Slot B (`seq=2`) + initial `boot_state` (`0x020FE000`) and drives
+  `ra8_emulator` (`--mode watchdog-reset`, `--mode revert`, `--mode selftest`)
+  to verify WDT0 arming, reset via `WDTRF`, try exhaustion, and revert to Slot A.
