@@ -7,11 +7,12 @@
  *
  * @details
  * Exercises the ``libs/ra8_ota`` A/B slot state machine end to end on the
- * EK-RA8D2, over the on-chip extra-MRAM (data-flash) bank model that
- * ``tools/ra8_emulator`` already reproduces (board_periph_mram.c, the MACI
- * program/erase sequencer). ``ra8_ota`` is Dependency-Inversion pure: it drives
- * injected ``net`` / ``crypto`` / ``flash`` interfaces, so this app supplies
- * concrete backends and runs BOTH outcomes of the A/B flow in a single boot:
+ * EK-RA8D2, over a rewritable slice of the upper 1 MiB Code-MRAM region
+ * (HUM Ch 59.1 / Ch 59.4.2 Figure 59.4 p 3548), keeping well clear of the
+ * extra-MRAM option-setting/OTP window (HUM Ch 59.7.4.5 Table 59.15 p 3592).
+ * ``ra8_ota`` is Dependency-Inversion pure: it drives injected ``net`` /
+ * ``crypto`` / ``flash`` interfaces, so this app supplies concrete backends
+ * and runs BOTH outcomes of the A/B flow in a single boot:
  *
  *  - **COMMIT path** -- a good image is streamed into the inactive bank
  *    (``ra8_ota_download_to_inactive_bank``), the freshly programmed bank is
@@ -27,10 +28,11 @@
  *    active bank A. This is the safe rollback a real bootloader relies on.
  *
  * @par Backends (EIL==HIL):
- *  - ``flash`` routes to the real ``ra8_flash`` extra-MRAM driver
- *    (``ra8_flash_extra_mram_write`` / ``_erase`` + direct read-back), so the
- *    stage / re-hash / boot-select persistence run the exact MACI register
- *    sequence ra8_emulator models -- the same code path a bench run drives.
+ *  - ``flash`` routes to the real ``ra8_flash`` Code-MRAM block driver
+ *    (``ra8_flash_write_block`` / ``ra8_flash_erase_block`` over ``MRCPC1`` +
+ *    direct read-back, executed from SRAM via ``SRAM_TEXT ra8_flash.c``), so the
+ *    stage / re-hash / boot-select persistence drive the same Code-MRAM high-speed
+ *    program sequence on ra8_emulator and on the EK-RA8D2 bench.
  *  - ``crypto`` routes SHA-256 to the real software SHA backend
  *    (``ra8_rsip_sha256*``); identical on host, emulator and silicon (there is no
  *    RSIP hash-hardware on this part). Image INTEGRITY (the digest match that
@@ -86,21 +88,18 @@ typedef enum : uint32_t {
 
 /**
  * @enum app_mram_addr_t
- * @brief Extra-MRAM option-setting addresses the demo owns (0x02E07600, 12 KiB).
+ * @brief Rewritable upper Code-MRAM addresses the demo owns (0x02080000+).
  *
- * @details The inactive "bank" is staged at the region base; the persistent
- * boot-select record lives in a separate 32-byte block clear of the image so an
- * OTA bank erase never touches it (HUM Ch 59.7.4.5 Table 59.15 p 3592).
- *
- * @warning This window is one-time-programmable option-setting / OTP memory, not
- * a rewritable data-flash bank: the erase + re-stage cycle an A/B updater needs
- * does NOT work on real silicon. ra8_emulator maps the window so the demo passes
- * here, but a real inactive-bank home (OSPI / SD) is tracked separately.
+ * @details Places the inactive A/B staging bank and persistent boot-select
+ * record in the upper half of the 1 MiB Code-MRAM (``0x02000000..0x02100000``,
+ * HUM Ch 59.1 p 3543 / Ch 59.4.2 Figure 59.4 p 3548), well above this demo's
+ * code footprint and well outside the read-mostly/OTP option-setting extra-MRAM
+ * window (HUM Ch 59.7.4.5 Table 59.15 p 3592). The boot-select record occupies a
+ * separate 32-byte block past the bank capacity so bank erases never touch it.
  */
 typedef enum : uintptr_t {
-  k_app_bank_addr = k_ra8_flash_extra_start, /**< Inactive-bank base (extra-MRAM start). */
-  k_app_bootsel_addr =
-    k_ra8_flash_extra_start + 0x2000U, /**< Persistent boot-select record (own block). */
+  k_app_bank_addr    = k_ra8_flash_code_start + 0x00080000UL, /**< Inactive bank (Code-MRAM).   */
+  k_app_bootsel_addr = k_ra8_flash_code_start + 0x00082000UL, /**< Persistent boot-select item. */
 } app_mram_addr_t;
 
 /**
@@ -117,13 +116,26 @@ typedef enum : uint8_t {
  * @brief Small byte-width and record-layout constants.
  */
 typedef enum : uint8_t {
-  k_app_mram_block_bytes = 32U, /**< Extra-MRAM erase/program granularity.  */
+  k_app_mram_block_bytes = 32U, /**< Code-MRAM erase/program granularity.   */
   k_app_sig_bytes        = 32U, /**< Demo signature length.                 */
   k_app_rec_off_magic    = 0U,  /**< Boot-select record: magic byte offset. */
   k_app_rec_off_bank     = 4U,  /**< Boot-select record: bank byte offset.  */
   k_app_rec_off_seq      = 5U,  /**< Boot-select record: seq byte offset.   */
   k_app_octet_bits       = 8U,  /**< Bits per octet for LE spreads.         */
 } app_size_t;
+
+static_assert(((uint32_t)k_app_bank_addr % (uint32_t)k_app_mram_block_bytes) == 0U,
+              "A/B inactive bank must be 32-byte Code-MRAM block aligned");
+static_assert(((uint32_t)k_app_bootsel_addr % (uint32_t)k_app_mram_block_bytes) == 0U,
+              "Boot-select record must be 32-byte Code-MRAM block aligned");
+static_assert((uint32_t)k_app_bank_addr >= (uint32_t)k_ra8_flash_code_start,
+              "A/B bank address below Code-MRAM base");
+static_assert(((uint32_t)k_app_bootsel_addr + (uint32_t)k_app_mram_block_bytes) <=
+                ((uint32_t)k_ra8_flash_code_start + (uint32_t)k_ra8_flash_code_size),
+              "Boot-select record exceeds 1 MiB Code-MRAM window");
+static_assert((uint32_t)k_app_bootsel_addr >=
+                ((uint32_t)k_app_bank_addr + (uint32_t)k_app_bank_size_bytes),
+              "Boot-select record must not overlap the inactive A/B bank");
 
 /**
  * @enum app_flash_freq_t
@@ -449,17 +461,18 @@ static ra8_err_t app_ecdsa_verify(void*          ctx,
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTA flash interface (real extra-MRAM driver) */
+/* OTA flash interface (real Code-MRAM block driver) */
 /* -------------------------------------------------------------------------- */
 
 /**
  * @brief Erase the inactive bank region (OTA ``flash.erase``).
  *
  * @details Walks ``len`` bytes from ``addr`` one ``k_app_mram_block_bytes`` block
- * at a time through ``ra8_flash_extra_mram_erase`` (each block back to 0xFF).
+ * at a time through ``ra8_flash_erase_block`` over the Secure program gate
+ * ``k_ra8_flash_world_s`` (``MRCPC1``, writing all-ones per HUM Ch 59.4.2).
  *
  * @param[in] ctx  Unused opaque context.
- * @param[in] addr Region base; 32-byte aligned.
+ * @param[in] addr Region base; 32-byte aligned inside Code-MRAM.
  * @param[in] len  Byte count; multiple of ``k_app_mram_block_bytes``.
  * @return ra8_err_t outcome.
  * @retval k_ra8_ok The whole region is erased.
@@ -475,7 +488,7 @@ static ra8_err_t app_flash_erase(void* ctx, uint32_t addr, uint32_t len)
 {
   (void)ctx;
   for (uint32_t off = 0U; off < len; off += (uint32_t)k_app_mram_block_bytes) {
-    const ra8_err_t e = ra8_flash_extra_mram_erase(addr + off);
+    const ra8_err_t e = ra8_flash_erase_block(addr + off, k_ra8_flash_world_s);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -487,11 +500,12 @@ static ra8_err_t app_flash_erase(void* ctx, uint32_t addr, uint32_t len)
  * @brief Program bytes into the inactive bank (OTA ``flash.program``).
  *
  * @details Splits ``len`` into <= ``k_app_mram_block_bytes`` chunks, each a
- * single ``ra8_flash_extra_mram_write`` (the MACI Program command ra8_emulator
- * models). Callers stage 32-aligned offsets, so no write crosses a page.
+ * single ``ra8_flash_write_block`` over ``k_ra8_flash_world_s`` (``MRCPC1``,
+ * HUM Ch 59.4.2 Figure 59.4). Callers stage 32-aligned offsets, so no write
+ * crosses a page.
  *
  * @param[in] ctx  Unused opaque context.
- * @param[in] addr Destination base; 32-byte aligned.
+ * @param[in] addr Destination base; 32-byte aligned inside Code-MRAM.
  * @param[in] src  Source bytes; non-NULL.
  * @param[in] len  Byte count.
  * @return ra8_err_t outcome.
@@ -499,7 +513,7 @@ static ra8_err_t app_flash_erase(void* ctx, uint32_t addr, uint32_t len)
  * @retval k_ra8_err_null_ptr @p src was NULL.
  * @retval other             The first failing block write's code.
  * @pre @p addr is 32-byte aligned and @p src is non-NULL.
- * @pre ``[addr, addr+len)`` lies inside the extra-MRAM window.
+ * @pre ``[addr, addr+len)`` lies inside the configured Code-MRAM window.
  * @post On success the region holds @p src.
  * @post On failure the region is left partially programmed.
  * @note Not thread-safe; single OTA owner.
@@ -513,7 +527,7 @@ static ra8_err_t app_flash_program(void* ctx, uint32_t addr, const uint8_t* src,
     const uint32_t remaining = len - off;
     const uint32_t n =
       (remaining < (uint32_t)k_app_mram_block_bytes) ? remaining : (uint32_t)k_app_mram_block_bytes;
-    const ra8_err_t e = ra8_flash_extra_mram_write(addr + off, &src[off], n);
+    const ra8_err_t e = ra8_flash_write_block(addr + off, &src[off], n, k_ra8_flash_world_s);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -524,17 +538,18 @@ static ra8_err_t app_flash_program(void* ctx, uint32_t addr, const uint8_t* src,
 /**
  * @brief Read the inactive bank back for re-hash (OTA ``flash.readback``).
  *
- * @details Extra-MRAM is directly readable once programmed, so this is a plain
- * copy from the mapped data-flash address -- the same access a bench build makes.
+ * @details Code-MRAM is directly memory-mapped once programmed, so this is a
+ * plain copy from the mapped Code-MRAM address -- the same access a bench
+ * build makes.
  *
  * @param[in]  ctx Unused opaque context.
- * @param[in]  addr Source address in the extra-MRAM window.
+ * @param[in]  addr Source address in the upper Code-MRAM staging region.
  * @param[out] dst Destination buffer; non-NULL.
  * @param[in]  len Byte count.
  * @return ra8_err_t outcome.
  * @retval k_ra8_ok           Bytes copied.
  * @retval k_ra8_err_null_ptr @p dst was NULL.
- * @pre @p dst is non-NULL and @p addr is inside the extra-MRAM window.
+ * @pre @p dst is non-NULL and @p addr is inside the configured Code-MRAM region.
  * @pre ``[addr, addr+len)`` was programmed (no blank cells).
  * @post ``dst[0..len)`` mirrors the bank contents.
  * @post No MRAM state changes.
@@ -553,9 +568,10 @@ static ra8_err_t app_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint
  * @brief Persist the A/B boot-select record for @p bank.
  *
  * @details Erases the boot-select block and programs a 32-byte record
- * ``[magic:4][bank:1][seq:4]`` into extra-MRAM through the real driver. Standing
- * in for the BTFLG boot-area swap (HUM Ch 7.2 "BTFLG Boot-Area Swap" p 282), but
- * on brick-safe data-flash: a demo never touches the option-setting anchors.
+ * ``[magic:4][bank:1][seq:4]`` into upper Code-MRAM through
+ * ``ra8_flash_write_block``. Standing in for the BTFLG boot-area swap
+ * (HUM Ch 7.2 "BTFLG Boot-Area Swap" p 282), without touching option-setting
+ * anchors or OTP fuses.
  *
  * @param[in] bank Slot to record as the next boot bank.
  * @return ra8_err_t outcome.
@@ -581,11 +597,14 @@ static ra8_err_t app_write_bootsel(uint8_t bank)
     rec[(uint8_t)k_app_rec_off_seq + i] =
       (uint8_t)(s_bootsel_seq >> ((uint32_t)i * (uint32_t)k_app_octet_bits));
   }
-  const ra8_err_t e = ra8_flash_extra_mram_erase((uint32_t)k_app_bootsel_addr);
+  const ra8_err_t e = ra8_flash_erase_block((uint32_t)k_app_bootsel_addr, k_ra8_flash_world_s);
   if (e != k_ra8_ok) {
     return e;
   }
-  return ra8_flash_extra_mram_write((uint32_t)k_app_bootsel_addr, rec, (uint32_t)sizeof rec);
+  return ra8_flash_write_block((uint32_t)k_app_bootsel_addr,
+                               rec,
+                               (uint32_t)sizeof rec,
+                               k_ra8_flash_world_s);
 }
 
 /**
@@ -862,7 +881,8 @@ static ra8_err_t app_stage_images(void)
  * @retval other   The first failing bring-up step's code.
  * @pre SystemInit configured VTOR / FPU.
  * @pre Runs single-threaded during early boot.
- * @post On success the console prints and extra-MRAM programs.
+ * @post On success the console prints and upper Code-MRAM programs inside
+ * the configured access window.
  * @post On failure the caller halts.
  * @note Not thread-safe; boot-context only.
  * @since 0.1.0
@@ -882,7 +902,12 @@ static ra8_err_t app_setup(void)
     .ecc_encoder_enable = true,
     .ecc_decoder_enable = true,
   };
-  return ra8_flash_init(&fcfg);
+  const ra8_err_t init_err = ra8_flash_init(&fcfg);
+  if (init_err != k_ra8_ok) {
+    return init_err;
+  }
+  return ra8_flash_set_window((uintptr_t)k_app_bank_addr,
+                              (uintptr_t)k_app_bootsel_addr + (uintptr_t)k_app_mram_block_bytes);
 }
 
 /**
@@ -917,7 +942,7 @@ static void app_print_banner(bool staged, bool committed, bool rolled_back)
  *
  * @pre Reset_Handler initialised the C runtime; SystemInit ran.
  * @pre The EK-RA8D2 J-Link OB VCOM console is attached for the banner.
- * @post The commit + rollback attempts have executed against extra-MRAM.
+ * @post The commit + rollback attempts have executed against upper Code-MRAM.
  * @post The verdict banner is emitted once per report cycle.
  * @note Single entry point; not re-entrant.
  * @since 0.1.0

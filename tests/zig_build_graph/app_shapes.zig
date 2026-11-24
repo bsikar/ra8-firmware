@@ -754,6 +754,11 @@ pub const uncovered = [_]Uncovered{
         },
         .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. RA8FW-309 traded its 361-line linker_script.ld fork for three keywords at once; a later Zig port then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
     },
+    .{
+        .representative = "ota_ab_orchestration",
+        .shape = .{ .sram_text = true },
+        .note = "1 declaration: ota_ab_orchestration stages and commits over upper Code-MRAM, running ra8_flash.c from SRAM via SRAM_TEXT per HUM Ch 59.4.2",
+    },
 };
 
 pub fn uncoveredFor(shape: Shape) ?Uncovered {
