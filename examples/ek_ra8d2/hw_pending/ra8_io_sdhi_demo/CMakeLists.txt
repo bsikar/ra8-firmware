@@ -39,3 +39,25 @@ ra8_add_app(
        ra8_usb_pal
        ra8_board_ek_ra8d2
 )
+
+if(NOT RA8_ZIG_EXECUTABLE)
+  message(FATAL_ERROR "ra8_io_sdhi_demo requires zig on PATH to compile src/sdhi_demo.zig")
+endif()
+
+_ra8_zig_target_for_toolchain(_sdhi_zig_target _sdhi_zig_cpu)
+set(_sdhi_zig_src "${CMAKE_CURRENT_SOURCE_DIR}/src/sdhi_demo.zig")
+set(_sdhi_zig_obj "${CMAKE_CURRENT_BINARY_DIR}/zig/sdhi_demo.o")
+add_custom_command(
+  OUTPUT "${_sdhi_zig_obj}"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/zig"
+  COMMAND
+    ${CMAKE_COMMAND} -E env "${RA8_ZIG_EXECUTABLE}" build-obj -target ${_sdhi_zig_target}
+    -mcpu ${_sdhi_zig_cpu} -O ${RA8_ZIG_OPTIMIZE} -fno-unwind-tables -fno-compiler-rt
+    "${_sdhi_zig_src}" --cache-dir "${CMAKE_CURRENT_BINARY_DIR}/zig/.cache"
+    "-femit-bin=${_sdhi_zig_obj}"
+  DEPENDS "${_sdhi_zig_src}"
+  COMMENT "Building Zig module sdhi_demo.zig for ${_sdhi_zig_target} ${_sdhi_zig_cpu}"
+  VERBATIM
+)
+set_source_files_properties("${_sdhi_zig_obj}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+target_sources(ra8_io_sdhi_demo.elf PRIVATE "${_sdhi_zig_obj}")

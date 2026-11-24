@@ -16,13 +16,15 @@
  *
  *   1. Route the six SDHI1_B pins (port 4, pins 0..5) via `ra8_board_sdhi_pins_init`.
  *   2. `ra8_sdcard_init({.instance = 1})` -- full SD identification + clock step-up.
- *   3. `ra8_io_blockdev_sdhi_init` -- native-SDHI block-device vtable over the card.
- *   4. `ra8_io_blockdev_as_fs_backend` -- bridge the block device to `ra8_fs`.
- *   5. `ra8_fs_format` (FAT16) + `ra8_fs_mount`, then `ra8_io_vfs_mount("sd", ...)`.
- *   6. `ra8_io_vfs_mkdir("sd:/LOGS")` -- exercises the VFS mkdir path.
- *   7. `ra8_io_vfs_open("sd:/LOGS/A.TXT", write)` + `ra8_fs_write` -- write payload.
- *   8. `ra8_io_vfs_open("sd:/LOGS/A.TXT", read)` + `ra8_fs_read` -- read it back.
- *   9. byte-compare the read-back against the deterministic payload.
+ *   3. `sdhi_demo_run()` (implemented in `sdhi_demo.zig`):
+ *      - `ra8_io_blockdev_sdhi_init` -- native-SDHI block-device vtable over the card.
+ *      - `ra8_io_blockdev_as_fs_backend` -- bridge the block device to `ra8_fs`.
+ *      - `ra8_fs_mount` (formatting FAT16 only when blank), then `ra8_io_vfs_mount("sd", ...)`.
+ *      - `ra8_io_vfs_listdir("sd:/", ...)` -- print one line per root entry (name and size).
+ *      - `ra8_io_vfs_mkdir("sd:/LOGS")` -- ensure the target directory exists.
+ *      - `ra8_io_vfs_open("sd:/LOGS/A.TXT", write)` + `ra8_fs_write` -- write payload.
+ *      - `ra8_io_vfs_open("sd:/LOGS/A.TXT", read)` + `ra8_fs_read` -- read it back.
+ *      - byte-compare the read-back against the deterministic payload.
  *
  * On a clean round-trip it prints exactly
  * `ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS`; any failed step prints
@@ -30,8 +32,9 @@
  * smoke gate scrape for that PASS line.
  *
  * Required external hardware (on-bench): a microSD card in the on-board SDHI
- * slot. THIS APP ERASES THE CARD. Under ra8_emulator attach a blank card with
- * `--sd-new 64:fat16`; the native-SDHI host-controller model serves it.
+ * slot. Existing FAT cards are mounted in place without reformatting; blank
+ * cards are formatted FAT16 (`RAIOSD`). Under ra8_emulator attach a blank card
+ * with `--sd-new 64:fat16` or a fixture folder with `--sd-dir DIR`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,21 +42,16 @@
  */
 
 #include <stdint.h>
-#include <string.h>
 
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
-#include "fw_if_clock.h"
-#include "ra8_check.h"
 #include "ra8_err.h"
-#include "ra8_fs.h"
-#include "ra8_io.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
 #include "ra8_sdcard.h"
-#include "ra8_sdhi.h"
 #include "ra8_time.h"
 
 /* =============================================================================
@@ -66,14 +64,8 @@
  * @brief Compile-time settings for the ra8_io native-SDHI backend demo.
  */
 typedef enum : uint32_t {
-  k_sdhi_demo_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.            */
-  k_sdhi_demo_instance        = 1U,           /**< SDHI1_B drives the micro-SD bus.       */
-  k_sdhi_demo_payload_bytes   = 512U,         /**< One-sector deterministic test payload. */
-  k_sdhi_demo_prng_seed       = 0xA5F00DadUL, /**< Deterministic payload seed.            */
-  k_sdhi_demo_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier.      */
-  k_sdhi_demo_prng_add        = 1013904223UL, /**< Numerical Recipes LCG increment.       */
-  k_sdhi_demo_prng_byte_shift = 16U,          /**< Bit shift selecting the PRNG byte.     */
-  k_sdhi_demo_byte_mask       = 0xFFU,        /**< Low-byte mask.                         */
+  k_sdhi_demo_uart_baud = 115200U, /**< J-Link OB CDC console baud.      */
+  k_sdhi_demo_instance  = 1U,      /**< SDHI1_B drives the micro-SD bus. */
 } sdhi_demo_config_t;
 
 /* =============================================================================
@@ -86,14 +78,6 @@ static const uint8_t k_msg_card_ok[]   = "ra8_io_sdhi_demo: card ready\r\n";
 static const uint8_t k_msg_init_fail[] = "ra8_io_sdhi_demo: FAIL init\r\n";
 static const uint8_t k_msg_pass[]      = "ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS\r\n";
 static const uint8_t k_msg_fail[]      = "ra8_io_sdhi_demo: FAIL\r\n";
-
-/** @brief VFS mount name and target path for the round-trip file. */
-static const char k_mount_name[] = "sd";
-static const char k_dir_path[]   = "sd:/LOGS";
-static const char k_file_path[]  = "sd:/LOGS/A.TXT";
-
-/** @brief Module log tag. */
-static const char* const s_tag = "ra8_io_sdhi_demo";
 
 /* =============================================================================
  * UART output helpers
@@ -225,185 +209,17 @@ static void sdhi_demo_init_card_or_halt(void)
 }
 
 /* =============================================================================
- * Payload + ra8_io round-trip
+ * Zig storage + VFS round-trip (src/sdhi_demo.zig)
  * =============================================================================
  */
 
-/** @brief Static payload + read-back buffers (no heap; NASA Rule 3). */
-static uint8_t s_payload[k_sdhi_demo_payload_bytes];
-static uint8_t s_readback[k_sdhi_demo_payload_bytes];
-
-/** @brief ra8_io block device + ra8_fs backend bridged onto the SD card. */
-static ra8_io_blockdev_t s_bd;
-static ra8_fs_backend_t  s_be;
-
 /**
- * @brief Fill the payload buffer with a deterministic LCG byte sequence.
+ * @brief Mount (formatting FAT16 only when blank), list `sd:/`, and round-trip
+ *        `sd:/LOGS/A.TXT` via `ra8_io`.
  *
- * @details Runs a Numerical-Recipes LCG over `s_payload`, selecting one byte per
- *          step, so the written content is reproducible and the read-back compare
- *          is a strong end-to-end check of the whole stack.
- *
- * @return Nothing.
- *
- * @pre `s_payload` is allocated (file-scope, always true).
- * @pre The LCG constants are non-zero.
- * @post `s_payload` holds a reproducible byte pattern.
- * @post No other state is modified.
- *
- * @note Not thread-safe; mutates the shared payload buffer.
- * @since 0.1.0
+ * @return ra8_err_t Error code (`k_ra8_ok` on success).
  */
-static void sdhi_demo_fill_payload(void)
-{
-  uint32_t state = (uint32_t)k_sdhi_demo_prng_seed;
-  for (uint32_t i = 0U; i < (uint32_t)k_sdhi_demo_payload_bytes; i++) {
-    state        = (state * (uint32_t)k_sdhi_demo_prng_mul) + (uint32_t)k_sdhi_demo_prng_add;
-    s_payload[i] = (uint8_t)((state >> k_sdhi_demo_prng_byte_shift) & k_sdhi_demo_byte_mask);
-  }
-}
-
-/**
- * @brief Bind the native-SDHI block device, bridge it to ra8_fs, format + mount
- *        FAT16, and register it in the VFS under `"sd"`.
- *
- * @details This is the "swappable backend" core: the only difference from
- *          `ra8_io_sd_demo` is that the block device here is the native-SDHI
- *          backend rather than the SD-over-SPI backend. Everything above
- *          (`ra8_fs` + VFS) is the identical API. The mount produced by
- *          `ra8_fs_mount` is handed to the VFS, which keeps the pointer, so the
- *          local is intentionally not returned.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok    Backend bound, FAT16 formatted + mounted + VFS-registered.
- * @retval k_ra8_err_* The first failing fabric step's code.
- *
- * @pre The SD card is initialised (`ra8_sdcard_init` succeeded).
- * @pre The VFS mount table has a free slot named distinctly from `"sd"`.
- * @post On success `"sd:/..."` paths resolve to the SD volume.
- * @post On any non-ok return the partial state is abandoned (caller halts).
- *
- * @note Not thread-safe; single-threaded init path only.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t sdhi_demo_mount_via_io(void)
-{
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_init(), s_tag, "vfs init");
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_sdhi_init(&s_bd), s_tag, "sdhi bind");
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(&s_bd, &s_be), s_tag, "fs bridge");
-  ra8_fs_format_opts_t opts = {};
-  opts.type                 = k_ra8_fs_type_fat16;
-  opts.label                = "RAIOSD";
-  RA8_RETURN_ON_ERROR(ra8_fs_format(&s_be, &opts), s_tag, "format");
-  ra8_fs_mount_t* mnt = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_fs_mount(&s_be, &mnt), s_tag, "mount");
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_mount(k_mount_name, mnt), s_tag, "vfs mount");
-  return k_ra8_ok;
-}
-
-/**
- * @brief Write `s_payload` to the VFS path through `ra8_io_vfs_open` + `ra8_fs_write`.
- *
- * @details Opens the file for writing via the named VFS path, streams the full
- *          payload, and closes it. The whole-file content is the deterministic
- *          LCG pattern, so a later read-back compare validates the path.
- *
- * @param[in] path `"sd:/..."` VFS file path to create.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok    Payload written and the file closed.
- * @retval k_ra8_err_* ra8_io open / write / close failure.
- *
- * @pre The `"sd"` volume is mounted and `s_payload` is filled.
- * @pre @p path is a valid `"name:/path"` string.
- * @post On success @p path holds `s_payload`.
- * @post The file handle is released on every path.
- *
- * @note Not thread-safe; mutates the shared SD volume.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t sdhi_demo_write_payload(const char* path)
-{
-  ra8_fs_file_t* wf = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_open(path, k_ra8_fs_mode_write, &wf), s_tag, "open w");
-  ra8_err_t err = ra8_fs_write(wf, s_payload, (uint32_t)k_sdhi_demo_payload_bytes);
-  if (err != k_ra8_ok) {
-    (void)ra8_fs_close(wf);
-    return err;
-  }
-  return ra8_fs_close(wf);
-}
-
-/**
- * @brief Read the VFS file back and byte-compare against `s_payload`.
- *
- * @details Opens the file for reading via the named VFS path, reads up to the
- *          payload length, closes it, then verifies both the returned length and
- *          the full byte content match the written payload.
- *
- * @param[in] path `"sd:/..."` VFS file path to read.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok                    Read-back length and content both matched.
- * @retval k_ra8_err_invalid_size      The returned length differed.
- * @retval k_ra8_err_checksum_mismatch The byte content differed.
- * @retval k_ra8_err_*                 ra8_io open / read / close failure.
- *
- * @pre The `"sd"` volume is mounted and @p path was written with `s_payload`.
- * @pre @p path is a valid `"name:/path"` string.
- * @post `s_readback` holds the bytes read from @p path.
- * @post The file handle is released on every path.
- *
- * @note Not thread-safe; mutates the shared read-back buffer.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t sdhi_demo_read_and_verify(const char* path)
-{
-  ra8_fs_file_t* rf = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_open(path, k_ra8_fs_mode_read, &rf), s_tag, "open r");
-  memset(s_readback, 0, sizeof(s_readback));
-  uint32_t  got = 0U;
-  ra8_err_t err = ra8_fs_read(rf, s_readback, (uint32_t)k_sdhi_demo_payload_bytes, &got);
-  (void)ra8_fs_close(rf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (got != (uint32_t)k_sdhi_demo_payload_bytes) {
-    return k_ra8_err_invalid_size;
-  }
-  if (memcmp(s_payload, s_readback, (size_t)k_sdhi_demo_payload_bytes) != 0) {
-    return k_ra8_err_checksum_mismatch;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Run the full ra8_io round-trip: mount, mkdir, write, read-back, verify.
- *
- * @details Composes the helpers in order so the success path is a single line
- *          per step and the first failing step short-circuits with its code. The
- *          VFS mkdir exercises the new directory-creation path on the SD volume.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok    Mount + mkdir + write + read-back + verify all passed.
- * @retval k_ra8_err_* The first failing step's code.
- *
- * @pre The SD card is initialised and `s_payload` is filled.
- * @pre The VFS mount table is empty or has a free slot.
- * @post On success the SD card holds the verified file under `sd:/LOGS`.
- * @post On any non-ok return the partial state is abandoned (caller halts).
- *
- * @note Not thread-safe; single-threaded round-trip.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t sdhi_demo_roundtrip(void)
-{
-  RA8_RETURN_ON_ERROR(sdhi_demo_mount_via_io(), s_tag, "mount via io");
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_mkdir(k_dir_path), s_tag, "mkdir");
-  RA8_RETURN_ON_ERROR(sdhi_demo_write_payload(k_file_path), s_tag, "write payload");
-  RA8_RETURN_ON_ERROR(sdhi_demo_read_and_verify(k_file_path), s_tag, "read verify");
-  return k_ra8_ok;
-}
+[[nodiscard]] extern ra8_err_t sdhi_demo_run(void);
 
 /* =============================================================================
  * Main
@@ -414,10 +230,11 @@ static void sdhi_demo_fill_payload(void)
  * @brief App entry: bring up the bus + card, run the ra8_io round-trip, print PASS.
  *
  * @details Brings up the clocks, console, and SDHI bus pins, runs the native SD
- *          card identification, fills the payload, then runs the full `ra8_io` VFS
- *          round-trip over the native-SDHI block device. On success it prints the
- *          exact PASS banner the HIL runner and ra8_emulator smoke gate scrape for;
- *          on any failure it prints `FAIL` and parks the core.
+ *          card identification, then calls `sdhi_demo_run()` (implemented in
+ *          `sdhi_demo.zig`) to mount or format, list root entries, and verify the
+ *          `sd:/LOGS/A.TXT` round-trip. On success it prints the exact PASS
+ *          banner the HIL runner and ra8_emulator smoke gate scrape for; on any
+ *          failure it prints `FAIL` and parks the core.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
@@ -435,9 +252,8 @@ void main(void)
   SDHI_DEMO_PUTS(k_msg_boot);
 
   sdhi_demo_init_card_or_halt();
-  sdhi_demo_fill_payload();
 
-  const ra8_err_t r = sdhi_demo_roundtrip();
+  const ra8_err_t r = sdhi_demo_run();
   if (r != k_ra8_ok) {
     SDHI_DEMO_PUTS(k_msg_fail);
     sdhi_demo_panic_halt();
