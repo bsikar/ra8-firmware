@@ -22,13 +22,17 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
-#include "ra8_io_netif.h"
 #include "ra8_net_pal.h"
 #include "ra8_nsc.h"
 #include "ra8_nsc_veneer.h"
 
+#if __has_include("ra8_io_netif.h")
+#include "ra8_io_netif.h"
+#endif
+
 static const char* const s_tag = "NSCETH";
 
+#if __has_include("ra8_io_netif.h")
 /**
  * @brief The seam target ``ra8_nsc_eth_bind`` installed, or NULL when the
  *   veneers still fall back to the ``ra8_net_pal`` singleton.
@@ -45,10 +49,10 @@ static const ra8_io_netif_t* s_netif = nullptr;
  * ``ra8_io_netif_bind_net_pal``/``ra8_io_netif_bind_c6link``, both in the
  * same archive that defines these two functions.
  */
-/* ra8_io_netif.h (line 25) already declares both functions; these externs
- * restate them with __attribute__((weak)) so unbound veneers resolve to NULL
- * at link time. The redeclaration is deliberate, so the redundant-decls
- * warning is suppressed for exactly these two declarations. */
+/* ra8_io_netif.h already declares both functions; these externs restate them
+ * with __attribute__((weak)) so unbound veneers resolve to NULL at link time.
+ * The redeclaration is deliberate, so the redundant-decls warning is
+ * suppressed for exactly these two declarations. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wredundant-decls"
 extern ra8_err_t ra8_io_netif_send(const ra8_io_netif_t* netif,
@@ -91,6 +95,7 @@ extern ra8_err_t ra8_io_netif_poll(const ra8_io_netif_t* netif,
   s_netif = netif;
   return k_ra8_ok;
 }
+#endif /* __has_include("ra8_io_netif.h") */
 
 /**
  * @brief NSC veneer: transmit an Ethernet frame from Non-Secure code.
@@ -122,9 +127,11 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_eth_send(const uint8_t* ns_frame, uint16_t len)
     return k_ra8_err_invalid_arg;
   }
   RA8_NSC_CHECK_NS_RANGE_R(ns_frame, len);
+#if __has_include("ra8_io_netif.h")
   if (s_netif != nullptr) {
     return ra8_io_netif_send(s_netif, ns_frame, len);
   }
+#endif
   return ra8_net_pal_send_frame(ns_frame, len);
 }
 
@@ -164,8 +171,10 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len)
     return k_ra8_err_invalid_arg;
   }
   RA8_NSC_CHECK_NS_RANGE_RW(ns_buf, *inout_len);
+#if __has_include("ra8_io_netif.h")
   if (s_netif != nullptr) {
     return ra8_io_netif_poll(s_netif, ns_buf, inout_len);
   }
+#endif
   return ra8_net_pal_recv_frame(ns_buf, inout_len);
 }

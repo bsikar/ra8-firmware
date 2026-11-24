@@ -65,8 +65,11 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_io_netif.h"
 #include "ra8_nsc_veneer.h"
+
+#if __has_include("ra8_io_netif.h")
+#include "ra8_io_netif.h"
+#endif
 
 /* =============================================================================
  * XSPI (external octa-SPI flash) veneers
@@ -199,6 +202,7 @@ extern "C" {
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len);
 
+#if __has_include("ra8_io_netif.h")
 /**
  * @brief Secure-side wiring: point the ethernet veneers at the
  *   ``ra8_io_netif`` seam.
@@ -220,6 +224,7 @@ extern "C" {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_nsc_eth_bind(const ra8_io_netif_t* netif);
+#endif /* __has_include("ra8_io_netif.h") */
 
 /* =============================================================================
  * Logging veneer
