@@ -162,26 +162,26 @@ const AtlasCfg = extern struct {
 // Extern seam: the vendored stb_truetype and the cross-library entry points.
 // ---------------------------------------------------------------------------
 
-extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) c_int;
-extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) c_int;
-extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) f32;
-extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) void;
-extern fn stbtt_GetFontVMetrics(info: *const StbttFontinfo, ascent: *c_int, descent: *c_int, line_gap: *c_int) void;
-extern fn stbtt_GetCodepointBitmapBox(info: *const StbttFontinfo, codepoint: c_int, scale_x: f32, scale_y: f32, ix0: *c_int, iy0: *c_int, ix1: *c_int, iy1: *c_int) void;
-extern fn stbtt_MakeCodepointBitmap(info: *const StbttFontinfo, output: [*]u8, out_w: c_int, out_h: c_int, out_stride: c_int, scale_x: f32, scale_y: f32, codepoint: c_int) void;
+extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) callconv(.c) c_int;
+extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) callconv(.c) c_int;
+extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) callconv(.c) f32;
+extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
+extern fn stbtt_GetFontVMetrics(info: *const StbttFontinfo, ascent: *c_int, descent: *c_int, line_gap: *c_int) callconv(.c) void;
+extern fn stbtt_GetCodepointBitmapBox(info: *const StbttFontinfo, codepoint: c_int, scale_x: f32, scale_y: f32, ix0: *c_int, iy0: *c_int, ix1: *c_int, iy1: *c_int) callconv(.c) void;
+extern fn stbtt_MakeCodepointBitmap(info: *const StbttFontinfo, output: [*]u8, out_w: c_int, out_h: c_int, out_stride: c_int, scale_x: f32, scale_y: f32, codepoint: c_int) callconv(.c) void;
 
-extern fn ra8_gfx_pixel(x: c_int, y: c_int, color: u32) c_int;
-extern fn ra8_glyph_atlas_init(atlas: *anyopaque, cfg: *const AtlasCfg) c_int;
-extern fn ra8_glyph_atlas_get(atlas: *anyopaque, key: *const GlyphKey, out_glyph: *GlyphView) c_int;
-extern fn ra8_glyph_atlas_put(atlas: *anyopaque, bitmap: [*]const u8) c_int;
-extern fn ra8_svg_is_svg(bytes: [*]const u8, len: usize) bool;
-extern fn ra8_svg_image_href(svg: [*]const u8, len: usize, out_off: *usize, out_len: *usize) c_int;
-extern fn ra8_svg_render(svg: [*]const u8, len: usize, x: c_int, y: c_int, w: c_int, h: c_int) c_int;
-extern fn ra8_img_decode_blit(arena: *anyopaque, bytes: [*]const u8, len: usize, dst_x: c_int, dst_y: c_int, box_w: c_int, box_h: c_int, out_w: ?*i32, out_h: ?*i32) c_int;
+extern fn ra8_gfx_pixel(x: c_int, y: c_int, color: u32) callconv(.c) c_int;
+extern fn ra8_glyph_atlas_init(atlas: *anyopaque, cfg: *const AtlasCfg) callconv(.c) c_int;
+extern fn ra8_glyph_atlas_get(atlas: *anyopaque, key: *const GlyphKey, out_glyph: *GlyphView) callconv(.c) c_int;
+extern fn ra8_glyph_atlas_put(atlas: *anyopaque, bitmap: [*]const u8) callconv(.c) c_int;
+extern fn ra8_svg_is_svg(bytes: [*]const u8, len: usize) callconv(.c) bool;
+extern fn ra8_svg_image_href(svg: [*]const u8, len: usize, out_off: *usize, out_len: *usize) callconv(.c) c_int;
+extern fn ra8_svg_render(svg: [*]const u8, len: usize, x: c_int, y: c_int, w: c_int, h: c_int) callconv(.c) c_int;
+extern fn ra8_img_decode_blit(arena: *anyopaque, bytes: [*]const u8, len: usize, dst_x: c_int, dst_y: c_int, box_w: c_int, box_h: c_int, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int;
 
 /// The face picker, exported by src/reflow_render_face.zig (RA8FW-1221) and
 /// linked by symbol, exactly as the C render linked it before the port.
-extern fn priv_reflow_render_face_for(faces: ?*const anyopaque, face_count: u8, primary: u8, cp: c_int) u8;
+extern fn priv_reflow_render_face_for(faces: ?*const anyopaque, face_count: u8, primary: u8, cp: c_int) callconv(.c) u8;
 
 // ---------------------------------------------------------------------------
 // File-static render state (single-threaded, like the C module).
@@ -391,7 +391,7 @@ fn blitGlyph(atlas: ?*anyopaque, face_id: u8, font: *const StbttFontinfo, g: *co
 
 /// stbtt_FindGlyphIndex, declared at this file's fontinfo type (the picker's
 /// extern uses an opaque view of the same symbol).
-extern fn stbtt_FindGlyphIndex(info: *const StbttFontinfo, unicode_codepoint: c_int) c_int;
+extern fn stbtt_FindGlyphIndex(info: *const StbttFontinfo, unicode_codepoint: c_int) callconv(.c) c_int;
 
 // ---------------------------------------------------------------------------
 // Image boxes.

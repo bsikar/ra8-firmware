@@ -13,8 +13,8 @@
 
 const std = @import("std");
 
-extern fn priv_reflow_render_is_blank_cp(cp: c_int) bool;
-extern fn stbtt_FindGlyphIndex(info: *const anyopaque, unicode_codepoint: c_int) c_int;
+extern fn priv_reflow_render_is_blank_cp(cp: c_int) callconv(.c) bool;
+extern fn stbtt_FindGlyphIndex(info: *const anyopaque, unicode_codepoint: c_int) callconv(.c) c_int;
 
 /// Mirror of the vendored stbtt__buf (stb_truetype.h).
 pub const StbttBuf = extern struct {

@@ -54,8 +54,8 @@ const k_ra8_err_not_supported: c_int = 0x107;
 const k_ra8_err_not_initialized: c_int = 0x10F;
 const k_ra8_err_null_ptr: c_int = 0x504;
 
-extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) c_int;
-extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) c_int;
+extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) callconv(.c) c_int;
+extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) callconv(.c) c_int;
 extern fn ra8_stbtt_sfnt_dir_in_bounds(data: [*]const u8, len: usize, fontstart: u32) callconv(.c) bool;
 
 /// Stack storage for one `stbtt_fontinfo`: the mirror from
@@ -159,7 +159,8 @@ pub fn reflow_run_layout(engine: ?*ReflowEngine) callconv(.c) c_int {
     return k_ra8_ok;
 }
 
-pub fn reflow_init(viewport_w: u16,
+pub fn reflow_init(
+    viewport_w: u16,
     viewport_h: u16,
     font_data: ?[*]const u8,
     font_len: usize,
@@ -212,7 +213,8 @@ pub fn reflow_close(engine: ?*ReflowEngine) callconv(.c) c_int {
     return k_ra8_ok;
 }
 
-pub export fn reflow_set_image_loader(engine: ?*ReflowEngine,
+pub export fn reflow_set_image_loader(
+    engine: ?*ReflowEngine,
     loader: ?ReflowLoaderFn,
     ctx: ?*anyopaque,
     arena: ?*anyopaque,
@@ -241,7 +243,8 @@ pub export fn reflow_set_css_loader(engine: ?*ReflowEngine, loader: ?ReflowLoade
     return k_ra8_ok;
 }
 
-pub fn reflow_layout_chapter(engine: ?*ReflowEngine,
+pub fn reflow_layout_chapter(
+    engine: ?*ReflowEngine,
     xhtml_buf: ?[*]const u8,
     xhtml_len: usize,
     out_total_pages: ?*u32,
@@ -350,7 +353,8 @@ pub export fn reflow_bind_font(engine: ?*ReflowEngine, font_data: ?[*]const u8, 
 }
 
 /// Implementation of `reflow_register_face()` -- validate then append.
-pub export fn reflow_register_face(engine: ?*ReflowEngine,
+pub export fn reflow_register_face(
+    engine: ?*ReflowEngine,
     css_face_idx: u8,
     blob: ?[*]const u8,
     len: usize,
