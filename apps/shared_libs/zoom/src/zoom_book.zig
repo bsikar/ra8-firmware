@@ -52,7 +52,9 @@ comptime {
     if (@sizeOf(BookImage) != 24) {
         @compileError("BookImage layout parity with book_image_t broken (k_book_sizeof_image == 24)");
     }
-    if (@sizeOf(BookSrc) != 8 + 24) {
+    if (@offsetOf(BookSrc, "img") != @sizeOf(?*const anyopaque) or
+        @sizeOf(BookSrc) != @sizeOf(?*const anyopaque) + @sizeOf(BookImage))
+    {
         @compileError("BookSrc layout parity with zoom_book_src_t broken");
     }
 }
