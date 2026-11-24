@@ -46,14 +46,14 @@ build_one() {
     # under build/bin/ beside the CMake-era build/ layout it replaced.
     if ! (cd "$dir" && zig build --prefix build); then
       echo "tools/$name failed to build." >&2
-      echo "Run 'just setup' and enter 'just dev_shell' for the pinned Zig toolchain." >&2
+      echo "Run 'just setup' and ensure the pinned Zig toolchain is on PATH (see docs/TOOLCHAIN.md)." >&2
       return 1
     fi
     return 0
   fi
   if ! "$SCRIPT_DIR/host_cmake.sh" "${mode[@]}" "$dir" "$dir/build"; then
     echo "tools/$name failed to build." >&2
-    echo "Run 'just setup' and enter 'just dev_shell' for the pinned compiler/toolchain." >&2
+    echo "Run 'just setup' and ensure a C23 host compiler/toolchain is on PATH (see docs/TOOLCHAIN.md)." >&2
     return 1
   fi
 }

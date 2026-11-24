@@ -30,7 +30,7 @@ default:
     @echo "  just zig::test_c            Run the unmodified C suites only"
     @echo "  just zig::test_zig          Run the Zig-native suites only"
     @echo "  just zig::test_soup         Run the vendored xz-embedded suite"
-    @echo "  just zig::arm               Cross-build one example app for the RA8D2"
+    @echo "  just zig::arm               Cross-build every app in app_table.zig"
     @echo "  just zig::compile_commands  Emit the graph's compile_commands.json"
     @echo "  just zig::analysis          Prove every compile command still compiles"
     @echo "  just zig::shapes            Check the app-shape ledger against the tree"
@@ -84,7 +84,7 @@ test_zig: _zig
 test_soup: _zig
     "${RA8_ZIG}" build test-soup
 
-# Cross-build one example application for the RA8D2 target
+# Cross-build every example application in tests/zig_build_graph/app_table.zig
 arm: _zig
     "${RA8_ZIG}" build arm
 
