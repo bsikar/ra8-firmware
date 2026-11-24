@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! SVG `<path>` `d` mini-language parser + Bezier flatten (RA8FW-1236).
 //!
 //! The `d` mini-language: M/L/H/V/Z exact, the cubic 'C'/'S' and quadratic
@@ -9,13 +12,13 @@
 //! priv_ra8_svgp_draw_path keeps C linkage for the still-C SVG doc TU.
 
 const std = @import("std");
-const svg = @import("reflow_svg.zig");
+pub const svg = @import("reflow_svg.zig");
 const xf = @import("reflow_svg_xform.zig");
-const shape = @import("reflow_svg_shape.zig");
+pub const shape = @import("reflow_svg_shape.zig");
 
-const SvgXform = xf.SvgXform;
+pub const SvgXform = xf.SvgXform;
 const SvgPt = shape.SvgPt;
-const SvgGrad = svg.SvgGrad;
+pub const SvgGrad = svg.SvgGrad;
 
 // Path-scope constants mirrored from reflow_svg_internal.h.
 /// Max args of a path command (`A`).
@@ -27,11 +30,11 @@ const k_svg_argc_quad: usize = 4;
 /// Arg count of `C`.
 const k_svg_argc_cube: usize = 6;
 /// Segments per cubic-Bezier flatten.
-const k_svg_curve_seg: usize = 12;
+pub const k_svg_curve_seg: usize = 12;
 
 /// Return the argument count for a lower-cased SVG path command letter, or
 /// -1 when the letter is unrecognised.
-fn internal_cmd_argc(u: u8) i32 {
+pub fn internal_cmd_argc(u: u8) i32 {
     return switch (u) {
         'm', 'l', 't' => @intCast(k_svg_path_ep),
         'h', 'v' => 1,
@@ -45,7 +48,7 @@ fn internal_cmd_argc(u: u8) i32 {
 
 /// Advance the current path point to the endpoint of a line-type command:
 /// 'h' and 'v' update one axis, every other command ends with an (x, y) pair.
-fn internal_path_step(u: u8, rel: bool, args: []const i32, na: i32, cx: *i32, cy: *i32) void {
+pub fn internal_path_step(u: u8, rel: bool, args: []const i32, na: i32, cx: *i32, cy: *i32) void {
     if (u == 'h') {
         cx.* = if (rel) cx.* + args[0] else args[0];
         return;
@@ -61,14 +64,14 @@ fn internal_path_step(u: u8, rel: bool, args: []const i32, na: i32, cx: *i32, cy
 }
 
 /// Evaluate one axis of a cubic Bernstein-Bezier polynomial at parameter tt.
-fn internal_bezier1(tt: f32, c0: f32, c1: f32, c2: f32, c3: f32) f32 {
+pub fn internal_bezier1(tt: f32, c0: f32, c1: f32, c2: f32, c3: f32) f32 {
     const mt = 1.0 - tt;
     return ((mt * mt * mt) * c0) + (3.0 * (mt * mt) * tt * c1) + (3.0 * mt * (tt * tt) * c2) +
         ((tt * tt * tt) * c3);
 }
 
 /// Evaluate one axis of a quadratic Bernstein-Bezier polynomial at parameter tt.
-fn internal_bezier_q1(tt: f32, c0: f32, c1: f32, c2: f32) f32 {
+pub fn internal_bezier_q1(tt: f32, c0: f32, c1: f32, c2: f32) f32 {
     const mt = 1.0 - tt;
     return ((mt * mt) * c0) + (2.0 * mt * tt * c1) + ((tt * tt) * c2);
 }
@@ -207,7 +210,7 @@ fn internal_next_cmd(d: []const u8, i: *usize, last: *u8) u8 {
 /// M/L/H/V/Z exact (absolute + relative, implicit-L repeats after M), curves
 /// and arcs flattened into the vertex array, multiple subpaths merged into one
 /// polygon. 'Z' is silently accepted; the polygon fill closes implicitly.
-fn internal_parse_path(d: []const u8, t: *const SvgXform, xs: []i32, ys: []i32) i32 {
+pub fn internal_parse_path(d: []const u8, t: *const SvgXform, xs: []i32, ys: []i32) i32 {
     var n: i32 = 0;
     var st = PathState{ .cx = 0, .cy = 0, .ctrl = .{ .x = 0, .y = 0 }, .kind = 0 };
     var last: u8 = 0;
@@ -277,260 +280,4 @@ pub export fn priv_ra8_svgp_draw_path(s: [*]const u8, len: usize, t: *const SvgX
     } else {
         shape.priv_ra8_svgp_fill_poly(&xs, &ys, n, fill);
     }
-}
-
-// ===========================================================================
-// Tests (host test harness, RA8FW-1236)
-// ===========================================================================
-
-const testing = std.testing;
-const seam = @import("reflow_render_test_seam.zig");
-
-fn calls() []seam.ShapeCall {
-    return seam.shape_calls[0..seam.shape_call_n];
-}
-
-/// An identity user-to-framebuffer map on a 64x64 box (scale 1, offset 0).
-fn identityXform() SvgXform {
-    return .{
-        .bx = 0,
-        .by = 0,
-        .bw = 64,
-        .bh = 64,
-        .vx = 0,
-        .vy = 0,
-        .vw = 64,
-        .vh = 64,
-        .ua = 1.0,
-        .ub = 0.0,
-        .uc = 0.0,
-        .ud = 1.0,
-        .ue = 0.0,
-        .uf = 0.0,
-        .grads = null,
-    };
-}
-
-fn gradLinear(off0: f32, col0: u32, off1: f32, col1: u32) SvgGrad {
-    var g = SvgGrad{
-        .kind = svg.k_svg_grad_linear,
-        .nstops = 2,
-        .id = @splat(0),
-        .x1 = 0.0,
-        .y1 = 0.0,
-        .x2 = 1.0,
-        .y2 = 0.0,
-        .stops = @splat(.{ .off = 0, .col = 0 }),
-    };
-    g.stops[0] = .{ .off = off0, .col = col0 };
-    g.stops[1] = .{ .off = off1, .col = col1 };
-    return g;
-}
-
-test "cmd argc table" {
-    try testing.expectEqual(@as(i32, 2), internal_cmd_argc('m'));
-    try testing.expectEqual(@as(i32, 2), internal_cmd_argc('l'));
-    try testing.expectEqual(@as(i32, 2), internal_cmd_argc('t'));
-    try testing.expectEqual(@as(i32, 1), internal_cmd_argc('h'));
-    try testing.expectEqual(@as(i32, 1), internal_cmd_argc('v'));
-    try testing.expectEqual(@as(i32, 6), internal_cmd_argc('c'));
-    try testing.expectEqual(@as(i32, 4), internal_cmd_argc('s'));
-    try testing.expectEqual(@as(i32, 4), internal_cmd_argc('q'));
-    try testing.expectEqual(@as(i32, 7), internal_cmd_argc('a'));
-    try testing.expectEqual(@as(i32, 0), internal_cmd_argc('z'));
-    try testing.expectEqual(@as(i32, -1), internal_cmd_argc('w'));
-}
-
-test "path step h v and endpoint pair" {
-    var cx: i32 = 0;
-    var cy: i32 = 0;
-    const args_h = [_]i32{8};
-    internal_path_step('h', false, &args_h, 1, &cx, &cy);
-    try testing.expectEqual(@as(i32, 8), cx);
-    try testing.expectEqual(@as(i32, 0), cy);
-    const args_v = [_]i32{5};
-    internal_path_step('v', true, &args_v, 1, &cx, &cy);
-    try testing.expectEqual(@as(i32, 8), cx);
-    try testing.expectEqual(@as(i32, 5), cy);
-    const args_pt = [_]i32{ 3, 4 };
-    internal_path_step('l', true, &args_pt, 2, &cx, &cy);
-    try testing.expectEqual(@as(i32, 11), cx);
-    try testing.expectEqual(@as(i32, 9), cy);
-    internal_path_step('l', false, &args_pt, 2, &cx, &cy);
-    try testing.expectEqual(@as(i32, 3), cx);
-    try testing.expectEqual(@as(i32, 4), cy);
-}
-
-test "bezier cubic and quad sample curves" {
-    try testing.expectEqual(@as(f32, 0.0), internal_bezier1(0.0, 0, 0, 0, 1));
-    try testing.expectEqual(@as(f32, 1.0), internal_bezier1(1.0, 0, 0, 0, 1));
-    try testing.expectEqual(@as(f32, 0.125), internal_bezier1(0.5, 0, 0, 0, 1));
-    // A symmetric cubic bulges to 3/4 at the midpoint.
-    try testing.expectEqual(@as(f32, 0.75), internal_bezier1(0.5, 0, 1, 1, 0));
-    // A quadratic with a centred control is linear, midpoint 1.
-    try testing.expectEqual(@as(f32, 1.0), internal_bezier_q1(0.5, 0, 1, 2));
-}
-
-test "parse m l and z exact" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 2,2 L 10,2 L 10,10 Z";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 3), n);
-    try testing.expectEqual(@as(i32, 2), xs[0]);
-    try testing.expectEqual(@as(i32, 2), ys[0]);
-    try testing.expectEqual(@as(i32, 10), xs[1]);
-    try testing.expectEqual(@as(i32, 2), ys[1]);
-    try testing.expectEqual(@as(i32, 10), xs[2]);
-    try testing.expectEqual(@as(i32, 10), ys[2]);
-}
-
-test "implicit repeats after m are line-tos" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 2,2 10,2 10,10";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 3), n);
-    try testing.expectEqual(@as(i32, 10), xs[1]);
-    try testing.expectEqual(@as(i32, 10), ys[2]);
-}
-
-test "relative commands move and line" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "m 2,2 l 8,0 0,8";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 3), n);
-    try testing.expectEqual(@as(i32, 2), xs[0]);
-    try testing.expectEqual(@as(i32, 10), xs[1]);
-    try testing.expectEqual(@as(i32, 10), ys[2]);
-}
-
-test "h and v shorthand" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 2,2 H 10 V 10";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 3), n);
-    try testing.expectEqual(@as(i32, 10), xs[1]);
-    try testing.expectEqual(@as(i32, 2), ys[1]);
-    try testing.expectEqual(@as(i32, 10), ys[2]);
-}
-
-test "cubic flatten hits the exact midpoint" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 0,0 C 4,0 8,10 12,10";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    // M plus k_svg_curve_seg samples.
-    try testing.expectEqual(@as(i32, @intCast(1 + k_svg_curve_seg)), n);
-    // tt = 1/2 is exact in f32, so the mid sample is exact too.
-    try testing.expectEqual(@as(i32, 6), xs[6]);
-    try testing.expectEqual(@as(i32, 5), ys[6]);
-    // The final sample is the endpoint.
-    try testing.expectEqual(@as(i32, 12), xs[@intCast(n - 1)]);
-    try testing.expectEqual(@as(i32, 10), ys[@intCast(n - 1)]);
-}
-
-test "smooth cubic s reflects control" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 0,0 C 2,2 4,4 6,6 S 8,8 10,10";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    // M + cubic samples + smooth-cubic samples.
-    try testing.expectEqual(@as(i32, @intCast(1 + 2 * k_svg_curve_seg)), n);
-    try testing.expectEqual(@as(i32, 10), xs[@intCast(n - 1)]);
-    try testing.expectEqual(@as(i32, 10), ys[@intCast(n - 1)]);
-}
-
-test "smooth quad t reflects control" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 0,0 Q 4,4 8,8 T 16,16";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, @intCast(1 + 2 * k_svg_curve_seg)), n);
-    try testing.expectEqual(@as(i32, 16), xs[@intCast(n - 1)]);
-    try testing.expectEqual(@as(i32, 16), ys[@intCast(n - 1)]);
-}
-
-test "arc delegates to the shared flatten" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 0,0 A 5 5 0 0 1 10,0";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expect(n > 1);
-    try testing.expectEqual(@as(i32, 0), xs[0]);
-    try testing.expectEqual(@as(i32, 0), ys[0]);
-    try testing.expectEqual(@as(i32, 10), xs[@intCast(n - 1)]);
-    try testing.expectEqual(@as(i32, 0), ys[@intCast(n - 1)]);
-}
-
-test "malformed z repeat cannot spin" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const n1 = internal_parse_path("M 2,2 L 10,2 Z", &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 2), n1);
-    // "Z2": the implicit repeat after 'z' skips the byte instead of looping.
-    const n2 = internal_parse_path("Z2", &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 0), n2);
-}
-
-test "unknown letter stops parsing" {
-    const t = identityXform();
-    var xs: [shape.k_svg_poly_max]i32 = @splat(0);
-    var ys: [shape.k_svg_poly_max]i32 = @splat(0);
-    const d = "M 2,2 X 5";
-    const n = internal_parse_path(d, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 1), n);
-    try testing.expectEqual(@as(i32, 2), xs[0]);
-}
-
-test "draw path gate fill none and missing d" {
-    const t = identityXform();
-    const no_fill = "<path d=\"M 2,2 L 10,10\" fill=\"none\"/>";
-    seam.shapeCallsReset();
-    priv_ra8_svgp_draw_path(no_fill, no_fill.len, &t);
-    try testing.expectEqual(@as(usize, 0), calls().len);
-    const no_d = "<path fill=\"#FF0000\"/>";
-    priv_ra8_svgp_draw_path(no_d, no_d.len, &t);
-    try testing.expectEqual(@as(usize, 0), calls().len);
-}
-
-test "draw path solid fill spans" {
-    seam.shapeCallsReset();
-    const t = identityXform();
-    const s = "<path d=\"M 2,2 L 10,2 L 10,10 L 2,10\" fill=\"#FF0000\"/>";
-    priv_ra8_svgp_draw_path(s, s.len, &t);
-    const cs = calls();
-    // Filled rows y = 2..9, each an (x = 2 .. x = 10) span.
-    try testing.expect(cs.len >= 8);
-    try testing.expectEqual(@as(u8, 1), cs[0].kind);
-    try testing.expectEqual(@as(i32, 2), cs[0].a);
-    try testing.expectEqual(@as(i32, 2), cs[0].b);
-    try testing.expectEqual(@as(i32, 10), cs[0].c);
-    try testing.expectEqual(@as(i32, 2), cs[0].d);
-    try testing.expectEqual(@as(u32, 0xFF0000), cs[0].color);
-}
-
-test "draw path gradient fills per pixel" {
-    seam.shapeCallsReset();
-    var t = identityXform();
-    var grads = svg.SvgGrads{ .n = 1, .g = @splat(gradLinear(0.0, 0x000000, 1.0, 0xFFFFFF)) };
-    grads.g[0].id[0] = 'g';
-    t.grads = &grads;
-    const s = "<path d=\"M 2,2 L 10,2 L 10,10 L 2,10\" fill=\"url(#g)\"/>";
-    priv_ra8_svgp_draw_path(s, s.len, &t);
-    const cs = calls();
-    try testing.expect(cs.len > 0);
-    // A gradient fill goes per pixel, not per span.
-    try testing.expectEqual(@as(u8, 4), cs[0].kind);
 }

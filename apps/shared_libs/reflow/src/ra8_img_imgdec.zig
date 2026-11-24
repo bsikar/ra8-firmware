@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! `ra8_imgdec` backend over the vendored stb_image residue
 //! (src/ra8_img_imgdec.c, RA8FW-1232).
 //!
@@ -12,8 +15,6 @@
 //! behind the extern seam; ra8_img_imgdec_bind keeps C linkage so the
 //! mux and the C callers link against it exactly as before.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");
@@ -21,22 +22,22 @@ const std = @import("std");
 // ---- Error codes (libs/ra8_core/inc/ra8_err.h; ra8_err_t is a plain
 // ---- c_int in the C ABI, so these mirror the C enumerators) ----
 
-const k_ra8_ok: c_int = 0;
+pub const k_ra8_ok: c_int = 0;
 const k_ra8_err_no_mem: c_int = 0x102;
 const k_ra8_err_invalid_state: c_int = 0x104;
-const k_ra8_err_invalid_size: c_int = 0x105;
+pub const k_ra8_err_invalid_size: c_int = 0x105;
 const k_ra8_err_not_supported: c_int = 0x107;
 const k_ra8_err_validation_failed: c_int = 0x501;
 const k_ra8_err_null_ptr: c_int = 0x504;
 
 // ---- Format / pixel bits (libs/ra8_imgdec/inc/ra8_imgdec.h) ----
 
-const k_ra8_imgdec_format_png: u32 = 1 << 1;
-const k_ra8_imgdec_format_gif: u32 = 1 << 3;
-const k_ra8_imgdec_format_bmp: u32 = 1 << 4;
-const k_ra8_imgdec_pixel_grey8: u32 = 1 << 0;
-const k_ra8_imgdec_pixel_rgb888: u32 = 1 << 1;
-const k_ra8_imgdec_pixel_rgba8888: u32 = 1 << 2;
+pub const k_ra8_imgdec_format_png: u32 = 1 << 1;
+pub const k_ra8_imgdec_format_gif: u32 = 1 << 3;
+pub const k_ra8_imgdec_format_bmp: u32 = 1 << 4;
+pub const k_ra8_imgdec_pixel_grey8: u32 = 1 << 0;
+pub const k_ra8_imgdec_pixel_rgb888: u32 = 1 << 1;
+pub const k_ra8_imgdec_pixel_rgba8888: u32 = 1 << 2;
 
 // ---- Numbers this backend publishes about itself ----
 
@@ -190,7 +191,7 @@ fn internalProbe(req: *const Ra8ImgdecReq, out_w: *u32, out_h: *u32) c_int {
 /// last row occupies a packed row, not a strided one: a destination
 /// sized exactly to the image must not be refused over padding it never
 /// uses.
-fn internalDstOk(req: *const Ra8ImgdecReq, rows: u32, packed_row: u32, out_need: *u32) c_int {
+pub fn internalDstOk(req: *const Ra8ImgdecReq, rows: u32, packed_row: u32, out_need: *u32) c_int {
     const stride: u32 = if (req.dst_stride != 0) req.dst_stride else packed_row;
     if (stride < packed_row) {
         return k_ra8_err_invalid_size;
@@ -243,7 +244,7 @@ fn internalArenaRelease(arena: *Ra8ImgArena) void {
 /// Report this backend's static capabilities. The arena came through the
 /// binder, not the request, so scratch_bytes is the literal truth about
 /// req->arena: this backend draws nothing from it.
-fn internalCaps(ctx: ?*anyopaque, out: *Ra8ImgdecCaps) callconv(.c) c_int {
+pub fn internalCaps(ctx: ?*anyopaque, out: *Ra8ImgdecCaps) callconv(.c) c_int {
     _ = ctx;
     out.formats = k_ra8_img_imgdec_formats;
     out.pixels = k_ra8_img_imgdec_pixels;
@@ -342,91 +343,4 @@ export fn ra8_img_imgdec_bind(out: ?*Ra8Imgdec, scratch: ?*Ra8ImgArena) callconv
     out.?.iface = &s_iface;
     out.?.ctx = scratch;
     return k_ra8_ok;
-}
-
-// ---- Unit tests (pure logic; the decode stack is answered by the
-// ---- test-only link seam, which rejects every header, so the hook
-// ---- paths fall through to the outcomes the C-era harness saw) ----
-
-const testing = std.testing;
-
-test "destination check honours a padded stride" {
-    const req: Ra8ImgdecReq = .{
-        .bytes = null,
-        .byte_count = 1,
-        .arena = null,
-        .dst = null,
-        .dst_bytes = 24,
-        .dst_stride = 10,
-        .format = 0,
-        .want = 0,
-    };
-    var need: u32 = 0;
-    // 2 rows of 8 packed bytes at stride 10: (2-1)*10 + 8 = 18 <= 24.
-    try testing.expectEqual(k_ra8_ok, internalDstOk(&req, 2, 8, &need));
-    try testing.expectEqual(@as(u32, 18), need);
-}
-
-test "destination check refuses a stride under one packed row" {
-    const req: Ra8ImgdecReq = .{
-        .bytes = null,
-        .byte_count = 1,
-        .arena = null,
-        .dst = null,
-        .dst_bytes = 64,
-        .dst_stride = 7,
-        .format = 0,
-        .want = 0,
-    };
-    var need: u32 = 0;
-    try testing.expectEqual(k_ra8_err_invalid_size, internalDstOk(&req, 2, 8, &need));
-}
-
-test "destination check refuses a destination under the exact span" {
-    const req: Ra8ImgdecReq = .{
-        .bytes = null,
-        .byte_count = 1,
-        .arena = null,
-        .dst = null,
-        .dst_bytes = 17,
-        .dst_stride = 10,
-        .format = 0,
-        .want = 0,
-    };
-    var need: u32 = 0;
-    try testing.expectEqual(k_ra8_err_invalid_size, internalDstOk(&req, 2, 8, &need));
-}
-
-test "destination check accepts an exactly-sized destination" {
-    const req: Ra8ImgdecReq = .{
-        .bytes = null,
-        .byte_count = 1,
-        .arena = null,
-        .dst = null,
-        .dst_bytes = 18,
-        .dst_stride = 0,
-        .format = 0,
-        .want = 0,
-    };
-    var need: u32 = 0;
-    try testing.expectEqual(k_ra8_ok, internalDstOk(&req, 2, 9, &need));
-    try testing.expectEqual(@as(u32, 18), need);
-}
-
-test "caps advertise the stb residue" {
-    var caps: Ra8ImgdecCaps = undefined;
-    try testing.expectEqual(k_ra8_ok, internalCaps(null, &caps));
-    try testing.expectEqual(k_ra8_imgdec_format_png | k_ra8_imgdec_format_gif | k_ra8_imgdec_format_bmp, caps.formats);
-    try testing.expectEqual(k_ra8_imgdec_pixel_grey8 | k_ra8_imgdec_pixel_rgb888 | k_ra8_imgdec_pixel_rgba8888, caps.pixels);
-    try testing.expectEqual(@as(u32, 0), caps.scratch_bytes);
-    try testing.expectEqual(@as(u32, 0), caps.scratch_align);
-    try testing.expectEqual(@as(u32, 8192), caps.dim_max);
-    try testing.expectEqual(false, caps.streams);
-}
-
-test "mirror layout sanity" {
-    comptime {
-        std.debug.assert(@offsetOf(Ra8ImgdecReq, "byte_count") == @sizeOf(?[*]const u8));
-        std.debug.assert(@offsetOf(Ra8Imgdec, "ctx") == @sizeOf(?*const Ra8ImgdecIface));
-    }
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Block-level `<img>` layout for the reflow engine
 //! (src/reflow_layout_image.c, RA8FW-1226).
 //!
@@ -17,8 +20,6 @@
 //! flush) come from the layout core module, which is Zig since
 //! RA8FW-1220.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! SVG scan / attribute / colour-parsing core
 //! (src/reflow_svg.c, RA8FW-1233).
 //!
@@ -11,8 +14,6 @@
 //! and the shared geometry types are extern-struct mirrors of the header.
 //! No DOM, no heap.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");
@@ -282,7 +283,7 @@ fn internal_ci_eq(s: [*]const u8, len: usize, lit: [*]const u8) bool {
 
 /// Parse a hex colour from raw digit bytes (no leading '#') into
 /// 0x00RRGGBB. Exactly 3 or 6 digits; 3-digit channels expand to NN.
-fn internal_hex_color(s: [*]const u8, len: usize) u32 {
+pub fn internal_hex_color(s: [*]const u8, len: usize) u32 {
     var rgb: u32 = 0;
     if (len == k_svg_hex6) {
         var i: usize = 0;
@@ -329,7 +330,7 @@ const k_named_colors = [_]NamedColor{
 
 /// Map a named SVG colour keyword to its 0x00RRGGBB value; "none" and any
 /// unknown name return the no-paint sentinel.
-fn internal_named_color(s: [*]const u8, len: usize) u32 {
+pub fn internal_named_color(s: [*]const u8, len: usize) u32 {
     for (k_named_colors) |entry| {
         if (internal_ci_eq(s, len, entry.name.ptr)) {
             return entry.rgb;
@@ -406,185 +407,4 @@ pub export fn priv_ra8_svgp_resolve_fill(s: [*]const u8, len: usize, t: ?*const 
         return k_svg_no_paint;
     }
     return priv_ra8_svgp_paint(s + off, vl);
-}
-
-// ---- Tests ----
-
-const testing = std.testing;
-
-fn cstr(comptime lit: []const u8) *const [lit.len + 1:0]u8 {
-    return lit ++ [_:0]u8{};
-}
-
-test "whitespace and fold" {
-    try testing.expect(priv_ra8_svgp_ws(' '));
-    try testing.expect(priv_ra8_svgp_ws('\t'));
-    try testing.expect(priv_ra8_svgp_ws('\n'));
-    try testing.expect(priv_ra8_svgp_ws('\r'));
-    try testing.expect(priv_ra8_svgp_ws(0x0C));
-    try testing.expect(!priv_ra8_svgp_ws('x'));
-    try testing.expect(!priv_ra8_svgp_ws(0));
-    try testing.expectEqual(@as(u8, 'a'), priv_ra8_svgp_lc('A'));
-    try testing.expectEqual(@as(u8, 'z'), priv_ra8_svgp_lc('Z'));
-    try testing.expectEqual(@as(u8, 'm'), priv_ra8_svgp_lc('m'));
-    try testing.expectEqual(@as(u8, '5'), priv_ra8_svgp_lc('5'));
-}
-
-test "starts_ci and find_ci" {
-    const s = "ReCT FiLL";
-    try testing.expect(priv_ra8_svgp_starts_ci(s, s.len, 0, "rect"));
-    try testing.expect(!priv_ra8_svgp_starts_ci(s, s.len, 0, "circle"));
-    // Short remainder fails without reading past the span.
-    try testing.expect(!priv_ra8_svgp_starts_ci(s, s.len, 6, "filler"));
-    try testing.expectEqual(@as(usize, 5), priv_ra8_svgp_find_ci(s, s.len, 0, "fill"));
-    try testing.expectEqual(@as(usize, s.len), priv_ra8_svgp_find_ci(s, s.len, 0, "nope"));
-    // Empty literal is the defined `len` sentinel.
-    try testing.expectEqual(@as(usize, s.len), priv_ra8_svgp_find_ci(s, s.len, 0, ""));
-}
-
-test "num parses signs, separators and truncates fractions" {
-    var i: usize = 0;
-    const s = " , -3.75 42+5";
-    try testing.expectEqual(@as(i32, -3), priv_ra8_svgp_num(s, s.len, &i));
-    // The fraction was consumed, so the next read starts at "42".
-    try testing.expectEqual(@as(i32, 42), priv_ra8_svgp_num(s, s.len, &i));
-    // "+5": sign with digits.
-    try testing.expectEqual(@as(i32, 5), priv_ra8_svgp_num(s, s.len, &i));
-    // No digits after the sign -> 0, cursor at end.
-    try testing.expectEqual(@as(i32, 0), priv_ra8_svgp_num(s, s.len, &i));
-    try testing.expectEqual(s.len, i);
-    // Absent digits entirely -> 0.
-    var j: usize = 0;
-    try testing.expectEqual(@as(i32, 0), priv_ra8_svgp_num("x", 1, &j));
-}
-
-test "attr finds quoted values on word boundaries" {
-    var off: usize = 0;
-    var vl: usize = 0;
-    var off2: usize = 0;
-    var vl2: usize = 0;
-    const tag = "<rect x=\"10\" fill = ' #0f0 ' width='6'>";
-    try testing.expect(priv_ra8_svgp_attr(tag, tag.len, "fill", &off, &vl));
-    try testing.expectEqualStrings(" #0f0 ", tag[off .. off + vl]);
-    try testing.expect(priv_ra8_svgp_attr(tag, tag.len, "x", &off, &vl));
-    try testing.expectEqualStrings("10", tag[off .. off + vl]);
-    // "filla" must not match "fill" (no word boundary after the name).
-    try testing.expect(!priv_ra8_svgp_attr(tag, tag.len, "filla", &off, &vl));
-    // A longer name is not a substring match either.
-    try testing.expect(!priv_ra8_svgp_attr(tag, tag.len, "fi", &off, &vl));
-    try testing.expect(!priv_ra8_svgp_attr(tag, tag.len, "stroke", &off, &vl));
-    // An unterminated value still finds the attribute: the value runs to
-    // the end of the span (the C scanner never checks the closing quote).
-    const bad = "<rect fill=\"open";
-    try testing.expect(priv_ra8_svgp_attr(bad, bad.len, "fill", &off, &vl));
-    try testing.expectEqualStrings("open", bad[off .. off + vl]);
-    // A miss leaves the outputs untouched.
-    try testing.expect(!priv_ra8_svgp_attr(tag, tag.len, "stroke", &off2, &vl2));
-    try testing.expectEqual(@as(usize, 0), off2);
-    try testing.expectEqual(@as(usize, 0), vl2);
-}
-
-test "attr_num falls back to the default" {
-    const tag = "<rect x=\"-7.9\" y=\"3\">";
-    try testing.expectEqual(@as(i32, -7), priv_ra8_svgp_attr_num(tag, tag.len, "x", 99));
-    try testing.expectEqual(@as(i32, 3), priv_ra8_svgp_attr_num(tag, tag.len, "y", 99));
-    try testing.expectEqual(@as(i32, 99), priv_ra8_svgp_attr_num(tag, tag.len, "width", 99));
-}
-
-test "hex colours" {
-    const six = "00FF7f";
-    try testing.expectEqual(@as(u32, 0x00FF7F), internal_hex_color(six, six.len));
-    const three = "f0a";
-    try testing.expectEqual(@as(u32, 0xFF00AA), internal_hex_color(three, three.len));
-    // Bad length and bad digits both return the sentinel.
-    try testing.expectEqual(k_svg_no_paint, internal_hex_color("00ff", 4));
-    try testing.expectEqual(k_svg_no_paint, internal_hex_color("00fg", 4));
-    try testing.expectEqual(k_svg_no_paint, internal_hex_color("zzz", 3));
-}
-
-test "named colours and paint" {
-    try testing.expectEqual(@as(u32, 0x000000), internal_named_color("BLACK", 5));
-    try testing.expectEqual(@as(u32, 0x808080), internal_named_color("Grey", 4));
-    try testing.expectEqual(@as(u32, 0xFFA500), internal_named_color("orange", 6));
-    // "none" and unknown names are the no-paint sentinel.
-    try testing.expectEqual(k_svg_no_paint, internal_named_color("none", 4));
-    try testing.expectEqual(k_svg_no_paint, internal_named_color("chartreuse", 10));
-    try testing.expectEqual(@as(u32, 0x123456), priv_ra8_svgp_paint("#123456", 7));
-    try testing.expectEqual(@as(u32, 0x00FFFF), priv_ra8_svgp_paint("#0fF", 4));
-    try testing.expectEqual(@as(u32, 0xFF0000), priv_ra8_svgp_paint("red", 3));
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_paint("none", 4));
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_paint("", 0));
-}
-
-test "attr_paint falls back to the default" {
-    const tag = "<path fill=\"#A1b2C3\" stroke=\"none\">";
-    try testing.expectEqual(@as(u32, 0xA1B2C3), priv_ra8_svgp_attr_paint(tag, tag.len, "fill", k_svg_no_paint));
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_attr_paint(tag, tag.len, "stroke", k_svg_def_fill));
-    try testing.expectEqual(@as(u32, 0x123456), priv_ra8_svgp_attr_paint(tag, tag.len, "d", 0x123456));
-}
-
-test "match_grad matches by exact id" {
-    var grads = SvgGrads{ .n = 2, .g = undefined };
-    grads.g[0] = SvgGrad{ .kind = k_svg_grad_linear, .nstops = 1, .id = undefined, .x1 = 0, .y1 = 0, .x2 = 1, .y2 = 0, .stops = undefined };
-    grads.g[1] = SvgGrad{ .kind = k_svg_grad_radial, .nstops = 2, .id = undefined, .x1 = 0.5, .y1 = 0.5, .x2 = 1, .y2 = 0, .stops = undefined };
-    @memcpy(grads.g[0].id[0..2], "g1");
-    grads.g[0].id[2] = 0;
-    @memcpy(grads.g[1].id[0..2], "g2");
-    grads.g[1].id[2] = 0;
-
-    try testing.expectEqual(@as(i32, 1), priv_match_grad(&grads, "url(#g2)", 8));
-    try testing.expectEqual(@as(i32, 0), priv_match_grad(&grads, "URL(#g1)", 8));
-    // Unknown id, no url( prefix, null set: all no match.
-    try testing.expectEqual(@as(i32, -1), priv_match_grad(&grads, "url(#nope)", 10));
-    try testing.expectEqual(@as(i32, -1), priv_match_grad(&grads, "#g1", 3));
-    try testing.expectEqual(@as(i32, -1), priv_match_grad(null, "url(#g1)", 8));
-    // The id comparison is case-sensitive even though the prefix is not.
-    try testing.expectEqual(@as(i32, -1), priv_match_grad(&grads, "url(#G2)", 8));
-}
-
-test "resolve_fill routes solid, gradient and default" {
-    var grads = SvgGrads{ .n = 1, .g = undefined };
-    grads.g[0] = SvgGrad{ .kind = k_svg_grad_linear, .nstops = 1, .id = undefined, .x1 = 0, .y1 = 0, .x2 = 1, .y2 = 0, .stops = undefined };
-    @memcpy(grads.g[0].id[0..2], "gg");
-    grads.g[0].id[2] = 0;
-    var t = SvgXform{
-        .bx = 0,
-        .by = 0,
-        .bw = 100,
-        .bh = 100,
-        .vx = 0,
-        .vy = 0,
-        .vw = 100,
-        .vh = 100,
-        .ua = 1,
-        .ub = 0,
-        .uc = 0,
-        .ud = 1,
-        .ue = 0,
-        .uf = 0,
-        .grads = &grads,
-    };
-    var gi: i32 = 99;
-
-    // Solid fill parses straight through.
-    const solid = "<rect fill=\"#102030\">";
-    try testing.expectEqual(@as(u32, 0x102030), priv_ra8_svgp_resolve_fill(solid, solid.len, &t, k_svg_def_fill, &gi));
-    try testing.expectEqual(@as(i32, -1), gi);
-
-    // A resolving gradient reference returns no-paint with the index.
-    const grad = "<rect fill=\"url(#gg)\">";
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_resolve_fill(grad, grad.len, &t, k_svg_def_fill, &gi));
-    try testing.expectEqual(@as(i32, 0), gi);
-
-    // An unresolving reference also returns no-paint with -1.
-    const grad_miss = "<rect fill=\"url(#zz)\">";
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_resolve_fill(grad_miss, grad_miss.len, &t, k_svg_def_fill, &gi));
-    try testing.expectEqual(@as(i32, -1), gi);
-
-    // Absent fill returns the default.
-    const plain = "<rect width=\"4\">";
-    try testing.expectEqual(k_svg_def_fill, priv_ra8_svgp_resolve_fill(plain, plain.len, &t, k_svg_def_fill, &gi));
-    // No transform at all: the reference cannot resolve, still no-paint.
-    try testing.expectEqual(k_svg_no_paint, priv_ra8_svgp_resolve_fill(grad, grad.len, null, k_svg_def_fill, &gi));
-    try testing.expectEqual(@as(i32, -1), gi);
 }

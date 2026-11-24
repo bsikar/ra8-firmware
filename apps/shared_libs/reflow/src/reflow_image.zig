@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Zero-heap raster image decode + nearest-neighbour scale + blit
 //! (src/reflow_image.c, RA8FW-1231).
 //!
@@ -23,8 +26,6 @@
 //! exports keep C linkage so the C callers (layout, render, apps,
 //! test suites) link against them exactly as before.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");
@@ -32,11 +33,11 @@ const std = @import("std");
 // ---- Error codes (libs/ra8_core/inc/ra8_err.h; ra8_err_t is a plain
 // ---- c_int in the C ABI, so these mirror the C enumerators) ----
 
-const k_ra8_ok: c_int = 0;
-const k_ra8_err_no_mem: c_int = 0x102;
-const k_ra8_err_invalid_arg: c_int = 0x103;
-const k_ra8_err_not_supported: c_int = 0x107;
-const k_ra8_err_null_ptr: c_int = 0x504;
+pub const k_ra8_ok: c_int = 0;
+pub const k_ra8_err_no_mem: c_int = 0x102;
+pub const k_ra8_err_invalid_arg: c_int = 0x103;
+pub const k_ra8_err_not_supported: c_int = 0x107;
+pub const k_ra8_err_null_ptr: c_int = 0x504;
 
 // ---- Pixel-packing and channel constants (no magic numbers) ----
 
@@ -154,7 +155,7 @@ fn isWebp(bytes: [*]const u8, len: usize) bool {
 /// scratch surfaces as k_ra8_err_not_supported, not k_ra8_err_no_mem.
 /// The canvas allocation, which dominates the arena footprint, is checked
 /// separately in webpDecodeBlit() and does report no_mem.
-fn webpClassify(err: c_int) c_int {
+pub fn webpClassify(err: c_int) c_int {
     if (err == k_ra8_ok or err == k_ra8_err_null_ptr or err == k_ra8_err_invalid_arg) {
         return err;
     }
@@ -169,7 +170,7 @@ fn webpClassify(err: c_int) c_int {
 /// prevent overflow on large dimensions. Both output dimensions are
 /// clamped to at least k_ra8_img_min_edge (1 pixel) so downstream callers
 /// never receive a zero-size rectangle.
-fn fitBox(src_w: i32, src_h: i32, box_w: i32, box_h: i32, fit_w: *i32, fit_h: *i32) void {
+pub fn fitBox(src_w: i32, src_h: i32, box_w: i32, box_h: i32, fit_w: *i32, fit_h: *i32) void {
     var sw: i64 = 0;
     var sh: i64 = 0;
     if (@as(i64, box_w) * @as(i64, src_h) <= @as(i64, box_h) * @as(i64, src_w)) {
@@ -222,7 +223,7 @@ fn gfxEmit(x: i32, y: i32, color: u32) void {
 /// row-major `pixels` buffer is packed into a 0x00RRGGBB word (the red,
 /// green and blue bytes sit at the same offsets in the RGB and RGBA
 /// packings, so only the stride differs) and emitted via `emit`.
-fn blitScaled(pixels: [*]const u8, src_w: i32, src_h: i32, src_bpp: i32, fit_w: i32, fit_h: i32, dst_x: i32, dst_y: i32, emit: PixelEmitter) void {
+pub fn blitScaled(pixels: [*]const u8, src_w: i32, src_h: i32, src_bpp: i32, fit_w: i32, fit_h: i32, dst_x: i32, dst_y: i32, emit: PixelEmitter) void {
     var dy: i32 = 0;
     while (dy < fit_h) : (dy += 1) {
         const map_y: usize = @intCast(@divTrunc(@as(i64, dy) * @as(i64, src_h), @as(i64, fit_h)));
@@ -259,7 +260,7 @@ fn arenaRelease(arena: *Ra8ImgArena) void {
 /// Uses the exact BT.601 integer coefficients used by stb_image (`(77*R +
 /// 150*G + 29*B) >> 8`), discarding the alpha channel so PNG and WebP gray8
 /// decodes agree byte-for-byte.
-fn rgbaToGray8(rgba: [*]const u8, px_count: usize, dst: [*]u8) void {
+pub fn rgbaToGray8(rgba: [*]const u8, px_count: usize, dst: [*]u8) void {
     var i: usize = 0;
     while (i < px_count) : (i += 1) {
         const base = i * @as(usize, @intCast(k_ra8_img_req_rgba));
@@ -426,7 +427,7 @@ fn stbiDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]
 /// before deciding to decode + blit. Allocates nothing. SVG is not a
 /// raster: its intrinsic size comes from the document. stb_image cannot
 /// parse a WebP header; the ra8_webp facade can.
-export fn ra8_img_probe_size(bytes: ?[*]const u8, len: usize, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
+pub export fn ra8_img_probe_size(bytes: ?[*]const u8, len: usize, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
     if (bytes == null) {
         logErr("probe: null bytes");
         return k_ra8_err_null_ptr;
@@ -480,7 +481,7 @@ export fn ra8_img_probe_size(bytes: ?[*]const u8, len: usize, out_w: ?*i32, out_
 /// scaled image at `(dst_x, dst_y)` via ra8_gfx. The arena is fully reset
 /// on return (success or failure). The caller must have bound a
 /// framebuffer with ra8_gfx_init().
-export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
+pub export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
     if (arena == null) {
         logErr("blit: null arena");
         return k_ra8_err_null_ptr;
@@ -533,7 +534,7 @@ export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len: us
 }
 
 /// Decode raster `bytes` to tightly packed gray8 using caller-owned storage.
-export fn ra8_img_decode_gray8(
+pub export fn ra8_img_decode_gray8(
     arena: ?*Ra8ImgArena,
     bytes: ?[*]const u8,
     len: usize,
@@ -561,210 +562,4 @@ export fn ra8_img_decode_gray8(
         return webpDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
     }
     return stbiDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
-}
-
-// ---- Unit tests (pure logic; the decode stack is answered by the
-// ---- test-only link seam, which returns "not supported" so the export
-// ---- paths fall through to the same outcomes the C-era harness saw) ----
-
-const testing = std.testing;
-
-test "fit box fills the tighter width axis" {
-    var fw: i32 = 0;
-    var fh: i32 = 0;
-    // box_w*src_h (40*50) <= box_h*src_w (100*100): width is tighter.
-    fitBox(100, 50, 40, 100, &fw, &fh);
-    try testing.expectEqual(@as(i32, 40), fw);
-    try testing.expectEqual(@as(i32, 20), fh);
-}
-
-test "fit box fills the tighter height axis" {
-    var fw: i32 = 0;
-    var fh: i32 = 0;
-    // box_w*src_h (100*100) > box_h*src_w (40*50): height is tighter.
-    fitBox(50, 100, 100, 40, &fw, &fh);
-    try testing.expectEqual(@as(i32, 20), fw);
-    try testing.expectEqual(@as(i32, 40), fh);
-}
-
-test "fit box clamps degenerate scales to the minimum edge" {
-    var fw: i32 = 0;
-    var fh: i32 = 0;
-    // A 1000x2 source in a 10x10 box scales height to 0; clamped to 1.
-    fitBox(1000, 2, 10, 10, &fw, &fh);
-    try testing.expectEqual(@as(i32, 10), fw);
-    try testing.expectEqual(@as(i32, 1), fh);
-}
-
-test "fit box uses i64 products on large dimensions" {
-    var fw: i32 = 0;
-    var fh: i32 = 0;
-    // 60000 * 60000 overflows i32 products; the i64 path must not.
-    fitBox(60000, 60000, 30000, 30000, &fw, &fh);
-    try testing.expectEqual(@as(i32, 30000), fw);
-    try testing.expectEqual(@as(i32, 30000), fh);
-}
-
-const t_max_emit = 256;
-var t_xy: [t_max_emit][2]i32 = undefined;
-var t_color: [t_max_emit]u32 = undefined;
-var t_count: usize = 0;
-
-fn tEmit(x: i32, y: i32, color: u32) void {
-    if (t_count < t_max_emit) {
-        t_xy[t_count] = .{ x, y };
-        t_color[t_count] = color;
-    }
-    t_count += 1;
-}
-
-fn tReset() void {
-    t_count = 0;
-}
-
-test "blit maps 1:1 for an unscaled image and packs 0x00RRGGBB" {
-    // 2x2 RGB source blitted 1:1 at (5, 7).
-    const px = [_]u8{
-        0x10, 0x20, 0x30, // pixel (0,0)
-        0x40, 0x50, 0x60, // pixel (1,0)
-        0x70, 0x80, 0x90, // pixel (0,1)
-        0xa0, 0xb0, 0xc0, // pixel (1,1)
-    };
-    tReset();
-    blitScaled(&px, 2, 2, 3, 2, 2, 5, 7, tEmit);
-    try testing.expectEqual(@as(usize, 4), t_count);
-    try testing.expectEqual([2]i32{ 5, 7 }, t_xy[0]);
-    try testing.expectEqual([2]i32{ 6, 7 }, t_xy[1]);
-    try testing.expectEqual([2]i32{ 5, 8 }, t_xy[2]);
-    try testing.expectEqual([2]i32{ 6, 8 }, t_xy[3]);
-    try testing.expectEqual(@as(u32, 0x102030), t_color[0]);
-    try testing.expectEqual(@as(u32, 0x405060), t_color[1]);
-    try testing.expectEqual(@as(u32, 0x708090), t_color[2]);
-    try testing.expectEqual(@as(u32, 0xa0b0c0), t_color[3]);
-}
-
-test "blit picks nearest-neighbour source columns when downscaling" {
-    // 4x1 source scaled into 2x1: map_x = dx * 4 / 2 -> 0 and 2.
-    const px = [_]u8{
-        1, 2, 3, // source pixel 0
-        4, 5, 6, // source pixel 1
-        7, 8, 9, // source pixel 2
-        10, 11, 12, // source pixel 3
-    };
-    tReset();
-    blitScaled(&px, 4, 1, 3, 2, 1, 0, 0, tEmit);
-    try testing.expectEqual(@as(usize, 2), t_count);
-    try testing.expectEqual(@as(u32, 0x010203), t_color[0]);
-    try testing.expectEqual(@as(u32, 0x070809), t_color[1]);
-}
-
-test "blit strides by src_bpp for RGBA sources" {
-    // 1x2 RGBA source (bpp 4) scaled 1:1: the alpha byte is ignored.
-    const px = [_]u8{
-        0x11, 0x22, 0x33, 0xff, // pixel (0,0)
-        0x44, 0x55, 0x66, 0x80, // pixel (0,1)
-    };
-    tReset();
-    blitScaled(&px, 1, 2, 4, 1, 2, 0, 0, tEmit);
-    try testing.expectEqual(@as(usize, 2), t_count);
-    try testing.expectEqual(@as(u32, 0x112233), t_color[0]);
-    try testing.expectEqual(@as(u32, 0x445566), t_color[1]);
-}
-
-test "webp classification passes the shared statuses through" {
-    try testing.expectEqual(k_ra8_ok, webpClassify(k_ra8_ok));
-    try testing.expectEqual(k_ra8_err_null_ptr, webpClassify(k_ra8_err_null_ptr));
-    try testing.expectEqual(k_ra8_err_invalid_arg, webpClassify(k_ra8_err_invalid_arg));
-    try testing.expectEqual(k_ra8_err_not_supported, webpClassify(k_ra8_err_not_supported));
-    try testing.expectEqual(k_ra8_err_not_supported, webpClassify(k_ra8_err_no_mem));
-    try testing.expectEqual(k_ra8_err_not_supported, webpClassify(0x105));
-}
-
-test "decode blit rejects a null arena and null bytes" {
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_blit(null, "x", 1, 0, 0, 1, 1, null, null));
-    var scratch = Ra8ImgArena{ .base = null, .cap = 16, .offset = 0, .live = 0, .high_water = 0 };
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_blit(&scratch, null, 1, 0, 0, 1, 1, null, null));
-}
-
-test "decode blit rejects an empty input or an empty box" {
-    var scratch = Ra8ImgArena{ .base = null, .cap = 16, .offset = 0, .live = 0, .high_water = 0 };
-    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_blit(&scratch, "x", 0, 0, 0, 1, 1, null, null));
-    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_blit(&scratch, "x", 1, 0, 0, 0, 1, null, null));
-    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_blit(&scratch, "x", 1, 0, 0, 1, 0, null, null));
-}
-
-test "decode blit drains the arena on the decode-failure path" {
-    // The seam answers stbi_load_from_memory with null, so the export
-    // falls to the decode-failure path; the arena must come back drained.
-    var backing: [64]u8 = undefined;
-    var scratch = Ra8ImgArena{
-        .base = &backing,
-        .cap = backing.len,
-        .offset = 24,
-        .live = 3,
-        .high_water = 24,
-    };
-    try testing.expectEqual(k_ra8_err_not_supported, ra8_img_decode_blit(&scratch, "x", 1, 0, 0, 1, 1, null, null));
-    try testing.expectEqual(@as(usize, 0), scratch.offset);
-    try testing.expectEqual(@as(usize, 0), scratch.live);
-    try testing.expectEqual(@as(usize, 24), scratch.high_water);
-}
-
-test "probe rejects the seam's not-supported stack" {
-    var w: i32 = 0;
-    var h: i32 = 0;
-    // The seam answers SVG=no, sniff=fail, stbi_info=reject: not supported.
-    try testing.expectEqual(k_ra8_err_not_supported, ra8_img_probe_size("x", 1, &w, &h));
-}
-
-test "probe rejects null arguments" {
-    var w: i32 = 0;
-    var h: i32 = 0;
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size(null, 1, &w, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size("x", 1, null, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_probe_size("x", 1, &w, null));
-}
-
-test "rgbaToGray8 matches BT.601 integer luma and ignores alpha" {
-    const rgba = [_]u8{
-        255, 0, 0, 0x11, // red
-        0, 255, 0, 0x22, // green
-        0, 0, 255, 0x33, // blue
-        255, 255, 255, 0x00, // white, alpha=0
-    };
-    var gray: [4]u8 = undefined;
-    rgbaToGray8(&rgba, 4, &gray);
-    try testing.expectEqual([4]u8{ 76, 149, 28, 255 }, gray);
-}
-
-test "decode gray8 rejects null arguments and invalid sizes" {
-    var scratch = Ra8ImgArena{ .base = null, .cap = 16, .offset = 0, .live = 0, .high_water = 0 };
-    var dst: [4]u8 = undefined;
-    var w: u32 = 0;
-    var h: u32 = 0;
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(null, "x", 1, &dst, dst.len, &w, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, null, 1, &dst, dst.len, &w, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, null, dst.len, &w, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, null, &h));
-    try testing.expectEqual(k_ra8_err_null_ptr, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, &w, null));
-    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_gray8(&scratch, "x", 0, &dst, dst.len, &w, &h));
-    try testing.expectEqual(k_ra8_err_invalid_arg, ra8_img_decode_gray8(&scratch, "x", 1, &dst, 0, &w, &h));
-}
-
-test "decode gray8 drains the arena on the decode-failure path" {
-    var backing: [64]u8 = undefined;
-    var scratch = Ra8ImgArena{
-        .base = &backing,
-        .cap = backing.len,
-        .offset = 16,
-        .live = 2,
-        .high_water = 16,
-    };
-    var dst: [4]u8 = undefined;
-    var w: u32 = 0;
-    var h: u32 = 0;
-    try testing.expectEqual(k_ra8_err_not_supported, ra8_img_decode_gray8(&scratch, "x", 1, &dst, dst.len, &w, &h));
-    try testing.expectEqual(@as(usize, 0), scratch.offset);
-    try testing.expectEqual(@as(usize, 0), scratch.live);
-    try testing.expectEqual(@as(usize, 16), scratch.high_water);
 }

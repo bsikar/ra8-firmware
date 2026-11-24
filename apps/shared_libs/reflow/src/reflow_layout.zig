@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Greedy line-break + page-break engine for the reflow v1 layout pass
 //! (inc/reflow_layout_internal.h).
 //!
@@ -15,8 +18,6 @@
 //! the vendored stb_truetype implementation TU remains C and is linked by
 //! CMake.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");

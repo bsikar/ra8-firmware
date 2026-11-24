@@ -1,0 +1,134 @@
+{
+  "test_roots": [
+    "tests/reflow_parse_test.zig"
+  ],
+  "covered_sources": [
+    "src/ra8_img_imgdec.zig",
+    "src/reflow_cache.zig",
+    "src/reflow_css.zig",
+    "src/reflow_css_cascade.zig",
+    "src/reflow_css_rules.zig",
+    "src/reflow_image.zig",
+    "src/reflow_layout.zig",
+    "src/reflow_layout_driver.zig",
+    "src/reflow_layout_image.zig",
+    "src/reflow_layout_table.zig",
+    "src/reflow_link.zig",
+    "src/reflow_parse_abi.zig",
+    "src/reflow_render.zig",
+    "src/reflow_render_face.zig",
+    "src/reflow_svg.zig",
+    "src/reflow_svg_doc.zig",
+    "src/reflow_svg_path.zig",
+    "src/reflow_svg_shape.zig",
+    "src/reflow_svg_xform.zig",
+    "src/reflow_tokenize.zig",
+    "src/reflow_tokenize_attr.zig",
+    "src/reflow_tokenize_entities.zig",
+    "src/reflow_tokenize_lex.zig",
+    "src/standalone_build_options.zig",
+    "tests/ra8_img_imgdec_test.zig",
+    "tests/reflow_cache_test.zig",
+    "tests/reflow_css_cascade_test.zig",
+    "tests/reflow_css_rules_test.zig",
+    "tests/reflow_css_test.zig",
+    "tests/reflow_image_test.zig",
+    "tests/reflow_image_test_seam.zig",
+    "tests/reflow_parse_test.zig",
+    "tests/reflow_render_face_test.zig",
+    "tests/reflow_render_test.zig",
+    "tests/reflow_render_test_seam.zig",
+    "tests/reflow_svg_doc_test.zig",
+    "tests/reflow_svg_path_test.zig",
+    "tests/reflow_svg_shape_test.zig",
+    "tests/reflow_svg_test.zig",
+    "tests/reflow_svg_xform_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/reflow_cache.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_cache.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_css.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_css.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_css_cascade.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_css_cascade.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_css_rules.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_css_rules.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_layout.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_layout.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_layout_driver.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_layout_driver.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_layout_image.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_layout_image.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_layout_table.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_layout_table.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_link.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_link.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_parse_abi.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_parse_abi.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_render.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_render.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_tokenize.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_tokenize.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_tokenize_attr.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_tokenize_attr.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_tokenize_lex.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_tokenize_lex.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ]
+  },
+  "minimum_tests": 132
+}

@@ -1,19 +1,28 @@
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
-//!
-//! Host tests for the reflow parse entry (RA8FW-1212 + RA8FW-1213). The
-//! tests drive the argument gates of `reflow_parse_xhtml` and the real
-//! Zig markup walk (`priv_reflow_xml_walk`) end to end, with the lexical
-//! + attribute C helpers and the CSS library linked in.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
+//! Root host unit test harness for `apps/shared_libs/reflow`.
 
 const std = @import("std");
-const abi = @import("reflow_parse_abi.zig");
+const abi = @import("reflow");
 
-// RA8FW-1240: the sfnt guard is Zig (libs/ra8_imgdec/src/ra8_stbtt_guard.zig);
-// touching its export keeps the symbol in this test object for the driver's
-// extern seam.
 comptime {
     _ = &@import("ra8_stbtt_guard").ra8_stbtt_sfnt_dir_in_bounds;
+    _ = @import("reflow_image_test_seam.zig");
+    _ = @import("reflow_render_test_seam.zig");
+    _ = @import("ra8_img_imgdec_test.zig");
+    _ = @import("reflow_cache_test.zig");
+    _ = @import("reflow_css_test.zig");
+    _ = @import("reflow_css_cascade_test.zig");
+    _ = @import("reflow_css_rules_test.zig");
+    _ = @import("reflow_image_test.zig");
+    _ = @import("reflow_render_face_test.zig");
+    _ = @import("reflow_render_test.zig");
+    _ = @import("reflow_svg_test.zig");
+    _ = @import("reflow_svg_doc_test.zig");
+    _ = @import("reflow_svg_path_test.zig");
+    _ = @import("reflow_svg_shape_test.zig");
+    _ = @import("reflow_svg_xform_test.zig");
 }
 
 const ReflowEngine = abi.ReflowEngine;
@@ -27,6 +36,15 @@ const k_ra8_err_invalid_size: c_int = 0x105;
 const k_ra8_err_not_initialized: c_int = 0x10F;
 const k_ra8_err_null_ptr: c_int = 0x504;
 const k_ra8_err_validation_failed: c_int = 0x501;
+
+test "mirror layout sanity" {
+    comptime {
+        std.debug.assert(@offsetOf(ReflowEngine, "in_use") == @sizeOf(ReflowEngine) - 8);
+        std.debug.assert(@offsetOf(ReflowEngine, "token_count") < @offsetOf(ReflowEngine, "text_pool"));
+        std.debug.assert(@offsetOf(ReflowEngine, "text_pool_used") < @offsetOf(ReflowEngine, "link_targets"));
+        std.debug.assert(@offsetOf(ReflowEngine, "link_target_count") < @offsetOf(ReflowEngine, "link_rects"));
+    }
+}
 
 test "argument gates" {
     const engine = try std.heap.page_allocator.create(ReflowEngine);
@@ -50,7 +68,7 @@ test "pool reset then real walk" {
     engine.link_target_count = 3;
 
     try std.testing.expectEqual(@as(c_int, 0), abi.reflow_parse_xhtml(engine, "<p>hi</p>", 9));
-    try std.testing.expectEqual(@as(u32, 0), engine.text_pool_used - 2); // "hi" stored
+    try std.testing.expectEqual(@as(u32, 0), engine.text_pool_used - 2);
     try std.testing.expectEqualStrings("hi", engine.text_pool[0..2]);
     try std.testing.expectEqual(@as(u32, 3), engine.token_count);
     try std.testing.expectEqual(k_ra8_tok_block_start, engine.tokens[0].kind);
@@ -78,40 +96,4 @@ test "unbalanced element fails validation" {
     engine.in_use = 1;
 
     try std.testing.expectEqual(k_ra8_err_validation_failed, abi.reflow_parse_xhtml(engine, "<p>hi", 5));
-}
-
-comptime {
-    // Test-only link seam (RA8FW-1231): the raster surface itself is Zig
-    // (reflow_image.zig), so its exports link here and the image seam answers
-    // the decode stack they reach (stb_image, ra8_webp, ra8_imgdec, the
-    // ra8_img_arena, ra8_svg_size, ra8_log) with the documented not-supported
-    // / empty results -- the real stack lives in third_party/stb, webp,
-    // libs/ra8_imgdec and the SVG TUs, CMake-suite territory.
-    _ = @import("reflow_image_test_seam.zig");
-    // Test-only link seams (RA8FW-1222): the render harness answers
-    // reflow_render.zig's cross-library seams (glyph atlas, gfx pixel, SVG)
-    // with their documented not-supported statuses -- the real surfaces live
-    // in libs/ra8_mem, libs/ra8_gfx and the SVG TUs, CMake-suite territory.
-    _ = @import("reflow_render_test_seam.zig");
-}
-
-test "render-face picker suite" {
-    _ = @import("reflow_render_face.zig");
-}
-
-test "render suite" {
-    _ = @import("reflow_render.zig");
-}
-
-test "svg scan suite" {
-    _ = @import("reflow_svg.zig");
-}
-
-test "svg xform suite" {
-    _ = @import("reflow_svg_xform.zig");
-}
-
-test "svg shape suite" {
-    _ = @import("reflow_svg_shape.zig");
-    _ = @import("reflow_svg_path.zig");
 }

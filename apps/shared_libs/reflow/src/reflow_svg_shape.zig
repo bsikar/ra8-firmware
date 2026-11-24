@@ -14,8 +14,8 @@
 //! the ra8_gfx entry points stay extern for the CMake library build.
 
 const std = @import("std");
-const svg = @import("reflow_svg.zig");
-const xf = @import("reflow_svg_xform.zig");
+pub const svg = @import("reflow_svg.zig");
+pub const xf = @import("reflow_svg_xform.zig");
 
 pub const SvgXform = xf.SvgXform;
 pub const SvgGrad = svg.SvgGrad;
@@ -182,7 +182,7 @@ pub export fn priv_ra8_svgp_draw_line(s: [*]const u8, len: usize, t: *const SvgX
 /// the full affine, and stores the result in xs[n] / ys[n]. Terminates when
 /// k_svg_poly_max vertices have been collected or the end of the span is
 /// reached. Returns the count of vertex pairs filled.
-fn internal_parse_points(v: [*]const u8, vlen: usize, t: *const SvgXform, xs: *[k_svg_poly_max]i32, ys: *[k_svg_poly_max]i32) i32 {
+pub fn internal_parse_points(v: [*]const u8, vlen: usize, t: *const SvgXform, xs: *[k_svg_poly_max]i32, ys: *[k_svg_poly_max]i32) i32 {
     var k: usize = 0;
     var n: i32 = 0;
     // Bounded: <= k_svg_poly_max pairs; k advances past each number.
@@ -204,7 +204,7 @@ fn internal_parse_points(v: [*]const u8, vlen: usize, t: *const SvgXform, xs: *[
 /// `internal_sort_i32`: sort m int32 values in a into ascending order using
 /// insertion sort. O(m^2), efficient for the small bounded arrays (m is
 /// bounded by k_svg_poly_max scanline crossings per row). In place.
-fn internal_sort_i32(a: []i32) void {
+pub fn internal_sort_i32(a: []i32) void {
     // Bounded: a.len <= k_svg_poly_max.
     var i: usize = 1;
     while (i < a.len) : (i += 1) {
@@ -223,7 +223,7 @@ fn internal_sort_i32(a: []i32) void {
 /// (half-open interval [y0,y1) or [y1,y0)). For crossing edges, computes the
 /// X intercept via linear interpolation with 64-bit arithmetic. Stops early
 /// if k_svg_poly_max crossings are found. Returns the crossing count.
-fn internal_scanline_x(xs: []const i32, ys: []const i32, y: i32, xint: *[k_svg_poly_max]i32) i32 {
+pub fn internal_scanline_x(xs: []const i32, ys: []const i32, y: i32, xint: *[k_svg_poly_max]i32) i32 {
     const n: usize = xs.len;
     var m: i32 = 0;
     // Bounded: one test per polygon edge (n edges); n is capped at
@@ -282,7 +282,7 @@ pub export fn priv_ra8_svgp_fill_poly(xs: [*]const i32, ys: [*]const i32, n: i32
 /// independently as (channel_a + (channel_b - channel_a) * f), and recombines
 /// into a 0x00RRGGBB result. f is not clamped here; the gradient evaluator
 /// provides a value in [0,1].
-fn internal_col_lerp(a: u32, b: u32, f: f32) u32 {
+pub fn internal_col_lerp(a: u32, b: u32, f: f32) u32 {
     const ra_bits = (a >> k_svg_sh_r) & k_svg_chan_mask;
     const ga_bits = (a >> svg.k_svg_hex_chan) & k_svg_chan_mask;
     const ba_bits = a & k_svg_chan_mask;
@@ -314,7 +314,7 @@ fn internal_col_lerp(a: u32, b: u32, f: f32) u32 {
 /// first stop colour, values after the last return the last stop colour, and
 /// values between two stops are linearly interpolated by internal_col_lerp.
 /// Returns the default fill colour when g.nstops is zero.
-fn internal_grad_eval(g: *const SvgGrad, px: f32, py: f32) u32 {
+pub fn internal_grad_eval(g: *const SvgGrad, px: f32, py: f32) u32 {
     if (g.nstops == 0) {
         return svg.k_svg_def_fill;
     }
@@ -505,7 +505,7 @@ fn internal_arc_solve(a: *SvgArc, x1p: f32, y1p: f32, rx: f32, ry: f32, mx: f32,
 /// are scaled up (F.6.6.2), the centre is solved via internal_arc_solve
 /// (F.6.5.2), and the start angle plus signed sweep are derived honouring
 /// the large-arc and sweep flags. Pure; no MMIO, no heap.
-fn internal_arc_center(p0: SvgPt, p_end: SvgPt, rx_in: i32, ry_in: i32, rot_deg: i32, large: bool, sweep: bool) SvgArc {
+pub fn internal_arc_center(p0: SvgPt, p_end: SvgPt, rx_in: i32, ry_in: i32, rot_deg: i32, large: bool, sweep: bool) SvgArc {
     const k_pi: f32 = 3.14159265;
     const k_deg_half: f32 = 180.0;
     const k_half: f32 = 0.5;
@@ -539,7 +539,7 @@ fn internal_arc_center(p0: SvgPt, p_end: SvgPt, rx_in: i32, ry_in: i32, rot_deg:
 /// sweep dt. Divides the absolute value of dt by the target
 /// radians-per-segment arc step (~pi/8) and adds 1 to ensure at least one
 /// segment. Clamped to k_svg_arc_seg_max so the vertex count stays bounded.
-fn internal_arc_segs(dt: f32) i32 {
+pub fn internal_arc_segs(dt: f32) i32 {
     const k_arc_step: f32 = 0.39269908;
     var segs = @as(i32, @intFromFloat(internal_absf(dt) / k_arc_step)) + 1;
     if (segs > k_svg_arc_seg_max) {
@@ -593,345 +593,4 @@ pub export fn priv_ra8_svgp_flatten_arc(
         xf.priv_ra8_svgp_map_point(t, @as(i32, @intFromFloat(px)), @as(i32, @intFromFloat(py)), &xs[@intCast(n.*)], &ys[@intCast(n.*)]);
         n.* += 1;
     }
-}
-
-// ===========================================================================
-// Tests
-// ===========================================================================
-
-const testing = std.testing;
-const seam = @import("reflow_render_test_seam.zig");
-
-/// The recorded ra8_gfx draw calls since the last reset.
-fn calls() []seam.ShapeCall {
-    return seam.shape_calls[0..seam.shape_call_n];
-}
-
-/// An identity user-to-framebuffer map on a 64x64 box (scale 1, offset 0).
-fn identityXform() SvgXform {
-    return .{
-        .bx = 0,
-        .by = 0,
-        .bw = 64,
-        .bh = 64,
-        .vx = 0,
-        .vy = 0,
-        .vw = 64,
-        .vh = 64,
-        .ua = 1.0,
-        .ub = 0.0,
-        .uc = 0.0,
-        .ud = 1.0,
-        .ue = 0.0,
-        .uf = 0.0,
-        .grads = null,
-    };
-}
-
-test "col lerp endpoints and mid" {
-    try testing.expectEqual(@as(u32, 0x000000), internal_col_lerp(0x000000, 0xFFFFFF, 0.0));
-    try testing.expectEqual(@as(u32, 0xFFFFFF), internal_col_lerp(0x000000, 0xFFFFFF, 1.0));
-    // Halfway between black and white: every channel rounds down to 127.
-    try testing.expectEqual(@as(u32, 0x7F7F7F), internal_col_lerp(0x000000, 0xFFFFFF, 0.5));
-    // A uniform colour stays uniform.
-    try testing.expectEqual(@as(u32, 0xFF0000), internal_col_lerp(0xFF0000, 0xFF0000, 0.7));
-}
-
-fn gradLinear(off0: f32, col0: u32, off1: f32, col1: u32) SvgGrad {
-    var g = SvgGrad{
-        .kind = svg.k_svg_grad_linear,
-        .nstops = 2,
-        .id = @splat(0),
-        .x1 = 0.0,
-        .y1 = 0.0,
-        .x2 = 1.0,
-        .y2 = 0.0,
-        .stops = @splat(.{ .off = 0, .col = 0 }),
-    };
-    g.stops[0] = .{ .off = off0, .col = col0 };
-    g.stops[1] = .{ .off = off1, .col = col1 };
-    return g;
-}
-
-test "grad eval clamps and interpolates" {
-    // No stops: the default fill.
-    var empty = SvgGrad{
-        .kind = svg.k_svg_grad_linear,
-        .nstops = 0,
-        .id = @splat(0),
-        .x1 = 0,
-        .y1 = 0,
-        .x2 = 0,
-        .y2 = 0,
-        .stops = @splat(.{ .off = 0, .col = 0 }),
-    };
-    try testing.expectEqual(svg.k_svg_def_fill, internal_grad_eval(&empty, 0.5, 0.5));
-
-    const g = gradLinear(0.0, 0x000000, 1.0, 0xFFFFFF);
-    try testing.expectEqual(@as(u32, 0x000000), internal_grad_eval(&g, 0.0, 0.5));
-    try testing.expectEqual(@as(u32, 0xFFFFFF), internal_grad_eval(&g, 1.0, 0.5));
-    // Before the first stop and after the last clamp to the ends.
-    try testing.expectEqual(@as(u32, 0x000000), internal_grad_eval(&g, -0.5, 0.5));
-    try testing.expectEqual(@as(u32, 0xFFFFFF), internal_grad_eval(&g, 1.5, 0.5));
-    // Midway is the half blend.
-    try testing.expectEqual(@as(u32, 0x7F7F7F), internal_grad_eval(&g, 0.5, 0.5));
-
-    // Radial: distance from (x1, y1) over radius x2.
-    var rad = gradLinear(0.0, 0x000000, 1.0, 0xFFFFFF);
-    rad.kind = svg.k_svg_grad_radial;
-    rad.x1 = 0.5;
-    rad.y1 = 0.5;
-    rad.x2 = 0.5;
-    try testing.expectEqual(@as(u32, 0x000000), internal_grad_eval(&rad, 0.5, 0.5));
-    try testing.expectEqual(@as(u32, 0xFFFFFF), internal_grad_eval(&rad, 1.0, 0.5));
-}
-
-test "scanline x crossings and sort" {
-    // An axis-aligned quad (0,0), (8,0), (8,8), (0,8): scanline y = 4
-    // crosses the two vertical edges at x = 0 and x = 8.
-    const xs = [_]i32{ 0, 8, 8, 0 };
-    const ys = [_]i32{ 0, 0, 8, 8 };
-    var xint: [k_svg_poly_max]i32 = @splat(0);
-    const m = internal_scanline_x(&xs, &ys, 4, &xint);
-    try testing.expectEqual(@as(i32, 2), m);
-    internal_sort_i32(xint[0..@intCast(m)]);
-    try testing.expectEqual(@as(i32, 0), xint[0]);
-    try testing.expectEqual(@as(i32, 8), xint[1]);
-    // Above and on the bottom edge: no crossings (half-open rule).
-    try testing.expectEqual(@as(i32, 0), internal_scanline_x(&xs, &ys, -1, &xint));
-    try testing.expectEqual(@as(i32, 0), internal_scanline_x(&xs, &ys, 8, &xint));
-}
-
-test "fill poly emits one span per row" {
-    seam.shapeCallsReset();
-    const xs = [_]i32{ 2, 10, 10, 2 };
-    const ys = [_]i32{ 2, 2, 10, 10 };
-    priv_ra8_svgp_fill_poly(&xs, &ys, 4, 0x00FF00);
-
-    // Rows y = 2..9 each fill one span (2, y) to (10, y); the bottom edge
-    // row is excluded by the half-open rule.
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 8), cs.len);
-    try testing.expectEqual(@as(u8, 1), cs[0].kind);
-    try testing.expectEqual(@as(i32, 2), cs[0].a);
-    try testing.expectEqual(@as(i32, 2), cs[0].b);
-    try testing.expectEqual(@as(i32, 10), cs[0].c);
-    try testing.expectEqual(@as(i32, 2), cs[0].d);
-    try testing.expectEqual(@as(u32, 0x00FF00), cs[0].color);
-    try testing.expectEqual(@as(i32, 2), cs[7].a);
-    try testing.expectEqual(@as(i32, 9), cs[7].b);
-    try testing.expectEqual(@as(i32, 10), cs[7].c);
-    try testing.expectEqual(@as(i32, 9), cs[7].d);
-
-    // Too few vertices: nothing drawn.
-    seam.shapeCallsReset();
-    const two_x = [_]i32{ 2, 10, 10 };
-    const two_y = [_]i32{ 2, 2, 10 };
-    priv_ra8_svgp_fill_poly(&two_x, &two_y, 2, 0x00FF00);
-    try testing.expectEqual(@as(usize, 0), calls().len);
-}
-
-test "fill poly grad evaluates per pixel" {
-    seam.shapeCallsReset();
-    const xs = [_]i32{ 0, 10, 10, 0 };
-    const ys = [_]i32{ 0, 0, 10, 10 };
-    const g = gradLinear(0.0, 0x000000, 1.0, 0xFFFFFF);
-    priv_ra8_svgp_fill_poly_grad(&xs, &ys, 4, &g);
-
-    // Rows y = 0..9, each spanning x = 0..10 inclusive: 110 pixel writes.
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 110), cs.len);
-    try testing.expectEqual(@as(u8, 4), cs[0].kind);
-    try testing.expectEqual(@as(i32, 0), cs[0].a);
-    try testing.expectEqual(@as(i32, 0), cs[0].b);
-    try testing.expectEqual(@as(u32, 0x000000), cs[0].color);
-    // The gradient is bbox-relative and linear in x: the midpoint pixel is
-    // the half blend.
-    const mid = cs[5 * 11 + 5];
-    try testing.expectEqual(@as(i32, 5), mid.a);
-    try testing.expectEqual(@as(i32, 5), mid.b);
-    try testing.expectEqual(@as(u32, 0x7F7F7F), mid.color);
-    // The right edge is white.
-    try testing.expectEqual(@as(u32, 0xFFFFFF), cs[5 * 11 + 10].color);
-}
-
-test "parse points maps and bounds" {
-    const t = identityXform();
-    var xs: [k_svg_poly_max]i32 = @splat(0);
-    var ys: [k_svg_poly_max]i32 = @splat(0);
-    const v = "0,0 4, 0 4,4";
-    const n = internal_parse_points(v, v.len, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, 3), n);
-    try testing.expectEqual(@as(i32, 0), xs[0]);
-    try testing.expectEqual(@as(i32, 4), xs[1]);
-    try testing.expectEqual(@as(i32, 4), ys[2]);
-
-    // Cap: more pairs than k_svg_poly_max stops at the cap.
-    const long = try testing.allocator.alloc(u8, (k_svg_poly_max + 8) * 8);
-    defer testing.allocator.free(long);
-    for (0..k_svg_poly_max + 8) |i| {
-        _ = try std.fmt.bufPrint(long[i * 8 ..][0..8], "{d},{d} ", .{ i, i });
-    }
-    const capped = internal_parse_points(long.ptr, long.len, &t, &xs, &ys);
-    try testing.expectEqual(@as(i32, @intCast(k_svg_poly_max)), capped);
-}
-
-test "draw rect fast path and gate" {
-    seam.shapeCallsReset();
-    const tag = "<rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" fill=\"#FF0000\"/>";
-    priv_ra8_svgp_draw_rect(tag.ptr, tag.len, &identityXform());
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 1), cs.len);
-    try testing.expectEqual(@as(u8, 2), cs[0].kind);
-    try testing.expectEqual(@as(i32, 2), cs[0].a);
-    try testing.expectEqual(@as(i32, 2), cs[0].b);
-    try testing.expectEqual(@as(i32, 4), cs[0].c);
-    try testing.expectEqual(@as(i32, 4), cs[0].d);
-    try testing.expectEqual(@as(u32, 0xFF0000), cs[0].color);
-    try testing.expectEqual(@as(u8, 1), cs[0].filled);
-
-    // fill="none": the gate returns without drawing.
-    seam.shapeCallsReset();
-    const none = "<rect x=\"30\" y=\"30\" width=\"4\" height=\"4\" fill=\"none\"/>";
-    priv_ra8_svgp_draw_rect(none.ptr, none.len, &identityXform());
-    try testing.expectEqual(@as(usize, 0), calls().len);
-}
-
-test "draw rect maps under shear" {
-    seam.shapeCallsReset();
-    // skewX(45): (x, y) -> (x + y, y). The quad (0..4, 0..4) becomes a
-    // parallelogram; the scanline path fills rows y = 0..3, each shifted
-    // right by its y.
-    var t2 = identityXform();
-    const xsh = "transform=\"skewX(45)\"";
-    xf.priv_ra8_svgp_apply_xform(&t2, xsh.ptr, xsh.len);
-    const tag = "<rect x=\"0\" y=\"0\" width=\"4\" height=\"4\" fill=\"#00FF00\"/>";
-    priv_ra8_svgp_draw_rect(tag.ptr, tag.len, &t2);
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 4), cs.len);
-    try testing.expectEqual(@as(i32, 0), cs[0].a);
-    try testing.expectEqual(@as(i32, 0), cs[0].b);
-    try testing.expectEqual(@as(i32, 4), cs[0].c);
-    try testing.expectEqual(@as(i32, 0), cs[0].d);
-    try testing.expectEqual(@as(i32, 3), cs[3].a);
-    try testing.expectEqual(@as(i32, 3), cs[3].b);
-    try testing.expectEqual(@as(i32, 7), cs[3].c);
-    try testing.expectEqual(@as(i32, 3), cs[3].d);
-}
-
-test "draw circle fast path and ngon" {
-    seam.shapeCallsReset();
-    const tag = "<circle cx=\"8\" cy=\"8\" r=\"4\" fill=\"#FF0000\"/>";
-    priv_ra8_svgp_draw_circle(tag.ptr, tag.len, &identityXform());
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 1), cs.len);
-    try testing.expectEqual(@as(u8, 3), cs[0].kind);
-    try testing.expectEqual(@as(i32, 8), cs[0].a);
-    try testing.expectEqual(@as(i32, 8), cs[0].b);
-    try testing.expectEqual(@as(i32, 4), cs[0].c);
-    try testing.expectEqual(@as(u32, 0xFF0000), cs[0].color);
-    try testing.expectEqual(@as(u8, 1), cs[0].filled);
-
-    // Under a rotation the N-gon path fills with spans; the fill still
-    // happens and stays bounded.
-    seam.shapeCallsReset();
-    var t = identityXform();
-    const xsh = "transform=\"rotate(45)\"";
-    xf.priv_ra8_svgp_apply_xform(&t, xsh.ptr, xsh.len);
-    priv_ra8_svgp_draw_circle(tag.ptr, tag.len, &t);
-    try testing.expect(calls().len > 0);
-    for (calls()) |c| {
-        try testing.expectEqual(@as(u8, 1), c.kind);
-    }
-}
-
-test "draw line uses stroke" {
-    seam.shapeCallsReset();
-    const tag = "<line x1=\"2\" y1=\"2\" x2=\"10\" y2=\"2\" stroke=\"#FF0000\"/>";
-    priv_ra8_svgp_draw_line(tag.ptr, tag.len, &identityXform());
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 1), cs.len);
-    try testing.expectEqual(@as(u8, 1), cs[0].kind);
-    try testing.expectEqual(@as(i32, 2), cs[0].a);
-    try testing.expectEqual(@as(i32, 2), cs[0].b);
-    try testing.expectEqual(@as(i32, 10), cs[0].c);
-    try testing.expectEqual(@as(i32, 2), cs[0].d);
-
-    // No stroke: nothing drawn.
-    seam.shapeCallsReset();
-    const bare = "<line x1=\"2\" y1=\"20\" x2=\"10\" y2=\"20\"/>";
-    priv_ra8_svgp_draw_line(bare.ptr, bare.len, &identityXform());
-    try testing.expectEqual(@as(usize, 0), calls().len);
-}
-
-test "draw polygon and polyline" {
-    seam.shapeCallsReset();
-    const poly = "<polygon fill=\"#00FF00\" points=\"2,2 10,2 10,10 2,10\"/>";
-    priv_ra8_svgp_draw_polygon(poly.ptr, poly.len, &identityXform());
-    const cs = calls();
-    try testing.expectEqual(@as(usize, 8), cs.len);
-    try testing.expectEqual(@as(i32, 2), cs[0].a);
-    try testing.expectEqual(@as(i32, 2), cs[0].b);
-    try testing.expectEqual(@as(i32, 10), cs[0].c);
-    try testing.expectEqual(@as(i32, 2), cs[0].d);
-
-    // Missing points: nothing drawn.
-    seam.shapeCallsReset();
-    const bare = "<polygon fill=\"#00FF00\"/>";
-    priv_ra8_svgp_draw_polygon(bare.ptr, bare.len, &identityXform());
-    try testing.expectEqual(@as(usize, 0), calls().len);
-
-    seam.shapeCallsReset();
-    const line = "<polyline stroke=\"#FF0000\" points=\"2,30 10,30 10,40\"/>";
-    priv_ra8_svgp_draw_polyline(line.ptr, line.len, &identityXform());
-    const cs2 = calls();
-    try testing.expectEqual(@as(usize, 2), cs2.len);
-    try testing.expectEqual(@as(i32, 10), cs2[1].a);
-    try testing.expectEqual(@as(i32, 30), cs2[1].b);
-    try testing.expectEqual(@as(i32, 10), cs2[1].c);
-    try testing.expectEqual(@as(i32, 40), cs2[1].d);
-}
-
-test "arc flatten degenerate and quarter" {
-    const t = identityXform();
-    var xs: [k_svg_poly_max]i32 = @splat(0);
-    var ys: [k_svg_poly_max]i32 = @splat(0);
-
-    // Zero radius: the degenerate line-to.
-    var n: i32 = 0;
-    const args0 = [_]i32{ 0, 0, 0, 0, 1, 0, 0 };
-    priv_ra8_svgp_flatten_arc(&t, .{ .x = 0, .y = 0 }, &args0, .{ .x = 10, .y = 0 }, &xs, &ys, &n);
-    try testing.expectEqual(@as(i32, 1), n);
-    try testing.expectEqual(@as(i32, 10), xs[0]);
-
-    // Quarter arc from (0, 0) to (10, 0) with r = 5, sweep = 1: the samples
-    // bulge off the chord and the last sample lands on the endpoint.
-    n = 0;
-    const args = [_]i32{ 5, 5, 0, 0, 1, 10, 0 };
-    priv_ra8_svgp_flatten_arc(&t, .{ .x = 0, .y = 0 }, &args, .{ .x = 10, .y = 0 }, &xs, &ys, &n);
-    try testing.expect(n > 1);
-    try testing.expect(n <= @as(i32, @intCast(k_svg_poly_max)));
-    try testing.expectEqual(@as(i32, 10), xs[@intCast(n - 1)]);
-    try testing.expectEqual(@as(i32, 0), ys[@intCast(n - 1)]);
-    // Sweep=1 runs angles 180 to 360 degrees: mid samples sit above the
-    // chord (negative y in SVG user space).
-    try testing.expect(ys[@intCast(@divTrunc(n, 2))] < 0);
-}
-
-test "arc center solves the quarter circle" {
-    const a = internal_arc_center(.{ .x = 0, .y = 0 }, .{ .x = 10, .y = 0 }, 5, 5, 0, false, true);
-    try testing.expect(a.ok);
-    try testing.expectEqual(@as(f32, 5.0), a.cx);
-    try testing.expectEqual(@as(f32, 0.0), a.cy);
-
-    // Coincident endpoints are degenerate.
-    const d = internal_arc_center(.{ .x = 3, .y = 3 }, .{ .x = 3, .y = 3 }, 5, 5, 0, false, true);
-    try testing.expect(!d.ok);
-}
-
-test "arc segs bounded" {
-    try testing.expectEqual(@as(i32, 1), internal_arc_segs(0.0));
-    try testing.expectEqual(@as(i32, 2), internal_arc_segs(0.4));
-    try testing.expectEqual(k_svg_arc_seg_max, internal_arc_segs(100.0));
-    try testing.expectEqual(k_svg_arc_seg_max, internal_arc_segs(-100.0));
 }
