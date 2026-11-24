@@ -38,6 +38,7 @@
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb_internal.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 #include "ux_utility.h"
@@ -603,4 +604,129 @@ ra8_err_t ux_dcd_ra8_usb_uninitialize(void)
 ra8_usb_dcd_state_t ux_dcd_ra8_usb_state(void)
 {
   return g_dcd.state;
+}
+
+/* -------------------------------------------------------------------------- */
+/* USBX stack-ops seam implementation for ra8_usb_device_open (RA8FW-317) */
+/* -------------------------------------------------------------------------- */
+
+static ra8_usb_device_error_cb_t       s_port_error_cb    = nullptr;
+static ra8_usb_device_class_entry_fn_t s_port_class_entry = nullptr;
+static UCHAR                           s_port_class_name[64];
+
+static VOID priv_ux_port_error_trampoline(UINT system_level, UINT system_context, UINT error_code)
+{
+  if (s_port_error_cb != nullptr) {
+    s_port_error_cb((uint32_t)system_level, (uint32_t)system_context, (uint32_t)error_code);
+  }
+}
+
+static UINT priv_ux_port_class_trampoline(UX_SLAVE_CLASS_COMMAND* command)
+{
+  if (s_port_class_entry == nullptr) {
+    return (UINT)UX_ERROR;
+  }
+  return (UINT)s_port_class_entry((void*)command);
+}
+
+static ra8_err_t priv_ux_port_system_init(void* pool, uint32_t pool_bytes)
+{
+  if ((pool == nullptr) || (pool_bytes == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return (_ux_system_initialize(pool, (ULONG)pool_bytes, UX_NULL, 0UL) == UX_SUCCESS)
+           ? k_ra8_ok
+           : k_ra8_err_invalid_state;
+}
+
+static ra8_err_t priv_ux_port_error_cb_register(ra8_usb_device_error_cb_t error_cb)
+{
+  s_port_error_cb = error_cb;
+  if (error_cb != nullptr) {
+    _ux_utility_error_callback_register(priv_ux_port_error_trampoline);
+  } else {
+    _ux_utility_error_callback_register(UX_NULL);
+  }
+  return k_ra8_ok;
+}
+
+static ra8_err_t priv_ux_port_device_stack_init(uint8_t* hs_device_fw,
+                                                uint32_t hs_device_fw_len,
+                                                uint8_t* fs_device_fw,
+                                                uint32_t fs_device_fw_len,
+                                                uint8_t* strings_fw,
+                                                uint32_t strings_fw_len,
+                                                uint8_t* langid_fw,
+                                                uint32_t langid_fw_len)
+{
+  UINT status = _ux_device_stack_initialize((UCHAR*)hs_device_fw,
+                                            (ULONG)hs_device_fw_len,
+                                            (UCHAR*)fs_device_fw,
+                                            (ULONG)fs_device_fw_len,
+                                            (UCHAR*)strings_fw,
+                                            (ULONG)strings_fw_len,
+                                            (UCHAR*)langid_fw,
+                                            (ULONG)langid_fw_len,
+                                            UX_NULL);
+  return (status == UX_SUCCESS) ? k_ra8_ok : k_ra8_err_invalid_state;
+}
+
+static ra8_err_t priv_ux_port_class_register(const char*                     class_name,
+                                             ra8_usb_device_class_entry_fn_t class_entry,
+                                             uint8_t                         configuration,
+                                             uint8_t                         interface,
+                                             void*                           class_param)
+{
+  if ((class_name == nullptr) || (class_entry == nullptr) || (class_param == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+
+  size_t len = 0U;
+  while ((len < sizeof(s_port_class_name)) && (class_name[len] != '\0')) {
+    s_port_class_name[len] = (UCHAR)class_name[len];
+    len++;
+  }
+  if ((len == 0U) || (len >= sizeof(s_port_class_name))) {
+    return k_ra8_err_invalid_arg;
+  }
+  s_port_class_name[len] = '\0';
+  s_port_class_entry     = class_entry;
+
+  UINT status = _ux_device_stack_class_register(s_port_class_name,
+                                                priv_ux_port_class_trampoline,
+                                                (ULONG)configuration,
+                                                (ULONG)interface,
+                                                class_param);
+  return (status == UX_SUCCESS) ? k_ra8_ok : k_ra8_err_invalid_state;
+}
+
+static ra8_err_t priv_ux_port_dcd_open(ra8_usb_device_port_t port)
+{
+  const ra8_usb_speed_t speed =
+    (port == k_ra8_usb_device_port_hs) ? k_ra8_usb_speed_hs : k_ra8_usb_speed_fs;
+  return ux_dcd_ra8_usb_initialize(speed);
+}
+
+const ra8_usb_stack_ops_t* ux_device_port_stack_ops(void)
+{
+  static const ra8_usb_stack_ops_t s_ops = {
+    .system_init       = priv_ux_port_system_init,
+    .error_cb_register = priv_ux_port_error_cb_register,
+    .device_stack_init = priv_ux_port_device_stack_init,
+    .class_register    = priv_ux_port_class_register,
+    .dcd_open          = nullptr,
+  };
+  return &s_ops;
+}
+
+const ra8_usb_stack_ops_t* ux_device_port_stack_ops_with_dcd(void)
+{
+  static const ra8_usb_stack_ops_t s_ops = {
+    .system_init       = priv_ux_port_system_init,
+    .error_cb_register = priv_ux_port_error_cb_register,
+    .device_stack_init = priv_ux_port_device_stack_init,
+    .class_register    = priv_ux_port_class_register,
+    .dcd_open          = priv_ux_port_dcd_open,
+  };
+  return &s_ops;
 }

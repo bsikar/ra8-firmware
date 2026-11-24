@@ -65,6 +65,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
@@ -478,54 +479,31 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Synthesises the frameworks, then brings the FS device stack up.
+ * @brief Synthesizes USB frameworks, opens the FS USBX stack, and binds MSC.
  *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
+ * @details Uses ::ra8_usb_device_open with ::ux_device_port_stack_ops_with_dcd
+ * so pool init, FS stack setup, single-LUN RAM-disk class registration, and
+ * DCD initialization execute through the shared PAL seam.
  *
- * @pre File-scope pool reserved.
+ * @return ``k_ra8_ok`` on success, negative error code otherwise.
+ * @retval k_ra8_ok Stack, MSC class, and FS DCD initialized.
+ *
+ * @pre File-scope pool and ::s_ramdisk callbacks are ready.
  * @pre Thread context.
- * @post Device stack accepts class registrations.
+ * @post MSC class bound to configuration 1, interface 0.
+ * @post LUN0 advertises ``k_demo_block_count`` removable FAT blocks.
  * @post On failure, USBX state is undefined.
  *
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT demo_usbx_stack_up(void)
+static ra8_err_t demo_usb_open(void)
 {
-  if (demo_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+  const ra8_err_t built = demo_usb_build_frameworks();
+  if (built != k_ra8_ok) {
+    return built;
   }
-  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     (UCHAR*)s_device_framework_fs,
-                                     (ULONG)s_device_framework_len,
-                                     (UCHAR*)s_string_framework,
-                                     (ULONG)s_string_framework_len,
-                                     (UCHAR*)s_language_id_framework,
-                                     (ULONG)s_language_id_framework_len,
-                                     UX_NULL);
-}
 
-/**
- * @brief Registers the Mass-Storage class with one LUN backed by ``s_ramdisk``.
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ``demo_usbx_stack_up`` has succeeded.
- * @pre Media read/write/status callbacks are defined.
- * @post MSC class bound to configuration 1, interface 0.
- * @post LUN0 advertises ``k_demo_block_count`` removable FAT blocks.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT demo_msc_class_register(void)
-{
   UX_SLAVE_CLASS_STORAGE_PARAMETER msc_params;
   (void)memset(&msc_params, 0, sizeof(msc_params));
   msc_params.ux_slave_class_storage_parameter_number_lun  = 1UL;
@@ -550,26 +528,37 @@ static UINT demo_msc_class_register(void)
   msc_params.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status =
     demo_msc_status;
 
-  static UCHAR s_class_name[] = "ux_slave_class_storage";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_storage_entry,
-                                         1,
-                                         0,
-                                         &msc_params);
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_demo_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops_with_dcd(),
+    .class_driver  = ux_device_port_class_msc(),
+    .class_param   = &msc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 static VOID demo_worker(ULONG arg)
 {
   (void)arg;
 
-  if (demo_usbx_stack_up() != UX_SUCCESS) {
-    return;
-  }
-  if (demo_msc_class_register() != UX_SUCCESS) {
-    return;
-  }
-  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
+  if (demo_usb_open() != k_ra8_ok) {
     return;
   }
   if (ra8_usb_device_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {

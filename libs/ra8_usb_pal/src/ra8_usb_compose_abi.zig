@@ -141,11 +141,7 @@ fn run(cfg: *const CConfig, fw: *CFrameworks, len: *compose.Lengths) compose.Err
     try compose.compose(model, try class(&entries[0]), out, len);
 }
 
-// =============================================================================
-// Export (inc/ra8_usb_compose.h)
-// =============================================================================
-
-export fn ra8_usb_device_compose(cfg: ?*const CConfig, fw: ?*CFrameworks) callconv(.c) u16 {
+pub fn composeNullable(cfg: ?*const CConfig, fw: ?*CFrameworks) u16 {
     const c_cfg = cfg orelse return err_invalid_arg;
     const c_fw = fw orelse return err_invalid_arg;
     var len = compose.Lengths{};
@@ -155,4 +151,12 @@ export fn ra8_usb_device_compose(cfg: ?*const CConfig, fw: ?*CFrameworks) callco
     };
     publish(len, c_fw);
     return err_ok;
+}
+
+// =============================================================================
+// Export (inc/ra8_usb_compose.h)
+// =============================================================================
+
+export fn ra8_usb_device_compose(cfg: ?*const CConfig, fw: ?*CFrameworks) callconv(.c) u16 {
+    return composeNullable(cfg, fw);
 }

@@ -71,6 +71,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_hid.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
@@ -425,40 +426,63 @@ static ra8_err_t hid_usb_build_frameworks(void)
   return k_ra8_ok;
 }
 
+static UINT hid_get_callback(UX_SLAVE_CLASS_HID* hid, UX_SLAVE_CLASS_HID_EVENT* hid_event);
+
 /**
- * @brief Bring USBX system + device stack up with the HID framework.
+ * @brief Builds HID USB frameworks and opens USBX device stack + HID class.
  *
- * @details One-shot USBX pool + device-stack init (FS-only framework).
+ * @details One-shot framework compose + USBX pool + device-stack + HID class
+ * init via ::ra8_usb_device_open (FS-only framework).
  *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
+ * @return ``k_ra8_ok`` on success, negative error code otherwise.
+ * @retval k_ra8_ok Stack initialized and HID class registered.
  *
  * @pre File-scope pool reserved.
  * @pre Thread context.
- * @post Device stack accepts class registrations.
+ * @post Device stack accepts attach once DCD is initialized.
  * @post On failure USBX state is undefined.
  *
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT hid_usbx_stack_up(void)
+static ra8_err_t hid_usb_open(void)
 {
   if (hid_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+    return k_ra8_err_invalid_arg;
   }
-
-  if (_ux_system_initialize(s_usbx_pool, k_hid_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     s_device_framework_fs,
-                                     s_device_framework_len,
-                                     s_string_framework,
-                                     s_string_framework_len,
-                                     s_language_id_framework,
-                                     s_language_id_framework_len,
-                                     UX_NULL);
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
+  UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
+    .ux_slave_class_hid_instance_activate         = hid_activate,
+    .ux_slave_class_hid_instance_deactivate       = hid_deactivate,
+    .ux_device_class_hid_parameter_report_address = s_report_descriptor,
+    .ux_device_class_hid_parameter_report_id      = 0UL,
+    .ux_device_class_hid_parameter_report_length  = (ULONG)sizeof(s_report_descriptor),
+    .ux_device_class_hid_parameter_callback       = UX_NULL,
+    .ux_device_class_hid_parameter_get_callback   = hid_get_callback,
+  };
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_hid_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_hid(),
+    .class_param   = &hid_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -494,51 +518,11 @@ static UINT hid_get_callback(UX_SLAVE_CLASS_HID* hid, UX_SLAVE_CLASS_HID_EVENT* 
 }
 
 /**
- * @brief Register the HID class against configuration 1, interface 0.
- *
- * @details Binds ::hid_activate / ::hid_deactivate and publishes the vendor
- * report descriptor so the host's enumeration sees a real HID interface.
- *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ::hid_usbx_stack_up has succeeded.
- * @pre ::s_report_descriptor is at file scope and valid.
- * @post The HID class is bound; the activate callback will fire on
- *       SET_CONFIGURATION.
- * @post No other class is registered.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT hid_class_register(void)
-{
-  UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
-    .ux_slave_class_hid_instance_activate         = hid_activate,
-    .ux_slave_class_hid_instance_deactivate       = hid_deactivate,
-    .ux_device_class_hid_parameter_report_address = s_report_descriptor,
-    .ux_device_class_hid_parameter_report_id      = 0UL,
-    .ux_device_class_hid_parameter_report_length  = (ULONG)sizeof(s_report_descriptor),
-    .ux_device_class_hid_parameter_callback       = UX_NULL,
-    .ux_device_class_hid_parameter_get_callback   = hid_get_callback,
-  };
-  static UCHAR s_class_name[] = "ux_slave_class_hid";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_hid_entry,
-                                         1,
-                                         0,
-                                         &hid_params);
-}
-
-/**
  * @brief One device send iteration: queue a fresh input report.
  *
  * @details Pins CONFIGURED (DVSQ-poll race guard), builds a report
- * { seq, fixed body }, queues it with `_ux_device_class_hid_event_set` on
- * the interrupt-IN endpoint, and yields one tick. The yield lets the
- * lower-priority host thread drain the queue; when the queue is full the
- * event_set fails harmlessly and the seq does not advance.
+ * { seq, fixed body }, queues it with `ux_device_port_hid_event_set` on
+ * the interrupt-IN endpoint, and yields one tick.
  *
  * @param[in,out] seq Rolling report sequence; advanced on a queued report.
  *
@@ -563,7 +547,7 @@ static void hid_send_iter(uint32_t* seq)
   ev.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
   hid_fill_report_body(ev.ux_device_class_hid_event_buffer, (uint32_t)k_hid_report_len);
   ev.ux_device_class_hid_event_buffer[k_hid_seq_idx] = (UCHAR)(*seq & (uint32_t)k_hid_byte_mask);
-  if (_ux_device_class_hid_event_set(s_hid_class, &ev) == UX_SUCCESS) {
+  if (ux_device_port_hid_event_set(s_hid_class, &ev) == k_ra8_ok) {
     (*seq)++;
     s_dbg_dev_sent++;
     (void)ra8_board_led_toggle(k_ra8_board_led1);
@@ -593,19 +577,13 @@ static VOID hid_device_worker(ULONG arg)
 {
   (void)arg;
 
-  UINT ux = hid_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_hid_dev_step_stack;
-  ux             = hid_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
+  ra8_err_t e = hid_usb_open();
+  if (e != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_hid_dev_step_class;
-  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  e              = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
   if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;

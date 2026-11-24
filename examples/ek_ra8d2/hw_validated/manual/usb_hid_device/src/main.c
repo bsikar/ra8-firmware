@@ -50,15 +50,14 @@
  *   4. ``ra8_board_led_init(k_ra8_board_led1)`` for visual heartbeat.
  *   5. ThreadX ``tx_kernel_enter()`` -- spins the scheduler.
  *   6. ``tx_application_define`` -- spawns one worker thread that:
- *        - Allocates USBX memory pool and calls
- *          ``_ux_system_initialize`` + ``_ux_device_stack_initialize``.
- *        - Calls ``_ux_device_stack_class_register`` for the HID class.
+ *        - Allocates the USBX pool and calls ``ra8_usb_device_open`` with
+ *          ``ux_device_port_stack_ops()`` + ``ux_device_port_class_hid()``.
  *        - Calls ``ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs)`` to
  *          plug our DCD bridge into USBX.
  *        - Calls ``ra8_usb_device_attach(true)`` so the host begins
  *          enumeration.
  *        - Drops into the jiggle loop:
- *          ``_ux_device_class_hid_event_set`` once per second, LED1
+ *          ``ux_device_port_hid_event_set`` once per second, LED1
  *          toggle per send.
  *
  * ## Verification (macOS)
@@ -97,6 +96,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_hid.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
@@ -556,42 +556,22 @@ static ra8_err_t demo_usb_build_frameworks(void)
  * @note Call once per worker bring-up.
  * @since 0.1.0
  */
-static UINT demo_usbx_stack_up(void)
+static ra8_err_t demo_usb_open(void)
 {
   if (demo_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+    return k_ra8_err_invalid_arg;
   }
-
-  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     s_device_framework_fs,
-                                     s_device_framework_len,
-                                     s_string_framework,
-                                     s_string_framework_len,
-                                     s_language_id_framework,
-                                     s_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
- * @brief Registers the HID class with the configured report descriptor.
- *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ``demo_usbx_stack_up`` has succeeded.
- * @pre ``s_report_descriptor`` is at file scope and valid.
- * @post HID class bound to configuration 1, interface 0.
- * @post ``demo_hid_activate`` will fire on SET_CONFIGURATION.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT demo_hid_class_register(void)
-{
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
     .ux_slave_class_hid_instance_activate         = demo_hid_activate,
     .ux_slave_class_hid_instance_deactivate       = demo_hid_deactivate,
@@ -601,13 +581,19 @@ static UINT demo_hid_class_register(void)
     .ux_device_class_hid_parameter_callback       = UX_NULL,
     .ux_device_class_hid_parameter_get_callback   = demo_hid_get_callback,
   };
-  static UCHAR s_class_name[] = "ux_slave_class_hid";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_hid_entry,
-                                         1,
-                                         0,
-                                         &hid_params);
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_demo_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_hid(),
+    .class_param   = &hid_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -617,7 +603,7 @@ static UINT demo_hid_class_register(void)
  *
  * @pre Worker thread context; ``s_hid_class`` is non-NULL.
  * @pre ``phase`` points to a valid ``demo_phase_t``.
- * @post On UX_SUCCESS: LED1 toggled and ``*phase`` advanced.
+ * @post On k_ra8_ok: LED1 toggled and ``*phase`` advanced.
  * @post On failure: ``*phase`` unchanged.
  *
  * @note Caller paces invocations with ``tx_thread_sleep``.
@@ -632,7 +618,7 @@ static void demo_jiggle_send(demo_phase_t* phase)
   hid_event.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
   demo_build_jiggle(*phase, hid_event.ux_device_class_hid_event_buffer);
 
-  if (_ux_device_class_hid_event_set(s_hid_class, &hid_event) == UX_SUCCESS) {
+  if (ux_device_port_hid_event_set(s_hid_class, &hid_event) == k_ra8_ok) {
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     *phase = (demo_phase_t)(((uint8_t)(*phase + 1U)) % k_demo_phase_count);
     g_usb_hid_match += 1U;
@@ -645,10 +631,7 @@ static VOID demo_worker(ULONG arg)
 {
   (void)arg;
 
-  if (demo_usbx_stack_up() != UX_SUCCESS) {
-    return;
-  }
-  if (demo_hid_class_register() != UX_SUCCESS) {
+  if (demo_usb_open() != k_ra8_ok) {
     return;
   }
   if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {

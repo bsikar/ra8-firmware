@@ -59,6 +59,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 
 /* -------------------------------------------------------------------------- */
@@ -431,66 +432,36 @@ static UINT sdmsc_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* me
 }
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 /* Device side: USBX MSC with one writable live-SD LUN */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Bring USBX system + device stack up with the MSC framework.
+ * @brief Builds USB frameworks, opens the FS USBX stack, and binds the live-SD LUN.
  *
- * @details One-shot USBX pool + device-stack init (FS-only framework).
+ * @details Uses ::ra8_usb_device_open with ::ux_device_port_stack_ops to run
+ * pool init, FS stack setup, and MSC registration for LUN0 with the real CSD
+ * card geometry ::s_usb_msc_sdcard_blocks and ``media_read_only_flag = UX_FALSE``.
  *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
+ * @return ``k_ra8_ok`` on success, negative error code otherwise.
+ * @retval k_ra8_ok Stack initialized and writable SD LUN registered.
  *
  * @pre File-scope pool reserved.
- * @pre Thread context.
- * @post Device stack accepts class registrations.
+ * @pre ::s_usb_msc_sdcard_blocks is non-zero (worker gated on it).
+ * @post MSC class bound to configuration 1, interface 0, with 1 LUN.
+ * @post GET_MAX_LUN will report 0.
  * @post On failure USBX state is undefined.
  *
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT sdmsc_usbx_stack_up(void)
+static ra8_err_t sdmsc_usb_open(void)
 {
-  if (_ux_system_initialize(s_usbx_pool, k_sdmsc_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
+  const ra8_err_t built = demo_usb_build_frameworks();
+  if (built != k_ra8_ok) {
+    return built;
   }
-  if (demo_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     (UCHAR*)s_device_framework_fs,
-                                     (ULONG)s_device_framework_len,
-                                     (UCHAR*)s_string_framework,
-                                     (ULONG)s_string_framework_len,
-                                     (UCHAR*)s_language_id_framework,
-                                     (ULONG)s_language_id_framework_len,
-                                     UX_NULL);
-}
 
-/**
- * @brief Register the Mass-Storage class with one writable live-SD LUN.
- *
- * @details Sets ``number_lun`` = 1 and fills LUN0 with the REAL card
- * geometry: ``last_lba`` = ::s_usb_msc_sdcard_blocks - 1 (CSD-derived
- * capacity, no snapshot), 512-byte blocks, removable, and -- the write
- * enable -- ``media_read_only_flag = UX_FALSE`` so MODE SENSE omits the WP
- * bit and the class routes WRITE(10) into ::sdmsc_msc_write.
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ::sdmsc_usbx_stack_up has succeeded.
- * @pre ::s_usb_msc_sdcard_blocks is non-zero (worker gated on it).
- * @post MSC class bound to configuration 1, interface 0, with 1 LUN.
- * @post GET_MAX_LUN will report 0.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT sdmsc_class_register(void)
-{
   UX_SLAVE_CLASS_STORAGE_PARAMETER msc_params;
   (void)memset(&msc_params, 0, sizeof(msc_params));
   msc_params.ux_slave_class_storage_parameter_number_lun  = 1UL;
@@ -515,13 +486,30 @@ static UINT sdmsc_class_register(void)
   msc_params.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status =
     sdmsc_msc_status;
 
-  static UCHAR s_class_name[] = "ux_slave_class_storage";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_storage_entry,
-                                         1,
-                                         0,
-                                         &msc_params);
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_sdmsc_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_msc(),
+    .class_param   = &msc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -562,21 +550,14 @@ VOID sdmsc_device_worker(ULONG arg)
     (void)sdmsc_print_fail("no card -- not attaching USB", k_ra8_err_invalid_state);
     return;
   }
-  UINT ux = sdmsc_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    (void)sdmsc_print_fail("usbx stack", (ra8_err_t)ux);
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_sdmsc_dev_step_stack;
-  ux             = sdmsc_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    (void)sdmsc_print_fail("msc class", (ra8_err_t)ux);
+  ra8_err_t err = sdmsc_usb_open();
+  if (err != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)err;
+    (void)sdmsc_print_fail("usbx open", err);
     return;
   }
   s_dbg_dev_step = (uint32_t)k_sdmsc_dev_step_class;
-  ra8_err_t err  = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  err            = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
   if (err != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)err;
     (void)sdmsc_print_fail("dcd init", err);

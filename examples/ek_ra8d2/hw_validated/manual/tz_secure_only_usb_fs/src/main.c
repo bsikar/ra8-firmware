@@ -87,6 +87,7 @@
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
+#include "ux_device_port.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
@@ -435,66 +436,52 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Brings USBX system + device stack up with the FS framework.
+ * @brief Compose USBX frameworks, bring up the device stack, and register CDC-ACM.
  *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Stack initialized.
+ * @return ra8_err_t ``k_ra8_ok`` on success, propagated error otherwise.
+ * @retval k_ra8_ok Stack initialised and CDC-ACM class registered.
  *
- * @pre USBX memory pool ``s_usbx_pool`` is at file scope.
- * @pre Caller is in thread context (USBX requires ThreadX services).
- * @post On success, the device stack accepts class registrations.
- * @post On failure, USBX state is undefined; caller should bail.
+ * @pre File-scope pool and framework buffers are reserved.
+ * @pre Caller is in thread context.
+ * @post Device stack accepts DCD initialisation and attach.
  *
  * @note Single-call; not idempotent.
  * @since 0.1.0
  */
-static UINT demo_usbx_stack_up(void)
+static ra8_err_t demo_usb_open(void)
 {
   if (demo_usb_build_frameworks() != k_ra8_ok) {
-    return UX_ERROR;
+    return k_ra8_err_invalid_arg;
   }
-  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     (UCHAR*)s_device_framework_fs,
-                                     (ULONG)s_device_framework_len,
-                                     (UCHAR*)s_string_framework,
-                                     (ULONG)s_string_framework_len,
-                                     (UCHAR*)s_language_id_framework,
-                                     (ULONG)s_language_id_framework_len,
-                                     UX_NULL);
-}
-
-/**
- * @brief Registers the CDC-ACM class against the device-stack configuration.
- *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ``demo_usbx_stack_up`` has succeeded.
- * @pre ``demo_cdc_activate`` / ``demo_cdc_deactivate`` are defined.
- * @post CDC-ACM class is bound to configuration 1, interface 0.
- * @post Activation callback will post ``s_cdc_active_sem``.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT demo_cdc_class_register(void)
-{
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .device_len  = s_device_framework_len,
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .strings_len = s_string_framework_len,
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+    .langid_len  = s_language_id_framework_len,
+  };
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
-  static UCHAR s_class_name[] = "ux_slave_class_cdc_acm";
-
-  return _ux_device_stack_class_register(s_class_name,
-                                         _ux_device_class_cdc_acm_entry,
-                                         1,
-                                         0,
-                                         &cdc_params);
+  const ra8_usb_device_open_cfg_t cfg = {
+    .port          = k_ra8_usb_device_port_fs,
+    .configuration = 1U,
+    .interface     = 0U,
+    .pool_bytes    = (uint32_t)k_demo_usbx_pool_bytes,
+    .pool          = s_usbx_pool,
+    .device_cfg    = nullptr,
+    .frameworks    = &fw,
+    .ops           = ux_device_port_stack_ops(),
+    .class_driver  = ux_device_port_class_cdc_acm(),
+    .class_param   = &cdc_params,
+  };
+  return ra8_usb_device_open(&cfg);
 }
 
 /**
@@ -502,7 +489,7 @@ static UINT demo_cdc_class_register(void)
  *
  * @details Works around a residual DVSQ-poll race on this silicon that can
  * leave ``ux_slave_device_state`` at ATTACHED after SET_CONFIGURATION,
- * breaking ``_ux_device_class_cdc_acm_read``'s state gate. Safe to assert
+ * breaking ``ux_device_port_cdc_read``'s state gate. Safe to assert
  * once ``s_cdc_acm`` is non-NULL.
  *
  * @pre Called from worker thread context.
@@ -538,25 +525,25 @@ static void demo_pin_configured_state(void)
 static void demo_echo_iter(UCHAR* buf, ULONG cap)
 {
   demo_pin_configured_state();
-  ULONG n = 0UL;
+  uint32_t n = 0U;
   s_demo_diag.loop_pre_read++;
-  UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, cap, &n);
+  ra8_err_t read_status = ux_device_port_cdc_read(s_cdc_acm, buf, (uint32_t)cap, &n);
   s_demo_diag.loop_post_read++;
-  if (read_status != UX_SUCCESS) {
+  if (read_status != k_ra8_ok) {
     tx_thread_sleep(k_demo_idle_ticks);
     return;
   }
   s_demo_diag.loop_read_ok++;
-  if (n == 0UL) {
+  if (n == 0U) {
     s_demo_diag.loop_read_zero++;
     return;
   }
   s_demo_diag.loop_pre_write++;
-  if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+  if (ux_device_port_cdc_write(s_cdc_acm, buf, n, &n) != k_ra8_ok) {
     return;
   }
   s_demo_diag.loop_post_write++;
-  for (ULONG i = 0UL; i < n; i++) {
+  for (uint32_t i = 0U; i < n; i++) {
     (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
 }
@@ -576,10 +563,7 @@ static VOID demo_worker(ULONG arg)
 {
   (void)arg;
 
-  if (demo_usbx_stack_up() != UX_SUCCESS) {
-    return;
-  }
-  if (demo_cdc_class_register() != UX_SUCCESS) {
+  if (demo_usb_open() != k_ra8_ok) {
     return;
   }
   if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
