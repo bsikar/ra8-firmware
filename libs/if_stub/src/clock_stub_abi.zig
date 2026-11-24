@@ -41,3 +41,8 @@ pub fn fill(module: Module, out: ?*Row) u16 {
     row.* = .{ .rate_hz = rate, .has_rate = true };
     return Err.ok;
 }
+
+/// C ABI entry point backing `fw_if_clock_stub.h:fw_clock_stub_resolve`.
+pub export fn fw_clock_stub_resolve(module: Module, out: ?*Row) callconv(.c) u16 {
+    return fill(module, out);
+}
