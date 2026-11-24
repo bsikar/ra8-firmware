@@ -7,8 +7,8 @@
 //! decisions live in `src/internal/`; what this file adds is the register
 //! stores, the driver calls and the protection-gate discipline that a host
 //! test cannot exercise. Each export is the C prototype's shape exactly:
-//! `ra8_err_t` is a `u32`, and a pointer the caller may pass as NULL is an
-//! optional so the null check cannot be forgotten.
+//! `ra8_err_t` is `u16` (`enum : uint16_t`), and a pointer the caller may pass
+//! as NULL is an optional so the null check cannot be forgotten.
 
 const std = @import("std");
 const build_options = @import("build_options");
@@ -57,7 +57,7 @@ pub export fn ra8_tz_ns_signed_body_len(ns_vector_table: ?[*]const u32) callconv
 }
 
 /// Program the canonical five-region partition.
-pub export fn ra8_tz_secure_boot_sau_init() callconv(.c) u32 {
+pub export fn ra8_tz_secure_boot_sau_init() callconv(.c) regs.ErrCode {
     // Checked here rather than left to the driver so a shortfall keeps
     // reporting not_supported, which is this function's published contract.
     if (!sau.supported(hal.regionCount())) return regs.Err.not_supported;
@@ -75,7 +75,7 @@ pub export fn ra8_tz_secure_boot_sau_init() callconv(.c) u32 {
 }
 
 /// Write the two IPC attribution words behind the protection gate.
-pub export fn ra8_tz_secure_boot_security_init(ipcsar_value: u32, ipcpar_value: u32) callconv(.c) u32 {
+pub export fn ra8_tz_secure_boot_security_init(ipcsar_value: u32, ipcpar_value: u32) callconv(.c) regs.ErrCode {
     gateOpen();
     boot.step = .prcr_unlocked;
 
@@ -92,7 +92,7 @@ pub export fn ra8_tz_secure_boot_security_init(ipcsar_value: u32, ipcpar_value: 
 
 /// Encode a descriptor and apply it. A bad descriptor returns before the
 /// gate is ever opened.
-pub export fn ra8_tz_secure_boot_security_init_map(cfg: ?*const ipc.Attribution) callconv(.c) u32 {
+pub export fn ra8_tz_secure_boot_security_init_map(cfg: ?*const ipc.Attribution) callconv(.c) regs.ErrCode {
     const map = cfg orelse return regs.Err.null_ptr;
     if (!ipc.valid(map.*)) return regs.Err.invalid_arg;
     const words = ipc.encode(map.*);
@@ -100,7 +100,7 @@ pub export fn ra8_tz_secure_boot_security_init_map(cfg: ?*const ipc.Attribution)
 }
 
 /// Point VTOR_NS at the NS image and branch into it.
-pub export fn ra8_tz_secure_boot_jump_ns(ns_vector_table: ?[*]const u32) callconv(.c) u32 {
+pub export fn ra8_tz_secure_boot_jump_ns(ns_vector_table: ?[*]const u32) callconv(.c) regs.ErrCode {
     const table = ns_vector_table orelse return regs.Err.null_ptr;
     const base = @intFromPtr(table);
     // Kept for the C callers, who can hand over a misaligned pointer. There is
@@ -149,7 +149,7 @@ pub export fn ra8_tz_secure_boot_run(
     ipcsar_value: u32,
     ipcpar_value: u32,
     ns_vector_table: ?[*]const u32,
-) callconv(.c) u32 {
+) callconv(.c) regs.ErrCode {
     const table = ns_vector_table orelse return regs.Err.null_ptr;
 
     const sau_err = ra8_tz_secure_boot_sau_init();
@@ -186,7 +186,7 @@ pub export fn ra8_tz_ipc_attribution_encode(
     cfg: ?*const ipc.Attribution,
     out_ipcsar: ?*u32,
     out_ipcpar: ?*u32,
-) callconv(.c) u32 {
+) callconv(.c) regs.ErrCode {
     const map = cfg orelse return regs.Err.null_ptr;
     const sar = out_ipcsar orelse return regs.Err.null_ptr;
     const par = out_ipcpar orelse return regs.Err.null_ptr;
@@ -201,7 +201,7 @@ pub export fn ra8_tz_ipc_attribution_encode(
 }
 
 /// The map the cpu1_pingpong app runs.
-pub export fn ra8_tz_ipc_attribution_cpu1_pingpong(out_cfg: ?*ipc.Attribution) callconv(.c) u32 {
+pub export fn ra8_tz_ipc_attribution_cpu1_pingpong(out_cfg: ?*ipc.Attribution) callconv(.c) regs.ErrCode {
     const out = out_cfg orelse return regs.Err.null_ptr;
     out.* = ipc.cpu1Pingpong();
     return regs.Err.ok;
@@ -212,13 +212,13 @@ pub export fn ra8_tz_ipc_attribution_cpu1_pingpong(out_cfg: ?*ipc.Attribution) c
 // ===========================================================================
 
 /// Check a descriptor without applying it.
-pub export fn ra8_tz_partition_validate(cfg: ?*const partition.Partition) callconv(.c) u32 {
+pub export fn ra8_tz_partition_validate(cfg: ?*const partition.Partition) callconv(.c) regs.ErrCode {
     const map = cfg orelse return regs.Err.null_ptr;
     return partition.validate(map, hal.regionCount());
 }
 
 /// Validate a descriptor, then program the SAU and the SRAM boundaries.
-pub export fn ra8_tz_partition_apply(cfg: ?*const partition.Partition) callconv(.c) u32 {
+pub export fn ra8_tz_partition_apply(cfg: ?*const partition.Partition) callconv(.c) regs.ErrCode {
     const map = cfg orelse return regs.Err.null_ptr;
 
     const check = partition.validate(map, hal.regionCount());
@@ -235,7 +235,7 @@ pub export fn ra8_tz_partition_apply(cfg: ?*const partition.Partition) callconv(
     const boundary = map.sram_boundary orelse return regs.Err.ok;
 
     gateOpen();
-    var failed: u32 = regs.Err.ok;
+    var failed: regs.ErrCode = regs.Err.ok;
     for (0..partition.Limits.sram_bank_count) |bank| {
         const bank_err = hal.setBoundary(@intCast(bank), boundary[bank]);
         if (bank_err != regs.Err.ok) {
@@ -257,7 +257,7 @@ pub export fn ra8_tz_partition_board_map() callconv(.c) *const partition.Partiti
 // ===========================================================================
 
 /// Hand peripheral bits to the Non-Secure world, and report what stuck.
-pub export fn ra8_tz_psar_set_ns(psar_addr: usize, ns_mask: u32, out_seen: ?*u32) callconv(.c) u32 {
+pub export fn ra8_tz_psar_set_ns(psar_addr: usize, ns_mask: u32, out_seen: ?*u32) callconv(.c) regs.ErrCode {
     switch (psar.plan(psar_addr, ns_mask)) {
         .reject => |err| return err,
         // An empty mask reports the current value without opening the gate.

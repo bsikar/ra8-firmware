@@ -11,10 +11,15 @@ const hal = @import("hal.zig");
 const vocab = @import("vocab.zig");
 
 pub const Err = vocab.Err;
+pub const ErrCode = clock.ErrCode;
 pub const Module = clock.Module;
 pub const Kind = clock.Kind;
 pub const FwClock = clock.FwClock;
 pub const Iface = clock.FwClockIface;
+
+fn errCode(err: u32) ErrCode {
+    return @intCast(err);
+}
 
 /// Longest wired run on this board, which is the four SCI channels.
 const max_wired = 4;
@@ -57,13 +62,13 @@ fn kindValid(kind: u8) bool {
 }
 
 /// Translate a board-numbered module to the chip instance behind it.
-pub fn toChip(module: Module, out_chip: ?*Module) u32 {
-    const dst = out_chip orelse return Err.invalid_arg;
-    if (!kindValid(module.kind)) return Err.not_found;
+pub fn toChip(module: Module, out_chip: ?*Module) ErrCode {
+    const dst = out_chip orelse return errCode(Err.invalid_arg);
+    if (!kindValid(module.kind)) return errCode(Err.not_found);
     const row = wiring[module.kind];
-    if (module.index >= row.count) return Err.not_found;
+    if (module.index >= row.count) return errCode(Err.not_found);
     dst.* = .{ .kind = module.kind, .index = row.chip_index[module.index] };
-    return Err.ok;
+    return errCode(Err.ok);
 }
 
 /// How many instances of @p kind this board wires.
@@ -72,7 +77,7 @@ pub fn count(kind: u8) u8 {
     return wiring[kind].count;
 }
 
-fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) u32 {
+fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) ErrCode {
     _ = ctx;
     var chip: Module = .{ .kind = Kind.none, .index = 0 };
     const err = toChip(module, &chip);
@@ -80,7 +85,7 @@ fn rateFor(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) u32 {
     return hal.fw_clock_ra8_iface().rate_for(null, chip, out_hz);
 }
 
-fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
+fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) ErrCode {
     _ = ctx;
     var chip: Module = .{ .kind = Kind.none, .index = 0 };
     const err = toChip(module, &chip);
@@ -93,11 +98,11 @@ fn setGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
 /// Answered from the wiring table alone, so "present" means the board routes
 /// it, not that the chip binding happens to have a row. An unwired module is a
 /// false answer, not an error: the caller asked a question and got one.
-fn hasModule(ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) u32 {
+fn hasModule(ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) ErrCode {
     _ = ctx;
     var chip: Module = .{ .kind = Kind.none, .index = 0 };
     out_present.* = toChip(module, &chip) == Err.ok;
-    return Err.ok;
+    return errCode(Err.ok);
 }
 
 /// The profile's ops, filled once at compile time.
@@ -108,8 +113,8 @@ const iface: clock.FwClockIface = .{
 };
 
 /// Bind @p clk to this board's profile.
-pub fn bind(clk: ?*FwClock) u32 {
-    const dst = clk orelse return Err.invalid_arg;
+pub fn bind(clk: ?*FwClock) ErrCode {
+    const dst = clk orelse return errCode(Err.invalid_arg);
     return hal.fw_clock_bind(dst, &iface, null);
 }
 

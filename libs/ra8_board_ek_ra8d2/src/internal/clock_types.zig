@@ -36,11 +36,14 @@ pub const Module = extern struct {
     index: u8,
 };
 
+/// `ra8_err_t`, which is `enum : uint16_t`.
+pub const ErrCode = u16;
+
 /// `fw_clock_iface_t`: the three ops a binding supplies.
 pub const FwClockIface = extern struct {
-    rate_for: *const fn (ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) u32,
-    set_gate: *const fn (ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32,
-    has_module: *const fn (ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) u32,
+    rate_for: *const fn (ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) ErrCode,
+    set_gate: *const fn (ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) ErrCode,
+    has_module: *const fn (ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) ErrCode,
 };
 
 /// `fw_clock_t`: the caller-allocated handle `fw_clock_bind` fills.

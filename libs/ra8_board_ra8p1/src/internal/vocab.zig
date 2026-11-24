@@ -6,11 +6,14 @@
 //! the `ra8_port_pin_t` packing. One place so no module re-spells a magic
 //! number.
 
+/// `ra8_err_t` is `enum : uint16_t`.
+pub const ErrCode = u16;
+
 /// `ra8_err_t` values this layer returns (libs/ra8_core/inc/ra8_err.h).
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const not_initialized: u32 = 0x10F;
+    pub const ok: ErrCode = 0;
+    pub const invalid_arg: ErrCode = 0x103;
+    pub const not_initialized: ErrCode = 0x10F;
 };
 
 /// `ra8_level_t` (libs/ra8_core/inc/ra8_port_constants.h).

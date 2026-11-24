@@ -44,7 +44,7 @@ pub const Partition = extern struct {
 ///
 /// `implemented` is what `ra8_sau_region_count()` reports, passed in so the
 /// decision stays testable without the driver.
-pub fn validate(cfg: *const Partition, implemented: u8) u32 {
+pub fn validate(cfg: *const Partition, implemented: u8) regs.ErrCode {
     if (cfg.sau_region_count != 0 and cfg.sau_regions == null) return regs.Err.null_ptr;
     if (cfg.sau_region_count > implemented) return regs.Err.not_supported;
 
@@ -65,7 +65,7 @@ pub fn validate(cfg: *const Partition, implemented: u8) u32 {
 
 /// One window's own rules: granule-aligned, non-empty, a named attribute,
 /// and wholly inside the 32-bit address space.
-fn validateRegion(region: SauRegion) u32 {
+fn validateRegion(region: SauRegion) regs.ErrCode {
     if (region.base % Limits.sau_granule != 0) return regs.Err.invalid_arg;
     if (region.size == 0 or region.size % Limits.sau_granule != 0) return regs.Err.invalid_arg;
     if (@backingInt(region.attr) > @backingInt(SauAttr.nsc)) return regs.Err.invalid_arg;

@@ -10,6 +10,7 @@ const clock_profile = @import("clock_profile");
 
 const Kind = clock_profile.Kind;
 const Module = clock_profile.Module;
+const ErrCode = clock_profile.ErrCode;
 
 var bind_calls: usize = 0;
 var bound_iface: ?*const anyopaque = null;
@@ -17,7 +18,7 @@ var chip_rate_calls: usize = 0;
 var chip_gate_calls: usize = 0;
 var last_chip: Module = .{ .kind = 0, .index = 0 };
 
-fn chipRate(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) u32 {
+fn chipRate(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) ErrCode {
     _ = ctx;
     last_chip = module;
     chip_rate_calls += 1;
@@ -25,7 +26,7 @@ fn chipRate(ctx: ?*anyopaque, module: Module, out_hz: *u32) callconv(.c) u32 {
     return 0;
 }
 
-fn chipGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
+fn chipGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) ErrCode {
     _ = ctx;
     _ = on;
     last_chip = module;
@@ -33,7 +34,7 @@ fn chipGate(ctx: ?*anyopaque, module: Module, on: bool) callconv(.c) u32 {
     return 0;
 }
 
-fn chipHas(ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) u32 {
+fn chipHas(ctx: ?*anyopaque, module: Module, out_present: *bool) callconv(.c) ErrCode {
     _ = ctx;
     _ = module;
     out_present.* = true;
@@ -50,7 +51,7 @@ export fn fw_clock_ra8_iface() *const clock_profile.Iface {
     return &chip_iface;
 }
 
-export fn fw_clock_bind(clk: *clock_profile.FwClock, iface: *const clock_profile.Iface, ctx: ?*anyopaque) u32 {
+export fn fw_clock_bind(clk: *clock_profile.FwClock, iface: *const clock_profile.Iface, ctx: ?*anyopaque) ErrCode {
     bind_calls += 1;
     bound_iface = @ptrCast(iface);
     clk.* = .{ .iface = iface, .ctx = ctx, .bound = true };
@@ -59,19 +60,19 @@ export fn fw_clock_bind(clk: *clock_profile.FwClock, iface: *const clock_profile
 
 test "a null out is refused" {
     const module: Module = .{ .kind = Kind.uart, .index = 0 };
-    try std.testing.expectEqual(clock_profile.Err.invalid_arg, clock_profile.toChip(module, null));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.invalid_arg)), clock_profile.toChip(module, null));
 }
 
 test "a kind outside the table is not found" {
     var chip: Module = undefined;
     const module: Module = .{ .kind = 200, .index = 0 };
-    try std.testing.expectEqual(clock_profile.Err.not_found, clock_profile.toChip(module, &chip));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.not_found)), clock_profile.toChip(module, &chip));
 }
 
 test "an index past what the board wires is not found" {
     var chip: Module = undefined;
     const module: Module = .{ .kind = Kind.uart, .index = 4 };
-    try std.testing.expectEqual(clock_profile.Err.not_found, clock_profile.toChip(module, &chip));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.not_found)), clock_profile.toChip(module, &chip));
 }
 
 test "the four wired UARTs are SCI 0, 2, 7 and 8" {
@@ -79,7 +80,7 @@ test "the four wired UARTs are SCI 0, 2, 7 and 8" {
     for (want, 0..) |chip_index, board_index| {
         var chip: Module = undefined;
         const module: Module = .{ .kind = Kind.uart, .index = @intCast(board_index) };
-        try std.testing.expectEqual(clock_profile.Err.ok, clock_profile.toChip(module, &chip));
+        try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clock_profile.toChip(module, &chip));
         try std.testing.expectEqual(chip_index, chip.index);
         try std.testing.expectEqual(Kind.uart, chip.kind);
     }
@@ -88,11 +89,11 @@ test "the four wired UARTs are SCI 0, 2, 7 and 8" {
 test "the one wired I2C bus is RIIC1, not the I3C touch bus" {
     var chip: Module = undefined;
     const module: Module = .{ .kind = Kind.i2c, .index = 0 };
-    try std.testing.expectEqual(clock_profile.Err.ok, clock_profile.toChip(module, &chip));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clock_profile.toChip(module, &chip));
     try std.testing.expectEqual(@as(u8, 1), chip.index);
 
     const second: Module = .{ .kind = Kind.i2c, .index = 1 };
-    try std.testing.expectEqual(clock_profile.Err.not_found, clock_profile.toChip(second, &chip));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.not_found)), clock_profile.toChip(second, &chip));
 }
 
 test "single-instance blocks pass their numbering through" {
@@ -100,7 +101,7 @@ test "single-instance blocks pass their numbering through" {
     for (kinds) |kind| {
         var chip: Module = undefined;
         const module: Module = .{ .kind = kind, .index = 0 };
-        try std.testing.expectEqual(clock_profile.Err.ok, clock_profile.toChip(module, &chip));
+        try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clock_profile.toChip(module, &chip));
         try std.testing.expectEqual(@as(u8, 0), chip.index);
     }
 }
@@ -120,11 +121,11 @@ test "counts match the wiring" {
 
 test "binding refuses a null handle and otherwise reaches fw_clock_bind" {
     bind_calls = 0;
-    try std.testing.expectEqual(clock_profile.Err.invalid_arg, clock_profile.bind(null));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.invalid_arg)), clock_profile.bind(null));
     try std.testing.expectEqual(@as(usize, 0), bind_calls);
 
     var clk: clock_profile.FwClock = .{};
-    try std.testing.expectEqual(clock_profile.Err.ok, clock_profile.bind(&clk));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clock_profile.bind(&clk));
     try std.testing.expectEqual(@as(usize, 1), bind_calls);
     try std.testing.expect(clk.bound);
 }
@@ -143,7 +144,7 @@ test "a board-numbered read reaches the chip binding translated" {
     _ = clock_profile.bind(&clk);
     var hz: u32 = 0;
     const module: Module = .{ .kind = Kind.uart, .index = 3 };
-    try std.testing.expectEqual(@as(u32, 0), clk.iface.?.rate_for(null, module, &hz));
+    try std.testing.expectEqual(@as(ErrCode, 0), clk.iface.?.rate_for(null, module, &hz));
     try std.testing.expectEqual(@as(u8, 8), last_chip.index);
     try std.testing.expectEqual(@as(u32, 125_000_000), hz);
 }
@@ -153,7 +154,7 @@ test "an unwired module never reaches the chip binding" {
     var clk: clock_profile.FwClock = .{};
     _ = clock_profile.bind(&clk);
     const module: Module = .{ .kind = Kind.spi, .index = 0 };
-    try std.testing.expectEqual(clock_profile.Err.not_found, clk.iface.?.set_gate(null, module, true));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.not_found)), clk.iface.?.set_gate(null, module, true));
     try std.testing.expectEqual(@as(usize, 0), chip_gate_calls);
 }
 
@@ -162,10 +163,10 @@ test "presence is answered from the board wiring, not the chip" {
     _ = clock_profile.bind(&clk);
     var present: bool = false;
     const wired: Module = .{ .kind = Kind.uart, .index = 2 };
-    try std.testing.expectEqual(clock_profile.Err.ok, clk.iface.?.has_module(null, wired, &present));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clk.iface.?.has_module(null, wired, &present));
     try std.testing.expect(present);
 
     const unwired: Module = .{ .kind = Kind.can, .index = 0 };
-    try std.testing.expectEqual(clock_profile.Err.ok, clk.iface.?.has_module(null, unwired, &present));
+    try std.testing.expectEqual(@as(ErrCode, @intCast(clock_profile.Err.ok)), clk.iface.?.has_module(null, unwired, &present));
     try std.testing.expect(!present);
 }
