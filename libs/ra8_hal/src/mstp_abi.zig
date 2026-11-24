@@ -85,3 +85,11 @@ export fn priv_ra8_mstp_wait_reg_settle_internal(reg: u8, expect: u32, care_mask
 export fn priv_ra8_mstp_ns_mask_internal(reg: u8) u32 {
     return mstp.nsMask(Hw{}, reg);
 }
+
+comptime {
+    if (mstp.k_ra8_ok != common.k_ra8_ok) @compileError("k_ra8_ok mismatch");
+    if (mstp.k_ra8_err_invalid_arg != common.k_ra8_err_invalid_arg) @compileError("k_ra8_err_invalid_arg mismatch");
+    if (mstp.k_ra8_err_invalid_state != common.k_ra8_err_invalid_state) @compileError("k_ra8_err_invalid_state mismatch");
+    if (mstp.k_ra8_err_hw_timeout != common.k_ra8_err_hw_timeout) @compileError("k_ra8_err_hw_timeout mismatch");
+    if (mstp.k_ra8_err_null_ptr != common.k_ra8_err_null_ptr) @compileError("k_ra8_err_null_ptr mismatch");
+}

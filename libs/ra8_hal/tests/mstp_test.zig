@@ -7,7 +7,7 @@
 //! the read-back timeout and rollback legs run deterministically.
 
 const std = @import("std");
-const mstp = @import("../src/internal/mstp.zig");
+const mstp = @import("mstp");
 
 const zero5: [5]u32 = @splat(0);
 
@@ -81,7 +81,6 @@ test "init read-back tolerates Non-secure-owned bits" {
     // Without the mask this register would never settle: the strict path
     // times out on the same fake.
     var strict = Fake{};
-    var gate2 = mstp.Gate{};
     try std.testing.expectEqual(
         mstp.k_ra8_err_hw_timeout,
         mstp.waitRegSettle(strict.hw(), 1, mstp.all_stopped, ~@as(u32, 0)),
@@ -106,8 +105,8 @@ test "enable and disable only move the register on the count edges" {
     try std.testing.expectEqual(mstp.k_ra8_ok, mstp.disable(f.hw(), &gate, usbfs));
     try std.testing.expectEqual(usbfs_bit, f.regs[1] & usbfs_bit);
     try std.testing.expectEqual(mstp.k_ra8_err_invalid_state, mstp.disable(f.hw(), &gate, usbfs));
-    // The bit-level read-backs ran through the poll seam.
-    try std.testing.expect(f.polls >= 4);
+    // Only the 0->1 and 1->0 count edges run the bit-level read-back poll.
+    try std.testing.expectEqual(@as(usize, 2), f.polls);
     var stopped_v: bool = false;
     try std.testing.expectEqual(mstp.k_ra8_ok, mstp.stopped(f.hw(), &gate, usbfs, &stopped_v));
     try std.testing.expectEqual(true, stopped_v);

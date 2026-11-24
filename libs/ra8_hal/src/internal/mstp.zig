@@ -10,13 +10,12 @@
 //! `s_refcount` file-static.
 
 const std = @import("std");
-const common = @import("../abi_common.zig");
 
-pub const k_ra8_ok = common.k_ra8_ok;
-pub const k_ra8_err_invalid_arg = common.k_ra8_err_invalid_arg;
-pub const k_ra8_err_invalid_state = common.k_ra8_err_invalid_state;
-pub const k_ra8_err_hw_timeout = common.k_ra8_err_hw_timeout;
-pub const k_ra8_err_null_ptr = common.k_ra8_err_null_ptr;
+pub const k_ra8_ok: u16 = 0;
+pub const k_ra8_err_invalid_arg: u16 = 0x103;
+pub const k_ra8_err_invalid_state: u16 = 0x104;
+pub const k_ra8_err_hw_timeout: u16 = 0x203;
+pub const k_ra8_err_null_ptr: u16 = 0x504;
 
 /// MSTPCRA..MSTPCRE.
 pub const reg_count = 5;
