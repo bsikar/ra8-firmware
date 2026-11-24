@@ -1,0 +1,42 @@
+{
+  "test_roots": [
+    "tests/pipeline_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/err.zig",
+    "src/internal/pipeline.zig",
+    "src/root.zig",
+    "src/update_abi.zig",
+    "tests/pipeline_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/pipeline.zig": [
+      "--dep",
+      "err",
+      "-Mroot=src/internal/pipeline.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "update_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mupdate_abi=src/update_abi.zig",
+      "-Mpipeline=src/internal/pipeline.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "src/update_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "pipeline",
+      "-Mroot=src/update_abi.zig",
+      "-Mpipeline=src/internal/pipeline.zig",
+      "-Merr=src/internal/err.zig"
+    ]
+  },
+  "minimum_tests": 5
+}
