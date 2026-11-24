@@ -23,6 +23,10 @@
 //!   negative   src/negative_layout.c must FAIL to compile, naming the layout
 //!              assertion, and src/negative_missing_symbol.c must FAIL to link,
 //!              naming ra8_abi_fixture_missing
+//!   exports    abi_export_check builds every migrated Zig library archive
+//!              and proves via nm (or ar symbol-table fallback on Windows) that
+//!              every non-static/inline C function in its inc/*.h headers is
+//!              defined, plus a negative control against the fixture archive
 //!
 //! A negative control that stops failing is a silent hole, so each one asserts
 //! the diagnostic text too: a compile that fails for an unrelated reason (a
@@ -35,6 +39,7 @@
 //! classification) are ordinary functions once they are in a module.
 
 const std = @import("std");
+const cross_build = @import("cross_build.zig");
 
 /// The fixture package, as declared in the root build.zig.zon.
 pub const dependency_name = "ra8_abi_fixture";
@@ -206,6 +211,48 @@ pub fn add(
         negative.expectExitCode(0);
         step.dependOn(&negative.step);
     }
+
+    const export_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/abi_export_check_test.zig"),
+            .target = b.graph.host,
+        }),
+    });
+    const run_export_tests = b.addRunArtifact(export_tests);
+    step.dependOn(&run_export_tests.step);
+
+    const nm_exe = cross_build.findProgram(b, "nm") orelse
+        cross_build.findProgram(b, "llvm-nm") orelse
+        "-";
+    const export_tool = b.addExecutable(.{
+        .name = "abi_export_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig_build_graph/abi_export_check.zig"),
+            .target = b.graph.host,
+        }),
+    });
+
+    const export_negative = b.addRunArtifact(export_tool);
+    export_negative.setName("abi export negative missing_symbol");
+    export_negative.setCwd(b.path("."));
+    export_negative.addArg("negative");
+    export_negative.addArg(nm_exe);
+    export_negative.addFileArg(archive.getEmittedBin());
+    _ = export_negative.addOutputFileArg("export_negative.ok");
+    export_negative.expectExitCode(0);
+    step.dependOn(&export_negative.step);
+
+    const export_all = b.addRunArtifact(export_tool);
+    export_all.setName("abi export check all");
+    export_all.setCwd(b.path("."));
+    export_all.has_side_effects = true;
+    export_all.addArg("all");
+    export_all.addFileArg(std.Build.LazyPath.zig_exe);
+    export_all.addArg(nm_exe);
+    export_all.addDirectoryArg(std.Build.LazyPath.cache_root);
+    _ = export_all.addOutputFileArg("export_all.ok");
+    export_all.expectExitCode(0);
+    step.dependOn(&export_all.step);
 
     const print = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
     print.addArg(artifact_name);

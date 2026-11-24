@@ -45,7 +45,7 @@ pub fn findTools(b: *std.Build) ?Tools {
     return .{ .gcc = gcc, .objcopy = objcopy, .size = size, .ar = ar };
 }
 
-fn findProgram(b: *std.Build, name: []const u8) ?[]const u8 {
+pub fn findProgram(b: *std.Build, name: []const u8) ?[]const u8 {
     if (builtin.os.tag != .windows) {
         return b.findProgram(.{ .names = &.{name} });
     }
