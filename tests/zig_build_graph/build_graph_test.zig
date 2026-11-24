@@ -960,12 +960,14 @@ test "the app that excludes the NSC set names nothing else that could explain it
     try std.testing.expect(sources.isAuxSource(no_nsc_app, "src/cpu1_main.c"));
     try std.testing.expect(!sources.appLocalIsCompiled(no_nsc_app, "src/cpu1_main.c"));
     try std.testing.expect(sources.appLocalIsCompiled(no_nsc_app, "src/ns_main.c"));
-    // And its two boot overrides resolve to its own copies, not the board's.
-    for ([_][]const u8{ "system_init.c", "trustzone_init.c" }) |boot| {
-        const resolved = sources.bootSourcePath(std.testing.allocator, no_nsc_app, boot, true);
-        defer std.testing.allocator.free(resolved);
-        try std.testing.expect(std.mem.startsWith(u8, resolved, no_nsc_app.dir));
-    }
+    // cpu1_pingpong_ipc overrides trustzone_init.c (dual-core IPCSAR/CPU1),
+    // while system_init comes from the board's Zig boot unit.
+    const tz_resolved = sources.bootSourcePath(std.testing.allocator, no_nsc_app, "trustzone_init.c", true);
+    defer std.testing.allocator.free(tz_resolved);
+    try std.testing.expect(std.mem.startsWith(u8, tz_resolved, no_nsc_app.dir));
+    const sys_resolved = sources.bootSourcePath(std.testing.allocator, no_nsc_app, "system_init.c", false);
+    defer std.testing.allocator.free(sys_resolved);
+    try std.testing.expect(std.mem.startsWith(u8, sys_resolved, no_nsc_app.board));
 }
 
 // The second-image (Cortex-M33) rules live in their own file: this one hit the
@@ -999,25 +1001,30 @@ test "a Zig boot unit learns TrustZone and the cache/MPU gates from its app" {
     try std.testing.expect(sources.bootOptions(trust_zone_app).trust_zone);
     try std.testing.expect(!sources.bootOptions(bare_app).trust_zone);
 
-    // The three per-app cache/MPU gates default off, matching the C tree's
-    // default: no RA8_BOOT_ENABLE_CACHE_MPU define, no boot map, no caches.
+    // The four per-app boot gates default off, matching the C tree's
+    // default: no RA8_BOOT_ENABLE_CACHE_MPU / CGC-before-TZ defines, no boot map,
+    // no caches.
     const off = sources.bootOptions(bare_app);
     try std.testing.expect(!off.cache_mpu);
     try std.testing.expect(!off.mpu_via_hal);
     try std.testing.expect(!off.cache_via_hal);
+    try std.testing.expect(!off.cgc_before_tz);
 
     // An app that names the gates gets exactly the gates it names, so
     // cache_hal_enable_demo's spelling (enable + HAL cache) is a distinct
-    // boot object from mpu_boot_map_hal's (enable + raw pokes).
+    // boot object from mpu_boot_map_hal's (enable + HAL MPU) and from a
+    // TrustZone image needing early CGC bring-up.
     var gated = bare_app;
     gated.cache_mpu = true;
     gated.cache_via_hal = true;
+    gated.cgc_before_tz = true;
     const on = sources.bootOptions(gated);
     try std.testing.expect(on.cache_mpu);
     try std.testing.expect(on.cache_via_hal);
     try std.testing.expect(!on.mpu_via_hal);
+    try std.testing.expect(on.cgc_before_tz);
 
-    try std.testing.expectEqual(4, @typeInfo(sources.BootOptions).@"struct".field_names.len);
+    try std.testing.expectEqual(5, @typeInfo(sources.BootOptions).@"struct".field_names.len);
 }
 
 // RA8FW-1255: the Zig universal include list is a hand copy of

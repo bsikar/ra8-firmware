@@ -11,11 +11,13 @@
 //! five-region MPU map plus the I/D caches, each with its architectural
 //! invalidate before the enable bit. NVIC priority grouping lands last.
 //!
-//! The three C gates arrive as boot options, the per-app spellings of
-//! `RA8_BOOT_ENABLE_CACHE_MPU`, `RA8_BOOT_MPU_VIA_HAL` and
-//! `RA8_BOOT_CACHE_VIA_HAL`. `ra8_trustzone_init` is referenced so the
-//! TrustZone unit keeps its own gate (`RA8_TRUSTZONE_ENABLE`) and its own
-//! object. Ported from system_init.c (RA8FW-365).
+//! The four C gates arrive as boot options: the per-app spellings of
+//! `RA8_BOOT_ENABLE_CACHE_MPU`, `RA8_BOOT_MPU_VIA_HAL`,
+//! `RA8_BOOT_CACHE_VIA_HAL`, and `RA8_APP_BOOT_CGC_BEFORE_TZ`, alongside the
+//! image-level `trust_zone` flag (`RA8_TRUSTZONE_ENABLE`). When `trust_zone`
+//! is enabled, `SystemInit` calls `ra8_trustzone_init()` after priority
+//! grouping (and after `ra8_cgc_init()` when `cgc_before_tz` is set).
+//! Ported from system_init.c (RA8FW-365).
 
 const boot_options = @import("boot_options");
 
@@ -49,6 +51,7 @@ extern const g_ra8_vector_table_start: u32;
 extern fn ra8_cache_dcache_invalidate_all() callconv(.c) void;
 extern fn ra8_cache_icache_enable() callconv(.c) void;
 extern fn ra8_cache_dcache_enable() callconv(.c) void;
+extern fn ra8_cgc_init() callconv(.c) ErrCode;
 extern fn ra8_mpu_apply_boot_map() callconv(.c) ErrCode;
 extern fn ra8_trustzone_init() callconv(.c) void;
 
@@ -259,6 +262,14 @@ fn bootMapInstall() bool {
     return true;
 }
 
+/// Park forever after a Secure clock-tree bring-up failure so a failed boot
+/// never enters Non-Secure execution on an unconfigured clock tree.
+fn haltSecureClockFault() noreturn {
+    while (true) {
+        asm volatile ("wfi");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -287,8 +298,16 @@ fn systemInit() callconv(.c) void {
             enableBranchPredictor();
         }
     }
-    _ = &ra8_trustzone_init; // TrustZone has its own gate (RA8_TRUSTZONE_ENABLE).
     setPriorityGrouping();
+    if (boot_options.cgc_before_tz) {
+        if (ra8_cgc_init() != 0) haltSecureClockFault();
+    }
+    if (boot_options.trust_zone) {
+        ra8_trustzone_init();
+    } else {
+        // Retain symbol linkability when TrustZone is compiled out.
+        _ = &ra8_trustzone_init;
+    }
 }
 
 comptime {

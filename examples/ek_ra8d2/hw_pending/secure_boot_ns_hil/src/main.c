@@ -63,6 +63,7 @@
 #include "ra8_mstp.h"
 #include "ra8_psa_crypto.h"
 #include "ra8_tz_secure_boot.h"
+#include "secure_boot_ns_hil.h"
 #include "trustzone_init.h"
 
 /** @brief Static-heap sizing for tf-psa-crypto's mbedtls_calloc (no libc heap). */

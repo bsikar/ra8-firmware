@@ -6,13 +6,13 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Single-core (Cortex-M85) demonstrator. The app's build defines
- * ``RA8_BOOT_ENABLE_CACHE_MPU`` (see ``CMakeLists.txt``) and ships a per-app
- * ``system_init.c`` whose ``SystemInit()`` installs the boot MPU
- * memory-attribute map through the ``ra8_mpu`` HAL
+ * Single-core (Cortex-M85) demonstrator. The app's build enables
+ * ``RA8_BOOT_ENABLE_CACHE_MPU`` and ``RA8_BOOT_MPU_VIA_HAL`` (see
+ * ``CMakeLists.txt``) so the shared board ``SystemInit()`` installs the boot
+ * MPU memory-attribute map through the ``ra8_mpu`` HAL
  * (``ra8_mpu_apply_boot_map()``) instead of the raw MAIR/RBAR/RLAR/CTRL pokes
- * the shared board boot uses. It is the HAL-path twin of ``cache_mpu_hil``
- * (raw-poke path); the two boot files diff cleanly and can be compared on HIL.
+ * the default gate uses. It is the HAL-path twin of ``cache_mpu_hil``
+ * (raw-poke path).
  *
  * Self-test (each step independent; runs once, then the core parks in WFI):
  *

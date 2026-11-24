@@ -48,6 +48,7 @@
 #include "ra8_err.h"
 #include "ra8_sau.h"
 #include "ra8_tz_partition.h"
+#include "secure_boot_ns_hil.h"
 
 #ifdef RA8_TRUSTZONE_ENABLE
 

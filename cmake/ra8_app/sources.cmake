@@ -177,10 +177,11 @@ macro(_ra8_app_collect_sources)
         list(APPEND _ra8_src "${_ra8_profile_dir}/${_ra8_boot}")
       elseif(_RA8_APP_BOOT_PROFILE AND EXISTS "${_ra8_profile_dir}/${_ra8_boot_zig}")
         # The RA8_APP_BOOT_* variables are the app's own CMakeLists' spelling
-        # of the per-app cache/MPU gates, set before ra8_add_app() (RA8FW-365).
+        # of the per-app cache/MPU/CGC-TZ gates, set before ra8_add_app() (RA8FW-365).
         _ra8_app_zig_boot_object(
           "${_ra8_board_dir}" "${_RA8_APP_BOOT_PROFILE}/${_ra8_boot_zig}"
           "${RA8_APP_BOOT_CACHE_MPU}" "${RA8_APP_BOOT_MPU_VIA_HAL}" "${RA8_APP_BOOT_CACHE_VIA_HAL}"
+          "${RA8_APP_BOOT_CGC_BEFORE_TZ}"
           _ra8_boot_obj
         )
         list(APPEND _ra8_src "${_ra8_boot_obj}")
@@ -188,6 +189,7 @@ macro(_ra8_app_collect_sources)
         _ra8_app_zig_boot_object(
           "${_ra8_board_dir}" "${_ra8_boot_zig}"
           "${RA8_APP_BOOT_CACHE_MPU}" "${RA8_APP_BOOT_MPU_VIA_HAL}" "${RA8_APP_BOOT_CACHE_VIA_HAL}"
+          "${RA8_APP_BOOT_CGC_BEFORE_TZ}"
           _ra8_boot_obj
         )
         list(APPEND _ra8_src "${_ra8_boot_obj}")

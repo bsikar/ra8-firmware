@@ -3,8 +3,8 @@
 #
 # Per-app CMake stub for `mpu_boot_map_hal`. All build logic lives in the shared
 # cmake/ra8_add_app.cmake recipe; this file only names the app, its deps, and
-# turns on the cache + MPU boot path so the per-app system_init.c installs the
-# MPU map through the ra8_mpu HAL.
+# selects the HAL MPU boot-map gate so the shared board `SystemInit()` installs
+# the MPU map through `ra8_mpu_apply_boot_map()`.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -35,6 +35,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # (RA8FW-365); the target_compile_definitions below stay for the C readers
 # (main.c). Set before ra8_add_app() so the boot-object build sees them.
 set(RA8_APP_BOOT_CACHE_MPU ON)
+set(RA8_APP_BOOT_MPU_VIA_HAL ON)
 ra8_add_app(
   NAME mpu_boot_map_hal
   STACK_BYTES 2200
@@ -42,10 +43,9 @@ ra8_add_app(
   DESCRIPTION "MPU boot map brought up through the ra8_mpu HAL"
 )
 
-# Turn on the cache + MPU boot path for THIS app only. The per-app
-# system_init.c (which overrides the shared board boot) is compiled into this
-# executable, so this PRIVATE define reaches that translation unit here and
-# nowhere else: SystemInit() installs the boot MPU map via
-# ra8_mpu_apply_boot_map() and enables the I-cache / D-cache / branch predictor
-# before main() runs.
-target_compile_definitions(mpu_boot_map_hal.elf PRIVATE RA8_BOOT_ENABLE_CACHE_MPU)
+# Turn on the cache + MPU HAL boot path for THIS app only: the shared board
+# boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.zig) installs the boot MPU
+# map via ra8_mpu_apply_boot_map() and enables I/D-cache + branch predictor.
+target_compile_definitions(
+  mpu_boot_map_hal.elf PRIVATE RA8_BOOT_ENABLE_CACHE_MPU RA8_BOOT_MPU_VIA_HAL
+)
