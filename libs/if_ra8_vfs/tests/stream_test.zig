@@ -11,6 +11,10 @@ const abi = @import("abi");
 const core = abi.core;
 const fake = @import("vfs_fake.zig");
 
+comptime {
+    _ = @import("vfs_fake.zig");
+}
+
 const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 
@@ -39,16 +43,42 @@ test "open: an undersized workspace is no_mem before any mode check" {
     try expectEqual(@as(u32, 0), fake.g_open_calls);
 }
 
-test "open: create-new has no native equivalent" {
+test "open: create-new opens absent leaf in write mode, refuses existing, and forwards stat errors" {
     var fixture = Fixture{};
     try expectEqual(core.ok, mountedFat(&fixture, false));
     var file: core.FileState = .{};
-    try expectEqual(core.err_not_supported, streams().open.?(
+    const bytes = @sizeOf(core.FileState);
+
+    try expectEqual(core.ok, streams().open.?(
         fake.g_bound_ctx,
-        "/a",
+        "/fresh",
         core.open_create_new,
         &file,
-        @sizeOf(core.FileState),
+        bytes,
+    ));
+    try expectEqual(@as(u32, 1), fake.g_stat_calls);
+    try expectEqual(@as(u32, 1), fake.g_open_calls);
+    try expectEqual(core.fs_mode_write, fake.g_last_open_mode);
+    try expectEqual(core.ok, streams().close.?(fake.g_bound_ctx, &file));
+
+    fake.g_open_calls = 0;
+    _ = addNode("ram:/taken", false, "x");
+    try expectEqual(core.err_exists, streams().open.?(
+        fake.g_bound_ctx,
+        "/taken",
+        core.open_create_new,
+        &file,
+        bytes,
+    ));
+    try expectEqual(@as(u32, 0), fake.g_open_calls);
+
+    fake.g_stat_rc = core.err_invalid_arg;
+    try expectEqual(core.err_invalid_arg, streams().open.?(
+        fake.g_bound_ctx,
+        "/statfail",
+        core.open_create_new,
+        &file,
+        bytes,
     ));
     try expectEqual(@as(u32, 0), fake.g_open_calls);
 }

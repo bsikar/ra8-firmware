@@ -124,7 +124,7 @@ const Instances = struct {
     pub const sci: u8 = 10;
 };
 
-const kinds = blk: {
+pub const kinds = blk: {
     var table: [kind_count]KindRow = @splat(.{});
     table[@backingInt(Kind.core)] = .{ .domain = .cpuclk0, .instances = Instances.one };
     table[@backingInt(Kind.uart)] = .{ .domain = .pclka, .gate_base = Mstp.sci0, .instances = Instances.sci };
@@ -154,9 +154,4 @@ pub fn resolve(kind_raw: u8, index: u8) Fault!Row {
         // Descending within one MSTPCRx word; see KindRow.
         .gate = if (row.gate_base) |base| base - index else null,
     };
-}
-
-test "the table length is the port's kind count" {
-    try std.testing.expectEqual(kind_count, kinds.len);
-    try std.testing.expectEqual(kind_count, @backingInt(Kind.memory) + 1);
 }

@@ -9,6 +9,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 const Rng = abi.Rng;
 const Iface = abi.Iface;
 

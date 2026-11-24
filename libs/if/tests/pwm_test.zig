@@ -8,6 +8,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 const Caps = abi.Caps;
 const Ch = abi.Ch;
 const Duty = abi.Duty;

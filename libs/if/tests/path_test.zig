@@ -8,6 +8,10 @@
 const std = @import("std");
 const path = @import("policy");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 const testing = std.testing;
 
 fn sanitize(raw: ?[]const u8, buffer: []u8) !path.Segment {

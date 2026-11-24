@@ -12,9 +12,12 @@
 //! in `tests/if/src/test_fw_if_clock_ra8.c`.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const clock_map = b.createModule(.{
@@ -46,13 +49,6 @@ pub fn build(b: *std.Build) void {
     root_module.addImport("clock_ops_abi", ops_abi);
 
     const test_step = b.step("test", "Run Zig if_ra8_cgc tests");
-
-    const map_unit = b.createModule(.{
-        .root_source_file = b.path("src/internal/clock_map.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = map_unit })).step);
 
     const table_test = b.createModule(.{
         .root_source_file = b.path("tests/clock_map_test.zig"),

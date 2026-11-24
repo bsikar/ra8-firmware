@@ -4,7 +4,41 @@
   ],
   "covered_sources": [
     "src/internal/clock_map.zig",
+    "src/clock_map_abi.zig",
+    "src/clock_ops_abi.zig",
+    "src/root.zig",
     "tests/clock_map_test.zig"
   ],
+  "standalone_source_args": {
+    "src/clock_map_abi.zig": [
+      "--dep",
+      "clock_map",
+      "-Mroot=src/clock_map_abi.zig",
+      "-Mclock_map=src/internal/clock_map.zig"
+    ],
+    "src/clock_ops_abi.zig": [
+      "--dep",
+      "clock_map_abi",
+      "-Mroot=src/clock_ops_abi.zig",
+      "--dep",
+      "clock_map",
+      "-Mclock_map_abi=src/clock_map_abi.zig",
+      "-Mclock_map=src/internal/clock_map.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "clock_map_abi",
+      "--dep",
+      "clock_ops_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "clock_map",
+      "-Mclock_map_abi=src/clock_map_abi.zig",
+      "--dep",
+      "clock_map_abi",
+      "-Mclock_ops_abi=src/clock_ops_abi.zig",
+      "-Mclock_map=src/internal/clock_map.zig"
+    ]
+  },
   "minimum_tests": 9
 }

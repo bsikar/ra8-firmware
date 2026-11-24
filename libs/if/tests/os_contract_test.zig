@@ -12,6 +12,10 @@
 
 const std = @import("std");
 
+comptime {
+    _ = @import("abi_fake.zig");
+}
+
 // Both translations come from build.zig: `os` with the default caps,
 // `os_queue` with FW_OS_HAS_QUEUE set.
 const os = @import("fw_os_h");

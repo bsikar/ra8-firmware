@@ -4,6 +4,10 @@
 
 const std = @import("std");
 const abi = @import("abi");
+
+comptime {
+    _ = @import("abi_fake.zig");
+}
 const core = abi.core;
 
 const path_abi = abi.path_policy;

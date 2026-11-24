@@ -11,9 +11,12 @@
 //! and the target, so nothing here is configured at compile time.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -33,11 +36,6 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
-    const implementation_module = b.createModule(.{
-        .root_source_file = b.path("src/internal/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
     const abi_module = b.createModule(.{
         .root_source_file = b.path("src/fw_if_fs_ra8_vfs_abi.zig"),
         .target = target,
@@ -49,7 +47,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    internal_test_module.addImport("implementation", implementation_module);
+    internal_test_module.addImport("abi", abi_module);
     const internal_tests = b.addTest(.{ .root_module = internal_test_module });
 
     const abi_test_module = b.createModule(.{
