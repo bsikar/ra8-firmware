@@ -69,6 +69,7 @@
 #include "ra8_usb.h"
 #include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
+#include "ra8_wdt.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "mbedtls/memory_buffer_alloc.h"
 #include "ra8_psa_crypto.h"
@@ -707,6 +708,37 @@ VOID tx_application_define(VOID* first_unused_memory)
 }
 
 /**
+ * @brief Arm WDT0 in reset-on-expiry mode before launching a trial slot.
+ *
+ * @details
+ * Configures WDT0 (HUM Ch 27) with a 1024-cycle window over CLKDIV /4, hardware
+ * reset on expiry (`RSTIRQS = 1`), and Sleep-keep-count (`SLCSTP = 0`) so a
+ * hung or WFI-stalled trial payload always triggers a hardware reset back into
+ * the bootloader instead of hanging forever. Confirmed boots leave WDT0 disarmed.
+ *
+ * @return void -- halts in ::blc_panic_halt if WDT bring-up fails.
+ * @pre Called once on a trial boot right before ::blc_boot_slot.
+ * @post WDT0 is armed and counting down toward an internal reset unless kicked.
+ * @note Firmware-only (`!RA8_OFF_TARGET`). @since 0.1.0
+ */
+static void blc_arm_trial_watchdog_or_halt(void)
+{
+#ifndef RA8_OFF_TARGET
+  const ra8_wdt_cfg_t cfg = {
+    .timeout       = k_ra8_wdt_timeout_1024,
+    .clock_div     = k_ra8_wdt_clkdiv_4,
+    .window_start  = k_ra8_wdt_window_start_100,
+    .window_end    = k_ra8_wdt_window_end_0,
+    .on_expiry     = k_ra8_wdt_on_expiry_reset,
+    .stop_in_sleep = k_ra8_wdt_sleep_keep_count,
+  };
+  if (ra8_wdt_init(&cfg) != k_ra8_ok) {
+    blc_panic_halt();
+  }
+#endif
+}
+
+/**
  * @brief Open the USB-FS port in the device role via the board facade.
  * @return void.
  * @pre IOPORT is reachable.
@@ -852,6 +884,10 @@ void main(void)
       (void)blc_print(plan.is_trial ? " (trial) -> copy-to-run @0x" : " -> copy-to-run @0x");
       (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
       (void)blc_print("\r\n");
+      if (plan.is_trial) {
+        (void)blc_print("dfu-bootloader: arming trial watchdog\r\n");
+        blc_arm_trial_watchdog_or_halt();
+      }
       blc_boot_slot(boot_slot); /* returns only if run target / RoT verify fails */
     }
   }
