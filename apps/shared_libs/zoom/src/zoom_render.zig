@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Strip composite for the tap-to-zoom viewer (RA8FW-1260): magnify,
 //! re-dither, blit.
 //!
@@ -36,11 +39,7 @@
 //! build installs silent/stub versions of all three; the firmware build links
 //! the real definitions.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
-
 const std = @import("std");
-const builtin = @import("builtin");
 
 pub const zoom = @import("zoom.zig");
 
@@ -118,7 +117,7 @@ const blit_native: i32 = 1;
 /// buffer once the axis' own `s0` is subtracted. Columns outside
 /// `[ax.d0, ax.d1)` are letterbox and are left at the background fill the
 /// caller wrote.
-fn expandRow(v: *View, ax: *const Axis, drow: [*]u8) void {
+pub fn expandRow(v: *View, ax: *const Axis, drow: [*]u8) void {
     const scale: i32 = v.scale;
     // The whole index calculation stays signed and the only conversion is of
     // the axis' own simple `s0` -- a cast of the composite `(anchor + d) /
@@ -140,7 +139,7 @@ fn expandRow(v: *View, ax: *const Axis, drow: [*]u8) void {
 /// its source row only when it differs from the one already in the row
 /// buffer, which at zoom `n` is once per `n` destination rows and never twice
 /// across a strip boundary, since `cached_sy` carries over.
-fn fillRow(v: *View, ax: *const Axis, plane_y: i32, drow: [*]u8, cached_sy: *i32) Err {
+pub fn fillRow(v: *View, ax: *const Axis, plane_y: i32, drow: [*]u8, cached_sy: *i32) Err {
     const scale: i32 = v.scale;
     const height: i32 = @intCast(v.src.height);
     const sy: i32 = if (plane_y >= 0) @divTrunc(plane_y, scale) else -1;
@@ -177,7 +176,7 @@ fn fillRow(v: *View, ax: *const Axis, plane_y: i32, drow: [*]u8, cached_sy: *i32
 /// row: it is constant across the frame, and a zero-width row would violate
 /// the source seam's `w > 0` contract if it ever reached zoom_read_fn.
 /// Everything else is fillRow's decision.
-fn fillStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Err {
+pub fn fillStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Err {
     const stride: usize = @intCast(v.dst.w);
     const strip = v.scratch.strip.?;
     @memset(strip[0 .. @as(usize, @intCast(rows)) * stride], zoom.bg_gray);
@@ -203,7 +202,7 @@ fn fillStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Er
 /// describes, kept together so viewRender is only the strip loop. The dither
 /// phase is the magnified-plane origin of this strip, which is what makes the
 /// grain belong to the image rather than to the panel.
-fn emitStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Err {
+pub fn emitStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Err {
     const fill_err = fillStrip(v, ax, top, rows, cached_sy);
     if (fill_err != .ok) {
         logErr("strip fill");
@@ -244,7 +243,7 @@ fn emitStrip(v: *View, ax: *const Axis, top: i32, rows: i32, cached_sy: *i32) Er
 /// strip loop and nothing else. The strip-height check is not defensive
 /// padding: it is the loop bound, and a zero would make the strip loop fail
 /// to advance (NASA P10 Rule 2).
-fn renderReady(v: ?*const View) Err {
+pub fn renderReady(v: ?*const View) Err {
     if (v == null) {
         logErr("view must not be nullptr");
         return .null_ptr;
@@ -289,290 +288,4 @@ pub fn viewRender(v: ?*View) Err {
         }
     }
     return .ok;
-}
-
-// ---------------------------------------------------------------------------
-// The standalone test build: silent log, stub dither and stub blit. The
-// firmware build links the real ra8_gfx definitions instead.
-// ---------------------------------------------------------------------------
-
-comptime {
-    if (builtin.is_test) {
-        @export(&testDitherStub, .{ .name = "ra8_gfx_dither_gray8_to_gray4_tone" });
-        @export(&testBlitStub, .{ .name = "ra8_gfx_blit_gray4_zoom" });
-    }
-}
-
-/// Controllable stub failures and captures for the test suite.
-pub var test_dither_err: Err = .ok;
-pub var test_blit_err: Err = .ok;
-pub var test_dither_calls: u32 = 0;
-pub var test_blit_calls: u32 = 0;
-pub const DitherArgs = struct { w: i32 = 0, h: i32 = 0, origin_x: i32 = 0, origin_y: i32 = 0, out_cap: u32 = 0 };
-pub const BlitArgs = struct { src_w: i32 = 0, src_h: i32 = 0, sw: i32 = 0, sh: i32 = 0, zoom: i32 = 0, dst_x: i32 = 0, dst_y: i32 = 0 };
-pub var test_dither_args: DitherArgs = .{};
-pub var test_blit_args: BlitArgs = .{};
-
-fn testDitherStub(map: ?*const ToneMap, src: [*]const u8, w: i32, h: i32, origin_x: i32, origin_y: i32, out: [*]u8, out_cap: u32, out_size: *u32) callconv(.c) Err {
-    _ = map;
-    test_dither_calls += 1;
-    test_dither_args = .{ .w = w, .h = h, .origin_x = origin_x, .origin_y = origin_y, .out_cap = out_cap };
-    // Pack gray8 nibble-high/low, the trivially checkable stand-in for the
-    // blue-noise dither the real ra8_gfx runs.
-    const n: usize = @intCast(w * h);
-    var i: usize = 0;
-    while (i < (n + 1) / 2) : (i += 1) {
-        const hi: u8 = src[2 * i] >> 4;
-        const lo: u8 = if (2 * i + 1 < n) src[2 * i + 1] >> 4 else 0;
-        if (i < out_cap) {
-            out[i] = (hi << 4) | lo;
-        }
-    }
-    out_size.* = @intCast((n + 1) / 2);
-    return test_dither_err;
-}
-
-fn testBlitStub(src: [*]const u8, src_w: i32, src_h: i32, sx: i32, sy: i32, sw: i32, sh: i32, zoom_arg: i32, dst_x: i32, dst_y: i32) callconv(.c) Err {
-    _ = src;
-    _ = sx;
-    _ = sy;
-    test_blit_calls += 1;
-    test_blit_args = .{ .src_w = src_w, .src_h = src_h, .sw = sw, .sh = sh, .zoom = zoom_arg, .dst_x = dst_x, .dst_y = dst_y };
-    return test_blit_err;
-}
-
-// ---------------------------------------------------------------------------
-// Implementation suite. The C host suite (tests/src/test_zoom.c) drives the
-// same pipeline end to end over the C ABI against the real ra8_gfx; these
-// tests pin the strip decisions themselves against stubs.
-// ---------------------------------------------------------------------------
-
-fn testReadFill(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: [*]u8, out_stride: u32) callconv(.c) Err {
-    if (zoom_render_test_read_fail) {
-        return .no_mem;
-    }
-    const img: *const [64]u8 = @ptrCast(@alignCast(ctx));
-    var r: u32 = 0;
-    while (r < h) : (r += 1) {
-        var c: u32 = 0;
-        while (c < w) : (c += 1) {
-            out[r * out_stride + c] = img[(y + r) * 8 + (x + c)];
-        }
-    }
-    return .ok;
-}
-
-var zoom_render_test_read_fail: bool = false;
-
-test "renderReady rejects each broken state in the C order" {
-    var v = View{};
-    try std.testing.expectEqual(Err.null_ptr, renderReady(null));
-    try std.testing.expectEqual(Err.null_ptr, renderReady(&v));
-    v.src.read = testReadFill;
-    try std.testing.expectEqual(Err.invalid_state, renderReady(&v));
-    v.active = true;
-    try std.testing.expectEqual(Err.invalid_state, renderReady(&v));
-    v.strip_rows = 2;
-    try std.testing.expectEqual(Err.ok, renderReady(&v));
-}
-
-test "expandRow samples source columns and leaves letterbox alone" {
-    var img: [64]u8 = undefined;
-    var row: [4]u8 = undefined;
-    for (&img, 0..) |*p, i| p.* = @intCast(i);
-    var v = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img), .width = 4, .height = 4 },
-        .scratch = .{ .row = row[0..].ptr, .row_cap = 4 },
-        .scale = 2,
-        .anchor_x = 0,
-        .active = true,
-        .strip_rows = 2,
-    };
-    // A 4-px source at x2: the plane is 8 px wide against an 8-px viewport at
-    // anchor 0, so every destination column is covered and shows source
-    // column d/2.
-    const ax = zoom.axis(0, 8, 2, 4);
-    var drow: [8]u8 = undefined;
-    var i: usize = 0;
-    while (i < drow.len) : (i += 1) {
-        drow[i] = 0xEE;
-    }
-    // The row buffer holds source columns [0, 4): the test reader's row 0.
-    for (&row, 0..) |*rp, ri| rp.* = @intCast(ri);
-    expandRow(&v, &ax, &drow);
-    for (drow, 0..) |b, d| {
-        try std.testing.expectEqual(@as(u8, @intCast(d / 2)), b);
-    }
-    // Letterbox on the left: anchor -4 puts d0 at 4, so columns 0..3 keep
-    // the background the caller wrote.
-    const ax_lb = zoom.axis(-4, 8, 2, 4);
-    v.anchor_x = -4;
-    v.scratch.row.?[@intCast(ax_lb.s0)] = 9; // source col 0 of the covered span
-    var drow2: [8]u8 = undefined;
-    i = 0;
-    while (i < drow2.len) : (i += 1) {
-        drow2[i] = 0xEE;
-    }
-    expandRow(&v, &ax_lb, &drow2);
-    try std.testing.expectEqual(@as(u8, 0xEE), drow2[0]);
-    try std.testing.expectEqual(@as(u8, 0xEE), drow2[3]);
-    try std.testing.expectEqual(@as(u8, 9), drow2[4]);
-}
-
-test "fillRow faults only on a new source row and resets on failure" {
-    var img: [64]u8 = undefined;
-    var row: [4]u8 = undefined;
-    for (&img, 0..) |*p, i| p.* = @intCast(i);
-    var v = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img), .width = 4, .height = 4 },
-        .scratch = .{ .row = row[0..].ptr, .row_cap = 4 },
-        .scale = 2,
-        .anchor_x = 0,
-        .active = true,
-        .strip_rows = 2,
-    };
-    const ax = zoom.axis(0, 8, 2, 4);
-    var drow: [8]u8 = undefined;
-    var cached: i32 = -1;
-    // Plane rows 0 and 1 share source row 0: the second call must not read.
-    try std.testing.expectEqual(Err.ok, fillRow(&v, &ax, 0, &drow, &cached));
-    try std.testing.expectEqual(@as(i32, 0), cached);
-    try std.testing.expectEqual(Err.ok, fillRow(&v, &ax, 1, &drow, &cached));
-    // Above and below the image are letterbox and reset nothing.
-    try std.testing.expectEqual(Err.ok, fillRow(&v, &ax, -1, &drow, &cached));
-    try std.testing.expectEqual(@as(i32, 0), cached);
-    try std.testing.expectEqual(Err.ok, fillRow(&v, &ax, 8, &drow, &cached));
-    try std.testing.expectEqual(@as(i32, 0), cached);
-    // A failing read propagates verbatim and invalidates the row cache.
-    zoom_render_test_read_fail = true;
-    defer zoom_render_test_read_fail = false;
-    try std.testing.expectEqual(Err.no_mem, fillRow(&v, &ax, 2, &drow, &cached));
-    try std.testing.expectEqual(@as(i32, -1), cached);
-}
-
-test "fillStrip fills letterbox first and composites covered rows" {
-    var img: [64]u8 = undefined;
-    var row: [4]u8 = undefined;
-    var strip: [16]u8 = undefined;
-    for (&img, 0..) |*p, i| p.* = @intCast(i);
-    var v = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img), .width = 4, .height = 4 },
-        .scratch = .{ .row = row[0..].ptr, .strip = strip[0..].ptr, .row_cap = 4, .strip_cap = 16 },
-        .dst = .{ .w = 8, .h = 8 },
-        .scale = 2,
-        .anchor_x = 0,
-        .anchor_y = 0,
-        .active = true,
-        .strip_rows = 2,
-    };
-    const ax = zoom.axis(0, 8, 2, 4);
-    var cached: i32 = -1;
-    try std.testing.expectEqual(Err.ok, fillStrip(&v, &ax, 0, 2, &cached));
-    // Strip rows 0..1 show plane rows 0..1, i.e. source row 0 twice: every
-    // covered column d shows source column d/2 of row 0 (img[d/2]).
-    var c: usize = 0;
-    while (c < 8) : (c += 1) {
-        try std.testing.expectEqual(@as(u8, @intCast(c / 2)), strip[c]);
-        try std.testing.expectEqual(@as(u8, @intCast(c / 2)), strip[8 + c]);
-    }
-    // A horizontally uncovered axis: the whole strip stays background and no
-    // source row is faulted.
-    var img2: [64]u8 = undefined;
-    for (&img2) |*b| b.* = 0xAA;
-    var row2: [4]u8 = undefined;
-    var strip2: [16]u8 = undefined;
-    var v2 = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img2), .width = 4, .height = 4 },
-        .scratch = .{ .row = row2[0..].ptr, .strip = strip2[0..].ptr, .row_cap = 4, .strip_cap = 16 },
-        .dst = .{ .w = 8, .h = 8 },
-        .scale = 2,
-        .anchor_x = 100,
-        .anchor_y = 0,
-        .active = true,
-        .strip_rows = 2,
-    };
-    var cached2: i32 = -1;
-    try std.testing.expectEqual(Err.ok, fillStrip(&v2, &zoom.axis(100, 8, 2, 4), 0, 2, &cached2));
-    for (strip2) |b| try std.testing.expectEqual(zoom.bg_gray, b);
-    try std.testing.expectEqual(@as(i32, -1), cached2);
-}
-
-test "emitStrip dithers at plane phase and blits at native scale" {
-    var img: [64]u8 = undefined;
-    var row: [4]u8 = undefined;
-    var strip: [16]u8 = undefined;
-    var packed_buf: [8]u8 = undefined;
-    for (&img, 0..) |*p, i| p.* = @intCast(i);
-    var tone = ToneMap{ .level = undefined, .up_threshold = undefined };
-    var v = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img), .width = 4, .height = 4 },
-        .scratch = .{ .row = row[0..].ptr, .strip = strip[0..].ptr, .packed_buf = packed_buf[0..].ptr, .row_cap = 4, .strip_cap = 16, .packed_cap = 8 },
-        .dst = .{ .x = 3, .y = 4, .w = 8, .h = 8 },
-        .scale = 2,
-        .anchor_x = 0,
-        .anchor_y = 0,
-        .active = true,
-        .strip_rows = 2,
-        .tone = @ptrCast(&tone),
-    };
-    const ax = zoom.axis(0, 8, 2, 4);
-    var cached: i32 = -1;
-    test_dither_calls = 0;
-    test_blit_calls = 0;
-    try std.testing.expectEqual(Err.ok, emitStrip(&v, &ax, 6, 2, &cached));
-    try std.testing.expectEqual(@as(u32, 1), test_dither_calls);
-    try std.testing.expectEqual(@as(i32, 8), test_dither_args.w);
-    try std.testing.expectEqual(@as(i32, 2), test_dither_args.h);
-    // The dither phase is the magnified-plane origin of the strip.
-    try std.testing.expectEqual(@as(i32, 0), test_dither_args.origin_x);
-    try std.testing.expectEqual(@as(i32, 6), test_dither_args.origin_y);
-    try std.testing.expectEqual(@as(u32, 1), test_blit_calls);
-    try std.testing.expectEqual(@as(i32, 8), test_blit_args.sw);
-    try std.testing.expectEqual(@as(i32, 2), test_blit_args.sh);
-    try std.testing.expectEqual(@as(i32, 1), test_blit_args.zoom); // native
-    try std.testing.expectEqual(@as(i32, 3), test_blit_args.dst_x);
-    try std.testing.expectEqual(@as(i32, 10), test_blit_args.dst_y);
-    // A failing blit surfaces the gfx error verbatim (hw_error when the
-    // framebuffer binding is missing).
-    test_blit_err = .hw_error;
-    defer test_blit_err = .ok;
-    try std.testing.expectEqual(Err.hw_error, emitStrip(&v, &ax, 6, 2, &cached));
-}
-
-test "viewRender strips the viewport and stops on a failing strip" {
-    var img: [64]u8 = undefined;
-    var row: [4]u8 = undefined;
-    var strip: [16]u8 = undefined;
-    var packed_buf: [8]u8 = undefined;
-    for (&img, 0..) |*p, i| p.* = @intCast(i);
-    var v = View{
-        .src = .{ .read = testReadFill, .ctx = @ptrCast(&img), .width = 4, .height = 4 },
-        .scratch = .{ .row = row[0..].ptr, .strip = strip[0..].ptr, .packed_buf = packed_buf[0..].ptr, .row_cap = 4, .strip_cap = 16, .packed_cap = 8 },
-        .dst = .{ .w = 8, .h = 8 },
-        .scale = 2,
-        .anchor_x = 0,
-        .anchor_y = 0,
-        .active = true,
-        .strip_rows = 2,
-    };
-    test_dither_calls = 0;
-    test_blit_calls = 0;
-    try std.testing.expectEqual(Err.ok, viewRender(&v));
-    // Four strips of two rows cover the 8-row viewport.
-    try std.testing.expectEqual(@as(u32, 4), test_blit_calls);
-    try std.testing.expectEqual(@as(u32, 4), test_dither_calls);
-    // The last strip lands at destination row 6.
-    try std.testing.expectEqual(@as(i32, 6), test_blit_args.dst_y);
-    // A source fault abandons the frame at the strip boundary: strips before
-    // the fault are on the framebuffer, nothing after is blitted.
-    test_dither_calls = 0;
-    test_blit_calls = 0;
-    zoom_render_test_read_fail = true;
-    defer zoom_render_test_read_fail = false;
-    try std.testing.expectEqual(Err.no_mem, viewRender(&v));
-    try std.testing.expectEqual(@as(u32, 0), test_blit_calls);
-    // A null view and a closed view never reach the strip loop.
-    try std.testing.expectEqual(Err.null_ptr, viewRender(null));
-    v.active = false;
-    try std.testing.expectEqual(Err.invalid_state, viewRender(&v));
 }
