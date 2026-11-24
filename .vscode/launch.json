@@ -19,12 +19,9 @@
       "name": "RA8: firmware in emulator (debug emulator host)",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/tools/ra8_emulator/build/ra8_emulator",
+      "program": "${workspaceFolder}/tools/ra8_emulator/zig-out/bin/ra8_emulator",
       "args": [
-        "${command:cmake.launchTargetPath}",
-        "--panel",
-        "${workspaceFolder}/tools/ra8_emulator/panels/ek_ra8d2.toml",
-        "--view"
+        "${command:cmake.launchTargetPath}"
       ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "RA8: prepare emulator session"

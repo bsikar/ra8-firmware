@@ -3,24 +3,23 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """ereader_golden.py -- golden-image regression gate for the e-reader chrome.
 
-The ``ereader_ui`` example paints its Library and Reading screens
-into the GLCDC framebuffer. ``tools/ra8_emulator`` renders that firmware
-framebuffer deterministically, so we can pin the chrome with checked-in golden
-images and fail CI (or the local ``just apps::emulator::golden`` recipe) when an unrelated
-change shifts a pixel.
+The ``ereader_ui`` example paints its Library and Reading screens into the GLCDC
+framebuffer. ``tools/ra8_emulator`` renders that firmware framebuffer
+deterministically, so we can pin the chrome with checked-in golden images and
+fail CI (via ``scripts/emu/smoke.sh``) when an unrelated change shifts a pixel.
 
-ra8_emulator's ``--ppm`` snapshot is the panel framebuffer PLUS a fixed-width debug
-sidebar on the right (LED / USB / IRQ state). The chrome golden must test the
-*firmware* output, not ra8_emulator's overlay, so every snapshot is cropped to the
-panel region (total width minus the sidebar) before it is hashed or stored. The
-golden bytes are gzipped (the flat 16-level-grayscale chrome compresses ~30x).
+ra8_emulator's ``--frames-out DIR`` captures numbered P6 PPM images of the
+1024x600 panel framebuffer only (no overlay or debug sidebar), so no cropping is
+needed. Each screen is run for a fixed virtual-time budget (``--ms 2000``), the
+final scanned frame ``frame_NNNNN.ppm`` is read, and its golden bytes are stored
+gzipped (the flat 16-level-grayscale chrome compresses ~30x).
 
 Usage
 -----
     ereader_golden.py check  --elf E --emulator B --golden-dir D [--out-dir O]
     ereader_golden.py update --elf E --emulator B --golden-dir D
 
-``check`` renders each screen, crops it, and compares against
+``check`` renders each screen and compares against
 ``<golden-dir>/<name>.ppm.gz``; mismatches are reported (with the actual image
 written to ``--out-dir`` for inspection) and exit status is non-zero.
 ``update`` regenerates the goldens in place.
@@ -38,30 +37,28 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Virtual-time settle budget per screen in milliseconds of SysTick time.
+RENDER_MS = 2000
+
 # Number of integer tokens in a PPM (P6) header: width, height, maxval.
 PPM_HEADER_TOKEN_COUNT = 3
 
-# Width ra8_emulator appends on the right of the panel for its status sidebar.
-# Mirrors ``k_ovl_sidebar_w`` in tools/ra8_emulator/src/display/board_overlay.c; the crop
-# removes it so the golden depends only on the firmware chrome.
-SIDEBAR_W = 520
-
 # The screens to capture: (golden name, ra8_emulator extra args). Reading is
 # reached by tapping a Library book card; keyboard by tapping the toolbar
-# Search field -- both via the genuine touch path. battery_low drives the
-# modelled fuel gauge below the critical threshold (--battery 8) so the
-# low-battery nag banner overlay is captured over the Library chrome.
+# Search field -- both via the genuine touch path (--touch X,Y). battery_low
+# fits the Click module's MAX17048 fuel gauge (--click) and seeds it below the
+# critical threshold (--battery 8) so the low-battery nag banner overlay is
+# captured over the Library chrome.
 SCREENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("library", ()),
-    ("reading", ("--click", "250", "250")),
-    ("keyboard", ("--click", "200", "100")),
-    ("battery_low", ("--battery", "8")),
+    ("reading", ("--touch", "250,250")),
+    ("keyboard", ("--touch", "200,100")),
+    ("battery_low", ("--click", "--battery", "8")),
 )
 
 
-def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
-    """Parse a binary (P6) PPM into (width, height, maxval, pixel-bytes)."""
-    data = path.read_bytes()
+def validate_ppm(data: bytes, path: Path) -> bytes:
+    """Verify P6 PPM header + raster length and return ``data`` unchanged."""
     if data[:2] != b"P6":
         msg = f"{path}: not a P6 PPM"
         raise ValueError(msg)
@@ -75,32 +72,26 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
             idx += 1
         tokens.append(int(data[start:idx]))
     idx += 1  # single whitespace byte separating the header from the raster
-    width, height, maxval = tokens
-    pixels = data[idx : idx + width * height * 3]
-    if len(pixels) != width * height * 3:
-        msg = f"{path}: truncated raster"
+    width, height, _maxval = tokens
+    expected_bytes = width * height * 3
+    if len(data) - idx != expected_bytes:
+        msg = f"{path}: expected {expected_bytes} raster bytes, got {len(data) - idx}"
         raise ValueError(msg)
-    return width, height, maxval, pixels
-
-
-def crop_panel(width: int, height: int, maxval: int, pixels: bytes) -> bytes:
-    """Return a P6 PPM of the panel region (left ``width - SIDEBAR_W`` columns)."""
-    panel_w = width - SIDEBAR_W
-    if panel_w <= 0:
-        msg = f"width {width} <= sidebar {SIDEBAR_W}"
-        raise ValueError(msg)
-    out = bytearray()
-    for row in range(height):
-        off = row * width * 3
-        out += pixels[off : off + panel_w * 3]
-    header = b"P6\n%d %d\n%d\n" % (panel_w, height, maxval)
-    return header + bytes(out)
+    return data
 
 
 def render_panel(emulator: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
-    """Run ra8_emulator for one screen and return its cropped-panel PPM bytes."""
-    with tempfile.NamedTemporaryFile(suffix=".ppm") as tmp:
-        cmd = [str(emulator), str(elf), *extra, "--ppm", tmp.name]
+    """Run ra8_emulator for one screen and return its final panel P6 PPM bytes."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cmd = [
+            str(emulator),
+            str(elf),
+            "--ms",
+            str(RENDER_MS),
+            *extra,
+            "--frames-out",
+            tmpdir,
+        ]
         # Capture as bytes, not text: ra8_emulator's diagnostic stream can carry
         # raw bytes (e.g. 0xFF SPI idle bytes from an SD bring-up with no card),
         # which would crash a UTF-8 text decode.
@@ -109,7 +100,12 @@ def render_panel(emulator: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
             err = proc.stderr.decode("utf-8", "replace")
             msg = f"ra8_emulator failed: {' '.join(cmd)}\n{err}"
             raise RuntimeError(msg)
-        return crop_panel(*read_ppm(Path(tmp.name)))
+        frames = sorted(Path(tmpdir).glob("frame_*.ppm"))
+        if not frames:
+            msg = f"ra8_emulator produced no panel frames: {' '.join(cmd)}"
+            raise RuntimeError(msg)
+        last = frames[-1]
+        return validate_ppm(last.read_bytes(), last)
 
 
 def golden_path(golden_dir: Path, name: str) -> Path:

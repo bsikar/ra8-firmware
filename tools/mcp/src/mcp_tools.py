@@ -171,7 +171,6 @@ def tool_repo_overview(_args: dict[str, Any]) -> str:
         "  just apps::build <app>              cross-compile one app\n"
         "  just apps::hardware::flash <app>    build + flash via local J-Link\n"
         "  just apps::emulator::run <app>      run the real .elf on ra8_emulator\n"
-
         "AUTHORITATIVE DOCS are exposed as MCP resources (CLAUDE.md, STYLE_GUIDE, "
         "RING_AND_WORLD, CONTRIBUTING, the HUM chapter map, the app catalogue)."
     )
@@ -238,12 +237,13 @@ def tool_coverage(args: dict[str, Any]) -> str:
 
 
 def tool_emu_app(args: dict[str, Any]) -> str:
-    """Boot one app's real ``.elf`` on the ra8_emulator Unicorn emulator -- no hardware.
+    """Boot one app's real ``.elf`` on ``ra8_emulator`` -- no hardware.
 
     Runs ``scripts/emu/smoke.sh <app>`` headlessly: it builds the app + the
-    emulator, runs the firmware, and asserts it reaches its run budget without
-    faulting -- plus its real peripheral UART banner where known. Returns the
-    per-app verdict + log tail. The single way to exercise an app without a board.
+    Zig-built emulator, runs the firmware, and asserts it reaches its run budget
+    without faulting -- plus its real peripheral UART banner where known. Returns
+    the per-app verdict + log tail. The single way to exercise an app without a
+    board.
     """
     app = require_app(str(args.get("app", "")).strip())
     return run_command(["bash", "scripts/emu/smoke.sh", app["id"]], timeout=900)
@@ -429,7 +429,7 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "emu_app",
-        "description": "Boot one app's real .elf on the ra8_emulator Unicorn emulator (no "
+        "description": "Boot one app's real .elf on ra8_emulator (no "
         "hardware): build + run headless, assert it reaches its run budget "
         "without faulting plus its peripheral UART banner. Returns the verdict.",
         "inputSchema": _schema({"app": {"type": "string", "description": "app name"}}, ["app"]),
