@@ -38,12 +38,13 @@ ra8_add_app(
   DESCRIPTION "Dual-core M85 + M33: M33 runs the RABOOK1 emitter, M85 validates (#149b)"
 )
 
-# The M85 image needs only book_validate plus the header-only book.h inline
-# accessors, so link the single dependency-clean book.c core directly -- NOT
-# the whole book lib via LIBS. book's xhtml / paged TUs carry deep stack
-# frames (book_walk_to_xhtml ~4 KiB) and pull in ra8_mem, none of which this
-# validate-only app exercises; globbing them in would trip -Wstack-usage.
-target_sources(compile_on_m33.elf PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/book/src/book.c)
+# The M85 image needs book_validate plus the header-only book.h inline
+# accessors. Link the migrated ra8_book archive directly rather than LIBS so
+# the standalone image keeps its explicit dependency set.
+_ra8_app_zig_library(ra8_book "${RA8_REPO_ROOT}/apps/shared_libs/book" _c0_book_archive _c0_book_stamp)
+add_custom_target(compile_on_m33_zig_ra8_book DEPENDS "${_c0_book_stamp}")
+add_dependencies(compile_on_m33.elf compile_on_m33_zig_ra8_book)
+target_link_libraries(compile_on_m33.elf PRIVATE "${_c0_book_archive}" gcc)
 target_include_directories(compile_on_m33.elf PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/book/inc)
 
 #############################################################################
@@ -118,7 +119,6 @@ if(TARGET compile_on_m33_cpu1.elf)
   #     compile clean and none reaches -Wstack-usage=2048, so the EPUB parse
   #     path now carries real stack evidence. Their rows were the last ten in
   #     the inventory, which is now empty.
-  file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
@@ -127,14 +127,59 @@ if(TARGET compile_on_m33_cpu1.elf)
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
-    # The epub zip guard is Zig too (RA8FW-1160): the glob below drops
-    # epub_zip_guard.c on its own, and the guards come from
-    # ra8_zig::ra8_epub, which this image links like the xml reader.
-    # xml_decode.c (RA8FW-1157), xml.c (RA8FW-1158) and xml_doctype.c
-    # (RA8FW-1206) are all retired to Zig: the whole reader lives in
-    # ra8_zig::ra8_xml_reader, which this hw-pending M33 image must link
-    # when hardware enablement resumes.
-    ${_c1_epub_c}
+  )
+  # The XML reader and EPUB front end are Zig archives now: cross-build them
+  # for cortex_m33 and link them inside --start-group/--end-group alongside
+  # ra8_core so __aeabi_* helpers emitted in ARM release builds resolve even
+  # across archive link-order edges.
+  _ra8_zig_build_archive(
+    xml_reader
+    "${RA8_REPO_ROOT}/apps/shared_libs/xml"
+    thumb-freestanding-eabihf
+    cortex_m33
+    _c1_xml_archive
+  )
+  add_custom_target(compile_on_m33_cpu1_zig_xml_reader DEPENDS "${_c1_xml_archive}")
+  add_dependencies(compile_on_m33_cpu1.elf compile_on_m33_cpu1_zig_xml_reader)
+
+  _ra8_zig_build_archive(
+    ra8_epub
+    "${RA8_REPO_ROOT}/apps/shared_libs/epub"
+    thumb-freestanding-eabihf
+    cortex_m33
+    _c1_epub_archive
+  )
+  add_custom_target(compile_on_m33_cpu1_zig_ra8_epub DEPENDS "${_c1_epub_archive}")
+  add_dependencies(compile_on_m33_cpu1.elf compile_on_m33_cpu1_zig_ra8_epub)
+
+  ra8_zig_archive_for_cpu(
+    _c1_core_archive
+    LIB ra8_core
+    CPU cortex_m33
+    FLOAT hard
+  )
+  get_filename_component(_c1_epub_dir "${_c1_epub_archive}" DIRECTORY)
+  target_link_directories(compile_on_m33_cpu1.elf PRIVATE "${_c1_epub_dir}")
+  target_link_libraries(
+    compile_on_m33_cpu1.elf
+    PRIVATE -Wl,--start-group
+            "${_c1_xml_archive}"
+            -lra8_epub_open
+            -lra8_epub_chapter
+            -lra8_epub_entry
+            -lra8_epub_xml
+            -lra8_epub_toc
+            -lra8_epub_miniz
+            -lra8_epub_img_import
+            "${_c1_epub_archive}"
+            "${_c1_core_archive}"
+            gcc
+            -Wl,--end-group
+  )
+  set_property(
+    TARGET compile_on_m33_cpu1.elf
+    APPEND
+    PROPERTY LINK_DEPENDS "${_c1_xml_archive}" "${_c1_epub_archive}" "${_c1_core_archive}"
   )
   # Still plain target_sources(): vendored miniz.c only (SOUP, deliberately
   # outside the first-party bar). Every first-party TU on this image now goes
