@@ -58,6 +58,22 @@ pub fn build(b: *std.Build) void {
     });
     ocr_mod.addImport("err", err_mod);
 
+    const vocab_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/vocab.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    vocab_mod.addImport("crc32", crc32_mod);
+    vocab_mod.addImport("err", err_mod);
+
+    const tok_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/tokenizer.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tok_mod.addImport("vocab", vocab_mod);
+    tok_mod.addImport("err", err_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -69,6 +85,7 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("lang", lang_mod);
     abi_mod.addImport("glossary", glossary_mod);
     abi_mod.addImport("ocr", ocr_mod);
+    abi_mod.addImport("tokenizer", tok_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -135,6 +152,7 @@ pub fn build(b: *std.Build) void {
     });
     abi_tmod.addImport("err", err_mod);
     abi_tmod.addImport("ra8_translate_abi", abi_mod);
+    abi_tmod.addImport("tokenizer", tok_mod);
     const abi_tests = b.addTest(.{ .root_module = abi_tmod });
     const run_abi = b.addRunArtifact(abi_tests);
     ra8_build.configureHostTestRun(b, test_step, abi_tests, run_abi);
@@ -173,4 +191,15 @@ pub fn build(b: *std.Build) void {
     const run_ocr = b.addRunArtifact(ocr_tests);
     ra8_build.configureHostTestRun(b, test_step, ocr_tests, run_ocr);
     test_step.dependOn(&run_ocr.step);
+
+    const tok_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/tokenizer_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tok_tmod.addImport("tokenizer", tok_mod);
+    const tok_tests = b.addTest(.{ .root_module = tok_tmod });
+    const run_tok = b.addRunArtifact(tok_tests);
+    ra8_build.configureHostTestRun(b, test_step, tok_tests, run_tok);
+    test_step.dependOn(&run_tok.step);
 }

@@ -337,11 +337,13 @@
         "ra8_translate_glossary_lookup",
         "ra8_translate_glossary_mask",
         "ra8_translate_glossary_restore",
-        "ra8_translate_ocr_has_helium",
-        "ra8_translate_ocr_required_bytes",
-        "ra8_translate_ocr_resize_u8",
         "ra8_translate_ocr_normalize_i8",
-        "ra8_translate_ocr_preprocess_i8"
+        "ra8_translate_ocr_preprocess_i8",
+        "ra8_translate_tok_open",
+        "ra8_translate_tok_piece_info",
+        "ra8_translate_tok_work_bytes",
+        "ra8_translate_tok_encode",
+        "ra8_translate_tok_decode"
       ]
     },
     {
@@ -3725,7 +3727,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "e270aa6bac152e9ba7e7791823e04ca3d88fd9f99bf99f69570f4a261c7f23d4",
+      "compatibility_sha256": "0cf6a037b5a158543a275f6d6511372ac83a30c26ea21128ef59778f6d72e040",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3746,7 +3748,9 @@
         "@sizeOf(OcrPreprocessCfg) == 8",
         "@alignOf(OcrPreprocessCfg) == 2",
         "@sizeOf(OcrQuantParams) == 36",
-        "@alignOf(OcrQuantParams) == 4"
+        "@alignOf(OcrQuantParams) == 4",
+        "@sizeOf(VocabHeader) == 36",
+        "@alignOf(VocabHeader) == 4"
       ],
       "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
       "layout_sources": [
@@ -3889,6 +3893,31 @@
           "name": "ra8_translate_ocr_preprocess_i8",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows immutable source image and params and streams cropped resized quantized int8 activations to caller buffer"
+        },
+        {
+          "name": "ra8_translate_tok_open",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable TVOC bytes for validation and writes caller vocabulary header on success"
+        },
+        {
+          "name": "ra8_translate_tok_piece_info",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows validated TVOC bytes and outputs borrowed piece slice base, length, kind, and score"
+        },
+        {
+          "name": "ra8_translate_tok_work_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "computes scratch workspace byte count from scalar length and model family without retaining pointers"
+        },
+        {
+          "name": "ra8_translate_tok_encode",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TVOC and UTF-8 text, uses caller scratch buffer, and writes token IDs into caller array"
+        },
+        {
+          "name": "ra8_translate_tok_decode",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows TVOC and token ID array and writes decoded UTF-8 bytes into caller buffer"
         }
       ],
       "data_exports": [],

@@ -654,6 +654,192 @@ ra8_err_t ra8_translate_glossary_restore(const uint8_t* tgl_buf,
                                          size_t         restored_cap,
                                          size_t*        out_restored_len);
 
+/** @brief Tokenization model family stored in a `TVOC` container. */
+typedef enum ra8_translate_tok_model_e : uint8_t {
+  k_ra8_translate_tok_unigram = 0U,
+  k_ra8_translate_tok_bpe     = 1U,
+} ra8_translate_tok_model_t;
+
+/** @brief SentencePiece vocabulary entry classification. */
+typedef enum ra8_translate_tok_piece_kind_e : uint8_t {
+  k_ra8_translate_tok_piece_normal       = 0U,
+  k_ra8_translate_tok_piece_unknown      = 1U,
+  k_ra8_translate_tok_piece_control      = 2U,
+  k_ra8_translate_tok_piece_user_defined = 3U,
+  k_ra8_translate_tok_piece_byte         = 4U,
+  k_ra8_translate_tok_piece_unused       = 5U,
+} ra8_translate_tok_piece_kind_t;
+
+/** @brief Normalization and byte-fallback flags in a `TVOC` header. */
+typedef enum ra8_translate_tok_flag_e : uint8_t {
+  k_ra8_translate_tok_flag_add_dummy_prefix = 0x01U,
+  k_ra8_translate_tok_flag_remove_extra_ws  = 0x02U,
+  k_ra8_translate_tok_flag_escape_ws        = 0x04U,
+  k_ra8_translate_tok_flag_byte_fallback    = 0x08U,
+  k_ra8_translate_tok_flag_norm_fullwidth   = 0x10U,
+} ra8_translate_tok_flag_t;
+
+/** @brief Per-call encode control token flags. */
+typedef enum ra8_translate_tok_enc_flag_e : uint8_t {
+  k_ra8_translate_tok_enc_none    = 0x00U,
+  k_ra8_translate_tok_enc_add_bos = 0x01U,
+  k_ra8_translate_tok_enc_add_eos = 0x02U,
+} ra8_translate_tok_enc_flag_t;
+
+/** @brief Sentinel ID constants for `TVOC` special token slots. */
+typedef enum ra8_translate_tok_const_e : uint32_t {
+  k_ra8_translate_tok_id_none = 0xFFFFFFFFU,
+} ra8_translate_tok_const_t;
+
+static_assert(sizeof(ra8_translate_tok_model_t) == 1U, "ra8_translate_tok_model_t width");
+static_assert(sizeof(ra8_translate_tok_piece_kind_t) == 1U, "ra8_translate_tok_piece_kind_t width");
+static_assert(sizeof(ra8_translate_tok_flag_t) == 1U, "ra8_translate_tok_flag_t width");
+static_assert(sizeof(ra8_translate_tok_enc_flag_t) == 1U, "ra8_translate_tok_enc_flag_t width");
+static_assert(sizeof(ra8_translate_tok_const_t) == 4U, "ra8_translate_tok_const_t width");
+
+/** @brief Validated `TVOC` SentencePiece vocabulary container header. */
+typedef struct ra8_translate_vocab_header_s {
+  uint32_t total_bytes;
+  uint32_t container_crc32;
+  uint32_t vocab_size;
+  uint32_t unk_id;
+  uint32_t bos_id;
+  uint32_t eos_id;
+  uint32_t pad_id;
+  float    min_normal_score;
+  uint8_t  model_type;
+  uint8_t  flags;
+  uint8_t  reserved[2];
+} ra8_translate_vocab_header_t;
+
+static_assert(sizeof(ra8_translate_vocab_header_t) == 36U, "ra8_translate_vocab_header_t size");
+static_assert(alignof(ra8_translate_vocab_header_t) == 4U, "ra8_translate_vocab_header_t align");
+static_assert(offsetof(ra8_translate_vocab_header_t, total_bytes) == 0U, "vocab total_bytes off");
+static_assert(offsetof(ra8_translate_vocab_header_t, container_crc32) == 4U, "vocab crc off");
+static_assert(offsetof(ra8_translate_vocab_header_t, vocab_size) == 8U, "vocab size off");
+static_assert(offsetof(ra8_translate_vocab_header_t, unk_id) == 12U, "vocab unk_id off");
+static_assert(offsetof(ra8_translate_vocab_header_t, bos_id) == 16U, "vocab bos_id off");
+static_assert(offsetof(ra8_translate_vocab_header_t, eos_id) == 20U, "vocab eos_id off");
+static_assert(offsetof(ra8_translate_vocab_header_t, pad_id) == 24U, "vocab pad_id off");
+static_assert(offsetof(ra8_translate_vocab_header_t, min_normal_score) == 28U,
+              "vocab min_normal_score off");
+static_assert(offsetof(ra8_translate_vocab_header_t, model_type) == 32U, "vocab model_type off");
+static_assert(offsetof(ra8_translate_vocab_header_t, flags) == 33U, "vocab flags off");
+static_assert(offsetof(ra8_translate_vocab_header_t, reserved) == 34U, "vocab reserved off");
+
+/**
+ * @brief Validate a serialized `TVOC` SentencePiece vocabulary container.
+ *
+ * @details Calling context: `task-safe-reentrant`. Verifies header fields,
+ * CRC-32 checksum, piece UTF-8 validity, and sorted lookup permutation before
+ * writing @p out_header.
+ *
+ * @param[in] tvoc_buf Serialized `TVOC` container bytes.
+ * @param[in] tvoc_len Byte length of @p tvoc_buf.
+ * @param[out] out_header Non-null destination for validated vocabulary metadata.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_tok_open(const uint8_t*                tvoc_buf,
+                                 size_t                        tvoc_len,
+                                 ra8_translate_vocab_header_t* out_header);
+
+/**
+ * @brief Inspect metadata and borrowed UTF-8 piece slice for one vocabulary ID.
+ *
+ * @details Calling context: `task-safe-reentrant`. Returned @p out_piece_ptr
+ * borrows directly from @p tvoc_buf while @p tvoc_buf remains live.
+ *
+ * @param[in] tvoc_buf Validated `TVOC` container bytes.
+ * @param[in] tvoc_len Byte length of @p tvoc_buf.
+ * @param[in] token_id Token identifier in `[0, vocab_size)`.
+ * @param[out] out_piece_ptr Non-null out-pointer receiving UTF-8 piece base.
+ * @param[out] out_piece_len Non-null storage receiving piece byte length.
+ * @param[out] out_kind Non-null storage receiving ::ra8_translate_tok_piece_kind_t.
+ * @param[out] out_score Non-null storage receiving Unigram log-prob or BPE rank score.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_tok_piece_info(const uint8_t*                  tvoc_buf,
+                                       size_t                          tvoc_len,
+                                       uint32_t                        token_id,
+                                       const uint8_t**                 out_piece_ptr,
+                                       uint16_t*                       out_piece_len,
+                                       ra8_translate_tok_piece_kind_t* out_kind,
+                                       float*                          out_score);
+
+/**
+ * @brief Compute conservative scratch buffer size required by ::ra8_translate_tok_encode.
+ *
+ * @details Calling context: `task-safe-reentrant`. Pure arithmetic bound based
+ * on input UTF-8 byte length and model family.
+ *
+ * @param[in] text_len Input UTF-8 byte length in bytes.
+ * @param[in] model_type Tokenizer model family (Unigram or BPE).
+ * @param[out] out_work_bytes Non-null storage receiving required scratch byte count.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_tok_work_bytes(size_t                    text_len,
+                                       ra8_translate_tok_model_t model_type,
+                                       size_t*                   out_work_bytes);
+
+/**
+ * @brief Encode UTF-8 text into SentencePiece token IDs using caller scratch storage.
+ *
+ * @details Calling context: `task-safe-reentrant`. Allocates zero heap memory;
+ * all normalization and Viterbi/BPE state lives in @p work_buf. Outputs
+ * @p out_ids and @p out_id_count are untouched if any error occurs.
+ *
+ * @param[in] tvoc_buf Validated `TVOC` container bytes.
+ * @param[in] tvoc_len Byte length of @p tvoc_buf.
+ * @param[in] text_utf8 UTF-8 input string (NULL allowed only if @p text_len == 0).
+ * @param[in] text_len Byte length of @p text_utf8.
+ * @param[in] enc_flags Bitmask of ::ra8_translate_tok_enc_flag_t values.
+ * @param[in,out] work_buf Non-null scratch buffer sized at least ::ra8_translate_tok_work_bytes.
+ * @param[in] work_cap Byte capacity of @p work_buf.
+ * @param[out] out_ids Non-null destination array receiving encoded token IDs.
+ * @param[in] id_cap Element capacity of @p out_ids.
+ * @param[out] out_id_count Non-null storage receiving token count written.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_tok_encode(const uint8_t* tvoc_buf,
+                                   size_t         tvoc_len,
+                                   const uint8_t* text_utf8,
+                                   size_t         text_len,
+                                   uint8_t        enc_flags,
+                                   uint8_t*       work_buf,
+                                   size_t         work_cap,
+                                   uint32_t*      out_ids,
+                                   size_t         id_cap,
+                                   size_t*        out_id_count);
+
+/**
+ * @brief Decode SentencePiece token IDs back to UTF-8 text transactionally.
+ *
+ * @details Calling context: `task-safe-reentrant`. Strips control/unused tokens,
+ * renders unknown tokens as SentencePiece unk_surface, reassembles contiguous
+ * byte fallback tokens into valid UTF-8, and unescapes leading dummy metaspace.
+ *
+ * @param[in] tvoc_buf Validated `TVOC` container bytes.
+ * @param[in] tvoc_len Byte length of @p tvoc_buf.
+ * @param[in] ids Input token ID array (NULL allowed only if @p id_count == 0).
+ * @param[in] id_count Element count of @p ids.
+ * @param[out] out_utf8 Non-null destination buffer for decoded UTF-8 bytes.
+ * @param[in] out_cap Byte capacity of @p out_utf8.
+ * @param[out] out_len Non-null storage receiving decoded byte length.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_tok_decode(const uint8_t*  tvoc_buf,
+                                   size_t          tvoc_len,
+                                   const uint32_t* ids,
+                                   size_t          id_count,
+                                   uint8_t*        out_utf8,
+                                   size_t          out_cap,
+                                   size_t*         out_len);
+
 #ifdef __cplusplus
 }
 #endif
