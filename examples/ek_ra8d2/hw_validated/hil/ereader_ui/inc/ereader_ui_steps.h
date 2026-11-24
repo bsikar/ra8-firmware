@@ -260,6 +260,17 @@ typedef enum : uint32_t {
   k_er_glyph_buckets    = 512U,                                    /**< Glyph-cache hash buckets. */
 } er_reflow_cfg_t;
 
+/**
+ * @enum er_fig_zoom_cfg_t
+ * @brief Figure-zoom overlay storage and scale limits (no magic numbers).
+ */
+typedef enum : uint32_t {
+  k_er_fig_gray8_cap   = 512U * 1024U, /**< Decoded figure gray8 capacity in SDRAM. */
+  k_er_zoom_strip_rows = 16U,          /**< Rows composited per zoom strip.         */
+  k_er_zoom_scale_max  = 4U,           /**< Upper magnification on the popup tap.   */
+  k_er_fig_dim_half    = 2U,           /**< Centre divisor when fallback focusing.  */
+} er_fig_zoom_cfg_t;
+
 /** @enum er_reflow_sentinel_t @brief "No chapter cached" sentinel. */
 typedef enum : uint32_t {
   k_er_chapter_none = 0xFFFFFFFFU, /**< s_reflow_chapter when nothing is laid out. */
@@ -354,9 +365,11 @@ extern bool                 s_nag_region_only; /**< True when a tap only toggled
 extern display_turn_event_t s_pending_event;   /**< Pending refresh event for next flush. */
 
 /** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL. */
-extern volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn. */
-extern volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.   */
-extern volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.    */
+extern volatile uint32_t g_er_cur_page;   /**< Current reading page after the last turn. */
+extern volatile uint32_t g_er_turns;      /**< Count of page turns applied since boot.   */
+extern volatile uint32_t g_er_last_hint;  /**< Last `display_refresh_hint_t` flushed.    */
+extern volatile uint32_t g_er_fig_active; /**< Non-zero while the figure popup is open.  */
+extern volatile uint32_t g_er_fig_scale;  /**< Active figure popup magnification (1..4). */
 
 /* ===========================================================================
  * Text helpers (ereader_ui_screens.c) -- shared by every band renderer.
@@ -459,6 +472,22 @@ bool er_apply_pageturn(er_dir_t dir);
  * @since 0.1.0
  */
 bool er_reading_link_tap(int32_t x, int32_t y);
+
+/**
+ * @brief Resolve an `<img src>` href to its encoded fixture bytes.
+ *
+ * @param[in]  ctx       Unused loader context.
+ * @param[in]  href      Image source href (not NUL-terminated).
+ * @param[in]  href_len  Length of @p href in bytes.
+ * @param[out] out_bytes Receives pointer to encoded image bytes.
+ * @param[out] out_len   Receives byte count.
+ * @return ::k_ra8_ok when fixture bytes are provided.
+ */
+ra8_err_t er_image_loader(void*           ctx,
+                          const char*     href,
+                          uint32_t        href_len,
+                          const uint8_t** out_bytes,
+                          size_t*         out_len);
 
 /**
  * @brief Push the current (chapter, page) on the back-stack, capacity permitting.
@@ -596,3 +625,47 @@ void er_render_nag_region(void);
  * @since 0.1.0
  */
 void er_flush_event(display_turn_event_t event);
+
+/**
+ * @brief Flush a panel rectangle with an explicit e-ink waveform hint.
+ *
+ * @param[in] x    Left column, pixels.
+ * @param[in] y    Top row, pixels.
+ * @param[in] w    Width, pixels.
+ * @param[in] h    Height, pixels.
+ * @param[in] hint Waveform hint (`k_display_refresh_fast` / `_quality`).
+ */
+void er_flush_rect(int32_t x, int32_t y, int32_t w, int32_t h, display_refresh_hint_t hint);
+
+/* ===========================================================================
+ * Figure tap-to-zoom popup (ereader_ui_figure_zoom.c).
+ * =========================================================================== */
+
+/** @brief True while the full-screen EPUB figure zoom popup is active. */
+bool er_figure_zoom_active(void);
+
+/**
+ * @brief Hit-test laid-out Reading figures at `(x, y)` and open the popup.
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ * @return true iff a raster figure was hit, decoded, and opened in the popup.
+ */
+bool er_reading_figure_tap(int32_t x, int32_t y);
+
+/**
+ * @brief Route a tap while the figure zoom popup is active (zoom/pan/close).
+ *
+ * @param[in] x Tap X (panel pixels).
+ * @param[in] y Tap Y (panel pixels).
+ */
+void er_figure_zoom_tap(int32_t x, int32_t y);
+
+/** @brief Render the active figure zoom popup into the bound framebuffer. */
+void er_figure_zoom_render(void);
+
+/** @brief Render and present the newly opened figure popup on the panel. */
+void er_figure_zoom_present_open(void);
+
+/** @brief Advance the zoom popup idle settle timer and flush GC16 on settle. */
+void er_figure_zoom_tick(void);

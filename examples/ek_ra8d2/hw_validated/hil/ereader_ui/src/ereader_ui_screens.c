@@ -103,11 +103,11 @@ typedef enum : uint32_t {
  * @note Not thread-safe (single-threaded UI loop).
  * @since 0.1.0
  */
-static ra8_err_t er_image_loader(void*           ctx,
-                                 const char*     href,
-                                 uint32_t        href_len,
-                                 const uint8_t** out_bytes,
-                                 size_t*         out_len)
+ra8_err_t er_image_loader(void*           ctx,
+                          const char*     href,
+                          uint32_t        href_len,
+                          const uint8_t** out_bytes,
+                          size_t*         out_len)
 {
   (void)ctx;
   /* `*.svg` -> the vector logo; everything else -> the baked raster figure. */

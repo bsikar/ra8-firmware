@@ -458,8 +458,12 @@ static bool er_handle_reading_tap(int32_t x, int32_t y)
     uint16_t prev = 0U;
     return (ra8_ui_nav_pop(&s_nav, &prev) == k_ra8_ok);
   }
-  /* Follow an in-content `<a>` link before falling back to page-turn. */
+  /* Follow an in-content `<a>` link before figure zoom or page-turn. */
   if (er_reading_link_tap(x, y)) {
+    return true;
+  }
+  /* Open an inline raster `<img>` figure in the zoom popup if tapped. */
+  if (er_reading_figure_tap(x, y)) {
     return true;
   }
   /* Page-turn: a tap in the right third of the screen advances, the left third
@@ -584,13 +588,18 @@ void er_poll_touch(void)
   }
   const bool touching = (got > 0U);
   if (touching && !s_was_touching) {
-    if (er_handle_tap((int32_t)pt.x, (int32_t)pt.y)) {
-      if (s_nag_region_only) {
+    if (er_figure_zoom_active()) {
+      er_figure_zoom_tap((int32_t)pt.x, (int32_t)pt.y);
+    } else if (er_handle_tap((int32_t)pt.x, (int32_t)pt.y)) {
+      if (er_figure_zoom_active()) {
+        er_figure_zoom_present_open();
+      } else if (s_nag_region_only) {
         er_render_nag_region(); /* a tap that only dismissed the banner */
+        er_flush_event(s_pending_event);
       } else {
         er_render_current();
+        er_flush_event(s_pending_event);
       }
-      er_flush_event(s_pending_event);
     }
   }
   s_was_touching = touching;
@@ -623,7 +632,7 @@ void er_poll_buttons(void)
    * no-op, so it cannot disturb the reading location from another screen). */
   uint16_t top = (uint16_t)k_er_screen_library;
   (void)ra8_ui_nav_top(&s_nav, &top);
-  if ((top != (uint16_t)k_er_screen_reading) || !(fresh1 || fresh2)) {
+  if ((top != (uint16_t)k_er_screen_reading) || er_figure_zoom_active() || !(fresh1 || fresh2)) {
     return;
   }
   if (er_apply_pageturn(er_buttons_to_dir(fresh1, fresh2))) {
