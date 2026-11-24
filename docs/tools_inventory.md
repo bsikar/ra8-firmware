@@ -90,7 +90,7 @@ CMake test target, or a selftest wired into a gate suite.
 | `openocd_debug.sh`, `openocd_flash.sh` | `just/hw.just`, `docs/DEBUG.md` | keep |
 | `ozone.sh` | `just/hw.just`, `docs/DEBUG.md` | keep |
 | `ra8_apps.py` | `just/filter.just`, the example HIL configs and docs | keep |
-| `remote_gdb_args.py` | none in either tree; the IDE remote-debug tunnel is owned by the lab automation's own server (`just hil::remote_gdb` resolves there; `docs/IDE.md` and `.vscode/tasks.json` name the recipe, not these files) | **delete** |
+| `remote_gdb_args.py` | none in either tree; remote-rig debug orchestration moved out to lab automation (the IDE `remote_gdb` tasks and launch entry were retired from `.vscode/` and `docs/IDE.md`) | **delete** |
 | `remote_gdb_guard.py` | none; only `scripts/dev/remote_gdb_process.py` imports it | **delete** |
 | `remote_gdb_process.py` | only `scripts/dev/remote_gdb_guard.py` | **delete** |
 | `remote_gdb_remote.py` | none | **delete** |
@@ -158,10 +158,10 @@ CMake test target, or a selftest wired into a gate suite.
 ## Removed in this change
 
 - `scripts/dev/remote_gdb_args.py`, `remote_gdb_guard.py`, `remote_gdb_process.py`,
-  `remote_gdb_remote.py`: no consumer in either tree. The IDE remote-debug tunnel is
-  owned by the lab automation's own guarded server; `docs/IDE.md` and
-  `.vscode/tasks.json` name the `hil::remote_gdb` recipe, which resolves in the lab
-  checkout, not these files. Last touched at the repository migration checkpoint.
+  `remote_gdb_remote.py`: no consumer in either tree. The remote-rig debug tunnel
+  was retired from `.vscode/` and `docs/IDE.md` and moved out to lab automation
+  rather than keeping these unused wrappers. Last touched at the repository
+  migration checkpoint.
 - `scripts/dev/ssh_loopback_proxy.py`: the lab automation carries and runs its own,
   newer revision of this helper; nothing in either tree references this copy.
 
