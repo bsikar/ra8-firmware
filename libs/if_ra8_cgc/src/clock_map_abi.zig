@@ -11,12 +11,15 @@
 const std = @import("std");
 const map = @import("clock_map");
 
+/// `ra8_err_t`, which is `enum : uint16_t`, so every C return of it is 16 bits.
+pub const ErrCode = u16;
+
 /// `ra8_err.h` codes this membrane can return.
 pub const Err = struct {
-    pub const ok: u32 = 0;
-    pub const invalid_arg: u32 = 0x103;
-    pub const not_found: u32 = 0x106;
-    pub const not_supported: u32 = 0x107;
+    pub const ok: ErrCode = 0;
+    pub const invalid_arg: ErrCode = 0x103;
+    pub const not_found: ErrCode = 0x106;
+    pub const not_supported: ErrCode = 0x107;
 };
 
 /// `fw_clock_module_t`.
@@ -40,6 +43,7 @@ const no_domain: u8 = @backingInt(map.Domain.cpuclk0);
 const no_gate: u16 = map.Mstp.sram0;
 
 comptime {
+    std.debug.assert(@sizeOf(ErrCode) == @sizeOf(u16));
     std.debug.assert(@sizeOf(bool) == 1);
     std.debug.assert(@offsetOf(Row, "domain") == 0);
     std.debug.assert(@offsetOf(Row, "gate") == 2);
@@ -48,7 +52,7 @@ comptime {
 }
 
 /// Fill a C row from the table's answer, or leave it blank and say why.
-pub fn fill(module: Module, out_row: ?*Row) u32 {
+pub fn fill(module: Module, out_row: ?*Row) ErrCode {
     const row = out_row orelse return Err.invalid_arg;
 
     row.* = .{
@@ -75,6 +79,6 @@ pub fn fill(module: Module, out_row: ?*Row) u32 {
     return Err.ok;
 }
 
-pub export fn fw_clock_ra8_resolve(module: Module, out_row: ?*Row) callconv(.c) u32 {
+pub export fn fw_clock_ra8_resolve(module: Module, out_row: ?*Row) callconv(.c) ErrCode {
     return fill(module, out_row);
 }
