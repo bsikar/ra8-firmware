@@ -519,10 +519,10 @@ test "EXTRA_SRCS helpers are compiled in, in the order the app names them" {
     // library's units is not naming the library.
     try std.testing.expectEqual(@as(usize, 0), extra_srcs_app.extra_srcs.len);
 
-    // And the rest of libs/ra8_dfu/src stays out: naming five units is not
-    // naming the library.
+    // ra8_dfu stays outside LIBS (linked via ra8_link_zig_library_for_cpu),
+    // while ra8_psa_crypto, ra8_rot_launch, and ra8_rot moved into LIBS.
     try std.testing.expect(!sources.declaresLibrary(extra_srcs_app, "ra8_dfu"));
-    try std.testing.expect(!sources.declaresLibrary(extra_srcs_app, "ra8_psa_crypto"));
+    try std.testing.expect(sources.declaresLibrary(extra_srcs_app, "ra8_psa_crypto"));
 
     // No other app in the table names any, so the keyword was dead code in the
     // graph until this app arrived.
@@ -543,11 +543,13 @@ test "an app-local vendored library exports its defines and system dirs onto the
     try std.testing.expectEqualStrings("-DRA8_ENABLE_ROOT_OF_TRUST", app_defines[4]);
 
     // SYSTEM, not ordinary: on the app's -Werror -Wconversion bar the vendor
-    // headers would fail the app's own compile.
+    // headers would fail the app's own compile. The app's own inc/ goes first
+    // so tf_psa_crypto_config_sb.h overrides the shared port header (RA8FW-341).
     const system_dirs = local.appSystemIncludeDirs(extra_srcs_app.local);
-    try std.testing.expectEqual(@as(usize, 10), system_dirs.len);
-    try std.testing.expectEqualStrings("pkg:tf_psa_crypto/include", system_dirs[0]);
-    try std.testing.expectEqualStrings("port/mbedtls/inc", system_dirs[9]);
+    try std.testing.expectEqual(@as(usize, 11), system_dirs.len);
+    try std.testing.expectEqualStrings("examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/inc", system_dirs[0]);
+    try std.testing.expectEqualStrings("pkg:tf_psa_crypto/include", system_dirs[1]);
+    try std.testing.expectEqualStrings("port/mbedtls/inc", system_dirs[10]);
 
     // An app with no CMakeLists of its own takes neither.
     const none = local.appDefines(std.testing.allocator, bare_app.local);

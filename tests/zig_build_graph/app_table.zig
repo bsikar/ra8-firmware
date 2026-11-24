@@ -386,31 +386,16 @@ pub const cross_apps = [_]CrossApp{
         .name = "secure_boot_hil",
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
         .board = "libs/ra8_board_ek_ra8d2",
-        // STALE PATH, left deliberately. The fork was dropped by af7c00ee
-        // (RA8FW-309, "compose the 128K bootloader bank"), and what replaced it is
-        // not the plain board script but a bank composed at configure time,
-        // which the graph cannot yet express. The link never runs today (the
-        // image overflows MRAM in a Debug configure), so nothing is hidden by
-        // leaving it; modelling the composed bank is its own slice.
-        .linker_script = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/linker_script.ld",
-        .libraries = &.{"ra8_board_ek_ra8d2"},
-        .zig_libraries = &.{},
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_psa_crypto", "ra8_rot_launch", "ra8_rot" },
+        // ra8_dfu is linked via ra8_link_zig_library_for_cpu() rather than LIBS
+        // in CMakeLists.txt, so zig_libraries pulls it explicitly.
+        .zig_libraries = &.{"ra8_dfu"},
         .stack_bytes = 32768,
         // RA8FW-309: the bootloader bank, and the two sources that run from SRAM.
         // Both replaced its 377-line linker_script.ld fork.
         .mram_length = "128K",
         .sram_text = &.{"ra8_flash.c"},
-        // Neither build system links this app in a Debug configure: measured
-        // 122.79% of MRAM under CMake (overflow 29868 bytes) and the same
-        // failure from the graph (overflow 29860 bytes), same linker, same
-        // message. Filed separately; every TU still compiles here.
-        .links_in_debug = false,
-        // All five units this app used to name here are Zig archives now and
-        // reached through LIBS instead: ra8_psa_crypto, ra8_rot,
-        // ra8_dfu_boot and ra8_dfu_antirollback, which joined the
-        // ra8_rot archive, and the launch gate itself, which became
-        // ra8_rot_launch. The app declares no EXTRA_SRCS at all now, which is
-        // what its own CMakeLists says, and no app in the table does.
         .extra_srcs = &.{},
         .local = .{
             .defines = &.{"-DRA8_ENABLE_ROOT_OF_TRUST"},
@@ -428,6 +413,7 @@ pub const cross_apps = [_]CrossApp{
                     "pkg:tf_psa_crypto/extras",
                 },
                 .system_include_dirs = &.{
+                    "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/inc",
                     "pkg:tf_psa_crypto/include",
                     "pkg:tf_psa_crypto/drivers/builtin/include",
                     "pkg:tf_psa_crypto/core",
@@ -441,7 +427,7 @@ pub const cross_apps = [_]CrossApp{
                 },
                 .defines = &.{
                     "-DMBEDTLS_CONFIG_FILE=\"mbedtls_config.h\"",
-                    "-DTF_PSA_CRYPTO_CONFIG_FILE=\"tf_psa_crypto_config.h\"",
+                    "-DTF_PSA_CRYPTO_CONFIG_FILE=\"tf_psa_crypto_config_sb.h\"",
                     "-DMBEDTLS_PLATFORM_MEMORY",
                     "-DMBEDTLS_MEMORY_BUFFER_ALLOC_C",
                 },
