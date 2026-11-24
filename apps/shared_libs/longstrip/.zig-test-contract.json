@@ -1,0 +1,20 @@
+{
+  "test_roots": [
+    "tests/longstrip_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/longstrip_abi.zig",
+    "src/standalone_longstrip_h.zig",
+    "tests/abi_stubs.zig",
+    "tests/longstrip_abi_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/longstrip_abi.zig": [
+      "--dep",
+      "longstrip_h",
+      "-Mroot=src/longstrip_abi.zig",
+      "-Mlongstrip_h=src/standalone_longstrip_h.zig"
+    ]
+  },
+  "minimum_tests": 12
+}

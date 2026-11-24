@@ -11,9 +11,9 @@ const ls_h = @import("longstrip_h");
 
 // Test control: 1 makes the fake atlas multi-column (open must reject it),
 // 1 makes every cache get miss, and ls_stub_puts counts successful puts.
-export var ls_stub_multi_column: c_int = 0;
-export var ls_stub_cache_miss: c_int = 0;
-export var ls_stub_puts: c_int = 0;
+var ls_stub_multi_column: c_int = 0;
+var ls_stub_cache_miss: c_int = 0;
+var ls_stub_puts: c_int = 0;
 
 const fake_w: u32 = 200;
 const fake_h: u32 = 1000;
@@ -23,12 +23,12 @@ const fake_bpp: u8 = 4;
 
 var fake_cell: [fake_w * fake_tile_h * 4]u8 = undefined;
 
-pub export fn ra8_log_emit_error(tag: [*c]const u8, message: [*c]const u8) callconv(.c) void {
+fn ra8_log_emit_error(tag: [*c]const u8, message: [*c]const u8) callconv(.c) void {
     _ = tag;
     _ = message;
 }
 
-pub export fn jof_parse(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, total_size: u64, out_info: ?*ls_h.jof_info_t) callconv(.c) ls_h.ra8_err_t {
+fn jof_parse(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, total_size: u64, out_info: ?*ls_h.jof_info_t) callconv(.c) ls_h.ra8_err_t {
     _ = pread;
     _ = pread_ctx;
     _ = total_size;
@@ -48,7 +48,7 @@ pub export fn jof_parse(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, total_
     return ls_h.k_ra8_ok;
 }
 
-pub export fn jof_read_tile(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, info: ?*const ls_h.jof_info_t, tile_x: u16, tile_y: u16, scratch: ?[*]u8, scratch_cap: u32, out_px: ?[*]u8, out_cap: u32, out_w: ?*u16, out_h: ?*u16) callconv(.c) ls_h.ra8_err_t {
+fn jof_read_tile(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, info: ?*const ls_h.jof_info_t, tile_x: u16, tile_y: u16, scratch: ?[*]u8, scratch_cap: u32, out_px: ?[*]u8, out_cap: u32, out_w: ?*u16, out_h: ?*u16) callconv(.c) ls_h.ra8_err_t {
     _ = pread;
     _ = pread_ctx;
     _ = info;
@@ -66,7 +66,7 @@ pub export fn jof_read_tile(pread: ls_h.jof_pread_fn, pread_ctx: ?*anyopaque, in
     return ls_h.k_ra8_ok;
 }
 
-pub export fn ra8_tile_cache_get(tc: ?*ls_h.ra8_tile_cache_t, key: ?*const ls_h.ra8_tile_key_t, out_tile: ?*ls_h.ra8_tile_t) callconv(.c) ls_h.ra8_err_t {
+fn ra8_tile_cache_get(tc: ?*ls_h.ra8_tile_cache_t, key: ?*const ls_h.ra8_tile_key_t, out_tile: ?*ls_h.ra8_tile_t) callconv(.c) ls_h.ra8_err_t {
     _ = tc;
     _ = key;
     if (ls_stub_cache_miss != 0) {
@@ -80,7 +80,7 @@ pub export fn ra8_tile_cache_get(tc: ?*ls_h.ra8_tile_cache_t, key: ?*const ls_h.
     return ls_h.k_ra8_ok;
 }
 
-pub export fn ra8_tile_cache_put(tc: ?*ls_h.ra8_tile_cache_t, pixels: ?*const u8) callconv(.c) ls_h.ra8_err_t {
+fn ra8_tile_cache_put(tc: ?*ls_h.ra8_tile_cache_t, pixels: ?*const u8) callconv(.c) ls_h.ra8_err_t {
     _ = tc;
     if (pixels == null) {
         return ls_h.k_ra8_err_null_ptr;
@@ -88,3 +88,16 @@ pub export fn ra8_tile_cache_put(tc: ?*ls_h.ra8_tile_cache_t, pixels: ?*const u8
     ls_stub_puts += 1;
     return ls_h.k_ra8_ok;
 }
+
+pub const Exports = struct {
+    comptime {
+        @export(&ls_stub_multi_column, .{ .name = "ls_stub_multi_column" });
+        @export(&ls_stub_cache_miss, .{ .name = "ls_stub_cache_miss" });
+        @export(&ls_stub_puts, .{ .name = "ls_stub_puts" });
+        @export(&ra8_log_emit_error, .{ .name = "ra8_log_emit_error" });
+        @export(&jof_parse, .{ .name = "jof_parse" });
+        @export(&jof_read_tile, .{ .name = "jof_read_tile" });
+        @export(&ra8_tile_cache_get, .{ .name = "ra8_tile_cache_get" });
+        @export(&ra8_tile_cache_put, .{ .name = "ra8_tile_cache_put" });
+    }
+};

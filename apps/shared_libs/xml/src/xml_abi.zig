@@ -14,14 +14,14 @@ const std = @import("std");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint32_t) --------------
 const ra8_err_t = u16;
-const k_ra8_ok: ra8_err_t = 0;
-const k_ra8_err_no_mem: ra8_err_t = 0x102;
-const k_ra8_err_null_ptr: ra8_err_t = 0x504;
+pub const k_ra8_ok: ra8_err_t = 0;
+pub const k_ra8_err_no_mem: ra8_err_t = 0x102;
+pub const k_ra8_err_null_ptr: ra8_err_t = 0x504;
 const k_ra8_err_invalid_size: ra8_err_t = 0x105;
-const k_ra8_err_validation_failed: ra8_err_t = 0x501;
+pub const k_ra8_err_validation_failed: ra8_err_t = 0x501;
 
 // ---- xml.h public types (extern layout matches the C header) ---------------
-const xml_span_t = extern struct { offset: c_uint, length: c_uint };
+pub const xml_span_t = extern struct { offset: c_uint, length: c_uint };
 
 // ---- xml_internal.h constants (priv_xml_encoding_t, enum : uint32_t) -------
 const k_priv_xml_tab: u32 = 0x09;
@@ -161,7 +161,7 @@ fn internal_utf8_next(
 
 /// Check that a source-relative span is in range. Uses subtraction after
 /// checking the offset to avoid overflow.
-export fn priv_xml_span_valid(source_len: usize, span: xml_span_t) callconv(.c) bool {
+pub export fn priv_xml_span_valid(source_len: usize, span: xml_span_t) callconv(.c) bool {
     return (@as(usize, span.offset) <= source_len) and
         (@as(usize, span.length) <= (source_len - @as(usize, span.offset)));
 }
@@ -407,7 +407,7 @@ fn internal_decoded_byte(
 }
 
 /// Entity-decode a source span into a bounded NUL-terminated buffer.
-export fn xml_decode(
+pub export fn xml_decode(
     source: [*c]const u8,
     source_len: usize,
     span: xml_span_t,
@@ -430,7 +430,7 @@ export fn xml_decode(
 /// Decode the longest complete prefix that fits the destination. The prefix
 /// never splits an entity or UTF-8 sequence, and the entire encoded span is
 /// still validated after output clips.
-export fn xml_decode_prefix(
+pub export fn xml_decode_prefix(
     source: [*c]const u8,
     source_len: usize,
     span: xml_span_t,
@@ -451,7 +451,7 @@ export fn xml_decode_prefix(
 }
 
 /// Measure the entity-decoded byte count of a bounded span.
-export fn xml_decoded_size(
+pub export fn xml_decoded_size(
     source: [*c]const u8,
     source_len: usize,
     span: xml_span_t,
@@ -470,7 +470,7 @@ export fn xml_decoded_size(
 }
 
 /// Compare a bounded span with an exact ASCII literal.
-export fn xml_span_equal(
+pub export fn xml_span_equal(
     source: [*c]const u8,
     source_len: usize,
     span: xml_span_t,
@@ -486,7 +486,7 @@ export fn xml_span_equal(
 
 /// Compare the namespace-local tail of a bounded span with an ASCII literal:
 /// the bytes after the optional colon.
-export fn xml_span_local_equal(
+pub export fn xml_span_local_equal(
     source: [*c]const u8,
     source_len: usize,
     span: xml_span_t,
@@ -508,7 +508,7 @@ export fn xml_span_local_equal(
 }
 
 /// Compare two entity-decoded spans from the same immutable source.
-export fn xml_decoded_equal(
+pub export fn xml_decoded_equal(
     source: [*c]const u8,
     source_len: usize,
     left: xml_span_t,
@@ -547,7 +547,7 @@ export fn xml_decoded_equal(
 
 /// Validate canonical UTF-8 XML 1.0 characters over a byte range: rejects
 /// overlong encoding, invalid continuations, controls, and surrogates.
-export fn priv_xml_raw(source: [*c]const u8, start: usize, end: usize) callconv(.c) ra8_err_t {
+pub export fn priv_xml_raw(source: [*c]const u8, start: usize, end: usize) callconv(.c) ra8_err_t {
     var cursor = start;
     while (cursor < end) {
         var cp: u32 = 0;
@@ -571,16 +571,16 @@ export fn priv_xml_raw(source: [*c]const u8, start: usize, end: usize) callconv(
 const k_xml_max_element_depth: c_ushort = 499;
 const k_xml_workspace_frames: c_ushort = 512;
 
-const k_xml_event_none: u8 = 0;
-const k_xml_event_start: u8 = 1;
-const k_xml_event_end: u8 = 2;
-const k_xml_event_text: u8 = 3;
-const k_xml_event_cdata: u8 = 4;
+pub const k_xml_event_none: u8 = 0;
+pub const k_xml_event_start: u8 = 1;
+pub const k_xml_event_end: u8 = 2;
+pub const k_xml_event_text: u8 = 3;
+pub const k_xml_event_cdata: u8 = 4;
 
-const xml_attribute_t = extern struct { name: xml_span_t, value: xml_span_t };
+pub const xml_attribute_t = extern struct { name: xml_span_t, value: xml_span_t };
 const xml_frame_t = extern struct { name_offset: c_uint, name_length: c_ushort, consumer: c_ushort };
-const xml_workspace_t = extern struct { frames: [k_xml_workspace_frames]xml_frame_t };
-const xml_event_t = extern struct {
+pub const xml_workspace_t = extern struct { frames: [k_xml_workspace_frames]xml_frame_t };
+pub const xml_event_t = extern struct {
     markup: xml_span_t,
     name: xml_span_t,
     depth: c_ushort,
@@ -588,8 +588,8 @@ const xml_event_t = extern struct {
     kind: u8,
     self_closing: u8,
 };
-const xml_attr_cursor_t = extern struct { position: c_uint, emitted: c_ushort };
-const xml_reader_t = extern struct {
+pub const xml_attr_cursor_t = extern struct { position: c_uint, emitted: c_ushort };
+pub const xml_reader_t = extern struct {
     source: [*c]const u8,
     source_len: usize,
     position: usize,
@@ -776,7 +776,7 @@ fn internal_matches(source: [*c]const u8, offset: usize, literal: []const u8) bo
 
 /// Scan the supported QName subset over a bounded byte range: one or two
 /// ASCII NCName components separated by at most one interior colon.
-export fn priv_xml_qname(source: [*c]const u8, end: usize, start: usize, out_end: [*c]usize) callconv(.c) ra8_err_t {
+pub export fn priv_xml_qname(source: [*c]const u8, end: usize, start: usize, out_end: [*c]usize) callconv(.c) ra8_err_t {
     if ((start >= end) or !internal_name_start(source[start])) {
         return k_ra8_err_validation_failed;
     }
@@ -800,7 +800,7 @@ export fn priv_xml_qname(source: [*c]const u8, end: usize, start: usize, out_end
 }
 
 /// Initialise source-order attribute iteration for a start event.
-export fn xml_attr_begin(event: [*c]const xml_event_t, cursor: [*c]xml_attr_cursor_t) callconv(.c) void {
+pub export fn xml_attr_begin(event: [*c]const xml_event_t, cursor: [*c]xml_attr_cursor_t) callconv(.c) void {
     if ((event != null) and (cursor != null)) {
         cursor.*.position = event.*.name.offset +% event.*.name.length;
         cursor.*.emitted = 0;
@@ -889,7 +889,7 @@ fn internal_attr_duplicate(source: [*c]const u8, source_len: usize, event: [*c]c
 }
 
 /// Return the next source-order attribute of a start event.
-export fn xml_attr_next(source: [*c]const u8, source_len: usize, event: [*c]const xml_event_t, cursor: [*c]xml_attr_cursor_t, out_attribute: [*c]xml_attribute_t, out_has_value: [*c]bool) callconv(.c) ra8_err_t {
+pub export fn xml_attr_next(source: [*c]const u8, source_len: usize, event: [*c]const xml_event_t, cursor: [*c]xml_attr_cursor_t, out_attribute: [*c]xml_attribute_t, out_has_value: [*c]bool) callconv(.c) ra8_err_t {
     if ((source == null) or (event == null) or (cursor == null) or
         (out_attribute == null) or (out_has_value == null))
     {
@@ -1316,7 +1316,7 @@ fn internal_text(reader: [*c]xml_reader_t, event: [*c]xml_event_t) ra8_err_t {
 
 /// Initialise a pull pass over immutable bytes. A leading UTF-8 BOM is
 /// consumed only when it begins at byte zero.
-export fn xml_reader_init(reader: [*c]xml_reader_t, source: [*c]const u8, source_len: usize, workspace: [*c]xml_workspace_t) callconv(.c) ra8_err_t {
+pub export fn xml_reader_init(reader: [*c]xml_reader_t, source: [*c]const u8, source_len: usize, workspace: [*c]xml_workspace_t) callconv(.c) ra8_err_t {
     if ((reader == null) or (source == null) or (workspace == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -1344,7 +1344,7 @@ export fn xml_reader_init(reader: [*c]xml_reader_t, source: [*c]const u8, source
 }
 
 /// Return the next semantic event and validate syntax incrementally.
-export fn xml_reader_next(reader: [*c]xml_reader_t, out_event: [*c]xml_event_t) callconv(.c) ra8_err_t {
+pub export fn xml_reader_next(reader: [*c]xml_reader_t, out_event: [*c]xml_event_t) callconv(.c) ra8_err_t {
     if ((reader == null) or (out_event == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -1389,7 +1389,7 @@ export fn xml_reader_next(reader: [*c]xml_reader_t, out_event: [*c]xml_event_t) 
 }
 
 /// Validate a complete document before any consumer mutation.
-export fn xml_validate(source: [*c]const u8, source_len: usize, workspace: [*c]xml_workspace_t) callconv(.c) ra8_err_t {
+pub export fn xml_validate(source: [*c]const u8, source_len: usize, workspace: [*c]xml_workspace_t) callconv(.c) ra8_err_t {
     var reader: xml_reader_t = undefined;
     var err = xml_reader_init(&reader, source, source_len, workspace);
     while (err == k_ra8_ok) {
@@ -1400,242 +1400,4 @@ export fn xml_validate(source: [*c]const u8, source_len: usize, workspace: [*c]x
         }
     }
     return err;
-}
-
-// ---------------------------------------------------------------------------
-// Zig-side unit tests. The library is pure, so these run with no seams.
-// ---------------------------------------------------------------------------
-const testing = std.testing;
-
-fn decodedEqual(expect: []const u8, got: [*c]const u8, len: usize) bool {
-    if (got == null) return false;
-    var i: usize = 0;
-    while (i < len) : (i += 1) {
-        if (got[i] != expect[i]) return false;
-    }
-    return (len < expect.len) or (expect[len] == 0) or true;
-}
-
-test "utf8 scalar validation accepts canonical runs and rejects the rest" {
-    const ok_src = "a\t\n\r" ++ "\xC3\xA9" ++ "\xE2\x82\xAC" ++ "\xF0\x9F\x92\xA9";
-    try testing.expectEqual(k_ra8_ok, priv_xml_raw(ok_src.ptr, 0, ok_src.len));
-    const overlong = "\xC0\x80";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(overlong.ptr, 0, overlong.len));
-    const bare_continuation = "\x80";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(bare_continuation.ptr, 0, 1));
-    const surrogate = "\xED\xA0\x80";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(surrogate.ptr, 0, 3));
-    const beyond_max = "\xF4\x90\x80\x80";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(beyond_max.ptr, 0, 4));
-    const nul = "\x00";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(nul.ptr, 0, 1));
-    const truncated = "\xC3";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(truncated.ptr, 0, 1));
-}
-
-test "predefined entities decode" {
-    const src = "&amp;&lt;&gt;&quot;&apos;";
-    var out: [8]u8 = undefined;
-    var len: usize = 0;
-    const span = xml_span_t{ .offset = 0, .length = src.len };
-    try testing.expectEqual(k_ra8_ok, xml_decode(src.ptr, src.len, span, &out, out.len, &len));
-    try testing.expectEqual(@as(usize, 5), len);
-    try testing.expectEqualStrings("&<>\"'", out[0..len]);
-}
-
-test "numeric references: decimal, hex, and the rejection set" {
-    var len: usize = 0;
-    const dec = "&#38;";
-    try testing.expectEqual(k_ra8_ok, xml_decoded_size(dec.ptr, dec.len, .{ .offset = 0, .length = dec.len }, &len));
-    try testing.expectEqual(@as(usize, 1), len);
-    const hex = "&#x26;";
-    try testing.expectEqual(k_ra8_ok, xml_decoded_size(hex.ptr, hex.len, .{ .offset = 0, .length = hex.len }, &len));
-    try testing.expectEqual(@as(usize, 1), len);
-    const hex_upper_x = "&#X41;";
-    try testing.expectEqual(k_ra8_ok, xml_decoded_size(hex_upper_x.ptr, hex_upper_x.len, .{ .offset = 0, .length = hex_upper_x.len }, &len));
-    try testing.expectEqual(@as(usize, 1), len);
-    const bad_digit = "&#3z;";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(bad_digit.ptr, bad_digit.len, .{ .offset = 0, .length = bad_digit.len }, &len));
-    const overflow = "&#99999999999999999999;";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(overflow.ptr, overflow.len, .{ .offset = 0, .length = overflow.len }, &len));
-    const empty = "&#;";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(empty.ptr, empty.len, .{ .offset = 0, .length = empty.len }, &len));
-    const unterminated = "&#65";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(unterminated.ptr, unterminated.len, .{ .offset = 0, .length = unterminated.len }, &len));
-    const control = "&#0;";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(control.ptr, control.len, .{ .offset = 0, .length = control.len }, &len));
-    const unknown_name = "&nbsp;";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(unknown_name.ptr, unknown_name.len, .{ .offset = 0, .length = unknown_name.len }, &len));
-    const short = "&a";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_decoded_size(short.ptr, short.len, .{ .offset = 0, .length = short.len }, &len));
-}
-
-test "decode round-trips mixed text and entities" {
-    const src = "a&amp;b&#x42;c";
-    var out: [8]u8 = undefined;
-    var len: usize = 0;
-    try testing.expectEqual(k_ra8_ok, xml_decode(src.ptr, src.len, .{ .offset = 0, .length = src.len }, &out, out.len, &len));
-    try testing.expectEqual(@as(usize, 5), len);
-    try testing.expectEqualStrings("a&bBc", out[0..len]);
-}
-
-test "decode rejects an undersized destination; prefix clips at entity boundaries" {
-    const src = "a&amp;b";
-    var out: [8]u8 = undefined;
-    var len: usize = 0;
-    try testing.expectEqual(k_ra8_err_no_mem, xml_decode(src.ptr, src.len, .{ .offset = 0, .length = src.len }, &out, 3, &len));
-    // Decoded size is 3; capacity must hold the NUL, so 3 is one short.
-    try testing.expectEqual(k_ra8_ok, xml_decode(src.ptr, src.len, .{ .offset = 0, .length = src.len }, &out, 4, &len));
-    try testing.expectEqual(@as(usize, 3), len);
-    try testing.expectEqualStrings("a&b", out[0..len]);
-
-    var pfx: [4]u8 = undefined;
-    var plen: usize = 0;
-    const wide = "a&amp;b&amp;c";
-    try testing.expectEqual(k_ra8_ok, xml_decode_prefix(wide.ptr, wide.len, .{ .offset = 0, .length = wide.len }, &pfx, pfx.len, &plen));
-    try testing.expectEqual(@as(usize, 3), plen);
-    try testing.expectEqualStrings("a&b", pfx[0..plen]);
-}
-
-test "span validity and literal comparisons" {
-    const src = "svg:rect";
-    try testing.expect(priv_xml_span_valid(src.len, .{ .offset = 0, .length = src.len }));
-    try testing.expect(!priv_xml_span_valid(src.len, .{ .offset = 9, .length = 0 }));
-    try testing.expect(!priv_xml_span_valid(src.len, .{ .offset = 0, .length = src.len + 1 }));
-    try testing.expect(xml_span_equal(src.ptr, src.len, .{ .offset = 4, .length = 4 }, "rect"));
-    try testing.expect(!xml_span_equal(src.ptr, src.len, .{ .offset = 4, .length = 4 }, "rectx"));
-    try testing.expect(xml_span_local_equal(src.ptr, src.len, .{ .offset = 0, .length = 8 }, "rect"));
-    try testing.expect(xml_span_local_equal(src.ptr, src.len, .{ .offset = 4, .length = 4 }, "rect"));
-}
-
-test "decoded equality compares through entities" {
-    const src = "&#65;A&#66;B";
-    try testing.expect(xml_decoded_equal(src.ptr, src.len, .{ .offset = 0, .length = 5 }, .{ .offset = 5, .length = 1 }));
-    try testing.expect(!xml_decoded_equal(src.ptr, src.len, .{ .offset = 5, .length = 1 }, .{ .offset = 6, .length = 1 }));
-    try testing.expect(!xml_decoded_equal(null, src.len, .{ .offset = 0, .length = 1 }, .{ .offset = 5, .length = 1 }));
-}
-
-test "null pointers take the null_ptr tail" {
-    var len: usize = 0;
-    const src = "a";
-    try testing.expectEqual(k_ra8_err_null_ptr, xml_decode(null, 1, .{ .offset = 0, .length = 1 }, null, 1, &len));
-    try testing.expectEqual(k_ra8_err_null_ptr, xml_decode(src.ptr, 1, .{ .offset = 0, .length = 1 }, null, 1, &len));
-    try testing.expectEqual(k_ra8_err_null_ptr, xml_decoded_size(src.ptr, 1, .{ .offset = 0, .length = 1 }, null));
-}
-
-test "raw validation walks the whole range, not a prefix" {
-    const src = "ok\xFF";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(src.ptr, 0, src.len));
-    // start inside the range still validates to the end
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_raw(src.ptr, 2, 3));
-}
-
-test "reader walks a full document and emits the expected events" {
-    const doc = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root a=\"1&amp;b\"><child/><!--c-->t&amp;x<![CDATA[raw]]><child>tail</child></root>";
-    var workspace: xml_workspace_t = undefined;
-    var reader: xml_reader_t = undefined;
-    try testing.expectEqual(k_ra8_ok, xml_reader_init(&reader, doc.ptr, doc.len, &workspace));
-    var event: xml_event_t = undefined;
-    var started: usize = 0;
-    var ended: usize = 0;
-    var texts: usize = 0;
-    var cdatas: usize = 0;
-    while (true) {
-        try testing.expectEqual(k_ra8_ok, xml_reader_next(&reader, &event));
-        if (event.kind == k_xml_event_none) break;
-        switch (event.kind) {
-            k_xml_event_start => started += 1,
-            k_xml_event_end => ended += 1,
-            k_xml_event_text => texts += 1,
-            k_xml_event_cdata => cdatas += 1,
-            else => {},
-        }
-    }
-    try testing.expectEqual(@as(usize, 3), started);
-    try testing.expectEqual(@as(usize, 2), ended);
-    try testing.expectEqual(@as(usize, 2), texts);
-    try testing.expectEqual(@as(usize, 1), cdatas);
-    try testing.expectEqual(k_ra8_ok, xml_validate(doc.ptr, doc.len, &workspace));
-}
-
-test "attribute iteration walks a start event in source order" {
-    const doc = "<root a=\"1\" svg:x=\"&amp;\"/>";
-    var workspace: xml_workspace_t = undefined;
-    var reader: xml_reader_t = undefined;
-    try testing.expectEqual(k_ra8_ok, xml_reader_init(&reader, doc.ptr, doc.len, &workspace));
-    var event: xml_event_t = undefined;
-    try testing.expectEqual(k_ra8_ok, xml_reader_next(&reader, &event));
-    try testing.expectEqual(k_xml_event_start, event.kind);
-    try testing.expectEqual(@as(c_ushort, 2), event.attribute_count);
-    try testing.expectEqual(@as(u8, 1), event.self_closing);
-    var cursor: xml_attr_cursor_t = undefined;
-    xml_attr_begin(&event, &cursor);
-    var attribute: xml_attribute_t = undefined;
-    var has_value = false;
-    try testing.expectEqual(k_ra8_ok, xml_attr_next(doc.ptr, doc.len, &event, &cursor, &attribute, &has_value));
-    try testing.expect(has_value);
-    try testing.expectEqual(@as(c_uint, 6), attribute.name.offset);
-    try testing.expectEqual(@as(c_uint, 1), attribute.name.length);
-    try testing.expectEqual(@as(c_uint, 9), attribute.value.offset);
-    try testing.expectEqual(@as(c_uint, 1), attribute.value.length);
-    try testing.expectEqual(k_ra8_ok, xml_attr_next(doc.ptr, doc.len, &event, &cursor, &attribute, &has_value));
-    try testing.expect(has_value);
-    try testing.expectEqual(@as(c_uint, 12), attribute.name.offset);
-    try testing.expectEqual(@as(c_uint, 5), attribute.name.length);
-    try testing.expectEqual(@as(c_uint, 19), attribute.value.offset);
-    try testing.expectEqual(@as(c_uint, 5), attribute.value.length);
-    try testing.expectEqual(k_ra8_ok, xml_attr_next(doc.ptr, doc.len, &event, &cursor, &attribute, &has_value));
-    try testing.expect(!has_value);
-}
-
-test "qname subset accepts one colon and rejects the rest" {
-    var out: usize = 0;
-    const simple = "svg:rect";
-    try testing.expectEqual(k_ra8_ok, priv_xml_qname(simple.ptr, simple.len, 0, &out));
-    try testing.expectEqual(@as(usize, 8), out);
-    const two_colons = "a:b:c";
-    try testing.expectEqual(k_ra8_ok, priv_xml_qname(two_colons.ptr, two_colons.len, 0, &out));
-    try testing.expectEqual(@as(usize, 3), out);
-    const digit_start = "1abc";
-    try testing.expectEqual(k_ra8_err_validation_failed, priv_xml_qname(digit_start.ptr, digit_start.len, 0, &out));
-}
-
-test "duplicate attributes and a literal less-than in a value fail closed" {
-    var workspace: xml_workspace_t = undefined;
-    const dup = "<r a=\"1\" a=\"2\"/>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(dup.ptr, dup.len, &workspace));
-    const lt = "<r a=\"<\"/>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(lt.ptr, lt.len, &workspace));
-}
-
-test "DOCTYPE passthrough reaches the C validator through the seam" {
-    var workspace: xml_workspace_t = undefined;
-    const good = "<!DOCTYPE r SYSTEM \"r.dtd\"><r/>";
-    try testing.expectEqual(k_ra8_ok, xml_validate(good.ptr, good.len, &workspace));
-    const subset = "<!DOCTYPE r [ <!ENTITY x \"y\"> ]><r/>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(subset.ptr, subset.len, &workspace));
-}
-
-test "BOM-prefixed declaration parses; a declaration off the front fails" {
-    var workspace: xml_workspace_t = undefined;
-    const bom_doc = "\xEF\xBB\xBF<?xml version=\"1.0\"?><r/>";
-    try testing.expectEqual(k_ra8_ok, xml_validate(bom_doc.ptr, bom_doc.len, &workspace));
-    const misplaced = "<!--x--><?xml version=\"1.0\"?><r/>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(misplaced.ptr, misplaced.len, &workspace));
-}
-
-test "nesting and document-shape gates hold" {
-    var workspace: xml_workspace_t = undefined;
-    const mismatch = "<r></s>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(mismatch.ptr, mismatch.len, &workspace));
-    const unclosed = "<r>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(unclosed.ptr, unclosed.len, &workspace));
-    const ok_doc = "<r></r>";
-    try testing.expectEqual(k_ra8_ok, xml_validate(ok_doc.ptr, ok_doc.len, &workspace));
-    const stray = " x<r/>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(stray.ptr, stray.len, &workspace));
-    const cdata_top = "<r/>]]>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(cdata_top.ptr, cdata_top.len, &workspace));
-    const raw_cdata_close = "<r>]]></r>";
-    try testing.expectEqual(k_ra8_err_validation_failed, xml_validate(raw_cdata_close.ptr, raw_cdata_close.len, &workspace));
 }

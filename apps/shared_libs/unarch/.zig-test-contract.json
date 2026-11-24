@@ -1,0 +1,22 @@
+{
+  "test_roots": [
+    "tests/unarch_io_abi_test.zig",
+    "tests/unarch_gzip_abi_test.zig",
+    "tests/unarch_xz_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/unarch_gzip_abi.zig",
+    "src/unarch_gzip_teststub.zig",
+    "src/unarch_io_abi.zig",
+    "src/unarch_tar_abi.zig",
+    "src/unarch_tar_fields_abi.zig",
+    "src/unarch_tar_teststub.zig",
+    "src/unarch_xz_abi.zig",
+    "src/unarch_xz_pool_abi.zig",
+    "src/unarch_xz_teststub.zig",
+    "tests/unarch_gzip_abi_test.zig",
+    "tests/unarch_io_abi_test.zig",
+    "tests/unarch_xz_abi_test.zig"
+  ],
+  "minimum_tests": 28
+}

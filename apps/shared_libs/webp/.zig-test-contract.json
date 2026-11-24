@@ -1,0 +1,14 @@
+{
+  "test_roots": [
+    "tests/ra8_webp_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/ra8_webp_abi.zig",
+    "src/ra8_webp_arena_abi.zig",
+    "src/ra8_webp_imgdec_abi.zig",
+    "src/scratch_mirror.zig",
+    "src/webp_fixture.zig",
+    "tests/ra8_webp_abi_test.zig"
+  ],
+  "minimum_tests": 12
+}

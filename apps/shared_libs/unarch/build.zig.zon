@@ -1,0 +1,16 @@
+.{
+    .name = .unarch,
+    .version = "0.1.0",
+    .fingerprint = 0x157909ab40dee666,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}

@@ -9,6 +9,7 @@
 //! Template: apps/shared_libs/compress/build.zig.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 /// The vendored libwebp decode-only subset, every TU except utils/utils.c,
 /// which carries the arena patch flag and compiles separately below.
@@ -78,7 +79,9 @@ const vendor_sources = [_][]const u8{
 };
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -97,11 +100,17 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig WebP facade tests");
-    const test_module = b.createModule(.{
+    const sut_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_webp_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/ra8_webp_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_module.addImport("ra8_webp_abi", sut_module);
     test_module.link_libc = true;
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
