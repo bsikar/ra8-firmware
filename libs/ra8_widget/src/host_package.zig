@@ -1,16 +1,30 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Root of the `ra8_widget_host` package export (RA8FW-828): the CPU canvas
-//! for host previews, plus the box layout, UI rect and widget core symbols the
-//! widgets reach through `extern fn`, so an importer links them from Zig
-//! instead of the board build. The importer still exports
-//! `ra8_log_emit_error`, which belongs to its own log.
+//! Root of the `ra8_widget_host` package export (RA8FW-828, RA8FW-1016):
+//! exposes both the grey8 `Canvas` preview backend, the desktop RGBA
+//! `DesktopSurface` / `Surface` + `surface_paint` backend, and the panel
+//! `EinkSurface` + `eink_paint` backend alongside the Zig box, UI rect, and
+//! widget core symbols for host UI tools and desktop apps.
+
+pub const gfx = @import("ra8_gfx");
+pub const widget = @import("ra8_widget");
+pub const ops = widget.ops;
 
 pub const Canvas = @import("host_paint.zig").Canvas;
+pub const DesktopSurface = @import("host_desktop.zig").DesktopSurface;
+pub const surface_paint = @import("host_surface_paint.zig");
+pub const eink_paint = @import("eink_panel_paint.zig");
+
+pub const Surface = gfx.Surface;
+pub const EinkSurface = gfx.EinkSurface;
+pub const Capabilities = gfx.Capabilities;
+pub const PixelFormat = gfx.PixelFormat;
+pub const Format = gfx.Format;
+pub const Rect = gfx.Rect;
 
 comptime {
     _ = @import("box");
     _ = @import("ui");
-    _ = @import("ra8_widget").core;
+    _ = widget.core;
 }
