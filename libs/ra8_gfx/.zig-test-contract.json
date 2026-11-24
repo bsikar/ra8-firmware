@@ -7,7 +7,8 @@
     "tests/font_test.zig",
     "tests/abi_test.zig",
     "tests/text_test.zig",
-    "tests/surface_test.zig"
+    "tests/surface_test.zig",
+    "tests/eink_surface_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -16,6 +17,7 @@
     "src/internal/dither_mask.zig",
     "src/internal/bind.zig",
     "src/internal/coverage_rle.zig",
+    "src/internal/eink_surface.zig",
     "src/internal/font_8x16.zig",
     "src/internal/font_display.zig",
     "src/internal/font_literata.zig",
@@ -32,7 +34,8 @@
     "tests/font_test.zig",
     "tests/abi_test.zig",
     "tests/text_test.zig",
-    "tests/surface_test.zig"
+    "tests/surface_test.zig",
+    "tests/eink_surface_test.zig"
   ],
-  "minimum_tests": 210
+  "minimum_tests": 217
 }

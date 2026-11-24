@@ -24,17 +24,20 @@
     "tests/list_test.zig",
     "tests/paint_ops_test.zig",
     "tests/surface_render_test.zig",
+    "tests/eink_render_test.zig",
     "tests/book_test.zig",
     "tests/core_test.zig",
     "tests/level_bar_test.zig"
   ],
   "covered_sources": [
+    "src/eink_panel_paint.zig",
     "src/host_package.zig",
     "src/host_paint.zig",
     "src/host_surface_paint.zig",
     "src/internal/paint.zig",
     "src/internal/text_layout.zig",
     "src/paint_ops.zig",
+    "src/panel_paint.zig",
     "src/ra8_widget_abi.zig",
     "src/standalone_build_options.zig",
     "src/widget_abi_types.zig",
@@ -85,6 +88,7 @@
     "tests/segmented_test.zig",
     "tests/status_bar_test.zig",
     "tests/surface_render_test.zig",
+    "tests/eink_render_test.zig",
     "tests/text_field_render_test.zig",
     "tests/toggle_test.zig",
     "tests/toolbar_test.zig"
@@ -123,7 +127,29 @@
     "src/host_surface_paint.zig": [
       "--dep",
       "ra8_gfx",
+      "--dep",
+      "panel_paint",
       "-Mroot=src/host_surface_paint.zig",
+      "--dep",
+      "ra8_gfx",
+      "-Mpanel_paint=src/panel_paint.zig",
+      "-Mra8_gfx=../ra8_gfx/src/ra8_gfx.zig"
+    ],
+    "src/eink_panel_paint.zig": [
+      "--dep",
+      "ra8_gfx",
+      "--dep",
+      "panel_paint",
+      "-Mroot=src/eink_panel_paint.zig",
+      "--dep",
+      "ra8_gfx",
+      "-Mpanel_paint=src/panel_paint.zig",
+      "-Mra8_gfx=../ra8_gfx/src/ra8_gfx.zig"
+    ],
+    "src/panel_paint.zig": [
+      "--dep",
+      "ra8_gfx",
+      "-Mroot=src/panel_paint.zig",
       "-Mra8_gfx=../ra8_gfx/src/ra8_gfx.zig"
     ],
     "src/host_package.zig": [
@@ -148,5 +174,5 @@
       "-Mra8_gfx=../ra8_gfx/src/ra8_gfx.zig"
     ]
   },
-  "minimum_tests": 374
+  "minimum_tests": 382
 }

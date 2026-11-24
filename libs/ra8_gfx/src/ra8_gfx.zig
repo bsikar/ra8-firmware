@@ -26,3 +26,9 @@ pub const Rect = surface.Rect;
 pub const Format = surface.Format;
 pub const PixelFormat = surface.PixelFormat;
 pub const Capabilities = surface.Capabilities;
+
+/// Chip and host e-ink gray4 panel surface with blue-noise dithering (RA8FW-1012).
+pub const eink_surface = @import("internal/eink_surface.zig");
+pub const EinkSurface = eink_surface.EinkSurface;
+pub const dither = @import("internal/dither.zig");
+pub const tone = @import("internal/tone.zig");
