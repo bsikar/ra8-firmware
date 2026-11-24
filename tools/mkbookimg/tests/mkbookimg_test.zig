@@ -8,8 +8,16 @@ const expected_size: u64 = 67_108_864;
 const golden_sha256 = "0a028a558cac7ced26b928f1f9c9d8d8cd36dc364f970a387eb5c429e48e4f73";
 
 fn runTool(dir: std.Io.Dir, argv: []const []const u8) !std.process.RunResult {
-    return std.process.run(std.testing.allocator, std.testing.io, .{
-        .argv = argv,
+    const io = std.testing.io;
+    const exe_abs = try std.Io.Dir.cwd().realPathFileAlloc(io, argv[0], std.testing.allocator);
+    defer std.testing.allocator.free(exe_abs);
+
+    const resolved = try std.testing.allocator.dupe([]const u8, argv);
+    defer std.testing.allocator.free(resolved);
+    resolved[0] = exe_abs;
+
+    return std.process.run(std.testing.allocator, io, .{
+        .argv = resolved,
         .cwd = .{ .dir = dir },
         .stderr_limit = .limited(1024 * 1024),
         .stdout_limit = .limited(1024 * 1024),
