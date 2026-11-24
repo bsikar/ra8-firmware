@@ -15,7 +15,7 @@
 //! the widget tree's child-array shape is still the container's problem.
 
 const types = @import("widget_abi_types.zig");
-const paint_abi = @import("widget_paint_abi.zig");
+const paint_ops = @import("paint_ops.zig");
 const text_field_abi = @import("widget_text_field_abi.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
@@ -95,9 +95,9 @@ pub const Keyboard = extern struct {
 /// A character key wins over a label, matching the C precedence, and a key
 /// with neither draws just its face.
 fn drawKey(kbd: *const Keyboard, backend: *const Paint, info: *const KeyInfo) void {
-    paint_abi.priv_widget_fill_box(backend, &info.rect, kbd.key_face, kbd.key_border, kbd.border_w);
+    paint_ops.fillBox(backend, info.rect, kbd.key_face, kbd.key_border, kbd.border_w);
 
-    const draw_text = backend.draw_text orelse return;
+    if (!paint_ops.hasText(backend)) return;
 
     var glyph_buf: [1:0]u8 = .{key.no_glyph};
     var text: [*:0]const u8 = undefined;
@@ -108,22 +108,7 @@ fn drawKey(kbd: *const Keyboard, backend: *const Paint, info: *const KeyInfo) vo
         text = info.label orelse return;
     }
 
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(
-        backend,
-        &info.rect,
-        text,
-        geometry.no_pad,
-        .center,
-        .sans,
-        .regular,
-        .size_3,
-        false,
-        &pen_x,
-        &pen_y,
-    );
-    draw_text(backend.user, pen_x, pen_y, text, kbd.key_fg, kbd.key_face);
+    paint_ops.drawTextInRect(backend, info.rect, text, geometry.no_pad, .center, .sans, .regular, .size_3, kbd.key_fg, kbd.key_face);
 }
 
 /// Fill the keyboard band, then paint every key the seam reports.
@@ -131,17 +116,17 @@ fn render(w: *Widget) callconv(.c) void {
     const kbd: *const Keyboard = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = kbd.paint orelse return;
 
-    paint_abi.priv_widget_fill_box(backend, &w.rect, kbd.bg, kbd.bg, geometry.no_pad);
+    paint_ops.fillBox(backend, w.rect, kbd.bg, kbd.bg, geometry.no_pad);
 
-    const ops = kbd.ops orelse return;
-    const count = ops.count orelse return;
-    const key_info = ops.key_info orelse return;
+    const kbd_ops = kbd.ops orelse return;
+    const count = kbd_ops.count orelse return;
+    const key_info = kbd_ops.key_info orelse return;
 
-    const n = count(ops.user);
+    const n = count(kbd_ops.user);
     for (0..n) |i| {
         var info: KeyInfo = undefined;
         @memset(@as([*]u8, @ptrCast(&info))[0..@sizeOf(KeyInfo)], 0);
-        key_info(ops.user, @intCast(i), &info);
+        key_info(kbd_ops.user, @intCast(i), &info);
         drawKey(kbd, backend, &info);
     }
 }

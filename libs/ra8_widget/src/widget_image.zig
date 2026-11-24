@@ -6,7 +6,6 @@
 
 const std = @import("std");
 pub const types = @import("widget_abi_types.zig");
-const paint_abi = @import("widget_paint_abi.zig");
 const ops = @import("paint_ops.zig");
 
 /// Scaling policy for an image placed in a destination rectangle.
@@ -37,7 +36,7 @@ fn gray(pixel: u8) u32 {
 }
 
 fn paintPlaceholder(backend: *const types.Paint, rect: types.Rect, placeholder: Placeholder) void {
-    paint_abi.priv_widget_fill_box(backend, &rect, gray(placeholder.fill), gray(placeholder.border), @intCast(@min(placeholder.border_width, std.math.maxInt(i16))));
+    ops.fillBox(backend, rect, gray(placeholder.fill), gray(placeholder.border), @intCast(@min(placeholder.border_width, std.math.maxInt(i16))));
 }
 
 /// Paint a decoded bitmap with nearest-neighbour scaling, or a framed box when
@@ -50,7 +49,7 @@ pub fn render(
     scale: Scale,
     placeholder: Placeholder,
 ) void {
-    const fill_rect = backend.fill_rect orelse return;
+    if (backend.fill_rect == null and ops.capabilities(backend).blit == 0) return;
     const image = bitmap orelse {
         paintPlaceholder(backend, rect, placeholder);
         return;
@@ -71,7 +70,7 @@ pub fn render(
     var crop_h = image.height;
 
     if (scale == .fit) {
-        fill_rect(backend.user, rect.x, rect.y, rect.w, rect.h, gray(placeholder.fill));
+        ops.fillRect(backend, rect, gray(placeholder.fill));
         if (@as(i64, rect.w) * image.height > @as(i64, rect.h) * image.width) {
             target.w = @intCast(@max(1, @divTrunc(@as(i64, image.width) * rect.h, image.height)));
             target.x += @divFloor(rect.w - target.w, 2);
@@ -90,11 +89,11 @@ pub fn render(
     ops.pushClip(backend, rect);
     defer ops.popClip(backend);
     const crop: Crop = .{ .x = crop_x, .y = crop_y, .w = crop_w, .h = crop_h };
-    if (unscaled(target, crop)) {
+    if (ops.capabilities(backend).blit != 0 and unscaled(target, crop)) {
         const first = image.pixels[@as(usize, crop_y) * image.width + crop_x ..];
         if (ops.blit(backend, target, first.ptr, @intCast(image.width), .gray8)) return;
     }
-    drawRuns(fill_rect, backend.user, image, target, crop);
+    drawRuns(backend, image, target, crop);
 }
 
 /// The source window a render reads.
@@ -106,7 +105,7 @@ fn unscaled(target: types.Rect, crop: Crop) bool {
 
 /// Nearest-neighbour scale `crop` into `target` as horizontal fill_rect runs,
 /// coalescing equal adjacent output pixels.
-fn drawRuns(fill_rect: anytype, user: ?*anyopaque, image: Bitmap, target: types.Rect, crop: Crop) void {
+fn drawRuns(backend: *const types.Paint, image: Bitmap, target: types.Rect, crop: Crop) void {
     const crop_x = crop.x;
     const crop_y = crop.y;
     const crop_w = crop.w;
@@ -123,7 +122,7 @@ fn drawRuns(fill_rect: anytype, user: ?*anyopaque, image: Bitmap, target: types.
                 const next_x = crop_x + @as(u32, @intCast(@as(u64, @intCast(end)) * crop_w / @as(u64, @intCast(target.w))));
                 if (gray(image.pixels[@as(usize, sy) * image.width + next_x]) != color) break;
             }
-            fill_rect(user, target.x + dx, target.y + dy, end - dx, 1, color);
+            ops.fillRect(backend, .{ .x = target.x + dx, .y = target.y + dy, .w = end - dx, .h = 1 }, color);
             dx = end;
         }
     }

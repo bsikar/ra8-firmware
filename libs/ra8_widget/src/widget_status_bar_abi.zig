@@ -10,7 +10,7 @@
 //! Guard order, log lines and error codes are the C's, byte for byte.
 
 const types = @import("widget_abi_types.zig");
-const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -70,7 +70,7 @@ comptime {
 /// backend with no `draw_text` is a no-op, so both labels share one path.
 fn drawAligned(
     backend: *const Paint,
-    rect: *const Rect,
+    rect: Rect,
     text: ?[*:0]const u8,
     pad: i16,
     alignment: Alignment,
@@ -78,33 +78,30 @@ fn drawAligned(
     bg: u32,
 ) void {
     const string = text orelse return;
-    const draw_text = backend.draw_text orelse return;
-
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, rect, string, pad, alignment, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-    draw_text(backend.user, pen_x, pen_y, string, fg, bg);
+    ops.drawTextInRect(backend, rect, string, pad, alignment, .sans, .regular, .size_3, fg, bg);
 }
 
 /// Vtable `render`: fill the band, draw both labels, then the bottom hairline.
 ///
-/// The hairline is a strip along the band's bottom edge, so it is issued
-/// directly rather than through the box helper, and it is the only part that
-/// needs `fill_rect` in its own right.
+/// A single-pixel rule routes through `paint_ops.line` so capable canvases draw
+/// native lines while panel backends fall back to a horizontal `fill_rect`.
 fn renderStatusBar(w: *Widget) callconv(.c) void {
     const bar: *const StatusBar = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = bar.paint orelse return;
 
-    const rect = &w.rect;
-    paint_abi.priv_widget_fill_box(backend, rect, bar.bg, bar.bg, geometry.no_border);
+    const rect = w.rect;
+    ops.fillBox(backend, rect, bar.bg, bar.bg, geometry.no_border);
     drawAligned(backend, rect, bar.left, bar.pad, .left, bar.fg, bar.bg);
     drawAligned(backend, rect, bar.right, bar.pad, .right, bar.fg_right, bar.bg);
 
     if (bar.rule_h <= geometry.no_rule) return;
-    const fill_rect = backend.fill_rect orelse return;
-
     const thickness: i32 = bar.rule_h;
-    fill_rect(backend.user, rect.x, rect.y + rect.h - thickness, rect.w, thickness, bar.rule);
+    const rule_y = rect.y + rect.h - thickness;
+    if (thickness == 1 and rect.w > 0) {
+        ops.line(backend, rect.x, rule_y, rect.x + rect.w - 1, rule_y, bar.rule);
+        return;
+    }
+    ops.fillRect(backend, .{ .x = rect.x, .y = rule_y, .w = rect.w, .h = thickness }, bar.rule);
 }
 
 /// The single immutable vtable shared by every status bar: display only, so

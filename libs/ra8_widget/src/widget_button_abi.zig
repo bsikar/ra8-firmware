@@ -11,6 +11,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -87,17 +88,10 @@ fn renderButton(w: *Widget) callconv(.c) void {
     const backend = button.paint orelse return;
 
     const face = button.faceColor();
-    paint_abi.priv_widget_fill_box(backend, &w.rect, face, button.border, button.border_w);
+    ops.fillBox(backend, w.rect, face, button.border, button.border_w);
 
     const text = button.text orelse return;
-    const styled = backend.draw_text_style;
-    if (styled == null and backend.draw_text == null) return;
-
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    const size: paint_abi.TextSize = if (button.text_size == .default) .size_3 else button.text_size;
-    paint_abi.priv_widget_text_pos(backend, &w.rect, text, button.pad, button.alignment, button.text_face, button.text_weight, size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @backingInt(button.text_face), @backingInt(button.text_weight), @backingInt(size), button.fg, face) else backend.draw_text.?(backend.user, pen_x, pen_y, text, button.fg, face);
+    ops.drawTextInRect(backend, w.rect, text, button.pad, button.alignment, button.text_face, button.text_weight, button.text_size, button.fg, face);
 }
 
 /// Vtable `on_input`: latch a touch, decline everything else.

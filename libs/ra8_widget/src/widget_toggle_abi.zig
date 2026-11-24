@@ -8,6 +8,7 @@
 const std = @import("std");
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Published widget geometry, paint, instance, and event types.
 pub const Rect = types.Rect;
@@ -55,35 +56,29 @@ comptime {
 fn renderToggle(w: *Widget) callconv(.c) void {
     const toggle: *const Toggle = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = toggle.paint orelse return;
-    const fill_rect = backend.fill_rect orelse return;
+    if (backend.fill_rect == null) return;
     const side = @min(@as(i32, toggle.box_size), @max(w.rect.h, 0));
     if (side == 0) return;
 
     const x = w.rect.x;
     const y = w.rect.y + @divTrunc(w.rect.h - side, 2);
-    fill_rect(backend.user, x, y, side, side, toggle.border);
+    ops.fillRect(backend, .{ .x = x, .y = y, .w = side, .h = side }, toggle.border);
     if (side > 2) {
-        fill_rect(backend.user, x + 1, y + 1, side - 2, side - 2, toggle.bg);
+        ops.fillRect(backend, .{ .x = x + 1, .y = y + 1, .w = side - 2, .h = side - 2 }, toggle.bg);
     }
     if (toggle.checked and side > 4) {
         const inset: i32 = @max(@divTrunc(side, 4), 1);
-        fill_rect(backend.user, x + inset, y + inset, side - 2 * inset, side - 2 * inset, toggle.mark);
+        ops.fillRect(backend, .{ .x = x + inset, .y = y + inset, .w = side - 2 * inset, .h = side - 2 * inset }, toggle.mark);
     }
 
     const label = toggle.label orelse return;
-    const styled = backend.draw_text_style;
-    if (styled == null and backend.draw_text == null) return;
     const label_rect: Rect = .{
         .x = x + side + toggle.gap,
         .y = w.rect.y,
         .w = @max(w.rect.w - side - toggle.gap, 0),
         .h = w.rect.h,
     };
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    const size: paint_abi.TextSize = if (toggle.text_size == .default) .size_3 else toggle.text_size;
-    paint_abi.priv_widget_text_pos(backend, &label_rect, label, 0, .left, toggle.text_face, toggle.text_weight, size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, label, @backingInt(toggle.text_face), @backingInt(toggle.text_weight), @backingInt(size), toggle.fg, toggle.bg) else backend.draw_text.?(backend.user, pen_x, pen_y, label, toggle.fg, toggle.bg);
+    ops.drawTextInRect(backend, label_rect, label, 0, .left, toggle.text_face, toggle.text_weight, toggle.text_size, toggle.fg, toggle.bg);
 }
 
 fn onToggleInput(w: *Widget, event: *const Event) callconv(.c) bool {

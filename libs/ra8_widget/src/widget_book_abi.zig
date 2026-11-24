@@ -12,6 +12,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -150,12 +151,7 @@ const Card = struct {
 /// Draw one label left-aligned in its row. A record with no text is a gap.
 fn drawLabel(backend: *const Paint, row: Rect, text: ?[*:0]const u8, fg: u32, bg: u32) void {
     const label = text orelse return;
-    const draw_text = backend.draw_text orelse return;
-
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &row, label, geometry.no_pad, .left, .sans, .regular, .size_3, false, &pen_x, &pen_y);
-    draw_text(backend.user, pen_x, pen_y, label, fg, bg);
+    ops.drawTextInRect(backend, row, label, geometry.no_pad, .left, .sans, .regular, .size_3, fg, bg);
 }
 
 /// Paint one card: cover swatch, title, author, progress bar.
@@ -164,18 +160,17 @@ fn drawCard(grid: *const BookGrid, book: Book, cell: Rect) void {
     const bands = Card.of(cell, grid.label_h, grid.bar_h);
 
     if (bands.cover.h > geometry.no_cover_height) {
-        paint_abi.priv_widget_fill_box(backend, &bands.cover, book.cover, book.cover, geometry.no_pad);
+        ops.fillBox(backend, bands.cover, book.cover, book.cover, geometry.no_pad);
     }
-    if (backend.draw_text != null) {
+    if (ops.hasText(backend)) {
         drawLabel(backend, bands.title, book.title, grid.title_fg, book.cover);
         drawLabel(backend, bands.author, book.author, grid.author_fg, book.cover);
     }
 
-    paint_abi.priv_widget_fill_box(backend, &bands.bar, grid.bar_track, grid.bar_track, geometry.no_pad);
+    ops.fillBox(backend, bands.bar, grid.bar_track, grid.bar_track, geometry.no_pad);
     const filled = paint_abi.priv_widget_fill_frac(book.percent, geometry.pct_full, cell.w);
     if (filled > geometry.no_fill_width) {
-        const fill_rect = backend.fill_rect orelse return;
-        fill_rect(backend.user, cell.x, bands.bar.y, filled, bands.bar.h, grid.bar_fill);
+        ops.fillRect(backend, .{ .x = cell.x, .y = bands.bar.y, .w = filled, .h = bands.bar.h }, grid.bar_fill);
     }
 }
 
@@ -184,7 +179,7 @@ fn render(w: *Widget) callconv(.c) void {
     const grid: *const BookGrid = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = grid.paint orelse return;
 
-    paint_abi.priv_widget_fill_box(backend, &w.rect, grid.bg, grid.bg, geometry.no_pad);
+    ops.fillBox(backend, w.rect, grid.bg, grid.bg, geometry.no_pad);
 
     const books = grid.cards() orelse return;
     const cols = grid.columns();

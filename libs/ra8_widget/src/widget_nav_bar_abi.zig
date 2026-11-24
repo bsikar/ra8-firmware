@@ -12,6 +12,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 const icon_atlas = @import("widget_icons.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
@@ -114,13 +115,7 @@ fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, icon: Icon
         text_rect.h -= icon_h;
     }
     const text = label orelse return;
-    const styled = backend.draw_text_style;
-    if (styled == null and backend.draw_text == null) return;
-    const selected_size = if (size == .default) paint_abi.TextSize.size_3 else size;
-    var pen_x: i32 = 0;
-    var pen_y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &text_rect, text, geometry.no_pad, .center, face, weight, selected_size, styled != null, &pen_x, &pen_y);
-    if (styled) |draw| draw(backend.user, pen_x, pen_y, text, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg) else backend.draw_text.?(backend.user, pen_x, pen_y, text, fg, bg);
+    ops.drawTextInRect(backend, text_rect, text, geometry.no_pad, .center, face, weight, size, fg, bg);
 }
 
 /// Fill the strip, then centre each item's label in its own cell.
@@ -128,7 +123,7 @@ fn render(w: *Widget) callconv(.c) void {
     const nav: *const NavBar = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = nav.paint orelse return;
 
-    paint_abi.priv_widget_fill_box(backend, &w.rect, nav.bg, nav.bg, geometry.no_pad);
+    ops.fillBox(backend, w.rect, nav.bg, nav.bg, geometry.no_pad);
 
     if (nav.count == geometry.no_cells) return;
     const items = nav.items orelse return;

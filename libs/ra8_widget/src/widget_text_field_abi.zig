@@ -7,6 +7,7 @@
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 
 pub const Rect = types.Rect;
 pub const Widget = types.Widget;
@@ -60,42 +61,18 @@ fn text(field: *const TextField) [*:0]const u8 {
 fn render(w: *Widget) callconv(.c) void {
     const field: *TextField = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = field.paint orelse return;
-    paint_abi.priv_widget_fill_box(backend, &w.rect, field.bg, field.bg, 0);
+    ops.fillBox(backend, w.rect, field.bg, field.bg, 0);
 
     const showing_placeholder = field.len == 0 and field.placeholder != null;
     const value = if (showing_placeholder) field.placeholder.? else text(field);
-    const size = normalizeSize(field.size);
-    var x: i32 = 0;
-    var y: i32 = 0;
-    paint_abi.priv_widget_text_pos(backend, &w.rect, value, field.pad, .left, field.face, field.weight, size, true, &x, &y);
-    const text_x = x + @as(i32, if (showing_placeholder and field.focused) 2 else 0);
-    if (backend.draw_text_style) |draw| {
-        draw(backend.user, text_x, y, value, @backingInt(field.face), @backingInt(field.weight), @backingInt(size), field.fg, field.bg);
-    } else if (backend.draw_text_face) |draw| {
-        draw(backend.user, text_x, y, value, @backingInt(field.face), field.fg, field.bg);
-    } else if (backend.draw_text) |draw| {
-        draw(backend.user, text_x, y, value, field.fg, field.bg);
-    }
+    const size = ops.normalizeTextSize(field.size);
+    const pen = ops.textPen(backend, w.rect, value, field.pad, .left, field.face, field.weight, size);
+    const text_x = pen.x + @as(i32, if (showing_placeholder and field.focused) 2 else 0);
+    ops.drawTextStyle(backend, text_x, pen.y, value, field.face, field.weight, size, field.fg, field.bg);
     if (!field.focused) return;
 
-    var width: i32 = 0;
-    var height: i32 = 0;
-    measure(backend, text(field), field.face, field.weight, size, &width, &height);
-    if (backend.fill_rect) |fill| fill(backend.user, x + width, y, 2, @max(height, 1), field.caret);
-}
-
-fn measure(backend: *const paint_abi.Paint, value: [*:0]const u8, face: paint_abi.Face, weight: paint_abi.Weight, size: paint_abi.TextSize, out_w: *i32, out_h: *i32) void {
-    if (backend.text_size_style) |measure_text| {
-        measure_text(backend.user, value, @backingInt(face), @backingInt(weight), @backingInt(size), out_w, out_h);
-    } else if (backend.text_size_face) |measure_text| {
-        measure_text(backend.user, value, @backingInt(face), out_w, out_h);
-    } else if (backend.text_size) |measure_text| {
-        measure_text(backend.user, value, out_w, out_h);
-    }
-}
-
-fn normalizeSize(size: paint_abi.TextSize) paint_abi.TextSize {
-    return if (@backingInt(size) == 0) .size_3 else size;
+    const ext = ops.measureTextStyle(backend, text(field), field.face, field.weight, size);
+    ops.fillRect(backend, .{ .x = pen.x + ext.w, .y = pen.y, .w = 2, .h = @max(ext.h, 1) }, field.caret);
 }
 
 fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {

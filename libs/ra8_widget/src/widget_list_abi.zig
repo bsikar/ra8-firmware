@@ -6,6 +6,7 @@
 //! smallest affected rect before invalidating the host widget.
 const types = @import("widget_abi_types.zig");
 const paint = @import("widget_paint_abi.zig");
+const ops = @import("paint_ops.zig");
 const std = @import("std");
 pub const Rect = types.Rect;
 pub const Paint = types.Paint;
@@ -93,18 +94,10 @@ pub fn hitElement(bounds: Rect, row: Row, x: i32, y: i32) ?Element {
 }
 fn drawText(b: *const Paint, r: Rect, s: ?[*:0]const u8, fg: u32, bg: u32, pad: i16, alignment: paint.Alignment, face: paint.Face, weight: paint.Weight, size: paint.TextSize) void {
     const value = s orelse return;
-    const styled = b.draw_text_style;
-    if (styled == null and b.draw_text == null) return;
-    const selected_size = if (size == .default) paint.TextSize.size_3 else size;
-    var x: i32 = 0;
-    var y: i32 = 0;
-    paint.priv_widget_text_pos(b, &r, value, pad, alignment, face, weight, selected_size, styled != null, &x, &y);
-    if (styled) |draw| {
-        draw(b.user, x, y, value, @backingInt(face), @backingInt(weight), @backingInt(selected_size), fg, bg);
-    } else b.draw_text.?(b.user, x, y, value, fg, bg);
+    ops.drawTextInRect(b, r, value, pad, alignment, face, weight, size, fg, bg);
 }
 fn fill(b: *const Paint, r: Rect, color: u32) void {
-    if (b.fill_rect) |draw| draw(b.user, r.x, r.y, r.w, r.h, color);
+    ops.fillRect(b, r, color);
 }
 fn drawButtons(b: *const Paint, row: Row, bounds: Rect, list: *const List) void {
     const first = buttonRect(bounds, .button_1);
@@ -135,14 +128,21 @@ fn drawToggle(b: *const Paint, row: Row, bounds: Rect, list: *const List) void {
 fn render(w: *Widget) callconv(.c) void {
     const list: *const List = @ptrCast(@alignCast(w.ctx orelse return));
     const b = list.paint orelse return;
-    const fill_rect = b.fill_rect orelse return;
+    if (b.fill_rect == null) return;
     const rows = list.rows orelse return;
     for (rows[0..list.count], 0..) |row, n| {
         const i: u16 = @intCast(n);
         const bounds = rowRect(w.rect, list.row_height, i);
         if (bounds.h <= 0) break;
-        fill_rect(b.user, bounds.x, bounds.y, bounds.w, bounds.h, list.bg);
-        if (bounds.h > 1) fill_rect(b.user, bounds.x, bounds.y + bounds.h - 1, bounds.w, 1, list.divider);
+        ops.fillRect(b, bounds, list.bg);
+        if (bounds.h > 1) {
+            const line_y = bounds.y + bounds.h - 1;
+            if (bounds.w > 0) {
+                ops.line(b, bounds.x, line_y, bounds.x + bounds.w - 1, line_y, list.divider);
+            } else {
+                ops.fillRect(b, .{ .x = bounds.x, .y = line_y, .w = bounds.w, .h = 1 }, list.divider);
+            }
+        }
         if (row.variant == .two_buttons) {
             const title_area = Rect{ .x = bounds.x, .y = bounds.y, .w = bounds.w - 2 * @divTrunc(bounds.w, 4), .h = bounds.h };
             drawText(b, title_area, row.title, list.title_fg, list.bg, list.pad, .left, list.text_face, list.text_weight, list.text_size);

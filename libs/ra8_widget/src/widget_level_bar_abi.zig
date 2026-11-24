@@ -5,6 +5,7 @@
 //! remains marked; positive values fill above it and negative values below.
 
 const types = @import("widget_abi_types.zig");
+const ops = @import("paint_ops.zig");
 
 pub const Rect = types.Rect;
 pub const Paint = types.Paint;
@@ -92,13 +93,13 @@ fn valueAt(rect: Rect, y: i32) ?i8 {
 fn render(w: *Widget) callconv(.c) void {
     const bar: *const LevelBar = @ptrCast(@alignCast(w.ctx orelse return));
     const backend = bar.paint orelse return;
-    const fill_rect = backend.fill_rect orelse return;
+    if (backend.fill_rect == null) return;
     for (0..geometry.cell_count) |raw| {
         const index: u8 = @intCast(raw);
         const cell = paintCellRect(w.rect, index);
         if (cell.h <= 0) continue;
         const color = if (index == geometry.center) bar.center_mark else if (cellFilled(bar.value, index)) bar.fill else bar.track;
-        fill_rect(backend.user, cell.x, cell.y, cell.w, cell.h, color);
+        ops.fillRect(backend, cell, color);
     }
 }
 

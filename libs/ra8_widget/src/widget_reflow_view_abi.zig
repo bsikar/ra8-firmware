@@ -12,7 +12,7 @@
 //! app-bound callbacks.
 
 const types = @import("widget_abi_types.zig");
-const paint_abi = @import("widget_paint_abi.zig");
+const paint_ops = @import("paint_ops.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
 pub const Rect = types.Rect;
@@ -146,12 +146,20 @@ fn render(w: *Widget) callconv(.c) void {
     const view: *const ReflowView = @ptrCast(@alignCast(w.ctx orelse return));
 
     if (view.paint) |backend| {
-        paint_abi.priv_widget_fill_box(backend, &w.rect, view.bg, view.bg, paging.no_inset);
+        paint_ops.fillBox(backend, w.rect, view.bg, view.bg, paging.no_inset);
     }
 
     const ops = view.ops orelse return;
     const paint_page = ops.render_page orelse return;
     const body = bodyRect(w.rect, view.margin_x, view.margin_y);
+    if (view.paint) |backend| {
+        if (paint_ops.capabilities(backend).clip != 0) {
+            paint_ops.pushClip(backend, body);
+            defer paint_ops.popClip(backend);
+            paint_page(ops.user, view.page, &body);
+            return;
+        }
+    }
     paint_page(ops.user, view.page, &body);
 }
 

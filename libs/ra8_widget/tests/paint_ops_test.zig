@@ -197,3 +197,31 @@ test "text and fill canvas ops dispatch with style -> face -> basic fallbacks" {
     const full_m = ops.measureTextStyle(&full_text, "c", .serif, .bold, .ui_26);
     try std.testing.expectEqual(@as(i32, 41), full_m.w);
 }
+
+test "normalizeTextSize, hasText, hasMeasure, fillBox, and drawTextInRect share fallback rules" {
+    try std.testing.expectEqual(ops.TextSize.size_3, ops.normalizeTextSize(.default));
+    try std.testing.expectEqual(ops.TextSize.ui_26, ops.normalizeTextSize(.ui_26));
+    try std.testing.expectEqual(ops.TextSize.size_1, ops.normalizeTextSize(.size_1));
+
+    try std.testing.expect(!ops.hasText(&panel));
+    try std.testing.expect(!ops.hasMeasure(&panel));
+
+    reset();
+    ops.fillBox(&panel, .{ .x = 10, .y = 20, .w = 40, .h = 16 }, 0xAA, 0xBB, 2);
+    try std.testing.expectEqualSlices(Call, &.{
+        .{ .fill = .{ 10, 20, 40, 16, 0xBB } },
+        .{ .fill = .{ 12, 22, 36, 12, 0xAA } },
+    }, calls.items);
+
+    const basic_only: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = drawText, .text_size = textSize };
+    try std.testing.expect(ops.hasText(&basic_only));
+    try std.testing.expect(ops.hasMeasure(&basic_only));
+    reset();
+    ops.drawTextInRect(&basic_only, .{ .x = 0, .y = 0, .w = 60, .h = 30 }, "ok", 4, .center, .sans, .regular, .default, 1, 2);
+    try std.testing.expectEqualSlices(Call, &.{.{ .text = .{ 24, 7, 1, 2 } }}, calls.items);
+
+    const styled_no_measure: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = drawText, .text_size = textSize, .draw_text_face = drawTextFace };
+    reset();
+    ops.drawTextInRect(&styled_no_measure, .{ .x = 10, .y = 20, .w = 80, .h = 40 }, "ok", 4, .center, .serif, .bold, .default, 3, 4);
+    try std.testing.expectEqualSlices(Call, &.{.{ .text_face = .{ 14, 24, 1, 3, 4 } }}, calls.items);
+}
