@@ -224,11 +224,11 @@ test "generateC23Header with padding holes and C23 static_assert" {
         },
     };
 
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer: std.Io.Writer.Allocating = .init(allocator);
     defer buffer.deinit();
 
-    try generateC23Header(def, allocator, buffer.writer());
-    const output = buffer.items;
+    try generateC23Header(def, allocator, &buffer.writer);
+    const output = buffer.written();
 
     try std.testing.expect(std.mem.indexOf(u8, output, "#pragma once") != null);
     try std.testing.expect(std.mem.indexOf(u8, output, "#ifndef TIMER0_REGS_H_") == null);
@@ -244,35 +244,15 @@ test "generateC23Header with padding holes and C23 static_assert" {
     try std.testing.expect(std.mem.indexOf(u8, output, "static inline volatile timer0_regs_t *timer0_get_regs(void)") != null);
 }
 
-fn expectC23HeaderCompiles(compiler: []const u8, def: PeripheralDef) !void {
+fn expectC23HeaderCompiles(compiler_argv: []const []const u8, def: PeripheralDef) !void {
     const allocator = std.testing.allocator;
-    var header = std.ArrayList(u8).init(allocator);
+    var header: std.Io.Writer.Allocating = .init(allocator);
     defer header.deinit();
 
-    try generateC23Header(def, allocator, header.writer());
+    try generateC23Header(def, allocator, &header.writer);
 
-    var argv = std.ArrayList([]const u8).init(allocator);
-    defer argv.deinit();
-    var words = std.mem.tokenizeAny(u8, compiler, " ");
-    while (words.next()) |word| try argv.append(word);
-    try argv.appendSlice(&c23_cc.compile_args);
-
-    var child = std.process.Child.init(argv.items, allocator);
-    child.stdin_behavior = .Pipe;
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Inherit;
-    try child.spawn();
-    try child.stdin.?.writeAll(header.items);
-    child.stdin.?.close();
-    child.stdin = null;
-
-    switch (try child.wait()) {
-        .Exited => |code| {
-            if (code != 0) {
-                return error.GeneratedHeaderDoesNotCompile;
-            }
-        },
-        else => return error.GeneratedHeaderCompilerDidNotExit,
+    if (!try c23_cc.compiles(allocator, std.testing.io, compiler_argv, header.written())) {
+        return error.GeneratedHeaderDoesNotCompile;
     }
 }
 
@@ -297,15 +277,14 @@ test "generated headers compile under the pinned C23 compiler" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const override = std.process.getEnvVarOwned(allocator, "RA8_C23_CC") catch null;
-    const argv = try c23_cc.resolve(allocator, .{
+    const override = std.testing.environ.getAlloc(allocator, "RA8_C23_CC") catch null;
+    const argv = try c23_cc.resolve(allocator, std.testing.io, .{
         .override = override,
         .zig_exe = build_options.zig_exe,
     });
-    const compiler = try std.mem.join(allocator, " ", argv);
 
-    try expectC23HeaderCompiles(compiler, timer);
-    try expectC23HeaderCompiles(compiler, pcie);
+    try expectC23HeaderCompiles(argv, timer);
+    try expectC23HeaderCompiles(argv, pcie);
 }
 
 test "generateC23Header with trailing padding for struct alignment" {
@@ -319,11 +298,11 @@ test "generateC23Header with trailing padding for struct alignment" {
         },
     };
 
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer: std.Io.Writer.Allocating = .init(allocator);
     defer buffer.deinit();
 
-    try generateC23Header(def, allocator, buffer.writer());
-    const output = buffer.items;
+    try generateC23Header(def, allocator, &buffer.writer);
+    const output = buffer.written();
 
     try std.testing.expect(std.mem.indexOf(u8, output, "volatile uint8_t DATA;") != null);
     try std.testing.expect(std.mem.indexOf(u8, output, "uint8_t _reserved0[3]; /**< Reserved trailing padding */") != null);
@@ -340,11 +319,11 @@ test "generateC23Header 64-bit base address" {
         },
     };
 
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer: std.Io.Writer.Allocating = .init(allocator);
     defer buffer.deinit();
 
-    try generateC23Header(def, allocator, buffer.writer());
-    const output = buffer.items;
+    try generateC23Header(def, allocator, &buffer.writer);
+    const output = buffer.written();
 
     try std.testing.expect(std.mem.indexOf(u8, output, "k_pcie0_base_addr = 0x0000000100000000ULL") != null);
     try std.testing.expect(std.mem.indexOf(u8, output, "volatile uint64_t BAR0;") != null);
@@ -361,11 +340,11 @@ test "generateC23Header 16-bit offset width alignment" {
         },
     };
 
-    var buffer = std.ArrayList(u8).init(allocator);
+    var buffer: std.Io.Writer.Allocating = .init(allocator);
     defer buffer.deinit();
 
-    try generateC23Header(def, allocator, buffer.writer());
-    const output = buffer.items;
+    try generateC23Header(def, allocator, &buffer.writer);
+    const output = buffer.written();
 
     try std.testing.expect(std.mem.indexOf(u8, output, "typedef enum : uint16_t {") != null);
     try std.testing.expect(std.mem.indexOf(u8, output, "k_dma0_cfg_offset = 0x0100U") != null);

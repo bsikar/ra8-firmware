@@ -3,6 +3,8 @@
     "tests/root.zig"
   ],
   "covered_sources": [
+    "check.zig",
+    "check_artifact.zig",
     "macos_host.zig",
     "macho.zig",
     "ar.zig",
@@ -11,5 +13,22 @@
     "tests/ar_test.zig",
     "tests/root.zig"
   ],
+  "standalone_source_args": {
+    "check.zig": [
+      "--dep",
+      "macos_host",
+      "--dep",
+      "ar",
+      "-Mroot=check.zig",
+      "-Mmacos_host=macos_host.zig",
+      "-Mar=ar.zig"
+    ],
+    "check_artifact.zig": [
+      "--dep",
+      "ar",
+      "-Mroot=check_artifact.zig",
+      "-Mar=ar.zig"
+    ]
+  },
   "minimum_tests": 85
 }

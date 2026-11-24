@@ -21,30 +21,25 @@ pub fn printUsage(writer: anytype) !void {
     , .{});
 }
 
-fn findJsonFile(buf: *[std.fs.max_path_bytes]u8) ![]const u8 {
+fn findJsonFile(io: std.Io, buf: *[std.Io.Dir.max_path_bytes]u8) ![]const u8 {
     const candidates = [_][]const u8{
         "registers.json",
         "apps/host/reg_gen/registers.json",
     };
 
+    const cwd = std.Io.Dir.cwd();
     for (candidates) |path| {
-        const file = std.fs.cwd().openFile(path, .{}) catch continue;
-        file.close();
+        const file = cwd.openFile(io, path, .{}) catch continue;
+        file.close(io);
         return path;
     }
 
-    var bin_dir_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const exe_dir = std.fs.selfExeDirPath(&bin_dir_buf) catch null;
-    if (exe_dir) |dir| {
-        const joined = std.fmt.bufPrint(buf, "{s}{c}registers.json", .{ dir, std.fs.path.sep }) catch return error.PathTooLong;
-        const file = std.fs.cwd().openFile(joined, .{}) catch null;
-        if (file) |f| {
-            f.close();
-            return joined;
-        }
-    }
-
-    return error.FileNotFound;
+    var bin_dir_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const dir_len = std.process.executableDirPath(io, &bin_dir_buf) catch return error.FileNotFound;
+    const joined = std.fmt.bufPrint(buf, "{s}{c}registers.json", .{ bin_dir_buf[0..dir_len], std.fs.path.sep }) catch return error.PathTooLong;
+    const file = cwd.openFile(io, joined, .{}) catch return error.FileNotFound;
+    file.close(io);
+    return joined;
 }
 
 pub const CliOptions = struct {
@@ -81,68 +76,69 @@ pub fn parseCliArgs(args: []const []const u8, err_writer: anytype) !CliOptions {
     return opts;
 }
 
-fn run(allocator: std.mem.Allocator) !void {
-    const stderr = std.io.getStdErr().writer();
+fn run(init: std.process.Init) !void {
+    const io = init.io;
+    const allocator = init.arena.allocator();
+    var stderr_buf: [256]u8 = undefined;
+    var stderr_writer = std.Io.File.stderr().writer(io, &stderr_buf);
+    const stderr = &stderr_writer.interface;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    const opts = try parseCliArgs(args, stderr);
+    const args = try init.minimal.args.toSlice(allocator);
+    const opts = parseCliArgs(args, stderr) catch |err| {
+        stderr.flush() catch {};
+        return err;
+    };
     if (opts.show_help) {
-        try printUsage(std.io.getStdOut().writer());
+        var stdout_buf: [256]u8 = undefined;
+        var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buf);
+        try printUsage(&stdout_writer.interface);
+        try stdout_writer.interface.flush();
         return;
     }
 
-    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+    var path_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
     const resolved_input = if (opts.input_path) |p|
         p
     else
-        findJsonFile(&path_buf) catch |err| {
-            try stderr.print("Error: could not locate default registers.json: {s}\n", .{@errorName(err)});
+        findJsonFile(io, &path_buf) catch |err| {
+            stderr.print("Error: could not locate default registers.json: {s}\n", .{@errorName(err)}) catch {};
+            stderr.flush() catch {};
             return err;
         };
 
-    const file = std.fs.cwd().openFile(resolved_input, .{}) catch |err| {
-        try stderr.print("Error opening input file '{s}': {s}\n", .{ resolved_input, @errorName(err) });
+    const cwd = std.Io.Dir.cwd();
+    const json_bytes = cwd.readFileAlloc(io, resolved_input, allocator, .limited(10 * 1024 * 1024)) catch |err| {
+        stderr.print("Error reading file '{s}': {s}\n", .{ resolved_input, @errorName(err) }) catch {};
+        stderr.flush() catch {};
         return err;
     };
-    defer file.close();
-
-    const json_bytes = file.readToEndAlloc(allocator, 10 * 1024 * 1024) catch |err| {
-        try stderr.print("Error reading file '{s}': {s}\n", .{ resolved_input, @errorName(err) });
-        return err;
-    };
-    defer allocator.free(json_bytes);
 
     const parsed = generator.parseDefinition(allocator, json_bytes) catch |err| {
-        try stderr.print("Error parsing register definition JSON in '{s}': {s}\n", .{ resolved_input, @errorName(err) });
+        stderr.print("Error parsing register definition JSON in '{s}': {s}\n", .{ resolved_input, @errorName(err) }) catch {};
+        stderr.flush() catch {};
         return err;
     };
     defer parsed.deinit();
 
+    var io_buf: [4096]u8 = undefined;
     if (opts.output_path) |out_p| {
-        const out_file = std.fs.cwd().createFile(out_p, .{}) catch |err| {
-            try stderr.print("Error creating output file '{s}': {s}\n", .{ out_p, @errorName(err) });
+        const out_file = cwd.createFile(io, out_p, .{}) catch |err| {
+            stderr.print("Error creating output file '{s}': {s}\n", .{ out_p, @errorName(err) }) catch {};
+            stderr.flush() catch {};
             return err;
         };
-        defer out_file.close();
-        try generator.generateC23Header(parsed.value, allocator, out_file.writer());
+        defer out_file.close(io);
+        var file_writer = out_file.writer(io, &io_buf);
+        try generator.generateC23Header(parsed.value, allocator, &file_writer.interface);
+        try file_writer.interface.flush();
     } else {
-        const stdout = std.io.getStdOut().writer();
-        try generator.generateC23Header(parsed.value, allocator, stdout);
+        var stdout_writer = std.Io.File.stdout().writer(io, &io_buf);
+        try generator.generateC23Header(parsed.value, allocator, &stdout_writer.interface);
+        try stdout_writer.interface.flush();
     }
 }
 
-pub fn main() u8 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer {
-        const check = gpa.deinit();
-        if (check == .leak) {
-            std.log.err("Memory leak detected in reg_gen GeneralPurposeAllocator", .{});
-        }
-    }
-    const allocator = gpa.allocator();
-
-    run(allocator) catch return 1;
+pub fn main(init: std.process.Init) u8 {
+    run(init) catch return 1;
     return 0;
 }

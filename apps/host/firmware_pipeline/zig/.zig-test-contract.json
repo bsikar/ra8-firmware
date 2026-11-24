@@ -5,22 +5,18 @@
   "covered_sources": [
     "src/adapter.zig",
     "src/main.zig",
-    "tests/native.zig"
+    "tests/native.zig",
+    "tests/standalone_firmware_pipeline_h.zig"
   ],
   "standalone_source_args": {
     "src/adapter.zig": [
-      "-fno-emit-bin",
-      "-lc",
-      "-I",
-      "../inc"
+      "--dep",
+      "firmware_pipeline_h",
+      "-Mroot=src/adapter.zig",
+      "-Mfirmware_pipeline_h=tests/standalone_firmware_pipeline_h.zig"
     ],
     "src/main.zig": [
-      "-fno-emit-bin",
-      "-lc",
-      "-I",
-      "../inc",
-      "-I",
-      "../src"
+      "-fno-emit-bin"
     ]
   },
   "minimum_tests": 3
