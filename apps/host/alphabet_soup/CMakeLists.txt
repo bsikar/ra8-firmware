@@ -2,11 +2,48 @@
 # Copyright (c) 2026 Brighton Sikarskie
 
 cmake_minimum_required(VERSION 3.20)
+
+# Standalone host configure defaults to GCC on hosts whose system cc predates
+# C23 fixed-underlying-type enums; select a C23-capable compiler before
+# project() locks CMAKE_C_COMPILER unless the caller or parent build chose one.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR
+   AND NOT DEFINED CMAKE_C_COMPILER
+   AND "$ENV{CC}" STREQUAL ""
+)
+  find_program(
+    _alphabet_soup_c_compiler
+    NAMES clang-19 clang-20 clang-18 clang-17 clang gcc-14 gcc-13
+  )
+  if(_alphabet_soup_c_compiler)
+    set(CMAKE_C_COMPILER "${_alphabet_soup_c_compiler}" CACHE FILEPATH "C compiler")
+  endif()
+  unset(_alphabet_soup_c_compiler CACHE)
+endif()
+
 project(alphabet_soup C)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  include(CheckCSourceCompiles)
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_C23_STANDARD_COMPILE_OPTION}")
+  check_c_source_compiles(
+    "typedef enum : int { k_ra8_c23_probe_ok = 0 } ra8_c23_probe_t;
+     int main(void) { ra8_c23_probe_t v = k_ra8_c23_probe_ok; return (int)v; }"
+    ALPHABET_SOUP_HAVE_C23_ENUM
+  )
+  unset(CMAKE_REQUIRED_FLAGS)
+  if(NOT ALPHABET_SOUP_HAVE_C23_ENUM)
+    message(
+      FATAL_ERROR
+        "alphabet_soup requires a C23 compiler supporting fixed underlying enum types "
+        "(clang >= 17 or gcc >= 13); got ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID} "
+        "${CMAKE_C_COMPILER_VERSION}). Set CC=clang-19 or -DCMAKE_C_COMPILER=clang-19."
+    )
+  endif()
+endif()
 
 set(ALPHABET_SOUP_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 set(FW ${ALPHABET_SOUP_REPO_ROOT}/libs)
