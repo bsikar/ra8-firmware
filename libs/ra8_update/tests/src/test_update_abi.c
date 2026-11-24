@@ -16,7 +16,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_bundle.h"
@@ -52,7 +51,6 @@ static uint32_t   s_fail = 0U;
 #define EXPECT_TRUE(cond)                                                                          \
   do {                                                                                             \
     if (!(cond)) {                                                                                 \
-      (void)fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #cond);                                \
       ++s_fail;                                                                                    \
     }                                                                                              \
   } while (0)
@@ -62,11 +60,6 @@ static uint32_t   s_fail = 0U;
     const uint64_t e_ = (uint64_t)(exp);                                                           \
     const uint64_t a_ = (uint64_t)(act);                                                           \
     if (e_ != a_) {                                                                                \
-      (void)fprintf(stderr,                                                                        \
-                    "FAIL line %d: exp=0x%llx act=0x%llx\n",                                       \
-                    __LINE__,                                                                      \
-                    (unsigned long long)e_,                                                        \
-                    (unsigned long long)a_);                                                       \
       ++s_fail;                                                                                    \
     }                                                                                              \
   } while (0)
@@ -516,9 +509,5 @@ int main(void)
   test_dfu_trial_defers_floor_and_rolls_back_on_bad_verify();
   test_guards_downgrade_and_explicit_rollback();
   test_ra8u_bundle_pipeline_single_and_multi();
-  if (s_fail != 0U) {
-    return 1;
-  }
-  (void)printf("test_ra8_update_abi: OK\n");
-  return 0;
+  return (s_fail == 0U) ? 0 : 1;
 }
