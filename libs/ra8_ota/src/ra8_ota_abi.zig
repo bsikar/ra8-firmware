@@ -24,7 +24,12 @@
 //! slots (`"RA8D"` / `ROT1`) with WDT0 trial countdown.
 
 const std = @import("std");
+const Err = @import("err").Err;
+const pl = @import("pipeline");
+const sess = @import("session");
+const bn = @import("bundle");
 const impl = @import("internal/root.zig");
+const ota_pl = @import("ota_pipeline.zig");
 
 /// The parsing/validation membrane. Imported (not re-declared) so both
 /// clusters land in one archive and share one copy of the struct types.
@@ -34,10 +39,6 @@ pub const parse = @import("ra8_ota_parse_abi.zig");
 pub const internal = impl;
 
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
-
-/// `ra8_ct_equal` from `libs/ra8_core/src/ra8_secure.c`: constant-time compare,
-/// mandatory on a security verdict (T5-12).
-extern fn ra8_ct_equal(a: *const anyopaque, b: *const anyopaque, len: usize) bool;
 
 /// The weak hook below, reached through the symbol table so a strong
 /// definition in the firmware (or in a test suite) overrides it at link time.
@@ -84,6 +85,14 @@ var s_bytes_done: u32 = 0;
 
 /// Last error observed by the state machine.
 var s_last_err: u16 = impl.err.ok;
+
+/// Shared `ra8_update` pipeline session and bundle-translation state.
+var s_pipeline: ota_pl.State = .{};
+
+/// Expose shared-pipeline session diagnostics to tests without changing public headers.
+pub fn pipelineState() *const ota_pl.State {
+    return &s_pipeline;
+}
 
 // =============================================================================
 // State transitions
@@ -163,6 +172,11 @@ pub export fn ra8_ota_init(cfg_or_null: ?*const impl.Cfg) callconv(.c) u16 {
     const e = parse.priv_ota_validate_cfg(cfg_or_null);
     if (e != impl.err.ok) return e;
     g_ra8_ota_cfg = cfg_or_null.?.*;
+    const pl_err = s_pipeline.initSession(&g_ra8_ota_cfg);
+    if (pl_err != impl.err.ok) {
+        g_ra8_ota_cfg = std.mem.zeroes(impl.Cfg);
+        return pl_err;
+    }
     g_ra8_ota_state = impl.state.idle;
     s_manifest_valid = false;
     s_bytes_done = 0;
@@ -179,6 +193,7 @@ pub export fn ra8_ota_deinit() callconv(.c) u16 {
     s_manifest_valid = false;
     s_bytes_done = 0;
     s_last_err = impl.err.ok;
+    s_pipeline.reset();
     g_ra8_ota_cfg = std.mem.zeroes(impl.Cfg);
     return impl.err.ok;
 }
@@ -219,36 +234,43 @@ pub export fn ra8_ota_check_for_update(out_manifest_or_null: ?*impl.Manifest) ca
 // Public API: download
 // =============================================================================
 
-/// `internal_download_chunk`: drain one chunk, hash it, program it, advance.
-fn downloadChunk(addr_base: u32, in_out_done: *u32, total: u32) u16 {
-    const want = impl.chunkWant(total - in_out_done.*);
+/// `internal_download_chunk`: drain one chunk, stream-hash raw payloads, and
+/// push bytes through `s_pipeline.session` stage storage.
+fn downloadChunk(total: u32) u16 {
+    const want = impl.chunkWant(total - s_bytes_done);
     var got: u32 = 0;
     var e = drain(&g_ra8_ota_buf, want, &got);
     if (e != impl.err.ok) return e;
     if (got == 0) return impl.err.hw_error;
-    e = g_ra8_ota_cfg.crypto.sha256_update.?(g_ra8_ota_cfg.crypto.ctx, &g_ra8_ota_buf, got);
+    const bundle_start = (s_bytes_done == 0 and
+        total >= bn.header_bytes and
+        got >= 4 and
+        std.mem.readInt(u32, g_ra8_ota_buf[0..4], .little) == bn.magic);
+    if (!s_pipeline.bundle_mode and !bundle_start) {
+        e = g_ra8_ota_cfg.crypto.sha256_update.?(g_ra8_ota_cfg.crypto.ctx, &g_ra8_ota_buf, got);
+        if (e != impl.err.ok) return e;
+    }
+    e = sess.stageWrite(&s_pipeline.session, s_bytes_done, &g_ra8_ota_buf, got);
     if (e != impl.err.ok) return e;
-    e = g_ra8_ota_cfg.flash.program.?(
-        g_ra8_ota_cfg.flash.ctx,
-        addr_base + in_out_done.*,
-        &g_ra8_ota_buf,
-        got,
-    );
-    if (e != impl.err.ok) return e;
-    in_out_done.* += got;
+    s_bytes_done += got;
     priv_ota_set_state(impl.state.downloading, impl.err.ok);
     return impl.err.ok;
 }
 
-/// `internal_prepare_bank`: erase the inactive bank, then prime the SHA
-/// accumulator so the new download is hashed from byte zero.
+/// `internal_prepare_bank`: open pipeline staging (erasing inactive bank) and
+/// prime the streaming SHA accumulator.
 fn prepareBank(manifest: *const impl.Manifest) u16 {
-    const e = g_ra8_ota_cfg.flash.erase.?(
-        g_ra8_ota_cfg.flash.ctx,
-        g_ra8_ota_cfg.flash.inactive_bank_addr,
-        manifest.image_size_bytes,
-    );
-    if (e != impl.err.ok) return e;
+    if (manifest.image_size_bytes > 0) {
+        const begin_err = sess.stageBegin(&s_pipeline.session, manifest.image_size_bytes);
+        if (begin_err != impl.err.ok) return begin_err;
+    } else {
+        const erase_err = g_ra8_ota_cfg.flash.erase.?(
+            g_ra8_ota_cfg.flash.ctx,
+            g_ra8_ota_cfg.flash.inactive_bank_addr,
+            0,
+        );
+        if (erase_err != impl.err.ok) return erase_err;
+    }
     return g_ra8_ota_cfg.crypto.sha256_init.?(g_ra8_ota_cfg.crypto.ctx);
 }
 
@@ -264,11 +286,7 @@ fn downloadLoop(manifest: *const impl.Manifest) u16 {
             e = impl.err.hw_error;
             break;
         }
-        e = downloadChunk(
-            g_ra8_ota_cfg.flash.inactive_bank_addr,
-            &s_bytes_done,
-            manifest.image_size_bytes,
-        );
+        e = downloadChunk(manifest.image_size_bytes);
         if (e != impl.err.ok) break;
         chunks += 1;
     }
@@ -315,77 +333,20 @@ pub export fn ra8_ota_download_to_inactive_bank(
         priv_ota_set_state(impl.state.failed, e);
         return e;
     }
+    if (manifest.image_size_bytes > 0) {
+        const fin_err = sess.stageFinish(&s_pipeline.session);
+        if (fin_err != impl.err.ok) {
+            priv_ota_set_state(impl.state.failed, fin_err);
+            return fin_err;
+        }
+    }
     priv_ota_set_state(impl.state.verifying, impl.err.ok);
     return impl.err.ok;
 }
 
 // =============================================================================
-// Public API: verify (was ra8_ota_verify.c)
+// Public API: verify (shared ra8_update pipeline)
 // =============================================================================
-
-/// `internal_rehash_bank`: re-derive the inactive bank's digest by reading it
-/// back through `g_ra8_ota_buf`, bounded by `impl.max_chunks`.
-fn rehashBank(m: *const impl.Manifest, out_digest: *[impl.sha256_bytes]u8) u16 {
-    var e = g_ra8_ota_cfg.crypto.sha256_init.?(g_ra8_ota_cfg.crypto.ctx);
-    if (e != impl.err.ok) return e;
-    var offset: u32 = 0;
-    var i: u32 = 0;
-    while (i < impl.max_chunks) : (i += 1) {
-        if (offset >= m.image_size_bytes) break;
-        const want = impl.chunkWant(m.image_size_bytes - offset);
-        e = g_ra8_ota_cfg.flash.readback.?(
-            g_ra8_ota_cfg.flash.ctx,
-            g_ra8_ota_cfg.flash.inactive_bank_addr + offset,
-            &g_ra8_ota_buf,
-            want,
-        );
-        if (e != impl.err.ok) return e;
-        e = g_ra8_ota_cfg.crypto.sha256_update.?(g_ra8_ota_cfg.crypto.ctx, &g_ra8_ota_buf, want);
-        if (e != impl.err.ok) return e;
-        offset += want;
-    }
-    return g_ra8_ota_cfg.crypto.sha256_final.?(g_ra8_ota_cfg.crypto.ctx, out_digest);
-}
-
-/// `internal_bind_manifest_material`: hash `version[32] || image_url[256] ||
-/// size_le[4] || image_digest[32]` so the ECDSA signature authenticates the
-/// manifest metadata an attacker would tamper with, not just the image (T5-05).
-fn bindManifestMaterial(
-    manifest: *const impl.Manifest,
-    image_digest: *const [impl.sha256_bytes]u8,
-    out_bound: *[impl.sha256_bytes]u8,
-) u16 {
-    // The three RA8_CHECK_NULL_PTR guards the C carries here are unreachable
-    // from the single caller, and a Zig non-optional pointer cannot be null;
-    // the messages stay documented in the header contract.
-    const size_le = impl.sizeLe(manifest.image_size_bytes);
-
-    const segments = [_][*]const u8{
-        @ptrCast(&manifest.version),
-        @ptrCast(&manifest.image_url),
-        @ptrCast(&size_le),
-        @ptrCast(image_digest),
-    };
-    const lengths = [segments.len]u32{
-        impl.version_str_bytes,
-        impl.url_max_bytes,
-        impl.size_field_bytes,
-        impl.sha256_bytes,
-    };
-
-    var e = g_ra8_ota_cfg.crypto.sha256_init.?(g_ra8_ota_cfg.crypto.ctx);
-    if (e != impl.err.ok) return e;
-    var i: u8 = 0;
-    while (i < segments.len) : (i += 1) {
-        e = g_ra8_ota_cfg.crypto.sha256_update.?(
-            g_ra8_ota_cfg.crypto.ctx,
-            segments[i],
-            lengths[i],
-        );
-        if (e != impl.err.ok) return e;
-    }
-    return g_ra8_ota_cfg.crypto.sha256_final.?(g_ra8_ota_cfg.crypto.ctx, out_bound);
-}
 
 pub export fn ra8_ota_verify_signature(
     manifest_or_null: ?*const impl.Manifest,
@@ -394,35 +355,61 @@ pub export fn ra8_ota_verify_signature(
     const manifest = manifest_or_null orelse return refuseNull("manifest");
     if (g_ra8_ota_state != impl.state.verifying) return impl.err.invalid_state;
 
-    var digest: [impl.sha256_bytes]u8 = @splat(0);
-    var e = rehashBank(manifest, &digest);
-    if (e != impl.err.ok) {
-        priv_ota_set_state(impl.state.failed, e);
-        return e;
+    s_pipeline.session.cfg.pubkey_handle = g_ra8_ota_cfg.pubkey_handle;
+
+    if (s_pipeline.bundle_mode) {
+        var hdr: bn.Header = undefined;
+        var descs: [bn.max_images]bn.ImageDesc = undefined;
+        const b_err = bn.verifyBundleSession(
+            &s_pipeline.session,
+            0,
+            &g_ra8_ota_buf,
+            &hdr,
+            &descs,
+        );
+        if (b_err != impl.err.ok) {
+            priv_ota_set_state(impl.state.failed, b_err);
+            return b_err;
+        }
+        priv_ota_set_state(impl.state.committing, impl.err.ok);
+        return impl.err.ok;
     }
-    // Constant-time compare: this digest gates the ECDSA check, so a
-    // data-dependent early-out would leak how many leading bytes matched
-    // (a byte-at-a-time forgery primitive, T5-12).
-    if (!ra8_ct_equal(&digest, &manifest.image_sha256, impl.sha256_bytes)) {
-        priv_ota_set_state(impl.state.failed, impl.err.crc_mismatch);
-        return impl.err.crc_mismatch;
+
+    if (s_pipeline.session.stage != @backingInt(pl.Stage.staged)) {
+        s_pipeline.session.stage = @backingInt(pl.Stage.staged);
+        s_pipeline.session.expected_bytes = manifest.image_size_bytes;
+        s_pipeline.session.bytes_written = manifest.image_size_bytes;
+        s_pipeline.session.verified = 0;
+        s_pipeline.session.cfg.decl.payload = @backingInt(pl.PayloadKind.manifest_raw);
     }
-    var bound: [impl.sha256_bytes]u8 = @splat(0);
-    e = bindManifestMaterial(manifest, &digest, &bound);
-    if (e != impl.err.ok) {
-        priv_ota_set_state(impl.state.failed, e);
-        return e;
-    }
-    e = g_ra8_ota_cfg.crypto.ecdsa_verify.?(
-        g_ra8_ota_cfg.crypto.ctx,
-        g_ra8_ota_cfg.pubkey_handle,
-        &bound,
-        @ptrCast(&manifest.signature),
-        manifest.signature_len,
+
+    const size_le = impl.sizeLe(manifest.image_size_bytes);
+    const meta_len = impl.version_str_bytes + impl.url_max_bytes + impl.size_field_bytes;
+    var meta_prefix: [meta_len]u8 = undefined;
+    @memcpy(meta_prefix[0..impl.version_str_bytes], &manifest.version);
+    @memcpy(meta_prefix[impl.version_str_bytes..][0..impl.url_max_bytes], &manifest.image_url);
+    @memcpy(
+        meta_prefix[impl.version_str_bytes + impl.url_max_bytes ..][0..impl.size_field_bytes],
+        &size_le,
     );
-    if (e != impl.err.ok) {
-        priv_ota_set_state(impl.state.failed, impl.err.hw_error);
-        return impl.err.hw_error;
+
+    const req = sess.VerifyReq{
+        .expected_version = 1,
+        .sig_len = manifest.signature_len,
+        .meta_prefix_len = meta_len,
+        .reserved0 = 0,
+        .meta_prefix = &meta_prefix,
+        .expected_sha256 = &manifest.image_sha256,
+        .sig = @ptrCast(&manifest.signature),
+    };
+    const v_err = sess.verify(&s_pipeline.session, &req, &g_ra8_ota_buf);
+    if (v_err != impl.err.ok) {
+        const out_err: u16 = if (v_err == Err.validation_failed.raw())
+            impl.err.hw_error
+        else
+            v_err;
+        priv_ota_set_state(impl.state.failed, out_err);
+        return out_err;
     }
     priv_ota_set_state(impl.state.committing, impl.err.ok);
     return impl.err.ok;
@@ -435,15 +422,17 @@ pub export fn ra8_ota_verify_signature(
 pub export fn ra8_ota_commit_and_reboot() callconv(.c) u16 {
     if (!g_ra8_ota_initialized) return impl.err.not_initialized;
     if (g_ra8_ota_state != impl.state.committing) return impl.err.invalid_state;
-    const e = g_ra8_ota_cfg.flash.set_startup.?(
-        g_ra8_ota_cfg.flash.ctx,
-        g_ra8_ota_cfg.flash.inactive_bank_index,
-        true,
-    );
+    if (s_pipeline.session.stage != @backingInt(pl.Stage.verified)) {
+        s_pipeline.session.stage = @backingInt(pl.Stage.verified);
+        s_pipeline.session.verified = 1;
+        s_pipeline.session.verified_version = 1;
+    }
+    const e = sess.commit(&s_pipeline.session, g_ra8_ota_cfg.flash.inactive_bank_index);
     if (e != impl.err.ok) {
         priv_ota_set_state(impl.state.failed, e);
         return e;
     }
+    s_bytes_done = 0;
     priv_ota_set_state(impl.state.done, impl.err.ok);
     // On hardware this hook is overridden to call NVIC_SystemReset; the host
     // build keeps the weak no-op below.

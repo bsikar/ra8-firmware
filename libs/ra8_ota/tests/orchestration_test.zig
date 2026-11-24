@@ -12,6 +12,8 @@
 
 const std = @import("std");
 const abi = @import("abi");
+const pl = @import("pipeline");
+const bn = @import("bundle");
 const impl = abi.internal;
 
 const ok = impl.err.ok;
@@ -735,4 +737,291 @@ test "run_full_update on an already-done machine reports the latched error" {
     try initModule();
     abi.g_ra8_ota_state = impl.state.done;
     try std.testing.expectEqual(ok, abi.ra8_ota_run_full_update());
+}
+
+// =============================================================================
+// Signed N-image "RA8U" bundle transport over the shared pipeline
+// =============================================================================
+
+var bundle_stream_buf: [8192]u8 = @splat(0);
+var real_sha_ctx: std.crypto.hash.sha2.Sha256 = undefined;
+var real_sha_active: bool = false;
+var real_ecdsa_expect: [32]u8 = @splat(0);
+var real_ecdsa_check: bool = false;
+
+fn realShaInit(_: ?*anyopaque) callconv(.c) u16 {
+    model.sha_init_calls += 1;
+    if (model.sha_init_status != ok) return model.sha_init_status;
+    real_sha_ctx = std.crypto.hash.sha2.Sha256.init(.{});
+    real_sha_active = true;
+    return ok;
+}
+
+fn realShaUpdate(_: ?*anyopaque, data: [*]const u8, len: u32) callconv(.c) u16 {
+    if (model.sha_update_status != ok) return model.sha_update_status;
+    real_sha_ctx.update(data[0..len]);
+    return ok;
+}
+
+fn realShaFinal(_: ?*anyopaque, out: [*]u8) callconv(.c) u16 {
+    if (model.sha_final_status != ok) return model.sha_final_status;
+    var digest: [32]u8 = undefined;
+    real_sha_ctx.final(&digest);
+    @memcpy(out[0..32], &digest);
+    real_sha_active = false;
+    return ok;
+}
+
+fn realEcdsaVerify(
+    _: ?*anyopaque,
+    pubkey: u32,
+    digest: [*]const u8,
+    _: [*]const u8,
+    sig_len: u32,
+) callconv(.c) u16 {
+    model.ecdsa_pubkey = pubkey;
+    model.ecdsa_sig_len = sig_len;
+    @memcpy(&model.signed_material, digest[0..32]);
+    if (real_ecdsa_check and !std.mem.eql(u8, digest[0..32], &real_ecdsa_expect)) {
+        return 0x666;
+    }
+    return model.ecdsa_status;
+}
+
+fn initBundleModule() !void {
+    var cfg = baseCfg();
+    cfg.crypto = .{
+        .sha256_init = realShaInit,
+        .sha256_update = realShaUpdate,
+        .sha256_final = realShaFinal,
+        .ecdsa_verify = realEcdsaVerify,
+        .ctx = null,
+    };
+    real_ecdsa_check = false;
+    try std.testing.expectEqual(ok, abi.ra8_ota_init(&cfg));
+}
+
+fn writeHdrLe(dst: []u8, hdr: bn.Header) void {
+    std.mem.writeInt(u32, dst[0..4], hdr.magic, .little);
+    std.mem.writeInt(u16, dst[4..6], hdr.format_version, .little);
+    std.mem.writeInt(u16, dst[6..8], hdr.header_bytes, .little);
+    std.mem.writeInt(u32, dst[8..12], hdr.bundle_version, .little);
+    std.mem.writeInt(u16, dst[12..14], hdr.image_count, .little);
+    std.mem.writeInt(u16, dst[14..16], hdr.flags, .little);
+    std.mem.writeInt(u32, dst[16..20], hdr.total_bytes, .little);
+    std.mem.writeInt(u32, dst[20..24], hdr.payloads_offset, .little);
+    std.mem.writeInt(u32, dst[24..28], hdr.sig_len, .little);
+    std.mem.writeInt(u32, dst[28..32], hdr.reserved, .little);
+}
+
+fn writeDescLe(dst: []u8, d: bn.ImageDesc) void {
+    std.mem.writeInt(u32, dst[0..4], d.target, .little);
+    std.mem.writeInt(u16, dst[4..6], d.format, .little);
+    std.mem.writeInt(u16, dst[6..8], d.flags, .little);
+    std.mem.writeInt(u32, dst[8..12], d.image_version, .little);
+    std.mem.writeInt(u32, dst[12..16], d.compat_proto_ver, .little);
+    std.mem.writeInt(u32, dst[16..20], d.offset, .little);
+    std.mem.writeInt(u32, dst[20..24], d.size, .little);
+    std.mem.writeInt(u32, dst[24..28], d.reserved0, .little);
+    std.mem.writeInt(u32, dst[28..32], d.reserved1, .little);
+    @memcpy(dst[32..64], &d.sha256);
+}
+
+fn buildSingleRa8Bundle(version: u32, payload: []const u8) u32 {
+    @memset(&bundle_stream_buf, 0);
+    const pay_off: u32 = bn.expectedPayloadsOffset(1);
+    const total: u32 = @intCast(std.mem.alignForward(usize, pay_off + payload.len, bn.page_align));
+    var sha: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(payload, &sha, .{});
+
+    const hdr = bn.Header{
+        .magic = bn.magic,
+        .format_version = bn.format_version,
+        .header_bytes = bn.header_bytes,
+        .bundle_version = version,
+        .image_count = 1,
+        .flags = 0,
+        .total_bytes = total,
+        .payloads_offset = pay_off,
+        .sig_len = bn.sig_slot_bytes,
+        .reserved = 0,
+    };
+    const desc = bn.ImageDesc{
+        .target = @backingInt(bn.Target.ra8_app),
+        .format = @backingInt(bn.PayloadFmt.rot1_img),
+        .flags = 0,
+        .image_version = version,
+        .compat_proto_ver = 1,
+        .offset = pay_off,
+        .size = @intCast(payload.len),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .sha256 = sha,
+    };
+    writeHdrLe(bundle_stream_buf[0..32], hdr);
+    writeDescLe(bundle_stream_buf[32..96], desc);
+    @memset(bundle_stream_buf[96..160], 0x5A);
+    @memcpy(bundle_stream_buf[pay_off .. pay_off + payload.len], payload);
+    std.crypto.hash.sha2.Sha256.hash(bundle_stream_buf[0..96], &real_ecdsa_expect, .{});
+    return total;
+}
+
+test "single-image RA8U bundle downloads, unwraps to bank offset 0, verifies and commits" {
+    reset();
+    try initBundleModule();
+
+    var app_img: [600]u8 = undefined;
+    for (&app_img, 0..) |*b, idx| b.* = @truncate((idx * 13) +% 5);
+    const total = buildSingleRa8Bundle(4, &app_img);
+    real_ecdsa_check = true;
+
+    model.stream = bundle_stream_buf[0..total];
+    model.read_granularity = 67;
+    const manifest = cachedManifest(total);
+
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expect(abi.pipelineState().bundle_mode);
+    try std.testing.expectEqual(@backingInt(pl.PayloadKind.bundle), abi.pipelineState().session.cfg.decl.payload);
+    try std.testing.expectEqualSlices(u8, &app_img, model.bank[0..app_img.len]);
+
+    try std.testing.expectEqual(ok, abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(impl.state.committing, abi.ra8_ota_get_state());
+    try std.testing.expectEqual(@as(u32, 64), model.ecdsa_sig_len);
+    try std.testing.expectEqualSlices(u8, &real_ecdsa_expect, &model.signed_material);
+
+    try std.testing.expectEqual(ok, abi.ra8_ota_commit_and_reboot());
+    try std.testing.expectEqual(impl.state.done, abi.ra8_ota_get_state());
+    try std.testing.expectEqual(@as(u8, 1), model.startup_index);
+    try std.testing.expectEqual(@as(u32, 4), abi.pipelineState().floor);
+    try std.testing.expectEqual(@as(usize, 1), reset_hook_calls);
+}
+
+test "multi-image RA8U bundle with companion first keeps ra8_app at bank offset 0 and verifies both" {
+    reset();
+    try initBundleModule();
+    @memset(&bundle_stream_buf, 0);
+
+    var c6_img: [180]u8 = undefined;
+    for (&c6_img, 0..) |*b, idx| b.* = @truncate((idx * 3) +% 0x41);
+    var ra8_img: [512]u8 = undefined;
+    for (&ra8_img, 0..) |*b, idx| b.* = @truncate((idx * 17) +% 9);
+
+    const pay_off: u32 = bn.expectedPayloadsOffset(2);
+    const ra8_off: u32 = @intCast(std.mem.alignForward(usize, pay_off + c6_img.len, bn.page_align));
+    const total: u32 = @intCast(std.mem.alignForward(usize, ra8_off + ra8_img.len, bn.page_align));
+
+    var c6_sha: [32]u8 = undefined;
+    var ra8_sha: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(&c6_img, &c6_sha, .{});
+    std.crypto.hash.sha2.Sha256.hash(&ra8_img, &ra8_sha, .{});
+
+    const hdr = bn.Header{
+        .magic = bn.magic,
+        .format_version = bn.format_version,
+        .header_bytes = bn.header_bytes,
+        .bundle_version = 9,
+        .image_count = 2,
+        .flags = 0,
+        .total_bytes = total,
+        .payloads_offset = pay_off,
+        .sig_len = bn.sig_slot_bytes,
+        .reserved = 0,
+    };
+    const c6_desc = bn.ImageDesc{
+        .target = @backingInt(bn.Target.esp32_c6),
+        .format = @backingInt(bn.PayloadFmt.c6_img),
+        .flags = 0,
+        .image_version = 7,
+        .compat_proto_ver = 2,
+        .offset = pay_off,
+        .size = c6_img.len,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .sha256 = c6_sha,
+    };
+    const ra8_desc = bn.ImageDesc{
+        .target = @backingInt(bn.Target.ra8_app),
+        .format = @backingInt(bn.PayloadFmt.raw),
+        .flags = 0,
+        .image_version = 9,
+        .compat_proto_ver = 2,
+        .offset = ra8_off,
+        .size = ra8_img.len,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .sha256 = ra8_sha,
+    };
+    writeHdrLe(bundle_stream_buf[0..32], hdr);
+    writeDescLe(bundle_stream_buf[32..96], c6_desc);
+    writeDescLe(bundle_stream_buf[96..160], ra8_desc);
+    @memset(bundle_stream_buf[160..pay_off], 0x3C);
+    @memcpy(bundle_stream_buf[pay_off .. pay_off + c6_img.len], &c6_img);
+    @memcpy(bundle_stream_buf[ra8_off .. ra8_off + ra8_img.len], &ra8_img);
+    std.crypto.hash.sha2.Sha256.hash(bundle_stream_buf[0..160], &real_ecdsa_expect, .{});
+    real_ecdsa_check = true;
+
+    model.stream = bundle_stream_buf[0..total];
+    model.read_granularity = 53;
+    const manifest = cachedManifest(total);
+
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqualSlices(u8, &ra8_img, model.bank[0..ra8_img.len]);
+    try std.testing.expectEqual(ok, abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(ok, abi.ra8_ota_commit_and_reboot());
+    try std.testing.expectEqual(@as(u8, 1), model.startup_index);
+}
+
+test "RA8U bundle rejects tampered payload, bad signature, missing ra8_app, and downgrade" {
+    // 1. Tampered payload byte triggers crc_mismatch without commit.
+    reset();
+    try initBundleModule();
+    var payload: [256]u8 = @splat(0x77);
+    const total = buildSingleRa8Bundle(6, &payload);
+    real_ecdsa_check = true;
+    model.stream = bundle_stream_buf[0..total];
+    const manifest = cachedManifest(total);
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    model.bank[42] ^= 0xFF;
+    try std.testing.expectEqual(@as(u16, 0x0405), abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(impl.state.failed, abi.ra8_ota_get_state());
+    try std.testing.expectEqual(@as(u8, 0xFF), model.startup_index);
+
+    // 2. Rejected ECDSA fails verification and stops commit.
+    reset();
+    try initBundleModule();
+    _ = buildSingleRa8Bundle(6, &payload);
+    model.stream = bundle_stream_buf[0..total];
+    model.ecdsa_status = 0x666;
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqual(@as(u16, 0x501), abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(impl.state.failed, abi.ra8_ota_get_state());
+
+    // 3. Successful v6 bundle commit advances floor; downgrade to v5 is refused.
+    reset();
+    try initBundleModule();
+    _ = buildSingleRa8Bundle(6, &payload);
+    real_ecdsa_check = true;
+    model.stream = bundle_stream_buf[0..total];
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqual(ok, abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(ok, abi.ra8_ota_commit_and_reboot());
+    try std.testing.expectEqual(@as(u32, 6), abi.pipelineState().floor);
+
+    abi.g_ra8_ota_state = impl.state.idle;
+    _ = buildSingleRa8Bundle(5, &payload);
+    model.stream = bundle_stream_buf[0..total];
+    model.stream_pos = 0;
+    try std.testing.expectEqual(ok, abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqual(@as(u16, 0x501), abi.ra8_ota_verify_signature(&manifest));
+    try std.testing.expectEqual(impl.state.failed, abi.ra8_ota_get_state());
+
+    // 4. Bundle containing only esp32_c6 (no ra8_app target) aborts download.
+    reset();
+    try initBundleModule();
+    _ = buildSingleRa8Bundle(7, &payload);
+    std.mem.writeInt(u32, bundle_stream_buf[32..36], @backingInt(bn.Target.esp32_c6), .little);
+    model.stream = bundle_stream_buf[0..total];
+    try std.testing.expectEqual(@as(u16, 0x0106), abi.ra8_ota_download_to_inactive_bank(&manifest));
+    try std.testing.expectEqual(impl.state.failed, abi.ra8_ota_get_state());
+    try std.testing.expectEqual(@as(usize, 1), model.close_calls);
 }
