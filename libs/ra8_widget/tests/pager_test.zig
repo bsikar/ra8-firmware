@@ -7,6 +7,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 var last_message: ?[*:0]const u8 = null;
 
 export fn ra8_log_emit_error(_: [*:0]const u8, message: [*:0]const u8) void {

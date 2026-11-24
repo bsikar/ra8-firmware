@@ -5,6 +5,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 var last_message: ?[*:0]const u8 = null;
 var invalidations: u32 = 0;
 

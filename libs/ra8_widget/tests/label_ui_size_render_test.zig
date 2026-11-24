@@ -3,11 +3,15 @@
 //!
 //! Host ink check for the UI text sizes: ui_26 and ui_30 labels must draw at
 //! their own line height through the real atlas, not fall back to size_3.
-//! Reached from host_render_test.zig so it shares that module's imports.
 
 const std = @import("std");
 const abi = @import("abi");
 const host = @import("host");
+
+comptime {
+    _ = @import("host_box_shims.zig");
+    _ = @import("host_box_shims.zig").Shims(abi);
+}
 
 const ink_threshold: u8 = 128;
 

@@ -13,6 +13,10 @@ const builtin = @import("builtin");
 const abi = @import("abi");
 const debug = @import("debug");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 const Op = enum { layout, damage, render_dirty, dispatch, invalidate };
 
 /// Recorded call log plus the answers the stubs hand back.

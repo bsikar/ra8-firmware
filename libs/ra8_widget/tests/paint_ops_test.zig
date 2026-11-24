@@ -8,6 +8,10 @@
 const std = @import("std");
 const ops = @import("ops");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 const Call = union(enum) {
     fill: [5]i64,
     line: [5]i64,

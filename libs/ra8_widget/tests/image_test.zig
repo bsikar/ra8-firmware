@@ -5,6 +5,10 @@
 
 const std = @import("std");
 const image = @import("image");
+
+comptime {
+    _ = @import("host_box_shims.zig");
+}
 const types = image.types;
 
 const Fill = struct { x: i32, y: i32, w: i32, h: i32, color: u32 };

@@ -6,6 +6,10 @@
 const std = @import("std");
 const paint = @import("implementation");
 
+comptime {
+    _ = @import("host_box_shims.zig");
+}
+
 const rect: paint.Rect = .{ .x = 10, .y = 20, .w = 100, .h = 40 };
 
 test "inset pen hugs the rect's top-left plus the pad" {
