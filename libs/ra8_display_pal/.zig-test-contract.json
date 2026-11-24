@@ -3,7 +3,9 @@
     "tests/internal_test.zig",
     "tests/lcd_test.zig",
     "tests/eink_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/backlight_test.zig",
+    "tests/backlight_abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -13,6 +15,10 @@
     "src/ra8_display_pal_abi.zig",
     "src/ra8_display_pal_lcd_abi.zig",
     "src/ra8_display_pal_eink_abi.zig",
+    "src/internal/backlight.zig",
+    "src/ra8_display_pal_backlight_abi.zig",
+    "tests/backlight_test.zig",
+    "tests/backlight_abi_test.zig",
     "tests/internal_test.zig",
     "tests/lcd_test.zig",
     "tests/eink_test.zig",
@@ -26,5 +32,5 @@
       "-Mbuild_config=src/internal/standalone_build_config.zig"
     ]
   },
-  "minimum_tests": 65
+  "minimum_tests": 77
 }

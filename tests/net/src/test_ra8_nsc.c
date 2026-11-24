@@ -385,6 +385,43 @@ static void internal_test_periph_init_idempotent(void)
   TEST_END("ra8_nsc_periph_init: idempotent");
 }
 
+/**
+ * @brief Verify panel backlight and switch NSC veneers validate args and delegate safely.
+ *
+ * @details Exercises ``ra8_nsc_backlight_init``, ``ra8_nsc_backlight_get_caps``,
+ *          ``ra8_nsc_backlight_set``, ``ra8_nsc_backlight_set_brightness``,
+ *          ``ra8_nsc_sw_init``, and ``ra8_nsc_sw_read``.
+ */
+RA8_INTERNAL
+static void internal_test_panel_and_switch_veneers(void)
+{
+  TEST_BEGIN("ra8_nsc panel backlight and switch veneers");
+  internal_prep();
+
+  ra8_nsc_backlight_caps_t caps = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_backlight_get_caps(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_get_caps(&caps));
+  TEST_ASSERT_EQ(0U, caps.min_pct);
+  TEST_ASSERT_EQ(100U, caps.max_pct);
+  TEST_ASSERT(!caps.supports_pwm);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_init(false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_set(true));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_set(false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_set_brightness(100U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_nsc_backlight_set_brightness(50U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_backlight_set_brightness(101U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_backlight_set_brightness(0U));
+
+  bool pressed = true;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_sw_read(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_sw_init(2U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_sw_read(2U, &pressed));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_sw_init(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_sw_read(0U, &pressed));
+  TEST_END("ra8_nsc panel backlight and switch veneers");
+}
+
 int main(void)
 {
   internal_test_xspi_read_validates_args();
@@ -395,5 +432,6 @@ int main(void)
   internal_test_log_emit_happy();
   internal_test_log_emit_null();
   internal_test_periph_init_idempotent();
+  internal_test_panel_and_switch_veneers();
   return 0;
 }

@@ -2777,6 +2777,17 @@
             "@intFromEnum(PixelFormat.bpp4) == 2"
           ],
           "symbol_prefix": "ra8_display_pal_eink_"
+        },
+        {
+          "path": "libs/ra8_display_pal/inc/ra8_display_pal_backlight.h",
+          "compatibility_sha256": "918873d2ae3d0668acbe77e0b1a3b9d7516e069ed84cdb3071a4934835bfd466",
+          "layout_assertions": [
+            "@sizeOf(BacklightPolicyCfg) == 12",
+            "@sizeOf(BacklightPolicy) == 20",
+            "@offsetOf(BacklightPolicy, \"state\") == 16",
+            "@sizeOf(BacklightPolicyDecision) == 4",
+            "@offsetOf(BacklightCfg, \"mode\") == ptr_bytes * 3 + 4"
+          ]
         }
       ],
       "adapters": [
@@ -2788,7 +2799,8 @@
             "ra8_display_pal_eink_",
             "k_display_backend_eink_"
           ]
-        }
+        },
+        "libs/ra8_display_pal/src/ra8_display_pal_backlight_abi.zig"
       ],
       "library_name": "ra8_display_pal",
       "symbol_prefix": "display_",
@@ -2803,7 +2815,8 @@
       "run_host_tests_in_all_modes": false,
       "c_include_dirs": [
         "libs/ra8_display_pal/inc",
-        "libs/ra8_core/inc"
+        "libs/ra8_core/inc",
+        "libs/if/inc"
       ],
       "contract_tests": [
         {
@@ -2814,6 +2827,11 @@
         {
           "language": "c",
           "path": "tests/graphics/src/test_ra8_display_pal_policy.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_display_pal_backlight.c",
           "registration": "tests/cmake/unit_tests.cmake"
         },
         {
@@ -2837,6 +2855,18 @@
           "language": "zig",
           "path": "libs/ra8_display_pal/tests/eink_test.zig",
           "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig",
+          "registration": "libs/ra8_display_pal/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_display_pal/tests/backlight_test.zig",
+          "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_backlight_abi.zig",
+          "registration": "libs/ra8_display_pal/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_display_pal/tests/backlight_abi_test.zig",
+          "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_backlight_abi.zig",
           "registration": "libs/ra8_display_pal/.zig-test-contract.json"
         }
       ],
@@ -2900,6 +2930,46 @@
           "name": "ra8_display_pal_eink_luma_from_rgb565",
           "calling_context": "task-safe-reentrant",
           "ownership": "pure conversion of one caller-supplied RGB565 pixel, owns nothing"
+        },
+        {
+          "name": "display_backlight_percent_to_q16",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "stateless conversion of caller-supplied brightness percent into Q16 duty written to caller output"
+        },
+        {
+          "name": "display_backlight_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned backlight controller in 0% state while borrowing cfg->pwm and cfg->ctx"
+        },
+        {
+          "name": "display_backlight_deinit",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "stops/closes PWM channel and deasserts gate enable before clearing caller-owned handle"
+        },
+        {
+          "name": "display_backlight_set_brightness",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "updates brightness on caller-owned backlight handle; borrows bound PWM/enable callbacks"
+        },
+        {
+          "name": "display_backlight_apply_decision",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads caller-owned decision struct and applies target_pct to caller-owned handle when changed"
+        },
+        {
+          "name": "display_backlight_policy_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned idle policy state machine and retains no external pointers"
+        },
+        {
+          "name": "display_backlight_policy_activity",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "updates caller-owned idle timer to ACTIVE and writes decision to caller-owned output"
+        },
+        {
+          "name": "display_backlight_policy_step",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "advances caller-owned ACTIVE->DIMMED->OFF state machine and writes decision to caller output"
         }
       ],
       "layout_sources": [
@@ -2908,7 +2978,9 @@
         "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
         "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
         "libs/ra8_display_pal/src/internal/eink.zig",
-        "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig"
+        "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig",
+        "libs/ra8_display_pal/src/internal/backlight.zig",
+        "libs/ra8_display_pal/src/ra8_display_pal_backlight_abi.zig"
       ],
       "data_exports": [
         {

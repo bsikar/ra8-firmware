@@ -25,9 +25,11 @@
  * @since 0.1.0
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_display_pal_backlight.h"
 #include "ra8_err.h"
 #include "ra8_nsc.h"
 #include "ra8_wdt_supervisor.h"
@@ -167,6 +169,162 @@ volatile uint32_t g_ns_ui_frames = 0U;
  * @since 0.1.0
  */
 volatile uint32_t g_ns_sys_ticks = 0U;
+/**
+ * @var g_ns_backlight_state
+ * @brief Live NS backlight policy state (0 = ACTIVE, 1 = DIMMED, 2 = OFF).
+ */
+volatile uint32_t g_ns_backlight_state = (uint32_t)k_display_backlight_state_off;
+/**
+ * @var g_ns_backlight_pct
+ * @brief Current target backlight brightness percent applied by NS UI thread (0..100).
+ */
+volatile uint32_t g_ns_backlight_pct = 0U;
+/**
+ * @var g_ns_backlight_transitions
+ * @brief Total backlight state transitions observed by the NS UI loop.
+ */
+volatile uint32_t g_ns_backlight_transitions = 0U;
+/**
+ * @var g_ns_backlight_init_err
+ * @brief Error status captured during NS backlight controller bring-up.
+ */
+volatile ra8_err_t g_ns_backlight_init_err = k_ra8_ok;
+
+static display_backlight_t        s_ns_backlight               = {};
+static display_backlight_policy_t s_ns_backlight_policy        = {};
+static ra8_nsc_backlight_caps_t   s_ns_backlight_caps          = {};
+static bool                       s_ns_backlight_ready         = false;
+static volatile bool              s_backlight_activity_pending = false;
+
+/**
+ * @brief Convert ThreadX kernel ticks into monotonic milliseconds.
+ * @return Elapsed milliseconds from ThreadX tick counter.
+ */
+RA8_INTERNAL static uint32_t internal_ns_now_ms(void)
+{
+  return (uint32_t)(((uint64_t)tx_time_get() * 1000ULL) / (uint64_t)TX_TIMER_TICKS_PER_SECOND);
+}
+
+/**
+ * @brief Backlight enable callback bridged across TrustZone to Secure board GPIO.
+ * @param[in] ctx Unused caller context.
+ * @param[in] on  1 for ON, 0 for OFF.
+ * @return ``k_ra8_ok`` on success or NSC error code.
+ */
+RA8_INTERNAL static ra8_err_t internal_ns_backlight_set_cb(void* ctx, uint8_t on)
+{
+  (void)ctx;
+  return ra8_nsc_backlight_set(on != 0U);
+}
+
+/**
+ * @brief Signal user or display activity to wake the NS backlight idle timer.
+ * @details Lockless single-flag latch consumed by the NS UI thread.
+ * @since 0.1.0
+ */
+void ra8_ereader_backlight_notify_activity(void);
+void ra8_ereader_backlight_notify_activity(void)
+{
+  s_backlight_activity_pending = true;
+}
+
+/**
+ * @brief Bring up the NS backlight controller, 30s idle policy, and wake switches.
+ * @param[in] now_ms Monotonic timestamp in milliseconds.
+ */
+RA8_INTERNAL static void internal_ns_backlight_setup(uint32_t now_ms)
+{
+  ra8_err_t err = ra8_nsc_backlight_get_caps(&s_ns_backlight_caps);
+  if (err != k_ra8_ok) {
+    g_ns_backlight_init_err = err;
+    return;
+  }
+  err = ra8_nsc_backlight_init(false);
+  if (err != k_ra8_ok) {
+    g_ns_backlight_init_err = err;
+    return;
+  }
+
+  const display_backlight_cfg_t cfg = {
+    .mode       = k_display_backlight_mode_binary,
+    .set_enable = internal_ns_backlight_set_cb,
+    .ctx        = nullptr,
+  };
+  err = display_backlight_init(&s_ns_backlight, &cfg);
+  if (err != k_ra8_ok) {
+    g_ns_backlight_init_err = err;
+    return;
+  }
+
+  const uint8_t                        supports_dim = s_ns_backlight_caps.supports_pwm ? 1U : 0U;
+  const display_backlight_policy_cfg_t pol_cfg      = {
+    .dim_after_ms = (supports_dim != 0U) ? (uint32_t)k_display_backlight_default_dim_ms : 0U,
+    .off_after_ms = (uint32_t)k_display_backlight_default_off_ms,
+    .active_pct   = (uint8_t)k_display_backlight_default_active_pct,
+    .dimmed_pct   = (uint8_t)k_display_backlight_default_dimmed_pct,
+    .supports_dim = supports_dim,
+  };
+  err = display_backlight_policy_init(&s_ns_backlight_policy, &pol_cfg, now_ms);
+  if (err != k_ra8_ok) {
+    g_ns_backlight_init_err = err;
+    return;
+  }
+
+  err = display_backlight_set_brightness(&s_ns_backlight,
+                                         (uint8_t)k_display_backlight_default_active_pct);
+  if (err != k_ra8_ok) {
+    g_ns_backlight_init_err = err;
+    return;
+  }
+
+  (void)ra8_nsc_sw_init(0U);
+  (void)ra8_nsc_sw_init(1U);
+
+  g_ns_backlight_init_err = k_ra8_ok;
+  g_ns_backlight_state    = (uint32_t)s_ns_backlight_policy.state;
+  g_ns_backlight_pct      = (uint32_t)s_ns_backlight.brightness_pct;
+  s_ns_backlight_ready    = true;
+}
+
+/**
+ * @brief Pump user button edges and advance the 30s backlight idle policy.
+ * @param[in,out] prev_sw1 Prior sampled SW1 pressed state.
+ * @param[in,out] prev_sw2 Prior sampled SW2 pressed state.
+ */
+RA8_INTERNAL static void internal_ns_backlight_tick(bool* prev_sw1, bool* prev_sw2)
+{
+  if (!s_ns_backlight_ready) {
+    return;
+  }
+
+  bool sw1_now = false;
+  bool sw2_now = false;
+  (void)ra8_nsc_sw_read(0U, &sw1_now);
+  (void)ra8_nsc_sw_read(1U, &sw2_now);
+
+  const bool sw_edge = (sw1_now && !(*prev_sw1)) || (sw2_now && !(*prev_sw2));
+  *prev_sw1          = sw1_now;
+  *prev_sw2          = sw2_now;
+
+  const uint32_t                      now_ms = internal_ns_now_ms();
+  display_backlight_policy_decision_t dec    = {};
+  ra8_err_t                           err    = k_ra8_ok;
+  if (sw_edge || s_backlight_activity_pending) {
+    s_backlight_activity_pending = false;
+    err = display_backlight_policy_activity(&s_ns_backlight_policy, now_ms, &dec);
+  } else {
+    err = display_backlight_policy_step(&s_ns_backlight_policy, now_ms, &dec);
+  }
+
+  if ((err == k_ra8_ok) && (dec.changed != 0U)) {
+    if (display_backlight_apply_decision(&s_ns_backlight, &dec) == k_ra8_ok) {
+      g_ns_backlight_transitions++;
+      g_ns_backlight_state = (uint32_t)dec.state;
+      g_ns_backlight_pct   = (uint32_t)dec.target_pct;
+      (void)ra8_nsc_log_emit("UI", (dec.on != 0U) ? "Backlight: active" : "Backlight: idle off");
+    }
+  }
+}
 
 /**
  * @brief Perform the ThreadX Non-Secure context switch requested by PendSV.
@@ -263,11 +421,15 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   (void)ra8_nsc_log_emit("UI", "UI thread started");
+  internal_ns_backlight_setup(internal_ns_now_ms());
 
-  uint32_t frame = 0U;
+  uint32_t frame    = 0U;
+  bool     prev_sw1 = false;
+  bool     prev_sw2 = false;
   for (;;) {
     frame++;
     g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
+    internal_ns_backlight_tick(&prev_sw1, &prev_sw2);
     /* Prove liveness to the watchdog supervisor once per frame. */
     (void)ra8_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {

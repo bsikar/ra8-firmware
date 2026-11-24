@@ -58,6 +58,24 @@ pub fn build(b: *std.Build) void {
     // soft-float and would shadow newlib's hard-float one (RA8FW-943).
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.link_function_sections = true;
+    library.link_data_sections = true;
+
+    // The backlight module is a separate member of the same archive, so a link
+    // naming display_backlight_* does not pull in GLCDC/IT8951 HAL symbols.
+    const backlight_obj = b.addObject(.{
+        .name = "ra8_display_pal_backlight",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ra8_display_pal_backlight_abi.zig"),
+            .target = target,
+            .optimize = optimize,
+            .pic = true,
+        }),
+    });
+    backlight_obj.link_function_sections = true;
+    backlight_obj.link_data_sections = true;
+    library.root_module.addObject(backlight_obj);
+
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
@@ -114,13 +132,43 @@ pub fn build(b: *std.Build) void {
     eink_test_module.addImport("implementation", eink_module);
     const eink_tests = b.addTest(.{ .root_module = eink_test_module });
 
+    const backlight_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/backlight.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const backlight_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/backlight_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    backlight_test_module.addImport("backlight", backlight_module);
+    const backlight_tests = b.addTest(.{ .root_module = backlight_test_module });
+
+    const backlight_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_display_pal_backlight_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const backlight_abi_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/backlight_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    backlight_abi_test_module.addImport("backlight_abi", backlight_abi_module);
+    const backlight_abi_tests = b.addTest(.{ .root_module = backlight_abi_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_lcd_tests = b.addRunArtifact(lcd_tests);
     const run_eink_tests = b.addRunArtifact(eink_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_backlight_tests = b.addRunArtifact(backlight_tests);
+    const run_backlight_abi_tests = b.addRunArtifact(backlight_abi_tests);
     const test_step = b.step("test", "Run Zig ra8_display_pal tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_lcd_tests.step);
     test_step.dependOn(&run_eink_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_backlight_tests.step);
+    test_step.dependOn(&run_backlight_abi_tests.step);
 }

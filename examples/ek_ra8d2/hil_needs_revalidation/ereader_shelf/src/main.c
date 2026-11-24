@@ -35,6 +35,7 @@
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_backlight.h"
 #include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_gfx.h"
@@ -699,18 +700,40 @@ static void sh_demo_step(uint32_t step)
  * @note Not thread-safe; the single application superloop.
  * @since 0.1.0
  */
+static ra8_err_t internal_sh_backlight_set_cb(void* ctx, uint8_t on)
+{
+  (void)ctx;
+  return ra8_board_backlight_set(on != 0U);
+}
+
 static void sh_run(void)
 {
   ra8_board_sw_state_t sw1_boot = k_ra8_board_sw_released;
   (void)ra8_board_sw_read(k_ra8_board_sw1, &sw1_boot);
-  uint8_t              prev_touch  = 0U;
-  ra8_board_sw_state_t prev1       = sw1_boot;
-  ra8_board_sw_state_t prev2       = k_ra8_board_sw_released;
-  bool                 demo        = (sw1_boot == k_ra8_board_sw_pressed);
-  uint32_t             demo_ticks  = 0U;
-  uint32_t             demo_step   = 0U;
-  uint32_t             idle_ref_ms = ra8_time_ms(); /* timestamp of last activity. */
-  bool                 backlit     = true;          /* backlight currently lit.    */
+  uint8_t                             prev_touch = 0U;
+  ra8_board_sw_state_t                prev1      = sw1_boot;
+  ra8_board_sw_state_t                prev2      = k_ra8_board_sw_released;
+  bool                                demo       = (sw1_boot == k_ra8_board_sw_pressed);
+  uint32_t                            demo_ticks = 0U;
+  uint32_t                            demo_step  = 0U;
+  display_backlight_t                 bl_dev     = {};
+  display_backlight_policy_t          bl_pol     = {};
+  display_backlight_policy_decision_t bl_dec     = {};
+  const display_backlight_cfg_t       bl_cfg     = {
+    .mode       = k_display_backlight_mode_binary,
+    .set_enable = internal_sh_backlight_set_cb,
+    .ctx        = nullptr,
+  };
+  const display_backlight_policy_cfg_t bl_pol_cfg = {
+    .dim_after_ms = 0U,
+    .off_after_ms = (uint32_t)k_sh_idle_dim_ms,
+    .active_pct   = k_display_backlight_default_active_pct,
+    .dimmed_pct   = k_display_backlight_default_active_pct,
+    .supports_dim = 0U,
+  };
+  (void)display_backlight_init(&bl_dev, &bl_cfg);
+  (void)display_backlight_set_brightness(&bl_dev, k_display_backlight_default_active_pct);
+  (void)display_backlight_policy_init(&bl_pol, &bl_pol_cfg, ra8_time_ms());
   sh_wdt_arm_or_halt();
   while (1) {
     (void)ra8_wdt_refresh_for(k_ra8_wdt0); /* heartbeat: loop is alive. */
@@ -722,15 +745,13 @@ static void sh_run(void)
       sh_demo_step(demo_step++);
       sh_present();
     }
+    const uint32_t now = ra8_time_ms();
     if (acted || demo) {
-      idle_ref_ms = ra8_time_ms();
-      if (!backlit) {
-        (void)ra8_board_backlight_set(true);
-        backlit = true;
+      if (display_backlight_policy_activity(&bl_pol, now, &bl_dec) == k_ra8_ok) {
+        (void)display_backlight_apply_decision(&bl_dev, &bl_dec);
       }
-    } else if (backlit && ((ra8_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
-      (void)ra8_board_backlight_set(false);
-      backlit = false;
+    } else if (display_backlight_policy_step(&bl_pol, now, &bl_dec) == k_ra8_ok) {
+      (void)display_backlight_apply_decision(&bl_dev, &bl_dec);
     }
     (void)ra8_delay_ms((uint32_t)k_sh_poll_ms);
   }
