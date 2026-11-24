@@ -874,6 +874,32 @@ bool ra8_dfu_boot_state_valid(const ra8_dfu_boot_state_t* state);
  */
 [[nodiscard]] ra8_err_t ra8_dfu_boot_state_erase_all(void);
 
+/**
+ * @brief Confirm the currently running trial slot after application self-tests pass.
+ *
+ * @details
+ * Payload-side confirmation API called from SRAM (`k_ra8_dfu_run_base`) once
+ * post-boot self-tests succeed. Reads the dual-copy ::ra8_dfu_boot_state_t
+ * record, verifies it tracks a concrete slot (`A` or `B`), and writes an
+ * updated ping-pong copy with `confirmed = 1` so subsequent resets stop
+ * consuming trial attempts and keep the slot permanently active. Idempotent when
+ * the slot is already confirmed (`k_ra8_ok` with no extra MRAM write). Accepts
+ * `tries_left == 0` so an image running its final allowed attempt can still
+ * confirm itself before the next reset.
+ *
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok                Slot confirmed (or already confirmed).
+ * @retval k_ra8_err_not_found     No valid boot-state record present.
+ * @retval k_ra8_err_invalid_state Record does not name Slot A or Slot B.
+ * @retval k_ra8_err_hw_error      MRAM controller reported a program error.
+ *
+ * @pre Caller executes from SRAM on target (true for all copy-to-run payloads at
+ *      ::k_ra8_dfu_run_base) and hardware MRAM controller clocks are active.
+ * @post On `k_ra8_ok`, `ra8_dfu_boot_state_read` observes `confirmed == 1`.
+ * @note Idempotent; safe to call once per boot after self-test passes. @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_confirm(void);
+
 #ifdef __cplusplus
 }
 #endif

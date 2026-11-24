@@ -42,7 +42,12 @@ const ShadowFlash = struct {
     }
 };
 
-fn readCopies() struct { copy0: boot_state.Record, copy1: boot_state.Record } {
+const CopyPair = struct {
+    copy0: boot_state.Record,
+    copy1: boot_state.Record,
+};
+
+fn readCopies() CopyPair {
     if (off_target) {
         const c0: *const boot_state.Record = @ptrCast(&shadow_copies[0]);
         const c1: *const boot_state.Record = @ptrCast(&shadow_copies[1]);
@@ -119,14 +124,13 @@ export fn ra8_dfu_boot_state_read(out_ptr: ?*boot_state.Record) u16 {
     return err.Err.ok.raw();
 }
 
-export fn ra8_dfu_boot_state_write(
-    trial_slot: u8,
+fn commitState(
+    copies: CopyPair,
+    s: slot.Slot,
     tries_left: u8,
     confirmed: bool,
     slot_seq: u32,
 ) u16 {
-    const s = parseSlot(trial_slot) orelse return err.Err.invalid_arg.raw();
-    const copies = readCopies();
     if (off_target) {
         _ = boot_state.writeRecord(
             ShadowFlash{},
@@ -145,6 +149,35 @@ export fn ra8_dfu_boot_state_write(
     };
     const addr = boot_state.copyAddr(plan.copy_index) catch return err.Err.invalid_arg.raw();
     return commitTargetMram(addr, std.mem.asBytes(&rec));
+}
+
+export fn ra8_dfu_boot_state_write(
+    trial_slot: u8,
+    tries_left: u8,
+    confirmed: bool,
+    slot_seq: u32,
+) u16 {
+    const s = parseSlot(trial_slot) orelse return err.Err.invalid_arg.raw();
+    return commitState(readCopies(), s, tries_left, confirmed, slot_seq);
+}
+
+export fn ra8_dfu_confirm() u16 {
+    const copies = readCopies();
+    const confirm_plan = boot_state.planConfirm(&copies.copy0, &copies.copy1) catch |e| {
+        return switch (e) {
+            error.NotFound => err.Err.not_found.raw(),
+            error.InvalidState => err.Err.invalid_state.raw(),
+        };
+    };
+    if (confirm_plan.outcome == .already_confirmed) return err.Err.ok.raw();
+    const s = parseSlot(confirm_plan.record.trial_slot) orelse return err.Err.invalid_state.raw();
+    return commitState(
+        copies,
+        s,
+        confirm_plan.record.tries_left,
+        true,
+        confirm_plan.record.slot_seq,
+    );
 }
 
 export fn ra8_dfu_boot_state_erase_all() u16 {

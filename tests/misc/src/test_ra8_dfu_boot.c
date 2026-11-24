@@ -605,6 +605,62 @@ static void test_boot_decide_trial_mcdc(void)
   TEST_END("ra8_dfu: boot_decide_trial trial + revert (MC/DC)");
 }
 
+/**
+ * @brief Payload confirmation API ::ra8_dfu_confirm() and post-confirm boot plan.
+ *
+ * @par MC/DC: not applicable -- sequential error guards, idempotency, and confirm transition.
+ * @pre Host off-target store shadow available.
+ * @post Off-target boot-state shadow left erased.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_dfu_confirm(void)
+{
+  TEST_BEGIN("ra8_dfu: ra8_dfu_confirm() + idempotency");
+
+  priv_dfu_boot_state_reset_store();
+
+  /* Missing record -> k_ra8_err_not_found. */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_dfu_confirm());
+
+  /* Slot none -> k_ra8_err_invalid_state. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_none, 0U, false, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_dfu_confirm());
+
+  /* Unconfirmed Slot B on trial -> confirm sets confirmed = 1 and preserves slot/tries. */
+  priv_dfu_boot_state_reset_store();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 2U, false, 9U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_confirm());
+
+  ra8_dfu_boot_state_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&st));
+  TEST_ASSERT_EQ((uint8_t)k_ra8_dfu_slot_b, st.trial_slot);
+  TEST_ASSERT_EQ(2U, st.tries_left);
+  TEST_ASSERT_EQ(1U, st.confirmed);
+  TEST_ASSERT_EQ(9U, st.slot_seq);
+  const uint32_t seq_after_confirm = st.write_seq;
+
+  /* Repeating ra8_dfu_confirm() is idempotent and does not bump write_seq. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_confirm());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&st));
+  TEST_ASSERT_EQ(seq_after_confirm, st.write_seq);
+
+  /* Last-try boot (tries_left == 0 while unconfirmed) can still confirm before reset. */
+  priv_dfu_boot_state_reset_store();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_a, 0U, false, 5U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_confirm());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&st));
+  TEST_ASSERT_EQ(1U, st.confirmed);
+
+  ra8_dfu_boot_plan_t plan = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 5U, true, 3U, &st, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  priv_dfu_boot_state_reset_store();
+
+  TEST_END("ra8_dfu: ra8_dfu_confirm() + idempotency");
+}
+
 int main(void)
 {
   test_crc32_known_vectors();
@@ -616,5 +672,6 @@ int main(void)
   test_boot_state_pick_mcdc();
   test_boot_state_store_torn_and_corrupt();
   test_boot_decide_trial_mcdc();
+  test_dfu_confirm();
   return 0;
 }
