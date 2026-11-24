@@ -264,7 +264,13 @@ test "threadx_cpu1, the bare CPU1 examples and the Module Manager apps are the Z
     try std.testing.expectEqual(expected.len, zig_entries);
 }
 
-test "only the Module Manager images carry a packed module, each in its own linker script" {
+test "only the Module Manager images carry a packed module via the shared board map + fragment (RA8FW-1273)" {
+    const allocator = std.testing.allocator;
+    const fragment = cpu1.txmModuleFragment(allocator, "libs/ra8_board_ek_ra8d2");
+    defer allocator.free(fragment);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/ld/txm_module_cpu1.ld", fragment);
+    try std.Io.Dir.cwd().access(std.testing.io, fragment, .{});
+
     for (graph.cross_apps) |app| {
         const image = app.cpu1 orelse continue;
         if (image.txm_module == null) continue;
@@ -276,6 +282,15 @@ test "only the Module Manager images carry a packed module, each in its own link
         for (module_apps) |name| known = known or std.mem.eql(u8, app.name, name);
         try std.testing.expect(known);
         try std.testing.expectEqualStrings("linker_script_cpu1.ld", image.linker_script);
+        // None of the six apps keeps a per-app linker_script_cpu1.ld fork;
+        // each resolves the board map plus the shared .txm_module fragment.
+        const local_fork = std.fs.path.join(allocator, &.{ app.dir, image.linker_script }) catch @panic("OOM");
+        defer allocator.free(local_fork);
+        try std.testing.expectError(error.FileNotFound, std.Io.Dir.cwd().access(std.testing.io, local_fork, .{}));
+        const resolved = cpu1.boardLinkerScript(allocator, app.board, image.linker_script);
+        defer allocator.free(resolved);
+        try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld", resolved);
+        try std.Io.Dir.cwd().access(std.testing.io, resolved, .{});
     }
 }
 
