@@ -60,6 +60,12 @@ comptime {
     _ = clock_facade;
     _ = timer_facade;
     _ = pwm_facade;
+    _ = rng_facade;
+    _ = gpio_facade;
+    _ = uart_facade;
+    _ = spi_facade;
+    _ = i2c_facade;
+    _ = dma_facade;
 }
 
 const Err = core.Err;
