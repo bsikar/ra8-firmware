@@ -278,6 +278,21 @@ def _selftest_migrated_zig_archive_provenance() -> list[str]:
         ):
             failures.append("per-core Zig archive provenance not recognized")
 
+        # Hard-float FPU feature suffixes (+fp_armv8d16sp / +fp_armv8d16) live
+        # in the CPU directory segment and must stay recognized as migrated.
+        for fpu_cpu in ("cortex_m85+fp_armv8d16sp", "cortex_m33+fp_armv8d16sp"):
+            fpu_dir = build / "zig" / "ra8_power_profile" / fpu_cpu / "lib"
+            fpu_dir.mkdir(parents=True)
+            (fpu_dir / "libra8_power_profile.a").write_bytes(b"archive")
+            fpu_member = (
+                f"zig/ra8_power_profile/{fpu_cpu}/lib/libra8_power_profile.a(ra8_power_profile.a.o)"
+            )
+            fpu_map = f"Memory Map\n .text.zig 0x02000000 0x10 {fpu_member}\n"
+            if core.parse_map_file(fpu_map, map_dir=build, repo_root=root)[
+                "project_zig_archives"
+            ] != expected:
+                failures.append(f"FPU-suffixed Zig archive provenance not recognized ({fpu_cpu})")
+
         recipe.unlink()
         if core.parse_map_file(map_content, map_dir=build, repo_root=root)["project_zig_archives"]:
             failures.append("Zig archive without a first-party recipe gained approval")
