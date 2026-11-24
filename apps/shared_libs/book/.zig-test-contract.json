@@ -1,0 +1,29 @@
+{
+  "test_roots": [
+    "tests/book_stream_wire_test.zig",
+    "tests/book_chunked_test.zig",
+    "tests/book_chunked_validate_test.zig",
+    "tests/book_stream_test.zig",
+    "tests/book_paged_test.zig",
+    "tests/book_xhtml_test.zig",
+    "tests/book_test.zig"
+  ],
+  "covered_sources": [
+    "src/book.zig",
+    "src/book_chunked.zig",
+    "src/book_chunked_validate.zig",
+    "src/book_paged.zig",
+    "src/book_root.zig",
+    "src/book_stream.zig",
+    "src/book_stream_wire.zig",
+    "src/book_xhtml.zig",
+    "tests/book_chunked_test.zig",
+    "tests/book_chunked_validate_test.zig",
+    "tests/book_paged_test.zig",
+    "tests/book_stream_test.zig",
+    "tests/book_stream_wire_test.zig",
+    "tests/book_test.zig",
+    "tests/book_xhtml_test.zig"
+  ],
+  "minimum_tests": 93
+}

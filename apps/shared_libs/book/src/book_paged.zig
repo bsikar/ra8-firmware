@@ -21,7 +21,7 @@
 //! stays extern to libs/ra8_mem.
 
 const std = @import("std");
-const wire = @import("book_stream_wire.zig");
+pub const wire = @import("book_stream_wire.zig");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint16_t) --------------
 const ra8_err_t = u16;

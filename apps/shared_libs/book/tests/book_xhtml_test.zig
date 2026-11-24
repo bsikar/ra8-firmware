@@ -10,8 +10,8 @@
 //! the two public entry points' gates (null args, chapter bounds).
 
 const std = @import("std");
-const xhtml = @import("book_xhtml.zig");
-const wire = @import("book_stream_wire.zig");
+const xhtml = @import("xhtml");
+const wire = xhtml.wire;
 
 const k_ra8_ok: u16 = 0;
 const k_ra8_err_invalid_arg: u16 = 0x103;
@@ -218,7 +218,7 @@ test "chapter_to_xhtml void elements self-close" {
 }
 
 test "chapter_to_xhtml escapes text and attribute values" {
-    // <span class="a & b">say "hi" <x>&</x></span> — the quote stays literal
+    // <span class="a & b">say "hi" <x>&</x></span> -- the quote stays literal
     // in content but is escaped inside the attribute value.
     const blob = buildBlob(
         &.{ "span", "class", "a & b", "say \"hi\" <x>&", "p" },

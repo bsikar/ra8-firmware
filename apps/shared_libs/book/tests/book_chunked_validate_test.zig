@@ -10,9 +10,9 @@
 //! book_stream.c) is stubbed here with marker semantics.
 
 const std = @import("std");
-const chunked = @import("book_chunked.zig");
-const validate = @import("book_chunked_validate.zig");
-const wire = @import("book_stream_wire.zig");
+const chunked = validate.chunked;
+const validate = @import("validate");
+const wire = validate.wire;
 
 const BookChunked = chunked.BookChunked;
 const BookHeader = wire.BookHeader;

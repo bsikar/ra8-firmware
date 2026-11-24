@@ -1,0 +1,20 @@
+{
+  "test_roots": [
+    "tests/jof_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/jof_abi.zig",
+    "src/standalone_jof_h.zig",
+    "tests/abi_stubs.zig",
+    "tests/jof_abi_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/jof_abi.zig": [
+      "--dep",
+      "jof_h",
+      "-Mroot=src/jof_abi.zig",
+      "-Mjof_h=src/standalone_jof_h.zig"
+    ]
+  },
+  "minimum_tests": 27
+}

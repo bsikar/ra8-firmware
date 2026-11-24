@@ -20,8 +20,8 @@
 //! returned error codes are identical.
 
 const std = @import("std");
-const wire = @import("book_stream_wire.zig");
-const chunked = @import("book_chunked.zig");
+pub const wire = @import("book_stream_wire.zig");
+pub const chunked = @import("book_chunked.zig");
 
 const BookChunked = chunked.BookChunked;
 const BookHeader = wire.BookHeader;

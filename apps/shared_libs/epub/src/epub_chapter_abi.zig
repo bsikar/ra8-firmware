@@ -21,15 +21,15 @@ const std = @import("std");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint16_t) --------------
 const ra8_err_t = u16;
-const k_ra8_ok: ra8_err_t = 0;
-const k_ra8_err_no_mem: ra8_err_t = 0x102;
-const k_ra8_err_invalid_arg: ra8_err_t = 0x103;
-const k_ra8_err_invalid_size: ra8_err_t = 0x105;
-const k_ra8_err_not_found: ra8_err_t = 0x106;
-const k_ra8_err_not_initialized: ra8_err_t = 0x10F;
-const k_ra8_err_out_of_range: ra8_err_t = 0x208;
-const k_ra8_err_validation_failed: ra8_err_t = 0x501;
-const k_ra8_err_null_ptr: ra8_err_t = 0x504;
+pub const k_ra8_ok: ra8_err_t = 0;
+pub const k_ra8_err_no_mem: ra8_err_t = 0x102;
+pub const k_ra8_err_invalid_arg: ra8_err_t = 0x103;
+pub const k_ra8_err_invalid_size: ra8_err_t = 0x105;
+pub const k_ra8_err_not_found: ra8_err_t = 0x106;
+pub const k_ra8_err_not_initialized: ra8_err_t = 0x10F;
+pub const k_ra8_err_out_of_range: ra8_err_t = 0x208;
+pub const k_ra8_err_validation_failed: ra8_err_t = 0x501;
+pub const k_ra8_err_null_ptr: ra8_err_t = 0x504;
 
 // ---- epub.h limits ---------------------------------------------------------
 const k_epub_max_chapters = 64;
@@ -43,9 +43,9 @@ const k_epub_media_len = 48;
 const k_epub_zip_archive_bytes = 256;
 
 // ---- the book (epub.h epub_book_t, exact C layout; mirrors the open TU) ----
-const epub_toc_entry_t = extern struct { title: [k_epub_meta_len]u8, href: [k_epub_max_path_len]u8, depth: u8 };
+pub const epub_toc_entry_t = extern struct { title: [k_epub_meta_len]u8, href: [k_epub_max_path_len]u8, depth: u8 };
 const epub_manifest_item_t = extern struct { id: [k_epub_id_len]u8, href: [k_epub_max_path_len]u8, media_type: [k_epub_media_len]u8 };
-const epub_metadata_t = extern struct {
+pub const epub_metadata_t = extern struct {
     title: ?[*:0]const u8,
     author: ?[*:0]const u8,
     language: ?[*:0]const u8,
@@ -170,31 +170,8 @@ extern fn stbtt_MakeCodepointBitmap(info: *const stbtt_fontinfo, output: [*]u8, 
 extern fn ra8_stbtt_sfnt_dir_in_bounds(data: [*]const u8, len: usize, fontstart: c_uint) callconv(.c) bool;
 
 // Test-only knobs, defined by teststub/chapter_test_stubs.c.
-extern var teststub_locate_miss_prefixed: c_int;
-extern var teststub_fail_stat: c_int;
-extern var teststub_guard_result: c_int;
-extern var teststub_fail_extract: c_int;
-extern var teststub_entry_uncomp: u64;
-extern var teststub_font_offset: c_int;
-extern var teststub_fail_sfnt_dir: c_int;
-extern var teststub_fail_font_init: c_int;
-extern var teststub_box_x0: c_int;
-extern var teststub_box_y0: c_int;
-extern var teststub_box_x1: c_int;
-extern var teststub_box_y1: c_int;
 
 // Test-only capture accessors, defined by teststub/chapter_test_stubs.c.
-extern fn teststub_located_prefixed() [*:0]const u8;
-extern fn teststub_located_bare() [*:0]const u8;
-extern fn teststub_extract_len() usize;
-extern fn teststub_extract_buf() [*]const u8;
-extern fn teststub_locate_calls() c_int;
-extern fn teststub_scale() f32;
-extern fn teststub_make_stride() c_int;
-extern fn teststub_make_codepoint() c_int;
-extern fn teststub_reset() void;
-
-const testing = std.testing;
 
 // ---- C-string helpers -------------------------------------------------------
 fn c_strlen(p: [*]const u8) usize {
@@ -212,7 +189,7 @@ export fn priv_epub_book_not_ready(in_use: u8, zip_archive_active: u8) callconv(
     return @intFromBool((in_use == 0) or (zip_archive_active == 0));
 }
 
-export fn priv_epub_join_path(dir: ?[*]const u8, name: ?[*]const u8, dst: ?[*]u8, cap: usize) callconv(.c) void {
+pub export fn priv_epub_join_path(dir: ?[*]const u8, name: ?[*]const u8, dst: ?[*]u8, cap: usize) callconv(.c) void {
     if ((dst == null) or (cap == 0)) return;
     dst.?[0] = 0;
     var off: usize = 0;
@@ -316,7 +293,7 @@ fn internal_render_into(font: *const stbtt_fontinfo, codepoint: i32, font_size: 
 }
 
 // ---- public API ----------------------------------------------------------------
-export fn epub_get_chapter_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
+pub export fn epub_get_chapter_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
     if ((book == null) or (out_count == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -327,7 +304,7 @@ export fn epub_get_chapter_count(book: ?*const epub_book_t, out_count: ?*u16) ca
     return k_ra8_ok;
 }
 
-export fn epub_load_chapter(book: ?*epub_book_t, idx: u16, out_xhtml: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
+pub export fn epub_load_chapter(book: ?*epub_book_t, idx: u16, out_xhtml: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
     if ((book == null) or (out_xhtml == null) or (got_len == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -349,7 +326,7 @@ export fn epub_load_chapter(book: ?*epub_book_t, idx: u16, out_xhtml: ?[*]u8, ma
     return internal_locate_extract(zip, &full_path, &book.?.chapter_paths[idx], out_xhtml.?, max_len, got_len.?);
 }
 
-export fn epub_get_toc_kind(book: ?*const epub_book_t, out_kind: ?*u8) callconv(.c) ra8_err_t {
+pub export fn epub_get_toc_kind(book: ?*const epub_book_t, out_kind: ?*u8) callconv(.c) ra8_err_t {
     if ((book == null) or (out_kind == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -360,7 +337,7 @@ export fn epub_get_toc_kind(book: ?*const epub_book_t, out_kind: ?*u8) callconv(
     return k_ra8_ok;
 }
 
-export fn epub_get_toc_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
+pub export fn epub_get_toc_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
     if ((book == null) or (out_count == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -371,7 +348,7 @@ export fn epub_get_toc_count(book: ?*const epub_book_t, out_count: ?*u16) callco
     return k_ra8_ok;
 }
 
-export fn epub_get_toc_entry(book: ?*const epub_book_t, idx: u16, out_entry: ?*epub_toc_entry_t) callconv(.c) ra8_err_t {
+pub export fn epub_get_toc_entry(book: ?*const epub_book_t, idx: u16, out_entry: ?*epub_toc_entry_t) callconv(.c) ra8_err_t {
     if ((book == null) or (out_entry == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -385,7 +362,7 @@ export fn epub_get_toc_entry(book: ?*const epub_book_t, idx: u16, out_entry: ?*e
     return k_ra8_ok;
 }
 
-export fn epub_toc_entry_to_chapter(book: ?*const epub_book_t, toc_idx: u16, out_chapter_idx: ?*u16) callconv(.c) ra8_err_t {
+pub export fn epub_toc_entry_to_chapter(book: ?*const epub_book_t, toc_idx: u16, out_chapter_idx: ?*u16) callconv(.c) ra8_err_t {
     if ((book == null) or (out_chapter_idx == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -419,7 +396,7 @@ export fn epub_toc_entry_to_chapter(book: ?*const epub_book_t, toc_idx: u16, out
     return k_ra8_err_not_found;
 }
 
-export fn epub_get_metadata(book: ?*const epub_book_t, out_meta: ?*epub_metadata_t) callconv(.c) ra8_err_t {
+pub export fn epub_get_metadata(book: ?*const epub_book_t, out_meta: ?*epub_metadata_t) callconv(.c) ra8_err_t {
     if ((book == null) or (out_meta == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -433,7 +410,7 @@ export fn epub_get_metadata(book: ?*const epub_book_t, out_meta: ?*epub_metadata
     return k_ra8_ok;
 }
 
-export fn epub_get_cover_image(book: ?*epub_book_t, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
+pub export fn epub_get_cover_image(book: ?*epub_book_t, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
     if ((book == null) or (out_buf == null) or (got_len == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -455,7 +432,7 @@ export fn epub_get_cover_image(book: ?*epub_book_t, out_buf: ?[*]u8, max_len: us
     return internal_locate_extract(zip, &full_path, &book.?.cover_path, out_buf.?, max_len, got_len.?);
 }
 
-export fn epub_get_resource(book: ?*epub_book_t, path: ?[*:0]const u8, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
+pub export fn epub_get_resource(book: ?*epub_book_t, path: ?[*:0]const u8, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
     if ((book == null) or (path == null) or (out_buf == null) or (got_len == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -474,7 +451,7 @@ export fn epub_get_resource(book: ?*epub_book_t, path: ?[*:0]const u8, out_buf: 
     return internal_locate_extract(zip, &full_path, path.?, out_buf.?, max_len, got_len.?);
 }
 
-export fn epub_get_embedded_font_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
+pub export fn epub_get_embedded_font_count(book: ?*const epub_book_t, out_count: ?*u16) callconv(.c) ra8_err_t {
     if ((book == null) or (out_count == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -485,7 +462,7 @@ export fn epub_get_embedded_font_count(book: ?*const epub_book_t, out_count: ?*u
     return k_ra8_ok;
 }
 
-export fn epub_manifest_count(book: ?*const epub_book_t) callconv(.c) u16 {
+pub export fn epub_manifest_count(book: ?*const epub_book_t) callconv(.c) u16 {
     if (book == null) {
         return 0;
     }
@@ -495,7 +472,7 @@ export fn epub_manifest_count(book: ?*const epub_book_t) callconv(.c) u16 {
     return book.?.manifest_count;
 }
 
-export fn epub_manifest_item(book: ?*const epub_book_t, index: u16) callconv(.c) ?*const epub_manifest_item_t {
+pub export fn epub_manifest_item(book: ?*const epub_book_t, index: u16) callconv(.c) ?*const epub_manifest_item_t {
     if ((book == null) or (book.?.in_use == 0)) {
         return null;
     }
@@ -505,7 +482,7 @@ export fn epub_manifest_item(book: ?*const epub_book_t, index: u16) callconv(.c)
     return &book.?.manifest[index];
 }
 
-export fn epub_get_embedded_font(book: ?*epub_book_t, idx: u16, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
+pub export fn epub_get_embedded_font(book: ?*epub_book_t, idx: u16, out_buf: ?[*]u8, max_len: usize, got_len: ?*usize) callconv(.c) ra8_err_t {
     if ((book == null) or (out_buf == null) or (got_len == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -529,7 +506,7 @@ export fn epub_get_embedded_font(book: ?*epub_book_t, idx: u16, out_buf: ?[*]u8,
 
 const k_epub_min_font_bytes = 16;
 
-export fn epub_set_font(book: ?*epub_book_t, font_data: ?[*]const u8, font_size: usize) callconv(.c) ra8_err_t {
+pub export fn epub_set_font(book: ?*epub_book_t, font_data: ?[*]const u8, font_size: usize) callconv(.c) ra8_err_t {
     if ((book == null) or (font_data == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -544,7 +521,7 @@ export fn epub_set_font(book: ?*epub_book_t, font_data: ?[*]const u8, font_size:
     return k_ra8_ok;
 }
 
-export fn epub_render_glyph(book: ?*epub_book_t, codepoint: i32, font_size: f32, out_bitmap: ?[*]u8, max_pixels: usize, out_w: ?*u32, out_h: ?*u32) callconv(.c) ra8_err_t {
+pub export fn epub_render_glyph(book: ?*epub_book_t, codepoint: i32, font_size: f32, out_bitmap: ?[*]u8, max_pixels: usize, out_w: ?*u32, out_h: ?*u32) callconv(.c) ra8_err_t {
     if ((book == null) or (out_bitmap == null) or (out_w == null) or (out_h == null)) {
         return k_ra8_err_null_ptr;
     }
@@ -568,254 +545,3 @@ export fn epub_render_glyph(book: ?*epub_book_t, codepoint: i32, font_size: f32,
 // ---------------------------------------------------------------------------
 // Tests (stub-driven: no real archive, no real font).
 // ---------------------------------------------------------------------------
-
-fn setStr(comptime N: usize, buf: *[N]u8, s: []const u8) void {
-    @memcpy(buf[0..s.len], s);
-    buf[s.len] = 0;
-}
-
-fn freshBook() epub_book_t {
-    teststub_reset();
-    var book = std.mem.zeroes(epub_book_t);
-    book.in_use = 1;
-    book.zip_archive_active = 1;
-    book.chapter_count = 2;
-    setStr(192, &book.chapter_paths[0], "ch1.xhtml");
-    setStr(192, &book.chapter_paths[1], "ch2.xhtml");
-    setStr(192, &book.opf_dir, "oebps/");
-    setStr(192, &book.cover_path, "cover.png");
-    setStr(192, &book.embedded_font_paths[0], "fonts/a.ttf");
-    book.embedded_font_count = 1;
-    book.manifest_count = 1;
-    setStr(64, &book.manifest[0].id, "id1");
-    setStr(192, &book.manifest[0].href, "ch1.xhtml");
-    book.toc_count = 1;
-    setStr(192, &book.toc[0].href, "ch1.xhtml#sec2");
-    book.toc_kind = 2;
-    return book;
-}
-
-fn freshBuf() [256]u8 {
-    return @splat(0);
-}
-
-test "join_path concatenates dir and name" {
-    var out: [32]u8 = undefined;
-    priv_epub_join_path("oebps/", "ch1.xhtml", &out, out.len);
-    try testing.expectEqualStrings("oebps/ch1.xhtml", std.mem.sliceTo(&out, 0));
-}
-
-test "join_path truncates to cap-1 and NUL-terminates" {
-    var out: [8]u8 = undefined;
-    priv_epub_join_path("oebps/", "ch1.xhtml", &out, out.len);
-    try testing.expectEqualStrings("oebps/c", std.mem.sliceTo(&out, 0));
-}
-
-test "join_path with null dir writes name only" {
-    var out: [16]u8 = undefined;
-    priv_epub_join_path(null, "x.html", &out, out.len);
-    try testing.expectEqualStrings("x.html", std.mem.sliceTo(&out, 0));
-}
-
-test "chapter_count ok, null and not-initialized paths" {
-    var book = freshBook();
-    var n: u16 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_get_chapter_count(&book, &n));
-    try testing.expectEqual(@as(u16, 2), n);
-    try testing.expectEqual(k_ra8_err_null_ptr, epub_get_chapter_count(null, &n));
-    book.in_use = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, epub_get_chapter_count(&book, &n));
-}
-
-test "load_chapter happy path joins opf_dir, extracts and sets got_len" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_entry_uncomp = 5;
-    try testing.expectEqual(k_ra8_ok, epub_load_chapter(&book, 0, &buf, buf.len, &got));
-    try testing.expectEqualStrings("oebps/ch1.xhtml", std.mem.sliceTo(teststub_located_prefixed(), 0));
-    try testing.expectEqual(@as(usize, 5), got);
-    try testing.expectEqual(@as(usize, 5), teststub_extract_len());
-    try testing.expectEqual(@as(c_int, 1), teststub_locate_calls());
-}
-
-test "load_chapter falls back to the bare path on a prefixed miss" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_locate_miss_prefixed = 1;
-    defer teststub_locate_miss_prefixed = 0;
-    try testing.expectEqual(k_ra8_ok, epub_load_chapter(&book, 1, &buf, buf.len, &got));
-    try testing.expectEqualStrings("ch2.xhtml", std.mem.sliceTo(teststub_located_bare(), 0));
-    try testing.expectEqual(@as(c_int, 2), teststub_locate_calls());
-}
-
-test "load_chapter rejects a not-ready book, zero max_len and an out-of-range index" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 9;
-    book.zip_archive_active = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, epub_load_chapter(&book, 0, &buf, buf.len, &got));
-    try testing.expectEqual(@as(usize, 0), got);
-    book.zip_archive_active = 1;
-    try testing.expectEqual(k_ra8_err_invalid_size, epub_load_chapter(&book, 0, &buf, 0, &got));
-    try testing.expectEqual(k_ra8_err_out_of_range, epub_load_chapter(&book, 2, &buf, buf.len, &got));
-    try testing.expectEqual(k_ra8_err_null_ptr, epub_load_chapter(&book, 0, null, buf.len, &got));
-}
-
-test "load_chapter propagates the guard verdict before inflation" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_guard_result = 0x501;
-    defer teststub_guard_result = 0;
-    try testing.expectEqual(k_ra8_err_validation_failed, epub_load_chapter(&book, 0, &buf, buf.len, &got));
-    try testing.expectEqual(@as(usize, 0), got);
-}
-
-test "load_chapter rejects an entry larger than the caller buffer" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_entry_uncomp = 1000;
-    defer teststub_entry_uncomp = 16;
-    try testing.expectEqual(k_ra8_err_no_mem, epub_load_chapter(&book, 0, &buf, buf.len, &got));
-}
-
-test "load_chapter maps an extract failure to validation_failed" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_fail_extract = 1;
-    defer teststub_fail_extract = 0;
-    try testing.expectEqual(k_ra8_err_validation_failed, epub_load_chapter(&book, 0, &buf, buf.len, &got));
-}
-
-test "toc accessors: kind, count, entry and out-of-range" {
-    var book = freshBook();
-    var kind: u8 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_get_toc_kind(&book, &kind));
-    try testing.expectEqual(@as(u8, 2), kind);
-    var n: u16 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_get_toc_count(&book, &n));
-    try testing.expectEqual(@as(u16, 1), n);
-    var entry: epub_toc_entry_t = undefined;
-    try testing.expectEqual(k_ra8_ok, epub_get_toc_entry(&book, 0, &entry));
-    try testing.expectEqualStrings("ch1.xhtml#sec2", std.mem.sliceTo(&entry.href, 0));
-    try testing.expectEqual(k_ra8_err_out_of_range, epub_get_toc_entry(&book, 1, &entry));
-}
-
-test "toc_entry_to_chapter strips the fragment and finds the spine index" {
-    var book = freshBook();
-    var idx: u16 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_toc_entry_to_chapter(&book, 0, &idx));
-    try testing.expectEqual(@as(u16, 0), idx);
-    setStr(192, &book.toc[0].href, "missing.xhtml");
-    try testing.expectEqual(k_ra8_err_not_found, epub_toc_entry_to_chapter(&book, 0, &idx));
-    try testing.expectEqual(k_ra8_err_out_of_range, epub_toc_entry_to_chapter(&book, 1, &idx));
-}
-
-test "metadata returns pointers into the book" {
-    var book = freshBook();
-    setStr(128, &book.title, "A Book");
-    setStr(128, &book.author, "An Author");
-    var meta: epub_metadata_t = undefined;
-    try testing.expectEqual(k_ra8_ok, epub_get_metadata(&book, &meta));
-    try testing.expectEqualStrings("A Book", std.mem.sliceTo(meta.title.?, 0));
-    try testing.expectEqualStrings("An Author", std.mem.sliceTo(meta.author.?, 0));
-    book.in_use = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, epub_get_metadata(&book, &meta));
-}
-
-test "cover_image: empty cover path is not-found, real path extracts" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_entry_uncomp = 32;
-    try testing.expectEqual(k_ra8_ok, epub_get_cover_image(&book, &buf, buf.len, &got));
-    try testing.expectEqual(@as(usize, 32), got);
-    book.cover_path[0] = 0;
-    try testing.expectEqual(k_ra8_err_not_found, epub_get_cover_image(&book, &buf, buf.len, &got));
-}
-
-test "resource extracts by the caller path" {
-    var book = freshBook();
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_entry_uncomp = 9;
-    try testing.expectEqual(k_ra8_ok, epub_get_resource(&book, "css/main.css", &buf, buf.len, &got));
-    try testing.expectEqualStrings("oebps/css/main.css", std.mem.sliceTo(teststub_located_prefixed(), 0));
-    try testing.expectEqual(k_ra8_err_invalid_size, epub_get_resource(&book, "css/main.css", &buf, 0, &got));
-}
-
-test "manifest accessors: count, item pointer, not-ready and out-of-range" {
-    var book = freshBook();
-    try testing.expectEqual(@as(u16, 1), epub_manifest_count(&book));
-    const item = epub_manifest_item(&book, 0).?;
-    try testing.expectEqualStrings("id1", std.mem.sliceTo(&item.id, 0));
-    try testing.expect(epub_manifest_item(&book, 1) == null);
-    book.in_use = 0;
-    try testing.expectEqual(@as(u16, 0), epub_manifest_count(&book));
-    try testing.expect(epub_manifest_item(&book, 0) == null);
-}
-
-test "embedded font: count, extract and out-of-range" {
-    var book = freshBook();
-    var n: u16 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_get_embedded_font_count(&book, &n));
-    try testing.expectEqual(@as(u16, 1), n);
-    var buf = freshBuf();
-    var got: usize = 0;
-    teststub_entry_uncomp = 128;
-    try testing.expectEqual(k_ra8_ok, epub_get_embedded_font(&book, 0, &buf, buf.len, &got));
-    try testing.expectEqual(@as(usize, 128), got);
-    try testing.expectEqual(k_ra8_err_out_of_range, epub_get_embedded_font(&book, 1, &buf, buf.len, &got));
-}
-
-test "set_font rejects a tiny blob and accepts a real one" {
-    var book = freshBook();
-    var blob = freshBuf();
-    blob[0] = 0x00;
-    try testing.expectEqual(k_ra8_err_invalid_size, epub_set_font(&book, &blob, 8));
-    try testing.expectEqual(k_ra8_ok, epub_set_font(&book, &blob, blob.len));
-    try testing.expect(book.font_data != null);
-    try testing.expectEqual(@as(usize, 256), book.font_size);
-    book.in_use = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, epub_set_font(&book, &blob, blob.len));
-}
-
-test "render_glyph: not-init, bad size, sfnt-dir and reversed-box rejects" {
-    var book = freshBook();
-    var blob = freshBuf();
-    var bmp = freshBuf();
-    var w: u32 = 0;
-    var h: u32 = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, epub_render_glyph(&book, 65, 12, &bmp, bmp.len, &w, &h));
-    try testing.expectEqual(@as(u32, 0), w);
-    try testing.expectEqual(k_ra8_ok, epub_set_font(&book, &blob, blob.len));
-    try testing.expectEqual(k_ra8_err_invalid_arg, epub_render_glyph(&book, 65, 0, &bmp, bmp.len, &w, &h));
-    teststub_fail_sfnt_dir = 1;
-    try testing.expectEqual(k_ra8_err_validation_failed, epub_render_glyph(&book, 65, 12, &bmp, bmp.len, &w, &h));
-    teststub_fail_sfnt_dir = 0;
-    teststub_box_x0 = 4;
-    teststub_box_x1 = 2;
-    try testing.expectEqual(k_ra8_err_validation_failed, epub_render_glyph(&book, 65, 12, &bmp, bmp.len, &w, &h));
-    teststub_box_x0 = 0;
-    teststub_box_x1 = 8;
-}
-
-test "render_glyph rejects a bitmap over the pixel budget and renders under it" {
-    var book = freshBook();
-    var blob = freshBuf();
-    var bmp = freshBuf();
-    var w: u32 = 0;
-    var h: u32 = 0;
-    try testing.expectEqual(k_ra8_ok, epub_set_font(&book, &blob, blob.len));
-    try testing.expectEqual(k_ra8_err_no_mem, epub_render_glyph(&book, 65, 12, &bmp, 7, &w, &h));
-    try testing.expectEqual(k_ra8_ok, epub_render_glyph(&book, 65, 12, &bmp, bmp.len, &w, &h));
-    try testing.expectEqual(@as(u32, 8), w);
-    try testing.expectEqual(@as(u32, 16), h);
-    try testing.expectEqual(@as(c_int, 8), teststub_make_stride());
-    try testing.expectEqual(@as(c_int, 65), teststub_make_codepoint());
-    try testing.expect(teststub_scale() > 0.0);
-}

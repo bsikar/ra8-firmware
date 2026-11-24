@@ -7,7 +7,7 @@
 //! layout walk, exact-read guard and the string-boundary checks.
 
 const std = @import("std");
-const wire = @import("book_stream_wire.zig");
+const wire = @import("wire");
 
 const StreamValidate = wire.StreamValidate;
 const BookHeader = wire.BookHeader;

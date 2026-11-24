@@ -16,5 +16,6 @@
         "build.zig.zon",
         "inc",
         "src",
+        "tests",
     },
 }

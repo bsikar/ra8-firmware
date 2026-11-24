@@ -16,9 +16,12 @@
 //! epub core entry points.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -70,28 +73,46 @@ pub fn build(b: *std.Build) void {
     installStaticLib(b, open_library);
 
     const test_step = b.step("test", "Run Zig epub guard, fs-bridge and open tests");
-    const test_module = b.createModule(.{
+    const test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_module.addImport("epub_abi", test_module_sut);
     test_module.addCSourceFile(.{ .file = b.path("teststub/zip_guard_test_stubs.c"), .flags = &.{"-std=c23"} });
     const epub_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(epub_test).step);
 
-    const fs_test_module = b.createModule(.{
+    const fs_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_fs_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const fs_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_fs_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    fs_test_module.addImport("epub_fs_abi", fs_test_module_sut);
     fs_test_module.addCSourceFile(.{ .file = b.path("teststub/fs_bridge_test_stubs.c"), .flags = &.{"-std=c23"} });
     const fs_test = b.addTest(.{ .root_module = fs_test_module });
     test_step.dependOn(&b.addRunArtifact(fs_test).step);
-    const open_test_module = b.createModule(.{
+    const open_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_open_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const open_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_open_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    open_test_module.addImport("epub_open_abi", open_test_module_sut);
     open_test_module.addCSourceFile(.{ .file = b.path("teststub/open_test_stubs.c"), .flags = &.{"-std=c23"} });
     const open_test = b.addTest(.{ .root_module = open_test_module });
     test_step.dependOn(&b.addRunArtifact(open_test).step);
@@ -113,11 +134,17 @@ pub fn build(b: *std.Build) void {
     });
     installStaticLib(b, chapter_library);
 
-    const chapter_test_module = b.createModule(.{
+    const chapter_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_chapter_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const chapter_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_chapter_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    chapter_test_module.addImport("epub_chapter_abi", chapter_test_module_sut);
     chapter_test_module.addCSourceFile(.{ .file = b.path("teststub/chapter_test_stubs.c"), .flags = &.{"-std=c23"} });
     const chapter_test = b.addTest(.{ .root_module = chapter_test_module });
     test_step.dependOn(&b.addRunArtifact(chapter_test).step);
@@ -139,11 +166,17 @@ pub fn build(b: *std.Build) void {
     });
     installStaticLib(b, entry_library);
 
-    const entry_test_module = b.createModule(.{
+    const entry_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_entry_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const entry_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_entry_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    entry_test_module.addImport("epub_entry_abi", entry_test_module_sut);
     entry_test_module.addCSourceFile(.{ .file = b.path("teststub/entry_test_stubs.c"), .flags = &.{"-std=c23"} });
     const entry_test = b.addTest(.{ .root_module = entry_test_module });
     test_step.dependOn(&b.addRunArtifact(entry_test).step);
@@ -169,11 +202,17 @@ pub fn build(b: *std.Build) void {
     // The shim test links the real ra8_xml reader and decoder, so the tests
     // replay true XML documents end to end rather than standing in for the
     // parser.
-    const xml_shim_test_module = b.createModule(.{
+    const xml_shim_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_xml_shim_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const xml_shim_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_xml_shim_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    xml_shim_test_module.addImport("epub_xml_shim_abi", xml_shim_test_module_sut);
     const xml_module = b.createModule(.{
         .root_source_file = b.path("../xml/src/xml_abi.zig"),
         .target = target,
@@ -211,11 +250,17 @@ pub fn build(b: *std.Build) void {
 
     // The TOC test links the real ra8_xml reader and the real shim helpers,
     // so the tests replay true NCX and nav documents end to end.
-    const toc_test_module = b.createModule(.{
+    const toc_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_xml_toc_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const toc_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_xml_toc_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    toc_test_module.addImport("epub_xml_toc_abi", toc_test_module_sut);
     const toc_xml_module = b.createModule(.{
         .root_source_file = b.path("../xml/src/xml_abi.zig"),
         .target = target,
@@ -264,11 +309,17 @@ pub fn build(b: *std.Build) void {
 
     // The allocator test needs no stand-ins: the TU has no externs, so the
     // tests drive a real workspace end to end.
-    const miniz_test_module = b.createModule(.{
+    const miniz_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_miniz_alloc_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const miniz_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_miniz_alloc_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    miniz_test_module.addImport("epub_miniz_alloc_abi", miniz_test_module_sut);
     const miniz_test = b.addTest(.{ .root_module = miniz_test_module });
     test_step.dependOn(&b.addRunArtifact(miniz_test).step);
 
@@ -291,11 +342,17 @@ pub fn build(b: *std.Build) void {
     });
     installStaticLib(b, img_import_library);
 
-    const img_import_test_module = b.createModule(.{
+    const img_import_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_img_import_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const img_import_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_img_import_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    img_import_test_module.addImport("epub_img_import_abi", img_import_test_module_sut);
     img_import_test_module.addCSourceFile(.{ .file = b.path("teststub/img_import_test_stubs.c"), .flags = &.{"-std=c23"} });
     const img_import_test = b.addTest(.{ .root_module = img_import_test_module });
     test_step.dependOn(&b.addRunArtifact(img_import_test).step);
@@ -320,11 +377,17 @@ pub fn build(b: *std.Build) void {
     });
     installStaticLib(b, img_tiles_library);
 
-    const img_tiles_test_module = b.createModule(.{
+    const img_tiles_test_module_sut = b.createModule(.{
         .root_source_file = b.path("src/epub_img_tiles_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const img_tiles_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/epub_img_tiles_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    img_tiles_test_module.addImport("epub_img_tiles_abi", img_tiles_test_module_sut);
     img_tiles_test_module.addCSourceFile(.{ .file = b.path("teststub/tiles_test_stubs.c"), .flags = &.{"-std=c23"} });
     const img_tiles_test = b.addTest(.{ .root_module = img_tiles_test_module });
     test_step.dependOn(&b.addRunArtifact(img_tiles_test).step);
