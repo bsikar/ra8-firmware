@@ -123,3 +123,7 @@ test "backend read error propagates" {
     var slot: c.dir_slot_t = std.mem.zeroes(c.dir_slot_t);
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_state), run.priv_dir_find_free_run(m, &loc, 1, &slot));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

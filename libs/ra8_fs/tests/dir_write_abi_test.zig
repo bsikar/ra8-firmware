@@ -490,3 +490,7 @@ test "83_to_str restores the kanji escape on byte zero" {
     try std.testing.expectEqual(@as(u8, c.k_dir_marker_free_used), out13[0]);
     try std.testing.expectEqual(@as(u8, 'A'), out13[1]);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

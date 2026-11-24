@@ -1,0 +1,19 @@
+{
+  "test_roots": [
+    "tests/abi_test.zig",
+    "tests/big_test.zig",
+    "tests/binary64_test.zig",
+    "tests/decimal_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/big.zig",
+    "src/internal/binary64.zig",
+    "src/internal/decimal.zig",
+    "src/ra8_num_abi.zig",
+    "tests/abi_test.zig",
+    "tests/big_test.zig",
+    "tests/binary64_test.zig",
+    "tests/decimal_test.zig"
+  ],
+  "minimum_tests": 28
+}

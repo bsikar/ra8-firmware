@@ -465,3 +465,7 @@ test "rmdir refuses the root, a file, and propagates lookup failures" {
     try std.testing.expectEqual(@as(u8, 0b0000_0011), disk[clusLba(3)][0]);
     try std.testing.expectEqual(entry_file | inuse_bit, disk[clusLba(root_cluster)][0]);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

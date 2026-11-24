@@ -226,8 +226,11 @@ export fn ra8_sdmmc_spi_get_capacity(_: *u32) c_int {
 // The format registry forwards to ra8_fs; these stubs stand in for it.
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("fs_stubs.zig").Exports;
     _ = @import("netif_stubs.zig");
+    _ = @import("netif_stubs.zig").Exports;
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 
 // The archive root also emits the MRAM block device (RA8FW-726).
@@ -236,4 +239,8 @@ export fn ra8_flash_extra_mram_write(_: u32, _: [*]const u8, _: u32) c_int {
 }
 export fn ra8_flash_extra_mram_erase(_: u32) c_int {
     return 0;
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
 }

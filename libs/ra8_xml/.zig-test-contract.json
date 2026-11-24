@@ -1,0 +1,19 @@
+{
+  "test_roots": [
+    "tests/abi_test.zig",
+    "tests/entity_test.zig",
+    "tests/name_test.zig",
+    "tests/writer_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/entity.zig",
+    "src/internal/name.zig",
+    "src/internal/writer.zig",
+    "src/ra8_xml_writer_abi.zig",
+    "tests/abi_test.zig",
+    "tests/entity_test.zig",
+    "tests/name_test.zig",
+    "tests/writer_test.zig"
+  ],
+  "minimum_tests": 43
+}

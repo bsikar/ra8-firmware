@@ -267,3 +267,7 @@ test "rename on exFAT dispatches to the exFAT path" {
     const err = dir_ops.ra8_fs_rename(fake.mount(), "/nope", "/alsonope");
     try std.testing.expectEqual(err_not_found, err);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

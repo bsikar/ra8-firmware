@@ -1,68 +1,377 @@
 {
   "test_roots": [
-    "tests/lock_abi_test.zig",
-    "tests/exfat_label_abi_test.zig",
+    "tests/alloc_abi_test.zig",
     "tests/attr_abi_test.zig",
-    "tests/utime_abi_test.zig",
-    "tests/space_abi_test.zig",
-    "tests/gpt_abi_test.zig",
-    "tests/lfn_abi_test.zig",
-    "tests/utf_abi_test.zig",
-    "tests/upcase_abi_test.zig",
-    "tests/exfat_openw_abi_test.zig",
-    "tests/free_chain_abi_test.zig",
-    "tests/dirmk_abi_test.zig",
-    "tests/exfat_write_abi_test.zig",
-    "tests/stat_abi_test.zig",
-    "tests/file_abi_test.zig",
-    "tests/resolve_abi_test.zig",
-    "tests/label_abi_test.zig",
-    "tests/fat_core_abi_test.zig",
+    "tests/check_abi_test.zig",
+    "tests/dir_erase_abi_test.zig",
     "tests/dir_run_abi_test.zig",
-    "tests/prim_abi_test.zig",
+    "tests/dir_write_abi_test.zig",
+    "tests/dirmk_abi_test.zig",
+    "tests/exfat_dir_abi_test.zig",
+    "tests/exfat_fmt_abi_test.zig",
+    "tests/exfat_label_abi_test.zig",
+    "tests/exfat_mutate_abi_test.zig",
+    "tests/exfat_openw_abi_test.zig",
+    "tests/exfat_read_abi_test.zig",
+    "tests/exfat_stream_abi_test.zig",
+    "tests/exfat_write_abi_test.zig",
+    "tests/fat_bytes_abi_test.zig",
+    "tests/fat_core_abi_test.zig",
+    "tests/fat_dir_abi_test.zig",
     "tests/fat_entry_abi_test.zig",
-    "tests/dir_erase_abi_test.zig"
+    "tests/fat_fileio_abi_test.zig",
+    "tests/fat_mount_abi_test.zig",
+    "tests/fat_state_abi_test.zig",
+    "tests/file_abi_test.zig",
+    "tests/fmt_abi_test.zig",
+    "tests/free_chain_abi_test.zig",
+    "tests/gpt_abi_test.zig",
+    "tests/label_abi_test.zig",
+    "tests/lfn_abi_test.zig",
+    "tests/lfn_find_abi_test.zig",
+    "tests/lock_abi_test.zig",
+    "tests/prim_abi_test.zig",
+    "tests/resolve_abi_test.zig",
+    "tests/space_abi_test.zig",
+    "tests/stat_abi_test.zig",
+    "tests/time_abi_test.zig",
+    "tests/upcase_abi_test.zig",
+    "tests/utf_abi_test.zig",
+    "tests/utime_abi_test.zig"
   ],
   "covered_sources": [
     "src/fs_c.zig",
+    "src/ra8_fs_alloc_abi.zig",
     "src/ra8_fs_attr_abi.zig",
+    "src/ra8_fs_check_abi.zig",
+    "src/ra8_fs_dir_erase_abi.zig",
+    "src/ra8_fs_dir_run_abi.zig",
+    "src/ra8_fs_dir_walk_abi.zig",
+    "src/ra8_fs_dir_write_abi.zig",
+    "src/ra8_fs_dirmk_abi.zig",
+    "src/ra8_fs_exfat_dir_abi.zig",
+    "src/ra8_fs_exfat_fmt_abi.zig",
+    "src/ra8_fs_exfat_hash_abi.zig",
     "src/ra8_fs_exfat_label_abi.zig",
+    "src/ra8_fs_exfat_mutate_abi.zig",
     "src/ra8_fs_exfat_openw_abi.zig",
+    "src/ra8_fs_exfat_read_abi.zig",
+    "src/ra8_fs_exfat_stream_abi.zig",
+    "src/ra8_fs_exfat_write_abi.zig",
+    "src/ra8_fs_fat_bytes_abi.zig",
+    "src/ra8_fs_fat_core_abi.zig",
+    "src/ra8_fs_fat_dir_abi.zig",
+    "src/ra8_fs_fat_entry_abi.zig",
+    "src/ra8_fs_fat_fileio_abi.zig",
+    "src/ra8_fs_fat_mount_abi.zig",
+    "src/ra8_fs_fat_prim_abi.zig",
+    "src/ra8_fs_fat_state_abi.zig",
+    "src/ra8_fs_file_abi.zig",
+    "src/ra8_fs_fmt_abi.zig",
     "src/ra8_fs_free_chain_abi.zig",
     "src/ra8_fs_gpt_abi.zig",
+    "src/ra8_fs_label_abi.zig",
     "src/ra8_fs_lfn_abi.zig",
+    "src/ra8_fs_lfn_find_abi.zig",
     "src/ra8_fs_lock_abi.zig",
+    "src/ra8_fs_resolve_abi.zig",
     "src/ra8_fs_space_abi.zig",
+    "src/ra8_fs_stat_abi.zig",
+    "src/ra8_fs_time_abi.zig",
+    "src/ra8_fs_trunc_abi.zig",
     "src/ra8_fs_upcase_abi.zig",
     "src/ra8_fs_utf_abi.zig",
     "src/ra8_fs_utime_abi.zig",
     "src/root.zig",
+    "src/standalone_fs_h.zig",
+    "src/standalone_fs_types.zig",
+    "tests/alloc_abi_test.zig",
     "tests/attr_abi_test.zig",
+    "tests/check_abi_test.zig",
+    "tests/dir_erase_abi_test.zig",
+    "tests/dir_run_abi_test.zig",
+    "tests/dir_write_abi_test.zig",
+    "tests/dirmk_abi_test.zig",
+    "tests/exfat_dir_abi_test.zig",
+    "tests/exfat_fmt_abi_test.zig",
     "tests/exfat_label_abi_test.zig",
+    "tests/exfat_mutate_abi_test.zig",
     "tests/exfat_openw_abi_test.zig",
+    "tests/exfat_read_abi_test.zig",
+    "tests/exfat_stream_abi_test.zig",
+    "tests/exfat_write_abi_test.zig",
+    "tests/fat_bytes_abi_test.zig",
+    "tests/fat_core_abi_test.zig",
+    "tests/fat_dir_abi_test.zig",
+    "tests/fat_entry_abi_test.zig",
+    "tests/fat_fileio_abi_test.zig",
+    "tests/fat_mount_abi_test.zig",
+    "tests/fat_state_abi_test.zig",
+    "tests/file_abi_test.zig",
+    "tests/fmt_abi_test.zig",
+    "tests/free_chain_abi_test.zig",
     "tests/fs_walker_fake.zig",
     "tests/gpt_abi_test.zig",
+    "tests/label_abi_test.zig",
     "tests/lfn_abi_test.zig",
+    "tests/lfn_find_abi_test.zig",
     "tests/lock_abi_test.zig",
+    "tests/prim_abi_test.zig",
+    "tests/resolve_abi_test.zig",
     "tests/space_abi_test.zig",
+    "tests/stat_abi_test.zig",
+    "tests/time_abi_test.zig",
     "tests/upcase_abi_test.zig",
     "tests/utf_abi_test.zig",
-    "tests/utime_abi_test.zig",
-    "src/ra8_fs_dirmk_abi.zig",
-    "tests/dirmk_abi_test.zig",
-    "src/ra8_fs_exfat_write_abi.zig",
-    "src/ra8_fs_stat_abi.zig",
-    "tests/stat_abi_test.zig",
-    "src/ra8_fs_file_abi.zig",
-    "ra8_fs_resolve_abi.zig",
-    "src/ra8_fs_label_abi.zig",
-    "tests/label_abi_test.zig",
-    "src/ra8_fs_fat_core_abi.zig",
-    "tests/fat_core_abi_test.zig",
-    "src/ra8_fs_dir_run_abi.zig",
-    "src/ra8_fs_fat_prim_abi.zig",
-    "src/ra8_fs_fat_entry_abi.zig",
-    "src/ra8_fs_dir_erase_abi.zig"
+    "tests/utime_abi_test.zig"
   ],
-  "minimum_tests": 158
+  "standalone_source_args": {
+    "src/ra8_fs_alloc_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_alloc_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_attr_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_attr_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_check_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_check_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_dir_erase_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_dir_erase_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_dir_run_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_dir_run_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_dir_walk_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_dir_walk_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_dir_write_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_dir_write_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_dirmk_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_dirmk_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_dir_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_dir_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_fmt_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_fmt_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_hash_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_hash_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_label_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_label_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_mutate_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_mutate_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_openw_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_openw_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_read_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_read_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_stream_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_stream_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_exfat_write_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_exfat_write_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_bytes_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_bytes_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_core_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_core_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_dir_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_dir_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_entry_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_entry_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_fileio_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_fileio_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_mount_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_mount_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_prim_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_prim_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fat_state_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fat_state_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_file_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_file_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_fmt_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_fmt_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_free_chain_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_free_chain_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_gpt_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_gpt_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_label_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_label_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_lfn_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_lfn_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_lfn_find_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_lfn_find_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_resolve_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_resolve_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_space_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_space_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_stat_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_stat_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_time_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_time_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_trunc_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_trunc_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_upcase_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_upcase_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_utf_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_utf_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/ra8_fs_utime_abi.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/ra8_fs_utime_abi.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "fs_h",
+      "-Mroot=src/root.zig",
+      "-Mfs_h=src/standalone_fs_h.zig"
+    ]
+  },
+  "minimum_tests": 501
 }

@@ -1,0 +1,15 @@
+.{
+    .name = .ra8_cache_store,
+    .version = "0.1.0",
+    .fingerprint = 0xf79e12a8c64b71bc,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}

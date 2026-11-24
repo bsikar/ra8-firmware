@@ -25,70 +25,72 @@ pub fn reset() void {
     dir_closes = 0;
 }
 
-export fn ra8_fs_probe(_: *const anyopaque, out: *c_int) c_int {
-    out.* = probe_type orelse return not_supported;
-    return 0;
-}
-export fn ra8_fs_mount(_: *const anyopaque, _: *?*anyopaque) c_int {
-    return not_supported;
-}
-export fn ra8_fs_unmount(_: ?*anyopaque) c_int {
-    return not_supported;
-}
-export fn ra8_fs_open(_: ?*anyopaque, _: [*:0]const u8, _: c_int, _: *?*anyopaque) c_int {
-    return not_supported;
-}
-export fn ra8_fs_close(_: ?*anyopaque) c_int {
-    return not_supported;
-}
-export fn ra8_fs_read(_: ?*anyopaque, _: *anyopaque, _: u32, _: *u32) c_int {
-    return not_supported;
-}
-export fn ra8_fs_write(_: ?*anyopaque, _: *const anyopaque, _: u32) c_int {
-    return not_supported;
-}
-export fn ra8_fs_seek(_: ?*anyopaque, _: u64) c_int {
-    return not_supported;
-}
-export fn ra8_fs_tell(_: ?*const anyopaque, _: *u64) c_int {
-    return not_supported;
-}
-export fn ra8_fs_size(_: ?*const anyopaque, _: *u64) c_int {
-    return not_supported;
-}
-export fn ra8_fs_stat(_: ?*anyopaque, _: [*:0]const u8, _: *anyopaque) c_int {
-    return not_supported;
-}
-export fn ra8_fs_dir_open(_: ?*anyopaque, _: [*:0]const u8, dir: *fsfmt.FsDir) c_int {
-    dir.is_open = true;
-    return 0;
-}
-export fn ra8_fs_dir_next(_: *fsfmt.FsDir, out: *fsfmt.FsDirent, present: *bool) c_int {
-    present.* = dir_entries > 0;
-    if (dir_entries == 0) return 0;
-    dir_entries -= 1;
-    out.name[0] = 'a';
-    out.attr = 0x20;
-    out.size_bytes = 7;
-    return 0;
-}
-export fn ra8_fs_dir_close(dir: *fsfmt.FsDir) c_int {
-    dir.is_open = false;
-    dir_closes += 1;
-    return 0;
-}
-export fn ra8_fs_unlink(_: ?*anyopaque, _: [*:0]const u8) c_int {
-    return not_supported;
-}
-export fn ra8_fs_rename(_: ?*anyopaque, _: [*:0]const u8, _: [*:0]const u8) c_int {
-    return not_supported;
-}
-export fn ra8_fs_mkdir(_: ?*anyopaque, _: [*:0]const u8) c_int {
-    return not_supported;
-}
-export fn ra8_fs_rmdir(_: ?*anyopaque, _: [*:0]const u8) c_int {
-    return not_supported;
-}
-export fn ra8_fs_free_space(_: ?*anyopaque, _: *anyopaque) c_int {
-    return not_supported;
-}
+pub const Exports = struct {
+    export fn ra8_fs_probe(_: *const anyopaque, out: *c_int) c_int {
+        out.* = probe_type orelse return not_supported;
+        return 0;
+    }
+    export fn ra8_fs_mount(_: *const anyopaque, _: *?*anyopaque) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_unmount(_: ?*anyopaque) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_open(_: ?*anyopaque, _: [*:0]const u8, _: c_int, _: *?*anyopaque) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_close(_: ?*anyopaque) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_read(_: ?*anyopaque, _: *anyopaque, _: u32, _: *u32) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_write(_: ?*anyopaque, _: *const anyopaque, _: u32) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_seek(_: ?*anyopaque, _: u64) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_tell(_: ?*const anyopaque, _: *u64) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_size(_: ?*const anyopaque, _: *u64) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_stat(_: ?*anyopaque, _: [*:0]const u8, _: *anyopaque) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_dir_open(_: ?*anyopaque, _: [*:0]const u8, dir: *fsfmt.FsDir) c_int {
+        dir.is_open = true;
+        return 0;
+    }
+    export fn ra8_fs_dir_next(_: *fsfmt.FsDir, out: *fsfmt.FsDirent, present: *bool) c_int {
+        present.* = dir_entries > 0;
+        if (dir_entries == 0) return 0;
+        dir_entries -= 1;
+        out.name[0] = 'a';
+        out.attr = 0x20;
+        out.size_bytes = 7;
+        return 0;
+    }
+    export fn ra8_fs_dir_close(dir: *fsfmt.FsDir) c_int {
+        dir.is_open = false;
+        dir_closes += 1;
+        return 0;
+    }
+    export fn ra8_fs_unlink(_: ?*anyopaque, _: [*:0]const u8) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_rename(_: ?*anyopaque, _: [*:0]const u8, _: [*:0]const u8) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_mkdir(_: ?*anyopaque, _: [*:0]const u8) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_rmdir(_: ?*anyopaque, _: [*:0]const u8) c_int {
+        return not_supported;
+    }
+    export fn ra8_fs_free_space(_: ?*anyopaque, _: *anyopaque) c_int {
+        return not_supported;
+    }
+};

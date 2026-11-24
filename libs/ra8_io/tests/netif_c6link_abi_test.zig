@@ -322,6 +322,7 @@ fn bind() void {
 
 comptime {
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 
 test "bind refuses NULLs and an undersized ring" {
@@ -430,4 +431,10 @@ test "a NULL link skips the pump but still drains" {
     try std.testing.expectEqual(front.ok, ra8_io_netif_poll(&n, &buf, &len));
     try std.testing.expectEqual(@as(u32, 0), pump_calls);
     try std.testing.expectEqual(@as(u16, 2), len);
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
+    _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }

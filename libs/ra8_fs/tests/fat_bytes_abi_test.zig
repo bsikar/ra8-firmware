@@ -17,3 +17,7 @@ test "sector arena serves four distinct, stable role buffers" {
     try std.testing.expectEqual(w, ab.priv_sec_walk());
     try std.testing.expectEqual(io, ab.priv_sec_io());
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

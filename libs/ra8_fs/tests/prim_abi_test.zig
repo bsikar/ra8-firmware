@@ -132,3 +132,7 @@ test "backend errors propagate through the sector wrappers" {
     try std.testing.expectEqual(@as(u16, 0xBEEF), prim.priv_write_sector(mp, 1, &buf));
     backend_err = 0;
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

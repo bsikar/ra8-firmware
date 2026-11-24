@@ -100,3 +100,7 @@ test "exFAT errors propagate" {
     var s = std.mem.zeroes(sp.Space);
     try std.testing.expectEqual(@as(u16, 0x205), query(&s));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

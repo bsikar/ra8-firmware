@@ -141,3 +141,7 @@ test "a backend read error comes back from get" {
     var v: u32 = 0;
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_hw_error), fe.priv_fat_get(mp, 5, &v));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

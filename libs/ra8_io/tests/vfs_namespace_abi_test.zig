@@ -116,8 +116,11 @@ fn noop_op() callconv(.c) c_int {
 }
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("fs_stubs.zig").Exports;
     _ = @import("netif_stubs.zig");
+    _ = @import("netif_stubs.zig").Exports;
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 var backend: [5]usize = @splat(0);
 
@@ -357,4 +360,8 @@ export fn ra8_flash_extra_mram_write(_: u32, _: [*]const u8, _: u32) c_int {
 }
 export fn ra8_flash_extra_mram_erase(_: u32) c_int {
     return 0;
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
 }

@@ -171,3 +171,7 @@ test "exFAT mounts route to the exFAT label writer" {
     try std.testing.expectEqual(@as(u8, 'X'), fake.dir[2][2]);
     try std.testing.expectEqual(@as(u8, 'Y'), fake.dir[2][4]);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

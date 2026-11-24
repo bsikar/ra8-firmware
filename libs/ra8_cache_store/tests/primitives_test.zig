@@ -9,7 +9,12 @@
 
 const std = @import("std");
 const mount = @import("mount");
-const fake = @import("cache_fake.zig");
+const fake = @import("cache_fake.zig").For(mount);
+
+comptime {
+    _ = @import("cache_fake.zig");
+    _ = fake.Exports;
+}
 
 const Super = mount.Super;
 const DirEntry = mount.DirEntry;

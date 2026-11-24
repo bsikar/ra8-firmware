@@ -84,3 +84,7 @@ test "a directory with no label and no end marker hits the scan limit" {
     var buf: [8]u8 = undefined;
     try std.testing.expectEqual(lbl.err_not_found, lbl.priv_exfat_get_label(mount(), &buf, buf.len));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

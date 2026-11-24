@@ -13,6 +13,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("cache_fake.zig");
+}
+
 const Entry = abi.Entry;
 const Store = abi.Store;
 const Reader = abi.Reader;

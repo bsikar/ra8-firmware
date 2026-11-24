@@ -265,3 +265,7 @@ test "ra8_fs_open and ra8_fs_close run the lock brackets end to end" {
     try std.testing.expectEqual(ok, cerr);
     try std.testing.expectEqual(@as(u32, 0), f.?.in_use);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

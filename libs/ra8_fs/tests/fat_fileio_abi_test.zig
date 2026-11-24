@@ -27,7 +27,7 @@ const err_invalid_state: u16 = c.k_ra8_err_invalid_state;
 const err_invalid_size: u16 = c.k_ra8_err_invalid_size;
 const err_no_mem: u16 = c.k_ra8_err_no_mem;
 
-const eoc32: u32 = 0xFFFF_FFF8;
+const eoc32: u32 = c.k_cluster_eoc_write_fat32;
 const bps: u32 = 512;
 
 /// A file handle with the common fields set: open for writing, mounted,
@@ -37,7 +37,7 @@ fn file() *c.ra8_fs_file_t {
     f.* = std.mem.zeroes(c.ra8_fs_file_t);
     f.in_use = 1;
     f.mode = c.k_ra8_fs_mode_write;
-    f.mount = fake.mount();
+    f.mount = &fake.mount_store;
     return f;
 }
 
@@ -51,12 +51,16 @@ fn readonly() *c.ra8_fs_file_t {
 /// data-cluster LBA reads it back unchanged, which is what the read path
 /// asserts against.
 fn seedIO() void {
-    for (&fake.io_sector, 0..) |*b, i| b.* = @truncate(i * 7 + 3);
+    for (fake.io_sector, 0..) |*b, i| b.* = @truncate(i * 7 + 3);
 }
 
 fn pattern(comptime n: usize) [n]u8 {
+    return patternFrom(0, n);
+}
+
+fn patternFrom(comptime start: usize, comptime n: usize) [n]u8 {
     var buf: [n]u8 = undefined;
-    for (&buf, 0..) |*b, i| b.* = @truncate(i * 7 + 3);
+    for (&buf, 0..) |*b, i| b.* = @truncate((start + i) * 7 + 3);
     return buf;
 }
 
@@ -140,17 +144,17 @@ test "exFAT reads serve zeros past ValidDataLength" {
     f.size_bytes = 20;
     f.valid_bytes = 10;
     var take: u32 = 0;
-    var buf: [4]u8 = @splat(0xFF);
+    var buf: [5]u8 = @splat(0xFF);
     // In the hole: offset 10 >= valid 10, zeros only.
     f.offset = 10;
     try std.testing.expectEqual(ok, fio.internal_read_span(f, &buf, 4, &take));
     try std.testing.expectEqual(@as(u32, 4), take);
-    try std.testing.expectEqualSlices(u8, &@as([4]u8, @splat(0)), &buf);
+    try std.testing.expectEqualSlices(u8, &@as([4]u8, @splat(0)), buf[0..4]);
     // Crossing out of the prefix: the span is clipped to valid - offset.
     f.offset = 5;
     try std.testing.expectEqual(ok, fio.internal_read_span(f, &buf, 10, &take));
     try std.testing.expectEqual(@as(u32, 5), take);
-    try std.testing.expectEqualSlices(u8, pattern(5)[0..5], &buf);
+    try std.testing.expectEqualSlices(u8, &patternFrom(5, 5), &buf);
 }
 
 test "a FAT handle has no hole: its size is its valid length" {
@@ -162,7 +166,7 @@ test "a FAT handle has no hole: its size is its valid length" {
     var buf: [8]u8 = @splat(0);
     try std.testing.expectEqual(ok, fio.internal_read_span(f, &buf, 8, &take));
     try std.testing.expectEqual(@as(u32, 8), take);
-    try std.testing.expectEqualSlices(u8, pattern(8), &buf);
+    try std.testing.expectEqualSlices(u8, &pattern(8), &buf);
 }
 
 test "ra8_fs_read guards and short reads" {
@@ -186,7 +190,7 @@ test "ra8_fs_read guards and short reads" {
     try std.testing.expectEqual(ok, fio.ra8_fs_read(f, &buf, 100, &got));
     try std.testing.expectEqual(@as(u32, 4), got);
     try std.testing.expectEqual(@as(u64, 8), f.offset);
-    try std.testing.expectEqualSlices(u8, pattern(4), buf[0..4]);
+    try std.testing.expectEqualSlices(u8, &patternFrom(4, 4), buf[0..4]);
 }
 
 test "alloc_eoc_cluster marks the new cluster EOC" {
@@ -230,7 +234,8 @@ test "write_position allocates the first cluster on demand" {
     try std.testing.expectEqual(@as(u32, 2), f.first_cluster);
     try std.testing.expectEqual(@as(u32, 2), f.cur_cluster);
     try std.testing.expectEqual(eoc32, fake.fat[2]);
-    // A cursor behind the waypoint is a caller bug, refused.
+    // Advance to index 1, then verify a cursor behind the waypoint is refused.
+    try std.testing.expectEqual(ok, fio.internal_write_position(f, &way, 1, &out));
     try std.testing.expectEqual(err_invalid_state, fio.internal_write_position(f, &way, 0, &out));
 }
 
@@ -287,10 +292,10 @@ test "write_file guards a null or unmounted handle" {
     fatMount();
     var data: [4]u8 = @splat(0);
     try std.testing.expectEqual(err_null_ptr, fio.ra8_fs_write_file(null, "/", &data, 4));
-    try std.testing.expectEqual(err_null_ptr, fio.ra8_fs_write_file(fake.mount(), null, &data, 4));
-    try std.testing.expectEqual(err_null_ptr, fio.ra8_fs_write_file(fake.mount(), "/", null, 4));
+    try std.testing.expectEqual(err_null_ptr, fio.ra8_fs_write_file(&fake.mount_store, null, &data, 4));
+    try std.testing.expectEqual(err_null_ptr, fio.ra8_fs_write_file(&fake.mount_store, "/", null, 4));
     fake.mount_store.in_use = 0;
-    try std.testing.expectEqual(err_invalid_state, fio.ra8_fs_write_file(fake.mount(), "/", &data, 4));
+    try std.testing.expectEqual(err_invalid_state, fio.ra8_fs_write_file(&fake.mount_store, "/", &data, 4));
 }
 
 test "seek clamps to the size; tell and size report the cursor" {
@@ -313,4 +318,8 @@ test "seek clamps to the size; tell and size report the cursor" {
     try std.testing.expectEqual(err_invalid_state, fio.ra8_fs_seek(f, 1));
     try std.testing.expectEqual(err_invalid_state, fio.ra8_fs_tell(f, &out));
     try std.testing.expectEqual(err_invalid_state, fio.ra8_fs_size(f, &out));
+}
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
 }

@@ -12,7 +12,9 @@ const ns = io.vfs_namespace;
 const fs = @import("fs_stubs.zig");
 comptime {
     _ = @import("netif_stubs.zig");
+    _ = @import("netif_stubs.zig").Exports;
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 
 var errors_logged: u32 = 0;
@@ -262,4 +264,13 @@ test "the built-in dir_open needs room for a whole cursor" {
     var mount: ?*anyopaque = null;
     const mount_fn: *align(1) const fn (*const anyopaque, *?*anyopaque) callconv(.c) c_int = @ptrCast(ops.mount.?);
     try std.testing.expectEqual(ns.err_not_supported, mount_fn(&backend, &mount));
+}
+
+comptime {
+    _ = @import("fs_stubs.zig");
+    _ = fs.Exports;
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
 }

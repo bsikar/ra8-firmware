@@ -119,3 +119,7 @@ test "byte_equal compares n bytes and treats an empty range as equal" {
     try std.testing.expectEqual(@as(u8, 0), fs.fat_core.priv_byte_equal("abc", "abd", 3));
     try std.testing.expectEqual(@as(u8, 1), fs.fat_core.priv_byte_equal("abc", "xyz", 0));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

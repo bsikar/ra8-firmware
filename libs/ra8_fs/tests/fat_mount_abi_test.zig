@@ -79,3 +79,7 @@ test "internal_locate_indexed dispatches on sector 0" {
     try std.testing.expectEqual(c.k_ra8_ok, geo.internal_locate_indexed(&m, 0, &base));
     try std.testing.expectEqual(@as(u64, 0x80), base);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

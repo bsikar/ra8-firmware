@@ -309,6 +309,7 @@ const frame = [_]u8{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x11 };
 
 comptime {
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 
 test "send: NULL handle is refused" {
@@ -378,4 +379,10 @@ test "poll: NULL handle is refused" {
 
 test "invalid_arg shares the generic range" {
     try std.testing.expectEqual(err_invalid_arg, @as(c_int, 0x103));
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
+    _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }
