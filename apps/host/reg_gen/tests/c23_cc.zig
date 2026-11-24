@@ -50,31 +50,31 @@ pub const Options = struct {
 /// Split a pinned command line on ASCII whitespace, so RA8_C23_CC can carry
 /// arguments ("xcrun clang", "ccache clang-18").
 pub fn splitCommand(allocator: std.mem.Allocator, raw: []const u8) ![]const []const u8 {
-    var words = std.ArrayList([]const u8).init(allocator);
-    errdefer words.deinit();
+    var words: std.ArrayList([]const u8) = .empty;
+    errdefer words.deinit(allocator);
     var it = std.mem.tokenizeAny(u8, raw, " \t\r\n");
-    while (it.next()) |word| try words.append(word);
-    return words.toOwnedSlice();
+    while (it.next()) |word| try words.append(allocator, word);
+    return words.toOwnedSlice(allocator);
 }
 
 /// The ordered argv prefixes to probe. Pure: it spawns nothing, so the
 /// ordering is unit-testable without a compiler on the machine.
 pub fn candidates(allocator: std.mem.Allocator, options: Options) ![]const []const []const u8 {
-    var list = std.ArrayList([]const []const u8).init(allocator);
-    errdefer list.deinit();
+    var list: std.ArrayList([]const []const u8) = .empty;
+    errdefer list.deinit(allocator);
 
     if (options.override) |raw| {
         const argv = try splitCommand(allocator, raw);
         if (argv.len != 0) {
-            try list.append(argv);
-            return list.toOwnedSlice();
+            try list.append(allocator, argv);
+            return list.toOwnedSlice(allocator);
         }
     }
 
     for (default_names) |name| {
         const argv = try allocator.alloc([]const u8, 1);
         argv[0] = name;
-        try list.append(argv);
+        try list.append(allocator, argv);
     }
 
     if (options.zig_exe) |exe| {
@@ -82,52 +82,53 @@ pub fn candidates(allocator: std.mem.Allocator, options: Options) ![]const []con
             const argv = try allocator.alloc([]const u8, 2);
             argv[0] = exe;
             argv[1] = "cc";
-            try list.append(argv);
+            try list.append(allocator, argv);
         }
     }
 
-    return list.toOwnedSlice();
+    return list.toOwnedSlice(allocator);
 }
 
 /// Feed `source` to `argv_prefix ++ compile_args` on stdin and report whether
 /// it exited 0. A candidate that cannot even be spawned is simply not there.
-pub fn compiles(allocator: std.mem.Allocator, argv_prefix: []const []const u8, source: []const u8) !bool {
-    var argv = std.ArrayList([]const u8).init(allocator);
-    defer argv.deinit();
-    try argv.appendSlice(argv_prefix);
-    try argv.appendSlice(&compile_args);
+pub fn compiles(allocator: std.mem.Allocator, io: std.Io, argv_prefix: []const []const u8, source: []const u8) !bool {
+    var argv: std.ArrayList([]const u8) = .empty;
+    defer argv.deinit(allocator);
+    try argv.appendSlice(allocator, argv_prefix);
+    try argv.appendSlice(allocator, &compile_args);
 
-    var child = std.process.Child.init(argv.items, allocator);
-    child.stdin_behavior = .Pipe;
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Inherit;
-    child.spawn() catch return false;
+    var child = std.process.spawn(io, .{
+        .argv = argv.items,
+        .stdin = .pipe,
+        .stdout = .ignore,
+        .stderr = .inherit,
+    }) catch return false;
 
-    child.stdin.?.writeAll(source) catch {
-        child.stdin.?.close();
+    child.stdin.?.writeStreamingAll(io, source) catch {
+        child.stdin.?.close(io);
         child.stdin = null;
-        _ = child.wait() catch {};
+        _ = child.wait(io) catch {};
         return false;
     };
-    child.stdin.?.close();
+    child.stdin.?.close(io);
     child.stdin = null;
 
     // On Linux the spawn is deferred, so a candidate that does not exist on
     // this host reports FileNotFound out of wait() rather than out of spawn().
     // Either way it is simply not a usable compiler, never a test failure.
-    const term = child.wait() catch return false;
+    const term = child.wait(io) catch return false;
     return switch (term) {
-        .Exited => |code| code == 0,
+        .exited => |code| code == 0,
         else => false,
     };
 }
 
 /// First candidate that accepts the C23 probe, or error.NoC23CompilerAvailable
 /// with every name tried printed so the failure is actionable.
-pub fn resolve(allocator: std.mem.Allocator, options: Options) ![]const []const u8 {
+pub fn resolve(allocator: std.mem.Allocator, io: std.Io, options: Options) ![]const []const u8 {
     const list = try candidates(allocator, options);
     for (list) |argv| {
-        if (try compiles(allocator, argv, probe_source)) return argv;
+        if (try compiles(allocator, io, argv, probe_source)) return argv;
     }
     std.debug.print("reg_gen: no C23 front end found. Tried:\n", .{});
     for (list) |argv| {

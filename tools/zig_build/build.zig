@@ -286,12 +286,15 @@ pub fn addExplainHostTargetStep(
 /// executed, with nothing in the exit status to say so. On an arm64 Mac the
 /// pinned `aarch64-macos` target is the host, so the excuse does not apply and
 /// a run that cannot happen fails loudly instead.
-pub fn addHostTestRun(
+/// Configure a host test run so targets foreign to the build host compile
+/// cleanly while local runs remain mandatory (RA8FW-330).
+pub fn configureHostTestRun(
     b: *std.Build,
     test_step: *std.Build.Step,
     tests: *std.Build.Step.Compile,
-) *std.Build.Step.Run {
-    const run = b.addRunArtifact(tests);
+    run: *std.Build.Step.Run,
+) void {
+    _ = b;
     const resolved = tests.rootModuleTarget();
     run.skip_foreign_checks = !macos_host.targetRunsOnBuildHost(
         resolved.cpu.arch,
@@ -302,6 +305,15 @@ pub fn addHostTestRun(
     // Linking is the property RA8FW-330 is about, so it must happen even on a host
     // that cannot execute the result.
     test_step.dependOn(&tests.step);
+}
+
+pub fn addHostTestRun(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    tests: *std.Build.Step.Compile,
+) *std.Build.Step.Run {
+    const run = b.addRunArtifact(tests);
+    configureHostTestRun(b, test_step, tests, run);
     test_step.dependOn(&run.step);
     return run;
 }

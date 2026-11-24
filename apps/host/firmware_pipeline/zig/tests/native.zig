@@ -7,6 +7,10 @@ const std = @import("std");
 const adapter = @import("adapter");
 const c = adapter.c;
 
+comptime {
+    _ = @import("standalone_firmware_pipeline_h.zig");
+}
+
 fn sentinel() c.firmware_pipeline_result_t {
     return std.mem.bytesToValue(c.firmware_pipeline_result_t, &(@as([@sizeOf(c.firmware_pipeline_result_t)]u8, @splat(0xa5))));
 }

@@ -106,29 +106,26 @@ pub fn isValidIdentifier(name: []const u8) bool {
     return true;
 }
 
-// Zero-allocation case transformation formatters
-pub fn fmtLower(bytes: []const u8) std.fmt.Formatter(formatLower) {
-    return .{ .data = bytes };
-}
-
-fn formatLower(bytes: []const u8, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-    _ = fmt;
-    _ = options;
+fn formatAsciiCase(bytes: []const u8, writer: *std.Io.Writer, upper: bool) std.Io.Writer.Error!void {
     for (bytes) |c| {
-        try writer.writeByte(std.ascii.toLower(c));
+        try writer.writeByte(if (upper) std.ascii.toUpper(c) else std.ascii.toLower(c));
     }
 }
 
-pub fn fmtUpper(bytes: []const u8) std.fmt.Formatter(formatUpper) {
+pub fn fmtLower(bytes: []const u8) std.fmt.Alt([]const u8, formatLower) {
     return .{ .data = bytes };
 }
 
-fn formatUpper(bytes: []const u8, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-    _ = fmt;
-    _ = options;
-    for (bytes) |c| {
-        try writer.writeByte(std.ascii.toUpper(c));
-    }
+fn formatLower(bytes: []const u8, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+    return formatAsciiCase(bytes, writer, false);
+}
+
+pub fn fmtUpper(bytes: []const u8) std.fmt.Alt([]const u8, formatUpper) {
+    return .{ .data = bytes };
+}
+
+fn formatUpper(bytes: []const u8, writer: *std.Io.Writer) std.Io.Writer.Error!void {
+    return formatAsciiCase(bytes, writer, true);
 }
 
 pub fn determineSmallestType(max_val: u64) []const u8 {
@@ -241,8 +238,8 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
 
     try writer.print(
         \\/**
-        \\ * @file {s}_regs.h
-        \\ * @brief {s} Register Definitions
+        \\ * @file {f}_regs.h
+        \\ * @brief {f} Register Definitions
         \\ *
         \\ * @copyright Copyright (c) 2026 Brighton Sikarskie
         \\ * SPDX-License-Identifier: MIT
@@ -258,7 +255,7 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
         \\#endif
         \\
         \\/**
-        \\ * @brief {s} Base Address.
+        \\ * @brief {f} Base Address.
         \\ */
         \\typedef enum : uintptr_t {{
         \\
@@ -269,14 +266,14 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
     });
 
     if (is_64bit_base) {
-        try writer.print("  k_{s}_base_addr = 0x{X:0>16}{s}, /**< Base address for {s}. */\n", .{
+        try writer.print("  k_{f}_base_addr = 0x{X:0>16}{s}, /**< Base address for {f}. */\n", .{
             peri_l,
             validated.base_address,
             base_suffix,
             peri_u,
         });
     } else {
-        try writer.print("  k_{s}_base_addr = 0x{X:0>8}{s}, /**< Base address for {s}. */\n", .{
+        try writer.print("  k_{f}_base_addr = 0x{X:0>8}{s}, /**< Base address for {f}. */\n", .{
             peri_l,
             validated.base_address,
             base_suffix,
@@ -285,10 +282,10 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
     }
 
     try writer.print(
-        \\}} {s}_addr_t;
+        \\}} {f}_addr_t;
         \\
         \\/**
-        \\ * @brief {s} Register Offsets.
+        \\ * @brief {f} Register Offsets.
         \\ */
         \\typedef enum : {s} {{
         \\
@@ -299,19 +296,19 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
     });
 
     for (validated.registers) |r| {
-        try writer.print("  k_{s}_{s}_offset = ", .{ peri_l, fmtLower(r.name) });
+        try writer.print("  k_{f}_{f}_offset = ", .{ peri_l, fmtLower(r.name) });
         try printHexLiteral(writer, r.offset, offset_width);
         try writer.print(", /**< {s} */\n", .{r.description});
     }
 
     try writer.print(
-        \\}} {s}_offset_t;
+        \\}} {f}_offset_t;
         \\
         \\/**
-        \\ * @struct {s}_regs
-        \\ * @brief {s} register block layout.
+        \\ * @struct {f}_regs
+        \\ * @brief {f} register block layout.
         \\ */
-        \\typedef struct {s}_regs {{
+        \\typedef struct {f}_regs {{
         \\
     , .{
         peri_l,
@@ -332,7 +329,7 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
             reserved_idx += 1;
             current_offset = r.offset;
         }
-        try writer.print("  volatile {s} {s}; /**< +", .{
+        try writer.print("  volatile {s} {f}; /**< +", .{
             r.size.cTypeName(),
             fmtUpper(r.name),
         });
@@ -349,32 +346,32 @@ pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, write
     }
 
     try writer.print(
-        \\}} {s}_regs_t;
+        \\}} {f}_regs_t;
         \\
         \\
     , .{peri_l});
 
     for (validated.registers) |r| {
-        try writer.print("static_assert(offsetof({s}_regs_t, {s}) == ", .{
+        try writer.print("static_assert(offsetof({f}_regs_t, {f}) == ", .{
             peri_l,
             fmtUpper(r.name),
         });
         try printHexLiteral(writer, r.offset, offset_width);
-        try writer.print(", \"{s} offset mismatch\");\n", .{fmtUpper(r.name)});
+        try writer.print(", \"{f} offset mismatch\");\n", .{fmtUpper(r.name)});
     }
 
-    try writer.print("static_assert(sizeof({s}_regs_t) == ", .{peri_l});
+    try writer.print("static_assert(sizeof({f}_regs_t) == ", .{peri_l});
     try printHexLiteral(writer, current_offset, offset_width);
     try writer.print(
-        \\, "{s}_regs_t size mismatch");
+        \\, "{f}_regs_t size mismatch");
         \\
         \\/**
-        \\ * @brief Get pointer to {s} hardware registers.
+        \\ * @brief Get pointer to {f} hardware registers.
         \\ * @return Pointer to volatile register structure.
         \\ */
-        \\static inline volatile {s}_regs_t *{s}_get_regs(void)
+        \\static inline volatile {f}_regs_t *{f}_get_regs(void)
         \\{{
-        \\  return (volatile {s}_regs_t *)k_{s}_base_addr;
+        \\  return (volatile {f}_regs_t *)k_{f}_base_addr;
         \\}}
         \\
         \\#ifdef __cplusplus

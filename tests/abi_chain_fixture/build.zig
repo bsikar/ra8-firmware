@@ -77,5 +77,7 @@ pub fn build(b: *std.Build) void {
         require_archive.dependOn(&cargo.step);
     }
     const test_step = b.step("test", "Run Zig chain adapter tests");
-    _ = ra8_build.addHostTestRun(b, test_step, tests);
+    const run_tests = b.addRunArtifact(tests);
+    ra8_build.configureHostTestRun(b, test_step, tests, run_tests);
+    test_step.dependOn(&run_tests.step);
 }
