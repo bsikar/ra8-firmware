@@ -43,6 +43,13 @@ pub const translate = Identity{
     .capabilities = test_key.translate_capabilities,
 };
 
+/// The touch-to-LED demo module's identity (RA8FW-1262): display and LED.
+pub const touch_led = Identity{
+    .app_id = test_key.touch_led_app_id,
+    .display_name = test_key.touch_led_display_name,
+    .capabilities = test_key.touch_led_capabilities,
+};
+
 /// Packs `bin`, the binary of module `name`, into a signed `<name>.ra8app`
 /// with `identity`'s manifest and installs it under `arm/`.
 pub fn add(b: *std.Build, step: *std.Build.Step, name: []const u8, bin: std.Build.LazyPath, identity: Identity) std.Build.LazyPath {

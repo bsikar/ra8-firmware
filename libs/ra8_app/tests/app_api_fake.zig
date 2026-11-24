@@ -23,6 +23,8 @@ pub const Fake = struct {
     file_len: usize = 0,
     open_handle: ?u32 = null,
     queued: ?abi.TouchEvent = null,
+    led_index: ?u32 = null,
+    led_on: bool = false,
 
     pub const handle: u32 = 7;
     pub const screen = abi.ScreenInfo{ .width = 32, .height = 16, .bytes_per_pixel = 4 };
@@ -106,6 +108,14 @@ pub const Fake = struct {
         return .ok;
     }
 
+    fn ledFn(ctx: *anyopaque, _: *const kernel.Caller, index: u32, on: bool) abi.Status {
+        const self = of(ctx);
+        if (index >= 3) return .bad_argument;
+        self.led_index = index;
+        self.led_on = on;
+        return .ok;
+    }
+
     pub fn backend(self: *Fake) kernel.Backend {
         return .{
             .ctx = self,
@@ -120,6 +130,7 @@ pub const Fake = struct {
             .write = writeFn,
             .close = closeFn,
             .touch = touchFn,
+            .led = ledFn,
         };
     }
 
@@ -148,7 +159,7 @@ pub const Arena = struct {
     }
 };
 
-pub const all = api.appimg.Capability.display | api.appimg.Capability.storage;
+pub const all = api.appimg.Capability.display | api.appimg.Capability.storage | api.appimg.Capability.led;
 
 pub fn caller(arena: *Arena, capabilities: u32) kernel.Caller {
     return .{ .app_id = "com.example.notes", .capabilities = capabilities, .owned = arena.owned() };

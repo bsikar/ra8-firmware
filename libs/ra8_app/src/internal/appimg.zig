@@ -25,7 +25,7 @@ pub const Format = struct {
     /// Header revision this implementation reads.
     pub const version: u32 = 0x00000001;
     /// Syscall-table generation the running firmware publishes.
-    pub const api_version_current: u32 = 0x00000001;
+    pub const api_version_current: u32 = 0x00000002;
     /// Per-segment byte cap: the Non-Secure region a module can be given.
     pub const segment_max: u32 = 0x00100000;
     /// Smallest usable module stack, bytes.
@@ -38,8 +38,9 @@ pub const Capability = struct {
     pub const display: u32 = 0x00000001;
     pub const storage: u32 = 0x00000002;
     pub const network: u32 = 0x00000004;
+    pub const led: u32 = 0x00000008;
     /// Mask of every bit this format revision defines.
-    pub const known: u32 = 0x00000007;
+    pub const known: u32 = 0x0000000F;
 };
 
 /// Why a candidate container was refused.

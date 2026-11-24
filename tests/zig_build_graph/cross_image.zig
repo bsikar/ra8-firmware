@@ -163,6 +163,8 @@ fn ra8appModuleObjects(b: *std.Build, step: *std.Build.Step, named: ?[]const u8,
     const built = cpu1_txm_hello.image(b, module_tc, tools.objcopy, module);
     const identity: txm_ra8app.Identity = if (std.mem.eql(u8, wanted, "txm_translate_m33"))
         txm_ra8app.translate
+    else if (std.mem.eql(u8, wanted, "txm_touch_led_m33"))
+        txm_ra8app.touch_led
     else if (std.mem.eql(u8, wanted, "txm_hello_m33"))
         txm_ra8app.hello
     else if (std.mem.eql(u8, wanted, "txm_tour_m33"))
@@ -218,6 +220,19 @@ pub fn addTxmTranslateM33(b: *std.Build, step: *std.Build.Step, globals: build_t
     const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
     const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.translate);
     _ = txm_ra8app.add(b, step, cpu1_txm_hello.translate.name, built.bin, txm_ra8app.translate);
+}
+
+/// The `txm-touch-led-m33` step: the touch-to-LED demo module, built through C
+/// and packed as a `.ra8app` with display and LED capabilities (RA8FW-1262).
+pub fn addTxmTouchLedM33(b: *std.Build, step: *std.Build.Step, globals: build_type.Globals) void {
+    const tools = findArmTools(b) orelse {
+        const notice = b.addSystemCommand(&.{ "echo", "txm-touch-led-m33: skipped -- no arm-none-eabi toolchain on PATH" });
+        step.dependOn(&notice.step);
+        return;
+    };
+    const module_tc = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+    const built = cpu1_txm_hello.add(b, step, module_tc, tools.objcopy, cpu1_txm_hello.touch_led);
+    _ = txm_ra8app.add(b, step, cpu1_txm_hello.touch_led.name, built.bin, txm_ra8app.touch_led);
 }
 
 /// The `txm-module-check` step: Zig built as module objects through the C

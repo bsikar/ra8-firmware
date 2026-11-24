@@ -45,6 +45,7 @@ pub const Backend = struct {
     write: *const fn (ctx: *anyopaque, caller: *const Caller, handle: u32, bytes: []const u8, done: *u32) Status,
     close: *const fn (ctx: *anyopaque, caller: *const Caller, handle: u32) Status,
     touch: *const fn (ctx: *anyopaque, caller: *const Caller, event: *abi.TouchEvent) Status,
+    led: *const fn (ctx: *anyopaque, caller: *const Caller, index: u32, on: bool) Status,
 };
 
 /// The capability a request needs, or `none` when it needs nothing.
@@ -52,6 +53,7 @@ pub fn needs(request: abi.Request) u32 {
     return switch (request) {
         .screen_info, .draw_rect, .draw_image, .touch_event => Capability.display,
         .file_open, .file_read, .file_write, .file_close => Capability.storage,
+        .led_set => Capability.led,
         else => Capability.none,
     };
 }
@@ -86,8 +88,16 @@ fn serve(backend: Backend, caller: *const Caller, call: abi.Request, p1: Word, p
         .file_write => fileIo(backend, caller, p1, .write),
         .file_close => backend.close(backend.ctx, caller, narrow(p1) orelse return .bad_argument),
         .touch_event => touchEvent(backend, caller, p1),
+        .led_set => ledSet(backend, caller, p1, p2),
         _ => .unknown_request,
     };
+}
+
+fn ledSet(backend: Backend, caller: *const Caller, index: Word, state: Word) Status {
+    const led = narrow(index) orelse return .bad_argument;
+    const on = narrow(state) orelse return .bad_argument;
+    if (on > 1) return .bad_argument;
+    return backend.led(backend.ctx, caller, led, on == 1);
 }
 
 /// A word as a `u32` argument, or null when it does not fit one.

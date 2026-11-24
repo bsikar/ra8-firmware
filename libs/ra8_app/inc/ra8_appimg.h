@@ -96,7 +96,7 @@ typedef enum : uint32_t {
   /** Header format revision this implementation reads. */
   k_ra8_appimg_format_version = 0x00000001U,
   /** Syscall-table generation the running firmware publishes. */
-  k_ra8_appimg_api_version_current = 0x00000001U,
+  k_ra8_appimg_api_version_current = 0x00000002U,
   /** Per-segment byte cap, the Non-Secure region a module can be given. */
   k_ra8_appimg_segment_max = 0x00100000U,
   /** Smallest usable module stack, bytes. */
@@ -120,7 +120,8 @@ typedef enum : uint32_t {
   k_ra8_appimg_cap_display = 0x00000001U, /**< Draws into its screen region.   */
   k_ra8_appimg_cap_storage = 0x00000002U, /**< Reads/writes under its own dir. */
   k_ra8_appimg_cap_network = 0x00000004U, /**< Opens network connections.      */
-  k_ra8_appimg_cap_known   = 0x00000007U, /**< Mask of all defined bits.       */
+  k_ra8_appimg_cap_led     = 0x00000008U, /**< Drives board status LEDs.       */
+  k_ra8_appimg_cap_known   = 0x0000000FU, /**< Mask of all defined bits.       */
 } ra8_appimg_capability_t;
 
 /**

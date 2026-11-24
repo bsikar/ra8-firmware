@@ -55,6 +55,8 @@ Module apps:
 - `txm_translate_m33/`: the translation module's shell for CPU1, packaged
   with display and storage and no network (RA8FW-680). Its manager example
   lives in `examples/ra8p1_foundation/txm_manager_ra8p1`.
+- `txm_touch_led_m33/`: the touch-to-LED demo module, packaged with
+  `display | led` (`0x9`, RA8FW-1262): polls touch events and drives LED1.
 
 Manager and loader apps:
 
@@ -73,6 +75,9 @@ Manager and loader apps:
   `txm_fault_m33` from a micro-SD card (RA8FW-290).
 - `txm_sd_tour_m85/`: SD load and run of `txm_tour_m33`, admitted through
   ra8_app's gate (RA8FW-965, under RA8FW-290).
+- `txm_touch_led_m85/`: EK-RA8D2 manager that admits `txm_touch_led_m33` under
+  `display | led`, feeds GT911 touch events, and lights LED1 on touch
+  (RA8FW-1262).
 
 Setup examples for the `.ra8app` build and load path land here too:
 `ra8app_setup_hello/` walks the pack, sign, verify and gate path on one

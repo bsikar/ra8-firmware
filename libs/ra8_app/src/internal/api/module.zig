@@ -134,5 +134,10 @@ pub fn Api(comptime request: RequestFn) type {
             try check(word);
             return event;
         }
+
+        /// Drive a board status LED on (`true`) or off (`false`).
+        pub fn ledSet(index: u32, on: bool) Error!void {
+            return check(call(.led_set, index, @intFromBool(on), 0));
+        }
     };
 }

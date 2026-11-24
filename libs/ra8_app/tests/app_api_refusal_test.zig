@@ -44,6 +44,9 @@ test "a call whose capability the manifest does not hold is denied before its po
         try refused(&backend, .denied, kernel.dispatch(backend.backend(), &storage_only, req(r), 0, 0, 0));
         try refused(&backend, .denied, kernel.dispatch(backend.backend(), &nothing, req(r), 0, 0, 0));
     }
+    try refused(&backend, .denied, kernel.dispatch(backend.backend(), &display_only, req(.led_set), 0, 1, 0));
+    try refused(&backend, .denied, kernel.dispatch(backend.backend(), &storage_only, req(.led_set), 0, 1, 0));
+    try refused(&backend, .denied, kernel.dispatch(backend.backend(), &nothing, req(.led_set), 0, 1, 0));
 }
 
 test "the lifecycle calls need no capability" {
@@ -153,4 +156,7 @@ test "a word too wide for its argument is refused" {
     try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.exit), wide, 0, 0));
     try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.sleep), wide, 0, 0));
     try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.file_close), wide, 0, 0));
+    try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.led_set), wide, 1, 0));
+    try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.led_set), 0, wide, 0));
+    try refused(&backend, .bad_argument, kernel.dispatch(backend.backend(), &caller, req(.led_set), 0, 2, 0));
 }

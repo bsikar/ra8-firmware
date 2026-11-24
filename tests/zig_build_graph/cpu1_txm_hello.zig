@@ -134,8 +134,18 @@ pub const translate = Module{
     .api = true,
 };
 
+/// The legible touch-to-LED demo module (RA8FW-1262): packed with
+/// `display | led` capabilities.
+pub const touch_led = Module{
+    .name = "txm_touch_led_m33",
+    .entry_source = "apps/board/threadx_modules/txm_touch_led_m33/module_start.zig",
+    .stack_size = 4096,
+    .through_c = true,
+    .api = true,
+};
+
 /// Every module an image can name in `txm_module`.
-pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server, dual_client, tour, translate };
+pub const modules = [_]Module{ hello_world, fault, table, rpc, helium, dual_server, dual_client, tour, translate, touch_led };
 
 pub const name = hello_world.name;
 pub const entry_source = hello_world.entry_source;
