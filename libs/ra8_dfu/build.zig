@@ -54,6 +54,15 @@ pub fn build(b: *std.Build) void {
 
     var modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
 
+    const update_dep = b.dependency("ra8_update", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const upd_err = update_dep.module("err");
+    const upd_pipeline = update_dep.module("pipeline");
+    const upd_session = update_dep.module("session");
+    const upd_bundle = update_dep.module("bundle");
+
     inline for (units) |unit| {
         const module = b.createModule(.{
             .root_source_file = b.path(b.fmt("src/internal/{s}.zig", .{unit.name})),
@@ -65,6 +74,20 @@ pub fn build(b: *std.Build) void {
         }
         modules.put(unit.name, module) catch @panic("OOM");
     }
+
+    const dfu_pipeline_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/dfu_pipeline.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    dfu_pipeline_module.addImport("err", modules.get("err").?);
+    dfu_pipeline_module.addImport("image", modules.get("image").?);
+    dfu_pipeline_module.addImport("program", modules.get("program").?);
+    dfu_pipeline_module.addImport("slot", modules.get("slot").?);
+    dfu_pipeline_module.addImport("upd_err", upd_err);
+    dfu_pipeline_module.addImport("pipeline", upd_pipeline);
+    dfu_pipeline_module.addImport("upd_session", upd_session);
+    dfu_pipeline_module.addImport("bundle", upd_bundle);
 
     const abi_module = b.createModule(.{
         .root_source_file = b.path("src/dfu_host_abi.zig"),
@@ -111,6 +134,8 @@ pub fn build(b: *std.Build) void {
         program_abi_module.addImport(name, modules.get(name).?);
     }
     program_abi_module.addImport("mram_port", mram_port_module);
+    program_abi_module.addImport("dfu_pipeline", dfu_pipeline_module);
+    program_abi_module.addImport("upd_session", upd_session);
 
     const boot_state_abi_module = b.createModule(.{
         .root_source_file = b.path("src/boot_state_abi.zig"),
@@ -121,6 +146,7 @@ pub fn build(b: *std.Build) void {
         boot_state_abi_module.addImport(name, modules.get(name).?);
     }
     boot_state_abi_module.addImport("mram_port", mram_port_module);
+    boot_state_abi_module.addImport("dfu_pipeline", dfu_pipeline_module);
 
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
@@ -200,6 +226,11 @@ pub fn build(b: *std.Build) void {
     inline for (.{ "image", "program", "slot" }) |name| {
         program_test_module.addImport(name, modules.get(name).?);
     }
+    program_test_module.addImport("dfu_pipeline", dfu_pipeline_module);
+    program_test_module.addImport("upd_err", upd_err);
+    program_test_module.addImport("pipeline", upd_pipeline);
+    program_test_module.addImport("upd_session", upd_session);
+    program_test_module.addImport("bundle", upd_bundle);
 
     const boot_state_test_module = b.createModule(.{
         .root_source_file = b.path("tests/boot_state_test.zig"),

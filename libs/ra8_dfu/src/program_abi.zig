@@ -1,17 +1,63 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The C ABI for the DFU slot programmer, delegating hardware MRAM access to
-//! the shared SRAM-resident `mram_port`.
+//! The C ABI for the DFU slot programmer, delegating MRAM I/O to `mram_port`
+//! and staging / `"RA8U"` verification / commit through `dfu_pipeline`
+//! (`libs/ra8_update`).
 
 const std = @import("std");
+const dfu_pipeline = @import("dfu_pipeline");
 const err = @import("err");
 const image = @import("image");
 const mram = @import("mram_port");
 const program = @import("program");
 const slot = @import("slot");
+const upd_sess = @import("upd_session");
 
 extern fn ra8_dfu_crc32(data: [*]const u8, len: u32) u32;
+
+fn mramPrepare(_: ?*anyopaque, which: slot.Slot) u16 {
+    const slot_base = program.base(which);
+    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    return mram.prepareWindow(slot_base, slot_base + program.slots.size);
+}
+
+fn mramWrite(_: ?*anyopaque, which: slot.Slot, offset: u32, data: []const u8) u16 {
+    const slot_base = program.base(which);
+    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    return mram.writePages(slot_base + offset, data);
+}
+
+fn mramRead(_: ?*anyopaque, which: slot.Slot, offset: u32, dst: []u8) u16 {
+    const slot_base = program.base(which);
+    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    const ptr: [*]const u8 = @ptrFromInt(slot_base + offset);
+    @memcpy(dst, ptr[0..dst.len]);
+    return err.Err.ok.raw();
+}
+
+fn mramCrc(_: ?*anyopaque, which: slot.Slot, len: u32) u32 {
+    const slot_base = program.base(which);
+    if (slot_base == 0) return 0;
+    return ra8_dfu_crc32(@ptrFromInt(slot_base), len);
+}
+
+fn mramWriteHeader(_: ?*anyopaque, which: slot.Slot, hdr: *const image.Header) u16 {
+    const slot_base = program.base(which);
+    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    return mram.writePages(slot_base + program.slots.hdr_offset, std.mem.asBytes(hdr));
+}
+
+fn mramBackend() dfu_pipeline.Backend {
+    return .{
+        .prepare = mramPrepare,
+        .write = mramWrite,
+        .read = mramRead,
+        .crc32 = mramCrc,
+        .write_header = mramWriteHeader,
+        .ctx = null,
+    };
+}
 
 fn readHeader(which: slot.Slot) ?image.Header {
     const slot_base = program.base(which);
@@ -53,10 +99,17 @@ export fn ra8_dfu_slot_seq(which: slot.Slot, out_seq: ?*u32) linksection(mram.sr
     return err.Err.ok.raw();
 }
 
+export fn ra8_dfu_set_bundle_hooks(
+    crypto: ?*const upd_sess.CryptoIface,
+    pubkey_handle: u32,
+    rollback: ?*const upd_sess.RollbackIface,
+) u16 {
+    return dfu_pipeline.shared.setBundleHooks(crypto, pubkey_handle, rollback);
+}
+
 export fn ra8_dfu_program_prepare(inactive: slot.Slot) linksection(mram.sram_text) u16 {
-    const slot_base = program.base(inactive);
-    if (slot_base == 0) return err.Err.invalid_arg.raw();
-    return mram.prepareWindow(slot_base, slot_base + program.slots.size);
+    if (program.base(inactive) == 0) return err.Err.invalid_arg.raw();
+    return dfu_pipeline.shared.prepare(inactive, mramBackend());
 }
 
 export fn ra8_dfu_program_image(
@@ -66,10 +119,9 @@ export fn ra8_dfu_program_image(
     len: u32,
 ) linksection(mram.sram_text) u16 {
     const src = data orelse return err.Err.null_ptr.raw();
-    const slot_base = program.base(inactive);
-    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    if (program.base(inactive) == 0) return err.Err.invalid_arg.raw();
     if (!program.bodyWriteValid(img_offset, len)) return err.Err.invalid_arg.raw();
-    return mram.writePages(slot_base + img_offset, src[0..len]);
+    return dfu_pipeline.shared.writeImage(inactive, img_offset, src[0..len], mramBackend());
 }
 
 export fn ra8_dfu_program_commit(
@@ -77,21 +129,9 @@ export fn ra8_dfu_program_commit(
     img_len: u32,
     seq: u32,
 ) linksection(mram.sram_text) u16 {
-    const slot_base = program.base(inactive);
-    if (slot_base == 0) return err.Err.invalid_arg.raw();
+    if (program.base(inactive) == 0) return err.Err.invalid_arg.raw();
     if (!image.lengthValid(img_len)) return err.Err.invalid_arg.raw();
-
-    const hdr = image.Header{
-        .magic = image.layout.hdr_magic,
-        .seq = seq,
-        .img_len = img_len,
-        .img_crc32 = ra8_dfu_crc32(@ptrFromInt(slot_base), img_len),
-        .entry = image.layout.run_base,
-        .rsv0 = 0,
-        .rsv1 = 0,
-        .rsv2 = 0,
-    };
-    return mram.writePages(slot_base + program.slots.hdr_offset, std.mem.asBytes(&hdr));
+    return dfu_pipeline.shared.commit(inactive, img_len, seq, mramBackend());
 }
 
 export fn ra8_dfu_program_verify(which: slot.Slot) linksection(mram.sram_text) u16 {

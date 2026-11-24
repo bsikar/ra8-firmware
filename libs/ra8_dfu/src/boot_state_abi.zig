@@ -8,6 +8,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const boot_state = @import("boot_state");
+const dfu_pipeline = @import("dfu_pipeline");
 const err = @import("err");
 const mram = @import("mram_port");
 const slot = @import("slot");
@@ -169,15 +170,17 @@ export fn ra8_dfu_confirm() u16 {
             error.InvalidState => err.Err.invalid_state.raw(),
         };
     };
-    if (confirm_plan.outcome == .already_confirmed) return err.Err.ok.raw();
+    if (confirm_plan.outcome == .already_confirmed) return dfu_pipeline.shared.confirmPending();
     const s = parseSlot(confirm_plan.record.trial_slot) orelse return err.Err.invalid_state.raw();
-    return commitState(
+    const st_err = commitState(
         copies,
         s,
         confirm_plan.record.tries_left,
         true,
         confirm_plan.record.slot_seq,
     );
+    if (st_err != err.Err.ok.raw()) return st_err;
+    return dfu_pipeline.shared.confirmPending();
 }
 
 export fn ra8_dfu_boot_state_erase_all() u16 {
