@@ -1,3 +1,46 @@
 {
+  "test_roots": [
+    "tests/pins_test.zig",
+    "tests/identity_test.zig",
+    "tests/console_test.zig"
+  ],
+  "covered_sources": [
+    "src/boot/nmi_exception.zig",
+    "src/boot/secure_exception.zig",
+    "src/boot/standalone_boot_options.zig",
+    "src/boot/trustzone_init.zig",
+    "src/internal/console.zig",
+    "src/internal/identity.zig",
+    "src/internal/pins.zig",
+    "src/internal/sci_hal.zig",
+    "src/internal/vocab.zig",
+    "src/ra8_board_ra8p1_abi.zig",
+    "src/root.zig",
+    "src/standalone_build_config.zig",
+    "tests/console_test.zig",
+    "tests/identity_test.zig",
+    "tests/pins_test.zig",
+    "tests/sci_fake.zig"
+  ],
+  "standalone_source_args": {
+    "src/boot/trustzone_init.zig": [
+      "--dep",
+      "boot_options",
+      "-Mroot=src/boot/trustzone_init.zig",
+      "-Mboot_options=src/boot/standalone_boot_options.zig"
+    ],
+    "src/ra8_board_ra8p1_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_board_ra8p1_abi.zig",
+      "-Mbuild_config=src/standalone_build_config.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/root.zig",
+      "-Mbuild_config=src/standalone_build_config.zig"
+    ]
+  },
   "minimum_tests": 22
 }

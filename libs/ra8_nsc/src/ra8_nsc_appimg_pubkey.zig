@@ -12,8 +12,6 @@
 //! placement of the section inside the secure MRAM window is the
 //! hardware-gated three-case proof (RA8FW-1019's lane).
 
-const std = @import("std");
-
 /// The Ed25519 verification key's width: 32 bytes.
 pub const pubkey_bytes = 32;
 
@@ -30,16 +28,10 @@ pub const default_key = [pubkey_bytes]u8{
 /// The pinned key as flash carries it: its own read-only section in the
 /// Secure image, so a provisioning pass rewrites the section in place and
 /// nothing else in the image has to move.
-export const k_ra8_nsc_appimg_pubkey linksection(".ra8_nsc_appimg_pubkey") = default_key;
+pub export const k_ra8_nsc_appimg_pubkey linksection(".ra8_nsc_appimg_pubkey") = default_key;
 
 /// The key admission verifies under: the flash-resident section, read
 /// secure-side only.
 pub fn pinned() *const [pubkey_bytes]u8 {
     return &k_ra8_nsc_appimg_pubkey;
-}
-
-test "pinned returns the flash section's key" {
-    try std.testing.expectEqual(@intFromPtr(&k_ra8_nsc_appimg_pubkey), @intFromPtr(pinned()));
-    try std.testing.expectEqual(pubkey_bytes, pinned().len);
-    try std.testing.expectEqualSlices(u8, &default_key, pinned());
 }

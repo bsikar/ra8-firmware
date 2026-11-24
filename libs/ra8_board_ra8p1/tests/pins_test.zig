@@ -7,6 +7,10 @@
 const std = @import("std");
 const pins = @import("pins");
 
+comptime {
+    _ = @import("sci_fake.zig");
+}
+
 const vocab = pins.vocab;
 
 const Pin = vocab.Pin;
