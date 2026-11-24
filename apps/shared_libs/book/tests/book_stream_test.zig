@@ -9,8 +9,8 @@
 //! CRC, over built-in-memory canonical RABOOK1 blobs.
 
 const std = @import("std");
-const stream = @import("book_stream.zig");
-const wire = @import("book_stream_wire.zig");
+const stream = @import("stream");
+const wire = stream.wire;
 
 const k_ra8_ok: u16 = 0;
 const k_ra8_err_invalid_arg: u16 = 0x103;

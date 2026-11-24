@@ -20,15 +20,15 @@ const std = @import("std");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint16_t) --------------
 const ra8_err_t = u16;
-const k_ra8_ok: ra8_err_t = 0;
-const k_ra8_err_no_mem: ra8_err_t = 0x102;
-const k_ra8_err_invalid_size: ra8_err_t = 0x105;
+pub const k_ra8_ok: ra8_err_t = 0;
+pub const k_ra8_err_no_mem: ra8_err_t = 0x102;
+pub const k_ra8_err_invalid_size: ra8_err_t = 0x105;
 const k_ra8_err_no_data: ra8_err_t = 0x10A;
-const k_ra8_err_validation_failed: ra8_err_t = 0x501;
-const k_ra8_err_null_ptr: ra8_err_t = 0x504;
+pub const k_ra8_err_validation_failed: ra8_err_t = 0x501;
+pub const k_ra8_err_null_ptr: ra8_err_t = 0x504;
 
 // ---- epub.h limits ---------------------------------------------------------
-const k_epub_max_chapters = 64;
+pub const k_epub_max_chapters = 64;
 const k_epub_max_toc = 64;
 const k_epub_max_path_len = 192;
 const k_epub_meta_len = 128;
@@ -38,15 +38,15 @@ const k_epub_id_len = 64;
 const k_epub_media_len = 48;
 const k_epub_zip_archive_bytes = 256;
 const k_epub_toc_none: u8 = 0;
-const k_epub_toc_ncx: u8 = 1;
-const k_epub_toc_nav: u8 = 2;
+pub const k_epub_toc_ncx: u8 = 1;
+pub const k_epub_toc_nav: u8 = 2;
 
 // ---- xml.h (apps/shared_libs/xml/inc/xml.h, ra8_xml stays linked) ----------
-const xml_span_t = extern struct { offset: u32, length: u32 };
+pub const xml_span_t = extern struct { offset: u32, length: u32 };
 const xml_frame_t = extern struct { name_offset: u32, name_length: u16, consumer: u16 };
 const k_xml_workspace_frames = 512;
 const xml_workspace_t = extern struct { frames: [k_xml_workspace_frames]xml_frame_t };
-const xml_event_t = extern struct {
+pub const xml_event_t = extern struct {
     markup: xml_span_t,
     name: xml_span_t,
     depth: u16,
@@ -56,7 +56,7 @@ const xml_event_t = extern struct {
 };
 const xml_attribute_t = extern struct { name: xml_span_t, value: xml_span_t };
 const xml_attr_cursor_t = extern struct { position: u32, emitted: u16 };
-const xml_reader_t = extern struct {
+pub const xml_reader_t = extern struct {
     source: ?[*]const u8,
     source_len: usize,
     position: usize,
@@ -68,24 +68,24 @@ const xml_reader_t = extern struct {
     doctype_seen: u8,
     finished: u8,
 };
-const k_xml_event_none: u8 = 0;
-const k_xml_event_start: u8 = 1;
+pub const k_xml_event_none: u8 = 0;
+pub const k_xml_event_start: u8 = 1;
 const k_xml_event_end: u8 = 2;
 const k_xml_event_text: u8 = 3;
 
 extern fn xml_validate(source: ?[*]const u8, source_len: usize, workspace: ?*xml_workspace_t) callconv(.c) ra8_err_t;
 extern fn xml_reader_init(reader: ?*xml_reader_t, source: ?[*]const u8, source_len: usize, workspace: ?*xml_workspace_t) callconv(.c) ra8_err_t;
-extern fn xml_reader_next(reader: ?*xml_reader_t, out_event: ?*xml_event_t) callconv(.c) ra8_err_t;
+pub extern fn xml_reader_next(reader: ?*xml_reader_t, out_event: ?*xml_event_t) callconv(.c) ra8_err_t;
 extern fn xml_decode(source: ?[*]const u8, source_len: usize, span: xml_span_t, destination: ?[*]u8, capacity: usize, out_length: ?*usize) callconv(.c) ra8_err_t;
 extern fn xml_decode_prefix(source: ?[*]const u8, source_len: usize, span: xml_span_t, destination: ?[*]u8, capacity: usize, out_length: ?*usize) callconv(.c) ra8_err_t;
 extern fn xml_span_equal(source: ?[*]const u8, source_len: usize, span: xml_span_t, literal: [*:0]const u8) callconv(.c) bool;
-extern fn xml_span_local_equal(source: ?[*]const u8, source_len: usize, span: xml_span_t, literal: [*:0]const u8) callconv(.c) bool;
+pub extern fn xml_span_local_equal(source: ?[*]const u8, source_len: usize, span: xml_span_t, literal: [*:0]const u8) callconv(.c) bool;
 extern fn xml_decoded_equal(source: ?[*]const u8, source_len: usize, left: xml_span_t, right: xml_span_t) callconv(.c) bool;
 extern fn xml_attr_begin(event: ?*const xml_event_t, cursor: ?*xml_attr_cursor_t) callconv(.c) void;
 extern fn xml_attr_next(source: ?[*]const u8, source_len: usize, event: ?*const xml_event_t, cursor: ?*xml_attr_cursor_t, out_attribute: ?*xml_attribute_t, out_has_value: ?*bool) callconv(.c) ra8_err_t;
 
 // ---- the epub book and workspace (epub.h, exact C layout) ------------------
-const epub_xml_workspace_t = extern struct {
+pub const epub_xml_workspace_t = extern struct {
     reader: xml_workspace_t,
     references: [k_epub_max_chapters]xml_span_t,
     legacy_cover_id: xml_span_t,
@@ -95,7 +95,7 @@ const epub_miniz_arena_t = extern struct { base: ?[*]u8, capacity: usize, initia
 const epub_miniz_workspace_t = extern struct { bytes: [163840]u8 align(16) };
 const epub_stream_read_fn = *const fn (?*anyopaque, u64, ?*anyopaque, u32, ?*u32) callconv(.c) ra8_err_t;
 const epub_stream_media_t = extern struct { read: ?epub_stream_read_fn, ctx: ?*anyopaque, size: u64 };
-const epub_container_result_t = extern struct { opf_path: [k_epub_max_path_len]u8 };
+pub const epub_container_result_t = extern struct { opf_path: [k_epub_max_path_len]u8 };
 const epub_toc_entry_t = extern struct { title: [k_epub_meta_len]u8, href: [k_epub_max_path_len]u8, depth: u8 };
 const epub_manifest_item_t = extern struct { id: [k_epub_id_len]u8, href: [k_epub_max_path_len]u8, media_type: [k_epub_media_len]u8 };
 pub const epub_book_t = extern struct {
@@ -133,7 +133,7 @@ const priv_attr_t = extern struct { span: xml_span_t, present: bool };
 
 /// Consumer markers stored in live reader frames (epub_xml_shim.c).
 const k_priv_mark_none: u16 = 0;
-const k_priv_mark_title: u16 = 1;
+pub const k_priv_mark_title: u16 = 1;
 const k_priv_mark_creator: u16 = 2;
 const k_priv_mark_language: u16 = 3;
 const k_priv_mark_identifier: u16 = 4;
@@ -614,220 +614,4 @@ pub export fn priv_epub_xml_parse_opf(xml_bytes: ?[*]const u8, xml_len: usize, b
         err = internal_opf_resolve_refs(xml_bytes.?, xml_len, spine_toc, book.?);
     }
     return err;
-}
-
-const test_container_xml =
-    "<?xml version=\"1.0\"?>\n" ++
-    "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n" ++
-    "  <rootfiles>\n" ++
-    "    <rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/>\n" ++
-    "  </rootfiles>\n" ++
-    "</container>";
-
-const test_opf_xml =
-    "<?xml version=\"1.0\"?>\n" ++
-    "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"pub-id\">\n" ++
-    "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n" ++
-    "    <dc:title>Test Book</dc:title>\n" ++
-    "    <dc:creator>Author Name</dc:creator>\n" ++
-    "    <dc:language>en</dc:language>\n" ++
-    "    <dc:identifier id=\"pub-id\">urn:uuid:1234</dc:identifier>\n" ++
-    "    <meta name=\"cover\" content=\"cover-image\"/>\n" ++
-    "  </metadata>\n" ++
-    "  <manifest>\n" ++
-    "    <item id=\"titlepage\" href=\"title.xhtml\" media-type=\"application/xhtml+xml\"/>\n" ++
-    "    <item id=\"cover-image\" href=\"cover.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"/>\n" ++
-    "    <item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>\n" ++
-    "    <item id=\"font1\" href=\"font.ttf\" media-type=\"font/ttf\"/>\n" ++
-    "  </manifest>\n" ++
-    "  <spine toc=\"nav\">\n" ++
-    "    <itemref idref=\"titlepage\"/>\n" ++
-    "  </spine>\n" ++
-    "</package>";
-
-fn test_book() epub_book_t {
-    return std.mem.zeroes(epub_book_t);
-}
-
-fn span_of(text: []const u8) xml_span_t {
-    return .{ .offset = 0, .length = @intCast(text.len) };
-}
-
-test "copy decodes entities and truncates only at a complete prefix" {
-    const source = "&lt;T&amp;itle&gt;suffix";
-    var out: [8]u8 = @splat(0);
-    priv_epub_xml_copy(source, source.len, span_of(source), &out, out.len);
-    try std.testing.expectEqualStrings("<T&itle", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&out)), 0));
-}
-
-test "attr finds the wanted attribute and misses the absent one" {
-    const source = "<rootfile full-path=\"a.opf\" media-type=\"x\"/>";
-    var event: xml_event_t = undefined;
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_find(source, source.len, &workspace, "rootfile", false, 0, 0, &event));
-    const path = priv_epub_xml_attr(source, source.len, &event, "full-path");
-    try std.testing.expect(path.present);
-    const missing = priv_epub_xml_attr(source, source.len, &event, "href");
-    try std.testing.expect(!missing.present);
-}
-
-test "attr_contains needs a present attribute and a matching needle" {
-    const source = "<item properties=\"cover-image nav\"/>";
-    var event: xml_event_t = undefined;
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_find(source, source.len, &workspace, "item", false, 0, 0, &event));
-    const properties = priv_epub_xml_attr(source, source.len, &event, "properties");
-    try std.testing.expect(priv_epub_xml_attr_contains(source, source.len, properties, "cover-image"));
-    try std.testing.expect(!priv_epub_xml_attr_contains(source, source.len, properties, "epub"));
-    try std.testing.expect(!priv_epub_xml_attr_contains(source, source.len, .{ .span = .{ .offset = 0, .length = 0 }, .present = false }, "nav"));
-}
-
-test "direct_child rejects the unparented sentinel and walks one level" {
-    try std.testing.expect(!priv_epub_xml_direct_child(1, 0xFFFF));
-    try std.testing.expect(priv_epub_xml_direct_child(3, 2));
-    try std.testing.expect(!priv_epub_xml_direct_child(4, 2));
-}
-
-test "ancestor_frame walks up and fails past the root" {
-    var frame: u16 = 0;
-    try std.testing.expect(priv_epub_xml_ancestor_frame(3, 2, &frame));
-    try std.testing.expectEqual(@as(u16, 1), frame);
-    try std.testing.expect(!priv_epub_xml_ancestor_frame(1, 2, &frame));
-}
-
-test "ancestor_marker reads the marked frame above the depth" {
-    const source = "<metadata><title>Text</title></metadata>";
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    var reader: xml_reader_t = undefined;
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_reader(&reader, source, source.len, &workspace));
-    var event: xml_event_t = undefined;
-    var title_depth: u16 = 0;
-    while (true) {
-        try std.testing.expectEqual(k_ra8_ok, xml_reader_next(&reader, &event));
-        if (event.kind == k_xml_event_none) break;
-        if ((event.kind == k_xml_event_start) and xml_span_local_equal(source, source.len, event.name, "title")) {
-            title_depth = event.depth;
-            workspace.reader.frames[event.depth].consumer = k_priv_mark_title;
-        }
-    }
-    try std.testing.expectEqual(k_priv_mark_title, priv_epub_xml_ancestor_marker(&reader, title_depth + 1, 1));
-    try std.testing.expectEqual(@as(u16, 0), priv_epub_xml_ancestor_marker(&reader, 0, 1));
-}
-
-test "find locates a start event without a parent gate" {
-    const source = test_container_xml;
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    var out: xml_event_t = undefined;
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_find(source, source.len, &workspace, "rootfiles", false, 0, 0, &out));
-    try std.testing.expectEqual(@as(u16, 1), out.depth);
-}
-
-test "find without a parent returns validation_failed when absent" {
-    const source = "<container><rootfiles/></container>";
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    var out: xml_event_t = undefined;
-    try std.testing.expectEqual(k_ra8_err_validation_failed, priv_epub_xml_find(source, source.len, &workspace, "rootfile", false, 0, 0, &out));
-}
-
-test "find with a parent only accepts direct children of that parent" {
-    const source = "<a><parent><child/></parent></a>";
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    var parent: xml_event_t = undefined;
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_find(source, source.len, &workspace, "parent", false, 0, 0, &parent));
-    var out: xml_event_t = undefined;
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_find(source, source.len, &workspace, "child", true, parent.markup.offset, parent.depth, &out));
-    try std.testing.expectEqual(k_ra8_err_validation_failed, priv_epub_xml_find(source, source.len, &workspace, "parent", true, parent.markup.offset, parent.depth, &out));
-}
-
-test "parse_container rejects null, empty, and malformed documents" {
-    var out: epub_container_result_t = std.mem.zeroes(epub_container_result_t);
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_err_null_ptr, priv_epub_xml_parse_container(null, 4, &out, &workspace));
-    try std.testing.expectEqual(k_ra8_err_invalid_size, priv_epub_xml_parse_container("<a/>", 0, &out, &workspace));
-    try std.testing.expectEqual(k_ra8_err_validation_failed, priv_epub_xml_parse_container("<a><b></c></a>", 13, &out, &workspace));
-}
-
-test "parse_container copies the first rootfile path" {
-    var out: epub_container_result_t = std.mem.zeroes(epub_container_result_t);
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_parse_container(test_container_xml, test_container_xml.len, &out, &workspace));
-    try std.testing.expectEqualStrings("OEBPS/content.opf", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&out.opf_path)), 0));
-}
-
-test "parse_container survives a missing rootfiles wrapper" {
-    const source = "<container><rootfile full-path=\"x.opf\"/></container>";
-    var out: epub_container_result_t = std.mem.zeroes(epub_container_result_t);
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_parse_container(source, source.len, &out, &workspace));
-    try std.testing.expectEqualStrings("x.opf", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&out.opf_path)), 0));
-}
-
-test "parse_container rejects a rootfile without a full-path" {
-    const source = "<container><rootfiles><rootfile/></rootfiles></container>";
-    var out: epub_container_result_t = std.mem.zeroes(epub_container_result_t);
-    var workspace: epub_xml_workspace_t = std.mem.zeroes(epub_xml_workspace_t);
-    try std.testing.expectEqual(k_ra8_err_validation_failed, priv_epub_xml_parse_container(source, source.len, &out, &workspace));
-}
-
-test "parse_opf rejects null and empty inputs" {
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_err_null_ptr, priv_epub_xml_parse_opf(null, 4, &book));
-    try std.testing.expectEqual(k_ra8_err_invalid_size, priv_epub_xml_parse_opf("<a/>", 0, &book));
-}
-
-test "parse_opf rejects a package without manifest or spine" {
-    const source = "<package/>";
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_err_validation_failed, priv_epub_xml_parse_opf(source, source.len, &book));
-}
-
-test "parse_opf rejects a spine over the fixed chapter capacity" {
-    var source: std.ArrayListUnmanaged(u8) = .empty;
-    defer source.deinit(std.testing.allocator);
-    try source.appendSlice(std.testing.allocator, "<package><manifest><item id=\"i0\" href=\"0.xhtml\"/></manifest><spine>");
-    var i: usize = 0;
-    while (i <= k_epub_max_chapters) : (i += 1) {
-        var ref: [32]u8 = undefined;
-        const written = try std.fmt.bufPrint(&ref, "<itemref idref=\"i{d}\"/>", .{i});
-        try source.appendSlice(std.testing.allocator, written);
-    }
-    try source.appendSlice(std.testing.allocator, "</spine></package>");
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_err_no_mem, priv_epub_xml_parse_opf(source.items.ptr, source.items.len, &book));
-}
-
-test "parse_opf commits metadata, spine, cover, fonts and nav toc" {
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_parse_opf(test_opf_xml, test_opf_xml.len, &book));
-    try std.testing.expectEqualStrings("Test Book", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.title)), 0));
-    try std.testing.expectEqualStrings("Author Name", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.author)), 0));
-    try std.testing.expectEqualStrings("en", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.language)), 0));
-    try std.testing.expectEqualStrings("urn:uuid:1234", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.identifier)), 0));
-    try std.testing.expectEqual(@as(u16, 4), book.manifest_count);
-    try std.testing.expectEqualStrings("title.xhtml", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.manifest[0].href)), 0));
-    try std.testing.expectEqual(@as(u16, 1), book.embedded_font_count);
-    try std.testing.expectEqualStrings("font.ttf", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.embedded_font_paths[0])), 0));
-    try std.testing.expectEqualStrings("cover.jpg", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.cover_path)), 0));
-    try std.testing.expectEqualStrings("nav.xhtml", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.toc_path)), 0));
-    try std.testing.expectEqual(k_epub_toc_nav, book.toc_kind);
-    try std.testing.expectEqual(@as(u16, 1), book.chapter_count);
-    try std.testing.expectEqualStrings("title.xhtml", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.chapter_paths[0])), 0));
-}
-
-test "parse_opf falls back to the spine toc attribute for the NCX path" {
-    var source: std.ArrayListUnmanaged(u8) = .empty;
-    defer source.deinit(std.testing.allocator);
-    try source.appendSlice(std.testing.allocator, "<package unique-identifier=\"uid\"><metadata><identifier id=\"uid\">book-id</identifier></metadata><manifest><item id=\"ncx\" href=\"toc.ncx\"/></manifest><spine toc=\"ncx\"><itemref idref=\"ncx\"/></spine></package>");
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_parse_opf(source.items.ptr, source.items.len, &book));
-    try std.testing.expectEqualStrings("book-id", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.identifier)), 0));
-    try std.testing.expectEqualStrings("toc.ncx", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.toc_path)), 0));
-    try std.testing.expectEqual(k_epub_toc_ncx, book.toc_kind);
-}
-
-test "parse_opf resolves the legacy EPUB 2 cover meta" {
-    const source = "<package><metadata><meta name=\"cover\" content=\"c0\"/></metadata><manifest><item id=\"c0\" href=\"pic.png\" media-type=\"image/png\"/></manifest><spine/></package>";
-    var book = test_book();
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_xml_parse_opf(source, source.len, &book));
-    try std.testing.expectEqualStrings("pic.png", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(&book.cover_path)), 0));
 }

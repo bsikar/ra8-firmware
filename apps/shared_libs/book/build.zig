@@ -9,9 +9,12 @@
 //! book C TUs call them unchanged.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -33,66 +36,29 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig book archive tests");
-    const test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_stream_wire_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_wire_test = b.addTest(.{ .root_module = test_module });
-    test_step.dependOn(&b.addRunArtifact(book_wire_test).step);
-
-    const chunked_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_chunked_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_chunked_test = b.addTest(.{ .root_module = chunked_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_chunked_test).step);
-
-    const validate_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_chunked_validate_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_validate_test = b.addTest(.{ .root_module = validate_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_validate_test).step);
-
-    const stream_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_stream_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_stream_test = b.addTest(.{ .root_module = stream_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_stream_test).step);
-
-    const paged_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_paged_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_paged_test = b.addTest(.{ .root_module = paged_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_paged_test).step);
-
-    const xhtml_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_xhtml_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_xhtml_test = b.addTest(.{ .root_module = xhtml_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_xhtml_test).step);
-
-    const book_test_module = b.createModule(.{
-        .root_source_file = b.path("src/book_test.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    const book_test = b.addTest(.{ .root_module = book_test_module });
-    test_step.dependOn(&b.addRunArtifact(book_test).step);
+    const suites = [_]struct { alias: []const u8, source: []const u8, root: []const u8 }{
+        .{ .alias = "wire", .source = "src/book_stream_wire.zig", .root = "tests/book_stream_wire_test.zig" },
+        .{ .alias = "chunked", .source = "src/book_chunked.zig", .root = "tests/book_chunked_test.zig" },
+        .{ .alias = "validate", .source = "src/book_chunked_validate.zig", .root = "tests/book_chunked_validate_test.zig" },
+        .{ .alias = "stream", .source = "src/book_stream.zig", .root = "tests/book_stream_test.zig" },
+        .{ .alias = "paged", .source = "src/book_paged.zig", .root = "tests/book_paged_test.zig" },
+        .{ .alias = "xhtml", .source = "src/book_xhtml.zig", .root = "tests/book_xhtml_test.zig" },
+        .{ .alias = "book", .source = "src/book.zig", .root = "tests/book_test.zig" },
+    };
+    for (suites) |suite| {
+        const sut = b.createModule(.{
+            .root_source_file = b.path(suite.source),
+            .target = target,
+            .optimize = optimize,
+        });
+        const mod = b.createModule(.{
+            .root_source_file = b.path(suite.root),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        mod.addImport(suite.alias, sut);
+        const test_exe = b.addTest(.{ .root_module = mod });
+        test_step.dependOn(&b.addRunArtifact(test_exe).step);
+    }
 }

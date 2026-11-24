@@ -10,7 +10,7 @@
 //! here with the same semantics it has in book.c.
 
 const std = @import("std");
-const chunked = @import("book_chunked.zig");
+const chunked = @import("chunked");
 
 const BookChunked = chunked.BookChunked;
 

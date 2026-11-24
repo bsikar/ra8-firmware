@@ -21,7 +21,7 @@
 //! shared header parser; the port externs it until that TU ports.
 
 const std = @import("std");
-const wire = @import("book_stream_wire.zig");
+pub const wire = @import("book_stream_wire.zig");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint16_t) --------------
 const ra8_err_t = u16;
@@ -151,7 +151,7 @@ fn validateChapters(ctx: *const StreamValidate) ra8_err_t {
             );
             if ((err == k_ra8_ok) and
                 ((node[k_stream_node_kind] != k_book_node_element) or
-                (le32(node[k_stream_node_next_sibling..][0..4]) != k_book_nil)))
+                    (le32(node[k_stream_node_next_sibling..][0..4]) != k_book_nil)))
             {
                 err = k_ra8_err_invalid_arg;
             }
@@ -450,7 +450,7 @@ fn validateImages(ctx: *const StreamValidate) ra8_err_t {
         const data_size = le32(rec[k_stream_image_data_size..][0..4]);
         if ((err == k_ra8_ok) and
             ((data_off != pool_cursor) or
-            (data_size > (ctx.hdr.image_pool_size - pool_cursor))))
+                (data_size > (ctx.hdr.image_pool_size - pool_cursor))))
         {
             err = k_ra8_err_invalid_size;
         }

@@ -7,8 +7,8 @@
 //! walk, and the full open pipeline driven by a byte-copy stand-in inflater.
 
 const std = @import("std");
-const book = @import("book.zig");
-const wire = @import("book_stream_wire.zig");
+const book = @import("book");
+const wire = book.wire;
 
 const k_ra8_ok: u16 = 0;
 const k_ra8_err_invalid_arg: u16 = 0x103;

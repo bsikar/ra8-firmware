@@ -17,18 +17,18 @@
 const std = @import("std");
 
 // ---- ra8_err_t (libs/ra8_core/inc/ra8_err.h, enum : uint16_t) --------------
-const ra8_err_t = u16;
-const k_ra8_ok: ra8_err_t = 0;
-const k_ra8_err_null_ptr: ra8_err_t = 0x504;
-const k_ra8_err_decomp_entries: ra8_err_t = 0x507;
+pub const ra8_err_t = u16;
+pub const k_ra8_ok: ra8_err_t = 0;
+pub const k_ra8_err_null_ptr: ra8_err_t = 0x504;
+pub const k_ra8_err_decomp_entries: ra8_err_t = 0x507;
 
 // ---- miniz (SOUP, apps/shared_libs/third_party/miniz/miniz.h) --------------
 // The guard only passes the two handles through and reads the declared
 // sizes, so miniz stays an opaque handle plus the stat prefix the checks
 // read. The layout mirrors miniz.h's mz_zip_archive_file_stat through
 // m_uncomp_size.
-const mz_zip_archive = opaque {};
-const mz_zip_archive_file_stat = extern struct {
+pub const mz_zip_archive = opaque {};
+pub const mz_zip_archive_file_stat = extern struct {
     m_file_index: c_uint,
     m_central_dir_ofs: u64,
     m_version_made_by: c_ushort,
@@ -58,7 +58,6 @@ extern fn ra8_decomp_check_declared(limits: ?*const ra8_decomp_limits_t, comp_si
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 
 // Test-only knob, defined by teststub/zip_guard_test_stubs.c.
-extern var teststub_num_files: c_uint;
 
 const s_tag_zip_guard: [:0]const u8 = "epub_zip";
 
@@ -82,41 +81,4 @@ pub export fn priv_epub_zip_guard_entry(st: ?*const mz_zip_archive_file_stat) ca
     }
     const limits = ra8_decomp_limits_default();
     return ra8_decomp_check_declared(&limits, st.?.m_comp_size, st.?.m_uncomp_size);
-}
-
-test "archive guard rejects a null zip" {
-    try std.testing.expectEqual(k_ra8_err_null_ptr, priv_epub_zip_guard_archive(null));
-}
-
-test "entry guard rejects a null stat" {
-    try std.testing.expectEqual(k_ra8_err_null_ptr, priv_epub_zip_guard_entry(null));
-}
-
-test "archive guard rejects the many-tiny-entries bomb and passes a small archive" {
-    var archive_probe: u8 = 0;
-    const archive: *mz_zip_archive = @ptrCast(&archive_probe);
-
-    teststub_num_files = 5; // stub policy caps at 4
-    try std.testing.expectEqual(k_ra8_err_decomp_entries, priv_epub_zip_guard_archive(archive));
-
-    teststub_num_files = 3;
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_zip_guard_archive(archive));
-}
-
-test "entry guard forwards the declared sizes to the policy" {
-    var stat = mz_zip_archive_file_stat{
-        .m_file_index = 0,
-        .m_central_dir_ofs = 0,
-        .m_version_made_by = 0,
-        .m_version_needed = 0,
-        .m_bit_flag = 0,
-        .m_method = 0,
-        .m_crc32 = 0,
-        .m_comp_size = 0,
-        .m_uncomp_size = 0,
-    };
-    try std.testing.expectEqual(k_ra8_ok, priv_epub_zip_guard_entry(&stat));
-
-    stat.m_uncomp_size = 1; // stub policy flags any nonzero declared output
-    try std.testing.expectEqual(@as(ra8_err_t, 0x505), priv_epub_zip_guard_entry(&stat));
 }

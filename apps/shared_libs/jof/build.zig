@@ -8,6 +8,7 @@
 //! library + host test step. The test units fill in as functions port.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// The headers jof_abi.zig exposes, translated once so every Zig unit shares
@@ -63,7 +64,9 @@ fn translateHeaders(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -88,21 +91,19 @@ pub fn build(b: *std.Build) void {
     // in the consumers' C TUs; the standalone test link stubs them
     // (tests/abi_stubs.zig). The stubs ride a dedicated test module so they
     // never enter libjof.a or any consumer link.
-    const test_module = b.createModule(.{
+    const sut_module = b.createModule(.{
         .root_source_file = b.path("src/jof_abi.zig"),
         .target = target,
         .optimize = optimize,
-        .pic = true,
     });
-    test_module.addImport("jof_h", jof_h_mod);
-    const stub_mod = b.createModule(.{
-        .root_source_file = b.path("tests/abi_stubs.zig"),
+    sut_module.addImport("jof_h", jof_h_mod);
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/jof_abi_test.zig"),
         .target = target,
         .optimize = optimize,
     });
-    stub_mod.addImport("jof_h", jof_h_mod);
-    const stubs = b.addObject(.{ .name = "abi_stubs", .root_module = stub_mod });
-    test_module.addObject(stubs);
+    test_module.addImport("jof_h", jof_h_mod);
+    test_module.addImport("jof_abi", sut_module);
     const webp_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(webp_test).step);
 }

@@ -10,8 +10,8 @@
 //! DOM text walk with its seam behaviour.
 
 const std = @import("std");
-const paged = @import("book_paged.zig");
-const wire = @import("book_stream_wire.zig");
+const paged = @import("paged");
+const wire = paged.wire;
 
 const k_ra8_ok: u16 = 0;
 const k_ra8_err_invalid_arg: u16 = 0x103;
@@ -36,9 +36,9 @@ fn internalEmit(out: [*]u8, cap: usize, pos: *usize, bytes: []const u8) bool {
 
 export fn priv_book_is_block(name: [*:0]const u8) callconv(.c) bool {
     const blocks = [_][]const u8{
-        "p", "h1", "h2", "h3", "h4", "h5", "h6", "li",
-        "ul", "ol", "div", "br", "hr", "section", "tr", "pre",
-        "header", "blockquote", "article", "aside", "footer", "figure", "figcaption",
+        "p",      "h1",         "h2",      "h3",    "h4",     "h5",      "h6",         "li",
+        "ul",     "ol",         "div",     "br",    "hr",     "section", "tr",         "pre",
+        "header", "blockquote", "article", "aside", "footer", "figure",  "figcaption",
     };
     const s = std.mem.span(name);
     for (blocks) |b| {
@@ -93,7 +93,7 @@ const FakeVm = struct {
     fault_code: u16 = 0,
     puts: u32 = 0,
     frame: [256]u8 = undefined,
-    prefetches: [8]u64 = .{0, 0, 0, 0, 0, 0, 0, 0},
+    prefetches: [8]u64 = .{ 0, 0, 0, 0, 0, 0, 0, 0 },
     prefetch_count: usize = 0,
 };
 

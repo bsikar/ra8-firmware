@@ -1,0 +1,37 @@
+{
+  "test_roots": [
+    "tests/epub_abi_test.zig",
+    "tests/epub_fs_abi_test.zig",
+    "tests/epub_open_abi_test.zig",
+    "tests/epub_chapter_abi_test.zig",
+    "tests/epub_entry_abi_test.zig",
+    "tests/epub_xml_shim_abi_test.zig",
+    "tests/epub_xml_toc_abi_test.zig",
+    "tests/epub_miniz_alloc_abi_test.zig",
+    "tests/epub_img_import_abi_test.zig",
+    "tests/epub_img_tiles_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/epub_abi.zig",
+    "src/epub_chapter_abi.zig",
+    "src/epub_entry_abi.zig",
+    "src/epub_fs_abi.zig",
+    "src/epub_img_import_abi.zig",
+    "src/epub_img_tiles_abi.zig",
+    "src/epub_miniz_alloc_abi.zig",
+    "src/epub_open_abi.zig",
+    "src/epub_xml_shim_abi.zig",
+    "src/epub_xml_toc_abi.zig",
+    "tests/epub_abi_test.zig",
+    "tests/epub_chapter_abi_test.zig",
+    "tests/epub_entry_abi_test.zig",
+    "tests/epub_fs_abi_test.zig",
+    "tests/epub_img_import_abi_test.zig",
+    "tests/epub_img_tiles_abi_test.zig",
+    "tests/epub_miniz_alloc_abi_test.zig",
+    "tests/epub_open_abi_test.zig",
+    "tests/epub_xml_shim_abi_test.zig",
+    "tests/epub_xml_toc_abi_test.zig"
+  ],
+  "minimum_tests": 125
+}

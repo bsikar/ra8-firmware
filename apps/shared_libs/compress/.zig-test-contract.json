@@ -1,0 +1,11 @@
+{
+  "test_roots": [
+    "tests/vfs_compress_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/ra8_compress_abi.zig",
+    "src/ra8_vfs_compress_abi.zig",
+    "tests/vfs_compress_abi_test.zig"
+  ],
+  "minimum_tests": 5
+}
