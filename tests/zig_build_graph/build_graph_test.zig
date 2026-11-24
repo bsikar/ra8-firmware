@@ -1009,22 +1009,25 @@ test "a Zig boot unit learns TrustZone and the cache/MPU gates from its app" {
     try std.testing.expect(!off.mpu_via_hal);
     try std.testing.expect(!off.cache_via_hal);
     try std.testing.expect(!off.cgc_before_tz);
+    try std.testing.expect(!off.ns_xip);
 
     // An app that names the gates gets exactly the gates it names, so
     // cache_hal_enable_demo's spelling (enable + HAL cache) is a distinct
     // boot object from mpu_boot_map_hal's (enable + HAL MPU) and from a
-    // TrustZone image needing early CGC bring-up.
+    // TrustZone image needing early CGC bring-up or OSPI NS XIP.
     var gated = bare_app;
     gated.cache_mpu = true;
     gated.cache_via_hal = true;
     gated.cgc_before_tz = true;
+    gated.ns_xip = true;
     const on = sources.bootOptions(gated);
     try std.testing.expect(on.cache_mpu);
     try std.testing.expect(on.cache_via_hal);
     try std.testing.expect(!on.mpu_via_hal);
     try std.testing.expect(on.cgc_before_tz);
+    try std.testing.expect(on.ns_xip);
 
-    try std.testing.expectEqual(5, @typeInfo(sources.BootOptions).@"struct".field_names.len);
+    try std.testing.expectEqual(6, @typeInfo(sources.BootOptions).@"struct".field_names.len);
 }
 
 // RA8FW-1255: the Zig universal include list is a hand copy of

@@ -301,6 +301,7 @@ pub const BootOptions = struct {
     mpu_via_hal: bool,
     cache_via_hal: bool,
     cgc_before_tz: bool,
+    ns_xip: bool,
 };
 
 pub fn bootOptions(app: CrossApp) BootOptions {
@@ -310,6 +311,7 @@ pub fn bootOptions(app: CrossApp) BootOptions {
         .mpu_via_hal = app.mpu_via_hal,
         .cache_via_hal = app.cache_via_hal,
         .cgc_before_tz = app.cgc_before_tz,
+        .ns_xip = app.ns_xip,
     };
 }
 

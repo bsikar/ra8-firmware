@@ -313,6 +313,7 @@ function(
   _mpu_via_hal
   _cache_via_hal
   _cgc_before_tz
+  _ns_xip
   _out_object
 )
   if(NOT RA8_ZIG_EXECUTABLE)
@@ -363,17 +364,25 @@ function(
   else()
     set(_cbtz false)
   endif()
+  if(_ns_xip)
+    set(_nx true)
+  else()
+    set(_nx false)
+  endif()
   set(_dir "${CMAKE_CURRENT_BINARY_DIR}/zig/boot/${_board}/${_zig_cpu}/${_tz}")
   set(_object "${_dir}/${_stem}.o")
   set(_options "${_dir}/boot_options.zig")
-  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}_cbtz${_cbtz}")
+  set(_boot_key "${_board}_${_stem}_${_zig_cpu}_${_tz}")
+  string(APPEND _boot_key "_cm${_cm}_mh${_mh}_ch${_ch}_cbtz${_cbtz}_nx${_nx}")
+  get_property(_declared DIRECTORY PROPERTY "ra8_zig_boot_${_boot_key}")
   if(NOT _declared)
-    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_board}_${_stem}_${_zig_cpu}_${_tz}_cm${_cm}_mh${_mh}_ch${_ch}_cbtz${_cbtz}" ON)
+    set_property(DIRECTORY PROPERTY "ra8_zig_boot_${_boot_key}" ON)
     file(WRITE "${_options}" "pub const trust_zone: bool = ${_tz_zig};\n"
     "pub const cache_mpu: bool = ${_cm};\n"
     "pub const mpu_via_hal: bool = ${_mh};\n"
     "pub const cache_via_hal: bool = ${_ch};\n"
-    "pub const cgc_before_tz: bool = ${_cbtz};\n")
+    "pub const cgc_before_tz: bool = ${_cbtz};\n"
+    "pub const ns_xip: bool = ${_nx};\n")
     set(_source "${_board_dir}/src/boot/${_unit}")
     set(_module_flags -target ${_zig_target} -mcpu ${_zig_cpu} -O ${RA8_ZIG_OPTIMIZE}
                       -fno-unwind-tables

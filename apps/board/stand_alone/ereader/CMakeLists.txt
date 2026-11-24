@@ -27,45 +27,37 @@ endwhile()
 # Include the shared per-app build macro
 include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 
-# ---- Secure Target --------------------------------------------------------
-# Use the repository's standard macro to build the Secure side.
-# This automatically handles include paths for ra8_core, ra8_hal, ra8_net_pal, ra8_usb_pal,
-# ra8_board_ek_ra8d2, and compiles the Ring 5 libs/ra8_secure_app/ sources.
-ra8_add_app(
-  NAME ra8d2-ereader
-  STACK_BYTES 2200 MRAM_LENGTH 512K
-  DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
-  LIBS ra8_mpu ra8_tz_secure_boot AUX_SRCS src/ns_main.c
-)
-
 # ---- OSPI XIP (execute-in-place) variant ----------------------------------
 # RA8_EREADER_NS_XIP=ON links the Non-Secure image to run execute-in-place from
 # OSPI flash (NS alias 0x9000_0000) instead of the default copy-to-SRAM run
-# model: the Secure boot arms XIP + BLXNS instead of copying MRAM->SRAM, and
+# model: the Secure boot skips the MRAM->SRAM copy and BLXNS-es to OSPI, and
 # ns_reset_handler copies only .data into SRAM. OFF by default so the proven
-# SRAM-run e-reader stays the default build.
+# SRAM-run e-reader stays the default build. Set before ra8_add_app() so the
+# shared ns_usb_handoff Zig boot object receives trust_zone + ns_xip.
 option(RA8_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
-# ra8_add_ns_image() generates the script from the board template; the option
-# selects the read-only home rather than a second copy of the script.
+set(RA8_APP_BOOT_TRUST_ZONE ON)
 if(RA8_EREADER_NS_XIP)
+  set(RA8_APP_BOOT_NS_XIP ON)
   set(_ra8_ns_xip XIP)
 else()
   set(_ra8_ns_xip)
 endif()
 
+# ---- Secure Target --------------------------------------------------------
+# Use the repository's standard macro to build the Secure side.
+# This automatically handles include paths for ra8_core, ra8_hal, ra8_net_pal, ra8_usb_pal,
+# ra8_board_ek_ra8d2, and compiles the Ring 5 libs/ra8_secure_app/ sources.
+ra8_add_app(
+  NAME ra8d2-ereader BOOT_PROFILE ns_usb_handoff
+  STACK_BYTES 2200 MRAM_LENGTH 512K
+  DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
+  LIBS ra8_mpu ra8_tz_secure_boot AUX_SRCS src/ns_main.c
+)
+
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
 # the e-reader's logs appear on the UART -- ra8_emulator's on-screen console panel
 # and a real serial terminal -- not only on the ITM/SWO trace.
-include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
-# The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
-# constants. They come from the same map the NS linker script is generated from
-# rather than being re-typed in trustzone_init.c.
-ra8_ns_memory_map_defines(ra8d2-ereader.elf)
-
-target_compile_definitions(
-  ra8d2-ereader.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG
-                            $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
-)
+target_compile_definitions(ra8d2-ereader.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG)
 target_compile_options(ra8d2-ereader.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
 
 # ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
