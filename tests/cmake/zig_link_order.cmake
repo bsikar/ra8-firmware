@@ -6,6 +6,19 @@
 # Included from zig_libraries.cmake right after the last ra8_add_zig_library
 # that these lists name; the text is unchanged from its old home.
 
+set(_ra8_epub_archives
+    ra8_zig::ra8_epub
+    ra8_zig::ra8_epub_fs
+    ra8_zig::ra8_epub_open
+    ra8_zig::ra8_epub_chapter
+    ra8_zig::ra8_epub_toc
+    ra8_zig::ra8_epub_entry
+    ra8_zig::ra8_epub_xml
+    ra8_zig::ra8_epub_miniz
+    ra8_zig::ra8_epub_img_import
+    ra8_zig::ra8_epub_img_tiles
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -44,15 +57,7 @@ target_link_libraries(
          ra8_zig::ra8_camera_io
          ra8_zig::ra8_xml
          ra8_zig::ra8_xml_reader
-  ra8_zig::ra8_epub
-  ra8_zig::ra8_epub_fs
-  ra8_zig::ra8_epub_open
-  ra8_zig::ra8_epub_chapter
-  ra8_zig::ra8_epub_xml
-  ra8_zig::ra8_epub_toc
-  ra8_zig::ra8_epub_entry
-  ra8_zig::ra8_epub_miniz
-  ra8_zig::ra8_epub_img_import
+         ${_ra8_epub_archives}
          ra8_zig::ra8_net_policy
          ra8_zig::webp
          ra8_zig::ra8_imgdec
@@ -99,15 +104,7 @@ link_libraries(
   # archives ride the directory scope beside the other hal-facing archives:
   # callers first, callees after (ra8_fs before its epub_fs bridge, open and
   # chapter before the miniz plumbing and XML shim they reach).
-  ra8_zig::ra8_epub
-  ra8_zig::ra8_epub_fs
-  ra8_zig::ra8_epub_open
-  ra8_zig::ra8_epub_chapter
-  ra8_zig::ra8_epub_toc
-  ra8_zig::ra8_epub_entry
-  ra8_zig::ra8_epub_xml
-  ra8_zig::ra8_epub_miniz
-  ra8_zig::ra8_epub_img_import
+  ${_ra8_epub_archives}
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio
