@@ -6,6 +6,8 @@
     .fingerprint = 0xdfedae39362c62d6,
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
+        // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
         // Turns the vendored PSA headers into the `psa_h` module the on-target
         // backend imports.
         .translate_c = .{

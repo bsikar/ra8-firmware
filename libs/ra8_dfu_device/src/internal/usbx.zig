@@ -40,8 +40,11 @@ pub const DfuParameter = extern struct {
 };
 
 comptime {
-    // Ten word-sized members and no padding, on ARM and on the host.
-    if (@sizeOf(DfuParameter) != 10 * @sizeOf(usize)) @compileError("DfuParameter layout");
+    // Two leading c_ulong flags, seven pointer members, and trailing c_ulong
+    // padded to pointer alignment (40B on ILP32 ARM, 72B on LLP64 Windows,
+    // 80B on LP64 Unix).
+    const expected = 2 * @sizeOf(c_ulong) + 7 * @sizeOf([*]u8) + @alignOf(DfuParameter);
+    if (@sizeOf(DfuParameter) != expected) @compileError("DfuParameter layout");
 }
 
 pub extern fn _ux_system_initialize(

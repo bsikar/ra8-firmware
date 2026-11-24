@@ -1,0 +1,42 @@
+{
+  "test_roots": [
+    "tests/fake_test.zig",
+    "tests/pool_test.zig",
+    "tests/guard_test.zig",
+    "tests/psa_map_test.zig",
+    "tests/facade_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/backend_fake.zig",
+    "src/internal/backend_psa.zig",
+    "src/internal/facade.zig",
+    "src/internal/fake.zig",
+    "src/internal/guard.zig",
+    "src/internal/pool.zig",
+    "src/internal/psa_c.zig",
+    "src/internal/psa_map.zig",
+    "src/internal/standalone_build_config.zig",
+    "src/internal/vocab.zig",
+    "src/ra8_psa_crypto_abi.zig",
+    "tests/facade_test.zig",
+    "tests/fake_test.zig",
+    "tests/guard_test.zig",
+    "tests/pool_test.zig",
+    "tests/psa_map_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/facade.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/facade.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/ra8_psa_crypto_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_psa_crypto_abi.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ]
+  },
+  "minimum_tests": 80
+}

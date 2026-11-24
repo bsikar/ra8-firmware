@@ -1,0 +1,29 @@
+{
+  "test_roots": [
+    "tests/launch_gate_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/launch_gate.zig",
+    "src/launch_gate_abi.zig",
+    "src/root.zig",
+    "tests/launch_gate_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/launch_gate_abi.zig": [
+      "--dep",
+      "launch_gate",
+      "-Mroot=src/launch_gate_abi.zig",
+      "-Mlaunch_gate=src/internal/launch_gate.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "launch_gate_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "launch_gate",
+      "-Mlaunch_gate_abi=src/launch_gate_abi.zig",
+      "-Mlaunch_gate=src/internal/launch_gate.zig"
+    ]
+  },
+  "minimum_tests": 3
+}

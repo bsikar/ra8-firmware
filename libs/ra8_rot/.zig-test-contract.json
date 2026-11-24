@@ -1,0 +1,45 @@
+{
+  "test_roots": [
+    "tests/rot_test.zig",
+    "tests/antirollback_test.zig"
+  ],
+  "covered_sources": [
+    "src/antirollback_abi.zig",
+    "src/internal/antirollback.zig",
+    "src/internal/rot.zig",
+    "src/root.zig",
+    "src/rot_abi.zig",
+    "tests/antirollback_test.zig",
+    "tests/rot_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/antirollback_abi.zig": [
+      "--dep",
+      "antirollback",
+      "-Mroot=src/antirollback_abi.zig",
+      "-Mantirollback=src/internal/antirollback.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "rot_abi",
+      "--dep",
+      "antirollback_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "rot",
+      "-Mrot_abi=src/rot_abi.zig",
+      "--dep",
+      "antirollback",
+      "-Mantirollback_abi=src/antirollback_abi.zig",
+      "-Mrot=src/internal/rot.zig",
+      "-Mantirollback=src/internal/antirollback.zig"
+    ],
+    "src/rot_abi.zig": [
+      "--dep",
+      "rot",
+      "-Mroot=src/rot_abi.zig",
+      "-Mrot=src/internal/rot.zig"
+    ]
+  },
+  "minimum_tests": 15
+}

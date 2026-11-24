@@ -17,6 +17,7 @@
 //! mirror what `cmake/mbedtls.cmake` already gives the C compiler.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// Package (pinned in build.zig.zon) and the include root inside it.
@@ -54,7 +55,9 @@ fn addPsaHeaders(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const off_target = b.option(
