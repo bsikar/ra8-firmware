@@ -9,7 +9,6 @@ default:
     @echo ""
     @echo "SUBMODULES:"
     @echo "  just tests::local          Explore native test commands"
-    @echo "  just tests::devcontainer   Explore isolated Linux test commands"
     @echo ""
     @echo "COMMANDS:"
     @echo "  just tests::build          Build the test suite"
@@ -37,7 +36,6 @@ clean:
     rm -rf tests/build*
 
 mod local 'test_local.just'
-mod devcontainer 'test_devcontainer.just'
 
 # --- Category Listings ---
 
