@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/rabook_viewer_test.zig"
+  ],
+  "covered_sources": [
+    "tests/rabook_viewer_test.zig"
+  ],
+  "minimum_tests": 6
+}
