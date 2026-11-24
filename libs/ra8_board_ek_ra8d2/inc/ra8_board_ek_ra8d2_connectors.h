@@ -254,6 +254,13 @@ ra8_board_sw_attach_irq(ra8_board_sw_id_t sw, ra8_board_sw_irq_cb_t cb, void* ct
 
 /**
  * @brief Translate a board switch id into its underlying ``ra8_port_pin_t``.
+ *
+ * @param[in]  sw       Switch id.
+ * @param[out] out_pin  Destination pin id; must be non-NULL.
+ *
+ * @retval k_ra8_ok               *out_pin holds the mapped pin.
+ * @retval k_ra8_err_invalid_arg  sw out of range or out_pin NULL.
+ *
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_sw_pin(ra8_board_sw_id_t sw, ra8_port_pin_t* out_pin);
@@ -547,6 +554,14 @@ typedef enum : uint8_t {
 
 /**
  * @brief Sample a previously-initialized Arduino GPIO pin.
+ *
+ * @param[in]  pin        Arduino GPIO pin id.
+ * @param[out] out_level  Sampled logic level; must be non-NULL.
+ *
+ * @retval k_ra8_ok               *out_level holds the sampled logic level.
+ * @retval k_ra8_err_invalid_arg  out_level NULL.
+ * @retval other                  Propagated unchanged from ::ra8_gpio_read.
+ *
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_arduino_gpio_read(ra8_board_arduino_pin_t pin,
