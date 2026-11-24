@@ -193,6 +193,32 @@ pub fn build(b: *std.Build) void {
     eink_render_test_module.addImport("ra8_gfx", host_font_module);
     eink_render_test_module.addImport("abi", host_render_abi_module);
     const eink_render_tests = b.addTest(.{ .root_module = eink_render_test_module });
+
+    const host_pkg_module = b.createModule(.{
+        .root_source_file = b.path("src/host_package.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    host_pkg_module.addImport("ra8_gfx", host_font_module);
+    host_pkg_module.addImport("panel_paint", panel_paint_module);
+    host_pkg_module.addImport("box", b.createModule(.{
+        .root_source_file = b.path("../ra8_box/src/ra8_box_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    host_pkg_module.addImport("ui", b.createModule(.{
+        .root_source_file = b.path("../ra8_ui/src/ra8_ui_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    host_pkg_module.addImport("ra8_widget", host_render_abi_module);
+    const host_pkg_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/host_package_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    host_pkg_test_module.addImport("host_pkg", host_pkg_module);
+    const host_pkg_tests = b.addTest(.{ .root_module = host_pkg_test_module });
     const gfx_module_test_module = b.createModule(.{
         .root_source_file = b.path("tests/gfx_module_test.zig"),
         .target = target,
@@ -443,6 +469,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(gfx_module_tests).step);
     test_step.dependOn(&b.addRunArtifact(surface_render_tests).step);
     test_step.dependOn(&b.addRunArtifact(eink_render_tests).step);
+    test_step.dependOn(&b.addRunArtifact(host_pkg_tests).step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_image_widget_tests.step);
     test_step.dependOn(&run_abi_tests.step);

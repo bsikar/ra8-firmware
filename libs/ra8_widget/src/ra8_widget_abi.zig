@@ -16,6 +16,9 @@ pub const types = @import("widget_abi_types.zig");
 /// The module-private paint helpers of `src/ra8_widget_internal.h`.
 pub const paint = @import("widget_paint_abi.zig");
 
+/// Shared Paint dispatch, text sizing, and capability helpers.
+pub const ops = @import("paint_ops.zig");
+
 /// The CPU greyscale-image renderer.
 pub const image = @import("widget_image.zig");
 

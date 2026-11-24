@@ -869,10 +869,15 @@ fn addWidgetModules(b: *std.Build) void {
     const gfx = b.addModule("ra8_gfx", .{
         .root_source_file = b.path("libs/ra8_gfx/src/ra8_gfx.zig"),
     });
+    const panel_paint = b.createModule(.{
+        .root_source_file = b.path("libs/ra8_widget/src/panel_paint.zig"),
+        .imports = &.{.{ .name = "ra8_gfx", .module = gfx }},
+    });
     _ = b.addModule("ra8_widget_host", .{
         .root_source_file = b.path("libs/ra8_widget/src/host_package.zig"),
         .imports = &.{
             .{ .name = "ra8_gfx", .module = gfx },
+            .{ .name = "panel_paint", .module = panel_paint },
             .{ .name = "box", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_box/src/ra8_box_abi.zig") }) },
             .{ .name = "ui", .module = b.createModule(.{ .root_source_file = b.path("libs/ra8_ui/src/ra8_ui_abi.zig") }) },
             .{ .name = "ra8_widget", .module = widget },
