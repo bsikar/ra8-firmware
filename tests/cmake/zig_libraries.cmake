@@ -1095,6 +1095,14 @@ ra8_add_zig_library(
   LIBRARY_NAME
   webp
 )
+ra8_add_zig_library(
+  NAME
+  vfs_compress
+  ZIG_ROOT
+  ${FW_ROOT}/apps/shared_libs/compress
+  LIBRARY_NAME
+  vfs_compress
+)
 include(${CMAKE_CURRENT_LIST_DIR}/zig_link_order.cmake)
 
 # Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved

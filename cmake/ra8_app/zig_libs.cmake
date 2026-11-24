@@ -658,7 +658,10 @@ function(_ra8_app_zig_hal_link_one _target _lib_path)
   _ra8_app_zig_library(ra8_hal "${_lib_path}" _archive _stamp ${_tokens})
   add_custom_target(${_target}_zig_ra8_hal DEPENDS ${_stamp})
   add_dependencies(${_target} ${_target}_zig_ra8_hal)
-  target_link_libraries(${_target} PRIVATE ${_archive})
+  # Link -lgcc after libra8_hal.a (and after any app target_link_libraries
+  # such as tfpsa_arm added after ra8_add_app()) so __aeabi_*divmod helpers
+  # resolve on ARM targets.
+  target_link_libraries(${_target} PRIVATE ${_archive} gcc)
   # RA8FW-845: the words object has no referenced symbols, so it must reach
   # the link as a direct input, not as an archive member the resolver would
   # never pull in. The board linker script's KEEP rules then retain the
