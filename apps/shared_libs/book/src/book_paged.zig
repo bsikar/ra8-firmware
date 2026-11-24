@@ -107,7 +107,10 @@ pub const BookSrc = extern struct {
     hdr: wire.BookHeader,
 
     comptime {
-        if (@sizeOf(@This()) != 8 + 8 + 4 + 4 + 4 + k_book_sizeof_header) {
+        const hdr_offset = @sizeOf(?[*]const u8) + @sizeOf(?*anyopaque) + 4 + 4 + 4;
+        if (@offsetOf(@This(), "hdr") != hdr_offset or
+            @sizeOf(@This()) != hdr_offset + k_book_sizeof_header)
+        {
             @compileError("book_src_t layout drift");
         }
     }
