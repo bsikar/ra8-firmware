@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_translate_ocr.h"
 
 #ifdef __cplusplus
 extern "C" {

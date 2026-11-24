@@ -336,7 +336,12 @@
         "ra8_translate_glossary_upsert",
         "ra8_translate_glossary_lookup",
         "ra8_translate_glossary_mask",
-        "ra8_translate_glossary_restore"
+        "ra8_translate_glossary_restore",
+        "ra8_translate_ocr_has_helium",
+        "ra8_translate_ocr_required_bytes",
+        "ra8_translate_ocr_resize_u8",
+        "ra8_translate_ocr_normalize_i8",
+        "ra8_translate_ocr_preprocess_i8"
       ]
     },
     {
@@ -3720,7 +3725,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "e9ae8a822ede1b5e7435a865583db599b0856cedb313be43faba85291ebc4ecf",
+      "compatibility_sha256": "e270aa6bac152e9ba7e7791823e04ca3d88fd9f99bf99f69570f4a261c7f23d4",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3733,12 +3738,21 @@
         "@sizeOf(ScriptCounts) == 16",
         "@alignOf(ScriptCounts) == 4",
         "@sizeOf(LangSelection) == 24",
-        "@alignOf(LangSelection) == 4"
+        "@alignOf(LangSelection) == 4",
+        "@sizeOf(OcrRect) == 8",
+        "@alignOf(OcrRect) == 2",
+        "@sizeOf(OcrImageSpec) == 12",
+        "@alignOf(OcrImageSpec) == 4",
+        "@sizeOf(OcrPreprocessCfg) == 8",
+        "@alignOf(OcrPreprocessCfg) == 2",
+        "@sizeOf(OcrQuantParams) == 36",
+        "@alignOf(OcrQuantParams) == 4"
       ],
       "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
       "layout_sources": [
         "libs/ra8_translate/src/internal/sidecar.zig",
-        "libs/ra8_translate/src/internal/lang.zig"
+        "libs/ra8_translate/src/internal/lang.zig",
+        "libs/ra8_translate/src/internal/ocr_preprocess.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3850,6 +3864,31 @@
           "name": "ra8_translate_glossary_restore",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows glossary, serialized plan, and English UTF-8 and writes restored UTF-8 to caller buffer"
+        },
+        {
+          "name": "ra8_translate_ocr_has_helium",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "writes compile-time Helium MVE capability boolean to caller out-pointer"
+        },
+        {
+          "name": "ra8_translate_ocr_required_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "computes packed OCR tensor byte requirement into caller out-pointer without mutation"
+        },
+        {
+          "name": "ra8_translate_ocr_resize_u8",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable image buffer and parameters and writes cropped rotated resized 8-bit pixels to caller buffer"
+        },
+        {
+          "name": "ra8_translate_ocr_normalize_i8",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable 8-bit pixels and quant params and writes int8 activations to caller buffer"
+        },
+        {
+          "name": "ra8_translate_ocr_preprocess_i8",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable source image and params and streams cropped resized quantized int8 activations to caller buffer"
         }
       ],
       "data_exports": [],

@@ -51,6 +51,13 @@ pub fn build(b: *std.Build) void {
     glossary_mod.addImport("sidecar", sidecar_mod);
     glossary_mod.addImport("lang", lang_mod);
 
+    const ocr_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/ocr_preprocess.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ocr_mod.addImport("err", err_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -61,6 +68,7 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("sidecar", sidecar_mod);
     abi_mod.addImport("lang", lang_mod);
     abi_mod.addImport("glossary", glossary_mod);
+    abi_mod.addImport("ocr", ocr_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -154,4 +162,15 @@ pub fn build(b: *std.Build) void {
     const run_glossary = b.addRunArtifact(glossary_tests);
     ra8_build.configureHostTestRun(b, test_step, glossary_tests, run_glossary);
     test_step.dependOn(&run_glossary.step);
+
+    const ocr_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/ocr_preprocess_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ocr_tmod.addImport("ocr", ocr_mod);
+    const ocr_tests = b.addTest(.{ .root_module = ocr_tmod });
+    const run_ocr = b.addRunArtifact(ocr_tests);
+    ra8_build.configureHostTestRun(b, test_step, ocr_tests, run_ocr);
+    test_step.dependOn(&run_ocr.step);
 }

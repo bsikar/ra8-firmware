@@ -211,3 +211,47 @@ test "C ABI glossary init, upsert, lookup, mask, and restore preserve error inva
     );
     try std.testing.expectEqualStrings("Hey Tanaka-san!", restored[0..restored_len]);
 }
+
+test "C ABI OCR preprocessing validates nulls, bounds, rotation, and quantization" {
+    var has_mve: bool = true;
+    try std.testing.expectEqual(err_mod.k_ra8_err_null_ptr, abi.ra8_translate_ocr_has_helium(null));
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_ocr_has_helium(&has_mve));
+
+    var req_bytes: usize = 999;
+    try std.testing.expectEqual(err_mod.k_ra8_err_invalid_arg, abi.ra8_translate_ocr_required_bytes(10, 10, 9, &req_bytes));
+    try std.testing.expectEqual(@as(usize, 999), req_bytes);
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_ocr_required_bytes(3, 2, 1, &req_bytes));
+    try std.testing.expectEqual(@as(usize, 6), req_bytes);
+
+    const src = [_]u8{ 10, 11, 20, 21, 30, 31 };
+    const spec: abi.OcrImageSpec = .{ .stride_bytes = 2, .width = 2, .height = 3, .format = 1 };
+    const crop: abi.OcrRect = .{ .x = 0, .y = 0, .width = 2, .height = 3 };
+    const cfg: abi.OcrPreprocessCfg = .{ .dst_width = 3, .dst_height = 2, .dst_format = 1, .rotation = 1, .coord_mode = 1 };
+    var out_u8: [6]u8 = @splat(0xAA);
+    var out_written: usize = 77;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_null_ptr,
+        abi.ra8_translate_ocr_resize_u8(&src, src.len, &spec, null, &cfg, &out_u8, out_u8.len, &out_written),
+    );
+    try std.testing.expectEqual(@as(usize, 77), out_written);
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_ocr_resize_u8(&src, src.len, &spec, &crop, &cfg, &out_u8, out_u8.len, &out_written),
+    );
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 11, 21, 31, 10, 20, 30 }, &out_u8);
+
+    const q: abi.OcrQuantParams = .{ .mean = .{ 0.0, 0.0, 0.0 }, .inv_std = .{ 1.0, 1.0, 1.0 }, .input_scale = 1.0, .quant_scale = 2.0, .zero_point = -10 };
+    var out_i8: [6]i8 = @splat(99);
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_ocr_normalize_i8(&out_u8, out_u8.len, 1, &q, &out_i8, out_i8.len, &out_written),
+    );
+    try std.testing.expectEqual(@as(i8, -5), out_i8[0]);
+
+    var fused_i8: [6]i8 = @splat(99);
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_ocr_preprocess_i8(&src, src.len, &spec, &crop, &cfg, &q, &fused_i8, fused_i8.len, &out_written),
+    );
+    try std.testing.expectEqualSlices(i8, &out_i8, &fused_i8);
+}
