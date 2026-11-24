@@ -621,6 +621,104 @@ RA8_INTERNAL static void internal_test_host_announcement(void)
  * @post Every session-facing facade scenario has completed its assertions.
  * @since 0.1.0
  */
+/**
+ * @par MC/DC:
+ * (no compound decision under test -- exercises the full 4-step Wi-Fi scan
+ * exchange through the host C6 model plus failure and truncation paths)
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_scan_abi.zig@ra8_c6link_wifi_scan
+ * @brief Verify end-to-end Wi-Fi scan against the modelled ESP32-C6.
+ * @details Drives Req_WifiScanStart -> Event_StaScanDone -> Req_WifiScanGetApNum
+ *          -> Req_WifiScanGetApRecords over ra8_c6_model, checks AP truncation,
+ *          empty scan short-circuit, RPC failure cleanup, and scan timeout.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre The bounded C6 model fixture is linked into this test executable.
+ * @post Every scan roundtrip, truncation, empty, and error assertion passes.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_wifi_scan(void)
+{
+  TEST_BEGIN("c6link Wi-Fi scan roundtrip via C6 model");
+  const uint8_t        want_bssid0[] = {9U, 8U, 7U, 6U, 5U, 4U};
+  const uint8_t        want_bssid1[] = {3U, 4U, 5U, 6U, 7U, 8U};
+  ra8_c6link_ap_info_t aps[4]        = {};
+  uint16_t             found         = 99U;
+
+  priv_c6link_test_bringup();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_wifi_scan(nullptr, aps, 4U, &found));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_c6link_wifi_scan(priv_c6link_test_link(), nullptr, 4U, &found));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 4U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 0U, &found));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 4U, &found));
+  TEST_ASSERT_EQ((uint16_t)k_c6m_scan_count, found);
+  TEST_ASSERT_EQ(3U, ra8_c6_model()->seen_n);
+  TEST_ASSERT_EQ((uint32_t)RPC_ID__Req_WifiScanStart, ra8_c6_model()->seen[0]);
+  TEST_ASSERT_EQ((uint32_t)RPC_ID__Req_WifiScanGetApNum, ra8_c6_model()->seen[1]);
+  TEST_ASSERT_EQ((uint32_t)RPC_ID__Req_WifiScanGetApRecords, ra8_c6_model()->seen[2]);
+  TEST_ASSERT_EQ(0, strcmp(aps[0].ssid, "benc"));
+  TEST_ASSERT_EQ(k_c6m_channel, aps[0].channel);
+  TEST_ASSERT_EQ(-(int32_t)k_c6m_rssi_mag, aps[0].rssi);
+  TEST_ASSERT_EQ((int32_t)k_c6m_scan_wpa2, aps[0].authmode);
+  TEST_ASSERT_EQ(0, memcmp(aps[0].bssid.octet, want_bssid0, sizeof want_bssid0));
+  TEST_ASSERT_EQ(0, strcmp(aps[1].ssid, "ra8b"));
+  TEST_ASSERT_EQ(k_c6m_scan_alt_ch, aps[1].channel);
+  TEST_ASSERT_EQ(-(int32_t)k_c6m_scan_alt_rssi, aps[1].rssi);
+  TEST_ASSERT_EQ(0, aps[1].authmode);
+  TEST_ASSERT_EQ(0, memcmp(aps[1].bssid.octet, want_bssid1, sizeof want_bssid1));
+  TEST_END("c6link Wi-Fi scan roundtrip via C6 model");
+}
+
+/**
+ * @brief Verify scan capacity truncation, empty scans, and scan failure paths.
+ * @details Tests max_aps < announced count, empty scan skipping GetApRecords,
+ *          protocol failure zero-clearing, and missing Event_StaScanDone
+ *          timeout behavior.
+ * @pre Fixed-capacity fixture storage required by this operation is available.
+ * @pre The bounded C6 model fixture is linked into this test executable.
+ * @post Every edge and error-path assertion passes with clean state.
+ * @note File-local helper; no ownership escapes this focused test executable.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_wifi_scan_edges(void)
+{
+  TEST_BEGIN("c6link Wi-Fi scan truncation empty and error paths");
+  ra8_c6link_ap_info_t aps[4] = {};
+  uint16_t             found  = 99U;
+
+  /* Caller capacity smaller than announced AP count truncates cleanly. */
+  priv_c6link_test_bringup();
+  (void)memset(aps, (int)k_t_junk_octet, sizeof aps);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 1U, &found));
+  TEST_ASSERT_EQ(1U, found);
+  TEST_ASSERT_EQ(0, strcmp(aps[0].ssid, "benc"));
+  TEST_ASSERT_EQ(k_t_junk_octet, (uint8_t)aps[1].ssid[0]);
+
+  /* Empty scan skips Req_WifiScanGetApRecords cleanly. */
+  priv_c6link_test_bringup();
+  ra8_c6_model()->scan_empty = true;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ(2U, ra8_c6_model()->seen_n);
+
+  /* Failure paths clear output and surface error codes accurately. */
+  priv_c6link_test_bringup();
+  ra8_c6_model()->fail_req = (uint32_t)RPC_ID__Req_WifiScanGetApRecords;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ('\0', aps[0].ssid[0]);
+
+  priv_c6link_test_bringup();
+  ra8_c6_model()->silent_scan = true;
+  TEST_ASSERT_EQ(k_ra8_err_timeout, ra8_c6link_wifi_scan(priv_c6link_test_link(), aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_END("c6link Wi-Fi scan truncation empty and error paths");
+}
+
 void ra8_test_c6link_session(void)
 {
   internal_test_open_validation();
@@ -634,4 +732,6 @@ void ra8_test_c6link_session(void)
   internal_test_events();
   internal_test_events_remaining();
   internal_test_join_pinned_bssid();
+  internal_test_wifi_scan();
+  internal_test_wifi_scan_edges();
 }

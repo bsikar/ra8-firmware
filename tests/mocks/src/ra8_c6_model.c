@@ -185,6 +185,25 @@ void ra8_c6_model_emit_disconnected(void)
   internal_c6m_emit(&msg);
 }
 
+void ra8_c6_model_emit_scan_done(uint32_t count)
+{
+  WifiEventStaScanDone inner = WIFI_EVENT_STA_SCAN_DONE__INIT;
+  inner.status               = 0U;
+  inner.number               = count;
+  inner.scan_id              = 1U;
+
+  RpcEventStaScanDone body = RPC__EVENT__STA_SCAN_DONE__INIT;
+  body.scan_done           = &inner;
+
+  Rpc msg;
+  rpc__init(&msg);
+  msg.msg_type            = RPC_TYPE__Event;
+  msg.msg_id              = RPC_ID__Event_StaScanDone;
+  msg.payload_case        = RPC__PAYLOAD_EVENT_STA_SCAN_DONE;
+  msg.event_sta_scan_done = &body;
+  internal_c6m_emit(&msg);
+}
+
 void ra8_c6_model_emit_eth(void)
 {
   uint8_t* slot = ra8_c6_model_slot();
@@ -377,13 +396,20 @@ RA8_INTERNAL static void internal_c6m_take_config(const RpcReqWifiSetConfig* bod
  * @since 0.1.0
  */
 typedef struct c6m_rich {
-  RpcRespGetCoprocessorFwVersion fw;      /**< `Resp_GetCoprocessorFwVersion` body. */
-  RpcRespGetMacAddress           mac;     /**< `Resp_GetMACAddress` body.           */
-  RpcRespWifiStaGetApInfo        ap;      /**< `Resp_WifiStaGetApInfo` body.        */
-  WifiApRecord                   rec;     /**< The AP record inside that answer.    */
-  uint8_t octets[k_ra8_c6link_mac_bytes]; /**< The modelled station address.        */
-  uint8_t ssid[4];                        /**< The modelled AP's SSID.              */
-  char    target[8];                      /**< The modelled `CONFIG_IDF_TARGET`.    */
+  RpcRespGetCoprocessorFwVersion fw;  /**< `Resp_GetCoprocessorFwVersion` body. */
+  RpcRespGetMacAddress           mac; /**< `Resp_GetMACAddress` body.           */
+  RpcRespWifiStaGetApInfo        ap;  /**< `Resp_WifiStaGetApInfo` body.        */
+  WifiApRecord                   rec; /**< The AP record inside that answer.    */
+  RpcRespWifiScanStart           scan_start;
+  RpcRespWifiScanGetApNum        scan_num;
+  RpcRespWifiScanGetApRecords    scan_recs;
+  WifiApRecord                   scan_ap[k_c6m_scan_count];
+  WifiApRecord*                  scan_ptrs[k_c6m_scan_count];
+  uint8_t                        octets[k_ra8_c6link_mac_bytes];      /**< Modelled STA MAC.   */
+  uint8_t                        scan_bssid1[k_ra8_c6link_mac_bytes]; /**< Second scan AP MAC. */
+  uint8_t                        ssid[4];                             /**< Modelled AP SSID.   */
+  uint8_t                        scan_ssid1[4];                       /**< Second AP SSID.     */
+  char                           target[8];                           /**< Modelled target.    */
 } c6m_rich_t;
 
 /** @brief Backing storage for whichever rich answer is being built. */
@@ -494,6 +520,90 @@ RA8_INTERNAL static bool internal_c6m_rich_answer(Rpc* out, uint32_t req_id, int
  * @details Records correlation state, applies scripted faults, selects the
  * response builder, and queues at most one reply.
  */
+/**
+ * @brief Populate the two deterministic scan AP records in ::s_rich.
+ * @pre ::s_rich.octets and ::s_rich.ssid are initialised.
+ * @post ::s_rich.scan_ap and ::s_rich.scan_ptrs hold valid protobuf-c records.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_c6m_fill_scan_ap(void)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_mac_bytes; i++) {
+    s_rich.octets[i]      = (uint8_t)((uint8_t)k_c6m_mac_first - i);
+    s_rich.scan_bssid1[i] = (uint8_t)((uint8_t)k_c6m_scan_alt_first + i);
+  }
+  (void)memcpy(s_rich.ssid, "benc", sizeof s_rich.ssid);
+  (void)memcpy(s_rich.scan_ssid1, "ra8b", sizeof s_rich.scan_ssid1);
+
+  wifi_ap_record__init(&s_rich.scan_ap[0]);
+  s_rich.scan_ap[0].ssid.data  = s_rich.ssid;
+  s_rich.scan_ap[0].ssid.len   = sizeof s_rich.ssid;
+  s_rich.scan_ap[0].bssid.data = s_rich.octets;
+  s_rich.scan_ap[0].bssid.len  = sizeof s_rich.octets;
+  s_rich.scan_ap[0].primary    = (uint32_t)k_c6m_channel;
+  s_rich.scan_ap[0].rssi       = -(int32_t)k_c6m_rssi_mag;
+  s_rich.scan_ap[0].authmode   = (int32_t)k_c6m_scan_wpa2;
+
+  wifi_ap_record__init(&s_rich.scan_ap[1]);
+  s_rich.scan_ap[1].ssid.data  = s_rich.scan_ssid1;
+  s_rich.scan_ap[1].ssid.len   = sizeof s_rich.scan_ssid1;
+  s_rich.scan_ap[1].bssid.data = s_rich.scan_bssid1;
+  s_rich.scan_ap[1].bssid.len  = sizeof s_rich.scan_bssid1;
+  s_rich.scan_ap[1].primary    = (uint32_t)k_c6m_scan_alt_ch;
+  s_rich.scan_ap[1].rssi       = -(int32_t)k_c6m_scan_alt_rssi;
+  s_rich.scan_ap[1].authmode   = 0;
+
+  s_rich.scan_ptrs[0] = &s_rich.scan_ap[0];
+  s_rich.scan_ptrs[1] = &s_rich.scan_ap[1];
+}
+
+/**
+ * @brief Build the response for the Wi-Fi scan RPC family when @p req names one.
+ * @param[in,out] out  Response envelope initialised by `rpc__init()`.
+ * @param[in]     req  Decoded request message from the host.
+ * @param[in]     resp Status code to report inside the response body.
+ * @return true if @p req is a Wi-Fi scan request; false otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_c6m_scan_answer(Rpc* out, const Rpc* req, int32_t resp)
+{
+  const uint32_t req_id = (uint32_t)req->msg_id;
+  if (req_id == (uint32_t)RPC_ID__Req_WifiScanStart) {
+    rpc__resp__wifi_scan_start__init(&s_rich.scan_start);
+    s_rich.scan_start.resp    = resp;
+    out->msg_id               = RPC_ID__Resp_WifiScanStart;
+    out->payload_case         = RPC__PAYLOAD_RESP_WIFI_SCAN_START;
+    out->resp_wifi_scan_start = &s_rich.scan_start;
+    return true;
+  }
+  if (req_id == (uint32_t)RPC_ID__Req_WifiScanGetApNum) {
+    rpc__resp__wifi_scan_get_ap_num__init(&s_rich.scan_num);
+    s_rich.scan_num.resp           = resp;
+    s_rich.scan_num.number         = s_c6.scan_empty ? 0 : (int32_t)k_c6m_scan_count;
+    out->msg_id                    = RPC_ID__Resp_WifiScanGetApNum;
+    out->payload_case              = RPC__PAYLOAD_RESP_WIFI_SCAN_GET_AP_NUM;
+    out->resp_wifi_scan_get_ap_num = &s_rich.scan_num;
+    return true;
+  }
+  if (req_id != (uint32_t)RPC_ID__Req_WifiScanGetApRecords) {
+    return false;
+  }
+  internal_c6m_fill_scan_ap();
+  const int32_t asked =
+    (req->req_wifi_scan_get_ap_records != nullptr) ? req->req_wifi_scan_get_ap_records->number : 0;
+  const size_t avail = s_c6.scan_empty ? 0U : (size_t)k_c6m_scan_count;
+  const size_t give  = ((asked > 0) && ((size_t)asked < avail)) ? (size_t)asked : avail;
+  rpc__resp__wifi_scan_get_ap_records__init(&s_rich.scan_recs);
+  s_rich.scan_recs.resp              = resp;
+  s_rich.scan_recs.number            = (int32_t)give;
+  s_rich.scan_recs.n_ap_records      = give;
+  s_rich.scan_recs.ap_records        = (give > 0U) ? s_rich.scan_ptrs : nullptr;
+  out->msg_id                        = RPC_ID__Resp_WifiScanGetApRecords;
+  out->payload_case                  = RPC__PAYLOAD_RESP_WIFI_SCAN_GET_AP_RECORDS;
+  out->resp_wifi_scan_get_ap_records = &s_rich.scan_recs;
+  return true;
+}
+
 RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
 {
   const uint32_t req_id = (uint32_t)req->msg_id;
@@ -520,7 +630,8 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
   }
 
   RpcRespWifiStart bare;
-  if (!internal_c6m_rich_answer(&out, req_id, resp) && !internal_c6m_bare(&out, req_id, &bare, resp)) {
+  if (!internal_c6m_rich_answer(&out, req_id, resp) && !internal_c6m_scan_answer(&out, req, resp) &&
+      !internal_c6m_bare(&out, req_id, &bare, resp)) {
     return;
   }
 
@@ -528,6 +639,10 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
     out.msg_id = RPC_ID__Resp_WifiStop;
   }
   internal_c6m_emit(&out);
+  if ((req_id == (uint32_t)RPC_ID__Req_WifiScanStart) && (resp == 0) && !s_c6.wrong_id &&
+      !s_c6.wrong_uid && !s_c6.silent_scan) {
+    ra8_c6_model_emit_scan_done(s_c6.scan_empty ? 0U : (uint32_t)k_c6m_scan_count);
+  }
 }
 
 /**
