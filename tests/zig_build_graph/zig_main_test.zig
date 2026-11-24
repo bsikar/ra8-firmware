@@ -48,6 +48,7 @@ test "an app's Zig code is built for the M85 with the hard float ABI" {
     try std.testing.expectEqual(std.Target.Os.Tag.freestanding, q.os_tag.?);
     try std.testing.expectEqual(std.Target.Abi.eabihf, q.abi.?);
     try std.testing.expectEqualStrings("cortex_m85", q.cpu_model.explicit.name);
+    try std.testing.expect(q.cpu_features_add.isEnabled(@backingInt(std.Target.arm.Feature.fp_armv8d16sp)));
 }
 
 test "a Zig main imports nothing unless its row names a module" {

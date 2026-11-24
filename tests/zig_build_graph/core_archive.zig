@@ -18,6 +18,7 @@
 //! is therefore asking for both roots together, which is what an image wants.
 
 const std = @import("std");
+const arm_flags = @import("arm_flags.zig");
 
 /// The dependency name, the artifact name and the archive basename are all
 /// this one string; see the build.zig comment above for why they must be.
@@ -32,12 +33,7 @@ pub fn forCpu(
     cpu_model: *const std.Target.Cpu.Model,
     optimize: std.lang.OptimizeMode,
 ) std.Build.LazyPath {
-    const target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb,
-        .os_tag = .freestanding,
-        .abi = .eabihf,
-        .cpu_model = .{ .explicit = cpu_model },
-    });
+    const target = b.resolveTargetQuery(arm_flags.hardFloatQuery(cpu_model, null));
     return forTarget(b, target, optimize);
 }
 

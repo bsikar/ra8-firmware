@@ -17,6 +17,7 @@
 //! belongs to a second image and must be kept OUT of this one.
 
 const std = @import("std");
+const arm_flags = @import("arm_flags.zig");
 const src_tree = @import("src_tree.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
@@ -562,14 +563,9 @@ pub fn declaresLibrary(app: CrossApp, library: []const u8) bool {
     return false;
 }
 
-/// The target an app's Zig code is built for: cortex-m85 with hard float,
-/// what zig_libs.cmake derives from the toolchain's -mcpu and -mfloat-abi.
-pub const zig_target_query = std.Target.Query{
-    .cpu_arch = .thumb,
-    .os_tag = .freestanding,
-    .abi = .eabihf,
-    .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
-};
+/// The target an app's Zig code is built for: cortex-m85 with single-precision
+/// hard float (`fp_armv8d16sp`), matching zig_libs.cmake and GCC's `-mfpu=fpv5-sp-d16`.
+pub const zig_target_query = arm_flags.hardFloatQuery(&std.Target.arm.cpu.cortex_m85, null);
 
 /// False for an app whose main is a Zig root (`zig_main`): it has no
 /// `src/main.c`, and listing one would fail the compile on a missing file.

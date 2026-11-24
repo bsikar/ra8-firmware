@@ -29,6 +29,7 @@
 //! real configure's `compile_commands.json`, not read off the listfile.
 
 const std = @import("std");
+const arm_flags = @import("arm_flags.zig");
 const src_tree = @import("src_tree.zig");
 const cpu1_threadx = @import("cpu1_threadx.zig");
 const middleware = @import("middleware.zig");
@@ -102,15 +103,10 @@ pub const ZigImport = struct {
 
 pub const EntryLanguage = enum { c, zig };
 
-/// The Zig target every `.zig` CPU1 entry is built for. Same triple and CPU
-/// model as ra8_core's cortex_m33 archive, so both halves of the M33 link
-/// agree on the float ABI (fpv5-sp-d16, hard).
-pub const zig_target_query = std.Target.Query{
-    .cpu_arch = .thumb,
-    .os_tag = .freestanding,
-    .abi = .eabihf,
-    .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m33 },
-};
+/// The Zig target every `.zig` CPU1 entry is built for. Same triple, CPU
+/// model, and `fp_armv8d16sp` feature as ra8_core's cortex_m33 archive, so
+/// both halves of the M33 link agree on the float ABI (`fpv5-sp-d16`, hard).
+pub const zig_target_query = arm_flags.hardFloatQuery(&std.Target.arm.cpu.cortex_m33, null);
 
 /// The CPU1 target's own compile options, in CMakeLists order. No warning
 /// flags: the first-party profile rides on `ra8_add_app()` targets only.

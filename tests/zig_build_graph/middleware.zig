@@ -24,6 +24,7 @@
 //! later slices and each is a table entry rather than new code.
 
 const std = @import("std");
+const arm_flags = @import("arm_flags.zig");
 const pkg_path = @import("pkg_path.zig");
 const Translator = @import("translate_c").Translator;
 pub const header_patch = @import("header_patch.zig");
@@ -648,12 +649,7 @@ fn gccInclude(b: *std.Build, tc: Toolchain) []const u8 {
 /// translate-c view of `source.c_headers` under the same patched, -I,
 /// -isystem and -D set the C units get, in the same order.
 fn addZigObject(b: *std.Build, mw: Middleware, tc: Toolchain, source: ZigSource) std.Build.LazyPath {
-    const target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb,
-        .os_tag = .freestanding,
-        .abi = .eabihf,
-        .cpu_model = .{ .explicit = source.cpu },
-    });
+    const target = b.resolveTargetQuery(arm_flags.hardFloatQuery(source.cpu, null));
     const module = b.createModule(.{
         .root_source_file = pkg_path.lazy(b, source.path),
         .target = target,

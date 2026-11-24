@@ -59,16 +59,10 @@ pub const Core = enum {
 
     /// The target Zig emits C for.
     pub fn zigQuery(core: Core) std.Target.Query {
-        return .{
-            .cpu_arch = .thumb,
-            .os_tag = .freestanding,
-            .abi = .eabihf,
-            .cpu_model = .{ .explicit = switch (core) {
-                .cortex_m85 => &std.Target.arm.cpu.cortex_m85,
-                .cortex_m33 => &std.Target.arm.cpu.cortex_m33,
-            } },
-            .ofmt = .c,
-        };
+        return arm_flags.hardFloatQuery(switch (core) {
+            .cortex_m85 => &std.Target.arm.cpu.cortex_m85,
+            .cortex_m33 => &std.Target.arm.cpu.cortex_m33,
+        }, .c);
     }
 };
 
