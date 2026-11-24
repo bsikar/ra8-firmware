@@ -16,6 +16,7 @@
         .longstrip = .{ .path = "../../apps/shared_libs/longstrip" },
         .unarch = .{ .path = "../../apps/shared_libs/unarch" },
         .epub = .{ .path = "../../apps/shared_libs/epub" },
+        .reflow = .{ .path = "../../apps/shared_libs/reflow" },
     },
     .paths = .{
         "build.zig",
