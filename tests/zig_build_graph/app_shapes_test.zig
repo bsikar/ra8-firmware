@@ -444,15 +444,19 @@ test "the uncovered table is keyed by shape, not by name" {
     const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true, .sram_text = true }) orelse
         return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("dfu_selftest_boot", usbx.representative);
-    // The same middleware plus the bootloader-bank keywords is a DIFFERENT
-    // kind of app, and has its own entry.
-    const dfu = uncoveredFor(.{
+    // The three-middleware TLS stack is its own kind of app, while
+    // dfu_bootloader's shape is now covered in the cross-build table.
+    const tls = uncoveredFor(.{
+        .uses = &.{ "mbedtls", "netxduo", "threadx" },
+        .threadx_heap = true,
+    }) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("threadx_https_client", tls.representative);
+    try std.testing.expect(uncoveredFor(.{
         .uses = &.{ "threadx", "usbx" },
         .threadx_heap = true,
         .sram_text = true,
         .mram_length = true,
-    }) orelse return error.TestUnexpectedResult;
-    try std.testing.expectEqualStrings("dfu_bootloader", dfu.representative);
+    }) == null);
     // A shape the table cross-builds is not in here at all.
     try std.testing.expect(uncoveredFor(.{}) == null);
 }
