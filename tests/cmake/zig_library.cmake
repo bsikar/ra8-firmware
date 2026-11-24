@@ -14,6 +14,32 @@
 
 include(CMakeParseArguments)
 
+# Resolve shared Zig global and local cache roots per build tree so all
+# migrated Zig libraries reuse std/compiler_rt and shared dependency artifacts
+# without colliding across separate build directories. On Unix hosts, keep
+# caches under /tmp so workspace build trees keep hot I/O off the workspace disk.
+function(_ra8_zig_cache_dirs _out_global _out_local)
+  if(DEFINED ENV{ZIG_GLOBAL_CACHE_DIR} AND NOT "$ENV{ZIG_GLOBAL_CACHE_DIR}" STREQUAL "")
+    set(_global "$ENV{ZIG_GLOBAL_CACHE_DIR}")
+  elseif(CMAKE_HOST_UNIX AND IS_DIRECTORY "/tmp")
+    set(_global "/tmp/ra8-zig-cache/global")
+  else()
+    set(_global "${CMAKE_BINARY_DIR}/zig-global-cache")
+  endif()
+
+  string(SHA256 _build_hash "${CMAKE_BINARY_DIR}")
+  string(SUBSTRING "${_build_hash}" 0 12 _build_id)
+  if(CMAKE_HOST_UNIX AND IS_DIRECTORY "/tmp")
+    set(_local "/tmp/ra8-zig-cache/${_build_id}/local")
+  else()
+    set(_local "${CMAKE_BINARY_DIR}/zig-local-cache")
+  endif()
+
+  file(MAKE_DIRECTORY "${_global}" "${_local}")
+  set(${_out_global} "${_global}" PARENT_SCOPE)
+  set(${_out_local} "${_local}" PARENT_SCOPE)
+endfunction()
+
 # Build one migrated library's Zig static archive and expose it as an IMPORTED
 # target named ra8_zig::<NAME>.
 function(ra8_add_zig_library)
@@ -60,17 +86,17 @@ function(ra8_add_zig_library)
     "${RA8_ZIG_ZIG_ROOT}/build.zig.zon"
   )
 
-  # One global cache for every migrated library in the tree: zig's global
-  # cache is content-addressed, so sharing it de-duplicates compiler_rt and
-  # std across ~60 libraries instead of burning a private copy per library.
-  set(_ra8_global_cache "${CMAKE_CURRENT_BINARY_DIR}/zig-global-cache")
+  # Share both global and local caches across every migrated Zig library in the
+  # build tree: content-addressed manifests keep cross-library artifacts apart
+  # while de-duplicating shared std/bitcode/dependency builds.
+  _ra8_zig_cache_dirs(_ra8_global_cache _ra8_local_cache)
 
   add_custom_command(
     OUTPUT "${_ra8_library}"
     COMMAND
       "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
       "${ZIG_EXECUTABLE}" build -Doptimize=ReleaseSafe ${RA8_ZIG_ZIG_OPTIONS} --prefix "${_ra8_output_dir}" --cache-dir
-      "${_ra8_output_dir}/cache"
+      "${_ra8_local_cache}"
     DEPENDS ${_ra8_zig_sources}
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
     COMMENT "Building migrated Zig library ${RA8_ZIG_NAME}"
@@ -110,7 +136,7 @@ function(ra8_add_zig_library)
   add_test(
     NAME ${RA8_ZIG_NAME}_zig_tests
     COMMAND "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_global_cache}"
-            "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_output_dir}/cache"
+            "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_local_cache}"
     WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
   )
 endfunction()

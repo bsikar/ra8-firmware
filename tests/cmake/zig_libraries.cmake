@@ -311,13 +311,14 @@ file(
   "${FW_ROOT}/libs/ra8_modem_at/build.zig"
   "${FW_ROOT}/libs/ra8_modem_at/build.zig.zon"
 )
+_ra8_zig_cache_dirs(_ra8_modem_at_global_cache _ra8_modem_at_local_cache)
 add_custom_command(
   OUTPUT "${_ra8_modem_at_test_library}"
   COMMAND
     "${CMAKE_COMMAND}" -E env
-    "ZIG_GLOBAL_CACHE_DIR=${CMAKE_CURRENT_BINARY_DIR}/zig-global-cache"
+    "ZIG_GLOBAL_CACHE_DIR=${_ra8_modem_at_global_cache}"
     "${ZIG_EXECUTABLE}" build -Dtest-helpers=true -Doptimize=ReleaseSafe --prefix
-    "${_ra8_modem_at_test_dir}" --cache-dir "${_ra8_modem_at_test_dir}/cache"
+    "${_ra8_modem_at_test_dir}" --cache-dir "${_ra8_modem_at_local_cache}"
   DEPENDS ${_ra8_modem_at_test_helpers_sources}
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_modem_at"
   COMMENT "Building test-only ra8_modem_at helper archive"
@@ -1155,13 +1156,14 @@ file(
   "${FW_ROOT}/libs/ra8_core/build.zig"
   "${FW_ROOT}/libs/ra8_core/build.zig.zon"
 )
+_ra8_zig_cache_dirs(_ra8_prefixed_global_cache _ra8_prefixed_local_cache)
 add_custom_command(
   OUTPUT "${_ra8_core_prefixed_library}"
   COMMAND
     "${CMAKE_COMMAND}" -E env
-    "ZIG_GLOBAL_CACHE_DIR=${CMAKE_CURRENT_BINARY_DIR}/zig-global-cache"
+    "ZIG_GLOBAL_CACHE_DIR=${_ra8_prefixed_global_cache}"
     "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8_ -Doptimize=ReleaseSafe --prefix
-    "${_ra8_core_prefixed_dir}" --cache-dir "${_ra8_core_prefixed_dir}/cache"
+    "${_ra8_core_prefixed_dir}" --cache-dir "${_ra8_prefixed_local_cache}"
   DEPENDS ${_ra8_core_prefixed_sources}
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_core"
   COMMENT "Building ra8_ prefixed ra8_core archive for test_ra8_freestanding"
@@ -1187,17 +1189,26 @@ set(_ra8p1_prefixed_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_libs/ra8_board_ra8p1_pr
 set(_ra8p1_prefixed_library
     "${_ra8p1_prefixed_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ra8_board_ra8p1${CMAKE_STATIC_LIBRARY_SUFFIX}"
 )
-add_custom_target(
-  ra8_board_ra8p1_prefixed_zig_library ALL
+file(
+  GLOB_RECURSE
+  _ra8p1_prefixed_sources
+  CONFIGURE_DEPENDS
+  "${FW_ROOT}/libs/ra8_board_ra8p1/src/*.zig"
+  "${FW_ROOT}/libs/ra8_board_ra8p1/build.zig"
+  "${FW_ROOT}/libs/ra8_board_ra8p1/build.zig.zon"
+)
+add_custom_command(
+  OUTPUT "${_ra8p1_prefixed_library}"
   COMMAND
-    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8p1_prefixed_dir}/global-cache"
+    "${CMAKE_COMMAND}" -E env "ZIG_GLOBAL_CACHE_DIR=${_ra8_prefixed_global_cache}"
     "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8p1_test_ -Doptimize=ReleaseSafe --prefix
-    "${_ra8p1_prefixed_dir}" --cache-dir "${_ra8p1_prefixed_dir}/cache"
+    "${_ra8p1_prefixed_dir}" --cache-dir "${_ra8_prefixed_local_cache}"
+  DEPENDS ${_ra8p1_prefixed_sources}
   WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_board_ra8p1"
-  BYPRODUCTS "${_ra8p1_prefixed_library}"
   COMMENT "Building ra8p1_test_ prefixed ra8_board_ra8p1 archive for test_ra8_board_ra8p1_cov"
   VERBATIM
 )
+add_custom_target(ra8_board_ra8p1_prefixed_zig_library ALL DEPENDS "${_ra8p1_prefixed_library}")
 add_library(ra8_zig::ra8_board_ra8p1_prefixed STATIC IMPORTED GLOBAL)
 set_target_properties(
   ra8_zig::ra8_board_ra8p1_prefixed
