@@ -32,6 +32,7 @@ test "ci_eq matches case-insensitively and rejects prefixes" {
     try std.testing.expect(!css.priv_reflow_css_ci_eq("boldx", 5, "bold"));
     try std.testing.expect(!css.priv_reflow_css_ci_eq("bol", 3, "bold"));
     try std.testing.expect(!css.priv_reflow_css_ci_eq(null, 3, "bold"));
+    try std.testing.expect(!css.priv_reflow_css_ci_eq("red", 3, null));
 }
 
 test "trim strips whitespace from both ends" {
