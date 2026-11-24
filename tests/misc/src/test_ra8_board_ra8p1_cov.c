@@ -17,6 +17,30 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+
+/*
+ * Link against the -Dabi-prefix=ra8p1_test_ archive built by CMake
+ * (tests/cmake/zig_libraries.cmake) so the RA8P1 symbols stay distinct from
+ * the default EK-RA8D2 archive without per-symbol compile definitions in CMake.
+ */
+#define k_ra8_board_name             k_ra8p1_test_board_name
+#define k_ra8_board_doc_rev          k_ra8p1_test_board_doc_rev
+#define k_ra8_board_mcu              k_ra8p1_test_board_mcu
+#define ra8_board_get_info           ra8p1_test_board_get_info
+#define ra8_board_led_pin            ra8p1_test_board_led_pin
+#define ra8_board_led_init           ra8p1_test_board_led_init
+#define ra8_board_led_on             ra8p1_test_board_led_on
+#define ra8_board_led_off            ra8p1_test_board_led_off
+#define ra8_board_led_toggle         ra8p1_test_board_led_toggle
+#define ra8_board_sw_pin             ra8p1_test_board_sw_pin
+#define ra8_board_sw_init            ra8p1_test_board_sw_init
+#define ra8_board_sw_read            ra8p1_test_board_sw_read
+#define ra8_board_sw_attach_irq      ra8p1_test_board_sw_attach_irq
+#define ra8_board_uart_console_init  ra8p1_test_board_uart_console_init
+#define ra8_board_uart_console_write ra8p1_test_board_uart_console_write
+#define ra8_board_uart_console_read  ra8p1_test_board_uart_console_read
+#define ra8_board_uart_console_flush ra8p1_test_board_uart_console_flush
+
 #include "ra8_board_ra8p1.h"
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
