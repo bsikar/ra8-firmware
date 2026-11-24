@@ -14,6 +14,7 @@
 //! same warning bar.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 // The whole FAT driver -- and ONLY the driver (no ra8_core_hal, so no MMIO
 // and no ra8_time weak-extern), which is what lets this build and RUN on
@@ -21,7 +22,7 @@ const std = @import("std");
 // tests/cmake/tests_storage.cmake (test_ra8_fs_exfat).
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
 
     // The UTF codec and the library lock are Zig now (RA8FW-747, RA8FW-724);
@@ -45,8 +46,22 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     const integration = b.addSystemCommand(&.{ "bash", "tests/integration.sh" });
+    integration.setCwd(b.path("."));
     integration.addArtifactArg(exe);
     integration.expectExitCode(0);
     const test_step = b.step("test", "Run the mkfontimg integration suite");
     test_step.dependOn(&integration.step);
+
+    const test_options = b.addOptions();
+    test_options.addOptionPath("tool_exe", exe.getEmittedBin());
+    const ztest_mod = b.createModule(.{
+        .root_source_file = b.path("tests/mkfontimg_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ztest_mod.addOptions("tool_options", test_options);
+    const ztest = b.addTest(.{ .root_module = ztest_mod });
+    const run_ztest = b.addRunArtifact(ztest);
+    ra8_build.configureHostTestRun(b, test_step, ztest, run_ztest);
+    test_step.dependOn(&run_ztest.step);
 }

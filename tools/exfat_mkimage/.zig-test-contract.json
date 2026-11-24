@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/exfat_mkimage_test.zig"
+  ],
+  "covered_sources": [
+    "tests/exfat_mkimage_test.zig"
+  ],
+  "minimum_tests": 6
+}
