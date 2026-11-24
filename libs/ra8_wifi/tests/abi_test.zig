@@ -13,6 +13,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("log_fixture.zig");
+}
+
 const ok: u16 = 0x0000;
 const err_invalid_state: u16 = 0x0104;
 const err_timeout: u16 = 0x0108;

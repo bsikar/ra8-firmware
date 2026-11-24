@@ -16,6 +16,10 @@
 const std = @import("std");
 const abi = @import("abi");
 
+comptime {
+    _ = @import("abi_fixture.zig");
+}
+
 const ok: u16 = 0;
 const no_mem: u16 = 0x102;
 const invalid_arg: u16 = 0x103;

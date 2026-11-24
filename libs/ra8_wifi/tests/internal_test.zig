@@ -8,6 +8,10 @@
 const std = @import("std");
 const core = @import("implementation");
 
+comptime {
+    _ = @import("log_fixture.zig");
+}
+
 test "budget constants match the header" {
     try std.testing.expectEqual(@as(u16, 200), core.join_polls);
     try std.testing.expectEqual(@as(u16, 50), core.poll_gap_ms);
