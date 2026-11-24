@@ -618,6 +618,7 @@ fn addCrossApp(
     // link is held back, with the reason printed rather than a red step.
     if (!app.links_in_debug) {
         for (objects.items) |object| object.addStepDependencies(arm_step);
+        if (local_archive) |archive| archive.addStepDependencies(arm_step);
         const notice = b.addSystemCommand(&.{
             "echo",
             b.fmt(

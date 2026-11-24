@@ -29,6 +29,7 @@
 //!
 //! Only (4) announces itself, and only when a symbol is missing entirely.
 const std = @import("std");
+const pkg_path = @import("pkg_path.zig");
 const src_tree = @import("src_tree.zig");
 
 /// A static library declared in an app's own CMakeLists, built from globbed
@@ -82,26 +83,56 @@ pub const Toolchain = struct {
     global_defines: []const []const u8,
 };
 
-/// The library's globbed translation units, sorted within each directory so
-/// the object list is stable across filesystems.
-pub fn sources(b: *std.Build, lib: VendoredLibrary) []const []const u8 {
+/// Directory resolver seam for source collection: returns null only when a
+/// lazy `pkg:` dependency is not fetched yet so Zig's fetch pass completes.
+pub const DirOpener = *const fn (ctx: *anyopaque, dir_path: []const u8) ?std.Io.Dir;
+
+fn openBuildDir(ctx: *anyopaque, dir_path: []const u8) ?std.Io.Dir {
+    const b: *std.Build = @ptrCast(@alignCast(ctx));
+    if (pkg_path.split(dir_path) != null) return pkg_path.openDir(b, dir_path);
+    return src_tree.openDir(b, dir_path) catch |err| {
+        std.debug.panic("ra8: cannot read source directory '{s}': {s}", .{ dir_path, @errorName(err) });
+    };
+}
+
+/// Collect globbed `.c` translation units using `open_dir`, sorted within each
+/// directory so the object list is stable across filesystems.
+pub fn collectSources(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    lib: VendoredLibrary,
+    ctx: *anyopaque,
+    open_dir: DirOpener,
+) []const []const u8 {
     var out: std.ArrayList([]const u8) = .empty;
     for (lib.source_dirs) |dir_path| {
+        var dir = open_dir(ctx, dir_path) orelse continue;
+        defer dir.close(io);
         var names: std.ArrayList([]const u8) = .empty;
-        var dir = src_tree.openDir(b, dir_path) catch continue;
-        defer dir.close(b.graph.io);
+        defer {
+            for (names.items) |name| allocator.free(name);
+            names.deinit(allocator);
+        }
         var it = dir.iterate();
-        while (it.next(b.graph.io) catch null) |entry| {
+        while (it.next(io) catch |err| {
+            std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
+        }) |entry| {
             if (entry.kind != .file) continue;
             if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-            names.append(b.allocator, b.dupe(entry.name)) catch @panic("OOM");
+            names.append(allocator, allocator.dupe(u8, entry.name) catch @panic("OOM")) catch @panic("OOM");
         }
         std.mem.sort([]const u8, names.items, {}, lessThan);
         for (names.items) |name| {
-            out.append(b.allocator, b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
+            out.append(allocator, std.fmt.allocPrint(allocator, "{s}/{s}", .{ dir_path, name }) catch @panic("OOM")) catch @panic("OOM");
         }
     }
-    return out.toOwnedSlice(b.allocator) catch @panic("OOM");
+    return out.toOwnedSlice(allocator) catch @panic("OOM");
+}
+
+/// The library's globbed translation units, sorted within each directory so
+/// the object list is stable across filesystems.
+pub fn sources(b: *std.Build, lib: VendoredLibrary) []const []const u8 {
+    return collectSources(b.allocator, b.graph.io, lib, b, openBuildDir);
 }
 
 fn lessThan(_: void, a: []const u8, b_name: []const u8) bool {
@@ -150,10 +181,10 @@ pub fn add(b: *std.Build, lib: VendoredLibrary, tc: Toolchain) std.Build.LazyPat
         compile.addArgs(flags);
         for (lib.system_include_dirs) |include_dir| {
             compile.addArg("-isystem");
-            compile.addDirectoryArg(b.path(include_dir));
+            compile.addDirectoryArg(pkg_path.lazy(b, include_dir));
         }
         compile.addArg("-c");
-        compile.addFileArg(b.path(source));
+        compile.addFileArg(pkg_path.lazy(b, source));
         compile.addArg("-o");
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(source)});
         objects.append(b.allocator, compile.addOutputFileArg(object_name)) catch @panic("OOM");
