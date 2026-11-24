@@ -653,6 +653,7 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/compress/inc
          ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
     )
+    list(APPEND _ra8_lib_zig "compress|${RA8_REPO_ROOT}/apps/shared_libs/compress")
 
     if((NOT "epub" IN_LIST _RA8_APP_LIBS) AND (NOT "miniz" IN_LIST _RA8_APP_LIBS))
       set(_ra8_rabook_vendor ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c)
@@ -665,8 +666,8 @@ macro(_ra8_app_collect_sources)
   # reuses ra8_compress, so wire the miniz + compression includes when an app
   # pulls in jof. The miniz *implementation* TU comes from the
   # epub block above or the bare-miniz block below -- an app using
-  # jof lists one of those alongside it. The single compress TU is
-  # added directly when the app does not already list the compression seam.
+  # jof lists one of those alongside it. The compress Zig archive is
+  # registered directly and deduped at consumption when compress is in LIBS.
   if("jof" IN_LIST _RA8_APP_LIBS)
     # JPEG is a pure-software Domain codec rather than a HAL backend. JOF owns
     # that dependency, so applications do not need to know which source image
@@ -701,7 +702,9 @@ macro(_ra8_app_collect_sources)
     # link helper dedupes against the LIBS loop's own entry. The vendored
     # libwebp decoder itself is wired by the shared block below.
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
-    list(APPEND _ra8_lib_zig "webp|${RA8_REPO_ROOT}/apps/shared_libs/webp")
+    list(APPEND _ra8_lib_zig "compress|${RA8_REPO_ROOT}/apps/shared_libs/compress"
+         "webp|${RA8_REPO_ROOT}/apps/shared_libs/webp"
+    )
   endif()
 
   if("rabook_compile" IN_LIST _RA8_APP_LIBS)
