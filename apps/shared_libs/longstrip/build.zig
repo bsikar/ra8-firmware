@@ -7,6 +7,7 @@
 //! static library + host test step shape, translated seam included).
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// The header longstrip_abi.zig exposes, translated once so every Zig unit
@@ -44,7 +45,9 @@ fn translateHeaders(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -68,21 +71,19 @@ pub fn build(b: *std.Build) void {
     // The JOF reader, tile cache and log backend the engine drives are the
     // deterministic fakes in tests/abi_stubs.zig. The stubs ride a dedicated
     // test module so they never enter liblongstrip.a or any consumer link.
-    const test_module = b.createModule(.{
+    const sut_module = b.createModule(.{
         .root_source_file = b.path("src/longstrip_abi.zig"),
         .target = target,
         .optimize = optimize,
-        .pic = true,
     });
-    test_module.addImport("longstrip_h", ls_h_mod);
-    const stub_mod = b.createModule(.{
-        .root_source_file = b.path("tests/abi_stubs.zig"),
+    sut_module.addImport("longstrip_h", ls_h_mod);
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/longstrip_abi_test.zig"),
         .target = target,
         .optimize = optimize,
     });
-    stub_mod.addImport("longstrip_h", ls_h_mod);
-    const stubs = b.addObject(.{ .name = "abi_stubs", .root_module = stub_mod });
-    test_module.addObject(stubs);
+    test_module.addImport("longstrip_h", ls_h_mod);
+    test_module.addImport("longstrip_abi", sut_module);
     const ls_test = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(ls_test).step);
 }

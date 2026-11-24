@@ -9,9 +9,12 @@
 //! DOCTYPE validator included (RA8FW-1206), is Zig: no C source remains.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -30,11 +33,17 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig xml reader tests");
-    const test_module = b.createModule(.{
+    const sut_module = b.createModule(.{
         .root_source_file = b.path("src/xml_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/xml_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_module.addImport("xml_abi", sut_module);
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("src"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));

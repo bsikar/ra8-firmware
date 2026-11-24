@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "tests/xml_abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/xml_abi.zig",
+    "tests/xml_abi_test.zig"
+  ],
+  "minimum_tests": 16
+}
