@@ -331,7 +331,12 @@
         "ra8_translate_sidecar_required_bytes",
         "ra8_translate_sidecar_write",
         "ra8_translate_lang_from_hint",
-        "ra8_translate_lang_select"
+        "ra8_translate_lang_select",
+        "ra8_translate_glossary_init",
+        "ra8_translate_glossary_upsert",
+        "ra8_translate_glossary_lookup",
+        "ra8_translate_glossary_mask",
+        "ra8_translate_glossary_restore"
       ]
     },
     {
@@ -3715,7 +3720,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "13cf23cff248c32729b08edf697434c1648cf8c7d4b4a5bdbb0ae4a1894bc685",
+      "compatibility_sha256": "e9ae8a822ede1b5e7435a865583db599b0856cedb313be43faba85291ebc4ecf",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3820,6 +3825,31 @@
           "name": "ra8_translate_lang_select",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows UTF-8 OCR text sample and writes selection, model profile, and counts to caller storage"
+        },
+        {
+          "name": "ra8_translate_glossary_init",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "writes an empty CRC-stamped TGL1 glossary container into caller buffer"
+        },
+        {
+          "name": "ra8_translate_glossary_upsert",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows serialized glossary and UTF-8 term pair and emits updated TGL1 into caller buffer"
+        },
+        {
+          "name": "ra8_translate_glossary_lookup",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows serialized glossary and outputs borrowed English pointer and byte length"
+        },
+        {
+          "name": "ra8_translate_glossary_mask",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows glossary and UTF-8 source and emits masked UTF-8 and serialized plan into caller buffers"
+        },
+        {
+          "name": "ra8_translate_glossary_restore",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows glossary, serialized plan, and English UTF-8 and writes restored UTF-8 to caller buffer"
         }
       ],
       "data_exports": [],

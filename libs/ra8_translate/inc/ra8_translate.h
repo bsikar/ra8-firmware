@@ -41,6 +41,9 @@ typedef enum : uint32_t {
   k_ra8_translate_sidecar_max_page_bubbles = 1024U,       /**< Maximum bubbles on one page.  */
   k_ra8_translate_max_confidence_bps       = 10000U,      /**< 100.00% in integer basis pts. */
   k_ra8_translate_chapter_hash_bytes       = 32U,         /**< SHA-256 content key length.   */
+  k_ra8_translate_glossary_magic           = 0x314C4754U, /**< Little-endian "TGL1".         */
+  k_ra8_translate_glossary_version         = 1U,          /**< Supported glossary revision.  */
+  k_ra8_translate_glossary_header_bytes    = 32U,         /**< Fixed wire TGL1 header size.  */
 } ra8_translate_const_t;
 
 /** @brief Translation source script / language identifier. */
@@ -517,6 +520,138 @@ ra8_err_t ra8_translate_lang_select(ra8_translate_lang_t            hint,
                                     const uint8_t*                  sample_utf8,
                                     size_t                          sample_len,
                                     ra8_translate_lang_selection_t* out_selection);
+
+/**
+ * @brief Initialize an empty serialized `TGL1` per-series glossary container.
+ *
+ * @details Calling context: `task-safe-reentrant`. Writes CRC-stamped empty
+ * container bytes into @p out_buf and writes @p out_len only on success.
+ *
+ * @param[in] lang Source script / language for the series glossary.
+ * @param[in] revision Initial monotonic revision number.
+ * @param[out] out_buf Non-null destination buffer receiving `TGL1` bytes.
+ * @param[in] out_cap Capacity of @p out_buf in bytes (`>= 32`).
+ * @param[out] out_len Non-null storage receiving bytes written.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_glossary_init(ra8_translate_lang_t lang,
+                                      uint32_t             revision,
+                                      uint8_t*             out_buf,
+                                      size_t               out_cap,
+                                      size_t*              out_len);
+
+/**
+ * @brief Insert or update a glossary entry and write the new `TGL1` container.
+ *
+ * @details Calling context: `task-safe-reentrant`. Validates @p tgl_buf, bumps
+ * revision, and serializes updated CRC-stamped `TGL1` bytes into @p out_buf.
+ * Caller storage @p out_buf must not alias @p tgl_buf.
+ *
+ * @param[in] tgl_buf Existing validated `TGL1` container bytes.
+ * @param[in] tgl_len Byte length of @p tgl_buf.
+ * @param[in] src_utf8 Non-empty UTF-8 source term bytes.
+ * @param[in] src_len Byte length of @p src_utf8.
+ * @param[in] eng_utf8 Non-empty UTF-8 English translation bytes.
+ * @param[in] eng_len Byte length of @p eng_utf8.
+ * @param[out] out_buf Non-null destination buffer for updated `TGL1`.
+ * @param[in] out_cap Capacity of @p out_buf in bytes.
+ * @param[out] out_len Non-null storage receiving bytes written.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_glossary_upsert(const uint8_t* tgl_buf,
+                                        size_t         tgl_len,
+                                        const uint8_t* src_utf8,
+                                        size_t         src_len,
+                                        const uint8_t* eng_utf8,
+                                        size_t         eng_len,
+                                        uint8_t*       out_buf,
+                                        size_t         out_cap,
+                                        size_t*        out_len);
+
+/**
+ * @brief Look up an exact UTF-8 source term in a `TGL1` container zero-copy.
+ *
+ * @details Calling context: `task-safe-reentrant`. Returned @p out_eng_ptr
+ * borrows directly from @p tgl_buf while @p tgl_buf lives. Returns
+ * `k_ra8_err_not_found` when absent without writing output pointers.
+ *
+ * @param[in] tgl_buf Validated `TGL1` container bytes.
+ * @param[in] tgl_len Byte length of @p tgl_buf.
+ * @param[in] src_utf8 UTF-8 source term to search.
+ * @param[in] src_len Byte length of @p src_utf8.
+ * @param[out] out_eng_ptr Non-null out-pointer receiving English term slice.
+ * @param[out] out_eng_len Non-null storage receiving English byte length.
+ * @return ::k_ra8_ok when present, `k_ra8_err_not_found` when missing, or error.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_glossary_lookup(const uint8_t*  tgl_buf,
+                                        size_t          tgl_len,
+                                        const uint8_t*  src_utf8,
+                                        size_t          src_len,
+                                        const uint8_t** out_eng_ptr,
+                                        size_t*         out_eng_len);
+
+/**
+ * @brief Replace known glossary stems (and attached honorifics) with placeholders.
+ *
+ * @details Calling context: `task-safe-reentrant`. Emits UTF-8 masked source text
+ * containing deterministic `__Gdd__` tokens and an opaque substitution plan into
+ * caller buffers only when both output capacities suffice.
+ *
+ * @param[in] tgl_buf Validated `TGL1` container bytes.
+ * @param[in] tgl_len Byte length of @p tgl_buf.
+ * @param[in] src_utf8 UTF-8 input bubble text (NULL allowed only if @p src_len == 0).
+ * @param[in] src_len Byte length of @p src_utf8.
+ * @param[out] out_masked Non-null destination buffer for masked UTF-8 text.
+ * @param[in] masked_cap Capacity of @p out_masked in bytes.
+ * @param[out] out_masked_len Non-null storage receiving masked byte length.
+ * @param[out] out_plan Non-null destination buffer for serialized plan bytes.
+ * @param[in] plan_cap Capacity of @p out_plan in bytes.
+ * @param[out] out_plan_len Non-null storage receiving serialized plan length.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_glossary_mask(const uint8_t* tgl_buf,
+                                      size_t         tgl_len,
+                                      const uint8_t* src_utf8,
+                                      size_t         src_len,
+                                      uint8_t*       out_masked,
+                                      size_t         masked_cap,
+                                      size_t*        out_masked_len,
+                                      uint8_t*       out_plan,
+                                      size_t         plan_cap,
+                                      size_t*        out_plan_len);
+
+/**
+ * @brief Restore `__Gdd__` placeholders back to canonical English and honorific policy.
+ *
+ * @details Calling context: `task-safe-reentrant`. Restores every token in
+ * @p eng_utf8 from @p tgl_buf and @p plan_bytes into @p out_restored without
+ * mutating outputs on any error.
+ *
+ * @param[in] tgl_buf Validated `TGL1` container bytes.
+ * @param[in] tgl_len Byte length of @p tgl_buf.
+ * @param[in] plan_bytes Plan buffer produced by ::ra8_translate_glossary_mask.
+ * @param[in] plan_len Byte length of @p plan_bytes.
+ * @param[in] eng_utf8 UTF-8 decoded English containing `__Gdd__` placeholders.
+ * @param[in] eng_len Byte length of @p eng_utf8.
+ * @param[out] out_restored Non-null destination buffer for restored UTF-8 English.
+ * @param[in] restored_cap Capacity of @p out_restored in bytes.
+ * @param[out] out_restored_len Non-null storage receiving restored byte length.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_glossary_restore(const uint8_t* tgl_buf,
+                                         size_t         tgl_len,
+                                         const uint8_t* plan_bytes,
+                                         size_t         plan_len,
+                                         const uint8_t* eng_utf8,
+                                         size_t         eng_len,
+                                         uint8_t*       out_restored,
+                                         size_t         restored_cap,
+                                         size_t*        out_restored_len);
 
 #ifdef __cplusplus
 }

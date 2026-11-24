@@ -216,6 +216,73 @@ static void test_language_selection(void)
   TEST_ASSERT_EQ(k_ra8_translate_lang_chinese, sel.language);
 }
 
+static void test_glossary_round_trip(void)
+{
+  uint8_t tgl_a[256] = {};
+  size_t  len_a      = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_glossary_init(k_ra8_translate_lang_japanese, 1U, tgl_a, sizeof(tgl_a), &len_a));
+
+  const uint8_t tanaka[]   = "\xe3\x82\xbf\xe3\x83\x8a\xe3\x82\xab";
+  uint8_t       tgl_b[256] = {};
+  size_t        len_b      = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_glossary_upsert(tgl_a,
+                                               len_a,
+                                               tanaka,
+                                               sizeof(tanaka) - 1U,
+                                               (const uint8_t*)"Tanaka",
+                                               6U,
+                                               tgl_b,
+                                               sizeof(tgl_b),
+                                               &len_b));
+
+  const uint8_t* eng_ptr = nullptr;
+  size_t         eng_len = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_glossary_lookup(tgl_b, len_b, tanaka, sizeof(tanaka) - 1U, &eng_ptr, &eng_len));
+  TEST_ASSERT_NOT_NULL(eng_ptr);
+  TEST_ASSERT_EQ(6U, eng_len);
+  TEST_ASSERT_EQ(0, memcmp(eng_ptr, "Tanaka", 6U));
+
+  const uint8_t bub[]      = "\xe3\x82\xbf\xe3\x83\x8a\xe3\x82\xab\xe3\x81\x95\xe3\x82\x93";
+  uint8_t       masked[64] = {};
+  size_t        masked_len = 0U;
+  uint8_t       plan[32]   = {};
+  size_t        plan_len   = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_glossary_mask(tgl_b,
+                                             len_b,
+                                             bub,
+                                             sizeof(bub) - 1U,
+                                             masked,
+                                             sizeof(masked),
+                                             &masked_len,
+                                             plan,
+                                             sizeof(plan),
+                                             &plan_len));
+  TEST_ASSERT_EQ(7U, masked_len);
+  TEST_ASSERT_EQ(0, memcmp(masked, "__G00__", 7U));
+
+  uint8_t     restored[64] = {};
+  size_t      restored_len = 0U;
+  const char* model_out    = "See __G00__!";
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_glossary_restore(tgl_b,
+                                                len_b,
+                                                plan,
+                                                plan_len,
+                                                (const uint8_t*)model_out,
+                                                strlen(model_out),
+                                                restored,
+                                                sizeof(restored),
+                                                &restored_len));
+  TEST_ASSERT_EQ(15U, restored_len);
+  TEST_ASSERT_EQ(0, memcmp(restored, "See Tanaka-san!", 15U));
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -229,5 +296,9 @@ int main(void)
   TEST_BEGIN("test_language_selection");
   test_language_selection();
   TEST_END("test_language_selection");
+
+  TEST_BEGIN("test_glossary_round_trip");
+  test_glossary_round_trip();
+  TEST_END("test_glossary_round_trip");
   return 0;
 }

@@ -41,6 +41,16 @@ pub fn build(b: *std.Build) void {
     lang_mod.addImport("err", err_mod);
     lang_mod.addImport("sidecar", sidecar_mod);
 
+    const glossary_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/glossary.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    glossary_mod.addImport("crc32", crc32_mod);
+    glossary_mod.addImport("err", err_mod);
+    glossary_mod.addImport("sidecar", sidecar_mod);
+    glossary_mod.addImport("lang", lang_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -50,6 +60,7 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("err", err_mod);
     abi_mod.addImport("sidecar", sidecar_mod);
     abi_mod.addImport("lang", lang_mod);
+    abi_mod.addImport("glossary", glossary_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -132,4 +143,15 @@ pub fn build(b: *std.Build) void {
     const run_lang = b.addRunArtifact(lang_tests);
     ra8_build.configureHostTestRun(b, test_step, lang_tests, run_lang);
     test_step.dependOn(&run_lang.step);
+
+    const glossary_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/glossary_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    glossary_tmod.addImport("glossary", glossary_mod);
+    const glossary_tests = b.addTest(.{ .root_module = glossary_tmod });
+    const run_glossary = b.addRunArtifact(glossary_tests);
+    ra8_build.configureHostTestRun(b, test_step, glossary_tests, run_glossary);
+    test_step.dependOn(&run_glossary.step);
 }

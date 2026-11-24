@@ -9,6 +9,7 @@ const std = @import("std");
 const err_mod = @import("err");
 const sidecar = @import("sidecar");
 const lang = @import("lang");
+const glossary = @import("glossary");
 
 pub const SidecarKey = sidecar.SidecarKey;
 pub const SidecarHeader = sidecar.SidecarHeader;
@@ -322,5 +323,123 @@ pub export fn ra8_translate_lang_select(
     const hint = sidecar.Language.fromRaw(hint_raw) orelse return err_mod.k_ra8_err_invalid_arg;
     const result = lang.selectLanguage(hint, sample) catch |e| return err_mod.toRa8Err(e);
     out_selection.* = result;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_glossary_init()`.
+pub export fn ra8_translate_glossary_init(
+    lang_raw: u8,
+    revision: u32,
+    out_buf_opt: ?[*]u8,
+    out_cap: usize,
+    out_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_len = out_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_buf = out_buf_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const source_lang = sidecar.Language.fromRaw(lang_raw) orelse return err_mod.k_ra8_err_invalid_arg;
+    const written = glossary.initEmptyWire(source_lang, revision, out_buf[0..out_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_len.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_glossary_upsert()`.
+pub export fn ra8_translate_glossary_upsert(
+    tgl_opt: ?[*]const u8,
+    tgl_len: usize,
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    eng_opt: ?[*]const u8,
+    eng_len: usize,
+    out_buf_opt: ?[*]u8,
+    out_cap: usize,
+    out_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_len = out_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_buf = out_buf_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tgl = inputSlice(u8, tgl_opt, tgl_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const src = inputSlice(u8, src_opt, src_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const eng = inputSlice(u8, eng_opt, eng_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const written = glossary.upsertWire(tgl, src, eng, out_buf[0..out_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_len.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_glossary_lookup()`.
+pub export fn ra8_translate_glossary_lookup(
+    tgl_opt: ?[*]const u8,
+    tgl_len: usize,
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    out_eng_ptr_opt: ?*?[*]const u8,
+    out_eng_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_eng_ptr = out_eng_ptr_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_eng_len = out_eng_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tgl = inputSlice(u8, tgl_opt, tgl_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const src = inputSlice(u8, src_opt, src_len) orelse return err_mod.k_ra8_err_null_ptr;
+    if (src.len == 0) return err_mod.k_ra8_err_invalid_arg;
+    const view = glossary.TglView.open(tgl) catch |e| return err_mod.toRa8Err(e);
+    const eng_opt = view.lookup(src) catch |e| return err_mod.toRa8Err(e);
+    const eng = eng_opt orelse return err_mod.k_ra8_err_not_found;
+    out_eng_ptr.* = eng.ptr;
+    out_eng_len.* = eng.len;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_glossary_mask()`.
+pub export fn ra8_translate_glossary_mask(
+    tgl_opt: ?[*]const u8,
+    tgl_len: usize,
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    out_masked_opt: ?[*]u8,
+    masked_cap: usize,
+    out_masked_len_opt: ?*usize,
+    out_plan_opt: ?[*]u8,
+    plan_cap: usize,
+    out_plan_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_masked_len = out_masked_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_plan_len = out_plan_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_masked = out_masked_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_plan = out_plan_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tgl = inputSlice(u8, tgl_opt, tgl_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const src = inputSlice(u8, src_opt, src_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = glossary.TglView.open(tgl) catch |e| return err_mod.toRa8Err(e);
+    const res = view.maskTextWire(src, out_masked[0..masked_cap], out_plan[0..plan_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_masked_len.* = res.masked_len;
+    out_plan_len.* = res.plan_len;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_glossary_restore()`.
+pub export fn ra8_translate_glossary_restore(
+    tgl_opt: ?[*]const u8,
+    tgl_len: usize,
+    plan_opt: ?[*]const u8,
+    plan_len: usize,
+    eng_opt: ?[*]const u8,
+    eng_len: usize,
+    out_restored_opt: ?[*]u8,
+    restored_cap: usize,
+    out_restored_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_restored_len = out_restored_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_restored = out_restored_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tgl = inputSlice(u8, tgl_opt, tgl_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const plan_bytes = inputSlice(u8, plan_opt, plan_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const eng = inputSlice(u8, eng_opt, eng_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = glossary.TglView.open(tgl) catch |e| return err_mod.toRa8Err(e);
+    const plan = glossary.SubstitutionPlan.deserialize(plan_bytes) catch |e| return err_mod.toRa8Err(e);
+    const written = view.restoreText(&plan, eng, out_restored[0..restored_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_restored_len.* = written;
     return err_mod.k_ra8_ok;
 }
