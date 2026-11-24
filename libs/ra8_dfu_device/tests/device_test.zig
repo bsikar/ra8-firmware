@@ -125,3 +125,23 @@ test "the USBX parameter block is ten words" {
     try std.testing.expectEqual(10 * @sizeOf(usize), @sizeOf(usbx.DfuParameter));
     try std.testing.expectEqual(8 * @sizeOf(usize), @offsetOf(usbx.DfuParameter, "framework"));
 }
+
+test "device diagnostic fields start at zero and latch after blocks and manifest" {
+    var state = device.State{};
+    try std.testing.expectEqual(@as(u32, 0), state.img_len);
+    try std.testing.expectEqual(@as(u32, 0), state.writes);
+    try std.testing.expect(!state.manifest);
+
+    var fake = Fake{};
+    const block: [device.block_bytes]u8 = @splat(0x5A);
+    state.write(&fake, 0, &block);
+    state.write(&fake, 1, &block);
+    try std.testing.expectEqual(@as(u32, 2), state.writes);
+    try std.testing.expectEqual(@as(u32, 2 * device.block_bytes), state.img_len);
+    try std.testing.expect(!state.manifest);
+
+    state.write(&fake, 2, &.{});
+    try std.testing.expect(state.manifest);
+    try std.testing.expectEqual(@as(u32, 2), state.writes);
+    try std.testing.expectEqual(@as(u32, 2 * device.block_bytes), state.img_len);
+}
