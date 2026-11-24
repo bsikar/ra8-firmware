@@ -27,19 +27,23 @@ pub fn build(b: *std.Build) void {
     // The bench reaches only the stream ABI, so it links ra8_io's narrow
     // stream archive: root.zig's comptime block would keep every facade (and
     // its extern driver deps) in the archive, which --gc-sections cannot drop.
+    const if_dep = b.dependency("ra8_if", .{ .target = target, .optimize = optimize });
     const io_dep = b.dependency("ra8_io", .{ .target = target, .optimize = optimize, .units = "stream" });
     const mem_dep = b.dependency("ra8_mem", .{ .target = target, .optimize = optimize });
     const core_dep = b.dependency("ra8_core", .{ .target = target, .optimize = optimize });
 
     const mod = b.createModule(.{ .target = target, .optimize = optimize });
     mod.link_libc = true;
+    mod.linkLibrary(if_dep.artifact("if"));
     mod.linkLibrary(io_dep.artifact("ra8_io"));
     mod.linkLibrary(mem_dep.artifact("ra8_mem"));
     mod.linkLibrary(core_dep.artifact("ra8_core_zig"));
+    mod.addIncludePath(b.path("../../libs/if/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_core/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_mem/inc"));
     mod.addIncludePath(b.path("../../libs/ra8_io/inc"));
     mod.addIncludePath(b.path("../../port/posix/inc"));
+    mod.addIncludePath(b.path("../../port/posix/src"));
     mod.addCSourceFiles(.{
         .root = b.path("src"),
         .files = &.{"glyph_bench.c"},
@@ -47,7 +51,14 @@ pub fn build(b: *std.Build) void {
     });
     mod.addCSourceFiles(.{
         .root = b.path("../../port/posix/src"),
-        .files = &.{"ra8_io_stream_posix.c"},
+        .files = &.{
+            "fw_if_fs_posix.c",
+            "fw_if_fs_posix_bind.c",
+            "fw_if_fs_posix_common.c",
+            "fw_if_fs_posix_stream.c",
+            "ra8_host.c",
+            "ra8_io_stream_posix.c",
+        },
         .flags = &.{ "-std=gnu23", "-Wall", "-Wextra", "-Werror", "-DRA8_OFF_TARGET" },
     });
 

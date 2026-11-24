@@ -12,7 +12,7 @@
 #include "alphabet_soup.h"
 #include "alphabet_soup_cli_internal.h"
 #include "fw_if_fs.h"
-#include "fw_if_fs_posix.h"
+#include "ra8_host.h"
 
 /** @brief Buffer sizes and limits for host CLI file ingestion. */
 typedef enum : uint32_t {
@@ -103,25 +103,24 @@ RA8_PRIV ra8_err_t priv_alphabet_soup_load_file_contents(const char* filepath,
                                     sizeof(portable_path)) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
-  fw_fs_t                 fs          = {};
-  fw_fs_posix_state_t     posix_state = {.root_fd = -1};
-  const fw_fs_posix_cfg_t cfg         = {.root_path = root_dir, .removable_media = false};
-  if (fw_fs_posix_init(&fs, &posix_state, &cfg) != k_ra8_ok) {
+  ra8_host_t           host     = {};
+  const ra8_host_cfg_t host_cfg = {.root_path = root_dir, .bind_filesystem = true};
+  if (ra8_host_open(&host, &host_cfg) != k_ra8_ok) {
     return k_ra8_fail;
   }
   alignas(max_align_t) uint8_t file_work[k_cli_file_work_capacity] = {};
   fw_fs_file_t                 file                                = {};
-  if (fw_fs_open(&fs.streams,
+  if (fw_fs_open(&host.fs->streams,
                  portable_path,
                  k_fw_fs_open_read,
                  &file,
                  file_work,
                  sizeof(file_work)) != k_ra8_ok) {
-    (void)fw_fs_posix_deinit(&posix_state);
+    (void)ra8_host_close(&host);
     return k_ra8_err_not_found;
   }
   const ra8_err_t err = priv_alphabet_soup_read_all(&file, out_buf, buf_cap, out_len);
   (void)fw_fs_close(&file);
-  (void)fw_fs_posix_deinit(&posix_state);
+  (void)ra8_host_close(&host);
   return err;
 }
