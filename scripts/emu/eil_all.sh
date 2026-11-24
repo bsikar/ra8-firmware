@@ -558,6 +558,18 @@ if [[ "$-" == *p* ]]; then
     exit 0
   fi
 
+  # The gate calls bare `zig` and the app builds configure through
+  # cmake/toolchain-ra8d2.cmake. On the runner and in the devcontainer all of it
+  # is on PATH; on a dev box it often lives in user-space installs instead (the
+  # Arm toolchain under ~/opt, a zig distribution beside an older one,
+  # cmake/just/ninja in ~/.local/bin). Discover and export it here -- RA8_ZIG
+  # and RA8_ARM_TOOLCHAIN_BIN keep their documented precedence -- so a local
+  # EIL run needs no hand-built PATH and no sudo. After --list, which must
+  # stay tool-free.
+  # shellcheck source=scripts/builders/find_tools.sh
+  . "$REPO_ROOT/scripts/builders/find_tools.sh"
+  ra8_find_tools_activate
+
   echo -e "${CYAN}[eil_all]${NC} ${#SEL[@]} app(s), ra8_emulator EIL, -j ${JOBS}"
 
   if [ -n "${RA8_EMULATOR:-}" ]; then

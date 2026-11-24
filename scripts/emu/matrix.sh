@@ -272,6 +272,18 @@ EOF
   exit "$sel_fail"
 fi
 
+# The gate calls bare `zig` and `arm-none-eabi-nm`, and the app builds configure
+# through cmake/toolchain-ra8d2.cmake. On the runner and in the devcontainer all
+# of it is on PATH; on a dev box it often lives in user-space installs instead
+# (the Arm toolchain under ~/opt, a zig distribution beside an older one,
+# cmake/just/ninja in ~/.local/bin). Discover and export it here -- RA8_ZIG and
+# RA8_ARM_TOOLCHAIN_BIN keep their documented precedence -- so a local matrix
+# run needs no hand-built PATH and no sudo. After --selftest, which must stay
+# tool-free.
+# shellcheck source=scripts/builders/find_tools.sh
+. "$ROOT/scripts/builders/find_tools.sh"
+ra8_find_tools_activate
+
 # -- Locate or build the Zig ra8_emulator binary, and HARD-CHECK it. ----------
 emu_build_log="$ROOT/build/ra8_emulator_matrix_emu_build.log"
 if [ -n "${RA8_EMULATOR:-}" ]; then
