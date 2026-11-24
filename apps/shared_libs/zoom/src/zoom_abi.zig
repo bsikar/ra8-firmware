@@ -18,6 +18,14 @@ pub const popup = @import("zoom_popup.zig");
 pub const render = @import("zoom_render.zig");
 pub const tiles = @import("zoom_tiles.zig");
 
+comptime {
+    _ = book;
+    _ = mem;
+    _ = popup;
+    _ = render;
+    _ = tiles;
+}
+
 const Err = zoom.Err;
 const View = zoom.View;
 const Source = zoom.Source;
