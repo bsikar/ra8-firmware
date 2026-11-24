@@ -536,7 +536,7 @@ fn renderPage(engine: *const ReflowEngine, page_idx: u32, ox: i32, oy: i32) c_in
 // Public ABI -- render (unchanged C shape).
 // ---------------------------------------------------------------------------
 
-pub fn reflow_render_page(engine: ?*ReflowEngine, page_idx: c_uint, framebuffer: ?*anyopaque) c_int {
+pub fn reflow_render_page(engine: ?*ReflowEngine, page_idx: c_uint, framebuffer: ?*anyopaque) callconv(.c) c_int {
     _ = framebuffer; // Reserved hook -- ra8_gfx is bound externally.
     const e = engine orelse return k_ra8_err_null_ptr;
     return renderPage(e, page_idx, 0, 0);
