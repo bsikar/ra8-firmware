@@ -57,17 +57,20 @@ const ErrCode = u16;
 
 // ---------------------------------------------------------------------------
 // Fixed NS-image addresses (two-project build). The NS image is a SEPARATE
-// ELF (tz_nsc_cgc_usb_ns.elf), so the Secure side has none of its linker
-// symbols. Its load (MRAM) and run (SRAM2 NS alias) bases are fixed by the NS
-// linker script; the Secure boot copies a fixed window large enough for the
-// NS image (ThreadX + USBX + ra8_usb fit well under 192 KB) and BLXNS-es to
-// slot 1 of the NS vector table at the run base.
-// Invariant: matches RA8_NS_MRAM_ORIGIN / RA8_NS_SRAM_ORIGIN in
-// libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
+// ELF (tz_nsc_cgc_usb_ns.elf / ra8d2-ereader_ns.elf), so the Secure side has
+// none of its linker symbols. Its load (MRAM) and run (SRAM2 NS alias, or
+// OSPI NS alias under `ns_xip`) bases are fixed by the NS linker script; in
+// the RAM-resident layout the Secure boot copies a fixed window large enough
+// for the NS image (ThreadX + USBX + ra8_usb fit well under 192 KB) and
+// BLXNS-es to slot 1 of the NS vector table at the run base.
+// Invariant: matches RA8_NS_MRAM_ORIGIN / RA8_NS_OSPI_ORIGIN / RA8_NS_SRAM_ORIGIN
+// in libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
 // ---------------------------------------------------------------------------
 
 const ns_load_base: usize = 0x02080000; // NS image LMA (Secure MRAM).
-const ns_run_base: usize = 0x32100000; // NS image VMA (SRAM2 NS alias).
+const ns_ospi_run_base: usize = 0x90000000; // NS OSPI XIP alias (bit[28] = 1).
+const ns_sram_run_base: usize = 0x32100000; // NS image VMA (SRAM2 NS alias).
+const ns_run_base: usize = if (boot_options.ns_xip) ns_ospi_run_base else ns_sram_run_base;
 const ns_copy_size: usize = 0x00030000; // Bytes copied LMA->VMA (192 KB).
 
 // ---------------------------------------------------------------------------
@@ -418,8 +421,14 @@ pub fn ra8TrustzoneInit() callconv(.c) void {
         return; // Fall through to the S-side main() fallback.
     }
 
-    // 3. Copy the NS image into the now-Non-secure SRAM alias.
-    tzCopyNsImage();
+    // 3. Copy the NS image into the now-Non-secure SRAM alias (skipped when
+    //    `boot_options.ns_xip` runs .text/.rodata XIP from OSPI 0x9000_0000
+    //    and ns_reset_handler copies only .data into SRAM).
+    //    TODO(OSPI XIP arming on silicon): on real hardware under ns_xip,
+    //    enable OSPI XIP before BLXNS and map the OSPI NS alias in SAU.
+    if (!boot_options.ns_xip) {
+        tzCopyNsImage();
+    }
 
     // 4. Clear the Secure PRIMASK before handing off. The core bring-up
     //    masked IRQs (CPSID i) for secure bring-up; a set PRIMASK_S boosts
@@ -430,7 +439,8 @@ pub fn ra8TrustzoneInit() callconv(.c) void {
     asm volatile ("cpsie i" ::: .{ .memory = true });
 
     // 5. BLXNS into the NS reset vector (slot 1 of the NS vector table at the
-    //    fixed run base 0x3210_0000). Does not return on hardware.
+    //    active run base: SRAM2 NS alias or OSPI NS alias under ns_xip).
+    //    Does not return on hardware.
     const jump_err = ra8_tz_secure_boot_jump_ns(@ptrFromInt(ns_run_base));
     if (jump_err != 0) {
         // Reached on hardware ONLY when the NS image was DENIED

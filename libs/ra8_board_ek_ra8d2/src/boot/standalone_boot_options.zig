@@ -8,3 +8,4 @@ pub const cache_mpu: bool = false;
 pub const mpu_via_hal: bool = false;
 pub const cache_via_hal: bool = false;
 pub const cgc_before_tz: bool = false;
+pub const ns_xip: bool = false;
