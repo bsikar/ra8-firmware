@@ -40,8 +40,12 @@ pub const Psel = struct {
     pub const usb_fs: u32 = 0x13;
     /// 11000b: ESWM (RGMII). HUM 20.6.
     pub const ether_rgmii: u32 = 0x18;
-    /// 00010b: GPT0 (low channels).
-    pub const gpt0: u32 = 0x02;
+    /// HUM Ch 20.6 "Register settings for input/output pin function (PORT5)" p 861:
+    /// 00010b GPT trigger pins (GTETRGA/B).
+    pub const gpt_trig: u32 = 0x02;
+    /// HUM Ch 20.6 "Register settings for input/output pin function (PORT5)" p 861:
+    /// 00011b GPT timer I/O (GTIOCnA/B, including GTIOC12A on P501).
+    pub const gpt0: u32 = 0x03;
     /// 01111b: camera engine unit.
     pub const ceu: u32 = 0x0F;
     /// 11011b: PDM-IF (PDMCLKn / PDMDATn). HUM 20.6.

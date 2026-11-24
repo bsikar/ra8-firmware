@@ -18,9 +18,9 @@ pub const PwmCh = gpt.PwmCh;
 pub const FwTimer = gpt.FwTimer;
 pub const FwPwm = gpt.FwPwm;
 
-/// `k_ra8_psel_gpt0` in ra8_gpio_constants.h: 00011b, GTIOCnA/B timer I/O.
-/// Not `vocab.Psel.gpt0`, which is 0x02, the GPT trigger-pin code.
-const psel_gtioc: u8 = 0x03;
+/// `k_ra8_psel_gpt0` / `vocab.Psel.gpt0` (HUM Ch 20.6 "Register settings for
+/// input/output pin function (PORT5)" p 861): 00011b, GTIOCnA/B timer I/O.
+const psel_gtioc: u8 = @intCast(vocab.Psel.gpt0);
 
 const ok: ErrCode = @intCast(vocab.Err.ok);
 const invalid_arg: ErrCode = @intCast(vocab.Err.invalid_arg);
