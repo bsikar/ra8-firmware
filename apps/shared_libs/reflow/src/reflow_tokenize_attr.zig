@@ -43,7 +43,7 @@ const k_reflow_style_italic: u8 = 2;
 const k_ra8_css_set_family: u8 = 1 << 7;
 
 // The CSS library's sheet side (rules + cascade) stays C: face matching.
-extern fn ra8_css_match_face(sheet: *const CssSheet, family: [*]const u8, family_len: u16, want_bold: bool, want_italic: bool) i16;
+extern fn ra8_css_match_face(sheet: *const CssSheet, family: [*]const u8, family_len: u16, want_bold: bool, want_italic: bool) callconv(.c) i16;
 
 // ---- Quoted-attribute scanning + value capture ----
 

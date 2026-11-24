@@ -75,9 +75,9 @@ const priv_reflow_tok_skip_past = lex.priv_reflow_tok_skip_past;
 const priv_reflow_tok_find_lit = lex.priv_reflow_tok_find_lit;
 
 // ---- C attribute/CSS helpers that stay C this slice ----
-extern fn ra8_css_sheet_reset(sheet: *CssSheet) c_int;
-extern fn ra8_css_parse(sheet: *CssSheet, css: [*]const u8, len: u32) c_int;
-extern fn ra8_css_cascade_ctx(sheet: *const CssSheet, el: *const CssElement, inherited: CssStyle, inline_decl: CssStyle, ancestors: [*]const CssElement, n_anc: u8) CssStyle;
+extern fn ra8_css_sheet_reset(sheet: *CssSheet) callconv(.c) c_int;
+extern fn ra8_css_parse(sheet: *CssSheet, css: [*]const u8, len: u32) callconv(.c) c_int;
+extern fn ra8_css_cascade_ctx(sheet: *const CssSheet, el: *const CssElement, inherited: CssStyle, inline_decl: CssStyle, ancestors: [*]const CssElement, n_anc: u8) callconv(.c) CssStyle;
 
 // ---- Mutable tokenizer context (the C file's tok_ctx_t) ----
 const TokCtx = struct {

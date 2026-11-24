@@ -82,10 +82,10 @@ const k_ra8_err_validation_failed: c_int = 0x501;
 /// the vendored struct is touched from Zig.
 pub const StbttFontinfo = opaque {};
 
-extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) c_int;
-extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) c_int;
-extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) f32;
-extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) void;
+extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) callconv(.c) c_int;
+extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) callconv(.c) c_int;
+extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) callconv(.c) f32;
+extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
 
 /// The image-layout sibling TU, Zig since RA8FW-1226 (its entry point
 /// keeps C linkage for any remaining C sibling).
