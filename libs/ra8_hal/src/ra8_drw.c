@@ -198,6 +198,15 @@ static uint32_t s_drw_color1;
  */
 static uint32_t s_drw_pitch_px;
 
+/** @brief Cached TEXPITCH in texels for HUM Ch 62.6.3.2 V-limiter scaling. */
+static uint32_t s_drw_texpitch_px;
+
+/** @brief Implementation of `priv_ra8_drw_internal_texpitch_px()`. */
+RA8_PRIV uint32_t priv_ra8_drw_internal_texpitch_px(void)
+{
+  return s_drw_texpitch_px;
+}
+
 /**
  * @var s_drw_bytes_px
  * @brief Cached framebuffer bytes per pixel for the configured WRITEFORMAT.
@@ -535,6 +544,7 @@ static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
   s_drw_control2                         = internal_pack_surface_defaults(cfg->format);
   *ra8_drw_reg32(k_ra8_drw_off_control2) = s_drw_control2;
   s_drw_color1                           = 0U;
+  s_drw_texpitch_px                      = 0U;
 
   internal_drw_program_cache_options(cfg);
 
@@ -554,13 +564,14 @@ static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
   /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
   *ra8_drw_reg32(k_ra8_drw_off_dbwer) = 0UL;
 
-  s_drw_fn       = nullptr;
-  s_drw_ctx      = nullptr;
-  s_drw_origin   = 0U;
-  s_drw_pitch_px = 0U;
-  s_drw_bytes_px = 0U;
-  s_drw_control2 = 0U;
-  s_drw_color1   = 0U;
+  s_drw_fn          = nullptr;
+  s_drw_ctx         = nullptr;
+  s_drw_origin      = 0U;
+  s_drw_pitch_px    = 0U;
+  s_drw_texpitch_px = 0U;
+  s_drw_bytes_px    = 0U;
+  s_drw_control2    = 0U;
+  s_drw_color1      = 0U;
   return ra8_mstp_disable(k_ra8_mstp_drw);
 }
 
@@ -900,7 +911,9 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
 [[nodiscard]] ra8_err_t ra8_drw_set_texture(const ra8_drw_texture_t* tex)
 {
   RA8_CHECK_NULL_PTR(tex, s_tag, "tex must not be nullptr");
-  if ((uint16_t)tex->pitch_px > k_ra8_drw_max_texpitch_tx) {
+  if ((tex->pitch_px == 0U) || ((uint16_t)tex->pitch_px > k_ra8_drw_max_texpitch_tx) ||
+      (tex->u_mask > (uint16_t)k_ra8_drw_texmask_umask_max) ||
+      (tex->v_mask > (uint32_t)k_ra8_drw_texmask_vmask_max)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -910,9 +923,12 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
   /* HUM Ch 62.2.15 "TEXPITCH: Texels Per Texture Line Register", p 3700 */
   *ra8_drw_reg32(k_ra8_drw_off_texpitch) = (uint32_t)tex->pitch_px;
 
-  /* HUM Ch 62.2.16 "TEXMASK: Texture U/V Mask Register", p 3700.
- * U mask in [15:0], V mask in [31:16]. */
-  *ra8_drw_reg32(k_ra8_drw_off_texmask) = ((uint32_t)tex->v_mask << 16U) | (uint32_t)tex->u_mask;
+  /* HUM Ch 62.2.16 "TEXMASK: Texture Size or Texture Address Mask Register", p 3700.
+   * TEXUMASK in [10:0], TEXVMASK in [31:11]. */
+  const uint32_t tex_umask = (uint32_t)tex->u_mask & (uint32_t)k_ra8_drw_texmask_umask_mask;
+  const uint32_t tex_vmask = (tex->v_mask & (uint32_t)k_ra8_drw_texmask_vmask_mask)
+                             << (uint32_t)k_ra8_drw_texmask_vmask_pos;
+  *ra8_drw_reg32(k_ra8_drw_off_texmask) = tex_vmask | tex_umask;
 
   /* HUM Ch 62.2.27 "TEXCLOFFSET: CLUT Offset Register", p 3704 */
   *ra8_drw_reg32(k_ra8_drw_off_texcloffset) =
@@ -932,6 +948,7 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
     /* HUM Ch 62.2.28 "COLKEY: Color Key Register", p 3704 */
     *ra8_drw_reg32(k_ra8_drw_off_colkey) = tex->color_key_rgb & k_ra8_drw_internal_color_alpha_mask;
   }
+  s_drw_texpitch_px = (uint32_t)tex->pitch_px;
   return k_ra8_ok;
 }
 
@@ -941,6 +958,7 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
                              k_ra8_drw_control2_clutenable | k_ra8_drw_control2_colkeyenable |
                              k_ra8_drw_control2_rlepixel_mask);
   (void)internal_control2_rmw(clr_mask, 0UL);
+  s_drw_texpitch_px = 0UL;
   return k_ra8_ok;
 }
 

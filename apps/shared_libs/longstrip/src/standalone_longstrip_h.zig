@@ -409,6 +409,31 @@ pub const longstrip_render_stats_t = extern struct {
     skipped: u16,
     covered_rows: u32,
 };
+pub const longstrip_clip_rect_t = extern struct {
+    src_x: u16,
+    src_y: u16,
+    dst_x: i32,
+    dst_y: i32,
+    width: u16,
+    height: u16,
+    visible: bool,
+};
+pub const longstrip_hw_blit_fn = ?*const fn (ctx: ?*anyopaque, pixels: [*c]const u8, src_w: u16, src_h: u16, bpp: u8, dst_x: i32, dst_y: i32, view_w: u16, view_h: u16) callconv(.c) ra8_err_t;
+pub const longstrip_hw_fill_fn = ?*const fn (ctx: ?*anyopaque, x: i32, y: i32, w: u16, h: u16, argb8888: u32) callconv(.c) ra8_err_t;
+pub const longstrip_hw_ops_t = extern struct {
+    blit_band: longstrip_hw_blit_fn,
+    fill_rect: longstrip_hw_fill_fn,
+    ctx: ?*anyopaque,
+};
+pub const longstrip_target_t = extern struct {
+    fb565: [*c]u16,
+    fb_pitch_px: u16,
+    view_w: u16,
+    view_h: u16,
+    x_off: i32,
+    prefer_hw: bool,
+    hw: longstrip_hw_ops_t,
+};
 pub extern fn longstrip_tile_decode(ctx: ?*anyopaque, key: [*c]const ra8_tile_key_t, cell: [*c]u8, cell_bytes: u32, out_w: [*c]u16, out_h: [*c]u16) ra8_err_t;
 pub extern fn longstrip_open(wt: [*c]longstrip_t, cfg: [*c]const longstrip_cfg_t) ra8_err_t;
 pub extern fn longstrip_set_viewport(wt: [*c]longstrip_t, viewport_w: u16, viewport_h: u16) ra8_err_t;
@@ -420,6 +445,10 @@ pub extern fn longstrip_fling(wt: [*c]longstrip_t, v0: i32) ra8_err_t;
 pub extern fn longstrip_tick(wt: [*c]longstrip_t) bool;
 pub extern fn longstrip_prefetch(wt: [*c]longstrip_t, depth: u16) ra8_err_t;
 pub extern fn longstrip_render(wt: [*c]longstrip_t, stats: [*c]longstrip_render_stats_t) ra8_err_t;
+pub extern fn longstrip_clip_band(dst_x: i32, dst_y: i32, src_w: u16, src_h: u16, view_w: u16, view_h: u16, out: [*c]longstrip_clip_rect_t) ra8_err_t;
+pub extern fn longstrip_sw_blit_rgb565(fb565: [*c]u16, fb_pitch_px: u16, view_w: u16, view_h: u16, pixels: [*c]const u8, src_w: u16, src_h: u16, bpp: u8, dst_x: i32, dst_y: i32) ra8_err_t;
+pub extern fn longstrip_target_blit(target_ctx: ?*anyopaque, pixels: [*c]const u8, src_w: u16, src_h: u16, bpp: u8, dst_x: i32, dst_y: i32) ra8_err_t;
+pub extern fn longstrip_target_fill(target: [*c]const longstrip_target_t, x: i32, y: i32, w: u16, h: u16, argb8888: u32) ra8_err_t;
 
 pub const __VERSION__ = "Aro 0.0.0";
 pub const __Aro__ = "";

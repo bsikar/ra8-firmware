@@ -138,22 +138,22 @@ typedef struct {
  * @invariant ``pitch_px`` <= ``k_ra8_drw_max_texpitch_tx`` (HUM 62.2.15).
  */
 typedef struct {
-  uintptr_t            base_addr;        /**< TEXORIGIN -- texel base.      */
-  uint16_t             pitch_px;         /**< TEXPITCH (texels per line).   */
-  uint16_t             u_mask;           /**< TEXMASK[15:0] (U mask).       */
-  uint16_t             v_mask;           /**< TEXMASK[31:16] (V mask).      */
-  ra8_drw_readformat_t format;           /**< READFORMAT_H+L 4-bit value.   */
-  bool                 clamp_x;          /**< CONTROL2.TEXTURECLAMPX.       */
-  bool                 clamp_y;          /**< CONTROL2.TEXTURECLAMPY.       */
-  bool                 filter_x;         /**< CONTROL2.TEXTUREFILTERX.      */
-  bool                 filter_y;         /**< CONTROL2.TEXTUREFILTERY.      */
-  bool                 enable_clut;      /**< CONTROL2.CLUTENABLE.          */
-  bool                 clut_565;         /**< CONTROL2.CLUTFORMAT (RGB565). */
-  bool                 enable_color_key; /**< CONTROL2.COLKEYENABLE.        */
-  uint32_t             color_key_rgb;    /**< COLKEY value (0x00RRGGBB).    */
-  bool                 enable_rle;       /**< CONTROL2.RLEENABLE.           */
-  ra8_drw_rlepixel_t   rle_pixel_width;  /**< CONTROL2.RLEPIXELWIDTH.       */
-  uint8_t              clut_offset;      /**< TEXCLOFFSET CLOFFSET[7:0].    */
+  uintptr_t            base_addr;        /**< TEXORIGIN -- texel base.                     */
+  uint16_t             pitch_px;         /**< TEXPITCH (texels per line).                  */
+  uint16_t             u_mask;           /**< TEXMASK[10:0] (U mask: width - 1).           */
+  uint32_t             v_mask;           /**< TEXMASK[31:11] (V mask: TEXPITCH * (h - 1)). */
+  ra8_drw_readformat_t format;           /**< READFORMAT_H+L 4-bit value.                  */
+  bool                 clamp_x;          /**< CONTROL2.TEXTURECLAMPX.                      */
+  bool                 clamp_y;          /**< CONTROL2.TEXTURECLAMPY.                      */
+  bool                 filter_x;         /**< CONTROL2.TEXTUREFILTERX.                     */
+  bool                 filter_y;         /**< CONTROL2.TEXTUREFILTERY.                     */
+  bool                 enable_clut;      /**< CONTROL2.CLUTENABLE.                         */
+  bool                 clut_565;         /**< CONTROL2.CLUTFORMAT (RGB565).                */
+  bool                 enable_color_key; /**< CONTROL2.COLKEYENABLE.                       */
+  uint32_t             color_key_rgb;    /**< COLKEY value (0x00RRGGBB).                   */
+  bool                 enable_rle;       /**< CONTROL2.RLEENABLE.                          */
+  ra8_drw_rlepixel_t   rle_pixel_width;  /**< CONTROL2.RLEPIXELWIDTH.                      */
+  uint8_t              clut_offset;      /**< TEXCLOFFSET CLOFFSET[7:0].                   */
 } ra8_drw_texture_t;
 
 /**
@@ -782,6 +782,37 @@ ra8_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  *
  * @since 0.1.0
  */
+/**
+ * @brief Blit a clipped sub-rectangle of the currently bound texture.
+ *
+ * @details
+ * Programmes the U/V texture limiters per HUM Ch 62.6.3.2 p 3731 so the
+ * blit samples starting at texel ``(src_x, src_y)`` (``LUSTART = src_x * 16``,
+ * ``LVSTARTI = src_y * TEXPITCH``, ``LVYADDI = TEXPITCH``) into destination
+ * bounding box @p rect, and sets ``COLOR1 = 0`` / ``COLOR2 = 0xFFFFFFFF``
+ * (HUM Ch 62.6.4 Table 62.8 p 3732 Copy mode).
+ *
+ * @param[in] rect  Destination rectangle in pixels (``width_px, height_px >= 1``).
+ * @param[in] src_x Starting texture X coordinate in texels.
+ * @param[in] src_y Starting texture Y coordinate in texels.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                Blit queued into the DRW engine.
+ * @retval k_ra8_err_null_ptr      @p rect was ``nullptr``.
+ * @retval k_ra8_err_invalid_arg   @p rect dimensions or bounds out of range.
+ * @retval k_ra8_err_invalid_state No active texture bound (``TEXPITCH == 0``).
+ *
+ * @pre ``ra8_drw_init()`` and ``ra8_drw_set_texture()`` succeeded.
+ * @pre Texture memory is clean in CPU D-cache and DMA-reachable.
+ * @post DRW is rendering the textured sub-rectangle; call ``ra8_drw_wait_idle()``.
+ * @post Texture registers remain latched until ``ra8_drw_clear_texture()``.
+ *
+ * @note Not thread-safe; drives shared DRW registers.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_drw_blit_textured_subrect(const ra8_drw_rect_t* rect, uint16_t src_x, uint16_t src_y);
+
 [[nodiscard]] ra8_err_t ra8_drw_blit_textured_rect(const ra8_drw_rect_t* rect);
 
 /**

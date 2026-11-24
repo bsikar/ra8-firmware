@@ -370,6 +370,63 @@ fn internal_draw_band(wt: *ls_h.longstrip_t, band: u16, dst_x: i32, stats: *ls_h
     return if (berr != ls_h.k_ra8_ok) berr else perr;
 }
 
+pub export fn longstrip_clip_band(
+    dst_x: i32,
+    dst_y: i32,
+    src_w: u16,
+    src_h: u16,
+    view_w: u16,
+    view_h: u16,
+    out: ?*ls_h.longstrip_clip_rect_t,
+) callconv(.c) ls_h.ra8_err_t {
+    const out_ptr = out orelse return ls_h.k_ra8_err_null_ptr;
+    return @import("compositor.zig").clipBand(dst_x, dst_y, src_w, src_h, view_w, view_h, out_ptr);
+}
+
+pub export fn longstrip_sw_blit_rgb565(
+    fb565: ?[*]u16,
+    fb_pitch_px: u16,
+    view_w: u16,
+    view_h: u16,
+    pixels: ?[*]const u8,
+    src_w: u16,
+    src_h: u16,
+    bpp: u8,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) ls_h.ra8_err_t {
+    const fb = fb565 orelse return ls_h.k_ra8_err_null_ptr;
+    const px = pixels orelse return ls_h.k_ra8_err_null_ptr;
+    return @import("compositor.zig").swBlitRgb565(fb, fb_pitch_px, view_w, view_h, px, src_w, src_h, bpp, dst_x, dst_y);
+}
+
+pub export fn longstrip_target_blit(
+    target_ctx: ?*anyopaque,
+    pixels: ?[*]const u8,
+    src_w: u16,
+    src_h: u16,
+    bpp: u8,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) ls_h.ra8_err_t {
+    const ctx = target_ctx orelse return ls_h.k_ra8_err_null_ptr;
+    const px = pixels orelse return ls_h.k_ra8_err_null_ptr;
+    const target: *const ls_h.longstrip_target_t = @ptrCast(@alignCast(ctx));
+    return @import("compositor.zig").targetBlit(target, px, src_w, src_h, bpp, dst_x, dst_y);
+}
+
+pub export fn longstrip_target_fill(
+    target: ?*const ls_h.longstrip_target_t,
+    x: i32,
+    y: i32,
+    w: u16,
+    h: u16,
+    argb8888: u32,
+) callconv(.c) ls_h.ra8_err_t {
+    const t = target orelse return ls_h.k_ra8_err_null_ptr;
+    return @import("compositor.zig").targetFill(t, x, y, w, h, argb8888);
+}
+
 pub export fn longstrip_render(wt: ?*ls_h.longstrip_t, stats: ?*ls_h.longstrip_render_stats_t) callconv(.c) ls_h.ra8_err_t {
     if (!null_check("wt must not be nullptr", wt)) return ls_h.k_ra8_err_null_ptr;
     const w = wt.?;

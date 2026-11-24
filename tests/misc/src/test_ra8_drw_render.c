@@ -131,7 +131,9 @@ RA8_INTERNAL static void internal_test_set_texture_argb8888(void)
 
   TEST_ASSERT_EQ(tex.base_addr, *ra8_drw_reg32(k_ra8_drw_off_texorigin));
   TEST_ASSERT_EQ(tex.pitch_px, *ra8_drw_reg32(k_ra8_drw_off_texpitch));
-  const uint32_t expected_mask = ((uint32_t)tex.v_mask << 16U) | (uint32_t)tex.u_mask;
+  const uint32_t expected_mask = (((uint32_t)tex.v_mask & (uint32_t)k_ra8_drw_texmask_vmask_mask)
+                                  << (uint32_t)k_ra8_drw_texmask_vmask_pos) |
+                                 ((uint32_t)tex.u_mask & (uint32_t)k_ra8_drw_texmask_umask_mask);
   TEST_ASSERT_EQ(expected_mask, *ra8_drw_reg32(k_ra8_drw_off_texmask));
   TEST_ASSERT_EQ(tex.clut_offset, *ra8_drw_reg32(k_ra8_drw_off_texcloffset));
 
@@ -387,7 +389,7 @@ RA8_INTERNAL static void internal_test_blit_textured_rect(void)
    * texture limiters are a separate unit and stay programmed. */
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_control));
   TEST_ASSERT_EQ(k_ra8_drw_subpixel_unit, *ra8_drw_reg32(k_ra8_drw_off_luxadd));
-  TEST_ASSERT_EQ(k_ra8_drw_subpixel_unit, *ra8_drw_reg32(k_ra8_drw_off_lvyaddi));
+  TEST_ASSERT_EQ(tex.pitch_px, *ra8_drw_reg32(k_ra8_drw_off_lvyaddi));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_drw_blit_textured_rect(nullptr));
   ra8_drw_rect_t bad = rect;

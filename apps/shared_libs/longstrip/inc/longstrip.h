@@ -535,6 +535,230 @@ bool longstrip_tick(longstrip_t* wt);
  */
 [[nodiscard]] ra8_err_t longstrip_render(longstrip_t* wt, longstrip_render_stats_t* stats);
 
+/**
+ * @struct longstrip_clip_rect_t
+ * @brief Viewport-clipped band or tile rectangle and source offsets.
+ *
+ * @invariant When @c visible is true, @c width > 0 and @c height > 0.
+ * @invariant @c dst_x >= 0 and @c dst_y >= 0 when @c visible is true.
+ */
+typedef struct {
+  uint16_t src_x;   /**< Clipped source X offset in texels.           */
+  uint16_t src_y;   /**< Clipped source Y offset in texels.           */
+  int32_t  dst_x;   /**< Clipped viewport X coordinate.               */
+  int32_t  dst_y;   /**< Clipped viewport Y coordinate.               */
+  uint16_t width;   /**< Visible clipped width in pixels.             */
+  uint16_t height;  /**< Visible clipped height in pixels.            */
+  bool     visible; /**< True when clipped intersection is non-empty. */
+} longstrip_clip_rect_t;
+
+/**
+ * @brief Hardware-accelerated clipped band-blit seam (e.g. RA8 DRW + MVE).
+ *
+ * @param[in,out] ctx    Caller-owned context pointer.
+ * @param[in]     pixels Decoded source pixels.
+ * @param[in]     src_w  Source band width in pixels.
+ * @param[in]     src_h  Source band height in pixels.
+ * @param[in]     bpp    Source bytes per pixel (1, 2, 3, or 4).
+ * @param[in]     dst_x  Unclipped viewport X coordinate.
+ * @param[in]     dst_y  Unclipped viewport Y coordinate.
+ * @param[in]     view_w Viewport width in pixels.
+ * @param[in]     view_h Viewport height in pixels.
+ * @return ``ra8_err_t`` status code.
+ */
+typedef ra8_err_t (*longstrip_hw_blit_fn)(void*          ctx,
+                                          const uint8_t* pixels,
+                                          uint16_t       src_w,
+                                          uint16_t       src_h,
+                                          uint8_t        bpp,
+                                          int32_t        dst_x,
+                                          int32_t        dst_y,
+                                          uint16_t       view_w,
+                                          uint16_t       view_h);
+
+/**
+ * @brief Hardware-accelerated solid rectangle fill seam (e.g. DRW fill_rect).
+ *
+ * @param[in,out] ctx      Caller-owned context pointer.
+ * @param[in]     x        Clipped viewport X coordinate.
+ * @param[in]     y        Clipped viewport Y coordinate.
+ * @param[in]     w        Clipped rectangle width in pixels.
+ * @param[in]     h        Clipped rectangle height in pixels.
+ * @param[in]     argb8888 Solid fill color in 0xAARRGGBB format.
+ * @return ``ra8_err_t`` status code.
+ */
+typedef ra8_err_t (*longstrip_hw_fill_fn)(void*    ctx,
+                                          int32_t  x,
+                                          int32_t  y,
+                                          uint16_t w,
+                                          uint16_t h,
+                                          uint32_t argb8888);
+
+/**
+ * @struct longstrip_hw_ops_t
+ * @brief Optional hardware acceleration callbacks bound behind the compositor.
+ */
+typedef struct {
+  longstrip_hw_blit_fn blit_band; /**< Hardware band-blit backend (required if active). */
+  longstrip_hw_fill_fn fill_rect; /**< Optional hardware solid rect backend.            */
+  void*                ctx;       /**< Caller context passed to hardware callbacks.     */
+} longstrip_hw_ops_t;
+
+/**
+ * @struct longstrip_target_t
+ * @brief Compositor render target binding HW acceleration and SW RGB565 parity fallback.
+ *
+ * @details
+ * When ``prefer_hw`` is true and ``hw.blit_band`` is non-null, calls dispatch
+ * through the hardware callbacks (e.g. ``ra8_drw_mve_blit_band`` and
+ * ``ra8_drw_fill_rect``). Otherwise ``longstrip`` composites bit-exact native
+ * RGB565 into @c fb565 so host tools and target silicon agree pixel-for-pixel.
+ */
+typedef struct {
+  uint16_t*          fb565;       /**< RGB565 destination buffer (nullable if HW-only). */
+  uint16_t           fb_pitch_px; /**< Framebuffer pitch in pixels.                     */
+  uint16_t           view_w;      /**< Viewport width in pixels.                        */
+  uint16_t           view_h;      /**< Viewport height in pixels.                       */
+  int32_t            x_off;       /**< Horizontal offset added to band @c dst_x.        */
+  bool               prefer_hw;   /**< Route through @c hw when wired.                  */
+  longstrip_hw_ops_t hw;          /**< Optional hardware acceleration backend.          */
+} longstrip_target_t;
+
+/**
+ * @brief Compute the viewport-clipped sub-rectangle for a band/tile placement.
+ *
+ * @param[in]  dst_x  Signed viewport X coordinate.
+ * @param[in]  dst_y  Signed viewport Y coordinate.
+ * @param[in]  src_w  Source band width in pixels (> 0).
+ * @param[in]  src_h  Source band height in pixels (> 0).
+ * @param[in]  view_w Viewport width in pixels (> 0).
+ * @param[in]  view_h Viewport height in pixels (> 0).
+ * @param[out] out    Receives clipped coordinates and visibility flag.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             Clipped result populated in @p out.
+ * @retval k_ra8_err_null_ptr   @p out was ``nullptr``.
+ * @retval k_ra8_err_invalid_arg Zero dimension supplied.
+ *
+ * @pre @p out is non-null.
+ * @pre Dimensions are strictly positive.
+ * @post When ``out->visible`` is true, ``out->dst_x + out->width <= view_w``.
+ * @post When ``out->visible`` is false, ``out->width == 0`` and ``out->height == 0``.
+ *
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t longstrip_clip_band(int32_t                dst_x,
+                                            int32_t                dst_y,
+                                            uint16_t               src_w,
+                                            uint16_t               src_h,
+                                            uint16_t               view_w,
+                                            uint16_t               view_h,
+                                            longstrip_clip_rect_t* out);
+
+/**
+ * @brief Software-composite a packed band window directly into an RGB565 buffer.
+ *
+ * @details
+ * Supports @p bpp 1 (Gray8), 2 (LE RGB565), 3 (RGB888), and 4 (RGBA8888),
+ * matching the hardware DRW + MVE RGB565 packing formula bit-for-bit.
+ *
+ * @param[out] fb565       Destination RGB565 framebuffer.
+ * @param[in]  fb_pitch_px Destination stride in pixels (>= @p view_w).
+ * @param[in]  view_w      Viewport width in pixels.
+ * @param[in]  view_h      Viewport height in pixels.
+ * @param[in]  pixels      Source pixel buffer.
+ * @param[in]  src_w       Source width in pixels.
+ * @param[in]  src_h       Source height in pixels.
+ * @param[in]  bpp         Source bytes per pixel (1, 2, 3, or 4).
+ * @param[in]  dst_x       Signed destination X.
+ * @param[in]  dst_y       Signed destination Y.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              Blitted (or completely outside viewport).
+ * @retval k_ra8_err_null_ptr    @p fb565 or @p pixels was ``nullptr``.
+ * @retval k_ra8_err_invalid_arg Invalid dimensions, @p bpp, or pitch.
+ *
+ * @pre @p fb565 spans ``fb_pitch_px * view_h`` halfwords.
+ * @pre @p pixels spans ``src_w * src_h * bpp`` bytes.
+ * @post Visible pixels inside ``[0..view_w) x [0..view_h)`` match RGB565 conversion.
+ * @post Pixels outside the intersection are left untouched.
+ *
+ * @note Reentrant and thread-safe on disjoint targets.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t longstrip_sw_blit_rgb565(uint16_t*      fb565,
+                                                 uint16_t       fb_pitch_px,
+                                                 uint16_t       view_w,
+                                                 uint16_t       view_h,
+                                                 const uint8_t* pixels,
+                                                 uint16_t       src_w,
+                                                 uint16_t       src_h,
+                                                 uint8_t        bpp,
+                                                 int32_t        dst_x,
+                                                 int32_t        dst_y);
+
+/**
+ * @brief ``longstrip_blit_fn`` adapter routing bands through ``longstrip_target_t``.
+ *
+ * @param[in,out] target_ctx Pointer to configured ::longstrip_target_t.
+ * @param[in]     pixels     Decoded source band pixels.
+ * @param[in]     src_w      Band width in pixels.
+ * @param[in]     src_h      Band height in pixels.
+ * @param[in]     bpp        Bytes per source pixel.
+ * @param[in]     dst_x      Signed viewport X coordinate.
+ * @param[in]     dst_y      Signed viewport Y coordinate.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok           Dispatched cleanly.
+ * @retval k_ra8_err_null_ptr @p target_ctx, @p pixels, or needed fallback FB was ``nullptr``.
+ *
+ * @pre @p target_ctx points to an initialized ::longstrip_target_t.
+ * @pre Either @c hw.blit_band (with @c prefer_hw) or @c fb565 is populated.
+ * @post Destination pixels reflect the composited band via HW or SW parity path.
+ * @post Uncovered pixels remain unchanged.
+ *
+ * @note Not thread-safe when HW callbacks drive shared DRW hardware.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t longstrip_target_blit(void*          target_ctx,
+                                              const uint8_t* pixels,
+                                              uint16_t       src_w,
+                                              uint16_t       src_h,
+                                              uint8_t        bpp,
+                                              int32_t        dst_x,
+                                              int32_t        dst_y);
+
+/**
+ * @brief Fill a viewport-clipped solid rectangle through ``longstrip_target_t``.
+ *
+ * @param[in] target   Compositor target (HW ops or SW RGB565 buffer).
+ * @param[in] x        Signed destination X coordinate.
+ * @param[in] y        Signed destination Y coordinate.
+ * @param[in] w        Rectangle width in pixels.
+ * @param[in] h        Rectangle height in pixels.
+ * @param[in] argb8888 Fill color in 0xAARRGGBB format.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              Filled (or clipped outside viewport).
+ * @retval k_ra8_err_null_ptr    @p target or needed fallback FB was ``nullptr``.
+ * @retval k_ra8_err_invalid_arg Zero dimensions or invalid pitch.
+ *
+ * @pre @p target is non-null.
+ * @pre Either @c hw.fill_rect (with @c prefer_hw) or @c fb565 is populated.
+ * @post Clipped rectangle in @p target holds @p argb8888 converted to RGB565.
+ * @post Framebuffer pixels outside the rectangle are untouched.
+ *
+ * @note Not thread-safe when HW callbacks drive shared DRW hardware.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t longstrip_target_fill(const longstrip_target_t* target,
+                                              int32_t                   x,
+                                              int32_t                   y,
+                                              uint16_t                  w,
+                                              uint16_t                  h,
+                                              uint32_t                  argb8888);
+
 #ifdef __cplusplus
 }
 #endif

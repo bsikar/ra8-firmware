@@ -97,7 +97,8 @@ static const char* const s_tag = "DRW";
   return k_ra8_ok;
 }
 
-[[nodiscard]] ra8_err_t ra8_drw_blit_textured_rect(const ra8_drw_rect_t* rect)
+[[nodiscard]] ra8_err_t
+ra8_drw_blit_textured_subrect(const ra8_drw_rect_t* rect, uint16_t src_x, uint16_t src_y)
 {
   RA8_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
   if (priv_ra8_drw_internal_rect_below_min((uint16_t)k_ra8_drw_min_dim_px,
@@ -114,25 +115,38 @@ static const char* const s_tag = "DRW";
   if (priv_ra8_drw_internal_rect_off_surface(rect)) {
     return k_ra8_err_invalid_arg;
   }
+  const uint32_t texpitch = priv_ra8_drw_internal_texpitch_px();
+  if (texpitch == 0UL) {
+    return k_ra8_err_invalid_state;
+  }
+  if (((uint32_t)src_x > (uint32_t)k_ra8_drw_texmask_umask_max) ||
+      ((uint32_t)src_y >= (uint32_t)k_ra8_drw_max_height_px)) {
+    return k_ra8_err_invalid_arg;
+  }
 
   priv_program_rect_bbox(rect);
 
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
-  *ra8_drw_reg32(k_ra8_drw_off_lustart) = 0UL;
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
+  /* HUM Ch 62.6.4 Table 62.8 "Colorization operations" p 3732: Copy uses A=0, B=0xFF. */
+  priv_ra8_drw_internal_color1_write((uint32_t)k_ra8_drw_colorize_copy_color1);
+  /* HUM Ch 62.2.8 "COLOR2: Secondary Color Register" p 3697 */
+  *ra8_drw_reg32(k_ra8_drw_off_color2) = (uint32_t)k_ra8_drw_colorize_copy_color2;
+
+  /* HUM Ch 62.2.17 "LUSTART: U Limiter Start Value Register" p 3700 & Ch 62.6.3.2 p 3731 */
+  *ra8_drw_reg32(k_ra8_drw_off_lustart) = (uint32_t)src_x * (uint32_t)k_ra8_drw_subpixel_unit;
+  /* HUM Ch 62.2.18 "LUXADD: U Limiter X-Axis Increment Register" p 3701 */
   *ra8_drw_reg32(k_ra8_drw_off_luxadd) = (uint32_t)k_ra8_drw_subpixel_unit;
-  /* HUM Ch 62.2.18 "LUSTART: U Limiter Start Value Register" p 3701 */
+  /* HUM Ch 62.2.19 "LUYADD: U Limiter Y-Axis Increment Register" p 3701 */
   *ra8_drw_reg32(k_ra8_drw_off_luyadd) = 0UL;
 
-  /* HUM Ch 62.2.20 "LVSTARTI: V Limiter Start Integer Part", p 3702 */
-  *ra8_drw_reg32(k_ra8_drw_off_lvstarti) = 0UL;
-  /* HUM Ch 62.2.21 "LVSTARTF: V Limiter Start Fractional Part", p 3702 */
+  /* HUM Ch 62.2.20 "LVSTARTI: V Limiter Start Value Integer Part" p 3701 & Ch 62.6.3.2 p 3731 */
+  *ra8_drw_reg32(k_ra8_drw_off_lvstarti) = (uint32_t)src_y * texpitch;
+  /* HUM Ch 62.2.21 "LVSTARTF: V Limiter Start Value Fractional Part" p 3702 */
   *ra8_drw_reg32(k_ra8_drw_off_lvstartf) = 0UL;
-  /* HUM Ch 62.2.22 "LVXADDI: V Limiter X-Axis Increment Integer", p 3702 */
+  /* HUM Ch 62.2.22 "LVXADDI: V Limiter X-Axis Increment Integer" p 3702 */
   *ra8_drw_reg32(k_ra8_drw_off_lvxaddi) = 0UL;
-  /* HUM Ch 62.2.23 "LVYADDI: V Limiter Y-Axis Increment Integer", p 3702 */
-  *ra8_drw_reg32(k_ra8_drw_off_lvyaddi) = (uint32_t)k_ra8_drw_subpixel_unit;
-  /* HUM Ch 62.2.24 "LVYXADDF: V Limiter Increment Fractional", p 3703 */
+  /* HUM Ch 62.2.23 "LVYADDI: V Limiter Y-Axis Increment Integer" p 3702 & Ch 62.6.3.2 p 3731 */
+  *ra8_drw_reg32(k_ra8_drw_off_lvyaddi) = texpitch;
+  /* HUM Ch 62.2.24 "LVYXADDF: V Limiter Increment Fractional" p 3703 */
   *ra8_drw_reg32(k_ra8_drw_off_lvyxaddf) = 0UL;
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
@@ -151,6 +165,12 @@ static const char* const s_tag = "DRW";
   /* ORIGIN positions the bounding box AND triggers the render. */
   *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_rect_origin(rect);
   return k_ra8_ok;
+}
+
+/** @brief Implementation of `ra8_drw_blit_textured_rect()` -- full-texture sub-rect at (0,0). */
+[[nodiscard]] ra8_err_t ra8_drw_blit_textured_rect(const ra8_drw_rect_t* rect)
+{
+  return ra8_drw_blit_textured_subrect(rect, 0U, 0U);
 }
 
 /**
