@@ -13,6 +13,10 @@ const abi = api.abi;
 const kernel = api.kernel;
 const Capability = api.appimg.Capability;
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 /// What the fake entry point dispatches to. The shims put their argument
 /// blocks on the stack, so the module's region here is the whole address
 /// space; the refusal tests pin the region down.

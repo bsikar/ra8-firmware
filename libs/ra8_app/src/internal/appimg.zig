@@ -33,15 +33,7 @@ pub const Format = struct {
 };
 
 /// What a module declares it needs, one bit per host resource.
-pub const Capability = struct {
-    pub const none: u32 = 0x00000000;
-    pub const display: u32 = 0x00000001;
-    pub const storage: u32 = 0x00000002;
-    pub const network: u32 = 0x00000004;
-    pub const led: u32 = 0x00000008;
-    /// Mask of every bit this format revision defines.
-    pub const known: u32 = 0x0000000F;
-};
+pub const Capability = @import("api/abi.zig").Capability;
 
 /// Why a candidate container was refused.
 ///

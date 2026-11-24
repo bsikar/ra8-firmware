@@ -12,6 +12,10 @@ const Ed25519 = std.crypto.sign.Ed25519;
 const pack = @import("appimg_pack");
 const backend_lib = @import("ed25519_backend");
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 // The gate types come from the packer's tree, so the gate end to end here is
 // the one the packer's tests drive; the backend joins it the way a C caller
 // joins it, through the fn pointer in the verifier struct.

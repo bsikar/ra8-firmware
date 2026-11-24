@@ -14,6 +14,7 @@
 //! translation, so all the ABI files see the same `ra8_c6link_t`.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 const Translator = @import("translate_c").Translator;
 
 /// The translated header views. `rpc` is null until the lazy vendor packages
@@ -90,7 +91,9 @@ fn translateRpc(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.l
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
     const headers = translateHeaders(b, target, optimize);
 

@@ -7,6 +7,10 @@
 const std = @import("std");
 const appimg = @import("appimg");
 
+comptime {
+    _ = @import("app_api_fake.zig");
+}
+
 const header_bytes = @sizeOf(appimg.Header);
 
 /// A header that parses, as the base every negative case perturbs.
