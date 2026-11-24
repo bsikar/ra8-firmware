@@ -26,6 +26,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_boot_entry.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -112,14 +113,7 @@ static void internal_bringup_display(void)
   (void)ra8_sdramc_init();
   (void)display_init(&k_display_cfg, &s_display);
   (void)display_get_framebuffer(s_display, &s_fb);
-  const ra8_gfx_surface_t surface = {
-    .pixels       = s_fb.pixels,
-    .w            = s_fb.width_px,
-    .h            = s_fb.height_px,
-    .stride_bytes = s_fb.stride_bytes,
-    .fmt          = k_ra8_gfx_format_rgb565,
-  };
-  (void)ra8_gfx_init_surface(&surface);
+  (void)display_bind_gfx(&s_fb);
   (void)ra8_gfx_clear((uint32_t)k_tone_paper_argb);
 }
 

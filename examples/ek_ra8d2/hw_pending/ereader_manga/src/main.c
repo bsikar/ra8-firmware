@@ -51,6 +51,7 @@
 #include "ra8_cgc.h"
 #include "fw_if_clock.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -357,13 +358,7 @@ static void mg_bringup_panel(void)
   if (display_get_framebuffer(s_display, &s_fb) != k_ra8_ok) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra8_gfx_init_surface(&(const ra8_gfx_surface_t){
-        .pixels       = s_fb.pixels,
-        .w            = s_fb.width_px,
-        .h            = s_fb.height_px,
-        .stride_bytes = s_fb.stride_bytes,
-        .fmt          = k_ra8_gfx_format_rgb565,
-      }) != k_ra8_ok) {
+  if (display_bind_gfx(&s_fb) != k_ra8_ok) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }

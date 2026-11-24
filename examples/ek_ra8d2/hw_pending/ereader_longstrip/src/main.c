@@ -55,6 +55,7 @@
 #include "fw_if_clock.h"
 #include "ra8_check.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -454,13 +455,7 @@ static void app_bringup_panel(void)
 /** @brief Bind ra8_gfx to the panel framebuffer, row pitch included. */
 static void app_bringup_gfx(void)
 {
-  if (ra8_gfx_init_surface(&(const ra8_gfx_surface_t){
-        .pixels       = s_fb.pixels,
-        .w            = s_fb.width_px,
-        .h            = s_fb.height_px,
-        .stride_bytes = s_fb.stride_bytes,
-        .fmt          = k_ra8_gfx_format_rgb565,
-      }) != k_ra8_ok) {
+  if (display_bind_gfx(&s_fb) != k_ra8_ok) {
     app_panic_halt();
   }
 }
