@@ -14,7 +14,7 @@ export fn ra8_bundle_parse_header(
     raw_len: u32,
     max_bytes: u32,
     out_hdr_opt: ?*bundle.Header,
-) u16 {
+) callconv(.c) u16 {
     const out_hdr = out_hdr_opt orelse return Err.null_ptr.raw();
     const raw = raw_opt orelse return Err.null_ptr.raw();
     const hdr = bundle.parseHeader(raw[0..raw_len], max_bytes) catch |e| {
@@ -31,7 +31,7 @@ export fn ra8_bundle_parse_and_validate(
     out_hdr_opt: ?*bundle.Header,
     out_descs_opt: ?[*]bundle.ImageDesc,
     descs_cap: u32,
-) u16 {
+) callconv(.c) u16 {
     const out_hdr = out_hdr_opt orelse return Err.null_ptr.raw();
     const out_descs = out_descs_opt orelse return Err.null_ptr.raw();
     const container = container_opt orelse return Err.null_ptr.raw();
@@ -63,7 +63,7 @@ export fn ra8_bundle_find_target(
     image_count: u16,
     target_raw: u32,
     out_desc_opt: ?*bundle.ImageDesc,
-) u16 {
+) callconv(.c) u16 {
     const out_desc = out_desc_opt orelse return Err.null_ptr.raw();
     const descs = descs_opt orelse return Err.null_ptr.raw();
     if (image_count == 0 or image_count > bundle.max_images) return Err.invalid_arg.raw();
@@ -85,7 +85,7 @@ export fn ra8_bundle_verify_mem(
     out_hdr_opt: ?*bundle.Header,
     out_descs_opt: ?[*]bundle.ImageDesc,
     descs_cap: u32,
-) u16 {
+) callconv(.c) u16 {
     _ = scratch_opt;
     _ = scratch_cap;
     const out_hdr = out_hdr_opt orelse return Err.null_ptr.raw();
@@ -151,7 +151,7 @@ export fn ra8_update_verify_bundle(
     out_hdr_opt: ?*bundle.Header,
     out_descs_opt: ?[*]bundle.ImageDesc,
     descs_cap: u32,
-) u16 {
+) callconv(.c) u16 {
     const out_hdr = out_hdr_opt orelse return Err.null_ptr.raw();
     const out_descs = out_descs_opt orelse return Err.null_ptr.raw();
     const session = session_opt orelse return Err.null_ptr.raw();

@@ -484,11 +484,10 @@
       "kind": "test-helper",
       "build_root": "libs/ra8_ota",
       "symbols": [
-        "ra8_log_emit_error",
         "ra8_ct_equal",
         "ra8_ota_system_reset_hook"
       ],
-      "reason": "the orchestration suite links the adapter without ra8_core_hal, so it exports the log sink and the constant-time compare the state machine calls, plus a strong reset hook that proves the weak default in reset_hook.zig is overridable"
+      "reason": "the orchestration suite links the adapter without ra8_core_hal, so it exports the constant-time compare the state machine calls plus a strong reset hook that proves the weak default in reset_hook.zig is overridable"
     }
   ],
   "libraries": [
@@ -3446,6 +3445,176 @@
           "ownership": "read-only committed curve in the archive's rodata; callers copy from it and never write it"
         }
       ],
+      "c_retained_exports": []
+    },
+    {
+      "name": "ra8_update",
+      "build_root": "libs/ra8_update",
+      "public_header": "libs/ra8_update/inc/ra8_update.h",
+      "compatibility_sha256": "507e19eca99ae479c267d594d9ba29f35d9fb94898e51b02277b510610b1f2a9",
+      "layout_assertions": [
+        "@sizeOf(PipelineDecl) == 8",
+        "@sizeOf(StorageIface) == ptr_bytes * 4",
+        "@sizeOf(CryptoIface) == ptr_bytes * 5",
+        "@sizeOf(RollbackIface) == ptr_bytes * 3",
+        "@sizeOf(CommitIface) == ptr_bytes * 4",
+        "@offsetOf(Cfg, \"decl\") == 0",
+        "@offsetOf(VerifyReq, \"expected_version\") == 0",
+        "@offsetOf(Session, \"cfg\") == 0"
+      ],
+      "public_headers": [
+        {
+          "path": "libs/ra8_update/inc/ra8_bundle.h",
+          "compatibility_sha256": "6a4fedaebbfe994f5e6345eb87a14d8783f675381e8add0e2b886f262b67d24d",
+          "symbol_prefix": "ra8_bundle_",
+          "layout_assertions": [
+            "@sizeOf(Header) == 32",
+            "@sizeOf(ImageDesc) == 64"
+          ]
+        }
+      ],
+      "additional_headers": [
+        {
+          "path": "libs/ra8_update/inc/ra8_bundle.h",
+          "role": "internal",
+          "symbol_prefix": "ra8_update_",
+          "reason": "ra8_bundle.h declares ra8_update_verify_bundle alongside ra8_bundle_* APIs so callers verify signed N-image bundles from one header"
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_update/src/update_abi.zig",
+          "symbol_prefixes": [
+            "ra8_update_"
+          ]
+        },
+        {
+          "path": "libs/ra8_update/src/bundle_abi.zig",
+          "symbol_prefixes": [
+            "ra8_bundle_",
+            "ra8_update_"
+          ]
+        }
+      ],
+      "layout_sources": [
+        "libs/ra8_update/src/internal/pipeline.zig",
+        "libs/ra8_update/src/internal/session.zig",
+        "libs/ra8_update/src/internal/bundle.zig"
+      ],
+      "library_name": "ra8_update",
+      "symbol_prefix": "ra8_update_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_update/inc",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "libs/ra8_update/tests/src/test_update_abi.c",
+          "symbol_evidence": "libs/ra8_update/src/update_abi.zig",
+          "registration": "build.zig"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_update/tests/pipeline_test.zig",
+          "symbol_evidence": "libs/ra8_update/src/update_abi.zig",
+          "registration": "libs/ra8_update/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_update/tests/bundle_test.zig",
+          "symbol_evidence": "libs/ra8_update/src/update_abi.zig",
+          "registration": "libs/ra8_update/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {
+          "name": "ra8_update_decl_canonical",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "writes the canonical policy descriptor into caller-owned storage without retaining pointers"
+        },
+        {
+          "name": "ra8_update_stage_is_terminal",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "pure value classification on a numeric stage code; touches no pointers",
+          "allow_c_bool": true
+        },
+        {
+          "name": "ra8_update_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned session storage from borrowed configuration and injected hook seams"
+        },
+        {
+          "name": "ra8_update_stage_begin",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "begins staging in caller-owned session storage and calls borrowed storage prepare hook"
+        },
+        {
+          "name": "ra8_update_stage_write",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows input chunk bytes for the write call and retains no caller buffer pointers"
+        },
+        {
+          "name": "ra8_update_stage_finish",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "transitions caller-owned session state from staging to staged without allocation"
+        },
+        {
+          "name": "ra8_update_verify",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows request and scratch buffer for streaming verification without retaining pointers"
+        },
+        {
+          "name": "ra8_update_commit",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "activates verified payload through the borrowed commit seam on caller-owned session state"
+        },
+        {
+          "name": "ra8_update_confirm",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "confirms active trial update and commits anti-rollback floor on caller-owned session state"
+        },
+        {
+          "name": "ra8_update_rollback",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "aborts or rolls back caller-owned session state via the borrowed rollback hook"
+        },
+        {
+          "name": "ra8_bundle_parse_header",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows serialized header bytes and writes decoded header into caller-owned storage"
+        },
+        {
+          "name": "ra8_bundle_parse_and_validate",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows container span and writes validated header and descriptor array into caller storage"
+        },
+        {
+          "name": "ra8_bundle_find_target",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows validated descriptor table and copies matching target descriptor into caller storage"
+        },
+        {
+          "name": "ra8_bundle_verify_mem",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows container, crypto seam, and scratch buffer for in-memory bundle verification"
+        },
+        {
+          "name": "ra8_update_verify_bundle",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows scratch buffer and outputs verified bundle metadata from staged session storage"
+        }
+      ],
+      "data_exports": [],
       "c_retained_exports": []
     }
   ]
