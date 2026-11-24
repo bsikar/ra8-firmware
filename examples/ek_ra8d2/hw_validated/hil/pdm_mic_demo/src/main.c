@@ -330,14 +330,9 @@ static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  */
 static void pdm_demo_clocks_or_halt(void)
 {
-  ra8_board_clock_rates_t clock_rates = {};
-  if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
-    pdm_demo_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    pdm_demo_panic_halt();
-  }
-  if (ra8_time_init(clock_rates.cpuclk0_hz) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
 }

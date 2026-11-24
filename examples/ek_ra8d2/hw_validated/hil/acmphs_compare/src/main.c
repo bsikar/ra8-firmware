@@ -117,29 +117,11 @@ RA8_INTERNAL static void internal_acmphs_demo_panic_halt(void)
  */
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_acmphs_demo_setup(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-  ra8_err_t               err         = ra8_cgc_init();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_time_init(cpuclk0_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_board_led_init(k_ra8_board_led1);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_board_led_init(k_ra8_board_led2);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_board_led_init(k_ra8_board_led3);
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_leds_all,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  ra8_err_t               err         = ra8_board_bringup(&bringup_cfg, &bringup_out);
   if (err != k_ra8_ok) {
     return err;
   }

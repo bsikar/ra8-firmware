@@ -814,25 +814,14 @@ static void demo_panic_halt(void)
  */
 void main(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     demo_panic_halt();
   }
-  /* Bring up the USBHS 60 MHz PLL reference before MSTPB12 is
-   * released inside ux_dcd_ra8_usb_initialize -- without it the UTMI
-   * PHY never locks and the host never sees the attach. */
   if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
   if (demo_pins_init() != k_ra8_ok) {

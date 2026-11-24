@@ -132,28 +132,15 @@ RA8_INTERNAL static void internal_lcd_panic_halt(void)
  */
 RA8_INTERNAL static uint32_t internal_lcd_bringup_clocks(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask         = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led3,
+    .enable_interrupts = true,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     internal_lcd_panic_halt();
   }
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  ra8_isr_globals_enable();
-  return cpuclk0_hz;
+  return bringup_out.cpuclk0_hz;
 }
 
 /**

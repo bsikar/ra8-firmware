@@ -556,23 +556,12 @@ static void modem_panic_halt(void)
  */
 static void modem_clocks_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    modem_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  const fw_clock_module_t clk_sci  = {.kind  = k_fw_clock_module_uart,
-                                      .index = (uint8_t)k_ra8_board_clock_uart_mikrobus};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    modem_panic_halt();
-  }
-  if (fw_clock_rate_for(ra8_board_clock(), clk_sci, out_pclka_hz) != k_ra8_ok) {
-    modem_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    modem_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  const fw_clock_module_t       clk_sci     = {.kind  = k_fw_clock_module_uart,
+                                               .index = (uint8_t)k_ra8_board_clock_uart_mikrobus};
+  if ((ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) ||
+      (fw_clock_rate_for(ra8_board_clock(), clk_sci, out_pclka_hz) != k_ra8_ok)) {
     modem_panic_halt();
   }
 }

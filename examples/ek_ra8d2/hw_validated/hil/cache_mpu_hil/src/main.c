@@ -413,10 +413,11 @@ static cache_mpu_result_t cache_mpu_run_selftest(void)
  */
 static bool cache_mpu_setup(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
-    return false;
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_cache_mpu_baud) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_cache_mpu_baud,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     return false;
   }
   return true;

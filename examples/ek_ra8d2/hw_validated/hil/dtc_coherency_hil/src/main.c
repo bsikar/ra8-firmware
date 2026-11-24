@@ -389,10 +389,9 @@ static void dtc_coh_swevt_isr(void* ctx)
  */
 static void dtc_coh_setup_or_halt(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
-    dtc_coh_park();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     dtc_coh_park();
   }
   if (ra8_isr_init() != k_ra8_ok) {

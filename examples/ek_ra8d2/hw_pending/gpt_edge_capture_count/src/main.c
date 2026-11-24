@@ -237,21 +237,11 @@ static bool gpt_ecc_period_valid(uint32_t delta_ticks)
  */
 static void gpt_ecc_clocks_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    gpt_ecc_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    gpt_ecc_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    gpt_ecc_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    gpt_ecc_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
 }

@@ -282,24 +282,15 @@ static ra8_err_t fs_fmt_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  */
 static void fs_fmt_setup_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    fs_fmt_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
+  uint32_t                      pclka_hz    = 0U;
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_fs_fmt_uart_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
   const fw_clock_module_t clk_spi = {.kind  = k_fw_clock_module_uart,
                                      .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
   if (fw_clock_rate_for(ra8_board_clock(), clk_spi, &pclka_hz) != k_ra8_ok) {
-    fs_fmt_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    fs_fmt_panic_halt();
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_fs_fmt_uart_baud) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
   if (fs_fmt_spi_pins_init() != k_ra8_ok) {

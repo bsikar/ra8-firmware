@@ -326,10 +326,11 @@ static ra8_err_t internal_run(void)
  */
 void main(void)
 {
-  ra8_board_clock_rates_t rates = {};
-  (void)ra8_board_clocks_init(&rates);
-  (void)ra8_mstp_init();
-  (void)ra8_board_uart_console_init(115200U);
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = 115200U,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  (void)ra8_board_bringup(&bringup_cfg, &bringup_out);
   ra8_log_init();
   (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_cd_uart_chan);
   (void)ra8_io_log_attach(&s_uart);

@@ -39,6 +39,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_bringup.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
@@ -141,16 +142,14 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  */
 RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  uint32_t                pclka_hz    = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
+  uint32_t                      pclka_hz    = 0U;
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
   /* PCLKA here feeds the SCI8 J-Link OB console, i.e. the console UART slot. */
   const fw_clock_module_t uart_module = {.kind  = k_fw_clock_module_uart,
                                          .index = (uint8_t)k_ra8_board_clock_uart_console};
-  if ((ra8_cgc_init() != k_ra8_ok) ||
-      (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
+  if ((ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) ||
       (fw_clock_rate_for(ra8_board_clock(), uart_module, &pclka_hz) != k_ra8_ok) ||
-      (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
     while (true) {

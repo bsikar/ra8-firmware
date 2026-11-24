@@ -207,12 +207,12 @@ static void sfr_panic_halt(uint32_t stage)
 /** @brief Clocks, MSTP, SysTick, LEDs, then enable IRQs. */
 static void sfr_bringup_clocks(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    sfr_panic_halt(k_sfr_stage_boot);
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask         = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led3,
+    .enable_interrupts = true,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }
   const fw_clock_module_t clk_spi = {.kind  = k_fw_clock_module_uart,
@@ -220,19 +220,6 @@ static void sfr_bringup_clocks(void)
   if (fw_clock_rate_for(ra8_board_clock(), clk_spi, &s_pclka_hz) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    sfr_panic_halt(k_sfr_stage_boot);
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    sfr_panic_halt(k_sfr_stage_boot);
-  }
-  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
-    sfr_panic_halt(k_sfr_stage_boot);
-  }
-  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
-    sfr_panic_halt(k_sfr_stage_boot);
-  }
-  ra8_isr_globals_enable();
 }
 
 /** @brief External SDRAM + GLCDC panel + ra8_gfx binding, row pitch included. */

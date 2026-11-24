@@ -97,25 +97,12 @@ RA8_INTERNAL static void internal_panic_halt(void)
  */
 RA8_INTERNAL static void internal_clocks_or_halt(uint32_t* out_pclka)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if ((out_pclka == nullptr) || (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok)) {
     internal_panic_halt();
   }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  /* Direct driver read on purpose (issue RA8FW-299): this drives the real SPI0
-   * block, and the board clock profile's wiring table has no spi slot. */
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka) != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    internal_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    internal_panic_halt();
-  }
+  *out_pclka = bringup_out.pclka_hz;
 }
 
 /**

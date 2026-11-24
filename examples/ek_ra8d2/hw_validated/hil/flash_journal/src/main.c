@@ -288,21 +288,11 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
  */
 static void flash_journal_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    flash_journal_panic_halt();
-  }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    flash_journal_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    flash_journal_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    flash_journal_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led2,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
   /* Best-effort U15 I/O-expander courtesy write. The on-board Octo-SPI

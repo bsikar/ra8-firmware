@@ -299,7 +299,9 @@ void tx_application_define(void* first_unused)
 
 void main(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   tx_kernel_enter();

@@ -177,39 +177,14 @@ static void demo_panic_halt(void)
  */
 void main(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .leds_mask = (uint32_t)k_ra8_board_bringup_led1,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     demo_panic_halt();
   }
-
-  /* Bring up the USBHS PHY clock (USB60CKCR / USB60CLK = PLL2P / 4 =
-   * 60 MHz) BEFORE any caller releases MSTPB12 (USBHS) -- mirrors the
-   * FS demo's ra8_cgc_usbfs_clock_enable() pattern. The bridge's
-   * ra8_usb_device_init invocation later releases MSTPB12 and immediately
-   * starts the PHY-PLL CLKSEL bisect; without this clock arm step the
-   * PHY block has no reference and PLLLOCK never asserts.
-   *
-   * Previously this lived inside ra8_board_usbhs_device_init() called
-   * from the worker, but that wrapper also called ra8_usb_device_init
-   * which is then re-invoked by ux_dcd_ra8_usb_initialize -- the
-   * duplicate PHY bring-up clobbered INTENB0 and is the most plausible
-   * explanation for the "ISR fires but host never sends SETUP" symptom
-   * on HS. With the clock armed here the worker can drop the wrapper
-   * call entirely, making the HS demo's worker-side init sequence a
-   * structural mirror of the working FS demo. */
   if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
-    demo_panic_halt();
-  }
-
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    demo_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
   if (demo_pins_init() != k_ra8_ok) {

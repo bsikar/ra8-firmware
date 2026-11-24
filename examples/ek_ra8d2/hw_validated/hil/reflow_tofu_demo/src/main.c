@@ -93,14 +93,13 @@ static const char k_demo_xhtml[] = "<html><body>"
  */
 static void internal_bringup_clocks(void)
 {
-  ra8_board_clock_rates_t rates = {};
-  (void)ra8_board_clocks_init(&rates);
-  (void)ra8_mstp_init();
-  (void)ra8_time_init(rates.cpuclk0_hz);
-  (void)ra8_board_led_init(k_ra8_board_led_blue);
-  (void)ra8_board_led_init(k_ra8_board_led_green);
-  (void)ra8_board_uart_console_init(115200U);
-  ra8_isr_globals_enable();
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud      = 115200U,
+    .leds_mask         = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led2,
+    .enable_interrupts = true,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  (void)ra8_board_bringup(&bringup_cfg, &bringup_out);
 }
 
 /**

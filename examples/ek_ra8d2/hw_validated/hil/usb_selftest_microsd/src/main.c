@@ -488,14 +488,12 @@ static void microsd_route_usb_or_halt(void)
  */
 static void microsd_setup_or_halt(void)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  uint32_t                pclka_hz    = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
-  /* The card hangs off SCI0 in Simple-SPI mode, so the block that clocks it is
-     the Pmod2 SCI, not SDHI0. */
-  const fw_clock_module_t sd_spi_module = {.kind  = k_fw_clock_module_uart,
-                                           .index = (uint8_t)k_ra8_board_pmod2_sci_channel};
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {
+    .console_baud = (uint32_t)k_microsd_baud,
+    .leds_mask    = (uint32_t)k_ra8_board_bringup_led1 | (uint32_t)k_ra8_board_bringup_led2,
+  };
+  ra8_board_bringup_out_t bringup_out = {};
+  if (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) {
     microsd_panic_halt();
   }
   if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
@@ -504,25 +502,13 @@ static void microsd_setup_or_halt(void)
   if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
+  uint32_t                pclka_hz      = 0U;
+  const fw_clock_module_t sd_spi_module = {.kind  = k_fw_clock_module_uart,
+                                           .index = (uint8_t)k_ra8_board_pmod2_sci_channel};
   if (fw_clock_rate_for(ra8_board_clock(), sd_spi_module, &pclka_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
   s_pclka_hz = pclka_hz;
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_microsd_baud) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
   /* Snapshot SD LBA 0..63 into RAM (read-only) before the kernel starts.
    * On failure s_dbg_sd_err records it and the host verifier reports the
    * missing boot signature -- the board does not hang. */

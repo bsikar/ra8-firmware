@@ -87,26 +87,12 @@ static void combo_panic_halt(void)
  */
 static void combo_clocks_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
+  const ra8_board_bringup_cfg_t bringup_cfg = {};
+  ra8_board_bringup_out_t       bringup_out = {};
+  if ((out_pclka_hz == nullptr) || (ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok)) {
     combo_panic_halt();
   }
-  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
-    combo_panic_halt();
-  }
-  /* Direct driver read on purpose (issue RA8FW-299): this app clocks I3C channel 0
-   * (J27, P400/P401). The board clock profile's i2c slot is RIIC1, the J35
-   * SCCB channel, so routing this read would name the wrong peripheral. */
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
-    combo_panic_halt();
-  }
-  if (ra8_mstp_init() != k_ra8_ok) {
-    combo_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    combo_panic_halt();
-  }
+  *out_pclka_hz = bringup_out.pclka_hz;
 }
 
 /**

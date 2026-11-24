@@ -395,19 +395,14 @@ internal_pc_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
  */
 RA8_INTERNAL static void internal_pc_setup_or_halt(uint32_t* out_pclka_hz)
 {
-  uint32_t                cpuclk0_hz  = 0U;
-  uint32_t                pclka_hz    = 0U;
-  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
+  uint32_t                      pclka_hz    = 0U;
+  const ra8_board_bringup_cfg_t bringup_cfg = {.console_baud = (uint32_t)k_pc_uart_baud};
+  ra8_board_bringup_out_t       bringup_out = {};
   /* PCLKA here feeds the microSD Simple-SPI on SCI0, i.e. the Pmod2 UART slot. */
   const fw_clock_module_t spi_module = {.kind  = k_fw_clock_module_uart,
                                         .index = (uint8_t)k_ra8_board_clock_uart_pmod2};
-  if ((ra8_cgc_init() != k_ra8_ok) ||
-      (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) ||
-      (fw_clock_rate_for(ra8_board_clock(), spi_module, &pclka_hz) != k_ra8_ok) ||
-      (ra8_time_init(cpuclk0_hz) != k_ra8_ok)) {
-    internal_pc_fail((uint32_t)k_pc_err_init);
-  }
-  if (ra8_board_uart_console_init((uint32_t)k_pc_uart_baud) != k_ra8_ok) {
+  if ((ra8_board_bringup(&bringup_cfg, &bringup_out) != k_ra8_ok) ||
+      (fw_clock_rate_for(ra8_board_clock(), spi_module, &pclka_hz) != k_ra8_ok)) {
     internal_pc_fail((uint32_t)k_pc_err_init);
   }
   if (internal_pc_spi_pins_init() != k_ra8_ok) {
