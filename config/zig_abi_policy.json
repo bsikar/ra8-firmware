@@ -318,6 +318,21 @@
       ]
     },
     {
+      "path": "libs/ra8_translate/src/ra8_translate_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_translate_sidecar_open",
+        "ra8_translate_sidecar_key_matches",
+        "ra8_translate_sidecar_page_at",
+        "ra8_translate_sidecar_bubble_at",
+        "ra8_translate_sidecar_source_text",
+        "ra8_translate_sidecar_english_text",
+        "ra8_translate_sidecar_line_breaks",
+        "ra8_translate_sidecar_required_bytes",
+        "ra8_translate_sidecar_write"
+      ]
+    },
+    {
       "path": "libs/ra8_ui/src/ra8_ui_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -3617,6 +3632,105 @@
           "name": "ra8_update_verify_bundle",
           "calling_context": "task-only-non-reentrant",
           "ownership": "borrows scratch buffer and outputs verified bundle metadata from staged session storage"
+        }
+      ],
+      "data_exports": [],
+      "c_retained_exports": []
+    },
+    {
+      "name": "ra8_translate",
+      "build_root": "libs/ra8_translate",
+      "public_header": "libs/ra8_translate/inc/ra8_translate.h",
+      "compatibility_sha256": "325410ad803256d65035357d5d0e609811eb2d9d22969ae4db89ae673c2f2e84",
+      "layout_assertions": [
+        "@sizeOf(SidecarKey) == 52",
+        "@alignOf(SidecarKey) == 4",
+        "@sizeOf(SidecarHeader) == 76",
+        "@alignOf(SidecarHeader) == 4",
+        "@sizeOf(PageEntry) == 12",
+        "@alignOf(PageEntry) == 4",
+        "@sizeOf(BubbleRecord) == 44",
+        "@alignOf(BubbleRecord) == 4"
+      ],
+      "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
+      "layout_sources": [
+        "libs/ra8_translate/src/internal/sidecar.zig"
+      ],
+      "library_name": "ra8_translate",
+      "symbol_prefix": "ra8_translate_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_translate/inc",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/support/c/test_ra8_translate.c",
+          "symbol_evidence": "libs/ra8_translate/src/ra8_translate_abi.zig",
+          "registration": "build.zig"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_translate/tests/abi_test.zig",
+          "symbol_evidence": "libs/ra8_translate/src/ra8_translate_abi.zig",
+          "registration": "libs/ra8_translate/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {
+          "name": "ra8_translate_sidecar_open",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows immutable sidecar bytes for validation and writes caller header on success"
+        },
+        {
+          "name": "ra8_translate_sidecar_key_matches",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows header and expected key and writes boolean match flag into caller storage",
+          "allow_c_bool": true
+        },
+        {
+          "name": "ra8_translate_sidecar_page_at",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows sidecar bytes and writes decoded page descriptor into caller storage"
+        },
+        {
+          "name": "ra8_translate_sidecar_bubble_at",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows sidecar bytes and writes decoded bubble descriptor into caller storage"
+        },
+        {
+          "name": "ra8_translate_sidecar_source_text",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows sidecar bytes and outputs pointer and byte length into caller text pool slice"
+        },
+        {
+          "name": "ra8_translate_sidecar_english_text",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows sidecar bytes and outputs pointer and byte length into caller text pool slice"
+        },
+        {
+          "name": "ra8_translate_sidecar_line_breaks",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows sidecar bytes and copies cumulative u16 line breaks into caller array"
+        },
+        {
+          "name": "ra8_translate_sidecar_required_bytes",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "computes total byte extent from scalar counts without retaining caller pointers"
+        },
+        {
+          "name": "ra8_translate_sidecar_write",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows flat key/page/bubble/break/text inputs and serializes CRC-stamped bytes into caller buffer"
         }
       ],
       "data_exports": [],

@@ -134,6 +134,7 @@ gate checks ISA/semantics portability, not libc availability. Semantic Zig cross
 | `ra8_secure_app` | portable | ra8_core only |
 | `ra8_tls` | portable | ra8_core only |
 | `ra8_touch_cal` | portable | ra8_core only |
+| `ra8_translate` | portable | ra8_core only |
 | `ra8_ui` | portable | ra8_core only |
 | `ra8_update` | portable | ra8_core only |
 | `ra8_wdt_supervisor` | portable | ra8_core only |
