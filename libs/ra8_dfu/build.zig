@@ -184,4 +184,29 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(launch_tests).step);
     const program_tests = b.addTest(.{ .root_module = program_test_module });
     test_step.dependOn(&b.addRunArtifact(program_tests).step);
+
+    // Host C ABI acceptance suite for ra8_dfu_host_run / ra8_dfu_host_program.
+    // Built only for hosted targets where libc and test mocks exist.
+    if (target.result.os.tag != .freestanding) {
+        const c_host_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        c_host_module.addIncludePath(b.path("inc"));
+        c_host_module.addIncludePath(b.path("../ra8_core/inc"));
+        c_host_module.addIncludePath(b.path("../ra8_hal/inc"));
+        c_host_module.addCSourceFile(.{
+            .file = b.path("tests/src/test_dfu_host.c"),
+            .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },
+        });
+        const c_host_test = b.addExecutable(.{
+            .name = "test_dfu_host",
+            .root_module = c_host_module,
+        });
+        c_host_test.root_module.linkLibrary(library);
+        const run_c_host = b.addRunArtifact(c_host_test);
+        run_c_host.expectExitCode(0);
+        test_step.dependOn(&run_c_host.step);
+    }
 }
