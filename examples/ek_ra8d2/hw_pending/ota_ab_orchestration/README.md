@@ -45,3 +45,15 @@ The demo stages into upper Code-MRAM (`0x02080000` / `0x02082000`) guarded by
 `ra8_flash_set_window` -- **not** over the lower application `.text`, **not** by
 touching option-setting anchors, the BTFLG configuration set, or permanent
 block-protect fuses. It is safe to run on a stock EK-RA8D2.
+
+## Unified pipeline contract alignment
+
+Annotated against `docs/design/unified_update_pipeline.md`:
+
+- **Agrees:** Streams 32-byte-aligned blocks into an inactive MRAM window,
+  re-hashes and verifies bound metadata/signature before committing, and preserves
+  the active bank (`Bank A`) when `VERIFY` fails (`k_ra8_ota_state_error`).
+- **Diverges:** Drives `STAGE -> VERIFY -> COMMIT` directly from an in-RAM pull
+  manifest (`net` + JSON, `apply_mode = ab_banks`, `trial_budget = 0`) rather
+  than accepting the signed `"RA8U"` N-image bundle or delegating launch/confirm
+  rollback to a boot-time WDT0 trial record (`0x020FE000`).

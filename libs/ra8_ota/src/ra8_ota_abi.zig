@@ -13,6 +13,15 @@
 //! predicate and every piece of arithmetic sits in `internal/root.zig`.
 //!
 //! Guard order, log lines and error codes are the C's, byte for byte.
+//!
+//! Pipeline contract alignment (`docs/design/unified_update_pipeline.md`):
+//!   - `ra8_ota_check_for_update`          -> PREFLIGHT (HTTPS/RAM JSON manifest pull)
+//!   - `ra8_ota_download_to_inactive_bank` -> STAGE     (32B-aligned chunked flash writes)
+//!   - `ra8_ota_verify_signature`          -> VERIFY    (rehash + bound metadata ECDSA; failure skips COMMIT)
+//!   - `ra8_ota_commit_and_reboot`         -> COMMIT    (bank swap / `ra8_nsc_ota_commit` NSC veneer)
+//! Divergences from DFU flow: executes in NS world using pull-based JSON manifest +
+//! immediate verify-before-swap (`trial_budget = 0`) rather than S-world copy-to-run
+//! slots (`"RA8D"` / `ROT1`) with WDT0 trial countdown.
 
 const std = @import("std");
 const impl = @import("internal/root.zig");
