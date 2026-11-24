@@ -14,6 +14,90 @@ const paint_abi = @import("widget_paint_abi.zig");
 pub const Paint = paint_abi.Paint;
 pub const Rect = paint_abi.Rect;
 pub const PixelFormat = paint_abi.PixelFormat;
+pub const CanvasCaps = paint_abi.CanvasCaps;
+pub const Face = paint_abi.Face;
+pub const Weight = paint_abi.Weight;
+pub const TextSize = paint_abi.TextSize;
+
+/// Query native capabilities advertised by `backend`, falling back to
+/// conservative feature detection when `backend.caps` is left null.
+pub fn capabilities(backend: *const Paint) CanvasCaps {
+    if (backend.caps) |c| return c.*;
+    return .{
+        .pixel_format = .gray8,
+        .color = 0,
+        .alpha = @intFromBool(backend.fill_rect_alpha != null),
+        .gray4 = 0,
+        .dither = 0,
+        .line = @intFromBool(backend.draw_line != null),
+        .blit = @intFromBool(backend.blit != null),
+        .clip = @intFromBool(backend.push_clip != null and backend.pop_clip != null),
+    };
+}
+
+/// Fill an axis-aligned rectangle when `fill_rect` is bound.
+pub fn fillRect(backend: *const Paint, rect: Rect, color: u32) void {
+    const fill = backend.fill_rect orelse return;
+    fill(backend.user, rect.x, rect.y, rect.w, rect.h, color);
+}
+
+/// Draw a NUL-terminated string in the default UI style.
+pub fn drawText(backend: *const Paint, x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32) void {
+    const draw = backend.draw_text orelse return;
+    draw(backend.user, x, y, str, fg, bg);
+}
+
+/// Draw text selecting family, falling back to `draw_text` when unbound.
+pub fn drawTextFace(backend: *const Paint, x: i32, y: i32, str: [*:0]const u8, family: Face, fg: u32, bg: u32) void {
+    if (backend.draw_text_face) |draw| return draw(backend.user, x, y, str, @backingInt(family), fg, bg);
+    drawText(backend, x, y, str, fg, bg);
+}
+
+/// Draw text with full style, falling back through face then basic `draw_text`.
+pub fn drawTextStyle(
+    backend: *const Paint,
+    x: i32,
+    y: i32,
+    str: [*:0]const u8,
+    family: Face,
+    stroke: Weight,
+    size: TextSize,
+    fg: u32,
+    bg: u32,
+) void {
+    if (backend.draw_text_style) |draw| {
+        return draw(backend.user, x, y, str, @backingInt(family), @backingInt(stroke), @backingInt(size), fg, bg);
+    }
+    drawTextFace(backend, x, y, str, family, fg, bg);
+}
+
+/// Measure text in the default UI style; returns zero extent when unmeasurable.
+pub fn measureText(backend: *const Paint, str: [*:0]const u8) struct { w: i32, h: i32 } {
+    var w: i32 = 0;
+    var h: i32 = 0;
+    if (backend.text_size) |measure| measure(backend.user, str, &w, &h);
+    return .{ .w = w, .h = h };
+}
+
+/// Measure text with full style, falling back through face then `text_size`.
+pub fn measureTextStyle(
+    backend: *const Paint,
+    str: [*:0]const u8,
+    family: Face,
+    stroke: Weight,
+    size: TextSize,
+) struct { w: i32, h: i32 } {
+    var w: i32 = 0;
+    var h: i32 = 0;
+    if (backend.text_size_style) |measure| {
+        measure(backend.user, str, @backingInt(family), @backingInt(stroke), @backingInt(size), &w, &h);
+    } else if (backend.text_size_face) |measure| {
+        measure(backend.user, str, @backingInt(family), &w, &h);
+    } else if (backend.text_size) |measure| {
+        measure(backend.user, str, &w, &h);
+    }
+    return .{ .w = w, .h = h };
+}
 
 /// Draw a line. Straight runs fall back to one fill_rect; a slope falls back
 /// to one-pixel fills along the Bresenham walk.
@@ -77,6 +161,5 @@ pub fn fillAlpha(backend: *const Paint, rect: Rect, color: u32, alpha: u8) void 
     if (alpha != std.math.maxInt(u8)) {
         if (backend.fill_rect_alpha) |blend| return blend(backend.user, rect.x, rect.y, rect.w, rect.h, color, alpha);
     }
-    const fill = backend.fill_rect orelse return;
-    fill(backend.user, rect.x, rect.y, rect.w, rect.h, color);
+    fillRect(backend, rect, color);
 }

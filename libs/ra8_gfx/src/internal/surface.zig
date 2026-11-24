@@ -10,8 +10,53 @@
 
 const std = @import("std");
 const blit_formats = @import("surface_blit.zig");
+const text = @import("text.zig");
 
 pub const Format = blit_formats.Format;
+
+/// Storage / panel format advertised by a canvas or Surface backend.
+pub const PixelFormat = enum(u8) {
+    gray4 = 0,
+    gray8 = 1,
+    rgb565 = 2,
+    rgb888 = 3,
+    argb8888 = 4,
+};
+
+/// Per-canvas capability flags describing native target support rather than a
+/// lowest common denominator (gray4 + dither on e-ink vs colour + alpha on desktop).
+pub const Capabilities = struct {
+    pixel_format: PixelFormat,
+    color: bool = false,
+    alpha: bool = false,
+    gray4: bool = false,
+    dither: bool = false,
+    line: bool = false,
+    blit: bool = false,
+    clip: bool = false,
+
+    pub const desktop_argb8888: Capabilities = .{
+        .pixel_format = .argb8888,
+        .color = true,
+        .alpha = true,
+        .gray4 = false,
+        .dither = false,
+        .line = true,
+        .blit = true,
+        .clip = true,
+    };
+
+    pub const eink_gray4: Capabilities = .{
+        .pixel_format = .gray4,
+        .color = false,
+        .alpha = false,
+        .gray4 = true,
+        .dither = true,
+        .line = true,
+        .blit = true,
+        .clip = true,
+    };
+};
 
 /// A rectangle in surface pixels.
 pub const Rect = struct {
@@ -96,6 +141,66 @@ pub const Surface = struct {
     /// The pixel at (`x`, `y`) as argb8888.
     pub fn at(self: *const Surface, x: u32, y: u32) u32 {
         return self.pixels[@as(usize, y) * self.width + x];
+    }
+
+    /// Capabilities of this argb8888 destination surface.
+    pub fn capabilities(self: *const Surface) Capabilities {
+        _ = self;
+        return Capabilities.desktop_argb8888;
+    }
+
+    /// Native pixel format stored in this surface.
+    pub fn pixelFormat(self: *const Surface) PixelFormat {
+        return self.capabilities().pixel_format;
+    }
+
+    fn plotCallback(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
+        const self: *Surface = @ptrCast(@alignCast(user orelse return));
+        self.plot(x, y, color);
+    }
+
+    /// Draw a sans 8x16 string clipped to the active clip stack.
+    pub fn drawText(self: *Surface, str: [*:0]const u8, x: i32, y: i32, fg: u32, bg: u32) void {
+        text.drawSans(str, x, y, fg, bg, @ptrCast(self), plotCallback);
+    }
+
+    /// Draw text in the selected face clipped to the active clip stack.
+    pub fn drawTextFace(self: *Surface, str: [*:0]const u8, x: i32, y: i32, family: text.Face, fg: u32, bg: u32) void {
+        if (family == .serif) {
+            text.drawSerif(str, x, y, fg, bg, @ptrCast(self), plotCallback);
+        } else {
+            text.drawSans(str, x, y, fg, bg, @ptrCast(self), plotCallback);
+        }
+    }
+
+    /// Draw text with face, weight, and size clipped to the active clip stack.
+    pub fn drawTextStyle(
+        self: *Surface,
+        str: [*:0]const u8,
+        x: i32,
+        y: i32,
+        family: text.Face,
+        stroke: text.Weight,
+        size: u8,
+        fg: u32,
+        bg: u32,
+    ) void {
+        text.drawStyle(str, x, y, family, stroke, size, fg, bg, @ptrCast(self), plotCallback);
+    }
+
+    /// Measure a single-line run in `family`.
+    pub fn measureText(str: [*:0]const u8, family: text.Face) text.Extent {
+        return text.measure(str, family);
+    }
+
+    /// Measure a single-line run in `family` and `stroke`.
+    pub fn measureTextWeight(str: [*:0]const u8, family: text.Face, stroke: text.Weight) text.Extent {
+        return text.measureWeight(str, family, stroke);
+    }
+
+    /// Measure a single-line run using full style selection.
+    pub fn measureTextStyle(str: [*:0]const u8, family: text.Face, stroke: text.Weight, size: u8) text.Extent {
+        return text.measureStyle(str, family, stroke, size);
     }
 
     fn index(self: *const Surface, x: i32, y: i32) usize {

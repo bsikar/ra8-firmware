@@ -21,9 +21,22 @@ pub const Weight = enum(u8) { regular = 0, bold = 1 };
 /// Reading size selector. Zero-initialized labels resolve to size three.
 pub const TextSize = enum(u8) { default = 0, size_1 = 1, size_2 = 2, size_3 = 3, size_4 = 4, size_5 = 5, body_38 = 6, title_68 = 7, clock_120 = 8, ui_26 = 9, ui_30 = 10 };
 
-/// Pixel layout a `blit` hands the backend (`ra8_widget_pixel_format_t`). The
-/// value is the bytes per pixel, the same convention as ra8_gfx's formats.
-pub const PixelFormat = enum(u8) { gray8 = 1, rgb565 = 2, rgb888 = 3, argb8888 = 4 };
+/// Pixel layout a `blit` or canvas target reports (`ra8_widget_pixel_format_t`).
+/// Values 1..4 are bytes per pixel; `gray4` (0) denotes 4-bit packed e-ink.
+pub const PixelFormat = enum(u8) { gray4 = 0, gray8 = 1, rgb565 = 2, rgb888 = 3, argb8888 = 4 };
+
+/// Per-canvas capability flags (`ra8_widget_canvas_caps_t`) describing what a
+/// Paint backend natively supports instead of forcing a lowest common denominator.
+pub const CanvasCaps = extern struct {
+    pixel_format: PixelFormat = .gray8,
+    color: u8 = 0,
+    alpha: u8 = 0,
+    gray4: u8 = 0,
+    dither: u8 = 0,
+    line: u8 = 0,
+    blit: u8 = 0,
+    clip: u8 = 0,
+};
 
 /// Draw backend of the published ABI (`ra8_widget_paint_t`). Every member is
 /// optional because the C struct is zero-initialised by callers that bind only
@@ -112,6 +125,7 @@ pub const Paint = extern struct {
         color: u32,
         alpha: u8,
     ) callconv(.c) void = null,
+    caps: ?*const CanvasCaps = null,
 };
 
 comptime {
@@ -124,7 +138,18 @@ comptime {
     if (@offsetOf(Rect, "w") != 8) @compileError("ra8_ui_rect_t w offset");
     if (@offsetOf(Rect, "h") != 12) @compileError("ra8_ui_rect_t h offset");
 
-    if (@sizeOf(Paint) != 13 * ptr) @compileError("ra8_widget_paint_t size");
+    if (@sizeOf(CanvasCaps) != 8) @compileError("ra8_widget_canvas_caps_t size");
+    if (@alignOf(CanvasCaps) != 1) @compileError("ra8_widget_canvas_caps_t alignment");
+    if (@offsetOf(CanvasCaps, "pixel_format") != 0) @compileError("ra8_widget_canvas_caps_t pixel_format offset");
+    if (@offsetOf(CanvasCaps, "color") != 1) @compileError("ra8_widget_canvas_caps_t color offset");
+    if (@offsetOf(CanvasCaps, "alpha") != 2) @compileError("ra8_widget_canvas_caps_t alpha offset");
+    if (@offsetOf(CanvasCaps, "gray4") != 3) @compileError("ra8_widget_canvas_caps_t gray4 offset");
+    if (@offsetOf(CanvasCaps, "dither") != 4) @compileError("ra8_widget_canvas_caps_t dither offset");
+    if (@offsetOf(CanvasCaps, "line") != 5) @compileError("ra8_widget_canvas_caps_t line offset");
+    if (@offsetOf(CanvasCaps, "blit") != 6) @compileError("ra8_widget_canvas_caps_t blit offset");
+    if (@offsetOf(CanvasCaps, "clip") != 7) @compileError("ra8_widget_canvas_caps_t clip offset");
+
+    if (@sizeOf(Paint) != 14 * ptr) @compileError("ra8_widget_paint_t size");
     if (@alignOf(Paint) != @alignOf(usize)) @compileError("ra8_widget_paint_t alignment");
     if (@offsetOf(Paint, "user") != 0) @compileError("ra8_widget_paint_t user offset");
     if (@offsetOf(Paint, "fill_rect") != ptr) @compileError("ra8_widget_paint_t fill_rect offset");
@@ -139,7 +164,8 @@ comptime {
     if (@offsetOf(Paint, "push_clip") != 10 * ptr) @compileError("ra8_widget_paint_t push_clip offset");
     if (@offsetOf(Paint, "pop_clip") != 11 * ptr) @compileError("ra8_widget_paint_t pop_clip offset");
     if (@offsetOf(Paint, "fill_rect_alpha") != 12 * ptr) @compileError("ra8_widget_paint_t fill_rect_alpha offset");
-    if (@sizeOf(PixelFormat) != 1 or @backingInt(PixelFormat.gray8) != 1 or @backingInt(PixelFormat.argb8888) != 4) @compileError("ra8_widget_pixel_format_t representation");
+    if (@offsetOf(Paint, "caps") != 13 * ptr) @compileError("ra8_widget_paint_t caps offset");
+    if (@sizeOf(PixelFormat) != 1 or @backingInt(PixelFormat.gray4) != 0 or @backingInt(PixelFormat.gray8) != 1 or @backingInt(PixelFormat.argb8888) != 4) @compileError("ra8_widget_pixel_format_t representation");
     if (@sizeOf(Weight) != 1 or @backingInt(Weight.regular) != 0 or @backingInt(Weight.bold) != 1) @compileError("ra8_widget_text_weight_t representation");
     if (@backingInt(TextSize.body_38) != 6 or @backingInt(TextSize.title_68) != 7 or @backingInt(TextSize.clock_120) != 8) @compileError("ra8_widget_text_size_t display representation");
     if (@sizeOf(Face) != 1 or @backingInt(Face.sans) != 0 or @backingInt(Face.serif) != 1) {

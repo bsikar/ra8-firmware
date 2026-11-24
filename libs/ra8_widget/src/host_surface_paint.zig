@@ -52,13 +52,6 @@ fn popClip(user: ?*anyopaque) callconv(.c) void {
     s.popClip();
 }
 
-/// Text draws hand each pixel over solid; the font has already mixed the
-/// glyph's coverage between foreground and background.
-fn putPixel(user: ?*anyopaque, x: i32, y: i32, color: u32) callconv(.c) void {
-    const s = surfaceOf(user) orelse return;
-    s.plot(x, y, color);
-}
-
 fn face(value: u8) text.Face {
     return if (value == 1) .serif else .sans;
 }
@@ -68,15 +61,18 @@ fn weight(value: u8) text.Weight {
 }
 
 fn drawText(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, fg: u32, bg: u32) callconv(.c) void {
-    text.drawSans(str, x, y, fg, bg, user, putPixel);
+    const s = surfaceOf(user) orelse return;
+    s.drawText(str, x, y, fg, bg);
 }
 
 fn drawTextFace(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, family: u8, fg: u32, bg: u32) callconv(.c) void {
-    if (face(family) == .serif) text.drawSerif(str, x, y, fg, bg, user, putPixel) else text.drawSans(str, x, y, fg, bg, user, putPixel);
+    const s = surfaceOf(user) orelse return;
+    s.drawTextFace(str, x, y, face(family), fg, bg);
 }
 
 fn drawTextStyle(user: ?*anyopaque, x: i32, y: i32, str: [*:0]const u8, family: u8, stroke: u8, size: u8, fg: u32, bg: u32) callconv(.c) void {
-    text.drawStyle(str, x, y, face(family), weight(stroke), size, fg, bg, user, putPixel);
+    const s = surfaceOf(user) orelse return;
+    s.drawTextStyle(str, x, y, face(family), weight(stroke), size, fg, bg);
 }
 
 fn store(extent: text.Extent, out_w: *i32, out_h: *i32) void {
@@ -85,19 +81,42 @@ fn store(extent: text.Extent, out_w: *i32, out_h: *i32) void {
 }
 
 fn textSize(_: ?*anyopaque, str: [*:0]const u8, out_w: *i32, out_h: *i32) callconv(.c) void {
-    store(text.measure(str, .sans), out_w, out_h);
+    store(Surface.measureText(str, .sans), out_w, out_h);
 }
 
 fn textSizeFace(_: ?*anyopaque, str: [*:0]const u8, family: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
-    store(text.measure(str, face(family)), out_w, out_h);
+    store(Surface.measureText(str, face(family)), out_w, out_h);
 }
 
 fn textSizeStyle(_: ?*anyopaque, str: [*:0]const u8, family: u8, stroke: u8, size: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
-    store(text.measureStyle(str, face(family), weight(stroke), size), out_w, out_h);
+    store(Surface.measureTextStyle(str, face(family), weight(stroke), size), out_w, out_h);
+}
+
+fn capsType(comptime Paint: type) type {
+    const field = @typeInfo(@FieldType(Paint, "caps")).optional.child;
+    return @typeInfo(field).pointer.child;
+}
+
+fn makeDesktopCaps(comptime Caps: type) Caps {
+    const surface_caps = gfx.Capabilities.desktop_argb8888;
+    return .{
+        .pixel_format = @fromBackingInt(@intCast(@backingInt(surface_caps.pixel_format))),
+        .color = @intFromBool(surface_caps.color),
+        .alpha = @intFromBool(surface_caps.alpha),
+        .gray4 = @intFromBool(surface_caps.gray4),
+        .dither = @intFromBool(surface_caps.dither),
+        .line = @intFromBool(surface_caps.line),
+        .blit = @intFromBool(surface_caps.blit),
+        .clip = @intFromBool(surface_caps.clip),
+    };
 }
 
 /// A Paint table of type `Paint` drawing into `surface`, every member bound.
 pub fn table(comptime Paint: type, surface: *Surface) Paint {
+    const Caps = capsType(Paint);
+    const desktop_caps = struct {
+        const value: Caps = makeDesktopCaps(Caps);
+    };
     return .{
         .user = surface,
         .fill_rect = fillRect,
@@ -112,6 +131,7 @@ pub fn table(comptime Paint: type, surface: *Surface) Paint {
         .push_clip = pushClip,
         .pop_clip = popClip,
         .fill_rect_alpha = fillRectAlpha,
+        .caps = &desktop_caps.value,
     };
 }
 

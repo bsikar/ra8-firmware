@@ -19,6 +19,9 @@ const Call = union(enum) {
     push: [4]i64,
     pop,
     alpha: [6]i64,
+    text: [4]i64,
+    text_face: [5]i64,
+    text_style: [7]i64,
 };
 
 var calls_buffer: [64]Call = undefined;
@@ -45,6 +48,27 @@ fn pop(_: ?*anyopaque) callconv(.c) void {
 }
 fn alpha(_: ?*anyopaque, x: i32, y: i32, w: i32, h: i32, color: u32, a: u8) callconv(.c) void {
     record(.{ .alpha = .{ x, y, w, h, color, a } });
+}
+fn drawText(_: ?*anyopaque, x: i32, y: i32, _: [*:0]const u8, fg: u32, bg: u32) callconv(.c) void {
+    record(.{ .text = .{ x, y, fg, bg } });
+}
+fn drawTextFace(_: ?*anyopaque, x: i32, y: i32, _: [*:0]const u8, family: u8, fg: u32, bg: u32) callconv(.c) void {
+    record(.{ .text_face = .{ x, y, family, fg, bg } });
+}
+fn drawTextStyle(_: ?*anyopaque, x: i32, y: i32, _: [*:0]const u8, family: u8, stroke: u8, size: u8, fg: u32, bg: u32) callconv(.c) void {
+    record(.{ .text_style = .{ x, y, family, stroke, size, fg, bg } });
+}
+fn textSize(_: ?*anyopaque, _: [*:0]const u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+    out_w.* = 12;
+    out_h.* = 16;
+}
+fn textSizeFace(_: ?*anyopaque, _: [*:0]const u8, family: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+    out_w.* = 20 + family;
+    out_h.* = 22;
+}
+fn textSizeStyle(_: ?*anyopaque, _: [*:0]const u8, family: u8, stroke: u8, size: u8, out_w: *i32, out_h: *i32) callconv(.c) void {
+    out_w.* = 30 + family + stroke + size;
+    out_h.* = 34;
 }
 
 const panel: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = null, .text_size = null };
@@ -115,4 +139,61 @@ test "without a blended fill any visible alpha paints solid" {
     reset();
     ops.fillAlpha(&panel, box, 9, 64);
     try std.testing.expectEqualSlices(Call, &.{.{ .fill = .{ 2, 3, 4, 5, 9 } }}, calls.items);
+}
+
+test "capabilities return explicit caps when bound and infer from callbacks when null" {
+    const inferred_panel = ops.capabilities(&panel);
+    try std.testing.expectEqual(ops.PixelFormat.gray8, inferred_panel.pixel_format);
+    try std.testing.expectEqual(@as(u8, 0), inferred_panel.color);
+    try std.testing.expectEqual(@as(u8, 0), inferred_panel.alpha);
+    try std.testing.expectEqual(@as(u8, 0), inferred_panel.line);
+    try std.testing.expectEqual(@as(u8, 0), inferred_panel.blit);
+    try std.testing.expectEqual(@as(u8, 0), inferred_panel.clip);
+
+    const inferred_desktop = ops.capabilities(&desktop);
+    try std.testing.expectEqual(@as(u8, 1), inferred_desktop.alpha);
+    try std.testing.expectEqual(@as(u8, 1), inferred_desktop.line);
+    try std.testing.expectEqual(@as(u8, 1), inferred_desktop.blit);
+    try std.testing.expectEqual(@as(u8, 1), inferred_desktop.clip);
+
+    const eink_caps: ops.CanvasCaps = .{ .pixel_format = .gray4, .gray4 = 1, .dither = 1, .line = 1 };
+    var eink_paint = panel;
+    eink_paint.caps = &eink_caps;
+    const explicit = ops.capabilities(&eink_paint);
+    try std.testing.expectEqual(ops.PixelFormat.gray4, explicit.pixel_format);
+    try std.testing.expectEqual(@as(u8, 1), explicit.gray4);
+    try std.testing.expectEqual(@as(u8, 1), explicit.dither);
+    try std.testing.expectEqual(@as(u8, 1), explicit.line);
+}
+
+test "text and fill canvas ops dispatch with style -> face -> basic fallbacks" {
+    reset();
+    ops.fillRect(&panel, box, 0x123456);
+    ops.drawTextStyle(&panel, 1, 2, "hi", .serif, .bold, .size_4, 10, 20);
+    try std.testing.expectEqualSlices(Call, &.{.{ .fill = .{ 2, 3, 4, 5, 0x123456 } }}, calls.items);
+
+    const basic_ext = ops.measureText(&panel, "hi");
+    try std.testing.expectEqual(@as(i32, 0), basic_ext.w);
+    try std.testing.expectEqual(@as(i32, 0), basic_ext.h);
+
+    const base_text: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = drawText, .text_size = textSize };
+    reset();
+    ops.drawTextStyle(&base_text, 4, 5, "a", .serif, .bold, .size_2, 7, 8);
+    try std.testing.expectEqualSlices(Call, &.{.{ .text = .{ 4, 5, 7, 8 } }}, calls.items);
+    const base_m = ops.measureTextStyle(&base_text, "a", .serif, .bold, .size_2);
+    try std.testing.expectEqual(@as(i32, 12), base_m.w);
+
+    const face_text: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = drawText, .text_size = textSize, .draw_text_face = drawTextFace, .text_size_face = textSizeFace };
+    reset();
+    ops.drawTextStyle(&face_text, 6, 7, "b", .serif, .bold, .size_2, 9, 10);
+    try std.testing.expectEqualSlices(Call, &.{.{ .text_face = .{ 6, 7, 1, 9, 10 } }}, calls.items);
+    const face_m = ops.measureTextStyle(&face_text, "b", .serif, .bold, .size_2);
+    try std.testing.expectEqual(@as(i32, 21), face_m.w);
+
+    const full_text: ops.Paint = .{ .user = null, .fill_rect = fill, .draw_text = drawText, .text_size = textSize, .draw_text_face = drawTextFace, .text_size_face = textSizeFace, .draw_text_style = drawTextStyle, .text_size_style = textSizeStyle };
+    reset();
+    ops.drawTextStyle(&full_text, 8, 9, "c", .serif, .bold, .ui_26, 11, 12);
+    try std.testing.expectEqualSlices(Call, &.{.{ .text_style = .{ 8, 9, 1, 1, 9, 11, 12 } }}, calls.items);
+    const full_m = ops.measureTextStyle(&full_text, "c", .serif, .bold, .ui_26);
+    try std.testing.expectEqual(@as(i32, 41), full_m.w);
 }

@@ -64,13 +64,22 @@ test "a widget tree renders in colour through the host surface into its golden" 
     }
 }
 
-test "the surface table binds every Paint member" {
+test "the surface table binds every Paint member and desktop capabilities" {
     var surface = try gfx.Surface.init(std.testing.allocator, 4, 4, 0);
     defer surface.deinit(std.testing.allocator);
     const paint = surface_paint.table(abi.types.Paint, &surface);
     inline for (comptime std.meta.fieldNames(abi.types.Paint)) |name| {
         try std.testing.expect(@field(paint, name) != null);
     }
+    const caps = paint.caps.?;
+    try std.testing.expectEqual(abi.types.PixelFormat.argb8888, caps.pixel_format);
+    try std.testing.expectEqual(@as(u8, 1), caps.color);
+    try std.testing.expectEqual(@as(u8, 1), caps.alpha);
+    try std.testing.expectEqual(@as(u8, 0), caps.gray4);
+    try std.testing.expectEqual(@as(u8, 0), caps.dither);
+    try std.testing.expectEqual(@as(u8, 1), caps.line);
+    try std.testing.expectEqual(@as(u8, 1), caps.blit);
+    try std.testing.expectEqual(@as(u8, 1), caps.clip);
     var w: i32 = 0;
     var h: i32 = 0;
     paint.text_size.?(paint.user, "Run", &w, &h);
