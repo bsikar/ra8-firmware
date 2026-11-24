@@ -13,6 +13,8 @@
 const std = @import("std");
 pub const zoom = @import("zoom.zig");
 pub const book = @import("zoom_book.zig");
+pub const mem = @import("zoom_mem.zig");
+pub const popup = @import("zoom_popup.zig");
 pub const render = @import("zoom_render.zig");
 pub const tiles = @import("zoom_tiles.zig");
 
@@ -146,6 +148,62 @@ export fn zoom_tiles_prefetch(ts: ?*tiles.TileSrc, v: ?*const View, dir: zoom.Pa
 }
 
 // ---------------------------------------------------------------------------
+// In-memory gray8 figure adapter (zoom_mem.h).
+// ---------------------------------------------------------------------------
+
+export fn zoom_mem_src_init(out: ?*mem.MemSrc, pixels: ?[*]const u8, width: u32, height: u32, stride: u32) callconv(.c) Err {
+    return mem.memSrcInit(out, pixels, width, height, stride);
+}
+
+export fn zoom_mem_src_bind(src: ?*const mem.MemSrc, out: ?*Source) callconv(.c) Err {
+    return mem.memSrcBind(src, out);
+}
+
+export fn zoom_mem_read(ctx: ?*anyopaque, x: u32, y: u32, w: u32, h: u32, out: ?[*]u8, out_stride: u32) callconv(.c) Err {
+    return mem.memReadImpl(ctx, x, y, w, h, out, out_stride);
+}
+
+// ---------------------------------------------------------------------------
+// EPUB figure-zoom popup controller (zoom_popup.h).
+// ---------------------------------------------------------------------------
+
+export fn zoom_popup_open(p: ?*popup.Popup, cfg: ?*const popup.PopupCfg) callconv(.c) Err {
+    return popup.popupOpen(p, cfg);
+}
+
+export fn zoom_popup_close(p: ?*popup.Popup) callconv(.c) Err {
+    return popup.popupClose(p);
+}
+
+export fn zoom_popup_active(p: ?*const popup.Popup) callconv(.c) bool {
+    return (p != null) and p.?.active;
+}
+
+export fn zoom_popup_zone_hit(p: ?*const popup.Popup, x: i32, y: i32) callconv(.c) popup.PopupZone {
+    return popup.popupZoneHit(p, x, y);
+}
+
+export fn zoom_popup_tap(p: ?*popup.Popup, x: i32, y: i32, now_ms: u32, out_action: ?*popup.PopupAction) callconv(.c) Err {
+    return popup.popupTap(p, x, y, now_ms, out_action);
+}
+
+export fn zoom_popup_tick(p: ?*popup.Popup, now_ms: u32) callconv(.c) bool {
+    return popup.popupTick(p, now_ms);
+}
+
+export fn zoom_popup_present(p: ?*popup.Popup, out: ?*Present) callconv(.c) Err {
+    return popup.popupPresent(p, out);
+}
+
+export fn zoom_popup_render(p: ?*popup.Popup) callconv(.c) Err {
+    return popup.popupRender(p);
+}
+
+export fn zoom_popup_status(p: ?*const popup.Popup, buf: ?[*]u8, buf_cap: usize) callconv(.c) Err {
+    return popup.popupStatus(p, buf, buf_cap);
+}
+
+// ---------------------------------------------------------------------------
 // The ABI membrane's own probe suite: every export driven over the C-shaped
 // structs, including the null guards zoom.c had and the log path.
 // ---------------------------------------------------------------------------
@@ -198,4 +256,33 @@ test "priv_zoom_axis resolves one axis like the C did" {
     try std.testing.expectEqual(@as(i32, 0), ax.d0);
     try std.testing.expectEqual(@as(i32, 0), ax.d1);
     try std.testing.expectEqual(@as(u32, 0), ax.count);
+}
+
+test "zoom_mem and zoom_popup C ABI exports carry C guards and state" {
+    const px = [_]u8{ 0x10, 0x20, 0x30, 0x40 };
+    var ms = mem.MemSrc{};
+    try std.testing.expectEqual(Err.ok, zoom_mem_src_init(&ms, &px, 2, 2, 0));
+    var src = Source{};
+    try std.testing.expectEqual(Err.ok, zoom_mem_src_bind(&ms, &src));
+    var out: [4]u8 = undefined;
+    try std.testing.expectEqual(Err.ok, zoom_mem_read(&ms, 0, 0, 2, 2, &out, 2));
+    try std.testing.expectEqual([4]u8{ 0x10, 0x20, 0x30, 0x40 }, out);
+
+    var p = popup.Popup{};
+    try std.testing.expect(!zoom_popup_active(&p));
+    try std.testing.expect(!zoom_popup_tick(&p, 0));
+    try std.testing.expectEqual(popup.PopupZone.none, zoom_popup_zone_hit(&p, 0, 0));
+    var scratch: [128]u8 = undefined;
+    const cfg = popup.PopupCfg{
+        .src = src,
+        .scratch = .{ .row = &scratch, .row_cap = 64, .strip = &scratch, .strip_cap = 128, .packed_buf = &scratch, .packed_cap = 64 },
+        .fb_w = 64,
+        .fb_h = 64,
+    };
+    try std.testing.expectEqual(Err.ok, zoom_popup_open(&p, &cfg));
+    try std.testing.expect(zoom_popup_active(&p));
+    var act: popup.PopupAction = .none;
+    try std.testing.expectEqual(Err.ok, zoom_popup_tap(&p, 2, 2, 10, &act));
+    try std.testing.expectEqual(popup.PopupAction.closed, act);
+    try std.testing.expect(!zoom_popup_active(&p));
 }

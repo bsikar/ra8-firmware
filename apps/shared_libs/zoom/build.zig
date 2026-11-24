@@ -87,6 +87,22 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const mem_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/zoom_mem.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    const popup_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/zoom_popup.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
     const run_implementation_tests = b.addRunArtifact(implementation_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig zoom tests");
@@ -95,4 +111,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(book_tests).step);
     test_step.dependOn(&b.addRunArtifact(render_tests).step);
     test_step.dependOn(&b.addRunArtifact(tiles_tests).step);
+    test_step.dependOn(&b.addRunArtifact(mem_tests).step);
+    test_step.dependOn(&b.addRunArtifact(popup_tests).step);
 }

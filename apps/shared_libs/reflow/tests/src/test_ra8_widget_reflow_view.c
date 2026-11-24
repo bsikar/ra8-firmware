@@ -50,12 +50,14 @@ typedef enum : uint32_t {
  * @brief A recording ::ra8_widget_reflow_ops_t backend for the reflow-view tests.
  */
 typedef struct {
-  uint32_t      render_calls; /**< Times render_page() ran.         */
-  uint32_t      link_calls;   /**< Times follow_link() ran.         */
-  uint16_t      last_page;    /**< Last page passed to render_page. */
-  ra8_ui_rect_t last_body;    /**< Last body rect painted.          */
-  bool          link_return;  /**< follow_link return value.        */
-  uint16_t      link_dest;    /**< follow_link destination page.    */
+  uint32_t      render_calls;  /**< Times render_page() ran.         */
+  uint32_t      link_calls;    /**< Times follow_link() ran.         */
+  uint32_t      figure_calls;  /**< Times open_figure() ran.         */
+  uint16_t      last_page;     /**< Last page passed to render_page. */
+  ra8_ui_rect_t last_body;     /**< Last body rect painted.          */
+  bool          link_return;   /**< follow_link return value.        */
+  uint16_t      link_dest;     /**< follow_link destination page.    */
+  bool          figure_return; /**< open_figure return value.        */
 } mock_rv_t;
 
 static void mock_rv_render(void* user, uint16_t page, const ra8_ui_rect_t* body)
@@ -75,6 +77,16 @@ static bool mock_rv_follow(void* user, uint16_t page, int32_t x, int32_t y, uint
   m->link_calls++;
   *out_page = m->link_dest;
   return m->link_return;
+}
+
+static bool mock_rv_figure(void* user, uint16_t page, int32_t x, int32_t y)
+{
+  mock_rv_t* m = (mock_rv_t*)user;
+  (void)page;
+  (void)x;
+  (void)y;
+  m->figure_calls++;
+  return m->figure_return;
 }
 
 /** @brief A recording paint backend whose only role is to count bg clears. */
@@ -357,6 +369,57 @@ static void test_reflow_view_init_guards(void)
   TEST_END("ra8_widget_reflow_view: init guards");
 }
 
+/**
+ * @test ra8_widget_reflow_view opens an inline figure before turning the page.
+ *
+ * @par MC/DC:
+ * `openFigure` `(ops == NULL) || (open_figure == NULL)`: both true arms
+ * (ops == NULL covered by input_guards; open_figure == NULL covered below) and
+ * the both-false control (`open_figure` hits and consumes tap without paging;
+ * `open_figure` declines and falls through to page turn). Also verifies
+ * `follow_link` retains priority over `open_figure`.
+ */
+static void test_reflow_view_figure(void)
+{
+  TEST_BEGIN("ra8_widget_reflow_view: figure hit + link priority");
+  mock_rv_t                m   = {.link_return = false, .figure_return = true};
+  ra8_widget_reflow_ops_t  ops = {.user        = &m,
+                                  .render_page = mock_rv_render,
+                                  .follow_link = mock_rv_follow,
+                                  .open_figure = mock_rv_figure};
+  ra8_widget_reflow_view_t rv  = {.ops = &ops, .page = 2, .page_count = k_t_page_count};
+  ra8_widget_t             w   = {};
+  (void)ra8_widget_reflow_view_init(&w, &rv);
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h};
+
+  const ra8_widget_event_t right = {.kind = k_ra8_widget_ev_touch, .x = 150, .y = 50};
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &right));
+  TEST_ASSERT_EQ(1U, m.link_calls);
+  TEST_ASSERT_EQ(1U, m.figure_calls);
+  TEST_ASSERT_EQ(2U, rv.page); /* figure tap consumed without turning page */
+
+  /* Link priority: followed link wins without invoking open_figure. */
+  m.link_return = true;
+  m.link_dest   = 5U;
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &right));
+  TEST_ASSERT_EQ(1U, m.figure_calls);
+  TEST_ASSERT_EQ(5U, rv.page);
+
+  /* Declined figure falls through to page turn. */
+  m.link_return   = false;
+  m.figure_return = false;
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &right));
+  TEST_ASSERT_EQ(2U, m.figure_calls);
+  TEST_ASSERT_EQ(6U, rv.page);
+
+  /* Null open_figure falls straight through to page turn. */
+  ops.open_figure = nullptr;
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &right));
+  TEST_ASSERT_EQ(2U, m.figure_calls);
+  TEST_ASSERT_EQ(7U, rv.page);
+  TEST_END("ra8_widget_reflow_view: figure hit + link priority");
+}
+
 int main(void)
 {
   test_reflow_view_render();
@@ -365,5 +428,6 @@ int main(void)
   test_reflow_view_render_guards();
   test_reflow_view_input_guards();
   test_reflow_view_init_guards();
+  test_reflow_view_figure();
   return 0;
 }
