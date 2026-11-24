@@ -88,3 +88,7 @@ test "entry count is clamped to the scan bound, and read errors propagate" {
     try std.testing.expectEqual(@as(u16, 0x204), volume()[0]);
     try std.testing.expectEqual(@as(u16, 0x204), partition(0)[0]);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

@@ -109,3 +109,7 @@ test "exFAT errors propagate without a write" {
     try std.testing.expectEqual(@as(u16, 0x203), setAttr("/book.epub", hidden, 0));
     try std.testing.expectEqual(@as(?u32, null), fake.written_index);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

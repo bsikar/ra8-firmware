@@ -160,3 +160,7 @@ test "the entry stampers write the packed fields at the spec offsets" {
     try expectEqual(@as(u8, 0x86), fe2[23]);
     try expectEqual(@as(u32, 0), std.mem.readInt(u32, fe2[8..12], .little)); // create untouched
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

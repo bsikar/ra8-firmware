@@ -10,12 +10,14 @@
 //! dedicated xspi root defines its own recording stubs instead and must not
 //! import this file.
 
-export fn ra8_xspi_flash_read(_: u8, _: u32, _: ?[*]u8, _: u32) c_int {
-    return 0;
-}
-export fn ra8_xspi_flash_program(_: u8, _: u32, _: ?[*]const u8, _: u32) c_int {
-    return 0;
-}
-export fn ra8_xspi_flash_erase_sector(_: u8, _: u32) c_int {
-    return 0;
-}
+pub const Exports = struct {
+    export fn ra8_xspi_flash_read(_: u8, _: u32, _: ?[*]u8, _: u32) c_int {
+        return 0;
+    }
+    export fn ra8_xspi_flash_program(_: u8, _: u32, _: ?[*]const u8, _: u32) c_int {
+        return 0;
+    }
+    export fn ra8_xspi_flash_erase_sector(_: u8, _: u32) c_int {
+        return 0;
+    }
+};

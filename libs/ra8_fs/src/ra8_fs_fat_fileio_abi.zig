@@ -254,7 +254,7 @@ pub export fn priv_write_into_sector(m: [*c]const Mount, lba: u64, off_in_sector
 /// allocation scan and worth the same fix. One write's offset only ever
 /// moves forward, so the waypoint is always at or behind the cluster being
 /// written.
-const WriteWay = struct {
+pub const WriteWay = struct {
     cluster: u32, // cluster the last walk reached
     index: u32, // chain index of `cluster`
 };

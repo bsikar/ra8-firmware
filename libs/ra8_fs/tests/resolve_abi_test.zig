@@ -156,3 +156,7 @@ test "a failed leaf lookup surfaces through resolve_dir" {
     fake.lay83(0, &d11, attr_archive, 0x21); // leaf resolves to a file
     try std.testing.expectEqual(err_invalid_arg, resolve.priv_resolve_dir(m, "/d", &out));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

@@ -30,8 +30,11 @@ export fn ra8_log_emit_error_val(_: [*:0]const u8, _: [*:0]const u8, _: u32) voi
 
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("fs_stubs.zig").Exports;
     _ = @import("netif_stubs.zig");
+    _ = @import("netif_stubs.zig").Exports;
     _ = @import("driver_stubs.zig");
+    _ = @import("driver_stubs.zig").Exports;
 }
 
 const flash_sectors: u32 = 4;
@@ -231,4 +234,8 @@ test "null ctx and null buffer arguments are refused with a log line each" {
     try std.testing.expectEqual(xspi.err_null_ptr, iface.get_caps.?(null, &caps));
     try std.testing.expectEqual(xspi.err_null_ptr, iface.get_caps.?(device.ctx, null));
     try std.testing.expectEqual(@as(u32, 7), errors_logged);
+}
+
+comptime {
+    _ = @import("xspi_stubs.zig");
 }

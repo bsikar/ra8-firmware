@@ -79,8 +79,11 @@ var backend: [5]usize = @splat(0);
 
 comptime {
     _ = @import("fs_stubs.zig");
+    _ = @import("fs_stubs.zig").Exports;
     _ = @import("netif_stubs.zig");
+    _ = @import("netif_stubs.zig").Exports;
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 export fn ra8_log_emit_error(_: [*:0]const u8, _: [*:0]const u8) void {
     errors_logged += 1;
@@ -267,4 +270,8 @@ test "raw open reaches the native format and caps follow it" {
     var space: [16]u8 = undefined;
     try std.testing.expectEqual(ns.err_not_supported, vfs.ra8_io_vfs_free_space("fl", &space));
     try std.testing.expectEqual(ns.err_not_supported, vfs.ra8_io_vfs_free_space("sd", &space));
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
 }

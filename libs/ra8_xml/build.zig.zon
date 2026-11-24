@@ -1,0 +1,15 @@
+.{
+    .name = .ra8_xml,
+    .version = "0.1.0",
+    .fingerprint = 0xe9b92f41248b5bab,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}

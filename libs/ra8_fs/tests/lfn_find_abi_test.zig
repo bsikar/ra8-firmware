@@ -154,3 +154,7 @@ test "scan: the laid name matches itself" {
 comptime {
     _ = utf;
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

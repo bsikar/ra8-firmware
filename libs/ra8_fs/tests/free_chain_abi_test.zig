@@ -102,3 +102,7 @@ test "write error is returned and the cluster is not credited" {
     try std.testing.expectEqual(@as(u32, 100), al.priv_alloc_hint_get(fake.mount()));
     al.priv_alloc_state_release(fake.mount());
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

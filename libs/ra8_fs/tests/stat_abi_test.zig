@@ -263,3 +263,7 @@ test "path_is_root covers the slash runs" {
     try std.testing.expect(!stat.path_is_root("/a"));
     try std.testing.expect(!stat.path_is_root("a/"));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

@@ -9,6 +9,10 @@
 const std = @import("std");
 const implementation = @import("implementation");
 
+comptime {
+    _ = @import("cache_fake.zig");
+}
+
 const Entry = implementation.Entry;
 
 fn live(key: u32, start: u32, count: u16) Entry {

@@ -191,3 +191,7 @@ test "path, name and lookup errors pass through" {
     fake.reset(c.k_ra8_fs_type_exfat);
     try std.testing.expectEqual(@as(u16, c.k_ra8_err_invalid_arg), openAt("", write_mode, &f));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

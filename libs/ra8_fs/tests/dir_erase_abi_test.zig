@@ -112,3 +112,7 @@ test "a walk past the directory answers not_found" {
     setLfn(2, chain_csum);
     try std.testing.expectEqual(err_not_found, erase.internal_dir_collect_chain(m, &loc, fake.dir_lba + 2, 0, chain_csum, &run, &len));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

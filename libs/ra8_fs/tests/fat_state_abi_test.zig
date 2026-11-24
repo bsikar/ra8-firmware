@@ -52,3 +52,7 @@ test "mount allocator mirrors the file allocator" {
     }
     try std.testing.expect(st.internal_alloc_mount_slot() == null);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

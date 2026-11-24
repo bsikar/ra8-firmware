@@ -452,3 +452,7 @@ fn priv_lfn_alias_basis(leaf: [*c]const u16, n: u32, tail: u32, out11: [*c]u8) c
     out11[9] = 'T';
     out11[10] = '0';
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

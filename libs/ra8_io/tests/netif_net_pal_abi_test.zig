@@ -295,6 +295,7 @@ const frame = [_]u8{ 0x01, 0x02, 0x03, 0x04 };
 
 comptime {
     _ = @import("xspi_stubs.zig");
+    _ = @import("xspi_stubs.zig").Exports;
 }
 
 test "bind: NULL handle is refused once" {
@@ -340,4 +341,10 @@ test "the PAL's verdict passes through both directions" {
 test "an unbound handle is refused" {
     var netif: Bus = .{ .iface = null, .ctx = null };
     try std.testing.expectEqual(front.err_not_initialized, ra8_io_netif_send(&netif, &frame, frame.len));
+}
+
+comptime {
+    _ = @import("driver_stubs.zig");
+    _ = @import("fs_stubs.zig");
+    _ = @import("netif_stubs.zig");
 }

@@ -329,3 +329,7 @@ test "priv exfat format lays the whole volume end to end" {
     try std.testing.expectEqual(@as(u8, 0), root[95]);
     try std.testing.expectEqual(@as(u8, 0), disk2[2048 + g.heap_offset + (g.root_cluster - 2) * g.spc + 1][0]);
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

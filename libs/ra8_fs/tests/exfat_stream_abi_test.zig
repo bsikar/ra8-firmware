@@ -647,3 +647,7 @@ test "flush_set keeps an empty file's stream entry cluster-free" {
     try std.testing.expectEqual(@as(u8, 0x01), disk[0][32 + @as(usize, @intCast(c.k_exfat_strm_off_flags))]);
     try std.testing.expectEqual(@as(u32, 0), rd32(disk[0][32..], @intCast(c.k_exfat_strm_off_clus)));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

@@ -986,3 +986,7 @@ test "listdir walks a whole directory through the callback" {
     try std.testing.expectEqualStrings("AB", std.mem.sliceTo(&cb_names[0], 0));
     try std.testing.expectEqualStrings("CD", std.mem.sliceTo(&cb_names[1], 0));
 }
+
+comptime {
+    _ = @import("fs_walker_fake.zig");
+}

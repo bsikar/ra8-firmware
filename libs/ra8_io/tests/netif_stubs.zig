@@ -10,15 +10,17 @@
 //! dedicated netif roots define their own recording stubs instead and must
 //! not import this file.
 
-export fn ra8_c6link_eth_send(_: ?*anyopaque, _: ?[*]const u8, _: u16) c_int {
-    return 0;
-}
-export fn ra8_c6link_poll(_: ?*anyopaque, _: u16, _: ?*anyopaque) c_int {
-    return 0;
-}
-export fn ra8_net_pal_send_frame(_: ?[*]const u8, _: u16) u16 {
-    return 0;
-}
-export fn ra8_net_pal_recv_frame(_: ?[*]u8, _: ?*u16) u16 {
-    return 0;
-}
+pub const Exports = struct {
+    export fn ra8_c6link_eth_send(_: ?*anyopaque, _: ?[*]const u8, _: u16) c_int {
+        return 0;
+    }
+    export fn ra8_c6link_poll(_: ?*anyopaque, _: u16, _: ?*anyopaque) c_int {
+        return 0;
+    }
+    export fn ra8_net_pal_send_frame(_: ?[*]const u8, _: u16) u16 {
+        return 0;
+    }
+    export fn ra8_net_pal_recv_frame(_: ?[*]u8, _: ?*u16) u16 {
+        return 0;
+    }
+};
