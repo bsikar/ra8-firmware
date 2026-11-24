@@ -248,7 +248,7 @@ def _migrated_zig_archive(
         relative = archive.relative_to(map_dir.resolve(strict=True)).as_posix()
     except (OSError, ValueError):
         return None
-    migrated = re.fullmatch(r"zig/([a-z0-9_]+)/([a-z0-9_]+)/lib/lib\1\.a", relative)
+    migrated = re.fullmatch(r"zig/([a-z0-9_]+)/([a-z0-9_+]+)/lib/lib\1\.a", relative)
     if migrated is None:
         return None
     library = migrated.group(1)
