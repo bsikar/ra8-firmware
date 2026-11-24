@@ -345,8 +345,7 @@ macro(_ra8_app_collect_sources)
     endforeach()
   else()
     file(GLOB_RECURSE _ra8_lib_nsc CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_nsc/src/*.c)
-    if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_nsc/build.zig" AND NOT
-       EXISTS "${RA8_REPO_ROOT}/libs/ra8_nsc/src/ra8_nsc.c")
+    if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_nsc/build.zig")
       # ra8_nsc is mid-port: the appimg veneers live in its Zig static
       # archive, while ten support C files still compile from src/. Its
       # build.zig installs the real artifacts (libra8_nsc_appimg.a,
@@ -416,6 +415,22 @@ macro(_ra8_app_collect_sources)
     )
   endif()
   list(APPEND _ra8_lib_zig ${_ra8_hal_zig})
+  # apps/shared_libs/compress builds two archives: libcompress.a (codec) and
+  # libvfs_compress.a (ra8_vfs_compress_* over ra8_io + ra8_fs + compress).
+  # Register vfs_compress ahead of the LIBS loop whenever compress and ra8_io
+  # are both present so it precedes ra8_io, compress, and ra8_fs regardless of
+  # LIBS ordering (single-pass GNU ld).
+  set(_ra8_compress_path "${RA8_REPO_ROOT}/apps/shared_libs/compress")
+  if(EXISTS "${_ra8_compress_path}/build.zig")
+    if("compress" IN_LIST _RA8_APP_LIBS AND "ra8_io" IN_LIST _RA8_APP_LIBS)
+      list(APPEND _ra8_lib_zig "vfs_compress|${_ra8_compress_path}")
+    endif()
+    if("compress" IN_LIST _RA8_APP_OFF_TARGET_LIBS
+       AND ("ra8_io" IN_LIST _RA8_APP_LIBS OR "ra8_io" IN_LIST _RA8_APP_OFF_TARGET_LIBS)
+    )
+      list(APPEND _ra8_lib_zig "vfs_compress|${_ra8_compress_path}|off_target")
+    endif()
+  endif()
   set(_ra8_lib_inc "")
   # Chip adapter headers ride with the board (RA8FW-299); see board_adapters.cmake.
   _ra8_app_board_adapter_includes()
@@ -558,6 +573,12 @@ macro(_ra8_app_collect_sources)
     # RA8FW-1212: the reflow parse entry point is a Zig archive too, so
     # apps link it instead of compiling the former C TU by path.
     list(APPEND _ra8_lib_zig "ra8_reflow_parse|${RA8_REPO_ROOT}/apps/shared_libs/reflow")
+    # reflow's SVG shape renderer reaches ra8_gfx_pixel/line/rect/circle, so
+    # ra8_gfx must appear after ra8_reflow_parse regardless of LIBS order.
+    if("ra8_gfx" IN_LIST _RA8_APP_LIBS AND EXISTS "${RA8_REPO_ROOT}/libs/ra8_gfx/build.zig")
+      list(REMOVE_ITEM _ra8_lib_zig "ra8_gfx|${RA8_REPO_ROOT}/libs/ra8_gfx")
+      list(APPEND _ra8_lib_zig "ra8_gfx|${RA8_REPO_ROOT}/libs/ra8_gfx")
+    endif()
     list(
       APPEND
       _ra8_lib_inc
@@ -674,7 +695,7 @@ macro(_ra8_app_collect_sources)
   endif()
 
   if(("epub" IN_LIST _RA8_APP_LIBS) OR ("rabook_compile" IN_LIST _RA8_APP_LIBS))
-    file(GLOB_RECURSE _xml CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/*.c)
+    # xml is fully ported to Zig (no C sources remain under xml/src).
     set(_xml_zig "")
     if(EXISTS "${RA8_REPO_ROOT}/apps/shared_libs/xml/build.zig")
       # xml's Zig build installs libxml_reader.a (xml_reader) rather than
@@ -686,10 +707,9 @@ macro(_ra8_app_collect_sources)
       xml
       "${RA8_REPO_ROOT}/apps/shared_libs/xml"
       "pulls in xml for LIBS epub/rabook_compile"
-      "${_xml}"
+      ""
       "${_xml_zig}"
     )
-    list(APPEND _ra8_lib_extra ${_xml})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/xml/inc)
   endif()
 

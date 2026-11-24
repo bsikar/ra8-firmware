@@ -36,6 +36,7 @@ target_link_libraries(
          ra8_zig::ra8_lsm6dso
          ra8_zig::ra8_board_ek_ra8d2
          ra8_zig::ra8_hal
+         ra8_zig::vfs_compress
          ra8_zig::ra8_io
          ra8_zig::ra8_fs
          ra8_zig::ra8_usb_pal
@@ -97,6 +98,7 @@ link_libraries(
   ra8_zig::ra8_lsm6dso
   ra8_zig::ra8_board_ek_ra8d2
   ra8_zig::ra8_hal
+  ra8_zig::vfs_compress
   ra8_zig::ra8_io
   ra8_zig::ra8_fs
   # The epub library is all Zig behind the unchanged C headers (RA8FW-1160
