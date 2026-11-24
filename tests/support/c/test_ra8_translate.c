@@ -283,6 +283,94 @@ static void test_glossary_round_trip(void)
   TEST_ASSERT_EQ(0, memcmp(restored, "See Tanaka-san!", 15U));
 }
 
+static void test_ocr_preprocess(void)
+{
+  bool has_helium = true;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_translate_ocr_has_helium(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_ocr_has_helium(&has_helium));
+
+  size_t req_bytes = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_translate_ocr_required_bytes(3U, 2U, k_ra8_translate_ocr_format_gray8, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_ocr_required_bytes(3U, 2U, k_ra8_translate_ocr_format_gray8, &req_bytes));
+  TEST_ASSERT_EQ(6U, req_bytes);
+
+  const uint8_t                        src[6] = {10U, 11U, 20U, 21U, 30U, 31U};
+  const ra8_translate_ocr_image_spec_t spec   = {
+    .stride_bytes = 2U,
+    .width        = 2U,
+    .height       = 3U,
+    .format       = k_ra8_translate_ocr_format_gray8,
+    .reserved     = {0U, 0U, 0U},
+  };
+  const ra8_translate_ocr_rect_t           crop = {.x = 0U, .y = 0U, .width = 2U, .height = 3U};
+  const ra8_translate_ocr_preprocess_cfg_t cfg  = {
+    .dst_width  = 3U,
+    .dst_height = 2U,
+    .dst_format = k_ra8_translate_ocr_format_gray8,
+    .rotation   = k_ra8_translate_ocr_rot_ccw_90,
+    .coord_mode = k_ra8_translate_ocr_coord_align_corners,
+    .reserved   = 0U,
+  };
+  const ra8_translate_ocr_quant_t quant = {
+    .mean        = {0.0f, 0.0f, 0.0f},
+    .inv_std     = {1.0f, 1.0f, 1.0f},
+    .input_scale = 1.0f,
+    .quant_scale = 2.0f,
+    .zero_point  = -10,
+    .reserved    = {0U, 0U, 0U},
+  };
+
+  uint8_t out_u8[6] = {};
+  size_t  written   = 99U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_translate_ocr_resize_u8(src, sizeof(src), &spec, &crop, &cfg, out_u8, 2U, &written));
+  TEST_ASSERT_EQ(99U, written);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_ocr_resize_u8(src,
+                                             sizeof(src),
+                                             &spec,
+                                             &crop,
+                                             &cfg,
+                                             out_u8,
+                                             sizeof(out_u8),
+                                             &written));
+  TEST_ASSERT_EQ(6U, written);
+  const uint8_t expected_rot[6] = {11U, 21U, 31U, 10U, 20U, 30U};
+  TEST_ASSERT_EQ(0, memcmp(out_u8, expected_rot, sizeof(expected_rot)));
+
+  int8_t out_i8[6]   = {};
+  int8_t fused_i8[6] = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_ocr_normalize_i8(out_u8,
+                                                sizeof(out_u8),
+                                                k_ra8_translate_ocr_format_gray8,
+                                                &quant,
+                                                out_i8,
+                                                sizeof(out_i8),
+                                                &written));
+  TEST_ASSERT_EQ(6U, written);
+  TEST_ASSERT_EQ(-5, out_i8[0]);
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_ocr_preprocess_i8(src,
+                                                 sizeof(src),
+                                                 &spec,
+                                                 &crop,
+                                                 &cfg,
+                                                 &quant,
+                                                 fused_i8,
+                                                 sizeof(fused_i8),
+                                                 &written));
+  TEST_ASSERT_EQ(6U, written);
+  TEST_ASSERT_EQ(0, memcmp(out_i8, fused_i8, sizeof(out_i8)));
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -300,5 +388,9 @@ int main(void)
   TEST_BEGIN("test_glossary_round_trip");
   test_glossary_round_trip();
   TEST_END("test_glossary_round_trip");
+
+  TEST_BEGIN("test_ocr_preprocess");
+  test_ocr_preprocess();
+  TEST_END("test_ocr_preprocess");
   return 0;
 }

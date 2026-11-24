@@ -10,6 +10,7 @@ const err_mod = @import("err");
 const sidecar = @import("sidecar");
 const lang = @import("lang");
 const glossary = @import("glossary");
+const ocr = @import("ocr");
 
 pub const SidecarKey = sidecar.SidecarKey;
 pub const SidecarHeader = sidecar.SidecarHeader;
@@ -17,6 +18,10 @@ pub const PageEntry = sidecar.PageEntry;
 pub const BubbleRecord = sidecar.BubbleRecord;
 pub const ScriptCounts = lang.ScriptCounts;
 pub const LangSelection = lang.Selection;
+pub const OcrRect = ocr.Rect;
+pub const OcrImageSpec = ocr.ImageSpec;
+pub const OcrPreprocessCfg = ocr.PreprocessCfg;
+pub const OcrQuantParams = ocr.QuantParams;
 
 comptime {
     const assert = std.debug.assert;
@@ -120,6 +125,54 @@ comptime {
     assert(@offsetOf(LangSelection, "nmt_model") == 3);
     assert(@offsetOf(LangSelection, "reserved") == 4);
     assert(@offsetOf(LangSelection, "counts") == 8);
+
+    assert(@sizeOf(ocr.PixelFormat) == 1);
+    assert(@backingInt(ocr.PixelFormat.gray8) == 1);
+    assert(@backingInt(ocr.PixelFormat.rgb888) == 3);
+
+    assert(@sizeOf(ocr.Rotation) == 1);
+    assert(@backingInt(ocr.Rotation.none) == 0);
+    assert(@backingInt(ocr.Rotation.ccw_90) == 1);
+    assert(@backingInt(ocr.Rotation.cw_90) == 2);
+    assert(@backingInt(ocr.Rotation.rot_180) == 3);
+
+    assert(@sizeOf(ocr.CoordMode) == 1);
+    assert(@backingInt(ocr.CoordMode.half_pixel) == 0);
+    assert(@backingInt(ocr.CoordMode.align_corners) == 1);
+    assert(@backingInt(ocr.CoordMode.asym_scale) == 2);
+
+    assert(@sizeOf(OcrRect) == 8);
+    assert(@alignOf(OcrRect) == 2);
+    assert(@offsetOf(OcrRect, "x") == 0);
+    assert(@offsetOf(OcrRect, "y") == 2);
+    assert(@offsetOf(OcrRect, "width") == 4);
+    assert(@offsetOf(OcrRect, "height") == 6);
+
+    assert(@sizeOf(OcrImageSpec) == 12);
+    assert(@alignOf(OcrImageSpec) == 4);
+    assert(@offsetOf(OcrImageSpec, "stride_bytes") == 0);
+    assert(@offsetOf(OcrImageSpec, "width") == 4);
+    assert(@offsetOf(OcrImageSpec, "height") == 6);
+    assert(@offsetOf(OcrImageSpec, "format") == 8);
+    assert(@offsetOf(OcrImageSpec, "reserved") == 9);
+
+    assert(@sizeOf(OcrPreprocessCfg) == 8);
+    assert(@alignOf(OcrPreprocessCfg) == 2);
+    assert(@offsetOf(OcrPreprocessCfg, "dst_width") == 0);
+    assert(@offsetOf(OcrPreprocessCfg, "dst_height") == 2);
+    assert(@offsetOf(OcrPreprocessCfg, "dst_format") == 4);
+    assert(@offsetOf(OcrPreprocessCfg, "rotation") == 5);
+    assert(@offsetOf(OcrPreprocessCfg, "coord_mode") == 6);
+    assert(@offsetOf(OcrPreprocessCfg, "reserved") == 7);
+
+    assert(@sizeOf(OcrQuantParams) == 36);
+    assert(@alignOf(OcrQuantParams) == 4);
+    assert(@offsetOf(OcrQuantParams, "mean") == 0);
+    assert(@offsetOf(OcrQuantParams, "inv_std") == 12);
+    assert(@offsetOf(OcrQuantParams, "input_scale") == 24);
+    assert(@offsetOf(OcrQuantParams, "quant_scale") == 28);
+    assert(@offsetOf(OcrQuantParams, "zero_point") == 32);
+    assert(@offsetOf(OcrQuantParams, "reserved") == 33);
 }
 
 fn inputSlice(comptime T: type, ptr_opt: ?[*]const T, count: usize) ?[]const T {
@@ -441,5 +494,113 @@ pub export fn ra8_translate_glossary_restore(
         return err_mod.toRa8Err(e);
     };
     out_restored_len.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_ocr_has_helium()`.
+pub export fn ra8_translate_ocr_has_helium(out_has_helium_opt: ?*bool) callconv(.c) u16 {
+    const out_has_helium = out_has_helium_opt orelse return err_mod.k_ra8_err_null_ptr;
+    out_has_helium.* = ocr.hasHeliumMve();
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_ocr_required_bytes()`.
+pub export fn ra8_translate_ocr_required_bytes(
+    dst_width: u16,
+    dst_height: u16,
+    dst_format_raw: u8,
+    out_bytes_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_bytes = out_bytes_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const needed = ocr.requiredDstBytes(dst_width, dst_height, dst_format_raw) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_bytes.* = needed;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_ocr_resize_u8()`.
+pub export fn ra8_translate_ocr_resize_u8(
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    src_spec_opt: ?*const OcrImageSpec,
+    crop_opt: ?*const OcrRect,
+    cfg_opt: ?*const OcrPreprocessCfg,
+    out_dst_opt: ?[*]u8,
+    out_cap: usize,
+    out_written_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_written = out_written_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_dst = out_dst_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const src = src_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const src_spec = src_spec_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const crop = crop_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const cfg = cfg_opt orelse return err_mod.k_ra8_err_null_ptr;
+
+    const written = ocr.resizeCropRotateU8(
+        src[0..src_len],
+        src_spec.*,
+        crop.*,
+        cfg.*,
+        out_dst[0..out_cap],
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_written.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_ocr_normalize_i8()`.
+pub export fn ra8_translate_ocr_normalize_i8(
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    format_raw: u8,
+    quant_opt: ?*const OcrQuantParams,
+    out_dst_opt: ?[*]i8,
+    out_cap: usize,
+    out_written_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_written = out_written_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_dst = out_dst_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const src = src_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const quant = quant_opt orelse return err_mod.k_ra8_err_null_ptr;
+
+    const written = ocr.normalizeU8ToI8(
+        src[0..src_len],
+        format_raw,
+        quant.*,
+        out_dst[0..out_cap],
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_written.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_ocr_preprocess_i8()`.
+pub export fn ra8_translate_ocr_preprocess_i8(
+    src_opt: ?[*]const u8,
+    src_len: usize,
+    src_spec_opt: ?*const OcrImageSpec,
+    crop_opt: ?*const OcrRect,
+    cfg_opt: ?*const OcrPreprocessCfg,
+    quant_opt: ?*const OcrQuantParams,
+    out_dst_opt: ?[*]i8,
+    out_cap: usize,
+    out_written_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_written = out_written_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_dst = out_dst_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const src = src_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const src_spec = src_spec_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const crop = crop_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const cfg = cfg_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const quant = quant_opt orelse return err_mod.k_ra8_err_null_ptr;
+
+    const written = ocr.preprocessCropRotateToI8(
+        src[0..src_len],
+        src_spec.*,
+        crop.*,
+        cfg.*,
+        quant.*,
+        out_dst[0..out_cap],
+    ) catch |e| return err_mod.toRa8Err(e);
+    out_written.* = written;
     return err_mod.k_ra8_ok;
 }

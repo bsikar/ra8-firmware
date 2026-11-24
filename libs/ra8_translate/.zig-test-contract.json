@@ -4,6 +4,7 @@
     "tests/sidecar_test.zig",
     "tests/lang_test.zig",
     "tests/glossary_test.zig",
+    "tests/ocr_preprocess_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
@@ -11,12 +12,14 @@
     "src/internal/err.zig",
     "src/internal/glossary.zig",
     "src/internal/lang.zig",
+    "src/internal/ocr_preprocess.zig",
     "src/internal/sidecar.zig",
     "src/ra8_translate_abi.zig",
     "tests/abi_test.zig",
     "tests/crc32_test.zig",
     "tests/glossary_test.zig",
     "tests/lang_test.zig",
+    "tests/ocr_preprocess_test.zig",
     "tests/sidecar_test.zig"
   ],
   "standalone_source_args": {
@@ -66,6 +69,12 @@
       "sidecar",
       "-Mlang=src/internal/lang.zig"
     ],
+    "src/internal/ocr_preprocess.zig": [
+      "--dep",
+      "err",
+      "-Mroot=src/internal/ocr_preprocess.zig",
+      "-Merr=src/internal/err.zig"
+    ],
     "src/ra8_translate_abi.zig": [
       "--dep",
       "err",
@@ -75,6 +84,8 @@
       "lang",
       "--dep",
       "glossary",
+      "--dep",
+      "ocr",
       "-Mroot=src/ra8_translate_abi.zig",
       "-Merr=src/internal/err.zig",
       "--dep",
@@ -96,7 +107,10 @@
       "sidecar",
       "--dep",
       "lang",
-      "-Mglossary=src/internal/glossary.zig"
+      "-Mglossary=src/internal/glossary.zig",
+      "--dep",
+      "err",
+      "-Mocr=src/internal/ocr_preprocess.zig"
     ],
     "tests/crc32_test.zig": [
       "--dep",
@@ -161,6 +175,15 @@
       "sidecar",
       "-Mlang=src/internal/lang.zig"
     ],
+    "tests/ocr_preprocess_test.zig": [
+      "--dep",
+      "ocr",
+      "-Mroot=tests/ocr_preprocess_test.zig",
+      "--dep",
+      "err",
+      "-Mocr=src/internal/ocr_preprocess.zig",
+      "-Merr=src/internal/err.zig"
+    ],
     "tests/abi_test.zig": [
       "--dep",
       "err",
@@ -176,6 +199,8 @@
       "lang",
       "--dep",
       "glossary",
+      "--dep",
+      "ocr",
       "-Mra8_translate_abi=src/ra8_translate_abi.zig",
       "--dep",
       "crc32",
@@ -196,8 +221,11 @@
       "sidecar",
       "--dep",
       "lang",
-      "-Mglossary=src/internal/glossary.zig"
+      "-Mglossary=src/internal/glossary.zig",
+      "--dep",
+      "err",
+      "-Mocr=src/internal/ocr_preprocess.zig"
     ]
   },
-  "minimum_tests": 20
+  "minimum_tests": 27
 }
