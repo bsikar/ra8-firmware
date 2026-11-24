@@ -75,6 +75,7 @@
 #include "ra8_dfu_antirollback.h"
 #include "ra8_psa_crypto.h"
 #include "ra8_rot.h"
+#include "ra8_rsip.h"
 #endif
 
 #ifndef RA8_OFF_TARGET
@@ -898,6 +899,103 @@ static void blc_setup_or_halt(void)
   blc_route_usb_or_halt();
 }
 
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
+static ra8_rsip_sha256_ctx_t s_blc_bundle_sha;
+
+/** @brief Reset streaming SHA-256 context for DFU bundle checks. */
+static ra8_err_t blc_bundle_sha_init(void* ctx)
+{
+  (void)ctx;
+  return ra8_rsip_sha256_init(&s_blc_bundle_sha);
+}
+
+/** @brief Feed bytes into the bootloader's streaming SHA-256 context. */
+static ra8_err_t blc_bundle_sha_update(void* ctx, const uint8_t* data, uint32_t len)
+{
+  (void)ctx;
+  return ra8_rsip_sha256_update(&s_blc_bundle_sha, data, len);
+}
+
+/** @brief Emit 32-byte SHA-256 digest from the bootloader streaming context. */
+static ra8_err_t blc_bundle_sha_final(void* ctx, uint8_t* out32)
+{
+  (void)ctx;
+  return ra8_rsip_sha256_final(&s_blc_bundle_sha, out32);
+}
+
+/** @brief Verify an ECDSA-P256 digest against the provisioned root key. */
+static ra8_err_t blc_bundle_ecdsa_verify(void*          ctx,
+                                         uint32_t       pubkey_handle,
+                                         const uint8_t* digest32,
+                                         const uint8_t* sig,
+                                         uint32_t       sig_len)
+{
+  (void)ctx;
+  (void)pubkey_handle;
+  const uint8_t* pub_bytes = nullptr;
+  uint32_t       pub_len   = 0U;
+  ra8_err_t      e         = ra8_rot_root_public_key(&pub_bytes, &pub_len);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  const ra8_psa_key_attr_t attr = {
+    .type  = k_ra8_psa_key_type_ecc_p256_pub,
+    .alg   = k_ra8_psa_alg_ecdsa_sha_256,
+    .usage = k_ra8_psa_usage_verify,
+  };
+  ra8_psa_key_t key = nullptr;
+  e                 = ra8_psa_key_import(&key, &attr, pub_bytes, (size_t)pub_len);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  e = ra8_psa_verify_hash(key, k_ra8_psa_alg_ecdsa_sha_256, digest32, 32U, sig, (size_t)sig_len);
+  (void)ra8_psa_key_destroy(key);
+  return e;
+}
+
+/** @brief Read active hardware rollback floor for DFU bundle checks. */
+static ra8_err_t blc_bundle_read_floor(void* ctx, uint32_t* out_floor)
+{
+  (void)ctx;
+  const ra8_rot_antirollback_store_t* store = ra8_rot_antirollback_default_store();
+  if (store == nullptr || store->read == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  return store->read(out_floor);
+}
+
+/** @brief Persist a new anti-rollback floor after confirmed trial success. */
+static ra8_err_t blc_bundle_commit_floor(void* ctx, uint32_t new_floor)
+{
+  (void)ctx;
+  const ra8_rot_antirollback_store_t* store = ra8_rot_antirollback_default_store();
+  if (store == nullptr || store->commit == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  return store->commit(new_floor);
+}
+
+/** @brief Register hardware RoT + anti-rollback hooks on the DFU update pipeline. */
+static void blc_attach_bundle_hooks(void)
+{
+  static const ra8_dfu_bundle_crypto_t k_bundle_crypto = {
+    .sha256_init   = blc_bundle_sha_init,
+    .sha256_update = blc_bundle_sha_update,
+    .sha256_final  = blc_bundle_sha_final,
+    .ecdsa_verify  = blc_bundle_ecdsa_verify,
+    .ctx           = nullptr,
+  };
+  static const ra8_dfu_bundle_rollback_t k_bundle_rollback = {
+    .read_floor   = blc_bundle_read_floor,
+    .commit_floor = blc_bundle_commit_floor,
+    .ctx          = nullptr,
+  };
+  if (ra8_dfu_set_bundle_hooks(&k_bundle_crypto, 1U, &k_bundle_rollback) != k_ra8_ok) {
+    blc_panic_halt();
+  }
+}
+#endif
+
 /**
  * @brief Application entry: decide, then boot a slot or enter the DFU device.
  * @pre Reset_Handler copied .data and zeroed .bss.
@@ -947,6 +1045,7 @@ void main(void)
 
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
   blc_commit_confirmed_slot_floor();
+  blc_attach_bundle_hooks();
 #endif
   /* k_ra8_dfu_action_dfu (or a slot whose run target failed validation): no
    * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */

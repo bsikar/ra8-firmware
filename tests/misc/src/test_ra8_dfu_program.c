@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "../../../libs/ra8_update/inc/ra8_bundle.h"
 #include "ra8_dfu.h"
 #include "ra8_dfu_internal.h"
 #include "ra8_err.h"
@@ -313,6 +314,178 @@ static void test_slot_valid_len_bound_mcdc(void)
   TEST_END("ra8_dfu: slot_valid length-bound (MC/DC)");
 }
 
+typedef struct {
+  uint32_t acc;
+  uint32_t len;
+  bool     reject_sig;
+  uint32_t floor;
+  uint32_t floor_commits;
+} test_dfu_bundle_ctx_t;
+
+static ra8_err_t test_dfu_sha_init(void* ctx)
+{
+  test_dfu_bundle_ctx_t* c = (test_dfu_bundle_ctx_t*)ctx;
+  c->acc                   = 0x811C9DC5UL;
+  c->len                   = 0U;
+  return k_ra8_ok;
+}
+
+static ra8_err_t test_dfu_sha_update(void* ctx, const uint8_t* data, uint32_t len)
+{
+  test_dfu_bundle_ctx_t* c = (test_dfu_bundle_ctx_t*)ctx;
+  for (uint32_t i = 0U; i < len; i += 1U) {
+    c->acc ^= data[i];
+    c->acc *= 0x01000193UL;
+    c->len += 1U;
+  }
+  return k_ra8_ok;
+}
+
+static ra8_err_t test_dfu_sha_final(void* ctx, uint8_t* out32)
+{
+  const test_dfu_bundle_ctx_t* c = (const test_dfu_bundle_ctx_t*)ctx;
+  for (uint32_t i = 0U; i < k_ra8_bundle_sha256_bytes; i += 1U) {
+    out32[i] = (uint8_t)((c->acc >> ((i % 4U) * 8U)) ^ (c->len + i));
+  }
+  return k_ra8_ok;
+}
+
+static ra8_err_t test_dfu_ecdsa(void*          ctx,
+                                uint32_t       pubkey,
+                                const uint8_t* digest32,
+                                const uint8_t* sig,
+                                uint32_t       sig_len)
+{
+  const test_dfu_bundle_ctx_t* c = (const test_dfu_bundle_ctx_t*)ctx;
+  (void)digest32;
+  (void)sig;
+  if (pubkey != 0xA8D2U || sig_len != k_ra8_bundle_sig_bytes || c->reject_sig) {
+    return k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
+}
+
+static ra8_err_t test_dfu_read_floor(void* ctx, uint32_t* out_floor)
+{
+  const test_dfu_bundle_ctx_t* c = (const test_dfu_bundle_ctx_t*)ctx;
+  *out_floor                     = c->floor;
+  return k_ra8_ok;
+}
+
+static ra8_err_t test_dfu_commit_floor(void* ctx, uint32_t new_floor)
+{
+  test_dfu_bundle_ctx_t* c = (test_dfu_bundle_ctx_t*)ctx;
+  if (new_floor > c->floor) {
+    c->floor = new_floor;
+  }
+  c->floor_commits += 1U;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Signed `"RA8U"` bundle unwrapping, ECDSA verification, and deferred rollback on DFU path.
+ *
+ * @pre RA8_OFF_TARGET backs the MRAM window and dual-copy boot-state shadow.
+ * @pre None.
+ * @post Hook registration resets cleanly on exit.
+ * @post Slot B holds the verified unwrapped `ra8_app` body after the passing vector.
+ * @note Host integration test.
+ * @since 0.1.0
+ */
+static void test_dfu_bundle_roundtrip_and_fail_closed(void)
+{
+  TEST_BEGIN("ra8_dfu: RA8U bundle verify, unwrap, and deferred floor");
+
+  uint8_t payload[k_test_img_len];
+  fill_pattern(payload, (uint32_t)k_test_img_len);
+
+  const uint32_t pay_off =
+    k_ra8_bundle_header_bytes + k_ra8_bundle_desc_bytes + k_ra8_bundle_sig_bytes;
+  const uint32_t total = pay_off + (uint32_t)k_test_img_len;
+  uint8_t        container[pay_off + k_test_img_len];
+  (void)memset(container, 0, sizeof(container));
+
+  test_dfu_bundle_ctx_t bctx = {.floor = 1U};
+  ra8_bundle_hdr_t      hdr  = {
+    .magic           = k_ra8_bundle_magic,
+    .format_version  = k_ra8_bundle_format_ver,
+    .header_bytes    = k_ra8_bundle_header_bytes,
+    .bundle_version  = 5U,
+    .image_count     = 1U,
+    .flags           = 0U,
+    .total_bytes     = total,
+    .payloads_offset = pay_off,
+    .sig_len         = k_ra8_bundle_sig_bytes,
+    .reserved        = 0U,
+  };
+  ra8_bundle_image_desc_t desc = {
+    .target           = k_ra8_bundle_target_ra8_app,
+    .format           = k_ra8_bundle_fmt_rot1_img,
+    .flags            = 0U,
+    .image_version    = 5U,
+    .compat_proto_ver = 1U,
+    .offset           = pay_off,
+    .size             = (uint32_t)k_test_img_len,
+    .reserved0        = 0U,
+    .reserved1        = 0U,
+  };
+  (void)test_dfu_sha_init(&bctx);
+  (void)test_dfu_sha_update(&bctx, payload, (uint32_t)k_test_img_len);
+  (void)test_dfu_sha_final(&bctx, desc.sha256);
+
+  (void)memcpy(container, &hdr, sizeof(hdr));
+  (void)memcpy(&container[k_ra8_bundle_header_bytes], &desc, sizeof(desc));
+  (void)memset(&container[k_ra8_bundle_header_bytes + k_ra8_bundle_desc_bytes],
+               0x5A,
+               k_ra8_bundle_sig_bytes);
+  (void)memcpy(&container[pay_off], payload, (uint32_t)k_test_img_len);
+
+  /* Fail-closed: RA8U fails without crypto hooks configured. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_set_bundle_hooks(nullptr, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_b));
+  fake_mark_program_ready();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_dfu_program_image(k_ra8_dfu_slot_b, 0U, container, 64U));
+
+  const ra8_dfu_bundle_crypto_t crypto = {
+    .sha256_init   = test_dfu_sha_init,
+    .sha256_update = test_dfu_sha_update,
+    .sha256_final  = test_dfu_sha_final,
+    .ecdsa_verify  = test_dfu_ecdsa,
+    .ctx           = &bctx,
+  };
+  const ra8_dfu_bundle_rollback_t rb = {
+    .read_floor   = test_dfu_read_floor,
+    .commit_floor = test_dfu_commit_floor,
+    .ctx          = &bctx,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_set_bundle_hooks(&crypto, 0xA8D2U, &rb));
+
+  /* Valid 64-byte chunked transfer succeeds and places ra8_app at slot base. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_b));
+  fake_mark_program_ready();
+  for (uint32_t off = 0U; off < total;) {
+    const uint32_t rem  = total - off;
+    const uint32_t step = (rem >= 64U) ? 64U : rem;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_image(k_ra8_dfu_slot_b, off, &container[off], step));
+    off += step;
+  }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_commit(k_ra8_dfu_slot_b, total, 9U));
+  TEST_ASSERT(ra8_dfu_slot_valid(k_ra8_dfu_slot_b));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_verify(k_ra8_dfu_slot_b));
+  TEST_ASSERT_EQ(0, memcmp((const void*)(uintptr_t)k_ra8_dfu_slot_b_base, payload, k_test_img_len));
+  TEST_ASSERT_EQ(0U, bctx.floor_commits);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_erase_all());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, 3U, false, 9U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_confirm());
+  TEST_ASSERT_EQ(1U, bctx.floor_commits);
+  TEST_ASSERT_EQ(5U, bctx.floor);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_erase_all());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_set_bundle_hooks(nullptr, 0U, nullptr));
+  TEST_END("ra8_dfu: RA8U bundle verify, unwrap, and deferred floor");
+}
+
 int main(void)
 {
   test_slot_addressing();
@@ -320,5 +493,6 @@ int main(void)
   test_program_guards_mcdc();
   test_write_secure_guard_mcdc();
   test_slot_valid_len_bound_mcdc();
+  test_dfu_bundle_roundtrip_and_fail_closed();
   return 0;
 }

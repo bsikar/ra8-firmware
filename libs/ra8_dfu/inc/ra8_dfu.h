@@ -968,6 +968,75 @@ bool ra8_dfu_boot_state_valid(const ra8_dfu_boot_state_t* state);
  */
 [[nodiscard]] ra8_err_t ra8_dfu_confirm(void);
 
+/**
+ * @struct ra8_dfu_bundle_crypto_t
+ * @brief SHA-256 and ECDSA-P256 verification hooks for `"RA8U"` DFU bundles.
+ *
+ * @details
+ * Layout-identical to `ra8_update_crypto_t` so `ra8_dfu` delegates `"RA8U"`
+ * container verification into the shared `ra8_update` pipeline without taking
+ * a direct link dependency on PSA/RSIP crypto in non-RoT targets.
+ */
+typedef struct {
+  /** Reset streaming SHA-256 context state. */
+  ra8_err_t (*sha256_init)(void* ctx);
+  /** Absorb one chunk into streaming SHA-256 state. */
+  ra8_err_t (*sha256_update)(void* ctx, const uint8_t* data, uint32_t len);
+  /** Emit finalized 32-byte SHA-256 digest. */
+  ra8_err_t (*sha256_final)(void* ctx, uint8_t* out32);
+  /** Verify raw 32-byte digest with ECDSA-P256 signature. */
+  ra8_err_t (*ecdsa_verify)(void*          ctx,
+                            uint32_t       pubkey_handle,
+                            const uint8_t* digest32,
+                            const uint8_t* sig,
+                            uint32_t       sig_len);
+  /** Caller context passed to crypto callbacks. */
+  void* ctx;
+} ra8_dfu_bundle_crypto_t;
+
+/**
+ * @struct ra8_dfu_bundle_rollback_t
+ * @brief Optional rollback floor callbacks bound into the DFU update pipeline.
+ */
+typedef struct {
+  /** Read active anti-rollback minimum version floor. */
+  ra8_err_t (*read_floor)(void* ctx, uint32_t* out_floor);
+  /** Advance anti-rollback minimum version floor once confirmed. */
+  ra8_err_t (*commit_floor)(void* ctx, uint32_t new_floor);
+  /** Caller context passed to rollback callbacks. */
+  void* ctx;
+} ra8_dfu_bundle_rollback_t;
+
+/**
+ * @brief Register or clear crypto and rollback hooks used when DFU receives
+ *        a signed `"RA8U"` update bundle.
+ *
+ * @details
+ * `"RA8U"` bundle commits are fail-closed: when @p crypto is NULL (or any
+ * SHA-256 / ECDSA callback inside it is NULL), DFU refuses `"RA8U"` containers
+ * rather than skipping authenticity checks. Passing all NULL arguments resets
+ * hooks to the unconfigured fail-closed default.
+ *
+ * @param[in] crypto        SHA-256 + ECDSA hooks (NULL clears configuration).
+ * @param[in] pubkey_handle Opaque ECDSA verification key handle passed through.
+ * @param[in] rollback      Optional rollback floor reader/committer (may be NULL).
+ *
+ * @return `ra8_err_t` outcome.
+ * @retval k_ra8_ok            Hooks installed (or cleared when `crypto == NULL`).
+ * @retval k_ra8_err_null_ptr  `crypto` is non-NULL with a NULL required method.
+ * @retval k_ra8_err_invalid_arg `rollback` is non-NULL with a NULL method.
+ *
+ * @pre Call before `ra8_dfu_program_image` receives `"RA8U"` header bytes.
+ * @pre Provided callback pointers remain valid for the duration of DFU transfers.
+ * @post `"RA8U"` staging uses @p crypto and verifies against @p pubkey_handle.
+ * @post On any error, prior hook configuration is left unchanged.
+ * @note Not thread-safe; configure from device init before DFU worker startup.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_set_bundle_hooks(const ra8_dfu_bundle_crypto_t*   crypto,
+                                                 uint32_t                         pubkey_handle,
+                                                 const ra8_dfu_bundle_rollback_t* rollback);
+
 #ifdef __cplusplus
 }
 #endif
