@@ -50,23 +50,28 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_c6m_queue                 = 10U,   /**< Frames the model may hold for the host.      */
-  k_c6m_seen                  = 16U,   /**< Request ids the model records, in order.     */
-  k_c6m_fw_major              = 2U,    /**< Firmware major version reported.             */
-  k_c6m_fw_minor              = 12U,   /**< Firmware minor version reported.             */
-  k_c6m_fw_patch              = 11U,   /**< Firmware patch version reported.             */
-  k_c6m_chip_id               = 0x0DU, /**< `ESP_PRIV_FIRMWARE_CHIP_ESP32C6`.            */
-  k_c6m_channel               = 6U,    /**< Channel the modelled AP is on.               */
-  k_c6m_reason                = 15U,   /**< 802.11 four-way-handshake timeout.           */
-  k_c6m_rssi_mag              = 55U,   /**< Magnitude of the modelled RSSI, in dBm.      */
-  k_c6m_eth_len               = 64U,   /**< Length of the modelled Ethernet frame.       */
-  k_c6m_wifi_ev               = 2U,    /**< `WIFI_EVENT_STA_START`, as the bench saw it. */
-  k_c6m_bssid_first           = 2U,    /**< First octet of the modelled AP address; the
+  k_c6m_queue          = 10U,   /**< Frames the model may hold for the host.      */
+  k_c6m_seen           = 16U,   /**< Request ids the model records, in order.     */
+  k_c6m_fw_major       = 2U,    /**< Firmware major version reported.             */
+  k_c6m_fw_minor       = 12U,   /**< Firmware minor version reported.             */
+  k_c6m_fw_patch       = 11U,   /**< Firmware patch version reported.             */
+  k_c6m_chip_id        = 0x0DU, /**< `ESP_PRIV_FIRMWARE_CHIP_ESP32C6`.            */
+  k_c6m_channel        = 6U,    /**< Channel the modelled AP is on.               */
+  k_c6m_reason         = 15U,   /**< 802.11 four-way-handshake timeout.           */
+  k_c6m_rssi_mag       = 55U,   /**< Magnitude of the modelled RSSI, in dBm.      */
+  k_c6m_eth_len        = 64U,   /**< Length of the modelled Ethernet frame.       */
+  k_c6m_wifi_ev        = 2U,    /**< `WIFI_EVENT_STA_START`, as the bench saw it. */
+  k_c6m_bssid_first    = 2U,    /**< First octet of the modelled AP address; the
 rest ascend from it.                        */
-  k_c6m_mac_first             = 9U,    /**< First octet of the modelled station address;
+  k_c6m_mac_first      = 9U,    /**< First octet of the modelled station address;
 the rest descend from it.                   */
-  k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
-  k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
+  k_c6m_eth_first      = 0x80U, /**< First octet of the modelled 802.3 frame.      */
+  k_c6m_caps_bytes     = 17U,   /**< Octets in the host-capabilities announcement. */
+  k_c6m_scan_count     = 2U,    /**< APs reported by a non-empty modelled scan.    */
+  k_c6m_scan_alt_ch    = 11U,   /**< Channel of the second modelled scan AP.       */
+  k_c6m_scan_alt_rssi  = 62U,   /**< RSSI magnitude of the second modelled AP.     */
+  k_c6m_scan_wpa2      = 3U,    /**< `WIFI_AUTH_WPA2_PSK` for the first scan AP.   */
+  k_c6m_scan_alt_first = 3U,    /**< First BSSID octet of the second scan AP.      */
 } ra8_c6_model_const_t;
 
 /**
@@ -122,6 +127,8 @@ typedef struct ra8_c6_model {
   bool                     wrong_id;         /**< Answer with a message id nobody asked for. */
   bool                     mute;             /**< Answer nothing at all.                     */
   bool                     silent_boot;      /**< Do not answer the announcement.            */
+  bool                     silent_scan;      /**< Do not emit Event_StaScanDone on scan.     */
+  bool                     scan_empty;       /**< Report zero APs during modelled scan.      */
   uint16_t                 hs_quiet_polls;   /**< HANDSHAKE samples to read inactive first.  */
   uint16_t                 transfers;        /**< Transactions the host has clocked.         */
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
@@ -264,6 +271,16 @@ void ra8_c6_model_emit_wifi_event(void);
  * @since 0.1.0
  */
 void ra8_c6_model_emit_disconnected(void);
+
+/**
+ * @brief Queue a `Event_StaScanDone` announcement carrying @p count APs.
+ * @param[in] count Number of scan results reported in the event payload.
+ * @pre The queue has room.
+ * @pre ::ra8_c6_model_reset has run.
+ * @post One `Event_StaScanDone` frame is queued.
+ * @since 0.1.0
+ */
+void ra8_c6_model_emit_scan_done(uint32_t count);
 
 /**
  * @brief Queue an 802.3 frame as if the AP had forwarded one to the station.
