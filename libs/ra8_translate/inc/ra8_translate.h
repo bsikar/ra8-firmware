@@ -1,0 +1,417 @@
+/**
+ * @file ra8_translate.h
+ * @brief Freestanding per-chapter translation sidecar (`TRN1`) C ABI contract.
+ * @ingroup grp_translate
+ *
+ * @details
+ * Exposes the versioned binary chapter translation sidecar contract (`TRN1`),
+ * keyed by the source chapter SHA-256 content digest and translation pipeline
+ * model versions so chapter updates or model upgrades invalidate stale caches
+ * deterministically with zero dynamic memory allocation.
+ *
+ * All public functions are `task-safe-reentrant`: they borrow immutable inputs
+ * for the duration of the call, write only caller-owned output storage on
+ * success, retain no caller pointers after return, and preserve incoming output
+ * values on every non-success return.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra8_err.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** @brief Wire constants and bounds for the `TRN1` translation sidecar format. */
+typedef enum : uint32_t {
+  k_ra8_translate_sidecar_magic            = 0x314E5254U, /**< Little-endian "TRN1".         */
+  k_ra8_translate_sidecar_version          = 1U,          /**< Supported format revision.    */
+  k_ra8_translate_sidecar_header_bytes     = 96U,         /**< Fixed wire header size.       */
+  k_ra8_translate_sidecar_page_bytes       = 12U,         /**< Fixed wire PageEntry size.    */
+  k_ra8_translate_sidecar_bubble_bytes     = 44U,         /**< Fixed wire BubbleRecord size. */
+  k_ra8_translate_sidecar_max_page_bubbles = 1024U,       /**< Maximum bubbles on one page.  */
+  k_ra8_translate_max_confidence_bps       = 10000U,      /**< 100.00% in integer basis pts. */
+  k_ra8_translate_chapter_hash_bytes       = 32U,         /**< SHA-256 content key length.   */
+} ra8_translate_const_t;
+
+/** @brief Translation source script / language identifier. */
+typedef enum : uint8_t {
+  k_ra8_translate_lang_unknown  = 0U, /**< Language unspecified or unknown. */
+  k_ra8_translate_lang_korean   = 1U, /**< Korean (Hangul / mixed Hanja).   */
+  k_ra8_translate_lang_japanese = 2U, /**< Japanese (Kana / Kanji).         */
+  k_ra8_translate_lang_chinese  = 3U, /**< Chinese (Han script).            */
+} ra8_translate_lang_t;
+
+/** @brief Speech or narration bubble contour shape. */
+typedef enum : uint8_t {
+  k_ra8_translate_shape_rect         = 0U, /**< Axis-aligned rectangle.          */
+  k_ra8_translate_shape_ellipse      = 1U, /**< Elliptical speech bubble.        */
+  k_ra8_translate_shape_rounded_rect = 2U, /**< Rounded rectangle with radius.   */
+  k_ra8_translate_shape_cloud        = 3U, /**< Scalloped / thought cloud shape. */
+} ra8_translate_shape_t;
+
+/** @brief Source OCR text orientation inside a detected bubble. */
+typedef enum : uint8_t {
+  k_ra8_translate_orient_horizontal  = 0U, /**< Left-to-right horizontal lines.  */
+  k_ra8_translate_orient_vertical_rl = 1U, /**< Vertical columns, right-to-left. */
+  k_ra8_translate_orient_vertical_lr = 2U, /**< Vertical columns, left-to-right. */
+} ra8_translate_orientation_t;
+
+/** @brief Bitmask flags for `ra8_translate_sidecar_bubble_t::bubble_flags`. */
+typedef enum : uint8_t {
+  k_ra8_translate_bflag_glossary = 1U << 0U, /**< Term matched in series glossary. */
+} ra8_translate_bubble_flag_t;
+
+static_assert(sizeof(ra8_translate_lang_t) == 1U, "ra8_translate_lang_t width");
+static_assert(sizeof(ra8_translate_shape_t) == 1U, "ra8_translate_shape_t width");
+static_assert(sizeof(ra8_translate_orientation_t) == 1U, "ra8_translate_orientation_t width");
+static_assert(sizeof(ra8_translate_bubble_flag_t) == 1U, "ra8_translate_bubble_flag_t width");
+
+/**
+ * @brief Cache invalidation key binding a sidecar to a chapter and pipeline.
+ * @details Any difference in chapter hash, model version, glossary revision, or
+ * source language marks an existing sidecar stale. Reserved bytes must be zero.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t              chapter_hash[k_ra8_translate_chapter_hash_bytes]; /**< Chapter SHA-256. */
+  uint32_t             detector_model_version;                           /**< Detector .npub.  */
+  uint32_t             ocr_model_version;                                /**< OCR .npub.       */
+  uint32_t             nmt_model_version;                                /**< Marian NMT ver.  */
+  uint32_t             glossary_revision;                                /**< Series glossary. */
+  ra8_translate_lang_t source_lang;                                      /**< Chapter script.  */
+  uint8_t              reserved[3];                                      /**< Zero padding.    */
+} ra8_translate_sidecar_key_t;
+
+static_assert(sizeof(ra8_translate_sidecar_key_t) == 52U, "ra8_translate_sidecar_key_t size");
+static_assert(alignof(ra8_translate_sidecar_key_t) == 4U, "ra8_translate_sidecar_key_t align");
+static_assert(offsetof(ra8_translate_sidecar_key_t, chapter_hash) == 0U, "key chapter_hash off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, detector_model_version) == 32U,
+              "key detector_model_version off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, ocr_model_version) == 36U,
+              "key ocr_model_version off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, nmt_model_version) == 40U,
+              "key nmt_model_version off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, glossary_revision) == 44U,
+              "key glossary_revision off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, source_lang) == 48U, "key source_lang off");
+static_assert(offsetof(ra8_translate_sidecar_key_t, reserved) == 49U, "key reserved off");
+
+/**
+ * @brief Validated header view opened from an immutable `TRN1` buffer.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t                    total_bytes;      /**< Exact byte length of container. */
+  uint32_t                    file_crc32;       /**< IEEE CRC-32 stored in header.   */
+  ra8_translate_sidecar_key_t key;              /**< Cache validation key.           */
+  uint16_t                    page_count;       /**< Number of PageEntry records.    */
+  uint16_t                    reserved;         /**< Zero padding.                   */
+  uint32_t                    bubble_count;     /**< Number of BubbleRecord items.   */
+  uint32_t                    line_break_count; /**< Total u16 line-break offsets.   */
+  uint32_t                    text_pool_bytes;  /**< Byte extent of UTF-8 text pool. */
+} ra8_translate_sidecar_header_t;
+
+static_assert(sizeof(ra8_translate_sidecar_header_t) == 76U, "ra8_translate_sidecar_header_t size");
+static_assert(alignof(ra8_translate_sidecar_header_t) == 4U,
+              "ra8_translate_sidecar_header_t align");
+static_assert(offsetof(ra8_translate_sidecar_header_t, total_bytes) == 0U,
+              "header total_bytes off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, file_crc32) == 4U, "header file_crc32 off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, key) == 8U, "header key off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, page_count) == 60U, "header page_count off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, reserved) == 62U, "header reserved off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, bubble_count) == 64U,
+              "header bubble_count off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, line_break_count) == 68U,
+              "header line_break_count off");
+static_assert(offsetof(ra8_translate_sidecar_header_t, text_pool_bytes) == 72U,
+              "header text_pool_bytes off");
+
+/**
+ * @brief Per-page slice descriptor inside a `TRN1` sidecar.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t page_index;   /**< 0-based page index within the chapter. */
+  uint16_t bubble_count; /**< Bubbles present on this page.          */
+  uint32_t first_bubble; /**< Start index in chapter bubble array.   */
+  uint16_t page_width;   /**< Page raster width in pixels.           */
+  uint16_t page_height;  /**< Page raster height in pixels.          */
+} ra8_translate_sidecar_page_t;
+
+static_assert(sizeof(ra8_translate_sidecar_page_t) == 12U, "ra8_translate_sidecar_page_t size");
+static_assert(alignof(ra8_translate_sidecar_page_t) == 4U, "ra8_translate_sidecar_page_t align");
+static_assert(offsetof(ra8_translate_sidecar_page_t, page_index) == 0U, "page page_index off");
+static_assert(offsetof(ra8_translate_sidecar_page_t, bubble_count) == 2U, "page bubble_count off");
+static_assert(offsetof(ra8_translate_sidecar_page_t, first_bubble) == 4U, "page first_bubble off");
+static_assert(offsetof(ra8_translate_sidecar_page_t, page_width) == 8U, "page page_width off");
+static_assert(offsetof(ra8_translate_sidecar_page_t, page_height) == 10U, "page page_height off");
+
+/**
+ * @brief Metadata and table offsets for one speech or narration bubble.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t                    x;                  /**< Box left pixel coordinate.        */
+  uint16_t                    y;                  /**< Box top pixel coordinate.         */
+  uint16_t                    w;                  /**< Box width in pixels.              */
+  uint16_t                    h;                  /**< Box height in pixels.             */
+  ra8_translate_shape_t       shape;              /**< Bubble contour shape.             */
+  ra8_translate_orientation_t text_orientation;   /**< OCR text orientation.             */
+  uint16_t                    corner_radius;      /**< Radius for rounded_rect shapes.   */
+  uint16_t                    reading_order;      /**< 0-based page reading order index. */
+  uint16_t                    ocr_confidence_bps; /**< Confidence in [0, 10000].         */
+  uint16_t                    font_size_px;       /**< Fitted English font size (px).    */
+  uint16_t                    line_count;         /**< Number of fitted line breaks.     */
+  uint32_t                    first_line_break;   /**< Index into line-break table.      */
+  uint32_t                    source_text_off;    /**< Byte offset in UTF-8 text pool.   */
+  uint32_t                    source_text_len;    /**< UTF-8 source text length (bytes). */
+  uint32_t                    english_text_off;   /**< Byte offset in UTF-8 text pool.   */
+  uint32_t                    english_text_len;   /**< UTF-8 English length (bytes).     */
+  uint8_t                     bubble_flags;       /**< `ra8_translate_bubble_flag_t`.    */
+  uint8_t                     reserved[3];        /**< Zero padding.                     */
+} ra8_translate_sidecar_bubble_t;
+
+static_assert(sizeof(ra8_translate_sidecar_bubble_t) == 44U, "ra8_translate_sidecar_bubble_t size");
+static_assert(alignof(ra8_translate_sidecar_bubble_t) == 4U,
+              "ra8_translate_sidecar_bubble_t align");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, x) == 0U, "bubble x off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, y) == 2U, "bubble y off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, w) == 4U, "bubble w off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, h) == 6U, "bubble h off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, shape) == 8U, "bubble shape off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, text_orientation) == 9U,
+              "bubble text_orientation off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, corner_radius) == 10U,
+              "bubble corner_radius off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, reading_order) == 12U,
+              "bubble reading_order off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, ocr_confidence_bps) == 14U,
+              "bubble ocr_confidence_bps off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, font_size_px) == 16U,
+              "bubble font_size_px off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, line_count) == 18U, "bubble line_count off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, first_line_break) == 20U,
+              "bubble first_line_break off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, source_text_off) == 24U,
+              "bubble source_text_off off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, source_text_len) == 28U,
+              "bubble source_text_len off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, english_text_off) == 32U,
+              "bubble english_text_off off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, english_text_len) == 36U,
+              "bubble english_text_len off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, bubble_flags) == 40U,
+              "bubble bubble_flags off");
+static_assert(offsetof(ra8_translate_sidecar_bubble_t, reserved) == 41U, "bubble reserved off");
+
+/**
+ * @brief Validate a `TRN1` sidecar buffer and decode its header.
+ *
+ * @details Calling context: `task-safe-reentrant`. Borrows @p bytes for the
+ * duration of the call and writes caller-owned @p out_header only on success.
+ * Null @p out_header or non-empty null @p bytes returns `k_ra8_err_null_ptr`;
+ * length mismatches return `k_ra8_err_invalid_size`; CRC mismatches return
+ * `k_ra8_err_crc_mismatch`; unsupported format version returns
+ * `k_ra8_err_not_supported`; malformed tables return `k_ra8_err_invalid_arg`.
+ *
+ * @param[in] bytes Immutable serialized `TRN1` byte buffer (may be NULL only if @p len == 0).
+ * @param[in] len Byte length of @p bytes.
+ * @param[out] out_header Non-null caller storage receiving validated header fields.
+ * @return ::k_ra8_ok on valid container, or explicit `ra8_err_t` failure code.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_open(const uint8_t*                  bytes,
+                                     size_t                          len,
+                                     ra8_translate_sidecar_header_t* out_header);
+
+/**
+ * @brief Check whether a validated `TRN1` header matches an expected cache key.
+ *
+ * @details Calling context: `task-safe-reentrant`. Borrows both structs for the
+ * call and writes @p out_matches only when inputs are valid. Returns
+ * `k_ra8_err_invalid_arg` if @p header or @p expected has non-zero reserved
+ * bytes, out-of-range language enum, or zero model version.
+ *
+ * @param[in] header Non-null validated header from ::ra8_translate_sidecar_open.
+ * @param[in] expected Non-null key describing current chapter bytes and models.
+ * @param[out] out_matches Non-null caller boolean receiving key-match status.
+ * @return ::k_ra8_ok on comparison completion, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_key_matches(const ra8_translate_sidecar_header_t* header,
+                                            const ra8_translate_sidecar_key_t*    expected,
+                                            bool*                                 out_matches);
+
+/**
+ * @brief Read one validated page descriptor by index.
+ *
+ * @details Calling context: `task-safe-reentrant`. Validates @p bytes and writes
+ * @p out_page only on success. Returns `k_ra8_err_range_check_failed` when
+ * @p page_index is out of bounds.
+ *
+ * @param[in] bytes Validated `TRN1` byte buffer.
+ * @param[in] len Byte length of @p bytes.
+ * @param[in] page_index Page index in `[0, header.page_count)`.
+ * @param[out] out_page Non-null caller storage receiving the page descriptor.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_page_at(const uint8_t*                bytes,
+                                        size_t                        len,
+                                        uint16_t                      page_index,
+                                        ra8_translate_sidecar_page_t* out_page);
+
+/**
+ * @brief Read one validated bubble record by chapter-global index.
+ *
+ * @details Calling context: `task-safe-reentrant`. Validates @p bytes and writes
+ * @p out_bubble only on success. Returns `k_ra8_err_range_check_failed` when
+ * @p bubble_index is out of bounds.
+ *
+ * @param[in] bytes Validated `TRN1` byte buffer.
+ * @param[in] len Byte length of @p bytes.
+ * @param[in] bubble_index Bubble index in `[0, header.bubble_count)`.
+ * @param[out] out_bubble Non-null caller storage receiving the bubble metadata.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_bubble_at(const uint8_t*                  bytes,
+                                          size_t                          len,
+                                          uint32_t                        bubble_index,
+                                          ra8_translate_sidecar_bubble_t* out_bubble);
+
+/**
+ * @brief Borrow a validated bubble's UTF-8 source text span inside @p bytes.
+ *
+ * @details Calling context: `task-safe-reentrant`. Returned @p out_ptr borrows
+ * directly from @p bytes and remains valid only while @p bytes lives; an empty
+ * string returns a non-null pointer within @p bytes text pool with `*out_len == 0`.
+ *
+ * @param[in] bytes Validated `TRN1` byte buffer.
+ * @param[in] len Byte length of @p bytes.
+ * @param[in] bubble_index Bubble index in `[0, header.bubble_count)`.
+ * @param[out] out_ptr Non-null out-pointer receiving span base inside @p bytes.
+ * @param[out] out_len Non-null out-length receiving UTF-8 byte count.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_source_text(const uint8_t*  bytes,
+                                            size_t          len,
+                                            uint32_t        bubble_index,
+                                            const uint8_t** out_ptr,
+                                            uint32_t*       out_len);
+
+/**
+ * @brief Borrow a validated bubble's UTF-8 English text span inside @p bytes.
+ *
+ * @details Calling context: `task-safe-reentrant`. Returned @p out_ptr borrows
+ * directly from @p bytes and remains valid only while @p bytes lives.
+ *
+ * @param[in] bytes Validated `TRN1` byte buffer.
+ * @param[in] len Byte length of @p bytes.
+ * @param[in] bubble_index Bubble index in `[0, header.bubble_count)`.
+ * @param[out] out_ptr Non-null out-pointer receiving span base inside @p bytes.
+ * @param[out] out_len Non-null out-length receiving UTF-8 byte count.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_english_text(const uint8_t*  bytes,
+                                             size_t          len,
+                                             uint32_t        bubble_index,
+                                             const uint8_t** out_ptr,
+                                             uint32_t*       out_len);
+
+/**
+ * @brief Copy a validated bubble's fitted line-break offsets into caller storage.
+ *
+ * @details Calling context: `task-safe-reentrant`. Writes neither @p out_breaks
+ * nor @p out_count on failure. A null @p out_breaks returns `k_ra8_err_null_ptr`.
+ * Insufficient @p break_cap returns `k_ra8_err_invalid_size`.
+ *
+ * @param[in] bytes Validated `TRN1` byte buffer.
+ * @param[in] len Byte length of @p bytes.
+ * @param[in] bubble_index Bubble index in `[0, header.bubble_count)`.
+ * @param[out] out_breaks Non-null caller array receiving cumulative end byte offsets.
+ * @param[in] break_cap Element capacity of @p out_breaks.
+ * @param[out] out_count Non-null storage receiving copied line-break count.
+ * @return ::k_ra8_ok on success, or explicit error status.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_line_breaks(const uint8_t* bytes,
+                                            size_t         len,
+                                            uint32_t       bubble_index,
+                                            uint16_t*      out_breaks,
+                                            uint16_t       break_cap,
+                                            uint16_t*      out_count);
+
+/**
+ * @brief Compute the exact byte length needed to serialize a chapter sidecar.
+ *
+ * @details Calling context: `task-safe-reentrant`. Checks section-size arithmetic
+ * without overflow and writes @p out_bytes only on success.
+ *
+ * @param[in] page_count Number of pages.
+ * @param[in] bubble_count Total number of bubbles.
+ * @param[in] line_break_count Total number of `uint16_t` line-break entries.
+ * @param[in] text_pool_bytes Byte length of concatenated UTF-8 text pool.
+ * @param[out] out_bytes Non-null storage receiving exact serialized byte count.
+ * @return ::k_ra8_ok on success, `k_ra8_err_invalid_size` on `uint32_t` / `size_t` overflow.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_required_bytes(uint16_t page_count,
+                                               uint32_t bubble_count,
+                                               uint32_t line_break_count,
+                                               uint32_t text_pool_bytes,
+                                               size_t*  out_bytes);
+
+/**
+ * @brief Serialize and CRC-stamp a chapter translation sidecar into @p out_buf.
+ *
+ * @details Calling context: `task-safe-reentrant`. Validates all arguments and
+ * sidecar invariants before writing any byte to @p out_buf or @p out_written.
+ * Input slice pointers (@p pages, @p bubbles, @p line_breaks, @p text_pool) may
+ * be NULL only when their corresponding element or byte count is zero.
+ * Insufficient @p out_cap returns `k_ra8_err_invalid_size`.
+ *
+ * @param[in] key Non-null cache invalidation key.
+ * @param[in] pages Page descriptors (`page_count` entries).
+ * @param[in] page_count Number of pages.
+ * @param[in] bubbles Bubble descriptors (`bubble_count` entries).
+ * @param[in] bubble_count Total number of bubbles.
+ * @param[in] line_breaks Cumulative line-break end offsets (`line_break_count` entries).
+ * @param[in] line_break_count Total entries in @p line_breaks.
+ * @param[in] text_pool UTF-8 text pool bytes (`text_pool_bytes` bytes).
+ * @param[in] text_pool_bytes Byte extent of @p text_pool.
+ * @param[out] out_buf Non-null caller output buffer receiving serialized bytes.
+ * @param[in] out_cap Capacity of @p out_buf in bytes.
+ * @param[out] out_written Non-null storage receiving exact byte count written.
+ * @return ::k_ra8_ok on success, or explicit error status with outputs unchanged.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_translate_sidecar_write(const ra8_translate_sidecar_key_t*    key,
+                                      const ra8_translate_sidecar_page_t*   pages,
+                                      uint16_t                              page_count,
+                                      const ra8_translate_sidecar_bubble_t* bubbles,
+                                      uint32_t                              bubble_count,
+                                      const uint16_t*                       line_breaks,
+                                      uint32_t                              line_break_count,
+                                      const uint8_t*                        text_pool,
+                                      uint32_t                              text_pool_bytes,
+                                      uint8_t*                              out_buf,
+                                      size_t                                out_cap,
+                                      size_t*                               out_written);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,0 +1,79 @@
+{
+  "test_roots": [
+    "tests/crc32_test.zig",
+    "tests/sidecar_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/crc32.zig",
+    "src/internal/err.zig",
+    "src/internal/sidecar.zig",
+    "src/ra8_translate_abi.zig",
+    "tests/abi_test.zig",
+    "tests/crc32_test.zig",
+    "tests/sidecar_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/sidecar.zig": [
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Mroot=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "src/ra8_translate_abi.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mroot=src/ra8_translate_abi.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig"
+    ],
+    "tests/crc32_test.zig": [
+      "--dep",
+      "crc32",
+      "-Mroot=tests/crc32_test.zig",
+      "-Mcrc32=src/internal/crc32.zig"
+    ],
+    "tests/sidecar_test.zig": [
+      "--dep",
+      "sidecar",
+      "-Mroot=tests/sidecar_test.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig",
+      "-Merr=src/internal/err.zig"
+    ],
+    "tests/abi_test.zig": [
+      "--dep",
+      "err",
+      "--dep",
+      "ra8_translate_abi",
+      "-Mroot=tests/abi_test.zig",
+      "-Merr=src/internal/err.zig",
+      "--dep",
+      "err",
+      "--dep",
+      "sidecar",
+      "-Mra8_translate_abi=src/ra8_translate_abi.zig",
+      "--dep",
+      "crc32",
+      "--dep",
+      "err",
+      "-Msidecar=src/internal/sidecar.zig",
+      "-Mcrc32=src/internal/crc32.zig"
+    ]
+  },
+  "minimum_tests": 10
+}

@@ -17,6 +17,7 @@
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_launch.c
 //!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
 //!   ra8_fmt            tests/support/c/test_ra8_fmt.c
+//!   ra8_translate      tests/support/c/test_ra8_translate.c
 //!   ra8_update         libs/ra8_update/tests/src/test_update_abi.c
 //!
 //! Under CMake the same archives are produced by tests/cmake/zig_library.cmake
@@ -160,6 +161,12 @@ const slice = [_]SliceMember{
         .c_suite_path = "tests/support/c/test_ra8_fmt.c",
         .host_seam_roots = &.{"tests/support/zig/ra8_fmt_seam.zig"},
         .extra_include_paths = &.{"apps/shared_libs/jof/inc"},
+    },
+    .{
+        .dependency_name = "ra8_translate",
+        .artifact_name = "ra8_translate",
+        .include_path = "libs/ra8_translate/inc",
+        .c_suite_path = "tests/support/c/test_ra8_translate.c",
     },
 };
 
