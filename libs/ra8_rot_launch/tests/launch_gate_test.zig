@@ -24,3 +24,8 @@ test "an unrecognised verdict denies" {
     try std.testing.expect(!gate.passed(1));
     try std.testing.expect(!gate.passed(0xFFFF));
 }
+
+test "trial launch verifies anti-rollback without committing, confirmed launch commits" {
+    try std.testing.expectEqual(gate.FloorPolicy.verify_no_commit, gate.floorPolicyForLaunch(true));
+    try std.testing.expectEqual(gate.FloorPolicy.verify_and_commit, gate.floorPolicyForLaunch(false));
+}

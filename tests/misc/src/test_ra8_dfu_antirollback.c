@@ -352,12 +352,59 @@ static void test_default_store_nv_backed(void)
   TEST_ASSERT_EQ(k_ra8_ok, store->read(&stored));
   TEST_ASSERT_EQ(k_test_arb_newer, stored);
 
-  /* verify() now denies a real downgrade and accepts a same-or-newer image. */
+  /* trial (no-commit) verifies newer without advancing stored floor. */
+  const uint32_t trial_newer = (uint32_t)k_test_arb_newer + 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_antirollback_verify_no_commit(store, trial_newer));
+  TEST_ASSERT_EQ(k_ra8_ok, store->read(&stored));
+  TEST_ASSERT_EQ(k_test_arb_newer, stored);
+
+  /* Because trial_newer was not committed, reverting to k_test_arb_newer still passes,
+   * while older versions below the stored floor are still rejected. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_rot_antirollback_verify(store, (uint32_t)k_test_arb_older));
+                 ra8_rot_antirollback_verify_no_commit(store, (uint32_t)k_test_arb_older));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_antirollback_verify(store, (uint32_t)k_test_arb_newer));
 
+  /* Once the trial is confirmed, a non-trial verify commits trial_newer. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_antirollback_verify(store, trial_newer));
+  TEST_ASSERT_EQ(k_ra8_ok, store->read(&stored));
+  TEST_ASSERT_EQ(trial_newer, stored);
+
   TEST_END("anti-rollback: default store NV-backed + monotonic");
+}
+
+/**
+ * @brief Verify no-commit mode: enforces floor, never calls commit, tolerates NULL commit.
+ *
+ * @pre Mock store models the confirmed floor cleanly.
+ * @post No persistent side effects.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_verify_no_commit_preserves_floor(void)
+{
+  TEST_BEGIN("anti-rollback: verify_no_commit preserves floor");
+
+  mock_reset((uint32_t)k_test_arb_stored);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rot_antirollback_verify_no_commit(&s_mock_store, (uint32_t)k_test_arb_newer));
+  TEST_ASSERT(!s_mock_commit_called);
+  TEST_ASSERT_EQ(k_test_arb_stored, s_mock_stored);
+
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_rot_antirollback_verify_no_commit(&s_mock_store, (uint32_t)k_test_arb_older));
+  TEST_ASSERT(!s_mock_commit_called);
+
+  /* Reads still fault safely; commit=NULL is permitted since it is never called. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rot_antirollback_verify_no_commit(nullptr, (uint32_t)k_test_arb_newer));
+  const ra8_rot_antirollback_store_t no_read = {.read = nullptr, .commit = mock_commit};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rot_antirollback_verify_no_commit(&no_read, (uint32_t)k_test_arb_newer));
+  const ra8_rot_antirollback_store_t no_commit = {.read = mock_read, .commit = nullptr};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rot_antirollback_verify_no_commit(&no_commit, (uint32_t)k_test_arb_newer));
+
+  TEST_END("anti-rollback: verify_no_commit preserves floor");
 }
 
 int main(void)
@@ -368,6 +415,7 @@ int main(void)
   test_verify_older_rejected();
   test_verify_null_store_denied();
   test_verify_read_failure_denied();
+  test_verify_no_commit_preserves_floor();
   test_default_store_nv_backed();
   return 0;
 }

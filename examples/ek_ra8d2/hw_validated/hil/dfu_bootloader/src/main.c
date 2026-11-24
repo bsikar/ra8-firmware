@@ -72,7 +72,9 @@
 #include "ra8_wdt.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "mbedtls/memory_buffer_alloc.h"
+#include "ra8_dfu_antirollback.h"
 #include "ra8_psa_crypto.h"
+#include "ra8_rot.h"
 #endif
 
 #ifndef RA8_OFF_TARGET
@@ -486,13 +488,14 @@ static void blc_decide(ra8_dfu_boot_plan_t* out_plan, uint32_t* out_boot_seq)
  *
  * @details
  * Reads the slot header for its `img_len` / `entry`, then delegates to the
- * shared ::ra8_dfu_launch, which cross-checks the run target, copies the image
- * body from the slot to ::k_ra8_dfu_run_base in SRAM, and branches to it. Because
- * an app is linked ONCE at the run base, the same image boots from either slot.
- * ::ra8_dfu_launch returns here only when the run target fails validation (a
- * corrupted `entry`/length), in which case `main` drops to DFU.
+ * shared ::ra8_dfu_launch_trial (when @p is_trial is true) or ::ra8_dfu_launch
+ * (when confirmed / non-trial), which cross-checks the run target, verifies the
+ * slot signature and anti-rollback floor (committing the floor only when
+ * @p is_trial is false), copies the image body to ::k_ra8_dfu_run_base, and
+ * branches to it.
  *
- * @param[in] slot Slot to boot (A or B); already passed ::ra8_dfu_slot_valid.
+ * @param[in] slot     Slot to boot (A or B); already passed ::ra8_dfu_slot_valid.
+ * @param[in] is_trial True for an unconfirmed trial boot; false for confirmed.
  *
  * @return void -- returns to the caller ONLY when the run target is invalid
  *         (so `main` drops to DFU); on a valid image it does not return.
@@ -505,15 +508,60 @@ static void blc_decide(ra8_dfu_boot_plan_t* out_plan, uint32_t* out_boot_seq)
  * @note Not thread-safe; the final hand-off of a single-threaded boot.
  * @since 0.1.0
  */
-static void blc_boot_slot(ra8_dfu_slot_t slot)
+static void blc_boot_slot(ra8_dfu_slot_t slot, bool is_trial)
 {
   ra8_dfu_img_hdr_t hdr = {};
   if (ra8_dfu_read_header(slot, &hdr) != k_ra8_ok) {
     return; /* unreadable header -> let main fall through to DFU */
   }
-  ra8_dfu_launch(ra8_dfu_slot_base(slot), hdr.img_len, hdr.entry);
-  /* Returns only if ra8_dfu_run_target_valid rejected the image -> main -> DFU. */
+  const uintptr_t base = ra8_dfu_slot_base(slot);
+  if (is_trial) {
+    ra8_dfu_launch_trial(base, hdr.img_len, hdr.entry);
+  } else {
+    ra8_dfu_launch(base, hdr.img_len, hdr.entry);
+  }
+  /* Returns only if run-target or RoT verification rejected the image -> main -> DFU. */
 }
+
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
+/**
+ * @brief Persist the anti-rollback floor for an already-confirmed slot before DFU.
+ *
+ * @details If an unconfirmed trial slot called ::ra8_dfu_confirm() and the
+ * device reset directly into DFU mode before a confirmed normal launch occurred,
+ * commit that confirmed slot's authenticated image version now so a subsequent
+ * DFU transfer cannot downgrade past the confirmed release.
+ *
+ * @return void.
+ * @pre PSA crypto and boot state are readable.
+ * @post Anti-rollback counter is at least the confirmed slot's version if authentic.
+ * @note No-op when no confirmed valid authentic slot is recorded. @since 0.1.0
+ */
+static void blc_commit_confirmed_slot_floor(void)
+{
+  ra8_dfu_boot_state_t boot_state = {};
+  if (ra8_dfu_boot_state_read(&boot_state) != k_ra8_ok || boot_state.confirmed == 0U) {
+    return;
+  }
+  const ra8_dfu_slot_t slot = (ra8_dfu_slot_t)boot_state.trial_slot;
+  if ((slot != k_ra8_dfu_slot_a && slot != k_ra8_dfu_slot_b) || !ra8_dfu_slot_valid(slot)) {
+    return;
+  }
+  ra8_dfu_img_hdr_t hdr = {};
+  if (ra8_dfu_read_header(slot, &hdr) != k_ra8_ok ||
+      !ra8_dfu_run_target_valid(hdr.entry, hdr.img_len)) {
+    return;
+  }
+  const uintptr_t   base    = ra8_dfu_slot_base(slot);
+  const void* const trailer = ra8_rot_trailer_after((const void*)base, hdr.img_len);
+  if (trailer == nullptr ||
+      ra8_rot_verify_image((const uint8_t*)base, hdr.img_len, trailer) != k_ra8_ok) {
+    return;
+  }
+  (void)ra8_rot_antirollback_verify(ra8_rot_antirollback_default_store(),
+                                    ra8_rot_trailer_image_version(trailer));
+}
+#endif
 
 #ifndef RA8_OFF_TARGET
 
@@ -888,10 +936,13 @@ void main(void)
         (void)blc_print("dfu-bootloader: arming trial watchdog\r\n");
         blc_arm_trial_watchdog_or_halt();
       }
-      blc_boot_slot(boot_slot); /* returns only if run target / RoT verify fails */
+      blc_boot_slot(boot_slot, plan.is_trial); /* returns only if run target / RoT verify fails */
     }
   }
 
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
+  blc_commit_confirmed_slot_floor();
+#endif
   /* k_ra8_dfu_action_dfu (or a slot whose run target failed validation): no
    * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */
   (void)blc_print("dfu-bootloader: no bootable slot -- entering DFU\r\n");

@@ -403,6 +403,26 @@ bool ra8_dfu_run_target_valid(uint32_t entry, uint32_t img_len);
 void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry);
 
 /**
+ * @brief Trial copy-to-run hand-off: verify signature and version without advancing floor.
+ *
+ * Identical to ::ra8_dfu_launch except it enforces anti-rollback without
+ * advancing the durable version counter in Extra-MRAM. Intended for
+ * unconfirmed A/B trial launches so that if the trial fails or exhausts its
+ * watchdog budget, the bootloader can still fall back to the older confirmed
+ * slot; once confirmed, the next non-trial boot via ::ra8_dfu_launch commits
+ * the new floor.
+ *
+ * @param[in] src     Source image base (body + trailer); non-zero.
+ * @param[in] img_len Image body length in bytes; non-zero 32-byte multiple.
+ * @param[in] entry   Recorded run base; must equal ::k_ra8_dfu_run_base.
+ *
+ * @see ra8_dfu_launch
+ * @see ra8_rot_antirollback_verify_no_commit
+ * @since 0.1.0
+ */
+void ra8_dfu_launch_trial(uintptr_t src, uint32_t img_len, uint32_t entry);
+
+/**
  * @brief Copy-to-run hand-off with NO authentication.
  *
  * Checks @p src and cross-checks @p entry with ::ra8_dfu_run_target_valid,

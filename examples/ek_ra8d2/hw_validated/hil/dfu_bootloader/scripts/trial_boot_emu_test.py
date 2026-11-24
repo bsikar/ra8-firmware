@@ -301,16 +301,17 @@ def run_emulator_check(
     """Run the composed multi-boot WDT0 trial-reset + revert check in ra8_emulator."""
     body_a = make_wfi_payload(SLOT_A_MARKER, b"dfu-payload: Slot A active\r\n")
     body_b = make_wfi_payload(SLOT_B_MARKER, b"dfu-payload: Slot B trial hang\r\n")
-    # Both slots use the same monotonic security version (img_version=7) while
-    # advancing slot header seq (2 > 1), matching how an unconfirmed trial must
-    # not irrevocably burn a higher anti-rollback OTP floor prior to confirm.
+    # Slot B carries a newer image (img_version=8, seq=2) launched as an
+    # unconfirmed trial while Slot A remains at confirmed img_version=7 (seq=1).
+    # Trial launch must verify anti-rollback without committing 8 to Extra-MRAM
+    # prior to confirm so WDT0 exhaustion still reverts cleanly to Slot A.
     if key_path is not None:
         slot_a = sign_with_pem(repo_root, key_path, body_a, 7)
-        slot_b = sign_with_pem(repo_root, key_path, body_b, 7)
+        slot_b = sign_with_pem(repo_root, key_path, body_b, 8)
         pubkey_patch = None
     else:
         slot_a = sign_with_ephemeral_key(body_a, 7)
-        slot_b = sign_with_ephemeral_key(body_b, 7)
+        slot_b = sign_with_ephemeral_key(body_b, 8)
         pubkey_patch = (read_prod_pubkey(repo_root), test_pubkey_sec1())
 
     segments = (
