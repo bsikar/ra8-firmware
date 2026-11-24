@@ -13,9 +13,16 @@
     "src/internal/root.zig",
     "src/internal/tone.zig",
     "src/internal/dither.zig",
+    "src/internal/dither_mask.zig",
     "src/internal/bind.zig",
+    "src/internal/coverage_rle.zig",
     "src/internal/font_8x16.zig",
+    "src/internal/font_display.zig",
+    "src/internal/font_literata.zig",
+    "src/internal/surface.zig",
+    "src/internal/surface_blit.zig",
     "src/internal/text.zig",
+    "src/ra8_gfx.zig",
     "src/ra8_gfx_abi.zig",
     "src/ra8_gfx_font_abi.zig",
     "tests/internal_test.zig",
@@ -25,11 +32,7 @@
     "tests/font_test.zig",
     "tests/abi_test.zig",
     "tests/text_test.zig",
-    "src/internal/font_literata.zig",
-    "src/internal/surface.zig",
-    "src/internal/surface_blit.zig",
-    "src/ra8_gfx.zig",
     "tests/surface_test.zig"
   ],
-  "minimum_tests": 154
-}\n
+  "minimum_tests": 210
+}
