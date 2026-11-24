@@ -4,6 +4,7 @@
   ],
   "covered_sources": [
     "src/ra8_img_imgdec.zig",
+    "src/reflow_bidi.zig",
     "src/reflow_cache.zig",
     "src/reflow_css.zig",
     "src/reflow_css_cascade.zig",
@@ -14,9 +15,12 @@
     "src/reflow_layout_image.zig",
     "src/reflow_layout_table.zig",
     "src/reflow_link.zig",
+    "src/reflow_opentype.zig",
     "src/reflow_parse_abi.zig",
     "src/reflow_render.zig",
     "src/reflow_render_face.zig",
+    "src/reflow_shape.zig",
+    "src/reflow_shape_layout.zig",
     "src/reflow_svg.zig",
     "src/reflow_svg_doc.zig",
     "src/reflow_svg_path.zig",
@@ -26,8 +30,10 @@
     "src/reflow_tokenize_attr.zig",
     "src/reflow_tokenize_entities.zig",
     "src/reflow_tokenize_lex.zig",
+    "src/reflow_unicode.zig",
     "src/standalone_build_options.zig",
     "tests/ra8_img_imgdec_test.zig",
+    "tests/reflow_bidi_test.zig",
     "tests/reflow_cache_test.zig",
     "tests/reflow_css_cascade_test.zig",
     "tests/reflow_css_rules_test.zig",
@@ -38,6 +44,8 @@
     "tests/reflow_render_face_test.zig",
     "tests/reflow_render_test.zig",
     "tests/reflow_render_test_seam.zig",
+    "tests/reflow_shaping_test.zig",
+    "tests/reflow_shaping_test_font.zig",
     "tests/reflow_svg_doc_test.zig",
     "tests/reflow_svg_path_test.zig",
     "tests/reflow_svg_shape_test.zig",
@@ -111,6 +119,18 @@
       "-Mroot=src/reflow_render.zig",
       "-Mreflow_build_options=src/standalone_build_options.zig"
     ],
+    "src/reflow_shape.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_shape.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
+    "src/reflow_shape_layout.zig": [
+      "--dep",
+      "reflow_build_options",
+      "-Mroot=src/reflow_shape_layout.zig",
+      "-Mreflow_build_options=src/standalone_build_options.zig"
+    ],
     "src/reflow_tokenize.zig": [
       "--dep",
       "reflow_build_options",
@@ -130,5 +150,5 @@
       "-Mreflow_build_options=src/standalone_build_options.zig"
     ]
   },
-  "minimum_tests": 132
+  "minimum_tests": 144
 }

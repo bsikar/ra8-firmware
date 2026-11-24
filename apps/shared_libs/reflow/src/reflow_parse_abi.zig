@@ -249,13 +249,22 @@ pub const css = @import("reflow_css.zig");
 pub const css_cascade = @import("reflow_css_cascade.zig");
 pub const css_rules = @import("reflow_css_rules.zig");
 pub const image = @import("reflow_image.zig");
+pub const layout = @import("reflow_layout.zig");
+pub const layout_driver = @import("reflow_layout_driver.zig");
+pub const link = @import("reflow_link.zig");
 pub const render = @import("reflow_render.zig");
 pub const render_face = @import("reflow_render_face.zig");
+pub const shape = @import("reflow_shape.zig");
+pub const shape_layout = @import("reflow_shape_layout.zig");
 pub const svg = @import("reflow_svg.zig");
 pub const svg_doc = @import("reflow_svg_doc.zig");
 pub const svg_path = @import("reflow_svg_path.zig");
 pub const svg_shape = @import("reflow_svg_shape.zig");
 pub const svg_xform = @import("reflow_svg_xform.zig");
+pub const tokenize = @import("reflow_tokenize.zig");
+pub const unicode = @import("reflow_unicode.zig");
+pub const bidi = @import("reflow_bidi.zig");
+pub const opentype = @import("reflow_opentype.zig");
 
 comptime {
     _ = k_ra8_ok;
@@ -263,6 +272,10 @@ comptime {
     _ = @import("reflow_layout_table.zig");
     _ = @import("reflow_layout_driver.zig");
     _ = @import("reflow_link.zig");
+    _ = unicode;
+    _ = bidi;
+    _ = opentype;
+    _ = shape;
     _ = imgdec;
     _ = cache;
     _ = css_rules;

@@ -354,6 +354,12 @@ fn internal_apply_decl(prop: [*]const u8, plen: usize, val: [*]const u8, vlen: u
     } else if (priv_reflow_css_ci_eq(prop, plen, "display")) {
         out.set |= k_ra8_css_set_display;
         out.display = if (priv_reflow_css_ci_eq(val, vlen, "none")) 1 else 0;
+    } else if (priv_reflow_css_ci_eq(prop, plen, "direction")) {
+        if (priv_reflow_css_ci_eq(val, vlen, "rtl")) {
+            out.pad = 2;
+        } else if (priv_reflow_css_ci_eq(val, vlen, "ltr")) {
+            out.pad = 1;
+        }
     }
 }
 

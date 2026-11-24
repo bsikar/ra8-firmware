@@ -23,6 +23,7 @@
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 const lz = @import("reflow_layout.zig");
+const shape = @import("reflow_shape.zig");
 
 const ReflowEngine = abi.ReflowEngine;
 const ReflowToken = abi.ReflowToken;
@@ -130,6 +131,11 @@ fn cell_text(engine: *ReflowEngine, font: *const StbttFontinfo, tok: *const Refl
     const line_h: i32 = @intCast(lz.priv_reflow_layout_line_height(font_px));
     const base = engine.text_pool[tok.text_off..];
     const len: u32 = tok.text_len;
+    const font_data: []const u8 = if (engine.font_data) |fd| fd[0..engine.font_len] else &.{};
+    if (len > 0 and shape.needsComplexPipeline(base[0..len], .auto, shape.tablesForBlob(font_data))) {
+        shape.layComplexCellText(engine, font, font_data, tok, cell_x, cell_right, font_px, color, cx, cy, lines);
+        return;
+    }
     var i: u32 = 0;
     while (i < len) {
         if (base[i] == ' ') {
