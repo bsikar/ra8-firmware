@@ -23,6 +23,8 @@ comptime {
     _ = @import("reflow_svg_path_test.zig");
     _ = @import("reflow_svg_shape_test.zig");
     _ = @import("reflow_svg_xform_test.zig");
+    _ = @import("reflow_bidi_test.zig");
+    _ = @import("reflow_shaping_test.zig");
 }
 
 const ReflowEngine = abi.ReflowEngine;

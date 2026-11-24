@@ -23,6 +23,7 @@
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 const lex = @import("reflow_tokenize_lex.zig");
+const u = @import("reflow_unicode.zig");
 
 const ReflowEngine = abi.ReflowEngine;
 const ReflowToken = abi.ReflowToken;
@@ -87,6 +88,7 @@ extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) callconv(
 extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) callconv(.c) c_int;
 extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) callconv(.c) f32;
 extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
+extern fn stbtt_GetGlyphHMetrics(info: *const StbttFontinfo, glyph_index: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
 
 /// The image-layout sibling TU, Zig since RA8FW-1226 (its entry point
 /// keeps C linkage for any remaining C sibling).
@@ -185,13 +187,20 @@ pub fn block_font_px(body_px: u16, tag: u8) u16 {
     return @intCast((@as(u32, body_px) * pct) / @as(u32, k_reflow_pct_full));
 }
 
-/// Measure one code point's advance width in pixels (font units scaled by
-/// `stbtt_ScaleForPixelHeight`).
+/// Measure one code point (or shaped glyph sentinel `0x40000000 | gid`) advance width in pixels.
 pub export fn priv_reflow_layout_glyph_advance(font: *const StbttFontinfo, font_px: u16, cp: i32) callconv(.c) i32 {
-    const scale = stbtt_ScaleForPixelHeight(font, @floatFromInt(font_px));
+    const raw_cp: u32 = @bitCast(cp);
     var advance_units: c_int = 0;
     var lsb: c_int = 0;
-    stbtt_GetCodepointHMetrics(font, cp, &advance_units, &lsb);
+    if ((raw_cp & 0x4000_0000) != 0) {
+        stbtt_GetGlyphHMetrics(font, @intCast(raw_cp & 0xFFFF), &advance_units, &lsb);
+    } else {
+        if (raw_cp >= 0x0300 and u.isCombiningMark(raw_cp)) {
+            return 0;
+        }
+        stbtt_GetCodepointHMetrics(font, cp, &advance_units, &lsb);
+    }
+    const scale = stbtt_ScaleForPixelHeight(font, @floatFromInt(font_px));
     return @intFromFloat(@as(f32, @floatFromInt(advance_units)) * scale);
 }
 
@@ -483,13 +492,19 @@ fn emit_link_rect(engine: *ReflowEngine, font: *const StbttFontinfo, lo: u32, hi
         return;
     }
     const gfirst = &engine.glyphs[lo];
-    const glast = &engine.glyphs[hi - 1];
     const fpx: i32 = gfirst.font_px;
-    const x1 = glast.x + priv_reflow_layout_glyph_advance(font, glast.font_px, glast.cp);
+    var min_x: i32 = gfirst.x;
+    var max_x1: i32 = gfirst.x;
+    for (lo..hi) |idx| {
+        const g = &engine.glyphs[idx];
+        const adv = priv_reflow_layout_glyph_advance(font, g.font_px, g.cp);
+        if (g.x < min_x) min_x = g.x;
+        if (g.x + adv > max_x1) max_x1 = g.x + adv;
+    }
     const rect = &engine.link_rects[engine.link_rect_count];
-    rect.x = gfirst.x;
+    rect.x = min_x;
     rect.y = gfirst.y - fpx;
-    rect.w = if (x1 > gfirst.x) x1 - gfirst.x else 1;
+    rect.w = if (max_x1 > min_x) max_x1 - min_x else 1;
     rect.h = fpx + @divTrunc(fpx, 2);
     rect.target = @as(u32, link) - 1; // 1-based -> 0-based
     rect.page_index = page;
@@ -513,11 +528,15 @@ pub export fn priv_reflow_layout_build_link_rects(engine: *ReflowEngine, font: *
                 continue;
             }
             const y = engine.glyphs[base + k].y;
+            const fpx: i32 = engine.glyphs[base + k].font_px;
             var e = k + 1;
             while ((e < page.glyph_count) and
-                (engine.glyphs[base + e].reserved == link) and
-                (engine.glyphs[base + e].y == y))
+                (engine.glyphs[base + e].reserved == link))
             {
+                const ge = &engine.glyphs[base + e];
+                const same_line = (ge.y == y) or
+                    (priv_reflow_layout_glyph_advance(font, ge.font_px, ge.cp) == 0 and @abs(ge.y - y) <= fpx);
+                if (!same_line) break;
                 e += 1;
             }
             emit_link_rect(engine, font, base + k, base + e, link, @intCast(p));

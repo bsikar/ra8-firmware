@@ -33,6 +33,16 @@ const k_priv_underline_offset_px: i32 = 2;
 const k_priv_glyph_dim_max: u32 = 192;
 const k_priv_svg_href_max: usize = 256;
 const k_priv_glyph_mode_aa: u16 = 0;
+const k_shaped_gid_flag: u32 = 0x4000_0000;
+const k_shaped_gid_mask: u32 = 0x0000_FFFF;
+
+fn shapedGidFromCp(cp: c_int) ?c_int {
+    const raw: u32 = @bitCast(cp);
+    if ((raw & k_shaped_gid_flag) != 0) {
+        return @intCast(raw & k_shaped_gid_mask);
+    }
+    return null;
+}
 
 const k_priv_tofu_min_px: i32 = 3;
 const k_priv_tofu_inset_den: i32 = 8;
@@ -166,9 +176,12 @@ extern fn stbtt_GetFontOffsetForIndex(data: [*]const u8, index: c_int) callconv(
 extern fn stbtt_InitFont(info: *StbttFontinfo, data: [*]const u8, data_size: c_int, offset: c_int) callconv(.c) c_int;
 extern fn stbtt_ScaleForPixelHeight(info: *const StbttFontinfo, height: f32) callconv(.c) f32;
 extern fn stbtt_GetCodepointHMetrics(info: *const StbttFontinfo, codepoint: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
+extern fn stbtt_GetGlyphHMetrics(info: *const StbttFontinfo, glyph_index: c_int, advance: *c_int, lsb: *c_int) callconv(.c) void;
 extern fn stbtt_GetFontVMetrics(info: *const StbttFontinfo, ascent: *c_int, descent: *c_int, line_gap: *c_int) callconv(.c) void;
 extern fn stbtt_GetCodepointBitmapBox(info: *const StbttFontinfo, codepoint: c_int, scale_x: f32, scale_y: f32, ix0: *c_int, iy0: *c_int, ix1: *c_int, iy1: *c_int) callconv(.c) void;
+extern fn stbtt_GetGlyphBitmapBox(info: *const StbttFontinfo, glyph: c_int, scale_x: f32, scale_y: f32, ix0: *c_int, iy0: *c_int, ix1: *c_int, iy1: *c_int) callconv(.c) void;
 extern fn stbtt_MakeCodepointBitmap(info: *const StbttFontinfo, output: [*]u8, out_w: c_int, out_h: c_int, out_stride: c_int, scale_x: f32, scale_y: f32, codepoint: c_int) callconv(.c) void;
+extern fn stbtt_MakeGlyphBitmap(info: *const StbttFontinfo, output: [*]u8, out_w: c_int, out_h: c_int, out_stride: c_int, scale_x: f32, scale_y: f32, glyph: c_int) callconv(.c) void;
 
 extern fn ra8_gfx_pixel(x: c_int, y: c_int, color: u32) callconv(.c) c_int;
 extern fn ra8_glyph_atlas_init(atlas: *anyopaque, cfg: *const AtlasCfg) callconv(.c) c_int;
@@ -220,7 +233,11 @@ fn atlasRenderGlyph(ctx: ?*anyopaque, key: ?*const GlyphKey, cell: ?[*]u8, cell_
         return k_ra8_err_invalid_size; // Too big to cache -> caller blits directly.
     }
     const font = rc.font orelse return k_ra8_err_invalid_size;
-    stbtt_MakeCodepointBitmap(font, c, rc.w, rc.h, rc.w, rc.scale, rc.scale, @bitCast(k.glyph_id));
+    if (shapedGidFromCp(@bitCast(k.glyph_id))) |gid| {
+        stbtt_MakeGlyphBitmap(font, c, rc.w, rc.h, rc.w, rc.scale, rc.scale, gid);
+    } else {
+        stbtt_MakeCodepointBitmap(font, c, rc.w, rc.h, rc.w, rc.scale, rc.scale, @bitCast(k.glyph_id));
+    }
     out_w.?.* = @intCast(rc.w);
     out_h.?.* = @intCast(rc.h);
     return k_ra8_ok;
@@ -268,7 +285,11 @@ fn blitAlphaMask(g: *const ReflowGlyph, bitmap: [*]const u8, w: c_int, h: c_int,
 fn drawUnderline(font: *const StbttFontinfo, g: *const ReflowGlyph, scale: f32, ox: i32, oy: i32) void {
     var advance_units: c_int = 0;
     var lsb: c_int = 0;
-    stbtt_GetCodepointHMetrics(font, g.cp, &advance_units, &lsb);
+    if (shapedGidFromCp(g.cp)) |gid| {
+        stbtt_GetGlyphHMetrics(font, gid, &advance_units, &lsb);
+    } else {
+        stbtt_GetCodepointHMetrics(font, g.cp, &advance_units, &lsb);
+    }
     const advance: i32 = @intFromFloat(@as(f32, @floatFromInt(advance_units)) * scale);
     const y_under = g.y + k_priv_underline_offset_px + oy;
     var i: i32 = 0;
@@ -282,7 +303,11 @@ fn drawUnderline(font: *const StbttFontinfo, g: *const ReflowGlyph, scale: f32, 
 fn glyphRenderDirect(font: *const StbttFontinfo, scale: f32, g: *const ReflowGlyph, w: c_int, h: c_int, x0: c_int, y0: c_int, ox: i32, oy: i32) void {
     const total = @as(usize, @intCast(w)) * @as(usize, @intCast(h));
     if (total <= s_glyph_mask.len) {
-        stbtt_MakeCodepointBitmap(font, &s_glyph_mask, w, h, w, scale, scale, g.cp);
+        if (shapedGidFromCp(g.cp)) |gid| {
+            stbtt_MakeGlyphBitmap(font, &s_glyph_mask, w, h, w, scale, scale, gid);
+        } else {
+            stbtt_MakeCodepointBitmap(font, &s_glyph_mask, w, h, w, scale, scale, g.cp);
+        }
         blitAlphaMask(g, &s_glyph_mask, w, h, x0, y0, ox, oy);
     }
 }
@@ -358,7 +383,9 @@ fn drawTofu(font: *const StbttFontinfo, g: *const ReflowGlyph, scale: f32, ox: i
 /// Underlined link glyphs additionally get an underline strip.
 fn blitGlyph(atlas: ?*anyopaque, face_id: u8, font: *const StbttFontinfo, g: *const ReflowGlyph, ox: i32, oy: i32) void {
     const scale = stbtt_ScaleForPixelHeight(font, @floatFromInt(g.font_px));
-    if (needsTofu(stbtt_FindGlyphIndex(font, g.cp), g.cp)) {
+    const direct_gid = shapedGidFromCp(g.cp);
+    const resolved_gid = direct_gid orelse stbtt_FindGlyphIndex(font, g.cp);
+    if (needsTofu(resolved_gid, g.cp)) {
         drawTofu(font, g, scale, ox, oy);
         if ((g.style & k_reflow_style_underline) != 0) {
             drawUnderline(font, g, scale, ox, oy);
@@ -369,7 +396,11 @@ fn blitGlyph(atlas: ?*anyopaque, face_id: u8, font: *const StbttFontinfo, g: *co
     var y0: c_int = 0;
     var x1: c_int = 0;
     var y1: c_int = 0;
-    stbtt_GetCodepointBitmapBox(font, g.cp, scale, scale, &x0, &y0, &x1, &y1);
+    if (direct_gid) |gid| {
+        stbtt_GetGlyphBitmapBox(font, gid, scale, scale, &x0, &y0, &x1, &y1);
+    } else {
+        stbtt_GetCodepointBitmapBox(font, g.cp, scale, scale, &x0, &y0, &x1, &y1);
+    }
     const w = x1 - x0;
     const h = y1 - y0;
     // w and h are the glyph bitmap-box extents: a code point is either inked
@@ -524,8 +555,11 @@ fn renderPage(engine: *const ReflowEngine, page_idx: u32, ox: i32, oy: i32) c_in
             fi = 0; // defensive: out-of-range face index -> default
         }
         // CSS picked the face by family and weight; coverage can still send
-        // this code point to another registered face.
-        fi = priv_reflow_render_face_for(@ptrCast(&s_faces), nfaces, fi, g.cp);
+        // this code point to another registered face. Shaped GIDs stay bound
+        // to the layout-selected face that emitted them.
+        if (shapedGidFromCp(g.cp) == null) {
+            fi = priv_reflow_render_face_for(@ptrCast(&s_faces), nfaces, fi, g.cp);
+        }
         blitGlyph(atlas, fi, &s_faces[fi], g, ox, oy);
     }
     renderImages(engine, page_idx, ox, oy);

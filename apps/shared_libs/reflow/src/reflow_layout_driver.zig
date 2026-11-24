@@ -23,6 +23,8 @@ const abi = @import("reflow_parse_abi.zig");
 const lz = @import("reflow_layout.zig");
 const tbl = @import("reflow_layout_table.zig");
 const rf = @import("reflow_render_face.zig");
+const bidi = @import("reflow_bidi.zig");
+const shape = @import("reflow_shape.zig");
 
 const ReflowEngine = abi.ReflowEngine;
 const ReflowToken = abi.ReflowToken;
@@ -41,6 +43,9 @@ const k_reflow_max_pages: u32 = 256;
 const k_priv_min_chapter_pages: u32 = 1;
 
 const k_reflow_tok_block_start: u8 = 0;
+const k_reflow_tok_block_end: u8 = 1;
+const k_reflow_tok_text: u8 = 2;
+const k_reflow_tok_break: u8 = 3;
 const k_reflow_tag_table: u8 = 20;
 const k_reflow_style_normal: u8 = 0;
 const k_reflow_align_left: u8 = 0;
@@ -64,15 +69,57 @@ extern fn ra8_stbtt_sfnt_dir_in_bounds(data: [*]const u8, len: usize, fontstart:
 /// is ever read from Zig.
 const FontInfo = rf.StbttFontinfo;
 
+/// Module-static registered face infos for shaping/metrics (~1.5 KB off stack).
+var s_layout_faces: [1 + k_reflow_max_faces]FontInfo = std.mem.zeroes([1 + k_reflow_max_faces]FontInfo);
+
 /// Hand the layout siblings an opaque fontinfo pointer for stack storage.
 fn font_ptr(font: *FontInfo) *StbttFontinfo {
     return @ptrCast(font);
 }
 
+fn init_layout_faces(engine: *const ReflowEngine, default_font: *const FontInfo, out_faces: []shape.FaceEntry) usize {
+    const def_data: []const u8 = if (engine.font_data) |fd| fd[0..engine.font_len] else &.{};
+    s_layout_faces[0] = default_font.*;
+    out_faces[0] = .{ .font = &s_layout_faces[0], .data = def_data };
+    var count: usize = 1;
+    const nreg: usize = @min(@as(usize, engine.face_count), k_reflow_max_faces);
+    var k: usize = 0;
+    while (k < nreg) : (k += 1) {
+        const reg = &engine.faces[k];
+        const blob = reg.blob orelse {
+            s_layout_faces[count] = default_font.*;
+            out_faces[count] = .{ .font = &s_layout_faces[count], .data = def_data };
+            count += 1;
+            continue;
+        };
+        const off = stbtt_GetFontOffsetForIndex(blob, 0);
+        if (off >= 0 and stbtt_InitFont(font_ptr(&s_layout_faces[count]), blob, @intCast(reg.len), off) != 0) {
+            out_faces[count] = .{ .font = &s_layout_faces[count], .data = blob[0..reg.len] };
+        } else {
+            s_layout_faces[count] = default_font.*;
+            out_faces[count] = .{ .font = &s_layout_faces[count], .data = def_data };
+        }
+        count += 1;
+    }
+    return count;
+}
+
+fn dir_from_meta(meta: u16) bidi.BaseDir {
+    return switch ((meta >> 8) & 0x03) {
+        1 => .ltr,
+        2 => .rtl,
+        else => .auto,
+    };
+}
+
 /// Run one pass over the token stream populating engine.glyphs[] and
-/// engine.pages[]: <table> ranges go to the table grid, every other token
-/// to the line/page engine, then the final page flush.
+/// engine.pages[]: <table> ranges go to the table grid, complex/bidi runs
+/// go to the shaper, every other token to the line/page engine.
 fn internal_layout_tokens(engine: *ReflowEngine, font: *const StbttFontinfo) c_int {
+    var face_entries: [1 + k_reflow_max_faces]shape.FaceEntry = undefined;
+    const def_fi: *const FontInfo = @ptrCast(@alignCast(font));
+    const nfaces = init_layout_faces(engine, def_fi, &face_entries);
+
     var cur = PrivCursor{
         .x = k_reflow_margin_px,
         .y = k_reflow_margin_px,
@@ -89,6 +136,8 @@ fn internal_layout_tokens(engine: *ReflowEngine, font: *const StbttFontinfo) c_i
         .reserved8 = .{ 0, 0 },
     };
 
+    var block_dir: bidi.BaseDir = .auto;
+    var block_explicit_align = false;
     var i: u32 = 0;
     while (i < engine.token_count) {
         const tok = &engine.tokens[i];
@@ -97,13 +146,44 @@ fn internal_layout_tokens(engine: *ReflowEngine, font: *const StbttFontinfo) c_i
             if (err != k_ra8_ok) {
                 return err;
             }
-        } else {
-            const err = lz.priv_reflow_layout_apply_token(engine, &cur, font, tok);
-            if (err != k_ra8_ok) {
-                return err;
-            }
-            i += 1;
+            block_dir = .auto;
+            block_explicit_align = false;
+            continue;
         }
+        if (tok.kind == k_reflow_tok_text) {
+            var run_end = i + 1;
+            while (run_end < engine.token_count and
+                (engine.tokens[run_end].kind == k_reflow_tok_text or
+                    engine.tokens[run_end].kind == k_reflow_tok_break)) : (run_end += 1)
+            {}
+            if (shape.tokensNeedShaping(engine, block_dir, engine.tokens[i..run_end], face_entries[0..nfaces])) {
+                const err = shape.layComplexBlockRun(
+                    engine,
+                    &cur,
+                    face_entries[0..nfaces],
+                    block_dir,
+                    block_explicit_align,
+                    engine.tokens[i..run_end],
+                );
+                if (err != k_ra8_ok) {
+                    return err;
+                }
+                i = run_end;
+                continue;
+            }
+        }
+        const err = lz.priv_reflow_layout_apply_token(engine, &cur, font, tok);
+        if (err != k_ra8_ok) {
+            return err;
+        }
+        if (tok.kind == k_reflow_tok_block_start) {
+            block_dir = dir_from_meta(tok.reserved16);
+            block_explicit_align = ((tok.reserved16 >> 10) & 0x01) != 0;
+        } else if (tok.kind == k_reflow_tok_block_end) {
+            block_dir = .auto;
+            block_explicit_align = false;
+        }
+        i += 1;
     }
 
     // Flush the final page if it has glyph or image content.

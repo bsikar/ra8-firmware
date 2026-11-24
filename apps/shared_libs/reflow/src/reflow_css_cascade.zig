@@ -320,6 +320,29 @@ fn cascadeFamily(out: *CssStyle, ctx: CascadeCtx) void {
     }
 }
 
+/// Resolve `direction` (`pad`: 0=unset, 1=ltr, 2=rtl) from rules, inline, or parent.
+fn cascadeDirection(out: *CssStyle, ctx: CascadeCtx) void {
+    var best_dir: u8 = ctx.inherited.pad;
+    var best_rank: u16 = 0;
+    var best_order: u16 = 0;
+    var have = false;
+    var i: usize = 0;
+    while (i < ctx.sheet.rule_count) : (i += 1) {
+        if (!ctx.matched[i]) continue;
+        const r = &ctx.sheet.rules[i];
+        if (r.decl.pad == 0) continue;
+        const rank = ruleRank(r);
+        if (!have or rank > best_rank or (rank == best_rank and r.order >= best_order)) {
+            best_dir = r.decl.pad;
+            best_rank = rank;
+            best_order = r.order;
+            have = true;
+        }
+    }
+    if (ctx.inl.pad != 0) best_dir = ctx.inl.pad;
+    out.pad = best_dir;
+}
+
 pub fn ra8_css_cascade_ctx(
     sheet: ?*const CssSheet,
     el: ?*const CssElement,
@@ -340,6 +363,7 @@ pub fn ra8_css_cascade_ctx(
     cascadeEmphasis(&out, ctx);
     cascadeScalars(&out, ctx);
     cascadeFamily(&out, ctx);
+    cascadeDirection(&out, ctx);
     return out;
 }
 

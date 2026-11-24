@@ -63,6 +63,7 @@ const k_priv_max_depth: u32 = 64;
 // ---- Lexical primitives, now Zig (RA8FW-1214) ----
 const lex = @import("reflow_tokenize_lex.zig");
 const attr = @import("reflow_tokenize_attr.zig");
+const css = @import("reflow_css.zig");
 const priv_reflow_tok_is_xml_whitespace = lex.priv_reflow_tok_is_xml_whitespace;
 const priv_reflow_tok_classify = lex.priv_reflow_tok_classify;
 const priv_reflow_tok_is_block = lex.priv_reflow_tok_is_block;
@@ -89,6 +90,7 @@ const TokCtx = struct {
     family_off: u16,
     family_len: u16,
     face_slot: u8,
+    dir: u8,
     stack_el: [k_priv_max_depth]CssElement,
     stack_style: [k_priv_max_depth]u8,
     stack_link: [k_priv_max_depth]u8,
@@ -97,6 +99,7 @@ const TokCtx = struct {
     stack_fam_off: [k_priv_max_depth]u16,
     stack_fam_len: [k_priv_max_depth]u16,
     stack_face: [k_priv_max_depth]u8,
+    stack_dir: [k_priv_max_depth]u8,
     sp: u32,
     suppress_sp: u32,
     saw_element: bool,
@@ -143,7 +146,8 @@ fn internal_handle_cdata(ctx: *TokCtx, buf: [*]const u8, pi: *usize, len: usize)
             return k_ra8_err_no_mem;
         }
         if (tlen > 0) {
-            ctx.engine.tokens[ctx.engine.token_count - 1].reserved16 = ctx.face_slot;
+            ctx.engine.tokens[ctx.engine.token_count - 1].reserved16 =
+                (@as(u16, ctx.dir) << 8) | @as(u16, ctx.face_slot);
         }
     }
     pi.* = if ((close + 3) <= len) close + 3 else len;
@@ -166,6 +170,7 @@ fn internal_handle_end(ctx: *TokCtx, buf: [*]const u8, pi: *usize, len: usize) c
     ctx.family_off = ctx.stack_fam_off[ctx.sp];
     ctx.family_len = ctx.stack_fam_len[ctx.sp];
     ctx.face_slot = ctx.stack_face[ctx.sp];
+    ctx.dir = ctx.stack_dir[ctx.sp];
     if (priv_reflow_tok_is_block(tag) and !internal_suppressed(ctx) and
         !priv_reflow_tok_emit(ctx.engine, k_reflow_tok_block_end, tag, ctx.style, 0, 0))
     {
@@ -204,7 +209,20 @@ fn internal_parse_start(buf: [*]const u8, pi: *usize, len: usize, selfclose: *bo
     return tag;
 }
 
-fn internal_open_attrs(ctx: *TokCtx, tag: [*]const u8, span: usize, kind: u8, block: bool, comp: *const CssStyle, css_font_px: u16) c_int {
+fn internal_parse_dir_attr(tag: [*]const u8, span: usize, inherited: u8, css_dir: u8) u8 {
+    var off: usize = 0;
+    var len: usize = 0;
+    if (attr.priv_reflow_tok_find_attr(tag, span, "dir", 3, &off, &len)) {
+        const val = tag + off;
+        if (css.priv_reflow_css_ci_eq(val, len, "rtl")) return 2;
+        if (css.priv_reflow_css_ci_eq(val, len, "ltr")) return 1;
+        if (css.priv_reflow_css_ci_eq(val, len, "auto")) return 0;
+    }
+    if (css_dir == 1 or css_dir == 2) return css_dir;
+    return inherited;
+}
+
+fn internal_open_attrs(ctx: *TokCtx, tag: [*]const u8, span: usize, kind: u8, block: bool, comp: *const CssStyle, css_font_px: u16, elem_dir: u8) c_int {
     if (internal_suppressed(ctx)) {
         return k_ra8_ok; // inside a display:none subtree -> emit nothing
     }
@@ -215,16 +233,18 @@ fn internal_open_attrs(ctx: *TokCtx, tag: [*]const u8, span: usize, kind: u8, bl
         if (!priv_reflow_tok_emit(ctx.engine, k_reflow_tok_block_start, kind, ctx.style, id_off, id_len)) {
             return k_ra8_err_no_mem;
         }
-        // Stash the block's cascaded alignment + CSS font px on the block-start
-        // token (left + 0 = unstyled defaults, so unstyled blocks lay out
-        // byte-identically).
-        const align_v: u8 = if ((comp.set & k_ra8_css_set_align) != 0)
+        // Stash the block's cascaded alignment + CSS font px + dir metadata
+        // on the block-start token (left + 0 = unstyled defaults, keeping
+        // unstyled blocks byte-identical).
+        const has_align: u16 = if ((comp.set & k_ra8_css_set_align) != 0) 1 else 0;
+        const align_v: u8 = if (has_align != 0)
             comp.@"align"
         else
             k_reflow_align_left;
         const bst = &ctx.engine.tokens[ctx.engine.token_count - 1];
         bst.reserved = align_v;
         bst.css_font_px = css_font_px;
+        bst.reserved16 = (has_align << 10) | (@as(u16, elem_dir) << 8);
         return k_ra8_ok;
     }
     if (kind == k_reflow_tag_a) {
@@ -352,10 +372,12 @@ fn internal_open_styled(ctx: *TokCtx, tagbuf: [*]const u8, span: usize, tag: u8,
     if (hidden and ctx.suppress_sp == 0) {
         ctx.suppress_sp = ctx.sp;
     }
-    const aerr = internal_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
+    const elem_dir = internal_parse_dir_attr(tagbuf, span, ctx.dir, comp.pad);
+    const aerr = internal_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx, elem_dir);
     if (aerr != k_ra8_ok) {
         return aerr;
     }
+    ctx.dir = elem_dir;
     ctx.style = comp.style & k_priv_style_mask;
     ctx.color = if ((comp.set & k_ra8_css_set_color) != 0) comp.color else k_reflow_color_inherit;
     ctx.css_font_px = fpx;
@@ -409,6 +431,7 @@ fn internal_handle_start(ctx: *TokCtx, buf: [*]const u8, pi: *usize, len: usize)
     ctx.stack_fam_off[ctx.sp] = ctx.family_off;
     ctx.stack_fam_len[ctx.sp] = ctx.family_len;
     ctx.stack_face[ctx.sp] = ctx.face_slot;
+    ctx.stack_dir[ctx.sp] = ctx.dir;
     ctx.sp += 1;
     return internal_open_styled(ctx, buf + tag_lt, span, tag, block);
 }
@@ -470,7 +493,8 @@ fn internal_emit_text_run(ctx: *TokCtx, buf: [*]const u8, run: usize, end: usize
     }
     ctx.engine.tokens[ctx.engine.token_count - 1].reserved = ctx.active_link;
     ctx.engine.tokens[ctx.engine.token_count - 1].color = ctx.color;
-    ctx.engine.tokens[ctx.engine.token_count - 1].reserved16 = ctx.face_slot;
+    ctx.engine.tokens[ctx.engine.token_count - 1].reserved16 =
+        (@as(u16, ctx.dir) << 8) | @as(u16, ctx.face_slot);
     return true;
 }
 
@@ -492,6 +516,7 @@ pub fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml
     ctx.family_off = 0;
     ctx.family_len = 0;
     ctx.face_slot = 0;
+    ctx.dir = 0;
     ctx.sp = 0;
     ctx.suppress_sp = 0;
     ctx.saw_element = false;
@@ -503,6 +528,7 @@ pub fn priv_reflow_xml_walk(engine: *ReflowEngine, xhtml_buf: [*]const u8, xhtml
     @memset(&ctx.stack_fam_off, 0);
     @memset(&ctx.stack_fam_len, 0);
     @memset(&ctx.stack_face, 0);
+    @memset(&ctx.stack_dir, 0);
 
     var i: usize = 0;
     while (i < xhtml_len) {
