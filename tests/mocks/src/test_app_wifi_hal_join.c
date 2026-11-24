@@ -101,6 +101,15 @@ static ra8_err_t m_get_ap(void* ctx, ra8_wifi_ap_t* out)
   return k_ra8_ok;
 }
 
+static ra8_err_t m_scan(void* ctx, ra8_wifi_ap_t* out, uint16_t max, uint16_t* count)
+{
+  (void)ctx;
+  (void)out;
+  (void)max;
+  *count = 0U;
+  return k_ra8_ok;
+}
+
 static void m_idle(void* ctx, uint16_t ms)
 {
   (void)ctx;
@@ -118,6 +127,7 @@ static const ra8_wifi_backend_t k_mock = {
   .service    = m_service,
   .get_mac    = m_get_mac,
   .get_ap     = m_get_ap,
+  .scan       = m_scan,
   .idle       = m_idle,
 };
 

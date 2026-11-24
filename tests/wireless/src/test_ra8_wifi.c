@@ -53,7 +53,7 @@ typedef enum : int8_t {
 
 /** @brief What the mock backend did and what it should return next. */
 typedef struct t_mock {
-  int open_n, close_n, up_n, down_n, join_n, leave_n, service_n, mac_n, ap_n, ip_n;
+  int open_n, close_n, up_n, down_n, join_n, leave_n, service_n, mac_n, ap_n, scan_n, ip_n;
   /**< Call counters, one per backend/ip operation. */
   int idle_n;
   /**< Times the facade paced itself through the `idle` row. */
@@ -61,13 +61,16 @@ typedef struct t_mock {
   /**< Gap in milliseconds the last `idle` was asked for. */
   ra8_err_t open_ret, close_ret, up_ret, down_ret, join_ret, leave_ret, service_ret;
   /**< Result each backend row returns next. */
-  ra8_err_t mac_ret, ap_ret, ip_ret;
-  /**< Result get_mac / get_ap / the ip provider return next. */
+  ra8_err_t mac_ret, ap_ret, scan_ret, ip_ret;
+  /**< Result get_mac / get_ap / scan / the ip provider return next. */
   uint16_t         service_fail_first;      /**< Fail this many services, then answer.    */
   ra8_wifi_link_t  link;                    /**< Link state the mock reports directly.    */
   uint16_t         up_after;                /**< Report up once `service_n` reaches this. */
   ra8_wifi_mac_t   mac;                     /**< Address `get_mac` returns.               */
   ra8_wifi_ap_t    ap;                      /**< AP record `get_ap` returns.              */
+  ra8_wifi_ap_t    scan_aps[4];             /**< Canned scan results the mock returns.    */
+  uint16_t         scan_count;              /**< Records available in `scan_aps`.         */
+  uint16_t         scan_report_over;        /**< Optional oversized count for clamping.   */
   ra8_wifi_lease_t lease;                   /**< Lease the IP provider returns.           */
   char             last_ssid[k_t_ssid_cap]; /**< SSID the last join saw.                  */
   bool             saw_psk_null;            /**< Last join was handed a null passphrase.  */
@@ -165,6 +168,23 @@ static ra8_err_t t_get_ap(void* ctx, ra8_wifi_ap_t* out)
   return k_ra8_ok;
 }
 
+static ra8_err_t t_scan(void* ctx, ra8_wifi_ap_t* out, uint16_t max, uint16_t* count)
+{
+  (void)ctx;
+  s_m.scan_n++;
+  if (s_m.scan_ret != k_ra8_ok) {
+    return s_m.scan_ret;
+  }
+  const uint16_t cap    = (uint16_t)(sizeof s_m.scan_aps / sizeof s_m.scan_aps[0]);
+  const uint16_t take   = (s_m.scan_count < max) ? s_m.scan_count : max;
+  const uint16_t copy_n = (take < cap) ? take : cap;
+  for (uint16_t i = 0U; i < copy_n; i++) {
+    out[i] = s_m.scan_aps[i];
+  }
+  *count = (s_m.scan_report_over != 0U) ? s_m.scan_report_over : copy_n;
+  return k_ra8_ok;
+}
+
 static ra8_err_t t_ip_bind(void* ctx, const ra8_wifi_mac_t* mac, ra8_wifi_lease_t* out)
 {
   (void)ctx;
@@ -195,6 +215,7 @@ static const ra8_wifi_backend_t k_t_backend = {
   .service    = t_service,
   .get_mac    = t_get_mac,
   .get_ap     = t_get_ap,
+  .scan       = t_scan,
   .idle       = t_idle,
 };
 
@@ -262,6 +283,9 @@ static void test_init_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
   dented        = k_t_backend;
   dented.get_ap = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
+  dented      = k_t_backend;
+  dented.scan = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
   dented      = k_t_backend;
   dented.idle = nullptr;
@@ -753,6 +777,101 @@ static void test_disconnect(void)
   TEST_END("wifi disconnect");
 }
 
+/* --- scan ---------------------------------------------------------------- */
+
+static ra8_wifi_ap_t t_make_ap(const char* name, uint8_t channel, int8_t rssi, int32_t auth)
+{
+  ra8_wifi_ap_t ap = {};
+  const size_t  n  = strlen(name);
+  (void)memcpy(ap.ssid, name, n);
+  ap.ssid_len = (uint8_t)n;
+  ap.channel  = channel;
+  ap.rssi     = rssi;
+  ap.authmode = auth;
+  return ap;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_scan(void)
+{
+  TEST_BEGIN("wifi scan");
+  t_reset();
+  ra8_wifi_t     wifi   = {};
+  ra8_wifi_cfg_t cfg    = t_cfg();
+  ra8_wifi_ap_t  aps[4] = {};
+  uint16_t       found  = 99U;
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_scan(nullptr, aps, 4U, &found));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_scan(&wifi, nullptr, 4U, &found));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_scan(&wifi, aps, 4U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_wifi_scan(&wifi, aps, 0U, &found));
+  TEST_ASSERT_EQ(0U, found);
+
+  found = 55U;
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_wifi_scan(&wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_init(&wifi, &cfg));
+
+  /* radio_up failure aborts before invoking backend.scan and clears output. */
+  s_m.up_ret = k_ra8_err_hw_timeout;
+  aps[0]     = t_make_ap("stale", 3U, -40, 1);
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_wifi_scan(&wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ(0U, aps[0].ssid_len);
+  TEST_ASSERT_EQ(0, s_m.scan_n);
+
+  /* Backend error zeroes count and clears caller output slots. */
+  s_m.up_ret   = k_ra8_ok;
+  s_m.scan_ret = k_ra8_err_protocol_error;
+  aps[0]       = t_make_ap("stale", 3U, -40, 1);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_wifi_scan(&wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ(0U, aps[0].ssid_len);
+  TEST_ASSERT_EQ(2, s_m.up_n);
+
+  /* Subsequent scan and connect reuse the already-started radio. */
+  s_m.scan_ret    = k_ra8_ok;
+  s_m.scan_count  = 3U;
+  s_m.scan_aps[0] = t_make_ap("one", 1U, -42, 3);
+  s_m.scan_aps[1] = t_make_ap("two", 6U, -58, 4);
+  s_m.scan_aps[2] = t_make_ap("three", 11U, -75, 0);
+
+  for (size_t i = 0U; i < 4U; i++) {
+    aps[i] = t_make_ap("guard", 13U, -12, 7);
+  }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&wifi, aps, 2U, &found));
+  TEST_ASSERT_EQ(2U, found);
+  TEST_ASSERT_EQ(0, strcmp(aps[0].ssid, "one"));
+  TEST_ASSERT_EQ(0, strcmp(aps[1].ssid, "two"));
+  TEST_ASSERT_EQ(0, strcmp(aps[2].ssid, "guard"));
+  TEST_ASSERT_EQ(2, s_m.up_n);
+
+  /* Oversized count reported by a buggy backend is clamped to max. */
+  s_m.scan_report_over = 9U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&wifi, aps, 2U, &found));
+  TEST_ASSERT_EQ(2U, found);
+  TEST_ASSERT_EQ(0, strcmp(aps[2].ssid, "guard"));
+
+  /* Empty scan clears output and sets count = 0; connect still reuses radio_on. */
+  s_m.scan_report_over = 0U;
+  s_m.scan_count       = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_scan(&wifi, aps, 4U, &found));
+  TEST_ASSERT_EQ(0U, found);
+  TEST_ASSERT_EQ(0U, aps[0].ssid_len);
+
+  s_m.up_after = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_connect(&wifi, "one", "pw"));
+  TEST_ASSERT_EQ(2, s_m.up_n);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&wifi));
+  TEST_END("wifi scan");
+}
+
 /**
  * @brief Run every facade test; return non-zero on the first failure.
  * @return 0 when all tests pass.
@@ -772,5 +891,6 @@ int main(void)
   test_get_mac();
   test_get_ap();
   test_disconnect();
+  test_scan();
   return 0;
 }

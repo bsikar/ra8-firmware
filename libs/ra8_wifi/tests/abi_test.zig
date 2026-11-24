@@ -18,6 +18,7 @@ comptime {
 }
 
 const ok: u16 = 0x0000;
+const err_invalid_arg: u16 = 0x0103;
 const err_invalid_state: u16 = 0x0104;
 const err_timeout: u16 = 0x0108;
 const err_not_initialized: u16 = 0x010F;
@@ -47,6 +48,7 @@ const Mock = struct {
     service_n: i32 = 0,
     mac_n: i32 = 0,
     ap_n: i32 = 0,
+    scan_n: i32 = 0,
     ip_n: i32 = 0,
     idle_n: i32 = 0,
     idle_ms: u16 = 0,
@@ -60,6 +62,7 @@ const Mock = struct {
     service_ret: u16 = ok,
     mac_ret: u16 = ok,
     ap_ret: u16 = ok,
+    scan_ret: u16 = ok,
     ip_ret: u16 = ok,
 
     service_fail_first: u16 = 0,
@@ -67,6 +70,9 @@ const Mock = struct {
     up_after: u16 = 0,
     mac: abi.Mac = .{ .octet = .{ 0x02, 0, 0, 0, 0, 0x2A } },
     ap: abi.Ap = .{},
+    scan_aps: [4]abi.Ap = @splat(.{}),
+    scan_count: u16 = 0,
+    scan_report_over: u16 = 0,
     lease: abi.Lease = .{},
     last_ssid: [64]u8 = @splat(0),
     last_ssid_len: usize = 0,
@@ -149,6 +155,20 @@ fn mockGetAp(ctx: ?*anyopaque, out: ?*abi.Ap) callconv(.c) u16 {
     return ok;
 }
 
+fn mockScan(ctx: ?*anyopaque, out: ?[*]abi.Ap, max: u16, count: ?*u16) callconv(.c) u16 {
+    _ = ctx;
+    m.scan_n += 1;
+    if (m.scan_ret != ok) return m.scan_ret;
+    const take: u16 = @min(m.scan_count, max);
+    if (out) |dst| {
+        for (0..take) |i| dst[i] = m.scan_aps[i];
+    }
+    if (count) |found| {
+        found.* = if (m.scan_report_over != 0) m.scan_report_over else take;
+    }
+    return ok;
+}
+
 fn mockIdle(ctx: ?*anyopaque, ms: u16) callconv(.c) void {
     _ = ctx;
     m.idle_n += 1;
@@ -174,6 +194,7 @@ const full_backend: abi.Backend = .{
     .service = mockService,
     .get_mac = mockGetMac,
     .get_ap = mockGetAp,
+    .scan = mockScan,
     .idle = mockIdle,
 };
 
@@ -209,7 +230,7 @@ fn opened(wifi: *abi.Wifi) !void {
 
 test "handle and vtable keep their C layout" {
     const ptr = @sizeOf(usize);
-    try std.testing.expectEqual(ptr * 10, @sizeOf(abi.Backend));
+    try std.testing.expectEqual(ptr * 11, @sizeOf(abi.Backend));
     try std.testing.expectEqual(ptr * 4, @sizeOf(abi.Config));
     try std.testing.expectEqual(ptr * 4, @offsetOf(abi.Wifi, "mac"));
     try std.testing.expectEqual(ptr * 4 + 8, @offsetOf(abi.Wifi, "lease"));
@@ -290,6 +311,11 @@ test "init dents every backend row in turn and names it" {
         .{ .name = "backend.get_ap", .dent = struct {
             fn f(b: *abi.Backend) void {
                 b.get_ap = null;
+            }
+        }.f },
+        .{ .name = "backend.scan", .dent = struct {
+            fn f(b: *abi.Backend) void {
+                b.scan = null;
             }
         }.f },
         .{ .name = "backend.idle", .dent = struct {
@@ -645,4 +671,126 @@ test "a radio_down failure is surfaced when the leave succeeded" {
     m.down_ret = err_spi_error;
     try std.testing.expectEqual(err_spi_error, abi.ra8_wifi_disconnect(&wifi));
     try std.testing.expect(!wifi.radio_on);
+}
+
+fn seedAp(name: []const u8, ch: u8, rssi: i8, auth: i32) abi.Ap {
+    var ap: abi.Ap = .{
+        .channel = ch,
+        .rssi = rssi,
+        .authmode = auth,
+        .ssid_len = @intCast(name.len),
+    };
+    @memcpy(ap.ssid[0..name.len], name);
+    return ap;
+}
+
+test "scan validates pointers, max capacity and handle state" {
+    reset();
+    var wifi: abi.Wifi = .{};
+    var aps: [2]abi.Ap = @splat(.{});
+    var found: u16 = 99;
+
+    try std.testing.expectEqual(err_null_ptr, abi.ra8_wifi_scan(null, &aps, 2, &found));
+    try std.testing.expectEqualStrings("wifi", lastLog());
+    try std.testing.expectEqual(err_null_ptr, abi.ra8_wifi_scan(&wifi, null, 2, &found));
+    try std.testing.expectEqualStrings("out", lastLog());
+    try std.testing.expectEqual(err_null_ptr, abi.ra8_wifi_scan(&wifi, &aps, 2, null));
+    try std.testing.expectEqualStrings("count", lastLog());
+
+    found = 77;
+    try std.testing.expectEqual(err_invalid_arg, abi.ra8_wifi_scan(&wifi, &aps, 0, &found));
+    try std.testing.expectEqual(@as(u16, 0), found);
+
+    found = 55;
+    try std.testing.expectEqual(err_not_initialized, abi.ra8_wifi_scan(&wifi, &aps, 2, &found));
+    try std.testing.expectEqual(@as(u16, 0), found);
+    try std.testing.expectEqual(@as(i32, 0), m.scan_n);
+}
+
+test "scan starts the radio once and propagates radio_up failures" {
+    reset();
+    var wifi: abi.Wifi = .{};
+    try opened(&wifi);
+    var aps: [2]abi.Ap = @splat(seedAp("stale", 1, -30, 1));
+    var found: u16 = 9;
+
+    m.up_ret = err_hw_timeout;
+    try std.testing.expectEqual(err_hw_timeout, abi.ra8_wifi_scan(&wifi, &aps, 2, &found));
+    try std.testing.expectEqual(@as(u16, 0), found);
+    try std.testing.expectEqual(@as(u8, 0), aps[0].ssid_len);
+    try std.testing.expect(!wifi.radio_on);
+    try std.testing.expectEqual(@as(i32, 0), m.scan_n);
+
+    m.up_ret = ok;
+    m.scan_count = 1;
+    m.scan_aps[0] = seedAp("lab", 6, -52, 3);
+    try std.testing.expectEqual(ok, abi.ra8_wifi_scan(&wifi, &aps, 2, &found));
+    try std.testing.expectEqual(@as(u16, 1), found);
+    try std.testing.expect(wifi.radio_on);
+    try std.testing.expectEqual(@as(i32, 2), m.up_n);
+
+    m.up_after = 1;
+    try std.testing.expectEqual(ok, abi.ra8_wifi_connect(&wifi, "lab", "pw"));
+    try std.testing.expectEqual(@as(i32, 2), m.up_n);
+}
+
+test "scan clears caller buffers on backend failure and handles empty scans" {
+    reset();
+    var wifi: abi.Wifi = .{};
+    try opened(&wifi);
+    var aps: [3]abi.Ap = @splat(seedAp("dirty", 9, -20, 4));
+    var found: u16 = 42;
+
+    m.scan_ret = err_protocol_error;
+    try std.testing.expectEqual(err_protocol_error, abi.ra8_wifi_scan(&wifi, &aps, 3, &found));
+    try std.testing.expectEqual(@as(u16, 0), found);
+    for (aps) |entry| {
+        try std.testing.expectEqual(@as(u8, 0), entry.ssid_len);
+        try std.testing.expectEqual(@as(u8, 0), entry.channel);
+    }
+
+    m.scan_ret = ok;
+    m.scan_count = 0;
+    aps = @splat(seedAp("dirty", 9, -20, 4));
+    found = 42;
+    try std.testing.expectEqual(ok, abi.ra8_wifi_scan(&wifi, &aps, 3, &found));
+    try std.testing.expectEqual(@as(u16, 0), found);
+    for (aps) |entry| {
+        try std.testing.expectEqual(@as(u8, 0), entry.ssid_len);
+        try std.testing.expectEqual(@as(u8, 0), entry.ssid[0]);
+    }
+}
+
+test "scan truncates oversized AP lists and zeroes unused tail entries" {
+    reset();
+    var wifi: abi.Wifi = .{};
+    try opened(&wifi);
+    m.scan_count = 3;
+    m.scan_aps[0] = seedAp("one", 1, -40, 3);
+    m.scan_aps[1] = seedAp("two", 6, -55, 4);
+    m.scan_aps[2] = seedAp("three", 11, -70, 0);
+
+    var aps: [4]abi.Ap = @splat(seedAp("guard", 14, -10, 9));
+    var found: u16 = 0;
+    try std.testing.expectEqual(ok, abi.ra8_wifi_scan(&wifi, &aps, 2, &found));
+    try std.testing.expectEqual(@as(u16, 2), found);
+    try std.testing.expectEqualStrings("one", aps[0].ssid[0..aps[0].ssid_len]);
+    try std.testing.expectEqualStrings("two", aps[1].ssid[0..aps[1].ssid_len]);
+    try std.testing.expectEqualStrings("guard", aps[2].ssid[0..aps[2].ssid_len]);
+
+    m.scan_report_over = 7;
+    try std.testing.expectEqual(ok, abi.ra8_wifi_scan(&wifi, &aps, 2, &found));
+    try std.testing.expectEqual(@as(u16, 2), found);
+    try std.testing.expectEqualStrings("guard", aps[2].ssid[0..aps[2].ssid_len]);
+
+    m.scan_report_over = 0;
+    m.scan_count = 1;
+    aps = @splat(seedAp("guard", 14, -10, 9));
+    try std.testing.expectEqual(ok, abi.ra8_wifi_scan(&wifi, &aps, 4, &found));
+    try std.testing.expectEqual(@as(u16, 1), found);
+    try std.testing.expectEqualStrings("one", aps[0].ssid[0..aps[0].ssid_len]);
+    for (aps[1..]) |tail| {
+        try std.testing.expectEqual(@as(u8, 0), tail.ssid_len);
+        try std.testing.expectEqual(@as(u8, 0), tail.channel);
+    }
 }

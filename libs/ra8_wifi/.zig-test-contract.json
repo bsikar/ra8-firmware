@@ -15,5 +15,5 @@
     "tests/log_fixture.zig",
     "tests/c6link_test.zig"
   ],
-  "minimum_tests": 10
+  "minimum_tests": 67
 }

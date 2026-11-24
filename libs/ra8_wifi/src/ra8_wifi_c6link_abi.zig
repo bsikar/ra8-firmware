@@ -44,6 +44,12 @@ extern fn ra8_c6link_wifi_join(link: ?*anyopaque, cfg: ?*const implementation.St
 extern fn ra8_c6link_wifi_leave(link: ?*anyopaque) u16;
 extern fn ra8_c6link_wifi_mac(link: ?*anyopaque, out: ?*implementation.Mac) u16;
 extern fn ra8_c6link_wifi_ap_info(link: ?*anyopaque, out: ?*implementation.ApInfo) u16;
+extern fn ra8_c6link_wifi_scan(
+    link: ?*anyopaque,
+    out: ?[*]implementation.ApInfo,
+    max: u16,
+    count: ?*u16,
+) u16;
 
 /// Log a rejected pointer the way `RA8_CHECK_NULL_PTR` did, then answer
 /// `k_ra8_err_null_ptr`.
@@ -158,6 +164,30 @@ fn opGetAp(ctx: ?*anyopaque, out: ?*core.Ap) callconv(.c) u16 {
     return core.err_ok;
 }
 
+fn opScan(ctx: ?*anyopaque, out: ?[*]core.Ap, max: u16, count: ?*u16) callconv(.c) u16 {
+    const self: *implementation.Handle = @ptrCast(@alignCast(ctx orelse return nullPtr("ctx")));
+    if (self.link == null) return nullPtr("ctx.link");
+    const records = out orelse return nullPtr("out");
+    const found = count orelse return nullPtr("count");
+    found.* = 0;
+
+    const raw: [*]implementation.ApInfo = @ptrCast(@alignCast(records));
+    var reported: u16 = 0;
+    const err = ra8_c6link_wifi_scan(self.link, raw, max, &reported);
+    if (err != core.err_ok) {
+        @memset(records[0..max], core.Ap.empty);
+        return err;
+    }
+
+    const kept: u16 = @min(reported, max);
+    implementation.normalizeScanRecords(records, raw, kept);
+    if (kept < max) {
+        @memset(records[kept..max], core.Ap.empty);
+    }
+    found.* = kept;
+    return core.err_ok;
+}
+
 fn opIdle(ctx: ?*anyopaque, ms: u16) callconv(.c) void {
     const self: *implementation.Handle = @ptrCast(@alignCast(ctx orelse return));
     const delay = self.transport.delay_ms orelse return;
@@ -177,6 +207,7 @@ pub export const k_ra8_wifi_backend_c6link: types.Backend = .{
     .service = &opService,
     .get_mac = &opGetMac,
     .get_ap = &opGetAp,
+    .scan = &opScan,
     .idle = &opIdle,
 };
 
