@@ -39,8 +39,14 @@ smoke_abort_guard() {
   if [ -n "$smoke_current_app" ]; then
     printf '\n'
     echo "NO VERDICT for '$smoke_current_app' -- the runner exited (status $rc) without"
-    echo "  producing a result line. This is a RUNNER defect, not an app failure:"
-    echo "  a helper leaked a conditional's status and 'set -e' aborted mid-app."
+    if [ "$rc" -eq 0 ]; then
+      echo "  producing a result line. Status 0 usually means the runner was killed from"
+      echo "  outside (an outer 'timeout' cap or a signal), not an internal abort:"
+      echo "  check the cap that wrapped this run before reading it as a runner defect."
+    else
+      echo "  producing a result line. A nonzero status points at an internal abort:"
+      echo "  a helper leaked a conditional's status and 'set -e' aborted mid-app."
+    fi
     echo "  Run 'scripts/emu/smoke.sh --selftest' -- it asserts this class."
   fi
   return 0
