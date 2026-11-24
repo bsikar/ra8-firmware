@@ -230,22 +230,27 @@ test "an explicit --roadmap wins over every root" {
 test "--repo-root wins over the environment" {
     const path = try cli.resolveRoadmapPath(testing.allocator, .{ .repo_root = "/srv" }, "/env");
     defer testing.allocator.free(path);
-    try testing.expectEqualStrings("/srv/docs/ROADMAP.md", path);
+    const expected = try std.fs.path.join(testing.allocator, &.{ "/srv", "docs", "ROADMAP.md" });
+    defer testing.allocator.free(expected);
+    try testing.expectEqualStrings(expected, path);
 }
 
 test "the environment wins over the cwd" {
     const path = try cli.resolveRoadmapPath(testing.allocator, .{}, "/env");
     defer testing.allocator.free(path);
-    try testing.expectEqualStrings("/env/docs/ROADMAP.md", path);
+    const expected = try std.fs.path.join(testing.allocator, &.{ "/env", "docs", "ROADMAP.md" });
+    defer testing.allocator.free(expected);
+    try testing.expectEqualStrings(expected, path);
 }
 
 test "with no root at all the path is relative to the cwd" {
     // The root falls back to `"."`, which `std.fs.path.join` keeps as a
-    // leading component, so the path reads `./docs/ROADMAP.md`. Pinned as
-    // the tool's own behaviour: it is what the diagnostics print.
+    // leading component, so the path reads `./docs/ROADMAP.md` (or `.\` on Windows).
     const path = try cli.resolveRoadmapPath(testing.allocator, .{}, null);
     defer testing.allocator.free(path);
-    try testing.expectEqualStrings("./docs/ROADMAP.md", path);
+    const expected = try std.fs.path.join(testing.allocator, &.{ ".", "docs", "ROADMAP.md" });
+    defer testing.allocator.free(expected);
+    try testing.expectEqualStrings(expected, path);
 }
 
 // -- run() over a real directory --------------------------------------------
@@ -527,7 +532,9 @@ test "an empty argv list is the rewriting mode, not a crash" {
     defer outcome.deinit();
     // No roadmap under the temporary cwd, so the resolution reports exit 2.
     try testing.expectEqual(@as(u8, 2), outcome.status);
-    try testing.expect(std.mem.indexOf(u8, outcome.err, "docs/ROADMAP.md") != null);
+    const expected = try std.fs.path.join(testing.allocator, &.{ "docs", "ROADMAP.md" });
+    defer testing.allocator.free(expected);
+    try testing.expect(std.mem.indexOf(u8, outcome.err, expected) != null);
 }
 
 test "check mode never reports a stale summary as current" {

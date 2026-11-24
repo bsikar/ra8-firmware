@@ -1,0 +1,16 @@
+.{
+    .name = .gen_jlink_w4,
+    .version = "0.1.0",
+    .fingerprint = 0xaa90cca11efc393c,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
+        .ra8_zig_build = .{ .path = "../zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}
