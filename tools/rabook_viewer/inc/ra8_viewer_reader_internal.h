@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include "comic.h"
+#include "epub.h"
 #include "jof.h"
 #include "longstrip.h"
 #include "ra8_attributes.h"
@@ -20,6 +21,7 @@
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
 #include "ra8_viewer_reader.h"
+#include "reflow.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,10 +31,21 @@ extern "C" {
 typedef enum : uint32_t {
   k_viewer_jof_cells      = 1U,          /**< One decoded band resident.       */
   k_viewer_jof_buckets    = 64U,         /**< Power-of-two cache bucket count. */
-  k_viewer_layout_version = 0x56570002U, /**< Workspace layout ABI guard.      */
+  k_viewer_layout_version = 0x56570003U, /**< Workspace layout ABI guard.      */
   k_viewer_background     = 0x00FFFFFFU, /**< White graphics clear colour.     */
   k_viewer_white_byte     = 0xFFU,       /**< Byte fill for white RGB565.      */
 } ra8_viewer_budget_t;
+
+/** @brief Fixed caller-workspace budgets for EPUB/RABOOK reflow. */
+typedef enum : uint32_t {
+  k_viewer_reflow_page_cap    = 2048U,              /**< Maximum indexed pages.        */
+  k_viewer_reflow_xhtml_bytes = 512U * 1024U,       /**< Per-chapter XHTML staging.    */
+  k_viewer_reflow_file_bytes  = 4U * 1024U * 1024U, /**< Max raw .rabook container.    */
+  k_viewer_reflow_book_bytes  = 8U * 1024U * 1024U, /**< Max inflated .rabook blob.    */
+  k_viewer_reflow_font_px     = 24U,                /**< Reader body font size, px.    */
+  k_viewer_reflow_body_color  = 0xFF101010U,        /**< Body text colour (ARGB).      */
+  k_viewer_reflow_link_color  = 0xFF2A52BEU,        /**< Hyperlink text colour (ARGB). */
+} ra8_viewer_reflow_budget_t;
 
 /** @brief Fixed bounded slices for the bare comic engine. */
 typedef enum : uint32_t {
@@ -90,6 +103,31 @@ typedef struct {
   size_t        arena_cap; /**< Decode-arena capacity in bytes.  */
 } viewer_comic_t;
 
+/** @brief Maps one global book page back to its chapter and local page. */
+typedef struct {
+  uint32_t chapter;    /**< Spine chapter index.          */
+  uint32_t local_page; /**< Page index within @p chapter. */
+} viewer_reflow_page_t;
+
+/** @brief Caller-bound EPUB and RABOOK reflow engine backing. */
+typedef struct {
+  epub_book_t*          epub;           /**< Bound EPUB reader handle.       */
+  reflow_t*             engine;         /**< Bound reflow pagination handle. */
+  viewer_reflow_page_t* pages;          /**< Global-to-chapter page map.     */
+  uint8_t*              xhtml;          /**< Per-chapter XHTML staging.      */
+  uint8_t*              file_buf;       /**< Raw .rabook container storage.  */
+  uint8_t*              book_buf;       /**< Inflated .rabook blob storage.  */
+  size_t                xhtml_cap;      /**< XHTML capacity in bytes.        */
+  size_t                file_cap;       /**< Container capacity in bytes.    */
+  size_t                book_cap;       /**< Inflated blob capacity, bytes.  */
+  const void*           book_base;      /**< Validated flat RABOOK1 blob.    */
+  size_t                book_size;      /**< Validated flat blob size.       */
+  uint32_t              chapter_count;  /**< Total spine chapters.           */
+  uint32_t              page_count;     /**< Total paginated pages.          */
+  uint32_t              loaded_chapter; /**< Currently laid-out chapter.     */
+  bool                  is_epub;        /**< True for EPUB; false RABOOK.    */
+} viewer_reflow_t;
+
 /** @brief Bound reader state; every buffer is borrowed from one workspace. */
 struct ra8_viewer_reader {
   viewer_file_ctx_t   file;     /**< Raw source descriptor.              */
@@ -107,6 +145,7 @@ struct ra8_viewer_reader {
   uint32_t            rt_h;     /**< Current target height.              */
   viewer_jof_t        jof;      /**< JOF engine and caller-bound cache.  */
   viewer_comic_t      comic;    /**< Comic engine and caller slices.     */
+  viewer_reflow_t     reflow;   /**< EPUB/RABOOK reflow engine slices.   */
 };
 
 /** @brief JOF positional-reader seam over ::viewer_file_ctx_t. */
@@ -160,6 +199,24 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_tile_comic(ra8_viewer_reader_t* rea
                                                         size_t               pixel_bytes,
                                                         uint32_t*            width,
                                                         uint32_t*            height);
+
+/** @brief Validate, open, and paginate an EPUB or RABOOK document. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_open_reflow(ra8_viewer_reader_t* reader);
+
+/** @brief Release EPUB/reflow engine state owned by @p reader. */
+RA8_PRIV void priv_viewer_close_reflow(ra8_viewer_reader_t* reader);
+
+/** @brief Render one reflow page into the fixed framebuffer. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_render_reflow(ra8_viewer_reader_t* reader,
+                                                           uint32_t             page);
+
+/** @brief Render one reflow page into caller-owned RGB565 storage. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_tile_reflow(ra8_viewer_reader_t* reader,
+                                                         uint32_t             index,
+                                                         uint16_t*            pixels,
+                                                         size_t               pixel_bytes,
+                                                         uint32_t*            width,
+                                                         uint32_t*            height);
 
 /**
  * @brief Name the container one comic page holds.

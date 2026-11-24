@@ -37,7 +37,8 @@ typedef enum : uint8_t {
   k_viewer_fmt_jof        = 1U, /**< Supported streamed JOF.            */
   k_viewer_fmt_comic      = 2U, /**< Supported bare CBZ/CBR/CBT.        */
   k_viewer_fmt_comic_wrap = 3U, /**< Gzip/XZ whole-output seam remains. */
-  k_viewer_fmt_reflow     = 4U, /**< EPUB/RABOOK engine not wired.      */
+  k_viewer_fmt_epub       = 4U, /**< Streamed EPUB reflowable book.     */
+  k_viewer_fmt_rabook     = 5U, /**< Compiled RBKC/RABOOK1 reflow book. */
 } viewer_fmt_t;
 
 /** @brief Mutable cursor used to calculate or bind one aligned layout. */
@@ -174,6 +175,41 @@ internal_take_comic(viewer_layout_t* layout, const ra8_viewer_reader_requirement
 }
 
 /**
+ * @brief Carve fixed-size reflow slices from the validated workspace.
+ * @details Advances @p layout in alignment order identical to
+ * ::internal_layout for the reflow engine branch.
+ * @param[in,out] layout Workspace cursor.
+ * @param[in] requirements Validated reflow requirements object.
+ * @return Populated reflow slice pointers and capacities.
+ * @pre @p layout holds enough remaining space for every requested slice.
+ * @post Layout cursor advances across all reflow buffers.
+ * @note Pure pointer carving; acquires no memory.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static viewer_reflow_t
+internal_take_reflow(viewer_layout_t* layout, const ra8_viewer_reader_requirements_t* requirements)
+{
+  viewer_reflow_t reflow = {.loaded_chapter = UINT32_MAX};
+  reflow.epub =
+    (epub_book_t*)internal_take(layout, requirements->reflow_epub_bytes, alignof(epub_book_t));
+  reflow.engine =
+    (reflow_t*)internal_take(layout, requirements->reflow_engine_bytes, alignof(reflow_t));
+  reflow.pages = (viewer_reflow_page_t*)internal_take(layout,
+                                                      requirements->reflow_pages_bytes,
+                                                      alignof(viewer_reflow_page_t));
+  reflow.xhtml =
+    (uint8_t*)internal_take(layout, requirements->reflow_xhtml_bytes, alignof(max_align_t));
+  reflow.file_buf =
+    (uint8_t*)internal_take(layout, requirements->reflow_file_bytes, alignof(max_align_t));
+  reflow.book_buf =
+    (uint8_t*)internal_take(layout, requirements->reflow_book_bytes, alignof(max_align_t));
+  reflow.xhtml_cap = requirements->reflow_xhtml_bytes;
+  reflow.file_cap  = requirements->reflow_file_bytes;
+  reflow.book_cap  = requirements->reflow_book_bytes;
+  return reflow;
+}
+
+/**
  * @brief Test one case-insensitive ASCII filename suffix.
  * @details Folds only ASCII uppercase characters in the path tail.
  * @param[in] path NUL-terminated path.
@@ -233,9 +269,11 @@ RA8_INTERNAL static viewer_fmt_t internal_classify(const char* path)
   if (internal_ends_with(path, ".gz") || internal_ends_with(path, ".xz")) {
     return k_viewer_fmt_comic_wrap;
   }
-  if (internal_ends_with(path, ".epub") || internal_ends_with(path, ".epb") ||
-      internal_ends_with(path, ".rabook") || internal_ends_with(path, ".rbk")) {
-    return k_viewer_fmt_reflow;
+  if (internal_ends_with(path, ".epub") || internal_ends_with(path, ".epb")) {
+    return k_viewer_fmt_epub;
+  }
+  if (internal_ends_with(path, ".rabook") || internal_ends_with(path, ".rbk")) {
+    return k_viewer_fmt_rabook;
   }
   return k_viewer_fmt_unknown;
 }
@@ -269,7 +307,7 @@ RA8_INTERNAL static void internal_stderr_write(const char* text)
 
 /**
  * @brief Emit the truthful unsupported-format reason.
- * @details Distinguishes codec-contract, reflow-wiring, and unknown formats.
+ * @details Distinguishes codec-contract and unknown formats.
  * @param[in] format Classified path family.
  * @param[in] path NUL-terminated path for the diagnostic.
  * @return Always unsupported.
@@ -288,9 +326,6 @@ RA8_INTERNAL static ra8_err_t internal_reject(viewer_fmt_t format, const char* p
   if (format == k_viewer_fmt_comic_wrap) {
     internal_stderr_write("' recognised but wrapped comics require a streaming or "
                           "descriptor-spooled gzip/XZ output seam");
-  } else if (format == k_viewer_fmt_reflow) {
-    internal_stderr_write("' recognised but its reflow reader engine "
-                          "(font + image loader) is not wired into the viewer yet");
   } else {
     internal_stderr_write("' has an unsupported file type");
   }
@@ -401,6 +436,8 @@ internal_layout(const ra8_viewer_reader_requirements_t* need, uint8_t* base, siz
     (void)internal_take_jof(&layout, need);
   } else if (need->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     (void)internal_take_comic(&layout, need);
+  } else if (need->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    (void)internal_take_reflow(&layout, need);
   } else {
     layout.valid = false;
   }
@@ -408,8 +445,21 @@ internal_layout(const ra8_viewer_reader_requirements_t* need, uint8_t* base, siz
 }
 
 /**
+ * @brief Return whether every reflow slice requirement is zero.
+ * @param[in] need Candidate requirements object.
+ * @return True if all six reflow extent fields are zero.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_reflow_fields_zero(const ra8_viewer_reader_requirements_t* need)
+{
+  return (need->reflow_epub_bytes == 0U) && (need->reflow_engine_bytes == 0U) &&
+         (need->reflow_pages_bytes == 0U) && (need->reflow_xhtml_bytes == 0U) &&
+         (need->reflow_file_bytes == 0U) && (need->reflow_book_bytes == 0U);
+}
+
+/**
  * @brief Validate engine-specific requirement fields.
- * @details Requires exact fixed comic capacities or mutually exclusive JOF slices.
+ * @details Requires exact fixed capacities or mutually exclusive JOF slices.
  * @param[in] need Candidate requirements object.
  * @return Whether its selected engine fields are canonical.
  * @retval true The engine and all exclusive fields match policy.
@@ -427,7 +477,8 @@ internal_engine_requirements_valid(const ra8_viewer_reader_requirements_t* need)
   if (need->engine == (uint32_t)k_ra8_viewer_engine_jof) {
     return (need->cell_bytes != 0U) && (need->scratch_bytes != 0U) &&
            (need->comic_pages_bytes == 0U) && (need->comic_names_bytes == 0U) &&
-           (need->comic_page_bytes == 0U) && (need->comic_arena_bytes == 0U);
+           (need->comic_page_bytes == 0U) && (need->comic_arena_bytes == 0U) &&
+           internal_reflow_fields_zero(need);
   }
   if (need->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     return (need->cell_bytes == 0U) && (need->scratch_bytes == 0U) &&
@@ -435,7 +486,21 @@ internal_engine_requirements_valid(const ra8_viewer_reader_requirements_t* need)
            (need->comic_pages_bytes == ((size_t)k_viewer_comic_page_cap * sizeof(comic_page_t))) &&
            (need->comic_names_bytes == (size_t)k_viewer_comic_name_bytes) &&
            (need->comic_page_bytes == (size_t)k_viewer_comic_page_bytes) &&
-           (need->comic_arena_bytes == (size_t)k_viewer_comic_arena_bytes);
+           (need->comic_arena_bytes == (size_t)k_viewer_comic_arena_bytes) &&
+           internal_reflow_fields_zero(need);
+  }
+  if (need->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    return (need->cell_bytes == 0U) && (need->scratch_bytes == 0U) &&
+           (need->comic_pages_bytes == 0U) && (need->comic_names_bytes == 0U) &&
+           (need->comic_page_bytes == 0U) && (need->comic_arena_bytes == 0U) &&
+           (need->tile_count == (uint32_t)k_viewer_reflow_page_cap) &&
+           (need->reflow_epub_bytes == sizeof(epub_book_t)) &&
+           (need->reflow_engine_bytes == sizeof(reflow_t)) &&
+           (need->reflow_pages_bytes ==
+            ((size_t)k_viewer_reflow_page_cap * sizeof(viewer_reflow_page_t))) &&
+           (need->reflow_xhtml_bytes == (size_t)k_viewer_reflow_xhtml_bytes) &&
+           (need->reflow_file_bytes == (size_t)k_viewer_reflow_file_bytes) &&
+           (need->reflow_book_bytes == (size_t)k_viewer_reflow_book_bytes);
   }
   return false;
 }
@@ -534,6 +599,24 @@ RA8_INTERNAL static void internal_require_comic(ra8_viewer_reader_requirements_t
   out->engine            = (uint32_t)k_ra8_viewer_engine_comic;
 }
 
+/**
+ * @brief Populate fixed reflow requirements for EPUB and RABOOK books.
+ * @param[out] out Partially populated requirements struct.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_require_reflow(ra8_viewer_reader_requirements_t* out)
+{
+  out->tile_count          = (uint32_t)k_viewer_reflow_page_cap;
+  out->dimensions_bytes    = (size_t)out->tile_count * 2U * sizeof(uint32_t);
+  out->reflow_epub_bytes   = sizeof(epub_book_t);
+  out->reflow_engine_bytes = sizeof(reflow_t);
+  out->reflow_pages_bytes  = (size_t)out->tile_count * sizeof(viewer_reflow_page_t);
+  out->reflow_xhtml_bytes  = (size_t)k_viewer_reflow_xhtml_bytes;
+  out->reflow_file_bytes   = (size_t)k_viewer_reflow_file_bytes;
+  out->reflow_book_bytes   = (size_t)k_viewer_reflow_book_bytes;
+  out->engine              = (uint32_t)k_ra8_viewer_engine_reflow;
+}
+
 ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_requirements_t* out)
 {
   if ((path == nullptr) || (out == nullptr)) {
@@ -541,7 +624,8 @@ ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_req
   }
   *out                      = (ra8_viewer_reader_requirements_t){};
   const viewer_fmt_t format = internal_classify(path);
-  if ((format != k_viewer_fmt_jof) && (format != k_viewer_fmt_comic)) {
+  if ((format != k_viewer_fmt_jof) && (format != k_viewer_fmt_comic) &&
+      (format != k_viewer_fmt_epub) && (format != k_viewer_fmt_rabook)) {
     return internal_reject(format, path);
   }
   viewer_file_ctx_t file  = {.fd = -1};
@@ -553,8 +637,10 @@ ra8_err_t ra8_viewer_reader_requirements(const char* path, ra8_viewer_reader_req
     out->layout_version = (uint32_t)k_viewer_layout_version;
     if (format == k_viewer_fmt_jof) {
       error = internal_require_jof(&file, out);
-    } else {
+    } else if (format == k_viewer_fmt_comic) {
       internal_require_comic(out);
+    } else {
+      internal_require_reflow(out);
     }
   }
   if (file.is_open) {
@@ -598,15 +684,18 @@ ra8_err_t ra8_viewer_reader_bind(ra8_viewer_reader_t**                   out,
     (ra8_viewer_reader_t*)internal_take(&layout, sizeof(*reader), alignof(max_align_t));
   uint16_t* framebuffer =
     (uint16_t*)internal_take(&layout, requirements->framebuffer_bytes, alignof(uint16_t));
-  const size_t   dimension_bytes = requirements->dimensions_bytes / 2U;
-  uint32_t*      widths  = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
-  uint32_t*      heights = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
-  viewer_jof_t   jof     = {};
-  viewer_comic_t comic   = {};
+  const size_t    dimension_bytes = requirements->dimensions_bytes / 2U;
+  uint32_t*       widths  = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
+  uint32_t*       heights = (uint32_t*)internal_take(&layout, dimension_bytes, alignof(uint32_t));
+  viewer_jof_t    jof     = {};
+  viewer_comic_t  comic   = {};
+  viewer_reflow_t reflow  = {};
   if (requirements->engine == (uint32_t)k_ra8_viewer_engine_jof) {
     jof = internal_take_jof(&layout, requirements);
-  } else {
+  } else if (requirements->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     comic = internal_take_comic(&layout, requirements);
+  } else {
+    reflow = internal_take_reflow(&layout, requirements);
   }
   if (!layout.valid || (layout.used != requirements->required_bytes)) {
     return k_ra8_err_invalid_size;
@@ -623,7 +712,8 @@ ra8_err_t ra8_viewer_reader_bind(ra8_viewer_reader_t**                   out,
                                   .rt_w     = (uint32_t)k_ra8_viewer_fb_width,
                                   .rt_h     = (uint32_t)k_ra8_viewer_fb_height,
                                   .jof      = jof,
-                                  .comic    = comic};
+                                  .comic    = comic,
+                                  .reflow   = reflow};
   *out    = reader;
   return k_ra8_ok;
 }
@@ -670,6 +760,8 @@ RA8_INTERNAL static ra8_err_t internal_open_selected(ra8_viewer_reader_t* reader
     if (error == k_ra8_ok) {
       error = priv_viewer_size_comic_tiles(reader);
     }
+  } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    error = priv_viewer_open_reflow(reader);
   }
   return error;
 }
@@ -695,7 +787,9 @@ RA8_INTERNAL static bool internal_engine_matches(const ra8_viewer_reader_t* read
 {
   return ((reader->engine == (uint32_t)k_ra8_viewer_engine_jof) && (format == k_viewer_fmt_jof)) ||
          ((reader->engine == (uint32_t)k_ra8_viewer_engine_comic) &&
-          (format == k_viewer_fmt_comic));
+          (format == k_viewer_fmt_comic)) ||
+         ((reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) &&
+          ((format == k_viewer_fmt_epub) || (format == k_viewer_fmt_rabook)));
 }
 
 ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
@@ -710,7 +804,8 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
   if (!internal_engine_matches(reader, format)) {
     return k_ra8_err_invalid_state;
   }
-  ra8_err_t error = internal_file_open(&reader->file, path);
+  reader->reflow.is_epub = (format == k_viewer_fmt_epub);
+  ra8_err_t error        = internal_file_open(&reader->file, path);
   if (error == k_ra8_ok) {
     error = internal_open_selected(reader);
   }
@@ -720,6 +815,8 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
   }
   if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     (void)comic_close(&reader->comic.archive);
+  } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    priv_viewer_close_reflow(reader);
   }
   if (reader->file.is_open) {
     (void)close(reader->file.fd);
@@ -745,9 +842,13 @@ ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* reader, uint32_t page)
   if (page >= reader->tile_n) {
     return k_ra8_err_out_of_range;
   }
-  return (reader->engine == (uint32_t)k_ra8_viewer_engine_comic)
-           ? priv_viewer_render_comic(reader, page)
-           : priv_viewer_render_jof(reader, page);
+  if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    return priv_viewer_render_comic(reader, page);
+  }
+  if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    return priv_viewer_render_reflow(reader, page);
+  }
+  return priv_viewer_render_jof(reader, page);
 }
 
 ra8_err_t
@@ -841,10 +942,17 @@ ra8_err_t ra8_viewer_render_tile565(ra8_viewer_reader_t*           reader,
       (workspace_bytes < required)) {
     return k_ra8_err_invalid_size;
   }
-  const ra8_err_t render =
-    (reader->engine == (uint32_t)k_ra8_viewer_engine_comic)
-      ? priv_viewer_tile_comic(reader, index, (uint16_t*)workspace, workspace_bytes, width, height)
-      : priv_viewer_tile_jof(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
+  ra8_err_t render = k_ra8_err_invalid_state;
+  if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
+    render =
+      priv_viewer_tile_comic(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
+  } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+    render =
+      priv_viewer_tile_reflow(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
+  } else {
+    render =
+      priv_viewer_tile_jof(reader, index, (uint16_t*)workspace, workspace_bytes, width, height);
+  }
   if (render == k_ra8_ok) {
     *out_pixels = (uint16_t*)workspace;
   }
@@ -859,6 +967,8 @@ void ra8_viewer_close(ra8_viewer_reader_t* reader)
   if (reader->file.is_open) {
     if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
       (void)comic_close(&reader->comic.archive);
+    } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_reflow) {
+      priv_viewer_close_reflow(reader);
     }
     (void)close(reader->file.fd);
   }

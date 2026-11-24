@@ -83,6 +83,7 @@ malicious=(
   giant_decl.cbz zip_bomb.cbz giant_decl.cbt
   truncated.cbz truncated.cbt garbage.cbr
   giant_tiles.jof truncated.jof unwrap_bomb.cbt.gz
+  truncated.epub truncated.rabook
 )
 for f in "${malicious[@]}"; do
   run_one "$f"
@@ -103,8 +104,8 @@ for f in "${malicious[@]}"; do
   fi
 done
 
-# --- legitimate: a valid atlas must still decode ----------------------------
-legit=(legit.jof legit_deflate.jof legit.cbz legit.cbt)
+# --- legitimate: a valid atlas or reflow book must decode --------------------
+legit=(legit.jof legit_deflate.jof legit.cbz legit.cbt sample.epub sample.rabook)
 for f in "${legit[@]}"; do
   run_one "$f"
   if [[ "$rc" -ne 0 ]]; then
@@ -117,6 +118,10 @@ for f in "${legit[@]}"; do
     [[ "$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$PPM")" != "$COMIC_PPM_SHA256" ]]; then
     echo "FAIL: legitimate $f pixels differ from the committed RGB golden" >&2
     fail=1
+  elif [[ "$f" == "sample.epub" || "$f" == "sample.rabook" ]] &&
+    ! python3 -c 'import sys; d=open(sys.argv[1],"rb").read().split(b"\n",3)[3]; sys.exit(0 if any(b != 255 for b in d) else 1)' "$PPM"; then
+    echo "FAIL: legitimate $f rendered an all-white blank page" >&2
+    fail=1
   else
     echo "PASS decoded: $f -> $(wc -c <"$PPM") bytes of P6"
   fi
@@ -126,8 +131,6 @@ done
 # Each entry is "fixture|expected stderr fragment".
 unwired=(
   "legit.cbt.gz|wrapped comics require"
-  "sample.epub|reflow reader engine"
-  "sample.rabook|reflow reader engine"
   "notes.pdf|unsupported file type"
 )
 for entry in "${unwired[@]}"; do

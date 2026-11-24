@@ -288,8 +288,8 @@ def build_epub() -> bytes:
     chapter = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>1</title></head>\n'
-        "<body><h1>Chapter 1</h1><p>Reflowable text the viewer cannot lay out "
-        "yet.</p></body></html>\n"
+        "<body><h1>Chapter 1</h1><p>Reflowable text for the viewer integration "
+        "corpus.</p></body></html>\n"
     )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
@@ -300,19 +300,20 @@ def build_epub() -> bytes:
     return buf.getvalue()
 
 
-def build_rabook_stub() -> bytes:
-    """Build a .rabook whose RBKC magic is real and whose body is deliberately not.
+def build_rabook_from_epub(epub_path: Path) -> bytes:
+    """Compile sample.epub into a real RBKC-wrapped .rabook container."""
+    epub_compile_src = Path(__file__).resolve().parents[3] / "tools" / "epub_compile" / "src"
+    if str(epub_compile_src) not in sys.path:
+        sys.path.insert(0, str(epub_compile_src))
+    from epub_pipeline import compile_epub  # noqa: PLC0415
+    from rabook_format import wrap_container  # noqa: PLC0415
 
-    The exporter that emits real RBKC containers is not wired into this corpus,
-    and forging a chunk table here would assert a layout this script does not
-    own. The viewer classifies `.rabook` by extension and refuses it before any
-    byte is parsed, so the magic plus a zeroed fixed header is exactly enough to
-    gate that refusal. Replace this fixture with exporter output when the reflow
-    engine lands.
+    blob, _meta, _bb = compile_epub(epub_path, skip_images=True)
+    return wrap_container(blob)
 
-    Returns:
-        The stub container bytes.
-    """
+
+def build_rabook_corrupt() -> bytes:
+    """Build a truncated .rabook container with RBKC magic for refusal tests."""
     return RBKC_MAGIC + (b"\x00" * (RBKC_HEADER_BYTES - len(RBKC_MAGIC)))
 
 
@@ -360,10 +361,15 @@ def main() -> int:
     # --- legitimate: must still decode ---------------------------------------
     _write(out, "legit.jof", build_jof(JofGeom(32, 32, 32, 32, 1)))
     _write(out, "legit_deflate.jof", build_jof(JofGeom(32, 32, 32, 32, 1), codec=1))
+    epub_bytes = build_epub()
+    _write(out, "sample.epub", epub_bytes)
+    _write(out, "sample.rabook", build_rabook_from_epub(out / "sample.epub"))
 
-    # --- recognised but unwired: must be refused with the honest reason
-    _write(out, "sample.epub", build_epub())
-    _write(out, "sample.rabook", build_rabook_stub())
+    # --- malicious: truncated/corrupt reflow books -------------------------
+    _write(out, "truncated.epub", epub_bytes[: len(epub_bytes) // 3])
+    _write(out, "truncated.rabook", build_rabook_corrupt())
+
+    # --- recognised but unwired / unsupported ------------------------------
     _write(out, "notes.pdf", b"%PDF-1.7\n% not a book format the viewer knows\n")
     if sample is not None:
         legit_cbt = build_cbt_from_comic(sample)
