@@ -9,8 +9,16 @@ const blank_sha256 = "1f5720358302c8a9d329b85f698fa1e86aae6d29042e294f48ebfd5b25
 const font_sha256 = "c293f3bff8508dcc81d74e1d6b427f372d89baac9fc4ea4aac8af75a2b876567";
 
 fn runTool(dir: std.Io.Dir, argv: []const []const u8) !std.process.RunResult {
-    return std.process.run(std.testing.allocator, std.testing.io, .{
-        .argv = argv,
+    const io = std.testing.io;
+    const exe_abs = try std.Io.Dir.cwd().realPathFileAlloc(io, argv[0], std.testing.allocator);
+    defer std.testing.allocator.free(exe_abs);
+
+    const resolved = try std.testing.allocator.dupe([]const u8, argv);
+    defer std.testing.allocator.free(resolved);
+    resolved[0] = exe_abs;
+
+    return std.process.run(std.testing.allocator, io, .{
+        .argv = resolved,
         .cwd = .{ .dir = dir },
         .stderr_limit = .limited(1024 * 1024),
         .stdout_limit = .limited(1024 * 1024),

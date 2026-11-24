@@ -5,8 +5,16 @@ const std = @import("std");
 const tool_options = @import("tool_options");
 
 fn runTool(dir: std.Io.Dir, argv: []const []const u8) !std.process.RunResult {
-    return std.process.run(std.testing.allocator, std.testing.io, .{
-        .argv = argv,
+    const io = std.testing.io;
+    const exe_abs = try std.Io.Dir.cwd().realPathFileAlloc(io, argv[0], std.testing.allocator);
+    defer std.testing.allocator.free(exe_abs);
+
+    const resolved = try std.testing.allocator.dupe([]const u8, argv);
+    defer std.testing.allocator.free(resolved);
+    resolved[0] = exe_abs;
+
+    return std.process.run(std.testing.allocator, io, .{
+        .argv = resolved,
         .cwd = .{ .dir = dir },
         .stderr_limit = .limited(1024 * 1024),
         .stdout_limit = .limited(4 * 1024 * 1024),
