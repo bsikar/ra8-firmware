@@ -11,6 +11,7 @@ const sidecar = @import("sidecar");
 const lang = @import("lang");
 const glossary = @import("glossary");
 const ocr = @import("ocr");
+const tokenizer = @import("tokenizer");
 
 pub const SidecarKey = sidecar.SidecarKey;
 pub const SidecarHeader = sidecar.SidecarHeader;
@@ -22,6 +23,21 @@ pub const OcrRect = ocr.Rect;
 pub const OcrImageSpec = ocr.ImageSpec;
 pub const OcrPreprocessCfg = ocr.PreprocessCfg;
 pub const OcrQuantParams = ocr.QuantParams;
+
+/// Public C ABI representation of `ra8_translate_vocab_header_t`.
+pub const VocabHeader = extern struct {
+    total_bytes: u32,
+    container_crc32: u32,
+    vocab_size: u32,
+    unk_id: u32,
+    bos_id: u32,
+    eos_id: u32,
+    pad_id: u32,
+    min_normal_score: f32,
+    model_type: u8,
+    flags: u8,
+    reserved: [2]u8,
+};
 
 comptime {
     const assert = std.debug.assert;
@@ -173,6 +189,32 @@ comptime {
     assert(@offsetOf(OcrQuantParams, "quant_scale") == 28);
     assert(@offsetOf(OcrQuantParams, "zero_point") == 32);
     assert(@offsetOf(OcrQuantParams, "reserved") == 33);
+
+    assert(@sizeOf(tokenizer.ModelType) == 1);
+    assert(@backingInt(tokenizer.ModelType.unigram) == 0);
+    assert(@backingInt(tokenizer.ModelType.bpe) == 1);
+
+    assert(@sizeOf(tokenizer.PieceKind) == 1);
+    assert(@backingInt(tokenizer.PieceKind.normal) == 0);
+    assert(@backingInt(tokenizer.PieceKind.unknown) == 1);
+    assert(@backingInt(tokenizer.PieceKind.control) == 2);
+    assert(@backingInt(tokenizer.PieceKind.user_defined) == 3);
+    assert(@backingInt(tokenizer.PieceKind.byte) == 4);
+    assert(@backingInt(tokenizer.PieceKind.unused) == 5);
+
+    assert(@sizeOf(VocabHeader) == 36);
+    assert(@alignOf(VocabHeader) == 4);
+    assert(@offsetOf(VocabHeader, "total_bytes") == 0);
+    assert(@offsetOf(VocabHeader, "container_crc32") == 4);
+    assert(@offsetOf(VocabHeader, "vocab_size") == 8);
+    assert(@offsetOf(VocabHeader, "unk_id") == 12);
+    assert(@offsetOf(VocabHeader, "bos_id") == 16);
+    assert(@offsetOf(VocabHeader, "eos_id") == 20);
+    assert(@offsetOf(VocabHeader, "pad_id") == 24);
+    assert(@offsetOf(VocabHeader, "min_normal_score") == 28);
+    assert(@offsetOf(VocabHeader, "model_type") == 32);
+    assert(@offsetOf(VocabHeader, "flags") == 33);
+    assert(@offsetOf(VocabHeader, "reserved") == 34);
 }
 
 fn inputSlice(comptime T: type, ptr_opt: ?[*]const T, count: usize) ?[]const T {
@@ -602,5 +644,115 @@ pub export fn ra8_translate_ocr_preprocess_i8(
         out_dst[0..out_cap],
     ) catch |e| return err_mod.toRa8Err(e);
     out_written.* = written;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_tok_open()`.
+pub export fn ra8_translate_tok_open(
+    tvoc_opt: ?[*]const u8,
+    tvoc_len: usize,
+    out_header_opt: ?*VocabHeader,
+) callconv(.c) u16 {
+    const out_header = out_header_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tvoc = inputSlice(u8, tvoc_opt, tvoc_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = tokenizer.TvocView.open(tvoc) catch |e| return err_mod.toRa8Err(e);
+    out_header.* = .{
+        .total_bytes = view.header.total_bytes,
+        .container_crc32 = view.header.container_crc32,
+        .vocab_size = view.header.vocab_size,
+        .unk_id = view.header.unk_id,
+        .bos_id = view.header.bos_id,
+        .eos_id = view.header.eos_id,
+        .pad_id = view.header.pad_id,
+        .min_normal_score = view.header.min_normal_score,
+        .model_type = @backingInt(view.header.model_type),
+        .flags = view.header.flags,
+        .reserved = .{ 0, 0 },
+    };
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_tok_piece_info()`.
+pub export fn ra8_translate_tok_piece_info(
+    tvoc_opt: ?[*]const u8,
+    tvoc_len: usize,
+    token_id: u32,
+    out_piece_ptr_opt: ?*?[*]const u8,
+    out_piece_len_opt: ?*u16,
+    out_kind_opt: ?*u8,
+    out_score_opt: ?*f32,
+) callconv(.c) u16 {
+    const out_piece_ptr = out_piece_ptr_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_piece_len = out_piece_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_kind = out_kind_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_score = out_score_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tvoc = inputSlice(u8, tvoc_opt, tvoc_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = tokenizer.TvocView.open(tvoc) catch |e| return err_mod.toRa8Err(e);
+    const meta = view.pieceAt(token_id) catch |e| return err_mod.toRa8Err(e);
+    out_piece_ptr.* = meta.text.ptr;
+    out_piece_len.* = @intCast(meta.text.len);
+    out_kind.* = @backingInt(meta.kind);
+    out_score.* = meta.score;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_tok_work_bytes()`.
+pub export fn ra8_translate_tok_work_bytes(
+    text_len: usize,
+    model_raw: u8,
+    out_work_bytes_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_work_bytes = out_work_bytes_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const model_type = tokenizer.ModelType.fromRaw(model_raw) orelse return err_mod.k_ra8_err_invalid_arg;
+    const needed = tokenizer.minWorkBufBytes(text_len, model_type) catch |e| return err_mod.toRa8Err(e);
+    out_work_bytes.* = needed;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_tok_encode()`.
+pub export fn ra8_translate_tok_encode(
+    tvoc_opt: ?[*]const u8,
+    tvoc_len: usize,
+    text_opt: ?[*]const u8,
+    text_len: usize,
+    enc_flags: u8,
+    work_opt: ?[*]u8,
+    work_cap: usize,
+    out_ids_opt: ?[*]u32,
+    id_cap: usize,
+    out_id_count_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_id_count = out_id_count_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_ids = out_ids_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const work_buf = work_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tvoc = inputSlice(u8, tvoc_opt, tvoc_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const text = inputSlice(u8, text_opt, text_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = tokenizer.TvocView.open(tvoc) catch |e| return err_mod.toRa8Err(e);
+    const count = view.encode(text, enc_flags, work_buf[0..work_cap], out_ids[0..id_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_id_count.* = count;
+    return err_mod.k_ra8_ok;
+}
+
+/// C ABI export for `ra8_translate_tok_decode()`.
+pub export fn ra8_translate_tok_decode(
+    tvoc_opt: ?[*]const u8,
+    tvoc_len: usize,
+    ids_opt: ?[*]const u32,
+    id_count: usize,
+    out_utf8_opt: ?[*]u8,
+    out_cap: usize,
+    out_len_opt: ?*usize,
+) callconv(.c) u16 {
+    const out_len = out_len_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const out_utf8 = out_utf8_opt orelse return err_mod.k_ra8_err_null_ptr;
+    const tvoc = inputSlice(u8, tvoc_opt, tvoc_len) orelse return err_mod.k_ra8_err_null_ptr;
+    const ids = inputSlice(u32, ids_opt, id_count) orelse return err_mod.k_ra8_err_null_ptr;
+    const view = tokenizer.TvocView.open(tvoc) catch |e| return err_mod.toRa8Err(e);
+    const written = view.decode(ids, out_utf8[0..out_cap]) catch |e| {
+        return err_mod.toRa8Err(e);
+    };
+    out_len.* = written;
     return err_mod.k_ra8_ok;
 }

@@ -371,6 +371,249 @@ static void test_ocr_preprocess(void)
   TEST_ASSERT_EQ(0, memcmp(out_i8, fused_i8, sizeof(out_i8)));
 }
 
+typedef struct test_tvoc_piece_s {
+  const char* text;
+  float       score;
+  uint8_t     kind;
+} test_tvoc_piece_t;
+
+static void test_wr_u16(uint8_t* p, uint16_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8U) & 0xFFU);
+}
+
+static void test_wr_u32(uint8_t* p, uint32_t v)
+{
+  p[0] = (uint8_t)(v & 0xFFU);
+  p[1] = (uint8_t)((v >> 8U) & 0xFFU);
+  p[2] = (uint8_t)((v >> 16U) & 0xFFU);
+  p[3] = (uint8_t)((v >> 24U) & 0xFFU);
+}
+
+static uint32_t test_crc32_ieee(const uint8_t* data, size_t len)
+{
+  uint32_t crc = 0xFFFFFFFFU;
+  for (size_t i = 0U; i < len; ++i) {
+    crc ^= data[i];
+    for (uint32_t b = 0U; b < 8U; ++b) {
+      uint32_t mask = (crc & 1U) ? 0xEDB88320U : 0U;
+      crc           = (crc >> 1U) ^ mask;
+    }
+  }
+  return ~crc;
+}
+
+static size_t build_test_tvoc(uint8_t                  model_type,
+                              uint8_t                  flags,
+                              uint32_t                 bos_id,
+                              uint32_t                 eos_id,
+                              const test_tvoc_piece_t* pieces,
+                              uint32_t                 count,
+                              uint8_t*                 out_buf)
+{
+  const size_t hdr_bytes   = 56U;
+  const size_t table_off   = hdr_bytes;
+  const size_t sorted_off  = table_off + (size_t)count * 12U;
+  const size_t pool_off    = sorted_off + (size_t)count * 4U;
+  size_t       pool_cursor = 0U;
+  float        min_score   = -10.0F;
+  bool         saw_normal  = false;
+
+  for (uint32_t i = 0U; i < count; ++i) {
+    size_t   len = strlen(pieces[i].text);
+    uint32_t score_bits;
+    memcpy(&score_bits, &pieces[i].score, sizeof(score_bits));
+    if (pieces[i].kind == k_ra8_translate_tok_piece_normal &&
+        (!saw_normal || pieces[i].score < min_score)) {
+      min_score  = pieces[i].score;
+      saw_normal = true;
+    }
+    uint8_t* rec = out_buf + table_off + (size_t)i * 12U;
+    test_wr_u32(rec + 0U, (uint32_t)pool_cursor);
+    test_wr_u16(rec + 4U, (uint16_t)len);
+    rec[6] = pieces[i].kind;
+    rec[7] = 0U;
+    test_wr_u32(rec + 8U, score_bits);
+    memcpy(out_buf + pool_off + pool_cursor, pieces[i].text, len);
+    pool_cursor += len;
+  }
+
+  uint32_t sorted[32];
+  for (uint32_t i = 0U; i < count; ++i) {
+    sorted[i] = i;
+  }
+  for (uint32_t i = 1U; i < count; ++i) {
+    uint32_t key = sorted[i];
+    uint32_t j   = i;
+    while (j > 0U) {
+      uint32_t prev = sorted[j - 1U];
+      int      cmp  = strcmp(pieces[prev].text, pieces[key].text);
+      if (cmp < 0 || (cmp == 0 && prev < key)) {
+        break;
+      }
+      sorted[j] = prev;
+      --j;
+    }
+    sorted[j] = key;
+  }
+  for (uint32_t i = 0U; i < count; ++i) {
+    test_wr_u32(out_buf + sorted_off + (size_t)i * 4U, sorted[i]);
+  }
+
+  size_t   total = pool_off + pool_cursor;
+  uint32_t min_bits;
+  memcpy(&min_bits, &min_score, sizeof(min_bits));
+  test_wr_u32(out_buf + 0U, 0x434F5654U);
+  test_wr_u16(out_buf + 4U, 1U);
+  out_buf[6] = model_type;
+  out_buf[7] = flags;
+  test_wr_u32(out_buf + 8U, (uint32_t)total);
+  test_wr_u32(out_buf + 12U, 0U);
+  test_wr_u32(out_buf + 16U, count);
+  test_wr_u32(out_buf + 20U, 0U);
+  test_wr_u32(out_buf + 24U, bos_id);
+  test_wr_u32(out_buf + 28U, eos_id);
+  test_wr_u32(out_buf + 32U, k_ra8_translate_tok_id_none);
+  test_wr_u32(out_buf + 36U, min_bits);
+  test_wr_u32(out_buf + 40U, (uint32_t)table_off);
+  test_wr_u32(out_buf + 44U, (uint32_t)sorted_off);
+  test_wr_u32(out_buf + 48U, (uint32_t)pool_off);
+  test_wr_u32(out_buf + 52U, 0U);
+  test_wr_u32(out_buf + 12U, test_crc32_ieee(out_buf, total));
+  return total;
+}
+
+static void test_tokenizer_unigram_bpe_and_errors(void)
+{
+  const test_tvoc_piece_t uni_pieces[] = {
+    {"<unk>", 0.0F, k_ra8_translate_tok_piece_unknown},
+    {"<s>", 0.0F, k_ra8_translate_tok_piece_control},
+    {"</s>", 0.0F, k_ra8_translate_tok_piece_control},
+    {"__G00__", 0.0F, k_ra8_translate_tok_piece_user_defined},
+    {"\xe2\x96\x81", -2.0F, k_ra8_translate_tok_piece_normal},
+    {"\xe2\x96\x81\xeb\x82\x98\xeb\x8a\x94", -1.0F, k_ra8_translate_tok_piece_normal},
+    {"\xe2\x96\x81\xe7\xa7\x81\xe3\x81\xaf", -1.0F, k_ra8_translate_tok_piece_normal},
+    {"\xe2\x96\x81\xe4\xbb\x96\xe5\x9c\xa8", -1.0F, k_ra8_translate_tok_piece_normal},
+    {"\xe2\x96\x81Hello", -0.5F, k_ra8_translate_tok_piece_normal},
+    {"!", -0.4F, k_ra8_translate_tok_piece_normal},
+  };
+  uint8_t tvoc[1024] = {};
+  uint8_t flags =
+    (uint8_t)(k_ra8_translate_tok_flag_add_dummy_prefix | k_ra8_translate_tok_flag_remove_extra_ws |
+              k_ra8_translate_tok_flag_escape_ws | k_ra8_translate_tok_flag_norm_fullwidth);
+  size_t tvoc_len =
+    build_test_tvoc(k_ra8_translate_tok_unigram, flags, 1U, 2U, uni_pieces, 10U, tvoc);
+
+  ra8_translate_vocab_header_t hdr = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_translate_tok_open(nullptr, tvoc_len, &hdr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_translate_tok_open(nullptr, tvoc_len, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_tok_open(tvoc, tvoc_len, &hdr));
+  TEST_ASSERT_EQ(10U, hdr.vocab_size);
+
+  const uint8_t*                 p_ptr  = nullptr;
+  uint16_t                       p_len  = 0U;
+  ra8_translate_tok_piece_kind_t p_kind = k_ra8_translate_tok_piece_normal;
+  float                          p_scr  = 0.0F;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_tok_piece_info(tvoc, tvoc_len, 8U, &p_ptr, &p_len, &p_kind, &p_scr));
+  TEST_ASSERT_EQ(8U, p_len);
+  TEST_ASSERT_EQ(0, memcmp(p_ptr, "\xe2\x96\x81Hello", 8U));
+
+  size_t work_bytes = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_tok_work_bytes(32U, k_ra8_translate_tok_unigram, &work_bytes));
+
+  uint8_t       work[2048] = {};
+  uint32_t      ids[16]    = {};
+  size_t        id_count   = 0U;
+  const uint8_t ja[]       = "\xe7\xa7\x81\xe3\x81\xaf\xef\xbc\x81";
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_tok_encode(tvoc,
+                                          tvoc_len,
+                                          ja,
+                                          sizeof(ja) - 1U,
+                                          k_ra8_translate_tok_enc_add_eos,
+                                          work,
+                                          work_bytes,
+                                          ids,
+                                          16U,
+                                          &id_count));
+  TEST_ASSERT_EQ(3U, id_count);
+  TEST_ASSERT_EQ(6U, ids[0]);
+  TEST_ASSERT_EQ(9U, ids[1]);
+  TEST_ASSERT_EQ(2U, ids[2]);
+
+  const uint32_t en_ids[] = {1U, 8U, 4U, 3U, 9U, 2U};
+  uint8_t        dec[64]  = {};
+  size_t         dec_len  = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_tok_decode(tvoc, tvoc_len, en_ids, 6U, dec, sizeof(dec), &dec_len));
+  TEST_ASSERT_EQ(14U, dec_len);
+  TEST_ASSERT_EQ(0, memcmp(dec, "Hello __G00__!", 14U));
+
+  /* BPE model round-trip through the same C ABI entry points. */
+  const test_tvoc_piece_t bpe_pieces[] = {
+    {"<unk>", 0.0F, k_ra8_translate_tok_piece_unknown},
+    {"\xe2\x96\x81", -9.0F, k_ra8_translate_tok_piece_normal},
+    {"a", -10.0F, k_ra8_translate_tok_piece_normal},
+    {"b", -11.0F, k_ra8_translate_tok_piece_normal},
+    {"ab", -1.0F, k_ra8_translate_tok_piece_normal},
+    {"\xe2\x96\x81"
+     "ab",
+     -2.0F,
+     k_ra8_translate_tok_piece_normal},
+  };
+  uint8_t bpe_tvoc[512] = {};
+  size_t  bpe_len       = build_test_tvoc(k_ra8_translate_tok_bpe,
+                                          flags,
+                                          k_ra8_translate_tok_id_none,
+                                          k_ra8_translate_tok_id_none,
+                                          bpe_pieces,
+                                          6U,
+                                          bpe_tvoc);
+  size_t  bpe_work      = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_translate_tok_work_bytes(8U, k_ra8_translate_tok_bpe, &bpe_work));
+  size_t bpe_n = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_translate_tok_encode(bpe_tvoc,
+                                          bpe_len,
+                                          (const uint8_t*)"ab",
+                                          2U,
+                                          0U,
+                                          work,
+                                          bpe_work,
+                                          ids,
+                                          16U,
+                                          &bpe_n));
+  TEST_ASSERT_EQ(1U, bpe_n);
+  TEST_ASSERT_EQ(5U, ids[0]);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_translate_tok_decode(bpe_tvoc, bpe_len, ids, bpe_n, dec, sizeof(dec), &dec_len));
+  TEST_ASSERT_EQ(2U, dec_len);
+  TEST_ASSERT_EQ(0, memcmp(dec, "ab", 2U));
+
+  /* Corrupt CRC triggers failure without touching output. */
+  uint32_t sentinel_id = 0xDEADBEEFU;
+  ids[0]               = sentinel_id;
+  id_count             = 77U;
+  tvoc[tvoc_len - 1U] ^= 0x01U;
+  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
+                 ra8_translate_tok_encode(tvoc,
+                                          tvoc_len,
+                                          ja,
+                                          sizeof(ja) - 1U,
+                                          0U,
+                                          work,
+                                          work_bytes,
+                                          ids,
+                                          16U,
+                                          &id_count));
+  TEST_ASSERT_EQ(sentinel_id, ids[0]);
+  TEST_ASSERT_EQ(77U, id_count);
+}
+
 int main(void)
 {
   TEST_BEGIN("test_null_guards_and_no_write");
@@ -392,5 +635,9 @@ int main(void)
   TEST_BEGIN("test_ocr_preprocess");
   test_ocr_preprocess();
   TEST_END("test_ocr_preprocess");
+
+  TEST_BEGIN("test_tokenizer_unigram_bpe_and_errors");
+  test_tokenizer_unigram_bpe_and_errors();
+  TEST_END("test_tokenizer_unigram_bpe_and_errors");
   return 0;
 }

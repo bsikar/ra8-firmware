@@ -6,6 +6,7 @@
 const std = @import("std");
 const abi = @import("ra8_translate_abi");
 const err_mod = @import("err");
+const tok = @import("tokenizer");
 
 test "C ABI exports enforce null-first precedence and leave outputs untouched on error" {
     var sentinel_hdr: abi.SidecarHeader = std.mem.zeroes(abi.SidecarHeader);
@@ -254,4 +255,127 @@ test "C ABI OCR preprocessing validates nulls, bounds, rotation, and quantizatio
         abi.ra8_translate_ocr_preprocess_i8(&src, src.len, &spec, &crop, &cfg, &q, &fused_i8, fused_i8.len, &out_written),
     );
     try std.testing.expectEqualSlices(i8, &out_i8, &fused_i8);
+}
+
+test "C ABI tokenizer open, piece_info, work_bytes, encode, and decode round-trip cleanly" {
+    const pieces = [_]tok.PieceInput{
+        .{ .text = "<unk>", .score = 0.0, .kind = .unknown },
+        .{ .text = "<s>", .score = 0.0, .kind = .control },
+        .{ .text = "</s>", .score = 0.0, .kind = .control },
+        .{ .text = "\xe2\x96\x81", .score = -2.0 },
+        .{ .text = "\xe2\x96\x81\xeb\x82\x98\xeb\x8a\x94", .score = -1.0 },
+        .{ .text = "\xe2\x96\x81go", .score = -0.8 },
+        .{ .text = "!", .score = -0.4 },
+    };
+    var wire: [1024]u8 = undefined;
+    const tvoc_len = try tok.writeVocab(.{
+        .model_type = .unigram,
+        .flags = tok.default_flags | tok.flag_norm_fullwidth,
+        .unk_id = 0,
+        .bos_id = 1,
+        .eos_id = 2,
+    }, &pieces, &wire);
+
+    var hdr: abi.VocabHeader = undefined;
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_tok_open(&wire, tvoc_len, &hdr));
+    try std.testing.expectEqual(@as(u32, 7), hdr.vocab_size);
+    try std.testing.expectEqual(@as(u8, 0), hdr.model_type);
+    try std.testing.expectEqual(@as(u32, 1), hdr.bos_id);
+    try std.testing.expectEqual(@as(u32, 2), hdr.eos_id);
+
+    var p_ptr: ?[*]const u8 = null;
+    var p_len: u16 = 0;
+    var p_kind: u8 = 0;
+    var p_score: f32 = 0.0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_tok_piece_info(&wire, tvoc_len, 4, &p_ptr, &p_len, &p_kind, &p_score),
+    );
+    try std.testing.expectEqual(@as(u8, 0), p_kind);
+    try std.testing.expectEqualStrings("\xe2\x96\x81\xeb\x82\x98\xeb\x8a\x94", p_ptr.?[0..p_len]);
+    try std.testing.expectEqual(@as(f32, -1.0), p_score);
+
+    const src = "\xeb\x82\x98\xeb\x8a\x94";
+    var work_needed: usize = 0;
+    try std.testing.expectEqual(err_mod.k_ra8_ok, abi.ra8_translate_tok_work_bytes(src.len, 0, &work_needed));
+
+    var work: [512]u8 = undefined;
+    var ids: [8]u32 = undefined;
+    var id_count: usize = 0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_tok_encode(&wire, tvoc_len, src.ptr, src.len, tok.enc_add_eos, &work, work_needed, &ids, ids.len, &id_count),
+    );
+    try std.testing.expectEqualSlices(u32, &[_]u32{ 4, 2 }, ids[0..id_count]);
+
+    const dec_ids = [_]u32{ 1, 5, 6, 2 };
+    var out_utf8: [32]u8 = undefined;
+    var out_len: usize = 0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_ok,
+        abi.ra8_translate_tok_decode(&wire, tvoc_len, &dec_ids, dec_ids.len, &out_utf8, out_utf8.len, &out_len),
+    );
+    try std.testing.expectEqualStrings("go!", out_utf8[0..out_len]);
+}
+
+test "C ABI tokenizer exports enforce null-first precedence and no-write on errors" {
+    const pieces = [_]tok.PieceInput{
+        .{ .text = "<unk>", .score = 0.0, .kind = .unknown },
+        .{ .text = "ok", .score = -1.0 },
+    };
+    var wire: [512]u8 = undefined;
+    const tvoc_len = try tok.writeVocab(.{
+        .model_type = .bpe,
+        .flags = tok.default_flags,
+        .unk_id = 0,
+    }, &pieces, &wire);
+
+    var hdr: abi.VocabHeader = std.mem.zeroes(abi.VocabHeader);
+    hdr.vocab_size = 777;
+    try std.testing.expectEqual(err_mod.k_ra8_err_null_ptr, abi.ra8_translate_tok_open(&wire, tvoc_len, null));
+    try std.testing.expectEqual(err_mod.k_ra8_err_null_ptr, abi.ra8_translate_tok_open(null, tvoc_len, &hdr));
+    try std.testing.expectEqual(@as(u32, 777), hdr.vocab_size);
+
+    var p_ptr: ?[*]const u8 = null;
+    var p_len: u16 = 0;
+    var p_kind: u8 = 0;
+    var p_score: f32 = 0.0;
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_null_ptr,
+        abi.ra8_translate_tok_piece_info(&wire, tvoc_len, 0, null, &p_len, &p_kind, &p_score),
+    );
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_range_check_failed,
+        abi.ra8_translate_tok_piece_info(&wire, tvoc_len, 9, &p_ptr, &p_len, &p_kind, &p_score),
+    );
+
+    var work_needed: usize = 55;
+    try std.testing.expectEqual(err_mod.k_ra8_err_null_ptr, abi.ra8_translate_tok_work_bytes(10, 0, null));
+    try std.testing.expectEqual(err_mod.k_ra8_err_invalid_arg, abi.ra8_translate_tok_work_bytes(10, 99, &work_needed));
+    try std.testing.expectEqual(@as(usize, 55), work_needed);
+
+    var work: [256]u8 = undefined;
+    var ids = [_]u32{ 99, 99 };
+    var id_count: usize = 88;
+    const text = "ok";
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_null_ptr,
+        abi.ra8_translate_tok_encode(&wire, tvoc_len, text.ptr, text.len, 0, &work, work.len, null, 2, &id_count),
+    );
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_invalid_size,
+        abi.ra8_translate_tok_encode(&wire, tvoc_len, text.ptr, text.len, 0, &work, 2, &ids, ids.len, &id_count),
+    );
+    try std.testing.expectEqual(@as(u32, 99), ids[0]);
+    try std.testing.expectEqual(@as(usize, 88), id_count);
+
+    var out_utf8 = [_]u8{ 0xAA, 0xBB };
+    var out_len: usize = 44;
+    const bad_id = [_]u32{9};
+    try std.testing.expectEqual(
+        err_mod.k_ra8_err_range_check_failed,
+        abi.ra8_translate_tok_decode(&wire, tvoc_len, &bad_id, 1, &out_utf8, out_utf8.len, &out_len),
+    );
+    try std.testing.expectEqual(@as(u8, 0xAA), out_utf8[0]);
+    try std.testing.expectEqual(@as(usize, 44), out_len);
 }
