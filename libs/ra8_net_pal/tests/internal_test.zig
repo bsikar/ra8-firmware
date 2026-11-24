@@ -8,6 +8,10 @@
 const std = @import("std");
 const implementation = @import("implementation");
 
+comptime {
+    _ = @import("abi_fixture.zig");
+}
+
 test "constants match the header contract" {
     try std.testing.expectEqual(@as(u16, 6), implementation.mac_addr_len);
     try std.testing.expectEqual(@as(u16, 1500), implementation.mtu);

@@ -1,0 +1,22 @@
+{
+  "test_roots": [
+    "tests/abi_test.zig",
+    "tests/addr_test.zig",
+    "tests/policy_test.zig",
+    "tests/url_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/ascii.zig",
+    "src/internal/policy.zig",
+    "src/internal/root.zig",
+    "src/internal/url.zig",
+    "src/internal/v4.zig",
+    "src/internal/v6.zig",
+    "src/ra8_net_urlguard_abi.zig",
+    "tests/abi_test.zig",
+    "tests/addr_test.zig",
+    "tests/policy_test.zig",
+    "tests/url_test.zig"
+  ],
+  "minimum_tests": 44
+}

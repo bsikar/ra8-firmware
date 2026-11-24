@@ -9,6 +9,10 @@ const std = @import("std");
 const c6link = @import("c6link");
 const core = c6link.core;
 
+comptime {
+    _ = @import("log_fixture.zig");
+}
+
 test "the mirrored widths match the facade's" {
     try std.testing.expectEqual(core.mac_bytes, c6link.c6.mac_bytes);
     try std.testing.expectEqual(core.ssid_max, c6link.c6.ssid_max);
