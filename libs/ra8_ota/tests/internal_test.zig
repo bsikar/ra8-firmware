@@ -8,6 +8,10 @@
 const std = @import("std");
 const impl = @import("implementation");
 
+comptime {
+    _ = @import("abi_log_stub.zig");
+}
+
 test "charInRange is a closed interval on both ends" {
     try std.testing.expect(impl.charInRange('5', '0', '9'));
     try std.testing.expect(impl.charInRange('0', '0', '9'));

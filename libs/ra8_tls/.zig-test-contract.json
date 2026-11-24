@@ -1,3 +1,49 @@
 {
+  "test_roots": [
+    "tests/mss_test.zig",
+    "tests/cstr_test.zig",
+    "tests/pool_test.zig",
+    "tests/backend_fake_test.zig",
+    "tests/facade_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/backend_fake.zig",
+    "src/internal/backend_mbedtls.zig",
+    "src/internal/cfg.zig",
+    "src/internal/cstr.zig",
+    "src/internal/facade.zig",
+    "src/internal/mbedtls_c.zig",
+    "src/internal/mss.zig",
+    "src/internal/pool.zig",
+    "src/internal/standalone_build_config.zig",
+    "src/internal/vocab.zig",
+    "src/ra8_tls_abi.zig",
+    "src/root.zig",
+    "tests/backend_fake_test.zig",
+    "tests/cstr_test.zig",
+    "tests/facade_test.zig",
+    "tests/mss_test.zig",
+    "tests/pool_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/internal/facade.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/internal/facade.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/ra8_tls_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_tls_abi.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/root.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ]
+  },
   "minimum_tests": 25
 }

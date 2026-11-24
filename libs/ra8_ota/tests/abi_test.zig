@@ -11,6 +11,10 @@ const impl = abi.internal;
 
 const log_stub = @import("abi_log_stub.zig");
 
+comptime {
+    _ = @import("abi_log_stub.zig");
+}
+
 fn resetLog() void {
     log_stub.reset();
 }

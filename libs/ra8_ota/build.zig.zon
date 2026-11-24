@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+.{
+    .name = .ra8_ota,
+    .version = "0.1.0",
+    .fingerprint = 0x15614f119ac26636,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .ra8_zig_build = .{ .path = "../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "inc",
+        "src",
+        "tests",
+    },
+}
