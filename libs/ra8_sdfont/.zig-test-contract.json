@@ -1,0 +1,16 @@
+{
+  "test_roots": [
+    "tests/policy_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/abi_types.zig",
+    "src/internal/bus.zig",
+    "src/internal/policy.zig",
+    "src/internal/root.zig",
+    "src/ra8_sdfont_abi.zig",
+    "tests/abi_test.zig",
+    "tests/policy_test.zig"
+  ],
+  "minimum_tests": 18
+}
