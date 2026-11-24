@@ -1,0 +1,36 @@
+{
+  "test_roots": [
+    "tests/device_test.zig"
+  ],
+  "covered_sources": [
+    "src/device_abi.zig",
+    "src/internal/device.zig",
+    "src/internal/usbx.zig",
+    "src/root.zig",
+    "tests/device_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/device_abi.zig": [
+      "--dep",
+      "device",
+      "--dep",
+      "usbx",
+      "-Mroot=src/device_abi.zig",
+      "-Mdevice=src/internal/device.zig",
+      "-Musbx=src/internal/usbx.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "device_abi",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "device",
+      "--dep",
+      "usbx",
+      "-Mdevice_abi=src/device_abi.zig",
+      "-Mdevice=src/internal/device.zig",
+      "-Musbx=src/internal/usbx.zig"
+    ]
+  },
+  "minimum_tests": 9
+}

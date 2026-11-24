@@ -16,6 +16,7 @@
 //! the decision tables are driven without an engine behind them.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 /// Every unit under `src/internal/`, with the exported ABI surface that wraps
 /// it and the test that drives it. Adding a unit means adding one row.
@@ -37,7 +38,9 @@ const units = [_]struct {
 };
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const root_module = b.createModule(.{

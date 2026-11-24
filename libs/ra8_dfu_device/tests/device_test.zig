@@ -121,9 +121,11 @@ test "set_target accepts only slot A or B" {
     try std.testing.expectEqual(device.Slot.a, state.target);
 }
 
-test "the USBX parameter block is ten words" {
-    try std.testing.expectEqual(10 * @sizeOf(usize), @sizeOf(usbx.DfuParameter));
-    try std.testing.expectEqual(8 * @sizeOf(usize), @offsetOf(usbx.DfuParameter, "framework"));
+test "the USBX parameter block is packed cleanly per target C ABI" {
+    const flags_span = 2 * @sizeOf(c_ulong);
+    const expected_size = flags_span + 7 * @sizeOf([*]u8) + @alignOf(usbx.DfuParameter);
+    try std.testing.expectEqual(expected_size, @sizeOf(usbx.DfuParameter));
+    try std.testing.expectEqual(flags_span + 6 * @sizeOf([*]u8), @offsetOf(usbx.DfuParameter, "framework"));
 }
 
 test "device diagnostic fields start at zero and latch after blocks and manifest" {
