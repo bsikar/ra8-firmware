@@ -69,6 +69,7 @@ pub const m85_txm_manager = @import("tests/zig_build_graph/m85_txm_manager.zig")
 pub const m85_shared_grant = @import("port/threadx/src/cortex_m85_modules/shared_grant.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
+pub const pkg_path = @import("tests/zig_build_graph/pkg_path.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
 const ns_linker_script = @import("tests/zig_build_graph/ns_linker_script.zig");
 pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");

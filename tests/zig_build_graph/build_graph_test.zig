@@ -990,6 +990,7 @@ test {
     _ = @import("ra8p1_cpu1_ld_test.zig");
     _ = @import("zig_main_test.zig");
     _ = @import("cross_build_test.zig");
+    _ = @import("app_local_test.zig");
 }
 
 test "a Zig boot unit learns TrustZone and the cache/MPU gates from its app" {
