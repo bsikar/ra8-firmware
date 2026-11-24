@@ -92,7 +92,8 @@ padded back to full size. `--first` and `--last` cut out one exchange (for
 example the Wi-Fi scan) from a longer run. The script refuses a log with a
 gap in the sequence numbers, a duplicate line or a frame over 1600 bytes,
 because a fixture built from a damaged log would not be the traffic that
-crossed the wire.
+crossed the wire. Run `python3 libs/ra8_c6link/scripts/test_c6cap_to_bin.py`
+to execute the converter's unit tests.
 
 Before committing a scan fixture, check that the AP records hold only the
 bench's own soft-AP. A scan reports every network in range, and a
