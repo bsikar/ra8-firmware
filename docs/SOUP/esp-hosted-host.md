@@ -44,8 +44,8 @@ esp-hosted aggregate hash.
 - **Version**: 1.4.1 (`PROTOBUF_C_VERSION` in `protobuf-c/protobuf-c.h`).
 - **Source pin**: submodule commit
   `abc67a11c6db271bedbb9f58be85d6f4e2ea8389`, consumed through the fork
-  <https://github.com/bsikar/protobuf-c> at `c61bb2e30f50a984f9c76f600b34150bc76f9553`
-  (branch `ra8-abc67a11`: upstream plus one RA8 patch commit).
+  <https://github.com/bsikar/protobuf-c> at `838ea1bda90098366e3dc413af000930936822d3`
+  (branch `ra8-abc67a11`: upstream plus two RA8 commits).
 - **Upstream URL**: <https://github.com/protobuf-c/protobuf-c>.
 - **Local path**: none. Pinned in `build.zig.zon` (`protobuf_c`).
 - **License**: BSD-2-Clause (upstream `LICENSE`).
@@ -311,11 +311,12 @@ DO-178C Section 12.1.4 (previously developed software):
   up to 25 places (lines 2096 and 2099), and two null-plus-zero pointer
   offsets (`desc->fields + 0` for a message with no fields, line 3046, and an
   empty repeated array's base plus `siz * 0`, line 2762). None corrupts memory
-  on the targets here, but each is undefined in C on a remote-input path.
-  Whether to carry fixes in the `bsikar/protobuf-c` fork or report them
-  upstream is RA8FW-1032. That run used a by-hand build of the harness,
-  because the CMake host and fuzz build does not link on `dev` today
-  (RA8FW-1031).
+  on the targets here, but each is undefined in C on a remote-input path. All
+  four UB sites were fixed in fork commit `838ea1bd` (`RA8FW-1032`) and
+  re-verified clean under clang 19 ASan + UBSan (1.67 M `fuzz_ra8_c6link_rpc`
+  inputs plus deterministic C regression tests in
+  `tests/wireless/src/test_ra8_c6link_wire.c`, with `-fsanitize=function`
+  disabled on the fuzzer harness as before).
 - **Fully pinned and reproducible.** A commit pin plus a per-file upstream
   manifest for both the esp-hosted tree and the nested protobuf-c tree -- see
   "Integrity" above, which is also why no aggregate hash is transcribed into
@@ -324,13 +325,21 @@ DO-178C Section 12.1.4 (previously developed software):
 ## Deviations / patches
 
 The esp-hosted driver files remain byte-identical to upstream `949bb30`. The
-protobuf-c runtime has one functional patch: target builds route its
-unreachable assertion and hosted allocator paths through the first-party RA8
-policy, while host builds keep the upstream behavior. It is the single commit
-`c61bb2e3` on top of upstream `abc67a11` in the `bsikar/protobuf-c` fork, so
-`git diff abc67a11 c61bb2e3` there is the whole deviation. (Until RA8FW-385
-it was `docs/sbom/patches/protobuf-c/0001-use-ra8-runtime-policy.patch`,
-replayed by the offline patch gate.)
+protobuf-c runtime carries two commits on top of upstream `abc67a11` in the
+`bsikar/protobuf-c` fork (branch `ra8-abc67a11`), so
+`git diff abc67a11 838ea1bd` there is the whole deviation:
+
+1. `c61bb2e3` -- target builds route unreachable assertions and hosted allocator
+   paths through the first-party RA8 policy, while host builds keep the
+   upstream behaviour. (Until RA8FW-385 this was
+   `docs/sbom/patches/protobuf-c/0001-use-ra8-runtime-policy.patch`, replayed by
+   the offline patch gate.)
+2. `838ea1bd` (`RA8FW-1032`) -- fixes four UBSan decode-path UB sites: casts the
+   tag bytes in `parse_tag_and_wiretype` to `uint32_t` before shifting by up
+   to 25 places, guards `NULL + 0` and empty `memcpy(NULL, at, 0)` in
+   `parse_packed_repeated_member` when an empty packed repeated array is
+   unpacked, and removes `+ 0` from `desc->fields` in
+   `protobuf_c_message_unpack` for zero-field messages.
 
 ## CVE monitoring
 
@@ -347,6 +356,8 @@ alongside the rest of the vendored SOUP.
   re-verified against the tree and corrected (RA8FW-285): 2026-08-04. The document
   still said this port had never run on silicon, listed nine compiled TUs
   including one the build excludes, and taught the premise the bench disproved.
+- Fork pin updated to `838ea1bd` (`RA8FW-1032`, 4 decode-path UB fixes):
+  2026-11-23.
 - Expected re-review by: 2027-07-26
 
 ## See also

@@ -670,7 +670,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="BSD-2-Clause (upstream LICENSE); distinct upstream from esp-hosted.",
         upstream_commit="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
         upstream_ref="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
-        dep_pin_spec="N-V-__8AAMeECgBRiKccCTAGJTRwB5LP6QVHDxHj_SQxBofe",
+        dep_pin_spec="N-V-__8AAD2FCgB9sNw2LD-T5l6Byr2jcJgH_fWbbT0DBR0C",
         modified=True,
         extra_notes=(
             "Nested component: upstream esp-hosted-mcu carries protobuf-c as a "
@@ -679,10 +679,10 @@ REGISTRY: tuple[Component, ...] = (
             "its own registry entry and its own OSV commit query rather than "
             "hiding inside the esp-hosted aggregate hash.",
             "NOT vendored: pinned in build.zig.zon as the bsikar/protobuf-c fork "
-            "at c61bb2e3 (branch ra8-abc67a11): upstream abc67a11 plus one commit "
-            "that routes target-build assertions through the RA8 policy and makes "
-            "the system allocator fail closed. That commit is the whole local "
-            "patch; it used to live in docs/sbom/patches/protobuf-c.",
+            "at 838ea1bd (branch ra8-abc67a11): upstream abc67a11 plus two commits "
+            "(c61bb2e3 routing target assertions/allocator through RA8 policy, "
+            "and 838ea1bd fixing four UBSan decode-path UB sites found by "
+            "fuzz_ra8_c6link_rpc). Used to live in docs/sbom/patches/protobuf-c.",
             "Only the runtime is used: protobuf-c/protobuf-c.c and .h. The protoc-c code "
             "generator, build system and tests are a host-side C++ toolchain and "
             "are not vendored; the generated esp_hosted_rpc.pb-c.c ships "

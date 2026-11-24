@@ -1108,7 +1108,7 @@
         },
         {
           "name": "ra8:note1",
-          "value": "NOT vendored: pinned in build.zig.zon as the bsikar/protobuf-c fork at c61bb2e3 (branch ra8-abc67a11): upstream abc67a11 plus one commit that routes target-build assertions through the RA8 policy and makes the system allocator fail closed. That commit is the whole local patch; it used to live in docs/sbom/patches/protobuf-c."
+          "value": "NOT vendored: pinned in build.zig.zon as the bsikar/protobuf-c fork at 838ea1bd (branch ra8-abc67a11): upstream abc67a11 plus two commits (c61bb2e3 routing target assertions/allocator through RA8 policy, and 838ea1bd fixing four UBSan decode-path UB sites found by fuzz_ra8_c6link_rpc). Used to live in docs/sbom/patches/protobuf-c."
         },
         {
           "name": "ra8:note2",
