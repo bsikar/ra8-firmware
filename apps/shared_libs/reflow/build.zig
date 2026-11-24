@@ -10,9 +10,12 @@
 //! library through inc/reflow_api.h.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const library_module = b.createModule(.{
@@ -46,7 +49,7 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run Zig reflow parse entry tests");
     const test_module = b.createModule(.{
-        .root_source_file = b.path("src/reflow_parse_tests.zig"),
+        .root_source_file = b.path("tests/reflow_parse_test.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
@@ -56,7 +59,7 @@ pub fn build(b: *std.Build) void {
     // its extern seam (the four stbtt_* entry points) is linked into the
     // host test so the exported layout symbols resolve. RA8FW-1226: the
     // image layout TU is Zig as well.
-    test_module.addOptions("reflow_build_options", build_options);
+    test_module.addImport("reflow", library_module);
     test_module.addIncludePath(b.path("inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_core/inc"));
     test_module.addIncludePath(b.path("../../../libs/ra8_mem/inc"));

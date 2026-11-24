@@ -1,17 +1,11 @@
-//! Test-only link seam for the reflow Zig unit test harness (RA8FW-1222).
-//!
-//! The render module's rasteriser reaches three Layer-3 surfaces behind the
-//! ported reflow_render.zig: the ra8_glyph_atlas glyph cache (libs/ra8_mem),
-//! and the ra8_gfx pixel hook. (The SVG document surface behind reflow_svg.c\n//! joined the real Zig library in RA8FW-1237, so the harness no longer stubs it.)
-//! Those surfaces are out of scope for this unit harness (the CMake suite
-//! exercises them end to end), so the harness answers each surface with its
-//! documented "not supported" status, which the render path handles by
-//! falling back: direct rasterisation for the atlas, and a skipped (blank)
-//! box for SVG. Raster decodes reach the real reflow_image.zig export, whose
-//! own seam answers the stb / webp stack (RA8FW-1231). The pixel hook accepts
-//! every write. The real blank-code-point policy now ships in
-//! reflow_render.zig itself, so the seam exports none of it. The seam must
-//! never be imported by reflow_parse_abi.zig: the archive keeps no stub.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
+//! Test-only render seam and shared SVG test helpers for `apps/shared_libs/reflow`.
+
+const reflow = @import("reflow");
+const svg = reflow.svg;
+
 const k_ra8_ok: c_int = 0;
 const k_ra8_err_not_supported: c_int = 0x107;
 
@@ -39,15 +33,7 @@ export fn ra8_glyph_atlas_put(atlas: *anyopaque, bitmap: [*]const u8) callconv(.
     return k_ra8_ok;
 }
 
-// ---------------------------------------------------------------------------
-// RA8FW-1235: the shape rasteriser seam. The reflow unit harness has no
-// framebuffer, so the ra8_gfx draw entry points record their calls instead:
-// the SVG shape tests assert dispatch (fast path vs scanline fill) and the
-// emitted coordinates from the record. Existing exports above are untouched.
-// ---------------------------------------------------------------------------
-
-/// One recorded ra8_gfx draw call. kind: 1 = line, 2 = rect, 3 = circle,
-/// 4 = pixel. a/b/c/d carry the entry point's positional arguments.
+/// One recorded `ra8_gfx` draw call (`kind`: 1=line, 2=rect, 3=circle, 4=pixel).
 pub const ShapeCall = struct {
     kind: u8,
     a: i32,
@@ -61,9 +47,52 @@ pub const ShapeCall = struct {
 pub var shape_calls: [512]ShapeCall = @splat(.{ .kind = 0, .a = 0, .b = 0, .c = 0, .d = 0, .color = 0, .filled = 0 });
 pub var shape_call_n: usize = 0;
 
-/// Empty the record; a test calls this before the draw it wants to observe.
+/// Empty the recorded draw-call buffer before a draw assertion.
 pub fn shapeCallsReset() void {
     shape_call_n = 0;
+}
+
+/// Slice of draw calls recorded since the last `shapeCallsReset()`.
+pub fn calls() []ShapeCall {
+    return shape_calls[0..shape_call_n];
+}
+
+/// Identity 64x64 `SvgXform` fixture shared across SVG unit test modules.
+pub fn identityXform() svg.SvgXform {
+    return .{
+        .bx = 0,
+        .by = 0,
+        .bw = 64,
+        .bh = 64,
+        .vx = 0,
+        .vy = 0,
+        .vw = 64,
+        .vh = 64,
+        .ua = 1.0,
+        .ub = 0.0,
+        .uc = 0.0,
+        .ud = 1.0,
+        .ue = 0.0,
+        .uf = 0.0,
+        .grads = null,
+    };
+}
+
+/// Linear two-stop gradient fixture shared across SVG shape and path tests.
+pub fn gradLinear(off0: f32, col0: u32, off1: f32, col1: u32) svg.SvgGrad {
+    var g = svg.SvgGrad{
+        .kind = svg.k_svg_grad_linear,
+        .nstops = 2,
+        .id = @splat(0),
+        .x1 = 0.0,
+        .y1 = 0.0,
+        .x2 = 1.0,
+        .y2 = 0.0,
+        .stops = @splat(.{ .off = 0, .col = 0 }),
+    };
+    g.stops[0] = .{ .off = off0, .col = col0 };
+    g.stops[1] = .{ .off = off1, .col = col1 };
+    return g;
 }
 
 fn shapeRecord(kind: u8, a: i32, b: i32, c: i32, d: i32, color: u32, filled: u8) void {

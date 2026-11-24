@@ -63,7 +63,7 @@ const HasGlyphFn = fn (?*const anyopaque, u8, c_int) callconv(.c) bool;
 /// Answer the coverage probe from a render face array: asks the face's own
 /// cmap through stbtt_FindGlyphIndex, where glyph index 0 is stb's "this
 /// face has no glyph for that code point" answer.
-fn faceHasGlyph(ctx: ?*const anyopaque, face_idx: u8, cp: c_int) callconv(.c) bool {
+pub fn faceHasGlyph(ctx: ?*const anyopaque, face_idx: u8, cp: c_int) callconv(.c) bool {
     const cov: *const FaceCov = @ptrCast(@alignCast(ctx orelse return false));
     const faces = cov.faces orelse return false;
     return stbtt_FindGlyphIndex(&faces[face_idx], cp) != 0;
@@ -73,7 +73,7 @@ fn faceHasGlyph(ctx: ?*const anyopaque, face_idx: u8, cp: c_int) callconv(.c) bo
 /// reflow_internal.h for the contract). No probe, a single face, a bogus
 /// index, or a code point that must stay blank: the run keeps the face the
 /// layout pass chose.
-export fn priv_reflow_render_pick_face(
+pub export fn priv_reflow_render_pick_face(
     has_glyph: ?*const HasGlyphFn,
     ctx: ?*const anyopaque,
     face_count: u8,
@@ -111,50 +111,4 @@ export fn priv_reflow_render_face_for(
 ) u8 {
     const cov = FaceCov{ .faces = faces };
     return priv_reflow_render_pick_face(faceHasGlyph, &cov, face_count, primary, cp);
-}
-
-test "face picker keeps the layout pick when fallback is disabled" {
-    // No probe: the run keeps its face.
-    try std.testing.expectEqual(@as(u8, 2), priv_reflow_render_pick_face(null, null, 3, 2, 65));
-    // A face set of one: no coverage probe at all.
-    try std.testing.expectEqual(@as(u8, 0), priv_reflow_render_pick_face(&faceHasGlyph, null, 1, 0, 65));
-    // A primary past the end of the set is bogus: keep it.
-    try std.testing.expectEqual(@as(u8, 5), priv_reflow_render_pick_face(&faceHasGlyph, null, 3, 5, 65));
-}
-
-test "face picker falls back by coverage" {
-    const harness = struct {
-        var covered: [4]bool = .{ false, false, false, false };
-
-        fn probe(ctx: ?*const anyopaque, idx: u8, cp: c_int) callconv(.c) bool {
-            _ = ctx;
-            _ = cp;
-            return covered[idx];
-        }
-    };
-    const ctx: ?*const anyopaque = null;
-
-    // The run's own face covers it: no change.
-    harness.covered = .{ false, true, false, false };
-    try std.testing.expectEqual(@as(u8, 1), priv_reflow_render_pick_face(&harness.probe, ctx, 3, 1, 65));
-
-    // The engine's bound default face (0) is the first fallback.
-    harness.covered = .{ true, false, false, false };
-    try std.testing.expectEqual(@as(u8, 0), priv_reflow_render_pick_face(&harness.probe, ctx, 3, 1, 65));
-
-    // Neither the run's face nor the default covers it: the first
-    // registered face that does, by index.
-    harness.covered = .{ false, false, true, false };
-    try std.testing.expectEqual(@as(u8, 2), priv_reflow_render_pick_face(&harness.probe, ctx, 3, 1, 65));
-
-    // Nothing covers it: the missing-glyph box draws at the run's face.
-    harness.covered = .{ false, false, false, false };
-    try std.testing.expectEqual(@as(u8, 1), priv_reflow_render_pick_face(&harness.probe, ctx, 3, 1, 65));
-}
-
-test "stbtt_fontinfo mirror matches the C struct size" {
-    // Checked against the vendored stb_truetype.h layout by the repo's ABI
-    // probe: LP64 sizes are asserted here and against C in the CMake suite.
-    // The mirror must stay size-identical for faces-array indexing.
-    try std.testing.expectEqual(@as(usize, 168), @sizeOf(StbttFontinfo));
 }

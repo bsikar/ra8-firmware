@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Lexical primitives for the no-heap streaming XHTML tokenizer:
 //! whitespace/entity/UTF-8 scanning, tag classification, and the
 //! text-pool / token-pool emit helpers.
@@ -14,8 +17,6 @@
 //! The functions keep C linkage (`export fn`) so the attribute / entities /
 //! CSS translation units and the C test suites keep linking against them.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");

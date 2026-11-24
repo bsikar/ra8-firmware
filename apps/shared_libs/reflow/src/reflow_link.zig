@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Page tap-target queries for the reflow engine
 //! (src/reflow_link.c, RA8FW-1228).
 //!
@@ -15,8 +18,6 @@
 //! (and the litehtml v2 engine branch, which still compiles the C TU)
 //! link against them exactly as before.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const abi = @import("reflow_parse_abi.zig");
@@ -73,7 +74,8 @@ fn internal_has_scheme(href: [*]const u8, end: u32) bool {
 /// delegates scheme detection to internal_has_scheme on the path sub-range.
 /// Fragment offset and length are written only when a '#' was found;
 /// otherwise the caller-initialized zeros remain unchanged.
-fn internal_href_classify(href: [*]const u8,
+fn internal_href_classify(
+    href: [*]const u8,
     len: u32,
     out_kind: *u8,
     out_path_len: *u32,
@@ -108,7 +110,8 @@ fn internal_href_classify(href: [*]const u8,
 
 /// Point -> href (for a tap): scan the page's tappable rects in fill order
 /// and hand back the target href slice through the text pool offsets.
-pub export fn reflow_hit_test_link(engine: ?*const ReflowEngine,
+pub export fn reflow_hit_test_link(
+    engine: ?*const ReflowEngine,
     page_idx: u32,
     x: i32,
     y: i32,
@@ -144,7 +147,8 @@ pub export fn reflow_hit_test_link(engine: ?*const ReflowEngine,
 /// Point -> laid-out `<img>` box index: the sibling of reflow_hit_test_link
 /// and the entry point of the reader's tap-to-zoom. Returns the box index so
 /// the caller can reach the source slice via the engine text pool.
-pub export fn reflow_hit_test_image(engine: ?*const ReflowEngine,
+pub export fn reflow_hit_test_image(
+    engine: ?*const ReflowEngine,
     page_idx: u32,
     x: i32,
     y: i32,
@@ -174,7 +178,8 @@ pub export fn reflow_hit_test_image(engine: ?*const ReflowEngine,
 /// `#fragment` id -> page: byte-compare the caller's id against every laid
 /// out anchor id in the engine text pool and hand back the page the id
 /// landed on.
-pub export fn reflow_find_anchor(engine: ?*const ReflowEngine,
+pub export fn reflow_find_anchor(
+    engine: ?*const ReflowEngine,
     id: ?[*]const u8,
     id_len: u32,
     out_page: ?*u32,
@@ -212,7 +217,8 @@ pub export fn reflow_find_anchor(engine: ?*const ReflowEngine,
 
 /// Pure classification of an href string into a `k_reflow_href_*` kind,
 /// with the path length and fragment slice written back.
-pub export fn reflow_href_split(href: ?[*]const u8,
+pub export fn reflow_href_split(
+    href: ?[*]const u8,
     len: u32,
     out_kind: ?*u8,
     out_path_len: ?*u32,

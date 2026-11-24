@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Inline CSS declaration parsing for the reflow engine: whitespace and
 //! case-fold primitives, `prop: value` body parsing, and the public
 //! `ra8_css_parse_inline` entry point.
@@ -13,44 +16,42 @@
 //! own slice, so the shared primitives keep C linkage (`@export`) and the
 //! remaining C translation units link against them exactly as before.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 
-const CssStyle = abi.CssStyle;
+pub const CssStyle = abi.CssStyle;
 
 // ---- Shared constants (inc/reflow_types.h, inc/reflow_css.h, ra8_err.h) ----
 
 /// Style bit VALUES from ::reflow_font_style_t.
-const k_reflow_style_bold: u8 = 1 << 0;
-const k_reflow_style_italic: u8 = 1 << 1;
-const k_reflow_style_underline: u8 = 1 << 2;
+pub const k_reflow_style_bold: u8 = 1 << 0;
+pub const k_reflow_style_italic: u8 = 1 << 1;
+pub const k_reflow_style_underline: u8 = 1 << 2;
 
 /// ::reflow_align_t values.
 const k_reflow_align_left: u8 = 0;
 const k_reflow_align_right: u8 = 1;
-const k_reflow_align_center: u8 = 2;
-const k_reflow_align_justify: u8 = 3;
+pub const k_reflow_align_center: u8 = 2;
+pub const k_reflow_align_justify: u8 = 3;
 
 /// ::ra8_css_set_t presence bits for the properties this unit applies.
-const k_ra8_css_set_bold: u8 = 1 << 0;
-const k_ra8_css_set_italic: u8 = 1 << 1;
-const k_ra8_css_set_underline: u8 = 1 << 2;
-const k_ra8_css_set_align: u8 = 1 << 3;
-const k_ra8_css_set_color: u8 = 1 << 4;
-const k_ra8_css_set_fontsize: u8 = 1 << 5;
-const k_ra8_css_set_display: u8 = 1 << 6;
+pub const k_ra8_css_set_bold: u8 = 1 << 0;
+pub const k_ra8_css_set_italic: u8 = 1 << 1;
+pub const k_ra8_css_set_underline: u8 = 1 << 2;
+pub const k_ra8_css_set_align: u8 = 1 << 3;
+pub const k_ra8_css_set_color: u8 = 1 << 4;
+pub const k_ra8_css_set_fontsize: u8 = 1 << 5;
+pub const k_ra8_css_set_display: u8 = 1 << 6;
 
 /// ::ra8_css_font_unit_t values.
-const k_ra8_css_font_px: u8 = 0;
-const k_ra8_css_font_pct: u8 = 1;
+pub const k_ra8_css_font_px: u8 = 0;
+pub const k_ra8_css_font_pct: u8 = 1;
 
 /// ra8_err.h results.
-const k_ra8_ok: c_int = 0;
-const k_ra8_err_null_ptr: c_int = 0x504;
+pub const k_ra8_ok: c_int = 0;
+pub const k_ra8_err_null_ptr: c_int = 0x504;
 
 // ---- Hex colour scanner constants ----
 
@@ -62,7 +63,7 @@ const k_priv_hex_nib: u5 = 4;
 const k_priv_hex_chan: u5 = 8;
 
 /// ::k_priv_col_t sentinels and CSS Level 1/2 named colours.
-const k_priv_col_invalid: u32 = 0xFFFFFFFF;
+pub const k_priv_col_invalid: u32 = 0xFFFFFFFF;
 const k_priv_col_black: u32 = 0x000000;
 const k_priv_col_white: u32 = 0xFFFFFF;
 const k_priv_col_red: u32 = 0xFF0000;
@@ -198,7 +199,7 @@ const k_priv_named_colors = [_]ColorName{
 
 /// Parse a CSS colour value: `#rgb`, `#rrggbb`, or a named keyword.
 /// Returns `k_priv_col_invalid` when the span is empty or unrecognised.
-fn internal_parse_color(s: [*]const u8, len: usize) u32 {
+pub fn internal_parse_color(s: [*]const u8, len: usize) u32 {
     if (len == 0) {
         return k_priv_col_invalid;
     }
@@ -250,7 +251,7 @@ fn internal_fs_whole(hund: u32) u16 {
 /// `em` is normalised at parse time: 1em = 100%, so the stored hundredths
 /// value already IS the percentage. Returns false when no digit was parsed
 /// or the unit suffix is unrecognised.
-fn internal_parse_fontsize(s: [*]const u8, len: usize, out_val: *u16, out_unit: *u8) bool {
+pub fn internal_parse_fontsize(s: [*]const u8, len: usize, out_val: *u16, out_unit: *u8) bool {
     var i: usize = 0;
     var any = false;
     const hund = internal_scan_hundredths(s, len, &i, &any);
@@ -402,139 +403,4 @@ comptime {
     @export(&priv_reflow_css_trim, .{ .name = "priv_reflow_css_trim" });
     @export(&priv_reflow_css_parse_decls, .{ .name = "priv_reflow_css_parse_decls" });
     @export(&ra8_css_parse_inline, .{ .name = "ra8_css_parse_inline" });
-}
-
-// ---- Tests ----
-
-fn styleFor(decls: []const u8) CssStyle {
-    var out = std.mem.zeroes(CssStyle);
-    _ = ra8_css_parse_inline(decls.ptr, @intCast(decls.len), &out);
-    return out;
-}
-
-test "is_ws and lower" {
-    try std.testing.expect(priv_reflow_css_is_ws(' '));
-    try std.testing.expect(priv_reflow_css_is_ws('\t'));
-    try std.testing.expect(priv_reflow_css_is_ws('\n'));
-    try std.testing.expect(priv_reflow_css_is_ws('\r'));
-    try std.testing.expect(priv_reflow_css_is_ws(0x0C));
-    try std.testing.expect(!priv_reflow_css_is_ws('a'));
-    try std.testing.expectEqual(@as(u8, 'a'), priv_reflow_css_lower('A'));
-    try std.testing.expectEqual(@as(u8, 'z'), priv_reflow_css_lower('Z'));
-    try std.testing.expectEqual(@as(u8, '5'), priv_reflow_css_lower('5'));
-}
-
-test "ci_eq matches case-insensitively and rejects prefixes" {
-    try std.testing.expect(priv_reflow_css_ci_eq("Bold", 4, "bold"));
-    try std.testing.expect(priv_reflow_css_ci_eq("UNDERLINE", 9, "underline"));
-    try std.testing.expect(!priv_reflow_css_ci_eq("boldx", 5, "bold"));
-    try std.testing.expect(!priv_reflow_css_ci_eq("bol", 3, "bold"));
-    try std.testing.expect(!priv_reflow_css_ci_eq(null, 3, "bold"));
-}
-
-test "trim strips whitespace from both ends" {
-    var len: usize = 7;
-    const trimmed = priv_reflow_css_trim("  ab\t \n", &len);
-    try std.testing.expectEqual(@as(usize, 2), len);
-    try std.testing.expectEqual(@as(u8, 'a'), trimmed[0]);
-    len = 3;
-    _ = priv_reflow_css_trim("   ", &len);
-    try std.testing.expectEqual(@as(usize, 0), len);
-}
-
-test "hex colours parse in 3 and 6 digit forms" {
-    try std.testing.expectEqual(@as(u32, 0xAABBCC), internal_parse_color("#aabbcc", 7));
-    try std.testing.expectEqual(@as(u32, 0xFFA500), internal_parse_color("#FFA500", 7));
-    try std.testing.expectEqual(@as(u32, 0xFFAA00), internal_parse_color("#fa0", 4));
-    try std.testing.expectEqual(@as(u32, 0x112233), internal_parse_color("#123", 4));
-    try std.testing.expectEqual(@as(u32, k_priv_col_invalid), internal_parse_color("#12", 3));
-    try std.testing.expectEqual(@as(u32, k_priv_col_invalid), internal_parse_color("#12345", 6));
-    try std.testing.expectEqual(@as(u32, k_priv_col_invalid), internal_parse_color("#zzz", 4));
-}
-
-test "named colours parse case-insensitively" {
-    try std.testing.expectEqual(@as(u32, 0x000000), internal_parse_color("BLACK", 5));
-    try std.testing.expectEqual(@as(u32, 0xFFFFFF), internal_parse_color("white", 5));
-    try std.testing.expectEqual(@as(u32, 0x008000), internal_parse_color("Green", 5));
-    try std.testing.expectEqual(@as(u32, 0x808080), internal_parse_color("grey", 4));
-    try std.testing.expectEqual(@as(u32, 0x808080), internal_parse_color("gray", 4));
-    try std.testing.expectEqual(@as(u32, 0xC0C0C0), internal_parse_color("silver", 6));
-    try std.testing.expectEqual(@as(u32, 0x800000), internal_parse_color("maroon", 6));
-    try std.testing.expectEqual(@as(u32, 0x000080), internal_parse_color("NAVY", 4));
-    try std.testing.expectEqual(@as(u32, k_priv_col_invalid), internal_parse_color("teal", 4));
-}
-
-test "font sizes parse px, % and em" {
-    var v: u16 = 0;
-    var u: u8 = 0;
-    try std.testing.expect(internal_parse_fontsize("12px", 4, &v, &u));
-    try std.testing.expectEqual(@as(u16, 12), v);
-    try std.testing.expectEqual(k_ra8_css_font_px, u);
-    try std.testing.expect(internal_parse_fontsize("150%", 4, &v, &u));
-    try std.testing.expectEqual(@as(u16, 150), v);
-    try std.testing.expectEqual(k_ra8_css_font_pct, u);
-    try std.testing.expect(internal_parse_fontsize("1.2em", 5, &v, &u));
-    try std.testing.expectEqual(@as(u16, 120), v);
-    try std.testing.expectEqual(k_ra8_css_font_pct, u);
-    try std.testing.expect(internal_parse_fontsize("0.5px", 5, &v, &u));
-    try std.testing.expectEqual(@as(u16, 0), v);
-    try std.testing.expect(internal_parse_fontsize("99999px", 7, &v, &u));
-    try std.testing.expectEqual(@as(u16, 9999), v);
-    try std.testing.expect(!internal_parse_fontsize("px", 2, &v, &u));
-    try std.testing.expect(!internal_parse_fontsize("12pt", 4, &v, &u));
-}
-
-test "emphasis properties set style bits" {
-    var st = styleFor("font-weight: bold");
-    try std.testing.expectEqual(k_ra8_css_set_bold, st.set & k_ra8_css_set_bold);
-    try std.testing.expectEqual(k_reflow_style_bold, st.style & k_reflow_style_bold);
-
-    st = styleFor("font-style: oblique");
-    try std.testing.expectEqual(k_ra8_css_set_italic, st.set & k_ra8_css_set_italic);
-    try std.testing.expectEqual(k_reflow_style_italic, st.style & k_reflow_style_italic);
-
-    st = styleFor("text-decoration: underline overline");
-    try std.testing.expectEqual(k_ra8_css_set_underline, st.set & k_ra8_css_set_underline);
-    try std.testing.expectEqual(k_reflow_style_underline, st.style & k_reflow_style_underline);
-
-    st = styleFor("font-weight: normal");
-    try std.testing.expectEqual(k_ra8_css_set_bold, st.set & k_ra8_css_set_bold);
-    try std.testing.expectEqual(@as(u8, 0), st.style & k_reflow_style_bold);
-
-    st = styleFor("text-decoration-line: none");
-    try std.testing.expectEqual(@as(u8, 0), st.style & k_reflow_style_underline);
-}
-
-test "align, colour and display apply through the decl loop" {
-    const st = styleFor("text-align:center;color:#FF0000;display:none;font-size:2em");
-    try std.testing.expectEqual(k_ra8_css_set_align, st.set & k_ra8_css_set_align);
-    try std.testing.expectEqual(k_reflow_align_center, st.@"align");
-    try std.testing.expectEqual(k_ra8_css_set_color, st.set & k_ra8_css_set_color);
-    try std.testing.expectEqual(@as(u32, 0xFF0000), st.color);
-    try std.testing.expectEqual(k_ra8_css_set_display, st.set & k_ra8_css_set_display);
-    try std.testing.expectEqual(@as(u8, 1), st.display);
-    try std.testing.expectEqual(k_ra8_css_set_fontsize, st.set & k_ra8_css_set_fontsize);
-    try std.testing.expectEqual(@as(u16, 200), st.font_val);
-    try std.testing.expectEqual(k_ra8_css_font_pct, st.font_unit);
-}
-
-test "multi-declaration bodies survive whitespace and semicolons" {
-    const st = styleFor("  color : gray ;  font-weight : 700 ;;  text-align : justify ; ");
-    try std.testing.expectEqual(@as(u32, 0x808080), st.color);
-    try std.testing.expectEqual(k_reflow_style_bold, st.style & k_reflow_style_bold);
-    try std.testing.expectEqual(k_reflow_align_justify, st.@"align");
-}
-
-test "invalid colour leaves the set bit clear" {
-    const st = styleFor("color: teal");
-    try std.testing.expectEqual(@as(u8, 0), st.set);
-}
-
-test "parse_inline zeroes the style and reports null errors" {
-    var st: CssStyle = undefined;
-    st.set = 0xAA;
-    try std.testing.expectEqual(k_ra8_ok, ra8_css_parse_inline("display:none", 12, &st));
-    try std.testing.expectEqual(k_ra8_css_set_display, st.set);
-    try std.testing.expectEqual(k_ra8_err_null_ptr, ra8_css_parse_inline(null, 0, &st));
-    try std.testing.expectEqual(k_ra8_err_null_ptr, ra8_css_parse_inline("a", 1, null));
 }

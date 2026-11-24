@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Import-time pagination cache serialiser/loader for the reflow engine
 //! (src/reflow_cache.c, RA8FW-1230).
 //!
@@ -19,28 +22,26 @@
 //! The exports keep C linkage so the C callers (the corpus round-trip
 //! test suite) link against them exactly as before.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");
 const abi = @import("reflow_parse_abi.zig");
 
-const ReflowEngine = abi.ReflowEngine;
-const ReflowGlyph = abi.ReflowGlyph;
-const ReflowPage = abi.ReflowPage;
+pub const ReflowEngine = abi.ReflowEngine;
+pub const ReflowGlyph = abi.ReflowGlyph;
+pub const ReflowPage = abi.ReflowPage;
 
 // ---- Error codes (libs/ra8_core/inc/ra8_err.h; the C ABI keeps ra8_err_t
 // ---- a plain c_int, so these mirror the C enumerators) ----
 
-const k_ra8_ok: c_int = 0;
-const k_ra8_err_invalid_arg: c_int = 0x103;
-const k_ra8_err_invalid_state: c_int = 0x104;
-const k_ra8_err_invalid_size: c_int = 0x105;
-const k_ra8_err_not_found: c_int = 0x106;
-const k_ra8_err_not_initialized: c_int = 0x10F;
-const k_ra8_err_null_ptr: c_int = 0x504;
-const k_ra8_err_checksum_mismatch: c_int = 0x502;
+pub const k_ra8_ok: c_int = 0;
+pub const k_ra8_err_invalid_arg: c_int = 0x103;
+pub const k_ra8_err_invalid_state: c_int = 0x104;
+pub const k_ra8_err_invalid_size: c_int = 0x105;
+pub const k_ra8_err_not_found: c_int = 0x106;
+pub const k_ra8_err_not_initialized: c_int = 0x10F;
+pub const k_ra8_err_null_ptr: c_int = 0x504;
+pub const k_ra8_err_checksum_mismatch: c_int = 0x502;
 
 // ---- Format identity + layout (inc/reflow_cache.h) ----
 
@@ -63,7 +64,7 @@ const k_reflow_max_pages: u32 = 256;
 // ---- Internal constants (no magic numbers) ----
 
 /// FNV-1a 32-bit offset basis.
-const k_priv_fnv_offset: u32 = 0x811C9DC5;
+pub const k_priv_fnv_offset: u32 = 0x811C9DC5;
 /// FNV-1a 32-bit prime.
 const k_priv_fnv_prime: u32 = 0x01000193;
 /// Low-byte mask.
@@ -142,7 +143,7 @@ fn internal_get_u16(buf: [*]const u8, off: *usize) u16 {
 
 /// 32-bit FNV-1a over a byte range; len == 0 yields the offset basis.
 /// Used for the font hash, the content hash and the body checksum.
-fn internal_fnv1a(data: ?[*]const u8, len: usize) u32 {
+pub fn internal_fnv1a(data: ?[*]const u8, len: usize) u32 {
     var hash: u32 = k_priv_fnv_offset;
     if (data == null) {
         return hash;
@@ -469,145 +470,4 @@ pub export fn reflow_cache_load(
     engine.?.xhtml_buf = content;
     engine.?.xhtml_len = content_len;
     return k_ra8_ok;
-}
-
-// ===========================================================================
-// Tests
-// ===========================================================================
-
-const testing = std.testing;
-
-/// A small initialised engine, heap-allocated because the full
-/// ReflowEngine pool arrays are far too large for the stack.
-fn makeTestEngine(alloc: std.mem.Allocator, glyphs: []const ReflowGlyph, pages: []const ReflowPage) !*ReflowEngine {
-    const eng = try alloc.create(ReflowEngine);
-    eng.* = std.mem.zeroes(ReflowEngine);
-    eng.in_use = 1;
-    eng.viewport_w = 320;
-    eng.viewport_h = 480;
-    eng.font_px = 16;
-    eng.body_color = 0x00FF00;
-    eng.link_color = 0x0000FF;
-    for (glyphs, 0..) |g, i| {
-        eng.glyphs[i] = g;
-    }
-    eng.glyph_count = @intCast(glyphs.len);
-    for (pages, 0..) |p, i| {
-        eng.pages[i] = p;
-    }
-    eng.page_count = @intCast(pages.len);
-    return eng;
-}
-
-test "cache serialize/load round-trip restores glyphs and pages byte-exactly" {
-    const a = testing.allocator;
-    const glyphs = [_]ReflowGlyph{
-        .{ .x = 10, .y = -4, .cp = 'A', .color = 0xDEADBEEF, .font_px = 16, .style = 3, .reserved = 7 },
-        .{ .x = 26, .y = 0, .cp = 0x1F600, .color = 0x12345678, .font_px = 9, .style = 0, .reserved = 0 },
-    };
-    const pages = [_]ReflowPage{
-        .{ .glyph_first = 0, .glyph_count = 2 },
-        .{ .glyph_first = 2, .glyph_count = 0 },
-    };
-    const eng = try makeTestEngine(a, &glyphs, &pages);
-    defer a.destroy(eng);
-
-    var blob: [512]u8 = undefined;
-    var out_len: usize = 0;
-    const content = "chapter one";
-    try testing.expectEqual(k_ra8_ok, reflow_cache_serialize(eng, content.ptr, content.len, &blob, blob.len, &out_len));
-    try testing.expectEqual(k_reflow_cache_header_bytes + glyphs.len * k_reflow_cache_glyph_bytes + pages.len * k_reflow_cache_page_bytes, out_len);
-
-    const restored = try makeTestEngine(a, &.{}, &.{});
-    defer a.destroy(restored);
-    try testing.expectEqual(k_ra8_ok, reflow_cache_load(restored, content.ptr, content.len, &blob, out_len));
-    try testing.expectEqual(eng.glyph_count, restored.glyph_count);
-    try testing.expectEqual(eng.page_count, restored.page_count);
-    try testing.expectEqual(eng.glyphs[0], restored.glyphs[0]);
-    try testing.expectEqual(eng.glyphs[1], restored.glyphs[1]);
-    try testing.expectEqual(eng.pages[0], restored.pages[0]);
-    try testing.expectEqual(eng.pages[1], restored.pages[1]);
-    try testing.expectEqual(content.len, restored.xhtml_len);
-    try testing.expectEqual(@as(usize, @intFromPtr(content.ptr)), @as(usize, @intFromPtr(restored.xhtml_buf.?)));
-}
-
-test "cache blob header is byte-exact on the wire" {
-    const a = testing.allocator;
-    const eng = try makeTestEngine(a, &.{}, &.{});
-    defer a.destroy(eng);
-    var blob: [128]u8 = undefined;
-    var out_len: usize = 0;
-    try testing.expectEqual(k_ra8_ok, reflow_cache_serialize(eng, null, 0, &blob, blob.len, &out_len));
-    try testing.expectEqual(k_reflow_cache_header_bytes, out_len);
-    // Magic 'R''F''C''1' little-endian.
-    try testing.expectEqualSlices(u8, &.{ 0x31, 0x43, 0x46, 0x52 }, blob[0..4]);
-    // version 2 then the reserved half-word, all little-endian.
-    try testing.expectEqualSlices(u8, &.{ 0x02, 0x00, 0x00, 0x00 }, blob[4..8]);
-    // 320, 480, 16 little-endian (viewport_w, viewport_h, font_px).
-    try testing.expectEqualSlices(u8, &.{ 0x40, 0x01 }, blob[8..10]);
-    try testing.expectEqualSlices(u8, &.{ 0xE0, 0x01 }, blob[10..12]);
-    try testing.expectEqualSlices(u8, &.{ 0x10, 0x00 }, blob[12..14]);
-    try testing.expectEqualSlices(u8, &.{ 0x00, 0x00 }, blob[14..16]); // reserved16
-    // FNV-1a of an empty range is the offset basis.
-    try testing.expectEqual(k_priv_fnv_offset, internal_fnv1a(null, 0));
-}
-
-test "cache load rejects a foreign magic, a stale key and a bad version" {
-    const a = testing.allocator;
-    const glyphs = [_]ReflowGlyph{.{ .x = 3, .y = 4, .cp = 'Z', .color = 9, .font_px = 16, .style = 1, .reserved = 2 }};
-    const eng = try makeTestEngine(a, &glyphs, &.{});
-    defer a.destroy(eng);
-    var blob: [128]u8 = undefined;
-    var out_len: usize = 0;
-    const content = "abc";
-    try testing.expectEqual(k_ra8_ok, reflow_cache_serialize(eng, content.ptr, content.len, &blob, blob.len, &out_len));
-
-    // Magic mismatch.
-    var bad = blob;
-    bad[0] ^= 0xFF;
-    try testing.expectEqual(k_ra8_err_not_found, reflow_cache_load(eng, content.ptr, content.len, &bad, out_len));
-
-    // Version mismatch.
-    bad = blob;
-    bad[4] = 0x63;
-    try testing.expectEqual(k_ra8_err_invalid_state, reflow_cache_load(eng, content.ptr, content.len, &bad, out_len));
-
-    // Content-hash mismatch (different chapter bytes) is a stale key.
-    try testing.expectEqual(k_ra8_err_invalid_state, reflow_cache_load(eng, "xyz".ptr, 3, &blob, out_len));
-
-    // Truncated blob: header present but shorter than the computed size.
-    try testing.expectEqual(k_ra8_err_invalid_size, reflow_cache_load(eng, content.ptr, content.len, &blob, k_reflow_cache_header_bytes - 1));
-
-    // Corrupt body: checksum mismatch.
-    bad = blob;
-    bad[k_reflow_cache_header_bytes] ^= 0x55;
-    try testing.expectEqual(k_ra8_err_checksum_mismatch, reflow_cache_load(eng, content.ptr, content.len, &bad, out_len));
-
-    // Uninitialised engine.
-    eng.in_use = 0;
-    try testing.expectEqual(k_ra8_err_not_initialized, reflow_cache_load(eng, content.ptr, content.len, &blob, out_len));
-    eng.in_use = 1;
-
-    // NULL content with a non-zero length.
-    try testing.expectEqual(k_ra8_err_invalid_arg, reflow_cache_serialize(eng, null, 4, &blob, blob.len, &out_len));
-}
-
-test "cache serialize rejects a short destination buffer" {
-    const a = testing.allocator;
-    const glyphs = [_]ReflowGlyph{.{ .x = 1, .y = 2, .cp = 'A', .color = 1, .font_px = 16, .style = 0, .reserved = 0 }};
-    const eng = try makeTestEngine(a, &glyphs, &.{});
-    defer a.destroy(eng);
-    var blob: [k_reflow_cache_header_bytes]u8 = undefined;
-    var out_len: usize = 0;
-    try testing.expectEqual(k_ra8_err_invalid_size, reflow_cache_serialize(eng, null, 0, &blob, blob.len, &out_len));
-}
-
-test "cache size reports the header for an empty layout" {
-    const a = testing.allocator;
-    const eng = try makeTestEngine(a, &.{}, &.{});
-    defer a.destroy(eng);
-    var bytes: usize = 0;
-    try testing.expectEqual(k_ra8_ok, reflow_cache_size(eng, &bytes));
-    try testing.expectEqual(k_reflow_cache_header_bytes, bytes);
-    try testing.expectEqual(k_ra8_err_null_ptr, reflow_cache_size(null, &bytes));
 }

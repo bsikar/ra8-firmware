@@ -243,66 +243,38 @@ pub fn reflow_parse_xhtml(engine: ?*ReflowEngine, xhtml_buf: ?[*]const u8, xhtml
     return walk.priv_reflow_xml_walk(engine.?, xhtml_buf.?, xhtml_len);
 }
 
-test "mirror layout sanity" {
-    comptime {
-        std.debug.assert(@offsetOf(ReflowEngine, "in_use") == @sizeOf(ReflowEngine) - 8);
-        std.debug.assert(@offsetOf(ReflowEngine, "token_count") < @offsetOf(ReflowEngine, "text_pool"));
-        std.debug.assert(@offsetOf(ReflowEngine, "text_pool_used") < @offsetOf(ReflowEngine, "link_targets"));
-        std.debug.assert(@offsetOf(ReflowEngine, "link_target_count") < @offsetOf(ReflowEngine, "link_rects"));
-    }
-}
+pub const imgdec = @import("ra8_img_imgdec.zig");
+pub const cache = @import("reflow_cache.zig");
+pub const css = @import("reflow_css.zig");
+pub const css_cascade = @import("reflow_css_cascade.zig");
+pub const css_rules = @import("reflow_css_rules.zig");
+pub const image = @import("reflow_image.zig");
+pub const render = @import("reflow_render.zig");
+pub const render_face = @import("reflow_render_face.zig");
+pub const svg = @import("reflow_svg.zig");
+pub const svg_doc = @import("reflow_svg_doc.zig");
+pub const svg_path = @import("reflow_svg_path.zig");
+pub const svg_shape = @import("reflow_svg_shape.zig");
+pub const svg_xform = @import("reflow_svg_xform.zig");
 
 comptime {
     _ = k_ra8_ok;
-    // RA8FW-1218/1219: the whole CSS library (rules + cascade) is Zig;
-    // pull both TUs into the archive for the C layout / render callers.
-    _ = @import("reflow_css_rules.zig");
-    _ = @import("reflow_css_cascade.zig");
-    // RA8FW-1220: the layout core is Zig too; pull it into the archive for
-    // the C layout driver / image / table + render callers.
     _ = @import("reflow_layout.zig");
-    // RA8FW-1223: the table grid is Zig; pull it into the archive for the
-    // C layout driver.
     _ = @import("reflow_layout_table.zig");
-    // RA8FW-1227: the token-dispatch driver + public lifecycle API is Zig;
-    // its exports (reflow_init / reflow_run_layout / ...) replace
-    // reflow_layout_driver.c in the archive.
     _ = @import("reflow_layout_driver.zig");
     _ = @import("reflow_link.zig");
-    // RA8FW-1230: the import-time pagination cache serialiser/loader is Zig;
-    // its exports (reflow_cache_size / serialize / load) replace
-    // reflow_cache.c in the archive.
-    _ = @import("reflow_cache.zig");
-    // RA8FW-1231: the raster image decode / probe / blit surface is Zig;
-    // its exports (ra8_img_probe_size / ra8_img_decode_blit) replace
-    // reflow_image.c in the archive.
-    _ = @import("reflow_image.zig");
-    // RA8FW-1232: the ra8_imgdec backend adapter (ra8_img_imgdec.c) is
-    // Zig; its export (ra8_img_imgdec_bind) replaces the C TU in the
-    // archive.
-    _ = @import("ra8_img_imgdec.zig");
-    // RA8FW-1233: the SVG scan / attribute / colour core is Zig; pull it
-    // into the archive for the still-C SVG sibling TUs (xform, shape,
-    // path, doc), which call these helpers through reflow_svg_internal.h.
-    _ = @import("reflow_svg.zig");
-    // RA8FW-1234: the viewBox + transform coordinate map is Zig; pull it
-    // into the archive for the still-C SVG sibling TUs (shape, path, doc),
-    // which call these helpers through reflow_svg_internal.h.
-    _ = @import("reflow_svg_xform.zig");
-    // RA8FW-1235: the shape rasterisers join the Zig library module so the
-    // static-lib build carries their C-linkage exports (the C TU is gone).
-    _ = @import("reflow_svg_shape.zig");
-    _ = @import("reflow_svg_path.zig");
-    // RA8FW-1237: the SVG document driver (viewBox read, group walk, gradient
-    // scan, public ra8_svg_* API) is Zig; its exports replace reflow_svg_doc.c
-    // in the archive.
-    _ = @import("reflow_svg_doc.zig");
-    // RA8FW-1221: the fallback-face picker is Zig; pull it into the archive
-    // for the C render caller.
-    _ = @import("reflow_render_face.zig");
-    // RA8FW-1222: the render pass is Zig; its public ABI (reflow_render_page,
-    // reflow_render_page_at, reflow_set_glyph_atlas) replaces reflow_render.c.
-    _ = @import("reflow_render.zig");
+    _ = imgdec;
+    _ = cache;
+    _ = css_rules;
+    _ = css_cascade;
+    _ = image;
+    _ = svg;
+    _ = svg_xform;
+    _ = svg_shape;
+    _ = svg_path;
+    _ = svg_doc;
+    _ = render_face;
+    _ = render;
 }
 
 // RA8FW-1263: when the LiteHTML v2 engine is linked it owns the core reflow

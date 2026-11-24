@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! Attribute and CSS-identity helpers for the no-heap streaming XHTML
 //! tokenizer: quoted-attribute scanning, `<img src>` / `<a href>` capture,
 //! CSS element-identity + inline-style extraction, link interning, and
@@ -18,8 +21,6 @@
 //! (rules + cascade) stays C: face matching is an extern C call; inline
 //! style parsing is Zig since RA8FW-1217.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");

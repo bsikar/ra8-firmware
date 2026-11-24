@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
 //! XHTML 1.0 named character reference table for the reflow tokenizer.
 //!
 //! Zig port of reflow_tokenize_entities.c (RA8FW-1216). Companion unit to
@@ -18,8 +21,6 @@
 //! The functions keep C linkage (`export fn`) so the C test suites and the
 //! remaining C translation units keep linking against them.
 //!
-//! SPDX-License-Identifier: MIT
-//! Copyright (c) 2026 Brighton Sikarskie
 //! @since 0.1.0
 
 const std = @import("std");

@@ -76,7 +76,7 @@ fn needsTofu(glyph_index: c_int, cp: c_int) bool {
 
 /// Mirror of ra8_glyph_key_t (libs/ra8_mem/inc/ra8_glyph_atlas.h): the
 /// padding-free byte-wise cache key.
-const GlyphKey = extern struct {
+pub const GlyphKey = extern struct {
     glyph_id: u32,
     face_id: u16,
     size_px: u16,
@@ -91,7 +91,7 @@ const GlyphDims = extern struct {
 };
 
 /// Mirror of ra8_glyph_t: a pinned view of one cached glyph bitmap.
-const GlyphView = extern struct {
+pub const GlyphView = extern struct {
     bitmap: ?[*]const u8,
     width: u16,
     height: u16,
@@ -99,7 +99,7 @@ const GlyphView = extern struct {
 
 /// Mirror of ra8_keycache_cell_t (libs/ra8_mem/inc/ra8_keycache.h): the
 /// per-cell link metadata the keyed-LRU cache keeps.
-const KeycacheCell = extern struct {
+pub const KeycacheCell = extern struct {
     prev: i32,
     next: i32,
     hash_next: i32,
@@ -111,7 +111,7 @@ const KeycacheCell = extern struct {
 /// Mirror of reflow_glyph_atlas_storage_t (inc/reflow_api.h): caller-owned
 /// backing storage for the render-path glyph cache, minus the render seam the
 /// engine supplies itself.
-const AtlasStorage = extern struct {
+pub const AtlasStorage = extern struct {
     cell_mem: ?[*]u8,
     cell_bytes: u32,
     cell_count: u32,
@@ -124,7 +124,7 @@ const AtlasStorage = extern struct {
 
 /// Mirror of priv_reflow_tofu_rect_t (reflow_internal.h): the missing-glyph
 /// box geometry relative to the glyph pen.
-const TofuRect = extern struct {
+pub const TofuRect = extern struct {
     x_off: i32,
     y_off: i32,
     w: i32,
@@ -581,15 +581,15 @@ export fn reflow_set_glyph_atlas(engine: ?*ReflowEngine, atlas: ?*anyopaque, sto
     return k_ra8_ok;
 }
 
-export fn priv_reflow_render_is_blank_cp(cp: c_int) bool {
+pub export fn priv_reflow_render_is_blank_cp(cp: c_int) bool {
     return isBlankCodePoint(cp);
 }
 
-export fn priv_reflow_render_needs_tofu(glyph_index: c_int, cp: c_int) bool {
+pub export fn priv_reflow_render_needs_tofu(glyph_index: c_int, cp: c_int) bool {
     return needsTofu(glyph_index, cp);
 }
 
-export fn priv_reflow_render_tofu_rect(advance_px: i32, ascent_px: i32, font_px: i32, out: ?*TofuRect) bool {
+pub export fn priv_reflow_render_tofu_rect(advance_px: i32, ascent_px: i32, font_px: i32, out: ?*TofuRect) bool {
     const rect = out orelse return false;
     if (font_px <= 0) {
         return false;
@@ -616,67 +616,6 @@ export fn priv_reflow_render_tofu_rect(advance_px: i32, ascent_px: i32, font_px:
     rect.w = box_w;
     rect.h = height;
     return true;
-}
-
-// ---------------------------------------------------------------------------
-// Tests.
-// ---------------------------------------------------------------------------
-
-test "blank code points draw nothing" {
-    try std.testing.expect(priv_reflow_render_is_blank_cp(0x20));
-    try std.testing.expect(priv_reflow_render_is_blank_cp(0xA0));
-    try std.testing.expect(priv_reflow_render_is_blank_cp(0xFEFF));
-    try std.testing.expect(!priv_reflow_render_is_blank_cp(0x41));
-    try std.testing.expect(!priv_reflow_render_is_blank_cp(0xFFFF));
-}
-
-test "tofu decision mirrors the cmap probe" {
-    // Glyph 0 means "no glyph for that code point"; blank code points stay
-    // blank even then.
-    try std.testing.expect(priv_reflow_render_needs_tofu(0, 0x41));
-    try std.testing.expect(!priv_reflow_render_needs_tofu(0, 0x20));
-    try std.testing.expect(!priv_reflow_render_needs_tofu(7, 0x41));
-}
-
-test "tofu rect geometry" {
-    var rect: TofuRect = undefined;
-    // Advance-driven box: inset = 10/8 = 1, height from font_px.
-    try std.testing.expect(priv_reflow_render_tofu_rect(10, 12, 12, &rect));
-    try std.testing.expectEqual(@as(i32, 1), rect.x_off);
-    try std.testing.expectEqual(@as(i32, -9), rect.y_off);
-    try std.testing.expectEqual(@as(i32, 8), rect.w);
-    try std.testing.expectEqual(@as(i32, 9), rect.h);
-
-    // Ascent-driven height overrides the font_px fallback.
-    try std.testing.expect(priv_reflow_render_tofu_rect(16, 16, 12, &rect));
-    try std.testing.expectEqual(@as(i32, 12), rect.h);
-
-    // Degenerate advance: width falls back to font_px / 2.
-    try std.testing.expect(priv_reflow_render_tofu_rect(0, 0, 12, &rect));
-    try std.testing.expectEqual(@as(i32, 6), rect.w);
-
-    // Tiny advance: the box stays legible at the minimum edge.
-    try std.testing.expect(priv_reflow_render_tofu_rect(1, 0, 12, &rect));
-    try std.testing.expectEqual(@as(i32, 3), rect.w);
-    try std.testing.expectEqual(@as(i32, 0), rect.x_off);
-
-    // No output slot or a non-positive font size: nothing to draw.
-    try std.testing.expect(!priv_reflow_render_tofu_rect(10, 12, 12, null));
-    try std.testing.expect(!priv_reflow_render_tofu_rect(10, 12, 0, &rect));
-}
-
-test "ABI mirrors match the C layout" {
-    // ra8_glyph_key_t: u32 + 4 x u16.
-    try std.testing.expectEqual(@as(usize, 12), @sizeOf(GlyphKey));
-    // ra8_glyph_t: pointer + 2 x u16, rounded up to pointer alignment
-    // (C's sizeof agrees).
-    try std.testing.expectEqual(@as(usize, 16), @sizeOf(GlyphView));
-    // ra8_keycache_cell_t: 3 x i32 + u16 + 2 x u8.
-    try std.testing.expectEqual(@as(usize, 16), @sizeOf(KeycacheCell));
-    // reflow_glyph_atlas_storage_t: bucket_count trails the pointers.
-    try std.testing.expectEqual(@as(usize, 48), @offsetOf(AtlasStorage, "bucket_count"));
-    // priv_reflow_tofu_rect_t: 4 x i32.
-    try std.testing.expectEqual(@as(usize, 16), @sizeOf(TofuRect));
 }
 
 // RA8FW-1263: reflow_render_page belongs to the LiteHTML v2 engine when it
