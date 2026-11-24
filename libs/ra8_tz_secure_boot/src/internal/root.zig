@@ -14,7 +14,3 @@ pub const partition = @import("partition.zig");
 pub const sau = @import("sau.zig");
 pub const nsimage = @import("nsimage.zig");
 pub const psar = @import("psar.zig");
-
-test {
-    @import("std").testing.refAllDecls(@This());
-}

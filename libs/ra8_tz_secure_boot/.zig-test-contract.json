@@ -1,18 +1,52 @@
 {
   "test_roots": [
-    "src/internal/root.zig",
-    "tests/internal_test.zig"
+    "tests/unit_test.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
   ],
   "covered_sources": [
-    "src/internal/root.zig",
-    "src/internal/regs.zig",
+    "ns/ra8_ns_rot_header.zig",
     "src/internal/boot.zig",
+    "src/internal/hal.zig",
     "src/internal/ipc.zig",
-    "src/internal/partition.zig",
-    "src/internal/sau.zig",
+    "src/internal/mmio.zig",
     "src/internal/nsimage.zig",
+    "src/internal/partition.zig",
     "src/internal/psar.zig",
-    "tests/internal_test.zig"
+    "src/internal/regs.zig",
+    "src/internal/root.zig",
+    "src/internal/sau.zig",
+    "src/internal/standalone_build_options.zig",
+    "src/ra8_tz_secure_boot_abi.zig",
+    "tests/abi_test.zig",
+    "tests/internal_test.zig",
+    "tests/unit_test.zig"
   ],
-  "minimum_tests": 47
+  "standalone_source_args": {
+    "ns/ra8_ns_rot_header.zig": [
+      "--dep",
+      "tz_regs",
+      "-Mroot=ns/ra8_ns_rot_header.zig",
+      "-Mtz_regs=src/internal/regs.zig"
+    ],
+    "src/internal/hal.zig": [
+      "--dep",
+      "build_options",
+      "-Mroot=src/internal/hal.zig",
+      "-Mbuild_options=src/internal/standalone_build_options.zig"
+    ],
+    "src/internal/mmio.zig": [
+      "--dep",
+      "build_options",
+      "-Mroot=src/internal/mmio.zig",
+      "-Mbuild_options=src/internal/standalone_build_options.zig"
+    ],
+    "src/ra8_tz_secure_boot_abi.zig": [
+      "--dep",
+      "build_options",
+      "-Mroot=src/ra8_tz_secure_boot_abi.zig",
+      "-Mbuild_options=src/internal/standalone_build_options.zig"
+    ]
+  },
+  "minimum_tests": 50
 }

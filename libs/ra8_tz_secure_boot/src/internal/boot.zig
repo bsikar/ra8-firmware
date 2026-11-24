@@ -7,7 +7,6 @@
 //! step a bench probe reads back, and the capture an off-target build keeps
 //! in place of the stores so unit tests can assert what would have landed.
 
-const std = @import("std");
 const regs = @import("regs.zig");
 
 /// Progress markers stamped as the boot makes forward progress. The values
@@ -86,43 +85,4 @@ pub var host: Host = .{};
 pub fn reset() void {
     step = .idle;
     host = .{};
-}
-
-test "a full gate cycle leaves the capture balanced" {
-    reset();
-    host.write16(regs.Prcr.open);
-    host.write32(regs.Addr.ipcsar, 0xABCD);
-    host.write32(regs.Addr.ipcpar, 0x1234);
-    host.write16(regs.Prcr.close);
-    try std.testing.expectEqual(@as(u32, 0xABCD), host.ipcsar_value);
-    try std.testing.expectEqual(@as(u32, 0x1234), host.ipcpar_value);
-    try std.testing.expectEqual(@as(u8, 1), host.prcr_unlock_count);
-    try std.testing.expect(host.balanced());
-    try std.testing.expectEqual(regs.Prcr.close, host.prcr_s_last);
-}
-
-test "an address outside the documented set lands in the PSAR shadow" {
-    reset();
-    host.write32(0x4000_0000, 0xDEAD);
-    try std.testing.expectEqual(@as(u32, 0), host.ipcsar_value);
-    try std.testing.expectEqual(@as(u32, 0), host.vtor_ns);
-    try std.testing.expectEqual(@as(u32, 0xDEAD), host.read32(0x4000_0000));
-}
-
-test "the PSAR shadow reads back only the address it was written at" {
-    reset();
-    host.write32(0x4000_8000, 0x30);
-    try std.testing.expectEqual(@as(u32, 0x30), host.read32(0x4000_8000));
-    try std.testing.expectEqual(@as(u32, 0), host.read32(0x4000_9000));
-}
-
-test "reset clears a dirtied capture" {
-    reset();
-    host.write16(regs.Prcr.open);
-    host.vtor_ns = 0x2008_0000;
-    step = .blxns_armed;
-    reset();
-    try std.testing.expectEqual(Step.idle, step);
-    try std.testing.expectEqual(@as(u32, 0), host.vtor_ns);
-    try std.testing.expect(host.balanced());
 }

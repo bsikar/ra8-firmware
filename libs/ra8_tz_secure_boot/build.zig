@@ -14,9 +14,12 @@
 //! before BLXNS. It defaults off, exactly as the C did.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = ra8_build.hostDefaultTargetQuery(b),
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     const root_of_trust = b.option(
@@ -77,26 +80,23 @@ pub fn build(b: *std.Build) void {
     const internal_tests = b.addTest(.{ .root_module = internal_test_module });
     const run_internal_tests = b.addRunArtifact(internal_tests);
 
-    // Each module's own tests. A test root that only *imports* the modules
-    // does not pull their `test` blocks into the binary, so the decision core
-    // is compiled a second time as its own test artifact.
-    const module_test_module = b.createModule(.{
-        .root_source_file = b.path("src/internal/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    module_test_module.addOptions("build_options", test_options);
-    const module_tests = b.addTest(.{ .root_module = module_test_module });
-    const run_module_tests = b.addRunArtifact(module_tests);
-
-    // The membrane, compiled as its own test root so the exported functions
-    // are exercised through the same signatures C will call them by.
+    // The membrane, compiled as its own test roots so both the internal
+    // unit suite and the exported C ABI tests exercise the same build_options.
     const abi_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_tz_secure_boot_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
     abi_module.addOptions("build_options", test_options);
+
+    const unit_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/unit_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    unit_test_module.addImport("abi", abi_module);
+    const unit_tests = b.addTest(.{ .root_module = unit_test_module });
+    const run_unit_tests = b.addRunArtifact(unit_tests);
 
     const abi_test_module = b.createModule(.{
         .root_source_file = b.path("tests/abi_test.zig"),
@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
     const run_abi_tests = b.addRunArtifact(abi_tests);
 
     const test_step = b.step("test", "Run Zig ra8_tz_secure_boot tests");
-    test_step.dependOn(&run_module_tests.step);
+    test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

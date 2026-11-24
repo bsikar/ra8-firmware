@@ -6,8 +6,6 @@
 //! Every value here is a property of the RA8D2 silicon, not of this port, so
 //! it is stated once and shared by the sequencer, the PSAR gate and the tests.
 
-const std = @import("std");
-
 /// MMIO addresses the secure boot touches.
 pub const Addr = struct {
     /// HUM Ch 3.2.1 "IPCSAR" p 205: IPC security attribution.
@@ -60,15 +58,3 @@ pub const Err = struct {
     pub const validation_failed: ErrCode = 0x501;
     pub const null_ptr: ErrCode = 0x504;
 };
-
-test "PRCR open carries the key and PRC4, close carries the key alone" {
-    try std.testing.expectEqual(@as(u16, 0xA510), Prcr.open);
-    try std.testing.expectEqual(@as(u16, 0xA500), Prcr.close);
-    try std.testing.expectEqual(@as(u16, 0), Prcr.close & Prcr.prc4);
-}
-
-test "NS RoT magic reads NSR1 in a byte dump" {
-    var bytes: [4]u8 = undefined;
-    std.mem.writeInt(u32, &bytes, NsRot.magic, .little);
-    try std.testing.expectEqualSlices(u8, "NSR1", &bytes);
-}

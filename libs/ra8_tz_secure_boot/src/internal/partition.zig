@@ -7,7 +7,6 @@
 //! is even applyable is the part worth stating on its own, so it lives here
 //! and is checked before a single register moves.
 
-const std = @import("std");
 const regs = @import("regs.zig");
 
 /// Attribute a SAU region carries.
@@ -65,7 +64,7 @@ pub fn validate(cfg: *const Partition, implemented: u8) regs.ErrCode {
 
 /// One window's own rules: granule-aligned, non-empty, a named attribute,
 /// and wholly inside the 32-bit address space.
-fn validateRegion(region: SauRegion) regs.ErrCode {
+pub fn validateRegion(region: SauRegion) regs.ErrCode {
     if (region.base % Limits.sau_granule != 0) return regs.Err.invalid_arg;
     if (region.size == 0 or region.size % Limits.sau_granule != 0) return regs.Err.invalid_arg;
     if (@backingInt(region.attr) > @backingInt(SauAttr.nsc)) return regs.Err.invalid_arg;
@@ -92,87 +91,3 @@ pub const board_map: Partition = .{
     .sau_region_count = board_regions.len,
     .sau_all_ns = false,
 };
-
-test "the board map validates against the silicon it is written for" {
-    try std.testing.expectEqual(regs.Err.ok, validate(&board_map, 8));
-    try std.testing.expectEqual(@as(u8, 4), board_map.sau_region_count);
-    try std.testing.expect(!board_map.sau_all_ns);
-    try std.testing.expect(board_map.sram_boundary == null);
-}
-
-test "a count the silicon cannot serve is not supported" {
-    try std.testing.expectEqual(regs.Err.not_supported, validate(&board_map, 3));
-    try std.testing.expectEqual(regs.Err.ok, validate(&board_map, 4));
-}
-
-test "a non-zero count with no table is a null pointer" {
-    const cfg: Partition = .{
-        .sau_regions = null,
-        .sram_boundary = null,
-        .sau_region_count = 2,
-        .sau_all_ns = false,
-    };
-    try std.testing.expectEqual(regs.Err.null_ptr, validate(&cfg, 8));
-}
-
-test "an empty descriptor is legal and asks for nothing" {
-    const cfg: Partition = .{
-        .sau_regions = null,
-        .sram_boundary = null,
-        .sau_region_count = 0,
-        .sau_all_ns = false,
-    };
-    try std.testing.expectEqual(regs.Err.ok, validate(&cfg, 0));
-}
-
-test "base and size must both sit on the 32-byte granule" {
-    try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
-        .base = 0x02080010,
-        .size = 0x80000,
-        .attr = .ns,
-    }));
-    try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
-        .base = 0x02080000,
-        .size = 0x80010,
-        .attr = .ns,
-    }));
-}
-
-test "a zero-size window is rejected" {
-    try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
-        .base = 0x02080000,
-        .size = 0,
-        .attr = .ns,
-    }));
-}
-
-test "a window may touch the top of the address space but not cross it" {
-    try std.testing.expectEqual(regs.Err.ok, validateRegion(.{
-        .base = 0xFFFFF000,
-        .size = 0x1000,
-        .attr = .ns,
-    }));
-    try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
-        .base = 0xFFFFF000,
-        .size = 0x2000,
-        .attr = .ns,
-    }));
-}
-
-test "an unnamed attribute is a caller error" {
-    try std.testing.expectEqual(regs.Err.invalid_arg, validateRegion(.{
-        .base = 0x02080000,
-        .size = 0x80000,
-        .attr = @fromBackingInt(@intCast(9)),
-    }));
-}
-
-test "an SRAM boundary must be 4 KB aligned in every bank" {
-    const good = [_]u32{ 0, 0x2000, 0x4000, 0x6000 };
-    const bad = [_]u32{ 0, 0x2000, 0x2001, 0x6000 };
-    var cfg = board_map;
-    cfg.sram_boundary = &good;
-    try std.testing.expectEqual(regs.Err.ok, validate(&cfg, 8));
-    cfg.sram_boundary = &bad;
-    try std.testing.expectEqual(regs.Err.invalid_arg, validate(&cfg, 8));
-}

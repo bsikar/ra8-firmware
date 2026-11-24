@@ -56,7 +56,3 @@ pub fn headerValid(hdr: *const Header, computed_crc: u32) bool {
 pub fn runTargetValid(entry: u32, img_len: u32) bool {
     return entry == layout.run_base and lengthValid(img_len);
 }
-
-test "header size is one program page" {
-    try std.testing.expectEqual(@as(usize, 32), @sizeOf(Header));
-}

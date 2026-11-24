@@ -8,7 +8,6 @@
 //! become a recorded fake, which is what lets the sequencer's ordering be
 //! tested on a host that has no registers at all.
 
-const std = @import("std");
 const mmio = @import("mmio.zig");
 const partition = @import("partition.zig");
 const regs = @import("regs.zig");
@@ -74,23 +73,4 @@ pub fn setBoundary(bank: u8, offset: u32) regs.ErrCode {
     fake.last_bank = bank;
     fake.last_offset = offset;
     return fake.boundary_result;
-}
-
-test "the fake answers what it was told to answer" {
-    reset();
-    fake.implemented = 5;
-    try std.testing.expectEqual(@as(u8, 5), regionCount());
-    fake.configure_result = regs.Err.not_supported;
-    const cfg: SauCfg = .{ .regions = null, .region_count = 0, .all_ns = false };
-    try std.testing.expectEqual(regs.Err.not_supported, configure(&cfg));
-    try std.testing.expectEqual(@as(u8, 1), fake.configure_count);
-}
-
-test "reset clears a dirtied fake" {
-    reset();
-    _ = setBoundary(2, 0x4000);
-    try std.testing.expectEqual(@as(u8, 2), fake.last_bank);
-    reset();
-    try std.testing.expectEqual(@as(u8, 0), fake.boundary_count);
-    try std.testing.expectEqual(@as(u8, 8), fake.implemented);
 }

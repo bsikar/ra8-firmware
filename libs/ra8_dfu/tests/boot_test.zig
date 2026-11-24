@@ -114,3 +114,19 @@ test "the C enum values the ABI returns" {
     try std.testing.expectEqual(@as(u8, 1), @backingInt(slot.Action.jump_a));
     try std.testing.expectEqual(@as(u8, 2), @backingInt(slot.Action.jump_b));
 }
+
+test "crc32: published check values" {
+    try std.testing.expectEqual(@as(u32, 0x0000_0000), crc32.compute(""));
+    try std.testing.expectEqual(@as(u32, 0xCBF4_3926), crc32.compute("123456789"));
+    try std.testing.expectEqual(@as(u32, 0xE8B7_BE43), crc32.compute("a"));
+    try std.testing.expectEqual(@as(u32, 0xD202_EF8D), crc32.compute(&.{0x00}));
+}
+
+test "image: header size is one program page" {
+    try std.testing.expectEqual(@as(usize, 32), @sizeOf(image.Header));
+}
+
+test "slot: a tie goes to slot A" {
+    const tie = candidate(true, 4);
+    try std.testing.expectEqual(slot.Slot.a, slot.select(tie, tie));
+}
