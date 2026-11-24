@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ra8_bundle.h"
 #include "ra8_err.h"
 #include "ra8_update.h"
 
@@ -388,11 +389,133 @@ static void test_guards_downgrade_and_explicit_rollback(void)
   EXPECT_EQ(k_ra8_fail, ra8_update_rollback(&sess, k_ra8_ok));
 }
 
+static void sign_bundle(uint8_t* container, uint16_t image_count, uint32_t meta_bytes)
+{
+  const uint32_t sig_off = (uint32_t)k_ra8_bundle_header_bytes +
+                           ((uint32_t)image_count * (uint32_t)k_ra8_bundle_desc_bytes);
+  (void)meta_bytes;
+  uint8_t meta_digest[k_ra8_update_sha256_bytes] = {};
+  (void)mock_sha_init(&s_env);
+  (void)mock_sha_update(&s_env, container, sig_off);
+  (void)mock_sha_final(&s_env, meta_digest);
+  (void)memset(&container[sig_off], 0, k_ra8_bundle_sig_bytes);
+  (void)memcpy(&container[sig_off], meta_digest, sizeof(meta_digest));
+}
+
+static void test_ra8u_bundle_pipeline_single_and_multi(void)
+{
+  env_reset(5U);
+  uint8_t        container[k_test_buf_bytes] = {};
+  const uint32_t pay_off =
+    k_ra8_bundle_header_bytes + (2U * k_ra8_bundle_desc_bytes) + k_ra8_bundle_sig_bytes;
+  const uint32_t   total = pay_off + 96U;
+  ra8_bundle_hdr_t hdr   = {
+    .magic           = k_ra8_bundle_magic,
+    .format_version  = k_ra8_bundle_format_ver,
+    .header_bytes    = k_ra8_bundle_header_bytes,
+    .bundle_version  = 11U,
+    .image_count     = 2U,
+    .flags           = 0U,
+    .total_bytes     = total,
+    .payloads_offset = pay_off,
+    .sig_len         = k_ra8_bundle_sig_bytes,
+    .reserved        = 0U,
+  };
+  (void)memcpy(container, &hdr, sizeof(hdr));
+  (void)memset(&container[pay_off], 0x11, 48U);
+  (void)memset(&container[pay_off + 64U], 0x22, 32U);
+
+  ra8_bundle_image_desc_t descs[2] = {};
+  descs[0].target                  = k_ra8_bundle_target_ra8_app;
+  descs[0].format                  = k_ra8_bundle_fmt_rot1_img;
+  descs[0].image_version           = 11U;
+  descs[0].compat_proto_ver        = 4U;
+  descs[0].offset                  = pay_off;
+  descs[0].size                    = 48U;
+  (void)mock_sha_init(&s_env);
+  (void)mock_sha_update(&s_env, &container[descs[0].offset], descs[0].size);
+  (void)mock_sha_final(&s_env, descs[0].sha256);
+
+  descs[1].target           = k_ra8_bundle_target_esp32_c6;
+  descs[1].format           = k_ra8_bundle_fmt_c6_img;
+  descs[1].image_version    = 11U;
+  descs[1].compat_proto_ver = 4U;
+  descs[1].offset           = pay_off + 64U;
+  descs[1].size             = 32U;
+  (void)mock_sha_init(&s_env);
+  (void)mock_sha_update(&s_env, &container[descs[1].offset], descs[1].size);
+  (void)mock_sha_final(&s_env, descs[1].sha256);
+
+  (void)memcpy(&container[k_ra8_bundle_header_bytes], descs, sizeof(descs));
+  sign_bundle(container, 2U, pay_off);
+
+  const ra8_update_crypto_iface_t crypto = {
+    .sha256_init   = mock_sha_init,
+    .sha256_update = mock_sha_update,
+    .sha256_final  = mock_sha_final,
+    .ecdsa_verify  = mock_ecdsa_verify,
+    .ctx           = &s_env,
+  };
+  ra8_bundle_hdr_t        out_hdr                      = {};
+  ra8_bundle_image_desc_t out_descs[4]                 = {};
+  uint8_t                 scratch[k_test_scratch_size] = {};
+  EXPECT_EQ(k_ra8_ok,
+            ra8_bundle_verify_mem(container,
+                                  total,
+                                  (uint32_t)k_test_pubkey,
+                                  5U,
+                                  &crypto,
+                                  scratch,
+                                  sizeof(scratch),
+                                  &out_hdr,
+                                  out_descs,
+                                  4U));
+  ra8_bundle_image_desc_t ra8_hit = {};
+  EXPECT_EQ(
+    k_ra8_ok,
+    ra8_bundle_find_target(out_descs, out_hdr.image_count, k_ra8_bundle_target_ra8_app, &ra8_hit));
+  EXPECT_EQ(pay_off, ra8_hit.offset);
+
+  /* Drive the full DFU trial pipeline on the multi-image RA8U bundle. */
+  ra8_update_cfg_t     cfg  = make_cfg(k_ra8_update_transport_dfu);
+  ra8_update_session_t sess = {};
+  EXPECT_EQ(k_ra8_ok, ra8_update_init(&sess, &cfg));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_begin(&sess, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_write(&sess, 0U, container, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_finish(&sess));
+  EXPECT_EQ(k_ra8_ok,
+            ra8_update_verify_bundle(&sess, 4U, scratch, sizeof(scratch), &out_hdr, out_descs, 4U));
+  EXPECT_EQ(k_ra8_ok, ra8_update_commit(&sess, 9U));
+  EXPECT_EQ(k_ra8_update_stage_trial_pending, sess.stage);
+  EXPECT_EQ(5U, s_env.floor);
+  EXPECT_EQ(k_ra8_ok, ra8_update_confirm(&sess));
+  EXPECT_EQ(11U, s_env.floor);
+
+  /* Companion protocol mismatch rolls back cleanly before commit. */
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_begin(&sess, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_write(&sess, 0U, container, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_finish(&sess));
+  EXPECT_EQ(
+    k_ra8_err_validation_failed,
+    ra8_update_verify_bundle(&sess, 99U, scratch, sizeof(scratch), &out_hdr, out_descs, 4U));
+  EXPECT_EQ(k_ra8_update_stage_rolled_back, sess.stage);
+
+  /* Tampered payload byte fails per-image SHA-256 and rolls back. */
+  container[pay_off] ^= 0x80U;
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_begin(&sess, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_write(&sess, 0U, container, total));
+  EXPECT_EQ(k_ra8_ok, ra8_update_stage_finish(&sess));
+  EXPECT_EQ(k_ra8_err_crc_mismatch,
+            ra8_update_verify_bundle(&sess, 4U, scratch, sizeof(scratch), &out_hdr, out_descs, 4U));
+  EXPECT_EQ(k_ra8_update_stage_rolled_back, sess.stage);
+}
+
 int main(void)
 {
   test_ota_immediate_flow();
   test_dfu_trial_defers_floor_and_rolls_back_on_bad_verify();
   test_guards_downgrade_and_explicit_rollback();
+  test_ra8u_bundle_pipeline_single_and_multi();
   if (s_fail != 0U) {
     return 1;
   }
