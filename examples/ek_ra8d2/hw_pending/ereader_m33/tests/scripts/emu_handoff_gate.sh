@@ -62,22 +62,25 @@ cmake -S "${app_dir}" -B "${build_dir}" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null
 cmake --build "${build_dir}" -j >/dev/null
 elf="${build_dir}/${APP}.elf"
-if [ ! -f "${elf}" ]; then
-  echo "ereader_m33 handoff gate: FAIL -- ${elf} not built" >&2
+cpu1_elf="${build_dir}/${APP}_cpu1.elf"
+if [ ! -f "${elf}" ] || [ ! -f "${cpu1_elf}" ]; then
+  echo "ereader_m33 handoff gate: FAIL -- ${elf} or ${cpu1_elf} not built" >&2
   exit 1
 fi
 
-echo "ereader_m33 handoff gate: building ra8_emulator ..."
-cmake -B "${emu_dir}/build" -S "${emu_dir}" >/dev/null
-cmake --build "${emu_dir}/build" -j >/dev/null
-emu="${emu_dir}/build/ra8_emulator"
+if [ -n "${RA8_EMULATOR:-}" ]; then
+  emu="${RA8_EMULATOR}"
+else
+  echo "ereader_m33 handoff gate: building ra8_emulator ..."
+  (cd "${emu_dir}" && zig build -Doptimize=ReleaseFast) >/dev/null
+  emu="${emu_dir}/zig-out/bin/ra8_emulator"
+fi
 
 echo "ereader_m33 handoff gate: driving the M85-park / M33-hold / wake cycle ..."
-# The cycle (boot + page-0 render + 3 park/wake/re-render turns) completes in a
-# few dozen instruction-chunks; the bound below is a generous, runner-speed-
-# independent ceiling. The M85 then parks in WFI for good. Banners reach stdout
-# over ITM, so the run is captured and grepped.
-out="$(RA8_EMU_MAX_CHUNKS=4000 RA8_EMU_WALL_S=300 "${emu}" "${elf}" 2>&1 || true)"
+# The cycle (boot + page-0 render + 3 park/wake/re-render turns) completes well
+# within 5000 ms of virtual time. The M85 then parks in WFI for good. Banners
+# reach stdout over ITM, so the run is captured and grepped.
+out="$("${emu}" "${elf}" --cpu1 "${cpu1_elf}" --ms 5000 --console </dev/null 2>&1 || true)"
 
 fail() {
   echo "ereader_m33 handoff gate: FAIL -- $1" >&2
@@ -86,9 +89,9 @@ fail() {
   exit 1
 }
 
-if grep -qE 'INVALID INSN|UNMAPPED|executed a BKPT' <<<"${out}"; then
+if grep -qE 'fault:|hardfault|memmanage|busfault|usagefault|INVALID INSN|UNMAPPED|executed a BKPT' <<<"${out}"; then
   echo "ereader_m33 handoff gate: FAIL -- a core faulted during the handoff" >&2
-  grep -E 'INVALID INSN|UNMAPPED|executed a BKPT' <<<"${out}" | head -3 >&2
+  grep -E 'fault:|hardfault|memmanage|busfault|usagefault|INVALID INSN|UNMAPPED|executed a BKPT' <<<"${out}" | head -3 >&2
   exit 1
 fi
 

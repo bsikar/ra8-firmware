@@ -17,9 +17,9 @@
  *   @code
  *   tools/mkfontimg/build/mkfontimg libs/ra8_fonts/Literata-Regular.ttf /tmp/font.img
  *   just apps::build sd_font_render
- *   tools/ra8_emulator/build/ra8_emulator \
+ *   tools/ra8_emulator/zig-out/bin/ra8_emulator \
  *     examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
- *     --sd /tmp/font.img --ppm /tmp/out.ppm
+ *     --sd /tmp/font.img --ms 5000 --frames-out /tmp/sfr_frames
  *   @endcode
  *
  * Flow:
@@ -186,7 +186,7 @@ volatile uint32_t g_sfr_heartbeat = 0U;
 /** @brief Halt forever with the red board LED on (fatal init error marker).
  *
  * @details Also floods the framebuffer a stage-coded gray so a ra8_emulator
- * @c --ppm snapshot (or a glance at the panel) reveals which bring-up stage
+ * @c --frames-out snapshot (or a glance at the panel) reveals which bring-up stage
  * failed without a debugger: low nibble of the stage code picks the level. */
 static void sfr_panic_halt(uint32_t stage)
 {
@@ -338,7 +338,7 @@ void main(void)
   sfr_render_or_halt();
 
   /* The page is rendered; GLCDC scans out the framebuffer continuously.
-   * ra8_emulator snapshots it via --ppm. Idle with a heartbeat that advances only
+   * ra8_emulator snapshots it via --frames-out. Idle with a heartbeat that advances only
    * on this success path -- the panic-halt loop does not bump it -- so a J-Link
    * memprobe gate proves the full SD-font render pipeline ran end to end. */
   while (1) {
