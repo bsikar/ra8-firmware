@@ -441,3 +441,38 @@ test "verify counts the matching prefix even when it fails later" {
     try testing.expectEqual(@as(u32, 4), outcome.blocks_ok);
     try testing.expectEqual(@as(?u32, 4), outcome.mismatch);
 }
+
+test "Err.from preserves unknown and out-of-range error codes without panicking" {
+    const known = Err.from(0x0103);
+    try testing.expectEqual(Err.invalid_arg, known);
+    try testing.expect(!known.isOk());
+    try testing.expectEqual(@as(u16, 0x0103), known.raw());
+
+    const ok = Err.from(0);
+    try testing.expectEqual(Err.ok, ok);
+    try testing.expect(ok.isOk());
+
+    // Valid ra8_err_t codes outside Err's named tags, plus arbitrary unknown u16 values.
+    const unknown_codes = [_]u16{ 0x0101, 0x0108, 0x0201, 0x1234, 0xFFFF };
+    for (unknown_codes) |code| {
+        const widened = Err.from(code);
+        try testing.expect(!widened.isOk());
+        try testing.expectEqual(code, widened.raw());
+    }
+}
+
+test "session propagates unknown HAL error codes without panicking" {
+    FakeDevice.reset();
+    FakeDevice.init_err = Err.from(0xFFFF);
+    const image = rampImage(1);
+    var report = session.Report{};
+    const init_res = session.drive(FakeDevice, .hs, &image, .round_trip, &report);
+    try testing.expectEqual(@as(u16, 0xFFFF), init_res.raw());
+    try testing.expect(!init_res.isOk());
+
+    FakeDevice.reset();
+    FakeDevice.dnload_fail_at = .{ .block = 0, .err = Err.from(0x0108) };
+    const xfer_res = session.drive(FakeDevice, .hs, &image, .program, &report);
+    try testing.expectEqual(@as(u16, 0x0108), xfer_res.raw());
+    try testing.expectEqual(@as(u32, 1), FakeDevice.deinit_calls);
+}
