@@ -169,3 +169,63 @@ test "ping-pong writes survive torn erase and torn program without losing active
         boot_state.pick(model.asRecord(0), model.asRecord(1)),
     );
 }
+
+test "decideWithState runs unconfirmed trial until tries run out then reverts" {
+    const a_v1 = slot.Candidate{ .valid = true, .seq = 1 };
+    const b_v2 = slot.Candidate{ .valid = true, .seq = 2 };
+    const invalid = slot.Candidate{ .valid = false, .seq = 0 };
+
+    // Null / untracked state keeps higher-seq-wins without trial.
+    const no_state = slot.decideWithState(false, a_v1, b_v2, null);
+    try std.testing.expectEqual(slot.Action.jump_b, no_state.action);
+    try std.testing.expect(!no_state.is_trial);
+
+    // Trigger overrides trial cleanly.
+    const trial_b_3 = slot.TrialState{ .trial_slot = .b, .tries_left = 3, .confirmed = false };
+    const trig = slot.decideWithState(true, a_v1, b_v2, trial_b_3);
+    try std.testing.expectEqual(slot.Action.dfu, trig.action);
+    try std.testing.expect(!trig.is_trial);
+
+    // Unconfirmed newer slot B consumes tries 3 -> 2 -> 1 -> 0.
+    const try1 = slot.decideWithState(false, a_v1, b_v2, trial_b_3);
+    try std.testing.expectEqual(slot.Action.jump_b, try1.action);
+    try std.testing.expect(try1.is_trial);
+    try std.testing.expectEqual(@as(u8, 2), try1.next_tries);
+
+    const last_try = slot.decideWithState(false, a_v1, b_v2, .{
+        .trial_slot = .b,
+        .tries_left = 1,
+        .confirmed = false,
+    });
+    try std.testing.expectEqual(slot.Action.jump_b, last_try.action);
+    try std.testing.expect(last_try.is_trial);
+    try std.testing.expectEqual(@as(u8, 0), last_try.next_tries);
+
+    // Tries exhausted: revert to older valid Slot A.
+    const revert_a = slot.decideWithState(false, a_v1, b_v2, .{
+        .trial_slot = .b,
+        .tries_left = 0,
+        .confirmed = false,
+    });
+    try std.testing.expectEqual(slot.Action.jump_a, revert_a.action);
+    try std.testing.expect(!revert_a.is_trial);
+    try std.testing.expectEqual(slot.Slot.b, revert_a.dfu_target);
+
+    // Tries exhausted with no alternate slot: enter DFU.
+    const no_alt = slot.decideWithState(false, invalid, b_v2, .{
+        .trial_slot = .b,
+        .tries_left = 0,
+        .confirmed = false,
+    });
+    try std.testing.expectEqual(slot.Action.dfu, no_alt.action);
+    try std.testing.expect(!no_alt.is_trial);
+
+    // Confirmed slot keeps higher-sequence-wins without trial.
+    const conf = slot.decideWithState(false, a_v1, b_v2, .{
+        .trial_slot = .b,
+        .tries_left = 0,
+        .confirmed = true,
+    });
+    try std.testing.expectEqual(slot.Action.jump_b, conf.action);
+    try std.testing.expect(!conf.is_trial);
+}

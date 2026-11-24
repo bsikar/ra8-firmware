@@ -459,6 +459,61 @@ ra8_dfu_slot_t ra8_dfu_select_slot(bool a_valid, uint32_t a_seq, bool b_valid, u
 ra8_dfu_action_t
 ra8_dfu_boot_decide(bool dfu_trigger, bool a_valid, uint32_t a_seq, bool b_valid, uint32_t b_seq);
 
+/**
+ * @struct ra8_dfu_boot_plan_t
+ * @brief Trial-aware boot decision plan produced by ::ra8_dfu_boot_decide_trial.
+ */
+typedef struct {
+  ra8_dfu_action_t action;     /**< Chosen reset action (DFU, jump A, or jump B).    */
+  bool             is_trial;   /**< True iff booting an unconfirmed trial slot.      */
+  uint8_t          next_tries; /**< Remaining tries to persist before jumping.       */
+  ra8_dfu_slot_t   dfu_target; /**< Target slot for DFU mode (inactive or fallback). */
+} ra8_dfu_boot_plan_t;
+
+static_assert(sizeof(ra8_dfu_boot_plan_t) == 4U,
+              "ra8_dfu_boot_plan_t must stay a compact 4-byte ABI struct");
+
+/**
+ * @brief Reset-time trial-aware boot decision: trial newer unconfirmed slots and
+ *        revert when tries run out.
+ *
+ * @details
+ * Extends ::ra8_dfu_boot_decide with trial-boot state from @p state. Confirmed (or
+ * untracked) slots preserve higher-sequence-wins (`is_trial = false`). When the
+ * selected higher-sequence valid slot matches `state->trial_slot` and is not yet
+ * confirmed:
+ *  - if `state->tries_left > 0`, boots that slot with `is_trial = true` and
+ *    `next_tries = state->tries_left - 1` (the caller persists `next_tries` before
+ *    jumping);
+ *  - if `state->tries_left == 0`, falls back to the older valid slot (`is_trial = false`),
+ *    or enters DFU if no alternate valid slot exists.
+ * If @p state is NULL or fails ::ra8_dfu_boot_state_valid, the decision ignores it
+ * and applies the higher-sequence-wins rule cleanly.
+ *
+ * @param[in]  dfu_trigger `true` iff the one-shot no-init DFU request magic was set.
+ * @param[in]  a_valid     Slot A validity (`ra8_dfu_slot_valid`).
+ * @param[in]  a_seq       Slot A header sequence.
+ * @param[in]  b_valid     Slot B validity (`ra8_dfu_slot_valid`).
+ * @param[in]  b_seq       Slot B header sequence.
+ * @param[in]  state       Optional live boot-state record (may be NULL).
+ * @param[out] out_plan    Destination boot plan (non-NULL).
+ * @return `ra8_err_t` outcome (`k_ra8_ok` or `k_ra8_err_null_ptr`).
+ * @retval k_ra8_ok           `*out_plan` populated.
+ * @retval k_ra8_err_null_ptr `out_plan` is NULL.
+ *
+ * @pre `out_plan` is non-NULL.
+ * @post No MRAM or persistent state mutated; on `k_ra8_err_null_ptr` no outputs modified.
+ * @note Thread-safe (pure). Covered by MC/DC vectors in `tests/misc/src/test_ra8_dfu_boot.c`.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_dfu_boot_decide_trial(bool                        dfu_trigger,
+                                                  bool                        a_valid,
+                                                  uint32_t                    a_seq,
+                                                  bool                        b_valid,
+                                                  uint32_t                    b_seq,
+                                                  const ra8_dfu_boot_state_t* state,
+                                                  ra8_dfu_boot_plan_t*        out_plan);
+
 /* =============================================================================
  * MRAM slot access + program / verify (ra8_dfu_program.c)
  *

@@ -477,6 +477,134 @@ static void test_boot_state_store_torn_and_corrupt(void)
   TEST_END("ra8_dfu: boot_state store read/write + torn/corrupt");
 }
 
+/**
+ * @brief `ra8_dfu_boot_decide_trial` trial-boot & revert decision (MC/DC).
+ *
+ * @par MC/DC:
+ * Covers every branch added on top of `ra8_dfu_boot_decide`:
+ * - Null `out_plan` -> `k_ra8_err_null_ptr`.
+ * - Trigger active / no valid slot -> DFU (`is_trial = false`).
+ * - Absent/corrupt or confirmed/other-slot state -> higher-seq wins, `is_trial = false`.
+ * - Unconfirmed newer slot (`trial_slot == preferred && !confirmed`):
+ *   - `tries_left > 0` (incl. boundary `tries_left == 1`) -> `is_trial = true`, `next_tries = tries_left - 1`.
+ *   - `tries_left == 0 && other_valid` -> reverts to older valid slot, `is_trial = false`.
+ *   - `tries_left == 0 && !other_valid` -> enters DFU, `is_trial = false`.
+ * Also simulates a full 3-try unconfirmed cycle through `ra8_dfu_boot_state_{write,read}`.
+ *
+ * @pre None.
+ * @post Off-target boot-state shadow left erased.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_boot_decide_trial_mcdc(void)
+{
+  TEST_BEGIN("ra8_dfu: boot_decide_trial trial + revert (MC/DC)");
+
+  ra8_dfu_boot_plan_t plan = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dfu_boot_decide_trial(false, true, 1U, false, 0U, nullptr, nullptr));
+
+  /* Null or corrupt boot_state falls back cleanly to higher-seq-wins without trial. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, nullptr, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_b, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  ra8_dfu_boot_state_t corrupt = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 5U, true, 2U, &corrupt, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  /* Active unconfirmed trial on Slot B (tries=3) is overridden by DFU trigger. */
+  ra8_dfu_boot_state_t st_b_3 = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_b, 3U, false, 2U, 1U, &st_b_3));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(true, true, 1U, true, 2U, &st_b_3, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_dfu, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  /* Neither slot valid -> DFU targeting Slot A. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, false, 0U, false, 0U, &st_b_3, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_dfu, plan.action);
+  TEST_ASSERT_EQ(k_ra8_dfu_slot_a, plan.dfu_target);
+
+  /* Unconfirmed Slot B with higher seq boots as trial and spends 1 try (3 -> 2). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, &st_b_3, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_b, plan.action);
+  TEST_ASSERT(plan.is_trial);
+  TEST_ASSERT_EQ(2U, plan.next_tries);
+
+  /* Boundary: tries_left == 1 spends last try -> next_tries == 0. */
+  ra8_dfu_boot_state_t st_a_1 = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_a, 1U, false, 5U, 2U, &st_a_1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 5U, true, 3U, &st_a_1, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(plan.is_trial);
+  TEST_ASSERT_EQ(0U, plan.next_tries);
+
+  /* Tries exhausted (tries_left == 0) with valid fallback -> revert to older slot. */
+  ra8_dfu_boot_state_t st_b_0 = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_b, 0U, false, 2U, 4U, &st_b_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, &st_b_0, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+  TEST_ASSERT_EQ(k_ra8_dfu_slot_b, plan.dfu_target);
+
+  ra8_dfu_boot_state_t st_a_0 = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_a, 0U, false, 5U, 4U, &st_a_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 5U, true, 3U, &st_a_0, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_b, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+  TEST_ASSERT_EQ(k_ra8_dfu_slot_a, plan.dfu_target);
+
+  /* Tries exhausted with NO valid fallback -> enter DFU instead of infinite boot loop. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, false, 0U, true, 2U, &st_b_0, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_dfu, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+  TEST_ASSERT_EQ(k_ra8_dfu_slot_b, plan.dfu_target);
+
+  /* Confirmed slot keeps higher-sequence-wins with is_trial == false even if tries == 0. */
+  ra8_dfu_boot_state_t st_b_conf = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_prepare(k_ra8_dfu_slot_b, 0U, true, 2U, 5U, &st_b_conf));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, &st_b_conf, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_b, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  /* State tracks another slot (e.g. trial Slot B became corrupt, only A valid) -> non-trial. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, false, 0U, &st_b_3, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  /* End-to-end 3-try countdown through store read/write until fallback to Slot A. */
+  priv_dfu_boot_state_reset_store();
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dfu_boot_state_write(k_ra8_dfu_slot_b,
+                                          (uint8_t)k_ra8_dfu_boot_state_default_tries,
+                                          false,
+                                          2U));
+  for (uint8_t expected = (uint8_t)k_ra8_dfu_boot_state_default_tries; expected > 0U; expected--) {
+    ra8_dfu_boot_state_t cur = {};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&cur));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, &cur, &plan));
+    TEST_ASSERT_EQ(k_ra8_dfu_action_jump_b, plan.action);
+    TEST_ASSERT(plan.is_trial);
+    TEST_ASSERT_EQ((uint8_t)(expected - 1U), plan.next_tries);
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   ra8_dfu_boot_state_write(k_ra8_dfu_slot_b, plan.next_tries, false, 2U));
+  }
+  ra8_dfu_boot_state_t exhausted = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_state_read(&exhausted));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_boot_decide_trial(false, true, 1U, true, 2U, &exhausted, &plan));
+  TEST_ASSERT_EQ(k_ra8_dfu_action_jump_a, plan.action);
+  TEST_ASSERT(!plan.is_trial);
+
+  priv_dfu_boot_state_reset_store();
+
+  TEST_END("ra8_dfu: boot_decide_trial trial + revert (MC/DC)");
+}
+
 int main(void)
 {
   test_crc32_known_vectors();
@@ -487,5 +615,6 @@ int main(void)
   test_boot_state_valid_mcdc();
   test_boot_state_pick_mcdc();
   test_boot_state_store_torn_and_corrupt();
+  test_boot_decide_trial_mcdc();
   return 0;
 }
