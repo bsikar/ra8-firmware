@@ -35,6 +35,7 @@
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
@@ -532,14 +533,7 @@ static void sh_panel_or_halt(void)
       (display_get_framebuffer(s_display, &fb) != k_ra8_ok)) {
     sh_panic_halt();
   }
-  const ra8_gfx_surface_t surface = {
-    .pixels       = fb.pixels,
-    .w            = fb.width_px,
-    .h            = fb.height_px,
-    .stride_bytes = fb.stride_bytes,
-    .fmt          = k_ra8_gfx_format_rgb565,
-  };
-  if (ra8_gfx_init_surface(&surface) != k_ra8_ok) {
+  if (display_bind_gfx(&fb) != k_ra8_ok) {
     sh_panic_halt();
   }
 }

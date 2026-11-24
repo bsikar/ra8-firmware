@@ -60,6 +60,7 @@
 #include "ra8_box.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
+#include "ra8_display_pal_gfx.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -444,14 +445,7 @@ static bool wk_panel_up(void)
   if (fb.pixels != (void*)s_framebuffer) {
     return false;
   }
-  const ra8_gfx_surface_t surface = {
-    .pixels       = fb.pixels,
-    .w            = fb.width_px,
-    .h            = fb.height_px,
-    .stride_bytes = fb.stride_bytes,
-    .fmt          = k_ra8_gfx_format_rgb565,
-  };
-  return (ra8_gfx_init_surface(&surface) == k_ra8_ok);
+  return (display_bind_gfx(&fb) == k_ra8_ok);
 }
 
 /** @brief Map a widget refresh hint to the display PAL refresh hint. */
