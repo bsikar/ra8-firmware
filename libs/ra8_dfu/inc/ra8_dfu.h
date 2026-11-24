@@ -57,11 +57,46 @@
  * since VTOR is set to the aligned run base, not the slot.)
  *
  * The bootloader is never swapped (no BTFLG / startup-area swap); it
- * reads both slot headers and jumps to the valid slot with the higher
- * sequence number in software. A freshly-written bad slot fails its CRC,
- * so the older valid slot is chosen automatically -- brick-safe by
- * construction, and SWD recovery is always available because the
- * bootloader region is never written.
+ * reads both slot headers and `boot_state`, then launches the winning slot
+ * in software. A freshly-written bad slot fails its CRC, so the older valid
+ * slot is chosen automatically -- brick-safe by construction, and SWD recovery
+ * is always available because the bootloader region is never written.
+ *
+ * ## Trial boot, confirmation, and watchdog revert
+ *
+ * When a DFU commit finishes into the inactive slot, the bootloader writes an
+ * unconfirmed `boot_state` record (`confirmed = 0`,
+ * `tries_left = k_ra8_dfu_boot_state_default_tries` = 3) into the dual-copy
+ * ping-pong metadata region (`0x020FE000` / `0x020FE020`, IEEE CRC32 protected)
+ * before resetting. At each reset:
+ *
+ *  1. `ra8_dfu_boot_decide_trial` picks `preferred` (higher-sequence valid
+ *     slot, A on tie) and checks `boot_state`.
+ *  2. If `preferred` is unconfirmed and `tries_left > 0`, the bootloader
+ *     persists the decremented `tries_left - 1` into the alternate ping-pong
+ *     page BEFORE branching, arms WDT0 (1024 cycles, CLKDIV /4, reset on
+ *     expiry, keep counting during WFI/sleep), and boots `preferred` as a trial.
+ *  3. If a trial image hangs, faults, or crashes before confirming, WDT0
+ *     underflows (~25.6 s at default clocks), resets the chip via `RSTSR1.WDTRF`,
+ *     and repeats until `tries_left == 0`, at which point the bootloader reverts
+ *     to the alternate valid confirmed slot (or enters DFU mode if none exists)
+ *     with WDT0 disarmed.
+ *
+ * ## Payload liveness contract
+ *
+ * To survive a trial boot and stay live across subsequent resets, a payload
+ * linked at ::k_ra8_dfu_run_base must:
+ *
+ *  1. Call `ra8_flash_init()` (or keep bootloader MRAM clocks active) and link
+ *     `libra8_dfu_boot.a` in SRAM so ::ra8_dfu_confirm() can update MRAM.
+ *  2. Feed WDT0 via `ra8_wdt_refresh()` / `ra8_wdt_refresh_for(k_ra8_wdt0)` if
+ *     startup or post-boot self-tests approach ~25.6 s, and note that once WDT0
+ *     is armed on the trial boot it stays running until the next reset (either
+ *     keep kicking WDT0 for the rest of that boot or soft-reset after confirm).
+ *  3. Call ::ra8_dfu_confirm() once self-tests pass. It idempotently writes
+ *     `confirmed = 1` to the alternate ping-pong page (succeeding even on the
+ *     last attempt when `tries_left == 0`), so subsequent resets skip the trial
+ *     watchdog and boot the slot permanently.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -882,10 +917,15 @@ bool ra8_dfu_boot_state_valid(const ra8_dfu_boot_state_t* state);
  * post-boot self-tests succeed. Reads the dual-copy ::ra8_dfu_boot_state_t
  * record, verifies it tracks a concrete slot (`A` or `B`), and writes an
  * updated ping-pong copy with `confirmed = 1` so subsequent resets stop
- * consuming trial attempts and keep the slot permanently active. Idempotent when
- * the slot is already confirmed (`k_ra8_ok` with no extra MRAM write). Accepts
- * `tries_left == 0` so an image running its final allowed attempt can still
- * confirm itself before the next reset.
+ * consuming trial attempts, leave WDT0 disarmed, and keep the slot permanently
+ * active. Idempotent when the slot is already confirmed (`k_ra8_ok` with no
+ * extra MRAM write). Accepts `tries_left == 0` so an image running its final
+ * allowed attempt can still confirm itself before the next reset.
+ *
+ * A trial payload that runs longer than the bootloader's ~25.6 s trial WDT0
+ * window must also refresh WDT0 periodically while running in that trial boot
+ * (WDT0 remains latched until reset once started) or soft-reset after
+ * ::ra8_dfu_confirm() returns `k_ra8_ok`.
  *
  * @return `ra8_err_t` outcome.
  * @retval k_ra8_ok                Slot confirmed (or already confirmed).
