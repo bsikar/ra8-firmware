@@ -7,9 +7,12 @@
 //! `scripts/builders/list_tests.sh` passes through.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // Default target comes from the shared host probe so a native arm64 macOS
+    // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
 
     const executable = b.addExecutable(.{
@@ -56,6 +59,10 @@ pub fn build(b: *std.Build) void {
     const cli_tests = b.addTest(.{ .root_module = cli_test_module });
 
     const test_step = b.step("test", "Run list_tests tests");
-    test_step.dependOn(&b.addRunArtifact(internal_tests).step);
-    test_step.dependOn(&b.addRunArtifact(cli_tests).step);
+    const run_internal_tests = b.addRunArtifact(internal_tests);
+    ra8_build.configureHostTestRun(b, test_step, internal_tests, run_internal_tests);
+    test_step.dependOn(&run_internal_tests.step);
+    const run_cli_tests = b.addRunArtifact(cli_tests);
+    ra8_build.configureHostTestRun(b, test_step, cli_tests, run_cli_tests);
+    test_step.dependOn(&run_cli_tests.step);
 }
