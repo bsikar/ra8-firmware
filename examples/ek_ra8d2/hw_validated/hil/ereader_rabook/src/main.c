@@ -71,8 +71,16 @@ typedef enum : uint32_t {
   k_erb_dec_ten     = 10U,         /**< Hex digit / decimal split.        */
 } erb_consts_t;
 
-/** @brief RGB565 framebuffer in internal SRAM (no panel attached). */
-static uint16_t s_framebuffer[(size_t)k_erb_fb_h * (size_t)k_erb_fb_w];
+/**
+ * @brief RGB565 framebuffer in DTCM (no panel attached).
+ * @details 40,960 B, placed in the otherwise unused 64 KiB DTCM because SRAM
+ *          cannot hold it beside ::s_engine, the image-decode arena, and the
+ *          16 KiB stack (RA8FW-1393). `.dtcm_bss` is NOLOAD / not zeroed at
+ *          reset, which is safe here because erb_render_all() and
+ *          erb_render_image() both call ra8_gfx_clear() before rendering.
+ */
+[[gnu::section(
+  ".dtcm_bss")]] static uint16_t s_framebuffer[(size_t)k_erb_fb_h * (size_t)k_erb_fb_w];
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
 static reflow_t s_engine;
