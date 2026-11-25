@@ -20,6 +20,7 @@ and third-party reference documentation for `bsikar/ra8-firmware`.
   - [`STYLE_GUIDE.md`](STYLE_GUIDE.md) -- C23 and Doxygen style guide
   - [`ZIG_MIGRATION.md`](ZIG_MIGRATION.md) -- incremental Zig migration plan
   - [`ZIG_ABI.md`](ZIG_ABI.md) -- Zig and C ABI rules
+  - [`PAIRED_HIL_EXAMPLES.md`](PAIRED_HIL_EXAMPLES.md) -- paired C/Rust HIL example conventions
   - [`TOOLCHAIN.md`](TOOLCHAIN.md) -- pinned compilers and build tools
   - [`PYTHON_ENVIRONMENTS.md`](PYTHON_ENVIRONMENTS.md) -- repository-local Python setup
   - [`IDE.md`](IDE.md) -- editor integration
