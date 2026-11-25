@@ -29,6 +29,10 @@ const Mmio = struct {
     pub fn write32(_: Mmio, ch: u8, off: usize, value: u32) void {
         @as(*volatile u32, @ptrFromInt(addr(ch, off))).* = value;
     }
+    pub fn eval(_: Mmio, ch: u8, off: usize, iter: u32, cond: bool) bool {
+        const reg: *const volatile u8 = @ptrFromInt(addr(ch, off));
+        return common.waitEval(reg, iter, cond);
+    }
 };
 
 const C = struct {

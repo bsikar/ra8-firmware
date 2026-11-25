@@ -12,6 +12,8 @@ const Regs = struct {
     cnt: [2]u32 = .{ 0xDEAD, 0xBEEF },
     busy: u32 = 0,
     writes: u32 = 0,
+    force_eval: ?bool = null,
+    eval_calls: u32 = 0,
 
     pub fn read8(self: *Regs, ch: u8, off: usize) u8 {
         if (off == ulpt.off_cr and self.busy > 0) {
@@ -28,6 +30,10 @@ const Regs = struct {
         std.debug.assert(off == ulpt.off_cnt);
         self.cnt[ch] = v;
         self.writes += 1;
+    }
+    pub fn eval(self: *Regs, _: u8, _: usize, _: u32, cond: bool) bool {
+        self.eval_calls += 1;
+        return self.force_eval orelse cond;
     }
 };
 
@@ -166,4 +172,14 @@ test "dispatch calls the handler for a valid channel only" {
     ulpt.dispatch(&onEvent, &token, 1);
     try std.testing.expectEqual(@as(u8, 1), seen);
     try std.testing.expect(seen_ctx == @as(?*anyopaque, &token));
+}
+
+test "stop honours Regs.eval override over raw TCSTF" {
+    var r_ok = Regs{ .busy = ulpt.stop_poll_max, .force_eval = true };
+    try std.testing.expectEqual(ulpt.ok, ulpt.stop(&r_ok, 0));
+    try std.testing.expectEqual(@as(u32, 1), r_ok.eval_calls);
+
+    var r_fail = Regs{ .busy = 0, .force_eval = false };
+    try std.testing.expectEqual(ulpt.err_hw_timeout, ulpt.stop(&r_fail, 0));
+    try std.testing.expectEqual(ulpt.stop_poll_max, r_fail.eval_calls);
 }

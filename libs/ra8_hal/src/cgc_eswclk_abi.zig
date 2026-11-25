@@ -26,6 +26,10 @@ const Mmio = struct {
     pub fn write16(_: Mmio, off: usize, value: u16) void {
         @as(*volatile u16, @ptrFromInt(eswclk.system_base + off)).* = value;
     }
+    pub fn eval(_: Mmio, off: usize, iter: u32, cond: bool) bool {
+        const reg: *const volatile u8 = @ptrFromInt(eswclk.system_base + off);
+        return common.waitEval(reg, iter, cond);
+    }
 };
 
 const C = struct {

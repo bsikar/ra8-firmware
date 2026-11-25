@@ -22,3 +22,16 @@ pub extern fn ra8_log_emit_info(tag: [*:0]const u8, message: [*:0]const u8) void
 pub extern fn ra8_log_emit_info_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
 pub extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
 pub extern fn ra8_log_emit_error_val(tag: [*:0]const u8, message: [*:0]const u8, value: u32) void;
+
+/// True when building host tests/simulators rather than freestanding Arm firmware.
+pub const hosted = @import("builtin").os.tag != .freestanding;
+
+const seam = struct {
+    extern fn ra8_fake_mmio_wait_eval(reg: *const volatile anyopaque, iter: u32, real_cond: bool) bool;
+};
+
+/// Evaluate a bounded MMIO wait poll via `ra8_fake_mmio_wait_eval` off-target,
+/// or return `real_cond` directly on freestanding Arm targets.
+pub fn waitEval(reg: *const volatile anyopaque, iter: u32, real_cond: bool) bool {
+    return if (hosted) seam.ra8_fake_mmio_wait_eval(reg, iter, real_cond) else real_cond;
+}

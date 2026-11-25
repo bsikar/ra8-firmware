@@ -17,6 +17,8 @@ const Regs = struct {
     stuck_ckcr: usize = 0,
     stuck_pd: u8 = 0,
     pd_writes: usize = 0,
+    force_eval: ?bool = null,
+    eval_calls: usize = 0,
 
     pub fn read8(self: *Regs, off: usize) u8 {
         return self.mem[off];
@@ -40,6 +42,10 @@ const Regs = struct {
         std.debug.assert(off == e.off_prcr);
         self.prcr[self.np] = value;
         self.np += 1;
+    }
+    pub fn eval(self: *Regs, _: usize, _: u32, cond: bool) bool {
+        self.eval_calls += 1;
+        return self.force_eval orelse cond;
     }
 };
 
@@ -167,4 +173,23 @@ test "an ESWPCKCR handshake timeout is reported after ESWCKCR switched" {
     try std.testing.expectEqual(e.sel_pll1p, r.mem[e.off_eswckcr]);
     try std.testing.expectEqual(@as(u16, 0xA500), r.prcr[r.np - 1]);
     try std.testing.expectEqualStrings("eswclk: ESWPCKCR handshake timeout", o.last_err.?);
+}
+
+test "wait delegates loop exit to Regs.eval override" {
+    var r_ok = gated();
+    r_ok.stuck_ckcr = e.off_eswckcr;
+    r_ok.force_eval = true;
+    var o_ok = Ops{};
+    var hz_ok: u32 = 0;
+    try std.testing.expectEqual(e.ok, e.init(&r_ok, &o_ok, &hz_ok));
+    try std.testing.expectEqual(@as(u32, 250_000_000), hz_ok);
+    try std.testing.expect(r_ok.eval_calls > 0);
+
+    var r_fail = gated();
+    r_fail.force_eval = false;
+    var o_fail = Ops{};
+    var hz_fail: u32 = 0;
+    try std.testing.expectEqual(e.hw_timeout, e.init(&r_fail, &o_fail, &hz_fail));
+    try std.testing.expectEqual(@as(u32, 0), hz_fail);
+    try std.testing.expect(r_fail.eval_calls >= e.poll_limit);
 }
