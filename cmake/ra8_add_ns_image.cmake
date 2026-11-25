@@ -141,6 +141,19 @@ function(ra8_ns_rot_header_object _out)
   )
 endfunction()
 
+function(_ra8_ns_link_libgcc)
+  get_property(_ns_targets DIRECTORY PROPERTY "ra8_ns_defer_libgcc")
+  set_property(DIRECTORY PROPERTY "ra8_ns_defer_libgcc" "")
+  foreach(_ns_target ${_ns_targets})
+    set(_libgcc_iface "${_ns_target}_libgcc")
+    if(NOT TARGET ${_libgcc_iface})
+      add_library(${_libgcc_iface} INTERFACE)
+      target_link_libraries(${_libgcc_iface} INTERFACE gcc)
+    endif()
+    target_link_libraries(${_ns_target} PRIVATE ${_libgcc_iface})
+  endforeach()
+endfunction()
+
 function(ra8_add_ns_image)
   set(_opts XIP)
   set(_one SECURE_TARGET NAME LINKER STACK_BYTES MERGED_HEX IMPLIB)
@@ -217,11 +230,14 @@ function(ra8_add_ns_image)
   if(_NS_LINK_LIBS)
     target_link_libraries(${_ns_elf} PRIVATE ${_NS_LINK_LIBS})
   endif()
-  # libgcc last, as ra8_add_app() does for the Secure image (ra8_add_app.cmake)
-  # and the CPU1 image: the link is -nostdlib, so a 64-bit divide anywhere in
-  # the NS world (fw_os_threadx.h's tick/ms conversions) is an undefined
-  # __aeabi_uldivmod without it.
-  target_link_libraries(${_ns_elf} PRIVATE gcc)
+  # libgcc strictly last, after any direct archives and after transitive
+  # INTERFACE archives such as threadx_ns -> libra8_core.a: libra8_core.a
+  # provides __aeabi_unwind_cpp_pr0..2 so ld must scan it before libgcc.a
+  # (whose unwind-arm.o pulls abort/__exidx_start), while deferring to the
+  # end of the directory keeps any post-macro NS archives ahead of -lgcc as
+  # well (matching cmake/ra8_app/zig_libs.cmake).
+  set_property(DIRECTORY APPEND PROPERTY "ra8_ns_defer_libgcc" "${_ns_elf}")
+  cmake_language(DEFER DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} CALL _ra8_ns_link_libgcc)
 
   # The warning profile the raw add_executable does not get. This is the whole
   # reason the helper applies it rather than documenting it.
