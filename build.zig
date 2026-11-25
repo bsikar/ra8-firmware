@@ -404,8 +404,6 @@ pub fn build(b: *std.Build) void {
         });
         if (std.mem.eql(u8, member.dependency_name, "ra8_rot")) {
             suite_module.addIncludePath(dfu_include_dir);
-        } else if (std.mem.eql(u8, member.dependency_name, "ra8_translate")) {
-            suite_module.addIncludePath(b.path(member.include_path));
         }
         for (member.extra_include_paths) |include_path| {
             if (std.mem.eql(u8, include_path, "apps/shared_libs/jof/inc")) {

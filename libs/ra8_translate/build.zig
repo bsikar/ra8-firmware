@@ -249,6 +249,28 @@ pub fn build(b: *std.Build) void {
     root_mod.addImport("chapter_job_abi", job_abi_mod);
     root_mod.addImport("marian_abi", marian_abi_mod);
 
+    const core_lib = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core");
+    const gfx_dep = b.dependency("ra8_gfx", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const widget_dep = b.dependency("ra8_widget", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const widget_lib = widget_dep.artifact("ra8_widget");
+    const box_lib = b.dependency("ra8_box", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_box");
+    const ui_lib = b.dependency("ra8_ui", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_ui");
+
     const library = b.addLibrary(.{
         .name = "ra8_translate",
         .linkage = .static,
@@ -258,6 +280,7 @@ pub fn build(b: *std.Build) void {
     library.link_function_sections = true;
     library.link_data_sections = true;
     library.root_module.pic = true;
+    library.installHeadersDirectory(b.path("inc"), "", .{});
     b.installArtifact(library);
 
     // Keep the cross-target C23 header contract smoke compile on default_step.
@@ -265,11 +288,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    smoke_mod.addIncludePath(b.path("inc"));
-    smoke_mod.addIncludePath(b.path("../ra8_core/inc"));
-    smoke_mod.addIncludePath(b.path("../ra8_widget/inc"));
-    smoke_mod.addIncludePath(b.path("../ra8_box/inc"));
-    smoke_mod.addIncludePath(b.path("../ra8_ui/inc"));
+    smoke_mod.addIncludePath(library.getEmittedIncludeTree());
+    smoke_mod.addIncludePath(core_lib.getEmittedIncludeTree());
+    smoke_mod.addIncludePath(widget_lib.getEmittedIncludeTree());
+    smoke_mod.addIncludePath(box_lib.getEmittedIncludeTree());
+    smoke_mod.addIncludePath(ui_lib.getEmittedIncludeTree());
     smoke_mod.addCSourceFile(.{
         .file = b.path("tests/ra8_translate_smoke.c"),
         .flags = &.{"-std=c23"},
@@ -279,12 +302,6 @@ pub fn build(b: *std.Build) void {
         .root_module = smoke_mod,
     });
     b.default_step.dependOn(&smoke.step);
-
-    b.default_step.dependOn(&b.addInstallDirectory(.{
-        .source_dir = b.path("inc"),
-        .install_dir = .header,
-        .install_subdir = "",
-    }).step);
 
     const test_step = b.step("test", "Run Zig ra8_translate unit and ABI tests");
 
@@ -368,22 +385,9 @@ pub fn build(b: *std.Build) void {
     ra8_build.configureHostTestRun(b, test_step, tok_tests, run_tok);
     test_step.dependOn(&run_tok.step);
 
-    const gfx_mod = b.createModule(.{
-        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    const panel_paint_mod = b.createModule(.{
-        .root_source_file = b.path("../ra8_widget/src/panel_paint.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    panel_paint_mod.addImport("ra8_gfx", gfx_mod);
-    const widget_paint_mod = b.createModule(.{
-        .root_source_file = b.path("../ra8_widget/src/widget_paint_abi.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    const gfx_mod = gfx_dep.module("ra8_gfx");
+    const panel_paint_mod = widget_dep.module("panel_paint");
+    const widget_paint_mod = widget_dep.module("widget_paint_abi");
     const overlay_tmod = b.createModule(.{
         .root_source_file = b.path("tests/overlay_test.zig"),
         .target = target,
