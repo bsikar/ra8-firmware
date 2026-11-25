@@ -14,8 +14,8 @@
  * through a dedicated **MRMS** (MRAM Memory System) register block at
  * `0x4013C000`.
  *
- * The CGC bring-up sequence (HUM Ch 54.4.3 "Frequency Change Procedure
- * for MRAM" / FSP `bsp_clocks.c`) requires:
+ * The CGC bring-up sequence (HUM Ch 59.4.3 "Frequency Change Procedure"
+ * for MRAM / FSP `bsp_clocks.c`) requires:
  *
  * 1. Clear the prefetch buffer (write `MRCPFB = 0`, then 3 dummy reads)
  *    *before* changing any clock source or divider.

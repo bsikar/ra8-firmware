@@ -44,7 +44,7 @@ extern "C" {
 
 /**
  * @enum ra8_cac_status_mask_t
- * @brief CASTR status-flag bit masks (HUM Ch 10.2.5 "CASTR" p 424).
+ * @brief CASTR status-flag bit masks (HUM Ch 10.2.5 "CASTR" p 425).
  *
  * @details
  * CASTR layout (cross-verified against FSP `R_CAC_Type.CASTR_b` and CMSIS
@@ -55,7 +55,7 @@ extern "C" {
  *
  * To clear a flag, write 1 to the matching `*CL` bit in CAICR shifted up
  * by `k_ra8_cac_castr_to_caicr_shift` (= 4): FERRFCL=bit4, MENDFCL=bit5,
- * OVFFCL=bit6 (HUM Ch 10.2.4 "CAICR" p 423).
+ * OVFFCL=bit6 (HUM Ch 10.2.4 "CAICR" p 424).
  */
 typedef enum : uint8_t {
   k_ra8_cac_status_none  = 0x00U, /**< RA8 cac status none.            */

@@ -115,7 +115,7 @@ RA8_PRIV ra8_err_t priv_ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channe
  *
  * @details
  * FSAMP[1:0] selects the LOCO sample-divider for the digital filter
- * (HUM Ch 12.2.6 "PVDmCR1" p 599). All four encodings are valid.
+ * (HUM Ch 8.2.6 "PVDmCR1" p 307). All four encodings are valid.
  * Shared across the ra8_lvd translation units.
  *
  * @param[in] div Divider candidate.
@@ -137,7 +137,7 @@ RA8_PRIV ra8_err_t priv_ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
  * @brief Read PVDmCR0.RI for an m channel.
  *
  * @details
- * Returns the Reset-on-Voltage bit (HUM Ch 12.2.4 "PVDmCR0" p 597)
+ * Returns the Reset-on-Voltage bit (HUM Ch 8.2.4 "PVDmCR0" p 304)
  * so the caller can decide whether to issue a software reset on a
  * detected voltage crossing. Shared across the ra8_lvd TUs.
  *

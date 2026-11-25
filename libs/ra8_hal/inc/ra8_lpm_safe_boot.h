@@ -49,8 +49,8 @@ extern "C" {
  * @brief PRCR keyed values used by ra8_lpm_safe_boot.
  *
  * @details
- * HUM Ch 11.2.18 p 456: PRCR key = 0xA5 in bits 15:8, PRC1 = bit 1
- * gates the LPM/SYSC register group.
+ * HUM Ch 13.2.1 "PRCR_S" p 521 (referenced by Ch 11.2.18 SBYCR p 456):
+ * PRCR key = 0xA5 in bits 15:8, PRC1 = bit 1 gates the LPM/SYSC register group.
  */
 typedef enum : uint16_t {
   k_ra8_lpm_safe_boot_prcr_unlock = 0xA502U, /**< Key + PRC1 = 1.     */
@@ -98,10 +98,10 @@ typedef enum : uint8_t {
  * @brief Restore LPSCR / SBYCR / DPSBYCR to cold-reset values.
  *
  * @details
- * HUM Ch 11.2.18 p 456 specifies the PRCR (Protect Register) write
- * sequence for the SYSC LPM group: write 16-bit value ``0xA502``
- * (key ``0xA5`` in bits 15:8 plus PRC1 = 1 in bit 1) to unlock, do
- * the protected writes, then write ``0xA500`` to relock.
+ * HUM Ch 13.2.1 "PRCR_S" p 521 (and Ch 11.2.18 SBYCR p 456) specifies the
+ * PRCR (Protect Register) write sequence for the SYSC LPM group: write 16-bit
+ * value ``0xA502`` (key ``0xA5`` in bits 15:8 plus PRC1 = 1 in bit 1) to unlock,
+ * do the protected writes, then write ``0xA500`` to relock.
  *
  * Cold-reset values per HUM:
  *  - SBYCR   = 0x40 (OPE = 1)
@@ -115,7 +115,8 @@ typedef enum : uint8_t {
  *
  * @note No-op on host (``RA8_OFF_TARGET``).
  *
- * @see HUM Ch 11.2.18 "SBYCR / PRCR" p 456.
+ * @see HUM Ch 13.2.1 "PRCR_S" p 521.
+ * @see HUM Ch 11.2.18 "SBYCR" p 456.
  * @see HUM Ch 11.2.20 "LPSCR" p 457.
  * @see HUM Ch 11.2.21 "DPSBYCR" p 458.
  *

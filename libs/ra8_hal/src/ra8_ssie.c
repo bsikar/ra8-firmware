@@ -294,7 +294,8 @@ internal_build_ssicr(const ra8_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8
  * @return ``k_ra8_ok`` if SSIRST self-cleared, otherwise
  *         ``k_ra8_err_hw_timeout``.
  *
- * @details See HUM Ch 46.2.3 "SSIRST" description, p 3077-3078.
+ * @details See HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" (SSIRST bit),
+ * p 3077-3078.
  * In fake/host mode the bit clears immediately after we
  * write 0; in production a few PCLK cycles are required.
  *
@@ -623,7 +624,7 @@ ra8_err_t ra8_ssie_init(uint8_t channel, const ra8_ssie_cfg_t* cfg)
   RA8_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg");
 
   /* HUM Ch 11.2.8 "MSTPCRC" p 446 */
-  /* HUM Ch 46.2.3 "SSIRST" p 3077 */
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" (SSIRST bit) p 3077 */
   const ra8_err_t pwr_err = internal_ssie_power_up(channel, reg);
   RA8_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up");
 

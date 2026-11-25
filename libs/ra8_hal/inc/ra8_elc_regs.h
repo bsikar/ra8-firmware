@@ -97,7 +97,7 @@ typedef enum : uint8_t {
  * @enum ra8_elc_elcr_bit_t
  * @brief Bit positions inside the ELCR register.
  *
- * @details HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817.
+ * @details HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 819.
  */
 typedef enum : uint8_t {
   k_ra8_elcr_bit_elcon = 7U, /**< ELCR.ELCON -- global enable. */
