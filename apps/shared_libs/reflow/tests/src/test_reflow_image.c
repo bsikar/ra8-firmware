@@ -32,6 +32,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
+#include "ra8_jpeg_sw.h"
 #include "reflow_image.h"
 #include "unity_minimal.h"
 
@@ -832,6 +833,146 @@ RA8_INTERNAL static void internal_test_decode_gray8_guards(void)
 }
 
 /**
+ * @test internal_test_formats_bmp_gif_and_jpeg
+ * @brief Verify BMP, GIF, and JPEG route cleanly through ra8_imgdec_mux across
+ *        probe, blit, and gray8 decode while draining caller arenas.
+ * @pre Fixture bytes and JPEG software encoder are linked in-tree.
+ * @post All three formats probe, blit, and decode gray8 within contract.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_formats_bmp_gif_and_jpeg(void)
+{
+  TEST_BEGIN("ra8_imgdec_mux routing: BMP, GIF, and JPEG probe/blit/gray8");
+
+  /* 2x2 BMP (red, white / blue, green) and 2x2 GIF (red, green / blue, white). */
+  static const uint8_t s_bmp[] = {
+    0x42U, 0x4DU, 0x46U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x36U, 0x00U,
+    0x00U, 0x00U, 0x28U, 0x00U, 0x00U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x02U, 0x00U,
+    0x00U, 0x00U, 0x01U, 0x00U, 0x18U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x10U, 0x00U,
+    0x00U, 0x00U, 0x13U, 0x0BU, 0x00U, 0x00U, 0x13U, 0x0BU, 0x00U, 0x00U, 0x00U, 0x00U,
+    0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0xFFU, 0x00U, 0x00U, 0x00U, 0xFFU, 0x00U,
+    0x00U, 0x00U, 0x00U, 0x00U, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0x00U, 0x00U};
+  static const uint8_t s_gif[] = {0x47U, 0x49U, 0x46U, 0x38U, 0x39U, 0x61U, 0x02U, 0x00U, 0x02U,
+                                  0x00U, 0x81U, 0x00U, 0x00U, 0xFFU, 0x00U, 0x00U, 0x00U, 0xFFU,
+                                  0x00U, 0x00U, 0x00U, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0x2CU, 0x00U,
+                                  0x00U, 0x00U, 0x00U, 0x02U, 0x00U, 0x02U, 0x00U, 0x00U, 0x02U,
+                                  0x03U, 0x44U, 0x34U, 0x05U, 0x00U};
+  enum : uint32_t {
+    k_jpg_w      = 16U,
+    k_jpg_h      = 16U,
+    k_jpg_rgb    = 3U,
+    k_jpg_px     = k_jpg_w * k_jpg_h,
+    k_jpg_cap    = 4096U,
+    k_jpg_q      = 95U,
+    k_mse_max    = 65U,
+    k_bmp_dim    = 2U,
+    k_gray_cap   = 4U,
+    k_luma_r     = 76U,
+    k_luma_g     = 149U,
+    k_luma_b     = 28U,
+    k_luma_w     = 255U,
+    k_jpg_step   = 16U,
+    k_jpg_step_b = 8U,
+  };
+
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  static uint8_t  s_fb[k_jpg_px * k_jpg_rgb];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch};
+  int32_t         pw    = 0;
+  int32_t         ph    = 0;
+  uint32_t        gw    = 0U;
+  uint32_t        gh    = 0U;
+
+  typedef struct {
+    const uint8_t* data;
+    size_t         len;
+    uint32_t       px[4];
+    uint8_t        gray[4];
+  } fmt_case_t;
+  const fmt_case_t cases[] = {
+    {s_bmp,
+     sizeof s_bmp,
+     {k_red, k_white, k_blue, k_green},
+     {k_luma_r, k_luma_w, k_luma_b, k_luma_g}},
+    {s_gif,
+     sizeof s_gif,
+     {k_red, k_green, k_blue, k_white},
+     {k_luma_r, k_luma_g, k_luma_b, k_luma_w}},
+  };
+  const int32_t dim2 = (int32_t)k_bmp_dim;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, dim2, dim2, k_ra8_gfx_format_rgb888));
+  for (size_t c = 0U; c < (sizeof cases / sizeof cases[0]); ++c) {
+    uint8_t gray[k_gray_cap] = {};
+    (void)memset(s_fb, 0, sizeof s_fb);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_img_probe_size(cases[c].data, cases[c].len, &pw, &ph));
+    TEST_ASSERT((pw == dim2) && (ph == dim2));
+    const ra8_err_t brc =
+      ra8_img_decode_blit(&arena, cases[c].data, cases[c].len, 0, 0, dim2, dim2, &pw, &ph);
+    TEST_ASSERT((brc == k_ra8_ok) && (arena.offset == 0U) && (arena.live == 0U));
+    TEST_ASSERT_EQ(cases[c].px[0], internal_fb_px(s_fb, dim2, 0, 0));
+    TEST_ASSERT_EQ(cases[c].px[1], internal_fb_px(s_fb, dim2, 1, 0));
+    TEST_ASSERT_EQ(cases[c].px[2], internal_fb_px(s_fb, dim2, 0, 1));
+    TEST_ASSERT_EQ(cases[c].px[3], internal_fb_px(s_fb, dim2, 1, 1));
+    const ra8_err_t grc =
+      ra8_img_decode_gray8(&arena, cases[c].data, cases[c].len, gray, sizeof gray, &gw, &gh);
+    TEST_ASSERT((grc == k_ra8_ok) && (gw == k_bmp_dim) && (gh == k_bmp_dim));
+    for (uint32_t k = 0U; k < k_gray_cap; ++k) {
+      TEST_ASSERT_EQ(cases[c].gray[k], gray[k]);
+    }
+  }
+
+  /* Baseline JPEG through ra8_jpeg backend. */
+  static uint8_t s_rgb_in[k_jpg_px * k_jpg_rgb];
+  static uint8_t s_jpg[k_jpg_cap];
+  static uint8_t s_gray_jpg[k_jpg_px];
+  static uint8_t s_tiny_jpg[k_t_tiny_dst_cap];
+  for (uint32_t y = 0U; y < k_jpg_h; ++y) {
+    for (uint32_t x = 0U; x < k_jpg_w; ++x) {
+      const uint32_t i = ((y * k_jpg_w) + x) * k_jpg_rgb;
+      s_rgb_in[i + 0U] = (uint8_t)(x * k_jpg_step);
+      s_rgb_in[i + 1U] = (uint8_t)(y * k_jpg_step);
+      s_rgb_in[i + 2U] = (uint8_t)((x + y) * k_jpg_step_b);
+    }
+  }
+  uint32_t        jlen = 0U;
+  const int32_t   jw   = (int32_t)k_jpg_w;
+  const int32_t   jh   = (int32_t)k_jpg_h;
+  const ra8_err_t erc  = ra8_jpeg_sw_encode(s_rgb_in,
+                                            (uint16_t)k_jpg_w,
+                                            (uint16_t)k_jpg_h,
+                                            (uint8_t)k_jpg_q,
+                                            s_jpg,
+                                            sizeof s_jpg,
+                                            &jlen);
+  TEST_ASSERT_EQ(k_ra8_ok, erc);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_img_probe_size(s_jpg, jlen, &pw, &ph));
+  TEST_ASSERT((pw == jw) && (ph == jh));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, jw, jh, k_ra8_gfx_format_rgb888));
+  (void)memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_img_decode_blit(&arena, s_jpg, jlen, 0, 0, jw, jh, &pw, &ph));
+  TEST_ASSERT((arena.offset == 0U) && (arena.live == 0U));
+
+  uint64_t mse_acc = 0ULL;
+  for (uint32_t i = 0U; i < k_jpg_px * k_jpg_rgb; ++i) {
+    const int32_t d = (int32_t)s_fb[i] - (int32_t)s_rgb_in[i];
+    mse_acc += (uint64_t)(d * d);
+  }
+  TEST_ASSERT((mse_acc / (uint64_t)(k_jpg_px * k_jpg_rgb)) <= k_mse_max);
+
+  const ra8_err_t jgrc =
+    ra8_img_decode_gray8(&arena, s_jpg, jlen, s_gray_jpg, sizeof s_gray_jpg, &gw, &gh);
+  TEST_ASSERT((jgrc == k_ra8_ok) && (gw == k_jpg_w) && (gh == k_jpg_h));
+  TEST_ASSERT((arena.offset == 0U) && (arena.live == 0U));
+
+  ra8_img_arena_t small_arena = {.base = s_tiny_jpg, .cap = sizeof s_tiny_jpg};
+  const ra8_err_t nrc =
+    ra8_img_decode_blit(&small_arena, s_jpg, jlen, 0, 0, jw, jh, nullptr, nullptr);
+  TEST_ASSERT((nrc == k_ra8_err_no_mem) && (small_arena.offset == 0U) && (small_arena.live == 0U));
+
+  TEST_END("ra8_imgdec_mux routing: BMP, GIF, and JPEG probe/blit/gray8");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -850,5 +991,6 @@ int main(void)
   internal_test_webp_canvas_no_mem();
   internal_test_decode_gray8_png_and_webp();
   internal_test_decode_gray8_guards();
+  internal_test_formats_bmp_gif_and_jpeg();
   return 0;
 }

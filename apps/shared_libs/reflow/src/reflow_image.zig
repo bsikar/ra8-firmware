@@ -5,30 +5,19 @@
 //! (src/reflow_image.c, RA8FW-1231).
 //!
 //! Zig port of the raster image surface declared in reflow_image.h:
-//! decode an in-memory JPEG/PNG/GIF/BMP through the vendored stb_image,
-//! compute an aspect-preserving fit rectangle inside the layout box, then
+//! probe dimensions and decode in-memory JPEG/PNG/GIF/BMP/WebP rasters
+//! through the shared `ra8_imgdec_mux` backend matrix (`ra8_jpeg_imgdec_bind`
+//! + `ra8_webp_imgdec_bind` + `ra8_img_imgdec_bind`), compute an
+//! aspect-preserving fit rectangle inside the layout box, then
 //! nearest-neighbour blit the scaled image into the ra8_gfx framebuffer,
-//! one ra8_gfx_pixel() per destination pixel. The decode reaches no
-//! malloc: stb_image's allocator is redirected to the caller-owned
-//! ra8_img_arena bump arena, and the arena is fully drained on every
-//! return path.
-//!
-//! stb_image cannot decode WebP, so a RIFF/WEBP buffer is dispatched to
-//! the ra8_webp facade over the vendored libwebp: the inline small-image
-//! path takes the same formats the band-tile producer does, and an EPUB
-//! whose illustrations are WebP renders them instead of dropping them.
-//! The WebP canvas is RGBA8888, so the blit carries a source
-//! bytes-per-pixel rather than assuming the stb RGB triple.
-//!
-//! The whole decode stack (stb_image, the ra8_webp facade, the shared
-//! ra8_imgdec container sniff, the arena allocator, the SVG document
-//! surface, ra8_gfx and ra8_log) stays behind the extern seam; the
-//! exports keep C linkage so the C callers (layout, render, apps,
-//! test suites) link against them exactly as before.
+//! one ra8_gfx_pixel() per destination pixel. All transient scratch and
+//! decoded canvases stay within the caller-owned `ra8_img_arena` bump arena,
+//! drained on every return path (NASA Rule 3).
 //!
 //! @since 0.1.0
 
 const std = @import("std");
+const imgdec = @import("ra8_img_imgdec.zig");
 
 // ---- Error codes (libs/ra8_core/inc/ra8_err.h; ra8_err_t is a plain
 // ---- c_int in the C ABI, so these mirror the C enumerators) ----
@@ -36,15 +25,14 @@ const std = @import("std");
 pub const k_ra8_ok: c_int = 0;
 pub const k_ra8_err_no_mem: c_int = 0x102;
 pub const k_ra8_err_invalid_arg: c_int = 0x103;
+pub const k_ra8_err_invalid_size: c_int = 0x105;
 pub const k_ra8_err_not_supported: c_int = 0x107;
 pub const k_ra8_err_null_ptr: c_int = 0x504;
 
 // ---- Pixel-packing and channel constants (no magic numbers) ----
 
-/// Desired channel count requested from stb_image.
-const k_ra8_img_req_rgb: c_int = 3;
-/// Single-channel gray8 output requested from stb_image.
-const k_ra8_img_req_gray: c_int = 1;
+/// Channel count for RGB888 surfaces.
+const k_ra8_img_req_rgb: i32 = 3;
 /// Channel count libwebp decodes into (RGBA8888).
 const k_ra8_img_req_rgba: i32 = 4;
 /// BT.601 integer luma weights (matches stbi__compute_y: (77*R + 150*G + 29*B) >> 8).
@@ -64,35 +52,22 @@ const k_ra8_img_min_edge: i32 = 1;
 const k_ra8_img_shift_r: u5 = 16;
 /// Green channel shift into 0x00RRGGBB.
 const k_ra8_img_shift_g: u5 = 8;
+/// Mux capacity matching `k_ra8_imgdec_mux_max`.
+const k_ra8_imgdec_mux_max: usize = 4;
 
-// ---- Shared container sniff (libs/ra8_imgdec/inc/ra8_imgdec.h) ----
+// ---- Extern seam: shared decoder mux and platform sinks ----
 
-/// Leading bytes ra8_imgdec_sniff() reads; longer buffers are clamped to it.
-const k_ra8_imgdec_sniff_bytes: u32 = 12;
-/// The WebP format bit (k_ra8_imgdec_format_webp, 1 << 2).
-const k_ra8_imgdec_format_webp: u32 = 1 << 2;
+extern fn ra8_img_imgdec_bind(out: *Ra8Imgdec, scratch: *Ra8ImgArena) callconv(.c) c_int;
+extern fn ra8_jpeg_imgdec_bind(out: *Ra8Imgdec) callconv(.c) u16;
+extern fn ra8_webp_imgdec_bind(out: *Ra8Imgdec, scratch: *Ra8ImgArena) callconv(.c) u16;
 
-// ---- Extern seam: the decode stack stays C ----
+extern fn ra8_imgdec_mux_init(mux: *Ra8ImgdecMux) callconv(.c) u16;
+extern fn ra8_imgdec_mux_add(mux: *Ra8ImgdecMux, dec: *const Ra8Imgdec) callconv(.c) u16;
+extern fn ra8_imgdec_mux_decode(mux: *const Ra8ImgdecMux, req: *const Ra8ImgdecReq, out: *Ra8ImgdecImage) callconv(.c) u16;
+extern fn ra8_imgdec_mux_probe(mux: *const Ra8ImgdecMux, bytes: [*]const u8, byte_count: u32, pixel: u32, out_geom: *Ra8ImgdecGeom, out_member: ?*?*const Ra8Imgdec) callconv(.c) u16;
+extern fn ra8_imgdec_pixel_bytes(pixel: u32) callconv(.c) u32;
 
-// stb_image (apps/shared_libs/third_party/stb/stb_image.h).
-extern fn stbi_info_from_memory(buffer: [*]const u8, len: c_int, x: *c_int, y: *c_int, comp: *c_int) callconv(.c) c_int;
-extern fn stbi_load_from_memory(buffer: [*]const u8, len: c_int, x: *c_int, y: *c_int, channels_in_file: *c_int, desired_channels: c_int) callconv(.c) ?[*]u8;
-extern fn stbi_failure_reason() callconv(.c) ?[*:0]const u8;
-extern fn stbi_image_free(retval_from_stbi_load: *anyopaque) callconv(.c) void;
-
-// Shared container sniff: the one RIFF/WEBP test in the tree (RA8FW-308).
-extern fn ra8_imgdec_sniff(bytes: [*]const u8, byte_count: u32, out: *u32) callconv(.c) c_int;
-
-// ra8_webp facade (apps/shared_libs/webp/inc/ra8_webp.h).
-extern fn ra8_webp_get_info(data: [*]const u8, size: usize, out_w: *u32, out_h: *u32) callconv(.c) c_int;
-extern fn ra8_webp_decode_rgba(data: [*]const u8, size: usize, arena: *Ra8ImgArena, out_rgba: [*]u8, out_stride: usize, out_capacity: usize, out_w: ?*u32, out_h: ?*u32) callconv(.c) c_int;
-
-// ra8_img_arena bump allocator (apps/shared_libs/reflow/inc/ra8_img_arena.h).
-extern fn ra8_img_arena_bind(arena: *Ra8ImgArena) callconv(.c) void;
-extern fn ra8_img_arena_unbind() callconv(.c) void;
-extern fn ra8_img_arena_malloc(n: usize) callconv(.c) ?*anyopaque;
-
-// SVG document surface (reflow_svg*.c).
+// SVG document surface (reflow_svg*.zig).
 extern fn ra8_svg_is_svg(bytes: [*]const u8, len: usize) callconv(.c) bool;
 extern fn ra8_svg_size(svg: [*]const u8, len: usize, out_w: *i32, out_h: *i32) callconv(.c) c_int;
 
@@ -102,15 +77,19 @@ extern fn ra8_gfx_pixel(x: c_int, y: c_int, color: u32) callconv(.c) c_int;
 // ra8_log backend entry (ra8_log_error() expands to this in ra8_log.h).
 extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void;
 
-// ---- Caller-owned bump arena (ra8_imgdec_scratch_t, RA8FW-308) ----
+// ---- Shared ABI types (from ra8_img_imgdec.zig) ----
 
 /// One spelling of ra8_imgdec_scratch_t: the ra8_webp_arena_t alias shares it.
-pub const Ra8ImgArena = extern struct {
-    base: ?[*]u8,
-    cap: usize,
-    offset: usize,
-    live: usize,
-    high_water: usize,
+pub const Ra8ImgArena = imgdec.Ra8ImgArena;
+const Ra8Imgdec = imgdec.Ra8Imgdec;
+const Ra8ImgdecReq = imgdec.Ra8ImgdecReq;
+const Ra8ImgdecImage = imgdec.Ra8ImgdecImage;
+const Ra8ImgdecGeom = imgdec.Ra8ImgdecGeom;
+
+/// Mirror of `ra8_imgdec_mux_t` (libs/ra8_imgdec/inc/ra8_imgdec_mux.h).
+const Ra8ImgdecMux = extern struct {
+    members: [k_ra8_imgdec_mux_max]Ra8Imgdec,
+    count: u32,
 };
 
 /// Log tag for the image decode/blit module.
@@ -120,46 +99,62 @@ fn logErr(message: [*:0]const u8) void {
     ra8_log_emit_error(s_tag_img, message);
 }
 
-/// Report whether `bytes` opens with a WebP container signature.
-///
-/// Forwards to ra8_imgdec_sniff(), the one container sniff in the tree
-/// (RA8FW-308). The predicate stays deliberately cheap and keeps its old
-/// meaning: it only decides which decoder sees the bytes, and the
-/// ra8_webp facade does the real container and dimension validation.
-/// Anything the sniff does not recognise as WebP -- including a buffer
-/// too short to carry the signature, and a RIFF container whose form type
-/// is something else -- falls through to stb_image and is rejected there,
-/// rather than being mis-routed into the WebP facade.
-fn isWebp(bytes: [*]const u8, len: usize) bool {
-    const window: u32 = @intCast(@min(len, @as(usize, k_ra8_imgdec_sniff_bytes)));
-    var fmt: u32 = 0;
-    if (ra8_imgdec_sniff(bytes, window, &fmt) != k_ra8_ok) {
-        return false;
-    }
-    return fmt == k_ra8_imgdec_format_webp;
+/// Bind JPEG (first-party), WebP, and stb-residual (PNG/GIF/BMP) into `mux`.
+fn initDecoderMux(mux: *Ra8ImgdecMux, webp_scratch: *Ra8ImgArena, stb_scratch: *Ra8ImgArena) c_int {
+    var err = ra8_imgdec_mux_init(mux);
+    if (err != 0) return @intCast(err);
+
+    var dec: Ra8Imgdec = .{ .iface = null, .ctx = null };
+    err = ra8_jpeg_imgdec_bind(&dec);
+    if (err != 0) return @intCast(err);
+    err = ra8_imgdec_mux_add(mux, &dec);
+    if (err != 0) return @intCast(err);
+
+    err = ra8_webp_imgdec_bind(&dec, webp_scratch);
+    if (err != 0) return @intCast(err);
+    err = ra8_imgdec_mux_add(mux, &dec);
+    if (err != 0) return @intCast(err);
+
+    const stb_err = ra8_img_imgdec_bind(&dec, stb_scratch);
+    if (stb_err != k_ra8_ok) return stb_err;
+    err = ra8_imgdec_mux_add(mux, &dec);
+    return @intCast(err);
 }
 
-/// Map an ra8_webp facade status onto ra8_img's documented error set.
-///
-/// The facade reports a richer set than this module publishes: a malformed
-/// container, a non-positive canvas, and a failed body decode all come
-/// back as k_ra8_err_validation_failed, and an over-cap dimension as
-/// k_ra8_err_not_supported. Both mean the same thing to a caller of this
-/// module -- these bytes cannot be drawn -- so they collapse onto
-/// k_ra8_err_not_supported, keeping ra8_img_decode_blit()'s published
-/// retval list unchanged. k_ra8_err_null_ptr and k_ra8_err_invalid_arg
-/// pass through because they mean the same thing in both contracts.
-///
-/// One caveat this mapping cannot avoid: libwebp reports an exhausted
-/// scratch arena as a plain decode failure, so a shortfall in the WebP
-/// scratch surfaces as k_ra8_err_not_supported, not k_ra8_err_no_mem.
-/// The canvas allocation, which dominates the arena footprint, is checked
-/// separately in webpDecodeBlit() and does report no_mem.
+/// Probe `bytes` against each layout in priority order until a mux member matches.
+fn probeForLayouts(
+    mux: *const Ra8ImgdecMux,
+    bytes: [*]const u8,
+    byte_count: u32,
+    layouts: []const u32,
+    out_geom: *Ra8ImgdecGeom,
+    out_want: *u32,
+) c_int {
+    for (layouts) |want| {
+        const err = ra8_imgdec_mux_probe(mux, bytes, byte_count, want, out_geom, null);
+        if (err == @as(u16, @intCast(k_ra8_ok))) {
+            out_want.* = want;
+            return k_ra8_ok;
+        }
+        if (err != @as(u16, @intCast(k_ra8_err_not_supported))) {
+            return @intCast(err);
+        }
+    }
+    return k_ra8_err_not_supported;
+}
+
+/// Map a mux/backend failure onto `reflow_image`'s published error set.
 pub fn webpClassify(err: c_int) c_int {
     if (err == k_ra8_ok or err == k_ra8_err_null_ptr or err == k_ra8_err_invalid_arg) {
         return err;
     }
     return k_ra8_err_not_supported;
+}
+
+/// Map a decode failure preserving `k_ra8_err_no_mem` alongside argument errors.
+fn classifyDecodeErr(err: c_int) c_int {
+    if (err == k_ra8_err_no_mem) return k_ra8_err_no_mem;
+    return webpClassify(err);
 }
 
 /// Compute the aspect-preserving fit rectangle for an image in a box.
@@ -184,24 +179,6 @@ pub fn fitBox(src_w: i32, src_h: i32, box_w: i32, box_h: i32, fit_w: *i32, fit_h
     }
     fit_w.* = @intCast(@max(sw, @as(i64, k_ra8_img_min_edge)));
     fit_h.* = @intCast(@max(sh, @as(i64, k_ra8_img_min_edge)));
-}
-
-/// Map a decode failure to the closest ra8_err_t via stbi_failure_reason.
-///
-/// Queries stbi_failure_reason() immediately after a failed
-/// stbi_load_from_memory() call and inspects the returned string for the
-/// substring "outofmem". When that tag is present the arena exhausted its
-/// capacity before the decode completed; the function returns
-/// k_ra8_err_no_mem so the caller can report a memory shortage rather
-/// than a format error. Any other reason string (corrupt header,
-/// unsupported colour depth, unsupported format, etc.) and a null reason
-/// string map to k_ra8_err_not_supported.
-fn decodeFail() c_int {
-    const reason = stbi_failure_reason() orelse return k_ra8_err_not_supported;
-    if (std.mem.indexOf(u8, std.mem.span(reason), "outofmem") != null) {
-        return k_ra8_err_no_mem;
-    }
-    return k_ra8_err_not_supported;
 }
 
 /// One destination pixel write. The public path forwards to ra8_gfx_pixel
@@ -239,20 +216,24 @@ pub fn blitScaled(pixels: [*]const u8, src_w: i32, src_h: i32, src_bpp: i32, fit
     }
 }
 
-/// Unbind the decode arena and force it back to the fully-drained state.
-///
-/// Calls ra8_img_arena_unbind() to clear the module-static pointer that
-/// redirects stb_image allocations, then resets both bookkeeping fields
-/// of the arena struct to zero: `offset` (the bump pointer) and `live`
-/// (the outstanding allocation count). This guarantees the arena is ready
-/// for reuse and that no stale stb_image allocation callbacks can reach
-/// it after the call. The `base` and `cap` fields, which are owned by the
-/// caller, are left untouched. Called on every return path of
-/// ra8_img_decode_blit().
+/// Drain transient bookkeeping fields of `arena` while keeping `base`, `cap`,
+/// and `high_water` intact.
 fn arenaRelease(arena: *Ra8ImgArena) void {
-    ra8_img_arena_unbind();
     arena.offset = 0;
     arena.live = 0;
+}
+
+/// Convert `px_count` tightly packed RGB or RGBA pixels to 8-bit grayscale
+/// using BT.601 integer luma (`(77*R + 150*G + 29*B) >> 8`).
+fn packedToGray8(src: [*]const u8, px_count: usize, step: usize, dst: [*]u8) void {
+    var i: usize = 0;
+    while (i < px_count) : (i += 1) {
+        const base = i * step;
+        const r: u32 = src[base + k_ra8_img_ch_r];
+        const g: u32 = src[base + k_ra8_img_ch_g];
+        const b: u32 = src[base + k_ra8_img_ch_b];
+        dst[i] = @intCast((r * k_ra8_luma_r + g * k_ra8_luma_g + b * k_ra8_luma_b) >> k_ra8_luma_shift);
+    }
 }
 
 /// Convert `px_count` tightly packed RGBA8888 pixels to 8-bit grayscale.
@@ -261,163 +242,120 @@ fn arenaRelease(arena: *Ra8ImgArena) void {
 /// 150*G + 29*B) >> 8`), discarding the alpha channel so PNG and WebP gray8
 /// decodes agree byte-for-byte.
 pub fn rgbaToGray8(rgba: [*]const u8, px_count: usize, dst: [*]u8) void {
-    var i: usize = 0;
-    while (i < px_count) : (i += 1) {
-        const base = i * @as(usize, @intCast(k_ra8_img_req_rgba));
-        const r: u32 = rgba[base + k_ra8_img_ch_r];
-        const g: u32 = rgba[base + k_ra8_img_ch_g];
-        const b: u32 = rgba[base + k_ra8_img_ch_b];
-        dst[i] = @intCast((r * k_ra8_luma_r + g * k_ra8_luma_g + b * k_ra8_luma_b) >> k_ra8_luma_shift);
-    }
+    packedToGray8(rgba, px_count, @intCast(k_ra8_img_req_rgba), dst);
 }
 
-/// Decode a WebP container into an arena-backed RGBA8888 canvas.
-///
-/// Shared backend for both `webpDecodeBlit` and `webpDecodeGray8`. When
-/// `dst_px_cap` is provided, verifies the caller's pixel capacity before
-/// binding `arena`. On `k_ra8_ok`, `arena` remains bound until the caller
-/// invokes `arenaRelease(arena)`; on any error, `arena` is already released.
-fn webpDecodeRgba(
-    arena: *Ra8ImgArena,
-    bytes: [*]const u8,
-    len: usize,
-    dst_px_cap: ?usize,
-    out_w: *u32,
-    out_h: *u32,
-    out_rgba: *[*]u8,
-) c_int {
-    var src_w: u32 = 0;
-    var src_h: u32 = 0;
-    const info = ra8_webp_get_info(bytes, len, &src_w, &src_h);
-    if (info != k_ra8_ok) {
-        logErr("img: webp header rejected");
-        return webpClassify(info);
-    }
-    if (src_w == 0 or src_h == 0) {
-        logErr("img: webp empty dimensions");
-        return k_ra8_err_not_supported;
-    }
-    const px_count = std.math.mul(usize, src_w, src_h) catch {
-        logErr("img: webp pixel count overflow");
-        return k_ra8_err_no_mem;
-    };
-    if (dst_px_cap) |cap| {
-        if (cap < px_count) {
-            logErr("img: webp dst capacity too small");
-            return k_ra8_err_no_mem;
-        }
-    }
-    const stride = std.math.mul(usize, src_w, @as(usize, @intCast(k_ra8_img_req_rgba))) catch {
-        return k_ra8_err_no_mem;
-    };
-    const canvas = std.math.mul(usize, src_h, stride) catch {
-        return k_ra8_err_no_mem;
-    };
+/// Convert `px_count` tightly packed RGB888 pixels to 8-bit grayscale.
+pub fn rgbToGray8(rgb: [*]const u8, px_count: usize, dst: [*]u8) void {
+    packedToGray8(rgb, px_count, @intCast(k_ra8_img_req_rgb), dst);
+}
 
-    ra8_img_arena_bind(arena); // resets the arena to empty
-    const rgba_block = ra8_img_arena_malloc(canvas) orelse {
-        arenaRelease(arena);
-        logErr("img: webp canvas does not fit the arena");
-        return k_ra8_err_no_mem;
+/// Build an aligned WebP scratch view out of the unused suffix past `used`.
+fn tailScratchView(arena: *const Ra8ImgArena, used: usize, out_tail_off: *usize) Ra8ImgArena {
+    const base_ptr = arena.base orelse {
+        out_tail_off.* = arena.cap;
+        return .{ .base = null, .cap = 0, .offset = 0, .live = 0, .high_water = 0 };
     };
-    const rgba: [*]u8 = @ptrCast(@alignCast(rgba_block));
-
-    // Whatever the canvas did not take backs libwebp's own scratch.
-    var scratch = Ra8ImgArena{
-        .base = arena.base.? + arena.offset,
-        .cap = arena.cap - arena.offset,
+    const rem = arena.cap - used;
+    const cur_addr = @intFromPtr(base_ptr) +% used;
+    const pad: usize = (16 -% (cur_addr & 15)) & 15;
+    if (pad >= rem) {
+        out_tail_off.* = arena.cap;
+        return .{ .base = null, .cap = 0, .offset = 0, .live = 0, .high_water = 0 };
+    }
+    const tail_off = used + pad;
+    out_tail_off.* = tail_off;
+    return .{
+        .base = base_ptr + tail_off,
+        .cap = arena.cap - tail_off,
         .offset = 0,
         .live = 0,
         .high_water = 0,
     };
-    const dec = ra8_webp_decode_rgba(bytes, len, &scratch, rgba, stride, canvas, null, null);
-    if (dec != k_ra8_ok) {
-        arenaRelease(arena);
-        logErr("img: webp decode failed");
-        return webpClassify(dec);
-    }
-
-    out_w.* = src_w;
-    out_h.* = src_h;
-    out_rgba.* = rgba;
-    return k_ra8_ok;
 }
 
-/// Decode a WebP through the ra8_webp facade and blit it scaled to fit.
-fn webpDecodeBlit(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) c_int {
-    var src_w: u32 = 0;
-    var src_h: u32 = 0;
-    var rgba: [*]u8 = undefined;
-    const status = webpDecodeRgba(arena, bytes, len, null, &src_w, &src_h, &rgba);
-    if (status != k_ra8_ok) {
-        return status;
+/// Probe raster container geometry and select a supported destination layout.
+fn probeRasterMux(
+    bytes: [*]const u8,
+    len: usize,
+    layouts: []const u32,
+    out_geom: *Ra8ImgdecGeom,
+    out_want: *u32,
+) c_int {
+    if (len == 0 or len > @as(usize, std.math.maxInt(c_int))) {
+        return k_ra8_err_not_supported;
     }
-
-    var fit_w: i32 = 0;
-    var fit_h: i32 = 0;
-    fitBox(@intCast(src_w), @intCast(src_h), box_w, box_h, &fit_w, &fit_h);
-    blitScaled(rgba, @intCast(src_w), @intCast(src_h), k_ra8_img_req_rgba, fit_w, fit_h, dst_x, dst_y, gfxEmit);
-    arenaRelease(arena);
-
-    if (out_w) |p| {
-        p.* = fit_w;
+    var dummy_webp = Ra8ImgArena{ .base = null, .cap = 0, .offset = 0, .live = 0, .high_water = 0 };
+    var dummy_stb = Ra8ImgArena{ .base = null, .cap = 0, .offset = 0, .live = 0, .high_water = 0 };
+    var mux: Ra8ImgdecMux = undefined;
+    const init_err = initDecoderMux(&mux, &dummy_webp, &dummy_stb);
+    if (init_err != k_ra8_ok) {
+        return webpClassify(init_err);
     }
-    if (out_h) |p| {
-        p.* = fit_h;
+    const err = probeForLayouts(&mux, bytes, @intCast(len), layouts, out_geom, out_want);
+    if (err != k_ra8_ok) {
+        return webpClassify(err);
     }
     return k_ra8_ok;
 }
 
-/// Decode a WebP container into a tightly packed gray8 buffer via `arena`.
-fn webpDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]u8, dst_cap: usize, out_w: *u32, out_h: *u32) c_int {
-    var src_w: u32 = 0;
-    var src_h: u32 = 0;
-    var rgba: [*]u8 = undefined;
-    const status = webpDecodeRgba(arena, bytes, len, dst_cap, &src_w, &src_h, &rgba);
-    if (status != k_ra8_ok) {
-        return status;
-    }
-
-    const px_count: usize = @as(usize, src_w) * @as(usize, src_h);
-    rgbaToGray8(rgba, px_count, dst);
-    arenaRelease(arena);
-    out_w.* = src_w;
-    out_h.* = src_h;
-    return k_ra8_ok;
-}
-
-/// Decode an stb_image raster directly to 1-channel gray8 via `arena`.
-fn stbiDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]u8, dst_cap: usize, out_w: *u32, out_h: *u32) c_int {
-    ra8_img_arena_bind(arena); // resets the arena to empty
-    var sx: c_int = 0;
-    var sy: c_int = 0;
-    var comp: c_int = 0;
-    const pixels = stbi_load_from_memory(bytes, @intCast(len), &sx, &sy, &comp, k_ra8_img_req_gray);
-    if ((pixels == null) or (sx <= 0) or (sy <= 0)) {
-        const err = decodeFail();
-        arenaRelease(arena);
-        logErr("gray8: decode failed");
-        return err;
-    }
-
-    const w: u32 = @intCast(sx);
-    const h: u32 = @intCast(sy);
-    const px_count = std.math.mul(usize, w, h) catch {
-        stbi_image_free(@ptrCast(pixels.?));
+/// Carve `canvas_bytes` in the prefix of `arena` and decode via `ra8_imgdec_mux`.
+fn decodeToArenaPrefix(
+    arena: *Ra8ImgArena,
+    bytes: [*]const u8,
+    byte_count: u32,
+    geom: Ra8ImgdecGeom,
+    want: u32,
+    canvas_bytes: usize,
+    out_pixels: *[*]u8,
+) c_int {
+    const base_ptr = arena.base orelse {
         arenaRelease(arena);
         return k_ra8_err_no_mem;
     };
-    if (dst_cap < px_count) {
-        stbi_image_free(@ptrCast(pixels.?));
+    if (canvas_bytes == 0 or canvas_bytes > arena.cap or canvas_bytes > @as(usize, std.math.maxInt(u32))) {
         arenaRelease(arena);
-        logErr("gray8: dst buffer too small");
         return k_ra8_err_no_mem;
     }
-    @memcpy(dst[0..px_count], pixels.?[0..px_count]);
-    stbi_image_free(@ptrCast(pixels.?));
-    arenaRelease(arena);
-    out_w.* = w;
-    out_h.* = h;
+
+    arena.offset = canvas_bytes;
+    arena.live = 1;
+    if (canvas_bytes > arena.high_water) {
+        arena.high_water = canvas_bytes;
+    }
+
+    var webp_tail_off: usize = canvas_bytes;
+    var webp_scratch = tailScratchView(arena, canvas_bytes, &webp_tail_off);
+    var mux: Ra8ImgdecMux = undefined;
+    const init_err = initDecoderMux(&mux, &webp_scratch, arena);
+    if (init_err != k_ra8_ok) {
+        arenaRelease(arena);
+        return classifyDecodeErr(init_err);
+    }
+
+    const req = Ra8ImgdecReq{
+        .bytes = bytes,
+        .byte_count = byte_count,
+        .arena = null,
+        .dst = base_ptr,
+        .dst_bytes = @intCast(canvas_bytes),
+        .dst_stride = 0,
+        .format = geom.format,
+        .want = want,
+    };
+    var img: Ra8ImgdecImage = undefined;
+    const dec_err = ra8_imgdec_mux_decode(&mux, &req, &img);
+    const webp_peak = webp_tail_off +| webp_scratch.high_water;
+    if (webp_peak > arena.high_water) {
+        arena.high_water = webp_peak;
+    }
+    if (dec_err != 0) {
+        arenaRelease(arena);
+        logErr("img: mux decode failed");
+        return classifyDecodeErr(@intCast(dec_err));
+    }
+
+    out_pixels.* = base_ptr;
     return k_ra8_ok;
 }
 
@@ -425,8 +363,8 @@ fn stbiDecodeGray8(arena: *Ra8ImgArena, bytes: [*]const u8, len: usize, dst: [*]
 ///
 /// Lets the layout pass size an `<img>` box from the source dimensions
 /// before deciding to decode + blit. Allocates nothing. SVG is not a
-/// raster: its intrinsic size comes from the document. stb_image cannot
-/// parse a WebP header; the ra8_webp facade can.
+/// raster: its intrinsic size comes from the document. Raster headers
+/// route through `ra8_imgdec_mux_probe`.
 pub export fn ra8_img_probe_size(bytes: ?[*]const u8, len: usize, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
     if (bytes == null) {
         logErr("probe: null bytes");
@@ -442,45 +380,30 @@ pub export fn ra8_img_probe_size(bytes: ?[*]const u8, len: usize, out_w: ?*i32, 
     }
     const b = bytes.?;
 
-    // SVG is not a raster: take its intrinsic size from the document.
     if (ra8_svg_is_svg(b, len)) {
         return ra8_svg_size(b, len, out_w.?, out_h.?);
     }
 
-    // stb_image cannot parse a WebP header; the ra8_webp facade can.
-    if (isWebp(b, len)) {
-        var webp_w: u32 = 0;
-        var webp_h: u32 = 0;
-        const err = ra8_webp_get_info(b, len, &webp_w, &webp_h);
-        if (err != k_ra8_ok) {
-            logErr("probe: webp header rejected");
-            return webpClassify(err);
-        }
-        out_w.?.* = @intCast(webp_w);
-        out_h.?.* = @intCast(webp_h);
-        return k_ra8_ok;
+    const probe_layouts = [_]u32{ imgdec.k_ra8_imgdec_pixel_rgb888, imgdec.k_ra8_imgdec_pixel_rgba8888 };
+    var geom: Ra8ImgdecGeom = undefined;
+    var want: u32 = 0;
+    const err = probeRasterMux(b, len, &probe_layouts, &geom, &want);
+    if (err != k_ra8_ok) {
+        logErr("probe: unsupported or invalid image");
+        return err;
     }
-
-    var x: c_int = 0;
-    var y: c_int = 0;
-    var comp: c_int = 0;
-    if (stbi_info_from_memory(b, @intCast(len), &x, &y, &comp) == 0) {
-        logErr("probe: stbi_info rejected the header");
-        return k_ra8_err_not_supported;
-    }
-    out_w.?.* = x;
-    out_h.?.* = y;
+    out_w.?.* = @intCast(geom.width_px);
+    out_h.?.* = @intCast(geom.height_px);
     return k_ra8_ok;
 }
 
 /// Decode `bytes` and blit it, scaled to fit, into the bound framebuffer.
 ///
-/// Decodes the image to RGB through stb_image (allocating only from
-/// `arena`), computes a fit rectangle inside `box_w x box_h` that
-/// preserves the source aspect ratio, then nearest-neighbour blits the
-/// scaled image at `(dst_x, dst_y)` via ra8_gfx. The arena is fully reset
-/// on return (success or failure). The caller must have bound a
-/// framebuffer with ra8_gfx_init().
+/// Routes JPEG/PNG/GIF/BMP/WebP through `ra8_imgdec_mux_decode` into a
+/// caller-arena prefix buffer while backends draw transient scratch from
+/// the aligned tail, computes a fit rectangle inside `box_w x box_h`, then
+/// nearest-neighbour blits the scaled image via ra8_gfx. `arena` is reset
+/// on every return path after argument validation.
 pub export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len: usize, dst_x: i32, dst_y: i32, box_w: i32, box_h: i32, out_w: ?*i32, out_h: ?*i32) callconv(.c) c_int {
     if (arena == null) {
         logErr("blit: null arena");
@@ -497,31 +420,35 @@ pub export fn ra8_img_decode_blit(arena: ?*Ra8ImgArena, bytes: ?[*]const u8, len
     const a = arena.?;
     const b = bytes.?;
 
-    // stb_image has no WebP decoder: route the container to libwebp.
-    if (isWebp(b, len)) {
-        return webpDecodeBlit(a, b, len, dst_x, dst_y, box_w, box_h, out_w, out_h);
+    const blit_layouts = [_]u32{ imgdec.k_ra8_imgdec_pixel_rgb888, imgdec.k_ra8_imgdec_pixel_rgba8888 };
+    var geom: Ra8ImgdecGeom = undefined;
+    var want: u32 = 0;
+    const probe_err = probeRasterMux(b, len, &blit_layouts, &geom, &want);
+    if (probe_err != k_ra8_ok) {
+        arenaRelease(a);
+        return probe_err;
     }
 
-    ra8_img_arena_bind(a); // resets the arena to empty
-    var sx: c_int = 0;
-    var sy: c_int = 0;
-    var comp: c_int = 0;
-    // stbi_load_from_memory() returns a non-null pixel pointer only when it
-    // decoded a bitmap of at least 1x1 (it rejects zero-dimension images
-    // with a null return), so whenever pixels != null, sx >= 1 and sy >= 1.
-    const pixels = stbi_load_from_memory(b, @intCast(len), &sx, &sy, &comp, k_ra8_img_req_rgb);
-    if ((pixels == null) or (sx <= 0) or (sy <= 0)) {
-        const err = decodeFail();
+    const bpp = ra8_imgdec_pixel_bytes(want);
+    const px_count = std.math.mul(usize, geom.width_px, geom.height_px) catch {
         arenaRelease(a);
-        logErr("blit: decode failed");
-        return err;
+        return k_ra8_err_no_mem;
+    };
+    const canvas_bytes = std.math.mul(usize, px_count, bpp) catch {
+        arenaRelease(a);
+        return k_ra8_err_no_mem;
+    };
+
+    var pixels: [*]u8 = undefined;
+    const dec_err = decodeToArenaPrefix(a, b, @intCast(len), geom, want, canvas_bytes, &pixels);
+    if (dec_err != k_ra8_ok) {
+        return dec_err;
     }
 
     var fit_w: i32 = 0;
     var fit_h: i32 = 0;
-    fitBox(sx, sy, box_w, box_h, &fit_w, &fit_h);
-    blitScaled(pixels.?, sx, sy, k_ra8_img_req_rgb, fit_w, fit_h, dst_x, dst_y, gfxEmit);
-    stbi_image_free(@ptrCast(pixels.?));
+    fitBox(@intCast(geom.width_px), @intCast(geom.height_px), box_w, box_h, &fit_w, &fit_h);
+    blitScaled(pixels, @intCast(geom.width_px), @intCast(geom.height_px), @intCast(bpp), fit_w, fit_h, dst_x, dst_y, gfxEmit);
     arenaRelease(a);
 
     if (out_w) |p| {
@@ -558,8 +485,75 @@ pub export fn ra8_img_decode_gray8(
         logErr("gray8: svg is not raster");
         return k_ra8_err_not_supported;
     }
-    if (isWebp(b, len)) {
-        return webpDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
+
+    const gray_layouts = [_]u32{
+        imgdec.k_ra8_imgdec_pixel_grey8,
+        imgdec.k_ra8_imgdec_pixel_rgb888,
+        imgdec.k_ra8_imgdec_pixel_rgba8888,
+    };
+    var geom: Ra8ImgdecGeom = undefined;
+    var want: u32 = 0;
+    const probe_err = probeRasterMux(b, len, &gray_layouts, &geom, &want);
+    if (probe_err != k_ra8_ok) {
+        arenaRelease(a);
+        return probe_err;
     }
-    return stbiDecodeGray8(a, b, len, d, dst_cap, out_w.?, out_h.?);
+
+    const px_count = std.math.mul(usize, geom.width_px, geom.height_px) catch {
+        arenaRelease(a);
+        return k_ra8_err_no_mem;
+    };
+    if (dst_cap < px_count) {
+        arenaRelease(a);
+        logErr("gray8: dst buffer too small");
+        return k_ra8_err_no_mem;
+    }
+
+    if (want == imgdec.k_ra8_imgdec_pixel_grey8) {
+        a.offset = 0;
+        a.live = 0;
+        var dummy_webp = Ra8ImgArena{ .base = null, .cap = 0, .offset = 0, .live = 0, .high_water = 0 };
+        var mux: Ra8ImgdecMux = undefined;
+        const init_err = initDecoderMux(&mux, &dummy_webp, a);
+        if (init_err != k_ra8_ok) {
+            arenaRelease(a);
+            return classifyDecodeErr(init_err);
+        }
+        const req = Ra8ImgdecReq{
+            .bytes = b,
+            .byte_count = @intCast(len),
+            .arena = null,
+            .dst = d,
+            .dst_bytes = @intCast(px_count),
+            .dst_stride = 0,
+            .format = geom.format,
+            .want = want,
+        };
+        var img: Ra8ImgdecImage = undefined;
+        const dec_err = ra8_imgdec_mux_decode(&mux, &req, &img);
+        arenaRelease(a);
+        if (dec_err != 0) {
+            logErr("gray8: mux decode failed");
+            return classifyDecodeErr(@intCast(dec_err));
+        }
+        out_w.?.* = img.width_px;
+        out_h.?.* = img.height_px;
+        return k_ra8_ok;
+    }
+
+    const bpp = ra8_imgdec_pixel_bytes(want);
+    const canvas_bytes = std.math.mul(usize, px_count, bpp) catch {
+        arenaRelease(a);
+        return k_ra8_err_no_mem;
+    };
+    var pixels: [*]u8 = undefined;
+    const dec_err = decodeToArenaPrefix(a, b, @intCast(len), geom, want, canvas_bytes, &pixels);
+    if (dec_err != k_ra8_ok) {
+        return dec_err;
+    }
+    packedToGray8(pixels, px_count, @intCast(bpp), d);
+    arenaRelease(a);
+    out_w.?.* = geom.width_px;
+    out_h.?.* = geom.height_px;
+    return k_ra8_ok;
 }

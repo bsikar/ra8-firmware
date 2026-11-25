@@ -45,6 +45,8 @@ pub fn build(b: *std.Build) void {
     });
     library.bundle_compiler_rt = library.root_module.resolved_target.?.result.os.tag != .freestanding;
     library.root_module.pic = true;
+    library.link_function_sections = true;
+    library.link_data_sections = true;
     b.installArtifact(library);
 
     const test_step = b.step("test", "Run Zig reflow parse entry tests");

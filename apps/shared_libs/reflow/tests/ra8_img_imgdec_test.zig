@@ -91,3 +91,58 @@ test "mirror layout sanity" {
         std.debug.assert(@offsetOf(Ra8Imgdec, "ctx") == @sizeOf(?*const Ra8ImgdecIface));
     }
 }
+
+test "tail carve preserves aligned caller prefix and merges high water" {
+    var backing: [128]u8 align(16) = @splat(0xAA);
+    var caller: imgdec.Ra8ImgArena = .{
+        .base = &backing,
+        .cap = backing.len,
+        .offset = 12,
+        .live = 1,
+        .high_water = 12,
+    };
+
+    var carved = imgdec.internalCarveTail(&caller) orelse return error.TestUnexpectedResult;
+    try testing.expectEqual(@as(usize, 16), carved.tail_off);
+    try testing.expectEqual(@as(usize, 112), carved.tail.cap);
+    try testing.expectEqual(@intFromPtr(&backing[16]), @intFromPtr(carved.tail.base.?));
+    try testing.expectEqual(@as(usize, 0), @intFromPtr(carved.tail.base.?) & 15);
+
+    carved.tail.high_water = 40;
+    imgdec.internalReleaseTail(&caller, carved.tail_off, &carved.tail);
+    try testing.expectEqual(@as(usize, 12), caller.offset);
+    try testing.expectEqual(@as(usize, 1), caller.live);
+    try testing.expectEqual(@as(usize, 56), caller.high_water);
+    const expected: [12]u8 = @splat(0xAA);
+    try testing.expectEqualSlices(u8, &expected, backing[0..12]);
+}
+
+test "tail carve rejects full or unbacked caller arena" {
+    var empty: imgdec.Ra8ImgArena = .{
+        .base = null,
+        .cap = 64,
+        .offset = 0,
+        .live = 0,
+        .high_water = 0,
+    };
+    try testing.expect(imgdec.internalCarveTail(&empty) == null);
+
+    var backing: [32]u8 align(16) = undefined;
+    const exact_full: imgdec.Ra8ImgArena = .{
+        .base = &backing,
+        .cap = backing.len,
+        .offset = backing.len,
+        .live = 1,
+        .high_water = backing.len,
+    };
+    try testing.expect(imgdec.internalCarveTail(&exact_full) == null);
+
+    const only_pad_left: imgdec.Ra8ImgArena = .{
+        .base = &backing,
+        .cap = backing.len,
+        .offset = 20,
+        .live = 1,
+        .high_water = 20,
+    };
+    try testing.expect(imgdec.internalCarveTail(&only_pad_left) == null);
+}
