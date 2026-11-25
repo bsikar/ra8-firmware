@@ -125,4 +125,22 @@ pub const apps = [_]CrossApp{
             },
         },
     },
+    .{
+        // RA8FW-997: C client of the ra8_box Zig C ABI executing shared
+        // vectors from tests/zig_abi_pairs/ra8_box_pair/vectors.json.
+        .name = "ra8_box_pair_c",
+        .dir = "examples/ek_ra8d2/hw_pending/ra8_box_pair_c",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_box"},
+        .zig_libraries = &.{"ra8_box"},
+        .stack_bytes = 4096,
+        .extra_srcs = &.{"tests/zig_abi_pairs/ra8_box_pair/src/ra8_box_pair_runner.c"},
+        .local = .{
+            .include_dirs = &.{
+                "libs/ra8_ui/inc",
+                "tests/zig_abi_pairs/ra8_box_pair/inc",
+            },
+        },
+    },
 };
