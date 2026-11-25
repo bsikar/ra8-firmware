@@ -26,6 +26,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0003](./0003-test-only-internal-headers.md)             | Test-only access to internal symbols via `<module>_internal.h`      | Accepted |
 | [0004](./0004-deactivated-condition-policy.md)           | DO-178C 6.4.4.3 deactivated-condition policy with regen-script auto-classification | Accepted |
 | [0005](./0005-multi-language-documentation-architecture.md) | Multi-language documentation architecture (Markdown hub, Zig autodoc, rustdoc, Doxygen C ABI) | Accepted |
+| [0021](./0021-ra8p1-external-memory-sizing.md) | Emulator-driven external OSPI NOR and SDRAM sizing for RA8P1 (provisional development ceiling) | Accepted |
 
 ## Authoring a new ADR
 
