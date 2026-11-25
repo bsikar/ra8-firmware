@@ -131,7 +131,7 @@ internal_read_page(ra8_viewer_reader_t* reader, uint32_t page, size_t* out_bytes
   ra8_err_t error =
     comic_page_info(&reader->comic.archive, page, nullptr, 0U, nullptr, &declared, nullptr);
   if (error == k_ra8_ok) {
-    error = ra8_decomp_check_declared(&reader->limits, reader->file.size, declared);
+    error = ra8_decomp_check_declared(&reader->limits, reader->source.size, declared);
   }
   if ((error == k_ra8_ok) && (declared > (uint64_t)reader->comic.page_cap)) {
     error = k_ra8_err_invalid_size;
@@ -241,8 +241,8 @@ ra8_err_t priv_viewer_open_comic(ra8_viewer_reader_t* reader)
 {
   return comic_open(&reader->comic.archive,
                     priv_viewer_comic_read,
-                    &reader->file,
-                    reader->file.size,
+                    &reader->source,
+                    reader->source.size,
                     reader->comic.pages,
                     (uint32_t)k_viewer_comic_page_cap,
                     reader->comic.names,

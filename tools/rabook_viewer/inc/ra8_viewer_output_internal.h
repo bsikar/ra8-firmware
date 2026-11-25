@@ -1,7 +1,7 @@
 /**
  * @file ra8_viewer_output_internal.h
  * @brief Private typed diagnostic writers for the host viewer.
- * @details Declares the stream-injected, allocation-free message vocabulary
+ * @details Declares the stream-injected, zero-allocation message vocabulary
  * used by the viewer composition root and its focused output tests.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

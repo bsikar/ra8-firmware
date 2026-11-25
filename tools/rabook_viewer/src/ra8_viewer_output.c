@@ -1,6 +1,6 @@
 /**
  * @file ra8_viewer_output.c
- * @brief Typed allocation-free diagnostic writers for the host viewer.
+ * @brief Typed zero-allocation diagnostic writers for the host viewer.
  * @details Composes the viewer's exact messages from bounded stream primitives,
  * propagating the first short or failed write without varargs or hosted I/O.
  * @copyright Copyright (c) 2026 Brighton Sikarskie

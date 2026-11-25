@@ -19,6 +19,7 @@
 #include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
+#include "ra8_fmt_io.h"
 #include "ra8_tile_cache.h"
 #include "ra8_viewer_reader.h"
 #include "reflow.h"
@@ -61,6 +62,9 @@ typedef struct {
   int      fd;      /**< Owned descriptor while open. */
   bool     is_open; /**< Descriptor ownership flag.   */
 } viewer_file_ctx_t;
+
+/** @brief Optional cleanup hook for caller/host-owned source handles. */
+typedef void (*viewer_source_close_fn)(void* ctx);
 
 /** @brief Caller-bound JOF engine and one-band cache backing. */
 typedef struct {
@@ -130,27 +134,39 @@ typedef struct {
 
 /** @brief Bound reader state; every buffer is borrowed from one workspace. */
 struct ra8_viewer_reader {
-  viewer_file_ctx_t   file;     /**< Raw source descriptor.              */
-  bool                is_bound; /**< Successful workspace bind flag.     */
-  bool                is_open;  /**< Successful engine-open flag.        */
-  uint32_t            engine;   /**< ::ra8_viewer_reader_engine_t value. */
-  ra8_decomp_limits_t limits;   /**< Shared untrusted-input policy.      */
-  uint16_t*           fb;       /**< Fixed headless framebuffer.         */
-  uint32_t*           tile_wpx; /**< Native width per viewport tile.     */
-  uint32_t*           tile_hpx; /**< Native height per viewport tile.    */
-  uint32_t            tile_cap; /**< Bound dimension entries.            */
-  uint32_t            tile_n;   /**< Populated dimension entries.        */
-  uint16_t*           rt565;    /**< Current composite target.           */
-  uint32_t            rt_w;     /**< Current target width.               */
-  uint32_t            rt_h;     /**< Current target height.              */
-  viewer_jof_t        jof;      /**< JOF engine and caller-bound cache.  */
-  viewer_comic_t      comic;    /**< Comic engine and caller slices.     */
-  viewer_reflow_t     reflow;   /**< EPUB/RABOOK reflow engine slices.   */
+  ra8_fmt_source_t       source;       /**< Active positioned-read source.      */
+  viewer_source_close_fn source_close; /**< Optional cleanup for @p source.ctx. */
+  viewer_file_ctx_t      host_file;    /**< Host-fd storage for path opens.     */
+  bool                   is_bound;     /**< Successful workspace bind flag.     */
+  bool                   is_open;      /**< Successful engine-open flag.        */
+  uint32_t               engine;       /**< ::ra8_viewer_reader_engine_t value. */
+  ra8_decomp_limits_t    limits;       /**< Shared untrusted-input policy.      */
+  uint16_t*              fb;           /**< Fixed headless framebuffer.         */
+  uint32_t*              tile_wpx;     /**< Native width per viewport tile.     */
+  uint32_t*              tile_hpx;     /**< Native height per viewport tile.    */
+  uint32_t               tile_cap;     /**< Bound dimension entries.            */
+  uint32_t               tile_n;       /**< Populated dimension entries.        */
+  uint16_t*              rt565;        /**< Current composite target.           */
+  uint32_t               rt_w;         /**< Current target width.               */
+  uint32_t               rt_h;         /**< Current target height.              */
+  viewer_jof_t           jof;          /**< JOF engine and caller-bound cache.  */
+  viewer_comic_t         comic;        /**< Comic engine and caller slices.     */
+  viewer_reflow_t        reflow;       /**< EPUB/RABOOK reflow engine slices.   */
 };
 
-/** @brief JOF positional-reader seam over ::viewer_file_ctx_t. */
+/** @brief JOF positional-reader seam over an active source or reader. */
 RA8_PRIV [[nodiscard]] ra8_err_t
 priv_viewer_pread(void* ctx, uint64_t offset, uint8_t* buffer, size_t length, size_t* out_read);
+
+/** @brief Check whether @p format selects the engine frozen at bind time. */
+RA8_PRIV [[nodiscard]] bool priv_viewer_engine_matches(const ra8_viewer_reader_t* reader,
+                                                       ra8_viewer_format_t        format);
+
+/** @brief Open the engine with caller-supplied source and optional closer. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_open_bound_source(ra8_viewer_reader_t*    reader,
+                                                               ra8_viewer_format_t     format,
+                                                               const ra8_fmt_source_t* source,
+                                                               viewer_source_close_fn  close_fn);
 
 /** @brief Open and wire the JOF engine over a bound reader. */
 RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_open_jof(ra8_viewer_reader_t* reader);

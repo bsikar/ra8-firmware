@@ -177,3 +177,44 @@ test "directory --dump-ppm target fails cleanly without damaging directory" {
     const stat = try tmp.dir.statFile(std.testing.io, "ppm_dir", .{ .follow_symlinks = false });
     try std.testing.expectEqual(std.Io.File.Kind.directory, stat.kind);
 }
+
+fn readPackageOrRepoFile(
+    allocator: std.mem.Allocator,
+    pkg_rel: []const u8,
+    repo_rel: []const u8,
+) ![]u8 {
+    const dir = std.Io.Dir.cwd();
+    return dir.readFileAlloc(std.testing.io, pkg_rel, allocator, .limited(1024 * 1024)) catch
+        try dir.readFileAlloc(std.testing.io, repo_rel, allocator, .limited(1024 * 1024));
+}
+
+test "reader header declares device-portable source API and pragma once" {
+    const allocator = std.testing.allocator;
+    const reader_h = try readPackageOrRepoFile(
+        allocator,
+        "inc/ra8_viewer_reader.h",
+        "tools/rabook_viewer/inc/ra8_viewer_reader.h",
+    );
+    defer allocator.free(reader_h);
+
+    try std.testing.expect(std.mem.indexOf(u8, reader_h, "#pragma once") != null);
+    try std.testing.expect(std.mem.indexOf(u8, reader_h, "extern \"C\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, reader_h, "ra8_viewer_classify_path") != null);
+    try std.testing.expect(std.mem.indexOf(u8, reader_h, "ra8_viewer_reader_requirements_source") != null);
+    try std.testing.expect(std.mem.indexOf(u8, reader_h, "ra8_viewer_open_source") != null);
+}
+
+test "production surface gate enforces non-vacuity and forbids heap and POSIX leaks" {
+    const allocator = std.testing.allocator;
+    const gate_sh = try readPackageOrRepoFile(
+        allocator,
+        "tests/check_production_surface.sh",
+        "tools/rabook_viewer/tests/check_production_surface.sh",
+    );
+    defer allocator.free(gate_sh);
+
+    try std.testing.expect(std.mem.indexOf(u8, gate_sh, "scanned=$(find") != null);
+    try std.testing.expect(std.mem.indexOf(u8, gate_sh, "malloc|calloc|realloc|free") != null);
+    try std.testing.expect(std.mem.indexOf(u8, gate_sh, "nm -u") != null);
+    try std.testing.expect(std.mem.indexOf(u8, gate_sh, "posix_hdr_pattern") != null);
+}

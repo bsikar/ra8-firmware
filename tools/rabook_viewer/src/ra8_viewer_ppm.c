@@ -35,19 +35,17 @@
 
 /**
  * @enum ra8_viewer_rgb565_shift_t
- * @brief Field positions and channel-width conversions for RGB565 packing.
- * @details The `_drop` values narrow 8-bit channels on the way in; the `_fill`
- *          values position the replicated high bits on the way back out.
+ * @brief Field positions and channel-width conversions for RGB565 unpacking.
+ * @details The `_fill` values position the replicated high bits on the way out.
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_rgb565_r_shift  = 11U, /**< Red field position in the 16-bit word.       */
-  k_rgb565_g_shift  = 5U,  /**< Green field position in the 16-bit word.     */
-  k_rgb565_r5_drop  = 3U,  /**< 8->5-bit reduction for red/blue.             */
-  k_rgb565_g6_drop  = 2U,  /**< 8->6-bit reduction for green.                */
-  k_rgb565_r5_fill  = 2U,  /**< 5->8 low-bit replication shift (red/blue).   */
-  k_rgb565_g6_fill  = 4U,  /**< 6->8 low-bit replication shift (green).      */
-  k_rgb565_hi_shift = 8U,  /**< High-byte position of a little-endian pixel. */
+  k_rgb565_r_shift = 11U, /**< Red field position in the 16-bit word.     */
+  k_rgb565_g_shift = 5U,  /**< Green field position in the 16-bit word.   */
+  k_rgb565_r5_drop = 3U,  /**< 5->8 left shift for red and blue.          */
+  k_rgb565_g6_drop = 2U,  /**< 6->8 left shift for green.                 */
+  k_rgb565_r5_fill = 2U,  /**< 5->8 low-bit replication shift (red/blue). */
+  k_rgb565_g6_fill = 4U,  /**< 6->8 low-bit replication shift (green).    */
 } ra8_viewer_rgb565_shift_t;
 
 /**
@@ -83,19 +81,6 @@ typedef enum : uint16_t {
   /** @brief Conversion buffer capacity in bytes. */
   k_ppm_chunk_bytes = k_ppm_chunk_pixels * k_ppm_channels,
 } ra8_viewer_ppm_io_t;
-
-uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb)
-{
-  const uint16_t r5 = (uint16_t)(rr >> (uint16_t)k_rgb565_r5_drop);
-  const uint16_t g6 = (uint16_t)(gg >> (uint16_t)k_rgb565_g6_drop);
-  const uint16_t b5 = (uint16_t)(bb >> (uint16_t)k_rgb565_r5_drop);
-  return (uint16_t)((r5 << (uint16_t)k_rgb565_r_shift) | (g6 << (uint16_t)k_rgb565_g_shift) | b5);
-}
-
-uint16_t ra8_viewer_pack565_le_pair(uint8_t lo, uint8_t hi)
-{
-  return (uint16_t)((uint16_t)lo | ((uint16_t)hi << (uint16_t)k_rgb565_hi_shift));
-}
 
 /**
  * @brief Expand one RGB565 word into three 8-bit channels.
