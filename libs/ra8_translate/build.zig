@@ -74,6 +74,22 @@ pub fn build(b: *std.Build) void {
     tok_mod.addImport("vocab", vocab_mod);
     tok_mod.addImport("err", err_mod);
 
+    const overlay_mask_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/overlay_mask.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    overlay_mask_mod.addImport("sidecar", sidecar_mod);
+
+    const overlay_mod = b.createModule(.{
+        .root_source_file = b.path("src/internal/overlay.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    overlay_mod.addImport("err", err_mod);
+    overlay_mod.addImport("sidecar", sidecar_mod);
+    overlay_mod.addImport("overlay_mask", overlay_mask_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/ra8_translate_abi.zig"),
         .target = target,
@@ -86,6 +102,7 @@ pub fn build(b: *std.Build) void {
     abi_mod.addImport("glossary", glossary_mod);
     abi_mod.addImport("ocr", ocr_mod);
     abi_mod.addImport("tokenizer", tok_mod);
+    abi_mod.addImport("overlay", overlay_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_translate",
@@ -105,6 +122,9 @@ pub fn build(b: *std.Build) void {
     });
     smoke_mod.addIncludePath(b.path("inc"));
     smoke_mod.addIncludePath(b.path("../ra8_core/inc"));
+    smoke_mod.addIncludePath(b.path("../ra8_widget/inc"));
+    smoke_mod.addIncludePath(b.path("../ra8_box/inc"));
+    smoke_mod.addIncludePath(b.path("../ra8_ui/inc"));
     smoke_mod.addCSourceFile(.{
         .file = b.path("tests/ra8_translate_smoke.c"),
         .flags = &.{"-std=c23"},
@@ -202,4 +222,35 @@ pub fn build(b: *std.Build) void {
     const run_tok = b.addRunArtifact(tok_tests);
     ra8_build.configureHostTestRun(b, test_step, tok_tests, run_tok);
     test_step.dependOn(&run_tok.step);
+
+    const gfx_mod = b.createModule(.{
+        .root_source_file = b.path("../ra8_gfx/src/ra8_gfx.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const panel_paint_mod = b.createModule(.{
+        .root_source_file = b.path("../ra8_widget/src/panel_paint.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    panel_paint_mod.addImport("ra8_gfx", gfx_mod);
+    const widget_paint_mod = b.createModule(.{
+        .root_source_file = b.path("../ra8_widget/src/widget_paint_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const overlay_tmod = b.createModule(.{
+        .root_source_file = b.path("tests/overlay_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    overlay_tmod.addImport("overlay", overlay_mod);
+    overlay_tmod.addImport("sidecar", sidecar_mod);
+    overlay_tmod.addImport("ra8_gfx", gfx_mod);
+    overlay_tmod.addImport("panel_paint", panel_paint_mod);
+    overlay_tmod.addImport("widget_paint_abi", widget_paint_mod);
+    const overlay_tests = b.addTest(.{ .root_module = overlay_tmod });
+    const run_overlay = b.addRunArtifact(overlay_tests);
+    ra8_build.configureHostTestRun(b, test_step, overlay_tests, run_overlay);
+    test_step.dependOn(&run_overlay.step);
 }

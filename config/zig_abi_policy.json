@@ -343,7 +343,11 @@
         "ra8_translate_tok_piece_info",
         "ra8_translate_tok_work_bytes",
         "ra8_translate_tok_encode",
-        "ra8_translate_tok_decode"
+        "ra8_translate_tok_decode",
+        "ra8_translate_overlay_safe_rect",
+        "ra8_translate_overlay_fit_text",
+        "ra8_translate_overlay_render_bubble",
+        "ra8_translate_overlay_render_page"
       ]
     },
     {
@@ -3793,7 +3797,7 @@
       "name": "ra8_translate",
       "build_root": "libs/ra8_translate",
       "public_header": "libs/ra8_translate/inc/ra8_translate.h",
-      "compatibility_sha256": "0cf6a037b5a158543a275f6d6511372ac83a30c26ea21128ef59778f6d72e040",
+      "compatibility_sha256": "f27f35b76b165f29ab8a7ae58aad461505d580a1f5d389e969cbc4debaaa89a4",
       "layout_assertions": [
         "@sizeOf(SidecarKey) == 52",
         "@alignOf(SidecarKey) == 4",
@@ -3816,13 +3820,22 @@
         "@sizeOf(OcrQuantParams) == 36",
         "@alignOf(OcrQuantParams) == 4",
         "@sizeOf(VocabHeader) == 36",
-        "@alignOf(VocabHeader) == 4"
+        "@alignOf(VocabHeader) == 4",
+        "@sizeOf(OverlayRect) == 16",
+        "@alignOf(OverlayRect) == 4",
+        "@sizeOf(OverlayStyle) == 24",
+        "@alignOf(OverlayStyle) == 4",
+        "@sizeOf(OverlayBubbleSpec) == 16",
+        "@alignOf(OverlayBubbleSpec) == 4",
+        "@sizeOf(OverlayFit) == 12",
+        "@alignOf(OverlayFit) == 2"
       ],
       "adapter": "libs/ra8_translate/src/ra8_translate_abi.zig",
       "layout_sources": [
         "libs/ra8_translate/src/internal/sidecar.zig",
         "libs/ra8_translate/src/internal/lang.zig",
-        "libs/ra8_translate/src/internal/ocr_preprocess.zig"
+        "libs/ra8_translate/src/internal/ocr_preprocess.zig",
+        "libs/ra8_translate/src/internal/overlay.zig"
       ],
       "library_name": "ra8_translate",
       "symbol_prefix": "ra8_translate_",
@@ -3837,7 +3850,10 @@
       "run_host_tests_in_all_modes": false,
       "c_include_dirs": [
         "libs/ra8_translate/inc",
-        "libs/ra8_core/inc"
+        "libs/ra8_core/inc",
+        "libs/ra8_widget/inc",
+        "libs/ra8_box/inc",
+        "libs/ra8_ui/inc"
       ],
       "contract_tests": [
         {
@@ -3984,6 +4000,26 @@
           "name": "ra8_translate_tok_decode",
           "calling_context": "task-safe-reentrant",
           "ownership": "borrows TVOC and token ID array and writes decoded UTF-8 bytes into caller buffer"
+        },
+        {
+          "name": "ra8_translate_overlay_safe_rect",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows bubble spec and overlay style and writes inscribed safe rect to caller storage"
+        },
+        {
+          "name": "ra8_translate_overlay_fit_text",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "queries borrowed Paint measurement callbacks over UTF-8 text and writes breaks and fit metadata to caller buffers"
+        },
+        {
+          "name": "ra8_translate_overlay_render_bubble",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows Paint callbacks, bubble spec, UTF-8 text, and breaks, paints bubble mask and text, and writes damage rect"
+        },
+        {
+          "name": "ra8_translate_overlay_render_page",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows Paint callbacks and immutable TRN1 bytes, paints page bubbles in reading order, and emits minimal damage rects"
         }
       ],
       "data_exports": [],
