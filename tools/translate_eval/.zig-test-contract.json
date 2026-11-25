@@ -1,0 +1,42 @@
+{
+  "test_roots": [
+    "tests/eval_test.zig"
+  ],
+  "covered_sources": [
+    "src/cli.zig",
+    "src/corpus.zig",
+    "src/fixtures.zig",
+    "src/main.zig",
+    "src/metrics.zig",
+    "src/pipeline.zig",
+    "src/ra8_translate_c.zig",
+    "tests/eval_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/cli.zig": [
+      "--dep",
+      "eval_corpus",
+      "-Mroot=src/cli.zig",
+      "-Meval_corpus=corpus/eval_corpus.json"
+    ],
+    "src/corpus.zig": [
+      "--dep",
+      "eval_corpus",
+      "-Mroot=src/corpus.zig",
+      "-Meval_corpus=corpus/eval_corpus.json"
+    ],
+    "src/main.zig": [
+      "--dep",
+      "eval_corpus",
+      "-Mroot=src/main.zig",
+      "-Meval_corpus=corpus/eval_corpus.json"
+    ],
+    "src/pipeline.zig": [
+      "--dep",
+      "eval_corpus",
+      "-Mroot=src/pipeline.zig",
+      "-Meval_corpus=corpus/eval_corpus.json"
+    ]
+  },
+  "minimum_tests": 12
+}
