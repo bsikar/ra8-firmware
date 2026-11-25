@@ -6,4 +6,5 @@
 comptime {
     _ = @import("update_abi");
     _ = @import("bundle_abi");
+    _ = @import("reconcile_abi");
 }

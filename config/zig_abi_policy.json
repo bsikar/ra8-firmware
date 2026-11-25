@@ -3593,6 +3593,23 @@
             "@sizeOf(Header) == 32",
             "@sizeOf(ImageDesc) == 64"
           ]
+        },
+        {
+          "path": "libs/ra8_update/inc/ra8_reconcile.h",
+          "compatibility_sha256": "c69ac82c280333b9ee6a9ce4fb54c2cbe55f42f33234ba84110e1f21678bc7f6",
+          "symbol_prefix": "ra8_reconcile_",
+          "layout_assertions": [
+            "@sizeOf(Policy) == 12",
+            "@alignOf(Policy) == 4",
+            "@sizeOf(TargetNv) == 16",
+            "@sizeOf(NvState) == 88",
+            "@alignOf(NvState) == 4",
+            "@offsetOf(NvState, \"targets\") == 20",
+            "@offsetOf(NvState, \"crc32\") == 84",
+            "@sizeOf(Report) == 28",
+            "@alignOf(Report) == 4",
+            "@sizeOf(Ops) == ptr_bytes * 7"
+          ]
         }
       ],
       "additional_headers": [
@@ -3616,12 +3633,19 @@
             "ra8_bundle_",
             "ra8_update_"
           ]
+        },
+        {
+          "path": "libs/ra8_update/src/reconcile_abi.zig",
+          "symbol_prefixes": [
+            "ra8_reconcile_"
+          ]
         }
       ],
       "layout_sources": [
         "libs/ra8_update/src/internal/pipeline.zig",
         "libs/ra8_update/src/internal/session.zig",
-        "libs/ra8_update/src/internal/bundle.zig"
+        "libs/ra8_update/src/internal/bundle.zig",
+        "libs/ra8_update/src/internal/reconcile.zig"
       ],
       "library_name": "ra8_update",
       "symbol_prefix": "ra8_update_",
@@ -3655,6 +3679,12 @@
           "language": "zig",
           "path": "libs/ra8_update/tests/bundle_test.zig",
           "symbol_evidence": "libs/ra8_update/src/update_abi.zig",
+          "registration": "libs/ra8_update/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_update/tests/reconcile_test.zig",
+          "symbol_evidence": "libs/ra8_update/src/reconcile_abi.zig",
           "registration": "libs/ra8_update/.zig-test-contract.json"
         }
       ],
@@ -3734,6 +3764,26 @@
           "name": "ra8_update_verify_bundle",
           "calling_context": "task-only-non-reentrant",
           "ownership": "borrows scratch buffer and outputs verified bundle metadata from staged session storage"
+        },
+        {
+          "name": "ra8_reconcile_nv_init",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows descriptor table and initializes CRC-32-protected NV state inside caller storage"
+        },
+        {
+          "name": "ra8_reconcile_nv_validate",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows persisted NV state struct and checks CRC-32 and invariants without mutation"
+        },
+        {
+          "name": "ra8_reconcile_compute_backoff_ms",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows retry policy and writes bounded millisecond delay to caller out-pointer"
+        },
+        {
+          "name": "ra8_reconcile_boot",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows bundle metadata, policy, and hook seams to reconcile companion versions and write caller report"
         }
       ],
       "data_exports": [],

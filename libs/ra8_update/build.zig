@@ -43,6 +43,14 @@ pub fn build(b: *std.Build) void {
     bundle_mod.addImport("pipeline", pipeline_mod);
     bundle_mod.addImport("session", session_mod);
 
+    const reconcile_mod = b.addModule("reconcile", .{
+        .root_source_file = b.path("src/internal/reconcile.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    reconcile_mod.addImport("err", err_mod);
+    reconcile_mod.addImport("bundle", bundle_mod);
+
     const abi_mod = b.createModule(.{
         .root_source_file = b.path("src/update_abi.zig"),
         .target = target,
@@ -63,6 +71,15 @@ pub fn build(b: *std.Build) void {
     bundle_abi_mod.addImport("bundle", bundle_mod);
     bundle_abi_mod.addImport("update_abi", abi_mod);
 
+    const reconcile_abi_mod = b.createModule(.{
+        .root_source_file = b.path("src/reconcile_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    reconcile_abi_mod.addImport("err", err_mod);
+    reconcile_abi_mod.addImport("bundle", bundle_mod);
+    reconcile_abi_mod.addImport("reconcile", reconcile_mod);
+
     const root_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -70,6 +87,7 @@ pub fn build(b: *std.Build) void {
     });
     root_mod.addImport("update_abi", abi_mod);
     root_mod.addImport("bundle_abi", bundle_abi_mod);
+    root_mod.addImport("reconcile_abi", reconcile_abi_mod);
 
     const library = b.addLibrary(.{
         .name = "ra8_update",
@@ -99,9 +117,20 @@ pub fn build(b: *std.Build) void {
     bundle_test_mod.addImport("bundle", bundle_mod);
     const bundle_tests = b.addTest(.{ .root_module = bundle_test_mod });
 
+    const reconcile_test_mod = b.createModule(.{
+        .root_source_file = b.path("tests/reconcile_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    reconcile_test_mod.addImport("err", err_mod);
+    reconcile_test_mod.addImport("bundle", bundle_mod);
+    reconcile_test_mod.addImport("reconcile", reconcile_mod);
+    const reconcile_tests = b.addTest(.{ .root_module = reconcile_test_mod });
+
     const test_step = b.step("test", "Run Zig and C ra8_update tests");
     test_step.dependOn(&b.addRunArtifact(pipeline_tests).step);
     test_step.dependOn(&b.addRunArtifact(bundle_tests).step);
+    test_step.dependOn(&b.addRunArtifact(reconcile_tests).step);
 
     if (target.result.os.tag != .freestanding) {
         const c_mod = b.createModule(.{

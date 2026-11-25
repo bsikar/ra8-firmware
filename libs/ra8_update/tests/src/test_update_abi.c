@@ -20,6 +20,7 @@
 
 #include "ra8_bundle.h"
 #include "ra8_err.h"
+#include "ra8_reconcile.h"
 #include "ra8_update.h"
 
 typedef enum : uint32_t {
@@ -503,11 +504,182 @@ static void test_ra8u_bundle_pipeline_single_and_multi(void)
   EXPECT_EQ(k_ra8_update_stage_rolled_back, sess.stage);
 }
 
+typedef struct {
+  bool                     has_nv;
+  ra8_reconcile_nv_state_t nv;
+  uint32_t                 c6_ver;
+  uint32_t                 disp_ver;
+  uint32_t                 c6_applies;
+  uint32_t                 disp_applies;
+  uint32_t                 safe_calls;
+  uint32_t                 last_delay;
+  bool                     cut_after_c6_flash;
+  bool                     c6_stuck;
+} c_reconcile_ctx_t;
+
+static ra8_err_t c_rec_nv_load(void* ctx, ra8_reconcile_nv_state_t* out_state)
+{
+  c_reconcile_ctx_t* r = (c_reconcile_ctx_t*)ctx;
+  if (!r->has_nv) {
+    return k_ra8_err_not_found;
+  }
+  *out_state = r->nv;
+  return k_ra8_ok;
+}
+
+static ra8_err_t c_rec_nv_save(void* ctx, const ra8_reconcile_nv_state_t* state)
+{
+  c_reconcile_ctx_t* r = (c_reconcile_ctx_t*)ctx;
+  r->nv                = *state;
+  r->has_nv            = true;
+  return k_ra8_ok;
+}
+
+static ra8_err_t
+c_rec_query(void* ctx, ra8_bundle_target_t target, uint32_t* out_ver, uint32_t* out_proto)
+{
+  c_reconcile_ctx_t* r = (c_reconcile_ctx_t*)ctx;
+  if (out_proto != nullptr) {
+    *out_proto = 4U;
+  }
+  if (target == k_ra8_bundle_target_esp32_c6) {
+    *out_ver = r->c6_ver;
+    return k_ra8_ok;
+  }
+  if (target == k_ra8_bundle_target_display) {
+    *out_ver = r->disp_ver;
+    return k_ra8_ok;
+  }
+  return k_ra8_err_not_found;
+}
+
+static ra8_err_t c_rec_apply(void* ctx, const ra8_bundle_image_desc_t* desc)
+{
+  c_reconcile_ctx_t* r = (c_reconcile_ctx_t*)ctx;
+  if (desc->target == k_ra8_bundle_target_esp32_c6) {
+    ++r->c6_applies;
+    if (r->c6_stuck) {
+      return k_ra8_err_hw_error;
+    }
+    r->c6_ver = desc->image_version;
+    if (r->cut_after_c6_flash) {
+      r->cut_after_c6_flash = false;
+      return k_ra8_err_hw_error;
+    }
+    return k_ra8_ok;
+  }
+  if (desc->target == k_ra8_bundle_target_display) {
+    ++r->disp_applies;
+    r->disp_ver = desc->image_version;
+    return k_ra8_ok;
+  }
+  return k_ra8_err_invalid_arg;
+}
+
+static ra8_err_t
+c_rec_delay(void* ctx, ra8_bundle_target_t target, uint8_t attempt, uint32_t delay_ms)
+{
+  (void)target;
+  (void)attempt;
+  ((c_reconcile_ctx_t*)ctx)->last_delay = delay_ms;
+  return k_ra8_ok;
+}
+
+static void c_rec_safe(void* ctx, ra8_bundle_target_t target, const ra8_reconcile_nv_state_t* state)
+{
+  (void)target;
+  (void)state;
+  ++((c_reconcile_ctx_t*)ctx)->safe_calls;
+}
+
+static void test_reconcile_desired_state_and_safe_halt(void)
+{
+  const uint32_t          pay_off  = k_ra8_bundle_header_bytes + 3U * k_ra8_bundle_desc_bytes + 64U;
+  ra8_bundle_hdr_t        hdr      = {.magic           = k_ra8_bundle_magic,
+                                      .format_version  = k_ra8_bundle_format_ver,
+                                      .header_bytes    = k_ra8_bundle_header_bytes,
+                                      .bundle_version  = 40U,
+                                      .image_count     = 3U,
+                                      .flags           = 0U,
+                                      .total_bytes     = pay_off + 192U,
+                                      .payloads_offset = pay_off,
+                                      .sig_len         = 64U,
+                                      .reserved        = 0U};
+  ra8_bundle_image_desc_t descs[3] = {
+    {.target        = k_ra8_bundle_target_ra8_app,
+     .format        = k_ra8_bundle_fmt_rot1_img,
+     .image_version = 100U,
+     .offset        = pay_off,
+     .size          = 64U},
+    {.target           = k_ra8_bundle_target_esp32_c6,
+     .format           = k_ra8_bundle_fmt_c6_img,
+     .image_version    = 200U,
+     .compat_proto_ver = 4U,
+     .offset           = pay_off + 64U,
+     .size             = 64U},
+    {.target        = k_ra8_bundle_target_display,
+     .format        = k_ra8_bundle_fmt_raw,
+     .image_version = 300U,
+     .offset        = pay_off + 128U,
+     .size          = 64U},
+  };
+  ra8_reconcile_nv_state_t nv_check = {};
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_nv_init(40U, descs, 3U, &nv_check));
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_nv_validate(&nv_check));
+  nv_check.bundle_version ^= 1U;
+  EXPECT_EQ(k_ra8_err_crc_mismatch, ra8_reconcile_nv_validate(&nv_check));
+
+  ra8_reconcile_policy_t pol = {
+    .base_backoff_ms     = 50U,
+    .max_backoff_ms      = 200U,
+    .max_retries         = 2U,
+    .backoff_shift       = 2U,
+    .reprobe_after_apply = true,
+  };
+  uint32_t delay = 0U;
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_compute_backoff_ms(&pol, 2U, &delay));
+  EXPECT_EQ(100U, delay);
+
+  c_reconcile_ctx_t   ctx = {.c6_ver = 10U, .disp_ver = 15U, .cut_after_c6_flash = true};
+  ra8_reconcile_ops_t ops = {
+    .nv_load         = c_rec_nv_load,
+    .nv_save         = c_rec_nv_save,
+    .query_companion = c_rec_query,
+    .apply_companion = c_rec_apply,
+    .backoff_delay   = c_rec_delay,
+    .on_safe_state   = c_rec_safe,
+    .ctx             = &ctx,
+  };
+  ra8_reconcile_report_t rpt = {};
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_boot(&hdr, descs, &pol, &ops, &rpt));
+  EXPECT_EQ(k_ra8_reconcile_state_pending_retry, rpt.overall_state);
+  EXPECT_EQ(1U, ctx.c6_applies);
+
+  /* Next boot skips already-converged C6 and finishes Display. */
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_boot(&hdr, descs, &pol, &ops, &rpt));
+  EXPECT_EQ(k_ra8_reconcile_state_converged, rpt.overall_state);
+  EXPECT_EQ(1U, ctx.c6_applies);
+  EXPECT_EQ(1U, ctx.disp_applies);
+
+  /* New bundle targeting permanently failing C6 hits safe_halted after 2 retries. */
+  hdr.bundle_version     = 41U;
+  descs[1].image_version = 201U;
+  ctx.c6_stuck           = true;
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_boot(&hdr, descs, &pol, &ops, &rpt));
+  EXPECT_EQ(k_ra8_reconcile_state_pending_retry, rpt.overall_state);
+  EXPECT_EQ(k_ra8_ok, ra8_reconcile_boot(&hdr, descs, &pol, &ops, &rpt));
+  EXPECT_EQ(k_ra8_reconcile_state_safe_halted, rpt.overall_state);
+  EXPECT_EQ(50U, ctx.last_delay);
+  EXPECT_EQ(1U, ctx.safe_calls);
+  EXPECT_EQ(3U, ctx.c6_applies);
+}
+
 int main(void)
 {
   test_ota_immediate_flow();
   test_dfu_trial_defers_floor_and_rolls_back_on_bad_verify();
   test_guards_downgrade_and_explicit_rollback();
   test_ra8u_bundle_pipeline_single_and_multi();
+  test_reconcile_desired_state_and_safe_halt();
   return (s_fail == 0U) ? 0 : 1;
 }
