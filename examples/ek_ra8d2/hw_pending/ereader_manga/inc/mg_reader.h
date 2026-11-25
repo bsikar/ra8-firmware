@@ -38,6 +38,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "jof.h"
+#include "mg_translate.h"
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
 
@@ -79,12 +80,14 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_mg_zone_none      = 0U, /**< Outside every actionable zone.    */
-  k_mg_zone_pan_up    = 1U, /**< Top edge band: slide viewport up. */
-  k_mg_zone_pan_down  = 2U, /**< Bottom edge band: slide down.     */
-  k_mg_zone_pan_left  = 3U, /**< Left edge band: slide left.       */
-  k_mg_zone_pan_right = 4U, /**< Right edge band: slide right.     */
-  k_mg_zone_zoom      = 5U, /**< Centre: toggle 1:1 <-> fit-page.  */
+  k_mg_zone_none         = 0U, /**< Outside every actionable zone.       */
+  k_mg_zone_pan_up       = 1U, /**< Top edge band: slide viewport up.    */
+  k_mg_zone_pan_down     = 2U, /**< Bottom edge band: slide down.        */
+  k_mg_zone_pan_left     = 3U, /**< Left edge band: slide left.          */
+  k_mg_zone_pan_right    = 4U, /**< Right edge band: slide right.        */
+  k_mg_zone_zoom         = 5U, /**< Centre: toggle 1:1 <-> fit-page.     */
+  k_mg_zone_trn_toggle   = 6U, /**< Status bar: original <-> translated. */
+  k_mg_zone_chapter_next = 7U, /**< Status bar: cycle active chapter.    */
 } mg_zone_t;
 
 /**
@@ -147,6 +150,8 @@ typedef struct {
   uint8_t            zoom;       /**< Current ::mg_zoom_t.                            */
   uint8_t            fit_factor; /**< Decimation factor for fit-page (>= 1).          */
   ra8_tile_pan_dir_t last_pan;   /**< Last pan direction (::mg_reader_prefetch seed). */
+  /** @brief Optional translation controller (`NULL` disables overlays/chrome). */
+  mg_translate_ctx_t* trn;
 } mg_reader_t;
 
 /**
@@ -173,6 +178,14 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t mg_reader_init(mg_reader_t* r, const mg_reader_cfg_t* cfg);
+
+/**
+ * @brief Attach or detach an initialized ::mg_translate_ctx_t controller.
+ * @param[in,out] r Bound reader.
+ * @param[in] trn Translation controller (NULL detaches overlays/chrome).
+ * @since 0.1.0
+ */
+void mg_reader_set_translate(mg_reader_t* r, mg_translate_ctx_t* trn);
 
 /**
  * @brief Classify a panel coordinate into its tap-zone.
