@@ -1,0 +1,9 @@
+{
+  "test_roots": [
+    "tests/verify_vectors_test.zig"
+  ],
+  "covered_sources": [
+    "tests/verify_vectors_test.zig"
+  ],
+  "minimum_tests": 2
+}
